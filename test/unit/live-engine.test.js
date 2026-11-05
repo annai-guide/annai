@@ -116,16 +116,18 @@ test('enter and leave fire once a crossing; jitter at the edge does not refire t
   assert.deepEqual(k.agent.wakes.map((w) => w.fallbacks[0].text), ['Bixby Bridge ahead.', 'On to Big Sur.', 'Bixby Bridge ahead.']);
 });
 
-test('moved fires after its km since her last wake; any wake starts the count again', async () => {
+test('moved fires after its km from when it was set: wakes do not start the count again (second drive); with repeat, it counts again from each firing', async () => {
   const k = await liveKit();
   const w = await k.live.setWatch(k.trip, { when: { type: 'moved', km: 5 }, repeat: true, fallback: 'Narrate.' });
   await k.drive(MONTEREY, off(MONTEREY, 0, -3000), at('09:00'), at('09:03'));
   k.agent.woke(); // she woke for something else
-  await k.drive(off(MONTEREY, 0, -3000), off(MONTEREY, 0, -7000), at('09:03:05'), at('09:07'));
-  assert.equal(k.agent.wakes.length, 0);
-  await k.drive(off(MONTEREY, 0, -7000), off(MONTEREY, 0, -9000), at('09:07:05'), at('09:09'));
+  await k.drive(off(MONTEREY, 0, -3000), off(MONTEREY, 0, -5500), at('09:03:05'), at('09:06'));
   assert.equal(k.agent.wakes.length, 1);
-  assert.match(k.agent.wakes[0].text, new RegExp(`^Your watch ${w.id} \\(after 5 km travelled\\) fired: you have travelled 5\\.\\d km since your last wake`));
+  assert.match(k.agent.wakes[0].text, new RegExp(`^Your watch ${w.id} \\(after 5 km travelled\\) fired: you have travelled 5\\.\\d km since this watch started counting`));
+  await k.drive(off(MONTEREY, 0, -5500), off(MONTEREY, 0, -9000), at('09:06:05'), at('09:09'));
+  assert.equal(k.agent.wakes.length, 1, 'counting again from that firing: 3.5 km');
+  await k.drive(off(MONTEREY, 0, -9000), off(MONTEREY, 0, -11000), at('09:09:05'), at('09:11'));
+  assert.equal(k.agent.wakes.length, 2);
 });
 
 test('a watch that is broken, of an unknown type, expired, or whose plugin trigger throws is skipped; the others still fire', async () => {
@@ -506,6 +508,49 @@ test('parking after a drive: the slower speed held completes on the recheck, not
   assert.equal(k.live.activity, 'still', 'no fix for 2 min after a slow speed');
   assert.match(k.live.nowInfo().activity, /^still$/);
   assert.deepEqual(seen, ['walking', 'still']);
+});
+
+test('parking on the second drive\'s points, with the recheck: moving fast has gone a minute after the slow speed, and the status reads still well before six minutes; a 3-minute arrived fires on them', async () => {
+  const k = await liveKit({ start: at('17:00') });
+  await k.fix(at('17:00'), MONTEREY, { speed: 0 });
+  const arrived = await k.live.setWatch(k.trip, { when: { type: 'arrived', minutes: 3 }, fallback: 'Parked.' });
+  const p = await fastFrom(k, at('17:00:05'), 300);
+  const t0 = at('17:05:10');
+  /** @type {[number, number | null, number][]} */
+  const points = [[0, 8.6, 8], [62, 3.2, 8], [136, 0.8, 8], [233, null, 13], [294, 0.3, 8], [354, null, 8]];
+  /** @type {Record<number, string>} */
+  const read = {};
+  for (const [s, speed, accuracy] of points) {
+    await k.fix(t0 + s * 1000, p, { speed, accuracy });
+    read[s] = k.live.activity;
+  }
+  assert.equal(read[136], 'moving-fast');
+  assert.notEqual(read[233], 'moving-fast', 'about 4 minutes on');
+  assert.equal(read[294], 'still');
+  const fired = k.agent.wakes.filter((w) => w.text.includes(arrived.id));
+  assert.equal(fired.length, 1, 'the stop began with the first of these points');
+  assert.match(fired[0].text, /you've stopped for 3 min somewhere new/);
+});
+
+test('a red light does not fire "moving fast starts" again; the end of the drive and the next drive do', async () => {
+  const k = await liveKit({ start: at('17:00') });
+  const starts = await k.live.setWatch(k.trip, { when: { type: 'activity', activity: 'moving-fast' }, repeat: true, fallback: 'Off we go.' });
+  const ends = await k.live.setWatch(k.trip, { when: { type: 'activity', activity: 'moving-fast', edge: 'stop' }, repeat: true, fallback: 'Stopped.' });
+  const count = (/** @type {{ id: string }} */ w) => k.agent.wakes.filter((x) => x.text.includes(w.id)).length;
+  let p = await fastFrom(k, at('17:00'), 300);
+  assert.equal(count(starts), 1);
+  await k.stay(p, at('17:05:10'), at('17:07:30')); // a long red light: long enough to read still
+  assert.equal(k.live.activity, 'still');
+  assert.equal(count(ends), 1);
+  p = await fastFrom(k, at('17:07:40'), 200);
+  assert.equal(k.live.activity, 'moving-fast');
+  assert.equal(count(starts), 1, 'the same drive');
+  await k.stay(p, at('17:11:10'), at('17:13:00'));
+  assert.equal(count(ends), 2);
+  await k.stay(p, at('17:13:10'), at('17:19:00'), 60);
+  p = await fastFrom(k, at('17:19:10'), 100);
+  assert.equal(k.live.activity, 'moving-fast');
+  assert.equal(count(starts), 2, 'stopped for over five minutes: a new drive');
 });
 
 test('a tunnel: moving fast, then 3 min with no fix, stays moving fast', async () => {

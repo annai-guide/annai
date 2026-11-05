@@ -4,6 +4,10 @@ import { meters } from './geo.js';
  * The activity sensor's reasoning (spec §11.2): still, walking or moving fast, from GPS speed,
  * with 30–60 s hysteresis. GPS can't tell driving from riding a bus; both are moving fast, and
  * voice Auto treats them the same (§10.5).
+ *
+ * An activity ends once no speed has said it for the hold, and what follows is what the last speed
+ * said. The slow speeds on the way need not agree: at a stop they wander across STILL_BELOW, and
+ * each change of mind starting the hold again kept "moving fast" for minutes after parking (second drive).
  * @typedef {'still' | 'walking' | 'moving-fast' | 'unknown'} Activity
  * @typedef {import('./geo.js').Fix} Fix
  * @typedef {{ from: Activity, to: Activity, at: number }} Change
@@ -23,7 +27,7 @@ export const LEAVE_FAST_MS = 60_000;
 export const QUIET_STILL_MS = 120_000;
 /** Without the GPS's own speed, it is worked out from the oldest point at least this far back… */
 const SPAN_MS = 15_000;
-/** …and at most this far: the longer the span, the less GPS jitter looks like walking. */
+/** …and at most this far, the longer the span, the less GPS jitter looks like walking; or from the fix before, when there is none so near. */
 const RECENT_MS = 60_000;
 
 export class ActivityTracker {
@@ -31,8 +35,8 @@ export class ActivityTracker {
   activity = 'unknown';
   /** The speed last worked out, m/s. @type {number | null} */
   speed = null;
-  /** @type {{ activity: Activity, since: number } | null} what the speed has said lately, and since when */
-  #candidate = null;
+  /** @type {number | null} since when the speeds have said something other than the activity */
+  #leaving = null;
   /** @type {Fix[]} */
   #recent = [];
   /** @type {number | null} when the last fix came */
@@ -42,12 +46,15 @@ export class ActivityTracker {
 
   /** @param {Fix} fix @returns {Change | null} the change, when there is one */
   feed(fix) {
-    this.#recent = [...this.#recent.filter((f) => f.at < fix.at && fix.at - f.at <= RECENT_MS), fix];
+    const before = this.#recent.filter((f) => f.at < fix.at);
+    const near = before.filter((f) => fix.at - f.at <= RECENT_MS);
+    this.#recent = [...(near.length ? near : before.slice(-1)), fix];
     this.#lastAt = fix.at;
     const speed = this.#speedAt(fix);
-    if (speed === null) return null;
-    this.speed = speed;
-    this.#seen = speed < STILL_BELOW ? 'still' : speed < WALK_BELOW ? 'walking' : speed >= FAST_FROM ? 'moving-fast' : null; // between: neither
+    if (speed !== null) {
+      this.speed = speed;
+      this.#seen = speed < STILL_BELOW ? 'still' : speed < WALK_BELOW ? 'walking' : speed >= FAST_FROM ? 'moving-fast' : null; // between: neither
+    }
     return this.#decide(fix.at);
   }
 
@@ -59,22 +66,22 @@ export class ActivityTracker {
   tick(now) {
     if (this.#lastAt === null) return null;
     if (this.#quiet() && now - this.#lastAt >= QUIET_STILL_MS) return this.#become('still', now);
-    return this.#decide(now);
+    return this.#leaving === null ? null : this.#decide(now); // only a fix starts a hold: a last speed from before a quiet GPS says nothing new
   }
 
   /** When tick could next change something, or null. @returns {number | null} */
   due() {
     if (this.#lastAt === null) return null;
-    const c = this.#candidate;
-    const held = c && this.#seen === c.activity ? c.since + this.#hold() : Infinity;
+    const held = this.#leaving !== null && this.#seen !== null ? this.#leaving + this.#hold() : Infinity;
     const t = Math.min(held, this.#quiet() ? this.#lastAt + QUIET_STILL_MS : Infinity);
     return t === Infinity ? null : t;
   }
 
-  /** The GPS (re)started, after annai was off screen: a gap counts from now, and a change starts holding again with the next fix. @param {number} now */
+  /** The GPS (re)started, after annai was off screen: a gap counts from now, a change starts holding again with the next fix, and the way travelled meanwhile says nothing of the speed now. @param {number} now */
   heard(now) {
     if (this.#lastAt !== null) this.#lastAt = Math.max(this.#lastAt, now);
-    this.#candidate = null;
+    this.#leaving = null;
+    this.#recent = [];
   }
 
   /** @param {number} at @returns {Change | null} */
@@ -82,11 +89,11 @@ export class ActivityTracker {
     const seen = this.#seen;
     if (seen === null) return null;
     if (seen === this.activity) {
-      this.#candidate = null;
+      this.#leaving = null;
       return null;
     }
-    if (this.#candidate?.activity !== seen) this.#candidate = { activity: seen, since: at };
-    if (at - this.#candidate.since < this.#hold()) return null;
+    this.#leaving ??= at;
+    if (at - this.#leaving < this.#hold()) return null;
     return this.#become(seen, at);
   }
 
@@ -94,7 +101,7 @@ export class ActivityTracker {
   #become(to, at) {
     const change = { from: this.activity, to, at };
     this.activity = to;
-    this.#candidate = null;
+    this.#leaving = null;
     return change;
   }
 
@@ -111,14 +118,14 @@ export class ActivityTracker {
   reset() {
     this.activity = 'unknown';
     this.speed = null;
-    this.#candidate = null;
+    this.#leaving = null;
     this.#recent = [];
     this.#lastAt = null;
     this.#seen = null;
   }
 
   /**
-   * m/s: the GPS's own, when it gives one with a usable fix; else over the last 15 to 60 s, less what
+   * m/s: the GPS's own, when it gives one with a usable fix; else over the last 15 to 60 s (or the gap since the last fix), less what
    * the accuracy of both ends could explain: each can be off by its accuracy, so jitter at a stop
    * reads as no speed at all.
    * @param {Fix} fix

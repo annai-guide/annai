@@ -27,6 +27,8 @@ import { meters, kmText } from './geo.js';
 /** A stop this far from the last one is somewhere new (arrived). */
 export const NEW_PLACE_M = 500;
 const MIN = 60_000;
+/** Moving fast starting again this soon after it ended is the same drive: a red light, a queue. */
+export const SAME_DRIVE_MS = 5 * MIN;
 
 /** @param {unknown} v @param {number} lo @param {number} hi */
 const num = (v, lo, hi) => typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= hi;
@@ -163,26 +165,30 @@ function startSide(w, m, mem) {
 
 /** @type {TriggerType} */
 /* en */ const MOVED = {
-  type: 'moved', gps: true, summary: 'moved {km}: after travelling that far since your last wake',
+  type: 'moved', gps: true, summary: 'moved {km}: after travelling that far, counted from when the watch is set, annai\'s last start, or (with repeat) its last firing',
   validate: (w) => (num(w?.km, 0.1, 1000) ? null : 'km must be a number from 0.1 to 1000'),
   describe: (w) => `after ${w.km} km travelled`,
   check: (w, m, mem) => {
     const done = m.odometer - (mem.km0 ?? m.odometer);
-    /* en */ return done >= w.km ? { text: `you have travelled ${done.toFixed(1)} km since your last wake` } : null;
+    /* en */ return done >= w.km ? { text: `you have travelled ${done.toFixed(1)} km since this watch started counting` } : null;
   },
 };
 
 /** @type {TriggerType} */
 /* en */ const ACTIVITY = {
-  type: 'activity', gps: true, summary: 'activity {activity: still | walking | moving-fast, edge?: start | stop}: when it starts (or, with edge stop, stops)',
+  type: 'activity', gps: true, summary: 'activity {activity: still | walking | moving-fast, edge?: start | stop}: when it starts (or, with edge stop, stops); moving fast starting again under 5 min after it ended (a red light) doesn\'t count as starting',
   validate: (w) => {
     if (!['still', 'walking', 'moving-fast'].includes(w?.activity)) /* en */ return 'activity is still, walking or moving-fast';
     /* en */ return w.edge === undefined || w.edge === 'start' || w.edge === 'stop' ? null : 'edge is start or stop';
   },
   describe: (w) => `when ${words(w.activity)} ${w.edge === 'stop' ? 'stops' : 'starts'}`,
-  check: (w, m) => {
+  check: (w, m, mem) => {
     const c = m.change;
-    if (!c || (w.edge === 'stop' ? c.from !== w.activity : c.to !== w.activity)) return null;
+    if (!c) return null;
+    const ended = mem.fastEnded;
+    if (c.from === 'moving-fast') mem.fastEnded = m.now;
+    if (w.edge === 'stop' ? c.from !== w.activity : c.to !== w.activity) return null;
+    if (w.edge !== 'stop' && w.activity === 'moving-fast' && typeof ended === 'number' && m.now - ended < SAME_DRIVE_MS) return null;
     /* en */ return { text: `the activity is now ${words(c.to)} (it was ${words(c.from)})` };
   },
 };

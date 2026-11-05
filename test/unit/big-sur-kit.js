@@ -20,7 +20,7 @@ export const RULES = [
   { match: '^While there was no connection', reply: { toolCalls: [sleep] } },
   { match: 'is now moving fast', times: 1, reply: { toolCalls: [{ name: 'watch_set', input: { when: { type: 'moved', km: 15 }, repeat: true, fallback: NARRATE } }, speak('Off we go. Bixby Bridge comes first.'), sleep] } },
   { match: 'is now moving fast', reply: { toolCalls: [sleep] } },
-  { match: 'travelled .* km since your last wake', reply: { toolCalls: [{ name: 'nearby', input: { lat: 36.307, lng: -121.899, radius: 8000, kinds: ['sights'] } }, speak('Point Sur Lighthouse is up on the rock to the right.'), sleep] } },
+  { match: 'travelled .* km since this watch started counting', reply: { toolCalls: [{ name: 'nearby', input: { lat: 36.307, lng: -121.899, radius: 8000, kinds: ['sights'] } }, speak('Point Sur Lighthouse is up on the rock to the right.'), sleep] } },
   { match: 'you arrived at', reply: { toolCalls: [speak('Here we are.'), sleep] } },
   {
     match: '^Off plan: the user has been stopped', times: 1,
@@ -39,8 +39,8 @@ export const RULES = [
 export const EXPECTED = [
   'live mode on', 'driving', 'moved', 'arrived: Bixby Creek Bridge',
   'driving', 'moved', 'stopped off plan', 'leave: Lunch at Nepenthe',
-  'driving', 'arrived: Nepenthe',
-  'driving', 'arrived: McWay Falls',
+  'driving', 'moved', 'arrived: Nepenthe',
+  'driving', 'moved', 'arrived: McWay Falls',
   'driving', 'back online', 'stopped off plan',
   'driving', 'catch-up', 'stopped off plan', 'late: Hearst Castle tour',
   'driving', 'arrived: Hearst Castle',
@@ -55,7 +55,7 @@ export function label(reasons) {
   if (r.kind === 'catch-up') return 'catch-up';
   if (t.startsWith('While there was no connection')) return 'back online';
   if (t.includes('is now moving fast')) return 'driving';
-  if (/travelled .* km since your last wake/.test(t)) return 'moved';
+  if (/travelled .* km since this watch started counting/.test(t)) return 'moved';
   const arrived = /you arrived at (.+?) for "/.exec(t);
   if (arrived) return `arrived: ${arrived[1]}`;
   if (t.startsWith('Off plan: the user has been stopped')) return 'stopped off plan';
