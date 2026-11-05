@@ -20,7 +20,7 @@ const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Housekeeping: ['compaction'],
   // GPS is what live mode did; its location points (about one a second on a drive) are a kind of their own,
   // so they never crowd the firings out of the newest 300 (B5).
-  'GPS': ['trigger.fired', 'state', 'reminder'],
+  'GPS': ['trigger.fired', 'state', 'reminder', 'app.start'],
   Location: ['location'],
   Errors: ['error', 'plugin.error', 'plugin.disabled', 'content.refused'],
   Plugins: ['plugin.install', 'plugin.update', 'plugin.reset', 'plugin.remove', 'plugin.error', 'plugin.disabled'],
@@ -171,7 +171,8 @@ export function traceSummary(e, { costs: perWake } = {}) {
   }
   if (e.type === 'note') return line(d.from === 'koe' ? t`Koe to Kokoro` : t`Kokoro to Koe`, d.mode, d.why && d.why !== 'tool' ? d.why : null, cut(d.text));
   if (e.type === 'halves') return line(t`annai to Kokoro`, d.state, cut(d.text));
-  if (e.type === 'msg.user' || e.type === 'out.speak') return cut(d.text);
+  if (e.type === 'msg.user') return line(d.claim ? t`this was for Shiori` : null, cut(d.text));
+  if (e.type === 'out.speak') return cut(d.text);
   if (e.type === 'heard') {
     return line(d.source === 'dictation' ? t`phone dictation` : t`${duration(d.ms ?? 0)} from the microphone`, d.text ? quoted(d.text) : null,
       d.answer ? t`an answer` : d.meanwhile ? t`while she was thinking` : null, d.dismissed ? (d.source === 'live' ? t`she didn't answer` : t`not for Shiori`) : null,
@@ -208,6 +209,15 @@ export function traceSummary(e, { costs: perWake } = {}) {
     const unnamed = t`no name`;
     return line(t`audio route ${d.route}`, d.using === null ? t`from the devices present` : t`the microphone in use: ${d.using || unnamed}`,
       (d.devices ?? []).map((/** @type {string} */ x) => x || unnamed).join(', ') || t`no devices`);
+  }
+  if (e.type === 'app.start') return /* en */ `annai started · GPS ${d.gps}${d.activity && d.activity !== 'unknown' ? ` · ${d.activity} restored` : ''}`;
+  if (e.type === 'state' && typeof d.activity === 'string') {
+    // Live mode's activity: a change and what it rested on, or (from equal to activity) a beat or a km of way. No positions.
+    const r = d.readings;
+    return /* en */ line(d.from === d.activity ? `${d.activity}, unchanged` : `${d.from} to ${d.activity}`, typeof d.speed === 'number' ? `${d.speed} m/s` : null,
+      typeof d.odometer === 'number' ? `${d.odometer.toFixed(1)} km` : null, d.heldS !== undefined ? `held ${d.heldS} s` : null, d.gapS !== undefined ? `${d.gapS} s since a fix` : null,
+      r ? `readings still ${r.still}, walking ${r.walking}, between ${r.between}, fast ${r.fast}, none ${r.none}` : null, d.heards ? `${d.heards} unlocks` : null,
+      d.maxSpeed !== undefined ? `at most ${d.maxSpeed} m/s, ±${d.maxAccuracy} m` : null);
   }
   if (e.type === 'state') {
     // As live mode and the voice log them: on or off, and the voice's reason, a code.
@@ -247,7 +257,11 @@ export function traceSummary(e, { costs: perWake } = {}) {
       d.player ? t`on ${d.player}` : null);
   }
   // How the user's turn in a live session ended, in numbers only (the voice investigation, 2026-10-22).
-  if (e.type === 'live.turn') return t`your turn ended: ${d.end} · ${duration(d.ms ?? 0)} sent · floor ${d.floorDb ?? '?'} dB, loudest ${d.peakDb ?? '?'} dB`;
+  if (e.type === 'live.turn') {
+    // What the level check did, to tune it (the second-drive design, section 3); lines from before it have none of this.
+    const check = d.keptFrames === undefined ? null : t`your voice ${d.voiceDb ?? '?'} dB, least to start ${d.minDb ?? '–'} dB, ${d.keptFrames} frames kept out (loudest ${d.keptPeakDb ?? '?'} dB)`;
+    return d.end === 'kept' ? line(t`no turn`, check) : line(t`your turn ended: ${d.end} · ${duration(d.ms ?? 0)} sent · floor ${d.floorDb ?? '?'} dB, loudest ${d.peakDb ?? '?'} dB`, check);
+  }
   if (e.type === 'net.request') {
     // Each clip's format and size (spec §10.6).
     const clips = d.format ? `${d.format}, ${size(d.bytes ?? 0)}` : d.audio?.length ? t`audio: ${d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')}` : null;

@@ -75,9 +75,12 @@ test("spoken: a live question gets \"checking\" aloud, then the answer aloud; a 
     const koe = JSON.stringify(server.bodies('/koe/v1/messages')[1].messages);
     expect(koe).toContain('Nepenthe is open till 10 tonight (nepenthe.com).');
     expect(koe).toContain('Did you lock the car?');
+    // Chatter no longer ends her turn, so the words heard come as it ends: their lines are announced a moment after her last.
+    await expect.poll(() => page.evaluate(() => /** @type {any} */ (window).announced.filter((/** @type {string} */ t) => /^Heard/.test(t)).length), { timeout: 10_000 }).toBe(2);
     await page.getByRole('link', { name: 'Conversation' }).click();
-    await expect(page.locator('.convo .you')).toHaveText(['Is Nepenthe open now?']);
-    await expect(page.locator('.convo .system-line').filter({ hasText: 'Heard, not for Shiori' })).toHaveText('Heard, not for Shiori: Did you lock the car?');
+    await expect(page.locator('.convo .you:not(.quiet) p')).toHaveText(['Is Nepenthe open now?']);
+    await expect(page.locator('.convo .you.quiet p')).toHaveText('Did you lock the car?');
+    await expect(page.locator('.convo .you.quiet .line-label')).toHaveText('heard · judged not for her');
     await expect(page.locator('.convo .shiori.said')).toHaveCount(2);
     // The halves' notes show by default (the user, 2026-10-23), as quiet lines between the bubbles.
     await expect(page.locator('.convo .halves-note')).toContainText(['Koe to Kokoro: Is Nepenthe open now?', 'Kokoro to Koe: Nepenthe is open till 10 tonight (nepenthe.com).']);

@@ -378,3 +378,17 @@ test('a stream the player never plays (its audio suspended) gives up a moment af
   assert.equal((await u2.done).failed, 'blocked');
   assert.ok(Date.now() - t1 < 500, 'without waiting for the watchdog');
 });
+
+test('a player that ends a stream as stalled is no sentence said: playStream says the page may not play sound, so the Voice hears and the words show', async () => {
+  const p = stuckPlayer();
+  const stream = /** @type {any} */ (p.player.stream);
+  p.player.stream = /** @type {any} */ ((/** @type {any} */ o) => ({ ...stream(o), done: Promise.resolve({ playedMs: 0, stalled: true }) }));
+  /** @type {string[]} */
+  const blocked = [];
+  const speaker = new Speaker({ entries: async () => [{ id: 'v1', name: 'v1', kind: 'api' }], bench: () => {}, platform: () => /** @type {any} */ (p), locale: 'en', onBlocked: () => { blocked.push('blocked'); },
+    synthesize: async (_e, _t, signal) => fakeStream({ n: 3, at: () => 0, now: Date.now, signal }) });
+  const u = speaker.begin();
+  u.end('One sentence.');
+  assert.equal((await u.done).failed, 'blocked');
+  assert.deepEqual(blocked, ['blocked']);
+});

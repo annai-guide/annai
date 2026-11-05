@@ -52,7 +52,7 @@ test('a spoken back-and-forth: tap, ask aloud, hear her answer, answer her, and 
     expect(answer).toContain('Yes, the first one.');
     expect(server.bodies('/voice/audio/speech').map((/** @type {any} */ b) => b.input)).toEqual(['There is a taco stand two miles ahead.', 'Want to stop there?', 'Great, I will tell you when to turn.']);
     expect(await page.evaluate(() => /** @type {any} */ (window).__micOpens)).toBe(2);
-    await expect(page.locator('.convo .you')).toHaveText(['Where should we eat?', 'Yes, the first one.']);
+    await expect(page.locator('.convo .you:not(.quiet) p')).toHaveText(['Where should we eat?', 'Yes, the first one.']);
     // Keep voice clips is off: nothing heard was kept as sound.
     const sounds = await page.evaluate(() => new Promise((resolve) => {
       const open = indexedDB.open('annai');
@@ -148,7 +148,8 @@ test('chatter: with a quick-decision model, talk that is not for her is recorded
     await expect(label).toHaveText('Tap to talk', { timeout: 30_000 });
     expect(server.bodies('/b/v1/messages')).toHaveLength(1);
     expect(JSON.stringify(server.bodies('/d/v1/messages')[0].messages)).toContain('Can you pass the water?');
-    await expect(page.locator('.convo .system-line').filter({ hasText: 'Heard, not for Shiori' })).toHaveText('Heard, not for Shiori: Can you pass the water?');
+    await expect(page.locator('.convo .you.quiet p')).toHaveText('Can you pass the water?');
+    await expect(page.locator('.convo .you.quiet .line-label')).toHaveText('heard · judged not for her');
   } finally {
     await server.stop();
   }

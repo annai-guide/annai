@@ -9,23 +9,22 @@ test("the first tap's unlock listens to what a phone counts as a tap: pointerup,
   assert.deepEqual([...UNLOCK_EVENTS].sort(), ['click', 'keydown', 'pointerup', 'touchend']);
 });
 
-test('an unlock that fails keeps listening, a later tap tries again, and one that works stops listening; it runs inside the tap', async () => {
+test('every tap tries, inside the tap, even after one worked (sound may get stuck later; Voice.unlock does nothing while it is fine); pointerdown never does; off stops it', async () => {
   const target = new EventTarget();
-  const works = [false, true];
   let calls = 0;
-  armUnlock(target, async () => {
+  const off = armUnlock(target, async () => {
     calls++;
-    return works.shift() ?? true;
+    return true;
   });
   target.dispatchEvent(new Event('pointerup'));
   assert.equal(calls, 1, 'called in the event itself, not after a wait');
   await tick();
-  target.dispatchEvent(new Event('click'));
-  assert.equal(calls, 2);
-  await tick();
   for (const type of UNLOCK_EVENTS) target.dispatchEvent(new Event(type));
   target.dispatchEvent(new Event('pointerdown'));
-  assert.equal(calls, 2, 'nothing listens once it worked');
+  assert.equal(calls, 1 + UNLOCK_EVENTS.length);
+  off();
+  target.dispatchEvent(new Event('pointerup'));
+  assert.equal(calls, 1 + UNLOCK_EVENTS.length);
 });
 
 test('an unlock that throws keeps listening', async () => {
@@ -39,8 +38,6 @@ test('an unlock that throws keeps listening', async () => {
   target.dispatchEvent(new Event('touchend'));
   await tick();
   target.dispatchEvent(new Event('keydown'));
-  await tick();
-  target.dispatchEvent(new Event('click'));
   assert.equal(calls, 2);
 });
 

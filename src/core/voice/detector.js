@@ -16,7 +16,10 @@ import { biquad } from './pcm.js';
  * as a new microphone's zeros end is speech. Sound over a guess is held (speechMs 0) until the room is heard
  * (a frame near it, or outside speech one too quiet to start speech: the floor), the run ends, or a second
  * has passed: the floor is then its quietest frame (or steady sound's level), the run judged again. reset()
- * drops a guess.
+ * drops a guess. minDb (the level check, voice/level.js): a frame under the minimum it gives never starts speech, though a run going on is
+ * untouched. Only once the floor is learned: a guess, or a floor a second old, says nothing about the room. Such a frame is neither a blip nor
+ * the room, as far as the floor goes: its quiet counts as quiet, and only steady sound (a second of it) moves the floor. floorDb: a floor
+ * learned earlier on this microphone, taken as learned (a new session's first second would have no minimum).
  * @typedef {{ type: 'speech' } | { type: 'segment', pcm: Float32Array, sampleRate: number, ms: number, cut: 'pause' | 'cap' | 'end', peakDb: number } | { type: 'discard' }} DetectorEvent
  *   cut: what ended it: its pause, maxMs, or end(); peakDb: its loudest frame
  * @typedef {{ frames: Float32Array[], dbs: number[], speech: number, quiet: number, peak: number }} Run  speech going on: its frames, their loudness, and counts
@@ -67,6 +70,14 @@ export class Detector {
   #gap = 0;
   /** Frames over the floor's keep margin outside speech: noise that never became speech, and a word's first frames. */
   #blips = 0;
+  /** Frames over the floor that the minimum kept from starting speech, and the loudest; the last minimum in force. */
+  keptFrames = 0;
+  /** @type {number | null} */
+  keptPeakDb = null;
+  /** @type {number | null} */
+  minNow = null;
+  /** Frames in a row the minimum kept out, for the steady rule. @type {number[]} */
+  #under = [];
   /** Frames heard, and the last one louder than markDb. */
   #count = 0;
   #marked = 0;
@@ -81,10 +92,15 @@ export class Detector {
 
   /**
    * @param {{ sampleRate: number, pauseMs?: number, startDb?: number, keepDb?: number, prerollMs?: number, tailMs?: number,
-   *   minSpeechMs?: number, maxMs?: number }} o
+   *   minSpeechMs?: number, maxMs?: number, minDb?: (floorDb: number) => number | null, floorDb?: number | null }} o
    */
-  constructor({ sampleRate, pauseMs = 700, startDb = 10, keepDb = 6, prerollMs = 300, tailMs = 200, minSpeechMs = 250, maxMs = 30_000 }) {
+  constructor({ sampleRate, pauseMs = 700, startDb = 10, keepDb = 6, prerollMs = 300, tailMs = 200, minSpeechMs = 250, maxMs = 30_000, minDb, floorDb = null }) {
     this.sampleRate = sampleRate;
+    this.minDb = minDb;
+    if (floorDb !== null) {
+      this.#floor = floorDb;
+      this.#learned = LEARN_FRAMES;
+    }
     this.startDb = startDb;
     this.keepDb = keepDb;
     const frames = (/** @type {number} */ msOf) => Math.max(1, Math.round(msOf / FRAME_MS));
@@ -206,7 +222,9 @@ export class Detector {
   #step(raw, db, events) {
     this.#count++;
     if (this.markDb !== null && db > this.markDb) this.#marked = this.#count;
-    this.#still = db < SILENT_DB || (this.#floor !== null && db - this.#floor <= this.keepDb) ? this.#still + 1 : 0;
+    if (!this.#seg) this.minNow = !this.#guess && this.#floor !== null && this.#learned >= LEARN_FRAMES ? this.minDb?.(this.#floor) ?? null : null;
+    const under = !this.#seg && this.minNow !== null && db < this.minNow;
+    this.#still = under || db < SILENT_DB || (this.#floor !== null && db - this.#floor <= this.keepDb) ? this.#still + 1 : 0;
     this.#gap = Math.max(this.#gap, this.#still);
     if (db < SILENT_DB) {
       this.level = 0;
@@ -236,8 +254,13 @@ export class Detector {
     this.level = Math.max(0, Math.min(1, over / 30));
     const s = this.#seg;
     if (!s) {
-      if (over > this.keepDb) this.#blips++;
-      this.#recent.push(over > this.startDb && db > FLOOR_MIN_DB);
+      if (under && over > this.startDb) {
+        this.keptFrames++;
+        this.keptPeakDb = Math.max(this.keptPeakDb ?? db, db);
+      }
+      const kept = under && over > this.keepDb;
+      if (over > this.keepDb && !under) this.#blips++;
+      this.#recent.push(!under && over > this.startDb && db > FLOOR_MIN_DB);
       if (this.#recent.length > 4) this.#recent.shift();
       this.#before.push(raw);
       if (this.#before.length > this.preroll + 4) this.#before.shift();
@@ -246,7 +269,16 @@ export class Detector {
         this.#before = [];
         this.#recent = [];
         events.push({ type: 'speech' });
+      } else if (kept) {
+        // Lyrics don't raise the floor, or the user's own voice would soon not clear it; a room gone loud for good, steady, does.
+        this.#under.push(db);
+        if (this.#under.length >= STEADY_FRAMES) {
+          const last = spread(this.#under);
+          this.#under = [];
+          if (last.std < STEADY_DB) this.#floor = last.mean - 1;
+        }
       } else {
+        this.#under = [];
         this.#floor += (db - this.#floor) * this.#rate(db, 0.005);
       }
       return;

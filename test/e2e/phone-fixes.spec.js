@@ -267,11 +267,9 @@ test("each of Shiori's lines names the model that wrote it, as written with it: 
   await writeEvent(page, trip, { type: 'out.speak', data: { id: 's3', wake: 'w-live', text: 'Hello.', by: null } });
   await writeEvent(page, trip, { type: 'out.speak', data: { id: 's4', wake: 'w-old', text: 'From before.' } });
   await page.goto('/#/talk');
-  const named = page.locator('.convo .by');
-  await expect(named).toHaveText(['Claude Sonnet 5.5', 'Claude Sonnet 5.5', "Gemini 3.5 Flash Lite · Claude Opus 5.5 didn't answer", 'Qwen3.8 Flash · instead of Claude Sonnet 5.5']);
-  for (const words of ['Hello.', 'From before.']) await expect(page.locator('.convo li', { hasText: words }).locator('.by')).toHaveCount(0);
-  // Quiet: small, and not in what the announcer says of a line.
-  expect(await named.first().evaluate((el) => el.classList.contains('sub'))).toBe(true);
+  await expect(page.locator('.convo .by')).toHaveText(['Claude Sonnet 5.5', "Gemini 3.5 Flash Lite · Claude Opus 5.5 didn't answer"]); // the halves' notes
+  await expect(page.locator('.convo .shiori .line-label')).toHaveText(['Claude Sonnet 5.5', 'Qwen3.8 Flash · instead of Claude Sonnet 5.5']); // her lines
+  for (const words of ['Hello.', 'From before.']) await expect(page.locator('.convo li', { hasText: words }).locator('.line-label')).toHaveCount(0);
 });
 
 

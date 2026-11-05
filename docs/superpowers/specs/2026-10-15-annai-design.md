@@ -924,8 +924,8 @@ When the phone locks, the app freezes, and catch-up (§11.4) covers the gap.
 | `enter`, `leave` | crossing a circle around a place, with a margin so GPS jitter at the edge doesn't refire it |
 | `dwell` | inside a place longer than X |
 | `arrived` | stopped somewhere new for N minutes |
-| `moved` | X km travelled since the last wake |
-| `activity` | an activity starts or stops |
+| `moved` | X km travelled since the watch was set or (with repeat) it last fired; restarting annai doesn't reset it (the odometer is kept in the drive's one record on this device, and a watch records its reading when it is set and when it fires) |
+| `activity` | an activity starts or stops; moving fast starting again under 5 minutes after it ended doesn't count as starting |
 | `plan` | a plan item is coming up, running late, or the user is off-plan |
 
 Plugins can add types.

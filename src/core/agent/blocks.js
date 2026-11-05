@@ -46,6 +46,9 @@ export function cardText(card) {
 /** An ask in a line: the question and its options, quoted. @param {any} d */
 const askText = (d) => `${quote(d.question)} (options: ${JSON.stringify((Array.isArray(d.options) ? d.options : []).map(String))})`;
 
+/** A line annai only heard, that the user says was for her ("This was for Shiori"), as a model reads it. @param {string} text */
+/* en */ export const claimLine = (text) => `[the user says this was for you] ${quote(text)}`;
+
 /**
  * What the user sent, as Koe reads it, in every place it reads it (its transcript, a live session's text turn, the conversation so far,
  * What each half sees): a typed line says so, so it stands apart from a [heard] one; a tap, a claim, a photo alone and files alone
@@ -62,7 +65,7 @@ export function koeLine(d, text, { unseen = false, quoted = false, files: showFi
   /* en */ const files = (/** @type {string} */ lead) => (n ? `${lead} handed you ${n === 1 ? 'a file' : `${n} files`}; Kokoro reads them]` : '');
   const body = (/** @type {string} */ x) => (quoted ? escapeTags(quote(x)) : theirs(x));
   /* en */ if (d.chose) return `[the user chose] ${theirs(quote(text))}`;
-  /* en */ if (d.claim) return `[the user says this was for you] ${theirs(quote(text))}`;
+  if (d.claim) return escapeTags(claimLine(text));
   /* en */ const typed = `${d.meanwhile ? '[meanwhile, the user wrote]' : '[typed]'} ${body(words || text)}`;
   /* en */ if (!words) return [d.images?.length ? `${user} sent a photo${unseen ? '; Kokoro sees it' : ''}]` : '', files(user)].filter(Boolean).join(' ') || (handed ? '' : typed);
   return `${typed}${n ? ` ${files('[the user')}` : ''}`;
@@ -87,6 +90,7 @@ export function blockFor(e, texts) {
   const d = e.data ?? {};
   const text = String(texts.text ?? '');
   if (e.type === 'msg.user' && d.split) {
+    if (d.claim) return claimLine(text);
     if (d.chose) /* en */ return `[the user chose] ${quote(text)}`;
     if (d.images?.length) /* en */ return text && text !== '(a photo)' ? `[the user sent a photo] ${quote(text)}` : '[the user sent a photo]';
     /* en */ return `[the user typed] ${quote(text)}`;

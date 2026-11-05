@@ -50,6 +50,15 @@ import { screenToResume } from '../ui/resume.js';
 import { controllerReady as taken, pluginsMayLoad } from './claim.js';
 
 const root = /** @type {HTMLElement} */ (document.getElementById('app'));
+/** Live mode's one record: on this device only, and read synchronously as annai starts. Erase takes it with the other annai.* keys. */
+const driveKeep = {
+  get() {
+    try { return JSON.parse(localStorage.getItem('annai.drive') ?? 'null'); } catch { return null; }
+  },
+  set(/** @type {unknown} */ r) {
+    try { localStorage.setItem('annai.drive', JSON.stringify(r)); } catch { /* storage blocked or full */ }
+  },
+};
 /** This page's voice, once it has one: a reload waits for a tap's sound unlock (a reload while it starts deadlocks WebKit on Linux). */
 /** @type {Voice | null} */
 let voiceNow = null;
@@ -159,7 +168,7 @@ async function boot() {
   /** @type {unknown[]} live mode's problems from before the shell is up */
   const liveEarly = [];
   let liveProblem = (/** @type {unknown} */ e) => { liveEarly.push(e); };
-  const live = new Live({ store, ws, registry, agent, news, problem: (e) => liveProblem(e), close: (keys) => { closeNotifications(keys).catch(() => {}); } });
+  const live = new Live({ store, ws, registry, agent, news, problem: (e) => liveProblem(e), close: (keys) => { closeNotifications(keys).catch(() => {}); }, keep: driveKeep });
   /** @type {any[]} cards from before the shell is up */
   const early = [];
   let pushCard = (/** @type {any} */ n) => { early.push(n); };
@@ -289,6 +298,7 @@ async function boot() {
     if (unloaded.length) offerReload(unloaded);
   }).finally(() => {
     pluginsStarted();
+    live.logStart(); // now, not as live mode starts: a plugin that follows the log (Remote trace) is running to see it
     // Not waited for again where no worker took the page.
     (gaveUp ? Promise.resolve() : controllerReady()).then(() => updates.start()).catch(() => {});
     // The link catalog is kept for offline use: fetched now, so it is there before the first offline moment (spec §7.2).

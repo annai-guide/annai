@@ -106,7 +106,7 @@ for (const why of ['voice', 'away']) {
   });
 }
 
-test("a stream that never plays out (a context suspended mid-reply) is stopped past its length: her line cut where heard, the reply traced as stalled, and Koe free again (review 5)", async () => {
+test("a stream that never plays out (a context suspended mid-reply) is stopped past its length: her whole line is written, the reply traced as stalled, and Koe free again (review 5, the second drive)", async () => {
   const words = 'The bridge ahead was built in 1932.';
   const k = await liveKit([{ heard: 'Where should we eat?', said: words, audio: tone(0.6) }, { heard: 'And then?', said: 'Then the coast.', audio: tone(0.3) }]);
   try {
@@ -117,14 +117,17 @@ test("a stream that never plays out (a context suspended mid-reply) is stopped p
     await say(k, 'where-eat');
     await soon(async () => (await k.events(['live.reply'])).length === 1, 8000); // 0.6 s of her sound and 3 s, on the real clock
     const [reply] = await k.events(['live.reply']);
-    assert.deepEqual([reply.data.stalled, reply.data.cut, reply.data.ms], [true, true, 0]);
-    assert.deepEqual(await k.events(['out.speak']), [], 'none of it was heard: no line');
+    assert.deepEqual([reply.data.stalled, reply.data.cut, reply.data.ms], [true, false, 0]);
+    await soon(async () => (await k.events(['out.speak'])).length === 1, 3000);
+    assert.equal((await k.events(['out.speak']))[0].data.text, words, 'none of it was heard, and none of it is lost');
     assert.equal(k.platform.streams[0].stopped, true);
     assert.notEqual(k.agent.live.view.name, 'speaking');
     k.platform.streamStalls = false;
+    k.agent.tap(); // the microphone closed with the sound: a tap brings both back
+    await until(() => k.agent.live.listening);
     await say(k, 'gas-station');
-    await soon(async () => (await k.events(['out.speak'])).length === 1, 3000);
-    assert.equal((await k.events(['out.speak']))[0].data.text, 'Then the coast.', 'the next turn plays');
+    await soon(async () => (await k.events(['out.speak'])).length === 2, 3000);
+    assert.equal((await k.events(['out.speak']))[1].data.text, 'Then the coast.', 'the next turn plays');
   } finally {
     await k.done();
   }
@@ -148,8 +151,12 @@ test("a stream whose sound can't play (the page may not play sound now) is stopp
 test('chatter: speech the model chose not to answer (proactive audio) is in both transcripts as not meant for Shiori, and wakes nobody', async () => {
   const k = await liveKit([{ heard: 'Did you lock the car?' }]);
   try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
     k.agent.tap();
     await until(() => k.agent.live.listening);
+    await new Promise((r) => setTimeout(r, 1050)); // past a tap's lift: a turn begun in it is the user's by their own word
+    k.agent.live.level.heard(10);
+    k.agent.live.level.heard(10); // the user's voice is far louder: at their own level, it would cue Kokoro (live-drive2.test.js)
     await say(k, 'gas-station');
     await soon(async () => (await k.events(['heard'])).length === 1);
     await k.agent.idle();
@@ -975,7 +982,7 @@ test("a live turn whose transcript has stopped growing for 3 s, with nothing ove
     assert.deepEqual(await turnEnds(k), ['transcript']);
     const [turn] = await k.events(['live.turn']);
     for (const key of ['ms', 'floorDb', 'peakDb']) assert.equal(typeof turn.data[key], 'number', key);
-    assert.deepEqual(Object.keys(turn.data).sort(), ['end', 'floorDb', 'ms', 'peakDb', 'wake']);
+    assert.deepEqual(Object.keys(turn.data).sort(), ['end', 'floorDb', 'keptFrames', 'keptPeakDb', 'minDb', 'ms', 'peakDb', 'voiceDb', 'wake']);
     assert.ok(turn.data.ms > 3000 && turn.data.ms < 6000, `${turn.data.ms} ms sent`);
   } finally {
     await k.done();
@@ -1121,23 +1128,7 @@ test('a handle Gemini no longer keeps (1008 "session not found or expired") is l
   }
 });
 
-test('no answer within 8 s of the user finishing: traced, and a fresh session gets their words, once; silent again, Koe\'s next model answers', async () => {
-  const k = await liveKit([{ heard: 'Hello, can you hear me?', heardFirst: true, silent: true }, { said: 'Yes, I can hear you.', audio: tone(0.2) }]);
-  try {
-    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } }); // 3 s here, past the watchdog's 1 s (as 30 s is past 8 s)
-    k.agent.tap();
-    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
-    await say(k, 'where-lunch');
-    await soon(async () => (await k.events(['out.speak'])).length === 1, 5000);
-    assert.equal((await k.events(['out.speak']))[0].data.text, 'Yes, I can hear you.');
-    assert.deepEqual(setups(k), ['fresh', 'fresh']);
-    assert.ok(texts(k).some((t) => t.includes('Hello, can you hear me?')), 'their words, as text, in the fresh session');
-    const silent = (await k.events(['error'])).filter((/** @type {any} */ e) => e.data.kind === 'live-silent');
-    assert.equal(silent.length, 1);
-    assert.equal(silent[0].data.quiet, true);
-  } finally {
-    await k.done();
-  }
+test('no answer within 8 s of a typed line: traced, and a fresh session gets it, once; silent again, Koe\'s next model answers', async () => {
   // Review S2: silent twice in a row, the session is let go, and Koe's next model answers the user.
   const k2 = await liveKit([{ silent: true }], { koe: { talk: { rules: [{ match: '.', reply: { toolCalls: [{ name: 'speak', input: { text: 'Hello! Yes, I am here.' } }, { name: 'sleep', input: {} }] } }] } } });
   try {
