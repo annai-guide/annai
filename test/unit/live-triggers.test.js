@@ -98,15 +98,44 @@ test('arrived: stopped for its minutes somewhere new; not where it was set, and 
   assert.equal(T.arrived.check(w, moment({ now: T0 + 50 * MIN, stop: { ...nepenthe, since: T0 + 40 * MIN } }), mem), null); // the same spot again
 });
 
-test('moved counts the odometer from her last wake; activity fires on its edge', () => {
+test('moved counts the odometer from where the watch began counting; activity fires on its edge', () => {
   assert.equal(T.moved.check({ km: 15 }, moment({ odometer: 24.9 }), { km0: 10 }), null);
-  assert.deepEqual(T.moved.check({ km: 15 }, moment({ odometer: 25.2 }), { km0: 10 }), { text: 'you have travelled 15.2 km since your last wake' });
+  assert.deepEqual(T.moved.check({ km: 15 }, moment({ odometer: 25.2 }), { km0: 10 }), { text: 'you have travelled 15.2 km since this watch started counting' });
+  assert.doesNotMatch(T.moved.summary, /wake/);
   const start = { activity: 'moving-fast' };
   const stop = { activity: 'moving-fast', edge: 'stop' };
   assert.equal(T.activity.check(start, moment(), {}), null);
   assert.deepEqual(T.activity.check(start, moment({ change: { from: 'unknown', to: 'moving-fast' } }), {}), { text: 'the activity is now moving fast (it was not known yet)' });
   assert.equal(T.activity.check(stop, moment({ change: { from: 'unknown', to: 'moving-fast' } }), {}), null);
   assert.deepEqual(T.activity.check(stop, moment({ change: { from: 'moving-fast', to: 'still' } }), {}), { text: 'the activity is now still (it was moving fast)' });
+});
+
+test('moving fast starting again under 5 minutes after it ended is the same drive; stopping still fires; a stop before the watch was set is no reason to stay quiet', () => {
+  const start = { activity: 'moving-fast' };
+  const stop = { activity: 'moving-fast', edge: 'stop' };
+  const ended = { from: 'moving-fast', to: 'still' };
+  const walked = { from: 'still', to: 'walking' };
+  const again = { from: 'still', to: 'moving-fast' };
+  /** @type {Record<string, any>} */
+  const mem = {};
+  assert.equal(T.activity.check(start, moment({ now: T0, change: ended }), mem), null);
+  assert.equal(T.activity.check(start, moment({ now: T0 + 5 * MIN - 1, change: again }), mem), null, 'a red light');
+  assert.equal(T.activity.check(start, moment({ now: T0 + 6 * MIN, change: ended }), mem), null);
+  assert.ok(T.activity.check(start, moment({ now: T0 + 11 * MIN, change: again }), mem), 'five minutes after it ended');
+  /** @type {Record<string, any>} */
+  const parked = {};
+  T.activity.check(start, moment({ now: T0, change: ended }), parked);
+  T.activity.check(start, moment({ now: T0 + 57 * MIN, change: walked }), parked);
+  assert.ok(T.activity.check(start, moment({ now: T0 + 60 * MIN, change: { from: 'walking', to: 'moving-fast' } }), parked), 'parked an hour, walked 3 minutes, then drove');
+  /** @type {Record<string, any>} */
+  const stops = {};
+  assert.ok(T.activity.check(stop, moment({ now: T0, change: ended }), stops));
+  assert.ok(T.activity.check(stop, moment({ now: T0 + MIN, change: ended }), stops), 'watches on stopping fire as they did');
+  /** @type {Record<string, any>} */
+  const walking = {};
+  T.activity.check({ activity: 'walking' }, moment({ now: T0, change: { from: 'walking', to: 'still' } }), walking);
+  assert.ok(T.activity.check({ activity: 'walking' }, moment({ now: T0 + MIN, change: walked }), walking), 'only moving fast has the rule');
+  assert.ok(T.activity.check(start, moment({ now: T0, change: again }), {}), 'set at the light, it fires as the car moves off');
 });
 
 test('watch records: kept as /watches/<id>.json with a format check; broken ones are counted, not read', async () => {

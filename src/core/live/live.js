@@ -184,7 +184,6 @@ export class Live {
         },
       }),
       this.ws.onChange((c) => this.#changed(c)),
-      this.agent.on('event', (e) => this.#heard(e)),
       // Another trip opened: its plan's reminders are looked at at once, not at the next fix (spec §11.3).
       this.agent.on('open', () => this.#bg(async () => {
         await this.#check();
@@ -985,13 +984,6 @@ export class Live {
     const a = this.near(c.from);
     const b = this.near(this.fix);
     return /* en */ `${head}, and the user moved ${kmText(moved)}${a ? /* en */ ` from near ${a.name}` : ''}${b ? /* en */ ` to near ${b.name}` : ''}.`;
-  }
-
-  /** A wake of hers: moved counts again from here (spec §11.3: "X km travelled since the last wake"). @param {any} e */
-  #heard(e) {
-    if (e?.type !== 'wake' || e.data?.meanwhile) return;
-    const prefix = `${e.scope ?? this.#scope()}\n`;
-    for (const [key, mem] of this.#mem) if (key.startsWith(prefix)) mem.km0 = this.odometer;
   }
 
   /** A watch or the plan changed on disk. @param {{ scope: string, path: string }} c */

@@ -155,3 +155,79 @@ test('a last speed of 3 to 5 m/s while moving fast (slow traffic before a tunnel
   u.feed(at(p, 65, { speed: 2.5 }));
   assert.deepEqual(u.tick(T0 + 65_000 + 120_000)?.to, 'still');
 });
+
+/** A drive at 14 m/s up to T0, then the second drive's points after it (seconds after T0; speed; accuracy). */
+const PARKING = /** @type {const} */ ([[0, 8.6, 8], [62, 3.2, 8], [136, 0.8, 8], [233, null, 13], [294, 0.3, 8], [354, null, 8]]);
+/** @returns {ActivityTracker} moving fast, up to just before T0 */
+function driving() {
+  const t = new ActivityTracker();
+  let p = BIXBY;
+  for (let s = -60; s < 0; s += 5) t.feed(at((p = off(p, 0, -70)), s, { speed: 14 }));
+  assert.equal(t.activity, 'moving-fast');
+  return t;
+}
+
+test('parking on sparse fixes, each fix judged by itself (second drive): a fix with no speed still counts, and the gap before it is a span to read a speed over', () => {
+  const t = driving();
+  /** @type {Record<number, string>} */
+  const was = {};
+  for (const [s, speed, accuracy] of PARKING) {
+    t.feed(at(BIXBY, s, { speed, accuracy }));
+    was[s] = t.activity;
+  }
+  assert.equal(was[136], 'moving-fast', 'the first slow speed only starts the hold');
+  assert.equal(was[233], 'still', '97 s after that slow speed, and no way travelled');
+});
+
+test('parking with the speed jumping between still and walking (second drive): moving fast ends within two minutes, whichever slow speed each fix says', () => {
+  // The points the trace keeps are a minute apart while moving; the fixes between them aren't kept. Speeds at a stop wander across 0.5 m/s.
+  // A no-speed fix reads the last 60 s of way, so the drive itself can still say moving fast for a minute; then the hold of a minute runs.
+  for (const every of [1, 5, 15]) {
+    const t = driving();
+    /** @type {any[]} */
+    const speeds = [0.8, null, 0.3, 1.1];
+    let ended = null;
+    for (let s = 0, i = 0; s <= 300 && ended === null; s += every, i++) {
+      t.feed(at(BIXBY, s, { speed: speeds[i % speeds.length] }));
+      if (t.activity !== 'moving-fast') ended = s;
+    }
+    assert.ok(ended !== null && ended <= 120 + every, `every ${every} s: moving fast ended at ${ended}`);
+  }
+});
+
+test('a red light with the speed jumping about, then driving on, stays moving fast; a fast speed starts the minute again', () => {
+  const t = driving();
+  /** @type {any[]} */
+  const speeds = [0.8, null, 0.3, 1.1];
+  let p = BIXBY;
+  for (let s = 0, i = 0; s <= 50; s += 5, i++) assert.equal(t.feed(at(p, s, { speed: speeds[i % 4] })), null);
+  t.feed(at((p = off(p, 0, -70)), 55, { speed: 14 }));
+  for (let s = 60, i = 0; s <= 115; s += 5, i++) assert.equal(t.feed(at(p, s, { speed: speeds[i % 4] })), null, `at ${s} s`);
+  assert.equal(t.activity, 'moving-fast');
+  assert.equal(t.due(), T0 + 120_000);
+});
+
+test('a span over a gap: a no-speed fix after a tunnel reads the way travelled; time off screen is no span', () => {
+  const t = driving();
+  const far = off(BIXBY, 0, -3000);
+  t.feed(at(BIXBY, 0, { speed: 14 }));
+  t.feed(at(far, 200)); // 15 m/s since the tunnel began
+  assert.ok(Math.abs(/** @type {number} */ (t.speed) - 15) < 1);
+  const u = driving();
+  u.feed(at(BIXBY, 0, { speed: 14 }));
+  u.heard(T0 + 200_000);
+  u.feed(at(far, 200));
+  assert.equal(u.speed, 14, 'off screen: the way travelled says nothing of the speed now');
+});
+
+test('still after a quiet GPS stays still at every later look, until a new fix says otherwise', () => {
+  const t = new ActivityTracker();
+  for (let s = 0; s <= 40; s += 5) t.feed(at(BIXBY, s, { speed: 1.2 }));
+  assert.equal(t.activity, 'walking');
+  assert.equal(t.tick(T0 + 160_000)?.to, 'still');
+  for (let s = 220; s <= 1200; s += 60) assert.equal(t.tick(T0 + s * 1000), null, `at ${s} s`);
+  assert.equal(t.activity, 'still');
+  t.feed(at(off(BIXBY, 0, 40), 1205, { speed: 1.2 }));
+  t.feed(at(off(BIXBY, 0, 80), 1240, { speed: 1.2 }));
+  assert.equal(t.activity, 'walking');
+});
