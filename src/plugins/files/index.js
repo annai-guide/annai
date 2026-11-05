@@ -38,6 +38,8 @@ export function activate(annai) {
   const writable = (scope, path) => {
     /* en */
     if (scope === 'me' && (path === '/personalities' || path.startsWith('/personalities/'))) throw new Error('Personalities change only through tune_personality.');
+    /* en */
+    if (scope === 'me' && (path === '/instructions' || path.startsWith('/instructions/'))) throw new Error('Your instructions are the user\'s to change, in Settings → Shiori.');
     // What waits with her is the user's, as they handed it: her short names are all she writes there.
     /* en */
     if (scope === SYS_WAITING && path !== NAMES_FILE) throw new Error('/waiting/ holds the user\'s files as they handed them: only /waiting/names.json, your short names for them, is yours to write. File a file into a trip to work with it.');

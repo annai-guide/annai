@@ -24,7 +24,7 @@ test('chatter after she speaks is recorded, and she goes back to sleep without a
   assert.deepEqual([heard.data.dismissed, heard.data.answer, heard.data.gate], [true, speak.data.id, 'chatter']);
   assert.equal(mainRequests(k).length, 1, 'no call for chatter');
   assert.match(JSON.stringify(gateRequests(k)[0].messages), /turn the radio down/);
-  assert.match(gateRequests(k)[0].messages[0].parts[0].text, /She last said aloud: "Bixby Bridge is ahead\."/);
+  assert.match(gateRequests(k)[0].messages[0].parts[0].text, /She: "Bixby Bridge is ahead\."/);
   assert.equal(k.platform.log.at(-1), 'mic close');
   assert.equal(k.agent.state.name, 'sleeping');
 });
@@ -121,5 +121,5 @@ test('after chatter ends her turn, a later speak in the same reply is not said a
   await until(() => mainRequests(k).length === 2);
   await hear(k, 'first-one');
   await k.agent.idle();
-  assert.match(gateRequests(k).at(-1).messages[0].parts[0].text, /She last said aloud: "Bixby Bridge is ahead\."/);
+  assert.match(gateRequests(k).at(-1).messages[0].parts[0].text, /She: "Bixby Bridge is ahead\."/);
 });

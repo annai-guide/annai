@@ -153,8 +153,8 @@ test('the languages (phase 2): one section, in the system text of Shiori, Kokoro
   // They point at the section, so a fixed answer language is not contradicted by a line saying to follow the user; and they are the same
   // for every user, so every provider's cache holds (review item 2).
   assert.match(CORE, /- Reply in the language the Languages section says, with the units and formats in their profile\./);
-  assert.match(KOE_CORE, /warmly, in the language the Languages section says\./);
-  assert.match(KOE_LIVE, /warmly, in the language the Languages section says\./);
+  assert.match(KOE_CORE, /sentences\), in the language the Languages section says\./);
+  assert.match(KOE_LIVE, /sentences\), in the language the Languages section says\./);
   assert.doesNotMatch(`${CORE}${KOE_CORE}${KOE_LIVE}`, /the language the user used/);
   // A snapshot without the field (an older one) has no section and no crash.
   const { languages: _l, ...older } = snap;

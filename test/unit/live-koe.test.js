@@ -157,7 +157,7 @@ test('chatter: speech the model chose not to answer (proactive audio) is in both
     assert.deepEqual([heard.data.text, heard.data.dismissed, heard.data.gate], ['Did you lock the car?', true, 'chatter']);
     assert.deepEqual(await k.events(['out.speak']), []);
     assert.equal(k.sent['model-0'], undefined, 'Kokoro slept on');
-    assert.ok(read(k.agent.kokoro).join('|').includes('[heard, not meant for you]|speech:Did you lock the car?'));
+    assert.ok(read(k.agent.kokoro).join('|').includes("[heard, Koe didn't answer]|speech:Did you lock the car?"));
   } finally {
     await k.done();
   }
@@ -790,7 +790,7 @@ test('a photo goes in as a turn of its own, then the words that ask about it; Ko
     await soon(async () => (await k.events(['out.speak'])).length === 1);
     await k.agent.idle();
     const turns = got(k, 'clientContent').map((/** @type {any} */ m) => [m.clientContent.turns[0].parts[0].inlineData?.mimeType ?? m.clientContent.turns[0].parts[0].text, m.clientContent.turnComplete]);
-    assert.deepEqual(turns, [['image/webp', false], ['What is this?', true]]);
+    assert.deepEqual(turns, [['image/webp', false], ['[typed] What is this?', true]]);
     const [msg] = await k.events(['msg.user']);
     assert.equal(msg.data.images.length, 1);
     const sent = Buffer.from(got(k, 'clientContent')[0].clientContent.turns[0].parts[0].inlineData.data, 'base64').toString();
@@ -830,7 +830,7 @@ test('a drop mid-sentence: the half-said line is kept, cut where it was heard; t
     await soon(async () => (await k.events(['out.speak'])).length === 2);
     assert.equal(k.agent.koeState, 'live');
     assert.equal(k.server.connections().length, 2);
-    assert.equal(texts(k).at(-1), 'And the weather?');
+    assert.equal(texts(k).at(-1), '[typed] And the weather?');
   } finally {
     await k.done();
   }

@@ -8,6 +8,7 @@ import { NotFoundError } from '../workspace.js';
 import { fromBase64, toBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
 import { record, storedTexts, TALK_TAG } from './log.js';
+import { quote } from './blocks.js';
 import { blobBytes, canRead } from '../reach.js';
 import { compactionNeed, cutAt, promptTokens, requestBytes, instruction, renderForSummary, coldSystem, summaryLanguage, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
 import { Transcript, resolveEvent, repair, NOT_SAID, SAID, STOPPED } from './transcript.js';
@@ -148,6 +149,8 @@ export const isForUser = (w) => w.kind === 'note' && w.from === 'kokoro' && !NOT
 export const NOTE_UNSAID = /* en */ "Kokoro's note hasn't reached the user. Only what you say, show or ask reaches them; anything you write for yourself never does. Tell them what it adds, in your own words; if you have already told them all of it, call already_told.";
 /** How many steps Koe takes after the cue while it still owes the user, before annai's backstop. */
 const AFTER_CUE = 2;
+/** How many of the conversation's last lines the gate reads. */
+const GATE_LINES = 6;
 /** How many calls of a turn may be forced while she hasn't reached the user: ten without a word to them is far past any real plan's lookups before its first word. */
 export const FORCED_STEPS = 10;
 /**
@@ -363,8 +366,6 @@ export class Agent {
   #voiceNow = false;
   /** Heard while she worked and judged not meant for her: written at her next step. @type {Heard[]} */
   #chatter = [];
-  /** What she said aloud last, for the gate. */
-  #lastSaid = '';
   /** A card said she can't hear: until listening works again, it isn't said again for every speak. */
   #toldDeaf = false;
   /** The user stopped her during this step: nothing more is said until she has listened. */
@@ -1204,6 +1205,39 @@ export class Agent {
     return (this.#half.system?.(snapshot) ?? systemText(snapshot)) + shows;
   }
 
+  /**
+   * What the now block is made from. The half that holds the voice reads this turn's (asked aloud, speak switched off); while the other half
+   * holds it, this one's own is false, and the block says what is so: voice.on (the second drive, item 16: "voice: off" while Koe talked).
+   * @param {string[]} reasons
+   */
+  #nowFor(reasons) {
+    const voiceWhy = this.voice?.mode.setting === 'auto' ? `auto: ${this.voice.mode.why}` : '';
+    const here = this.sense?.() ?? {};
+    const voice = this.#half.voice() ? this.#voiceNow : Boolean(this.voice?.on);
+    return { now: this.now(), timeZone: this.timeZone(), voice: voice ? 'on' : 'off', voiceWhy, online: this.online(), reasons, place: here.place, activity: here.activity };
+  }
+
+  /** The block a request ends with: the half's own, or the now block. @param {Parameters<NonNullable<Half['tail']>>[0]} now */
+  async #tailFor(now) {
+    const koe = this.#half.koe?.() ?? null;
+    return this.#half.tail ? this.#half.tail(now) : nowBlock({ ...now, plan: await nextPlanItems(this.ws, this.trip, this.now()), ...(koe ? { koe } : {}) });
+  }
+
+  /**
+   * What this half's next request would hold, from the code that builds it, so it can't disagree with what the model gets ("is there way to
+   * see kokoro's transcript?"). Changes nothing: the snapshot is the one the next wake would take, and isn't kept.
+   * @returns {Promise<{ system: string, tools: string[], messages: import('../llm/contract.js').Message[], tail: string }>}
+   */
+  async sees() {
+    await this.opening.catch(() => {});
+    const settings = await this.settings();
+    const last = this.#warmth.last;
+    const cold = !last || this.now() >= last.at + last.ttlMs - SOON_MS;
+    const snapshot = nextSnapshot(this.#snapshot, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale }), { cold });
+    const { tools, shows } = await this.#toolsNow();
+    return { system: this.#systemFor(snapshot, shows), tools: tools.map((x) => x.name), messages: await this.#sendable(), tail: await this.#tailFor(this.#nowFor([])) };
+  }
+
   /** What the turn keeps from its first step (the keep-reasoning design §3). @param {import('./context.js').Snapshot} snapshot @returns {Promise<Frozen>} */
   async #freeze(snapshot) {
     const { tools, via, providerTools, shows } = await this.#toolsNow();
@@ -1827,13 +1861,10 @@ export class Agent {
       const turn = was ? (was.snapshot === snapshot ? was : { ...was, snapshot, system: this.#systemFor(snapshot, was.shows), cacheAt: -1 }) : await this.#freeze(snapshot);
       frozen = turn;
       const { tools, via, providerTools } = turn;
-      const voiceWhy = this.voice?.mode.setting === 'auto' ? `auto: ${this.voice.mode.why}` : '';
-      const here = this.sense?.() ?? {};
-      const now = { now: this.now(), timeZone: this.timeZone(), voice: this.#voiceNow ? 'on' : 'off', voiceWhy, online: this.online(), reasons, place: here.place, activity: here.activity };
-      const koe = this.#half.koe?.() ?? null;
+      const now = this.#nowFor(reasons);
       const reachedUser = this.#reached !== begun || this.#facts.told;
       const force = !providerTools.providerTools && ((owes() && this.#half.voice()) || !(reachedUser || forced >= FORCED_STEPS));
-      const tail = this.#half.tail ? await this.#half.tail(now) : nowBlock({ ...now, plan: await nextPlanItems(this.ws, this.trip, this.now()), ...(koe ? { koe } : {}) });
+      const tail = await this.#tailFor(now);
       // What the request holds, read together: lines written later follow this reply.
       const messages = turn.send(this.#visible());
       const context = { from: this.transcript.from, to: this.transcript.to };
@@ -2799,7 +2830,6 @@ export class Agent {
     }
     u.end(text);
     const spoken = await u.done;
-    if (spoken.heard) this.#lastSaid = spoken.heard; // only what was said aloud
     if (spoken.failed) {
       await this.#notice(spoken.failed === 'blocked'
         ? { tone: 'info', title: t`Tap the screen so Shiori can speak`, body: t`This browser plays sound only after a tap. Her words are in the conversation.` }
@@ -2835,7 +2865,6 @@ export class Agent {
     this.#setState('speaking');
     u.end(question);
     const spoken = await u.done;
-    if (spoken.heard) this.#lastSaid = spoken.heard;
     /** @type {Got} */
     let got = spoken.failed ? {} : await this.#listenFor(call.id, 'ask', (await voice.settings()).silenceSeconds);
     if (got.dismissed) {
@@ -3041,7 +3070,7 @@ export class Agent {
     if (!cfg.roles?.decide?.models?.length || !this.llm.gate || !this.voice) return null;
     try {
       const r = await this.llm.gate({
-        prompt: gatePrompt(this.#lastSaid), options: GATE_OPTIONS, scope: this.scope, speech: this.voice.resolver(this.scope),
+        prompt: gatePrompt(await this.#lastLines()), options: GATE_OPTIONS, scope: this.scope, speech: this.voice.resolver(this.scope),
         parts: [{ type: 'speech', id: h.id, ...(typeof h.text === 'string' ? { text: h.text } : {}) }],
       });
       if (r.by === 'unsure') return 'unsure';
@@ -3049,6 +3078,26 @@ export class Agent {
     } catch {
       return 'unsure'; // the gate never loses speech: unsure goes to the main model
     }
+  }
+
+  /**
+   * The conversation's last lines for the gate, oldest first: what she said and what the user said, not what was set aside, every word quoted.
+   * @returns {Promise<string[]>}
+   */
+  async #lastLines() {
+    const events = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['msg.user', 'heard', 'heard.text', 'out.speak'], reverse: true, limit: GATE_LINES * 3 }));
+    /** @type {Map<string, string>} */
+    const later = new Map();
+    /** @type {string[]} */
+    const lines = [];
+    for (const e of events) {
+      const d = { ...e.data, ...(await storedTexts(this.store, e)) };
+      if (e.type === 'heard.text') later.set(d.of, later.get(d.of) ?? d.text);
+      const text = e.type === 'heard' ? later.get(d.id) ?? d.text : d.text;
+      if (e.type === 'heard.text' || !text || d.dismissed || lines.length >= GATE_LINES) continue;
+      /* en */ lines.unshift(`${e.type === 'out.speak' ? 'She' : 'The user'}: ${quote(String(text).slice(0, 300))}`);
+    }
+    return lines;
   }
 
   /** Chatter heard while she worked, written in now (spec §10.4: dismissed speech still goes into the transcript). @param {string} wakeId */

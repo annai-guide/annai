@@ -1,6 +1,8 @@
 import { Agent, GATHER, isTheirs, isForUser, checkCard, checkAsk, CAPS, capped } from './loop.js';
 import { TALK_TAG, KOE_TAG } from './log.js';
-import { asksOrNotes, quote, cardText, escapeTags, newNonce } from './blocks.js';
+import { asksOrNotes, quote, cardText, escapeTags, newNonce, koeLine, asideLabel, saidWithout, wrapNote } from './blocks.js';
+import { linesOf } from './transcript.js';
+import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 import { systemText, nowBlock, takeSnapshot } from './context.js';
 import { ME, SYS_SETTINGS, newId } from '../scopes.js';
 import { storedTexts } from './log.js';
@@ -241,7 +243,7 @@ export class Halves {
         name: 'kokoro', tag: TALK_TAG, role: 'main', registryTools: true, logVoice: true, housekeeping: true, serial, ready,
         voice: () => !this.#works(),
         rules: () => (this.#split ? 'kokoro' : 'one'),
-        system: (s) => systemText(s, this.#split ? KOKORO_PART : ''),
+        system: (s) => systemText(s, this.#split ? s.edited?.kokoro ?? KOKORO_PART : ''),
         koe: () => (this.#split ? (this.#works() ? this.koeState : 'down') : null),
         hidden: async () => (this.#split ? [] : ['tell_koe']),
         // Its errors while Koe talks are set aside: Koe tells the user, and a card says what needs saying.
@@ -626,10 +628,48 @@ export class Halves {
       if (e.type === 'heard.text') later.set(d.of, later.get(d.of) ?? d.text);
       const text = e.type === 'heard' ? later.get(d.id) ?? d.text : e.type === 'out.show' ? cardText(d.card) : e.type === 'out.ask' ? d.question : d.text;
       if (e.type === 'heard.text' || !text || d.dismissed || lines.length >= 12) continue;
-      const who = e.type === 'msg.user' ? /* en */ 'the user typed' : e.type === 'heard' ? 'heard' : d.half === 'koe' ? /* en */ 'you said' : /* en */ 'said to the user';
+      const who = e.type === 'msg.user' ? /* en */ (d.chose ? 'the user chose' : 'typed') : e.type === 'heard' ? 'heard' : d.half === 'koe' ? /* en */ 'you said' : /* en */ 'said to the user';
       lines.unshift(`[${who}] ${escapeTags(quote(text))}`);
     }
     return lines.length ? /* en */ `The conversation so far:\n${lines.join('\n')}` : '';
+  }
+
+  /**
+   * What a half is getting, for its screen. Kokoro and a text Koe: their next request, from the code that builds it. A live Koe: setup goes once
+   * and the provider holds the rest, so the setup kept, then the lines since, as annai wrote them down.
+   * @param {'kokoro' | 'koe'} half
+   * @returns {Promise<{ how: 'off' } | { how: 'request', one: boolean, system: string, tools: string[], lines: string[], tail: string } | { how: 'live', open: boolean, system: string, context: string, tools: string[], lines: string[] }>}
+   */
+  async sees(half) {
+    await this.#ready;
+    if (half === 'koe' && !this.#split) return { how: 'off' };
+    if (half === 'koe' && this.koeState === 'live') {
+      const set = await this.live.sees();
+      return { how: 'live', open: set.after !== null, system: set.instructions, context: set.context, tools: set.tools, lines: set.after === null ? [] : await this.#linesSince(set.after) };
+    }
+    if (half === 'koe') this.#koeOpen();
+    const { messages, ...seen } = await (half === 'koe' ? this.koe : this.kokoro).sees();
+    return { how: 'request', one: !this.#split, ...seen, lines: linesOf(messages) };
+  }
+
+  /** What a live Koe has had since its setup, in Koe's labels, from the log. @param {number} after @returns {Promise<string[]>} */
+  async #linesSince(after) {
+    const scope = this.koe.scope;
+    const events = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: [...LINES, 'heard.text', 'note', 'tool.call', 'tool.result'], after }));
+    const later = new Map(events.filter((e) => e.type === 'heard.text').map((e) => [e.data?.of, e.data?.text]));
+    /** @type {string[]} */
+    const lines = [];
+    for (const e of events) {
+      const d = { ...e.data, ...(await storedTexts(this.store, e)) };
+      /* en */
+      if (e.type === 'msg.user') lines.push(koeLine(d, String(d.text ?? ''), Boolean(d.images?.length)));
+      else if (e.type === 'heard') lines.push(`${d.dismissed ? asideLabel(d, 'koe') : '[heard]'} ${later.get(d.id) ?? d.text ?? NOT_TRANSCRIBED}`);
+      else if (e.type === 'note' && d.from === 'kokoro') lines.push(wrapNote(String(d.text ?? ''), this.nonce));
+      else if (e.type === 'tool.call' && d.half === 'koe') lines.push(`[it calls] ${d.name} ${JSON.stringify(d.input ?? {})}`);
+      else if (e.type === 'tool.result' && d.half === 'koe') lines.push(`[the result${d.ok === false ? ', an error' : ''}] ${d.content ?? ''}`);
+      else if (e.type.startsWith('out.')) lines.push(saidWithout(e, d) ?? '');
+    }
+    return lines.filter(Boolean);
   }
 
   #koeOpen() {

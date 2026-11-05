@@ -45,6 +45,25 @@ export function cardText(card) {
 const askText = (d) => `${quote(d.question)} (options: ${JSON.stringify((Array.isArray(d.options) ? d.options : []).map(String))})`;
 
 /**
+ * What the user sent, as Koe reads it: a typed line says so, so it stands apart from a [heard] one; a tap or a photo alone wasn't typed.
+ * @param {any} d the event's data @param {string} text @param {boolean} [photo] it holds a photo
+ */
+export function koeLine(d, text, photo = false) {
+  /* en */ if (d.chose) return `[the user chose] ${theirs(JSON.stringify(text))}`;
+  /* en */ if (photo && (!text || text === '(a photo)')) return '[the user sent a photo]';
+  /* en */ return `[typed] ${theirs(text)}`;
+}
+
+/**
+ * A dismissed heard line's label, by what happened: in a live session it means only that the model said nothing, and nobody judged the
+ * words; elsewhere the gate judged them. Read from source, so a stored line needs no change. @param {any} d the event's data @param {string} half
+ */
+export function asideLabel(d, half) {
+  /* en */ if (d.source === 'live') return half === 'kokoro' ? "[heard, Koe didn't answer]" : "[heard, you didn't answer]";
+  /* en */ return '[heard, not meant for you]';
+}
+
+/**
  * Kokoro's block for an event of the conversation it didn't write: what the user typed (to Koe), what
  * Koe said, showed and asked, Koe's notes, and annai's instruction blocks. Null: not a block of Kokoro's.
  * @param {any} e @param {Record<string, string>} texts its texts, stored ones included
