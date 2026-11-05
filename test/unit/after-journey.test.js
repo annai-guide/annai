@@ -90,3 +90,11 @@ test('an arrival the road shows no stay for is still in the timeline; live mode 
   assert.equal(stays.length, 1);
   assert.deepEqual([/** @type {any} */ (stays[0]).name, stays[0].at, /** @type {any} */ (stays[0]).to], ['Cambria Pines Lodge', at('18:25'), at('19:30')]);
 });
+
+test('the journey: words claimed with "This was for Shiori" were spoken; typed words were not', async () => {
+  const k = await liveKit({ live: false, plan: PLAN });
+  await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'Typed words']], now: at('09:36') });
+  await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: { claim: 'h1' }, texts: [['text', 'Claimed words']], now: at('09:37') });
+  const j = await readJourney({ store: k.store, ws: k.ws, trip: k.trip, namer: () => null });
+  assert.deepEqual(j.entries.filter((x) => x.kind === 'said').map((x) => [x.text, x.spoken]), [['Typed words', false], ['Claimed words', true]]);
+});

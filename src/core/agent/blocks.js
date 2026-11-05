@@ -44,6 +44,9 @@ export function cardText(card) {
 /** An ask in a line: the question and its options, quoted. @param {any} d */
 const askText = (d) => `${quote(d.question)} (options: ${JSON.stringify((Array.isArray(d.options) ? d.options : []).map(String))})`;
 
+/** A line annai only heard, that the user says was for her ("This was for Shiori"), as a model reads it. @param {string} text */
+/* en */ export const claimLine = (text) => `[the user says this was for you] ${quote(text)}`;
+
 /**
  * Kokoro's block for an event of the conversation it didn't write: what the user typed (to Koe), what
  * Koe said, showed and asked, Koe's notes, and annai's instruction blocks. Null: not a block of Kokoro's.
@@ -54,6 +57,7 @@ export function blockFor(e, texts) {
   const d = e.data ?? {};
   const text = String(texts.text ?? '');
   if (e.type === 'msg.user' && d.split) {
+    if (d.claim) return claimLine(text);
     if (d.chose) /* en */ return `[the user chose] ${quote(text)}`;
     if (d.images?.length) /* en */ return text && text !== '(a photo)' ? `[the user sent a photo] ${quote(text)}` : '[the user sent a photo]';
     /* en */ return `[the user typed] ${quote(text)}`;
