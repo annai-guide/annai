@@ -109,9 +109,12 @@ export class Live {
   /**
    * A drive's end found only after this page opened (the record's hold had run out: 'due'; the record said moving fast, and the first good fix says otherwise: 'fast')
    * waits for the first good fix, and a choice of voice's since the page opened cancels it. null: none waits.
+   * A 'due' end waits at most FIX_WAIT_MS (from the catch-up) for it: with no good fix by then it ends (going off is the safe way).
    * @type {'due' | 'fast' | null}
    */
   #late = null;
+  /** @type {number | null} until when a 'due' end waits for a good fix */
+  #dueBy = null;
   /** Voice hears a drive's end. An end no one was there to hear yet (found as annai starts) waits for it. @type {Set<() => void>} */
   #driveEnds = new Set();
   #driveEndOwed = false;
@@ -928,9 +931,13 @@ export class Live {
         await this.#log(this.#changeData(c));
       }
       // A drive's end from the record's hold waits for the first good fix, and dies if she is driving: there was no end.
+      // Her speed is the tracker's; a fix with none (and a coarse accuracy) is judged by the way from the record's place, as for 'fast'; with neither, the next good fix says.
       if (this.#late === 'due' && fix.accuracy <= 100) {
-        this.#late = null;
-        if ((this.#tracker.speed ?? 0) >= FAST_FROM) this.#voiceLapse = null;
+        const speed = this.#tracker.speed ?? (this.#odo ? waySpeed(this.#odo, fix) : null);
+        if (speed !== null) {
+          this.#late = null;
+          if (speed >= FAST_FROM) this.#voiceLapse = null;
+        }
       }
     }
     if (!this.stop || meters(this.stop, fix) > Math.max(STOP_M, fix.accuracy)) this.stop = { lat: fix.lat, lng: fix.lng, since: fix.at };
@@ -1028,6 +1035,7 @@ export class Live {
     if (this.#catch) await this.#endCatchUp();
     const c = { ...gap, fired: /** @type {Fired[]} */ ([]), timer: /** @type {any} */ (null) };
     this.#catch = c;
+    if (this.#late === 'due') this.#dueBy = this.clock.now() + FIX_WAIT_MS;
     this.#back = true;
     // What the phone's notifications did meanwhile, before the firings that may be theirs (spec §11.6).
     const doubles = await this.#hear(await this.#readNews());
@@ -1265,6 +1273,7 @@ export class Live {
     if (o.change === undefined && !o.past) o = { ...o, change: this.#settle() };
     const m = this.#moment(o);
     // The drive has ended. What fires in this same moment is said first, with voice as it was.
+    if (this.#late === 'due' && this.#dueBy !== null && m.now >= this.#dueBy) this.#late = null; // no good fix came: it ends
     let ended = this.#voiceLapse !== null && m.now >= this.#voiceLapse && this.#late !== 'due';
     // Green a moment ago: the speeds say moving fast again, though the activity takes its 30 s to follow. Not a drive that ended.
     if (ended && (this.#tracker.speed ?? 0) >= FAST_FROM && this.fix && m.now - this.fix.at <= SETTLE_MS) {
@@ -1311,7 +1320,7 @@ export class Live {
    * it is in is over (she finishes her sentence, the user's turn is heard), and a reminder that fired in this same moment is said first.
    */
   #driveEnd() {
-    this.agent.holdVoice?.();
+    if (!this.#sim) this.agent.holdVoice?.();
     this.#driveEnding = this.#hushed = false;
     this.#keepRecord();
     if (!this.#sim) this.#tellDriveEnd();
@@ -1637,6 +1646,7 @@ export class Live {
     };
     if (this.on) consider(this.#tracker.due()); // an activity change held long enough, or a quiet GPS
     if (this.on) consider(this.#voiceLapse); // voice's hold after moving fast
+    if (this.on && this.#late === 'due') consider(this.#dueBy); // a late end's wait for a fix
     if (this.on && !this.#sim && this.#stateAt !== null) consider(this.#stateAt + HEARTBEAT_MS);
     const types = this.types();
     const open = this.#scope();
