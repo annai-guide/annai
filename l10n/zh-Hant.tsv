@@ -460,8 +460,8 @@ bo3wjk	ok	Shiori stopped: today's budget is spent	Shiori 已停止：今天的�
 1o4yqf3	ok	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	她已走完一次喚醒可走的{0}步（設定 → Shiori → 她主動行動的頻率）。想讓她繼續，就告訴她。	src/core/agent/budgets.js:125	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告訴她), not the glossary's Ask, Safari's 詢問 choice; the setting's path as the screens name it.
 edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	目前由 Shiori 直接回答你。原因見記錄（模型）；Koe 幾分鐘後會再試。	src/core/agent/halves.js:566	
 yvabm6	ok	Koe's live voice couldn't start	Koe 的即時語音無法啟動	src/core/agent/halves.js:566	Note: "live voice" is the glossary's Live voice (即時語音), not a voice she speaks with (聲音).
-bzrasi	ok	Shiori answers as one half for now	Shiori 暫時獨自回答	src/core/agent/halves.js:726	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
-o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai 無法把你的訊息轉給 Koe：{0}	src/core/agent/halves.js:726	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+bzrasi	ok	Shiori answers as one half for now	Shiori 暫時獨自回答	src/core/agent/halves.js:735	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
+o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai 無法把你的訊息轉給 Koe：{0}	src/core/agent/halves.js:735	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
 1dhsqvv	ok	Tap to talk	點一下說話	src/core/agent/loop.js:127	
 1ldobgc	ok	Tap to interrupt	點一下打斷	src/core/agent/loop.js:127	
 4mbury	ok	Thinking · tap to stop	思考中 · 點一下停止	src/core/agent/loop.js:127	
@@ -570,8 +570,8 @@ iwgrsx	ok	This calendar has more than {0} events. Export only the trip's dates f
 5l9pv6	ok	{0} is larger than a trip's calendar ever is (over {1}). Export only the trip's dates from your calendar, and add that file.	{0} 對一個旅行行事曆來說太大了（超過 {1}）。請只從行事曆中匯出旅行日期內的事件，再新增那個檔案。	src/core/imports.js:15	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:27	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Chinese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	ok	just now	剛剛	src/core/intl.js:130	
-1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	用手機揚聲器時，Shiori 說話期間 annai 聽不到你，所以你在她說話時說的話會被丟棄。點一下就能讓她停下並開始收聽。	src/core/koe/live.js:484	
-1ml2kgi	ok	Tap Shiori to talk over her	點一下 Shiori 即可打斷她	src/core/koe/live.js:484	Note: The dock's Shiori button: tap it to talk over her.
+1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	用手機揚聲器時，Shiori 說話期間 annai 聽不到你，所以你在她說話時說的話會被丟棄。點一下就能讓她停下並開始收聽。	src/core/koe/live.js:487	
+1ml2kgi	ok	Tap Shiori to talk over her	點一下 Shiori 即可打斷她	src/core/koe/live.js:487	Note: The dock's Shiori button: tap it to talk over her.
 3fqfy0	ok	Languages	語言	src/core/languages.js:336	
 1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你說的語言和 Shiori 回答所用的語言會告知每個負責聽和說的模型，以免把簡短的回覆誤認作其他語言。	src/core/languages.js:337	
 1giusr1	ok	Languages you speak	你說的語言	src/core/languages.js:338	
@@ -2136,23 +2136,26 @@ hg5a8z	ok	Time in the trip	旅行中的時間	src/ui/screens/replay.js:173
 7xq6tu	ok	The trip in order	旅行經過	src/ui/screens/replay.js:175	Note: A screen reader's name for the timeline's section.
 djv8ja	ok	Timeline	時間軸	src/ui/screens/replay.js:175	
 j4z771	ok	Pause	暫停	src/ui/screens/replay.js:176	
-h0pksu	draft	A live session gets its setup once, and the provider holds the rest. So this is the setup it was given, then the lines since, as annai wrote them down. It isn't a copy of a request.	即時工作階段的設定只在開始時傳送一次，之後由供應商保存。因此這裡顯示的是當時給它的設定，以及 annai 記錄的之後內容，並不是請求的副本。	src/ui/screens/sees.js:14	
-pa1adz	draft	No live session is going. This is the setup the next one would get.	目前沒有即時工作階段。這是下一次工作階段會得到的設定。	src/ui/screens/sees.js:15	
-ip9sup	draft	Its setup: the conversation so far, and the moment	設定：到目前為止的對話和目前情況	src/ui/screens/sees.js:16	
-qxxy9e	draft	Its tools	工具	src/ui/screens/sees.js:16	
-vvrw23	draft	Its setup: instructions	設定：指示	src/ui/screens/sees.js:16	
-1kuzgud	draft	The lines since	之後的內容	src/ui/screens/sees.js:17	
-1oep3py	draft	Nothing yet.	還沒有內容。	src/ui/screens/sees.js:17	
-5m66td	draft	Its next request, built by the code that sends it.	它的下一次請求，由實際傳送請求的程式碼產生。	src/ui/screens/sees.js:21	
-mt9jss	draft	Shiori is one half right now, so this is all of her: her next request, built by the code that sends it.	Shiori 現在只有一個分身，所以這就是她的全部：她的下一次請求，由實際傳送請求的程式碼產生。	src/ui/screens/sees.js:21	
-1g828u2	draft	The block that ends the request	請求結尾的區塊	src/ui/screens/sees.js:22	
-ptc85g	draft	Its conversation	對話	src/ui/screens/sees.js:22	
-yxdp3q	draft	Its instructions	指示	src/ui/screens/sees.js:22	
-1adp8wi	draft	What Koe sees	Koe 看到的內容	src/ui/screens/sees.js:29	
-1pyevfq	draft	What Kokoro sees	Kokoro 看到的內容	src/ui/screens/sees.js:29	
-lebwd9	draft	Koe isn't in use: Shiori is one half right now. Give Koe a model in Settings → Models to have two.	Koe 未在使用：Shiori 現在只有一個分身。要使用兩個分身，請在 設定 → 模型 中為 Koe 選擇模型。	src/ui/screens/sees.js:32	
-n67yk1	draft	Copied.	已複製。	src/ui/screens/sees.js:40	
-wllyue	draft	Copying didn't work here. Select the text on this screen instead.	這裡無法複製。請直接選取畫面上的文字。	src/ui/screens/sees.js:42	
+qxxy9e	draft	Its tools	工具	src/ui/screens/sees.js:12	
+vvrw23	draft	Its setup: instructions	設定：指示	src/ui/screens/sees.js:12	
+yxdp3q	draft	Its instructions	指示	src/ui/screens/sees.js:12	
+h0pksu	draft	A live session gets its setup once, and the provider holds the rest. So this is the setup it was given, then the lines since, as annai wrote them down. It isn't a copy of a request.	即時工作階段的設定只在開始時傳送一次，之後由供應商保存。因此這裡顯示的是當時給它的設定，以及 annai 記錄的之後內容，並不是請求的副本。	src/ui/screens/sees.js:20	
+pa1adz	draft	No live session is going. This is the setup the next one would get.	目前沒有即時工作階段。這是下一次工作階段會得到的設定。	src/ui/screens/sees.js:21	
+ip9sup	draft	Its setup: the conversation so far, and the moment	設定：到目前為止的對話和目前情況	src/ui/screens/sees.js:22	
+1kuzgud	draft	The lines since	之後的內容	src/ui/screens/sees.js:23	
+1oep3py	draft	Nothing yet.	還沒有內容。	src/ui/screens/sees.js:23	
+5m66td	draft	Its next request, built by the code that sends it.	它的下一次請求，由實際傳送請求的程式碼產生。	src/ui/screens/sees.js:27	
+mt9jss	draft	Shiori is one half right now, so this is all of her: her next request, built by the code that sends it.	Shiori 現在只有一個分身，所以這就是她的全部：她的下一次請求，由實際傳送請求的程式碼產生。	src/ui/screens/sees.js:27	
+1g828u2	draft	The block that ends the request	請求結尾的區塊	src/ui/screens/sees.js:28	
+ptc85g	draft	Its conversation	對話	src/ui/screens/sees.js:28	
+1adp8wi	draft	What Koe sees	Koe 看到的內容	src/ui/screens/sees.js:35	
+1pyevfq	draft	What Kokoro sees	Kokoro 看到的內容	src/ui/screens/sees.js:35	
+1hsgfoz	draft	Which half	哪個分身	src/ui/screens/sees.js:39	
+1rjgwdq	draft	Koe	Koe	src/ui/screens/sees.js:39	
+1uh7eay	draft	Kokoro	Kokoro	src/ui/screens/sees.js:39	
+lebwd9	draft	Koe isn't in use: Shiori is one half right now. Give Koe a model in Settings → Models to have two.	Koe 未在使用：Shiori 現在只有一個分身。要使用兩個分身，請在 設定 → 模型 中為 Koe 選擇模型。	src/ui/screens/sees.js:40	
+n67yk1	draft	Copied.	已複製。	src/ui/screens/sees.js:48	
+wllyue	draft	Copying didn't work here. Select the text on this screen instead.	這裡無法複製。請直接選取畫面上的文字。	src/ui/screens/sees.js:50	
 17z59l7	ok	Plugin updates are ready: {0}.	外掛程式更新已就緒：{0}。	src/ui/screens/settings.js:31	{0} = list(plugins.map(updateName), 'plain')
 1ltn2ct	ok	A new version of annai is ready.	annai 的新版本已就緒。	src/ui/screens/settings.js:31	
 2i7wwt	ok	No automatic backups yet. Add a place to back up to, such as a private GitHub repository.	還沒有自動備份。請新增一個備份位置，例如私有的 GitHub 儲存庫。	src/ui/screens/settings.js:40	
@@ -2268,16 +2271,17 @@ u8z792	draft	Koe, classic	Koe（經典）	src/ui/screens/shiori.js:164
 mmvypk	draft	Koe, live	Koe（即時）	src/ui/screens/shiori.js:165	
 1eogfr1	draft	Her instructions	給 Shiori 的指示	src/ui/screens/shiori.js:170	
 1eoyx0p	draft	These hold how Shiori works, including her safety rules. Reset to original brings them back. A change applies at her next wake.	這些內容決定 Shiori 如何運作，包括她的安全規則。「還原原版」可以還原。變更在她下次喚醒時生效。	src/ui/screens/shiori.js:171	
-jgug0r	draft	changed	已變更	src/ui/screens/shiori.js:180	
 3w9he4	draft	Reset to original: {0}	還原原版：{0}	src/ui/screens/shiori.js:182	{0} = words.name
-kntv40	draft	The new original of {0}	{0} 的新原版	src/ui/screens/shiori.js:198	{0} = words.name
-1nh34lh	draft	Keep mine: {0}	保留我的：{0}	src/ui/screens/shiori.js:200	{0} = words.name
-1s0o9t8	draft	Use the new original: {0}	使用新原版：{0}	src/ui/screens/shiori.js:201	{0} = words.name
-b5wyro	draft	Save: {0}	儲存：{0}	src/ui/screens/shiori.js:212	{0} = words.name
-1mrunng	ok	{0} (from a plugin)	{0}（來自外掛程式）	src/ui/screens/shiori.js:233	{0} = p.name
-1px053l	ok	{0} (from {1})	{0}（來自 {1}）	src/ui/screens/shiori.js:233	{0} = p.name; {1} = p.plugin
-9xxzlu	ok	You already have a personality called "{0}".	你已經有名為「{0}」的性格了。	src/ui/screens/shiori.js:238	{0} = p.name
-fnme9h	ok	Added the personality "{0}". Choose it above.	已新增性格「{0}」。請在上方選擇。	src/ui/screens/shiori.js:242	{0} = p.name
+1tc34br	draft	changed, and annai has a new original	已變更，annai 有新原版	src/ui/screens/shiori.js:196	
+jgug0r	draft	changed	已變更	src/ui/screens/shiori.js:196	
+kntv40	draft	The new original of {0}	{0} 的新原版	src/ui/screens/shiori.js:200	{0} = words.name
+1nh34lh	draft	Keep mine: {0}	保留我的：{0}	src/ui/screens/shiori.js:202	{0} = words.name
+1s0o9t8	draft	Use the new original: {0}	使用新原版：{0}	src/ui/screens/shiori.js:203	{0} = words.name
+b5wyro	draft	Save: {0}	儲存：{0}	src/ui/screens/shiori.js:215	{0} = words.name
+1mrunng	ok	{0} (from a plugin)	{0}（來自外掛程式）	src/ui/screens/shiori.js:237	{0} = p.name
+1px053l	ok	{0} (from {1})	{0}（來自 {1}）	src/ui/screens/shiori.js:237	{0} = p.name; {1} = p.plugin
+9xxzlu	ok	You already have a personality called "{0}".	你已經有名為「{0}」的性格了。	src/ui/screens/shiori.js:242	{0} = p.name
+fnme9h	ok	Added the personality "{0}". Choose it above.	已新增性格「{0}」。請在上方選擇。	src/ui/screens/shiori.js:246	{0} = p.name
 aqber3	ok	600 times: an hour takes 6 seconds	600 倍：一小時只需 6 秒	src/ui/screens/simulate.js:10	
 u8l013	ok	10 times real time: an hour takes 6 minutes	實際時間的 10 倍：一小時只需 6 分鐘	src/ui/screens/simulate.js:10	
 zby7kj	ok	60 times: an hour takes a minute	60 倍：一小時只需一分鐘	src/ui/screens/simulate.js:10	
@@ -2363,26 +2367,25 @@ mpifrf	ok	Undone. Your files are waiting with Shiori again.	已復原。你的�
 urusz7#other	ok	Left # files as you changed them.	你改過的 # 個檔案保持原樣。	src/ui/screens/talk.js:587	plural; # = kept; English: "Left # file as you changed it." (one), "Left # files as you changed them." (other); Note: Taiwan wording: 個檔案, 改過.
 1v37fcy	ok	Undo what Shiori did with these files	復原 Shiori 對這些檔案所做的事	src/ui/screens/talk.js:599	Note: Taiwan wording: 復原 as Undo, 檔案.
 bomkf4	ok	Tidy up the conversation	整理對話	src/ui/screens/talk.js:641	
-7flpxf	ok	Summarizing…	正在總結…	src/ui/screens/talk.js:656	
-12707g	ok	She couldn't summarize it. A card says why.	她沒能總結。卡片上寫了原因。	src/ui/screens/talk.js:658	
-5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	已總結之前的對話。每一行都留在這裡，她也仍能查到。	src/ui/screens/talk.js:658	
-u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在工作。請稍後再試。	src/ui/screens/talk.js:658	
-va2k72	ok	There is not enough yet to summarize.	內容還不夠總結。	src/ui/screens/talk.js:658	
-mienoe	ok	Summarize now	立即總結	src/ui/screens/talk.js:661	
-10sfmur	ok	Starting fresh…	正在重新開始…	src/ui/screens/talk.js:663	
-va77q0	ok	Start fresh?	重新開始？	src/ui/screens/talk.js:676	
-19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 會從這裡重新開始，不再記著之前的內容。它們都留在對話裡，供你閱讀和搜尋，她也仍能查到：什麼都不會刪除。即時語音連線也會重新開始。	src/ui/screens/talk.js:677	Note: "A live voice session" is the glossary's Live voice (即時語音) and a live session (即時連線), not a voice she speaks with.
-czdqlz	ok	Start fresh	重新開始	src/ui/screens/talk.js:678	
-1h9wwbn	ok	She couldn't start fresh: {0}	她沒能重新開始：{0}	src/ui/screens/talk.js:688	{0} = messageOf(e)
-1thzla3	ok	Already fresh: nothing has been said since.	已經是新的開始：之後還沒說過話。	src/ui/screens/talk.js:691	
-3fntk0	ok	Started fresh.	已重新開始。	src/ui/screens/talk.js:691	
-mg70bg	ok	The conversation is still opening. Try again in a moment.	對話還在開啟。請稍後再試。	src/ui/screens/talk.js:691	
-p5pj7b	ok	There is nothing to start fresh from yet.	還沒有可以重新開始的內容。	src/ui/screens/talk.js:691	
-1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即總結：Shiori 現在就把之前的對話總結一下，讓它保持簡短。每一行都留在這裡，她也仍能查到。	src/ui/screens/talk.js:711	
-18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新開始：Shiori 不再記著之前的內容，從這裡重新開始。每一行都留在分隔線上方。	src/ui/screens/talk.js:712	
-16zlzgr	draft	See what Kokoro sees	查看 Kokoro 看到的內容	src/ui/screens/talk.js:713	
-19t8xqh	draft	See what Koe sees	查看 Koe 看到的內容	src/ui/screens/talk.js:713	
-16pl3gf	ok	Undone. Her old personality applies at her next wake.	已復原。她原來的性格在下次喚醒時生效。	src/ui/screens/talk.js:735	
+7flpxf	ok	Summarizing…	正在總結…	src/ui/screens/talk.js:658	
+12707g	ok	She couldn't summarize it. A card says why.	她沒能總結。卡片上寫了原因。	src/ui/screens/talk.js:660	
+5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	已總結之前的對話。每一行都留在這裡，她也仍能查到。	src/ui/screens/talk.js:660	
+u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在工作。請稍後再試。	src/ui/screens/talk.js:660	
+va2k72	ok	There is not enough yet to summarize.	內容還不夠總結。	src/ui/screens/talk.js:660	
+mienoe	ok	Summarize now	立即總結	src/ui/screens/talk.js:663	
+10sfmur	ok	Starting fresh…	正在重新開始…	src/ui/screens/talk.js:665	
+va77q0	ok	Start fresh?	重新開始？	src/ui/screens/talk.js:678	
+19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 會從這裡重新開始，不再記著之前的內容。它們都留在對話裡，供你閱讀和搜尋，她也仍能查到：什麼都不會刪除。即時語音連線也會重新開始。	src/ui/screens/talk.js:679	Note: "A live voice session" is the glossary's Live voice (即時語音) and a live session (即時連線), not a voice she speaks with.
+czdqlz	ok	Start fresh	重新開始	src/ui/screens/talk.js:680	
+1h9wwbn	ok	She couldn't start fresh: {0}	她沒能重新開始：{0}	src/ui/screens/talk.js:690	{0} = messageOf(e)
+1thzla3	ok	Already fresh: nothing has been said since.	已經是新的開始：之後還沒說過話。	src/ui/screens/talk.js:693	
+3fntk0	ok	Started fresh.	已重新開始。	src/ui/screens/talk.js:693	
+mg70bg	ok	The conversation is still opening. Try again in a moment.	對話還在開啟。請稍後再試。	src/ui/screens/talk.js:693	
+p5pj7b	ok	There is nothing to start fresh from yet.	還沒有可以重新開始的內容。	src/ui/screens/talk.js:693	
+1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即總結：Shiori 現在就把之前的對話總結一下，讓它保持簡短。每一行都留在這裡，她也仍能查到。	src/ui/screens/talk.js:713	
+18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新開始：Shiori 不再記著之前的內容，從這裡重新開始。每一行都留在分隔線上方。	src/ui/screens/talk.js:714	
+15ve7m7	draft	What each half sees	各個分身看到的內容	src/ui/screens/talk.js:715	
+16pl3gf	ok	Undone. Her old personality applies at her next wake.	已復原。她原來的性格在下次喚醒時生效。	src/ui/screens/talk.js:737	
 11gkctr	ok	Places	地點	src/ui/screens/tools.js:11	context: tool group
 13mxqrp	ok	Talk	對話	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	ok	Go	出遊	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).

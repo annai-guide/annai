@@ -3,6 +3,8 @@
  * quoted; Koe reads Kokoro's notes in a marker with its session nonce, every other text's brackets escaped.
  */
 
+import { FILES_ONLY } from '../handover.js';
+
 /** The longest text Koe reads from one place (a guard). */
 export const MAX_TEXT = 100_000;
 
@@ -45,13 +47,21 @@ export function cardText(card) {
 const askText = (d) => `${quote(d.question)} (options: ${JSON.stringify((Array.isArray(d.options) ? d.options : []).map(String))})`;
 
 /**
- * What the user sent, as Koe reads it: a typed line says so, so it stands apart from a [heard] one; a tap or a photo alone wasn't typed.
- * @param {any} d the event's data @param {string} text @param {boolean} [photo] it holds a photo
+ * What the user sent, as Koe reads it, in every place it reads it (its transcript, a live session's text turn, the conversation so far,
+ * What each half sees): a typed line says so, so it stands apart from a [heard] one; a tap, a claim, a photo alone and files alone
+ * say what they are, as the placeholders stored for the last two ("(a photo)", "(files)") are not the user's words.
+ * @param {any} d the event's data @param {string} text
+ * @param {{ photo?: boolean, unseen?: boolean, quoted?: boolean }} [o] photo: it holds a photo; unseen: this Koe can't look at photos itself; quoted: words as a quoted string
  */
-export function koeLine(d, text, photo = false) {
-  /* en */ if (d.chose) return `[the user chose] ${theirs(JSON.stringify(text))}`;
-  /* en */ if (photo && (!text || text === '(a photo)')) return '[the user sent a photo]';
-  /* en */ return `[typed] ${theirs(text)}`;
+export function koeLine(d, text, { photo = false, unseen = false, quoted = false } = {}) {
+  const words = text === FILES_ONLY || text === '(a photo)' ? '' : text;
+  const n = Array.isArray(d.handed) ? d.handed.length : 0;
+  /* en */ const files = n ? `[the user handed you ${n === 1 ? 'a file' : `${n} files`}; Kokoro reads them]` : '';
+  const body = (/** @type {string} */ x) => (quoted ? escapeTags(quote(x)) : theirs(x));
+  /* en */ if (d.chose) return `[the user chose] ${theirs(quote(text))}`;
+  /* en */ if (d.claim) return `[the user says this was for you] ${theirs(quote(text))}`;
+  /* en */ if (!words) return [photo || d.images?.length ? `[the user sent a photo${unseen ? '; Kokoro sees it' : ''}]` : '', files].filter(Boolean).join(' ') || `[typed] ${body(text)}`;
+  /* en */ return `[typed] ${body(words)}${files ? ` ${files}` : ''}`;
 }
 
 /**

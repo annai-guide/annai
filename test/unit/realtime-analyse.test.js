@@ -363,3 +363,37 @@ test('the harness reads a language as annai does: Vietnamese by its marks (â ê
   assert.equal(seenLanguage('Bună'), '');
   assert.equal(seenLanguage('Great, I will look into that.'), 'English');
 });
+
+// The second drive: a clip of kind scold (told off for filler). Silence is the right answer; filler in anything she says is the failure.
+const SCOLD = { ...CLIPS, annoyed: { kind: 'scold', words: "You keep saying sorry. Stop that." } };
+/** The scold clip played, her sound (or none), and what she said. @param {string | null} said */
+function scolded(said) {
+  const r = spoke('annoyed', 'You keep saying sorry. Stop that.', said ?? '');
+  if (said === null) {
+    r.frames = r.frames.filter((x) => !(x.dir === 'in' && ['audio', 'said'].includes(x.kind)));
+    r.level = levels([]);
+  }
+  return r;
+}
+const filler = (/** @type {any} */ a) => a.checks.find((/** @type {any} */ c) => c.name === 'no filler');
+
+test('a scold she answers with nothing passes, and silence is not an unanswered question', () => {
+  const a = analyse(scolded(null), SCOLD);
+  assert.equal(a.clips[0].expect, 'scold');
+  assert.equal(filler(a)?.ok, true);
+  assert.equal(a.checks.find((c) => c.name === 'answered')?.ok, true);
+  assert.equal(a.pass, true);
+});
+
+test('a scold she answers with "Okay." passes; "Understood. I will stop.", "I\'ll adjust." and an apology fail "no filler", as the first drive\'s runs recorded them', () => {
+  assert.equal(filler(analyse(scolded('Okay.'), SCOLD))?.ok, true);
+  for (const said of ['Understood. I will stop.', "I'll adjust.", 'Understood.', 'Sorry about that.', "I understand, I'll make sure not to."]) {
+    const a = analyse(scolded(said), SCOLD);
+    assert.equal(filler(a)?.ok, false, said);
+    assert.equal(a.pass, false, said);
+  }
+});
+
+test('"no filler" belongs to the scenarios with a scold in them', () => {
+  assert.equal(filler(run(clean())), undefined);
+});

@@ -2343,7 +2343,7 @@ export class Agent {
     else {
       const scope = this.scope;
       const call = {
-        id: c.id, scope, trip: this.trip, signal: o.signal, model: o.model, wake: o.wakeId, llm: this.llm, author: /** @type {const} */ ('shiori'),
+        id: c.id, scope, trip: this.trip, signal: o.signal, model: o.model, wake: o.wakeId, llm: this.llm, author: /** @type {const} */ ('shiori'), half: this.#half.name,
         sleeping: o.sleeping, watched: o.watched ?? this.#facts.watched, ...(this.#handover && !o.live ? { handover: this.#handover, handovers: [...this.#handovers] } : {}), ...(o.more ? { more: true } : {}), ...(o.live ? { live: true } : {}), voice: this.#voiceNow, providerOff: o.providerOff ?? [], fetch: tracedFetch(this.store, this.scope, { tool: c.name, wake: o.wakeId }, this.get),
         photos: { copy: (/** @type {any} */ source, /** @type {any} */ crop) => this.#copy(source, crop, scope) },
       };
@@ -3081,11 +3081,11 @@ export class Agent {
   }
 
   /**
-   * The conversation's last lines for the gate, oldest first: what she said and what the user said, not what was set aside, every word quoted.
+   * The conversation's last lines for the gate, oldest first: what she said or asked and what the user said, not what was set aside, every word quoted.
    * @returns {Promise<string[]>}
    */
   async #lastLines() {
-    const events = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['msg.user', 'heard', 'heard.text', 'out.speak'], reverse: true, limit: GATE_LINES * 3 }));
+    const events = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.ask'], reverse: true, limit: GATE_LINES * 3 }));
     /** @type {Map<string, string>} */
     const later = new Map();
     /** @type {string[]} */
@@ -3093,9 +3093,9 @@ export class Agent {
     for (const e of events) {
       const d = { ...e.data, ...(await storedTexts(this.store, e)) };
       if (e.type === 'heard.text') later.set(d.of, later.get(d.of) ?? d.text);
-      const text = e.type === 'heard' ? later.get(d.id) ?? d.text : d.text;
+      const text = e.type === 'heard' ? later.get(d.id) ?? d.text : e.type === 'out.ask' ? d.question : d.text;
       if (e.type === 'heard.text' || !text || d.dismissed || lines.length >= GATE_LINES) continue;
-      /* en */ lines.unshift(`${e.type === 'out.speak' ? 'She' : 'The user'}: ${quote(String(text).slice(0, 300))}`);
+      /* en */ lines.unshift(`${e.type === 'out.speak' || e.type === 'out.ask' ? 'She' : 'The user'}: ${quote(String(text).slice(0, 300))}`);
     }
     return lines;
   }

@@ -1,5 +1,5 @@
 import { LiveInput } from '../realtime/input.js';
-import { escapeTags, wrapNote, theirs } from '../agent/blocks.js';
+import { escapeTags, wrapNote, theirs, koeLine } from '../agent/blocks.js';
 import { LABELS, NOTE_UNSAID, isWatched } from '../agent/loop.js';
 import { newId, SYS_DEVICE, ensureDeviceScope } from '../scopes.js';
 import { forget } from '../forget.js';
@@ -132,6 +132,8 @@ export class LiveKoe {
   #handle;
   /** The setup of the session in use, or of the one a kept handle resumes. @type {{ instructions: string, context: string, tools: string[], after: number } | null} */
   #setUp = null;
+  /** The turns annai wrote to the session since that setup which the log holds none of (a reminder's), for What each half sees. @type {{ ts: number, text: string }[]} */
+  #told = [];
   #wake = '';
   /** What the user speaks, the browser's language where they chose none (phase 2): a very short transcript in another language is flagged against it. @type {import('../languages.js').LanguageSettings | null} */
   #languages = null;
@@ -365,11 +367,12 @@ export class LiveKoe {
     const { instructions, context, languages, known } = await this.c.setup();
     this.#languages = known ?? null;
     const tools = definitions(await this.c.koe.liveTools());
-    // What a session was set up with, for What each half sees. A resumed one goes on from it: the provider holds the rest.
-    if (!resume || !this.#setUp) {
-      const [last] = await this.c.store.tx(['events'], 'readonly', (t) => t.listEvents(this.c.koe.scope, { reverse: true, limit: 1 }));
-      this.#setUp = { instructions, context, tools: tools.map((x) => x.name), after: last?.seq ?? 0 };
-    }
+    // What a session was set up with, for What each half sees: the text it was given every time, and where its conversation began. A resumed
+    // one goes on from there: the provider holds the rest.
+    const kept = resume ? this.#setUp : null;
+    const [last] = kept ? [] : await this.c.store.tx(['events'], 'readonly', (t) => t.listEvents(this.c.koe.scope, { reverse: true, limit: 1 }));
+    if (!kept) this.#told = [];
+    this.#setUp = { instructions, context, tools: tools.map((x) => x.name), after: kept ? kept.after : last?.seq ?? 0 };
     this.#wake = newId('w');
     // The phone's sound, for the Trace's ready line: its rate and the output's own latency (the pops investigation).
     const output = this.c.voice?.platform?.player.output?.() ?? undefined;
@@ -386,12 +389,12 @@ export class LiveKoe {
 
   /**
    * What a live session got: its setup as kept, with the last entry before it (after); with none going, the setup the next would get (after: null).
-   * @returns {Promise<{ instructions: string, context: string, tools: string[], after: number | null }>}
+   * @returns {Promise<{ instructions: string, context: string, tools: string[], after: number | null, told: { ts: number, text: string }[] }>}
    */
   async sees() {
-    if (this.#setUp && (this.state === 'open' || this.#handle)) return this.#setUp;
+    if (this.#setUp && (this.state === 'open' || this.#handle)) return { ...this.#setUp, told: [...this.#told] };
     const { instructions, context } = await this.c.setup();
-    return { instructions, context, tools: definitions(await this.c.koe.liveTools()).map((x) => x.name), after: null };
+    return { instructions, context, tools: definitions(await this.c.koe.liveTools()).map((x) => x.name), after: null, told: [] };
   }
 
   /** An open session's voice plays from now on, where it may. */
@@ -644,12 +647,7 @@ export class LiveKoe {
     // The request copies Kokoro gets, as its transcript reads them.
     const { images } = await resolveEvent(this.c.store, e);
     for (const im of takes ? images : []) if (im.type === 'image' && im.data) this.#send((s) => s.image({ mediaType: im.mediaType, data: im.data }));
-    const words = String(text ?? '').trim();
-    /* en */
-    const files = handed.length ? `[the user handed you ${handed.length === 1 ? 'a file' : `${handed.length} files`}; Kokoro reads them]` : '';
-    /* en */ this.#text(chose ? `[the user chose] ${theirs(JSON.stringify(words))}`
-      : images.length && (!words || words === '(a photo)') ? `[the user sent a photo${takes ? '' : '; Kokoro sees it'}]`
-        : files && !words ? files : `[typed] ${theirs(words)}${files ? ` ${files}` : ''}`);
+    this.#text(koeLine(e.data, String(text ?? '').trim(), { photo: images.length > 0, unseen: !takes }));
     return true;
   }
 
@@ -658,7 +656,10 @@ export class LiveKoe {
     if (isWatched(w)) this.#watched = true;
     const text = `[annai] ${escapeTags(JSON.stringify(String(w.text ?? '')))}`;
     // An urgent watch fired (drive-test design §7): said now, as an urgent note is; out of view, it waits as any wake does.
-    return w.urgent && this.c.visible() ? this.#now(text, w.kind) : this.#say(text, w.kind);
+    const ts = Date.now();
+    const sent = w.urgent && this.c.visible() ? this.#now(text, w.kind) : this.#say(text, w.kind);
+    // What Koe was told, for What each half sees: after the open, which starts a new list when the session is a fresh one.
+    return sent.then((ok) => { if (ok) this.#told.push({ ts, text }); return ok; });
   }
 
   /**

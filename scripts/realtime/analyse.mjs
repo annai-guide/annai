@@ -63,7 +63,7 @@ export function soundRuns(level) {
 /**
  * @typedef {{ i: number, start: number, end: number | null, ms: number | null, audioBytes: number, reason: string | null, clip: string | null,
  *   spurious: boolean, echo: boolean }} Turn
- * @typedef {{ name: string, at: number, end: number, expect: 'answer' | 'nothing' | 'stray', turns: number, endLagMs: number | null, answered: boolean | null,
+ * @typedef {{ name: string, at: number, end: number, expect: 'answer' | 'nothing' | 'stray' | 'scold', turns: number, endLagMs: number | null, answered: boolean | null,
  *   firstAudioMs: number | null, firstSoundMs: number | null, heard: string, recall: number, said: string, tools: string[], overHer: boolean, sentMs: number, coverage: number,
  *   lang?: string, heardLang?: string, saidLang?: string }} ClipResult
  *   tools: what she called before her first sound; overHer: it began while she sounded or as she began; lang: the language the clip is spoken in;
@@ -71,6 +71,9 @@ export function soundRuns(level) {
  * @typedef {{ at: number, cause: 'user' | 'echo' | 'noise' | 'other' }} Cut
  * @typedef {{ name: string, ok: boolean, detail: string, soft?: boolean }} Check  soft: a warning, which does not fail the scenario
  */
+
+/** Filler: an apology, "I understand" or "understood", a promise ("I'll adjust", "I will stop"), "noted". */
+const FILLER = /\b(sorry|apolog\w*|understand\w*|understood|noted|my bad|i['’]ll|i will|i['’]m going to)\b/i;
 
 /**
  * @param {Rec} rec @param {Record<string, { kind: string, words: string, lang?: string }>} clips
@@ -133,7 +136,7 @@ export function analyse(rec, clips, { endLagMs = END_LAG_MS, expectCut = false }
     const tools = audio ? frames.filter((fr) => fr.dir === 'in' && fr.kind === 'toolCall' && lastEnd !== null && fr.at > lastEnd && fr.at < audio.at).map((fr) => fr.name ?? '?') : [];
     const overHer = runs.some((r) => r.to >= p.at && r.from <= p.at + 600);
     return {
-      name: p.name, at: p.at, end: p.end, expect: kind === 'stray' ? /** @type {const} */ ('stray') : /** @type {const} */ ('answer'), turns: mine.length, tools, overHer,
+      name: p.name, at: p.at, end: p.end, expect: kind === 'stray' ? /** @type {const} */ ('stray') : kind === 'scold' ? /** @type {const} */ ('scold') : /** @type {const} */ ('answer'), turns: mine.length, tools, overHer,
       sentMs: mine.reduce((n, t) => n + (t.ms ?? 0), 0), coverage: mine.reduce((n, t) => n + (t.ms ?? 0), 0) / Math.max(1, p.end - p.at),
       endLagMs: lastEnd === null ? null : lastEnd - p.end,
       answered: Boolean(audio), firstAudioMs: audio ? audio.at - p.end : null, firstSoundMs: sound ? Math.max(sound.from, lastEnd ?? 0) - p.end : null,
@@ -227,6 +230,11 @@ export function analyse(rec, clips, { endLagMs = END_LAG_MS, expectCut = false }
   // Told by what the speaker played: Gemini Live "says" <no speech>{pause} there, in audio that makes no sound.
   const strays = results.filter((r) => r.expect === 'stray');
   if (strays.length) checks.push({ name: 'strays left alone', ok: strays.every((r) => r.firstSoundMs === null), detail: strays.map((r) => `${r.name}: ${r.firstSoundMs !== null ? `she answered "${String(r.said ?? '').slice(0, 80)}"` : `no sound${r.said ? ` (silent audio, "${String(r.said).slice(0, 40)}")` : ''}`}`).join('; ') });
+  // What she should say little of (the second drive): told off for filler, silence is right and filler is the failure. Whatever she said in the scenario is read.
+  if (results.some((r) => r.expect === 'scold')) {
+    const filled = results.filter((r) => FILLER.test(r.said)).map((r) => `${r.name}: "${r.said.slice(0, 80)}"`);
+    checks.push({ name: 'no filler', ok: filled.length === 0, detail: filled.length ? filled.join('; ') : results.filter((r) => r.expect === 'scold').map((r) => `${r.name}: ${r.firstSoundMs !== null ? `she said "${r.said.slice(0, 80)}"` : 'no sound'}`).join('; ') });
+  }
   if (expectCut) checks.push({ name: 'she is cut by the user', ok: cuts.some((c) => c.cause === 'user'), detail: cuts.some((c) => c.cause === 'user') ? 'the user speaking over her cut her off' : 'the user spoke over her and she was not cut' });
   return { turns, clips: results, cuts, notes, errors, checks, echoMeasuredDb, warnings: checks.filter((c) => c.soft && !c.ok).map((c) => c.name), pass: checks.filter((c) => !c.soft).every((c) => c.ok) };
 }
