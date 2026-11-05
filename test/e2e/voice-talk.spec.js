@@ -86,7 +86,6 @@ async function setUpVoice(page, origin, { decide = false } = {}) {
     await expect(page.getByLabel(`Add a model to ${role}`).locator('option', { hasText: model })).toHaveCount(0);
   }
   await page.locator('.voice-chip').click();
-  await page.getByRole('group', { name: 'Voice' }).getByRole('button', { name: 'On' }).click();
   await expect(page.locator('.voice-chip')).toHaveText('Voice on');
   await page.goto('/#/trips'); // the Models screen has a Send button of its own
 }

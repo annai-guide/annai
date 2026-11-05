@@ -1,0 +1,324 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { agentKit, until } from './agent-kit.js';
+import { fakeSensors, memoryKeep, at, LA, MONTEREY, off } from './live-kit.js';
+import { Live } from '../../src/core/live/live.js';
+import { ManualClock } from '../../src/core/live/clock.js';
+import { updateAppSettings, readAppSettings } from '../../src/core/settings.js';
+import { SYS_DEVICE } from '../../src/core/scopes.js';
+import { nowBlock } from '../../src/core/agent/context.js';
+import { voiceWhy } from '../../src/core/voice/mode.js';
+
+const tick = () => new Promise((r) => setTimeout(r, 5));
+const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
+/** @param {() => Promise<boolean>} fn */
+const eventually = async (fn, by = Date.now() + 3000) => { while (!(await fn())) { if (Date.now() > by) throw new Error('still waiting'); await tick(); } };
+const STOPPED = 'Voice off: you stopped driving';
+const UNPLUGGED = 'Voice off: headphones disconnected';
+
+/** A real Voice and a Live on a manual clock, GPS on; the notes voice left. @param {{ setting?: 'on' | 'off', kit?: any, rules?: any[], keep?: any }} [o] */
+async function drive({ setting = 'off', rules = [{ match: '.', reply: sleep }], kit = {}, keep = memoryKeep() } = {}) {
+  const clock = new ManualClock(at('17:00'));
+  const k = await agentKit([{ rules }], { agent: { now: clock.now, timeZone: () => LA }, voice: { mode: setting }, ...kit });
+  await updateAppSettings(k.ws, { live: { on: true } });
+  const sensors = fakeSensors(k.registry);
+  /** @type {string[]} */
+  const notes = [];
+  k.voice.onNote((/** @type {string} */ n) => notes.push(n));
+  const start = async () => {
+    const live = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent: k.agent, clock, timeZone: () => LA, keep });
+    await live.start();
+    await live.settled();
+    await tick();
+    return live;
+  };
+  const d = {
+    k, clock, sensors, notes, keep, start, live: await start(), p: MONTEREY,
+    /** @param {number} t @param {number} speed */
+    async fix(t, speed) {
+      await clock.advanceTo(t, () => d.live.settled());
+      d.p = speed > 1 ? off(d.p, 0, -speed * 5) : d.p;
+      sensors.fix({ lat: d.p.lat, lng: d.p.lng, accuracy: 8, speed });
+      await d.live.settled();
+      await tick();
+    },
+    /** Speeds from t0 for secs, a fix every 5 s. @param {number} t0 @param {number} secs @param {number} speed */
+    async run(t0, secs, speed) {
+      for (let s = 0; s <= secs; s += 5) await d.fix(t0 + s * 1000, speed);
+    },
+    /** The clock runs on, with no fixes. @param {number} to */
+    async wait(to) {
+      for (let t = clock.now() + 10_000; t <= to; t += 10_000) {
+        await clock.advanceTo(t, () => d.live.settled());
+        await tick();
+      }
+      await clock.advanceTo(to, () => d.live.settled());
+      await tick();
+    },
+    /** Two minutes of driving, from 17:00. */
+    road: () => d.run(at('17:00'), 120, 14),
+    /** Parked for good, from 17:02:05, and the clock past the hold's end. */
+    async park() {
+      await d.run(at('17:02:05'), 40, 0);
+      await d.wait(at('17:02:05') + 10 * 60_000);
+    },
+    /** The page reloads: Live starts anew from its record, on this clock. */
+    async reload() {
+      d.live.dispose();
+      d.live = await start();
+    },
+  };
+  return d;
+}
+
+test('voice on by the user: a drive ends and voice goes off, once, with a note; turned on after that, it stays on', async () => {
+  const d = await drive({ setting: 'on' });
+  await d.road();
+  assert.deepEqual([d.k.voice.on, d.k.voice.mode.why], [true, 'on'], 'the user\'s own On doesn\'t say driving');
+  await d.park();
+  assert.equal(d.k.voice.on, false);
+  assert.deepEqual(d.notes, [STOPPED]);
+  assert.equal((await readAppSettings(d.k.ws)).voice.mode, 'off', 'kept: a reload doesn\'t bring it back');
+  await d.k.voice.choose('on');
+  await d.wait(d.clock.now() + 15 * 60_000);
+  assert.equal(d.k.voice.on, true, 'only at that moment');
+  assert.deepEqual(d.notes, [STOPPED]);
+  d.live.dispose();
+});
+
+test('voice on while driving, the setting off: it reads driving, and goes off about 3 minutes after stopping, with the note', async () => {
+  const d = await drive();
+  assert.equal(d.k.voice.on, false);
+  await d.road();
+  assert.deepEqual([d.k.voice.on, d.k.voice.mode.why], [true, 'driving']);
+  const parked = at('17:02:05');
+  await d.run(parked, 40, 0);
+  assert.equal(d.k.voice.on, true);
+  let offAt = 0;
+  d.k.voice.onChange((/** @type {any} */ m) => { if (!m.on) offAt = d.clock.now(); });
+  await d.wait(parked + 10 * 60_000);
+  assert.ok(offAt - parked >= 150_000 && offAt - parked <= 210_000, `off ${(offAt - parked) / 1000} s after parking`);
+  assert.deepEqual(d.notes, [STOPPED]);
+  d.live.dispose();
+});
+
+test('without GPS, driving never turns voice on, and turning GPS off during a hold is no drive ending', async () => {
+  const d = await drive({ setting: 'on' });
+  await d.road();
+  await d.run(at('17:02:05'), 70, 0); // moving fast has ended: the hold runs
+  await d.live.setLive(false);
+  await d.wait(at('17:30'));
+  assert.equal(d.k.voice.on, true, 'the setting stays');
+  assert.deepEqual(d.notes, []);
+  await d.k.voice.choose('off');
+  d.sensors.fix({ lat: d.p.lat, lng: d.p.lng, accuracy: 8, speed: 14 });
+  await d.live.settled();
+  await tick();
+  assert.equal(d.k.voice.on, false);
+  await d.live.setLive(false);
+  d.live.dispose();
+});
+
+test('red lights don\'t turn voice off, whichever way it is on', async () => {
+  for (const setting of /** @type {const} */ (['on', 'off'])) {
+    const d = await drive({ setting });
+    await d.road();
+    /** @type {boolean[]} */
+    const seen = [];
+    d.k.voice.onChange((/** @type {any} */ m) => seen.push(m.on));
+    await d.run(at('17:02:05'), 75, 0); // a light of 75 s
+    await d.run(at('17:03:25'), 60, 14);
+    await d.run(at('17:04:30'), 100, 0); // a longer one
+    await d.run(at('17:06:15'), 60, 14);
+    assert.equal(d.k.voice.on, true, setting);
+    assert.deepEqual(seen, [], setting);
+    assert.deepEqual(d.notes, [], setting);
+    d.live.dispose();
+  }
+});
+
+test('turned off during a drive, voice stays off until it ends, with no note; the next drive turns it on', async () => {
+  for (const setting of /** @type {const} */ (['on', 'off'])) {
+    const d = await drive({ setting });
+    await d.road();
+    await d.k.voice.choose('off');
+    assert.equal(d.k.voice.on, false, setting);
+    await d.run(at('17:02:05'), 30, 14);
+    assert.equal(d.k.voice.on, false, `${setting}: stays off while the drive goes on`);
+    await d.reload();
+    assert.equal(d.k.voice.on, false, `${setting}: and after a reload`);
+    await d.run(at('17:02:40'), 40, 0);
+    await d.wait(at('17:15'));
+    assert.deepEqual(d.notes, [], setting);
+    await d.run(at('17:15:05'), 120, 14);
+    assert.deepEqual([d.k.voice.on, d.k.voice.mode.why], [true, 'driving'], setting);
+    d.live.dispose();
+  }
+});
+
+test('a reload during a drive: voice is still on; the drive\'s end comes on time, once', async () => {
+  const d = await drive();
+  await d.road();
+  await d.reload();
+  assert.deepEqual([d.k.voice.on, d.k.voice.mode.why], [true, 'driving']);
+  const parked = at('17:02:05');
+  await d.run(parked, 70, 0); // moving fast has ended: the hold runs
+  await d.reload();
+  assert.equal(d.k.voice.on, true, 'in the hold');
+  await d.wait(parked + 5 * 60_000);
+  assert.equal(d.k.voice.on, false);
+  assert.deepEqual(d.notes, [STOPPED]);
+  await d.reload();
+  await tick();
+  assert.deepEqual(d.notes, [STOPPED], 'a reload after it says nothing again');
+  d.live.dispose();
+});
+
+test('a page killed in the hold, opened hours later: voice the user left on goes off, once; turned on after that, a reload leaves it on', async () => {
+  const d = await drive({ setting: 'on' });
+  await d.road();
+  await d.run(at('17:02:05'), 70, 0);
+  d.live.dispose();
+  await d.clock.advanceTo(at('21:00'), () => Promise.resolve());
+  d.live = await d.start();
+  await until(() => !d.k.voice.on);
+  assert.deepEqual(d.notes, [STOPPED]);
+  await d.k.voice.choose('on');
+  await d.reload();
+  await tick();
+  assert.equal(d.k.voice.on, true);
+  assert.deepEqual(d.notes, [STOPPED]);
+  d.live.dispose();
+});
+
+test('a page killed on the road, opened parked: the drive ended unseen, so voice left on goes off at the first fix', async () => {
+  const d = await drive({ setting: 'on' });
+  await d.road();
+  d.live.dispose();
+  await d.clock.advanceTo(at('21:00'), () => Promise.resolve());
+  d.live = await d.start();
+  assert.equal(d.k.voice.on, true);
+  await d.fix(at('21:00:05'), 0);
+  await until(() => !d.k.voice.on);
+  assert.deepEqual(d.notes, [STOPPED]);
+  d.live.dispose();
+});
+
+test('a reminder due in the moment a drive ends is said first; then voice goes off, and the note comes after it', async () => {
+  const speak = { toolCalls: [{ name: 'speak', input: { text: 'Tea time, as you asked.' } }, { name: 'sleep', input: {} }] };
+  const d = await drive({ setting: 'on', kit: { halves: true }, rules: [{ match: 'Tea time', reply: speak }, { match: '.', reply: sleep }] });
+  await d.road();
+  await d.run(at('17:02:05'), 70, 0);
+  const due = d.keep.get().due;
+  assert.equal(typeof due, 'number');
+  await d.live.setWatch(d.k.trip, { when: { type: 'time', at: new Date(due).toISOString() }, fallback: 'Tea time.' });
+  await d.clock.advanceTo(due, () => d.live.settled());
+  await eventually(async () => (await d.k.events(['out.speak'])).length > 0);
+  const [said] = await d.k.events(['out.speak']);
+  assert.equal(said.data.voice, true, 'said aloud, not a bubble');
+  await until(() => !d.k.voice.on, 3000);
+  assert.deepEqual(d.notes, [STOPPED]);
+  assert.equal((await readAppSettings(d.k.ws)).voice.mode, 'off');
+  d.live.dispose();
+});
+
+test('reminders: while off, shown; while driving, said aloud', async () => {
+  const quiet = await drive({ kit: { halves: true } });
+  await quiet.live.setWatch(quiet.k.trip, { when: { type: 'time', at: new Date(at('17:01')).toISOString() }, fallback: 'Fuel soon.' });
+  quiet.live.online = false; // no connection: annai says the reminder itself
+  await quiet.wait(at('17:01'));
+  await eventually(async () => (await quiet.k.events(['reminder'])).length > 0);
+  assert.deepEqual((await quiet.k.events(['reminder'])).map((/** @type {any} */ e) => [e.data.text, Boolean(e.data.aloud)]), [['Fuel soon.', false]]);
+  quiet.live.dispose();
+
+  const road = await drive({ kit: { halves: true } });
+  await road.road();
+  await road.live.setWatch(road.k.trip, { when: { type: 'time', at: new Date(at('17:03')).toISOString() }, fallback: 'Fuel soon.' });
+  road.live.online = false;
+  await road.run(at('17:02:05'), 60, 14);
+  await eventually(async () => (await road.k.events(['reminder'])).length > 0);
+  assert.deepEqual((await road.k.events(['reminder'])).map((/** @type {any} */ e) => [e.data.text, Boolean(e.data.aloud)]), [['Fuel soon.', true]]);
+  road.live.dispose();
+});
+
+const PHONE = { kind: 'audioinput', label: 'iPhone Microphone', deviceId: 'phone' };
+const BUDS = { kind: 'audioinput', label: 'Somebody\'s buds', deviceId: 'buds' };
+
+/** @param {any} [voice] */
+async function plugged(voice = {}) {
+  const k = await agentKit([[{ toolCalls: [{ name: 'speak', input: { text: 'A long sentence, on and on.' } }, { name: 'sleep', input: {} }] }]], { voice: { playMs: 400, ...voice } });
+  /** @type {string[]} */
+  const notes = [];
+  k.voice.onNote((/** @type {string} */ n) => notes.push(n));
+  k.platform.setDevices([PHONE, BUDS]);
+  await tick();
+  return { k, notes };
+}
+
+test('an audio device disappears, whatever its name: voice goes off at once, mid-word, stays off, with the note and the Trace\'s voice.route', async () => {
+  const { k, notes } = await plugged();
+  assert.equal(k.voice.on, true);
+  k.agent.send('Say something long');
+  await until(() => k.voice.speaker.speaking, 2000);
+  k.platform.setDevices([PHONE]);
+  await until(() => !k.voice.on);
+  assert.equal(k.voice.speaker.speaking, false, 'mid-word');
+  assert.deepEqual(notes, [UNPLUGGED]);
+  assert.equal((await readAppSettings(k.ws)).voice.mode, 'off');
+  await tick();
+  const traced = await k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(SYS_DEVICE, { types: ['voice.route'] }));
+  assert.deepEqual(traced.at(-1).data.gone, ['Somebody\'s buds']);
+  await k.agent.idle();
+});
+
+test('a device coming, a device gone with voice already off, or a list with nothing to go by turn nothing off and leave no note', async () => {
+  const { k, notes } = await plugged();
+  k.platform.setDevices([PHONE, BUDS, { kind: 'audioinput', label: 'Another', deviceId: 'another' }]);
+  await tick();
+  assert.equal(k.voice.on, true, 'a device coming');
+  k.platform.setDevices([{ kind: 'audioinput', label: '', deviceId: '' }]);
+  await tick();
+  assert.equal(k.voice.on, true, 'nothing named or identified: nothing can be said to have gone (the microphone no longer allowed)');
+  k.platform.setDevices([PHONE, BUDS]);
+  await tick();
+  assert.equal(k.voice.on, false, 'Another went');
+  notes.length = 0;
+  k.platform.setDevices([PHONE]);
+  await tick();
+  assert.deepEqual(notes, [], 'voice was off already');
+  // An id changing with the same name is the same device.
+  await k.voice.choose('on');
+  k.platform.setDevices([{ ...PHONE, deviceId: 'phone2' }]);
+  await tick();
+  assert.equal(k.voice.on, true);
+});
+
+test('a device disappearing ends a tap\'s hold too, and during a drive voice stays off until it ends', async () => {
+  const d = await drive();
+  d.k.platform.setDevices([PHONE, BUDS]);
+  await tick();
+  await d.road();
+  assert.deepEqual([d.k.voice.on, d.k.voice.mode.why], [true, 'driving']);
+  d.k.platform.setDevices([PHONE]);
+  await until(() => !d.k.voice.on);
+  await d.run(at('17:02:05'), 30, 14);
+  assert.equal(d.k.voice.on, false);
+  assert.deepEqual(d.notes, [UNPLUGGED]);
+  d.live.dispose();
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { halves: true, voice: { mode: 'off', speechIn: ['m-hear'] } });
+  k.platform.setDevices([PHONE, BUDS]);
+  await tick();
+  k.agent.tap();
+  await until(() => k.agent.state.name === 'listening');
+  k.platform.setDevices([PHONE]);
+  await until(() => !k.voice.on);
+  assert.notEqual(k.agent.state.name, 'listening');
+});
+
+test('the prompts\' voice line says what is so, and never auto', () => {
+  const line = (/** @type {any} */ m) => nowBlock({ now: 0, timeZone: 'UTC', voice: m.on ? 'on' : 'off', online: true, reasons: [], plan: null, voiceWhy: voiceWhy(m) }).split('\n').find((l) => l.startsWith('voice:'));
+  assert.match(String(line({ setting: 'off', on: true, why: 'driving' })), /^voice: on .*\(while driving\)$/);
+  assert.match(String(line({ setting: 'off', on: true, why: 'tapped' })), /^voice: on .*\(the user tapped Shiori, for this exchange\)$/);
+  assert.match(String(line({ setting: 'on', on: true, why: 'on' })), /^voice: on [^(]*\([^)]*\)$/);
+  assert.doesNotMatch(String(line({ setting: 'off', on: false, why: 'off' })), /auto/);
+});

@@ -248,8 +248,17 @@ for (const width of [320, 360, 375, 393]) {
       await page.goto('/#/talk');
       await expect(page.locator('nav.dock')).toHaveClass(/\bvoice\b/);
       const out = [];
-      for (const words of ['Voice auto · off', 'Voice on · car audio · Realtime', 'Voice on · headphones · Classic']) {
+      for (const words of ['Voice off', 'Voice on', 'Voice on · driving', 'Listening live']) {
+        await page.locator('.koe-live-chip').evaluate((el) => { /** @type {HTMLElement} */ (el).hidden = false; el.textContent = 'Live off'; });
         await page.locator('.voice-chip').evaluate((el, w) => { el.textContent = w; }, words);
+        // One line, whatever the words, with both voice chips whole and on the screen.
+        const row = await page.evaluate(() => {
+          const box = (/** @type {string} */ s) => /** @type {Element} */ (document.querySelector(s)).getBoundingClientRect();
+          const whole = (/** @type {string} */ s) => { const e = /** @type {HTMLElement} */ (document.querySelector(s)); const b = e.getBoundingClientRect(); return e.scrollWidth <= e.clientWidth + 1 && b.left >= 0 && b.right <= innerWidth; };
+          return { height: box('.voice-row').height, voice: whole('.voice-chip'), live: whole('.koe-live-chip'), wide: document.documentElement.scrollWidth <= innerWidth };
+        });
+        expect(row, words).toEqual({ height: expect.any(Number), voice: true, live: true, wide: true });
+        expect(row.height, words).toBeLessThan(45);
         out.push(await page.evaluate(() => ['nav.dock', '.dock-row', '.voice-row'].map((s) => { const b = document.querySelector(s)?.getBoundingClientRect(); return b && [b.x, Math.round(b.y), b.width, Math.round(b.height)]; })));
       }
       return out;

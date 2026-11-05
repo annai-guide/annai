@@ -91,7 +91,7 @@
     },
     "provider-openai": {
       "name": "OpenAI",
-      "description": "OpenAI の Responses API を通じた GPT のモデル。OpenAI の文字起こしと声、Koe のためのリアルタイム音声も、1つのキーで使えます。"
+      "description": "OpenAI の Responses API を通じた GPT のモデル。OpenAI の文字起こしと声、Koe のためのライブ音声も、1つのキーで使えます。"
     },
     "provider-openrouter": {
       "name": "OpenRouter",
@@ -170,7 +170,7 @@
     "openai-realtime": "d482ca37bb9d3925bde67db6be4343098534c53f45a63cccf470342e9dc76911",
     "openai-responses": "654be92948335827db2ca695d9c0e477c26d277311bfea9cc6ce59f6b6b1b239",
     "pdf-pages": "57a2211e73b0ff4dd0b43159eb8e086dd700994c4386bec18d8e487b89827dc5",
-    "provider-another-address": "33dac420db163ab087195c05329c6103fe8151fd397aeaa6f0c00c610dd46072",
+    "provider-another-address": "5feb893ef50dbac95ba50b98b3fb32332fb270657e80ddac18f0fbf338d137a0",
     "provider-anthropic": "e3f899aecc2dcec177eae833bcfdef7940ea8003e6152a68f570a8f32d08d21c",
     "provider-deepseek": "36889bd552056525cb95871d172c3996e28b4c5472f3b911412500482359cc28",
     "provider-gemini": "7d3fe959c4bd3c6242711a1229a76244198ba18d8ffc7d0e17cc8112191b2e11",
@@ -180,7 +180,7 @@
     "provider-local-speech": "293aaffc2e2d71c7ddeaae51dc0ddb67b489bd1a301fa6edef939401701a9f36",
     "provider-mistral": "4b2bf56e04f45f06cd182921e2dde640738eed8d1d4635e66d265e91d0ab6f7d",
     "provider-ollama": "927d4d79c08cd5d7859167ce9572212e2b01691c8c0b9fbd8f09c1d2d762217f",
-    "provider-openai": "5c48675a00929c913a205615b6e4a6df40a392889635b4ae996a1fca28226bfe",
+    "provider-openai": "0b233eab1c30c62550657a4f2193a671f27fdd8ebe130406bbcba8fea6b33ce4",
     "provider-openrouter": "a887328c293cc6bca05fc14285baeb92b8f5aabdb7142be49c1a27f4b4644ec9",
     "provider-scripted": "75a78e1a3a3b216317a2041eba975e7e7d34a02c5cd74799a3a5412aa59f6f8e",
     "provider-sglang": "77fe951da8be293bdb526152ac02e5d0cc363944a5aa5a2e2a063d836dc290c7",

@@ -564,7 +564,7 @@ test('every change of activity is logged once, on this device, from a fix or fro
   for (const [t, speed] of /** @type {const} */ ([['17:02:10', 0.8], ['17:02:30', 0.3], ['17:02:55', 1.1]])) await k.fix(at(t), parked, { speed });
   await k.to(at('17:09')); // no more fixes: moving fast ended on the recheck
   const states = (await k.events(['state'], SYS_DEVICE)).filter((e) => e.data.activity && e.data.from !== e.data.activity); // the changes; a beat has from equal to activity
-  assert.deepEqual(states.map((e) => e.data.activity), told.filter((x, i) => x !== told[i - 1]), 'listeners are also told when the hold of Auto voice is over');
+  assert.deepEqual(states.map((e) => e.data.activity), told.filter((x, i) => x !== told[i - 1]), 'listeners are also told when the hold of voice is over');
   assert.deepEqual(states.map((e) => [e.data.from, e.data.activity]), [['unknown', 'moving-fast'], ['moving-fast', 'still']]);
   const end = states[1].data;
   assert.deepEqual(Object.keys(end).sort(), ['activity', 'ended', 'from', 'gapS', 'heards', 'heldS', 'odometer', 'readings', 'speed']);

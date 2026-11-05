@@ -33,7 +33,7 @@ provider-another-address:@provider.abilities.messages.name	ok	Anthropic Messages
 provider-another-address:@provider.abilities.messages.note	ok	Give the address without /v1: Anthropic Messages adds /v1/messages itself.	請填寫不帶 /v1 的網址：Anthropic Messages 會自己加上 /v1/messages。	plugins-official/provider-another-address/annai-plugin.json:50	
 provider-another-address:@provider.abilities.transcription.name	ok	Transcription	語音轉文字	plugins-official/provider-another-address/annai-plugin.json:55	
 provider-another-address:@provider.abilities.voice.name	ok	Voice	聲音	plugins-official/provider-another-address/annai-plugin.json:61	Note: 聲音: the Voice ability, as annai's own kindWords (b1qn4p), not the Settings → Voice screen (語音).
-provider-another-address:@provider.abilities.realtime.name	ok	Realtime voice	即時語音	plugins-official/provider-another-address/annai-plugin.json:67	Note: 即時語音 as annai's own Live voice (the realtime ability's kind); 語音 here is speech, not the glossary's voice (聲音).
+provider-another-address:@provider.abilities.realtime.name	ok	Live voice	即時語音	plugins-official/provider-another-address/annai-plugin.json:67	Note: 即時語音 as annai's own Live voice (the realtime ability's kind); 語音 here is speech, not the glossary's voice (聲音).
 provider-another-address:@provider.abilities.realtime.note	ok	For a server that speaks OpenAI's Realtime API over a WebSocket, at this address plus /realtime. Add its models by id. annai gives the key as the browser's subprotocol, as OpenAI's own does.	用於透過 WebSocket 支援 OpenAI Realtime API 的伺服器，網址為此網址加上 /realtime。請依 ID 新增它的模型。annai 會像 OpenAI 自己那樣，把金鑰作為瀏覽器的子協定傳遞。	plugins-official/provider-another-address/annai-plugin.json:69	
 provider-another-address:sp1muy	ok	{0}: {1}	{0}：{1}	plugins-official/provider-another-address/index.js:21	{0} = name; {1} = format.sentences(...parts)
 provider-another-address:1ltqbgc	ok	The path is there; Test says whether a model there can listen.	路徑存在；「測試」會告訴你那裡的模型能否辨識語音。	plugins-official/provider-another-address/index.js:25	Note: "listen" is a transcription model's job: 辨識語音 reads better than a bare 聽.
@@ -129,14 +129,14 @@ provider-ollama:@description	ok	Models on Ollama, with their thinking switched o
 provider-ollama:@provider.note	ok	Ollama lets in only pages on its own computer: start it with OLLAMA_ORIGINS=https://annai.guide so annai's page may call it. It listens on port 11434.	Ollama 只允許同一台電腦上的頁面存取：請用 OLLAMA_ORIGINS=https://annai.guide 啟動它，讓 annai 的頁面能呼叫它。它在 11434 連接埠監聽。	plugins-official/provider-ollama/annai-plugin.json:19	
 provider-ollama:@provider.abilities.chat.note	ok	Add models with Fetch model list. It reads what Ollama says of each: whether it reads images, calls tools and thinks, and its context while it is loaded (as ollama ps shows), else the num_ctx its Modelfile sets. A model that thinks gets low, medium and high; for one that can't, annai only switches thinking off, for quick decisions, as it refuses a named level. Ollama holds only 4K tokens of a conversation unless told (with under 24 GiB of video memory), far less than Shiori needs: start it with OLLAMA_CONTEXT_LENGTH=64000, and set the context window of a model not loaded when you fetched the list on its page. Ollama can't be made to call a given tool, so a quick decision may go to the main model instead.	用「取得模型清單」新增模型。它會讀取 Ollama 對每個模型的說明：能否讀圖、能否呼叫工具、是否會思考，以及載入期間的上下文長度（與 ollama ps 顯示的相同），否則讀取其 Modelfile 設定的 num_ctx。會思考的模型有 low、medium 和 high；不會思考的模型會拒絕指定的等級，所以 annai 只在快速判斷時關閉思考。除非另行指定，Ollama 只保留對話的 4K 個 token（顯示記憶體低於 24 GiB 時），遠少於 Shiori 所需：請用 OLLAMA_CONTEXT_LENGTH=64000 啟動它；取得清單時未載入的模型，請在其頁面上設定上下文視窗。Ollama 無法被要求呼叫指定的工具，所以快速判斷可能會改由主要模型來做。	plugins-official/provider-ollama/annai-plugin.json:34	
 provider-openai:@name	ok	OpenAI	OpenAI	plugins-official/provider-openai/annai-plugin.json:3	
-provider-openai:@description	ok	GPT models through OpenAI's Responses API, with OpenAI's transcription and voices, and its Realtime voice for Koe, on one key.	透過 OpenAI 的 Responses API 使用 GPT 模型，另有 OpenAI 的語音轉文字和聲音，以及供 Koe 使用的 Realtime 語音，全部用一個金鑰。	plugins-official/provider-openai/annai-plugin.json:6	
+provider-openai:@description	ok	GPT models through OpenAI's Responses API, with OpenAI's transcription and voices, and its live voice for Koe, on one key.	透過 OpenAI 的 Responses API 使用 GPT 模型，另有 OpenAI 的語音轉文字和聲音，以及供 Koe 使用的 即時語音，全部用一個金鑰。	plugins-official/provider-openai/annai-plugin.json:6	
 provider-openai:@provider.abilities.chat.name	ok	Chat (Responses)	對話（Responses）	plugins-official/provider-openai/annai-plugin.json:26	Note: Chat → 對話, as annai names the Chat ability (kindWords in src/core/llm/contract.js).
 provider-openai:@provider.abilities.chat.note	ok	The one to use for OpenAI: GPT-6 Astra and GPT-6.1 Sol call tools only through Responses. Reasoning summaries may need a verified organization at OpenAI; without one, add "reasoningSummary": false to the tunables. A reasoning model added with Fetch model list needs its Reasoning levels set, as these models have; without them it thinks without showing progress, and may run past the time limit.	在 OpenAI 上請用這個：GPT-6 Astra 和 GPT-6.1 Sol 只透過 Responses 呼叫工具。推理摘要可能需要在 OpenAI 有經過驗證的組織；沒有的話，請在可調參數中加入 "reasoningSummary": false。用「取得模型清單」新增的推理模型需要像這些模型一樣設定推理等級；否則它思考時不顯示進度，還可能超出時間限制。	plugins-official/provider-openai/annai-plugin.json:28	
 provider-openai:@provider.abilities.chat-completions.name	ok	Chat (Chat Completions)	對話（Chat Completions）	plugins-official/provider-openai/annai-plugin.json:265	Note: Chat → 對話, as annai names the Chat ability; Chat Completions is the protocol's name.
 provider-openai:@provider.abilities.chat-completions.note	ok	Prefer Chat (Responses): GPT-6 Astra and GPT-6.1 Sol call tools only there. Add models with Fetch model list.	請優先使用「對話（Responses）」：GPT-6 Astra 和 GPT-6.1 Sol 只在那裡呼叫工具。用「取得模型清單」新增模型。	plugins-official/provider-openai/annai-plugin.json:271	Note: Quotes the ability's own name, 對話（Responses）.
 provider-openai:@provider.abilities.transcription.note	ok	Turns what you say into text, for models that don't take audio.	把你說的話轉成文字，供不接受音訊的模型使用。	plugins-official/provider-openai/annai-plugin.json:276	
 provider-openai:@provider.abilities.voice.note	ok	Shiori's voice. GPT-4o mini TTS is priced by audio; its price here is OpenAI's estimate of $0.015 a minute. It takes a Style (OpenAI's instructions); TTS-1 and TTS-1 HD don't, and say nothing of one. OpenAI is retiring all three on January 6, 2027.	Shiori 的聲音。GPT-4o mini TTS 按音訊計費；這裡的價格是 OpenAI 估算的每分鐘 $0.015。它接受風格（OpenAI 的 instructions）；TTS-1 和 TTS-1 HD 不接受，並且會不聲不響地忽略它。OpenAI 將於 2027 年 1 月 6 日停用這三個模型。	plugins-official/provider-openai/annai-plugin.json:304	
-provider-openai:@provider.abilities.realtime.name	ok	Realtime voice	即時語音	plugins-official/provider-openai/annai-plugin.json:381	
+provider-openai:@provider.abilities.realtime.name	ok	Live voice	即時語音	plugins-official/provider-openai/annai-plugin.json:381	
 provider-openai:@provider.abilities.realtime.note	ok	A conversation in one stream, voice both ways, for Koe (OpenAI Realtime). While a session is open, what you say goes to OpenAI as telephone audio (G.711, a sixth of the data of full quality; "input": "pcm16" in the tunables sends full quality), and gpt-transcribe writes it down, which OpenAI bills apart (about $0.0045 a minute) and Spend per day doesn't count. annai gives your key to OpenAI straight from the browser, where OpenAI suggests short-lived keys made by a server: if Test says the key was rejected, or the address can't be reached, while chat works with the same key, OpenAI is refusing keys from a browser, and its realtime voice would need a server, which annai doesn't have.	為 Koe 提供在單一串流中雙向語音的對話（OpenAI Realtime）。連線開啟期間，你說的話會以電話音質（G.711，資料量是全音質的六分之一；在可調參數中加入 "input": "pcm16" 則傳送全音質）傳送給 OpenAI，並由 gpt-transcribe 轉錄；這部分由 OpenAI 另行計費（每分鐘約 $0.0045），不計入「每日花費」。annai 直接從瀏覽器把你的金鑰交給 OpenAI，而 OpenAI 建議使用由伺服器產生的短期金鑰：如果同一個金鑰用於對話沒有問題，但「測試」顯示金鑰被拒絕或網址無法連線，表示 OpenAI 拒絕來自瀏覽器的金鑰，此時即時語音需要一台伺服器，而 annai 沒有。	plugins-official/provider-openai/annai-plugin.json:383	Note: chat → 對話, as annai names the Chat ability.
 provider-openrouter:@name	ok	OpenRouter	OpenRouter	plugins-official/provider-openrouter/annai-plugin.json:3	
 provider-openrouter:@description	ok	One key for many models, free ones among them, with transcription and voices too. Sign in with OpenRouter, or give a key.	一個金鑰即可使用許多模型（其中有免費的），還有語音轉文字和聲音。請「使用 OpenRouter 登入」，或填寫金鑰。	plugins-official/provider-openrouter/annai-plugin.json:7	
@@ -409,18 +409,18 @@ fki4un	ok	Notifications	通知	src/app/main.js:234
 1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai 現在依供應商設定：一個網址和一個金鑰即可使用該供應商提供的一切。你的端點（{0}）及其金鑰已移除。請在設定 → 模型中重新新增。	src/app/main.js:238	{0} = list(moved.names, 'plain')
 whpd9d	ok	Open Models	開啟模型	src/app/main.js:239	
 10renyj	ok	Plugins	外掛程式	src/app/main.js:250	
-1sp21de	ok	A new version of the {0} personality	性格「{0}」有新版本	src/app/main.js:340	{0} = o.name
-1yoe82	ok	Yours has your own edits, so it was kept as it is.	你的版本有你自己的修改，因此保持原樣。	src/app/main.js:341	
-1n8cxuc	ok	Compare	比較	src/app/main.js:343	
-rzp4o3	ok	Keep mine	保留我的	src/app/main.js:344	
-1j662as	ok	Let Shiori merge	讓 Shiori 合併	src/app/main.js:345	
-x0ig66	ok	Something went wrong	出了點問題	src/app/main.js:397	
-1oy79dy	ok	annai kept running. The details are in Trace.	annai 仍在執行。詳情見記錄。	src/app/main.js:398	
-c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai 仍在執行，但沒能記下發生了什麼，所以記錄裡也沒有。如果反覆出現，請關閉 annai 再重新開啟。	src/app/main.js:398	
-11n1kcg	ok	Open Trace	開啟記錄	src/app/main.js:399	
-gt9ssw	ok	annai couldn't start	annai 無法啟動	src/app/main.js:410	
-6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反覆出現，可能是瀏覽器阻止了儲存（例如在無痕視窗中）。	src/app/main.js:412	
-982hh6	ok	Try again	重試	src/app/main.js:413	
+1sp21de	ok	A new version of the {0} personality	性格「{0}」有新版本	src/app/main.js:341	{0} = o.name
+1yoe82	ok	Yours has your own edits, so it was kept as it is.	你的版本有你自己的修改，因此保持原樣。	src/app/main.js:342	
+1n8cxuc	ok	Compare	比較	src/app/main.js:344	
+rzp4o3	ok	Keep mine	保留我的	src/app/main.js:345	
+1j662as	ok	Let Shiori merge	讓 Shiori 合併	src/app/main.js:346	
+x0ig66	ok	Something went wrong	出了點問題	src/app/main.js:398	
+1oy79dy	ok	annai kept running. The details are in Trace.	annai 仍在執行。詳情見記錄。	src/app/main.js:399	
+c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai 仍在執行，但沒能記下發生了什麼，所以記錄裡也沒有。如果反覆出現，請關閉 annai 再重新開啟。	src/app/main.js:399	
+11n1kcg	ok	Open Trace	開啟記錄	src/app/main.js:400	
+gt9ssw	ok	annai couldn't start	annai 無法啟動	src/app/main.js:411	
+6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反覆出現，可能是瀏覽器阻止了儲存（例如在無痕視窗中）。	src/app/main.js:413	
+982hh6	ok	Try again	重試	src/app/main.js:414	
 1u3dm1p	ok	This address holds a name or password before an @. Leave it out.	這個網址在 @ 前面帶有使用者名稱或密碼。請把它去掉。	src/core/address.js:70	
 1f8b0m5	ok	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	你停留的地方和時長（依名稱；沒有名稱的地點用約 100 公尺精度的位置）。絕不傳送 GPS 軌跡本身。	src/core/after/recap.js:54	
 7m1pck	ok	How far you drove or walked between, the stamps, and the plan.	其間開車或步行的距離、紀念章和行程。	src/core/after/recap.js:55	
@@ -474,24 +474,24 @@ edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe 
 yvabm6	ok	Koe's live voice couldn't start	Koe 的即時語音無法啟動	src/core/agent/halves.js:605	Note: "live voice" is the glossary's Live voice (即時語音), not a voice she speaks with (聲音).
 bzrasi	ok	Shiori answers as one half for now	Shiori 暫時獨自回答	src/core/agent/halves.js:782	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
 o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai 無法把你的訊息轉給 Koe：{0}	src/core/agent/halves.js:782	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-1dhsqvv	ok	Tap to talk	點一下說話	src/core/agent/loop.js:127	
-1ldobgc	ok	Tap to interrupt	點一下打斷	src/core/agent/loop.js:127	
-4mbury	ok	Thinking · tap to stop	思考中 · 點一下停止	src/core/agent/loop.js:127	
-89yydm	ok	Listening	聆聽中	src/core/agent/loop.js:127	Note: one of Shiori's states, as the dock shows her.
-bost42	draft	Ignoring sound · tap to talk	忽略聲音 · 輕點說話	src/core/agent/loop.js:127	
-g8840o	ok	Waiting for your OK	等待你的確認	src/core/agent/loop.js:127	
-yydchc	ok	Hearing you	正在聽你說	src/core/agent/loop.js:127	Note: one of Shiori's states: she hears you speaking.
-akjf4d	ok	Working on …	處理中…	src/core/agent/loop.js:128	
-izy3tv	ok	Offline · reminders still work	離線 · 提醒仍然有效	src/core/agent/loop.js:128	
-gni5zk	draft	Her sound got stuck, and a tap brings it back. Her words are in the conversation.	Shiori 的聲音卡住了，點一下即可恢復。她說的話都在對話裡。	src/core/agent/loop.js:152	
-guullf	ok	Tap the screen so Shiori can speak	點一下螢幕，讓 Shiori 能說話	src/core/agent/loop.js:152	
-1080xlr	ok	Working on {0}	處理中：{0}	src/core/agent/loop.js:592	{0} = detail; Note: label: value, {0} is what she works on, in her words.
-1h2c64o	ok	Working on tidying up the conversation	正在整理對話	src/core/agent/loop.js:592	
-19793n8	ok	Shiori skipped a wake	Shiori 跳過了一次喚醒	src/core/agent/loop.js:913	
-16ny0z2	ok	Shiori stopped	Shiori 已停止	src/core/agent/loop.js:1148	
-1sxm1ou	ok	Something went wrong: {0}	出了點問題：{0}	src/core/agent/loop.js:1148	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori 無法整理對話	src/core/agent/loop.js:1181	
-oeaxaa	ok	She will try again later.	她稍後會再試。	src/core/agent/loop.js:1181	
+1dhsqvv	ok	Tap to talk	點一下說話	src/core/agent/loop.js:128	
+1ldobgc	ok	Tap to interrupt	點一下打斷	src/core/agent/loop.js:128	
+4mbury	ok	Thinking · tap to stop	思考中 · 點一下停止	src/core/agent/loop.js:128	
+89yydm	ok	Listening	聆聽中	src/core/agent/loop.js:128	Note: one of Shiori's states, as the dock shows her.
+bost42	draft	Ignoring sound · tap to talk	忽略聲音 · 輕點說話	src/core/agent/loop.js:128	
+g8840o	ok	Waiting for your OK	等待你的確認	src/core/agent/loop.js:128	
+yydchc	ok	Hearing you	正在聽你說	src/core/agent/loop.js:128	Note: one of Shiori's states: she hears you speaking.
+akjf4d	ok	Working on …	處理中…	src/core/agent/loop.js:129	
+izy3tv	ok	Offline · reminders still work	離線 · 提醒仍然有效	src/core/agent/loop.js:129	
+gni5zk	draft	Her sound got stuck, and a tap brings it back. Her words are in the conversation.	Shiori 的聲音卡住了，點一下即可恢復。她說的話都在對話裡。	src/core/agent/loop.js:153	
+guullf	ok	Tap the screen so Shiori can speak	點一下螢幕，讓 Shiori 能說話	src/core/agent/loop.js:153	
+1080xlr	ok	Working on {0}	處理中：{0}	src/core/agent/loop.js:593	{0} = detail; Note: label: value, {0} is what she works on, in her words.
+1h2c64o	ok	Working on tidying up the conversation	正在整理對話	src/core/agent/loop.js:593	
+19793n8	ok	Shiori skipped a wake	Shiori 跳過了一次喚醒	src/core/agent/loop.js:914	
+16ny0z2	ok	Shiori stopped	Shiori 已停止	src/core/agent/loop.js:1149	
+1sxm1ou	ok	Something went wrong: {0}	出了點問題：{0}	src/core/agent/loop.js:1149	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori 無法整理對話	src/core/agent/loop.js:1182	
+oeaxaa	ok	She will try again later.	她稍後會再試。	src/core/agent/loop.js:1182	
 x10s30	ok	Shiori couldn't summarize the conversation	Shiori 無法總結對話	src/core/agent/loop.js:1372	
 1ds0zov	ok	Reminder	提醒	src/core/agent/loop.js:1583	
 1szzjml	ok	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:1583	
@@ -610,7 +610,7 @@ bgn4sv	ok	Shiori answers in the language you speak to her	Shiori 用你對她說
 1qt7a9v	ok	Shiori answers in	Shiori 回答所用語言	src/core/languages.js:355	Note: A label, so a noun: "the language Shiori answers in".
 k4u05v	ok	The language you speak to her	你對她說的語言	src/core/languages.js:356	
 cc69cl	ok	None picked: annai uses the browser’s language.	未選擇：annai 使用瀏覽器的語言。	src/core/languages.js:357	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
-1dyfzsg	ok	A simulation is already running.	模擬已在執行。	src/core/live/live.js:267	
+1dyfzsg	ok	A simulation is already running.	模擬已在執行。	src/core/live/live.js:280	
 157qf8n	ok	Flight {0} departs {1}, {2}	航班 {0}，{1} 起飛，{2}	src/core/live/plan-watches.js:140	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
 1tvx4k9	ok	Flight {0} departs {1}	航班 {0}，{1} 起飛	src/core/live/plan-watches.js:140	{0} = w.flight; {1} = time
 1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}，{2}）	src/core/live/plan-watches.js:141	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
@@ -644,7 +644,7 @@ d9hh16	ok	Photo uploads work: each photo is uploaded once, and expires after 48 
 1u5s6ep	ok	Uploading photos didn't work with this key.	用這個金鑰無法上傳照片。	src/core/llm/check.js:129	
 1uj9pv4	ok	annai will send photos in each request instead.	annai 會改為在每次請求中傳送照片。	src/core/llm/check.js:129	
 16s9khr	ok	Utility	輔助	src/core/llm/check.js:134	
-a5cd15	ok	Koe · Classic	Koe · 經典	src/core/llm/check.js:134	
+2qw9g9	draft	Koe · Chat	Koe · 聊天	src/core/llm/check.js:134	English was: Koe · Classic
 mlh3jc	ok	Main	主要	src/core/llm/check.js:134	
 1q9bibx	ok	It also answers at {0}'s level ({1}).	在{0}的等級（{1}）下也能回答。	src/core/llm/check.js:136	{0} = roleName(role); {1} = role.level; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
 1bbu08l	ok	At {0}'s level ({1}), this model refused: {2}	在{0}的等級（{1}）下，這個模型拒絕了：{2}	src/core/llm/check.js:138	{0} = roleName(role); {1} = role.level; {2} = said; Note: {0} is a role's name as the screens give it.
@@ -723,7 +723,7 @@ s8uown	ok	The speech couldn't be sent to it.	無法把語音傳給它。	src/cor
 13y0hea	ok	Its daily limit is used up; it rests until {0}.	已用完每日限額，將暫停到 {0}。	src/core/llm/fallback.js:153	{0} = at; Note: {0} is a time, or a weekday and a time.
 22cbmy	ok	This device is offline.	這台裝置處於離線狀態。	src/core/llm/fallback.js:179	
 1av83fe	ok	No model is set for the utility role. Add one in Settings → Models.	輔助角色沒有設定模型。請在設定 → 模型中新增。	src/core/llm/fallback.js:228	Note: the role by its screen name (補助 / 輔助).
-d34x39	ok	No model is set for Koe · Classic. Add one in Settings → Models.	Koe · 經典沒有設定模型。請在設定 → 模型中新增。	src/core/llm/fallback.js:229	
+35l8v	draft	No model is set for Koe · Chat. Add one in Settings → Models.	Koe · 聊天未設定模型。請在「設定 → 模型」中新增。	src/core/llm/fallback.js:229	English was: No model is set for Koe · Classic. Add one in Settings → Models.
 1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	主要角色沒有設定模型。請在設定 → 模型中新增。	src/core/llm/fallback.js:230	Note: the role by its screen name (メイン / 主要).
 g4h5be	ok	annai's list of plugins couldn't be loaded. Check the connection and try again.	無法載入 annai 的外掛程式清單。請檢查網路連線，然後重試。	src/core/llm/official.js:33	
 2vsb85	ok	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	無法載入 annai 的外掛程式清單（HTTP {0}）。請稍後再試。	src/core/llm/official.js:35	{0} = res.status
@@ -871,37 +871,20 @@ h8lp19	ok	On Android: tap the icon left of the address (in the installed app: ho
 1kv2ch5	ok	The microphone is busy	麥克風正被佔用	src/core/voice/mic.js:20	
 1mv2ac5	ok	Try again; if it keeps happening, restart annai.	請再試一次；如果反覆出現，請重新啟動 annai。	src/core/voice/mic.js:23	
 8ycwt2	ok	The microphone didn't start	麥克風未能啟動	src/core/voice/mic.js:23	
-1r1k76k	ok	Realtime	即時	src/core/voice/mode.js:71	
-1kmd589	ok	Realtime off	即時已關閉	src/core/voice/mode.js:74	Note: a label on the voice chip, after "Voice on".
-599lim	ok	Realtime resting	即時休息中	src/core/voice/mode.js:74	Note: a label on the voice chip, after "Voice on".
-v13cxh	ok	Shiori answers directly until it can.	在它恢復之前，由 Shiori 直接回答。	src/core/voice/mode.js:74	
-1xyn0at	ok	Classic unavailable	經典無法使用	src/core/voice/mode.js:75	Note: a label on the voice chip, after "Voice on".
-2nakam	ok	Koe · Classic can't answer now. Shiori answers directly until it can.	Koe · 經典現在無法回答。在它恢復之前，由 Shiori 直接回答。	src/core/voice/mode.js:75	
-1qzc99v	ok	Koe · Classic has no model, so Shiori answers as one. Add one in Settings → Models.	Koe · 經典沒有模型，所以 Shiori 獨自回答。請在設定 → 模型中新增。	src/core/voice/mode.js:77	
-nr2jvc	ok	(no model)	（無模型）	src/core/voice/mode.js:77	
-y7erjn	ok	Classic	經典	src/core/voice/mode.js:77	
-1jfshdf	ok	(no Realtime model)	（無即時模型）	src/core/voice/mode.js:79	
-pfn1mf	ok	Realtime has no model: add one under Koe · Realtime in Settings → Models. Classic talks meanwhile.	即時沒有模型：請在設定 → 模型的 Koe · 即時下新增。在此期間由經典說話。	src/core/voice/mode.js:79	
-1fq5gan	ok	(Realtime resting)	（即時休息中）	src/core/voice/mode.js:80	
-1iee2u1	ok	Realtime is resting after a failure. Classic talks until it can.	即時在出錯後正在休息。在它恢復之前，由經典說話。	src/core/voice/mode.js:80	
-1p1eu5	ok	Realtime's live voice is switched off, or its plugin isn't running. Classic talks meanwhile.	Koe · 即時所用的即時語音已關閉，或它的外掛程式沒有執行。在此期間由經典說話。	src/core/voice/mode.js:81	Note: "Realtime's live voice" is the glossary's Live voice (即時語音); the list is named whole so 即時 isn't said twice in a row.
-mszveu	ok	(Realtime off)	（即時已關閉）	src/core/voice/mode.js:81	
-dra7tz	ok	moving	移動中	src/core/voice/mode.js:87	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.
-3c71hb	ok	car audio	車用音響	src/core/voice/mode.js:88	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.
-86z50m	ok	headphones	耳機	src/core/voice/mode.js:89	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.
-1noivph	ok	your last choice	上次的選擇	src/core/voice/mode.js:90	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.
-bxwivy	ok	Voice auto · off	語音自動 · 關	src/core/voice/mode.js:100	Note: The glossary's own example: 語音自動 · 關.
-46l9so	ok	Voice off	語音關閉	src/core/voice/mode.js:101	
-1o81qfq	ok	Voice on	語音開啟	src/core/voice/mode.js:102	
+46l9so	ok	Voice off	語音關閉	src/core/voice/mode.js:54	
+1o81qfq	ok	Voice on	語音開啟	src/core/voice/mode.js:55	
+d3i18u	draft	Voice on · driving	語音開啟 · 駕駛中	src/core/voice/mode.js:55	
+1c3vxa8	draft	Voice off: headphones disconnected	語音關閉：耳機已中斷連線	src/core/voice/mode.js:60	
+t042iv	draft	Voice off: you stopped driving	語音關閉：您已停止駕駛	src/core/voice/mode.js:60	
 xi9ch6	ok	Shiori can't hear you: the speech-in list is empty. Add an entry in Settings → Models → Speech in.	Shiori 聽不到你：語音辨識清單是空的。請在設定 → 模型 → 語音辨識中新增一項。	src/core/voice/resolve.js:157	
 1da2r7t	ok	Shiori can't hear you yet: {0} doesn't take audio, and the speech-in list has no transcription model that works.	Shiori 還聽不到你：{0} 不接受音訊，語音辨識清單中也沒有可用的語音轉文字模型。	src/core/voice/resolve.js:163	{0} = model.name
 1j6uoln	ok	Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works.	Shiori 還聽不到你：沒有設定主要模型，語音辨識清單中也沒有可用的語音轉文字模型。	src/core/voice/resolve.js:164	
 1oy92m8	ok	This browser has no phone dictation either.	這個瀏覽器也沒有手機語音輸入。	src/core/voice/resolve.js:165	
 l80ifa	ok	Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	請在設定 → 模型中新增一個語音轉文字模型（如 OpenAI 或 Groq），或一個接受音訊的主要模型。	src/core/voice/resolve.js:165	
 m5s9f4	ok	This browser can't play a voice as it arrives.	這個瀏覽器無法邊接收邊播放聲音。	src/core/voice/speaker.js:132	
-jo5o9d	ok	This browser can't play sound here.	這個瀏覽器無法在這裡播放聲音。	src/core/voice/voice.js:413	
-ocv5zw	ok	This browser can't use the microphone here.	這個瀏覽器無法在這裡使用麥克風。	src/core/voice/voice.js:458	
-55949q	draft	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	聲音卡住了，annai 聽不到你說話。點一下螢幕即可恢復。	src/core/voice/voice.js:690	
+jo5o9d	ok	This browser can't play sound here.	這個瀏覽器無法在這裡播放聲音。	src/core/voice/voice.js:421	
+ocv5zw	ok	This browser can't use the microphone here.	這個瀏覽器無法在這裡使用麥克風。	src/core/voice/voice.js:466	
+55949q	draft	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	聲音卡住了，annai 聽不到你說話。點一下螢幕即可恢復。	src/core/voice/voice.js:763	
 pib2vo	ok	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	由瀏覽器自帶的語音服務來聽：在 Android 上通常是 Google 的伺服器，在 iPhone 上是 Apple 的（有時就在手機上）。這個請求不是 annai 送出的，所以記錄裡看不到。	src/core/voice/where.js:15	
 m93xm3	ok	On this phone only: the browser recognizes your speech on the device.	僅在這部手機上：瀏覽器在裝置上辨識你的語音。	src/core/voice/where.js:16	
 1m5zm0a	ok	Phone dictation	手機語音輸入	src/core/voice/where.js:18	
@@ -1796,21 +1779,21 @@ nf3vcm	ok	Style	風格	src/ui/screens/model.js:196
 18b8wh7	ok	Prices, USD per million tokens (JSON: input, cacheRead, audioIn, cacheReadAudio, image, cacheReadImage, output, audioOut)	價格：每百萬 token 多少美元（JSON：input、cacheRead、audioIn、cacheReadAudio、image、cacheReadImage、output、audioOut）	src/ui/screens/model.js:198	Note: The prices are in US dollars for each million tokens; the JSON keys stay as typed.
 1wo5fes	ok	Prices, USD (JSON: perMillionChars)	價格：美元（JSON：perMillionChars）	src/ui/screens/model.js:198	Note: The JSON keys stay as typed.
 heq2kw	ok	Prices, USD (JSON: perMinute, minSeconds)	價格：美元（JSON：perMinute、minSeconds）	src/ui/screens/model.js:198	
-1oqe6zr	ok	Koe · Realtime: hears you and speaks in one stream	Koe · 即時：在同一個串流中聽你說並說話	src/ui/screens/models.js:16	
+1iltlrh	draft	Koe · Chat: a chat model, with Speech in and Speech out	Koe · 聊天：聊天模型，搭配語音輸入和語音輸出	src/ui/screens/models.js:16	English was: Koe · Classic: a chat model, with Speech in and Speech out; Note: chat model → 對話模型, as the glossary's Koe · Classic note.
+b7irvo	draft	Koe · Live: hears you and speaks in one stream	Koe · 即時：在一條串流中聽你說話並開口	src/ui/screens/models.js:16	English was: Koe · Realtime: hears you and speaks in one stream
 k0393o	ok	Main: talks with you	主要：與你交談	src/ui/screens/models.js:16	
-mcznv1	ok	Koe · Classic: a chat model, with Speech in and Speech out	Koe · 經典：對話模型，配合語音辨識和朗讀	src/ui/screens/models.js:16	Note: chat model → 對話模型, as the glossary's Koe · Classic note.
 187fzjq	ok	Quick decision: yes-or-no checks	快速判斷：是或否的檢查	src/ui/screens/models.js:17	
 5815dj	ok	Utility: summaries and small jobs	輔助：摘要和小任務	src/ui/screens/models.js:17	
 1hclnju	ok	Speech in: how Shiori hears you	語音辨識：Shiori 怎樣聽你說話	src/ui/screens/models.js:18	
 dadv07	ok	Speech out: Shiori's voice	朗讀：Shiori 的聲音	src/ui/screens/models.js:18	
+18wgr3h	draft	Koe · Live	Koe · 即時	src/ui/screens/models.js:22	
 1h7ll5r	ok	utility	輔助	src/ui/screens/models.js:22	Note: the role's id, shown so in English buttons ("Add to utility"); translated as the role's name.
 1naapyq	ok	speech-out	朗讀	src/ui/screens/models.js:22	Note: the role's id, shown so in English buttons; translated as the role's name.
 1t30hzc	ok	main	主要	src/ui/screens/models.js:22	Note: the role's id, shown so in English buttons ("Add to main"); translated as the role's name.
 1u27rxd	ok	decide	快速判斷	src/ui/screens/models.js:22	Note: the role's id, shown so in English buttons; translated as the role's name.
-1u7wm22	ok	Koe · Realtime	Koe · 即時	src/ui/screens/models.js:22	
 a363wx	ok	speech-in	語音辨識	src/ui/screens/models.js:22	Note: the role's id, shown so in English buttons; translated as the role's name.
-12dmh42	ok	Koe uses it while voice is on and Realtime is chosen on the voice chip. When none here can answer, Classic does.	語音開啟且在語音按鈕上選了即時時，Koe 使用它。這裡沒有能回答的，就由經典回答。	src/ui/screens/models.js:28	Note: "voice is on" is the glossary's Voice on mode (語音開啟) and the voice chip is 語音按鈕, both from the Voice screen's 語音, not a voice she speaks with (聲音).
-1nrakqh	ok	Koe uses it when Classic is chosen, while voice is off, and when Realtime can't answer: Speech in hears you, and Speech out speaks.	選了經典、語音關閉，或即時無法回答時，Koe 使用它：語音辨識聽你說，朗讀負責說話。	src/ui/screens/models.js:29	Note: "voice is off" is the glossary's Voice off mode (語音關閉), not a voice she speaks with (聲音).
+qx3inn	draft	Koe uses it while voice is on and the Live chip is on. When none here can answer, Koe · Chat does.	語音開啟且「即時」按鈕開啟時，Koe 使用它。這裡沒有能回答的模型時，由 Koe · 聊天回答。	src/ui/screens/models.js:28	English was: Koe uses it while voice is on and Realtime is chosen on the voice chip. When none here can answer, Classic does.; Note: "voice is on" is the glossary's Voice on mode (語音開啟) and the voice chip is 語音按鈕, both from the Voice screen's 語音, not a voice she speaks with (聲音).
+1wr3zin	draft	Koe uses it when Live is off, while voice is off, and when Koe · Live can't answer: Speech in hears you, and Speech out speaks.	即時關閉時、語音關閉時，以及 Koe · 即時無法回答時，Koe 使用它：語音輸入聽你說話，語音輸出負責說話。	src/ui/screens/models.js:29	English was: Koe uses it when Classic is chosen, while voice is off, and when Realtime can't answer: Speech in hears you, and Speech out speaks.; Note: "voice is off" is the glossary's Voice off mode (語音關閉), not a voice she speaks with (聲音).
 1htj30x	ok	the phone's own; usually goes to Google or Apple	手機自帶；通常傳送到 Google 或 Apple	src/ui/screens/models.js:32	
 1w4m41d	ok	the browser's own; some voices go online	瀏覽器自帶；有些聲音需要連網	src/ui/screens/models.js:32	
 ce8br5	ok	when the model takes audio	當模型接受音訊時	src/ui/screens/models.js:32	
@@ -1840,8 +1823,8 @@ hbz43i	ok	Roles	角色	src/ui/screens/models.js:132
 7uxkel	ok	The speech lists are tried from the top too: the first entry that works for the model hearing you, and the first voice that answers.	語音清單也從上往下嘗試：使用對聽你說話的模型可用的第一項，以及第一個回應的聲音。	src/ui/screens/models.js:137	
 1erapbm	ok	Remove {0} from {1}	從{1}移除{0}	src/ui/screens/models.js:161	{0} = nameOf(id); {1} = called
 1w3dq5v	ok	No models yet. Add one.	還沒有模型。請新增一個。	src/ui/screens/models.js:167	
-pzkck9	ok	Empty: Koe has no realtime voice, so Classic answers. Add one, such as Gemini Live, from a provider with live voice.	空：Koe 沒有即時語音，所以由經典回答。請從提供即時語音的供應商新增一個，比如 Gemini Live。	src/ui/screens/models.js:168	Note: "realtime voice" and "live voice" are the glossary's Live voice (即時語音), not a voice she speaks with (聲音).
-1duwaob	ok	Empty: in Classic, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.	空：在經典模式下，Shiori 只有一個分身，即主要模型。在這裡新增一個快速模型，讓她在前面有個反應快的聲音。	src/ui/screens/models.js:169	Note: halves is 半身/分身 per the glossary.
+14zzm1c	draft	Empty: Koe has no live voice, so Koe · Chat answers. Add one, such as Gemini Live, from a provider with live voice.	空：Koe 沒有即時語音，因此由 Koe · 聊天回答。請從提供即時語音的供應商新增一個，例如 Gemini Live。	src/ui/screens/models.js:168	English was: Empty: Koe has no realtime voice, so Classic answers. Add one, such as Gemini Live, from a provider with live voice.; Note: "realtime voice" and "live voice" are the glossary's Live voice (即時語音), not a voice she speaks with (聲音).
+12bm0vn	draft	Empty: with Live off, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.	空：即時關閉時，Shiori 只有一個分身，即主模型。在這裡新增一個快速模型，讓她有一個快速回應的聲音。	src/ui/screens/models.js:169	English was: Empty: in Classic, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.; Note: halves is 半身/分身 per the glossary.
 wer5y9	ok	Nothing here, so annai can't hear you. Add an entry.	這裡沒有任何項，所以 annai 聽不到你。請新增一項。	src/ui/screens/models.js:170	
 1n694n2	ok	Nothing here, so Shiori can't speak aloud. Add a voice.	這裡沒有任何項，所以 Shiori 無法出聲說話。請新增一個聲音。	src/ui/screens/models.js:171	
 el9rbx	ok	Uses the main list.	使用主要清單。	src/ui/screens/models.js:172	
@@ -2292,8 +2275,8 @@ ro3vrl	ok	Steps per wake is a whole number from 1; leave it empty for no limit o
 srktqx	draft	How she talks, how annai works, and her safety rules. Kokoro reads it, and Shiori when she is one half.	她的說話方式、annai 的運作方式和她的安全規則。Kokoro 會讀取，只有一個分身時 Shiori 也會讀取。	src/ui/screens/shiori.js:162	
 10gef26	draft	What Kokoro adds while Shiori is two halves: how it works behind Koe.	Shiori 有兩個分身時 Kokoro 額外讀取的內容：如何在 Koe 背後工作。	src/ui/screens/shiori.js:163	
 13snrep	draft	Kokoro's part	Kokoro 的部分	src/ui/screens/shiori.js:163	
+1t3wpe4	draft	Koe, chat	Koe（聊天）	src/ui/screens/shiori.js:164	
 1x7xmuu	draft	What Koe reads when its words go to a voice.	Koe 的話由語音朗讀時，Koe 讀取的內容。	src/ui/screens/shiori.js:164	
-u8z792	draft	Koe, classic	Koe（經典）	src/ui/screens/shiori.js:164	
 777qwf	draft	What Koe reads in a live voice session.	Koe 在即時語音工作階段中讀取的內容。	src/ui/screens/shiori.js:165	
 mmvypk	draft	Koe, live	Koe（即時）	src/ui/screens/shiori.js:165	
 1eogfr1	draft	Her instructions	給 Shiori 的指示	src/ui/screens/shiori.js:170	
@@ -2498,6 +2481,7 @@ vgv0s2	ok	started fresh after event {0}	在事件 {0} 之後重新開始	src/ui/
 1nk1wxu	ok	audio route {0}	音訊路由 {0}	src/ui/screens/trace.js:210	{0} = d.route
 1yo1hz0	ok	the microphone in use: {0}	正在使用的麥克風：{0}	src/ui/screens/trace.js:210	{0} = d.using || unnamed
 bt7zey	ok	from the devices present	來自現有的裝置	src/ui/screens/trace.js:210	
+1rzyxvu	draft	disconnected: {0}	已中斷連線：{0}	src/ui/screens/trace.js:211	{0} = d.gone.join(', ')
 3gdj21	ok	no devices	無裝置	src/ui/screens/trace.js:211	
 1ijsnzq	ok	voice on	語音開啟	src/ui/screens/trace.js:226	Note: The glossary's Voice on mode (語音開啟).
 z2w914	ok	voice off	語音關閉	src/ui/screens/trace.js:226	Note: The glossary's Voice off mode (語音關閉).
@@ -2604,53 +2588,53 @@ cdoxxa	ok	A new version of annai	annai 的新版本	src/ui/screens/updates.js:57
 1jptowo	ok	Speech leaves this phone in the smallest format each service takes. Made here: {0}. Played here: {1}.	語音以每個服務接受的最小格式離開這部手機。這裡能產生：{0}。這裡能播放：{1}。	src/ui/screens/voice.js:34	{0} = made; {1} = played
 8wro44	ok	Voice is off.	語音已關閉。	src/ui/screens/voice.js:44	
 sns8o2	ok	Voice is on.	語音已開啟。	src/ui/screens/voice.js:44	
-540b06	ok	Auto	自動	src/ui/screens/voice.js:45	
 fceyoz	ok	Voice	語音	src/ui/screens/voice.js:45	context: voice mode; Note: voice on, off or auto (the glossary's Voice on, Voice off).
-12k3pw4	ok	Show what she says	顯示她說的話	src/ui/screens/voice.js:53	
-3gprw9	ok	Keep voice clips	保留語音片段	src/ui/screens/voice.js:54	Note: Voice clips are recordings of what you said (語音片段), not a voice she speaks with (聲音).
-1r528n6	ok	Keep the screen on while GPS is on	GPS 開啟時保持螢幕開啟	src/ui/screens/voice.js:60	
-o7g54g	ok	Cut her off by speaking	說話即可打斷她	src/ui/screens/voice.js:61	
-1maeag1	ok	Speaking…	正在朗讀…	src/ui/screens/voice.js:69	
-1rasxdf	ok	This browser didn't let annai play sound yet. Tap anywhere on the page, then try again.	這個瀏覽器還不允許 annai 播放聲音。請點一下頁面任意處，然後再試一次。	src/ui/screens/voice.js:73	
-39tqta	ok	No voice could speak. The Trace shows what each voice answered; check them in Settings → Models.	沒有聲音能朗讀。記錄裡有每個聲音的回應；請在設定 → 模型中檢查。	src/ui/screens/voice.js:74	
-m6lqjc	ok	{0} couldn't speak: {1}	{0}無法朗讀：{1}	src/ui/screens/voice.js:76	{0} = f.name; {1} = speechProblem(f.error)
-1v88hol	ok	{0}, then {1}	{0}，然後是{1}	src/ui/screens/voice.js:77	context: one voice, then the next; {0} = a; {1} = b; Note: voices in the order they spoke: "A, then B, then C".
-1w6xnpw	ok	Spoken by {0}.	朗讀的聲音：{0}。	src/ui/screens/voice.js:77	{0} = r.voices.reduce((/** @type {string} */ a, /** @type {string} */ b) => tc('one voice, then the next')`${a}, then ${b}`)
-1l6oe5c	ok	Test the voice	測試聲音	src/ui/screens/voice.js:84	
-1bbvn6f	ok	Automatic: one on this phone when there is one	自動：有手機上的聲音就用它	src/ui/screens/voice.js:91	
-1swzhj6	ok	{0} ({1}, online)	{0}（{1}，線上）	src/ui/screens/voice.js:92	{0} = v.name; {1} = v.lang; Note: a browser voice, its language code, and that it sends her words online.
-1er0uz6	ok	How loud the microphone hears you	麥克風聽到的音量	src/ui/screens/voice.js:102	
-1v58i1s	ok	Say something…	說點什麼…	src/ui/screens/voice.js:108	
-bjwya4	ok	Hearing you…	正在聽…	src/ui/screens/voice.js:112	
-1hsov55	ok	Nothing was heard in 15 seconds. Check that the microphone is on and that no other app is using it, then try again.	15 秒內沒聽到聲音。請確認麥克風已開啟且沒有被別的 App 佔用，然後再試一次。	src/ui/screens/voice.js:114	Note: App, as Taiwan's iPhone says it, as the microphone's other rows say it.
-1plbhzy	ok	Heard {0} of speech.	聽到了{0}的語音。	src/ui/screens/voice.js:117	{0} = seconds(seg.ms, 'long')
-u495xc	ok	Writing it down…	正在轉成文字…	src/ui/screens/voice.js:120	
-1fnqjaw	ok	{0} heard: "{1}"	{0}聽到：「{1}」	src/ui/screens/voice.js:124	{0} = name; {1} = text
-1rgfjj8	ok	{0} heard speech but wrote nothing down.	{0}聽到了語音，但什麼也沒寫出來。	src/ui/screens/voice.js:124	{0} = name
-1rec7os	ok	Add a transcription model in Settings → Models to see the words.	在設定 → 模型中新增語音轉文字模型，就能看到文字。	src/ui/screens/voice.js:126	
-5uf1sa	ok	Test the microphone	測試麥克風	src/ui/screens/voice.js:137	
-1du6nik	ok	Settings → Models	設定 → 模型	src/ui/screens/voice.js:139	
-1tl20ub	ok	How Shiori speaks and hears you. Which voices and which transcription models she uses, and in what order, is in Settings → Models.	Shiori 如何說話、如何聽你說。她用哪些聲音和語音轉文字模型、依什麼順序，在設定 → 模型中。	src/ui/screens/voice.js:143	
-1nt5zac	ok	On or off	開啟或關閉	src/ui/screens/voice.js:144	
-1i4uvxi	draft	Auto: on in the car, with headphones, or when moving fast; off on the phone speaker; and where annai can’t tell, what you chose last time. On: Shiori speaks aloud and listens for your answer. Off: she writes, and you type. In Auto, a tap on Shiori turns voice on until that talk ends. The chip on the dock changes it too.	自動：在車裡、戴耳機或快速移動時開啟；用手機揚聲器時關閉；annai 無法判斷時，沿用你上次的選擇。開啟：Shiori 出聲說話，並聽你的回答。關閉：她寫字，你打字。自動時，點一下 Shiori 會開啟語音，直到這段對話結束。底部列上的按鈕也能切換。	src/ui/screens/voice.js:145	
-1hwskdv	ok	Listen for 2 to 60 seconds.	請設為 2 到 60 秒。	src/ui/screens/voice.js:148	
-qyfmia	ok	Listen for an answer (seconds)	等待回答（秒）	src/ui/screens/voice.js:148	
-1f9vvmr	ok	Wait for her first words (seconds)	等待她開口（秒）	src/ui/screens/voice.js:149	
-1sz04rq	ok	Wait 5 to 120 seconds.	請設為 5 到 120 秒。	src/ui/screens/voice.js:149	
-17b2a79	ok	On the screen	螢幕上	src/ui/screens/voice.js:150	
-4xxyqf	ok	On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".	開啟：她出聲說的話會以「已朗讀」標記顯示在對話中，說話時也會在她上方的氣泡中顯示。關閉：螢幕保持安靜。她說過的話在對話中摺疊起來，直到你點一下「檢視她說的話」。	src/ui/screens/voice.js:152	Note: "said aloud" and "Show what she said" are the conversation's own words: they must match those rows.
-y61lbz	ok	Shiori's voice	Shiori 的聲音	src/ui/screens/voice.js:153	
-1879vb9	ok	Voices, tried in order: none.	依次嘗試的聲音：無。	src/ui/screens/voice.js:154	
-1su08w7	ok	Voices, tried in order: {0}.	依次嘗試的聲音：{0}。	src/ui/screens/voice.js:154	{0} = list(entries.map((/** @type {any} */ e) => e.name), 'plain')
-1oc2cqc	ok	The browser’s own voice. Some of its voices speak on this phone; those marked online send her words to their service.	瀏覽器自帶的聲音。其中一些在這部手機上朗讀；標為「線上」的會把她的話傳給它們的服務。	src/ui/screens/voice.js:157	
-t9jotl	ok	This browser has no voice of its own.	這個瀏覽器沒有自帶的聲音。	src/ui/screens/voice.js:157	
-154la7x	ok	The speed goes from 0.5 (slow) to 2 (fast); 1 is normal.	速度從 0.5（慢）到 2（快）；1 為正常。	src/ui/screens/voice.js:160	
-1r7xlh3	ok	Speed (0.5 to 2)	速度（0.5 到 2）	src/ui/screens/voice.js:160	
-1hnhxk8	ok	Listening	語音辨識	src/ui/screens/voice.js:161	context: section; Note: Settings → Voice's section on how annai hears you (the glossary's Speech in), not Shiori's state.
-rwdfwh	ok	annai hears that you finished a sentence when you pause. A longer pause lets you think mid-sentence; a shorter one answers sooner.	你停頓時，annai 就認為一句話說完了。停頓設長些，你可以在句中思考；設短些，回答更快。	src/ui/screens/voice.js:162	
-11q2yij	ok	Pause that ends a sentence (ms)	判定一句話結束的停頓（毫秒）	src/ui/screens/voice.js:163	
-mfkrny	ok	The pause goes from 300 to 3000 milliseconds; 700 is the usual.	停頓為 300 到 3000 毫秒；通常為 700。	src/ui/screens/voice.js:163	
-d3o3oq	ok	Off: what the microphone hears is sent to be written down, then let go. On: each clip is kept with the conversation, and in backups.	關閉：麥克風聽到的內容送去轉成文字，然後丟棄。開啟：每個片段都隨對話儲存，也包含在備份中。	src/ui/screens/voice.js:166	
+12k3pw4	ok	Show what she says	顯示她說的話	src/ui/screens/voice.js:52	
+3gprw9	ok	Keep voice clips	保留語音片段	src/ui/screens/voice.js:53	Note: Voice clips are recordings of what you said (語音片段), not a voice she speaks with (聲音).
+1r528n6	ok	Keep the screen on while GPS is on	GPS 開啟時保持螢幕開啟	src/ui/screens/voice.js:59	
+o7g54g	ok	Cut her off by speaking	說話即可打斷她	src/ui/screens/voice.js:60	
+1maeag1	ok	Speaking…	正在朗讀…	src/ui/screens/voice.js:68	
+1rasxdf	ok	This browser didn't let annai play sound yet. Tap anywhere on the page, then try again.	這個瀏覽器還不允許 annai 播放聲音。請點一下頁面任意處，然後再試一次。	src/ui/screens/voice.js:72	
+39tqta	ok	No voice could speak. The Trace shows what each voice answered; check them in Settings → Models.	沒有聲音能朗讀。記錄裡有每個聲音的回應；請在設定 → 模型中檢查。	src/ui/screens/voice.js:73	
+m6lqjc	ok	{0} couldn't speak: {1}	{0}無法朗讀：{1}	src/ui/screens/voice.js:75	{0} = f.name; {1} = speechProblem(f.error)
+1v88hol	ok	{0}, then {1}	{0}，然後是{1}	src/ui/screens/voice.js:76	context: one voice, then the next; {0} = a; {1} = b; Note: voices in the order they spoke: "A, then B, then C".
+1w6xnpw	ok	Spoken by {0}.	朗讀的聲音：{0}。	src/ui/screens/voice.js:76	{0} = r.voices.reduce((/** @type {string} */ a, /** @type {string} */ b) => tc('one voice, then the next')`${a}, then ${b}`)
+1l6oe5c	ok	Test the voice	測試聲音	src/ui/screens/voice.js:83	
+1bbvn6f	ok	Automatic: one on this phone when there is one	自動：有手機上的聲音就用它	src/ui/screens/voice.js:90	
+1swzhj6	ok	{0} ({1}, online)	{0}（{1}，線上）	src/ui/screens/voice.js:91	{0} = v.name; {1} = v.lang; Note: a browser voice, its language code, and that it sends her words online.
+1er0uz6	ok	How loud the microphone hears you	麥克風聽到的音量	src/ui/screens/voice.js:101	
+1v58i1s	ok	Say something…	說點什麼…	src/ui/screens/voice.js:107	
+bjwya4	ok	Hearing you…	正在聽…	src/ui/screens/voice.js:111	
+1hsov55	ok	Nothing was heard in 15 seconds. Check that the microphone is on and that no other app is using it, then try again.	15 秒內沒聽到聲音。請確認麥克風已開啟且沒有被別的 App 佔用，然後再試一次。	src/ui/screens/voice.js:113	Note: App, as Taiwan's iPhone says it, as the microphone's other rows say it.
+1plbhzy	ok	Heard {0} of speech.	聽到了{0}的語音。	src/ui/screens/voice.js:116	{0} = seconds(seg.ms, 'long')
+u495xc	ok	Writing it down…	正在轉成文字…	src/ui/screens/voice.js:119	
+1fnqjaw	ok	{0} heard: "{1}"	{0}聽到：「{1}」	src/ui/screens/voice.js:123	{0} = name; {1} = text
+1rgfjj8	ok	{0} heard speech but wrote nothing down.	{0}聽到了語音，但什麼也沒寫出來。	src/ui/screens/voice.js:123	{0} = name
+1rec7os	ok	Add a transcription model in Settings → Models to see the words.	在設定 → 模型中新增語音轉文字模型，就能看到文字。	src/ui/screens/voice.js:125	
+5uf1sa	ok	Test the microphone	測試麥克風	src/ui/screens/voice.js:136	
+1du6nik	ok	Settings → Models	設定 → 模型	src/ui/screens/voice.js:138	
+1tl20ub	ok	How Shiori speaks and hears you. Which voices and which transcription models she uses, and in what order, is in Settings → Models.	Shiori 如何說話、如何聽你說。她用哪些聲音和語音轉文字模型、依什麼順序，在設定 → 模型中。	src/ui/screens/voice.js:142	
+1nt5zac	ok	On or off	開啟或關閉	src/ui/screens/voice.js:143	
+1usj795	draft	On: Shiori speaks aloud and listens for your answer. Off: she writes. A tap on Shiori always talks, until that talk ends; the keyboard button is how to type. With GPS on, voice is on while driving. It goes off by itself when a drive ends or headphones disconnect. The chip on the dock changes it too.	開啟：Shiori 會開口說話並聽你回答。關閉：她寫字回答。點按 Shiori 時總是可以說話，直到這次對話結束；要打字請用鍵盤按鈕。GPS 開啟時，駕駛期間語音開啟。駕駛結束或耳機中斷連線時，語音會自動關閉。也可以用底部列的按鈕切換。	src/ui/screens/voice.js:144	
+1hwskdv	ok	Listen for 2 to 60 seconds.	請設為 2 到 60 秒。	src/ui/screens/voice.js:147	
+qyfmia	ok	Listen for an answer (seconds)	等待回答（秒）	src/ui/screens/voice.js:147	
+1f9vvmr	ok	Wait for her first words (seconds)	等待她開口（秒）	src/ui/screens/voice.js:148	
+1sz04rq	ok	Wait 5 to 120 seconds.	請設為 5 到 120 秒。	src/ui/screens/voice.js:148	
+17b2a79	ok	On the screen	螢幕上	src/ui/screens/voice.js:149	
+4xxyqf	ok	On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".	開啟：她出聲說的話會以「已朗讀」標記顯示在對話中，說話時也會在她上方的氣泡中顯示。關閉：螢幕保持安靜。她說過的話在對話中摺疊起來，直到你點一下「檢視她說的話」。	src/ui/screens/voice.js:151	Note: "said aloud" and "Show what she said" are the conversation's own words: they must match those rows.
+y61lbz	ok	Shiori's voice	Shiori 的聲音	src/ui/screens/voice.js:152	
+1879vb9	ok	Voices, tried in order: none.	依次嘗試的聲音：無。	src/ui/screens/voice.js:153	
+1su08w7	ok	Voices, tried in order: {0}.	依次嘗試的聲音：{0}。	src/ui/screens/voice.js:153	{0} = list(entries.map((/** @type {any} */ e) => e.name), 'plain')
+1oc2cqc	ok	The browser’s own voice. Some of its voices speak on this phone; those marked online send her words to their service.	瀏覽器自帶的聲音。其中一些在這部手機上朗讀；標為「線上」的會把她的話傳給它們的服務。	src/ui/screens/voice.js:156	
+t9jotl	ok	This browser has no voice of its own.	這個瀏覽器沒有自帶的聲音。	src/ui/screens/voice.js:156	
+154la7x	ok	The speed goes from 0.5 (slow) to 2 (fast); 1 is normal.	速度從 0.5（慢）到 2（快）；1 為正常。	src/ui/screens/voice.js:159	
+1r7xlh3	ok	Speed (0.5 to 2)	速度（0.5 到 2）	src/ui/screens/voice.js:159	
+1hnhxk8	ok	Listening	語音辨識	src/ui/screens/voice.js:160	context: section; Note: Settings → Voice's section on how annai hears you (the glossary's Speech in), not Shiori's state.
+rwdfwh	ok	annai hears that you finished a sentence when you pause. A longer pause lets you think mid-sentence; a shorter one answers sooner.	你停頓時，annai 就認為一句話說完了。停頓設長些，你可以在句中思考；設短些，回答更快。	src/ui/screens/voice.js:161	
+11q2yij	ok	Pause that ends a sentence (ms)	判定一句話結束的停頓（毫秒）	src/ui/screens/voice.js:162	
+mfkrny	ok	The pause goes from 300 to 3000 milliseconds; 700 is the usual.	停頓為 300 到 3000 毫秒；通常為 700。	src/ui/screens/voice.js:162	
+d3o3oq	ok	Off: what the microphone hears is sent to be written down, then let go. On: each clip is kept with the conversation, and in backups.	關閉：麥克風聽到的內容送去轉成文字，然後丟棄。開啟：每個片段都隨對話儲存，也包含在備份中。	src/ui/screens/voice.js:165	
+1xjm3fg	draft	Live on: Shiori hears you and answers in one stream, with a live model. Live off: what you say is written down, then answered. The Live chip on the dock switches it.	即時開啟：Shiori 用即時模型在一條串流中聽你說話並回答。即時關閉：先把你說的話寫下來，再回答。用底部列的「即時」按鈕切換。	src/ui/screens/voice.js:168	
 byedp9	draft	While a live session listens, what you say goes straight to {0} as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange, when she's asked to sleep, on voice off, or when annai leaves the screen. With sound that never stops, such as music, Shiori decides when to sleep.	即時連線在聽時，你說的話會以音訊形式直接傳給 {0}，只在有人說話時傳送，按鈕上顯示「正在即時收聽」。經過下面設定的安靜時間、關閉語音，或 annai 離開螢幕時，連線關閉。	src/ui/screens/voice.js:170	{0} = list(live, 'or'); English was: While a live session listens, what you say goes straight to {0} as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange (sound alone, such as music, doesn't keep it open), when she's asked to sleep, on voice off, or when annai leaves the screen.; Note: "on voice off" is the glossary's Voice off mode (關閉語音); a live session is 即時連線.
 8znos	draft	While a live session listens, what you say goes straight to its provider as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange, when she's asked to sleep, on voice off, or when annai leaves the screen. With sound that never stops, such as music, Shiori decides when to sleep.	即時連線在聽時，你說的話會以音訊形式直接傳給它的供應商，只在有人說話時傳送，按鈕上顯示「正在即時收聽」。經過下面設定的安靜時間、關閉語音，或 annai 離開螢幕時，連線關閉。	src/ui/screens/voice.js:171	English was: While a live session listens, what you say goes straight to its provider as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange (sound alone, such as music, doesn't keep it open), when she's asked to sleep, on voice off, or when annai leaves the screen.; Note: "on voice off" is the glossary's Voice off mode (關閉語音); a live session is 即時連線.
 18jgtvh	draft	Close after 10 to 300 seconds with no exchange.	請設為安靜 10 到 300 秒後關閉。	src/ui/screens/voice.js:172	English was: Close after 10 to 300 seconds of quiet.
@@ -2761,4 +2745,6 @@ rtcus4	ok	The download of the new version didn't finish. annai tries again the n
 32o7q3	ok	annai restarts once Shiori has finished	Shiori 完成後，annai 將重新啟動	src/ui/updates.js:184	
 3ur3tf	ok	She is in the middle of something, and an update never lands during her turn. Tap her to stop her now.	Shiori 正在處理事情，更新不會在她的回合中進行。點一下她可立即停止。	src/ui/updates.js:184	
 4naie6	ok	Don't restart	不重新啟動	src/ui/updates.js:185	
-4u8ij0	ok	Listening live	正在即時收聽	src/ui/voice-chip.js:79	
+4u8ij0	ok	Listening live	正在即時收聽	src/ui/voice-chip.js:25	
+11rknnz	draft	Live	即時	src/ui/voice-chip.js:30	
+m0me4i	draft	Live off	即時關閉	src/ui/voice-chip.js:30	

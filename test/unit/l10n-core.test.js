@@ -15,7 +15,7 @@ const { AllFailedError, failedText, whyOf, whyWords } = await import('../../src/
 const { budgetStop, budgetWords } = await import('../../src/core/agent/budgets.js');
 const { LABELS } = await import('../../src/core/agent/loop.js');
 const { planWatches, planWords, PLAN } = await import('../../src/core/live/plan-watches.js');
-const { chipText, koeWords } = await import('../../src/core/voice/mode.js');
+const { chipText, offNote } = await import('../../src/core/voice/mode.js');
 const { micProblem } = await import('../../src/core/voice/mic.js');
 const { listenKind } = await import('../../src/core/voice/resolve.js');
 const { scopeTitle, ME, SYS } = await import('../../src/core/scopes.js');
@@ -74,11 +74,10 @@ test("a budget's stop is data: its card in the screens' words, the log's English
 test("the dock's states and the voice chip's line are the screens' words", () => {
   assert.equal(LABELS.sleeping, 'タップして話す');
   assert.equal(LABELS.offline, 'オフライン · リマインダーは使えます');
-  const way = { mode: 'realtime', using: 'classic', why: 'resting', koe: true, split: true, path: 'text' };
-  const koe = koeWords(way, true);
-  assert.deepEqual(koe, { text: 'クラシック', reason: '（リアルタイム休止中）', note: 'リアルタイムはエラーの後で休んでいます。使えるようになるまで、クラシックが話します。' });
-  assert.equal(chipText({ setting: 'auto', on: true, why: 'car audio' }, koe.text), '音声オン · カーオーディオ · クラシック');
-  assert.equal(chipText({ setting: 'auto', on: false, why: 'not sure' }), '音声自動 · オフ');
+  assert.equal(chipText({ setting: 'off', on: false, why: 'off' }), '音声オフ');
+  assert.equal(chipText({ setting: 'on', on: true, why: 'on' }), '音声オン');
+  assert.ok(!/driving/.test(chipText({ setting: 'off', on: true, why: 'driving' })));
+  assert.ok(!/Voice off/.test(offNote('drive')));
 });
 
 test("a plan's reminder: Shiori reads annai's English, the user's words are made from its data wherever they are shown", () => {

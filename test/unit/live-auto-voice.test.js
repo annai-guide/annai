@@ -8,10 +8,10 @@ import { updateAppSettings } from '../../src/core/settings.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 5));
 
-/** A real Agent and Voice (Auto, no audio device to go by) and a Live on a manual clock, GPS on; what voice did and when. */
+/** A real Agent and Voice (setting off) and a Live on a manual clock, GPS on; what voice did and when. */
 async function drive() {
   const clock = new ManualClock(at('17:00'));
-  const k = await agentKit([{ rules: [] }], { agent: { now: clock.now, timeZone: () => LA }, voice: { mode: 'auto' } });
+  const k = await agentKit([{ rules: [] }], { agent: { now: clock.now, timeZone: () => LA }, voice: { mode: 'off' } });
   await updateAppSettings(k.ws, { live: { on: true } });
   const sensors = fakeSensors(k.registry);
   const keep = memoryKeep();
@@ -36,7 +36,7 @@ async function drive() {
   return { k, clock, live, voice, run, sensors, keep };
 }
 
-test('Auto voice stays on through a stop at a light of 75 s, and a crawl of 2 min; it goes off about 3 minutes after parking for good', async () => {
+test('voice stays on through a stop at a light of 75 s, and a crawl of 2 min; it goes off about 3 minutes after parking for good', async () => {
   const d = await drive();
   await d.run(at('17:00'), 120, () => 14);
   assert.equal(d.live.activity, 'moving-fast');

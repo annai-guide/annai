@@ -7,7 +7,7 @@ import { t } from '../../core/l10n.js';
  * The device side of voice (spec §10), a built-in plugin (§19): one audio player for every voice
  * clip, unlocked by the first tap of each session (an iPhone rule, §10.1); the browser's own
  * voice; the microphone, through an AudioWorklet (§10.2); the phone's dictation; the audio devices,
- * for voice Auto (§10.5); the audio session type where the browser has one (Safari); and its audio
+ * for the audio route and a device disconnecting (§10.5); the audio session type where the browser has one (Safari); and its audio
  * encoders (§10.6). The core reaches it as 'voice-platform'.
  * @typedef {import('../../core/voice/platform.js').VoicePlatform} VoicePlatform
  */
@@ -719,7 +719,7 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
       },
     },
     async devices() {
-      // Names come only once the microphone was allowed (spec §10.5: without them Auto can't tell).
+      // Names come only once the microphone was allowed (spec §10.5).
       if (!navigator.mediaDevices?.enumerateDevices) return [];
       return (await navigator.mediaDevices.enumerateDevices()).map((d) => ({ kind: d.kind, label: d.label, deviceId: d.deviceId }));
     },

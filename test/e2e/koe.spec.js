@@ -8,24 +8,24 @@ test("Models shows Koe's two lists right after Main, each with a line on when it
   await waitForServiceWorker(page);
   const roles = page.getByRole('region', { name: 'Roles' });
   await expect(roles.locator('h3')).toHaveText([
-    'Main: talks with you', 'Koe · Realtime: hears you and speaks in one stream', 'Koe · Classic: a chat model, with Speech in and Speech out',
+    'Main: talks with you', 'Koe · Live: hears you and speaks in one stream', 'Koe · Chat: a chat model, with Speech in and Speech out',
     'Utility: summaries and small jobs', 'Quick decision: yes-or-no checks', 'Speech in: how Shiori hears you', "Speech out: Shiori's voice",
   ]);
   const realtime = roles.locator('.role').nth(1);
   const classic = roles.locator('.role').nth(2);
-  await expect(realtime.getByText('Koe uses it while voice is on and Realtime is chosen on the voice chip. When none here can answer, Classic does.')).toBeVisible();
-  await expect(realtime.getByText('Empty: Koe has no realtime voice, so Classic answers.', { exact: false })).toBeVisible();
-  await expect(classic.getByText("Koe uses it when Classic is chosen, while voice is off, and when Realtime can't answer", { exact: false })).toBeVisible();
-  await expect(classic.getByText('Empty: in Classic, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.')).toBeVisible();
+  await expect(realtime.getByText('Koe uses it while voice is on and the Live chip is on. When none here can answer, Koe · Chat does.')).toBeVisible();
+  await expect(realtime.getByText('Empty: Koe has no live voice, so Koe · Chat answers.', { exact: false })).toBeVisible();
+  await expect(classic.getByText("Koe uses it when Live is off, while voice is off, and when Koe · Live can't answer", { exact: false })).toBeVisible();
+  await expect(classic.getByText('Empty: with Live off, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.')).toBeVisible();
   // A live session takes no level and has its own wait: Realtime shows neither.
-  await expect(realtime.getByLabel('Reasoning for Koe · Realtime')).toHaveCount(0);
+  await expect(realtime.getByLabel('Reasoning for Koe · Live')).toHaveCount(0);
   await expect(realtime.getByLabel('Wait for the first words (seconds)')).toHaveCount(0);
-  await expect(classic.getByLabel('Reasoning for Koe · Classic')).toHaveValue('low');
+  await expect(classic.getByLabel('Reasoning for Koe · Chat')).toHaveValue('low');
   await expect(classic.getByLabel('Wait for the first words (seconds)')).toHaveAttribute('placeholder', '8');
   await addProvider(page, 'Custom provider', { ability: 'Chat Completions', name: 'Fast', url: 'https://fast.example.test/v1', key: 'sk-fast', model: 'fast-model', look: false });
-  await expect(page.getByLabel('Add a model to Koe · Realtime')).toHaveCount(0);
-  await page.getByLabel('Add a model to Koe · Classic').selectOption({ label: 'fast-model' });
-  await page.getByRole('button', { name: 'Add to Koe · Classic' }).click();
+  await expect(page.getByLabel('Add a model to Koe · Live')).toHaveCount(0);
+  await page.getByLabel('Add a model to Koe · Chat').selectOption({ label: 'fast-model' });
+  await page.getByRole('button', { name: 'Add to Koe · Chat' }).click();
   await expect(roles.locator('.role').nth(2).getByText('1. fast-model')).toBeVisible();
   await page.reload();
   await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(2).getByText('1. fast-model')).toBeVisible();

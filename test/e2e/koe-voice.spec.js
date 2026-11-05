@@ -34,7 +34,7 @@ test("spoken: a live question gets \"checking\" aloud, then the answer aloud; a 
     await addProvider(page, 'Custom provider', { ability: 'Transcription', name: 'Ears', url: `${server.origin}/ears`, key: 'sk-ears-test', model: 'ears' });
     await addProvider(page, 'Custom provider', { ability: 'Voice', name: 'Voice', url: `${server.origin}/voice`, key: 'sk-voice-test', model: 'voice' });
     /** @type {[string, string][]} */
-    const roles = [['main', 'kokoro-model'], ['Koe · Classic', 'koe-model'], ['decide', 'd-model'], ['speech-in', 'ears'], ['speech-out', 'voice']];
+    const roles = [['main', 'kokoro-model'], ['Koe · Chat', 'koe-model'], ['decide', 'd-model'], ['speech-in', 'ears'], ['speech-out', 'voice']];
     for (const [role, model] of roles) {
       await page.getByLabel(`Add a model to ${role}`).selectOption({ label: model });
       await page.getByRole('button', { name: `Add to ${role}` }).click();
@@ -45,8 +45,7 @@ test("spoken: a live question gets \"checking\" aloud, then the answer aloud; a 
     await page.getByRole('button', { name: 'Start trip' }).click();
     await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
     await page.locator('.voice-chip').click();
-    await page.getByRole('group', { name: 'Voice' }).getByRole('button', { name: 'On' }).click();
-    await expect(page.locator('.voice-chip')).toHaveText('Voice on · Classic');
+    await expect(page.locator('.voice-chip')).toHaveText('Voice on');
     // What the conversation's announcer says (fix pass 2, S2: the words heard, once they are in).
     await page.getByRole('link', { name: 'Conversation' }).click();
     await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();

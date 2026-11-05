@@ -13,54 +13,52 @@ async function fakeDevices(page, labels) {
   }, labels);
 }
 
-test('the voice chip: Auto turns voice on with headphones; On and Off are one tap away; the dock grows with voice (spec §10.5, §16.2)', async ({ page }) => {
+test('the voice chip: one tap on, one tap off; audio devices turn nothing on; the dock grows with voice (spec §10.5, §16.2)', async ({ page }) => {
   await fakeDevices(page, ['iPhone Microphone', 'AirPods Pro']);
   await openApp(page, '#/trips');
   const chip = page.locator('.voice-chip');
-  await expect(chip).toHaveText('Voice on · headphones');
-  await expect(page.locator('nav.dock')).toHaveClass(/\bvoice\b/);
-  await chip.click();
-  await expect(chip).toHaveAttribute('aria-expanded', 'true');
-  await page.getByRole('group', { name: 'Voice' }).getByRole('button', { name: 'Off' }).click();
   await expect(chip).toHaveText('Voice off');
+  await expect(chip).toHaveAttribute('aria-pressed', 'false');
   await expect(page.locator('nav.dock')).not.toHaveClass(/\bvoice\b/);
   await chip.click();
-  await expect(page.getByRole('group', { name: 'Voice' }).getByRole('button', { name: 'Off' })).toHaveAttribute('aria-pressed', 'true');
-  await page.getByRole('group', { name: 'Voice' }).getByRole('button', { name: 'On' }).click();
   await expect(chip).toHaveText('Voice on');
-  await page.goto('/#/voice');
-  await expect(page.getByRole('radio', { name: 'On', exact: true })).toBeChecked();
-});
-
-test('the voice menu says it pops up, and a tap elsewhere closes it', async ({ page }) => {
-  await fakeDevices(page, ['iPhone Microphone', 'AirPods Pro']);
-  await openApp(page, '#/trips');
-  const chip = page.locator('.voice-chip');
-  const menu = page.getByRole('group', { name: 'Voice' });
-  await expect(chip).toHaveAttribute('aria-haspopup', 'true');
+  await expect(chip).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('nav.dock')).toHaveClass(/\bvoice\b/);
   await chip.click();
-  await expect(menu).toBeVisible();
-  await expect(chip).toHaveAttribute('aria-controls', String(await menu.getAttribute('id')));
-  await page.getByRole('heading', { name: 'Trips', exact: true }).click();
-  await expect(menu).toBeHidden();
-  await expect(chip).toHaveAttribute('aria-expanded', 'false');
-  // A tap inside it still chooses.
-  await chip.click();
-  await menu.getByRole('button', { name: 'Off' }).click();
+  await expect(chip).toHaveText('Voice off');
+  await expect(page.locator('nav.dock')).not.toHaveClass(/\bvoice\b/);
+  await expect(page.locator('.koe-live-chip')).toBeHidden(); // no live model here
+  await expect(page.locator('#voice-menu')).toHaveCount(0);
+  await page.reload();
   await expect(chip).toHaveText('Voice off');
 });
 
-test('where annai cannot tell what audio is connected, Auto follows your last choice (spec §10.5)', async ({ page }) => {
-  await fakeDevices(page, ['', '']);
+test('a saved auto reads as off, in Settings too, which offers only On and Off', async ({ page }) => {
+  await openApp(page, '#/trips');
+  await page.goto('/#/voice');
+  await expect(page.getByRole('radio', { name: 'Off', exact: true })).toBeChecked();
+  await expect(page.getByRole('radio', { name: 'Auto', exact: true })).toHaveCount(0);
+  await expect(page.getByText('A tap on Shiori always talks', { exact: false })).toBeVisible();
+});
+
+test('an audio device disappearing: voice off at once, with a note (spec §10.5)', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (typeof MediaDevices === 'undefined') return;
+    const w = /** @type {any} */ (window);
+    w.devs = [{ kind: 'audioinput', label: 'iPhone Microphone', deviceId: 'phone', groupId: 'p' }, { kind: 'audioinput', label: 'Some buds', deviceId: 'buds', groupId: 'b' }];
+    MediaDevices.prototype.enumerateDevices = async () => w.devs;
+  });
   await openApp(page, '#/trips');
   const chip = page.locator('.voice-chip');
-  await expect(chip).toHaveText('Voice auto · off');
   await chip.click();
-  await page.getByRole('group', { name: 'Voice' }).getByRole('button', { name: 'On' }).click();
   await expect(chip).toHaveText('Voice on');
-  await chip.click();
-  await page.getByRole('group', { name: 'Voice' }).getByRole('button', { name: 'Auto' }).click();
-  await expect(chip).toHaveText('Voice on · your last choice');
+  await page.evaluate(() => {
+    const w = /** @type {any} */ (window);
+    w.devs = w.devs.slice(0, 1);
+    navigator.mediaDevices.dispatchEvent(new Event('devicechange'));
+  });
+  await expect(chip).toHaveText('Voice off');
+  await expect(page.locator('.toasts')).toContainText('Voice off: headphones disconnected');
 });
 
 /** Her one spoken line, from a stand-in model and a stand-in voice; fn runs with the page on Trips and voice on. */
@@ -70,7 +68,6 @@ async function sheSpeaks(/** @type {import('@playwright/test').Page} */ page, /*
     '/voice/audio/speech': wav,
   });
   try {
-    await fakeDevices(page, ['Toyota Camry']);
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
     await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${server.origin}/b`, key: 'sk-chat-test', model: 'b-model' });
@@ -80,7 +77,8 @@ async function sheSpeaks(/** @type {import('@playwright/test').Page} */ page, /*
     await expect(page.getByText('1. b-model')).toBeVisible();
     await page.getByLabel('Add a model to speech-out').selectOption({ label: 'voice' });
     await page.getByRole('button', { name: 'Add to speech-out' }).click();
-    await expect(page.locator('.voice-chip')).toHaveText('Voice on · car audio');
+    await page.locator('.voice-chip').click();
+    await expect(page.locator('.voice-chip')).toHaveText('Voice on');
     await before();
     await page.goto('/#/talk'); // the Models screen has a Send button of its own
     await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();

@@ -578,7 +578,7 @@ test('"Use the recommended models" with Gemini Live turned off in Settings → P
 test("OpenAI's Realtime voice: off until switched on, which installs openai-realtime; Test opens a session through the key as a subprotocol that answers OK aloud, in 24 kHz PCM; a refused key is said as one (K6)", async () => {
   const desc = (await official('provider-openai')).provider;
   const rt = /** @type {any} */ (desc.abilities.realtime);
-  assert.deepEqual([rt.kind, rt.type, rt.name, rt.on, rt.baseUrl], ['realtime', 'openai-realtime', 'Realtime voice', false, undefined], 'at the provider\'s own address');
+  assert.deepEqual([rt.kind, rt.type, rt.name, rt.on, rt.baseUrl], ['realtime', 'openai-realtime', 'Live voice', false, undefined], 'at the provider\'s own address');
   assert.deepEqual(rt.models.map((/** @type {any} */ m) => m.providerId), ['gpt-realtime-2.1', 'gpt-realtime-2.1-mini']);
   assert.deepEqual(rt.models.map((/** @type {any} */ m) => m.prices), [
     { input: 4, cacheRead: 0.4, audioIn: 32, cacheReadAudio: 0.4, image: 5, cacheReadImage: 0.5, output: 24, audioOut: 64 },

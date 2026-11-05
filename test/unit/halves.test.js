@@ -370,7 +370,7 @@ test("a tap on Koe's question answers Koe, and Kokoro reads what was chosen; a t
   const chose = (await k.events(['msg.user'])).find((e) => e.data.answer === id);
   assert.deepEqual([chose?.data.split, chose?.data.chose], [true, true]);
   assert.ok(k.sent['model-0'].some((/** @type {any} */ r) => userTexts(r).includes('[the user chose] "Dinner"')), 'Kokoro reads it, and woke for it');
-  assert.equal(k.agent.tap(), 'typing', 'voice off, nobody talking: typing opens');
+  assert.equal(k.agent.tap(), 'typing', 'no voice here: typing opens');
 });
 
 // Fix pass 2 (the review's reload-midturn probe): annai reloads while Koe waits on Kokoro and Kokoro is mid-call.

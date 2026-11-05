@@ -87,7 +87,7 @@ export async function driveBigSur({ utility } = {}) {
   let sim = null;
   const k = await agentKit([{ rules: RULES }], {
     agent: { now: clock.now, timeZone: () => DRIVE.timezone, online: () => sim?.online ?? true, fetch: places },
-    voice: { mode: 'auto' }, ...(utility ? { utility } : {}),
+    voice: { mode: 'off' }, ...(utility ? { utility } : {}),
   });
   await k.host.addBuiltin(new URL('../../src/plugins/places/index.js', import.meta.url).href);
   await k.ws.patch(k.trip, '/trip.json', { timezones: [DRIVE.timezone] }, { author: 'user' });

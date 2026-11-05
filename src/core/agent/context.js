@@ -100,14 +100,14 @@ function localTime(now, timeZone) {
   return `${parts.weekday} ${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}, ${timeZone} (${parts.timeZoneName})`;
 }
 
-/* en */ const VOICE = /** @type {Record<string, string>} */ ({ off: 'off (speak shows a bubble; wait waits for typing)', on: 'on (speak plays aloud, then listens; wait listens; ask is spoken too)', auto: 'auto' });
+/* en */ const VOICE = /** @type {Record<string, string>} */ ({ off: 'off (speak shows a bubble; wait waits for typing)', on: 'on (speak plays aloud, then listens; wait listens; ask is spoken too)' });
 /** Koe's state, as Kokoro's now block says it (the Koe and Kokoro design). */
 /* en */ const KOE = /** @type {Record<string, string>} */ ({ text: 'talking with the user (use tell_koe)', live: 'talking with the user live (use tell_koe)', down: "can't speak now: talk to the user directly" });
 
 /**
  * The now block (spec §6.3, item 4): sent last, never cached.
  * @param {{ now: number, timeZone: string, voice: string, online: boolean, reasons: string[], plan: string[][] | null, place?: string, activity?: string, voiceWhy?: string, koe?: string }} c
- *   voiceWhy: why voice is what it is, for Auto (spec §10.5); plan null: no plan line (Koe's view has the plan); koe: Koe's state, for Kokoro;
+ *   voiceWhy: why voice is on with its setting off (spec §10.5); plan null: no plan line (Koe's view has the plan); koe: Koe's state, for Kokoro;
  *   reasons: what woke her, or joined her turn, since her last request: none, no line (each is said once; the fix pass)
  */
 export function nowBlock({ now, timeZone, voice, online, reasons, plan, place = 'unknown', activity = 'unknown', voiceWhy = '', koe }) {

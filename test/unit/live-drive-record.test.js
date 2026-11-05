@@ -31,7 +31,7 @@ async function startsWatch(k) {
 }
 const movedFired = (/** @type {any} */ k) => k.agent.wakes.filter((/** @type {any} */ x) => x.text.includes('travelled'));
 
-test('locked over 3 minutes on the highway, unlocked at a red light: moving fast holds a minute from the first slow fix, and Auto voice with it', async () => {
+test('locked over 3 minutes on the highway, unlocked at a red light: moving fast holds a minute from the first slow fix, and voice with it', async () => {
   const k = await liveKit({ start: at('09:00') });
   const count = await startsWatch(k);
   const y = await road(k, at('09:00'), 0, 60);
@@ -50,7 +50,7 @@ test('locked over 3 minutes on the highway, unlocked at a red light: moving fast
   assert.equal(count(), 1);
 });
 
-test('locked 10 minutes on the highway, unlocked at a long light: no false "starts" on green, and Auto voice stays on', async () => {
+test('locked 10 minutes on the highway, unlocked at a long light: no false "starts" on green, and voice stays on', async () => {
   const k = await liveKit({ start: at('09:00') });
   const count = await startsWatch(k);
   const y = await road(k, at('09:00'), 0, 60);
@@ -60,13 +60,13 @@ test('locked 10 minutes on the highway, unlocked at a long light: no false "star
   const light = y + SPEED * 600;
   for (let s = 5; s <= 70; s += 5) await k.fix(at('09:11') + s * 1000, north(light), { speed: 0 });
   assert.equal(k.live.activity, 'still', 'over a minute at the light');
-  assert.equal(held(k), true, 'Auto voice holds two minutes more');
+  assert.equal(held(k), true, 'voice holds two minutes more');
   await road(k, at('09:12:15'), light, 45);
   assert.equal(k.live.activity, 'moving-fast');
   assert.equal(count(), 1, 'it is the same drive');
 });
 
-test('unlocked with no fix for two minutes: moving fast ends then, not back when the phone locked; Auto voice holds, and green fires nothing', async () => {
+test('unlocked with no fix for two minutes: moving fast ends then, not back when the phone locked; voice holds, and green fires nothing', async () => {
   const k = await liveKit({ start: at('09:00') });
   const count = await startsWatch(k);
   const y = await road(k, at('09:00'), 0, 60);
@@ -164,7 +164,7 @@ test('a ±1500 m fix is no place to count from, over a reload or not', async () 
   assert.ok(first.live.odometer < 0.05, `first of all: ${first.live.odometer} km`);
 });
 
-test('killed while locked 10 minutes on the road: the same drive at the first fix, one "starts", and Auto voice on at once; the way counts', async () => {
+test('killed while locked 10 minutes on the road: the same drive at the first fix, one "starts", and voice on at once; the way counts', async () => {
   const k = await liveKit({ start: at('09:00') });
   const count = await startsWatch(k);
   const y = await road(k, at('09:00'), 0, 60);
@@ -197,7 +197,7 @@ test('killed while locked 10 minutes on the road: the same drive at the first fi
   assert.equal(lights(), 1, 'green is not a start');
 });
 
-test('killed on the road, then parked and opened: whatever the way from the record says, a parked fix stays silent, Auto voice off, no "stops", no catch-up spoken', async () => {
+test('killed on the road, then parked and opened: whatever the way from the record says, a parked fix stays silent, voice off, no "stops", no catch-up spoken', async () => {
   // Parked a minute after 4 km of road in 11 minutes; 2 hours and 50 km on; a flight. Each averages over 18 km/h from the record's place.
   for (const [wait, away] of [[11 * 60_000, 4000], [2 * 3600_000, 50_000], [3600_000, 800_000]]) {
     const k = await liveKit({ start: at('09:00') });
@@ -212,8 +212,8 @@ test('killed on the road, then parked and opened: whatever the way from the reco
     await k.restart();
     await k.fix(at('09:01') + wait + 5000, north(y + away), { speed: 0 });
     assert.notEqual(k.live.activity, 'moving-fast', `${away} m`);
-    assert.equal(held(k), false, `Auto voice stays off after ${away} m`);
-    assert.equal(acts(), before, `no "starts" or "stops" after ${away} m (the moved watch may fire: the way counts, but Auto voice is off, so it is shown, not said)`);
+    assert.equal(held(k), false, `voice stays off after ${away} m`);
+    assert.equal(acts(), before, `no "starts" or "stops" after ${away} m (the moved watch may fire: the way counts, but voice is off, so it is shown, not said)`);
   }
 });
 
@@ -295,7 +295,7 @@ test('the record: what it holds, written on each change, each km, the beat and g
   assert.equal(k.keep.get(), null, 'nothing to say yet');
   await road(k, at('09:00:05'), 0, 35); // moving fast
   const change = k.keep.get();
-  assert.deepEqual(Object.keys(change).sort(), ['activity', 'at', 'ended', 'odo', 'odometer']);
+  assert.deepEqual(Object.keys(change).sort(), ['activity', 'at', 'due', 'ended', 'hushed', 'odo', 'odometer']);
   assert.deepEqual(Object.keys(change.odo).sort(), ['accuracy', 'at', 'lat', 'lng']);
   assert.equal(change.activity, 'moving-fast');
   assert.equal(change.ended, null);

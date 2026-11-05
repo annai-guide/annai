@@ -18,7 +18,7 @@ memories afterwards.
 > confirmations, Wallet passes, calendar files and shares, which you confirm; the Plan, day by day; and
 > search and directions links. And voice: Shiori speaks (OpenAI-compatible voices, or the phone's own) and listens
 > (recording with an end-of-sentence detector, a transcription model or the model itself, or phone dictation), with interruptions,
-> a quick check that talk is meant for her, and Auto, On and Off. And backups to GitHub, Forgejo or Gitea, S3-compatible storage and WebDAV
+> a quick check that talk is meant for her, and voice on or off in one tap. And backups to GitHub, Forgejo or Gitea, S3-compatible storage and WebDAV
 > (milestone 9). And live mode (milestone 5; its real-drive checklist is next): watches Shiori sets, the
 > plan's own reminders (leave in time, arrived, running late, off plan), catch-up after the phone was locked, and reminders annai
 > shows and says by itself when no model can be reached, tested by a simulated Big Sur drive; on the phone, GPS in live mode (called GPS on and off in the app), the GPS chip (the screen kept on as
@@ -40,7 +40,7 @@ memories afterwards.
 
 - Tap Shiori and talk. With voice on she answers aloud, sentence by sentence as she writes, then listens for your answer; tap her while she speaks to cut her off.
 - Voices and transcription are lists you order in Settings → Models: the voices and transcription of the providers you add (OpenRouter, OpenAI, Groq, a local speech server, or another address), "Send audio to the model" for models that take audio, phone dictation, and the browser's own voice. A provider's speech models join behind the phone's own, so nothing that costs money comes first unless you move it up.
-- The voice chip on the dock: Auto (on in the car or with headphones), On or Off. What the microphone hears leaves the phone only when someone spoke, only to the entry you chose, and the sound is let go once written down unless you keep voice clips. Phone dictation and some browser voices are the browser's own services (Google's on Chrome, Apple's on Safari): Settings → Voice → Where your voice goes says where each entry sends it. To keep your voice on the phone, type with your keyboard's microphone key instead: iPhone and most Android keyboards can dictate on the phone itself.
+- The voice chip on the dock: one tap on or off, on by itself while driving with GPS on, and off when a drive ends or headphones disconnect. A tap on Shiori always talks. The Live chip beside it switches Koe's live voice. What the microphone hears leaves the phone only when someone spoke, only to the entry you chose, and the sound is let go once written down unless you keep voice clips. Phone dictation and some browser voices are the browser's own services (Google's on Chrome, Apple's on Safari): Settings → Voice → Where your voice goes says where each entry sends it. To keep your voice on the phone, type with your keyboard's microphone key instead: iPhone and most Android keyboards can dictate on the phone itself.
 - In a loud room whose noise jumps, a voice session can send one short noise turn as it opens. That and the other known limits are in [docs/limitations.md](docs/limitations.md).
 
 ## After the trip

@@ -264,7 +264,8 @@ for (const scheme of ['light', 'dark']) {
       if (typeof MediaDevices !== 'undefined') MediaDevices.prototype.enumerateDevices = async () => /** @type {any} */ ([{ kind: 'audioinput', label: 'AirPods Pro', deviceId: '1', groupId: '1' }]);
     });
     await openApp(page, '#/trips');
-    await expect(page.locator('.voice-chip')).toHaveText('Voice on · headphones');
+    await page.locator('.voice-chip').click();
+    await expect(page.locator('.voice-chip')).toHaveText('Voice on');
     // There is no Captions chip any more (the user, 2026-10-23): the bubble shows by itself while she speaks. Here it is shown by hand, for its look.
     await expect(page.getByRole('button', { name: 'Captions', exact: true })).toHaveCount(0);
     const caption = page.locator('.dock .caption');

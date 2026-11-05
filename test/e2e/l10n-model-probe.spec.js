@@ -6,7 +6,7 @@ import { accented } from '../../src/core/l10n-pseudo.js';
 // every request the model gets recorded. A message, tools that answer and tools that refuse, a card, a model that fails and the turn
 // after it, and the model's Test: if any of annai's words a model reads went through t, its pseudo text would be in a request.
 // Only the quick asks (asUser, the user's own words) may be pseudo text, and this session sends none. A second session has Shiori as two
-// halves (Koe · Classic in front of Kokoro), and a file brought into the trip wakes her: the halves' instructions, blocks and notes,
+// halves (Koe · Chat in front of Kokoro), and a file brought into the trip wakes her: the halves' instructions, blocks and notes,
 // and annai's wake lines.
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });

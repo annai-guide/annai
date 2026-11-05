@@ -1,5 +1,5 @@
 import { readAppSettings, updateAppSettings } from '../settings.js';
-import { voiceMode, routeOf } from './mode.js';
+import { voiceMode, routeOf, offNote } from './mode.js';
 import { SYS, SYS_DEVICE, ensureDeviceScope, newId } from '../scopes.js';
 import { ProviderError } from '../llm/contract.js';
 import { COOLDOWN_MS, NETWORK_RETRIES, chatCandidates } from '../llm/fallback.js';
@@ -79,9 +79,17 @@ export class Voice {
   /** The transcription models that answered a 400 naming language: asked without the user's languages from then on (until annai restarts). @type {Set<string>} */
   unhinted = new Set();
   /** The voice mode now (spec §10.5); refresh() works it out again. @type {import('./mode.js').VoiceMode} */
-  mode = { setting: 'auto', on: false, why: /* en */ 'not sure' };
-  /** A tap on the avatar holds Auto on (hold). */
+  mode = { setting: 'off', on: false, why: 'off' };
+  /** A tap on the avatar holds voice on (hold). */
   #tapped = false;
+  /** Voice was turned off so that it stops at once, by the user or an audio device gone: a live Koe's sentence doesn't end whole. Until voice is on again. */
+  stopNow = false;
+  /** Why voice is turning itself off: the note said once it is off. @type {'drive' | 'device' | null} */
+  #offWhy = null;
+  /** @type {Set<(note: string) => void>} */
+  #notes = new Set();
+  /** The audio devices seen, by id or name, and their names. @type {Map<string, string>} */
+  #known = new Map();
   /** @type {Set<(m: import('./mode.js').VoiceMode, first: boolean) => void>} */
   #changes = new Set();
   /** The mode has been read once: the first reading, as annai starts, is no change of mode. */
@@ -534,15 +542,15 @@ export class Voice {
   }
 
   /**
-   * Works out the voice mode (spec §10.5): the setting; for Auto, the activity sensor and the
-   * audio devices' names; and, where it can't tell, the last explicit choice. Listeners hear a change,
+   * Works out the voice mode (spec §10.5): the setting, a tap's hold, and whether the user is driving. Listeners hear a change,
    * and whether it is the first reading (as annai starts, nothing changed: the log doesn't record it).
    * @returns {Promise<boolean>} whether voice is on
    */
   async refresh() {
     const s = await this.settings();
-    const route = s.mode === 'auto' ? await this.route() : 'unknown';
-    const next = voiceMode({ setting: s.mode, activity: this.activity(), route, lastChoices: s.lastChoices, tapped: this.#tapped, held: this.#held() });
+    const driving = this.#driving();
+    if (driving) this.#offWhy = null; // the drive went on after all
+    const next = voiceMode({ setting: s.mode, driving, tapped: this.#tapped });
     this.#watch();
     const first = !this.#read;
     this.#read = true;
@@ -553,6 +561,7 @@ export class Voice {
   /** @param {import('./mode.js').VoiceMode} next @param {boolean} first */
   #setMode(next, first) {
     this.mode = next;
+    if (next.on) this.stopNow = false;
     for (const fn of this.#changes) {
       try {
         fn(next, first);
@@ -560,51 +569,53 @@ export class Voice {
         console.warn(/* en */ 'a voice listener failed', e);
       }
     }
+    if (next.on || !this.#offWhy) return;
+    const note = offNote(this.#offWhy);
+    this.#offWhy = null;
+    for (const fn of this.#notes) fn(note);
   }
 
-  /** A tap on the avatar in Auto: voice is on now, inside the tap, until release(). */
+  /** A tap on the avatar with voice off, or a reminder as a drive ends: voice is on now, until release(). */
   hold() {
     this.#tapped = true;
-    this.#setMode(voiceMode({ setting: this.mode.setting, activity: '', route: 'unknown', lastChoices: {}, tapped: true }), false);
+    this.#setMode(voiceMode({ setting: this.mode.setting, tapped: true }), false);
   }
 
-  /** That exchange ended: Auto decides again. */
+  /** That exchange ended: voice is what it would be without it. */
   release() {
     this.#tapped = false;
     return this.refresh();
   }
 
-  /** Whether the activity sensor says moving fast ended only a moment ago (a light, a queue). @returns {boolean} */
-  #held() {
+  /** Live mode's activity sensor (spec §11.2), if it is there. */
+  #sensor() {
+    return this.registry.list('activity')[0] ?? null;
+  }
+
+  /** Whether the sensor says the user is driving: moving fast, or it ended only a moment ago (a light, a queue), and not turned off for this drive. @returns {boolean} */
+  #driving() {
     try {
-      return this.registry.list('activity')[0]?.held?.() === true;
+      return this.#sensor()?.held?.() === true;
     } catch {
       return false;
     }
   }
 
-  /** What the activity sensor says (live mode's, spec §11.2); unknown without one. @returns {string} */
-  activity() {
-    try {
-      return this.registry.list('activity')[0]?.now?.() ?? 'unknown';
-    } catch {
-      return 'unknown';
-    }
-  }
-
   /**
-   * What audio is in use, from the devices' names (spec §10.5): while the microphone is open, the one input it takes (its track's
+   * What audio is in use, from the devices' names (spec §10.4): while the microphone is open, the one input it takes (its track's
    * label, else its deviceId's); else those present. Each new decision goes in this device's own Trace, with the names.
+   * @param {string[]} [gone] the names of devices that just disappeared
    */
-  async route() {
+  async route(gone = []) {
     try {
       const devices = (await this.platform?.devices?.()) ?? [];
+      this.#learn(devices);
       const used = this.platform?.mic.inUse?.() ?? null;
       const using = used && (used.label || devices.find((d) => d.deviceId && d.deviceId === used.deviceId)?.label || '');
       // An input no longer among the devices (AirPods taken out, its track still named for them) is unknown.
-      const gone = used?.deviceId && devices.some((d) => d.deviceId) && !devices.some((d) => d.deviceId === used.deviceId);
-      const route = gone ? 'unknown' : routeOf(used ? [{ kind: 'audioinput', label: /** @type {string} */ (using) }] : devices);
-      const data = { route, using, devices: devices.map((d) => d.label) };
+      const lost = used?.deviceId && devices.some((d) => d.deviceId) && !devices.some((d) => d.deviceId === used.deviceId);
+      const route = lost ? 'unknown' : routeOf(used ? [{ kind: 'audioinput', label: /** @type {string} */ (using) }] : devices);
+      const data = { route, using, devices: devices.map((d) => d.label), ...(gone.length ? { gone } : {}) };
       const key = JSON.stringify(data);
       if (key !== this.#routed && this.store) {
         this.#routed = key;
@@ -617,18 +628,72 @@ export class Voice {
     }
   }
 
+  /** Remembers audio devices the browser names or gives an id for: before the microphone is allowed it gives neither. @param {{ kind: string, label: string, deviceId?: string }[]} devices */
+  #learn(devices) {
+    for (const d of devices) {
+      const key = (d.kind === 'audioinput' || d.kind === 'audiooutput') && (d.deviceId || d.label);
+      if (key) this.#known.set(key, d.label ?? '');
+    }
+  }
+
   /**
-   * An explicit choice of Auto, On or Off (spec §10.5). On or Off, where annai can't tell what audio
-   * is connected, is remembered for this activity: Auto follows it there.
-   * @param {'auto' | 'on' | 'off'} setting
+   * The audio devices changed: one that disappeared turns voice off, whatever it was (no name matching: the phone's own never disappear), and goes in the Trace.
+   * A list with no id or name says nothing about what is connected, so nothing is taken as gone from it.
+   */
+  async #devicesChanged() {
+    const devices = (await this.platform?.devices?.().catch(() => [])) ?? [];
+    const audio = devices.filter((d) => (d.kind === 'audioinput' || d.kind === 'audiooutput') && (d.deviceId || d.label));
+    const here = (/** @type {string} */ key, /** @type {string} */ label) => audio.some((d) => d.deviceId === key || (label && d.label === label) || (!d.deviceId && d.label === key));
+    const gone = audio.length ? [...this.#known].filter(([key, label]) => !here(key, label)) : [];
+    for (const [key] of gone) this.#known.delete(key);
+    await this.route(gone.map(([key, label]) => label || key));
+    if (gone.length) await this.#deviceGone();
+    else await this.refresh();
+  }
+
+  /** An audio device disappeared: voice goes off at once, mid-word, and stays off for the rest of a drive. Nothing to do with voice off. */
+  async #deviceGone() {
+    if (!this.mode.on) return;
+    this.speaker.stop();
+    this.stopNow = true;
+    this.#tapped = false;
+    this.#offWhy = 'device';
+    this.#hush(true);
+    const { setting } = this.mode;
+    // Written first: a listener works the mode out again from the setting.
+    if (setting === 'on') await updateAppSettings(this.ws, { voice: { mode: 'off' } }).catch(() => {});
+    this.#setMode(voiceMode({ setting: 'off' }), false);
+    await this.refresh();
+  }
+
+  /** Whether voice stays off for this drive, though the user is driving: turned off during it. @param {boolean} on */
+  #hush(on) {
+    try {
+      this.#sensor()?.hush?.(on);
+    } catch {
+      // a sensor that can't: the next change of activity works it out
+    }
+  }
+
+  /** A drive ended (spec §10.5): voice goes off, even if the user turned it on themselves. Only at that moment: turning it on afterwards stays on. */
+  async #driveEnded() {
+    if (this.mode.on && this.mode.why !== 'off') this.#offWhy = 'drive';
+    if ((await this.settings()).mode === 'on') await updateAppSettings(this.ws, { voice: { mode: 'off' } });
+    await this.refresh();
+  }
+
+  /**
+   * An explicit choice of On or Off (spec §10.5). Off during a drive stays off until the drive ends. Anything but 'on' is Off.
+   * @param {string} setting
    */
   async choose(setting) {
     this.unlock(); // a choice is a tap (spec §10.1)
+    const on = setting === 'on';
     this.#tapped = false;
-    /** @type {Record<string, any>} */
-    const change = { mode: setting };
-    if (setting !== 'auto' && (await this.route()) === 'unknown') change.lastChoices = { [this.activity()]: setting };
-    await updateAppSettings(this.ws, { voice: change });
+    this.#offWhy = null;
+    this.stopNow = !on;
+    this.#hush(!on);
+    await updateAppSettings(this.ws, { voice: { mode: on ? 'on' : 'off' } });
     await this.refresh();
   }
 
@@ -638,22 +703,30 @@ export class Voice {
     return () => this.#changes.delete(fn);
   }
 
-  /** Devices coming and going, and the activity changing, work out the mode again. */
+  /** Hears the note when voice turned itself off, saying why, in the screens' language. @param {(note: string) => void} fn @returns {() => void} */
+  onNote(fn) {
+    this.#notes.add(fn);
+    return () => this.#notes.delete(fn);
+  }
+
+  /** Devices coming and going, the activity changing and a drive ending work out the mode again. */
   #watch() {
     if (this.#watching) return;
     const platform = this.platform;
     if (!platform) return;
     this.#watching = true;
+    platform.onDeviceChange?.(() => { this.#devicesChanged().catch(() => {}); });
+    this.route().catch(() => {}); // what is there now, for telling what disappears later, and for the Trace
     const again = () => { this.refresh().catch(() => {}); };
-    platform.onDeviceChange?.(again);
     // The activity sensor comes with live mode (spec §11.2), maybe after voice started: followed once it is there.
     /** @type {any} */
     let followed = null;
     const follow = (/** @type {boolean} */ late) => {
-      const sensor = this.registry.list('activity')[0] ?? null;
+      const sensor = this.#sensor();
       if (!sensor || sensor === followed) return;
       followed = sensor;
       sensor.onChange?.(again);
+      sensor.onDriveEnd?.(() => { this.#driveEnded().catch(() => {}); });
       if (late) again(); // one that came later may already say something
     };
     follow(false); // called from refresh(), which reads the activity itself
@@ -705,6 +778,7 @@ export class Voice {
         },
         onSwitch: () => { this.dictationFailed = true; },
       });
+      this.route().catch(() => {}); // the browser names its devices once the microphone was allowed
       if (session.kind === 'dictation') {
         this.#trace(scope, { kind: 'dictation', local, message: local ? /* en */ 'Phone dictation listened, on this phone only.' : /* en */ "Phone dictation listened: the browser sends the audio to its own speech service; annai can't see that request." });
       }

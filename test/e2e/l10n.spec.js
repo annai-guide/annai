@@ -869,10 +869,10 @@ test('under Japanese screens each of the voice menu\'s buttons is one line, at 3
   await page.goto('/#/talk');
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
-  await page.locator('.voice-chip').click();
-  const buttons = page.locator('#voice-menu .btn');
-  await expect(buttons.first()).toBeVisible();
-  const lines = await buttons.evaluateAll((all) => all.map((b) => {
+  // A narrow row: Japanese and Chinese break anywhere, and オン must not go one kana a line.
+  const chips = page.locator('.voice-row .chip:visible');
+  await expect(chips.first()).toBeVisible();
+  const lines = await chips.evaluateAll((all) => all.map((b) => {
     const range = document.createRange();
     range.selectNodeContents(b);
     return `${b.textContent}: ${new Set([...range.getClientRects()].filter((r) => r.width).map((r) => Math.round(r.top))).size}`;

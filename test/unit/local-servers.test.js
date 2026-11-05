@@ -172,7 +172,7 @@ test("vLLM's transcription starts off, and brings its protocol when turned on; C
   const v = (await official('provider-vllm')).provider.abilities;
   assert.deepEqual([v.chat.on, v.transcription.on, v.transcription.kind, v.transcription.type], [undefined, false, 'transcription', 'openai-transcription']);
   const another = JSON.parse(await readFile(new URL('plugins-official/provider-another-address/annai-plugin.json', root), 'utf8'));
-  assert.equal(another.version, '2.2.2', 'its note came in 1.1.0; catchAll, which lists it last, in 1.2.0; the probe (milestone 5) in 2.0.0; Realtime voice (K6) in 2.1.0; no "null" under a look that found nothing in 2.1.1; named Custom provider in 2.1.2; keeping the conversation off until turned on, for the Responses protocol, in 2.1.3; keeping left to the default of its type in 2.1.4; its words in Japanese and Chinese, in whole sentences, in 2.2.0; plugin API 2, so an older annai refuses it in words, in 2.2.1; Traditional Chinese in 2.2.2');
+  assert.equal(another.version, '2.2.3', 'its note came in 1.1.0; catchAll, which lists it last, in 1.2.0; the probe (milestone 5) in 2.0.0; Realtime voice (K6) in 2.1.0; no "null" under a look that found nothing in 2.1.1; named Custom provider in 2.1.2; keeping the conversation off until turned on, for the Responses protocol, in 2.1.3; keeping left to the default of its type in 2.1.4; its words in Japanese and Chinese, in whole sentences, in 2.2.0; plugin API 2, so an older annai refuses it in words, in 2.2.1; Traditional Chinese in 2.2.2');
   assert.equal(another.catchAll, true);
   assert.match(another.provider.note, /Wait for the first words/);
   assert.match(another.provider.note, /never streams/);
@@ -283,7 +283,7 @@ test("Test also asks at the level a role will use: a model Main asks at medium t
     // Koe asks at low by default (the user, 2026-10-19): Test asks there too.
     await saveModel(k.ws, { ...rec, user: { ...rec.user, reasoning: { off: { reasoning_effort: 'none' }, low: { reasoning_effort: 'low' } } } });
     await saveRoles(k.ws, { ...cfg.roles, main: { models: [], level: 'high' }, 'koe-classic': { models: [modelId], level: (await readConfig(k.ws)).roles['koe-classic'].level } });
-    assert.equal((await k.llm.test(modelId)).steps.find((x) => x.step === 'level')?.detail, 'At Koe · Classic\'s level (low), this model refused: "llama3.2:latest" does not support thinking. Lower Koe · Classic\'s level in Settings → Models, or change this model\'s Reasoning levels on its page.');
+    assert.equal((await k.llm.test(modelId)).steps.find((x) => x.step === 'level')?.detail, 'At Koe · Chat\'s level (low), this model refused: "llama3.2:latest" does not support thinking. Lower Koe · Chat\'s level in Settings → Models, or change this model\'s Reasoning levels on its page.');
   } finally {
     await s.stop();
   }

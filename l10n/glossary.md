@@ -89,8 +89,8 @@ This page is a review aid. The source is [`glossary.tsv`](glossary.tsv): one row
 
 | en | ja | zh-Hans | zh-Hant |
 |---|---|---|---|
-| Koe · Classic | Koe · クラシック | Koe · 经典 | Koe · 經典 |
-| Koe · Realtime | Koe · リアルタイム | Koe · 实时 | Koe · 即時 |
+| Koe · Chat | Koe · チャット | Koe · 聊天 | Koe · 聊天 |
+| Koe · Live | Koe · ライブ | Koe · 实时 | Koe · 即時 |
 | Listening live | ライブで聞いています | 正在实时收听 | 正在即時收聽 |
 | Live voice | ライブ音声 | 实时语音 | 即時語音 |
 | Voice auto | 音声自動 | 语音自动 | 語音自動 |
@@ -173,8 +173,8 @@ The choices that want your eye: each line gives the glossary's choice first, the
 - **Speech in** (聞き取り / 语音识别): 聞き取り / 语音识别, or 音声入力 / 语音输入 (the phones' words for dictation).
 - **Speech out** (読み上げ / 朗读): 読み上げ / 朗读, or 音声出力 / 语音输出.
 - **stamp** (スタンプ / 纪念章): zh 纪念章, or 打卡章.
-- **Koe · Classic** (Koe · クラシック / Koe · 经典): クラシック / 经典, or 標準 / 标准.
-- **Koe · Realtime** (Koe · リアルタイム / Koe · 实时): "Koe · リアルタイム" with the English dot and spaces, or "Koe・リアルタイム" as Japanese writes it.
+- **Koe · Chat** (Koe · チャット / Koe · 聊天): the list of chat models Koe talks through with Live off.
+- **Koe · Live** (Koe · ライブ / Koe · 实时): "Koe · ライブ" with the English dot and spaces, or "Koe・ライブ" as Japanese writes it.
 - **Install app** (アプリをインストール / 安装应用): Chrome's current words, インストールしてショートカットを作成 → インストール / 安装并创建快捷方式 → 安装, with the English changed to match.
 - **mobile data** (モバイルデータ通信 / 移动数据): zh 移动数据 or iPhone's 蜂窝数据.
 - **Wi-Fi** (Wi-Fi / Wi-Fi): zh Wi-Fi or iPhone's 无线局域网.
