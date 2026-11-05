@@ -109,3 +109,6 @@ export async function storedTexts(store, e) {
     return out;
   });
 }
+
+/** A tool.call entry's input as JSON text: a long one is stored whole as text (data.input is then that text already). @param {Record<string, any>} d the entry's data, with its stored texts merged in */
+export const inputText = (d) => (typeof d.input === 'string' ? d.input : JSON.stringify(d.input ?? {}));

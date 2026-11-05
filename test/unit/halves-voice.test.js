@@ -117,6 +117,7 @@ test('with no Koe model and voice on, Halves and the one Agent send the same req
     await a.idle();
     await a.wake({ kind: 'trigger', text: 'Sunset in 30 minutes', fallbacks: [{ watch: 'sun', text: 'Sunset at 18:40' }] });
     await a.idle();
+    await until(() => !k.platform.mic.isOpen(), 2000); // her last sleep leaves the window to run out: the log ends when it does
     /** @param {any} x */
     const norm = (x) => JSON.parse(JSON.stringify(x, (key, v) => {
       if (['id', 'wake', 'ms', 'firstMs', 'ts', 'seq', 'prefix', 'now', 'answer', 'of', 'hash', 'refs', 'new', 'old', 'heard', 'at'].includes(key)) return undefined;
