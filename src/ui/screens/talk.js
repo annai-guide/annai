@@ -710,7 +710,7 @@ function tidyMenu(ctx) {
   menu.append(
     h('p', { id: 'tidy-summarize', class: 'sub', text: t`Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.` }), summarize,
     h('p', { id: 'tidy-fresh', class: 'sub', text: t`Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.` }), fresh,
-    h('a', { class: 'btn', href: '#/sees?half=kokoro', text: t`See what Kokoro sees` }), h('a', { class: 'btn', href: '#/sees?half=koe', text: t`See what Koe sees` }));
+    h('div', { class: 'tidy-see' }, h('a', { class: 'btn', href: '#/sees?half=kokoro', text: t`See what Kokoro sees` }), h('a', { class: 'btn', href: '#/sees?half=koe', text: t`See what Koe sees` })));
   whenGone(el, () => {
     offTap();
     document.removeEventListener('keydown', escape);

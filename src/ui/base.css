@@ -390,4 +390,3 @@ pre.licence-text { white-space: pre-wrap; overflow-wrap: anywhere; font-family: 
 /* Text shown as it was sent: its own line breaks, never wider than the phone. */
 .wrap-text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; margin: 0; }
 .instructions > summary { cursor: pointer; padding: 8px 0; font-weight: 600; }
-.tidy-menu a.btn { display: block; text-align: center; }
