@@ -147,9 +147,9 @@ Measured on the drive (53 live turns, one car, one volume): the user's voice pea
 
 annai decides when each audio turn begins (`automaticActivityDetection: { disabled: true }`), so lyrics that never open a turn never reach the model, cost nothing, and can't be answered:
 - The detector (`src/core/voice/detector.js`, about line 240) gains a minimum level for starting speech, reaching LiveInput through a callback as `speaking` does. Under it, a frame doesn't start a turn. A turn already going on is untouched. Every turn start comes from the detector's one `speech` event. Frames kept out this way raise `blips`, so `noisy` turns true and she plays at once: keep them out of that count, and test that the floor's creep doesn't defeat the -70 dB line.
-- `voiceDb`: the loudest peak of turns Koe answered or the user tapped, a running maximum with no fall over time. A tapped turn sets it anew, and it resets when the audio route changes (`voice.route`). It lives on the Koe live object across sessions. (Reversed from a first version that fell 3 dB a minute and learned from every turn: lyrics got through after a minute, and each woke Kokoro.)
+- `voiceDb`: the second-loudest peak of the last 5 turns she answered (none with fewer than two), not a running maximum, so one loud answered lyric (-7.8 against a normal voice of -23.3) can't leave the normal voice opening no turns until a tap. A turn she lets go teaches nothing, and it never falls with time. It lives on the Koe live object across sessions, and resets when the audio route changes (`voice.route`), or when a turn begun in a tap's lift is answered: that turn starts it again. (Reversed from a first version that fell 3 dB a minute and learned from every turn: lyrics got through after a minute, and each woke Kokoro.)
 - While the floor is above about -70 dB, the minimum is `voiceDb - 10`. In a quiet car there is no minimum. With no `voiceDb` yet there is no minimum.
-- A tap lifts the minimum until its first turn ends: a tap only opens the mic (`live.js`, about 579 to 595), so it can't force a turn.
+- A tap lifts the minimum for 8 s from when the microphone hears: a tap only opens the mic (`live.js`, about 579 to 595), so it can't force a turn.
 - `live.turn` also logs `voiceDb` and the minimum in force, and a count of frames over the floor that the minimum kept from starting a turn, so the next drive can tune the constants. The constants are the main session's first guess, measured from one drive.
 - Dictation has no level to read (the browser holds the audio), so classic relies on the gate.
 
@@ -165,6 +165,10 @@ Reproduce with the fake realtime server, then fix at the source:
 
 ### Item 6, the silent retry
 `#silent` (`src/core/koe/live.js:833`) restarted the session three times on the drive, and the first restart was followed by a heard Korean word and a reply in Korean. It does resend the heard words to a fresh session (`live.js`, about 853 to 857). Not checked: whether `#due` survives an empty `#complete`, so whether proactive silence counts as a failure. Make sure a turn the model chose not to answer is never retried.
+
+Measured (2026-11-04): after the user's turn music got an empty turn, or no message for 12 s from a session that then answered speech and notes at once. That is the model's choice, so a fresh session isn't given the words (it has no reason to let them go too: a lyric was answered in Korean). A session really dead shows itself at the next note or typed line.
+
+A turn whose tool call was answered silently may never get its turnComplete. Real runs, 2026-11-05: it came about at her sound's end, at most 2.9 s after the answer, in 48 of 48 probes, silent or not; in one of 31 full runs it never came, and the turn held the note that waited for it until the session closed, 35 s later. So `#endLater` ends the turn `TURN_END_S` (2 s) past the end of her sound, counted from when her sound began (her first word may come late, and a call alone has no sound: it counts from the answer). A turnComplete that comes after the bound, with no new audio between, is that turn's and is swallowed. One that comes after more audio is that audio's end, as the provider sends them in order, and is applied.
 
 ### Item 12, the reminder cut off
 A reminder began in the fallback voice, and 9 seconds later a session opened for Kokoro's note. A reminder being said finishes first; a session that opens meanwhile doesn't play or capture over it (hold the open, or hold the first sound).
@@ -241,3 +245,6 @@ The user: "do you want to build a more enhanced and heavier trace mode (option) 
 - "See what Koe sees" beside Kokoro's (the user asked about Kokoro's).
 - A dismissed live turn at the user's own level cues Kokoro; lyrics don't.
 - A live session's listening windows stay at 8 s.
+- `voiceDb` learns only from answered turns, as the second-loudest of the last 5: learning from every turn, or a running maximum, let lyrics read as the user's own, and one loud lyric lock the normal voice out.
+- A turn at the user's own level is also one let go over a quiet floor with nothing learned; those cue Kokoro once until an exchange.
+- `REFUSED_REST_MS` (6 h) is for a refusal naming a thinking level; any other 1007 gets the normal rest.

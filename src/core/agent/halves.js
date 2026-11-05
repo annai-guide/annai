@@ -1,4 +1,4 @@
-import { Agent, GATHER, isTheirs, isForUser, checkCard, checkAsk, CAPS, capped } from './loop.js';
+import { Agent, GATHER, isTheirs, isForUser, checkCard, checkAsk, CAPS, capped, soundStuck } from './loop.js';
 import { TALK_TAG, KOE_TAG } from './log.js';
 import { asksOrNotes, quote, cardText, escapeTags, newNonce } from './blocks.js';
 import { systemText, nowBlock, takeSnapshot } from './context.js';
@@ -45,6 +45,8 @@ const BLOCKS = Object.freeze({
 export const STOP_HELD = /* en */ "Not sent: the user stopped Kokoro, and hasn't written or spoken since. Don't ask Kokoro again until they do; tell them what you know yourself.";
 /** How long Koe rests after its whole list failed, at least. */
 export const KOE_REST_MS = 60_000;
+/** The longest a session that wants to open waits for a reminder being said. */
+const SAID_WAIT_MS = 60_000;
 const KOKORO_ONLY = ['personality', 'restart'];
 /** The user's own wakes, past the budgets. */
 const THEIRS = ['user', 'choice', 'file', 'live'];
@@ -180,6 +182,8 @@ export class Halves {
   #stopped = { on: false, seq: Infinity };
   /** The user stopped Kokoro and hasn't written or spoken since: Koe's tell_kokoro is refused. */
   #stopHeld = false;
+  /** A turn at the user's own level, let go, has cued Kokoro since the last exchange. */
+  #ownCued = false;
   #lastHalves = '';
   #lastView = '';
   /** The realtime model of Koe's pathway now, and whether voice was on when it was worked out. @type {string | null} */
@@ -326,6 +330,7 @@ export class Halves {
       model: () => this.#liveId,
       setup: () => this.#liveSetup(),
       held: () => this.#fresh?.held ?? null,
+      voiceOut: () => this.#voiceOut(),
       saying: (words) => this.#emit('saying', words),
       visible: () => this.#visible(),
       release: () => { this.kokoro.release(); this.koe.release(); },
@@ -343,6 +348,11 @@ export class Halves {
       noisy: (heard) => this.#wakeKokoro({ kind: 'cue', text: NONSTOP(heard), logged: true, input: true }),
     });
     this.voice?.onChange((_, first) => { if (!first) this.#route(() => this.#refresh()); });
+    this.voice?.onSound((stuck) => {
+      if (stuck) return this.#notice(soundStuck());
+      this.#lastCard = { key: '', at: 0 }; // sound getting stuck again soon is a new card
+      return this.#emit('clear', 'sound');
+    });
     // A change to the models, Koe's lists or its mode (Settings → Models, the voice chip) applies at once, not at the next voice change.
     // Writes that come together (a provider saved with its models) make one refresh, which reads them all.
     this.ws.onChange((/** @type {{ scope: string, path: string }} */ x) => {
@@ -387,7 +397,7 @@ export class Halves {
   /** Kokoro's words for the user (for_user) a switch or Start fresh left unsaid: shown, never aloud. @param {Wake[]} notes */
   #leftUnsaid(notes) {
     for (const w of notes) this.#shown.add(w); // a live part that then finds no session doesn't show it again (#live)
-    const list = notes.filter((w) => w.forUser).map((w) => ({ watch: '', text: capped(forUserText(String(w.forUser)), CAPS.text), answer: true }));
+    const list = [...notes.filter((w) => w.forUser).map((w) => ({ watch: '', text: capped(forUserText(String(w.forUser)), CAPS.text), answer: true })), ...notes.flatMap((w) => (w.kind === 'note' ? [] : w.fallbacks ?? []))];
     if (!list.length) return;
     const shown = this.kokoro.remind(list, this.kokoro.target ?? ME, { unsaid: true, silent: true }).catch(() => {}).finally(() => { this.#left = this.#left.filter((x) => x !== shown); });
     this.#left.push(shown);
@@ -518,9 +528,11 @@ export class Halves {
     // A live session closes when voice goes off, or Koe's pathway leaves its model: its microphone never stays open otherwise.
     const model = this.live.modelId;
     const voiceOff = this.#voiceWas && !voiceOn;
+    // Its own model has left the list, or rests. An earlier one coming back from a rest closes nothing: a healthy session is kept, and the next session uses it.
+    const leftUs = Boolean(model && model !== this.#liveId && (!cfg.roles[KOE_REALTIME]?.models?.includes(model) || until(model) > Date.now()));
     // One closed with Kokoro's notes waiting for the page lets go of them too (they are handed on).
     // Auto turning voice off (AirPods out) lets Koe's sentence end whole; the user's Off, or another pathway, closes at once.
-    if ((this.live.state !== 'closed' || this.live.owing) && (!this.#liveId || (model && model !== this.#liveId) || voiceOff)) {
+    if ((this.live.state !== 'closed' || this.live.owing) && (!this.#liveId || leftUs || voiceOff)) {
       if (voiceOff && this.voice?.mode.setting === 'auto') this.live.closeSoon(/* en */ 'voice off');
       else this.live.close(voiceOff ? /* en */ 'voice off' : 'pathway');
     }
@@ -545,9 +557,28 @@ export class Halves {
     await this.kokoro.log({ type: 'halves', actor: 'system', data: { state }, texts: [['text', `${BLOCKS[state]}${unsaid}`]] });
   }
 
+  /**
+   * A reminder being said finishes first (the second drive: a session opening 9 s in cut it off, as a session lets go of the speech
+   * pipeline): one that opens waits, at most SAID_WAIT_MS in case the voice never ends. A tap stops it first. @returns {Promise<void> | null}
+   */
+  #voiceOut() {
+    const speaker = this.voice?.speaker;
+    if (!speaker?.speaking) return null;
+    /** @type {any} */
+    let timer;
+    return Promise.race([speaker.quiet(), new Promise((/** @type {(v: void) => void} */ r) => { timer = setTimeout(r, SAID_WAIT_MS); })]).finally(() => clearTimeout(timer));
+  }
+
   /** One of Kokoro's instruction blocks: a live session opened, closed or dropped (Review Focus 2: messages, never its system text or tools). @param {Block} state */
   #block(state) {
     this.kokoro.log({ type: 'halves', actor: 'system', data: { state }, texts: [['text', BLOCKS[state]]] }).catch(() => {});
+  }
+
+  /** A session may wait for a reminder being said: nothing else waits for that (a typed line is written at once). @param {Promise<unknown>} p */
+  #alongside(p) {
+    const going = p.catch((e) => console.warn(/* en */ 'routing failed', e));
+    this.#sending.add(going);
+    going.finally(() => this.#sending.delete(going));
   }
 
   /**
@@ -559,8 +590,11 @@ export class Halves {
   async #live(fn, w) {
     await this.koe.opening.catch(() => {});
     if (await fn()) return;
+    const failed = this.#liveId;
     await this.#refresh();
     if (this.koeState === 'text') return this.koe.enqueue(w);
+    // That model rests now, and the next in Koe's list can take it: a note or a reminder doesn't lose its moment. (A typed line is written by the try.)
+    if (this.koeState === 'live' && this.#liveId !== failed && (await fn())) return;
     if (this.koeState !== 'down') {
       // No session could take Kokoro's note for the user, and Koe stays live (today's spend reached): annai shows it.
       if (isForUser(w) && !this.#shown.has(w)) await this.#backstop([w]);
@@ -647,6 +681,7 @@ export class Halves {
   open(trip, o) {
     this.#stopped = { on: false, seq: Infinity }; // a Stop belongs to the conversation it was in
     this.#stopHeld = false;
+    this.#ownCued = false;
     if (trip !== this.kokoro.target) {
       this.live.close('switch', { forget: true });
       this.#retell = [];
@@ -684,7 +719,12 @@ export class Halves {
       await this.#refresh();
       if (!this.#works() || this.kokoro.pendingId) return this.kokoro.send(text, o);
       this.#koeOpen();
-      if (this.koeState === 'live') return this.#live(() => this.live.send(text, o), { kind: 'user', text, logged: true });
+      if (this.koeState === 'live') {
+        // Written here, in order; only the session may wait (for a reminder being said).
+        await this.koe.opening.catch(() => {});
+        const e = await this.live.write(text, o);
+        return this.#alongside(this.#live(() => this.live.send(e, text, o), { kind: 'user', text, logged: true }));
+      }
       this.koe.send(text, o);
     }, (e) => {
       this.kokoro.send(text, o); // never dropped
@@ -710,8 +750,9 @@ export class Halves {
       // Asked to hear her (the recap told aloud): the half with the voice tells it.
       if (!w.aloud) this.#wakeKokoro({ ...w, fallbacks: [] });
       // From a page out of view, a session waits for it; its reminders show now, as annai's always do (review).
-      if (this.koeState === 'live' && !this.#visible() && w.fallbacks?.length) this.kokoro.remind(w.fallbacks);
-      if (this.koeState === 'live') await this.#live(() => this.live.wake(w), w);
+      const away = this.koeState === 'live' && !this.#visible() && Boolean(w.fallbacks?.length);
+      if (away) this.kokoro.remind(w.fallbacks ?? []);
+      if (this.koeState === 'live') this.#alongside(this.#live(() => this.live.wake(away ? { ...w, fallbacks: [] } : w), w));
       else this.koe.enqueue(w);
     });
     return Promise.resolve();
@@ -748,6 +789,7 @@ export class Halves {
   /** The half that talks (its tap unlocks sound, an iPhone rule); a live Koe's session. */
   #tapNow() {
     if (this.koeState !== 'live') return this.talking.tap();
+    this.#ownCued = false;
     this.voice?.unlock();
     this.#koeOpen();
     const did = this.live.tap();
@@ -780,10 +822,10 @@ export class Halves {
     return !a.busy && !a.voicing && !a.tapOpening && !a.turning && (a.state.name === 'sleeping' || a.state.name === 'offline');
   }
 
-  /** The exchange a tap held voice on for is over once nothing is listening, speaking or working: Auto decides again. Kokoro's answer may still be on its way to Koe's voice, so it counts too. */
+  /** The exchange a tap held voice on for is over once nothing is listening, speaking or working (the window after she spoke counts): Auto decides again. Kokoro's answer may still be on its way to Koe's voice, so it counts too. */
   #endTapHold() {
     if (!this.#tapHeld || this.#tapStarting > 0) return;
-    const quiet = (/** @type {Agent} */ a) => !a.busy && !a.voicing && !a.tapOpening;
+    const quiet = (/** @type {Agent} */ a) => !a.busy && !a.voicing && !a.tapOpening && !a.listensOn;
     if (!quiet(this.kokoro) || !quiet(this.koe) || this.live.busy || this.live.state !== 'closed') return;
     this.#tapHeld = false;
     this.voice?.release().catch(() => {});
@@ -1034,6 +1076,12 @@ export class Halves {
     const typed = e.type === 'msg.user' && e.data?.split;
     if (e.type.startsWith('out.')) this.#unsaid = []; // Koe reached the user: what it was told is passed on
     if (e.type === 'heard' && !e.data?.dismissed) this.#heardNow(false);
+    // Koe didn't answer something at the user's own level (the second-drive design, section 2): Kokoro hears now, not at the review. Lyrics, quieter, cost no call;
+    // lyrics as loud as the user cost one, until an exchange.
+    if (e.type === 'heard' && e.data?.dismissed && e.data.source === 'live' && e.data.ownLevel && !this.#stopHeld && !this.#ownCued) {
+      this.#ownCued = true;
+      this.#wakeKokoro({ kind: 'cue', text: /* en */ "Koe didn't answer what was just heard", logged: true, input: true, watched: this.#koeWatched() });
+    }
     // The user's next words: Kokoro's notes Koe left unsaid go to Koe again, with them (live, as their turn ends: spoke); Koe
     // reaching the user meanwhile has passed them on.
     if (e.type.startsWith('out.')) this.#retell = [];
@@ -1042,6 +1090,7 @@ export class Halves {
       this.#answered = false;
       this.#failTold = false;
       this.#bothTold = false;
+      this.#ownCued = false;
       this.#stopped.on = this.#stopHeld = false;
     }
     if (e.type.startsWith('out.')) this.#up('koe'); // a live Koe that spoke works
@@ -1084,6 +1133,11 @@ export class Halves {
   async #backstop(notes) {
     this.#unsaid = [];
     for (const w of notes) {
+      // A trigger's reminders, which she didn't say: annai says them.
+      if (w.kind !== 'note') {
+        await this.kokoro.remind(w.fallbacks ?? [], undefined, { aloud: true });
+        continue;
+      }
       const i = w.call?.input ?? {};
       const card = w.why === 'gated:show' ? checkCard(i.card, this.registry) : null;
       const ask = w.why === 'gated:ask' ? checkAsk(i) : null;
@@ -1096,7 +1150,7 @@ export class Halves {
           : typeof i.question === 'string' && i.question.trim() ? `${i.question}${Array.isArray(i.options) && i.options.length ? ` (${i.options.map(String).join(', ')})` : ''}` : '';
         if (said) await this.kokoro.remind([{ watch: '', text: capped(said, CAPS.text), answer: true }], undefined, { unsaid: true });
         else await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ `Kokoro's ${card ? 'card' : 'question'} wasn't shown: annai couldn't show it, and it had no words to give instead.`, quiet: true } });
-      } else if (forUserText(w.forUser || (w.why === 'gated:speak' ? w.note : ''))) await this.kokoro.remind([{ watch: '', text: capped(forUserText(w.forUser || w.note), CAPS.text), answer: true }], undefined, { unsaid: true });
+      } else if (forUserText(w.forUser || (w.why === 'gated:speak' ? w.note : ''))) await this.kokoro.remind([{ watch: '', text: capped(forUserText(w.forUser || w.note), CAPS.text), answer: true }], undefined, { unsaid: true, aloud: true });
       else if (w.why === 'gated:speak') await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ "Kokoro's speak wasn't shown: it had no words.", quiet: true } });
       else if (w.why === 'tool' && !w.retold) this.#retell.push(w);
       else if (w.why === 'tool') await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ "Kokoro's note wasn't passed on: Koe didn't say it, twice, and it had no words for the user (for_user).", quiet: true } });

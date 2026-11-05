@@ -75,6 +75,8 @@ test("spoken: a live question gets \"checking\" aloud, then the answer aloud; a 
     const koe = JSON.stringify(server.bodies('/koe/v1/messages')[1].messages);
     expect(koe).toContain('Nepenthe is open till 10 tonight (nepenthe.com).');
     expect(koe).toContain('Did you lock the car?');
+    // Chatter no longer ends her turn, so the words heard come as it ends: their lines are announced a moment after her last.
+    await expect.poll(() => page.evaluate(() => /** @type {any} */ (window).announced.filter((/** @type {string} */ t) => /^Heard/.test(t)).length), { timeout: 10_000 }).toBe(2);
     await page.getByRole('link', { name: 'Conversation' }).click();
     await expect(page.locator('.convo .you:not(.quiet) p')).toHaveText(['Is Nepenthe open now?']);
     await expect(page.locator('.convo .you.quiet p')).toHaveText('Did you lock the car?');
