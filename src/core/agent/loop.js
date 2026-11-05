@@ -2975,7 +2975,7 @@ export class Agent {
     } catch (e) {
       if (this.#ear === ear) this.#ear = null;
       const problem = voice.problem(e); // denied: steps for this phone (spec §17 rule 3)
-      await this.#notice({ tone: 'warn', title: problem.title, body: problem.body });
+      await this.#notice(/** @type {any} */ (e)?.stuck ? soundStuck() : { tone: 'warn', title: problem.title, body: problem.body });
       return `${problem.plain}.`;
     }
   }
