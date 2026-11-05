@@ -458,57 +458,57 @@ bo3wjk	ok	Shiori stopped: today's budget is spent	Shiori 已停止：今天的�
 67wvld	ok	Shiori stopped: step limit	Shiori 已停止：步數上限	src/core/agent/budgets.js:123	
 177194c	ok	She took {0} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.	Shiori 在沒人要求時自己做事，已經走了{0}步，所以停在了這裡。想讓她繼續，就告訴她。	src/core/agent/budgets.js:124	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告訴她), not the glossary's Ask, Safari's 詢問 choice.
 1o4yqf3	ok	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	她已走完一次喚醒可走的{0}步（設定 → Shiori → 她主動行動的頻率）。想讓她繼續，就告訴她。	src/core/agent/budgets.js:125	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告訴她), not the glossary's Ask, Safari's 詢問 choice; the setting's path as the screens name it.
-edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	目前由 Shiori 直接回答你。原因見記錄（模型）；Koe 幾分鐘後會再試。	src/core/agent/halves.js:564	
-yvabm6	ok	Koe's live voice couldn't start	Koe 的即時語音無法啟動	src/core/agent/halves.js:564	Note: "live voice" is the glossary's Live voice (即時語音), not a voice she speaks with (聲音).
-bzrasi	ok	Shiori answers as one half for now	Shiori 暫時獨自回答	src/core/agent/halves.js:686	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
-o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai 無法把你的訊息轉給 Koe：{0}	src/core/agent/halves.js:686	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-1dhsqvv	ok	Tap to talk	點一下說話	src/core/agent/loop.js:126	
-1ldobgc	ok	Tap to interrupt	點一下打斷	src/core/agent/loop.js:126	
-4mbury	ok	Thinking · tap to stop	思考中 · 點一下停止	src/core/agent/loop.js:126	
-89yydm	ok	Listening	聆聽中	src/core/agent/loop.js:126	Note: one of Shiori's states, as the dock shows her.
-g8840o	ok	Waiting for your OK	等待你的確認	src/core/agent/loop.js:126	
-yydchc	ok	Hearing you	正在聽你說	src/core/agent/loop.js:126	Note: one of Shiori's states: she hears you speaking.
-akjf4d	ok	Working on …	處理中…	src/core/agent/loop.js:127	
-izy3tv	ok	Offline · reminders still work	離線 · 提醒仍然有效	src/core/agent/loop.js:127	
-1080xlr	ok	Working on {0}	處理中：{0}	src/core/agent/loop.js:573	{0} = detail; Note: label: value, {0} is what she works on, in her words.
-1h2c64o	ok	Working on tidying up the conversation	正在整理對話	src/core/agent/loop.js:573	
-19793n8	ok	Shiori skipped a wake	Shiori 跳過了一次喚醒	src/core/agent/loop.js:892	
-16ny0z2	ok	Shiori stopped	Shiori 已停止	src/core/agent/loop.js:1122	
-1sxm1ou	ok	Something went wrong: {0}	出了點問題：{0}	src/core/agent/loop.js:1122	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori 無法整理對話	src/core/agent/loop.js:1155	
-oeaxaa	ok	She will try again later.	她稍後會再試。	src/core/agent/loop.js:1155	
-x10s30	ok	Shiori couldn't summarize the conversation	Shiori 無法總結對話	src/core/agent/loop.js:1313	
-1ds0zov	ok	Reminder	提醒	src/core/agent/loop.js:1523	
-1szzjml	ok	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:1523	
-nxpady	ok	The message went without it.	訊息已在沒有這張照片的情況下送出。	src/core/agent/loop.js:1627	
-sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1627	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
-ssozn1	ok	A photo wasn't sent to Shiori	照片沒有傳給 Shiori	src/core/agent/loop.js:1627	
-311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori 剛才正忙到一半。你回來後她會接著做。	src/core/agent/loop.js:1684	
-1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她以相同結果呼叫了同一個工具三次，所以這一輪結束了。請換個說法再問一次。	src/core/agent/loop.js:2004	Note: "Ask again" is the verb (再問), not the glossary's Ask, Safari's 詢問 choice.
-pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重複	src/core/agent/loop.js:2004	
-1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什麼也沒對你說就結束了。	src/core/agent/loop.js:2041	
-2bgbpn	ok	Shiori didn't answer	Shiori 沒有回答	src/core/agent/loop.js:2045	
-1mjdfzn	ok	Shiori can't reach her model	Shiori 無法連線她的模型	src/core/agent/loop.js:2109	
-1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	這個模型只接受{0}格式的照片，而這個瀏覽器無法產生。新增{1}的外掛程式可以解決（設定 → 外掛程式）。	src/core/agent/loop.js:2137	{0} = names; {1} = names
-1uhz9dg	ok	Shiori couldn't send the photo	Shiori 無法傳送照片	src/core/agent/loop.js:2196	
-vjxaph	ok	Your turn	輪到你了	src/core/agent/loop.js:2662	
-19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	這個瀏覽器只有在點一下後才會播放聲音。她的話在對話裡。	src/core/agent/loop.js:2805	
-guullf	ok	Tap the screen so Shiori can speak	點一下螢幕，讓 Shiori 能說話	src/core/agent/loop.js:2805	
-1h2ina6	ok	Shiori couldn't speak aloud	Shiori 無法朗讀出聲	src/core/agent/loop.js:2806	
-1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → 模型 → 朗讀中沒有一個聲音能用；原因見記錄。她的話在對話裡。	src/core/agent/loop.js:2806	
-1r1dhd7	ok	Shiori can't hear you yet	Shiori 還聽不到你	src/core/agent/loop.js:2944	
-8wd0xv	ok	Listening stopped	收聽已停止	src/core/agent/loop.js:3079	
-43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:3253	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	每邊最多 # 畫素	src/core/agent/loop.js:3254	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一次最多#張照片	src/core/agent/loop.js:3255	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	僅限{0}	src/core/agent/loop.js:3256	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一張照片（它接受：{0}），annai 也無法做出它能接受的副本。請在設定 → 照片 → 傳給 Shiori 的照片中改用更小的照片，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:3257	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一張照片，annai 也無法做出它能接受的副本。請在設定 → 照片 → 傳給 Shiori 的照片中改用更小的照片，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:3258	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，對話對她的模型來說太長了。請在設定 → 模型中檢查模型，或稍後再試。	src/core/agent/loop.js:3265	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	外掛程式 {0} 喚醒她的次數超過了你允許的每小時#次。	src/core/agent/loop.js:3275	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情喚醒她的次數超過了你允許的每小時#次：{0}。	src/core/agent/loop.js:3276	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你新增的檔案喚醒她的次數超過了你允許的每小時#次：{0}。	src/core/agent/loop.js:3277	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	有東西喚醒她的次數超過了你允許的每小時#次。	src/core/agent/loop.js:3278	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	目前由 Shiori 直接回答你。原因見記錄（模型）；Koe 幾分鐘後會再試。	src/core/agent/halves.js:566	
+yvabm6	ok	Koe's live voice couldn't start	Koe 的即時語音無法啟動	src/core/agent/halves.js:566	Note: "live voice" is the glossary's Live voice (即時語音), not a voice she speaks with (聲音).
+bzrasi	ok	Shiori answers as one half for now	Shiori 暫時獨自回答	src/core/agent/halves.js:726	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
+o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai 無法把你的訊息轉給 Koe：{0}	src/core/agent/halves.js:726	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+1dhsqvv	ok	Tap to talk	點一下說話	src/core/agent/loop.js:127	
+1ldobgc	ok	Tap to interrupt	點一下打斷	src/core/agent/loop.js:127	
+4mbury	ok	Thinking · tap to stop	思考中 · 點一下停止	src/core/agent/loop.js:127	
+89yydm	ok	Listening	聆聽中	src/core/agent/loop.js:127	Note: one of Shiori's states, as the dock shows her.
+g8840o	ok	Waiting for your OK	等待你的確認	src/core/agent/loop.js:127	
+yydchc	ok	Hearing you	正在聽你說	src/core/agent/loop.js:127	Note: one of Shiori's states: she hears you speaking.
+akjf4d	ok	Working on …	處理中…	src/core/agent/loop.js:128	
+izy3tv	ok	Offline · reminders still work	離線 · 提醒仍然有效	src/core/agent/loop.js:128	
+1080xlr	ok	Working on {0}	處理中：{0}	src/core/agent/loop.js:574	{0} = detail; Note: label: value, {0} is what she works on, in her words.
+1h2c64o	ok	Working on tidying up the conversation	正在整理對話	src/core/agent/loop.js:574	
+19793n8	ok	Shiori skipped a wake	Shiori 跳過了一次喚醒	src/core/agent/loop.js:893	
+16ny0z2	ok	Shiori stopped	Shiori 已停止	src/core/agent/loop.js:1123	
+1sxm1ou	ok	Something went wrong: {0}	出了點問題：{0}	src/core/agent/loop.js:1123	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori 無法整理對話	src/core/agent/loop.js:1156	
+oeaxaa	ok	She will try again later.	她稍後會再試。	src/core/agent/loop.js:1156	
+x10s30	ok	Shiori couldn't summarize the conversation	Shiori 無法總結對話	src/core/agent/loop.js:1347	
+1ds0zov	ok	Reminder	提醒	src/core/agent/loop.js:1557	
+1szzjml	ok	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:1557	
+nxpady	ok	The message went without it.	訊息已在沒有這張照片的情況下送出。	src/core/agent/loop.js:1661	
+sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1661	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
+ssozn1	ok	A photo wasn't sent to Shiori	照片沒有傳給 Shiori	src/core/agent/loop.js:1661	
+311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori 剛才正忙到一半。你回來後她會接著做。	src/core/agent/loop.js:1718	
+1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她以相同結果呼叫了同一個工具三次，所以這一輪結束了。請換個說法再問一次。	src/core/agent/loop.js:2035	Note: "Ask again" is the verb (再問), not the glossary's Ask, Safari's 詢問 choice.
+pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重複	src/core/agent/loop.js:2035	
+1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什麼也沒對你說就結束了。	src/core/agent/loop.js:2072	
+2bgbpn	ok	Shiori didn't answer	Shiori 沒有回答	src/core/agent/loop.js:2076	
+1mjdfzn	ok	Shiori can't reach her model	Shiori 無法連線她的模型	src/core/agent/loop.js:2140	
+1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	這個模型只接受{0}格式的照片，而這個瀏覽器無法產生。新增{1}的外掛程式可以解決（設定 → 外掛程式）。	src/core/agent/loop.js:2168	{0} = names; {1} = names
+1uhz9dg	ok	Shiori couldn't send the photo	Shiori 無法傳送照片	src/core/agent/loop.js:2227	
+vjxaph	ok	Your turn	輪到你了	src/core/agent/loop.js:2693	
+19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	這個瀏覽器只有在點一下後才會播放聲音。她的話在對話裡。	src/core/agent/loop.js:2835	
+guullf	ok	Tap the screen so Shiori can speak	點一下螢幕，讓 Shiori 能說話	src/core/agent/loop.js:2835	
+1h2ina6	ok	Shiori couldn't speak aloud	Shiori 無法朗讀出聲	src/core/agent/loop.js:2836	
+1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → 模型 → 朗讀中沒有一個聲音能用；原因見記錄。她的話在對話裡。	src/core/agent/loop.js:2836	
+1r1dhd7	ok	Shiori can't hear you yet	Shiori 還聽不到你	src/core/agent/loop.js:2973	
+8wd0xv	ok	Listening stopped	收聽已停止	src/core/agent/loop.js:3128	
+43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:3302	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	每邊最多 # 畫素	src/core/agent/loop.js:3303	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一次最多#張照片	src/core/agent/loop.js:3304	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	僅限{0}	src/core/agent/loop.js:3305	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一張照片（它接受：{0}），annai 也無法做出它能接受的副本。請在設定 → 照片 → 傳給 Shiori 的照片中改用更小的照片，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:3306	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一張照片，annai 也無法做出它能接受的副本。請在設定 → 照片 → 傳給 Shiori 的照片中改用更小的照片，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:3307	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，對話對她的模型來說太長了。請在設定 → 模型中檢查模型，或稍後再試。	src/core/agent/loop.js:3314	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	外掛程式 {0} 喚醒她的次數超過了你允許的每小時#次。	src/core/agent/loop.js:3324	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情喚醒她的次數超過了你允許的每小時#次：{0}。	src/core/agent/loop.js:3325	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你新增的檔案喚醒她的次數超過了你允許的每小時#次：{0}。	src/core/agent/loop.js:3326	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	有東西喚醒她的次數超過了你允許的每小時#次。	src/core/agent/loop.js:3327	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	這則訊息含有金鑰，所以不顯示。	src/core/agent/net.js:94	
 157dl17	ok	Shiori wants to adjust her personality	Shiori 想調整她的性格	src/core/agent/personalities.js:130	
 13g1wjf	ok	No thanks	不用了	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
@@ -570,8 +570,8 @@ iwgrsx	ok	This calendar has more than {0} events. Export only the trip's dates f
 5l9pv6	ok	{0} is larger than a trip's calendar ever is (over {1}). Export only the trip's dates from your calendar, and add that file.	{0} 對一個旅行行事曆來說太大了（超過 {1}）。請只從行事曆中匯出旅行日期內的事件，再新增那個檔案。	src/core/imports.js:15	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:27	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Chinese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	ok	just now	剛剛	src/core/intl.js:130	
-1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	用手機揚聲器時，Shiori 說話期間 annai 聽不到你，所以你在她說話時說的話會被丟棄。點一下就能讓她停下並開始收聽。	src/core/koe/live.js:467	
-1ml2kgi	ok	Tap Shiori to talk over her	點一下 Shiori 即可打斷她	src/core/koe/live.js:467	Note: The dock's Shiori button: tap it to talk over her.
+1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	用手機揚聲器時，Shiori 說話期間 annai 聽不到你，所以你在她說話時說的話會被丟棄。點一下就能讓她停下並開始收聽。	src/core/koe/live.js:484	
+1ml2kgi	ok	Tap Shiori to talk over her	點一下 Shiori 即可打斷她	src/core/koe/live.js:484	Note: The dock's Shiori button: tap it to talk over her.
 3fqfy0	ok	Languages	語言	src/core/languages.js:336	
 1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你說的語言和 Shiori 回答所用的語言會告知每個負責聽和說的模型，以免把簡短的回覆誤認作其他語言。	src/core/languages.js:337	
 1giusr1	ok	Languages you speak	你說的語言	src/core/languages.js:338	
@@ -2136,6 +2136,23 @@ hg5a8z	ok	Time in the trip	旅行中的時間	src/ui/screens/replay.js:173
 7xq6tu	ok	The trip in order	旅行經過	src/ui/screens/replay.js:175	Note: A screen reader's name for the timeline's section.
 djv8ja	ok	Timeline	時間軸	src/ui/screens/replay.js:175	
 j4z771	ok	Pause	暫停	src/ui/screens/replay.js:176	
+h0pksu	draft	A live session gets its setup once, and the provider holds the rest. So this is the setup it was given, then the lines since, as annai wrote them down. It isn't a copy of a request.	即時工作階段的設定只在開始時傳送一次，之後由供應商保存。因此這裡顯示的是當時給它的設定，以及 annai 記錄的之後內容，並不是請求的副本。	src/ui/screens/sees.js:14	
+pa1adz	draft	No live session is going. This is the setup the next one would get.	目前沒有即時工作階段。這是下一次工作階段會得到的設定。	src/ui/screens/sees.js:15	
+ip9sup	draft	Its setup: the conversation so far, and the moment	設定：到目前為止的對話和目前情況	src/ui/screens/sees.js:16	
+qxxy9e	draft	Its tools	工具	src/ui/screens/sees.js:16	
+vvrw23	draft	Its setup: instructions	設定：指示	src/ui/screens/sees.js:16	
+1kuzgud	draft	The lines since	之後的內容	src/ui/screens/sees.js:17	
+1oep3py	draft	Nothing yet.	還沒有內容。	src/ui/screens/sees.js:17	
+5m66td	draft	Its next request, built by the code that sends it.	它的下一次請求，由實際傳送請求的程式碼產生。	src/ui/screens/sees.js:21	
+mt9jss	draft	Shiori is one half right now, so this is all of her: her next request, built by the code that sends it.	Shiori 現在只有一個分身，所以這就是她的全部：她的下一次請求，由實際傳送請求的程式碼產生。	src/ui/screens/sees.js:21	
+1g828u2	draft	The block that ends the request	請求結尾的區塊	src/ui/screens/sees.js:22	
+ptc85g	draft	Its conversation	對話	src/ui/screens/sees.js:22	
+yxdp3q	draft	Its instructions	指示	src/ui/screens/sees.js:22	
+1adp8wi	draft	What Koe sees	Koe 看到的內容	src/ui/screens/sees.js:29	
+1pyevfq	draft	What Kokoro sees	Kokoro 看到的內容	src/ui/screens/sees.js:29	
+lebwd9	draft	Koe isn't in use: Shiori is one half right now. Give Koe a model in Settings → Models to have two.	Koe 未在使用：Shiori 現在只有一個分身。要使用兩個分身，請在 設定 → 模型 中為 Koe 選擇模型。	src/ui/screens/sees.js:32	
+n67yk1	draft	Copied.	已複製。	src/ui/screens/sees.js:40	
+wllyue	draft	Copying didn't work here. Select the text on this screen instead.	這裡無法複製。請直接選取畫面上的文字。	src/ui/screens/sees.js:42	
 17z59l7	ok	Plugin updates are ready: {0}.	外掛程式更新已就緒：{0}。	src/ui/screens/settings.js:31	{0} = list(plugins.map(updateName), 'plain')
 1ltn2ct	ok	A new version of annai is ready.	annai 的新版本已就緒。	src/ui/screens/settings.js:31	
 2i7wwt	ok	No automatic backups yet. Add a place to back up to, such as a private GitHub repository.	還沒有自動備份。請新增一個備份位置，例如私有的 GitHub 儲存庫。	src/ui/screens/settings.js:40	
@@ -2199,52 +2216,68 @@ u9zvd	ok	Erase now	立即清除	src/ui/screens/settings.js:210
 tgdxsp	ok	Deletes every trip, file, setting and key on this device. Export a backup first.	刪除此裝置上的所有旅行、檔案、設定和金鑰。請先匯出一個備份。	src/ui/screens/settings.js:216	
 1x8t4tk	ok	Type {0} to confirm	輸入 {0} 以確認	src/ui/screens/settings.js:218	{0} = ERASE; Note: {0} is the word to type, ERASE, the same in every language.
 199v6bp	ok	From plugins	來自外掛程式	src/ui/screens/settings.js:228	
-1bu98qy	ok	Shiori, hearing you	Shiori，正在聽你說	src/ui/screens/shiori.js:18	
-1m5wnho	ok	Shiori, listening	Shiori，正在聆聽	src/ui/screens/shiori.js:18	
-1mlnwtl	ok	Shiori, asleep	Shiori，睡著了	src/ui/screens/shiori.js:18	
-bhzo0f	ok	Asleep	睡著了	src/ui/screens/shiori.js:18	Note: one of Shiori's states, as the dock shows her.
-1c5j3ex	ok	Talking	說話中	src/ui/screens/shiori.js:19	
-1pyssg8	ok	Working	工作中	src/ui/screens/shiori.js:19	
-1v3zmky	ok	Shiori, working	Shiori，工作中	src/ui/screens/shiori.js:19	
-95xxof	ok	Shiori, talking	Shiori，說話中	src/ui/screens/shiori.js:19	
-ba34ez	ok	Shiori, thinking	Shiori，思考中	src/ui/screens/shiori.js:19	
-jkajtp	ok	Thinking	思考中	src/ui/screens/shiori.js:19	
-ki7u7j	ok	Shiori, your turn	Shiori，輪到你了	src/ui/screens/shiori.js:19	
-1iimwg8	ok	Offline	離線	src/ui/screens/shiori.js:20	
-jcy1qy	ok	Shiori, offline	Shiori，離線	src/ui/screens/shiori.js:20	
-9chhxd	ok	"{0}"	「{0}」	src/ui/screens/shiori.js:43	{0} = name; Note: a personality's name, quoted, as the editor's label.
-1imu4jh	draft	Back to the original. It applies at her next wake.	已還原原版。她下次喚醒時生效。	src/ui/screens/shiori.js:47	
-veugk0	ok	Reset to original	還原原版	src/ui/screens/shiori.js:49	Note: puts a personality back to annai's original text.
-1vcli95	ok	Ask me before Shiori changes her personality	Shiori 修改性格前先問我	src/ui/screens/shiori.js:61	
-1atbaso	ok	Show what the halves tell each other	顯示兩個分身之間的交流	src/ui/screens/shiori.js:65	
-1csnvhb	ok	Quiet until	安靜時段結束	src/ui/screens/shiori.js:73	Note: quiet hours' end, named after the glossary's quiet hours (安靜時段).
-1p3ttz9	ok	Quiet from	安靜時段開始	src/ui/screens/shiori.js:73	Note: quiet hours' start, named after the glossary's quiet hours (安靜時段).
-1ite7lp	ok	Set the other time too.	請把另一個時間也設好。	src/ui/screens/shiori.js:78	
-11mcr74	ok	Quiet hours need both times. Clear both for none.	安靜時段需要兩個時間。都清空則不設。	src/ui/screens/shiori.js:99	
-1qa55ez	ok	How she looks	她的樣子	src/ui/screens/shiori.js:106	
-15cdrhf	ok	Each state, as the dock shows her, with the words under her.	每種狀態在底部列中的樣子，以及下面的文字。	src/ui/screens/shiori.js:107	
-jq414z	ok	Personality	性格	src/ui/screens/shiori.js:109	
-efcvdh	ok	How Shiori behaves. She can adjust it herself through a reviewed change, and you can always undo it. A change applies at her next wake.	Shiori 的行為方式。她可以透過經你審閱的修改自行調整，你隨時可以復原。修改在她下次喚醒時生效。	src/ui/screens/shiori.js:110	
-1amzdg4	ok	The new original of "{0}"	「{0}」的新原版	src/ui/screens/shiori.js:117	{0} = compare
-pmpsfk	ok	Use the new original	使用新原版	src/ui/screens/shiori.js:120	
-eh67ee	ok	Saved. It applies at her next wake.	已儲存。她下次喚醒時生效。	src/ui/screens/shiori.js:129	
-3wot4g	ok	A name is lowercase letters, digits and dashes, like my-shiori.	名稱只能用小寫字母、數字和連字元，例如 my-shiori。	src/ui/screens/shiori.js:137	
-8vtmkf	ok	There is already a personality called "{0}".	已經有名為「{0}」的性格了。	src/ui/screens/shiori.js:137	{0} = name
-codbeh	ok	New from this one	以此建立	src/ui/screens/shiori.js:142	
-10pf3h4	ok	Name for a new one	新性格的名稱	src/ui/screens/shiori.js:143	
-185xhpb	ok	Her two halves	她的兩個分身	src/ui/screens/shiori.js:146	
-1vyft97	ok	Koe talks with you and answers at once; Kokoro thinks things through and does the work. They pass each other short notes. On: the notes show in the conversation as quiet lines. Off: they stay in the Trace.	Koe 和你說話，馬上回答；Kokoro 仔細思考並完成工作。兩者互相傳遞簡短的便條。開啟：便條以淺色行顯示在對話中。關閉：只留在記錄裡。	src/ui/screens/shiori.js:147	
-u36mv	ok	The languages you speak, and the one Shiori answers in, are in Settings → Languages.	你說的語言和 Shiori 回答所用語言，在設定 → 語言中。	src/ui/screens/shiori.js:149	Note: a link on Settings → Shiori to the Languages screen; 語言 as the glossary's screen name.
-is7afy	ok	How often she acts on her own	她主動行動的頻率	src/ui/screens/shiori.js:151	
-1mzkqw7	ok	Plugins, reminders and GPS wake her as well as you. None of these is set unless you set it: more wakes in an hour are skipped, quiet hours hold her until they end (reminders still come), and past the steps of one wake she stops, with a card.	除了你，外掛程式、提醒和 GPS 也會喚醒她。這些都只有你設了才生效：一小時內超出的喚醒會被跳過，安靜時段會讓她等到結束（提醒照常），一次喚醒超出步數時她會停下，並顯示一張卡片。	src/ui/screens/shiori.js:152	
-6a0cdc	ok	Wakes per hour is a whole number from 1; leave it empty for no limit.	每小時喚醒次數是從 1 起的整數；留空表示不限。	src/ui/screens/shiori.js:153	
-pd5jqf	ok	Wakes per hour, not counting yours	每小時喚醒次數（不算你的）	src/ui/screens/shiori.js:153	
-av9dc1	ok	Steps per wake	每次喚醒的步數	src/ui/screens/shiori.js:155	
-ro3vrl	ok	Steps per wake is a whole number from 1; leave it empty for no limit on what you ask; what she does on her own stops after 50.	每次喚醒的步數是從 1 起的整數；留空則你的請求不限步數；她主動做的事在 50 步後停止。	src/ui/screens/shiori.js:155	
-1mrunng	ok	{0} (from a plugin)	{0}（來自外掛程式）	src/ui/screens/shiori.js:169	{0} = p.name
-1px053l	ok	{0} (from {1})	{0}（來自 {1}）	src/ui/screens/shiori.js:169	{0} = p.name; {1} = p.plugin
-9xxzlu	ok	You already have a personality called "{0}".	你已經有名為「{0}」的性格了。	src/ui/screens/shiori.js:174	{0} = p.name
-fnme9h	ok	Added the personality "{0}". Choose it above.	已新增性格「{0}」。請在上方選擇。	src/ui/screens/shiori.js:178	{0} = p.name
+1bu98qy	ok	Shiori, hearing you	Shiori，正在聽你說	src/ui/screens/shiori.js:19	
+1m5wnho	ok	Shiori, listening	Shiori，正在聆聽	src/ui/screens/shiori.js:19	
+1mlnwtl	ok	Shiori, asleep	Shiori，睡著了	src/ui/screens/shiori.js:19	
+bhzo0f	ok	Asleep	睡著了	src/ui/screens/shiori.js:19	Note: one of Shiori's states, as the dock shows her.
+1c5j3ex	ok	Talking	說話中	src/ui/screens/shiori.js:20	
+1pyssg8	ok	Working	工作中	src/ui/screens/shiori.js:20	
+1v3zmky	ok	Shiori, working	Shiori，工作中	src/ui/screens/shiori.js:20	
+95xxof	ok	Shiori, talking	Shiori，說話中	src/ui/screens/shiori.js:20	
+ba34ez	ok	Shiori, thinking	Shiori，思考中	src/ui/screens/shiori.js:20	
+jkajtp	ok	Thinking	思考中	src/ui/screens/shiori.js:20	
+ki7u7j	ok	Shiori, your turn	Shiori，輪到你了	src/ui/screens/shiori.js:20	
+1iimwg8	ok	Offline	離線	src/ui/screens/shiori.js:21	
+jcy1qy	ok	Shiori, offline	Shiori，離線	src/ui/screens/shiori.js:21	
+9chhxd	ok	"{0}"	「{0}」	src/ui/screens/shiori.js:44	{0} = name; Note: a personality's name, quoted, as the editor's label.
+1imu4jh	draft	Back to the original. It applies at her next wake.	已還原原版。她下次喚醒時生效。	src/ui/screens/shiori.js:48	
+veugk0	ok	Reset to original	還原原版	src/ui/screens/shiori.js:50	Note: puts a personality back to annai's original text.
+1vcli95	ok	Ask me before Shiori changes her personality	Shiori 修改性格前先問我	src/ui/screens/shiori.js:62	
+1atbaso	ok	Show what the halves tell each other	顯示兩個分身之間的交流	src/ui/screens/shiori.js:66	
+1csnvhb	ok	Quiet until	安靜時段結束	src/ui/screens/shiori.js:74	Note: quiet hours' end, named after the glossary's quiet hours (安靜時段).
+1p3ttz9	ok	Quiet from	安靜時段開始	src/ui/screens/shiori.js:74	Note: quiet hours' start, named after the glossary's quiet hours (安靜時段).
+1ite7lp	ok	Set the other time too.	請把另一個時間也設好。	src/ui/screens/shiori.js:79	
+11mcr74	ok	Quiet hours need both times. Clear both for none.	安靜時段需要兩個時間。都清空則不設。	src/ui/screens/shiori.js:100	
+1qa55ez	ok	How she looks	她的樣子	src/ui/screens/shiori.js:107	
+15cdrhf	ok	Each state, as the dock shows her, with the words under her.	每種狀態在底部列中的樣子，以及下面的文字。	src/ui/screens/shiori.js:108	
+jq414z	ok	Personality	性格	src/ui/screens/shiori.js:110	
+efcvdh	ok	How Shiori behaves. She can adjust it herself through a reviewed change, and you can always undo it. A change applies at her next wake.	Shiori 的行為方式。她可以透過經你審閱的修改自行調整，你隨時可以復原。修改在她下次喚醒時生效。	src/ui/screens/shiori.js:111	
+1amzdg4	ok	The new original of "{0}"	「{0}」的新原版	src/ui/screens/shiori.js:118	{0} = compare
+pmpsfk	ok	Use the new original	使用新原版	src/ui/screens/shiori.js:121	
+eh67ee	ok	Saved. It applies at her next wake.	已儲存。她下次喚醒時生效。	src/ui/screens/shiori.js:130	
+3wot4g	ok	A name is lowercase letters, digits and dashes, like my-shiori.	名稱只能用小寫字母、數字和連字元，例如 my-shiori。	src/ui/screens/shiori.js:138	
+8vtmkf	ok	There is already a personality called "{0}".	已經有名為「{0}」的性格了。	src/ui/screens/shiori.js:138	{0} = name
+codbeh	ok	New from this one	以此建立	src/ui/screens/shiori.js:143	
+10pf3h4	ok	Name for a new one	新性格的名稱	src/ui/screens/shiori.js:144	
+185xhpb	ok	Her two halves	她的兩個分身	src/ui/screens/shiori.js:148	
+1vyft97	ok	Koe talks with you and answers at once; Kokoro thinks things through and does the work. They pass each other short notes. On: the notes show in the conversation as quiet lines. Off: they stay in the Trace.	Koe 和你說話，馬上回答；Kokoro 仔細思考並完成工作。兩者互相傳遞簡短的便條。開啟：便條以淺色行顯示在對話中。關閉：只留在記錄裡。	src/ui/screens/shiori.js:149	
+u36mv	ok	The languages you speak, and the one Shiori answers in, are in Settings → Languages.	你說的語言和 Shiori 回答所用語言，在設定 → 語言中。	src/ui/screens/shiori.js:151	Note: a link on Settings → Shiori to the Languages screen; 語言 as the glossary's screen name.
+is7afy	ok	How often she acts on her own	她主動行動的頻率	src/ui/screens/shiori.js:153	
+1mzkqw7	ok	Plugins, reminders and GPS wake her as well as you. None of these is set unless you set it: more wakes in an hour are skipped, quiet hours hold her until they end (reminders still come), and past the steps of one wake she stops, with a card.	除了你，外掛程式、提醒和 GPS 也會喚醒她。這些都只有你設了才生效：一小時內超出的喚醒會被跳過，安靜時段會讓她等到結束（提醒照常），一次喚醒超出步數時她會停下，並顯示一張卡片。	src/ui/screens/shiori.js:154	
+6a0cdc	ok	Wakes per hour is a whole number from 1; leave it empty for no limit.	每小時喚醒次數是從 1 起的整數；留空表示不限。	src/ui/screens/shiori.js:155	
+pd5jqf	ok	Wakes per hour, not counting yours	每小時喚醒次數（不算你的）	src/ui/screens/shiori.js:155	
+av9dc1	ok	Steps per wake	每次喚醒的步數	src/ui/screens/shiori.js:157	
+ro3vrl	ok	Steps per wake is a whole number from 1; leave it empty for no limit on what you ask; what she does on her own stops after 50.	每次喚醒的步數是從 1 起的整數；留空則你的請求不限步數；她主動做的事在 50 步後停止。	src/ui/screens/shiori.js:157	
+1oxfybk	draft	Shiori's core	Shiori 的核心	src/ui/screens/shiori.js:162	
+srktqx	draft	How she talks, how annai works, and her safety rules. Kokoro reads it, and Shiori when she is one half.	她的說話方式、annai 的運作方式和她的安全規則。Kokoro 會讀取，只有一個分身時 Shiori 也會讀取。	src/ui/screens/shiori.js:162	
+10gef26	draft	What Kokoro adds while Shiori is two halves: how it works behind Koe.	Shiori 有兩個分身時 Kokoro 額外讀取的內容：如何在 Koe 背後工作。	src/ui/screens/shiori.js:163	
+13snrep	draft	Kokoro's part	Kokoro 的部分	src/ui/screens/shiori.js:163	
+1x7xmuu	draft	What Koe reads when its words go to a voice.	Koe 的話由語音朗讀時，Koe 讀取的內容。	src/ui/screens/shiori.js:164	
+u8z792	draft	Koe, classic	Koe（經典）	src/ui/screens/shiori.js:164	
+777qwf	draft	What Koe reads in a live voice session.	Koe 在即時語音工作階段中讀取的內容。	src/ui/screens/shiori.js:165	
+mmvypk	draft	Koe, live	Koe（即時）	src/ui/screens/shiori.js:165	
+1eogfr1	draft	Her instructions	給 Shiori 的指示	src/ui/screens/shiori.js:170	
+1eoyx0p	draft	These hold how Shiori works, including her safety rules. Reset to original brings them back. A change applies at her next wake.	這些內容決定 Shiori 如何運作，包括她的安全規則。「還原原版」可以還原。變更在她下次喚醒時生效。	src/ui/screens/shiori.js:171	
+jgug0r	draft	changed	已變更	src/ui/screens/shiori.js:180	
+3w9he4	draft	Reset to original: {0}	還原原版：{0}	src/ui/screens/shiori.js:182	{0} = words.name
+kntv40	draft	The new original of {0}	{0} 的新原版	src/ui/screens/shiori.js:198	{0} = words.name
+1nh34lh	draft	Keep mine: {0}	保留我的：{0}	src/ui/screens/shiori.js:200	{0} = words.name
+1s0o9t8	draft	Use the new original: {0}	使用新原版：{0}	src/ui/screens/shiori.js:201	{0} = words.name
+b5wyro	draft	Save: {0}	儲存：{0}	src/ui/screens/shiori.js:212	{0} = words.name
+1mrunng	ok	{0} (from a plugin)	{0}（來自外掛程式）	src/ui/screens/shiori.js:233	{0} = p.name
+1px053l	ok	{0} (from {1})	{0}（來自 {1}）	src/ui/screens/shiori.js:233	{0} = p.name; {1} = p.plugin
+9xxzlu	ok	You already have a personality called "{0}".	你已經有名為「{0}」的性格了。	src/ui/screens/shiori.js:238	{0} = p.name
+fnme9h	ok	Added the personality "{0}". Choose it above.	已新增性格「{0}」。請在上方選擇。	src/ui/screens/shiori.js:242	{0} = p.name
 aqber3	ok	600 times: an hour takes 6 seconds	600 倍：一小時只需 6 秒	src/ui/screens/simulate.js:10	
 u8l013	ok	10 times real time: an hour takes 6 minutes	實際時間的 10 倍：一小時只需 6 分鐘	src/ui/screens/simulate.js:10	
 zby7kj	ok	60 times: an hour takes a minute	60 倍：一小時只需一分鐘	src/ui/screens/simulate.js:10	
@@ -2347,7 +2380,9 @@ mg70bg	ok	The conversation is still opening. Try again in a moment.	對話還在
 p5pj7b	ok	There is nothing to start fresh from yet.	還沒有可以重新開始的內容。	src/ui/screens/talk.js:691	
 1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即總結：Shiori 現在就把之前的對話總結一下，讓它保持簡短。每一行都留在這裡，她也仍能查到。	src/ui/screens/talk.js:711	
 18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新開始：Shiori 不再記著之前的內容，從這裡重新開始。每一行都留在分隔線上方。	src/ui/screens/talk.js:712	
-16pl3gf	ok	Undone. Her old personality applies at her next wake.	已復原。她原來的性格在下次喚醒時生效。	src/ui/screens/talk.js:734	
+16zlzgr	draft	See what Kokoro sees	查看 Kokoro 看到的內容	src/ui/screens/talk.js:713	
+19t8xqh	draft	See what Koe sees	查看 Koe 看到的內容	src/ui/screens/talk.js:713	
+16pl3gf	ok	Undone. Her old personality applies at her next wake.	已復原。她原來的性格在下次喚醒時生效。	src/ui/screens/talk.js:735	
 11gkctr	ok	Places	地點	src/ui/screens/tools.js:11	context: tool group
 13mxqrp	ok	Talk	對話	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	ok	Go	出遊	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).
@@ -2401,6 +2436,7 @@ piy3vo	ok	{0} from the microphone	麥克風錄音 {0}	src/ui/screens/trace.js:17
 1sfeb1g	ok	an answer	一個回答	src/ui/screens/trace.js:177	
 1x13vat	ok	not for Shiori	不是給 Shiori 的	src/ui/screens/trace.js:177	
 k9shc3	ok	while she was thinking	在她思考時	src/ui/screens/trace.js:177	
+mj6pnh	draft	she didn't answer	她沒有回答	src/ui/screens/trace.js:177	
 an9lly	ok	clip kept: {0}, {1}	已保留片段：{0}，{1}	src/ui/screens/trace.js:178	{0} = d.clipFormat; {1} = size(d.clipBytes ?? 0)
 voav2t	ok	clip kept	已保留片段	src/ui/screens/trace.js:178	
 1gqj9yn	ok	written down by {0}	由 {0} 轉錄	src/ui/screens/trace.js:180	{0} = d.by
@@ -2658,9 +2694,9 @@ f2eaqi	ok	Find a search plugin	尋找搜尋外掛程式	src/ui/search-panel.js:9
 do1m5o	ok	{0}: annai can't show this setting.	{0}：annai 無法顯示此設定。	src/ui/settings-form.js:117	{0} = f.label
 1qrgqx0	ok	saved	已儲存	src/ui/settings-form.js:122	
 phutrz	ok	{0} wasn't saved: {1}	{0}未儲存：{1}	src/ui/settings-form.js:131	{0} = f.label; {1} = messageOf(e)
-1skw031	ok	This screen couldn't open	無法開啟此頁面	src/ui/shell.js:266	
-1z00dfe	ok	An update is ready	更新已就緒	src/ui/shell.js:361	
-gt0nrj	ok	It will be used the next time annai starts.	下次啟動 annai 時生效。	src/ui/shell.js:361	
+1skw031	ok	This screen couldn't open	無法開啟此頁面	src/ui/shell.js:268	
+1z00dfe	ok	An update is ready	更新已就緒	src/ui/shell.js:363	
+gt0nrj	ok	It will be used the next time annai starts.	下次啟動 annai 時生效。	src/ui/shell.js:363	
 sntfon	ok	Hello! This is how I sound when I talk to you.	你好！我和你說話時就是這樣的聲音。	src/ui/speech-check.js:10	Note: spoken by the voice being tested, so it is heard in the screens' language.
 n8hyke	ok	{0}. {1}	{0}。{1}	src/ui/speech-check.js:16	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
 1a27ynt	ok	Last tested {0}: it worked.	上次測試於{0}：可用。	src/ui/speech-check.js:26	{0} = relTime(verified.at)
