@@ -191,29 +191,39 @@ remote-trace:@settings.properties.location.title	ok	Send location points	发送�
 remote-trace:@settings.properties.location.description	ok	Also send the location points annai records while GPS is on, about one a second on a drive. Off, other entries can still name a place, as the Trace shows them: a weather request's address, a tool's input.	同时发送 GPS 开启时 annai 记录的位置点（驾驶时约每秒一个）。关闭时，其他条目仍可能包含地点，正如“记录”中显示的：天气请求的地址、工具的输入等。	plugins-official/remote-trace/annai-plugin.json:28	
 remote-trace:@settings.properties.send.title	ok	Send	发送	plugins-official/remote-trace/annai-plugin.json:33	
 remote-trace:@settings.properties.send.description	ok	On, what the Trace records from now on goes to the server within a few seconds: what you write, what Shiori says, her tools, requests and errors. Keys are blanked, and stored content (photos, long texts) stays here. Off stops it at once.	打开后，从现在起“记录”所记下的内容会在几秒内发送到服务器：你写的、Shiori 说的、她的工具、请求和错误。密钥会被遮盖，已保存的内容（照片、长文本）留在这里。关闭会立即停止。	plugins-official/remote-trace/annai-plugin.json:34	
-remote-trace:@settings.properties.device.title	ok	Device id	设备 ID	plugins-official/remote-trace/annai-plugin.json:39	
-remote-trace:@settings.properties.device.description	ok	Sent with each batch, so the server can tell this device from another. annai makes one at the first send; you may give it a name of your own.	随每批一起发送，让服务器能把本设备与其他设备区分开。annai 会在第一次发送时生成一个；你也可以自己起名。	plugins-official/remote-trace/annai-plugin.json:40	
-remote-trace:4clmw9	ok	It needs the address of your server.	需要你的服务器地址。	plugins-official/remote-trace/index.js:50	
-remote-trace:u2jqcp	ok	Its server address must start with https:// (http:// only for localhost or 127.0.0.1).	服务器地址必须以 https:// 开头（http:// 只能用于 localhost 或 127.0.0.1）。	plugins-official/remote-trace/index.js:56	
-remote-trace:15ggh6g	ok	Its server address has a name or password in it, which a request can't carry. Take it out, and give the server's token as the Token.	服务器地址中含有用户名或密码，请求无法携带它们。请把它们去掉，并把服务器的令牌填到“令牌”中。	plugins-official/remote-trace/index.js:58	Note: "a name or password" in an address is its user name (https://user:pass@…), so 用户名.
-remote-trace:rr1ir8	ok	Change it in Settings → Plugins → Remote trace (for developers).	请在设置 → 插件 → 远程记录（开发者）中更改。	plugins-official/remote-trace/index.js:138	Note: Settings paths sit in the sentence without spaces, as annai's rows write them.
-remote-trace:1kwbgo3	ok	The phone is offline.	手机处于离线状态。	plugins-official/remote-trace/index.js:140	
-remote-trace:q62pwu	ok	Its token can't be sent.	令牌无法发送。	plugins-official/remote-trace/index.js:140	
-remote-trace:zr5o1w	ok	It has no token.	没有令牌。	plugins-official/remote-trace/index.js:140	
-remote-trace:14w66x9	ok	The server can't be reached.	无法连接服务器。	plugins-official/remote-trace/index.js:141	
-remote-trace:46d80m	ok	The server answered {0}.	服务器返回了 {0}。	plugins-official/remote-trace/index.js:141	{0} = p.status
-remote-trace:rt350m	ok	annai couldn't get the batch ready.	annai 无法准备好这一批。	plugins-official/remote-trace/index.js:141	
-remote-trace:1t53c9s	ok	Sending trace	正在发送记录	plugins-official/remote-trace/index.js:166	
-remote-trace:zzw26r#other	ok	Sending trace: # waiting.	正在发送记录：# 条等待中。	plugins-official/remote-trace/index.js:166	plural; # = waiting; English: "Sending trace: # waiting." (one), "Sending trace: # waiting." (other)
-remote-trace:ata72m	ok	Trace	记录	plugins-official/remote-trace/index.js:179	
-remote-trace:bbadl	ok	Remote trace isn't sending	远程记录没有在发送	plugins-official/remote-trace/index.js:276	
-remote-trace:s7tmcq	ok	It needs the server's token. Add it in Settings → Plugins → Remote trace (for developers).	需要服务器的令牌。请在设置 → 插件 → 远程记录（开发者）中添加。	plugins-official/remote-trace/index.js:304	
-remote-trace:1ahd84q	ok	Its token has characters a request can't carry: letters, digits and punctuation only, no spaces.	令牌中含有请求无法携带的字符：只能用字母、数字和标点，不能有空格。	plugins-official/remote-trace/index.js:308	
-remote-trace:1qhwapr	ok	The trace server refuses what annai sends	记录服务器拒绝了 annai 发送的内容	plugins-official/remote-trace/index.js:357	
-remote-trace:18ckgf7	ok	{0} answered {1} {2} times in a row.	{0} 连续 {2} 次返回了 {1}。	plugins-official/remote-trace/index.js:358	{0} = host; {1} = res.status; {2} = refusals
-remote-trace:dslm8u	ok	{0} answered {1} {2} times in a row: the token may be wrong.	{0} 连续 {2} 次返回了 {1}：令牌可能不对。	plugins-official/remote-trace/index.js:358	{0} = host; {1} = res.status; {2} = refusals
-remote-trace:16cfxwg	ok	annai keeps trying about once a minute, and keeps the newest {0} entries until they go. Check the server address and the token in Settings → Plugins → Remote trace (for developers), or turn Send off there.	annai 会继续大约每分钟尝试一次，并保留最新的 {0} 条，直到发出为止。请在设置 → 插件 → 远程记录（开发者）中检查服务器地址和令牌，或在那里关闭“发送”。	plugins-official/remote-trace/index.js:359	{0} = kept
-remote-trace:m3chyg	ok	Open Remote trace	打开远程记录	plugins-official/remote-trace/index.js:360	
+remote-trace:@settings.properties.detailed.title	draft	Detailed trace	详细记录	plugins-official/remote-trace/annai-plugin.json:39	
+remote-trace:@settings.properties.detailed.description	draft	Also sends recordings of what the microphone heard to the server above: each of your turns, and short samples of sound the level check kept out. Recordings include passengers and whatever is playing. Phone dictation is the browser's own, so it has no audio. A text copy of the screen goes too, without what's typed in fields or keys, and a Flag button shows beside the chips, to mark when something looks wrong. It needs a server address and Send on, and turns itself off after 24 hours.	同时把麦克风听到的录音发送到上面的服务器：你的每次发言，以及音量检查挡在外面的声音的简短样本。录音会包含乘客的声音和正在播放的内容。手机听写由浏览器负责，因此没有音频。屏幕文字的副本也会发送，但不含输入框中的内容和密钥。标记按钮会显示在标签旁边，用于在有问题时做标记。它需要服务器地址并打开“发送”，24 小时后自动关闭。	plugins-official/remote-trace/annai-plugin.json:40	
+remote-trace:@settings.properties.device.title	ok	Device id	设备 ID	plugins-official/remote-trace/annai-plugin.json:45	
+remote-trace:@settings.properties.device.description	ok	Sent with each batch, so the server can tell this device from another. annai makes one at the first send; you may give it a name of your own.	随每批一起发送，让服务器能把本设备与其他设备区分开。annai 会在第一次发送时生成一个；你也可以自己起名。	plugins-official/remote-trace/annai-plugin.json:46	
+remote-trace:4clmw9	ok	It needs the address of your server.	需要你的服务器地址。	plugins-official/remote-trace/index.js:68	
+remote-trace:u2jqcp	ok	Its server address must start with https:// (http:// only for localhost or 127.0.0.1).	服务器地址必须以 https:// 开头（http:// 只能用于 localhost 或 127.0.0.1）。	plugins-official/remote-trace/index.js:74	
+remote-trace:15ggh6g	ok	Its server address has a name or password in it, which a request can't carry. Take it out, and give the server's token as the Token.	服务器地址中含有用户名或密码，请求无法携带它们。请把它们去掉，并把服务器的令牌填到“令牌”中。	plugins-official/remote-trace/index.js:76	Note: "a name or password" in an address is its user name (https://user:pass@…), so 用户名.
+remote-trace:rr1ir8	ok	Change it in Settings → Plugins → Remote trace (for developers).	请在设置 → 插件 → 远程记录（开发者）中更改。	plugins-official/remote-trace/index.js:216	Note: Settings paths sit in the sentence without spaces, as annai's rows write them.
+remote-trace:1kwbgo3	ok	The phone is offline.	手机处于离线状态。	plugins-official/remote-trace/index.js:218	
+remote-trace:q62pwu	ok	Its token can't be sent.	令牌无法发送。	plugins-official/remote-trace/index.js:218	
+remote-trace:zr5o1w	ok	It has no token.	没有令牌。	plugins-official/remote-trace/index.js:218	
+remote-trace:14w66x9	ok	The server can't be reached.	无法连接服务器。	plugins-official/remote-trace/index.js:219	
+remote-trace:46d80m	ok	The server answered {0}.	服务器返回了 {0}。	plugins-official/remote-trace/index.js:219	{0} = p.status
+remote-trace:rt350m	ok	annai couldn't get the batch ready.	annai 无法准备好这一批。	plugins-official/remote-trace/index.js:219	
+remote-trace:1t53c9s	ok	Sending trace	正在发送记录	plugins-official/remote-trace/index.js:262	
+remote-trace:zzw26r#other	ok	Sending trace: # waiting.	正在发送记录：# 条等待中。	plugins-official/remote-trace/index.js:262	plural; # = waiting; English: "Sending trace: # waiting." (one), "Sending trace: # waiting." (other)
+remote-trace:ata72m	ok	Trace	记录	plugins-official/remote-trace/index.js:292	
+remote-trace:bbadl	ok	Remote trace isn't sending	远程记录没有在发送	plugins-official/remote-trace/index.js:398	
+remote-trace:s7tmcq	ok	It needs the server's token. Add it in Settings → Plugins → Remote trace (for developers).	需要服务器的令牌。请在设置 → 插件 → 远程记录（开发者）中添加。	plugins-official/remote-trace/index.js:433	
+remote-trace:1ahd84q	ok	Its token has characters a request can't carry: letters, digits and punctuation only, no spaces.	令牌中含有请求无法携带的字符：只能用字母、数字和标点，不能有空格。	plugins-official/remote-trace/index.js:437	
+remote-trace:1qhwapr	ok	The trace server refuses what annai sends	记录服务器拒绝了 annai 发送的内容	plugins-official/remote-trace/index.js:483	
+remote-trace:18ckgf7	ok	{0} answered {1} {2} times in a row.	{0} 连续 {2} 次返回了 {1}。	plugins-official/remote-trace/index.js:484	{0} = host; {1} = res.status; {2} = refusals
+remote-trace:dslm8u	ok	{0} answered {1} {2} times in a row: the token may be wrong.	{0} 连续 {2} 次返回了 {1}：令牌可能不对。	plugins-official/remote-trace/index.js:484	{0} = host; {1} = res.status; {2} = refusals
+remote-trace:16cfxwg	ok	annai keeps trying about once a minute, and keeps the newest {0} entries until they go. Check the server address and the token in Settings → Plugins → Remote trace (for developers), or turn Send off there.	annai 会继续大约每分钟尝试一次，并保留最新的 {0} 条，直到发出为止。请在设置 → 插件 → 远程记录（开发者）中检查服务器地址和令牌，或在那里关闭“发送”。	plugins-official/remote-trace/index.js:485	{0} = kept
+remote-trace:m3chyg	ok	Open Remote trace	打开远程记录	plugins-official/remote-trace/index.js:486	
+remote-trace:1jgbgmt	draft	It stops after 24 hours, so it can't be forgotten.	为避免忘记关闭，它会在 24 小时后停止。	plugins-official/remote-trace/index.js:540	
+remote-trace:dbxfo4	draft	Detailed trace turned itself off	详细记录已自动关闭	plugins-official/remote-trace/index.js:540	
+remote-trace:dq1l0x	draft	Flagged	已标记	plugins-official/remote-trace/index.js:563	
+remote-trace:lhtiv0	draft	Not flagged	未能标记	plugins-official/remote-trace/index.js:563	
+remote-trace:h872lz	draft	Flag	标记	plugins-official/remote-trace/index.js:653	
+remote-trace:tebmzn	draft	Flag this moment	标记此刻	plugins-official/remote-trace/index.js:654	
+remote-trace:1cbqns1	draft	Detailed trace stayed off	详细记录仍为关闭	plugins-official/remote-trace/index.js:697	
+remote-trace:602wt0	draft	It needs a server address and Send on. Set those, then turn it on.	它需要服务器地址，并打开“发送”。设置好后再打开它。	plugins-official/remote-trace/index.js:697	
 scripted-model:@name	ok	Scripted model	脚本模型	plugins-official/scripted-model/annai-plugin.json:3	Note: annai's own rows call it 脚本模型 (Simulate).
 scripted-model:@description	ok	A model that replies from a script, for tests and plugin authors. It never uses the network.	按脚本回复的模型，供测试和插件作者使用。它从不使用网络。	plugins-official/scripted-model/annai-plugin.json:7	
 search-searxng:@name	ok	SearXNG Search	SearXNG 搜索	plugins-official/search-searxng/annai-plugin.json:3	Note: annai translates its own plugins' descriptive word (decision 10): Search → 搜索; annai's credits rows name Tavily's and Serper's the same way.
@@ -570,8 +580,8 @@ iwgrsx	ok	This calendar has more than {0} events. Export only the trip's dates f
 5l9pv6	ok	{0} is larger than a trip's calendar ever is (over {1}). Export only the trip's dates from your calendar, and add that file.	{0} 对一个旅行日历来说太大了（超过 {1}）。请只从日历中导出旅行日期内的事件，再添加那个文件。	src/core/imports.js:15	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:27	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Chinese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	ok	just now	刚刚	src/core/intl.js:130	
-1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	用手机扬声器时，Shiori 说话期间 annai 听不到你，所以你在她说话时说的话会被丢弃。轻点一下就能让她停下并开始收听。	src/core/koe/live.js:475	
-1ml2kgi	ok	Tap Shiori to talk over her	轻点 Shiori 即可打断她	src/core/koe/live.js:475	Note: The dock's Shiori button: tap it to talk over her.
+1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	用手机扬声器时，Shiori 说话期间 annai 听不到你，所以你在她说话时说的话会被丢弃。轻点一下就能让她停下并开始收听。	src/core/koe/live.js:477	
+1ml2kgi	ok	Tap Shiori to talk over her	轻点 Shiori 即可打断她	src/core/koe/live.js:477	Note: The dock's Shiori button: tap it to talk over her.
 3fqfy0	ok	Languages	语言	src/core/languages.js:336	
 1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你说的语言和 Shiori 回答所用的语言会告知每个负责听和说的模型，以免把简短的回复误认作其他语言。	src/core/languages.js:337	
 1giusr1	ok	Languages you speak	你说的语言	src/core/languages.js:338	
@@ -885,8 +895,8 @@ xi9ch6	ok	Shiori can't hear you: the speech-in list is empty. Add an entry in Se
 1oy92m8	ok	This browser has no phone dictation either.	这个浏览器也没有手机语音输入。	src/core/voice/resolve.js:165	
 l80ifa	ok	Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	请在设置 → 模型中添加一个语音转文字模型（如 OpenAI 或 Groq），或一个接受音频的主要模型。	src/core/voice/resolve.js:165	
 m5s9f4	ok	This browser can't play a voice as it arrives.	这个浏览器无法边接收边播放声音。	src/core/voice/speaker.js:132	
-jo5o9d	ok	This browser can't play sound here.	这个浏览器无法在这里播放声音。	src/core/voice/voice.js:316	
-ocv5zw	ok	This browser can't use the microphone here.	这个浏览器无法在这里使用麦克风。	src/core/voice/voice.js:361	
+jo5o9d	ok	This browser can't play sound here.	这个浏览器无法在这里播放声音。	src/core/voice/voice.js:366	
+ocv5zw	ok	This browser can't use the microphone here.	这个浏览器无法在这里使用麦克风。	src/core/voice/voice.js:411	
 pib2vo	ok	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	由浏览器自带的语音服务来听：在 Android 上通常是 Google 的服务器，在 iPhone 上是 Apple 的（有时就在手机上）。这个请求不是 annai 发出的，所以记录里看不到。	src/core/voice/where.js:15	
 m93xm3	ok	On this phone only: the browser recognizes your speech on the device.	仅在这部手机上：浏览器在设备上识别你的语音。	src/core/voice/where.js:16	
 1m5zm0a	ok	Phone dictation	手机语音输入	src/core/voice/where.js:18	

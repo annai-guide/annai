@@ -4,7 +4,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { startModelServer, anthropicToolReply, addProvider, openApp, waitForServiceWorker, startTrip } from './helpers.js';
+import { startModelServer, anthropicToolReply, addProvider, openApp, waitForServiceWorker, startTrip, fakeMicrophone } from './helpers.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 const TOKEN = 'e2e-trace-token-0123456789abcdef';
@@ -32,7 +32,7 @@ async function startSink(origin) {
   });
   const text = () => readFile(out, 'utf8').catch(() => '');
   return {
-    url, text,
+    url, text, dir,
     /** @returns {Promise<any[]>} */
     lines: async () => (await text()).split('\n').filter(Boolean).map((l) => JSON.parse(l)),
     stop: async () => {
@@ -120,6 +120,104 @@ test('Remote trace, installed from the catalog, sends a conversation to a sink t
     await startTrip(page, 'Carmel');
     await page.waitForTimeout(4000);
     expect((await sink.lines()).length).toBe(before);
+  } finally {
+    await llm.stop();
+    await sink.stop();
+  }
+});
+
+test('Detailed trace: it stays off with no server; on, a turn the microphone heard reaches the sink as a clip named by its heard entry, Flag sends the screen without what is in a field, and off stops it', async ({ page }) => {
+  const origin = new URL(String(test.info().project.use.baseURL)).origin;
+  const SECRET = 'sk-e2e-typed-into-a-field-0123456789';
+  const clip = fileURLToPath(new URL('../fixtures/voice/where-eat.wav', import.meta.url));
+  const json = (/** @type {any} */ o) => ({ status: 200, type: 'application/json', body: JSON.stringify(o) });
+  const llm = await startModelServer({
+    '/b/v1/messages': [sse(anthropicToolReply([{ name: 'speak', input: { text: 'Tacos.' } }, { name: 'sleep', input: {} }]))],
+    '/ears/audio/transcriptions': [json({ text: 'Where should we eat?' })],
+  });
+  const sink = await startSink(origin);
+  try {
+    await fakeMicrophone(page, [clip]);
+    await openApp(page, '#/models');
+    await waitForServiceWorker(page);
+    await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${llm.origin}/b`, key: KEY, model: 'b-model' });
+    await addProvider(page, 'Custom provider', { ability: 'Transcription', name: 'Ears', url: `${llm.origin}/ears`, key: 'sk-e2e-ears-key-0123456789', model: 'ears' });
+    await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
+    await page.getByRole('button', { name: 'Add to main' }).click();
+    await expect(page.getByText('1. b-model')).toBeVisible();
+    await page.getByLabel('Add a model to speech-in').selectOption({ label: 'ears' });
+    await page.getByRole('button', { name: 'Add to speech-in' }).click();
+    await expect(page.getByText('2. ears')).toBeVisible();
+    await page.goto('/#/voice');
+    await page.getByRole('radio', { name: 'On', exact: true }).check();
+    await expect(page.getByText('Voice is on.')).toBeVisible();
+
+    await page.goto('/#/add');
+    await page.getByRole('button', { name: 'Install Remote trace (for developers)' }).click();
+    await page.getByRole('link', { name: 'Open Remote trace (for developers)' }).click();
+    const detailed = page.getByRole('checkbox', { name: 'Detailed trace', exact: true });
+    const flag = page.getByRole('button', { name: 'Flag this moment' });
+    // The warning is on the switch, and off is the default.
+    await expect(page.getByText('Recordings include passengers and whatever is playing.')).toBeVisible();
+    await expect(detailed).not.toBeChecked();
+    await expect(flag).toHaveCount(0);
+
+    // Nowhere to send to: there is nothing to turn on, and it says so.
+    await detailed.click();
+    await expect(page.getByText('Detailed trace stayed off')).toBeVisible();
+    await expect(detailed).not.toBeChecked();
+    await expect(flag).toHaveCount(0);
+    await page.reload();
+    await expect(detailed).not.toBeChecked();
+
+    await page.getByLabel('Server address').fill(`${sink.url}/trace`);
+    await page.getByLabel('Token').fill(TOKEN);
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(page.getByLabel('Token')).toHaveAttribute('placeholder', 'saved');
+    await page.getByRole('checkbox', { name: 'Send', exact: true }).check();
+    await expect(page.getByRole('button', { name: 'Sending trace' })).toBeVisible();
+    await detailed.check();
+    await expect(flag).toBeVisible();
+
+    // A tap with a key typed into a field: the page's words go, the field's don't.
+    await page.getByLabel('Token').fill(SECRET);
+    await page.getByLabel('Token').blur(); // the dock steps aside for a field being typed in
+    await flag.click();
+    await expect(page.getByText('Flagged', { exact: true })).toBeVisible();
+    await expect.poll(async () => (await sink.lines()).filter((l) => l.type === 'trace.flag').length, { timeout: 20_000 }).toBe(1);
+    const lines = await sink.lines();
+    const flagged = lines.find((l) => l.type === 'trace.flag');
+    expect(flagged.data.screen).toContain('Recordings include passengers');
+    expect(flagged.data.screen).toContain('[nav: Shiori]');
+    expect(flagged.data.route).toBe('#/plugins/remote-trace');
+    expect(lines.find((l) => l.type === 'trace.screen').data.flag).toBe(flagged.data.at);
+    expect(await sink.text()).not.toContain(SECRET);
+    expect(await sink.text()).not.toContain(TOKEN);
+    expect(flagged.data.screen).not.toContain(`${sink.url}/trace`); // an address in a field stays there too
+
+    // A route change sends a copy of the new screen.
+    await page.goto('/#/talk');
+    await expect.poll(async () => (await sink.lines()).filter((l) => l.type === 'trace.screen' && l.data.route === '#/talk').length, { timeout: 20_000 }).toBe(1);
+
+    // A real turn through the browser's microphone path: its clip is on the sink's disk, named by the heard entry.
+    await page.getByRole('button', { name: 'Shiori' }).click();
+    await expect.poll(async () => (await sink.lines()).filter((l) => l.type === 'trace.clip').length, { timeout: 30_000 }).toBeGreaterThan(0);
+    await expect.poll(async () => (await sink.lines()).filter((l) => l.type === 'heard').length, { timeout: 30_000 }).toBeGreaterThan(0);
+    const after = await sink.lines();
+    const entry = after.find((l) => l.type === 'trace.clip');
+    expect(entry.data.id).toBe(after.find((l) => l.type === 'heard').data.id);
+    expect(entry.data.kind).toBe('turn');
+    const file = join(sink.dir, 'clips', entry.device, `${entry.data.id}.${entry.data.format}`);
+    await expect.poll(async () => (await readFile(file).catch(() => Buffer.alloc(0))).length, { timeout: 20_000 }).toBe(entry.data.bytes);
+
+    // It's in the Trace too.
+    await page.goto('/#/trace?type=trace.flag');
+    await expect(page.locator('.trace li').filter({ hasText: 'trace.flag' }).first()).toBeVisible();
+
+    // Off: the flag goes at once.
+    await page.goto('/#/plugins/remote-trace');
+    await detailed.uncheck();
+    await expect(flag).toHaveCount(0);
   } finally {
     await llm.stop();
     await sink.stop();

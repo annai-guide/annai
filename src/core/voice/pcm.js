@@ -148,3 +148,10 @@ export function biquad(kind, f0, fs, q = Math.SQRT1_2) {
     return y;
   };
 }
+
+/** Pieces of sound as one. @param {Int16Array[]} pieces */
+export function joinPcm(pieces) {
+  const all = new Int16Array(pieces.reduce((n, x) => n + x.length, 0));
+  pieces.reduce((at, x) => (all.set(x, at), at + x.length), 0);
+  return all;
+}

@@ -2,19 +2,23 @@
 // The receiving end of annai's Remote trace plugin (plugins-official/remote-trace): a tiny server, with
 // no dependencies, that takes the plugin's batches and appends each entry to a JSONL file, one line each,
 // with the device it came from and the time it arrived. For a developer watching a phone as it runs.
+// Detailed trace's recordings come to <any path>/clips and go under a folder clips/ beside that file, as clips/<device>/<id>.<format>.
 //   node scripts/trace-sink.mjs --port <p> (--token-file <path> | --token <t>) --out <file.jsonl> [--origin <allowed origin>]...
 // The token may come from TRACE_SINK_TOKEN instead; a file or the environment keeps it out of shell history and ps.
 // It listens on 127.0.0.1 only: a phone reaches it through an https proxy, such as `tailscale serve`.
 import http from 'node:http';
-import { appendFile, readFile } from 'node:fs/promises';
+import { appendFile, readFile, mkdir, rename, rm, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import { realpathSync } from 'node:fs';
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 /** Ports annai's own servers use on this machine: never the sink's. */
 export const TAKEN = [8765, 8790, 8791, 8792, 8796, 8797, 18010, 18011, 18012, 18013, 18014];
 /** The largest body the sink reads; the plugin sends at most half of it. */
 export const BODY_MAX = 1024 * 1024;
+/** The largest recording the sink reads; a turn is 15 to 30 s, well under 1 MiB even as WAV. */
+export const CLIP_MAX = 8 * 1024 * 1024;
 /** The most entries one batch may hold; the plugin sends at most 100. */
 export const ENTRIES_MAX = 1000;
 /** The origin annai is served from, always allowed. */
@@ -22,15 +26,33 @@ export const ANNAI = 'https://annai.guide';
 const TOKEN_MIN = 16;
 const USAGE = 'node scripts/trace-sink.mjs --port <p> (--token-file <path> | --token <t>) --out <file.jsonl> [--origin <allowed origin>]...\n(or the token in TRACE_SINK_TOKEN)';
 
+/** What a clip's id and format may be: no dot and no slash, so a name can't leave its folder. */
+const CLIP_ID = /^[A-Za-z0-9_-]{1,80}$/;
+const CLIP_FORMAT = /^[a-z0-9]{1,8}$/;
+
+/** A request's address, or null when it isn't a clip's: a path ending /clips. @param {string} [url] */
+function clipAsked(url) {
+  try {
+    const u = new URL(url ?? '/', 'http://sink');
+    return u.pathname.endsWith('/clips') ? u.searchParams : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A device's name as a folder's: other characters become _ (a user may name a device anything). @param {unknown} name */
+export const deviceFolder = (name) => String(name ?? '').slice(0, 64).replace(/[^A-Za-z0-9_-]/g, '_') || 'unknown';
+
 const digest = (/** @type {string} */ s) => createHash('sha256').update(s).digest();
 
 /**
- * Starts the sink on a port of this machine. log: each batch, in a line for the console; append: how lines reach the file.
+ * Starts the sink on a port of this machine. log: each batch, in a line for the console; append: how lines reach the file; write: how a clip's bytes do.
  * @param {{ port?: number, token: string, out: string, origins?: string[], now?: () => number, log?: (line: string) => void,
- *   append?: (file: string, text: string) => Promise<void> }} o
+ *   append?: (file: string, text: string) => Promise<void>, write?: (file: string, bytes: Buffer, o: { mode: number }) => Promise<void> }} o
  */
-export async function startSink({ port = 0, token, out, origins = [], now = () => Date.now(), log = () => {}, append = appendFile }) {
+export async function startSink({ port = 0, token, out, origins = [], now = () => Date.now(), log = () => {}, append = appendFile, write = writeFile }) {
   const allowed = new Set([ANNAI, ...origins.map((o) => o.replace(/\/+$/, ''))]);
+  const clips = join(dirname(out), 'clips');
   const want = digest(`Bearer ${token}`);
   /** Writes one after another, so lines keep the order batches came in. */
   let writing = Promise.resolve();
@@ -70,9 +92,11 @@ export async function startSink({ port = 0, token, out, origins = [], now = () =
       answer(405, { error: 'method', message: 'The sink takes POST.' }, { Allow: 'GET, POST, OPTIONS' });
       return;
     }
+    const clip = clipAsked(req.url);
+    const most = clip ? CLIP_MAX : BODY_MAX;
     // Refused as soon as it is too big, whatever comes after; the answer is written before the connection goes.
-    const tooBig = () => answer(413, { error: 'size', message: `The body is larger than the ${BODY_MAX} bytes the sink reads.` }, { Connection: 'close' }, () => req.socket.destroy());
-    if (Number(req.headers['content-length'] ?? 0) > BODY_MAX) {
+    const tooBig = () => answer(413, { error: 'size', message: `The body is larger than the ${most} bytes the sink reads.` }, { Connection: 'close' }, () => req.socket.destroy());
+    if (Number(req.headers['content-length'] ?? 0) > most) {
       tooBig();
       return;
     }
@@ -89,7 +113,7 @@ export async function startSink({ port = 0, token, out, origins = [], now = () =
     req.on('data', (c) => {
       if (refused) return;
       size += c.length;
-      if (size <= BODY_MAX) {
+      if (size <= most) {
         chunks.push(c);
         return;
       }
@@ -99,6 +123,30 @@ export async function startSink({ port = 0, token, out, origins = [], now = () =
     });
     req.on('end', () => {
       if (refused) return;
+      if (clip) {
+        const [id, format] = [clip.get('id') ?? '', clip.get('format') ?? ''];
+        if (!CLIP_ID.test(id) || !CLIP_FORMAT.test(format) || !size) {
+          answer(400, { error: 'clip', message: 'A clip has sound in its body, an id of letters, digits, - and _, and a format of lowercase letters and digits.' });
+          return;
+        }
+        const name = join(deviceFolder(clip.get('device')), `${id}.${format}`);
+        const file = join(clips, name);
+        const part = `${file}.${randomBytes(4).toString('hex')}.part`;
+        // Whole or not at all: a retry of the same clip replaces it, and a full disk leaves nothing behind.
+        mkdir(dirname(file), { recursive: true, mode: 0o700 })
+          .then(() => write(part, Buffer.concat(chunks), { mode: 0o600 }))
+          .then(() => rename(part, file))
+          .then(() => {
+            log(`${new Date(now()).toISOString()} ${name}: ${size} bytes`);
+            answer(200, { file: name });
+          }, async (/** @type {any} */ e) => {
+            await rm(part, { force: true }).catch(() => {});
+            const full = e?.code === 'ENOSPC' || e?.code === 'EDQUOT';
+            answer(full ? 507 : 500, { error: full ? 'full' : 'write', message: full ? 'The disk is full.' : "The sink couldn't write the clip." });
+            log(`couldn't write ${name}: ${e?.message ?? e}`);
+          });
+        return;
+      }
       /** @type {any} */
       let batch;
       try {
@@ -191,7 +239,7 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
   for (const signal of /** @type {const} */ (['SIGTERM', 'SIGINT'])) process.once(signal, () => { s.close().then(() => process.exit(0), () => process.exit(1)); });
   console.log([
     `annai trace sink: ${s.origin}/, appending to ${out}`,
-    `It takes batches from ${[ANNAI, ...origins].join(', ')}, with the token.`,
+    `It takes batches from ${[ANNAI, ...origins].join(', ')}, with the token. Recordings go under ${join(dirname(/** @type {string} */ (out)), 'clips')}.`,
     'A phone needs https in front of it. On a tailnet, for example:',
     `  tailscale serve --bg --https=8443 http://127.0.0.1:${s.port}`,
     'Then in annai: Settings → Plugins → Remote trace (for developers), the server address',
