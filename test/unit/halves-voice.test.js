@@ -825,3 +825,46 @@ test('a claim goes through the send path as a msg.user with claim: Koe and Kokor
   assert.match(JSON.stringify(k.sent['model-koe']), /\[the user says this was for you\] \\"Is there parking\?\\"/);
   assert.match(JSON.stringify(k.sent['model-0']), /\[the user says this was for you\] \\"Is there parking\?\\"/);
 });
+
+// Drive2-ui fix pass 1, finding 1: the listening window failed after it opened; nothing said "sleeping", so the hold never ended.
+test('Auto: a tap whose window fails after it opened (dictation refused, then the microphone too) lets the dock and voice go', async (t) => {
+  useClock(t);
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { halves: true, voice: { mode: 'auto', dictation: true, micFails: 'NotAllowedError', speechIn: ['dictation', 'm-hear'] } });
+  assert.equal(k.agent.tap(), 'listening');
+  await until(() => k.agent.state.name === 'listening');
+  assert.equal(k.voice.on, true);
+  k.platform.dictation.fail('not-allowed');
+  await until(() => k.notices.length > 0);
+  await until(() => !k.voice.on);
+  assert.equal(k.agent.state.name, 'sleeping', 'the dock stops saying Listening');
+});
+
+// Fix pass 1, finding 2: a claim sent while Koe thinks was taken by its speak or wait as plain typing: stored without claim, read as "wrote".
+for (const [tool, input, voice] of /** @type {const} */ ([['wait', { seconds: 5 }, false], ['speak', { text: 'Anything else?' }, true]])) {
+  test(`a claim sent while Koe thinks, taken by its ${tool}: stored with claim, read as a claim, and the line still says it was spoken`, async (t) => {
+    useClock(t);
+    const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], {
+      koe: { talk: [{ delayMs: 120, toolCalls: [{ name: tool, input }] }, sleep, sleep] },
+      voice: { mode: voice ? 'on' : 'off', speechIn: ['m-hear'] },
+    });
+    k.agent.send('Hi');
+    await until(() => (k.sent['model-koet'] ?? []).length === 1);
+    k.agent.send('Is there parking?', { claim: 'h1' });
+    await k.agent.idle();
+    const users = (await k.events(['msg.user'])).filter((/** @type {any} */ e) => e.data.text !== 'Hi');
+    assert.deepEqual(users.map((/** @type {any} */ e) => e.data.claim), ['h1'], JSON.stringify(users));
+    assert.match(JSON.stringify(k.sent['model-koet'].at(-1)), /\[the user says this was for you\] \\+"Is there parking\?/);
+    assert.doesNotMatch(JSON.stringify(k.sent['model-koet'].at(-1)), /The user wrote/);
+  });
+}
+
+// Finding 3: a tap is "tapped", also when it reaches the half as a message.
+test('a tap that reaches Agent.send as a message is stored as chosen, and Kokoro reads it as a choice', async (t) => {
+  useClock(t);
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { type: { rules: [{ match: '.', reply: calls(['speak', { text: 'Ok.' }]) }] } } });
+  k.agent.send('Tell me more', { chose: true });
+  await k.agent.idle();
+  const line = (await k.events(['msg.user']))[0];
+  assert.deepEqual([line.data.chose, line.data.split], [true, true]);
+  assert.match(JSON.stringify(k.sent['model-0']), /\[the user chose\] \\"Tell me more\\"/);
+});

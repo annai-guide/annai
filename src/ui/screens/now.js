@@ -159,7 +159,7 @@ export async function eventCard(ctx, e) {
   const app = await readAppSettings(ctx.ws);
   const hers = wording(app, true);
   const who = () => h('span', { class: 'who', text: t`Shiori` });
-  if (e.type === 'out.show') return h('div', { class: 'shiori-card' }, h('span', { class: 'who', text: cardWho(ctx, d.card ?? {}) }), shownCard(d, { ctx, onChoice: (o) => ctx.agent.send(o), say: hers }));
+  if (e.type === 'out.show') return h('div', { class: 'shiori-card' }, h('span', { class: 'who', text: cardWho(ctx, d.card ?? {}) }), shownCard(d, { ctx, onChoice: (o) => ctx.agent.send(o, { chose: true }), say: hers }));
   if (e.type === 'reminder') return h('p', { class: 'system-line' }, ...reminderParts(d, wording(app)));
   const text = String({ ...d, ...(await storedTexts(ctx.store, e)) }.text ?? '');
   if (!d.voice) return h('div', { class: 'shiori-card' }, who(), h('p', { ...hers(text), text }));

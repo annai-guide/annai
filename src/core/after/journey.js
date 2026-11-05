@@ -121,7 +121,7 @@ export async function readJourney({ store, ws, trip, namer = () => null }) {
       if (d.card && typeof d.card === 'object' && !Array.isArray(d.card)) entries.push({ kind: 'card', at: e.ts, card: d.card, ...(d.tune ? { tune: true } : {}) });
     } else if (e.type === 'msg.user') {
       const text = String({ ...d, ...(d.stored ? await storedTexts(store, e) : {}) }.text ?? '').trim();
-      if (text) entries.push({ kind: 'said', at: e.ts, text, spoken: false });
+      if (text) entries.push({ kind: 'said', at: e.ts, text, spoken: Boolean(d.claim) }); // a claim ("This was for Shiori") is words that were spoken
     } else if (e.type === 'heard' && !d.dismissed) {
       const said = { kind: /** @type {const} */ ('said'), at: e.ts, text: typeof d.text === 'string' ? d.text.trim() : '', spoken: true };
       entries.push(said);

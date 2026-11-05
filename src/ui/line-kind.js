@@ -35,9 +35,10 @@ export function lineKind(e) {
     return d.text === PHOTO_ONLY || d.text === FILES_ONLY ? line('sent', '', '', '') : line('typed', '', 'keyboard', t`typed`);
   }
   if (e.type === 'heard') {
-    if (typeof d.text !== 'string') return line('hearing', '', 'mic', t`hearing you`);
-    // In a live session, dismissed means only that the model said nothing: no one judged the words.
+    // Dismissed first: it is a quiet line with or without words. In a live session it means only that the model said nothing: no one judged the words.
     if (d.dismissed) return d.source === 'live' ? line('unanswered', '', 'ear', t`heard · she didn't answer`) : line('judged', '', 'ear', t`heard · judged not for her`);
+    // The words may come later, or never (a clip kept, not yet written down): the label is true in both.
+    if (typeof d.text !== 'string') return line('hearing', '', 'mic', t`spoken · no words yet`);
     const words = d.source === 'dictation' ? t`spoken · phone dictation` : d.source === 'live' ? t`spoken · live voice` : t`spoken`;
     return line('spoken', 'blue', 'mic', words);
   }

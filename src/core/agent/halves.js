@@ -731,6 +731,7 @@ export class Halves {
       try {
         await this.#refresh();
         this.#tapNow();
+        await this.#tapFollow; // the hold stays while a live session that couldn't open is answered by Classic's
       } finally {
         this.#tapStarting = false;
         this.#endTapHold();
@@ -744,7 +745,20 @@ export class Halves {
     if (this.koeState !== 'live') return this.talking.tap();
     this.voice?.unlock();
     this.#koeOpen();
-    return this.live.tap();
+    const did = this.live.tap();
+    const opened = this.live.tapping;
+    if (did === 'listening' && opened) this.#tapFollow = opened.then((r) => (r === 'failed' ? this.#liveTapFailed() : undefined)).catch(() => {});
+    return did;
+  }
+
+  /** What follows a live tap whose session could not open (or nothing). @type {Promise<void> | undefined} */
+  #tapFollow;
+
+  /** A tap's live session could not open: Koe's way is worked out again, and the tap goes to Classic (or Kokoro) if one can answer; else the user is told, as for a send. */
+  async #liveTapFailed() {
+    await this.#refresh();
+    if (this.koeState !== 'live') this.#tapNow();
+    if (this.koeState === 'live' || this.koeState === 'down') this.#notice({ tone: 'warn', title: t`Koe's live voice couldn't start`, body: t`Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.` });
   }
 
   /** The exchange a tap held voice on for is over once nothing is listening, speaking or working: Auto decides again. Kokoro's answer may still be on its way to Koe's voice, so it counts too. */
