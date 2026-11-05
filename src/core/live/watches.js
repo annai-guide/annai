@@ -5,9 +5,9 @@ import { newId } from '../scopes.js';
  * scope of the conversation they belong to (a trip, or "me"), so removing a trip removes its
  * watches (§4.9). The plan's own watches aren't stored: they come from the plan.
  * @typedef {import('../workspace.js').Workspace} Workspace
- * @typedef {{ id: string, owner: string, when: { type: string, [k: string]: any }, repeat?: boolean, urgent?: boolean, fallback: string, expires?: string, created?: string, setAt?: { lat: number, lng: number }, path?: string,
+ * @typedef {{ id: string, owner: string, when: { type: string, [k: string]: any }, repeat?: boolean, urgent?: boolean, fallback: string, expires?: string, created?: string, setAt?: { lat?: number, lng?: number, km?: number }, path?: string,
  *   say?: import('./plan-watches.js').PlanSay }} Watch
- *   owner: shiori, system or plugin:<id>; setAt: where the user was when a moved watch was set (read tolerantly: anything else is no place); path: where it is stored (not part of the record); urgent: its alert loses its point if late, so
+ *   owner: shiori, system or plugin:<id>; setAt: where the user was, and the odometer's km, when a moved watch was set (read tolerantly: anything else is no place, and no km); path: where it is stored (not part of the record); urgent: its alert loses its point if late, so
  *   live Koe says it at once (drive-test design §7)
  */
 

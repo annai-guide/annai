@@ -5,14 +5,14 @@ import { meters } from './geo.js';
  * with 30–60 s hysteresis. GPS can't tell driving from riding a bus; both are moving fast, and
  * voice Auto treats them the same (§10.5).
  *
- * An activity ends once no speed has said it for the hold. The slow speeds on the way need not agree:
- * at a stop they wander across STILL_BELOW, and each change of mind starting the hold again kept
- * "moving fast" for minutes after parking (second drive). Leaving moving fast, any speed that said still
- * in the hold makes it still; else it is what the last speed said. A hold towards another activity starts
+ * An activity ends once no speed has said it for the hold. Leaving moving fast, the slow speeds need not agree (at a stop they wander across
+ * STILL_BELOW): any that said still in the hold makes it still, else it is what the last speed said. A hold towards another activity starts
  * again when the speeds say a third one.
  * @typedef {'still' | 'walking' | 'moving-fast' | 'unknown'} Activity
  * @typedef {import('./geo.js').Fix} Fix
- * @typedef {{ from: Activity, to: Activity, at: number }} Change
+ * @typedef {{ heldS: number, gapS: number, readings: Record<string, number>, heards: number }} Why  what a change rested on, for the trace
+ * @typedef {{ from: Activity, to: Activity, at: number, why: Why }} Change
+ *   at: when it happened: leaving moving fast, when its hold ran out, not when annai found out (a locked phone)
  */
 
 /** m/s: below this, still. */
@@ -37,7 +37,7 @@ const RECENT_MS = 60_000;
 export class ActivityTracker {
   /** @type {Activity} */
   activity = 'unknown';
-  /** The speed last worked out, m/s. @type {number | null} */
+  /** The speed last worked out, m/s; null: none since annai started or came back, which reads as slow. @type {number | null} */
   speed = null;
   /** @type {number | null} since when the speeds have said something other than the activity */
   #leaving = null;
@@ -58,8 +58,6 @@ export class ActivityTracker {
   /** The largest speed and accuracy read since the last change or beat. */
   #maxSpeed = 0;
   #maxAcc = 0;
-  /** What the last change rested on, for the trace: the hold and the gap before it in seconds, the readings and the unlocks since the change before. @type {{ heldS: number, gapS: number, readings: Record<string, number>, heards: number } | null} */
-  why = null;
 
   /** @param {Fix} fix @returns {Change | null} the change, when there is one */
   feed(fix) {
@@ -100,11 +98,7 @@ export class ActivityTracker {
     this.#lastAt = now;
   }
 
-  /**
-   * What a quiet stretch rested on, for the trace, when nothing has changed for a while: the hold running and the time since the last
-   * fix in seconds, the readings, unlocks, and the largest speed and accuracy since the last change or beat. Starts those counts again.
-   * @param {number} now
-   */
+  /** What a quiet stretch rested on, for the trace: as a change's why, and the largest speed and accuracy since the last change or beat. Starts those counts again. @param {number} now */
   beat(now) {
     const data = {
       heldS: this.#leaving === null ? 0 : Math.round((now - this.#leaving) / 1000), gapS: this.#lastAt === null ? 0 : Math.round((now - this.#lastAt) / 1000),
@@ -125,9 +119,8 @@ export class ActivityTracker {
   }
 
   /**
-   * The GPS (re)started, after annai was off screen: a gap counts from now, and the speed before it and the way travelled meanwhile say
-   * nothing of the speed now. A change starts holding again with the next fix, except leaving moving fast: time off screen doesn't
-   * restart that hold (a parked phone looked at every minute still ends it), and it counts from the last fix when none had begun.
+   * The GPS (re)started after annai was off screen: a gap counts from now, and the speed and way before it say nothing of the speed now.
+   * A change starts holding again with the next fix, except leaving moving fast, which goes on (counting from the last fix if none had begun).
    * @param {number} now
    */
   heard(now) {
@@ -138,6 +131,7 @@ export class ActivityTracker {
     this.#target = null;
     this.#seen = null;
     this.#recent = [];
+    this.speed = null; // a fast speed from before the gap would hold moving fast through any silence after it
     this.#heards++;
   }
 
@@ -164,8 +158,9 @@ export class ActivityTracker {
 
   /** @param {Activity} to @param {number} at @param {number} gap ms since the fix before @returns {Change} */
   #become(to, at, gap) {
-    const change = { from: this.activity, to, at };
-    this.why = { heldS: this.#leaving === null ? 0 : Math.round((at - this.#leaving) / 1000), gapS: Math.round(gap / 1000), readings: this.#counts, heards: this.#heards };
+    const why = { heldS: this.#leaving === null ? 0 : Math.round((at - this.#leaving) / 1000), gapS: Math.round(gap / 1000), readings: this.#counts, heards: this.#heards };
+    const ended = this.activity === 'moving-fast' && this.#leaving !== null ? Math.min(at, this.#leaving + LEAVE_FAST_MS) : at;
+    const change = { from: this.activity, to, at: ended, why };
     this.#counts = zero();
     this.#heards = 0;
     this.#maxSpeed = this.#maxAcc = 0;
@@ -179,9 +174,9 @@ export class ActivityTracker {
     return this.activity === 'moving-fast' ? LEAVE_FAST_MS : SETTLE_MS;
   }
 
-  /** The last speed was a slow one (while moving fast, below walking: slow traffic before a tunnel isn't a stop), and the activity isn't still yet. */
+  /** The last speed was a slow one, or there is none (while moving fast, below walking: slow traffic before a tunnel isn't a stop), and the activity isn't still yet. */
   #quiet() {
-    return this.speed !== null && this.speed < (this.activity === 'moving-fast' ? WALK_BELOW : FAST_FROM) && this.activity !== 'still';
+    return (this.speed === null || this.speed < (this.activity === 'moving-fast' ? WALK_BELOW : FAST_FROM)) && this.activity !== 'still';
   }
 
   /** Forgets everything: live mode went off. */
@@ -197,7 +192,6 @@ export class ActivityTracker {
     this.#counts = zero();
     this.#heards = 0;
     this.#maxSpeed = this.#maxAcc = 0;
-    this.why = null;
   }
 
   /**

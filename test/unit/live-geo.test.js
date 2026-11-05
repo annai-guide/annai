@@ -1,13 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { meters, fixOf, keep, travelMinutes, modeFor, kmText, span, KEEP_MS } from '../../src/core/live/geo.js';
-import { ActivityTracker } from '../../src/core/live/activity.js';
+import { ActivityTracker, QUIET_STILL_MS } from '../../src/core/live/activity.js';
 
 import { off, BIXBY, NEPENTHE } from './live-kit.js';
 
 const T0 = Date.parse('2026-11-27T09:00:00-08:00');
 /** @param {{ lat: number, lng: number }} p @param {number} s seconds after T0 @param {Partial<import('../../src/core/live/geo.js').Fix>} [o] */
 const at = (p, s, o = {}) => /** @type {import('../../src/core/live/geo.js').Fix} */ ({ ...p, accuracy: 8, at: T0 + s * 1000, speed: null, heading: null, source: 'gps', ...o });
+
+/** A change without what it rested on. @param {import('../../src/core/live/activity.js').Change | null} c */
+const bare = (c) => (c ? { from: c.from, to: c.to, at: c.at } : c);
 
 test('meters between two points', () => {
   assert.equal(meters(BIXBY, BIXBY), 0);
@@ -129,10 +132,10 @@ test('activity asked without a fix: a held change completes on time; a quiet GPS
   for (const [s, speed] of [[245, 0.8], [265, 1.3], [290, 1.5]]) assert.equal(t.feed(at(p, s, { speed })), null);
   assert.equal(t.due(), T0 + 305_000);
   assert.equal(t.tick(T0 + 304_000), null);
-  assert.deepEqual(t.tick(T0 + 305_000), { from: 'moving-fast', to: 'walking', at: T0 + 305_000 });
+  assert.deepEqual(bare(t.tick(T0 + 305_000)), { from: 'moving-fast', to: 'walking', at: T0 + 305_000 });
   assert.equal(t.due(), T0 + 410_000, 'two minutes after the last fix');
   assert.equal(t.tick(T0 + 409_000), null);
-  assert.deepEqual(t.tick(T0 + 410_000), { from: 'walking', to: 'still', at: T0 + 410_000 });
+  assert.deepEqual(bare(t.tick(T0 + 410_000)), { from: 'walking', to: 'still', at: T0 + 410_000 });
   assert.equal(t.due(), null);
   const u = new ActivityTracker();
   for (let s = 0; s <= 40; s += 5) u.feed(at(BIXBY, s, { speed: 1.2 }));
@@ -217,7 +220,7 @@ test('a span over a gap: a no-speed fix after a tunnel reads the way travelled; 
   u.feed(at(BIXBY, 0, { speed: 14 }));
   u.heard(T0 + 200_000);
   u.feed(at(far, 200));
-  assert.equal(u.speed, 14, 'off screen: the way travelled says nothing of the speed now');
+  assert.equal(u.speed, null, 'off screen: the way travelled says nothing of the speed now');
 });
 
 test('still after a quiet GPS stays still at every later look, until a new fix says otherwise', () => {
@@ -275,7 +278,7 @@ test('no fix for 15 minutes is still, whatever the last speed was; a tunnel shor
   slow.feed(at(BIXBY, 0, { speed: 3.5 })); // into a garage
   assert.equal(slow.due(), T0 + GAP);
   assert.equal(slow.tick(T0 + GAP - 1), null);
-  assert.deepEqual(slow.tick(T0 + GAP), { from: 'moving-fast', to: 'still', at: T0 + GAP });
+  assert.deepEqual(bare(slow.tick(T0 + GAP)), { from: 'moving-fast', to: 'still', at: T0 + GAP });
   assert.equal(slow.due(), null);
   const glitch = new ActivityTracker();
   for (let s = 0; s <= 20; s += 5) glitch.feed(at(BIXBY, s, { speed: 0 }));
@@ -285,9 +288,9 @@ test('no fix for 15 minutes is still, whatever the last speed was; a tunnel shor
   assert.equal(glitch.tick(T0 + 25_000 + GAP)?.to, 'still');
   const unlocked = driving();
   unlocked.feed(at(BIXBY, 0, { speed: 14 }));
-  unlocked.heard(T0 + 3_600_000); // an hour off screen, and no fix since
-  assert.equal(unlocked.due(), T0 + 3_600_000 + GAP);
-  assert.equal(unlocked.tick(T0 + 3_600_000 + GAP)?.to, 'still');
+  unlocked.heard(T0 + 3_600_000); // an hour off screen, and no fix since: no speed to say it is moving
+  assert.equal(unlocked.due(), T0 + 3_600_000 + QUIET_STILL_MS);
+  assert.equal(unlocked.tick(T0 + 3_600_000 + QUIET_STILL_MS)?.to, 'still');
 });
 
 test('after a gap the last speed says nothing: a no-speed first fix back decides nothing', () => {
@@ -320,9 +323,37 @@ test('what the last change rested on: readings since the one before, the hold, t
   t.feed(at(BIXBY, 20, { speed: 0 }));
   t.feed(at(BIXBY, 40, { speed: 4 }));
   assert.equal(t.activity, 'moving-fast');
-  t.feed(at(BIXBY, 62, { speed: 0.3 }));
+  const c = t.feed(at(BIXBY, 62, { speed: 0.3 }));
   assert.equal(t.activity, 'still');
-  assert.deepEqual(t.why, { heldS: 62, gapS: 22, readings: { still: 2, walking: 1, between: 1, fast: 5, none: 1 }, heards: 1 }); // fast: the drive's last fixes, since it began
+  assert.deepEqual(c?.why, { heldS: 62, gapS: 22, readings: { still: 2, walking: 1, between: 1, fast: 5, none: 1 }, heards: 1 }); // fast: the drive's last fixes, since it began
   t.feed(at(BIXBY, 70, { speed: 0 }));
-  assert.equal(t.why.readings.still, 2, 'the counts stay with the change they explain');
+  assert.equal(c?.why.readings.still, 2, 'the counts stay with the change they explain');
+});
+
+test('after an unlock or a reload one fix without a speed and then silence ends moving fast in 2 min, not 15 (fix pass 2)', () => {
+  const t = driving();
+  t.feed(at(BIXBY, 0, { speed: 14 }));
+  t.heard(T0 + 600_000);
+  assert.equal(t.speed, null, 'the speed before the gap says nothing of now');
+  t.feed(at(BIXBY, 601)); // no speed, nothing to compare it with
+  assert.equal(t.due(), T0 + 601_000 + 120_000);
+  assert.equal(t.tick(T0 + 601_000 + 119_000), null);
+  assert.equal(t.tick(T0 + 601_000 + 120_000)?.to, 'still');
+  // A fast speed after the gap keeps a tunnel's moving fast as before.
+  const u = driving();
+  u.heard(T0 + 600_000);
+  u.feed(at(BIXBY, 601, { speed: 14 }));
+  assert.equal(u.tick(T0 + 601_000 + 600_000), null);
+});
+
+test('moving fast is said to have ended when its hold ran out, not when the page found out (fix pass 2)', () => {
+  const t = driving();
+  t.feed(at(BIXBY, 0, { speed: 14 }));
+  t.feed(at(BIXBY, 10, { speed: 0.2 })); // parked: the hold begins
+  t.heard(T0 + 40 * 60_000); // locked for 40 minutes, then unlocked
+  const c = t.feed(at(BIXBY, 40 * 60 + 5, { speed: 0.1 }));
+  assert.equal(c?.to, 'still');
+  assert.equal(c?.at, T0 + 10_000 + 60_000, 'a minute after the first slow speed');
+  assert.deepEqual(Object.keys(c?.why ?? {}).sort(), ['gapS', 'heards', 'heldS', 'readings']);
+  assert.equal(/** @type {any} */ (t).why, undefined, 'what it rested on goes with the change');
 });

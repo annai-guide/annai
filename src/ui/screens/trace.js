@@ -211,10 +211,11 @@ export function traceSummary(e, { costs: perWake } = {}) {
   }
   if (e.type === 'app.start') return /* en */ `annai started · GPS ${d.gps}${d.activity && d.activity !== 'unknown' ? ` · ${d.activity} restored` : ''}`;
   if (e.type === 'state' && typeof d.activity === 'string') {
-    // Live mode's activity: a change and what it rested on, or (from equal to activity) a beat while nothing changed. No positions.
-    const r = d.readings ?? {};
-    return /* en */ line(d.from === d.activity ? `${d.activity}, unchanged` : `${d.from} to ${d.activity}`, typeof d.speed === 'number' ? `${d.speed} m/s` : null, `held ${d.heldS} s`, `${d.gapS} s since a fix`,
-      `readings still ${r.still}, walking ${r.walking}, between ${r.between}, fast ${r.fast}, none ${r.none}`, d.heards ? `${d.heards} unlocks` : null,
+    // Live mode's activity: a change and what it rested on, or (from equal to activity) a beat or a km of way. No positions.
+    const r = d.readings;
+    return /* en */ line(d.from === d.activity ? `${d.activity}, unchanged` : `${d.from} to ${d.activity}`, typeof d.speed === 'number' ? `${d.speed} m/s` : null,
+      typeof d.odometer === 'number' ? `${d.odometer.toFixed(1)} km` : null, d.heldS !== undefined ? `held ${d.heldS} s` : null, d.gapS !== undefined ? `${d.gapS} s since a fix` : null,
+      r ? `readings still ${r.still}, walking ${r.walking}, between ${r.between}, fast ${r.fast}, none ${r.none}` : null, d.heards ? `${d.heards} unlocks` : null,
       d.maxSpeed !== undefined ? `at most ${d.maxSpeed} m/s, ±${d.maxAccuracy} m` : null);
   }
   if (e.type === 'state') {
