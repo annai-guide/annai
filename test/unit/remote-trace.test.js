@@ -906,7 +906,8 @@ test('Flag writes the time and the screen copy, names the last clip, marks the n
   await k.tapFlag();
   const [f] = logged(k, 'trace.flag');
   assert.equal(f.data.at, k.clock.now());
-  assert.equal(f.data.screen, '[main]\nThe road');
+  assert.equal(f.data.screen, undefined, 'the copy is its own entry');
+  assert.equal(f.data.route, '#/now');
   assert.equal(f.data.lastClip, 'before');
   assert.equal(f.scope, 'sys:device');
   const [copy] = logged(k, 'trace.screen');
@@ -988,4 +989,133 @@ test('a screen copy is the visible text with its landmarks, and nothing from a f
   const text = screenText(root, { gone: (/** @type {any} */ n) => n.style.display === 'none', seen: (/** @type {any} */ n) => n.style.off !== 'yes' });
   assert.equal(text, '[header]\nBig Sur\n[main]\nYour key\n[section: Today]\nLunch\nDinner\n[dialog]\nSure?');
   assert.equal(text.includes(KEY), false);
+});
+
+// Fix pass 1 (findings from the review of Detailed trace).
+/** What reached the server's batch address, by entry type. @param {any} k */
+const sentTypes = (k) => k.posts.filter((/** @type {any} */ x) => x.url === SERVER).flatMap((/** @type {any} */ x) => x.body.entries).map((/** @type {any} */ e) => e.type).filter((/** @type {string} */ t) => t !== 'file.write');
+
+test('screen text that waited offline does not leave after Detailed trace goes off: the flag and the copy go with what waits', async () => {
+  const k = await kit({ settings: ON, online: false, screen: () => ({ route: '#/now', text: 'Dinner at eight' }) });
+  k.give(entry(1));
+  k.hear('a');
+  await k.tapFlag();
+  k.route();
+  await k.clock.advance(SCREEN_SETTLE_MS);
+  assert.ok(logged(k, 'trace.screen').length >= 2 && logged(k, 'trace.flag').length === 1);
+  await k.save({ detailed: false });
+  await k.goOnline();
+  await k.clock.advance(RETRY_MAX_MS);
+  const types = sentTypes(k);
+  assert.deepEqual(types, ['msg.user'], 'only the ordinary entry goes');
+  assert.equal(JSON.stringify(k.posts).includes('Dinner at eight'), false);
+  k.stop();
+});
+
+test('a batch on its way when Detailed trace goes off, and refused, comes back without its trace entries', async () => {
+  let release = () => {};
+  const held = new Promise((r) => { release = () => r(null); });
+  const k = await kit({ settings: ON, screen: () => ({ route: '#/now', text: 'Dinner at eight' }), answer: async (_n, init) => { if (typeof init.body === 'string') { await held; return new Response('{}', { status: 503 }); } return new Response('{}'); } });
+  await k.tapFlag();
+  k.give(entry(1));
+  await k.clock.advance(BATCH_MS);
+  assert.equal(k.posts.filter((p) => p.url === SERVER).length, 1, 'the batch is on its way');
+  await k.save({ detailed: false });
+  release();
+  await k.clock.advance(RETRY_MAX_MS * 2);
+  const later = k.posts.filter((p) => p.url === SERVER).slice(1).flatMap((p) => p.body.entries.map((/** @type {any} */ e) => e.type));
+  assert.deepEqual([...new Set(later)].filter((t) => t !== 'file.write'), ['msg.user']);
+  k.stop();
+});
+
+test('a different server turns Detailed trace off: clips waiting and the one on its way do not go to the new address, and the switch is saved off', async () => {
+  const k = await kit({ settings: ON, answer: () => new Promise(() => {}) });
+  k.hear('a');
+  k.hear('b');
+  await k.clock.advance(0);
+  assert.equal(clipPosts(k).length, 1);
+  const flight = clipPosts(k)[0].init.signal;
+  await k.save({ server: 'https://other.example/trace' });
+  assert.equal(flight.aborted, true, 'the clip on its way is cut off');
+  assert.equal(k.tapped.size, 0);
+  assert.equal(k.chips.has('flag'), false);
+  assert.equal(k.saved.detailed, false);
+  assert.equal(k.saved.detailedUntil, null);
+  assert.equal(k.cards.at(-1).title, 'Detailed trace turned off');
+  await k.clock.advance(RETRY_MAX_MS);
+  assert.equal(k.posts.filter((p) => p.url.startsWith('https://other.example')).filter((p) => new URL(p.url).pathname.endsWith('/clips')).length, 0);
+  k.stop();
+});
+
+test('the same server saved again keeps Detailed trace on, and its address is compared as written without spaces', async () => {
+  const k = await kit({ settings: ON });
+  await k.save({ server: ` ${SERVER} ` });
+  assert.equal(k.tapped.size, 1);
+  assert.equal(k.saved.detailed, true);
+  k.stop();
+});
+
+test('a screen copy leaves out what is inside a closed <details>, and keeps its summary; an open one is read', () => {
+  const closed = el('DETAILS', {}, el('SUMMARY', {}, 'net.request'), el('PRE', {}, '{"url":"https://example.test/forecast?lat=1"}'));
+  const open = el('DETAILS', { open: '' }, el('SUMMARY', {}, 'Row'), el('PRE', {}, 'its json'));
+  const text = screenText(el('BODY', {}, closed, open), { gone: () => false, seen: () => true });
+  assert.equal(text, 'net.request\nRow\nits json');
+});
+
+test('on the Trace screen no text is copied, only the route: not by a route change, not by Flag', async () => {
+  const k = await kit({ settings: ON, screen: () => ({ route: '#/trace', text: 'open row {"lat":1}' }) });
+  k.route();
+  await k.clock.advance(SCREEN_SETTLE_MS);
+  await k.tapFlag();
+  const copies = logged(k, 'trace.screen');
+  assert.equal(copies.length, 2);
+  for (const c of copies) assert.deepEqual([c.data.route, c.data.text], ['#/trace', '']);
+  assert.equal(JSON.stringify(k.appended).includes('lat'), false);
+  k.stop();
+  const filtered = await kit({ settings: ON, screen: () => ({ route: '#/trace?type=net', text: 'x' }) });
+  await filtered.tapFlag();
+  assert.equal(logged(filtered, 'trace.screen')[0].data.text, '');
+  const other = await kit({ settings: ON, screen: () => ({ route: '#/traces-of-snow', text: 'kept' }) });
+  await other.tapFlag();
+  assert.equal(logged(other, 'trace.screen')[0].data.text, 'kept', 'only the Trace screen');
+  filtered.stop();
+  other.stop();
+});
+
+test('a line that looks like a key by its prefix (sk-ant-, AIza, ghp_) is left out of the screen copy even when annai keeps no such key', () => {
+  const root = el('BODY', {}, el('P', {}, 'Paste sk-ant-api03-abcdefghijklmnop here'), el('P', {}, 'AIzaSyA1234567890abcdefghij'), el('P', {}, 'ghp_abcdefghijklmnopqrstuvwxyz0123'),
+    el('P', {}, 'The ghp_ prefix, and sk-ant- alone, are words'), el('P', {}, 'Lunch'));
+  assert.equal(screenText(root, { gone: () => false, seen: () => true }), 'The ghp_ prefix, and sk-ant- alone, are words\nLunch');
+});
+
+test('Detailed trace ends 24 hours after it began even when the saved end is later: a clock set ahead cannot lengthen it', async () => {
+  const k = await kit({ settings: { ...ON, detailedUntil: T0 + 10 * DETAIL_MS } });
+  assert.equal(k.saved.detailedUntil, T0 + DETAIL_MS);
+  await k.clock.advance(DETAIL_MS);
+  assert.equal(k.tapped.size, 0);
+  k.stop();
+});
+
+test('text is judged by where it is, not by where its parent is: a line scrolled out of a tall block is left out', () => {
+  const a = { nodeType: 3, nodeValue: 'in view', out: false };
+  const b = { nodeType: 3, nodeValue: 'scrolled away', out: true };
+  const root = el('BODY', {}, el('DIV', {}, a, b));
+  const text = screenText(root, { gone: () => false, seen: (/** @type {any} */ _el, /** @type {any} */ node) => !node.out });
+  assert.equal(text, 'in view');
+});
+
+test('Flag takes the Trace chip\'s place while Detailed trace is on, so the dock\'s row is no wider; the Trace chip is back when it goes off', async () => {
+  const k = await kit({ settings: { server: SERVER, send: true } });
+  assert.deepEqual([...k.chips.keys()], ['sending']);
+  await k.save({ detailed: true });
+  assert.deepEqual([...k.chips.keys()], ['flag']);
+  await k.save({ detailed: false });
+  assert.deepEqual([...k.chips.keys()], ['sending']);
+  await k.save({ detailed: true });
+  await k.clock.advance(DETAIL_MS);
+  assert.deepEqual([...k.chips.keys()], ['sending'], 'back when it turns itself off');
+  await k.save({ detailed: true });
+  await k.save({ send: false });
+  assert.deepEqual([...k.chips.keys()], [], 'Send off: no chip at all');
+  k.stop();
 });

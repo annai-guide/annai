@@ -362,6 +362,7 @@ export class LiveKoe {
 
   /** The minimum kept a frame out: "ignoring" shows, until IGNORING_HOLD_S past the last. */
   #kept() {
+    this.c.voice?.keptOut?.(); // Detailed trace may sample the sound that is being kept out
     const now = Date.now();
     if (this.#ignoring) {
       this.#ignoring.last = now;
@@ -574,6 +575,7 @@ export class LiveKoe {
         this.#endedBy = t.end;
       },
     }));
+    v.endSample?.(); // a sample half taken on the last input is not the start of this one's
     input.onOutside = (pcm) => v.outside?.(pcm, input.rate);
     clearTimeout(this.#toPlayback);
     p.session('play-and-record');

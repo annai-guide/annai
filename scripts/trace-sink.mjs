@@ -7,7 +7,7 @@
 // The token may come from TRACE_SINK_TOKEN instead; a file or the environment keeps it out of shell history and ps.
 // It listens on 127.0.0.1 only: a phone reaches it through an https proxy, such as `tailscale serve`.
 import http from 'node:http';
-import { appendFile, readFile, mkdir, rename, rm, writeFile } from 'node:fs/promises';
+import { appendFile, chmod, readFile, mkdir, rename, rm, statfs, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { realpathSync } from 'node:fs';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
@@ -21,6 +21,8 @@ export const BODY_MAX = 1024 * 1024;
 export const CLIP_MAX = 8 * 1024 * 1024;
 /** The most entries one batch may hold; the plugin sends at most 100. */
 export const ENTRIES_MAX = 1000;
+/** A recording is refused (507) when writing it would leave less than this free on the disk, so the log keeps room: a turn is up to 2.7 GiB a day as WAV. */
+export const FREE_FLOOR = 2 * 1024 ** 3;
 /** The origin annai is served from, always allowed. */
 export const ANNAI = 'https://annai.guide';
 const TOKEN_MIN = 16;
@@ -46,11 +48,17 @@ export const deviceFolder = (name) => String(name ?? '').slice(0, 64).replace(/[
 const digest = (/** @type {string} */ s) => createHash('sha256').update(s).digest();
 
 /**
- * Starts the sink on a port of this machine. log: each batch, in a line for the console; append: how lines reach the file; write: how a clip's bytes do.
+ * Starts the sink on a port of this machine. log: each batch, in a line for the console; append: how lines reach the file; write: how a clip's bytes do;
+ * free: the bytes free on the disk of a folder; floor: the least a clip may leave free. The log file is private (0600), as it holds the screen text.
  * @param {{ port?: number, token: string, out: string, origins?: string[], now?: () => number, log?: (line: string) => void,
- *   append?: (file: string, text: string) => Promise<void>, write?: (file: string, bytes: Buffer, o: { mode: number }) => Promise<void> }} o
+ *   append?: (file: string, text: string) => Promise<void>, write?: (file: string, bytes: Buffer, o: { mode: number }) => Promise<void>,
+ *   free?: (dir: string) => Promise<number>, floor?: number }} o
  */
-export async function startSink({ port = 0, token, out, origins = [], now = () => Date.now(), log = () => {}, append = appendFile, write = writeFile }) {
+export async function startSink({
+  port = 0, token, out, origins = [], now = () => Date.now(), log = () => {}, append = (file, text) => appendFile(file, text, { mode: 0o600 }), write = writeFile,
+  free = async (dir) => { const f = await statfs(dir); return f.bavail * f.bsize; }, floor = FREE_FLOOR,
+}) {
+  await chmod(out, 0o600).catch(() => {}); // a file from before is made private too
   const allowed = new Set([ANNAI, ...origins.map((o) => o.replace(/\/+$/, ''))]);
   const clips = join(dirname(out), 'clips');
   const want = digest(`Bearer ${token}`);
@@ -133,7 +141,12 @@ export async function startSink({ port = 0, token, out, origins = [], now = () =
         const file = join(clips, name);
         const part = `${file}.${randomBytes(4).toString('hex')}.part`;
         // Whole or not at all: a retry of the same clip replaces it, and a full disk leaves nothing behind.
-        mkdir(dirname(file), { recursive: true, mode: 0o700 })
+        // Nothing rotates the recordings, so the disk is not filled with them: the log needs room too.
+        free(dirname(out))
+          .then((left) => {
+            if (left - size < floor) throw Object.assign(new Error(`less than ${floor / 1024 ** 3} GiB would be left free`), { code: 'ENOSPC' });
+          })
+          .then(() => mkdir(dirname(file), { recursive: true, mode: 0o700 }))
           .then(() => write(part, Buffer.concat(chunks), { mode: 0o600 }))
           .then(() => rename(part, file))
           .then(() => {
@@ -142,7 +155,7 @@ export async function startSink({ port = 0, token, out, origins = [], now = () =
           }, async (/** @type {any} */ e) => {
             await rm(part, { force: true }).catch(() => {});
             const full = e?.code === 'ENOSPC' || e?.code === 'EDQUOT';
-            answer(full ? 507 : 500, { error: full ? 'full' : 'write', message: full ? 'The disk is full.' : "The sink couldn't write the clip." });
+            answer(full ? 507 : 500, { error: full ? 'full' : 'write', message: full ? `The disk is full, or less than ${floor / 1024 ** 3} GiB would be left free.` : "The sink couldn't write the clip." });
             log(`couldn't write ${name}: ${e?.message ?? e}`);
           });
         return;
@@ -230,7 +243,7 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
   if (String(token).length < TOKEN_MIN) quit(`The token must be at least ${TOKEN_MIN} characters. Make one with: openssl rand -hex 16`);
   const origins = all('--origin');
   try {
-    await appendFile(/** @type {string} */ (out), '');
+    await appendFile(/** @type {string} */ (out), '', { mode: 0o600 });
   } catch (e) {
     quit(`The sink can't write ${out}: ${/** @type {any} */ (e)?.message ?? e}`);
   }

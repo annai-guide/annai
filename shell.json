@@ -1,5 +1,5 @@
 {
-  "build": "2822b37ae479",
+  "build": "4041c6ac77cf",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -108,7 +108,7 @@
     "/src/core/intl.js": "0da282c01667",
     "/src/core/koe/context.js": "0fb694f46b35",
     "/src/core/koe/instructions.js": "5acdba9f570c",
-    "/src/core/koe/live.js": "953d6f5b48ee",
+    "/src/core/koe/live.js": "39b2317055b5",
     "/src/core/koe/tools.js": "cfbc62fd865b",
     "/src/core/l10n-list.js": "98de5dc21171",
     "/src/core/l10n.js": "bc73b53b2add",
@@ -134,7 +134,7 @@
     "/src/core/nominatim.js": "66704b17c6aa",
     "/src/core/paths.js": "b519fae60471",
     "/src/core/plan.js": "405a95b1efa7",
-    "/src/core/plugins.js": "3f2b4ba052ec",
+    "/src/core/plugins.js": "4cda7718e4f1",
     "/src/core/push/mirror.js": "e8f1f106cd02",
     "/src/core/push/relay-client.js": "a2f4fe58a177",
     "/src/core/push/webpush.js": "7273918284c6",
@@ -176,7 +176,7 @@
     "/src/core/voice/settings.js": "5b822fd583b7",
     "/src/core/voice/speaker.js": "917188cde5dd",
     "/src/core/voice/stream-start.js": "360b714c0b43",
-    "/src/core/voice/voice.js": "ac523c1cb09b",
+    "/src/core/voice/voice.js": "ca9d977d4e07",
     "/src/core/voice/where.js": "858b458d948b",
     "/src/core/types.js": "16693e8fad29",
     "/src/core/ui-slots.js": "355a32f019cb",

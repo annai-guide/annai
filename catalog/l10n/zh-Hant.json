@@ -112,7 +112,7 @@
     },
     "remote-trace": {
       "name": "遠端記錄（開發人員）",
-      "description": "開發人員用：在你檢視時，把 annai 的記錄按「記錄」頁面顯示的樣子傳送到你自己執行的伺服器。在你填寫伺服器和權杖並開啟「傳送」之前，它什麼也不傳送。從不傳送金鑰。"
+      "description": "開發人員用：在你檢視時，把 annai 的記錄按「記錄」頁面顯示的樣子傳送到你自己執行的伺服器。在你填寫伺服器和權杖並開啟「傳送」之前，它什麼也不傳送。annai 儲存的金鑰會被遮蓋。"
     },
     "scripted-model": {
       "name": "腳本模型",
@@ -185,7 +185,7 @@
     "provider-scripted": "82a7b879e22071a767765ccdcf064f7ae675719753d9fb7bf4e169cdccfc8971",
     "provider-sglang": "ed6f8629475ad83e31d73f292d397d2e93a8f83876caee9754223825f6534ddf",
     "provider-vllm": "b3b0051d42e846d04814ebe2ddc865412bbe7ea395e045c6fbb9e16de884294c",
-    "remote-trace": "8ba7dc7d87d27eb202863885fd51527ff92767f4ecece7e72502083442801ccd",
+    "remote-trace": "3c90c667f0e962495e930fa8d5ff8bfd5b883b8b9a5818c85831057b0e5e412a",
     "scripted-model": "b4b0b6b30046bb7e1f3babc38ae2199f157bf52c12887ec1196429e1b90228a5",
     "search-searxng": "240e0259328ccdfd9aba0a487df90e6f289c44189664d0155fcdc4a4c6e1b18f",
     "search-serper": "820d733fd7b218474d3f44bd1d5f5a51029e347198d496b2e07d56b37eba89ba",
