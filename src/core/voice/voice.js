@@ -86,10 +86,10 @@ export class Voice {
   stopNow = false;
   /** Why voice is turning itself off: the note said once it is off. @type {'drive' | 'device' | null} */
   #offWhy = null;
+  /** The input that went, by name, for the note ('' when it had none). */
+  #offName = '';
   /** @type {Set<(note: string) => void>} */
   #notes = new Set();
-  /** The audio devices seen, by id or name, and their names. @type {Map<string, string>} */
-  #known = new Map();
   /** @type {Set<(m: import('./mode.js').VoiceMode, first: boolean) => void>} */
   #changes = new Set();
   /** The mode has been read once: the first reading, as annai starts, is no change of mode. */
@@ -570,7 +570,7 @@ export class Voice {
       }
     }
     if (next.on || !this.#offWhy) return;
-    const note = offNote(this.#offWhy);
+    const note = offNote(this.#offWhy, this.#offName);
     this.#offWhy = null;
     for (const fn of this.#notes) fn(note);
   }
@@ -609,7 +609,6 @@ export class Voice {
   async route(gone = []) {
     try {
       const devices = (await this.platform?.devices?.()) ?? [];
-      this.#learn(devices);
       const used = this.platform?.mic.inUse?.() ?? null;
       const using = used && (used.label || devices.find((d) => d.deviceId && d.deviceId === used.deviceId)?.label || '');
       // An input no longer among the devices (AirPods taken out, its track still named for them) is unknown.
@@ -628,36 +627,37 @@ export class Voice {
     }
   }
 
-  /** Remembers audio devices the browser names or gives an id for: before the microphone is allowed it gives neither. @param {{ kind: string, label: string, deviceId?: string }[]} devices */
-  #learn(devices) {
-    for (const d of devices) {
-      const key = (d.kind === 'audioinput' || d.kind === 'audiooutput') && (d.deviceId || d.label);
-      if (key) this.#known.set(key, d.label ?? '');
-    }
+  /**
+   * The input the microphone is open on, when it is no longer among the devices. Nothing else counts: a Receiver that comes and goes with
+   * the microphone, a watch, an id with no name. A list with no id or name says nothing about what is connected (the microphone no longer
+   * allowed), and a microphone not open has no input to lose.
+   * @param {{ kind: string, label: string, deviceId?: string }[]} devices @returns {{ label: string, deviceId: string } | null}
+   */
+  #lostInput(devices) {
+    const used = this.platform?.mic.inUse?.();
+    if (!used || !(used.label || used.deviceId)) return null;
+    const inputs = devices.filter((d) => d.kind === 'audioinput' && (d.deviceId || d.label));
+    if (!inputs.length || inputs.some((d) => (used.deviceId && d.deviceId === used.deviceId) || (used.label && d.label === used.label))) return null;
+    return used;
   }
 
-  /**
-   * The audio devices changed: one that disappeared turns voice off, whatever it was (no name matching: the phone's own never disappear), and goes in the Trace.
-   * A list with no id or name says nothing about what is connected, so nothing is taken as gone from it.
-   */
+  /** The audio devices changed: the input the microphone is open on disappearing turns voice off, and goes in the Trace. */
   async #devicesChanged() {
     const devices = (await this.platform?.devices?.().catch(() => [])) ?? [];
-    const audio = devices.filter((d) => (d.kind === 'audioinput' || d.kind === 'audiooutput') && (d.deviceId || d.label));
-    const here = (/** @type {string} */ key, /** @type {string} */ label) => audio.some((d) => d.deviceId === key || (label && d.label === label) || (!d.deviceId && d.label === key));
-    const gone = audio.length ? [...this.#known].filter(([key, label]) => !here(key, label)) : [];
-    for (const [key] of gone) this.#known.delete(key);
-    await this.route(gone.map(([key, label]) => label || key));
-    if (gone.length) await this.#deviceGone();
+    const lost = this.#lostInput(devices);
+    await this.route(lost ? [lost.label || lost.deviceId] : []);
+    if (lost) await this.#deviceGone(lost.label);
     else await this.refresh();
   }
 
-  /** An audio device disappeared: voice goes off at once, mid-word, and stays off for the rest of a drive. Nothing to do with voice off. */
-  async #deviceGone() {
+  /** The microphone's input disappeared: voice goes off at once, mid-word, and stays off for the rest of a drive. Nothing to do with voice off. @param {string} name */
+  async #deviceGone(name) {
     if (!this.mode.on) return;
     this.speaker.stop();
     this.stopNow = true;
     this.#tapped = false;
     this.#offWhy = 'device';
+    this.#offName = name;
     this.#hush(true);
     const { setting } = this.mode;
     // Written first: a listener works the mode out again from the setting.
@@ -677,7 +677,7 @@ export class Voice {
 
   /** A drive ended (spec §10.5): voice goes off, even if the user turned it on themselves. Only at that moment: turning it on afterwards stays on. */
   async #driveEnded() {
-    if (this.mode.on && this.mode.why !== 'off') this.#offWhy = 'drive';
+    if (this.mode.on) this.#offWhy = 'drive';
     if ((await this.settings()).mode === 'on') await updateAppSettings(this.ws, { voice: { mode: 'off' } });
     await this.refresh();
   }
@@ -716,7 +716,7 @@ export class Voice {
     if (!platform) return;
     this.#watching = true;
     platform.onDeviceChange?.(() => { this.#devicesChanged().catch(() => {}); });
-    this.route().catch(() => {}); // what is there now, for telling what disappears later, and for the Trace
+    this.route().catch(() => {}); // what is there now, for the Trace
     const again = () => { this.refresh().catch(() => {}); };
     // The activity sensor comes with live mode (spec §11.2), maybe after voice started: followed once it is there.
     /** @type {any} */

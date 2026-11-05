@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
-import { liveText } from '../../src/ui/live-chip.js';
+import { liveText, gpsWords } from '../../src/ui/live-chip.js';
 
 // "sorry let's use GPS on and off. simple and easy for everyone to understand." (the user, 2026-10-23)
 const ROOT = new URL('../../', import.meta.url);
@@ -30,4 +30,16 @@ test('the GPS switch is GPS on and GPS off in every word the user sees or Shiori
     }
   }
   assert.deepEqual(found, []);
+});
+
+test('the GPS chip says what the switch is in at most two short words, and Now keeps the long ones', () => {
+  const at = Date.now();
+  const clock = { now: () => at };
+  const on = { on: true, gps: 'ok', activity: 'moving-fast', fix: { lat: 1, lng: 2, at, accuracy: 8, source: 'gps' }, clock };
+  assert.deepEqual(
+    [{ on: false, gps: 'off', activity: 'unknown', fix: null }, { ...on, fix: null, gps: 'waiting' }, { ...on, fix: null, gps: 'denied' }, { ...on, fix: null, gps: 'unavailable' }, on, { ...on, simulating: true }].map(gpsWords),
+    ['GPS off', 'GPS…', 'No GPS', 'No GPS', 'GPS on', 'Simulation'],
+  );
+  assert.equal(liveText(on), 'GPS on · moving fast');
+  assert.equal(liveText({ ...on, fix: null, gps: 'denied' }), 'GPS on · no location');
 });

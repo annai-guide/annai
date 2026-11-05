@@ -841,7 +841,8 @@ export class Halves {
   #tapWorking = false;
 
   /**
-   * A reminder fired as a drive ended: it is said first. Voice holds on until that exchange is over, as for a tap; a wake that started nothing lets go of it after a moment.
+   * A drive ended: voice holds on until the exchange it is in is over, as for a tap (she finishes her sentence, the user's turn is heard), and a reminder
+   * that fired in the same moment is said first. A wake that started nothing lets go of it after a moment.
    */
   holdVoice() {
     if (!this.voice?.on) return;

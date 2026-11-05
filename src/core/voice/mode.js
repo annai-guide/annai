@@ -55,7 +55,8 @@ export function chipText(m) {
   return m.why === 'driving' ? t`Voice on · driving` : t`Voice on`;
 }
 
-/** The note when voice turned itself off, saying why. @param {'drive' | 'device'} why */
-export function offNote(why) {
-  return why === 'drive' ? t`Voice off: you stopped driving` : t`Voice off: headphones disconnected`;
+/** The note when voice turned itself off, saying why; for a device, the input that went, if it had a name. @param {'drive' | 'device'} why @param {string} [name] */
+export function offNote(why, name = '') {
+  if (why === 'drive') return t`Voice off: you stopped driving`;
+  return name ? t`Voice off: ${name} disconnected` : t`Voice off: the microphone disconnected`;
 }

@@ -1,5 +1,5 @@
 import { meters, keep, fixOf, kmText, span, KEEP_M } from './geo.js';
-import { ActivityTracker, STILL_BELOW, FAST_FROM, waySpeed } from './activity.js';
+import { ActivityTracker, STILL_BELOW, FAST_FROM, SETTLE_MS, waySpeed } from './activity.js';
 import { TRIGGERS, SAME_DRIVE_MS } from './triggers.js';
 import { PLAN, planWatches, planWords, planItemWords } from './plan-watches.js';
 import { readWatches, saveWatch, removeWatch, newWatchId, expired, watchPath, WATCH_FILE } from './watches.js';
@@ -106,6 +106,12 @@ export class Live {
   #driveEnding = false;
   /** Voice was turned off during this drive: it stays off until the drive ends. */
   #hushed = false;
+  /**
+   * A drive's end found only after this page opened (the record's hold had run out: 'due'; the record said moving fast, and the first good fix says otherwise: 'fast')
+   * waits for the first good fix, and a choice of voice's since the page opened cancels it. null: none waits.
+   * @type {'due' | 'fast' | null}
+   */
+  #late = null;
   /** Voice hears a drive's end. An end no one was there to hear yet (found as annai starts) waits for it. @type {Set<() => void>} */
   #driveEnds = new Set();
   #driveEndOwed = false;
@@ -335,6 +341,7 @@ export class Live {
     this.#tracker.reset();
     this.#fastEnded = this.#voiceLapse = this.#stateAt = null;
     this.#hushed = this.#driveEnding = this.#driveEndOwed = false;
+    this.#late = null;
     this.#savedKm = 0;
     this.#kept = null;
     this.#odo = this.#wasFast = null;
@@ -366,6 +373,7 @@ export class Live {
         this.#tracker.reset();
         this.#fastEnded = this.#voiceLapse = this.#stateAt = null;
         this.#hushed = false;
+        this.#late = null;
         this.activity = 'unknown';
         this.fix = null;
         this.stop = null;
@@ -907,16 +915,22 @@ export class Live {
             this.#tellActivity();
           } else {
             this.#fastEnded = fix.at - VOICE_HOLD_MS; // parked or at a light: no false "starts", and no voice
-            this.#voiceLapse = fix.at; // the drive ended unseen: as far as voice goes, it ends now
+            if (this.#late === 'fast') this.#voiceLapse = fix.at; // the drive ended unseen: as far as voice goes, it ends now
           }
-        } else this.#voiceLapse = fix.at;
+        } else if (this.#late === 'fast') this.#voiceLapse = fix.at;
         this.#wasFast = null;
+        this.#late = null;
       }
       const c = this.#tracker.feed(fix);
       if (c) {
         change = { from: c.from, to: c.to };
         this.activity = c.to;
         await this.#log(this.#changeData(c));
+      }
+      // A drive's end from the record's hold waits for the first good fix, and dies if she is driving: there was no end.
+      if (this.#late === 'due' && fix.accuracy <= 100) {
+        this.#late = null;
+        if ((this.#tracker.speed ?? 0) >= FAST_FROM) this.#voiceLapse = null;
       }
     }
     if (!this.stop || meters(this.stop, fix) > Math.max(STOP_M, fix.accuracy)) this.stop = { lat: fix.lat, lng: fix.lng, since: fix.at };
@@ -1251,7 +1265,12 @@ export class Live {
     if (o.change === undefined && !o.past) o = { ...o, change: this.#settle() };
     const m = this.#moment(o);
     // The drive has ended. What fires in this same moment is said first, with voice as it was.
-    const ended = this.#voiceLapse !== null && m.now >= this.#voiceLapse;
+    let ended = this.#voiceLapse !== null && m.now >= this.#voiceLapse && this.#late !== 'due';
+    // Green a moment ago: the speeds say moving fast again, though the activity takes its 30 s to follow. Not a drive that ended.
+    if (ended && (this.#tracker.speed ?? 0) >= FAST_FROM && this.fix && m.now - this.fix.at <= SETTLE_MS) {
+      this.#voiceLapse = m.now + SETTLE_MS;
+      ended = false;
+    }
     if (ended) {
       this.#voiceLapse = null;
       this.#driveEnding = true;
@@ -1264,7 +1283,7 @@ export class Live {
       await this.#look(m, open, fired);
     } finally {
       this.#schedule(m); // whatever failed, the clock goes on (L1)
-      if (ended) this.#driveEnd(fired.length > 0);
+      if (ended) this.#driveEnd();
     }
     // Most checks only move a time a little (a new fix): calm. One that said a reminder: urgent (6b choice 3).
     this.#tellReminders(fired.length ? 'urgent' : 'calm');
@@ -1277,17 +1296,22 @@ export class Live {
 
   /** Voice stays off for this drive, or no longer. Off while not driving is just off. @param {boolean} on */
   #hush(on) {
+    if (this.#late) { // a choice since the page opened: the end that came late no longer is hers
+      if (this.#late === 'due') this.#voiceLapse = null;
+      this.#late = null;
+      this.#keepRecord();
+    }
     if (on === this.#hushed || (on && !this.#driving())) return;
     this.#hushed = on;
     this.#keepRecord();
   }
 
   /**
-   * A drive ended: said once, whichever way voice is. A simulation's is its own: the user's setting stays.
-   * @param {boolean} fired a reminder fired in this same moment, and voice waits for it
+   * A drive ended: said once, whichever way voice is. A simulation's is its own: the user's setting stays. Voice holds on until the exchange
+   * it is in is over (she finishes her sentence, the user's turn is heard), and a reminder that fired in this same moment is said first.
    */
-  #driveEnd(fired) {
-    if (fired) this.agent.holdVoice?.();
+  #driveEnd() {
+    this.agent.holdVoice?.();
     this.#driveEnding = this.#hushed = false;
     this.#keepRecord();
     if (!this.#sim) this.#tellDriveEnd();
@@ -1359,11 +1383,17 @@ export class Live {
     if (!this.on) return;
     this.#stateAt = r?.at ?? now; // the beats go on as if the page had not been away
     if (!r || r.activity === 'unknown') return;
-    // A drive's end not yet told to voice is told at the first check, whatever the record's age: a page killed in the hold has not said it.
-    if (typeof r.due === 'number') this.#voiceLapse = r.due;
+    // A drive's end not yet told to voice is told whatever the record's age (a page killed in the hold has not said it): on time when it is still ahead, else at the first good fix.
+    if (typeof r.due === 'number') {
+      this.#voiceLapse = r.due;
+      if (r.due <= now) this.#late = 'due'; // she may be driving again by now: the first good fix says
+    }
     this.#hushed = r.hushed === true && (r.activity === 'moving-fast' || this.#voiceLapse !== null);
     if (now - r.at >= SAME_DRIVE_MS) {
-      if (r.activity === 'moving-fast') this.#wasFast = this.#odo;
+      if (r.activity === 'moving-fast') {
+        this.#wasFast = this.#odo;
+        if (this.#wasFast) this.#late = 'fast';
+      }
       return;
     }
     this.#restored = r.activity;

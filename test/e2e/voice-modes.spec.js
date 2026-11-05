@@ -41,7 +41,7 @@ test('a saved auto reads as off, in Settings too, which offers only On and Off',
   await expect(page.getByText('A tap on Shiori always talks', { exact: false })).toBeVisible();
 });
 
-test('an audio device disappearing: voice off at once, with a note (spec §10.5)', async ({ page }) => {
+test('an audio device disappearing with no microphone open leaves voice on and says nothing (spec §10.5)', async ({ page }) => {
   await page.addInitScript(() => {
     if (typeof MediaDevices === 'undefined') return;
     const w = /** @type {any} */ (window);
@@ -57,8 +57,10 @@ test('an audio device disappearing: voice off at once, with a note (spec §10.5)
     w.devs = w.devs.slice(0, 1);
     navigator.mediaDevices.dispatchEvent(new Event('devicechange'));
   });
-  await expect(chip).toHaveText('Voice off');
-  await expect(page.locator('.toasts')).toContainText('Voice off: headphones disconnected');
+  // Only the input the microphone is open on counts (the unit tests have that one); nothing was listening here.
+  await page.waitForTimeout(500);
+  await expect(chip).toHaveText('Voice on');
+  await expect(page.locator('.toasts')).not.toContainText('disconnected');
 });
 
 /** Her one spoken line, from a stand-in model and a stand-in voice; fn runs with the page on Trips and voice on. */

@@ -610,7 +610,7 @@ bgn4sv	ok	Shiori answers in the language you speak to her	Shiori は話しかけ
 1qt7a9v	ok	Shiori answers in	Shiori が答える言語	src/core/languages.js:355	Note: A label for a menu of languages, so a noun: "the language Shiori answers in".
 k4u05v	ok	The language you speak to her	話しかけた言語	src/core/languages.js:356	
 cc69cl	ok	None picked: annai uses the browser’s language.	未選択：annai はブラウザの言語を使います。	src/core/languages.js:357	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
-1dyfzsg	ok	A simulation is already running.	シミュレーションはすでに実行中です。	src/core/live/live.js:280	
+1dyfzsg	ok	A simulation is already running.	シミュレーションはすでに実行中です。	src/core/live/live.js:286	
 157qf8n	ok	Flight {0} departs {1}, {2}	フライト {0}、{1} 出発、{2}	src/core/live/plan-watches.js:140	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
 1tvx4k9	ok	Flight {0} departs {1}	フライト {0}、{1} 出発	src/core/live/plan-watches.js:140	{0} = w.flight; {1} = time
 1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}、{2}）	src/core/live/plan-watches.js:141	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
@@ -874,8 +874,9 @@ h8lp19	ok	On Android: tap the icon left of the address (in the installed app: ho
 46l9so	ok	Voice off	音声オフ	src/core/voice/mode.js:54	
 1o81qfq	ok	Voice on	音声オン	src/core/voice/mode.js:55	
 d3i18u	draft	Voice on · driving	音声オン · 運転中	src/core/voice/mode.js:55	
-1c3vxa8	draft	Voice off: headphones disconnected	音声オフ：ヘッドホンが切断されました	src/core/voice/mode.js:60	
 t042iv	draft	Voice off: you stopped driving	音声オフ：運転が終わりました	src/core/voice/mode.js:60	
+tgf1x2	draft	Voice off: the microphone disconnected	音声オフ：マイクが切断されました	src/core/voice/mode.js:61	
+xonbcn	draft	Voice off: {0} disconnected	音声オフ：{0} が切断されました	src/core/voice/mode.js:61	{0} = name; English was: Voice off: headphones disconnected
 xi9ch6	ok	Shiori can't hear you: the speech-in list is empty. Add an entry in Settings → Models → Speech in.	Shiori にはあなたの声が聞こえません：聞き取りのリストが空です。設定 → モデル → 聞き取りで追加してください。	src/core/voice/resolve.js:157	
 1da2r7t	ok	Shiori can't hear you yet: {0} doesn't take audio, and the speech-in list has no transcription model that works.	Shiori にはまだあなたの声が聞こえません：{0} は音声を受け付けず、聞き取りのリストに使える文字起こしのモデルがありません。	src/core/voice/resolve.js:163	{0} = model.name
 1j6uoln	ok	Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works.	Shiori にはまだあなたの声が聞こえません：メインのモデルが設定されておらず、聞き取りのリストに使える文字起こしのモデルがありません。	src/core/voice/resolve.js:164	
@@ -1249,10 +1250,13 @@ zemwn2	ok	GPS off	GPS オフ	src/ui/live-chip.js:23
 1a0v739	ok	GPS on · no location	GPS オン · 位置情報なし	src/ui/live-chip.js:24	
 thd4ot	ok	GPS on · finding you	GPS オン · 現在地を確認中	src/ui/live-chip.js:24	
 j7yqys	ok	GPS on	GPS オン	src/ui/live-chip.js:25	
-13ebf61	ok	Pause the simulation	シミュレーションを一時停止	src/ui/live-chip.js:52	
-1ui2yvw	ok	Resume the simulation	シミュレーションを再開	src/ui/live-chip.js:52	
-5zs6ip	ok	Stop the simulation	シミュレーションを終了	src/ui/live-chip.js:53	
-1yuht27	ok	Simulate a trip	旅のシミュレーション	src/ui/live-chip.js:54	
+lrcjli	draft	Simulation	シミュレーション	src/ui/live-chip.js:33	
+23eagt	draft	GPS…	GPS…	src/ui/live-chip.js:35	
+om0646	draft	No GPS	GPS なし	src/ui/live-chip.js:35	
+13ebf61	ok	Pause the simulation	シミュレーションを一時停止	src/ui/live-chip.js:63	
+1ui2yvw	ok	Resume the simulation	シミュレーションを再開	src/ui/live-chip.js:63	
+5zs6ip	ok	Stop the simulation	シミュレーションを終了	src/ui/live-chip.js:64	
+1yuht27	ok	Simulate a trip	旅のシミュレーション	src/ui/live-chip.js:65	
 19pzct7	ok	Location Services must be on: Settings → Privacy & Security → Location Services.	位置情報サービスをオンにしてください：設定 → プライバシーとセキュリティ → 位置情報サービス。	src/ui/live-help.js:14	
 6c6pb6	ok	On iPhone: Settings → Privacy & Security → Location Services → Safari Websites → While Using the App, and Settings → Apps → Safari → Location → Allow.	iPhone では：設定 → プライバシーとセキュリティ → 位置情報サービス → SafariのWebサイト → このアプリの使用中、および 設定 → アプリ → Safari → 位置情報 → 許可。	src/ui/live-help.js:16	Note: The rows' names as the glossary gives them; SafariのWebサイト and このアプリの使用中 are to be checked on a phone (glossary).
 m9ud30	ok	On iPhone: tap the page menu button in the address bar, then Website Settings → Location → Allow (or Settings → Apps → Safari → Location → Allow).	iPhone では：アドレスバーのページメニューボタンをタップし、Webサイトの設定 → 位置情報 → 許可（または 設定 → アプリ → Safari → 位置情報 → 許可）。	src/ui/live-help.js:17	Note: ページメニューボタン as Apple's ja-jp guide names it; Webサイトの設定 is to be checked on a phone (glossary).

@@ -153,14 +153,14 @@ test('location refused: a card with steps for this phone, and "Where are you?" w
   await liveOn(page);
   const card = page.locator('.notice', { hasText: "annai can't see where you are" });
   await expect(card).toContainText(/On (iPhone|Android):/);
-  await expect(page.locator('.live-chip')).toHaveText('GPS on · no location');
+  await expect(page.locator('.live-chip')).toHaveText('No GPS');
   await page.goto('/#/drive');
   await page.getByRole('button', { name: 'Bixby Creek Bridge' }).click();
   await page.goto('/#/now');
   await expect(page.locator('.now-place')).toHaveText('At Bixby Creek Bridge');
   // annai starts again with location still refused: the card isn't shown again.
   await page.reload();
-  await expect(page.locator('.live-chip')).toHaveText('GPS on · no location');
+  await expect(page.locator('.live-chip')).toHaveText('No GPS');
   await expect(page.locator('.notice', { hasText: "annai can't see where you are" })).toHaveCount(0);
 });
 
@@ -232,7 +232,7 @@ test('the GPS chip is a switch on a narrow phone: no menu; with no location, Dri
   await expect(chip).toHaveAttribute('aria-pressed', 'false');
   await expect(chip).not.toHaveAttribute('aria-haspopup', /./);
   await liveOn(page);
-  await expect(chip).toHaveText('GPS on · no location');
+  await expect(chip).toHaveText('No GPS');
   await expect(chip).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('group', { name: 'GPS' })).toHaveCount(0);
   await page.goto('/#/drive');

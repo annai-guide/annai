@@ -1,5 +1,5 @@
 {
-  "build": "66a8b6c2cf03",
+  "build": "e2276fcecd2c",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -39,7 +39,7 @@
     "/src/core/agent/budgets.js": "ec0a25e840fb",
     "/src/core/agent/compaction.js": "b3bb32c5c86c",
     "/src/core/agent/context.js": "1e23f12809d2",
-    "/src/core/agent/halves.js": "27c8741891f9",
+    "/src/core/agent/halves.js": "57b0408603b9",
     "/src/core/agent/instructions.js": "5989e634fbf3",
     "/src/core/agent/listen.js": "e6c194b03c77",
     "/src/core/agent/log.js": "6ea82833ac72",
@@ -96,7 +96,7 @@
     "/src/core/live/activity.js": "538eceb8138c",
     "/src/core/live/clock.js": "3a80893f52a5",
     "/src/core/live/geo.js": "018e805b07f7",
-    "/src/core/live/live.js": "b704b941ffb8",
+    "/src/core/live/live.js": "c591a8667db4",
     "/src/core/live/plan-watches.js": "86e5053be983",
     "/src/core/live/sim-run.js": "7a6c3579a014",
     "/src/core/live/simulate.js": "b7a9e9c0442c",
@@ -167,7 +167,7 @@
     "/src/core/voice/level.js": "7b0a0547ad8b",
     "/src/core/voice/listening.js": "5bd336e6a48a",
     "/src/core/voice/mic.js": "d629c0a36aa8",
-    "/src/core/voice/mode.js": "580da90f92a2",
+    "/src/core/voice/mode.js": "f49e34f34679",
     "/src/core/voice/mux.js": "10820370e5a3",
     "/src/core/voice/pcm.js": "7ae9fb9828c4",
     "/src/core/voice/platform.js": "b2fe50514d75",
@@ -177,7 +177,7 @@
     "/src/core/voice/settings.js": "78d994d326d6",
     "/src/core/voice/speaker.js": "917188cde5dd",
     "/src/core/voice/stream-start.js": "360b714c0b43",
-    "/src/core/voice/voice.js": "e95be601ded4",
+    "/src/core/voice/voice.js": "c8f89c9d58a5",
     "/src/core/voice/where.js": "858b458d948b",
     "/src/core/types.js": "16693e8fad29",
     "/src/core/ui-slots.js": "355a32f019cb",
@@ -218,7 +218,7 @@
     "/src/ui/install.js": "2c4eb4214b7c",
     "/src/ui/languages.js": "12bc0a154663",
     "/src/ui/line-kind.js": "0b0db2a32616",
-    "/src/ui/live-chip.js": "b9e9c084463a",
+    "/src/ui/live-chip.js": "75768a5cfaaf",
     "/src/ui/live-help.js": "b7ec5d428f1c",
     "/src/ui/markdown.js": "f07c8d58f557",
     "/src/ui/media-keys.js": "1c616b5f79e6",
@@ -279,7 +279,7 @@
     "/src/ui/shell.js": "348fa92feb87",
     "/src/ui/slots.js": "b7fb8d979e45",
     "/src/ui/stamps.js": "fd929ca54c31",
-    "/src/ui/shiori.css": "1779ae97ed31",
+    "/src/ui/shiori.css": "c6b2ac17809e",
     "/src/ui/speech-check.js": "396550d02345",
     "/src/ui/storage-full.js": "6b7d5a2fe9fe",
     "/src/ui/talk-panel.js": "b12c573be9a4",
@@ -292,8 +292,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b86e78535207",
     "/src/ui/welcome.js": "23fcd35c12df",
-    "/l10n/ja.json": "2820f40693be",
-    "/l10n/zh-Hans.json": "1bceb598b5bb",
-    "/l10n/zh-Hant.json": "318157da44ff"
+    "/l10n/ja.json": "0635c91364af",
+    "/l10n/zh-Hans.json": "6359f13fa663",
+    "/l10n/zh-Hant.json": "3109959fe15f"
   }
 }
