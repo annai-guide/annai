@@ -189,9 +189,64 @@ test('killed while locked 10 minutes on the road: the same drive at the first fi
   await l.to(at('09:11'));
   await l.restart();
   await l.fix(at('09:11:05'), north(z + SPEED * 600), { speed: 0 });
-  assert.equal(l.live.activity, 'moving-fast');
+  // A light is told from a parking by the first fix alone, which cannot be done: no false "starts" on green, but voice comes 30 s after green, not at the light.
+  assert.notEqual(l.live.activity, 'moving-fast', 'no speed, no road yet');
+  assert.equal(held(l), false);
   await road(l, at('09:11:30'), z + SPEED * 600, 30);
-  assert.equal(lights(), 1);
+  assert.equal(l.live.activity, 'moving-fast');
+  assert.equal(lights(), 1, 'green is not a start');
+});
+
+test('killed on the road, then parked and opened: whatever the way from the record says, a parked fix stays silent, Auto voice off, no "stops", no catch-up spoken', async () => {
+  // Parked a minute after 4 km of road in 11 minutes; 2 hours and 50 km on; a flight. Each averages over 18 km/h from the record's place.
+  for (const [wait, away] of [[11 * 60_000, 4000], [2 * 3600_000, 50_000], [3600_000, 800_000]]) {
+    const k = await liveKit({ start: at('09:00') });
+    await startsWatch(k);
+    await k.live.setWatch(k.trip, { when: { type: 'activity', activity: 'moving-fast', edge: 'stop' }, repeat: true, fallback: 'Pulled up.' });
+    await k.live.setWatch(k.trip, { when: { type: 'moved', km: 5 }, fallback: 'Narrate.' });
+    const y = await road(k, at('09:00'), 0, 60);
+    const acts = () => k.agent.wakes.filter((/** @type {any} */ x) => x.text.includes('the activity is now')).length;
+    const before = acts();
+    await off_screen(k);
+    await k.to(at('09:01') + wait);
+    await k.restart();
+    await k.fix(at('09:01') + wait + 5000, north(y + away), { speed: 0 });
+    assert.notEqual(k.live.activity, 'moving-fast', `${away} m`);
+    assert.equal(held(k), false, `Auto voice stays off after ${away} m`);
+    assert.equal(acts(), before, `no "starts" or "stops" after ${away} m (the moved watch may fire: the way counts, but Auto voice is off, so it is shown, not said)`);
+  }
+});
+
+test('killed on the road, then reopened on the road with a speed: the same drive at the first fix, voice on, one "starts"', async () => {
+  const k = await liveKit({ start: at('09:00') });
+  const count = await startsWatch(k);
+  const y = await road(k, at('09:00'), 0, 60);
+  await off_screen(k);
+  await k.to(at('09:03'));
+  await k.restart();
+  await k.fix(at('09:03:05'), north(y + SPEED * 125), { speed: SPEED });
+  assert.equal(k.live.activity, 'moving-fast');
+  assert.equal(held(k), true);
+  await road(k, at('09:03:10'), y + SPEED * 130, 30);
+  assert.equal(count(), 1);
+});
+
+test('killed on the road, opened and gone before a good fix, then reopened on the road: the same drive, one "starts"', async () => {
+  const k = await liveKit({ start: at('09:00') });
+  const count = await startsWatch(k);
+  const y = await road(k, at('09:00'), 0, 60);
+  await off_screen(k);
+  await k.to(at('09:11'));
+  await k.restart(); // opened, too old to say so, no fix
+  await off_screen(k); // gone: the record must not say unknown now
+  assert.equal(k.keep.get().activity, 'moving-fast');
+  await k.to(at('09:11:40'));
+  await k.restart(); // again, on the road
+  await k.fix(at('09:11:45'), north(y + SPEED * 645), { speed: SPEED });
+  assert.equal(k.live.activity, 'moving-fast');
+  assert.equal(held(k), true);
+  await road(k, at('09:11:50'), y + SPEED * 650, 30);
+  assert.equal(count(), 1);
 });
 
 test('reloaded, locked again before a fix, unlocked at a light: the way from the record says the drive went on', async () => {
