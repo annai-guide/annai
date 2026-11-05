@@ -10,7 +10,7 @@ The user: "a bit messy screens and tabs here and there"; "everything come back t
 
 **Non-goals:** search across conversations, a calendar view, conversations running side by side.
 
-**Anti-goals:** a new kind of scope, a stored end for a chat, a naming model, a rename tool, "trip" on small chats, drawing for overlaps.
+**Anti-goals:** a new kind of scope, a stored end for a chat, a naming model, a rename tool, "trip" on small chats, drawing for overlaps, writing across trips.
 
 ## The model
 
@@ -64,6 +64,20 @@ An undated chat's snapshot says: if this is about one of their trips, `open_trip
 6. `went`: the shell replaces the address if you're on home or that chat.
 
 `list_trips` gives dated trips and the 30 newest chats, so "what was that ramen place?" moves you to that chat. `recall` stays inside its conversation; the walls stand.
+
+## Reading another trip
+
+The user, after the design's doubts about forgetting and the slow route: "with user approval, shiori can just read another trip's files? this includes trascripts and stuff so she just able to know what you are talking about without going to the other trip? she should still have the capability to do so but this will allow user to mention another trip and continue in the current trip". Picked: "Once per chat, or always for mine (Recommended)". This replaces an earlier pick of moving as the only route; moving stays.
+
+- Shiori (Kokoro only, as Koe is a relay) can read another trip's files and search its conversation (`read`, `list` and `recall` reach it), read-only, once approved. She writes only in the open conversation.
+- She asks by `ask`: "Read Kyoto in April?" with Allow, Always for my trips, Not now. It's a tap, or a spoken yes while driving. annai's code enforces the answer: no model text can grant it (RULES 9).
+- Allow lasts for this conversation, stored in its log, so a reload keeps it. "Always for my trips" is a setting, changeable in Settings. Trips other people shared always ask.
+- `reach.js`'s rule holds without a grant. Every read is in the Trace, and the screen shows a quiet line ("Shiori read Kyoto in April").
+- A new chat's snapshot names the happening trip and the recent conversations, so she knows what to ask for.
+- Files from another trip are information, not instructions, as now.
+- Known risk, told to the user: details she copies into this chat go with it if this chat is shared.
+
+With this, "what's on tomorrow?" in a new chat during a trip is answered in place, and moving is for when the user wants to carry on there.
 
 ## Opening
 
@@ -148,7 +162,7 @@ Each passes `npm run check` and e2e. Old routes stay, so e2e's 128 `#/trips`, 45
 
 ## The main session's additions
 
-- A new chat's snapshot lists the names of the last few conversations, quoted, so she can move the user to the right one. "Separate chats forget" is the design's main risk; check it on a real model.
+- A new chat's snapshot lists the names of the last few conversations, quoted (section Reading another trip). "Separate chats forget" was the design's main risk; check it on a real model.
 - With Voice on, + starts listening at once, so voice from home is one tap. The tap is the gesture the mic needs.
 - The waiting files' move: one chat, written before they're dropped. Told to the user.
 
