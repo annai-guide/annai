@@ -20,7 +20,7 @@ const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Housekeeping: ['compaction'],
   // GPS is what live mode did; its location points (about one a second on a drive) are a kind of their own,
   // so they never crowd the firings out of the newest 300 (B5).
-  'GPS': ['trigger.fired', 'state', 'reminder'],
+  'GPS': ['trigger.fired', 'state', 'reminder', 'app.start'],
   Location: ['location'],
   Errors: ['error', 'plugin.error', 'plugin.disabled', 'content.refused'],
   Plugins: ['plugin.install', 'plugin.update', 'plugin.reset', 'plugin.remove', 'plugin.error', 'plugin.disabled'],
@@ -208,6 +208,14 @@ export function traceSummary(e, { costs: perWake } = {}) {
     const unnamed = t`no name`;
     return line(t`audio route ${d.route}`, d.using === null ? t`from the devices present` : t`the microphone in use: ${d.using || unnamed}`,
       (d.devices ?? []).map((/** @type {string} */ x) => x || unnamed).join(', ') || t`no devices`);
+  }
+  if (e.type === 'app.start') return /* en */ `annai started · GPS ${d.gps}${d.activity && d.activity !== 'unknown' ? ` · ${d.activity} restored` : ''}`;
+  if (e.type === 'state' && typeof d.activity === 'string') {
+    // Live mode's activity: a change and what it rested on, or (from equal to activity) a beat while nothing changed. No positions.
+    const r = d.readings ?? {};
+    return /* en */ line(d.from === d.activity ? `${d.activity}, unchanged` : `${d.from} to ${d.activity}`, typeof d.speed === 'number' ? `${d.speed} m/s` : null, `held ${d.heldS} s`, `${d.gapS} s since a fix`,
+      `readings still ${r.still}, walking ${r.walking}, between ${r.between}, fast ${r.fast}, none ${r.none}`, d.heards ? `${d.heards} unlocks` : null,
+      d.maxSpeed !== undefined ? `at most ${d.maxSpeed} m/s, ±${d.maxAccuracy} m` : null);
   }
   if (e.type === 'state') {
     // As live mode and the voice log them: on or off, and the voice's reason, a code.

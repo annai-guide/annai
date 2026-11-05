@@ -113,9 +113,17 @@ export async function liveKit({ plan = {}, bookings = {}, live = true, start = a
   const engine = new Live({ store, ws, registry, agent, clock, timeZone: () => LA, ...(news ? { news } : {}), ...(problem ? { problem } : {}) });
   await engine.start();
   await engine.settled();
-  const settle = () => engine.settled();
+  const settle = () => k.live.settled();
   const k = {
     registry, store, ws, trip, clock, agent, sensors, live: engine, settle,
+    /** The page reloads: the engine stops, and a new one starts over the same store, with the same clock and sensors. */
+    async restart() {
+      k.live.dispose();
+      k.live = new Live({ store, ws, registry, agent, clock, timeZone: () => LA, ...(news ? { news } : {}), ...(problem ? { problem } : {}) });
+      await k.live.start();
+      await k.live.settled();
+      return k.live;
+    },
     /** Moves the clock to t, firing the timers that come due on the way. @param {number} t */
     to: (t) => clock.advanceTo(t, settle),
     /** A GPS fix at p, at t. @param {number} t @param {{ lat: number, lng: number }} p @param {Record<string, any>} [o] */

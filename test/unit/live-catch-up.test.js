@@ -25,7 +25,7 @@ test('back on screen: a time watch that came due fires late and labelled, with m
   assert.equal(w.kind, 'catch-up');
   assert.ok(w.text.startsWith('Catch-up: annai was off screen for 48 min (since 09:42), and the user moved 18.0 km. '), w.text);
   assert.ok(w.text.includes(`Your watch ${tea.id} (at ${iso('10:00')}) fired: the time came: ${iso('10:00')} (late by 30 min: annai was off screen). Its reminder: "Tea time."`), w.text);
-  assert.match(w.text, /fired: you have travelled 20\.\d km since this watch started counting\. Its reminder: "Narrate\."$/);
+  assert.match(w.text, /fired: you have travelled 20\.\d km since this watch last started counting\. Its reminder: "Narrate\."$/);
   assert.deepEqual(w.fallbacks.map((/** @type {any} */ f) => f.text), ['Tea time.', 'Narrate.']);
   assert.deepEqual((await k.events(['trigger.fired'])).map((e) => [e.data.late ?? 0, e.data.catchUp]), [[30, true], [0, true]]);
 });

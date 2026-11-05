@@ -1,12 +1,12 @@
 import { meters, keep, fixOf, kmText, span, KEEP_M } from './geo.js';
 import { ActivityTracker, STILL_BELOW } from './activity.js';
-import { TRIGGERS } from './triggers.js';
+import { TRIGGERS, SAME_DRIVE_MS } from './triggers.js';
 import { PLAN, planWatches, planWords, planItemWords } from './plan-watches.js';
 import { readWatches, saveWatch, removeWatch, newWatchId, expired, watchPath, WATCH_FILE } from './watches.js';
 import { realClock } from './clock.js';
 import { readAppSettings, updateAppSettings } from '../settings.js';
 import { logEvent } from '../events.js';
-import { ME, listTrips } from '../scopes.js';
+import { ME, SYS_DEVICE, ensureDeviceScope, listTrips } from '../scopes.js';
 import { PLAN_FILE, BOOKING_FILE } from '../plan.js';
 import { validZone, deviceZone, isoInZone, timeIn } from '../time.js';
 import { validate } from '../schema.js';
@@ -49,6 +49,10 @@ export const STOP_M = 100;
 export const FRESH_MS = 10 * 60_000;
 /** While live, the clock looks again at least this often (arrival estimates change with time). */
 export const RECHECK_MS = 60_000;
+/** Auto voice stays on this long after moving fast ends, so a stop at a light or in a queue (the minute moving fast holds, then this: under about 3 minutes) isn't voice going off and on. */
+export const VOICE_HOLD_MS = 2 * 60_000;
+/** While live and nothing changes, the activity is logged this often, so a quiet log can be told from nothing logged. */
+export const HEARTBEAT_MS = 5 * 60_000;
 /** The one timer waits at most a day, whatever is planned weeks ahead: the clock can't hold much longer. */
 export const MAX_WAIT_MS = 86_400_000;
 /** After coming back on screen, catch-up waits this long for a GPS fix (spec §11.4). */
@@ -91,6 +95,14 @@ export class Live {
   /** Name a point for the now block, besides the plan's places (the offline pack adds one). @type {((p: { lat: number, lng: number }) => { name: string, m: number } | null)[]} */
   namers = [];
   #tracker = new ActivityTracker();
+  /** @type {number | null} when moving fast last ended (memory only): the triggers' same-drive rule and Auto voice both read it */
+  #fastEnded = null;
+  /** @type {number | null} when Auto voice's hold after that is over, and voice is told */
+  #voiceLapse = null;
+  /** @type {number | null} when an activity entry (a change, or a beat) was last logged, while live */
+  #stateAt = null;
+  /** @type {Map<string, number>} km of a moved watch's way, read back from the log before its memory is made (a restart) */
+  #logged = new Map();
   /** @type {Fix | null} the last location point kept (spec §4.5) */
   #kept = null;
   /** @type {Fix | null} where the odometer last counted from */
@@ -178,6 +190,8 @@ export class Live {
     this.#offs.push(
       this.registry.add('live', 'activity', {
         now: () => (this.on ? this.activity : 'unknown'),
+        // Whether Auto voice counts the user as moving: moving fast, or it ended under VOICE_HOLD_MS ago (a light, a queue).
+        held: () => this.on && (this.activity === 'moving-fast' || (this.#fastEnded !== null && this.clock.now() - this.#fastEnded < VOICE_HOLD_MS)),
         onChange: (/** @type {() => void} */ fn) => {
           this.#activityChanges.add(fn);
           return () => { this.#activityChanges.delete(fn); };
@@ -192,6 +206,9 @@ export class Live {
       this.registry.onChange(() => this.#sensors()),
     );
     await this.#run(async () => {
+      const restored = this.on ? await this.#restore() : null;
+      if (this.on) this.#stateAt = this.clock.now();
+      await this.#started(restored);
       await this.#loadAll();
       await this.#follow();
       this.#loaded = true;
@@ -294,6 +311,7 @@ export class Live {
     this.shown = true;
     this.online = true;
     this.#tracker.reset();
+    this.#fastEnded = this.#voiceLapse = this.#stateAt = null;
     this.#kept = null;
     this.#odo = null;
     this.#back = false;
@@ -317,10 +335,12 @@ export class Live {
       if (!this.#sim) await updateAppSettings(this.ws, { live: { on } }); // a simulation's switch isn't the user's (choice 10)
       await logEvent(this.store, this.#scope(), { type: 'state', actor: 'user', data: { live: on ? 'on' : 'off' } }, this.clock.now());
       if (on) {
+        this.#stateAt = this.clock.now();
         if (this.shown) this.#gpsStart();
       } else {
         this.#gpsStop();
         this.#tracker.reset();
+        this.#fastEnded = this.#voiceLapse = this.#stateAt = null;
         this.activity = 'unknown';
         this.fix = null;
         this.stop = null;
@@ -406,6 +426,7 @@ export class Live {
     const fallback = typeof i.fallback === 'string' ? i.fallback.trim() : '';
     if (!fallback) throw new Error(/* en */ "Every watch needs a fallback: the words annai shows, and says with voice on, by itself when it fires and you can't be reached.");
     const now = this.clock.now();
+    const here = type.type === 'moved' ? this.#moment().fix : null;
     if (i.expires !== undefined && validate({ type: 'string', format: 'date-time' }, i.expires).length) throw new Error(/* en */ 'expires must be an ISO date-time with an offset, like 2026-11-27T18:00:00-08:00.');
     if (i.expires !== undefined && Date.parse(i.expires) <= now) throw new Error(/* en */ `expires ${i.expires} has already passed.`);
     if (type.type === 'time' && Date.parse(when.at) <= now) throw new Error(/* en */ `${when.at} has already passed. Give a time ahead.`);
@@ -413,6 +434,7 @@ export class Live {
     const w = {
       id: newWatchId(), owner, when: { ...when }, repeat: type.type === 'every' || (type.type !== 'time' && i.repeat === true), ...(i.urgent === true ? { urgent: true } : {}),
       fallback: fallback.slice(0, 500), ...(i.expires ? { expires: i.expires } : {}), created: new Date(now).toISOString(),
+      ...(here ? { setAt: { lat: round6(here.lat), lng: round6(here.lng) } } : {}), // where a moved watch counts from
     };
     return this.#run(async () => {
       await saveWatch(this.ws, scope, w, owner);
@@ -855,6 +877,7 @@ export class Live {
       if (c) {
         change = { from: c.from, to: c.to };
         this.activity = c.to;
+        await this.#logActivity(this.#activityData(c));
       }
     }
     if (!this.stop || meters(this.stop, fix) > Math.max(STOP_M, fix.accuracy)) this.stop = { lat: fix.lat, lng: fix.lng, since: fix.at };
@@ -991,6 +1014,7 @@ export class Live {
     if (WATCH_FILE.test(c.path)) {
       this.#bg(async () => {
         await this.#loadScope(c.scope);
+        await this.#countLogged(c.scope);
         this.#prune();
         await this.#check();
         this.#tellReminders('prompt');
@@ -1024,6 +1048,41 @@ export class Live {
     for (const scope of scopes) {
       await this.#loadScope(scope);
       await this.#recall(scope);
+      await this.#countLogged(scope);
+    }
+  }
+
+  /**
+   * How far each moved watch of a scope has come, from the kept location points since it was set or last fired (the way it counted before
+   * annai restarted); it stops once the way is far enough, which fires it. Only those without a memory yet: a watch seen in this run
+   * counted by the odometer. @param {string} scope
+   */
+  async #countLogged(scope) {
+    if (this.#sim) return;
+    for (const w of this.#watches.get(scope) ?? []) {
+      const key = this.#key(scope, w.id);
+      if (w.when?.type !== 'moved' || this.#mem.has(key) || this.#logged.has(key)) continue;
+      const km = Number(w.when.km);
+      const since = Math.max(Date.parse(w.created ?? '') || 0, this.#fired.get(key)?.at ?? 0);
+      let sum = 0;
+      /** @type {Fix | null} */
+      let prev = null;
+      /** @type {number | undefined} */
+      let before;
+      scan: for (;;) {
+        const page = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['location'], reverse: true, limit: 500, ...(before ? { before } : {}) }));
+        for (const e of page) {
+          if (e.ts < since) break scan;
+          const p = fixOf({ ...e.data, at: e.ts }, e.ts);
+          if (!p) continue;
+          if (prev) sum += meters(p, prev) / 1000;
+          prev = p;
+          if (sum >= km) break scan;
+        }
+        if (page.length < 500) break;
+        before = page[page.length - 1].seq;
+      }
+      this.#logged.set(key, sum);
     }
   }
 
@@ -1118,7 +1177,7 @@ export class Live {
     const scope = this.#scope();
     return {
       now, fix, newFix: !past && Boolean(o.newFix) && Boolean(fix), past, live: this.on, activity: this.on ? this.activity : 'unknown', change: o.change ?? null,
-      odometer: this.odometer, stop: this.on && !past ? this.stop : null, gap: c ? { since: c.since, from: c.from } : null,
+      odometer: this.odometer, stop: this.on && !past ? this.stop : null, gap: c ? { since: c.since, from: c.from } : null, fastEnded: this.#fastEnded, near: (p) => this.near(p),
       fired: (id) => this.#fired.has(this.#key(scope, id)),
     };
   }
@@ -1129,7 +1188,12 @@ export class Live {
     let mem = this.#mem.get(key);
     if (mem) return mem;
     const last = this.#fired.get(key);
-    mem = { set: Date.parse(w.created ?? '') || m.now, lastAt: last?.at ?? null, lastPlace: last?.place ?? null, km0: this.odometer };
+    // A moved watch's way so far was read back from the log when it was loaded (an annai that restarted): negative if the odometer is behind.
+    const logged = this.#logged.get(key) ?? 0;
+    this.#logged.delete(key);
+    const at = /** @type {any} */ (w).setAt;
+    mem = { set: Date.parse(w.created ?? '') || m.now, lastAt: last?.at ?? null, lastPlace: last?.place ?? null, km0: this.odometer - logged };
+    if (Number.isFinite(at?.lat) && Number.isFinite(at?.lng)) mem.setAt = { lat: at.lat, lng: at.lng };
     this.#mem.set(key, mem);
     try {
       type.start?.(w.when, m, mem);
@@ -1183,6 +1247,15 @@ export class Live {
     await this.#follow();
     if (o.change === undefined && !o.past) o = { ...o, change: this.#settle() };
     const m = this.#moment(o);
+    if (this.#voiceLapse !== null && m.now >= this.#voiceLapse) {
+      this.#voiceLapse = null;
+      this.#tellActivity(); // Auto voice hears that moving fast ended long enough ago
+    }
+    if (this.on && this.shown && !this.#sim && this.#stateAt !== null && m.now - this.#stateAt >= HEARTBEAT_MS) {
+      this.#stateAt = m.now;
+      const data = { ...this.#activityNow(), ...this.#tracker.beat(m.now) };
+      this.#bg(() => this.#logActivity(data));
+    }
     const open = this.#scope();
     /** @type {Fired[]} */
     const fired = [];
@@ -1201,9 +1274,75 @@ export class Live {
     const c = this.#tracker.tick(this.clock.now());
     if (!c) return null;
     this.activity = c.to;
+    const data = this.#activityData(c);
+    this.#bg(() => this.#logActivity(data));
     this.#tellActivity();
     this.#tell();
     return { from: c.from, to: c.to };
+  }
+
+  /** A change of activity, as the log keeps it: what it rested on (the tracker's), no position. Moving fast ending starts the clocks that two things read. @param {import('./activity.js').Change} c */
+  #activityData(c) {
+    const now = this.clock.now();
+    if (c.from === 'moving-fast') {
+      this.#fastEnded = now;
+      this.#voiceLapse = now + VOICE_HOLD_MS;
+    } else if (c.to === 'moving-fast') this.#voiceLapse = null;
+    this.#stateAt = now;
+    return { ...this.#activityNow(), from: c.from, ...this.#tracker.why };
+  }
+
+  /** The activity and the speed that goes with it, for an entry. */
+  #activityNow() {
+    const speed = this.#tracker.speed;
+    return { activity: this.activity, from: this.activity, speed: speed === null ? null : Math.round(speed * 10) / 10 };
+  }
+
+  /**
+   * One state entry for each change of activity, and one for every HEARTBEAT_MS it stays, so a real drive shows what each rested on and a
+   * quiet log can be told from nothing logged. On this device, not in a conversation: the activity is the phone's, and a restart (the
+   * page reloaded, maybe into another conversation) reads it back from here. A simulation's goes into its own trip.
+   * @param {Record<string, any>} data
+   */
+  async #logActivity(data) {
+    const scope = this.#sim ? this.#sim.trip : SYS_DEVICE;
+    if (scope === SYS_DEVICE) await ensureDeviceScope(this.store, this.clock.now());
+    else if (!(await this.#exists(scope))) return;
+    await logEvent(this.store, scope, { type: 'state', actor: 'system', data }, this.clock.now()).catch((e) => this.#fail(e));
+  }
+
+  /**
+   * annai started with GPS on: the activity from before, read from the log, when it was logged under SAME_DRIVE_MS ago (a reload mid-drive
+   * or at a red light is the same drive; later it is not known, as on a first start); and when moving fast last ended, for the triggers'
+   * same-drive rule and Auto voice. @returns {Promise<string | null>} the activity restored
+   */
+  async #restore() {
+    const now = this.clock.now();
+    const entries = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS_DEVICE, { types: ['state'], reverse: true, limit: 20 })).catch(() => []);
+    /** @type {string | null} */
+    let activity = null;
+    /** @type {number | null} */
+    let ended = null;
+    for (const e of entries) {
+      if (now - e.ts >= SAME_DRIVE_MS) break;
+      const d = e.data;
+      if (activity === null && ['still', 'walking', 'moving-fast'].includes(d?.activity)) activity = d.activity;
+      if (ended === null && d?.from === 'moving-fast' && ['still', 'walking'].includes(d?.activity)) ended = e.ts;
+    }
+    if (activity === null) return null;
+    this.activity = /** @type {import('./activity.js').Activity} */ (activity);
+    this.#tracker.restore(this.activity, now);
+    if (ended !== null) {
+      this.#fastEnded = ended;
+      if (ended + VOICE_HOLD_MS > now) this.#voiceLapse = ended + VOICE_HOLD_MS;
+    }
+    return activity;
+  }
+
+  /** One app.start entry for each page load, on this device, so the trace can tell how often annai restarts. @param {string | null} restored */
+  async #started(restored) {
+    await ensureDeviceScope(this.store, this.clock.now());
+    await logEvent(this.store, SYS_DEVICE, { type: 'app.start', actor: 'system', data: { gps: this.on ? 'on' : 'off', activity: restored ?? 'unknown' } }, this.clock.now()).catch((e) => this.#fail(e));
   }
 
   /** The watches and the plan looked at (#check), and what fired fired. @param {Moment} m @param {string} open @param {Fired[]} fired */
@@ -1432,6 +1571,8 @@ export class Live {
       if (typeof t === 'number' && Number.isFinite(t) && t > m.now && t < next) next = t;
     };
     if (this.on) consider(this.#tracker.due()); // an activity change held long enough, or a quiet GPS
+    if (this.on) consider(this.#voiceLapse); // Auto voice's hold after moving fast
+    if (this.on && !this.#sim && this.#stateAt !== null) consider(this.#stateAt + HEARTBEAT_MS);
     const types = this.types();
     const open = this.#scope();
     for (const [scope, list] of this.#watches) {
