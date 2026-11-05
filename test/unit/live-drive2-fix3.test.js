@@ -75,6 +75,21 @@ test('2: Classic: sound stuck with the window open closes it: the dock stops say
   assert.equal(k.platform.mic.isOpen(), true);
 });
 
+test('2b: Classic: sound sticking while a tap\'s microphone opens: the dock doesn\'t say Listening over a mic that was stopped (Step on fix pass 3)', async () => {
+  const k = await agentKit([], { halves: true, voice: { speechIn: ['m-hear'] } });
+  await k.voice.unlock();
+  const open = k.voice.open.bind(k.voice);
+  /** @type {any} */ (k.voice).open = async (/** @type {any} */ o) => {
+    const session = await open(o);
+    k.voice.soundStopped(); // it sticks just as the microphone comes up, before the ear holds its session
+    return session;
+  };
+  k.agent.tap();
+  await wait(200);
+  assert.equal(k.platform.mic.isOpen(), false, 'closed while it opened');
+  assert.notEqual(k.agent.state.name, 'listening');
+});
+
 test('3: a tap whose silent clip takes 1.5 s still opens the Classic microphone', async () => {
   const k = await agentKit([], { voice: { speechIn: ['m-hear'] } });
   await k.voice.unlock();
