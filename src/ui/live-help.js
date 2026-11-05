@@ -21,7 +21,7 @@ export function gpsProblem(where, installed = false) {
       ? t`On Android: tap the icon left of the address (in the installed app: hold the annai icon, then App info → Permissions) and allow Location.`
       : t`Allow location for this site in your browser's site settings.`;
   const refused = t`Location isn't allowed, so GPS has only its time reminders.`;
-  const again = t`Then turn GPS off and on again. Or tell annai where you are: tap the GPS chip → Where are you?`;
+  const again = t`Then turn GPS off and on again. Or tell annai where you are: Now → Driving → Where are you?`;
   return { title: t`annai can't see where you are`, body: sentences(refused, steps, again) };
 }
 

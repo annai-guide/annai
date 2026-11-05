@@ -21,7 +21,6 @@ test('Driving: Now hands over when moving fast; the road ahead, directions, big 
     await writeRecords(page, trip, { write: { '/plan/lunch.json': { id: 'lunch', title: 'Lunch at Nepenthe', fixed: true, start: { at: lunch, tz: 'UTC' }, place: { name: 'Nepenthe', lat: 36.2213, lng: -121.7567 } } } });
     await page.goto('/#/now');
     await page.locator('.live-chip').click();
-    await page.getByRole('group', { name: 'GPS' }).getByRole('button', { name: 'Turn GPS on' }).click();
     await expect.poll(() => llm.bodies('/b/v1/messages').length).toBe(1); // she was told live mode is on
     await expect(page.locator('.talk-label')).toHaveText('Tap to talk');
     for (let i = 1; i <= 10; i++) {

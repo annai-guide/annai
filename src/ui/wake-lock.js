@@ -1,33 +1,17 @@
 import { readAppSettings, updateAppSettings } from '../core/settings.js';
 
-/** The situations the screen choice is kept for (spec §11.1: "per situation"). @param {string} activity */
-export const situation = (activity) => (activity === 'moving-fast' || activity === 'walking' || activity === 'still' ? activity : 'unknown');
-
 /**
- * The screen kept on in live mode (spec §11.1: "the user's choice per situation (on the car charger,
- * yes; walking, probably not)"): one choice for each activity, kept in the app settings. The lock is
- * held while live mode is on, annai is on screen, and the choice for the activity now says so; the
+ * The screen kept on while GPS is on (the user, the second drive: "Keep the screen on while GPS is on"): one setting, on unless the
+ * user turned it off, kept in the app settings. The lock is held while GPS is on, annai is on screen, and the setting says so; the
  * browser lets it go off screen, and it is asked for again on coming back.
- * @param {{ live: { on: boolean, shown: boolean, activity: string, onChange: (fn: () => void) => unknown },
+ * @param {{ live: { on: boolean, shown: boolean, onChange: (fn: () => void) => unknown },
  *   ws: import('../core/workspace.js').Workspace, lock?: { request: (type: 'screen') => Promise<any> } | null }} c
  */
 export function keepAwake({ live, ws, lock = /** @type {any} */ (globalThis.navigator)?.wakeLock ?? null }) {
-  /** @type {Record<string, boolean>} */
-  let choices = {};
+  let chosen = true;
   /** @type {any} */
   let held = null;
   let asking = false;
-  /** @type {boolean | null} a choice made while the activity wasn't known yet: it is for the activity that follows (B6) */
-  let carry = null;
-  /** The first known activity after such a choice takes it, over any older one. */
-  const settle = () => {
-    const key = situation(live.activity);
-    if (carry === null || key === 'unknown') return;
-    const on = carry;
-    carry = null;
-    choices = { ...choices, [key]: on };
-    updateAppSettings(ws, { live: { awake: { [key]: on } } }).catch(() => {});
-  };
   /** @type {Set<() => void>} */
   const changes = new Set();
   const tell = () => {
@@ -39,9 +23,8 @@ export function keepAwake({ live, ws, lock = /** @type {any} */ (globalThis.navi
       }
     }
   };
-  const want = () => Boolean(live.on && live.shown && choices[situation(live.activity)]);
+  const want = () => Boolean(live.on && live.shown && chosen);
   const apply = async () => {
-    settle();
     if (want() && !held && lock && !asking) {
       asking = true;
       try {
@@ -65,7 +48,7 @@ export function keepAwake({ live, ws, lock = /** @type {any} */ (globalThis.navi
     }
     tell();
   };
-  const ready = readAppSettings(ws).then((s) => { choices = { ...(s.live?.awake ?? {}) }; }, () => {}).then(apply);
+  const ready = readAppSettings(ws).then((s) => { chosen = s.live?.keepScreenOn !== false; }, () => {}).then(apply);
   live.onChange(() => { apply().catch(() => {}); });
   return {
     ready,
@@ -74,14 +57,12 @@ export function keepAwake({ live, ws, lock = /** @type {any} */ (globalThis.navi
       return Boolean(held);
     },
     get chosen() {
-      return Boolean(choices[situation(live.activity)]);
+      return chosen;
     },
-    /** Keep the screen on (or not) in the situation now. @param {boolean} on */
+    /** Keep the screen on while GPS is on, or not. @param {boolean} on */
     async choose(on) {
-      const key = situation(live.activity);
-      carry = key === 'unknown' ? on : null;
-      choices = { ...choices, [key]: on };
-      await updateAppSettings(ws, { live: { awake: { [key]: on } } });
+      chosen = on;
+      await updateAppSettings(ws, { live: { keepScreenOn: on } });
       await apply();
     },
     /** @param {() => void} fn */

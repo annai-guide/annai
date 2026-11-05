@@ -32,7 +32,7 @@ const keyboardIcon = () => icon(/* en */ 'M4 6.5h16a1.5 1.5 0 0 1 1.5 1.5v8a1.5 
 
 /**
  * The dock at the bottom of every screen (spec §16.2): camera · Shiori · type. Tapping Shiori stops
- * her while she works or speaks (§6.7, §10.4), and starts listening while she rests with voice on; with voice off it opens typing.
+ * her while she works or speaks (§6.7, §10.4), and starts listening while she rests, in Auto as in On; with voice set to Off it opens typing.
  * dispose() lets go of everything it listens to, for a dock made again (minors 13).
  * @param {any} ctx
  */
@@ -169,7 +169,7 @@ export function createDock(ctx) {
   const talk = h('button', {
     class: 'talk', type: 'button', 'aria-label': t`Shiori`,
     onclick: () => {
-      // While she speaks, a tap stops her and listens; asleep with voice on, it listens; with voice off, typing opens (spec §10.4).
+      // While she speaks, a tap stops her and listens; asleep, in Auto or On, it listens; with voice set to Off, typing opens (spec §10.4).
       if (ctx.agent.tap() === 'typing') openTyping();
     },
   }, avatar.el, label);
@@ -249,12 +249,13 @@ export function createDock(ctx) {
     else if (!caption.hidden) letGo();
   }), () => clearTimeout(lingering));
   // While Kokoro works behind Koe, a sign says so, with Stop for Kokoro's turn alone (the Koe and Kokoro design).
-  const halves = h('span', { class: 'halves-sign', hidden: true },
+  // Its space is always kept (visibility, not display: nothing in the bar moves as it comes and goes, the second drive's item 5).
+  const halves = h('span', { class: 'halves-sign idle' },
     h('span', { class: 'chip', role: 'status', text: t`Kokoro is working` }),
     h('button', { class: 'btn', type: 'button', 'aria-label': t`Stop Kokoro`, onclick: () => ctx.agent.stopKokoro() }, t`Stop`));
   if ('kokoroWorking' in ctx.agent) {
-    halves.hidden = !ctx.agent.kokoroWorking;
-    offs.push(ctx.agent.on('halves', (/** @type {{ kokoroWorking: boolean }} */ x) => { halves.hidden = !x.kokoroWorking; }));
+    halves.classList.toggle('idle', !ctx.agent.kokoroWorking);
+    offs.push(ctx.agent.on('halves', (/** @type {{ kokoroWorking: boolean }} */ x) => { halves.classList.toggle('idle', !x.kokoroWorking); }));
   }
   // Plugins' status chips and dock actions (spec §16.4), drawn again whenever they change (refreshSlots).
   const pluginChips = h('span', { class: 'plugin-chips' });

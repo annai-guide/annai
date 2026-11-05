@@ -3,8 +3,9 @@ import { routeStrip } from '../../core/now.js';
 import { loadLinks, mapsLinks } from '../../core/links.js';
 import { tripRows } from '../trip-rows.js';
 import { readAppSettings } from '../../core/settings.js';
-import { distance, duration, sentenceGap, speaksScreens } from '../format.js';
-import { knownFix, screenOn } from '../live-chip.js';
+import { distance, duration, sentenceGap, sentences, speaksScreens } from '../format.js';
+import { knownFix } from '../live-chip.js';
+import { PLAN_FILE } from '../../core/plan.js';
 import { latestCard, eventCard, nowOf } from './now.js';
 
 /** Big quick-ask buttons (spec §16.2): what each says to Shiori, as the user's own words. @param {boolean} speaks @param {{ name: string } | undefined} next */
@@ -18,6 +19,23 @@ const quickAsks = (speaks, next) => [
 
 /** How far and how long to a stop, for the road ahead: "≈ 26 mi · about 1 hr, 12 min"; a minute at least, even standing at it. @param {{ km: number | null, minutes: number | null }} s */
 export const roadText = (s) => (s.km === null ? '' : `≈ ${distance(s.km)} · ${t`about ${duration(Math.max(1, s.minutes ?? 0) * 60_000)}`}`);
+
+/** The open trip's plan places, for "Where are you?". @param {any} ctx @returns {Promise<{ name: string, lat: number, lng: number }[]>} */
+async function planPlaces(ctx) {
+  const trip = ctx.agent?.trip;
+  if (!trip) return [];
+  /** @type {{ name: string, lat: number, lng: number }[]} */
+  const out = [];
+  for (const f of await ctx.ws.list(trip, '/plan/')) {
+    if (!PLAN_FILE.test(f.path)) continue;
+    const it = await ctx.ws.readJSON(trip, f.path).catch(() => null);
+    const p = it?.place;
+    if (!p || typeof p.lat !== 'number' || typeof p.lng !== 'number') continue;
+    const name = String(p.name ?? it.title ?? t`A plan place`);
+    if (!out.some((x) => x.name === name)) out.push({ name, lat: p.lat, lng: p.lng });
+  }
+  return out.slice(0, 8);
+}
 
 /**
  * Driving (spec §16.2): the route strip, a maps card, big quick-ask buttons, and the big dock
@@ -40,6 +58,9 @@ export async function renderDrive(ctx) {
   const maps = h('div', { class: 'maps-card' });
   const ask = h('div', { class: 'quick-ask' });
   const awake = h('div', { class: 'acts' });
+  // With no GPS, the user can say where they are, from the plan's places (spec §17: "a manual place").
+  const where = h('div', { class: 'acts' });
+  const places = await planPlaces(ctx);
   const latest = h('div', { class: 'drive-latest', 'aria-live': 'polite' });
   const draw = () => {
     const here = live ? knownFix(live) : null; // not a position from before the GPS was lost
@@ -65,8 +86,18 @@ export async function renderDrive(ctx) {
     }, label)));
     const a = ctx.awake;
     awake.replaceChildren(...(live?.on && a?.available
-      ? [h('button', { class: 'btn', type: 'button', 'aria-pressed': String(a.chosen), onclick: async () => { await a.choose(!a.chosen); draw(); } }, screenOn(live.activity).keep)]
+      ? [h('button', { class: 'btn', type: 'button', 'aria-pressed': String(a.chosen), onclick: async () => { await a.choose(!a.chosen); draw(); } }, t`Keep the screen on while GPS is on`)]
       : live && !live.on ? [h('button', { class: 'btn pri', type: 'button', onclick: () => live.setLive(true) }, t`Turn GPS on`)] : []));
+    const lost = live?.on && (live.gps === 'denied' || live.gps === 'unavailable');
+    where.replaceChildren(...(!lost ? [] : [
+      h('p', { class: 'sub', text: places.length ? t`Where are you?` : sentences(t`Where are you?`, t`The plan has no places to choose from yet.`) }),
+      ...places.map((p) => h('button', {
+        class: 'btn', type: 'button',
+        onclick: async () => {
+          await live.place(p);
+          ctx.notices.toast(t`annai now knows you're at ${p.name}.`);
+        },
+      }, p.name))]));
   };
   draw();
   const first = await latestCard(ctx, id);
@@ -95,6 +126,6 @@ export async function renderDrive(ctx) {
   addEventListener('hashchange', leave);
   return h('div', { class: 'screen drive' },
     h('h1', { class: 'title', text: t`Driving` }),
-    strip, maps, ask, latest, awake,
+    strip, maps, ask, latest, where, awake,
     h('p', {}, crumb('#/now', t`Now`)));
 }

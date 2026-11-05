@@ -1,3 +1,4 @@
+import { claimLine } from './blocks.js';
 import { ME, newId } from '../scopes.js';
 import { readAppSettings } from '../settings.js';
 import { languageSettings, strayLanguage } from '../languages.js';
@@ -50,7 +51,7 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string, fallbacks?: Reminder[], aloud?: boolean,
  *   logged?: boolean, from?: 'koe' | 'kokoro', note?: string, mode?: 'append' | 'immediate', again?: boolean, at?: number, input?: boolean, why?: string,
  *   call?: { name: string, input: any }, seq?: number, watched?: boolean, forUser?: string, retold?: boolean, files?: string[], titles?: string[],
- *   by?: { name: string, first: string | null, tried: boolean } | null, handed?: import('../handover.js').HandedFile[], handover?: string, recap?: string, fromScope?: string, turn?: string, urgent?: boolean }} Wake
+ *   by?: { name: string, first: string | null, tried: boolean } | null, handed?: import('../handover.js').HandedFile[], handover?: string, recap?: string, claim?: string, fromScope?: string, turn?: string, urgent?: boolean }} Wake
  *   by: a note's, the model that wrote it; turn: a note's, the sender's turn it came from (its wake id)
  *   handed, handover: a hand-over's files and its id (the user's message with files, handover.js): the turn that takes it carries the id;
  *   recap: what Shiori said of a trip before, written into the trip she started or opened for a hand-over; fromScope: a hand-over's copy
@@ -804,7 +805,8 @@ export class Agent {
   /**
    * The user wrote, or sent photos (spec §4.8, §16.2), or handed her files (handover.js). It answers a pending ask or wait; otherwise
    * it wakes Shiori, or reaches her next call. Photos and files sent with an answer reach her right after it.
-   * @param {string} text @param {{ photos?: SentPhoto[], handed?: import('../handover.js').HandedFile[], handover?: string }} [o]
+   * @param {string} text @param {{ photos?: SentPhoto[], claim?: string, handed?: import('../handover.js').HandedFile[], handover?: string }} [o]
+   *   claim: "This was for Shiori": the id of the heard line these are the words of
    */
   send(text, o = {}) {
     const photos = (o.photos ?? []).filter((x) => x && typeof x.path === 'string');
@@ -815,11 +817,11 @@ export class Agent {
     const p = this.#pending;
     if (p) {
       this.#pending = null;
-      p.resolve({ text: said });
+      p.resolve({ text: said, ...(o.claim ? { claim: o.claim } : {}) });
       if (photos.length || handed.length) this.#push({ kind: 'user', text: photos.length ? PHOTO_ONLY : FILES_ONLY, ...(photos.length ? { photos } : {}), ...given });
       return;
     }
-    this.#push({ kind: 'user', text: said, ...(photos.length ? { photos } : {}), ...given });
+    this.#push({ kind: 'user', text: said, ...(photos.length ? { photos } : {}), ...(o.claim ? { claim: o.claim } : {}), ...given });
     this.#drain();
   }
 
@@ -917,7 +919,7 @@ export class Agent {
   /**
    * What the user typed or sent to a live session (K5), written as a turn writes it, photos as request copies.
    * @param {string} text @param {SentPhoto[]} photos
-   * @param {{ chose?: boolean, handed?: import('../handover.js').HandedFile[], handover?: string }} [o] chose: a tap on a live ask's buttons; handed, handover: a hand-over
+   * @param {{ chose?: boolean, claim?: string, handed?: import('../handover.js').HandedFile[], handover?: string }} [o] chose: a tap on a live ask's buttons; claim: "This was for Shiori"; handed, handover: a hand-over
    */
   async logUser(text, photos, o = {}) {
     const { images, blobs } = photos.length ? await this.#userPhotos(photos, this.trip) : { images: [], blobs: [] };
@@ -925,7 +927,7 @@ export class Agent {
     const words = String(text ?? '').trim() || (photos.length || !handed.length ? PHOTO_ONLY : FILES_ONLY);
     return this.#log({
       type: 'msg.user', actor: 'user', texts: [['text', words]], blobs,
-      data: { ...(images.length ? { images } : {}), ...(o.chose ? { chose: true } : {}), ...(handed.length ? { handed, ...(o.handover ? { handover: o.handover } : {}) } : {}) },
+      data: { ...(images.length ? { images } : {}), ...(o.chose ? { chose: true } : {}), ...(o.claim ? { claim: o.claim } : {}), ...(handed.length ? { handed, ...(o.handover ? { handover: o.handover } : {}) } : {}) },
     });
   }
 
@@ -1597,7 +1599,7 @@ export class Agent {
       if (w.kind !== 'user' && w.kind !== 'choice') continue;
       const { images, blobs } = w.photos?.length ? await this.#userPhotos(w.photos, trip) : { images: [], blobs: [] };
       const handed = { ...(w.handed?.length ? { handed: w.handed } : {}), ...(w.handover ? { handover: w.handover } : {}), ...(w.fromScope ? { from: w.fromScope } : {}) };
-      await log({ type: 'msg.user', actor: 'user', data: { wake: wakeId, ...(meanwhile ? { meanwhile: true } : {}), ...(images.length ? { images } : {}), ...handed }, texts: [['text', w.text]], blobs });
+      await log({ type: 'msg.user', actor: 'user', data: { wake: wakeId, ...(meanwhile ? { meanwhile: true } : {}), ...(images.length ? { images } : {}), ...(w.claim ? { claim: w.claim } : {}), ...handed }, texts: [['text', w.text]], blobs });
     }
   }
 
@@ -2615,8 +2617,8 @@ export class Agent {
             await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...this.#chose() }, texts: [['text', got.chosen]] });
             return `The user chose: ${got.chosen}`;
           }
-          await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id }, texts: [['text', got.text ?? '']] });
-          return `The user wrote: ${got.text}`;
+          await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...(got.claim ? { claim: got.claim } : {}) }, texts: [['text', got.text ?? '']] });
+          return got.claim ? claimLine(String(got.text)) : `The user wrote: ${got.text}`;
         },
       },
       {
@@ -2633,9 +2635,9 @@ export class Agent {
           if (got.stopped) return { content: STOPPED, isError: true };
           if (got.note) return `${got.note === 'koe' ? 'Koe' : 'Kokoro'}: see the note below.`;
           if (got.text === undefined) return `Nothing yet (${seconds} seconds).`;
-          await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id }, texts: [['text', got.text]] });
+          await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...(got.claim ? { claim: got.claim } : {}) }, texts: [['text', got.text]] });
           if (this.#half.listenLast) this.#facts.wrote = true; // Koe's: a message of theirs it owes an answer
-          return `The user wrote: ${got.text}`;
+          return got.claim ? claimLine(got.text) : `The user wrote: ${got.text}`;
         },
       },
       {
@@ -2877,9 +2879,9 @@ export class Agent {
       return { content: `${lead}Someone spoke, but not to you; it is below. You went back to sleep.`, heard: [got.dismissed.id], endTurn: true };
     }
     if (got.text !== undefined) {
-      await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id }, texts: [['text', got.text]] });
+      await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...(got.claim ? { claim: got.claim } : {}) }, texts: [['text', got.text]] });
       /* en */
-      return `${lead}The user wrote: ${got.text}`;
+      return got.claim ? `${lead}${claimLine(got.text)}` : `${lead}The user wrote: ${got.text}`;
     }
     /* en */
     if (got.deaf) return `${lead}annai couldn't listen: ${got.deaf} The user may type.`;
@@ -3124,10 +3126,15 @@ export class Agent {
     return 'listening';
   }
 
+  /** A tap's microphone is opening: it may yet say why it can't. */
+  tapOpening = false;
+
   /** The user tapped to talk (spec §10.4): the microphone opens; a silence closes it again. */
   #tapListen() {
+    this.tapOpening = true;
     this.#openEar('tap').then(async (deaf) => {
-      if (deaf) return; // the card said why
+      this.tapOpening = false;
+      if (deaf) return void this.#emit('state', this.state); // the card said why; whoever waits on this tap hears it came to nothing
       const p = this.#pending;
       if (p?.kind === 'ask') p.listening = true; // an ask's answer may be spoken
       if (this.#busy) return; // she is speaking or working: the window serves her turn

@@ -1203,3 +1203,41 @@ test("a session whose audio rate is missing doesn't stop her voice at once (foll
     await k.done();
   }
 });
+
+test('Auto, voice off, Realtime chosen: a tap works Koe out again and opens a live session, held on until it closes; its line names its model; then Classic again', async () => {
+  const k = await liveKit([{ said: 'Left at the light.', audio: tone(0.2) }], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+  try {
+    await updateAppSettings(k.ws, { voice: { mode: 'auto' } });
+    await k.voice.refresh();
+    await k.agent.idle();
+    assert.deepEqual([k.voice.on, k.agent.koeState], [false, 'text']);
+    assert.equal(k.agent.tap(), 'listening');
+    assert.equal(k.voice.mode.why, 'tapped');
+    await soon(async () => k.agent.koeState === 'live' && k.agent.live.state === 'open');
+    await soon(async () => k.agent.live.listening);
+    k.agent.send('Which way?');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    const said = (await k.events(['out.speak']))[0];
+    assert.equal(said.data.live, true);
+    assert.deepEqual(said.data.by, { name: 'Gemini 3.8 Live', first: null, tried: false });
+    assert.equal(k.voice.on, true, 'the session is open: the exchange goes on');
+    k.agent.live.close('tap');
+    await soon(async () => !k.voice.on);
+    await soon(async () => k.agent.koeState === 'text');
+    assert.equal(k.voice.mode.why, 'not sure');
+  } finally {
+    await k.done();
+  }
+});
+
+test('a claim in a live session goes in as a text turn that says it was for her, in the log as a msg.user with claim', async () => {
+  const k = await liveKit([{ said: 'Yes.', audio: tone(0.2) }], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+  try {
+    k.agent.send('Is there parking?', { claim: 'h1' });
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    assert.deepEqual((await k.events(['msg.user'])).map((e) => [e.data.claim, e.data.text]), [['h1', 'Is there parking?']]);
+    assert.ok(texts(k).some((x) => x.includes('[the user says this was for you] "Is there parking?"')), JSON.stringify(texts(k)));
+  } finally {
+    await k.done();
+  }
+});
