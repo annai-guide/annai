@@ -781,7 +781,7 @@ test('voice off: a tap starts voice, held on for that exchange, and she answers 
   assert.equal((await k.events(['out.speak']))[0].data.voice, true, 'a reply said aloud, not a bubble');
   await k.agent.idle();
   await until(() => !k.voice.on);
-  assert.equal(k.voice.mode.why, 'not sure');
+  assert.equal(k.voice.mode.why, 'off');
   assert.equal(k.platform.log.filter((/** @type {string} */ l) => l.startsWith('mic ')).at(-1), 'mic close');
 });
 

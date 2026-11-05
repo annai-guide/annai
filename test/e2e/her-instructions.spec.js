@@ -125,12 +125,12 @@ test("a new original of a text the user changed opens its fold and says so in it
   const koe = page.locator('details[data-instructions="koe"]');
   await expect(koe).toHaveJSProperty('open', true);
   await expect(koe.locator('summary')).toContainText('annai has a new original');
-  await expect(koe.getByRole('button', { name: 'Use the new original: Koe, classic' })).toBeVisible();
+  await expect(koe.getByRole('button', { name: 'Use the new original: Koe, chat' })).toBeVisible();
   // The others stay folded.
   await expect(page.locator('details[data-instructions="shiori"]')).toHaveJSProperty('open', false);
   // Merging by hand beside the new original, then Keep mine: the typing stays in the box (unsaved, as it was).
   await koe.locator('textarea').fill('My Koe words, with a line from the new original.');
-  await koe.getByRole('button', { name: 'Keep mine: Koe, classic' }).click();
+  await koe.getByRole('button', { name: 'Keep mine: Koe, chat' }).click();
   await expect(koe.locator('summary')).not.toContainText('new original');
   await expect(koe.locator('textarea')).toHaveValue('My Koe words, with a line from the new original.');
   await expect(koe.locator('summary')).toContainText('changed');

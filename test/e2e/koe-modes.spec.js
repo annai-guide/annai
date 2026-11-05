@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, addProvider, pickProvider, savedBy, leaveSaved, startModelServer, anthropicToolReply } from './helpers.js';
+import { fileURLToPath } from 'node:url';
+import { openApp, waitForServiceWorker, addProvider, pickProvider, savedBy, leaveSaved, startModelServer, anthropicToolReply, fakeMicrophone } from './helpers.js';
 import { startRealtimeServer } from '../fakes/realtime-server.js';
 
 // Koe's two lists, Koe · Live and Koe · Chat, and the Live chip's switch (the user, 2026-11-04: "also the realtime mode on and off"). Gemini Live at the stand-in realtime server, Kokoro and Koe · Chat at a stand-in
@@ -50,6 +51,7 @@ test("the Live chip: one tap switches which of Koe's lists talks, kept across a 
   const s = await startRealtimeServer({ flavour: 'gemini', key: KEY, turns: [{ said: 'Hello.', audio: new Uint8Array(4800) }] });
   const llm = await startModelServer({ '/kokoro/v1/messages': sse([sleep]), '/koe/v1/messages': sse([{ name: 'speak', input: { text: 'Classic here.' } }, sleep]) });
   try {
+    await fakeMicrophone(page, [fileURLToPath(new URL('../fixtures/voice/where-eat.wav', import.meta.url))]);
     await setUp(page, llm.origin, s.origin);
     const chip = page.locator('.voice-chip');
     const live = page.locator('.koe-live-chip');
