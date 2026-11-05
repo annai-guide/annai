@@ -93,6 +93,11 @@ export const SCENARIOS = {
     route: 'speaker', echoDb: null, extra: true, languages: { spoken: ['en', 'ja'], answer: 'follow' },
     steps: [{ say: 'ko-word' }, { wait: 9000 }, { say: 'lyric' }, { wait: 9000 }, { say: 'lunch' }, { answered: 1500 }],
   },
+  'relay-unset-ja': {
+    about: 'no languages set (the browser\'s English only): a Japanese sentence, which is a language the user may speak, so it is answered, in Japanese (fix pass 2: the stay-silent rule must not catch it)',
+    route: 'speaker', echoDb: null, extra: true,
+    steps: [{ say: 'ja' }, { answered: 1500 }],
+  },
   'relay-note': {
     about: "a note it must say, then Kokoro's same note again (item 11): the first is said with nothing added, the second settled with already_told",
     route: 'speaker', echoDb: null, extra: true, repeatNote: true,

@@ -121,6 +121,7 @@ test("a trigger's session listens only briefly: a heard turn she dismisses doesn
     await until(() => k.agent.live.state === 'closed', 2500).finally(() => { done = true; });
     await feeding;
     assert.ok(Date.now() - t0 < 2500, `closed after ${Date.now() - t0} ms`);
+    await soon(async () => (await lives(k, 'closed')).length === 1); // the state turns closed a moment before its entry is written
     assert.equal((await lives(k, 'closed'))[0].data.why, 'quiet');
   } finally {
     await k.done();

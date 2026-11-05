@@ -188,10 +188,10 @@ async function instructionEditor(ctx, id) {
     },
   }, t`Reset to original`);
   const offer = h('div', { class: 'compare', hidden: true });
-  /** The screen follows what is stored now. */
-  const redraw = async () => {
+  /** The screen follows what is stored now; typed: the words in the box stay (Keep mine changes nothing in them, and the user may be merging by hand beside the new original). @param {{ typed?: boolean }} [o] */
+  const redraw = async (o = {}) => {
     const now = await instructionState(ctx.ws, id);
-    area.value = now.text;
+    if (!o.typed) area.value = now.text;
     mark.hidden = reset.hidden = !now.edited;
     mark.textContent = now.newOriginal ? t`changed, and annai has a new original` : t`changed`;
     offer.hidden = !now.newOriginal;
@@ -199,7 +199,7 @@ async function instructionEditor(ctx, id) {
     offer.replaceChildren(...(now.newOriginal ? [
       h('h3', { text: t`The new original of ${words.name}` }), h('pre', { class: 'mono wrap-text', lang: 'en', text: now.newOriginal }),
       h('div', { class: 'acts' },
-        h('button', { class: 'btn', type: 'button', 'aria-label': t`Keep mine: ${words.name}`, onclick: async () => { await keepMyInstruction(ctx.ws, id); await redraw(); area.focus(); } }, t`Keep mine`),
+        h('button', { class: 'btn', type: 'button', 'aria-label': t`Keep mine: ${words.name}`, onclick: async () => { await keepMyInstruction(ctx.ws, id); await redraw({ typed: true }); area.focus(); } }, t`Keep mine`),
         h('button', { class: 'btn', type: 'button', 'aria-label': t`Use the new original: ${words.name}`, onclick: async () => { await resetInstruction(ctx.ws, id); ctx.notices.toast(t`Back to the original. It applies at her next wake.`); await redraw(); area.focus(); } }, t`Use the new original`)),
     ] : []));
   };

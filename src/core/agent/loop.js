@@ -146,7 +146,7 @@ const waitingMedia = (output) => [...(output.images ?? []), ...(output.document 
 /** A note from Kokoro that Koe owes the user (spec §6.8): what Kokoro found, or couldn't. @param {Wake} w */
 export const isForUser = (w) => w.kind === 'note' && w.from === 'kokoro' && !NOT_FOR_USER.includes(String(w.why));
 /** What Koe is asked when Kokoro's note for the user ended its turn unsaid, text or live: only what the note adds (§6.8), or already_told. */
-export const NOTE_UNSAID = /* en */ "Kokoro's note hasn't reached the user. Only what you say, show or ask reaches them; anything you write for yourself never does. Tell them what it adds, in your own words; if you have already told them all of it, call already_told.";
+export const NOTE_UNSAID = /* en */ "Kokoro's note hasn't reached the user. Only what you say, show or ask reaches them; anything you write for yourself never does. Tell them what it adds, without changing what it claims; if you have already told them all of it, call already_told.";
 /** How many steps Koe takes after the cue while it still owes the user, before annai's backstop. */
 const AFTER_CUE = 2;
 /** How many of the conversation's last lines the gate reads. */

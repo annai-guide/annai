@@ -648,8 +648,6 @@ function tidyMenu(ctx) {
     if (toggle.getAttribute('aria-disabled') === 'true') return;
     menu.hidden = !menu.hidden;
     toggle.setAttribute('aria-expanded', String(!menu.hidden));
-    menu.style.maxHeight = '';
-    if (!menu.hidden) menu.style.maxHeight = `${Math.max(120, innerHeight - menu.getBoundingClientRect().top - 8)}px`;
   });
   const summarize = h('button', {
     class: 'btn', type: 'button', 'aria-describedby': 'tidy-summarize',
