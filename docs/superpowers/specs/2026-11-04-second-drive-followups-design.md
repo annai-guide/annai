@@ -147,7 +147,7 @@ Measured on the drive (53 live turns, one car, one volume): the user's voice pea
 
 annai decides when each audio turn begins (`automaticActivityDetection: { disabled: true }`), so lyrics that never open a turn never reach the model, cost nothing, and can't be answered:
 - The detector (`src/core/voice/detector.js`, about line 240) gains a minimum level for starting speech, reaching LiveInput through a callback as `speaking` does. Under it, a frame doesn't start a turn. A turn already going on is untouched. Every turn start comes from the detector's one `speech` event. Frames kept out this way raise `blips`, so `noisy` turns true and she plays at once: keep them out of that count, and test that the floor's creep doesn't defeat the -70 dB line.
-- `voiceDb`: the loudest turn peak heard lately, a running maximum that falls about 3 dB a minute, so a lyric can't lower it quickly and a slammed door passes. It lives on the Koe live object across sessions, and resets when the audio route changes (`voice.route`).
+- `voiceDb`: the loudest peak of turns Koe answered or the user tapped, a running maximum with no fall over time. A tapped turn sets it anew, and it resets when the audio route changes (`voice.route`). It lives on the Koe live object across sessions. (Reversed from a first version that fell 3 dB a minute and learned from every turn: lyrics got through after a minute, and each woke Kokoro.)
 - While the floor is above about -70 dB, the minimum is `voiceDb - 10`. In a quiet car there is no minimum. With no `voiceDb` yet there is no minimum.
 - A tap lifts the minimum until its first turn ends: a tap only opens the mic (`live.js`, about 579 to 595), so it can't force a turn.
 - `live.turn` also logs `voiceDb` and the minimum in force, and a count of frames over the floor that the minimum kept from starting a turn, so the next drive can tune the constants. The constants are the main session's first guess, measured from one drive.
@@ -185,8 +185,8 @@ The status read "moving fast" about 4 minutes after the car had stopped: speed f
 ### Surviving a reload (the user, 2026-11-04)
 "I think we might need to fix this? because iphone clears background apps (we are web pages?) quite aggressively? And if user want to be notified then it is quite important we make that accurate. and user may actually want to know where they said that as well?" And: "I think restart actaully might be quite common? indeed today I almost did not switch away still happened?"
 
-- A `moved` watch counts from the log (kept `location` events and `trigger.fired`), so a reload loses nothing. No new store.
-- A `moved` watch records where it was set, and its firing says so.
+- The odometer persists in the activity `state` entries on `sys:device`, and a `moved` watch records its odometer reading and place when set and at each firing, so a reload loses nothing, in any conversation. (A first version recounted from the logged points: it skipped the odometer's filters and couldn't count outside the open trip.)
+- A `moved` watch's firing says where it was set.
 - The last activity and when moving fast ended come back at start from the newest activity `state` event, under 5 minutes old, so a reload at a light or mid-drive doesn't re-fire "moving fast starts".
 - `app.start` is logged per page load. The trace can't show reloads today, so how common they are is not yet measured.
 
@@ -238,4 +238,3 @@ The user: "do you want to build a more enhanced and heavier trace mode (option) 
 - "See what Koe sees" beside Kokoro's (the user asked about Kokoro's).
 - A dismissed live turn at the user's own level cues Kokoro; lyrics don't.
 - A live session's listening windows stay at 8 s.
-- `voiceDb` learns from every turn, not only answered ones: the spec check's worry, a lyric setting it first, is no worse than today until the user speaks, and a running maximum recovers at once.
