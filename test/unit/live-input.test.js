@@ -507,7 +507,7 @@ test("each turn's end is traced as numbers only: why it ended, how long, the flo
   r.feed(cat(quiet(1), lunch, quiet(1.5)), RATE);
   assert.equal(turns.length, 1);
   const [t] = turns;
-  assert.deepEqual(Object.keys(t).sort(), ['end', 'floorDb', 'ms', 'peakDb']);
+  assert.deepEqual(Object.keys(t).sort(), ['end', 'floorDb', 'keptFrames', 'keptPeakDb', 'minDb', 'ms', 'peakDb']);
   assert.equal(t.end, 'pause');
   assert.ok(Number.isFinite(t.floorDb) && Number.isFinite(t.peakDb) && t.peakDb > t.floorDb + 30, JSON.stringify(t));
   assert.ok(t.ms > 1000 && t.ms < 4000, JSON.stringify(t));

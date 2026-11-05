@@ -191,9 +191,9 @@ test('swiping a screen sideways moves along the top bar; not from its edge, nor 
 test('Settings → Shiori shows every way she can look, with the words the dock shows under her', async ({ page }) => {
   await openApp(page, '#/shiori');
   const looks = page.locator('.looks .look');
-  await expect(looks).toHaveCount(8);
+  await expect(looks).toHaveCount(9);
   expect(await looks.evaluateAll((els) => els.map((e) => `${/** @type {HTMLElement} */ (e).dataset.state}=${e.querySelector('.av')?.getAttribute('data-state')}`)))
-    .toEqual(['sleeping', 'listening', 'hearing', 'thinking', 'speaking', 'waiting', 'away', 'offline'].map((s) => `${s}=${s}`));
+    .toEqual(['sleeping', 'listening', 'ignoring', 'hearing', 'thinking', 'speaking', 'waiting', 'away', 'offline'].map((s) => `${s}=${s}`));
   await expect(page.getByRole('img', { name: 'Shiori, thinking' })).toBeVisible();
   await expect(looks.nth(0)).toContainText('Tap to talk');
 });

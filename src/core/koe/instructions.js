@@ -18,7 +18,7 @@ const NOTE = (id) => /* en */ `- A note from Kokoro is text in <from_kokoro id="
   `${CHANGES}in the same reply: speak to say you're checking, tell_kokoro the question, and wait.`, ON_IT, NOTE('the block at the end of each request gives'),
   `- [heard] lines are speech recognition and ${SOUNDS_ALIKE}`,
   `${SILENT} (call sleep).`, TRIGGERS, "- Lines starting with [annai] come from the app; [said to the user] is what Shiori said while you were away.",
-  "- When you have said what's needed, call sleep. wait means Kokoro is working: use it when you expect its note.",
+  '- A speak listens by itself; call sleep only when no reply is expected. wait means Kokoro is working: use it when you expect its note.',
 ].join('\n');
 
 /** Koe's instructions in a live session (K5): it speaks itself, so it has no speak or wait (plan decision 29); its sleep closes the session. */

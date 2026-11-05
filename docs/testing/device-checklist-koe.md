@@ -35,6 +35,8 @@ In the car, with the iPhone on the car's Bluetooth, and a passenger. Set up as f
 - [ ] **Her voice is one voice.** With voice on, Shiori never talks over herself: Kokoro's notes come out only in her own words, after what she was saying (or, for a correction, cutting it).
 - [ ] **Hear Shiori tell it.** With voice off, a trip's Recap → **Hear Shiori tell it**: she tells it aloud, and doesn't listen afterwards.
 - [ ] **Voice off again.** Turn voice off and type: she answers in bubbles (Trace: `Koe · koe` turns).
+- [ ] **A slow wake of sound isn't "stuck".** Lock the phone or take a call with annai open, come back, and tap Shiori in Realtime at once: the microphone opens, within 3 s at the most, with no "Tap the screen" card. If the card comes on a sound that one tap then brings back, write down how long the tap's microphone took: annai waits 3 s for the phone's sound to run, and a slower phone needs a longer wait.
+- [ ] **Dictation comes back on its own.** With phone dictation as the speech in, let her say something and stay quiet through several of dictation's own silence ends, then speak inside her window (`r.start()` thrown in `onend` is swallowed, and leaves dictation dead until the window ends): she hears you. If she doesn't, write down how long after her last words it was.
 
 ## K3: Audio in the smallest format
 

@@ -55,7 +55,7 @@ test('heard nothing: speak stops listening after the silence limit (spec §7.1)'
   const k = await agentKit([[{ toolCalls: [{ name: 'speak', input: { text: 'Anything else?' } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]], { voice: {} });
   k.agent.send('Thanks');
   await k.agent.idle();
-  assert.equal((await results(k, 'speak'))[0].data.content, 'Said aloud. Heard nothing (8 seconds).');
+  assert.equal((await results(k, 'speak'))[0].data.content, 'Said aloud. Heard nothing (20 seconds).');
   assert.deepEqual(k.platform.log.filter((/** @type {string} */ l) => l.startsWith('mic')), ['mic open', 'mic close']);
 });
 

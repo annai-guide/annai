@@ -7,7 +7,7 @@ import { h } from './dom.js';
  * the parts with transforms and transitions (shiori.css); her eyes and her streamer are drawn here, as shapes that
  * change smoothly, never swapped pictures. Her only loops: breathing while asleep, and her tail's tip and the
  * streamer on her marker while she works. A named component: setState, setLevel, glance, blink. Built without innerHTML.
- * @typedef {'sleeping' | 'listening' | 'hearing' | 'thinking' | 'speaking' | 'waiting' | 'away' | 'offline'} AvatarState
+ * @typedef {'sleeping' | 'listening' | 'ignoring' | 'hearing' | 'thinking' | 'speaking' | 'waiting' | 'away' | 'offline'} AvatarState
  */
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -127,7 +127,7 @@ const FRONT = {
 /** The turned gazes. @type {Record<string, Gaze>} */
 const TURNED = { open: { eyes: [FAR, NEAR], look: [0, 0] }, closed: { eyes: [squashed(FAR), squashed(NEAR)], look: [0, 0] } };
 /** The front eyes each state shows. @type {Record<string, string>} */
-const EYES = { sleeping: 'asleep', hearing: 'wide', offline: 'sad' };
+const EYES = { sleeping: 'asleep', hearing: 'wide', ignoring: 'drowsy', offline: 'sad' };
 
 /** @template T @param {T} a @param {T} b @param {number} k 0..1 @returns {T} */
 const mix = (a, b, k) => /** @type {any} */ (typeof a === 'number' ? a + (/** @type {number} */ (b) - a) * k
