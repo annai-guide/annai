@@ -21,7 +21,7 @@ The user: "a bit messy screens and tabs here and there"; "everything come back t
 
 **Existing data:**
 - `trip-*` scopes: untouched.
-- `me`: keeps profile, memory, personalities, instructions. Its old lines become a read-only row, "Shiori, no trip" (`#/talk/me`); it takes no more turns (Q1). `agent.open(null)` stays as "nothing open": `send` and `tap` then make a chat first, in `Halves`, so `ui.shiori.send` works too. `me`'s log is also written by `remind`, `setLive`'s `state`, catch-ups, `/me/` file writes and `composer`, and old `me` watches and owed restarts would run turns. So one guard in the loop: with target null, wakes log and `remind` fires, with no turn and nothing owed.
+- `me`: keeps profile, memory, personalities, instructions. Its old lines become a read-only row, "Shiori, no trip" (`#/talk/me`); it takes no more turns. `agent.open(null)` stays as "nothing open": `send` and `tap` then make a chat first, in `Halves`, so `ui.shiori.send` works too. `me`'s log is also written by `remind`, `setLive`'s `state`, catch-ups, `/me/` file writes and `composer`, and old `me` watches and owed restarts would run turns. So one guard in the loop: with target null, wakes log and `remind` fires, with no turn and nothing owed.
 - `sys:waiting`: at each start its files move into one chat, "Waiting with Shiori", with a `file` wake so she reads them on opening. `moveFile` writes before it drops; a cut-off run resumes. A restored backup's waiting files, and an Undo whose chat is gone, go the same way.
 
 ## The timeline
@@ -75,7 +75,7 @@ The user, after the design's doubts about forgetting and the slow route: "with u
 - Its `run` shows annai's own card, built from the scope's title with fixed options ("Read Kyoto in April?": Allow, Always for my trips, Not now), and logs a grant entry only on `got.chosen`. `ask` can't do this: it's model-authored, and no model text may grant (RULES 9). A late tap (`send` with `chose`) grants nothing. 
 - A spoken yes: annai's own strict word list on the heard line, inside the window after she asks, with no model involved.
 - Allow lasts for this conversation, stored in its log, so a reload keeps it; restored trips get new ids, so she asks again. "Always for my trips" is a setting, changeable in Settings.
-- Trips other people shared always ask. Nothing marks them today, so import stamps `imported: true` on the scope record (`madeBy` is unticked by default, so it can't serve).
+- Trips other people shared always ask. Nothing marks them today, so import stamps `imported: true` on the scope record.
 - Every read is in the Trace, and the screen shows a quiet line ("Shiori read Kyoto in April").
 - A new chat's snapshot names the happening trip and the recent conversations, so she knows what to ask for.
 - Files from another trip are information, not instructions, as now.
@@ -93,7 +93,7 @@ Forced: `live.js` follows only the open conversation for plan watches (`#loadPla
 
 - **Home showing:** nothing changes; a voice session goes on.
 - **Nothing open:** GPS keeps no points; time watches fire.
-- **Driving:** `handover()` moves to shell.js and runs from home, conversation and Itinerary as moving fast begins, not while typing (Q3). Quick asks open the trip in play first, only with no live session: `Halves.open` closes it.
+- **Driving:** `handover()` moves to shell.js and runs from home, conversation and Itinerary as moving fast begins, not while typing. Quick asks open the trip in play first, only with no live session: `Halves.open` closes it.
 
 ## Notifications, imports, exports
 
