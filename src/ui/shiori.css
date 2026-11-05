@@ -261,3 +261,5 @@ a.attach-chip, .attach-chip.gone { padding-inline: 12px; text-decoration: none; 
 body:has(.dock:not(.seat)) .toasts { bottom: calc(var(--dock-h, 140px) + 8px); }
 /* A menu opened from the dock comes above the top bar and the cards. */
 .dock:not(.seat):has(.voice-menu:not([hidden])) { z-index: 30; }
+/* The working sign steps aside while a menu from the bar is open: the menu opens where the sign floats, and its buttons take the taps. */
+.dock:not(.seat):has(.voice-menu:not([hidden])) .halves-sign { visibility: hidden; }

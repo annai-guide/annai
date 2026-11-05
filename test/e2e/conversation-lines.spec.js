@@ -226,6 +226,27 @@ test.describe('the bottom bar, at phone width', () => {
     });
   }
 
+  for (const [width, height] of [[360, 640], [390, 844]]) {
+    test(`${width} × ${height}: the voice menu, opened while the working sign shows, is not under the sign: every button in it takes the tap`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await openApp(page, '#/talk');
+      await page.goto('/#/voice');
+      await page.getByRole('radio', { name: 'On', exact: true }).check();
+      await page.goto('/#/talk');
+      await expect(page.locator('nav.dock')).toHaveClass(/\bvoice\b/);
+      await page.locator('.halves-sign').evaluate((el) => el.classList.remove('idle'));
+      await page.locator('.voice-chip').click();
+      const menu = page.locator('#voice-menu');
+      await expect(menu).toBeVisible();
+      const covered = await menu.evaluate((m) => [...m.querySelectorAll('button, .voice-menu-label')].map((b) => {
+        const r = b.getBoundingClientRect();
+        const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        return m.contains(top) ? null : `${b.textContent} is under ${top?.className || top?.tagName}`;
+      }).filter(Boolean));
+      expect(covered).toEqual([]);
+    });
+  }
+
   test('at 360 × 640 the bar is no taller than it was before the sign had a row: 138 px voice off, 168 px voice on', async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 640 });
     await openApp(page, '#/talk');

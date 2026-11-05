@@ -330,9 +330,10 @@ export class LiveKoe {
     this.#changed();
     await this.c.koe.opening.catch(() => {}); // its lines go into Koe's conversation
     // One that can't open rests its model, as a failed call's does: Koe's next model answers meanwhile.
-    const s = (await this.#over()) ? null : await this.#resume(id, this.#handle, why).catch(() => { this.c.llm.bench?.bench(id, COOLDOWN_MS); return null; });
+    const over = await this.#over(); // its own card says why; the model isn't at fault
+    const s = over ? null : await this.#resume(id, this.#handle, why).catch(() => { this.c.llm.bench?.bench(id, COOLDOWN_MS); return null; });
     if (gen !== this.#gen || !s) {
-      this.#failed = !s && gen === this.#gen;
+      this.#failed = !s && !over && gen === this.#gen;
       s?.close('closed');
       if (gen === this.#gen) this.state = 'closed';
       return false;

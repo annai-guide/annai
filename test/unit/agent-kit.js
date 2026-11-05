@@ -66,7 +66,7 @@ export function fakeCodec(formats) {
  *   voice?: { mode?: 'on' | 'off' | 'auto', speechIn?: string[], hears?: string[], failing?: string[], decide?: any[], dictation?: boolean, keepClips?: boolean, playMs?: number, micFails?: string,
  *     encoder?: { makes: string[] }, plays?: string[] },
  *   halves?: boolean, koe?: { type?: any[] | Record<string, any>, talk?: any[] | Record<string, any>, input?: string[], model?: Record<string, any> },
- *   live?: { origin: string, first?: boolean, key?: string, tunables?: Record<string, any>, type?: 'gemini-live' | 'openai-realtime' }, fetch?: import('../../src/core/llm/call.js').Fetch }} [opts]
+ *   live?: { origin: string, first?: boolean, second?: boolean, key?: string, tunables?: Record<string, any>, type?: 'gemini-live' | 'openai-realtime' }, fetch?: import('../../src/core/llm/call.js').Fetch }} [opts]
  *   uploading: whether the main model's provider takes photos by upload; a script (or koe's type) with an ability is a model on that
  *   endpoint type (anthropic-messages, chat-completions), its requests sent through fetch (a stand-in)
  *   utility: a script for one more scripted model, in the utility role; utilityModel: what its model record has besides (its input)
@@ -125,6 +125,11 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
     add('pv-live', 'm-live', openai ? 'OpenAI' : 'Gemini', { kind: 'realtime', type: openai ? 'openai-realtime' : 'gemini-live', baseUrl: openai ? `${live.origin}/v1` : live.origin },
       { providerId: openai ? 'gpt-realtime-2.1' : 'gemini-3.8-live', name: openai ? 'GPT Realtime 2.1' : 'Gemini 3.8 Live', prices: { input: 0.75, audioIn: 3, output: 4.5, audioOut: 12 }, input: ['text', 'image'] });
     config.roles['koe-realtime'].models = ['m-live'];
+    if (live.second) { // a second Realtime model after the first, at the same server
+      add('pv-live2', 'm-live2', 'Gemini 2', { kind: 'realtime', type: 'gemini-live', baseUrl: live.origin },
+        { providerId: 'gemini-3.8-live-b', name: 'Gemini 3.8 Live B', prices: { input: 0.75, audioIn: 3, output: 4.5, audioOut: 12 }, input: ['text', 'image'] });
+      config.roles['koe-realtime'].models.push('m-live2');
+    }
   }
   if (utility) {
     add('pv-u', 'm-u', 'EU', { kind: 'chat', type: 'scripted', tunables: { script: utility } }, { providerId: 'model-u', prices: { input: 1, output: 1 }, input: ['text', 'image'], ...utilityModel });
