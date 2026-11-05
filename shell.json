@@ -1,5 +1,5 @@
 {
-  "build": "e2276fcecd2c",
+  "build": "0c8cea5a5206",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -96,7 +96,7 @@
     "/src/core/live/activity.js": "538eceb8138c",
     "/src/core/live/clock.js": "3a80893f52a5",
     "/src/core/live/geo.js": "018e805b07f7",
-    "/src/core/live/live.js": "c591a8667db4",
+    "/src/core/live/live.js": "57f30a0f390a",
     "/src/core/live/plan-watches.js": "86e5053be983",
     "/src/core/live/sim-run.js": "7a6c3579a014",
     "/src/core/live/simulate.js": "b7a9e9c0442c",

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit, until } from './agent-kit.js';
 import { fakeSensors, memoryKeep, at, LA, MONTEREY, off } from './live-kit.js';
-import { Live } from '../../src/core/live/live.js';
+import { Live, FIX_WAIT_MS } from '../../src/core/live/live.js';
 import { ManualClock } from '../../src/core/live/clock.js';
 import { updateAppSettings, readAppSettings } from '../../src/core/settings.js';
 import { SYS_DEVICE } from '../../src/core/scopes.js';
@@ -449,4 +449,85 @@ test('the prompts\' voice line says what is so, and never auto', () => {
   assert.match(String(line({ setting: 'off', on: true, why: 'tapped' })), /^voice: on .*\(the user tapped Shiori, for this exchange\)$/);
   assert.match(String(line({ setting: 'on', on: true, why: 'on' })), /^voice: on [^(]*\([^)]*\)$/);
   assert.doesNotMatch(String(line({ setting: 'off', on: false, why: 'off' })), /auto/);
+});
+
+/** A record as a page killed on the road (activity moving fast) leaves it, with its place and what it owes. @param {any} p @param {any} [more] */
+const record = (p, more = {}) => ({ at: at('17:03'), odometer: 1.2, odo: { ...p, at: at('17:02:30'), accuracy: 8 }, activity: 'moving-fast', ended: null, due: null, hushed: false, ...more });
+
+/** A page killed in the hold, opened at `now` with GPS on: voice left on, the record owing its end. @param {any} d @param {number} now @param {any} [more] */
+async function reopened(d, now, more = {}) {
+  d.live.dispose();
+  d.keep.set(record(d.p, { activity: 'still', due: at('17:05'), ...more }));
+  await d.clock.advanceTo(now, () => Promise.resolve());
+  d.live = await d.start();
+  await tick();
+}
+
+test('a simulated drive\'s end holds nothing of the user\'s voice: the user\'s setting stays', async () => {
+  const d = await drive({ setting: 'on' });
+  let held = 0;
+  d.k.agent.holdVoice = () => { held++; }; // Halves has it; the kit's bare Agent doesn't
+  const sim = new ManualClock(at('09:00'));
+  const back = await d.live.simulate({ clock: sim, timeZone: () => LA, trip: d.k.trip });
+  await d.live.setLive(true);
+  let p = MONTEREY;
+  for (let t = at('09:00'); t <= at('09:02'); t += 5000) {
+    await sim.advanceTo(t, () => d.live.settled());
+    p = off(p, 0, -70);
+    d.live.fixed({ lat: p.lat, lng: p.lng, accuracy: 8, speed: 14 });
+    await d.live.settled();
+  }
+  for (let t = at('09:02:05'); t <= at('09:12'); t += 5000) {
+    await sim.advanceTo(t, () => d.live.settled());
+    d.live.fixed({ lat: p.lat, lng: p.lng, accuracy: 8, speed: 0 });
+    await d.live.settled();
+  }
+  assert.equal(d.live.activity, 'still', 'the simulated drive ended');
+  assert.equal(held, 0);
+  assert.equal(d.k.voice.on, true);
+  await back();
+  d.live.dispose();
+});
+
+test('a page opened after its drive\'s end came due, the first fix with no speed and a coarse accuracy: the way from the record\'s place says she is driving, so the end dies', async () => {
+  const d = await drive({ setting: 'on' });
+  await reopened(d, at('17:06'));
+  assert.equal(d.k.voice.on, true);
+  const far = off(d.p, 0, -6000); // 6 km in about 4 minutes
+  d.sensors.fix({ lat: far.lat, lng: far.lng, accuracy: 60, speed: null });
+  await d.live.settled();
+  await d.wait(at('17:20'));
+  assert.equal(d.k.voice.on, true);
+  assert.deepEqual(d.notes, []);
+  assert.equal(d.keep.get().due, null, 'and the record no longer owes it');
+  d.live.dispose();
+});
+
+test('a first fix that can say nothing of the speed (no place to judge from, no speed) leaves the end waiting for the next good fix', async () => {
+  const d = await drive({ setting: 'on' });
+  await reopened(d, at('17:06'), { odo: null });
+  d.sensors.fix({ lat: d.p.lat, lng: d.p.lng, accuracy: 60, speed: null });
+  await d.live.settled();
+  await tick();
+  assert.equal(d.k.voice.on, true, 'a fix that says nothing ends nothing');
+  await d.fix(at('17:06:05'), 0);
+  await until(() => !d.k.voice.on);
+  assert.deepEqual(d.notes, [STOPPED]);
+  d.live.dispose();
+});
+
+test('a late end with GPS on and no fix good enough: voice goes off after FIX_WAIT_MS, and a choice made meanwhile still cancels it', async () => {
+  for (const choose of [false, true]) {
+    const d = await drive({ setting: 'on' });
+    await reopened(d, at('21:00'));
+    d.sensors.fix({ lat: d.p.lat, lng: d.p.lng, accuracy: 400, speed: 0 }); // indoors
+    await d.live.settled();
+    await d.clock.advanceTo(at('21:00') + FIX_WAIT_MS - 1000, () => d.live.settled());
+    assert.equal(d.k.voice.on, true, 'it waits for a fix first');
+    if (choose) await d.k.voice.choose('on');
+    await d.wait(at('21:00') + FIX_WAIT_MS + 70_000);
+    assert.equal(d.k.voice.on, choose, `${choose ? 'chosen' : 'nothing chosen'}`);
+    assert.deepEqual(d.notes, choose ? [] : [STOPPED]);
+    d.live.dispose();
+  }
 });
