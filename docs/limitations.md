@@ -134,4 +134,48 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** in a jam that never gets above about 7 mph, annai can't tell a crawl from a parked car. Voice goes off about 3 minutes in and comes back about 35 seconds after traffic clears. A tap on Shiori still talks, but a reminder meanwhile may arrive silently, and "moving fast starts" can fire again when it clears. Stop-and-go that reaches 7 mph isn't affected.
 - **Why:** telling a crawl from walking away from a parked car needs more logic, and GPS speed alone can't always do it; holding voice longer would leave it on after really parking.
 - **Revisit when:** it bothers the user on a commute; the drive log shows how often it happens.
-- **Approved:** 2026-11-05, the user picked "Accept it for now (Recommended)".
+- **With Voice set to On:** the jam also saves the setting as off, as a drive's end does, and the chip shows "Voice on · driving" when traffic clears.
+- **Approved:** 2026-11-05, the user picked "Accept it for now (Recommended)".; the wider effect: 2026-11-05, the user ticked "Jam also saves Voice off".
+
+### AirPods taken out with no mic open go unnoticed
+- **Kind:** known limitation.
+- **What the user sees:** voice turns itself off when a device disconnects only if the microphone is open on that device. Otherwise iOS may move her sound to the speaker with voice still on.
+- **Why:** counting every device in the list gave false alarms, such as the phone's Receiver coming and going with the mic, or a watch going out of range.
+- **Revisit when:** it happens to the user, or a device check shows what iOS reports.
+- **Approved:** 2026-11-05, the user ticked "AirPods with no mic open".
+
+### A refused mic with Live on says "Voice on" for a moment
+- **Kind:** known limitation.
+- **What the user sees:** with Voice off and Live on, a tap whose mic is refused shows a card that explains, but the chip says "Voice on" for up to 30 s until the session's quiet spell closes it. It fixes itself.
+- **Why:** the hold lasts as long as the session does, and the card already says what happened.
+- **Revisit when:** it confuses someone.
+- **Approved:** 2026-11-05, the user ticked "Mic refused, Live on".
+
+### A restored backup can fire a distance reminder once
+- **Kind:** known limitation.
+- **What the user sees:** restoring a backup onto a phone that has driven further can make a distance reminder that hasn't fired yet fire once on open, with too large a number. A reminder that already fired stays fired.
+- **Why:** telling the two phones apart needs a device id on each reading. The user: "importing with an untriggered one may cause the reminder to trigger and that can be intentional so let it be I think."
+- **Revisit when:** the user meets it.
+- **Approved:** 2026-11-05, the user ticked "Restored backup, distance reminder", with that note.
+
+### Detailed trace: gaps in what it keeps
+- **Kind:** known limitation.
+- **What the user sees:** clips wait in memory, so a reload or kill loses up to 16 MB waiting during no signal. A turn during a 3 s sample leaves a hole in that sample.
+- **Why:** saving clips would store voices on the phone, and a hole in a sample doesn't harm tuning.
+- **Revisit when:** clips are lost like this on a real drive.
+- **Approved:** 2026-11-05, the user ticked "Heavier trace: gaps".
+
+### Detailed trace: text in a box with its own scroll
+- **Kind:** known limitation.
+- **What the user sees:** with Detailed trace on, a screen copy also includes lines hidden inside a box that scrolls by itself, and text clipped by CSS. A sweep of 14 screens, with no trip data, found no private text in such boxes.
+- **Why:** telling clipped text from visible text needs more logic for something off by default.
+- **Revisit when:** private text turns up in such a box.
+- **Approved:** 2026-11-05, the user ticked "Heavier trace: scrolled-box text".
+
+### A rare wrong "moving fast starts" after annai is killed
+- **Kind:** known limitation.
+- **What the user sees:** after annai is killed on the road, stopping at a light and driving off 3 to 5 minutes later can fire one extra reminder. Carrying on in someone else's car or on a flight can skip one.
+- **Why:** with no fix while it was closed, annai can't tell these apart from the way speed alone.
+- **Revisit when:** the drive log shows it happening.
+- **Approved:** 2026-11-05, the user ticked "Rare wrong \"moving fast starts\"".
+
