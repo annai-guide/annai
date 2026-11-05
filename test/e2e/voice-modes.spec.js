@@ -114,14 +114,14 @@ test('what she says aloud is shown: its words in the conversation, marked "said 
   await sheSpeaks(page, async () => {
     const said = page.locator('.convo .shiori.said');
     await expect(said.getByText('Nepenthe is 25 minutes south.')).toBeVisible();
-    await expect(said.getByText('said aloud')).toBeVisible();
+    await expect(said.locator('.line-label')).toBeVisible();
     await expect(said.getByRole('button', { name: 'Show what she said' })).toHaveCount(0);
-    // Quieter than a line she wrote or the user's (the user, 2026-10-23: the bubble above her is where they are read live): smaller and muted.
+    // The normal size, as her written lines (the second-drive design: the mock-up), no more smaller and grey.
     const look = (/** @type {import('@playwright/test').Locator} */ l) => l.evaluate((el) => { const s = getComputedStyle(el); return { size: Number.parseFloat(s.fontSize), color: s.color }; });
     const quiet = await look(said.locator('p'));
     const loud = await look(page.locator('.convo .you p').first());
-    expect(quiet.size).toBeLessThan(loud.size);
-    expect(quiet.color).not.toBe(loud.color);
+    expect(quiet.size).toBe(loud.size);
+    expect(quiet.color).toBe(loud.color);
     expect(await page.evaluate(() => /** @type {any} */ (window).sawBubble), 'the bubble held her words while she spoke').toBe('Nepenthe is 25 minutes south.');
     expect((await page.evaluate(() => /** @type {any} */ (window).sawBubbleLook)).style, 'English in the bubble stays slanted, with no language of its own').toBe('italic');
     await expect(page.locator('.dock .caption')).toHaveText('Nepenthe is 25 minutes south.');
@@ -153,7 +153,7 @@ test('"Show what she says" in Settings → Voice is on, and off it hides both: t
     expect(await page.evaluate(() => /** @type {any} */ (window).announced.filter((/** @type {string} */ t) => t.includes('Nepenthe is 25 minutes south.')))).toEqual(['Shiori: Nepenthe is 25 minutes south.']);
     await expect(page.getByRole('button', { name: 'Captions' })).toHaveCount(0);
     const said = page.locator('.convo .shiori.said');
-    await expect(said).toContainText('Said aloud');
+    await expect(said.locator('.line-label')).toBeVisible();
     await expect(said.getByText('Nepenthe is 25 minutes south.')).toBeHidden();
     await said.getByRole('button', { name: 'Show what she said' }).click();
     await expect(said.getByText('Nepenthe is 25 minutes south.')).toBeVisible();

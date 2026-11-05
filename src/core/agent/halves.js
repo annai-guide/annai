@@ -191,6 +191,9 @@ export class Halves {
   #voiceWas = false;
   /** Koe's way now (the voice chip's words and switch): the mode chosen, the list in use, and why Classic stands in. @type {import('../llm/fallback.js').KoeWay | null} */
   #way = null;
+  /** A tap in Auto holds voice on for its exchange (tap), and is still being carried out. */
+  #tapHeld = false;
+  #tapStarting = 0;
   /** A refresh for when a resting realtime model can answer again, so the chosen Realtime comes back. @type {ReturnType<typeof setTimeout> | undefined} */
   #back;
   /** The page went with that refresh waiting: it asks again when the page is back. */
@@ -449,6 +452,7 @@ export class Halves {
 
   /** @param {Agent} half @param {any} s */
   #stateOf(half, s) {
+    queueMicrotask(() => this.#endTapHold());
     if (half === this.koe) this.kokoro.poke(); // the user speaking to Koe holds Kokoro
     if (half === this.talking && this.koeState !== 'live') this.#emit('state', s);
     if (half === this.kokoro) this.#emitHalves();
@@ -469,6 +473,7 @@ export class Halves {
 
   /** A live session's state changed: the dock's, and the chip's. */
   #liveChanged() {
+    this.#endTapHold();
     this.kokoro.poke(); // the user speaking into it holds Kokoro
     const name = this.live.view.name;
     if (this.koeState === 'live' && name !== this.#lastView) this.#emit('state', this.live.view);
@@ -660,7 +665,7 @@ export class Halves {
       if (e.type === 'heard.text') later.set(d.of, later.get(d.of) ?? d.text);
       const text = e.type === 'heard' ? later.get(d.id) ?? d.text : e.type === 'out.show' ? cardText(d.card) : e.type === 'out.ask' ? d.question : d.text;
       if (e.type === 'heard.text' || !text || d.dismissed || lines.length >= 12) continue;
-      const who = e.type === 'msg.user' ? /* en */ 'the user typed' : e.type === 'heard' ? 'heard' : d.half === 'koe' ? /* en */ 'you said' : /* en */ 'said to the user';
+      const who = e.type === 'msg.user' ? (d.claim ? /* en */ 'the user says this was for you' : /* en */ 'the user typed') : e.type === 'heard' ? 'heard' : d.half === 'koe' ? /* en */ 'you said' : /* en */ 'said to the user';
       lines.unshift(`[${who}] ${escapeTags(quote(text))}`);
     }
     return lines.length ? /* en */ `The conversation so far:\n${lines.join('\n')}` : '';
@@ -703,8 +708,8 @@ export class Halves {
 
   /**
    * To Koe while it talks (Kokoro reads it and wakes), else to Kokoro; a half waiting for an answer gets it.
-   * @param {string} text @param {{ photos?: import('./loop.js').SentPhoto[], chose?: boolean, handed?: import('../handover.js').HandedFile[], handover?: string }} [o]
-   *   chose: a tap on a live ask's buttons; handed, handover: a hand-over (handover.js)
+   * @param {string} text @param {{ photos?: import('./loop.js').SentPhoto[], chose?: boolean, claim?: string, handed?: import('../handover.js').HandedFile[], handover?: string }} [o]
+   *   chose: a tap on a live ask's buttons; claim: "This was for Shiori", the heard line's id; handed, handover: a hand-over (handover.js)
    */
   send(text, o = {}) {
     this.#bothTold = false;
@@ -753,13 +758,77 @@ export class Halves {
     return Promise.resolve();
   }
 
-  /** The half that talks (its tap unlocks sound, an iPhone rule); a live Koe's session. */
+  /**
+   * A tap on the avatar starts voice, in Auto as in On (the user: "I expect tapping avatar starts a voice session even if I'm in auto"):
+   * Auto off holds voice on until that exchange ends, and Koe's way is worked out again first, as Realtime needs voice on. With voice
+   * set to Off, a half's 'typing' stands.
+   */
   tap() {
+    const taps = ++this.#taps;
+    const did = this.#tapNow();
+    if (did !== 'typing' || this.voice?.mode.setting !== 'auto') return did;
+    this.#tapHeld = true;
+    this.#tapStarting++;
+    this.voice.hold();
+    this.#route(async () => {
+      try {
+        await this.#refresh();
+        if (taps === this.#taps) this.#tapNow(); // a later tap has already answered for the user: this one would shut what it opened
+        await this.#tapFollow; // the hold stays while a live session that couldn't open is answered by Classic's
+      } finally {
+        this.#tapStarting--;
+        this.#endTapHold();
+      }
+    });
+    return 'listening';
+  }
+
+  /** Avatar taps so far (a tap during another's refresh takes over from it). */
+  #taps = 0;
+
+  /** The half that talks (its tap unlocks sound, an iPhone rule); a live Koe's session. */
+  #tapNow() {
     if (this.koeState !== 'live') return this.talking.tap();
     this.#ownCued = false;
     this.voice?.unlock();
     this.#koeOpen();
-    return this.live.tap();
+    const did = this.live.tap();
+    const opened = this.live.tapping;
+    if (did === 'listening' && opened) this.#tapFollow = opened.then((r) => (r === 'failed' ? this.#liveTapFailed() : undefined)).catch(() => {});
+    return did;
+  }
+
+  /** What follows a live tap whose session could not open (or nothing). @type {Promise<void> | undefined} */
+  #tapFollow;
+
+  /**
+   * A tap's live session could not open: Koe's way is worked out again. If another Realtime model now answers, the tap goes to it;
+   * if Classic (or Kokoro) can answer and is idle, the tap goes to it (a half already working is never tapped: a tap stops a turn);
+   * else the user is told, as for a send.
+   */
+  async #liveTapFailed() {
+    const was = this.#liveId;
+    await this.#refresh();
+    const again = this.koeState === 'live' && this.#liveId !== was && this.live.state === 'closed' && !this.live.busy;
+    if (again || (this.koeState !== 'live' && this.#idle(this.talking))) {
+      this.#tapNow();
+      if (again) return this.#tapFollow; // the next model may fail too
+    }
+    if (this.koeState === 'live' || this.koeState === 'down') this.#notice({ tone: 'warn', title: t`Koe's live voice couldn't start`, body: t`Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.` });
+  }
+
+  /** Nothing is listening, speaking or working on this half, so a tap on it would start something and stop nothing. @param {Agent} a */
+  #idle(a) {
+    return !a.busy && !a.voicing && !a.tapOpening && !a.turning && (a.state.name === 'sleeping' || a.state.name === 'offline');
+  }
+
+  /** The exchange a tap held voice on for is over once nothing is listening, speaking or working (the window after she spoke counts): Auto decides again. Kokoro's answer may still be on its way to Koe's voice, so it counts too. */
+  #endTapHold() {
+    if (!this.#tapHeld || this.#tapStarting > 0) return;
+    const quiet = (/** @type {Agent} */ a) => !a.busy && !a.voicing && !a.tapOpening && !a.listensOn;
+    if (!quiet(this.kokoro) || !quiet(this.koe) || this.live.busy || this.live.state !== 'closed') return;
+    this.#tapHeld = false;
+    this.voice?.release().catch(() => {});
   }
 
   /** The user's Try again: the half that talks answers their last message; a Stop holds no more, as when they write again. */

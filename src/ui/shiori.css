@@ -94,7 +94,7 @@
 }
 
 /* The dock (spec §16.2): camera · Shiori · type, at the bottom of every screen. Not her seat, whose size is also called dock. */
-body { padding-bottom: calc(var(--dock-h, 154px) + 16px); }
+body { padding-bottom: calc(var(--dock-h, 154px) + 52px); } /* the working sign floats above the bar: the end of the page stays readable under it */
 .dock:not(.seat) { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--paper); border-top: 1px solid var(--line);
   padding: 8px 16px calc(10px + env(safe-area-inset-bottom)); }
 /* A text field outside the dock has focus (dock-hides.js): the dock steps aside, keeping its box and its place in the accessibility tree, so nothing moves as the keyboard comes and goes, and taps go through to the page. */
@@ -141,9 +141,12 @@ a.attach-chip, .attach-chip.gone { padding-inline: 12px; text-decoration: none; 
 /* Voice (spec §16.2): the states line under the dock's buttons, one small line of words that open their menus;
    while voice is on, the dock grows, and never moves. */
 .voice-row { display: flex; justify-content: center; align-items: center; gap: 2px; max-width: 560px; margin: 2px auto 0; flex-wrap: wrap; }
-.voice-row > :not([hidden]):not(:empty) ~ :not([hidden]):not(:empty) { border-left: 1px solid var(--line); padding-left: 4px; margin-left: 4px; }
+.voice-row > :not(:empty):not(.halves-sign) ~ :not(:empty):not(.halves-sign) { border-left: 1px solid var(--line); padding-left: 4px; margin-left: 4px; }
 .voice-row .voice-chip-wrap, .voice-row .plugin-chips, .voice-row .halves-sign { display: inline-flex; align-items: center; gap: 4px; }
-.voice-row .halves-sign[hidden] { display: none; }
+/* The working sign floats just above the bar at every size, so nothing in the bar moves as Kokoro starts and stops (the second drive, item 5). */
+.voice-row .halves-sign { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); white-space: nowrap; margin: 0 0 4px; padding: 0 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.voice-row .halves-sign.idle { visibility: hidden; }
+.voice-row .halves-sign .btn { min-height: 32px; padding-block: 2px; }
 .voice-row .chip { border: 0; background: none; min-height: 32px; padding: 4px 10px; font-size: 13px; color: var(--ink-2); }
 .ib-icon { font-size: 22px; line-height: 1; }
 .voice-row .chip:hover { color: var(--ink); }
@@ -206,8 +209,8 @@ a.attach-chip, .attach-chip.gone { padding-inline: 12px; text-decoration: none; 
 .tidy-menu .sub { margin: 4px 0 0; }
 .convo .fresh-divider { align-self: stretch; display: flex; align-items: center; gap: 10px; color: var(--ink-2); font-size: 13px; }
 .convo .fresh-divider::before, .convo .fresh-divider::after { content: ''; flex: 1; border-top: 1px solid var(--line); }
-/* What she said aloud is read live in the bubble over the dock; here it is there to look back on, so it is quieter than her written lines. */
-.convo .shiori .said-words, .shiori-card .said-words { font-size: 0.875em; color: var(--ink-2); }
+/* What she said aloud on Now's card is read live in the bubble over the dock; there it is quieter than her written lines. */
+.shiori-card .said-words { font-size: 0.875em; color: var(--ink-2); }
 
 /* The conversation: speech bubbles carry a SHIORI label instead of a second avatar. */
 .convo { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
@@ -217,6 +220,25 @@ a.attach-chip, .attach-chip.gone { padding-inline: 12px; text-decoration: none; 
 .convo .you img { max-width: 100%; border-radius: 10px; display: block; }
 .convo .you p, .convo .shiori p { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
 .who-row { display: flex; align-items: baseline; gap: 8px; }
+/* What each line says of itself (line-kind.js): the words say it, the tint only assists. */
+.line-label { display: flex; align-items: flex-start; gap: 5px; min-width: 0; font-size: 12px; line-height: 1.35; color: var(--ink-2); overflow-wrap: anywhere; }
+.line-label > span { min-width: 0; }
+.line-label svg { flex: none; width: 13px; height: 13px; margin-top: 2px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.convo .you .line-label { justify-content: flex-end; margin-top: 3px; text-align: end; }
+/* What annai said or showed by itself. */
+.convo .note { align-self: flex-start; max-width: 92%; display: flex; flex-direction: column; gap: 2px; font-size: 13px; padding: 4px 10px; border: 1px solid transparent; border-radius: 10px; }
+.convo .note p { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+.convo .you.tint-blue { border: 1px solid var(--blue-line); }
+.convo .tint-blue { background: var(--blue-wash); border-color: var(--blue-line); }
+.convo .tint-teal { background: var(--teal-wash); border-color: var(--teal-line); }
+.convo .tint-violet { background: var(--violet-wash); border-color: var(--violet-line); }
+/* Words still coming: no fill, a dashed line. Heard only: no bubble at all, quiet, on the user's side. */
+.convo .you.line-hearing { background: transparent; border: 1.5px dashed var(--line); color: var(--ink-2); }
+.convo .you.quiet { background: transparent; color: var(--ink-2); font-size: 14px; padding: 2px 4px; text-align: end; }
+.convo .claim { display: block; margin-inline-start: auto; min-height: 36px; padding: 2px 0; font: inherit; font-size: 12px; color: var(--ai); background: none; border: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.convo .claim:focus-visible { outline: 2px solid var(--ai); outline-offset: 2px; }
+.convo .tint-amber { background: var(--amber-wash); }
+.convo .tint-amber .line-label { color: var(--amber); }
 .who { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ai); } /* capitals by CSS, so CJK is left alone */
 .system-line { align-self: center; font-size: 12px; color: var(--ink-2); }
 /* What the halves tell each other: a dashed note of its own, not one of her reminders' quiet lines. */
@@ -242,3 +264,5 @@ a.attach-chip, .attach-chip.gone { padding-inline: 12px; text-decoration: none; 
 body:has(.dock:not(.seat)) .toasts { bottom: calc(var(--dock-h, 140px) + 8px); }
 /* A menu opened from the dock comes above the top bar and the cards. */
 .dock:not(.seat):has(.voice-menu:not([hidden])) { z-index: 30; }
+/* The working sign steps aside while a menu from the bar is open: the menu opens where the sign floats, and its buttons take the taps. */
+.dock:not(.seat):has(.voice-menu:not([hidden])) .halves-sign { visibility: hidden; }

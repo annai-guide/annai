@@ -103,7 +103,7 @@ test('a refused location gets one card, with steps for this phone (spec §17 rul
   assert.match(gpsProblem('ios', true).body, /On iPhone: Settings → Privacy & Security → Location Services → Safari Websites → While Using the App, and Settings → Apps → Safari → Location → Allow\./);
   assert.match(gpsProblem('android').body, /allow Location/);
   assert.match(gpsProblem('desktop').body, /site settings/);
-  assert.match(gpsProblem('ios').body, /tap the GPS chip → Where are you/);
+  assert.match(gpsProblem('ios').body, /Now → Driving → Where are you/);
   /** @type {Set<() => void>} */
   const fns = new Set();
   const live = { on: true, gps: 'waiting', onChange: (/** @type {() => void} */ fn) => { fns.add(fn); return () => fns.delete(fn); } };

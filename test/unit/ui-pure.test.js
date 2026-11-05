@@ -928,3 +928,12 @@ test('countParts: what else goes, in words', () => {
   assert.deepEqual(countParts(0, 3), ['3 plan items']);
   assert.deepEqual(countParts(0, 0), []);
 });
+
+// Fix pass 1, item 9: the Trace says a claim was a claim, and a live line nobody answered was not judged.
+test("the trace's lines: a claim says so, a live heard line nobody answered says that, and a plain message is as it was", () => {
+  const e = (/** @type {string} */ type, /** @type {any} */ data) => ({ type, data, ts: 0, seq: 1, actor: 'x', scope: 's' });
+  assert.equal(traceSummary(e('msg.user', { text: 'Is there parking?', claim: 'h1' })), 'this was for Shiori · Is there parking?');
+  assert.equal(traceSummary(e('msg.user', { text: 'Is there parking?' })), 'Is there parking?');
+  assert.match(traceSummary(e('heard', { id: 'h', source: 'live', text: 'la la', dismissed: true })), /she didn't answer/);
+  assert.match(traceSummary(e('heard', { id: 'h', source: 'mic', ms: 900, text: 'la la', dismissed: true })), /not for Shiori/);
+});

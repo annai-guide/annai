@@ -70,6 +70,8 @@ export class Voice {
   unhinted = new Set();
   /** The voice mode now (spec §10.5); refresh() works it out again. @type {import('./mode.js').VoiceMode} */
   mode = { setting: 'auto', on: false, why: /* en */ 'not sure' };
+  /** A tap on the avatar holds Auto on (hold). */
+  #tapped = false;
   /** @type {Set<(m: import('./mode.js').VoiceMode, first: boolean) => void>} */
   #changes = new Set();
   /** The mode has been read once: the first reading, as annai starts, is no change of mode. */
@@ -474,21 +476,36 @@ export class Voice {
   async refresh() {
     const s = await this.settings();
     const route = s.mode === 'auto' ? await this.route() : 'unknown';
-    const next = voiceMode({ setting: s.mode, activity: this.activity(), route, lastChoices: s.lastChoices });
+    const next = voiceMode({ setting: s.mode, activity: this.activity(), route, lastChoices: s.lastChoices, tapped: this.#tapped });
     this.#watch();
     const first = !this.#read;
     this.#read = true;
-    if (next.on !== this.mode.on || next.why !== this.mode.why || next.setting !== this.mode.setting) {
-      this.mode = next;
-      for (const fn of this.#changes) {
-        try {
-          fn(next, first);
-        } catch (e) {
-          console.warn(/* en */ 'a voice listener failed', e);
-        }
+    if (next.on !== this.mode.on || next.why !== this.mode.why || next.setting !== this.mode.setting) this.#setMode(next, first);
+    return next.on;
+  }
+
+  /** @param {import('./mode.js').VoiceMode} next @param {boolean} first */
+  #setMode(next, first) {
+    this.mode = next;
+    for (const fn of this.#changes) {
+      try {
+        fn(next, first);
+      } catch (e) {
+        console.warn(/* en */ 'a voice listener failed', e);
       }
     }
-    return next.on;
+  }
+
+  /** A tap on the avatar in Auto: voice is on now, inside the tap, until release(). */
+  hold() {
+    this.#tapped = true;
+    this.#setMode(voiceMode({ setting: this.mode.setting, activity: '', route: 'unknown', lastChoices: {}, tapped: true }), false);
+  }
+
+  /** That exchange ended: Auto decides again. */
+  release() {
+    this.#tapped = false;
+    return this.refresh();
   }
 
   /** What the activity sensor says (live mode's, spec §11.2); unknown without one. @returns {string} */
@@ -532,6 +549,7 @@ export class Voice {
    */
   async choose(setting) {
     this.unlock(); // a choice is a tap (spec §10.1)
+    this.#tapped = false;
     /** @type {Record<string, any>} */
     const change = { mode: setting };
     if (setting !== 'auto' && (await this.route()) === 'unknown') change.lastChoices = { [this.activity()]: setting };

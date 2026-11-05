@@ -1,5 +1,5 @@
 import { LiveInput } from '../realtime/input.js';
-import { escapeTags, wrapNote, theirs } from '../agent/blocks.js';
+import { escapeTags, wrapNote, theirs, claimLine } from '../agent/blocks.js';
 import { LABELS, NOTE_UNSAID, isWatched } from '../agent/loop.js';
 import { newId, SYS_DEVICE, ensureDeviceScope } from '../scopes.js';
 import { forget } from '../forget.js';
@@ -408,8 +408,14 @@ export class LiveKoe {
     return db === null ? null : Math.round(db * 10) / 10;
   }
 
+  /** What a tap's session came to: 'failed' when the connection itself couldn't be made (Halves tells the user), else 'ok' (including a close the user asked for). @type {Promise<'ok' | 'failed'> | null} */
+  tapping = null;
+  /** The last session start failed to connect (not a close that won). */
+  #failed = false;
+
   /** @param {string} why */
   async #start(why) {
+    this.#failed = false;
     // Start fresh runs: a session opens once it is done, its setup from the fresh start; a close meanwhile wins.
     const asked = this.#gen;
     const held = this.c.held?.();
@@ -423,9 +429,11 @@ export class LiveKoe {
     this.#changed();
     await this.c.koe.opening.catch(() => {}); // its lines go into Koe's conversation
     // One that can't open rests its model, as a failed call's does: Koe's next model answers meanwhile.
-    const s = (await this.#over()) ? null : await this.#resume(id, this.#handle, why).catch((e) => { this.c.llm.bench?.bench(id, e?.kind === 'bad-request' && /thinking level/i.test(String(e.message)) ? REFUSED_REST_MS : COOLDOWN_MS); return null; });
+    const over = await this.#over(); // its own card says why; the model isn't at fault
+    const s = over ? null : await this.#resume(id, this.#handle, why).catch((e) => { this.c.llm.bench?.bench(id, e?.kind === 'bad-request' && /thinking level/i.test(String(e.message)) ? REFUSED_REST_MS : COOLDOWN_MS); return null; });
     if (s) await this.c.voiceOut?.(); // one that began while the socket connected finishes first too: the session hasn't let go of the speech pipeline yet
     if (gen !== this.#gen || !s) {
+      this.#failed = !s && !over && gen === this.#gen;
       s?.close('closed');
       if (gen === this.#gen) this.state = 'closed';
       return false;
@@ -704,6 +712,7 @@ export class LiveKoe {
 
   /** A tap on Shiori (§10.4): while she speaks, stops her and listens; while she listens, closes; else, with voice on, opens and listens. */
   tap() {
+    this.tapping = null;
     this.#exchanged();
     this.#unmark();
     if (this.#sounding) {
@@ -727,7 +736,7 @@ export class LiveKoe {
     this.#lift();
     if (this.#otherVoice()) this.c.release(); // the user asked: a reminder being said stops, and a session opens at once
     if (this.state === 'closed' && this.#owed.waiting.length) this.#hearFirst = setTimeout(() => this.#heardFirst(), 2 * Math.max(500, this.c.secondMs ?? 1000));
-    this.open('tap', { mic: true }).catch(() => {});
+    this.tapping = this.open('tap', { mic: true }).then((ok) => ok || !this.#failed ? 'ok' : 'failed', () => 'failed');
     return 'listening';
   }
 
@@ -755,22 +764,22 @@ export class LiveKoe {
 
   /**
    * What the user typed or sent, written (Kokoro has it at once): Halves waits for this, so lines are written in the order they were sent.
-   * @param {string} text @param {{ photos?: import('../agent/loop.js').SentPhoto[], chose?: boolean, handed?: import('../handover.js').HandedFile[], handover?: string }} [o]
+   * @param {string} text @param {{ photos?: import('../agent/loop.js').SentPhoto[], chose?: boolean, claim?: string, handed?: import('../handover.js').HandedFile[], handover?: string }} [o]
    */
-  async write(text, { photos = [], chose = false, handed = [], handover } = {}) {
+  async write(text, { photos = [], chose = false, claim, handed = [], handover } = {}) {
     this.#exchanged();
     this.#watched = true;
     await this.c.held?.(); // typed while Start fresh runs: written below its divider
-    return this.c.koe.logUser(text, photos, { chose, handed, ...(handover ? { handover } : {}) });
+    return this.c.koe.logUser(text, photos, { chose, handed, ...(handover ? { handover } : {}), ...(claim ? { claim } : {}) });
   }
 
   /**
    * What the user sent, written, goes to the session: its photos, each a turn that waits, and its words. Files handed over are Kokoro's to
    * read: the session hears only that they came.
-   * @param {any} e its entry (write) @param {string} text @param {{ chose?: boolean, handed?: import('../handover.js').HandedFile[] }} [o]
+   * @param {any} e its entry (write) @param {string} text @param {{ chose?: boolean, claim?: string, handed?: import('../handover.js').HandedFile[] }} [o]
    * @returns {Promise<boolean>} false: no session
    */
-  async send(e, text, { chose = false, handed = [] } = {}) {
+  async send(e, text, { chose = false, claim, handed = [] } = {}) {
     if (!(await this.open('typed'))) return false;
     const rec = (await this.c.llm.config()).models[this.modelId ?? ''];
     const takes = Boolean(rec && modelOf(rec).input.includes('image'));
@@ -780,7 +789,7 @@ export class LiveKoe {
     const words = String(text ?? '').trim();
     /* en */
     const files = handed.length ? `[the user handed you ${handed.length === 1 ? 'a file' : `${handed.length} files`}; Kokoro reads them]` : '';
-    /* en */ this.#text(chose ? `[the user chose] ${theirs(JSON.stringify(words))}`
+    /* en */ this.#text(claim ? theirs(claimLine(words)) : chose ? `[the user chose] ${theirs(JSON.stringify(words))}`
       : images.length && (!words || words === '(a photo)') ? `[the user sent a photo${takes ? '' : '; Kokoro sees it'}]`
         : files && !words ? files : `${theirs(words)}${files ? ` ${files}` : ''}`);
     return true;
@@ -1418,7 +1427,13 @@ export class LiveKoe {
     }
     const v = this.c.voice;
     const aloud = Boolean(text && !cut && v?.on && (t.stalled || v.stuck));
-    if (text) this.#write({ type: 'out.speak', actor: 'shiori', data: { id: newId('s'), wake: this.#wake, live: true, by: null, ...(t.stream || aloud ? { voice: true } : {}), ...(cut ? { cut: true } : {}) }, texts: [['text', text]] });
+    const voiced = Boolean(t.stream || aloud);
+    const [modelId, wake] = [this.modelId, this.#wake]; // as they are now: a close clears the model before the write below runs
+    if (text) this.#write(async () => {
+      const rec = (await this.c.llm.config()).models[modelId ?? ''];
+      const by = rec ? { name: modelOf(rec).name, first: null, tried: false } : null;
+      return { type: 'out.speak', actor: 'shiori', data: { id: newId('s'), wake, live: true, by, ...(voiced ? { voice: true } : {}), ...(cut ? { cut: true } : {}) }, texts: [['text', text]] };
+    });
     if (aloud) v?.say(text).catch(() => {});
     if (next) this.#next();
     this.#heardOut();

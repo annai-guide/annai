@@ -11,12 +11,14 @@
  */
 import { t } from '../l10n.js';
 
-/** @param {{ setting: VoiceSetting, activity: string, route: Route, lastChoices: Record<string, 'on' | 'off'> }} c @returns {VoiceMode} */
-export function voiceMode({ setting, activity, route, lastChoices }) {
+/** @param {{ setting: VoiceSetting, activity: string, route: Route, lastChoices: Record<string, 'on' | 'off'>, tapped?: boolean }} c tapped: a tap on the avatar holds Auto on until that exchange ends @returns {VoiceMode} */
+export function voiceMode({ setting, activity, route, lastChoices, tapped = false }) {
   /* en */
   if (setting === 'on') return { setting, on: true, why: 'on' };
   /* en */
   if (setting === 'off') return { setting, on: false, why: 'off' };
+  /* en */
+  if (tapped) return { setting, on: true, why: 'tapped' };
   /* en */
   if (activity === 'moving-fast') return { setting, on: true, why: 'moving' };
   /* en */

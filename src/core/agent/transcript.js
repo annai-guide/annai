@@ -1,7 +1,7 @@
 import { TALK_TAG, KOE_TAG, record, storedTexts } from './log.js';
 import { blobBytes } from '../reach.js';
 import { toBase64 } from '../bytes.js';
-import { blockFor, saidWithout, wrapNote, escapeTags, quote, theirs } from './blocks.js';
+import { blockFor, saidWithout, wrapNote, escapeTags, quote, theirs, claimLine } from './blocks.js';
 import { strayNote } from '../languages.js';
 import { handOverText } from '../handover.js';
 import { nativeExtra } from '../llm/contract.js';
@@ -140,7 +140,8 @@ export class Transcript {
       // A message that answered an ask or a wait is already in that tool's result.
       if (texts.text && !(d.answer && (this.half === 'one' || this.#calls.has(d.answer)))) {
         const typed = koe ? theirs(texts.text) : texts.text;
-        /* en */ this.#line([{ type: 'text', text: d.meanwhile ? `[meanwhile, the user wrote] ${typed}` : typed }, ...r.images, ...this.#handed(d)]);
+        const said = !d.claim ? typed : koe ? theirs(claimLine(texts.text)) : claimLine(texts.text);
+        /* en */ this.#line([{ type: 'text', text: d.meanwhile && !d.claim ? `[meanwhile, the user wrote] ${typed}` : said }, ...r.images, ...this.#handed(d)]);
         // Koe owes an answer only to what was typed to it.
         if (!koe || d.split) {
           this.unanswered = true;
