@@ -1,6 +1,6 @@
 import { Agent, GATHER, isTheirs, isForUser, checkCard, checkAsk, CAPS, capped } from './loop.js';
 import { TALK_TAG, KOE_TAG } from './log.js';
-import { asksOrNotes, quote, cardText, escapeTags, newNonce, koeLine, asideLabel, saidWithout, wrapNote } from './blocks.js';
+import { asksOrNotes, quote, cardText, escapeTags, newNonce, koeLine, asideLabel, saidWithout, wrapNote, theirs } from './blocks.js';
 import { linesOf } from './transcript.js';
 import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 import { systemText, nowBlock, takeSnapshot } from './context.js';
@@ -44,7 +44,7 @@ const BLOCKS = Object.freeze({
   'live-dropped': /* en */ "The live voice session dropped and couldn't resume: Koe goes on through its next model.",
 });
 /** What Koe is told when it asks Kokoro after the user's Stop. */
-export const STOP_HELD = /* en */ "Not sent: the user stopped Kokoro, and hasn't written or spoken since. Don't ask Kokoro again until they do; tell them what you know yourself.";
+export const STOP_HELD = /* en */ "Not sent: the user stopped Kokoro, and hasn't written or spoken since. Don't ask Kokoro again until they do; say you can't check that now.";
 /** How long Koe rests after its whole list failed, at least. */
 export const KOE_REST_MS = 60_000;
 const KOKORO_ONLY = ['personality', 'restart'];
@@ -628,7 +628,11 @@ export class Halves {
       if (e.type === 'heard.text') later.set(d.of, later.get(d.of) ?? d.text);
       const text = e.type === 'heard' ? later.get(d.id) ?? d.text : e.type === 'out.show' ? cardText(d.card) : e.type === 'out.ask' ? d.question : d.text;
       if (e.type === 'heard.text' || !text || d.dismissed || lines.length >= 12) continue;
-      const who = e.type === 'msg.user' ? /* en */ (d.chose ? 'the user chose' : 'typed') : e.type === 'heard' ? 'heard' : d.half === 'koe' ? /* en */ 'you said' : /* en */ 'said to the user';
+      if (e.type === 'msg.user') {
+        lines.unshift(koeLine(d, text, { photo: Boolean(d.images?.length), quoted: true }));
+        continue;
+      }
+      const who = e.type === 'heard' ? 'heard' : d.half === 'koe' ? /* en */ 'you said' : /* en */ 'said to the user';
       lines.unshift(`[${who}] ${escapeTags(quote(text))}`);
     }
     return lines.length ? /* en */ `The conversation so far:\n${lines.join('\n')}` : '';
@@ -645,31 +649,36 @@ export class Halves {
     if (half === 'koe' && !this.#split) return { how: 'off' };
     if (half === 'koe' && this.koeState === 'live') {
       const set = await this.live.sees();
-      return { how: 'live', open: set.after !== null, system: set.instructions, context: set.context, tools: set.tools, lines: set.after === null ? [] : await this.#linesSince(set.after) };
+      return { how: 'live', open: set.after !== null, system: set.instructions, context: set.context, tools: set.tools, lines: set.after === null ? [] : await this.#linesSince(set.after, set.told) };
     }
     if (half === 'koe') this.#koeOpen();
     const { messages, ...seen } = await (half === 'koe' ? this.koe : this.kokoro).sees();
     return { how: 'request', one: !this.#split, ...seen, lines: linesOf(messages) };
   }
 
-  /** What a live Koe has had since its setup, in Koe's labels, from the log. @param {number} after @returns {Promise<string[]>} */
-  async #linesSince(after) {
+  /**
+   * What a live Koe has had since its setup, in Koe's labels: the log's lines, and the turns annai wrote to it that the log holds none of
+   * (a reminder's), in the order they came. @param {number} after @param {{ ts: number, text: string }[]} told @returns {Promise<string[]>}
+   */
+  async #linesSince(after, told) {
     const scope = this.koe.scope;
     const events = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: [...LINES, 'heard.text', 'note', 'tool.call', 'tool.result'], after }));
     const later = new Map(events.filter((e) => e.type === 'heard.text').map((e) => [e.data?.of, e.data?.text]));
-    /** @type {string[]} */
-    const lines = [];
+    /** @type {{ ts: number, line: string }[]} */
+    const lines = told.map((x) => ({ ts: x.ts, line: x.text }));
     for (const e of events) {
       const d = { ...e.data, ...(await storedTexts(this.store, e)) };
       /* en */
-      if (e.type === 'msg.user') lines.push(koeLine(d, String(d.text ?? ''), Boolean(d.images?.length)));
-      else if (e.type === 'heard') lines.push(`${d.dismissed ? asideLabel(d, 'koe') : '[heard]'} ${later.get(d.id) ?? d.text ?? NOT_TRANSCRIBED}`);
-      else if (e.type === 'note' && d.from === 'kokoro') lines.push(wrapNote(String(d.text ?? ''), this.nonce));
-      else if (e.type === 'tool.call' && d.half === 'koe') lines.push(`[it calls] ${d.name} ${JSON.stringify(d.input ?? {})}`);
-      else if (e.type === 'tool.result' && d.half === 'koe') lines.push(`[the result${d.ok === false ? ', an error' : ''}] ${d.content ?? ''}`);
-      else if (e.type.startsWith('out.')) lines.push(saidWithout(e, d) ?? '');
+      const line = e.type === 'msg.user' ? koeLine(d, String(d.text ?? ''), { photo: Boolean(d.images?.length) })
+        : e.type === 'heard' ? `${d.dismissed ? asideLabel(d, 'koe') : '[heard]'} ${later.get(d.id) ?? d.text ?? NOT_TRANSCRIBED}`
+          : e.type === 'note' && d.from === 'kokoro' ? wrapNote(String(d.text ?? ''), this.nonce)
+            : e.type === 'tool.call' && d.half === 'koe' ? `[it calls] ${d.name} ${JSON.stringify(d.input ?? {})}`
+              : e.type === 'tool.result' && d.half === 'koe' ? `[the result${d.ok === false ? ', an error' : ''}] ${theirs(String(d.content ?? ''))}`
+                // Koe's own words are Koe's: "[said to the user]" is what Shiori said without it.
+                : e.type.startsWith('out.') ? (d.half === 'koe' ? `[you said] ${quote(e.type === 'out.show' ? cardText(d.card) : e.type === 'out.ask' ? d.question : d.text)}` : saidWithout(e, d)) : null;
+      if (line) lines.push({ ts: e.ts, line });
     }
-    return lines.filter(Boolean);
+    return lines.sort((a, b) => a.ts - b.ts).map((x) => x.line);
   }
 
   #koeOpen() {

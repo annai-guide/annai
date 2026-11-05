@@ -16,7 +16,7 @@ import { anySignal } from '../signals.js';
  *   photos: request copies and crops of stored photos (spec §4.8); voice: voice is on for this turn (§10.5); sleeping: sleep came in the same reply
  *   handover: the hand-over the turn took (the user's message with files), which the file tools put on what they write; handovers: every
  *   hand-over the turn took, oldest first (a second message with files while she worked);
- *   watched: the user is watching the turn (Koe's tell_kokoro passes it on); providerOff: the provider tools switched off, for a tool that asks a model to use its own (spec §9.5); offline: Koe's quick reads, the offline pack only
+ *   half: which half is calling ('one', 'kokoro' or 'koe'); watched: the user is watching the turn (Koe's tell_kokoro passes it on); providerOff: the provider tools switched off, for a tool that asks a model to use its own (spec §9.5); offline: Koe's quick reads, the offline pack only
  * @typedef {{ name: string, description: string, input: Record<string, any>, run: (input: any, call: ToolCall) => any, group?: string }} Tool
  */
 

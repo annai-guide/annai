@@ -150,6 +150,13 @@
       "seconds": 6.7,
       "bytes": 214444,
       "sha256": "f25bcbcdf76cb022"
+    },
+    "hello": {
+      "words": "Good morning, Shiori.",
+      "voice": "Kore",
+      "seconds": 1.32,
+      "bytes": 42284,
+      "sha256": "bdb9085e086dd334"
     }
   }
 }

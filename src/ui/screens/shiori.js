@@ -177,7 +177,7 @@ async function instructionEditor(ctx, id) {
   const words = INSTRUCTION_WORDS[id];
   const state = await instructionState(ctx.ws, id);
   const area = h('textarea', { id: `instructions-${id}`, class: 'mono', rows: 16, lang: 'en', spellcheck: 'false', value: state.text });
-  const mark = h('span', { class: 'sub', text: t`changed`, hidden: !state.edited });
+  const mark = h('span', { class: 'sub', hidden: !state.edited });
   const reset = h('button', {
     class: 'btn', type: 'button', hidden: !state.edited, 'aria-label': t`Reset to original: ${words.name}`,
     onclick: async () => {
@@ -193,7 +193,9 @@ async function instructionEditor(ctx, id) {
     const now = await instructionState(ctx.ws, id);
     area.value = now.text;
     mark.hidden = reset.hidden = !now.edited;
+    mark.textContent = now.newOriginal ? t`changed, and annai has a new original` : t`changed`;
     offer.hidden = !now.newOriginal;
+    if (now.newOriginal) box.open = true; // a new original the user can't see is never answered
     offer.replaceChildren(...(now.newOriginal ? [
       h('h3', { text: t`The new original of ${words.name}` }), h('pre', { class: 'mono wrap-text', lang: 'en', text: now.newOriginal }),
       h('div', { class: 'acts' },
@@ -201,8 +203,9 @@ async function instructionEditor(ctx, id) {
         h('button', { class: 'btn', type: 'button', 'aria-label': t`Use the new original: ${words.name}`, onclick: async () => { await resetInstruction(ctx.ws, id); ctx.notices.toast(t`Back to the original. It applies at her next wake.`); await redraw(); area.focus(); } }, t`Use the new original`)),
     ] : []));
   };
+  const box = h('details', { class: 'instructions', dataset: { instructions: id } });
   await redraw();
-  return h('details', { class: 'instructions', dataset: { instructions: id } },
+  box.append(
     h('summary', {}, words.name, ' ', mark),
     h('p', { class: 'sub', text: words.about }),
     offer,
@@ -217,6 +220,7 @@ async function instructionEditor(ctx, id) {
         },
       }, t`Save`),
       reset));
+  return box;
 }
 
 /**

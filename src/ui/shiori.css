@@ -200,10 +200,11 @@ a.attach-chip, .attach-chip.gone { padding-inline: 12px; text-decoration: none; 
 .btn.tidy-toggle { min-width: 44px; min-height: 44px; padding: 0 10px; font-size: 22px; line-height: 1; }
 .tidy-menu { position: absolute; top: 100%; right: 0; z-index: 5; width: min(300px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 6px; padding: 10px; background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 4px 16px rgb(0 0 0 / .12); }
 .tidy-menu[hidden] { display: none; }
-.tidy-menu .sub { margin: 2px 0 0; font-size: 13px; line-height: 1.3; }
-/* Side by side, so the menu still fits under the ⋯ on a small phone with a card above it. */
-.tidy-see { display: flex; gap: 6px; }
-.tidy-see a.btn { flex: 1 1 0; min-width: 0; padding-inline: 6px; font-size: 13px; line-height: 1.2; text-align: center; white-space: normal; }
+.tidy-menu .sub { margin: 4px 0 0; }
+/* On a small phone with a card above it, it scrolls (its height is set when it opens) rather than run off the bottom of the screen. */
+.tidy-menu { overflow-y: auto; }
+.tidy-menu a.sees-link { display: flex; align-items: center; justify-content: center; min-height: 44px; font-size: 15px; text-align: center; }
+.sees-switch a.btn[aria-current='page'] { background: var(--ai-wash); color: var(--ai); border-color: var(--ai); }
 .convo .fresh-divider { align-self: stretch; display: flex; align-items: center; gap: 10px; color: var(--ink-2); font-size: 13px; }
 .convo .fresh-divider::before, .convo .fresh-divider::after { content: ''; flex: 1; border-top: 1px solid var(--line); }
 /* What she said aloud is read live in the bubble over the dock; here it is there to look back on, so it is quieter than her written lines. */

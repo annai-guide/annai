@@ -14,8 +14,8 @@ const TTS_RATE = 24_000;
 /**
  * name → what is said. kind: question, yes (a quick answer), reply (a short English reply, for the languages check), sentence (one in
  * another language), pause (a sentence with a thinking pause: parts are speech and seconds of silence), long (a long question),
- * silence (no sound: seconds). voice: one of Gemini's prebuilt voices. lang: the language it is spoken in (en unless said).
- * @typedef {{ kind: 'question' | 'yes' | 'reply' | 'sentence' | 'pause' | 'long' | 'silence' | 'stray', text?: string, parts?: (string | number)[], voice?: string, seconds?: number, lang?: 'en' | 'ja' | 'zh' | 'ko' }} ClipDef
+ * stray (words she should leave alone: silence is right), scold (told off for filler: silence is right, filler is the failure), silence (no sound: seconds). voice: one of Gemini's prebuilt voices. lang: the language it is spoken in (en unless said).
+ * @typedef {{ kind: 'question' | 'scold' | 'yes' | 'reply' | 'sentence' | 'pause' | 'long' | 'silence' | 'stray', text?: string, parts?: (string | number)[], voice?: string, seconds?: number, lang?: 'en' | 'ja' | 'zh' | 'ko' }} ClipDef
  * @type {Record<string, ClipDef>}
  */
 export const CLIPS = {
@@ -42,8 +42,9 @@ export const CLIPS = {
   zh: { kind: 'sentence', text: '附近有什么好吃的餐馆吗？', voice: 'Puck', lang: 'zh' },
   // The second drive's shapes: a fact Koe wasn't told, about annai and general, a filler trap, and what it should leave alone (kind stray: she stays silent).
   'auto-gps': { kind: 'question', text: 'Is there an auto GPS mode in this app?', voice: 'Kore' },
+  hello: { kind: 'question', text: 'Good morning, Shiori.', voice: 'Kore' },
   built: { kind: 'question', text: 'What year was Bixby Bridge built?', voice: 'Puck' },
-  annoyed: { kind: 'question', text: "You keep saying sorry and that you understand. Stop that, it's really annoying.", voice: 'Leda' },
+  annoyed: { kind: 'scold', text: "You keep saying sorry and that you understand. Stop that, it's really annoying.", voice: 'Leda' },
   'ko-word': { kind: 'stray', text: '안녕하세요', voice: 'Aoede', lang: 'ko' },
   lyric: { kind: 'stray', text: 'Oh baby baby, dancing through the night, hold me till the morning light.', voice: 'Puck' },
   silence: { kind: 'silence', seconds: 8 },

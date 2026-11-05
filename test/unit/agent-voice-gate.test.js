@@ -123,3 +123,16 @@ test('after chatter ends her turn, a later speak in the same reply is not said a
   await k.agent.idle();
   assert.match(gateRequests(k).at(-1).messages[0].parts[0].text, /She: "Bixby Bridge is ahead\."/);
 });
+
+test("the gate is shown the question an ask just spoke aloud, so the answer to it ('the coastal one') is judged with the question in view", async (t) => {
+  useClock(t);
+  const k = await agentKit([[
+    { toolCalls: [{ name: 'ask', input: { question: 'Coastal or inland?', options: ['Coastal', 'Inland'] } }] },
+    say('Coastal it is.'),
+  ]], { voice: { decide: [choose('A')], speechIn: ['m-hear'], hears: ['the coastal one'] } });
+  k.agent.send('Which way should we go?');
+  await until(() => k.agent.state.name === 'listening');
+  await hear(k, 'where-lunch');
+  await k.agent.idle();
+  assert.match(gateRequests(k)[0].messages[0].parts[0].text, /She: "Coastal or inland\?"/);
+});

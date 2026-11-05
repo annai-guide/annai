@@ -460,8 +460,8 @@ bo3wjk	ok	Shiori stopped: today's budget is spent	Shiori が止まりました�
 1o4yqf3	ok	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	1回の起動で進めるステップ数（設定 → Shiori → Shiori が自分から動く頻度）の{0}ステップに達しました。続けてほしいときは、そう頼んでください。	src/core/agent/budgets.js:125	{0} = num(over.steps); Note: ja names no subject (the card's title says Shiori stopped); the setting's path as the screens name it.; Note: "Ask her" is a request (頼んで), not the glossary's Ask (Safari's permission choice, 確認).
 edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	しばらくは Shiori が直接答えます。理由は記録（モデル）にあります。Koe は数分後にもう一度試します。	src/core/agent/halves.js:566	
 yvabm6	ok	Koe's live voice couldn't start	Koe のライブ音声を開始できませんでした	src/core/agent/halves.js:566	
-bzrasi	ok	Shiori answers as one half for now	しばらくは Shiori が1人で答えます	src/core/agent/halves.js:726	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
-o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai はあなたのメッセージを Koe に渡せませんでした：{0}	src/core/agent/halves.js:726	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+bzrasi	ok	Shiori answers as one half for now	しばらくは Shiori が1人で答えます	src/core/agent/halves.js:735	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
+o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai はあなたのメッセージを Koe に渡せませんでした：{0}	src/core/agent/halves.js:735	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
 1dhsqvv	ok	Tap to talk	タップして話す	src/core/agent/loop.js:127	
 1ldobgc	ok	Tap to interrupt	タップして中断	src/core/agent/loop.js:127	
 4mbury	ok	Thinking · tap to stop	考え中 · タップで停止	src/core/agent/loop.js:127	
@@ -570,8 +570,8 @@ iwgrsx	ok	This calendar has more than {0} events. Export only the trip's dates f
 5l9pv6	ok	{0} is larger than a trip's calendar ever is (over {1}). Export only the trip's dates from your calendar, and add that file.	{0} は旅のカレンダーとしては大きすぎます（{1}超）。カレンダーから旅の日付の分だけをエクスポートして、そのファイルを追加してください。	src/core/imports.js:15	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:27	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Japanese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	ok	just now	たった今	src/core/intl.js:130	
-1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	スマートフォンのスピーカーでは、Shiori が話している間は annai にあなたの声が聞こえないため、重ねて話したことは使われません。タップすると Shiori が止まり、聞き取りを始めます。	src/core/koe/live.js:484	
-1ml2kgi	ok	Tap Shiori to talk over her	Shiori をタップして話をさえぎる	src/core/koe/live.js:484	Note: names what to tap (the dock's Shiori), as the English does.
+1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	スマートフォンのスピーカーでは、Shiori が話している間は annai にあなたの声が聞こえないため、重ねて話したことは使われません。タップすると Shiori が止まり、聞き取りを始めます。	src/core/koe/live.js:487	
+1ml2kgi	ok	Tap Shiori to talk over her	Shiori をタップして話をさえぎる	src/core/koe/live.js:487	Note: names what to tap (the dock's Shiori), as the English does.
 3fqfy0	ok	Languages	言語	src/core/languages.js:336	
 1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	話す言語と Shiori が答える言語は、聞き取りや読み上げをするすべてのモデルに伝えます。短い返事を別の言語と取り違えないためです。	src/core/languages.js:337	Note: "Hears or speaks" as the glossary's 聞き取り / 読み上げ (Speech in, Speech out).
 1giusr1	ok	Languages you speak	話す言語	src/core/languages.js:338	
@@ -2136,23 +2136,26 @@ hg5a8z	ok	Time in the trip	旅の時刻	src/ui/screens/replay.js:173
 7xq6tu	ok	The trip in order	旅の流れ	src/ui/screens/replay.js:175	
 djv8ja	ok	Timeline	タイムライン	src/ui/screens/replay.js:175	
 j4z771	ok	Pause	一時停止	src/ui/screens/replay.js:176	
-h0pksu	draft	A live session gets its setup once, and the provider holds the rest. So this is the setup it was given, then the lines since, as annai wrote them down. It isn't a copy of a request.	ライブセッションの設定は最初に一度だけ送られ、以降はプロバイダーが保持します。そのため、ここには渡した設定と、その後のやりとりを annai の記録から表示します。リクエストそのものではありません。	src/ui/screens/sees.js:14	
-pa1adz	draft	No live session is going. This is the setup the next one would get.	ライブセッションは開いていません。次のセッションに渡す設定を表示しています。	src/ui/screens/sees.js:15	
-ip9sup	draft	Its setup: the conversation so far, and the moment	設定：ここまでの会話と現在の状況	src/ui/screens/sees.js:16	
-qxxy9e	draft	Its tools	ツール	src/ui/screens/sees.js:16	
-vvrw23	draft	Its setup: instructions	設定：指示	src/ui/screens/sees.js:16	
-1kuzgud	draft	The lines since	その後のやりとり	src/ui/screens/sees.js:17	
-1oep3py	draft	Nothing yet.	まだありません。	src/ui/screens/sees.js:17	
-5m66td	draft	Its next request, built by the code that sends it.	次のリクエストの内容です。実際に送信するコードで組み立てています。	src/ui/screens/sees.js:21	
-mt9jss	draft	Shiori is one half right now, so this is all of her: her next request, built by the code that sends it.	いまの Shiori は1つの半身だけなので、これが Shiori のすべてです。次のリクエストの内容を、実際に送信するコードで組み立てています。	src/ui/screens/sees.js:21	
-1g828u2	draft	The block that ends the request	リクエストの最後に付くブロック	src/ui/screens/sees.js:22	
-ptc85g	draft	Its conversation	会話	src/ui/screens/sees.js:22	
-yxdp3q	draft	Its instructions	指示	src/ui/screens/sees.js:22	
-1adp8wi	draft	What Koe sees	Koe に見えているもの	src/ui/screens/sees.js:29	
-1pyevfq	draft	What Kokoro sees	Kokoro に見えているもの	src/ui/screens/sees.js:29	
-lebwd9	draft	Koe isn't in use: Shiori is one half right now. Give Koe a model in Settings → Models to have two.	Koe は使われていません。いまの Shiori は1つの半身だけです。2つにするには、設定 → モデルで Koe にモデルを割り当ててください。	src/ui/screens/sees.js:32	
-n67yk1	draft	Copied.	コピーしました。	src/ui/screens/sees.js:40	
-wllyue	draft	Copying didn't work here. Select the text on this screen instead.	ここではコピーできませんでした。画面のテキストを選択してください。	src/ui/screens/sees.js:42	
+qxxy9e	draft	Its tools	ツール	src/ui/screens/sees.js:12	
+vvrw23	draft	Its setup: instructions	設定：指示	src/ui/screens/sees.js:12	
+yxdp3q	draft	Its instructions	指示	src/ui/screens/sees.js:12	
+h0pksu	draft	A live session gets its setup once, and the provider holds the rest. So this is the setup it was given, then the lines since, as annai wrote them down. It isn't a copy of a request.	ライブセッションの設定は最初に一度だけ送られ、以降はプロバイダーが保持します。そのため、ここには渡した設定と、その後のやりとりを annai の記録から表示します。リクエストそのものではありません。	src/ui/screens/sees.js:20	
+pa1adz	draft	No live session is going. This is the setup the next one would get.	ライブセッションは開いていません。次のセッションに渡す設定を表示しています。	src/ui/screens/sees.js:21	
+ip9sup	draft	Its setup: the conversation so far, and the moment	設定：ここまでの会話と現在の状況	src/ui/screens/sees.js:22	
+1kuzgud	draft	The lines since	その後のやりとり	src/ui/screens/sees.js:23	
+1oep3py	draft	Nothing yet.	まだありません。	src/ui/screens/sees.js:23	
+5m66td	draft	Its next request, built by the code that sends it.	次のリクエストの内容です。実際に送信するコードで組み立てています。	src/ui/screens/sees.js:27	
+mt9jss	draft	Shiori is one half right now, so this is all of her: her next request, built by the code that sends it.	いまの Shiori は1つの半身だけなので、これが Shiori のすべてです。次のリクエストの内容を、実際に送信するコードで組み立てています。	src/ui/screens/sees.js:27	
+1g828u2	draft	The block that ends the request	リクエストの最後に付くブロック	src/ui/screens/sees.js:28	
+ptc85g	draft	Its conversation	会話	src/ui/screens/sees.js:28	
+1adp8wi	draft	What Koe sees	Koe に見えているもの	src/ui/screens/sees.js:35	
+1pyevfq	draft	What Kokoro sees	Kokoro に見えているもの	src/ui/screens/sees.js:35	
+1hsgfoz	draft	Which half	どちらの半身か	src/ui/screens/sees.js:39	
+1rjgwdq	draft	Koe	Koe	src/ui/screens/sees.js:39	
+1uh7eay	draft	Kokoro	Kokoro	src/ui/screens/sees.js:39	
+lebwd9	draft	Koe isn't in use: Shiori is one half right now. Give Koe a model in Settings → Models to have two.	Koe は使われていません。いまの Shiori は1つの半身だけです。2つにするには、設定 → モデルで Koe にモデルを割り当ててください。	src/ui/screens/sees.js:40	
+n67yk1	draft	Copied.	コピーしました。	src/ui/screens/sees.js:48	
+wllyue	draft	Copying didn't work here. Select the text on this screen instead.	ここではコピーできませんでした。画面のテキストを選択してください。	src/ui/screens/sees.js:50	
 17z59l7	ok	Plugin updates are ready: {0}.	プラグインのアップデートがあります：{0}。	src/ui/screens/settings.js:31	{0} = list(plugins.map(updateName), 'plain')
 1ltn2ct	ok	A new version of annai is ready.	annai の新しいバージョンの準備ができました。	src/ui/screens/settings.js:31	
 2i7wwt	ok	No automatic backups yet. Add a place to back up to, such as a private GitHub repository.	自動バックアップはまだありません。非公開の GitHub リポジトリなど、バックアップ先を追加してください。	src/ui/screens/settings.js:40	
@@ -2268,16 +2271,17 @@ u8z792	draft	Koe, classic	Koe（クラシック）	src/ui/screens/shiori.js:164
 mmvypk	draft	Koe, live	Koe（ライブ）	src/ui/screens/shiori.js:165	
 1eogfr1	draft	Her instructions	Shiori への指示	src/ui/screens/shiori.js:170	
 1eoyx0p	draft	These hold how Shiori works, including her safety rules. Reset to original brings them back. A change applies at her next wake.	Shiori の動き方を決める指示で、安全のルールも含まれます。「オリジナルに戻す」で元に戻せます。変更は次の起動から反映されます。	src/ui/screens/shiori.js:171	
-jgug0r	draft	changed	変更済み	src/ui/screens/shiori.js:180	
 3w9he4	draft	Reset to original: {0}	オリジナルに戻す：{0}	src/ui/screens/shiori.js:182	{0} = words.name
-kntv40	draft	The new original of {0}	{0} の新しいオリジナル	src/ui/screens/shiori.js:198	{0} = words.name
-1nh34lh	draft	Keep mine: {0}	自分のものを残す：{0}	src/ui/screens/shiori.js:200	{0} = words.name
-1s0o9t8	draft	Use the new original: {0}	新しいオリジナルを使う：{0}	src/ui/screens/shiori.js:201	{0} = words.name
-b5wyro	draft	Save: {0}	保存：{0}	src/ui/screens/shiori.js:212	{0} = words.name
-1mrunng	ok	{0} (from a plugin)	{0}（プラグインから）	src/ui/screens/shiori.js:233	{0} = p.name
-1px053l	ok	{0} (from {1})	{0}（{1} から）	src/ui/screens/shiori.js:233	{0} = p.name; {1} = p.plugin
-9xxzlu	ok	You already have a personality called "{0}".	「{0}」という性格はもうあります。	src/ui/screens/shiori.js:238	{0} = p.name
-fnme9h	ok	Added the personality "{0}". Choose it above.	性格「{0}」を追加しました。上で選んでください。	src/ui/screens/shiori.js:242	{0} = p.name
+1tc34br	draft	changed, and annai has a new original	変更済み。annai に新しいオリジナルがあります	src/ui/screens/shiori.js:196	
+jgug0r	draft	changed	変更済み	src/ui/screens/shiori.js:196	
+kntv40	draft	The new original of {0}	{0} の新しいオリジナル	src/ui/screens/shiori.js:200	{0} = words.name
+1nh34lh	draft	Keep mine: {0}	自分のものを残す：{0}	src/ui/screens/shiori.js:202	{0} = words.name
+1s0o9t8	draft	Use the new original: {0}	新しいオリジナルを使う：{0}	src/ui/screens/shiori.js:203	{0} = words.name
+b5wyro	draft	Save: {0}	保存：{0}	src/ui/screens/shiori.js:215	{0} = words.name
+1mrunng	ok	{0} (from a plugin)	{0}（プラグインから）	src/ui/screens/shiori.js:237	{0} = p.name
+1px053l	ok	{0} (from {1})	{0}（{1} から）	src/ui/screens/shiori.js:237	{0} = p.name; {1} = p.plugin
+9xxzlu	ok	You already have a personality called "{0}".	「{0}」という性格はもうあります。	src/ui/screens/shiori.js:242	{0} = p.name
+fnme9h	ok	Added the personality "{0}". Choose it above.	性格「{0}」を追加しました。上で選んでください。	src/ui/screens/shiori.js:246	{0} = p.name
 aqber3	ok	600 times: an hour takes 6 seconds	600倍：1時間が6秒	src/ui/screens/simulate.js:10	
 u8l013	ok	10 times real time: an hour takes 6 minutes	実時間の10倍：1時間が6分	src/ui/screens/simulate.js:10	
 zby7kj	ok	60 times: an hour takes a minute	60倍：1時間が1分	src/ui/screens/simulate.js:10	
@@ -2363,26 +2367,25 @@ mpifrf	ok	Undone. Your files are waiting with Shiori again.	元に戻しまし�
 urusz7#other	ok	Left # files as you changed them.	あなたが変更したファイル#件はそのままにしました。	src/ui/screens/talk.js:587	plural; # = kept; English: "Left # file as you changed it." (one), "Left # files as you changed them." (other); Note: after Undone.: the files the user had changed since, which Undo left; 件 counts files.
 1v37fcy	ok	Undo what Shiori did with these files	このファイルについて Shiori がしたことを元に戻す	src/ui/screens/talk.js:599	Note: the Undo button's label for screen readers; 元に戻す as Undo.
 bomkf4	ok	Tidy up the conversation	会話を整理	src/ui/screens/talk.js:641	
-7flpxf	ok	Summarizing…	要約しています…	src/ui/screens/talk.js:656	
-12707g	ok	She couldn't summarize it. A card says why.	要約できませんでした。カードに理由があります。	src/ui/screens/talk.js:658	
-5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	これまでの会話を要約しました。すべての行はここに残り、Shiori はいつでも見返せます。	src/ui/screens/talk.js:658	
-u82uid	ok	Shiori is working. Try again in a moment.	Shiori は作業中です。少し待ってからもう一度お試しください。	src/ui/screens/talk.js:658	
-va2k72	ok	There is not enough yet to summarize.	まだ要約するほどの内容がありません。	src/ui/screens/talk.js:658	
-mienoe	ok	Summarize now	今すぐ要約	src/ui/screens/talk.js:661	
-10sfmur	ok	Starting fresh…	新しく始めています…	src/ui/screens/talk.js:663	
-va77q0	ok	Start fresh?	新しく始めますか？	src/ui/screens/talk.js:676	Note: the glossary's 新しく始める, conjugated as a question (始めますか).
-19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori はここから、これまでの行を気にせずに新しく始めます。行はすべて会話に残り、読んだり検索したりでき、Shiori も見返せます。何も削除されません。ライブ音声のセッションも開き直します。	src/ui/screens/talk.js:677	
-czdqlz	ok	Start fresh	新しく始める	src/ui/screens/talk.js:678	
-1h9wwbn	ok	She couldn't start fresh: {0}	新しく始められませんでした：{0}	src/ui/screens/talk.js:688	{0} = messageOf(e)
-1thzla3	ok	Already fresh: nothing has been said since.	もう新しく始まっています。それ以降、まだ何も話していません。	src/ui/screens/talk.js:691	
-3fntk0	ok	Started fresh.	新しく始めました。	src/ui/screens/talk.js:691	
-mg70bg	ok	The conversation is still opening. Try again in a moment.	会話はまだ開いている途中です。少し待ってからもう一度お試しください。	src/ui/screens/talk.js:691	
-p5pj7b	ok	There is nothing to start fresh from yet.	まだ新しく始めるもとになる会話がありません。	src/ui/screens/talk.js:691	
-1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	今すぐ要約：Shiori がこれまでの会話を今まとめて、短く保ちます。すべての行はここに残り、Shiori はいつでも見返せます。	src/ui/screens/talk.js:711	
-18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	新しく始める：Shiori はこれまでの行を気にせず、ここから始め直します。すべての行は区切りの上に残ります。	src/ui/screens/talk.js:712	
-16zlzgr	draft	See what Kokoro sees	Kokoro に見えているものを見る	src/ui/screens/talk.js:713	
-19t8xqh	draft	See what Koe sees	Koe に見えているものを見る	src/ui/screens/talk.js:713	
-16pl3gf	ok	Undone. Her old personality applies at her next wake.	元に戻しました。前の性格は次の起動から反映されます。	src/ui/screens/talk.js:735	
+7flpxf	ok	Summarizing…	要約しています…	src/ui/screens/talk.js:658	
+12707g	ok	She couldn't summarize it. A card says why.	要約できませんでした。カードに理由があります。	src/ui/screens/talk.js:660	
+5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	これまでの会話を要約しました。すべての行はここに残り、Shiori はいつでも見返せます。	src/ui/screens/talk.js:660	
+u82uid	ok	Shiori is working. Try again in a moment.	Shiori は作業中です。少し待ってからもう一度お試しください。	src/ui/screens/talk.js:660	
+va2k72	ok	There is not enough yet to summarize.	まだ要約するほどの内容がありません。	src/ui/screens/talk.js:660	
+mienoe	ok	Summarize now	今すぐ要約	src/ui/screens/talk.js:663	
+10sfmur	ok	Starting fresh…	新しく始めています…	src/ui/screens/talk.js:665	
+va77q0	ok	Start fresh?	新しく始めますか？	src/ui/screens/talk.js:678	Note: the glossary's 新しく始める, conjugated as a question (始めますか).
+19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori はここから、これまでの行を気にせずに新しく始めます。行はすべて会話に残り、読んだり検索したりでき、Shiori も見返せます。何も削除されません。ライブ音声のセッションも開き直します。	src/ui/screens/talk.js:679	
+czdqlz	ok	Start fresh	新しく始める	src/ui/screens/talk.js:680	
+1h9wwbn	ok	She couldn't start fresh: {0}	新しく始められませんでした：{0}	src/ui/screens/talk.js:690	{0} = messageOf(e)
+1thzla3	ok	Already fresh: nothing has been said since.	もう新しく始まっています。それ以降、まだ何も話していません。	src/ui/screens/talk.js:693	
+3fntk0	ok	Started fresh.	新しく始めました。	src/ui/screens/talk.js:693	
+mg70bg	ok	The conversation is still opening. Try again in a moment.	会話はまだ開いている途中です。少し待ってからもう一度お試しください。	src/ui/screens/talk.js:693	
+p5pj7b	ok	There is nothing to start fresh from yet.	まだ新しく始めるもとになる会話がありません。	src/ui/screens/talk.js:693	
+1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	今すぐ要約：Shiori がこれまでの会話を今まとめて、短く保ちます。すべての行はここに残り、Shiori はいつでも見返せます。	src/ui/screens/talk.js:713	
+18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	新しく始める：Shiori はこれまでの行を気にせず、ここから始め直します。すべての行は区切りの上に残ります。	src/ui/screens/talk.js:714	
+15ve7m7	draft	What each half sees	各半身に見えているもの	src/ui/screens/talk.js:715	
+16pl3gf	ok	Undone. Her old personality applies at her next wake.	元に戻しました。前の性格は次の起動から反映されます。	src/ui/screens/talk.js:737	
 11gkctr	ok	Places	場所	src/ui/screens/tools.js:11	context: tool group
 13mxqrp	ok	Talk	会話	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	ok	Go	移動	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).

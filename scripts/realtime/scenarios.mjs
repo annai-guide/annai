@@ -79,9 +79,14 @@ export const SCENARIOS = {
     steps: [{ say: 'auto-gps' }, { answered: 1500 }, { say: 'built' }, { answered: 1500 }],
   },
   'relay-filler': {
-    about: "the filler trap: a question, then being told off for apologising. No apology, no \"I understand\", no \"I'll make sure\", in what she says",
+    about: "the filler trap: a question, then being told off for apologising. Silence is right; no apology, no \"I understand\", no \"I'll make sure\", no \"I will stop\", in what she says (the check \"no filler\")",
     route: 'speaker', echoDb: null, extra: true,
-    steps: [{ say: 'lunch' }, { answered: 1500 }, { say: 'annoyed' }, { answered: 1500 }],
+    steps: [{ say: 'lunch' }, { answered: 1500 }, { say: 'annoyed' }, { wait: 9000 }],
+  },
+  'relay-greet': {
+    about: "a greeting (\"Good morning, Shiori.\") gets a greeting, and \"What?\" after her answer gets her last words again, without a trip to Kokoro (fix pass 1)",
+    route: 'speaker', echoDb: null, extra: true,
+    steps: [{ say: 'hello' }, { answered: 1500 }, { say: 'lunch' }, { answered: 1500 }, { say: 'what' }, { answered: 1500 }],
   },
   'relay-stray': {
     about: 'the languages setting English and Japanese: a stray word in Korean and song lyrics, left alone, in English throughout; then a question',
