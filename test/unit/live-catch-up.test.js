@@ -25,7 +25,7 @@ test('back on screen: a time watch that came due fires late and labelled, with m
   assert.equal(w.kind, 'catch-up');
   assert.ok(w.text.startsWith('Catch-up: annai was off screen for 48 min (since 09:42), and the user moved 18.0 km. '), w.text);
   assert.ok(w.text.includes(`Your watch ${tea.id} (at ${iso('10:00')}) fired: the time came: ${iso('10:00')} (late by 30 min: annai was off screen). Its reminder: "Tea time."`), w.text);
-  assert.match(w.text, /fired: you have travelled 20\.\d km since your last wake\. Its reminder: "Narrate\."$/);
+  assert.match(w.text, /fired: you have travelled 20\.\d km since this watch last started counting\. Its reminder: "Narrate\."$/);
   assert.deepEqual(w.fallbacks.map((/** @type {any} */ f) => f.text), ['Tea time.', 'Narrate.']);
   assert.deepEqual((await k.events(['trigger.fired'])).map((e) => [e.data.late ?? 0, e.data.catchUp]), [[30, true], [0, true]]);
 });
@@ -143,12 +143,14 @@ test("after a restart the way travelled while closed counts once, in the catch-u
   const k = await liveKit();
   const moved = await k.live.setWatch(k.trip, { when: { type: 'moved', km: 10 }, fallback: 'Ten km.' });
   await k.fix(at('08:31'), MONTEREY);
+  k.sensors.visible(false); // the record is written as annai goes
+  await k.settle();
   k.live.dispose();
   // annai is closed while the user drives to Nepenthe, and starts again there.
   const clock = new ManualClock(at('10:30'));
   const agent = fakeAgent(k.trip);
   const sensors = fakeSensors(k.registry);
-  const live = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent, clock, timeZone: () => LA });
+  const live = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent, clock, timeZone: () => LA, keep: k.keep });
   await live.start();
   await live.settled();
   sensors.fix({ lat: NEPENTHE.lat, lng: NEPENTHE.lng, accuracy: 8, speed: 0 });
@@ -172,11 +174,13 @@ test("a catch-up that ends before the first fix still counts the way travelled w
   const k = await liveKit();
   const moved = await k.live.setWatch(k.trip, { when: { type: 'moved', km: 10 }, fallback: 'Ten km.' });
   await k.fix(at('08:31'), MONTEREY);
+  k.sensors.visible(false); // the record is written as annai goes
+  await k.settle();
   k.live.dispose();
   const clock = new ManualClock(at('10:30'));
   const agent = fakeAgent(k.trip);
   const sensors = fakeSensors(k.registry);
-  const live = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent, clock, timeZone: () => LA });
+  const live = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent, clock, timeZone: () => LA, keep: k.keep });
   await live.start();
   await live.settled();
   // The GPS takes longer than the catch-up waits for it.
@@ -199,11 +203,13 @@ test("a catch-up that ends before the first fix still counts the way travelled w
 test("a coarse first fix after coming back (a cell tower's, 800 m) leaves the way travelled meanwhile to the first good one, not to a jump when the user later moves (fix pass 2)", async () => {
   const k = await liveKit();
   await k.fix(at('08:31'), MONTEREY);
+  k.sensors.visible(false); // the record is written as annai goes
+  await k.settle();
   k.live.dispose();
   const clock = new ManualClock(at('10:30'));
   const agent = fakeAgent(k.trip);
   const sensors = fakeSensors(k.registry);
-  const live = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent, clock, timeZone: () => LA });
+  const live = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent, clock, timeZone: () => LA, keep: k.keep });
   await live.start();
   await live.settled();
   sensors.fix({ lat: NEPENTHE.lat, lng: NEPENTHE.lng, accuracy: 800, speed: 0 });

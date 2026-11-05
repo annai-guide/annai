@@ -386,29 +386,29 @@ storage-webdav:kpd7yy	ok	The folder above {0} doesn't exist on the server, so an
 storage-webdav:nr7x2z	ok	Works: annai made the folder {0} and can keep its backups there.	動作しています：annai はフォルダー {0} を作り、そこにバックアップを保存できます。	plugins-official/storage-webdav/index.js:139	{0} = shownOf(w.url)
 storage-webdav:1hxwq6b	ok	Works: annai can keep its backups in {0}.	動作しています：annai は {0} にバックアップを保存できます。	plugins-official/storage-webdav/index.js:142	{0} = shownOf(w.url)
 1aajvdy	ok	Opening annai…	annai を開いています…	src/app/boot.js:32	
-1v76pcd	ok	annai is open in another tab	annai は別のタブで開いています	src/app/main.js:75	
-cohfbh	ok	Only one copy of annai runs at a time, so your trips stay consistent.	旅のデータを食い違わせないため、annai は一度に1つだけ動きます。	src/app/main.js:76	
-u0vojx	ok	Use it here	ここで使う	src/app/main.js:77	
-p4x3of	ok	annai was opened in another tab	annai が別のタブで開かれました	src/app/main.js:82	
-11qyuy7	ok	This tab has stopped, so your trips stay consistent.	旅のデータを食い違わせないため、このタブは止まりました。	src/app/main.js:83	
-1ku6bv3	ok	Use it here instead	こちらで使う	src/app/main.js:84	
-fki4un	ok	Notifications	通知	src/app/main.js:225	
-1clzv4	ok	Settings → Models changed	設定 → モデルが変わりました	src/app/main.js:228	
-1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai はプロバイダーごとに設定するようになりました。1つのアドレスと1つのキーで、そのプロバイダーのすべてを使えます。エンドポイント（{0}）とそのキーは削除しました。設定 → モデルで追加し直してください。	src/app/main.js:229	{0} = list(moved.names, 'plain')
-whpd9d	ok	Open Models	モデルを開く	src/app/main.js:230	
-10renyj	ok	Plugins	プラグイン	src/app/main.js:241	
-1sp21de	ok	A new version of the {0} personality	性格「{0}」の新しいバージョン	src/app/main.js:330	{0} = o.name
-1yoe82	ok	Yours has your own edits, so it was kept as it is.	あなたが編集しているため、今のまま残しました。	src/app/main.js:331	
-1n8cxuc	ok	Compare	比較	src/app/main.js:333	
-rzp4o3	ok	Keep mine	自分のものを残す	src/app/main.js:334	
-1j662as	ok	Let Shiori merge	Shiori に統合してもらう	src/app/main.js:335	
-x0ig66	ok	Something went wrong	問題が起きました	src/app/main.js:387	
-1oy79dy	ok	annai kept running. The details are in Trace.	annai は動き続けています。詳しくは記録にあります。	src/app/main.js:388	
-c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai は動き続けていますが、何が起きたかを書き残せなかったため、記録にもありません。何度も起きる場合は、annai を閉じて開き直してください。	src/app/main.js:388	
-11n1kcg	ok	Open Trace	記録を開く	src/app/main.js:389	
-gt9ssw	ok	annai couldn't start	annai を起動できませんでした	src/app/main.js:400	
-6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	何度も起きる場合は、ブラウザが保存をブロックしているのかもしれません（プライベートウインドウなど）。	src/app/main.js:402	
-982hh6	ok	Try again	再試行	src/app/main.js:403	
+1v76pcd	ok	annai is open in another tab	annai は別のタブで開いています	src/app/main.js:84	
+cohfbh	ok	Only one copy of annai runs at a time, so your trips stay consistent.	旅のデータを食い違わせないため、annai は一度に1つだけ動きます。	src/app/main.js:85	
+u0vojx	ok	Use it here	ここで使う	src/app/main.js:86	
+p4x3of	ok	annai was opened in another tab	annai が別のタブで開かれました	src/app/main.js:91	
+11qyuy7	ok	This tab has stopped, so your trips stay consistent.	旅のデータを食い違わせないため、このタブは止まりました。	src/app/main.js:92	
+1ku6bv3	ok	Use it here instead	こちらで使う	src/app/main.js:93	
+fki4un	ok	Notifications	通知	src/app/main.js:234	
+1clzv4	ok	Settings → Models changed	設定 → モデルが変わりました	src/app/main.js:237	
+1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai はプロバイダーごとに設定するようになりました。1つのアドレスと1つのキーで、そのプロバイダーのすべてを使えます。エンドポイント（{0}）とそのキーは削除しました。設定 → モデルで追加し直してください。	src/app/main.js:238	{0} = list(moved.names, 'plain')
+whpd9d	ok	Open Models	モデルを開く	src/app/main.js:239	
+10renyj	ok	Plugins	プラグイン	src/app/main.js:250	
+1sp21de	ok	A new version of the {0} personality	性格「{0}」の新しいバージョン	src/app/main.js:340	{0} = o.name
+1yoe82	ok	Yours has your own edits, so it was kept as it is.	あなたが編集しているため、今のまま残しました。	src/app/main.js:341	
+1n8cxuc	ok	Compare	比較	src/app/main.js:343	
+rzp4o3	ok	Keep mine	自分のものを残す	src/app/main.js:344	
+1j662as	ok	Let Shiori merge	Shiori に統合してもらう	src/app/main.js:345	
+x0ig66	ok	Something went wrong	問題が起きました	src/app/main.js:397	
+1oy79dy	ok	annai kept running. The details are in Trace.	annai は動き続けています。詳しくは記録にあります。	src/app/main.js:398	
+c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai は動き続けていますが、何が起きたかを書き残せなかったため、記録にもありません。何度も起きる場合は、annai を閉じて開き直してください。	src/app/main.js:398	
+11n1kcg	ok	Open Trace	記録を開く	src/app/main.js:399	
+gt9ssw	ok	annai couldn't start	annai を起動できませんでした	src/app/main.js:410	
+6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	何度も起きる場合は、ブラウザが保存をブロックしているのかもしれません（プライベートウインドウなど）。	src/app/main.js:412	
+982hh6	ok	Try again	再試行	src/app/main.js:413	
 1u3dm1p	ok	This address holds a name or password before an @. Leave it out.	このアドレスには @ の前に名前かパスワードが含まれています。外してください。	src/core/address.js:70	
 1f8b0m5	ok	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	滞在した場所と滞在時間（名前で。名前のない場所は約100 mに丸めた位置で）。GPS の軌跡そのものは送りません。	src/core/after/recap.js:54	Note: a stay is any stop in the record, so 滞在した, not 泊まった (overnight).
 7m1pck	ok	How far you drove or walked between, the stamps, and the plan.	その間に車や徒歩で移動した距離、スタンプ、予定。	src/core/after/recap.js:55	
@@ -598,7 +598,7 @@ bgn4sv	ok	Shiori answers in the language you speak to her	Shiori は話しかけ
 1qt7a9v	ok	Shiori answers in	Shiori が答える言語	src/core/languages.js:355	Note: A label for a menu of languages, so a noun: "the language Shiori answers in".
 k4u05v	ok	The language you speak to her	話しかけた言語	src/core/languages.js:356	
 cc69cl	ok	None picked: annai uses the browser’s language.	未選択：annai はブラウザの言語を使います。	src/core/languages.js:357	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
-1dyfzsg	ok	A simulation is already running.	シミュレーションはすでに実行中です。	src/core/live/live.js:244	
+1dyfzsg	ok	A simulation is already running.	シミュレーションはすでに実行中です。	src/core/live/live.js:267	
 157qf8n	ok	Flight {0} departs {1}, {2}	フライト {0}、{1} 出発、{2}	src/core/live/plan-watches.js:140	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
 1tvx4k9	ok	Flight {0} departs {1}	フライト {0}、{1} 出発	src/core/live/plan-watches.js:140	{0} = w.flight; {1} = time
 1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}、{2}）	src/core/live/plan-watches.js:141	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
@@ -859,28 +859,28 @@ h8lp19	ok	On Android: tap the icon left of the address (in the installed app: ho
 1kv2ch5	ok	The microphone is busy	マイクは使用中です	src/core/voice/mic.js:20	
 1mv2ac5	ok	Try again; if it keeps happening, restart annai.	もう一度試してください。何度も起きる場合は annai を再起動してください。	src/core/voice/mic.js:23	
 8ycwt2	ok	The microphone didn't start	マイクを開始できませんでした	src/core/voice/mic.js:23	
-1r1k76k	ok	Realtime	リアルタイム	src/core/voice/mode.js:67	
-1kmd589	ok	Realtime off	リアルタイム オフ	src/core/voice/mode.js:70	Note: a label on the voice chip, after "Voice on".
-599lim	ok	Realtime resting	リアルタイム 休止中	src/core/voice/mode.js:70	Note: a label on the voice chip, after "Voice on".
-v13cxh	ok	Shiori answers directly until it can.	使えるようになるまで、Shiori が直接答えます。	src/core/voice/mode.js:70	
-1xyn0at	ok	Classic unavailable	クラシック 利用不可	src/core/voice/mode.js:71	Note: a label on the voice chip, after "Voice on".
-2nakam	ok	Koe · Classic can't answer now. Shiori answers directly until it can.	Koe · クラシックは今答えられません。使えるようになるまで、Shiori が直接答えます。	src/core/voice/mode.js:71	
-1qzc99v	ok	Koe · Classic has no model, so Shiori answers as one. Add one in Settings → Models.	Koe · クラシックにモデルがないため、Shiori は1人で答えます。設定 → モデルで追加してください。	src/core/voice/mode.js:73	
-nr2jvc	ok	(no model)	（モデルなし）	src/core/voice/mode.js:73	
-y7erjn	ok	Classic	クラシック	src/core/voice/mode.js:73	
-1jfshdf	ok	(no Realtime model)	（リアルタイムのモデルなし）	src/core/voice/mode.js:75	
-pfn1mf	ok	Realtime has no model: add one under Koe · Realtime in Settings → Models. Classic talks meanwhile.	リアルタイムにモデルがありません：設定 → モデルの Koe · リアルタイムで追加してください。その間はクラシックが話します。	src/core/voice/mode.js:75	
-1fq5gan	ok	(Realtime resting)	（リアルタイム休止中）	src/core/voice/mode.js:76	
-1iee2u1	ok	Realtime is resting after a failure. Classic talks until it can.	リアルタイムはエラーの後で休んでいます。使えるようになるまで、クラシックが話します。	src/core/voice/mode.js:76	
-1p1eu5	ok	Realtime's live voice is switched off, or its plugin isn't running. Classic talks meanwhile.	リアルタイムのライブ音声がオフか、そのプラグインが動いていません。その間はクラシックが話します。	src/core/voice/mode.js:77	
-mszveu	ok	(Realtime off)	（リアルタイム オフ）	src/core/voice/mode.js:77	
-dra7tz	ok	moving	移動中	src/core/voice/mode.js:83	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.
-3c71hb	ok	car audio	カーオーディオ	src/core/voice/mode.js:84	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.; Note: the glossary's own example: 音声オン · カーオーディオ.
-86z50m	ok	headphones	ヘッドホン	src/core/voice/mode.js:85	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.
-1noivph	ok	your last choice	前回の選択	src/core/voice/mode.js:86	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.
-bxwivy	ok	Voice auto · off	音声自動 · オフ	src/core/voice/mode.js:96	
-46l9so	ok	Voice off	音声オフ	src/core/voice/mode.js:97	
-1o81qfq	ok	Voice on	音声オン	src/core/voice/mode.js:98	
+1r1k76k	ok	Realtime	リアルタイム	src/core/voice/mode.js:71	
+1kmd589	ok	Realtime off	リアルタイム オフ	src/core/voice/mode.js:74	Note: a label on the voice chip, after "Voice on".
+599lim	ok	Realtime resting	リアルタイム 休止中	src/core/voice/mode.js:74	Note: a label on the voice chip, after "Voice on".
+v13cxh	ok	Shiori answers directly until it can.	使えるようになるまで、Shiori が直接答えます。	src/core/voice/mode.js:74	
+1xyn0at	ok	Classic unavailable	クラシック 利用不可	src/core/voice/mode.js:75	Note: a label on the voice chip, after "Voice on".
+2nakam	ok	Koe · Classic can't answer now. Shiori answers directly until it can.	Koe · クラシックは今答えられません。使えるようになるまで、Shiori が直接答えます。	src/core/voice/mode.js:75	
+1qzc99v	ok	Koe · Classic has no model, so Shiori answers as one. Add one in Settings → Models.	Koe · クラシックにモデルがないため、Shiori は1人で答えます。設定 → モデルで追加してください。	src/core/voice/mode.js:77	
+nr2jvc	ok	(no model)	（モデルなし）	src/core/voice/mode.js:77	
+y7erjn	ok	Classic	クラシック	src/core/voice/mode.js:77	
+1jfshdf	ok	(no Realtime model)	（リアルタイムのモデルなし）	src/core/voice/mode.js:79	
+pfn1mf	ok	Realtime has no model: add one under Koe · Realtime in Settings → Models. Classic talks meanwhile.	リアルタイムにモデルがありません：設定 → モデルの Koe · リアルタイムで追加してください。その間はクラシックが話します。	src/core/voice/mode.js:79	
+1fq5gan	ok	(Realtime resting)	（リアルタイム休止中）	src/core/voice/mode.js:80	
+1iee2u1	ok	Realtime is resting after a failure. Classic talks until it can.	リアルタイムはエラーの後で休んでいます。使えるようになるまで、クラシックが話します。	src/core/voice/mode.js:80	
+1p1eu5	ok	Realtime's live voice is switched off, or its plugin isn't running. Classic talks meanwhile.	リアルタイムのライブ音声がオフか、そのプラグインが動いていません。その間はクラシックが話します。	src/core/voice/mode.js:81	
+mszveu	ok	(Realtime off)	（リアルタイム オフ）	src/core/voice/mode.js:81	
+dra7tz	ok	moving	移動中	src/core/voice/mode.js:87	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.
+3c71hb	ok	car audio	カーオーディオ	src/core/voice/mode.js:88	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.; Note: the glossary's own example: 音声オン · カーオーディオ.
+86z50m	ok	headphones	ヘッドホン	src/core/voice/mode.js:89	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.
+1noivph	ok	your last choice	前回の選択	src/core/voice/mode.js:90	Note: why Auto turned voice on, a label after "Voice on" on the voice chip.
+bxwivy	ok	Voice auto · off	音声自動 · オフ	src/core/voice/mode.js:100	
+46l9so	ok	Voice off	音声オフ	src/core/voice/mode.js:101	
+1o81qfq	ok	Voice on	音声オン	src/core/voice/mode.js:102	
 xi9ch6	ok	Shiori can't hear you: the speech-in list is empty. Add an entry in Settings → Models → Speech in.	Shiori にはあなたの声が聞こえません：聞き取りのリストが空です。設定 → モデル → 聞き取りで追加してください。	src/core/voice/resolve.js:157	
 1da2r7t	ok	Shiori can't hear you yet: {0} doesn't take audio, and the speech-in list has no transcription model that works.	Shiori にはまだあなたの声が聞こえません：{0} は音声を受け付けず、聞き取りのリストに使える文字起こしのモデルがありません。	src/core/voice/resolve.js:163	{0} = model.name
 1j6uoln	ok	Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works.	Shiori にはまだあなたの声が聞こえません：メインのモデルが設定されておらず、聞き取りのリストに使える文字起こしのモデルがありません。	src/core/voice/resolve.js:164	
@@ -889,7 +889,7 @@ l80ifa	ok	Add a transcription model in Settings → Models, such as OpenAI or Gr
 m5s9f4	ok	This browser can't play a voice as it arrives.	このブラウザでは、届くそばから声を再生できません。	src/core/voice/speaker.js:132	
 jo5o9d	ok	This browser can't play sound here.	このブラウザでは、ここで音を鳴らせません。	src/core/voice/voice.js:347	
 ocv5zw	ok	This browser can't use the microphone here.	このブラウザでは、ここでマイクを使えません。	src/core/voice/voice.js:392	
-55949q	draft	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	音声が止まってしまったため、annai にあなたの声が聞こえません。画面をタップすると戻ります。	src/core/voice/voice.js:615	
+55949q	draft	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	音声が止まってしまったため、annai にあなたの声が聞こえません。画面をタップすると戻ります。	src/core/voice/voice.js:624	
 pib2vo	ok	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	ブラウザ自身の音声サービスが聞き取ります。Android では多くの場合 Google のサーバー、iPhone では Apple のサーバーです（端末上で処理されることもあります）。このリクエストは annai が送るものではないため、記録には表示されません。	src/core/voice/where.js:15	
 m93xm3	ok	On this phone only: the browser recognizes your speech on the device.	この端末上だけ：ブラウザが端末上で音声を認識します。	src/core/voice/where.js:16	
 1m5zm0a	ok	Phone dictation	端末の音声入力	src/core/voice/where.js:18	
@@ -2207,11 +2207,11 @@ awxg9v	ok	The copies she is sent, made once and kept with the conversation. A cl
 1kotxez	ok	Quality sent ({0} to {1})	送る画質（{0}〜{1}）	src/ui/screens/settings.js:153	{0} = num(0.5); {1} = num(1)
 8ruaox	ok	Diagnostics copied.	診断情報をコピーしました。	src/ui/screens/settings.js:168	
 jdwnfb	ok	Copying didn't work here. Select and copy this report:	ここではコピーできませんでした。このレポートを選択してコピーしてください：	src/ui/screens/settings.js:170	
-ltgiri	ok	Erasing…	消去しています…	src/ui/screens/settings.js:189	
-u9zvd	ok	Erase now	今すぐ消去	src/ui/screens/settings.js:210	
-tgdxsp	ok	Deletes every trip, file, setting and key on this device. Export a backup first.	この端末のすべての旅、ファイル、設定、キーを削除します。先にバックアップをエクスポートしてください。	src/ui/screens/settings.js:216	
-1x8t4tk	ok	Type {0} to confirm	確認のため「{0}」と入力	src/ui/screens/settings.js:218	{0} = ERASE; Note: {0} is the word to type, ERASE, the same in every language.; Note: the word to type stands apart in 「」.
-199v6bp	ok	From plugins	プラグインから	src/ui/screens/settings.js:228	
+ltgiri	ok	Erasing…	消去しています…	src/ui/screens/settings.js:191	
+u9zvd	ok	Erase now	今すぐ消去	src/ui/screens/settings.js:212	
+tgdxsp	ok	Deletes every trip, file, setting and key on this device. Export a backup first.	この端末のすべての旅、ファイル、設定、キーを削除します。先にバックアップをエクスポートしてください。	src/ui/screens/settings.js:218	
+1x8t4tk	ok	Type {0} to confirm	確認のため「{0}」と入力	src/ui/screens/settings.js:220	{0} = ERASE; Note: {0} is the word to type, ERASE, the same in every language.; Note: the word to type stands apart in 「」.
+199v6bp	ok	From plugins	プラグインから	src/ui/screens/settings.js:230	
 1bu98qy	ok	Shiori, hearing you	Shiori、聞き取り中	src/ui/screens/shiori.js:18	
 1m5wnho	ok	Shiori, listening	Shiori、聞いています	src/ui/screens/shiori.js:18	
 1mlnwtl	ok	Shiori, asleep	Shiori、おやすみ中	src/ui/screens/shiori.js:18	
@@ -2449,48 +2449,48 @@ vgv0s2	ok	started fresh after event {0}	イベント {0} のあとで新しく�
 1yo1hz0	ok	the microphone in use: {0}	使用中のマイク：{0}	src/ui/screens/trace.js:210	{0} = d.using || unnamed
 bt7zey	ok	from the devices present	接続されているデバイスから	src/ui/screens/trace.js:210	
 3gdj21	ok	no devices	デバイスなし	src/ui/screens/trace.js:211	
-1ijsnzq	ok	voice on	音声オン	src/ui/screens/trace.js:217	
-z2w914	ok	voice off	音声オフ	src/ui/screens/trace.js:217	
-1g1k3by	ok	{0} waiting	{0}件待機中	src/ui/screens/trace.js:220	{0} = d.waiting ?? 0
-xy6oxk	ok	{0} sent, {1} called off	{0}件送信、{1}件取り消し	src/ui/screens/trace.js:220	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
-1efflnv	ok	notification shown	通知を表示	src/ui/screens/trace.js:221	
-cjmncb	ok	notification opened	通知を開いた	src/ui/screens/trace.js:222	
-3m7wpo#other	ok	# attempts	#回試行	src/ui/screens/trace.js:232	plural; # = n; English: "# attempt" (one), "# attempts" (other)
-r42rpw	ok	{0} ms processing latency	処理の遅延 {0} ms	src/ui/screens/trace.js:236	{0} = Math.round(d.baseLatency * 1000)
-1y5g6mq	ok	{0} ms output latency	出力の遅延 {0} ms	src/ui/screens/trace.js:237	{0} = Math.round(d.outputLatency * 1000)
-a1oech	ok	live session {0}	ライブセッション {0}	src/ui/screens/trace.js:238	{0} = d.state
-beya44	ok	sound at {0} kHz	音声 {0} kHz	src/ui/screens/trace.js:240	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
-1u50qqt	ok	her voice: {0} played	Shiori の声：{0}再生	src/ui/screens/trace.js:245	{0} = duration(d.ms ?? 0); Note: "her" is written as Shiori: 彼女 reads distant in Japanese.
-1wcl60z	ok	cut	中断	src/ui/screens/trace.js:245	
-njy1uz	ok	her voice: cut before it played	Shiori の声：再生前に中断	src/ui/screens/trace.js:245	Note: "her" is written as Shiori.
-9atabi	ok	started after {0} ms	{0} ms 後に開始	src/ui/screens/trace.js:246	{0} = d.waitMs
-j43x3k	ok	stalled	停滞	src/ui/screens/trace.js:246	
-1qyanji#other	ok	# holes, {0} ms	途切れ#回、{0} ms	src/ui/screens/trace.js:247	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
-gw0cwm#other	ok	# holes	途切れ#回	src/ui/screens/trace.js:247	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
-1bx4bl6	ok	on {0}	{0}で	src/ui/screens/trace.js:248	{0} = d.player
-1jhbzkn	draft	your voice {0} dB, least to start {1} dB, {2} frames kept out (loudest {3} dB)	あなたの声 {0} dB、開始に必要な最小 {1} dB、{2} フレームを除外（最大 {3} dB）	src/ui/screens/trace.js:253	{0} = d.voiceDb ?? '?'; {1} = d.minDb ?? '–'; {2} = d.keptFrames; {3} = d.keptPeakDb ?? '?'
-1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	あなたのターン終了：{0} · {1}送信 · 下限 {2} dB、最大 {3} dB	src/ui/screens/trace.js:254	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
-7ovnj9	draft	no turn	ターンなし	src/ui/screens/trace.js:254	
-khxbvb	ok	audio: {0}	音声：{0}	src/ui/screens/trace.js:258	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
-1wy37ql	ok	{0} sent	{0}送信	src/ui/screens/trace.js:260	{0} = size(d.bytes)
-l04i5	ok	{0} sent, after a kept turn	{0}送信（保持されたターンのあと）	src/ui/screens/trace.js:260	{0} = size(d.bytes)
-1n96vkk	ok	earlier thinking not sent: something before it changed	以前の思考は送っていません：その前の部分が変わりました	src/ui/screens/trace.js:262	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
-yfywm0#other	ok	thinking of # earlier steps sent back	以前の#ステップの思考を送り返しました	src/ui/screens/trace.js:262	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
-15hqi4k#other	ok	# guides	#件のガイド	src/ui/screens/trace.js:266	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
-4k86ja	ok	{0} failed	{0}件失敗	src/ui/screens/trace.js:266	{0} = d.failed
-1waoe51	ok	at its limit	上限に達した	src/ui/screens/trace.js:267	
-66h5i6	ok	by itself on Wi-Fi	Wi-Fi で自動	src/ui/screens/trace.js:267	
-rfe2ef	ok	{0} files sent, {1}	{0}個のファイルを送信、{1}	src/ui/screens/trace.js:269	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
-2601w8	ok	a newer backup from another device is there	別の端末からの新しいバックアップがあります	src/ui/screens/trace.js:270	
-uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	{0}をダウンロード、{1}、その後停止：破棄しました	src/ui/screens/trace.js:272	{0} = d.backup; {1} = size(d.bytes ?? 0)
-wgniil	ok	downloaded {0}, {1}	{0}をダウンロード、{1}	src/ui/screens/trace.js:272	{0} = d.backup; {1} = size(d.bytes ?? 0)
-1gauo2f	ok	{0} can't be opened: {1}	{0}を開けません：{1}	src/ui/screens/trace.js:273	{0} = d.backup; {1} = cut(d.problem)
-1rrq0vn	ok	deleted an older backup, {0}	古いバックアップを削除：{0}	src/ui/screens/trace.js:274	{0} = d.backup
-57gz9u#other	ok	# secrets	シークレット#件	src/ui/screens/trace.js:276	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
-scekw#other	ok	# settings	設定#件	src/ui/screens/trace.js:276	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
-mp7j1w#other	ok	({0}, # bytes)	（{0}、#バイト）	src/ui/screens/trace.js:299	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
-tqj8t3	ok	(no longer stored)	（もう保存されていません）	src/ui/screens/trace.js:299	
-1kfziuy	ok	Show what was stored	保存された内容を表示	src/ui/screens/trace.js:316	
+1ijsnzq	ok	voice on	音声オン	src/ui/screens/trace.js:226	
+z2w914	ok	voice off	音声オフ	src/ui/screens/trace.js:226	
+1g1k3by	ok	{0} waiting	{0}件待機中	src/ui/screens/trace.js:229	{0} = d.waiting ?? 0
+xy6oxk	ok	{0} sent, {1} called off	{0}件送信、{1}件取り消し	src/ui/screens/trace.js:229	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
+1efflnv	ok	notification shown	通知を表示	src/ui/screens/trace.js:230	
+cjmncb	ok	notification opened	通知を開いた	src/ui/screens/trace.js:231	
+3m7wpo#other	ok	# attempts	#回試行	src/ui/screens/trace.js:241	plural; # = n; English: "# attempt" (one), "# attempts" (other)
+r42rpw	ok	{0} ms processing latency	処理の遅延 {0} ms	src/ui/screens/trace.js:245	{0} = Math.round(d.baseLatency * 1000)
+1y5g6mq	ok	{0} ms output latency	出力の遅延 {0} ms	src/ui/screens/trace.js:246	{0} = Math.round(d.outputLatency * 1000)
+a1oech	ok	live session {0}	ライブセッション {0}	src/ui/screens/trace.js:247	{0} = d.state
+beya44	ok	sound at {0} kHz	音声 {0} kHz	src/ui/screens/trace.js:249	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
+1u50qqt	ok	her voice: {0} played	Shiori の声：{0}再生	src/ui/screens/trace.js:254	{0} = duration(d.ms ?? 0); Note: "her" is written as Shiori: 彼女 reads distant in Japanese.
+1wcl60z	ok	cut	中断	src/ui/screens/trace.js:254	
+njy1uz	ok	her voice: cut before it played	Shiori の声：再生前に中断	src/ui/screens/trace.js:254	Note: "her" is written as Shiori.
+9atabi	ok	started after {0} ms	{0} ms 後に開始	src/ui/screens/trace.js:255	{0} = d.waitMs
+j43x3k	ok	stalled	停滞	src/ui/screens/trace.js:255	
+1qyanji#other	ok	# holes, {0} ms	途切れ#回、{0} ms	src/ui/screens/trace.js:256	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
+gw0cwm#other	ok	# holes	途切れ#回	src/ui/screens/trace.js:256	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
+1bx4bl6	ok	on {0}	{0}で	src/ui/screens/trace.js:257	{0} = d.player
+1jhbzkn	draft	your voice {0} dB, least to start {1} dB, {2} frames kept out (loudest {3} dB)	あなたの声 {0} dB、開始に必要な最小 {1} dB、{2} フレームを除外（最大 {3} dB）	src/ui/screens/trace.js:262	{0} = d.voiceDb ?? '?'; {1} = d.minDb ?? '–'; {2} = d.keptFrames; {3} = d.keptPeakDb ?? '?'
+1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	あなたのターン終了：{0} · {1}送信 · 下限 {2} dB、最大 {3} dB	src/ui/screens/trace.js:263	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
+7ovnj9	draft	no turn	ターンなし	src/ui/screens/trace.js:263	
+khxbvb	ok	audio: {0}	音声：{0}	src/ui/screens/trace.js:267	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
+1wy37ql	ok	{0} sent	{0}送信	src/ui/screens/trace.js:269	{0} = size(d.bytes)
+l04i5	ok	{0} sent, after a kept turn	{0}送信（保持されたターンのあと）	src/ui/screens/trace.js:269	{0} = size(d.bytes)
+1n96vkk	ok	earlier thinking not sent: something before it changed	以前の思考は送っていません：その前の部分が変わりました	src/ui/screens/trace.js:271	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
+yfywm0#other	ok	thinking of # earlier steps sent back	以前の#ステップの思考を送り返しました	src/ui/screens/trace.js:271	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
+15hqi4k#other	ok	# guides	#件のガイド	src/ui/screens/trace.js:275	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
+4k86ja	ok	{0} failed	{0}件失敗	src/ui/screens/trace.js:275	{0} = d.failed
+1waoe51	ok	at its limit	上限に達した	src/ui/screens/trace.js:276	
+66h5i6	ok	by itself on Wi-Fi	Wi-Fi で自動	src/ui/screens/trace.js:276	
+rfe2ef	ok	{0} files sent, {1}	{0}個のファイルを送信、{1}	src/ui/screens/trace.js:278	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
+2601w8	ok	a newer backup from another device is there	別の端末からの新しいバックアップがあります	src/ui/screens/trace.js:279	
+uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	{0}をダウンロード、{1}、その後停止：破棄しました	src/ui/screens/trace.js:281	{0} = d.backup; {1} = size(d.bytes ?? 0)
+wgniil	ok	downloaded {0}, {1}	{0}をダウンロード、{1}	src/ui/screens/trace.js:281	{0} = d.backup; {1} = size(d.bytes ?? 0)
+1gauo2f	ok	{0} can't be opened: {1}	{0}を開けません：{1}	src/ui/screens/trace.js:282	{0} = d.backup; {1} = cut(d.problem)
+1rrq0vn	ok	deleted an older backup, {0}	古いバックアップを削除：{0}	src/ui/screens/trace.js:283	{0} = d.backup
+57gz9u#other	ok	# secrets	シークレット#件	src/ui/screens/trace.js:285	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
+scekw#other	ok	# settings	設定#件	src/ui/screens/trace.js:285	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
+mp7j1w#other	ok	({0}, # bytes)	（{0}、#バイト）	src/ui/screens/trace.js:308	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
+tqj8t3	ok	(no longer stored)	（もう保存されていません）	src/ui/screens/trace.js:308	
+1kfziuy	ok	Show what was stored	保存された内容を表示	src/ui/screens/trace.js:325	
 1cnmmj7	ok	Archived	アーカイブ済み	src/ui/screens/trip.js:40	
 jz8mjk	ok	Unarchive	アーカイブを解除	src/ui/screens/trip.js:50	
 qeuftp	ok	Tap again to archive	もう一度タップするとアーカイブします	src/ui/screens/trip.js:52	

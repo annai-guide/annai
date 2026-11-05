@@ -15,7 +15,7 @@ const T0 = Date.parse('2026-11-27T10:00:00-08:00');
 const BIXBY = { lat: 36.3715, lng: -121.9017 };
 const MIN = 60_000;
 /** @param {Partial<import('../../src/core/live/triggers.js').Moment>} o @returns {import('../../src/core/live/triggers.js').Moment} */
-const moment = (o = {}) => ({ now: T0, fix: null, newFix: false, past: false, live: true, activity: 'unknown', change: null, odometer: 0, stop: null, gap: null, fired: () => false, ...o });
+const moment = (o = {}) => ({ now: T0, fix: null, newFix: false, past: false, live: true, activity: 'unknown', change: null, odometer: 0, stop: null, gap: null, fastEnded: null, fired: () => false, ...o });
 /** A moment with a new fix at p, at now. @param {{ lat: number, lng: number }} p @param {number} now @param {Partial<import('../../src/core/live/geo.js').Fix>} [f] @param {Partial<import('../../src/core/live/triggers.js').Moment>} [o] */
 const at = (p, now, f = {}, o = {}) => moment({ now, fix: { lat: p.lat, lng: p.lng, accuracy: 10, at: now, speed: null, heading: null, source: 'gps', ...f }, newFix: true, ...o });
 
@@ -98,15 +98,41 @@ test('arrived: stopped for its minutes somewhere new; not where it was set, and 
   assert.equal(T.arrived.check(w, moment({ now: T0 + 50 * MIN, stop: { ...nepenthe, since: T0 + 40 * MIN } }), mem), null); // the same spot again
 });
 
-test('moved counts the odometer from her last wake; activity fires on its edge', () => {
+test('moved counts the odometer from where the watch began counting; activity fires on its edge', () => {
   assert.equal(T.moved.check({ km: 15 }, moment({ odometer: 24.9 }), { km0: 10 }), null);
-  assert.deepEqual(T.moved.check({ km: 15 }, moment({ odometer: 25.2 }), { km0: 10 }), { text: 'you have travelled 15.2 km since your last wake' });
+  assert.deepEqual(T.moved.check({ km: 15 }, moment({ odometer: 25.2 }), { km0: 10 }), { text: 'you have travelled 15.2 km since this watch last started counting' });
+  assert.doesNotMatch(T.moved.summary, /wake/);
   const start = { activity: 'moving-fast' };
   const stop = { activity: 'moving-fast', edge: 'stop' };
   assert.equal(T.activity.check(start, moment(), {}), null);
   assert.deepEqual(T.activity.check(start, moment({ change: { from: 'unknown', to: 'moving-fast' } }), {}), { text: 'the activity is now moving fast (it was not known yet)' });
   assert.equal(T.activity.check(stop, moment({ change: { from: 'unknown', to: 'moving-fast' } }), {}), null);
   assert.deepEqual(T.activity.check(stop, moment({ change: { from: 'moving-fast', to: 'still' } }), {}), { text: 'the activity is now still (it was moving fast)' });
+});
+
+test('moved says where it counts from when a place is near, the last firing\'s over where it was set; a record without or with a broken setAt is as before', () => {
+  const near = (/** @type {{ lat: number }} */ p) => (p.lat === 1 ? { name: 'Old Harbor' } : p.lat === 2 ? { name: 'Half Moon Diner' } : null);
+  const here = { lat: 3, lng: 3, accuracy: 5, at: T0, speed: null, heading: null, source: /** @type {const} */ ('gps') };
+  const text = (/** @type {any} */ mem) => /** @type {any} */ (T.moved.check({ km: 1 }, moment({ odometer: 2, near, fix: here }), mem)).text;
+  assert.match(text({ km0: 0, setAt: { lat: 1, lng: 1 } }), /km since near Old Harbor$/);
+  assert.match(text({ km0: 0, setAt: { lat: 1, lng: 1 }, lastPlace: { lat: 2, lng: 2 } }), /km since near Half Moon Diner$/);
+  assert.match(text({ km0: 0, setAt: { lat: 9, lng: 9 } }), /km since this watch last started counting$/, 'no place near');
+  assert.match(text({ km0: 0 }), /km since this watch last started counting$/);
+  assert.match(text({ km0: 0, setAt: { lat: 'x', lng: null } }), /km since this watch last started counting$/);
+  assert.deepEqual(/** @type {any} */ (T.moved.check({ km: 1 }, moment({ odometer: 2, near, fix: here }), { km0: 0 })).place, { lat: 3, lng: 3 }, 'where it fired, for the next');
+});
+
+test('moving fast starting again under 5 minutes after it ended (Live says when) is the same drive; stopping still fires; a long stop before the watch was set is no reason to stay quiet', () => {
+  const start = { activity: 'moving-fast' };
+  const stop = { activity: 'moving-fast', edge: 'stop' };
+  const walked = { from: 'still', to: 'walking' };
+  const again = { from: 'still', to: 'moving-fast' };
+  assert.equal(T.activity.check(start, moment({ now: T0 + 5 * MIN - 1, change: again, fastEnded: T0 }), {}), null, 'a red light');
+  assert.ok(T.activity.check(start, moment({ now: T0 + 5 * MIN, change: again, fastEnded: T0 }), {}), 'five minutes after it ended');
+  assert.ok(T.activity.check(start, moment({ now: T0 + 60 * MIN, change: { from: 'walking', to: 'moving-fast' }, fastEnded: T0 }), {}), 'parked an hour, walked 3 minutes, then drove');
+  assert.ok(T.activity.check(start, moment({ now: T0, change: again, fastEnded: null }), {}), 'no drive before');
+  assert.ok(T.activity.check(stop, moment({ now: T0 + MIN, change: { from: 'moving-fast', to: 'still' }, fastEnded: T0 + MIN }), {}), 'watches on stopping fire as they did');
+  assert.ok(T.activity.check({ activity: 'walking' }, moment({ now: T0 + MIN, change: walked, fastEnded: T0 }), {}), 'only moving fast has the rule');
 });
 
 test('watch records: kept as /watches/<id>.json with a format check; broken ones are counted, not read', async () => {
