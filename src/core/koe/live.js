@@ -169,7 +169,7 @@ export class LiveKoe {
   #overs = 0;
   #hinted = false;
   #routeName = 'unknown';
-  /** Why it closes once Koe's sentence has ended (Auto turned voice off), the microphone closed already. @type {string | null} */
+  /** Why it closes once Koe's sentence has ended (a drive's end turned voice off), the microphone closed already. @type {string | null} */
   #closing = null;
   /** A tap opened it to talk: Kokoro's kept notes wait for the user's first turn to end, or 2 s with no speech (review S3). @type {any} */
   #hearFirst = null;
@@ -732,8 +732,7 @@ export class LiveKoe {
   }
 
   /**
-   * Closes once Koe's sentence has ended, whole: the microphone closes now, and nothing more goes in (Auto turning voice off as
-   * AirPods come out, review S1). @param {string} why
+   * Closes once Koe's sentence has ended, whole: the microphone closes now, and nothing more goes in (a drive's end turning voice off). @param {string} why
    */
   closeSoon(why) {
     if (this.state === 'closed' || !(this.#sounding || this.#t || this.#pending)) return this.close(why);
