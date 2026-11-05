@@ -4,6 +4,7 @@ import { liveKit, at, off, LA, MONTEREY } from './live-kit.js';
 import { createTrip, SYS_DEVICE } from '../../src/core/scopes.js';
 import { ManualClock } from '../../src/core/live/clock.js';
 import { TRIGGERS } from '../../src/core/live/triggers.js';
+import { NO_FIX_BACK_MS } from '../../src/core/live/activity.js';
 
 /** The drive's one record (the design's section 4): the scenarios of the third re-review, each through the real Live, tracker and triggers. */
 const north = (/** @type {number} */ m) => off(MONTEREY, 0, -m);
@@ -64,21 +65,6 @@ test('locked 10 minutes on the highway, unlocked at a long light: no false "star
   await road(k, at('09:12:15'), light, 45);
   assert.equal(k.live.activity, 'moving-fast');
   assert.equal(count(), 1, 'it is the same drive');
-});
-
-test('unlocked with no fix for two minutes: moving fast ends then, not back when the phone locked; voice holds, and green fires nothing', async () => {
-  const k = await liveKit({ start: at('09:00') });
-  const count = await startsWatch(k);
-  const y = await road(k, at('09:00'), 0, 60);
-  await off_screen(k);
-  await k.to(at('09:06'));
-  await on_screen(k);
-  await k.to(at('09:08:01'));
-  assert.equal(k.live.activity, 'still');
-  assert.equal(held(k), true, 'two minutes of quiet GPS is what ended it; voice holds from there');
-  await road(k, at('09:08:30'), y + SPEED * 360, 45);
-  assert.equal(k.live.activity, 'moving-fast');
-  assert.equal(count(), 1, 'moving fast ended under five minutes ago');
 });
 
 test('parked and locked, page alive: the way since the last fix is short, so the hold still dates from there and the first fix ends it', async () => {
@@ -365,4 +351,174 @@ test('a simulation leaves the record alone', async () => {
   await k.settle();
   await back();
   assert.deepEqual(k.keep.get(), kept);
+});
+
+// One false "stops" after a reload or unlock (the user left "accept" unticked, 2026-11-05): silence right after coming back says nothing of stopping.
+/** A "when moving fast stops" watch, and how many times it has fired. @param {any} k */
+async function stopsWatch(k) {
+  const w = await k.live.setWatch(k.trip, { when: { type: 'activity', activity: 'moving-fast', edge: 'stop' }, repeat: true, fallback: 'Pulled up.' });
+  return () => k.agent.wakes.filter((/** @type {any} */ x) => x.text.includes(w.id)).length;
+}
+
+for (const locked of [3, 5, 10]) {
+  for (const quiet of [120, 300]) {
+    test(`locked ${locked} min on the road, unlocked, no fix for ${quiet} s, the road again with a first fix without speed: moving fast never flips, voice holds, no "stops", one "starts"`, async () => {
+      const k = await liveKit({ start: at('09:00') });
+      const starts = await startsWatch(k);
+      const stops = await stopsWatch(k);
+      const y = await road(k, at('09:00'), 0, 60);
+      await off_screen(k);
+      const back = at('09:01') + locked * 60_000;
+      await k.to(back);
+      await on_screen(k);
+      for (let s = 30; s <= quiet; s += 30) {
+        await k.to(back + s * 1000);
+        assert.equal(k.live.activity, 'moving-fast', `${s} s after the unlock`);
+        assert.equal(held(k), true, `voice, ${s} s after the unlock`);
+      }
+      const there = y + SPEED * (locked * 60 + quiet + 5);
+      await k.fix(back + (quiet + 5) * 1000, north(there), { speed: null });
+      assert.equal(k.live.activity, 'moving-fast', 'a first fix with no speed');
+      await road(k, back + (quiet + 10) * 1000, there + SPEED * 5, 40);
+      assert.equal(k.live.activity, 'moving-fast');
+      assert.equal(held(k), true);
+      assert.equal(stops(), 0);
+      assert.equal(starts(), 1);
+    });
+  }
+}
+
+for (const quiet of [120, 300]) {
+  test(`reloaded on the road (the record under 5 min old), no fix for ${quiet} s, the road again: moving fast never flips, voice holds, no "stops", one "starts"`, async () => {
+    const k = await liveKit({ start: at('09:00') });
+    const starts = await startsWatch(k);
+    const stops = await stopsWatch(k);
+    const y = await road(k, at('09:00'), 0, 60);
+    await off_screen(k);
+    await k.to(at('09:03'));
+    await k.restart();
+    assert.equal(k.live.activity, 'moving-fast');
+    await k.to(at('09:03') + quiet * 1000);
+    assert.equal(k.live.activity, 'moving-fast');
+    assert.equal(held(k), true);
+    const there = y + SPEED * (120 + quiet + 5);
+    await k.fix(at('09:03') + (quiet + 5) * 1000, north(there), { speed: null });
+    await road(k, at('09:03') + (quiet + 10) * 1000, there + SPEED * 5, 40);
+    assert.equal(k.live.activity, 'moving-fast');
+    assert.equal(stops(), 0);
+    assert.equal(starts(), 1);
+  });
+}
+
+test('killed on the road and reopened after 5 and 10 min, no fix for 120 and 300 s, the road again: too old to restore, so nothing can flip; one "starts", no "stops"', async () => {
+  for (const killed of [5, 10]) {
+    for (const quiet of [120, 300]) {
+      const k = await liveKit({ start: at('09:00') });
+      const starts = await startsWatch(k);
+      const stops = await stopsWatch(k);
+      const y = await road(k, at('09:00'), 0, 60);
+      await off_screen(k);
+      const back = at('09:01') + killed * 60_000;
+      await k.to(back);
+      await k.restart();
+      await k.to(back + quiet * 1000);
+      assert.equal(k.live.activity, 'unknown');
+      const there = y + SPEED * (killed * 60 + quiet + 5);
+      await k.fix(back + (quiet + 5) * 1000, north(there), { speed: SPEED });
+      assert.equal(k.live.activity, 'moving-fast');
+      await road(k, back + (quiet + 10) * 1000, there + SPEED * 5, 30);
+      assert.equal(stops(), 0, `${killed} min, ${quiet} s`);
+      assert.equal(starts(), 1, `${killed} min, ${quiet} s`);
+    }
+  }
+});
+
+test('a garage: unlocked with no fix at all, moving fast ends at the bound and dates from the last fix, voice goes with it, and "stops" fires once', async () => {
+  const k = await liveKit({ start: at('09:00') });
+  const stops = await stopsWatch(k);
+  await road(k, at('09:00'), 0, 60);
+  const last = at('09:01');
+  await off_screen(k);
+  await k.to(at('09:04'));
+  await on_screen(k);
+  await k.to(at('09:04') + NO_FIX_BACK_MS - 1000);
+  assert.equal(k.live.activity, 'moving-fast');
+  assert.equal(held(k), true);
+  assert.equal(stops(), 0);
+  await k.to(at('09:04') + NO_FIX_BACK_MS);
+  assert.equal(k.live.activity, 'still');
+  assert.equal(held(k), false, 'it ended long ago: no two minutes more');
+  assert.equal(stops(), 1);
+  const ended = (await k.events(['state'], SYS_DEVICE)).map((e) => e.data.ended).filter((e) => e !== undefined).at(-1);
+  assert.equal(ended, last + 60_000, 'a minute after the last fix, as a hold that dates from it');
+  await k.to(at('09:04') + NO_FIX_BACK_MS + 600_000);
+  assert.equal(stops(), 1);
+});
+
+test('the GPS dead past the bound on the road, then back: the way says the same drive, so voice is on at the first fix and "starts" does not fire', async () => {
+  const k = await liveKit({ start: at('09:00') });
+  const starts = await startsWatch(k);
+  const y = await road(k, at('09:00'), 0, 60);
+  await off_screen(k);
+  await k.to(at('09:04'));
+  await on_screen(k);
+  const back = at('09:04') + NO_FIX_BACK_MS + 30_000;
+  const there = y + SPEED * (back - at('09:01')) / 1000;
+  await k.fix(back, north(there), { speed: SPEED });
+  assert.equal(k.live.activity, 'moving-fast');
+  assert.equal(held(k), true);
+  await road(k, back + 5000, there + SPEED * 5, 40);
+  assert.equal(starts(), 1);
+});
+
+test('reloaded with the record under 5 min old, then parked: a garage ends at the bound and dates from the last fix; a parked fix ends a minute on, and driving off later starts', async () => {
+  const g = await liveKit({ start: at('09:00') });
+  const gStops = await stopsWatch(g);
+  await road(g, at('09:00'), 0, 60);
+  await off_screen(g);
+  await g.to(at('09:03'));
+  await g.restart();
+  await g.to(at('09:03') + NO_FIX_BACK_MS - 1000);
+  assert.equal(g.live.activity, 'moving-fast');
+  await g.to(at('09:03') + NO_FIX_BACK_MS);
+  assert.equal(g.live.activity, 'still');
+  assert.equal(held(g), false);
+  assert.equal(gStops(), 1);
+
+  const k = await liveKit({ start: at('09:00') });
+  const y = await road(k, at('09:00'), 0, 60);
+  await off_screen(k);
+  await k.to(at('09:03'));
+  await k.restart();
+  await k.stay(north(y + 60), at('09:03:05'), at('09:04:10'));
+  assert.equal(k.live.activity, 'still', 'no fifteen minutes, and no five: the good fix decided');
+});
+
+test('after a reload or an unlock, one fix without a speed and then silence ends moving fast 2 min on, not 15, and not at the bound', async () => {
+  const k = await liveKit({ start: at('09:00') });
+  const y = await road(k, at('09:00'), 0, 60);
+  await off_screen(k);
+  await k.to(at('09:03'));
+  await k.restart();
+  await k.fix(at('09:03:05'), north(y + SPEED * 125), { speed: null });
+  await k.to(at('09:05:04'));
+  assert.equal(k.live.activity, 'moving-fast');
+  await k.to(at('09:05:05'));
+  assert.equal(k.live.activity, 'still');
+});
+
+test('cell-tower fixes after an unlock are no first good fix: two of them, however still they look, do not end moving fast', async () => {
+  const k = await liveKit({ start: at('09:00') });
+  const stops = await stopsWatch(k);
+  const y = await road(k, at('09:00'), 0, 60);
+  await off_screen(k);
+  await k.to(at('09:04'));
+  await on_screen(k);
+  for (const s of [5, 25, 45]) await k.fix(at('09:04') + s * 1000, north(y + 3000), { speed: null, accuracy: 3000 });
+  assert.equal(k.live.activity, 'moving-fast');
+  assert.equal(stops(), 0);
+  // And the bound does not move for them.
+  await k.to(at('09:04') + NO_FIX_BACK_MS);
+  assert.equal(k.live.activity, 'still');
+  assert.equal(stops(), 1);
 });

@@ -75,6 +75,8 @@ const round3 = (/** @type {number} */ x) => Math.round(x * 1e3) / 1e3;
 const SHOWN_SLACK_MS = 60_000;
 /** A watch that is a reminder, not a cue for Shiori: a time watch's, or the plan's leave, running late and coming up (spec §11.3). @param {Watch} w */
 const reminds = (w) => w.when.type === 'time' || w.when.type === 'every' || (w.when.type === 'plan' && ['leave', 'late', 'coming-up'].includes(String(w.when.event)));
+/** A watch that goes once it has fired: not the plan's, and not one that repeats. @param {Watch} w */
+const oneTime = (w) => w.owner !== 'system' && (w.when.type === 'time' || (!w.repeat && w.when.type !== 'every'));
 
 export class Live {
   /** Live mode is on (spec §11.1). */
@@ -1344,6 +1346,7 @@ export class Live {
     const c = this.#tracker.tick(this.clock.now());
     if (!c) return null;
     this.activity = c.to;
+    if (c.noFix) this.#wasFast = this.#odo; // no fix came back: the first good one says whether it was the same drive, as after a kill
     this.#log(this.#changeData(c));
     this.#tellActivity();
     this.#tell();
@@ -1429,6 +1432,11 @@ export class Live {
           await this.#drop(scope, w).catch((e) => this.#fail(e)); // gone from live mode, if not from its file
           continue;
         }
+        // A one-time watch its log says fired, with its file still here (a backup taken before the delete, a page killed before it): it has been said, and only goes.
+        if (oneTime(w) && this.#fired.has(this.#key(scope, w.id))) {
+          await this.#drop(scope, w).catch((e) => this.#fail(e));
+          continue;
+        }
         const type = types.get(w.when?.type);
         if (!type || !this.#looked(type, scope) || this.#broken(type, w)) continue; // a broken watch never fires; watch_list says why
         const f = this.#try(type, w, scope, m);
@@ -1482,7 +1490,7 @@ export class Live {
       }
       done.push(x);
       // A one-time watch goes; a watch file that can't be removed is told, and the reminder still comes (L1).
-      if (x.watch.owner !== 'system' && (x.watch.when.type === 'time' || (!x.watch.repeat && x.watch.when.type !== 'every'))) await this.#drop(x.scope, x.watch).catch((e) => this.#fail(e));
+      if (oneTime(x.watch)) await this.#drop(x.scope, x.watch).catch((e) => this.#fail(e));
       // Said on screen, now or in the catch-up: a notification for it from now on is a double (one shown while away was read first).
       if (this.shown) {
         this.#said.set(this.#keyOf(x.scope, x.watch), this.clock.now());

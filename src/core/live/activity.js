@@ -11,8 +11,9 @@ import { meters } from './geo.js';
  * @typedef {'still' | 'walking' | 'moving-fast' | 'unknown'} Activity
  * @typedef {import('./geo.js').Fix} Fix
  * @typedef {{ heldS: number, gapS: number, readings: Record<string, number>, heards: number }} Why  what a change rested on, for the trace
- * @typedef {{ from: Activity, to: Activity, at: number, why: Why }} Change
- *   at: when it happened: leaving moving fast, when its hold ran out, not when annai found out (a locked phone)
+ * @typedef {{ from: Activity, to: Activity, at: number, why: Why, noFix?: boolean }} Change
+ *   at: when it happened: leaving moving fast, when its hold ran out, not when annai found out (a locked phone);
+ *   noFix: moving fast ended only because no good fix came back in NO_FIX_BACK_MS: the way to the next one says whether it was the same drive
  */
 
 /** m/s: below this, still. */
@@ -29,6 +30,11 @@ export const LEAVE_FAST_MS = 60_000;
 export const QUIET_STILL_MS = 120_000;
 /** No fix this long reads as still whatever the last speed was (a garage, a dead GPS, a lone glitch): longer than any tunnel. */
 export const NO_FIX_STILL_MS = 15 * 60_000;
+/**
+ * Moving fast across a reload or an unlock, with no good fix since: silence right after coming back says nothing of stopping (the GPS is finding itself, or a phone in a
+ * car under a roof), so it holds this long. A little over five minutes, so a five-minute gap and the fix after it aren't cut. Then it ends, dated from the last fix.
+ */
+export const NO_FIX_BACK_MS = 330_000;
 /** Without the GPS's own speed, it is worked out from the oldest point at least this far back… */
 const SPAN_MS = 15_000;
 /** …and at most this far, the longer the span, the less GPS jitter looks like walking; or from the fix before, when there is none so near. */
@@ -48,6 +54,8 @@ export class ActivityTracker {
   #recent = [];
   /** @type {Fix | null} the last fix before annai went off screen, until a good one back */
   #before = null;
+  /** @type {number | null} when annai came back moving fast, until a good fix decides */
+  #backAt = null;
   /** @type {number | null} when the last fix came */
   #lastAt = null;
   /** @type {Activity | null} what the last speed said (null: between walking and moving fast) */
@@ -66,6 +74,15 @@ export class ActivityTracker {
 
   /** @param {Fix} fix @returns {Change | null} the change, when there is one */
   feed(fix) {
+    if (this.#backAt !== null) {
+      if (fix.accuracy > 100) { // a cell tower's says nothing of a drive, and two of them read as no way travelled
+        this.#lastAt = fix.at;
+        this.#maxAcc = Math.max(this.#maxAcc, fix.accuracy);
+        this.#counts.none++;
+        return null;
+      }
+      this.#backAt = null;
+    }
     const gap = this.#lastAt === null ? 0 : fix.at - this.#lastAt;
     if (this.#before) {
       if (this.activity === 'moving-fast' && waySpeed(this.#before, fix) >= FAST_FROM) { // the drive went on
@@ -95,15 +112,19 @@ export class ActivityTracker {
   /**
    * Asked without a new fix (live mode's recheck): a held change completes on time, the last speed seen
    * counting as still holding; no fix for QUIET_STILL_MS after a slow last speed is still, and for NO_FIX_STILL_MS after any.
+   * Moving fast across a reload or an unlock holds until a good fix decides, for at most NO_FIX_BACK_MS.
    * @param {number} now @returns {Change | null}
    */
   tick(now) {
     if (this.#lastAt === null) return null;
     const gap = now - this.#lastAt;
-    if ((this.#quiet() && gap >= QUIET_STILL_MS) || (this.activity !== 'still' && gap >= NO_FIX_STILL_MS)) {
-      if (this.#before) this.#leaving = null; // no fix since the unlock: it ends now
-      return this.#become('still', now, gap);
+    if (this.#backAt !== null) {
+      if (now - this.#backAt < NO_FIX_BACK_MS) return null;
+      this.#backAt = null;
+      this.#leaving ??= this.#before?.at ?? null; // dated from the last fix, as a hold that began there
+      return { ...this.#become('still', now, gap), noFix: true };
     }
+    if ((this.#quiet() && gap >= QUIET_STILL_MS) || (this.activity !== 'still' && gap >= NO_FIX_STILL_MS)) return this.#become('still', now, gap);
     return this.#leaving === null ? null : this.#decide(now, gap); // only a fix starts a hold: a last speed from before a quiet GPS says nothing new
   }
 
@@ -112,6 +133,7 @@ export class ActivityTracker {
     this.activity = activity;
     this.#lastAt = now;
     this.#before = from;
+    this.#backAt = activity === 'moving-fast' ? now : null;
   }
 
   /** What a quiet stretch rested on, for the trace: as a change's why, and the largest speed and accuracy since the last change or beat. Starts those counts again. @param {number} now */
@@ -129,6 +151,7 @@ export class ActivityTracker {
   /** When tick could next change something, or null. @returns {number | null} */
   due() {
     if (this.#lastAt === null) return null;
+    if (this.#backAt !== null) return this.#backAt + NO_FIX_BACK_MS;
     const held = this.#leaving !== null && this.#seen !== null ? this.#leaving + this.#hold() : Infinity;
     const t = Math.min(held, this.#quiet() ? this.#lastAt + QUIET_STILL_MS : Infinity, this.activity === 'still' ? Infinity : this.#lastAt + NO_FIX_STILL_MS);
     return t === Infinity ? null : t;
@@ -147,6 +170,7 @@ export class ActivityTracker {
     this.#target = null;
     this.#seen = null;
     this.#before ??= this.#recent.at(-1) ?? null;
+    this.#backAt = this.activity === 'moving-fast' ? now : null;
     this.#recent = [];
     this.speed = null; // a fast speed from before the gap would hold moving fast through any silence after it
     this.#heards++;
@@ -203,6 +227,7 @@ export class ActivityTracker {
     this.#leaving = null;
     this.#recent = [];
     this.#before = null;
+    this.#backAt = null;
     this.#lastAt = null;
     this.#seen = null;
     this.#target = null;

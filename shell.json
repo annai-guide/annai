@@ -1,5 +1,5 @@
 {
-  "build": "0c8cea5a5206",
+  "build": "7368bfa0dd17",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -39,7 +39,7 @@
     "/src/core/agent/budgets.js": "ec0a25e840fb",
     "/src/core/agent/compaction.js": "b3bb32c5c86c",
     "/src/core/agent/context.js": "1e23f12809d2",
-    "/src/core/agent/halves.js": "57b0408603b9",
+    "/src/core/agent/halves.js": "f6d341478d9b",
     "/src/core/agent/instructions.js": "5989e634fbf3",
     "/src/core/agent/listen.js": "e6c194b03c77",
     "/src/core/agent/log.js": "6ea82833ac72",
@@ -93,10 +93,10 @@
     "/src/core/llm/trace.js": "256c3fe59b0f",
     "/src/core/llm/uploads.js": "7c2609587e19",
     "/src/core/llm/kept.js": "069ca9edcb98",
-    "/src/core/live/activity.js": "538eceb8138c",
+    "/src/core/live/activity.js": "ab58adabda8b",
     "/src/core/live/clock.js": "3a80893f52a5",
     "/src/core/live/geo.js": "018e805b07f7",
-    "/src/core/live/live.js": "57f30a0f390a",
+    "/src/core/live/live.js": "b9ba1f443ad8",
     "/src/core/live/plan-watches.js": "86e5053be983",
     "/src/core/live/sim-run.js": "7a6c3579a014",
     "/src/core/live/simulate.js": "b7a9e9c0442c",
@@ -292,8 +292,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b86e78535207",
     "/src/ui/welcome.js": "23fcd35c12df",
-    "/l10n/ja.json": "0635c91364af",
-    "/l10n/zh-Hans.json": "6359f13fa663",
-    "/l10n/zh-Hant.json": "3109959fe15f"
+    "/l10n/ja.json": "387ad7b5d262",
+    "/l10n/zh-Hans.json": "ac951ab1d3f4",
+    "/l10n/zh-Hant.json": "63f99ac180b0"
   }
 }
