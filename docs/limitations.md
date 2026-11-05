@@ -128,3 +128,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** telling voices apart would likely need a voice model downloaded to the phone, estimated at several MB and not researched, in an app that ships under 3 MB. The level check comes first, and may be enough.
 - **Revisit when:** a drive shows the level check and the gate aren't enough, or the user asks.
 - **Approved:** 2026-11-04, the user picked "Music check now, who later (Recommended)".
+
+### A long slow traffic jam turns voice off
+- **Kind:** known limitation.
+- **What the user sees:** in a jam that never gets above about 7 mph, annai can't tell a crawl from a parked car. Voice goes off about 3 minutes in and comes back about 35 seconds after traffic clears. A tap on Shiori still talks, but a reminder meanwhile may arrive silently, and "moving fast starts" can fire again when it clears. Stop-and-go that reaches 7 mph isn't affected.
+- **Why:** telling a crawl from walking away from a parked car needs more logic, and GPS speed alone can't always do it; holding voice longer would leave it on after really parking.
+- **Revisit when:** it bothers the user on a commute; the drive log shows how often it happens.
+- **Approved:** 2026-11-05, the user picked "Accept it for now (Recommended)".
