@@ -482,12 +482,17 @@ export class LiveKoe {
     const { instructions, context, languages, known } = await this.c.setup();
     this.#languages = known ?? null;
     const tools = definitions(await this.c.koe.liveTools());
+    // Changed instructions start a fresh session: whether the provider applies new text sent with a handle isn't known, and Koe could keep the old rules.
+    if (resume && this.#setUp && this.#setUp.instructions !== instructions) {
+      resume = undefined;
+      this.#handle = undefined;
+    }
     // What a session was set up with, for What each half sees: the text it was given every time, and where its conversation began. A resumed
-    // one goes on from there: the provider holds the rest.
+    // one goes on from there: the provider holds the rest, so its context stays with the place it counts from.
     const kept = resume ? this.#setUp : null;
     const [last] = kept ? [] : await this.c.store.tx(['events'], 'readonly', (t) => t.listEvents(this.c.koe.scope, { reverse: true, limit: 1 }));
     if (!kept) this.#told = [];
-    this.#setUp = { instructions, context, tools: tools.map((x) => x.name), after: kept ? kept.after : last?.seq ?? 0 };
+    this.#setUp = { instructions, context: kept ? kept.context : context, tools: tools.map((x) => x.name), after: kept ? kept.after : last?.seq ?? 0 };
     this.#wake = newId('w');
     this.#noBack = 0;
     this.#endedEarly = false;

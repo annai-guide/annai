@@ -1,4 +1,4 @@
-import { claimLine } from './blocks.js';
+import { claimLine, quote } from './blocks.js';
 import { ME, newId } from '../scopes.js';
 import { readAppSettings } from '../settings.js';
 import { languageSettings, strayLanguage } from '../languages.js';
@@ -9,7 +9,6 @@ import { NotFoundError } from '../workspace.js';
 import { fromBase64, toBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
 import { record, storedTexts, TALK_TAG } from './log.js';
-import { quote } from './blocks.js';
 import { blobBytes, canRead } from '../reach.js';
 import { compactionNeed, cutAt, promptTokens, requestBytes, instruction, renderForSummary, coldSystem, summaryLanguage, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
 import { Transcript, resolveEvent, repair, NOT_SAID, SAID, STOPPED } from './transcript.js';
@@ -49,7 +48,7 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  *   cue: a cue's for her (a place, the road), not a reminder: owed only until a model answers; answer: her words annai shows for her, called "Shiori's
  *   answer" in place of "Reminder"; plan: a plan watch's, the data its words for the user are made from (text is the English a model reads)
  * @typedef {{ path: string, region?: number[] }} SentPhoto a photo the user sends: a path, and a part of it
- * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string, fallbacks?: Reminder[], aloud?: boolean,
+ * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string, fallbacks?: Reminder[], aloud?: boolean, window?: boolean,
  *   logged?: boolean, from?: 'koe' | 'kokoro', note?: string, mode?: 'append' | 'immediate', again?: boolean, at?: number, input?: boolean, why?: string,
  *   call?: { name: string, input: any }, seq?: number, watched?: boolean, forUser?: string, retold?: boolean, files?: string[], titles?: string[],
  *   by?: { name: string, first: string | null, tried: boolean } | null, handed?: import('../handover.js').HandedFile[], handover?: string, recap?: string, claim?: string, chose?: boolean, fromScope?: string, turn?: string, urgent?: boolean }} Wake
@@ -59,7 +58,7 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  *   written into another conversation, the one it came from
  *   files, titles: a file wake's paths, and what a trigger's watches are for: the screens' data for its line
  *   scope: the conversation it was meant for, set when it is queued; heard: what the microphone heard (spec §6.1); gate: what the quick-decision gate made of it;
- *   fallbacks: what annai shows and says by itself if no model answers (spec §11.3); aloud: this turn is spoken even with voice off (the user asked to hear her, spec §13);
+ *   fallbacks: what annai shows and says by itself if no model answers (spec §11.3); aloud: this turn is spoken even with voice off (the user asked to hear her, spec §13); window: it was heard in the window after she spoke, so it may not be for her (it owes no answer);
  *   logged: its lines are in the log already (the other half's), so only the wake is written; from, note, mode: a note's half, words and mode;
  *   again: the user tapped Try again after a turn that said nothing to them: the turn is theirs; at: when it was queued (GATHER's cap counts from it);
  *   input: it comes from the user's input (Koe answering what was heard), so a turn gathers for it; why: a note's reason (NoteWhy);
@@ -424,7 +423,7 @@ export class Agent {
   /** Every hand-over the turn running took, oldest first (ToolCall.handovers). @type {string[]} */
   #handovers = [];
   /** What the running turn did (Half.ended). */
-  #facts = { finalText: '', told: false, slept: false, spoke: false, aloud: false, wrote: false, watched: false, kinds: /** @type {string[]} */ ([]) };
+  #facts = { finalText: '', told: false, slept: false, closed: false, spoke: false, aloud: false, wrote: false, watched: false, kinds: /** @type {string[]} */ ([]) };
   /** The user stopped the running turn (a tap, or the sign's Stop), not annai opening another conversation. */
   #userStop = false;
   /** The turn running was cut by opening another conversation: the one left is told (the third emulator pass). */
@@ -1697,7 +1696,7 @@ export class Agent {
     this.#abort = abort;
     await this.#workOutVoice(wakes);
     this.#heardBy = null;
-    this.#facts = { finalText: '', told: false, slept: false, spoke: false, aloud: false, wrote: false, watched: wakes.some(isWatched), kinds: wakes.map((w) => w.kind) };
+    this.#facts = { finalText: '', told: false, slept: false, closed: false, spoke: false, aloud: wakes.some((w) => w.window), wrote: false, watched: wakes.some(isWatched), kinds: wakes.map((w) => w.kind) };
     this.#userStop = false;
     this.#cutByOpen = false;
     // Shiori became two halves, or one again.
@@ -1772,7 +1771,7 @@ export class Agent {
      */
     let owed = wakes.flatMap((w) => w.fallbacks ?? []);
     /** The user's own message (or tap) is in this turn, and nothing has reached them since. */
-    let theirs = wakes.some(isTheirs);
+    let theirs = wakes.some((w) => isTheirs(w) && !w.window); // a word heard in the window after she spoke may be no one's: it owes no answer
     let reached = this.#reached;
     /** What had reached the user when the turn began: a tool call is asked for only until something more has (review A4). */
     const begun = this.#reached;
@@ -1810,7 +1809,7 @@ export class Agent {
       if (!first) this.#half.joined?.(wakeId);
       this.#handover = handoverOf(more) ?? this.#handover ?? (more.some(isTheirs) ? this.transcript.owedHandover : null);
       for (const h of [this.#handover, ...more.map((w) => w.handover)]) if (h && !this.#handovers.includes(h)) this.#handovers.push(h);
-      theirs ||= more.some(isTheirs);
+      theirs ||= more.some((w) => isTheirs(w) && !w.window);
       this.#facts.watched ||= more.some(isWatched); // someone is watching: a wake from the user began the turn or joined it; it stays so
       const read = this.#reachedTo.scope === this.scope ? this.#reachedTo.to : 0;
       notes.push(...more.filter((w) => isForUser(w) && !((w.seq ?? Infinity) <= read)));
@@ -2036,6 +2035,7 @@ export class Agent {
       }
       const sleeping = calls.some((/** @type {any} */ c) => c.name === 'sleep');
       if (sleeping) this.#facts.slept = true;
+      if (sleeping && calls.some((/** @type {any} */ c) => ['speak', 'show', 'ask'].includes(c.name))) this.#facts.closed = true; // sleep alone, or with a note told already, leaves the window open
       const ordered = [...calls.filter((/** @type {any} */ c) => c.name !== 'sleep'), ...calls.filter((/** @type {any} */ c) => c.name === 'sleep')];
       let stop = false;
       let endTurn = false;
@@ -3092,8 +3092,9 @@ export class Agent {
       if (this.#ear?.owner === 'after' && !this.#busy) this.#armQuiet(); // it listens on, to the same deadline
       return;
     }
-    if (this.#ear?.owner === 'after') this.#ear.owner = 'turn';
-    this.#push({ kind: 'heard', text: '', heard: h, ...(verdict ? { gate: verdict } : {}) });
+    const after = this.#ear?.owner === 'after';
+    if (this.#ear && after) this.#ear.owner = 'turn';
+    this.#push({ kind: 'heard', text: '', heard: h, ...(verdict ? { gate: verdict } : {}), ...(after ? { window: true } : {}) });
     this.#drain();
   }
 
@@ -3258,10 +3259,12 @@ export class Agent {
     for (const u of this.#utterances.values()) u.stop();
     this.#utterances.clear();
     // She spoke and didn't sleep: she listens on (the second drive, item 10), through the gate; sleep closes the microphone at once.
-    const listens = ok && this.#facts.aloud && !this.#facts.slept && !this.#wentToSleep && !this.#aloudOnly && !this.#cut && this.#half.voice() && Boolean(this.voice?.on);
-    if (this.#ear?.owner === 'turn' || (this.#ear?.owner === 'after' && this.#facts.slept)) {
-      if (listens && this.#ear) this.#ear.owner = 'after';
-      else this.#closeEar();
+    const listens = ok && this.#facts.aloud && !this.#facts.closed && !this.#wentToSleep && !this.#aloudOnly && !this.#cut && this.#half.voice() && Boolean(this.voice?.on);
+    if (this.#ear?.owner === 'turn' || (this.#ear?.owner === 'after' && this.#facts.closed)) {
+      if (listens && this.#ear) {
+        this.#ear.owner = 'after';
+        this.#armQuiet(); // the deadline stands: her last words plus the silence
+      } else this.#closeEar();
     } else if (!this.#ear && listens) {
       this.#afterOpening = true;
       this.#openEar('after').then((deaf) => {

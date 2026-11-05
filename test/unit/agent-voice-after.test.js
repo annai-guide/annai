@@ -338,3 +338,56 @@ test('silenceSeconds: the default is 20, a saved value stays; a tap window and a
   const { LIVE_ANSWER_S } = await import('../../src/core/koe/live.js');
   assert.equal(LIVE_ANSWER_S, 8);
 });
+
+// The fix pass: sleep closes the microphone only in a reply that also speaks, shows or asks.
+/** Taps, lets her speak a question, and says a stray word into the window she listens in after it. @param {any} k */
+async function strayInWindow(k) {
+  k.agent.tap();
+  await until(() => k.agent.state.name === 'listening');
+  await hear(k, 'where-eat');
+  await until(() => k.agent.state.name === 'listening' && k.requests.length === 1);
+  await hear(k, 'gas-station'); // passes the gate: a word, maybe not for her
+  await until(() => k.requests.length === 2);
+  while (k.agent.busy) await new Promise((r) => setTimeout(r, 5));
+}
+
+test('classic: a stray word in the window answered with sleep alone keeps the window open, with no cue and no card, to the same deadline', async (t) => {
+  useClock(t);
+  const k = await agentKit([[speakOnly('Let me check.'), { toolCalls: [{ name: 'sleep', input: {} }] }]], { voice: { speechIn: ['m-hear'], hears: ['where should we eat', 'mm'] } });
+  await updateAppSettings(k.ws, { voice: { silenceSeconds: 100 } }); // 1 s here
+  const from = Date.now();
+  await strayInWindow(k);
+  assert.equal(k.platform.mic.isOpen(), true, 'a sleep with nothing said does not close the window');
+  assert.equal(k.agent.state.name, 'listening');
+  assert.equal((await k.events(['wake'])).filter((/** @type {any} */ e) => e.data.kind === 'cue').length, 0, 'no "the user hasn\'t been answered"');
+  assert.equal(k.requests.length, 2, 'one call for the stray word');
+  assert.equal(k.notices.length, 0);
+  await until(() => !k.platform.mic.isOpen(), 2000);
+  assert.ok(Date.now() - from <= 1250, `${Date.now() - from} ms: the deadline is never extended`);
+  assert.equal(k.notices.length, 0);
+});
+
+test('classic: a real reply after the stray word is answered, and speak plus sleep closes the window', async (t) => {
+  useClock(t);
+  const k = await agentKit([[speakOnly('Let me check.'), { toolCalls: [{ name: 'sleep', input: {} }] }, say('It is open.')]], { voice: { speechIn: ['m-hear'], hears: ['where should we eat', 'mm', 'is it open'] } });
+  await updateAppSettings(k.ws, { voice: { silenceSeconds: 100 } });
+  await strayInWindow(k);
+  await hear(k, 'first-one');
+  await until(() => k.requests.length === 3);
+  await k.agent.idle();
+  assert.ok(k.platform.log.some((/** @type {string} */ l) => l === 'play m-say:It is open.'), JSON.stringify(k.platform.log));
+  assert.equal(k.notices.length, 0);
+  assert.equal(k.platform.mic.isOpen(), false);
+});
+
+test('classic: speak with sleep in the window closes it; sleep with already_told does not', async (t) => {
+  useClock(t);
+  const spoke = await agentKit([[speakOnly('Let me check.'), say('Right.')]], { voice: { speechIn: ['m-hear'], hears: ['where should we eat', 'mm'] } });
+  await updateAppSettings(spoke.ws, { voice: { silenceSeconds: 100 } });
+  await strayInWindow(spoke);
+  assert.equal(spoke.platform.mic.isOpen(), false, 'speak plus sleep closes');
+  const told = await agentKit([[speakOnly('Let me check.'), { toolCalls: [{ name: 'already_told', input: {} }, { name: 'sleep', input: {} }] }]], { voice: { speechIn: ['m-hear'], hears: ['where should we eat', 'mm'] } });
+  await updateAppSettings(told.ws, { voice: { silenceSeconds: 100 } });
+  await strayInWindow(told);
+  assert.equal(told.platform.mic.isOpen(), true, 'a redundant note keeps the window');
+});

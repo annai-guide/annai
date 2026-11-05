@@ -1,6 +1,6 @@
 import { tunePersonality } from './personalities.js';
 import { toolList, definitions, runTool, toolSwitches, TALK, Stuck } from './tools.js';
-import { record, storedTexts } from './log.js';
+import { record, storedTexts, inputText } from './log.js';
 import { blobBytes } from '../reach.js';
 import { photoStub } from './compaction.js';
 import { asideLabel } from './blocks.js';
@@ -160,7 +160,7 @@ async function recall(agent, i, half = 'kokoro') {
       else if (e.type === 'out.speak') /* en */ out.push(`#${e.seq} Shiori said: ${t.text ?? ''}`);
       else if (e.type === 'out.show') /* en */ out.push(`#${e.seq} Shiori showed: ${[t.card?.title, t.card?.text].filter(Boolean).join(' — ')}`);
       else if (e.type === 'out.ask') /* en */ out.push(`#${e.seq} Shiori asked: ${t.question} (${(Array.isArray(t.options) ? t.options : []).join(' / ')})`);
-      else if (e.type === 'tool.call' && !QUIET.includes(t.name)) out.push(`#${e.seq} ${t.name} ${JSON.stringify(t.input ?? {})}`);
+      else if (e.type === 'tool.call' && !QUIET.includes(t.name)) out.push(`#${e.seq} ${t.name} ${inputText(t)}`);
       else if (e.type === 'tool.result' && !QUIET.includes(t.name)) out.push(`#${e.seq} → ${String(t.content ?? '').slice(0, 1500)}${photos}`);
       else if (e.type === 'wake') {
         const others = (t.reasons ?? []).filter((/** @type {any} */ w) => w.kind !== 'user' && w.kind !== 'heard');

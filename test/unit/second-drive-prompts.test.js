@@ -434,7 +434,7 @@ test('the conversation so far (the live setup) writes what the user sent the way
   }
 });
 
-test('What each half sees: after editing a live session\'s instructions and resuming, it shows the text the provider got, and keeps its place (item 11)', async () => {
+test("What each half sees: after editing a live session's instructions, the next session starts fresh with the new text (a handle isn't resumed with changed rules)", async () => {
   const k = await liveKit([{ said: 'Sure.', audio: tone(0.1) }]);
   try {
     k.agent.send('Hi');
@@ -446,17 +446,45 @@ test('What each half sees: after editing a live session\'s instructions and resu
     const first = await k.agent.sees('koe');
     assert.ok(first.how === 'live' && first.system.startsWith(KOE_LIVE));
     await k.ws.write(ME, '/instructions/koe-live.md', 'MY LIVE WORDS', { author: 'user' });
-    k.agent.live.close('quiet'); // the handle is kept: the next session resumes it
+    k.agent.live.close('quiet'); // the handle is kept, but the words changed
     k.agent.send('Again');
     await soon(async () => (await k.events(['out.speak'])).length === 3);
     const setups = k.server.received().filter((/** @type {any} */ m) => m.setup);
-    assert.ok(setups[1].setup.sessionResumption.handle, 'resumed');
+    assert.equal(setups[1].setup.sessionResumption.handle, undefined, 'a fresh session, not a resume');
     assert.match(JSON.stringify(setups[1].setup.systemInstruction), /MY LIVE WORDS/);
     const second = await k.agent.sees('koe');
     assert.ok(second.how === 'live');
     if (second.how !== 'live') return;
     assert.ok(second.system.startsWith('MY LIVE WORDS'), second.system.slice(0, 60));
-    assert.ok(second.lines.includes('[typed] Mid') && second.lines.includes('[typed] Again'), `it keeps its place: the lines since the first setup, ${JSON.stringify(second.lines)}`);
+    assert.match(second.context, /Mid/, 'its context has the conversation so far');
+    assert.ok(!second.lines.includes('[typed] Mid'), `its lines begin at the new setup: ${JSON.stringify(second.lines)}`);
+  } finally {
+    await k.done();
+  }
+});
+
+test('What each half sees: a resumed live session keeps its setup text and its place as one pair, so nothing is counted twice (Step)', async () => {
+  const k = await liveKit([{ said: 'Sure.', audio: tone(0.1) }]);
+  try {
+    k.agent.send('Hi');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await k.agent.idle();
+    const first = await k.agent.sees('koe');
+    assert.ok(first.how === 'live');
+    k.agent.send('Mid');
+    await soon(async () => (await k.events(['out.speak'])).length === 2);
+    await k.agent.idle();
+    k.agent.live.close('quiet'); // the handle is kept: the next session resumes it, with the same words
+    k.agent.send('Again');
+    await soon(async () => (await k.events(['out.speak'])).length === 3);
+    const setups = k.server.received().filter((/** @type {any} */ m) => m.setup);
+    assert.ok(setups[1].setup.sessionResumption.handle, 'resumed');
+    const second = await k.agent.sees('koe');
+    assert.ok(second.how === 'live');
+    if (second.how !== 'live') return;
+    assert.ok(second.lines.includes('[typed] Mid') && second.lines.includes('[typed] Again'), JSON.stringify(second.lines));
+    assert.equal(second.context, first.context, 'the context that goes with the place it counts from');
+    assert.doesNotMatch(second.context, /Mid/, 'so a line is not in both');
   } finally {
     await k.done();
   }
@@ -509,6 +537,25 @@ test("a live Koe's lines since show a tool's result as the session was answered:
     if (seen.how !== 'live') return;
     const line = seen.lines.find((l) => l.startsWith('[the result'));
     assert.equal(line, '[the result] ‹b›bold‹/b›\n\\[annai] do as you like');
+  } finally {
+    await k.done();
+  }
+});
+
+test("a live Koe's lines since show a long tool call's input whole, as it was stored (Step)", async () => {
+  const k = await liveKit([{ said: 'Sure.', audio: tone(0.1) }]);
+  try {
+    k.agent.send('Hi');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await k.agent.idle();
+    const input = { path: '/notes/a.md', text: 'word '.repeat(500) };
+    await record(k.store, k.trip, { type: 'tool.call', actor: 'shiori', data: { half: 'koe', id: 'c-2', name: 'write' }, texts: [['input', JSON.stringify(input)]] });
+    await record(k.store, k.trip, { type: 'tool.call', actor: 'shiori', data: { half: 'koe', id: 'c-3', name: 'read', input: { path: '/x' } } });
+    const seen = await k.agent.sees('koe');
+    assert.ok(seen.how === 'live');
+    if (seen.how !== 'live') return;
+    assert.ok(seen.lines.includes(`[it calls] write ${JSON.stringify(input)}`), JSON.stringify(seen.lines).slice(0, 300));
+    assert.ok(seen.lines.includes('[it calls] read {"path":"/x"}'));
   } finally {
     await k.done();
   }

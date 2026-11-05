@@ -5,7 +5,7 @@ import { linesOf } from './transcript.js';
 import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 import { systemText, nowBlock, takeSnapshot } from './context.js';
 import { ME, SYS_SETTINGS, newId } from '../scopes.js';
-import { storedTexts } from './log.js';
+import { storedTexts, inputText } from './log.js';
 import { chatCandidates, koeWay, AllFailedError, COOLDOWN_MS, whyWords } from '../llm/fallback.js';
 import { LiveKoe } from '../koe/live.js';
 import { ProviderError, explainPlain } from '../llm/contract.js';
@@ -713,7 +713,7 @@ export class Halves {
         // The placeholder is annai's words, not the user's.
         : e.type === 'heard' ? `${d.dismissed ? asideLabel(d, 'koe') : '[heard]'} ${heard === NOT_TRANSCRIBED ? heard : theirs(heard)}`
           : e.type === 'note' && d.from === 'kokoro' ? wrapNote(String(d.text ?? ''), this.nonce)
-            : e.type === 'tool.call' && d.half === 'koe' ? `[it calls] ${d.name} ${JSON.stringify(d.input ?? {})}`
+            : e.type === 'tool.call' && d.half === 'koe' ? `[it calls] ${d.name} ${inputText(d)}`
               : e.type === 'tool.result' && d.half === 'koe' ? `[the result${d.ok === false ? ', an error' : ''}] ${theirs(String(d.content ?? ''))}`
                 // Koe's own words are Koe's: "[said to the user]" is what Shiori said without it.
                 : e.type.startsWith('out.') ? (d.half === 'koe' ? `[you said] ${escapeTags(quote(e.type === 'out.show' ? cardText(d.card) : e.type === 'out.ask' ? d.question : d.text))}` : escapeTags(saidWithout(e, d) ?? '')) : null;
