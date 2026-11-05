@@ -3227,7 +3227,7 @@ export class Agent {
     this.tapOpening = true;
     this.#openEar('tap').then(async (deaf) => {
       this.tapOpening = false;
-      if (deaf) return void this.#emit('state', this.state); // the card said why; whoever waits on this tap hears it came to nothing
+      if (deaf || !this.#ear) return void this.#emit('state', this.state); // the card said why (or sound stuck as it opened, and closed it); whoever waits on this tap hears it came to nothing
       const p = this.#pending;
       if (p?.kind === 'ask') p.listening = true; // an ask's answer may be spoken
       if (this.#busy) return; // she is speaking or working: the window serves her turn
