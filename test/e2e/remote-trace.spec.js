@@ -171,6 +171,7 @@ test('Detailed trace: it stays off with no server; on, a turn the microphone hea
     await expect(detailed).not.toBeChecked();
 
     await page.getByLabel('Server address').fill(`${sink.url}/trace`);
+    await page.waitForTimeout(300); // the form draws again after the address saves, and a token typed meanwhile is lost (as the first test waits)
     await page.getByLabel('Token').fill(TOKEN);
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByLabel('Token')).toHaveAttribute('placeholder', 'saved');
