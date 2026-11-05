@@ -7,8 +7,8 @@
 // route: the audio the microphone stands for (speaker: the phone's own, half-duplex; headphones: she can be cut by speaking);
 // echoDb: her voice mixed back into the microphone at that level (the phone's speaker), null for none.
 /** @typedef {{ say: string, gainDb?: number } | { answered: number } | { sounding: number } | { wait: number }} Step */
-/** @typedef {{ about: string, route: 'speaker' | 'headphones' | 'car', echoDb: number | null, echoDelayMs?: number, expectCut?: boolean, extra?: boolean, languages?: { spoken: string[], answer: string }, steps: Step[] }} Scenario
- *   extra: not in a plain run, only by name (--only); languages (phase 2): the languages setting the run sets in Settings → Shiori before she listens (the browser's
+/** @typedef {{ about: string, route: 'speaker' | 'headphones' | 'car', echoDb: number | null, echoDelayMs?: number, expectCut?: boolean, extra?: boolean, repeatNote?: boolean, languages?: { spoken: string[], answer: string }, steps: Step[] }} Scenario
+ *   repeatNote: the stand-in Kokoro sends its note again once Koe has said it; extra: not in a plain run, only by name (--only); languages (phase 2): the languages setting the run sets in Settings → Shiori before she listens (the browser's
  *   English is the list's first; the others are added), and the scenario is held to answering in the language each clip is spoken in */
 
 /** @type {Record<string, Scenario>} */
@@ -72,6 +72,26 @@ export const SCENARIOS = {
     about: 'the languages setting English, Chinese and Japanese: a Japanese sentence, a Chinese one and an English question, each after her answer; each should be answered in kind',
     route: 'speaker', echoDb: null, extra: true, languages: { spoken: ['en', 'zh', 'ja'], answer: 'follow' },
     steps: [{ say: 'ja' }, { answered: 600 }, { say: 'zh' }, { answered: 600 }, { say: 'lunch' }, { answered: 600 }],
+  },
+  'relay-fact': {
+    about: "Koe is a relay (the second drive): a question about annai and a general fact, neither of which it was told. It should say it's checking and ask Kokoro, stating neither",
+    route: 'speaker', echoDb: null, extra: true,
+    steps: [{ say: 'auto-gps' }, { answered: 1500 }, { say: 'built' }, { answered: 1500 }],
+  },
+  'relay-filler': {
+    about: "the filler trap: a question, then being told off for apologising. No apology, no \"I understand\", no \"I'll make sure\", in what she says",
+    route: 'speaker', echoDb: null, extra: true,
+    steps: [{ say: 'lunch' }, { answered: 1500 }, { say: 'annoyed' }, { answered: 1500 }],
+  },
+  'relay-stray': {
+    about: 'the languages setting English and Japanese: a stray word in Korean and song lyrics, left alone, in English throughout; then a question',
+    route: 'speaker', echoDb: null, extra: true, languages: { spoken: ['en', 'ja'], answer: 'follow' },
+    steps: [{ say: 'ko-word' }, { wait: 9000 }, { say: 'lyric' }, { wait: 9000 }, { say: 'lunch' }, { answered: 1500 }],
+  },
+  'relay-note': {
+    about: "a note it must say, then Kokoro's same note again (item 11): the first is said with nothing added, the second settled with already_told",
+    route: 'speaker', echoDb: null, extra: true, repeatNote: true,
+    steps: [{ say: 'bixby' }, { answered: 1500 }, { wait: 12_000 }],
   },
   'echo-late': {
     about: 'a late echo (a slow speaker, a car): her voice back into the microphone at -6 dB, 400 ms late, two questions',

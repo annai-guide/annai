@@ -87,6 +87,10 @@ with no network, after the analysis changed.
 | talk-over | phone speaker | the same on the speaker, where annai hears nothing while she speaks, by design, and lets go of what was begun over her (no turn); then a question |
 | echo-late (only by name) | phone speaker | two questions, her voice back at -6 dB, 400 ms late (a slow speaker, a car) |
 | short-replies (only by name) | phone speaker | the languages setting English; a question, then five short replies ("Yes.", "Sure.", "What?", "Alright.", "No."), each after her answer: every answer should come back in English, and what Gemini heard should be English (the user, 2026-10-23: short replies were heard as "¿Qué?" and answered in Spanish) |
+| relay-fact (only by name) | phone speaker | a question about annai and a general fact, neither of which Koe was told: read what she said; she should say she's checking and call tell_kokoro, stating neither (the second drive) |
+| relay-filler (only by name) | phone speaker | a question, then being told off for apologising: read what she said, for apologies, "I understand" and promises |
+| relay-stray (only by name) | phone speaker | the languages setting English and Japanese: a stray word in Korean and song lyrics, each should get no sound back (the check "strays left alone"); then a question |
+| relay-note (only by name) | phone speaker | a question, Kokoro's note, then the same note again once she has said it (the stand-in Kokoro repeats it): the first is said with nothing added, the second settled with already_told |
 | multilingual (only by name) | phone speaker | the languages setting English, Chinese and Japanese; a Japanese sentence, a Chinese one and an English one, each after her answer: each should be answered in kind |
 
 ## What the report says, and when it passes
@@ -135,3 +139,7 @@ the detector or the half-duplex rules: `git archive dd393c2 | tar -x -C /tmp/old
   the setup screens changed (the selectors are in `scripts/realtime/drive.mjs`, copied from the e2e tests' helpers). The report's
   notes hold the failing step.
 - *Gemini's TTS gives 429*: its free tier is about 3 requests a minute and 10 a day for each key and model; the script moves to the next line.
+
+## The classic gate
+
+`node scripts/gate-check.mjs --keys-file <path> --lines 1-11 [--times 3] [--old <a gate.js>]` asks the gate's real small model (Gemini Flash Lite, on a free key) about synthetic lines shaped like what it got wrong on the second drive, and about clear chatter, through annai's own `gatePrompt`, `decide` and Gemini chat type. It needs no browser.

@@ -70,6 +70,7 @@ export async function runChecks({ keys, only, out, port = 18061, roomDb = -60, s
         }
         log(`\n[${name}] ${sc.about}${keys.line ? ` (key line ${keys.line})` : ''}`);
         const env = { origin: server.origin, ...(standIn ? { standIn: standIn.origin } : {}), key: keys.key, clips: files, roomDb, settleMs, answerTimeoutMs, log, scrub: (/** @type {string} */ s) => keys.scrub(s), ...(ui ? { ui } : {}) };
+        standIn?.repeatNote(sc.repeatNote === true);
         const rec = await runScenario(browser, name, sc, env);
         rec.keyLine = keys.line;
         sessions += rec.frames.filter((f) => f.kind === 'setup').length; // sockets opened with a setup message: what a key's quota counts
