@@ -198,6 +198,8 @@ export const WRITE_TRIES = 3;
  * a2), a choice they tapped, or their Try again. @param {Wake} w
  */
 export const isTheirs = (w) => w.kind === 'user' || w.kind === 'choice' || (w.kind === 'heard' && w.gate !== 'chatter') || Boolean(w.again);
+/** A wake the user is owed an answer to: a word heard in the window after she spoke may be no one's, and claims nothing. @param {Wake} w */
+const owesAnswer = (w) => isTheirs(w) && !w.window;
 
 /**
  * A wake that means the user is there to tap Stop (budgets.js UNWATCHED_STEPS): one they started (isTheirs), the user turning live
@@ -1749,7 +1751,7 @@ export class Agent {
   async #steps(wakes, wakeId, abort) {
     // The newest hand-over among its wakes, those that join included (join); else, for a turn of the user's (Try again among them),
     // one a failed turn left owed: never a reminder's or a note's turn, whose writes Undo would then take back.
-    this.#handover = wakes.some(isTheirs) ? this.transcript.owedHandover : null;
+    this.#handover = wakes.some(owesAnswer) ? this.transcript.owedHandover : null;
     this.#handovers = this.#handover ? [this.#handover] : [];
     await this.#logWakes(wakes, wakeId, false);
     const settings = await this.settings();
@@ -1771,7 +1773,7 @@ export class Agent {
      */
     let owed = wakes.flatMap((w) => w.fallbacks ?? []);
     /** The user's own message (or tap) is in this turn, and nothing has reached them since. */
-    let theirs = wakes.some((w) => isTheirs(w) && !w.window); // a word heard in the window after she spoke may be no one's: it owes no answer
+    let theirs = wakes.some(owesAnswer);
     let reached = this.#reached;
     /** What had reached the user when the turn began: a tool call is asked for only until something more has (review A4). */
     const begun = this.#reached;
@@ -1807,9 +1809,9 @@ export class Agent {
      */
     const join = (more, first = false) => {
       if (!first) this.#half.joined?.(wakeId);
-      this.#handover = handoverOf(more) ?? this.#handover ?? (more.some(isTheirs) ? this.transcript.owedHandover : null);
+      this.#handover = handoverOf(more) ?? this.#handover ?? (more.some(owesAnswer) ? this.transcript.owedHandover : null);
       for (const h of [this.#handover, ...more.map((w) => w.handover)]) if (h && !this.#handovers.includes(h)) this.#handovers.push(h);
-      theirs ||= more.some((w) => isTheirs(w) && !w.window);
+      theirs ||= more.some(owesAnswer);
       this.#facts.watched ||= more.some(isWatched); // someone is watching: a wake from the user began the turn or joined it; it stays so
       const read = this.#reachedTo.scope === this.scope ? this.#reachedTo.to : 0;
       notes.push(...more.filter((w) => isForUser(w) && !((w.seq ?? Infinity) <= read)));

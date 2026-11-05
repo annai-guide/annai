@@ -479,6 +479,7 @@ test('What each half sees: a resumed live session keeps its setup text and its p
     await soon(async () => (await k.events(['out.speak'])).length === 3);
     const setups = k.server.received().filter((/** @type {any} */ m) => m.setup);
     assert.ok(setups[1].setup.sessionResumption.handle, 'resumed');
+    assert.equal(setups[1].setup.systemInstruction.parts[0].text, setups[0].setup.systemInstruction.parts[0].text, 'a resume sends the context it began with');
     const second = await k.agent.sees('koe');
     assert.ok(second.how === 'live');
     if (second.how !== 'live') return;
