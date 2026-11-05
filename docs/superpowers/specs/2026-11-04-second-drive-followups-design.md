@@ -208,6 +208,11 @@ The user: "the voice is bit busy? it says Voice on ` your last choice ` realtime
 - One automatic rule: voice is on while driving (needs GPS on).
 - Auto goes, with `route`, `lastChoices` and the audio-name matching. A saved `auto` reads as off. The settings format stays tolerant.
 
+Voice also turns off by itself, in two cases. The user: "I am thinking maybe we should include some automatic turns voice off senerios? maybe like from moving fast to stopped, or headphone disconnect? for things we know user might not want it play through speaker. and they can always just start talking again by tapping the avator."
+- **A drive ends:** when Auto's old "moving" hold ends, about 3 minutes after stopping (section 4's `fastEnded`), voice goes off, even if the user turned it on themselves. Only at that moment: turning it on afterwards stays on. A reminder due in that same moment is said first.
+- **An audio device disconnects:** when a non-phone audio device disappears (`devicechange`, with no name matching), voice goes off at once and stops mid-word. That also covers a car's Bluetooth. Not verified: that iOS tells a web page. The iPhone did list a watch by name in the trace. A device check, and `voice.route` logs the change.
+- A short note says why ("Voice off: headphones disconnected"). A tap on Shiori still talks.
+
 ## 7. Detailed trace (before the next long drive)
 
 The user: "do you want to build a more enhanced and heavier trace mode (option) with more information like recordings / even screenshots able to be collected?" Picked: "Yes, before the next long drive (Recommended)". Off by default; sends only to the user's own trace server.
