@@ -386,29 +386,29 @@ storage-webdav:kpd7yy	ok	The folder above {0} doesn't exist on the server, so an
 storage-webdav:nr7x2z	ok	Works: annai made the folder {0} and can keep its backups there.	可以使用：annai 已创建文件夹 {0}，并能把备份保存在那里。	plugins-official/storage-webdav/index.js:139	{0} = shownOf(w.url)
 storage-webdav:1hxwq6b	ok	Works: annai can keep its backups in {0}.	可以使用：annai 能把备份保存在 {0} 中。	plugins-official/storage-webdav/index.js:142	{0} = shownOf(w.url)
 1aajvdy	ok	Opening annai…	正在打开 annai…	src/app/boot.js:32	
-1v76pcd	ok	annai is open in another tab	annai 已在另一个标签页中打开	src/app/main.js:75	
-cohfbh	ok	Only one copy of annai runs at a time, so your trips stay consistent.	为了让旅行数据保持一致，annai 同一时间只运行一个。	src/app/main.js:76	
-u0vojx	ok	Use it here	在这里使用	src/app/main.js:77	
-p4x3of	ok	annai was opened in another tab	annai 已在另一个标签页中被打开	src/app/main.js:82	
-11qyuy7	ok	This tab has stopped, so your trips stay consistent.	为了让旅行数据保持一致，此标签页已停止。	src/app/main.js:83	
-1ku6bv3	ok	Use it here instead	改在这里使用	src/app/main.js:84	
-fki4un	ok	Notifications	通知	src/app/main.js:225	
-1clzv4	ok	Settings → Models changed	设置 → 模型已更改	src/app/main.js:228	
-1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai 现在按提供商设置：一个地址和一个密钥即可使用该提供商提供的一切。你的端点（{0}）及其密钥已移除。请在设置 → 模型中重新添加。	src/app/main.js:229	{0} = list(moved.names, 'plain')
-whpd9d	ok	Open Models	打开模型	src/app/main.js:230	
-10renyj	ok	Plugins	插件	src/app/main.js:241	
-1sp21de	ok	A new version of the {0} personality	性格“{0}”有新版本	src/app/main.js:330	{0} = o.name
-1yoe82	ok	Yours has your own edits, so it was kept as it is.	你的版本有你自己的修改，因此保持原样。	src/app/main.js:331	
-1n8cxuc	ok	Compare	比较	src/app/main.js:333	
-rzp4o3	ok	Keep mine	保留我的	src/app/main.js:334	
-1j662as	ok	Let Shiori merge	让 Shiori 合并	src/app/main.js:335	
-x0ig66	ok	Something went wrong	出了点问题	src/app/main.js:387	
-1oy79dy	ok	annai kept running. The details are in Trace.	annai 仍在运行。详情见记录。	src/app/main.js:388	
-c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai 仍在运行，但没能记下发生了什么，所以记录里也没有。如果反复出现，请关闭 annai 再重新打开。	src/app/main.js:388	
-11n1kcg	ok	Open Trace	打开记录	src/app/main.js:389	
-gt9ssw	ok	annai couldn't start	annai 无法启动	src/app/main.js:400	
-6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反复出现，可能是浏览器阻止了存储（例如在无痕窗口中）。	src/app/main.js:402	
-982hh6	ok	Try again	重试	src/app/main.js:403	
+1v76pcd	ok	annai is open in another tab	annai 已在另一个标签页中打开	src/app/main.js:84	
+cohfbh	ok	Only one copy of annai runs at a time, so your trips stay consistent.	为了让旅行数据保持一致，annai 同一时间只运行一个。	src/app/main.js:85	
+u0vojx	ok	Use it here	在这里使用	src/app/main.js:86	
+p4x3of	ok	annai was opened in another tab	annai 已在另一个标签页中被打开	src/app/main.js:91	
+11qyuy7	ok	This tab has stopped, so your trips stay consistent.	为了让旅行数据保持一致，此标签页已停止。	src/app/main.js:92	
+1ku6bv3	ok	Use it here instead	改在这里使用	src/app/main.js:93	
+fki4un	ok	Notifications	通知	src/app/main.js:234	
+1clzv4	ok	Settings → Models changed	设置 → 模型已更改	src/app/main.js:237	
+1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai 现在按提供商设置：一个地址和一个密钥即可使用该提供商提供的一切。你的端点（{0}）及其密钥已移除。请在设置 → 模型中重新添加。	src/app/main.js:238	{0} = list(moved.names, 'plain')
+whpd9d	ok	Open Models	打开模型	src/app/main.js:239	
+10renyj	ok	Plugins	插件	src/app/main.js:250	
+1sp21de	ok	A new version of the {0} personality	性格“{0}”有新版本	src/app/main.js:340	{0} = o.name
+1yoe82	ok	Yours has your own edits, so it was kept as it is.	你的版本有你自己的修改，因此保持原样。	src/app/main.js:341	
+1n8cxuc	ok	Compare	比较	src/app/main.js:343	
+rzp4o3	ok	Keep mine	保留我的	src/app/main.js:344	
+1j662as	ok	Let Shiori merge	让 Shiori 合并	src/app/main.js:345	
+x0ig66	ok	Something went wrong	出了点问题	src/app/main.js:397	
+1oy79dy	ok	annai kept running. The details are in Trace.	annai 仍在运行。详情见记录。	src/app/main.js:398	
+c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai 仍在运行，但没能记下发生了什么，所以记录里也没有。如果反复出现，请关闭 annai 再重新打开。	src/app/main.js:398	
+11n1kcg	ok	Open Trace	打开记录	src/app/main.js:399	
+gt9ssw	ok	annai couldn't start	annai 无法启动	src/app/main.js:410	
+6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反复出现，可能是浏览器阻止了存储（例如在无痕窗口中）。	src/app/main.js:412	
+982hh6	ok	Try again	重试	src/app/main.js:413	
 1u3dm1p	ok	This address holds a name or password before an @. Leave it out.	这个地址在 @ 前面带有用户名或密码。请把它去掉。	src/core/address.js:70	
 1f8b0m5	ok	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	你停留的地方和时长（按名称；没有名称的地点用约 100 米精度的位置）。绝不发送 GPS 轨迹本身。	src/core/after/recap.js:54	
 7m1pck	ok	How far you drove or walked between, the stamps, and the plan.	其间开车或步行的距离、纪念章和行程。	src/core/after/recap.js:55	
@@ -596,7 +596,7 @@ bgn4sv	ok	Shiori answers in the language you speak to her	Shiori 用你对她说
 1qt7a9v	ok	Shiori answers in	Shiori 回答所用语言	src/core/languages.js:355	Note: A label, so a noun: "the language Shiori answers in".
 k4u05v	ok	The language you speak to her	你对她说的语言	src/core/languages.js:356	
 cc69cl	ok	None picked: annai uses the browser’s language.	未选择：annai 使用浏览器的语言。	src/core/languages.js:357	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
-1dyfzsg	ok	A simulation is already running.	模拟已在运行。	src/core/live/live.js:260	
+1dyfzsg	ok	A simulation is already running.	模拟已在运行。	src/core/live/live.js:267	
 157qf8n	ok	Flight {0} departs {1}, {2}	航班 {0}，{1} 起飞，{2}	src/core/live/plan-watches.js:140	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
 1tvx4k9	ok	Flight {0} departs {1}	航班 {0}，{1} 起飞	src/core/live/plan-watches.js:140	{0} = w.flight; {1} = time
 1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}，{2}）	src/core/live/plan-watches.js:141	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
@@ -2194,11 +2194,11 @@ awxg9v	ok	The copies she is sent, made once and kept with the conversation. A cl
 1kotxez	ok	Quality sent ({0} to {1})	发送质量（{0} 到 {1}）	src/ui/screens/settings.js:153	{0} = num(0.5); {1} = num(1)
 8ruaox	ok	Diagnostics copied.	诊断信息已复制。	src/ui/screens/settings.js:168	
 jdwnfb	ok	Copying didn't work here. Select and copy this report:	这里无法复制。请选中并复制此报告：	src/ui/screens/settings.js:170	
-ltgiri	ok	Erasing…	正在清除…	src/ui/screens/settings.js:189	
-u9zvd	ok	Erase now	立即清除	src/ui/screens/settings.js:210	
-tgdxsp	ok	Deletes every trip, file, setting and key on this device. Export a backup first.	删除此设备上的所有旅行、文件、设置和密钥。请先导出一个备份。	src/ui/screens/settings.js:216	
-1x8t4tk	ok	Type {0} to confirm	输入 {0} 以确认	src/ui/screens/settings.js:218	{0} = ERASE; Note: {0} is the word to type, ERASE, the same in every language.
-199v6bp	ok	From plugins	来自插件	src/ui/screens/settings.js:228	
+ltgiri	ok	Erasing…	正在清除…	src/ui/screens/settings.js:191	
+u9zvd	ok	Erase now	立即清除	src/ui/screens/settings.js:212	
+tgdxsp	ok	Deletes every trip, file, setting and key on this device. Export a backup first.	删除此设备上的所有旅行、文件、设置和密钥。请先导出一个备份。	src/ui/screens/settings.js:218	
+1x8t4tk	ok	Type {0} to confirm	输入 {0} 以确认	src/ui/screens/settings.js:220	{0} = ERASE; Note: {0} is the word to type, ERASE, the same in every language.
+199v6bp	ok	From plugins	来自插件	src/ui/screens/settings.js:230	
 1bu98qy	ok	Shiori, hearing you	Shiori，正在听你说	src/ui/screens/shiori.js:18	
 1m5wnho	ok	Shiori, listening	Shiori，正在聆听	src/ui/screens/shiori.js:18	
 1mlnwtl	ok	Shiori, asleep	Shiori，睡着了	src/ui/screens/shiori.js:18	
@@ -2432,46 +2432,46 @@ vgv0s2	ok	started fresh after event {0}	在事件 {0} 之后重新开始	src/ui/
 1yo1hz0	ok	the microphone in use: {0}	正在使用的麦克风：{0}	src/ui/screens/trace.js:209	{0} = d.using || unnamed
 bt7zey	ok	from the devices present	来自现有的设备	src/ui/screens/trace.js:209	
 3gdj21	ok	no devices	无设备	src/ui/screens/trace.js:210	
-1ijsnzq	ok	voice on	语音开启	src/ui/screens/trace.js:224	Note: The glossary's Voice on mode (语音开启).
-z2w914	ok	voice off	语音关闭	src/ui/screens/trace.js:224	Note: The glossary's Voice off mode (语音关闭).
-1g1k3by	ok	{0} waiting	{0} 条等待中	src/ui/screens/trace.js:227	{0} = d.waiting ?? 0
-xy6oxk	ok	{0} sent, {1} called off	已发送 {0} 条，已取消 {1} 条	src/ui/screens/trace.js:227	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
-1efflnv	ok	notification shown	通知已显示	src/ui/screens/trace.js:228	
-cjmncb	ok	notification opened	通知已打开	src/ui/screens/trace.js:229	
-3m7wpo#other	ok	# attempts	尝试 # 次	src/ui/screens/trace.js:239	plural; # = n; English: "# attempt" (one), "# attempts" (other)
-r42rpw	ok	{0} ms processing latency	处理延迟 {0} ms	src/ui/screens/trace.js:243	{0} = Math.round(d.baseLatency * 1000)
-1y5g6mq	ok	{0} ms output latency	输出延迟 {0} ms	src/ui/screens/trace.js:244	{0} = Math.round(d.outputLatency * 1000)
-a1oech	ok	live session {0}	实时会话 {0}	src/ui/screens/trace.js:245	{0} = d.state
-beya44	ok	sound at {0} kHz	声音 {0} kHz	src/ui/screens/trace.js:247	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
-1u50qqt	ok	her voice: {0} played	她的声音：已播放 {0}	src/ui/screens/trace.js:252	{0} = duration(d.ms ?? 0)
-1wcl60z	ok	cut	已中断	src/ui/screens/trace.js:252	
-njy1uz	ok	her voice: cut before it played	她的声音：播放前被中断	src/ui/screens/trace.js:252	
-9atabi	ok	started after {0} ms	{0} ms 后开始	src/ui/screens/trace.js:253	{0} = d.waitMs
-j43x3k	ok	stalled	卡住	src/ui/screens/trace.js:253	
-1qyanji#other	ok	# holes, {0} ms	# 处空白，{0} ms	src/ui/screens/trace.js:254	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
-gw0cwm#other	ok	# holes	# 处空白	src/ui/screens/trace.js:254	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
-1bx4bl6	ok	on {0}	在 {0} 上	src/ui/screens/trace.js:255	{0} = d.player
-1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	你的回合结束：{0} · 已发送 {1} · 底噪 {2} dB，最响 {3} dB	src/ui/screens/trace.js:258	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
-khxbvb	ok	audio: {0}	音频：{0}	src/ui/screens/trace.js:261	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
-1wy37ql	ok	{0} sent	已发送 {0}	src/ui/screens/trace.js:263	{0} = size(d.bytes)
-l04i5	ok	{0} sent, after a kept turn	已发送 {0}，接在保留的轮次之后	src/ui/screens/trace.js:263	{0} = size(d.bytes); Note: A kept turn is one of the conversation turns a provider keeps (轮).
-1n96vkk	ok	earlier thinking not sent: something before it changed	未发送之前的思考：它之前的内容有变化	src/ui/screens/trace.js:265	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
-yfywm0#other	ok	thinking of # earlier steps sent back	已发回之前 # 步的思考	src/ui/screens/trace.js:265	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
-15hqi4k#other	ok	# guides	# 份指南	src/ui/screens/trace.js:269	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
-4k86ja	ok	{0} failed	{0} 个失败	src/ui/screens/trace.js:269	{0} = d.failed
-1waoe51	ok	at its limit	已达上限	src/ui/screens/trace.js:270	
-66h5i6	ok	by itself on Wi-Fi	在 Wi-Fi 下自动	src/ui/screens/trace.js:270	
-rfe2ef	ok	{0} files sent, {1}	已发送 {0} 个文件，{1}	src/ui/screens/trace.js:272	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
-2601w8	ok	a newer backup from another device is there	有一个来自另一台设备的更新备份	src/ui/screens/trace.js:273	
-uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	已下载 {0}，{1}，随后停止：已丢弃	src/ui/screens/trace.js:275	{0} = d.backup; {1} = size(d.bytes ?? 0)
-wgniil	ok	downloaded {0}, {1}	已下载 {0}，{1}	src/ui/screens/trace.js:275	{0} = d.backup; {1} = size(d.bytes ?? 0)
-1gauo2f	ok	{0} can't be opened: {1}	{0} 无法打开：{1}	src/ui/screens/trace.js:276	{0} = d.backup; {1} = cut(d.problem)
-1rrq0vn	ok	deleted an older backup, {0}	已删除一个较早的备份：{0}	src/ui/screens/trace.js:277	{0} = d.backup
-57gz9u#other	ok	# secrets	# 个机密	src/ui/screens/trace.js:279	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
-scekw#other	ok	# settings	# 项设置	src/ui/screens/trace.js:279	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
-mp7j1w#other	ok	({0}, # bytes)	（{0}，# 字节）	src/ui/screens/trace.js:302	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
-tqj8t3	ok	(no longer stored)	（已不再保存）	src/ui/screens/trace.js:302	
-1kfziuy	ok	Show what was stored	显示保存的内容	src/ui/screens/trace.js:319	
+1ijsnzq	ok	voice on	语音开启	src/ui/screens/trace.js:225	Note: The glossary's Voice on mode (语音开启).
+z2w914	ok	voice off	语音关闭	src/ui/screens/trace.js:225	Note: The glossary's Voice off mode (语音关闭).
+1g1k3by	ok	{0} waiting	{0} 条等待中	src/ui/screens/trace.js:228	{0} = d.waiting ?? 0
+xy6oxk	ok	{0} sent, {1} called off	已发送 {0} 条，已取消 {1} 条	src/ui/screens/trace.js:228	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
+1efflnv	ok	notification shown	通知已显示	src/ui/screens/trace.js:229	
+cjmncb	ok	notification opened	通知已打开	src/ui/screens/trace.js:230	
+3m7wpo#other	ok	# attempts	尝试 # 次	src/ui/screens/trace.js:240	plural; # = n; English: "# attempt" (one), "# attempts" (other)
+r42rpw	ok	{0} ms processing latency	处理延迟 {0} ms	src/ui/screens/trace.js:244	{0} = Math.round(d.baseLatency * 1000)
+1y5g6mq	ok	{0} ms output latency	输出延迟 {0} ms	src/ui/screens/trace.js:245	{0} = Math.round(d.outputLatency * 1000)
+a1oech	ok	live session {0}	实时会话 {0}	src/ui/screens/trace.js:246	{0} = d.state
+beya44	ok	sound at {0} kHz	声音 {0} kHz	src/ui/screens/trace.js:248	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
+1u50qqt	ok	her voice: {0} played	她的声音：已播放 {0}	src/ui/screens/trace.js:253	{0} = duration(d.ms ?? 0)
+1wcl60z	ok	cut	已中断	src/ui/screens/trace.js:253	
+njy1uz	ok	her voice: cut before it played	她的声音：播放前被中断	src/ui/screens/trace.js:253	
+9atabi	ok	started after {0} ms	{0} ms 后开始	src/ui/screens/trace.js:254	{0} = d.waitMs
+j43x3k	ok	stalled	卡住	src/ui/screens/trace.js:254	
+1qyanji#other	ok	# holes, {0} ms	# 处空白，{0} ms	src/ui/screens/trace.js:255	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
+gw0cwm#other	ok	# holes	# 处空白	src/ui/screens/trace.js:255	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
+1bx4bl6	ok	on {0}	在 {0} 上	src/ui/screens/trace.js:256	{0} = d.player
+1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	你的回合结束：{0} · 已发送 {1} · 底噪 {2} dB，最响 {3} dB	src/ui/screens/trace.js:259	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
+khxbvb	ok	audio: {0}	音频：{0}	src/ui/screens/trace.js:262	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
+1wy37ql	ok	{0} sent	已发送 {0}	src/ui/screens/trace.js:264	{0} = size(d.bytes)
+l04i5	ok	{0} sent, after a kept turn	已发送 {0}，接在保留的轮次之后	src/ui/screens/trace.js:264	{0} = size(d.bytes); Note: A kept turn is one of the conversation turns a provider keeps (轮).
+1n96vkk	ok	earlier thinking not sent: something before it changed	未发送之前的思考：它之前的内容有变化	src/ui/screens/trace.js:266	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
+yfywm0#other	ok	thinking of # earlier steps sent back	已发回之前 # 步的思考	src/ui/screens/trace.js:266	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
+15hqi4k#other	ok	# guides	# 份指南	src/ui/screens/trace.js:270	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
+4k86ja	ok	{0} failed	{0} 个失败	src/ui/screens/trace.js:270	{0} = d.failed
+1waoe51	ok	at its limit	已达上限	src/ui/screens/trace.js:271	
+66h5i6	ok	by itself on Wi-Fi	在 Wi-Fi 下自动	src/ui/screens/trace.js:271	
+rfe2ef	ok	{0} files sent, {1}	已发送 {0} 个文件，{1}	src/ui/screens/trace.js:273	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
+2601w8	ok	a newer backup from another device is there	有一个来自另一台设备的更新备份	src/ui/screens/trace.js:274	
+uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	已下载 {0}，{1}，随后停止：已丢弃	src/ui/screens/trace.js:276	{0} = d.backup; {1} = size(d.bytes ?? 0)
+wgniil	ok	downloaded {0}, {1}	已下载 {0}，{1}	src/ui/screens/trace.js:276	{0} = d.backup; {1} = size(d.bytes ?? 0)
+1gauo2f	ok	{0} can't be opened: {1}	{0} 无法打开：{1}	src/ui/screens/trace.js:277	{0} = d.backup; {1} = cut(d.problem)
+1rrq0vn	ok	deleted an older backup, {0}	已删除一个较早的备份：{0}	src/ui/screens/trace.js:278	{0} = d.backup
+57gz9u#other	ok	# secrets	# 个机密	src/ui/screens/trace.js:280	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
+scekw#other	ok	# settings	# 项设置	src/ui/screens/trace.js:280	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
+mp7j1w#other	ok	({0}, # bytes)	（{0}，# 字节）	src/ui/screens/trace.js:303	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
+tqj8t3	ok	(no longer stored)	（已不再保存）	src/ui/screens/trace.js:303	
+1kfziuy	ok	Show what was stored	显示保存的内容	src/ui/screens/trace.js:320	
 1cnmmj7	ok	Archived	已归档	src/ui/screens/trip.js:40	
 jz8mjk	ok	Unarchive	取消归档	src/ui/screens/trip.js:50	
 qeuftp	ok	Tap again to archive	再点一次以归档	src/ui/screens/trip.js:52	

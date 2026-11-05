@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, startTrip, writeRecords, filterTrace } from './helpers.js';
+import { openApp, pastWelcome, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, startTrip, writeRecords, filterTrace } from './helpers.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 const sleep = { name: 'sleep', input: {} };
@@ -120,6 +120,28 @@ test('the phone locked and unlocked: one catch-up wake, with the time away and w
   } finally {
     await llm.stop();
   }
+});
+
+test('the drive\'s one record is kept in this browser as the page goes off screen, and Erase takes it, though the page goes after it', async ({ page, context }) => {
+  const record = () => page.evaluate(() => JSON.parse(localStorage.getItem('annai.drive') ?? 'null'));
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation({ latitude: 36.40, longitude: -121.90, accuracy: 10 });
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  await page.goto('/#/now');
+  await liveOn(page);
+  // Off screen and back until the first fix has come: the record then says where the odometer counts from.
+  await expect.poll(async () => {
+    await locked(page, true);
+    await locked(page, false);
+    return (await record())?.odo?.lat;
+  }).toBe(36.40);
+  expect((await record()).odometer).toBe(0);
+  await page.goto('/#/settings');
+  await page.getByLabel('Type ERASE to confirm').fill('ERASE');
+  await page.getByRole('button', { name: 'Erase now' }).click();
+  await pastWelcome(page);
+  expect(await record()).toBeNull();
 });
 
 test('location refused: a card with steps for this phone, and "Where are you?" with the plan\'s places (spec §17)', async ({ page }) => {

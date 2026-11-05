@@ -775,15 +775,15 @@ const roadTo = async (/** @type {any} */ k, /** @type {number} */ a, /** @type {
 };
 const movedWakes = (/** @type {any} */ k) => k.agent.wakes.filter((/** @type {any} */ w) => w.text.includes('travelled'));
 
-test('a page killed unseen loses at most the km since the last entry: a watch fires late, never early', async () => {
+test('a page killed unseen loses nothing: the record\'s odometer and place are of one moment, so the way since counts at the first fix back', async () => {
   const k = await liveKit({ start: at('09:00') });
   await k.live.setWatch(k.trip, { when: { type: 'moved', km: 3 }, fallback: 'Narrate.' });
   let t = await roadTo(k, 0, 2500, at('09:00:05'));
   await k.restart(); // no beat on the way out
-  t = await roadTo(k, 2500, 3300, t);
-  assert.equal(movedWakes(k).length, 0, 'the 2.0 to 2.5 km the log lacks');
-  await roadTo(k, 3300, 4200, t);
-  assert.equal(movedWakes(k).length, 1, 'fired by 4 km');
+  t = await roadTo(k, 2500, 2900, t);
+  assert.equal(movedWakes(k).length, 0, '2.9 km');
+  await roadTo(k, 2900, 3300, t);
+  assert.equal(movedWakes(k).length, 1, 'by 3.3 km, as if nothing had happened');
 });
 
 test('one fix with an accuracy of 1500 m adds nothing to the way, and neither does a manual place far away (re-review)', async () => {
@@ -881,7 +881,7 @@ test('app.start is written by logStart once the installed plugins have started, 
   const starts = async () => (await k.events(['app.start'], SYS_DEVICE)).map((e) => e.data);
   assert.deepEqual(await starts(), [{ gps: 'on', activity: 'unknown' }]);
   k.live.dispose();
-  const again = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent: k.agent, clock: k.clock, timeZone: () => LA });
+  const again = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent: k.agent, clock: k.clock, timeZone: () => LA, keep: k.keep });
   await again.start();
   await again.settled();
   assert.equal((await starts()).length, 1, 'start() writes none');
@@ -912,28 +912,6 @@ test('reloading every 3 minutes on screen or off, moving fast is restored every 
   await k.to(t + 120_000);
   await k.restart();
   assert.equal(k.live.activity, 'moving-fast', 'back after two minutes off screen');
-});
-
-test('after a reload the activity is told to listeners that already read it, and Auto voice stays on (re-review)', async () => {
-  const k = await liveKit({ start: at('09:00') });
-  await fastFrom(k, at('09:00'), 90);
-  k.live.dispose();
-  let told = 0;
-  /** @type {boolean[]} */
-  const read = [];
-  const sensor = () => k.registry.list('activity').at(-1);
-  // Voice reads the activity the moment the sensor appears, before the log is read back.
-  const off1 = k.registry.onChange(() => {
-    if (!sensor() || read.length) return;
-    read.push(sensor().held());
-    sensor().onChange(() => { told++; read.push(sensor().held()); });
-  });
-  const again = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent: k.agent, clock: k.clock, timeZone: () => LA });
-  await again.start();
-  await again.settled();
-  off1();
-  assert.equal(read[0], false);
-  assert.ok(told >= 1 && read.at(-1) === true, `told ${told}, read ${read}`);
 });
 
 test('moving fast ends 2 min after a reload with no fix at all, not 15 (re-review)', async () => {
