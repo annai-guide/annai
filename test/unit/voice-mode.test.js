@@ -23,6 +23,9 @@ test('Auto: on when moving fast, with headphones or car audio; off on the speake
   assert.deepEqual(auto({ route: 'car' }), { setting: 'auto', on: true, why: 'car audio' });
   assert.deepEqual(auto({ route: 'headphones' }), { setting: 'auto', on: true, why: 'headphones' });
   assert.deepEqual(auto({ route: 'speaker', lastChoices: { unknown: 'on' } }), { setting: 'auto', on: false, why: 'phone speaker' });
+  assert.deepEqual(auto({ activity: 'still', route: 'speaker', held: true }), { setting: 'auto', on: true, why: 'moving' }, 'moving fast ended a moment ago: a light');
+  assert.deepEqual(voiceMode({ setting: 'off', activity: 'still', route: 'speaker', lastChoices: {}, held: true }), { setting: 'off', on: false, why: 'off' });
+  assert.deepEqual(auto({ activity: 'still', route: 'speaker', held: false }), { setting: 'auto', on: false, why: 'phone speaker' });
   assert.deepEqual(auto({ activity: 'walking', lastChoices: { walking: 'on' } }), { setting: 'auto', on: true, why: 'your last choice' });
   assert.deepEqual(auto({ activity: 'walking', lastChoices: { still: 'on' } }), { setting: 'auto', on: false, why: 'not sure' });
 });
