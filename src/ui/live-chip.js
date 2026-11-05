@@ -26,6 +26,17 @@ export function liveText(live) {
 }
 
 /**
+ * The GPS chip's own words, short so the dock's row stays one line at 320 px: what the switch is, not what the user is doing (Now says that, in liveText).
+ * @param {{ on: boolean, gps: string, fix: any, simulating?: boolean, clock?: { now: () => number } }} live
+ */
+export function gpsWords(live) {
+  if (live.simulating) return t`Simulation`;
+  if (!live.on) return t`GPS off`;
+  if (!knownFix(live)) return live.gps === 'denied' || live.gps === 'unavailable' ? t`No GPS` : t`GPS…`;
+  return t`GPS on`;
+}
+
+/**
  * The GPS chip (spec §11.1: live mode is a switch), one tap away on every screen next to the voice chip. One tap turns GPS on or off at
  * once: the phone's own permission prompt is the only other step (the user, the second drive). While a simulation runs, which has live
  * mode, a tap opens its menu instead. The screen kept on is in Settings → Voice; "Where are you?" on the Driving screen.
@@ -63,7 +74,7 @@ export function liveChip(ctx) {
   const show = () => {
     const sim = Boolean(ctx.sim?.running);
     if (!sim && !menu.hidden) close();
-    chip.textContent = liveText(live);
+    chip.textContent = gpsWords(live);
     chip.classList.toggle('on', live.on);
     // A switch, or the button of a simulation's menu.
     if (sim) {

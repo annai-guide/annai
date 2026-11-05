@@ -47,7 +47,7 @@ test('Driving: Now hands over when moving fast; the road ahead, directions, big 
       await context.setGeolocation({ latitude: 36.60 - i * 0.0011, longitude: -121.89, accuracy: 10 });
       await page.clock.fastForward(5000);
     }
-    await expect(page.locator('.live-chip')).toHaveText('GPS on · moving fast');
+    await expect(page.locator('.live-chip')).toHaveText('GPS on');
     await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Driving' })).toHaveCount(0);
   } finally {

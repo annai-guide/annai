@@ -393,12 +393,12 @@ test('AirPods taken out while she speaks: voice goes off at once, her sound stop
     await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
     k.agent.send('Tell me about the bridge');
     await until(() => k.agent.live.view.name === 'speaking');
-    k.platform.input = { label: 'iPhone Microphone', deviceId: 'phone' };
+    k.platform.input = { label: 'AirPods Pro', deviceId: 'pods' }; // the session's microphone is open on them
     k.platform.setDevices([phone]);
     await until(() => !k.voice.on);
     await until(() => k.agent.live.state === 'closed', 1000);
     assert.ok(k.platform.streams[0].stopped, 'stopped mid-word');
-    assert.deepEqual(notes, ['Voice off: headphones disconnected']);
+    assert.deepEqual(notes, ['Voice off: AirPods Pro disconnected']);
     assert.equal(k.voice.mode.setting, 'off');
   } finally {
     await k.done();

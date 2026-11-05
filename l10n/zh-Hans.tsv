@@ -610,7 +610,7 @@ bgn4sv	ok	Shiori answers in the language you speak to her	Shiori 用你对她说
 1qt7a9v	ok	Shiori answers in	Shiori 回答所用语言	src/core/languages.js:355	Note: A label, so a noun: "the language Shiori answers in".
 k4u05v	ok	The language you speak to her	你对她说的语言	src/core/languages.js:356	
 cc69cl	ok	None picked: annai uses the browser’s language.	未选择：annai 使用浏览器的语言。	src/core/languages.js:357	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
-1dyfzsg	ok	A simulation is already running.	模拟已在运行。	src/core/live/live.js:280	
+1dyfzsg	ok	A simulation is already running.	模拟已在运行。	src/core/live/live.js:286	
 157qf8n	ok	Flight {0} departs {1}, {2}	航班 {0}，{1} 起飞，{2}	src/core/live/plan-watches.js:140	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
 1tvx4k9	ok	Flight {0} departs {1}	航班 {0}，{1} 起飞	src/core/live/plan-watches.js:140	{0} = w.flight; {1} = time
 1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}，{2}）	src/core/live/plan-watches.js:141	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
@@ -874,8 +874,9 @@ h8lp19	ok	On Android: tap the icon left of the address (in the installed app: ho
 46l9so	ok	Voice off	语音关闭	src/core/voice/mode.js:54	
 1o81qfq	ok	Voice on	语音开启	src/core/voice/mode.js:55	
 d3i18u	draft	Voice on · driving	语音开启 · 驾驶中	src/core/voice/mode.js:55	
-1c3vxa8	draft	Voice off: headphones disconnected	语音关闭：耳机已断开	src/core/voice/mode.js:60	
 t042iv	draft	Voice off: you stopped driving	语音关闭：您已停止驾驶	src/core/voice/mode.js:60	
+tgf1x2	draft	Voice off: the microphone disconnected	语音关闭：麦克风已断开	src/core/voice/mode.js:61	
+xonbcn	draft	Voice off: {0} disconnected	语音关闭：{0} 已断开	src/core/voice/mode.js:61	{0} = name; English was: Voice off: headphones disconnected
 xi9ch6	ok	Shiori can't hear you: the speech-in list is empty. Add an entry in Settings → Models → Speech in.	Shiori 听不到你：语音识别列表是空的。请在设置 → 模型 → 语音识别中添加一项。	src/core/voice/resolve.js:157	
 1da2r7t	ok	Shiori can't hear you yet: {0} doesn't take audio, and the speech-in list has no transcription model that works.	Shiori 还听不到你：{0} 不接受音频，语音识别列表中也没有可用的语音转文字模型。	src/core/voice/resolve.js:163	{0} = model.name
 1j6uoln	ok	Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works.	Shiori 还听不到你：没有设置主要模型，语音识别列表中也没有可用的语音转文字模型。	src/core/voice/resolve.js:164	
@@ -1249,10 +1250,13 @@ zemwn2	ok	GPS off	GPS 关闭	src/ui/live-chip.js:23
 1a0v739	ok	GPS on · no location	GPS 开启 · 无位置	src/ui/live-chip.js:24	
 thd4ot	ok	GPS on · finding you	GPS 开启 · 正在定位	src/ui/live-chip.js:24	
 j7yqys	ok	GPS on	GPS 开启	src/ui/live-chip.js:25	
-13ebf61	ok	Pause the simulation	暂停模拟	src/ui/live-chip.js:52	
-1ui2yvw	ok	Resume the simulation	继续模拟	src/ui/live-chip.js:52	
-5zs6ip	ok	Stop the simulation	停止模拟	src/ui/live-chip.js:53	
-1yuht27	ok	Simulate a trip	模拟旅行	src/ui/live-chip.js:54	
+lrcjli	draft	Simulation	模拟	src/ui/live-chip.js:33	
+23eagt	draft	GPS…	GPS…	src/ui/live-chip.js:35	
+om0646	draft	No GPS	无 GPS	src/ui/live-chip.js:35	
+13ebf61	ok	Pause the simulation	暂停模拟	src/ui/live-chip.js:63	
+1ui2yvw	ok	Resume the simulation	继续模拟	src/ui/live-chip.js:63	
+5zs6ip	ok	Stop the simulation	停止模拟	src/ui/live-chip.js:64	
+1yuht27	ok	Simulate a trip	模拟旅行	src/ui/live-chip.js:65	
 19pzct7	ok	Location Services must be on: Settings → Privacy & Security → Location Services.	必须开启定位服务：设置 → 隐私与安全 → 定位服务。	src/ui/live-help.js:14	Note: Location Services is the platform's 定位服务 (glossary), not the Location row (位置).
 6c6pb6	ok	On iPhone: Settings → Privacy & Security → Location Services → Safari Websites → While Using the App, and Settings → Apps → Safari → Location → Allow.	在 iPhone 上：设置 → 隐私与安全 → 定位服务 → Safari 浏览器网站 → 使用 App 期间，以及设置 → App → Safari 浏览器 → 位置 → 允许。	src/ui/live-help.js:16	Note: The rows' names as the glossary gives them; Safari 浏览器网站, 使用 App 期间 and Safari's 位置 are to be checked on a phone (glossary).
 m9ud30	ok	On iPhone: tap the page menu button in the address bar, then Website Settings → Location → Allow (or Settings → Apps → Safari → Location → Allow).	在 iPhone 上：轻点地址栏中的“页面菜单”按钮，然后选择网站设置 → 位置 → 允许（或设置 → App → Safari 浏览器 → 位置 → 允许）。	src/ui/live-help.js:17	Note: “页面菜单”按钮 as Apple's zh-cn guide names it; 网站设置 is to be checked on a phone (glossary).

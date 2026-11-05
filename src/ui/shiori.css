@@ -147,7 +147,6 @@ a.attach-chip, .attach-chip.gone { padding-inline: 12px; text-decoration: none; 
 .voice-row > .plugin-chips { max-width: 40vw; overflow: hidden; }
 .voice-row .chip { white-space: nowrap; }
 .voice-row .live-chip, .voice-row .plugin-chip { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.voice-row .koe-live-chip { border-left: 1px solid var(--line); border-radius: 0; }
 .voice-row > :not(:empty):not(.halves-sign) ~ :not(:empty):not(.halves-sign) { border-left: 1px solid var(--line); padding-left: 4px; margin-left: 4px; }
 .voice-row .voice-chip-wrap, .voice-row .plugin-chips, .voice-row .halves-sign { display: inline-flex; align-items: center; gap: 4px; }
 /* The working sign floats just above the bar at every size, so nothing in the bar moves as Kokoro starts and stops (the second drive, item 5). */
@@ -159,8 +158,13 @@ a.attach-chip, .attach-chip.gone { padding-inline: 12px; text-decoration: none; 
 .voice-row .chip:hover { color: var(--ink); }
 .voice-row .chip.listening { color: var(--risk); font-weight: 600; }
 .ib-svg { display: block; }
-.voice-chip, .voice-row .chip { cursor: pointer; font: inherit; }
+.voice-chip, .voice-row .chip { cursor: pointer; font-family: inherit; }
+/* The two voice chips keep a width whatever their words, so the row, and Live in it, don't move as Voice reads off, on, driving or Listening live. */
+.voice-row .voice-chip { min-width: 9.2em; }
+.voice-row .koe-live-chip { min-width: 5em; }
 @media (max-width: 360px) {
+  .voice-row .voice-chip { min-width: 8.2em; }
+  .voice-row .koe-live-chip { min-width: 4.2em; }
   .voice-row .chip { padding-inline: 4px; }
   .voice-row > :not(:empty):not(.halves-sign) ~ :not(:empty):not(.halves-sign) { padding-left: 1px; margin-left: 1px; }
 }

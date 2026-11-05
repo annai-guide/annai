@@ -238,8 +238,8 @@ test('Detailed trace: it stays off with no server; on, a turn the microphone hea
   }
 });
 
-for (const width of [320, 360, 375, 393]) {
-  test(`${width} px: Flag takes the Trace chip's place, so the dock does not grow or move whatever the voice words are`, async ({ page }) => {
+for (const width of [320, 360, 390, 430]) {
+  test(`${width} px: Flag takes the Trace chip's place, so the dock does not grow or move whatever the voice and GPS words are`, async ({ page }) => {
     await page.setViewportSize({ width, height: 800 });
     await openApp(page, '#/voice');
     await page.getByRole('radio', { name: 'On', exact: true }).check();
@@ -248,6 +248,8 @@ for (const width of [320, 360, 375, 393]) {
       await page.goto('/#/talk');
       await expect(page.locator('nav.dock')).toHaveClass(/\bvoice\b/);
       const out = [];
+      /** Where the Live chip is, for each of Voice's words. @type {Record<string, number>} */
+      const liveAt = {};
       for (const words of ['Voice off', 'Voice on', 'Voice on · driving', 'Listening live']) {
         await page.locator('.koe-live-chip').evaluate((el) => { /** @type {HTMLElement} */ (el).hidden = false; el.textContent = 'Live off'; });
         await page.locator('.voice-chip').evaluate((el, w) => { el.textContent = w; }, words);
@@ -259,7 +261,23 @@ for (const width of [320, 360, 375, 393]) {
         });
         expect(row, words).toEqual({ height: expect.any(Number), voice: true, live: true, wide: true });
         expect(row.height, words).toBeLessThan(45);
+        liveAt[words] = await page.locator('.koe-live-chip').evaluate((el) => el.getBoundingClientRect().x);
         out.push(await page.evaluate(() => ['nav.dock', '.dock-row', '.voice-row'].map((s) => { const b = document.querySelector(s)?.getBoundingClientRect(); return b && [b.x, Math.round(b.y), b.width, Math.round(b.height)]; })));
+      }
+      // Driving starting changes Voice's words and nothing else: Live stays where it was.
+      expect(Math.abs(liveAt['Voice on · driving'] - liveAt['Voice on']), 'Live moves when driving starts').toBeLessThan(2);
+      // GPS's own words, each whole (no cut, no ellipsis), beside the widest of Voice's.
+      for (const gps of ['GPS on', 'GPS off', 'GPS…', 'No GPS', 'Simulation']) {
+        for (const words of ['Voice on · driving', 'Listening live']) {
+          await page.locator('.voice-chip').evaluate((el, w) => { el.textContent = w; }, words);
+          await page.locator('.live-chip').evaluate((el, w) => { el.textContent = w; }, gps);
+          const row = await page.evaluate(() => {
+            const whole = (/** @type {string} */ s) => { const e = /** @type {HTMLElement} */ (document.querySelector(s)); const b = e.getBoundingClientRect(); return e.scrollWidth <= e.clientWidth + 1 && b.left >= 0 && b.right <= innerWidth; };
+            return { height: /** @type {Element} */ (document.querySelector('.voice-row')).getBoundingClientRect().height, gps: whole('.live-chip'), voice: whole('.voice-chip'), live: whole('.koe-live-chip'), wide: document.documentElement.scrollWidth <= innerWidth };
+          });
+          expect(row, `${gps} beside ${words}`).toEqual({ height: expect.any(Number), gps: true, voice: true, live: true, wide: true });
+          expect(row.height, `${gps} beside ${words}`).toBeLessThan(45);
+        }
       }
       return out;
     };
