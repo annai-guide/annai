@@ -427,7 +427,7 @@ test('ignoring: sound the minimum keeps out shows, with the words that offer a t
     k.agent.on('state', (/** @type {any} */ s) => names.push(s.name));
     k.platform.mic.feed(hum(0.5, 0.05), RATE);
     assert.equal(k.agent.state.name, 'ignoring');
-    assert.match(k.agent.state.label, /Ignoring background sound/);
+    assert.match(k.agent.state.label, /Ignoring sound/);
     k.platform.mic.feed(room(0.2), RATE);
     assert.equal(k.agent.state.name, 'ignoring', 'held past the last frame');
     k.platform.mic.feed(hum(0.6, 0.5), RATE); // the user

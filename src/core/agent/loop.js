@@ -124,7 +124,7 @@ const NO_TOOLS = /** @type {any} */ ({ entries: () => [] });
 
 /** The dock's words for each state (spec §16.3), in the screens' language: boot.js sets the words before this module loads. */
 export const LABELS = Object.freeze({
-  sleeping: t`Tap to talk`, thinking: t`Thinking · tap to stop`, speaking: t`Tap to interrupt`, listening: t`Listening`, ignoring: t`Ignoring background sound · tap to talk`, hearing: t`Hearing you`, waiting: t`Waiting for your OK`,
+  sleeping: t`Tap to talk`, thinking: t`Thinking · tap to stop`, speaking: t`Tap to interrupt`, listening: t`Listening`, ignoring: t`Ignoring sound · tap to talk`, hearing: t`Hearing you`, waiting: t`Waiting for your OK`,
   away: t`Working on …`, offline: t`Offline · reminders still work`,
 });
 /** What she is away doing while she tidies up the conversation: the dock's words are made from it. */
@@ -362,7 +362,7 @@ export class Agent {
   #utterances = new Map();
   /**
    * The listening window (spec §10.4), and who opened it: a tap (until the first thing said, or a
-   * silence) or the turn (until it ends), or the time after a turn that spoke and didn't sleep (a silence; what is heard goes through the gate). @type {{ owner: 'tap' | 'turn' | 'after', session: { stop(): void } | null } | null}
+   * silence) or the turn (until it ends), or the time after a turn that spoke and didn't sleep (a silence; what is heard goes through the gate). @type {{ owner: 'tap' | 'turn' | 'after', session: { stop(): void, kind?: string } | null } | null}
    */
   #ear = null;
   /** Openings of the window, one at a time. @type {Promise<unknown>} */
@@ -486,6 +486,8 @@ export class Agent {
     this.voice = voice ?? null;
     // The mode read as annai starts is no change: only changes are logged (spec §4.5).
     this.voice?.onChange((m, first) => { if (!first) this.#voiceChanged(m); });
+    // Sound stuck under an open window: its microphone runs on the closed context, so it closes (dictation doesn't use that context).
+    this.voice?.onSound((stuck) => { if (stuck && this.#ear && this.#ear.session?.kind !== 'dictation') this.#earFailed(Object.assign(new Error(/* en */ 'Sound got stuck.'), { stuck: true })); });
     if (!online()) this.state = { name: 'offline', label: LABELS.offline };
     // The connection coming and going: the dock says so at once, not only when a turn ends (emulator pass m2b #10).
     for (const type of ['online', 'offline']) globalThis.addEventListener?.(type, () => this.#connection());
@@ -2972,7 +2974,7 @@ export class Agent {
       this.#toldDeaf = true;
       return how.why;
     }
-    /** @type {{ owner: 'tap' | 'turn' | 'after', session: { stop(): void } | null }} */
+    /** @type {{ owner: 'tap' | 'turn' | 'after', session: { stop(): void, kind?: string } | null }} */
     const ear = { owner, session: null };
     this.#ear = ear;
     try {

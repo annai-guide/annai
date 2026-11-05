@@ -1,5 +1,5 @@
 {
-  "build": "89ff80fd09ca",
+  "build": "6df95f0f2e9f",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -39,11 +39,11 @@
     "/src/core/agent/budgets.js": "ec0a25e840fb",
     "/src/core/agent/compaction.js": "b3bb32c5c86c",
     "/src/core/agent/context.js": "b0818c542af2",
-    "/src/core/agent/halves.js": "0eb2aa6175c6",
+    "/src/core/agent/halves.js": "bdcfcb67e14b",
     "/src/core/agent/instructions.js": "fab0e8c49574",
     "/src/core/agent/listen.js": "e6c194b03c77",
     "/src/core/agent/log.js": "d242418d747d",
-    "/src/core/agent/loop.js": "1cc6f3d3b694",
+    "/src/core/agent/loop.js": "302641272341",
     "/src/core/agent/reading.js": "4aa68253f39e",
     "/src/core/agent/personalities.js": "20c2b7d8981a",
     "/src/core/agent/refusals.js": "9ccce89c793b",
@@ -108,7 +108,7 @@
     "/src/core/intl.js": "0da282c01667",
     "/src/core/koe/context.js": "0fb694f46b35",
     "/src/core/koe/instructions.js": "5acdba9f570c",
-    "/src/core/koe/live.js": "858f466167b3",
+    "/src/core/koe/live.js": "91295d81535b",
     "/src/core/koe/tools.js": "cfbc62fd865b",
     "/src/core/l10n-list.js": "98de5dc21171",
     "/src/core/l10n.js": "bc73b53b2add",
@@ -163,7 +163,7 @@
     "/src/core/voice/formats.js": "1b037e1a12bc",
     "/src/core/voice/g711.js": "66f5baeb9a02",
     "/src/core/voice/gate.js": "e8b7fee325ea",
-    "/src/core/voice/level.js": "adc0e178d9b7",
+    "/src/core/voice/level.js": "7b0a0547ad8b",
     "/src/core/voice/listening.js": "5bd336e6a48a",
     "/src/core/voice/mic.js": "d629c0a36aa8",
     "/src/core/voice/mode.js": "78db46df07ad",
@@ -176,7 +176,7 @@
     "/src/core/voice/settings.js": "5b822fd583b7",
     "/src/core/voice/speaker.js": "917188cde5dd",
     "/src/core/voice/stream-start.js": "360b714c0b43",
-    "/src/core/voice/voice.js": "e50bd6c68e8e",
+    "/src/core/voice/voice.js": "b948f7fe7301",
     "/src/core/voice/where.js": "858b458d948b",
     "/src/core/types.js": "16693e8fad29",
     "/src/core/ui-slots.js": "355a32f019cb",
@@ -277,7 +277,7 @@
     "/src/ui/shell.js": "8d9e30548f59",
     "/src/ui/slots.js": "b7fb8d979e45",
     "/src/ui/stamps.js": "fd929ca54c31",
-    "/src/ui/shiori.css": "9aecdb4aa8a3",
+    "/src/ui/shiori.css": "b8af06260d34",
     "/src/ui/speech-check.js": "396550d02345",
     "/src/ui/storage-full.js": "6b7d5a2fe9fe",
     "/src/ui/talk-panel.js": "b12c573be9a4",
@@ -290,8 +290,8 @@
     "/src/ui/voice-chip.js": "276ef563bf58",
     "/src/ui/wake-lock.js": "b86e78535207",
     "/src/ui/welcome.js": "23fcd35c12df",
-    "/l10n/ja.json": "0860eb41a736",
-    "/l10n/zh-Hans.json": "edfc12133dba",
-    "/l10n/zh-Hant.json": "7b390738eb2d"
+    "/l10n/ja.json": "90e9c65632a1",
+    "/l10n/zh-Hans.json": "bab1d3fa01d6",
+    "/l10n/zh-Hant.json": "fe494daa06dc"
   }
 }

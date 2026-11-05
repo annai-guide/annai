@@ -17,11 +17,12 @@ import { t } from '../l10n.js';
  * opened and closed as §10.8 says, never by itself.
  * @typedef {import('../realtime/open.js').LiveSession} LiveSession
  * @typedef {import('../agent/loop.js').Wake} Wake
- * @typedef {{ said: string, bytes: number, held: Uint8Array[], stream: import('../voice/platform.js').PlayerStream | null, spoken: boolean, wordAt: number,
+ * @typedef {{ said: string, bytes: number, held: Uint8Array[], stream: import('../voice/platform.js').PlayerStream | null, spoken: boolean, wordAt: number, soundAt: number, alone?: boolean,
  *   tools: boolean, cut: boolean, whole: boolean, logged: boolean, goesOn: boolean, calls: number, done: boolean, stalled?: boolean, audible?: boolean, endBy?: any }} Turn  one of Koe's; held: its sound until a real word;
  *   stalled: its sound stopped coming out, so its stream was let go, and its words are said by the speech voice;
  *   goesOn: it called a tool it speaks after; calls: its tool calls not answered yet; done: the provider ended it; whole: cut, but all of it was
- *   heard or written; audible: its sound has started playing, so its words may show; endBy: the timer that ends it if no turnComplete comes (#endLater)
+ *   heard or written; audible: its sound has started playing, so its words may show; endBy: the timer that ends it if no turnComplete comes (#endLater);
+ *   soundAt: when its sound began; alone: a call alone, answered silently, which #tool let go of
  * @typedef {{ sent: number, spoke: boolean, timer: any, idle?: boolean }} Mark  an urgent note's (LiveKoe's #urgent); idle: what waited, going in with nothing before it, so its turn is the next to end
  * @typedef {{ text: string }} Waiting  what waits to go in (LiveKoe's #notes)
  * @typedef {{ text: string, of: object, by: number, more: boolean, timer: any }} Late  the stretch's note waiting (LiveKoe's #late)
@@ -121,10 +122,7 @@ const LIFT_S = LIVE_ANSWER_S;
  * annai or its plugin changes (the second drive: every reminder tried it first, and lost its moment). Any other refusal of a setup rests as a failure does: it may pass.
  */
 export const REFUSED_REST_MS = 6 * 3_600_000;
-/**
- * Past the end of her sound, the wait for the turnComplete of a turn whose tool call was answered silently. Real runs, 2026-11-05: it came about at her sound's end, at
- * most 2.9 s after the answer, in 48 of 48 probes, SILENT or not; in one of 31 full runs it never came, and the turn held the note that waited for it until the session closed, 35 s later.
- */
+/** Past the end of her sound, the wait for the turnComplete of a turn whose tool call was answered silently (measured: the design, section 3, item 6). */
 const TURN_END_S = 2;
 
 /** A realtime model's transcript as annai keeps it: no markup (measured: `<!-- … -->`, `<no speech>`, `{pause}`, even cut off), escaped. @param {string} text */
@@ -134,7 +132,7 @@ export const realWord = (text) => /[\p{L}\p{N}]/u.test(cleanSaid(text));
 /** @param {Uint8Array} b 16-bit PCM */
 const samples = (b) => new Int16Array(b.slice(0, b.length & ~1).buffer);
 /** @returns {Turn} */
-const newTurn = () => ({ said: '', bytes: 0, held: [], stream: null, spoken: false, wordAt: 0, tools: false, cut: false, whole: false, logged: false, goesOn: false, calls: 0, done: false });
+const newTurn = () => ({ said: '', bytes: 0, held: [], stream: null, spoken: false, wordAt: 0, soundAt: 0, tools: false, cut: false, whole: false, logged: false, goesOn: false, calls: 0, done: false });
 /** @returns {Hearing} */
 const hearing = () => ({ id: newId('h'), text: '', at: Date.now(), ms: 0, pcm: [], logged: null });
 
@@ -252,8 +250,12 @@ export class LiveKoe {
   #ignoring = null;
   /** A tap: no minimum until this time (a tap only opens the microphone, so it can't force a turn); Infinity: until LIFT_S after its microphone opens. */
   #liftBy = 0;
+  /** A tap's first answered turn says what the user's voice is now (the level resets once); the tap's later ones add to it. */
+  #fresh = false;
   /** A turn was ended without its turnComplete (#endLater): one that comes after all, with no new turn of hers, is that one's. */
   #endedEarly = false;
+  /** Turns of hers ended so far (#complete). */
+  #ends = 0;
   /** The user's turns ended since this connection last gave anything back: two is a dead session. */
   #noBack = 0;
   /** Koe's sound's sample rate, and the microphone's as the session takes it. */
@@ -390,16 +392,20 @@ export class LiveKoe {
     return Date.now() < this.#liftBy ? null : this.level.minimum(floorDb);
   }
 
-  /** The level check learns only from the turns she answered; one begun in a tap's lift says what the user's voice is now. Once a turn. @param {Hearing} h */
+  /** The level check learns only from the turns she answered; one begun in a tap's lift says what the user's voice is now, once a tap. @param {Hearing} h */
   #learn(h) {
     if (h.peak === undefined) return;
-    if (h.tapped) this.level.reset();
+    if (h.tapped && this.#fresh) {
+      this.#fresh = false;
+      this.level.reset();
+    }
     this.level.heard(h.peak);
     delete h.peak;
   }
 
   /** A tap: the next sound is a turn, however soft, for a while from when the microphone hears (the phone's own prompt may take longer than the lift). */
   #lift() {
+    this.#fresh = true;
     this.#liftBy = this.listening ? Date.now() + LIFT_S * this.#unit() : Infinity;
   }
 
@@ -967,6 +973,7 @@ export class LiveKoe {
   /** A text turn, which Koe answers; cut: it cuts Koe off, heard this far; strict: only sound, a word, a card or a question answers it. @param {string} text @param {{ playedMs?: number }} [cut] */
   #text(text, cut, strict = false) {
     this.#trail = null;
+    if (this.#hear) delete this.#hear.peak; // a note going in as a lyric ends: her reply to it answers the note, not the lyric
     this.#poke();
     this.#send((s) => s.text(text, { interrupt: Boolean(cut), ...cut }));
     this.#answer(text, strict);
@@ -1012,10 +1019,8 @@ export class LiveKoe {
       return this.#arm();
     }
     this.#due = null;
-    // The user's turn, with nothing at all back: Gemini's way of letting a turn go (measured 2026-11-04: music got an empty turn, or no
-    // message for 12 s from a session that then answered speech and notes at once). The model chose: nothing is retried, least of all by a
-    // fresh session with the words, which has no reason to let them go too (a lyric answered in Korean). A session really dead shows itself
-    // at the next note or typed line.
+    // The user's turn, with nothing at all back: Gemini's way of letting a turn go (measured: the design, section 3, item 6). The model chose: nothing is
+    // retried, least of all by a fresh session with the words. A session really dead shows itself at the next note or typed line.
     if (due.text === null && !due.alive) {
       /* en */ this.#write({ type: 'error', actor: 'system', data: { kind: 'live-silent', message: `The live session gave nothing back within ${SILENT_S} seconds of a turn: taken as let go.`, quiet: true } });
       this.#complete();
@@ -1133,6 +1138,7 @@ export class LiveKoe {
       this.#trail = null;
       const t = (this.#t ??= newTurn());
       t.bytes += e.data.length;
+      t.soundAt ||= Date.now();
       if (t.stream) t.stream.push(samples(e.data));
       else if (!t.cut) t.held.push(e.data);
       if (t.endBy) this.#endLater(t);
@@ -1292,6 +1298,7 @@ export class LiveKoe {
 
   /** The provider's turn ended: her voice plays out, or her words are a bubble; a turn with no real word is dropped. */
   #complete() {
+    this.#ends++;
     const t = (this.#trail = this.#t);
     this.#t = null;
     this.#tries = 0;
@@ -1499,8 +1506,13 @@ export class LiveKoe {
       // To its session, or to the one that resumed it with the handle, which carries the call; a fresh one never saw it.
       if (s === this.#s) answer(s);
       else if (this.state === 'open' && this.#handle) this.#send(answer);
-      if (silent && this.#t === t && !t.bytes && !t.said) this.#t = null; // a turn of a call alone, answered silently, is over
-      else if (silent && this.#t === t) this.#endLater(t);
+      if (silent && this.#t === t) { // a turn of a call alone, answered silently, is over; its turnComplete may never come either
+        if (!t.bytes && !t.said) {
+          this.#t = null;
+          t.alone = true;
+        }
+        this.#endLater(t);
+      }
       // The user asked her to sleep, or Kokoro said so: it closes as a tap does, once what she is saying has ended.
       if (e.name === 'sleep' && !out.isError) this.closeSoon('sleep');
     } finally {
@@ -1514,15 +1526,18 @@ export class LiveKoe {
     }
   }
 
-  /** Her turn's tool call was answered silently, and its turnComplete may never come: it ends TURN_END_S past her sound, whatever more of it came last. @param {Turn} t */
+  /** Her turn's tool call was answered silently, and its turnComplete may never come: it ends TURN_END_S past her sound, counted from when it began. @param {Turn} t */
   #endLater(t) {
     clearTimeout(t.endBy);
+    const ends = this.#ends;
+    const began = t.soundAt || Date.now();
     t.endBy = setTimeout(() => {
-      if (this.#t !== t || t.calls) return; // it ended, or the last call's answer sets this again
+      // It ended, or the last call's answer sets this again; one let go of (alone) ends only if nothing of hers began or ended since.
+      if (t.calls || (this.#t ? this.#t !== t : !t.alone || this.#ends !== ends)) return;
       this.#endedEarly = true;
       this.#complete();
       this.#changed();
-    }, Math.max(0, t.bytes / (this.#rate / 500) - (Date.now() - t.wordAt)) + TURN_END_S * this.#unit());
+    }, Math.max(0, t.bytes / (this.#rate / 500) - (Date.now() - began)) + TURN_END_S * this.#unit());
   }
 
   /**
