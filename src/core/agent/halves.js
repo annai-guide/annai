@@ -191,9 +191,9 @@ export class Halves {
   /** The realtime model of Koe's pathway now, and whether voice was on when it was worked out. @type {string | null} */
   #liveId = null;
   #voiceWas = false;
-  /** Koe's way now (the voice chip's words and switch): the mode chosen, the list in use, and why Classic stands in. @type {import('../llm/fallback.js').KoeWay | null} */
+  /** Koe's way now (the Live chip's switch): the mode chosen, the list in use, and why Classic stands in. @type {import('../llm/fallback.js').KoeWay | null} */
   #way = null;
-  /** A tap in Auto holds voice on for its exchange (tap), and is still being carried out. */
+  /** A tap with voice off holds voice on for its exchange (tap), and is still being carried out. */
   #tapHeld = false;
   #tapStarting = 0;
   /** A refresh for when a resting realtime model can answer again, so the chosen Realtime comes back. @type {ReturnType<typeof setTimeout> | undefined} */
@@ -409,10 +409,10 @@ export class Halves {
   set sense(fn) { this.kokoro.sense = fn; this.koe.sense = fn; }
   get sense() { return this.kokoro.sense; }
 
-  /** Koe's way, for the voice chip: the mode chosen, the list Koe runs on, and why Classic stands in for Realtime. */
+  /** Koe's way, for the Live chip: the mode chosen, the list Koe runs on, and whether a live model exists. */
   get way() { return this.#way; }
 
-  /** The voice chip's switch: Koe · Realtime or Koe · Classic, kept with the lists; it applies at once. @param {import('../llm/config.js').KoeMode} mode */
+  /** The Live chip's switch: Koe's live list or its chat list, kept with the lists; it applies at once. @param {import('../llm/config.js').KoeMode} mode */
   async chooseKoe(mode) {
     await saveKoeMode(this.ws, mode);
     await this.#route(() => this.#refresh());
@@ -462,11 +462,11 @@ export class Halves {
     if (half === this.koe && (s.name === 'waiting' || s.name === 'listening')) queueMicrotask(() => { if (this.koe.waiting && !this.kokoro.busy && this.koeState === 'text') this.#nothingToAdd(); });
   }
 
-  /** The sign, and the chip's "Listening live" (a session's microphone is open) and Koe's way (which list talks, and why). */
+  /** The sign, and the chip's "Listening live" (a session's microphone is open) and the Live chip's switch. */
   #emitHalves() {
     const w = this.#way;
     const now = { koe: this.koeState, kokoroWorking: this.kokoroWorking, live: this.live.listening ? 'listening' : this.live.state === 'open' ? 'open' : null,
-      way: w ? { mode: w.mode, using: w.using, why: w.why, koe: w.koe, split: w.split, path: this.koeState === 'down' ? null : w.path?.kind ?? null } : null };
+      way: w ? { mode: w.mode, live: w.live } : null };
     const key = JSON.stringify(now);
     if (key === this.#lastHalves) return;
     this.#lastHalves = key;
@@ -499,7 +499,7 @@ export class Halves {
 
   /** Koe's state from the settings, the voice and Koe's rest; Kokoro is told when it changed. @param {{ tell?: boolean }} [o] */
   async #refresh({ tell = true } = {}) {
-    await this.voice?.refresh().catch(() => {}); // Auto follows the car's audio: read now
+    await this.voice?.refresh().catch(() => {}); // read now
     await this.llm.ready; // a realtime model needs its protocol running
     const cfg = await this.llm.config();
     const voiceOn = Boolean(this.voice?.on);
@@ -533,9 +533,9 @@ export class Halves {
     // Its own model has left the list, or rests. An earlier one coming back from a rest closes nothing: a healthy session is kept, and the next session uses it.
     const leftUs = Boolean(model && model !== this.#liveId && (!cfg.roles[KOE_REALTIME]?.models?.includes(model) || until(model) > Date.now()));
     // One closed with Kokoro's notes waiting for the page lets go of them too (they are handed on).
-    // Auto turning voice off (AirPods out) lets Koe's sentence end whole; the user's Off, or another pathway, closes at once.
+    // A drive's end lets Koe's sentence end whole; the user's Off, an audio device gone, or another pathway, closes at once.
     if ((this.live.state !== 'closed' || this.live.owing) && (!this.#liveId || leftUs || voiceOff)) {
-      if (voiceOff && this.voice?.mode.setting === 'auto') this.live.closeSoon(/* en */ 'voice off');
+      if (voiceOff && !this.voice?.stopNow) this.live.closeSoon(/* en */ 'voice off');
       else this.live.close(voiceOff ? /* en */ 'voice off' : 'pathway');
     }
     else if (voiceOn) this.live.unmute();
@@ -810,23 +810,26 @@ export class Halves {
   }
 
   /**
-   * A tap on the avatar starts voice, in Auto as in On (the user: "I expect tapping avatar starts a voice session even if I'm in auto"):
-   * Auto off holds voice on until that exchange ends, and Koe's way is worked out again first, as Realtime needs voice on. With voice
-   * set to Off, a half's 'typing' stands.
+   * A tap on the avatar always talks (the user: "I expect tapping avatar starts a voice session"): with voice off it holds voice on until that
+   * exchange ends, and Koe's way is worked out again first, as Live needs voice on. The keyboard button is how to type. A second tap before
+   * that's done is the same wish, not a tap on what is opening: Koe's way isn't known yet, and it would open Classic's microphone rather than live.
    */
   tap() {
-    const taps = ++this.#taps;
+    if (this.#tapWorking) return 'listening';
     const did = this.#tapNow();
-    if (did !== 'typing' || this.voice?.mode.setting !== 'auto') return did;
+    if (did !== 'typing' || !this.voice?.platform) return did;
     this.#tapHeld = true;
     this.#tapStarting++;
+    this.#tapWorking = true;
     this.voice.hold();
     this.#route(async () => {
       try {
         await this.#refresh();
-        if (taps === this.#taps) this.#tapNow(); // a later tap has already answered for the user: this one would shut what it opened
+        this.#tapWorking = false;
+        this.#tapNow();
         await this.#tapFollow; // the hold stays while a live session that couldn't open is answered by Classic's
       } finally {
+        this.#tapWorking = false;
         this.#tapStarting--;
         this.#endTapHold();
       }
@@ -834,8 +837,18 @@ export class Halves {
     return 'listening';
   }
 
-  /** Avatar taps so far (a tap during another's refresh takes over from it). */
-  #taps = 0;
+  /** A tap's hold is on, and Koe's way not yet worked out again. */
+  #tapWorking = false;
+
+  /**
+   * A reminder fired as a drive ended: it is said first. Voice holds on until that exchange is over, as for a tap; a wake that started nothing lets go of it after a moment.
+   */
+  holdVoice() {
+    if (!this.voice?.on) return;
+    this.#tapHeld = true;
+    this.voice.hold();
+    /** @type {any} */ (setTimeout(() => this.#endTapHold(), 3 * this.secondMs)).unref?.();
+  }
 
   /** The half that talks (its tap unlocks sound, an iPhone rule); a live Koe's session. */
   #tapNow() {
@@ -873,7 +886,7 @@ export class Halves {
     return !a.busy && !a.voicing && !a.tapOpening && !a.turning && (a.state.name === 'sleeping' || a.state.name === 'offline');
   }
 
-  /** The exchange a tap held voice on for is over once nothing is listening, speaking or working (the window after she spoke counts): Auto decides again. Kokoro's answer may still be on its way to Koe's voice, so it counts too. */
+  /** The exchange a tap held voice on for is over once nothing is listening, speaking or working (the window after she spoke counts). Kokoro's answer may still be on its way to Koe's voice, so it counts too. */
   #endTapHold() {
     if (!this.#tapHeld || this.#tapStarting > 0) return;
     const quiet = (/** @type {Agent} */ a) => !a.busy && !a.voicing && !a.tapOpening && !a.listensOn;

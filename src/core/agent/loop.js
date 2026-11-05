@@ -25,6 +25,7 @@ import { parsePartialJSON } from '../llm/partial-json.js';
 import { spokenText, unspoken } from './listen.js';
 import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 import { GATE_OPTIONS, gatePrompt } from '../voice/gate.js';
+import { voiceWhy } from '../voice/mode.js';
 import { cardSchema } from '../ui-slots.js';
 import { validate } from '../schema.js';
 import { anySignal } from '../signals.js';
@@ -1236,10 +1237,9 @@ export class Agent {
    * @param {string[]} reasons
    */
   #nowFor(reasons) {
-    const voiceWhy = this.voice?.mode.setting === 'auto' ? `auto: ${this.voice.mode.why}` : '';
-    const here = this.sense?.() ?? {};
+        const here = this.sense?.() ?? {};
     const voice = this.#half.voice() ? this.#voiceNow : Boolean(this.voice?.on);
-    return { now: this.now(), timeZone: this.timeZone(), voice: voice ? 'on' : 'off', voiceWhy, online: this.online(), reasons, place: here.place, activity: here.activity };
+    return { now: this.now(), timeZone: this.timeZone(), voice: voice ? 'on' : 'off', voiceWhy: voiceWhy(this.voice?.mode), online: this.online(), reasons, place: here.place, activity: here.activity };
   }
 
   /** The block a request ends with: the half's own, or the now block. @param {Parameters<NonNullable<Half['tail']>>[0]} now */

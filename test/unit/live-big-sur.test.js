@@ -22,10 +22,10 @@ test('a simulated Big Sur drive produces the expected wakes, and Shiori does wha
   assert.equal(calls.filter((n) => n === 'nearby').length, 5);
   assert.equal(calls.filter((n) => n === 'patch').length, 1);
   assert.equal((await k.ws.readJSON(k.trip, '/plan/mcway.json')).start.at, '2026-11-27T14:00:00-08:00'); // the replan: a patch, so it can be undone (§11.5)
-  // Voice Auto came on with the driving and went off at the stops (spec §10.5).
+  // Voice came on with the driving and went off at the stops (spec §10.5).
   const voice = (await k.events(['state'])).filter((e) => e.data.voice).map((e) => `${e.data.voice} ${e.data.why}`);
-  assert.ok(voice.includes('on moving'), voice.join(', '));
-  assert.ok(voice.includes('off not sure'), voice.join(', '));
+  assert.ok(voice.includes('on driving'), voice.join(', '));
+  assert.ok(voice.includes('off off'), voice.join(', '));
   // Nothing went wrong on the way: the only cards were the reminders.
   assert.deepEqual([...new Set(k.notices.map((/** @type {any} */ n) => n.title))], ['Reminder']);
   // The road is in the log, for replay (spec §4.5, §13).

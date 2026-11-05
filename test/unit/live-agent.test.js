@@ -150,18 +150,18 @@ test('the now block says where the user is and what they are doing (spec §6.3)'
   assert.match(tail, /^activity: moving fast, about 54 km\/h$/m);
 });
 
-test('voice Auto hears "moving fast" from an activity sensor that came after voice started (spec §10.5)', async () => {
-  const k = await agentKit([[say('Hi.')]], { voice: { mode: 'auto' } });
+test('voice hears "moving fast" from an activity sensor that came after voice started (spec §10.5)', async () => {
+  const k = await agentKit([[say('Hi.')]], { voice: { mode: 'off' } });
   assert.equal(k.voice.mode.on, false);
   /** @type {Set<() => void>} */
   const fns = new Set();
   let activity = 'still';
-  k.registry.add('live', 'activity', { now: () => activity, onChange: (/** @type {() => void} */ fn) => { fns.add(fn); } });
+  k.registry.add('live', 'activity', { now: () => activity, held: () => activity === 'moving-fast', onChange: (/** @type {() => void} */ fn) => { fns.add(fn); } });
   await until(() => fns.size === 1);
   activity = 'moving-fast';
   for (const fn of fns) fn();
   await until(() => k.voice.mode.on);
-  assert.equal(k.voice.mode.why, 'moving');
+  assert.equal(k.voice.mode.why, 'driving');
 });
 
 test('Shiori sets, lists and cancels watches with her Time tools (spec §7.2)', async () => {

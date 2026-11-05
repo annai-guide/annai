@@ -13,20 +13,20 @@ import { numField, num, list as listOf } from '../format.js';
 
 /** @type {Record<string, string>} */
 const ROLE_NAMES = {
-  main: t`Main: talks with you`, 'koe-realtime': t`Koe · Realtime: hears you and speaks in one stream`, 'koe-classic': t`Koe · Classic: a chat model, with Speech in and Speech out`,
+  main: t`Main: talks with you`, 'koe-realtime': t`Koe · Live: hears you and speaks in one stream`, 'koe-classic': t`Koe · Chat: a chat model, with Speech in and Speech out`,
   utility: t`Utility: summaries and small jobs`, decide: t`Quick decision: yes-or-no checks`,
   'speech-in': t`Speech in: how Shiori hears you`, 'speech-out': t`Speech out: Shiori's voice`,
 };
 /** A role as its buttons name it: Koe's lists by name, the rest by id in English. @type {Record<string, string>} */
 const ROLE_CALLED = {
-  main: t`main`, 'koe-realtime': t`Koe · Realtime`, 'koe-classic': t`Koe · Classic`, utility: t`utility`, decide: t`decide`, 'speech-in': t`speech-in`, 'speech-out': t`speech-out`,
+  main: t`main`, 'koe-realtime': t`Koe · Live`, 'koe-classic': t`Koe · Chat`, utility: t`utility`, decide: t`decide`, 'speech-in': t`speech-in`, 'speech-out': t`speech-out`,
 };
 /** The chat roles in the order they are shown: Koe's two lists right after Main. */
 const CHAT_ORDER = ['main', 'koe-realtime', 'koe-classic', 'utility', 'decide'];
 /** What each Koe list is for, in a line (the user, 2026-10-22: two lists and a switch on the voice chip). @type {Record<string, string>} */
 const KOE_NOTES = {
-  'koe-realtime': t`Koe uses it while voice is on and Realtime is chosen on the voice chip. When none here can answer, Classic does.`,
-  'koe-classic': t`Koe uses it when Classic is chosen, while voice is off, and when Realtime can't answer: Speech in hears you, and Speech out speaks.`,
+  'koe-realtime': t`Koe uses it while voice is on and the Live chip is on. When none here can answer, Koe · Chat does.`,
+  'koe-classic': t`Koe uses it when Live is off, while voice is off, and when Koe · Live can't answer: Speech in hears you, and Speech out speaks.`,
 };
 /** Short notes on the stand-ins; Settings → Voice says where each sends your voice (spec §11.7). */
 const STAND_IN_NOTES = { 'send-audio': t`when the model takes audio`, dictation: t`the phone's own; usually goes to Google or Apple`, 'browser-voice': t`the browser's own; some voices go online` };
@@ -165,8 +165,8 @@ function roleBlock(role, roles, choices, nameOf, list, edit, { speech = false, k
   if (level) level.value = r.level;
   const wait = h('input', { id: `role-${role}-wait`, inputmode: 'numeric', placeholder: speech ? (role === 'speech-in' ? '15' : '10') : koe ? '8' : '30', value: numField(r.firstOutputSeconds) });
   const empty = role === 'main' ? t`No models yet. Add one.`
-    : realtime ? t`Empty: Koe has no realtime voice, so Classic answers. Add one, such as Gemini Live, from a provider with live voice.`
-    : koe ? t`Empty: in Classic, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.`
+    : realtime ? t`Empty: Koe has no live voice, so Koe · Chat answers. Add one, such as Gemini Live, from a provider with live voice.`
+    : koe ? t`Empty: with Live off, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.`
     : role === 'speech-in' ? t`Nothing here, so annai can't hear you. Add an entry.`
       : role === 'speech-out' ? t`Nothing here, so Shiori can't speak aloud. Add a voice.`
         : t`Uses the main list.`;

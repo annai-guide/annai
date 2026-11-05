@@ -518,7 +518,6 @@ test('on a short screen (an iPhone SE, 320 × 544) the dock is compact: under a 
   expect(Math.round(quiet.y + quiet.height)).toBe(544);
   await expect(page.getByRole('button', { name: 'Shiori' })).toContainText('Tap to talk'); // her state still shows
   await page.locator('.voice-chip').click();
-  await page.getByRole('group', { name: 'Voice' }).getByRole('button', { name: 'On' }).click();
   await expect(dock).toHaveClass(/\bvoice\b/);
   const voice = /** @type {{ y: number, height: number }} */ (await dock.boundingBox());
   expect(voice.height).toBeGreaterThan(quiet.height);

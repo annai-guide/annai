@@ -270,6 +270,7 @@ async function boot() {
     if (n.key) named.set(n.key, dismiss);
   });
   tellGps({ live, notices: shell.notices });
+  voice.onNote((note) => shell.notices.card({ title: note, toast: true }));
   // Leaving the page cancels Shiori's request; WebKit does so before pagehide, as the navigation begins.
   // A beforeunload that leads nowhere (the page stays) is forgotten after a few seconds.
   addEventListener('beforeunload', () => {

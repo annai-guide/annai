@@ -15,19 +15,19 @@ import { agentKit, until } from './agent-kit.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 5));
 
-test('Auto: on when moving fast, with headphones or car audio; off on the speaker; else the last choice there (spec §10.5)', () => {
-  const auto = (/** @type {any} */ c) => voiceMode({ setting: 'auto', activity: 'unknown', route: 'unknown', lastChoices: {}, ...c });
-  assert.deepEqual(voiceMode({ setting: 'on', activity: 'still', route: 'speaker', lastChoices: {} }), { setting: 'on', on: true, why: 'on' });
-  assert.deepEqual(voiceMode({ setting: 'off', activity: 'moving-fast', route: 'car', lastChoices: {} }), { setting: 'off', on: false, why: 'off' });
-  assert.deepEqual(auto({ activity: 'moving-fast', route: 'speaker' }), { setting: 'auto', on: true, why: 'moving' });
-  assert.deepEqual(auto({ route: 'car' }), { setting: 'auto', on: true, why: 'car audio' });
-  assert.deepEqual(auto({ route: 'headphones' }), { setting: 'auto', on: true, why: 'headphones' });
-  assert.deepEqual(auto({ route: 'speaker', lastChoices: { unknown: 'on' } }), { setting: 'auto', on: false, why: 'phone speaker' });
-  assert.deepEqual(auto({ activity: 'still', route: 'speaker', held: true }), { setting: 'auto', on: true, why: 'moving' }, 'moving fast ended a moment ago: a light');
-  assert.deepEqual(voiceMode({ setting: 'off', activity: 'still', route: 'speaker', lastChoices: {}, held: true }), { setting: 'off', on: false, why: 'off' });
-  assert.deepEqual(auto({ activity: 'still', route: 'speaker', held: false }), { setting: 'auto', on: false, why: 'phone speaker' });
-  assert.deepEqual(auto({ activity: 'walking', lastChoices: { walking: 'on' } }), { setting: 'auto', on: true, why: 'your last choice' });
-  assert.deepEqual(auto({ activity: 'walking', lastChoices: { still: 'on' } }), { setting: 'auto', on: false, why: 'not sure' });
+test('voice: the setting; with it off, a tap holds it on and driving turns it on; nothing else does (spec §10.5)', () => {
+  assert.deepEqual(voiceMode({ setting: 'on' }), { setting: 'on', on: true, why: 'on' });
+  assert.deepEqual(voiceMode({ setting: 'on', driving: true, tapped: true }), { setting: 'on', on: true, why: 'on' });
+  assert.deepEqual(voiceMode({ setting: 'off' }), { setting: 'off', on: false, why: 'off' });
+  assert.deepEqual(voiceMode({ setting: 'off', driving: true }), { setting: 'off', on: true, why: 'driving' });
+  assert.deepEqual(voiceMode({ setting: 'off', tapped: true }), { setting: 'off', on: true, why: 'tapped' });
+});
+
+test('old settings stay readable: a saved auto, or anything else, reads as off, and what went with Auto is ignored', () => {
+  for (const mode of ['auto', 'AUTO', undefined, 7]) assert.equal(voiceSettings({ voice: { mode, lastChoices: { unknown: 'on' } } }).mode, 'off', String(mode));
+  assert.equal(voiceSettings({ voice: { mode: 'on', lastChoices: 'x' } }).mode, 'on');
+  assert.equal(voiceSettings({}).mode, 'off');
+  assert.equal('lastChoices' in voiceSettings({ voice: { lastChoices: { unknown: 'on' } } }), false);
 });
 
 test("what audio is connected, from the devices' names; nothing to go on without names", () => {
@@ -46,7 +46,7 @@ test("what audio is connected, from the devices' names; nothing to go on without
   assert.equal(routeOf([{ kind: 'videoinput', label: 'Car camera' }]), 'unknown');
 });
 
-// voice-fix item 5 (the iPhone trace, 2026-10-22: Auto said "headphones" on the phone's own speaker): the table.
+// voice-fix item 5 (the iPhone trace, 2026-10-22: "headphones" on the phone's own speaker): the table.
 test('routeOf: the phone\'s own names (speaker and receiver too) are the speaker; names nobody listed are unknown, never headphones', () => {
   const input = (/** @type {string} */ label) => ({ kind: 'audioinput', label });
   const output = (/** @type {string} */ label) => ({ kind: 'audiooutput', label });
@@ -66,10 +66,10 @@ test('routeOf: the phone\'s own names (speaker and receiver too) are the speaker
   ])) assert.equal(routeOf(devices), want, devices.map((d) => d.label).join(' + '));
 });
 
-test('the chip says what voice is now', () => {
-  assert.equal(chipText({ setting: 'auto', on: false, why: 'phone speaker' }), 'Voice auto · off');
-  assert.equal(chipText({ setting: 'auto', on: true, why: 'car audio' }), 'Voice on · car audio');
+test('the chip says what voice is now, and no reason but driving', () => {
   assert.equal(chipText({ setting: 'on', on: true, why: 'on' }), 'Voice on');
+  assert.equal(chipText({ setting: 'off', on: true, why: 'tapped' }), 'Voice on');
+  assert.equal(chipText({ setting: 'off', on: true, why: 'driving' }), 'Voice on · driving');
   assert.equal(chipText({ setting: 'off', on: false, why: 'off' }), 'Voice off');
 });
 
@@ -88,48 +88,35 @@ async function voiceKit(devices = []) {
   return { voice, platform, registry, ws, store, changes };
 }
 
-test('the Voice follows the devices as they come and go, and the activity sensor when there is one', async () => {
-  const k = await voiceKit([{ kind: 'audioinput', label: 'iPhone Microphone' }]);
+test('a saved auto reads as off on the chip, and no audio device turns voice on', async () => {
+  const k = await voiceKit([{ kind: 'audioinput', label: 'iPhone Microphone' }, { kind: 'audioinput', label: 'Toyota Camry' }, { kind: 'audioinput', label: 'AirPods Pro' }]);
+  await updateAppSettings(k.ws, { voice: { mode: 'auto', lastChoices: { unknown: 'on' } } });
   assert.equal(await k.voice.refresh(), false);
-  assert.equal(k.voice.mode.why, 'phone speaker');
-  k.platform.setDevices([{ kind: 'audioinput', label: 'iPhone Microphone' }, { kind: 'audioinput', label: 'AirPods Pro' }]);
-  await tick();
-  assert.equal(k.voice.on, true);
-  assert.deepEqual(k.changes.map((m) => m.why), ['phone speaker', 'headphones']);
-  k.platform.setDevices([{ kind: 'audioinput', label: 'iPhone Microphone' }]);
-  await tick();
-  assert.equal(k.voice.on, false);
-  k.registry.add('live', 'activity', { now: () => 'moving-fast' });
-  assert.equal(await k.voice.refresh(), true);
-  assert.equal(k.voice.mode.why, 'moving');
+  assert.deepEqual(k.voice.mode, { setting: 'off', on: false, why: 'off' });
 });
 
-test('an explicit choice where annai cannot tell is remembered for that activity, and Auto uses it (spec §10.5)', async () => {
+test('the activity sensor: its held says driving, with the setting off', async () => {
   const k = await voiceKit([]);
-  await k.voice.refresh();
-  assert.deepEqual(k.voice.mode, { setting: 'auto', on: false, why: 'not sure' });
-  await k.voice.choose('on');
-  assert.deepEqual(k.voice.mode, { setting: 'on', on: true, why: 'on' });
-  assert.deepEqual(voiceSettings((await k.ws.readJSON('sys:settings', '/app.json')) ?? {}).lastChoices, { unknown: 'on' });
-  await k.voice.choose('auto');
-  assert.deepEqual(k.voice.mode, { setting: 'auto', on: true, why: 'your last choice' });
-  const known = await voiceKit([{ kind: 'audioinput', label: 'iPhone Microphone' }]);
-  await known.voice.choose('on');
-  assert.deepEqual(voiceSettings((await known.ws.readJSON('sys:settings', '/app.json')) ?? {}).lastChoices, {}, 'with the speaker known, there is nothing to learn');
+  let held = false;
+  k.registry.add('live', 'activity', { now: () => 'still', held: () => held });
+  assert.equal(await k.voice.refresh(), false);
+  held = true;
+  assert.equal(await k.voice.refresh(), true);
+  assert.equal(k.voice.mode.why, 'driving');
 });
 
 test('Shiori hears about voice changes: a state event, the now block, and the microphone closing when voice goes off (spec §4.5, §6.3)', async () => {
   const k = await agentKit([[{ toolCalls: [{ name: 'speak', input: { text: 'Anything else?' } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]], { voice: { mode: 'off' } });
-  await k.voice.choose('auto');
-  k.platform.setDevices([{ kind: 'audioinput', label: 'Toyota Camry' }]);
+  let driving = true;
+  k.registry.add('live', 'activity', { now: () => 'moving-fast', held: () => driving, hush: () => { driving = false; } });
   await until(() => k.voice.on);
   k.agent.send('Hi');
   await until(() => k.agent.state.name === 'listening');
-  assert.match(k.requests[0].tail, /voice: on .*\(auto: car audio\)/);
+  assert.match(k.requests[0].tail, /voice: on .*\(while driving\)/);
   await k.voice.choose('off');
   await k.agent.idle();
   const states = (await k.events(['state'])).map((/** @type {any} */ e) => [e.data.voice, e.data.setting, e.data.why]);
-  assert.deepEqual(states.slice(-2), [['on', 'auto', 'car audio'], ['off', 'off', 'off']]);
+  assert.deepEqual(states.slice(-2), [['on', 'off', 'driving'], ['off', 'off', 'off']]);
   assert.equal(k.platform.log.filter((/** @type {string} */ l) => l.startsWith('mic ')).at(-1), 'mic close');
   // Voice going off while a tap's window listens: the window closes, and the dock says she sleeps, so the next tap opens typing.
   await k.voice.choose('on');

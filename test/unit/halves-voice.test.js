@@ -765,15 +765,15 @@ test("heard, then the Stop, then Koe's answer and a question for Kokoro: the que
 });
 
 // The second drive, item 1: "I expect tapping avatar starts a voice session even if I'm in auto".
-test('Auto, voice off: a tap starts voice, held on for that exchange, and she answers aloud; then Auto decides again', async (t) => {
+test('voice off: a tap starts voice, held on for that exchange, and she answers aloud; then voice is off again', async (t) => {
   useClock(t);
   const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], {
     koe: { talk: { rules: [{ match: 'the user spoke', reply: { toolCalls: [{ name: 'speak', input: { text: 'A concrete arch.' } }, { name: 'sleep', input: {} }] } }] } },
-    voice: { mode: 'auto', speechIn: ['m-hear'], hears: ['what is that bridge'] },
+    voice: { mode: 'off', speechIn: ['m-hear'], hears: ['what is that bridge'] },
   });
   assert.equal(k.voice.on, false);
   assert.equal(k.agent.tap(), 'listening');
-  assert.deepEqual([k.voice.on, k.voice.mode.why, k.voice.mode.setting], [true, 'tapped', 'auto']);
+  assert.deepEqual([k.voice.on, k.voice.mode.why, k.voice.mode.setting], [true, 'tapped', 'off']);
   await until(() => k.agent.state.name === 'listening');
   await hear(k, 'where-eat');
   await until(() => plays(k).length === 1);
@@ -785,27 +785,24 @@ test('Auto, voice off: a tap starts voice, held on for that exchange, and she an
   assert.equal(k.platform.log.filter((/** @type {string} */ l) => l.startsWith('mic ')).at(-1), 'mic close');
 });
 
-test('Auto: a tap that hears nothing lets voice go when its window closes; one with no way to hear says so, and lets it go', async (t) => {
+test('a tap that hears nothing lets voice go when its window closes; one with no way to hear says so, and lets it go', async (t) => {
   useClock(t);
-  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { halves: true, voice: { mode: 'auto', speechIn: ['m-hear'] } });
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { halves: true, voice: { mode: 'off', speechIn: ['m-hear'] } });
   assert.equal(k.agent.tap(), 'listening');
   await until(() => k.agent.state.name === 'listening');
   assert.equal(k.voice.on, true);
   assert.equal(k.agent.tap(), 'stopped');
   await until(() => !k.voice.on);
-  const deaf = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { halves: true, voice: { mode: 'auto', micFails: 'NotAllowedError', speechIn: ['m-hear'] } });
+  const deaf = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { halves: true, voice: { mode: 'off', micFails: 'NotAllowedError', speechIn: ['m-hear'] } });
   assert.equal(deaf.agent.tap(), 'listening');
   await until(() => deaf.notices.length > 0);
   await until(() => !deaf.voice.on);
   assert.equal(deaf.agent.state.name, 'sleeping');
 });
 
-test('voice set to Off: a tap still opens typing, and a choice ends a hold', async (t) => {
+test('a choice ends a tap\'s hold', async (t) => {
   useClock(t);
-  const off = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { halves: true, voice: { mode: 'off', speechIn: ['m-hear'] } });
-  assert.equal(off.agent.tap(), 'typing');
-  assert.equal(off.voice.on, false);
-  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { halves: true, voice: { mode: 'auto', speechIn: ['m-hear'] } });
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { halves: true, voice: { mode: 'off', speechIn: ['m-hear'] } });
   k.agent.tap();
   await until(() => k.agent.state.name === 'listening');
   await k.voice.choose('off');
@@ -827,9 +824,9 @@ test('a claim goes through the send path as a msg.user with claim: Koe and Kokor
 });
 
 // Drive2-ui fix pass 1, finding 1: the listening window failed after it opened; nothing said "sleeping", so the hold never ended.
-test('Auto: a tap whose window fails after it opened (dictation refused, then the microphone too) lets the dock and voice go', async (t) => {
+test('a tap whose window fails after it opened (dictation refused, then the microphone too) lets the dock and voice go', async (t) => {
   useClock(t);
-  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { halves: true, voice: { mode: 'auto', dictation: true, micFails: 'NotAllowedError', speechIn: ['dictation', 'm-hear'] } });
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { halves: true, voice: { mode: 'off', dictation: true, micFails: 'NotAllowedError', speechIn: ['dictation', 'm-hear'] } });
   assert.equal(k.agent.tap(), 'listening');
   await until(() => k.agent.state.name === 'listening');
   assert.equal(k.voice.on, true);

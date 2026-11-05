@@ -208,7 +208,7 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'voice.route') {
     const unnamed = t`no name`;
     return line(t`audio route ${d.route}`, d.using === null ? t`from the devices present` : t`the microphone in use: ${d.using || unnamed}`,
-      (d.devices ?? []).map((/** @type {string} */ x) => x || unnamed).join(', ') || t`no devices`);
+      (d.devices ?? []).map((/** @type {string} */ x) => x || unnamed).join(', ') || t`no devices`, d.gone?.length ? t`disconnected: ${d.gone.join(', ')}` : null);
   }
   if (e.type === 'app.start') return /* en */ `annai started · GPS ${d.gps}${d.activity && d.activity !== 'unknown' ? ` · ${d.activity} restored` : ''}`;
   if (e.type === 'state' && typeof d.activity === 'string') {

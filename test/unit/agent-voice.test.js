@@ -282,9 +282,9 @@ test('ask is spoken too, and a spoken answer answers it; wait listens (spec §7.
   assert.deepEqual((await results(k, 'wait')).map((/** @type {any} */ e) => e.data.content), ['The user said:', 'Nothing yet (10 seconds).']);
 });
 
-test('one half: a claim answers a wait as the words it is, and the line says so; and the voice mode holds on a tap in Auto, as one half too', async (t) => {
+test('one half: a claim answers a wait as the words it is, and the line says so; and the voice mode holds on a tap with voice off, as one half too', async (t) => {
   useClock(t);
-  const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] }], { voice: { mode: 'auto', speechIn: ['m-hear'] }, halves: true });
+  const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] }], { voice: { mode: 'off', speechIn: ['m-hear'] }, halves: true });
   k.agent.send('Is there parking?', { claim: 'h1' });
   await k.agent.idle();
   assert.equal((await k.events(['msg.user']))[0].data.claim, 'h1');

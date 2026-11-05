@@ -91,7 +91,7 @@
     },
     "provider-openai": {
       "name": "OpenAI",
-      "description": "通过 OpenAI 的 Responses API 使用 GPT 模型，另有 OpenAI 的语音转文字和声音，以及供 Koe 使用的 Realtime 语音，全部用一个密钥。"
+      "description": "通过 OpenAI 的 Responses API 使用 GPT 模型，另有 OpenAI 的语音转文字和声音，以及供 Koe 使用的 实时语音，全部用一个密钥。"
     },
     "provider-openrouter": {
       "name": "OpenRouter",
@@ -180,7 +180,7 @@
     "provider-local-speech": "5fe7c8fe545e27614da2d66d7e2f17d3f32edb588faed0e3b1cca24af254c8d9",
     "provider-mistral": "6e3d8d19e51b48a482a5e54c734b26a9f9a78b93db61907baf9588b53795d568",
     "provider-ollama": "0366bf394b094038f5bce16c4d43de6446a07c760e2c8726c96c8be51a606825",
-    "provider-openai": "60047f27be782a7900e2d45beab643e14bf63d000802b2d0e9abfa877162c4be",
+    "provider-openai": "17b3c9d57cbef0ed6d3734530a3a7660c93683fa94fd3590789b5bf44f477d99",
     "provider-openrouter": "e06aa19dc66c49b7575a00d891964f75a10a27b0cc4014e32e8bfe6d41d655f7",
     "provider-scripted": "9dfb3901051de397e56465adb78a6d14712730275536b85bccefc18b4026f41e",
     "provider-sglang": "3f4e38e1ee62f34620ca4740ea7282c2fa66d339a00cbef277963f8c9a3f5665",

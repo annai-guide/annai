@@ -61,9 +61,9 @@ test("OpenAI's Realtime voice: switched on, openai-realtime installs; Test opens
     await page.getByLabel('API key').fill(SK);
     await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
-    const rt = page.getByRole('region', { name: 'Realtime voice', exact: true });
+    const rt = page.getByRole('region', { name: 'Live voice', exact: true });
     await expect(rt.getByText(/short-lived keys made by a server/)).toBeVisible();
-    const use = rt.getByLabel('Use Realtime voice');
+    const use = rt.getByLabel('Use Live voice');
     await expect(use).not.toBeChecked();
     await use.check();
     await expect(savedBy(use)).toHaveText('Saved', { timeout: 30_000 }); // openai-realtime, installed first

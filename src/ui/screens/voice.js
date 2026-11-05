@@ -42,8 +42,7 @@ export async function renderVoice(ctx) {
     await voice.refresh();
   };
   const modeStatus = h('p', { class: 'sub', role: 'status', text: voice.on ? t`Voice is on.` : t`Voice is off.` });
-  const mode = savedRadios(tc('voice mode')`Voice`, [['auto', t`Auto`], ['on', t`On`], ['off', t`Off`]], s.mode, async (m) => {
-    // A choice here teaches Auto, as one on the chip does (spec §10.5).
+  const mode = savedRadios(tc('voice mode')`Voice`, [['on', t`On`], ['off', t`Off`]], s.mode, async (m) => {
     await voice.choose(m);
     modeStatus.textContent = voice.on ? t`Voice is on.` : t`Voice is off.`;
   });
@@ -142,7 +141,7 @@ export async function renderVoice(ctx) {
     h('h1', { class: 'title', text: tc('screen')`Voice` }),
     h('p', { class: 'sub', text: t`How Shiori speaks and hears you. Which voices and which transcription models she uses, and in what order, is in Settings → Models.` }),
     section(t`On or off`,
-      h('p', { class: 'sub', text: t`Auto: on in the car, with headphones, or when moving fast; off on the phone speaker; and where annai can’t tell, what you chose last time. On: Shiori speaks aloud and listens for your answer. Off: she writes, and you type. In Auto, a tap on Shiori turns voice on until that talk ends. The chip on the dock changes it too.` }),
+      h('p', { class: 'sub', text: t`On: Shiori speaks aloud and listens for your answer. Off: she writes. A tap on Shiori always talks, until that talk ends; the keyboard button is how to type. With GPS on, voice is on while driving. It goes off by itself when a drive ends or headphones disconnect. The chip on the dock changes it too.` }),
       mode, modeStatus,
       h('div', { class: 'row' },
         savedField(t`Listen for an answer (seconds)`, silence, () => numberIn(silence, 2, 60, t`Listen for 2 to 60 seconds.`, { whole: true, need: true }), (n) => save({ silenceSeconds: n })),
@@ -166,6 +165,7 @@ export async function renderVoice(ctx) {
       h('p', { class: 'sub', text: t`Off: what the microphone hears is sent to be written down, then let go. On: each clip is kept with the conversation, and in backups.` }),
       h('p', { class: 'sub', text: formats })),
     section(t`Live voice`,
+      h('p', { class: 'sub', text: t`Live on: Shiori hears you and answers in one stream, with a live model. Live off: what you say is written down, then answered. The Live chip on the dock switches it.` }),
       h('p', { class: 'sub', text: live.length
         ? t`While a live session listens, what you say goes straight to ${list(live, 'or')} as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange, when she's asked to sleep, on voice off, or when annai leaves the screen. With sound that never stops, such as music, Shiori decides when to sleep.`
         : t`While a live session listens, what you say goes straight to its provider as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange, when she's asked to sleep, on voice off, or when annai leaves the screen. With sound that never stops, such as music, Shiori decides when to sleep.` }),

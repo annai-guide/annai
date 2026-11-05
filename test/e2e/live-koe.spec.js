@@ -16,7 +16,7 @@ const sleep = { name: 'sleep', input: {} };
 
 /** The two realtime providers, as their pages name them. */
 const GEMINI = { provider: 'Google Gemini', key: KEY, ability: 'Live voice', address: (/** @type {string} */ o) => o, model: 'Gemini 3.8 Live' };
-const OPENAI = { provider: 'OpenAI', key: 'sk-proj-e2e-koe-live-stand-in-0123456789abcdef', ability: 'Realtime voice', address: (/** @type {string} */ o) => `${o}/v1`, model: 'GPT Realtime 2.1' };
+const OPENAI = { provider: 'OpenAI', key: 'sk-proj-e2e-koe-live-stand-in-0123456789abcdef', ability: 'Live voice', address: (/** @type {string} */ o) => `${o}/v1`, model: 'GPT Realtime 2.1' };
 
 /**
  * Kokoro on Custom provider, then a realtime provider (Gemini by default) with its realtime voice at the stand-in, its
@@ -41,16 +41,15 @@ async function liveSetUp(page, kokoro, live, p = GEMINI) {
   await address.fill(p.address(live));
   await leaveSaved(address);
   await page.goto('/#/models');
-  await page.getByLabel('Add a model to Koe · Realtime').selectOption({ label: p.model });
-  await page.getByRole('button', { name: 'Add to Koe · Realtime' }).click();
+  await page.getByLabel('Add a model to Koe · Live').selectOption({ label: p.model });
+  await page.getByRole('button', { name: 'Add to Koe · Live' }).click();
   await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(1).getByText(`1. ${p.model}`)).toBeVisible();
   await page.goto('/#/trips');
   await page.getByLabel('Trip name').fill('Big Sur');
   await page.getByRole('button', { name: 'Start trip' }).click();
   await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
   await page.locator('.voice-chip').click();
-  await page.getByRole('group', { name: 'Voice' }).getByRole('button', { name: 'On' }).click();
-  await expect(page.locator('.voice-chip')).toHaveText('Voice on · Realtime');
+  await expect(page.locator('.voice-chip')).toHaveText('Voice on');
 }
 
 test('voice on, a tap: "Listening live"; a spoken question gets "checking" aloud and a tell_kokoro; Kokoro\'s answer arrives as <from_kokoro> text and is said; the microphone streamed only speech; voice off closes it; Trace shows the session, its data and cost, never the key', async ({ page }) => {
@@ -99,7 +98,6 @@ test('voice on, a tap: "Listening live"; a spoken question gets "checking" aloud
     ]);
     // Voice off closes it, the microphone with it.
     await page.locator('.voice-chip').click();
-    await page.getByRole('group', { name: 'Voice' }).getByRole('button', { name: 'Off' }).click();
     await expect(page.locator('.voice-chip')).toHaveText('Voice off');
     expect(await page.evaluate(() => /** @type {any} */ (window).__micOpens)).toBe(1);
     await page.goto('/#/trace');
@@ -129,10 +127,10 @@ test('the page out of view: the session closes and the microphone stops; back in
       document.dispatchEvent(new Event('visibilitychange'));
     }, state);
     await view('hidden');
-    await expect(page.locator('.voice-chip')).toHaveText('Voice on · Realtime');
+    await expect(page.locator('.voice-chip')).toHaveText('Voice on');
     await view('visible');
     await page.waitForTimeout(500);
-    await expect(page.locator('.voice-chip')).toHaveText('Voice on · Realtime');
+    await expect(page.locator('.voice-chip')).toHaveText('Voice on');
     expect(await page.evaluate(() => /** @type {any} */ (window).__micOpens)).toBe(1);
     await page.goto('/#/trace');
     await filterTrace(page, { kind: 'Models', type: 'live.session' });
@@ -173,7 +171,7 @@ test("on the phone's speaker, her voice coming back into the microphone never cu
 });
 
 // Fix pass 2, item 3: a live Koe's line is written only once she has finished; the bubble shows her words as they come, while she speaks.
-test('in Koe · Realtime the bubble over Shiori holds her words while she speaks, before her line is in the conversation', async ({ page }) => {
+test('in Koe · Live the bubble over Shiori holds her words while she speaks, before her line is in the conversation', async ({ page }) => {
   const words = 'There is a taco stand two miles ahead, and a diner just after the bridge.';
   const s = await startRealtimeServer({ flavour: 'gemini', key: KEY, turns: [{ heard: 'Where should we eat?', said: words, audio: voice(3), usage }] });
   const kokoro = await startModelServer({ '/kokoro/v1/messages': sse([sleep]) });
@@ -200,7 +198,7 @@ test('in Koe · Realtime the bubble over Shiori holds her words while she speaks
 });
 
 // Fix pass 3, item 5: Gemini's input transcript often finishes after her turn: the heard line takes its last words, and they are announced.
-test('in Koe · Realtime the last words heard, coming after her turn, reach the heard line and the announcer', async ({ page }) => {
+test('in Koe · Live the last words heard, coming after her turn, reach the heard line and the announcer', async ({ page }) => {
   const s = await startRealtimeServer({ flavour: 'gemini', key: KEY, turns: [{ heard: 'Where should we', heardAfter: ' eat tonight?', said: 'Somewhere nice by the water.', audio: voice(0.4), usage }] });
   const kokoro = await startModelServer({ '/kokoro/v1/messages': sse([sleep]) });
   try {
@@ -259,7 +257,6 @@ test("OpenAI Realtime as Koe: the same conversation: \"Listening live\", a spoke
     await expect(said).toHaveCount(2, { timeout: 20_000 });
     await expect(said.nth(1)).toContainText("It's open until ten tonight.");
     await page.locator('.voice-chip').click();
-    await page.getByRole('group', { name: 'Voice' }).getByRole('button', { name: 'Off' }).click();
     await expect(page.locator('.voice-chip')).toHaveText('Voice off');
     await page.goto('/#/trace');
     await filterTrace(page, { kind: 'Models', type: 'live.session' });

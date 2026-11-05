@@ -24,7 +24,7 @@ In the car, with the iPhone on the car's Bluetooth, and a passenger. Set up as f
 - **Koe:** `gemini-3.5-flash-lite`, as for K1: Koe uses the same list with voice on or off.
 - **Speech in:** "Send audio to the model" first (Gemini hears audio), or a transcription model such as Groq's (free).
 - **Quick decision:** `gemini-3.5-flash-lite`, so talk not meant for Shiori is left alone.
-- **Voice:** Auto (it turns on in the car) or On.
+- **Voice:** On, or off with GPS on (it turns on while driving).
 
 - [ ] **A live question aloud.** Tap Shiori and ask "Is Nepenthe open now?". About a second after you stop, plus the voice's own start, Shiori says she's checking (that's Koe), and "Kokoro is working" shows. 10 to 15 seconds later she says the hours aloud, in her own words. While she waits, the microphone listens: say something else meanwhile, and she answers that first, then the hours.
 - [ ] **A stable question aloud.** "What's that bridge?" near Bixby Bridge: she answers at once. Trace → Kind **Models**, Type contains `model.turn`: a `Kokoro · main` turn after it, woken for "Koe answered the user". If Kokoro finds her wrong, she stops mid-sentence, corrects herself and apologises: write down what she said.
@@ -80,7 +80,8 @@ You need Gemini's Live voice switched on (K4), **Gemini 3.8 Live** first in Sett
 - [ ] **Chatter.** Talk to a passenger, not Shiori: Koe stays silent. With "Show what the halves tell each other" on (Settings → Shiori): the line shows as heard, not for Shiori.
 - [ ] **Cutting in.** While Koe talks, say something: she stops at once and listens. Does her own voice from the car's speakers ever cut her off (echo)? If it does, turn off Settings → Voice → **Cut her off by speaking** and check a tap still stops her.
 - [ ] **The phone's speaker.** No headphones, no car: ask something that takes her a few sentences. She says all of it, never cut off (✂) by her own voice; speaking over her does nothing, a tap stops her.
-- [ ] **AirPods in and out.** With AirPods in, start a live session and ask something long; speaking over her cuts her off. Take them out while she speaks: she goes on from the phone's speaker and her own voice never cuts her off (✂). With voice on Auto, voice goes off: she finishes her sentence, then the session closes. Put them back in, tap, and speak over her again: it cuts her off. Trace → Kind **Live**: `voice.route` lines say what was in use each time.
+- [ ] **AirPods in and out: does iOS tell a web page?** Not verified, and the rule depends on it. With AirPods in, start a live session and ask something long; speaking over her cuts her off. Take them out while she speaks: she stops mid-word, the chip says **Voice off**, and a note says "Voice off: headphones disconnected". If she goes on, iOS didn't tell annai: write that down. Trace → Kind **Models**: a `voice.route` line says "disconnected: …" with the device's name. Turn voice on, put them back in, tap, and speak over her again: it cuts her off.
+- [ ] **A car's Bluetooth going away.** On the car's Bluetooth with voice on, turn the engine off: same as above, if the phone's list named the car. Does a watch going out of range, or the phone changing audio session, turn voice off when nothing was unplugged? Write it down: that would be a false "disconnected".
 - [ ] **A quick "yes".** Ask something she answers with a question ("Shall I find a place for lunch?"), and say "yes" the moment she stops. It is heard, and she goes on; Trace → `live.turn` says why the turn ended.
 - [ ] **A slow speaker.** Settings → Voice → Pause that ends a sentence: 2500 ms. Speak slowly, with 1 to 2 s pauses mid-sentence: she waits for the whole sentence, and answers it as one; nothing is cut off mid-way (`live.turn`: pause, never transcript).
 - [ ] **The quiet spell.** Say nothing for 30 seconds: the chip goes back to "Voice on", and music returns to full quality (not the thin phone-call sound). Settings → Voice → **Close a live session after** changes the wait.
@@ -116,29 +117,33 @@ Replaced on 2026-10-22 by Koe's two lists, Realtime and Classic (the section aft
 - [ ] **The recommended models.** Google Gemini's page → **Use the recommended models**: Gemini 3.8 Live goes into Koe.
 - [ ] **A photo to Live.** Gemini 3.8 Live first in Koe, voice on: take a photo of something and ask "What's this?". Koe talks about the photo itself (before Google Gemini 1.5.0, Live never got photos, and only Kokoro saw them).
 
-## Koe's two lists, Realtime and Classic (2026-10-22)
+## Voice and Live, each one tap (the second drive, 2026-11-05)
 
-The one Koe list is two again, with a switch on the voice chip (the user: "Two lists + a switch", named "Realtime / Classic"). Before you start, open Settings → Updates: if it offers Google Gemini 2.4.0, update it.
+Auto is gone: voice is on or off, and Live is its own switch. Koe's two lists are Koe · Live and Koe · Chat in Settings → Models. Before you start, open Settings → Updates and update what it offers.
 
-- [ ] **Your list moved over.** Settings → Models: right after Main, "Koe · Realtime: hears you and speaks in one stream" and "Koe · Classic: a chat model, with Speech in and Speech out", each with a line on when Koe uses it. Gemini 3.8 Live is in Realtime, gemini-3.5-flash-lite in Classic, each list in the order the one list had. Classic's Reasoning and Wait are what Koe's were; Realtime shows neither.
-- [ ] **The chip says which.** Voice on: the chip reads **Voice on · Realtime** if Live was first in your old list, else **Voice on · Classic**. Voice auto with car audio: **Voice on · car audio · Realtime**. Does it fit on one line on the iPhone? Write down where it wraps.
-- [ ] **The switch.** Tap the chip: under Auto, On and Off, **Koe** with Realtime and Classic, the one in use pressed. Tap Classic: the chip says **Voice on · Classic** at once; a tap on Shiori talks through Shiori's usual voice, never **Listening live**. Tap Realtime: a tap gives **Listening live**. Close annai and open it again: the choice is kept.
-- [ ] **Realtime off.** Realtime chosen, switch off Live voice on Google Gemini's page: the chip says **Voice on · Classic (Realtime off)**, with the reason on one line, and its menu says so in a sentence. Switch Live voice back on: **Voice on · Realtime**, with nothing else tapped.
-- [ ] **Koe down.** Empty Koe · Classic, Realtime chosen, Live voice off: the chip says **Voice on · Realtime off**, never Classic, and Shiori answers directly. Put flash-lite back.
-- [ ] **Realtime back mid-reply.** If Live rests after a failure (**Classic (Realtime resting)**) and comes back while Koe is speaking through Classic, the sentence ends whole; the next answer is Realtime's.
-- [ ] **No Realtime model.** Remove Gemini 3.8 Live from Koe · Realtime: **Voice on · Classic (no Realtime model)**. Put it back.
-- [ ] **Voice off types through Classic.** Realtime chosen, voice off: the chip says only **Voice off**. Type a question: flash-lite answers as a bubble, and Trace → Type contains `live.session` shows no new session.
-- [ ] **The recommended models.** On a fresh install (or after emptying both Koe lists and choosing Classic), Google Gemini's page → **Use the recommended models**: Live voice is switched on, Gemini 3.8 Live goes into Koe · Realtime, gemini-3.5-flash-lite into Koe · Classic, and the chip says **Realtime** with voice on.
+- [ ] **The chips.** The dock reads **Voice off** or **Voice on**, and **Live** or **Live off** beside it. One line at your phone's width, with Flag on too; write down what gets cut. One tap turns each on or off, no menu.
+- [ ] **Your old Auto.** On a phone that had Auto saved, the chip reads **Voice off** after the update, whatever is connected.
+- [ ] **The Live switch.** **Live** and voice on: a tap on Shiori gives **Listening live**. Tap **Live**: **Live off** at once, and a tap talks through Shiori's usual voice. Close annai and open it again: the choice is kept.
+- [ ] **No live model.** Remove the live models from Koe · Live, or switch Live voice off on Google Gemini's page: the Live chip goes. Put them back: it comes back with nothing else tapped.
+- [ ] **Voice off types through Koe · Chat.** Live on, voice off. Type a question: flash-lite answers as a bubble, and Trace → Type contains `live.session` shows no new session.
+- [ ] **The recommended models.** On a fresh install (or after emptying both Koe lists and turning Live off), Google Gemini's page → **Use the recommended models**: Live voice is switched on, Gemini 3.8 Live goes into Koe · Live, gemini-3.5-flash-lite into Koe · Chat, and the chip says **Live**.
 
-## The first tap in Auto (the second drive, 2026-11-04)
+## A tap always talks (the second drive, 2026-11-04)
 
-The user: "I expect tapping avatar starts a voice session even if I'm in auto". On the phone's own speaker Auto has voice off, so a tap holds voice on for that exchange. These steps need a real phone: the harness has no real microphone, no call and no permission prompt.
+The user: "I expect tapping avatar starts a voice session". With voice off, a tap holds voice on for that exchange. The keyboard button is how to type. These steps need a real phone: the harness has no real microphone, no call and no permission prompt.
 
-- [ ] **Dictation.** Voice on Auto, on the phone's speaker, Speech in with Phone dictation first. The first tap on Shiori (nothing said before): the dock says Listening, you speak, she answers aloud. Afterwards the dock goes back to asleep and the chip to its Auto words ("Voice auto · off").
+- [ ] **Dictation.** Voice off, Speech in with Phone dictation first. The first tap on Shiori (nothing said before): the dock says Listening, you speak, she answers aloud. Afterwards the dock goes back to asleep and the chip to **Voice off**.
 - [ ] **Recording.** The same with Send audio to the model first in Speech in (no dictation): the first tap asks for the microphone once (allow it); she hears you and answers aloud.
-- [ ] **The first tap, microphone refused.** Refuse the microphone (or turn it off in Settings) and tap Shiori: a card says why, the dock does not stay on Listening, and voice goes back to Auto's own answer. Allow it and tap again: it works.
+- [ ] **The first tap, microphone refused.** Refuse the microphone (or turn it off in Settings) and tap Shiori: a card says why, the dock does not stay on Listening, and the chip goes back to **Voice off**. Allow it and tap again: it works.
 - [ ] **A call takes the microphone.** Tap Shiori, then ring the phone from another phone (or start a call) before you speak: a card says listening stopped, the dock goes back to asleep and does not say Listening, and nothing she says afterwards is spoken aloud on the speaker until you tap or speak again.
-- [ ] **Realtime in Auto.** Realtime chosen, Auto on the speaker: the first tap opens a live session (Listening live) and she answers aloud. With Live voice switched off on Google Gemini's page (or the key refused), the first tap lands on Classic's microphone instead: you are listened to, never left looking at nothing.
+- [ ] **Live with voice off.** **Live** on, voice off: the first tap opens a live session (Listening live) and she answers aloud; two quick taps do the same, never Classic's microphone. With Live voice switched off on Google Gemini's page (or the key refused), the first tap lands on Koe · Chat's microphone instead: you are listened to, never left looking at nothing.
+
+## On while driving, off when it ends (the second drive, 2026-11-05)
+
+- [ ] **On while driving.** GPS on, voice off. Drive: within about a minute of moving fast the chip reads **Voice on · driving**. A red light leaves it on.
+- [ ] **A drive ends.** Park: about 3 minutes after stopping, voice goes off with a note, "Voice off: you stopped driving". The same with voice turned on by hand before the drive, and then the chip stays **Voice off** after a restart. Turn it on: it stays on.
+- [ ] **Off during a drive.** Tap the chip off while driving: it stays off for the rest of the drive, after a reload too; the next drive turns it on.
+- [ ] **A reminder at the end.** Set a reminder for about 3 minutes after you'll park: if it comes at the moment the drive ends, it is said before voice goes off.
 
 ## The languages you speak (phase 2, 2026-10-23)
 

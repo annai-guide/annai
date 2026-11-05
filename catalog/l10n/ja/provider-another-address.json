@@ -5,7 +5,7 @@
     "provider.abilities.chat-completions.name": "Chat Completions",
     "provider.abilities.messages.name": "Anthropic Messages",
     "provider.abilities.messages.note": "アドレスは /v1 を付けずに入力してください：Anthropic Messages が /v1/messages を自分で加えます。",
-    "provider.abilities.realtime.name": "リアルタイム音声",
+    "provider.abilities.realtime.name": "ライブ音声",
     "provider.abilities.realtime.note": "OpenAI の Realtime API を WebSocket で話すサーバー用で、このアドレスに /realtime を付けた場所につなぎます。モデルは ID で追加してください。annai は OpenAI 自身と同じく、キーをブラウザのサブプロトコルとして渡します。",
     "provider.abilities.responses.name": "OpenAI Responses",
     "provider.abilities.responses.note": "OpenAI の Responses API に対応したサーバー用です。会話をサーバーに保持して毎回新しい部分だけを送る機能は、オンにするまでここではオフです：previous_response_id を無視するサーバーは、会話なしで答えてしまうからです。リクエストを拒否されるなら、調整項目で \"phase\": false、\"nowRole\": \"user\"、\"encryptedReasoning\": false を試してください。推論モデルには、そのページで推論レベルを設定してください。設定しないと途中経過を見せずに考え、制限時間を超えることがあります。",

@@ -30,7 +30,7 @@ import { t } from '../l10n.js';
  *   late: minutes after it came due, in a catch-up; away: how annai was away then
  * @typedef {{ watch: string, text: string, cue?: boolean, plan?: import('./plan-watches.js').PlanSay }} Reminder  plan: a plan watch's, its data for the user's words
  * @typedef {{ target: string | null, wake: (w: any) => Promise<void>, remind: (list: Reminder[], scope?: string) => Promise<void>,
- *   on: (kind: 'event' | 'open', fn: (e: any) => void) => () => void }} AgentLike  the Agent, as live mode uses it
+ *   holdVoice?: () => void, on: (kind: 'event' | 'open', fn: (e: any) => void) => () => void }} AgentLike  the Agent, as live mode uses it
  * @typedef {{ kind: 'location' | 'visibility' | 'connectivity', start: (emit: (x: any) => void) => (() => void) | void }} Sensor
  *   location emits { lat, lng, accuracy, speed?, heading? }, or { error: 'denied' | 'unavailable', message };
  *   visibility emits true or false; connectivity true (online) or false
@@ -49,7 +49,7 @@ export const STOP_M = 100;
 export const FRESH_MS = 10 * 60_000;
 /** While live, the clock looks again at least this often (arrival estimates change with time). */
 export const RECHECK_MS = 60_000;
-/** Auto voice stays on this long after moving fast ends (a light, a queue). */
+/** Voice stays on this long after moving fast ends (a light, a queue); then the drive has ended. */
 export const VOICE_HOLD_MS = 2 * 60_000;
 /** While live and nothing changes, the activity is logged this often. */
 export const HEARTBEAT_MS = 5 * 60_000;
@@ -98,10 +98,17 @@ export class Live {
   /** Name a point for the now block, besides the plan's places (the offline pack adds one). @type {((p: { lat: number, lng: number }) => { name: string, m: number } | null)[]} */
   namers = [];
   #tracker = new ActivityTracker();
-  /** @type {number | null} when moving fast last ended: the triggers' same-drive rule and Auto voice read it */
+  /** @type {number | null} when moving fast last ended: the triggers' same-drive rule and voice read it */
   #fastEnded = null;
-  /** @type {number | null} when Auto voice's hold after that is over */
+  /** @type {number | null} when voice's hold after that is over: the drive has ended, once, then */
   #voiceLapse = null;
+  /** The check that found the drive ended is under way: what it fires is said with voice as it was. */
+  #driveEnding = false;
+  /** Voice was turned off during this drive: it stays off until the drive ends. */
+  #hushed = false;
+  /** Voice hears a drive's end. An end no one was there to hear yet (found as annai starts) waits for it. @type {Set<() => void>} */
+  #driveEnds = new Set();
+  #driveEndOwed = false;
   /** @type {number | null} when a state entry was last logged, while live */
   #stateAt = null;
   /** The odometer when the record was last written, km. */
@@ -200,7 +207,13 @@ export class Live {
     this.#offs.push(
       this.registry.add('live', 'activity', {
         now: () => (this.on ? this.activity : 'unknown'),
-        held: () => this.on && (this.activity === 'moving-fast' || (this.#fastEnded !== null && this.clock.now() - this.#fastEnded < VOICE_HOLD_MS)),
+        held: () => this.#driving() && !this.#hushed,
+        hush: (/** @type {boolean} */ on) => this.#hush(on),
+        onDriveEnd: (/** @type {() => void} */ fn) => {
+          this.#driveEnds.add(fn);
+          if (this.#driveEndOwed) this.#tellDriveEnd();
+          return () => { this.#driveEnds.delete(fn); };
+        },
         onChange: (/** @type {() => void} */ fn) => {
           this.#activityChanges.add(fn);
           return () => { this.#activityChanges.delete(fn); };
@@ -321,6 +334,7 @@ export class Live {
     this.online = true;
     this.#tracker.reset();
     this.#fastEnded = this.#voiceLapse = this.#stateAt = null;
+    this.#hushed = this.#driveEnding = this.#driveEndOwed = false;
     this.#savedKm = 0;
     this.#kept = null;
     this.#odo = this.#wasFast = null;
@@ -351,11 +365,13 @@ export class Live {
         this.#gpsStop();
         this.#tracker.reset();
         this.#fastEnded = this.#voiceLapse = this.#stateAt = null;
+        this.#hushed = false;
         this.activity = 'unknown';
         this.fix = null;
         this.stop = null;
         this.gps = 'off';
         this.gpsMessage = '';
+        this.#keepRecord(); // no drive to end after a reload
         this.#tellActivity();
       }
       this.#tell();
@@ -889,8 +905,11 @@ export class Live {
             this.activity = 'moving-fast';
             this.#tracker.restore(this.activity, fix.at);
             this.#tellActivity();
-          } else this.#fastEnded = fix.at - VOICE_HOLD_MS; // parked or at a light: no false "starts", and no voice
-        }
+          } else {
+            this.#fastEnded = fix.at - VOICE_HOLD_MS; // parked or at a light: no false "starts", and no voice
+            this.#voiceLapse = fix.at; // the drive ended unseen: as far as voice goes, it ends now
+          }
+        } else this.#voiceLapse = fix.at;
         this.#wasFast = null;
       }
       const c = this.#tracker.feed(fix);
@@ -1231,9 +1250,11 @@ export class Live {
     await this.#follow();
     if (o.change === undefined && !o.past) o = { ...o, change: this.#settle() };
     const m = this.#moment(o);
-    if (this.#voiceLapse !== null && m.now >= this.#voiceLapse) {
+    // The drive has ended. What fires in this same moment is said first, with voice as it was.
+    const ended = this.#voiceLapse !== null && m.now >= this.#voiceLapse;
+    if (ended) {
       this.#voiceLapse = null;
-      this.#tellActivity(); // Auto voice hears that moving fast ended long enough ago
+      this.#driveEnding = true;
     }
     if (this.on && this.shown && this.#stateAt !== null && m.now - this.#stateAt >= HEARTBEAT_MS) this.#log(this.#tracker.beat(m.now));
     const open = this.#scope();
@@ -1243,9 +1264,45 @@ export class Live {
       await this.#look(m, open, fired);
     } finally {
       this.#schedule(m); // whatever failed, the clock goes on (L1)
+      if (ended) this.#driveEnd(fired.length > 0);
     }
     // Most checks only move a time a little (a new fix): calm. One that said a reminder: urgent (6b choice 3).
     this.#tellReminders(fired.length ? 'urgent' : 'calm');
+  }
+
+  /** Whether the user is driving, for voice: moving fast, or it ended only a moment ago (a light, a queue). */
+  #driving() {
+    return this.on && (this.#driveEnding || this.activity === 'moving-fast' || (this.#fastEnded !== null && this.clock.now() - this.#fastEnded < VOICE_HOLD_MS));
+  }
+
+  /** Voice stays off for this drive, or no longer. Off while not driving is just off. @param {boolean} on */
+  #hush(on) {
+    if (on === this.#hushed || (on && !this.#driving())) return;
+    this.#hushed = on;
+    this.#keepRecord();
+  }
+
+  /**
+   * A drive ended: said once, whichever way voice is. A simulation's is its own: the user's setting stays.
+   * @param {boolean} fired a reminder fired in this same moment, and voice waits for it
+   */
+  #driveEnd(fired) {
+    if (fired) this.agent.holdVoice?.();
+    this.#driveEnding = this.#hushed = false;
+    this.#keepRecord();
+    if (!this.#sim) this.#tellDriveEnd();
+    this.#tellActivity();
+  }
+
+  #tellDriveEnd() {
+    this.#driveEndOwed = this.#driveEnds.size === 0;
+    for (const fn of this.#driveEnds) {
+      try {
+        fn();
+      } catch (e) {
+        console.warn(/* en */ 'a drive-end listener failed', e);
+      }
+    }
   }
 
   /** The activity, asked without a new fix: a held change completes on time, and a quiet GPS after a slow speed is still. @returns {{ from: string, to: string } | null} */
@@ -1260,7 +1317,7 @@ export class Live {
     return { from: c.from, to: c.to };
   }
 
-  /** A change of activity as the log keeps it (no position); moving fast ending starts the clocks that the triggers and Auto voice read. @param {import('./activity.js').Change} c */
+  /** A change of activity as the log keeps it (no position); moving fast ending starts the clocks that the triggers and voice read. @param {import('./activity.js').Change} c */
   #changeData(c) {
     if (c.from === 'moving-fast') {
       this.#fastEnded = c.at;
@@ -1279,12 +1336,18 @@ export class Live {
     const now = this.clock.now();
     const speed = this.#tracker.speed;
     const odometer = round3(this.odometer);
-    const o = this.#odo;
     this.#stateAt = now;
     this.#savedKm = odometer;
-    if (!this.#wasFast) this.keep.set({ at: now, odometer, odo: o && { lat: o.lat, lng: o.lng, at: o.at, accuracy: o.accuracy }, activity: this.activity, ended: this.#fastEnded });
+    this.#keepRecord();
     const data = { activity: this.activity, from: this.activity, speed: speed === null ? null : Math.round(speed * 10) / 10, odometer, ...extra };
     await logEvent(this.store, SYS_DEVICE, { type: 'state', actor: 'system', data }, now).catch((e) => this.#fail(e));
+  }
+
+  /** The one record a restart reads. due: when a drive's end is still to be told to voice. */
+  #keepRecord() {
+    if (this.#sim || this.#wasFast) return;
+    const o = this.#odo;
+    this.keep.set({ at: this.clock.now(), odometer: round3(this.odometer), odo: o && { lat: o.lat, lng: o.lng, at: o.at, accuracy: o.accuracy }, activity: this.activity, ended: this.#fastEnded, due: this.#voiceLapse, hushed: this.#hushed });
   }
 
   /** annai started: the odometer and its place, whatever the record's age; with GPS on, the activity and when moving fast ended, if under SAME_DRIVE_MS old. */
@@ -1296,6 +1359,9 @@ export class Live {
     if (!this.on) return;
     this.#stateAt = r?.at ?? now; // the beats go on as if the page had not been away
     if (!r || r.activity === 'unknown') return;
+    // A drive's end not yet told to voice is told at the first check, whatever the record's age: a page killed in the hold has not said it.
+    if (typeof r.due === 'number') this.#voiceLapse = r.due;
+    this.#hushed = r.hushed === true && (r.activity === 'moving-fast' || this.#voiceLapse !== null);
     if (now - r.at >= SAME_DRIVE_MS) {
       if (r.activity === 'moving-fast') this.#wasFast = this.#odo;
       return;
@@ -1540,7 +1606,7 @@ export class Live {
       if (typeof t === 'number' && Number.isFinite(t) && t > m.now && t < next) next = t;
     };
     if (this.on) consider(this.#tracker.due()); // an activity change held long enough, or a quiet GPS
-    if (this.on) consider(this.#voiceLapse); // Auto voice's hold after moving fast
+    if (this.on) consider(this.#voiceLapse); // voice's hold after moving fast
     if (this.on && !this.#sim && this.#stateAt !== null) consider(this.#stateAt + HEARTBEAT_MS);
     const types = this.types();
     const open = this.#scope();

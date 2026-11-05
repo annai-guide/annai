@@ -226,7 +226,7 @@ function noModel(role, plain) {
   /* en */
   if (plain) return `No model is set for the ${role} role. Add one in Settings → Models.`;
   if (role === 'utility') return t`No model is set for the utility role. Add one in Settings → Models.`;
-  if (role === 'koe-classic') return t`No model is set for Koe · Classic. Add one in Settings → Models.`;
+  if (role === 'koe-classic') return t`No model is set for Koe · Chat. Add one in Settings → Models.`;
   return t`No model is set for the main role. Add one in Settings → Models.`;
 }
 
@@ -245,7 +245,7 @@ export const chatCandidates = (cfg, role) => candidates(cfg, role).filter((id) =
 
 /**
  * @typedef {{ mode: import('./config.js').KoeMode, using: import('./config.js').KoeMode, why: '' | 'voice off' | 'none' | 'resting' | 'off', koe: boolean,
- *   split: boolean, path: { kind: 'live', modelId: string } | { kind: 'text' } | null }} KoeWay
+ *   live: boolean, split: boolean, path: { kind: 'live', modelId: string } | { kind: 'text' } | null }} KoeWay
  *   mode: the one chosen; using: the list Koe runs on now; why: why Classic stands in for a chosen Realtime ('none': its list is empty;
  *   'resting': a model of it rests after a failure, and will answer again; 'off': none can, switched off or without its protocol running); koe: a Koe list holds a model; split: Shiori is two halves; path: Koe's
  *   pathway (a live session, or the loop), null when Koe is down
@@ -272,12 +272,14 @@ export function koeWay(cfg, { voiceOn, types, until, now }) {
   const koe = realtime.length > 0 || classic.length > 0;
   const wanted = mode === 'realtime' && voiceOn;
   const live = wanted ? realtime.find((id) => { const a = can(id); return a?.kind === 'realtime' && types.get(a.type)?.realtime; }) : undefined;
-  if (live) return { mode, using: 'realtime', why: '', koe, split: true, path: { kind: 'live', modelId: live } };
-  const rests = (/** @type {string} */ id) => { const a = abilityOf(cfg, id); return Boolean(cfg.models[id] && a?.on && a.kind === 'realtime' && types.get(a.type)?.realtime && until(id) > now); };
+  if (live) return { mode, using: 'realtime', why: '', koe, live: true, split: true, path: { kind: 'live', modelId: live } };
+  /** A live model that is switched on and whose protocol runs, resting or not. @param {string} id */
+  const isLive = (id) => { const a = abilityOf(cfg, id); return Boolean(cfg.models[id] && a?.on && a.kind === 'realtime' && types.get(a.type)?.realtime); };
+  const hasLive = realtime.some(isLive);
   /** @type {KoeWay['why']} */
-  const why = mode !== 'realtime' ? '' : !voiceOn ? /* en */ 'voice off' : !realtime.length ? 'none' : realtime.some(rests) ? 'resting' : 'off';
+  const why = mode !== 'realtime' ? '' : !voiceOn ? /* en */ 'voice off' : !realtime.length ? 'none' : realtime.some((id) => isLive(id) && until(id) > now) ? 'resting' : 'off';
   const text = classic.some((id) => { const a = can(id); return a && a.kind !== 'realtime'; });
-  return { mode, using: 'classic', why, koe, split: classic.length > 0 || (wanted && realtime.length > 0), path: text ? { kind: 'text' } : null };
+  return { mode, using: 'classic', why, koe, live: hasLive, split: classic.length > 0 || (wanted && realtime.length > 0), path: text ? { kind: 'text' } : null };
 }
 
 /**

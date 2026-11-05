@@ -28,7 +28,7 @@ test('Driving: Now hands over when moving fast; the road ahead, directions, big 
       await page.clock.fastForward(5000);
     }
     await expect(page.getByRole('heading', { name: 'Driving' })).toBeVisible();
-    await expect(page.locator('.voice-chip')).toHaveText('Voice on · moving');
+    await expect(page.locator('.voice-chip')).toHaveText('Voice on · driving');
     await expect(page.locator('nav.dock')).toHaveClass(/\bvoice\b/);
     const strip = page.getByRole('list', { name: 'The road ahead' });
     await expect(strip.locator('li').first()).toHaveText('You');

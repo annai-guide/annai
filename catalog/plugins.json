@@ -198,7 +198,7 @@
     {
       "id": "provider-another-address",
       "name": "Custom provider",
-      "version": "2.2.2",
+      "version": "2.2.3",
       "description": "Any other server: an OpenAI-compatible one, a router or proxy, or a server you run. Give its address, and annai looks for what it offers, at no cost.",
       "category": "providers",
       "keywords": [
@@ -217,12 +217,12 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 25528,
+      "size": 25524,
       "requires": [],
       "catchAll": true,
       "provides": {},
       "files": {
-        "annai-plugin.json": "99c699923d4dd9ae4ee6d237578aa387fa5be044906d7da5f900c73ea9c919b2",
+        "annai-plugin.json": "23882d70fce645b6954b6b9061e74fd7c091ebe66a06c2db6139142ce5ddc8fd",
         "index.js": "72700e0f82a5c4328df36bb9164556c761585c4e782f41b72671ea63bfae1cf8",
         "probe.js": "2ee480d300a84e152a42f1cf6fbbfdcd561ac9f102e7526fe53763edc4661b6d"
       }
@@ -475,8 +475,8 @@
     {
       "id": "provider-openai",
       "name": "OpenAI",
-      "version": "1.6.1",
-      "description": "GPT models through OpenAI's Responses API, with OpenAI's transcription and voices, and its Realtime voice for Koe, on one key.",
+      "version": "1.6.2",
+      "description": "GPT models through OpenAI's Responses API, with OpenAI's transcription and voices, and its live voice for Koe, on one key.",
       "category": "providers",
       "keywords": [],
       "abilities": [
@@ -488,7 +488,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 13295,
+      "size": 13287,
       "requires": [
         {
           "id": "openai-responses",
@@ -501,7 +501,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "6a19ad63ec000b745f07e006b06bd70658a324c402f6ad5b458ec55ada32cb93"
+        "annai-plugin.json": "bae2d4041b065d348f34add64ab3c30987dc873b8583e21b8ddc7a3119e1daf2"
       }
     },
     {

@@ -1,6 +1,6 @@
 {
   "manifest": {
-    "description": "通过 OpenAI 的 Responses API 使用 GPT 模型，另有 OpenAI 的语音转文字和声音，以及供 Koe 使用的 Realtime 语音，全部用一个密钥。",
+    "description": "通过 OpenAI 的 Responses API 使用 GPT 模型，另有 OpenAI 的语音转文字和声音，以及供 Koe 使用的 实时语音，全部用一个密钥。",
     "name": "OpenAI",
     "provider.abilities.chat-completions.name": "对话（Chat Completions）",
     "provider.abilities.chat-completions.note": "请优先使用“对话（Responses）”：GPT-6 Astra 和 GPT-6.1 Sol 只在那里调用工具。用“获取模型列表”添加模型。",

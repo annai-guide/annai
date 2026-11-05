@@ -131,7 +131,7 @@ async function testUpload({ type, endpoint, model, key, fetch: get = (url, init)
 }
 
 /** A role by the name the screens give it, a label of its own. @param {{ id: string }} role */
-const roleName = ({ id }) => (id === 'koe-classic' ? t`Koe · Classic` : id === 'utility' ? t`Utility` : t`Main`);
+const roleName = ({ id }) => (id === 'koe-classic' ? t`Koe · Chat` : id === 'utility' ? t`Utility` : t`Main`);
 /** @param {{ id: string, level: string }} role */
 const alsoAnswers = (role) => t`It also answers at ${roleName(role)}'s level (${role.level}).`;
 /** @param {{ id: string, level: string }} role @param {string} said the model's refusal, as it gave it */

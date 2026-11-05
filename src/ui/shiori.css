@@ -140,7 +140,14 @@ a.attach-chip, .attach-chip.gone { padding-inline: 12px; text-decoration: none; 
 
 /* Voice (spec §16.2): the states line under the dock's buttons, one small line of words that open their menus;
    while voice is on, the dock grows, and never moves. */
-.voice-row { display: flex; justify-content: center; align-items: center; gap: 2px; max-width: 560px; margin: 2px auto 0; flex-wrap: wrap; }
+.voice-row { display: flex; justify-content: center; align-items: center; gap: 2px; max-width: 560px; margin: 2px auto 0; }
+/* One line, whatever the words: GPS's chip gives way (its first words stay), and a plugin's long chip at its own limit; the voice chips never do. */
+.voice-row > * { flex: none; min-width: 0; }
+.voice-row > .voice-chip-wrap:has(.live-chip) { flex: 0 1 auto; }
+.voice-row > .plugin-chips { max-width: 40vw; overflow: hidden; }
+.voice-row .chip { white-space: nowrap; }
+.voice-row .live-chip, .voice-row .plugin-chip { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.voice-row .koe-live-chip { border-left: 1px solid var(--line); border-radius: 0; }
 .voice-row > :not(:empty):not(.halves-sign) ~ :not(:empty):not(.halves-sign) { border-left: 1px solid var(--line); padding-left: 4px; margin-left: 4px; }
 .voice-row .voice-chip-wrap, .voice-row .plugin-chips, .voice-row .halves-sign { display: inline-flex; align-items: center; gap: 4px; }
 /* The working sign floats just above the bar at every size, so nothing in the bar moves as Kokoro starts and stops (the second drive, item 5). */
@@ -153,12 +160,13 @@ a.attach-chip, .attach-chip.gone { padding-inline: 12px; text-decoration: none; 
 .voice-row .chip.listening { color: var(--risk); font-weight: 600; }
 .ib-svg { display: block; }
 .voice-chip, .voice-row .chip { cursor: pointer; font: inherit; }
+@media (max-width: 360px) {
+  .voice-row .chip { padding-inline: 4px; }
+  .voice-row > :not(:empty):not(.halves-sign) ~ :not(:empty):not(.halves-sign) { padding-left: 1px; margin-left: 1px; }
+}
 .voice-menu { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 6px; padding: 6px;
   background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 4px 16px rgb(0 0 0 / .12); }
 .voice-menu-row { display: flex; gap: 6px; align-items: center; }
-.voice-menu-label { font-size: 13px; color: var(--ink-2); padding: 0 4px; }
-.voice-menu-note { margin: 0; max-width: 16em; font-size: 13px; color: var(--ink-2); }
-.voice-chip-why { white-space: nowrap; }
 .voice-menu .btn { min-height: 44px; min-width: 64px; }
 /* A row menu shrinks to its narrowest, and Japanese and Chinese break anywhere: オン would go one kana a line. The live menu's long items still wrap. */
 .voice-menu:not(.live-menu) .btn { white-space: nowrap; }

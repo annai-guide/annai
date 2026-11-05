@@ -13,7 +13,7 @@ import { meters, kmText } from './geo.js';
  *   fix: where the user is, when annai knows (live mode on, and not too old); newFix: this check came with that fix;
  *   past: a catch-up's first look, from where the user was when annai went off screen (spec §11.4): only what the clock makes due fires;
  *   change: the activity just changed; odometer: km travelled while live; stop: where the user has stayed, while live;
- *   gap: annai was off screen, or closed, and is catching up; fastEnded: when moving fast last ended (live mode's, one for all watches and Auto voice);
+ *   gap: annai was off screen, or closed, and is catching up; fastEnded: when moving fast last ended (live mode's, one for all watches and voice);
  *   near: the place a point is near, when annai knows one; fired: whether a watch of this conversation has fired
  * @typedef {{ name?: string, lat: number, lng: number }} Place
  * @typedef {{ text: string, at?: number, place?: Place, fallback?: string, say?: import('./plan-watches.js').PlanSay }} Firing

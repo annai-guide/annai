@@ -3,7 +3,7 @@ import { meters } from './geo.js';
 /**
  * The activity sensor's reasoning (spec §11.2): still, walking or moving fast, from GPS speed,
  * with 30–60 s hysteresis. GPS can't tell driving from riding a bus; both are moving fast, and
- * voice Auto treats them the same (§10.5).
+ * voice treats them the same (§10.5).
  *
  * An activity ends once no speed has said it for the hold. Leaving moving fast, the slow speeds need not agree (at a stop they wander across
  * STILL_BELOW): any that said still in the hold makes it still, else it is what the last speed said. A hold towards another activity starts

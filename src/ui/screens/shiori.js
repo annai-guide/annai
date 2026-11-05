@@ -161,7 +161,7 @@ export async function renderShiori(ctx, route) {
 const INSTRUCTION_WORDS = /** @type {const} */ ({
   shiori: { name: t`Shiori's core`, about: t`How she talks, how annai works, and her safety rules. Kokoro reads it, and Shiori when she is one half.` },
   kokoro: { name: t`Kokoro's part`, about: t`What Kokoro adds while Shiori is two halves: how it works behind Koe.` },
-  koe: { name: t`Koe, classic`, about: t`What Koe reads when its words go to a voice.` },
+  koe: { name: t`Koe, chat`, about: t`What Koe reads when its words go to a voice.` },
   koeLive: { name: t`Koe, live`, about: t`What Koe reads in a live voice session.` },
 });
 

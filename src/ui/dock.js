@@ -32,7 +32,7 @@ const keyboardIcon = () => icon(/* en */ 'M4 6.5h16a1.5 1.5 0 0 1 1.5 1.5v8a1.5 
 
 /**
  * The dock at the bottom of every screen (spec §16.2): camera · Shiori · type. Tapping Shiori stops
- * her while she works or speaks (§6.7, §10.4), and starts listening while she rests, in Auto as in On; with voice set to Off it opens typing.
+ * her while she works or speaks (§6.7, §10.4), and starts listening while she rests, with voice off too (the keyboard button opens typing).
  * dispose() lets go of everything it listens to, for a dock made again (minors 13).
  * @param {any} ctx
  */
@@ -169,7 +169,7 @@ export function createDock(ctx) {
   const talk = h('button', {
     class: 'talk', type: 'button', 'aria-label': t`Shiori`,
     onclick: () => {
-      // While she speaks, a tap stops her and listens; asleep, in Auto or On, it listens; with voice set to Off, typing opens (spec §10.4).
+      // While she speaks, a tap stops her and listens; asleep, it listens, with voice off too (spec §10.4). Typing opens only with no voice here.
       if (ctx.agent.tap() === 'typing') openTyping();
     },
   }, avatar.el, label);

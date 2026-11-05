@@ -23,7 +23,7 @@ test("Classic chosen: Koe talks through the loop, voice on or off, though Realti
   const k = await liveKit([], { live: { first: false }, koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
   try {
     assert.equal(k.agent.koeState, 'text', 'voice on');
-    assert.deepEqual(k.agent.way, { mode: 'classic', using: 'classic', why: '', koe: true, split: true, path: { kind: 'text' } });
+    assert.deepEqual(k.agent.way, { mode: 'classic', using: 'classic', why: '', koe: true, live: true, split: true, path: { kind: 'text' } });
     await updateAppSettings(k.ws, { voice: { mode: 'off' } });
     await k.voice.refresh();
     await k.agent.idle();
@@ -92,7 +92,7 @@ test("a change to Koe's lists in Settings → Models applies at once, with no vo
     await soon(async () => k.agent.koeState === 'text');
     await k.agent.idle();
     assert.deepEqual([k.agent.way.mode, k.agent.way.using, k.agent.way.why], ['realtime', 'classic', 'none'], 'the choice stays Realtime');
-    assert.deepEqual(seen.at(-1), { mode: 'realtime', using: 'classic', why: 'none', koe: true, split: true, path: 'text' }, "the chip hears of it");
+    assert.deepEqual(seen.at(-1), { mode: 'realtime', live: false }, "the chip hears of it");
   } finally {
     await k.done();
   }
@@ -1204,10 +1204,10 @@ test("a session whose audio rate is missing doesn't stop her voice at once (foll
   }
 });
 
-test('Auto, voice off, Realtime chosen: a tap works Koe out again and opens a live session, held on until it closes; its line names its model; then Classic again', async () => {
+test('voice off, Live on: a tap works Koe out again and opens a live session, held on until it closes; its line names its model; then Classic again', async () => {
   const k = await liveKit([{ said: 'Left at the light.', audio: tone(0.2) }], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
   try {
-    await updateAppSettings(k.ws, { voice: { mode: 'auto' } });
+    await updateAppSettings(k.ws, { voice: { mode: 'off' } });
     await k.voice.refresh();
     await k.agent.idle();
     assert.deepEqual([k.voice.on, k.agent.koeState], [false, 'text']);
@@ -1224,7 +1224,23 @@ test('Auto, voice off, Realtime chosen: a tap works Koe out again and opens a li
     k.agent.live.close('tap');
     await soon(async () => !k.voice.on);
     await soon(async () => k.agent.koeState === 'text');
-    assert.equal(k.voice.mode.why, 'not sure');
+    assert.equal(k.voice.mode.why, 'off');
+  } finally {
+    await k.done();
+  }
+});
+
+test('voice off, Live on: two quick taps open live, not Classic\'s microphone (the second drive): the second is the same wish, while Koe\'s way is worked out', async () => {
+  const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } }, voice: { mode: 'off' } });
+  try {
+    await k.agent.idle();
+    assert.deepEqual([k.voice.on, k.agent.koeState], [false, 'text']);
+    assert.equal(k.agent.tap(), 'listening');
+    assert.equal(k.agent.tap(), 'listening');
+    await soon(async () => k.agent.live.listening);
+    assert.equal(k.agent.koeState, 'live');
+    assert.equal(k.agent.koe.state.name, 'sleeping', 'Classic\'s half never listened');
+    assert.equal(k.platform.log.filter((/** @type {string} */ l) => l === 'mic open').length, 1);
   } finally {
     await k.done();
   }
@@ -1351,12 +1367,12 @@ test("fix pass 2, finding 4: two Realtime models, the first refusing: one tap op
   }
 });
 
-test("fix pass 2, finding 5 (Step): Auto, two quick taps on the avatar while the first's refresh runs: the microphone opens and stays open", async () => {
-  const k = await liveKit([], { live: { first: false }, koe: { type: { rules: [{ match: '.', reply: sleep }] } }, voice: { mode: 'auto' } });
+test("fix pass 2, finding 5 (Step): two quick taps on the avatar while the first's refresh runs: the microphone opens and stays open", async () => {
+  const k = await liveKit([], { live: { first: false }, koe: { type: { rules: [{ match: '.', reply: sleep }] } }, voice: { mode: 'off' } });
   try {
     await k.voice.refresh();
     await k.agent.idle();
-    assert.equal(k.agent.tap(), 'listening'); // voice off in Auto: held on, the route works Koe's way out
+    assert.equal(k.agent.tap(), 'listening'); // voice off: held on, the route works Koe's way out
     const second = k.agent.tap();
     assert.equal(second, 'listening');
     await k.agent.idle();

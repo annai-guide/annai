@@ -539,8 +539,8 @@ export async function koeSetUp(page, origin, trip = 'Big Sur') {
   await page.getByLabel('Add a model to main').selectOption({ label: 'kokoro-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
   await expect(page.getByText('1. kokoro-model')).toBeVisible();
-  await page.getByLabel('Add a model to Koe · Classic').selectOption({ label: 'koe-model' });
-  await page.getByRole('button', { name: 'Add to Koe · Classic' }).click();
+  await page.getByLabel('Add a model to Koe · Chat').selectOption({ label: 'koe-model' });
+  await page.getByRole('button', { name: 'Add to Koe · Chat' }).click();
   await expect(page.getByText('1. koe-model')).toBeVisible();
   await page.goto('/#/trips');
   await page.getByLabel('Trip name').fill(trip);
