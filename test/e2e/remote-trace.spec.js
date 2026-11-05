@@ -219,6 +219,15 @@ test('Detailed trace: it stays off with no server; on, a turn the microphone hea
     await expect.poll(async () => (await sink.lines()).filter((l) => l.type === 'trace.screen' && l.data.route.startsWith('#/trace')).length, { timeout: 20_000 }).toBeGreaterThan(0);
     for (const l of (await sink.lines()).filter((x) => x.type === 'trace.screen' && x.data.route.startsWith('#/trace'))) expect(l.data.text).toBe('');
 
+    // Leaving Trace with a row open, Flag at once: the old screen is still drawn under the new route, and its rows stay out of the copy.
+    await page.locator('.trace li').first().locator('summary').click();
+    await expect(page.locator('.trace li').first().locator('pre')).toBeVisible();
+    await flag.evaluate((el) => { location.hash = '#/talk'; /** @type {HTMLElement} */ (el).click(); });
+    await expect.poll(async () => (await sink.lines()).filter((l) => l.type === 'trace.screen' && l.data.route === '#/talk' && l.data.flag !== undefined).length, { timeout: 20_000 }).toBe(1);
+    const left = (await sink.lines()).find((l) => l.type === 'trace.screen' && l.data.route === '#/talk' && l.data.flag !== undefined);
+    expect(left.data.text).not.toContain('"actor"');
+    expect(left.data.text).not.toContain('trace.flag');
+
     // Off: the flag goes at once.
     await page.goto('/#/plugins/remote-trace');
     await detailed.uncheck();
