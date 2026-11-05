@@ -1,7 +1,7 @@
 {
   "id": "remote-trace",
   "name": "Remote trace (for developers)",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "api": 2,
   "category": "developer",
   "entry": "index.js",
@@ -32,6 +32,12 @@
         "default": false,
         "title": "Send",
         "description": "On, what the Trace records from now on goes to the server within a few seconds: what you write, what Shiori says, her tools, requests and errors. Keys are blanked, and stored content (photos, long texts) stays here. Off stops it at once."
+      },
+      "detailed": {
+        "type": "boolean",
+        "default": false,
+        "title": "Detailed trace",
+        "description": "Also sends recordings of what the microphone heard to the server above: each of your turns, and short samples of sound the level check kept out. Recordings include passengers and whatever is playing. Phone dictation is the browser's own, so it has no audio. A text copy of the screen goes too, without what's typed in fields or keys, and a Flag button shows beside the chips, to mark when something looks wrong. It needs a server address and Send on, and turns itself off after 24 hours."
       },
       "device": {
         "type": "string",

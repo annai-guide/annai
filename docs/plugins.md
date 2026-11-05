@@ -96,6 +96,7 @@ export function activate(annai) {
 | `annai.searchProviders()`, `await annai.searchProvidersAsync()` | the search providers in the order `web_search` tries them: the user's list (Settings → Tools → Search), then keyed ones, the free ones and the knowledge floor. The async one reads the user's order and leaves out those they switched off. |
 | `annai.register('skill', { name, description, text, files?, read? })` | a skill: Shiori sees its name and description, and loads the text with the `skill` tool. `text` is a string or a function returning one; `files()` lists its other files, and `read(file)` gives `{ bytes, type }` or null. A name another plugin or annai has isn't used until the user chooses yours (see "Names and conflicts"). Skills in a package's `skills` don't need this. |
 | `annai.register('search', { id, name, kind?, ready?(), search(query, { fetch, signal, limit }) })` | a search provider for `web_search`: see "Search providers" below |
+| `annai.register('heard-clips', { clip({ id, kind, format, mediaType, data, ms }) })` | hears what the microphone heard, as Remote trace's Detailed trace does: each turn or recorded segment as it ends, under the `id` its `heard` entry has (a live turn with no words has no such entry), and with `kind: 'kept'` samples of sound the level check kept out. `data` is a `Uint8Array` in the smallest format the phone makes and plays. annai collects nothing while nobody has this registered, so register it only while you need it, and remove it after. Dictation has no sound. On an annai older than this, it is never called. |
 | `annai.register('pdf-pages', { id, pages(bytes, { from, max, edge, signal }) })` | draws a PDF's pages as pictures, for a model that sees photos but reads no PDFs and for a PDF's preview: see "PDF pages" below |
 
 Every file write goes through one function. It keeps the old version and adds an entry to the log, so anything a plugin changes can be seen in the trace and undone (spec §4.2).
@@ -689,6 +690,18 @@ annai's official plugin **Remote trace (for developers)** sends annai's trace to
   - Without a token, or with one a request can't carry (spaces, letters beyond ASCII), it says so on one card and keeps what waits; the token is read at every try, so saving it is enough.
 - **The dock** shows a "Trace" chip while it is sending; tapping it opens the plugin's page.
 
+**Detailed trace** is a heavier switch on the same page, off by default, for tuning the music check from real car audio and going straight to a moment that looked wrong. **Recordings include passengers and whatever is playing.** They go only to the server address above. It needs that address and Send on: without them it goes back off and says so, and it never starts by itself later. It turns itself off 24 hours after it was turned on, across reloads, with a card. Off, however it goes off, it stops at once and drops what waits. While it is on:
+
+- **Recordings.** Each turn the microphone heard, live or recorded, goes as a clip in annai's smallest format, words or none. So do samples of sound the level check kept out: the next 3 seconds outside a turn, at most one a minute. Phone dictation is the browser's own, so it has no audio. "Keep voice clips" is a separate setting: Detailed trace stores nothing in the conversation or in backups.
+  - A clip is a POST of its bytes to `<server address>/clips?device=…&id=…&format=…`, with the same token. Each has a `trace.clip` entry in the batches: `{ id, kind, format, bytes, ms, flag? }`, where `kind` is `turn` or `kept`. A turn's `id` is its `heard` entry's `data.id`.
+  - Clips wait in the page's memory, at most 16 MiB, and go one at a time. Past the cap the oldest goes, with a `trace.clip.dropped` entry. A reload loses what waits, as it does for entries. A failure waits as a batch's does, up to a minute; a 400 or 413 drops that clip, with the same entry.
+- **What's on screen.** A `trace.screen` entry `{ route, text, cut?, flag? }` when the route changes and when you tap Flag: the visible text, with landmarks as `[main]` or `[nav: name]`, at most 16,000 characters. No pixels. Nothing from a field goes: no input, select, textarea or contenteditable is read. The copy goes through `annai.secrets.blank` before it is even logged on the phone.
+- **Flag.** A "Flag" chip in the dock. A tap writes `trace.flag` `{ at, route, lastClip, screen, cut? }` and shows "Flagged". Clips that arrive in the next 30 seconds carry `flag: <at>` in their `trace.clip` entries. Nothing is kept from before the tap beyond the last clip's name: there is no ring buffer.
+
+These entries are in this device's own scope, so they are in the Trace (type `trace.flag` in its filter) and in no backup.
+
+An iPhone can't give a web page a screenshot without asking: that's why this is text. As of 2026-11-05 caniuse and MDN's compatibility data list `getDisplayMedia` on iOS Safari from 27.0, which WebKit's Safari 27.0 post doesn't mention (its last third wasn't read), and it hasn't been tried on a phone here. Even where it works, it asks the user to pick what to share, so it can't take a picture on a tap by itself.
+
 **The sink.** `scripts/trace-sink.mjs` is a small receiving server with no dependencies:
 
 ```bash
@@ -698,6 +711,19 @@ node scripts/trace-sink.mjs --port <p> (--token-file <path> | --token <t>) --out
 - **The token** must be at least 16 characters; `openssl rand -hex 16` makes one. Give it in a file (`--token-file`, which keeps it out of your shell's history and the process list) or in `TRACE_SINK_TOKEN`; `--token` works too.
 - **What it takes:** batches with that token, from `https://annai.guide` and each `--origin` you add (more than one is fine), at most 1 MiB each. It listens on 127.0.0.1 only. Ports 8765, 8790–8792, 8796, 8797 and 18010–18014 are annai's own, so it refuses them.
 - **What it writes:** each entry, appended to the file as one JSON line `{ received, device, build, ...entry }`, and one line `{ received, device, build, dropped }` when a batch says entries were dropped. Watch it with `tail -f trace.jsonl`, or pick from it with `jq`, such as `jq -c 'select(.type == "error")' trace.jsonl`. A disk that fills up while it writes can leave a line cut short, a torn line: the sink answers 500, so the plugin sends that batch again, and the sink starts its next write on a new line, so the torn one stays alone. `jq -cR 'fromjson? // empty' trace.jsonl` reads the file past it.
+- **Recordings:** a POST to any path ending `/clips`, with the same token and origins, at most 8 MiB, goes to `clips/<device>/<id>.<format>` in a folder beside the file, readable only by the sink's user. It writes no line itself: the plugin's `trace.clip` entry does. An `id` is letters, digits, `-` and `_`, and a `format` lowercase letters and digits; anything else gets 400, so no name can leave the folder. In a device's folder name, any other character becomes `_`. A clip is written whole or not at all. A full disk answers 507 and leaves nothing behind, and the phone tries again. Nothing rotates these files: delete them when you're done.
+- **Reading a clip.** Find it from its entry, then decode it:
+
+  ```bash
+  jq -c 'select(.type == "trace.flag") | {at: .data.at, route: .data.route, lastClip: .data.lastClip}' trace.jsonl   # the flags
+  jq -r --argjson at <at> 'select(.type == "trace.clip" and .data.flag == $at) | "clips/\(.device)/\(.data.id).\(.data.format)"' trace.jsonl   # the clips after one
+  jq -r 'select(.type == "trace.clip" and .data.kind == "kept") | "clips/\(.device)/\(.data.id).\(.data.format)"' trace.jsonl   # the level check's samples
+  ffmpeg -i clips/<device>/<id>.ogg -ar 16000 -ac 1 clip.wav   # any format, as 16 kHz mono
+  ffmpeg -i clip.wav -af volumedetect -f null -                # its peak and mean level
+  jq -r 'select(.type == "trace.screen" and .data.flag == <at>) | .data.text' trace.jsonl   # what was on screen
+  ```
+
+  A device's raw name is in `device`; if it has characters other than letters, digits, `-` and `_`, use the folder name the sink made from it. Under the systemd service, these are in `/var/lib/private/annai-trace`. They hold real voices, so handle them as you would the person's own files.
 - **From a phone:** the phone needs https. On a tailnet, `tailscale serve` gives that:
 
   ```bash
