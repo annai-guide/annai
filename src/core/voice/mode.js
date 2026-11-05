@@ -11,8 +11,12 @@
  */
 import { t } from '../l10n.js';
 
-/** @param {{ setting: VoiceSetting, activity: string, route: Route, lastChoices: Record<string, 'on' | 'off'>, tapped?: boolean }} c tapped: a tap on the avatar holds Auto on until that exchange ends @returns {VoiceMode} */
-export function voiceMode({ setting, activity, route, lastChoices, tapped = false }) {
+/**
+ * @param {{ setting: VoiceSetting, activity: string, route: Route, lastChoices: Record<string, 'on' | 'off'>, tapped?: boolean, held?: boolean }} c
+ *   tapped: a tap on the avatar holds Auto on until that exchange ends; held: moving fast ended a moment ago, which live mode counts for Auto as still moving (a light, a queue)
+ * @returns {VoiceMode}
+ */
+export function voiceMode({ setting, activity, route, lastChoices, tapped = false, held = false }) {
   /* en */
   if (setting === 'on') return { setting, on: true, why: 'on' };
   /* en */
@@ -20,7 +24,7 @@ export function voiceMode({ setting, activity, route, lastChoices, tapped = fals
   /* en */
   if (tapped) return { setting, on: true, why: 'tapped' };
   /* en */
-  if (activity === 'moving-fast') return { setting, on: true, why: 'moving' };
+  if (activity === 'moving-fast' || held) return { setting, on: true, why: 'moving' };
   /* en */
   if (route === 'car') return { setting, on: true, why: 'car audio' };
   /* en */

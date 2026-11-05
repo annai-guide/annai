@@ -1,12 +1,12 @@
 import { meters, keep, fixOf, kmText, span, KEEP_M } from './geo.js';
-import { ActivityTracker, STILL_BELOW } from './activity.js';
-import { TRIGGERS } from './triggers.js';
+import { ActivityTracker, STILL_BELOW, FAST_FROM, waySpeed } from './activity.js';
+import { TRIGGERS, SAME_DRIVE_MS } from './triggers.js';
 import { PLAN, planWatches, planWords, planItemWords } from './plan-watches.js';
 import { readWatches, saveWatch, removeWatch, newWatchId, expired, watchPath, WATCH_FILE } from './watches.js';
 import { realClock } from './clock.js';
 import { readAppSettings, updateAppSettings } from '../settings.js';
 import { logEvent } from '../events.js';
-import { ME, listTrips } from '../scopes.js';
+import { ME, SYS_DEVICE, ensureDeviceScope, listTrips } from '../scopes.js';
 import { PLAN_FILE, BOOKING_FILE } from '../plan.js';
 import { validZone, deviceZone, isoInZone, timeIn } from '../time.js';
 import { validate } from '../schema.js';
@@ -49,6 +49,12 @@ export const STOP_M = 100;
 export const FRESH_MS = 10 * 60_000;
 /** While live, the clock looks again at least this often (arrival estimates change with time). */
 export const RECHECK_MS = 60_000;
+/** Auto voice stays on this long after moving fast ends (a light, a queue). */
+export const VOICE_HOLD_MS = 2 * 60_000;
+/** While live and nothing changes, the activity is logged this often. */
+export const HEARTBEAT_MS = 5 * 60_000;
+/** While moving, the odometer is logged this often (km). */
+const SAVE_KM = 1;
 /** The one timer waits at most a day, whatever is planned weeks ahead: the clock can't hold much longer. */
 export const MAX_WAIT_MS = 86_400_000;
 /** After coming back on screen, catch-up waits this long for a GPS fix (spec §11.4). */
@@ -63,6 +69,7 @@ const NEAR_M = 2000;
 const MIN = 60_000;
 /** @param {number} x */
 const round6 = (x) => Math.round(x * 1e6) / 1e6;
+const round3 = (/** @type {number} */ x) => Math.round(x * 1e3) / 1e3;
 
 /** How long before its firing came due a notification may have been shown and still be for it (review A8). */
 const SHOWN_SLACK_MS = 60_000;
@@ -91,6 +98,18 @@ export class Live {
   /** Name a point for the now block, besides the plan's places (the offline pack adds one). @type {((p: { lat: number, lng: number }) => { name: string, m: number } | null)[]} */
   namers = [];
   #tracker = new ActivityTracker();
+  /** @type {number | null} when moving fast last ended: the triggers' same-drive rule and Auto voice read it */
+  #fastEnded = null;
+  /** @type {number | null} when Auto voice's hold after that is over */
+  #voiceLapse = null;
+  /** @type {number | null} when a state entry was last logged, while live */
+  #stateAt = null;
+  /** The odometer when the record was last written, km. */
+  #savedKm = 0;
+  /** @type {Fix | null} the record, too old to say so, said moving fast from here: the first good fix decides if it is the same drive */
+  #wasFast = null;
+  /** @type {string | null} the activity read back at start */
+  #restored = null;
   /** @type {Fix | null} the last location point kept (spec §4.5) */
   #kept = null;
   /** @type {Fix | null} where the odometer last counted from */
@@ -105,7 +124,7 @@ export class Live {
   #places = [];
   /** @type {Map<string, Record<string, any>>} each watch's memory, by scope and id */
   #mem = new Map();
-  /** @type {Map<string, { at: number, place: any, for?: number }>} each watch's last firing, from the log; for: the plan item's time it was for */
+  /** @type {Map<string, { at: number, place: any, for?: number, km?: number }>} each watch's last firing, from the log; for: the plan item's time it was for; km: the odometer then */
   #fired = new Map();
   /** @type {Set<string>} problems already noted in a log, so each is noted once */
   #noted = new Set();
@@ -147,7 +166,7 @@ export class Live {
   #openedNews = [];
   /** @type {Map<string, number>} reminders annai said itself on screen, by key, with when: a notification for one is a double (6b choice 3) */
   #said = new Map();
-  /** @type {{ clock: import('./clock.js').Clock, timeZone: () => string, trip: string } | null} while a simulation runs: the device's clock and zone, and the simulation's trip */
+  /** @type {{ clock: import('./clock.js').Clock, timeZone: () => string, trip: string, odometer: number } | null} while a simulation runs: the device's clock, zone and odometer, and its trip */
   #sim = null;
   /** @type {Set<string>} simulations' trips (trip.json "simulation": true), still outside their run */
   #still = new Set();
@@ -155,12 +174,13 @@ export class Live {
   /**
    * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace, registry: import('../registry.js').Registry,
    *   agent: AgentLike, clock?: import('./clock.js').Clock, timeZone?: () => string, news?: () => Promise<PushNews[]>, problem?: (e: unknown) => void,
-   *   close?: (keys: string[]) => void }} c
+   *   close?: (keys: string[]) => void, keep?: { get(): any, set(r: any): void } }} c
    *   news: what the service worker saw while annai was away, read at each catch-up (spec §11.6);
    *   problem: live mode's own work failed (a log that can't be written), for a card: each kind is told once;
-   *   close: closes the phone's notifications for these reminders, doubles a catch-up read
+   *   close: closes the phone's notifications for these reminders, doubles a catch-up read;
+   *   keep: holds the drive's one record (#log) on this device, synchronously
    */
-  constructor({ store, ws, registry, agent, clock = realClock(), timeZone = deviceZone, news = async () => [], problem = () => {}, close = () => {} }) {
+  constructor({ store, ws, registry, agent, clock = realClock(), timeZone = deviceZone, news = async () => [], problem = () => {}, close = () => {}, keep = { get: () => null, set: () => {} } }) {
     this.store = store;
     this.ws = ws;
     this.registry = registry;
@@ -170,21 +190,23 @@ export class Live {
     this.news = news;
     this.problem = problem;
     this.close = close;
+    this.keep = keep;
   }
 
   /** Follows the sensors, the watches and the plan, from the switch as it was left (choice 11). */
   async start() {
     this.on = Boolean((await readAppSettings(this.ws)).live?.on);
+    this.#restore(); // before anyone can read the activity
     this.#offs.push(
       this.registry.add('live', 'activity', {
         now: () => (this.on ? this.activity : 'unknown'),
+        held: () => this.on && (this.activity === 'moving-fast' || (this.#fastEnded !== null && this.clock.now() - this.#fastEnded < VOICE_HOLD_MS)),
         onChange: (/** @type {() => void} */ fn) => {
           this.#activityChanges.add(fn);
           return () => { this.#activityChanges.delete(fn); };
         },
       }),
       this.ws.onChange((c) => this.#changed(c)),
-      this.agent.on('event', (e) => this.#heard(e)),
       // Another trip opened: its plan's reminders are looked at at once, not at the next fix (spec §11.3).
       this.agent.on('open', () => this.#bg(async () => {
         await this.#check();
@@ -193,6 +215,7 @@ export class Live {
       this.registry.onChange(() => this.#sensors()),
     );
     await this.#run(async () => {
+      await ensureDeviceScope(this.store, this.clock.now());
       await this.#loadAll();
       await this.#follow();
       this.#loaded = true;
@@ -244,7 +267,7 @@ export class Live {
       if (this.#sim) throw new Error(t`A simulation is already running.`);
       this.#gpsStop();
       this.#quiet();
-      this.#sim = { clock: this.clock, timeZone: this.timeZone, trip };
+      this.#sim = { clock: this.clock, timeZone: this.timeZone, trip, odometer: this.odometer };
       this.clock = clock;
       this.timeZone = timeZone;
       this.#fresh(false);
@@ -266,6 +289,8 @@ export class Live {
         this.clock = was.clock;
         this.timeZone = was.timeZone;
         this.#fresh(Boolean((await readAppSettings(this.ws)).live?.on));
+        this.odometer = this.#savedKm = was.odometer; // the simulation's own stayed apart
+        if (this.on) this.#stateAt = this.clock.now();
         // Its trip is still again: its watches and plan wait for no real clock.
         await this.#loadScope(was.trip);
         await this.#loadPlan();
@@ -295,8 +320,10 @@ export class Live {
     this.shown = true;
     this.online = true;
     this.#tracker.reset();
+    this.#fastEnded = this.#voiceLapse = this.#stateAt = null;
+    this.#savedKm = 0;
     this.#kept = null;
-    this.#odo = null;
+    this.#odo = this.#wasFast = null;
     this.#back = false;
     this.#away = null;
     this.#held = [];
@@ -318,10 +345,12 @@ export class Live {
       if (!this.#sim) await updateAppSettings(this.ws, { live: { on } }); // a simulation's switch isn't the user's (choice 10)
       await logEvent(this.store, this.#scope(), { type: 'state', actor: 'user', data: { live: on ? 'on' : 'off' } }, this.clock.now());
       if (on) {
+        this.#stateAt = this.clock.now();
         if (this.shown) this.#gpsStart();
       } else {
         this.#gpsStop();
         this.#tracker.reset();
+        this.#fastEnded = this.#voiceLapse = this.#stateAt = null;
         this.activity = 'unknown';
         this.fix = null;
         this.stop = null;
@@ -407,6 +436,7 @@ export class Live {
     const fallback = typeof i.fallback === 'string' ? i.fallback.trim() : '';
     if (!fallback) throw new Error(/* en */ "Every watch needs a fallback: the words annai shows, and says with voice on, by itself when it fires and you can't be reached.");
     const now = this.clock.now();
+    const here = type.type === 'moved' ? this.#moment().fix : null; // a moved watch counts from here
     if (i.expires !== undefined && validate({ type: 'string', format: 'date-time' }, i.expires).length) throw new Error(/* en */ 'expires must be an ISO date-time with an offset, like 2026-11-27T18:00:00-08:00.');
     if (i.expires !== undefined && Date.parse(i.expires) <= now) throw new Error(/* en */ `expires ${i.expires} has already passed.`);
     if (type.type === 'time' && Date.parse(when.at) <= now) throw new Error(/* en */ `${when.at} has already passed. Give a time ahead.`);
@@ -414,6 +444,7 @@ export class Live {
     const w = {
       id: newWatchId(), owner, when: { ...when }, repeat: type.type === 'every' || (type.type !== 'time' && i.repeat === true), ...(i.urgent === true ? { urgent: true } : {}),
       fallback: fallback.slice(0, 500), ...(i.expires ? { expires: i.expires } : {}), created: new Date(now).toISOString(),
+      ...(type.type === 'moved' ? { setAt: { ...(here ? { lat: round6(here.lat), lng: round6(here.lng) } : {}), km: round3(this.odometer) } } : {}),
     };
     return this.#run(async () => {
       await saveWatch(this.ws, scope, w, owner);
@@ -852,10 +883,21 @@ export class Live {
     let change = null;
     if (fix.source !== 'manual') {
       this.gps = 'ok';
+      if (this.#wasFast && fix.accuracy <= 100) {
+        if (waySpeed(this.#wasFast, fix) >= FAST_FROM) { // the same drive: nothing starts
+          if ((fix.speed ?? 0) >= FAST_FROM) { // and still on the road
+            this.activity = 'moving-fast';
+            this.#tracker.restore(this.activity, fix.at);
+            this.#tellActivity();
+          } else this.#fastEnded = fix.at - VOICE_HOLD_MS; // parked or at a light: no false "starts", and no voice
+        }
+        this.#wasFast = null;
+      }
       const c = this.#tracker.feed(fix);
       if (c) {
         change = { from: c.from, to: c.to };
         this.activity = c.to;
+        await this.#log(this.#changeData(c));
       }
     }
     if (!this.stop || meters(this.stop, fix) > Math.max(STOP_M, fix.accuracy)) this.stop = { lat: fix.lat, lng: fix.lng, since: fix.at };
@@ -873,12 +915,17 @@ export class Live {
     // away counts the way since then at once, in the catch-up (spec §11.4) when it comes in time, not as a
     // jump when the user next moves; one after FIX_WAIT_MS does too, as the catch-up has gone.
     // A fix too coarse to count (a cell tower's) leaves it to the first that is good enough.
-    const back = this.#back && fix.accuracy <= 100;
-    if (fix.accuracy <= 100) this.#back = false;
-    if (!this.#odo) this.#odo = fix;
-    else if ((moving || back) && fix.accuracy <= 100 && meters(this.#odo, fix) >= (back ? Math.max(STOP_M, 2 * fix.accuracy) : Math.max(KEEP_M, (this.activity === 'walking' ? 2 : 1) * fix.accuracy))) {
-      this.odometer += meters(this.#odo, fix) / 1000;
-      this.#odo = fix;
+    const good = fix.accuracy <= 100;
+    const back = this.#back && good;
+    if (good) this.#back = false;
+    if (fix.source === 'manual') this.#odo = null; // a place the user gives is a jump, not a way
+    else if (good) {
+      if (!this.#odo) this.#odo = fix;
+      else if ((moving || back) && meters(this.#odo, fix) >= (back ? Math.max(STOP_M, 2 * fix.accuracy) : Math.max(KEEP_M, (this.activity === 'walking' ? 2 : 1) * fix.accuracy))) {
+        this.odometer += meters(this.#odo, fix) / 1000;
+        this.#odo = fix;
+        if (this.odometer - this.#savedKm >= SAVE_KM) await this.#log();
+      }
     }
     this.fix = fix;
     if (change) this.#tellActivity();
@@ -897,6 +944,7 @@ export class Live {
       this.#gpsStop();
       this.#clearTimer();
       if (this.#catch) await this.#endCatchUp();
+      if (this.on) await this.#log(this.#tracker.beat(this.clock.now())); // the page may not come back
       this.#tell();
       return;
     }
@@ -933,10 +981,7 @@ export class Live {
     const [last] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { reverse: true, limit: 1 }));
     const [point] = this.#trip ? await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['location'], reverse: true, limit: 1 })) : [];
     const from = point ? fixOf({ ...point.data, at: point.ts }, point.ts) : null;
-    if (from) {
-      this.#kept = from;
-      this.#odo = from; // the distance from there counts once the user moves
-    }
+    if (from) this.#kept = from;
     return { since: last ? last.ts : null, from };
   }
 
@@ -987,13 +1032,6 @@ export class Live {
     return /* en */ `${head}, and the user moved ${kmText(moved)}${a ? /* en */ ` from near ${a.name}` : ''}${b ? /* en */ ` to near ${b.name}` : ''}.`;
   }
 
-  /** A wake of hers: moved counts again from here (spec §11.3: "X km travelled since the last wake"). @param {any} e */
-  #heard(e) {
-    if (e?.type !== 'wake' || e.data?.meanwhile) return;
-    const prefix = `${e.scope ?? this.#scope()}\n`;
-    for (const [key, mem] of this.#mem) if (key.startsWith(prefix)) mem.km0 = this.odometer;
-  }
-
   /** A watch or the plan changed on disk. @param {{ scope: string, path: string }} c */
   #changed(c) {
     if (WATCH_FILE.test(c.path)) {
@@ -1039,7 +1077,7 @@ export class Live {
   async #recall(scope, ids) {
     for (const e of await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['trigger.fired'] }))) {
       const id = String(e.data?.watch);
-      if (!ids || ids.has(id)) this.#fired.set(this.#key(scope, id), { at: e.ts, place: e.data?.place ?? null, ...(typeof e.data?.for === 'number' ? { for: e.data.for } : {}) });
+      if (!ids || ids.has(id)) this.#fired.set(this.#key(scope, id), { at: e.ts, place: e.data?.place ?? null, ...(typeof e.data?.for === 'number' ? { for: e.data.for } : {}), ...(Number.isFinite(e.data?.km) ? { km: e.data.km } : {}) });
     }
   }
 
@@ -1126,7 +1164,7 @@ export class Live {
     const scope = this.#scope();
     return {
       now, fix, newFix: !past && Boolean(o.newFix) && Boolean(fix), past, live: this.on, activity: this.on ? this.activity : 'unknown', change: o.change ?? null,
-      odometer: this.odometer, stop: this.on && !past ? this.stop : null, gap: c ? { since: c.since, from: c.from } : null,
+      odometer: this.odometer, stop: this.on && !past ? this.stop : null, gap: c ? { since: c.since, from: c.from } : null, fastEnded: this.#fastEnded, near: (p) => this.near(p),
       fired: (id) => this.#fired.has(this.#key(scope, id)),
     };
   }
@@ -1137,7 +1175,9 @@ export class Live {
     let mem = this.#mem.get(key);
     if (mem) return mem;
     const last = this.#fired.get(key);
-    mem = { set: Date.parse(w.created ?? '') || m.now, lastAt: last?.at ?? null, lastPlace: last?.place ?? null, km0: this.odometer };
+    // A moved watch counts from the odometer at its last firing, else at its setting; above the odometer (a backup from another phone), from now.
+    const km0 = last ? last.km : w.setAt?.km;
+    mem = { set: Date.parse(w.created ?? '') || m.now, lastAt: last?.at ?? null, lastPlace: last?.place ?? null, km0: typeof km0 === 'number' && Number.isFinite(km0) ? Math.min(km0, this.odometer) : this.odometer, setAt: w.setAt };
     this.#mem.set(key, mem);
     try {
       type.start?.(w.when, m, mem);
@@ -1191,6 +1231,11 @@ export class Live {
     await this.#follow();
     if (o.change === undefined && !o.past) o = { ...o, change: this.#settle() };
     const m = this.#moment(o);
+    if (this.#voiceLapse !== null && m.now >= this.#voiceLapse) {
+      this.#voiceLapse = null;
+      this.#tellActivity(); // Auto voice hears that moving fast ended long enough ago
+    }
+    if (this.on && this.shown && this.#stateAt !== null && m.now - this.#stateAt >= HEARTBEAT_MS) this.#log(this.#tracker.beat(m.now));
     const open = this.#scope();
     /** @type {Fired[]} */
     const fired = [];
@@ -1209,9 +1254,64 @@ export class Live {
     const c = this.#tracker.tick(this.clock.now());
     if (!c) return null;
     this.activity = c.to;
+    this.#log(this.#changeData(c));
     this.#tellActivity();
     this.#tell();
     return { from: c.from, to: c.to };
+  }
+
+  /** A change of activity as the log keeps it (no position); moving fast ending starts the clocks that the triggers and Auto voice read. @param {import('./activity.js').Change} c */
+  #changeData(c) {
+    if (c.from === 'moving-fast') {
+      this.#fastEnded = c.at;
+      this.#voiceLapse = c.at + VOICE_HOLD_MS;
+    } else if (c.to === 'moving-fast') this.#voiceLapse = null;
+    return { from: c.from, ...(c.from === 'moving-fast' ? { ended: c.at } : {}), ...c.why };
+  }
+
+  /**
+   * Each change of activity, each HEARTBEAT_MS it stays, each km of way and going off screen: the one record a restart reads (odometer and odo
+   * of one moment, so the way since counts at the first fix back), and a state entry for the Trace, not read back. A simulation's are not kept.
+   * @param {Record<string, any>} [extra]
+   */
+  async #log(extra = {}) {
+    if (this.#sim) return;
+    const now = this.clock.now();
+    const speed = this.#tracker.speed;
+    const odometer = round3(this.odometer);
+    const o = this.#odo;
+    this.#stateAt = now;
+    this.#savedKm = odometer;
+    if (!this.#wasFast) this.keep.set({ at: now, odometer, odo: o && { lat: o.lat, lng: o.lng, at: o.at, accuracy: o.accuracy }, activity: this.activity, ended: this.#fastEnded });
+    const data = { activity: this.activity, from: this.activity, speed: speed === null ? null : Math.round(speed * 10) / 10, odometer, ...extra };
+    await logEvent(this.store, SYS_DEVICE, { type: 'state', actor: 'system', data }, now).catch((e) => this.#fail(e));
+  }
+
+  /** annai started: the odometer and its place, whatever the record's age; with GPS on, the activity and when moving fast ended, if under SAME_DRIVE_MS old. */
+  #restore() {
+    const now = this.clock.now();
+    const r = this.keep.get();
+    this.odometer = this.#savedKm = r?.odometer ?? 0;
+    this.#odo = r?.odo ?? null;
+    if (!this.on) return;
+    this.#stateAt = r?.at ?? now; // the beats go on as if the page had not been away
+    if (!r || r.activity === 'unknown') return;
+    if (now - r.at >= SAME_DRIVE_MS) {
+      if (r.activity === 'moving-fast') this.#wasFast = this.#odo;
+      return;
+    }
+    this.#restored = r.activity;
+    this.activity = r.activity;
+    this.#tracker.restore(this.activity, now, this.#odo);
+    if (r.ended !== null) {
+      this.#fastEnded = r.ended;
+      if (r.ended + VOICE_HOLD_MS > now) this.#voiceLapse = r.ended + VOICE_HOLD_MS;
+    }
+  }
+
+  /** One app.start entry for each page load, once the installed plugins have started, so one that follows the log (Remote trace) sees it. */
+  logStart() {
+    return this.#run(() => logEvent(this.store, SYS_DEVICE, { type: 'app.start', actor: 'system', data: { gps: this.on ? 'on' : 'off', activity: this.#restored ?? 'unknown' } }, this.clock.now()).catch((e) => this.#fail(e)));
   }
 
   /** The watches and the plan looked at (#check), and what fired fired. @param {Moment} m @param {string} open @param {Fired[]} fired */
@@ -1265,10 +1365,10 @@ export class Live {
         type: 'trigger.fired', actor: 'system',
         data: {
           watch: x.watch.id, type: x.watch.when.type, ...(x.watch.when.event ? { event: x.watch.when.event } : {}), ...(forAt(x.watch) !== null ? { for: forAt(x.watch) } : {}), owner: x.watch.owner, text: f.text, fallback: x.fallback,
-          ...(x.late ? { late: x.late } : {}), ...(f.place ? { place: f.place } : {}), ...(tz ? { tz } : {}), ...(this.#catch ? { catchUp: true } : {}), ...(this.online ? {} : { offline: true }),
+          ...(x.late ? { late: x.late } : {}), ...(f.place ? { place: f.place } : {}), ...(x.watch.when.type === 'moved' ? { km: round3(this.odometer) } : {}), ...(tz ? { tz } : {}), ...(this.#catch ? { catchUp: true } : {}), ...(this.online ? {} : { offline: true }),
         },
       }, now).catch((e) => this.#fail(e));
-      this.#fired.set(key, { at: now, place: f.place ?? null, ...(forAt(x.watch) !== null ? { for: /** @type {number} */ (forAt(x.watch)) } : {}) });
+      this.#fired.set(key, { at: now, place: f.place ?? null, ...(forAt(x.watch) !== null ? { for: /** @type {number} */ (forAt(x.watch)) } : {}), ...(x.watch.when.type === 'moved' ? { km: this.odometer } : {}) });
       const mem = this.#mem.get(key);
       if (mem) {
         mem.lastAt = now;
@@ -1440,6 +1540,8 @@ export class Live {
       if (typeof t === 'number' && Number.isFinite(t) && t > m.now && t < next) next = t;
     };
     if (this.on) consider(this.#tracker.due()); // an activity change held long enough, or a quiet GPS
+    if (this.on) consider(this.#voiceLapse); // Auto voice's hold after moving fast
+    if (this.on && !this.#sim && this.#stateAt !== null) consider(this.#stateAt + HEARTBEAT_MS);
     const types = this.types();
     const open = this.#scope();
     for (const [scope, list] of this.#watches) {

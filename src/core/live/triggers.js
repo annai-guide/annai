@@ -8,11 +8,13 @@ import { meters, kmText } from './geo.js';
  * @typedef {{ lat: number, lng: number, since: number }} Stop  where the user has stayed, and since when
  * @typedef {{ now: number, fix: Fix | null, newFix: boolean, past: boolean, live: boolean, activity: string,
  *   change: { from: string, to: string } | null, odometer: number, stop: Stop | null,
- *   gap: { since: number | null, from: Fix | null } | null, fired: (id: string) => boolean }} Moment
+ *   gap: { since: number | null, from: Fix | null } | null, fastEnded: number | null, near?: (p: { lat: number, lng: number }) => { name: string } | null,
+ *   fired: (id: string) => boolean }} Moment
  *   fix: where the user is, when annai knows (live mode on, and not too old); newFix: this check came with that fix;
  *   past: a catch-up's first look, from where the user was when annai went off screen (spec §11.4): only what the clock makes due fires;
  *   change: the activity just changed; odometer: km travelled while live; stop: where the user has stayed, while live;
- *   gap: annai was off screen, or closed, and is catching up; fired: whether a watch of this conversation has fired
+ *   gap: annai was off screen, or closed, and is catching up; fastEnded: when moving fast last ended (live mode's, one for all watches and Auto voice);
+ *   near: the place a point is near, when annai knows one; fired: whether a watch of this conversation has fired
  * @typedef {{ name?: string, lat: number, lng: number }} Place
  * @typedef {{ text: string, at?: number, place?: Place, fallback?: string, say?: import('./plan-watches.js').PlanSay }} Firing
  *   text: what happened, for Shiori; at: when it came due (for "late by"); fallback: this firing's own words for the user
@@ -27,6 +29,8 @@ import { meters, kmText } from './geo.js';
 /** A stop this far from the last one is somewhere new (arrived). */
 export const NEW_PLACE_M = 500;
 const MIN = 60_000;
+/** Moving fast starting again this soon after it ended is the same drive: a red light, a queue. */
+export const SAME_DRIVE_MS = 5 * MIN;
 
 /** @param {unknown} v @param {number} lo @param {number} hi */
 const num = (v, lo, hi) => typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= hi;
@@ -163,18 +167,22 @@ function startSide(w, m, mem) {
 
 /** @type {TriggerType} */
 /* en */ const MOVED = {
-  type: 'moved', gps: true, summary: 'moved {km}: after travelling that far since your last wake',
+  type: 'moved', gps: true, summary: 'moved {km}: after travelling that far, counted from when the watch is set or (with repeat) its last firing, in any conversation; a reload doesn\'t reset it',
   validate: (w) => (num(w?.km, 0.1, 1000) ? null : 'km must be a number from 0.1 to 1000'),
   describe: (w) => `after ${w.km} km travelled`,
   check: (w, m, mem) => {
     const done = m.odometer - (mem.km0 ?? m.odometer);
-    /* en */ return done >= w.km ? { text: `you have travelled ${done.toFixed(1)} km since your last wake` } : null;
+    if (done < w.km) return null;
+    // Where it counts from: the place of its last firing, else where it was set, when a name is near; the point it fires at is kept for the next.
+    const from = [mem.lastPlace, mem.setAt].find((p) => num(p?.lat, -90, 90) && num(p?.lng, -180, 180));
+    const name = from ? m.near?.(from)?.name : undefined;
+    /* en */ return { text: `you have travelled ${done.toFixed(1)} km since ${name ? `near ${name}` : 'this watch last started counting'}`, ...(m.fix ? { place: { lat: m.fix.lat, lng: m.fix.lng } } : {}) };
   },
 };
 
 /** @type {TriggerType} */
 /* en */ const ACTIVITY = {
-  type: 'activity', gps: true, summary: 'activity {activity: still | walking | moving-fast, edge?: start | stop}: when it starts (or, with edge stop, stops)',
+  type: 'activity', gps: true, summary: 'activity {activity: still | walking | moving-fast, edge?: start | stop}: when it starts (or, with edge stop, stops); moving fast starting again under 5 min after it ended (a red light) doesn\'t count as starting',
   validate: (w) => {
     if (!['still', 'walking', 'moving-fast'].includes(w?.activity)) /* en */ return 'activity is still, walking or moving-fast';
     /* en */ return w.edge === undefined || w.edge === 'start' || w.edge === 'stop' ? null : 'edge is start or stop';
@@ -182,7 +190,9 @@ function startSide(w, m, mem) {
   describe: (w) => `when ${words(w.activity)} ${w.edge === 'stop' ? 'stops' : 'starts'}`,
   check: (w, m) => {
     const c = m.change;
-    if (!c || (w.edge === 'stop' ? c.from !== w.activity : c.to !== w.activity)) return null;
+    if (!c) return null;
+    if (w.edge === 'stop' ? c.from !== w.activity : c.to !== w.activity) return null;
+    if (w.edge !== 'stop' && w.activity === 'moving-fast' && m.fastEnded !== null && m.now - m.fastEnded < SAME_DRIVE_MS) return null;
     /* en */ return { text: `the activity is now ${words(c.to)} (it was ${words(c.from)})` };
   },
 };
