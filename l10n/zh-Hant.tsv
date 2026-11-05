@@ -182,7 +182,7 @@ provider-vllm:@provider.note	ok	vLLM listens on port 8000 unless --port says oth
 provider-vllm:@provider.abilities.chat.note	ok	Add models with Fetch model list: each comes with the context the server holds. Tool calls need --enable-auto-tool-choice --tool-call-parser <name>, and a model that thinks needs --reasoning-parser <name>; without them Shiori can't use her tools, and her thinking shows in her words.	用「取得模型清單」新增模型：每個模型都會帶上伺服器保有的上下文長度。工具呼叫需要 --enable-auto-tool-choice --tool-call-parser <name>，會思考的模型需要 --reasoning-parser <name>；沒有它們，Shiori 無法使用工具，她的思考也會混進她的話裡。	plugins-official/provider-vllm/annai-plugin.json:55	
 provider-vllm:@provider.abilities.transcription.note	ok	For a Whisper model on a vLLM server of its own: give that server's address as this ability's own, and add the model by id.	用於在單獨的 vLLM 伺服器上執行的 Whisper 模型：把那台伺服器的網址填為此功能自己的網址，再依 ID 新增模型。	plugins-official/provider-vllm/annai-plugin.json:61	
 remote-trace:@name	ok	Remote trace (for developers)	遠端記錄（開發人員）	plugins-official/remote-trace/annai-plugin.json:3	Note: As annai's own Experimental row names it (遠端記錄（開發者）); Trace is the glossary's 記錄.
-remote-trace:@description	ok	For developers: sends annai's trace, as the Trace screen shows it, to a server you run, while you watch. It sends nothing until you give it a server and a token and turn Send on. Never keys.	開發人員用：在你檢視時，把 annai 的記錄按「記錄」頁面顯示的樣子傳送到你自己執行的伺服器。在你填寫伺服器和權杖並開啟「傳送」之前，它什麼也不傳送。從不傳送金鑰。	plugins-official/remote-trace/annai-plugin.json:8	
+remote-trace:@description	draft	For developers: sends annai's trace, as the Trace screen shows it, to a server you run, while you watch. It sends nothing until you give it a server and a token and turn Send on. The keys annai keeps are blanked.	開發人員用：在你檢視時，把 annai 的記錄按「記錄」頁面顯示的樣子傳送到你自己執行的伺服器。在你填寫伺服器和權杖並開啟「傳送」之前，它什麼也不傳送。annai 儲存的金鑰會被遮蓋。	plugins-official/remote-trace/annai-plugin.json:8	
 remote-trace:@settings.properties.server.title	ok	Server address	伺服器網址	plugins-official/remote-trace/annai-plugin.json:15	
 remote-trace:@settings.properties.server.description	ok	Where annai sends its trace: a server you run, such as annai's scripts/trace-sink.mjs. https://…, or http:// only for localhost or 127.0.0.1.	annai 傳送記錄的去處：你自己執行的伺服器，例如 annai 的 scripts/trace-sink.mjs。用 https://…，http:// 只能用於 localhost 或 127.0.0.1。	plugins-official/remote-trace/annai-plugin.json:16	
 remote-trace:@settings.properties.token.title	ok	Token	權杖	plugins-official/remote-trace/annai-plugin.json:21	
@@ -190,30 +190,42 @@ remote-trace:@settings.properties.token.description	ok	The server's token. annai
 remote-trace:@settings.properties.location.title	ok	Send location points	傳送位置點	plugins-official/remote-trace/annai-plugin.json:27	
 remote-trace:@settings.properties.location.description	ok	Also send the location points annai records while GPS is on, about one a second on a drive. Off, other entries can still name a place, as the Trace shows them: a weather request's address, a tool's input.	同時傳送 GPS 開啟時 annai 記錄的位置點（駕駛時約每秒一個）。關閉時，其他條目仍可能包含地點，正如「記錄」中顯示的：天氣請求的網址、工具的輸入等。	plugins-official/remote-trace/annai-plugin.json:28	Note: a weather request's address is its web address (it carries the place), so 網址.
 remote-trace:@settings.properties.send.title	ok	Send	傳送	plugins-official/remote-trace/annai-plugin.json:33	
-remote-trace:@settings.properties.send.description	ok	On, what the Trace records from now on goes to the server within a few seconds: what you write, what Shiori says, her tools, requests and errors. Keys are blanked, and stored content (photos, long texts) stays here. Off stops it at once.	開啟後，從現在起「記錄」所記下的內容會在幾秒內傳送到伺服器：你寫的、Shiori 說的、她的工具、請求和錯誤。金鑰會被遮蓋，已儲存的內容（照片、長文字）留在這裡。關閉會立即停止。	plugins-official/remote-trace/annai-plugin.json:34	
-remote-trace:@settings.properties.device.title	ok	Device id	裝置 ID	plugins-official/remote-trace/annai-plugin.json:39	
-remote-trace:@settings.properties.device.description	ok	Sent with each batch, so the server can tell this device from another. annai makes one at the first send; you may give it a name of your own.	隨每批一起傳送，讓伺服器能把本裝置與其他裝置區分開。annai 會在第一次傳送時產生一個；你也可以自己命名。	plugins-official/remote-trace/annai-plugin.json:40	
-remote-trace:4clmw9	ok	It needs the address of your server.	需要你的伺服器網址。	plugins-official/remote-trace/index.js:50	
-remote-trace:u2jqcp	ok	Its server address must start with https:// (http:// only for localhost or 127.0.0.1).	伺服器網址必須以 https:// 開頭（http:// 只能用於 localhost 或 127.0.0.1）。	plugins-official/remote-trace/index.js:56	
-remote-trace:15ggh6g	ok	Its server address has a name or password in it, which a request can't carry. Take it out, and give the server's token as the Token.	伺服器網址中含有使用者名稱或密碼，請求無法攜帶它們。請把它們去掉，並把伺服器的權杖填到「權杖」中。	plugins-official/remote-trace/index.js:58	Note: "a name or password" in an address is its user name (https://user:pass@…), so 使用者名稱.
-remote-trace:rr1ir8	ok	Change it in Settings → Plugins → Remote trace (for developers).	請在設定 → 外掛程式 → 遠端記錄（開發人員）中更改。	plugins-official/remote-trace/index.js:138	Note: Settings paths sit in the sentence without spaces, as annai's rows write them.
-remote-trace:1kwbgo3	ok	The phone is offline.	手機處於離線狀態。	plugins-official/remote-trace/index.js:140	
-remote-trace:q62pwu	ok	Its token can't be sent.	權杖無法傳送。	plugins-official/remote-trace/index.js:140	
-remote-trace:zr5o1w	ok	It has no token.	沒有權杖。	plugins-official/remote-trace/index.js:140	
-remote-trace:14w66x9	ok	The server can't be reached.	無法連線伺服器。	plugins-official/remote-trace/index.js:141	
-remote-trace:46d80m	ok	The server answered {0}.	伺服器傳回了 {0}。	plugins-official/remote-trace/index.js:141	{0} = p.status
-remote-trace:rt350m	ok	annai couldn't get the batch ready.	annai 無法準備好這一批。	plugins-official/remote-trace/index.js:141	
-remote-trace:1t53c9s	ok	Sending trace	正在傳送記錄	plugins-official/remote-trace/index.js:166	
-remote-trace:zzw26r#other	ok	Sending trace: # waiting.	正在傳送記錄：# 筆等待中。	plugins-official/remote-trace/index.js:166	plural; # = waiting; English: "Sending trace: # waiting." (one), "Sending trace: # waiting." (other)
-remote-trace:ata72m	ok	Trace	記錄	plugins-official/remote-trace/index.js:179	
-remote-trace:bbadl	ok	Remote trace isn't sending	遠端記錄沒有在傳送	plugins-official/remote-trace/index.js:276	
-remote-trace:s7tmcq	ok	It needs the server's token. Add it in Settings → Plugins → Remote trace (for developers).	需要伺服器的權杖。請在設定 → 外掛程式 → 遠端記錄（開發人員）中新增。	plugins-official/remote-trace/index.js:304	
-remote-trace:1ahd84q	ok	Its token has characters a request can't carry: letters, digits and punctuation only, no spaces.	權杖中含有請求無法攜帶的字元：只能用字母、數字和標點，不能有空格。	plugins-official/remote-trace/index.js:308	
-remote-trace:1qhwapr	ok	The trace server refuses what annai sends	記錄伺服器拒絕了 annai 傳送的內容	plugins-official/remote-trace/index.js:357	
-remote-trace:18ckgf7	ok	{0} answered {1} {2} times in a row.	{0} 連續 {2} 次傳回了 {1}。	plugins-official/remote-trace/index.js:358	{0} = host; {1} = res.status; {2} = refusals
-remote-trace:dslm8u	ok	{0} answered {1} {2} times in a row: the token may be wrong.	{0} 連續 {2} 次傳回了 {1}：權杖可能不對。	plugins-official/remote-trace/index.js:358	{0} = host; {1} = res.status; {2} = refusals
-remote-trace:16cfxwg	ok	annai keeps trying about once a minute, and keeps the newest {0} entries until they go. Check the server address and the token in Settings → Plugins → Remote trace (for developers), or turn Send off there.	annai 會繼續大約每分鐘嘗試一次，並保留最新的 {0} 筆，直到送出為止。請在設定 → 外掛程式 → 遠端記錄（開發人員）中檢查伺服器網址和權杖，或在那裡關閉「傳送」。	plugins-official/remote-trace/index.js:359	{0} = kept
-remote-trace:m3chyg	ok	Open Remote trace	開啟遠端記錄	plugins-official/remote-trace/index.js:360	
+remote-trace:@settings.properties.send.description	draft	On, what the Trace records from now on goes to the server within a few seconds: what you write, what Shiori says, her tools, requests and errors. The keys annai keeps are blanked, and stored content (photos, long texts) stays here. Off stops it at once.	開啟後，從現在起「記錄」所記下的內容會在幾秒內傳送到伺服器：你寫的、Shiori 說的、她的工具、請求和錯誤。annai 儲存的金鑰會被遮蓋，已儲存的內容（照片、長文字）留在這裡。關閉會立即停止。	plugins-official/remote-trace/annai-plugin.json:34	
+remote-trace:@settings.properties.detailed.title	draft	Detailed trace	詳細記錄	plugins-official/remote-trace/annai-plugin.json:39	
+remote-trace:@settings.properties.detailed.description	draft	Also sends recordings of what the microphone heard to the server above: each of your turns, and short samples of sound the level check kept out. Recordings include passengers and whatever is playing. Phone dictation is the browser's own, so it has no audio. A text copy of the screen goes too, at each screen change and when you tap Flag, without what's typed in fields or the keys annai keeps, and never from the Trace screen. A Flag button takes the Trace chip's place in the dock, to mark when something looks wrong. It needs a server address and Send on, and turns itself off after 24 hours.	同時把麥克風聽到的錄音傳送到上面的伺服器：你的每次發言，以及音量檢查擋在外面的聲音的簡短樣本。錄音會包含乘客的聲音和正在播放的內容。手機聽寫由瀏覽器負責，因此沒有音訊。螢幕文字的副本也會傳送，在每次畫面變化和你點按「標記」時傳送，不含輸入欄中的內容和 annai 儲存的金鑰，也不含「記錄」頁面的文字。底部列中的「標記」按鈕會取代「記錄」按鈕，用於在有問題時做標記。它需要伺服器網址並開啟「傳送」，24 小時後自動關閉。	plugins-official/remote-trace/annai-plugin.json:40	
+remote-trace:@settings.properties.device.title	ok	Device id	裝置 ID	plugins-official/remote-trace/annai-plugin.json:45	
+remote-trace:@settings.properties.device.description	ok	Sent with each batch, so the server can tell this device from another. annai makes one at the first send; you may give it a name of your own.	隨每批一起傳送，讓伺服器能把本裝置與其他裝置區分開。annai 會在第一次傳送時產生一個；你也可以自己命名。	plugins-official/remote-trace/annai-plugin.json:46	
+remote-trace:4clmw9	ok	It needs the address of your server.	需要你的伺服器網址。	plugins-official/remote-trace/index.js:77	
+remote-trace:u2jqcp	ok	Its server address must start with https:// (http:// only for localhost or 127.0.0.1).	伺服器網址必須以 https:// 開頭（http:// 只能用於 localhost 或 127.0.0.1）。	plugins-official/remote-trace/index.js:83	
+remote-trace:15ggh6g	ok	Its server address has a name or password in it, which a request can't carry. Take it out, and give the server's token as the Token.	伺服器網址中含有使用者名稱或密碼，請求無法攜帶它們。請把它們去掉，並把伺服器的權杖填到「權杖」中。	plugins-official/remote-trace/index.js:85	Note: "a name or password" in an address is its user name (https://user:pass@…), so 使用者名稱.
+remote-trace:rr1ir8	ok	Change it in Settings → Plugins → Remote trace (for developers).	請在設定 → 外掛程式 → 遠端記錄（開發人員）中更改。	plugins-official/remote-trace/index.js:233	Note: Settings paths sit in the sentence without spaces, as annai's rows write them.
+remote-trace:1kwbgo3	ok	The phone is offline.	手機處於離線狀態。	plugins-official/remote-trace/index.js:235	
+remote-trace:q62pwu	ok	Its token can't be sent.	權杖無法傳送。	plugins-official/remote-trace/index.js:235	
+remote-trace:zr5o1w	ok	It has no token.	沒有權杖。	plugins-official/remote-trace/index.js:235	
+remote-trace:14w66x9	ok	The server can't be reached.	無法連線伺服器。	plugins-official/remote-trace/index.js:236	
+remote-trace:46d80m	ok	The server answered {0}.	伺服器傳回了 {0}。	plugins-official/remote-trace/index.js:236	{0} = p.status
+remote-trace:rt350m	ok	annai couldn't get the batch ready.	annai 無法準備好這一批。	plugins-official/remote-trace/index.js:236	
+remote-trace:1t53c9s	ok	Sending trace	正在傳送記錄	plugins-official/remote-trace/index.js:279	
+remote-trace:zzw26r#other	ok	Sending trace: # waiting.	正在傳送記錄：# 筆等待中。	plugins-official/remote-trace/index.js:279	plural; # = waiting; English: "Sending trace: # waiting." (one), "Sending trace: # waiting." (other)
+remote-trace:ata72m	ok	Trace	記錄	plugins-official/remote-trace/index.js:309	
+remote-trace:bbadl	ok	Remote trace isn't sending	遠端記錄沒有在傳送	plugins-official/remote-trace/index.js:438	
+remote-trace:s7tmcq	ok	It needs the server's token. Add it in Settings → Plugins → Remote trace (for developers).	需要伺服器的權杖。請在設定 → 外掛程式 → 遠端記錄（開發人員）中新增。	plugins-official/remote-trace/index.js:474	
+remote-trace:1ahd84q	ok	Its token has characters a request can't carry: letters, digits and punctuation only, no spaces.	權杖中含有請求無法攜帶的字元：只能用字母、數字和標點，不能有空格。	plugins-official/remote-trace/index.js:478	
+remote-trace:1qhwapr	ok	The trace server refuses what annai sends	記錄伺服器拒絕了 annai 傳送的內容	plugins-official/remote-trace/index.js:524	
+remote-trace:18ckgf7	ok	{0} answered {1} {2} times in a row.	{0} 連續 {2} 次傳回了 {1}。	plugins-official/remote-trace/index.js:525	{0} = host; {1} = res.status; {2} = refusals
+remote-trace:dslm8u	ok	{0} answered {1} {2} times in a row: the token may be wrong.	{0} 連續 {2} 次傳回了 {1}：權杖可能不對。	plugins-official/remote-trace/index.js:525	{0} = host; {1} = res.status; {2} = refusals
+remote-trace:16cfxwg	ok	annai keeps trying about once a minute, and keeps the newest {0} entries until they go. Check the server address and the token in Settings → Plugins → Remote trace (for developers), or turn Send off there.	annai 會繼續大約每分鐘嘗試一次，並保留最新的 {0} 筆，直到送出為止。請在設定 → 外掛程式 → 遠端記錄（開發人員）中檢查伺服器網址和權杖，或在那裡關閉「傳送」。	plugins-official/remote-trace/index.js:526	{0} = kept
+remote-trace:m3chyg	ok	Open Remote trace	開啟遠端記錄	plugins-official/remote-trace/index.js:527	
+remote-trace:1jgbgmt	draft	It stops after 24 hours, so it can't be forgotten.	為避免忘記關閉，它會在 24 小時後停止。	plugins-official/remote-trace/index.js:587	
+remote-trace:dbxfo4	draft	Detailed trace turned itself off	詳細記錄已自動關閉	plugins-official/remote-trace/index.js:587	
+remote-trace:dq1l0x	draft	Flagged	已標記	plugins-official/remote-trace/index.js:611	
+remote-trace:lhtiv0	draft	Not flagged	未能標記	plugins-official/remote-trace/index.js:611	
+remote-trace:h872lz	draft	Flag	標記	plugins-official/remote-trace/index.js:701	
+remote-trace:tebmzn	draft	Flag this moment	標記此刻	plugins-official/remote-trace/index.js:702	
+remote-trace:1tzfhga	draft	The server address changed, and recordings go only where you turned it on.	伺服器網址已更改。錄音只傳送到你開啟它時的那個網址。	plugins-official/remote-trace/index.js:734	
+remote-trace:1xzx64b	draft	Detailed trace turned off	詳細記錄已關閉	plugins-official/remote-trace/index.js:734	
+remote-trace:1cbqns1	draft	Detailed trace stayed off	詳細記錄仍為關閉	plugins-official/remote-trace/index.js:755	
+remote-trace:602wt0	draft	It needs a server address and Send on. Set those, then turn it on.	它需要伺服器網址，並開啟「傳送」。設定好後再開啟它。	plugins-official/remote-trace/index.js:755	
 scripted-model:@name	ok	Scripted model	腳本模型	plugins-official/scripted-model/annai-plugin.json:3	Note: 腳本模型, as annai's own Simulate row names it.
 scripted-model:@description	ok	A model that replies from a script, for tests and plugin authors. It never uses the network.	按腳本回覆的模型，供測試和外掛程式作者使用。它從不使用網路。	plugins-official/scripted-model/annai-plugin.json:7	
 search-searxng:@name	ok	SearXNG Search	SearXNG 搜尋	plugins-official/search-searxng/annai-plugin.json:3	Note: annai translates its own plugins' descriptive word (decision 10): Search → 搜尋; annai's credits rows name Tavily's and Serper's the same way.
@@ -462,55 +474,55 @@ edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe 
 yvabm6	ok	Koe's live voice couldn't start	Koe 的即時語音無法啟動	src/core/agent/halves.js:605	Note: "live voice" is the glossary's Live voice (即時語音), not a voice she speaks with (聲音).
 bzrasi	ok	Shiori answers as one half for now	Shiori 暫時獨自回答	src/core/agent/halves.js:782	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
 o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai 無法把你的訊息轉給 Koe：{0}	src/core/agent/halves.js:782	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-1dhsqvv	ok	Tap to talk	點一下說話	src/core/agent/loop.js:128	
-1ldobgc	ok	Tap to interrupt	點一下打斷	src/core/agent/loop.js:128	
-4mbury	ok	Thinking · tap to stop	思考中 · 點一下停止	src/core/agent/loop.js:128	
-89yydm	ok	Listening	聆聽中	src/core/agent/loop.js:128	Note: one of Shiori's states, as the dock shows her.
-bost42	draft	Ignoring sound · tap to talk	忽略聲音 · 輕點說話	src/core/agent/loop.js:128	
-g8840o	ok	Waiting for your OK	等待你的確認	src/core/agent/loop.js:128	
-yydchc	ok	Hearing you	正在聽你說	src/core/agent/loop.js:128	Note: one of Shiori's states: she hears you speaking.
-akjf4d	ok	Working on …	處理中…	src/core/agent/loop.js:129	
-izy3tv	ok	Offline · reminders still work	離線 · 提醒仍然有效	src/core/agent/loop.js:129	
-gni5zk	draft	Her sound got stuck, and a tap brings it back. Her words are in the conversation.	Shiori 的聲音卡住了，點一下即可恢復。她說的話都在對話裡。	src/core/agent/loop.js:153	
-guullf	ok	Tap the screen so Shiori can speak	點一下螢幕，讓 Shiori 能說話	src/core/agent/loop.js:153	
-1080xlr	ok	Working on {0}	處理中：{0}	src/core/agent/loop.js:591	{0} = detail; Note: label: value, {0} is what she works on, in her words.
-1h2c64o	ok	Working on tidying up the conversation	正在整理對話	src/core/agent/loop.js:591	
-19793n8	ok	Shiori skipped a wake	Shiori 跳過了一次喚醒	src/core/agent/loop.js:912	
-16ny0z2	ok	Shiori stopped	Shiori 已停止	src/core/agent/loop.js:1147	
-1sxm1ou	ok	Something went wrong: {0}	出了點問題：{0}	src/core/agent/loop.js:1147	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori 無法整理對話	src/core/agent/loop.js:1180	
-oeaxaa	ok	She will try again later.	她稍後會再試。	src/core/agent/loop.js:1180	
-x10s30	ok	Shiori couldn't summarize the conversation	Shiori 無法總結對話	src/core/agent/loop.js:1371	
-1ds0zov	ok	Reminder	提醒	src/core/agent/loop.js:1582	
-1szzjml	ok	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:1582	
-nxpady	ok	The message went without it.	訊息已在沒有這張照片的情況下送出。	src/core/agent/loop.js:1686	
-sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1686	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
-ssozn1	ok	A photo wasn't sent to Shiori	照片沒有傳給 Shiori	src/core/agent/loop.js:1686	
-311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori 剛才正忙到一半。你回來後她會接著做。	src/core/agent/loop.js:1743	
-1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她以相同結果呼叫了同一個工具三次，所以這一輪結束了。請換個說法再問一次。	src/core/agent/loop.js:2060	Note: "Ask again" is the verb (再問), not the glossary's Ask, Safari's 詢問 choice.
-pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重複	src/core/agent/loop.js:2060	
-1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什麼也沒對你說就結束了。	src/core/agent/loop.js:2097	
-2bgbpn	ok	Shiori didn't answer	Shiori 沒有回答	src/core/agent/loop.js:2101	
-1mjdfzn	ok	Shiori can't reach her model	Shiori 無法連線她的模型	src/core/agent/loop.js:2165	
-1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	這個模型只接受{0}格式的照片，而這個瀏覽器無法產生。新增{1}的外掛程式可以解決（設定 → 外掛程式）。	src/core/agent/loop.js:2193	{0} = names; {1} = names
-1uhz9dg	ok	Shiori couldn't send the photo	Shiori 無法傳送照片	src/core/agent/loop.js:2252	
-vjxaph	ok	Your turn	輪到你了	src/core/agent/loop.js:2720	
-19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	這個瀏覽器只有在點一下後才會播放聲音。她的話在對話裡。	src/core/agent/loop.js:2866	
-1h2ina6	ok	Shiori couldn't speak aloud	Shiori 無法朗讀出聲	src/core/agent/loop.js:2867	
-1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → 模型 → 朗讀中沒有一個聲音能用；原因見記錄。她的話在對話裡。	src/core/agent/loop.js:2867	
-1r1dhd7	ok	Shiori can't hear you yet	Shiori 還聽不到你	src/core/agent/loop.js:3002	
-8wd0xv	ok	Listening stopped	收聽已停止	src/core/agent/loop.js:3166	
-43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:3366	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	每邊最多 # 畫素	src/core/agent/loop.js:3367	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一次最多#張照片	src/core/agent/loop.js:3368	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	僅限{0}	src/core/agent/loop.js:3369	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一張照片（它接受：{0}），annai 也無法做出它能接受的副本。請在設定 → 照片 → 傳給 Shiori 的照片中改用更小的照片，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:3370	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一張照片，annai 也無法做出它能接受的副本。請在設定 → 照片 → 傳給 Shiori 的照片中改用更小的照片，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:3371	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，對話對她的模型來說太長了。請在設定 → 模型中檢查模型，或稍後再試。	src/core/agent/loop.js:3378	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	外掛程式 {0} 喚醒她的次數超過了你允許的每小時#次。	src/core/agent/loop.js:3388	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情喚醒她的次數超過了你允許的每小時#次：{0}。	src/core/agent/loop.js:3389	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你新增的檔案喚醒她的次數超過了你允許的每小時#次：{0}。	src/core/agent/loop.js:3390	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	有東西喚醒她的次數超過了你允許的每小時#次。	src/core/agent/loop.js:3391	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+1dhsqvv	ok	Tap to talk	點一下說話	src/core/agent/loop.js:127	
+1ldobgc	ok	Tap to interrupt	點一下打斷	src/core/agent/loop.js:127	
+4mbury	ok	Thinking · tap to stop	思考中 · 點一下停止	src/core/agent/loop.js:127	
+89yydm	ok	Listening	聆聽中	src/core/agent/loop.js:127	Note: one of Shiori's states, as the dock shows her.
+bost42	draft	Ignoring sound · tap to talk	忽略聲音 · 輕點說話	src/core/agent/loop.js:127	
+g8840o	ok	Waiting for your OK	等待你的確認	src/core/agent/loop.js:127	
+yydchc	ok	Hearing you	正在聽你說	src/core/agent/loop.js:127	Note: one of Shiori's states: she hears you speaking.
+akjf4d	ok	Working on …	處理中…	src/core/agent/loop.js:128	
+izy3tv	ok	Offline · reminders still work	離線 · 提醒仍然有效	src/core/agent/loop.js:128	
+gni5zk	draft	Her sound got stuck, and a tap brings it back. Her words are in the conversation.	Shiori 的聲音卡住了，點一下即可恢復。她說的話都在對話裡。	src/core/agent/loop.js:152	
+guullf	ok	Tap the screen so Shiori can speak	點一下螢幕，讓 Shiori 能說話	src/core/agent/loop.js:152	
+1080xlr	ok	Working on {0}	處理中：{0}	src/core/agent/loop.js:592	{0} = detail; Note: label: value, {0} is what she works on, in her words.
+1h2c64o	ok	Working on tidying up the conversation	正在整理對話	src/core/agent/loop.js:592	
+19793n8	ok	Shiori skipped a wake	Shiori 跳過了一次喚醒	src/core/agent/loop.js:913	
+16ny0z2	ok	Shiori stopped	Shiori 已停止	src/core/agent/loop.js:1148	
+1sxm1ou	ok	Something went wrong: {0}	出了點問題：{0}	src/core/agent/loop.js:1148	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori 無法整理對話	src/core/agent/loop.js:1181	
+oeaxaa	ok	She will try again later.	她稍後會再試。	src/core/agent/loop.js:1181	
+x10s30	ok	Shiori couldn't summarize the conversation	Shiori 無法總結對話	src/core/agent/loop.js:1372	
+1ds0zov	ok	Reminder	提醒	src/core/agent/loop.js:1583	
+1szzjml	ok	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:1583	
+nxpady	ok	The message went without it.	訊息已在沒有這張照片的情況下送出。	src/core/agent/loop.js:1687	
+sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1687	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
+ssozn1	ok	A photo wasn't sent to Shiori	照片沒有傳給 Shiori	src/core/agent/loop.js:1687	
+311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori 剛才正忙到一半。你回來後她會接著做。	src/core/agent/loop.js:1744	
+1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她以相同結果呼叫了同一個工具三次，所以這一輪結束了。請換個說法再問一次。	src/core/agent/loop.js:2062	Note: "Ask again" is the verb (再問), not the glossary's Ask, Safari's 詢問 choice.
+pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重複	src/core/agent/loop.js:2062	
+1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什麼也沒對你說就結束了。	src/core/agent/loop.js:2099	
+2bgbpn	ok	Shiori didn't answer	Shiori 沒有回答	src/core/agent/loop.js:2103	
+1mjdfzn	ok	Shiori can't reach her model	Shiori 無法連線她的模型	src/core/agent/loop.js:2167	
+1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	這個模型只接受{0}格式的照片，而這個瀏覽器無法產生。新增{1}的外掛程式可以解決（設定 → 外掛程式）。	src/core/agent/loop.js:2195	{0} = names; {1} = names
+1uhz9dg	ok	Shiori couldn't send the photo	Shiori 無法傳送照片	src/core/agent/loop.js:2254	
+vjxaph	ok	Your turn	輪到你了	src/core/agent/loop.js:2722	
+19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	這個瀏覽器只有在點一下後才會播放聲音。她的話在對話裡。	src/core/agent/loop.js:2868	
+1h2ina6	ok	Shiori couldn't speak aloud	Shiori 無法朗讀出聲	src/core/agent/loop.js:2869	
+1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → 模型 → 朗讀中沒有一個聲音能用；原因見記錄。她的話在對話裡。	src/core/agent/loop.js:2869	
+1r1dhd7	ok	Shiori can't hear you yet	Shiori 還聽不到你	src/core/agent/loop.js:3004	
+8wd0xv	ok	Listening stopped	收聽已停止	src/core/agent/loop.js:3169	
+43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:3371	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	每邊最多 # 畫素	src/core/agent/loop.js:3372	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一次最多#張照片	src/core/agent/loop.js:3373	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	僅限{0}	src/core/agent/loop.js:3374	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一張照片（它接受：{0}），annai 也無法做出它能接受的副本。請在設定 → 照片 → 傳給 Shiori 的照片中改用更小的照片，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:3375	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一張照片，annai 也無法做出它能接受的副本。請在設定 → 照片 → 傳給 Shiori 的照片中改用更小的照片，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:3376	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，對話對她的模型來說太長了。請在設定 → 模型中檢查模型，或稍後再試。	src/core/agent/loop.js:3383	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	外掛程式 {0} 喚醒她的次數超過了你允許的每小時#次。	src/core/agent/loop.js:3393	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情喚醒她的次數超過了你允許的每小時#次：{0}。	src/core/agent/loop.js:3394	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你新增的檔案喚醒她的次數超過了你允許的每小時#次：{0}。	src/core/agent/loop.js:3395	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	有東西喚醒她的次數超過了你允許的每小時#次。	src/core/agent/loop.js:3396	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	這則訊息含有金鑰，所以不顯示。	src/core/agent/net.js:94	
 157dl17	ok	Shiori wants to adjust her personality	Shiori 想調整她的性格	src/core/agent/personalities.js:130	
 13g1wjf	ok	No thanks	不用了	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
@@ -572,8 +584,8 @@ iwgrsx	ok	This calendar has more than {0} events. Export only the trip's dates f
 5l9pv6	ok	{0} is larger than a trip's calendar ever is (over {1}). Export only the trip's dates from your calendar, and add that file.	{0} 對一個旅行行事曆來說太大了（超過 {1}）。請只從行事曆中匯出旅行日期內的事件，再新增那個檔案。	src/core/imports.js:15	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:27	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Chinese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	ok	just now	剛剛	src/core/intl.js:130	
-1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	用手機揚聲器時，Shiori 說話期間 annai 聽不到你，所以你在她說話時說的話會被丟棄。點一下就能讓她停下並開始收聽。	src/core/koe/live.js:621	
-1ml2kgi	ok	Tap Shiori to talk over her	點一下 Shiori 即可打斷她	src/core/koe/live.js:621	Note: The dock's Shiori button: tap it to talk over her.
+1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	用手機揚聲器時，Shiori 說話期間 annai 聽不到你，所以你在她說話時說的話會被丟棄。點一下就能讓她停下並開始收聽。	src/core/koe/live.js:631	
+1ml2kgi	ok	Tap Shiori to talk over her	點一下 Shiori 即可打斷她	src/core/koe/live.js:631	Note: The dock's Shiori button: tap it to talk over her.
 3fqfy0	ok	Languages	語言	src/core/languages.js:336	
 1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你說的語言和 Shiori 回答所用的語言會告知每個負責聽和說的模型，以免把簡短的回覆誤認作其他語言。	src/core/languages.js:337	
 1giusr1	ok	Languages you speak	你說的語言	src/core/languages.js:338	
@@ -887,9 +899,9 @@ xi9ch6	ok	Shiori can't hear you: the speech-in list is empty. Add an entry in Se
 1oy92m8	ok	This browser has no phone dictation either.	這個瀏覽器也沒有手機語音輸入。	src/core/voice/resolve.js:165	
 l80ifa	ok	Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	請在設定 → 模型中新增一個語音轉文字模型（如 OpenAI 或 Groq），或一個接受音訊的主要模型。	src/core/voice/resolve.js:165	
 m5s9f4	ok	This browser can't play a voice as it arrives.	這個瀏覽器無法邊接收邊播放聲音。	src/core/voice/speaker.js:132	
-jo5o9d	ok	This browser can't play sound here.	這個瀏覽器無法在這裡播放聲音。	src/core/voice/voice.js:347	
-ocv5zw	ok	This browser can't use the microphone here.	這個瀏覽器無法在這裡使用麥克風。	src/core/voice/voice.js:392	
-55949q	draft	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	聲音卡住了，annai 聽不到你說話。點一下螢幕即可恢復。	src/core/voice/voice.js:624	
+jo5o9d	ok	This browser can't play sound here.	這個瀏覽器無法在這裡播放聲音。	src/core/voice/voice.js:413	
+ocv5zw	ok	This browser can't use the microphone here.	這個瀏覽器無法在這裡使用麥克風。	src/core/voice/voice.js:458	
+55949q	draft	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	聲音卡住了，annai 聽不到你說話。點一下螢幕即可恢復。	src/core/voice/voice.js:690	
 pib2vo	ok	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	由瀏覽器自帶的語音服務來聽：在 Android 上通常是 Google 的伺服器，在 iPhone 上是 Apple 的（有時就在手機上）。這個請求不是 annai 送出的，所以記錄裡看不到。	src/core/voice/where.js:15	
 m93xm3	ok	On this phone only: the browser recognizes your speech on the device.	僅在這部手機上：瀏覽器在裝置上辨識你的語音。	src/core/voice/where.js:16	
 1m5zm0a	ok	Phone dictation	手機語音輸入	src/core/voice/where.js:18	

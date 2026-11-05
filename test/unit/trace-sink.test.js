@@ -1,25 +1,25 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { startSink, TAKEN, BODY_MAX } from '../../scripts/trace-sink.mjs';
+import { startSink, deviceFolder, TAKEN, BODY_MAX, CLIP_MAX } from '../../scripts/trace-sink.mjs';
 
 const script = fileURLToPath(new URL('../../scripts/trace-sink.mjs', import.meta.url));
 const TOKEN = 'sink-token-0123456789abcdef';
 const PAGE = 'http://127.0.0.1:8790';
 
 /** A sink on a port of its own (port 0), writing to a file in a folder of its own. @param {string[]} [origins] */
-async function sink(origins = [PAGE]) {
+async function sink(origins = [PAGE], more = {}) {
   const dir = await mkdtemp(join(tmpdir(), 'annai-trace-sink-'));
   const out = join(dir, 'trace.jsonl');
   /** @type {string[]} */
   const said = [];
-  const s = await startSink({ port: 0, token: TOKEN, out, origins, log: (line) => said.push(line) });
+  const s = await startSink({ port: 0, token: TOKEN, out, origins, log: (line) => said.push(line), ...more });
   return {
-    ...s, out, said,
+    ...s, out, said, dir,
     lines: async () => (await readFile(out, 'utf8').catch(() => '')).split('\n').filter(Boolean).map((l) => JSON.parse(l)),
     stop: async () => {
       await s.close();
@@ -249,6 +249,159 @@ test('a write that fails half way (a full disk) leaves its cut line on a line of
     assert.equal(lines[2], '');
   } finally {
     await s.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+/** Every file under a folder, as paths from it. @param {string} dir */
+const filesIn = async (dir) => (await readdir(dir, { recursive: true, withFileTypes: true })).filter((e) => e.isFile()).map((e) => join(e.parentPath, e.name).slice(dir.length + 1)).sort();
+
+/** A clip sent as the plugin sends it. @param {any} s @param {Record<string, string>} q @param {any} [body] @param {Record<string, string>} [headers] */
+const sendClip = (s, q, body = new Uint8Array([1, 2, 3, 0xff]), headers = {}) => fetch(`${s.origin}/trace/clips?${new URLSearchParams(q)}`, {
+  method: 'POST', headers: { 'content-type': 'audio/ogg', authorization: `Bearer ${TOKEN}`, origin: PAGE, ...headers }, body,
+});
+
+test('a clip is written whole under clips/ beside the file, named by device and id, private, and writes no line; a retry replaces it', async () => {
+  const s = await sink();
+  try {
+    const res = await sendClip(s, { device: 'dev01', id: 'h-abc_1', format: 'ogg' });
+    assert.equal(res.status, 200);
+    assert.deepEqual(await res.json(), { file: join('dev01', 'h-abc_1.ogg') });
+    assert.equal(res.headers.get('access-control-allow-origin'), PAGE);
+    const file = join(s.dir, 'clips', 'dev01', 'h-abc_1.ogg');
+    assert.deepEqual([...await readFile(file)], [1, 2, 3, 0xff]);
+    assert.equal((await stat(file)).mode & 0o777, 0o600);
+    assert.equal((await s.lines()).length, 0);
+    assert.equal((await sendClip(s, { device: 'dev01', id: 'h-abc_1', format: 'ogg' }, new Uint8Array([9]))).status, 200);
+    assert.deepEqual([...await readFile(file)], [9]);
+    assert.deepEqual(await filesIn(join(s.dir, 'clips')), [join('dev01', 'h-abc_1.ogg')]);
+    // A batch to the same server still goes to the file.
+    assert.equal((await post(`${s.origin}/trace`, { device: 'dev01', entries: [entry(1)] })).status, 200);
+    assert.equal((await s.lines()).length, 1);
+  } finally {
+    await s.stop();
+  }
+});
+
+test('a clip needs the token and an allowed origin, as a batch does, and writes nothing without them', async () => {
+  const s = await sink();
+  try {
+    assert.equal((await sendClip(s, { device: 'd', id: 'a', format: 'ogg' }, undefined, { authorization: 'Bearer wrong' })).status, 401);
+    assert.equal((await sendClip(s, { device: 'd', id: 'a', format: 'ogg' }, undefined, { origin: 'https://other.example' })).status, 403);
+    assert.deepEqual(await readdir(s.dir).then((l) => l.filter((x) => x !== 'trace.jsonl')), []);
+  } finally {
+    await s.stop();
+  }
+});
+
+test('no name can leave the clips folder: an id or a format with a way out is refused, a device is made a plain folder name', async () => {
+  const s = await sink();
+  try {
+    for (const id of ['../../escaped', '..', '.', 'a/b', 'a\\b', '%2e%2e%2fescaped', 'a.b', '', 'x'.repeat(81), 'a\0b']) {
+      assert.equal((await sendClip(s, { device: 'd', id, format: 'ogg' })).status, 400, `id ${id}`);
+    }
+    for (const format of ['../../sh', 'o/g', 'OGG', '', 'a.b', 'waytoolongformat']) {
+      assert.equal((await sendClip(s, { device: 'd', id: 'a', format })).status, 400, `format ${format}`);
+    }
+    assert.deepEqual(await readdir(s.dir).then((l) => l.filter((x) => x !== 'trace.jsonl')), []);
+    for (const device of ['../../escaped', '..', '/etc', 'a/../../b', '..\\..\\c', 'my phone']) {
+      assert.equal((await sendClip(s, { device, id: 'a', format: 'ogg' })).status, 200, `device ${device}`);
+    }
+    assert.equal((await sendClip(s, { id: 'none', format: 'ogg' })).status, 200);
+    const files = await filesIn(s.dir);
+    assert.ok(files.every((f) => f.startsWith(`clips${'/'}`) && f.split('/').length === 3 && !f.includes('..')), files.join());
+    assert.ok(files.includes(join('clips', 'unknown', 'none.ogg')));
+    assert.equal(deviceFolder('../..'), '_____');
+    assert.equal(deviceFolder(''), 'unknown');
+  } finally {
+    await s.stop();
+  }
+});
+
+test('a clip too big is refused, by what it says and by what it sends; an empty one is refused', async () => {
+  const s = await sink();
+  try {
+    assert.equal((await sendClip(s, { device: 'd', id: 'big', format: 'ogg' }, new Uint8Array(CLIP_MAX + 1))).status, 413);
+    assert.equal((await sendClip(s, { device: 'd', id: 'fits', format: 'ogg' }, new Uint8Array(BODY_MAX + 1))).status, 200, "a batch's limit isn't a clip's");
+    assert.equal((await sendClip(s, { device: 'd', id: 'empty', format: 'ogg' }, new Uint8Array(0))).status, 400);
+    assert.deepEqual(await filesIn(join(s.dir, 'clips')), [join('d', 'fits.ogg')]);
+    assert.equal((await post(`${s.origin}/`, 'x'.repeat(BODY_MAX + 1))).status, 413, 'a batch keeps its limit');
+  } finally {
+    await s.stop();
+  }
+});
+
+test('a full disk answers 507 and leaves no part of the clip, so the phone keeps it and tries later; once there is room it goes', async () => {
+  let full = true;
+  const s = await sink([PAGE], {
+    write: async (/** @type {string} */ file, /** @type {Buffer} */ bytes, /** @type {any} */ o) => {
+      if (!full) return writeFile(file, bytes, o);
+      await writeFile(file, bytes.subarray(0, 1), o); // as a disk that fills part of the way
+      throw Object.assign(new Error('no space left on device'), { code: 'ENOSPC' });
+    },
+  });
+  try {
+    const res = await sendClip(s, { device: 'd', id: 'a', format: 'ogg' });
+    assert.equal(res.status, 507);
+    assert.equal((await res.json()).error, 'full');
+    assert.deepEqual(await filesIn(join(s.dir, 'clips')), []);
+    full = false;
+    assert.equal((await sendClip(s, { device: 'd', id: 'a', format: 'ogg' })).status, 200);
+    assert.deepEqual(await filesIn(join(s.dir, 'clips')), [join('d', 'a.ogg')]);
+  } finally {
+    await s.stop();
+  }
+});
+
+test('a clip folder that can\'t be made answers 500, and the sink goes on', async () => {
+  const s = await sink();
+  try {
+    await writeFile(join(s.dir, 'clips'), 'in the way');
+    assert.equal((await sendClip(s, { device: 'd', id: 'a', format: 'ogg' })).status, 500);
+    assert.equal((await post(`${s.origin}/`, { entries: [entry(1)] })).status, 200);
+  } finally {
+    await s.stop();
+  }
+});
+
+
+test('a clip is refused with 507 while less than the floor would be left free on the disk, and batches still go; with room it is written', async () => {
+  const GIB = 1024 ** 3;
+  let free = 1.5 * GIB;
+  const s = await sink([PAGE], { floor: 2 * GIB, free: async () => free });
+  try {
+    const res = await sendClip(s, { device: 'd', id: 'a', format: 'ogg' });
+    assert.equal(res.status, 507);
+    const body = await res.json();
+    assert.equal(body.error, 'full');
+    assert.match(body.message, /2 GiB/);
+    assert.deepEqual(await filesIn(join(s.dir, 'clips')).catch(() => []), []);
+    assert.equal((await post(`${s.origin}/`, { entries: [entry(1)] })).status, 200, 'the log goes on: the floor keeps room for it');
+    free = 2 * GIB + 2; // the clip's own 4 bytes count against what is left
+    assert.equal((await sendClip(s, { device: 'd', id: 'a', format: 'ogg' })).status, 507, 'a clip that would take it under the floor');
+    free = 3 * GIB;
+    assert.equal((await sendClip(s, { device: 'd', id: 'a', format: 'ogg' })).status, 200);
+  } finally {
+    await s.stop();
+  }
+});
+
+test('the log file is private: made readable by its user only, and an existing one too, since it holds the screen text', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'annai-trace-sink-'));
+  try {
+    const old = join(dir, 'old.jsonl');
+    await writeFile(old, '{"a":1}\n', { mode: 0o644 });
+    const s = await startSink({ port: 0, token: TOKEN, out: old, origins: [PAGE] });
+    assert.equal((await stat(old)).mode & 0o777, 0o600);
+    assert.equal((await post(`${s.origin}/`, { entries: [entry(1)] })).status, 200);
+    assert.equal((await stat(old)).mode & 0o777, 0o600);
+    await s.close();
+    const fresh = join(dir, 'fresh.jsonl');
+    const t = await startSink({ port: 0, token: TOKEN, out: fresh, origins: [PAGE] });
+    assert.equal((await post(`${t.origin}/`, { entries: [entry(1)] })).status, 200);
+    assert.equal((await stat(fresh)).mode & 0o777, 0o600);
+    await t.close();
+  } finally {
     await rm(dir, { recursive: true, force: true });
   }
 });

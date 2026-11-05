@@ -29,6 +29,8 @@ const NOISY_FRAMES = 6;
 export class LiveInput {
   /** Speech is being sent now. */
   active = false;
+  /** Hears the sound outside a turn, piece by piece (voice.js's samples of what the level check keeps out). @type {((pcm: Int16Array) => void) | undefined} */
+  onOutside;
   /** Speech began, and is held until it has enough in it to be sure. */
   #held = false;
   /** @type {Detector | null} */
@@ -258,6 +260,7 @@ export class LiveInput {
 
   /** Keeps the newest sound for the pre-roll, and all of it while speech is held. @param {Int16Array} pcm */
   #hold(pcm) {
+    this.onOutside?.(pcm);
     this.#before.push(pcm);
     if (this.#held) return;
     let n = this.#before.reduce((s, b) => s + b.length, 0);

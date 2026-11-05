@@ -3,14 +3,18 @@
  * user runs, so a developer can watch a phone's entries, requests and errors as they happen. It is
  * off until the user gives it a server and a token and turns Send on (spec §15: no telemetry), and
  * leaves location points out unless asked. Every entry goes through annai's own secret blanking
- * (annai.secrets.blank) first, though entries never hold keys. Stored content (texts over 2,000
+ * (annai.secrets.blank) first, which blanks the keys annai keeps. Stored content (texts over 2,000
  * characters, photos) stays on the device. scripts/trace-sink.mjs is a server that receives it;
  * docs/plugins.md, "Remote trace (for developers)", says what it sends and never sends.
+ * Detailed trace, a switch of its own for at most 24 hours, adds recordings, a text copy of the screen and a Flag button (in the Trace chip's place);
+ * it goes off at once, and drops all it holds, when it is switched off, expires, or the server address changes.
  */
 
 export const ID = 'remote-trace';
 /** Where the user's settings are saved (sys:settings), which its hook watches. */
 export const SETTINGS_FILE = `/plugin-settings/${ID}.json`;
+/** The entries Detailed trace writes, which go when it goes off. @param {unknown} type */
+export const isOwnTrace = (type) => ['trace.screen', 'trace.flag', 'trace.clip', 'trace.clip.dropped'].includes(String(type));
 /** A batch goes this long after the oldest entry waiting arrived, */
 export const BATCH_MS = 3000;
 /** or as soon as this many wait; a batch holds at most this many, */
@@ -27,8 +31,31 @@ export const RETRY_MS = 3000;
 export const RETRY_MAX_MS = 60_000;
 /** Refusals in a row before one card says so. */
 export const REFUSALS = 3;
+/** Detailed trace turns itself off this long after it is turned on. */
+export const DETAIL_MS = 24 * 60 * 60 * 1000;
+/** The most bytes of recordings kept while the server can't take them; the oldest go first, and the log says so. */
+export const CLIPS_KEEP_BYTES = 16 * 1024 * 1024;
+/** A clip that arrives this long after a flag is marked with its time. */
+export const FLAG_MS = 30_000;
+/** The most characters of a screen's text in one entry; well within ENTRY_BYTES in any language. */
+export const SCREEN_CHARS = 16_000;
+/** A new screen draws for about this long before its text is copied. */
+export const SCREEN_SETTLE_MS = 500;
 const SETTINGS_SCOPE = 'sys:settings';
+/** Screen copies and flags stay out of backups, as voice.route's device names do. */
+const DEVICE_SCOPE = 'sys:device';
 const PAGE = `#/plugins/${ID}`;
+/** What a screen copy leaves out: fields and what they hold (typed words, keys), and what has no text to read. */
+const NOT_COPIED = new Set(['INPUT', 'TEXTAREA', 'SELECT', 'SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'CANVAS', 'AUDIO', 'VIDEO', 'IFRAME', 'OBJECT', 'EMBED']);
+/** A line that looks like a key by its prefix (Anthropic, Google, GitHub); annai's blanking knows only the keys it keeps, so these never get that far. */
+const KEY_LIKE = /(?:sk-ant-|AIza|ghp_)[\w-]{8,}/;
+/** The Trace screen shows the log's rows, with every request and place in them: its text is never copied. */
+const TRACE_ROUTE = /^#\/?trace(?:[/?]|$)/i;
+/** The Trace screen's list of rows, by element: the shell keeps the old screen until the next one draws, so the route alone is not enough. @param {any} n */
+const isTraceRows = (n) => n.tagName === 'OL' && /(?:^|\s)trace(?:\s|$)/.test(n.getAttribute('class') ?? '');
+/** The elements a screen copy names as landmarks; a section only with a name. */
+const LANDMARKS = /** @type {Record<string, string>} */ ({ HEADER: 'header', NAV: 'nav', MAIN: 'main', ASIDE: 'aside', FOOTER: 'footer', DIALOG: 'dialog', FORM: 'form' });
+const LANDMARK_ROLES = new Set(['banner', 'navigation', 'main', 'complementary', 'contentinfo', 'dialog', 'alertdialog', 'region', 'form', 'search', 'alert', 'status']);
 /** sw.js names its offline copy annai-shell-<version>-<build>. */
 const SHELL = /^annai-shell-(.+)-([0-9a-f]{12})$/;
 /** What a Bearer token can hold: visible ASCII, no spaces (anything else, a request can't carry). */
@@ -69,6 +96,68 @@ export function shellBuild(names) {
   return m ? { app: `annai ${m[1]}`, build: m[2] } : { app: 'annai', build: null };
 }
 
+/** Where a clip goes: <server>/clips, which scripts/trace-sink.mjs takes on any path. @param {string} server @param {Record<string, string>} what */
+export function clipAddress(server, what) {
+  const u = new URL(server);
+  u.pathname = `${u.pathname.replace(/\/+$/, '')}/clips`;
+  for (const [k, v] of Object.entries(what)) u.searchParams.set(k, v);
+  return u.href;
+}
+
+/**
+ * The text a person can see under root, a line per piece, with its landmarks as [main] or [nav: name]. Never what is in a field: no value is
+ * read, and a textarea's or a contenteditable's words are left out with it; nor a closed <details>' body, nor a line that looks like a key. No pixels.
+ * @param {any} root @param {{ gone: (el: any) => boolean, seen: (el: any, text: any) => boolean }} look
+ *   gone: the element and all in it draw nothing (display: none); seen: this text node, directly in the element, is on the screen now
+ */
+export function screenText(root, look) {
+  /** @type {string[]} */
+  const lines = [];
+  /** @param {any} el */
+  const walk = (el) => {
+    for (const n of el.childNodes) {
+      if (n.nodeType === 3) {
+        const text = String(n.nodeValue ?? '').replace(/\s+/g, ' ').trim();
+        if (text && !KEY_LIKE.test(text) && look.seen(el, n)) lines.push(text);
+      } else if (n.nodeType === 1 && !NOT_COPIED.has(n.tagName) && !n.hasAttribute('contenteditable') && !isTraceRows(n) && !look.gone(n)) {
+        if (n.tagName === 'DETAILS' && !n.hasAttribute('open')) {
+          // Closed: its summary is what shows, and nothing else (the Trace screen's rows are closed ones).
+          for (const c of n.childNodes) if (c.nodeType === 1 && c.tagName === 'SUMMARY') walk({ childNodes: [c] });
+          continue;
+        }
+        const role = n.getAttribute('role');
+        const name = n.getAttribute('aria-label');
+        const kind = role && LANDMARK_ROLES.has(role) ? role : role ? null : LANDMARKS[n.tagName] ?? (n.tagName === 'SECTION' && name ? 'section' : null);
+        const mark = kind ? `[${kind}${name ? `: ${name}` : ''}]` : null;
+        const at = lines.length;
+        if (mark) lines.push(mark);
+        walk(n);
+        if (mark && lines.length === at + 1) lines.pop(); // nothing seen in it
+      }
+    }
+  };
+  walk(root);
+  return lines.join('\n');
+}
+
+/** The screen as this browser shows it now, as text. */
+function browserScreen() {
+  if (typeof document === 'undefined') return { route: '', text: '' };
+  const text = screenText(document.body, {
+    gone: (el) => getComputedStyle(el).display === 'none',
+    seen: (el, node) => {
+      const style = getComputedStyle(el);
+      if (style.visibility !== 'visible') return false;
+      // Where the text itself is: its parent may be a tall block, scrolled mostly away.
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const r = range.getBoundingClientRect();
+      return r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth;
+    },
+  });
+  return { route: location.hash, text };
+}
+
 /** @param {string} url */
 function hostOf(url) {
   try {
@@ -96,7 +185,7 @@ function sized(e) {
  * unless a test gives its own. Returns the cleanup, which stops everything at once.
  * @param {any} annai
  * @param {{ timers?: { set: (fn: () => void, ms: number) => any, clear: (h: any) => void }, now?: () => number, cacheNames?: () => Promise<string[]>,
- *   online?: () => boolean, onOnline?: (fn: () => void) => () => void }} [o]
+ *   online?: () => boolean, onOnline?: (fn: () => void) => () => void, screen?: () => { route: string, text: string }, onRoute?: (fn: () => void) => () => void }} [o]
  */
 export function start(annai, {
   timers = { set: (fn, ms) => setTimeout(fn, ms), clear: (h) => clearTimeout(h) },
@@ -108,6 +197,12 @@ export function start(annai, {
     if (typeof addEventListener !== 'function') return () => {};
     addEventListener('online', fn);
     return () => removeEventListener('online', fn);
+  },
+  screen = browserScreen,
+  onRoute = (fn) => {
+    if (typeof addEventListener !== 'function') return () => {};
+    addEventListener('hashchange', fn);
+    return () => removeEventListener('hashchange', fn);
   },
 } = {}) {
   /** @type {{ server: string, location: boolean } | null} where it sends, while it is on */
@@ -150,6 +245,24 @@ export function start(annai, {
   /** @type {any} the dock's ui object, once the chip has been drawn: what the card's action goes with */
   let ui = null;
   const shell = cacheNames().then(shellBuild, () => shellBuild([]));
+  /** @type {{ until: number, timer: any, ends: (() => void)[] } | null} Detailed trace, while it is on: when it ends, and what stops it */
+  let detail = null;
+  /** @typedef {{ id: string, kind: string, format: string, mediaType: string, data: Uint8Array, ms: number }} Clip */
+  /** @type {Clip[]} recordings waiting, oldest first */
+  let clips = [];
+  let clipsBytes = 0;
+  /** @type {{ clip: Clip, abort: AbortController } | null} the one being sent, still in clips */
+  let clipFlight = null;
+  /** @type {any} */
+  let clipTimer = null;
+  let clipFailures = 0;
+  let clipRetryAt = 0;
+  /** @type {string | null} the last recording heard */
+  let lastClip = null;
+  /** @type {number | null} when Flag was last tapped */
+  let flagAt = null;
+  /** @type {any} */
+  let screenTimer = null;
 
   const card = (/** @type {any} */ c) => {
     try {
@@ -168,6 +281,23 @@ export function start(annai, {
     chipEl.title = words;
   };
 
+  /** A chip that works as a button; returns what undoes it. @param {any} el @param {() => void} run */
+  const chipButton = (el, run) => {
+    el.setAttribute('role', 'button');
+    el.tabIndex = 0;
+    const key = (/** @type {KeyboardEvent} */ k) => {
+      if (k.key !== 'Enter' && k.key !== ' ') return;
+      k.preventDefault();
+      run();
+    };
+    el.addEventListener('click', run);
+    el.addEventListener('keydown', key);
+    return () => {
+      el.removeEventListener('click', run);
+      el.removeEventListener('keydown', key);
+    };
+  };
+
   /** The dock's chip, there only while it is on (a hidden one would leave the row's separator). @param {boolean} show */
   const showChip = (show) => {
     if (show && !chip) {
@@ -177,20 +307,10 @@ export function start(annai, {
           chipEl = el;
           ui = dock;
           el.textContent = t`Trace`;
-          el.setAttribute('role', 'button');
-          el.tabIndex = 0;
-          const open = () => dock.go(PAGE);
-          const key = (/** @type {KeyboardEvent} */ k) => {
-            if (k.key !== 'Enter' && k.key !== ' ') return;
-            k.preventDefault();
-            open();
-          };
-          el.addEventListener('click', open);
-          el.addEventListener('keydown', key);
+          const end = chipButton(el, () => dock.go(PAGE));
           label();
           return () => {
-            el.removeEventListener('click', open);
-            el.removeEventListener('keydown', key);
+            end();
             if (chipEl === el) chipEl = null;
           };
         },
@@ -201,6 +321,9 @@ export function start(annai, {
       chipEl = null;
     }
   };
+
+  /** The Trace chip shows while it sends, except while Detailed trace is on: its Flag chip takes the place, so the dock's row is no wider (it wraps, and the bar jumps). */
+  const chipNow = () => showChip(on !== null && !detail);
 
   /** A fresh start on what the user changed: try now, and a new run of refusals may give a card. */
   const afresh = () => {
@@ -213,8 +336,47 @@ export function start(annai, {
     limit = BATCH_MAX;
   };
 
+  /** The entries of Detailed trace's own that wait go, as the recordings do: text of the screen must not leave after it is off. */
+  const isTraceItem = (/** @type {Item} */ x) => isOwnTrace(x.e.type);
+  const dropTrace = () => {
+    queue = queue.filter((x) => !isTraceItem(x));
+    queueBytes = queue.reduce((sum, x) => sum + x.bytes, 0);
+  };
+
+  /** Detailed trace off: nothing more heard or copied, no flag, nothing waiting, at once. */
+  const detailOff = () => {
+    if (detail) {
+      timers.clear(detail.timer);
+      for (const end of detail.ends) end();
+    }
+    detail = null;
+    if (clipTimer !== null) timers.clear(clipTimer);
+    if (screenTimer !== null) timers.clear(screenTimer);
+    clipTimer = screenTimer = flagAt = lastClip = null;
+    clipFlight?.abort.abort();
+    clipFlight = null;
+    clips = [];
+    clipsBytes = 0;
+    clipFailures = 0;
+    clipRetryAt = 0;
+    dropTrace();
+    if (flight && flight.items.some(isTraceItem)) {
+      // A batch holding screen text or a flag is cut off, wherever it is (token, blanking, the request): its ordinary entries wait again.
+      const { items, abort } = flight;
+      flight = null;
+      abort.abort();
+      const rest = items.filter((x) => !isTraceItem(x));
+      queue = [...rest, ...queue];
+      queueBytes += rest.reduce((sum, x) => sum + x.bytes, 0);
+      trim();
+      schedule();
+    }
+    chipNow();
+  };
+
   /** Off: no timer, no request, nothing waiting, no chip, at once. */
   const halt = () => {
+    detailOff();
     on = null;
     device = null;
     if (timer !== null) timers.clear(timer);
@@ -225,7 +387,7 @@ export function start(annai, {
     queueBytes = 0;
     dropped = 0;
     afresh();
-    showChip(false);
+    chipNow();
   };
 
   /** Drops the oldest entries waiting while there are more than KEEP_MAX, or more than KEEP_BYTES, counting them. */
@@ -276,8 +438,16 @@ export function start(annai, {
     card({ tone: 'warn', title: t`Remote trace isn't sending`, body });
   };
 
+  /** Its device id, made at the first send. */
+  const ownDevice = async () => {
+    if (device) return;
+    device = [...crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(16).padStart(2, '0')).join('');
+    await annai.settings.set({ device });
+  };
+
   /** Sends the oldest entries waiting, one batch, and keeps them when the server doesn't take them. */
   const flush = async () => {
+    expired(); // a phone asleep past the end: the screen text waiting goes before a batch is made
     if (!on || holding || flight || stopped || !queue.length) return;
     if (!online()) {
       schedule();
@@ -308,10 +478,7 @@ export function start(annai, {
         needs({ code: 'token' }, format.sentences(t`Its token has characters a request can't carry: letters, digits and punctuation only, no spaces.`, settingsAt()));
         return;
       }
-      if (!device) {
-        device = [...crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(16).padStart(2, '0')).join('');
-        await annai.settings.set({ device });
-      }
+      await ownDevice();
       const { app, build } = await shell;
       // annai's own blanking, a second guard: every secret annai keeps, and anything shaped like a credential (spec §9.9).
       // It rejects when the secrets can't be read, so nothing goes out unchecked: the batch waits for the next try.
@@ -389,15 +556,210 @@ export function start(annai, {
     schedule();
   };
 
+  /**
+   * An entry of Detailed trace's own, in this device's log and on its way: a plugin's entries don't reach its hook. Secrets are blanked before it is even
+   * kept here. @param {string} type @param {any} data @returns {Promise<boolean>} whether it was written
+   */
+  const note = async (type, data) => {
+    try {
+      const clean = await annai.secrets.blank(data);
+      if (!detail) return false;
+      const written = await annai.events.append(DEVICE_SCOPE, type, clean);
+      if (!detail) return false; // off while it was being written: it does not leave
+      take(written);
+      return true;
+    } catch {
+      return false; // the database closed under it, as an iPhone's can
+    }
+  };
+
+  /** The saved switch goes off, and its form's, if it is on the screen: the form draws what is saved only when it opens. */
+  const saveOff = () => {
+    const box = globalThis.document?.getElementById(`setting-${ID}-detailed`);
+    if (box) /** @type {HTMLInputElement} */ (box).checked = false;
+    annai.settings.set({ detailed: false, detailedUntil: null, detailedFor: null }).catch(() => {});
+  };
+
+  /** 24 hours are up: off, and saved so, with one card. */
+  const expire = () => {
+    detailOff();
+    saveOff();
+    card({ tone: 'info', title: t`Detailed trace turned itself off`, body: format.sentences(t`It stops after 24 hours, so it can't be forgotten.`, settingsAt()) });
+  };
+
+  /** Its 24 hours may have passed while the phone slept, with the timer yet to run. */
+  const expired = () => {
+    if (!detail || now() < detail.until) return false;
+    expire();
+    return true;
+  };
+
+  /** The screen as text, cut to size. */
+  const screenNow = () => {
+    const { route, text: all } = screen();
+    const text = TRACE_ROUTE.test(route) ? '' : all;
+    return { route, text: text.slice(0, SCREEN_CHARS), ...(text.length > SCREEN_CHARS ? { cut: true } : {}) };
+  };
+
+  /** A tap on Flag: the moment, what's on screen and the last clip, findable by this time; clips in the next FLAG_MS say it too. */
+  const flag = async () => {
+    if (!detail || expired()) return;
+    const at = (flagAt = now());
+    const { route, text, ...more } = screenNow();
+    const copied = await note('trace.screen', { route, text, ...more, flag: at, message: route });
+    const flagged = await note('trace.flag', { at, route, lastClip, message: route });
+    annai.ui.toast(copied && flagged ? t`Flagged` : t`Not flagged`);
+  };
+
+  /** Sends the oldest clip, unless one is going or a failure's wait isn't over. */
+  const clipsSoon = () => {
+    if (!detail || clipFlight || clipTimer !== null || !clips.length || !online()) return;
+    clipTimer = timers.set(() => {
+      clipTimer = null;
+      sendClip();
+    }, Math.max(0, clipRetryAt - now()));
+  };
+
+  /** A clip is gone from those waiting. @param {Clip} clip */
+  const forgetClip = (clip) => {
+    clips = clips.filter((c) => c !== clip);
+    clipsBytes -= clip.data.length;
+  };
+
+  /** A clip that won't reach the server, counted in the log. @param {Clip} clip @param {string} why */
+  const dropClip = (clip, why) => {
+    forgetClip(clip);
+    note('trace.clip.dropped', { id: clip.id, kind: clip.kind, bytes: clip.data.length, why, message: `${clip.id}: ${why}` });
+  };
+
+  const sendClip = async () => {
+    if (!detail || !on || clipFlight || !clips.length || expired()) return;
+    const clip = clips[0];
+    const abort = new AbortController();
+    const flight = (clipFlight = { clip, abort });
+    const mine = () => clipFlight === flight;
+    let ok = false;
+    try {
+      // A token that's missing or can't go: the batches' card says so; the clip waits like them.
+      const token = String((await annai.secrets.get('token')) ?? '').trim();
+      if (!mine() || !TOKEN_CHARS.test(token)) return;
+      await ownDevice();
+      if (!mine() || !on) return;
+      const res = await annai.net.fetch(clipAddress(on.server, { device: /** @type {string} */ (device), id: clip.id, format: clip.format }), {
+        method: 'POST', headers: { 'content-type': clip.mediaType, authorization: `Bearer ${token}` }, body: clip.data, signal: abort.signal,
+      });
+      res.body?.cancel().catch(() => {});
+      if (!mine()) return;
+      if (res.ok) {
+        ok = true;
+        forgetClip(clip);
+      } else if (TOO_MUCH.has(res.status)) {
+        // The server will never take this one: it can't hold up the rest.
+        ok = true;
+        dropClip(clip, `the server answered ${res.status}`);
+      }
+    } catch {
+      // Offline, or no answer: tried again later.
+    } finally {
+      if (mine()) {
+        clipFlight = null;
+        clipFailures = ok ? 0 : clipFailures + 1;
+        clipRetryAt = ok ? 0 : now() + Math.min(RETRY_MAX_MS, RETRY_MS * 2 ** (clipFailures - 1));
+        clipsSoon();
+      }
+    }
+  };
+
+  /** A recording from annai's voice ('heard-clips'), kept to send, within the cap; its entry names it and any flag it follows. @param {Clip} c */
+  const heardClip = (c) => {
+    if (!detail || expired()) return;
+    const flagged = flagAt !== null && now() - flagAt <= FLAG_MS ? flagAt : null;
+    lastClip = c.id;
+    clips.push(c);
+    clipsBytes += c.data.length;
+    note('trace.clip', { id: c.id, kind: c.kind, format: c.format, bytes: c.data.length, ms: c.ms, ...(flagged === null ? {} : { flag: flagged }), message: `${c.kind}, ${c.format}, ${c.data.length} bytes${flagged === null ? '' : ', after a flag'}` });
+    const going = clipFlight?.clip;
+    while (clipsBytes > CLIPS_KEEP_BYTES) {
+      const oldest = clips.find((x) => x !== going && x !== c);
+      if (!oldest) break;
+      dropClip(oldest, 'over the cap on what waits on the phone');
+    }
+    clipsSoon();
+  };
+
+  /** Detailed trace on, or still on: until when. @param {number} until */
+  const detailOn = (until) => {
+    if (detail) {
+      timers.clear(detail.timer);
+      detail.until = until;
+    } else {
+      /** @type {(() => void)[]} */
+      const ends = [annai.register('heard-clips', { clip: heardClip })];
+      ends.push(annai.ui.slot('status-chip', {
+        id: 'flag',
+        render: (/** @type {any} */ el) => {
+          el.textContent = t`Flag`;
+          const words = t`Flag this moment`;
+          el.setAttribute('aria-label', words);
+          el.title = words;
+          return chipButton(el, () => void flag());
+        },
+      }));
+      ends.push(onRoute(() => {
+        if (screenTimer !== null) timers.clear(screenTimer);
+        screenTimer = timers.set(() => {
+          screenTimer = null;
+          if (expired()) return;
+          const copy = screenNow();
+          note('trace.screen', { ...copy, message: copy.route });
+        }, SCREEN_SETTLE_MS);
+      }));
+      detail = { until, timer: null, ends };
+      chipNow();
+    }
+    detail.timer = timers.set(expire, Math.max(0, until - now()));
+  };
+
+  /** The Detailed trace switch, with Remote trace on: its clock starts when first seen on, and is kept across reloads. @param {any} s */
+  const applyDetail = (s) => {
+    if (s?.detailed !== true) {
+      detailOff();
+      if (s?.detailedUntil != null) saveOff(); // the next turn on starts a fresh 24 hours
+      return;
+    }
+    // It was turned on for one address, saved with it: at another (changed while it ran, or while it was off) recordings and screen text were not agreed to.
+    if (typeof s.detailedUntil === 'number' && s.detailedFor !== on?.server) {
+      detailOff();
+      saveOff();
+      card({ tone: 'info', title: t`Detailed trace turned off`, body: format.sentences(t`The server address changed, and recordings go only where you turned it on.`, settingsAt()) });
+      return;
+    }
+    // Never more than 24 hours from now: a saved end further off (a clock set ahead) is cut back.
+    const until = typeof s.detailedUntil === 'number' ? Math.min(s.detailedUntil, now() + DETAIL_MS) : now() + DETAIL_MS;
+    if (now() >= until) {
+      expire();
+      return;
+    }
+    // Unsaved, its end and its address can't be kept to: it stays off.
+    if (s.detailedUntil !== until || s.detailedFor !== on?.server) annai.settings.set({ detailedUntil: until, detailedFor: on?.server }).catch(() => detailOff());
+    detailOn(until);
+  };
+
   /** Its settings, applied: on with a server it may use, else off (with a card when Send is on). @param {any} s */
   const apply = (s) => {
     if (s?.send !== true) {
       halt();
+      if (s?.detailed === true) {
+        // There's nothing to turn on without somewhere to send to, and it can't start by itself later.
+        saveOff();
+        card({ tone: 'warn', title: t`Detailed trace stayed off`, body: t`It needs a server address and Send on. Set those, then turn it on.` });
+      }
       return;
     }
     const why = serverProblem(s.server, annai.l10n);
     if (why) {
       halt();
+      if (s.detailed === true) saveOff();
       card({ tone: 'warn', title: t`Remote trace isn't sending`, body: format.sentences(why, settingsAt()) });
       return;
     }
@@ -408,8 +770,9 @@ export function start(annai, {
       queueBytes = queue.reduce((sum, x) => sum + x.bytes, 0);
     }
     afresh();
-    showChip(true);
+    chipNow();
     label();
+    applyDetail(s);
   };
 
   /** Reads its settings again; no batch starts until they are applied. */
@@ -440,6 +803,8 @@ export function start(annai, {
     if (problem?.code === 'offline') problem = null;
     schedule();
     label();
+    clipRetryAt = 0;
+    clipsSoon();
   });
   reload();
   return () => {

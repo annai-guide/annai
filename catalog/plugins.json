@@ -616,20 +616,20 @@
     {
       "id": "remote-trace",
       "name": "Remote trace (for developers)",
-      "version": "0.2.2",
-      "description": "For developers: sends annai's trace, as the Trace screen shows it, to a server you run, while you watch. It sends nothing until you give it a server and a token and turn Send on. Never keys.",
+      "version": "0.4.1",
+      "description": "For developers: sends annai's trace, as the Trace screen shows it, to a server you run, while you watch. It sends nothing until you give it a server and a token and turn Send on. The keys annai keeps are blanked.",
       "category": "developer",
       "keywords": [],
       "abilities": [],
       "free": false,
       "local": false,
       "code": true,
-      "size": 20549,
+      "size": 38602,
       "requires": [],
       "provides": {},
       "files": {
-        "annai-plugin.json": "8817e25f480ef253fda9277d80edd30a8aa3fe3f57f4c13ee273e00757a78f0a",
-        "index.js": "c5ea7b040096daf5045b8ad904c816fed0a027436452fca313e2e293e5df30fb"
+        "annai-plugin.json": "28d17140f22cf279b9759c57156bca1d5b82a1604dd90b5d0702b2c5755f6d9f",
+        "index.js": "c80889111783839c97a49bf31fc2fda63b3bbf9a60ec1b7c527b4f419e2c3a45"
       }
     },
     {
