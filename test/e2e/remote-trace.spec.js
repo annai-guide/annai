@@ -265,8 +265,14 @@ for (const width of [320, 360, 375, 393]) {
     };
     const none = await measureWords();
     await page.goto('/#/add');
-    await page.getByRole('button', { name: 'Install Remote trace (for developers)' }).click();
-    await page.getByRole('link', { name: 'Open Remote trace (for developers)' }).click();
+    // On a slow machine the list draws again once its catalog is in, which can take the tap with the button it replaced.
+    const opens = page.getByRole('link', { name: 'Open Remote trace (for developers)' });
+    await expect(async () => {
+      const install = page.getByRole('button', { name: 'Install Remote trace (for developers)' });
+      if (await install.count()) await install.click({ timeout: 3000 });
+      await expect(opens).toBeVisible({ timeout: 4000 });
+    }).toPass({ timeout: 30_000 });
+    await opens.click();
     await page.getByLabel('Server address').fill('https://sink.example/trace');
     await page.getByRole('checkbox', { name: 'Send', exact: true }).check();
     await expect(page.getByRole('button', { name: 'Sending trace' })).toBeVisible();
