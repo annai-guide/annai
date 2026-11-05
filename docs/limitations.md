@@ -121,3 +121,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** annai renames only what a save gives and never rewrites what is stored; moving old legs on an append would add a special case for old records only.
 - **Revisit when:** the user meets it. Asking Shiori to rewrite the booking fixes it.
 - **Approved:** 2026-11-03, the user: "Known limitation (Recommended)".
+
+### Telling who is talking
+- **Kind:** deferred.
+- **What the user sees:** annai can tell a voice near the phone from music further away by how loud it is, but not one person from another. A passenger talking near the phone is treated as the user's speech, until Shiori's own judgement says otherwise.
+- **Why:** telling voices apart would likely need a voice model downloaded to the phone, estimated at several MB and not researched, in an app that ships under 3 MB. The level check comes first, and may be enough.
+- **Revisit when:** a drive shows the level check and the gate aren't enough, or the user asks.
+- **Approved:** 2026-11-04, the user picked "Music check now, who later (Recommended)".
