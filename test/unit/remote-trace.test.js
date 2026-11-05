@@ -77,7 +77,7 @@ const entry = (seq, type = 'msg.user', data = { text: `hello ${seq}` }) => Objec
  * The plugin, started on a stand-in of the annai object: its settings and token, a server that answers
  * as told, and what it drew and said. answer(n): the nth post's answer (a Response, or an Error to throw).
  * online: whether the browser says it is online, which the test changes with goOnline/goOffline.
- * @param {{ settings?: any, token?: string | null, answer?: (n: number, init: any) => Response | Error | Promise<Response>, secrets?: Record<string, string>, online?: boolean, startAt?: number, screen?: () => { route: string, text: string } }} [o]
+ * @param {{ saveFails?: boolean, settings?: any, token?: string | null, answer?: (n: number, init: any) => Response | Error | Promise<Response>, secrets?: Record<string, string>, online?: boolean, startAt?: number, screen?: () => { route: string, text: string } }} [o]
  */
 async function kit({ saveFails = false, settings = { server: SERVER, send: true }, token = TOKEN, answer = () => new Response('{}'), secrets = {}, online = true, startAt = T0, screen = () => ({ route: '#/now', text: 'on screen' }) } = {}) {
   let isOnline = online;
