@@ -112,6 +112,7 @@ export async function liveKit({ plan = {}, bookings = {}, live = true, start = a
   const sensors = fakeSensors(registry);
   const engine = new Live({ store, ws, registry, agent, clock, timeZone: () => LA, ...(news ? { news } : {}), ...(problem ? { problem } : {}) });
   await engine.start();
+  await engine.logStart(); // main.js writes it once the installed plugins have started
   await engine.settled();
   const settle = () => k.live.settled();
   const k = {
@@ -121,8 +122,15 @@ export async function liveKit({ plan = {}, bookings = {}, live = true, start = a
       k.live.dispose();
       k.live = new Live({ store, ws, registry, agent, clock, timeZone: () => LA, ...(news ? { news } : {}), ...(problem ? { problem } : {}) });
       await k.live.start();
+      await k.live.logStart();
       await k.live.settled();
       return k.live;
+    },
+    /** The page reloads as a phone does it: it goes out of view first (the odometer is logged), then the page is gone. */
+    async reload() {
+      k.sensors.visible(false);
+      await settle();
+      return k.restart();
     },
     /** Moves the clock to t, firing the timers that come due on the way. @param {number} t */
     to: (t) => clock.advanceTo(t, settle),

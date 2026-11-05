@@ -289,6 +289,7 @@ async function boot() {
     if (unloaded.length) offerReload(unloaded);
   }).finally(() => {
     pluginsStarted();
+    live.logStart().catch(() => {}); // now, not as live mode starts: a plugin that follows the log (Remote trace) is running to see it
     // Not waited for again where no worker took the page.
     (gaveUp ? Promise.resolve() : controllerReady()).then(() => updates.start()).catch(() => {});
     // The link catalog is kept for offline use: fetched now, so it is there before the first offline moment (spec §7.2).
