@@ -195,37 +195,37 @@ remote-trace:@settings.properties.detailed.title	draft	Detailed trace	詳細な�
 remote-trace:@settings.properties.detailed.description	draft	Also sends recordings of what the microphone heard to the server above: each of your turns, and short samples of sound the level check kept out. Recordings include passengers and whatever is playing. Phone dictation is the browser's own, so it has no audio. A text copy of the screen goes too, at each screen change and when you tap Flag, without what's typed in fields or the keys annai keeps, and never from the Trace screen. A Flag button takes the Trace chip's place in the dock, to mark when something looks wrong. It needs a server address and Send on, and turns itself off after 24 hours.	マイクが聞いた音の録音も、上のサーバーへ送ります。あなたの発話ごとの録音と、音量チェックが除外した音の短いサンプルです。録音には同乗者の声や流れている音も入ります。端末の音声入力はブラウザーのものなので、音声はありません。画面のテキストのコピーも、画面が変わるたびと「印」をタップしたときに送ります（入力欄の内容と annai が保存しているキーは除き、「記録」画面のテキストは送りません）。ドックの「記録」ボタンの代わりに「印」ボタンが出て、おかしいと思った時に印を付けられます。サーバーのアドレスと「送信」のオンが必要で、24時間で自動的にオフになります。	plugins-official/remote-trace/annai-plugin.json:40	
 remote-trace:@settings.properties.device.title	ok	Device id	端末 ID	plugins-official/remote-trace/annai-plugin.json:45	
 remote-trace:@settings.properties.device.description	ok	Sent with each batch, so the server can tell this device from another. annai makes one at the first send; you may give it a name of your own.	サーバーがこの端末をほかと区別できるよう、毎回のまとまりと一緒に送ります。最初に送るときに annai が作りますが、自分で名前を付けてもかまいません。	plugins-official/remote-trace/annai-plugin.json:46	
-remote-trace:4clmw9	ok	It needs the address of your server.	サーバーのアドレスが必要です。	plugins-official/remote-trace/index.js:75	
-remote-trace:u2jqcp	ok	Its server address must start with https:// (http:// only for localhost or 127.0.0.1).	サーバーのアドレスは https:// で始める必要があります（http:// は localhost か 127.0.0.1 の場合だけ）。	plugins-official/remote-trace/index.js:81	
-remote-trace:15ggh6g	ok	Its server address has a name or password in it, which a request can't carry. Take it out, and give the server's token as the Token.	サーバーのアドレスに名前かパスワードが含まれていますが、リクエストでは送れません。それを除き、サーバーのトークンを「トークン」に入力してください。	plugins-official/remote-trace/index.js:83	
-remote-trace:rr1ir8	ok	Change it in Settings → Plugins → Remote trace (for developers).	設定 → プラグイン → リモート記録（開発者向け）で変更してください。	plugins-official/remote-trace/index.js:231	
-remote-trace:1kwbgo3	ok	The phone is offline.	端末がオフラインです。	plugins-official/remote-trace/index.js:233	Note: 端末, as annai's own rows say the phone.
-remote-trace:q62pwu	ok	Its token can't be sent.	トークンを送れません。	plugins-official/remote-trace/index.js:233	
-remote-trace:zr5o1w	ok	It has no token.	トークンがありません。	plugins-official/remote-trace/index.js:233	
-remote-trace:14w66x9	ok	The server can't be reached.	サーバーに接続できません。	plugins-official/remote-trace/index.js:234	
-remote-trace:46d80m	ok	The server answered {0}.	サーバーが {0} を返しました。	plugins-official/remote-trace/index.js:234	{0} = p.status
-remote-trace:rt350m	ok	annai couldn't get the batch ready.	annai は送信するまとまりを用意できませんでした。	plugins-official/remote-trace/index.js:234	
-remote-trace:1t53c9s	ok	Sending trace	記録を送信中	plugins-official/remote-trace/index.js:277	
-remote-trace:zzw26r#other	ok	Sending trace: # waiting.	記録を送信中：#件待機中。	plugins-official/remote-trace/index.js:277	plural; # = waiting; English: "Sending trace: # waiting." (one), "Sending trace: # waiting." (other)
-remote-trace:ata72m	ok	Trace	記録	plugins-official/remote-trace/index.js:307	
-remote-trace:bbadl	ok	Remote trace isn't sending	リモート記録を送信できていません	plugins-official/remote-trace/index.js:436	
-remote-trace:s7tmcq	ok	It needs the server's token. Add it in Settings → Plugins → Remote trace (for developers).	サーバーのトークンが必要です。設定 → プラグイン → リモート記録（開発者向け）で追加してください。	plugins-official/remote-trace/index.js:472	
-remote-trace:1ahd84q	ok	Its token has characters a request can't carry: letters, digits and punctuation only, no spaces.	トークンに、リクエストで送れない文字があります：使えるのは英字、数字、記号だけで、スペースは使えません。	plugins-official/remote-trace/index.js:476	
-remote-trace:1qhwapr	ok	The trace server refuses what annai sends	記録の送信先サーバーが annai の送信を拒否しています	plugins-official/remote-trace/index.js:522	
-remote-trace:18ckgf7	ok	{0} answered {1} {2} times in a row.	{0} が {2} 回続けて {1} を返しました。	plugins-official/remote-trace/index.js:523	{0} = host; {1} = res.status; {2} = refusals
-remote-trace:dslm8u	ok	{0} answered {1} {2} times in a row: the token may be wrong.	{0} が {2} 回続けて {1} を返しました：トークンが間違っているのかもしれません。	plugins-official/remote-trace/index.js:523	{0} = host; {1} = res.status; {2} = refusals
-remote-trace:16cfxwg	ok	annai keeps trying about once a minute, and keeps the newest {0} entries until they go. Check the server address and the token in Settings → Plugins → Remote trace (for developers), or turn Send off there.	annai は約1分に1回試し続け、送れるまで最新の {0} 件を保持します。設定 → プラグイン → リモート記録（開発者向け）でサーバーのアドレスとトークンを確認するか、そこで「送信」をオフにしてください。	plugins-official/remote-trace/index.js:524	{0} = kept
-remote-trace:m3chyg	ok	Open Remote trace	リモート記録を開く	plugins-official/remote-trace/index.js:525	
-remote-trace:1jgbgmt	draft	It stops after 24 hours, so it can't be forgotten.	消し忘れないよう、24時間で止まります。	plugins-official/remote-trace/index.js:585	
-remote-trace:dbxfo4	draft	Detailed trace turned itself off	詳細な記録は自動でオフになりました	plugins-official/remote-trace/index.js:585	
-remote-trace:dq1l0x	draft	Flagged	印済み	plugins-official/remote-trace/index.js:609	
-remote-trace:lhtiv0	draft	Not flagged	印を付けられません	plugins-official/remote-trace/index.js:609	
-remote-trace:h872lz	draft	Flag	印	plugins-official/remote-trace/index.js:699	
-remote-trace:tebmzn	draft	Flag this moment	この瞬間に印を付ける	plugins-official/remote-trace/index.js:700	
-remote-trace:1tzfhga	draft	The server address changed, and recordings go only where you turned it on.	サーバーのアドレスが変わりました。録音は、オンにしたときの送信先にだけ送ります。	plugins-official/remote-trace/index.js:732	
-remote-trace:1xzx64b	draft	Detailed trace turned off	詳細な記録をオフにしました	plugins-official/remote-trace/index.js:732	
-remote-trace:1cbqns1	draft	Detailed trace stayed off	詳細な記録はオフのままです	plugins-official/remote-trace/index.js:752	
-remote-trace:602wt0	draft	It needs a server address and Send on. Set those, then turn it on.	サーバーのアドレスと「送信」のオンが必要です。設定してからオンにしてください。	plugins-official/remote-trace/index.js:752	
+remote-trace:4clmw9	ok	It needs the address of your server.	サーバーのアドレスが必要です。	plugins-official/remote-trace/index.js:77	
+remote-trace:u2jqcp	ok	Its server address must start with https:// (http:// only for localhost or 127.0.0.1).	サーバーのアドレスは https:// で始める必要があります（http:// は localhost か 127.0.0.1 の場合だけ）。	plugins-official/remote-trace/index.js:83	
+remote-trace:15ggh6g	ok	Its server address has a name or password in it, which a request can't carry. Take it out, and give the server's token as the Token.	サーバーのアドレスに名前かパスワードが含まれていますが、リクエストでは送れません。それを除き、サーバーのトークンを「トークン」に入力してください。	plugins-official/remote-trace/index.js:85	
+remote-trace:rr1ir8	ok	Change it in Settings → Plugins → Remote trace (for developers).	設定 → プラグイン → リモート記録（開発者向け）で変更してください。	plugins-official/remote-trace/index.js:233	
+remote-trace:1kwbgo3	ok	The phone is offline.	端末がオフラインです。	plugins-official/remote-trace/index.js:235	Note: 端末, as annai's own rows say the phone.
+remote-trace:q62pwu	ok	Its token can't be sent.	トークンを送れません。	plugins-official/remote-trace/index.js:235	
+remote-trace:zr5o1w	ok	It has no token.	トークンがありません。	plugins-official/remote-trace/index.js:235	
+remote-trace:14w66x9	ok	The server can't be reached.	サーバーに接続できません。	plugins-official/remote-trace/index.js:236	
+remote-trace:46d80m	ok	The server answered {0}.	サーバーが {0} を返しました。	plugins-official/remote-trace/index.js:236	{0} = p.status
+remote-trace:rt350m	ok	annai couldn't get the batch ready.	annai は送信するまとまりを用意できませんでした。	plugins-official/remote-trace/index.js:236	
+remote-trace:1t53c9s	ok	Sending trace	記録を送信中	plugins-official/remote-trace/index.js:279	
+remote-trace:zzw26r#other	ok	Sending trace: # waiting.	記録を送信中：#件待機中。	plugins-official/remote-trace/index.js:279	plural; # = waiting; English: "Sending trace: # waiting." (one), "Sending trace: # waiting." (other)
+remote-trace:ata72m	ok	Trace	記録	plugins-official/remote-trace/index.js:309	
+remote-trace:bbadl	ok	Remote trace isn't sending	リモート記録を送信できていません	plugins-official/remote-trace/index.js:438	
+remote-trace:s7tmcq	ok	It needs the server's token. Add it in Settings → Plugins → Remote trace (for developers).	サーバーのトークンが必要です。設定 → プラグイン → リモート記録（開発者向け）で追加してください。	plugins-official/remote-trace/index.js:474	
+remote-trace:1ahd84q	ok	Its token has characters a request can't carry: letters, digits and punctuation only, no spaces.	トークンに、リクエストで送れない文字があります：使えるのは英字、数字、記号だけで、スペースは使えません。	plugins-official/remote-trace/index.js:478	
+remote-trace:1qhwapr	ok	The trace server refuses what annai sends	記録の送信先サーバーが annai の送信を拒否しています	plugins-official/remote-trace/index.js:524	
+remote-trace:18ckgf7	ok	{0} answered {1} {2} times in a row.	{0} が {2} 回続けて {1} を返しました。	plugins-official/remote-trace/index.js:525	{0} = host; {1} = res.status; {2} = refusals
+remote-trace:dslm8u	ok	{0} answered {1} {2} times in a row: the token may be wrong.	{0} が {2} 回続けて {1} を返しました：トークンが間違っているのかもしれません。	plugins-official/remote-trace/index.js:525	{0} = host; {1} = res.status; {2} = refusals
+remote-trace:16cfxwg	ok	annai keeps trying about once a minute, and keeps the newest {0} entries until they go. Check the server address and the token in Settings → Plugins → Remote trace (for developers), or turn Send off there.	annai は約1分に1回試し続け、送れるまで最新の {0} 件を保持します。設定 → プラグイン → リモート記録（開発者向け）でサーバーのアドレスとトークンを確認するか、そこで「送信」をオフにしてください。	plugins-official/remote-trace/index.js:526	{0} = kept
+remote-trace:m3chyg	ok	Open Remote trace	リモート記録を開く	plugins-official/remote-trace/index.js:527	
+remote-trace:1jgbgmt	draft	It stops after 24 hours, so it can't be forgotten.	消し忘れないよう、24時間で止まります。	plugins-official/remote-trace/index.js:587	
+remote-trace:dbxfo4	draft	Detailed trace turned itself off	詳細な記録は自動でオフになりました	plugins-official/remote-trace/index.js:587	
+remote-trace:dq1l0x	draft	Flagged	印済み	plugins-official/remote-trace/index.js:611	
+remote-trace:lhtiv0	draft	Not flagged	印を付けられません	plugins-official/remote-trace/index.js:611	
+remote-trace:h872lz	draft	Flag	印	plugins-official/remote-trace/index.js:701	
+remote-trace:tebmzn	draft	Flag this moment	この瞬間に印を付ける	plugins-official/remote-trace/index.js:702	
+remote-trace:1tzfhga	draft	The server address changed, and recordings go only where you turned it on.	サーバーのアドレスが変わりました。録音は、オンにしたときの送信先にだけ送ります。	plugins-official/remote-trace/index.js:734	
+remote-trace:1xzx64b	draft	Detailed trace turned off	詳細な記録をオフにしました	plugins-official/remote-trace/index.js:734	
+remote-trace:1cbqns1	draft	Detailed trace stayed off	詳細な記録はオフのままです	plugins-official/remote-trace/index.js:755	
+remote-trace:602wt0	draft	It needs a server address and Send on. Set those, then turn it on.	サーバーのアドレスと「送信」のオンが必要です。設定してからオンにしてください。	plugins-official/remote-trace/index.js:755	
 scripted-model:@name	ok	Scripted model	台本どおりのモデル	plugins-official/scripted-model/annai-plugin.json:3	
 scripted-model:@description	ok	A model that replies from a script, for tests and plugin authors. It never uses the network.	台本どおりに返答するモデル。テストとプラグインの作者向けです。ネットワークは一切使いません。	plugins-official/scripted-model/annai-plugin.json:7	
 search-searxng:@name	ok	SearXNG Search	SearXNG 検索	plugins-official/search-searxng/annai-plugin.json:3	

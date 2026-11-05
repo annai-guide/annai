@@ -13,6 +13,8 @@
 export const ID = 'remote-trace';
 /** Where the user's settings are saved (sys:settings), which its hook watches. */
 export const SETTINGS_FILE = `/plugin-settings/${ID}.json`;
+/** The entries Detailed trace writes, which go when it goes off. @param {unknown} type */
+export const isOwnTrace = (type) => ['trace.screen', 'trace.flag', 'trace.clip', 'trace.clip.dropped'].includes(String(type));
 /** A batch goes this long after the oldest entry waiting arrived, */
 export const BATCH_MS = 3000;
 /** or as soon as this many wait; a batch holds at most this many, */
@@ -335,7 +337,7 @@ export function start(annai, {
   };
 
   /** The entries of Detailed trace's own that wait go, as the recordings do: text of the screen must not leave after it is off. */
-  const isTraceItem = (/** @type {Item} */ x) => String(x.e.type).startsWith('trace.');
+  const isTraceItem = (/** @type {Item} */ x) => isOwnTrace(x.e.type);
   const dropTrace = () => {
     queue = queue.filter((x) => !isTraceItem(x));
     queueBytes = queue.reduce((sum, x) => sum + x.bytes, 0);
@@ -738,7 +740,8 @@ export function start(annai, {
       expire();
       return;
     }
-    if (s.detailedUntil !== until || s.detailedFor !== on?.server) annai.settings.set({ detailedUntil: until, detailedFor: on?.server }).catch(() => {});
+    // Unsaved, its end and its address can't be kept to: it stays off.
+    if (s.detailedUntil !== until || s.detailedFor !== on?.server) annai.settings.set({ detailedUntil: until, detailedFor: on?.server }).catch(() => detailOff());
     detailOn(until);
   };
 
