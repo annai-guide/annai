@@ -1,5 +1,5 @@
 {
-  "build": "33f083e1e5e4",
+  "build": "ae562eafe82d",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -43,7 +43,7 @@
     "/src/core/agent/instructions.js": "5989e634fbf3",
     "/src/core/agent/listen.js": "e6c194b03c77",
     "/src/core/agent/log.js": "6ea82833ac72",
-    "/src/core/agent/loop.js": "be8506d5aabc",
+    "/src/core/agent/loop.js": "550d1d3b88c4",
     "/src/core/agent/reading.js": "4aa68253f39e",
     "/src/core/agent/personalities.js": "20c2b7d8981a",
     "/src/core/agent/her-instructions.js": "b90fb982b678",
@@ -109,7 +109,7 @@
     "/src/core/intl.js": "0da282c01667",
     "/src/core/koe/context.js": "0fb694f46b35",
     "/src/core/koe/instructions.js": "e54b8ba251ca",
-    "/src/core/koe/live.js": "1525751b3d5c",
+    "/src/core/koe/live.js": "0d4a644b63bc",
     "/src/core/koe/tools.js": "cfbc62fd865b",
     "/src/core/l10n-list.js": "98de5dc21171",
     "/src/core/l10n.js": "bc73b53b2add",

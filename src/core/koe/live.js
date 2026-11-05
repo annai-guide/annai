@@ -492,13 +492,14 @@ export class LiveKoe {
     const kept = resume ? this.#setUp : null;
     const [last] = kept ? [] : await this.c.store.tx(['events'], 'readonly', (t) => t.listEvents(this.c.koe.scope, { reverse: true, limit: 1 }));
     if (!kept) this.#told = [];
-    this.#setUp = { instructions, context: kept ? kept.context : context, tools: tools.map((x) => x.name), after: kept ? kept.after : last?.seq ?? 0 };
+    const sent = kept ? kept.context : context; // a resume sends what it began with: a provider that reads it again repeats nothing
+    this.#setUp = { instructions, context: sent, tools: tools.map((x) => x.name), after: kept ? kept.after : last?.seq ?? 0 };
     this.#wake = newId('w');
     this.#noBack = 0;
     this.#endedEarly = false;
     // The phone's sound, for the Trace's ready line: its rate and the output's own latency (the pops investigation).
     const output = this.c.voice?.platform?.player.output?.() ?? undefined;
-    const s = await this.c.llm.live(id, { instructions, context, tools, ...(languages ? { languages } : {}), ...(resume ? { resume } : {}) }, { scope: this.c.koe.scope, wake: this.#wake, output });
+    const s = await this.c.llm.live(id, { instructions, context: sent, tools, ...(languages ? { languages } : {}), ...(resume ? { resume } : {}) }, { scope: this.c.koe.scope, wake: this.#wake, output });
     s.on((e) => this.#on(s, e));
     s.closed.then((c) => this.#closed(s, c, why));
     await s.ready;

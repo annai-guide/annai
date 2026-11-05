@@ -204,7 +204,15 @@ test.describe('the bottom bar, at phone width', () => {
           await expect(page.locator('nav.dock')).toHaveClass(voice === 'On' ? /\bvoice\b/ : /^(?!.*\bvoice\b)/);
           const sign = page.locator('.halves-sign');
           await expect(sign).toBeHidden();
-          const before = await boxes();
+          // The voice chip's words settle a moment after the screen draws, and move the chips beside them: measure once they have.
+          let before = await boxes();
+          await expect.poll(async () => {
+            await page.waitForTimeout(150);
+            const now = await boxes();
+            const same = JSON.stringify(now) === JSON.stringify(before);
+            before = now;
+            return same;
+          }).toBe(true);
           await sign.evaluate((el) => el.classList.remove('idle'));
           await expect(sign).toBeVisible();
           expect(await boxes()).toEqual(before);
