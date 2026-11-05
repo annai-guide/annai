@@ -291,7 +291,8 @@ test("item 11 (consent): a session a trigger opened listens after it speaks only
   const { updateAppSettings } = await import('../../src/core/settings.js');
   const k = await liveKit([{ said: 'The sun sets in half an hour.', audio: tone(0.1) }, { heard: 'thanks', said: 'You are welcome.', audio: tone(0.1) }]);
   try {
-    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 2 } }); // 3 s and 20 ms here
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.live.answerSeconds = 2; // 3 s and 20 ms here
     await k.voice.unlock();
     // Whether it listens is read as her line is written, not when the test looks: the answer window is 20 ms here, and a look from the test
     // can come after it on a slow machine.
@@ -318,7 +319,8 @@ test("item 11b: a trigger's first words come later than the answer window: the s
   // The answer takes 400 ms to begin; the window is 20 ms here ("Listen for an answer" at 2 s), and a slow network or model is longer.
   const k = await liveKit([{ said: 'The sun sets in half an hour.', audio: tone(0.1), delayMs: 400 }]);
   try {
-    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 2 } });
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.live.answerSeconds = 2;
     await k.voice.unlock();
     await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes' });
     await soon(async () => (await k.events(['out.speak'])).length === 1);
@@ -336,7 +338,8 @@ test("item 11c: a trigger a session never answers is waited for only as long as 
   const { updateAppSettings } = await import('../../src/core/settings.js');
   const k = await liveKit([{ silent: true }]);
   try {
-    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 2 } });
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.live.answerSeconds = 2;
     await k.voice.unlock();
     await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes' });
     await until(() => k.agent.live.state === 'open', 5000);

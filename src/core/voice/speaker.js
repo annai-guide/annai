@@ -197,6 +197,11 @@ export class Speaker {
     return this.#live.size > 0;
   }
 
+  /** Settles once nothing is being said, or waits to be. */
+  async quiet() {
+    while (this.speaking) await this.#last?.catch(() => {});
+  }
+
   /** The user cut her off (spec §10.4): everything stops. @returns {boolean} whether she was speaking */
   stop() {
     const was = this.#live.size > 0;

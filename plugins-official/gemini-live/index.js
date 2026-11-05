@@ -16,6 +16,9 @@
  *   languages section). Input transcription takes `languageCodes`, several BCP-47 hints ("If omitted or empty, defaults to automatic language
  *   detection"), in the guide's own codes (en, ja, zh-Hans), and only when every language listed has one (Cantonese has none); a session that
  *   refuses the field opens again without it, and again if it then refuses the proactive audio (two reopens at most);
+ * - thinking (Google's Live guide, read 2026-11-04, and one short open on a free key): gemini-3.8-live takes no thinkingLevel and it must be left
+ *   out; gemini-3.8-live-extended-thinking closes with 1007 "Thinking level must be specified for this model" without one, and takes
+ *   generationConfig.thinkingConfig.thinkingLevel: low, medium or high, from the model's reasoning map, as the chat models give theirs;
  * - usage comes once a turn, with turnComplete, by modality; thinking is counted apart from the response;
  * - a turn cut off ends with `interrupted`, then a turnComplete (and its usage) of its own; on resuming, Gemini first
  *   finishes the answer it was giving when the connection went.
@@ -104,7 +107,7 @@ export function activate(annai) {
       send({
         setup: {
           model: `models/${model.providerId}`,
-          generationConfig: { responseModalities: ['AUDIO'], ...(t.voice ? { speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: String(t.voice) } } } } : {}) },
+          generationConfig: { responseModalities: ['AUDIO'], ...(setup.reasoning?.generation_config?.thinking_level ? { thinkingConfig: { thinkingLevel: setup.reasoning.generation_config.thinking_level } } : {}), ...(t.voice ? { speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: String(t.voice) } } } } : {}) },
           systemInstruction: { parts: [{ text: [setup.instructions, setup.context].filter(Boolean).join('\n\n') }] },
           ...(setup.tools.length ? { tools: [{ functionDeclarations: setup.tools.map((/** @type {any} */ x) => ({ name: x.name, description: x.description, parametersJsonSchema: x.input })) }] } : {}),
           realtimeInputConfig: { automaticActivityDetection: { disabled: true } },

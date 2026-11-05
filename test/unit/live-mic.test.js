@@ -109,7 +109,8 @@ test("a trigger's session listens only briefly: a heard turn she dismisses doesn
   const { updateAppSettings } = await import('../../src/core/settings.js');
   const k = await liveKit([{ said: 'The sun sets in half an hour.', audio: tone(0.1) }, { heard: 'mm' }]);
   try {
-    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 40 } }); // 3 s spell, 400 ms answer window
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.live.answerSeconds = 40; // 3 s spell, 400 ms answer window
     await k.voice.unlock();
     await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes' });
     await soon(async () => (await k.events(['out.speak'])).length === 1);
@@ -131,7 +132,8 @@ test('a heard turn she answers with words clears the brief window: the quiet spe
   const { updateAppSettings } = await import('../../src/core/settings.js');
   const k = await liveKit([{ said: 'The sun sets in half an hour.', audio: tone(0.1) }, { heard: 'where should we eat', said: 'Tacos ahead.', audio: tone(0.1) }]);
   try {
-    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 40 } });
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.live.answerSeconds = 40;
     await k.voice.unlock();
     await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes' });
     await soon(async () => (await k.events(['out.speak'])).length === 1);
@@ -149,7 +151,8 @@ test('a heard turn she answers with a card alone (show, no words) clears the bri
   const { updateAppSettings } = await import('../../src/core/settings.js');
   const k = await liveKit([{ said: 'The sun sets in half an hour.', audio: tone(0.1) }, { heard: 'save a note', tool: { name: 'show', args: { card: { title: 'Tacos' } } } }]);
   try {
-    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 40 } });
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.live.answerSeconds = 40;
     await k.voice.unlock();
     await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes' });
     await soon(async () => (await k.events(['out.speak'])).length === 1);
@@ -167,7 +170,8 @@ test('an urgent note (immediate) is said whole while the detector reports speech
   const { updateAppSettings } = await import('../../src/core/settings.js');
   const k = await liveKit([{ heard: 'la la' }, { said: 'Turn left in two hundred meters.', audio: tone(0.6) }]);
   try {
-    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 40 } });
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.live.answerSeconds = 40;
     await k.voice.unlock();
     // In the car, where speaking cuts her off (full duplex), her voice playing in real time: sound over it is heard.
     k.voice.route = async () => 'car';
@@ -193,7 +197,8 @@ test('an urgent note (immediate) is said whole while the detector reports speech
   // Closed, an immediate note opens a session that listens only briefly.
   const k2 = await liveKit([{ said: 'Turn left now.', audio: tone(0.1) }]);
   try {
-    await updateAppSettings(k2.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 40 } });
+    await updateAppSettings(k2.ws, { voice: { closeAfterSeconds: 300 } });
+    k2.agent.live.answerSeconds = 40;
     await k2.voice.unlock();
     const t0 = Date.now();
     await k2.agent.live.note('Say now: turn left.', 'immediate');
@@ -209,7 +214,8 @@ test('a second urgent note cutting the first urgent reply leaves the mark for it
   const { updateAppSettings } = await import('../../src/core/settings.js');
   const k = await liveKit([{ heard: 'la la' }, { said: 'Turn left in two hundred meters.', audio: tone(1.5) }, { said: 'Turn right now.', audio: tone(0.6) }]);
   try {
-    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 40 } });
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.live.answerSeconds = 40;
     await k.voice.unlock();
     k.voice.route = async () => 'car';
     k.platform.streamSpeed = 1;
@@ -239,7 +245,8 @@ test('an urgent reply dropped with its connection before a word lets the microph
   const { updateAppSettings } = await import('../../src/core/settings.js');
   const k = await liveKit([{ heard: 'la la' }, { said: 'Turn left now.', audio: tone(0.6), delayMs: 4000 }]);
   try {
-    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 40 } });
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.live.answerSeconds = 40;
     await k.voice.unlock();
     k.voice.route = async () => 'car';
     k.agent.tap();
@@ -384,7 +391,8 @@ test('two urgent notes sent before any answer: the second reply is said whole ov
   const { updateAppSettings } = await import('../../src/core/settings.js');
   const k = await liveKit([{ heard: 'la la' }, { said: 'Turn left in two hundred meters.', audio: tone(1.5) }, { said: 'Turn right now.', audio: tone(1.5) }, { heard: 'la' }]);
   try {
-    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 40 } });
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.live.answerSeconds = 40;
     await k.voice.unlock();
     k.voice.route = async () => 'car';
     k.platform.streamSpeed = 1;
@@ -411,7 +419,8 @@ test('an urgent note and an appended one from one Kokoro reply: the urgent is sa
   const { updateAppSettings } = await import('../../src/core/settings.js');
   const k = await liveKit([{ heard: 'la la' }, { said: 'Turn left in two hundred meters.', audio: tone(1.5) }, { said: 'The exit after is closed.', audio: tone(0.6) }, { heard: 'la' }]);
   try {
-    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 40 } });
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.live.answerSeconds = 40;
     await k.voice.unlock();
     k.voice.route = async () => 'car';
     k.platform.streamSpeed = 1;
@@ -467,7 +476,8 @@ for (const [flavour, answer] of /** @type {const} */ ([['gemini', 'nothing'], ['
     const first = answer === 'nothing' ? {} : { tool: { name: 'already_told', args: {} } };
     const k = await liveKit([first, { said: 'Exit closed.', audio: tone(0.3) }, { heard: 'where should we eat', said: 'Tacos ahead.', audio: tone(0.3) }], flavour === 'openai' ? { live: { type: 'openai-realtime' } } : {});
     try {
-      await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 40 } });
+      await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+      k.agent.live.answerSeconds = 40;
       await k.voice.unlock();
       k.agent.tap();
       await until(() => k.agent.live.listening, 3000);
@@ -511,7 +521,8 @@ for (const music of [false, true]) {
     const { updateAppSettings } = await import('../../src/core/settings.js');
     const k = await liveKit([{ said: 'Turn left in two hundred meters.', audio: tone(1.5) }, { said: 'The exit after is closed.', audio: tone(0.6) }, { heard: 'la' }]);
     try {
-      await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 40 } });
+      await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+      k.agent.live.answerSeconds = 40;
       await k.voice.unlock();
       k.voice.route = async () => 'car';
       k.platform.streamSpeed = 1;
@@ -547,7 +558,8 @@ test("a brief session's heard turn answered with a silent tool, then words (tool
     { said: 'Tacos ahead.', audio: tone(0.1) },
   ]);
   try {
-    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 40 } }); // 3 s spell, 400 ms answer window
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.live.answerSeconds = 40; // 3 s spell, 400 ms answer window
     await k.voice.unlock();
     await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes' });
     await soon(async () => (await k.events(['out.speak'])).length === 1);
@@ -621,7 +633,8 @@ test('an urgent note over a user turn the provider answers together with the not
   // The music's turn, cut by the note, gets no end of its own: the note's answer is the provider's next turn, and the only one.
   const k = await liveKit([{ silent: true }, { said: 'Turn left now.', audio: tone(0.5) }, { heard: 'la' }]);
   try {
-    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 40 } });
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.live.answerSeconds = 40;
     await k.voice.unlock();
     k.voice.route = async () => 'car';
     k.agent.tap();
@@ -649,7 +662,8 @@ test('an urgent note while the user is mid-sentence, on a provider that never en
   const { updateAppSettings } = await import('../../src/core/settings.js');
   const k = await liveKit([{ silent: true }, { silent: true }]);
   try {
-    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 40 } });
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.live.answerSeconds = 40;
     await k.voice.unlock();
     k.voice.route = async () => 'car';
     k.agent.tap();
@@ -795,7 +809,8 @@ for (const urgent of [true, false]) {
     const { updateAppSettings } = await import('../../src/core/settings.js');
     const k = await liveKit([{ heard: 'la la' }, { said: 'Turn left at the next exit.', audio: tone(0.6) }]);
     try {
-      await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 40 } });
+      await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+      k.agent.live.answerSeconds = 40;
       await k.voice.unlock();
       k.voice.route = async () => 'car'; // where speaking cuts her off (full duplex)
       k.platform.streamSpeed = 1;
@@ -915,7 +930,8 @@ test('an urgent note answered in two turns, the second with no word yet as the f
   // In real time (pace 1): the second turn's sound comes over 1.2 s, its first word 0.9 s in, after the first has played out.
   const k = await liveKit([{ heard: 'la la' }, { said: 'Turn left now.', audio: tone(0.3), andThen: true }, { said: 'Then keep right for the bridge.', audio: tone(1.2), saidAt: 900 }], { pace: 1 });
   try {
-    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 40 } });
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.live.answerSeconds = 40;
     await k.voice.unlock();
     k.voice.route = async () => 'car';
     k.platform.streamSpeed = 1;
@@ -948,7 +964,8 @@ test('an urgent note answered with words and a tool she speaks after: the microp
     { said: 'Then keep right for the bridge.', audio: tone(0.6), delayMs: 1500 },
   ], { pace: 1 });
   try {
-    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300, silenceSeconds: 40 } });
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.live.answerSeconds = 40;
     await k.voice.unlock();
     k.voice.route = async () => 'car';
     k.platform.streamSpeed = 1;
@@ -1072,6 +1089,7 @@ test('steady music, every turn running to the cap and her answers cut by the nex
     }
     assert.equal(texts(k).filter((x) => /go to sleep/.test(x)).length, 1, 'the note went in once');
     assert.equal((await kokoroWakes(k, /non-stop sound/)).length, 1, 'Kokoro was woken once');
+    await soon(async () => (await lives(k, 'closed')).length === 1); // written just after it closes
     assert.deepEqual((await lives(k, 'closed')).map((e) => e.data.why), ['sleep']);
   } finally {
     await k.done();

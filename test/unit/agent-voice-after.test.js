@@ -6,6 +6,7 @@ import { WRITE_DOWN } from '../../src/core/voice/voice.js';
 import { NOT_TRANSCRIBED } from '../../src/core/voice/resolve.js';
 import { record } from '../../src/core/agent/log.js';
 import { useClock } from './clock.js';
+import { updateAppSettings } from '../../src/core/settings.js';
 
 const say = (/** @type {string} */ text) => ({ toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }] });
 const speakOnly = (/** @type {string} */ text) => ({ toolCalls: [{ name: 'speak', input: { text } }] });
@@ -163,7 +164,7 @@ test('phone dictation that hears a noise and no words: the silence limit starts 
   await until(() => k.agent.state.name === 'sleeping', 1500);
   await k.agent.idle();
   const [speak] = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'speak');
-  assert.equal(speak.data.content, 'Said aloud. Heard nothing (8 seconds).');
+  assert.equal(speak.data.content, 'Said aloud. Heard nothing (20 seconds).');
   k.agent.tap();
   await until(() => k.agent.state.name === 'listening');
   k.platform.dictation.noise();
@@ -277,4 +278,55 @@ test('words written down later (heard.text) are flagged too, and the model reads
   k.agent.send('Hello again');
   await k.agent.idle();
   assert.deepEqual(k.requests[1].messages[0].parts.slice(0, 2), [{ type: 'text', text: '[heard]' }, { type: 'text', text: '¿Qué? (heard; may be misheard as Spanish)' }]);
+});
+
+// Item 10 of the second drive: after she speaks she keeps listening by default.
+test('classic: a turn that spoke without sleep leaves the microphone open, listening; what is said goes through the gate, and a silence closes it', async (t) => {
+  useClock(t);
+  const k = await agentKit([[{ toolCalls: [{ name: 'speak', input: { text: 'Let me check.' } }, { name: 'wait', input: { seconds: 1 } }] }, { text: 'done' }, say('It is open.')]], { voice: { speechIn: ['m-hear'], hears: ['where should we eat', 'is it open', 'yes'] } });
+  await updateAppSettings(k.ws, { voice: { silenceSeconds: 30 } }); // 300 ms here
+  await tapAndSay(k, 'where-eat');
+  assert.equal(k.platform.mic.isOpen(), true, 'it listens after the turn');
+  assert.equal(k.agent.state.name, 'listening');
+  await until(() => !k.platform.mic.isOpen(), 2000);
+  assert.equal(k.agent.state.name, 'sleeping');
+});
+
+test('classic: speak with sleep in the same reply closes the microphone at once', async (t) => {
+  useClock(t);
+  const k = await agentKit([[say('Tacos are close.')]], { voice: { speechIn: ['m-hear'], hears: ['where should we eat'] } });
+  await tapAndSay(k, 'where-eat');
+  assert.equal(k.platform.mic.isOpen(), false);
+});
+
+test("classic: a speak that listened and heard nothing ends the turn with no model call for a sleep; the window isn't opened twice", async (t) => {
+  useClock(t);
+  const k = await agentKit([[speakOnly('Tacos are close.'), say('should never run')]], { voice: { speechIn: ['m-hear'], hears: ['where should we eat'] } });
+  await updateAppSettings(k.ws, { voice: { silenceSeconds: 2 } });
+  await tapAndSay(k, 'where-eat');
+  assert.equal(k.requests.length, 1, 'one model call');
+  assert.equal(k.platform.mic.isOpen(), false);
+});
+
+test("classic: the window after a turn isn't a tap's: chatter goes through the gate, is written as such, and it listens on", async (t) => {
+  useClock(t);
+  const k = await agentKit([[{ toolCalls: [{ name: 'speak', input: { text: 'Let me check.' } }, { name: 'wait', input: { seconds: 1 } }] }, { text: 'done' }]], { voice: { speechIn: ['m-hear'], hears: ['where should we eat', 'did you lock the car'], decide: [{ toolCalls: [{ name: 'decide', input: { option: 'B' } }] }] } });
+  await updateAppSettings(k.ws, { voice: { silenceSeconds: 100 } }); // 1 s here
+  await tapAndSay(k, 'where-eat');
+  assert.equal(k.platform.mic.isOpen(), true);
+  const wakes = (await k.events(['wake'])).length;
+  await hear(k, 'gas-station');
+  while ((await k.events(['heard'])).length < 2) await new Promise((r) => setTimeout(r, 5));
+  await k.agent.idle();
+  assert.equal((await k.events(['wake'])).length, wakes, 'it woke no one');
+  assert.equal((await k.events(['heard']))[1].data.dismissed, true);
+  assert.equal(k.platform.mic.isOpen(), true, 'it listens on');
+});
+
+test('silenceSeconds: the default is 20, a saved value stays; a tap window and a question aloud keep 8 s', async () => {
+  const { voiceSettings } = await import('../../src/core/voice/settings.js');
+  assert.equal(voiceSettings({}).silenceSeconds, 20);
+  assert.equal(voiceSettings({ voice: { silenceSeconds: 8 } }).silenceSeconds, 8);
+  const { LIVE_ANSWER_S } = await import('../../src/core/koe/live.js');
+  assert.equal(LIVE_ANSWER_S, 8);
 });

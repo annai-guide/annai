@@ -65,6 +65,9 @@
    wagging (loops, stepped by avatar.js) */
 .av[data-state="away"] .fox { opacity: 0; transform: translateY(260px); }
 .av[data-state="away"] .away { opacity: 1; transform: none; }
+/* ignoring: awake, listening for the user over sound she lets pass: ears eased back, head a little down, half-lidded; the dock's words carry the meaning. */
+.av[data-state="ignoring"] { --head-y: 6px; --lean-r: 12deg; --len-r: .94; --lean-l: 12deg; --len-l: .94; }
+
 /* offline: present, grey and dim, sad half-lidded eyes, ears folded flat (a droop between flat and upright reads alert) */
 .av[data-state="offline"] { --head-y: 14px; --lean-r: 24deg; --len-r: .84; --lean-l: 24deg; --len-l: .84; --pin-lean: 0deg; --pin-len: 1; --pin-y: 30px; }
 .av[data-state="offline"] :is(.ear-r, .ear-l) { opacity: 0; }
