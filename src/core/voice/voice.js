@@ -620,7 +620,7 @@ export class Voice {
     const platform = this.platform;
     if (!platform) throw new Error(t`This browser can't use the microphone here.`);
     // A microphone runs on the sound that is stuck. The tap that brings it back may still be starting.
-    if (this.#stuck) await this.settled();
+    if (this.#stuck) await this.settled(3000);
     if (this.#stuck) throw Object.assign(new Error(t`Sound got stuck, so annai can't hear you. Tap the screen to bring it back.`), { stuck: true });
     const { pauseMs } = await this.settings();
     const local = kind === 'dictation' && (await this.dictationLocal());

@@ -1,13 +1,8 @@
 /**
  * The level check (the second-drive design, section 3): how loud the user's voice has been lately, and the least a sound must reach to
- * begin a turn while something plays in the car. Lyrics that never open a turn never reach the model, cost nothing and can't be answered.
- * Measured on one drive, one car, one volume (53 live turns): the voice peaked at about -3 to -13 dB, lyrics at about -16 to -26 dB, a few
- * quiet words of the user's lower ("yeah." at -19); the floor with music on was about -54 to -66 dB, without it mostly -66 to -86 dB. So
- * these numbers are a first guess: `live.turn` logs voiceDb, minDb, keptFrames and keptPeakDb to tune them. Too high a minimum leaves the
- * user unheard, the worst failure here, so every doubt means no minimum: a floor not yet learned (Detector), no voiceDb yet, a tap, a new route.
- * It learns only from the turns she answered: a level that fell with time, or learned from every turn, let lyrics through within a minute,
- * and they then read as the user's own, so each one the model let go woke Kokoro. It is the second-loudest of the last few, not the loudest:
- * she answers a lyric now and then, and one at -7.8 dB against a voice of -23.3 dB would keep that voice from opening a turn until a tap.
+ * begin a turn while something plays in the car, so lyrics never reach the model. Every doubt means no minimum: a floor not yet learned
+ * (Detector), no voiceDb yet, a tap, a new route. It learns only from the turns she answered, as the second-loudest of the last few.
+ * The numbers are a first guess; the drive's measurements are in the design.
  */
 export const LEVEL = Object.freeze({
   /** A floor above this says something is playing; under it (a quiet car) there is no minimum. */

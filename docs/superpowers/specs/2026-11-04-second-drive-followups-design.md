@@ -166,6 +166,10 @@ Reproduce with the fake realtime server, then fix at the source:
 ### Item 6, the silent retry
 `#silent` (`src/core/koe/live.js:833`) restarted the session three times on the drive, and the first restart was followed by a heard Korean word and a reply in Korean. It does resend the heard words to a fresh session (`live.js`, about 853 to 857). Not checked: whether `#due` survives an empty `#complete`, so whether proactive silence counts as a failure. Make sure a turn the model chose not to answer is never retried.
 
+Measured (2026-11-04): after the user's turn music got an empty turn, or no message for 12 s from a session that then answered speech and notes at once. That is the model's choice, so a fresh session isn't given the words (it has no reason to let them go too: a lyric was answered in Korean). A session really dead shows itself at the next note or typed line.
+
+A turn whose tool call was answered silently may never get its turnComplete. Real runs, 2026-11-05: it came about at her sound's end, at most 2.9 s after the answer, in 48 of 48 probes, silent or not; in one of 31 full runs it never came, and the turn held the note that waited for it until the session closed, 35 s later. So `#endLater` ends the turn `TURN_END_S` (2 s) past the end of her sound, counted from when her sound began (her first word may come late, and a call alone has no sound: it counts from the answer). A turnComplete that comes after the bound, with no new audio between, is that turn's and is swallowed. One that comes after more audio is that audio's end, as the provider sends them in order, and is applied.
+
 ### Item 12, the reminder cut off
 A reminder began in the fallback voice, and 9 seconds later a session opened for Kokoro's note. A reminder being said finishes first; a session that opens meanwhile doesn't play or capture over it (hold the open, or hold the first sound).
 

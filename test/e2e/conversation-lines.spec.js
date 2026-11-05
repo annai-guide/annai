@@ -226,34 +226,42 @@ test.describe('the bottom bar, at phone width', () => {
     });
   }
 
-  for (const [width, height] of [[360, 640], [320, 844], [390, 844]]) {
-    test(`${width} × ${height}: "Ignoring background sound" under her and the working sign over the bar: each shows, neither covers the other, and she and the bar's height stay`, async ({ page }) => {
+  for (const [width, height] of [[280, 640], [320, 844], [360, 640], [390, 844]]) {
+    test(`${width} × ${height}: "Ignoring sound" or "Offline" under her, and the working sign over the bar: each shows, neither covers the other, whole (from 320), and nothing in the bar moves`, async ({ page }) => {
       await page.setViewportSize({ width, height });
       await openApp(page, '#/talk');
       await page.goto('/#/voice');
       await page.getByRole('radio', { name: 'On', exact: true }).check();
       await page.goto('/#/talk');
       await expect(page.locator('nav.dock')).toHaveClass(/\bvoice\b/);
-      const boxes = () => page.evaluate(() => ['nav.dock', '.dock .av'].map((s) => { const b = document.querySelector(s)?.getBoundingClientRect(); return b && [b.x, b.y, b.width, b.height]; }));
+      // The bar, her and the buttons beside her: the side buttons moved when a long label widened the middle column.
+      const boxes = () => page.evaluate(() => [...document.querySelectorAll('nav.dock, .dock .av, .dock .ib')].map((e) => { const b = e.getBoundingClientRect(); return [b.x, b.y, b.width, b.height]; }));
+      expect((await boxes()).length).toBeGreaterThan(3);
       const before = await boxes();
+      await page.evaluate(() => /** @type {Element} */ (document.querySelector('.halves-sign')).classList.remove('idle'));
+      await expect(page.locator('.halves-sign')).toBeVisible();
       const words = await page.evaluate(async () => {
         const load = (/** @type {string} */ url) => import(url);
         const { LABELS } = await load('/src/core/agent/loop.js');
-        /** @type {HTMLElement} */ (document.querySelector('.talk-label')).textContent = LABELS.ignoring;
-        /** @type {Element} */ (document.querySelector('.dock .av')).setAttribute('data-state', 'ignoring');
-        /** @type {Element} */ (document.querySelector('.halves-sign')).classList.remove('idle');
-        return LABELS.ignoring;
+        return [LABELS.ignoring, LABELS.offline, '音を無視中 · タップで話す', '忽略声音 · 轻点说话', '忽略聲音 · 輕點說話'];
       });
-      expect(words).toMatch(/^Ignoring/);
-      await expect(page.locator('.halves-sign')).toBeVisible();
-      await expect(page.locator('.talk-label')).toBeVisible();
-      expect(await boxes()).toEqual(before);
-      const seen = await page.evaluate(() => {
-        const box = (/** @type {string} */ s) => /** @type {Element} */ (document.querySelector(s)).getBoundingClientRect();
-        const [label, sign] = [box('.talk-label'), box('.halves-sign')];
-        return { apart: sign.bottom <= label.top, inside: label.left >= 0 && label.right <= innerWidth };
-      });
-      expect(seen).toEqual({ apart: true, inside: true });
+      expect(words[0]).toMatch(/^Ignoring/);
+      for (const text of words) {
+        await page.evaluate((x) => {
+          /** @type {HTMLElement} */ (document.querySelector('.talk-label')).textContent = x;
+          /** @type {Element} */ (document.querySelector('.dock .av')).setAttribute('data-state', 'ignoring');
+        }, text);
+        await expect(page.locator('.talk-label')).toBeVisible();
+        expect(await boxes(), text).toEqual(before);
+        const seen = await page.evaluate(() => {
+          const box = (/** @type {string} */ s) => /** @type {Element} */ (document.querySelector(s)).getBoundingClientRect();
+          const [label, sign] = [box('.talk-label'), box('.halves-sign')];
+          const el = /** @type {HTMLElement} */ (document.querySelector('.talk-label'));
+          return { apart: sign.bottom <= label.top, inside: label.left >= 0 && label.right <= innerWidth, whole: el.scrollWidth <= el.clientWidth };
+        });
+        expect(seen, text).toMatchObject({ apart: true, inside: true });
+        if (width >= 320) expect(seen.whole, `${text} is cut`).toBe(true); // 280 is narrower than a phone: the bar holds still, and the label may end in an ellipsis
+      }
     });
   }
 

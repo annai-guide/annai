@@ -594,7 +594,7 @@ export class Halves {
     await this.#refresh();
     if (this.koeState === 'text') return this.koe.enqueue(w);
     // That model rests now, and the next in Koe's list can take it: a note or a reminder doesn't lose its moment. (A typed line is written by the try.)
-    if (this.koeState === 'live' && this.#liveId !== failed && w.kind !== 'user' && (await fn())) return;
+    if (this.koeState === 'live' && this.#liveId !== failed && (await fn())) return;
     if (this.koeState !== 'down') {
       // No session could take Kokoro's note for the user, and Koe stays live (today's spend reached): annai shows it.
       if (isForUser(w) && !this.#shown.has(w)) await this.#backstop([w]);
