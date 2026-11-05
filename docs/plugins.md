@@ -676,9 +676,9 @@ annai's official plugin **Remote trace (for developers)** sends annai's trace to
   - Its own requests are in annai's trace, as any plugin's are.
 - **What it does send that you may not expect:** the names of this phone's audio devices. Each `voice.route` entry (which audio annai decided is in use: the speaker, headphones, the car) carries the microphone in use and every audio device's name, such as "AirPods Pro" or a car's, and goes to your server like any other entry. They are kept in this device's own scope, which no backup holds, but Remote trace sends them.
 - **What it never sends:**
-  - **Keys and its token.** Every entry first goes through `annai.secrets.blank`, annai's own blanking, as annai's cards do, so a key you type into a message is blanked too.
+  - **The keys annai keeps, and its token.** Every entry first goes through `annai.secrets.blank`, annai's own blanking, as annai's cards do: every key annai keeps, and the credentials with a known shape (a `Bearer` or `Basic` value, an AWS signature). A key annai doesn't keep, such as one you type into a message or onto the screen and never save, is not promised to be blanked.
   - **Stored content:** texts over 2,000 characters (such as model replies and their reasoning), photos and other bytes. Only their names and hashes go.
-  - **Location points,** unless you turn on Send location points. Other entries can still name a place, as the Trace shows them: a weather request's address, a tool's input.
+  - **Location points,** unless you turn on Send location points. Other entries can still name a place, as the Trace shows them: a weather request's address, a tool's input. Detailed trace's screen text can name a place too, if the screen shows it (see below).
   - **Entries from before Send was on, or after it went off.**
   - **Entries a plugin caused** (its own requests and model calls, its `plugin.error`), because no plugin's hooks get those (see "Following the log").
 - **Offline, or refused:**
@@ -689,6 +689,18 @@ annai's official plugin **Remote trace (for developers)** sends annai's trace to
   - Without a token, or with one a request can't carry (spaces, letters beyond ASCII), it says so on one card and keeps what waits; the token is read at every try, so saving it is enough.
 - **The dock** shows a "Trace" chip while it is sending; tapping it opens the plugin's page.
 
+**Detailed trace** is a heavier switch on the same page, off by default, for tuning the music check from real car audio and going straight to a moment that looked wrong. **Recordings include passengers and whatever is playing.** They go only to the server address above. It needs that address and Send on: without them it goes back off and says so, and it never starts by itself later. It turns itself off 24 hours after it was turned on, across reloads, with a card. Off, however it goes off, it stops at once and drops what waits, screen text and flags too. It goes off as well when you save a different server address, even one saved while the plugin was off, so no recording or screen text meant for the old one reaches the new one. Ordinary trace entries already waiting aren't Detailed trace's: they go to the new address like the ones after them. While it is on:
+
+- **Recordings.** Each turn the microphone heard, live or recorded, goes as a clip in annai's smallest format, words or none. So do samples of sound the level check kept out: the next 3 seconds outside a turn, at most one a minute. Phone dictation is the browser's own, so it has no audio. "Keep voice clips" is a separate setting: Detailed trace stores nothing in the conversation or in backups.
+  - A clip is a POST of its bytes to `<server address>/clips?device=…&id=…&format=…`, with the same token. Each has a `trace.clip` entry in the batches: `{ id, kind, format, bytes, ms, flag? }`, where `kind` is `turn` or `kept`. A turn's `id` is its `heard` entry's `data.id`.
+  - Clips wait in the page's memory, at most 16 MiB, and go one at a time. Past the cap the oldest goes, with a `trace.clip.dropped` entry. A reload loses what waits, as it does for entries. A failure waits as a batch's does, up to a minute; a 400 or 413 drops that clip, with the same entry.
+- **What's on screen.** A `trace.screen` entry `{ route, text, cut?, flag? }` at each screen change and when you tap Flag: the visible text, with landmarks as `[main]` or `[nav: name]`, at most 16,000 characters. No pixels. Nothing from a field goes: no input, select, textarea or contenteditable is read. What is folded away isn't copied: a closed row's body (a `<details>`; its summary is) and text scrolled off the screen. Text hidden inside a box with a scroll of its own is copied, even where that box has not scrolled it into view. On the Trace screen the text isn't copied, only the fact that you were on it, and its rows never are, so their JSON (requests, places, this plugin's own `net.request`) stays out, including while the screen you are leaving is still drawn. The copy goes through `annai.secrets.blank` before it is even logged on the phone, which blanks the keys annai keeps; a line that looks like a key by its start (`sk-ant-`, `AIza`, `ghp_`) is left out as well, and other keys on a screen aren't promised to be.
+- **Flag.** A "Flag" chip in the dock. A tap writes `trace.flag` `{ at, route, lastClip }`, next to the `trace.screen` copy it takes, and shows "Flagged". Clips that arrive in the next 30 seconds carry `flag: <at>` in their `trace.clip` entries. Nothing is kept from before the tap beyond the last clip's name: there is no ring buffer.
+
+These entries are in this device's own scope, so they are in the Trace (type `trace.flag` in its filter) and in no backup.
+
+An iPhone can't give a web page a screenshot without asking: that's why this is text. As of 2026-11-05 caniuse and MDN's compatibility data list `getDisplayMedia` on iOS Safari from 27.0, which WebKit's Safari 27.0 post doesn't mention (its last third wasn't read), and it hasn't been tried on a phone here. Even where it works, it asks the user to pick what to share, so it can't take a picture on a tap by itself.
+
 **The sink.** `scripts/trace-sink.mjs` is a small receiving server with no dependencies:
 
 ```bash
@@ -697,7 +709,20 @@ node scripts/trace-sink.mjs --port <p> (--token-file <path> | --token <t>) --out
 
 - **The token** must be at least 16 characters; `openssl rand -hex 16` makes one. Give it in a file (`--token-file`, which keeps it out of your shell's history and the process list) or in `TRACE_SINK_TOKEN`; `--token` works too.
 - **What it takes:** batches with that token, from `https://annai.guide` and each `--origin` you add (more than one is fine), at most 1 MiB each. It listens on 127.0.0.1 only. Ports 8765, 8790–8792, 8796, 8797 and 18010–18014 are annai's own, so it refuses them.
-- **What it writes:** each entry, appended to the file as one JSON line `{ received, device, build, ...entry }`, and one line `{ received, device, build, dropped }` when a batch says entries were dropped. Watch it with `tail -f trace.jsonl`, or pick from it with `jq`, such as `jq -c 'select(.type == "error")' trace.jsonl`. A disk that fills up while it writes can leave a line cut short, a torn line: the sink answers 500, so the plugin sends that batch again, and the sink starts its next write on a new line, so the torn one stays alone. `jq -cR 'fromjson? // empty' trace.jsonl` reads the file past it.
+- **What it writes:** each entry, appended to the file (0600, readable by its user only, as it holds the screen text) as one JSON line `{ received, device, build, ...entry }`, and one line `{ received, device, build, dropped }` when a batch says entries were dropped. Watch it with `tail -f trace.jsonl`, or pick from it with `jq`, such as `jq -c 'select(.type == "error")' trace.jsonl`. A disk that fills up while it writes can leave a line cut short, a torn line: the sink answers 500, so the plugin sends that batch again, and the sink starts its next write on a new line, so the torn one stays alone. `jq -cR 'fromjson? // empty' trace.jsonl` reads the file past it.
+- **Recordings:** a POST to any path ending `/clips`, with the same token and origins, at most 8 MiB, goes to `clips/<device>/<id>.<format>` in a folder beside the file, readable only by the sink's user. It writes no line itself: the plugin's `trace.clip` entry does. An `id` is letters, digits, `-` and `_`, and a `format` lowercase letters and digits; anything else gets 400, so no name can leave the folder. In a device's folder name, any other character becomes `_`. A clip is written whole or not at all. A full disk, or one that would be left with less than 2 GiB free by the clip, answers 507 and leaves nothing behind, and the phone tries again; batches still go, so the log keeps room. Nothing rotates these files: delete them when you're done.
+- **Reading a clip.** Find it from its entry, then decode it:
+
+  ```bash
+  jq -c 'select(.type == "trace.flag") | {at: .data.at, route: .data.route, lastClip: .data.lastClip}' trace.jsonl   # the flags
+  jq -r --argjson at <at> 'select(.type == "trace.clip" and .data.flag == $at) | "clips/\(.device)/\(.data.id).\(.data.format)"' trace.jsonl   # the clips after one
+  jq -r 'select(.type == "trace.clip" and .data.kind == "kept") | "clips/\(.device)/\(.data.id).\(.data.format)"' trace.jsonl   # the level check's samples
+  ffmpeg -i clips/<device>/<id>.ogg -ar 16000 -ac 1 clip.wav   # any format, as 16 kHz mono
+  ffmpeg -i clip.wav -af volumedetect -f null -                # its peak and mean level
+  jq -r 'select(.type == "trace.screen" and .data.flag == <at>) | .data.text' trace.jsonl   # what was on screen
+  ```
+
+  A device's raw name is in `device`; if it has characters other than letters, digits, `-` and `_`, use the folder name the sink made from it. Under the systemd service, these are in `/var/lib/private/annai-trace`. They hold real voices, so handle them as you would the person's own files.
 - **From a phone:** the phone needs https. On a tailnet, `tailscale serve` gives that:
 
   ```bash

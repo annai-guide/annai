@@ -9,6 +9,7 @@ import { definitions } from '../agent/tools.js';
 import { modelOf } from '../llm/config.js';
 import { COOLDOWN_MS } from '../llm/fallback.js';
 import { strayLanguage } from '../languages.js';
+import { joinPcm } from '../voice/pcm.js';
 import { VoiceLevel } from '../voice/level.js';
 import { t } from '../l10n.js';
 
@@ -366,6 +367,7 @@ export class LiveKoe {
 
   /** The minimum kept a frame out: "ignoring" shows, until IGNORING_HOLD_S past the last. */
   #kept() {
+    this.c.voice?.keptOut?.(); // Detailed trace may sample the sound that is being kept out
     const now = Date.now();
     if (this.#ignoring) {
       this.#ignoring.last = now;
@@ -600,6 +602,8 @@ export class LiveKoe {
         this.#endedBy = t.end;
       },
     }));
+    v.endSample?.(); // a sample half taken on the last input is not the start of this one's
+    input.onOutside = (pcm) => v.outside?.(pcm, input.rate);
     clearTimeout(this.#toPlayback);
     p.session('play-and-record');
     this.#changed(); // the microphone is being asked for: the dock shows her working (view), not listening
@@ -1098,6 +1102,7 @@ export class LiveKoe {
       if (this.#lapsed && before?.late && !before.answered) this.#stretched(before);
     } else {
       if (this.#hear) this.#hear.ms = Date.now() - this.#hear.at;
+      this.#tell(this.#hear);
       this.#trail = null;
       this.#endedAt = Date.now();
       this.#noBack++;
@@ -1127,7 +1132,7 @@ export class LiveKoe {
   #audio(b) {
     if (this.state === 'closed') return;
     if (!this.c.visible()) return this.close('away');
-    if (this.#keep && this.#hear) this.#hear.pcm.push(samples(b));
+    if ((this.#keep || this.c.voice?.tapped) && this.#hear) this.#hear.pcm.push(samples(b));
     this.#send((s) => s.audio(b));
   }
 
@@ -1503,10 +1508,14 @@ export class LiveKoe {
     return this.#chain;
   }
 
+  /** A turn's sound as it ends, words or none, to a plugin that asked ('heard-clips': Detailed trace). @param {Hearing | null} h */
+  #tell(h) {
+    if (h?.pcm.length && this.c.voice?.tapped) void this.c.voice.tell({ id: h.id, pcm: joinPcm(h.pcm), rate: this.#inRate });
+  }
+
   /** With "keep voice clips" (§10.2), what was said, as any heard sound is kept. @param {Hearing} h */
   #clip(h) {
-    const pcm = new Int16Array(h.pcm.reduce((n, x) => n + x.length, 0));
-    h.pcm.reduce((at, x) => (pcm.set(x, at), at + x.length), 0);
+    const pcm = joinPcm(h.pcm);
     return pcm.length && this.c.voice ? this.c.voice.keep({ id: h.id, pcm, rate: this.#inRate }) : { data: {}, blobs: [] };
   }
 
@@ -1683,6 +1692,7 @@ export class LiveKoe {
     const h = this.#input?.active ? this.#hear : null;
     if (h?.text.trim()) h.text += '✂';
     this.#flushHeard(false);
+    this.#tell(h);
     if (h) this.#hear = hearing();
   }
 

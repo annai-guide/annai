@@ -861,6 +861,8 @@ export class PluginHost {
         // A kind with a call of its own is checked and stamped there.
         const call = String(kind).startsWith('ui:') ? 'annai.ui' : Object.hasOwn(OWN_CALL, kind) ? OWN_CALL[kind] : '';
         if (call) /* en */ throw new PluginError(id, `annai.register can't add ${kind}: use ${call}`);
+        // An always-on microphone feed, with no sign of it on the phone: annai's own and its official plugins only.
+        if (kind === 'heard-clips' && !this.builtins.has(id) && this.#known[id]?.source !== 'official') /* en */ throw new PluginError(id, "only annai's official plugins can hear the microphone (heard-clips)");
         return registry.add(id, kind, item);
       },
       schemas: Object.freeze({ register: (/** @type {any} */ entry) => registry.add(id, 'schema', entry) }),
