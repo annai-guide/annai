@@ -493,8 +493,9 @@ test("the move-over from provider-gemini 1.x: the chat ability's type becomes ge
 /**
  * Gemini with Extended Thinking, Koe's Realtime list as given, chat models for Koe · Classic and Kokoro, then the update that takes it, and a chat model Kokoro uses, out of the description.
  * @param {(ids: { dropped: string, live: string, byId: string, listed: string }) => string[]} list @param {string[]} [classic] Koe · Classic's models, by provider model id
+ * @param {(next: any) => void} [change] the update's description, changed further @param {(ws: any) => Promise<void>} [ahead] called just before the update
  */
-async function updatedOverLive(list, classic = ['gemini-3.5-flash-lite']) {
+async function updatedOverLive(list, classic = ['gemini-3.5-flash-lite'], change = () => {}, ahead = async (/** @type {any} */ _ws) => {}) {
   const { addProvider, syncProviders, addListedModel, addModelById } = await import('../../src/core/llm/providers.js');
   const { setKey } = await import('../../src/core/llm/config.js');
   const k = await hostKit();
@@ -505,6 +506,7 @@ async function updatedOverLive(list, classic = ['gemini-3.5-flash-lite']) {
   const id = await addProvider({ ws: k.ws, store: k.store }, was, { key: 'AIza-kept', abilities: { live: { on: true } } });
   const next = /** @type {any} */ (structuredClone(now));
   next.provider.abilities.chat.models = next.provider.abilities.chat.models.filter((/** @type {any} */ m) => m.providerId !== 'gemini-3.6-flash');
+  change(next);
   const ids = {
     listed: await addListedModel({ ws: k.ws }, id, 'live', { providerId: 'gemini-from-the-list' }),
     byId: await addModelById({ ws: k.ws }, id, 'live', 'gemini-by-hand'),
@@ -520,10 +522,11 @@ async function updatedOverLive(list, classic = ['gemini-3.5-flash-lite']) {
   const types = new Map([['gemini-live', { realtime: true }], ['gemini', {}]]);
   const wayOf = (/** @type {any} */ cfg) => koeWay(cfg, { voiceOn: true, types, until: () => 0, now: 0 });
   const first = wayOf(await readConfig(k.ws));
-  assert.equal(await syncProviders({ ws: k.ws }, [next]), 1);
+  await ahead(k.ws);
+  const refreshed = await syncProviders({ ws: k.ws }, [next]).catch((/** @type {any} */ e) => e);
   const after = await readConfig(k.ws);
   await setKey(k.store, id, null);
-  return { ids, first, after, way: wayOf(after), kokoro, koe };
+  return { k, id, next, ids, first, refreshed, after, way: wayOf(after), kokoro, koe };
 }
 
 test('an update that drops a live model: first of two in Koe · Realtime, it leaves the list, and the next model is Koe\'s way with no refused session', async () => {
@@ -534,14 +537,93 @@ test('an update that drops a live model: first of two in Koe · Realtime, it lea
   assert.equal(way.why, '');
 });
 
-test('an update that drops a live model: alone in Koe · Realtime, the list is left empty: no Live model, nothing resting, and Koe · Chat answers', async () => {
-  const { first, after, way } = await updatedOverLive((m) => [m.dropped]);
+test('an update that drops a live model: alone in Koe · Realtime, the description\'s recommended model takes its place: the normal Live model, with no refused session', async () => {
+  const { ids, first, after, way, refreshed } = await updatedOverLive((m) => [m.dropped]);
+  assert.equal(refreshed, 1);
   assert.equal(first.path?.kind, 'live');
-  assert.deepEqual(after.roles['koe-realtime'].models, []);
-  assert.deepEqual([way.using, way.why, way.live, way.split, way.path], ['classic', 'none', false, true, { kind: 'text' }]);
-  // With no Koe · Chat either, Shiori is one again.
-  const none = await updatedOverLive((m) => [m.dropped], []);
-  assert.deepEqual([none.way.using, none.way.why, none.way.live, none.way.split, none.way.path], ['classic', 'none', false, false, null]);
+  assert.deepEqual(after.roles['koe-realtime'].models, [ids.live]);
+  assert.deepEqual([way.using, way.why, way.live, way.path], ['realtime', '', true, { kind: 'live', modelId: ids.live }]);
+  assert.equal(modelOf(after.models[ids.dropped]).providerId, 'gemini-3.8-live-extended-thinking', 'its record stays');
+});
+
+test('a plugin update swaps a Live model\'s id: the new model takes the place of the only one in Koe · Realtime, in the same save, and Live keeps working', async () => {
+  const swap = (/** @type {any} */ next) => {
+    next.provider.abilities.live.models = [{ ...next.provider.abilities.live.models[0], providerId: 'gemini-3.9-live', name: 'Gemini 3.9 Live' }];
+    next.provider.roles.recommended['koe-realtime'] = ['gemini-3.9-live'];
+    for (const r of Object.values(next.provider.roles)) if (/** @type {any} */ (r).main) /** @type {any} */ (r).main = /** @type {any} */ (r).main.filter((/** @type {string} */ p) => p !== 'gemini-3.6-flash');
+  };
+  const { after, way, ids } = await updatedOverLive((m) => [m.live], undefined, swap);
+  const [now] = after.roles['koe-realtime'].models;
+  assert.notEqual(now, ids.live);
+  assert.equal(modelOf(after.models[now]).providerId, 'gemini-3.9-live');
+  assert.deepEqual(way.path, { kind: 'live', modelId: now });
+});
+
+test('a drop that would empty Koe · Realtime, in a description that recommends nothing for it: the first model listed for that ability', async () => {
+  const none = (/** @type {any} */ next) => {
+    for (const r of Object.values(next.provider.roles)) delete /** @type {any} */ (r)['koe-realtime'];
+  };
+  const { after, ids } = await updatedOverLive((m) => [m.dropped], undefined, none);
+  assert.deepEqual(after.roles['koe-realtime'].models, [ids.live]);
+});
+
+test('a model leaves Koe · Realtime only at the update that dropped it: put back by the user, its kept record stays through the next update', async () => {
+  const { syncProviders } = await import('../../src/core/llm/providers.js');
+  const { setKey } = await import('../../src/core/llm/config.js');
+  const { k, id, next, ids, after } = await updatedOverLive((m) => [m.dropped, m.live]);
+  assert.deepEqual(after.roles['koe-realtime'].models, [ids.live]);
+  await saveRoles(k.ws, { ...after.roles, 'koe-realtime': { models: [ids.dropped, ids.live], level: 'off' } });
+  assert.equal(await syncProviders({ ws: k.ws }, [{ ...next, version: `${next.version}.1` }]), 1);
+  assert.deepEqual((await readConfig(k.ws)).roles['koe-realtime'].models, [ids.dropped, ids.live]);
+  await setKey(k.store, id, null);
+});
+
+test('a description that lists no models for an ability is partial: Koe · Realtime is left alone, whatever it holds, and is never emptied this way', async () => {
+  const partial = (/** @type {any} */ next) => {
+    delete next.provider.abilities.live.models;
+    for (const r of Object.values(next.provider.roles)) delete /** @type {any} */ (r)['koe-realtime'];
+  };
+  for (const list of [(/** @type {any} */ m) => [m.dropped], (/** @type {any} */ m) => [m.dropped, m.live]]) {
+    const { after, ids, refreshed } = await updatedOverLive(list, undefined, partial);
+    assert.equal(refreshed, 1);
+    assert.deepEqual(after.roles['koe-realtime'].models, list(ids));
+  }
+  const empty = (/** @type {any} */ next) => {
+    partial(next);
+    next.provider.abilities.live.models = [];
+  };
+  const { after, ids } = await updatedOverLive((m) => [m.live], undefined, empty);
+  assert.deepEqual(after.roles['koe-realtime'].models, [ids.live]);
+});
+
+test('killed around the update\'s one save: the roles and the provider go together, so before it the next start does it all, and the list never names a model with no record', async () => {
+  const { syncProviders } = await import('../../src/core/llm/providers.js');
+  const { setKey } = await import('../../src/core/llm/config.js');
+  const swap = (/** @type {any} */ next) => {
+    next.provider.abilities.live.models = [{ ...next.provider.abilities.live.models[0], providerId: 'gemini-3.9-live', name: 'Gemini 3.9 Live' }];
+    next.provider.roles.recommended['koe-realtime'] = ['gemini-3.9-live'];
+  };
+  // Every write after the allowed ones is the kill: nothing more reaches the store.
+  /** @type {() => void} */
+  let free = () => {};
+  const killedAtFirstWrite = async (/** @type {any} */ ws) => {
+    const { write, writeMany } = ws;
+    const kill = async () => { throw new Error('killed'); };
+    ws.write = ws.writeMany = kill;
+    free = () => { ws.write = write; ws.writeMany = writeMany; };
+  };
+  const { k, id, next, ids, after, refreshed } = await updatedOverLive((m) => [m.live], undefined, swap, killedAtFirstWrite);
+  assert.match(String(refreshed), /killed/);
+  assert.deepEqual(after.roles['koe-realtime'].models, [ids.live], 'as it was');
+  assert.notEqual(after.providers[id].template?.version, next.version, 'not done, so the next start does it');
+  free();
+  assert.equal(await syncProviders({ ws: k.ws }, [next]), 1);
+  const done = await readConfig(k.ws);
+  const [now] = done.roles['koe-realtime'].models;
+  assert.equal(modelOf(done.models[now]).providerId, 'gemini-3.9-live');
+  assert.equal(done.providers[id].template?.version, next.version);
+  assert.equal(await syncProviders({ ws: k.ws }, [next]), 0, 'and it is not done twice');
+  await setKey(k.store, id, null);
 });
 
 test('that update changes only Koe · Realtime: its order stays, models added by hand or from a list stay, the kept records stay, and Kokoro keeps a chat model the description dropped', async () => {

@@ -199,12 +199,12 @@ test('killed on the road, then parked and opened: whatever the way from the reco
     assert.notEqual(k.live.activity, 'moving-fast', `${away} m`);
     assert.equal(held(k), false, `voice stays off after ${away} m`);
     assert.equal(stops(), 0, `${away} m: not on one reading`);
-    await k.stay(north(y + away), back + 10_000, back + 45_000);
+    await k.stay(north(y + away), back + 10_000, back + 70_000); // the minute a light has too: a way this fast says only that the drive went on
     assert.equal(k.live.activity, 'still', `${away} m`);
     assert.equal(held(k), false, `voice stays off after ${away} m, so it is shown, not said`);
     assert.equal(stops(), 1, `${away} m: one late "stops"`);
     assert.equal(starts(), 1, `${away} m: the first drive's only`);
-    await k.stay(north(y + away), back + 50_000, back + 300_000, 30);
+    await k.stay(north(y + away), back + 80_000, back + 300_000, 30);
     assert.equal(stops(), 1, `${away} m`);
   }
 });
@@ -266,7 +266,7 @@ test('killed while locked, but parked: the record says moving fast and the way s
   await k.to(at('09:40'));
   await k.restart();
   await k.fix(at('09:40:05'), north(y + 60), { speed: 0 });
-  assert.equal(k.live.activity, 'unknown');
+  assert.equal(k.live.activity, 'still', 'the way and the speed both say so: the first reading confirms it');
   assert.equal(held(k), false);
   await k.stay(north(y + 60), at('09:40:10'), at('09:41'));
   assert.equal(k.live.activity, 'still');
@@ -287,7 +287,7 @@ test('the record: what it holds, written on each change, each km, the beat and g
   assert.equal(k.keep.get(), null, 'nothing to say yet');
   await road(k, at('09:00:05'), 0, 35); // moving fast
   const change = k.keep.get();
-  assert.deepEqual(Object.keys(change).sort(), ['activity', 'at', 'due', 'ended', 'hushed', 'odo', 'odometer']);
+  assert.deepEqual(Object.keys(change).sort(), ['activity', 'at', 'due', 'ended', 'hushed', 'odo', 'odometer', 'stale']);
   assert.deepEqual(Object.keys(change.odo).sort(), ['accuracy', 'at', 'lat', 'lng']);
   assert.equal(change.activity, 'moving-fast');
   assert.equal(change.ended, null);
@@ -439,11 +439,10 @@ test('killed on the road and reopened after 5 and 10 min, no fix for 120 and 300
   }
 });
 
-test('a garage: unlocked with no fix at all, moving fast ends at the bound and dates from the last fix, voice goes with it, and "stops" fires once', async () => {
+test('a garage: unlocked with no fix at all, moving fast ends at the bound, voice goes with it, and "stops" fires once', async () => {
   const k = await liveKit({ start: at('09:00') });
   const stops = await stopsWatch(k);
   await road(k, at('09:00'), 0, 60);
-  const last = at('09:01');
   await off_screen(k);
   await k.to(at('09:04'));
   await on_screen(k);
@@ -456,7 +455,7 @@ test('a garage: unlocked with no fix at all, moving fast ends at the bound and d
   assert.equal(held(k), false, 'it ended long ago: no two minutes more');
   assert.equal(stops(), 1);
   const ended = (await k.events(['state'], SYS_DEVICE)).map((e) => e.data.ended).filter((e) => e !== undefined).at(-1);
-  assert.equal(ended, last + 60_000, 'a minute after the last fix, as a hold that dates from it');
+  assert.equal(ended, at('09:04') + NO_FIX_BACK_MS, 'at the bound: the same-drive rule counts from there');
   await k.to(at('09:04') + NO_FIX_BACK_MS + 600_000);
   assert.equal(stops(), 1);
 });
@@ -741,7 +740,7 @@ test('voice off during a hold survives a reload: written with the record\'s age 
   assert.equal(held(k), false);
 });
 
-test('a false stop no longer: on the road, a reload, one good fix with no speed whose way says the drive went on, then silence: it holds to the bound, which dates from that fix', async () => {
+test('a false stop no longer: on the road, a reload, one good fix with no speed whose way says the drive went on, then silence: it holds to the bound', async () => {
   const k = await liveKit({ start: at('09:00') });
   const stops = await stopsWatch(k);
   const y = await road(k, at('09:00'), 0, 60);
@@ -765,14 +764,14 @@ test('a false stop no longer: on the road, a reload, one good fix with no speed 
   await road(r, fixAt + 125_000, ry + SPEED * 250, 40);
   assert.equal(r.live.activity, 'moving-fast');
   assert.equal(rStops(), 0);
-  // No more fixes at all: the same bound as with no fix, and "stops" once, moving fast having ended a minute after that fix.
+  // No more fixes at all: the same bound as with no fix, and "stops" once.
   await k.to(at('09:03') + NO_FIX_BACK_MS - 1000);
   assert.equal(k.live.activity, 'moving-fast');
   await k.to(at('09:03') + NO_FIX_BACK_MS);
   assert.equal(k.live.activity, 'still');
   assert.equal(stops(), 1);
   const ended = (await k.events(['state'], SYS_DEVICE)).map((/** @type {any} */ e) => e.data.ended).filter((/** @type {any} */ e) => e !== undefined).at(-1);
-  assert.equal(ended, fixAt + 60_000);
+  assert.equal(ended, at('09:03') + NO_FIX_BACK_MS);
 });
 
 test('the GPS that never gives its own speed: no-speed fixes on the road past the bound work out a speed, so nothing stops', async () => {
@@ -898,7 +897,7 @@ test('a light long enough to end moving fast, green, and a reload: the end under
   assert.equal(k.keep.get().hushed, true, 'her off for this drive stays');
 });
 
-test('a no-speed fix just before the bound leaves voice its 2 minutes; the road in them is the same drive, and no end is told, whatever the GPS does next', async () => {
+test('a no-speed fix just before the bound says nothing, so the bound ends it with voice off (the user\'s pick); the road after it is the same drive, with voice back and no second end, whatever the GPS does next', async () => {
   const k = await liveKit({ start: at('09:00') });
   const y = await road(k, at('09:00'), 0, 60);
   await off_screen(k);
@@ -910,12 +909,14 @@ test('a no-speed fix just before the bound leaves voice its 2 minutes; the road 
   await k.fix(bound - 20_000, north(there), { speed: null });
   await k.to(bound);
   assert.equal(k.live.activity, 'still');
-  assert.equal(held(k), true, 'it ended only now, as a stop does: the 2 minutes follow');
+  assert.equal(held(k), false);
+  assert.equal(told(), 1);
   await k.fix(bound + 10_000, north(there + SPEED * 30), { speed: SPEED });
   assert.equal(k.live.activity, 'moving-fast');
-  await k.to(bound + 240_000); // a tunnel, past what was its voice hold
+  assert.equal(held(k), true);
+  await k.to(bound + 240_000); // a tunnel
   assert.equal(k.live.activity, 'moving-fast');
-  assert.equal(told(), 0);
+  assert.equal(told(), 1);
 });
 
 test('annai started off screen, with moving fast restored: only the time on screen counts towards the bound', async () => {
@@ -1007,16 +1008,19 @@ test('after a kill and a reopening, a light under 30 s then the road: no firing,
   assert.equal(once(), 1);
 });
 
-test('silence is no stop after a kill: a lone no-speed fix, then silence, fires nothing; a change from no fix leaves it owed', async () => {
+test('silence is no stop after a kill: nothing fires with no reading at all; a lone no-speed fix whose way is slow says stopped, as after a reload, so its two minutes of quiet fire it late, once', async () => {
   const k = await liveKit({ start: at('09:00') });
   const once = await stopOnce(k);
   const y = await killedAnHour(k);
-  await k.fix(at('10:00:05'), north(y + 40), { speed: null });
-  await k.to(at('10:10'));
-  assert.equal(k.live.activity, 'still', 'two minutes of quiet read as still');
+  await k.to(at('10:30'));
+  assert.equal(once(), 0, 'half an hour of silence');
+  assert.equal(k.live.activity, 'unknown');
+  await k.fix(at('10:30:05'), north(y + 40), { speed: null });
   assert.equal(once(), 0);
-  // The next change a reading confirms says it, late.
-  for (let s = 0; s <= 35; s += 5) await k.fix(at('10:10:05') + s * 1000, north(y + 40), { speed: 1 });
+  await k.to(at('10:40'));
+  assert.equal(k.live.activity, 'still', 'two minutes of quiet read as still');
+  assert.equal(once(), 1);
+  for (let s = 0; s <= 35; s += 5) await k.fix(at('10:40:05') + s * 1000, north(y + 40), { speed: 1 });
   assert.equal(k.live.activity, 'walking');
   assert.equal(once(), 1);
 });

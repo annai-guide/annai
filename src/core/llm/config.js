@@ -364,11 +364,14 @@ function rolesFrom(saved, cfg) {
   return { roles: out, chosen };
 }
 
-/** Saves a provider, and any of its models given, in one transaction. @param {Workspace} ws @param {ProviderRecord} rec @param {ModelRecord[]} [models] */
-export async function saveProvider(ws, rec, models = []) {
+/** Saves a provider, and any of its models and the roles given, in one transaction. @param {Workspace} ws @param {ProviderRecord} rec @param {ModelRecord[]} [models] @param {Roles | null} [roles] */
+export async function saveProvider(ws, rec, models = [], roles = null) {
   check(PROVIDER_SCHEMA, rec, providerPath(rec.id));
   for (const m of models) check(MODEL_SCHEMA, m, modelPath(m.id));
-  await ws.writeMany(SYS_SETTINGS, [{ path: providerPath(rec.id), content: rec }, ...models.map((m) => ({ path: modelPath(m.id), content: m }))], { author: 'user' });
+  await ws.writeMany(SYS_SETTINGS, [
+    { path: providerPath(rec.id), content: rec }, ...models.map((m) => ({ path: modelPath(m.id), content: m })),
+    ...(roles ? [{ path: ROLES_PATH, content: rolesFile(roles, (await readConfig(ws)).koeChosen) }] : []),
+  ], { author: 'user' });
 }
 
 /** What makes a model record unsaveable: its provider must exist with its ability, and no other model may have its name. @param {Workspace} ws @param {ModelRecord} rec */

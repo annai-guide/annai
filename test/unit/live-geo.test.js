@@ -367,12 +367,12 @@ test('the way since the last fix says the drive went on: a slow first fix back s
   d.heard(T0 + 100_000);
   d.heard(T0 + 170_000);
   assert.equal(d.feed(at(light, 185, { speed: 0 })), null);
-  // No fix since the unlock: it holds to the bound, and dates from the last fix.
+  // No fix since the unlock: it holds to the bound, and ends there.
   const n = driving();
   n.feed(at(BIXBY, 0, { speed: 14 }));
   n.heard(T0 + 180_000);
   assert.equal(n.tick(T0 + 300_000), null);
-  assert.equal(n.tick(T0 + 180_000 + NO_FIX_BACK_MS)?.at, T0 + 60_000);
+  assert.equal(n.tick(T0 + 180_000 + NO_FIX_BACK_MS)?.at, T0 + 180_000 + NO_FIX_BACK_MS);
   // Between fixes on screen nothing is different: the hold of a stop goes on over an unlock whose way is short.
   const s = driving();
   s.feed(at(BIXBY, 0, { speed: 0.2 }));
@@ -392,7 +392,7 @@ test('moving fast is said to have ended when its hold ran out, not when the page
   assert.equal(/** @type {any} */ (t).why, undefined, 'what it rested on goes with the change');
 });
 
-test('moving fast across an unlock or a reload, and no fix since: it holds to the bound, then ends dated from the last fix; a good fix decides sooner (one false "stops", 2026-11-05)', () => {
+test('moving fast across an unlock or a reload, and no reading since that can say: it holds to the bound, then ends there; a good fix decides sooner (one false "stops", 2026-11-05)', () => {
   const t = driving();
   t.feed(at(BIXBY, 0, { speed: 14 }));
   t.heard(T0 + 180_000);
@@ -400,7 +400,7 @@ test('moving fast across an unlock or a reload, and no fix since: it holds to th
   assert.ok(NO_FIX_BACK_MS > 300_000, 'a five-minute gap and the fix after it are not cut');
   assert.equal(t.tick(T0 + 180_000 + NO_FIX_BACK_MS - 1), null);
   const c = t.tick(T0 + 180_000 + NO_FIX_BACK_MS);
-  assert.deepEqual(bare(c), { from: 'moving-fast', to: 'still', at: T0 + 60_000 });
+  assert.deepEqual(bare(c), { from: 'moving-fast', to: 'still', at: T0 + 180_000 + NO_FIX_BACK_MS });
   assert.equal(c?.noFix, true);
 
   const place = at(BIXBY, -60);
@@ -408,7 +408,7 @@ test('moving fast across an unlock or a reload, and no fix since: it holds to th
   r.restore('moving-fast', T0, place);
   assert.equal(r.due(), T0 + NO_FIX_BACK_MS);
   assert.equal(r.tick(T0 + 120_000), null);
-  assert.deepEqual(bare(r.tick(T0 + NO_FIX_BACK_MS)), { from: 'moving-fast', to: 'still', at: T0 });
+  assert.deepEqual(bare(r.tick(T0 + NO_FIX_BACK_MS)), { from: 'moving-fast', to: 'still', at: T0 + NO_FIX_BACK_MS });
 
   // A second unlock goes on from there: only time on screen counts, so the bound moves by the time off screen and no more.
   const u = driving();
@@ -441,7 +441,7 @@ test('moving fast across an unlock or a reload, and no fix since: it holds to th
   g.reset();
   assert.equal(g.due(), null);
 
-  // A good fix with no speed whose way says the drive went on: on to the same bound, which dates from it. One whose way is slow ends the wait.
+  // A good fix with no speed whose way says the drive went on: on to the same bound. One whose way is slow ends the wait.
   const f = driving();
   f.feed(at(BIXBY, 0, { speed: 14 }));
   f.heard(T0 + 180_000, T0 + 60_000);
@@ -452,5 +452,5 @@ test('moving fast across an unlock or a reload, and no fix since: it holds to th
   o.heard(T0 + 180_000, T0 + 60_000);
   o.feed(at(NEPENTHE, 185));
   assert.equal(o.due(), T0 + 180_000 + NO_FIX_BACK_MS);
-  assert.equal(o.tick(T0 + 180_000 + NO_FIX_BACK_MS)?.at, T0 + 245_000);
+  assert.equal(o.tick(T0 + 180_000 + NO_FIX_BACK_MS)?.at, T0 + 180_000 + NO_FIX_BACK_MS);
 });
