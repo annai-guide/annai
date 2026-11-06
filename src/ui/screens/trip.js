@@ -26,7 +26,7 @@ export async function renderTrip(ctx, route) {
     return h('div', { class: 'screen' }, h('h1', { class: 'title', text: t`This trip isn't on this device` }), h('p', {}, h('a', { href: '#/trips' }, t`Back to Trips`)));
   }
   // Opening a trip makes it the one Shiori talks about (spec §4.3: /trip/ is the active trip).
-  if (ctx.agent && ctx.agent.target !== id) {
+  if (ctx.agent && ctx.moved && ctx.agent.target !== id) {
     updateAppSettings(ctx.ws, { activeTrip: id }).catch(() => {});
     openOrTell(ctx, id);
   }

@@ -3,7 +3,7 @@
 // The booking files are synthetic (scripts/make-booking-fixtures.mjs).
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply, modelSetUp, startTrip, savedBy, writeRecords } from './helpers.js';
+import { openApp, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply, modelSetUp, startTrip, savedBy, writeRecords, breakOpen } from './helpers.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 const fixture = async (/** @type {string} */ name, /** @type {string} */ mimeType) => ({ name, mimeType, buffer: await readFile(new URL(`../fixtures/bookings/${name}`, import.meta.url)) });
@@ -233,6 +233,31 @@ test("a booking for another trip, while in a trip: she moves the file there and 
     await expect(page.getByRole('link', { name: 'Shiori took 1 file to Kyoto.' })).toBeVisible();
     await page.goto('/#/trips');
     await expect(page.locator('.trip-card', { hasText: 'Kyoto' })).toContainText('1 file waiting to be read');
+  } finally {
+    await llm.stop();
+  }
+});
+
+test("Undo sends the file back to a trip that then won't open: a card says so", async ({ page }) => {
+  const llm = await startModelServer({ [MESSAGES]: [
+    sse(anthropicToolReply([{ name: 'list_trips', input: {} }])),
+    (/** @type {any} */ body) => sse(anthropicToolReply([{ name: 'move_file', input: { path: '/trip/files/flight.pdf', trip: /(trip-[a-z0-9]+)\\tKyoto/.exec(asText(body))?.[1] ?? 'none' } }])),
+    sse(anthropicToolReply([{ name: 'speak', input: { text: 'That one is for Kyoto: I moved it there.' } }, { name: 'sleep', input: {} }])),
+    sse(anthropicToolReply([{ name: 'sleep', input: {} }])),
+  ] });
+  try {
+    await modelSetUp(page, llm.origin, 'Big Sur');
+    const bigSur = page.url();
+    await page.goto('/#/trips');
+    await startTrip(page, 'Kyoto');
+    await page.goto(bigSur);
+    await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+    await handOver(page, [await fixture('flight.pdf', 'application/pdf')]);
+    await expect(page.locator('.convo').getByText('That one is for Kyoto: I moved it there.')).toBeVisible({ timeout: 60_000 });
+    await breakOpen(page);
+    await page.getByRole('button', { name: 'Undo what Shiori did with these files' }).click();
+    await expect(page.getByText('Undone. Your files are back in Big Sur.')).toBeVisible();
+    await expect(page.getByText("That conversation didn't open")).toBeVisible();
   } finally {
     await llm.stop();
   }
