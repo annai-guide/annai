@@ -241,3 +241,9 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** in those 30 s annai can't tell a pull-in from a light, and reading it as a stop would likely fire a false "stops" at a light right after reopening.
 - **Revisit when:** it shows in a drive trace.
 - **Approved:** 2026-11-06, the user picked "Accept for now (Recommended)".
+
+### The sleep note's "let go" path has no test
+- **Kind:** deferred.
+- **What the user sees:** nothing today. If that line broke, a dismissed verdict would lose Kokoro's sleep note, and where a held microphone run keeps the session open, music would keep a live session open and billing.
+- **Why:** the path needs a verdict that lands with nothing going and nothing due while the detector's held run stops the quiet close. On every route tried the session closes in the same tick, so the right code and a mutant behave the same, and a click 0.1 to 0.5 s after the last turn didn't hold it open. The line's comment says what it must do.
+- **Revisit when:** the sleep note's code next changes, or the test kit can hold `input.hearing` itself.
