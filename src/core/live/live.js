@@ -6,7 +6,7 @@ import { readWatches, saveWatch, removeWatch, newWatchId, expired, watchPath, WA
 import { realClock } from './clock.js';
 import { readAppSettings, updateAppSettings } from '../settings.js';
 import { logEvent } from '../events.js';
-import { ME, SYS_DEVICE, ensureDeviceScope, listTrips, tripMirror } from '../scopes.js';
+import { ME, SYS_DEVICE, ensureDeviceScope, listTrips, talks, tripMirror } from '../scopes.js';
 import { PLAN_FILE, BOOKING_FILE } from '../plan.js';
 import { validZone, deviceZone, isoInZone, timeIn, nextDay } from '../time.js';
 import { phaseOf } from '../timeline.js';
@@ -235,12 +235,9 @@ export class Live {
         },
       }),
       this.ws.onChange((c) => this.#changed(c)),
-      // Another trip opened: its plan's reminders are looked at at once (spec §11.3); last talked moves as conversations are left.
-      this.agent.on('open', () => this.#bg(async () => {
-        await this.#loadRows();
-        await this.#check();
-        this.#tellReminders('prompt');
-      })),
+      // Another trip opened: its plan's reminders are looked at at once (spec §11.3). A line said moves the trip in play at once.
+      this.agent.on('open', () => this.#rowsMoved()),
+      this.agent.on('event', (/** @type {{ type: string, data?: any }} */ e) => { if (talks(e)) this.#rowsMoved(); }),
       this.registry.onChange(() => this.#sensors()),
     );
     await this.#run(async () => {
@@ -533,7 +530,7 @@ export class Live {
 
   /**
    * What a closed annai can still say through the push relay (spec §11.6, 6b choices 1 and 2): time watches in every conversation, and the "coming up" and "leave soon" of the trip
-   * in play and the open conversation; null until live mode has loaded, and during a simulation. held hears the other trips, whose waiting plan reminders stay.
+   * in play and of an open conversation that isn't happening; null until live mode has loaded, and during a simulation. held hears the other trips, whose waiting plan reminders stay.
    * @param {{ held?: (scopes: Set<string>) => void }} [o] @returns {Promise<Mirrored[] | null>}
    */
   reminders(o = {}) {
@@ -542,15 +539,15 @@ export class Live {
       await this.#follow(); // a trip being opened: its own plan, never the last one's under its name
       const play = this.#trip ?? ME;
       const open = this.agent.target;
-      // The open one's plan too: a trip starting tomorrow, opened tonight, must still wake a closed annai.
+      // The open one's plan too: a trip starting tomorrow, opened tonight, must still wake a closed annai. A happening one waits to be talked in: looking fires nothing.
       /** @type {[string, Watch[]][]} */
       const plans = [[play, this.#plan]];
-      if (open && open !== play && this.#rows.has(open) && this.#inPlay(open)) {
+      if (open && open !== play && this.#rows.has(open) && this.#inPlay(open) && !this.#happening(open)) {
         const { watches } = await this.#planOf(open);
         await this.#recallPlan(open, watches);
         plans.push([open, watches]);
       }
-      if (o.held) o.held(new Set((await listTrips(this.store)).active.map((t) => t.id).filter((id) => id !== play && id !== open && this.#inPlay(id))));
+      if (o.held) o.held(new Set((await listTrips(this.store)).active.map((t) => t.id).filter((id) => !plans.some(([scope]) => scope === id) && this.#inPlay(id))));
       const m = this.#moment();
       const time = this.types().get('time');
       /** @type {Mirrored[]} */
@@ -680,20 +677,20 @@ export class Live {
     return this.agent.target ?? ME;
   }
 
+  /** Whether a trip's dates hold today; a simulation's never do. @param {string} id */
+  #happening(id) {
+    return !this.#still.has(id) && phaseOf(this.#rows.get(id), this.clock.now(), this.timeZone()) === 'happening';
+  }
+
   /**
-   * The trip in play: a simulation's during its run; else the open conversation if happening; else the happening trip last talked in; else the open conversation.
+   * The trip in play: a simulation's during its run; else the happening trip last talked in (looking at one moves nothing); else the open conversation.
    * A simulation's trip is never the happening one, but open it is play; #inPlay keeps its plan quiet outside its run.
    * @returns {string | null}
    */
   #play() {
     if (this.#sim) return this.#sim.trip;
-    const now = this.clock.now();
-    const zone = this.timeZone();
-    const happening = (/** @type {string} */ id) => !this.#still.has(id) && phaseOf(this.#rows.get(id), now, zone) === 'happening';
-    const open = this.agent.target;
-    if (open && happening(open)) return open;
-    const [best] = [...this.#rows].filter(([id]) => happening(id)).sort(lastTalked);
-    return best?.[0] ?? open;
+    const [best] = [...this.#rows].filter(([id]) => this.#happening(id)).sort(lastTalked);
+    return best?.[0] ?? this.agent.target;
   }
 
   /** @param {string} scope @param {string} id */
@@ -1129,6 +1126,15 @@ export class Live {
     await this.#loadPlan();
   }
 
+  /** What #play chooses from may have changed: the rows read again, and whatever came with it looked at. */
+  #rowsMoved() {
+    this.#bg(async () => {
+      await this.#loadRows();
+      await this.#check();
+      this.#tellReminders('prompt');
+    });
+  }
+
   /** Whether a trip is a simulation's, from its trip.json as read. @param {string} scope @param {any} info */
   #setStill(scope, info) {
     if (info?.simulation === true) this.#still.add(scope);
@@ -1301,9 +1307,9 @@ export class Live {
     });
   }
 
-  /** Whether a watch is looked at now: the open conversation's or the play's, live mode for GPS, time watches anywhere (choices 2 and 3). @param {TriggerType | undefined} type @param {string} scope */
+  /** Whether a watch is looked at now: the play's or an open conversation's that isn't happening, live mode for GPS, time watches anywhere (choices 2 and 3). @param {TriggerType | undefined} type @param {string} scope */
   #looked(type, scope) {
-    return Boolean(type) && this.#inPlay(scope) && !(type?.gps && !this.on) && (scope === this.#scope() || scope === this.#trip || type?.type === 'time');
+    return Boolean(type) && this.#inPlay(scope) && !(type?.gps && !this.on) && (scope === this.#trip || type?.type === 'time' || (scope === this.#scope() && !this.#happening(scope)));
   }
 
   /** Looks at every watch now (spec §11.3), fires what is due as one wake, and sets the clock for the next. @param {{ newFix?: boolean, change?: Moment['change'], past?: boolean }} [o] */

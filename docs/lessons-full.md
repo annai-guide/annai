@@ -197,3 +197,9 @@ entries go last, in the same commit as the change:
 - Why we had to change: live mode and the timeline can't read 500 trip.json files at each change, and live mode must choose the trip in play in memory.
 - Original design was wrong because: a scope record named only what the list screen needed, so anything asking "which trips matter now" had to open every trip.
 - Lesson: a record that lists things carries what deciding among them needs, not only what today's list shows. A mirror has one writer per field and a key that says it was filled, so filling old records is one pass that ends. What can be read again from the source doesn't travel: an archive's copy could only be stale, or claim something.
+
+## 2026-11-06 annai: looking isn't doing
+- Changed: `live.play` no longer follows the open conversation. Among happening trips it's the one last talked in, and a line typed or heard moves it at once: Live hears it on the agent's `event`. `reminders()` and the watches looked at leave out a happening trip that's open but not in play. With no trip happening, the open one is still in play.
+- Why we had to change: with two trips overlapping, opening the other to check something took play with it, and the reminders, Driving and the relay all followed a glance. The user picked "Talking moves it".
+- Original design was wrong because: it read "open" as "what the user is doing". An open screen only says where they're looking.
+- Lesson: what the app acts on follows what the user did, not what's on screen. Looking changes nothing that fires, reminds or takes over.

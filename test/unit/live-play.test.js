@@ -92,17 +92,15 @@ test('another open trip that is not happening: play stays', async () => {
   assert.equal(k.live.play, k.trip);
 });
 
-test('two happening: the open one; opened elsewhere, the one last talked in, whose plan reminds alone; time watches fire for both', async () => {
+test('two happening: the one last talked in, whichever is open, whose plan reminds alone; time watches fire for both', async () => {
   const k = await liveKit({ plan: { bixby: BIX, nepenthe: NEP } });
   const other = await k.chat('Side trip', TODAY);
   await k.ws.write(other, '/plan/tea.json', { id: 'tea', title: 'Tea at Bixby', fixed: true, start: { at: iso('11:00'), tz: LA }, place: { name: 'Tea', ...NEPENTHE } }, { author: 'user' });
   const chat = await k.chat('Ramen');
+  await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'hello']], now: at('08:30') });
   k.agent.opened(other);
   await k.settle();
-  assert.equal(k.live.play, other, 'the open one');
-  k.agent.opened(k.trip);
-  await k.settle();
-  assert.equal(k.live.play, k.trip, 'the open one');
+  assert.equal(k.live.play, k.trip, 'looking at the other moves nothing');
   await record(k.store, other, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'hello']], now: at('08:31') });
   k.agent.opened(chat);
   await k.settle();
@@ -184,6 +182,7 @@ test('a trip ending at midnight lets go, with nothing else happening', async () 
 test('dates patched into the open chat make it the trip in play, with no reopening; cleared, play goes back', async () => {
   const k = await liveKit();
   const chat = await k.chat('Ramen');
+  await record(k.store, chat, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'hello']], now: at('08:31') });
   k.agent.opened(chat);
   await k.settle();
   assert.equal(k.live.play, k.trip);
