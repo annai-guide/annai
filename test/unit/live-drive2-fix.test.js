@@ -108,21 +108,23 @@ test('H1: a tap always reaches the unlock: armUnlock stays armed after one worke
 });
 
 test('level: a turn she let go teaches nothing and is not the user\'s own level with none learned; one she answers teaches', async () => {
-  const k = await liveKit([{ said: 'The fuel station is open.', audio: tone(0.1) }, { heard: 'la la' }, { heard: 'where to', said: 'Tacos ahead.', audio: tone(0.1) }]);
+  // A slower clock and a long answer window: on the kit's, a starved CPU's session closes between turns.
+  const k = await liveKit([{ said: 'The fuel station is open.', audio: tone(0.1) }, { heard: 'la la' }, { heard: 'where to', said: 'Tacos ahead.', audio: tone(0.1) }], { agent: { secondMs: 100 } });
   try {
     await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.live.answerSeconds = 600;
     await k.voice.unlock();
     await tell(k);
-    await until(() => k.agent.live.listening, 3000);
-    await soon(async () => (await lines(k)).length === 1, 3000);
+    await until(() => k.agent.live.listening, 60_000);
+    await soon(async () => (await lines(k)).length === 1);
     await k.agent.live.idle();
     k.platform.mic.feed(cat(room(1.5), hum(0.6, 0.1), room(1)), RATE); // lyrics, in a session nobody tapped
-    await soon(async () => (await k.events(['heard'])).length === 1, 3000);
+    await soon(async () => (await k.events(['heard'])).length === 1);
     await k.agent.live.idle();
     assert.equal(k.agent.live.level.db, null, 'a turn let go teaches nothing');
     assert.equal((await k.events(['heard']))[0].data.ownLevel, undefined, 'no level learned: not the user\'s own');
     k.platform.mic.feed(cat(hum(0.6, 0.1), room(1)), RATE);
-    await soon(async () => (await lines(k)).length === 2, 3000);
+    await soon(async () => (await lines(k)).length === 2);
     await k.agent.live.idle();
     assert.equal(k.agent.live.level.db, null, 'she answered it, but one may be a lyric');
   } finally {

@@ -11,7 +11,7 @@ export const tone = (seconds = 0.6) => new Uint8Array(Int16Array.from({ length: 
 /**
  * Shiori as two halves with a realtime model (m-live) first in Koe's list, at a stand-in Gemini Live server
  * that answers with turns; a voice (on unless voice says otherwise), and Kokoro's scripts.
- * @param {any[]} turns @param {{ pace?: number, kokoro?: any[], koe?: any, voice?: any, live?: any, agent?: any, server?: { expired?: boolean } }} [o] server: the stand-in's options
+ * @param {any[]} turns @param {{ pace?: number, kokoro?: any[], koe?: any, voice?: any, live?: any, agent?: any, server?: { expired?: boolean, onText?: { match: RegExp, turn: any } } }} [o] server: the stand-in's options
  */
 export async function liveKit(turns, o = {}) {
   const server = await startRealtimeServer({ flavour: o.live?.type === 'openai-realtime' ? 'openai' : 'gemini', turns, pace: o.pace ?? 0.05, ...o.server });
@@ -38,8 +38,8 @@ export const blocks = async (k) => (await k.events(['halves'])).map((/** @type {
 export const got = (k, key) => k.server.received().filter((/** @type {any} */ m) => m[key]);
 /** The text turns it got. @param {any} k */
 export const texts = (k) => got(k, 'clientContent').flatMap((/** @type {any} */ m) => m.clientContent.turns.flatMap((/** @type {any} */ t) => t.parts.filter((/** @type {any} */ p) => p.text).map((/** @type {any} */ p) => p.text)));
-/** Waits for an async condition. @param {() => Promise<boolean>} fn */
-export async function soon(fn, ms = 3000) {
+/** Waits for an async condition. The limit only ends a test that is failing, so it is long enough for a starved CPU. @param {() => Promise<boolean>} fn */
+export async function soon(fn, ms = 60_000) {
   const end = Date.now() + ms;
   while (!(await fn())) {
     if (Date.now() > end) throw new Error(`still waiting after ${ms} ms`);

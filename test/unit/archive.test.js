@@ -1144,9 +1144,10 @@ test('the scrub runs in linear time on padded text', () => {
     ['line breaks', `lat${'\n '.repeat(100_000)}`],
   ]) {
     const bytes = utf8(input);
-    const t0 = performance.now();
+    const before = process.cpuUsage(); // CPU time: a clock on the wall also counts time the machine gave to something else
     withoutPoints(bytes);
-    const ms = performance.now() - t0;
+    const { user, system } = process.cpuUsage(before);
+    const ms = (user + system) / 1000;
     assert.ok(ms < 100, `${name}: ${Math.round(ms)} ms`);
   }
 });
