@@ -40,7 +40,7 @@ export async function renderTrip(ctx, route) {
     h('p', { class: 'sub' }, ...factsWords([trip?.start ? dateRange(trip.start, trip.end) : null, archived ? t`Archived` : null, plural(files.length, '# file', '# files'), stamps.length ? { stamps: stampCount(stamps.length) } : null])),
     stampMarks(stamps, { max: 24, big: true }),
     h('div', { class: 'acts' },
-      h('a', { class: 'btn pri', href: `#/trip/${encodeURIComponent(id)}/plan` }, t`Plan`),
+      h('a', { class: 'btn pri', href: `#/trip/${encodeURIComponent(id)}/plan` }, t`Itinerary`),
       h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/recap` }, t`Recap`),
       h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/replay` }, t`Replay`),
       // Plugins' trip tabs (spec §16.4), each a page of its own.
@@ -229,7 +229,7 @@ function adders(ctx, id) {
       for (const note of notes) ctx.notices.card({ tone: 'warn', title: t`A photo was kept as it is`, body: note });
       for (const problem of problems) ctx.notices.card({ tone: 'warn', title: t`A calendar file couldn't be read`, body: problem });
       const what = paths.length === 1 ? paths[0] : plural(paths.length, '# file', '# files');
-      ctx.notices.toast(planned.length ? plural(planned.length, 'Added {0}, and # plan item from the calendar', 'Added {0}, and # plan items from the calendar', what)
+      ctx.notices.toast(planned.length ? plural(planned.length, 'Added {0}, and # itinerary item from the calendar', 'Added {0}, and # itinerary items from the calendar', what)
         : paths.length === 1 ? t`Added ${what}` : plural(paths.length, 'Added # file', 'Added # files'));
     } catch (e) {
       status.textContent = '';

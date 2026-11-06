@@ -192,7 +192,7 @@ const KIND_WORDS = /** @type {Record<string, (name: string) => string>} */ ({
   tool: (n) => t`the tool ${n}`, 'endpoint-type': (n) => t`the protocol ${n}`, 'storage-type': (n) => t`the kind of backup place ${n}`, skill: (n) => t`the skill ${n}`,
   personality: (n) => t`the personality ${n}`, 'ui:card-type': (n) => t`the card type ${n}`, search: (n) => t`the search provider ${n}`,
 });
-const COMPONENT_WORDS = /** @type {Record<string, string>} */ ({ avatar: t`how Shiori looks`, dock: t`the dock`, 'now-card': t`the Now card`, 'plan-row': t`how the plan's rows look` });
+const COMPONENT_WORDS = /** @type {Record<string, string>} */ ({ avatar: t`how Shiori looks`, dock: t`the dock`, 'now-card': t`the Now card`, 'plan-row': t`how the itinerary's rows look` });
 /** @param {string} kind @param {string} name */
 export const thingWords = (kind, name) => (kind === 'ui:component' ? COMPONENT_WORDS[name] ?? t`the part ${name}` : KIND_WORDS[kind]?.(name) ?? `${kind} ${name}`);
 /** Who owns a name: annai, a built-in's or official plugin's name, else a name from a manifest, with its id. @param {any[]} rows describe()'s @param {string} id */

@@ -54,8 +54,8 @@ test('the Plan: day tabs, ● fixed and ○ flexible, legs with directions, Chec
   await openApp(page);
   const trip = await startTrip(page, 'Thanksgiving');
   await records(page, trip, THANKSGIVING);
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Plan' }).click();
-  await expect(page.getByRole('heading', { name: 'Plan' })).toBeVisible();
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
+  await expect(page.getByRole('heading', { name: 'Itinerary' })).toBeVisible();
   const tabs = page.getByRole('tab');
   await expect(tabs).toHaveText(['Wed, Nov 25', 'Thu, Nov 26', 'Fri, Nov 27', 'Sat, Nov 28', 'Sun, Nov 29', 'No time yet (1)']);
   await tabs.first().click(); // the open tab is today's when the trip is on, so pick one
@@ -78,7 +78,7 @@ test('the Plan: day tabs, ● fixed and ○ flexible, legs with directions, Chec
   await expect(day.locator('.plan-row')).toHaveText(/^00:30 PT●Fixed: Arrive · UA 456 to San Francisco/);
   await tabs.last().click();
   await expect(day).toContainText('Ice skating');
-  await expect(page.getByText("1 plan file and 1 booking file couldn't be read. Open the trip's files to fix them.")).toBeVisible();
+  await expect(page.getByText("1 itinerary file and 1 booking file couldn't be read. Open the trip's files to fix them.")).toBeVisible();
   // The trip's bookings are on their days: there is no separate Bookings list (goal 9).
   await expect(page.getByRole('region', { name: 'Bookings' })).toHaveCount(0);
   // The calendar file: every timed item, in UTC.
@@ -110,7 +110,7 @@ test("the Plan: the flight on Nov 20 with its times, the stay's check-in, a line
   const trip = await startTrip(page, 'Anchorage');
   await records(page, trip, ANCHORAGE);
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
-  await expect(page.getByRole('heading', { name: 'Plan' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Itinerary' })).toBeVisible();
   // Not on a day is above the day tabs.
   const notOnDay = page.getByRole('region', { name: 'Not on a day' });
   await expect(notOnDay).toContainText('Museum pass');
@@ -146,16 +146,16 @@ test('a tap on any row opens its details, never the raw file', async ({ page }) 
   await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
   await expect(page.locator('textarea')).toHaveCount(0);
   await page.goBack();
-  await expect(page.getByRole('heading', { name: 'Plan' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Itinerary' })).toBeVisible();
   await page.getByRole('region', { name: 'Not on a day' }).getByRole('link', { name: /Museum pass/ }).click();
   await expect(page.getByRole('heading', { name: 'Museum pass' })).toBeVisible();
   await page.goBack();
-  await expect(page.getByRole('heading', { name: 'Plan' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Itinerary' })).toBeVisible();
   await page.getByRole('tab', { name: 'Fri, Nov 27' }).click();
   await page.getByRole('tabpanel').getByRole('link', { name: /Check out · Hotel Aurora Test/ }).click();
   await expect(page.getByRole('heading', { name: 'Hotel Aurora Test' })).toBeVisible();
   await page.goBack();
-  await expect(page.getByRole('heading', { name: 'Plan' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Itinerary' })).toBeVisible();
   await page.getByRole('tab', { name: 'Sat, Nov 21' }).click();
   await page.getByRole('tabpanel').getByRole('link', { name: /Dinner with Sam/ }).click();
   await expect(page.getByRole('heading', { name: 'Dinner with Sam' })).toBeVisible();
@@ -185,11 +185,11 @@ test('an old unverified booking says Check this; a new one with an unsure seat s
 test('the Plan with nothing in it, and with no trip open', async ({ page }) => {
   await openApp(page);
   await page.goto('/#/plan');
-  await expect(page.getByText('Open a trip to see its plan.')).toBeVisible();
+  await expect(page.getByText('Open a trip to see its itinerary.')).toBeVisible();
   await page.goto('/#/trips');
   await startTrip(page, 'Empty');
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Plan' }).click();
-  await expect(page.getByText('No plan yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.')).toBeVisible();
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
+  await expect(page.getByText('No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add to calendar' })).toBeDisabled();
 });
 
@@ -263,8 +263,8 @@ test("a flight's details: what Shiori read, its PDF's preview or card, Open the 
   await page.getByRole('main').getByRole('link', { name: 'Details' }).click();
   await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
   // Its crumb goes back to the Plan.
-  await page.getByRole('main').getByRole('link', { name: 'Plan', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Plan' })).toBeVisible();
+  await page.getByRole('main').getByRole('link', { name: 'Itinerary', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Itinerary' })).toBeVisible();
 });
 
 test("a plain item's details: what, when, where, notes and its calendar file; never raw JSON first", async ({ page }) => {
@@ -273,7 +273,7 @@ test("a plain item's details: what, when, where, notes and its calendar file; ne
   await records(page, trip, ANCHORAGE);
   const ics = ['BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'UID:aurora@test.invalid', 'SUMMARY:Aurora walk', 'LOCATION:Testville Park', 'DTSTART;TZID=America/Anchorage:20261122T220000', 'DURATION:PT2H', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
   await page.getByLabel('Add photos or files').setInputFiles([{ name: 'walks.ics', mimeType: 'text/calendar', buffer: Buffer.from(ics) }]);
-  await expect(page.getByText(/^Added .*walks\.ics, and 1 plan item from the calendar/)).toBeVisible();
+  await expect(page.getByText(/^Added .*walks\.ics, and 1 itinerary item from the calendar/)).toBeVisible();
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
   await page.getByRole('tab', { name: 'Sun, Nov 22' }).click();
   await page.getByRole('tabpanel').getByRole('link', { name: /Aurora walk/ }).click();
@@ -283,7 +283,7 @@ test("a plain item's details: what, when, where, notes and its calendar file; ne
   await expect(page.locator('dl.facts')).toContainText('(AKT)');
   await expect(page.locator('dl.facts')).toContainText('Testville Park');
   await expect(page.getByRole('region', { name: 'The original' })).toContainText('From walks.ics');
-  await page.getByRole('main').getByRole('link', { name: 'Plan', exact: true }).click();
+  await page.getByRole('main').getByRole('link', { name: 'Itinerary', exact: true }).click();
   await page.getByRole('tab', { name: 'Sat, Nov 21' }).click();
   await page.getByRole('tabpanel').getByRole('link', { name: /Dinner with Sam/ }).click();
   await expect(page.getByRole('heading', { name: 'Dinner with Sam' })).toBeVisible();
@@ -293,8 +293,8 @@ test("a plain item's details: what, when, where, notes and its calendar file; ne
   await expect(page.getByRole('link', { name: 'Change it' })).toBeVisible();
   // A link to something that isn't a plan item says so in words, with a way back.
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/item?path=${encodeURIComponent('/trip.json')}`);
-  await expect(page.getByRole('heading', { name: "This isn't on the plan" })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Go to the plan' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: "This isn't on the itinerary" })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Go to the itinerary' })).toBeVisible();
 });
 
 test('a booking whose file is gone says so, with no preview, and can still be asked about', async ({ page }) => {
@@ -359,7 +359,7 @@ test('milestone 4 done: a pass and a calendar are added, Shiori writes the booki
       { name: 'flight.pkpass', mimeType: 'application/vnd.apple.pkpass', buffer: Buffer.from(await z.finish().arrayBuffer()) },
       { name: 'thanksgiving.ics', mimeType: 'text/calendar', buffer: Buffer.from(ics) },
     ]);
-    await expect(page.getByText('Added 2 files, and 1 plan item from the calendar')).toBeVisible();
+    await expect(page.getByText('Added 2 files, and 1 itinerary item from the calendar')).toBeVisible();
 
     // Shiori is woken once, reads the pass, writes the booking and its plan item, can't confirm it, and shows it.
     await page.goto('/#/talk');
@@ -380,7 +380,7 @@ test('milestone 4 done: a pass and a calendar are added, Shiori writes the booki
 
     // Its crumb goes back to the Conversation it was opened from. The plan: the flight and the calendar's dinner, nothing left to check; and it goes to the calendar.
     await expect(page.getByRole('main').locator('.crumbs a')).toContainText('Conversation');
-    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Plan' }).click();
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
     await page.getByRole('tab', { name: 'Wed, Nov 25' }).click();
     await expect(page.getByRole('tabpanel')).toContainText('UA 123 to Newark');
     await expect(page.getByRole('tabpanel').getByRole('link', { name: 'Check this' })).toHaveCount(0);
@@ -444,7 +444,7 @@ test("a plan item's notes on the booking it stands for show on the booking's det
   await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();
   await page.getByRole('tabpanel').getByRole('link', { name: /Fly to Anchorage/ }).click();
   await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
-  const notes = page.getByRole('region', { name: 'On the plan' });
+  const notes = page.getByRole('region', { name: 'On the itinerary' });
   await expect(notes).toContainText('Terminal S, arrive 2 h early.');
   await expect(notes).toContainText('One checked bag each.');
   // In reading order: after what she read, before the file.

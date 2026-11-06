@@ -452,7 +452,7 @@ test('a fresh start reopens the trip screen that was open, and shows Trips when 
     await updateAppSettings(new Workspace(store), { welcomedAt: Date.now() });
     store.close();
   });
-  await page.getByRole('link', { name: 'Plan', exact: true }).first().click();
+  await page.getByRole('link', { name: 'Itinerary', exact: true }).first().click();
   await expect.poll(() => page.evaluate(() => localStorage.getItem('annai.resume'))).toContain('#/plan'); // drawn, and noted
   await page.goto('/'); // a new launch from the Home Screen icon
   await expect.poll(() => page.url()).toMatch(/#\/plan$/);

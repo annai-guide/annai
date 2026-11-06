@@ -64,8 +64,8 @@ test("the user's evening: on Trips with no trip open, + with the flight PDF and 
     await expect(page.locator('.convo .shiori .acts button')).toHaveCount(0);
 
     // 3. The Plan: the flight on Nov 20 at each airport's time, the stay's check-in, a line for each night, its check-out.
-    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Plan' }).click();
-    await expect(page.getByRole('heading', { name: 'Plan' })).toBeVisible();
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
+    await expect(page.getByRole('heading', { name: 'Itinerary' })).toBeVisible();
     const day = page.getByRole('tabpanel');
     await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();
     await expect(day.locator('.plan-row', { hasText: 'ANNAI AIR AN 123' })).toContainText(/11:20–14:05 AK/);

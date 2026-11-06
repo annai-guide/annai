@@ -15,14 +15,14 @@ memories afterwards.
 > switched off, personalities and memory, budgets, and housekeeping for long conversations. Shiori sees
 > photos: request copies within each model's limits, closer looks at a part, repair when a model refuses a
 > photo, and uploads to the provider where it can store files. And planning: bookings brought in from
-> confirmations, Wallet passes, calendar files and shares, which you confirm; the Plan, day by day; and
+> confirmations, Wallet passes, calendar files and shares, which you confirm; the Itinerary, day by day; and
 > search and directions links. And voice: Shiori speaks (OpenAI-compatible voices, or the phone's own) and listens
 > (recording with an end-of-sentence detector, a transcription model or the model itself, or phone dictation), with interruptions,
 > a quick check that talk is meant for her, and voice on or off in one tap. And backups to GitHub, Forgejo or Gitea, S3-compatible storage and WebDAV
 > (milestone 9). And live mode (milestone 5; its real-drive checklist is next): watches Shiori sets, the
-> plan's own reminders (leave in time, arrived, running late, off plan), catch-up after the phone was locked, and reminders annai
+> itinerary's own reminders (leave in time, arrived, running late, off plan), catch-up after the phone was locked, and reminders annai
 > shows and says by itself when no model can be reached, tested by a simulated Big Sur drive; on the phone, GPS in live mode (called GPS on and off in the app), the GPS chip (the screen kept on as
-> you choose, and where you are without GPS), and the Now and Driving screens. And the offline pack: OpenStreetMap places, Wikipedia summaries and Wikivoyage guides along the plan, which Shiori's tools read first, kept up to date on Wi-Fi. And after the trip (milestone 7): stamps for the places you arrived at, shown on trip cards; a recap written by your utility model from the trip, which Shiori can tell aloud; a replay of the timeline and the route on a flat map; and Settings → Developer → Simulate a trip. And notifications (milestone 6; its device checklist is next): reminders reach a closed annai through a small push relay, encrypted on the phone, and opening one starts a catch-up. And extensions (milestone 8; its device checklist is next): skills, MCP servers and code plugins, installed from a file, an address or annai's catalog, and what plugins add to annai's screens. Not deployed yet. See [docs/vision.md](docs/vision.md) and the
+> you choose, and where you are without GPS), and the Now and Driving screens. And the offline pack: OpenStreetMap places, Wikipedia summaries and Wikivoyage guides along the itinerary, which Shiori's tools read first, kept up to date on Wi-Fi. And after the trip (milestone 7): stamps for the places you arrived at, shown on trip cards; a recap written by your utility model from the trip, which Shiori can tell aloud; a replay of the timeline and the route on a flat map; and Settings → Developer → Simulate a trip. And notifications (milestone 6; its device checklist is next): reminders reach a closed annai through a small push relay, encrypted on the phone, and opening one starts a catch-up. And extensions (milestone 8; its device checklist is next): skills, MCP servers and code plugins, installed from a file, an address or annai's catalog, and what plugins add to annai's screens. Not deployed yet. See [docs/vision.md](docs/vision.md) and the
 > [design](docs/superpowers/specs/2026-10-15-annai-design.md).
 
 ## Models
@@ -30,10 +30,10 @@ memories afterwards.
 - A server you run has a provider of its own: llama.cpp (also for Unsloth Studio and KoboldCpp), vLLM, SGLang, Ollama or LM Studio. Each knows its usual address, and its page says what the server needs to let annai in. llama.cpp's, vLLM's, SGLang's and Ollama's also switch thinking off for quick decisions; LM Studio doesn't document how, so give a model that thinks its Reasoning levels on its page. llama.cpp's, Ollama's and LM Studio's Fetch model list also reads the context the server gives a loaded model, and whether it reads images, so Shiori knows how long a conversation can get. annai reaches a server at `localhost` on the device it runs on; from a phone, the server needs an HTTPS address, such as Tailscale Serve or a tunnel puts in front of it.
 - A server that never streams, such as an LLM router that sends each answer whole, works through Chat Completions or OpenAI Responses. annai sees nothing of an answer until all of it has come, so the wait for her first words must cover the whole answer: with voice on, Settings → Voice → Wait for her first words (15 seconds unless changed); otherwise the role's "Wait for the first words" in Settings → Models (30 seconds unless changed). Raise it if long answers stop with "No output started in time."
 
-## Plan and bookings
+## Itinerary and bookings
 
 - Add confirmations to a trip: PDFs, Apple Wallet passes, screenshots, calendar files, or text shared from another app (Android). annai keeps the files; Shiori reads them (or a model that can, for a model that can't; with the PDF pages plugin, a model that sees photos reads a PDF's first 10 pages) and writes each booking as unverified.
-- The Plan shows the trip day by day: ● fixed, ○ flexible, the distance between stops with directions, and "Check this" on every booking you haven't confirmed. "Add to calendar" saves the plan as an .ics file.
+- The Itinerary shows the trip day by day: ● fixed, ○ flexible, the distance between stops with directions, and "Check this" on every booking you haven't confirmed. "Add to calendar" saves the plan as an .ics file.
 - Shiori researches and hands you search links for flights, hotels and cars. You book; annai never books for you.
 
 ## Voice
@@ -45,7 +45,7 @@ memories afterwards.
 
 ## After the trip
 
-- Stamps: each place you arrived at on the plan, or a named place the offline pack knows, earns a station stamp, shown on the trip's card. They come from the trip's log; nothing extra is stored.
+- Stamps: each place you arrived at on the itinerary, or a named place the offline pack knows, earns a station stamp, shown on the trip's card. They come from the trip's log; nothing extra is stored.
 - Recap: your utility model writes `/trip/recap.md` from where you stayed and went (in words: never the GPS track itself), the stamps, what you and Shiori said, your notes and up to six photos. Shiori can tell it aloud.
 - Replay: the trip's timeline, the route drawn on a flat map with no map tiles, playback at a minute, ten minutes or an hour a second, a scrubber, and a day at a time.
 - Settings → Developer → Simulate a trip: the Big Sur sample, an itinerary file, or a trip's recorded track, played through live mode and Shiori in a new trip of its own, so the replay and the recap can be tried before a real trip.
@@ -59,7 +59,7 @@ memories afterwards.
 
 ## Notifications
 
-- Turn on Settings → Notifications, and Shiori's reminders for a time, and the plan's "coming up" and "leave soon", reach you as notifications while annai is closed. Tapping one opens annai, and Shiori catches up.
+- Turn on Settings → Notifications, and Shiori's reminders for a time, and the itinerary's "coming up" and "leave soon", reach you as notifications while annai is closed. Tapping one opens annai, and Shiori catches up.
 - They go through a small relay, `push.annai.guide` (its code is in [`relay/`](relay/README.md), to run your own). annai encrypts each reminder on the phone and pads it to one size: the relay learns only the phone's push address, when each reminder is due and how many are waiting. Reminders about places never leave the phone.
 - With annai open on screen, annai says a reminder itself and the relay's copy is called off, so it never comes twice.
 

@@ -31,7 +31,7 @@ async function planPlaces(ctx) {
     const it = await ctx.ws.readJSON(trip, f.path).catch(() => null);
     const p = it?.place;
     if (!p || typeof p.lat !== 'number' || typeof p.lng !== 'number') continue;
-    const name = String(p.name ?? it.title ?? t`A plan place`);
+    const name = String(p.name ?? it.title ?? t`An itinerary place`);
     if (!out.some((x) => x.name === name)) out.push({ name, lat: p.lat, lng: p.lng });
   }
   return out.slice(0, 8);
@@ -87,7 +87,7 @@ export async function renderDrive(ctx) {
     gps.replaceChildren(...(live && !live.on ? [h('button', { class: 'btn pri', type: 'button', onclick: () => live.setLive(true) }, t`Turn GPS on`)] : []));
     const lost = live?.on && (live.gps === 'denied' || live.gps === 'unavailable');
     where.replaceChildren(...(!lost ? [] : [
-      h('p', { class: 'sub', text: places.length ? t`Where are you?` : sentences(t`Where are you?`, t`The plan has no places to choose from yet.`) }),
+      h('p', { class: 'sub', text: places.length ? t`Where are you?` : sentences(t`Where are you?`, t`The itinerary has no places to choose from yet.`) }),
       ...places.map((p) => h('button', {
         class: 'btn', type: 'button',
         onclick: async () => {

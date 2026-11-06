@@ -81,7 +81,7 @@ export async function renderNow(ctx) {
     h('section', { 'aria-label': tc('coming up')`Next` },
       h('h2', { class: 'section', text: tc('coming up')`Next` }),
       next.length ? h('ol', { class: 'timetable' }, ...next.map((r) => planRowOf(ctx, id, r, r.time, () => nowRow(id, r)))) : h('p', { class: 'empty', text: t`Nothing more is planned.` }),
-      h('p', {}, h('a', { href: '#/plan' }, t`The whole plan`))),
+      h('p', {}, h('a', { href: '#/plan' }, t`The whole itinerary`))),
     await packLine(ctx, id),
     latest ? h('section', { 'aria-label': t`Latest` }, h('h2', { class: 'section', text: t`Latest` }), latest) : null,
     h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/drive' }, t`Driving`)));

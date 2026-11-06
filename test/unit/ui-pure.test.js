@@ -533,9 +533,9 @@ test('the Offline pack panel: the estimate before anything is downloaded, then w
   const base = { stops: 2, cut: 0, manifest: null, why: null, estimate: 120 * 1024, running: null };
   const none = packWords(/** @type {any} */ (base), 'unknown');
   assert.equal(none.button, 'Download (about 120 kB)');
-  assert.match(none.lines[0], /^For when there's no connection: places from OpenStreetMap, Wikipedia summaries and Wikivoyage guides, around the plan's 2 stops and along the way between them\./);
-  assert.equal(none.lines[1], "Downloading sends the plan's places to OpenStreetMap and Wikipedia, and place names to Wikivoyage.");
-  assert.deepEqual(packWords(/** @type {any} */ ({ ...base, stops: 0 }), 'wifi'), { lines: ['The pack follows the plan: once the plan has places, it can be downloaded here.'], button: null });
+  assert.match(none.lines[0], /^For when there's no connection: places from OpenStreetMap, Wikipedia summaries and Wikivoyage guides, around the itinerary's 2 stops and along the way between them\./);
+  assert.equal(none.lines[1], "Downloading sends the itinerary's places to OpenStreetMap and Wikipedia, and place names to Wikivoyage.");
+  assert.deepEqual(packWords(/** @type {any} */ ({ ...base, stops: 0 }), 'wifi'), { lines: ['The pack follows the itinerary: once the itinerary has places, it can be downloaded here.'], button: null });
   assert.deepEqual(packWords(/** @type {any} */ ({ ...base, running: { done: 2, total: 6, label: 'Wikipedia near Nepenthe' } }), 'wifi'), { lines: ['Downloading 3 of 6: Wikipedia near Nepenthe…'], button: null });
   const manifest = { at: new Date().toISOString(), bytes: 1_300_000, places: 1200, summaries: 40, files: [{ kind: 'osm', items: 1300 }, { kind: 'wikipedia', items: 45 }, { kind: 'wikivoyage', items: 1 }], guides: [{ title: 'Big Sur' }], failed: [], full: false, stopped: false };
   const done = packWords(/** @type {any} */ ({ ...base, manifest }), 'wifi');
@@ -545,15 +545,15 @@ test('the Offline pack panel: the estimate before anything is downloaded, then w
   assert.equal(done.lines.at(-1), 'On Wi-Fi, annai keeps it up to date by itself while this trip is open.');
   const changed = packWords(/** @type {any} */ ({ ...base, manifest, why: 'plan', estimate: 30 * 1024 }), 'unknown');
   assert.equal(changed.button, 'Update (about 30 kB)');
-  assert.ok(changed.lines.includes('The plan changed since.'));
+  assert.ok(changed.lines.includes('The itinerary changed since.'));
   assert.equal(changed.lines.at(-1), "This browser doesn't tell annai when it is on Wi-Fi, so update it here.");
   const failed = packWords(/** @type {any} */ ({ ...base, manifest: { ...manifest, failed: [{ label: 'OpenStreetMap around Nepenthe', why: 'overpass-api.de answered 504.' }] }, why: 'missing' }), 'wifi');
   assert.equal(failed.button, 'Try again (about 120 kB)');
   assert.ok(failed.lines.includes("One part didn't download: OpenStreetMap around Nepenthe (overpass-api.de answered 504)."));
   assert.equal(packWords(/** @type {any} */ ({ ...base, manifest: { ...manifest, stopped: true }, why: 'missing' }), 'wifi').button, 'Download the rest (about 120 kB)');
-  assert.ok(packWords(/** @type {any} */ ({ ...base, manifest: { ...manifest, full: true } }), 'wifi').lines.includes('It stopped at its 20 MB limit, so it holds only the start of the plan.'));
+  assert.ok(packWords(/** @type {any} */ ({ ...base, manifest: { ...manifest, full: true } }), 'wifi').lines.includes('It stopped at its 20 MB limit, so it holds only the start of the itinerary.'));
   assert.match(packWords(/** @type {any} */ ({ ...base, manifest: { ...manifest, places: 1, summaries: 1, guides: [] } }), 'wifi').lines[0], / · 1 place, 1 Wikipedia summary, 0 Wikivoyage guides\.$/);
-  assert.ok(packWords(/** @type {any} */ ({ ...base, manifest, cut: 3 }), 'wifi').lines.includes('This plan is longer than a pack holds, so some of the way between stops is left out.'));
+  assert.ok(packWords(/** @type {any} */ ({ ...base, manifest, cut: 3 }), 'wifi').lines.includes('This itinerary is longer than a pack holds, so some of the way between stops is left out.'));
   assert.equal(packWords(/** @type {any} */ ({ ...base, manifest, why: 'old' }), 'wifi').button, 'Update (about 120 kB)');
 });
 
@@ -888,7 +888,7 @@ test('fileLine: one booking, several of a kind with their days, mixed kinds, a c
   assert.equal(fileLine([b('flight', '2026-11-20'), b('flight', '2026-11-20')]), '2 flights · Nov 20');
   assert.equal(fileLine([b('flight', '2026-11-20'), b('lodging', '2026-11-20')]), '1 flight · 1 stay');
   assert.equal(fileLine([b('other', null)]), 'Booking');
-  assert.equal(fileLine([{ kind: 'plan', path: '/plan/a.json', title: 'A', at: null, day: null }, { kind: 'plan', path: '/plan/b.json', title: 'B', at: null, day: null }]), 'Plan items from a calendar');
+  assert.equal(fileLine([{ kind: 'plan', path: '/plan/a.json', title: 'A', at: null, day: null }, { kind: 'plan', path: '/plan/b.json', title: 'B', at: null, day: null }]), 'Itinerary items from a calendar');
   assert.equal(fileLine([{ kind: 'waiting' }]), 'Waiting for Shiori to read it');
   assert.equal(fileLine([{ kind: 'nothing' }]), 'Nothing yet');
 });
@@ -930,8 +930,8 @@ test('afterDelete: back where it came from, unless that screen was of something 
 });
 
 test('countParts: what else goes, in words', () => {
-  assert.deepEqual(countParts(2, 1), ['2 bookings', '1 plan item']);
-  assert.deepEqual(countParts(0, 3), ['3 plan items']);
+  assert.deepEqual(countParts(2, 1), ['2 bookings', '1 itinerary item']);
+  assert.deepEqual(countParts(0, 3), ['3 itinerary items']);
   assert.deepEqual(countParts(0, 0), []);
 });
 

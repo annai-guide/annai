@@ -129,7 +129,7 @@ export function fileLine(became) {
     const days = [...new Set(books.map((b) => b.day).filter((d) => typeof d === 'string'))].sort();
     parts.push([...kinds].map(([k, n]) => COUNTS[k](n)).join(' · ') + (kinds.size === 1 && days.length ? ` · ${list(days.map((d) => day(d)), 'plain')}` : ''));
   }
-  if (became.some((b) => b.kind === 'plan')) parts.push(t`Plan items from a calendar`);
+  if (became.some((b) => b.kind === 'plan')) parts.push(t`Itinerary items from a calendar`);
   if (!parts.length) parts.push(became[0]?.kind === 'waiting' ? t`Waiting for Shiori to read it` : became[0]?.kind === 'nothing' ? t`Nothing yet` : '');
   return parts.join(' · ');
 }

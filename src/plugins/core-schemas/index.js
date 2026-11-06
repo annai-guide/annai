@@ -7,7 +7,7 @@ export const manifest = {
   name: t`Trip record checks`,
   version: VERSION,
   api: 1,
-  description: t`Checks trip.json, plan items, bookings and watches when they are saved.`,
+  description: t`Checks trip.json, itinerary items, bookings and watches when they are saved.`,
 };
 
 /** @param {{ schemas: { register: (entry: any) => () => void } }} annai */

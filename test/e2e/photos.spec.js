@@ -165,7 +165,7 @@ test('a Share can leave out where photos were taken', async ({ page }) => {
   await page.getByRole('button', { name: 'Export trip' }).click();
   const places = page.getByLabel('Include where photos were taken and where you went');
   await expect(places).toBeHidden(); // a Backup keeps everything
-  await page.getByLabel('Share: plan, bookings, files and notes').check();
+  await page.getByLabel('Share: itinerary, bookings, files and notes').check();
   await expect(places).toBeChecked();
   await places.uncheck();
   const entries = await readZip(new Uint8Array(await readFile(await buildAndSave(page))));
@@ -185,7 +185,7 @@ test('a Share without places greys out History, with the reason; places on enabl
   const why = page.getByText('History holds where you were, so it needs places.');
   await expect(history).toBeChecked(); // a Backup keeps everything
   await expect(why).toBeHidden();
-  await page.getByLabel('Share: plan, bookings, files and notes').check();
+  await page.getByLabel('Share: itinerary, bookings, files and notes').check();
   await expect(history).toBeEnabled();
   await history.check();
   await places.uncheck();

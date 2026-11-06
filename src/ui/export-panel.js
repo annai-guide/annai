@@ -37,7 +37,7 @@ export function exportPanel(ctx, what) {
   };
   places.input.addEventListener('change', syncHistory);
   const preset = isTrip
-    ? radios(t`What to include`, [['backup', t`Backup: everything`], ['share', t`Share: plan, bookings, files and notes`]], 'backup', (v) => {
+    ? radios(t`What to include`, [['backup', t`Backup: everything`], ['share', t`Share: itinerary, bookings, files and notes`]], 'backup', (v) => {
       mode = v;
       const p = PRESETS[/** @type {'backup'|'share'} */ (v)];
       history.input.checked = p.history;

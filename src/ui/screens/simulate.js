@@ -120,7 +120,7 @@ async function form(ctx) {
     input.checked = checked;
     return { input, el: h('label', { class: 'check' }, input, h('span', { text: label })) };
   };
-  const sample = radio('sample', t`Big Sur on Highway 1: a sample drive, about ten hours, with a plan and bookings`, true);
+  const sample = radio('sample', t`Big Sur on Highway 1: a sample drive, about ten hours, with an itinerary and bookings`, true);
   const fromTrip = radio('trip', t`The recorded track of a trip on this device`);
   const fromFile = radio('file', t`An itinerary file`);
   const trips = h('select', { id: 'sim-trip', disabled: !recorded.length }, ...(recorded.length ? recorded.map((r) => h('option', { value: r.id, text: r.title })) : [h('option', { value: '', text: t`No trip has a recorded track yet` })]));
