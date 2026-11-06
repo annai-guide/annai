@@ -43,9 +43,9 @@ export function fakeAgent(target) {
       agent.wakes.push(w);
       return Promise.resolve();
     },
-    /** @param {{ watch: string, text: string }[]} list @param {string} [scope] */
-    async remind(list, scope) {
-      for (const r of list) agent.reminders.push({ ...r, scope: scope ?? agent.target ?? 'me' });
+    /** @param {{ watch: string, text: string }[]} list @param {string} [scope] @param {{ urgent?: boolean }} [o] */
+    async remind(list, scope, o = {}) {
+      for (const r of list) agent.reminders.push({ ...r, scope: scope ?? agent.target ?? 'me', ...(o.urgent ? { urgent: true } : {}) });
     },
     /** @param {'event' | 'open'} kind @param {(e: any) => void} fn */
     on(kind, fn) {

@@ -1100,8 +1100,18 @@ export class Halves {
   loopTools() { return this.kokoro.loopTools().filter((t) => this.#split || t.name !== 'tell_koe'); }
   /** @param {import('./loop.js').LoopTool[]} tools Shiori's own, which are Kokoro's */
   addLoopTools(tools) { this.kokoro.addLoopTools(tools); }
-  /** @param {import('./loop.js').Reminder[]} list @param {string} [scope] */
-  remind(list, scope) { return this.kokoro.remind(list, scope); }
+  /**
+   * annai's reminders, shown (and logged in their conversation). Another conversation's, while a session's voice plays, go into it as a trigger does: annai doesn't play over her.
+   * @param {import('./loop.js').Reminder[]} list @param {string} [scope] @param {{ urgent?: boolean }} [o] urgent: said at once
+   */
+  remind(list, scope, o = {}) {
+    const shown = this.kokoro.remind(list, scope);
+    if (scope && scope !== (this.kokoro.target ?? ME) && this.koeState === 'live' && this.live.voiced && list.length) {
+      const w = { kind: 'trigger', text: /* en */ `Reminders for the user, from another of their conversations: ${list.map((r) => `"${r.text}"`).join(', ')}`, ...(o.urgent ? { urgent: true } : {}) };
+      this.#alongside(this.#live(() => this.live.wake(w), w));
+    }
+    return shown;
+  }
 
   /** The now block, the trip's view, and the nonce (never in Koe's cached prefix). @param {Parameters<NonNullable<import('./loop.js').Half['tail']>>[0]} now */
   async #koeTail(now) {

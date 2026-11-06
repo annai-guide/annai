@@ -376,3 +376,14 @@ test("a closed annai is told of the open trip's first morning too, while another
   assert.ok(own.every((r) => r.scope !== next), 'the trip no longer open is the relay-held one, not listed');
   assert.ok(own.some((r) => r.scope === k.trip));
 });
+
+test("an urgent watch of a trip that isn't open hands its reminders on urgent; a plain one doesn't", async () => {
+  const k = await liveKit();
+  const chat = await k.chat('Ramen');
+  k.agent.opened(chat);
+  await k.settle();
+  await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('09:00') }, fallback: 'Leave now.', urgent: true });
+  await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea.' });
+  await k.to(at('10:00'));
+  assert.deepEqual(k.agent.reminders.map((r) => [r.text, r.scope, r.urgent]), [['Leave now.', k.trip, true], ['Tea.', k.trip, undefined]]);
+});
