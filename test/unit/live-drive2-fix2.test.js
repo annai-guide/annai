@@ -8,6 +8,7 @@ import { hum, quiet, cat } from './voice-kit.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { COOLDOWN_MS } from '../../src/core/llm/fallback.js';
 import { ProviderError } from '../../src/core/llm/contract.js';
+import { REFUSED_REST_MS } from '../../src/core/koe/live.js';
 
 const wait = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
 const RATE = 16_000;
@@ -374,3 +375,22 @@ test('6: a turnComplete that comes after the bound is that turn\'s: never an ans
   }
 });
 
+test('decision 9: only a refusal for a thinking level rests for hours; any other bad request rests as a failure does', async () => {
+  for (const [words, rest] of [['Thinking level must be specified for this model.', REFUSED_REST_MS], ['Invalid JSON payload received. Unknown name "something".', COOLDOWN_MS]]) {
+    const k = await liveKit([{ said: 'Hi.', audio: tone(0.1) }], { live: { second: true } });
+    try {
+      const live = k.llm.live;
+      k.llm.live = async (/** @type {string} */ id, /** @type {any} */ setup, /** @type {any} */ o) => {
+        if (id === 'm-live') throw new ProviderError('bad-request', String(words));
+        return live(id, setup, o);
+      };
+      const from = Date.now();
+      k.agent.tap();
+      await soon(async () => k.llm.bench.until('m-live') > 0, 2000);
+      const left = k.llm.bench.until('m-live') - from;
+      assert.ok(Math.abs(left - Number(rest)) < 5000, `${words}: ${left}`);
+    } finally {
+      await k.done();
+    }
+  }
+});

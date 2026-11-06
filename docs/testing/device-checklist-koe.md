@@ -61,7 +61,7 @@ What the phone makes is found by trying at run time, never by its name, so these
 You need your Gemini key from AI Studio (free). Before you start, open Settings → Updates: if it offers Google Gemini 1.3.0, update it. Live sessions don't talk to Shiori yet (that is K5): these checks are the connection, the sound and the Trace.
 
 - [ ] **Live voice arrives off.** Settings → Models → Google Gemini: a **Live voice** panel, its switch off, with a note that what you say goes to Google as audio while a session is open. Settings → Plugins has no Gemini Live yet.
-- [ ] **Switching it on installs it.** Turn **Use Live voice** on: "Saved", and its model shows (Gemini 3.8 Live). Settings → Plugins now lists Gemini Live.
+- [ ] **Switching it on installs it.** Turn **Use Live voice** on: "Saved", and its two models show (Gemini 3.8 Live, Gemini 3.8 Live Extended Thinking). Settings → Plugins now lists Gemini Live.
 - [ ] **Test, on Wi-Fi.** In the Live voice panel, tap **Test**: within a second or two you hear Shiori's Gemini voice say "OK" (through the phone's speaker, or the car's), and the panel says "✓ It answered aloud: OK." Write down roughly how long from the tap to the word.
 - [ ] **Test over cellular.** Turn Wi-Fi off and tap Test again: the same. If it says annai couldn't reach the address, write down the words.
 - [ ] **Sound after the tap only.** Close annai fully (swipe it away), open it, go straight to the Live voice panel and tap Test: you still hear "OK" (the tap itself unlocks sound).

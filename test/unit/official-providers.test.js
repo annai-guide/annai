@@ -323,7 +323,7 @@ test("Gemini's Live voice: off until switched on; Test opens a session that answ
   const desc = (await official('provider-gemini')).provider;
   const live = /** @type {any} */ (desc.abilities.live);
   assert.deepEqual([live.kind, live.type, live.name, live.on, live.baseUrl], ['realtime', 'gemini-live', 'Live voice', false, 'https://generativelanguage.googleapis.com']);
-  assert.deepEqual(live.models.map((/** @type {any} */ m) => m.providerId), ['gemini-3.8-live']);
+  assert.deepEqual(live.models.map((/** @type {any} */ m) => m.providerId), ['gemini-3.8-live', 'gemini-3.8-live-extended-thinking']);
   assert.deepEqual(live.models[0].prices, { input: 0.75, audioIn: 3, image: 1, output: 4.5, audioOut: 12 });
   assert.ok(live.models.every((/** @type {any} */ m) => m.input.join() === 'text,image'), 'it takes photos (and prices their tokens)');
   const GKEY = 'AIza-stand-in-gemini-key-0123456789';
@@ -380,7 +380,7 @@ const DOUBLES = [{ from: '2027-01-01', input: 1.5, output: 7.5, cacheRead: 0.15 
 test('provider-gemini 2.6.0: Gemini through its own API (gemini-api), its chat models priced as Google publishes them, the free-tier switch offered, no stand-in signature', async () => {
   const m = await official('provider-gemini');
   const { levelsFor } = await import('../../plugins-official/gemini-api/levels.js');
-  assert.equal(m.version, '2.8.0');
+  assert.equal(m.version, '2.7.2');
   assert.deepEqual((await officialManifests()).find((x) => x.id === 'provider-gemini').requires, [{ id: 'gemini-api', version: '^0' }], 'not chat-completions; gemini-live comes when Live is switched on');
   const d = m.provider;
   assert.deepEqual([d.baseUrl, d.freeTier, d.keyUrl], ['https://generativelanguage.googleapis.com', 'Google', 'https://aistudio.google.com/apikey'], "who doesn't charge, by name");
@@ -490,6 +490,19 @@ test("the move-over from provider-gemini 1.x: the chat ability's type becomes ge
   await setKey(k.store, id, null);
 });
 
+/** Fake descriptions, whatever the plugin lists today: Gemini with Extended Thinking, and the update that takes it out. @param {any} now */
+function aroundTheDrop(now) {
+  const et = 'gemini-3.8-live-extended-thinking';
+  const models = now.provider.abilities.live.models.filter((/** @type {any} */ m) => m.providerId !== et);
+  const was = /** @type {any} */ (structuredClone(now));
+  const next = /** @type {any} */ (structuredClone(now));
+  was.version = '2.7.2';
+  was.provider.abilities.live.models = [...models, { providerId: et, input: ['text', 'image'], name: 'Gemini 3.8 Live Extended Thinking', contextWindow: 131072 }];
+  next.version = '2.8.0';
+  next.provider.abilities.live.models = models;
+  return { was, next };
+}
+
 /**
  * Gemini with Extended Thinking, Koe's Realtime list as given, chat models for Koe · Classic and Kokoro, then the update that takes it, and a chat model Kokoro uses, out of the description.
  * @param {(ids: { dropped: string, live: string, byId: string, listed: string }) => string[]} list @param {string[]} [classic] Koe · Classic's models, by provider model id
@@ -499,12 +512,8 @@ async function updatedOverLive(list, classic = ['gemini-3.5-flash-lite'], change
   const { addProvider, syncProviders, addListedModel, addModelById } = await import('../../src/core/llm/providers.js');
   const { setKey } = await import('../../src/core/llm/config.js');
   const k = await hostKit();
-  const now = await official('provider-gemini');
-  const was = /** @type {any} */ (structuredClone(now));
-  was.version = '2.7.2';
-  was.provider.abilities.live.models.push({ providerId: 'gemini-3.8-live-extended-thinking', input: ['text', 'image'], name: 'Gemini 3.8 Live Extended Thinking', contextWindow: 131072 });
+  const { was, next } = aroundTheDrop(await official('provider-gemini'));
   const id = await addProvider({ ws: k.ws, store: k.store }, was, { key: 'AIza-kept', abilities: { live: { on: true } } });
-  const next = /** @type {any} */ (structuredClone(now));
   next.provider.abilities.chat.models = next.provider.abilities.chat.models.filter((/** @type {any} */ m) => m.providerId !== 'gemini-3.6-flash');
   change(next);
   const ids = {
@@ -565,6 +574,23 @@ test('a drop that would empty Koe · Realtime, in a description that recommends 
   };
   const { after, ids } = await updatedOverLive((m) => [m.dropped], undefined, none);
   assert.deepEqual(after.roles['koe-realtime'].models, [ids.live]);
+});
+
+test('the real sequence: a provider from before, a sync of the old description, then of one without the model: the first keeps it in Koe · Realtime, the second drops it', async () => {
+  const { addProvider, syncProviders } = await import('../../src/core/llm/providers.js');
+  const { setKey } = await import('../../src/core/llm/config.js');
+  const k = await hostKit();
+  const { was, next } = aroundTheDrop(await official('provider-gemini'));
+  const id = await addProvider({ ws: k.ws, store: k.store }, { ...was, version: '2.7.1' }, { key: 'AIza-kept', abilities: { live: { on: true } } });
+  const cfg = await readConfig(k.ws);
+  const idOf = (/** @type {string} */ pid) => /** @type {string} */ (Object.values(cfg.models).find((m) => modelOf(m).providerId === pid)?.id);
+  const [et, plain] = [idOf('gemini-3.8-live-extended-thinking'), idOf('gemini-3.8-live')];
+  await saveRoles(k.ws, { ...cfg.roles, 'koe-realtime': { models: [et, plain], level: 'off' } }, { koeMode: 'realtime' });
+  assert.equal(await syncProviders({ ws: k.ws }, [was]), 1);
+  assert.deepEqual((await readConfig(k.ws)).roles['koe-realtime'].models, [et, plain], 'the old description still names it');
+  assert.equal(await syncProviders({ ws: k.ws }, [next]), 1);
+  assert.deepEqual((await readConfig(k.ws)).roles['koe-realtime'].models, [plain]);
+  await setKey(k.store, id, null);
 });
 
 test('a model leaves Koe · Realtime only at the update that dropped it: put back by the user, its kept record stays through the next update', async () => {
