@@ -1414,7 +1414,7 @@ export class Live {
     this.#odo = r?.odo ?? null;
     if (!this.on) return;
     this.#stateAt = r?.at ?? now; // the beats go on as if the page had not been away
-    if (!r || r.activity === 'unknown') return;
+    if (!r || r.activity === 'unknown') { this.#hushed = r?.hushed === true && now - r.at < SAME_DRIVE_MS; return; } // a voice-off kept inside a silent end's 30 s
     // A drive's end not yet told to voice is told whatever the record's age (a page killed in the hold has not said it): on time when it is still ahead, else at the first good fix.
     if (typeof r.due === 'number') {
       this.#voiceLapse = r.due;
