@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { planRows } from '../../src/core/plan.js';
 import { upcoming, routeStrip, sunPlace } from '../../src/core/now.js';
+import { todayOf, nowOf } from '../../src/ui/today.js';
+import { dayIn, deviceZone } from '../../src/core/time.js';
 import { at, iso, LA, BIXBY, NEPENTHE, RIVER_INN } from './live-kit.js';
 
 const ROWS = planRows([
@@ -44,4 +46,15 @@ test("an end with no offset and no zone of its own is read on the start's zone, 
   const rows = planRows([{ path: '/plan/x.json', item: { id: 'x', title: 'Walk', fixed: false, start: { at: iso('09:45'), tz: LA }, end: { at: iso('10:30').slice(0, 16) } } }], [], { fallbackTz: LA });
   assert.deepEqual(ids(upcoming(rows, at('10:20'))), ['x']);
   assert.deepEqual(ids(upcoming(rows, at('10:31'))), []);
+});
+
+test("today is live mode's: a simulation's clock and zone while one runs, so the Itinerary's today follows it", () => {
+  const sim = { clock: { now: () => Date.parse('2030-11-27T07:30:00Z') }, timeZone: () => LA };
+  assert.equal(nowOf(sim), Date.parse('2030-11-27T07:30:00Z'));
+  assert.equal(todayOf(sim), '2030-11-26'); // still the evening before, where the simulation is
+  assert.equal(todayOf({ ...sim, timeZone: () => 'Asia/Tokyo' }), '2030-11-27');
+});
+
+test('today without live mode is the phone\'s own', () => {
+  assert.equal(todayOf(undefined), dayIn(Date.now(), deviceZone()));
 });

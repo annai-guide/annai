@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { keepAwake } from '../../src/ui/wake-lock.js';
 import { liveText, knownFix } from '../../src/ui/live-chip.js';
-import { whereWords } from '../../src/ui/screens/now.js';
+import { whereWords } from '../../src/ui/today.js';
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes } from '../../src/core/scopes.js';

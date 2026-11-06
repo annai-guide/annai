@@ -180,14 +180,14 @@ To change what a chip or a section shows, keep the element it was given and chan
 
 - **Slots,** `annai.ui.slot(slot, item)`; every item has an `id` (lowercase letters, digits and dashes):
   - `'status-chip'`, `{ id, render(el, ui) }`: a chip in the dock's row of chips, after the voice and live chips.
-  - `'now-section'`, `{ id, title, render(el, ui) }`: a section of the Now card, after its chips.
+  - `'now-section'`, `{ id, title, render(el, ui) }`: a section of the Now card, after its chips; drawn at the top of the Itinerary's today too, with the same arguments.
   - `'dock-action'`, `{ id, label, icon, run(ui) }`: a button in the dock after Type; `icon` is 1 or 2 characters, `label` its name.
   - `'trip-tab'`, `{ id, title, render(el, ui, { trip }) }`: a button on a trip's page, after Replay, opening a page of yours for that trip.
   - `'settings-page'`, `{ id, title, render(el, ui) }`: a page listed under Settings → From plugins and on your plugin's page.
 - **Card types,** `annai.ui.cardType({ type, name, description, schema?, render(data, el, ui) })`: a kind of card Shiori can show. Her `show` tool gains `type` and `data`, and its description lists your type with its description; `data` must pass `schema` when you give one, or Shiori is told why. The card's label reads "SHIORI · <NAME>". A card of your type shown while your plugin is off shows its title and text.
 - **Components,** `annai.ui.component(name, impl)`. A component is a name with one owner, annai's own until the user chooses yours: declare it in `replaces`, and your install screen asks ("It replaces how Shiori looks from annai"); without it, your plugin's page says Not used, with a switch. annai's own is used when yours fails:
   - `'avatar'`, `{ create({ size }) }` returning `{ el, setState(state), setLevel(0..1, who), glance(dx, dy), blink() }` (spec §16.3).
-  - `'now-card'`, `{ render(el, ui, { title, place, chips, liveOn }) }`: the top of the Now card.
+  - `'now-card'`, `{ render(el, ui, { title, place, chips, liveOn }) }`: the top of the Now card; drawn at the top of the Itinerary's today too, with the same arguments.
   - `'dock'`, `{ create(ui) }` returning `{ el }`: the whole dock.
   - `'plan-row'`, `{ render(li, row, ui) }` with `row = { trip, path, when, title, fixed, place, kind }`: one row of the Itinerary's and Now's timetables. A row is a plan item, or a booking no plan item stands for on that day: then `kind` is `'booking'`, `path` the booking's (`/bookings/…`), and `title` the words annai shows ("Check in · Hotel Aurora Test"); a stay's check-in and check-out are two rows with the same `path`. The quiet night lines of a stay are annai's own, never passed to a plan-row.
 - **Screens,** `annai.ui.screen({ id, title, render(el, ui), tab?, homeFor? })`: a page at `#/ext/<your id>/<screen id>`. `tab: true` adds it to the top bar; `homeFor: 'walking'` (or `'still'`, `'moving-fast'`) makes Now hand over to it when live mode says that activity starts, as it hands over to Driving.

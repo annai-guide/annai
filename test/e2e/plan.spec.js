@@ -182,6 +182,71 @@ test('an old unverified booking says Check this; a new one with an unsure seat s
   await expect(page.getByRole('heading', { name: 'New with a seat' })).toBeVisible();
 });
 
+// Noon UTC is the same calendar day everywhere from Honolulu to Tokyo, so the test's own clock fixes "today".
+const NOON = new Date('2030-11-27T12:00:00Z');
+const HAPPENING = {
+  patch: { '/trip.json': { start: '2030-11-26', end: '2030-11-28' } },
+  write: {
+    '/plan/bridge.json': { id: 'bridge', title: 'Testville Bridge', fixed: false, start: { at: '2030-11-27T13:00:00Z', tz: 'UTC' }, place: { name: 'Testville Bridge', lat: 36.3715, lng: -121.9017 } },
+    '/plan/lunch.json': { id: 'lunch', title: 'Lunch at Hotel Aurora Test', fixed: true, start: { at: '2030-11-27T15:00:00Z', tz: 'UTC' }, place: { name: 'Hotel Aurora Test', lat: 36.2213, lng: -121.7567 } },
+  },
+};
+
+test("today's tab of a trip happening now starts with where you are and Driving; another day's doesn't", async ({ page }) => {
+  await page.clock.setFixedTime(NOON);
+  await openApp(page);
+  const trip = await startTrip(page, 'Testville');
+  await records(page, trip, HAPPENING);
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
+  await expect(page.locator('.today-top .now-place')).toBeVisible();
+  await expect(page.locator('.today-top').getByRole('link', { name: 'Driving' })).toBeVisible();
+  await page.getByRole('tab').first().click(); // yesterday
+  await expect(page.locator('.today-top')).toBeHidden();
+  await page.getByRole('tab').nth(1).click(); // back on today
+  await expect(page.locator('.today-top .now-place')).toBeVisible();
+});
+
+test("today's top keeps up after its tab is left and come back to", async ({ page, context }) => {
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation({ latitude: 36.3715, longitude: -121.9017, accuracy: 10 });
+  await page.clock.install({ time: NOON });
+  await openApp(page);
+  const trip = await startTrip(page, 'Testville');
+  await records(page, trip, HAPPENING);
+  await page.reload(); // written outside the app's own files layer: live mode reads the plan again as it starts
+  await expect(page.locator('main.view > *')).toBeVisible();
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
+  await page.locator('.live-chip').click();
+  await expect(page.locator('.today-top .now-place')).toHaveText('At Testville Bridge');
+  await page.getByRole('tab').first().click();
+  await context.setGeolocation({ latitude: 36.2213, longitude: -121.7567, accuracy: 10 });
+  await page.clock.fastForward(5000);
+  await page.getByRole('tab').nth(1).click();
+  await expect(page.locator('.today-top .now-place')).toHaveText('At Hotel Aurora Test');
+});
+
+test("another trip's today has where you are but no Driving, which shows the open trip", async ({ page }) => {
+  await page.clock.setFixedTime(NOON);
+  await openApp(page);
+  const trip = await startTrip(page, 'Testville');
+  await records(page, trip, HAPPENING);
+  await page.goto('/#/trips');
+  await startTrip(page, 'Second Testville');
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
+  await expect(page.locator('.today-top .now-place')).toBeVisible();
+  await expect(page.locator('.today-top').getByRole('link', { name: 'Driving' })).toHaveCount(0);
+});
+
+test('a trip that ended has no today top', async ({ page }) => {
+  await page.clock.setFixedTime(NOON);
+  await openApp(page);
+  const trip = await startTrip(page, 'Testville');
+  await records(page, trip, { patch: { '/trip.json': { start: '2030-11-20', end: '2030-11-22' } }, write: { '/plan/tea.json': { id: 'tea', title: 'Tea', fixed: false, start: { at: '2030-11-21T13:00:00Z', tz: 'UTC' } } } });
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
+  await expect(page.getByRole('tab').first()).toBeVisible();
+  await expect(page.locator('.today-top')).toHaveCount(0);
+});
+
 test('the Plan with nothing in it, and with no trip open', async ({ page }) => {
   await openApp(page);
   await page.goto('/#/plan');

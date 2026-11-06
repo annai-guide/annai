@@ -6,7 +6,8 @@ import { readAppSettings } from '../../core/settings.js';
 import { distance, duration, sentenceGap, sentences, speaksScreens } from '../format.js';
 import { knownFix } from '../live-chip.js';
 import { PLAN_FILE } from '../../core/plan.js';
-import { latestCard, eventCard, nowOf } from './now.js';
+import { latestCard, eventCard } from './now.js';
+import { nowOf } from '../today.js';
 
 /** Big quick-ask buttons (spec §16.2): what each says to Shiori, as the user's own words. @param {boolean} speaks @param {{ name: string } | undefined} next */
 const quickAsks = (speaks, next) => [

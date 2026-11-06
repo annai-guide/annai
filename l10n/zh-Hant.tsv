@@ -1587,35 +1587,35 @@ iy42pb	ok	check	待核對	src/ui/screens/booking.js:153	context: a detail to che
 1a6z1m2	draft	Itinerary	行程	src/ui/screens/booking.js:166	
 d0tqtj	ok	The original, {0}, isn't in the trip.	原件 {0} 不在這個旅行中。	src/ui/screens/booking.js:188	{0} = name
 98drsx	ok	Open the original	開啟原件	src/ui/screens/booking.js:193	
-19jra30	ok	What is around us right now that is worth knowing about?	我們附近現在有什麼值得了解的嗎？	src/ui/screens/drive.js:13	Note: What the user says to Shiori with a tap, as their own words.
-sqqsfd	ok	What's around here?	附近有什麼？	src/ui/screens/drive.js:13	
-1gkqhnt	ok	Food	吃飯	src/ui/screens/drive.js:14	
-1hv457u	ok	Where can we eat along the way?	沿途哪裡可以吃飯？	src/ui/screens/drive.js:14	
-112axt9	ok	Fuel	加油	src/ui/screens/drive.js:15	
-1c79d90	ok	Where is the next fuel station or charger?	下一個加油站或充電站在哪裡？	src/ui/screens/drive.js:15	
-1d8ka8b	ok	Where is the nearest restroom?	最近的洗手間在哪裡？	src/ui/screens/drive.js:16	
-iw9ebk	ok	Restroom	洗手間	src/ui/screens/drive.js:16	
-14k2tsa	ok	How long?	還要多久？	src/ui/screens/drive.js:17	
-18wvy25	ok	How long until our next stop?	到下一站還要多久？	src/ui/screens/drive.js:17	
-1r191hj	ok	How long until we reach {0}?	到{0}還要多久？	src/ui/screens/drive.js:17	{0} = next.name
-1xb4fg	ok	about {0}	約{0}	src/ui/screens/drive.js:21	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000)
-12d1x1g	draft	An itinerary place	行程中的地點	src/ui/screens/drive.js:34	
-7quqpk	ok	Go to Trips	前往「旅行」	src/ui/screens/drive.js:51	
-ov2ou9	ok	Open a trip to see the road ahead.	開啟一個旅行即可檢視前方的路。	src/ui/screens/drive.js:51	
-sxc7mr	ok	The road ahead	前方的路	src/ui/screens/drive.js:57	
-1b4mdx5	ok	You (finding where)	你（正在定位）	src/ui/screens/drive.js:69	
-1efd4xo	ok	You	你	src/ui/screens/drive.js:69	
-591tvw	ok	You (GPS off)	你（GPS 已關閉）	src/ui/screens/drive.js:69	
-ugf9pe	ok	at {0}	預定{0}	src/ui/screens/drive.js:72	{0} = s.row.time; Note: A stop's time on the plan, on the road ahead ("at 14:00").
-102oezx	ok	Nothing more is planned with a place.	之後沒有帶地點的安排了。	src/ui/screens/drive.js:73	
-l329ve	ok	Directions to {0}	前往{0}的路線	src/ui/screens/drive.js:76	{0} = next.name
-kb2apf	ok	annai hasn't downloaded its maps links yet; it needs to be online once.	annai 還沒有下載地圖連結；需要連網一次。	src/ui/screens/drive.js:79	
-1tuqp1	ok	Asked Shiori: {0}	已問 Shiori：{0}	src/ui/screens/drive.js:84	{0} = text
-ah9gez	ok	Turn GPS on	開啟 GPS	src/ui/screens/drive.js:87	Note: 開啟, as "你開啟了 GPS" and the chip's GPS 開啟.
-14ltb7u	draft	The itinerary has no places to choose from yet.	行程裡還沒有可選的地點。	src/ui/screens/drive.js:90	English was: The plan has no places to choose from yet.
-1sedy1m	ok	Where are you?	你在哪裡？	src/ui/screens/drive.js:90	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
-1w8zbso	ok	annai now knows you're at {0}.	annai 現在知道你在{0}。	src/ui/screens/drive.js:95	{0} = p.name
-12mubvb	ok	Now	此刻	src/ui/screens/drive.js:127	
+19jra30	ok	What is around us right now that is worth knowing about?	我們附近現在有什麼值得了解的嗎？	src/ui/screens/drive.js:14	Note: What the user says to Shiori with a tap, as their own words.
+sqqsfd	ok	What's around here?	附近有什麼？	src/ui/screens/drive.js:14	
+1gkqhnt	ok	Food	吃飯	src/ui/screens/drive.js:15	
+1hv457u	ok	Where can we eat along the way?	沿途哪裡可以吃飯？	src/ui/screens/drive.js:15	
+112axt9	ok	Fuel	加油	src/ui/screens/drive.js:16	
+1c79d90	ok	Where is the next fuel station or charger?	下一個加油站或充電站在哪裡？	src/ui/screens/drive.js:16	
+1d8ka8b	ok	Where is the nearest restroom?	最近的洗手間在哪裡？	src/ui/screens/drive.js:17	
+iw9ebk	ok	Restroom	洗手間	src/ui/screens/drive.js:17	
+14k2tsa	ok	How long?	還要多久？	src/ui/screens/drive.js:18	
+18wvy25	ok	How long until our next stop?	到下一站還要多久？	src/ui/screens/drive.js:18	
+1r191hj	ok	How long until we reach {0}?	到{0}還要多久？	src/ui/screens/drive.js:18	{0} = next.name
+1xb4fg	ok	about {0}	約{0}	src/ui/screens/drive.js:22	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000)
+12d1x1g	draft	An itinerary place	行程中的地點	src/ui/screens/drive.js:35	
+7quqpk	ok	Go to Trips	前往「旅行」	src/ui/screens/drive.js:52	
+ov2ou9	ok	Open a trip to see the road ahead.	開啟一個旅行即可檢視前方的路。	src/ui/screens/drive.js:52	
+sxc7mr	ok	The road ahead	前方的路	src/ui/screens/drive.js:58	
+1b4mdx5	ok	You (finding where)	你（正在定位）	src/ui/screens/drive.js:70	
+1efd4xo	ok	You	你	src/ui/screens/drive.js:70	
+591tvw	ok	You (GPS off)	你（GPS 已關閉）	src/ui/screens/drive.js:70	
+ugf9pe	ok	at {0}	預定{0}	src/ui/screens/drive.js:73	{0} = s.row.time; Note: A stop's time on the plan, on the road ahead ("at 14:00").
+102oezx	ok	Nothing more is planned with a place.	之後沒有帶地點的安排了。	src/ui/screens/drive.js:74	
+l329ve	ok	Directions to {0}	前往{0}的路線	src/ui/screens/drive.js:77	{0} = next.name
+kb2apf	ok	annai hasn't downloaded its maps links yet; it needs to be online once.	annai 還沒有下載地圖連結；需要連網一次。	src/ui/screens/drive.js:80	
+1tuqp1	ok	Asked Shiori: {0}	已問 Shiori：{0}	src/ui/screens/drive.js:85	{0} = text
+ah9gez	ok	Turn GPS on	開啟 GPS	src/ui/screens/drive.js:88	Note: 開啟, as "你開啟了 GPS" and the chip's GPS 開啟.
+14ltb7u	draft	The itinerary has no places to choose from yet.	行程裡還沒有可選的地點。	src/ui/screens/drive.js:91	English was: The plan has no places to choose from yet.
+1sedy1m	ok	Where are you?	你在哪裡？	src/ui/screens/drive.js:91	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
+1w8zbso	ok	annai now knows you're at {0}.	annai 現在知道你在{0}。	src/ui/screens/drive.js:96	{0} = p.name
+12mubvb	ok	Now	此刻	src/ui/screens/drive.js:128	
 amdsnu	ok	Swipe sideways to move between tabs	橫向滑動切換分頁	src/ui/screens/experimental.js:14	
 1py6vf8	ok	Unfinished translations	未完成的翻譯	src/ui/screens/experimental.js:19	
 13a0vz9	ok	Features that are still being tried. They may have bugs, and their fixes may come slower than the rest of annai.	仍在試驗中的功能。它們可能有錯誤，修復也可能比 annai 的其他部分慢。	src/ui/screens/experimental.js:25	
@@ -1874,43 +1874,38 @@ u3pgdz	ok	annai encrypts every reminder on this phone, and makes each the same s
 1cg5akv	ok	Each reminder is deleted at the relay once it is sent, or when you cancel it, turn notifications off, or remove its trip.	每則提醒在傳送後，或在你取消它、關閉通知、移除其旅行時，會從中繼刪除。	src/ui/screens/notifications.js:157	
 1iz3xsa	ok	With annai open on screen, annai says a reminder itself, and the relay's copy is called off: you never get it twice.	annai 在螢幕上開啟時，會自己說出提醒，中繼那份會被取消：你永遠不會收到兩次。	src/ui/screens/notifications.js:158	
 qkddms	ok	Every request to the relay is in Trace, under System · This device.	送往中繼的每個請求都在記錄中的「系統 · 這台裝置」下。	src/ui/screens/notifications.js:159	Note: The Trace's own list name, "System · {0}" with the scope "This device" (這台裝置).
-1tbrgfp	ok	Open a trip to see where you are and what is next.	開啟一個旅行即可檢視你在哪裡、接下來做什麼。	src/ui/screens/now.js:29	
-15h0umr	ok	Next	接下來	src/ui/screens/now.js:81	context: coming up; Note: The heading over what is planned next on Now, not the welcome's Next button.
-1m0ri7	ok	Nothing more is planned.	之後沒有安排了。	src/ui/screens/now.js:83	
-1oi7u22	draft	The whole itinerary	完整行程	src/ui/screens/now.js:84	
-11lm89y	ok	Latest	最新	src/ui/screens/now.js:86	
-1tzspvr	ok	GPS is off, so annai isn't following where you are.	GPS 已關閉，因此 annai 不會追蹤你的位置。	src/ui/screens/now.js:127	
-1sflilm	draft	Location isn't allowed for annai. Open Driving to say where you are.	annai 未獲允許使用位置資訊。請開啟「駕駛中」，告訴它你在哪裡。	src/ui/screens/now.js:130	
-1770v5g	ok	Finding where you are…	正在確定你的位置…	src/ui/screens/now.js:131	
-vlhm27	draft	No GPS signal right now. Open Driving to say where you are.	現在沒有 GPS 訊號。請開啟「駕駛中」，告訴它你在哪裡。	src/ui/screens/now.js:131	
-ue501f	ok	Near {0}, ≈ {1}	{0}附近，≈ {1}	src/ui/screens/now.js:134	{0} = near.name; {1} = distance(near.m / 1000)
-1fw5x21	ok	Fixed:	固定：	src/ui/screens/now.js:145	Note: Read aloud before a plan item that keeps its time.
-tdmj58	ok	Flexible:	可調整：	src/ui/screens/now.js:145	Note: Read aloud before a plan item whose time can move.
-16ocoht	ok	Show what she said	檢視她說的話	src/ui/screens/now.js:169	
-1yj7glf	ok	Said aloud	已朗讀	src/ui/screens/now.js:170	
+1tbrgfp	ok	Open a trip to see where you are and what is next.	開啟一個旅行即可檢視你在哪裡、接下來做什麼。	src/ui/screens/now.js:25	
+15h0umr	ok	Next	接下來	src/ui/screens/now.js:36	context: coming up; Note: The heading over what is planned next on Now, not the welcome's Next button.
+1m0ri7	ok	Nothing more is planned.	之後沒有安排了。	src/ui/screens/now.js:38	
+1oi7u22	draft	The whole itinerary	完整行程	src/ui/screens/now.js:39	
+11lm89y	ok	Latest	最新	src/ui/screens/now.js:41	
+1fw5x21	ok	Fixed:	固定：	src/ui/screens/now.js:88	Note: Read aloud before a plan item that keeps its time.
+tdmj58	ok	Flexible:	可調整：	src/ui/screens/now.js:88	Note: Read aloud before a plan item whose time can move.
+16ocoht	ok	Show what she said	檢視她說的話	src/ui/screens/now.js:112	
+1yj7glf	ok	Said aloud	已朗讀	src/ui/screens/now.js:113	
 tctj7k	draft	Open a trip to see its itinerary.	開啟一個旅行即可檢視其行程。	src/ui/screens/plan.js:24	English was: Open a trip to see its plan.
 ow5t4g	ok	No time yet ({0})	未定時間（{0}）	src/ui/screens/plan.js:38	{0} = num(untimed.length)
-u71m40	ok	Nothing planned this day.	這一天沒有安排。	src/ui/screens/plan.js:48	
-g3ei4k	draft	Saved the itinerary.	已儲存行程。	src/ui/screens/plan.js:58	English was: Saved the plan.
-g48b3l#other	ok	# items have no time yet, so they aren't in it.	有 # 項還沒有時間，因此未包含在內。	src/ui/screens/plan.js:58	plural; # = left; English: "# item has no time yet, so it isn't in it." (one), "# items have no time yet, so they aren't in it." (other)
-foy2yl	ok	Add to calendar	新增到行事曆	src/ui/screens/plan.js:60	
-1ot147o#other	ok	# booking files	# 個預訂檔案	src/ui/screens/plan.js:63	plural; # = bookings.broken; English: "# booking file" (one), "# booking files" (other)
-3rvc64#other	draft	# itinerary files	# 個行程檔案	src/ui/screens/plan.js:63	plural; # = plan.broken; English: "# itinerary file" (one), "# itinerary files" (other)
-1rs1ez2	ok	Not on a day	不限日期	src/ui/screens/plan.js:68	Note: Taiwan wording; a heading above the day tabs, for bookings with no day of their own (a pass for the whole trip).
-pxfr8q	ok	Days	日期	src/ui/screens/plan.js:71	
-86s9x3	draft	No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.	還沒有行程。請 Shiori 和你一起規劃，或把行事曆檔案（.ics）新增到旅行中。	src/ui/screens/plan.js:72	English was: No plan yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.; Note: "Ask" here is asking Shiori, not the permission setting's Ask.
-1uxsg1z	ok	{0} couldn't be read. Open the trip's files to fix them.	{0}無法讀取。請開啟旅行的檔案進行修復。	src/ui/screens/plan.js:73	{0} = unread
-sdcje2	ok	{0} couldn't be read. Open the trip's files to fix it.	{0}無法讀取。請開啟旅行的檔案進行修復。	src/ui/screens/plan.js:73	{0} = unread
-1gmgpvl	ok	Check this	請核對	src/ui/screens/plan.js:129	
-wioqt8#other	ok	Check # details	請核對#項	src/ui/screens/plan.js:131	plural; # = r.checkFields.length; English: "Check # detail" (one), "Check # details" (other); Note: Taiwan wording; how many of a booking's details Shiori is unsure of; 請核對 as the Check this chip.
-1ropcog	ok	Booking missing	缺少預訂	src/ui/screens/plan.js:132	
-1u7blsq	draft	Shiori added this to the itinerary. Remove it?	這是 Shiori 新增到行程的。要移除嗎？	src/ui/screens/plan.js:149	English was: Shiori added this to the plan. Remove it?
-kmmqyh	draft	Undone: {0} is off the itinerary.	已復原：{0}已從行程中移除。	src/ui/screens/plan.js:151	{0} = title; English was: Undone: {0} is off the plan.
-19uog97	ok	Added by Shiori · Undo	Shiori 新增 · 復原	src/ui/screens/plan.js:154	
-1j6c9nb	ok	Undone: {0} is back as it was before Shiori changed it.	已復原：{0}已恢復到 Shiori 修改之前的樣子。	src/ui/screens/plan.js:160	{0} = title
-1qeof2p	ok	Changed by Shiori · Undo	Shiori 修改 · 復原	src/ui/screens/plan.js:163	
-pgaz5s	ok	≈ {0} apart	相距 ≈ {0}	src/ui/screens/plan.js:174	{0} = distance(km)
-1gjwkfv	ok	Directions	路線	src/ui/screens/plan.js:175	
+u71m40	ok	Nothing planned this day.	這一天沒有安排。	src/ui/screens/plan.js:56	
+g3ei4k	draft	Saved the itinerary.	已儲存行程。	src/ui/screens/plan.js:66	English was: Saved the plan.
+g48b3l#other	ok	# items have no time yet, so they aren't in it.	有 # 項還沒有時間，因此未包含在內。	src/ui/screens/plan.js:66	plural; # = left; English: "# item has no time yet, so it isn't in it." (one), "# items have no time yet, so they aren't in it." (other)
+foy2yl	ok	Add to calendar	新增到行事曆	src/ui/screens/plan.js:68	
+1ot147o#other	ok	# booking files	# 個預訂檔案	src/ui/screens/plan.js:71	plural; # = bookings.broken; English: "# booking file" (one), "# booking files" (other)
+3rvc64#other	draft	# itinerary files	# 個行程檔案	src/ui/screens/plan.js:71	plural; # = plan.broken; English: "# itinerary file" (one), "# itinerary files" (other)
+1rs1ez2	ok	Not on a day	不限日期	src/ui/screens/plan.js:76	Note: Taiwan wording; a heading above the day tabs, for bookings with no day of their own (a pass for the whole trip).
+pxfr8q	ok	Days	日期	src/ui/screens/plan.js:79	
+86s9x3	draft	No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.	還沒有行程。請 Shiori 和你一起規劃，或把行事曆檔案（.ics）新增到旅行中。	src/ui/screens/plan.js:82	English was: No plan yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.; Note: "Ask" here is asking Shiori, not the permission setting's Ask.
+1uxsg1z	ok	{0} couldn't be read. Open the trip's files to fix them.	{0}無法讀取。請開啟旅行的檔案進行修復。	src/ui/screens/plan.js:83	{0} = unread
+sdcje2	ok	{0} couldn't be read. Open the trip's files to fix it.	{0}無法讀取。請開啟旅行的檔案進行修復。	src/ui/screens/plan.js:83	{0} = unread
+1gmgpvl	ok	Check this	請核對	src/ui/screens/plan.js:139	
+wioqt8#other	ok	Check # details	請核對#項	src/ui/screens/plan.js:141	plural; # = r.checkFields.length; English: "Check # detail" (one), "Check # details" (other); Note: Taiwan wording; how many of a booking's details Shiori is unsure of; 請核對 as the Check this chip.
+1ropcog	ok	Booking missing	缺少預訂	src/ui/screens/plan.js:142	
+1u7blsq	draft	Shiori added this to the itinerary. Remove it?	這是 Shiori 新增到行程的。要移除嗎？	src/ui/screens/plan.js:159	English was: Shiori added this to the plan. Remove it?
+kmmqyh	draft	Undone: {0} is off the itinerary.	已復原：{0}已從行程中移除。	src/ui/screens/plan.js:161	{0} = title; English was: Undone: {0} is off the plan.
+19uog97	ok	Added by Shiori · Undo	Shiori 新增 · 復原	src/ui/screens/plan.js:164	
+1j6c9nb	ok	Undone: {0} is back as it was before Shiori changed it.	已復原：{0}已恢復到 Shiori 修改之前的樣子。	src/ui/screens/plan.js:170	{0} = title
+1qeof2p	ok	Changed by Shiori · Undo	Shiori 修改 · 復原	src/ui/screens/plan.js:173	
+pgaz5s	ok	≈ {0} apart	相距 ≈ {0}	src/ui/screens/plan.js:184	{0} = distance(km)
+1gjwkfv	ok	Directions	路線	src/ui/screens/plan.js:185	
 1a9dl1b	ok	This plugin gets full access to your trips and API keys.	此外掛程式可以完全存取你的旅行和 API 金鑰。	src/ui/screens/plugin-install.js:16	
 h65i2c	ok	It can read every key saved in annai and send it anywhere: now your keys for {0}.	它能讀取 annai 中儲存的每個金鑰，並傳送到任何地方：目前有你的 {0} 金鑰。	src/ui/screens/plugin-install.js:43	{0} = list(names)
 7jgsq6	ok	It can read every key saved in annai and send it anywhere.	它能讀取 annai 中儲存的每個金鑰，並傳送到任何地方。	src/ui/screens/plugin-install.js:44	
@@ -2743,6 +2738,11 @@ q69pp5	ok	{0} didn't answer: {1}. No other model was asked.	{0}沒有回答：{1
 1cam7ic	ok	Message	訊息	src/ui/talk-panel.js:74	
 vy4apn	ok	Try this model	試用這個模型	src/ui/talk-panel.js:75	
 1k3coi2	ok	A short conversation with this model alone: if it fails, no other model answers. Each reply shows its tokens and cost. Nothing is kept but the Trace.	只和這個模型的簡短對話：失敗時不會有其他模型回答。每則回覆都會顯示 token 數和費用。除了記錄，什麼都不保留。	src/ui/talk-panel.js:77	
+1tzspvr	ok	GPS is off, so annai isn't following where you are.	GPS 已關閉，因此 annai 不會追蹤你的位置。	src/ui/today.js:17	
+1sflilm	draft	Location isn't allowed for annai. Open Driving to say where you are.	annai 未獲允許使用位置資訊。請開啟「駕駛中」，告訴它你在哪裡。	src/ui/today.js:20	
+1770v5g	ok	Finding where you are…	正在確定你的位置…	src/ui/today.js:21	
+vlhm27	draft	No GPS signal right now. Open Driving to say where you are.	現在沒有 GPS 訊號。請開啟「駕駛中」，告訴它你在哪裡。	src/ui/today.js:21	
+ue501f	ok	Near {0}, ≈ {1}	{0}附近，≈ {1}	src/ui/today.js:24	{0} = near.name; {1} = distance(near.m / 1000)
 1sva5r0	ok	The check took too long. Check the connection, and try again.	檢查耗時過久。請檢查網路連線，然後重試。	src/ui/updates.js:122	
 14d6ut8	ok	annai's offline service hasn't started yet, so annai itself wasn't checked. Try again in a moment.	annai 的離線服務尚未啟動，因此沒有檢查 annai 本身。請稍後重試。	src/ui/updates.js:140	
 16l98jx	ok	annai couldn't check for a new version of itself. Check the connection and try again.	annai 無法檢查自身的新版本。請檢查網路連線，然後重試。	src/ui/updates.js:141	

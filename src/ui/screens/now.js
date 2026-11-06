@@ -1,19 +1,15 @@
 import { h, t, tc } from '../dom.js';
 import { reminderParts } from './talk.js';
-import { upcoming, sunPlace } from '../../core/now.js';
-import { sunChips } from '../../core/sun.js';
+import { upcoming } from '../../core/now.js';
 import { storedTexts } from '../../core/agent/log.js';
 import { readAppSettings } from '../../core/settings.js';
 import { shownSettings } from '../../core/shown.js';
 import { shownCard, cardWho } from '../cards.js';
-import { liveText, knownFix } from '../live-chip.js';
 import { tripRows } from '../trip-rows.js';
-import { detailsHref, rowName, distance, wording, sentenceGap } from '../format.js';
+import { detailsHref, rowName, wording, sentenceGap } from '../format.js';
 import { packLine } from '../offline-pack.js';
 import { component, mount, slotEntries } from '../slots.js';
-
-/** Now, by live mode's own clock: a simulation's while one runs (spec §13). @param {any} live */
-export const nowOf = (live) => live?.clock?.now() ?? Date.now();
+import { nowOf, todayTop, handover } from '../today.js';
 
 /**
  * Now (spec §16.2), the home screen during a trip: where you are, golden hour and other chips, the
@@ -30,73 +26,33 @@ export async function renderNow(ctx) {
   }
   const { scope, tz, rows } = await tripRows(ctx, id);
   const live = ctx.live;
-  const place = h('p', { class: 'now-place' });
-  const chips = h('div', { class: 'chips' });
-  const start = h('div', { class: 'acts' });
-  const draw = () => {
-    const now = nowOf(live);
-    place.textContent = whereWords(live);
-    const sunAt = sunPlace(live ? knownFix(live, now) : null, rows, now);
-    const words = [live ? liveText(live) : null, ...(sunAt ? sunChips(now, sunAt.lat, sunAt.lng, tz) : []), live && !live.online ? t`Offline · reminders still work` : null];
-    chips.replaceChildren(...words.filter(Boolean).map((w) => h('span', { class: 'chip', text: String(w) })));
-    start.replaceChildren(...(live && !live.on ? [h('button', { class: 'btn pri', type: 'button', onclick: () => live.setLive(true) }, t`Turn GPS on`)] : []));
-  };
-  draw();
-  // Hands over when moving fast begins while Now is on screen (or to a plugin's screen for its
-  // activity): not on every fix of a drive already going, so "← Now" stays on Now.
-  let was = live?.activity;
-  const off = live?.onChange(() => {
-    if (!place.isConnected && !top.isConnected) {
-      off?.();
-      return;
-    }
-    draw();
-    const to = handover(live.activity, was, slotEntries(ctx, 'ui:screen'));
-    was = live.activity;
-    if (to && live.on && location.hash.startsWith('#/now')) ctx.go(to);
-  });
   const next = upcoming(rows, nowOf(live), 4);
   const latest = await latestCard(ctx, id);
   const title = String(scope?.title ?? t`Now`);
-  // A plugin may draw the Now card's top itself (spec §16.4: now-card); annai's own when there is none.
-  const card = component(ctx, 'now-card');
-  const top = h('div', { class: 'now-card' });
-  if (card) {
-    const words = [live ? liveText(live) : null, live && !live.online ? t`Offline · reminders still work` : null].filter(Boolean);
-    // When the plugin's Now card fails, annai's own is drawn.
-    mount(ctx, card, top, (ui) => card.item.render(top, ui, { title, place: whereWords(live), chips: words, liveOn: Boolean(live?.on) }), {
-      what: 'now-card', onFail: () => { top.hidden = false; top.replaceChildren(place, chips, start); },
-    });
-  } else {
-    top.append(place, chips, start);
-  }
-  const sections = slotEntries(ctx, 'ui:now-section').map((e) => {
-    const el = h('section', { class: 'now-section', 'aria-label': String(e.item.title) });
-    mount(ctx, e, el, (ui) => e.item.render(el, ui), { what: /* en */ `Now section ${e.item.id}` });
-    return el;
-  });
-  return h('div', { class: 'screen now' },
+  const pack = await packLine(ctx, id);
+  const screen = h('div', { class: 'screen now' },
     h('h1', { class: 'title', text: title }),
-    top, ...sections,
+    todayTop(ctx, { title, rows, tz }),
     h('section', { 'aria-label': tc('coming up')`Next` },
       h('h2', { class: 'section', text: tc('coming up')`Next` }),
       next.length ? h('ol', { class: 'timetable' }, ...next.map((r) => planRowOf(ctx, id, r, r.time, () => nowRow(id, r)))) : h('p', { class: 'empty', text: t`Nothing more is planned.` }),
       h('p', {}, h('a', { href: '#/plan' }, t`The whole itinerary`))),
-    await packLine(ctx, id),
+    pack,
     latest ? h('section', { 'aria-label': t`Latest` }, h('h2', { class: 'section', text: t`Latest` }), latest) : null,
     h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/drive' }, t`Driving`)));
-}
-
-/**
- * Where Now hands over to when the activity changes: a running plugin's screen for that activity (the
- * last one registered), else Driving for moving fast, else nowhere.
- * @param {string} activity @param {string | undefined} was @param {{ pluginId: string, item: any }[]} screens @returns {string | null}
- */
-export function handover(activity, was, screens) {
-  if (activity === was) return null;
-  const home = screens.filter((e) => e.item?.homeFor === activity).pop();
-  if (home) return `#/ext/${encodeURIComponent(home.pluginId)}/${encodeURIComponent(home.item.id)}`;
-  return activity === 'moving-fast' ? '#/drive' : null;
+  // Hands over when moving fast begins while Now is on screen (or to a plugin's screen for its
+  // activity): not on every fix of a drive already going, so "← Now" stays on Now.
+  let was = live?.activity;
+  const off = live?.onChange(() => {
+    if (!screen.isConnected) {
+      off?.();
+      return;
+    }
+    const to = handover(live.activity, was, slotEntries(ctx, 'ui:screen'));
+    was = live.activity;
+    if (to && live.on && location.hash.startsWith('#/now')) ctx.go(to);
+  });
+  return screen;
 }
 
 /**
@@ -120,19 +76,6 @@ export function planRowOf(ctx, trip, r, when, own) {
     },
   });
   return instead ?? li;
-}
-
-/** Where the user is, in words for them (Shiori's are in the now block). @param {any} live */
-export function whereWords(live) {
-  if (!live || !live.on) return t`GPS is off, so annai isn't following where you are.`;
-  const f = knownFix(live);
-  if (!f) {
-    if (live.gps === 'denied') return t`Location isn't allowed for annai. Open Driving to say where you are.`;
-    return live.gps === 'unavailable' ? t`No GPS signal right now. Open Driving to say where you are.` : t`Finding where you are…`;
-  }
-  const near = live.near(f);
-  if (near) return near.m < 100 ? t`At ${near.name}` : t`Near ${near.name}, ≈ ${distance(near.m / 1000)}`;
-  return `${f.lat.toFixed(4)}, ${f.lng.toFixed(4)}`;
 }
 
 /** @param {string} id @param {import('../../core/plan.js').PlanRow} r */
