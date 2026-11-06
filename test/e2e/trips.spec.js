@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, buildAndSave, writeEvent, writeRecords, startTrip as startNamed, allFiles, putFile } from './helpers.js';
+import { openApp, buildAndSave, writeEvent, writeRecords, startTrip as startNamed, allFiles, putFile, breakOpen } from './helpers.js';
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
 
@@ -522,6 +522,16 @@ test('with a trip open, Trips has a way back to the conversation outside any tri
   await expect(page.getByText(/No trip is open/)).toBeVisible();
   await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
   await expect(page.getByRole('button', { name: /Shiori, no trip/ })).toHaveCount(0);
+});
+
+test("the way back outside any trip that won't open says so, and Trips stays", async ({ page }) => {
+  await openApp(page);
+  await startNamed(page, 'Kyoto');
+  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  await breakOpen(page);
+  await page.getByRole('button', { name: /Shiori, no trip/ }).click();
+  await expect(page.getByText("That conversation didn't open")).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
 });
 
 test("the folded dates keep their disclosure marker, and their tap is a phone's size", async ({ page }) => {

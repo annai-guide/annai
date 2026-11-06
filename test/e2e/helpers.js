@@ -474,6 +474,26 @@ export async function happeningTrip(page, title) {
   return id;
 }
 
+/** From now on no conversation opens, as when the store fails: the page's own class, as modules are shared. @param {import('@playwright/test').Page} page */
+export async function breakOpen(page) {
+  await page.evaluate(async () => {
+    const { Halves } = await import(/** @type {string} */ ('/src/core/agent/halves.js'));
+    Halves.prototype.open = () => Promise.reject(new Error('The store failed.'));
+  });
+}
+
+/** Keeps the page's agent as window.agent from the next open on, to say what only a microphone could. @param {import('@playwright/test').Page} page */
+export async function catchAgent(page) {
+  await page.evaluate(async () => {
+    const { Halves } = await import(/** @type {string} */ ('/src/core/agent/halves.js'));
+    const open = Halves.prototype.open;
+    Halves.prototype.open = function (/** @type {any[]} */ ...a) {
+      /** @type {any} */ (window).agent = this;
+      return open.apply(this, a);
+    };
+  });
+}
+
 /**
  * What the user said in a trip's log, as the page's store has it. @param {import('@playwright/test').Page} page @param {string} trip
  * @returns {Promise<string[]>}

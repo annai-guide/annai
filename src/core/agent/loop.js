@@ -1637,12 +1637,14 @@ export class Agent {
       if (w.logged) continue;
       if (w.kind === 'heard' && w.heard) {
         await this.#logHeard(w.heard, { wake: wakeId, meanwhile, gate: w.gate }, log);
+        w.logged = true;
         continue;
       }
       if (w.kind !== 'user' && w.kind !== 'choice') continue;
       const { images, blobs } = w.photos?.length ? await this.#userPhotos(w.photos, trip) : { images: [], blobs: [] };
       const handed = { ...(w.handed?.length ? { handed: w.handed } : {}), ...(w.handover ? { handover: w.handover } : {}), ...(w.fromScope ? { from: w.fromScope } : {}) };
       await log({ type: 'msg.user', actor: 'user', data: { wake: wakeId, ...(meanwhile ? { meanwhile: true } : {}), ...(images.length ? { images } : {}), ...(w.claim ? { claim: w.claim } : {}), ...(w.chose ? { chose: true } : {}), ...handed }, texts: [['text', w.text]], blobs });
+      w.logged = true; // a batch that fails later writes this line once
     }
   }
 

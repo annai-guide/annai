@@ -3,7 +3,7 @@ import { listTrips, createTrip, backupState, SYS_WAITING } from '../../core/scop
 import { readNames, shortName } from '../../core/names.js';
 import { waitingFiles, dropWaiting } from '../../core/waiting.js';
 import { filesToRead } from '../../core/handover.js';
-import { askAbout, canAsk } from '../composer.js';
+import { askAbout, canAsk, openOrTell } from '../composer.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { ValidationError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
@@ -62,8 +62,7 @@ function noTrip(ctx) {
     class: 'card no-trip', type: 'button',
     onclick: async () => {
       await updateAppSettings(ctx.ws, { activeTrip: null });
-      await ctx.agent.open(null).catch(() => {});
-      ctx.go('#/talk');
+      if (await openOrTell(ctx, null)) ctx.go('#/talk');
     },
   }, h('span', { class: 'name', text: t`Shiori, no trip` }), h('span', { class: 'sub', text: t`Talk with her outside any trip.` }));
 }

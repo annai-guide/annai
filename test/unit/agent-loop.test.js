@@ -1973,10 +1973,68 @@ test("the trip screen's open failing says so, as Ask Shiori does", async () => {
   /** @type {any[]} */
   const cards = [];
   // The screen is drawn with a DOM, which the unit tests don't have: its open comes first, and that is what is checked.
-  await renderTrip({ ws: k.ws, store: k.store, agent: k.agent, notices: { card: (/** @type {any} */ c) => cards.push(c) } }, { parts: ['trip', road] }).catch(() => {});
+  await renderTrip({ ws: k.ws, store: k.store, agent: k.agent, moved: true, notices: { card: (/** @type {any} */ c) => cards.push(c) } }, { parts: ['trip', road] }).catch(() => {});
   await until(() => cards.length > 0);
   assert.match(cards[0].title, /didn't open/);
   assert.equal(k.agent.target, k.trip, 'the conversation before is still the one open');
+});
+
+test("the trip screen opens a trip when you come to it, never at a redraw: Shiori's move to another trip stays, and a trip that won't open is left alone", async () => {
+  const sleeps = { rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] };
+  const k = await agentKit([sleeps], { halves: true, koe: { type: sleeps } });
+  const road = await createTrip(k.ws, { title: 'Road' });
+  const other = await createTrip(k.ws, { title: 'Other' });
+  await k.agent.open(road);
+  await k.agent.idle();
+  let went = 0;
+  k.agent.on('went', () => { went++; });
+  k.agent.openWhenDone(other);
+  await until(() => went > 0);
+  assert.equal(k.agent.target, other);
+  /** @type {any[]} */
+  const cards = [];
+  const redraw = { ws: k.ws, store: k.store, agent: k.agent, moved: false, notices: { card: (/** @type {any} */ c) => cards.push(c) } };
+  await renderTrip(redraw, { parts: ['trip', road] }).catch(() => {}); // what `went` does on Road's screen
+  await k.agent.idle();
+  assert.equal(k.agent.target, other, 'not bounced back to Road');
+  failOnce(k, road);
+  await renderTrip(redraw, { parts: ['trip', road] }).catch(() => {});
+  await k.agent.idle();
+  assert.deepEqual(cards, []);
+});
+
+/** The write of one line fails, `times` times, as a full store refuses it. @param {any} k @param {string} text @param {number} times */
+function failWrites(k, text, times) {
+  const real = k.store.tx.bind(k.store);
+  let left = times;
+  k.store.tx = (/** @type {any} */ s, /** @type {any} */ m, /** @type {any} */ f) => real(s, m, (/** @type {any} */ t) => f(new Proxy(t, {
+    get: (o, p) => (p !== 'appendEvent' ? (typeof o[p] === 'function' ? o[p].bind(o) : o[p]) : async (/** @type {string} */ scope, /** @type {any} */ ev) => {
+      if (left > 0 && ev.type === 'msg.user' && ev.data?.text === text) {
+        left--;
+        throw Object.assign(new Error('The store is full'), { name: 'QuotaExceededError' });
+      }
+      return o.appendEvent(scope, ev);
+    }),
+  })));
+}
+
+test('lines typed during a failed open, one of whose writes fails too: the good open writes each once', async () => {
+  const k = await agentKit([{ rules: [{ match: '.', reply: say('ok') }] }]);
+  const road = await createTrip(k.ws, { title: 'Road' });
+  failWrites(k, 'Second', 1);
+  /** @type {() => void} */
+  let go = () => {};
+  const reached = failOnce(k, road, new Promise((r) => { go = () => r(undefined); }));
+  const first = k.agent.open(road);
+  await reached;
+  k.agent.send('First');
+  k.agent.send('Second');
+  go();
+  await first.catch(() => {});
+  await k.agent.open(road);
+  await k.agent.idle();
+  const lines = await typed(k, road);
+  assert.deepEqual(lines.toSorted(), ['First', 'Second'], 'the first line isn\'t written again');
 });
 
 test('a failed open with a newer one under way leaves the newer one its target', async () => {

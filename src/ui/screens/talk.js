@@ -17,6 +17,7 @@ import { readNames } from '../../core/names.js';
 import { FILES_ONLY, undoable, undoEverywhere } from '../../core/handover.js';
 import { removeTripNow } from './trip.js';
 import { onTap } from '../dock-hides.js';
+import { openOrTell } from '../composer.js';
 import { lineKind, lineClass, lineLabel, modelWords, kokorosWords } from '../line-kind.js';
 import { NOT_TRANSCRIBED } from '../../core/voice/resolve.js';
 
@@ -621,7 +622,7 @@ function undoLine(ctx, scope, list) {
       ctx.notices.toast(kept ? sentences(said, plural(kept, 'Left # file as you changed it.', 'Left # files as you changed them.')) : said);
       if (!waiting && back.length) {
         await updateAppSettings(ctx.ws, { activeTrip: back[0].id });
-        await ctx.agent.open(back[0].id).catch(() => {});
+        await openOrTell(ctx, back[0].id);
         if (!location.hash.startsWith('#/talk')) ctx.go('#/talk');
         else await ctx.render();
       } else if (waiting || removed.length) ctx.go('#/trips');
