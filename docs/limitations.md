@@ -241,9 +241,3 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** in those 30 s annai can't tell a pull-in from a light, and reading it as a stop would likely fire a false "stops" at a light right after reopening.
 - **Revisit when:** it shows in a drive trace.
 - **Approved:** 2026-11-06, the user picked "Accept for now (Recommended)".
-
-### A reload right after a parked reopening loses a "starts"
-- **Kind:** deferred.
-- **What the user sees:** annai is killed on a drive and reopened parked, then the page reloads or is killed again within the first minute. Driving off within about 5 minutes gets no "starts". Later than that it starts as usual, and the drive's end is told once either way.
-- **Why:** when the old drive ended is held in memory for that minute, so a reload loses it. Carrying it in the saved record is its own change to stored data and needs its own review.
-- **Revisit when:** the next version, with the cleanup release.

@@ -915,6 +915,7 @@ export class Live {
     if (fix.source !== 'manual') {
       this.gps = 'ok';
       const unsure = this.#tracker.unsure;
+      const heldEnd = this.#tracker.heldEnd;
       const c = this.#tracker.feed(fix);
       const fast = (this.#tracker.speed ?? 0) >= FAST_FROM;
       if (c) {
@@ -926,10 +927,9 @@ export class Live {
         this.activity = this.#tracker.activity;
         this.#tellActivity();
       }
-      if (unsure && !this.#tracker.unsure) { // a gap decided: the record is fresh again
-        if (this.#tracker.activity !== 'moving-fast' && this.#tracker.activity !== 'unknown' && this.#voiceLapse === null) this.#hushed = false; // past a bound's end, stopped
-        this.#keepRecord();
-      }
+      const decided = unsure && !this.#tracker.unsure; // a gap decided: the record is fresh again
+      if (decided && this.#tracker.activity !== 'moving-fast' && this.#tracker.activity !== 'unknown' && this.#voiceLapse === null) this.#hushed = false; // past a bound's end, stopped
+      if (decided || heldEnd !== this.#tracker.heldEnd) this.#keepRecord(); // a date the record kept past its hold would lose a reminder at the real stop
       // A late end dies if she is driving: the tracker's speed, else the way from the record's place; with neither, the next good fix says.
       if (this.#late && fix.accuracy <= 100) {
         const speed = this.#tracker.speed ?? (this.#odo ? waySpeed(this.#odo, fix) : null);
@@ -1392,7 +1392,7 @@ export class Live {
   }
 
   /**
-   * The one record a restart reads. activity: the tracker's, so a stale one goes on saying moving fast. due: when a drive's end is still to be told to voice.
+   * The one record a restart reads. activity: the tracker's, so a stale one goes on saying moving fast. heldEnd: the date a stale record's hold will end with. due: when a drive's end is still to be told to voice.
    * at: how old what it says is, so a hold keeps the last evidence's (a fix that moved the odometer is that): reloads can't renew it.
    */
   #keepRecord() {
@@ -1400,7 +1400,7 @@ export class Live {
     const o = this.#odo;
     const now = this.clock.now();
     const at = this.#tracker.holding ? Math.max(this.keep.get()?.at ?? now, o?.at ?? 0) : now;
-    this.keep.set({ at, odometer: round3(this.odometer), odo: o && { lat: o.lat, lng: o.lng, at: o.at, accuracy: o.accuracy }, activity: this.#tracker.activity, ended: this.#fastEnded, due: this.#voiceLapse, hushed: this.#hushed, stale: this.#stale });
+    this.keep.set({ at, odometer: round3(this.odometer), odo: o && { lat: o.lat, lng: o.lng, at: o.at, accuracy: o.accuracy }, activity: this.#tracker.activity, ended: this.#fastEnded, heldEnd: this.#tracker.heldEnd, due: this.#voiceLapse, hushed: this.#hushed, stale: this.#stale });
   }
 
   /**
@@ -1427,13 +1427,13 @@ export class Live {
     const old = now - r.at >= SAME_DRIVE_MS;
     if (r.activity === 'moving-fast' && (old || r.stale)) {
       this.#stale = r.stale ?? 'owed';
-      this.#tracker.restore(r.activity, now, this.#odo, true);
+      this.#tracker.restore(r.activity, now, { from: this.#odo, old: true, heldEnd: typeof r.heldEnd === 'number' ? r.heldEnd : null });
       return;
     }
     if (old) return;
     this.#restored = r.activity;
     this.activity = r.activity;
-    this.#tracker.restore(this.activity, now, this.#odo);
+    this.#tracker.restore(this.activity, now, { from: this.#odo });
     this.#fastEnded = r.ended ?? null; // an end still to tell is in r.due
   }
 

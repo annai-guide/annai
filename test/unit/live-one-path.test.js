@@ -1424,3 +1424,120 @@ for (const way of [2, 4]) {
     assert.equal(once(), 1);
   });
 }
+
+// A hold's date goes with it across a reload: the record carries it, and the same-drive rule doesn't swallow a true "starts"
+
+/**
+ * Killed on the road, reopened parked 12 minutes later at `way` m/s from the record's place, then `again` at `secs` s, on the same spot, and driving off at 183 s.
+ * @param {number} way @param {'reloaded' | 'killed'} again @param {number} secs @param {{ setAt?: number, edit?: (r: any) => void }} [o]
+ */
+async function parkedTwice(way, again, secs, { setAt, edit } = {}) {
+  const { k, stops, starts, y } = await driving();
+  await hide(k);
+  const t = at('09:13');
+  await k.to(t);
+  await k.restart();
+  const before = ends(k);
+  const p = y - LAST + way * 720;
+  /** @type {() => number} */
+  let once = () => 0;
+  let armed = false;
+  /** @type {() => number} */
+  let after = () => 0;
+  let done = false;
+  for (let s = 3; s < 183; s += 5) {
+    if (!done && s > secs) {
+      await k.to(t + secs * 1000);
+      if (again === 'reloaded') await k.reload();
+      else await k.restart();
+      if (edit) { const r = k.keep.get(); edit(r); k.keep.set(r); await k.restart(); }
+      after = ends(k);
+      done = true;
+    }
+    await k.fix(t + s * 1000, north(p), { speed: 0 });
+    if (setAt !== undefined && !armed && s >= setAt) { armed = true; once = await watch(k, 'stop', false); }
+  }
+  const end = await road(k, t + 183_000, p, 60);
+  return { k, stops, starts, told: () => before() + after(), once, end, t };
+}
+
+for (const way of [2, 4]) {
+  for (const again of /** @type {('reloaded' | 'killed')[]} */ (['reloaded', 'killed'])) {
+    for (const secs of [13, 43]) {
+      test(`killed, reopened parked at a way of ${way} m/s, ${again} at ${secs} s, driving off 3 minutes on: told once, one "stops", one "starts"`, async () => {
+        const { stops, starts, told } = await parkedTwice(way, again, secs);
+        assert.deepEqual([told(), stops(), starts()], [1, 1, 1]);
+      });
+
+      test(`a "when I stop" set before the hold's end, killed, reopened at a way of ${way} m/s, ${again} at ${secs} s: not spent at the hold's end, and fires at the real stop`, async () => {
+        const { k, once, end, t } = await parkedTwice(way, again, secs, { setAt: 8 });
+        assert.equal(once(), 0, 'not at the hold end');
+        await k.stay(north(end), t + 183_000 + 90_000, t + 183_000 + 300_000, 5);
+        assert.equal(once(), 1, 'at the real stop');
+      });
+    }
+  }
+}
+
+for (const secs of [13, 43]) {
+  test(`a record with no date of a hold, reloaded at ${secs} s of a parked reopening: as before, one end and one "stops", and the same-drive rule holds "starts"`, async () => {
+    const { stops, starts, told } = await parkedTwice(2, 'reloaded', secs, { edit: (r) => { delete r.heldEnd; } });
+    assert.deepEqual([told(), stops(), starts()], [1, 1, 0]);
+  });
+}
+
+test('a first reading with no speed, then a reload: it has no hold yet and still needs its date, so driving off starts', async () => {
+  const { k, stops, starts, y } = await driving();
+  await hide(k);
+  const t = at('09:13');
+  await k.to(t);
+  await k.restart();
+  const before = ends(k);
+  const p = y - LAST + 2 * 720;
+  await k.fix(t + 3000, north(p), { speed: null, accuracy: 10 });
+  await k.to(t + 13_000);
+  await k.reload();
+  const after = ends(k);
+  await k.stay(north(p), t + 18_000, t + 183_000, 5);
+  await road(k, t + 183_000, p, 60);
+  assert.deepEqual([before() + after(), stops(), starts()], [1, 1, 1]);
+});
+
+test('green in the hold, killed before the next write: the date went with the hold, so a "when I stop" set since fires at the next stop', async () => {
+  const { k, y } = await driving();
+  await hide(k);
+  const t = at('09:13');
+  await k.to(t);
+  await k.restart();
+  const p = y - LAST + 2 * 720;
+  await k.fix(t + 3000, north(p), { speed: 0 });
+  await k.fix(t + 8000, north(p), { speed: SPEED });
+  const once = await watch(k, 'stop', false);
+  assert.equal(k.keep.get().heldEnd, null);
+  await k.to(t + 10_000);
+  await k.restart();
+  await k.stay(north(p + 10), t + 12_000, t + 200_000, 5);
+  assert.equal(once(), 1);
+});
+
+for (const lockSpeed of [14, 2]) {
+  test(`killed, reopened at a light at a way of 2 m/s, a "when I stop" set in the hold, reloaded, locked 6 minutes at ${lockSpeed} m/s, unlocked parked: it fires once at the real stop`, async () => {
+    const { k, y } = await driving();
+    await hide(k);
+    const t = at('09:13');
+    await k.to(t);
+    await k.restart();
+    const p = y - LAST + 2 * 720;
+    for (let s = 3; s < 10; s += 5) await k.fix(t + s * 1000, north(p), { speed: 0 });
+    const once = await watch(k, 'stop', false);
+    await k.to(t + 13_000);
+    await k.reload();
+    for (let s = 18; s < 45; s += 5) await k.fix(t + s * 1000, north(p), { speed: 0 });
+    await hide(k);
+    const t2 = t + 45_000 + 6 * 60_000;
+    await k.to(t2);
+    await show(k);
+    await k.stay(north(p + lockSpeed * 360), t2 + 3000, t2 + 200_000, 5);
+    assert.equal(once(), 1);
+  });
+}

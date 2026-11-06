@@ -405,7 +405,7 @@ test('moving fast across an unlock or a reload, and no reading since that can sa
 
   const place = at(BIXBY, -60);
   const r = new ActivityTracker();
-  r.restore('moving-fast', T0, place);
+  r.restore('moving-fast', T0, { from: place });
   assert.equal(r.due(), T0 + NO_FIX_BACK_MS);
   assert.equal(r.tick(T0 + 120_000), null);
   assert.deepEqual(bare(r.tick(T0 + NO_FIX_BACK_MS)), { from: 'moving-fast', to: 'still', at: T0 + NO_FIX_BACK_MS });
@@ -421,7 +421,7 @@ test('moving fast across an unlock or a reload, and no reading since that can sa
 
   // Only moving fast holds: any other activity reads quiet as before.
   const w = new ActivityTracker();
-  w.restore('walking', T0, place);
+  w.restore('walking', T0, { from: place });
   assert.equal(w.due(), T0 + QUIET_STILL_MS);
   assert.equal(w.tick(T0 + QUIET_STILL_MS)?.to, 'still');
 
