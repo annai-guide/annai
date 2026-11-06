@@ -257,7 +257,7 @@ test("by default a session asks for Sulafat, Shiori's voice in Classic too, so K
   }
 });
 
-test('Extended Thinking is refused as a bad request, so Koe goes on to its next model: no level is sent (it can reach no tool, 2026-11-05)', async () => {
+test('a saved list may still name Extended Thinking, out of annai since 2026-11-05: Gemini refuses it as a bad request, so Koe goes on to its next model', async () => {
   const server = await startRealtimeServer({ flavour: 'gemini', turns: [{ said: 'OK.' }], needsThinking: ['gemini-3.8-live-extended-thinking'] });
   const type = geminiLive();
   const open = (/** @type {string} */ providerId) => openLive({
