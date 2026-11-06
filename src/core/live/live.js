@@ -134,9 +134,9 @@ export class Live {
   #kept = null;
   /** @type {Fix | null} where the odometer last counted from */
   #odo = null;
-  /** @type {string | null | undefined} the trip in play (#play) as last followed: its plan is loaded and the road goes into it; undefined: none yet */
+  /** @type {string | null | undefined} the trip in play as last followed (#play): its plan is loaded; undefined: none yet */
   #trip = undefined;
-  /** @type {Map<string, { start?: string, end?: string, talked: number | null }>} the active trips, as #play chooses among them */
+  /** @type {Map<string, { start?: string, end?: string, talked: number | null }>} the active trips #play chooses among */
   #rows = new Map();
   /** @type {Map<string, Watch[]>} by scope */
   #watches = new Map();
@@ -235,7 +235,7 @@ export class Live {
         },
       }),
       this.ws.onChange((c) => this.#changed(c)),
-      // Another trip opened: its plan's reminders are looked at at once, not at the next fix (spec §11.3). Last talked moves as conversations are left.
+      // Another trip opened: its plan's reminders are looked at at once (spec §11.3); last talked moves as conversations are left.
       this.agent.on('open', () => this.#bg(async () => {
         await this.#loadRows();
         await this.#check();
@@ -277,12 +277,12 @@ export class Live {
     return [...new Set([...this.#mem.keys(), ...this.#fired.keys()])];
   }
 
-  /** The trip in play, always current: whose plan reminds and where the road goes. The open conversation keeps its meaning everywhere else. */
+  /** The trip in play: whose plan reminds and where the road goes. */
   get play() {
     return this.#play();
   }
 
-  /** Moving fast starting now would continue the drive that just ended: a light, not a new drive (what the activity trigger counts as starting). */
+  /** Moving fast starting now would continue the drive that just ended: a light, not a new drive. */
   get sameDrive() {
     return sameDrive(this.#fastEnded, this.clock.now());
   }
@@ -533,8 +533,8 @@ export class Live {
 
   /**
    * What a closed annai can still say through the push relay (spec §11.6, 6b choices 1 and 2): time watches in every conversation, and the "coming up"
-   * and "leave soon" of the trip in play and of the open conversation. Null until live mode has loaded, and while a simulation runs: the user's stay at the relay as they are.
-   * Read in its own queue, so never half of a list being reloaded. held hears the other trips whose plan reminders live mode doesn't follow now, so what waits for them stays.
+   * and "leave soon" of the trip in play and the open conversation. Null until live mode has loaded, and during a simulation (the relay's stay as they are).
+   * Read in its own queue. held hears the other trips, whose waiting plan reminders stay.
    * @param {{ held?: (scopes: Set<string>) => void }} [o] @returns {Promise<Mirrored[] | null>}
    */
   reminders(o = {}) {
@@ -543,7 +543,7 @@ export class Live {
       await this.#follow(); // a trip being opened: its own plan, never the last one's under its name
       const play = this.#trip ?? ME;
       const open = this.agent.target;
-      // The open conversation's plan too, when it isn't play's: a trip that starts tomorrow, opened tonight, must still wake a closed annai.
+      // The open one's plan too: a trip starting tomorrow, opened tonight, must still wake a closed annai.
       /** @type {[string, Watch[]][]} */
       const plans = [[play, this.#plan]];
       if (open && open !== play && this.#rows.has(open) && this.#inPlay(open)) {
@@ -685,7 +685,7 @@ export class Live {
 
   /**
    * The trip in play: a simulation's during its run; else the open conversation if happening; else the happening trip last talked in; else the open conversation.
-   * A simulation's trip is never chosen as the happening one, but open it is play, and #inPlay keeps its plan quiet outside its run.
+   * A simulation's trip is never the happening one, but open it is play; #inPlay keeps its plan quiet outside its run.
    * @returns {string | null}
    */
   #play() {
@@ -1036,8 +1036,7 @@ export class Live {
   }
 
   /**
-   * When annai last ran, by the newer of the open conversation's log and the play's (the older alone would make a quick chat's catch-up claim a longer gap),
-   * and the last point it kept, in the play (spec §11.4, after a restart).
+   * When annai last ran, by the newer of the open conversation's log and the play's, and the last point kept in the play (spec §11.4, after a restart).
    */
   async #lastSeen() {
     const trip = this.#trip;
@@ -1122,7 +1121,7 @@ export class Live {
     }
   }
 
-  /** Another trip came into play: its plan. Everyone's watches stay as they are: #changed keeps them current. */
+  /** Another trip came into play: its plan. Watches stay: #changed keeps them current. */
   async #follow() {
     const trip = this.#play();
     if (trip === this.#trip) return;
@@ -1145,7 +1144,7 @@ export class Live {
     return active;
   }
 
-  /** One trip's row, from its file: the hook writing the record may not have finished. A trip that isn't active has none. @param {string} scope */
+  /** One trip's row, from its file (the record's hook may not have finished); none for a trip not active. @param {string} scope */
   async #loadRow(scope) {
     const rec = await this.store.tx(['scopes'], 'readonly', (t) => t.getScope(scope));
     if (rec?.kind !== 'trip' || rec.status !== 'active') {
@@ -1312,7 +1311,7 @@ export class Live {
     });
   }
 
-  /** Whether a watch is looked at now: the open conversation's or the trip in play's, live mode for GPS, and time watches anywhere (choices 2 and 3). @param {TriggerType | undefined} type @param {string} scope */
+  /** Whether a watch is looked at now: the open conversation's or the play's, live mode for GPS, time watches anywhere (choices 2 and 3). @param {TriggerType | undefined} type @param {string} scope */
   #looked(type, scope) {
     return Boolean(type) && this.#inPlay(scope) && !(type?.gps && !this.on) && (scope === this.#scope() || scope === this.#trip || type?.type === 'time');
   }
@@ -1594,7 +1593,7 @@ export class Live {
       // What fired, for the wake's line: a plan item's title, or a watch's reminder; never annai's own English.
       const titles = xs.map((x) => (x.watch.owner === 'system' ? x.watch.when.title : x.watch.fallback)).filter((s) => typeof s === 'string' && s);
       const lines = notes.get(scope) ?? [];
-      // An urgent watch's alert is said at once in a live voice session (drive-test design §7); a catch-up is late already.
+      // An urgent alert is said at once in a live voice session (drive-test design §7); a catch-up is late already.
       const urgent = kind === 'trigger' && xs.some((x) => x.watch.urgent === true);
       if (scope !== open) {
         if (fallbacks.length) await this.agent.remind(fallbacks, scope, { urgent });
@@ -1712,7 +1711,7 @@ export class Live {
     this.#tellReminders('urgent');
   }
 
-  /** One timer, for the next due watch (spec §11.2); while live, at least once a minute; at midnight, when another trip may come into play. Off screen, none. @param {Moment} m */
+  /** One timer, for the next due watch (spec §11.2); while live, at least once a minute; at midnight, when play may change. Off screen, none. @param {Moment} m */
   #schedule(m) {
     this.#clearTimer();
     if (!this.shown) return;

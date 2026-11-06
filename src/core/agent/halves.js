@@ -381,7 +381,7 @@ export class Halves {
   /** The half that talks with the user now. */
   get talking() { return this.koeState === 'text' ? this.koe : this.kokoro; }
   get state() { return this.koeState === 'live' ? this.live.view : this.talking.state; }
-  /** A live session is open or opening, which opening another conversation would close. Koe being live only means the route can go live. */
+  /** A live session is open or opening, which opening another conversation would close (koeState 'live' only means the route can go live). */
   get sessionOpen() { return this.live.state !== 'closed'; }
   /** The dock's sign: never for a turn still stopping in the conversation being left. */
   get kokoroWorking() { return this.#works() && this.kokoro.busy && !this.kokoro.switching; }
@@ -1103,7 +1103,7 @@ export class Halves {
   /** @param {import('./loop.js').LoopTool[]} tools Shiori's own, which are Kokoro's */
   addLoopTools(tools) { this.kokoro.addLoopTools(tools); }
   /**
-   * annai's reminders, shown (and logged in their conversation). Another conversation's, while a session's voice plays, go into it as a trigger does: annai doesn't play over her.
+   * annai's reminders, shown and logged in their conversation; another's, while a session's voice plays, also go into it as a trigger does: annai doesn't play over her.
    * @param {import('./loop.js').Reminder[]} list @param {string} [scope] @param {{ urgent?: boolean }} [o] urgent: said at once
    */
   remind(list, scope, o = {}) {

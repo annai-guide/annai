@@ -24,13 +24,10 @@ export function kindOf(scope) {
   return 'other';
 }
 
-/** A line the user said to a conversation: typed, or heard and not dismissed. What "last talked in" counts. @param {{ type: string, data?: any }} e */
+/** A line the user said: typed, or heard and not dismissed; what "last talked in" counts. @param {{ type: string, data?: any }} e */
 export const talks = (e) => e.type === 'msg.user' || (e.type === 'heard' && !e.data?.dismissed);
 
-/**
- * What a trip's record mirrors of its trip.json, so "which trips matter now" needs no file opened: its dates, when they are dates.
- * @param {unknown} trip trip.json as read, whatever is in it @returns {{ start?: string, end?: string }}
- */
+/** What a trip's record mirrors of its trip.json, so no file is opened to tell which trips matter now: its dates, when they are dates. @param {unknown} trip @returns {{ start?: string, end?: string }} */
 export function tripMirror(trip) {
   const t = /** @type {any} */ (trip);
   /** @type {{ start?: string, end?: string }} */
@@ -237,7 +234,7 @@ export async function backupState(store, id) {
   });
 }
 
-/** Keeps each trip scope's title equal to the title in its trip.json, and its dates mirrored; a file with no title keeps the record's. @param {Workspace} ws */
+/** Keeps each trip scope's title and dates equal to its trip.json's; a file with no title keeps the record's. @param {Workspace} ws */
 export function syncTripTitles(ws) {
   return ws.onChange(async ({ op, scope, path }) => {
     if (op !== 'write' || kindOf(scope) !== 'trip' || path !== '/trip.json') return;
@@ -257,7 +254,7 @@ export function syncTripTitles(ws) {
 /** How many of a log's lines backfillTrips reads at a time. */
 const PAGE = 200;
 
-/** When the user last talked in a trip, read back from its log; null when nobody has. @param {Store} store @param {string} scope @returns {Promise<number | null>} */
+/** When the user last talked in a trip, from its log; null when nobody has. @param {Store} store @param {string} scope @returns {Promise<number | null>} */
 async function lastTalked(store, scope) {
   /** @type {number | undefined} */
   let before;
@@ -272,8 +269,8 @@ async function lastTalked(store, scope) {
 }
 
 /**
- * Fills the mirror on records that have none: released copies wrote no talked key, and an archive's may come without. Once each, archived ones too: the
- * key is what says it was done, so a later run reads no file; only this writes it on a record without it, so a run that failed halfway is finished by the next. A line said between its read and its write is the log's: the next line stamps it.
+ * Fills the mirror on records without it (released copies, some archives), archived too. The talked key says it was done; only this writes it on a record
+ * without one, so a run that failed halfway is finished by the next.
  * @param {Workspace} ws
  */
 export async function backfillTrips(ws) {

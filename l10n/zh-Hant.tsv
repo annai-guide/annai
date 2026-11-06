@@ -846,11 +846,11 @@ j773ua	ok	needs {0}, which isn't installed. Install it first, then try again.	�
 gvuaip	ok	isn't in annai's catalog.	不在 annai 的目錄中。	src/core/requires.js:203	
 olo1mq	ok	is installed from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.	它是從別處安裝的，不是 annai 自己的。要新增 annai 的，請在設定 → 外掛程式中移除它。	src/core/requires.js:206	Note: Remove → 移除, as annai's Remove buttons say.
 seoih8	ok	{0}, which you turned off, isn't switched on by adding it.	你已關閉的 {0} 不會因為新增而開啟。	src/core/requires.js:208	{0} = officialName(entry.id, entry.name)
-stkvyf	ok	Me	我	src/core/scopes.js:58	Note: the conversation that is not a trip's (Shiori and you), as the Trace's list names it.
-1imxpae	ok	System log	系統日誌	src/core/scopes.js:59	
-ktdb8o	ok	Settings	設定	src/core/scopes.js:60	
-13w3r95	ok	This device	這台裝置	src/core/scopes.js:62	
-1jqhjwe	ok	Waiting with Shiori	Shiori 暫存的檔案	src/core/scopes.js:63	Note: Taiwan wording: 檔案 for files (glossary Files), 暫存 for held for now.
+stkvyf	ok	Me	我	src/core/scopes.js:55	Note: the conversation that is not a trip's (Shiori and you), as the Trace's list names it.
+1imxpae	ok	System log	系統日誌	src/core/scopes.js:56	
+ktdb8o	ok	Settings	設定	src/core/scopes.js:57	
+13w3r95	ok	This device	這台裝置	src/core/scopes.js:59	
+1jqhjwe	ok	Waiting with Shiori	Shiori 暫存的檔案	src/core/scopes.js:60	Note: Taiwan wording: 檔案 for files (glossary Files), 暫存 for held for now.
 ulzb3n	ok	Midnight sun	極晝	src/core/sun.js:78	
 1fjho8h	ok	Polar night	極夜	src/core/sun.js:79	
 tqn1pi	ok	Sunrise {0}	日出 {0}	src/core/sun.js:82	{0} = hm(sunrise)
@@ -2716,8 +2716,8 @@ do1m5o	ok	{0}: annai can't show this setting.	{0}：annai 無法顯示此設定�
 1qrgqx0	ok	saved	已儲存	src/ui/settings-form.js:121	
 phutrz	ok	{0} wasn't saved: {1}	{0}未儲存：{1}	src/ui/settings-form.js:130	{0} = f.label; {1} = messageOf(e)
 1skw031	ok	This screen couldn't open	無法開啟此頁面	src/ui/shell.js:270	
-1z00dfe	ok	An update is ready	更新已就緒	src/ui/shell.js:370	
-gt0nrj	ok	It will be used the next time annai starts.	下次啟動 annai 時生效。	src/ui/shell.js:370	
+1z00dfe	ok	An update is ready	更新已就緒	src/ui/shell.js:369	
+gt0nrj	ok	It will be used the next time annai starts.	下次啟動 annai 時生效。	src/ui/shell.js:369	
 sntfon	ok	Hello! This is how I sound when I talk to you.	你好！我和你說話時就是這樣的聲音。	src/ui/speech-check.js:10	Note: spoken by the voice being tested, so it is heard in the screens' language.
 n8hyke	ok	{0}. {1}	{0}。{1}	src/ui/speech-check.js:16	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
 1a27ynt	ok	Last tested {0}: it worked.	上次測試於{0}：可用。	src/ui/speech-check.js:26	{0} = relTime(verified.at)
