@@ -252,7 +252,7 @@ export function startShell(root, core) {
     const screen = SCREENS[route.name] ?? SCREENS.trips;
     try {
       // Its screen's ctx says which render it is, so what it draws after a newer one began is cleaned up at once.
-      const node = await screen(Object.create(ctx, { seq: { value: my } }), route);
+      const node = await screen(Object.create(ctx, { seq: { value: my }, moved: { value: o.moved === true } }), route);
       if (my !== seq) return superseded(my);
       main.replaceChildren(node);
       if (pending !== null) {
