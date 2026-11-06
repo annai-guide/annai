@@ -62,7 +62,7 @@ export function fakeCodec(formats) {
  * A memory-backed annai with the built-in file tools, one scripted provider and model per script
  * (all in the main role, in order), and an Agent on a fresh trip. Every request a model receives is
  * kept in `requests`.
- * @param {(any[] | Record<string, any>)[]} scripts @param {{ models?: any[], open?: boolean, agent?: Record<string, any>, utility?: any[], utilityModel?: Record<string, any>, codecFormats?: string[], uploading?: boolean,
+ * @param {(any[] | Record<string, any>)[]} scripts @param {{ models?: any[], open?: boolean, ready?: Promise<void>, agent?: Record<string, any>, utility?: any[], utilityModel?: Record<string, any>, codecFormats?: string[], uploading?: boolean,
  *   voice?: { mode?: 'on' | 'off' | 'auto', speechIn?: string[], hears?: string[], failing?: string[], decide?: any[], dictation?: boolean, keepClips?: boolean, playMs?: number, micFails?: string,
  *     encoder?: { makes: string[] }, plays?: string[] },
  *   halves?: boolean, koe?: { type?: any[] | Record<string, any>, talk?: any[] | Record<string, any>, input?: string[], model?: Record<string, any> },
