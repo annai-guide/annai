@@ -11,8 +11,8 @@ import { todayOf, todayTop, drivingTrip } from '../today.js';
 import { ask } from '../ask.js';
 import { detailsHref, rowName, lineName, dateRange, day, distance, num, list, sentences, sentenceGap } from '../format.js';
 
-/** The tab shown, kept for a redraw; a fresh entry (ctx.moved) opens today's. @type {string | null} */
-let kept = null;
+/** The tab picked on each history entry, per trip: a redraw or coming back keeps it, a new entry opens today's. @type {Map<string, string>} */
+const kept = new Map();
 /** @template {{ key: string, rows: unknown[] }} T @param {T[]} tabs @param {string | null} today @param {string | null} keep */
 export const startTab = (tabs, today, keep) => tabs.find((x) => x.key === keep) ?? tabs.find((x) => x.key === today) ?? tabs.find((x) => x.rows.length) ?? tabs[0];
 
@@ -42,26 +42,35 @@ export async function renderPlan(ctx, route) {
 
   const tabs = [...days.map((d) => ({ key: d.key, label: day(d.key, true), rows: d.rows })), ...(untimed.length ? [{ key: '', label: t`No time yet (${num(untimed.length)})`, rows: untimed }] : [])];
   const today = todayOf(ctx.live);
-  const first = startTab(tabs, today, ctx.moved ? null : kept);
+  const picked = `${ctx.entry} ${id}`;
+  const first = startTab(tabs, today, kept.get(picked) ?? null);
   const panel = h('div', { class: 'plan-day', role: 'tabpanel' });
   // Today's tab opens with what Now opens with. Driving shows one trip, so only that trip links to it.
   let top = null;
   if (tabs.some((x) => x.key === today)) {
     await ctx.agent?.opening.catch(() => {});
-    top = h('div', { class: 'today-top' }, todayTop(ctx, { title: scope.title, rows, tz: fallbackTz }),
-      id === drivingTrip(ctx) ? h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/drive' }, t`Driving`)) : null);
+    const drive = h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/drive' }, t`Driving`));
+    const link = () => { drive.style.visibility = id === drivingTrip(ctx) ? '' : 'hidden'; }; // its room stays, so nothing below moves
+    link();
+    const off = ctx.live?.onReminders(() => { if (drive.isConnected) link(); else off?.(); });
+    top = h('div', { class: 'today-top' }, todayTop(ctx, { title: scope.title, rows, tz: fallbackTz }), drive);
   }
   /** @type {HTMLButtonElement[]} */
-  const buttons = tabs.map((x) => h('button', { type: 'button', role: 'tab', class: 'tab', onclick: () => show(x) }, x.label));
+  const buttons = tabs.map((x) => h('button', { type: 'button', role: 'tab', class: 'tab', onclick: () => { kept.set(picked, x.key); show(x); } }, x.label));
   /** @param {typeof tabs[number]} tab */
   function show(tab) {
-    kept = tab.key;
     buttons.forEach((b, i) => b.setAttribute('aria-selected', String(tabs[i] === tab)));
     panel.setAttribute('aria-label', tab.label);
     if (top) top.hidden = tab.key !== today;
     panel.replaceChildren(tab.rows.length ? timetable(ctx, id, tab.rows, links, undo, here) : h('p', { class: 'empty', text: t`Nothing planned this day.` }));
   }
-  if (first) show(first);
+  if (first) {
+    show(first);
+    // Drawn anew, the strip is back at its start: a redraw holds it where it was, anything else brings the tab shown into view.
+    const b = buttons[tabs.indexOf(first)];
+    const held = ctx.moved ? null : document.querySelector('.tabs')?.scrollLeft;
+    requestAnimationFrame(() => { const s = b.parentElement; if (s) s.scrollLeft = held ?? b.offsetLeft - s.offsetLeft; });
+  }
 
   const save = h('button', {
     class: 'btn', type: 'button', disabled: !rows.some((r) => r.from === 'item' && r.at !== null), // the calendar holds plan items

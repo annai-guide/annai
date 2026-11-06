@@ -62,6 +62,8 @@ export async function renderDrive(ctx) {
   const where = h('div', { class: 'acts' });
   const places = await planPlaces(ctx, id);
   const latest = h('div', { class: 'drive-latest', 'aria-live': 'polite' });
+  /** @type {string | undefined} */
+  let asked; // the stop they're for: a fix moves their start, and rebuilds nothing under a finger
   const draw = () => {
     const here = live ? knownFix(live) : null; // not a position from before the GPS was lost
     const stops = routeStrip(rows, here, nowOf(live), live?.activity ?? 'unknown');
@@ -72,22 +74,25 @@ export async function renderDrive(ctx) {
         h('span', { class: 'sub', text: [s.row.time ? t`at ${s.row.time}` : '', roadText(s)].filter(Boolean).join(' · ') }))),
       ...(stops.length ? [] : [h('li', { class: 'empty', text: t`Nothing more is planned with a place.` })]));
     const next = stops[0];
-    maps.replaceChildren(...(!next ? [] : links ? [
-      h('strong', { class: 'card-title', text: t`Directions to ${next.name}` }),
-      h('div', { class: 'acts' }, ...mapsLinks(links, { destination: `${next.place.lat},${next.place.lng}`, ...(here ? { origin: `${here.lat},${here.lng}` } : {}), mode: 'drive' })
-        .map((l) => h('a', { class: 'btn', href: l.url, target: '_blank', rel: 'noopener noreferrer', text: l.label }))),
-    ] : [h('p', { class: 'sub', text: t`annai hasn't downloaded its maps links yet; it needs to be online once.` })]));
-    ask.replaceChildren(...quickAsks(speaks, next).map(([label, text]) => h('button', {
-      class: 'btn big', type: 'button',
-      onclick: async () => {
-        try {
-          await askIn(ctx, text);
-          ctx.notices.toast(t`Asked Shiori: ${text}`);
-        } catch (e) {
-          if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: t`Shiori wasn't asked`, body: sentences(messageOf(e), t`Try again.`), errors: [e] });
-        }
-      },
-    }, label)));
+    const go = next && links ? mapsLinks(links, { destination: `${next.place.lat},${next.place.lng}`, ...(here ? { origin: `${here.lat},${here.lng}` } : {}), mode: 'drive' }) : [];
+    if (asked === (asked = next?.name ?? '')) maps.querySelectorAll('a').forEach((a, i) => { a.href = go[i].url; });
+    else {
+      maps.replaceChildren(...(!next ? [] : links ? [
+        h('strong', { class: 'card-title', text: t`Directions to ${next.name}` }),
+        h('div', { class: 'acts' }, ...go.map((l) => h('a', { class: 'btn', href: l.url, target: '_blank', rel: 'noopener noreferrer', text: l.label }))),
+      ] : [h('p', { class: 'sub', text: t`annai hasn't downloaded its maps links yet; it needs to be online once.` })]));
+      ask.replaceChildren(...quickAsks(speaks, next).map(([label, text]) => h('button', {
+        class: 'btn big', type: 'button',
+        onclick: async () => {
+          try {
+            await askIn(ctx, text);
+            ctx.notices.toast(t`Asked Shiori: ${text}`);
+          } catch (e) {
+            if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: t`Shiori wasn't asked`, body: sentences(messageOf(e), t`Try again.`), errors: [e] });
+          }
+        },
+      }, label)));
+    }
     gps.replaceChildren(...(live && !live.on ? [h('button', { class: 'btn pri', type: 'button', onclick: () => live.setLive(true) }, t`Turn GPS on`)] : []));
     const lost = live?.on && (live.gps === 'denied' || live.gps === 'unavailable');
     where.replaceChildren(...(!lost ? [] : [
