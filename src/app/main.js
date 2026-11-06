@@ -112,7 +112,7 @@ async function boot() {
   const moved = await moveOver(ws, store).catch((e) => { console.warn(/* en */ "the old endpoints couldn't be moved over", e); return null; });
   // Koe's one list from before Realtime and Classic is written split, once (spec §9.6).
   await splitOldKoe(ws).catch((e) => console.warn(/* en */ "Koe's old list couldn't be split", e));
-  syncTripTitles(ws);
+  syncTripTitles(ws); // before Live reads /trip.json
   syncNames(ws); // a deleted file's short name goes with it
   const plugins = new PluginHost({ registry, workspace: ws });
   await plugins.addBuiltin(new URL('../plugins/core-schemas/index.js', import.meta.url).href);

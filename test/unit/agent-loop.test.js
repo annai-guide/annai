@@ -13,6 +13,7 @@ import { useClock } from './clock.js';
 import { noReader } from '../../src/core/agent/reading.js';
 import { askIn } from '../../src/ui/today.js';
 import { askAbout } from '../../src/ui/composer.js';
+import { renderTrip } from '../../src/ui/screens/trip.js';
 
 const say = (/** @type {string} */ text) => ({ toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }] });
 
@@ -1952,6 +1953,30 @@ test("Ask Shiori about this after a failed open: the second tap opens the trip",
   await askAbout(ctx, { scope: road, path: '/notes.md', name: 'Notes' });
   assert.equal(k.agent.trip, road);
   assert.equal(cards.length, 1);
+});
+
+test('Ask Shiori about this after a failed open: no chip is put in the old conversation, and the screen stays', async () => {
+  const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] }]);
+  const road = await createTrip(k.ws, { title: 'Road' });
+  failOnce(k, road);
+  /** @type {string[]} */
+  const did = [];
+  const ctx = { ws: k.ws, agent: k.agent, notices: { card: () => did.push('card') }, dock: { attach: () => did.push('chip'), openTyping: () => did.push('typing') }, go: () => did.push('go') };
+  await askAbout(ctx, { scope: road, path: '/notes.md', name: 'Notes' });
+  assert.deepEqual(did, ['card']);
+});
+
+test("the trip screen's open failing says so, as Ask Shiori does", async () => {
+  const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] }]);
+  const road = await createTrip(k.ws, { title: 'Road' });
+  failOnce(k, road);
+  /** @type {any[]} */
+  const cards = [];
+  // The screen is drawn with a DOM, which the unit tests don't have: its open comes first, and that is what is checked.
+  await renderTrip({ ws: k.ws, store: k.store, agent: k.agent, notices: { card: (/** @type {any} */ c) => cards.push(c) } }, { parts: ['trip', road] }).catch(() => {});
+  await until(() => cards.length > 0);
+  assert.match(cards[0].title, /didn't open/);
+  assert.equal(k.agent.target, k.trip, 'the conversation before is still the one open');
 });
 
 test('a failed open with a newer one under way leaves the newer one its target', async () => {
