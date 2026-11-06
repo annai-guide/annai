@@ -700,18 +700,18 @@ test("a cue from another conversation stays out of a voiced session: it's shown,
     await live.settled();
     await k.voice.unlock();
     k.agent.send('Hi');
-    await soon(() => k.agent.live.voiced);
+    await soon(async () => k.agent.live.voiced);
     await clock.advanceTo(at('08:35'), () => live.settled());
     live.fixed({ ...BIXBY, accuracy: 8 });
     await live.settled();
-    await soon(() => k.notices.some((/** @type {any} */ n) => n.body === CUE));
-    await soon(() => !k.agent.live.voiced);
+    await soon(async () => k.notices.some((/** @type {any} */ n) => n.body === CUE));
+    await soon(async () => !k.agent.live.voiced);
     await new Promise((r) => { setTimeout(r, 200); });
     assert.ok(!texts(k).some((x) => x.includes(CUE) || /^Reminders for the user/.test(x)), 'nothing goes in for a list of cues alone');
     k.agent.send('Again');
-    await soon(() => k.agent.live.voiced);
+    await soon(async () => k.agent.live.voiced);
     await k.agent.remind([{ watch: 'a', text: CUE, cue: true }, { watch: 'b', text: 'Check-out at 11:00' }], 'elsewhere');
-    await soon(() => texts(k).some((x) => x.includes('Check-out at 11:00')));
+    await soon(async () => texts(k).some((x) => x.includes('Check-out at 11:00')));
     assert.ok(!texts(k).some((x) => x.includes(CUE)));
   } finally {
     live.dispose();
