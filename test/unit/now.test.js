@@ -108,36 +108,36 @@ async function asking(target, { koeState = 'off', sessionOpen = false } = {}) {
     async open(/** @type {string} */ id) { did.push(['open', id, (await readAppSettings(ws)).activeTrip]); agent.target = id; },
     send(/** @type {string} */ text, /** @type {any} */ o) { did.push(['send', text, o, agent.target]); },
   };
-  return { ctx: { ws, agent }, did };
+  return { ctx: { ws, agent, live: { play: 'trip-a' } }, did };
 }
 
 test("a quick ask from a quick chat opens the trip first, saved as the open one, then asks there", async () => {
   const { ctx, did } = await asking('trip-chat');
-  await askIn(ctx, 'trip-a', 'Fuel?');
+  await askIn(ctx, 'Fuel?');
   assert.deepEqual(did, [['open', 'trip-a', 'trip-a'], ['send', 'Fuel?', { chose: true }, 'trip-a']]);
 });
 
 test('a quick ask in the trip already open just asks', async () => {
   const { ctx, did } = await asking('trip-a');
-  await askIn(ctx, 'trip-a', 'Fuel?');
+  await askIn(ctx, 'Fuel?');
   assert.deepEqual(did, [['send', 'Fuel?', { chose: true }, 'trip-a']]);
 });
 
 test('a quick ask over an open live session goes to the open conversation: opening would close the session', async () => {
   const { ctx, did } = await asking('trip-chat', { koeState: 'live', sessionOpen: true });
-  await askIn(ctx, 'trip-a', 'Fuel?');
+  await askIn(ctx, 'Fuel?');
   assert.deepEqual(did, [['send', 'Fuel?', { chose: true }, 'trip-chat']]);
 });
 
 test("Koe being live isn't a session: with none open, the quick ask opens the trip first", async () => {
   const { ctx, did } = await asking('trip-chat', { koeState: 'live', sessionOpen: false });
-  await askIn(ctx, 'trip-a', 'Fuel?');
+  await askIn(ctx, 'Fuel?');
   assert.deepEqual(did, [['open', 'trip-a', 'trip-a'], ['send', 'Fuel?', { chose: true }, 'trip-a']]);
 });
 
 test("a trip that doesn't open leaves nothing asked: the failure reaches the caller, which says so", async () => {
   const { ctx, did } = await asking('trip-chat');
   ctx.agent.open = async () => { throw new Error('no'); };
-  await assert.rejects(askIn(ctx, 'trip-a', 'Fuel?'), /no/);
+  await assert.rejects(askIn(ctx, 'Fuel?'), /no/);
   assert.deepEqual(did, []);
 });

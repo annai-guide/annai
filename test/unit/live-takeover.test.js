@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { liveKit, at, off, LA, MONTEREY } from './live-kit.js';
-import { followDrive } from '../../src/ui/today.js';
+import { followDrive, followPlay, askIn } from '../../src/ui/today.js';
 import { Live } from '../../src/core/live/live.js';
 
 const A = MONTEREY;
@@ -80,4 +80,69 @@ test('a reload at a long light, then driving off: the same drive, nobody taken o
   await live.settled();
   await k.drive(B, C, at('09:06:20'), at('09:11'));
   assert.deepEqual(s.went, []);
+});
+
+/** Driving's reload: main.js's order, the shell starting while live mode still reads its rows. shown: the trip as the screen reads it, then each move told. @param {any} k */
+async function onDriving(k) {
+  await k.settle();
+  k.live.dispose();
+  const live = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent: k.agent, clock: k.clock, keep: k.keep, timeZone: () => LA });
+  k.live = live;
+  const started = live.start();
+  const shown = [live.play];
+  followPlay(live, () => live.play, () => shown.push(live.play));
+  const s = shell(live);
+  await started;
+  s.seed();
+  await live.settled();
+  return { shown, s };
+}
+
+test("a reload on Driving with a quick chat open: it's told the trip in play once the rows load", async () => {
+  const k = await liveKit();
+  const chat = await k.chat('Ramen');
+  k.agent.opened(chat);
+  const { shown } = await onDriving(k);
+  assert.deepEqual(shown, [chat, k.trip]);
+});
+
+test('a reload on Driving with nothing open: the same, from no trip', async () => {
+  const k = await liveKit();
+  k.agent.opened(null);
+  const { shown } = await onDriving(k);
+  assert.deepEqual(shown, [null, k.trip]);
+});
+
+test("that telling takes nobody over: a reload moving fast with a quick chat open stays where it was", async () => {
+  const k = await liveKit();
+  const chat = await k.chat('Ramen');
+  k.agent.opened(chat);
+  await k.drive(A, B, at('09:00'), at('09:05'));
+  const { shown, s } = await onDriving(k);
+  assert.deepEqual(shown, [chat, k.trip]);
+  await k.fix(at('09:05:10'), off(A, 0, -6100), { speed: 20 });
+  assert.deepEqual(s.went, []);
+});
+
+test('midnight with GPS off: a trip starting today comes into play, and Driving is told with no fix to carry it', async () => {
+  const k = await liveKit({ live: false, start: at('22:00', '2026-11-26') });
+  const chat = await k.chat('Ramen');
+  k.agent.opened(chat);
+  await k.settle();
+  assert.equal(k.live.play, chat);
+  const moved = /** @type {(string | null)[]} */ ([]);
+  followPlay(k.live, () => k.live.play, () => moved.push(k.live.play));
+  await k.to(at('00:01'));
+  assert.deepEqual(moved, [k.trip]);
+});
+
+test('a quick ask goes to the trip in play now, not the one the screen was drawn for', async () => {
+  const k = await liveKit();
+  const chat = await k.chat('Ramen');
+  k.agent.opened(chat);
+  await onDriving(k);
+  const sent = /** @type {any[]} */ ([]);
+  const agent = Object.assign(k.agent, { open: async (/** @type {string} */ id) => k.agent.opened(id), send: (/** @type {string} */ text) => sent.push([text, k.agent.target]) });
+  await askIn({ ws: k.ws, live: k.live, agent }, 'Fuel?');
+  assert.deepEqual(sent, [['Fuel?', k.trip]]);
 });

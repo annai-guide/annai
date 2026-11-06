@@ -81,7 +81,7 @@ export async function renderDrive(ctx) {
       class: 'btn big', type: 'button',
       onclick: async () => {
         try {
-          await askIn(ctx, id, text);
+          await askIn(ctx, text);
           ctx.notices.toast(t`Asked Shiori: ${text}`);
         } catch (e) {
           if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: t`Shiori wasn't asked`, body: sentences(messageOf(e), t`Try again.`), errors: [e] });

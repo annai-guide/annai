@@ -73,10 +73,24 @@ export function followDrive(live, o) {
 export const drivingTrip = (ctx) => ctx.live?.play ?? null;
 
 /**
- * A quick ask from Driving, in the trip it shows: opened first, unless a live session is open, which opening would close; it then goes to the
- * open conversation. A trip that won't open throws, and nothing is asked. @param {any} ctx @param {string} id @param {string} text
+ * Hears the trip in play move. It's told with reminders, whose trip it is: after the rows load and at midnight. A tell on onChange at start would beat followDrive's seed and take over.
+ * @param {any} live @param {() => string | null} trip @param {() => void} moved
  */
-export async function askIn(ctx, id, text) {
+export function followPlay(live, trip, moved) {
+  let was = trip();
+  live?.onReminders(() => {
+    if (trip() === was) return;
+    was = trip();
+    moved();
+  });
+}
+
+/**
+ * A quick ask from Driving, in the trip in play now: opened first, unless a live session is open, which opening would close; it then goes to the
+ * open conversation. A trip that won't open throws, and nothing is asked. @param {any} ctx @param {string} text
+ */
+export async function askIn(ctx, text) {
+  const id = drivingTrip(ctx);
   if (id !== ctx.agent.target && !ctx.agent.sessionOpen) {
     await updateAppSettings(ctx.ws, { activeTrip: id });
     await ctx.agent.open(id);
