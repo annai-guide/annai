@@ -1239,3 +1239,31 @@ test('a Share with places, and a backup, carry the log, the watches and the reca
   assert.equal(kept.trim().split('\n').filter((l) => JSON.parse(l).type === 'location').length, 2);
   assert.ok(backup.manifest.files.some((f) => f.path === '/watches/w9.json'));
 });
+
+test("an archive holds no mirror, lands mirrored from its own files and log, and what a record claims of itself doesn't count", async () => {
+  const a = await device();
+  const trip = await sampleTrip(a.ws);
+  await record(a.store, trip, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'hello']], now: 5000 });
+  const { blob, manifest } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: '0.1.0' });
+  const made = /** @type {any} */ (manifest.scopes.find((s) => s.record.id === trip)).record;
+  assert.deepEqual(['start' in made, 'end' in made, 'talked' in made], [false, false, false], "a released copy's archive looks the same");
+  const bytes = await bytesOf(blob);
+  for (const claims of [{}, { start: 'whenever', end: 7, talked: 'often' }, { start: '2020-01-01', end: '2020-01-02', talked: 1 }]) {
+    const b = await device();
+    const opened = await peekArchive(bytes);
+    Object.assign(/** @type {any} */ (opened.manifest.scopes.find((s) => s.record.id === trip)).record, claims);
+    const [id] = (await importArchive(b.store, opened)).trips;
+    const r = /** @type {any} */ (await b.store.tx(['scopes'], 'readonly', (t) => t.getScope(id)));
+    assert.deepEqual([r.start, r.end, r.talked], ['2027-04-03', '2027-04-10', 5000]);
+  }
+});
+
+test('a Share without the conversation says nobody has talked', async () => {
+  const a = await device();
+  const trip = await sampleTrip(a.ws);
+  await record(a.store, trip, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'hello']], now: 5000 });
+  const { blob } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0' });
+  const b = await device();
+  const [id] = (await importArchive(b.store, await peekArchive(await bytesOf(blob)))).trips;
+  assert.equal(/** @type {any} */ (await b.store.tx(['scopes'], 'readonly', (t) => t.getScope(id))).talked, null);
+});

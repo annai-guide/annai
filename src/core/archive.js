@@ -4,7 +4,8 @@ import { sha256Hex } from './hash.js';
 import { utf8, text, ownBuffer } from './bytes.js';
 import { isCompressedType, normPath, freeName, isGivenFile } from './paths.js';
 import { validate } from './schema.js';
-import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, SYS_DEVICE, SYS_WAITING, FORMAT, newId, isDeviceSecret } from './scopes.js';
+import { Workspace } from './workspace.js';
+import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, SYS_DEVICE, SYS_WAITING, FORMAT, newId, isDeviceSecret, backfillTrips } from './scopes.js';
 import { isPhotoType } from './photos.js';
 import { readPhotoMeta, stripMetadata, sniffImageType, sniffMediaType } from './photo-meta.js';
 import { blobsOf, isName } from './events.js';
@@ -202,7 +203,8 @@ export async function exportArchive(store, opts) {
       files: await t.listFiles(scope.id, '/'),
       events: include.history ? (await t.listEvents(scope.id)).map((e) => withoutPhotoMeta(e, include)) : [],
     }));
-    const { backup: _, ...record } = scope; // a backup note belongs to the device that made it
+    // A backup note belongs to the device that made it; the mirror is read again from what comes (backfillTrips), so a Share says nothing of when they last talked.
+    const { backup: _, start: _s, end: _e, talked: _t, ...record } = scope;
     /** @type {ManifestScope} */
     const ms = { dir, record };
     for (const f of files) {
@@ -722,6 +724,8 @@ export async function importArchive(store, opened, choices = {}) {
     await removeUnused(store, added).catch(() => {});
     throw e;
   }
+  // What came is in. Its mirror is read from its own files and log; a failure here fills at the next start.
+  await backfillTrips(new Workspace(store)).catch((e) => console.warn(/* en */ "the imported trips' dates couldn't be mirrored", e));
   return result;
 }
 
@@ -775,7 +779,8 @@ async function commitImport(store, { manifest, plan, overrides, secrets, now, re
       if (p.mode === 'system') await t.deleteScope(p.target);
       // The target decides the kind: a record that calls "me" a trip must not make it one.
       const kind = p.target === ME ? 'me' : p.mode === 'system' ? 'sys' : 'trip';
-      const { backup: _b, ...rec } = p.rec; // this device hasn't backed it up
+      // This device hasn't backed it up. The mirror is read from what came (backfillTrips), whatever a record says of itself.
+      const { backup: _b, start: _s, end: _e, talked: _t, ...rec } = p.rec;
       await t.putScope({ ...rec, id: p.target, kind, status: 'active', updated: now });
       for (const f of p.files) {
         const hash = overrides.get(f.name)?.hash ?? f.hash;

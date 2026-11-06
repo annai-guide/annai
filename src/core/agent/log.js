@@ -3,6 +3,7 @@ import { utf8, text, toBytes } from '../bytes.js';
 import { blobsOf, isName } from '../events.js';
 import { reachable, refused } from '../reach.js';
 import { keepBlob } from '../workspace.js';
+import { talks } from '../scopes.js';
 
 /**
  * Writing the conversation (spec §4.5). Each step is one event. Its long texts, and any bytes it
@@ -70,10 +71,12 @@ export async function record(store, scope, { type, actor, data, texts = [], blob
   const ev = { ts: now, type, actor, data: out, ...(refs.length ? { refs } : {}) };
   const brought = new Set(keep.map((k) => k.hash));
   const named = blobsOf(ev).filter((h) => !brought.has(h));
+  // A user's line stamps its trip's record, so last talked needs no log read.
+  const said = talks({ type, data });
   /** @type {string | null} another scope's content this entry tried to name */
   let denied = null;
   try {
-    return await store.tx(named.length ? ['blobs', 'events', 'files'] : ['blobs', 'events'], 'readwrite', async (t) => {
+    return await store.tx(/** @type {import('../types.js').StoreName[]} */ (['blobs', 'events', ...(named.length ? ['files'] : []), ...(said ? ['scopes'] : [])]), 'readwrite', async (t) => {
       denied = null; // a store that tries again starts over
       for (const k of keep) await keepBlob(t, k.hash, k.type, k.bytes);
       // Content named by its hash alone must be stored (spec §4.9), and the scope's own (§4.1): never another trip's.
@@ -83,7 +86,10 @@ export async function record(store, scope, { type, actor, data, texts = [], blob
         if (!own && (await t.hasBlob(h))) denied = h;
         /* en */ throw new Error(`The content ${h.slice(0, 12)}… is not stored.`);
       }
-      return t.appendEvent(scope, ev);
+      const done = await t.appendEvent(scope, ev);
+      const rec = said ? await t.getScope(scope) : null;
+      if (rec?.kind === 'trip') await t.putScope({ ...rec, talked: now });
+      return done;
     });
   } finally {
     if (denied) await refused(store, scope, denied, type);

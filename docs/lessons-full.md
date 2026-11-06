@@ -191,3 +191,9 @@ entries go last, in the same commit as the change:
 - Why we had to change: the timeline design ends the top bar, so Now can't be the one screen you are on as a drive begins. The user picked "Driving takes over, once" for the Conversation.
 - Original design was wrong because: Now was the home screen, so a listener on Now looked like a listener on the app. It worked only while Now showed, and its `was` began again at each draw.
 - Lesson: what must happen wherever the user is lives in the one place that is always there. A screen's listener only works while that screen shows, and says nothing about the others.
+
+## 2026-11-06 Trip dates and last talked on the scope record
+- Changed: a trip's scope record now carries `start` and `end` (absent when undated, copied only as `YYYY-MM-DD`) and `talked` (ms, `null` when nobody has spoken). `createTrip` writes them, `syncTripTitles`' hook keeps the dates and `record()` stamps `talked` for a user's own lines. `backfillTrips` fills records with no `talked` key once, at start and after an import. No key means "not mirrored yet". Archives don't carry the mirror: export leaves it out and import reads it again from what came.
+- Why we had to change: live mode and the timeline can't read 500 trip.json files at each change, and live mode must choose the trip in play in memory.
+- Original design was wrong because: a scope record named only what the list screen needed, so anything asking "which trips matter now" had to open every trip.
+- Lesson: a record that lists things carries what deciding among them needs, not only what today's list shows. A mirror has one writer per field and a key that says it was filled, so filling old records is one pass that ends. What can be read again from the source doesn't travel: an archive's copy could only be stale, or claim something.

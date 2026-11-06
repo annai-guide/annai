@@ -2,7 +2,7 @@ import { VERSION } from './version.js';
 import { createIdbStore } from '../core/store-idb.js';
 import { Workspace } from '../core/workspace.js';
 import { makeSchemaFor } from '../core/schema.js';
-import { kindOf, ensureBaseScopes, syncTripTitles, removeLeftovers, SYS } from '../core/scopes.js';
+import { kindOf, ensureBaseScopes, syncTripTitles, backfillTrips, removeLeftovers, SYS } from '../core/scopes.js';
 import { Registry } from '../core/registry.js';
 import { PluginHost } from '../core/plugins.js';
 import { watchAppends, deliverHooks } from '../core/hooks.js';
@@ -195,6 +195,8 @@ async function boot() {
   const active = settings.activeTrip;
   const exists = active ? await store.tx(['scopes'], 'readonly', (tx) => tx.getScope(active)) : null;
   agent.open(exists ? active : null).catch((e) => console.warn(/* en */ 'Shiori could not open the conversation', e));
+  // Records a released copy wrote get their dates and last talked once, as live mode chooses the trip in play from them.
+  await backfillTrips(ws).catch((e) => console.warn(/* en */ "trips' dates couldn't be mirrored", e));
   // Notifications start once live mode has loaded (their reminders are live mode's); each failure says whose it is.
   live.start().then(
     () => push?.start().catch((e) => console.warn(/* en */ 'Notifications could not start', e)),
