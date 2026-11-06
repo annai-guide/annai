@@ -97,6 +97,13 @@ export function dayIn(at, tz) {
   return `${w.year}-${pad(w.month)}-${pad(w.day)}`;
 }
 
+/** The first instant of the day after at, in tz: its midnight, or where a clock change moves it. @param {number} at @param {string} tz */
+export function nextDay(at, tz) {
+  const w = wallClock(at, tz);
+  const d = new Date(Date.UTC(w.year, w.month - 1, w.day + 1));
+  return instantOf({ year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() }, tz);
+}
+
 /** The time, "HH:MM", of a moment in tz. @param {string | number} at @param {string} tz */
 export function timeIn(at, tz) {
   const t = ms(at);
