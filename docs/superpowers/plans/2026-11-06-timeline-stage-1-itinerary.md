@@ -35,8 +35,8 @@
 **This plan's calls**
 - Every display noun for this thing becomes Itinerary, not only the screen's name: one word per concept, and the glossary row is one concept. Verbs stay ("Ask Shiori to plan with you").
 - The e2e lines naming the word change here, not in stage 8.
-- Typing when moving fast begins skips the take-over for that drive, with no retry: "once".
-- A reload during a drive may take over once, on the screens above: the activity comes back from the drive record after the shell starts, and that reads as a change. Driving is the right screen then, so no extra state guards it.
+- Typing when moving fast begins skips the take-over for that drive, with no retry: "once". Once means once per drive: moving fast starting again within `SAME_DRIVE_MS` of its end (a long light) is the same drive, by `Live.sameDrive`, the rule the activity trigger uses, and takes nobody over, whether the user typed, came back with ←, or reloaded.
+- A reload during a drive takes nobody over (fix pass 1; this plan first allowed one): "once" is the user's word, and a reload shouldn't undo a screen they chose. The activity comes back from the drive record after the shell starts, so `main.js` seeds the shell's `was` once `live.start()` settles (`followDrive`, `seedActivity`), with `#restore` untouched.
 - `handover` stays a pure function in `today.js`, with only the listener in `shell.js`, which unit tests can't import.
 - `now-card` and `ui:now-section` draw on both Now and the Itinerary's today until stage 8. The screens never show together.
 

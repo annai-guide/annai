@@ -32,7 +32,7 @@ import { createDock } from './dock.js';
 import { tapKeepsKeyboard } from './tap-keeps-keyboard.js';
 import { dockHidesWhileTyping } from './dock-hides.js';
 import { noteScreen } from './resume.js';
-import { takeover, isField, drivingTrip } from './today.js';
+import { followDrive, isField, drivingTrip } from './today.js';
 import { renderExt, renderPluginPage, renderTripTab } from './screens/ext.js';
 import { renderMcp } from './screens/mcp.js';
 import { renderWelcome } from './screens/welcome.js';
@@ -355,16 +355,13 @@ export function startShell(root, core) {
   render({ moved: true });
   // Driving, or a plugin's screen for the activity, takes over once as the activity changes. The dock's box is outside main, so
   // typing there counts here, and not in typing().
-  let was = core.live?.activity;
-  core.live?.onChange(() => {
-    const to = takeover({ activity: core.live.activity, was, screens: slotEntries(ctx, 'ui:screen'), on: core.live.on, hash: location.hash, typing: isField(document.activeElement), trip: drivingTrip(core) });
-    was = core.live.activity;
-    if (to) ctx.go(to);
-  });
+  const seedActivity = followDrive(core.live, { screens: () => slotEntries(ctx, 'ui:screen'), hash: () => location.hash, typing: () => isField(document.activeElement), trip: () => drivingTrip(core), go: (to) => ctx.go(to) });
   let readyCard = () => {};
   return {
     notices,
     render,
+    /** Live mode has restored the drive record: what the activity changes from is what it restored. */
+    seedActivity,
     /** Draws the screen again once nothing typed would be lost (what Settings → Updates shows changed). */
     redraw: () => redraw(),
     /** A new version of annai waits (Settings → Updates says so too): one card, the newest. @param {() => void} apply */

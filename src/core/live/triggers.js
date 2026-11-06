@@ -31,6 +31,8 @@ export const NEW_PLACE_M = 500;
 const MIN = 60_000;
 /** Moving fast starting again this soon after it ended is the same drive: a red light, a queue. */
 export const SAME_DRIVE_MS = 5 * MIN;
+/** Whether moving fast starting at `now` continues the drive that ended at `fastEnded` (null: none did). @param {number | null} fastEnded @param {number} now */
+export const sameDrive = (fastEnded, now) => fastEnded !== null && now - fastEnded < SAME_DRIVE_MS;
 
 /** @param {unknown} v @param {number} lo @param {number} hi */
 const num = (v, lo, hi) => typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= hi;
@@ -192,7 +194,7 @@ function startSide(w, m, mem) {
     const c = m.change;
     if (!c || (c.at ?? Infinity) < mem.set) return null; // a stale record's drive ended before it was set: not for it
     if (w.edge === 'stop' ? c.from !== w.activity : c.to !== w.activity) return null;
-    if (w.edge !== 'stop' && w.activity === 'moving-fast' && m.fastEnded !== null && m.now - m.fastEnded < SAME_DRIVE_MS) return null;
+    if (w.edge !== 'stop' && w.activity === 'moving-fast' && sameDrive(m.fastEnded, m.now)) return null;
     /* en */ return { text: `the activity is now ${words(c.to)} (it was ${words(c.from)})` };
   },
 };

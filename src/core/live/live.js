@@ -1,6 +1,6 @@
 import { meters, keep, fixOf, kmText, span, KEEP_M } from './geo.js';
 import { ActivityTracker, STILL_BELOW, FAST_FROM, SETTLE_MS, waySpeed } from './activity.js';
-import { TRIGGERS, SAME_DRIVE_MS } from './triggers.js';
+import { TRIGGERS, SAME_DRIVE_MS, sameDrive } from './triggers.js';
 import { PLAN, planWatches, planWords, planItemWords } from './plan-watches.js';
 import { readWatches, saveWatch, removeWatch, newWatchId, expired, watchPath, WATCH_FILE } from './watches.js';
 import { realClock } from './clock.js';
@@ -280,6 +280,11 @@ export class Live {
   /** The trip in play, always current: whose plan reminds and where the road goes. The open conversation keeps its meaning everywhere else. */
   get play() {
     return this.#play();
+  }
+
+  /** Moving fast starting now would continue the drive that just ended: a light, not a new drive (what the activity trigger counts as starting). */
+  get sameDrive() {
+    return sameDrive(this.#fastEnded, this.clock.now());
   }
 
   /** A simulation has live mode now (spec §13). */

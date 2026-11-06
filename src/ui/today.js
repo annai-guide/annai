@@ -43,15 +43,31 @@ export function handover(activity, was, screens) {
 const TAKEN_FROM = new Set(['trips', 'talk', 'plan', 'now']);
 
 /**
- * Where the shell goes as the activity changes, or null. Once per change, and never from under someone typing. Driving shows a trip
- * (drivingTrip), so it needs one; a plugin's screen doesn't.
- * @param {{ activity: string, was: string | undefined, screens: { pluginId: string, item: any }[], on: boolean, hash: string, typing: boolean, trip: string | null }} o
+ * Where the shell goes as the activity changes, or null. Once per drive: not from under someone typing, and not when moving fast starts again after a light
+ * (same). Driving shows a trip (drivingTrip), so it needs one; a plugin's screen doesn't.
+ * @param {{ activity: string, was: string | undefined, screens: { pluginId: string, item: any }[], on: boolean, hash: string, typing: boolean, trip: string | null, same: boolean }} o
  * @returns {string | null}
  */
-export function takeover({ activity, was, screens, on, hash, typing, trip }) {
+export function takeover({ activity, was, screens, on, hash, typing, trip, same }) {
   const to = handover(activity, was, screens);
-  if (!to || !on || typing || !TAKEN_FROM.has(parseHash(hash).name)) return null;
+  if (!to || !on || typing || (same && activity === 'moving-fast') || !TAKEN_FROM.has(parseHash(hash).name)) return null;
   return to === '#/drive' && !trip ? null : to;
+}
+
+/**
+ * Follows the activity for the shell: Driving, or a plugin's screen, takes over as it changes. The returned function seeds what "changed" is measured
+ * from, once live mode has restored the drive record, which a reload does after the shell starts.
+ * @param {any} live @param {{ screens: () => { pluginId: string, item: any }[], hash: () => string, typing: () => boolean, trip: () => string | null, go: (to: string) => void }} o
+ * @returns {() => void}
+ */
+export function followDrive(live, o) {
+  let was = live?.activity;
+  live?.onChange(() => {
+    const to = takeover({ activity: live.activity, was, screens: o.screens(), on: live.on, hash: o.hash(), typing: o.typing(), trip: o.trip(), same: live.sameDrive });
+    was = live.activity;
+    if (to) o.go(to);
+  });
+  return () => { was = live?.activity; };
 }
 
 /** The trip Driving shows: the one in play, else the open one. A quick chat doesn't take the road with it. @param {any} ctx @returns {string | null} */

@@ -63,7 +63,7 @@ test('today without live mode is the phone\'s own', () => {
   assert.equal(todayOf(undefined), dayIn(Date.now(), deviceZone()));
 });
 
-const go = { activity: 'moving-fast', was: 'walking', screens: [], on: true, hash: '#/trips', typing: false, trip: 'trip-a' };
+const go = { activity: 'moving-fast', was: 'walking', screens: [], on: true, hash: '#/trips', typing: false, trip: 'trip-a', same: false };
 test('moving fast begins: Driving takes over from home, the conversation, the Itinerary and Now', () => {
   for (const hash of ['', '#/trips', '#/talk', '#/plan', '#/trip/trip-a/plan', '#/now']) assert.equal(takeover({ ...go, hash }), '#/drive', hash);
 });
@@ -72,6 +72,14 @@ test('it stays put elsewhere, while typing, with GPS off, and with nothing open'
 });
 test('once: a drive already going takes nobody over', () => {
   assert.equal(takeover({ ...go, was: 'moving-fast' }), null);
+});
+test('moving fast starting again after a light is the same drive: Driving, or a plugin\'s screen for moving fast, does not take over again', () => {
+  assert.equal(takeover({ ...go, same: true }), null);
+  const screens = [{ pluginId: 'p', item: { id: 's', homeFor: 'moving-fast' } }];
+  assert.equal(takeover({ ...go, screens }), '#/ext/p/s');
+  assert.equal(takeover({ ...go, screens, same: true }), null);
+  const walking = [{ pluginId: 'p', item: { id: 's', homeFor: 'walking' } }];
+  assert.equal(takeover({ ...go, activity: 'walking', was: 'still', screens: walking, same: true }), '#/ext/p/s', 'the rule is about driving');
 });
 test("a plugin's screen for the activity takes over, with no trip open too", () => {
   const screens = [{ pluginId: 'p', item: { id: 's', homeFor: 'walking' } }];
