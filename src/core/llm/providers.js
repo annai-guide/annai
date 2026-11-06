@@ -188,12 +188,14 @@ export async function addProvider({ ws, store }, src, { key = null, roles = 'fre
 /**
  * Brings providers up to date when their plugin's version changed (decision 4): new template layers,
  * models new to the description (in no role), and new abilities switched off (decision 5). The user's
- * layers stay; models gone from the description, or removed by the user, stay as they are. @param {{ ws: Workspace }} c @param {ProviderSource[]} sources @returns {Promise<number>} the providers refreshed
+ * layers stay; models gone from the description, or removed by the user, stay as they are, except that a model gone from the description leaves Koe · Realtime: a live model
+ * is dropped because it can't serve, and a list that keeps it opens a refused session before the next model, or rests with none. @param {{ ws: Workspace }} c @param {ProviderSource[]} sources @returns {Promise<number>} the providers refreshed
  */
 export async function syncProviders({ ws }, sources) {
   const bySrc = new Map(sources.map((s) => [s.plugin, s]));
   const cfg = await readConfig(ws);
   const taken = new Set(Object.values(cfg.models).map((m) => modelOf(m).name.toLowerCase()));
+  let realtime = cfg.roles[KOE_REALTIME];
   let n = 0;
   for (const rec of Object.values(cfg.providers)) {
     const src = bySrc.get(rec.plugin);
@@ -212,6 +214,8 @@ export async function syncProviders({ ws }, sources) {
     const mine = Object.values(cfg.models).filter((m) => m.provider === rec.id);
     /** @type {ModelRecord[]} */
     const changed = [];
+    /** @type {Set<string>} */
+    const dropped = new Set();
     for (const m of mine) {
       const d = listed.find((x) => m.template?.id === `${src.plugin}/${x.key}`);
       if (d && m.template) changed.push({ ...m, template: { id: m.template.id, version: src.version, values: d.values } });
@@ -225,7 +229,12 @@ export async function syncProviders({ ws }, sources) {
         if (!fresh.length) continue;
         const add = Object.fromEntries(fresh.map((k) => [k, structuredClone(now[k])]));
         changed.push(m.template ? { ...m, template: { ...m.template, values: { ...m.template.values, ...add } } } : { ...m, user: { ...m.user, ...add } });
-      }
+      } else dropped.add(m.id);
+    }
+    // Before the provider's own save: a kill between the two does it again at the next start.
+    if (realtime?.models.some((id) => dropped.has(id))) {
+      realtime = { ...realtime, models: realtime.models.filter((id) => !dropped.has(id)) };
+      await saveRoles(ws, { ...cfg.roles, [KOE_REALTIME]: realtime });
     }
     for (const d of listed) {
       if (known.has(d.key) || mine.some((m) => m.template?.id === `${src.plugin}/${d.key}`)) continue;

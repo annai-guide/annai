@@ -6,6 +6,7 @@ import { catalogFacts } from '../../src/core/catalog-facts.js';
 import { satisfies } from '../../src/core/requires.js';
 import { readConfig, modelOf, providerOf, saveRoles } from '../../src/core/llm/config.js';
 import { createLlm } from '../../src/core/llm/service.js';
+import { koeWay } from '../../src/core/llm/fallback.js';
 import { encodeWav } from '../../src/core/voice/pcm.js';
 import { hostKit } from './package-kit.js';
 import { officialManifests, official } from './provider-kit.js';
@@ -489,25 +490,68 @@ test("the move-over from provider-gemini 1.x: the chat ability's type becomes ge
   await setKey(k.store, id, null);
 });
 
-test('an update that takes Extended Thinking out of the description: a saved Koe list stays as it is, and the model record with it', async () => {
-  const { addProvider, syncProviders } = await import('../../src/core/llm/providers.js');
+/**
+ * Gemini with Extended Thinking, Koe's Realtime list as given, chat models for Koe · Classic and Kokoro, then the update that takes it, and a chat model Kokoro uses, out of the description.
+ * @param {(ids: { dropped: string, live: string, byId: string, listed: string }) => string[]} list @param {string[]} [classic] Koe · Classic's models, by provider model id
+ */
+async function updatedOverLive(list, classic = ['gemini-3.5-flash-lite']) {
+  const { addProvider, syncProviders, addListedModel, addModelById } = await import('../../src/core/llm/providers.js');
   const { setKey } = await import('../../src/core/llm/config.js');
   const k = await hostKit();
   const now = await official('provider-gemini');
   const was = /** @type {any} */ (structuredClone(now));
   was.version = '2.7.2';
   was.provider.abilities.live.models.push({ providerId: 'gemini-3.8-live-extended-thinking', input: ['text', 'image'], name: 'Gemini 3.8 Live Extended Thinking', contextWindow: 131072 });
-  const id = await addProvider({ ws: k.ws, store: k.store }, was, { key: 'AIza-kept' });
+  const id = await addProvider({ ws: k.ws, store: k.store }, was, { key: 'AIza-kept', abilities: { live: { on: true } } });
+  const next = /** @type {any} */ (structuredClone(now));
+  next.provider.abilities.chat.models = next.provider.abilities.chat.models.filter((/** @type {any} */ m) => m.providerId !== 'gemini-3.6-flash');
+  const ids = {
+    listed: await addListedModel({ ws: k.ws }, id, 'live', { providerId: 'gemini-from-the-list' }),
+    byId: await addModelById({ ws: k.ws }, id, 'live', 'gemini-by-hand'),
+    dropped: '', live: '',
+  };
   const before = await readConfig(k.ws);
   const idOf = (/** @type {string} */ pid) => /** @type {string} */ (Object.values(before.models).find((m) => modelOf(m).providerId === pid)?.id);
-  const list = [idOf('gemini-3.8-live-extended-thinking'), idOf('gemini-3.8-live')];
-  await saveRoles(k.ws, { ...before.roles, 'koe-realtime': { models: list, level: 'off' } });
-  assert.equal(await syncProviders({ ws: k.ws }, [now]), 1);
+  ids.dropped = idOf('gemini-3.8-live-extended-thinking');
+  ids.live = idOf('gemini-3.8-live');
+  const kokoro = [idOf('gemini-3.6-flash'), idOf('gemini-3.8-flash')];
+  const koe = classic.map(idOf);
+  await saveRoles(k.ws, { ...before.roles, main: { models: kokoro, level: 'medium' }, 'koe-classic': { models: koe, level: 'off' }, 'koe-realtime': { models: list(ids), level: 'off' } }, { koeMode: 'realtime' });
+  const types = new Map([['gemini-live', { realtime: true }], ['gemini', {}]]);
+  const wayOf = (/** @type {any} */ cfg) => koeWay(cfg, { voiceOn: true, types, until: () => 0, now: 0 });
+  const first = wayOf(await readConfig(k.ws));
+  assert.equal(await syncProviders({ ws: k.ws }, [next]), 1);
   const after = await readConfig(k.ws);
-  assert.deepEqual(after.roles['koe-realtime'].models, list);
-  assert.ok(after.models[list[0]], 'Gemini refuses it, and the next model takes over (live-drive2)');
-  assert.deepEqual(after.providers[id].template?.models?.filter((/** @type {string} */ m) => m.startsWith('live/')), ['live/gemini-3.8-live']);
   await setKey(k.store, id, null);
+  return { ids, first, after, way: wayOf(after), kokoro, koe };
+}
+
+test('an update that drops a live model: first of two in Koe · Realtime, it leaves the list, and the next model is Koe\'s way with no refused session', async () => {
+  const { ids, first, after, way } = await updatedOverLive((m) => [m.dropped, m.live]);
+  assert.deepEqual(first.path, { kind: 'live', modelId: ids.dropped }, 'it was first');
+  assert.deepEqual(after.roles['koe-realtime'].models, [ids.live]);
+  assert.deepEqual(way.path, { kind: 'live', modelId: ids.live });
+  assert.equal(way.why, '');
+});
+
+test('an update that drops a live model: alone in Koe · Realtime, the list is left empty: no Live model, nothing resting, and Koe · Chat answers', async () => {
+  const { first, after, way } = await updatedOverLive((m) => [m.dropped]);
+  assert.equal(first.path?.kind, 'live');
+  assert.deepEqual(after.roles['koe-realtime'].models, []);
+  assert.deepEqual([way.using, way.why, way.live, way.split, way.path], ['classic', 'none', false, true, { kind: 'text' }]);
+  // With no Koe · Chat either, Shiori is one again.
+  const none = await updatedOverLive((m) => [m.dropped], []);
+  assert.deepEqual([none.way.using, none.way.why, none.way.live, none.way.split, none.way.path], ['classic', 'none', false, false, null]);
+});
+
+test('that update changes only Koe · Realtime: its order stays, models added by hand or from a list stay, the kept records stay, and Kokoro keeps a chat model the description dropped', async () => {
+  const { ids, after, kokoro, koe } = await updatedOverLive((m) => [m.byId, m.dropped, m.listed, m.live]);
+  assert.deepEqual(after.roles['koe-realtime'].models, [ids.byId, ids.listed, ids.live]);
+  assert.deepEqual(after.roles.main.models, kokoro);
+  assert.deepEqual(after.roles['koe-classic'].models, koe);
+  assert.equal(modelOf(after.models[ids.dropped]).providerId, 'gemini-3.8-live-extended-thinking', 'its record stays');
+  assert.equal(modelOf(after.models[kokoro[0]]).providerId, 'gemini-3.6-flash');
+  assert.equal(after.koeMode, 'realtime');
 });
 
 test('Gemini can be added while the user has Gemini Live turned off: it requires only gemini-api, and Live stays off', async () => {

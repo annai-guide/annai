@@ -36,12 +36,11 @@ import { createHash } from 'node:crypto';
  *   model or network gives it (a turn that comes meanwhile cuts it off before it begins); noEnd (Gemini's): no turnComplete ever comes, as after a
  *   tool response in a real run (2026-11-05); endAt (Gemini's): its turnComplete comes only this many ms after its burst
  * @typedef {{ flavour: 'gemini' | 'openai', turns: Turn[], key?: string, models?: string[], closeWith?: { code: number, reason: string },
- *   pace?: number, chunkBytes?: number, expired?: boolean, noLanguageCodes?: boolean, noProactivity?: boolean, noLanguages?: boolean | 'close', needsThinking?: string[] }} Options
+ *   pace?: number, chunkBytes?: number, expired?: boolean, noLanguageCodes?: boolean, noProactivity?: boolean, noLanguages?: boolean | 'close' }} Options
  *   key: the one key it takes (none: any); models: the ids it knows (none: any); closeWith: how it closes each session at its setup (openai: its session.update);
  *   pace: how long a turn stays open, as a share of its audio's real time (1, as Gemini; 0: at once); openai: how long generating it takes; chunkBytes: audio per message;
  *   expired: Gemini refuses every resumption handle as it does one it no longer keeps (1008, measured in the user's trace, 2026-10-22);
  *   noLanguageCodes: a setup with inputAudioTranscription.languageCodes is refused with 1007 "Unknown name", as a model that doesn't know the field would;
- *   needsThinking: these Gemini models close a setup with no thinking level with 1007, as Extended Thinking does (a free key, 2026-11-04);
  *   noProactivity: a setup with proactivity is refused the same way on any version; noLanguages (openai): a session.update with transcription.language or
  *   languages is refused with an unknown_parameter error naming the field ('close': and the socket closed 3000 after it)
  */
@@ -162,7 +161,7 @@ export async function startRealtimeServer(o) {
     open.add(conn);
     socket.on('close', () => open.delete(conn));
     socket.on('error', () => {});
-    const c = { conn, received, turns, turnAt, counter, early, key, given, models, closeWith, pace, chunkBytes, url, version: version ?? '', expired: Boolean(o.expired), noLanguageCodes: Boolean(o.noLanguageCodes), noProactivity: Boolean(o.noProactivity), noLanguages: o.noLanguages ?? false, needsThinking: o.needsThinking ?? [] };
+    const c = { conn, received, turns, turnAt, counter, early, key, given, models, closeWith, pace, chunkBytes, url, version: version ?? '', expired: Boolean(o.expired), noLanguageCodes: Boolean(o.noLanguageCodes), noProactivity: Boolean(o.noProactivity), noLanguages: o.noLanguages ?? false};
     const session = isOpenai ? openaiSession(c) : geminiSession(c);
     /** @type {Buffer} */
     let buf = Buffer.alloc(0);
@@ -227,12 +226,12 @@ export async function startRealtimeServer(o) {
 
 /**
  * @typedef {{ conn: ReturnType<typeof link>, received: any[], turns: Turn[], turnAt: () => Turn | undefined, counter: { next: number, calls: number, ids: number }, early: Set<Turn>,
- *   key?: string, given: string | null, models?: string[], closeWith?: { code: number, reason: string }, pace: number, chunkBytes: number, url: URL, version: string, expired?: boolean, noLanguageCodes?: boolean, noProactivity?: boolean, noLanguages?: boolean | 'close', needsThinking?: string[] }} Ctx
+ *   key?: string, given: string | null, models?: string[], closeWith?: { code: number, reason: string }, pace: number, chunkBytes: number, url: URL, version: string, expired?: boolean, noLanguageCodes?: boolean, noProactivity?: boolean, noLanguages?: boolean | 'close' }} Ctx
  */
 
 /** Gemini Live, as measured. @param {Ctx} c @returns {{ handle(m: any): void, stop(): void }} */
 function geminiSession(c) {
-  const { conn, turns, turnAt, counter, early, key, models, closeWith, pace, chunkBytes, url, version, expired, noLanguageCodes, noProactivity, needsThinking } = c;
+  const { conn, turns, turnAt, counter, early, key, models, closeWith, pace, chunkBytes, url, version, expired, noLanguageCodes, noProactivity } = c;
   const send = conn.send;
   let ready = false;
   /** The turn being played: its timers, and what cuts it off. @type {{ timers: NodeJS.Timeout[], turn: Turn } | null} */
@@ -300,7 +299,6 @@ function geminiSession(c) {
         if (!s.model || (models && !models.includes(id))) {
           return conn.close(1008, `${s.model} is not found for API version ${version}, or is not supported for bidiGenerateContent. Call ModelService.ListModels to see the list of available models and their supported methods.`);
         }
-        if (needsThinking?.includes(id) && !s.generationConfig?.thinkingConfig?.thinkingLevel) return conn.close(1007, 'Thinking level must be specified for this model.');
         if ((version === 'v1beta' || noProactivity) && s.proactivity) return conn.close(1007, 'Invalid JSON payload received. Unknown name "proactivity" at \'setup\': Cannot find field.');
         if (noLanguageCodes && s.inputAudioTranscription?.languageCodes) return conn.close(1007, 'Invalid JSON payload received. Unknown name "languageCodes" at \'setup.input_audio_transcription\': Cannot find field.');
         if (expired && s.sessionResumption?.handle) return conn.close(1008, 'BidiGenerateContent session not found or expired');

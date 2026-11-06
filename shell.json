@@ -1,5 +1,5 @@
 {
-  "build": "e99b68aec7da",
+  "build": "dd7361be06f3",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -81,7 +81,7 @@
     "/src/core/llm/move-over.js": "8f75b9e642f8",
     "/src/core/llm/official.js": "3e88bd9e8ba3",
     "/src/core/llm/provider-desc.js": "7d91c483fba5",
-    "/src/core/llm/providers.js": "8793c4502349",
+    "/src/core/llm/providers.js": "67794c3338b9",
     "/src/core/llm/setup.js": "7fa707720d18",
     "/src/core/llm/cost.js": "6e4f2df4a86e",
     "/src/core/llm/partial-json.js": "05dab759f366",
