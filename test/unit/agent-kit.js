@@ -80,7 +80,7 @@ export function fakeCodec(formats) {
  *   first false chooses Koe · Classic; key and tunables, for the real service (test/live); type: OpenAI's protocol
  *   (gpt-realtime-2.1, at <origin>/v1) in place of Gemini's
  */
-export async function agentKit(scripts, { models = [], open = true, agent: agentOpts = {}, utility, utilityModel = {}, codecFormats, uploading = false, voice: v, halves = false, koe, live, fetch, hold } = {}) {
+export async function agentKit(scripts, { models = [], open = true, agent: agentOpts = {}, utility, utilityModel = {}, codecFormats, uploading = false, voice: v, halves = false, koe, live, fetch, hold, ready } = {}) {
   const registry = new Registry();
   const store = createMemoryStore();
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
@@ -178,6 +178,7 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
   const bench = new Bench();
   const llm = {
     bench,
+    ready,
     config: () => readConfig(ws),
     uploading: async () => uploading,
     /** @param {any} c */

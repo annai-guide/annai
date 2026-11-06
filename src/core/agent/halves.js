@@ -817,10 +817,11 @@ export class Halves {
   /**
    * A tap on the avatar always talks: with voice off it holds voice on until that exchange ends, and Koe's way is worked out again first, as
    * Live needs voice on. A second tap before that's done is the same wish: Koe's way isn't known yet, and it would open Classic's microphone rather than live.
+   * As annai starts the way isn't known either (plugins come after the dock), so that tap takes the same road, or Kokoro's microphone opens under a live Koe.
    */
   tap() {
     if (this.#tapWorking) return 'listening';
-    const did = this.#tapNow();
+    const did = this.#way || !this.voice?.platform ? this.#tapNow() : 'typing';
     if (did !== 'typing' || !this.voice?.platform) return did;
     this.#tapHeld = true;
     this.#tapStarting++;
