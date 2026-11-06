@@ -830,7 +830,7 @@ test('a first fix with no speed, killed, then parked with a way above 5 m/s: the
   assert.equal(held(k), false);
 });
 
-test('a first fix with no speed whose way is slow decides at once: the end is told', async () => {
+test('a first fix with no speed whose way is slow: the end is told at its change, 2 minutes later, not on the first fix', async () => {
   const k = await liveKit({ start: at('09:00') });
   const y = await road(k, at('09:00'), 0, 60);
   await off_screen(k);
@@ -838,6 +838,8 @@ test('a first fix with no speed whose way is slow decides at once: the end is to
   await k.restart();
   const told = ends(k);
   await k.fix(at('09:40:05'), north(y + 60), { speed: null });
+  assert.equal(told(), 0);
+  await k.to(at('09:42:15'));
   assert.equal(told(), 1);
 });
 
