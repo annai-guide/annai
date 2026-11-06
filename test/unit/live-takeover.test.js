@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { liveKit, at, off, LA, MONTEREY } from './live-kit.js';
 import { followDrive, followPlay, askIn } from '../../src/ui/today.js';
 import { Live } from '../../src/core/live/live.js';
+import { startTab } from '../../src/ui/screens/plan.js';
 
 const A = MONTEREY;
 const B = off(MONTEREY, 0, -6000);
@@ -145,4 +146,14 @@ test('a quick ask goes to the trip in play now, not the one the screen was drawn
   const agent = Object.assign(k.agent, { open: async (/** @type {string} */ id) => k.agent.opened(id), send: (/** @type {string} */ text) => sent.push([text, k.agent.target]) });
   await askIn({ ws: k.ws, live: k.live, agent }, 'Fuel?');
   assert.deepEqual(sent, [['Fuel?', k.trip]]);
+});
+
+test("the Itinerary's redraw keeps the tab the user was on; a fresh entry, or a tab that is gone, opens today's", () => {
+  const tabs = [{ key: '2026-11-26', rows: [1] }, { key: '2026-11-27', rows: [1] }, { key: '2026-11-28', rows: [] }, { key: '', rows: [1] }];
+  assert.equal(startTab(tabs, '2026-11-27', null).key, '2026-11-27', 'fresh entry: today');
+  assert.equal(startTab(tabs, '2026-11-27', '2026-11-26').key, '2026-11-26', 'redraw: the one the user had');
+  assert.equal(startTab(tabs, '2026-11-27', '2026-11-28').key, '2026-11-28', 'an empty day too');
+  assert.equal(startTab(tabs, '2026-11-27', '').key, '', 'No time yet');
+  assert.equal(startTab(tabs, '2026-11-27', '2026-12-01').key, '2026-11-27', 'its day is gone: today');
+  assert.equal(startTab(tabs, '2026-12-05', null).key, '2026-11-26', 'no today: the first with rows');
 });

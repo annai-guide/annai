@@ -11,6 +11,11 @@ import { todayOf, todayTop, drivingTrip } from '../today.js';
 import { ask } from '../ask.js';
 import { detailsHref, rowName, lineName, dateRange, day, distance, num, list, sentences, sentenceGap } from '../format.js';
 
+/** The tab shown, kept for a redraw; a fresh entry (ctx.moved) opens today's. @type {string | null} */
+let kept = null;
+/** @param {{ key: string, rows: unknown[] }[]} tabs @param {string | null} today @param {string | null} keep */
+export const startTab = (tabs, today, keep) => tabs.find((x) => x.key === keep) ?? tabs.find((x) => x.key === today) ?? tabs.find((x) => x.rows.length) ?? tabs[0];
+
 /**
  * The Itinerary (spec §16.2): "Not on a day" (bookings with no time), day tabs, today's top, a timetable with ● fixed and ○ flexible, every booking on
  * its day with a quiet line for each night of a stay, the legs between stops, the check marks (§7.3), and "Add to calendar" (§8). A
@@ -37,7 +42,7 @@ export async function renderPlan(ctx, route) {
 
   const tabs = [...days.map((d) => ({ key: d.key, label: day(d.key, true), rows: d.rows })), ...(untimed.length ? [{ key: '', label: t`No time yet (${num(untimed.length)})`, rows: untimed }] : [])];
   const today = todayOf(ctx.live);
-  const first = tabs.find((x) => x.key === today) ?? tabs.find((x) => x.rows.length) ?? tabs[0];
+  const first = startTab(tabs, today, ctx.moved ? null : kept);
   const panel = h('div', { class: 'plan-day', role: 'tabpanel' });
   // Today's tab opens with what Now opens with. Driving shows one trip, so only that trip links to it.
   let top = null;
@@ -50,6 +55,7 @@ export async function renderPlan(ctx, route) {
   const buttons = tabs.map((x) => h('button', { type: 'button', role: 'tab', class: 'tab', onclick: () => show(x) }, x.label));
   /** @param {typeof tabs[number]} tab */
   function show(tab) {
+    kept = tab.key;
     buttons.forEach((b, i) => b.setAttribute('aria-selected', String(tabs[i] === tab)));
     panel.setAttribute('aria-label', tab.label);
     if (top) top.hidden = tab.key !== today;
