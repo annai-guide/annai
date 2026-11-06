@@ -206,7 +206,7 @@ test("a notification for a reminder annai already said on screen is a double: th
 
 test('while another trip opens, the list never pairs the new trip with the old plan: the plan and the conversation are read together', async () => {
   const k = await liveKit({ plan: { nepenthe: NEP } });
-  const other = await createTrip(k.ws, { title: 'Carmel' });
+  const other = await createTrip(k.ws, { title: 'Carmel', start: '2026-11-27', end: '2026-11-27' });
   await k.ws.write(other, '/plan/tea.json', { id: 'tea', ...TEA }, { author: 'user' });
   await k.to(at('11:00'));
   assert.ok((await k.live.reminders())?.some((r) => r.scope === k.trip && r.watch.startsWith('plan:nepenthe:')));
