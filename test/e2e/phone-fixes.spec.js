@@ -77,21 +77,21 @@ test('Plan → Check this → Open the original: back goes to the booking, then 
     text: { '/files/avis.txt': 'Your Avis reservation TESTCAR1' },
   });
   const tab = () => page.getByRole('navigation', { name: 'Main' }).locator('[aria-current="page"]');
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Plan' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Plan' })).toBeVisible();
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Itinerary' })).toBeVisible();
   await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();
   await page.getByRole('tabpanel').getByRole('link', { name: 'Check this' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Avis TESTCAR1' })).toBeVisible();
-  await expect(tab()).toHaveText('Plan');
+  await expect(tab()).toHaveText('Itinerary');
   await page.getByRole('link', { name: 'Open', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: /avis\.txt/ })).toBeVisible();
-  await expect(tab()).toHaveText('Plan');
+  await expect(tab()).toHaveText('Itinerary');
   await page.getByRole('main').locator('.crumbs a').click();
   await expect(page.getByRole('heading', { level: 1, name: 'Avis TESTCAR1' })).toBeVisible();
-  await expect(tab()).toHaveText('Plan');
-  await page.getByRole('main').getByRole('link', { name: 'Plan', exact: true }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Plan' })).toBeVisible();
-  await expect(tab()).toHaveText('Plan');
+  await expect(tab()).toHaveText('Itinerary');
+  await page.getByRole('main').getByRole('link', { name: 'Itinerary', exact: true }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Itinerary' })).toBeVisible();
+  await expect(tab()).toHaveText('Itinerary');
   // From the trip's own files, back is the trip, as before.
   await page.goto(`/#/trip/${encodeURIComponent(trip)}`);
   await page.getByRole('region', { name: 'Files', exact: true }).getByRole('link', { name: /Avis TESTCAR1/ }).click();

@@ -145,7 +145,7 @@ export async function renderNotifications(ctx) {
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, crumb('#/settings', t`Settings`)),
     h('h1', { class: 'title', text: t`Notifications` }),
-    h('p', { class: 'sub', text: t`Shiori's reminders for a time, and the plan's "coming up" and "leave soon", reach you as notifications while annai is closed. Tapping one opens annai, and Shiori catches up.` }),
+    h('p', { class: 'sub', text: t`Shiori's reminders for a time, and the itinerary's "coming up" and "leave soon", reach you as notifications while annai is closed. Tapping one opens annai, and Shiori catches up.` }),
     status, alert, help,
     acts.length ? h('div', { class: 'acts' }, ...acts) : null,
     section(t`Relay`, field(t`Relay address`, address), h('div', { class: 'acts' }, save),
@@ -153,7 +153,7 @@ export async function renderNotifications(ctx) {
     section(t`What the relay learns`, h('ul', { class: 'where' },
       h('li', { text: t`annai encrypts every reminder on this phone, and makes each the same size: the relay can't read it, or tell a long one from a short one.` }),
       h('li', { text: t`It learns this phone's push address (at Apple, Google or Mozilla, whose service delivers it), when each reminder is due, and how many are waiting. Like any server, it sees the internet address the phone connects from.` }),
-      h('li', { text: t`Reminders about places (arriving, leaving, nearby) never leave the phone. A "leave soon" reminder's time is worked out from where you were when annai last looked, so it tells roughly how far away you were to someone who also knew your plan; the relay doesn't.` }),
+      h('li', { text: t`Reminders about places (arriving, leaving, nearby) never leave the phone. A "leave soon" reminder's time is worked out from where you were when annai last looked, so it tells roughly how far away you were to someone who also knew your itinerary; the relay doesn't.` }),
       h('li', { text: t`Each reminder is deleted at the relay once it is sent, or when you cancel it, turn notifications off, or remove its trip.` }),
       h('li', { text: t`With annai open on screen, annai says a reminder itself, and the relay's copy is called off: you never get it twice.` }))),
     h('p', { class: 'sub', text: t`Every request to the relay is in Trace, under System · This device.` }));

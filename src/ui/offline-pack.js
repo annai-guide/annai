@@ -33,15 +33,15 @@ export function packWords(s, connection) {
     const line = r.total ? (r.label ? t`Downloading ${done} of ${total}: ${r.label}…` : t`Downloading ${done} of ${total}…`) : r.label ? t`Downloading: ${r.label}…` : t`Downloading…`;
     return { lines: [line], button: null };
   }
-  if (!s.stops) return { lines: [t`The pack follows the plan: once the plan has places, it can be downloaded here.`], button: null };
+  if (!s.stops) return { lines: [t`The pack follows the itinerary: once the itinerary has places, it can be downloaded here.`], button: null };
   const about = size(s.estimate);
   const m = s.manifest;
   if (!m) {
     return {
       lines: [
-        plural(s.stops, "For when there's no connection: places from OpenStreetMap, Wikipedia summaries and Wikivoyage guides, around the plan's stop and along the way between them. Shiori's nearby and guide read it first.",
-          "For when there's no connection: places from OpenStreetMap, Wikipedia summaries and Wikivoyage guides, around the plan's # stops and along the way between them. Shiori's nearby and guide read it first."),
-        t`Downloading sends the plan's places to OpenStreetMap and Wikipedia, and place names to Wikivoyage.`,
+        plural(s.stops, "For when there's no connection: places from OpenStreetMap, Wikipedia summaries and Wikivoyage guides, around the itinerary's stop and along the way between them. Shiori's nearby and guide read it first.",
+          "For when there's no connection: places from OpenStreetMap, Wikipedia summaries and Wikivoyage guides, around the itinerary's # stops and along the way between them. Shiori's nearby and guide read it first."),
+        t`Downloading sends the itinerary's places to OpenStreetMap and Wikipedia, and place names to Wikivoyage.`,
       ],
       button: t`Download (about ${about})`,
     };
@@ -49,8 +49,8 @@ export function packWords(s, connection) {
   const when = downloadedWhen(m.at);
   const lines = [when ? t`Downloaded ${when} · ${size(m.bytes)} · ${holds(m)}.` : t`Downloaded · ${size(m.bytes)} · ${holds(m)}.`];
   if (m.guides.length) lines.push(t`Guides: ${list(m.guides.map((g) => g.title), 'plain')}.`);
-  if (m.full) lines.push(t`It stopped at its ${size(MAX_BYTES)} limit, so it holds only the start of the plan.`);
-  if (s.cut) lines.push(t`This plan is longer than a pack holds, so some of the way between stops is left out.`);
+  if (m.full) lines.push(t`It stopped at its ${size(MAX_BYTES)} limit, so it holds only the start of the itinerary.`);
+  if (s.cut) lines.push(t`This itinerary is longer than a pack holds, so some of the way between stops is left out.`);
   if (m.failed.length) {
     // Which part and why, from what the failure kept; one kept before then, in the English it kept.
     const f = m.failed[0];
@@ -60,7 +60,7 @@ export function packWords(s, connection) {
   /** @type {string | null} */
   let button = null;
   if (s.why === 'plan') {
-    lines.push(t`The plan changed since.`);
+    lines.push(t`The itinerary changed since.`);
     button = t`Update (about ${about})`;
   } else if (s.why === 'missing') button = m.failed.length ? t`Try again (about ${about})` : t`Download the rest (about ${about})`;
   else if (s.why === 'old') {
@@ -125,7 +125,7 @@ export async function packLine(ctx, id) {
   if (!s?.stops) return null;
   const when = s.manifest ? downloadedWhen(s.manifest.at) : '';
   const text = !s.manifest ? t`No offline pack for this trip yet.`
-    : s.why === 'plan' ? t`The offline pack is from before the plan changed.`
+    : s.why === 'plan' ? t`The offline pack is from before the itinerary changed.`
       : when ? t`Offline pack: downloaded ${when}.` : t`Offline pack: downloaded.`;
   return h('p', { class: 'sub pack-line' }, text, sentenceGap(), h('a', { href: `#/trip/${encodeURIComponent(id)}` }, t`Offline pack`));
 }

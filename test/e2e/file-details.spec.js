@@ -9,7 +9,7 @@ test('Files: one row per file, by its first booking day then name, each one link
   const files = page.getByRole('region', { name: 'Files', exact: true });
   const rows = files.locator('.trip-file');
   await expect(rows.locator('.name')).toHaveText(['ANNAI AIR itinerary', 'Hotel Aurora Test', 'walks.ics', 'new.pdf']);
-  await expect(rows.locator('.became')).toHaveText(['2 flights · Nov 20, Nov 27', 'Stay · Nov 20', 'Plan items from a calendar', 'Waiting for Shiori to read it']);
+  await expect(rows.locator('.became')).toHaveText(['2 flights · Nov 20, Nov 27', 'Stay · Nov 20', 'Itinerary items from a calendar', 'Waiting for Shiori to read it']);
   for (const row of await rows.all()) await expect(row.getByRole('link')).toHaveCount(1);
   await expect(files.getByRole('button', { name: 'Ask Shiori about this' })).toHaveCount(0);
   await expect(files).not.toContainText('.json');
@@ -36,9 +36,9 @@ test('a file with two flights: one screen, two blocks in time order, each with i
   const second = page.getByRole('region', { name: 'ANNAI AIR AN 124' });
   await expect(second.locator('dl.facts .mark-check')).toHaveCount(1); // the seat
   // Each block's plan items are named by their block (A6), so two regions never share a name.
-  await expect(page.getByRole('region', { name: 'On the plan: ANNAI AIR AN 124', exact: true })).toContainText('Fly home');
-  await expect(page.getByRole('region', { name: 'On the plan', exact: true })).toHaveCount(0);
-  await expect(second.getByRole('region', { name: 'On the plan' })).toContainText('Terminal S.');
+  await expect(page.getByRole('region', { name: 'On the itinerary: ANNAI AIR AN 124', exact: true })).toContainText('Fly home');
+  await expect(page.getByRole('region', { name: 'On the itinerary', exact: true })).toHaveCount(0);
+  await expect(second.getByRole('region', { name: 'On the itinerary' })).toContainText('Terminal S.');
   await expect(page.getByRole('link', { name: 'Change it' })).toHaveCount(2);
   // With several bookings the file's region is named by its visible heading, not "The original" (which a booking's block could be).
   await expect(page.getByRole('region', { name: 'The file', exact: true })).toContainText('From itinerary.pdf');
@@ -90,7 +90,7 @@ test('a booking with no file: its block alone, no preview, Open or Download; its
   await expect(page.getByRole('region', { name: 'The original' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Open', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Download' })).toHaveCount(0);
-  await expect(page.getByRole('region', { name: 'On the plan' })).toContainText('Dinner at the grill');
+  await expect(page.getByRole('region', { name: 'On the itinerary' })).toContainText('Dinner at the grill');
   await expect(page.getByRole('link', { name: 'Change it' })).toHaveCount(1);
 });
 
@@ -98,7 +98,7 @@ test('a calendar file lists its plan items with their days, each opening its ite
   await openApp(page);
   await fileTrip(page);
   await openRow(page, 'walks.ics');
-  const made = page.getByRole('region', { name: 'Plan items from a calendar' });
+  const made = page.getByRole('region', { name: 'Itinerary items from a calendar' });
   await expect(made.getByRole('link')).toHaveText(['Aurora walk · Sun, Nov 22']);
   await made.getByRole('link').click();
   await expect(page.getByRole('heading', { name: 'Aurora walk' })).toBeVisible();
@@ -167,9 +167,9 @@ test('Back from the Plan: a tap on the return flight lands on its block, and the
   await page.getByRole('tab', { name: 'Fri, Nov 27' }).click();
   await page.getByRole('tabpanel').getByRole('link', { name: /Fly home/ }).first().click();
   await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 124' })).toBeFocused();
-  await expect(crumbOf(page)).toContainText('Plan');
+  await expect(crumbOf(page)).toContainText('Itinerary');
   await crumbOf(page).click();
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Plan');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Itinerary');
 });
 
 test('Back from Now and from the Conversation', async ({ page }) => {
@@ -228,7 +228,7 @@ test('Delete removes the file, its bookings and their plan items, says what went
   await openRow(page, 'ANNAI AIR itinerary');
   await deleteIt(page);
   // Nothing else names it (Shiori never read it in the conversation), so it is freed, and the toast says how much.
-  await expect(page.getByText(/^Deleted ANNAI AIR itinerary, 2 bookings,? and 1 plan item\. [\d.,]+ (bytes|kB|MB) freed\.$/)).toBeVisible();
+  await expect(page.getByText(/^Deleted ANNAI AIR itinerary, 2 bookings,? and 1 itinerary item\. [\d.,]+ (bytes|kB|MB) freed\.$/)).toBeVisible();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Anchorage');
   await expect(page.getByRole('region', { name: 'Files', exact: true }).locator('.trip-file .name')).toHaveText(['Hotel Aurora Test', 'walks.ics', 'new.pdf']);
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
@@ -278,10 +278,10 @@ test('a booking with no file: Delete removes it and its plan item', async ({ pag
   const trip = await fileTrip(page);
   await openAt(page, trip, '/bookings/said.json');
   await deleteIt(page);
-  await expect(page.getByText(/^Deleted Testville Grill and 1 plan item$/)).toBeVisible();
+  await expect(page.getByText(/^Deleted Testville Grill and 1 itinerary item$/)).toBeVisible();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Anchorage');
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/item?path=${encodeURIComponent('/plan/grill.json')}`);
-  await expect(page.getByRole('heading', { name: "This isn't on the plan" })).toBeVisible();
+  await expect(page.getByRole('heading', { name: "This isn't on the itinerary" })).toBeVisible();
 });
 
 test('the raw file screen says what else its Delete removes, and removes it', async ({ page }) => {
@@ -289,7 +289,7 @@ test('the raw file screen says what else its Delete removes, and removes it', as
   const trip = await fileTrip(page);
   await allFiles(page);
   await page.locator('details.all-files a[href*="file?path=%2Ffiles%2Fitinerary.pdf"]').click();
-  await expect(page.getByText('Deleting this file also deletes 2 bookings and 1 plan item.')).toBeVisible();
+  await expect(page.getByText('Deleting this file also deletes 2 bookings and 1 itinerary item.')).toBeVisible();
   await deleteIt(page, 'Delete file');
   await expect(page.getByText(/^Deleted ANNAI AIR itinerary/)).toBeVisible();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Anchorage');
@@ -344,7 +344,7 @@ test('a PDF Shiori read in the conversation: Delete keeps it under Deleted, and 
     await page.goto(home);
     await openRow(page, 'Hotel Aurora Test');
     await deleteIt(page);
-    await expect(page.getByText(/^Deleted Hotel Aurora Test, 1 booking,? and 1 plan item\. The conversation still has it, so it's under Deleted, where you can restore it\.$/)).toBeVisible();
+    await expect(page.getByText(/^Deleted Hotel Aurora Test, 1 booking,? and 1 itinerary item\. The conversation still has it, so it's under Deleted, where you can restore it\.$/)).toBeVisible();
     const files = page.getByRole('region', { name: 'Files', exact: true });
     await expect(files.locator(':scope > .file-list > .trip-file')).toHaveCount(0); // its rows; Deleted's are its own
     const deleted = files.locator('details.deleted-files');
@@ -363,15 +363,15 @@ test('a PDF Shiori read in the conversation: Delete keeps it under Deleted, and 
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Hotel Aurora Test');
     await expect(page.getByText('File name: booking.pdf')).toBeVisible();
     await expect(page.locator('p.sub.mono')).toHaveCount(0);
-    await expect(page.getByText(/^This file was deleted\. Restore brings it back with 1 booking,? and 1 plan item that Shiori read from it\.$/)).toBeVisible();
+    await expect(page.getByText(/^This file was deleted\. Restore brings it back with 1 booking,? and 1 itinerary item that Shiori read from it\.$/)).toBeVisible();
     const [restoreAt, previewAt] = await Promise.all([page.getByRole('button', { name: 'Restore', exact: true }), page.locator('.original, .pdf-view, .file-card').first()].map(async (l) => (await l.boundingBox())?.y ?? NaN));
     expect(restoreAt).toBeLessThan(previewAt);
     await expect(page.getByRole('button', { name: 'Restore this version' })).toHaveCount(0);
     await expect(page.getByText('Current', { exact: true })).toHaveCount(0);
     await page.getByRole('button', { name: 'Restore', exact: true }).click();
-    await expect(page.getByText(/^Restored booking\.pdf, 1 booking,? and 1 plan item$/)).toBeVisible();
+    await expect(page.getByText(/^Restored booking\.pdf, 1 booking,? and 1 itinerary item$/)).toBeVisible();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Hotel Aurora Test');
-    await expect(page.getByRole('region', { name: 'On the plan' })).toContainText('Check in');
+    await expect(page.getByRole('region', { name: 'On the itinerary' })).toContainText('Check in');
     await page.goto(home);
     await expect(page.getByRole('region', { name: 'Files', exact: true }).locator('details.deleted-files')).toHaveCount(0);
   } finally {

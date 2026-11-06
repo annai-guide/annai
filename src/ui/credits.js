@@ -16,7 +16,7 @@ export const SOURCES = [
   {
     name: 'OpenStreetMap',
     hosts: ['overpass-api.de', 'overpass.private.coffee'],
-    use: t`Places nearby and along the plan, for Shiori's nearby tool and the offline pack, found through Overpass (overpass-api.de, or private.coffee's server when that one is busy).`,
+    use: t`Places nearby and along the itinerary, for Shiori's nearby tool and the offline pack, found through Overpass (overpass-api.de, or private.coffee's server when that one is busy).`,
     credit: /* en */ 'Map data © OpenStreetMap contributors, under the Open Database License.',
     links: /* en */ [{ href: 'https://www.openstreetmap.org/copyright', text: 'OpenStreetMap contributors' }],
   },

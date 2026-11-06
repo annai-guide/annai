@@ -60,7 +60,7 @@ const SCREENS = { sees: renderSees, trips: renderTrips, trip: renderTrip, file: 
 export function startShell(root, core) {
   const notices = createNotices();
   const main = h('main', { class: 'view', id: 'view', tabindex: '-1' });
-  const builtIn = [['#/now', t`Now`], ['#/trips', t`Trips`], ['#/plan', t`Plan`], ['#/talk', t`Conversation`], ['#/trace', t`Trace`], ['#/settings', t`Settings`]].map(([href, label]) => h('a', { href }, label));
+  const builtIn = [['#/now', t`Now`], ['#/trips', t`Trips`], ['#/plan', t`Itinerary`], ['#/talk', t`Conversation`], ['#/trace', t`Trace`], ['#/settings', t`Settings`]].map(([href, label]) => h('a', { href }, label));
   /** @type {HTMLAnchorElement[]} the top bar's links: annai's, then plugins' screens with a tab */
   let links = builtIn;
   const nav = h('nav', { class: 'topnav', 'aria-label': t`Main` }, ...links);

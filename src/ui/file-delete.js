@@ -12,7 +12,7 @@ import { inTrip, isGivenFile } from '../core/paths.js';
  * @param {number} bookings @param {number} items @returns {string[]}
  */
 export function countParts(bookings, items) {
-  return [bookings ? plural(bookings, '# booking', '# bookings') : '', items ? plural(items, '# plan item', '# plan items') : ''].filter(Boolean);
+  return [bookings ? plural(bookings, '# booking', '# bookings') : '', items ? plural(items, '# itinerary item', '# itinerary items') : ''].filter(Boolean);
 }
 
 /**

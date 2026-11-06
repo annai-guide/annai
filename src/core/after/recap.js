@@ -52,7 +52,7 @@ export const RECAP_SYSTEM = /* en */ 'You write the recap of a trip for the trav
  */
 export const RECAP_SENDS = Object.freeze([
   t`Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.`,
-  t`How far you drove or walked between, the stamps, and the plan.`,
+  t`How far you drove or walked between, the stamps, and the itinerary.`,
   t`Shiori's cards and your words, typed or spoken, each shortened.`,
   t`The trip's notes and memory, and your profile.`,
   t`Up to ${RECAP_PHOTOS} photos, if the model takes photos. A photo kept as taken (Settings → Photos → Keep originals) can still hold where it was taken.`,

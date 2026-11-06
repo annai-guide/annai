@@ -66,7 +66,7 @@ test('an encrypted trip opens only with its passphrase, and can replace the copy
   await writeNote(page, '/notes/bixby.md', 'Bixby Bridge, 1932');
   await page.getByRole('link', { name: 'Back to trip', exact: true }).click();
   await page.getByRole('button', { name: 'Export trip' }).click();
-  await page.getByLabel('Share: plan, bookings, files and notes').check();
+  await page.getByLabel('Share: itinerary, bookings, files and notes').check();
   await page.getByLabel('Passphrase (optional)').fill('pine needle');
   await page.getByLabel('Repeat passphrase').fill('pine needle');
   const file = await buildAndSave(page);

@@ -21,7 +21,7 @@ export async function renderPlan(ctx, route) {
   const id = route.parts[0] === 'trip' ? route.parts[1] : (ctx.agent?.target ?? (await readAppSettings(ctx.ws)).activeTrip ?? null);
   const scope = id ? await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(id)) : null;
   if (!id || !scope || scope.kind !== 'trip') {
-    return h('div', { class: 'screen' }, h('h1', { class: 'title', text: t`Plan` }), h('p', { class: 'empty' }, t`Open a trip to see its plan.`, sentenceGap(), h('a', { href: '#/trips' }, t`Go to Trips`)));
+    return h('div', { class: 'screen' }, h('h1', { class: 'title', text: t`Itinerary` }), h('p', { class: 'empty' }, t`Open a trip to see its itinerary.`, sentenceGap(), h('a', { href: '#/trips' }, t`Go to Trips`)));
   }
   // Where a row's details come back to: this Plan, by the address it was opened at.
   const here = route.parts[0] === 'trip' ? `#/trip/${encodeURIComponent(id)}/plan` : '#/plan';
@@ -55,21 +55,21 @@ export async function renderPlan(ctx, route) {
       const { text, left } = planToIcs(plan.list.map((x) => x.value), { name: scope.title, tripId: id, now: Date.now() });
       const outcome = await saveFile(new Blob([text], { type: 'text/calendar' }), `${String(scope.title).replace(/[\\/:*?"<>|]+/g, '-').trim() || 'plan'}.ics`);
       if (outcome === 'cancelled') return;
-      ctx.notices.toast(sentences(t`Saved the plan.`, left ? plural(left, "# item has no time yet, so it isn't in it.", "# items have no time yet, so they aren't in it.") : ''));
+      ctx.notices.toast(sentences(t`Saved the itinerary.`, left ? plural(left, "# item has no time yet, so it isn't in it.", "# items have no time yet, so they aren't in it.") : ''));
     },
   }, t`Add to calendar`);
   const broken = plan.broken + bookings.broken;
   // "1 plan file and 2 booking files": each counted as what it is.
-  const unread = list([plan.broken ? plural(plan.broken, '# plan file', '# plan files') : '', bookings.broken ? plural(bookings.broken, '# booking file', '# booking files') : ''].filter(Boolean));
+  const unread = list([plan.broken ? plural(plan.broken, '# itinerary file', '# itinerary files') : '', bookings.broken ? plural(bookings.broken, '# booking file', '# booking files') : ''].filter(Boolean));
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, crumb(`#/trip/${encodeURIComponent(id)}`, h('span', { dir: 'auto', text: scope.title }))),
-    h('h1', { class: 'title', text: t`Plan` }),
+    h('h1', { class: 'title', text: t`Itinerary` }),
     h('p', { class: 'sub', text: [scope.title, trip.start ? dateRange(trip.start, trip.end) : null].filter(Boolean).join(' · ') }),
     notOnDay.length ? h('section', { class: 'not-on-day', 'aria-label': t`Not on a day` },
       h('h2', { class: 'section', text: t`Not on a day` }),
       h('ol', { class: 'timetable' }, ...notOnDay.map((r) => row(ctx, id, r, undo, here)))) : null,
     tabs.length && rows.length ? [h('div', { class: 'tabs', role: 'tablist', 'aria-label': t`Days` }, ...buttons), panel] : null,
-    rows.length ? null : h('p', { class: 'empty', text: t`No plan yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.` }),
+    rows.length ? null : h('p', { class: 'empty', text: t`No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.` }),
     broken ? h('p', { class: 'sub warn', text: broken === 1 ? t`${unread} couldn't be read. Open the trip's files to fix it.` : t`${unread} couldn't be read. Open the trip's files to fix them.` }) : null,
     h('div', { class: 'acts' }, save));
 }
@@ -146,9 +146,9 @@ function undoChip(ctx, id, r, u) {
     return h('button', {
       class: 'chip undo', type: 'button',
       onclick: async () => {
-        if (!(await ask({ title, body: t`Shiori added this to the plan. Remove it?`, yes: t`Remove` }))) return;
+        if (!(await ask({ title, body: t`Shiori added this to the itinerary. Remove it?`, yes: t`Remove` }))) return;
         await ctx.ws.delete(id, r.path, { author: 'user' });
-        ctx.notices.toast(t`Undone: ${title} is off the plan.`);
+        ctx.notices.toast(t`Undone: ${title} is off the itinerary.`);
         ctx.render();
       },
     }, t`Added by Shiori · Undo`);

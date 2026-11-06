@@ -32,7 +32,7 @@ export async function renderBooking(ctx, route) {
     return h('div', { class: 'screen' }, crumbs,
       path.startsWith('/files/') || path.startsWith('/trip/files/')
         ? [h('h1', { class: 'title', text: t`This file isn't in the trip` }), h('p', { class: 'sub', text: t`It may have been deleted or renamed.` })]
-        : [h('h1', { class: 'title', text: t`This booking isn't in the trip` }), h('p', { class: 'sub', text: t`It may have been deleted or renamed. The plan lists the bookings there are.` })]);
+        : [h('h1', { class: 'title', text: t`This booking isn't in the trip` }), h('p', { class: 'sub', text: t`It may have been deleted or renamed. The itinerary lists the bookings there are.` })]);
   }
   const here = bookingHref(id, path, route.params.from);
   const { file, blocks, made } = d;
@@ -55,7 +55,7 @@ export async function renderBooking(ctx, route) {
   const planList = (items, level, heading, label) => h('section', { class: 'block-items', 'aria-label': label ?? heading },
     h(level, { class: 'section', text: heading }),
     h('ul', { class: 'plan-items' }, ...items.map((i) => h('li', {},
-      h('a', { href: itemHref(id, i.path, here), dir: 'auto', text: [typeof i.item.title === 'string' && i.item.title.trim() ? i.item.title : t`Plan item`, i.day ? day(i.day, true) : null].filter(Boolean).join(' · ') }),
+      h('a', { href: itemHref(id, i.path, here), dir: 'auto', text: [typeof i.item.title === 'string' && i.item.title.trim() ? i.item.title : t`Itinerary item`, i.day ? day(i.day, true) : null].filter(Boolean).join(' · ') }),
       typeof i.item.notes === 'string' && i.item.notes.trim() ? h('p', { class: 'sub notes', dir: 'auto', text: i.item.notes }) : null))));
 
   const blockViews = blocks.map((b, i) => {
@@ -77,7 +77,7 @@ export async function renderBooking(ctx, route) {
       facts.length ? h('dl', { class: 'facts' }, ...facts.flatMap((f) => [
         h('dt', { lang: f.lang, text: f.label }),
         h('dd', {}, h('span', { dir: 'auto' }, ...zoned(f.value, f.zone)), f.unsure ? [' ', checkMark()] : null)])) : null,
-      b.items.length ? planList(b.items, many ? 'h3' : 'h2', t`On the plan`, many ? t`On the plan: ${title || kindDay(b)}` : undefined) : null,
+      b.items.length ? planList(b.items, many ? 'h3' : 'h2', t`On the itinerary`, many ? t`On the itinerary: ${title || kindDay(b)}` : undefined) : null,
       many ? h('div', { class: 'acts' },
         b.booking.place?.name ? h('a', { class: 'btn', href: mapsUrl(b.booking.place, platform()), target: '_blank', rel: 'noopener noreferrer' }, t`Open in Maps`) : null,
         h('a', { class: 'btn', href: fileHref(id, b.path, here) }, t`Change it`)) : null);
@@ -97,7 +97,7 @@ export async function renderBooking(ctx, route) {
     // What the file is, under its name: when it became nothing yet, or several bookings (one booking's block says it already).
     (!blocks.length && !made.length) || many ? (file && fileLine(file.became) ? h('p', { class: 'sub', text: fileLine(file.became) }) : null) : null,
     ...blockViews,
-    made.length ? planList(made, 'h2', t`Plan items from a calendar`) : null,
+    made.length ? planList(made, 'h2', t`Itinerary items from a calendar`) : null,
     file ? h('section', { class: 'original', 'aria-label': many ? null : t`The original`, 'aria-labelledby': many ? 'the-file' : null },
       // With several bookings above, the file's own part is headed, so it doesn't read as the last booking's; the heading names the region.
       many ? h('h2', { class: 'section', id: 'the-file', text: t`The file` }) : null,
@@ -163,7 +163,7 @@ export function backCrumb(ctx, id, from, o = {}) {
   const back = cameFrom(from, id, ctx.agent?.trip ?? null);
   const trip = `#/trip/${encodeURIComponent(id)}`;
   const link = o.trip === undefined
-    ? (back ? crumb(back.hash, backLabel(back.name)) : crumb(`${trip}/plan`, t`Plan`))
+    ? (back ? crumb(back.hash, backLabel(back.name)) : crumb(`${trip}/plan`, t`Itinerary`))
     : back && back.name !== 'trip' ? crumb(back.hash, backLabel(back.name)) : crumb(trip, h('span', { dir: 'auto', text: o.trip }));
   return h('p', { class: 'crumbs' }, link);
 }

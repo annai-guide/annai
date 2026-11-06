@@ -62,10 +62,10 @@ function body(n, ctx, part) {
   }
   if (id === 'can') {
     return [h('ul', { class: 'can' },
-      can(t`Plans and bookings.`, t`Plan the trip day by day with Shiori, and add your confirmations: PDFs, Wallet passes, screenshots. You book; annai never books for you.`),
+      can(t`Itineraries and bookings.`, t`Plan the trip day by day with Shiori, and add your confirmations: PDFs, Wallet passes, screenshots. You book; annai never books for you.`),
       can(t`GPS.`, t`With GPS on, annai follows where you are and reminds you at the right time and place: when to leave, when you've arrived, when you're running late.`),
       can(t`Voice.`, t`Talk with Shiori hands-free, in the car or on a trail.`),
-      can(t`Offline places.`, t`OpenStreetMap places, Wikipedia summaries and Wikivoyage guides along your plan, for when there's no signal.`),
+      can(t`Offline places.`, t`OpenStreetMap places, Wikipedia summaries and Wikivoyage guides along your itinerary, for when there's no signal.`),
       can(t`Photos.`, t`Show Shiori what you see, and ask about it.`),
       can(t`Backups.`, t`Export a file, or back up automatically to GitHub, a Forgejo or Gitea server, an S3 bucket or a WebDAV folder.`),
       can(t`Plugins and MCP servers.`, t`Skills, tools and screens that others make.`),

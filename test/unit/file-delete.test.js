@@ -41,7 +41,7 @@ test('Delete in Files: a file nothing else names is freed, the toast says how mu
   const ctx = ctxOf(ws);
   const gone = await deleteGroup(ctx, trip, await details());
   assert.deepEqual(gone, ['/files/hotel.pdf', '/bookings/stay.json', '/plan/check-in.json']);
-  assert.match(ctx.toasts[0], /^Deleted Hotel stay, 1 booking,? and 1 plan item\. \d+ bytes freed\.$/);
+  assert.match(ctx.toasts[0], /^Deleted Hotel stay, 1 booking,? and 1 itinerary item\. \d+ bytes freed\.$/);
   for (const p of /** @type {string[]} */ (gone)) assert.deepEqual(await ws.history(trip, p), [], p);
   assert.equal(Object.hasOwn(await readNames(ws, trip), '/files/hotel.pdf'), false);
   assert.ok((await ws.history(trip, '/names.json')).length >= 2, "names.json's own history stays");
@@ -53,7 +53,7 @@ test('Delete in Files: a file the conversation still names is kept, history and 
   await record(ws.store, trip, { type: 'tool.result', actor: 'system', data: { id: 'c1', name: 'read', ok: true, document: { hash: file.hash, mediaType: 'application/pdf' } }, blobs: [{ hash: file.hash, type: 'application/pdf' }] });
   const ctx = ctxOf(ws);
   await deleteGroup(ctx, trip, await details());
-  assert.match(ctx.toasts[0], /^Deleted Hotel stay, 1 booking,? and 1 plan item\. The conversation still has it, so it's under Deleted, where you can restore it\.$/);
+  assert.match(ctx.toasts[0], /^Deleted Hotel stay, 1 booking,? and 1 itinerary item\. The conversation still has it, so it's under Deleted, where you can restore it\.$/);
   assert.equal((await ws.history(trip, '/files/hotel.pdf')).length, 2);
   assert.equal((await ws.list(trip, '/files/')).length, 0);
 });
@@ -63,7 +63,7 @@ test('Delete in Files: the same bytes elsewhere keep it, and the toast says so',
   await ws.write(ME, '/files/hotel.pdf', '%PDF-1.4 Hotel Aurora Test', { author: 'user', type: 'application/pdf' });
   const ctx = ctxOf(ws);
   await deleteGroup(ctx, trip, await details());
-  assert.match(ctx.toasts[0], /^Deleted Hotel stay, 1 booking,? and 1 plan item\. Another trip or file has the same content, so it's under Deleted, where you can restore it\.$/);
+  assert.match(ctx.toasts[0], /^Deleted Hotel stay, 1 booking,? and 1 itinerary item\. Another trip or file has the same content, so it's under Deleted, where you can restore it\.$/);
 });
 
 test('Delete: a booking with no file keeps its history and frees nothing; the toast is as before', async () => {
@@ -650,7 +650,7 @@ async function lineFor(ws, trip, path) {
 
 test("Delete for good's line names the copy's booking and plan item too (the probe: b.pdf deleted with stay.json)", async () => {
   const { ws, trip } = await copiesWithGroups({});
-  assert.equal(await lineFor(ws, trip, '/files/a.pdf'), 'Also deletes b.pdf, a copy of this file, and the 1 booking and 1 plan item Shiori read from them.');
+  assert.equal(await lineFor(ws, trip, '/files/a.pdf'), 'Also deletes b.pdf, a copy of this file, and the 1 booking and 1 itinerary item Shiori read from them.');
   const before = await snapshot(ws.store);
   const ctx = ctxOf(ws);
   const gone = await deleteForGood(ctx, trip, '/files/a.pdf', 'a.pdf');

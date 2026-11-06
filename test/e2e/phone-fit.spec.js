@@ -179,7 +179,7 @@ test('swiping a screen sideways moves along the top bar; not from its edge, nor 
   await expect(current).toHaveText('Trips');
   await expect(page.locator('main.view')).toHaveCSS('touch-action', 'pan-y pinch-zoom');
   await swipe(page, 280, 120);
-  await expect(current).toHaveText('Plan');
+  await expect(current).toHaveText('Itinerary');
   await swipe(page, 100, 280);
   await expect(current).toHaveText('Trips');
   await swipe(page, 10, 200); // from the left edge: the phone's own back gesture
@@ -251,7 +251,7 @@ test('a swipe never brings back a screen you pass through, such as opening a fil
   const current = page.locator('.topnav a[aria-current="page"]');
   await expect(current).toHaveText('Trips');
   await swipe(page, 280, 100, 300);
-  await expect(current).toHaveText('Plan');
+  await expect(current).toHaveText('Itinerary');
   await swipe(page, 100, 280, 300);
   await expect(page.getByRole('heading', { name: 'Trips', level: 1 })).toBeVisible();
 });

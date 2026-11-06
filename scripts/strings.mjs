@@ -468,7 +468,7 @@ const glossaryOf = async (root) => (existsSync(`${root}/l10n/glossary.tsv`) ? re
  * not the developer's screens (Trace, Diagnostics, Simulate a trip…). The design allows the line about 100 to 300 tokens (decision 7):
  * with these 31 it is 275 cl100k tokens in Japanese, 235 in Chinese (L6 review 4). A name added costs every user one cold cache.
  */
-const TOLD = new Set(['Add', 'Backup', 'Booking', 'Conversation', 'Files', 'Languages', 'Models', 'Notifications', 'Now', 'Photos', 'Plan', 'Plugins',
+const TOLD = new Set(['Add', 'Backup', 'Booking', 'Conversation', 'Files', 'Languages', 'Models', 'Notifications', 'Now', 'Photos', 'Itinerary', 'Plugins',
   'Recap', 'Replay', 'Settings', 'Tools', 'Trips', 'Updates', 'Voice', 'Archive', 'Check this', 'Main', 'Offline pack', 'Speech in', 'Speech out',
   'Spend per day', 'Start fresh', 'Tidy up', 'Koe · Classic', 'Koe · Realtime', 'Voice on']);
 /** The names Shiori is told in a language (localization decision 7): "Settings (設定), Models (モデル), …", in the glossary's order. @param {Term[]} glossary @param {string} tag */

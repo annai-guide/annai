@@ -36,7 +36,7 @@ test('a calendar file becomes plan items when it is added', async ({ page }) => 
   await openApp(page);
   await startTrip(page, 'Thanksgiving');
   await page.getByLabel('Add photos or files').setInputFiles({ name: 'thanksgiving.ics', mimeType: 'text/calendar', buffer: Buffer.from(ICS) });
-  await expect(page.getByText('Added /files/thanksgiving.ics, and 2 plan items from the calendar')).toBeVisible();
+  await expect(page.getByText('Added /files/thanksgiving.ics, and 2 itinerary items from the calendar')).toBeVisible();
   await allFiles(page);
   await expect(page.getByRole('link', { name: /\/plan\/ics-dinner-example-com-[0-9a-f]{8}\.json/ })).toBeVisible();
   await expect(page.getByRole('link', { name: /\/plan\/ics-museum-[0-9a-f]{8}\.json/ })).toBeVisible();
@@ -91,7 +91,7 @@ test('a calendar without .ics in its name, sent as text/calendar, becomes plan i
   await openApp(page);
   await startTrip(page, 'Thanksgiving');
   await page.getByLabel('Add photos or files').setInputFiles({ name: 'invite', mimeType: 'text/calendar', buffer: Buffer.from(ICS) });
-  await expect(page.getByText('Added /files/invite, and 2 plan items from the calendar')).toBeVisible();
+  await expect(page.getByText('Added /files/invite, and 2 itinerary items from the calendar')).toBeVisible();
   await allFiles(page);
   await expect(page.getByRole('link', { name: /\/plan\/ics-dinner-example-com-[0-9a-f]{8}\.json/ })).toBeVisible();
 });

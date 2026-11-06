@@ -321,7 +321,7 @@ function fileInbox(ctx, items, trips, archives) {
       ctx.go(`#/trip/${encodeURIComponent(trip.id)}`);
       for (const note of notes) ctx.notices.card({ tone: 'warn', title: t`A photo was kept as it is`, body: note });
       for (const problem of problems) ctx.notices.card({ tone: 'warn', title: t`A calendar file couldn't be read`, body: problem });
-      ctx.notices.toast(planned.length ? plural(planned.length, 'Added {0}, and # plan item from the calendar', 'Added {0}, and # plan items from the calendar', what) : t`Added ${what}`);
+      ctx.notices.toast(planned.length ? plural(planned.length, 'Added {0}, and # itinerary item from the calendar', 'Added {0}, and # itinerary items from the calendar', what) : t`Added ${what}`);
     } catch (e) {
       explainStorageFull(ctx, e);
       status.textContent = messageOf(e);

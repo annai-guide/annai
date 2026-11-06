@@ -2,7 +2,7 @@
 
 annai's names for its screens and things in Japanese (ja), Chinese, Simplified (zh-Hans) and Chinese, Traditional with Taiwan's words (zh-Hant), with the names iPhone and Android use for their own settings, and what is never translated. Every draft follows it; Shiori's glossary line is made from it.
 
-This page is a review aid. The source is [`glossary.tsv`](glossary.tsv): one row per term, with where the English shows on screen and a note on why each word was chosen. Rows are in this order of kind (screen, thing, mode, platform, never), then by English. Its English is matched as written, so `Voice` (the screen) and `voice` (one she speaks with) are two rows. Some terms are also ordinary words (Now, Plan, Add, Ask, Allow, Share, Main, key, card): the strings check should take them as names only where a message uses them as one.
+This page is a review aid. The source is [`glossary.tsv`](glossary.tsv): one row per term, with where the English shows on screen and a note on why each word was chosen. Rows are in this order of kind (screen, thing, mode, platform, never), then by English. Its English is matched as written, so `Voice` (the screen) and `voice` (one she speaks with) are two rows. Some terms are also ordinary words (Now, Add, Ask, Allow, Share, Main, key, card): the strings check should take them as names only where a message uses them as one.
 
 120 rows: 31 screen, 38 thing, 7 mode, 28 platform, 16 never.
 
@@ -22,13 +22,13 @@ This page is a review aid. The source is [`glossary.tsv`](glossary.tsv): one row
 | Experimental | 試験運用版 | 实验性功能 | 實驗性功能 |
 | Files | ファイル | 文件 | 檔案 |
 | History | 履歴 | 历史 | 歷史 |
+| Itinerary | 旅程 | 行程 | 行程 |
 | Languages | 言語 | 语言 | 語言 |
 | MCP servers | MCPサーバー | MCP 服务器 | MCP 伺服器 |
 | Models | モデル | 模型 | 模型 |
 | Notifications | 通知 | 通知 | 通知 |
 | Now | いま | 此刻 | 此刻 |
 | Photos | 写真 | 照片 | 照片 |
-| Plan | 予定 | 行程 | 行程 |
 | Plugins | プラグイン | 插件 | 外掛程式 |
 | Recap | 振り返り | 回顾 | 回顧 |
 | Replay | リプレイ | 回放 | 回放 |

@@ -154,8 +154,8 @@ export function planWords(say) {
     case 'arrived': return sentences(t`${String(say.place)}: ${String(say.title)}.`, say.notes ?? '');
     case 'coming-up': return t`In ${num(COMING_UP_MIN)} min: ${what}.`;
     case 'linger':
-      if (say.next === undefined) return t`You've stopped somewhere that isn't on the plan.`;
-      return say.next ? t`Next on the plan: ${say.next.title} at ${clock(say.next.at, say.next.tz)}.` : t`Nothing more is on the plan.`;
+      if (say.next === undefined) return t`You've stopped somewhere that isn't on the itinerary.`;
+      return say.next ? t`Next on the itinerary: ${say.next.title} at ${clock(say.next.at, say.next.tz)}.` : t`Nothing more is on the itinerary.`;
     default: return '';
   }
 }

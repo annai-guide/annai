@@ -21,8 +21,8 @@ export async function renderItem(ctx, route) {
   const item = PLAN_FILE.test(path) ? await ctx.ws.readJSON(id, path).catch(() => undefined) : undefined;
   if (!item || typeof item !== 'object' || Array.isArray(item)) {
     return h('div', { class: 'screen' }, crumbs,
-      h('h1', { class: 'title', text: t`This isn't on the plan` }),
-      h('p', { class: 'sub' }, t`It may have been deleted or renamed.`, ' ', h('a', { href: `#/trip/${encodeURIComponent(id)}/plan` }, t`Go to the plan`)));
+      h('h1', { class: 'title', text: t`This isn't on the itinerary` }),
+      h('p', { class: 'sub' }, t`It may have been deleted or renamed.`, ' ', h('a', { href: `#/trip/${encodeURIComponent(id)}/plan` }, t`Go to the itinerary`)));
   }
   const here = itemHref(id, path, route.params.from);
   const tz = await tripZoneOf(ctx.ws, id);
@@ -33,7 +33,7 @@ export async function renderItem(ctx, route) {
   const entry = await ctx.store.tx(['files'], 'readonly', (/** @type {any} */ x) => x.getFile(id, path));
   const source = entry?.source ?? (has ? booking.source : undefined);
   const kind = typeof item.kind === 'string' && item.kind !== 'all-day' ? item.kind : '';
-  const title = typeof item.title === 'string' && item.title.trim() ? item.title : t`Plan item`;
+  const title = typeof item.title === 'string' && item.title.trim() ? item.title : t`Itinerary item`;
   /** @type {[string, string, 'en' | undefined][]} label, value, the value's language when it is a key as written */
   const facts = [];
   const start = timeText(item.start, tz, item.kind === 'all-day');

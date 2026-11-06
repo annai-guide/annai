@@ -62,7 +62,7 @@ test('the offline pack: its size before downloading, then OpenStreetMap, Wikiped
   await expect(page.locator('.pack-line')).toContainText('Offline pack: downloaded');
   await writeRecords(page, trip, { write: { '/plan/mcway.json': { id: 'mcway', title: 'McWay Falls', fixed: false, start: { at: at(21), tz: 'America/Los_Angeles' }, place: { name: 'McWay Falls', lat: 36.158, lng: -121.672 } } } });
   await page.goto(`/#/trip/${encodeURIComponent(trip)}`);
-  await expect(panel).toContainText('The plan changed since.');
+  await expect(panel).toContainText('The itinerary changed since.');
   await expect(panel.getByRole('button', { name: /^Update \(about \d+(\.\d)? kB\)$/ })).toBeVisible();
 });
 
@@ -70,6 +70,6 @@ test('a trip with no places in its plan says how the pack works, and offers no d
   await openApp(page);
   await startTrip(page, 'Somewhere');
   const panel = page.getByRole('region', { name: 'Offline pack' });
-  await expect(panel).toContainText('The pack follows the plan: once the plan has places, it can be downloaded here.');
+  await expect(panel).toContainText('The pack follows the itinerary: once the itinerary has places, it can be downloaded here.');
   await expect(panel.getByRole('button')).toHaveCount(0);
 });
