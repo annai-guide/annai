@@ -54,3 +54,65 @@ test('Driving: Now hands over when moving fast; the road ahead, directions, big 
     await llm.stop();
   }
 });
+
+/** A trip open and GPS on, standing at the start of the road. @param {any} page @param {any} context */
+async function atTheStart(page, context) {
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation({ latitude: 36.60, longitude: -121.89, accuracy: 10 });
+  await page.clock.install({ time: new Date() });
+  await openApp(page);
+  const trip = await startTrip(page, 'Testville');
+  await page.locator('.live-chip').click();
+  await expect(page.locator('.live-chip')).toHaveText(/^GPS on\b/);
+  return trip;
+}
+
+/** Fixes `from` to `to` along the road: 122 m every 5 s, 88 km/h. @param {any} page @param {any} context @param {number} from @param {number} to */
+async function roll(page, context, from, to) {
+  for (let i = from; i <= to; i++) {
+    await context.setGeolocation({ latitude: 36.60 - i * 0.0011, longitude: -121.89, accuracy: 10 });
+    await page.clock.fastForward(5000);
+  }
+}
+
+for (const [where, at] of [['home', '#/trips'], ['the conversation', '#/talk'], ['the Itinerary', '#/plan']]) {
+  test(`moving fast begun on ${where}: Driving takes over once, ← returns there, and the next fixes leave you there`, async ({ page, context }) => {
+    await atTheStart(page, context);
+    await page.goto(`/${at}`);
+    await roll(page, context, 1, 10);
+    await expect(page.getByRole('heading', { name: 'Driving' })).toBeVisible();
+    await page.getByRole('main').getByRole('link', { name: 'Back', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Driving' })).toHaveCount(0);
+    await expect.poll(() => new URL(page.url()).hash).toBe(at);
+    await roll(page, context, 11, 13);
+    await expect(page.locator('.live-chip')).toHaveText('GPS on');
+    await expect(page.getByRole('heading', { name: 'Driving' })).toHaveCount(0);
+    await expect.poll(() => new URL(page.url()).hash).toBe(at);
+  });
+}
+
+test("typing in the dock's box as moving fast begins: no take-over, the box keeps its words, and that drive doesn't take over later", async ({ page, context }) => {
+  await atTheStart(page, context);
+  await page.goto('/#/now');
+  await page.getByRole('button', { name: 'Type' }).click();
+  const box = page.getByLabel('Message to Shiori');
+  await box.fill('Where should we');
+  await roll(page, context, 1, 10);
+  await expect(page.locator('.now .chips')).toContainText('GPS on · moving fast');
+  await expect(page.getByRole('heading', { name: 'Driving' })).toHaveCount(0);
+  await expect(box).toHaveValue('Where should we');
+  await box.blur();
+  await roll(page, context, 11, 13);
+  await expect(page.getByRole('heading', { name: 'Driving' })).toHaveCount(0);
+});
+
+test("Driving's ← goes where it was entered from, not where an earlier take-over came from", async ({ page, context }) => {
+  await atTheStart(page, context);
+  await page.goto('/#/trips');
+  await roll(page, context, 1, 10);
+  await expect(page.getByRole('heading', { name: 'Driving' })).toBeVisible();
+  await page.goto('/#/now');
+  await page.getByRole('main').getByRole('link', { name: 'Driving' }).click();
+  await page.getByRole('main').getByRole('link', { name: 'Now', exact: true }).click();
+  await expect.poll(() => new URL(page.url()).hash).toBe('#/now');
+});

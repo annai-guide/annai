@@ -1615,7 +1615,6 @@ ah9gez	ok	Turn GPS on	GPS をオンにする	src/ui/screens/drive.js:88
 14ltb7u	draft	The itinerary has no places to choose from yet.	旅程にはまだ選べる場所がありません。	src/ui/screens/drive.js:91	English was: The plan has no places to choose from yet.
 1sedy1m	ok	Where are you?	いまどこにいますか？	src/ui/screens/drive.js:91	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
 1w8zbso	ok	annai now knows you're at {0}.	annai はあなたが{0}にいると認識しました。	src/ui/screens/drive.js:96	{0} = p.name
-12mubvb	ok	Now	いま	src/ui/screens/drive.js:128	
 amdsnu	ok	Swipe sideways to move between tabs	横にスワイプしてタブを移動	src/ui/screens/experimental.js:14	
 1py6vf8	ok	Unfinished translations	未完成の翻訳	src/ui/screens/experimental.js:19	
 13a0vz9	ok	Features that are still being tried. They may have bugs, and their fixes may come slower than the rest of annai.	まだ試している機能です。不具合があるかもしれず、修正は annai のほかの部分より遅れることがあります。	src/ui/screens/experimental.js:25	
@@ -1632,6 +1631,7 @@ govuvp	ok	This page isn't here	このページはありません	src/ui/screens/
 t9ug66	ok	This page belongs to a plugin that isn't on. Turn it on in {0}.	このページは、オンになっていないプラグインのものです。{0}でオンにしてください。	src/ui/screens/ext.js:24	{0} = plugins
 ata72m	ok	Trace	記録	src/ui/screens/ext.js:36	
 1y7aybz	ok	This page couldn't be drawn; the plugin's error is in {0}.	このページを表示できませんでした。プラグインのエラーは{0}にあります。	src/ui/screens/ext.js:37	{0} = trace
+12mubvb	ok	Now	いま	src/ui/screens/ext.js:44	
 xb1ny3	ok	Trips	旅	src/ui/screens/ext.js:56	
 17o4v1i	ok	Conversation	会話	src/ui/screens/file.js:24	
 1jpjwmm	ok	Back to trip	旅に戻る	src/ui/screens/file.js:24	
@@ -1874,15 +1874,15 @@ u3pgdz	ok	annai encrypts every reminder on this phone, and makes each the same s
 1cg5akv	ok	Each reminder is deleted at the relay once it is sent, or when you cancel it, turn notifications off, or remove its trip.	リマインダーは、送られたとき、または取り消したとき、通知をオフにしたとき、その旅を削除したときに、中継から削除されます。	src/ui/screens/notifications.js:157	
 1iz3xsa	ok	With annai open on screen, annai says a reminder itself, and the relay's copy is called off: you never get it twice.	annai を画面に開いているときは、annai 自身がリマインダーを伝え、中継の分は取り消されます。二度届くことはありません。	src/ui/screens/notifications.js:158	
 qkddms	ok	Every request to the relay is in Trace, under System · This device.	中継へのリクエストはすべて、記録の「システム · この端末」にあります。	src/ui/screens/notifications.js:159	Note: "This device" is the system scope's title, made by core (scopes.js); kept here as its drafts will say it.
-1tbrgfp	ok	Open a trip to see where you are and what is next.	旅を開くと、現在地と次の予定が表示されます。	src/ui/screens/now.js:25	
-15h0umr	ok	Next	次の予定	src/ui/screens/now.js:36	context: coming up; Note: The heading over what is planned next on Now, not the welcome's Next button.
-1m0ri7	ok	Nothing more is planned.	これ以上の予定はありません。	src/ui/screens/now.js:38	
-1oi7u22	draft	The whole itinerary	旅程全体	src/ui/screens/now.js:39	
-11lm89y	ok	Latest	最新	src/ui/screens/now.js:41	
-1fw5x21	ok	Fixed:	固定：	src/ui/screens/now.js:88	Note: Read aloud before a plan item that keeps its time.
-tdmj58	ok	Flexible:	調整可：	src/ui/screens/now.js:88	Note: Read aloud before a plan item whose time can move.
-16ocoht	ok	Show what she said	話した言葉を見る	src/ui/screens/now.js:112	
-1yj7glf	ok	Said aloud	読み上げ	src/ui/screens/now.js:113	
+1tbrgfp	ok	Open a trip to see where you are and what is next.	旅を開くと、現在地と次の予定が表示されます。	src/ui/screens/now.js:24	
+15h0umr	ok	Next	次の予定	src/ui/screens/now.js:35	context: coming up; Note: The heading over what is planned next on Now, not the welcome's Next button.
+1m0ri7	ok	Nothing more is planned.	これ以上の予定はありません。	src/ui/screens/now.js:37	
+1oi7u22	draft	The whole itinerary	旅程全体	src/ui/screens/now.js:38	
+11lm89y	ok	Latest	最新	src/ui/screens/now.js:40	
+1fw5x21	ok	Fixed:	固定：	src/ui/screens/now.js:74	Note: Read aloud before a plan item that keeps its time.
+tdmj58	ok	Flexible:	調整可：	src/ui/screens/now.js:74	Note: Read aloud before a plan item whose time can move.
+16ocoht	ok	Show what she said	話した言葉を見る	src/ui/screens/now.js:98	
+1yj7glf	ok	Said aloud	読み上げ	src/ui/screens/now.js:99	
 tctj7k	draft	Open a trip to see its itinerary.	旅を開くと、その旅程が表示されます。	src/ui/screens/plan.js:24	English was: Open a trip to see its plan.
 ow5t4g	ok	No time yet ({0})	時刻未定（{0}）	src/ui/screens/plan.js:38	{0} = num(untimed.length)
 u71m40	ok	Nothing planned this day.	この日の予定はありません。	src/ui/screens/plan.js:56	
@@ -2714,9 +2714,9 @@ f2eaqi	ok	Find a search plugin	検索プラグインを探す	src/ui/search-pane
 do1m5o	ok	{0}: annai can't show this setting.	{0}：annai ではこの設定を表示できません。	src/ui/settings-form.js:116	{0} = f.label
 1qrgqx0	ok	saved	保存済み	src/ui/settings-form.js:121	
 phutrz	ok	{0} wasn't saved: {1}	{0}を保存できませんでした：{1}	src/ui/settings-form.js:130	{0} = f.label; {1} = messageOf(e)
-1skw031	ok	This screen couldn't open	この画面を開けませんでした	src/ui/shell.js:267	
-1z00dfe	ok	An update is ready	アップデートの準備ができました	src/ui/shell.js:362	
-gt0nrj	ok	It will be used the next time annai starts.	次に annai を起動したときに使われます。	src/ui/shell.js:362	
+1skw031	ok	This screen couldn't open	この画面を開けませんでした	src/ui/shell.js:270	
+1z00dfe	ok	An update is ready	アップデートの準備ができました	src/ui/shell.js:373	
+gt0nrj	ok	It will be used the next time annai starts.	次に annai を起動したときに使われます。	src/ui/shell.js:373	
 sntfon	ok	Hello! This is how I sound when I talk to you.	こんにちは。あなたと話すときは、こんな声です。	src/ui/speech-check.js:10	Note: spoken by the voice being tested, so it is heard in the screens' language.
 n8hyke	ok	{0}. {1}	{0}。{1}	src/ui/speech-check.js:16	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
 1a27ynt	ok	Last tested {0}: it worked.	最終テスト（{0}）：動作しました。	src/ui/speech-check.js:26	{0} = relTime(verified.at); Note: {0} is a relative time, in brackets as on a model's test line.
@@ -2738,11 +2738,11 @@ q69pp5	ok	{0} didn't answer: {1}. No other model was asked.	{0}は答えませ�
 1cam7ic	ok	Message	メッセージ	src/ui/talk-panel.js:74	
 vy4apn	ok	Try this model	このモデルを試す	src/ui/talk-panel.js:75	
 1k3coi2	ok	A short conversation with this model alone: if it fails, no other model answers. Each reply shows its tokens and cost. Nothing is kept but the Trace.	このモデルだけとの短い会話です。失敗しても、ほかのモデルは答えません。返事ごとにトークン数と費用を表示します。記録以外には何も残りません。	src/ui/talk-panel.js:77	
-1tzspvr	ok	GPS is off, so annai isn't following where you are.	GPS がオフなので、annai は現在地を追っていません。	src/ui/today.js:17	
-1sflilm	draft	Location isn't allowed for annai. Open Driving to say where you are.	annai に位置情報が許可されていません。「運転中」を開いて、現在地を伝えてください。	src/ui/today.js:20	
-1770v5g	ok	Finding where you are…	現在地を確認しています…	src/ui/today.js:21	
-vlhm27	draft	No GPS signal right now. Open Driving to say where you are.	いま GPS の信号がありません。「運転中」を開いて、現在地を伝えてください。	src/ui/today.js:21	
-ue501f	ok	Near {0}, ≈ {1}	{0}の近く（≈ {1}）	src/ui/today.js:24	{0} = near.name; {1} = distance(near.m / 1000)
+1tzspvr	ok	GPS is off, so annai isn't following where you are.	GPS がオフなので、annai は現在地を追っていません。	src/ui/today.js:18	
+1sflilm	draft	Location isn't allowed for annai. Open Driving to say where you are.	annai に位置情報が許可されていません。「運転中」を開いて、現在地を伝えてください。	src/ui/today.js:21	
+1770v5g	ok	Finding where you are…	現在地を確認しています…	src/ui/today.js:22	
+vlhm27	draft	No GPS signal right now. Open Driving to say where you are.	いま GPS の信号がありません。「運転中」を開いて、現在地を伝えてください。	src/ui/today.js:22	
+ue501f	ok	Near {0}, ≈ {1}	{0}の近く（≈ {1}）	src/ui/today.js:25	{0} = near.name; {1} = distance(near.m / 1000)
 1sva5r0	ok	The check took too long. Check the connection, and try again.	確認に時間がかかりすぎました。接続を確かめて、もう一度お試しください。	src/ui/updates.js:122	
 14d6ut8	ok	annai's offline service hasn't started yet, so annai itself wasn't checked. Try again in a moment.	annai のオフラインサービスがまだ起動していないため、annai 自体は確認していません。少ししてから、もう一度お試しください。	src/ui/updates.js:140	
 16l98jx	ok	annai couldn't check for a new version of itself. Check the connection and try again.	annai は自分の新しいバージョンを確認できませんでした。接続を確かめて、もう一度お試しください。	src/ui/updates.js:141	

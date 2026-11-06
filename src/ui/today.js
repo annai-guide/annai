@@ -5,6 +5,7 @@ import { dayIn, deviceZone } from '../core/time.js';
 import { liveText, knownFix } from './live-chip.js';
 import { distance } from './format.js';
 import { component, mount, slotEntries } from './slots.js';
+import { parseHash } from './router.js';
 
 /** Now, by live mode's own clock: a simulation's while one runs (spec §13). @param {any} live */
 export const nowOf = (live) => live?.clock?.now() ?? Date.now();
@@ -36,6 +37,27 @@ export function handover(activity, was, screens) {
   if (home) return `#/ext/${encodeURIComponent(home.pluginId)}/${encodeURIComponent(home.item.id)}`;
   return activity === 'moving-fast' ? '#/drive' : null;
 }
+
+/** The screens a take-over may leave: where the user looks at the trip, not where they are doing something else. */
+const TAKEN_FROM = new Set(['trips', 'talk', 'plan', 'now']);
+
+/**
+ * Where the shell goes as the activity changes, or null. Once per change, and never from under someone typing. Driving shows the open
+ * trip, so it needs one; a plugin's screen doesn't.
+ * @param {{ activity: string, was: string | undefined, screens: { pluginId: string, item: any }[], on: boolean, hash: string, typing: boolean, trip: string | null }} o
+ * @returns {string | null}
+ */
+export function takeover({ activity, was, screens, on, hash, typing, trip }) {
+  const to = handover(activity, was, screens);
+  if (!to || !on || typing || !TAKEN_FROM.has(parseHash(hash).name)) return null;
+  return to === '#/drive' && !trip ? null : to;
+}
+
+/** A field being typed in. @param {Element | null} el */
+export const isField = (el) => Boolean(el?.matches('textarea, input:not([type=checkbox]):not([type=radio]):not([type=file])'));
+
+/** Driving's ←, to where it was entered from. @param {string | undefined} from @returns {{ href: string, label: string }} */
+export const driveBack = (from = '#/now') => ({ href: from, label: from === '#/now' ? t`Now` : t`Back` });
 
 /**
  * What Now and the Itinerary's today open with: where you are, the chips, then plugins' sections. A plugin may draw the

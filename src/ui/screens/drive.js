@@ -7,7 +7,7 @@ import { distance, duration, sentenceGap, sentences, speaksScreens } from '../fo
 import { knownFix } from '../live-chip.js';
 import { PLAN_FILE } from '../../core/plan.js';
 import { latestCard, eventCard } from './now.js';
-import { nowOf } from '../today.js';
+import { nowOf, driveBack } from '../today.js';
 
 /** Big quick-ask buttons (spec §16.2): what each says to Shiori, as the user's own words. @param {boolean} speaks @param {{ name: string } | undefined} next */
 const quickAsks = (speaks, next) => [
@@ -122,8 +122,9 @@ export async function renderDrive(ctx) {
     removeEventListener('hashchange', leave);
   };
   addEventListener('hashchange', leave);
+  const back = driveBack(ctx.drivingFrom);
   return h('div', { class: 'screen drive' },
     h('h1', { class: 'title', text: t`Driving` }),
     strip, maps, ask, latest, where, gps,
-    h('p', {}, crumb('#/now', t`Now`)));
+    h('p', {}, crumb(back.href, back.label)));
 }

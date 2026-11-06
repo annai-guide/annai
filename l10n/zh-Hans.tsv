@@ -1615,7 +1615,6 @@ ah9gez	ok	Turn GPS on	开启 GPS	src/ui/screens/drive.js:88	Note: 开启, as "�
 14ltb7u	draft	The itinerary has no places to choose from yet.	行程里还没有可选的地点。	src/ui/screens/drive.js:91	English was: The plan has no places to choose from yet.
 1sedy1m	ok	Where are you?	你在哪里？	src/ui/screens/drive.js:91	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
 1w8zbso	ok	annai now knows you're at {0}.	annai 现在知道你在{0}。	src/ui/screens/drive.js:96	{0} = p.name
-12mubvb	ok	Now	此刻	src/ui/screens/drive.js:128	
 amdsnu	ok	Swipe sideways to move between tabs	横向滑动切换标签页	src/ui/screens/experimental.js:14	
 1py6vf8	ok	Unfinished translations	未完成的翻译	src/ui/screens/experimental.js:19	
 13a0vz9	ok	Features that are still being tried. They may have bugs, and their fixes may come slower than the rest of annai.	仍在试验中的功能。它们可能有错误，修复也可能比 annai 的其他部分慢。	src/ui/screens/experimental.js:25	
@@ -1632,6 +1631,7 @@ govuvp	ok	This page isn't here	此页面不存在	src/ui/screens/ext.js:21
 t9ug66	ok	This page belongs to a plugin that isn't on. Turn it on in {0}.	此页面属于一个未开启的插件。请在{0}中开启它。	src/ui/screens/ext.js:24	{0} = plugins
 ata72m	ok	Trace	记录	src/ui/screens/ext.js:36	
 1y7aybz	ok	This page couldn't be drawn; the plugin's error is in {0}.	无法绘制此页面；插件的错误在{0}中。	src/ui/screens/ext.js:37	{0} = trace
+12mubvb	ok	Now	此刻	src/ui/screens/ext.js:44	
 xb1ny3	ok	Trips	旅行	src/ui/screens/ext.js:56	
 17o4v1i	ok	Conversation	对话	src/ui/screens/file.js:24	
 1jpjwmm	ok	Back to trip	返回旅行	src/ui/screens/file.js:24	
@@ -1874,15 +1874,15 @@ u3pgdz	ok	annai encrypts every reminder on this phone, and makes each the same s
 1cg5akv	ok	Each reminder is deleted at the relay once it is sent, or when you cancel it, turn notifications off, or remove its trip.	每条提醒在发送后，或在你取消它、关闭通知、移除其旅行时，会从中继删除。	src/ui/screens/notifications.js:157	
 1iz3xsa	ok	With annai open on screen, annai says a reminder itself, and the relay's copy is called off: you never get it twice.	annai 在屏幕上打开时，会自己说出提醒，中继那份会被取消：你永远不会收到两次。	src/ui/screens/notifications.js:158	
 qkddms	ok	Every request to the relay is in Trace, under System · This device.	发往中继的每个请求都在记录中的“系统 · 这台设备”下。	src/ui/screens/notifications.js:159	Note: The Trace's own list name, "System · {0}" with the scope "This device" (这台设备).
-1tbrgfp	ok	Open a trip to see where you are and what is next.	打开一个旅行即可查看你在哪里、接下来做什么。	src/ui/screens/now.js:25	
-15h0umr	ok	Next	接下来	src/ui/screens/now.js:36	context: coming up; Note: The heading over what is planned next on Now, not the welcome's Next button.
-1m0ri7	ok	Nothing more is planned.	之后没有安排了。	src/ui/screens/now.js:38	
-1oi7u22	draft	The whole itinerary	完整行程	src/ui/screens/now.js:39	
-11lm89y	ok	Latest	最新	src/ui/screens/now.js:41	
-1fw5x21	ok	Fixed:	固定：	src/ui/screens/now.js:88	Note: Read aloud before a plan item that keeps its time.
-tdmj58	ok	Flexible:	可调整：	src/ui/screens/now.js:88	Note: Read aloud before a plan item whose time can move.
-16ocoht	ok	Show what she said	查看她说的话	src/ui/screens/now.js:112	
-1yj7glf	ok	Said aloud	已朗读	src/ui/screens/now.js:113	
+1tbrgfp	ok	Open a trip to see where you are and what is next.	打开一个旅行即可查看你在哪里、接下来做什么。	src/ui/screens/now.js:24	
+15h0umr	ok	Next	接下来	src/ui/screens/now.js:35	context: coming up; Note: The heading over what is planned next on Now, not the welcome's Next button.
+1m0ri7	ok	Nothing more is planned.	之后没有安排了。	src/ui/screens/now.js:37	
+1oi7u22	draft	The whole itinerary	完整行程	src/ui/screens/now.js:38	
+11lm89y	ok	Latest	最新	src/ui/screens/now.js:40	
+1fw5x21	ok	Fixed:	固定：	src/ui/screens/now.js:74	Note: Read aloud before a plan item that keeps its time.
+tdmj58	ok	Flexible:	可调整：	src/ui/screens/now.js:74	Note: Read aloud before a plan item whose time can move.
+16ocoht	ok	Show what she said	查看她说的话	src/ui/screens/now.js:98	
+1yj7glf	ok	Said aloud	已朗读	src/ui/screens/now.js:99	
 tctj7k	draft	Open a trip to see its itinerary.	打开一个旅行即可查看其行程。	src/ui/screens/plan.js:24	English was: Open a trip to see its plan.
 ow5t4g	ok	No time yet ({0})	未定时间（{0}）	src/ui/screens/plan.js:38	{0} = num(untimed.length)
 u71m40	ok	Nothing planned this day.	这一天没有安排。	src/ui/screens/plan.js:56	
@@ -2714,9 +2714,9 @@ f2eaqi	ok	Find a search plugin	查找搜索插件	src/ui/search-panel.js:93
 do1m5o	ok	{0}: annai can't show this setting.	{0}：annai 无法显示此设置。	src/ui/settings-form.js:116	{0} = f.label
 1qrgqx0	ok	saved	已保存	src/ui/settings-form.js:121	
 phutrz	ok	{0} wasn't saved: {1}	{0}未保存：{1}	src/ui/settings-form.js:130	{0} = f.label; {1} = messageOf(e)
-1skw031	ok	This screen couldn't open	无法打开此页面	src/ui/shell.js:267	
-1z00dfe	ok	An update is ready	更新已就绪	src/ui/shell.js:362	
-gt0nrj	ok	It will be used the next time annai starts.	下次启动 annai 时生效。	src/ui/shell.js:362	
+1skw031	ok	This screen couldn't open	无法打开此页面	src/ui/shell.js:270	
+1z00dfe	ok	An update is ready	更新已就绪	src/ui/shell.js:373	
+gt0nrj	ok	It will be used the next time annai starts.	下次启动 annai 时生效。	src/ui/shell.js:373	
 sntfon	ok	Hello! This is how I sound when I talk to you.	你好！我和你说话时就是这样的声音。	src/ui/speech-check.js:10	Note: spoken by the voice being tested, so it is heard in the screens' language.
 n8hyke	ok	{0}. {1}	{0}。{1}	src/ui/speech-check.js:16	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
 1a27ynt	ok	Last tested {0}: it worked.	上次测试于{0}：可用。	src/ui/speech-check.js:26	{0} = relTime(verified.at)
@@ -2738,11 +2738,11 @@ q69pp5	ok	{0} didn't answer: {1}. No other model was asked.	{0}没有回答：{1
 1cam7ic	ok	Message	消息	src/ui/talk-panel.js:74	
 vy4apn	ok	Try this model	试用这个模型	src/ui/talk-panel.js:75	
 1k3coi2	ok	A short conversation with this model alone: if it fails, no other model answers. Each reply shows its tokens and cost. Nothing is kept but the Trace.	只和这个模型的简短对话：失败时不会有其他模型回答。每条回复都会显示 token 数和费用。除了记录，什么都不保留。	src/ui/talk-panel.js:77	
-1tzspvr	ok	GPS is off, so annai isn't following where you are.	GPS 已关闭，因此 annai 不会跟踪你的位置。	src/ui/today.js:17	
-1sflilm	draft	Location isn't allowed for annai. Open Driving to say where you are.	annai 未获允许使用位置信息。请打开“驾驶中”，告诉它你在哪里。	src/ui/today.js:20	
-1770v5g	ok	Finding where you are…	正在确定你的位置…	src/ui/today.js:21	
-vlhm27	draft	No GPS signal right now. Open Driving to say where you are.	现在没有 GPS 信号。请打开“驾驶中”，告诉它你在哪里。	src/ui/today.js:21	
-ue501f	ok	Near {0}, ≈ {1}	{0}附近，≈ {1}	src/ui/today.js:24	{0} = near.name; {1} = distance(near.m / 1000)
+1tzspvr	ok	GPS is off, so annai isn't following where you are.	GPS 已关闭，因此 annai 不会跟踪你的位置。	src/ui/today.js:18	
+1sflilm	draft	Location isn't allowed for annai. Open Driving to say where you are.	annai 未获允许使用位置信息。请打开“驾驶中”，告诉它你在哪里。	src/ui/today.js:21	
+1770v5g	ok	Finding where you are…	正在确定你的位置…	src/ui/today.js:22	
+vlhm27	draft	No GPS signal right now. Open Driving to say where you are.	现在没有 GPS 信号。请打开“驾驶中”，告诉它你在哪里。	src/ui/today.js:22	
+ue501f	ok	Near {0}, ≈ {1}	{0}附近，≈ {1}	src/ui/today.js:25	{0} = near.name; {1} = distance(near.m / 1000)
 1sva5r0	ok	The check took too long. Check the connection, and try again.	检查用时过长。请检查网络连接，然后重试。	src/ui/updates.js:122	
 14d6ut8	ok	annai's offline service hasn't started yet, so annai itself wasn't checked. Try again in a moment.	annai 的离线服务尚未启动，因此没有检查 annai 本身。请稍后重试。	src/ui/updates.js:140	
 16l98jx	ok	annai couldn't check for a new version of itself. Check the connection and try again.	annai 无法检查自身的新版本。请检查网络连接，然后重试。	src/ui/updates.js:141	

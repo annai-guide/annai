@@ -185,3 +185,9 @@ entries go last, in the same commit as the change:
 - Why we had to change: nothing shipped called them, and with no build step each line is sent to every phone. `pushNews` had the same body as `newsArrived`, so the tests proved a copy.
 - Original design was wrong because: each began as the real path or a convenience, the real path moved, and the tests kept the old one alive, so nothing showed it was dead.
 - Lesson: a member kept for tests is shipped code that no operator runs. Tests go through the real path, or keep their helper to themselves. A test seam stays only when it resets module state or is the one way into logic that does ship, as an option whose shipped default has its own test (`inspectPackage`'s `maxBytes`, tried small in packages.test.js and at the real limit through `host.inspect`).
+
+## 2026-11-06 annai: a take-over belongs to the shell, not to the screen it leaves
+- Changed: the hand-over to Driving, and to a plugin's `homeFor` screen, left `renderNow` and became one listener in the shell. It now runs from Trips, the Conversation, the Itinerary and Now, not while someone is typing, and with a trip open for Driving. A plugin's `homeFor` screen takes over from those four too (`docs/plugins.md`). `now-card` and `ui:now-section` also draw at the top of the Itinerary's today, with the same arguments. Driving's ← goes where it was entered from, no longer always to Now.
+- Why we had to change: the timeline design ends the top bar, so Now can't be the one screen you are on as a drive begins. The user picked "Driving takes over, once" for the Conversation.
+- Original design was wrong because: Now was the home screen, so a listener on Now looked like a listener on the app. It worked only while Now showed, and its `was` began again at each draw.
+- Lesson: what must happen wherever the user is lives in the one place that is always there. A screen's listener only works while that screen shows, and says nothing about the others.
