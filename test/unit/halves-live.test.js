@@ -1638,3 +1638,36 @@ test("fix pass 2, finding 5 (Step): two quick taps on the avatar while the first
     await k.done();
   }
 });
+
+/** The microphones opened so far. @param {any} k */
+const mics = (k) => k.platform.log.filter((/** @type {string} */ l) => l.startsWith('mic open')).length;
+
+test("a tap as annai starts, before Koe's way is known, waits for it: live opens, and Kokoro's microphone never opens under a live Koe", async (t) => {
+  /** @type {() => void} */
+  let started = () => {};
+  const k = await liveKit([], { open: false, ready: new Promise((resolve) => { started = () => resolve(undefined); }) }); // plugins start after the shell is up: the dock is there first
+  t.after(k.done);
+  await k.agent.open(k.trip);
+  assert.equal(k.agent.koeState, 'off', "the dock is there while Halves doesn't know yet");
+  assert.equal(k.agent.tap(), 'listening');
+  await new Promise((resolve) => { setTimeout(resolve, 20); });
+  assert.equal(mics(k), 0, 'nothing listens yet: Koe may be the one who should');
+  started();
+  await soon(async () => k.agent.live.listening);
+  assert.equal(k.agent.state.name, k.agent.live.view.name);
+  assert.equal(mics(k), 1, "one microphone, the live session's");
+  assert.notEqual(k.agent.kokoro.state.name, 'listening');
+});
+
+test("a second tap while the first waits for Koe's way is the same wish", async (t) => {
+  /** @type {() => void} */
+  let started = () => {};
+  const k = await liveKit([], { open: false, ready: new Promise((resolve) => { started = () => resolve(undefined); }) });
+  t.after(k.done);
+  await k.agent.open(k.trip);
+  k.agent.tap();
+  assert.equal(k.agent.tap(), 'listening');
+  started();
+  await soon(async () => k.agent.live.listening);
+  assert.equal(mics(k), 1);
+});
