@@ -32,7 +32,7 @@ import { createDock } from './dock.js';
 import { tapKeepsKeyboard } from './tap-keeps-keyboard.js';
 import { dockHidesWhileTyping } from './dock-hides.js';
 import { noteScreen } from './resume.js';
-import { takeover, isField } from './today.js';
+import { takeover, isField, drivingTrip } from './today.js';
 import { renderExt, renderPluginPage, renderTripTab } from './screens/ext.js';
 import { renderMcp } from './screens/mcp.js';
 import { renderWelcome } from './screens/welcome.js';
@@ -357,7 +357,7 @@ export function startShell(root, core) {
   // typing there counts here, and not in typing().
   let was = core.live?.activity;
   core.live?.onChange(() => {
-    const to = takeover({ activity: core.live.activity, was, screens: slotEntries(ctx, 'ui:screen'), on: core.live.on, hash: location.hash, typing: isField(document.activeElement), trip: core.agent?.trip ?? null });
+    const to = takeover({ activity: core.live.activity, was, screens: slotEntries(ctx, 'ui:screen'), on: core.live.on, hash: location.hash, typing: isField(document.activeElement), trip: drivingTrip(core) });
     was = core.live.activity;
     if (to) ctx.go(to);
   });

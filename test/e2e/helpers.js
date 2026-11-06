@@ -454,6 +454,41 @@ export async function startTrip(page, title) {
 }
 
 /**
+ * A trip dated today, made as the app makes one, so its record carries the dates; live mode reads it as the page loads again.
+ * @param {import('@playwright/test').Page} page @param {string} title @returns {Promise<string>} its id
+ */
+export async function happeningTrip(page, title) {
+  const id = await page.evaluate(async (title) => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const { createTrip } = await load('/src/core/scopes.js');
+    const { dayIn, deviceZone } = await load('/src/core/time.js');
+    const store = await createIdbStore();
+    const today = dayIn(Date.now(), deviceZone());
+    const made = await createTrip(new Workspace(store), { title, start: today, end: today });
+    store.close();
+    return made;
+  }, title);
+  await page.reload();
+  return id;
+}
+
+/**
+ * What the user said in a trip's log, as the page's store has it. @param {import('@playwright/test').Page} page @param {string} trip
+ * @returns {Promise<string[]>}
+ */
+export function userLines(page, trip) {
+  return page.evaluate(async (trip) => {
+    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+    const store = await createIdbStore();
+    const lines = await store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(trip, { types: ['msg.user'] }));
+    store.close();
+    return lines.map((/** @type {any} */ e) => String(e.data?.text ?? ''));
+  }, trip);
+}
+
+/**
  * Writes trip records through annai's own modules in the page, with no format check (so a broken
  * file can be written too); patches merge into existing JSON. author: who wrote them (the user's by default).
  * @param {import('@playwright/test').Page} page @param {string} trip

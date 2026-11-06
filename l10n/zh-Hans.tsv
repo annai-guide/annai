@@ -404,23 +404,23 @@ u0vojx	ok	Use it here	在这里使用	src/app/main.js:86
 p4x3of	ok	annai was opened in another tab	annai 已在另一个标签页中被打开	src/app/main.js:91	
 11qyuy7	ok	This tab has stopped, so your trips stay consistent.	为了让旅行数据保持一致，此标签页已停止。	src/app/main.js:92	
 1ku6bv3	ok	Use it here instead	改在这里使用	src/app/main.js:93	
-fki4un	ok	Notifications	通知	src/app/main.js:232	
-1clzv4	ok	Settings → Models changed	设置 → 模型已更改	src/app/main.js:235	
-1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai 现在按提供商设置：一个地址和一个密钥即可使用该提供商提供的一切。你的端点（{0}）及其密钥已移除。请在设置 → 模型中重新添加。	src/app/main.js:236	{0} = list(moved.names, 'plain')
-whpd9d	ok	Open Models	打开模型	src/app/main.js:237	
-10renyj	ok	Plugins	插件	src/app/main.js:248	
-1sp21de	ok	A new version of the {0} personality	性格“{0}”有新版本	src/app/main.js:339	{0} = o.name
-1yoe82	ok	Yours has your own edits, so it was kept as it is.	你的版本有你自己的修改，因此保持原样。	src/app/main.js:340	
-1n8cxuc	ok	Compare	比较	src/app/main.js:342	
-rzp4o3	ok	Keep mine	保留我的	src/app/main.js:343	
-1j662as	ok	Let Shiori merge	让 Shiori 合并	src/app/main.js:344	
-x0ig66	ok	Something went wrong	出了点问题	src/app/main.js:396	
-1oy79dy	ok	annai kept running. The details are in Trace.	annai 仍在运行。详情见记录。	src/app/main.js:397	
-c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai 仍在运行，但没能记下发生了什么，所以记录里也没有。如果反复出现，请关闭 annai 再重新打开。	src/app/main.js:397	
-11n1kcg	ok	Open Trace	打开记录	src/app/main.js:398	
-gt9ssw	ok	annai couldn't start	annai 无法启动	src/app/main.js:409	
-6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反复出现，可能是浏览器阻止了存储（例如在无痕窗口中）。	src/app/main.js:411	
-982hh6	ok	Try again	重试	src/app/main.js:412	
+fki4un	ok	Notifications	通知	src/app/main.js:234	
+1clzv4	ok	Settings → Models changed	设置 → 模型已更改	src/app/main.js:237	
+1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai 现在按提供商设置：一个地址和一个密钥即可使用该提供商提供的一切。你的端点（{0}）及其密钥已移除。请在设置 → 模型中重新添加。	src/app/main.js:238	{0} = list(moved.names, 'plain')
+whpd9d	ok	Open Models	打开模型	src/app/main.js:239	
+10renyj	ok	Plugins	插件	src/app/main.js:250	
+1sp21de	ok	A new version of the {0} personality	性格“{0}”有新版本	src/app/main.js:341	{0} = o.name
+1yoe82	ok	Yours has your own edits, so it was kept as it is.	你的版本有你自己的修改，因此保持原样。	src/app/main.js:342	
+1n8cxuc	ok	Compare	比较	src/app/main.js:344	
+rzp4o3	ok	Keep mine	保留我的	src/app/main.js:345	
+1j662as	ok	Let Shiori merge	让 Shiori 合并	src/app/main.js:346	
+x0ig66	ok	Something went wrong	出了点问题	src/app/main.js:398	
+1oy79dy	ok	annai kept running. The details are in Trace.	annai 仍在运行。详情见记录。	src/app/main.js:399	
+c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai 仍在运行，但没能记下发生了什么，所以记录里也没有。如果反复出现，请关闭 annai 再重新打开。	src/app/main.js:399	
+11n1kcg	ok	Open Trace	打开记录	src/app/main.js:400	
+gt9ssw	ok	annai couldn't start	annai 无法启动	src/app/main.js:411	
+6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反复出现，可能是浏览器阻止了存储（例如在无痕窗口中）。	src/app/main.js:413	
+982hh6	ok	Try again	重试	src/app/main.js:414	
 1u3dm1p	ok	This address holds a name or password before an @. Leave it out.	这个地址在 @ 前面带有用户名或密码。请把它去掉。	src/core/address.js:68	
 1f8b0m5	ok	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	你停留的地方和时长（按名称；没有名称的地点用约 100 米精度的位置）。绝不发送 GPS 轨迹本身。	src/core/after/recap.js:54	
 imb4zw	draft	How far you drove or walked between, the stamps, and the itinerary.	其间开车或步行的距离、纪念章和行程。	src/core/after/recap.js:55	English was: How far you drove or walked between, the stamps, and the plan.
@@ -538,26 +538,26 @@ uc7dg2	ok	annai couldn't reach {0}. Is the device offline?	annai 无法连到 {0
 1bw0b6k	ok	This file is not encrypted.	这个文件没有加密。	src/core/archive-crypto.js:90	
 1nzwtma	ok	This file is damaged.	这个文件已损坏。	src/core/archive-crypto.js:91	
 qh6gdt	ok	Wrong passphrase, or the file is damaged.	密码短语不对，或者文件已损坏。	src/core/archive-crypto.js:104	
-4ngq1	ok	annai couldn't build a file it could open again: {0}	annai 无法生成一个能再次打开的文件：{0}	src/core/archive.js:65	{0} = s.why; Note: {0} is a developer's detail, in English.
-gtgen1	ok	The content of {0} is missing from storage, so it can't be exported.	{0} 的内容不在存储空间中，因此无法导出。	src/core/archive.js:66	{0} = s.path
-13a6l3r	ok	There is nothing to export.	没有可导出的内容。	src/core/archive.js:67	
-am2v0c	ok	API keys can only be included in an encrypted backup of everything.	只有加密的全部备份才能包含 API 密钥。	src/core/archive.js:67	
-4ohc37	ok	This file is encrypted. Enter its passphrase to open it.	此文件已加密。请输入它的密码短语来打开。	src/core/archive.js:87	
-1oint3e	ok	This file was made by a newer version of annai. Update annai, then open it again.	此文件由更新版本的 annai 创建。请更新 annai，然后再打开。	src/core/archive.js:442	
-q7ee2s	ok	This file is damaged: {0}	此文件已损坏：{0}	src/core/archive.js:446	{0} = errors; Note: {0} is a developer's detail, in English.
-4er14u	ok	This file contains an unsafe file path ({0}), so annai won't open it.	此文件包含不安全的文件路径（{0}），因此 annai 不会打开它。	src/core/archive.js:449	{0} = path
-hwph32	ok	This file isn't an annai file, or it is damaged ({0}).	此文件不是 annai 文件，或者已损坏（{0}）。	src/core/archive.js:472	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1cut10v	ok	This zip isn't an annai file: it has no annai-archive.json.	此 zip 不是 annai 文件：其中没有 annai-archive.json。	src/core/archive.js:474	
-j0v5kk	ok	This file is damaged: its manifest is not readable.	此文件已损坏：无法读取其清单。	src/core/archive.js:481	
-lfeohr#other	ok	This file is damaged: {0} are missing.	此文件已损坏：缺少 {0}。	src/core/archive.js:487	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
-1ujco5p	ok	This file is damaged: its keys are not readable.	此文件已损坏：无法读取其中的密钥。	src/core/archive.js:503	
-1aqa7w5	ok	This file is damaged ({0}).	此文件已损坏（{0}）。	src/core/archive.js:515	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1txsojx	ok	This file is damaged: {0} was changed.	此文件已损坏：{0} 已被更改。	src/core/archive.js:520	{0} = name
-21t6o3	ok	This file is damaged: line {0} of {1} is not readable.	此文件已损坏：无法读取 {1} 的第 {0} 行。	src/core/archive.js:546	{0} = i + 1; {1} = name
-1ln7rqe	ok	This file is damaged: line {0} of {1}: {2}	此文件已损坏：{1} 的第 {0} 行：{2}	src/core/archive.js:550	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
-syvqmc	ok	This file is damaged: its plugin list is not readable.	此文件已损坏：无法读取其插件列表。	src/core/archive.js:634	
-qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件的部分内容已从本设备中删除，因此没有导入任何内容。请重新导入。	src/core/archive.js:734	
-cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件要替换的内容在本设备上发生了变化，因此没有导入任何内容。请重新导入。	src/core/archive.js:735	
+4ngq1	ok	annai couldn't build a file it could open again: {0}	annai 无法生成一个能再次打开的文件：{0}	src/core/archive.js:66	{0} = s.why; Note: {0} is a developer's detail, in English.
+gtgen1	ok	The content of {0} is missing from storage, so it can't be exported.	{0} 的内容不在存储空间中，因此无法导出。	src/core/archive.js:67	{0} = s.path
+13a6l3r	ok	There is nothing to export.	没有可导出的内容。	src/core/archive.js:68	
+am2v0c	ok	API keys can only be included in an encrypted backup of everything.	只有加密的全部备份才能包含 API 密钥。	src/core/archive.js:68	
+4ohc37	ok	This file is encrypted. Enter its passphrase to open it.	此文件已加密。请输入它的密码短语来打开。	src/core/archive.js:88	
+1oint3e	ok	This file was made by a newer version of annai. Update annai, then open it again.	此文件由更新版本的 annai 创建。请更新 annai，然后再打开。	src/core/archive.js:444	
+q7ee2s	ok	This file is damaged: {0}	此文件已损坏：{0}	src/core/archive.js:448	{0} = errors; Note: {0} is a developer's detail, in English.
+4er14u	ok	This file contains an unsafe file path ({0}), so annai won't open it.	此文件包含不安全的文件路径（{0}），因此 annai 不会打开它。	src/core/archive.js:451	{0} = path
+hwph32	ok	This file isn't an annai file, or it is damaged ({0}).	此文件不是 annai 文件，或者已损坏（{0}）。	src/core/archive.js:474	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1cut10v	ok	This zip isn't an annai file: it has no annai-archive.json.	此 zip 不是 annai 文件：其中没有 annai-archive.json。	src/core/archive.js:476	
+j0v5kk	ok	This file is damaged: its manifest is not readable.	此文件已损坏：无法读取其清单。	src/core/archive.js:483	
+lfeohr#other	ok	This file is damaged: {0} are missing.	此文件已损坏：缺少 {0}。	src/core/archive.js:489	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
+1ujco5p	ok	This file is damaged: its keys are not readable.	此文件已损坏：无法读取其中的密钥。	src/core/archive.js:505	
+1aqa7w5	ok	This file is damaged ({0}).	此文件已损坏（{0}）。	src/core/archive.js:517	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1txsojx	ok	This file is damaged: {0} was changed.	此文件已损坏：{0} 已被更改。	src/core/archive.js:522	{0} = name
+21t6o3	ok	This file is damaged: line {0} of {1} is not readable.	此文件已损坏：无法读取 {1} 的第 {0} 行。	src/core/archive.js:548	{0} = i + 1; {1} = name
+1ln7rqe	ok	This file is damaged: line {0} of {1}: {2}	此文件已损坏：{1} 的第 {0} 行：{2}	src/core/archive.js:552	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
+syvqmc	ok	This file is damaged: its plugin list is not readable.	此文件已损坏：无法读取其插件列表。	src/core/archive.js:636	
+qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件的部分内容已从本设备中删除，因此没有导入任何内容。请重新导入。	src/core/archive.js:738	
+cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件要替换的内容在本设备上发生了变化，因此没有导入任何内容。请重新导入。	src/core/archive.js:739	
 e0756x	ok	annai tries again later.	annai 稍后会再试。	src/core/backup.js:42	
 pak6iu	ok	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} 的插件没有运行。请在设置 → 备份中打开此备份位置，把插件开启。	src/core/backup.js:44	{0} = name; Note: "it" is the plugin: the backup place's screen turns its plugin on.
 al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	请输入 {0} 加密备份的密码短语，然后保存。	src/core/backup.js:45	{0} = name
@@ -611,7 +611,7 @@ bgn4sv	ok	Shiori answers in the language you speak to her	Shiori 用你对她说
 1qt7a9v	ok	Shiori answers in	Shiori 回答所用语言	src/core/languages.js:351	Note: A label, so a noun: "the language Shiori answers in".
 k4u05v	ok	The language you speak to her	你对她说的语言	src/core/languages.js:352	
 cc69cl	ok	None picked: annai uses the browser’s language.	未选择：annai 使用浏览器的语言。	src/core/languages.js:353	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
-1dyfzsg	ok	A simulation is already running.	模拟已在运行。	src/core/live/live.js:289	
+1dyfzsg	ok	A simulation is already running.	模拟已在运行。	src/core/live/live.js:298	
 157qf8n	ok	Flight {0} departs {1}, {2}	航班 {0}，{1} 起飞，{2}	src/core/live/plan-watches.js:138	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
 1tvx4k9	ok	Flight {0} departs {1}	航班 {0}，{1} 起飞	src/core/live/plan-watches.js:138	{0} = w.flight; {1} = time
 1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}，{2}）	src/core/live/plan-watches.js:139	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
@@ -846,11 +846,11 @@ j773ua	ok	needs {0}, which isn't installed. Install it first, then try again.	�
 gvuaip	ok	isn't in annai's catalog.	不在 annai 的目录中。	src/core/requires.js:203	
 olo1mq	ok	is installed from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.	它是从别处安装的，不是 annai 自己的。要添加 annai 的，请在设置 → 插件中删除它。	src/core/requires.js:206	
 seoih8	ok	{0}, which you turned off, isn't switched on by adding it.	你已关闭的 {0} 不会因为添加而打开。	src/core/requires.js:208	{0} = officialName(entry.id, entry.name)
-stkvyf	ok	Me	我	src/core/scopes.js:43	Note: the conversation that is not a trip's (Shiori and you), as the Trace's list names it.
-1imxpae	ok	System log	系统日志	src/core/scopes.js:44	
-ktdb8o	ok	Settings	设置	src/core/scopes.js:45	
-13w3r95	ok	This device	这台设备	src/core/scopes.js:47	
-1jqhjwe	ok	Waiting with Shiori	Shiori 暂存的文件	src/core/scopes.js:48	Note: files Shiori holds until she files them into a trip: 暂存 (held for now), with 文件 so the heading says what is listed.
+stkvyf	ok	Me	我	src/core/scopes.js:58	Note: the conversation that is not a trip's (Shiori and you), as the Trace's list names it.
+1imxpae	ok	System log	系统日志	src/core/scopes.js:59	
+ktdb8o	ok	Settings	设置	src/core/scopes.js:60	
+13w3r95	ok	This device	这台设备	src/core/scopes.js:62	
+1jqhjwe	ok	Waiting with Shiori	Shiori 暂存的文件	src/core/scopes.js:63	Note: files Shiori holds until she files them into a trip: 暂存 (held for now), with 文件 so the heading says what is listed.
 ulzb3n	ok	Midnight sun	极昼	src/core/sun.js:78	
 1fjho8h	ok	Polar night	极夜	src/core/sun.js:79	
 tqn1pi	ok	Sunrise {0}	日出 {0}	src/core/sun.js:82	{0} = hm(sunrise)
@@ -1599,22 +1599,22 @@ iw9ebk	ok	Restroom	洗手间	src/ui/screens/drive.js:17
 18wvy25	ok	How long until our next stop?	到下一站还要多久？	src/ui/screens/drive.js:18	
 1r191hj	ok	How long until we reach {0}?	到{0}还要多久？	src/ui/screens/drive.js:18	{0} = next.name
 1xb4fg	ok	about {0}	约{0}	src/ui/screens/drive.js:22	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000)
-12d1x1g	draft	An itinerary place	行程中的地点	src/ui/screens/drive.js:35	
-7quqpk	ok	Go to Trips	前往“旅行”	src/ui/screens/drive.js:52	
-ov2ou9	ok	Open a trip to see the road ahead.	打开一个旅行即可查看前方的路。	src/ui/screens/drive.js:52	
-sxc7mr	ok	The road ahead	前方的路	src/ui/screens/drive.js:58	
-1b4mdx5	ok	You (finding where)	你（正在定位）	src/ui/screens/drive.js:70	
-1efd4xo	ok	You	你	src/ui/screens/drive.js:70	
-591tvw	ok	You (GPS off)	你（GPS 已关闭）	src/ui/screens/drive.js:70	
-ugf9pe	ok	at {0}	预定{0}	src/ui/screens/drive.js:73	{0} = s.row.time; Note: A stop's time on the plan, on the road ahead ("at 14:00").
-102oezx	ok	Nothing more is planned with a place.	之后没有带地点的安排了。	src/ui/screens/drive.js:74	
-l329ve	ok	Directions to {0}	前往{0}的路线	src/ui/screens/drive.js:77	{0} = next.name
-kb2apf	ok	annai hasn't downloaded its maps links yet; it needs to be online once.	annai 还没有下载地图链接；需要联网一次。	src/ui/screens/drive.js:80	
-1tuqp1	ok	Asked Shiori: {0}	已问 Shiori：{0}	src/ui/screens/drive.js:85	{0} = text
-ah9gez	ok	Turn GPS on	开启 GPS	src/ui/screens/drive.js:88	Note: 开启, as "你开启了 GPS" and the chip's GPS 开启.
-14ltb7u	draft	The itinerary has no places to choose from yet.	行程里还没有可选的地点。	src/ui/screens/drive.js:91	English was: The plan has no places to choose from yet.
-1sedy1m	ok	Where are you?	你在哪里？	src/ui/screens/drive.js:91	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
-1w8zbso	ok	annai now knows you're at {0}.	annai 现在知道你在{0}。	src/ui/screens/drive.js:96	{0} = p.name
+12d1x1g	draft	An itinerary place	行程中的地点	src/ui/screens/drive.js:33	
+7quqpk	ok	Go to Trips	前往“旅行”	src/ui/screens/drive.js:50	
+ov2ou9	ok	Open a trip to see the road ahead.	打开一个旅行即可查看前方的路。	src/ui/screens/drive.js:50	
+sxc7mr	ok	The road ahead	前方的路	src/ui/screens/drive.js:56	
+1b4mdx5	ok	You (finding where)	你（正在定位）	src/ui/screens/drive.js:68	
+1efd4xo	ok	You	你	src/ui/screens/drive.js:68	
+591tvw	ok	You (GPS off)	你（GPS 已关闭）	src/ui/screens/drive.js:68	
+ugf9pe	ok	at {0}	预定{0}	src/ui/screens/drive.js:71	{0} = s.row.time; Note: A stop's time on the plan, on the road ahead ("at 14:00").
+102oezx	ok	Nothing more is planned with a place.	之后没有带地点的安排了。	src/ui/screens/drive.js:72	
+l329ve	ok	Directions to {0}	前往{0}的路线	src/ui/screens/drive.js:75	{0} = next.name
+kb2apf	ok	annai hasn't downloaded its maps links yet; it needs to be online once.	annai 还没有下载地图链接；需要联网一次。	src/ui/screens/drive.js:78	
+1tuqp1	ok	Asked Shiori: {0}	已问 Shiori：{0}	src/ui/screens/drive.js:83	{0} = text
+ah9gez	ok	Turn GPS on	开启 GPS	src/ui/screens/drive.js:86	Note: 开启, as "你开启了 GPS" and the chip's GPS 开启.
+14ltb7u	draft	The itinerary has no places to choose from yet.	行程里还没有可选的地点。	src/ui/screens/drive.js:89	English was: The plan has no places to choose from yet.
+1sedy1m	ok	Where are you?	你在哪里？	src/ui/screens/drive.js:89	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
+1w8zbso	ok	annai now knows you're at {0}.	annai 现在知道你在{0}。	src/ui/screens/drive.js:94	{0} = p.name
 amdsnu	ok	Swipe sideways to move between tabs	横向滑动切换标签页	src/ui/screens/experimental.js:14	
 1py6vf8	ok	Unfinished translations	未完成的翻译	src/ui/screens/experimental.js:19	
 13a0vz9	ok	Features that are still being tried. They may have bugs, and their fixes may come slower than the rest of annai.	仍在试验中的功能。它们可能有错误，修复也可能比 annai 的其他部分慢。	src/ui/screens/experimental.js:25	
@@ -2738,11 +2738,11 @@ q69pp5	ok	{0} didn't answer: {1}. No other model was asked.	{0}没有回答：{1
 1cam7ic	ok	Message	消息	src/ui/talk-panel.js:74	
 vy4apn	ok	Try this model	试用这个模型	src/ui/talk-panel.js:75	
 1k3coi2	ok	A short conversation with this model alone: if it fails, no other model answers. Each reply shows its tokens and cost. Nothing is kept but the Trace.	只和这个模型的简短对话：失败时不会有其他模型回答。每条回复都会显示 token 数和费用。除了记录，什么都不保留。	src/ui/talk-panel.js:77	
-1tzspvr	ok	GPS is off, so annai isn't following where you are.	GPS 已关闭，因此 annai 不会跟踪你的位置。	src/ui/today.js:18	
-1sflilm	draft	Location isn't allowed for annai. Open Driving to say where you are.	annai 未获允许使用位置信息。请打开“驾驶中”，告诉它你在哪里。	src/ui/today.js:21	
-1770v5g	ok	Finding where you are…	正在确定你的位置…	src/ui/today.js:22	
-vlhm27	draft	No GPS signal right now. Open Driving to say where you are.	现在没有 GPS 信号。请打开“驾驶中”，告诉它你在哪里。	src/ui/today.js:22	
-ue501f	ok	Near {0}, ≈ {1}	{0}附近，≈ {1}	src/ui/today.js:25	{0} = near.name; {1} = distance(near.m / 1000)
+1tzspvr	ok	GPS is off, so annai isn't following where you are.	GPS 已关闭，因此 annai 不会跟踪你的位置。	src/ui/today.js:19	
+1sflilm	draft	Location isn't allowed for annai. Open Driving to say where you are.	annai 未获允许使用位置信息。请打开“驾驶中”，告诉它你在哪里。	src/ui/today.js:22	
+1770v5g	ok	Finding where you are…	正在确定你的位置…	src/ui/today.js:23	
+vlhm27	draft	No GPS signal right now. Open Driving to say where you are.	现在没有 GPS 信号。请打开“驾驶中”，告诉它你在哪里。	src/ui/today.js:23	
+ue501f	ok	Near {0}, ≈ {1}	{0}附近，≈ {1}	src/ui/today.js:26	{0} = near.name; {1} = distance(near.m / 1000)
 1sva5r0	ok	The check took too long. Check the connection, and try again.	检查用时过长。请检查网络连接，然后重试。	src/ui/updates.js:122	
 14d6ut8	ok	annai's offline service hasn't started yet, so annai itself wasn't checked. Try again in a moment.	annai 的离线服务尚未启动，因此没有检查 annai 本身。请稍后重试。	src/ui/updates.js:140	
 16l98jx	ok	annai couldn't check for a new version of itself. Check the connection and try again.	annai 无法检查自身的新版本。请检查网络连接，然后重试。	src/ui/updates.js:141	

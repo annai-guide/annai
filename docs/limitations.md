@@ -275,3 +275,9 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** those readings look the same as a real stop behind a gap.
 - **Revisit when:** it shows in a drive trace.
 - **Approved:** 2026-11-06, the user picked "Check it, then accept (Recommended)"; checked by reading `#driveEnded` in src/core/voice/voice.js.
+### Only the trip in play reminds
+- **Kind:** known limitation.
+- **What the user sees:** with two trips happening at once, the other's itinerary reminders wait until it's opened. Time watches fire for both.
+- **Why:** one plan is followed at a time.
+- **Revisit when:** someone misses one.
+- **Approved:** 2026-11-05, the user picked "Only the one in play (Recommended)".

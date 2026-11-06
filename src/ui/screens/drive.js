@@ -7,7 +7,7 @@ import { distance, duration, sentenceGap, sentences, speaksScreens } from '../fo
 import { knownFix } from '../live-chip.js';
 import { PLAN_FILE } from '../../core/plan.js';
 import { latestCard, eventCard } from './now.js';
-import { nowOf, driveBack } from '../today.js';
+import { nowOf, driveBack, drivingTrip, askIn } from '../today.js';
 
 /** Big quick-ask buttons (spec §16.2): what each says to Shiori, as the user's own words. @param {boolean} speaks @param {{ name: string } | undefined} next */
 const quickAsks = (speaks, next) => [
@@ -21,10 +21,8 @@ const quickAsks = (speaks, next) => [
 /** How far and how long to a stop, for the road ahead: "≈ 26 mi · about 1 hr, 12 min"; a minute at least, even standing at it. @param {{ km: number | null, minutes: number | null }} s */
 export const roadText = (s) => (s.km === null ? '' : `≈ ${distance(s.km)} · ${t`about ${duration(Math.max(1, s.minutes ?? 0) * 60_000)}`}`);
 
-/** The open trip's plan places, for "Where are you?". @param {any} ctx @returns {Promise<{ name: string, lat: number, lng: number }[]>} */
-async function planPlaces(ctx) {
-  const trip = ctx.agent?.trip;
-  if (!trip) return [];
+/** The trip's plan places, for "Where are you?". @param {any} ctx @param {string} trip @returns {Promise<{ name: string, lat: number, lng: number }[]>} */
+async function planPlaces(ctx, trip) {
   /** @type {{ name: string, lat: number, lng: number }[]} */
   const out = [];
   for (const f of await ctx.ws.list(trip, '/plan/')) {
@@ -46,7 +44,7 @@ async function planPlaces(ctx) {
  */
 export async function renderDrive(ctx) {
   await ctx.agent?.opening.catch(() => {});
-  const id = ctx.agent?.trip;
+  const id = drivingTrip(ctx);
   if (!id) {
     return h('div', { class: 'screen' }, h('h1', { class: 'title', text: t`Driving` }),
       h('p', { class: 'empty' }, t`Open a trip to see the road ahead.`, sentenceGap(), h('a', { href: '#/trips' }, t`Go to Trips`)));
@@ -61,7 +59,7 @@ export async function renderDrive(ctx) {
   const gps = h('div', { class: 'acts' });
   // With no GPS, the user can say where they are, from the plan's places (spec §17: "a manual place").
   const where = h('div', { class: 'acts' });
-  const places = await planPlaces(ctx);
+  const places = await planPlaces(ctx, id);
   const latest = h('div', { class: 'drive-latest', 'aria-live': 'polite' });
   const draw = () => {
     const here = live ? knownFix(live) : null; // not a position from before the GPS was lost
@@ -80,8 +78,8 @@ export async function renderDrive(ctx) {
     ] : [h('p', { class: 'sub', text: t`annai hasn't downloaded its maps links yet; it needs to be online once.` })]));
     ask.replaceChildren(...quickAsks(speaks, next).map(([label, text]) => h('button', {
       class: 'btn big', type: 'button',
-      onclick: () => {
-        ctx.agent.send(text, { chose: true });
+      onclick: async () => {
+        await askIn(ctx, id, text);
         ctx.notices.toast(t`Asked Shiori: ${text}`);
       },
     }, label)));
