@@ -1,5 +1,5 @@
 {
-  "build": "4151a088c298",
+  "build": "b4c6946ce5c1",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -109,7 +109,7 @@
     "/src/core/intl.js": "0da282c01667",
     "/src/core/koe/context.js": "0fb694f46b35",
     "/src/core/koe/instructions.js": "e54b8ba251ca",
-    "/src/core/koe/live.js": "bf652c3ed47f",
+    "/src/core/koe/live.js": "10379d42289a",
     "/src/core/koe/tools.js": "cfbc62fd865b",
     "/src/core/l10n-list.js": "98de5dc21171",
     "/src/core/l10n.js": "bc73b53b2add",
