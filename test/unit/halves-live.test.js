@@ -649,6 +649,20 @@ test("annai's own reminders while a live session's voice plays are shown, never 
   }
 });
 
+test('sessionOpen is a session, not the route: Koe live with none open is false, and true once one is', async () => {
+  const k = await liveKit([{ said: 'Hello there.', audio: tone(0.2) }]);
+  try {
+    assert.equal(k.agent.koeState, 'live');
+    assert.equal(k.agent.sessionOpen, false);
+    await k.voice.unlock();
+    k.agent.send('Hi');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    assert.equal(k.agent.sessionOpen, true);
+  } finally {
+    await k.done();
+  }
+});
+
 test("a reminder for another conversation while a live session's voice plays: she says it in the session, annai only shows it (never over her)", async () => {
   const k = await liveKit([{ said: 'Hello there.', audio: tone(0.2) }, { said: 'Check-out is at eleven.', audio: tone(0.2) }]);
   try {

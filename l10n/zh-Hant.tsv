@@ -404,23 +404,23 @@ u0vojx	ok	Use it here	在這裡使用	src/app/main.js:86
 p4x3of	ok	annai was opened in another tab	annai 已在另一個分頁中被開啟	src/app/main.js:91	
 11qyuy7	ok	This tab has stopped, so your trips stay consistent.	為了讓旅行資料保持一致，此分頁已停止。	src/app/main.js:92	
 1ku6bv3	ok	Use it here instead	改在這裡使用	src/app/main.js:93	
-fki4un	ok	Notifications	通知	src/app/main.js:234	
-1clzv4	ok	Settings → Models changed	設定 → 模型已更改	src/app/main.js:237	
-1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai 現在依供應商設定：一個網址和一個金鑰即可使用該供應商提供的一切。你的端點（{0}）及其金鑰已移除。請在設定 → 模型中重新新增。	src/app/main.js:238	{0} = list(moved.names, 'plain')
-whpd9d	ok	Open Models	開啟模型	src/app/main.js:239	
-10renyj	ok	Plugins	外掛程式	src/app/main.js:250	
-1sp21de	ok	A new version of the {0} personality	性格「{0}」有新版本	src/app/main.js:341	{0} = o.name
-1yoe82	ok	Yours has your own edits, so it was kept as it is.	你的版本有你自己的修改，因此保持原樣。	src/app/main.js:342	
-1n8cxuc	ok	Compare	比較	src/app/main.js:344	
-rzp4o3	ok	Keep mine	保留我的	src/app/main.js:345	
-1j662as	ok	Let Shiori merge	讓 Shiori 合併	src/app/main.js:346	
-x0ig66	ok	Something went wrong	出了點問題	src/app/main.js:398	
-1oy79dy	ok	annai kept running. The details are in Trace.	annai 仍在執行。詳情見記錄。	src/app/main.js:399	
-c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai 仍在執行，但沒能記下發生了什麼，所以記錄裡也沒有。如果反覆出現，請關閉 annai 再重新開啟。	src/app/main.js:399	
-11n1kcg	ok	Open Trace	開啟記錄	src/app/main.js:400	
-gt9ssw	ok	annai couldn't start	annai 無法啟動	src/app/main.js:411	
-6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反覆出現，可能是瀏覽器阻止了儲存（例如在無痕視窗中）。	src/app/main.js:413	
-982hh6	ok	Try again	重試	src/app/main.js:414	
+fki4un	ok	Notifications	通知	src/app/main.js:237	
+1clzv4	ok	Settings → Models changed	設定 → 模型已更改	src/app/main.js:240	
+1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai 現在依供應商設定：一個網址和一個金鑰即可使用該供應商提供的一切。你的端點（{0}）及其金鑰已移除。請在設定 → 模型中重新新增。	src/app/main.js:241	{0} = list(moved.names, 'plain')
+whpd9d	ok	Open Models	開啟模型	src/app/main.js:242	
+10renyj	ok	Plugins	外掛程式	src/app/main.js:253	
+1sp21de	ok	A new version of the {0} personality	性格「{0}」有新版本	src/app/main.js:344	{0} = o.name
+1yoe82	ok	Yours has your own edits, so it was kept as it is.	你的版本有你自己的修改，因此保持原樣。	src/app/main.js:345	
+1n8cxuc	ok	Compare	比較	src/app/main.js:347	
+rzp4o3	ok	Keep mine	保留我的	src/app/main.js:348	
+1j662as	ok	Let Shiori merge	讓 Shiori 合併	src/app/main.js:349	
+x0ig66	ok	Something went wrong	出了點問題	src/app/main.js:401	
+1oy79dy	ok	annai kept running. The details are in Trace.	annai 仍在執行。詳情見記錄。	src/app/main.js:402	
+c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai 仍在執行，但沒能記下發生了什麼，所以記錄裡也沒有。如果反覆出現，請關閉 annai 再重新開啟。	src/app/main.js:402	
+11n1kcg	ok	Open Trace	開啟記錄	src/app/main.js:403	
+gt9ssw	ok	annai couldn't start	annai 無法啟動	src/app/main.js:414	
+6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反覆出現，可能是瀏覽器阻止了儲存（例如在無痕視窗中）。	src/app/main.js:416	
+982hh6	ok	Try again	重試	src/app/main.js:417	
 1u3dm1p	ok	This address holds a name or password before an @. Leave it out.	這個網址在 @ 前面帶有使用者名稱或密碼。請把它去掉。	src/core/address.js:68	
 1f8b0m5	ok	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	你停留的地方和時長（依名稱；沒有名稱的地點用約 100 公尺精度的位置）。絕不傳送 GPS 軌跡本身。	src/core/after/recap.js:54	
 imb4zw	draft	How far you drove or walked between, the stamps, and the itinerary.	其間開車或步行的距離、紀念章和行程。	src/core/after/recap.js:55	English was: How far you drove or walked between, the stamps, and the plan.
@@ -470,11 +470,11 @@ bo3wjk	ok	Shiori stopped: today's budget is spent	Shiori 已停止：今天的�
 67wvld	ok	Shiori stopped: step limit	Shiori 已停止：步數上限	src/core/agent/budgets.js:123	
 177194c	ok	She took {0} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.	Shiori 在沒人要求時自己做事，已經走了{0}步，所以停在了這裡。想讓她繼續，就告訴她。	src/core/agent/budgets.js:124	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告訴她), not the glossary's Ask, Safari's 詢問 choice.
 1o4yqf3	ok	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	她已走完一次喚醒可走的{0}步（設定 → Shiori → 她主動行動的頻率）。想讓她繼續，就告訴她。	src/core/agent/budgets.js:125	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告訴她), not the glossary's Ask, Safari's 詢問 choice; the setting's path as the screens name it.
-1vskjkw	draft	Live is resting; Koe · Chat is answering	即時正在休息，由 Koe · 聊天 回答	src/core/agent/halves.js:531	
-edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	目前由 Shiori 直接回答你。原因見記錄（模型）；Koe 幾分鐘後會再試。	src/core/agent/halves.js:608	
-yvabm6	ok	Koe's live voice couldn't start	Koe 的即時語音無法啟動	src/core/agent/halves.js:608	Note: "live voice" is the glossary's Live voice (即時語音), not a voice she speaks with (聲音).
-bzrasi	ok	Shiori answers as one half for now	Shiori 暫時獨自回答	src/core/agent/halves.js:785	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
-o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai 無法把你的訊息轉給 Koe：{0}	src/core/agent/halves.js:785	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+1vskjkw	draft	Live is resting; Koe · Chat is answering	即時正在休息，由 Koe · 聊天 回答	src/core/agent/halves.js:533	
+edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	目前由 Shiori 直接回答你。原因見記錄（模型）；Koe 幾分鐘後會再試。	src/core/agent/halves.js:610	
+yvabm6	ok	Koe's live voice couldn't start	Koe 的即時語音無法啟動	src/core/agent/halves.js:610	Note: "live voice" is the glossary's Live voice (即時語音), not a voice she speaks with (聲音).
+bzrasi	ok	Shiori answers as one half for now	Shiori 暫時獨自回答	src/core/agent/halves.js:787	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
+o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai 無法把你的訊息轉給 Koe：{0}	src/core/agent/halves.js:787	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
 1dhsqvv	ok	Tap to talk	點一下說話	src/core/agent/loop.js:128	
 1ldobgc	ok	Tap to interrupt	點一下打斷	src/core/agent/loop.js:128	
 4mbury	ok	Thinking · tap to stop	思考中 · 點一下停止	src/core/agent/loop.js:128	
@@ -611,7 +611,7 @@ bgn4sv	ok	Shiori answers in the language you speak to her	Shiori 用你對她說
 1qt7a9v	ok	Shiori answers in	Shiori 回答所用語言	src/core/languages.js:351	Note: A label, so a noun: "the language Shiori answers in".
 k4u05v	ok	The language you speak to her	你對她說的語言	src/core/languages.js:352	
 cc69cl	ok	None picked: annai uses the browser’s language.	未選擇：annai 使用瀏覽器的語言。	src/core/languages.js:353	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
-1dyfzsg	ok	A simulation is already running.	模擬已在執行。	src/core/live/live.js:298	
+1dyfzsg	ok	A simulation is already running.	模擬已在執行。	src/core/live/live.js:303	
 157qf8n	ok	Flight {0} departs {1}, {2}	航班 {0}，{1} 起飛，{2}	src/core/live/plan-watches.js:138	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
 1tvx4k9	ok	Flight {0} departs {1}	航班 {0}，{1} 起飛	src/core/live/plan-watches.js:138	{0} = w.flight; {1} = time
 1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}，{2}）	src/core/live/plan-watches.js:139	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
@@ -1587,34 +1587,36 @@ iy42pb	ok	check	待核對	src/ui/screens/booking.js:153	context: a detail to che
 1a6z1m2	draft	Itinerary	行程	src/ui/screens/booking.js:166	
 d0tqtj	ok	The original, {0}, isn't in the trip.	原件 {0} 不在這個旅行中。	src/ui/screens/booking.js:188	{0} = name
 98drsx	ok	Open the original	開啟原件	src/ui/screens/booking.js:193	
-19jra30	ok	What is around us right now that is worth knowing about?	我們附近現在有什麼值得了解的嗎？	src/ui/screens/drive.js:14	Note: What the user says to Shiori with a tap, as their own words.
-sqqsfd	ok	What's around here?	附近有什麼？	src/ui/screens/drive.js:14	
-1gkqhnt	ok	Food	吃飯	src/ui/screens/drive.js:15	
-1hv457u	ok	Where can we eat along the way?	沿途哪裡可以吃飯？	src/ui/screens/drive.js:15	
-112axt9	ok	Fuel	加油	src/ui/screens/drive.js:16	
-1c79d90	ok	Where is the next fuel station or charger?	下一個加油站或充電站在哪裡？	src/ui/screens/drive.js:16	
-1d8ka8b	ok	Where is the nearest restroom?	最近的洗手間在哪裡？	src/ui/screens/drive.js:17	
-iw9ebk	ok	Restroom	洗手間	src/ui/screens/drive.js:17	
-14k2tsa	ok	How long?	還要多久？	src/ui/screens/drive.js:18	
-18wvy25	ok	How long until our next stop?	到下一站還要多久？	src/ui/screens/drive.js:18	
-1r191hj	ok	How long until we reach {0}?	到{0}還要多久？	src/ui/screens/drive.js:18	{0} = next.name
-1xb4fg	ok	about {0}	約{0}	src/ui/screens/drive.js:22	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000)
-12d1x1g	draft	An itinerary place	行程中的地點	src/ui/screens/drive.js:33	
-7quqpk	ok	Go to Trips	前往「旅行」	src/ui/screens/drive.js:50	
-ov2ou9	ok	Open a trip to see the road ahead.	開啟一個旅行即可檢視前方的路。	src/ui/screens/drive.js:50	
-sxc7mr	ok	The road ahead	前方的路	src/ui/screens/drive.js:56	
-1b4mdx5	ok	You (finding where)	你（正在定位）	src/ui/screens/drive.js:68	
-1efd4xo	ok	You	你	src/ui/screens/drive.js:68	
-591tvw	ok	You (GPS off)	你（GPS 已關閉）	src/ui/screens/drive.js:68	
-ugf9pe	ok	at {0}	預定{0}	src/ui/screens/drive.js:71	{0} = s.row.time; Note: A stop's time on the plan, on the road ahead ("at 14:00").
-102oezx	ok	Nothing more is planned with a place.	之後沒有帶地點的安排了。	src/ui/screens/drive.js:72	
-l329ve	ok	Directions to {0}	前往{0}的路線	src/ui/screens/drive.js:75	{0} = next.name
-kb2apf	ok	annai hasn't downloaded its maps links yet; it needs to be online once.	annai 還沒有下載地圖連結；需要連網一次。	src/ui/screens/drive.js:78	
-1tuqp1	ok	Asked Shiori: {0}	已問 Shiori：{0}	src/ui/screens/drive.js:83	{0} = text
-ah9gez	ok	Turn GPS on	開啟 GPS	src/ui/screens/drive.js:86	Note: 開啟, as "你開啟了 GPS" and the chip's GPS 開啟.
-14ltb7u	draft	The itinerary has no places to choose from yet.	行程裡還沒有可選的地點。	src/ui/screens/drive.js:89	English was: The plan has no places to choose from yet.
-1sedy1m	ok	Where are you?	你在哪裡？	src/ui/screens/drive.js:89	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
-1w8zbso	ok	annai now knows you're at {0}.	annai 現在知道你在{0}。	src/ui/screens/drive.js:94	{0} = p.name
+19jra30	ok	What is around us right now that is worth knowing about?	我們附近現在有什麼值得了解的嗎？	src/ui/screens/drive.js:15	Note: What the user says to Shiori with a tap, as their own words.
+sqqsfd	ok	What's around here?	附近有什麼？	src/ui/screens/drive.js:15	
+1gkqhnt	ok	Food	吃飯	src/ui/screens/drive.js:16	
+1hv457u	ok	Where can we eat along the way?	沿途哪裡可以吃飯？	src/ui/screens/drive.js:16	
+112axt9	ok	Fuel	加油	src/ui/screens/drive.js:17	
+1c79d90	ok	Where is the next fuel station or charger?	下一個加油站或充電站在哪裡？	src/ui/screens/drive.js:17	
+1d8ka8b	ok	Where is the nearest restroom?	最近的洗手間在哪裡？	src/ui/screens/drive.js:18	
+iw9ebk	ok	Restroom	洗手間	src/ui/screens/drive.js:18	
+14k2tsa	ok	How long?	還要多久？	src/ui/screens/drive.js:19	
+18wvy25	ok	How long until our next stop?	到下一站還要多久？	src/ui/screens/drive.js:19	
+1r191hj	ok	How long until we reach {0}?	到{0}還要多久？	src/ui/screens/drive.js:19	{0} = next.name
+1xb4fg	ok	about {0}	約{0}	src/ui/screens/drive.js:23	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000)
+12d1x1g	draft	An itinerary place	行程中的地點	src/ui/screens/drive.js:34	
+7quqpk	ok	Go to Trips	前往「旅行」	src/ui/screens/drive.js:51	
+ov2ou9	ok	Open a trip to see the road ahead.	開啟一個旅行即可檢視前方的路。	src/ui/screens/drive.js:51	
+sxc7mr	ok	The road ahead	前方的路	src/ui/screens/drive.js:57	
+1b4mdx5	ok	You (finding where)	你（正在定位）	src/ui/screens/drive.js:69	
+1efd4xo	ok	You	你	src/ui/screens/drive.js:69	
+591tvw	ok	You (GPS off)	你（GPS 已關閉）	src/ui/screens/drive.js:69	
+ugf9pe	ok	at {0}	預定{0}	src/ui/screens/drive.js:72	{0} = s.row.time; Note: A stop's time on the plan, on the road ahead ("at 14:00").
+102oezx	ok	Nothing more is planned with a place.	之後沒有帶地點的安排了。	src/ui/screens/drive.js:73	
+l329ve	ok	Directions to {0}	前往{0}的路線	src/ui/screens/drive.js:76	{0} = next.name
+kb2apf	ok	annai hasn't downloaded its maps links yet; it needs to be online once.	annai 還沒有下載地圖連結；需要連網一次。	src/ui/screens/drive.js:79	
+1tuqp1	ok	Asked Shiori: {0}	已問 Shiori：{0}	src/ui/screens/drive.js:85	{0} = text
+1imrexv	draft	Shiori wasn't asked	沒能問到 Shiori	src/ui/screens/drive.js:87	
+bigbss	ok	Try again.	請重試。	src/ui/screens/drive.js:87	
+ah9gez	ok	Turn GPS on	開啟 GPS	src/ui/screens/drive.js:91	Note: 開啟, as "你開啟了 GPS" and the chip's GPS 開啟.
+14ltb7u	draft	The itinerary has no places to choose from yet.	行程裡還沒有可選的地點。	src/ui/screens/drive.js:94	English was: The plan has no places to choose from yet.
+1sedy1m	ok	Where are you?	你在哪裡？	src/ui/screens/drive.js:94	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
+1w8zbso	ok	annai now knows you're at {0}.	annai 現在知道你在{0}。	src/ui/screens/drive.js:99	{0} = p.name
 amdsnu	ok	Swipe sideways to move between tabs	橫向滑動切換分頁	src/ui/screens/experimental.js:14	
 1py6vf8	ok	Unfinished translations	未完成的翻譯	src/ui/screens/experimental.js:19	
 13a0vz9	ok	Features that are still being tried. They may have bugs, and their fixes may come slower than the rest of annai.	仍在試驗中的功能。它們可能有錯誤，修復也可能比 annai 的其他部分慢。	src/ui/screens/experimental.js:25	
@@ -1992,7 +1994,6 @@ qn6t6j	ok	You can turn it off or remove it in Settings → Plugins.	可以在設
 9igrvz	ok	Nothing was saved, so nothing changed.	沒有儲存任何內容，所以什麼都沒變。	src/ui/screens/plugin.js:33	
 hln9jd	ok	Cleared its secrets ({0}).	已清除它的機密（{0}）。	src/ui/screens/plugin.js:33	{0} = secrets
 14779x5	ok	{0}'s settings weren't reset	{0}的設定沒有重設	src/ui/screens/plugin.js:41	{0} = r.name
-bigbss	ok	Try again.	請重試。	src/ui/screens/plugin.js:41	
 14zac1b	ok	Reset forgets the settings and keys this plugin keeps, with their history. The plugin stays, and so do its tool switches and what it wrote into trips.	重設會清除此外掛程式儲存的設定和金鑰，連同它們的歷史。外掛程式本身會保留，它的工具開關以及它寫入旅行的內容也會保留。	src/ui/screens/plugin.js:49	
 1ff8trs	ok	Tap again to reset	再點一次以重設	src/ui/screens/plugin.js:50	
 2i2r8t	ok	Reset settings	重設設定	src/ui/screens/plugin.js:50	
@@ -2715,8 +2716,8 @@ do1m5o	ok	{0}: annai can't show this setting.	{0}：annai 無法顯示此設定�
 1qrgqx0	ok	saved	已儲存	src/ui/settings-form.js:121	
 phutrz	ok	{0} wasn't saved: {1}	{0}未儲存：{1}	src/ui/settings-form.js:130	{0} = f.label; {1} = messageOf(e)
 1skw031	ok	This screen couldn't open	無法開啟此頁面	src/ui/shell.js:270	
-1z00dfe	ok	An update is ready	更新已就緒	src/ui/shell.js:373	
-gt0nrj	ok	It will be used the next time annai starts.	下次啟動 annai 時生效。	src/ui/shell.js:373	
+1z00dfe	ok	An update is ready	更新已就緒	src/ui/shell.js:370	
+gt0nrj	ok	It will be used the next time annai starts.	下次啟動 annai 時生效。	src/ui/shell.js:370	
 sntfon	ok	Hello! This is how I sound when I talk to you.	你好！我和你說話時就是這樣的聲音。	src/ui/speech-check.js:10	Note: spoken by the voice being tested, so it is heard in the screens' language.
 n8hyke	ok	{0}. {1}	{0}。{1}	src/ui/speech-check.js:16	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
 1a27ynt	ok	Last tested {0}: it worked.	上次測試於{0}：可用。	src/ui/speech-check.js:26	{0} = relTime(verified.at)

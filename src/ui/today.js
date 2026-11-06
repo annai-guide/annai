@@ -74,13 +74,13 @@ export function followDrive(live, o) {
 export const drivingTrip = (ctx) => ctx.live?.play ?? ctx.agent?.trip ?? null;
 
 /**
- * A quick ask from Driving, in the trip it shows: opened first, unless a live session is running, which opening would close; it then goes to the
- * open conversation. @param {any} ctx @param {string} id @param {string} text
+ * A quick ask from Driving, in the trip it shows: opened first, unless a live session is open, which opening would close; it then goes to the
+ * open conversation. A trip that won't open throws, and nothing is asked. @param {any} ctx @param {string} id @param {string} text
  */
 export async function askIn(ctx, id, text) {
-  if (id !== ctx.agent.target && ctx.agent.koeState !== 'live') {
+  if (id !== ctx.agent.target && !ctx.agent.sessionOpen) {
     await updateAppSettings(ctx.ws, { activeTrip: id });
-    await ctx.agent.open(id).catch(() => {}); // she is still asked, where she is
+    await ctx.agent.open(id);
   }
   ctx.agent.send(text, { chose: true });
 }

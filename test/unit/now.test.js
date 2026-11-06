@@ -99,14 +99,14 @@ test('Driving shows the trip in play, else the open one, else nothing', () => {
   assert.equal(drivingTrip({}), null);
 });
 
-/** Driving's ctx, with an agent that records. @param {string | null} target @param {string} [koeState] */
-async function asking(target, koeState = 'off') {
+/** Driving's ctx, with an agent that records. @param {string | null} target @param {{ koeState?: string, sessionOpen?: boolean }} [o] */
+async function asking(target, { koeState = 'off', sessionOpen = false } = {}) {
   const ws = new Workspace(createMemoryStore());
   await ensureBaseScopes(ws);
   /** @type {any[]} */
   const did = [];
   const agent = {
-    target, koeState,
+    target, koeState, sessionOpen,
     async open(/** @type {string} */ id) { did.push(['open', id, (await readAppSettings(ws)).activeTrip]); agent.target = id; },
     send(/** @type {string} */ text, /** @type {any} */ o) { did.push(['send', text, o, agent.target]); },
   };
@@ -125,15 +125,21 @@ test('a quick ask in the trip already open just asks', async () => {
   assert.deepEqual(did, [['send', 'Fuel?', { chose: true }, 'trip-a']]);
 });
 
-test('a quick ask over a live session goes to the open conversation: opening would close the session', async () => {
-  const { ctx, did } = await asking('trip-chat', 'live');
+test('a quick ask over an open live session goes to the open conversation: opening would close the session', async () => {
+  const { ctx, did } = await asking('trip-chat', { koeState: 'live', sessionOpen: true });
   await askIn(ctx, 'trip-a', 'Fuel?');
   assert.deepEqual(did, [['send', 'Fuel?', { chose: true }, 'trip-chat']]);
 });
 
-test("a conversation that doesn't open still leaves the question asked", async () => {
+test("Koe being live isn't a session: with none open, the quick ask opens the trip first", async () => {
+  const { ctx, did } = await asking('trip-chat', { koeState: 'live', sessionOpen: false });
+  await askIn(ctx, 'trip-a', 'Fuel?');
+  assert.deepEqual(did, [['open', 'trip-a', 'trip-a'], ['send', 'Fuel?', { chose: true }, 'trip-a']]);
+});
+
+test("a trip that doesn't open leaves nothing asked: the failure reaches the caller, which says so", async () => {
   const { ctx, did } = await asking('trip-chat');
   ctx.agent.open = async () => { throw new Error('no'); };
-  await askIn(ctx, 'trip-a', 'Fuel?');
-  assert.deepEqual(did, [['send', 'Fuel?', { chose: true }, 'trip-chat']]);
+  await assert.rejects(askIn(ctx, 'trip-a', 'Fuel?'), /no/);
+  assert.deepEqual(did, []);
 });

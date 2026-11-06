@@ -404,23 +404,23 @@ u0vojx	ok	Use it here	ここで使う	src/app/main.js:86
 p4x3of	ok	annai was opened in another tab	annai が別のタブで開かれました	src/app/main.js:91	
 11qyuy7	ok	This tab has stopped, so your trips stay consistent.	旅のデータを食い違わせないため、このタブは止まりました。	src/app/main.js:92	
 1ku6bv3	ok	Use it here instead	こちらで使う	src/app/main.js:93	
-fki4un	ok	Notifications	通知	src/app/main.js:234	
-1clzv4	ok	Settings → Models changed	設定 → モデルが変わりました	src/app/main.js:237	
-1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai はプロバイダーごとに設定するようになりました。1つのアドレスと1つのキーで、そのプロバイダーのすべてを使えます。エンドポイント（{0}）とそのキーは削除しました。設定 → モデルで追加し直してください。	src/app/main.js:238	{0} = list(moved.names, 'plain')
-whpd9d	ok	Open Models	モデルを開く	src/app/main.js:239	
-10renyj	ok	Plugins	プラグイン	src/app/main.js:250	
-1sp21de	ok	A new version of the {0} personality	性格「{0}」の新しいバージョン	src/app/main.js:341	{0} = o.name
-1yoe82	ok	Yours has your own edits, so it was kept as it is.	あなたが編集しているため、今のまま残しました。	src/app/main.js:342	
-1n8cxuc	ok	Compare	比較	src/app/main.js:344	
-rzp4o3	ok	Keep mine	自分のものを残す	src/app/main.js:345	
-1j662as	ok	Let Shiori merge	Shiori に統合してもらう	src/app/main.js:346	
-x0ig66	ok	Something went wrong	問題が起きました	src/app/main.js:398	
-1oy79dy	ok	annai kept running. The details are in Trace.	annai は動き続けています。詳しくは記録にあります。	src/app/main.js:399	
-c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai は動き続けていますが、何が起きたかを書き残せなかったため、記録にもありません。何度も起きる場合は、annai を閉じて開き直してください。	src/app/main.js:399	
-11n1kcg	ok	Open Trace	記録を開く	src/app/main.js:400	
-gt9ssw	ok	annai couldn't start	annai を起動できませんでした	src/app/main.js:411	
-6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	何度も起きる場合は、ブラウザが保存をブロックしているのかもしれません（プライベートウインドウなど）。	src/app/main.js:413	
-982hh6	ok	Try again	再試行	src/app/main.js:414	
+fki4un	ok	Notifications	通知	src/app/main.js:237	
+1clzv4	ok	Settings → Models changed	設定 → モデルが変わりました	src/app/main.js:240	
+1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai はプロバイダーごとに設定するようになりました。1つのアドレスと1つのキーで、そのプロバイダーのすべてを使えます。エンドポイント（{0}）とそのキーは削除しました。設定 → モデルで追加し直してください。	src/app/main.js:241	{0} = list(moved.names, 'plain')
+whpd9d	ok	Open Models	モデルを開く	src/app/main.js:242	
+10renyj	ok	Plugins	プラグイン	src/app/main.js:253	
+1sp21de	ok	A new version of the {0} personality	性格「{0}」の新しいバージョン	src/app/main.js:344	{0} = o.name
+1yoe82	ok	Yours has your own edits, so it was kept as it is.	あなたが編集しているため、今のまま残しました。	src/app/main.js:345	
+1n8cxuc	ok	Compare	比較	src/app/main.js:347	
+rzp4o3	ok	Keep mine	自分のものを残す	src/app/main.js:348	
+1j662as	ok	Let Shiori merge	Shiori に統合してもらう	src/app/main.js:349	
+x0ig66	ok	Something went wrong	問題が起きました	src/app/main.js:401	
+1oy79dy	ok	annai kept running. The details are in Trace.	annai は動き続けています。詳しくは記録にあります。	src/app/main.js:402	
+c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai は動き続けていますが、何が起きたかを書き残せなかったため、記録にもありません。何度も起きる場合は、annai を閉じて開き直してください。	src/app/main.js:402	
+11n1kcg	ok	Open Trace	記録を開く	src/app/main.js:403	
+gt9ssw	ok	annai couldn't start	annai を起動できませんでした	src/app/main.js:414	
+6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	何度も起きる場合は、ブラウザが保存をブロックしているのかもしれません（プライベートウインドウなど）。	src/app/main.js:416	
+982hh6	ok	Try again	再試行	src/app/main.js:417	
 1u3dm1p	ok	This address holds a name or password before an @. Leave it out.	このアドレスには @ の前に名前かパスワードが含まれています。外してください。	src/core/address.js:68	
 1f8b0m5	ok	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	滞在した場所と滞在時間（名前で。名前のない場所は約100 mに丸めた位置で）。GPS の軌跡そのものは送りません。	src/core/after/recap.js:54	Note: a stay is any stop in the record, so 滞在した, not 泊まった (overnight).
 imb4zw	draft	How far you drove or walked between, the stamps, and the itinerary.	その間に車や徒歩で移動した距離、スタンプ、旅程。	src/core/after/recap.js:55	English was: How far you drove or walked between, the stamps, and the plan.
@@ -470,11 +470,11 @@ bo3wjk	ok	Shiori stopped: today's budget is spent	Shiori が止まりました�
 67wvld	ok	Shiori stopped: step limit	Shiori が止まりました：ステップ数の上限	src/core/agent/budgets.js:123	
 177194c	ok	She took {0} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.	Shiori は誰にも頼まれずに自分で進めていたことで{0}ステップ進んだため、そこで止まりました。続けてほしいときは、そう頼んでください。	src/core/agent/budgets.js:124	{0} = num(over.steps); Note: "She" is Shiori in ja, as elsewhere.; Note: "Ask her" is a request (頼んで), not the glossary's Ask (Safari's permission choice, 確認).
 1o4yqf3	ok	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	1回の起動で進めるステップ数（設定 → Shiori → Shiori が自分から動く頻度）の{0}ステップに達しました。続けてほしいときは、そう頼んでください。	src/core/agent/budgets.js:125	{0} = num(over.steps); Note: ja names no subject (the card's title says Shiori stopped); the setting's path as the screens name it.; Note: "Ask her" is a request (頼んで), not the glossary's Ask (Safari's permission choice, 確認).
-1vskjkw	draft	Live is resting; Koe · Chat is answering	ライブは休止中です。Koe · チャットが答えています	src/core/agent/halves.js:531	
-edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	しばらくは Shiori が直接答えます。理由は記録（モデル）にあります。Koe は数分後にもう一度試します。	src/core/agent/halves.js:608	
-yvabm6	ok	Koe's live voice couldn't start	Koe のライブ音声を開始できませんでした	src/core/agent/halves.js:608	
-bzrasi	ok	Shiori answers as one half for now	しばらくは Shiori が1人で答えます	src/core/agent/halves.js:785	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
-o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai はあなたのメッセージを Koe に渡せませんでした：{0}	src/core/agent/halves.js:785	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+1vskjkw	draft	Live is resting; Koe · Chat is answering	ライブは休止中です。Koe · チャットが答えています	src/core/agent/halves.js:533	
+edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	しばらくは Shiori が直接答えます。理由は記録（モデル）にあります。Koe は数分後にもう一度試します。	src/core/agent/halves.js:610	
+yvabm6	ok	Koe's live voice couldn't start	Koe のライブ音声を開始できませんでした	src/core/agent/halves.js:610	
+bzrasi	ok	Shiori answers as one half for now	しばらくは Shiori が1人で答えます	src/core/agent/halves.js:787	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
+o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai はあなたのメッセージを Koe に渡せませんでした：{0}	src/core/agent/halves.js:787	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
 1dhsqvv	ok	Tap to talk	タップして話す	src/core/agent/loop.js:128	
 1ldobgc	ok	Tap to interrupt	タップして中断	src/core/agent/loop.js:128	
 4mbury	ok	Thinking · tap to stop	考え中 · タップで停止	src/core/agent/loop.js:128	
@@ -611,7 +611,7 @@ bgn4sv	ok	Shiori answers in the language you speak to her	Shiori は話しかけ
 1qt7a9v	ok	Shiori answers in	Shiori が答える言語	src/core/languages.js:351	Note: A label for a menu of languages, so a noun: "the language Shiori answers in".
 k4u05v	ok	The language you speak to her	話しかけた言語	src/core/languages.js:352	
 cc69cl	ok	None picked: annai uses the browser’s language.	未選択：annai はブラウザの言語を使います。	src/core/languages.js:353	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
-1dyfzsg	ok	A simulation is already running.	シミュレーションはすでに実行中です。	src/core/live/live.js:298	
+1dyfzsg	ok	A simulation is already running.	シミュレーションはすでに実行中です。	src/core/live/live.js:303	
 157qf8n	ok	Flight {0} departs {1}, {2}	フライト {0}、{1} 出発、{2}	src/core/live/plan-watches.js:138	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
 1tvx4k9	ok	Flight {0} departs {1}	フライト {0}、{1} 出発	src/core/live/plan-watches.js:138	{0} = w.flight; {1} = time
 1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}、{2}）	src/core/live/plan-watches.js:139	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
@@ -1587,34 +1587,36 @@ iy42pb	ok	check	要確認	src/ui/screens/booking.js:153	context: a detail to che
 1a6z1m2	draft	Itinerary	旅程	src/ui/screens/booking.js:166	
 d0tqtj	ok	The original, {0}, isn't in the trip.	元の資料（{0}）は旅にありません。	src/ui/screens/booking.js:188	{0} = name
 98drsx	ok	Open the original	元の資料を開く	src/ui/screens/booking.js:193	
-19jra30	ok	What is around us right now that is worth knowing about?	いま周りに、知っておくとよいものはありますか？	src/ui/screens/drive.js:14	Note: What the user says to Shiori with a tap, as their own words.
-sqqsfd	ok	What's around here?	この辺りに何がある？	src/ui/screens/drive.js:14	
-1gkqhnt	ok	Food	食事	src/ui/screens/drive.js:15	
-1hv457u	ok	Where can we eat along the way?	途中で食事できる所はどこですか？	src/ui/screens/drive.js:15	
-112axt9	ok	Fuel	給油	src/ui/screens/drive.js:16	
-1c79d90	ok	Where is the next fuel station or charger?	次のガソリンスタンドか充電スポットはどこですか？	src/ui/screens/drive.js:16	
-1d8ka8b	ok	Where is the nearest restroom?	いちばん近いトイレはどこですか？	src/ui/screens/drive.js:17	
-iw9ebk	ok	Restroom	トイレ	src/ui/screens/drive.js:17	
-14k2tsa	ok	How long?	あとどのくらい？	src/ui/screens/drive.js:18	
-18wvy25	ok	How long until our next stop?	次の立ち寄り先まで、あとどのくらいですか？	src/ui/screens/drive.js:18	
-1r191hj	ok	How long until we reach {0}?	{0}まで、あとどのくらいですか？	src/ui/screens/drive.js:18	{0} = next.name
-1xb4fg	ok	about {0}	約{0}	src/ui/screens/drive.js:22	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000)
-12d1x1g	draft	An itinerary place	旅程の場所	src/ui/screens/drive.js:33	
-7quqpk	ok	Go to Trips	「旅」へ	src/ui/screens/drive.js:50	
-ov2ou9	ok	Open a trip to see the road ahead.	旅を開くと、この先の道が表示されます。	src/ui/screens/drive.js:50	
-sxc7mr	ok	The road ahead	この先の道	src/ui/screens/drive.js:56	
-1b4mdx5	ok	You (finding where)	あなた（現在地を確認中）	src/ui/screens/drive.js:68	
-1efd4xo	ok	You	あなた	src/ui/screens/drive.js:68	
-591tvw	ok	You (GPS off)	あなた（GPS オフ）	src/ui/screens/drive.js:68	
-ugf9pe	ok	at {0}	{0}予定	src/ui/screens/drive.js:71	{0} = s.row.time; Note: A stop's time on the plan, on the road ahead ("at 14:00").
-102oezx	ok	Nothing more is planned with a place.	場所のある予定はもうありません。	src/ui/screens/drive.js:72	
-l329ve	ok	Directions to {0}	{0}への経路	src/ui/screens/drive.js:75	{0} = next.name
-kb2apf	ok	annai hasn't downloaded its maps links yet; it needs to be online once.	annai はまだ地図のリンクをダウンロードしていません。一度オンラインになる必要があります。	src/ui/screens/drive.js:78	
-1tuqp1	ok	Asked Shiori: {0}	Shiori に聞きました：{0}	src/ui/screens/drive.js:83	{0} = text
-ah9gez	ok	Turn GPS on	GPS をオンにする	src/ui/screens/drive.js:86	
-14ltb7u	draft	The itinerary has no places to choose from yet.	旅程にはまだ選べる場所がありません。	src/ui/screens/drive.js:89	English was: The plan has no places to choose from yet.
-1sedy1m	ok	Where are you?	いまどこにいますか？	src/ui/screens/drive.js:89	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
-1w8zbso	ok	annai now knows you're at {0}.	annai はあなたが{0}にいると認識しました。	src/ui/screens/drive.js:94	{0} = p.name
+19jra30	ok	What is around us right now that is worth knowing about?	いま周りに、知っておくとよいものはありますか？	src/ui/screens/drive.js:15	Note: What the user says to Shiori with a tap, as their own words.
+sqqsfd	ok	What's around here?	この辺りに何がある？	src/ui/screens/drive.js:15	
+1gkqhnt	ok	Food	食事	src/ui/screens/drive.js:16	
+1hv457u	ok	Where can we eat along the way?	途中で食事できる所はどこですか？	src/ui/screens/drive.js:16	
+112axt9	ok	Fuel	給油	src/ui/screens/drive.js:17	
+1c79d90	ok	Where is the next fuel station or charger?	次のガソリンスタンドか充電スポットはどこですか？	src/ui/screens/drive.js:17	
+1d8ka8b	ok	Where is the nearest restroom?	いちばん近いトイレはどこですか？	src/ui/screens/drive.js:18	
+iw9ebk	ok	Restroom	トイレ	src/ui/screens/drive.js:18	
+14k2tsa	ok	How long?	あとどのくらい？	src/ui/screens/drive.js:19	
+18wvy25	ok	How long until our next stop?	次の立ち寄り先まで、あとどのくらいですか？	src/ui/screens/drive.js:19	
+1r191hj	ok	How long until we reach {0}?	{0}まで、あとどのくらいですか？	src/ui/screens/drive.js:19	{0} = next.name
+1xb4fg	ok	about {0}	約{0}	src/ui/screens/drive.js:23	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000)
+12d1x1g	draft	An itinerary place	旅程の場所	src/ui/screens/drive.js:34	
+7quqpk	ok	Go to Trips	「旅」へ	src/ui/screens/drive.js:51	
+ov2ou9	ok	Open a trip to see the road ahead.	旅を開くと、この先の道が表示されます。	src/ui/screens/drive.js:51	
+sxc7mr	ok	The road ahead	この先の道	src/ui/screens/drive.js:57	
+1b4mdx5	ok	You (finding where)	あなた（現在地を確認中）	src/ui/screens/drive.js:69	
+1efd4xo	ok	You	あなた	src/ui/screens/drive.js:69	
+591tvw	ok	You (GPS off)	あなた（GPS オフ）	src/ui/screens/drive.js:69	
+ugf9pe	ok	at {0}	{0}予定	src/ui/screens/drive.js:72	{0} = s.row.time; Note: A stop's time on the plan, on the road ahead ("at 14:00").
+102oezx	ok	Nothing more is planned with a place.	場所のある予定はもうありません。	src/ui/screens/drive.js:73	
+l329ve	ok	Directions to {0}	{0}への経路	src/ui/screens/drive.js:76	{0} = next.name
+kb2apf	ok	annai hasn't downloaded its maps links yet; it needs to be online once.	annai はまだ地図のリンクをダウンロードしていません。一度オンラインになる必要があります。	src/ui/screens/drive.js:79	
+1tuqp1	ok	Asked Shiori: {0}	Shiori に聞きました：{0}	src/ui/screens/drive.js:85	{0} = text
+1imrexv	draft	Shiori wasn't asked	Shiori に聞けませんでした	src/ui/screens/drive.js:87	
+bigbss	ok	Try again.	もう一度お試しください。	src/ui/screens/drive.js:87	
+ah9gez	ok	Turn GPS on	GPS をオンにする	src/ui/screens/drive.js:91	
+14ltb7u	draft	The itinerary has no places to choose from yet.	旅程にはまだ選べる場所がありません。	src/ui/screens/drive.js:94	English was: The plan has no places to choose from yet.
+1sedy1m	ok	Where are you?	いまどこにいますか？	src/ui/screens/drive.js:94	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
+1w8zbso	ok	annai now knows you're at {0}.	annai はあなたが{0}にいると認識しました。	src/ui/screens/drive.js:99	{0} = p.name
 amdsnu	ok	Swipe sideways to move between tabs	横にスワイプしてタブを移動	src/ui/screens/experimental.js:14	
 1py6vf8	ok	Unfinished translations	未完成の翻訳	src/ui/screens/experimental.js:19	
 13a0vz9	ok	Features that are still being tried. They may have bugs, and their fixes may come slower than the rest of annai.	まだ試している機能です。不具合があるかもしれず、修正は annai のほかの部分より遅れることがあります。	src/ui/screens/experimental.js:25	
@@ -1992,7 +1994,6 @@ qn6t6j	ok	You can turn it off or remove it in Settings → Plugins.	設定 → �
 9igrvz	ok	Nothing was saved, so nothing changed.	何も保存されていなかったので、何も変わっていません。	src/ui/screens/plugin.js:33	
 hln9jd	ok	Cleared its secrets ({0}).	シークレット（{0}）を消去しました。	src/ui/screens/plugin.js:33	{0} = secrets
 14779x5	ok	{0}'s settings weren't reset	{0}の設定をリセットできませんでした	src/ui/screens/plugin.js:41	{0} = r.name
-bigbss	ok	Try again.	もう一度お試しください。	src/ui/screens/plugin.js:41	
 14zac1b	ok	Reset forgets the settings and keys this plugin keeps, with their history. The plugin stays, and so do its tool switches and what it wrote into trips.	リセットすると、このプラグインが持つ設定とキーを、その履歴ごと消去します。プラグイン自体は残り、ツールのオン/オフと、旅に書き込んだものも残ります。	src/ui/screens/plugin.js:49	
 1ff8trs	ok	Tap again to reset	もう一度タップするとリセットします	src/ui/screens/plugin.js:50	
 2i2r8t	ok	Reset settings	設定をリセット	src/ui/screens/plugin.js:50	
@@ -2715,8 +2716,8 @@ do1m5o	ok	{0}: annai can't show this setting.	{0}：annai ではこの設定を�
 1qrgqx0	ok	saved	保存済み	src/ui/settings-form.js:121	
 phutrz	ok	{0} wasn't saved: {1}	{0}を保存できませんでした：{1}	src/ui/settings-form.js:130	{0} = f.label; {1} = messageOf(e)
 1skw031	ok	This screen couldn't open	この画面を開けませんでした	src/ui/shell.js:270	
-1z00dfe	ok	An update is ready	アップデートの準備ができました	src/ui/shell.js:373	
-gt0nrj	ok	It will be used the next time annai starts.	次に annai を起動したときに使われます。	src/ui/shell.js:373	
+1z00dfe	ok	An update is ready	アップデートの準備ができました	src/ui/shell.js:370	
+gt0nrj	ok	It will be used the next time annai starts.	次に annai を起動したときに使われます。	src/ui/shell.js:370	
 sntfon	ok	Hello! This is how I sound when I talk to you.	こんにちは。あなたと話すときは、こんな声です。	src/ui/speech-check.js:10	Note: spoken by the voice being tested, so it is heard in the screens' language.
 n8hyke	ok	{0}. {1}	{0}。{1}	src/ui/speech-check.js:16	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
 1a27ynt	ok	Last tested {0}: it worked.	最終テスト（{0}）：動作しました。	src/ui/speech-check.js:26	{0} = relTime(verified.at); Note: {0} is a relative time, in brackets as on a model's test line.
