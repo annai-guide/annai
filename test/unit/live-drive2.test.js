@@ -205,25 +205,6 @@ test('item 12: a tap while a reminder is said stops it and opens at once', async
   }
 });
 
-test('Extended Thinking: a model that refuses its setup rests long, and the note goes on at once to the next model of Koe\'s list, not to annai\'s fallback', async () => {
-  const k = await liveKit([{ said: 'The fuel station is open until ten.', audio: tone(0.1) }], { live: { second: true } });
-  try {
-    const live = k.llm.live;
-    const { ProviderError } = await import('../../src/core/llm/contract.js');
-    k.llm.live = async (/** @type {string} */ id, /** @type {any} */ setup, /** @type {any} */ o) => {
-      if (id === 'm-live') throw new ProviderError('bad-request', 'Thinking level must be specified for this model.');
-      return live(id, setup, o);
-    };
-    await tell(k);
-    await soon(async () => (await k.events(['out.speak'])).length === 1 || (await shown(k)).length > 0, 3000);
-    assert.ok(k.llm.bench.until('m-live') - Date.now() > 10 * COOLDOWN_MS, 'rests long');
-    assert.deepEqual(await shown(k), [], 'said by the next live model');
-    assert.equal(k.agent.live.modelId, 'm-live2');
-  } finally {
-    await k.done();
-  }
-});
-
 test('a model of Koe\'s list that refuses its setup rests as a failure does, the note goes on at once to the next model of the list, not to annai\'s fallback, and nothing shows an error', async () => {
   const k = await liveKit([{ said: 'The fuel station is open until ten.', audio: tone(0.1) }], { live: { second: true } });
   try {

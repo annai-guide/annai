@@ -323,7 +323,7 @@ test("Gemini's Live voice: off until switched on; Test opens a session that answ
   const desc = (await official('provider-gemini')).provider;
   const live = /** @type {any} */ (desc.abilities.live);
   assert.deepEqual([live.kind, live.type, live.name, live.on, live.baseUrl], ['realtime', 'gemini-live', 'Live voice', false, 'https://generativelanguage.googleapis.com']);
-  assert.deepEqual(live.models.map((/** @type {any} */ m) => m.providerId), ['gemini-3.8-live', 'gemini-3.8-live-extended-thinking']);
+  assert.deepEqual(live.models.map((/** @type {any} */ m) => m.providerId), ['gemini-3.8-live']);
   assert.deepEqual(live.models[0].prices, { input: 0.75, audioIn: 3, image: 1, output: 4.5, audioOut: 12 });
   assert.ok(live.models.every((/** @type {any} */ m) => m.input.join() === 'text,image'), 'it takes photos (and prices their tokens)');
   const GKEY = 'AIza-stand-in-gemini-key-0123456789';
@@ -380,7 +380,7 @@ const DOUBLES = [{ from: '2027-01-01', input: 1.5, output: 7.5, cacheRead: 0.15 
 test('provider-gemini 2.6.0: Gemini through its own API (gemini-api), its chat models priced as Google publishes them, the free-tier switch offered, no stand-in signature', async () => {
   const m = await official('provider-gemini');
   const { levelsFor } = await import('../../plugins-official/gemini-api/levels.js');
-  assert.equal(m.version, '2.7.2');
+  assert.equal(m.version, '2.8.0');
   assert.deepEqual((await officialManifests()).find((x) => x.id === 'provider-gemini').requires, [{ id: 'gemini-api', version: '^0' }], 'not chat-completions; gemini-live comes when Live is switched on');
   const d = m.provider;
   assert.deepEqual([d.baseUrl, d.freeTier, d.keyUrl], ['https://generativelanguage.googleapis.com', 'Google', 'https://aistudio.google.com/apikey'], "who doesn't charge, by name");

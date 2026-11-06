@@ -16,12 +16,8 @@
  *   languages section). Input transcription takes `languageCodes`, several BCP-47 hints ("If omitted or empty, defaults to automatic language
  *   detection"), in the guide's own codes (en, ja, zh-Hans), and only when every language listed has one (Cantonese has none); a session that
  *   refuses the field opens again without it, and again if it then refuses the proactive audio (two reopens at most);
- * - thinking (Google's Live guide, read 2026-11-05, and runs on free keys that day): gemini-3.8-live-extended-thinking closes with 1007 "Thinking
- *   level must be specified for this model" without generationConfig.thinkingConfig.thinkingLevel, and annai deliberately sends none, so the
- *   session is refused and Koe's next model takes over. With a level and `behavior: "NON_BLOCKING"` on its tools, as the guide asks, it opened, said a filler
- *   (turnComplete with interactionStatus IN_PROGRESS), and about 16 s later said "a system error occurred" (IDLE), never sending a toolCall: 12 of 12 runs
- *   with a tool (any level, v1alpha or v1beta, either schema field, manual or automatic turns, a no-argument tool as in the guide); with no tools it answered.
- *   gemini-3.8-live, in the same run, made the call at once. A Koe that can't reach Kokoro, and says so aloud, is no use;
+ * - thinking: annai sends no level, and gemini-3.8-live-extended-thinking, which closes with 1007 without one, is out of the list (2026-11-05): with a level it made no tool call in
+ *   12 of 12 free-key runs; on a paid key it made the call in 2 of 2, but 2 to 14 s behind a filler line. Koe only relays, and gemini-3.8-live calls at once;
  * - usage comes once a turn, with turnComplete, by modality; thinking is counted apart from the response;
  * - a turn cut off ends with `interrupted`, then a turnComplete (and its usage) of its own; on resuming, Gemini first
  *   finishes the answer it was giving when the connection went.
