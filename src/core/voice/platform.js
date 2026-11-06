@@ -10,9 +10,9 @@
  * @typedef {{ unlock(o?: { fresh?: boolean }): Promise<boolean>, play(clip: Clip, o: { signal: AbortSignal, onLevel?: (x: number) => void }): Promise<{ ended: boolean, fraction: number }>, plays?(): string[],
  *   stream?(o: { rate: number, onLevel?: (x: number) => void }): PlayerStream, output?(): { sampleRate: number, baseLatency?: number, outputLatency?: number } | null }} Player
  *   the one audio player (§10.1); unlock(), inside a tap, gives whether sound may play now (fresh: sound got stuck, so its context is made anew); play() resolves with ended false when stopped, and rejects with a NotAllowedError while the page may not play sound;
- *   stream(): a live session's voice, 16-bit PCM pushed as it arrives (K4); output: the sound's rate, and its processing and output latency (s) where the browser says, for the Trace, once there is sound
+ *   stream(): a live session's voice, 16-bit PCM pushed as it arrives; output: the sound's rate, and its processing and output latency (s) where the browser says, for the Trace, once there is sound
  * @typedef {{ push(pcm: Int16Array): void, end(): void, stop(): Played, done: Promise<Played>, queued(): number, running?: Promise<boolean>, started?: Promise<boolean> }} PlayerStream
- *   pieces play as one sound, however fast they come, after a short start (150 ms of it in, the pops investigation); end: no more is coming,
+ *   pieces play as one sound, however fast they come, after a short start (150 ms of it in); end: no more is coming,
  *   and done settles once it has all played; stop: silent within 15 ms, faded out (always one or the other); queued: pieces still to play;
  *   running: whether its sound can play, once the player knows (false: the page may not play sound now, so it would never end);
  *   started: true as its sound starts playing (after its start buffer), for what should go with it, such as her words; false once it is

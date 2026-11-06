@@ -1,6 +1,6 @@
 /**
  * The Time tools (spec §7.2): watch_set, watch_list and watch_cancel. Providers accept only
- * letters, digits, "_" and "-" in a tool's name, so watch.set is watch_set (choice 1). Like the
+ * letters, digits, "_" and "-" in a tool's name, so watch.set is watch_set. Like the
  * Self tools, they are the loop's own, so they reach the live engine.
  * @param {import('./live.js').Live} live @returns {import('../agent/loop.js').LoopTool[]}
  */

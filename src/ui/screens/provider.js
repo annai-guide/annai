@@ -87,7 +87,7 @@ export async function renderProvider(ctx, id) {
   const desc = src ? ctx.plugins.shownOf(rec.plugin)?.provider ?? src.provider : undefined;
   const shownIn = otherLang(ctx.plugins.langOf(rec.plugin));
   const installed = (await ctx.plugins.installed())[rec.plugin];
-  // What a plugin that isn't running is called comes from annai's catalog, never as its id (the second emulator re-check).
+  // What a plugin that isn't running is called comes from annai's catalog, never as its id.
   const catalog = (!src && !installed) || Object.values(p.abilities).some((a) => !types.has(a.type)) ? await officialPlugins().catch(() => null) : null;
   const catalogName = (/** @type {string | undefined} */ id) => { const e = catalog?.find((/** @type {any} */ x) => x.id === id); return e ? officialName(e.id, e.name) : null; };
   /** A protocol by name: running, else annai's own from the catalog, else nothing to name. @param {string} type @returns {string | null} */
@@ -112,7 +112,7 @@ export async function renderProvider(ctx, id) {
       const here = location.hash;
       savingNote(saving, async () => {
         try {
-          // Checked as a description's is: a typed address without its scheme would send the key to annai's own site (fix pass).
+          // Checked as a description's is: a typed address without its scheme would send the key to annai's own site.
           const wrong = url.value.trim() ? addressShown(url.value.trim()) : null;
           if (wrong) throw new Error(wrong);
           const typed = key?.value.trim() ?? '';
@@ -165,7 +165,7 @@ export async function renderProvider(ctx, id) {
       el.textContent = '';
     }
   };
-  // A server you run: what reaching it takes; on a phone, a warning while its address is localhost, which can't work there (the user, 2026-10-22).
+  // A server you run: what reaching it takes; on a phone, a warning while its address is localhost, which can't work there.
   const serverNote = { el: desc?.local || desc?.serverNote ? h('p', { class: 'sub', 'data-note': 'local-server', text: localNote(desc.baseUrl) }) : null };
   const paintNote = () => serverNote.el?.classList.toggle('warn', platform() !== 'desktop' && /^http:\/\/(localhost|127\.0\.0\.1)(?![\w.-])/i.test(url.value.trim()));
   url.addEventListener('input', paintNote);
@@ -262,7 +262,7 @@ export async function renderNewProvider(ctx, pluginId) {
 }
 
 /**
- * What a provider's page says when its plugin isn't running, in words with no plugin id (fixes-ui 16): installed, a link to it;
+ * What a provider's page says when its plugin isn't running, in words with no plugin id: installed, a link to it;
  * annai's own and missing (a restore brings providers back without theirs), Install it, here; another's, that annai can't fetch it.
  * @param {any} ctx @param {string} plugin @param {any} installed its install state, if any @param {any[] | null} catalog annai's catalog, when it could be loaded
  */
@@ -428,7 +428,7 @@ async function abilityBody(view, abilityId) {
 }
 
 /**
- * Switches for the provider's own tools its models offer with words for this page (G4: "Let Gemini search Google"), the same
+ * Switches for the provider's own tools its models offer with words for this page ("Let Gemini search Google"), the same
  * as Settings → Tools'. One that is paid only is off while the key is on the free tier, saying why. @param {any} ctx
  * @param {import('../../core/llm/config.js').Model[]} models @param {boolean} free @param {string} who doesn't charge on it
  */
@@ -510,7 +510,7 @@ function modelsPart(ctx, id, abilityId, models) {
 
 /**
  * The models an ability listed, minus those already added, with a filter. One whose name another model has says where
- * that is, as adding it by id refuses it, rather than adding it again as "name (2)" (the emulator pass).
+ * that is, as adding it by id refuses it, rather than adding it again as "name (2)".
  * @param {any} ctx @param {string} id @param {string} abilityId @param {import('../../core/llm/contract.js').ListedModel[]} listed @param {import('../../core/llm/config.js').Model[]} have
  * @param {import('../../core/llm/config.js').ModelConfig} cfg
  */

@@ -2,19 +2,14 @@ import { h, t } from './dom.js';
 import { platform } from './platform.js';
 
 let n = 0;
-/** This page's own part of each question's id: an entry another page load left in the history is never taken for one of its (review m2). */
+/** This page's own part of each question's id: an entry another page load left in the history is never taken for one of its. */
 const page = Math.random().toString(36).slice(2, 8);
 
 /**
- * A modal question with two answers (spec §4.9). Resolves true only for `yes`; Cancel, Escape and
- * Back resolve false. Focus starts on Cancel, so a stray Enter never confirms. Where the browser
- * closes a modal dialog on Back itself (CloseWatcher, Chrome 120+), it does; elsewhere (Chrome 113,
- * Safari) opening adds a history entry, as the photo viewer does, and Back takes it. On Android there
- * the dialog is not modal: Chrome 113 swallowed the first Back for a modal dialog, so it took two
- * (the second emulator re-check). annai draws its own backdrop, makes the rest of the page inert and
- * keeps the focus in the question and Escape closing it, as a modal does. An iPhone has no Back button,
- * and WebKit handles the modal with its history entry, so it keeps the modal. An answer takes
- * that entry back before it resolves, so what the answer does next, such as a new screen, stays.
+ * A modal question with two answers (spec §4.9). Resolves true only for `yes`; Cancel, Escape and Back resolve false. Focus starts
+ * on Cancel, so a stray Enter never confirms. Back closes it through CloseWatcher, else through a history entry, which an answer
+ * takes back before it resolves. Without CloseWatcher on Android the dialog is not modal (openPlain): Chrome 113 swallows the first
+ * Back for a modal dialog, so don't make it modal there.
  * @param {{ title: string, body: string, yes: string, no?: string }} q
  * @returns {Promise<boolean>}
  */

@@ -2,8 +2,7 @@ import { h, otherLang } from './dom.js';
 
 /**
  * What plugins add to annai's screens (spec §16.4), drawn. Each item draws itself into an element
- * annai made, with the ui object below (choice 8 of milestone 8b); what throws counts against its
- * plugin and never breaks the screen (choice 3).
+ * annai made, with the ui object below; what throws counts against its plugin and never breaks the screen.
  * @typedef {{ pluginId: string, item: any }} Entry
  */
 
@@ -26,7 +25,7 @@ export function uiSignature(registry) {
 
 /**
  * The object a plugin's drawing gets: annai's DOM builder, where to go, the open trip, system
- * cards and toasts, Shiori and live mode (choice 8).
+ * cards and toasts, Shiori and live mode.
  * @param {any} ctx @param {string} pluginId
  */
 export function pluginUi(ctx, pluginId) {
@@ -60,7 +59,7 @@ export function pluginUi(ctx, pluginId) {
 
 /** @type {Record<'screen' | 'dock', (() => void)[]>} cleanups plugins' drawings returned, by what they were drawn on */
 const cleanups = { screen: [], dock: [] };
-/** The shell's render whose drawings are the screen's now (minors 15). */
+/** The shell's render whose drawings are the screen's now. */
 let shown = 0;
 
 /** Runs a cleanup; one that fails changes nothing more. @param {() => void} fn */
@@ -74,11 +73,10 @@ const run = (fn) => {
 
 /**
  * Runs a plugin's drawing into el. A cleanup it returns (a function, or a promise of one) runs when
- * that group is drawn again, or at once when it comes from a render the shell gave up on (ctx.seq,
- * minors 15); anything it throws, or a promise of it that rejects, is its plugin's
- * failure (counted), el is left empty and hidden, and onFail runs, so annai can draw its own instead
- * (fix pass 8b-3). A drawing that returns, or whose promise resolves, ends its plugin's run of failures
- * (fix pass 8b-4). Returns false when it failed at once.
+ * that group is drawn again, or at once when it comes from a render the shell gave up on (ctx.seq).
+ * What it throws or rejects is its plugin's failure (counted): el is left empty and hidden, and onFail
+ * runs, so annai can draw its own instead. One that returns or resolves ends its plugin's run of
+ * failures. Returns false when it failed at once.
  * @param {any} ctx @param {Entry} entry @param {HTMLElement} el @param {(ui: any) => any} call
  * @param {{ group?: 'screen' | 'dock', what?: string, onFail?: () => void }} [o]
  */
@@ -120,8 +118,8 @@ export function mount(ctx, entry, el, call, { group = 'screen', what = 'drawing'
 }
 
 /**
- * Runs a plugin's dock action (spec §16.4: dock-action). What it throws, or a promise of it that rejects,
- * is its plugin's failure; a run that returns, or whose promise resolves, ends its run of failures (fix pass 8b-4).
+ * Runs a plugin's dock action (spec §16.4: dock-action). What it throws or rejects is its plugin's
+ * failure; a run that returns or resolves ends its run of failures.
  * @param {any} ctx @param {Entry} entry
  */
 export function runAction(ctx, entry) {
@@ -138,8 +136,7 @@ export function runAction(ctx, entry) {
 
 /**
  * A component a plugin makes (an avatar or a dock, spec §16.4): what create() returns when wrong(it) has
- * nothing to say, which ends its plugin's run of failures (fix pass 8b-4); else null, and its plugin's
- * failure is counted.
+ * nothing to say, which ends its plugin's run of failures; else null, and its plugin's failure is counted.
  * @template T
  * @param {any} ctx @param {Entry} entry @param {string} what @param {() => T} create @param {(made: T) => string | null} wrong
  * @returns {T | null}
@@ -177,7 +174,7 @@ export function component(ctx, name) {
   return slotEntries(ctx, 'ui:component').find((e) => e.item?.name === name) ?? null;
 }
 
-/** Which plugins' dock and avatar replace annai's now: when it changes, the dock is made again (choice 9). @param {any} ctx */
+/** Which plugins' dock and avatar replace annai's now: when it changes, the dock is made again. @param {any} ctx */
 export function dockKey(ctx) {
   return JSON.stringify(['dock', 'avatar'].map((n) => {
     const c = component(ctx, n);
@@ -185,7 +182,7 @@ export function dockKey(ctx) {
   }));
 }
 
-/** One stylesheet link per plugin theme, added and removed as they come and go (choice 6). @param {import('../core/registry.js').Registry} registry @param {HTMLElement} head */
+/** One stylesheet link per plugin theme, added and removed as they come and go. @param {import('../core/registry.js').Registry} registry @param {HTMLElement} head */
 export function syncThemes(registry, head) {
   const want = new Map(registry.entries('ui:theme').map((e) => [`${e.pluginId}|${e.item.href}`, e.item.href]));
   for (const l of [...head.querySelectorAll('link[data-plugin-theme]')]) {

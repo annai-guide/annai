@@ -212,9 +212,8 @@ export function activate(annai) {
     description: 'Search the web. Answers as TSV: title, url, snippet. fetch a result to read it.',
     input: { type: 'object', properties: { query: { type: 'string', minLength: 1 } }, required: ['query'] },
     /**
-     * The search providers in the user's order, each asked in turn (spec §7.2): one that isn't ready, or is resting after a
-     * failure, is passed over; one that fails or finds nothing hands on to the next; the first answer with rows wins. The whole
-     * search has a deadline (CHAIN), with a reserve kept for the floor; when every provider is resting, the one whose rest ends first is tried.
+     * The search providers in the user's order, each asked in turn (spec §7.2). The whole search has a deadline (CHAIN), with a
+     * reserve kept for the floor; when every provider is resting, the one whose rest ends first is tried.
      * @param {{ query: string }} i @param {any} call
      */
     async run(i, call) {

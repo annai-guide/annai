@@ -13,7 +13,7 @@ export function knownFix(live, now = live.clock?.now() ?? Date.now()) {
   return f.source === 'manual' || (live.gps === 'ok' && now - f.at <= FRESH_MS) ? f : null;
 }
 
-/** The GPS chip's words; during a simulation, it says so (7b choice 10). @param {{ on: boolean, gps: string, activity: string, fix: any, simulating?: boolean, clock?: { now: () => number } }} live */
+/** The GPS chip's words; during a simulation, it says so. @param {{ on: boolean, gps: string, activity: string, fix: any, simulating?: boolean, clock?: { now: () => number } }} live */
 export function liveText(live) {
   /** @type {Record<string, string>} */
   const doing = live.simulating
@@ -38,7 +38,7 @@ export function gpsWords(live) {
 
 /**
  * The GPS chip (spec §11.1: live mode is a switch), one tap away on every screen next to the voice chip. One tap turns GPS on or off at
- * once: the phone's own permission prompt is the only other step (the user, the second drive). While a simulation runs, which has live
+ * once: the phone's own permission prompt is the only other step. While a simulation runs, which has live
  * mode, a tap opens its menu instead. The screen kept on is in Settings → Voice; "Where are you?" on the Driving screen.
  * @param {any} ctx
  */
@@ -54,7 +54,7 @@ export function liveChip(ctx) {
     if (ctx.sim?.running) chip.setAttribute('aria-expanded', 'false');
     document.removeEventListener('pointerdown', outside, true);
   };
-  /** A simulation has live mode: the chip pauses or stops it (7b choice 10). */
+  /** A simulation has live mode: the chip pauses or stops it. */
   const open = () => {
     const sim = ctx.sim;
     chip.setAttribute('aria-expanded', 'true');

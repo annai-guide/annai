@@ -19,7 +19,7 @@ const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Models: ['model.turn', 'net.request', 'decide', 'speech.browser', 'recap', 'live.session', 'live.turn', 'live.reply', 'voice.route', 'reading'],
   Housekeeping: ['compaction'],
   // GPS is what live mode did; its location points (about one a second on a drive) are a kind of their own,
-  // so they never crowd the firings out of the newest 300 (B5).
+  // so they never crowd the firings out of the newest 300.
   'GPS': ['trigger.fired', 'state', 'reminder', 'app.start'],
   Location: ['location'],
   Errors: ['error', 'plugin.error', 'plugin.disabled', 'content.refused'],
@@ -62,7 +62,7 @@ export async function renderTrace(ctx, route) {
     const ids = select.value ? [select.value] : scopes.map((/** @type {any} */ s) => s.id);
     const f = filter.value.trim();
     const types = KINDS[kind.value];
-    // A drive logs a location point about every second: "Everything" leaves them to the Location kind (choice 10).
+    // A drive logs a location point about every second: "Everything" leaves them to the Location kind.
     // With a kind, "Type contains" narrows the query itself, so the newest 300 are all of what is asked for.
     const wanted = types ? types.filter((type) => !f || type.includes(f)) : null;
     const query = wanted ? { types: wanted } : f && 'location'.includes(f) ? {} : { notTypes: ['location'] };
@@ -190,7 +190,7 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'net.request' && d.kind === 'forget') return line(d.outcome === 'ok' ? t`kept turn deleted` : t`kept turn not deleted yet`, d.endpoint, d.status || t`no answer`, `${d.ms ?? '?'} ms`);
   if (e.type === 'net.request' && d.kind === 'look') return line(t`kept turn looked up`, d.endpoint, d.status || t`no answer`, `${d.ms ?? '?'} ms`);
   if (e.type === 'photo.replace') return t`a refused photo sent again as a new copy (${d.mediaType})`;
-  // A reading kept for a model that can't take the file (the review of reading-files); its words are the model's, English.
+  // A reading kept for a model that can't take the file; its words are the model's, English.
   if (e.type === 'reading') return line(d.kind === 'pdf' ? (d.how === 'pages' ? t`a PDF's pages kept for models that can't read PDFs` : t`a PDF's words kept for models that can't read PDFs`) : t`a photo's description kept for models that can't see photos`, d.text ? cut(d.text) : null);
   if (e.type === 'import') {
     const n = Number(d.uncarried) || 0;
@@ -248,7 +248,7 @@ export function traceSummary(e, { costs: perWake } = {}) {
       d.bytesIn !== undefined ? t`${size(d.bytesIn)} in, ${size(d.bytesOut ?? 0)} out` : null, d.cost !== undefined ? formatCost(d.cost) : null,
       d.sampleRate ? list([t`sound at ${num(d.sampleRate / 1000, { maximumFractionDigits: 1 })} kHz`, ...latency], 'plain') : null);
   }
-  // How her voice played in a live session, in numbers only (the pops investigation, 2026-10-23).
+  // How her voice played in a live session, in numbers only.
   if (e.type === 'live.reply') {
     const before = d.cut && !d.ms;
     return line(before ? t`her voice: cut before it played` : t`her voice: ${duration(d.ms ?? 0)} played`, d.cut && !before ? t`cut` : null,
@@ -256,7 +256,7 @@ export function traceSummary(e, { costs: perWake } = {}) {
       d.holes === undefined ? null : d.holes ? plural(d.holes, '# hole, {0} ms', '# holes, {0} ms', d.holeMs ?? 0) : plural(0, '# hole', '# holes'),
       d.player ? t`on ${d.player}` : null);
   }
-  // How the user's turn in a live session ended, in numbers only (the voice investigation, 2026-10-22).
+  // How the user's turn in a live session ended, in numbers only.
   if (e.type === 'live.turn') {
     // What the level check did, to tune it (the second-drive design, section 3); lines from before it have none of this.
     const check = d.keptFrames === undefined ? null : t`your voice ${d.voiceDb ?? '?'} dB, least to start ${d.minDb ?? '–'} dB, ${d.keptFrames} frames kept out (loudest ${d.keptPeakDb ?? '?'} dB)`;

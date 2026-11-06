@@ -3,10 +3,9 @@ import { BOOKING_FILE, record } from './plan.js';
 import { validZone, instantAt, isoInZone, offsetMinutes } from './time.js';
 
 /**
- * Shiori's writes to bookings (spec §4.4, §7.3). There is no confirming step (the bookings-and-trips design, My call 1): a booking she
- * writes lists in `unsure` just the fields she isn't sure of (`[]` when none), and only those are marked for the user to check. A
- * booking without the `unsure` key is from before: an unverified one is marked whole until she is told it's right. She still never sets
- * `confirmed`.
+ * Shiori's writes to bookings (spec §4.4, §7.3). There is no confirming step: a booking she writes lists in `unsure` just the fields she
+ * isn't sure of (`[]` when none), and only those are marked for the user to check. A booking without the `unsure` key is from before: an
+ * unverified one is marked whole until she is told it's right. She still never sets `confirmed`.
  */
 
 /** What Shiori is told to do with a booking she reads (a hand-over, and files added on the trip screen). */
@@ -39,9 +38,9 @@ export function isBookingPath(scope, path) {
 
 
 /**
- * Other names models write a booking's fields under (a small model wrote checkin, pickup, flights, name, total: the drive-test follow-ups,
- * section 3). Times go to start and end; a location and an address are the place; a total or price with an amount and currency is the
- * cost; the details models also write at the top level are kept in fields, where anything reads them.
+ * Other names models write a booking's fields under (a small model wrote checkin, pickup, flights, name, total). Times go to start and
+ * end; a location and an address are the place; a total or price with an amount and currency is the cost; the details models also write
+ * at the top level are kept in fields, where anything reads them.
  */
 const TIMES = /** @type {Record<string, string>} */ ({
   checkin: 'start', check_in: 'start', checkIn: 'start', pickup: 'start', pick_up: 'start', pickUp: 'start', depart: 'start', departure: 'start',
@@ -114,10 +113,10 @@ function same(a, b) {
 }
 
 /**
- * This write's own keys, written under other names, renamed to the format's own before it is stored (the drive-test follow-ups, section
- * 3): the write tool's whole value, or the patch tool's changes (with append, "notes+" too). What is stored is never read or changed
- * here, so this write wins over it. A key the booking schema in force lists is never renamed. The same write giving an alias and the
- * field it stands for, differently, is refused naming both; a time is refused in words when it can't be read (timeOf).
+ * This write's own keys, written under other names, renamed to the format's own before it is stored: the write tool's whole value, or the
+ * patch tool's changes (with append, "notes+" too). What is stored is never read or changed here, so this write wins over it. A key the
+ * booking schema in force lists is never renamed. An alias and the field it stands for, given differently, are refused naming both; a
+ * time is refused in words when it can't be read (timeOf).
  * @param {any} own @param {{ zones?: string[], schema?: any, kind?: unknown, append?: boolean }} [o] the trip's time zones; the booking
  * schema in force; the stored booking's kind, if this write doesn't give one; a patch's appends
  * @returns {any}
@@ -245,12 +244,11 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
 }
 
 /**
- * What to store when Shiori writes a booking: the value as it will be read (her write's other names already renamed by unalias), or a
- * refusal in words. She never sets `confirmed`; a change of hers to a booking the user confirmed keeps it confirmed (with no confirming
- * step, nothing would ever clear it again). A top-level key her write brings that the booking schema in force doesn't list is refused
- * (the drive-test follow-ups, section 3): nothing would read it. Keys already stored never block her. The schema itself stays open, so
- * the user's own edits, Undo, Restore and imports work as before; a plugin adds fields in `fields`, or as properties of a booking schema
- * it registers.
+ * What to store when Shiori writes a booking: the value as it will be read (other names already renamed by unalias), or a refusal in
+ * words. She never sets `confirmed`; a change of hers to a booking the user confirmed keeps it confirmed (with no confirming step, nothing
+ * would ever clear it again). A top-level key her write brings that the booking schema in force doesn't list is refused: nothing would
+ * read it. Keys already stored never block her. The schema itself stays open, so the user's own edits, Undo, Restore and imports work as
+ * before; a plugin adds fields in `fields`, or as properties of a booking schema it registers.
  * @param {any} before the booking as stored, or undefined @param {any} next what she would store
  * @param {{ schema?: any, changes?: any }} [o] the booking schema in force; a patch's changes (as renamed), which decide what of a
  * renamed place is stale
@@ -262,7 +260,7 @@ export function shioriBooking(before, next, { schema, changes } = {}) {
   if (next.status === 'confirmed' && old?.status !== 'confirmed') {
     /* en */ throw new Error('Only the user confirms a booking. Write it with status "unverified", and list in unsure the fields you are not sure of.');
   }
-  // A new booking, and one written with unsure, always carry it (LESSONS 2026-10-27): without it, it would read as one from before.
+  // A new booking, and one written with unsure, always carry it: without it, it would read as one from before.
   if (!('unsure' in next) && (!old || 'unsure' in old)) {
     /* en */ throw new Error('A new booking lists the fields you are unsure of in unsure (an empty list when you are sure of all of them), so the user sees what to check.');
   }

@@ -27,7 +27,7 @@ import { storedTexts } from '../agent/log.js';
 
 /** A stay is named by an arrival or a plan place this close (the namer keeps its own reach: the offline pack's 500 m). */
 export const NAMED_M = 300;
-/** What the journey reads from the log, by type (A6: the log is never walked). */
+/** What the journey reads from the log, by type (the log is never walked). */
 export const JOURNEY_TYPES = Object.freeze(['location', 'trigger.fired', 'out.show', 'msg.user', 'heard', 'heard.text', 'state']);
 const MIN = 60_000;
 

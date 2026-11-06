@@ -11,7 +11,7 @@ import { mount, slotEntries } from '../slots.js';
 const crumbs = (href, label) => h('p', { class: 'crumbs' }, crumb(href, label));
 
 /**
- * A page that isn't there: its plugin is off, or is on and has no page by that name (minors 11).
+ * A page that isn't there: its plugin is off, or is on and has no page by that name.
  * @param {any} ctx @param {string} pluginId @param {string} id @param {string} href @param {string} label
  */
 function missing(ctx, pluginId, id, href, label) {
@@ -32,14 +32,14 @@ function page(ctx, kind, pluginId, id, back, backLabel, more = []) {
   const e = slotEntries(ctx, kind).find((x) => x.pluginId === pluginId && x.item?.id === id);
   if (!e) return missing(ctx, pluginId, id, back, backLabel);
   const body = h('div', { class: 'ext-body' });
-  // A drawing that fails leaves words, not a blank page (minors 11).
+  // A drawing that fails leaves words, not a blank page.
   const trace = t`Trace`;
   const failed = h('p', { hidden: true }, ...linkIn(t`This page couldn't be drawn; the plugin's error is in ${trace}.`, h('a', { href: '#/trace?kind=Plugins', text: trace })));
   mount(ctx, e, body, (ui) => e.item.render(body, ui, ...more), { what: /* en */ `${kind.slice(3)} ${id}`, onFail: () => { failed.hidden = false; } });
   return h('div', { class: 'screen ext' }, crumbs(back, backLabel), h('h1', { class: 'title', text: String(e.item.title), lang: otherLang(ctx.plugins?.langOf(pluginId)) }), body, failed);
 }
 
-/** A whole screen a plugin adds (choice 5). @param {any} ctx @param {{ parts: string[] }} route */
+/** A whole screen a plugin adds. @param {any} ctx @param {{ parts: string[] }} route */
 export async function renderExt(ctx, route) {
   return page(ctx, 'ui:screen', route.parts[1], route.parts[2], '#/now', t`Now`);
 }

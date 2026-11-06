@@ -15,7 +15,7 @@ import { kindNames } from '../../core/backup.js';
 /** The spec's own words for a package with code (§5.1). */
 export const FULL_ACCESS = t`This plugin gets full access to your trips and API keys.`;
 /**
- * Whose keys annai keeps now, by name only, never a value (fixes-ui 15): providers', backup places', MCP servers',
+ * Whose keys annai keeps now, by name only, never a value: providers', backup places', MCP servers',
  * Jina's and plugins' own. ids: only these keys (secret ids), else all. A key whose owner is gone has no name, and is left out.
  * @param {any} plugins the plugin host @param {string[]} [only] @returns {Promise<string[]>}
  */
@@ -50,7 +50,7 @@ export const NO_SERVICE = t`Plugins load through annai's offline service, which 
 export const semicolons = (items) => (items.length ? items.reduce((a, b) => tc('semicolons')`${a}; ${b}`) : '');
 
 /**
- * What a package brings, one line each (choice 8 of milestone 8a): its code, skills, personalities,
+ * What a package brings, one line each: its code, skills, personalities,
  * its model provider, and (in an update) the new origins its provider sends keys to. A skill's name and description are its own words.
  * @param {{ code: boolean, skills: any[], personalities: any[], provider?: any, search?: any, origins?: string[], searchOrigins?: string[] }} pkg @returns {string[]}
  */
@@ -70,7 +70,7 @@ export function whatItBrings(pkg) {
 
 
 /**
- * Where a provider sends the keys a user gives it, by origin with its scheme (security review): said on
+ * Where a provider sends the keys a user gives it, by origin with its scheme: said on
  * a fresh install as on an update; a search provider's, where its searches go. null for a package that is neither.
  * @param {{ provider?: any, search?: any }} pkg @returns {string | null}
  */
@@ -123,7 +123,7 @@ export function abilityWords(desc) {
 }
 
 /**
- * Where a package came from (fix pass 8a-1): its address as annai keeps it, with «key» for each key in it and without its
+ * Where a package came from: its address as annai keeps it, with «key» for each key in it and without its
  * scheme; or none, for one from a file or annai, or an address that can't be read.
  * @param {{ source?: string, url?: string, file?: string }} from @returns {string | null}
  */
@@ -226,7 +226,7 @@ export function packageLine(p) {
 }
 
 /**
- * The install screen (spec §5.1, choice 8): what the package is, where it came from, what it brings
+ * The install screen (spec §5.1): what the package is, where it came from, what it brings
  * and may do, before anything is stored.
  * @param {any} ctx
  */
@@ -248,7 +248,7 @@ export async function renderPluginInstall(ctx) {
   const line = packageLine(pkg);
   const home = webAddress(pkg.homepage);
   const needs = await needsOf(ctx, pkg);
-  // A package from elsewhere can't take the name of annai's own plugin (security review).
+  // A package from elsewhere can't take the name of annai's own plugin.
   const taken = await checkPackageId(ctx.plugins, pkg.id, from?.source).then(() => null, (e) => message(e));
   // What it replaces is chosen here, by a tap.
   const rows = await ctx.plugins.describe();
@@ -256,10 +256,10 @@ export async function renderPluginInstall(ctx) {
   const owners = [...new Set(mine.map((s) => s.owner))];
   // Over one from another place: keep what it keeps, or start fresh.
   const elsewhere = Boolean(pkg.previous && !samePlace(pkg.previous.from, from));
-  // Code that isn't annai's own (here, from a file or an address): what it can do with the keys saved now, by name (fixes-ui 15).
+  // Code that isn't annai's own (here, from a file or an address): what it can do with the keys saved now, by name.
   const risk = pkg.code ? keysRisk(await keyNames(ctx.plugins)) : null;
   /** @type {[string, { use?: typeof mine, fresh?: boolean }][]} */
-  // With the risk said, every way to install says "anyway" (review S4): "Install anyway, keep its settings and keys", "Install fresh anyway".
+  // With the risk said, every way to install says "anyway": "Install anyway, keep its settings and keys", "Install fresh anyway".
   const picks = elsewhere ? [[risk ? t`Install anyway, keep its settings and keys` : t`Install, keep its settings and keys`, {}], [risk ? t`Install fresh anyway` : t`Install fresh`, { fresh: true }]]
     : mine.length ? [[risk ? t`Install anyway and use it` : t`Install and use it`, { use: mine }],
       [owners.join() === 'annai' ? (risk ? t`Install anyway, keep annai's` : t`Install, keep annai's`) : (risk ? t`Install anyway, keep what's used now` : t`Install, keep what's used now`), {}]]
@@ -285,13 +285,13 @@ export async function renderPluginInstall(ctx) {
     pkg.code
       ? h('div', { class: 'risk-note', role: 'note' }, h('p', { text: FULL_ACCESS }), risk ? h('p', { text: risk }) : null, h('p', { text: t`Only install it if you trust where it came from.` }), keysNote(pkg) ? h('p', { text: keysNote(pkg) }) : null)
       : pkg.provider
-        // A provider's own note, in place of the skill note (security review): what it can't do, and where keys go.
+        // A provider's own note, in place of the skill note: what it can't do, and where keys go.
         ? h('div', { class: 'skill-note', role: 'note' }, h('p', { text: t`It can't run anything: it is data that tells annai how to reach a model provider.` }), h('p', { text: keysNote(pkg) }))
         : h('p', { class: 'skill-note', text: t`A skill is instructions for Shiori: she reads them when they fit what you ask, and follows what they say. annai never runs anything in it, so install skills you trust.` }),
     // A search plugin's free-tier line is its own words (L7's); the link is annai's.
     keyInfo ? h('p', { class: 'sub' }, h('span', { text: keyInfo.text, lang: shownIn }), ' ', keyInfo.url ? h('a', { href: keyInfo.url, target: '_blank', rel: 'noopener noreferrer', text: t`Get a key` }) : null) : null,
     pkg.previous ? h('p', { class: elsewhere ? 'risk-note' : 'sub', text: overLine(pkg.previous, from) }) : null,
-    // What a new version adds is said on its own, so nothing new slips in with an update (the coordinator's second finding).
+    // What a new version adds is said on its own, so nothing new slips in with an update.
     pkg.previous && addsAnything(pkg.previous.added) ? h('section', { class: 'panel', 'aria-label': t`New in this version` },
       h('h2', { class: 'section', text: t`New in this version` }),
       h('ul', { class: 'brings' }, ...whatItBrings(pkg.previous.added).map((w) => h('li', { text: w })))) : null,
@@ -335,7 +335,7 @@ async function installPending(ctx, buttons, { use = [], fresh = false }) {
   }
   setPendingPackage(null);
   if ((await ctx.plugins.installed())[pkg.id]?.enabled === false) {
-    // A new version of one that is off stays off, and its code doesn't run (fix pass 8a-5).
+    // A new version of one that is off stays off, and its code doesn't run.
     ctx.notices.toast(t`Updated ${pkg.name}. It stays off.`);
   } else if (ctx.plugins.needsRestart(pkg.id)) {
     restartCard(ctx, pkg.name);

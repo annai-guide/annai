@@ -11,12 +11,12 @@ import { sentences } from '../intl.js';
  * @typedef {import('../plugins.js').PluginHost} PluginHost
  * @typedef {import('../catalog-facts.js').CatalogFacts & { provides: Record<string, string[]>, files: Record<string, string>, featured?: string }} CatalogPlugin
  * @typedef {{ fetch?: (url: string, init?: RequestInit) => Promise<Response>, base?: string, keepOff?: boolean }} FetchOptions
- *   keepOff: a plugin the user switched off is never switched on by this (security review): it stops, saying how to turn it on
+ *   keepOff: a plugin the user switched off is never switched on by this: it stops, saying how to turn it on
  */
 
 const defaultFetch = (/** @type {string} */ url, /** @type {RequestInit | undefined} */ init) => fetch(url, init);
 
-/** A catalog entry that makes a model provider: it has abilities. A restore and the provider page install only these (reviews of the emulator-pass fixes). @param {any} entry */
+/** A catalog entry that makes a model provider: it has abilities. A restore and the provider page install only these. @param {any} entry */
 export const makesProvider = (entry) => Array.isArray(entry?.abilities) && entry.abilities.length > 0;
 
 /**
@@ -41,7 +41,7 @@ export async function officialPlugins({ fetch: get = defaultFetch, base = '', wo
 /** @type {Awaited<ReturnType<typeof catalogWords>>} the catalog's words, once had in this run */
 let names = null;
 /**
- * An official plugin that isn't installed by name as the screens show it: annai's catalog's translation (decision 10), once the catalog
+ * An official plugin that isn't installed by name as the screens show it: annai's catalog's translation, once the catalog
  * has been read in this run, else its English. For one that is installed, pluginName. @param {string} id @param {string} name
  */
 export const officialName = (id, name) => names?.[id]?.name ?? name;
@@ -49,7 +49,7 @@ export const officialName = (id, name) => names?.[id]?.name ?? name;
 export const officialWords = () => names;
 /**
  * An installed plugin's name as the screens show it: annai's own from its own translation on the device (the running plugin's words, else
- * its stored ones, as Plugins shows it, running or off), any other as written (decision 10). No request is made.
+ * its stored ones, as Plugins shows it, running or off), any other as written. No request is made.
  * @param {PluginHost} plugins @param {any} state its record @param {string} id @param {string} name @returns {Promise<string>}
  */
 export async function pluginName(plugins, state, id, name) {
@@ -80,13 +80,12 @@ export async function catalogWords(opts = {}) {
 }
 
 /**
- * Brings annai's own installed plugins' words in a language (their packages carry none) to the hashes catalogIn lists: each one kept
- * with other bytes gets catalog/l10n/<tag>/<id>.json, kept only when it matches. English asks for nothing. It is no plugin update, and
- * never fails: what can't be had leaves the device as it is (else the plugin's English shows), and the next call tries again.
+ * Brings annai's own installed plugins' words in a language (their packages carry none) to the hashes catalogIn lists: each one kept with
+ * other bytes gets catalog/l10n/<tag>/<id>.json, kept only when it matches. English asks for nothing. It never fails: what can't be had
+ * leaves the device as it is, and the next call tries again. A plugin annai's catalog stops listing words for keeps its own.
  * ids: only these plugins (an install's); skip: these keep the words they have (a check's plugins with an update waiting: their words
- * match their version, and the update brings the new one's). next: the language the next start
- * opens in (nextScreens), brought too; given, words in any language but tag, next and the screens' go (a check's clean-up; an
- * install, which can't know it, drops nothing). A plugin annai's catalog stops listing words for keeps its own.
+ * match their version). next: the language the next start opens in (nextScreens), brought too; given, words in any language but tag,
+ * next and the screens' go (a check's clean-up; an install, which can't know it, drops nothing).
  * Callers name each option: never a whole env (an Update tap's holds next as a function).
  * @param {PluginHost} host
  * @param {{ fetch?: FetchOptions['fetch'], base?: string, tag?: string, next?: string, ids?: string[], skip?: string[] }} [opts]
@@ -202,9 +201,8 @@ export async function officialUpdates(host, opts = {}) {
 }
 
 /**
- * Installs the catalog's version of an official plugin the user chose to update, keeping their
- * on/off choice. What the new version requires is installed first (spec §5.3), and a version another
- * installed plugin doesn't accept is refused, naming it. New code that replaces code already running
+ * Installs the catalog's version of an official plugin the user chose to update, keeping their on/off choice. What it requires is installed
+ * first (spec §5.3); a version another installed plugin doesn't accept is refused, naming it. New code that replaces code already running
  * starts with the next start of annai.
  * @param {PluginHost} host @param {CatalogPlugin} entry @param {FetchOptions} [opts] @returns {Promise<'started' | 'restart'>}
  */
@@ -277,7 +275,7 @@ async function ensureNow(host, kind, type, opts) {
     throw new PluginError(type, "isn't an endpoint type annai knows. Install a plugin that provides it.", { shown: t`isn't an endpoint type annai knows. Install a plugin that provides it.` });
   }
   const state = (await host.installed())[entry.id];
-  // A package from elsewhere with annai's own id is neither used nor overwritten (security review).
+  // A package from elsewhere with annai's own id is neither used nor overwritten.
   if (state && state.source !== 'official') throw new PluginError(entry.id, NOT_OWN, { shown: notOwnShown() });
   // Only files that match the catalog run as an official plugin; anything else, such as a copy a
   // restored backup brought, is fetched again from annai and checked (spec §5.3).

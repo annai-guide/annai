@@ -10,6 +10,13 @@ const NEP = { title: 'Lunch at Nepenthe', fixed: true, start: { at: iso('12:00')
 const TEA = { title: 'Tea at the inn', fixed: true, start: { at: iso('16:00'), tz: LA } };
 const BIX = { title: 'Bixby Bridge photo stop', fixed: false, start: { at: iso('09:45'), tz: LA }, place: { name: 'Bixby Creek Bridge', lat: 36.3715, lng: -121.9017 } };
 
+/** The service worker's news reaching annai on screen, once. @param {any} live @param {any[]} list @returns {Promise<string[]>} */
+const arrives = (live, list) => {
+  const was = live.news;
+  live.news = async () => { live.news = was; return list; };
+  return live.newsArrived();
+};
+
 test('what a closed annai can still say: time watches in every conversation, and the open trip\'s "coming up" and "leave soon"; never a place (spec §11.6)', async () => {
   const k = await liveKit({ plan: { nepenthe: NEP, tea: TEA, bixby: BIX } });
   const tea = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea time.' });
@@ -173,9 +180,9 @@ test("a reminder whose notification the phone already showed has reached the use
 test('opened while annai is on screen: a catch-up wake at once; another trip\'s waits there; a removed trip\'s and test ones are dropped', async () => {
   const k = await liveKit({ live: false });
   const other = await createTrip(k.ws, { title: 'Tahoe' });
-  await k.live.pushNews([{ kind: 'opened', key: `${k.trip}|w-1`, scope: k.trip, watch: 'w-1', body: 'Tea time.', t: at('08:31') }]);
+  await arrives(k.live, [{ kind: 'opened', key: `${k.trip}|w-1`, scope: k.trip, watch: 'w-1', body: 'Tea time.', t: at('08:31') }]);
   assert.deepEqual(k.agent.wakes.map((w) => [w.kind, w.text, w.scope]), [['catch-up', 'Catch-up: the user opened the reminder "Tea time." from its notification at 08:31.', undefined]]);
-  await k.live.pushNews([
+  await arrives(k.live, [
     { kind: 'opened', key: `${other}|w-2`, scope: other, watch: 'w-2', body: 'Skis.', t: at('08:32') },
     { kind: 'opened', key: 'trip-gone|w-3', scope: 'trip-gone', watch: 'w-3', body: 'Gone.', t: at('08:32') },
     { kind: 'opened', key: 'hello|x', scope: '', test: true, body: 'Notifications are on.', t: at('08:32') },
@@ -185,12 +192,12 @@ test('opened while annai is on screen: a catch-up wake at once; another trip\'s 
   assert.match(k.agent.wakes[1].text, /"Skis\."/);
 });
 
-test("a notification for a reminder annai already said on screen is a double: pushNews names it, so the page closes it", async () => {
+test("a notification for a reminder annai already said on screen is a double: the news names it, so the page closes it", async () => {
   const k = await liveKit({ live: false });
   const w = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea time.' });
   const v = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('11:00') }, fallback: 'Walk.' });
   await k.to(at('10:00'));
-  const doubles = await k.live.pushNews([
+  const doubles = await arrives(k.live, [
     { kind: 'shown', key: `${k.trip}|${w.id}`, scope: k.trip, watch: w.id, t: at('10:00:30') },
     { kind: 'shown', key: `${k.trip}|${v.id}`, scope: k.trip, watch: v.id, t: at('10:00:30') },
   ]);
@@ -218,12 +225,12 @@ test('a reminder said in a catch-up counts as said: its notification arriving la
   await k.settle();
   await k.to(at('10:20'));
   // While away, Walk's notification was shown; Tea's was held up at the push service.
-  const away = await k.live.pushNews([{ kind: 'shown', key: `${k.trip}|${v.id}`, scope: k.trip, watch: v.id, t: at('10:05:30') }]);
+  const away = await arrives(k.live, [{ kind: 'shown', key: `${k.trip}|${v.id}`, scope: k.trip, watch: v.id, t: at('10:05:30') }]);
   assert.deepEqual(away, []);
   k.sensors.visible(true); // the catch-up says both
   await k.settle();
   assert.equal(k.agent.wakes.at(-1)?.kind, 'catch-up');
-  const later = await k.live.pushNews([{ kind: 'shown', key: `${k.trip}|${w.id}`, scope: k.trip, watch: w.id, t: at('10:20:10') }]);
+  const later = await arrives(k.live, [{ kind: 'shown', key: `${k.trip}|${w.id}`, scope: k.trip, watch: w.id, t: at('10:20:10') }]);
   assert.deepEqual(later, [`${k.trip}|${w.id}`]);
 });
 
@@ -277,7 +284,7 @@ test('annai starting off screen says nothing on screen: its catch-up firings are
   await live.settled();
   assert.equal(live.shown, false);
   assert.ok(agent.wakes.some((x) => x.kind === 'catch-up'), 'the catch-up still tells Shiori');
-  const doubles = await live.pushNews([{ kind: 'shown', key: `${k.trip}|${w.id}`, scope: k.trip, watch: w.id, t: at('10:30:20') }]);
+  const doubles = await arrives(live, [{ kind: 'shown', key: `${k.trip}|${w.id}`, scope: k.trip, watch: w.id, t: at('10:30:20') }]);
   assert.deepEqual(doubles, []);
   live.dispose();
 });
@@ -299,7 +306,7 @@ test('a notification the service worker found stale is a double, whoever said it
     news: async () => [{ kind: 'shown', key: `${k.trip}|w-gone`, scope: k.trip, watch: 'w-gone', stale: true, t: at('10:00') }] });
   await fresh.start();
   assert.deepEqual(closed, [[`${k.trip}|w-gone`]], 'the catch-up at start read it, and closed it');
-  const doubles = await fresh.pushNews([{ kind: 'shown', key: `${k.trip}|w-old`, scope: k.trip, watch: 'w-old', stale: true, t: at('10:01') }]);
+  const doubles = await arrives(fresh, [{ kind: 'shown', key: `${k.trip}|w-old`, scope: k.trip, watch: 'w-old', stale: true, t: at('10:01') }]);
   assert.deepEqual(doubles, [`${k.trip}|w-old`]);
   fresh.dispose();
 });

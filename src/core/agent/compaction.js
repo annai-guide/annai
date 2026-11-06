@@ -81,10 +81,10 @@ export const coldSystem = (language) => /* en */ 'You summarize a conversation b
   + /* en */ `For every photo, write one line with its path and what was said about it. Reply with the summary only, as plain text, in ${language}.`;
 
 /**
- * The language a summary is written in, named (emulator pass: "the user's language" got a Spanish summary of an English
- * conversation). With the languages setting (phase 2): the one Shiori answers in if it is fixed; else the listed language the user
- * wrote in last, told from their last message, else their last few together (review A6); else the first they speak. With none: the
- * language the user wrote in last, guessed so; else the app's (spec §14.3: it ships in English).
+ * The language a summary is written in, named ("the user's language" got a Spanish summary of an English conversation). With the
+ * languages setting: the one Shiori answers in if it is fixed; else the listed language the user wrote in last, told from their last
+ * message, else their last few together; else the first they speak. With none: the language the user wrote in last, guessed so; else
+ * the app's (spec §14.3: it ships in English).
  * @param {string | string[]} said their last messages, the newest last @param {import('../languages.js').LanguageSettings} [languages]
  */
 export function summaryLanguage(said, languages) {

@@ -69,17 +69,16 @@ const language = (id) => LANGUAGES.find((l) => l.id === id);
 /** A language as a picker shows it: its name in the screens' language, then its own. @param {import('../core/languages.js').Language} l */
 const optionText = (l) => W.option(languageName(l.id), nativeName(l));
 
-/** Settings → Languages, a screen of its own (the user, 2026-10-28; Settings → Shiori held it before). @param {any} ctx */
+/** Settings → Languages, a screen of its own. @param {any} ctx */
 export async function renderLanguages(ctx) {
   return h('div', { class: 'screen' }, h('p', { class: 'crumbs' }, crumb('#/settings', t`Settings`)), h('h1', { class: 'title', text: W.heading }),
     languagesSection(ctx, await readAppSettings(ctx.ws)));
 }
 
 /**
- * Settings → Languages (phase 2): annai's screens, distances, the languages you speak, in order, and the one Shiori answers in. Each change is saved at
- * once, in the app settings (so backups carry it), and every model that hears or speaks is told at its next session or wake. Each
- * change is built from the list as it stands, and shown before its write lands, so two quick ones lose neither; the answer language
- * is one of those listed, and takes leave with its language, in the same save.
+ * Settings → Languages: annai's screens, distances, the languages you speak, in order, and the one Shiori answers in. Each change is saved
+ * at once, in the app settings (so backups carry it), and every model that hears or speaks is told at its next session or wake. Each is built from the list as it stands, and shown before its write lands, so two
+ * quick ones lose neither; the answer language is one of those listed, and takes leave with its language, in the same save.
  * @param {any} ctx @param {Record<string, any>} app the app settings
  */
 export function languagesSection(ctx, app) {
@@ -153,7 +152,7 @@ export function languagesSection(ctx, app) {
 
   /** @param {{ id: string, act: string } | 'add' | null} [focus] */
   const draw = (focus) => {
-    // Dragged by a handle, as the model list is (the user, 2026-10-28).
+    // Dragged by a handle, as the model list is.
     list.replaceChildren(...ids.map((id, i) => {
       const l = /** @type {import('../core/languages.js').Language} */ (language(id));
       const own = nativeName(l);

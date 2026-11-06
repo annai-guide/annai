@@ -5,11 +5,10 @@ const NOT_TEXT = new Set(['checkbox', 'radio', 'button', 'submit', 'reset', 'fil
 export const takesTyping = (el) => el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && !NOT_TEXT.has(el.type)) || (el instanceof HTMLElement && el.isContentEditable);
 
 /**
- * A finger's tap on a screen's button, while a field is being typed in, no longer lets the keyboard go down before the click
- * lands. The second emulator re-check: after typing a key, the first tap on Save only focused it (the keyboard going down laid
- * the screen out again under the finger, and the tap was lost) and the second saved. The press leaves the field focused; the
- * click, first of all (capture), lets go of the field, which saves what changed in it, and then the button acts. So the order
- * is the same as with a mouse: change, then click. A mouse or a pen is left as it is. The dock's own buttons (Send) too.
+ * A finger's tap on a screen's button, while a field is being typed in, no longer lets the keyboard go down before the click lands:
+ * that laid the screen out again under the finger, and the tap was lost. The press leaves the field focused; the click, first of all
+ * (capture), lets go of the field, which saves what changed in it, and then the button acts: change, then click, as with a mouse.
+ * A mouse or a pen is left as it is. The dock's own buttons (Send) too.
  * @param {Document} [doc]
  */
 export function tapKeepsKeyboard(doc = document) {

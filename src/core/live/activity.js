@@ -7,8 +7,7 @@ import { SAME_DRIVE_MS } from './triggers.js';
  * voice treats them the same (§10.5).
  *
  * An activity ends once no speed has said it for the hold. Leaving moving fast, the slow speeds need not agree (at a stop they wander across
- * STILL_BELOW): any that said still in the hold makes it still, else it is what the last speed said. A hold towards another activity starts
- * again when the speeds say a third one.
+ * STILL_BELOW): any that said still in the hold makes it still.
  * @typedef {'still' | 'walking' | 'moving-fast' | 'unknown'} Activity
  * @typedef {import('./geo.js').Fix} Fix
  * @typedef {{ heldS: number, gapS: number, readings: Record<string, number>, heards: number }} Why  what a change rested on, for the trace
@@ -16,8 +15,7 @@ import { SAME_DRIVE_MS } from './triggers.js';
  *   at: when it happened: leaving moving fast, when its hold ran out, not when annai found out;
  *   noFix: moving fast ended only because no reading could say in NO_FIX_BACK_MS, so voice has no hold after it
  *
- * Any gap in evidence (a reload, an unlock, an old record) takes one path: the activity stays, and the first reading that can say decides. One can't if too coarse, between walking and
- * moving fast, a GPS speed too rough to read, or no speed with a way too short or fast. Moving fast holds NO_FIX_BACK_MS on screen; from an old record, as long as it takes.
+ * Any gap in evidence (a reload, an unlock, an old record) takes one path: the activity stays, and the first reading that can say decides (second-drive design §4).
  */
 
 /** m/s: below this, still. */
@@ -34,7 +32,7 @@ export const LEAVE_FAST_MS = 60_000;
 export const QUIET_STILL_MS = 120_000;
 /** No fix this long reads as still whatever the last speed was (a garage, a dead GPS, a lone glitch): longer than any tunnel. */
 export const NO_FIX_STILL_MS = 15 * 60_000;
-/** Moving fast across a gap: silence after coming back says nothing of stopping (the GPS is finding itself, a roof), so it holds this long, on screen; over five minutes, so a five-minute gap and the fix after it aren't cut. */
+/** Moving fast holds this long across a gap, on screen: silence after coming back says nothing of stopping. Over five minutes, so a five-minute gap and the fix after it aren't cut. */
 export const NO_FIX_BACK_MS = 330_000;
 /** Without the GPS's own speed, it is worked out from the oldest point at least this far back… */
 const SPAN_MS = 15_000;
@@ -144,8 +142,7 @@ export class ActivityTracker {
   }
 
   /**
-   * Asked without a new fix (live mode's recheck): a held change completes on time; no fix for QUIET_STILL_MS after a slow last speed is still, and for NO_FIX_STILL_MS
-   * after any. A gap's hold ends at its bound, with #before kept for the next reading.
+   * Asked without a new fix (live mode's recheck): a held change completes on time, and a quiet GPS reads as still. A gap's hold ends at its bound, with #before kept for the next reading.
    * @param {number} now @returns {Change | null}
    */
   tick(now) {
@@ -250,7 +247,7 @@ export class ActivityTracker {
     return this.#become(fast && this.#stillSeen ? 'still' : seen, at, gap);
   }
 
-  /** The hold is over, and the date it would have told goes with it. */
+  /** The one place a hold is cancelled: never clear #leaving by hand. Its date goes with it: one that outlives its hold dates the real stop before a "when I stop" set since, and loses that reminder. */
   #noHold() {
     this.#leaving = this.#ended = null;
     this.#stillSeen = false;

@@ -14,12 +14,10 @@ import { t, plural } from '../../core/l10n.js';
 import { num } from '../../core/intl.js';
 
 /**
- * The built-in MCP client plugin (spec §5.1): each MCP server the user adds gives Shiori its tools,
- * as mcp_<server>_<tool> (milestone 8c, choice 1), under Settings → Tools with switches, every
- * request in the trace. A server is its file /mcp/<server>.json in sys:settings (name, its address as
- * shown, with any part that may be a key blanked; kind of auth; its tools) and its secret
- * plugin:mcp:<server> (the address's keys, and a token or headers); removing it forgets both. The screen's words are translated;
- * Shiori's stay English (localization design, section 7).
+ * The built-in MCP client plugin (spec §5.1): each MCP server the user adds gives Shiori its tools, as mcp_<server>_<tool>.
+ * A server is its file /mcp/<server>.json in sys:settings (its address shown with any part that may be a key blanked) and its
+ * secret plugin:mcp:<server> (the address's keys, and a token or headers). The screen's words are translated; Shiori's stay
+ * English (localization design, section 7).
  */
 export const manifest = {
   id: 'mcp',
@@ -31,20 +29,20 @@ export const manifest = {
 
 const DIR = '/mcp/';
 const NAME = /^[a-z0-9][a-z0-9-]{0,19}$/;
-/** The most tools a server gives Shiori (choice 5). */
+/** The most tools a server gives Shiori. */
 export const MAX_TOOLS = 100;
 const LIST_MS = 30_000;
 const CALL_MS = 120_000;
 /** The file name ending for each kind of image a server may send. @type {Record<string, string>} */
 const EXT = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' };
-/** How long Remove waits for a server to end its session (fix pass 8c-3). */
+/** How long Remove waits for a server to end its session. */
 const END_MS = 5_000;
 const HEADER = /^([!#$%&'*+.^_`|~0-9A-Za-z-]+):\s*(.*\S)\s*$/;
-/** Headers annai sends itself: one of the user's would break its answers, SSE ones first (minors 6). */
+/** Headers annai sends itself: one of the user's would break its answers, SSE ones first. */
 const OWN = ['content-type', 'accept', 'mcp-protocol-version', 'mcp-session-id'];
 
 /**
- * Refuses a value a web request can't carry in a header (minors 7), in words that say what is wrong:
+ * Refuses a value a web request can't carry in a header, in words that say what is wrong:
  * fetch refuses any character past U+00FF, and NUL, CR and LF, and annai would only say it couldn't reach the server.
  * @param {string} value @param {string} [header] the header's name; none for the token
  */
@@ -59,13 +57,13 @@ function sendable(value, header) {
 
 /**
  * @typedef {{ name: string, shown: string, auth: 'none' | 'token' | 'headers', tools: any[], more: number, added: number, refreshed: number }} Server
- *   shown: the address with every part that may be a key blanked (the coordinator's third finding); the keys are in its secret
+ *   shown: the address with every part that may be a key blanked; the keys are in its secret
  * @typedef {{ token?: string, headers?: Record<string, string> }} Auth
  * @typedef {Auth & { keys?: string[] }} ServerSecret  a server's secret: its address's keys, and its auth
- * @typedef {{ removed: boolean }} Life  set when a server is removed, so work that was waiting for it stops (the coordinator's fourth finding)
+ * @typedef {{ removed: boolean }} Life  set when a server is removed, so work that was waiting for it stops
  */
 
-/** An address annai may call (choice 3): https, or http on this device. @param {string} url */
+/** An address annai may call: https, or http on this device. @param {string} url */
 function checkAddress(url) {
   /** @type {URL} */
   let u;
@@ -101,7 +99,7 @@ const headersOf = (auth) => (auth?.token ? { Authorization: /* en */ `Bearer ${a
 
 /** Where a schema's keys are names (of properties, definitions), not keywords. */
 const NAMED = new Set(['properties', 'patternProperties', '$defs', 'definitions', 'dependentSchemas']);
-/** A schema without $schema, $id and $comment at any depth, which some providers refuse (fix pass 8c-5). @param {any} v @param {boolean} [names] */
+/** A schema without $schema, $id and $comment at any depth, which some providers refuse. @param {any} v @param {boolean} [names] */
 const plain = (v, names = false) => {
   if (Array.isArray(v)) return v.map((x) => plain(x));
   if (!v || typeof v !== 'object') return v;
@@ -122,7 +120,7 @@ const inputOf = (s) => {
     return { type: 'object' }; // nested too deep to walk
   }
 };
-/** The longest description a tool gives Shiori (fix pass 8c-5). */
+/** The longest description a tool gives Shiori. */
 const DESCRIPTION_MAX = 1024;
 /** A tool's description: what its server says, cut to fit, and where it is from. @param {string} said @param {string} server */
 const describe = (said, server) => {
@@ -156,7 +154,7 @@ export async function activate(annai) {
   /** @param {string} name */
   const gone = (name) => new Error(t`The MCP server ${name} was removed.`);
 
-  /** Registers a server's tools, the first 100 (choice 5), replacing what it had. @param {Server} config @param {McpClient} [client] @param {Life} [life] */
+  /** Registers a server's tools, the first 100, replacing what it had. @param {Server} config @param {McpClient} [client] @param {Life} [life] */
   const register = (config, client, life) => {
     const had = servers.get(config.name);
     had?.offs.forEach((off) => off());
@@ -185,7 +183,7 @@ export async function activate(annai) {
   };
 
   /**
-   * One call of a server's tool (choice 8, 9): the call's own traced fetch, so its requests are in the
+   * One call of a server's tool: the call's own traced fetch, so its requests are in the
    * trip's trace; what comes back has every secret blanked; a failure is Shiori's answer, in words.
    * @param {string} server @param {string} tool @param {any} input @param {any} call
    */
@@ -269,7 +267,7 @@ export async function activate(annai) {
 
   /**
    * Asks a server for its tools again. A server removed meanwhile stays removed: nothing is saved or
-   * registered for it, and a file saved as it went is forgotten again (the coordinator's fourth finding).
+   * registered for it, and a file saved as it went is forgotten again.
    * @param {string} name
    */
   const refresh = async (name) => {
@@ -308,7 +306,7 @@ export async function activate(annai) {
       tools: config.tools.slice(0, MAX_TOOLS).map((t, i) => ({ name: names[i], mcp: String(t.name) })),
     })),
     /**
-     * Adds a server, after it answered (choice 4): nothing is kept when it doesn't.
+     * Adds a server, after it answered: nothing is kept when it doesn't.
      * @param {{ name: string, url: string, token?: string, headers?: string }} o
      */
     add: async ({ name, url, token, headers }) => {
@@ -330,10 +328,10 @@ export async function activate(annai) {
       const own = [...keys, ...(auth?.token ? [auth.token] : Object.values(auth?.headers ?? {}))];
       adding.add(n);
       try {
-        // Nothing to keep: a secret a failed remove left this session goes, so the check sends what was typed (fix pass R2).
+        // Nothing to keep: a secret a failed remove left this session goes, so the check sends what was typed.
         await annai.secrets.set(n, keeps ? record : null);
         const forgetSecret = () => (keeps ? annai.secrets.set(n, null).catch(() => {}) : Promise.resolve());
-        // The client that checks the server is the one its tools use: one session, not one left behind (minors 2).
+        // The client that checks the server is the one its tools use: one session, not one left behind.
         const client = clientFor({ name: n, shown });
         /** @type {any[]} */
         let tools;
@@ -362,10 +360,9 @@ export async function activate(annai) {
     },
     refresh,
     /**
-     * Removes a server and everything it stored (choice 10). Everything here goes first; then its session
-     * is ended on the server, best-effort and for 5 seconds at most, and its secret goes last, so the
-     * trace still blanks the address's keys in that request. A remove that failed partway can be done
-     * again, and a secret left by one is forgotten at the next start (fix pass 8c-3).
+     * Removes a server and everything it stored. Its secret goes last, after its session is ended on the server (best-effort,
+     * 5 seconds at most), so the trace still blanks the address's keys in that request. A remove that failed partway can be
+     * done again, and a secret left by one is forgotten at the next start.
      * @param {string} name
      */
     remove: async (name) => {
@@ -378,7 +375,7 @@ export async function activate(annai) {
         }
         return;
       }
-      s.life.removed = true; // first: a refresh waiting on the server now stops (the coordinator's fourth finding)
+      s.life.removed = true; // first: a refresh waiting on the server now stops
       s.offs.forEach((off) => off());
       const end = await s.client.ending().catch(() => null);
       await forgetFile(name);
@@ -398,7 +395,7 @@ export async function activate(annai) {
     const config = await ws.readJSON(SYS_SETTINGS, f.path).catch(() => null);
     if (config && typeof config.name === 'string' && NAME.test(config.name) && typeof config.shown === 'string' && Array.isArray(config.tools)) register(config);
   }
-  // A secret whose server has no file: what a remove that failed at its end left (fix pass 8c-3).
+  // A secret whose server has no file: what a remove that failed at its end left.
   const files = new Set(stored.map((f) => f.path));
   const ids = await store.tx(['secrets'], 'readonly', (/** @type {any} */ t) => t.listSecretIds()).catch(() => []);
   for (const id of ids) {

@@ -5,7 +5,7 @@ import { versionLine } from './about.js';
 import { updateButton, restartAnnai } from './plugins.js';
 
 /**
- * Settings → Updates (the user, 2026-10-18): the build running, when annai last checked, Check now, a new
+ * Settings → Updates: the build running, when annai last checked, Check now, a new
  * version of annai with Restart now, and each plugin update with its own Update.
  * @typedef {import('../updates.js').Updates} Updates
  */

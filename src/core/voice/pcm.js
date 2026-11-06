@@ -71,12 +71,6 @@ export function pcm16(bytes) {
   return { pcm: Int16Array.from({ length: n }, (_, i) => dv.getInt16(body + i * 2 * fmt.channels, true)), rate: fmt.sampleRate };
 }
 
-/** How long a WAV file plays, in seconds. @param {Uint8Array} bytes */
-export function wavSeconds(bytes) {
-  const { fmt, size } = chunks(bytes);
-  return size / 2 / fmt.channels / fmt.sampleRate;
-}
-
 /** Sound at another sample rate, piece by piece: the same samples as all at once. Filtered first when going down, so nothing folds back, then read between samples. */
 export class StreamResampler {
   #pos = 0; // the next output's place in the input

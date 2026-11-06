@@ -730,7 +730,7 @@ test('voice off, Koe types through Classic: with Realtime chosen and Classic emp
   const k = await liveKit([{ said: "There's a taco stand two minutes ahead.", audio: tone(0.3) }, { heard: 'Thanks', said: "You're welcome.", audio: tone(0.2) }], { voice: { mode: 'off' } });
   try {
     assert.equal(k.agent.koeState, 'off', 'voice off with only a realtime model: Classic is empty, so Shiori is one');
-    assert.deepEqual([k.agent.way.mode, k.agent.way.using, k.agent.way.why], ['realtime', 'classic', 'voice off']);
+    assert.deepEqual([k.agent.way.mode, k.agent.way.path, k.agent.way.why], ['realtime', null, 'voice off']);
     k.agent.send('Where can we eat?');
     await k.agent.idle();
     assert.equal(k.server.connections().length, 0, 'no live session, whose reply would be sound nobody hears');

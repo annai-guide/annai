@@ -26,7 +26,7 @@ const BACK = /** @type {Record<string, string>} */ ({ plan: t`Plan`, booking: t`
 export const backLabel = (name) => BACK[name] ?? t`Plan`;
 /**
  * Where a file opened from: one of BACK's screens of this trip, else null. The Plan and Now by their plain addresses show the open trip:
- * for a file of another (the open trip changed since), its own trip's Plan, and for Now, its trip (the review of phone-fixes-1).
+ * for a file of another (the open trip changed since), its own trip's Plan, and for Now, its trip.
  * @param {string | undefined} from @param {string} id the file's trip @param {string | null} [open] the open trip
  * @returns {{ hash: string, name: string } | null}
  */
@@ -44,7 +44,7 @@ export async function renderFile(ctx, route) {
   if (route.name === 'waiting-file') return waitingFile(ctx, route.params.path ?? '');
   const id = route.parts[1];
   const path = route.params.path ?? '';
-  // Back is where the file was opened from (Plan → Check this → Open the original, the user, 2026-10-28), else the trip.
+  // Back is where the file was opened from (Plan → Check this → Open the original), else the trip.
   const from = cameFrom(route.params.from, id, ctx.agent?.trip ?? null);
   const back = from?.hash ?? `#/trip/${encodeURIComponent(id)}`;
   // Only trips open here: a link must not lead someone into editing their profile or annai's own files.
@@ -79,12 +79,10 @@ export async function renderFile(ctx, route) {
 }
 
 /**
- * A deleted file's screen (Task 7): what Restore brings back, Restore itself, the file's last version, as a waiting file's is shown (a
- * photo, a PDF, or Download), and its history, whose own Restore buttons bring back one version. Restore is first, under the line
- * that says what it does: a deleted file's screen has little else. The crumb names the trip, as a details screen's does, and the
- * heading is the name the file had when deleted (the Delete's entry keeps it, as the short name goes with the file). Beside Restore,
- * Delete for good (asks once) when a dry run of forget says it would free space: Shiori's deletes, and those from before Delete freed
- * what nothing else names, are kept under Deleted until then.
+ * A deleted file's screen: what Restore brings back, Restore itself (first, as this screen has little else), the file's last version,
+ * as a waiting file's is shown, and its history, whose own Restore buttons bring back one version. The heading is the name the file had
+ * when deleted (the Delete's entry keeps it, as the short name goes with the file). Beside Restore, Delete for good (asks once) when a
+ * dry run of forget says it would free space.
  * @param {any} ctx @param {string} id @param {string} path @param {import('../../core/workspace.js').HistoryEntry[]} history
  * @param {Record<string, string>} names @param {{ back: string, from: { name: string } | null, trip: string }} o
  */
@@ -199,9 +197,9 @@ function editor(ctx, id, entry, content) {
 }
 
 /**
- * A PDF shown by the browser itself (Open the original: "shows the file itself"), where it has a viewer for one in a page (Chrome and
- * Firefox say so; Safari's <img> drawing a PDF says it is Safari, which shows PDFs in frames); elsewhere its card, with Open (the
- * browser's own handling of the file) and Download. @param {any} entry @param {Uint8Array} content
+ * A PDF shown by the browser itself, where it has a viewer for one in a page (Chrome and Firefox say so; Safari's <img> drawing a PDF
+ * says it is Safari, which shows PDFs in frames); elsewhere its card, with Open (the browser's own handling of the file) and Download.
+ * @param {any} entry @param {Uint8Array} content
  */
 async function pdfView(entry, content) {
   if (objectUrl) URL.revokeObjectURL(objectUrl);

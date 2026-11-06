@@ -26,7 +26,7 @@ import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 export const NOT_SAID = new Set(['location', 'trigger.fired']);
 /**
  * The log entry types the conversation is made of (what apply() reads; compaction aside), so it is
- * read by type: a day of location points is never walked (A6). A type apply() learns goes here too.
+ * read by type: a day of location points is never walked. A type apply() learns goes here too.
  */
 export const SAID = Object.freeze(['wake', 'msg.user', 'model.turn', 'photo.replace', 'error', 'heard', 'heard.text', 'reminder', 'tool.result', 'note', 'halves', 'out.speak', 'out.show', 'out.ask', 'handover.undo']);
 /** Koe's window (plan decision 5): its last 12 exchanges, its start moving in jumps of 6. */
@@ -53,10 +53,10 @@ export class Transcript {
   unanswered = false;
   /**
    * What is waiting when unanswered: 'user' (a message), 'wake' (something else, such as files added while it was closed), or 'turn' (her
-   * tool calls' results, her turn cut off before her next reply: emulator pass m2b #21). @type {'' | 'user' | 'wake' | 'turn'}
+   * tool calls' results, her turn cut off before her next reply). @type {'' | 'user' | 'wake' | 'turn'}
    */
   waiting = '';
-  /** The user's newest message holds a photo: a model that takes none can't answer it (emulator pass). */
+  /** The user's newest message holds a photo: a model that takes none can't answer it. */
   newestPhoto = false;
   /**
    * Where the latest turn began: the index of the last message before the first reply of its wake (the keep-reasoning design §7), -1 for
@@ -196,9 +196,8 @@ export class Transcript {
       this.#line([{ type: 'text', text: line }]);
       if (koe) this.unanswered = false;
     } else if (e.type === 'photo.replace') {
-      // A refused photo's new copy (spec §4.8): every place it was sent now sends the copy. When that
-      // copy was itself replaced later (its bytes gone), the swap still happens, so the next one finds it.
-      // A copy an import didn't carry is kept as data.was (spec §12.3).
+      // A refused photo's new copy (spec §4.8): every place it was sent now sends it. A copy itself replaced later (its bytes gone)
+      // is still swapped in, so the next one finds it. One an import didn't carry is kept as data.was (spec §12.3).
       const copy = r.images[0];
       const [old, next] = [d.old ?? d.was?.old, d.new ?? d.was?.new];
       this.messages = this.messages.map((m) => ({
@@ -270,7 +269,7 @@ export class Transcript {
         return /** @type {Part} */ (swapped.get(p));
       };
       this.messages = this.messages.map((m) => ({ role: m.role, parts: m.parts.map(worded) }));
-      // Lines held, or taken since the last reply, are the same parts: a reply made without them can still move them (item 16).
+      // Lines held, or taken since the last reply, are the same parts: a reply made without them can still move them.
       this.#since = this.#since.map((x) => ({ seq: x.seq, parts: x.parts.map(worded) }));
       this.#held = this.#held.map((x) => ({ seq: x.seq, parts: x.parts.map(worded) }));
       return;
@@ -400,7 +399,7 @@ export class Transcript {
     return [...this.#calls].filter(([id]) => !this.#answered.has(id)).map(([id, name]) => ({ id, name }));
   }
 
-  /** Koe's user lines have their angle brackets escaped, whatever their source (security reviews). @param {Part} p @returns {Part} */
+  /** Koe's user lines have their angle brackets escaped, whatever their source. @param {Part} p @returns {Part} */
   #unmarked(p) {
     if (this.#wrapped.has(p)) return p;
     if (p.type === 'text') return { ...p, text: escapeTags(p.text) };

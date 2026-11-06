@@ -15,7 +15,7 @@ import { keepBlob } from '../workspace.js';
  * @typedef {{ model: string, name: string, outcome: string, ms: number, cost?: number, error?: string, said?: import('./contract.js').Said, restsUntil?: number }} Attempt
  * @typedef {{ role: string, level: string, answeredBy: string | null, first?: string | null, attempts: Attempt[], usage: any, cost: number | undefined, stop?: string,
  *   tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, citations?: { url: string, title?: string }[] }} TurnInfo
- *   first: the role's first model, by name (since phone-fixes-1; null: none), whichever was tried first; tag: whose call it was ("conversation" for Shiori's own turns); wake: the wake it served; prefix: the cached prefix's
+ *   first: the role's first model, by name (null: none), whichever was tried first; tag: whose call it was ("conversation" for Shiori's own turns); wake: the wake it served; prefix: the cached prefix's
  *   fingerprint; context: the events in context (spec §4.5)
  */
 
@@ -119,7 +119,7 @@ export function modelTrace(store, scope) {
       return append({ ts: Date.now(), type: 'net.request', actor: 'system', data }, []);
     },
     /**
-     * A live session's life (K4): open, ready or resumed, goaway, closed, with its data and cost. Never its address,
+     * A live session's life: open, ready or resumed, goaway, closed, with its data and cost. Never its address,
      * subprotocols or key: why, the server's words, is blanked like an error. @param {Record<string, any>} i
      */
     live(i) {

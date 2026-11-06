@@ -133,13 +133,13 @@ export async function applyUpdates(ctx, updates, env) {
 }
 
 /**
- * An update from an address that brings something new asks first, listing it (the coordinator's second
- * finding); new code asks with the install screen's full-trust words. Nothing changes until Update.
+ * An update from an address that brings something new asks first, listing it; new code asks with the
+ * install screen's full-trust words. Nothing changes until Update.
  * @param {{ plugins: any, notices: any }} ctx @param {Update} u @param {Applying} env
  */
 async function askFirst(ctx, u, env) {
   const added = /** @type {import('../core/packages.js').Added} */ (u.added);
-  // New code from an address, not annai's: what it can do with the keys saved now, by name (fixes-ui 15).
+  // New code from an address, not annai's: what it can do with the keys saved now, by name.
   const risk = added.code ? keysRisk(await keyNames(ctx.plugins).catch(() => [])) : '';
   ctx.notices.card({
     tone: added.code ? 'risk' : 'warn',

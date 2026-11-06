@@ -17,7 +17,7 @@ import { NotFoundError } from './workspace.js';
  *   large to make without asking; or a failure, tried again at retryAt (needsYou: only the user can fix it). A failure's message
  *   is the log's English, or a place's or plugin's own words; said: what one of annai's own was, which the screens' words are
  *   made from (backup.js holdWords); offline: this device was offline, and annai tries again once it's back. shown and lang: a
- *   plugin's own words in the screens' language when it failed (lang), shown only on screens in that language (localization L7).
+ *   plugin's own words in the screens' language when it failed (lang), shown only on screens in that language.
  *   seen: the user found the newer backup themselves, testing the place on its screen; known: as LastBackup's, what
  *   "Back up over it" covers
  * @typedef {{ id: string, at: number, seqs: Record<string, number>, bytes: number, known?: Record<string, number> }} LastBackup

@@ -5,11 +5,9 @@ import { t } from '../l10n.js';
 import { sentences, num, when as clockAt } from '../intl.js';
 
 /**
- * The plan's own watches (spec §11.3: "Plan items create their own watches. The system sets
- * these, so they don't depend on Shiori remembering"): leave in X minutes, arrived, running late,
- * coming up; and off plan (§11.5). They are worked out from the plan whenever it changes and never
- * stored; the log's trigger.fired entries say which have fired. Their fallbacks come from the plan: in annai's English for Shiori
- * (fallback), and as data (say) the user's words are made from where they are shown (planWords).
+ * The plan's own watches (spec §11.3): leave in X minutes, arrived, running late, coming up; and off plan (§11.5). Worked out from the plan
+ * whenever it changes and never stored; the log's trigger.fired entries say which have fired. fallback is annai's English for Shiori; say is
+ * the data the user's words are made from where they are shown (planWords).
  * @typedef {import('./watches.js').Watch} Watch
  * @typedef {import('./triggers.js').Moment} Moment
  * @typedef {import('./triggers.js').Firing} Firing
@@ -113,8 +111,8 @@ export function planWatches(items, bookings, { fallbackTz }) {
 }
 
 /**
- * The item for a reminder, as data (spec §11.3: "Flight UA123 departs 14:05, SFO T3"): a flight by its name, the place where it
- * says more than the title. @param {string} title @param {any} booking @param {boolean} flight @param {number} at @param {string} tz @param {string} placeName
+ * The item for a reminder, as data (spec §11.3): a flight by its name, the place where it says more than the title.
+ * @param {string} title @param {any} booking @param {boolean} flight @param {number} at @param {string} tz @param {string} placeName
  * @returns {What}
  */
 function whatOf(title, booking, flight, at, tz, placeName) {

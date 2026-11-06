@@ -5,7 +5,7 @@ import { t } from '../l10n.js';
 /**
  * A provider description (spec §5.2, §9.1): what a provider plugin's annai-plugin.json says of one
  * provider, as data. One address and one key, and its abilities: chat, transcription, voice and realtime voice
- * (a live session, K4), each through a protocol plugin's endpoint type, with the models annai knows and the roles it suggests.
+ * (a live session), each through a protocol plugin's endpoint type, with the models annai knows and the roles it suggests.
  * @typedef {import('./config.js').ModelValues} ModelValues
  * @typedef {{ kind: 'chat' | 'transcription' | 'voice' | 'realtime', type: string, name?: string, on?: boolean, baseUrl?: string,
  *   tunables?: Record<string, any>, extraBody?: Record<string, any>, note?: string, noWindowNote?: string, modelDefaults?: ModelValues,
@@ -27,7 +27,7 @@ export const CATEGORIES = Object.freeze(['providers', 'speech', 'backup', 'tools
 export const ROLE_KINDS = Object.freeze({
   main: ['chat'], utility: ['chat'], decide: ['chat'], 'koe-realtime': ['realtime'], 'koe-classic': ['chat'], 'speech-in': ['transcription'], 'speech-out': ['voice'],
 });
-/** Koe's one list (2026-10-19 to 2026-10-22): a description naming it still checks, and its models go into the two lists by kind. */
+/** Koe's old one list: a description naming it still checks, and its models go into the two lists by kind. */
 export const OLD_KOE = Object.freeze({ koe: Object.freeze(['chat', 'realtime']) });
 
 const ABILITY_ID = /^[a-z][a-z0-9-]{0,30}$/;
@@ -66,7 +66,7 @@ export function checkProviderDesc(desc) {
   if (errors.length) return errors;
   const abilities = Object.entries(desc.abilities);
   if (!abilities.length) /* en */ errors.push('$.abilities: a provider needs at least one ability');
-  // Every address a key may go to must be one (security review): none is dropped, and none is plain http to another machine.
+  // Every address a key may go to must be one: none is dropped, and none is plain http to another machine.
   /** @param {string} at @param {string} url */
   const address = (at, url) => {
     const wrong = addressProblem(url);
@@ -76,7 +76,7 @@ export function checkProviderDesc(desc) {
   for (const [id, a] of abilities) {
     if (!ABILITY_ID.test(id)) /* en */ errors.push(`$.abilities.${id}: an ability id is lowercase letters, digits and dashes, starting with a letter`);
     if (a.baseUrl !== undefined) /* en */ address(`$.abilities.${id}.baseUrl`, a.baseUrl);
-    // A protocol joins these onto the address: each must be a path from it (fix pass, Critical).
+    // A protocol joins these onto the address: each must be a path from it.
     const paths = (/** @type {string} */ at, /** @type {any} */ t) => {
       for (const k of PATH_TUNABLES) {
         const v = t?.[k];
@@ -94,7 +94,7 @@ export function checkProviderDesc(desc) {
   for (const [which, roles] of Object.entries(desc.roles ?? {})) {
     for (const [role, ids] of Object.entries(/** @type {Record<string, string[]>} */ (roles))) {
       const kinds = ROLE_KINDS[role] ?? /** @type {Record<string, readonly string[]>} */ (OLD_KOE)[role];
-      // A role this annai doesn't know (Koe's two lists from before 2026-10-19, or one a later version names) is skipped, never a
+      // A role this annai doesn't know (an old one of Koe's, or one a later version names) is skipped, never a
       // reason to refuse the whole description: an older tab can still offer an update that renames one.
       if (!kinds) continue;
       const have = new Set(abilities.filter(([, a]) => kinds.includes(a.kind)).flatMap(([, a]) => (a.models ?? []).map((/** @type {any} */ m) => m.providerId)));
@@ -104,7 +104,7 @@ export function checkProviderDesc(desc) {
   return errors;
 }
 
-/** The command both the note and the refusal give, for the port the server listens on (the user, 2026-10-22). @param {string | number} port */
+/** The command both the note and the refusal give, for the port the server listens on. @param {string | number} port */
 const serve = (port) => /* en */ `tailscale serve --bg --https=8443 http://localhost:${port}`;
 /**
  * What a server you run's page says (its provider is local, or has a serverNote): a phone's localhost, https only and why, one way
@@ -157,7 +157,7 @@ export function addressProblem(url) {
   return f.code === 'http' ? `${must} Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: ${serve(f.port)}. The server must also allow CORS from annai.guide.` : must;
 }
 
-/** The same, in the screens' words: the provider's page checks a typed address with it (fix pass). @param {string} url @returns {string | null} */
+/** The same, in the screens' words: the provider's page checks a typed address with it. @param {string} url @returns {string | null} */
 export function addressShown(url) {
   const f = addressFault(url);
   if (!f) return null;
@@ -178,7 +178,7 @@ function originOf(url) {
 /**
  * Every origin (scheme, host and port) a key given to this provider may be sent to: its address and
  * each ability's own, sorted, once each. An update that names a new one asks first, so a change of
- * scheme or port does too (decision 11; security review). An address the user must give is none.
+ * scheme or port does too. An address the user must give is none.
  * @param {ProviderDesc} desc @returns {string[]}
  */
 export function descOrigins(desc) {

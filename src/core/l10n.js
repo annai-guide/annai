@@ -107,7 +107,7 @@ export const tc = (context) => (/** @type {TemplateStringsArray} */ strings, /**
 
 /**
  * Words annai sends or speaks as if the user said them (a quick ask, a voice's sample): the screens' when the user speaks their
- * language, else English (the user, 2026-10-24). asUser(speaks)`Where can we eat?`; the message is t's. @param {boolean} speaks
+ * language, else English. asUser(speaks)`Where can we eat?`; the message is t's. @param {boolean} speaks
  */
 export const asUser = (speaks) => (/** @type {TemplateStringsArray} */ strings, /** @type {unknown[]} */ ...values) => (speaks ? t(strings, ...values) : english(strings, values));
 

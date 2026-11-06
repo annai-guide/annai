@@ -23,7 +23,7 @@ const ROLE_CALLED = {
 };
 /** The chat roles in the order they are shown: Koe's two lists right after Main. */
 const CHAT_ORDER = ['main', 'koe-realtime', 'koe-classic', 'utility', 'decide'];
-/** What each Koe list is for, in a line (the user, 2026-10-22: two lists and a switch on the voice chip). @type {Record<string, string>} */
+/** What each Koe list is for, in a line. @type {Record<string, string>} */
 const KOE_NOTES = {
   'koe-realtime': t`Koe uses it while voice is on and the Live chip is on. When none here can answer, Koe · Chat does.`,
   'koe-classic': t`Koe uses it when Live is off, while voice is off, and when Koe · Live can't answer: Speech in hears you, and Speech out speaks.`,
@@ -58,7 +58,7 @@ export async function renderModels(ctx, route) {
 const section = (title, ...children) => h('section', { class: 'panel', 'aria-label': title }, h('h2', { class: 'section', text: title }), ...children);
 
 /**
- * What requests may cost and how large they grow, with the models (the user, 2026-10-18): a day's
+ * What requests may cost and how large they grow, with the models: a day's
  * spending (spec §6.6), the cache (§6.4), housekeeping (§6.5). Kept under shiori, where her loop reads them.
  * @param {any} ctx @param {Record<string, any>} s the app settings' shiori entry
  */
@@ -208,7 +208,7 @@ const reorderLabel = (name, i, n) => t`Reorder ${name}, ${num(i + 1)} of ${num(n
 let menus = 0;
 
 /**
- * One entry of a role's list: its model's name, a link to the model's page where there is one (the user, 2026-10-22), a handle to
+ * One entry of a role's list: its model's name, a link to the model's page where there is one, a handle to
  * drag it by, and the remove button. Dragging uses pointer events, so a finger works as a mouse does (HTML5 drag and drop doesn't on
  * iOS); the handle also takes the arrow keys, and a tap on it shows Move up and Move down, so nothing needs a drag.
  * @param {string} role @param {string} id @param {number} i @param {number} n @param {string} name @param {boolean} page @param {string | undefined} note

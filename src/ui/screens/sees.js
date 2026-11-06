@@ -29,7 +29,7 @@ function shown(seen) {
   };
 }
 
-/** What each half sees (the second-drive design: "is there way to see kokoro's transcript?"). Its route stands alone, so the menu that opens it can move. @param {any} ctx @param {{ params: Record<string, string> }} route */
+/** What each half sees (the second-drive design). Its route stands alone, so the menu that opens it can move. @param {any} ctx @param {{ params: Record<string, string> }} route */
 export async function renderSees(ctx, route) {
   const koe = route.params.half === 'koe';
   const title = koe ? t`What Koe sees` : t`What Kokoro sees`;

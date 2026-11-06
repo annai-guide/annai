@@ -13,7 +13,7 @@ const SPEED_WORDS = {
 
 /**
  * Settings → Developer → Simulate a trip (spec §13): a sample drive, an itinerary file or a trip's
- * recorded track, played through live mode and Shiori in a new trip of its own (7a choices 9–13).
+ * recorded track, played through live mode and Shiori in a new trip of its own.
  * While it runs this screen shows its clock and controls; afterwards, Replay it and Recap it.
  * @param {any} ctx
  */
@@ -64,7 +64,7 @@ function tickTime(ctx, body) {
   bar.value = Math.max(0, now - s.from);
 }
 
-/** While it runs (choice 10). @param {any} ctx */
+/** While it runs. @param {any} ctx */
 function running(ctx) {
   const sim = ctx.sim;
   const s = sim.state;
@@ -105,7 +105,7 @@ function ended(ctx) {
       h('a', { class: 'btn', href: trip }, t`Open the trip`)))];
 }
 
-/** Choosing a track and a speed (7a choices 12 and 13). @param {any} ctx */
+/** Choosing a track and a speed. @param {any} ctx */
 async function form(ctx) {
   const { active, archived } = await listTrips(ctx.store);
   /** @type {{ id: string, title: string }[]} */

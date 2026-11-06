@@ -56,7 +56,7 @@ export function activate(annai) {
   };
   /** @param {unknown} e @param {string} path */
   const plain = (e, path) => {
-    // Said plainly, so she never tells the user it was done (emulator pass).
+    // Said plainly, so she never tells the user it was done.
     /* en */
     if (e instanceof ValidationError) return new Error(`${path} doesn't match its format, so it wasn't written: ${e.errors.join('; ')}`);
     /* en */
@@ -104,20 +104,20 @@ export function activate(annai) {
     return /^\/?trip\/offline(\/|$)/.test(path) ? all : all.filter((f) => !f.shown.startsWith('/trip/offline/'));
   };
   /**
-   * The one existing path a path names but for its case (a model wrote /trip/Files/… for /trip/files/…, the real-PDF check), as Shiori
+   * The one existing path a path names but for its case (a model wrote /trip/Files/… for /trip/files/…), as Shiori
    * writes paths; null when there is none, or more than one. @param {string} raw @param {any} call @returns {Promise<string | null>}
    */
   const sameButCase = async (raw, call) => {
     const { scope, path } = where(raw, call);
-    // A path that ever held a file is that file's, deleted or not: "no file" is the true answer, never another file (round 6).
+    // A path that ever held a file is that file's, deleted or not: "no file" is the true answer, never another file.
     if ((await ws.history(scope, path)).length) return null;
     const root = rootOf(raw);
     const found = (await ws.list(scope, '/')).filter((/** @type {any} */ f) => f.path.toLowerCase() === path.toLowerCase());
     return found.length === 1 ? `${root}${found[0].path}` : null;
   };
   /**
-   * A tool that, for a path naming no file, uses the one file it names but for its case, and says so first in its result (the rules:
-   * an error with one obvious fix is fixed, and said). @param {string} done how the result says it, "read" @param {(i: any, call: any) => Promise<any>} run
+   * A tool that, for a path naming no file, uses the one file it names but for its case, and says so first in its result.
+   * @param {string} done how the result says it, "read" @param {(i: any, call: any) => Promise<any>} run
    */
   const caseTolerant = (done, run) => async (/** @type {any} */ i, /** @type {any} */ call) => {
     try {
@@ -158,9 +158,8 @@ export function activate(annai) {
         const got = await ws.read(scope, path);
         if (!got) throw new Error(`No file at ${i.path}. list shows what is there.`);
         const { entry, bytes } = got;
-        const input = call.model?.input ?? ['text'];
         if (entry.type.startsWith('image/')) {
-          // For a model that can't see photos, the loop has one that can describe it (emulator pass).
+          // For a model that can't see photos, the loop has one that can describe it.
           const m = entry.meta ?? {};
           const source = { hash: entry.hash, type: entry.type, width: m.width ?? null, height: m.height ?? null, size: entry.size };
           if (i.region) {
@@ -279,7 +278,7 @@ export function activate(annai) {
       description: 'Delete a file. Its history is kept, so the user can restore it; a pasted text waiting with you (/waiting/files/pasted-…) goes for good.',
       input: { type: 'object', properties: { path: PATH }, required: ['path'] },
       /** @param {{ path: string }} i @param {any} call */
-      // Not case-tolerant: for a delete, "no file" is the true answer (round 6).
+      // Not case-tolerant: for a delete, "no file" is the true answer.
       run: (async (i, call) => {
         const { scope, path } = where(i.path, call);
         // Of what waits with her, only annai's own pasted texts are hers to drop; the user's files are theirs to delete, on Trips.

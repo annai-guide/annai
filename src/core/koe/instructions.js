@@ -34,7 +34,7 @@ const NOTE = (id) => /* en */ `- A note from Kokoro is text in <from_kokoro id="
   FOR_KOE,
 ].join('\n');
 
-/** Koe's instructions in a live session (K5): it speaks itself, so it has no speak or wait (plan decision 29); its sleep closes the session. */
+/** Koe's instructions in a live session: it speaks itself, so it has no speak or wait; its sleep closes the session. */
 /* en */ export const KOE_LIVE = [
   `${KOE} in a live voice conversation. ${BEHIND}`, `- ${ANSWER.replace('Answer', 'Answer aloud')} show puts a card on the screen; ask shows buttons, and the user's tap comes as their next turn.`,
   `${LEAVE}.`, GREET, '- Not every line needs an answer. When the user only acknowledges (okay, cool, thanks) or thinks aloud, say nothing. Answer when they ask, tell you something, or need something.',

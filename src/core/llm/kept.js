@@ -10,8 +10,8 @@ import { anySignal } from '../signals.js';
  * The file is this device's ("This device", /llm/kept.json), without history, which would name a removed trip's turns.
  *
  * Each turn is tracked as long as the provider may keep one (its type's days), and a chain continued only its type's
- * hours after its first turn: Google silently drops a deleted or expired turn's content from the turns after it
- * (measured 2026-10-19). So too the cap takes whole chains.
+ * hours after its first turn: Google silently drops a deleted or expired turn's content from the turns after it.
+ * So too the cap takes whole chains.
  *
  * Under one lock a turn is kept only if it still may be (alive, as things are now), else its call deletes it at once,
  * with its own key; a removal changes that state first, then queues. A turn is deleted only with its key and address (key).
@@ -55,10 +55,9 @@ export const keyPrint = async (secret, baseUrl, headers = {}) => {
 };
 
 /**
- * Who keeps a provider's turns, in the words the provider page and the warnings use: the protocol's own (keeps.name, holds, note)
- * for the provider it names (keeps.provider), else the provider's own name and no claim about how long, as a server that only
- * speaks the protocol may keep nothing. holds: null where the page says it by key (Gemini's free and paid); server: another
- * server that speaks the protocol, which keeps them as long as it does (the page says so in its own words).
+ * Who keeps a provider's turns, in the words the provider page and the warnings use: the protocol's own for the provider it names
+ * (keeps.provider), else the provider's own name and no claim about how long, as a server that only speaks the protocol may keep nothing.
+ * holds: null where the page says it by key (Gemini's free and paid); server: another server that speaks the protocol.
  * @param {{ name?: string, days?: number, hours?: number, provider?: string, holds?: string, note?: string } | undefined} keeps @param {string} plugin the provider's plugin @param {string} providerName
  * @returns {{ name: string, holds: string | null, server: boolean, note: string }}
  */

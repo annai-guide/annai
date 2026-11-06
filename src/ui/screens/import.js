@@ -241,8 +241,8 @@ function preview(ctx, body, opened, desc, from, fresh, bring = null) {
 
 /**
  * The imported settings and plugins are used from the next start: the sentence, and the button that does it. A restart loads the
- * page again at its address, and this screen has nothing left to open then, so annai goes to Trips first, and starts there, where what came in is
- * (the third emulator pass). @param {any} ctx
+ * page again at its address, and this screen has nothing left to open then, so annai goes to Trips first, and starts there, where
+ * what came in is. @param {any} ctx
  */
 function restartPanel(ctx) {
   const b = h('button', {

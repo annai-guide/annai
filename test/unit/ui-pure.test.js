@@ -9,7 +9,7 @@ import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
 import { parseMarkdown, parseInline, MD_MAX } from '../../src/ui/markdown.js';
 import { mapsUrl, tripPath } from '../../src/ui/cards.js';
-import { follow, announcement, announced, wokeText, wokeTitles, reminderParts, movedWords, settled } from '../../src/ui/screens/talk.js';
+import { follow, announced, wokeText, wokeTitles, reminderParts, movedWords, settled } from '../../src/ui/screens/talk.js';
 import { visibleRegion } from '../../src/ui/photo-viewer.js';
 import { traceSummary, newestFirst } from '../../src/ui/screens/trace.js';
 import { micProblem } from '../../src/ui/mic-help.js';
@@ -22,6 +22,9 @@ import { liveText, knownFix } from '../../src/ui/live-chip.js';
 import { roadText } from '../../src/ui/screens/drive.js';
 import { cameFrom } from '../../src/ui/screens/file.js';
 import { afterDelete, countParts } from '../../src/ui/file-delete.js';
+
+/** @param {Parameters<typeof announced>} a */
+const announcement = (...a) => announced(...a).join('');
 
 test('parseHash: screens, parts and params', () => {
   assert.deepEqual(parseHash(''), { name: 'trips', parts: ['trips'], params: {} });

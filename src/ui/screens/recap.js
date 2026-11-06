@@ -15,7 +15,7 @@ const writing = new Map();
 /**
  * Recap (spec §13, §16.2): the trip's recap as the utility model wrote it, rendered by annai's own
  * Markdown renderer (§15); a tap writes it, or writes it again (the old one stays in the file's
- * history); Shiori can tell it aloud. What goes to the model is said here (§11.7, choice 4).
+ * history); Shiori can tell it aloud. What goes to the model is said here (§11.7).
  * @param {any} ctx @param {{ parts: string[] }} route
  */
 export async function renderRecap(ctx, route) {
@@ -56,7 +56,7 @@ export async function renderRecap(ctx, route) {
   const tell = recap && ctx.agent ? h('button', {
     class: 'btn pri', type: 'button',
     onclick: async () => {
-      // Shiori talks about the trip that is open: this one, as opening its page makes it (choice 3).
+      // Shiori talks about the trip that is open: this one, as opening its page makes it.
       if (ctx.agent.target !== id) {
         await updateAppSettings(ctx.ws, { activeTrip: id });
         await ctx.agent.open(id);

@@ -192,7 +192,7 @@ export function traceUrl(url, secrets = []) {
 /**
  * @param {Store} store @param {string} scope
  * @param {{ tool: string, wake?: string, blank?: string[] }} who blank: keys that aren't secrets yet, such as those
- *   in an address being tried (fix pass 8a-1), blanked as secrets are
+ *   in an address being tried, blanked as secrets are
  * @param {Fetch} [get] @returns {Fetch}
  */
 export function tracedFetch(store, scope, who, get = (url, init) => fetch(url, init)) {

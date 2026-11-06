@@ -16,8 +16,7 @@ export function countParts(bookings, items) {
 }
 
 /**
- * The line beside Delete for good: all that the tap frees besides the file, named before the tap. Its copies (by the names `shown`
- * gives), and the bookings and plan items Shiori read from the file and from them. Null when there are none of either.
+ * The line beside Delete for good: all that the tap frees besides the file, named before the tap. Null when there is nothing else.
  * @param {{ paths: string[], copies: string[] }} free freeableDeleted's answer @param {(path: string) => string} shown a copy's name
  * @returns {string | null}
  */
@@ -41,14 +40,12 @@ export function afterDelete(back, gone, id) {
 }
 
 /**
- * Deletes what a details screen showed (the file-details design, goal 4): deletionOf(d)'s paths that are still in the trip, in one
- * ws.writeMany of null contents (author 'user', so the workspace's listeners hear of each: Shiori's short name, live mode, the offline
- * pack), each marked with the file it went with. Then, for a file the user gave, it frees the group (its history and the content nothing
- * else names) when nothing else names the file's own versions; else the file is kept, history and all, and listed under Deleted (Task 7:
- * "if we are not freeing bytes anyway, I would prefer we can see / recover them"). The toast says what went, and how much was freed or
- * why it was kept. Returns the paths deleted. A failure is explained (explainStorageFull, else a toast of messageOf(e)) and deletes
- * nothing. @param {any} ctx @param {string} id @param {import('../core/trip-files.js').Details} d
- * @returns {Promise<string[] | null>} null when it failed
+ * Deletes what a details screen showed (the file-details design, goal 4): deletionOf(d)'s paths still in the trip, in one ws.writeMany
+ * of null contents (author 'user', so the workspace's listeners hear of each), each marked with its file. A file the user gave then
+ * frees its group, unless something else names the file's own versions: then it is kept, history and all, and listed under Deleted,
+ * so what isn't freed can be recovered. A failure is explained and deletes nothing.
+ * @param {any} ctx @param {string} id @param {import('../core/trip-files.js').Details} d
+ * @returns {Promise<string[] | null>} the paths deleted, null when it failed
  */
 export async function deleteGroup(ctx, id, d) {
   const want = deletionOf(d);
@@ -99,10 +96,9 @@ export function deletedName(names, deletes, path) {
 }
 
 /**
- * The other `/files/` paths that are copies of the file: the versions they ever stored are exactly the file's. (A copy that is a file
- * now keeps them all, whole: forget's mustFree finds its content in use.) A deleted file that shares only some of its versions (a duplicate, then an updated file saved under the same name) is
- * no copy: freeing it would take part of the other's history, so forget keeps both. Which copies can really go is forget's call
- * (mustFree): a live file, the conversation or another trip naming a version keeps them all.
+ * The other `/files/` paths that are copies of the file: the versions they ever stored are exactly the file's. A deleted file that
+ * shares only some of them is no copy: freeing it would take part of the other's history, so forget keeps both. Which copies can
+ * really go is forget's call (mustFree).
  * @param {import('../core/types.js').Store} store @param {string} id @param {string} path
  * @returns {Promise<string[]>}
  */
@@ -121,11 +117,10 @@ async function copiesOf(store, id, path) {
 }
 
 /**
- * What Delete for good takes from a deleted file: the file with its whole history, and the bookings and plan items its newest Delete
- * took with it (none for Shiori's delete, or one from before Delete marked its group), each only in its current life (ownLife). A
- * path that has a file again, or was deleted again on its own since, is not part of it: it is someone's now. With `copies`, the
- * other deleted copies of the same content go too, each with its own group. The match is forget's, with the files' own versions as
- * what must be freed, and the group's paths guarded (onlyDeleted) against being written again before the transaction runs.
+ * What Delete for good takes from a deleted file: the file with its whole history, and what its newest Delete took with it, each only
+ * in its current life (ownLife). A path that has a file again, or was deleted again on its own since, is left out: it is someone's now.
+ * With `copies`, the other deleted copies go too, each with its group. The group's paths are guarded (onlyDeleted) against being
+ * written again before the transaction runs.
  * @param {import('../core/workspace.js').Workspace} ws @param {string} id @param {string} path @param {string[]} [copies]
  * @returns {Promise<{ paths: string[], files: string[], there: boolean, match: import('../core/forget.js').Match }>}
  * there: the file is at its path again
@@ -141,9 +136,8 @@ async function foreverOf(ws, id, path, copies = []) {
 }
 
 /**
- * Whether Delete for good would free space on a deleted file, asked by a dry run of forget (one transaction, rolled back, no blob bytes
- * read), with the file's deleted copies (copiesOf) as one forget. Null when it would free nothing: the file is back, the
- * conversation or another file or trip still names a version, or no version of it with any bytes is stored.
+ * Whether Delete for good would free space on a deleted file and its deleted copies (copiesOf), asked by a dry run of forget (one
+ * transaction, rolled back, no blob bytes read). Null when it would free nothing.
  * @param {import('../core/workspace.js').Workspace} ws @param {string} id @param {string} path
  * @returns {Promise<{ paths: string[], copies: string[] } | null>} the paths it would delete, and the other copies of the file among them
  */
@@ -157,11 +151,9 @@ export async function freeableDeleted(ws, id, path) {
 }
 
 /**
- * Delete for good on a deleted file's screen: frees the file and its group (foreverOf), and any other deleted copy of the same
- * content with theirs, at once, and says how much. If the file is back (restored in another tab), nothing is freed and the toast
- * says so; if something names the content by now, nothing is freed and the toast says that; if the paths to free are no longer the
- * ones the screen named (`named`, freeableDeleted's `paths`: another copy appeared, one went, a group changed), nothing is freed
- * and the toast says that. Either way the screen is to render again. A failure is explained and frees nothing.
+ * Delete for good on a deleted file's screen: frees the file and its group (foreverOf), and any other deleted copy with theirs, at
+ * once, and says how much. Nothing is freed, and the toast says why, if the file is back, something names the content by now, or the
+ * paths to free are no longer the ones the screen named (`named`). Either way the screen is to render again. A failure is explained.
  * @param {any} ctx @param {string} id @param {string} path @param {string} name what the toast calls it
  * @param {string[]} [named] the paths the screen named as going; omitted by a caller that named nothing
  * @returns {Promise<string[] | null>} the paths freed, or null when nothing was
@@ -200,8 +192,8 @@ function nameOf(d) {
 }
 
 /**
- * Restore on a deleted file's screen (Task 7): the file and what its Delete took with it (restoreGroup), a toast of what came back and
- * of what couldn't, as something new is at its path; then the file's details screen. Shiori's short name for it doesn't come back.
+ * Restore on a deleted file's screen: the file and what its Delete took with it (restoreGroup), a toast of what came back and of what
+ * couldn't, as something new is at its path; then the file's details screen. Shiori's short name for it doesn't come back.
  * @param {any} ctx @param {string} id @param {string} path
  */
 export async function restoreDeleted(ctx, id, path) {

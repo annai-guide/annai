@@ -106,13 +106,13 @@ export function drawPanel(ctx, pluginId, provider, o) {
   return panel ? made(ctx, { pluginId, item: s }, /* en */ 'provider setup panel', () => panel(setupUi(ctx, pluginId, o), provider), (x) => (x === null || x instanceof Node ? null : /* en */ 'its panel is no element')) : null;
 }
 
-/** A catalog entry that makes a model provider, by the rule a restore's plugins follow (review M1). */
+/** A catalog entry that makes a model provider, by the rule a restore's plugins follow. */
 export const isProviderEntry = makesProvider;
 
 /**
  * Installs annai's own provider plugin that a provider record names but this device lacks, on the provider page's tap
  * (a restore brings records back without their plugins). Only a catalog entry that makes a model provider: a record
- * is data, and may name anything (review M1). One that then gives no provider is removed again. @param {any} ctx @param {any} entry
+ * is data, and may name anything. One that then gives no provider is removed again. @param {any} ctx @param {any} entry
  */
 export async function installMissing(ctx, entry) {
   if (!isProviderEntry(entry)) throw new Error(entry?.name ? t`${officialName(entry.id, entry.name)} isn't a model provider.` : t`That plugin isn't a model provider.`);
@@ -130,10 +130,10 @@ let finishing = null;
 let featured = null;
 
 /**
- * The featured provider (only annai's catalog marks one), its plugin installed in the background while no
- * provider exists, so its sign-in is there before the tap (spec §9.8). annai's own, installed and running,
- * is used as it is, with no wait on the catalog (a flaky connection, a sign-in coming back adding with it);
- * its manifest came from annai's catalog. null: none, or a provider exists. @param {any} ctx
+ * The featured provider (only annai's catalog marks one), its plugin installed in the background while no provider
+ * exists, so its sign-in is there before the tap (spec §9.8). annai's own, installed and running, is used as it is, with no
+ * wait on the catalog (a flaky connection, a sign-in coming back adding with it); its manifest came from annai's catalog.
+ * null: none, or a provider exists. @param {any} ctx
  */
 export async function readyFeatured(ctx) {
   await ctx.llm.ready;

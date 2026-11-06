@@ -7,12 +7,10 @@ import { StorageFullError } from '../errors.js';
 import { anySignal } from '../signals.js';
 
 /**
- * Downloads a trip's offline pack (spec §11.5), one request at a time with a second between them:
- * the parts its plan needs that the pack doesn't have, or has from more than a month ago, then the
- * Wikivoyage guides for the names the trip, the plan and the Wikipedia summaries give. Parts the plan
- * no longer needs go. Each part is a file in the trip (§4.9: everything stored is named), so a
- * download that stops keeps what it got and the next goes on from there. Positions go only to
- * OpenStreetMap and Wikipedia (§11.7); Wikivoyage is asked about names, as the guide tool asks it.
+ * Downloads a trip's offline pack (spec §11.5), one request at a time with a second between them: the parts its plan needs that the pack
+ * lacks or has from more than a month ago, then the Wikivoyage guides for the names the trip, the plan and the Wikipedia summaries give.
+ * Parts the plan no longer needs go. Each part is a file in the trip, so a download that stops keeps what it got and the next goes on.
+ * Positions go only to OpenStreetMap and Wikipedia (§11.7); Wikivoyage is asked about names, as the guide tool asks it.
  * @typedef {import('../workspace.js').Workspace} Workspace
  * @typedef {(url: string, init?: RequestInit) => Promise<Response>} Fetch
  * @typedef {import('./plan.js').Part} Part
@@ -29,8 +27,8 @@ import { anySignal } from '../signals.js';
  *   one of annai's own failures, as data: a server's answer, its time running out, Overpass stopping early, no Overpass server answering
  *   (inner: the last one's, or message, the browser's words), a service's own error (info, its words), a guide with no text
  * @typedef {{ label: string, why: string, part?: PartRef, said?: PackSaid | null }} Failure
- *   label and why: in annai's English, as the log keeps them; part and said: what the panel makes its words from. A failure kept since
- *   (localization L5h) always has part, and said null where why is the browser's or a service's own words; one from before has neither.
+ *   label and why: in annai's English, as the log keeps them; part and said: what the panel makes its words from (said null where why is
+ *   the browser's or a service's own words). A failure kept by an older annai has neither.
  * @typedef {{ format: 1, key: string, at: string, files: PackFile[], guides: Guide[],
  *   failed: Failure[], full: boolean, stopped: boolean, bytes: number, places: number, summaries: number }} Manifest
  *   key: the plan's when it was downloaded; full: it reached its 20 MB; stopped: it was stopped, or gave up;
@@ -361,7 +359,7 @@ async function namesFor(ws, scope, plan, files) {
 
 /**
  * Which names have a Wikivoyage guide, in their order, at most 12, following its redirects and
- * leaving out its disambiguation pages. Only names are sent (choice 3).
+ * leaving out its disambiguation pages. Only names are sent.
  * @param {string[]} names @param {Ask} ask @param {Record<string, string>} headers
  * @returns {Promise<{ title: string, asked: string[] }[]>}
  */

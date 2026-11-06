@@ -16,7 +16,7 @@ const REPORT = {
 /** @type {import('./contract.js').Request} */
 const SAY_OK = { system: /* en */ 'This is a connection test.', messages: [{ role: 'user', parts: [{ type: 'text', text: /* en */ 'Reply with the word OK.' }] }] };
 /**
- * Room for a model that thinks before it answers, which some can't turn off (the user, 2026-10-18),
+ * Room for a model that thinks before it answers, which some can't turn off,
  * or the model's own limit when it is lower. @param {import('./config.js').Model} model
  */
 const room = (model) => Math.min(4096, model.maxOutput ?? 4096);
@@ -72,7 +72,7 @@ export async function testModel(c) {
   const useTools = model.tools !== false;
   if (useImage || useTools) {
     // Without a picture there is no square to look at, so the question carries its answer: a model that
-    // takes no photos is tested on the tool alone (the user's DeepSeek answered in words, 2026-10-18).
+    // takes no photos is tested on the tool alone (DeepSeek answered in words).
     /* en */
     const ask = !useImage ? 'The square is red. Report its color by calling report_color.'
       : useTools ? 'What color is the square? Answer by calling report_color.' : 'What color is the square? Answer in one word.';
@@ -98,7 +98,7 @@ export async function testModel(c) {
       steps.push({ step: err.kind === 'image' || !useTools ? 'images' : 'tools', ok: false, detail: explain(err) });
     }
   }
-  // What the role will send, if not off's (fix pass).
+  // What the role will send, if not off's.
   const { role } = c;
   if (role && nearestLevel(model.reasoning, role.level) !== nearestLevel(model.reasoning, 'off')) {
     try {

@@ -43,7 +43,7 @@ export async function resetSettings(ctx, r) {
   ctx.render();
 }
 
-/** Reset settings, with one confirmation as Remove has (the user's ask, 2026-10-18). @param {any} ctx @param {any} r */
+/** Reset settings, with one confirmation as Remove has. @param {any} ctx @param {any} r */
 function resetPart(ctx, r) {
   return h('div', {},
     h('p', { class: 'sub', text: t`Reset forgets the settings and keys this plugin keeps, with their history. The plugin stays, and so do its tool switches and what it wrote into trips.` }),
@@ -72,7 +72,7 @@ function namesPart(ctx, id, rows) {
 }
 
 /**
- * A plugin's own page (milestone 8b, choice 11): what it is and where it came from, what it is doing,
+ * A plugin's own page: what it is and where it came from, what it is doing,
  * its skills and tools, its settings form (spec §5.2) and settings pages, and what can be done with it.
  * @param {any} ctx @param {string} id
  */

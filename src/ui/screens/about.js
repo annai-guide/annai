@@ -4,9 +4,8 @@ import { SOURCES, FONTS, ART } from '../credits.js';
 import { keysAndData, finePrint, REPO } from '../privacy.js';
 
 /**
- * Settings → About (the user, 2026-10-18): annai, its version and the build that is running (Updates is a
- * tap away), its licence and source, where to report a problem, what it does with keys and data (the welcome's
- * words), the fine print, the welcome again, and the credits. #/about/licence and #/about/fonts show
+ * Settings → About: annai, its version and build (Updates is a tap away), its licence and source, what it does with keys and data
+ * (the welcome's words), the fine print, the welcome again, and the credits. #/about/licence and #/about/fonts show
  * the licence texts annai ships, so they read offline.
  * @typedef {import('../credits.js').Link} Link
  */

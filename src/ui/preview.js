@@ -1,7 +1,6 @@
 /**
- * A file's first page for the screens (the bookings design, goal 12 and "PDF preview without a new dependency in annai's own code"):
- * a photo is itself; a PDF is the browser's own drawing where its <img> draws PDFs (Safari), else the PDF pages plugin's page 1 when
- * it runs, else nothing, and the caller shows the file card.
+ * A file's first page for the screens (the bookings design, goal 12): a photo is itself; a PDF is the browser's own drawing where its
+ * <img> draws PDFs (Safari), else the PDF pages plugin's page 1 when it runs, else nothing, and the caller shows the file card.
  */
 import { runningPdfPages } from '../core/pdf-pages.js';
 import { blobBytes } from '../core/reach.js';

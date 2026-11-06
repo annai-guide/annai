@@ -15,9 +15,8 @@ import { cameFrom, backLabel } from './file.js';
 /**
  * The details screen (the file-details design): a file the user gave and every booking Shiori read from it, or a booking with no file.
  * `path` is a file under /files/ or a booking under /bookings/, and a booking whose file is there opens its file's screen at its block.
- * Each booking is a block (what she read, the "check" marks on details she is unsure of, the plan items that stand for it); then the
- * preview of the file and the buttons: Open, Download, Ask Shiori about this, Change it (the raw form), Open in Maps. Where it was opened
- * from is the crumb. @param {any} ctx @param {{ parts: string[], params: Record<string, string> }} route
+ * Each booking is a block; then the preview of the file and its buttons. Where it was opened from is the crumb.
+ * @param {any} ctx @param {{ parts: string[], params: Record<string, string> }} route
  */
 export async function renderBooking(ctx, route) {
   const id = route.parts[1];
@@ -111,7 +110,7 @@ export async function renderBooking(ctx, route) {
       askAboutButton(ctx, refs),
       lone ? h('a', { class: 'btn', href: fileHref(id, lone.path, here) }, t`Change it`) : null,
       lone?.booking.place?.name ? h('a', { class: 'btn', href: mapsUrl(lone.booking.place, platform()), target: '_blank', rel: 'noopener noreferrer' }, t`Open in Maps`) : null,
-      // The file and what Shiori read from it go together (the user, 2026-11-01); the Plan no longer shows them.
+      // The file and what Shiori read from it go together.
       twoStep(t`Delete`, t`Tap again to delete`, async () => {
         const gone = await deleteGroup(ctx, id, d);
         if (gone) ctx.go(afterDelete(cameFrom(route.params.from, id, ctx.agent?.trip ?? null)?.hash ?? `#/trip/${encodeURIComponent(id)}`, gone, id));

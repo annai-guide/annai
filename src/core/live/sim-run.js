@@ -10,9 +10,8 @@ import { EnglishError } from '../errors.js';
 import { num } from '../intl.js';
 
 /**
- * Developer → "Simulate a trip" (spec §13): a recorded or made-up GPS track and its clock fed through
- * live mode and Shiori as on the road, in a new trip of its own (choice 9), so the replay and the recap
- * can be tried before a real trip. The screen and the tests share it.
+ * Developer → "Simulate a trip" (spec §13): a recorded or made-up GPS track and its clock fed through live mode and Shiori as on the road,
+ * in a new trip of its own, so the replay and the recap can be tried before a real trip. The screen and the tests share it.
  * @typedef {import('./simulate.js').Itinerary & { timezone?: string, plan?: Record<string, any>, bookings?: Record<string, any> }} SimItinerary
  * @typedef {{ kind: 'itinerary', itinerary: SimItinerary } | { kind: 'trip', trip: string }} SimSource
  * @typedef {'fast' | number} SimSpeed  fast: as fast as it can go; a number: that many times real time
@@ -21,13 +20,13 @@ import { num } from '../intl.js';
  * @typedef {{ track: import('./simulate.js').TrackEvent[], tz: string, title: string, make: () => Promise<string> }} Prepared
  */
 
-/** The speeds a simulation can play at, besides as fast as it can go (choice 13). */
+/** The speeds a simulation can play at, besides as fast as it can go. */
 export const SPEEDS = Object.freeze([10, 60, 600]);
 
 /**
  * At a start: a simulation that was running when the page went away (a reload, or iOS letting it go in
  * the background) is over. The trip open before it opens again, if it is still here, so live mode
- * goes on into the user's own trip (review 3). Returns that trip, or null when nothing was running.
+ * goes on into the user's own trip. Returns that trip, or null when nothing was running.
  * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace }} c @returns {Promise<string | null>}
  */
 export async function recoverSimulation({ store, ws }) {
@@ -60,7 +59,7 @@ export class SimRun {
   /**
    * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace, registry: import('../registry.js').Registry,
    *   agent: import('../agent/loop.js').Agent | import('../agent/halves.js').Halves, live: import('./live.js').Live, base?: import('./clock.js').Clock,
-   *   llm?: { forgetScope: (scope: string) => Promise<unknown> } }} c llm: what a provider kept of a trip removed here goes too (G2)
+   *   llm?: { forgetScope: (scope: string) => Promise<unknown> } }} c llm: what a provider kept of a trip removed here goes too
    *   base: the clock a timed simulation plays on (the real one; tests pass a manual one)
    */
   constructor(c) {
@@ -93,7 +92,7 @@ export class SimRun {
     const p = source.kind === 'trip' ? await this.#fromTrip(source.trip) : this.#fromItinerary(source.itinerary);
     const trip = await p.make();
     const before = agent.target;
-    // Remembered until it ends, so a reload in the middle (iOS lets a page go in the background) opens the trip before again (review 3).
+    // Remembered until it ends, so a reload in the middle (iOS lets a page go in the background) opens the trip before again.
     await updateAppSettings(ws, { activeTrip: trip, simulation: { trip, before } });
     const clock = speed === 'fast' ? new ManualClock(p.track[0].at) : new PlayClock(p.track[0].at, { speed, base: this.c.base ?? realClock() });
     this.#clock = clock;
@@ -112,7 +111,7 @@ export class SimRun {
     this.#abort = new AbortController();
     this.#emit();
     const state = this.state;
-    // Another trip opened: the simulation stops, and that trip stays open (choice 10).
+    // Another trip opened: the simulation stops, and that trip stays open.
     const offOpen = agent.on('open', (/** @type {{ trip: string | null }} */ o) => { if (o.trip !== trip) this.stop(); });
     /** @type {() => void} */
     let begun = () => {};
@@ -148,7 +147,7 @@ export class SimRun {
         sim.dispose();
         await giveBack();
         restore();
-        // The trip open before opens again, so the phone's own GPS goes on into it (choice 9), unless the user opened another.
+        // The trip open before opens again, so the phone's own GPS goes on into it, unless the user opened another.
         if (agent.target === trip) {
           const back = before && before !== trip && (await store.tx(['scopes'], 'readonly', (t) => t.getScope(before))) ? before : null;
           await updateAppSettings(ws, { activeTrip: back, simulation: null }).catch(() => {});
@@ -250,7 +249,7 @@ export class SimRun {
           ...Object.entries(it.bookings ?? {}).map(([n, v]) => /** @type {[string, string, any]} */ ([`booking "${n}"`, `/bookings/${fileName(n)}.json`, v])),
         ];
         try {
-          // Marked a simulation's: outside its run, live mode leaves it as it is (review 4).
+          // Marked a simulation's: outside its run, live mode leaves it as it is.
           await ws.patch(id, '/trip.json', { timezones: [tz], simulation: true }, { author: 'user' });
           for (const [what, path, value] of files) {
             try {
@@ -271,7 +270,7 @@ export class SimRun {
     return prepared;
   }
 
-  /** A trip's recorded track, its plan and bookings (choice 12). @param {string} id @returns {Promise<Prepared>} */
+  /** A trip's recorded track, its plan and bookings. @param {string} id @returns {Promise<Prepared>} */
   async #fromTrip(id) {
     const { store, ws } = this.c;
     const scope = await store.tx(['scopes'], 'readonly', (t) => t.getScope(id));
@@ -313,7 +312,7 @@ const simTitle = (stem, n) => (n === 1 ? t`${stem} (simulation)` : t`${stem} (si
 
 /**
  * A simulation's trip title no trip on this device has: "<name> (simulation)", then "<name> (simulation 2)" and so on, so each
- * simulation can be told apart in Trips and in the Trace's trip filter (the second emulator re-check).
+ * simulation can be told apart in Trips and in the Trace's trip filter.
  * @param {import('../types.js').Store} store @param {string} stem the name it simulates @returns {Promise<string>}
  */
 async function ownTitle(store, stem) {

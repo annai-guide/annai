@@ -149,7 +149,7 @@ a.attach-chip, .attach-chip.gone { padding-inline: 12px; text-decoration: none; 
 .voice-row .live-chip, .voice-row .plugin-chip { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .voice-row > :not(:empty):not(.halves-sign) ~ :not(:empty):not(.halves-sign) { border-left: 1px solid var(--line); padding-left: 4px; margin-left: 4px; }
 .voice-row .voice-chip-wrap, .voice-row .plugin-chips, .voice-row .halves-sign { display: inline-flex; align-items: center; gap: 4px; }
-/* The working sign floats just above the bar at every size, so nothing in the bar moves as Kokoro starts and stops (the second drive, item 5). */
+/* The working sign floats just above the bar at every size, so nothing in the bar moves as Kokoro starts and stops. */
 .voice-row .halves-sign { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); white-space: nowrap; margin: 0 0 4px; padding: 0 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
 .voice-row .halves-sign.idle { visibility: hidden; }
 .voice-row .halves-sign .btn { min-height: 32px; padding-block: 2px; }
@@ -203,7 +203,7 @@ a.attach-chip, .attach-chip.gone { padding-inline: 12px; text-decoration: none; 
   .dock.voice .ib { width: 50px; height: 50px; }
 }
 /* And a phone on its side, which has little height: the box is a single line with no panel around it, so the page keeps a third of the height
-   with it open (the third emulator pass: 11 px of 296). */
+   with it open. */
 @media (orientation: landscape) and (max-height: 420px) {
   .type-sheet { margin-bottom: 0; }
   .type-sheet input { min-height: 44px; }

@@ -3,11 +3,9 @@ import { t } from '../l10n.js';
 import { EnglishError } from '../errors.js';
 
 /**
- * Trip simulation (spec §13, §18): a GPS track and a fake clock fed through the same machinery as
- * a real trip. A track comes from an itinerary (a route with stops and their times); a Simulation
- * plays it through sensors of its own (location, visibility, connectivity) into the live engine.
- * Milestone 7 puts a screen on it ("Simulate a trip"); tests step it as fast as it can go, and a
- * person can watch it ten times faster than real time (§18).
+ * Trip simulation (spec §13, §18): a GPS track and a fake clock fed through the same machinery as a real trip. A track comes from an
+ * itinerary (a route with stops and their times); a Simulation plays it through sensors of its own (location, visibility, connectivity)
+ * into the live engine. Tests step it as fast as it can go, and a person can watch it ten times faster than real time (§18).
  * @typedef {{ name?: string, lat: number, lng: number, arrive?: string, leave?: string }} RoutePoint
  *   a stop has arrive and leave ("HH:MM" on the start's day, at its offset); the first only leaves, the last only
  *   arrives; points without either shape the road
@@ -189,7 +187,7 @@ export class Simulation {
   }
 
   /**
-   * In real time on a clock: a scaledClock, ten times faster for a person watching (spec §18).
+   * In real time on a clock: a PlayClock, ten times faster for a person watching (spec §18).
    * @param {import('./clock.js').Clock} clock @param {{ onEnd?: () => void }} [o] @returns {() => void} stops it
    */
   play(clock, { onEnd } = {}) {

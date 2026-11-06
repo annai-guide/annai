@@ -19,7 +19,7 @@ export async function tripStamps(ctx, id) {
 
 /**
  * @param {Stamp[]} stamps @param {{ max?: number, big?: boolean }} [o] max: how many show before "+N"; big: the trip page's and the replay's
- * A word too long for its ring at 7 px, the smallest that still reads, shows its start (review m1): 8 characters on a card, 11 big.
+ * A word too long for its ring at 7 px, the smallest that still reads, shows its start: 8 characters on a card, 11 big.
  */
 export function stampMarks(stamps, { max = 2, big = false } = {}) {
   if (!stamps.length) return null;
@@ -35,7 +35,7 @@ export function stampMarks(stamps, { max = 2, big = false } = {}) {
 
 /**
  * The words of a trip's facts joined by " · ", with the stamp count in a span a screen reader skips: the marks beside the line say
- * the count and the names, and a link holding both said "3 stamps" twice (the second emulator re-check).
+ * the count and the names, and a link holding both would say "3 stamps" twice.
  * @param {(string | { stamps: string } | null)[]} parts @returns {(string | HTMLElement)[]}
  */
 export function factsWords(parts) {

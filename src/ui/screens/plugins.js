@@ -15,7 +15,7 @@ import { finder, byKind } from './add.js';
  * Settings → Plugins (spec §5.3, §16.2): what is installed, with updates, searched and filtered as
  * the catalog is (provider plugins under Model providers, naming the providers made from them). Add
  * opens the catalog's Add screen, where annai's catalog, a file or an address is installed from.
- * A plugin's own page is #/plugins/<id> (milestone 8b, choice 11).
+ * A plugin's own page is #/plugins/<id>.
  * @param {any} ctx @param {{ parts?: string[] }} [route]
  */
 export async function renderPlugins(ctx, route) {
@@ -50,7 +50,7 @@ export function stateOf(r) {
 
 
 /**
- * What Plugins says of each installed plugin besides its state (milestone 1): a provider plugin's
+ * What Plugins says of each installed plugin besides its state: a provider plugin's
  * providers (named: a plugin's page lists them instead), what removing it takes with it, and the plugins that need one.
  * @param {any} ctx @param {any[]} rows @returns {Promise<Map<string, { providers: { id: string, name: string }[], named: string | null, lines: string[] }>>}
  */

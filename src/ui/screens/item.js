@@ -10,10 +10,9 @@ import { backCrumb, original } from './booking.js';
 import { tripZoneOf } from '../../core/trip-files.js';
 
 /**
- * A plan item's details (the bookings-and-trips design, goal 6: "what it is, when, where, notes, and the file it came from, if any"):
- * its title and kind, when (each end in its own zone, or All day), where, its notes as written, the booking it stands for, the file it
- * came from (a calendar's, or its booking's) with Open the original, then Ask Shiori about this and Change it (the raw form). Never the
- * raw JSON first. @param {any} ctx @param {{ parts: string[], params: Record<string, string> }} route
+ * A plan item's details (the bookings-and-trips design, goal 6): its title and kind, when (each end in its own zone, or All day), where,
+ * its notes as written, the booking it stands for, the file it came from with Open the original, then Ask Shiori about this and Change
+ * it (the raw form). Never the raw JSON first. @param {any} ctx @param {{ parts: string[], params: Record<string, string> }} route
  */
 export async function renderItem(ctx, route) {
   const id = route.parts[1];

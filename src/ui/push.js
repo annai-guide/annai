@@ -11,7 +11,7 @@ import { t } from './dom.js';
 
 /** The service worker's news cache (sw.js PUSH_NEWS). */
 export const PUSH_NEWS = 'annai-push';
-/** The end-to-end tests' stand-in subscription (6b choice 16). */
+/** The end-to-end tests' stand-in subscription. */
 const FAKE = 'annai.pushSubscription';
 
 /** The service worker's registration, or a plain error after 10 s. @returns {Promise<ServiceWorkerRegistration>} */
@@ -58,7 +58,7 @@ export function browserSource() {
       if (stand) return 'granted';
       return typeof Notification === 'undefined' ? 'unsupported' : Notification.permission;
     },
-    // Called first thing in the tap: iOS asks only during a user activation (6b choice 11).
+    // Called first thing in the tap: iOS asks only during a user activation.
     ask() {
       if (stand) return Promise.resolve('granted');
       if (typeof Notification === 'undefined') return Promise.resolve('denied');
@@ -93,8 +93,8 @@ export function browserSource() {
 let reading = Promise.resolve();
 
 /**
- * What the service worker saw since annai last looked, oldest first; read once (6b choice 10). Reads
- * run one after another, so two at the same moment never both get an entry (fix pass N2).
+ * What the service worker saw since annai last looked, oldest first; read once. Reads
+ * run one after another, so two at the same moment never both get an entry.
  * @param {CacheStorage} [cache] @returns {Promise<any[]>}
  */
 export function takeNews(cache = globalThis.caches) {
@@ -129,7 +129,7 @@ export function onPushMessage(fn) {
   });
 }
 
-/** Closes the notifications for reminders annai already said on screen (6b choice 3). @param {string[]} keys */
+/** Closes the notifications for reminders annai already said on screen. @param {string[]} keys */
 export async function closeNotifications(keys) {
   if (!keys.length) return;
   for (const n of await (await registration()).getNotifications()) if (keys.includes(n.tag)) n.close();

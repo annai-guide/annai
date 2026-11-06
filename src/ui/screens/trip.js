@@ -54,7 +54,7 @@ export async function renderTrip(ctx, route) {
     extra,
     await filesSection(ctx, id),
     await packPanel(ctx, id),
-    // Every file by folder, and the box that adds one by path: the full list, folded below the everyday one (My call 5).
+    // Every file by folder, and the box that adds one by path: the full list, folded below the everyday one.
     allFiles(id, fileList(id, files), newFile(ctx, id)));
 }
 
@@ -86,7 +86,7 @@ async function filesSection(ctx, id) {
   const all = await readTripFiles(ctx.ws, ctx.store, id);
   const rows = fileRows(all);
   const from = `#/trip/${encodeURIComponent(id)}`;
-  // Files deleted and kept, as the conversation still names them (Task 7): each opens its deleted-file screen, with Restore.
+  // Files deleted and kept, as the conversation still names them: each opens its deleted-file screen, with Restore.
   const gone = deletedFiles(await deletesOf(ctx.store, id), all.files);
   return h('section', { class: 'trip-files', 'aria-label': t`Files` },
     h('h2', { class: 'section', text: t`Files` }),

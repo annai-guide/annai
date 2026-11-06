@@ -17,7 +17,7 @@ import { sentences } from '../intl.js';
  * @typedef {Omit<LiveDriver, 'close'> & { closed: Promise<{ code: number, reason: string, kind: ErrorKind | null }>, on(fn: (e: LiveEvent) => void): () => void,
  *   close(why?: string): void, bytes: { in: number, out: number }, handle?: string, tunables: Record<string, any>,
  *   audioIn: LiveSetup['audioIn'], audioOut: LiveSetup['audioOut'], heardLive: boolean }} LiveSession
- *   closed: kind null when annai closed it; handle: the latest resume handle, in memory only (decision 28); tunables: what it opened with; audioIn, audioOut: 16-bit PCM at their rates (K6);
+ *   closed: kind null when annai closed it; handle: the latest resume handle, in memory only; tunables: what it opened with; audioIn, audioOut: 16-bit PCM at their rates;
  *   heardLive: its tunable heardLive, its transcript of the user streaming in while they speak
  */
 
@@ -26,7 +26,7 @@ export const READY_MS = 15_000;
 /** How many times a protocol may open again before the session is ready, a field refused each time (Gemini's language hints, then its proactive audio). */
 export const MAX_REOPENS = 2;
 
-/** A session's format, unless its setup says: the one its tunable names, else its protocol's first (K6). @param {any[] | undefined} list @param {unknown} name */
+/** A session's format, unless its setup says: the one its tunable names, else its protocol's first. @param {any[] | undefined} list @param {unknown} name */
 const pick = (list, name) => list?.find((f) => f.format === name) ?? list?.[0];
 
 /**
@@ -63,7 +63,7 @@ export function closeKind(type, code, reason) {
 
 /**
  * Opens a live session; an address not at the ability's origin throws at once. A protocol may open once more, before
- * the session is ready, with the tunables its reopen() gives (decision 11), twice at most.
+ * the session is ready, with the tunables its reopen() gives, twice at most.
  * @param {{ type: EndpointType, endpoint: import('../llm/config.js').Endpoint, model: import('../llm/config.js').Model, key: string | null,
  *   tunables: Record<string, any>, setup: Omit<LiveSetup, 'audioIn' | 'audioOut'> & Partial<LiveSetup>, trace: ReturnType<typeof import('../llm/trace.js').modelTrace> | null,
  *   socket?: (url: string, protocols: string[]) => any, registry?: { fail(id: string, what: string, e: unknown): void }, wake?: string, now?: () => number, readyMs?: number,
@@ -168,7 +168,7 @@ export function openLive(c) {
       const broke = (/** @type {string} */ what, /** @type {unknown} */ e) => {
         bug(what, e);
         st.broken = true;
-        // A refusal the protocol read (K6): the session ends with its kind and words.
+        // A refusal the protocol read: the session ends with its kind and words.
         // Its words go with it: what it was (said), or the words it carries (shown), keys blanked.
         if (e instanceof ProviderError) down(Object.assign(new ProviderError(e.kind, blank(e.message), { said: e.said, provider: e.provider }), e.shown === undefined ? {} : { shown: blank(e.shown) }), 1000, e.message);
         s.close(1000);
@@ -268,7 +268,7 @@ export function openLive(c) {
 const opened = () => [{ step: 'access', ok: true, detail: t`annai can open a live session at this address from the browser.` }, { step: 'key', ok: true, detail: t`The key works.` }];
 
 /**
- * A realtime model's Test (K4): asked "Say OK.", the session must answer aloud, in words, within ms; then it closes.
+ * A realtime model's Test: asked "Say OK.", the session must answer aloud, in words, within ms; then it closes.
  * onAudio: its voice, to play as it comes. @param {LiveSession} session @param {{ onAudio?: (data: Uint8Array) => void, ms?: number }} [o]
  * @returns {Promise<{ ok: boolean, steps: import('../llm/check.js').TestStep[] }>}
  */

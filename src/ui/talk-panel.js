@@ -17,16 +17,16 @@ export function metaLine(result) {
 /** Why the model didn't answer, in plain words, with any key blanked (spec §9.9). @param {any} ctx @param {unknown} err @param {string} name */
 function failure(ctx, err, name) {
   const a = err instanceof AllFailedError ? err.attempts[0] : null;
-  // What went wrong, then in brackets a provider's own words, or the screens' words for what one of annai's own was (review 3).
+  // What went wrong, then in brackets a provider's own words, or the screens' words for what one of annai's own was.
   const detail = a?.said ? saidWords(a.said, a.outcome).replace(/[.。]$/u, '') : a?.error;
   const why = a ? `${outcomeText(a.outcome)}${detail ? t` (${detail})` : ''}` : err instanceof ProviderError ? explain(err) : messageOf(err);
   return shownWithoutSecrets(ctx.store, t`${name} didn't answer: ${why}. No other model was asked.`);
 }
 
 /**
- * "Try this model" on a chat model's page (the user, 2026-10-18): a plain text conversation with
- * that model alone, with no fallback, each reply with its tokens and cost. Nothing is kept but the
- * trace. Replies only ever go into textContent (spec §15).
+ * "Try this model" on a chat model's page: a plain text conversation with that model alone, with no
+ * fallback, each reply with its tokens and cost. Nothing is kept but the trace. Replies only ever go
+ * into textContent (spec §15).
  * @param {any} ctx @param {import('../core/llm/config.js').Model} model
  */
 export function tryPanel(ctx, model) {

@@ -72,15 +72,6 @@ export class ManualClock {
 }
 
 /**
- * A clock speed times faster than real time, from start (spec §18: a trip simulation at 10×).
- * @param {number} start @param {number} speed @param {Clock} [base] @returns {Clock}
- */
-export function scaledClock(start, speed, base = realClock()) {
-  const t0 = base.now();
-  return { now: () => start + (base.now() - t0) * speed, set: (fn, ms) => base.set(fn, Math.max(0, ms) / speed), clear: (h) => base.clear(h) };
-}
-
-/**
  * A clock that plays time at a speed from a moment, and can pause, change speed or move (spec §13:
  * the replay's playback at adjustable speed; §18: a simulation at 10×). Its timers are in its own
  * time: when it pauses, changes speed or moves, they wait again from there, and one it moved past

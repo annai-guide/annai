@@ -4,18 +4,16 @@ import { speechCost } from './cost.js';
 import { pickOut, formatOf } from '../voice/formats.js';
 import { anySignal } from '../signals.js';
 
-/** A piece of a voice's stream that a player can take: 16-bit PCM at a finite rate (fix pass). @param {any} p */
+/** A piece of a voice's stream that a player can take: 16-bit PCM at a finite rate. @param {any} p */
 const playable = (p) => p?.pcm instanceof Int16Array && Number.isFinite(p.rate);
 
 /**
- * Speech calls (spec §9.1, §10): one transcription, or one voice clip, from a speech endpoint type.
- * The type builds the HTTP request and reads the reply; annai sends it with a time limit, reads
- * errors into the same kinds as chat calls (§9.9), and traces it as a net.request with its cost
- * (§2: every request is traceable), with each clip's format and size. Keys never reach the trace (§9.9).
- * A voice whose format is 'auto' is asked for the smallest it offers (audioOut) that the device plays.
- * A voice that streams (readSpeechStream, its stream tunable not off), asked for a stream, gives its PCM
- * as it comes (G3): the call resolves at the first piece, which must come within the time limit, as a
- * whole clip must; then no gap may be longer. It is traced once all of it is in, or when it fails.
+ * Speech calls (spec §9.1, §10): one transcription, or one voice clip, from a speech endpoint type. The type builds the HTTP request and
+ * reads the reply; annai sends it with a time limit, reads errors into the same kinds as chat calls (§9.9), and traces it as a net.request
+ * with its cost, with each clip's format and size. Keys never reach the trace (§9.9). A voice whose format is 'auto' is asked for the
+ * smallest it offers (audioOut) that the device plays. A voice that streams (readSpeechStream, its stream tunable not off), asked for a
+ * stream, gives its PCM as it comes: the call resolves at the first piece, which must come within the time limit, as a whole clip must;
+ * then no gap may be longer. It is traced once all of it is in, or when it fails.
  * @typedef {import('./contract.js').EndpointType} EndpointType
  * @typedef {{ data: Uint8Array, mediaType: string }} Clip
  * @typedef {import('./contract.js').SpeechStream} SpeechStream
@@ -24,7 +22,7 @@ const playable = (p) => p?.pcm instanceof Int16Array && Number.isFinite(p.rate);
  *   signal?: AbortSignal, timeoutMs?: number, trace?: ReturnType<typeof import('./trace.js').modelTrace>, registry?: import('../registry.js').Registry,
  *   now?: () => number, wake?: string, plays?: string[], stream?: boolean, unstyled?: boolean, languages?: import('./contract.js').Languages }} c  audio: transcribe it, with an 'in' type; text: say it, with an 'out' type;
  *   plays: what the device plays; stream: the caller plays a stream; unstyled: send no style (a server refused it); languages: what the user speaks, for a
- *   transcription's language hint (phase 2): a voice is given none, no voice API takes one
+ *   transcription's language hint: a voice is given none, no voice API takes one
  * @returns {Promise<{ text?: string, clip?: Clip, stream?: SpeechStream, cost: number | undefined, ms: number }>} text from an 'in' type, a clip or a stream from an 'out' type
  */
 export async function speechCall(c) {

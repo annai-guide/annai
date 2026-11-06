@@ -64,7 +64,7 @@ const driveKeep = {
 let voiceNow = null;
 /**
  * A tab that has stopped (another took annai over) or never started reloads once a tap's sound unlock has settled: no turn to wait
- * for, its store is closed, and no new version is swapped in (the reviews of phone-fixes-1). A running annai restarts with Updates.restart.
+ * for, its store is closed, and no new version is swapped in. A running annai restarts with Updates.restart.
  */
 const reloadSettled = async () => {
   await voiceNow?.settled();
@@ -148,16 +148,15 @@ async function boot() {
   armUnlock(window, () => voice.unlock());
 
   // Shiori (spec §6), talking about the trip that was open last: one half, or two when a Koe model is set
-  // (the Koe and Kokoro design). Her own tools are Kokoro's, the half that is Shiori as she always was.
+  // (the Koe and Kokoro design). Her own tools are Kokoro's.
   const agent = new Halves({ store, ws, llm, registry, codec, voice });
   // Steering-wheel and headset buttons tap Shiori while voice is on (spec §18, an experiment).
   mediaKeys({ session: /** @type {any} */ (navigator).mediaSession, agent, voice });
   agent.addLoopTools(selfTools(agent.kokoro));
   // Starting, opening and listing trips, and moving a file into one, for what the user hands her (the bookings-and-trips design).
   agent.addLoopTools(tripTools(agent));
-  // Live mode (spec §11): watches, the plan's own reminders, catch-up. The phone's sensors come in a plugin.
-  // Notifications for a closed annai (spec §11.6): what the service worker saw is read at each
-  // catch-up; the mirror keeps the push relay in step with live mode.
+  // Live mode (spec §11); the phone's sensors come in a plugin. Notifications for a closed annai (§11.6): what the
+  // service worker saw is read at each catch-up; the mirror keeps the push relay in step with live mode.
   /** @type {PushMirror | null} */
   let push = null;
   const news = async () => {
@@ -211,16 +210,15 @@ async function boot() {
       await ensureProvided(plugins, 'storage-type', type, { keepOff: o.keepOff });
     },
   });
-  // The welcome, once per device, at annai's plain start (the user, 2026-10-18): a link that opens a screen
+  // The welcome, once per device, at annai's plain start: a link that opens a screen
   // (a shared trip, a share, the sign-in coming back) is never interrupted. Decided before the first draw.
   if (await shouldWelcome(ws, location).catch(() => false)) history.replaceState(history.state, '', '#/welcome');
   else {
-    // Otherwise a plain start opens the trip's screen that was open, unless that trip is gone (the user, 2026-10-21).
+    // Otherwise a plain start opens the trip's screen that was open, unless that trip is gone.
     const back = await screenToResume({ ws, store }, location).catch(() => null);
     if (back) history.replaceState(history.state, '', back);
   }
-  // Updates (spec §5.3, §17 rule 5): annai's own and its plugins', checked at start, on coming back to the screen,
-  // once a day, and on Check now. Packages installed from an address are checked there, each request in the trace.
+  // Updates (spec §5.3, §17 rule 5): annai's own and its plugins'. Packages installed from an address are checked there.
   const updates = new Updates({ host: plugins, env: { addressFetch: tracedFetch(store, SYS, { tool: /* en */ 'plugin updates' }), next: nextScreens } });
   updates.agent = agent;
   updates.voice = voice;
@@ -253,11 +251,11 @@ async function boot() {
   // Open and on screen: the service worker's news now (a notification annai already said is closed).
   onPushMessage(async () => {
     if (document.visibilityState !== 'visible') return; // read at the catch-up
-    // In live mode's own queue (news() above reads it, and tells the mirror), so a catch-up starting now reads it once (fix pass N2).
+    // In live mode's own queue (news() above reads it, and tells the mirror), so a catch-up starting now reads it once.
     closeNotifications(await live.newsArrived()).catch(() => {});
   });
   addEventListener('online', () => { push?.sync().catch(() => {}); });
-  // Deletions of what providers keep of the conversations, waiting for a connection (G2).
+  // Deletions of what providers keep of the conversations, waiting for a connection.
   addEventListener('online', () => { llm.drainKept().catch(() => {}); });
   plugins.connect({ llm, agent, notices: shell.notices });
   // A card the agent names (key) is taken down when a later turn works, and replaced by a newer one of its name.
@@ -281,7 +279,7 @@ async function boot() {
     agent.leaving();
     agent.hush('away');
   });
-  // A live session (K5) closes when the page goes out of view: its microphone never runs unseen. What comes meanwhile waits for it.
+  // A live session closes when the page goes out of view: its microphone never runs unseen. What comes meanwhile waits for it.
   document.addEventListener('visibilitychange', () => (document.visibilityState === 'hidden' ? agent.hush('away') : agent.shown()));
   addEventListener('pageshow', (e) => { if (e.persisted) agent.leaving(false); });
   offerPersonalityUpdates({ ws, agent, presets, notices: shell.notices });
@@ -291,8 +289,8 @@ async function boot() {
   if (isStandalone()) requestPersist();
   registerServiceWorker(store, shell, updates);
   // Installed plugins start after the shell is up, so a plugin that hangs can never lock the user out of
-  // Settings → Plugins (spec §17 rule 2). Each start has a time limit; see PluginHost. A page no worker takes
-  // may reload by itself; else none is tried, and one card names them, with Reload now.
+  // Settings → Plugins (spec §17 rule 2). A page no worker takes may reload by itself; else none is tried, and one
+  // card names them, with Reload now.
   pluginsMayLoad({ sw: navigator.serviceWorker, session: () => sessionStorage, reload: () => location.reload(), used }).then(async (may) => {
     const unloaded = may ? await startPlugins(plugins, shell) : Object.values(await plugins.installed().catch(() => ({}))).filter((s) => s.enabled).map((s) => s.name);
     gaveUp = !may || unloaded.length > 0;
@@ -310,7 +308,7 @@ async function boot() {
   // An iPhone Home Screen app that comes back from the background only resumes: the browser checks nothing then.
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') updates.auto().catch(() => {}); });
   setInterval(() => updates.auto().catch(() => {}), DAILY);
-  // A sign-in comes back to annai's address, for the plugin that started it (decision 16).
+  // A sign-in comes back to annai's address, for the plugin that started it.
   finishReturn({ llm, store, registry, plugins, notices: shell.notices, render: shell.render, held: () => (whyNoPlugins() ? NEEDS_RELOAD : undefined), go: (/** @type {string} */ hash) => { location.hash = hash; } })
     .then((was) => { if (was) shell.render(); });
 }

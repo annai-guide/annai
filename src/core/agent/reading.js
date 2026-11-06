@@ -10,20 +10,20 @@ import { MAX_PAGES, PAGE_EDGE } from '../pdf-pages.js';
 import { STOPPED } from './transcript.js';
 
 /**
- * How long a photo's description may take, in seconds (review A5): the same as a role waits for a model's first words (§9.6),
+ * How long a photo's description may take, in seconds: the same as a role waits for a model's first words (§9.6),
  * as a turn shouldn't wait on a side job longer than on its own model; a description is a few sentences.
  */
 export const DESCRIBE_S = 30;
 /**
- * And a PDF's reading (the fix pass), its pages drawn included: its words, up to 3,000 tokens, take a slow model (a local one, at
+ * And a PDF's reading, its pages drawn included: its words, up to 3,000 tokens, take a slow model (a local one, at
  * some 35 tokens a second) near 90 seconds, where a photo's few sentences fit in 30. Only Kokoro and one Shiori wait for it; Koe never does.
  */
 export const DESCRIBE_PDF_S = 90;
 /** What a PDF told only up to the output limit ends with. */
 const GOES_ON = /* en */ ' …(it stops here: the PDF goes on)';
-/** What a model that sees photos is asked, for one that can't (emulator pass, 5b). */
+/** What a model that sees photos is asked, for one that can't. */
 const DESCRIBE = /* en */ 'Describe this photo for someone who can\'t see it, in a few plain sentences: what is in it, any writing in it word for word, and anything a traveller would want to know. Reply with the description only.';
-/** And for one that can't read PDFs (the second emulator pass): the PDF's own words, as annai has no PDF library (spec §7.2). */
+/** And for one that can't read PDFs: the PDF's own words, as annai has no PDF library (spec §7.2). */
 const DESCRIBE_PDF = /* en */ "Give the content of this PDF for someone who can't open it: its text word for word as far as it goes (dates, times, names, addresses, prices and numbers exactly), tables as plain lines, and what any picture in it shows. Reply with the content only.";
 /** And a PDF's pages as pictures, for a model that sees photos, read for one that sees none. */
 const DESCRIBE_PAGES = /* en */ "These are pictures of a PDF's pages, in order. Give its content for someone who can't open it: its text word for word as far as it goes (dates, times, names, addresses, prices and numbers exactly), tables as plain lines, and what any picture in it shows. Reply with the content only.";
@@ -37,7 +37,7 @@ const DESCRIBE_PAGES = /* en */ "These are pictures of a PDF's pages, in order. 
 /**
  * The roles that read for a half, in order: those with a chat model on, a role whose list is an earlier one's left out (an empty
  * Utility is Main's). Kokoro, and one Shiori: Koe's, Utility's, Main's; Koe: Utility's, Main's, her own (she answers at once, so the
- * side job's cheaper role goes first; the coordinator's call, 2026-10-28).
+ * side job's cheaper role goes first).
  * @param {import('../llm/config.js').ModelConfig} cfg @param {'one' | 'kokoro' | 'koe'} half @returns {string[]}
  */
 export function readerRoles(cfg, half) {
@@ -54,8 +54,7 @@ export function readerRoles(cfg, half) {
 }
 
 /**
- * The note when nothing here can read it, naming the setting (the bookings design: "Only when nothing can read it does she say
- * which setting fixes it"). @param {'image' | 'pdf'} kind @param {{ plugin?: boolean, photos?: boolean }} [o]
+ * The note when nothing here can read it, naming the setting that fixes it. @param {'image' | 'pdf'} kind @param {{ plugin?: boolean, photos?: boolean }} [o]
  *   plugin: name the PDF pages plugin as the other fix (it isn't running, and a model here sees photos); photos: name a model that sees
  *   photos as the other fix (the plugin runs, and nothing here sees photos)
  */
@@ -64,7 +63,7 @@ export function noReader(kind, { plugin = false, photos = false } = {}) {
   if (kind === 'image') return "No model here can see photos, so what it shows can't be told. Tell the user what fixes it: a model that sees photos (Takes photos on its page in Settings → Models).";
   /* en */
   const base = "No model here can read PDFs, so what it says can't be told. Tell the user what fixes it: a model that reads PDFs (Takes PDFs on its page in Settings → Models)";
-  // Settings → Plugins, not its Add: the plugin may be installed but switched off, or crashed (the review of reading-files).
+  // Settings → Plugins, not its Add: the plugin may be installed but switched off, or crashed.
   /* en */
   if (plugin) return `${base}, or the PDF pages plugin (Settings → Plugins), which shows a PDF's pages to a model that sees photos.`;
   /* en */
@@ -102,7 +101,7 @@ export async function readFile(file, model, o) {
   /**
    * How long a reader waits for its first words: the longer of its role's own wait and DESCRIBE_S, so a role's short wait (Koe's 8 s)
    * doesn't cut a reading; for a PDF, never more than two thirds of its reading, so a reader that never starts answering always leaves
-   * the pages their turn (the re-review of reading-files). @param {string} role
+   * the pages their turn. @param {string} role
    */
   const wait = (role) => {
     const ms = Math.max(firstWordsMs(cfg, role), DESCRIBE_S * o.secondMs);
@@ -152,7 +151,7 @@ export async function readFile(file, model, o) {
         let drawn;
         try {
           // Up to MAX_PAGES, whatever this model's photo limit: the reading is kept for every model, and each request sends only its
-          // model's limit, from page 1 (round 6).
+          // model's limit, from page 1.
           drawn = await Promise.race([o.pages.pages(fromBase64(file.data), { max: MAX_PAGES, edge: PAGE_EDGE, signal: stop.signal }), stopped]);
         } catch (e) {
           if (stop.signal.aborted) throw e;
@@ -162,7 +161,7 @@ export async function readFile(file, model, o) {
           const why = `The PDF pages plugin couldn't draw its pages: ${/** @type {any} */ (e)?.message ?? e}`;
           return reading('failed', [failed, why, reader ? '' : noReader('pdf')].filter(Boolean).join('\n'));
         }
-        // A page with nothing drawn on it isn't sent (the review of reading-files: a booking's empty last page went as a picture every turn).
+        // A page with nothing drawn on it isn't sent (a booking's empty last page went as a picture every turn).
         const blank = Array.isArray(drawn.blank) ? drawn.blank : [];
         // Each picture knows its page, so a photo limit drops the last pages first and says which (the re-check of reading-files).
         const numbers = Array.from({ length: drawn.pages.length + blank.length }, (_, i) => i + 1).filter((n) => !blank.includes(n));
@@ -181,7 +180,7 @@ export async function readFile(file, model, o) {
         if (images.length && sees) return reading('pages', `Its pages as pictures, as you can't read PDFs: ${which}`, images);
         if (images.length) {
           // A reader is sent no more pages than its role's models all take, from page 1, and no stub for a PDF it can't see; its words say
-          // which pages they cover, as they are kept for every model (round 7).
+          // which pages they cover, as they are kept for every model.
           const most = (/** @type {string} */ role) => Math.min(MAX_PAGES, ...chatCandidates(cfg, role).flatMap((id) => {
             const m = cfg.models[id] ? modelOf(cfg.models[id]) : null;
             return m?.input.includes('image') && m.images?.maxCount ? [m.images.maxCount] : [];
@@ -190,7 +189,7 @@ export async function readFile(file, model, o) {
           const covered = told ? told.sent.map((/** @type {any} */ p) => p.page).filter((/** @type {any} */ n) => typeof n === 'number') : [];
           /* en */
           const read = !covered.length ? 'its pages' : covered.length === 1 ? `page ${covered[0]} of ${drawn.count}` : covered.every((n, i) => n === covered[0] + i) ? `pages ${covered[0]}–${covered.at(-1)} of ${drawn.count}` : `pages ${covered.slice(0, -1).join(', ')} and ${covered.at(-1)} of ${drawn.count}`;
-          // A blank page among them is said to be blank, as the pages line says it, so it doesn't look unread (round 8).
+          // A blank page among them is said to be blank, as the pages line says it, so it doesn't look unread.
           const blanks = !blank.length ? '' : blank.length === 1 ? `; page ${blank[0]} is blank` : `; pages ${blank.slice(0, -1).join(', ')} and ${blank.at(-1)} are blank`;
           /* en */
           const which = `${read}${blanks}`;

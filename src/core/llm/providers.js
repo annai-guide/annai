@@ -66,7 +66,7 @@ export function speechAdd(list, id, role) {
 
 /**
  * A speech list with models added behind everything in it, the stand-ins too, so the free path stays
- * first (decision 6; the user, 2026-10-18: "Add, behind phone"). A list the user emptied stays empty. @param {readonly string[]} list @param {string[]} add @returns {string[]}
+ * first. A list the user emptied stays empty. @param {readonly string[]} list @param {string[]} add @returns {string[]}
  */
 export function speechBehind(list, add) {
   return list.length ? [...list, ...add.filter((id, i) => !list.includes(id) && add.indexOf(id) === i)] : [...list];
@@ -135,7 +135,7 @@ function picker(cfg, providerId) {
 /**
  * Adds a provider from its description (spec §9.8): it, every ability's models, its one key, and the
  * suggestion for chat roles still empty (by default only its free models: an empty chat role falls back to Main, so
- * a model that costs money there would go ahead of something free); speech models go behind (decision 6), the recommended
+ * a model that costs money there would go ahead of something free); speech models go behind, the recommended
  * suggestion's when the chosen one has none, so "free" still brings a voice. @param {{ ws: Workspace, store: Store }} c @param {ProviderSource} src @param {AddOptions} [o]
  * @returns {Promise<string>} the provider's id
  */
@@ -193,8 +193,8 @@ function liveInstead(src, ability, models) {
 }
 
 /**
- * Brings providers up to date when their plugin's version changed (decision 4): new template layers,
- * models new to the description (in no role), and new abilities switched off (decision 5). The user's
+ * Brings providers up to date when their plugin's version changed: new template layers,
+ * models new to the description (in no role), and new abilities switched off. The user's
  * layers stay; models gone from the description, or removed by the user, stay as they are, except that a model leaves Koe · Realtime (a refused session first)
  * at the update that dropped it: the previous description named it, this one doesn't, and lists that ability's models. A list it would empty gets the description's model. @param {{ ws: Workspace }} c @param {ProviderSource[]} sources @returns {Promise<number>} the providers refreshed
  */
@@ -228,7 +228,7 @@ export async function syncProviders({ ws }, sources) {
       if (d && m.template) changed.push({ ...m, template: { id: m.template.id, version: src.version, values: d.values } });
       else if (!m.template || m.template.id.startsWith('list/')) {
         // A model added from the list or by id started with its ability's modelDefaults then: a default new since (Claude's photos
-        // and PDFs, phone-fixes-1) reaches it, in the layer that holds its start, unless it or the user has that field.
+        // and PDFs) reaches it, in the layer that holds its start, unless it or the user has that field.
         const was = rec.template.values.abilities?.[m.ability]?.modelDefaults ?? {};
         const now = /** @type {Record<string, any>} */ (values.abilities?.[m.ability]?.modelDefaults ?? {});
         const start = /** @type {Record<string, any>} */ (m.template ? m.template.values : m.user ?? {});

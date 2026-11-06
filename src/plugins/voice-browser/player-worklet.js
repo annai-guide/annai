@@ -1,28 +1,20 @@
 /**
- * A live voice's player, on the audio thread (spec §10.8; the pops investigation, 2026-10-23): one continuous sound for a
- * stream of 16-bit PCM pieces, whatever their sizes and however they come. Loaded by the voice-browser plugin with addModule,
- * from annai's own origin, as the capture worklet is.
- * - It resamples to the context's rate itself, linearly, carrying its place across pieces: a piece's edge is no edge in the
- *   sound. (A buffer a piece, each resampled alone, left a wrong sample at many edges: a crackle at 44.1 kHz.)
- * - It starts once PRE_MS of sound is in, the stream has ended, or CAP_MS have passed; and so again after running dry.
- * - About to run dry, it fades out over the sound it still has, and fades in when it plays again (or back in, if more came
- *   during the fade): a hole has no edges.
- * - 'stop' fades out over STOP_MS, or what is left if less, then it is silent and done; 'end' plays to the last sample, then
- *   it is done (unless it had already run dry and faded out, with nothing since: then what was left of the fade is let go).
- * Messages in: an Int16Array (its buffer transferred), 'end', 'stop', and { sync } (answered at once with itself, once all
- * posted before it is in: the browser suite renders offline with it). Out: a report (Report in index.js) every REPORT_MS
- * while it lives, and at once when it starts playing, runs dry or is done.
+ * A live voice's player, on the audio thread (spec §10.8): one continuous sound for a stream of 16-bit PCM pieces, whatever their
+ * sizes. It resamples to the context's rate itself, carrying its place across pieces: each piece resampled alone left a wrong
+ * sample at many edges, a crackle at 44.1 kHz. It fades out before running dry and in when it plays again: a hole has no edges.
+ * Messages in: an Int16Array (its buffer transferred), 'end', 'stop', and { sync } (answered with itself once all posted before it
+ * is in: the browser suite renders offline with it). Out: a report (Report in index.js) every REPORT_MS, and at once when it
+ * starts playing, runs dry or is done.
  */
 const audio = /** @type {any} */ (globalThis);
 
 /**
- * Sound held before it starts. From 255 past Gemini turns (the pops investigation's table): with none, a 100 ms stall in
- * the connection would have left a hole in 85 of them; with 150 ms, in 8. Her first sound comes later by a median of 0 ms and
- * a p90 of 35 ms (it mostly is in already by her first word); 200 ms gains little more.
+ * Sound held before it starts. In 255 past Gemini turns, a 100 ms stall would have left a hole in 85 with none held and in 8
+ * with 150 ms, for a p90 of 35 ms on her first sound; 200 ms gains little more.
  */
 const PRE_MS = 150;
 /**
- * What waits for more plays anyway this long after its first sample came: above the largest start delay the table measured
+ * What waits for more plays anyway this long after its first sample came: above the largest start delay measured
  * (185 ms), and while sound waits a half-duplex microphone is deaf with nothing playing.
  */
 const CAP_MS = 250;

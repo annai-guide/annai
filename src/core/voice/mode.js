@@ -32,9 +32,9 @@ const OWN = /\b(iphone|ipad|built-in|internal|speaker|speakerphone|receiver|earp
 const WORN = /\b(airpods|earpods|beats|head(phones?|set)|ear(buds?|phones?)|buds|wired)\b/i;
 
 /**
- * What audio the phone is using, from the names of its audio devices (spec §10.4): whether speaking may cut a live Koe off, and the Trace's voice.route. It never
- * turns voice on or off. The one input in use, while the microphone is open, else those present. A name nobody listed is unknown, never headphones (the iPhone trace, 2026-10-22: "headphones" on the
- * phone's own speaker). Browsers name devices only after the microphone was allowed: without names, annai can't tell.
+ * What audio the phone is using, from the names of its audio devices (spec §10.4): whether speaking may cut a live Koe off, and the Trace's
+ * voice.route. It never turns voice on or off. The one input in use, while the microphone is open, else those present. A name nobody listed
+ * is unknown, never headphones (an iPhone's own speaker read as headphones). Browsers name devices only after the microphone was allowed.
  * @param {{ kind: string, label: string }[]} devices @returns {Route}
  */
 export function routeOf(devices) {

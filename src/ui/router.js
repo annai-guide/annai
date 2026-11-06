@@ -1,10 +1,7 @@
 /**
- * Hash routes: "#/trips", "#/trip/<id>", "#/trip/<id>/file?path=…", "#/waiting/file?path=…" (a file waiting with Shiori) (&from= the Plan, booking or Now screen its crumb goes back to), "#/plan" (the open trip's), "#/trip/<id>/plan", "#/trip/<id>/booking?path=…" and "#/trip/<id>/item?path=…" (a booking's and a plan item's details; &from= Now), "#/settings",
- * "#/trip/<id>/recap", "#/trip/<id>/replay?day=…", "#/simulate", plugins' pages: "#/ext/<plugin>/<screen>", "#/plugin-page/<plugin>/<page>",
- * "#/trip/<id>/ext/<plugin>/<tab>",
- * "#/welcome" (and "#/welcome/2" to 6), "#/about" (and "#/about/licence", "#/about/fonts"), "#/experimental", "#/updates",
- * "#/plugins", "#/add" (the catalog: ?kind=providers from Models, ?ability=transcription or voice from a speech role; ?from= its crumb), "#/plugin-install" (the package picked on Add), "#/models", "#/voice", "#/shiori" (?edit=, ?compare=), "#/sees?half=kokoro" (or koe: what that half sees), "#/languages", "#/talk", "#/tools", "#/mcp" (MCP servers), "#/models/provider?id=…" (?new=<plugin>: a provider plugin's own Add flow), "#/models/model?id=…", "#/trace", "#/notifications", "#/import?inbox=1". "#import=<url>" (spec §12.3)
- * becomes the import screen with that URL. A mangled link (a broken %-escape) opens Trips.
+ * Hash routes: "#/<screen>" (shell.js's SCREENS), "#/trip/<id>/<file, plan, booking, item, recap or replay>", "#/waiting/file?path=…"
+ * (a file waiting with Shiori), plugins' pages: "#/ext/<plugin>/<screen>", "#/plugin-page/<plugin>/<page>", "#/trip/<id>/ext/<plugin>/<tab>".
+ * "#import=<url>" (spec §12.3) becomes the import screen with that URL. A mangled link (a broken %-escape) opens Trips.
  * @param {string} hash
  * @returns {{ name: string, parts: string[], params: Record<string, string> }}
  */

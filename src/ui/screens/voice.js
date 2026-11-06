@@ -48,14 +48,14 @@ export async function renderVoice(ctx) {
   });
   const silence = h('input', { id: 'voice-silence', inputmode: 'numeric', value: numField(s.silenceSeconds) });
   const firstWords = h('input', { id: 'voice-first-words', inputmode: 'numeric', value: numField(s.firstWordsSeconds) });
-  // What she says shows on the screen unless switched off here (the user, 2026-10-23); it lives with the Shiori settings.
+  // What she says shows on the screen unless switched off here; it lives with the Shiori settings.
   const showWords = savedCheck(t`Show what she says`, shownSettings(app).showWords, (on) => updateAppSettings(ctx.ws, { shiori: { showWords: on } }));
   const clips = savedCheck(t`Keep voice clips`, s.keepClips, (on) => save({ keepClips: on }));
   // Koe live (K5): where a live session's audio goes, said plainly; its quiet spell, and whether speaking cuts her off.
   const live = [...new Set((cfg.roles[KOE_REALTIME]?.models ?? []).filter((/** @type {string} */ id) => abilityOf(cfg, id)?.kind === 'realtime')
     .map((/** @type {string} */ id) => providerOf(cfg.providers[cfg.models[id].provider]).name))];
   const closeAfter = h('input', { id: 'voice-close-after', inputmode: 'numeric', value: numField(s.closeAfterSeconds) });
-  // One setting, on by default (the second drive, item 3): on a phone that can keep its screen on.
+  // One setting, on by default: on a phone that can keep its screen on.
   const awake = ctx.awake?.available ? savedCheck(t`Keep the screen on while GPS is on`, ctx.awake.chosen, (on) => ctx.awake.choose(on)) : null;
   const bargeIn = savedCheck(t`Cut her off by speaking`, s.bargeIn, (on) => save({ bargeIn: on }));
 

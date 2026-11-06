@@ -3,7 +3,7 @@ import { forget } from '../forget.js';
 import { logEvent } from '../events.js';
 
 /**
- * Moving over from endpoints to providers (milestone 1, decision 1): no conversion. The endpoints from
+ * Moving over from endpoints to providers: no conversion. The endpoints from
  * before go, with their models, their places in roles, their keys, their uploads and the templates
  * cache, files and history alike (spec §4.9), and a card names them so the user adds providers again.
  * A backup from before, restored later, is moved over again at the next start.

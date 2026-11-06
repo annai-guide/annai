@@ -1,12 +1,10 @@
 import { h } from './dom.js';
 
 /**
- * Shiori, the character (spec §16.3): a white fox in a vermilion scarf, with her trail-tape hairpin at her left ear.
- * Her art is the user's art kit, traced by scripts/shiori-art/ into ART: parts that move on their own, like a puppet's,
- * and other drawings of some (ears folded or angled out, her head turned or asleep) that take their place. States move
- * the parts with transforms and transitions (shiori.css); her eyes and her streamer are drawn here, as shapes that
- * change smoothly, never swapped pictures. Her only loops: breathing while asleep, and her tail's tip and the
- * streamer on her marker while she works. A named component: setState, setLevel, glance, blink. Built without innerHTML.
+ * Shiori, the character (spec §16.3). Her art is the art kit, traced by scripts/shiori-art/ into ART: parts that move on
+ * their own, like a puppet's, and other drawings of some that take their place. States move the parts with transforms
+ * (shiori.css); her eyes and streamer are drawn here, as shapes that change smoothly, never swapped pictures.
+ * A named component: setState, setLevel, glance, blink. Built without innerHTML.
  * @typedef {'sleeping' | 'listening' | 'ignoring' | 'hearing' | 'thinking' | 'speaking' | 'waiting' | 'away' | 'offline'} AvatarState
  */
 
@@ -26,16 +24,10 @@ const part = (id) => s('use', { href: `${ART}#${id}` });
 /** A part in a group of its own, to move. @param {string} cls @param {...string} ids */
 const group = (cls, ...ids) => s('g', { class: cls }, ...ids.map(part));
 
-// Her eyes, in the art's units (3 pixels of the kit's front master): an oval (24 points round it), a lash, and a
-// highlight [x, y, rx, ry]. Front: her right eye, on your left; her left mirrors it. The turned eyes (FAR, NEAR), the
-// asleep ones and the streamer are scripts/shiori-art/measure.mjs's numbers as it prints them. The front open eye is
-// tuned by hand and differs from what the tool prints, on purpose, so a re-run of the tool doesn't change it:
-//   - OPEN is the tool's oval, but for its 8th and 9th points (by the lash's root), which come from the first round's
-//     measurement and are 1 to 3 units off what the tool prints now;
-//   - LASH was traced by hand from the master, along the lash's outer edge and back along its inner one; the tool
-//     traces the same stroke as a different 13-point outline;
-//   - LIGHT is round: the tool measures 14.5 by 14.8.
-// Don't paste the tool's front-eye numbers over these without looking at her eyes.
+// Her eyes, in the art's units: an oval (24 points round it), a lash, and a highlight [x, y, rx, ry]. Front: her right
+// eye, on your left; her left mirrors it. The other eyes and the streamer are scripts/shiori-art/measure.mjs's numbers.
+// OPEN, LASH and LIGHT are tuned by hand and differ from the tool on purpose: don't paste its numbers over them without
+// looking at her eyes.
 const OPEN = [396, 563, 394, 552, 390, 542, 385, 531, 378, 520, 367, 510, 353, 502, 335, 501, 324, 513, 316, 527, 311, 539, 308, 551,
   306, 563, 307, 576, 310, 588, 316, 600, 326, 609, 339, 615, 353, 617, 367, 615, 380, 611, 391, 601, 396, 588, 397, 575];
 const LASH = [339, 501, 322, 504, 304, 514, 289, 527, 280, 540, 274, 554, 280, 577, 287, 560, 296, 543, 307, 529, 319, 519, 327, 514, 333, 510];
@@ -67,9 +59,9 @@ const front = (e) => ({ eyes: [e, { iris: each(e.iris, (x, y) => [MIRROR - x, y]
 /** Points 1 to 11 of an oval are its top half, 13 to 23 its bottom half. @param {number} i */
 const top = (i) => i <= 12;
 
-/** A thick crescent bowed downward (‿), as in her icon: along a curve from its outer end (a) round (b) to its inner end
- * (c), thickest in the middle. Points 0 to 11 of the open eye (its inner end and top) go along the crescent's top
- * from its inner end, 12 to 23 along its bottom. @param {number[][]} abc @param {number} half its half-thickness at the ends
+/** A thick crescent bowed downward (‿), as in her icon: from its outer end (a) round (b) to its inner end (c). Points 0
+ * to 11 of the open eye go along its top from its inner end, 12 to 23 along its bottom.
+ * @param {number[][]} abc @param {number} half its half-thickness at the ends
  * @returns {Eye} */
 function crescent([a, b, c], half) {
   const at = (/** @type {number} */ t) => [0, 1].map((k) => (1 - t) ** 2 * a[k] + 2 * t * (1 - t) * b[k] + t * t * c[k]);
@@ -192,9 +184,8 @@ function eyes(gazes, first, still) {
   return { el, to };
 }
 
-// The streamer (README "Streamer"), measured by scripts/shiori-art/measure.mjs from the kit's tape_streamer: the middle
-// of its outline along its top edge, its end's two corners, along its bottom edge, and its root's bottom corner, in
-// the art's units from the middle of its straight root edge. It waves as a path, its root tucked under a bow's knot.
+// The streamer (README "Streamer"), measured by measure.mjs from the kit's tape_streamer: along its top edge, its end's
+// two corners, along its bottom edge, its root's bottom corner, in the art's units from the middle of its root edge.
 const STREAMER = [1.3, -22.7, 25.3, -20.7, 49.3, -12.8, 73.3, -3.8, 97.3, 1, 121.3, -3.8, 145.3, -15.3, 169.3, -30.2, 189, -45.5,
   216.7, 27.5, 169.3, 48.7, 145.3, 53.8, 121.3, 54.7, 97.3, 52, 73.3, 46.8, 49.3, 40.3, 25.3, 31, 1.7, 21.5];
 const LONG = 217; // its length
@@ -249,9 +240,7 @@ export function createAvatar({ size = 'md', label } = {}) {
   const hair = streamer(HAIR(0, 0));
   const flag = streamer(FLAG(0, 0));
   const tip = group('tip', 'tail-tip');
-  // Back to front, as the kit's README lays them: what she leaves while working; her body; her tail, wrapped round her
-  // while she sleeps; her head (ears in their other poses, her skull under the upright ears, her head and hairpin; or
-  // her head asleep; her eyes; or her head turned). The hairpin leans with her left ear; her voice swings its streamer.
+  // Back to front, as the kit's README lays them. The hairpin leans with her left ear; her voice swings its streamer.
   const body = part('body');
   const svg = s('svg', { class: 'avsvg', viewBox: '-27 -34 1014 1014', 'aria-hidden': 'true', focusable: 'false' },
     s('g', { class: 'away' },

@@ -26,18 +26,17 @@ export function createNotices() {
     }
   };
   /**
-   * A card whose text is more than three lines shows three and a More, after the text, which opens it to its full height, and a
-   * Less, which closes it (the user, 2026-10-22: a sign-in card stopped mid-sentence). Open, the box's cap is lifted; the buttons
-   * stay at the card's foot, Dismiss in reach. Looked at once the card is drawn (one in a closed stack, when it opens) and when
-   * the screen changes size: clamp the text, and see whether any of it is hidden.
+   * A card whose text is more than three lines shows three and a More, which opens it to its full height, and a Less, which closes
+   * it. Open, the box's cap is lifted; the buttons stay at the card's foot, Dismiss in reach. Looked at once the card is drawn (one in
+   * a closed stack, when it opens) and when the screen changes size.
    * @type {WeakMap<HTMLElement, () => void>}
    */
   const fitters = new WeakMap();
   /**
-   * A card in the box shows its title and every button, and none of its words behind them (the second review of phone-fixes-1: a
-   * choice that changes the user's data is never out of sight). Its words take fewer lines, down to one, while it is taller than the
-   * box; then More joins the buttons if their row stays one row, and the words go behind More (hidden to the eye only, so a screen
-   * reader still reads them); still too tall, the card grows past the quarter of the screen (cards scroll away with the page).
+   * A card in the box shows its title and every button, and none of its words behind them: a choice that changes the user's data is
+   * never out of sight. Its words take fewer lines, down to one, while it is taller than the box; then More joins the buttons if their
+   * row stays one row, and the words go behind More (hidden to the eye only, so a screen reader still reads them); still too tall, the
+   * card grows past the quarter of the screen.
    * @param {HTMLElement} node @param {HTMLElement} more
    */
   const fit = (node, more) => () => {
@@ -71,7 +70,7 @@ export function createNotices() {
       }
     }
     if (over()) node.classList.add('grow');
-    // More moved to measure: a keyboard's focus on it stays (the review of phone-fixes-1).
+    // More moved to measure: a keyboard's focus on it stays.
     if (focused && !more.hidden) more.focus({ preventScroll: true });
   };
   /** A folded stack shows its title and buttons: past the box's quarter of the screen if they need it. @param {HTMLElement} node */
@@ -86,7 +85,7 @@ export function createNotices() {
   const singles = new Map();
 let stacked = 0;
 let lone = 0;
-  /** Cards of one kind, folded into one (the user, 2026-10-21: "stack them"). @type {Map<string, Stack>} */
+  /** Cards of one kind, folded into one. @type {Map<string, Stack>} */
   const stacks = new Map();
   /** @param {string} kind @param {string} title */
   function makeStack(kind, title) {

@@ -2,7 +2,7 @@ import { tsv } from '../tsv.js';
 import { escapeTags } from '../agent/blocks.js';
 import { planRows } from '../plan.js';
 
-/** Koe's compact view of the trip, in its tail (plan decision 6); its words escaped. */
+/** Koe's compact view of the trip, in its tail; its words escaped. */
 export const VIEW_MAX = 2000;
 const DAY = 86_400_000;
 
@@ -19,7 +19,7 @@ async function items(ws, trip, dir) {
   return out.filter((x) => x.value && typeof x.value === 'object');
 }
 
-/** What the end of something over several days is, as the Plan says it (the drive-test follow-ups, section 2). */
+/** What the end of something over several days is, as the Plan says it. */
 /* en */ const ENDS = /** @type {Record<string, string>} */ ({ lodging: 'Check out', car: 'Return', flight: 'Arrive', rail: 'Arrive' });
 
 /**

@@ -55,7 +55,7 @@ export async function renderReplay(ctx, route) {
   const clock = new PlayClock(r.from, { speed: 600, playing: false });
   const clockText = (/** @type {number} */ at) => dayClock(at, r.tz);
 
-  // The map: the drawn route grey, what is behind vermilion, jumps dashed, stays and stamps as rings, you as a dot (choice 8).
+  // The map: the drawn route grey, what is behind vermilion, jumps dashed, stays and stamps as rings, you as a dot.
   const { width, height, xy } = r.map;
   const line = (/** @type {import('../../core/after/route.js').Point[]} */ seg) => seg.map((p) => xy(p).join(',')).join(' ');
   const jumps = r.segments.slice(1).map((seg, i) => {
@@ -76,7 +76,7 @@ export async function renderReplay(ctx, route) {
     svg('title', { id: titleId }, t`The route: ${r.words}`),
     ...jumps, ...r.segments.map((seg) => svg('polyline', { class: 'route-all', points: line(seg) })), ...done, ...rings, here);
 
-  // At this moment (choice 7).
+  // At this moment.
   const timeEl = h('p', { class: 'replay-time' });
   const whereEl = h('p', { class: 'replay-where now-place' });
   const soFar = h('p', { class: 'sub' });
@@ -115,13 +115,13 @@ export async function renderReplay(ctx, route) {
     }
   };
 
-  // The controls (choice 5).
+  // The controls.
   const play = h('button', { class: 'btn pri', type: 'button' }, t`Play`);
   const speed = h('select', { id: 'replay-speed' }, ...PLAY_SPEEDS.map(([v, label]) => h('option', { value: String(v), text: label })));
   speed.value = '600';
   const scrub = h('input', { id: 'replay-scrub', type: 'range', min: String(r.from), max: String(r.to), step: '60000', value: String(r.from) });
 
-  // The timeline (choice 6): each entry a button that moves the playback there.
+  // The timeline: each entry a button that moves the playback there.
   const items = r.entries.map((e) => {
     const { when, text } = entryLine(e, r.tz);
     return h('li', { class: ['replay-entry', `kind-${e.kind}`] }, h('button', {

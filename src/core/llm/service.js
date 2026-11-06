@@ -113,7 +113,7 @@ export function createLlm({
       await kept.drop(id).catch(() => {});
       return out;
     } finally {
-      // A removal that failed leaves the provider as it was, its turns kept again (verification, 2026-10-21).
+      // A removal that failed leaves the provider as it was, its turns kept again.
       if (!gone || !done) removing.delete(id);
     }
   };
@@ -121,7 +121,7 @@ export function createLlm({
   /**
    * Makes a protocol's type available, installing its official plugin: setup actions only (adding,
    * turning an ability on, Test, Fetch model list, Try this model), never a call (decision 9). A
-   * plugin the user switched off stays off (security review). @param {string} type
+   * plugin the user switched off stays off. @param {string} type
    */
   const ensure = async (type) => {
     await ready;
@@ -173,7 +173,7 @@ export function createLlm({
     /* en */
     if (type.speech !== dir) throw new ProviderError('bad-request', dir === 'in' ? `${model.name} isn't a transcription model.` : `${model.name} isn't a voice.`, { said: { code: dir === 'in' ? 'not-in' : 'not-out', name: model.name } });
     const role = (await readConfig(ws)).roles[dir === 'in' ? 'speech-in' : 'speech-out'];
-    // The trace learns the key, though a keyHeader gives the protocol none (fix pass).
+    // The trace learns the key, though a keyHeader gives the protocol none.
     const trace = modelTrace(store, scope);
     if (secret) trace.secret(secret);
     return { type, endpoint, model, key, trace, timeoutMs: (role?.firstOutputSeconds ?? (dir === 'in' ? 15 : 10)) * 1000 };
@@ -233,7 +233,7 @@ export function createLlm({
      * A provider plugin, running, with what it requires (spec §5.3): an official one from annai's
      * catalog, hash-checked, with no question; a third-party one must be installed already. official:
      * it must be annai's own (the featured start, the catalog's Add): a copy from elsewhere with that id is never
-     * used (security review), and annai's own whose files no longer match the catalog is fetched again.
+     * used, and annai's own whose files no longer match the catalog is fetched again.
      * tap: the user's, so one annai switched off after errors may start again (§5.5).
      * @param {string} plugin @param {{ official?: boolean, tap?: boolean }} [o] @returns {Promise<import('./providers.js').ProviderSource>}
      */
@@ -281,7 +281,7 @@ export function createLlm({
         for (const [ability, a] of Object.entries(src.provider.abilities)) if (o.abilities?.[ability]?.on ?? a.on !== false) await ensure(a.type);
         id = await addProviderRecords({ ws, store }, src, { ...o, key: typeof key === 'function' ? await key() : key });
       } catch (e) {
-        // A failed add leaves no provider plugin it brought without a provider, nor what that alone required (fix pass).
+        // A failed add leaves no provider plugin it brought without a provider, nor what that alone required.
         const cfg = await readConfig(ws).catch(() => null);
         if (!had && cfg && !Object.values(cfg.providers).some((p) => p.plugin === plugin)) await drop(plugin).catch(() => {});
         throw e;
@@ -314,12 +314,10 @@ export function createLlm({
       if (brought.delete(plugin) && !Object.values((await readConfig(ws)).providers).some((p) => p.plugin === plugin)) await drop(plugin);
     }),
     /**
-     * After a restore brought providers back with the settings (spec §12.3), in the same step: the plugins they and their
-     * abilities that are on use, annai's own from its catalog, hash-checked, as Add installs them. A record may name any
-     * plugin (an archive can be crafted), so only a model provider's is installed, checked before any download, and one
-     * this installed that then brings no provider goes again, with what only it required (review R1). One that isn't
-     * annai's own, or can't be had now, is named with what to do, each reason once. imported: the same import brought the
-     * plugins, all switched off, and says so: those stay as they came, with no line (review R3).
+     * After a restore brought providers back with the settings: the plugins they use, as spec §12.3 says. A record may name any
+     * plugin (an archive can be crafted), so only a model provider's is installed, checked before any download, and one this
+     * installed that then brings no provider goes again, with what only it required. imported: the same import brought the
+     * plugins, all switched off: those stay as they came, with no line.
      * @param {{ imported?: boolean }} [o] @returns {Promise<{ installed: string[], failed: string[] }>}
      *   installed: the plugins' names; failed: a line for each reason, naming its providers
      */
@@ -563,7 +561,7 @@ export function createLlm({
     /**
      * A live session with one realtime model (K4), traced in scope: annai opens it at the ability's origin, with the key
      * in the trace's secrets. A key refused, a rate limit or a server failure rests the model, as a call's would; "not found" too, unless
-     * it was a resume handle the provider no longer keeps, which Koe follows with a fresh session (the iPhone trace, 2026-10-22).
+     * it was a resume handle the provider no longer keeps, which Koe follows with a fresh session.
      * @param {string} modelId @param {Omit<import('./contract.js').LiveSetup, 'audioIn' | 'audioOut'> & Partial<import('./contract.js').LiveSetup>} setup
      * @param {{ scope?: string, wake?: string, output?: { sampleRate: number, baseLatency?: number, outputLatency?: number } }} [o] output: the phone's sound, traced as it is ready
      * @returns {Promise<import('../realtime/open.js').LiveSession>}
@@ -578,9 +576,8 @@ export function createLlm({
         type, endpoint, model, key, tunables, setup, trace,
         registry: plugins.registry, wake, output, ...(openSocket ? { socket: openSocket } : {}),
       });
-      // What a refusal taught the protocol (its language hints, its proactive audio) is remembered for the model, even when the session it
-      // reopened then fails for another reason: the next one need not pay a refused socket again. Only the keys the refusal changed are
-      // kept, never a copy of all of them, so what the user edits on the model meanwhile still reaches the next session.
+      // What a refusal taught the protocol (its language hints, its proactive audio) is remembered, even when the reopened session then
+      // fails, so the next need not pay a refused socket. Only the keys it changed: what the user edits meanwhile still reaches the next session.
       const learned = () => {
         const taught = Object.fromEntries(Object.entries(session.tunables).filter(([k, v]) => tunables[k] !== v));
         if (Object.keys(taught).length) liveTunables.set(modelId, { ...liveTunables.get(modelId), ...taught });
@@ -593,7 +590,7 @@ export function createLlm({
     },
     /**
      * Speech to text with one transcription model (spec §10.2), traced in scope.
-     * languages: what the user speaks (phase 2), for the model's language hint.
+     * languages: what the user speaks, for the model's language hint.
      * @param {{ modelId: string, audio: { data: Uint8Array, mediaType: string, seconds?: number }, scope?: string, signal?: AbortSignal, wake?: string, languages?: import('./contract.js').Languages }} c
      */
     async transcribe({ modelId, audio, scope = SYS, signal, wake, languages }) {
@@ -641,8 +638,8 @@ export function createLlm({
      * @param {string} modelId @param {{ onAudio?: (data: Uint8Array, format: import('./contract.js').AudioFormat) => void }} [o]
      */
     async test(modelId, { onAudio } = {}) {
-      const { rec, type, endpoint, model, key } = await resolve(modelId, { install: true });
-      // Test asks at the level of the first role that asks this model at one (fix pass).
+      const { type, endpoint, model, key } = await resolve(modelId, { install: true });
+      // Test asks at the level of the first role that asks this model at one.
       const { roles } = await readConfig(ws);
       const r = /** @type {const} */ (['main', 'koe-classic', 'utility']).find((x) => roles[x]?.models.includes(modelId) && roles[x].level !== 'off');
       const role = r ? { id: r, level: roles[r].level } : undefined;
@@ -663,7 +660,7 @@ export function createLlm({
     },
     /** Tries each reasoning level of one model, and records which work (spec §9.3). @param {string} modelId */
     async testLevels(modelId) {
-      const { rec, type, endpoint, model, key } = await resolve(modelId, { install: true });
+      const { type, endpoint, model, key } = await resolve(modelId, { install: true });
       const levels = await withoutSecretsIn(store, await testLevels({ type, endpoint, model, key, fetch: get }));
       await markVerified(ws, modelId, { levels, levelsAt: Date.now() });
       return levels;
@@ -680,7 +677,7 @@ export function createLlm({
       await ensure(ability.type);
       const { type, endpoint, key } = /** @type {NonNullable<Awaited<ReturnType<typeof reach>>>} */ (await reach(rec, abilityId));
       /**
-       * A list request: to the ability's address only, never following a redirect (fix pass). Failing, it says in
+       * A list request: to the ability's address only, never following a redirect. Failing, it says in
        * words, by host, whether the server doesn't allow web apps or can't be reached (spec §9.8). @param {string} url @param {RequestInit} [init]
        */
       const send = async (url, init = {}) => {

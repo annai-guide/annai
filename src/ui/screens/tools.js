@@ -9,7 +9,7 @@ import { list } from '../format.js';
 const GROUPS = /* en */ ['Talk', 'Files', 'Trips', 'Web', 'Places', 'Go', 'Time', 'Self'];
 /** The groups in the screens' words. @type {Record<string, string>} */
 const GROUP_NAMES = { Talk: tc('tool group')`Talk`, Files: tc('tool group')`Files`, Trips: tc('tool group')`Trips`, Web: tc('tool group')`Web`, Places: tc('tool group')`Places`, Go: tc('tool group')`Go`, Time: tc('tool group')`Time`, Self: tc('tool group')`Self` };
-/** Jina's main page, which shows the key to copy in its API box (the user, 2026-10-23: its API page "will not give you a copiable api there while the main page does"). */
+/** Jina's main page, which shows the key to copy in its API box: its API page gives none to copy. */
 const JINA_KEYS = 'https://jina.ai/';
 
 /** A switch for every tool and provider-side tool (spec §7.2, §9.5); switches cover plugins' tools too. @param {any} ctx */
@@ -19,7 +19,7 @@ export async function toolSwitchList(ctx) {
   /** @type {Map<string, any[]>} */
   const groups = new Map();
   for (const tool of all) {
-    // An MCP server's tools have a group of their own (milestone 8c): "MCP: <server>".
+    // An MCP server's tools have a group of their own: "MCP: <server>".
     const g = tool.group && (GROUPS.includes(tool.group) || String(tool.group).startsWith('MCP: ')) ? tool.group : t`Plugin: ${tool.pluginId}`;
     if (!groups.has(g)) groups.set(g, []);
     groups.get(g)?.push(tool);

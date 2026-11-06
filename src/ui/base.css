@@ -40,7 +40,7 @@ a { color: var(--ai); }
 .sub { color: var(--ink-2); font-size: 14px; }
 .empty { color: var(--ink-2); }
 .crumbs a { text-decoration: none; font-weight: 500; }
-/* A back link's tap area is 44 px tall like the buttons', with the words and the screen where they were (the second emulator re-check: 23 px). */
+/* A back link's tap area is 44 px tall like the buttons', with the words and the screen where they were. */
 .crumbs a { display: inline-block; padding: 11px 12px 11px 0; margin: -11px -12px -11px 0; }
 .booting { display: block; margin: 32px 16px; border-radius: 50%; }
 
@@ -148,7 +148,7 @@ pre.code { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--pap
 /* System cards: in the page under the top bar, never over a screen's buttons; a quarter of the screen at most (spec §16.1). */
 .notices { display: flex; flex-direction: column; gap: 8px; padding: 0 max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); align-items: center; max-height: 25vh; max-height: 25svh; overflow-y: auto; }
 .notices:not(:empty) { padding-top: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
-/* Each card is whole in the box, its four edges in view: one taller than the box scrolls inside itself (IMG_3013, 2026-10-28). */
+/* Each card is whole in the box, its four edges in view: one taller than the box scrolls inside itself. */
 .notices > .notice:not(.notice-stack) { flex-shrink: 0; max-height: calc(25vh - 17px); max-height: calc(25svh - 17px); overflow-y: auto; }
 .notice > * { flex-shrink: 0; }
 /* A card whose title and buttons need more than the box grows, and the box with it (notices.js). */
@@ -198,7 +198,7 @@ pre.code { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--pap
 .role-item > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 /* The handle of a role's entry: dragged by a finger, so the page doesn't scroll under it; a lifted entry floats over the others. */
 .grip { touch-action: none; cursor: grab; }
-/* On iOS a long press on a row is a drag, not a text selection (IMG_3014) */
+/* On iOS a long press on a row is a drag, not a text selection */
 .role-item, .role-item * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .role-item.dragging { position: relative; z-index: 2; background: var(--sheet); box-shadow: 0 6px 18px -8px var(--shadow); border-radius: 12px; }
 .reorder-menu { flex-basis: 100%; display: flex; gap: 6px; padding: 4px 0 6px; }
@@ -289,7 +289,7 @@ button.chip.filter[aria-pressed='true'] { background: var(--ai); color: var(--ai
 .file-card-words { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
 .pdf-view { display: block; width: 100%; height: 75vh; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); }
 /* Stamps (spec §13, §16.2): station-stamp marks for visited places. */
-/* A card's marks sit under its words, side by side, so neither covers the other's word (the emulator pass: "Nepent"). */
+/* A card's marks sit under its words, side by side, so neither covers the other's word. */
 .trip-card { align-items: flex-start; }
 .trip-card-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .stamps { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -349,7 +349,7 @@ a.tab { display: inline-flex; align-items: center; text-decoration: none; }
 .look { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
 .look figcaption { display: flex; flex-direction: column; font-size: 13px; }
 
-/* The welcome and Settings → About (the user, 2026-10-18). */
+/* The welcome and Settings → About. */
 .welcome { max-width: 560px; }
 .welcome .step { font-family: var(--f-mono); font-size: 13px; color: var(--ink-2); margin-bottom: -10px; }
 .welcome .title:focus, .welcome .title:focus-visible { outline: none; }

@@ -1,23 +1,10 @@
 /**
- * Kinds of backup places are storage types that plugins add (spec §5.4 storage, §12.4):
- * archive-level check, list, put and get, and delete where a place keeps whole archive files.
- * annai builds each backup and decides when; a type only moves it. Its functions are called
- * without `this`.
- *
- * stores: "tree" keeps the archive's files (git: one backup is one commit, and only changed files
- * are uploaded); "file" keeps the archive file itself.
- * fields and secret: what the user fills in for a place; secret values live in secrets, never in files.
- * where(config): the place in a few words ("you/annai-backup").
- * check(c) may fill in fields the user left empty: its config, which annai keeps as the place's own; or refuse
- * with TargetError "setup" and choices, each a label and the fields it fills in, for the user to pick one.
- * put(c, archive, o) refuses with TargetError "newer" when the place's newest backup is neither
- * o.base nor one this device made (c.device.id), and with "large" before uploading anything when it
- * would send more than o.maxUpload bytes.
- * peek(c, id, o) is optional, for a place that stores a "tree" and can tell what a backup holds without sending it: it
- * returns the backup's annai-archive.json (parsed) alone, in a few requests however many files the backup has (Forgejo: two,
- * GitHub: one). annai previews a backup with it, and calls get only when the user imports; a place without it
- * gets the whole backup first. get still brings every file, and its archive must carry the manifest peek returned (annai refuses
- * the backup if it does not); annai checks each file against that manifest's hash as it imports. Anything but a function is no peek.
+ * Kinds of backup places are storage types that plugins add (spec §5.4 storage, §12.4; docs/plugins.md has what each function must do).
+ * annai builds each backup and decides when; a type only moves it. Its functions are called without `this`.
+ * stores: "tree" keeps the archive's files (git: one backup is one commit); "file" keeps the archive file itself.
+ * Secret values live in secrets, never in files. put refuses with TargetError "newer" when the place's newest backup is neither o.base
+ * nor one this device made, and with "large" before uploading anything when it would send more than o.maxUpload bytes.
+ * peek is optional: anything but a function is no peek.
  *
  * @typedef {import('./backup-targets.js').RemoteBackup} RemoteBackup
  * @typedef {{ key: string, label: string, placeholder?: string, advanced?: boolean }} Field
@@ -113,10 +100,8 @@ export function parseBackupFileName(name) {
 export const TEXT_MAX = 8 * 1024 * 1024;
 
 /**
- * Reads a server's answer for a storage plugin. Whatever is wrong with the answer (cut off, not
- * JSON, too large) is the server's doing, so it is a TargetError, never a crash in the plugin's code:
- * only real bugs count against a plugin (spec §5.5), and a broken or hostile server mustn't switch
- * backups off.
+ * Reads a server's answer for a storage plugin. Whatever is wrong with the answer (cut off, not JSON, too large) is a TargetError, never a
+ * crash in the plugin's code: only real bugs count against a plugin (spec §5.5), and a broken or hostile server mustn't switch backups off.
  * @param {Response} res @param {'json' | 'text' | 'bytes' | 'blob' | 'arrayBuffer'} how
  *   bytes: a Uint8Array, at most max of them; blob and arrayBuffer: a whole download, such as an archive
  * @param {string} where the server, in a few words ("GitHub", "the bucket")

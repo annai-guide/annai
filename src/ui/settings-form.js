@@ -10,8 +10,7 @@ import { SYS_SETTINGS } from '../core/scopes.js';
 export const keypad = (f) => ((f.kind === 'number' || f.kind === 'integer') && typeof f.min === 'number' && f.min >= 0 ? (f.kind === 'integer' ? 'numeric' : 'decimal') : undefined);
 
 /**
- * A plugin's settings form, from the JSON Schema in its manifest (spec §5.2: "a JSON Schema, from
- * which we render a settings form automatically"; milestone 8b choice 12). Values go where
+ * A plugin's settings form, from the JSON Schema in its manifest (spec §5.2). Values go where
  * annai.settings.get() reads them; writeOnly ones go to the plugin's secrets, never into files.
  * @typedef {{ key: string, kind: 'text' | 'select' | 'secret' | 'number' | 'integer' | 'boolean' | 'unsupported', label: string,
  *   hint?: string, options?: [string, string][], min?: number, max?: number, default?: any }} Field
@@ -28,7 +27,7 @@ export function formFields(schema) {
       ...(p?.default !== undefined ? { default: p.default } : {}),
     };
     // A writeOnly field is a secret when it is a string; annai keeps no other kind of secret, and never
-    // puts one into a file (fix pass 8b-5).
+    // puts one into a file.
     if (p?.writeOnly) return { ...base, kind: /** @type {'secret' | 'unsupported'} */ (p.type === 'string' ? 'secret' : 'unsupported') };
     /** @type {any[] | null} */
     const choices = p?.type !== 'string' ? null : Array.isArray(p.oneOf) && p.oneOf.every((/** @type {any} */ o) => o && typeof o === 'object' && 'const' in o) ? p.oneOf
