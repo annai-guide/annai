@@ -684,8 +684,8 @@ export class Live {
   }
 
   /**
-   * The trip in play (spec: GPS, voice and watches): during a simulation its trip; else the open conversation if it is happening; else the happening trip
-   * last talked in; else the open conversation. Simulations' trips outside their run are never chosen. Dates are read on live mode's clock and zone.
+   * The trip in play: a simulation's during its run; else the open conversation if happening; else the happening trip last talked in; else the open conversation.
+   * A simulation's trip is never chosen as the happening one, but open it is play, and #inPlay keeps its plan quiet outside its run.
    * @returns {string | null}
    */
   #play() {
@@ -1132,6 +1132,12 @@ export class Live {
     await this.#loadPlan();
   }
 
+  /** Whether a trip is a simulation's, from its trip.json as read. @param {string} scope @param {any} info */
+  #setStill(scope, info) {
+    if (info?.simulation === true) this.#still.add(scope);
+    else this.#still.delete(scope);
+  }
+
   /** The active trips as #play chooses among them, in one read of the records. */
   async #loadRows() {
     const { active } = await listTrips(this.store);
@@ -1147,8 +1153,7 @@ export class Live {
       return;
     }
     const info = await this.ws.readJSON(scope, '/trip.json').catch(() => null);
-    if (info?.simulation === true) this.#still.add(scope);
-    else this.#still.delete(scope);
+    this.#setStill(scope, info);
     this.#rows.set(scope, { ...tripMirror(info), talked: rec.talked ?? null });
   }
 
@@ -1175,8 +1180,7 @@ export class Live {
   async #loadScope(scope) {
     // A simulation's trip: its watches are its run's alone.
     const info = scope === ME ? null : await this.ws.readJSON(scope, '/trip.json').catch(() => null);
-    if (info?.simulation === true) this.#still.add(scope);
-    else this.#still.delete(scope);
+    this.#setStill(scope, info);
     // An archived trip's, which a change to its watch file brings here too, wait until it is unarchived.
     const archived = scope !== ME && (await this.store.tx(['scopes'], 'readonly', (t) => t.getScope(scope)))?.status === 'archived';
     if (archived || (this.#still.has(scope) && this.#sim?.trip !== scope)) {
@@ -1194,13 +1198,12 @@ export class Live {
     this.#plan = [];
     this.#places = [];
     if (!trip) return;
-    const sim = await this.ws.readJSON(trip, '/trip.json').catch(() => null);
-    if (sim?.simulation === true) this.#still.add(trip);
-    else this.#still.delete(trip);
+    const info = await this.ws.readJSON(trip, '/trip.json').catch(() => null);
+    this.#setStill(trip, info);
     if (!this.#inPlay(trip)) return; // a simulation's plan reminds only during its run
     // An archived trip, open or not, reminds of nothing: its watches aren't loaded either (#loadAll).
     if ((await this.store.tx(['scopes'], 'readonly', (t) => t.getScope(trip)))?.status === 'archived') return;
-    const { items, watches } = await this.#planOf(trip);
+    const { items, watches } = await this.#planOf(trip, info);
     this.#plan = watches;
     // A plan item removed and made again remembers what it fired, as the log does, and as annai's next start reads it.
     const ids = new Set(this.#plan.map((w) => w.id).filter((id) => !this.#fired.has(this.#key(trip, id))));
@@ -1214,9 +1217,9 @@ export class Live {
 
   /**
    * A trip's plan as it stands: its items, and the watches they make (planWatches), with its bookings and its zone.
-   * @param {string} trip @returns {Promise<{ items: { path: string, item: any }[], watches: Watch[] }>}
+   * @param {string} trip @param {any} [info] its trip.json, when already read @returns {Promise<{ items: { path: string, item: any }[], watches: Watch[] }>}
    */
-  async #planOf(trip) {
+  async #planOf(trip, info) {
     /** @type {{ path: string, item: any }[]} */
     const items = [];
     /** @type {Map<string, any>} */
@@ -1231,8 +1234,8 @@ export class Live {
       const b = await this.ws.readJSON(trip, f.path).catch(() => null);
       if (b && typeof b === 'object') bookings.set(f.path, b);
     }
-    const info = await this.ws.readJSON(trip, '/trip.json').catch(() => null);
-    const fallbackTz = [info?.timezones?.[0], this.timeZone()].find(validZone) ?? 'UTC';
+    const file = info !== undefined ? info : await this.ws.readJSON(trip, '/trip.json').catch(() => null);
+    const fallbackTz = [file?.timezones?.[0], this.timeZone()].find(validZone) ?? 'UTC';
     return { items, watches: planWatches(items, bookings, { fallbackTz }) };
   }
 

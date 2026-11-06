@@ -70,8 +70,8 @@ export function followDrive(live, o) {
   return () => { was = live?.activity; };
 }
 
-/** The trip Driving shows: the one in play, else the open one. A quick chat doesn't take the road with it. @param {any} ctx @returns {string | null} */
-export const drivingTrip = (ctx) => ctx.live?.play ?? ctx.agent?.trip ?? null;
+/** The trip Driving shows: the one in play, which is the open one when none is happening. A quick chat doesn't take the road with it. @param {any} ctx @returns {string | null} */
+export const drivingTrip = (ctx) => ctx.live?.play ?? null;
 
 /**
  * A quick ask from Driving, in the trip it shows: opened first, unless a live session is open, which opening would close; it then goes to the
@@ -113,7 +113,7 @@ export function todayTop(ctx, { title, rows, tz }) {
   };
   draw();
   const off = live?.onChange(() => {
-    if (!place.isConnected && !top.isConnected) {
+    if (!top.isConnected) {
       off?.();
       return;
     }

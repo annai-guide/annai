@@ -91,11 +91,9 @@ test('← on Driving: Now by name, anywhere else as Back, and Now when nothing s
   assert.deepEqual(driveBack('#/trip/trip-a/plan'), { href: '#/trip/trip-a/plan', label: 'Back' });
 });
 
-test('Driving shows the trip in play, else the open one, else nothing', () => {
+test('Driving shows the trip in play (live mode falls back to the open one), else nothing', () => {
   assert.equal(drivingTrip({ live: { play: 'trip-a' }, agent: { trip: 'trip-chat' } }), 'trip-a');
-  assert.equal(drivingTrip({ live: { play: null }, agent: { trip: 'trip-chat' } }), 'trip-chat');
-  assert.equal(drivingTrip({ agent: { trip: 'trip-chat' } }), 'trip-chat');
-  assert.equal(drivingTrip({ live: { play: null }, agent: { trip: null } }), null);
+  assert.equal(drivingTrip({ live: { play: null }, agent: { trip: 'trip-chat' } }), null);
   assert.equal(drivingTrip({}), null);
 });
 
