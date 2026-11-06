@@ -247,3 +247,31 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** nothing today. If that line broke, a dismissed verdict would lose Kokoro's sleep note, and where a held microphone run keeps the session open, music would keep a live session open and billing.
 - **Why:** the path needs a verdict that lands with nothing going and nothing due while the detector's held run stops the quiet close. On every route tried the session closes in the same tick, so the right code and a mutant behave the same, and a click 0.1 to 0.5 s after the last turn didn't hold it open. The line's comment says what it must do.
 - **Revisit when:** the sleep note's code next changes, or the test kit can hold `input.hearing` itself.
+
+### Voice off can carry into the next drive
+- **Kind:** known limitation.
+- **What the user sees:** voice is turned off on a drive, the drive ends silently, the page reloads within 30 seconds, and then no GPS reading comes for over 5 minutes with the page on screen, or annai is reopened several times under 5 minutes apart with no reading. On the next drive voice stays off until that drive's stop or a tap.
+- **Why:** closing it needs a quiet timer that could read a tunnel as a stop, or a new stored field. It fails quiet, not loud.
+- **Revisit when:** it shows in a drive trace.
+- **Approved:** 2026-11-06, the user picked "Accept for now (Recommended)".
+
+### GPS noise right after a parked reopening reads as moving
+- **Kind:** known limitation.
+- **What the user sees:** in the first minute after reopening annai while parked, about 30 m or more of GPS noise across a quick app switch reads as the phone having moved. A true "moving fast starts" is lost, and a reminder set at the reopening fires while parked. A small step back from d1e93771.
+- **Why:** the readings alone can't tell noise from real movement across a gap, and a stricter rule would trade this for late or missed stops.
+- **Revisit when:** it shows in a drive trace.
+- **Approved:** 2026-11-06, the user picked "Accept for now (Recommended)".
+
+### A "when I stop" set just after reopening can fire one stop late
+- **Kind:** known limitation.
+- **What the user sees:** a "when I stop" set in the first minute after reopening fires at the next real stop, not this one, if the car crawls with only 3 to 5 m/s readings, or loops back and parks within 0.5 m/s of the light it left. The reminder isn't used up. No worse than d1e93771.
+- **Why:** a rule that catches a crawl risks false stops at lights.
+- **Revisit when:** it shows in a drive trace.
+- **Approved:** 2026-11-06, the user picked "Accept for now (Recommended)".
+
+### A false drive end at a light after a reload, with voice off
+- **Kind:** known limitation.
+- **What the user sees:** voice is off, a drive ends silently, then a light of 35 seconds or more, a reload of 200 seconds or more, and the first readings back are that light: annai tells a drive end while still on the road. About 1 in 2100 gaps in the fuzz test. Voice ends the same way as on d1e93771, and the saved voice mode doesn't change: a told end writes it only from `on`, and turning voice off has already written `off`.
+- **Why:** those readings look the same as a real stop behind a gap.
+- **Revisit when:** it shows in a drive trace.
+- **Approved:** 2026-11-06, the user picked "Check it, then accept (Recommended)"; checked by reading `#driveEnded` in src/core/voice/voice.js.
