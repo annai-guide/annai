@@ -11,7 +11,7 @@ const north = (/** @type {number} */ m) => off(MONTEREY, 0, -m);
 const SPEED = 14;
 /** Metres from the record to a place reached an hour later: the way says it went on (5.6 m/s). */
 const FAR = 20_000;
-/** …and to one where the way says it did not. */
+/** …and to one a slow way off (0.56 m/s in an hour: not still, so a parked car there takes the hold, but the drive is over). */
 const NEAR = 2_000;
 
 /** Driving north from y metres at 14 m/s for secs, a fix every 5 s. @param {any} k @param {number} t0 @param {number} y0 @param {number} secs @returns {Promise<number>} where it got to */
@@ -1074,3 +1074,146 @@ for (const way of [0.1, 0.3, 1]) {
     assert.equal(held(k), true);
   });
 }
+
+// Fix pass 3
+
+/**
+ * Killed on the road `secs` after the last fix, reopened parked at `way` m/s from the record's place (speed 0, a fix every 5 s from 3 s), and driving off at `off` s.
+ * @param {number} secs @param {number} way @param {number} off @param {number} [setAt] when to set a one-time "when I stop", s after the reopening
+ */
+async function parkedAfterKill(secs, way, off, setAt) {
+  const { k, stops, starts, y } = await driving();
+  await hide(k);
+  const t = at('09:01') + secs * 1000;
+  await k.to(t);
+  await k.restart();
+  const told = ends(k);
+  const p = y - LAST + way * secs;
+  /** @type {() => number} */
+  let once = () => 0;
+  let armed = false;
+  /** @type {Record<number, number>} */
+  const toldAt = {};
+  for (let s = 3; s < off; s += 5) {
+    await k.fix(t + s * 1000, north(p), { speed: 0 });
+    toldAt[s] = told();
+    if (setAt !== undefined && !armed && s >= setAt) { armed = true; once = await watch(k, 'stop', false); }
+  }
+  const stopsBefore = stops();
+  const end = await road(k, t + off * 1000, p, 60);
+  return { k, stops, starts, told, toldAt, stopsBefore, once, end, t };
+}
+
+// G1: killed on the road, reopened parked at a way of 0.5 to 5 m/s: the drive that record describes was over long ago, so driving off later starts
+
+for (const [name, secs] of /** @type {[string, number][]} */ ([['7 minutes', 420], ['20 minutes', 1200], ['1 hour', 3600]])) {
+  for (const way of [0.6, 2, 2.8, 3.5, 4.5]) {
+    test(`G1: killed at ${name}, reopened parked at a way of ${way} m/s: the end is told once at the reading plus 60 s, one "stops", and driving off 3 minutes on starts`, async () => {
+      const { stops, starts, told, toldAt, stopsBefore } = await parkedAfterKill(secs, way, 183);
+      assert.equal(toldAt[58], 0, 'not before the hold');
+      assert.equal(toldAt[68], 1, 'at the reading plus 60 s');
+      assert.deepEqual([stopsBefore, told(), stops()], [1, 1, 1]);
+      assert.equal(starts(), 1, 'driving off starts');
+    });
+  }
+}
+
+for (const way of [5.5, 8]) {
+  test(`G1, the rule's other side: killed, a way of ${way} m/s says it drove until now, so driving off 3 minutes on starts nothing; past the 5 minutes it does`, async () => {
+    const soon = await parkedAfterKill(1200, way, 183);
+    assert.equal(soon.starts(), 0, 'inside the same-drive rule');
+    const late = await parkedAfterKill(1200, way, 420);
+    assert.equal(late.starts(), 1, 'past it');
+  });
+}
+
+test('G1, the named case: a parked car 2 km past the record, reopened an hour later: told at the reading plus 60 s, and driving off starts', async () => {
+  const { starts, told, toldAt, stopsBefore } = await parkedAfterKill(3600, NEAR / 3600, 183);
+  assert.deepEqual([toldAt[58], toldAt[68], stopsBefore, told(), starts()], [0, 1, 1, 1, 1]);
+});
+
+for (const way of [0.6, 2]) {
+  test(`G1: a one-time "when I stop" set in the 60 s hold after a kill, at a way of ${way} m/s: it doesn't fire at the hold's end, and is still armed for the next drive's real stop`, async () => {
+    const { k, once, end } = await parkedAfterKill(1200, way, 183, 20);
+    assert.equal(once(), 0, 'not at the hold end');
+    await k.stay(north(end), at('09:21') + 183_000 + 90_000, at('09:21') + 183_000 + 300_000, 5);
+    assert.equal(once(), 1, 'at the real stop');
+  });
+}
+
+// A voice-off lasts through a light after K4, as on any drive
+
+/** A voice-off on a drive, killed, reopened driving on a slow way: K4. @returns {Promise<{ k: any, t: number, there: number }>} */
+async function killedHushed() {
+  const { k, y } = await driving();
+  sensor(k).hush(true);
+  await k.settle();
+  await hide(k);
+  const t = at('09:01') + 12 * 60_000;
+  await k.to(t);
+  await k.restart();
+  return { k, t, there: y - LAST + 4 * 12 * 60 };
+}
+
+for (const [name, light] of /** @type {[string, number][]} */ ([['a light of 40 s', 40], ['a light of 100 s', 100]])) {
+  test(`voice off, killed, reopened on a slow way (K4), then ${name}: the hush holds, and the road after has voice off`, async () => {
+    const { k, t, there } = await killedHushed();
+    let p = there;
+    for (let s = 3; s <= 18; s += 5) { await k.fix(t + s * 1000, north(p), { speed: SPEED }); p += SPEED * 5; }
+    for (let s = 23; s <= 18 + light; s += 5) await k.fix(t + s * 1000, north(p), { speed: 0 });
+    await road(k, t + (23 + light) * 1000, p, 60);
+    assert.equal(k.live.activity, 'moving-fast');
+    assert.equal(held(k), false);
+    assert.equal(k.keep.get().hushed, true);
+  });
+}
+
+test('voice off, killed, reopened on a slow way (K4), then a crawl at 1 to 2.5 m/s for 30 s: the hush holds, and the road after has voice off', async () => {
+  const { k, t, there } = await killedHushed();
+  let p = there;
+  for (let s = 3; s <= 18; s += 5) { await k.fix(t + s * 1000, north(p), { speed: SPEED }); p += SPEED * 5; }
+  for (let s = 23; s <= 53; s += 5) { const v = 1 + 1.5 * ((s - 23) / 30); await k.fix(t + s * 1000, north(p), { speed: v }); p += v * 5; }
+  await road(k, t + 58_000, p, 60);
+  assert.equal(k.live.activity, 'moving-fast');
+  assert.equal(held(k), false);
+  assert.equal(k.keep.get().hushed, true);
+});
+
+test('voice off, killed, reopened on a slow way (K4), then a 10-minute pull-in: it clears, and the hush does not reach the next drive', async () => {
+  const { k, t, there } = await killedHushed();
+  let p = there;
+  for (let s = 3; s <= 18; s += 5) { await k.fix(t + s * 1000, north(p), { speed: SPEED }); p += SPEED * 5; }
+  await k.stay(north(p), t + 23_000, t + 623_000, 5);
+  assert.equal(k.live.activity, 'still');
+  assert.equal(k.keep.get().hushed, false);
+  await road(k, t + 3_600_000, p, 60);
+  assert.equal(k.live.activity, 'moving-fast');
+  assert.equal(held(k), true);
+});
+
+test('a voice tap inside K4\'s 30 s counts: the voice-off it chose holds through a light', async () => {
+  const { k, y } = await driving();
+  await hide(k);
+  const t = at('09:01') + 12 * 60_000;
+  await k.to(t);
+  await k.restart();
+  let p = y - LAST + 4 * 12 * 60;
+  for (let s = 3; s <= 13; s += 5) { await k.fix(t + s * 1000, north(p), { speed: SPEED }); p += SPEED * 5; }
+  sensor(k).hush(true);
+  await k.settle();
+  assert.equal(k.keep.get().hushed, true);
+  await k.stay(north(p), t + 18_000, t + 68_000, 5);
+  await road(k, t + 73_000, p, 60);
+  assert.equal(held(k), false);
+  assert.equal(k.keep.get().hushed, true);
+});
+
+test('K4 with a voice-off, then a stop of about 2.5 minutes: a true end is told', async () => {
+  const { k, t, there } = await killedHushed();
+  const told = ends(k);
+  let p = there;
+  for (let s = 3; s <= 18; s += 5) { await k.fix(t + s * 1000, north(p), { speed: SPEED }); p += SPEED * 5; }
+  await k.stay(north(p), t + 23_000, t + 23_000 + 150_000, 5);
+  assert.equal(k.live.activity, 'still');
+  assert.equal(told(), 1);
+});

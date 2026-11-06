@@ -114,7 +114,7 @@ export class Live {
   #late = false;
   /**
    * The record says moving fast but is too old to: the tracker holds it as for any gap, and until a reading decides, unknown shows and voice isn't held.
-   * 'owed': voice is yet to hear the drive's end, at its change (the first reading with a speed, or two minutes of silence after one with none); 'told': it did, or a choice of voice's cancelled it.
+   * 'owed': voice is yet to hear the drive's end, at its change; 'told': it did, or a choice of voice's cancelled it.
    * @type {'owed' | 'told' | null}
    */
   #stale = null;
@@ -922,7 +922,7 @@ export class Live {
         this.activity = c.to;
         await this.#log(this.#changeData(c));
       } else if (this.#stale && fast) { // the same drive, or by the way one that ended unseen: nothing is heard
-        this.#stale = null;
+        this.#stale = this.#tracker.activity === 'unknown' ? 'told' : null; // unseen: its voice-off stays until a change
         this.activity = this.#tracker.activity;
         this.#tellActivity();
       }
@@ -1366,7 +1366,10 @@ export class Live {
       if (this.#stale) this.#hushed = false;
       if (this.#stale !== 'told') this.#voiceLapse = c.noFix || this.#stale ? c.at : c.at + VOICE_HOLD_MS;
     } else if (c.to === 'moving-fast') this.#voiceLapse = null;
-    else if (this.#voiceLapse === null) this.#hushed = false; // no drive is left for it to last through
+    else if (this.#voiceLapse === null) {
+      if (this.#stale && this.#hushed) this.#voiceLapse = c.at + VOICE_HOLD_MS; // lasts through a light, as on any drive
+      else this.#hushed = false; // no drive is left for it to last through
+    }
     this.#stale = null;
     return { from: c.from, ...(c.from === 'moving-fast' ? { ended: c.at } : {}), ...c.why };
   }

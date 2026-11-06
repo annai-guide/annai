@@ -62,6 +62,8 @@ export class ActivityTracker {
   speed = null;
   /** @type {number | null} since when the speeds have said something other than the activity */
   #leaving = null;
+  /** @type {number | null} when an old record's drive ended, for all anyone can say, over a gap whose way says no */
+  #ended = null;
   /** @type {Fix[]} */
   #recent = [];
   /** @type {Fix | null} the last evidence before a gap, until a reading says; past a bound's end too */
@@ -99,9 +101,9 @@ export class ActivityTracker {
     const from = this.#before;
     const way = from && wayOver(from, fix);
     const went = way !== null && way >= FAST_FROM; // the drive went on
-    // The phone stayed put only if the way is under the sensor's own "still", not under walking: the two mistakes aren't equal. A parked phone read as moved only delays a true
-    // "stops" by the hold; a moving car read as parked (a light behind a gap, at 2.5 to 5 m/s, which `wayOver` can't call fast) fires a false one.
+    // Stayed put only under the sensor's own "still", not walking's: a car read as parked fires a false "stops" (a light behind a gap at 2.5 to 5 m/s). A parked phone read as moved takes the hold.
     const moved = from !== null && fix.at - from.at >= SPAN_MS && waySpeed(from, fix) >= STILL_BELOW;
+    const gone = this.#backAt === Infinity && from !== null && way !== null && !went && fix.at - from.at >= SAME_DRIVE_MS; // an old record whose way says no
     const speed = this.#speedAt(fix);
     if (speed === null) {
       this.#counts.none++; // nothing to read a speed from yet
@@ -110,7 +112,7 @@ export class ActivityTracker {
           this.#before = fix;
           this.#leaving = null;
           this.#stillSeen = false;
-        } else this.#gapOver(from, moved);
+        } else this.#gapOver(from, moved, gone);
       }
       return null;
     }
@@ -124,25 +126,21 @@ export class ActivityTracker {
     } else {
       // An old record, a fast speed, and a way that says no: that drive ended unseen, or a city or a winding road only looks slow in a straight line.
       // Which one nothing can say, so nothing is told: this reads as a drive starting, and "stops" waits for a real stop.
-      if (kind === 'fast' && this.#backAt === Infinity && from && way !== null && !went && fix.at - from.at >= SAME_DRIVE_MS) this.activity = 'unknown';
+      if (kind === 'fast' && gone) this.activity = 'unknown';
       // Past a bound's end, on the road: moving fast is back at once.
       const back = kind === 'fast' && this.activity !== 'moving-fast' && from && (way === null || went);
-      this.#gapOver(from, moved);
+      this.#gapOver(from, moved, gone);
       if (back) return this.#become('moving-fast', fix.at, gap);
     }
     return this.#decide(fix.at, gap);
   }
 
-  /**
-   * A gap, if any, is over: a hold starts afresh unless the phone stayed put (its way under STILL_BELOW, the sensor's own "still"), and then leaving moving fast dates from the last
-   * evidence, so a parked phone ends at once. The limit is not walking's: a car at a light behind the gap has a way of 2.5 to 5 m/s, which can't be called fast, and reading it as
-   * parked fires a false "stops", while a phone carried on foot read as moved only delays its true one by the hold.
-   * @param {Fix | null} from @param {boolean} moved
-   */
-  #gapOver(from, moved) {
+  /** A gap is over. If the phone didn't stay put (`moved`) the hold starts afresh, and for `gone` its end is dated from the record. @param {Fix | null} from @param {boolean} moved @param {boolean} gone */
+  #gapOver(from, moved, gone) {
     if (moved) {
       this.#leaving = null;
       this.#stillSeen = false;
+      if (gone && from && this.activity === 'moving-fast') this.#ended = from.at + LEAVE_FAST_MS;
     } else if (this.activity === 'moving-fast') this.#leaving ??= from?.at ?? null;
     this.#before = this.#backAt = null;
   }
@@ -233,6 +231,7 @@ export class ActivityTracker {
     if (seen === this.activity) {
       this.#leaving = null;
       this.#stillSeen = false;
+      this.#ended = null;
       return null;
     }
     const fast = this.activity === 'moving-fast';
@@ -250,13 +249,13 @@ export class ActivityTracker {
   /** @param {Activity} to @param {number} at @param {number} gap ms since the fix before @returns {Change} */
   #become(to, at, gap) {
     const why = { heldS: this.#leaving === null ? 0 : Math.round((at - this.#leaving) / 1000), gapS: Math.round(gap / 1000), readings: this.#counts, heards: this.#heards };
-    const ended = this.activity === 'moving-fast' && this.#leaving !== null ? Math.min(at, this.#leaving + LEAVE_FAST_MS) : at;
+    const ended = this.activity !== 'moving-fast' ? at : this.#ended ?? (this.#leaving !== null ? Math.min(at, this.#leaving + LEAVE_FAST_MS) : at);
     const change = { from: this.activity, to, at: ended, why };
     this.#counts = zero();
     this.#heards = 0;
     this.#maxSpeed = this.#maxAcc = 0;
     this.activity = to;
-    this.#leaving = null;
+    this.#leaving = this.#ended = null;
     this.#stillSeen = false;
     return change;
   }
@@ -274,7 +273,7 @@ export class ActivityTracker {
   reset() {
     this.activity = 'unknown';
     this.speed = null;
-    this.#leaving = null;
+    this.#leaving = this.#ended = null;
     this.#recent = [];
     this.#before = null;
     this.#backAt = null;
