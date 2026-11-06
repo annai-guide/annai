@@ -649,6 +649,40 @@ test("annai's own reminders while a live session's voice plays are shown, never 
   }
 });
 
+test("a reminder for another conversation while a live session's voice plays: she says it in the session, annai only shows it (never over her)", async () => {
+  const k = await liveKit([{ said: 'Hello there.', audio: tone(0.2) }, { said: 'Check-out is at eleven.', audio: tone(0.2) }]);
+  try {
+    await k.voice.unlock();
+    k.agent.send('Hi');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    assert.ok(k.agent.live.voiced);
+    await k.agent.remind([{ watch: 'w', text: 'Check-out at 11:00 in the other trip' }], 'elsewhere');
+    await soon(async () => texts(k).some((x) => /Check-out at 11:00 in the other trip/.test(x)));
+    assert.ok(k.notices.some((/** @type {any} */ n) => n.body === 'Check-out at 11:00 in the other trip'), 'shown');
+    assert.ok(!k.said.includes('Check-out at 11:00 in the other trip'), 'never said by annai over her');
+    await soon(async () => (await k.events(['out.speak'])).length === 2);
+  } finally {
+    await k.done();
+  }
+});
+
+test('an urgent reminder for another conversation goes into the live session at once, as the open one does', async () => {
+  const k = await liveKit([{ said: 'Hello there.', audio: tone(0.2) }, { said: 'Leave now.', audio: tone(0.2) }]);
+  try {
+    await k.voice.unlock();
+    k.agent.send('Hi');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await k.agent.live.idle();
+    const before = texts(k).length;
+    await k.agent.remind([{ watch: 'w', text: 'Leave now for the ferry' }], 'elsewhere', { urgent: true });
+    await soon(async () => texts(k).length > before);
+    assert.match(texts(k).at(-1) ?? '', /Leave now for the ferry/);
+    assert.ok(!k.said.includes('Leave now for the ferry'));
+  } finally {
+    await k.done();
+  }
+});
+
 // The fix pass (M2): a live Koe owes Kokoro's notes for the user as a text Koe does: one cue, then annai shows them (spec §6.8).
 /** Kokoro's words for the user with its notes here (tell_koe's for_user). */
 const FOR_USER = 'Nepenthe is open until 10 tonight.';

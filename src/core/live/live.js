@@ -1591,8 +1591,10 @@ export class Live {
       // What fired, for the wake's line: a plan item's title, or a watch's reminder; never annai's own English.
       const titles = xs.map((x) => (x.watch.owner === 'system' ? x.watch.when.title : x.watch.fallback)).filter((s) => typeof s === 'string' && s);
       const lines = notes.get(scope) ?? [];
+      // An urgent watch's alert is said at once in a live voice session (drive-test design §7); a catch-up is late already.
+      const urgent = kind === 'trigger' && xs.some((x) => x.watch.urgent === true);
       if (scope !== open) {
-        if (fallbacks.length) await this.agent.remind(fallbacks, scope);
+        if (fallbacks.length) await this.agent.remind(fallbacks, scope, { urgent });
         await this.agent.wake({ kind, text: [...lines, ...reasons].join(' '), scope, titles });
         continue;
       }
@@ -1603,8 +1605,6 @@ export class Live {
         this.#held.push({ scope, text });
         continue;
       }
-      // An urgent watch's alert is said at once in a live voice session (drive-test design §7); a catch-up is late already.
-      const urgent = kind === 'trigger' && xs.some((x) => x.watch.urgent === true);
       await this.agent.wake({ kind, text, fallbacks, titles, ...(urgent ? { urgent } : {}) });
     }
   }
