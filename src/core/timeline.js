@@ -1,8 +1,7 @@
 import { dayIn, deviceZone } from './time.js';
 
 /**
- * Where a trip stands against today: by dates only, in a zone. The one answer for home, the opening rule and live mode.
- * A start with no end is happening on its start day only.
+ * Where a trip stands against today, by dates only, in a zone: the one answer for home, the opening rule and live mode. A start with no end is happening on its start day only.
  * @param {{ start?: string, end?: string } | null | undefined} trip @param {number} now @param {string} [zone]
  * @returns {'undated' | 'past' | 'happening' | 'future'}
  */

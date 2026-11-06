@@ -203,7 +203,7 @@ export async function exportArchive(store, opts) {
       files: await t.listFiles(scope.id, '/'),
       events: include.history ? (await t.listEvents(scope.id)).map((e) => withoutPhotoMeta(e, include)) : [],
     }));
-    // A backup note belongs to the device that made it; the mirror is read again from what comes (backfillTrips), so a Share says nothing of when they last talked.
+    // A backup note belongs to the device that made it; the mirror is read again from what comes (backfillTrips).
     const { backup: _, start: _s, end: _e, talked: _t, ...record } = scope;
     /** @type {ManifestScope} */
     const ms = { dir, record };
@@ -724,7 +724,7 @@ export async function importArchive(store, opened, choices = {}) {
     await removeUnused(store, added).catch(() => {});
     throw e;
   }
-  // What came is in. Its mirror is read from its own files and log; a failure here fills at the next start.
+  // What came is in; its mirror is read from its files and log, and a failure here fills at the next start.
   await backfillTrips(new Workspace(store)).catch((e) => console.warn(/* en */ "the imported trips' dates couldn't be mirrored", e));
   return result;
 }
@@ -779,7 +779,7 @@ async function commitImport(store, { manifest, plan, overrides, secrets, now, re
       if (p.mode === 'system') await t.deleteScope(p.target);
       // The target decides the kind: a record that calls "me" a trip must not make it one.
       const kind = p.target === ME ? 'me' : p.mode === 'system' ? 'sys' : 'trip';
-      // This device hasn't backed it up. The mirror is read from what came (backfillTrips), whatever a record says of itself.
+      // This device hasn't backed it up; the mirror is read from what came (backfillTrips).
       const { backup: _b, start: _s, end: _e, talked: _t, ...rec } = p.rec;
       await t.putScope({ ...rec, id: p.target, kind, status: 'active', updated: now });
       for (const f of p.files) {

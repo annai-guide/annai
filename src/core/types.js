@@ -14,7 +14,7 @@
  * @typedef {{ id: string, kind: 'me'|'trip'|'sys', title: string, status: 'active'|'archived',
  *   created: number, updated: number, format: number, tripId?: string, backup?: { at: number, seq: number }, start?: string, end?: string, talked?: number | null }} ScopeRecord
  *   backup: the last saved Backup that held this trip: when, and the last history entry it holds (spec §4.9).
- *   start, end: a trip's dates, mirrored from trip.json, absent when undated. talked: when the user last spoke in it, null when nobody has; no key: not mirrored yet (scopes.js).
+ *   start, end: the trip's dates mirrored from trip.json; talked: when the user last spoke in it, null when nobody has, no key: not filled yet (scopes.js).
  * @typedef {{ after?: number, before?: number, limit?: number, reverse?: boolean, types?: string[], notTypes?: string[] }} EventQuery
  *
  * @typedef {object} Tx

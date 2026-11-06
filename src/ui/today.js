@@ -56,9 +56,8 @@ export function takeover({ activity, was, screens, on, hash, typing, trip, same 
 
 /**
  * Follows the activity for the shell: Driving, or a plugin's screen, takes over as it changes. The returned function seeds what "changed" is measured
- * from, once live mode has restored the drive record, which a reload does after the shell starts.
- * @param {any} live @param {{ screens: () => { pluginId: string, item: any }[], hash: () => string, typing: () => boolean, trip: () => string | null, go: (to: string) => void }} o
- * @returns {() => void}
+ * from, once live mode has restored the drive record (a reload does that after the shell starts).
+ * @param {any} live @param {{ screens: () => any[], hash: () => string, typing: () => boolean, trip: () => string | null, go: (to: string) => void }} o @returns {() => void}
  */
 export function followDrive(live, o) {
   let was = live?.activity;

@@ -71,7 +71,7 @@ export async function record(store, scope, { type, actor, data, texts = [], blob
   const ev = { ts: now, type, actor, data: out, ...(refs.length ? { refs } : {}) };
   const brought = new Set(keep.map((k) => k.hash));
   const named = blobsOf(ev).filter((h) => !brought.has(h));
-  // A user's line stamps its trip's record, so last talked needs no log read. A record with no talked key isn't filled yet: the backfill reads the log for it.
+  // A user's line stamps its trip's record; one with no talked key isn't filled yet, and backfillTrips reads the log for it.
   const said = talks({ type, data });
   /** @type {string | null} another scope's content this entry tried to name */
   let denied = null;

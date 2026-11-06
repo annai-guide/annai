@@ -195,7 +195,7 @@ async function boot() {
   const active = settings.activeTrip;
   const exists = active ? await store.tx(['scopes'], 'readonly', (tx) => tx.getScope(active)) : null;
   agent.open(exists ? active : null).catch((e) => console.warn(/* en */ 'Shiori could not open the conversation', e));
-  // Records a released copy wrote get their dates and last talked once, as live mode chooses the trip in play from them.
+  // Records a released copy wrote get their dates and last talked once; live mode chooses the trip in play from them.
   await backfillTrips(ws).catch((e) => console.warn(/* en */ "trips' dates couldn't be mirrored", e));
   // Notifications start once live mode has loaded (their reminders are live mode's); each failure says whose it is.
   const liveStarted = live.start();
@@ -227,7 +227,7 @@ async function boot() {
   updates.voice = voice;
   const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, awake, pack, presets, backups, sim, push, updates, version: VERSION });
   updates.notices = shell.notices;
-  // A reload on an address, mid-drive, starts the shell before live mode has restored the drive: that isn't a change to take over for.
+  // A reload mid-drive starts the shell before live mode has restored the drive; that isn't a change to take over for.
   liveStarted.then(shell.seedActivity, () => {});
   offerReload = (names) => {
     offerReload = () => {};

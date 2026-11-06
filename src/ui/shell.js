@@ -241,7 +241,7 @@ export function startShell(root, core) {
     }
     // The screen you are on stays in view in the top bar, however far along it is.
     const on = links.find((a) => a.hasAttribute('aria-current'));
-    // Where Driving's ← goes: the screen it was entered from, by a take-over or a link.
+    // Where Driving's ← goes: the screen it was entered from.
     if (route.name === 'drive' && shown.name && shown.name !== 'drive') /** @type {any} */ (ctx).drivingFrom = shown.hash || '#/trips';
     shown = { tab: on?.getAttribute('href') ?? null, hash: location.hash, name: route.name };
     noteScreen(location.hash);
@@ -353,14 +353,13 @@ export function startShell(root, core) {
   // nothing typed would be lost.
   /** @type {any} */ (core.agent)?.on?.('went', () => redraw());
   render({ moved: true });
-  // Driving, or a plugin's screen for the activity, takes over once as the activity changes. The dock's box is outside main, so
-  // typing there counts here, and not in typing().
+  // Driving, or a plugin's screen for the activity, takes over once per drive. The dock's box is outside main, so typing there counts here.
   const seedActivity = followDrive(core.live, { screens: () => slotEntries(ctx, 'ui:screen'), hash: () => location.hash, typing: () => isField(document.activeElement), trip: () => drivingTrip(core), go: (to) => ctx.go(to) });
   let readyCard = () => {};
   return {
     notices,
     render,
-    /** Live mode has restored the drive record: what the activity changes from is what it restored. */
+    /** Live mode has restored the drive record: the activity changes from what it restored. */
     seedActivity,
     /** Draws the screen again once nothing typed would be lost (what Settings → Updates shows changed). */
     redraw: () => redraw(),
