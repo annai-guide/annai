@@ -205,7 +205,7 @@ test('item 12: a tap while a reminder is said stops it and opens at once', async
   }
 });
 
-test('Extended Thinking: a model that refuses its setup rests long, and the note goes on at once to the next model of Koe\'s list, not to annai\'s fallback', async () => {
+test('a saved Koe list naming Extended Thinking, which annai no longer lists and Gemini refuses: it rests as a failure does, the note goes on at once to the next model of the list, not to annai\'s fallback, and nothing shows an error', async () => {
   const k = await liveKit([{ said: 'The fuel station is open until ten.', audio: tone(0.1) }], { live: { second: true } });
   try {
     const live = k.llm.live;
@@ -214,11 +214,17 @@ test('Extended Thinking: a model that refuses its setup rests long, and the note
       if (id === 'm-live') throw new ProviderError('bad-request', 'Thinking level must be specified for this model.');
       return live(id, setup, o);
     };
+    /** @type {any[]} */
+    const notes = [];
+    k.agent.on('notice', (/** @type {any} */ n) => notes.push(n));
     await tell(k);
     await soon(async () => (await k.events(['out.speak'])).length === 1 || (await shown(k)).length > 0, 3000);
-    assert.ok(k.llm.bench.until('m-live') - Date.now() > 10 * COOLDOWN_MS, 'rests long');
+    const left = k.llm.bench.until('m-live') - Date.now();
+    assert.ok(left > 0 && left <= COOLDOWN_MS, `rests as a failure does: ${left}`);
     assert.deepEqual(await shown(k), [], 'said by the next live model');
     assert.equal(k.agent.live.modelId, 'm-live2');
+    assert.deepEqual(notes, [], 'no card, no toast');
+    assert.deepEqual(await k.events(['error']), []);
   } finally {
     await k.done();
   }

@@ -410,13 +410,14 @@ test('moving fast across an unlock or a reload, and no fix since: it holds to th
   assert.equal(r.tick(T0 + 120_000), null);
   assert.deepEqual(bare(r.tick(T0 + NO_FIX_BACK_MS)), { from: 'moving-fast', to: 'still', at: T0 });
 
-  // A second unlock starts it again: time off screen is still no silence.
+  // A second unlock goes on from there: only time on screen counts, so the bound moves by the time off screen and no more.
   const u = driving();
   u.feed(at(BIXBY, 0, { speed: 14 }));
-  u.heard(T0 + 180_000);
-  u.heard(T0 + 400_000);
-  assert.equal(u.tick(T0 + 180_000 + NO_FIX_BACK_MS), null);
-  assert.equal(u.due(), T0 + 400_000 + NO_FIX_BACK_MS);
+  u.heard(T0 + 180_000, T0 + 60_000);
+  u.heard(T0 + 400_000, T0 + 300_000); // 120 s on screen, 100 s off
+  assert.equal(u.due(), T0 + 280_000 + NO_FIX_BACK_MS);
+  assert.equal(u.tick(T0 + 280_000 + NO_FIX_BACK_MS - 1), null);
+  assert.equal(u.tick(T0 + 280_000 + NO_FIX_BACK_MS)?.to, 'still');
 
   // Only moving fast holds: any other activity reads quiet as before.
   const w = new ActivityTracker();
@@ -435,8 +436,21 @@ test('moving fast across an unlock or a reload, and no fix since: it holds to th
   // A good fix ends the wait: from there on, the rules of a fix (no speed: quiet for two minutes).
   const g = driving();
   g.heard(T0 + 10_000);
-  g.feed(at(BIXBY, 20));
+  g.feed(at(off(BIXBY, 0, -840), 20)); // where it stopped
   assert.equal(g.due(), T0 + 20_000 + QUIET_STILL_MS);
   g.reset();
   assert.equal(g.due(), null);
+
+  // A good fix with no speed whose way says the drive went on: on to the same bound, which dates from it. One whose way is slow ends the wait.
+  const f = driving();
+  f.feed(at(BIXBY, 0, { speed: 14 }));
+  f.heard(T0 + 180_000, T0 + 60_000);
+  f.feed(at(off(BIXBY, 0, -840), 185));
+  assert.equal(f.due(), T0 + 185_000 + QUIET_STILL_MS, 'the way is short');
+  const o = driving();
+  o.feed(at(BIXBY, 0, { speed: 14 }));
+  o.heard(T0 + 180_000, T0 + 60_000);
+  o.feed(at(NEPENTHE, 185));
+  assert.equal(o.due(), T0 + 180_000 + NO_FIX_BACK_MS);
+  assert.equal(o.tick(T0 + 180_000 + NO_FIX_BACK_MS)?.at, T0 + 245_000);
 });

@@ -75,8 +75,6 @@ const round3 = (/** @type {number} */ x) => Math.round(x * 1e3) / 1e3;
 const SHOWN_SLACK_MS = 60_000;
 /** A watch that is a reminder, not a cue for Shiori: a time watch's, or the plan's leave, running late and coming up (spec §11.3). @param {Watch} w */
 const reminds = (w) => w.when.type === 'time' || w.when.type === 'every' || (w.when.type === 'plan' && ['leave', 'late', 'coming-up'].includes(String(w.when.event)));
-/** A watch that goes once it has fired: not the plan's, and not one that repeats. @param {Watch} w */
-const oneTime = (w) => w.owner !== 'system' && (w.when.type === 'time' || (!w.repeat && w.when.type !== 'every'));
 
 export class Live {
   /** Live mode is on (spec §11.1). */
@@ -106,11 +104,11 @@ export class Live {
   #voiceLapse = null;
   /** The check that found the drive ended is under way: what it fires is said with voice as it was. */
   #driveEnding = false;
-  /** Voice was turned off during this drive: it stays off until the drive ends. */
+  /** Voice was turned off during this drive: it stays off until the drive ends (past a bound end, until a good fix says the road went on or not). */
   #hushed = false;
   /**
-   * A drive's end found only after this page opened (the record's hold had run out: 'due'; the record said moving fast, and the first good fix says otherwise: 'fast')
-   * waits for the first good fix, and a choice of voice's since the page opened cancels it. null: none waits.
+   * A drive's end found only after this page opened (the record's hold had run out: 'due'; the record said moving fast, and a good fix says otherwise: 'fast')
+   * waits for a good fix that can say, and a choice of voice's since the page opened cancels it. null: none waits.
    * A 'due' end waits at most FIX_WAIT_MS (from the catch-up) for it: with no good fix by then it ends (going off is the safe way).
    * @type {'due' | 'fast' | null}
    */
@@ -124,8 +122,13 @@ export class Live {
   #stateAt = null;
   /** The odometer when the record was last written, km. */
   #savedKm = 0;
-  /** @type {Fix | null} the record, too old to say so, said moving fast from here: the first good fix decides if it is the same drive */
+  /**
+   * @type {Fix | null} moving fast may have gone on from here: the record, too old to say so, said it (#late), or it ended only because no fix came back (in memory: a reload loses this).
+   * The first good fix that says decides if it is the same drive.
+   */
   #wasFast = null;
+  /** The record, too old to say so, said moving fast: a stop was missed unless the road goes on, and a fix that says so (not silence) fires it late. */
+  #stopOwed = false;
   /** @type {string | null} the activity read back at start */
   #restored = null;
   /** @type {Fix | null} the last location point kept (spec §4.5) */
@@ -345,7 +348,7 @@ export class Live {
     this.online = true;
     this.#tracker.reset();
     this.#fastEnded = this.#voiceLapse = this.#stateAt = null;
-    this.#hushed = this.#driveEnding = this.#driveEndOwed = false;
+    this.#hushed = this.#driveEnding = this.#driveEndOwed = this.#stopOwed = false;
     this.#late = null;
     this.#savedKm = 0;
     this.#kept = null;
@@ -377,8 +380,8 @@ export class Live {
         this.#gpsStop();
         this.#tracker.reset();
         this.#fastEnded = this.#voiceLapse = this.#stateAt = null;
-        this.#hushed = false;
-        this.#late = null;
+        this.#hushed = this.#stopOwed = false;
+        this.#late = this.#wasFast = null;
         this.activity = 'unknown';
         this.fix = null;
         this.stop = null;
@@ -840,8 +843,10 @@ export class Live {
    * @param {'visibility' | 'connectivity'} kind @param {boolean} v
    */
   #first(kind, v) {
-    if (kind === 'visibility') this.shown = v;
-    else if (v !== this.online) {
+    if (kind === 'visibility') {
+      this.shown = v;
+      if (!v) this.#away = { since: this.clock.now(), from: this.fix };
+    } else if (v !== this.online) {
       this.online = v;
       this.#offlineSince = v ? null : this.clock.now();
     }
@@ -913,22 +918,30 @@ export class Live {
     if (fix.source !== 'manual') {
       this.gps = 'ok';
       if (this.#wasFast && fix.accuracy <= 100) {
-        if (waySpeed(this.#wasFast, fix) >= FAST_FROM) { // the same drive: nothing starts
-          if ((fix.speed ?? 0) >= FAST_FROM) { // and still on the road
+        const same = waySpeed(this.#wasFast, fix) >= FAST_FROM; // the same drive: nothing starts
+        const speed = fix.speed ?? this.#tracker.speed;
+        if (!same || speed !== null) { // the same drive with no speed yet: on the road or parked after it, the next good fix says
+          if (same && (speed ?? 0) >= FAST_FROM) { // and still on the road
             this.activity = 'moving-fast';
+            this.#voiceLapse = null;
+            this.#stopOwed = false;
             this.#tracker.restore(this.activity, fix.at);
             this.#tellActivity();
           } else {
-            this.#fastEnded = fix.at - VOICE_HOLD_MS; // parked or at a light: no false "starts", and no voice
+            if (same) this.#fastEnded = fix.at - VOICE_HOLD_MS; // parked or at a light: no false "starts", and no voice
             if (this.#late === 'fast') this.#voiceLapse = fix.at; // the drive ended unseen: as far as voice goes, it ends now
+            else {
+              this.#hushed = false; // its end was told at the bound: voice off for it ends here
+              this.#keepRecord();
+            }
           }
-        } else if (this.#late === 'fast') this.#voiceLapse = fix.at;
-        this.#wasFast = null;
-        this.#late = null;
+          this.#wasFast = null;
+          this.#late = null;
+        }
       }
       const c = this.#tracker.feed(fix);
       if (c) {
-        change = { from: c.from, to: c.to };
+        change = this.#changeHeard(c);
         this.activity = c.to;
         await this.#log(this.#changeData(c));
       }
@@ -992,7 +1005,7 @@ export class Live {
     }
     const away = this.#away ?? { since: this.clock.now(), from: this.fix };
     this.#away = null;
-    this.#tracker.heard(this.clock.now()); // time off screen isn't a quiet GPS
+    this.#tracker.heard(this.clock.now(), away.since); // time off screen isn't a quiet GPS
     if (this.on) this.#gpsStart();
     this.#tell();
     await this.#catchUp({ ...away, how: 'shown' });
@@ -1323,7 +1336,8 @@ export class Live {
    */
   #driveEnd() {
     if (!this.#sim) this.agent.holdVoice?.();
-    this.#driveEnding = this.#hushed = false;
+    this.#driveEnding = false;
+    if (!this.#wasFast) this.#hushed = false; // past a bound end the road may go on: the next good fix says
     this.#keepRecord();
     if (!this.#sim) this.#tellDriveEnd();
     this.#tellActivity();
@@ -1347,10 +1361,21 @@ export class Live {
     if (!c) return null;
     this.activity = c.to;
     if (c.noFix) this.#wasFast = this.#odo; // no fix came back: the first good one says whether it was the same drive, as after a kill
+    const heard = this.#changeHeard(c);
     this.#log(this.#changeData(c));
     this.#tellActivity();
     this.#tell();
-    return { from: c.from, to: c.to };
+    return heard;
+  }
+
+  /**
+   * A change as the triggers hear it. A stop missed after a kill is heard at the first change the readings confirm, a hold that ran out (on a fix or on time), and silence isn't that: a lone no-speed fix can't fire it.
+   * The log says what the tracker saw. @param {import('./activity.js').Change} c
+   */
+  #changeHeard(c) {
+    const owed = this.#stopOwed && c.why.heldS > 0;
+    if (owed) this.#stopOwed = false;
+    return { from: owed && c.to !== 'moving-fast' ? 'moving-fast' : c.from, to: c.to };
   }
 
   /** A change of activity as the log keeps it (no position); moving fast ending starts the clocks that the triggers and voice read. @param {import('./activity.js').Change} c */
@@ -1379,11 +1404,15 @@ export class Live {
     await logEvent(this.store, SYS_DEVICE, { type: 'state', actor: 'system', data }, now).catch((e) => this.#fail(e));
   }
 
-  /** The one record a restart reads. due: when a drive's end is still to be told to voice. */
+  /**
+   * The one record a restart reads. due: when a drive's end is still to be told to voice. at: how old what it says is, so a hold, which nothing has said since, keeps the last evidence's:
+   * reloads can't renew it, and from 5 minutes on a restart restores nothing (#restore). What the record said stays while a first good fix after a kill is awaited.
+   */
   #keepRecord() {
-    if (this.#sim || this.#wasFast) return;
+    if (this.#sim || this.#late === 'fast') return;
     const o = this.#odo;
-    this.keep.set({ at: this.clock.now(), odometer: round3(this.odometer), odo: o && { lat: o.lat, lng: o.lng, at: o.at, accuracy: o.accuracy }, activity: this.activity, ended: this.#fastEnded, due: this.#voiceLapse, hushed: this.#hushed });
+    const now = this.clock.now();
+    this.keep.set({ at: this.#tracker.holding ? this.keep.get()?.at ?? now : now, odometer: round3(this.odometer), odo: o && { lat: o.lat, lng: o.lng, at: o.at, accuracy: o.accuracy }, activity: this.activity, ended: this.#fastEnded, due: this.#voiceLapse, hushed: this.#hushed });
   }
 
   /** annai started: the odometer and its place, whatever the record's age; with GPS on, the activity and when moving fast ended, if under SAME_DRIVE_MS old. */
@@ -1403,6 +1432,7 @@ export class Live {
     this.#hushed = r.hushed === true && (r.activity === 'moving-fast' || this.#voiceLapse !== null);
     if (now - r.at >= SAME_DRIVE_MS) {
       if (r.activity === 'moving-fast') {
+        this.#stopOwed = true;
         this.#wasFast = this.#odo;
         if (this.#wasFast) this.#late = 'fast';
       }
@@ -1413,7 +1443,7 @@ export class Live {
     this.#tracker.restore(this.activity, now, this.#odo);
     if (r.ended !== null) {
       this.#fastEnded = r.ended;
-      if (r.ended + VOICE_HOLD_MS > now) this.#voiceLapse = r.ended + VOICE_HOLD_MS;
+      if (r.activity !== 'moving-fast' && r.ended + VOICE_HOLD_MS > now) this.#voiceLapse = r.ended + VOICE_HOLD_MS; // moving fast again since: no end to tell
     }
   }
 
@@ -1430,11 +1460,6 @@ export class Live {
       for (const w of [...list]) {
         if (expired(w, m.now)) {
           await this.#drop(scope, w).catch((e) => this.#fail(e)); // gone from live mode, if not from its file
-          continue;
-        }
-        // A one-time watch its log says fired, with its file still here (a backup taken before the delete, a page killed before it): it has been said, and only goes.
-        if (oneTime(w) && this.#fired.has(this.#key(scope, w.id))) {
-          await this.#drop(scope, w).catch((e) => this.#fail(e));
           continue;
         }
         const type = types.get(w.when?.type);
@@ -1490,7 +1515,7 @@ export class Live {
       }
       done.push(x);
       // A one-time watch goes; a watch file that can't be removed is told, and the reminder still comes (L1).
-      if (oneTime(x.watch)) await this.#drop(x.scope, x.watch).catch((e) => this.#fail(e));
+      if (x.watch.owner !== 'system' && (x.watch.when.type === 'time' || (!x.watch.repeat && x.watch.when.type !== 'every'))) await this.#drop(x.scope, x.watch).catch((e) => this.#fail(e));
       // Said on screen, now or in the catch-up: a notification for it from now on is a double (one shown while away was read first).
       if (this.shown) {
         this.#said.set(this.#keyOf(x.scope, x.watch), this.clock.now());

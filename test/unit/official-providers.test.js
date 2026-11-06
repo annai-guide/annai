@@ -322,7 +322,7 @@ test("Gemini's Live voice: off until switched on; Test opens a session that answ
   const desc = (await official('provider-gemini')).provider;
   const live = /** @type {any} */ (desc.abilities.live);
   assert.deepEqual([live.kind, live.type, live.name, live.on, live.baseUrl], ['realtime', 'gemini-live', 'Live voice', false, 'https://generativelanguage.googleapis.com']);
-  assert.deepEqual(live.models.map((/** @type {any} */ m) => m.providerId), ['gemini-3.8-live', 'gemini-3.8-live-extended-thinking']);
+  assert.deepEqual(live.models.map((/** @type {any} */ m) => m.providerId), ['gemini-3.8-live']);
   assert.deepEqual(live.models[0].prices, { input: 0.75, audioIn: 3, image: 1, output: 4.5, audioOut: 12 });
   assert.ok(live.models.every((/** @type {any} */ m) => m.input.join() === 'text,image'), 'it takes photos (and prices their tokens)');
   const GKEY = 'AIza-stand-in-gemini-key-0123456789';
@@ -379,7 +379,7 @@ const DOUBLES = [{ from: '2027-01-01', input: 1.5, output: 7.5, cacheRead: 0.15 
 test('provider-gemini 2.6.0: Gemini through its own API (gemini-api), its chat models priced as Google publishes them, the free-tier switch offered, no stand-in signature', async () => {
   const m = await official('provider-gemini');
   const { levelsFor } = await import('../../plugins-official/gemini-api/levels.js');
-  assert.equal(m.version, '2.7.2');
+  assert.equal(m.version, '2.8.0');
   assert.deepEqual((await officialManifests()).find((x) => x.id === 'provider-gemini').requires, [{ id: 'gemini-api', version: '^0' }], 'not chat-completions; gemini-live comes when Live is switched on');
   const d = m.provider;
   assert.deepEqual([d.baseUrl, d.freeTier, d.keyUrl], ['https://generativelanguage.googleapis.com', 'Google', 'https://aistudio.google.com/apikey'], "who doesn't charge, by name");
@@ -486,6 +486,27 @@ test("the move-over from provider-gemini 1.x: the chat ability's type becomes ge
   assert.deepEqual(cfg.roles.main.models, [old]);
   assert.ok(Object.values(cfg.models).some((m) => modelOf(m).providerId === 'gemini-3.8-flash'), "2.0's models arrive, in no role");
   assert.equal(await getKey(k.store, id), 'AIza-kept');
+  await setKey(k.store, id, null);
+});
+
+test('an update that takes Extended Thinking out of the description: a saved Koe list stays as it is, and the model record with it', async () => {
+  const { addProvider, syncProviders } = await import('../../src/core/llm/providers.js');
+  const { setKey } = await import('../../src/core/llm/config.js');
+  const k = await hostKit();
+  const now = await official('provider-gemini');
+  const was = /** @type {any} */ (structuredClone(now));
+  was.version = '2.7.2';
+  was.provider.abilities.live.models.push({ providerId: 'gemini-3.8-live-extended-thinking', input: ['text', 'image'], name: 'Gemini 3.8 Live Extended Thinking', contextWindow: 131072 });
+  const id = await addProvider({ ws: k.ws, store: k.store }, was, { key: 'AIza-kept' });
+  const before = await readConfig(k.ws);
+  const idOf = (/** @type {string} */ pid) => /** @type {string} */ (Object.values(before.models).find((m) => modelOf(m).providerId === pid)?.id);
+  const list = [idOf('gemini-3.8-live-extended-thinking'), idOf('gemini-3.8-live')];
+  await saveRoles(k.ws, { ...before.roles, 'koe-realtime': { models: list, level: 'off' } });
+  assert.equal(await syncProviders({ ws: k.ws }, [now]), 1);
+  const after = await readConfig(k.ws);
+  assert.deepEqual(after.roles['koe-realtime'].models, list);
+  assert.ok(after.models[list[0]], 'Gemini refuses it, and the next model takes over (live-drive2)');
+  assert.deepEqual(after.providers[id].template?.models?.filter((/** @type {string} */ m) => m.startsWith('live/')), ['live/gemini-3.8-live']);
   await setKey(k.store, id, null);
 });
 

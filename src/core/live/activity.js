@@ -32,7 +32,8 @@ export const QUIET_STILL_MS = 120_000;
 export const NO_FIX_STILL_MS = 15 * 60_000;
 /**
  * Moving fast across a reload or an unlock, with no good fix since: silence right after coming back says nothing of stopping (the GPS is finding itself, or a phone in a
- * car under a roof), so it holds this long. A little over five minutes, so a five-minute gap and the fix after it aren't cut. Then it ends, dated from the last fix.
+ * car under a roof), so it holds this long, on screen. A little over five minutes, so a five-minute gap and the fix after it aren't cut. Then it ends, dated from the last fix.
+ * A good fix with no speed whose way says the drive went on is no decision either: it only becomes the last fix.
  */
 export const NO_FIX_BACK_MS = 330_000;
 /** Without the GPS's own speed, it is worked out from the oldest point at least this far back… */
@@ -54,7 +55,7 @@ export class ActivityTracker {
   #recent = [];
   /** @type {Fix | null} the last fix before annai went off screen, until a good one back */
   #before = null;
-  /** @type {number | null} when annai came back moving fast, until a good fix decides */
+  /** @type {number | null} when annai came back moving fast, until a good fix decides; moved on by each time off screen */
   #backAt = null;
   /** @type {number | null} when the last fix came */
   #lastAt = null;
@@ -81,7 +82,8 @@ export class ActivityTracker {
         this.#counts.none++;
         return null;
       }
-      this.#backAt = null;
+      // No speed, and the way says the drive went on: that says nothing of now, so it holds on (a speed worked out from such fixes decides, below).
+      if (fix.speed !== null || !this.#before || waySpeed(this.#before, fix) < FAST_FROM) this.#backAt = null;
     }
     const gap = this.#lastAt === null ? 0 : fix.at - this.#lastAt;
     if (this.#before) {
@@ -89,7 +91,7 @@ export class ActivityTracker {
         this.#leaving = null;
         this.#stillSeen = false;
       }
-      if (fix.accuracy <= 100) this.#before = null;
+      if (fix.accuracy <= 100) this.#before = this.#backAt === null ? null : fix;
     }
     const before = this.#recent.filter((f) => f.at < fix.at);
     const near = before.filter((f) => fix.at - f.at <= RECENT_MS);
@@ -101,6 +103,7 @@ export class ActivityTracker {
       this.#counts.none++; // nothing to read a speed from yet: it says nothing, and nothing is decided
       return null;
     }
+    this.#backAt = null;
     this.speed = speed;
     this.#maxSpeed = Math.max(this.#maxSpeed, speed);
     const kind = speed < STILL_BELOW ? 'still' : speed < WALK_BELOW ? 'walking' : speed >= FAST_FROM ? 'fast' : 'between';
@@ -112,7 +115,7 @@ export class ActivityTracker {
   /**
    * Asked without a new fix (live mode's recheck): a held change completes on time, the last speed seen
    * counting as still holding; no fix for QUIET_STILL_MS after a slow last speed is still, and for NO_FIX_STILL_MS after any.
-   * Moving fast across a reload or an unlock holds until a good fix decides, for at most NO_FIX_BACK_MS.
+   * Moving fast across a reload or an unlock holds until a good fix decides, for at most NO_FIX_BACK_MS on screen.
    * @param {number} now @returns {Change | null}
    */
   tick(now) {
@@ -148,6 +151,11 @@ export class ActivityTracker {
     return data;
   }
 
+  /** Moving fast is held across a reload or an unlock: no fix has said so since. */
+  get holding() {
+    return this.#backAt !== null;
+  }
+
   /** When tick could next change something, or null. @returns {number | null} */
   due() {
     if (this.#lastAt === null) return null;
@@ -160,9 +168,10 @@ export class ActivityTracker {
   /**
    * The GPS (re)started after annai was off screen: a gap counts from now, and the speed and way before it say nothing of the speed now.
    * A change starts holding again with the next fix, except leaving moving fast, which goes on (counting from the last fix if none had begun) unless the drive went on.
-   * @param {number} now
+   * Moving fast holds from now, or, held already, goes on as if the time off screen hadn't passed: only time on screen counts towards NO_FIX_BACK_MS.
+   * @param {number} now @param {number} [since] when annai went off screen
    */
-  heard(now) {
+  heard(now, since = now) {
     const last = this.#lastAt;
     if (last !== null) this.#lastAt = Math.max(last, now);
     this.#leaving = this.activity === 'moving-fast' ? this.#leaving ?? last : null;
@@ -170,7 +179,7 @@ export class ActivityTracker {
     this.#target = null;
     this.#seen = null;
     this.#before ??= this.#recent.at(-1) ?? null;
-    this.#backAt = this.activity === 'moving-fast' ? now : null;
+    this.#backAt = this.activity !== 'moving-fast' ? null : this.#backAt === null ? now : this.#backAt + (now - since);
     this.#recent = [];
     this.speed = null; // a fast speed from before the gap would hold moving fast through any silence after it
     this.#heards++;

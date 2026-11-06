@@ -168,6 +168,43 @@ test("Live resting because a model failed: one toast as it begins, once per rest
   }
 });
 
+test("the note that Live rests: a long rest cleared and a short new one says it again; a rest renewed while it lasts says it once", async () => {
+  const WORDS = 'Live is resting; Koe · Chat is answering';
+  const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+  try {
+    /** @type {any[]} */
+    const notes = [];
+    k.agent.on('notice', (/** @type {any} */ n) => { if (n.title === WORDS) notes.push(n); });
+    k.llm.bench.bench('m-live', 8 * 3_600_000);
+    await k.agent.split();
+    assert.equal(notes.length, 1);
+    k.llm.bench.clear('m-live'); // a new key
+    await k.agent.split();
+    assert.equal(k.agent.koeState, 'live');
+    k.llm.bench.bench('m-live', 60_000);
+    await k.agent.split();
+    assert.equal(k.agent.koeState, 'text');
+    assert.equal(notes.length, 2, 'a new rest');
+  } finally {
+    await k.done();
+  }
+  const r = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+  try {
+    /** @type {any[]} */
+    const notes = [];
+    r.agent.on('notice', (/** @type {any} */ n) => { if (n.title === WORDS) notes.push(n); });
+    r.llm.bench.bench('m-live', 400);
+    await r.agent.split();
+    r.llm.bench.bench('m-live', 60_000);
+    await new Promise((done) => setTimeout(done, 600));
+    await r.agent.split();
+    assert.equal(r.agent.koeState, 'text');
+    assert.equal(notes.length, 1, 'the same rest, renewed');
+  } finally {
+    await r.done();
+  }
+});
+
 test("Classic chosen while Realtime rests: when its model can answer again, Koe stays Classic, whatever asks again", async () => {
   const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
   try {
