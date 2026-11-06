@@ -3,8 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { until } from './agent-kit.js';
 import { updateAppSettings } from '../../src/core/settings.js';
-import { readConfig, saveProvider } from '../../src/core/llm/config.js';
-import { syncProviders } from '../../src/core/llm/providers.js';
+import { readConfig, saveRoles } from '../../src/core/llm/config.js';
 import { liveKit, lives, blocks, got, texts, soon, tone, say, sleep } from './koe-live-kit.js';
 import { quiet, cat } from './voice-kit.js';
 
@@ -207,15 +206,12 @@ test("the note that Live rests: a long rest cleared and a short new one says it 
   }
 });
 
-test("a plugin update drops the only model of Koe · Realtime: no Live model, so no session is tried and no \"Live is resting\" comes at any use, and Koe · Chat answers", async () => {
+test("no model in Koe · Realtime: no Live model, so no session is tried and no \"Live is resting\" comes at any use, and Koe · Chat answers", async () => {
   const WORDS = 'Live is resting; Koe · Chat is answering';
   const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
   try {
     const cfg = await readConfig(k.ws);
-    const key = 'realtime/gemini-3.8-live';
-    await saveProvider(k.ws, { ...cfg.providers['pv-live'], template: { version: '1.0.0', values: { name: 'Gemini', baseUrl: '', abilities: { realtime: { kind: 'realtime', type: 'gemini-live', on: true } } }, models: [key] } },
-      [{ ...cfg.models['m-live'], template: { id: `provider-test/${key}`, version: '1.0.0', values: { providerId: 'gemini-3.8-live' } } }]);
-    assert.equal(await syncProviders({ ws: k.ws }, [/** @type {any} */ ({ plugin: 'provider-test', name: 'Gemini', version: '2.0.0', provider: { abilities: { realtime: { kind: 'realtime', type: 'gemini-live', models: [] } } } })]), 1);
+    await saveRoles(k.ws, { ...cfg.roles, 'koe-realtime': { models: [], level: 'off' } });
     /** @type {any[]} */
     const notes = [];
     k.agent.on('notice', (/** @type {any} */ n) => notes.push(n.title));

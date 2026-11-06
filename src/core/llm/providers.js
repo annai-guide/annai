@@ -185,11 +185,18 @@ export async function addProvider({ ws, store }, src, { key = null, roles = 'fre
   return rec.id;
 }
 
+/** Koe · Realtime when a drop would empty it: the description's recommended model for that ability, else its first with a record. @param {ProviderSource} src @param {string} ability @param {ModelRecord[]} models */
+function liveInstead(src, ability, models) {
+  const wanted = src.provider.roles?.recommended?.[KOE_REALTIME] ?? [];
+  const of = descModels(src).filter((d) => d.ability === ability);
+  return [...of.filter((d) => wanted.includes(d.values.providerId)), ...of].flatMap((d) => models.filter((m) => m.template?.id === `${src.plugin}/${d.key}`).map((m) => m.id)).slice(0, 1);
+}
+
 /**
  * Brings providers up to date when their plugin's version changed (decision 4): new template layers,
  * models new to the description (in no role), and new abilities switched off (decision 5). The user's
- * layers stay; models gone from the description, or removed by the user, stay as they are, except that a model gone from the description leaves Koe · Realtime: a live model
- * is dropped because it can't serve, and a list that keeps it opens a refused session before the next model, or rests with none. @param {{ ws: Workspace }} c @param {ProviderSource[]} sources @returns {Promise<number>} the providers refreshed
+ * layers stay; models gone from the description, or removed by the user, stay as they are, except that a model leaves Koe · Realtime (a refused session first)
+ * at the update that dropped it: the previous description named it, this one doesn't, and lists that ability's models. A list it would empty gets the description's model. @param {{ ws: Workspace }} c @param {ProviderSource[]} sources @returns {Promise<number>} the providers refreshed
  */
 export async function syncProviders({ ws }, sources) {
   const bySrc = new Map(sources.map((s) => [s.plugin, s]));
@@ -229,18 +236,21 @@ export async function syncProviders({ ws }, sources) {
         if (!fresh.length) continue;
         const add = Object.fromEntries(fresh.map((k) => [k, structuredClone(now[k])]));
         changed.push(m.template ? { ...m, template: { ...m.template, values: { ...m.template.values, ...add } } } : { ...m, user: { ...m.user, ...add } });
-      } else dropped.add(m.id);
-    }
-    // Before the provider's own save: a kill between the two does it again at the next start.
-    if (realtime?.models.some((id) => dropped.has(id))) {
-      realtime = { ...realtime, models: realtime.models.filter((id) => !dropped.has(id)) };
-      await saveRoles(ws, { ...cfg.roles, [KOE_REALTIME]: realtime });
+      } else if (known.has(m.template.id.slice(src.plugin.length + 1)) && listed.some((x) => x.ability === m.ability)) dropped.add(m.id);
     }
     for (const d of listed) {
       if (known.has(d.key) || mine.some((m) => m.template?.id === `${src.plugin}/${d.key}`)) continue;
       changed.push(named(newModel(rec.id, d.ability, { template: { id: `${src.plugin}/${d.key}`, version: src.version, values: d.values } }), taken));
     }
-    await saveProvider(ws, { ...rec, template: { version: src.version, values, models: listed.map((d) => d.key), ...(added.length ? { added } : {}) }, user }, changed);
+    /** @type {Roles | null} */
+    let roles = null;
+    if (realtime?.models.some((id) => dropped.has(id))) {
+      const kept = realtime.models.filter((id) => !dropped.has(id));
+      realtime = { ...realtime, models: kept.length ? kept : liveInstead(src, cfg.models[realtime.models[0]].ability, [...changed, ...mine]) };
+      roles = { ...cfg.roles, [KOE_REALTIME]: realtime };
+    }
+    // One write: the model put in may be new, so a kill between two would leave a list naming nothing.
+    await saveProvider(ws, { ...rec, template: { version: src.version, values, models: listed.map((d) => d.key), ...(added.length ? { added } : {}) }, user }, changed, roles);
     n++;
   }
   return n;
