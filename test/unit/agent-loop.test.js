@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until } from './agent-kit.js';
+import { agentKit, until, hear } from './agent-kit.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { ProviderError } from '../../src/core/llm/contract.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
@@ -1985,6 +1985,74 @@ test('the newest open failing goes back to what is open, whatever came before it
   await assert.rejects(second, /IDB read failed/);
   assert.equal(k.agent.target, k.agent.trip);
   assert.equal(k.agent.trip, k.trip, 'the older open stood aside for it, so nothing moved');
+});
+
+test('a line typed during an open that fails is written into its conversation, and idle() settles', async () => {
+  const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'speak', input: { text: 'ok' } }, { name: 'sleep', input: {} }] } }] }]);
+  const road = await createTrip(k.ws, { title: 'Road' });
+  /** @type {() => void} */
+  let go = () => {};
+  const reached = failOnce(k, road, new Promise((r) => { go = () => r(undefined); }));
+  const opening = k.agent.open(road);
+  await reached;
+  k.agent.send('Typed during the open');
+  go();
+  await assert.rejects(opening, /IDB read failed/);
+  await k.agent.idle();
+  assert.deepEqual(await typed(k, road), ['Typed during the open']);
+  assert.equal(k.agent.busy, false);
+  await k.agent.open(road);
+  await k.agent.idle();
+  assert.deepEqual(await typed(k, road), ['Typed during the open'], 'once');
+  assert.deepEqual(await typed(k, k.trip), []);
+});
+
+test("a line typed during an open that fails, its write failing too, stays queued: not lost, and written once when the trip opens", async () => {
+  const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'speak', input: { text: 'ok' } }, { name: 'sleep', input: {} }] } }] }]);
+  const road = await createTrip(k.ws, { title: 'Road' });
+  /** @type {() => void} */
+  let go = () => {};
+  const reached = failOnce(k, road, new Promise((r) => { go = () => r(undefined); }));
+  const opening = k.agent.open(road);
+  await reached;
+  k.agent.send('Typed during the open');
+  const real = k.store.tx;
+  k.store.tx = (/** @type {any} */ s, /** @type {any} */ m, /** @type {any} */ f) => (m === 'readwrite' ? Promise.reject(new Error('QuotaExceededError')) : real.call(k.store, s, m, f));
+  go();
+  await assert.rejects(opening, /IDB read failed/);
+  assert.equal(k.agent.busy, true, 'owed, until it can be written');
+  k.store.tx = real;
+  await k.agent.open(road);
+  await k.agent.idle();
+  assert.deepEqual(await typed(k, road), ['Typed during the open']);
+  assert.equal(k.agent.trip, road);
+});
+
+test("Koe's open failing while Kokoro's holds: a tap and the words spoken after it land in the trip, not the old conversation", async () => {
+  const sleeps = { rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] };
+  const k = await agentKit([sleeps], { halves: true, koe: { type: sleeps }, voice: { mode: 'on', speechIn: ['m-hear'], hears: ['Where is the fuel'] } });
+  const road = await createTrip(k.ws, { title: 'Road' });
+  k.agent.send('Hi');
+  await k.agent.idle();
+  await k.voice.unlock();
+  let armed = true;
+  const own = Object.create(k.store);
+  own.tx = (/** @type {any} */ s, /** @type {any} */ m, /** @type {any} */ f) => {
+    if (!armed || m !== 'readonly' || !s.includes('events')) return k.store.tx(s, m, f);
+    armed = false;
+    throw new Error('IDB read failed');
+  };
+  k.agent.koe.store = own;
+  await assert.rejects(k.agent.open(road), /IDB read failed/);
+  assert.equal(k.agent.koe.target, k.trip, "Koe's open failed");
+  k.agent.tap();
+  await until(() => k.agent.koe.target === road);
+  await hear(k, 'where-eat');
+  const heard = async (/** @type {string} */ scope) => (await k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types: ['heard'] }))).length;
+  for (let i = 0; i < 500 && !(await heard(road)); i++) await new Promise((r) => { setTimeout(r, 10); });
+  assert.equal(await heard(road), 1);
+  assert.equal(await heard(k.trip), 0);
+  k.agent.hush('away');
 });
 
 test("Koe's open failing while Kokoro's holds: the next line opens Koe there first, and lands in the trip", async () => {

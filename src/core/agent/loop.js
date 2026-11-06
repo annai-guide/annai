@@ -624,8 +624,11 @@ export class Agent {
     if (this.#turning && trip !== this.trip && !o.quiet) this.#cutByOpen = true;
     if (this.#busy) this.#halt();
     this.#clearTimer();
-    this.opening = this.opening.catch(() => {}).then(() => this.#open(trip, generation)).catch((e) => {
-      if (generation === this.#generation) this.#target = this.trip; // it stays the one open, so opening it is asked for again
+    this.opening = this.opening.catch(() => {}).then(() => this.#open(trip, generation)).catch(async (e) => {
+      if (generation === this.#generation) {
+        this.#target = this.trip; // it stays the one open, so opening it is asked for again
+        await this.#keepElsewhere(this.scope).catch(() => {}); // lines typed meanwhile, or idle() never settles
+      }
       throw e;
     }).finally(() => {
       this.#opens--;
@@ -680,10 +683,10 @@ export class Agent {
    */
   async #keepElsewhere(scope) {
     const elsewhere = this.#queue.filter((w) => w.scope !== scope);
-    if (!elsewhere.length) return;
-    this.#queue = this.#queue.filter((w) => w.scope === scope);
     for (const s of new Set(elsewhere.map((w) => /** @type {string} */ (w.scope)))) {
-      await this.#logWakes(elsewhere.filter((w) => w.scope === s), newId('w'), false, (ev) => record(this.store, s, { now: this.#stamp(s), ...ev }), s === ME ? null : s);
+      const those = elsewhere.filter((w) => w.scope === s);
+      await this.#logWakes(those, newId('w'), false, (ev) => record(this.store, s, { now: this.#stamp(s), ...ev }), s === ME ? null : s);
+      this.#queue = this.#queue.filter((w) => !those.includes(w)); // only once written, so a failed write keeps them
     }
   }
 
