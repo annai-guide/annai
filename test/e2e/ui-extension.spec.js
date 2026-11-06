@@ -77,6 +77,64 @@ test("a plugin can replace the avatar, the Now card and the dock; turned off, an
   }
 });
 
+/** Makes the open trip one happening today by the test's clock, with an item today. @param {any} page */
+async function happeningToday(page) {
+  const trip = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+  await page.evaluate(async (trip) => {
+    const at = (/** @type {string} */ p) => p;
+    const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+    const { Workspace } = await import(at('/src/core/workspace.js'));
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    await ws.patch(trip, '/trip.json', { start: '2030-11-26', end: '2030-11-28' }, { author: 'user' });
+    await ws.write(trip, '/plan/falls.json', { id: 'falls', title: 'Testville Falls', kind: 'sight', fixed: false, priority: 1, start: { at: '2030-11-27T13:00:00Z', tz: 'UTC' } }, { author: 'user' });
+    store.close();
+  }, trip);
+}
+const NOON = new Date('2030-11-27T12:00:00Z'); // the same calendar day from Honolulu to Tokyo
+
+test("the Itinerary's today draws a plugin's Now card and sections, as Now does", async ({ page }) => {
+  const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });
+  try {
+    await page.clock.setFixedTime(NOON);
+    await modelSetUp(page, llm.origin);
+    await happeningToday(page);
+    await install(page, await zipOf(await fixtureFiles('trail-ui')), 'Trail UI', 'Install anyway and use it');
+    await install(page, await zipOf(await fixtureFiles('trail-look')), 'Trail look', 'Install anyway and use it');
+    await page.goto('/#/plan');
+    const top = page.locator('.today-top');
+    await expect(top.getByText('Trail Now card: Big Sur')).toBeVisible();
+    await expect(top.getByRole('region', { name: 'Trail' }).getByText('Trail section')).toBeVisible();
+  } finally {
+    await llm.stop();
+  }
+});
+
+test("a Now card that throws on the Itinerary leaves annai's own there, and the day tabs work", async ({ page }) => {
+  const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });
+  try {
+    await page.clock.setFixedTime(NOON);
+    await modelSetUp(page, llm.origin);
+    await happeningToday(page);
+    const broken = {
+      'annai-plugin.json': Buffer.from(JSON.stringify({ id: 'card-break', name: 'Card break', version: '1.0.0', api: 1, entry: 'index.js', replaces: ['now-card'] })),
+      'index.js': Buffer.from(`export function activate(annai) {
+        return annai.ui.component('now-card', { render: () => { throw new TypeError('now card broke'); } });
+      }`),
+    };
+    await install(page, await zipOf(broken), 'Card break', 'Install anyway and use it');
+    await page.goto('/#/plan');
+    await expect(page.locator('.today-top .now-place')).toHaveText("GPS is off, so annai isn't following where you are.");
+    await page.getByRole('tab').first().click();
+    await expect(page.locator('.today-top')).toBeHidden();
+    await page.getByRole('tab').nth(1).click();
+    await expect(page.locator('.today-top .now-place')).toBeVisible();
+    await expect(page.locator('.timetable .plan-row').filter({ hasText: 'Testville Falls' })).toBeVisible();
+  } finally {
+    await llm.stop();
+  }
+});
+
 test("a status chip that throws doesn't break the dock; it counts against its plugin", async ({ page }) => {
   const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });
   try {

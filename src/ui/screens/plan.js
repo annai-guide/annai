@@ -4,15 +4,15 @@ import { planRows, planDays, legKm, shioriUndos, PLAN_FILE, BOOKING_FILE } from 
 import { planToIcs } from '../../core/ics.js';
 import { loadLinks, expandLink } from '../../core/links.js';
 import { readAppSettings } from '../../core/settings.js';
-import { deviceZone, dayIn } from '../../core/time.js';
 import { tripZoneOf } from '../../core/trip-files.js';
 import { platform } from '../platform.js';
 import { saveFile } from '../save.js';
+import { todayOf, todayTop } from '../today.js';
 import { ask } from '../ask.js';
 import { detailsHref, rowName, lineName, dateRange, day, distance, num, list, sentences, sentenceGap } from '../format.js';
 
 /**
- * The Plan (spec §16.2): "Not on a day" (bookings with no time), day tabs, a timetable with ● fixed and ○ flexible, every booking on
+ * The Itinerary (spec §16.2): "Not on a day" (bookings with no time), day tabs, today's top, a timetable with ● fixed and ○ flexible, every booking on
  * its day with a quiet line for each night of a stay, the legs between stops, the check marks (§7.3), and "Add to calendar" (§8). A
  * tap on a row opens its details (the bookings-and-trips design, goal 6).
  * @param {any} ctx @param {{ parts: string[] }} route
@@ -36,15 +36,23 @@ export async function renderPlan(ctx, route) {
   const links = await loadLinks({ ws: ctx.ws }).catch(() => null);
 
   const tabs = [...days.map((d) => ({ key: d.key, label: day(d.key, true), rows: d.rows })), ...(untimed.length ? [{ key: '', label: t`No time yet (${num(untimed.length)})`, rows: untimed }] : [])];
-  const today = dayIn(Date.now(), deviceZone());
+  const today = todayOf(ctx.live);
   const first = tabs.find((x) => x.key === today) ?? tabs.find((x) => x.rows.length) ?? tabs[0];
   const panel = h('div', { class: 'plan-day', role: 'tabpanel' });
+  // Today's tab opens with what Now opens with. Driving shows the open trip, so only that trip links to it.
+  let top = null;
+  if (tabs.some((x) => x.key === today)) {
+    await ctx.agent?.opening.catch(() => {});
+    top = h('div', { class: 'today-top' }, todayTop(ctx, { title: scope.title, rows, tz: fallbackTz }),
+      id === ctx.agent?.trip ? h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/drive' }, t`Driving`)) : null);
+  }
   /** @type {HTMLButtonElement[]} */
   const buttons = tabs.map((x) => h('button', { type: 'button', role: 'tab', class: 'tab', onclick: () => show(x) }, x.label));
   /** @param {typeof tabs[number]} tab */
   function show(tab) {
     buttons.forEach((b, i) => b.setAttribute('aria-selected', String(tabs[i] === tab)));
     panel.setAttribute('aria-label', tab.label);
+    if (top) top.hidden = tab.key !== today;
     panel.replaceChildren(tab.rows.length ? timetable(ctx, id, tab.rows, links, undo, here) : h('p', { class: 'empty', text: t`Nothing planned this day.` }));
   }
   if (first) show(first);
@@ -68,7 +76,9 @@ export async function renderPlan(ctx, route) {
     notOnDay.length ? h('section', { class: 'not-on-day', 'aria-label': t`Not on a day` },
       h('h2', { class: 'section', text: t`Not on a day` }),
       h('ol', { class: 'timetable' }, ...notOnDay.map((r) => row(ctx, id, r, undo, here)))) : null,
-    tabs.length && rows.length ? [h('div', { class: 'tabs', role: 'tablist', 'aria-label': t`Days` }, ...buttons), panel] : null,
+    tabs.length && rows.length ? h('div', { class: 'tabs', role: 'tablist', 'aria-label': t`Days` }, ...buttons) : null,
+    top,
+    tabs.length && rows.length ? panel : null,
     rows.length ? null : h('p', { class: 'empty', text: t`No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.` }),
     broken ? h('p', { class: 'sub warn', text: broken === 1 ? t`${unread} couldn't be read. Open the trip's files to fix it.` : t`${unread} couldn't be read. Open the trip's files to fix them.` }) : null,
     h('div', { class: 'acts' }, save));

@@ -1587,35 +1587,35 @@ iy42pb	ok	check	要確認	src/ui/screens/booking.js:153	context: a detail to che
 1a6z1m2	draft	Itinerary	旅程	src/ui/screens/booking.js:166	
 d0tqtj	ok	The original, {0}, isn't in the trip.	元の資料（{0}）は旅にありません。	src/ui/screens/booking.js:188	{0} = name
 98drsx	ok	Open the original	元の資料を開く	src/ui/screens/booking.js:193	
-19jra30	ok	What is around us right now that is worth knowing about?	いま周りに、知っておくとよいものはありますか？	src/ui/screens/drive.js:13	Note: What the user says to Shiori with a tap, as their own words.
-sqqsfd	ok	What's around here?	この辺りに何がある？	src/ui/screens/drive.js:13	
-1gkqhnt	ok	Food	食事	src/ui/screens/drive.js:14	
-1hv457u	ok	Where can we eat along the way?	途中で食事できる所はどこですか？	src/ui/screens/drive.js:14	
-112axt9	ok	Fuel	給油	src/ui/screens/drive.js:15	
-1c79d90	ok	Where is the next fuel station or charger?	次のガソリンスタンドか充電スポットはどこですか？	src/ui/screens/drive.js:15	
-1d8ka8b	ok	Where is the nearest restroom?	いちばん近いトイレはどこですか？	src/ui/screens/drive.js:16	
-iw9ebk	ok	Restroom	トイレ	src/ui/screens/drive.js:16	
-14k2tsa	ok	How long?	あとどのくらい？	src/ui/screens/drive.js:17	
-18wvy25	ok	How long until our next stop?	次の立ち寄り先まで、あとどのくらいですか？	src/ui/screens/drive.js:17	
-1r191hj	ok	How long until we reach {0}?	{0}まで、あとどのくらいですか？	src/ui/screens/drive.js:17	{0} = next.name
-1xb4fg	ok	about {0}	約{0}	src/ui/screens/drive.js:21	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000)
-12d1x1g	draft	An itinerary place	旅程の場所	src/ui/screens/drive.js:34	
-7quqpk	ok	Go to Trips	「旅」へ	src/ui/screens/drive.js:51	
-ov2ou9	ok	Open a trip to see the road ahead.	旅を開くと、この先の道が表示されます。	src/ui/screens/drive.js:51	
-sxc7mr	ok	The road ahead	この先の道	src/ui/screens/drive.js:57	
-1b4mdx5	ok	You (finding where)	あなた（現在地を確認中）	src/ui/screens/drive.js:69	
-1efd4xo	ok	You	あなた	src/ui/screens/drive.js:69	
-591tvw	ok	You (GPS off)	あなた（GPS オフ）	src/ui/screens/drive.js:69	
-ugf9pe	ok	at {0}	{0}予定	src/ui/screens/drive.js:72	{0} = s.row.time; Note: A stop's time on the plan, on the road ahead ("at 14:00").
-102oezx	ok	Nothing more is planned with a place.	場所のある予定はもうありません。	src/ui/screens/drive.js:73	
-l329ve	ok	Directions to {0}	{0}への経路	src/ui/screens/drive.js:76	{0} = next.name
-kb2apf	ok	annai hasn't downloaded its maps links yet; it needs to be online once.	annai はまだ地図のリンクをダウンロードしていません。一度オンラインになる必要があります。	src/ui/screens/drive.js:79	
-1tuqp1	ok	Asked Shiori: {0}	Shiori に聞きました：{0}	src/ui/screens/drive.js:84	{0} = text
-ah9gez	ok	Turn GPS on	GPS をオンにする	src/ui/screens/drive.js:87	
-14ltb7u	draft	The itinerary has no places to choose from yet.	旅程にはまだ選べる場所がありません。	src/ui/screens/drive.js:90	English was: The plan has no places to choose from yet.
-1sedy1m	ok	Where are you?	いまどこにいますか？	src/ui/screens/drive.js:90	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
-1w8zbso	ok	annai now knows you're at {0}.	annai はあなたが{0}にいると認識しました。	src/ui/screens/drive.js:95	{0} = p.name
-12mubvb	ok	Now	いま	src/ui/screens/drive.js:127	
+19jra30	ok	What is around us right now that is worth knowing about?	いま周りに、知っておくとよいものはありますか？	src/ui/screens/drive.js:14	Note: What the user says to Shiori with a tap, as their own words.
+sqqsfd	ok	What's around here?	この辺りに何がある？	src/ui/screens/drive.js:14	
+1gkqhnt	ok	Food	食事	src/ui/screens/drive.js:15	
+1hv457u	ok	Where can we eat along the way?	途中で食事できる所はどこですか？	src/ui/screens/drive.js:15	
+112axt9	ok	Fuel	給油	src/ui/screens/drive.js:16	
+1c79d90	ok	Where is the next fuel station or charger?	次のガソリンスタンドか充電スポットはどこですか？	src/ui/screens/drive.js:16	
+1d8ka8b	ok	Where is the nearest restroom?	いちばん近いトイレはどこですか？	src/ui/screens/drive.js:17	
+iw9ebk	ok	Restroom	トイレ	src/ui/screens/drive.js:17	
+14k2tsa	ok	How long?	あとどのくらい？	src/ui/screens/drive.js:18	
+18wvy25	ok	How long until our next stop?	次の立ち寄り先まで、あとどのくらいですか？	src/ui/screens/drive.js:18	
+1r191hj	ok	How long until we reach {0}?	{0}まで、あとどのくらいですか？	src/ui/screens/drive.js:18	{0} = next.name
+1xb4fg	ok	about {0}	約{0}	src/ui/screens/drive.js:22	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000)
+12d1x1g	draft	An itinerary place	旅程の場所	src/ui/screens/drive.js:35	
+7quqpk	ok	Go to Trips	「旅」へ	src/ui/screens/drive.js:52	
+ov2ou9	ok	Open a trip to see the road ahead.	旅を開くと、この先の道が表示されます。	src/ui/screens/drive.js:52	
+sxc7mr	ok	The road ahead	この先の道	src/ui/screens/drive.js:58	
+1b4mdx5	ok	You (finding where)	あなた（現在地を確認中）	src/ui/screens/drive.js:70	
+1efd4xo	ok	You	あなた	src/ui/screens/drive.js:70	
+591tvw	ok	You (GPS off)	あなた（GPS オフ）	src/ui/screens/drive.js:70	
+ugf9pe	ok	at {0}	{0}予定	src/ui/screens/drive.js:73	{0} = s.row.time; Note: A stop's time on the plan, on the road ahead ("at 14:00").
+102oezx	ok	Nothing more is planned with a place.	場所のある予定はもうありません。	src/ui/screens/drive.js:74	
+l329ve	ok	Directions to {0}	{0}への経路	src/ui/screens/drive.js:77	{0} = next.name
+kb2apf	ok	annai hasn't downloaded its maps links yet; it needs to be online once.	annai はまだ地図のリンクをダウンロードしていません。一度オンラインになる必要があります。	src/ui/screens/drive.js:80	
+1tuqp1	ok	Asked Shiori: {0}	Shiori に聞きました：{0}	src/ui/screens/drive.js:85	{0} = text
+ah9gez	ok	Turn GPS on	GPS をオンにする	src/ui/screens/drive.js:88	
+14ltb7u	draft	The itinerary has no places to choose from yet.	旅程にはまだ選べる場所がありません。	src/ui/screens/drive.js:91	English was: The plan has no places to choose from yet.
+1sedy1m	ok	Where are you?	いまどこにいますか？	src/ui/screens/drive.js:91	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
+1w8zbso	ok	annai now knows you're at {0}.	annai はあなたが{0}にいると認識しました。	src/ui/screens/drive.js:96	{0} = p.name
+12mubvb	ok	Now	いま	src/ui/screens/drive.js:128	
 amdsnu	ok	Swipe sideways to move between tabs	横にスワイプしてタブを移動	src/ui/screens/experimental.js:14	
 1py6vf8	ok	Unfinished translations	未完成の翻訳	src/ui/screens/experimental.js:19	
 13a0vz9	ok	Features that are still being tried. They may have bugs, and their fixes may come slower than the rest of annai.	まだ試している機能です。不具合があるかもしれず、修正は annai のほかの部分より遅れることがあります。	src/ui/screens/experimental.js:25	
@@ -1874,43 +1874,38 @@ u3pgdz	ok	annai encrypts every reminder on this phone, and makes each the same s
 1cg5akv	ok	Each reminder is deleted at the relay once it is sent, or when you cancel it, turn notifications off, or remove its trip.	リマインダーは、送られたとき、または取り消したとき、通知をオフにしたとき、その旅を削除したときに、中継から削除されます。	src/ui/screens/notifications.js:157	
 1iz3xsa	ok	With annai open on screen, annai says a reminder itself, and the relay's copy is called off: you never get it twice.	annai を画面に開いているときは、annai 自身がリマインダーを伝え、中継の分は取り消されます。二度届くことはありません。	src/ui/screens/notifications.js:158	
 qkddms	ok	Every request to the relay is in Trace, under System · This device.	中継へのリクエストはすべて、記録の「システム · この端末」にあります。	src/ui/screens/notifications.js:159	Note: "This device" is the system scope's title, made by core (scopes.js); kept here as its drafts will say it.
-1tbrgfp	ok	Open a trip to see where you are and what is next.	旅を開くと、現在地と次の予定が表示されます。	src/ui/screens/now.js:29	
-15h0umr	ok	Next	次の予定	src/ui/screens/now.js:81	context: coming up; Note: The heading over what is planned next on Now, not the welcome's Next button.
-1m0ri7	ok	Nothing more is planned.	これ以上の予定はありません。	src/ui/screens/now.js:83	
-1oi7u22	draft	The whole itinerary	旅程全体	src/ui/screens/now.js:84	
-11lm89y	ok	Latest	最新	src/ui/screens/now.js:86	
-1tzspvr	ok	GPS is off, so annai isn't following where you are.	GPS がオフなので、annai は現在地を追っていません。	src/ui/screens/now.js:127	
-1sflilm	draft	Location isn't allowed for annai. Open Driving to say where you are.	annai に位置情報が許可されていません。「運転中」を開いて、現在地を伝えてください。	src/ui/screens/now.js:130	
-1770v5g	ok	Finding where you are…	現在地を確認しています…	src/ui/screens/now.js:131	
-vlhm27	draft	No GPS signal right now. Open Driving to say where you are.	いま GPS の信号がありません。「運転中」を開いて、現在地を伝えてください。	src/ui/screens/now.js:131	
-ue501f	ok	Near {0}, ≈ {1}	{0}の近く（≈ {1}）	src/ui/screens/now.js:134	{0} = near.name; {1} = distance(near.m / 1000)
-1fw5x21	ok	Fixed:	固定：	src/ui/screens/now.js:145	Note: Read aloud before a plan item that keeps its time.
-tdmj58	ok	Flexible:	調整可：	src/ui/screens/now.js:145	Note: Read aloud before a plan item whose time can move.
-16ocoht	ok	Show what she said	話した言葉を見る	src/ui/screens/now.js:169	
-1yj7glf	ok	Said aloud	読み上げ	src/ui/screens/now.js:170	
+1tbrgfp	ok	Open a trip to see where you are and what is next.	旅を開くと、現在地と次の予定が表示されます。	src/ui/screens/now.js:25	
+15h0umr	ok	Next	次の予定	src/ui/screens/now.js:36	context: coming up; Note: The heading over what is planned next on Now, not the welcome's Next button.
+1m0ri7	ok	Nothing more is planned.	これ以上の予定はありません。	src/ui/screens/now.js:38	
+1oi7u22	draft	The whole itinerary	旅程全体	src/ui/screens/now.js:39	
+11lm89y	ok	Latest	最新	src/ui/screens/now.js:41	
+1fw5x21	ok	Fixed:	固定：	src/ui/screens/now.js:88	Note: Read aloud before a plan item that keeps its time.
+tdmj58	ok	Flexible:	調整可：	src/ui/screens/now.js:88	Note: Read aloud before a plan item whose time can move.
+16ocoht	ok	Show what she said	話した言葉を見る	src/ui/screens/now.js:112	
+1yj7glf	ok	Said aloud	読み上げ	src/ui/screens/now.js:113	
 tctj7k	draft	Open a trip to see its itinerary.	旅を開くと、その旅程が表示されます。	src/ui/screens/plan.js:24	English was: Open a trip to see its plan.
 ow5t4g	ok	No time yet ({0})	時刻未定（{0}）	src/ui/screens/plan.js:38	{0} = num(untimed.length)
-u71m40	ok	Nothing planned this day.	この日の予定はありません。	src/ui/screens/plan.js:48	
-g3ei4k	draft	Saved the itinerary.	旅程を保存しました。	src/ui/screens/plan.js:58	English was: Saved the plan.
-g48b3l#other	ok	# items have no time yet, so they aren't in it.	#件はまだ時刻がないため、含まれていません。	src/ui/screens/plan.js:58	plural; # = left; English: "# item has no time yet, so it isn't in it." (one), "# items have no time yet, so they aren't in it." (other)
-foy2yl	ok	Add to calendar	カレンダーに追加	src/ui/screens/plan.js:60	
-1ot147o#other	ok	# booking files	予約ファイル#件	src/ui/screens/plan.js:63	plural; # = bookings.broken; English: "# booking file" (one), "# booking files" (other)
-3rvc64#other	draft	# itinerary files	旅程ファイル#件	src/ui/screens/plan.js:63	plural; # = plan.broken; English: "# itinerary file" (one), "# itinerary files" (other)
-1rs1ez2	ok	Not on a day	日付指定なし	src/ui/screens/plan.js:68	Note: a heading above the day tabs, for bookings with no day of their own (an open ticket, a pass for the whole trip); 日付指定なし as tickets say.
-pxfr8q	ok	Days	日付	src/ui/screens/plan.js:71	
-86s9x3	draft	No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.	まだ旅程はありません。Shiori に一緒に計画してもらうか、カレンダーファイル（.ics）を旅に追加してください。	src/ui/screens/plan.js:72	English was: No plan yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.; Note: "Ask" here is asking Shiori, not the permission setting's Ask.
-1uxsg1z	ok	{0} couldn't be read. Open the trip's files to fix them.	{0}を読み込めませんでした。旅のファイルを開いて直してください。	src/ui/screens/plan.js:73	{0} = unread
-sdcje2	ok	{0} couldn't be read. Open the trip's files to fix it.	{0}を読み込めませんでした。旅のファイルを開いて直してください。	src/ui/screens/plan.js:73	{0} = unread
-1gmgpvl	ok	Check this	要確認	src/ui/screens/plan.js:129	
-wioqt8#other	ok	Check # details	要確認（#件）	src/ui/screens/plan.js:131	plural; # = r.checkFields.length; English: "Check # detail" (one), "Check # details" (other); Note: a chip on a Plan row: how many of a booking's details Shiori is unsure of; 要確認 as the Check this chip.
-1ropcog	ok	Booking missing	予約が見つかりません	src/ui/screens/plan.js:132	
-1u7blsq	draft	Shiori added this to the itinerary. Remove it?	Shiori がこれを旅程に追加しました。削除しますか？	src/ui/screens/plan.js:149	English was: Shiori added this to the plan. Remove it?
-kmmqyh	draft	Undone: {0} is off the itinerary.	元に戻しました：{0}を旅程から外しました。	src/ui/screens/plan.js:151	{0} = title; English was: Undone: {0} is off the plan.
-19uog97	ok	Added by Shiori · Undo	Shiori が追加 · 元に戻す	src/ui/screens/plan.js:154	
-1j6c9nb	ok	Undone: {0} is back as it was before Shiori changed it.	元に戻しました：{0}は Shiori が変更する前の状態です。	src/ui/screens/plan.js:160	{0} = title
-1qeof2p	ok	Changed by Shiori · Undo	Shiori が変更 · 元に戻す	src/ui/screens/plan.js:163	
-pgaz5s	ok	≈ {0} apart	距離 ≈ {0}	src/ui/screens/plan.js:174	{0} = distance(km)
-1gjwkfv	ok	Directions	経路	src/ui/screens/plan.js:175	
+u71m40	ok	Nothing planned this day.	この日の予定はありません。	src/ui/screens/plan.js:56	
+g3ei4k	draft	Saved the itinerary.	旅程を保存しました。	src/ui/screens/plan.js:66	English was: Saved the plan.
+g48b3l#other	ok	# items have no time yet, so they aren't in it.	#件はまだ時刻がないため、含まれていません。	src/ui/screens/plan.js:66	plural; # = left; English: "# item has no time yet, so it isn't in it." (one), "# items have no time yet, so they aren't in it." (other)
+foy2yl	ok	Add to calendar	カレンダーに追加	src/ui/screens/plan.js:68	
+1ot147o#other	ok	# booking files	予約ファイル#件	src/ui/screens/plan.js:71	plural; # = bookings.broken; English: "# booking file" (one), "# booking files" (other)
+3rvc64#other	draft	# itinerary files	旅程ファイル#件	src/ui/screens/plan.js:71	plural; # = plan.broken; English: "# itinerary file" (one), "# itinerary files" (other)
+1rs1ez2	ok	Not on a day	日付指定なし	src/ui/screens/plan.js:76	Note: a heading above the day tabs, for bookings with no day of their own (an open ticket, a pass for the whole trip); 日付指定なし as tickets say.
+pxfr8q	ok	Days	日付	src/ui/screens/plan.js:79	
+86s9x3	draft	No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.	まだ旅程はありません。Shiori に一緒に計画してもらうか、カレンダーファイル（.ics）を旅に追加してください。	src/ui/screens/plan.js:82	English was: No plan yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.; Note: "Ask" here is asking Shiori, not the permission setting's Ask.
+1uxsg1z	ok	{0} couldn't be read. Open the trip's files to fix them.	{0}を読み込めませんでした。旅のファイルを開いて直してください。	src/ui/screens/plan.js:83	{0} = unread
+sdcje2	ok	{0} couldn't be read. Open the trip's files to fix it.	{0}を読み込めませんでした。旅のファイルを開いて直してください。	src/ui/screens/plan.js:83	{0} = unread
+1gmgpvl	ok	Check this	要確認	src/ui/screens/plan.js:139	
+wioqt8#other	ok	Check # details	要確認（#件）	src/ui/screens/plan.js:141	plural; # = r.checkFields.length; English: "Check # detail" (one), "Check # details" (other); Note: a chip on a Plan row: how many of a booking's details Shiori is unsure of; 要確認 as the Check this chip.
+1ropcog	ok	Booking missing	予約が見つかりません	src/ui/screens/plan.js:142	
+1u7blsq	draft	Shiori added this to the itinerary. Remove it?	Shiori がこれを旅程に追加しました。削除しますか？	src/ui/screens/plan.js:159	English was: Shiori added this to the plan. Remove it?
+kmmqyh	draft	Undone: {0} is off the itinerary.	元に戻しました：{0}を旅程から外しました。	src/ui/screens/plan.js:161	{0} = title; English was: Undone: {0} is off the plan.
+19uog97	ok	Added by Shiori · Undo	Shiori が追加 · 元に戻す	src/ui/screens/plan.js:164	
+1j6c9nb	ok	Undone: {0} is back as it was before Shiori changed it.	元に戻しました：{0}は Shiori が変更する前の状態です。	src/ui/screens/plan.js:170	{0} = title
+1qeof2p	ok	Changed by Shiori · Undo	Shiori が変更 · 元に戻す	src/ui/screens/plan.js:173	
+pgaz5s	ok	≈ {0} apart	距離 ≈ {0}	src/ui/screens/plan.js:184	{0} = distance(km)
+1gjwkfv	ok	Directions	経路	src/ui/screens/plan.js:185	
 1a9dl1b	ok	This plugin gets full access to your trips and API keys.	このプラグインは、あなたの旅と API キーに完全にアクセスできます。	src/ui/screens/plugin-install.js:16	
 h65i2c	ok	It can read every key saved in annai and send it anywhere: now your keys for {0}.	annai に保存されたどのキーも読めて、どこへでも送れます。いまあるのは{0}のキーです。	src/ui/screens/plugin-install.js:43	{0} = list(names)
 7jgsq6	ok	It can read every key saved in annai and send it anywhere.	annai に保存されたどのキーも読めて、どこへでも送れます。	src/ui/screens/plugin-install.js:44	
@@ -2743,6 +2738,11 @@ q69pp5	ok	{0} didn't answer: {1}. No other model was asked.	{0}は答えませ�
 1cam7ic	ok	Message	メッセージ	src/ui/talk-panel.js:74	
 vy4apn	ok	Try this model	このモデルを試す	src/ui/talk-panel.js:75	
 1k3coi2	ok	A short conversation with this model alone: if it fails, no other model answers. Each reply shows its tokens and cost. Nothing is kept but the Trace.	このモデルだけとの短い会話です。失敗しても、ほかのモデルは答えません。返事ごとにトークン数と費用を表示します。記録以外には何も残りません。	src/ui/talk-panel.js:77	
+1tzspvr	ok	GPS is off, so annai isn't following where you are.	GPS がオフなので、annai は現在地を追っていません。	src/ui/today.js:17	
+1sflilm	draft	Location isn't allowed for annai. Open Driving to say where you are.	annai に位置情報が許可されていません。「運転中」を開いて、現在地を伝えてください。	src/ui/today.js:20	
+1770v5g	ok	Finding where you are…	現在地を確認しています…	src/ui/today.js:21	
+vlhm27	draft	No GPS signal right now. Open Driving to say where you are.	いま GPS の信号がありません。「運転中」を開いて、現在地を伝えてください。	src/ui/today.js:21	
+ue501f	ok	Near {0}, ≈ {1}	{0}の近く（≈ {1}）	src/ui/today.js:24	{0} = near.name; {1} = distance(near.m / 1000)
 1sva5r0	ok	The check took too long. Check the connection, and try again.	確認に時間がかかりすぎました。接続を確かめて、もう一度お試しください。	src/ui/updates.js:122	
 14d6ut8	ok	annai's offline service hasn't started yet, so annai itself wasn't checked. Try again in a moment.	annai のオフラインサービスがまだ起動していないため、annai 自体は確認していません。少ししてから、もう一度お試しください。	src/ui/updates.js:140	
 16l98jx	ok	annai couldn't check for a new version of itself. Check the connection and try again.	annai は自分の新しいバージョンを確認できませんでした。接続を確かめて、もう一度お試しください。	src/ui/updates.js:141	
