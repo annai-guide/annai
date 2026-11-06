@@ -1248,3 +1248,132 @@ test('the same record 5 minutes or more old: the next drive has its voice', asyn
   assert.equal(k.live.activity, 'moving-fast');
   assert.equal(held(k), true);
 });
+
+// Fix pass 4
+
+/** K4 with a voice-off, and a reload inside its 30 s. @param {boolean} [hushed] @returns {Promise<{ k: any, t: number, p: number }>} */
+async function k4Reloaded(hushed = true) {
+  const { k, y } = await driving();
+  if (hushed) { sensor(k).hush(true); await k.settle(); }
+  await hide(k);
+  const t = at('09:01') + 12 * 60_000;
+  await k.to(t);
+  await k.restart();
+  let p = y - LAST + 4 * 12 * 60;
+  for (let s = 3; s <= 13; s += 5) { await k.fix(t + s * 1000, north(p), { speed: SPEED }); p += SPEED * 5; }
+  await k.to(t + 16_000);
+  await k.reload();
+  return { k, t: t + 18_000, p };
+}
+
+for (const mins of [6, 30]) {
+  for (const back of [5, 180]) {
+    test(`route I: voice off, the car parks, killed inside the voice hold, reopened ${mins} minutes later, switched away at 2 s, back ${back} s later on a new drive: voice is on`, async () => {
+      const { k, y } = await driving();
+      sensor(k).hush(true);
+      await k.settle();
+      const p = y - LAST;
+      await k.stay(north(p), at('09:01:05'), at('09:02:10'), 5);
+      await hide(k);
+      const t = at('09:02:10') + mins * 60_000;
+      await k.to(t);
+      await k.restart();
+      await k.to(t + 2000);
+      await hide(k);
+      await k.to(t + 2000 + back * 1000);
+      await k.restart();
+      await road(k, t + 3000 + back * 1000, p + 5000, 90);
+      assert.equal(k.live.activity, 'moving-fast');
+      assert.equal(held(k), true);
+    });
+  }
+}
+
+for (const [name, v, secs] of /** @type {[string, number, number][]} */ ([['a light of 40 s', 0, 40], ['a light of 100 s', 0, 100], ['a 35 s crawl at 1.5 m/s', 1.5, 35]])) {
+  test(`voice off, K4, a reload inside the 30 s, then ${name}: the voice stays off on the road, as with no reload`, async () => {
+    const { k, t, p: p0 } = await k4Reloaded();
+    let p = p0;
+    let s = 0;
+    for (; s < secs; s += 5) { await k.fix(t + s * 1000, north(p), { speed: v }); p += v * 5; }
+    await road(k, t + s * 1000, p, 90);
+    assert.equal(k.live.activity, 'moving-fast');
+    assert.equal(held(k), false);
+    assert.equal(k.keep.get().hushed, true);
+  });
+}
+
+test('voice off, K4, a reload inside the 30 s, then a 10-minute pull-in: the end is told once, as with no reload', async () => {
+  const { k, t, p } = await k4Reloaded();
+  const told = ends(k);
+  await k.stay(north(p), t, t + 600_000, 5);
+  assert.equal(k.live.activity, 'still');
+  assert.equal(told(), 1);
+});
+
+test('a voice tap after that reload counts: the voice-off it chose holds on the road', async () => {
+  const { k, t, p } = await k4Reloaded(false);
+  sensor(k).hush(true);
+  await k.settle();
+  assert.equal(k.keep.get().hushed, true);
+  await road(k, t, p, 90);
+  assert.equal(held(k), false);
+  assert.equal(k.keep.get().hushed, true);
+});
+
+// Two lines that were untested: removing either fails one of these
+
+test('a late end, a voice tap, then walking and still: the cancelled end is not told', async () => {
+  const { k, y } = await driving();
+  sensor(k).hush(true);
+  await k.settle();
+  const p = y - LAST;
+  await k.stay(north(p), at('09:01:05'), at('09:02:10'), 5);
+  await hide(k);
+  await k.to(at('09:10'));
+  await k.restart();
+  const told = ends(k);
+  sensor(k).hush(true);
+  await k.settle();
+  for (let s = 3; s <= 43; s += 5) await k.fix(at('09:10') + s * 1000, north(p + 10 * (s - 3)), { speed: 1.5 });
+  await k.stay(north(p + 400), at('09:10:50'), at('09:14:50'), 5);
+  assert.equal(k.live.activity, 'still');
+  assert.equal(told(), 0);
+});
+
+test('killed, a way of 2 m/s, a light, the road, a 90 s stop, the road: the drive\'s one "starts" stays the only one, a stop that short is the same drive', async () => {
+  const { k, starts, y } = await driving();
+  const t = at('09:01') + 20 * 60_000;
+  await hide(k);
+  await k.to(t);
+  await k.restart();
+  let p = y - LAST + 2 * 1200;
+  for (let s = 3; s <= 23; s += 5) await k.fix(t + s * 1000, north(p), { speed: 0 });
+  p = await road(k, t + 28_000, p, 60);
+  await k.stay(north(p), t + 95_000, t + 185_000, 5);
+  await road(k, t + 190_000, p, 60);
+  assert.equal(k.live.activity, 'moving-fast');
+  assert.equal(starts(), 0, 'none since the first drive began');
+});
+
+// A "when I stop" set in the hold after a reopening, then a lock for the rest of the drive: the later gap restarts the hold and its date
+
+for (const lockSpeed of [14, 2]) {
+  test(`killed, reopened at a light at a way of 2 m/s, a "when I stop" set in the hold, locked 6 minutes at ${lockSpeed} m/s, unlocked parked: it fires once at the real stop`, async () => {
+    const { k, y } = await driving();
+    await hide(k);
+    const t = at('09:13');
+    await k.to(t);
+    await k.restart();
+    const p = y - LAST + 2 * 720;
+    for (let s = 3; s < 10; s += 5) await k.fix(t + s * 1000, north(p), { speed: 0 });
+    const once = await watch(k, 'stop', false);
+    for (let s = 13; s < 45; s += 5) await k.fix(t + s * 1000, north(p), { speed: 0 });
+    await hide(k);
+    const t2 = t + 45_000 + 6 * 60_000;
+    await k.to(t2);
+    await show(k);
+    const p2 = p + lockSpeed * 360;
+    await k.stay(north(p2), t2 + 3000, t2 + 200_000, 5);
+    assert.equal(once(), 1);
+  });
+}

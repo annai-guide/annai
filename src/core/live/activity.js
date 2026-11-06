@@ -101,7 +101,7 @@ export class ActivityTracker {
     const from = this.#before;
     const way = from && wayOver(from, fix);
     const went = way !== null && way >= FAST_FROM; // the drive went on
-    // Stayed put only under the sensor's own "still", not walking's: a car read as parked fires a false "stops" (a light behind a gap at 2.5 to 5 m/s). A parked phone read as moved takes the hold.
+    // Stayed put only under the sensor's own "still": a car read as parked fires a false "stops" (a light behind a gap at 2.5 to 5 m/s). A parked phone read as moved takes the hold.
     const moved = from !== null && fix.at - from.at >= SPAN_MS && waySpeed(from, fix) >= STILL_BELOW;
     const gone = this.#backAt === Infinity && from !== null && way !== null && !went && fix.at - from.at >= SAME_DRIVE_MS; // an old record whose way says no
     const speed = this.#speedAt(fix);
@@ -140,7 +140,7 @@ export class ActivityTracker {
     if (moved) {
       this.#leaving = null;
       this.#stillSeen = false;
-      if (gone && from && this.activity === 'moving-fast') this.#ended = from.at + LEAVE_FAST_MS;
+      this.#ended = gone && from && this.activity === 'moving-fast' ? from.at + LEAVE_FAST_MS : null;
     } else if (this.activity === 'moving-fast') this.#leaving ??= from?.at ?? null;
     this.#before = this.#backAt = null;
   }
