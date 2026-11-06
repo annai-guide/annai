@@ -1109,7 +1109,7 @@ export class Halves {
   remind(list, scope, o = {}) {
     const shown = this.kokoro.remind(list, scope);
     if (scope && scope !== (this.kokoro.target ?? ME) && this.koeState === 'live' && this.live.voiced && list.length) {
-      const w = { kind: 'trigger', text: /* en */ `Reminders for the user, from another of their conversations: ${list.map((r) => `"${r.text}"`).join(', ')}`, ...(o.urgent ? { urgent: true } : {}) };
+      const w = /** @type {Wake} */ ({ kind: 'trigger', text: /* en */ `Reminders for the user, from another of their conversations: ${list.map((r) => `"${r.text}"`).join(', ')}`, ...(o.urgent ? { urgent: true } : {}) });
       this.#alongside(this.#live(() => this.live.wake(w), w));
     }
     return shown;

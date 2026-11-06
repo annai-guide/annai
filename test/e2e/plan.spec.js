@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, filterTrace } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, filterTrace, happeningTrip } from './helpers.js';
 import { ZipWriter } from '../../src/core/zip.js';
 import { utf8 } from '../../src/core/bytes.js';
 
@@ -225,16 +225,18 @@ test("today's top keeps up after its tab is left and come back to", async ({ pag
   await expect(page.locator('.today-top .now-place')).toHaveText('At Hotel Aurora Test');
 });
 
-test("another trip's today has where you are but no Driving, which shows the open trip", async ({ page }) => {
+test("Driving is linked from the trip in play's today, not from the open trip's when that is another", async ({ page }) => {
   await page.clock.setFixedTime(NOON);
   await openApp(page);
-  const trip = await startTrip(page, 'Testville');
-  await records(page, trip, HAPPENING);
-  await page.goto('/#/trips');
-  await startTrip(page, 'Second Testville');
-  await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
+  const playing = await happeningTrip(page, 'Testville'); // dated today through the app's own path, so its record carries the dates
+  await records(page, playing, { write: HAPPENING.write });
+  const open = await startTrip(page, 'Second Testville'); // undated and open: the happening trip stays in play
+  await records(page, open, { write: HAPPENING.write });
+  await page.goto(`/#/trip/${encodeURIComponent(open)}/plan`);
   await expect(page.locator('.today-top .now-place')).toBeVisible();
   await expect(page.locator('.today-top').getByRole('link', { name: 'Driving' })).toHaveCount(0);
+  await page.goto(`/#/trip/${encodeURIComponent(playing)}/plan`);
+  await expect(page.locator('.today-top').getByRole('link', { name: 'Driving' })).toBeVisible();
 });
 
 test('a trip that ended has no today top', async ({ page }) => {

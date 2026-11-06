@@ -36,7 +36,7 @@ export function fakeAgent(target) {
     target,
     /** @type {any[]} */
     wakes: [],
-    /** @type {{ watch: string, text: string, scope: string }[]} */
+    /** @type {{ watch: string, text: string, scope: string, urgent?: boolean }[]} */
     reminders: [],
     /** @param {any} w */
     wake(w) {

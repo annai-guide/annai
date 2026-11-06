@@ -31,7 +31,7 @@ import { t } from '../l10n.js';
  * @typedef {{ scope: string, watch: Watch, type: TriggerType, firing: Firing, late: number, away?: 'start' | 'shown', fallback: string, say?: import('./plan-watches.js').PlanSay }} Fired
  *   late: minutes after it came due, in a catch-up; away: how annai was away then
  * @typedef {{ watch: string, text: string, cue?: boolean, plan?: import('./plan-watches.js').PlanSay }} Reminder  plan: a plan watch's, its data for the user's words
- * @typedef {{ target: string | null, wake: (w: any) => Promise<void>, remind: (list: Reminder[], scope?: string) => Promise<void>,
+ * @typedef {{ target: string | null, wake: (w: any) => Promise<void>, remind: (list: Reminder[], scope?: string, o?: { urgent?: boolean }) => Promise<void>,
  *   holdVoice?: () => void, on: (kind: 'event' | 'open', fn: (e: any) => void) => () => void }} AgentLike  the Agent, as live mode uses it
  * @typedef {{ kind: 'location' | 'visibility' | 'connectivity', start: (emit: (x: any) => void) => (() => void) | void }} Sensor
  *   location emits { lat, lng, accuracy, speed?, heading? }, or { error: 'denied' | 'unavailable', message };
