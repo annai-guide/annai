@@ -343,6 +343,7 @@ test('a watch written in a conversation that is not open, with #loadAll gone fro
 test('the plan and the mirrored reminders follow play: reminders() lists its leave-soon, held names the other', async () => {
   const k = await liveKit({ plan: { bixby: BIX, nepenthe: NEP } });
   const chat = await k.chat('Ramen');
+  const other = await k.chat('Elsewhere');
   k.agent.opened(chat);
   await k.settle();
   /** @type {Set<string>} */
@@ -351,7 +352,27 @@ test('the plan and the mirrored reminders follow play: reminders() lists its lea
   const leave = list?.find((r) => r.watch === LEAVE);
   assert.equal(leave?.scope, k.trip);
   assert.ok(leave?.key.startsWith(`${k.trip}|`));
-  assert.deepEqual([...held], [chat]);
+  assert.deepEqual([...held], [other], 'the open conversation is followed too, so only the other is held');
   assert.match(await k.live.listWatches(k.trip), /plan:nepenthe:leave/);
 });
 
+
+test("a closed annai is told of the open trip's first morning too, while another trip is in play; nothing twice when open is play", async () => {
+  const k = await liveKit({ start: at('20:00', '2026-11-28'), plan: { nepenthe: NEP } });
+  const next = await k.chat('Next', { start: '2026-11-29', end: '2026-12-01' });
+  await k.ws.write(next, '/plan/fly.json', { id: 'fly', title: 'Flight', fixed: true, start: { at: iso('09:00', '2026-11-29'), tz: LA } }, { author: 'user' });
+  k.agent.opened(next);
+  await k.settle();
+  assert.equal(k.live.play, k.trip, 'the trip happening today stays in play');
+  /** @type {Set<string>} */
+  let held = new Set();
+  const list = (await k.live.reminders({ held: (s) => { held = s; } })) ?? [];
+  assert.ok(list.some((r) => r.scope === next && r.watch === 'plan:fly:coming-up'), 'the flight reaches the relay');
+  assert.ok(!held.has(next), 'followed now, so not held');
+  k.agent.opened(k.trip);
+  await k.settle();
+  const own = (await k.live.reminders()) ?? [];
+  assert.equal(new Set(own.map((r) => r.key)).size, own.length, 'no key twice');
+  assert.ok(own.every((r) => r.scope !== next), 'the trip no longer open is the relay-held one, not listed');
+  assert.ok(own.some((r) => r.scope === k.trip));
+});
