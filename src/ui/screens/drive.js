@@ -1,4 +1,5 @@
-import { h, crumb, t, asUser } from '../dom.js';
+import { h, crumb, t, asUser, messageOf } from '../dom.js';
+import { explainStorageFull } from '../storage-full.js';
 import { routeStrip } from '../../core/now.js';
 import { loadLinks, mapsLinks } from '../../core/links.js';
 import { tripRows } from '../trip-rows.js';
@@ -79,8 +80,12 @@ export async function renderDrive(ctx) {
     ask.replaceChildren(...quickAsks(speaks, next).map(([label, text]) => h('button', {
       class: 'btn big', type: 'button',
       onclick: async () => {
-        await askIn(ctx, id, text);
-        ctx.notices.toast(t`Asked Shiori: ${text}`);
+        try {
+          await askIn(ctx, id, text);
+          ctx.notices.toast(t`Asked Shiori: ${text}`);
+        } catch (e) {
+          if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: t`Shiori wasn't asked`, body: sentences(messageOf(e), t`Try again.`), errors: [e] });
+        }
       },
     }, label)));
     gps.replaceChildren(...(live && !live.on ? [h('button', { class: 'btn pri', type: 'button', onclick: () => live.setLive(true) }, t`Turn GPS on`)] : []));

@@ -381,6 +381,8 @@ export class Halves {
   /** The half that talks with the user now. */
   get talking() { return this.koeState === 'text' ? this.koe : this.kokoro; }
   get state() { return this.koeState === 'live' ? this.live.view : this.talking.state; }
+  /** A live session is open or opening, which opening another conversation would close. Koe being live only means the route can go live. */
+  get sessionOpen() { return this.live.state !== 'closed'; }
   /** The dock's sign: never for a turn still stopping in the conversation being left. */
   get kokoroWorking() { return this.#works() && this.kokoro.busy && !this.kokoro.switching; }
   #visible() { return globalThis.document?.visibilityState !== 'hidden'; }
