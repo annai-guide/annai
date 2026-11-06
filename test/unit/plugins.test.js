@@ -248,8 +248,12 @@ test('host: an install that runs out of space leaves nothing behind', async () =
   assert.deepEqual(await host.installed(), {});
 });
 
-test('host: plugin packages are limited to 64 MB unpacked', () => {
-  assert.equal(PLUGIN_MAX_BYTES, 64 * 1024 * 1024);
+test('host: plugin packages are limited to 64 MB unpacked, through inspect', async () => {
+  const { host } = await setup();
+  const files = await fixture('hello');
+  files.set('big.bin', new Uint8Array(PLUGIN_MAX_BYTES));
+  await assert.rejects(host.inspect(files), /too large/);
+  assert.equal((await host.inspect(await fixture('hello'))).id, 'hello');
 });
 
 test('host: a tool keeps its own "this" when annai runs it', async () => {

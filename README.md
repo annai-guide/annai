@@ -143,3 +143,5 @@ to it. The push relay runs there too, as [relay/README.md](relay/README.md) desc
 `docs/testing/device-checklist-*.md`, one for each milestone, list what to verify by hand on real phones.
 
 **Plugins.** [docs/plugins.md](docs/plugins.md) is the guide to writing one.
+
+**Reasons.** [docs/superpowers/specs/2026-11-06-reasons-from-comments.md](docs/superpowers/specs/2026-11-06-reasons-from-comments.md) holds the longer reasons behind a few lines of code comments.

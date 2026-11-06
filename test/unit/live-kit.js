@@ -130,6 +130,7 @@ export async function liveKit({ plan = {}, bookings = {}, live = true, start = a
     registry, store, ws, trip, clock, agent, sensors, keep, live: engine, settle,
     /** The page reloads: the engine stops, and a new one starts over the same store, with the same clock and sensors. */
     async restart() {
+      await settle(); // a kill lands between tasks: a disposed page's queued check can't set a timer on the shared clock
       k.live.dispose();
       k.live = new Live({ store, ws, registry, agent, clock, keep, timeZone: () => LA, ...(news ? { news } : {}), ...(problem ? { problem } : {}) });
       await k.live.start();

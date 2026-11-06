@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { squash, matchAt, rankEntry, searchCatalog } from '../../src/core/search.js';
+import { squash, searchCatalog } from '../../src/core/search.js';
 import { catalogFacts } from '../../src/core/catalog-facts.js';
 
 // annai's own catalog as it ships, so a description that starts naming another plugin shows up here.
@@ -14,6 +14,19 @@ const ENTRIES = [
   { ...facts({ id: 'kotoba', name: 'ことば Voice', description: '日本語の声', provider: { abilities: { v: { kind: 'voice' } } } }), official: false },
   { ...facts({ id: 'golos', name: 'Голос', description: 'A voice in Russian.', provider: { abilities: { v: { kind: 'voice' } } } }), official: false },
 ];
+/** The plain reference for matching: whether a query, squashed, is at the start of one of a field's words. @param {string} query @param {string} field */
+const matchAt = (query, field) => {
+  const q = squash(query).text;
+  const f = squash(field);
+  return Boolean(q) && [...f.starts].some((i) => f.text.startsWith(q, i));
+};
+/** An entry's rank for a query, as searchCatalog gives it: 3 its name, 2 a keyword, 1 its description, an ability or "free"; 0 no match. @param {any} e @param {string} query */
+const rankEntry = (e, query) => {
+  const [hit] = searchCatalog([e], query);
+  if (!hit) return { score: 0 };
+  const { entry, ...rank } = hit;
+  return rank;
+};
 /** @param {{ entry: { id: string } }[]} r */
 const ids = (r) => r.map((x) => x.entry.id);
 

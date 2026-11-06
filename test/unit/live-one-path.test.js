@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { liveKit, at, off, MONTEREY } from './live-kit.js';
-import { NO_FIX_BACK_MS, NO_FIX_STILL_MS, QUIET_STILL_MS } from '../../src/core/live/activity.js';
+import { ActivityTracker, LEAVE_FAST_MS, NO_FIX_BACK_MS, NO_FIX_STILL_MS, QUIET_STILL_MS } from '../../src/core/live/activity.js';
 
 /**
  * One path for every gap in evidence (restore, heard and the bound): the contract's lines and the findings that led to it, each
@@ -1541,3 +1541,15 @@ for (const lockSpeed of [14, 2]) {
     assert.equal(once(), 1);
   });
 }
+
+test('an old moving-fast record reopened an hour later, a no-speed fix that shows the phone moved, then silence: the stop is dated a minute after the last evidence, not an hour', () => {
+  const T0 = Date.UTC(2026, 10, 6, 8, 0, 0);
+  const back = T0 + 3600e3;
+  const t = new ActivityTracker();
+  const fix = (/** @type {number} */ lat, /** @type {number | null} */ speed, /** @type {number} */ at) => ({ lat, lng: -122.3, accuracy: 10, speed, heading: null, source: /** @type {const} */ ('gps'), at });
+  t.restore('moving-fast', back, { from: fix(47.6, 0, T0), old: true });
+  t.feed(fix(47.618, null, back + 1000)); // 2 km on in an hour, and no speed to say more
+  const change = t.tick(back + 1000 + 125_000);
+  assert.equal(change?.to, 'still');
+  assert.equal(change?.at, T0 + LEAVE_FAST_MS);
+});
