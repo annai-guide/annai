@@ -527,8 +527,8 @@ export class Live {
   }
 
   /**
-   * What a closed annai can still say through the push relay (spec §11.6, 6b choices 1 and 2): time watches in every conversation, and the trip
-   * in play's "coming up" and "leave soon". Null until live mode has loaded, and while a simulation runs: the user's stay at the relay as they are.
+   * What a closed annai can still say through the push relay (spec §11.6, 6b choices 1 and 2): time watches in every conversation, and the "coming up"
+   * and "leave soon" of the trip in play and of the open conversation. Null until live mode has loaded, and while a simulation runs: the user's stay at the relay as they are.
    * Read in its own queue, so never half of a list being reloaded. held hears the other trips whose plan reminders live mode doesn't follow now, so what waits for them stays.
    * @param {{ held?: (scopes: Set<string>) => void }} [o] @returns {Promise<Mirrored[] | null>}
    */
@@ -537,7 +537,17 @@ export class Live {
       if (!this.#loaded || this.#sim) return null;
       await this.#follow(); // a trip being opened: its own plan, never the last one's under its name
       const play = this.#trip ?? ME;
-      if (o.held) o.held(new Set((await listTrips(this.store)).active.map((t) => t.id).filter((id) => id !== play && this.#inPlay(id))));
+      const open = this.agent.target;
+      // The open conversation's plan too, when it isn't play's: a trip that starts tomorrow, opened tonight, must still wake a closed annai.
+      /** @type {[string, Watch[]][]} */
+      const plans = [[play, this.#plan]];
+      if (open && open !== play && this.#rows.has(open) && this.#inPlay(open)) {
+        const watches = (await this.#planOf(open)).watches;
+        const ids = new Set(watches.map((w) => w.id).filter((id) => !this.#fired.has(this.#key(open, id))));
+        if (ids.size) await this.#recall(open, ids);
+        plans.push([open, watches]);
+      }
+      if (o.held) o.held(new Set((await listTrips(this.store)).active.map((t) => t.id).filter((id) => id !== play && id !== open && this.#inPlay(id))));
       const m = this.#moment();
       const time = this.types().get('time');
       /** @type {Mirrored[]} */
@@ -550,18 +560,21 @@ export class Live {
           if (Number.isFinite(due) && !expired(w, due)) out.push({ key: this.#keyOf(scope, w), scope, watch: w.id, due, text: w.fallback });
         }
       }
-      for (const w of this.#inPlay(play) ? this.#plan : []) {
-        const event = /** @type {any} */ (w.when).event;
-        if ((event !== 'coming-up' && event !== 'leave') || this.#spent(play, w)) continue;
-        /** @type {number | null} */
-        let due = null;
-        try {
-          due = PLAN.next?.(w.when, m, this.#mem.get(this.#key(play, w.id)) ?? {}) ?? null;
-        } catch {
-          due = null;
+      for (const [scope, list] of plans) {
+        if (!this.#inPlay(scope)) continue;
+        for (const w of list) {
+          const event = /** @type {any} */ (w.when).event;
+          if ((event !== 'coming-up' && event !== 'leave') || this.#spent(scope, w)) continue;
+          /** @type {number | null} */
+          let due = null;
+          try {
+            due = PLAN.next?.(w.when, m, this.#mem.get(this.#key(scope, w.id)) ?? {}) ?? null;
+          } catch {
+            due = null;
+          }
+          const say = /** @type {import('./plan-watches.js').PlanSay} */ (w.say);
+          if (typeof due === 'number' && Number.isFinite(due)) out.push({ key: this.#keyOf(scope, w), scope, watch: w.id, due, text: w.fallback, shown: planWords(say), ...(event === 'coming-up' ? { start: forAt(w) ?? undefined, what: planItemWords(say) } : {}) });
         }
-        const say = /** @type {import('./plan-watches.js').PlanSay} */ (w.say);
-        if (typeof due === 'number' && Number.isFinite(due)) out.push({ key: this.#keyOf(play, w), scope: play, watch: w.id, due, text: w.fallback, shown: planWords(say), ...(event === 'coming-up' ? { start: forAt(w) ?? undefined, what: planItemWords(say) } : {}) });
       }
       return out.sort((a, b) => a.due - b.due);
     });
