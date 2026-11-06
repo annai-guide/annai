@@ -166,3 +166,24 @@ test('backfill: a bad date in trip.json is not copied, and an unreadable one lea
   const rk = /** @type {any} */ (await scope(broken));
   assert.deepEqual([rk.start, rk.talked], [undefined, null]);
 });
+
+test('a line said on a record the backfill has not reached does not mark it done: the next backfill still dates it', async () => {
+  const { store, ws, scope, released } = await kit();
+  const a = await createTrip(ws, { title: 'A', start: '2026-11-27' });
+  const b = await createTrip(ws, { title: 'B', start: '2026-11-27', end: '2026-11-28' });
+  await released(a);
+  await released(b);
+  // The first run throws on a log read before it reaches either trip.
+  const real = store.tx.bind(store);
+  let n = 0;
+  store.tx = (/** @type {string[]} */ s, /** @type {any} */ m, /** @type {any} */ f) => (s.length === 1 && s[0] === 'events' && m === 'readonly' && n++ === 0 ? Promise.reject(new Error('idb hiccup')) : real(s, m, f));
+  await assert.rejects(backfillTrips(ws), /idb hiccup/);
+  store.tx = real;
+  await record(store, a, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'hi']], now: 100 });
+  assert.equal('talked' in /** @type {any} */ (await scope(a)), false, 'the key still says: not filled');
+  await backfillTrips(ws);
+  const ra = /** @type {any} */ (await scope(a));
+  assert.deepEqual([ra.start, ra.talked], ['2026-11-27', 100]);
+  const rb = /** @type {any} */ (await scope(b));
+  assert.deepEqual([rb.start, rb.end, rb.talked], ['2026-11-27', '2026-11-28', null]);
+});

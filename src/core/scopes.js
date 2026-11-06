@@ -273,7 +273,7 @@ async function lastTalked(store, scope) {
 
 /**
  * Fills the mirror on records that have none: released copies wrote no talked key, and an archive's may come without. Once each, archived ones too: the
- * key is what says it was done, so a later run reads no file. A line said meanwhile has written the key, and stands.
+ * key is what says it was done, so a later run reads no file; only this writes it on a record without it, so a run that failed halfway is finished by the next. A line said between its read and its write is the log's: the next line stamps it.
  * @param {Workspace} ws
  */
 export async function backfillTrips(ws) {
