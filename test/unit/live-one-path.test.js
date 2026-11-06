@@ -1217,3 +1217,34 @@ test('K4 with a voice-off, then a stop of about 2.5 minutes: a true end is told'
   assert.equal(k.live.activity, 'still');
   assert.equal(told(), 1);
 });
+
+// A reload inside K4's 30 s keeps the voice-off (the record says unknown, with hushed true), unless the record is old
+
+test('voice off, killed, reopened on a slow way (K4), then a reload inside the 30 s: the voice-off stays, across "starts"', async () => {
+  const { k, t, there } = await killedHushed();
+  const starts = await watch(k, 'start');
+  let p = there;
+  for (let s = 3; s <= 13; s += 5) { await k.fix(t + s * 1000, north(p), { speed: SPEED }); p += SPEED * 5; }
+  await k.to(t + 16_000);
+  await k.reload();
+  assert.equal(k.keep.get().hushed, true);
+  await road(k, t + 18_000, p, 90);
+  assert.equal(k.live.activity, 'moving-fast');
+  assert.equal(starts(), 1);
+  assert.equal(held(k), false);
+  assert.equal(k.keep.get().hushed, true);
+});
+
+test('the same record 5 minutes or more old: the next drive has its voice', async () => {
+  const { k, t, there } = await killedHushed();
+  let p = there;
+  for (let s = 3; s <= 13; s += 5) { await k.fix(t + s * 1000, north(p), { speed: SPEED }); p += SPEED * 5; }
+  await k.to(t + 16_000);
+  await k.reload();
+  await hide(k);
+  await k.to(t + 16_000 + 6 * 60_000);
+  await k.restart();
+  await road(k, t + 16_000 + 6 * 60_000 + 3000, p, 90);
+  assert.equal(k.live.activity, 'moving-fast');
+  assert.equal(held(k), true);
+});
