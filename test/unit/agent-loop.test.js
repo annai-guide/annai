@@ -1930,10 +1930,10 @@ test('a failed open puts the target back, so Try again opens the trip and the li
   const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] }]);
   const road = await createTrip(k.ws, { title: 'Road' });
   failOnce(k, road);
-  const ctx = { ws: k.ws, agent: k.agent };
-  await assert.rejects(askIn(ctx, road, 'Fuel?'), /IDB read failed/);
+  const ctx = { ws: k.ws, agent: k.agent, live: { play: road } };
+  await assert.rejects(askIn(ctx, 'Fuel?'), /IDB read failed/);
   assert.equal(k.agent.target, k.trip, 'the open conversation is still the one the user is in');
-  await askIn(ctx, road, 'Fuel?');
+  await askIn(ctx, 'Fuel?');
   await k.agent.idle();
   assert.equal(k.agent.trip, road);
   assert.deepEqual(await typed(k, road), ['Fuel?']);

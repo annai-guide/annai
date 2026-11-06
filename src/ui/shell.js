@@ -32,7 +32,7 @@ import { createDock } from './dock.js';
 import { tapKeepsKeyboard } from './tap-keeps-keyboard.js';
 import { dockHidesWhileTyping } from './dock-hides.js';
 import { noteScreen } from './resume.js';
-import { followDrive, isField, drivingTrip } from './today.js';
+import { followDrive, followPlay, isField, drivingTrip } from './today.js';
 import { renderExt, renderPluginPage, renderTripTab } from './screens/ext.js';
 import { renderMcp } from './screens/mcp.js';
 import { renderWelcome } from './screens/welcome.js';
@@ -355,6 +355,8 @@ export function startShell(root, core) {
   render({ moved: true });
   // Driving, or a plugin's screen for the activity, takes over once per drive. The dock's box is outside main, so typing there counts here.
   const seedActivity = followDrive(core.live, { screens: () => slotEntries(ctx, 'ui:screen'), hash: () => location.hash, typing: () => isField(document.activeElement), trip: () => drivingTrip(core), go: (to) => ctx.go(to) });
+  // Driving and the Itinerary's link to it show the trip in play, which a reload learns late and midnight can change.
+  followPlay(core.live, () => drivingTrip(core), () => { if (shown.name === 'drive' || shown.name === 'plan') redraw(); });
   let readyCard = () => {};
   return {
     notices,

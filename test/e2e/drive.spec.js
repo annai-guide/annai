@@ -91,6 +91,20 @@ for (const [where, at] of [['home', '#/trips'], ['the conversation', '#/talk'], 
   });
 }
 
+test('a reload after leaving Driving: the drive goes on and Driving stays away', async ({ page, context }) => {
+  await atTheStart(page, context);
+  await page.goto('/#/talk');
+  await roll(page, context, 1, 10);
+  await expect(page.getByRole('heading', { name: 'Driving' })).toBeVisible();
+  await page.getByRole('main').getByRole('link', { name: 'Back', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Driving' })).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator('.live-chip')).toHaveText(/^GPS on\b/);
+  await roll(page, context, 11, 13);
+  await expect(page.getByRole('heading', { name: 'Driving' })).toHaveCount(0);
+  await expect.poll(() => new URL(page.url()).hash).toBe('#/talk');
+});
+
 test("typing in the dock's box as moving fast begins: no take-over, the box keeps its words, and that drive doesn't take over later", async ({ page, context }) => {
   await atTheStart(page, context);
   await page.goto('/#/now');
@@ -138,6 +152,8 @@ test("a quick chat open as moving fast begins: Driving shows the trip in play's 
     await page.goto('/#/talk');
     await roll(page, context, 1, 10);
     await expect(page.getByRole('heading', { name: 'Driving' })).toBeVisible();
+    await expect(page.getByRole('list', { name: 'The road ahead' })).toContainText('Nepenthe');
+    await page.reload(); // the quick chat is still the open one: Driving learns the trip in play only once live mode has read its rows
     await expect(page.getByRole('list', { name: 'The road ahead' })).toContainText('Nepenthe');
     await page.getByRole('button', { name: 'Fuel' }).click();
     await expect.poll(() => userLines(page, road)).toContainEqual(expect.stringContaining('Where is the next fuel station or charger?'));
