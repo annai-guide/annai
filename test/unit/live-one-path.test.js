@@ -1377,3 +1377,50 @@ for (const lockSpeed of [14, 2]) {
     assert.equal(once(), 1);
   });
 }
+
+// The same, unlocked with a first reading that has no speed: the new gap restarts the hold, so the date it had goes with it
+
+for (const [way, lockSpeed] of [[2, 14], [4, 6]]) {
+  test(`killed, reopened at a light at a way of ${way} m/s, a "when I stop" set in the hold, locked 6 minutes at ${lockSpeed} m/s, unlocked parked with a first reading with no speed, then speed 0: it fires once at the real stop`, async () => {
+    const { k, y } = await driving();
+    await hide(k);
+    const t = at('09:13');
+    await k.to(t);
+    await k.restart();
+    const p = y - LAST + way * 720;
+    for (let s = 3; s < 10; s += 5) await k.fix(t + s * 1000, north(p), { speed: 0 });
+    const once = await watch(k, 'stop', false);
+    for (let s = 13; s < 45; s += 5) await k.fix(t + s * 1000, north(p), { speed: 0 });
+    await hide(k);
+    const t2 = t + 45_000 + 6 * 60_000;
+    await k.to(t2);
+    await show(k);
+    const p2 = p + lockSpeed * 360;
+    await k.fix(t2 + 3000, north(p2), { speed: null, accuracy: 30 });
+    await k.stay(north(p2), t2 + 8000, t2 + 200_000, 5);
+    assert.equal(k.live.activity, 'still');
+    assert.equal(once(), 1);
+  });
+}
+
+// The bound's end: a hold's date that outlived the hold would put the watch before it
+
+for (const way of [2, 4]) {
+  test(`killed, reopened at a slow reading at a way of ${way} m/s, a "when I stop" set in the hold, hidden and shown, then on screen with no reading past the 5.5-minute bound: it fires once`, async () => {
+    const { k, y } = await driving();
+    await hide(k);
+    const t = at('09:13');
+    await k.to(t);
+    await k.restart();
+    const p = y - LAST + way * 720;
+    for (let s = 3; s < 20; s += 5) await k.fix(t + s * 1000, north(p), { speed: 0 });
+    const once = await watch(k, 'stop', false);
+    await hide(k);
+    await k.to(t + 60_000);
+    await show(k);
+    await k.to(t + 60_000 + 340_000);
+    await k.settle();
+    assert.equal(k.live.activity, 'still');
+    assert.equal(once(), 1);
+  });
+}
