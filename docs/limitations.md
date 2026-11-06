@@ -174,8 +174,76 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### A rare wrong "moving fast starts" after annai is killed
 - **Kind:** known limitation.
-- **What the user sees:** after annai is killed on the road, stopping at a light and driving off 3 to 5 minutes later can fire one extra reminder. Carrying on in someone else's car or on a flight can skip one.
+- **What the user sees:** after annai is killed on the road, stopping at a light and driving off 3 to 5 minutes later can fire one extra reminder, and so can a stop of over 60 s at the first reading after reopening, when annai takes that stop for the real one. Carrying on in someone else's car or on a flight can skip one.
 - **Why:** with no fix while it was closed, annai can't tell these apart from the way speed alone.
 - **Revisit when:** the drive log shows it happening.
-- **Approved:** 2026-11-05, the user ticked "Rare wrong \"moving fast starts\"".
+- **Approved:** 2026-11-05, the user ticked "Rare wrong \"moving fast starts\"". The stop of over 60 s: 2026-11-06, the user picked "Accept, widen it (Recommended)".
 
+### GPS that dies on the road reads as a stop
+- **Kind:** known limitation.
+- **What the user sees:** with GPS dead and annai open, moving fast holds for 5.5 minutes, then ends. Parked in a garage, a "when I stop" reminder comes on time. Still on the road with dead GPS, it's one false stop, and voice comes back at the next good reading.
+- **Why:** silence can't tell a garage from a tunnel. Holding longer makes every true stop with no signal late; this is also the simpler code.
+- **Revisit when:** a drive trace shows a false stop from dead GPS that the user minded.
+- **Approved:** 2026-11-05, the user picked "Fire at 5.5 minutes (Recommended)".
+
+### A stop right after reopening can fire "stops" early
+- **Kind:** known limitation.
+- **What the user sees:** annai was closed on the road and reopened on the road. A stop of over a minute right after that, such as a long light, can fire a one-time "when I stop" reminder, and voice is off at that point, so the reminder is shown, not spoken.
+- **Why:** after a gap, annai fires the late "stops" once the first readings confirm a stop, so that a reminder missed by a closed app isn't lost. A long light reads the same as parking.
+- **Revisit when:** a drive trace shows it. The user was told "a light of 30 to 60 s"; it now takes a stop of over 60 s, which is narrower than what they accepted.
+- **Approved:** 2026-11-05, the user picked "Fire when you reopen (Recommended)".
+
+### A voice-off is forgotten after a reload past the bound
+- **Kind:** known limitation.
+- **What the user sees:** voice turned off during a drive, then GPS gives out past the 5.5-minute bound, then the page reloads: voice-off is lost for this drive, and voice comes back on the road at the next good reading.
+- **Why:** the drive has ended as far as annai can tell, and an ended drive holds no voice-off.
+- **Revisit when:** it shows in a drive trace.
+- **Approved:** 2026-11-05, the user accepted "Voice off forgotten".
+
+### Voice comes back about 30 s late after a reload
+- **Kind:** known limitation.
+- **What the user sees:** after a reload past the bound, voice comes back about 30 s after the next good reading, not at it. "Moving fast starts" can also fire if that passes 5 minutes after the bound.
+- **Why:** past the bound the drive has ended, so the road is a new start and takes the usual 30 s to settle.
+- **Revisit when:** it shows in a drive trace.
+- **Approved:** 2026-11-05, the user accepted "30 s late after reload".
+
+### A false "starts" when GPS was dead over 5 minutes past the bound
+- **Kind:** known limitation.
+- **What the user sees:** still on the same drive, GPS dead for more than 5 minutes past the bound, then good readings: "moving fast starts" fires again, as if a new drive began.
+- **Why:** over 5 minutes from the last evidence, annai can't tell the same drive from a new one.
+- **Revisit when:** it shows in a drive trace.
+- **Approved:** 2026-11-05, the user accepted "False "starts" after 5 min".
+
+### A stop under a minute after a reopening reads as a light
+- **Kind:** known limitation.
+- **What the user sees:** the app was killed on the road, the user reopens it parked somewhere else and drives off within a minute, at about 2 to 14 km past the last reading an hour later. annai reads it all as one drive: no late "stops", no "starts", and a one-time "when I stop" reminder stays armed.
+- **Why:** a stop under a minute looks exactly like a light. Reading it as a stop brings back a false "stops" and drive end at a 30 s light after a kill.
+- **Revisit when:** it shows in a drive trace.
+- **Approved:** 2026-11-06, the user picked "Accept for now (Recommended)".
+
+### A long lock reads as a stop at the unlock
+- **Kind:** known limitation.
+- **What the user sees:** the phone is locked for 5 minutes or more on a drive, then the user parks and unlocks it. annai treats the unlock as the moment they stopped: moving fast shows for 60 more seconds, voice stays on about 3 minutes, and driving off within 5 minutes gets no new "starts".
+- **Why:** that's what a stop with the app on screen does, timed from the unlock. Dating it from before the lock fires a false drive end at a light after a lock.
+- **Revisit when:** it bothers the user on a drive. Keeping when the wait ends separate from when the drive ended might do it; not tried.
+- **Approved:** 2026-11-06, the user picked "Accept for now (Recommended)".
+
+### A light then readings with no speed can fire a false "stops"
+- **Kind:** known limitation.
+- **What the user sees:** on a drive with the app open, a light of about 37 to 44 s followed by a few GPS readings with no speed, while moving again, can fire one false "stops", and spend a one-time "when I stop" reminder early. About 1 in several hundred simulated city drives.
+- **Why:** fixing it means more logic in the rule that has been hardest to get right, for a rare case that d1e93771 has too.
+- **Revisit when:** it shows in a drive trace.
+- **Approved:** 2026-11-06, the user picked "Accept for now (Recommended)".
+
+### Parking within 30 s of reopening says nothing
+- **Kind:** known limitation.
+- **What the user sees:** the app is killed on a drive and reopened while still moving on a stretch that looks slow in a straight line, then the user parks within 30 s. The real stop says nothing, and a one-time "when I stop" reminder waits until the end of the next drive.
+- **Why:** in those 30 s annai can't tell a pull-in from a light, and reading it as a stop would likely fire a false "stops" at a light right after reopening.
+- **Revisit when:** it shows in a drive trace.
+- **Approved:** 2026-11-06, the user picked "Accept for now (Recommended)".
+
+### A reload right after a parked reopening loses a "starts"
+- **Kind:** deferred.
+- **What the user sees:** annai is killed on a drive and reopened parked, then the page reloads or is killed again within the first minute. Driving off within about 5 minutes gets no "starts". Later than that it starts as usual, and the drive's end is told once either way.
+- **Why:** when the old drive ended is held in memory for that minute, so a reload loses it. Carrying it in the saved record is its own change to stored data and needs its own review.
+- **Revisit when:** the next version, with the cleanup release.
