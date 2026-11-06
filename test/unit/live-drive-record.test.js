@@ -287,7 +287,7 @@ test('the record: what it holds, written on each change, each km, the beat and g
   assert.equal(k.keep.get(), null, 'nothing to say yet');
   await road(k, at('09:00:05'), 0, 35); // moving fast
   const change = k.keep.get();
-  assert.deepEqual(Object.keys(change).sort(), ['activity', 'at', 'due', 'ended', 'hushed', 'odo', 'odometer', 'stale']);
+  assert.deepEqual(Object.keys(change).sort(), ['activity', 'at', 'due', 'ended', 'heldEnd', 'hushed', 'odo', 'odometer', 'stale']);
   assert.deepEqual(Object.keys(change.odo).sort(), ['accuracy', 'at', 'lat', 'lng']);
   assert.equal(change.activity, 'moving-fast');
   assert.equal(change.ended, null);

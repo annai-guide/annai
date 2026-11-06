@@ -161,11 +161,16 @@ export class ActivityTracker {
     return this.#leaving === null ? null : this.#decide(now, gap); // only a fix starts a hold: a last speed from before a quiet GPS says nothing new
   }
 
-  /** annai started again, knowing the activity from before: no fix yet, and a gap counting from now. @param {Activity} activity @param {number} now @param {Fix | null} [from] the last place it knows @param {boolean} [old] too old to say so: a hold with no bound */
-  restore(activity, now, from = null, old = false) {
+  /**
+   * annai started again, knowing the activity from before: no fix yet, and a gap counting from now.
+   * @param {Activity} activity @param {number} now
+   * @param {{ from?: Fix | null, old?: boolean, heldEnd?: number | null }} [o] from: the last place it knows; old: too old to say so, a hold with no bound; heldEnd: the date a hold had
+   */
+  restore(activity, now, { from = null, old = false, heldEnd = null } = {}) {
     const fast = activity === 'moving-fast';
     this.activity = activity;
     this.#lastAt = now;
+    this.#ended = heldEnd;
     this.#before = fast ? from : null;
     this.#backAt = !fast ? null : old ? Infinity : now;
   }
@@ -190,6 +195,11 @@ export class ActivityTracker {
   /** No reading has said what became of the drive: held, or past a bound's end. */
   get unsure() {
     return this.#backAt !== null || this.#before !== null;
+  }
+
+  /** The date the hold's end will carry, for the record: it comes and goes with the hold. */
+  get heldEnd() {
+    return this.#ended;
   }
 
   /** When tick could next change something, or null. @returns {number | null} */
