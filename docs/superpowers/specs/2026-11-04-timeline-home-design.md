@@ -184,3 +184,17 @@ Also removable: `start_trip` in chats, the `/waiting` branches (files plugin, `f
 - The fold's limit, the 30 in `list_trips`, the Share box unticked.
 
 **Calls to confirm (changed APIs):** routes `#/trip/<id>/talk`, `#/talk/me`, `#/now`; `tab`, `homeFor`; `open_trip` in chats; `draft`, `imported`, `read_trip`.
+
+## Changed by the plans (2026-11-06)
+
+The stage plans in `docs/superpowers/plans/2026-11-06-timeline-stage-*.md` read this design against the code and moved these. Where they differ from the text above, the plans are right.
+
+- Now's helpers go to a shared `src/ui/today.js`, because Now stays a screen until stage 8.
+- The `start`/`end`/last-talked mirror lands in stage 2, with a backfill for records released copies wrote.
+- `went` bites at stage 3: a redraw of a talk address after a move would reopen the old trip, so opening happens only on a move, and a stale address is replaced centrally.
+- `#/talk` and `#/plan` redirect only while a trip is open, until stage 7.
+- `start_trip`'s refusal and snapshot text ship in stage 4 with chats; `list_trips` changes in stage 5.
+- Notifications open their trip through a new `annai.open` message, because `keepNews` and `onPushMessage` carry no scope.
+- A spoken yes needs `Agent.confirm` and `kokoro.confirmHeard`: `ask` is gated while Koe talks.
+- A moved conversation logs its own `conversation.moved` entry, because an old page would show `handover.moved` as "took 0 files".
+- The stage 8 counts above need a recount when it starts.
