@@ -532,9 +532,8 @@ export class Live {
   }
 
   /**
-   * What a closed annai can still say through the push relay (spec §11.6, 6b choices 1 and 2): time watches in every conversation, and the "coming up"
-   * and "leave soon" of the trip in play and the open conversation. Null until live mode has loaded, and during a simulation (the relay's stay as they are).
-   * Read in its own queue. held hears the other trips, whose waiting plan reminders stay.
+   * What a closed annai can still say through the push relay (spec §11.6, 6b choices 1 and 2): time watches in every conversation, and the "coming up" and "leave soon" of the trip
+   * in play and the open conversation; null until live mode has loaded, and during a simulation. held hears the other trips, whose waiting plan reminders stay.
    * @param {{ held?: (scopes: Set<string>) => void }} [o] @returns {Promise<Mirrored[] | null>}
    */
   reminders(o = {}) {
@@ -547,9 +546,8 @@ export class Live {
       /** @type {[string, Watch[]][]} */
       const plans = [[play, this.#plan]];
       if (open && open !== play && this.#rows.has(open) && this.#inPlay(open)) {
-        const watches = (await this.#planOf(open)).watches;
-        const ids = new Set(watches.map((w) => w.id).filter((id) => !this.#fired.has(this.#key(open, id))));
-        if (ids.size) await this.#recall(open, ids);
+        const { watches } = await this.#planOf(open);
+        await this.#recallPlan(open, watches);
         plans.push([open, watches]);
       }
       if (o.held) o.held(new Set((await listTrips(this.store)).active.map((t) => t.id).filter((id) => id !== play && id !== open && this.#inPlay(id))));
@@ -566,7 +564,6 @@ export class Live {
         }
       }
       for (const [scope, list] of plans) {
-        if (!this.#inPlay(scope)) continue;
         for (const w of list) {
           const event = /** @type {any} */ (w.when).event;
           if ((event !== 'coming-up' && event !== 'leave') || this.#spent(scope, w)) continue;
@@ -1107,7 +1104,8 @@ export class Live {
       });
     } else if (c.path === '/trip.json') {
       this.#bg(async () => {
-        await this.#loadRow(c.scope);
+        await this.#loadRows();
+        await this.#loadScope(c.scope);
         if (c.scope === this.#trip) await this.#loadPlan();
         await this.#check();
         this.#tellReminders('prompt');
@@ -1144,18 +1142,6 @@ export class Live {
     return active;
   }
 
-  /** One trip's row, from its file (the record's hook may not have finished); none for a trip not active. @param {string} scope */
-  async #loadRow(scope) {
-    const rec = await this.store.tx(['scopes'], 'readonly', (t) => t.getScope(scope));
-    if (rec?.kind !== 'trip' || rec.status !== 'active') {
-      this.#rows.delete(scope);
-      return;
-    }
-    const info = await this.ws.readJSON(scope, '/trip.json').catch(() => null);
-    this.#setStill(scope, info);
-    this.#rows.set(scope, { ...tripMirror(info), talked: rec.talked ?? null });
-  }
-
   /** Every conversation's watches, what has fired, and the trips' rows. */
   async #loadAll() {
     const active = await this.#loadRows();
@@ -1165,6 +1151,12 @@ export class Live {
       await this.#loadScope(scope);
       await this.#recall(scope);
     }
+  }
+
+  /** A plan item removed and made again remembers what it fired, as the log does, and as annai's next start reads it. @param {string} scope @param {Watch[]} watches */
+  async #recallPlan(scope, watches) {
+    const ids = new Set(watches.map((w) => w.id).filter((id) => !this.#fired.has(this.#key(scope, id))));
+    if (ids.size) await this.#recall(scope, ids);
   }
 
   /** Each watch's last firing in a conversation, from its log; only those of ids, when given. @param {string} scope @param {Set<string>} [ids] */
@@ -1202,11 +1194,9 @@ export class Live {
     if (!this.#inPlay(trip)) return; // a simulation's plan reminds only during its run
     // An archived trip, open or not, reminds of nothing: its watches aren't loaded either (#loadAll).
     if ((await this.store.tx(['scopes'], 'readonly', (t) => t.getScope(trip)))?.status === 'archived') return;
-    const { items, watches } = await this.#planOf(trip, info);
+    const { items, watches } = await this.#planOf(trip);
     this.#plan = watches;
-    // A plan item removed and made again remembers what it fired, as the log does, and as annai's next start reads it.
-    const ids = new Set(this.#plan.map((w) => w.id).filter((id) => !this.#fired.has(this.#key(trip, id))));
-    if (ids.size) await this.#recall(trip, ids);
+    await this.#recallPlan(trip, watches);
     for (const { item } of items) {
       const p = item.place;
       if (p && typeof p.lat === 'number' && typeof p.lng === 'number') this.#places.push({ name: String(p.name ?? item.title ?? /* en */ 'a plan place'), lat: p.lat, lng: p.lng });
@@ -1216,9 +1206,9 @@ export class Live {
 
   /**
    * A trip's plan as it stands: its items, and the watches they make (planWatches), with its bookings and its zone.
-   * @param {string} trip @param {any} [info] its trip.json, when already read @returns {Promise<{ items: { path: string, item: any }[], watches: Watch[] }>}
+   * @param {string} trip @returns {Promise<{ items: { path: string, item: any }[], watches: Watch[] }>}
    */
-  async #planOf(trip, info) {
+  async #planOf(trip) {
     /** @type {{ path: string, item: any }[]} */
     const items = [];
     /** @type {Map<string, any>} */
@@ -1233,8 +1223,8 @@ export class Live {
       const b = await this.ws.readJSON(trip, f.path).catch(() => null);
       if (b && typeof b === 'object') bookings.set(f.path, b);
     }
-    const file = info !== undefined ? info : await this.ws.readJSON(trip, '/trip.json').catch(() => null);
-    const fallbackTz = [file?.timezones?.[0], this.timeZone()].find(validZone) ?? 'UTC';
+    const info = await this.ws.readJSON(trip, '/trip.json').catch(() => null);
+    const fallbackTz = [info?.timezones?.[0], this.timeZone()].find(validZone) ?? 'UTC';
     return { items, watches: planWatches(items, bookings, { fallbackTz }) };
   }
 
