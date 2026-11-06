@@ -251,21 +251,10 @@ export function syncTripTitles(ws) {
   });
 }
 
-/** How many of a log's lines backfillTrips reads at a time. */
-const PAGE = 200;
-
 /** When the user last talked in a trip, from its log; null when nobody has. @param {Store} store @param {string} scope @returns {Promise<number | null>} */
 async function lastTalked(store, scope) {
-  /** @type {number | undefined} */
-  let before;
-  for (;;) {
-    const at = before;
-    const page = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['msg.user', 'heard'], reverse: true, limit: PAGE, ...(at === undefined ? {} : { before: at }) }));
-    const line = page.find(talks);
-    if (line) return line.ts;
-    if (page.length < PAGE) return null;
-    before = page[page.length - 1].seq;
-  }
+  const lines = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['msg.user', 'heard'], reverse: true }));
+  return lines.find(talks)?.ts ?? null;
 }
 
 /**

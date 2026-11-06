@@ -275,6 +275,12 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** those readings look the same as a real stop behind a gap.
 - **Revisit when:** it shows in a drive trace.
 - **Approved:** 2026-11-06, the user picked "Check it, then accept (Recommended)"; checked by reading `#driveEnded` in src/core/voice/voice.js.
+### A reminder of an open undated trip can be lost in its last 5 seconds at the relay
+- **Kind:** deferred.
+- **What the user sees:** an undated trip with a plan is open on screen while another trip is in play. A relay sync within 5 s of a reminder's send time leaves it out of what should wait there, and because the open trip isn't held, the sync calls it off. It's never said on screen either, because that trip isn't the one in play. The reminder is lost, with no sign of it.
+- **Why:** a sync can't tell this reminder from one annai is about to say itself, and telling them apart adds a field to `Mirrored`.
+- **Revisit when:** stage 4 changes `reminders()` for the next trip.
+
 ### Only the trip in play reminds
 - **Kind:** known limitation.
 - **What the user sees:** with two trips happening at once, the other's itinerary reminders wait until it's opened. Time watches fire for both.

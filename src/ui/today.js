@@ -105,9 +105,8 @@ export const isField = (el) => Boolean(el?.matches('textarea, input:not([type=ch
 export const driveBack = (from = '#/now') => ({ href: from, label: from === '#/now' ? t`Now` : t`Back` });
 
 /**
- * What Now and the Itinerary's today open with: where you are, the chips, then plugins' sections. A plugin may draw the
- * first part itself (spec §16.4: now-card); annai's own when there is none or it fails. It keeps itself current until
- * its nodes leave the page, so a tab hides it rather than removing it.
+ * What Now and the Itinerary's today open with: where you are, the chips, then plugins' sections. A plugin may draw the first part itself (spec §16.4: now-card); annai's own
+ * when there is none or it fails. It keeps itself current until its nodes leave the page, so a tab hides it rather than removing it.
  * @param {any} ctx @param {{ title: string, rows: import('../core/plan.js').PlanRow[], tz: string }} o @returns {HTMLElement[]}
  */
 export function todayTop(ctx, { title, rows, tz }) {
