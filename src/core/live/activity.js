@@ -99,7 +99,9 @@ export class ActivityTracker {
     const from = this.#before;
     const way = from && wayOver(from, fix);
     const went = way !== null && way >= FAST_FROM; // the drive went on
-    const moved = way !== null && way >= WALK_BELOW; // the car went on, for how a hold is dated: 4 m/s with lights is a city, not a stop
+    // The phone stayed put only if the way is under the sensor's own "still", not under walking: the two mistakes aren't equal. A parked phone read as moved only delays a true
+    // "stops" by the hold; a moving car read as parked (a light behind a gap, at 2.5 to 5 m/s, which `wayOver` can't call fast) fires a false one.
+    const moved = from !== null && fix.at - from.at >= SPAN_MS && waySpeed(from, fix) >= STILL_BELOW;
     const speed = this.#speedAt(fix);
     if (speed === null) {
       this.#counts.none++; // nothing to read a speed from yet
@@ -131,7 +133,12 @@ export class ActivityTracker {
     return this.#decide(fix.at, gap);
   }
 
-  /** A gap, if any, is over: a hold starts afresh if the car went on, else leaving moving fast dates from the last evidence, so a parked phone ends at once. @param {Fix | null} from @param {boolean} moved */
+  /**
+   * A gap, if any, is over: a hold starts afresh unless the phone stayed put (its way under STILL_BELOW, the sensor's own "still"), and then leaving moving fast dates from the last
+   * evidence, so a parked phone ends at once. The limit is not walking's: a car at a light behind the gap has a way of 2.5 to 5 m/s, which can't be called fast, and reading it as
+   * parked fires a false "stops", while a phone carried on foot read as moved only delays its true one by the hold.
+   * @param {Fix | null} from @param {boolean} moved
+   */
   #gapOver(from, moved) {
     if (moved) {
       this.#leaving = null;
@@ -186,11 +193,6 @@ export class ActivityTracker {
   /** No reading has said what became of the drive: held, or past a bound's end. */
   get unsure() {
     return this.#backAt !== null || this.#before !== null;
-  }
-
-  /** The way says moving fast ended over a gap, and no speed has said so yet: only silence or the next reading is left to end it. */
-  get stopped() {
-    return this.activity === 'moving-fast' && this.#backAt === null && this.#leaving !== null && this.speed === null;
   }
 
   /** When tick could next change something, or null. @returns {number | null} */

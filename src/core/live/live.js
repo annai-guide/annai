@@ -114,7 +114,7 @@ export class Live {
   #late = false;
   /**
    * The record says moving fast but is too old to: the tracker holds it as for any gap, and until a reading decides, unknown shows and voice isn't held.
-   * 'owed': voice is yet to hear the drive's end, at the first reading that says so; 'told': it did, or a choice of voice's cancelled it.
+   * 'owed': voice is yet to hear the drive's end, at its change (the first reading with a speed, or two minutes of silence after one with none); 'told': it did, or a choice of voice's cancelled it.
    * @type {'owed' | 'told' | null}
    */
   #stale = null;
@@ -917,10 +917,6 @@ export class Live {
       const unsure = this.#tracker.unsure;
       const c = this.#tracker.feed(fix);
       const fast = (this.#tracker.speed ?? 0) >= FAST_FROM;
-      if (this.#stale === 'owed' && this.#tracker.stopped) { // no change yet, and the first reading to say the drive ended unseen; any other end is told at its change
-        this.#stale = 'told';
-        this.#voiceLapse = fix.at;
-      }
       if (c) {
         change = this.#stale ? c : { ...c, at: undefined };
         this.activity = c.to;
@@ -931,7 +927,7 @@ export class Live {
         this.#tellActivity();
       }
       if (unsure && !this.#tracker.unsure) { // a gap decided: the record is fresh again
-        if (this.#tracker.activity !== 'moving-fast' && this.#voiceLapse === null) this.#hushed = false; // past a bound's end, and it says stopped
+        if (this.#tracker.activity !== 'moving-fast' && this.#tracker.activity !== 'unknown' && this.#voiceLapse === null) this.#hushed = false; // past a bound's end, and it says stopped
         this.#keepRecord();
       }
       // A late end dies if she is driving: the tracker's speed, else the way from the record's place; with neither, the next good fix says.
@@ -1370,6 +1366,7 @@ export class Live {
       if (this.#stale) this.#hushed = false;
       if (this.#stale !== 'told') this.#voiceLapse = c.noFix || this.#stale ? c.at : c.at + VOICE_HOLD_MS;
     } else if (c.to === 'moving-fast') this.#voiceLapse = null;
+    else if (this.#voiceLapse === null) this.#hushed = false; // no drive is left for it to last through
     this.#stale = null;
     return { from: c.from, ...(c.from === 'moving-fast' ? { ended: c.at } : {}), ...c.why };
   }
