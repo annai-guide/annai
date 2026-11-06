@@ -52,6 +52,7 @@
 3. **A reload with a draft open, or a draft in a backup:** the draft reads as an empty conversation, exports leave it out, and a restored `activeTrip` pointing at it opens nothing. Test in Task 1.
 4. **A first line that is one long word, an emoji sequence, only punctuation, or Japanese with no space:** the name is at most 40 characters, never splits a surrogate pair, and never is blank. Test in Task 1.
 5. **Two trips overlapping, or 500 chats:** overlaps are just rows; only dated trips sit below now, so a planned trip stays right under the line. Tests in Tasks 2 and 7.
+6. **A quick chat open the evening before a trip:** the trip's first-morning reminder must reach the relay, though neither open nor play is that trip. On the released copy this isn't mirrored either, and chats will make it common. Stage 4 must test it.
 
 ---
 

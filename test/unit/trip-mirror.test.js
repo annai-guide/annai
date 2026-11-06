@@ -176,7 +176,7 @@ test('a line said on a record the backfill has not reached does not mark it done
   // The first run throws on a log read before it reaches either trip.
   const real = store.tx.bind(store);
   let n = 0;
-  store.tx = (/** @type {string[]} */ s, /** @type {any} */ m, /** @type {any} */ f) => (s.length === 1 && s[0] === 'events' && m === 'readonly' && n++ === 0 ? Promise.reject(new Error('idb hiccup')) : real(s, m, f));
+  store.tx = (/** @type {any} */ s, /** @type {any} */ m, /** @type {any} */ f) => (s.length === 1 && s[0] === 'events' && m === 'readonly' && n++ === 0 ? Promise.reject(new Error('idb hiccup')) : real(s, m, f));
   await assert.rejects(backfillTrips(ws), /idb hiccup/);
   store.tx = real;
   await record(store, a, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'hi']], now: 100 });
