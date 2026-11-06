@@ -205,13 +205,13 @@ test('item 12: a tap while a reminder is said stops it and opens at once', async
   }
 });
 
-test('a saved Koe list naming Extended Thinking, which annai no longer lists and Gemini refuses: it rests as a failure does, the note goes on at once to the next model of the list, not to annai\'s fallback, and nothing shows an error', async () => {
+test('a model of Koe\'s list that refuses its setup rests as a failure does, the note goes on at once to the next model of the list, not to annai\'s fallback, and nothing shows an error', async () => {
   const k = await liveKit([{ said: 'The fuel station is open until ten.', audio: tone(0.1) }], { live: { second: true } });
   try {
     const live = k.llm.live;
     const { ProviderError } = await import('../../src/core/llm/contract.js');
     k.llm.live = async (/** @type {string} */ id, /** @type {any} */ setup, /** @type {any} */ o) => {
-      if (id === 'm-live') throw new ProviderError('bad-request', 'Thinking level must be specified for this model.');
+      if (id === 'm-live') throw new ProviderError('bad-request', 'Invalid JSON payload received. Unknown name "something".');
       return live(id, setup, o);
     };
     /** @type {any[]} */

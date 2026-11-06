@@ -174,7 +174,7 @@ A turn whose tool call was answered silently may never get its turnComplete. Rea
 A reminder began in the fallback voice, and 9 seconds later a session opened for Kokoro's note. A reminder being said finishes first; a session that opens meanwhile doesn't play or capture over it (hold the open, or hold the first sound).
 
 ### Extended thinking
-Taken out of annai on 2026-11-05 (the user: "Take it out"), with the long rest below: see `plugins-official/gemini-live/index.js`. What follows is what was first asked.
+Taken out of annai on 2026-11-05 (the user: "Take it out"), with the long rest below: see `plugins-official/gemini-live/index.js`. The update also takes it out of a saved Koe · Realtime list, as for any model a plugin's description drops: the order of the rest stays, and a list left empty is a list with no Live model (no chip, Koe · Chat answers). Its record, Kokoro's picks and models added by hand stay. What follows is what was first asked.
 
 "Gemini 3.8 Live Extended Thinking" (`plugins-official/provider-gemini/annai-plugin.json`) failed all 5 opens with 1007 "Thinking level must be specified for this model". The Gemini Live protocol (`plugins-official/gemini-live/index.js`) never sends one. Send what the API takes, checked against the current docs and on a free key, with the model's level as the catalog's other Gemini entries give it. Bump the plugin's version as the catalog gate needs. A model that fails every open on a bad request is also marked so, so the next try goes straight to the next model: today a reminder fired, tried it first, and lost its moment.
 

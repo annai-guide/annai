@@ -3,6 +3,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { until } from './agent-kit.js';
 import { updateAppSettings } from '../../src/core/settings.js';
+import { readConfig, saveProvider } from '../../src/core/llm/config.js';
+import { syncProviders } from '../../src/core/llm/providers.js';
 import { liveKit, lives, blocks, got, texts, soon, tone, say, sleep } from './koe-live-kit.js';
 import { quiet, cat } from './voice-kit.js';
 
@@ -202,6 +204,37 @@ test("the note that Live rests: a long rest cleared and a short new one says it 
     assert.equal(notes.length, 1, 'the same rest, renewed');
   } finally {
     await r.done();
+  }
+});
+
+test("a plugin update drops the only model of Koe · Realtime: no Live model, so no session is tried and no \"Live is resting\" comes at any use, and Koe · Chat answers", async () => {
+  const WORDS = 'Live is resting; Koe · Chat is answering';
+  const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+  try {
+    const cfg = await readConfig(k.ws);
+    const key = 'realtime/gemini-3.8-live';
+    await saveProvider(k.ws, { ...cfg.providers['pv-live'], template: { version: '1.0.0', values: { name: 'Gemini', baseUrl: '', abilities: { realtime: { kind: 'realtime', type: 'gemini-live', on: true } } }, models: [key] } },
+      [{ ...cfg.models['m-live'], template: { id: `provider-test/${key}`, version: '1.0.0', values: { providerId: 'gemini-3.8-live' } } }]);
+    assert.equal(await syncProviders({ ws: k.ws }, [/** @type {any} */ ({ plugin: 'provider-test', name: 'Gemini', version: '2.0.0', provider: { abilities: { realtime: { kind: 'realtime', type: 'gemini-live', models: [] } } } })]), 1);
+    /** @type {any[]} */
+    const notes = [];
+    k.agent.on('notice', (/** @type {any} */ n) => notes.push(n.title));
+    /** @type {any[]} */
+    const opened = [];
+    const open = k.llm.live;
+    k.llm.live = (/** @type {string} */ id, /** @type {any} */ setup, /** @type {any} */ o) => { opened.push(id); return open(id, setup, o); };
+    await k.agent.split();
+    for (const i of [1, 2]) {
+      await k.agent.wake({ kind: 'trigger', text: 'A note', fallbacks: [{ watch: 'w', text: `Note ${i}` }] });
+      await k.agent.idle();
+      await k.agent.split();
+    }
+    assert.deepEqual([k.agent.koeState, k.agent.way.why, k.agent.way.live], ['text', 'none', false], 'the Live chip shows for way.live: it is hidden');
+    assert.deepEqual(opened, []);
+    assert.deepEqual(notes.filter((n) => n === WORDS), []);
+    assert.deepEqual(await k.events(['error']), []);
+  } finally {
+    await k.done();
   }
 });
 
