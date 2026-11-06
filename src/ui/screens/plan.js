@@ -13,7 +13,7 @@ import { detailsHref, rowName, lineName, dateRange, day, distance, num, list, se
 
 /** The tab shown, kept for a redraw; a fresh entry (ctx.moved) opens today's. @type {string | null} */
 let kept = null;
-/** @param {{ key: string, rows: unknown[] }[]} tabs @param {string | null} today @param {string | null} keep */
+/** @template {{ key: string, rows: unknown[] }} T @param {T[]} tabs @param {string | null} today @param {string | null} keep */
 export const startTab = (tabs, today, keep) => tabs.find((x) => x.key === keep) ?? tabs.find((x) => x.key === today) ?? tabs.find((x) => x.rows.length) ?? tabs[0];
 
 /**
