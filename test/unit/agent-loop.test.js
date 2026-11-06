@@ -2042,7 +2042,7 @@ test("a line typed during an open that fails, its write failing too, stays queue
   await reached;
   k.agent.send('Typed during the open');
   const real = k.store.tx;
-  k.store.tx = (/** @type {any} */ s, /** @type {any} */ m, /** @type {any} */ f) => (m === 'readwrite' ? Promise.reject(new Error('QuotaExceededError')) : real.call(k.store, s, m, f));
+  k.store.tx = /** @type {any} */ ((/** @type {any} */ s, /** @type {any} */ m, /** @type {any} */ f) => (m === 'readwrite' ? Promise.reject(new Error('QuotaExceededError')) : real.call(k.store, s, m, f)));
   go();
   await assert.rejects(opening, /IDB read failed/);
   assert.equal(k.agent.busy, true, 'owed, until it can be written');
