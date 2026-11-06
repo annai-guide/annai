@@ -1,6 +1,6 @@
 /**
  * Errors every layer shares. As every error a model or the log may read: message is annai's English, and shown the screens' words
- * (the rule of LESSONS 2026-10-27), which a screen shows as shown ?? message.
+ * (the shown rule), which a screen shows as shown ?? message.
  */
 import { t } from './l10n.js';
 
@@ -24,7 +24,7 @@ export class StoppedError extends Error {
 }
 
 /**
- * An Error whose words are annai's own developer English (decision 11): a screen shows them marked lang="en" (dom.js englishOf).
+ * An Error whose words are annai's own developer English: a screen shows them marked lang="en" (dom.js englishOf).
  * en: true when all its words are English, or the part of its shown words that is.
  */
 export class EnglishError extends Error {

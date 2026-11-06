@@ -5,15 +5,13 @@ import { t } from '../../core/l10n.js';
 import { num } from '../../core/intl.js';
 
 /**
- * annai's MCP client (spec §5.1): MCP's Streamable HTTP transport, as a web app speaks it. Each
- * request is one JSON-RPC message POSTed to the server's address; the answer comes as JSON or as an
- * SSE stream. What annai reads is guarded: whatever a server sends, a failure is an McpError in
- * words, never a SyntaxError or TypeError (which would count against the plugin): its message for Shiori, in English, and shown
- * for the screen (localization design, section 7).
+ * annai's MCP client (spec §5.1): MCP's Streamable HTTP transport, as a web app speaks it. Whatever a server sends, a failure is
+ * an McpError in words, never a SyntaxError or TypeError (which would count against the plugin): its message for Shiori, in
+ * English, and shown for the screen (localization design, section 7).
  * @typedef {(url: string, init?: RequestInit) => Promise<Response>} Fetch
  */
 
-/** The protocol versions annai speaks (milestone 8c, choice 2), and the one it asks for. */
+/** The protocol versions annai speaks, and the one it asks for. */
 export const SUPPORTED = Object.freeze(['2025-11-25', '2025-06-18', '2025-03-26']);
 export const ASKED = '2025-06-18';
 /** Pages of tools annai asks for, and the most tools it keeps reading. */
@@ -52,7 +50,7 @@ export class McpClient {
   #id = 0;
   /** @type {{ done: Promise<void>, stop: AbortController, waiting: number } | null} the session being started, and how many calls wait for it */
   #connecting = null;
-  /** Set once the session is ended for good (close, ending): no other starts, and every call says the server was removed (minors 3). */
+  /** Set once the session is ended for good (close, ending): no other starts, and every call says the server was removed. */
   #closed = false;
   #stateless;
 
@@ -96,7 +94,7 @@ export class McpClient {
     return this.#inSession(o, async () => {
       /** @type {any[]} */
       const tools = [];
-      /** @type {Set<string>} a tool listed twice is listed once, the first time (fix pass 8c-5) */
+      /** @type {Set<string>} a tool listed twice is listed once, the first time */
       const seen = new Set();
       /** @type {string | undefined} */
       let cursor;
@@ -129,14 +127,14 @@ export class McpClient {
     return this.#inSession(o, call);
   }
 
-  /** Ends the session, when the server can be reached (milestone 8c, choice 6). @param {{ fetch: Fetch, signal?: AbortSignal }} o */
+  /** Ends the session, when the server can be reached. @param {{ fetch: Fetch, signal?: AbortSignal }} o */
   async close(o) {
     await (await this.ending())?.(o);
   }
 
   /**
    * Leaves the session, and gives what ends it on the server: the address and headers read now, so it
-   * can be sent after its secret is gone (fix pass 8c-3), or null when there is no session.
+   * can be sent after its secret is gone, or null when there is no session.
    * @returns {Promise<((o: { fetch: Fetch, signal?: AbortSignal }) => Promise<void>) | null>}
    */
   async ending() {
@@ -185,7 +183,7 @@ export class McpClient {
 
   /**
    * Waits for a session, starting one when none is being started. Calls that come meanwhile wait for
-   * the same start, each until its own signal: the start stops only once every one of them stopped (minors 4).
+   * the same start, each until its own signal: the start stops only once every one of them stopped.
    * @param {{ fetch: Fetch, signal?: AbortSignal }} o
    */
   async #ready(o) {
@@ -245,7 +243,7 @@ export class McpClient {
       res = await fetch(await this.#address(), { method: 'POST', headers, body: JSON.stringify(body), ...(signal ? { signal } : {}) });
     } catch (e) {
       if (stopOf(e, signal)) throw stopOf(e, signal);
-      // A browser says no more than that a request failed; offline, it is no use to suggest CORS (minors 8).
+      // A browser says no more than that a request failed; offline, it is no use to suggest CORS.
       if (globalThis.navigator?.onLine === false) {
         throw new McpError('network', /* en */ `annai couldn't reach the MCP server ${this.server}: this device is offline. Try again once it is online.`,
           t`annai couldn't reach the MCP server ${this.server}: this device is offline. Try again once it is online.`);
@@ -291,7 +289,7 @@ export class McpClient {
     const unreadable = () => new McpError('answer', /* en */ `The MCP server ${this.server} sent an answer annai can't read.`, t`The MCP server ${this.server} sent an answer annai can't read.`);
     if ((res.headers.get('content-type') ?? '').includes('text/event-stream')) {
       if (!res.body) throw unreadable();
-      // Read no further than ANSWER_MAX, as a JSON answer is (fix pass 8c-4).
+      // Read no further than ANSWER_MAX, as a JSON answer is.
       const tooMuch = () => new McpError('answer', /* en */ `The MCP server ${this.server} sent more than annai reads (${ANSWER_MAX / 1_048_576} MB).`,
         t`The MCP server ${this.server} sent more than annai reads (${num(ANSWER_MAX / 1_048_576)} MB).`);
       let read = 0;
@@ -313,7 +311,7 @@ export class McpClient {
           } catch {
             continue;
           }
-          // What the server says on the way (progress, its own requests) is skipped (choice 2).
+          // What the server says on the way (progress, its own requests) is skipped.
           if (m && typeof m === 'object' && m.id === id && ('result' in m || 'error' in m)) return m;
         }
       } catch (e) {
@@ -350,7 +348,7 @@ function ender(address, auth, session) {
   };
 }
 
-/** The start of an answer's body, as text: no more than max bytes are read (minors 5). @param {Response} res @param {number} max */
+/** The start of an answer's body, as text: no more than max bytes are read. @param {Response} res @param {number} max */
 async function startOf(res, max) {
   const reader = res.body?.getReader();
   const decoder = new TextDecoder();
@@ -381,7 +379,7 @@ function tag(s) {
 }
 
 /**
- * A tool's name for Shiori (milestone 8c, choice 1): mcp_<server>_<tool>, in the characters every
+ * A tool's name for Shiori: mcp_<server>_<tool>, in the characters every
  * provider accepts; one too long, or taken, is cut and ends in a short hash of the tool's own name.
  * @param {string} server @param {string} tool @param {Set<string>} taken
  */
@@ -392,7 +390,7 @@ export function mcpToolName(server, tool, taken) {
 }
 
 /**
- * What a tool answered, for Shiori (choice 8): text as text, photos as photos, a resource's text,
+ * What a tool answered, for Shiori: text as text, photos as photos, a resource's text,
  * other parts described, structured content as JSON when there is no text, and isError kept. Shiori's words: English.
  * @param {any} result @returns {{ content: string, images?: { mediaType: string, data: string }[], isError?: boolean }}
  */

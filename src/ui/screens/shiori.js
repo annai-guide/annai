@@ -20,7 +20,7 @@ const LOOKS = /** @type {const} */ ([['sleeping', t`Asleep`, t`Shiori, asleep`],
   ['thinking', t`Thinking`, t`Shiori, thinking`], ['speaking', t`Talking`, t`Shiori, talking`], ['waiting', t`Your turn`, t`Shiori, your turn`], ['away', t`Working`, t`Shiori, working`],
   ['offline', t`Offline`, t`Shiori, offline`]]);
 
-/** Every way she can look, side by side, to check her art (the user, 2026-10-18). */
+/** Every way she can look, side by side, to check her art. */
 function looks() {
   return h('div', { class: 'looks' }, ...LOOKS.map(([state, name, label]) => {
     const a = createAvatar({ size: 'md', label });
@@ -149,7 +149,7 @@ export async function renderShiori(ctx, route) {
       h('p', { class: 'sub', text: t`Koe talks with you and answers at once; Kokoro thinks things through and does the work. They pass each other short notes. On: the notes show in the conversation as quiet lines. Off: they stay in the Trace.` }),
       showHalves.el),
     section(W.heading, h('p', { class: 'sub' }, h('a', { href: '#/languages', text: t`The languages you speak, and the one Shiori answers in, are in Settings → Languages.` }))),
-    // Spend per day, the cache and housekeeping are on Settings → Models, with the requests they shape (the user, 2026-10-18).
+    // Spend per day, the cache and housekeeping are on Settings → Models, with the requests they shape.
     section(t`How often she acts on her own`,
       h('p', { class: 'sub', text: t`Plugins, reminders and GPS wake her as well as you. None of these is set unless you set it: more wakes in an hour are skipped, quiet hours hold her until they end (reminders still come), and past the steps of one wake she stops, with a card.` }),
       savedField(t`Wakes per hour, not counting yours`, wakes, () => numberIn(wakes, 1, 10_000, t`Wakes per hour is a whole number from 1; leave it empty for no limit.`, { whole: true }), (v) => budgets({ wakesPerHour: v })),
@@ -225,7 +225,7 @@ async function instructionEditor(ctx, id) {
 
 /**
  * Personalities that installed packages bring (spec §5.2), not yet among the user's: Add copies one
- * into /me/personalities/, where it is the user's own file (milestone 8a, choice 12).
+ * into /me/personalities/, where it is the user's own file.
  * @param {any} ctx @param {string[]} names the user's personalities
  */
 function fromPlugins(ctx, names) {

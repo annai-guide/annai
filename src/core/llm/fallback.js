@@ -38,7 +38,7 @@ export class Bench {
   #why = new Map();
   /** What failed, for a rest only the user can end (a refused key, no credit): such a model isn't asked anyway. @type {Map<string, string>} */
   #kind = new Map();
-  /** Models asked while resting whose failure renewed the rest: they hold no awake model back until this rest ends (rounds 11, 12). @type {Set<string>} */
+  /** Models asked while resting whose failure renewed the rest: they hold no awake model back until this rest ends. @type {Set<string>} */
   #askedWhileResting = new Set();
   /** @param {string} id @param {number} ms @param {number} [now] @param {string} [why] @param {string} [kind] the failure's kind */
   bench(id, ms, now = Date.now(), why, kind) {
@@ -58,7 +58,7 @@ export class Bench {
   why(id) {
     return this.#why.get(id);
   }
-  /** Asked while it rested, and the failure renewed its rest: it holds no awake model back until that rest ends (rounds 11, 12). @param {string} id */
+  /** Asked while it rested, and the failure renewed its rest. @param {string} id */
   askedResting(id) {
     this.#askedWhileResting.add(id);
   }
@@ -160,7 +160,7 @@ export function attemptWhy(a, { now = Date.now(), plain = false } = {}) {
 }
 
 /**
- * Why every model failed, for a card (emulator pass): one line per model, each reason once and in words; a failure to
+ * Why every model failed, for a card: one line per model, each reason once and in words; a failure to
  * connect is annai's words, not the browser's, and with no connection on the device, that is said once instead.
  * @param {Parameters<typeof attemptWhy>[0][]} attempts @param {{ offline?: boolean, now?: number, plain?: boolean }} [o] plain: for a model to read, in annai's English and never the screens' words
  */
@@ -244,19 +244,17 @@ export function candidates(config, role) {
 export const chatCandidates = (cfg, role) => candidates(cfg, role).filter((id) => { const a = abilityOf(cfg, id); return a?.on && a.kind !== 'realtime'; });
 
 /**
- * @typedef {{ mode: import('./config.js').KoeMode, using: import('./config.js').KoeMode, why: '' | 'voice off' | 'none' | 'resting' | 'off', koe: boolean,
+ * @typedef {{ mode: import('./config.js').KoeMode, why: '' | 'voice off' | 'none' | 'resting' | 'off',
  *   live: boolean, split: boolean, path: { kind: 'live', modelId: string } | { kind: 'text' } | null }} KoeWay
- *   mode: the one chosen; using: the list Koe runs on now; why: why Classic stands in for a chosen Realtime ('none': its list is empty;
- *   'resting': a model of it rests after a failure, and will answer again; 'off': none can, switched off or without its protocol running); koe: a Koe list holds a model; split: Shiori is two halves; path: Koe's
+ *   mode: the one chosen; why: why Classic stands in for a chosen Realtime ('none': its list is empty;
+ *   'resting': a model of it rests after a failure, and will answer again; 'off': none can, switched off or without its protocol running); split: Shiori is two halves; path: Koe's
  *   pathway (a live session, or the loop), null when Koe is down
  */
 
 /**
- * Koe's way now (the user, 2026-10-22: two lists, Realtime and Classic, and a switch on the voice chip). Realtime runs when it is
- * chosen, voice is on, and a model in its list can answer: the first one (a model off, resting or without its protocol running is
- * passed over, as callRole has it). Otherwise Classic: its chat models in the loop, with the speech lists; with voice off always,
- * since a live reply would be sound nobody hears. Shiori is two halves while Classic holds a model, or Realtime is wanted and holds
- * one: then Koe is down when nothing can answer. Otherwise Shiori is one, as for an empty Koe list.
+ * Koe's way now (spec §9.6): Realtime when it is chosen, voice is on, and a model in its list can answer (the first one); otherwise
+ * Classic. Shiori is two halves while Classic holds a model, or Realtime is wanted and holds one: then Koe is down when nothing can
+ * answer. Otherwise Shiori is one, as for an empty Koe list.
  * @param {ModelConfig} cfg @param {{ voiceOn: boolean, types: Map<string, { realtime?: boolean }>, until: (id: string) => number, now: number }} o
  * @returns {KoeWay}
  */
@@ -269,17 +267,16 @@ export function koeWay(cfg, { voiceOn, types, until, now }) {
     const a = abilityOf(cfg, id);
     return cfg.models[id] && a?.on && types.get(a.type) && until(id) <= now ? a : null;
   };
-  const koe = realtime.length > 0 || classic.length > 0;
   const wanted = mode === 'realtime' && voiceOn;
   const live = wanted ? realtime.find((id) => { const a = can(id); return a?.kind === 'realtime' && types.get(a.type)?.realtime; }) : undefined;
-  if (live) return { mode, using: 'realtime', why: '', koe, live: true, split: true, path: { kind: 'live', modelId: live } };
+  if (live) return { mode, why: '', live: true, split: true, path: { kind: 'live', modelId: live } };
   /** A live model that is switched on and whose protocol runs, resting or not. @param {string} id */
   const isLive = (id) => { const a = abilityOf(cfg, id); return Boolean(cfg.models[id] && a?.on && a.kind === 'realtime' && types.get(a.type)?.realtime); };
   const hasLive = realtime.some(isLive);
   /** @type {KoeWay['why']} */
   const why = mode !== 'realtime' ? '' : !voiceOn ? /* en */ 'voice off' : !realtime.length ? 'none' : realtime.some((id) => isLive(id) && until(id) > now) ? 'resting' : 'off';
   const text = classic.some((id) => { const a = can(id); return a && a.kind !== 'realtime'; });
-  return { mode, using: 'classic', why, koe, live: hasLive, split: classic.length > 0 || (wanted && realtime.length > 0), path: text ? { kind: 'text' } : null };
+  return { mode, why, live: hasLive, split: classic.length > 0 || (wanted && realtime.length > 0), path: text ? { kind: 'text' } : null };
 }
 
 /**
@@ -322,13 +319,13 @@ function newestDocument(request) {
 }
 
 /**
- * What a conversation has kept of a file a model can't take (the review of reading-files, finding 1), by the file's hash: what it says
+ * What a conversation has kept of a file a model can't take, by the file's hash: what it says
  * in words, for any model, or its pages, for one that sees photos (sees); null when nothing was kept.
  * @typedef {(hash: string, sees: boolean) => { text: string, images: { mediaType: string, data: string, hash?: string, page?: number }[] } | null} Readings
  */
 
 /**
- * The request for a model that takes no photos or no PDFs (emulator pass): each as words, "[a photo: /trip/files/….webp]" or
+ * The request for a model that takes no photos or no PDFs: each as words, "[a photo: /trip/files/….webp]" or
  * "[a PDF: booking.pdf]", so a conversation that once held one can still go on with it; followed by what the conversation kept of it
  * (readings), and its pages for a model that sees photos. @param {Request} request
  * @param {{ photos?: boolean, documents?: boolean, sees?: boolean, readings?: Readings, kept?: boolean }} [which] what to word (both when not
@@ -476,7 +473,7 @@ export const firstWordsMs = (config, role) => (config.roles?.[role]?.firstOutput
  *   readings: what the conversation has kept of its files, put in place of a file a model can't take wherever it is (§7.2)
  *   keepNative: Shiori's own turns want each reply as the provider returned it, to send back within the turn (the keep-reasoning design §4)
  *   askResting: a turn's own call (Shiori's): a resting model goes to the end of the list, whose rest ends soonest first, and at most one is asked; side jobs
- *   (readers, housekeeping, plugins', quick decisions) never are (round 6)
+ *   (readers, housekeeping, plugins', quick decisions) never are
  * @returns {Promise<{ reply: Reply, attempts: Attempt[], usage: import('./contract.js').Usage, cost: number | undefined, answeredBy: string, modelId: string,
  *   first: string | null, tried: boolean }>} first: the role's first model, by name; tried: whether it was asked (a warm model may answer first)
  */
@@ -494,7 +491,7 @@ export async function callRole(c) {
   let cost;
   const { keepParts, ...meta } = c.record ?? {};
   const keeps = c.kept && (keepParts || c.borrow) && (role === 'main' || role === KOE_CLASSIC) ? c.kept : null;
-  // A plugin's call is its own in the trace too, so its hooks don't get the requests it caused (fix pass 8b-1).
+  // A plugin's call is its own in the trace too, so its hooks don't get the requests it caused.
   const trace = c.trace && typeof meta.tag === 'string' && meta.tag.startsWith('plugin:')
     ? { ...c.trace, request: (/** @type {any} */ i) => /** @type {any} */ (c.trace).request({ ...i, tag: meta.tag }) } : c.trace;
   /**
@@ -517,14 +514,12 @@ export async function callRole(c) {
   const first = firstId && config.models[firstId] ? modelOf(config.models[firstId]).name : null;
   // The model holding a warm cache goes first: switching back waits until its cache is cold (spec §9.6).
   const preferred = c.prefer && list.includes(c.prefer) ? [c.prefer, ...list.filter((x) => x !== c.prefer)] : list;
-  // In a turn's own call (Shiori's), a model resting after an error isn't passed over: it goes after every model that isn't resting has had
-  // both passes (round 9), the one whose rest ends soonest first, and at most one is asked in the call, so a turn doesn't fail while something might answer (§9.6; the real-PDF
-  // check and round 8). Not Koe's list (Kokoro answers when she can't), and not a rest only the user can end (a refused key, no credit)
-  // or a long rest the provider stated (it won't answer, and asking sends the whole request again). Side jobs pass resting models over.
+  // In a turn's own call (Shiori's), a model resting after an error isn't passed over, so a turn doesn't fail while something might answer (§9.6). Not Koe's
+  // list, a rest only the user can end, or a long rest the provider stated (it won't answer, and asking sends the whole request again). Side jobs pass them over.
   const restingNow = new Set(c.askResting && role !== KOE_CLASSIC ? list.filter((id) => bench.until(id) > now() && !bench.usersToEnd(id) && !bench.why(id)) : []);
   const awake = preferred.filter((id) => !restingNow.has(id));
-  // The one whose rest ends soonest first; those that failed when asked in this rest form a group of their own, tried last (rounds 12, 13:
-  // a dead model would otherwise take the one resting ask from a live one).
+  // The one whose rest ends soonest first; those that failed when asked in this rest form a group of their own, tried last:
+  // a dead model would otherwise take the one resting ask from a live one.
   const resting = preferred.filter((id) => restingNow.has(id)).sort((a, b) => bench.until(a) - bench.until(b));
   const fresh = resting.filter((id) => !bench.triedResting(id));
   const marked = resting.filter((id) => bench.triedResting(id));
@@ -535,21 +530,21 @@ export async function callRole(c) {
   let last = '';
   /**
    * The request as a model is sent it: files it can't take as their kept readings or as words, its photo limit of the pictures, each once,
-   * and no required tool call for one that refused it. Shared by the passes and the hold-back's check (round 11).
+   * and no required tool call for one that refused it. Shared by the passes and the hold-back's check.
    * @param {Model | null} model @param {string} id @returns {(r: Request) => Request}
    */
   const requestFor = (model, id) => (r) => {
     const sees = Boolean(model?.input.includes('image'));
     const reads = Boolean(model?.input.includes('pdf'));
-    // A file the conversation has kept a reading of goes as that reading, wherever it is, the newest message's too (the review of
-    // reading-files): it was read once, so it no longer keeps a model out.
+    // A file the conversation has kept a reading of goes as that reading, wherever it is, the newest message's too: it was read once,
+    // so it no longer keeps a model out.
     let sent = model && c.readings && !(sees && reads) ? photosAsWords(r, { photos: !sees, documents: !reads, sees, readings: c.readings, kept: true }) : r;
     // A model that takes no photos gets them as words, unless the user's newest message is one: only that needs a model that sees.
     const words = Boolean(model && !sees && !newestPhoto(sent) && sent.messages.some((m) => m.parts.some((p) => p.type === 'image')));
     // The same for a PDF: an older one goes as a note; only one in the newest message needs a model that reads it.
     const notes = Boolean(model && !reads && !newestDocument(sent) && sent.messages.some((m) => m.parts.some((p) => p.type === 'document')));
     if (words || notes) sent = photosAsWords(sent, { photos: words, documents: notes, sees, readings: c.readings });
-    // The model's photo limit of the request's distinct pictures, kept pages included, each once (spec §4.8; round 8).
+    // The model's photo limit of the request's distinct pictures, kept pages included, each once (spec §4.8).
     sent = { ...sent, messages: limitImages(sent.messages, model?.images?.maxCount) };
     if (!sent.toolRequired || !bench.unforced.has(id)) return sent;
     const { toolRequired, ...rest } = sent;
@@ -561,7 +556,7 @@ export async function callRole(c) {
    */
   /**
    * What a model is, and why it can't be asked at all, whatever the request: removed, switched off, its type (protocol plugin) not
-   * running, or not a chat model. One and the hold-back both use it (round 14).
+   * running, or not a chat model. One and the hold-back both use it.
    * @param {string} id
    */
   const lookUp = (id) => {
@@ -587,9 +582,8 @@ export async function callRole(c) {
       });
       return null;
     }
-    // One key per provider; a provider with keyHeader sends it in that header (decision 25). The trace learns it
-    // first, whatever the header's name, as the protocol then gets none to tell it (fix pass). Its plugin's
-    // setup may add headers and sharpen error kinds (decision 15).
+    // One key per provider; a provider with keyHeader sends it in that header (decision 25). The trace learns it first, as the
+    // protocol then gets none to tell it. Its plugin's setup may add headers and sharpen error kinds (decision 15).
     const own = await c.keyFor(pRec.id);
     if (own) c.trace?.secret(own);
     const set = adjusted(c.registry, pRec.plugin, type, endpointOf(pRec, rec.ability, type.tunables), provider.keyHeader);
@@ -601,7 +595,7 @@ export async function callRole(c) {
     let again = false;
     /** The provider refused the reasoning sent back: asked again without it (the keep-reasoning design §8). */
     let unreasoned = false;
-    /** This model's own request once a refused photo was repaired for it: never the next model's (round 10). @type {Request | null} */
+    /** This model's own request once a refused photo was repaired for it: never the next model's. @type {Request | null} */
     let repaired = null;
     for (let retry = 0; ; retry++) {
       // Heard speech is resolved against the model actually receiving it, at every attempt (spec §10.3).
@@ -632,11 +626,11 @@ export async function callRole(c) {
         });
         usage = addUsage(usage, reply.usage);
         cost = addCost(cost, reply.cost);
-        // The resting models it never reached are in the Trace too, as passed over (round 9).
+        // The resting models it never reached are in the Trace too, as passed over.
         // One that can't be asked at all (switched off, say) says so, not that it rests.
         for (const x of resting) if (x !== id && !attempts.some((a) => a.model === x)) attempts.push({ model: x, name: config.models[x] ? modelOf(config.models[x]).name : x, outcome: lookUp(x).out ?? 'benched', ms: 0 });
         attempts.push({ model: id, name: model.name, outcome: 'ok', ms: now() - started, ...(reply.cost !== undefined ? { cost: reply.cost } : {}) });
-        // Asked while it rested, and it answered: it rests no more, so the next call asks it in its place again (round 7).
+        // Asked while it rested, and it answered: it rests no more, so the next call asks it in its place again.
         if (restingAsked === id) bench.clear(id);
         const answered = unreasoned ? { ...reply, natives: /** @type {const} */ ('refused') } : reply;
         const full = said ? prefixed(answered, said) : answered;
@@ -646,7 +640,7 @@ export async function callRole(c) {
       } catch (e) {
         const err = e instanceof ProviderError ? e : new ProviderError('plugin', String(/** @type {any} */ (e)?.message ?? e));
         // What a call that failed had used is spent, stopped, timed out or cut off part-way: the turn's record (the Trace, the day's
-        // spend) counts it (the reviews of phone-fixes-1).
+        // spend) counts it.
         const spent = Boolean(err.usage && Object.values(err.usage).some((v) => typeof v === 'number' && v > 0));
         if (spent) {
           usage = addUsage(usage, /** @type {any} */ (err.usage));
@@ -691,13 +685,13 @@ export async function callRole(c) {
           continue;
         }
         if (err.kind === 'bad-request' && request.toolRequired && !bench.unforced.has(id) && refusesRequired(err.message)) {
-          // A model or server that refuses a required tool call (review A1): the same model again without it, and never again with it.
+          // A model or server that refuses a required tool call: the same model again without it, and never again with it.
           bench.unforced.add(id);
           continue;
         }
         if (err.kind === 'image' && c.repairImages && repairs < 2) {
-          // The request as the model received it (its kept pages and limit in it), so a learned limit applies to all of it (round 9); the
-          // repaired request is this model's alone, and the next model starts from the shared one (round 10).
+          // The request as the model received it (its kept pages and limit in it), so a learned limit applies to all of it; the
+          // repaired request is this model's alone, and the next model starts from the shared one.
           const fixed = await c.repairImages(err, id, asked).catch((/** @type {unknown} */ x) => { console.warn(/* en */ 'the photo repair failed', x); return null; });
           if (fixed) {
             repairs++;
@@ -706,7 +700,7 @@ export async function callRole(c) {
           }
         }
         // No connection on this device (airplane mode, say): the model did nothing wrong, so it doesn't rest, and
-        // waiting won't help. It is asked again as soon as the connection is back (emulator pass).
+        // waiting won't help. It is asked again as soon as the connection is back.
         if ((err.kind === 'unreachable' || err.kind === 'network') && !online()) break;
         const step = nextStep(err, retry);
         if (step.wait !== undefined) {
@@ -718,7 +712,7 @@ export async function callRole(c) {
           if (long) Object.assign(attempts[attempts.length - 1], { error: long, restsUntil: now() + step.bench });
           bench.bench(id, step.bench, now(), long, err.kind);
           // Asked while it rested, and this failure benched it: it doesn't hold an awake model back again in this rest, and goes after the
-          // other resting models (rounds 11, 12, 14).
+          // other resting models.
           if (restingAsked === id) bench.askedResting(id);
         }
         break;
@@ -731,10 +725,10 @@ export async function callRole(c) {
    * in the newest message kept out, with each one it can't take read by whoever can (c.read), and older ones as words.
    * @param {string[]} ids
    */
-  /** Awake models whose reading of a file failed, held back until a resting model that takes it as it is was tried (round 10). @type {{ id: string, base: Request }[]} */
+  /** Awake models whose reading of a file failed, held back until a resting model that takes it as it is was tried. @type {{ id: string, base: Request }[]} */
   const blind = [];
-  /** Whether a resting model would be asked with the request as it is: nothing keeps it out, as it would be sent it (round 11). */
-  // One that failed when asked in this rest (and was rested again for it) holds no one back: it is only asked at the list's end (round 12).
+  /** Whether a resting model would be asked with the request as it is: nothing keeps it out, as it would be sent it. */
+  // One that failed when asked in this rest (and was rested again for it) holds no one back: it is only asked at the list's end.
   const restingTakes = () => !restingAsked && resting.some((x) => {
     if (bench.triedResting(x)) return false;
     const { model, provider, out } = lookUp(x);
@@ -749,10 +743,10 @@ export async function callRole(c) {
     }
     const passed = c.read ? [...new Set(attempts.filter((a) => ids.includes(a.model) && (a.outcome === 'no-images' || a.outcome === 'no-documents')).map((a) => a.model))] : [];
     for (const id of passed) {
-      // Only one resting model is asked in a call: none is read for once one was (round 9).
+      // Only one resting model is asked in a call: none is read for once one was.
       if (restingAsked && restingAsked !== id && restingNow.has(id)) continue;
       const model = modelOf(config.models[id]);
-      // What else keeps it out (too long, no tools…) is checked before anything is read for it, on what it would be sent (rounds 8, 9).
+      // What else keeps it out (too long, no tools…) is checked before anything is read for it, on what it would be sent.
       const pRec = config.providers[config.models[id].provider];
       const worded = photosAsWords(c.request, { photos: !model.input.includes('image'), documents: !model.input.includes('pdf') });
       const other = gap(model, { ...worded, messages: limitImages(worded.messages, model.images?.maxCount) }, pRec ? providerOf(pRec) : undefined);
@@ -764,7 +758,7 @@ export async function callRole(c) {
       base = read.request;
       request = said ? continueAfter(base, said) : base;
       // Its reading failed, and a resting model takes the file as it is: that one is asked first; this one answers without the file
-      // only if it fails too (round 10). A reading that worked is answered at once (a dead resting model is never waited on).
+      // only if it fails too. A reading that worked is answered at once (a dead resting model is never waited on).
       if (holdBlind && read.unread && restingTakes()) {
         blind.push({ id, base });
         continue;
@@ -774,9 +768,8 @@ export async function callRole(c) {
     }
     return null;
   };
-  // Every model that isn't resting has both passes before a resting one is asked (round 9: a dead photo model at rest held up every photo turn).
   // Three groups, each through both passes, with at most one resting model asked in all: awake models, resting ones, then resting ones
-  // that failed when asked in this rest (round 13).
+  // that failed when asked in this rest (§9.6: a dead photo model at rest mustn't hold up every photo turn).
   const answer = (await passes(awake, true)) ?? (await passes(fresh)) ?? (await passes(marked));
   if (answer) return answer;
   for (const b of blind) {

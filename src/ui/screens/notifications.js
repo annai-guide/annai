@@ -77,7 +77,7 @@ export async function renderNotifications(ctx) {
     const on = h('button', {
       class: 'btn pri', type: 'button',
       onclick: () => {
-        // First thing in the tap, before anything is awaited: iOS asks only during a user activation (6b choice 11).
+        // First thing in the tap, before anything is awaited: iOS asks only during a user activation.
         const asking = push.source.ask();
         on.disabled = true;
         alert.hidden = true;

@@ -18,7 +18,7 @@ export const nowOf = (live) => live?.clock?.now() ?? Date.now();
 /**
  * Now (spec §16.2), the home screen during a trip: where you are, golden hour and other chips, the
  * next items as a timetable, and the latest card. When live mode says moving fast, it hands over
- * to Driving (choice 4).
+ * to Driving.
  * @param {any} ctx
  */
 export async function renderNow(ctx) {
@@ -43,7 +43,7 @@ export async function renderNow(ctx) {
   };
   draw();
   // Hands over when moving fast begins while Now is on screen (or to a plugin's screen for its
-  // activity, milestone 8b choice 5): not on every fix of a drive already going, so "← Now" stays on Now (choice 4).
+  // activity): not on every fix of a drive already going, so "← Now" stays on Now.
   let was = live?.activity;
   const off = live?.onChange(() => {
     if (!place.isConnected && !top.isConnected) {
@@ -63,7 +63,7 @@ export async function renderNow(ctx) {
   const top = h('div', { class: 'now-card' });
   if (card) {
     const words = [live ? liveText(live) : null, live && !live.online ? t`Offline · reminders still work` : null].filter(Boolean);
-    // When the plugin's Now card fails, annai's own is drawn (fix pass 8b-3).
+    // When the plugin's Now card fails, annai's own is drawn.
     mount(ctx, card, top, (ui) => card.item.render(top, ui, { title, place: whereWords(live), chips: words, liveOn: Boolean(live?.on) }), {
       what: 'now-card', onFail: () => { top.hidden = false; top.replaceChildren(place, chips, start); },
     });
@@ -89,7 +89,7 @@ export async function renderNow(ctx) {
 
 /**
  * Where Now hands over to when the activity changes: a running plugin's screen for that activity (the
- * last one registered), else Driving for moving fast, else nowhere (milestone 8b, choice 5).
+ * last one registered), else Driving for moving fast, else nowhere.
  * @param {string} activity @param {string | undefined} was @param {{ pluginId: string, item: any }[]} screens @returns {string | null}
  */
 export function handover(activity, was, screens) {
@@ -101,7 +101,7 @@ export function handover(activity, was, screens) {
 
 /**
  * A timetable row: a plugin's (spec §16.4: plan-row) when one replaces annai's, else annai's own, which
- * also takes the place of a plugin's that fails, at once or later (fix pass 8b-3).
+ * also takes the place of a plugin's that fails, at once or later.
  * @param {any} ctx @param {string} trip @param {import('../../core/plan.js').PlanRow} r @param {string} when @param {() => HTMLElement} own
  */
 export function planRowOf(ctx, trip, r, when, own) {

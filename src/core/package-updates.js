@@ -5,7 +5,7 @@ import { installRequirements, checkPackageId } from './requires.js';
 
 /**
  * Updates for packages installed from an address (spec §5.3: "those installed from a URL get the
- * same check"). A package changed when its fingerprint did (choice 7), so a skill without a version
+ * same check"). A package changed when its fingerprint did, so a skill without a version
  * is offered too. Nothing changes until the user accepts.
  * @typedef {import('./plugins.js').PluginHost} PluginHost
  * @typedef {(url: string, init?: RequestInit) => Promise<Response>} Fetch
@@ -24,7 +24,7 @@ export async function addressUpdates(host, { fetch, failed }) {
   for (const [id, s] of Object.entries(await host.installed())) {
     if (s.source !== 'url' || typeof s.url !== 'string') continue;
     try {
-      // The address with its keys, from the package's secret (fix pass 8a-1); s.url shows «key» in their places.
+      // The address with its keys, from the package's secret; s.url shows «key» in their places.
       const address = await host.address(id);
       if (!address) continue;
       const pkg = await host.inspect(await fetchPackage(address, { fetch }));
@@ -60,7 +60,7 @@ export async function updateFromAddress(host, id, { fetch, agreed, official = {}
   // The log's English says that it adds parts; the screens' words say which.
   /* en */
   if (!agreedTo(agreed, added)) throw new PluginError(id, "this update adds parts you haven't agreed to. Check for updates again and look at what it adds.", { shown: t`this update adds parts you haven't agreed to: ${addedWords(added)}. Check for updates again and look at what it adds.` });
-  await checkPackageId(host, id, 'url', official); // annai's own names stay annai's (security review)
+  await checkPackageId(host, id, 'url', official); // annai's own names stay annai's
   if (pkg.requires.length) await installRequirements(host, pkg.requires, { ...official, tap: true }, { who: pkg.name, id }); // Update is the user's tap
   const wasOn = s.enabled !== false;
   await host.install(files, { source: 'url', url: address });

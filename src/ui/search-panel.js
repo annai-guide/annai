@@ -5,7 +5,7 @@ import { readAppSettings, updateAppSettings } from '../core/settings.js';
 import { orderSearch, searchOffIn, cooldowns, trusted, FREE_SERVICES, READY_MS } from '../core/web-search.js';
 
 /**
- * Where searches go, in words (Settings → Tools and the welcome, the user 2026-10-23): annai's free
+ * Where searches go, in words (Settings → Tools and the welcome): annai's free
  * search, three services each on until the user unticks it, and the other search providers, all in
  * the order web_search tries them.
  */

@@ -5,8 +5,7 @@
  *   mode: voice On or Off (§10.5; a saved 'auto', or anything else, reads as Off); pauseMs: the pause that ends a sentence (§10.2); silenceSeconds: how long speak listens for an
  *   answer (§7.1); firstWordsSeconds: how long her first words may take with voice on (§9.6); keepClips: keep what the microphone heard
  *   (§10.2); browserVoice: the system voice's id ('' for automatic: one on this phone when there is one, §11.7); rate: its speed;
- *   closeAfterSeconds: the quiet spell that closes a live session (K5,
- *   decision 12); bargeIn: speaking cuts a live Koe off (decision 13) with headphones or car audio only (§10.4), a tap always does
+ *   closeAfterSeconds: the quiet spell that closes a live session; bargeIn: speaking cuts a live Koe off with headphones or car audio only (§10.4), a tap always does
  */
 export const VOICE_DEFAULTS = Object.freeze({ mode: 'off', pauseMs: 700, silenceSeconds: 20, firstWordsSeconds: 15, keepClips: false, browserVoice: '', rate: 1, closeAfterSeconds: 30, bargeIn: true });
 

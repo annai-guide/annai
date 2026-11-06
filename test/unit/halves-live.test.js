@@ -24,7 +24,7 @@ test("Classic chosen: Koe talks through the loop, voice on or off, though Realti
   const k = await liveKit([], { live: { first: false }, koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
   try {
     assert.equal(k.agent.koeState, 'text', 'voice on');
-    assert.deepEqual(k.agent.way, { mode: 'classic', using: 'classic', why: '', koe: true, live: true, split: true, path: { kind: 'text' } });
+    assert.deepEqual(k.agent.way, { mode: 'classic', why: '', live: true, split: true, path: { kind: 'text' } });
     await updateAppSettings(k.ws, { voice: { mode: 'off' } });
     await k.voice.refresh();
     await k.agent.idle();
@@ -46,7 +46,7 @@ test("Realtime chosen: voice off, Koe types through Classic (a live reply would 
     await k.voice.refresh();
     await k.agent.idle();
     assert.equal(k.agent.koeState, 'text', 'voice off: Classic');
-    assert.deepEqual([k.agent.way.using, k.agent.way.why], ['classic', 'voice off']);
+    assert.deepEqual([k.agent.way.path?.kind, k.agent.way.why], ['text', 'voice off']);
     k.llm.bench.bench('m-koe', 60_000);
     assert.equal(await k.agent.split(), true);
     assert.equal(k.agent.koeState, 'down', 'Classic resting, voice off: Koe is down');
@@ -69,7 +69,7 @@ test("the voice chip's switch applies at once: Classic chosen closes an open ses
     assert.equal(k.agent.live.state, 'open');
     await k.agent.chooseKoe('classic');
     assert.equal(k.agent.koeState, 'text');
-    assert.deepEqual([k.agent.way.mode, k.agent.way.using], ['classic', 'classic']);
+    assert.deepEqual([k.agent.way.mode, k.agent.way.path?.kind], ['classic', 'text']);
     await soon(async () => (await lives(k, 'closed')).length === 1);
     assert.equal((await lives(k, 'closed'))[0].data.why, 'pathway');
     assert.equal((await k.ws.readJSON('sys:settings', '/llm/roles.json'))['koe-mode'], 'classic', 'kept with the lists');
@@ -92,7 +92,7 @@ test("a change to Koe's lists in Settings → Models applies at once, with no vo
     await saveRoles(k.ws, { ...cfg.roles, 'koe-realtime': { models: [], level: 'off' } });
     await soon(async () => k.agent.koeState === 'text');
     await k.agent.idle();
-    assert.deepEqual([k.agent.way.mode, k.agent.way.using, k.agent.way.why], ['realtime', 'classic', 'none'], 'the choice stays Realtime');
+    assert.deepEqual([k.agent.way.mode, k.agent.way.path?.kind, k.agent.way.why], ['realtime', 'text', 'none'], 'the choice stays Realtime');
     assert.deepEqual(seen.at(-1), { mode: 'realtime', live: false }, "the chip hears of it");
   } finally {
     await k.done();
@@ -104,9 +104,9 @@ test("Realtime resting: Classic answers and the way says Realtime is resting; on
   try {
     k.llm.bench.bench('m-live', 300);
     assert.equal(await k.agent.split(), true);
-    assert.deepEqual([k.agent.koeState, k.agent.way.using, k.agent.way.why], ['text', 'classic', 'resting']);
+    assert.deepEqual([k.agent.koeState, k.agent.way.path?.kind, k.agent.way.why], ['text', 'text', 'resting']);
     await soon(async () => k.agent.koeState === 'live', 3000);
-    assert.equal(k.agent.way.using, 'realtime');
+    assert.equal(k.agent.way.path?.kind, 'live');
   } finally {
     await k.done();
   }
@@ -243,7 +243,7 @@ test("Classic chosen while Realtime rests: when its model can answer again, Koe 
     await new Promise((r) => setTimeout(r, 300));
     assert.equal(k.llm.bench.until('m-live') <= Date.now(), true, 'its model can answer again');
     assert.equal(await k.agent.split(), true); // a refresh, as a message or a voice change makes
-    assert.deepEqual([k.agent.koeState, k.agent.way.mode, k.agent.way.using], ['text', 'classic', 'classic']);
+    assert.deepEqual([k.agent.koeState, k.agent.way.mode, k.agent.way.path?.kind], ['text', 'classic', 'text']);
   } finally {
     await k.done();
   }

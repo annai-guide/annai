@@ -17,7 +17,7 @@ import { LANGUAGE_WORDS as W } from '../../core/languages.js';
 const section = (title, ...children) => h('section', { class: 'panel', 'aria-label': title }, h('h2', { class: 'section', text: title }), ...children);
 
 /**
- * Settings' sections in the order a user reaches for them, most often first (the user, 2026-10-18),
+ * Settings' sections in the order a user reaches for them, most often first,
  * Erase last; while an update waits, Updates comes before everything.
  * @param {{ waiting: boolean }} o
  */
@@ -183,7 +183,7 @@ function eraseControls(ctx) {
     class: 'btn danger', type: 'button', disabled: true,
     onclick: async () => {
       go.disabled = true;
-      // A live session closes and is forgotten first: its microphone with it (security review).
+      // A live session closes and is forgotten first: its microphone with it.
       ctx.agent?.hush?.('erase');
       // Live mode stops: as the page goes it would write its record again.
       ctx.live?.dispose?.();

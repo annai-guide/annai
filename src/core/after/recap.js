@@ -19,13 +19,13 @@ import { sentences } from '../intl.js';
 /**
  * The recap (spec §13): the utility model writes /trip/recap.md from the trip as it went (the
  * journey), its notes and memory, and a few photos. The road goes as stays and moves in words and
- * TSV (§4.7), never as its location points (choice 4). Shiori can tell it by voice (TELL_RECAP).
+ * TSV (§4.7), never as its location points. Shiori can tell it by voice (TELL_RECAP).
  * @typedef {import('./journey.js').Journey} Journey
  * @typedef {import('./journey.js').Entry} Entry
  */
 
 export const RECAP_FILE = '/recap.md';
-/** Photos sent with it at most (choice 4)… */
+/** Photos sent with it at most… */
 export const RECAP_PHOTOS = 6;
 /** …taking at most this part of the maximum request size (spec §6.5). */
 export const PHOTO_SHARE = 0.5;
@@ -48,7 +48,7 @@ export const RECAP_SYSTEM = /* en */ 'You write the recap of a trip for the trav
 
 /**
  * What goes to the model, as the Recap screen says it (spec §11.7: it must be true). Photos go as Shiori's
- * own photos do: a copy made smaller has no metadata, but a photo kept as taken that fits goes as it is (review 6).
+ * own photos do: a copy made smaller has no metadata, but a photo kept as taken that fits goes as it is.
  */
 export const RECAP_SENDS = Object.freeze([
   t`Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.`,
@@ -58,7 +58,7 @@ export const RECAP_SENDS = Object.freeze([
   t`Up to ${RECAP_PHOTOS} photos, if the model takes photos. A photo kept as taken (Settings → Photos → Keep originals) can still hold where it was taken.`,
 ]);
 
-/** What Shiori is woken with when the user asks to hear the recap (choice 6). */
+/** What Shiori is woken with when the user asks to hear the recap. */
 export const TELL_RECAP = /* en */ "The user asked to hear the trip's recap. Read /trip/recap.md and tell it to them with speak, a few sentences at a time, in your own words.";
 
 /** @param {string} s @param {number} n */
@@ -78,7 +78,7 @@ export function recapPhotos(j, max = RECAP_PHOTOS) {
 }
 
 /**
- * The recap's input in words (choice 4): the trip, its days, the way (stays and moves), stamps, the
+ * The recap's input in words: the trip, its days, the way (stays and moves), stamps, the
  * plan, what was said and shown, photos, notes and memory. At most RECAP_CHARS: the words are thinned
  * evenly until it fits, then it is cut.
  * @param {Journey} j @param {{ profile?: string, memory?: string, notes?: { path: string, text: string }[] }} [more]
@@ -168,7 +168,7 @@ export function recapError(e) {
 }
 
 /**
- * Writes /trip/recap.md with the utility model (spec §13, choice 5), and logs a recap entry that names
+ * Writes /trip/recap.md with the utility model (spec §13), and logs a recap entry that names
  * the photo copies it sent (§4.9). Errors are plain: what happened and what to do next.
  * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace, llm: any, trip: string,
  *   codec?: import('../photos.js').Codec | null, namer?: (p: { lat: number, lng: number }) => { name: string, m: number } | null, signal?: AbortSignal }} c

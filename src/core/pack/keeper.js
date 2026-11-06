@@ -10,7 +10,7 @@ import { PLAN_FILE } from '../plan.js';
  * asked, and, once a trip has one, bringing it up to date by itself on Wi-Fi while annai and that
  * trip are open ("whenever the phone is on Wi-Fi"): when the plan changed, parts are missing, or it
  * is a month old; by itself at most once an hour. It names places from the open trip's pack for
- * live mode (choice 7).
+ * live mode.
  * @typedef {import('./download.js').Manifest} Manifest
  * @typedef {import('./download.js').Progress} Progress
  * @typedef {'plan' | 'missing' | 'old' | null} Why
@@ -37,7 +37,7 @@ export class PackKeeper {
   #timer;
   /** @type {Map<string, number>} when annai last updated each trip's pack by itself */
   #autoAt = new Map();
-  /** The plan changed while a download ran: look again once it ends, past the hourly gate (fix pass L2). */
+  /** The plan changed while a download ran: look again once it ends, past the hourly gate. */
   #again = false;
   /** @type {import('./read.js').Pack | null} the open trip's pack, for names */
   #named = null;
@@ -119,7 +119,7 @@ export class PackKeeper {
       this.#abort = null;
       this.running = null;
       this.#emit();
-      // What changed during it waits for no hourly gate: this download's own start doesn't count against it (fix pass L2).
+      // What changed during it waits for no hourly gate: this download's own start doesn't count against it.
       if (this.#again) {
         this.#autoAt.delete(scope);
         this.poke();
@@ -162,7 +162,7 @@ export class PackKeeper {
   }
 
   #opened() {
-    // Another trip, or none (this one was removed): its download stops (choice 10).
+    // Another trip, or none (this one was removed): its download stops.
     if (this.running && this.running.scope !== this.o.agent.target) this.stop().catch(() => {});
     this.#loadNames();
     this.poke();

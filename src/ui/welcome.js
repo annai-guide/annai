@@ -1,7 +1,7 @@
 import { readAppSettings, updateAppSettings } from '../core/settings.js';
 
 /**
- * When the welcome shows (the user, 2026-10-18): once per device, the first time annai opens at its
+ * When the welcome shows: once per device, the first time annai opens at its
  * start. It is noted in the app's settings (welcomedAt) when it is first drawn, so Erase brings it back.
  * @typedef {import('../core/workspace.js').Workspace} Workspace
  * @typedef {{ hash: string, search: string }} Address

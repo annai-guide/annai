@@ -17,7 +17,7 @@ const NOTE = /^\/trip\/notes\/(?!\.\.?$)[^/]+$/;
 const ITEM = /^\/trip\/plan\/(?!\.\.?\.json$)[^/]+\.json$/;
 
 /**
- * Why a change is too big for Koe, or null (plan decision 7): Koe may write or edit one note, move one
+ * Why a change is too big for Koe, or null: Koe may write or edit one note, move one
  * flexible plan item (its start, end, notes or priority), or add one new flexible one. Each is one
  * file, undone from its history (spec §4.2), and never touches a fixed commitment or money.
  * @param {string} name @param {any} input @param {{ ws: import('../workspace.js').Workspace, trip: string | null }} c

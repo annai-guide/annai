@@ -18,16 +18,12 @@ import { languageSettings, modelLanguages } from '../languages.js';
 import { modelOf, saveKoeMode, KOE_CLASSIC, KOE_REALTIME } from '../llm/config.js';
 
 /**
- * Shiori as two halves (the Koe and Kokoro design): Koe talks with the user at once, Kokoro (Shiori as
- * she was, on Main) thinks and works behind it. Halves runs both as instances of the one loop and is
- * what the app holds, with the Agent's surface. Koe logs what the user types and Kokoro reads it and
- * wakes; the halves pass notes that never wait; Kokoro's output tools are gated in code while Koe
- * talks; Koe's state reaches Kokoro as blocks in its messages, never in its system text or tools.
- * With no Koe model, everything goes to Kokoro: Shiori as one half.
+ * Shiori as two halves (the Koe and Kokoro design): Koe talks with the user at once, Kokoro thinks and works behind it. Halves runs
+ * both as instances of the one loop and is what the app holds, with the Agent's surface. With no Koe model, everything goes to Kokoro.
  * @typedef {import('./loop.js').Wake} Wake
  * @typedef {import('./loop.js').TurnEnd} TurnEnd
  * @typedef {import('../llm/fallback.js').Why} Why
- * @typedef {'text' | 'live' | 'down' | 'off'} KoeState  text: Koe talks through the loop; live: in live sessions (K5); down: Koe's list failed, and it rests; off: no Koe model
+ * @typedef {'text' | 'live' | 'down' | 'off'} KoeState  text: Koe talks through the loop; live: in live sessions; down: Koe's list failed, and it rests; off: no Koe model
  * @typedef {'koe-up' | 'koe-down'} Told
  * @typedef {Told | 'live-open' | 'live-closed' | 'live-dropped'} Block
  * @typedef {'koe' | 'kokoro'} Side
@@ -100,7 +96,7 @@ export class Channel {
     const skipped = this.skip?.({ from, why, ...(wake ? { wake } : {}), forUser });
     if (skipped) return skipped;
     const to = from === 'koe' ? 'kokoro' : 'koe';
-    // Which model wrote it, taken now: annai's own notes to a half name none (the reviews of phone-fixes-1).
+    // Which model wrote it, taken now: annai's own notes to a half name none.
     const by = ANNAI_NOTES.includes(why) ? null : o.by !== undefined ? o.by : this.by?.[from]() ?? null;
     const e = await this.log[from]({ type: 'note', actor: 'shiori', data: { id: newId('n'), from, mode, why, ...(wake ? { wake } : {}), by }, texts: [['text', text], ...(forUser ? /** @type {[string, string][]} */ ([['forUser', forUser]]) : [])] });
     // The other half's "woke for": Koe never mentions Kokoro, so its says only that a note came.
@@ -315,8 +311,7 @@ export class Halves {
     // Koe's quick tools are Shiori's own, by name: Kokoro's (timers, recall), else the plugins'.
     const find = (/** @type {string} */ name) => this.kokoro.loopTools().find((t) => t.name === name) ?? c.registry.entries('tool').find((e) => e.item?.name === name)?.item;
     this.koe.addLoopTools([...koeTools({ find, ws: c.ws }), channelTool('koe', this.channel, () => (this.#stopHeld ? STOP_HELD : null)), ALREADY_TOLD]);
-    // Kokoro's failure card is its own: only its good turn takes it down, never Koe's (the review of phone-fixes-1). The card for both
-    // halves goes at either half's good turn (its second review).
+    // Kokoro's failure card is its own: only its good turn takes it down, never Koe's. The card for both halves goes at either half's good turn.
     const own = (/** @type {Agent} */ a, /** @type {string} */ key) => (a === this.kokoro && key === 'model' ? KOKORO_CARD : key);
     for (const a of [this.kokoro, this.koe]) {
       a.on('event', (x) => this.#emit('event', x));
@@ -328,7 +323,7 @@ export class Halves {
       a.on('state', (s) => this.#stateOf(a, s));
     }
     this.kokoro.on('open', (x) => this.#emit('open', x));
-    // Koe live (K5): its sessions log as Koe, and only Halves opens and closes them.
+    // Koe live: its sessions log as Koe, and only Halves opens and closes them.
     this.live = new LiveKoe({
       koe: this.koe, llm: c.llm, voice: c.voice ?? null, store: c.store, nonce: this.nonce,
       model: () => this.#liveId,
@@ -509,7 +504,7 @@ export class Halves {
     const way = koeWay(cfg, { voiceOn, types: this.llm.types?.() ?? new Map(), until, now: Date.now() });
     this.#way = way;
     this.#split = way.split;
-    // One voice at a time: a Classic turn going (speaking, listening, waiting) ends whole before Realtime takes over (S1).
+    // One voice at a time: a Classic turn going (speaking, listening, waiting) ends whole before Realtime takes over.
     this.#koeLater = way.path?.kind === 'live' && this.koeState === 'text' && (this.koe.turning || this.koe.voicing);
     const path = this.#koeLater ? { kind: /** @type {const} */ ('text') } : way.path;
     // The chosen Realtime resting: it is used again once a model of its list can answer.
@@ -568,8 +563,8 @@ export class Halves {
   }
 
   /**
-   * A reminder being said finishes first (the second drive: a session opening 9 s in cut it off, as a session lets go of the speech
-   * pipeline): one that opens waits, at most SAID_WAIT_MS in case the voice never ends. A tap stops it first. @returns {Promise<void> | null}
+   * A reminder being said finishes first (a session opening would cut it off, as a session lets go of the speech pipeline): one that
+   * opens waits, at most SAID_WAIT_MS in case the voice never ends. A tap stops it first. @returns {Promise<void> | null}
    */
   #voiceOut() {
     const speaker = this.voice?.speaker;
@@ -579,7 +574,7 @@ export class Halves {
     return Promise.race([speaker.quiet(), new Promise((/** @type {(v: void) => void} */ r) => { timer = setTimeout(r, SAID_WAIT_MS); })]).finally(() => clearTimeout(timer));
   }
 
-  /** One of Kokoro's instruction blocks: a live session opened, closed or dropped (Review Focus 2: messages, never its system text or tools). @param {Block} state */
+  /** One of Kokoro's instruction blocks: a live session opened, closed or dropped (messages, never its system text or tools). @param {Block} state */
   #block(state) {
     this.kokoro.log({ type: 'halves', actor: 'system', data: { state }, texts: [['text', BLOCKS[state]]] }).catch(() => {});
   }
@@ -594,7 +589,7 @@ export class Halves {
   /**
    * A live session's part (a message, a wake, a note) once Koe has the conversation open. When no session can open, Koe's
    * next model takes it; with none left, a card says so, and Kokoro talks directly at once, told so (with what it last told
-   * Koe that didn't reach the user), the wake's reminders said by annai only if it can't (review); a session that closed
+   * Koe that didn't reach the user), the wake's reminders said by annai only if it can't; a session that closed
    * meanwhile leaves them to annai. @param {() => Promise<boolean>} fn @param {Wake} w
    */
   async #live(fn, w) {
@@ -615,7 +610,7 @@ export class Halves {
   }
 
   /**
-   * Kokoro's notes for the user a live session closed on before Koe passed them on (L1: a close, a drop it didn't come back from,
+   * Kokoro's notes for the user a live session closed on before Koe passed them on (a close, a drop it didn't come back from,
    * Koe moving to text): the text Koe owes them as its own (§6.8); while Koe stays live with no session, or is down, annai shows them.
    * @param {Wake[]} notes
    */
@@ -630,7 +625,7 @@ export class Halves {
   }
 
   /**
-   * A live session dropped and couldn't resume (plan Task 7): its model rests, Kokoro is told, and when Koe was cut off
+   * A live session dropped and couldn't resume: its model rests, Kokoro is told, and when Koe was cut off
    * mid-sentence, its next model finishes the answer (through the speech pipeline), or Kokoro does while Koe is down.
    * @param {boolean} cut
    */
@@ -808,7 +803,7 @@ export class Halves {
       this.#koeOpen();
       // Asked to hear her (the recap told aloud): the half with the voice tells it.
       if (!w.aloud) this.#wakeKokoro({ ...w, fallbacks: [] });
-      // From a page out of view, a session waits for it; its reminders show now, as annai's always do (review).
+      // From a page out of view, a session waits for it; its reminders show now, as annai's always do.
       const away = this.koeState === 'live' && !this.#visible() && Boolean(w.fallbacks?.length);
       if (away) this.kokoro.remind(w.fallbacks ?? []);
       if (this.koeState === 'live') this.#alongside(this.#live(() => this.live.wake(away ? { ...w, fallbacks: [] } : w), w));
@@ -818,9 +813,8 @@ export class Halves {
   }
 
   /**
-   * A tap on the avatar always talks (the user: "I expect tapping avatar starts a voice session"): with voice off it holds voice on until that
-   * exchange ends, and Koe's way is worked out again first, as Live needs voice on. The keyboard button is how to type. A second tap before
-   * that's done is the same wish, not a tap on what is opening: Koe's way isn't known yet, and it would open Classic's microphone rather than live.
+   * A tap on the avatar always talks: with voice off it holds voice on until that exchange ends, and Koe's way is worked out again first, as
+   * Live needs voice on. A second tap before that's done is the same wish: Koe's way isn't known yet, and it would open Classic's microphone rather than live.
    */
   tap() {
     if (this.#tapWorking) return 'listening';
@@ -973,7 +967,7 @@ export class Halves {
       for (const a of [this.kokoro, this.koe]) a.forgetTold();
       this.#retell = [];
     }
-    this.typing(false); // the page went: nobody types into it (review A3)
+    this.typing(false); // the page went: nobody types into it
   }
 
   /** The page is back in view: what waited for it is said; the microphone opens only at a tap. */
@@ -1015,7 +1009,7 @@ export class Halves {
     const speaking = this.kokoro.speakingNow || this.koe.speakingNow || this.live.view.name === 'hearing';
     const typing = this.kokoro.typingNow || this.kokoro.photoNow;
     if (!this.#works()) return wakes.some(isTheirs) && (typing || speaking) ? Infinity : 0;
-    // Only what comes from the user's input gathers: their messages, and Koe's questions and answers about them (review A3).
+    // Only what comes from the user's input gathers: their messages, and Koe's questions and answers about them.
     if (!wakes.some((w) => isTheirs(w) || (w.kind === 'note' && w.from === 'koe') || w.input)) return 0;
     if (typing || speaking) return Infinity;
     return Math.max(0, this.#input.at + (this.#input.photo ? GATHER.photo : GATHER.quiet) * this.secondMs - Date.now());
@@ -1023,7 +1017,7 @@ export class Halves {
 
   /**
    * The sign's Stop: Kokoro's turn alone (spec §16.2), and what Koe asked of it meanwhile; Koe's notes start no new turn until Koe
-   * has heard of the Stop or the user asks again (emulator pass K1 #8: a live Koe's late question started the plan over).
+   * has heard of the Stop or the user asks again (a live Koe's late question would start the plan over).
    */
   stopKokoro() {
     this.#stopped = { on: true, seq: Infinity };
@@ -1035,7 +1029,7 @@ export class Halves {
     this.kokoro.drop((w) => (w.kind === 'note' && w.from === 'koe') || (!started && w.scope === scope));
     this.kokoro.poke();
     this.kokoro.interrupt();
-    // Koe hears of it, waiting or not (review a1): once its model has seen this, its questions reach Kokoro again.
+    // Koe hears of it, waiting or not: once its model has seen this, its questions reach Kokoro again.
     this.#nothingTold = false;
     this.#nothingToAdd(/* en */ 'Kokoro was stopped.', 'stopped');
   }
@@ -1196,12 +1190,11 @@ export class Halves {
   }
 
   /**
-   * Kokoro's notes for the user that Koe never passed on, asked once more (spec §6.8): annai shows what Kokoro meant the user to
-   * have, a note's words for them (tell_koe's for_user) or a gated speak as "Shiori's answer", a gated card or question as itself,
-   * checked as show and ask check Shiori's own (a tap on its buttons comes to Koe as the user's choice); one they would refuse, as
-   * its words, or with none only a Trace line, never a card that says nothing. A note's own text is for Koe, never shown or said:
-   * with no for_user, it goes to Koe once more with the user's next words, then only the Trace has it. "Kokoro couldn't check" and a final text were words for Koe: it
-   * was asked once more, and that is all (plan decision 21: no card). @param {Wake[]} notes
+   * Kokoro's notes for the user that Koe never passed on, asked once more (spec §6.8): annai shows what Kokoro meant the user to have,
+   * a note's for_user or a gated speak as "Shiori's answer", a gated card or question as itself, checked as show and ask check Shiori's
+   * own; one they would refuse, as its words, or with none only a Trace line. A note's own text is for Koe, never shown or said: with no
+   * for_user, it goes to Koe once more with the user's next words, then only the Trace has it. "Kokoro couldn't check" and a final text
+   * were words for Koe: no card (plan decision 21). @param {Wake[]} notes
    */
   async #backstop(notes) {
     this.#unsaid = [];
@@ -1231,8 +1224,8 @@ export class Halves {
   }
 
   /**
-   * A half's list failed (emulator pass: both halves failed, each quietly, and the user heard nothing). When the other is down
-   * too, the card says why for each, once: both halves' whys, for the loop's card and error (Half.failed), which make the words;
+   * A half's list failed: each fails quietly, so when the other is down too, the card says why for each, once: both halves' whys,
+   * for the loop's card and error (Half.failed), which make the words;
    * true, said already; null: the half's own rule. @param {'koe' | 'kokoro'} side @param {Why} why @param {unknown} e @returns {Why | true | null}
    */
   #down(side, why, e) {
@@ -1271,8 +1264,7 @@ export class Halves {
       this.#asked = false;
       this.#note(/* en */ `Kokoro couldn't check: ${this.#why || 'its models are resting after errors.'} Tell the user you couldn't check, and offer to try again.`, 'kokoro-failed');
     }
-    // Koe tells the user (now, or did since their last words); else a card does (the user, 2026-10-28: only the Trace had it). The
-    // Conversation has its line either way.
+    // Koe tells the user (now, or did since their last words); else a card does. The Conversation has its line either way.
     return this.#failTold;
   }
 
@@ -1290,8 +1282,8 @@ export class Halves {
   }
 
   /**
-   * Kokoro wakes to talk to the user directly: once, however many failures ask it to (emulator pass: two near-identical
-   * bubbles, one from the turn that saw Koe go down and one from the wake that came meanwhile). @param {import('./loop.js').Reminder[]} [fallbacks]
+   * Kokoro wakes to talk to the user directly: once, however many failures ask it to, or two near-identical bubbles show (the turn
+   * that saw Koe go down, and a wake that came meanwhile). @param {import('./loop.js').Reminder[]} [fallbacks]
    */
   #talkDirectly(fallbacks = []) {
     const was = this.kokoro.drop((w) => w.kind === 'halves' && w.text === BLOCKS['koe-down']);
@@ -1344,7 +1336,7 @@ export class Halves {
   }
 
   /**
-   * A note annai sends Koe from Kokoro, not waited for here; idle() waits for it (the fix pass).
+   * A note annai sends Koe from Kokoro, not waited for here; idle() waits for it.
    * @param {string} text @param {NoteWhy} why @param {string} [wake] @param {TurnEnd['by']} [by] the model whose words it is, when its turn is over
    */
   #note(text, why, wake, by) {

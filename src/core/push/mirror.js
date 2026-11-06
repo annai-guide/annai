@@ -10,10 +10,9 @@ import { t, lang } from '../l10n.js';
 import { sentences } from '../intl.js';
 
 /**
- * Reminders for a closed annai (spec §11.6): while notifications are on, the time reminders live
- * mode would give wait at the push relay, each encrypted on the phone and padded to one size, sent
- * 30 seconds after its time. annai on screen says one itself and calls the relay's copy off.
- * State: /push.json in this device's own scope; the cancel tokens, the secret push:tokens.
+ * Reminders for a closed annai (spec §11.6): while notifications are on, the time reminders live mode would give wait at the push relay,
+ * each encrypted on the phone, padded to one size, and sent 30 seconds after its time. annai on screen says one itself and calls the
+ * relay's copy off. State: /push.json in this device's own scope; the cancel tokens, the secret push:tokens.
  * @typedef {import('../types.js').Store} Store
  * @typedef {import('../workspace.js').Workspace} Workspace
  * @typedef {import('../live/live.js').Mirrored} Mirrored
@@ -40,22 +39,22 @@ import { sentences } from '../intl.js';
  *   key, endpoint: what the phone subscribed with; hello: the "notifications are on" sent for that endpoint, through that relay
  */
 
-/** Whether this subscription had its "notifications are on" through this relay: each relay confirms it once (6a choice 13). @param {State} st @param {Sub} sub */
+/** Whether this subscription had its "notifications are on" through this relay: each relay confirms it once. @param {State} st @param {Sub} sub */
 const greeted = (st, sub) => st.hello?.endpoint === sub.endpoint && st.hello.relay === st.relay;
 
 export const FILE = '/push.json';
 export const TOKENS = 'push:tokens';
-/** The relay sends this long after a reminder's time, so annai on screen says it first and calls it off (6b choice 3). */
+/** The relay sends this long after a reminder's time, so annai on screen says it first and calls it off. */
 export const GRACE_MS = 30_000;
-/** At most this many wait at the relay (it keeps 200): the nearest (choice 7). */
+/** At most this many wait at the relay (it keeps 200): the nearest. */
 export const MAX_WAITING = 150;
 /** The furthest ahead annai sends: the relay takes 30 days. */
 export const AHEAD_MS = 29 * 86_400_000;
-/** Every reminder is padded to this size before it is encrypted (6a choice 4). */
+/** Every reminder is padded to this size before it is encrypted. */
 export const PAD = 3072;
 /** A push service keeps a reminder it can't deliver yet this long; catch-up covers the rest. */
 export const TTL_S = 3600;
-/** A reminder moves at the relay when its time comes this much earlier… (choice 2) */
+/** A reminder moves at the relay when its time comes this much earlier… */
 export const MOVE_MS = 5 * 60_000;
 /** …or, within this long of the relay's time, when it would come later than the relay's. */
 export const NEAR_MS = 10 * 60_000;
@@ -90,9 +89,8 @@ export function problemWords(p) {
 }
 
 /**
- * Whether a reminder's time moved enough to move it at the relay (choice 2): 5 minutes earlier (a
- * closed annai would be late), or later when the relay's copy comes within 10 minutes (it would come
- * before annai's own). @param {number} was the relay's @param {number} due annai's own @param {number} now
+ * Whether a reminder's time moved enough to move it at the relay: 5 minutes earlier (a closed annai would be late), or later when the
+ * relay's copy comes within 10 minutes (it would come before annai's own). @param {number} was the relay's @param {number} due annai's own @param {number} now
  */
 export function moves(was, due, now) {
   if (due === was) return false;
@@ -101,10 +99,9 @@ export function moves(was, due, now) {
 }
 
 /**
- * What to change at the relay: reminders no longer wanted, whose words changed, or whose time moved,
- * are called off; new and moved ones are sent; one written down but not known to have arrived is
- * sent again as it was. A plan reminder of a trip in held (one not open now) stays as it is: every
- * trip's wait, and only a removed or archived trip's go (the user, 2026-10-21).
+ * What to change at the relay: reminders no longer wanted, reworded or moved are called off; new and moved ones are sent; one written
+ * down but not known to have arrived is sent again as it was. A plan reminder of a trip in held (one not open now) stays as it is:
+ * only a removed or archived trip's go.
  * @param {Record<string, Item>} items @param {Map<string, Want>} wanted @param {number} now @param {Set<string>} [held]
  * @returns {{ off: string[], send: Want[] }}
  */
@@ -128,17 +125,17 @@ export function plan(items, wanted, now, held = new Set()) {
 
 /**
  * Whether a reminder at the relay is a plan reminder of a trip in held (not open now), which stays as it is while it may
- * still come: until it is long sent (review R7). @param {string} key @param {Item} item @param {Set<string>} held @param {number} now
+ * still come: until it is long sent. @param {string} key @param {Item} item @param {Set<string>} held @param {number} now
  */
 const stays = (key, item, held, now) => held.has(item.scope) && key.startsWith(`${item.scope}|plan:`) && item.sendAt + LONG_SENT_MS > now;
 
-/** The relay's name for a subscription's object: the SHA-256 of its endpoint (6a choice 1). @param {string} endpoint */
+/** The relay's name for a subscription's object: the SHA-256 of its endpoint. @param {string} endpoint */
 export async function subscriptionName(endpoint) {
   return toBase64Url(new Uint8Array(await crypto.subtle.digest('SHA-256', ownBuffer(utf8(endpoint)))));
 }
 
 /**
- * What a failed turn-on says: what happened, that nothing was turned on, and what to do (fix pass N5).
+ * What a failed turn-on says: what happened, that nothing was turned on, and what to do.
  * @param {unknown} e
  */
 function turnOnError(e) {
@@ -207,7 +204,7 @@ export class PushMirror {
   /**
    * @param {{ store: Store, ws: Workspace, live: LiveLike, source: Source, fetch?: (url: string, init?: RequestInit) => Promise<Response>,
    *   clock?: import('../live/clock.js').Clock, notice?: (n: { title: string, body: string }) => void, online?: () => boolean }} c
-   *   online: whether the browser says it has a connection; without one, nothing is tried until it is back (fix pass N4)
+   *   online: whether the browser says it has a connection; without one, nothing is tried until it is back
    */
   constructor({ store, ws, live, source, fetch, clock = realClock(), notice = () => {}, online = () => true }) {
     this.store = store;
@@ -262,9 +259,8 @@ export class PushMirror {
   }
 
   /**
-   * Turns notifications on, once the user has allowed them (the screen asks first, choice 11):
-   * subscribes with the relay's key, says so with a notification at once (choice 6), then sends
-   * every reminder. @param {string} [relay] its address; the one kept if not given
+   * Turns notifications on, once the user has allowed them (the screen asks first): subscribes with the relay's key, says so with a
+   * notification at once, then sends every reminder. @param {string} [relay] its address; the one kept if not given
    */
   turnOn(relay) {
     return this.#run(() => this.#turnOn(relay).catch((e) => { throw turnOnError(e); })).then(() => this.sync());
@@ -277,7 +273,7 @@ export class PushMirror {
     const base = relayAddress(relay ?? st.relay);
     if (!base) throw new Error(ADDRESS);
     const key = await this.#client(base).vapid();
-    if (base !== st.relay) this.#moveAll(st); // the old relay's copies are called off there (choice 13)
+    if (base !== st.relay) this.#moveAll(st); // the old relay's copies are called off there
     const had = await this.source.get().catch(() => null);
     /** @type {Sub} */
     let sub;
@@ -299,7 +295,7 @@ export class PushMirror {
     this.#tell();
   }
 
-  /** Turns notifications off: everything at the relay is called off, then the subscription goes (choice 9). */
+  /** Turns notifications off: everything at the relay is called off, then the subscription goes. */
   turnOff() {
     return this.#run(async () => {
       const st = await this.#read();
@@ -318,7 +314,7 @@ export class PushMirror {
     });
   }
 
-  /** Changes the relay's address; while on, everything moves there (choice 13). @param {string} url */
+  /** Changes the relay's address; while on, everything moves there. @param {string} url */
   async setRelay(url) {
     const base = relayAddress(url);
     if (!base) throw new Error(ADDRESS);
@@ -336,7 +332,7 @@ export class PushMirror {
     });
   }
 
-  /** A test notification, TEST_IN_MS from now (choice 6). */
+  /** A test notification, TEST_IN_MS from now. */
   test() {
     return this.#run(async () => {
       const st = await this.#read();
@@ -350,7 +346,7 @@ export class PushMirror {
   }
 
   /**
-   * What the service worker saw (choice 10): a notification shown means its copy left the relay; a
+   * What the service worker saw: a notification shown means its copy left the relay; a
    * renewed subscription is sent everything again. @param {import('../live/live.js').PushNews[]} news
    */
   delivered(news) {
@@ -374,8 +370,8 @@ export class PushMirror {
   }
 
   /**
-   * Brings the relay into step with live mode. One waiting to run is enough: more asked meanwhile (timers
-   * firing while a slow request fails) join it, rather than pile up (fix pass N4).
+   * Brings the relay into step with live mode. One waiting to run is enough: more asked meanwhile (timers firing while a slow request
+   * fails) join it, rather than pile up.
    * @returns {Promise<void>}
    */
   sync() {
@@ -391,7 +387,7 @@ export class PushMirror {
   async #sync() {
     this.#dirty = false;
     if (!this.online()) {
-      // Nothing can reach the relay: the browser's online event brings the next sync (fix pass N4).
+      // Nothing can reach the relay: the browser's online event brings the next sync.
       const st = await this.#read();
       if (st.on && st.problem?.said?.why !== NO_CONNECTION.why) {
         st.problem = { message: /* en */ 'This device has no connection.', said: NO_CONNECTION, at: this.clock.now(), needsYou: false };
@@ -458,7 +454,7 @@ export class PushMirror {
     for (const [key, at] of Object.entries(st.given)) if (at + GIVEN_MS < now || !scopes.has(key.slice(0, key.indexOf('|')))) delete st.given[key];
   }
 
-  /** The phone's subscription, renewed by itself when it is gone and permission stays (choice 12). @param {State} st */
+  /** The phone's subscription, renewed by itself when it is gone and permission stays. @param {State} st */
   async #subscription(st) {
     /** @type {Sub | null} */
     let sub;
@@ -499,7 +495,7 @@ export class PushMirror {
   }
 
   /**
-   * What should wait at the relay now: the nearest reminders within reach (choice 7), as many as the held trips' leave
+   * What should wait at the relay now: the nearest reminders within reach, as many as the held trips' leave
    * room for. null: live mode hasn't loaded. @param {Set<string>} held @param {Record<string, Item>} items
    */
   async #wanted(held, items) {
@@ -533,7 +529,7 @@ export class PushMirror {
     return h;
   }
 
-  /** A notification's title: the trip's name, or "Reminder" (choice 4). @param {string} scope @param {Map<string, string>} cache */
+  /** A notification's title: the trip's name, or "Reminder". @param {string} scope @param {Map<string, string>} cache */
   async #title(scope, cache) {
     if (scope === ME) return t`Reminder`;
     const had = cache.get(scope);
@@ -563,10 +559,9 @@ export class PushMirror {
   }
 
   /**
-   * Calls off what waits to be, before anything is sent (choice 3). A failure never holds up the sends
-   * (fix pass N1): it stays queued and is tried again, and a relay that failed isn't asked again this
-   * time. Once its reminder's time is long past, a cancel goes without a request: it was sent, or never
-   * will be. @param {State} st @param {Record<string, string>} tokens
+   * Calls off what waits to be, before anything is sent. A failure never holds up the sends: it stays queued and is tried again, and a
+   * relay that failed isn't asked again this time. Once its reminder's time is long past, a cancel goes without a request: it was sent,
+   * or never will be. @param {State} st @param {Record<string, string>} tokens
    * @returns {Promise<{ n: number, failed: { relay: string, error: RelayError, count: number } | null }>}
    */
   async #callOff(st, tokens) {
@@ -605,7 +600,7 @@ export class PushMirror {
 
   /**
    * What a cancel that failed means for the user: at this relay, its own words; at an old one, that
-   * the new relay works meanwhile (fix pass N1). @param {State} st @param {{ relay: string, error: RelayError, count: number }} f
+   * the new relay works meanwhile. @param {State} st @param {{ relay: string, error: RelayError, count: number }} f
    */
   #offFailure(st, f) {
     if (f.relay === st.relay) return f.error;
@@ -614,8 +609,8 @@ export class PushMirror {
   }
 
   /**
-   * Sends reminders, nearest first. Each id and token is written down before it is sent (choice 8).
-   * A change in live mode meanwhile stops this, so the next sync calls off first (choice 3).
+   * Sends reminders, nearest first. Each id and token is written down before it is sent.
+   * A change in live mode meanwhile stops this, so the next sync calls off first.
    * @param {State} st @param {Record<string, string>} tokens @param {Sub} sub @param {Want[]} list
    */
   async #send(st, tokens, sub, list) {
@@ -653,14 +648,14 @@ export class PushMirror {
   async #seal(sub, w) {
     let body = w.body;
     for (;;) {
-      // A "coming up" item goes with its start and its words apart: sw.js says the minutes left when it shows it (localization L5f).
+      // A "coming up" item goes with its start and its words apart: sw.js says the minutes left when it shows it.
       const bytes = utf8(JSON.stringify({ v: 1, key: w.m.key, title: w.title, body, at: w.m.due, scope: w.m.scope, watch: w.m.watch, start: w.m.start, what: w.m.what }));
       if (bytes.length < PAD || !body) return encryptPush(sub, bytes, { pad: PAD });
       body = body.slice(0, -20);
     }
   }
 
-  /** The notification that confirms a subscription at the relay, sent at once (choice 6). @param {State} st @param {Sub} sub @param {string} words */
+  /** The notification that confirms a subscription at the relay, sent at once. @param {State} st @param {Sub} sub @param {string} words */
   async #hello(st, sub, words) {
     if (!st.key) return;
     const rand = random(16);
@@ -693,11 +688,11 @@ export class PushMirror {
     if (e.code === 'unconfirmed' && st.hello && now - st.hello.at > MIN) st.hello = null;
     const message = await withoutSecrets(this.store, e.message);
     if (e.passing) {
-      // In the background, there is nothing for the user to do (fix pass N5); one at an old relay says it keeps trying itself.
+      // In the background, there is nothing for the user to do; one at an old relay says it keeps trying itself.
       st.problem = { message, said: e.said, at: now, needsYou: false, ...(e.said.why === 'old' ? {} : { again: true }) };
       const wait = e.retryAfter ? e.retryAfter * 1000 : Math.min(30 * MIN, MIN * 2 ** this.#retries);
       this.#retries++;
-      // The retry is the next sync: a sooner one already waiting would only fail again (fix pass N4).
+      // The retry is the next sync: a sooner one already waiting would only fail again.
       if (this.#soonTimer !== null) this.clock.clear(this.#soonTimer);
       this.#soonTimer = null;
       this.#retryTimer = this.clock.set(() => {
@@ -720,7 +715,7 @@ export class PushMirror {
    */
   #soon(level = 'prompt') {
     if (level === 'urgent') this.#dirty = true;
-    // A retry waits its turn: calm news doesn't cut its growing wait short (fix pass N4).
+    // A retry waits its turn: calm news doesn't cut its growing wait short.
     if (level === 'calm' && this.#retryTimer !== null) return;
     const wait = level === 'calm' ? CALM_MS : SOON_MS;
     const at = this.clock.now() + wait;

@@ -5,11 +5,9 @@ import { pickFormat, formatOf, mediaTypeOf, rankOf } from './formats.js';
 import { encodeWav, pcm16, resample, SEND_RATE } from './pcm.js';
 
 /**
- * Speech-in list resolution (spec §10.3). What was heard stays in memory as a segment until the
- * turn that used it succeeds. For each model attempt, of any role, the speech-in list is walked
- * again against the model actually receiving it: "Send audio to the model" when that model takes
- * audio; a transcription model's words, made once per segment; or phone dictation's words, which
- * are all a dictated segment has. Text versions are made lazily (textVersion).
+ * Speech-in list resolution (spec §10.3). What was heard stays in memory as a segment until the turn that used it succeeds. For each model
+ * attempt, of any role, the list is walked again against the model actually receiving it: audio when that model takes it; a transcription
+ * model's words, made once per segment; or phone dictation's words. Text versions are made lazily (textVersion).
  * @typedef {{ id: string, source: 'mic' | 'dictation', audio?: { data: Uint8Array, mediaType: string, seconds: number }, text?: string, ms: number, at: number,
  *   encoded?: Map<string, Promise<Uint8Array | null>> }} Heard  audio: the microphone's 16 kHz WAV, or a kept clip; encoded: its other files, by format
  * @typedef {Heard & { transcripts: Map<string, string>, encoded: Map<string, Promise<Uint8Array | null>>, pcm?: Promise<{ pcm: Int16Array, rate: number }>, scope?: string }} Kept

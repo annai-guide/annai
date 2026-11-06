@@ -148,12 +148,11 @@ test("Koe's way, for every mode, voice, list and model health: Realtime runs onl
           const at = `${mode}, voice ${voiceOn ? 'on' : 'off'}, Realtime ${r}, Classic ${c}`;
           const wants = mode === 'realtime' && voiceOn;
           assert.equal(way.mode, mode, at);
-          assert.equal(way.koe, r !== 'none' || c !== 'none', `${at}: Koe is set up`);
           if (wants && r === 'ok') {
-            assert.deepEqual([way.using, way.why, way.split, way.path], ['realtime', '', true, { kind: 'live', modelId: 'live' }], at);
+            assert.deepEqual([way.why, way.split, way.path], ['', true, { kind: 'live', modelId: 'live' }], at);
             continue;
           }
-          assert.equal(way.using, 'classic', at);
+          assert.notEqual(way.path?.kind, 'live', at);
           assert.equal(way.why, mode === 'classic' ? '' : !voiceOn ? 'voice off' : r === 'none' ? 'none' : 'resting', at);
           // Classic empty: Shiori is one, unless Realtime is wanted and has a model (then it is down, as a live voice that can't start was).
           assert.equal(way.split, c !== 'none' || (wants && r !== 'none'), `${at}: split`);
@@ -170,14 +169,14 @@ test("Koe's way passes over a model it can't call: an ability off, its protocol 
   const cfg = geminiCfg(['live'], ['fast'], 'realtime');
   const off = structuredClone(cfg);
   off.providers.pv.user.abilities.live.on = false;
-  assert.deepEqual([koeWay(off, on).using, koeWay(off, on).why], ['classic', 'off'], 'Live voice switched off: off, not resting (nothing to wait for)');
+  assert.deepEqual([koeWay(off, on).path?.kind, koeWay(off, on).why], ['text', 'off'], 'Live voice switched off: off, not resting (nothing to wait for)');
   assert.deepEqual([koeWay(cfg, { ...on, types: new Map([['chat-completions', {}]]) }).why], ['off'], 'its protocol not running');
   assert.equal(koeWay(off, { ...on, until: () => 5000 }).why, 'off', 'off and resting: off says what to do');
   const chatOff = structuredClone(cfg);
   chatOff.providers.pv.user.abilities.chat.on = false;
   assert.equal(koeWay({ ...chatOff, koeMode: 'classic' }, on).path, null, 'Classic, its chat ability off: Koe is down');
   // A model of the wrong kind in a list (a file edited by hand) is passed over.
-  assert.deepEqual(koeWay(geminiCfg(['fast'], ['live'], 'realtime'), on), { mode: 'realtime', using: 'classic', why: 'off', koe: true, live: false, split: true, path: null });
+  assert.deepEqual(koeWay(geminiCfg(['fast'], ['live'], 'realtime'), on), { mode: 'realtime', why: 'off', live: false, split: true, path: null });
   // A text Koe's models: Classic's chat models (to hear, to upload to), those of an ability switched on.
   assert.deepEqual(chatCandidates(cfg, KOE_CLASSIC), ['fast']);
   assert.deepEqual(chatCandidates(chatOff, KOE_CLASSIC), []);

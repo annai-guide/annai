@@ -53,7 +53,7 @@ function tripCard(s, trip, backup, stamps, say, unread) {
 }
 
 /**
- * The way back to the conversation outside any trip, while a trip is open (the user, 2026-10-29: "Add a way back"): what she was
+ * The way back to the conversation outside any trip, while a trip is open: what she was
  * handed with no trip open, and what she said of it, are there. @param {any} ctx
  */
 function noTrip(ctx) {

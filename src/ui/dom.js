@@ -87,7 +87,7 @@ export function radios(legend, options, value, onChange = () => {}) {
 /**
  * A destructive button that needs a second tap within eight seconds, the same everywhere; onArm: called at the first, to
  * say what goes. Both its words hold the same place, the one not shown hidden, so arming it never moves it: the second
- * tap lands where the first did (the emulator pass: a wider "Tap again to remove" wrapped onto the next line).
+ * tap lands where the first did.
  * @param {string} label @param {string} confirmLabel @param {() => Promise<void> | void} action @param {() => unknown} [onArm]
  */
 export function twoStep(label, confirmLabel, action, onArm) {

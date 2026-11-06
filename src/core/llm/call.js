@@ -196,9 +196,8 @@ const MONTH = '/llm/tool-calls.json';
 let counting = Promise.resolve();
 
 /**
- * Counts n calls of a provider tool with a monthly allowance (G4: Google Search, 5,000 free a month), one count at a time;
- * how many are past it. This device's count, by tool id and calendar month in UTC, in /llm/tool-calls.json in "This device"
- * (no backup carries it, and it keeps no history). An estimate: other devices on the account use the same allowance.
+ * Counts n calls of a provider tool with a monthly allowance (G4: Google Search, 5,000 free a month), one count at a time; how many are past it.
+ * This device's count, in "This device" (no backup carries it, and it keeps no history). An estimate: other devices on the account use the same allowance.
  * @param {import('../workspace.js').Workspace} ws @param {string} id @param {number} n @param {number} free @param {number} [now]
  */
 export function billMonth(ws, id, n, free, now = Date.now()) {
@@ -280,8 +279,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   try {
     uploaded = await withUploads(timed, { type, endpoint, model, key, uploads, get, trace, signal, now, from: matched?.from ?? 0 });
   } catch (e) {
-    // A stop during an upload is a stop, whether the caller stopped it or its deadline did (only an aborted call's upload throws; any
-    // other failure is caught there and sends the photo as bytes): never a failure of the protocol's plugin or the model, which would bench it.
+    // A stop during an upload is a stop, by the caller or its deadline (only an aborted call's upload throws): never a failure of the plugin or the model, which would bench it.
     if (signal?.aborted || /** @type {any} */ (e)?.name === 'AbortError') throw new ProviderError('cancelled', /* en */ 'Stopped.', { cause: e, said: { code: 'kind' } });
     throw e;
   }
@@ -427,8 +425,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   } catch (e) {
     clearTimeout(t);
     let err = asProviderError(e, linked, type, registry);
-    // Output that started and then stopped is not "no output in time" (the real-PDF check, 2026-10-28: a piece at 0.7 s, then 30 s of
-    // nothing): it says so, and how long it waited.
+    // Output that started and then stopped is not "no output in time": it says so, and how long it waited.
     if (err.said?.code === 'late' && firstMs !== null) {
       const seconds = Math.max(1, Math.round(firstOutputMs / 1000));
       /* en */
@@ -438,8 +435,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     // without them (the keep-reasoning design §8). One that sent none, or any other kind (a size error, say), is what it is.
     if (err.kind === 'bad-request' && natives?.sent) err.kind = 'reasoning';
     if (!err.partial) err.partial = textOf(parts); // what it said before it stopped: kept, and continued after a cut-off
-    // What the provider had reported using, and what that costs: a call stopped part-way is billed for it (the second review of
-    // phone-fixes-1). Searches it made count all the same.
+    // A call stopped part-way is billed for what the provider had reported using, searches included.
     const spent = endpoint.free ? usage : await billed(usage, model.providerTools ?? [], tally);
     err.usage = usage;
     err.cost = endpoint.free ? 0 : costOf(spent, model.prices, model.providerTools, started);
@@ -600,7 +596,7 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
   const ids = new Map();
   /** When each photo's upload expires, by the same hash. @type {Map<string, number>} */
   const expiry = new Map();
-  /** @type {Map<string, string>} each photo's hash, by its data: the bytes' own, never the hash a part claims (review, 1) */
+  /** @type {Map<string, string>} each photo's hash, by its data: the bytes' own, never the hash a part claims */
   const hashes = new Map();
   const hashOf = async (/** @type {string} */ data) => hashes.get(data) ?? hashes.set(data, await photoHash(data)).get(data);
   // Only what is sent is uploaded: a photo in the turns a kept turn already holds is left as it is.

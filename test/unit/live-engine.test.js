@@ -5,7 +5,7 @@ import { liveKit, at, iso, off, LA, MONTEREY, BIXBY, NEPENTHE, CAMBRIA, HEARST }
 import { readAppSettings } from '../../src/core/settings.js';
 import { readWatches } from '../../src/core/live/watches.js';
 import { createTrip, removeTrip, ME, SYS_DEVICE } from '../../src/core/scopes.js';
-import { ManualClock, scaledClock, realClock } from '../../src/core/live/clock.js';
+import { ManualClock, realClock } from '../../src/core/live/clock.js';
 import { Live } from '../../src/core/live/live.js';
 import { planWords } from '../../src/core/live/plan-watches.js';
 
@@ -13,7 +13,7 @@ const NEP = { title: 'Lunch at Nepenthe', fixed: true, start: { at: iso('12:00')
 const BIX = { title: 'Bixby Bridge photo stop', fixed: false, start: { at: iso('09:45'), tz: LA }, place: { name: 'Bixby Creek Bridge', ...BIXBY } };
 const CASTLE = { title: 'Hearst Castle tour', fixed: true, start: { at: iso('16:30'), tz: LA }, place: { name: 'Hearst Castle', ...HEARST } };
 
-test('clocks: a manual one runs its timers in order as it moves; a scaled one runs ten times faster', async () => {
+test('clocks: a manual one runs its timers in order as it moves', async () => {
   const c = new ManualClock(1000);
   /** @type {string[]} */
   const ran = [];
@@ -27,12 +27,6 @@ test('clocks: a manual one runs its timers in order as it moves; a scaled one ru
   await c.advanceTo(5000);
   assert.deepEqual(ran, ['a', 'b']);
   assert.equal(c.pending, 0);
-  let t = 0;
-  const base = { now: () => t, set: (/** @type {() => void} */ fn, /** @type {number} */ ms) => ({ fn, ms }), clear: () => {} };
-  const fast = scaledClock(1_000_000, 10, base);
-  t = 500;
-  assert.equal(fast.now(), 1_005_000);
-  assert.equal(fast.set(() => {}, 10_000).ms, 1000);
 });
 
 test('live mode on: GPS runs, the switch is kept, a state entry is logged and Shiori is woken once; off: GPS stops and the activity is unknown', async () => {

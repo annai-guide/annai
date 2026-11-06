@@ -2,17 +2,10 @@ import { StreamResampler } from '../voice/pcm.js';
 import { Detector } from '../voice/detector.js';
 
 /**
- * A live session's microphone (the Koe and Kokoro design: realtime sessions stream no silence). annai's end-of-sentence
- * detector drives the API's manual turns (decision 9): once a run has minSpeechMs of speech in it, activityStart and
- * everything since just before it; then 100 ms chunks of 16-bit PCM at the session's rate; at the cut, the rest and
- * activityEnd. A click or a door slam, thrown away sooner, sends nothing: no turn to pay for, no sound off the phone.
- * Half-duplex (spec §10.4): while Koe plays, nothing heard starts a turn or is kept, and the detector's floor doesn't learn her
- * voice; the phone's speaker is loud at its own microphone, and she cut herself off (the iPhone trace, 2026-10-22). For tailMs
- * after (her echo, the speaker's latency), what is heard is kept, but speech that began then starts a turn only if it goes on
- * at least GO_ON_MS past it: her echo dies inside it, and a quick "yes" right after her question is sent whole. Speech going on as she
- * stops, with no quiet before it, began over her: half-duplex heard none of its start, so all of it is let go, until a real pause
- * (onOver; the realtime check, 2026-10-22: its tail went as a turn, and was answered). Full duplex only where duplex() says (headphones or the car, cutting in by voice on): there a
- * start needs bargeInDb more over the floor (decision 13), as her voice from the car's speakers is quieter than a passenger.
+ * A live session's microphone (spec §10.8: realtime sessions stream no silence). annai's end-of-sentence detector drives the API's
+ * manual turns (decision 9): once a run has minSpeechMs of speech in it, activityStart and everything since just before it; then
+ * 100 ms chunks of 16-bit PCM at the session's rate; at the cut, the rest and activityEnd. A noise thrown away sooner sends nothing.
+ * Half-duplex and full duplex: spec §10.4. Full duplex only where duplex() says, and there a start needs bargeInDb more over the floor (decision 13).
  * A turn lasts maxMs at most, and cut() ends one the model has stopped transcribing; onTurn hears why each ended, in numbers.
  * @typedef {'pause' | 'cap' | 'transcript' | 'close' | 'voice' | 'noise' | 'kept'} TurnEnd  voice: Koe's began (half-duplex); noise: thrown away once sent; kept: no turn, the level check's count as the microphone closes
  */
@@ -72,9 +65,9 @@ export class LiveInput {
    *   speaking?: () => boolean, duplex?: () => boolean, deaf?: () => boolean, tailMs?: number, maxMs?: number, onLevel?: (x: number) => void, onError?: (e: Error) => void, onOver?: () => void,
    *   minDb?: (floorDb: number) => number | null, onKept?: () => void, floorDb?: number | null,
    *   onTurn?: (t: { end: TurnEnd, ms: number, floorDb: number | null, peakDb: number | null, minDb: number | null, keptFrames: number, keptPeakDb: number | null }) => void }} o
-   *   rate: what the session takes (send's audioIn, K6); speaking: whether Koe's voice is playing; duplex: whether the user may cut her off by
+   *   rate: what the session takes (send's audioIn); speaking: whether Koe's voice is playing; duplex: whether the user may cut her off by
    *   speaking now (else half-duplex); deaf: whether nothing heard is the user's now (an urgent line of hers, said whole); tailMs: how long after her voice half-duplex still hears nothing (her echo, the speaker's latency);
-   *   maxMs: a turn's longest (the iPhone trace: one ran on for 29 s); onOver: speech begun over her was let go; minDb: the level check's minimum; onKept: a frame over the floor was just kept out by it
+   *   maxMs: a turn's longest; onOver: speech begun over her was let go; minDb: the level check's minimum; onKept: a frame over the floor was just kept out by it
    *   to begin a turn (voice/level.js); floorDb: the floor learned earlier on this microphone; onTurn with end 'kept': the microphone closes, with sound the minimum kept out since the last turn
    */
   constructor({ mic, send, rate = send.audioIn?.rate ?? 16_000, pauseMs = 700, startDb = 10, minSpeechMs = 250, preRollMs = 300, chunkMs = 100, bargeInDb = 6,

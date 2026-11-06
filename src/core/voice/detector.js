@@ -1,25 +1,17 @@
 import { biquad } from './pcm.js';
 
 /**
- * The end-of-sentence detector (spec §10.2). It measures energy in the speech band against a
- * background-noise floor that keeps adapting; speech followed by a pause (700 ms by default,
- * tunable) becomes a segment. It only cuts audio: it never decides to stop listening.
+ * The end-of-sentence detector (spec §10.2). It measures energy in the speech band against a background-noise floor that keeps adapting;
+ * speech followed by a pause (700 ms by default, tunable) becomes a segment. It only cuts audio: it never decides to stop listening.
  *
- * Frames are 20 ms. Speech starts when 3 of 4 frames are startDb over the floor, and goes on while
- * frames stay keepDb over it. The floor falls fast and rises slowly. When the sound stays steady for
- * a second (an engine, a fan, a window opened) it becomes the new floor: speech rises and falls with
- * every syllable, steady noise doesn't. A segment keeps a little before the speech and after it; one
- * with too little speech in it (a click, a door) is thrown away. A frame of near digital silence (under
- * SILENT_DB, or a quarter of it zeros: a microphone just opened, an iPhone's echo canceller) doesn't move a
- * learned floor, and in speech it is quiet (the iPhone trace, 2026-10-22: a turn ran on for 29 s). Before
- * any floor, or under a young one (maybe a word's), it makes the floor a guess, FLOOR_MIN_DB, so a word said
- * as a new microphone's zeros end is speech. Sound over a guess is held (speechMs 0) until the room is heard
- * (a frame near it, or outside speech one too quiet to start speech: the floor), the run ends, or a second
- * has passed: the floor is then its quietest frame (or steady sound's level), the run judged again. reset()
- * drops a guess. minDb (the level check, voice/level.js): a frame under the minimum it gives never starts speech, though a run going on is
- * untouched. Only once the floor is learned: a guess, or a floor a second old, says nothing about the room. Such a frame is neither a blip nor
- * the room, as far as the floor goes: its quiet counts as quiet, and only steady sound (a second of it) moves the floor. floorDb: a floor
- * learned earlier on this microphone, taken as learned (a new session's first second would have no minimum).
+ * Frames are 20 ms. Speech starts when 3 of 4 frames are startDb over the floor, and goes on while frames stay keepDb over it. The floor
+ * falls fast and rises slowly. Sound steady for a second (an engine, a fan, a window opened) becomes the new floor: speech rises and
+ * falls with every syllable, steady noise doesn't. A segment keeps a little before the speech and after it; one with too little speech
+ * in it (a click, a door) is thrown away. A frame of near digital silence (under SILENT_DB, or a quarter of it zeros: a microphone just
+ * opened, an iPhone's echo canceller) doesn't move a learned floor, and in speech it is quiet, or a turn runs on.
+ * Before any floor, or under a young one, it makes the floor a guess, FLOOR_MIN_DB, so a word said as a new microphone's zeros end is
+ * speech; sound over a guess is held until the room is heard. reset() drops a guess. minDb (voice/level.js): a frame under it never
+ * starts speech, once the floor is learned. floorDb: a floor learned earlier on this microphone, taken as learned.
  * @typedef {{ type: 'speech' } | { type: 'segment', pcm: Float32Array, sampleRate: number, ms: number, cut: 'pause' | 'cap' | 'end', peakDb: number } | { type: 'discard' }} DetectorEvent
  *   cut: what ended it: its pause, maxMs, or end(); peakDb: its loudest frame
  * @typedef {{ frames: Float32Array[], dbs: number[], speech: number, quiet: number, peak: number }} Run  speech going on: its frames, their loudness, and counts

@@ -551,7 +551,7 @@ test('an update that drops a live model: alone in Koe · Realtime, the descripti
   assert.equal(refreshed, 1);
   assert.equal(first.path?.kind, 'live');
   assert.deepEqual(after.roles['koe-realtime'].models, [ids.live]);
-  assert.deepEqual([way.using, way.why, way.live, way.path], ['realtime', '', true, { kind: 'live', modelId: ids.live }]);
+  assert.deepEqual([way.why, way.live, way.path], ['', true, { kind: 'live', modelId: ids.live }]);
   assert.equal(modelOf(after.models[ids.dropped]).providerId, 'gemini-3.8-live-extended-thinking', 'its record stays');
 });
 

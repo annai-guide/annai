@@ -9,7 +9,7 @@ import { decodeEntities } from './html-text.js';
  *   ready?: () => Promise<{ ok: boolean, why?: string, shown?: string }>, search: (query: string, c: { fetch: any, signal: AbortSignal, limit: number, session?: string }) => Promise<any[]> }} SearchProvider
  */
 
-/** annai's own free search services (the user, 2026-10-23): each can be unticked, all start on. */
+/** annai's own free search services: each can be unticked, all start on. */
 export const FREE_SERVICES = Object.freeze([
   { id: 'exa', name: 'Exa' },
   { id: 'parallel', name: 'Parallel' },

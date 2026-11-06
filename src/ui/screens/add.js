@@ -49,8 +49,8 @@ function fromWords(s) {
 
 /**
  * The rows: annai's catalog, what is installed that it doesn't list (built-ins aren't added), and the
- * fixed row. annai's own entry wins over an installed copy of its id, and says why it can't be added
- * (security review); offline, each installed copy is listed as what it is.
+ * fixed row. annai's own entry wins over an installed copy of its id, and says why it can't be added;
+ * offline, each installed copy is listed as what it is.
  * @param {import('../../core/llm/official.js').CatalogPlugin[] | null} catalog @param {(Facts & { source: string, url?: string, builtin?: boolean })[]} installed
  * @param {Record<string, number>} configured the providers set up, by plugin id @returns {Row[]}
  */
@@ -230,7 +230,7 @@ function actions(ctx, r, update) {
   return [r.added ? h('span', { class: 'sub', text: t`Added` }) : null, b];
 }
 
-/** Installing from an address or a file: the install screen comes first (choice 8 of milestone 8a). @param {any} ctx */
+/** Installing from an address or a file: the install screen comes first. @param {any} ctx */
 function fromElsewhere(ctx) {
   const input = h('input', {
     id: 'plugin-file', type: 'file', class: 'visually-hidden', accept: '.zip,.md,application/zip,text/markdown',
@@ -299,7 +299,7 @@ async function fromAddress(ctx, value, button, error) {
   button.disabled = true;
   button.textContent = t`Getting it…`;
   try {
-    // A key in the address isn't a secret yet: the trace blanks it all the same (fix pass 8a-1).
+    // A key in the address isn't a secret yet: the trace blanks it all the same.
     const files = await fetchPackage(url, { fetch: tracedFetch(ctx.store, SYS, { tool: 'plugins', blank: keysIn(url) }) });
     const pkg = await ctx.plugins.inspect(files);
     setPendingPackage({ files, pkg, from: { source: 'url', url }, back: location.hash });

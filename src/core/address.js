@@ -3,8 +3,7 @@ import { t } from './l10n.js';
 
 /**
  * An address the user gives annai (an MCP server's, a package's) and the keys in it: shown and kept
- * with each part that may be a key blanked, the keys in a secret (milestone 8c's third finding; fix
- * passes 8c-2 and 8a-1).
+ * with each part that may be a key blanked, the keys in a secret.
  */
 
 /** The blank a key's place shows. */
@@ -12,7 +11,7 @@ import { t } from './l10n.js';
 /** Lowercase words, joined by - _ or .: model-context-protocol, internationalization. */
 const WORDS = /^[a-z]+(?:[-_.][a-z]+)*$/;
 /**
- * A part of an address that may be a key (the coordinator's third finding; fix pass 8c-2): 12 or more
+ * A part of an address that may be a key: 12 or more
  * digits; or a part that isn't words and is 16 or more characters, or 8 or more mixing letters and
  * digits; or lowercase letters alone, 24 or more, as no ordinary word is that long without a - _ or .
  * Words joined by - _ or . stay at any length. The gap accepted: a key of lowercase letters alone,
@@ -22,8 +21,7 @@ const WORDS = /^[a-z]+(?:[-_.][a-z]+)*$/;
 const keyLike = (v) => /^\d{12,}$/.test(v) || /^[a-z]{24,}$/.test(v) || (!WORDS.test(v) && (v.length >= 16 || (v.length >= 8 && /[a-z]/i.test(v) && /\d/.test(v))));
 
 /**
- * An address as annai shows and keeps it, and the keys in it (the coordinator's third finding; fix pass
- * 8a-1: for MCP servers and packages alike): every
+ * An address as annai shows and keeps it, and the keys in it, for MCP servers and packages alike: every
  * path segment or query value that may be a key, and every credential-named query value, becomes
  * «key»; the keys go to secrets. The fragment is left out. fullAddress puts them back.
  * @param {string} address @returns {{ shown: string, keys: string[] }}
@@ -63,8 +61,8 @@ export function fullAddress(shown, keys) {
 }
 
 /**
- * Refuses an address with a name or password before an @ (milestone 8c's third finding): annai would
- * have nowhere safe to keep it. @param {URL} u
+ * Refuses an address with a name or password before an @ (annai would
+ * have nowhere safe to keep it). @param {URL} u
  */
 export function refuseUserinfo(u) {
   if (u.username || u.password) throw new Error(t`This address holds a name or password before an @. Leave it out.`);

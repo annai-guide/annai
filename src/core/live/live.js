@@ -72,7 +72,7 @@ const MIN = 60_000;
 const round6 = (x) => Math.round(x * 1e6) / 1e6;
 const round3 = (/** @type {number} */ x) => Math.round(x * 1e3) / 1e3;
 
-/** How long before its firing came due a notification may have been shown and still be for it (review A8). */
+/** How long before its firing came due a notification may have been shown and still be for it. */
 const SHOWN_SLACK_MS = 60_000;
 /** A watch that is a reminder, not a cue for Shiori: a time watch's, or the plan's leave, running late and coming up (spec §11.3). @param {Watch} w */
 const reminds = (w) => w.when.type === 'time' || w.when.type === 'every' || (w.when.type === 'plan' && ['leave', 'late', 'coming-up'].includes(String(w.when.event)));
@@ -177,7 +177,7 @@ export class Live {
   #reminderChanges = new Set();
   /** The watches and the plan are loaded (start). */
   #loaded = false;
-  /** start() is starting the sensors: what they say at once is so before its catch-up (fix pass L3). */
+  /** start() is starting the sensors: what they say at once is so before its catch-up. */
   #starting = false;
   /** @type {Map<string, { t: number, at?: number }>} reminders whose notification the phone showed, by key: when, and the time it was for (spec §11.6) */
   #notified = new Map();
@@ -279,11 +279,8 @@ export class Live {
   }
 
   /**
-   * A simulation takes live mode over (spec §13: "feeds a … GPS track and clock through the same
-   * machinery", choice 10): its clock and zone, and only its own sensors (the phone's GPS stops; the
-   * phone's visibility and connection aren't heard), from nothing known; live mode is then on for it
-   * through setLive without saving the switch, and does nothing while another trip is open. The
-   * function returned gives live mode back as it was.
+   * A simulation takes live mode over (spec §13, choice 10): its clock and zone, and only its own sensors, from nothing known. Live mode is on
+   * for it through setLive without saving the switch, and does nothing while another trip is open. The function returned gives live mode back.
    * @param {{ clock: import('./clock.js').Clock, timeZone: () => string, trip: string }} s trip: the simulation's own
    * @returns {Promise<() => Promise<void>>}
    */
@@ -521,12 +518,9 @@ export class Live {
   }
 
   /**
-   * What a closed annai can still say through the push relay (spec §11.6, 6b choices 1 and 2): time
-   * watches in every conversation, and the open trip's "coming up" and "leave soon", each at the time
-   * the phone itself would say it. Null until live mode has loaded, and while a simulation runs: its
-   * reminders are its own, on its clock, and the user's stay at the relay as they are (M6×M7). Read in
-   * its own queue, so never half of a list being reloaded, with the plan of the trip open now. held hears
-   * the other trips whose plan's reminders live mode doesn't follow now, so what waits for them stays as it is.
+   * What a closed annai can still say through the push relay (spec §11.6, 6b choices 1 and 2): time watches in every conversation, and the open
+   * trip's "coming up" and "leave soon". Null until live mode has loaded, and while a simulation runs: the user's stay at the relay as they are.
+   * Read in its own queue, so never half of a list being reloaded. held hears the other trips whose plan reminders live mode doesn't follow now, so what waits for them stays.
    * @param {{ held?: (scopes: Set<string>) => void }} [o] @returns {Promise<Mirrored[] | null>}
    */
   reminders(o = {}) {
@@ -564,7 +558,7 @@ export class Live {
     });
   }
 
-  /** The reminders annai said itself on screen or in a catch-up, by key, with when: the push mirror writes them down for the service worker (review R8). @returns {[string, number][]} */
+  /** The reminders annai said itself on screen or in a catch-up, by key, with when: the push mirror writes them down for the service worker. @returns {[string, number][]} */
   given() {
     return [...this.#said];
   }
@@ -602,26 +596,13 @@ export class Live {
 
   /**
    * The service worker says something happened while annai is on screen: its news is read in live
-   * mode's own queue, after any catch-up that read it first, so a tap is told once (fix pass N2).
-   * @returns {Promise<string[]>} the doubles, as pushNews
+   * mode's own queue, after any catch-up that read it first, so a tap is told once (spec §11.6): opened
+   * notifications become a catch-up wake now, or join the one running.
+   * @returns {Promise<string[]>} the keys of shown notifications for reminders annai had already said on screen, for the page to close (6b choice 3)
    */
   newsArrived() {
     return this.#run(async () => {
       const doubles = await this.#hear(await this.#readNews());
-      if (!this.#catch) await this.#deliverOpened();
-      return doubles;
-    });
-  }
-
-  /**
-   * What the service worker saw while annai is on screen (spec §11.6): opened notifications become a
-   * catch-up wake now, or join the one running. Returns the keys of shown notifications for reminders
-   * annai had already said itself on screen, for the page to close (6b choice 3).
-   * @param {PushNews[]} list @returns {Promise<string[]>}
-   */
-  pushNews(list) {
-    return this.#run(async () => {
-      const doubles = await this.#hear(list);
       if (!this.#catch) await this.#deliverOpened();
       return doubles;
     });
@@ -786,14 +767,12 @@ export class Live {
       if (!(await this.#exists(n.scope))) continue;
       const t = typeof n.t === 'number' && Number.isFinite(n.t) ? n.t : now;
       if (n.kind === 'shown') {
-        // stale: the service worker found it no longer waiting at the relay (given, caught up or called off): it came
-        // quietly as a double, and doesn't count as this firing's reaching the user (the fixes' merge).
+        // stale: no longer waiting at the relay (given, caught up or called off): it came quietly as a double, and doesn't count as reaching the user.
         if (!n.stale) this.#notified.set(n.key, { t, ...(typeof n.at === 'number' ? { at: n.at } : {}) });
         if (this.#said.has(n.key) || n.stale) doubles.push(n.key);
       } else {
-        // A plan reminder's notification says it in the screens' words: Shiori is quoted its English, from its own trip's plan
-        // (a plan watch's id is the same in two trips with a plan file of the same name), while it is still planned there. Anyone
-        // else's reminder is quoted as it was written. With no words, none are quoted: an id tells her nothing.
+        // A plan reminder's notification is in the screens' words: Shiori is quoted its English, from its own trip's plan (two trips can share a plan
+        // watch's id), while it is still planned there. Anyone else's is quoted as written. With no words, none are quoted: an id tells her nothing.
         const plan = String(n.watch ?? '').startsWith('plan:');
         const words = (plan ? (await watchesOf(n.scope)).find((w) => w.id === n.watch)?.fallback ?? '' : String(n.body ?? '')).trim().slice(0, 300);
         this.#openedNews.push({ scope: n.scope, text: /* en */ `The user opened ${words ? `the reminder "${words}"` : 'a reminder'} from its notification at ${timeIn(t, zone())}.` });
@@ -857,7 +836,7 @@ export class Live {
   /**
    * Whether live mode looks at a conversation's watches and plan, and records the road into it: during a
    * simulation only its own trip (the user's watches wait for the real clock); otherwise any but a
-   * simulation's trip, which keeps what its run did (review 1, 4).
+   * simulation's trip, which keeps what its run did.
    * @param {string} scope
    */
   #inPlay(scope) {
@@ -919,7 +898,7 @@ export class Live {
       const c = this.#tracker.feed(fix);
       const fast = (this.#tracker.speed ?? 0) >= FAST_FROM;
       if (c) {
-        change = this.#stale ? c : { ...c, at: undefined };
+        change = this.#heard(c);
         this.activity = c.to;
         await this.#log(this.#changeData(c));
       } else if (this.#stale && fast) { // the same drive, or by the way one that ended unseen: nothing is heard
@@ -949,11 +928,8 @@ export class Live {
       // A point that can't be written is told, and the checks go on (reminders don't wait for the log).
       if (this.#trip && this.#inPlay(this.#trip)) await logEvent(this.store, this.#trip, { type: 'location', actor: 'system', data: pointData(fix) }, fix.at).catch((e) => this.#fail(e));
     }
-    // The odometer counts only while moving, so GPS jitter at a stop adds nothing (choice 13); walking,
-    // only steps longer than twice the accuracy, which jitter doesn't make. The first fix after annai was
-    // away counts the way since then at once, in the catch-up (spec §11.4) when it comes in time, not as a
-    // jump when the user next moves; one after FIX_WAIT_MS does too, as the catch-up has gone.
-    // A fix too coarse to count (a cell tower's) leaves it to the first that is good enough.
+    // The odometer counts only while moving, so GPS jitter at a stop adds nothing (choice 13); walking, only steps longer than twice the accuracy.
+    // The first good fix after annai was away counts the way since then at once, whenever it comes (spec §11.4), not as a jump when the user next moves.
     const good = fix.accuracy <= 100;
     const back = this.#back && good;
     if (good) this.#back = false;
@@ -1127,7 +1103,7 @@ export class Live {
     const info = scope === ME ? null : await this.ws.readJSON(scope, '/trip.json').catch(() => null);
     if (info?.simulation === true) this.#still.add(scope);
     else this.#still.delete(scope);
-    // An archived trip's, which a change to its watch file brings here too, wait until it is unarchived (minors-live item 33).
+    // An archived trip's, which a change to its watch file brings here too, wait until it is unarchived.
     const archived = scope !== ME && (await this.store.tx(['scopes'], 'readonly', (t) => t.getScope(scope)))?.status === 'archived';
     if (archived || (this.#still.has(scope) && this.#sim?.trip !== scope)) {
       this.#watches.delete(scope);
@@ -1147,7 +1123,7 @@ export class Live {
     const sim = await this.ws.readJSON(trip, '/trip.json').catch(() => null);
     if (sim?.simulation === true) this.#still.add(trip);
     else this.#still.delete(trip);
-    if (!this.#inPlay(trip)) return; // a simulation's plan reminds only during its run (review 4)
+    if (!this.#inPlay(trip)) return; // a simulation's plan reminds only during its run
     // An archived trip, open or not, reminds of nothing: its watches aren't loaded either (#loadAll).
     if ((await this.store.tx(['scopes'], 'readonly', (t) => t.getScope(trip)))?.status === 'archived') return;
     const { items, watches } = await this.#planOf(trip);
@@ -1246,8 +1222,7 @@ export class Live {
   /**
    * Notes a watch that can't be checked in its conversation's log, once: as data, from which the Conversation makes its line, with
    * annai's English for the Trace. @param {string} scope @param {{ type: string, watch: string, title?: string, reminder?: string, why: string }} d
-   *   what the Conversation names it by: a plan watch's item title (its fallback is annai's English), or another watch's own words
-   *   (reminder); why: the trigger's own words, a plugin's or the browser's
+   *   title: a plan watch's item (its fallback is annai's English); reminder: another watch's own words; why: the trigger's own words
    */
   #noteOnce(scope, d) {
     /* en */
@@ -1290,7 +1265,7 @@ export class Live {
     try {
       await this.#look(m, open, fired);
     } finally {
-      this.#schedule(m); // whatever failed, the clock goes on (L1)
+      this.#schedule(m); // whatever failed, the clock goes on
       if (ended) this.#driveEnd();
     }
     // Most checks only move a time a little (a new fix): calm. One that said a reminder: urgent (6b choice 3).
@@ -1342,12 +1317,15 @@ export class Live {
     }
   }
 
+  /** A change as the triggers hear it: they read its time only from a stale record. @param {NonNullable<Moment['change']>} c */
+  #heard(c) { return this.#stale ? c : { ...c, at: undefined }; }
+
   /** The activity, asked without a new fix: a held change completes on time, and a quiet GPS after a slow speed is still. @returns {Moment['change']} */
   #settle() {
     if (!this.on || !this.shown) return null;
     const c = this.#tracker.tick(this.clock.now());
     if (!c) return null;
-    const heard = this.#stale ? c : { ...c, at: undefined }; // the triggers read a change's time only from a stale record
+    const heard = this.#heard(c);
     this.activity = c.to;
     this.#log(this.#changeData(c));
     this.#tellActivity();
@@ -1446,7 +1424,7 @@ export class Live {
   async #look(m, open, fired) {
     const types = this.types();
     for (const [scope, list] of [...this.#watches]) {
-      if (!this.#inPlay(scope)) continue; // the user's own watches aren't due, or expired, on a simulation's clock (review 1)
+      if (!this.#inPlay(scope)) continue; // the user's own watches aren't due, or expired, on a simulation's clock
       for (const w of [...list]) {
         if (expired(w, m.now)) {
           await this.#drop(scope, w).catch((e) => this.#fail(e)); // gone from live mode, if not from its file
@@ -1504,7 +1482,7 @@ export class Live {
         if (f.place) mem.lastPlace = f.place;
       }
       done.push(x);
-      // A one-time watch goes; a watch file that can't be removed is told, and the reminder still comes (L1).
+      // A one-time watch goes; a watch file that can't be removed is told, and the reminder still comes.
       if (x.watch.owner !== 'system' && (x.watch.when.type === 'time' || (!x.watch.repeat && x.watch.when.type !== 'every'))) await this.#drop(x.scope, x.watch).catch((e) => this.#fail(e));
       // Said on screen, now or in the catch-up: a notification for it from now on is a double (one shown while away was read first).
       if (this.shown) {
@@ -1532,9 +1510,8 @@ export class Live {
     for (const o of opened) notes.set(o.scope, [...(notes.get(o.scope) ?? []), o.text]);
     for (const scope of notes.keys()) if (!by.has(scope)) by.set(scope, []);
     for (const [scope, xs] of by) {
-      // A reminder whose notification the phone showed has reached the user: annai doesn't show it again. A reminder's (a time
-      // watch's, or the plan's leave, late and coming up) stays owed until she tells the user; a cue's (a place, the road,
-      // an arrival, a stop off the plan) only until a model answers (emulator pass).
+      // A reminder whose notification the phone showed has reached the user: annai doesn't show it again. A reminder (see reminds) stays owed
+      // until she tells the user; a cue (a place, the road, an arrival, a stop off the plan) only until a model answers.
       const fallbacks = xs.filter((x) => this.#shownFor(x) === undefined)
         .map((x) => ({ watch: x.watch.id, text: x.fallback, ...(x.say ? { plan: x.say } : {}), ...(reminds(x.watch) ? {} : { cue: true }) }));
       const reasons = xs.map((x) => this.#reason(x));
@@ -1560,7 +1537,7 @@ export class Live {
   }
 
   /**
-   * When the phone showed this firing's notification, if it did (review A8): one shown before the firing came due was for an
+   * When the phone showed this firing's notification, if it did: one shown before the firing came due was for an
    * earlier one, and doesn't count. @param {Fired} x @returns {number | undefined}
    */
   #shownFor(x) {

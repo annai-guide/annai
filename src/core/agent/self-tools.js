@@ -138,7 +138,7 @@ async function mediaParts(store, scope, output) {
  */
 async function recall(agent, i, half = 'kokoro') {
   const shown = ['wake', 'msg.user', 'heard', 'out.speak', 'out.show', 'out.ask', 'tool.call', 'tool.result'];
-  // By type (A6): a day of location points isn't walked.
+  // By type: a day of location points isn't walked.
   const all = await agent.store.tx(['events'], 'readonly', (t) => t.listEvents(agent.scope, {
     types: [...shown, 'heard.text'], ...(i.from ? { after: i.from - 1 } : {}), ...(i.to ? { before: i.to + 1 } : {}),
   }));
@@ -191,8 +191,8 @@ const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 const SKILL_IMAGE_MAX = 5 * 1024 * 1024;
 
 /**
- * The skill tool (spec §7.2): a skill's text, with a line naming its other files; or one of them
- * (choice 9): text as text (scripts too: annai never runs them), a photo as a photo, else said what it is.
+ * The skill tool (spec §7.2): a skill's text, with a line naming its other files; or one of them:
+ * text as text (scripts too: annai never runs them), a photo as a photo, else said what it is.
  * Each name's owner's skill, as in her context.
  * @param {import('./loop.js').Agent} agent @param {{ name: string, file?: string }} i
  */

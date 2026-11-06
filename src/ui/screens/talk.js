@@ -34,17 +34,13 @@ const around = (message, node) => {
 };
 
 /**
- * What the announcer says of a line: her lines read "Shiori: …" (a plugin's kind of card, "Shiori (Trail): …"; a question,
- * "Shiori asks: …"), with the choices a card or a question offers read after the words, as her spoken lines always did, rather
- * than her label run into the words. A card with nothing to read says what it is. Nothing for what you typed or the halves'
- * notes; any other line as written.
+ * What the announcer says of a line, in three parts: annai's label, the words, and the choices that follow. Only the words can carry a language.
+ * Her lines read "Shiori: …" (a plugin's kind of card, "Shiori (Trail): …"; a question, "Shiori asks: …"), with any choices after the words.
+ * A card with nothing to read says what it is. Nothing for what you typed or the halves' notes; any other line as written.
  * @param {string} type the event's @param {string} kind a plugin's kind of card, by the name its plugin gave it, else ''
  * @param {string} words the line's words without its label @param {string[]} [choices] buttons that answer it
  * @param {{ image?: unknown }} [card] the card, for one with no words
  */
-export const announcement = (type, kind, words, choices = [], card = {}) => announced(type, kind, words, choices, card).join('');
-
-/** The same in three parts: annai's label, the words, and the choices that follow. Only the words can carry a language. @param {string} type @param {string} kind @param {string} words @param {string[]} [choices] @param {{ image?: unknown }} [card] */
 export function announced(type, kind, words, choices = [], card = {}) {
   if (type === 'msg.user' || type === 'note' || type.startsWith('handover.')) return ['', '', ''];
   if (type !== 'out.speak' && type !== 'out.show' && type !== 'out.ask') return ['', words, ''];
@@ -140,10 +136,8 @@ export async function settled(agent) {
 export const wokeTitles = (reasons) => reasons.flatMap((r) => (r.kind === 'trigger' && r.titles) || []).map((s) => s.replace(/[.!?。！？]+$/u, ''));
 
 /**
- * A reminder annai showed by itself, for the Conversation and Now, from its data. Her note shown for her (halves.js) is "Shiori's
- * answer": answer, or the title an older entry stored; anything else is a reminder. Said aloud, it says so. A plan watch's words are
- * made from its data, in the screens' language (an older one's are annai's English as stored, so marked); anyone else's carry their
- * own language. @param {any} d the event's data
+ * A reminder annai showed by itself, for the Conversation and Now, from its data. Her note shown for her (halves.js) is "Shiori's answer", anything else a reminder.
+ * A plan watch's words are made from its data, in the screens' language (an older one's are annai's English as stored, so marked). @param {any} d the event's data
  * @param {(text: string) => Record<string, any>} mine @param {(tag: string, attrs: Record<string, any>) => Node | string} [make] h, or a test's own
  */
 export function reminderParts(d, mine, make = h) {
@@ -207,9 +201,8 @@ function groundedCard(d, texts, say) {
 }
 
 /**
- * Shows a conversation's events in order, missing none: it listens before it reads, so an event
- * that comes while the log is read (or while those are shown) is shown once, after them. While the
- * screen is being built events are still shown; once it has left the page, it stops listening.
+ * Shows a conversation's events in order, missing none: it listens before it reads, so an event that comes
+ * while the log is read is shown once, after them. Once the screen has left the page, it stops listening.
  * @param {{ on: (kind: 'event', fn: (e: any) => void) => () => void }} agent @param {string} scope
  * @param {{ read: () => Promise<any[]>, show: (e: any) => Promise<void>, state: () => 'building' | 'shown' | 'gone' }} o
  * @returns {Promise<() => void>} stops listening
@@ -329,7 +322,7 @@ export async function renderTalk(ctx) {
     }
     return out;
   };
-  /** A note of the halves', quietly naming the model that wrote it (the user, 2026-10-28; her own lines say it in their label). @param {any} d @param {HTMLElement} li */
+  /** A note of the halves', quietly naming the model that wrote it (her own lines say it in their label). @param {any} d @param {HTMLElement} li */
   const by = (d, li) => {
     const who = modelWords(d.by);
     if (who) li.append(h('span', { class: 'sub by', text: who }));
@@ -468,7 +461,7 @@ export async function renderTalk(ctx) {
     if (e.type === 'compaction' && d.mode === 'fresh') return h('li', { class: 'fresh-divider', text: t`Started fresh` }); // a list item with its words: a separator has no name
     if (e.type === 'compaction') return h('li', { class: 'system-line', text: t`Earlier conversation summarized. The full log is in Trace.` });
     // The other half told the user, in its own words, or Kokoro's while Koe talks (a card still says it). A turn or a tidy-up every
-    // model failed shows all the same, Kokoro's too (the user, 2026-10-28: only the Trace had them); not Koe's, which Kokoro took over.
+    // model failed shows all the same, Kokoro's too; not Koe's, which Kokoro took over.
     const failed = (d.kind === 'model' || d.kind === 'compaction') && !(d.quiet && d.half === 'koe');
     if (e.type === 'error' && (d.quiet || d.aside) && !failed) return null;
     if (e.type === 'error') {
@@ -493,7 +486,7 @@ export async function renderTalk(ctx) {
   addEventListener('message', fit);
   const empty = h('p', { class: 'empty', text: t`Nothing yet. Tap Shiori or Type below to talk.` });
   // The end of the conversation: the page's foot keeps its last words clear of the dock. Once there, it is followed, as a
-  // photo loads or a frame takes its height too, until the user scrolls of their own accord (review S3).
+  // photo loads or a frame takes its height too, until the user scrolls of their own accord.
   const atEnd = () => innerHeight + scrollY >= document.documentElement.scrollHeight - 120;
   let following = false;
   const toEnd = () => {
@@ -529,7 +522,6 @@ export async function renderTalk(ctx) {
           const l = unheard.get(e.data?.id);
           if (l && typeof e.data?.text === 'string') hearSoon(e.data.id, l);
         } else {
-          const who = node.querySelector('.who');
           // A plugin's kind of card is drawn by its plugin: the choices and the photo annai draws on its own cards are not on it.
           const kind = e.type === 'out.show' ? cardKind(ctx, e.data?.card) : '';
           const choices = (e.type === 'out.ask' ? e.data?.options : kind ? [] : e.data?.card?.choice);
@@ -552,7 +544,7 @@ export async function renderTalk(ctx) {
           } else tell(parts, ['out.speak', 'out.show', 'out.ask'].includes(e.type) ? hers(words).lang : undefined);
         }
         if (follow) toEnd();
-        // A plugin's dock may have no avatar of annai's (fix pass 8b-2).
+        // A plugin's dock may have no avatar of annai's.
         if (built && e.actor === 'shiori') ctx.dock?.avatar?.glance?.(0, 1.5);
       }
       if (built) showCost();
@@ -566,8 +558,7 @@ export async function renderTalk(ctx) {
   showCost();
   const tidy = tidyMenu(ctx);
   const screen = h('div', { class: 'screen' },
-    // Tidy up is a ⋯ by the title, out of the conversation's way (the user, 2026-11-02).
-    // It stays at the top (under the app's bar) on a long conversation, so the ⋯ is always there.
+    // Tidy up is a ⋯ by the title, out of the conversation's way, and stays under the app's bar on a long conversation.
     h('div', { class: 'title-row' }, h('h1', { class: 'title', text: t`Conversation` }), tidy.el, tidy.status),
     h('p', { class: 'sub', text: agent.trip ? title : t`No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.` }),
     cost,
@@ -592,10 +583,8 @@ export async function renderTalk(ctx) {
 }
 
 /**
- * The Undo line of the newest hand-over in a conversation (My call 2 of the bookings-and-trips design): a quiet line with a real button
- * under her last line after it. It moves down as she adds lines, until the user writes or speaks again, then stays where it is; it is
- * there until her next hand-over here, or until it is used, and only while there is something to take back. It takes back what she did
- * here and in the trips the files went to; a trip she started for them, with nothing of the user's in it, goes, its files back with Shiori.
+ * The Undo line of the newest hand-over in a conversation: under her last line after it, moving down as she adds lines until the user writes or speaks again; there only
+ * while there is something to take back. A trip she started for the files, with nothing of the user's in it, goes, its files back with Shiori.
  * @param {any} ctx @param {string} scope the conversation's @param {HTMLElement} list its lines
  */
 function undoLine(ctx, scope, list) {
@@ -675,9 +664,8 @@ function undoLine(ctx, scope, list) {
 }
 
 /**
- * The Conversation screen's menu (the user, 2026-10-23: "some way to let the user compact or clear the transcript / session manually?"):
- * Summarize now, which runs housekeeping as it would run by itself, and Start fresh, which has Shiori start a new context from here.
- * Neither deletes a line: the earlier ones stay in the conversation, searchable and recallable (spec §6.5, §16.2).
+ * The Conversation screen's menu: Summarize now, which runs housekeeping as it would run by itself, and Start fresh, which has Shiori
+ * start a new context from here. Neither deletes a line (spec §6.5, §16.2).
  * @param {any} ctx
  * @returns {{ el: HTMLElement, status: HTMLElement }} the ⋯ and its menu, and a line that says "Starting fresh…" while Start fresh runs
  */
@@ -765,7 +753,7 @@ function tidyMenu(ctx) {
 
 /**
  * The Undo under a "I adjusted my personality" card. Once done it says so and offers no second Undo; a card for a change that is
- * already back as it was (undone before, or put back by hand) says so from the start (the second emulator re-check).
+ * already back as it was (undone before, or put back by hand) says so from the start.
  * @param {any} ctx @param {{ name: string, old: string | null }} tune
  */
 function tuneUndo(ctx, tune) {

@@ -58,7 +58,7 @@ export class PhotoCopies {
   /** @param {Source} source @param {Limits} limits @param {Crop} [crop] @param {string} [scope] whose photo it is, read for that scope @returns {Promise<Copy>} */
   async copy(source, limits, crop, scope) {
     if (!crop && fits(source, limits)) return { hash: source.hash, mediaType: source.type, width: source.width ?? null, height: source.height ?? null, made: false };
-    // Each conversation's copies are its own: one made for another is never looked up by its hash (review, 5a).
+    // Each conversation's copies are its own: one made for another is never looked up by its hash.
     const key = JSON.stringify([scope ?? '', source.hash, limits.formats, limits.quality, limits.maxEdge, limits.maxBytes, crop ?? null]);
     const had = this.#made.get(key);
     // A copy made before is reused only while its bytes are stored: a repair or a removed trip may have freed them.

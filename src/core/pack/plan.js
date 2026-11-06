@@ -6,7 +6,7 @@ import { PLAN_FILE, LEG_MAX_KM } from '../plan.js';
  * items with a place, in the order of their times. Around each stop, OpenStreetMap places within
  * 5 km; between one stop and the next, within 3 km of the straight line (legs are straight lines:
  * there is no routing); Wikipedia summaries at each stop and every 15 km on the way. Wikivoyage
- * guides are found when downloading, from the names here and Wikipedia's (choice 3).
+ * guides are found when downloading, from the names here and Wikipedia's.
  * @typedef {import('../workspace.js').Workspace} Workspace
  * @typedef {[lat: number, lng: number]} LatLng
  * @typedef {{ how: 'around' | 'near' | 'between', names: string[] }} Place  where a part is, as data: around or near a stop, or between two
@@ -31,7 +31,7 @@ export const MAX_WIKI = 100;
 export const MAX_GUIDES = 12;
 
 /**
- * Rough sizes for the estimate shown before downloading (choice 9), from a real Big Sur pack in October
+ * Rough sizes for the estimate shown before downloading, from a real Big Sur pack in October
  * 2026 (143 KB for 19 parts and 4 guides), rounded up: towns are denser than the coast.
  */
 export const SIZES = Object.freeze({ osmPerKm: 512, osmStop: 10 * 1024, wikipedia: 6 * 1024, guide: 25 * 1024 });

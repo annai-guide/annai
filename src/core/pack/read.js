@@ -12,7 +12,7 @@ import { MANIFEST, readManifest } from './download.js';
  * @typedef {{ lat: number, lng: number }} Point
  */
 
-/** Live mode is told it is near a place the pack names this close (choice 7). */
+/** Live mode is told it is near a place the pack names this close. */
 export const NAME_M = 500;
 /** The kinds whose places name where the user is. */
 const NAMED = new Set(['sights', 'parks', 'lodging']);
@@ -114,7 +114,7 @@ export class Pack {
     return out;
   }
 
-  /** nearby's rows for its Wikipedia articles within radius, each with its summary (choice 6). @param {Point} p @param {number} radius @returns {any[][]} */
+  /** nearby's rows for its Wikipedia articles within radius, each with its summary. @param {Point} p @param {number} radius @returns {any[][]} */
   pages(p, radius) {
     const seen = new Set();
     /** @type {any[][]} */

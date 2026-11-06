@@ -18,7 +18,7 @@ import { distance, duration } from '../intl.js';
  *   index: the entry last reached (-1: none yet); done: how much of each piece is behind, on the map
  */
 
-/** Playback speeds: trip time a second, and their words (choice 5). */
+/** Playback speeds: trip time a second, and their words. */
 export const PLAY_SPEEDS = Object.freeze(/** @type {[number, string][]} */ ([[60, t`1 minute a second`], [600, t`10 minutes a second`], [3600, t`1 hour a second`]]));
 
 /** A stay's or a move's length, to the minute: "25 min", "1 hr, 35 min". @param {number} ms */
@@ -110,7 +110,7 @@ const cut = (s, n) => {
   return one.length > n ? `${one.slice(0, n - 1)}…` : one;
 };
 
-/** One timeline entry in words: when, and what (choice 6). @param {Entry} e @param {string} tz */
+/** One timeline entry in words: when, and what. @param {Entry} e @param {string} tz */
 export function entryLine(e, tz) {
   const at = String(timeIn(e.at, tz));
   if (e.kind === 'stay') {

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { encodeWav, decodeWav, wavSeconds, resample, SEND_RATE, StreamResampler } from '../../src/core/voice/pcm.js';
+import { encodeWav, decodeWav, resample, SEND_RATE, StreamResampler } from '../../src/core/voice/pcm.js';
 import { clip, RATE } from './voice-kit.js';
 
 test('WAV round-trips as 16-bit mono, and says how long it is', () => {
@@ -11,7 +11,6 @@ test('WAV round-trips as 16-bit mono, and says how long it is', () => {
   const back = decodeWav(bytes);
   assert.equal(back.sampleRate, 16000);
   assert.ok(back.pcm.every((x, i) => Math.abs(x - pcm[i]) < 1e-4));
-  assert.equal(wavSeconds(bytes), 0.1);
   assert.equal(encodeWav(Float32Array.of(2, -2), 8000).length, 48); // out-of-range samples are clipped, not wrapped
   assert.deepEqual([...decodeWav(encodeWav(Float32Array.of(2, -2), 8000)).pcm].map((x) => Math.round(x)), [1, -1]);
 });

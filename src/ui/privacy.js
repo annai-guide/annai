@@ -2,8 +2,8 @@ import { h, t, linkIn } from './dom.js';
 import { sentenceGap } from './format.js';
 
 /**
- * What the welcome and Settings → About say about keys and data, and the fine print (the user,
- * 2026-10-18), in one place so the two never differ. Each claim is true of the code: the plan
+ * What the welcome and Settings → About say about keys and data, and the fine print, in one place
+ * so the two never differ. Each claim is true of the code: the plan
  * (docs/superpowers/plans/2026-10-18-welcome-about.md) and its report name the code for each.
  */
 

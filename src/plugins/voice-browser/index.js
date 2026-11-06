@@ -4,11 +4,8 @@ import { CODEC_ORDER, mediaTypeOf } from '../../core/voice/formats.js';
 import { t } from '../../core/l10n.js';
 
 /**
- * The device side of voice (spec §10), a built-in plugin (§19): one audio player for every voice
- * clip, unlocked by the first tap of each session (an iPhone rule, §10.1); the browser's own
- * voice; the microphone, through an AudioWorklet (§10.2); the phone's dictation; the audio devices,
- * for the audio route and a device disconnecting (§10.5); the audio session type where the browser has one (Safari); and its audio
- * encoders (§10.6). The core reaches it as 'voice-platform'.
+ * The device side of voice (spec §10), a built-in plugin (§19): the player, the browser's own voice, the microphone (§10.2),
+ * dictation, the audio devices (§10.5), the audio session type (Safari) and the encoders (§10.6). The core reaches it as 'voice-platform'.
  * @typedef {import('../../core/voice/platform.js').VoicePlatform} VoicePlatform
  */
 
@@ -145,10 +142,9 @@ function heldStream(made, running) {
 }
 
 /**
- * A stream through a player worklet's node: the page's side, apart so that it is tested without sound. Its reports are at most
- * 50 ms old, and come at once when it runs dry or is done: so queued() says a piece is still to play from its push until a report
- * has it played (a half-duplex microphone is deaf no shorter than her sound), and stop() adds what has played since the last report.
- * A node that tells nothing for stallMs, or fails, is stopped: done, stalled.
+ * A stream through a player worklet's node: the page's side, apart so that it is tested without sound. queued() says a piece is
+ * still to play from its push until a report has it played (a half-duplex microphone is deaf no shorter than her sound), and stop()
+ * adds what has played since the last report. A node that tells nothing for stallMs, or fails, is stopped: done, stalled.
  * @param {{ port: { postMessage(m: any, t?: Transferable[]): void, onmessage: ((e: MessageEvent) => void) | null, close(): void }, disconnect(): void, onprocessorerror?: any }} node
  * @param {{ rate: number, sampleRate: number, now: () => number, onLevel?: (x: number) => void, running: Promise<boolean>, stallMs?: number, state?: () => string }} o
  *   rate: the stream's; sampleRate: the context's; now: the context's time, in seconds; state: the context's state, for the Trace
@@ -239,7 +235,7 @@ export function workletStream(node, { rate, sampleRate, now, onLevel = () => {},
 
 /**
  * The player where AudioWorklet isn't, or its module didn't load: a buffer a piece, scheduled back to back on the context. Each
- * piece is resampled alone and stopped at once, so an edge or a stop can click (the pops investigation, 2026-10-23). A clock that
+ * piece is resampled alone and stopped at once, so an edge or a stop can click. A clock that
  * stands still for STALL_MS (a suspended context) stops it: done, stalled.
  * @param {AudioContext} c @param {{ rate: number, onLevel: (x: number) => void, running: Promise<boolean> }} o @returns {PlayerStream}
  */
@@ -425,11 +421,11 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
         }
         return played;
       },
-      // A live session's voice (K4), and a streamed voice's (G3): through the player worklet, or, where it can't load, pieces
+      // A live session's voice, and a streamed voice's: through the player worklet, or, where it can't load, pieces
       // scheduled back to back on the one unlocked context. What is pushed before the worklet is known to load or not is held.
       stream({ rate, onLevel = () => {} }) {
         const c = context();
-        // Whether it will sound: a context an interruption or a locked screen suspended may not resume without a tap (fix pass).
+        // Whether it will sound: a context an interruption or a locked screen suspended may not resume without a tap.
         const running = c.state === 'running' ? Promise.resolve(true) : c.resume().then(() => c.state === 'running', () => false);
         return heldStream(playerReady().then((ok) => {
           if (ok) {
@@ -598,7 +594,7 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
           for (const track of stream.getAudioTracks()) track.onended = () => onError(new Error(t`The microphone stopped.`));
           const input = stream.getAudioTracks()[0];
           if (input) inputs.push(input);
-          // A MediaRecorder alongside (decision 24), in files cut by take().
+          // A MediaRecorder alongside, in files cut by take().
           /** @type {MediaRecorder | null} */
           let rec = null;
           /** @type {Blob[]} */

@@ -19,7 +19,7 @@ import { size, sentences, list } from './intl.js';
  * @typedef {{ name: string, description: string, folder: string }} SkillInfo  folder: '' for the package's top, else "skills/tides"
  * @typedef {{ id: string, kind: 'web', origins: string[], key?: { setting: string, url?: string, note?: string } }} SearchDesc
  *   a search provider's description (docs/plugins.md, "Search providers"): the id it registers, the origins its searches and key go to
- * @typedef {{ id: string, version: string, homepage?: string }} Requirement  version: "^N", the same major (milestone 1, decision 7)
+ * @typedef {{ id: string, version: string, homepage?: string }} Requirement  version: "^N", the same major
  * @typedef {{ kind: 'plugin' | 'skill', id: string, name: string, version: string, shownVersion: string, manifest: any,
  *   files: Map<string, Uint8Array>, code: boolean, skills: SkillInfo[], personalities: { name: string, path: string }[],
  *   provider: import('./llm/provider-desc.js').ProviderDesc | null, search: SearchDesc | null, requires: Requirement[], category: string, keywords: string[], replaces: string[],
@@ -112,7 +112,7 @@ function canonical(tag) {
 export const L10N_MAX_BYTES = 256 * 1024;
 /**
  * The fields a translation may give (localization design, section 8), by path (* any key or index), with their limits; keywords are
- * added to the English. A name is shown only for annai's own: a third party's is shown as written everywhere (decision 10). @type {[string, number][]}
+ * added to the English. A name is shown only for annai's own: a third party's is shown as written everywhere. @type {[string, number][]}
  */
 export const TRANSLATED = [['name', 80], ['description', 500], ['featured', 200], ['keywords', 40], ['provider.note', 1000], ['provider.abilities.*.name', 80],
   ['provider.abilities.*.note', 1000], ['provider.abilities.*.noWindowNote', 1000], ['search.key.note', 300], ['settings.properties.*.title', 200],
@@ -122,11 +122,10 @@ const at = (o, keys) => keys.reduce((x, k) => (x && typeof x === 'object' && Obj
 const object = (/** @type {any} */ o) => o && typeof o === 'object' && !Array.isArray(o);
 
 /**
- * What is wrong with a plugin's l10n/<tag>.json, for its developer, or null: only manifest and messages; each manifest key a field
- * this manifest has that a translation may give, within its limit; each message text, or plural forms of the language, up to 2,000.
- * One with anything wrong is left out, never a reason to refuse the plugin (fail working); an empty text is no translation.
- * official: annai's own plugin's, fetched from its catalog for the version the catalog lists, which may not be the one installed: a
- * field this manifest hasn't is skipped (wordsOf gives only those it has), not a reason to leave the rest out.
+ * What is wrong with a plugin's l10n/<tag>.json, for its developer, or null: only manifest and messages; each manifest key a field this
+ * manifest has that a translation may give, within its limit; each message text, or plural forms of the language, up to 2,000. One with
+ * anything wrong is left out, never a reason to refuse the plugin; an empty text is no translation. official: annai's own plugin's, for
+ * the version the catalog lists, which may not be the one installed: a field this manifest hasn't is skipped (wordsOf gives only those it has).
  * @param {any} manifest @param {string} tag as listed @param {Uint8Array | undefined} bytes @param {{ official?: boolean }} [o]
  */
 export function checkTranslation(manifest, tag, bytes, { official = false } = {}) {
@@ -257,14 +256,14 @@ export function originsOf(manifest) {
   return [...new Set([...(manifest?.provider ? descOrigins(manifest.provider) : []), ...searchOriginsOf(manifest)])].sort();
 }
 
-/** A path that starts with a scheme (http:, javascript:), which an address would read off the package's site, as skillLinks refuses (fix pass 8a-4). */
+/** A path that starts with a scheme (http:, javascript:), which an address would read off the package's site, as skillLinks refuses. */
 const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
-/** Whitespace, control characters and backslashes, which an address parser drops or reads as / (fix pass 8a-4). */
+/** Whitespace, control characters and backslashes, which an address parser drops or reads as /. */
 const UNSAFE = /[\s\u0000-\u001f\u007f-\u009f\\]/;
 
 /**
  * A relative path that stays inside the package's folder, as it is and once percent-decoded as an
- * address would be (%2e%2e is ..), with no scheme, whitespace, control character or backslash (fix pass 8a-4).
+ * address would be (%2e%2e is ..), with no scheme, whitespace, control character or backslash.
  * @param {string} rel
  */
 function plainPath(rel) {
@@ -297,7 +296,7 @@ export async function fingerprint(files) {
   return sha256Hex(utf8(lines.sort().join('')));
 }
 
-/** The manifest annai reads a bare skill as; nothing like it is stored (choice 2). @param {Skill} skill */
+/** The manifest annai reads a bare skill as; nothing like it is stored. @param {Skill} skill */
 export function skillManifest(skill) {
   return {
     id: skill.name, name: skill.name, version: skillVersion(skill.metadata), api: 1, description: skill.description, skills: ['.'],
@@ -329,7 +328,7 @@ export async function inspectPackage(raw, { maxBytes = PLUGIN_MAX_BYTES } = {}) 
     kind = 'skill';
     root = rootOf(names, SKILL_FILE);
     if (root === null) {
-      // Deeper than annai reads (minors 20): the shallowest annai-plugin.json, else the one SKILL.md.
+      // Deeper than annai reads: the shallowest annai-plugin.json, else the one SKILL.md.
       const deep = (/** @type {string} */ file) => names.filter((n) => n.endsWith(`/${file}`)).sort((a, b) => a.split('/').length - b.split('/').length);
       const [plugin] = deep(MANIFEST_FILE);
       const skills = deep(SKILL_FILE);
@@ -440,7 +439,7 @@ async function pluginPackage(files, checkNames) {
   };
 }
 
-/** The most files a package installed from an address may have (choice 6). */
+/** The most files a package installed from an address may have. */
 export const ADDRESS_MAX_FILES = 200;
 /** The most files a SKILL.md's links bring along from an address. */
 export const SKILL_MAX_LINKS = 50;
@@ -459,12 +458,10 @@ const fileName = (name) => plainPath(name);
 const MISSING = new Set([403, 404, 410]);
 
 /**
- * A package's files from an address (choice 6): a zip, whatever the address ends with; an
- * annai-plugin.json and the files it names; or a SKILL.md and the files it links to inside its folder.
- * Nothing is stored. Every error is a plain Error that says what to do. Each file is asked for with
- * the browser's cache revalidated (minors 17): the browser sends the ETag or date it kept, so an update
- * check downloads only what changed, never a stale copy. annai sends no such header itself: GitHub's
- * raw files refuse the CORS preflight one would need.
+ * A package's files from an address: a zip, whatever the address ends with; an annai-plugin.json and the files it names; or a SKILL.md and
+ * the files it links to inside its folder. Nothing is stored. Every error is a plain Error that says what to do. Each file is asked for
+ * with the browser's cache revalidated, so an update check downloads only what changed, never a stale copy. annai sends no such header
+ * itself: GitHub's raw files refuse the CORS preflight one would need.
  * @param {string} address
  * @param {{ fetch: (url: string, init?: RequestInit) => Promise<Response>, max?: number }} o
  * @returns {Promise<Map<string, Uint8Array>>} files by name inside the package (a zip's as it has them)
@@ -479,7 +476,7 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
   }
   if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new Error(NOT_AN_ADDRESS);
   refuseUserinfo(url);
-  // github.com's pages can't be read by web apps; its raw files can (minors 19).
+  // github.com's pages can't be read by web apps; its raw files can.
   const hint = url.hostname === 'github.com' ? t`For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.` : '';
   let used = 0;
   const download = async (/** @type {URL} */ u) => {
@@ -510,7 +507,7 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
   const home = new URL('.', base); // the package's folder
   /**
    * Where a file of the package is: an address on the same site, inside the package's folder; null for a
-   * name that would lead anywhere else (fix pass 8a-4).
+   * name that would lead anywhere else.
    * @param {string} name
    */
   const fileUrl = (name) => {
@@ -589,7 +586,7 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
       try {
         files.set(name, await download(u));
       } catch (e) {
-        // Which file the site lacks (minors 21); a translation it answers it hasn't is left out.
+        // Which file the site lacks; a translation it answers it hasn't is left out.
         const why = failed(e, name, u, MANIFEST_FILE, l10n.has(name));
         if (why) throw why;
       }
@@ -618,10 +615,9 @@ function asManifest(url, body) {
 }
 
 /**
- * What a package brings that an installed one didn't (the coordinator's second finding): code where
- * there was none, skills and personalities it didn't have, and origins (scheme, host and port) its
- * provider description sends keys to that the installed one didn't (milestone 1, decision 11; the
- * security review: a change of scheme or port is new too). An update that adds any of them asks the user first.
+ * What a package brings that an installed one didn't: code where there was none, skills and personalities it didn't have, and origins
+ * (scheme, host and port: a change of scheme or port is new too) its provider description sends keys to. An update that adds any of them
+ * asks the user first.
  * @typedef {{ code: boolean, skills: string[], personalities: string[], origins: string[] }} Parts what an installed package has, by name
  * @typedef {{ code: boolean, skills: SkillInfo[], personalities: { name: string, path: string }[], origins: string[], searchOrigins?: string[] }} Added
  * @param {Parts} before @param {Package} pkg @returns {Added}

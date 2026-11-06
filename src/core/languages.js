@@ -1,7 +1,6 @@
 /**
- * The languages you speak (phase 2; spec §10.9): the list the setting picks from, the setting read from the app settings, and the
- * words and codes every model that hears or speaks is given, so a short reply is not taken for another language (the user,
- * 2026-10-23). The setting's own words are all here, as messages (LANGUAGE_WORDS).
+ * The languages you speak (spec §10.9): the list the setting picks from, the setting itself, and the words and codes every model that
+ * hears or speaks is given, so a short reply is not taken for another language. The setting's own words are here too (LANGUAGE_WORDS).
  * @typedef {{ id: string, name: string, locale: string, iso: string, live: string | null, google: string | null }} Language
  *   id: annai's; locale: a BCP-47 tag a browser's dictation and voice take; iso: Whisper-style models (ISO 639-1, or -3 where OpenAI
  *   takes it); live: Gemini Live's own code for it; google: Gemini's transcription model's tag (null: it has none; Cantonese has none for Live,
@@ -14,7 +13,7 @@ import { t } from './l10n.js';
 /* en: the names of the languages, until the formatting helpers name them */
 /**
  * id, name, locale, then only what differs: iso (else the id), live (else the id; null: none), google (else the locale; null: none). Chinese is
- * Mandarin in two rows, Simplified (the mainland's codes) and Traditional (Taiwan's: review F4, so a Taiwan user's dictation and
+ * Mandarin in two rows, Simplified (the mainland's codes) and Traditional (Taiwan's, so a Taiwan user's dictation and
  * transcription come back in Traditional); Cantonese is its own. A language's name for itself comes from the browser (nativeName).
  * @type {[string, string, string, string?, (string | null)?, (string | null)?][]}
  */
@@ -84,13 +83,13 @@ export function languageSettings(app, locale) {
 /** "English", "English and Japanese", "English, Chinese (Simplified) and Japanese" (or with "or"). @param {Language[]} list @param {string} [and] */
 export const named = (list, and = 'and') => list.map((l) => l.name).reduce((s, n, i, a) => (i ? `${s}${i === a.length - 1 ? ` ${and} ` : ', '}${n}` : n), '');
 
-/** What a model that writes speech down is told (phase 2), after its own instruction: who may speak, and that nothing is translated. @param {LanguageSettings} s */
+/** What a model that writes speech down is told, after its own instruction: who may speak, and that nothing is translated. @param {LanguageSettings} s */
 export const speakerLine = (s) => /* en */ (!s.explicit ? '' : `The speaker uses ${named(s.spoken, 'or')}: write ${s.spoken.length > 1 ? 'each' : 'it'} in the language spoken and never translate.`);
 
 /**
- * What every model that hears or speaks is told (the user, 2026-10-23), once, in the same words: Shiori's and Kokoro's system text,
- * Koe's, and a live session's. OpenAI's own prompting guide warns against "reply in the user's language" (the model takes an
- * accent, a filler or one foreign word for a change of language): so the languages are named, and one unsure word changes nothing.
+ * What every model that hears or speaks is told, in the same words: Shiori's and Kokoro's system text, Koe's, and a live session's. The
+ * languages are named because "reply in the user's language" makes a model take an accent, a filler or one foreign word for a change of
+ * language (OpenAI's own prompting guide warns against it); one unsure word changes nothing.
  * @param {LanguageSettings} s
  */
 export function languagesText(s) {
@@ -106,7 +105,7 @@ export function languagesText(s) {
   return `The user speaks ${list}${s.spoken.length > 1 ? '; they may switch between these' : ''}. Answer in the language they used. ${rest}`;
 }
 
-/** What Shiori is told of screens not in English (localization decision 7): one stable line of their names. @param {string} tag @param {string} names the catalog's, "Settings (設定), …" */
+/** What Shiori is told of screens not in English: one stable line of their names. @param {string} tag @param {string} names the catalog's, "Settings (設定), …" */
 export const screensText = (tag, names) => /* en */ (tag.split('-')[0] === 'en' || !names ? ''
   : `annai's screens are in ${display('en', tag, tag)}. When you name a screen, a setting or a button, use the name it shows: ${names}. This doesn't change the language you answer in.`);
 
@@ -120,9 +119,8 @@ export function distancesText(app) {
 }
 
 /**
- * What a protocol plugin is given: the languages as data, nothing else. Until the user has chosen, no language is given as a hint (the
- * browser's language is told to models in words only): a hint that forces a Whisper-style model to English would garble a Japanese
- * speaker whose browser is in English.
+ * What a protocol plugin is given: the languages as data. Until the user has chosen, no hint is given (the browser's language is told to
+ * models in words only): a hint that forces a Whisper-style model to English would garble a Japanese speaker whose browser is in English.
  * @param {LanguageSettings} s @returns {{ spoken: Language[], answer: Language | null }}
  */
 export const modelLanguages = (s) => ({ spoken: s.explicit ? s.spoken.map((l) => ({ ...l })) : [], answer: s.answer ? { ...s.answer } : null });
@@ -134,7 +132,7 @@ const units = (text) => (text.match(CJK)?.length ?? 0) + (text.replace(CJK, ' ')
 
 /* en */
 /**
- * Writing systems that name their language when they make up most of a text's letters (review A6: a place name in kanji in an
+ * Writing systems that name their language when they make up most of a text's letters (a place name in kanji in an
  * English line is no Chinese): Chinese characters with kana are Japanese, without, Chinese (the Han alone of a short Japanese reply is
  * Chinese here: listedFor places it with Japanese when only that is listed); Cyrillic with і, ї, є or ґ is Ukrainian.
  */
@@ -265,13 +263,12 @@ function latinTag(tag) {
 }
 
 /**
- * A line's BCP 47 tag, for its `lang`: a browser draws Han characters and a screen reader reads them by it (localization L3). From the
- * writing system (scriptOf) and the listed languages (listedFor); an address is no language. Latin text is never guessed (a wrong tag gives
- * it a wrong voice): it and any unsure text get '' and inherit the screens'. byShiori: the language she is set to answer in, where the
- * text agrees with it (its script, or Latin when hers is written in Latin); Han alone is taken for hers, if she answers in Japanese.
- * ui: the screens' language. Under screens not in Latin letters, a Latin line is the one listed Latin-script language if exactly one is
- * (usually English), else the one languageOf names from two of its words, else NO_LANGUAGE: it never takes the screens'.
- * Han that does not tell Simplified from Traditional is Traditional under Traditional Chinese screens.
+ * A line's BCP 47 tag, for its `lang`: a browser draws Han characters and a screen reader reads by it. From the writing system (scriptOf)
+ * and the listed languages (listedFor). Latin text is never guessed (a wrong tag gives it a wrong voice): it and unsure text get '' and
+ * inherit the screens'. byShiori: the language she answers in, where the text agrees with it; Han alone is taken for hers, if that is
+ * Japanese. ui: the screens' language. Under screens not in Latin letters, a Latin line is the one listed Latin-script language if exactly
+ * one is, else the one languageOf names from two of its words, else NO_LANGUAGE: never the screens'. Han that does not tell Simplified
+ * from Traditional is Traditional under Traditional Chinese screens.
  * @param {string} text @param {LanguageSettings} s @param {boolean} [byShiori] @param {string} [ui]
  */
 export function tagOf(text, s, byShiori = false, ui = 'en') {
@@ -311,10 +308,10 @@ export function speechLocale(s, text = '') {
 export const dictationLocale = (s) => s.spoken[0].locale;
 
 /**
- * A transcript of a user turn of fewer than 3 words (a Chinese, Japanese or Korean character counts as a word) that is plainly in a
- * language not listed ("¿Qué?" for a short English reply, on 2026-10-22): that language's name, else ''. annai never treats it as the user
- * changing language: it is flagged in the trace, and the model's own instruction (languagesText) covers its side. Plainly: a script, a
- * mark only that language has, or two of its small words; one word could be a name or English's own ("Per se.", "Um.").
+ * A transcript of a user turn of fewer than 3 words (a Chinese, Japanese or Korean character counts as a word) plainly in a language not
+ * listed ("¿Qué?" for a short English reply): that language's name, else ''. annai never treats it as the user changing language: it is
+ * flagged in the trace, and languagesText covers the model's side. Plainly: a script, a mark only that language has, or two of its small
+ * words; one word could be a name or English's own ("Per se.", "Um.").
  * @param {string} text @param {LanguageSettings} s
  */
 export function strayLanguage(text, s) {
@@ -324,13 +321,12 @@ export function strayLanguage(text, s) {
   return guess && !listedFor(guess, s.spoken) ? guess : '';
 }
 
-/** What the model that reads a flagged heard line is told beside it (review: Kokoro should know a line may be a mishearing). @param {string} language */
+/** What the model that reads a flagged heard line is told beside it: Kokoro should know a line may be a mishearing. @param {string} language */
 export const strayNote = (language) => /* en */ ` (heard; may be misheard as ${language})`;
 
 /**
- * The setting's own words, in one place: each a message (localization L1), so the screen draws them in the language of the day. A
- * status is a pair, what the line says while the change is written and what it says once it has been, each whole so each can be
- * translated whole.
+ * The setting's own words, each a message. A status is a pair, what the line says while the change is written and what it says once it
+ * has been, each whole so each can be translated whole.
  */
 export const LANGUAGE_WORDS = {
   heading: t`Languages`,

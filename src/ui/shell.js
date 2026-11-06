@@ -61,7 +61,7 @@ export function startShell(root, core) {
   const notices = createNotices();
   const main = h('main', { class: 'view', id: 'view', tabindex: '-1' });
   const builtIn = [['#/now', t`Now`], ['#/trips', t`Trips`], ['#/plan', t`Plan`], ['#/talk', t`Conversation`], ['#/trace', t`Trace`], ['#/settings', t`Settings`]].map(([href, label]) => h('a', { href }, label));
-  /** @type {HTMLAnchorElement[]} the top bar's links: annai's, then plugins' screens with a tab (choice 5 of milestone 8b) */
+  /** @type {HTMLAnchorElement[]} the top bar's links: annai's, then plugins' screens with a tab */
   let links = builtIn;
   const nav = h('nav', { class: 'topnav', 'aria-label': t`Main` }, ...links);
   const header = h('header', { class: 'topbar' },
@@ -83,8 +83,8 @@ export function startShell(root, core) {
   dockHidesWhileTyping();
   drawTabs();
 
-  // Swiping sideways between tabs is experimental, off until Settings → Experimental turns it on (the user,
-  // 2026-10-18). Off, the screen leaves sideways panning to the browser (no touch-action of its own).
+  // Swiping sideways between tabs is experimental, off until Settings → Experimental turns it on. Off, the screen
+  // leaves sideways panning to the browser (no touch-action of its own).
   let swipes = false;
   const setSwipes = (/** @type {boolean} */ on) => {
     swipes = on;
@@ -122,7 +122,7 @@ export function startShell(root, core) {
     if (!dock || dockKey(ctx) === dockMadeFor) return false;
     dockMadeFor = dockKey(ctx);
     cleanUp('dock');
-    /** @type {any} */ (dock).dispose?.(); // what the old one listened to (minors 13)
+    /** @type {any} */ (dock).dispose?.(); // what the old one listened to
     const made = makeDock();
     dockSize?.unobserve(dock.el);
     dock.el.replaceWith(made.el);
@@ -132,8 +132,8 @@ export function startShell(root, core) {
     return true;
   };
   let seq = 0;
-  // Where you were (the user, 2026-10-18): a screen you go to opens at its top; Back or Forward brings you
-  // back to where you were on it. Each history entry gets a key, and where you were is kept by key.
+  // Where you were: a screen you go to opens at its top; Back or Forward brings you back to where you were on it.
+  // Each history entry gets a key, and where you were is kept by key.
   history.scrollRestoration = 'manual';
   // Kept for the tab's life, so a reload (iPhone reloads an app it set aside) still knows.
   const KEPT = 'annai-scrolls';
@@ -147,8 +147,7 @@ export function startShell(root, core) {
     }
   })());
   let entry = '';
-  // Each tab's screen you last had open, and where you were on it: swiping into the tab brings you back
-  // there (the page-persistence bug, 2026-10-18), where it always opened the tab's first screen at its top.
+  // Each tab's screen you last had open, and where you were on it: swiping into the tab brings you back there.
   /** @type {Map<string, { hash: string, y: number }>} by the tab's link */
   const lastIn = new Map();
   /** The tab, the address and the name of the screen drawn now. @type {{ tab: string | null, hash: string, name: string }} */
@@ -230,7 +229,7 @@ export function startShell(root, core) {
     }
     cleanUp('screen', my); // what plugins drew on the screen before
     const route = parseHash(location.hash);
-    // A file opened from the Plan, a booking or Now is in that tab (the user, 2026-10-28: back on Plan, the top bar said Trips).
+    // A file opened from the Plan, a booking or Now is in that tab.
     const from = ['file', 'booking', 'item'].includes(route.name) ? cameFrom(route.params.from, route.parts[1], core.agent?.trip ?? null) : null;
     const at = from ? parseHash(from.hash) : route;
     const section = SECTION[at.name] ?? (at.parts[0] === 'trip' ? 'trips' : at.parts[0]);
@@ -249,7 +248,7 @@ export function startShell(root, core) {
     showMore();
     const screen = SCREENS[route.name] ?? SCREENS.trips;
     try {
-      // Its screen's ctx says which render it is, so what it draws after a newer one began is cleaned up at once (minors 15).
+      // Its screen's ctx says which render it is, so what it draws after a newer one began is cleaned up at once.
       const node = await screen(Object.create(ctx, { seq: { value: my } }), route);
       if (my !== seq) return superseded(my);
       main.replaceChildren(node);
@@ -274,8 +273,8 @@ export function startShell(root, core) {
   }
   addEventListener('hashchange', () => render({ moved: true }));
 
-  // Swiping a screen sideways moves to the next or the previous tab of the top bar (the user, 2026-10-18). Not
-  // from the screen's edges (the phone's own back gesture), nor on anything that moves sideways itself.
+  // Swiping a screen sideways moves to the next or the previous tab of the top bar. Not from the screen's edges
+  // (the phone's own back gesture), nor on anything that moves sideways itself.
   /** @type {{ x: number, y: number, t: number } | null} */
   let swipe = null;
   const ownsSideways = (/** @type {EventTarget | null} */ t) => {
@@ -318,7 +317,7 @@ export function startShell(root, core) {
     if (typing()) setTimeout(() => redraw(screen), 500);
     else render();
   };
-  // What plugins add redraws when it changes (choice 9 of milestone 8b): once per change, not per item.
+  // What plugins add redraws when it changes: once per change, not per item.
   if (core.registry) {
     syncThemes(core.registry, document.head);
     let drawn = uiSignature(core.registry);

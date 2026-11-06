@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { trackFrom, trackFromLog, Simulation, SIMULATION } from '../../src/core/live/simulate.js';
 import { Registry } from '../../src/core/registry.js';
-import { ManualClock, scaledClock } from '../../src/core/live/clock.js';
+import { ManualClock, PlayClock } from '../../src/core/live/clock.js';
 import { meters } from '../../src/core/live/geo.js';
 import { liveKit, at, MONTEREY, BIXBY } from './live-kit.js';
 
@@ -55,7 +55,7 @@ test('played on a clock ten times faster than real time (spec §18), 20 s of tra
   const base = new ManualClock(0);
   const k = await liveKit({ start: at('09:00') });
   const sim = new Simulation({ registry: k.registry, track: [{ at: at('09:00'), kind: 'offline' }, { at: at('09:00:10'), kind: 'online' }, { at: at('09:00:20'), kind: 'offline' }] });
-  const clock = scaledClock(at('09:00'), 10, base);
+  const clock = new PlayClock(at('09:00'), { speed: 10, base });
   let ended = false;
   sim.play(clock, { onEnd: () => { ended = true; } });
   await k.settle();

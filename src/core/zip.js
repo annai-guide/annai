@@ -170,13 +170,10 @@ const view = (b) => new DataView(b.buffer, b.byteOffset, b.byteLength);
  */
 
 /**
- * Reads a zip archive straight from a file (a Blob), one entry at a time: only the
- * index and the entry being read are ever in memory, so an archive larger than memory
- * can be read (spec §12.1). Supports stored and deflated entries, checks every CRC-32,
- * skips folder entries and refuses two entries with one name. Against zip bombs, before
- * anything is inflated: an entry may declare at most maxEntry bytes, all of them together
- * at most maxTotal, and no more than maxRatio times the file's own size (plus
- * RATIO_ALLOWANCE). Inflating stops as soon as an entry produces more than it declared.
+ * Reads a zip archive straight from a file (a Blob), one entry at a time, so an archive larger than memory can be read (spec §12.1).
+ * Supports stored and deflated entries, checks every CRC-32, skips folder entries and refuses two entries with one name. Against zip
+ * bombs, before anything is inflated: an entry may declare at most maxEntry bytes, all of them together at most maxTotal, and no more
+ * than maxRatio times the file's own size (plus RATIO_ALLOWANCE). Inflating stops as soon as an entry produces more than it declared.
  */
 export class ZipReader {
   /** @type {Blob} */ #file;

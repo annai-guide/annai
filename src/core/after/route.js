@@ -14,7 +14,7 @@ import { meters } from '../live/geo.js';
 
 /** A stay is within this many meters… */
 export const STAY_M = 200;
-/** …for at least this many minutes (choice 7). */
+/** …for at least this many minutes. */
 export const STAY_MIN = 10;
 /** The track jumps where two points are this far apart after this long… */
 export const JUMP_M = 1000;
@@ -23,7 +23,7 @@ export const JUMP_MIN = 10;
 export const FAR_M = 20_000;
 /** Slower than this on average is walking. */
 export const WALK_KMH = 8;
-/** At most this many points are drawn (choice 8). */
+/** At most this many points are drawn. */
 export const DRAWN = 1500;
 const MIN = 60_000;
 /** Meters in a degree of latitude. */
@@ -45,7 +45,7 @@ export function pointsOf(events) {
   return out.sort((a, b) => a.at - b.at);
 }
 
-/** Whether the track jumps from a to b (choice 7). @param {Point} a @param {Point} b */
+/** Whether the track jumps from a to b. @param {Point} a @param {Point} b */
 export function jumps(a, b) {
   const d = meters(a, b);
   return d >= FAR_M || (d >= JUMP_M && b.at - a.at >= JUMP_MIN * MIN);
@@ -69,7 +69,7 @@ export function segmentsOf(points) {
 }
 
 /**
- * Where the user stayed and how they moved between (choice 7): a stay is STAY_MIN minutes or more
+ * Where the user stayed and how they moved between: a stay is STAY_MIN minutes or more
  * within STAY_M of where it began, placed at the point that waited longest for the next; a move is
  * what lies between, from a stay's last point to the next one's first. The track's last stay has no
  * point after it to say when it ended: with end (when the record ends, such as live mode turned off
@@ -160,7 +160,7 @@ function simplify(s, xy, eps) {
 }
 
 /**
- * The track thinned for drawing (choice 8), piece by piece: Douglas–Peucker, its tolerance doubled
+ * The track thinned for drawing, piece by piece: Douglas–Peucker, its tolerance doubled
  * until at most max points are left. Every piece keeps its two ends.
  * @param {Point[][]} segments @param {number} [max] @returns {Point[][]}
  */

@@ -1,5 +1,5 @@
 /**
- * Settings → About's credits (the user, 2026-10-18): each data source annai contacts, what it is used
+ * Settings → About's credits: each data source annai contacts, what it is used
  * for, the hosts it is reached at, and the attribution its licence or policy asks for. Plain data:
  * test/unit/credits.test.js checks that every host annai's code names is credited here, or says why
  * it isn't a source, so a new source can't ship without its credit.

@@ -4,7 +4,7 @@ import { disabledReason } from './registry.js';
  * Hooks (spec §5.4: "subscribe to log appends; read-only in v1"). A watched store reports the log
  * entries each committed write appended; each running plugin's hooks get frozen copies of what the
  * user, Shiori and annai do, never of an entry any plugin caused: one it appended, or one annai logged
- * for its fetch, model call or wake (fix pass 8b-1). So no plugin feeds its own hooks or another's.
+ * for its fetch, model call or wake. So no plugin feeds its own hooks or another's.
  * A plugin's hooks get at most HOOK_LIMIT entries in HOOK_WINDOW_MS, for a loop annai can't see (a
  * file it writes as the user): one more is its failure and switches it off (§5.5, with its card).
  * @typedef {import('./types.js').Store} Store
@@ -23,7 +23,7 @@ export function watchAppends(store, onAppend) {
       /** @type {EventRecord[]} */
       const appended = [];
       return store.tx(stores, mode, (t) => {
-        appended.length = 0; // a store that tries again starts over (fix pass M1)
+        appended.length = 0; // a store that tries again starts over
         return fn({
         ...t,
         appendEvent: async (scope, ev) => {

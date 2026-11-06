@@ -5,10 +5,9 @@ import { t } from './l10n.js';
 
 /**
  * The Plan screen's timetable (spec §16.2): rows by local day with ● fixed and ○ flexible, the legs between stops, and each booking on
- * its day (the bookings-and-trips design, goal 5). Anything that runs over several days (the drive-test follow-ups, section 2) is a set:
- * its start row on its day, a quiet line on each day between, and its end as a row of its own on its day: a stay's check-in, nights and
- * check-out; a car's pick-up, days and return; a red-eye's departure and arrival. A booking with no time is "Not on a day". A plan item
- * that links a booking stands for it on the item's own day.
+ * its day (the bookings-and-trips design, goal 5). Anything over several days is a set: its start row on its day, a quiet line on each
+ * day between, and its end as a row of its own: a stay's check-in, nights and check-out; a car's pick-up, days and return; a red-eye's
+ * departure and arrival. A booking with no time is "Not on a day". A plan item that links a booking stands for it on the item's own day.
  * @typedef {{ path: string, item: Record<string, any> }} PlanFile
  * @typedef {{ path: string, booking: Record<string, any> }} BookingFile
  * @typedef {{ path: string, item: Record<string, any>, from: 'item' | 'booking' | 'end' | 'line', at: number | null, day: string | null,
@@ -217,9 +216,8 @@ function tripDays(start, end) {
 }
 
 /**
- * Rows by day: every day of the trip (even empty), then any other day with something on it, in
- * order; each day's quiet lines first (mockup 2b), then its rows by time. Plan items without a time are
- * apart (untimed), and so are bookings without one ("Not on a day", notOnDay).
+ * Rows by day: every day of the trip (even empty), then any other day with something on it, in order; each day's quiet lines first, then
+ * its rows by time. Plan items without a time are apart (untimed), and so are bookings without one ("Not on a day", notOnDay).
  * @param {PlanRow[]} rows @param {{ start?: unknown, end?: unknown }} trip
  * @returns {{ days: { key: string, rows: PlanRow[] }[], untimed: PlanRow[], notOnDay: PlanRow[] }}
  */
@@ -246,10 +244,8 @@ export function legKm(a, b) {
 }
 
 /**
- * What Undo does for a file whose last changes are Shiori's (spec §11.5: "every replan is a set of
- * patches to the plan files, so it can be undone"): brings back the version from before all her
- * writes in a row, or, when those began by adding it, removes it. Null when the user changed it
- * last, or her last change was a delete.
+ * What Undo does for a file whose last changes are Shiori's (spec §11.5): brings back the version from before all her writes in a row,
+ * or, when those began by adding it, removes it. Null when the user changed it last, or her last change was a delete.
  * @param {{ actor: string, type: string, old: string | null, was?: { old?: string } }[]} history oldest first
  * @returns {{ restore: string } | { remove: true } | null}
  */

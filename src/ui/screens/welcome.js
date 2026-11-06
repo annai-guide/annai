@@ -11,11 +11,9 @@ import { officialPlugins, officialWords, shownEntry } from '../../core/llm/offic
 import { freeTicks, WELCOME_SEARCH } from '../search-panel.js';
 
 /**
- * The welcome (the user, 2026-10-18): six short steps in annai's own words, not Shiori's, at
- * #/welcome and #/welcome/2 to 6. It shows once per device at annai's plain start (../welcome.js), and
- * again from Settings → About. Each step's heading takes the focus; Next, Back and Skip are buttons, so
- * a keyboard reaches them in every browser; the last step is the onboarding: installing annai where
- * it isn't, then Settings → Models with the catalog's featured provider's sign-in (spec §9.8).
+ * The welcome: six short steps in annai's own words, not Shiori's, at #/welcome and #/welcome/2 to 6. It shows once per device at
+ * annai's plain start (../welcome.js), and again from Settings → About. Next, Back and Skip are buttons, so a keyboard reaches them
+ * in every browser; the last step is the onboarding: installing annai, then Settings → Models with the featured provider's sign-in (spec §9.8).
  */
 
 /** The steps, each by an id its body is found by (not its number, so a step added between them moves nothing). */
@@ -48,12 +46,12 @@ function body(n, ctx, part) {
       h('p', { text: t`Its guide is Shiori. She plans the trip with you, keeps your bookings and notes, reminds you at the right time and place, talks with you on the road, and makes a recap afterwards.` }),
       h('p', { class: 'sub', text: t`She is at the bottom of every screen: tap her to talk, or type.` }),
       h('p', { class: 'sub', text: t`annai (案内) is Japanese for "guidance; showing someone around".` }),
-      // The screens' language, to choose before reading on: annai restarts here, on the welcome, in it (L6 review 2).
+      // The screens' language, to choose before reading on: annai restarts here, on the welcome, in it.
       part,
     ];
   }
   if (id === 'halves') {
-    // The architecture, plainly (the user, 2026-10-23: "explain who is shiori, what is kokoro and what is koe").
+    // The architecture, plainly: who is Shiori, what is Kokoro and what is Koe.
     return [
       h('p', { class: 'lead', text: t`Shiori is your guide. She has two halves that work together.` }),
       h('ul', { class: 'can' },
@@ -131,7 +129,7 @@ function start(ctx) {
 /** @param {any} ctx @param {{ parts: string[] }} route */
 export async function renderWelcome(ctx, route) {
   const n = Math.min(LAST, Math.max(1, Number.parseInt(route.parts[1] ?? '1', 10) || 1));
-  // Drawn once, it is seen: shown once per device (the user, 2026-10-18).
+  // Drawn once, it is seen: shown once per device.
   await markWelcomed(ctx.ws).catch(() => {});
   const title = h('h1', { class: 'title', tabindex: '-1', text: TITLES[n - 1] });
   const go = (/** @type {string} */ hash) => () => ctx.go(hash);

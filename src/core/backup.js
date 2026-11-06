@@ -12,10 +12,8 @@ import { officialName, pluginName } from './llm/official.js';
 import { sentences, size } from './intl.js';
 
 /**
- * Backups to the places this device backs up to (spec §12.4). annai builds a Backup of everything
- * (§12.2); a storage type moves it; the trips it holds count as backed up once it lands (§4.9).
- * Single writer: a place whose newest backup is neither the one this device builds on nor one it
- * made waits until the user chooses: import that backup as a copy, or back up over it.
+ * Backups to the places this device backs up to (spec §12.4); a storage type moves them. Single writer: a place whose newest backup is
+ * neither the one this device builds on nor one it made waits until the user chooses: import it as a copy, or back up over it.
  * @typedef {import('./types.js').Store} Store
  * @typedef {import('./workspace.js').Workspace} Workspace
  * @typedef {import('./registry.js').Registry} Registry
@@ -29,14 +27,13 @@ import { sentences, size } from './intl.js';
  * @typedef {ReturnType<typeof createBackups>} Backups
  * @typedef {{ code: 'plugin-off' | 'passphrase' | 'offline' | 'large' | 'newer', type?: string, noun?: string, bytes?: number }
  *   | import('./answer.js').AnswerSaid | import('./archive.js').ArchiveSaid} Said
- *   one of annai's own errors, as data (a hold keeps it): backup's own (the place's kind, by its type; this device's noun; the upload's
- *   size), a server's
- *   (answer.js: unreachable, or its answer) or an export's (archive.js)
+ *   one of annai's own errors, as data (a hold keeps it): backup's own (type: the place's kind; noun: this device's; bytes: the upload's
+ *   size), a server's (answer.js) or an export's (archive.js)
  */
 
 /**
- * One of annai's own backup errors in the screens' words, made from its data: when it is thrown, and again when a hold that keeps it
- * is shown (localization L5f). Its English is the log's. null for a code this annai doesn't know (a later one's): shown as an old hold.
+ * One of annai's own backup errors in the screens' words, made from its data, when thrown and again when a hold that keeps it is shown.
+ * null for a code this annai doesn't know (a later one's): shown as an old hold.
  * @param {Said} s @param {string} [place] the place's name as the screens show it (its kind's, kindNames); else its type
  * @returns {string | null}
  */
@@ -56,9 +53,8 @@ export function backupWords(s, place) {
 }
 
 /**
- * A kind of backup place by name, which every place is named by (no place has a name of its own): shown, as the screens show it, and
- * english, for the log. The running plugin's (in the screens' words); else the installed plugin that provides it (annai's own by its
- * own translation on the device); else annai's own kind's, from its catalog's words once read; else its type.
+ * A kind of backup place by name (no place has a name of its own): shown for the screens, english for the log. From the running plugin;
+ * else the installed plugin that provides it; else annai's own kind's, from its catalog's words once read; else its type.
  * @param {Registry} registry @param {import('./plugins.js').PluginHost | null} plugins @param {string} type
  * @returns {Promise<{ shown: string, english: string }>}
  */
@@ -76,9 +72,8 @@ export async function kindNames(registry, plugins, type) {
 }
 
 /**
- * Why backups to a place stopped, as a screen says it: from what the hold keeps where annai wrote it; a plugin's own words in the
- * screens' language when they were kept in it (a backup can bring the hold to a device in another); else a place's or a plugin's
- * words, and a hold kept before it said what it was, as they were written.
+ * Why backups to a place stopped, as a screen says it: from what the hold keeps where annai wrote it; a plugin's own words when they were
+ * kept in the screens' language (a backup can bring the hold to a device in another); else the words as they were written.
  * @param {{ message: string, said?: Said | null, offline?: boolean, shown?: string, lang?: string }} h
  * @param {string} [place] the place's name as the screens show it (Backups' list and get)
  */
@@ -88,9 +83,8 @@ export function holdWords(h, place) {
 }
 
 /**
- * A hold kept before holds said what they were: one kept now always has said (null for a place's or a plugin's own words), so an
- * older one has neither said nor offline. Its words are the English annai wrote then, which a screen shows as a line of their own,
- * marked English, never inside a sentence of the screens' language. @param {any} h
+ * A hold kept before holds said what they were: it has neither said nor offline. Its words are the English annai wrote then, which a
+ * screen shows as a line of their own, marked English, never inside a sentence of the screens' language. @param {any} h
  */
 export const oldHold = (h) => h?.kind === 'error' && ((!('said' in h) && !('offline' in h)) || (h.said && backupWords(h.said) === null));
 
@@ -101,7 +95,7 @@ export const oldHold = (h) => h?.kind === 'error' && ((!('said' in h) && !('offl
  */
 const own = (kind, en, said, extra) => Object.assign(new TargetError(kind, en, extra), { shown: backupWords(said) ?? en, said });
 
-/** The newest time of each device's backups in a listing, by that device's own clock (minors 23). @param {RemoteBackup[]} listed @returns {Record<string, number>} */
+/** The newest time of each device's backups in a listing, by that device's own clock. @param {RemoteBackup[]} listed @returns {Record<string, number>} */
 function knownOf(listed) {
   /** @type {Record<string, number>} */
   const out = Object.create(null);
@@ -110,12 +104,12 @@ function knownOf(listed) {
 }
 
 /**
- * The newest backup another device made after the one this device builds on, or null (single writer).
- * Each listed is checked against the newest of its device's seen here (last.known), by that device's
- * clock: one behind is still seen, one never seen is newer (minors 23). An older record knows its base's time.
+ * The newest backup another device made after the one this device builds on, or null (single writer). Each listed is checked against the
+ * newest of its device's seen here (last.known), by that device's clock: one behind is still seen, one never seen is newer. An older
+ * record knows its base's time.
  * @param {RemoteBackup[]} listed newest first @param {import('./backup-targets.js').LastBackup | null | undefined} last
  * @param {string} me @param {{ remote: RemoteBackup, known?: Record<string, number> } | null} [over] the hold the user backs
- *   up over, which covers every device listed with it (fix pass R1)
+ *   up over, which covers every device listed with it
  */
 function newerOf(listed, last, me, over = null) {
   const on = over?.remote ?? last;
@@ -291,9 +285,8 @@ export function createBackups({ store, ws, registry, plugins = null, app, label,
   }
 
   /**
-   * Before a whole file is sent: its size against what may go without asking, and every backup the
-   * place lists (single writer); what it lists, for the record. A newer one is held with what was listed
-   * with it. A git place checks both in its own put.
+   * Before a whole file is sent: its size against what may go without asking, and every backup the place lists (single writer). A newer
+   * one is held with what was listed with it. A git place checks both in its own put.
    * @param {Target} rec @param {number} bytes @param {Extract<Hold, { kind: 'newer' }> | null} over @param {number} maxUpload @param {string} me
    */
   async function beforeFile(rec, bytes, over, maxUpload, me) {
@@ -379,8 +372,8 @@ export function createBackups({ store, ws, registry, plugins = null, app, label,
     types: () => [...storageTypes(registry).values()],
 
     /**
-     * Adds a place of a kind, installing its plugin when needed (spec §5.3). A plugin the user turned off
-     * stays off, and the words say so (fix pass): the place's Turn it on is the tap for that.
+     * Adds a place of a kind, installing its plugin when needed (spec §5.3). A plugin the user turned off stays off, and the words say
+     * so: the place's Turn it on is the tap for that.
      * @param {string} type @returns {Promise<string>}
      */
     async add(type) {
@@ -423,7 +416,7 @@ export function createBackups({ store, ws, registry, plugins = null, app, label,
       const signIn = Boolean(secret && Object.keys(secret).length);
       const encrypting = encrypt ?? rec.encrypt ?? false;
       const withKeys = encrypt === false ? false : keys ?? rec.keys ?? false;
-      // Checked before anything is kept: a change that fails keeps no new sign-in or passphrase (minors 25).
+      // Checked before anything is kept: a change that fails keeps no new sign-in or passphrase.
       if (encrypt !== undefined || keys !== undefined || passphrase !== undefined) {
         const hasPassphrase = passphrase !== undefined ? Boolean(passphrase) : Boolean((await targetSecret(store, id)).passphrase);
         if (encrypting && !hasPassphrase) throw Object.assign(new TargetError('setup', /* en */ "Type a passphrase for the encrypted backups, then save."), { shown: t`Type a passphrase for the encrypted backups, then save.` });
@@ -481,7 +474,7 @@ export function createBackups({ store, ws, registry, plugins = null, app, label,
       const [remote] = there;
       // A backup this device made but didn't get to note is the one to build on.
       const mine = !newer && remote && remote.id !== rec.last?.id && remote.device === me ? remote : null;
-      // What is there, seen: kept as the base's, or with the hold (fix pass R1); a git place keeps none.
+      // What is there, seen: kept as the base's, or with the hold; a git place keeps none.
       const known = whole(rec) ? { known: knownOf(there) } : {};
       await setTarget(ws, id, {
         checked: now(),
@@ -506,9 +499,8 @@ export function createBackups({ store, ws, registry, plugins = null, app, label,
     },
 
     /**
-     * What one backup holds, from its manifest alone, for a place whose type can peek (storage-types.js): the import screen previews
-     * with it, and calls download when the user imports. Null for a place that can't. It reads nothing else, so an automatic
-     * backup running isn't in its way. @param {string} id @param {string} backupId @param {{ signal?: AbortSignal }} [o]
+     * What one backup holds, from its manifest alone, for the import screen's preview; null for a place whose type can't peek. It reads
+     * nothing else, so an automatic backup running isn't in its way. @param {string} id @param {string} backupId @param {{ signal?: AbortSignal }} [o]
      */
     async peek(id, backupId, o = {}) {
       const rec = await target(id);

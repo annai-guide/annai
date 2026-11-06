@@ -6,13 +6,11 @@ import { t } from '../l10n.js';
 import { STAND_IN_NAMES } from './where.js';
 
 /**
- * Speaking (spec §10.1). What Shiori says arrives as text, a piece at a time; each complete
- * sentence goes to the first working entry of the speech-out list, an API voice or the browser's.
- * An API voice's next sentence is fetched while one plays, so there are no gaps. When a voice fails
- * partway through, it is benched and the same sentence plays on the next one. When the user cuts
- * her off, playing stops at once and what she had said is kept: by sentence and the fraction of it
- * played, or by word with the browser voice. A voice that streams (G3) is played as it comes, through
- * the stream player, once the start rule says it won't stutter; the next sentence's stream reads ahead.
+ * Speaking (spec §10.1). What Shiori says arrives as text, a piece at a time; each complete sentence goes to the first working entry of the
+ * speech-out list, an API voice or the browser's. An API voice's next sentence is fetched while one plays, so there are no gaps. A voice
+ * that fails partway is benched and the same sentence plays on the next one. When the user cuts her off, playing stops at once and what
+ * she had said is kept: by sentence and the fraction played, or by word with the browser voice. A voice that streams is played as it
+ * comes, once the start rule says it won't stutter; the next sentence's stream reads ahead.
  * @typedef {import('./platform.js').VoicePlatform} VoicePlatform
  * @typedef {import('./platform.js').Clip} Clip
  * @typedef {import('../llm/contract.js').SpeechStream} SpeechStream
@@ -69,7 +67,7 @@ function heardText(texts, said, cut) {
 
 /**
  * A voice's stream read as it arrives, each piece kept with when the first came, so playing can start once it
- * won't stutter (G3). Reading starts at once, and goes on while another sentence plays.
+ * won't stutter. Reading starts at once, and goes on while another sentence plays.
  */
 export class Arrivals {
   /** @type {Int16Array[]} */
@@ -118,12 +116,10 @@ export class Arrivals {
 const notAllowed = () => new DOMException(/* en */ 'The page may not play sound now.', 'NotAllowedError');
 
 /**
- * A stream played through the stream player, started once readyToStart says the rest will be in before
- * playback reaches it (G3). It ends played, or stopped by signal, with the fraction heard of the whole
- * sentence (its length estimated while the rest is still coming). A stream that fails stops its player and
- * throws, so the sentence can go to the next voice. A player whose sound doesn't play (an iPhone's audio
- * suspended by an interruption or a locked screen) says so, or isn't done stallMs after it should have
- * been: then it is stopped, as a page that may not play sound (fix pass).
+ * A stream played through the stream player, started once readyToStart says the rest will be in before playback reaches it. It ends
+ * played, or stopped by signal, with the fraction heard (the length estimated while the rest is still coming). A stream that fails stops
+ * its player and throws, so the sentence can go to the next voice. A player whose sound doesn't play (an iPhone's audio suspended by an
+ * interruption or a locked screen) says so, or isn't done stallMs after it should have been: then it is stopped, as a page that may not play sound.
  * @param {import('./platform.js').Player} player @param {Arrivals} a
  * @param {{ signal: AbortSignal, onLevel?: (x: number) => void, estimatedS: number, now: () => number, stallMs?: number }} o
  * @returns {Promise<{ ended: boolean, fraction: number }>}

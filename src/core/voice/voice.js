@@ -22,9 +22,8 @@ import { sha256Hex } from '../hash.js';
 import { t } from '../l10n.js';
 
 /**
- * Voice (spec §10): annai's speaking and hearing, for the screens, and in milestone 3b for
- * Shiori. Speech goes through the speech-out list; hearing through the microphone and the
- * end-of-sentence detector. The device side is the voice-browser plugin's.
+ * Voice (spec §10): annai's speaking and hearing, for the screens and for Shiori. Speech goes through the speech-out list;
+ * hearing through the microphone and the end-of-sentence detector. The device side is the voice-browser plugin's.
  * @typedef {import('./speaker.js').Spoken} Spoken
  * @typedef {import('./recorder.js').Segment} Segment
  * @typedef {(level: number, who: 'her' | 'you') => void} LevelListener
@@ -167,9 +166,8 @@ export class Voice {
   }
 
   /**
-   * How Shiori sounds, in the words of the first Gemini voice in her voices' list: its style, the description's default or the user's own,
-   * in plain words; '' once the user has cleared it, for a voice that takes none, or with no Gemini voice. Koe live is told it, so it sounds
-   * as she does in Classic.
+   * How Shiori sounds: the style of the first Gemini voice in her voices' list, in plain words; '' once the user has cleared it, for a voice
+   * that takes none, or with no Gemini voice. Koe live is told it, so it sounds as she does in Classic.
    */
   async speakingStyle() {
     const cfg = await this.llm.config();
@@ -310,7 +308,7 @@ export class Voice {
   unlock() {
     if (this.#unlocked) return Promise.resolve(true);
     // One at a time: a tap is pointerup, touchend and click, and a tap on Shiori unlocks too; loading the silent clip
-    // again over itself wedges WebKit on Linux (the welcome's keyboard test). Taps wait on one still starting, however long (review m5).
+    // again over itself wedges WebKit on Linux. Taps wait on one still starting, however long.
     if (this.#trying) return this.#trying;
     /** @type {Promise<boolean> | boolean | undefined} */
     let tried;
@@ -426,11 +424,9 @@ export class Voice {
   }
 
   /**
-   * One voice's clip, in the smallest format it offers that the phone plays (spec §10.6). A voice
-   * that refuses it (Speaches refuses opus and aac) is asked for MP3, then WAV, until annai restarts; one that refuses its
-   * style (a 400 naming instructions) is asked without it, as long.
-   * A voice that streams gives its stream once a tap has unlocked sound (G3): before then, the stream
-   * player might never sound (an iPhone), where a whole clip's refusal says so.
+   * One voice's clip, in the smallest format it offers that the phone plays (spec §10.6). One that refuses it (Speaches refuses opus and aac) is asked
+   * for MP3, then WAV, until annai restarts; one that refuses its style is asked without it, as long. A voice streams only once a tap has unlocked
+   * sound (G3): before then the stream player might never sound (an iPhone), where a whole clip's refusal says so.
    * @param {string} id @param {string} text @param {AbortSignal} [signal]
    * @returns {Promise<import('./platform.js').Clip | import('../llm/contract.js').SpeechStream>}
    */
@@ -629,8 +625,7 @@ export class Voice {
 
   /**
    * The input the microphone is open on, when it is no longer among the devices. Nothing else counts: a Receiver that comes and goes with
-   * the microphone, a watch, an id with no name. A list with no id or name says nothing about what is connected (the microphone no longer
-   * allowed), and a microphone not open has no input to lose.
+   * the microphone, a watch, an id with no name. A list with no id or name says nothing about what is connected (the microphone no longer allowed).
    * @param {{ kind: string, label: string, deviceId?: string }[]} devices @returns {{ label: string, deviceId: string } | null}
    */
   #lostInput(devices) {

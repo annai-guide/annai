@@ -2,7 +2,7 @@
  * G.711 (ITU-T G.711): the telephone's audio at a byte a sample, μ-law and A-law, coded as the
  * reference g711.c does (μ-law in its 14-bit domain, A-law in its 13-bit one). annai speaks 16-bit
  * PCM; plugins code it at the wire through annai.helpers.g711: OpenAI Realtime takes and gives
- * audio/pcmu and audio/pcma, and Gemini's voices send audio/mulaw and audio/alaw (G3).
+ * audio/pcmu and audio/pcma, and Gemini's voices send audio/mulaw and audio/alaw.
  */
 
 /** μ-law's bias. */

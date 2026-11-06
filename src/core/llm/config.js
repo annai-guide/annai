@@ -61,8 +61,7 @@ import { kindWords } from './contract.js';
 /** The roles that call chat models; an empty one uses the main list (spec §9.6). */
 export const CHAT_ROLES = Object.freeze(['main', 'utility', 'decide']);
 /**
- * Koe's two lists (the user, 2026-10-22: "Two lists + a switch", named "Realtime / Classic"): realtime models that hear and
- * speak, and chat models used with the speech lists. Neither ever uses Main.
+ * Koe's two lists: realtime models that hear and speak, and chat models used with the speech lists. Neither ever uses Main.
  */
 export const KOE_REALTIME = 'koe-realtime';
 export const KOE_CLASSIC = 'koe-classic';
@@ -265,9 +264,7 @@ export function modelBase(rec) {
 export function modelOf(rec) {
   const v = { ...MODEL_DEFAULTS, ...mergePatch(modelBase(rec), rec.user ?? {}) };
   // A price the user set stays theirs: the description's schedule does not change that field from its date (a typed input price must
-  // not become Google's on 2027-01-01). A schedule of the user's own was made with those prices (the Prices box takes the fields
-  // typed out of it as they are typed). A schedule left with no entry, or emptied (`[]`, or null, which older builds read as the
-  // schedule removed), is no schedule.
+  // not become Google's on 2027-01-01). A schedule of the user's own was made with those prices. One with no entry left is no schedule.
   if (v.prices && Array.isArray(v.prices.schedule)) {
     const own = rec.user?.prices;
     const set = own && typeof own === 'object' && !('schedule' in own) ? Object.keys(own) : [];
@@ -330,7 +327,7 @@ function rolesFrom(saved, cfg) {
   // Koe's two lists before they were one (2026-10-19): the talking list's models, then the typing list's, and its wait, else
   // the typing list's. Not their level: old files hold an explicit 'off', the old default, which would defeat the new 'low'.
   const old = one ?? (talk || type ? { models: [...new Set([talk?.models, type?.models].flatMap((m) => (Array.isArray(m) ? m : [])))], firstOutputSeconds: talk?.firstOutputSeconds ?? type?.firstOutputSeconds } : undefined);
-  // The one list before it was two again (the user, 2026-10-22): its realtime models make Realtime, the rest Classic, each in its
+  // The one list before it was two again: its realtime models make Realtime, the rest Classic, each in its
   // order, Classic keeping the list's level and wait; the mode is the kind of its first model that could answer (its ability on).
   if (old) {
     const ids = (Array.isArray(old.models) ? old.models : []).filter((/** @type {any} */ id) => typeof id === 'string' && models[id]);
@@ -403,11 +400,10 @@ export async function saveModel(ws, rec) {
 }
 
 /**
- * Changes a model as it is stored: fn gets the record and gives the new one, read and written in the file's lock, so what is
- * recorded between (a Test's result, a field saved from another page) is not lost. The checks that look at other records (its
- * provider, its name) are made on the record fn gives first, before the lock, so an autosave does not hold the lock across a scan of
- * every provider and model; in the lock the record is checked on its own, and in full again if its provider, ability or name came
- * out otherwise. fn is called more than once, so it makes its answer from the record alone.
+ * Changes a model as it is stored, read and written in the file's lock, so what is recorded between (a Test's result, a field saved
+ * from another page) is not lost. The checks that scan other records run first, before the lock, so an autosave doesn't hold it across
+ * a scan; in the lock they run again only if provider, ability or name came out otherwise. fn is called more than once, so it makes its
+ * answer from the record alone.
  * @param {Workspace} ws @param {string} id @param {(rec: ModelRecord) => ModelRecord} fn @returns {Promise<ModelRecord>} the record as saved
  */
 export async function updateModel(ws, id, fn) {
@@ -426,9 +422,8 @@ export async function updateModel(ws, id, fn) {
 }
 
 /**
- * Records what a Test found on a model: only `verified`, changed in the model's file lock, so a field the user saved while the Test
- * ran (it can take seconds) is not written back as it was. What it names replaces what was there under that name (a level no longer
- * tried is no longer listed). A model removed meanwhile stays removed.
+ * Records what a Test found on a model: only `verified`, in the model's file lock, so a field saved while the Test ran is not written
+ * back as it was. What it names replaces what was there under that name. A model removed meanwhile stays removed.
  * @param {Workspace} ws @param {string} id @param {Record<string, any>} verified
  */
 export async function markVerified(ws, id, verified) {

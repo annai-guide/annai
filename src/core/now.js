@@ -41,7 +41,7 @@ export function routeStrip(rows, here, now, activity, limit = 3) {
   });
 }
 
-/** Where the sun chips are worked out (choice 6): where the user is, else the next stop with a place. @param {Point | null} here @param {PlanRow[]} rows @param {number} now */
+/** Where the sun chips are worked out: where the user is, else the next stop with a place. @param {Point | null} here @param {PlanRow[]} rows @param {number} now */
 export function sunPlace(here, rows, now) {
   if (here) return { lat: here.lat, lng: here.lng };
   return routeStrip(rows, null, now, 'unknown', 1)[0]?.place ?? null;

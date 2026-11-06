@@ -4,7 +4,7 @@ import { EXPERIMENTAL } from '../../core/l10n-list.js';
 import { ownName } from '../languages.js';
 
 /**
- * Settings → Experimental (the user, 2026-10-18): features still being tried, each off until turned
+ * Settings → Experimental: features still being tried, each off until turned
  * on, kept under experimental in the app's settings. Each is a panel of its own; more join the list.
  * @param {any} ctx
  */
@@ -30,7 +30,7 @@ export async function renderExperimental(ctx) {
       unfinished.el,
       h('p', { class: 'sub', text: t`Translations that nobody who reads the language has checked yet. On, you can choose them in Settings → Languages. Their wording may be wrong, and what isn't translated yet stays in English.` }),
       h('ul', { class: 'langs' }, ...EXPERIMENTAL.map((tag) => h('li', { lang: tag, text: ownName(tag) })))) : null,
-    // An official plugin rather than a switch: most people never need it (the user, 2026-10-18).
+    // An official plugin rather than a switch: most people never need it.
     h('section', { class: 'panel', 'aria-label': t`Remote trace (for developers)` },
       h('h2', { class: 'section', text: t`Remote trace (for developers)` }),
       h('p', { class: 'sub', text: t`Sends annai's trace to a server you run, to see what annai does on this phone as it happens. Off until you set it up; a chip in the dock shows while it sends.` }),

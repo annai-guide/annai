@@ -5,9 +5,9 @@ import { officialPlugins, download, officialName, pluginName, fetchTranslations 
 import { SYS_PLUGINS } from './scopes.js';
 
 /**
- * What a plugin requires (spec §5.3, decision 7): plugins by id and a range "^N", the same major. An
+ * What a plugin requires (spec §5.3): plugins by id and a range "^N", the same major. An
  * official one comes from annai's catalog, hash-checked, with no question; a third party's must be
- * installed first. All or nothing. Calls never install (decision 9).
+ * installed first. All or nothing. Calls never install.
  * @typedef {import('./plugins.js').PluginHost} PluginHost
  * @typedef {import('./llm/official.js').CatalogPlugin} CatalogPlugin
  * @typedef {import('./llm/official.js').FetchOptions & { catalog?: CatalogPlugin[], tap?: boolean }} Env
@@ -57,7 +57,7 @@ export async function refuseBreaking(host, id, version, name, except) {
  * The official plugins to install or update first, in order; nothing changes. It stops, naming the
  * requirement, when one can't be met: a third party's not installed (with its homepage) or out of
  * range, none in range in the catalog, annai's id held by a package from elsewhere, one the user switched
- * off (never switched on without asking: security review), or an update another plugin doesn't accept.
+ * off (never switched on without asking), or an update another plugin doesn't accept.
  * @param {PluginHost} host @param {Requirement[]} requires @param {CatalogPlugin[]} catalog
  * @param {{ who?: string, except?: string }} [o] who: for the words; except: the package being installed
  * @returns {Promise<CatalogPlugin[]>}
@@ -73,7 +73,7 @@ export async function checkRequires(host, requires, catalog, { who = /* en */ 'T
     // What it needs, in annai's English (words) and the screens' (shown).
     const no = (/** @type {string} */ words, /** @type {string} */ shown) => new PluginError(who, /* en */ `needs ${words}`, { shown });
     const named = e?.name ?? s?.name ?? r.id;
-    // annai's own in the screens' words (decision 10); the English is the log's.
+    // annai's own in the screens' words; the English is the log's.
     const shown = e ? officialName(e.id, e.name) : named;
     /* en */
     if (s?.enabled === false) throw no(`${named}, which you turned off. ${TURN_ON}`, sentences(t`needs ${shown}, which you turned off.`, turnOnShown()));
@@ -101,7 +101,7 @@ export async function checkRequires(host, requires, catalog, { who = /* en */ 'T
 
 /**
  * Starts a plugin that is on: one the user switched off stays off; one annai switched off after errors
- * starts again only on the user's tap (§5.5) or when this call installed it (security review).
+ * starts again only on the user's tap (§5.5) or when this call installed it.
  * @param {PluginHost} host @param {string} id @param {{ tap?: boolean, fresh?: boolean }} [o]
  */
 async function running(host, id, { tap = false, fresh = false } = {}) {
@@ -134,7 +134,7 @@ export async function installRequirements(host, requires, env, { who, id, instal
   const before = await host.installed();
   /** @type {string[]} */
   const fresh = [];
-  /** @type {Map<string, Map<string, Uint8Array>>} the files of requirements this call updates, to put back (fix pass) */
+  /** @type {Map<string, Map<string, Uint8Array>>} the files of requirements this call updates, to put back */
   const was = new Map();
   try {
     for (const [e, files] of got) {
@@ -171,7 +171,7 @@ async function storedFiles(host, id) {
 }
 
 /**
- * Refuses a package from a file or an address whose id is annai's own (security review): in its
+ * Refuses a package from a file or an address whose id is annai's own: in its
  * catalog or, offline, installed from it. @param {PluginHost} host @param {string} id @param {string | undefined} source @param {Env} [env]
  */
 export async function checkPackageId(host, id, source, env = {}) {
@@ -217,7 +217,7 @@ export async function addFromCatalog(host, id, env = {}) {
 }
 
 /**
- * The official protocol plugins nothing needs (decision 10): ones providing endpoint types no installed
+ * The official protocol plugins nothing needs: ones providing endpoint types no installed
  * plugin requires and no ability uses; a third party's stays. gone: plugins counted as removed already.
  * @param {PluginHost} host @param {Set<string>} inUseTypes @param {Set<string>} [gone] @returns {Promise<string[]>}
  */

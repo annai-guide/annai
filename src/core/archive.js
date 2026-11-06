@@ -165,9 +165,8 @@ const EVENT_SCHEMA = {
  * @param {Store} store
  * @param {{ kind: 'trip'|'everything', scopes?: string[], include: Include, secrets?: boolean,
  *   passphrase?: string, iterations?: number, app: string, now?: number, share?: { places: boolean, convert?: PhotoConvert } }} opts
- *   share: this is a Share (§12.2): photos go only as encoded copies, without older versions. Unless places is true, nothing says where
- *   anything was: no photo's place, no History (Shiori's lookups copy the live position into it) whatever include.history says,
- *   no /watches/, and every .md, .txt, .csv and .html file (notes, memory, the recap) without positions; JSON and .ics are never touched.
+ *   share: this is a Share (§12.2): photos go only as encoded copies, without older versions; unless places is true, nothing says where
+ *   anything was, whatever include.history says.
  * @returns {Promise<{ blob: Blob, filename: string, manifest: Manifest, skipped: string[], seqs: Map<string, number> }>}
  *   skipped: photos left out of a Share because their location couldn't be removed;
  *   seqs: scope id → the last history entry the archive holds (empty without history)
@@ -306,17 +305,8 @@ function withoutPhotoMeta(e, include) {
   return { ...e, data };
 }
 
-// A position quoted in a trip's text (the recap, notes, memory, a CSV or HTML file), as a Share without places removes it.
-// (An encoded bar, %7C, also splits a pair: the Wikipedia nearby search annai builds writes gscoord=36.3715%7C-121.9017.)
-// Matched, in every form annai itself writes and the forms people use:
-//  - a pair of numbers with three decimals or more, split by a comma, a semicolon, a slash or an encoded comma (%2C): "47.612, -122.335",
-//    "47.612;-122.335", "47.612/-122.335", "36.3715%2C-121.9017" (a maps link), also in brackets, with ° and N/S/E/W:
-//    "47.612° N, 122.335° W", "47.612N 122.335W";
-//  - a labelled pair, any decimals: "lat 47.612, lng -122.335", "latitude: …, longitude: …", OpenStreetMap's "mlat=…&mlon=…";
-//  - after "near", a pair with two decimals: "near 47.61, -122.33".
-// Not matched: a bare pair with two decimals (prices, "12.50, 14.00"), two numbers with only a space between and no hemisphere,
-// degrees-minutes-seconds, a hemisphere written before its number, a pair split over two lines.
-// Some number pairs that aren't positions go too ("near 12.50, 14.00", a list "1.250, 3.500"): the price of catching the rest.
+// A position quoted in a trip's text, as a Share without places removes it: the forms matched are in spec §12.2. An encoded bar, %7C,
+// also splits a pair: the Wikipedia nearby search annai builds writes gscoord=36.3715%7C-121.9017.
 //
 // Run time: a match can only start where no horizontal space comes before it and takes the spaces in front of it itself, and the
 // optional parts of a pattern never share the same characters, so no input takes more than linear time. Spaces are horizontal only:
@@ -348,7 +338,7 @@ function pointPattern(h, bytes = false) {
 const POINT = pointPattern(String.raw`[^\S\r\n\u2028\u2029\uFEFF]`);
 /** Text read byte for byte (an old Latin-1 or Shift-JIS file): only a space or a tab, since 0xA0 can be half of a letter. */
 const POINT_BYTES = pointPattern('[ \\t]', true);
-/** Trip text a Share without places removes positions from: notes, memory, the recap, CSV and HTML files, whoever wrote them. Never JSON or .ics: the plan's, bookings' and a calendar event's places stay. */
+/** Trip text a Share without places removes positions from, whoever wrote it. Never JSON or .ics: the plan's, bookings' and a calendar event's places stay. */
 const TEXT_FILE = /\.(?:md|txt|csv|html)$/i;
 const UTF8_STRICT = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }); // ignoreBOM: a BOM stays in the text, so it is written back
 
@@ -400,13 +390,9 @@ function validMeta(meta) {
 }
 
 /**
- * A photo as a Share carries it (§12.2). Encoded first: a kept original, a format some browsers
- * can't show, and a photo of unknown origin (no metadata, so not added through ingest). Without
- * places, its metadata and its bytes say nothing about where it was taken: every photo is either
- * stripped or encoded here, or stays home. Nothing it was given is trusted for that (its metadata
- * may come from someone else's archive), and the reader only knows EXIF, so finding no location
- * proves nothing. null when the photo has to stay home, for example a HEIC original in a browser
- * that can't read HEIC.
+ * A photo as a Share carries it (§12.2). Encoded first: a kept original, a format some browsers can't show, and a photo of unknown
+ * origin (no metadata, so not added through ingest). Without places, every photo is stripped or encoded here, or stays home (null):
+ * its metadata may come from someone else's archive, and the reader only knows EXIF, so finding no location proves nothing.
  * @param {{ path: string, type: string, meta?: PhotoMeta }} f @param {Uint8Array} bytes
  * @param {{ places: boolean, convert?: PhotoConvert }} share
  * @returns {Promise<{ bytes: Uint8Array, type: string, meta?: PhotoMeta } | null>}
@@ -465,10 +451,8 @@ export function checkManifest(manifest) {
 }
 
 /**
- * Decrypts (if needed) and opens an archive, and reads only its manifest: enough for the preview,
- * however large the file. The content is checked when it is imported, one entry at a time
- * (importArchive). Throws ArchiveError (or NeedsPassphraseError /
- * PassphraseError) without touching storage.
+ * Decrypts (if needed) and opens an archive, and reads only its manifest: enough for the preview, however large the file. The content
+ * is checked when it is imported (importArchive). Throws ArchiveError (or NeedsPassphraseError / PassphraseError) without touching storage.
  * @param {Blob | Uint8Array} file
  * @param {string} [passphrase]
  * @returns {Promise<OpenedArchive>}
@@ -665,11 +649,8 @@ export async function importArchive(store, opened, choices = {}) {
     keptSecrets: /** @type {string[]} */ ([]),
   };
 
-  // Content first, one entry at a time, each in its own transaction (spec §12.1: an archive
-  // needn't fit in memory). Blobs are stored by their hash and nothing points at them yet, so
-  // until the last step nothing is visible; if any step fails, the ones stored here go again.
-  // What comes: the files of the scopes taken, and what their logs name that the archive carries, an older version or a
-  // file of a scope not taken (an export holds each content once); nothing nothing taken names (spec §4.9).
+  // Content first, one entry at a time, each in its own transaction (spec §12.1: an archive needn't fit in memory). Nothing points
+  // at it yet, so until the last step nothing is visible; if any step fails, the ones stored here go again. What comes: spec §12.3.
   /** @type {Map<string, Content>} */
   const content = new Map();
   /** @param {string} hash @param {{ name: string, type: string, bytes?: Uint8Array }} c @param {Use} use */
@@ -695,9 +676,8 @@ export async function importArchive(store, opened, choices = {}) {
   /** @type {string[]} */
   const added = [];
   try {
-    // Content this device holds is checked, not stored again: an archive names only content it carries (reach.js),
-    // never another trip's by its hash. Asked once, not once per entry; an entry of another size is refused unread,
-    // and what what it replaces vouches for (vouched) isn't read at all. Each content's size is its own, never the manifest's.
+    // Content this device holds is checked, not stored again: an archive names only content it carries (reach.js, spec §12.3),
+    // never another trip's by its hash. Asked once, not once per entry.
     const { held, own } = await store.tx(['scopes', 'files', 'events', 'blobs'], 'readonly', async (t) => {
       /** @type {string[][]} */
       const replaced = [];
@@ -862,8 +842,7 @@ async function replacedBy(t, p) {
 
 /**
  * Whether what an import replaces vouches for content it then needn't read (spec §12.3): each file of it is the current
- * file at that path in a scope it replaces, and each log naming it is a part whose replaced scope names it. An older
- * version a replaced copy kept, or a deleted file of "me", is never made a current file unread.
+ * file at that path in a scope it replaces, and each log naming it is a part whose replaced scope names it.
  * @param {import('./types.js').Tx} t @param {string} hash @param {Use[]} uses @param {string[][]} replaced by plan index
  */
 async function vouched(t, hash, uses, replaced) {

@@ -51,7 +51,7 @@ export async function moveFile(ws, from, to, o = {}) {
 
 /**
  * Removes a waiting file for good: the file and its history, then the content nothing else names (spec §4.9); and its short name with
- * it, names.json's history included (the coordinator, 2026-10-29), so nothing stored keeps the dropped file's name.
+ * it, names.json's history included, so nothing stored keeps the dropped file's name.
  * @param {Workspace} ws @param {string} path in the waiting space (/files/…) @returns {Promise<number>} the bytes the file's content freed
  */
 export async function dropWaiting(ws, path) {

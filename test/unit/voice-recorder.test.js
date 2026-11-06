@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { record } from '../../src/core/voice/recorder.js';
-import { decodeWav, wavSeconds, resample } from '../../src/core/voice/pcm.js';
+import { decodeWav, resample } from '../../src/core/voice/pcm.js';
 import { clip, quiet, cat } from './voice-kit.js';
 import { fakePlatform } from './voice-fakes.js';
 
@@ -20,8 +20,9 @@ test('the microphone opens for the window; what it hears is cut into 16 kHz WAV 
   assert.equal(speech, 1);
   assert.match(got[0].id, /^s-/);
   assert.equal(got[0].audio.mediaType, 'audio/wav');
-  assert.equal(decodeWav(got[0].audio.data).sampleRate, 16_000);
-  assert.ok(Math.abs(got[0].audio.seconds - wavSeconds(got[0].audio.data)) < 0.05);
+  const wav = decodeWav(got[0].audio.data);
+  assert.equal(wav.sampleRate, 16_000);
+  assert.ok(Math.abs(got[0].audio.seconds - wav.pcm.length / wav.sampleRate) < 0.05);
   assert.ok(levels.some((x) => x > 0.2));
   s.close();
   assert.deepEqual(p.log, ['mic open', 'mic close']);

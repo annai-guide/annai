@@ -41,7 +41,7 @@ function upgrade(db, tx, from, to) {
     events.createIndex('old', 'data.old');
     events.createIndex('new', 'data.new');
   }
-  // 4: log entries by type, so a query by type reads only those entries, not a day's location points (A6).
+  // 4: log entries by type, so a query by type reads only those entries, not a day's location points.
   // The records stay as they are, so exports and Backups are unchanged.
   if (from < 4 && to >= 4) tx.objectStore('events').createIndex('type', ['scope', 'type', 'seq']);
 }

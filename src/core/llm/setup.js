@@ -2,7 +2,7 @@ import { isPluginBug } from '../registry.js';
 import { KINDS } from './contract.js';
 
 /**
- * The provider contract (decision 15; docs/plugins.md, "Model providers with code"): a provider
+ * The provider contract (docs/plugins.md, "Model providers with code"): a provider
  * plugin's setup, registered once as 'provider-setup'. panel and returned are drawn and called by
  * src/ui/provider-setup.js; classify, headers and list adjust how its abilities are called.
  * @typedef {{ panel?: Function, keyField: boolean, returned?: Function, classify?: (status: number, body: string, ability: string) => string | null,

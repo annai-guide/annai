@@ -16,7 +16,7 @@ import { lang, glossary } from '../l10n.js';
  * 4. the now block, last, after the cache marker.
  * @typedef {{ trip: string | null, personalityName: string, personality: string, profile: string, memory: string,
  *   tripInfo: string, tripMemory: string, skills: { name: string, description: string }[], languages?: string, edited?: Partial<Record<import('./her-instructions.js').InstructionId, string>> }} Snapshot
- *   languages: the languages section's words (phase 2), from the languages setting; edited: the instructions the user changed (her-instructions.js)
+ *   languages: the languages section's words, from the languages setting; edited: the instructions the user changed (her-instructions.js)
  * @typedef {import('../llm/contract.js').Request} Request
  */
 
@@ -38,7 +38,7 @@ export async function takeSnapshot({ ws, registry, trip, personalityName, locale
     tripInfo: tripJson ? JSON.stringify(tripJson, null, 2) : '',
     tripMemory: trip ? await read(trip, '/memory.md') : '',
     skills: skillIndex(registry),
-    // Then the screens' names and a Distances choice (localization L6).
+    // Then the screens' names and a Distances choice.
     languages: [languagesText(languageSettings(app, locale)), screensText(lang(), glossary()), distancesText(app)].filter(Boolean).join(' '),
     edited: await editedInstructions(ws),
   };
@@ -53,7 +53,7 @@ export async function takeSnapshot({ ws, registry, trip, personalityName, locale
 export function nextSnapshot(prev, fresh, { cold }) {
   if (!prev || cold || prev.trip !== fresh.trip) return fresh;
   const samePersonality = prev.personality === fresh.personality && prev.personalityName === fresh.personalityName;
-  // A skill installed or removed shows at once, as a new tool does (choice 10 of milestone 8a).
+  // A skill installed or removed shows at once, as a new tool does.
   const sameSkills = JSON.stringify(prev.skills) === JSON.stringify(fresh.skills);
   // So does a change of the languages setting, or of her instructions: the user chose it just now.
   const sameEdits = JSON.stringify(prev.edited ?? {}) === JSON.stringify(fresh.edited ?? {});
@@ -108,7 +108,7 @@ function localTime(now, timeZone) {
  * The now block (spec §6.3, item 4): sent last, never cached.
  * @param {{ now: number, timeZone: string, voice: string, online: boolean, reasons: string[], plan: string[][] | null, place?: string, activity?: string, voiceWhy?: string, koe?: string }} c
  *   voiceWhy: why voice is on with its setting off (spec §10.5); plan null: no plan line (Koe's view has the plan); koe: Koe's state, for Kokoro;
- *   reasons: what woke her, or joined her turn, since her last request: none, no line (each is said once; the fix pass)
+ *   reasons: what woke her, or joined her turn, since her last request: none, no line (each is said once)
  */
 export function nowBlock({ now, timeZone, voice, online, reasons, plan, place = 'unknown', activity = 'unknown', voiceWhy = '', koe }) {
   /* en */ const lines = [

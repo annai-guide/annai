@@ -24,8 +24,7 @@ const PASTE_MAX = 280;
 const PASTE_LINES = 4;
 
 /**
- * Whether pasted text is a confirmation to hand over (over 280 characters, or 4 lines or more), not words to type (My call 6; the user,
- * 2026-10-29: "Long pastes only, plus undo"). @param {string} text
+ * Whether pasted text is a confirmation to hand over (over 280 characters, or 4 lines or more), not words to type. @param {string} text
  */
 export const pasteBecomesFile = (text) => [...text].length > PASTE_MAX || text.trim().split(/\r\n|\r|\n/).length >= PASTE_LINES;
 
@@ -124,7 +123,7 @@ export function createComposer(ctx, o = {}) {
       const pasted = 'file' in a && typeof a.pasted === 'string' ? a.pasted : null;
       return h('span', { class: 'attach-chip' },
         h('span', { class: 'attach-name', dir: 'auto', text: name }),
-        // A paste that became a file can be words again (the user, 2026-10-29: "plus undo").
+        // A paste that became a file can be words again.
         pasted !== null ? h('button', { class: 'attach-back', type: 'button', disabled: keeping, onclick: () => { drop(i); o.onPutBack?.(pasted); } }, t`Put back as text`) : null,
         h('button', { class: 'attach-remove', type: 'button', disabled: keeping, 'aria-label': tc('a file in the message')`Remove ${name}`, title: tc('a file in the message')`Remove ${name}`, onclick: () => drop(i) },
           h('span', { 'aria-hidden': 'true', text: '×' })));
@@ -180,7 +179,7 @@ export function createComposer(ctx, o = {}) {
       draw();
     },
     /**
-     * A paste into an empty box: a long one (a confirmation email) becomes a file chip, its text not typed (My call 6); anything else is
+     * A paste into an empty box: a long one (a confirmation email) becomes a file chip, its text not typed; anything else is
      * typed. @param {ClipboardEvent} e @param {boolean} empty the box holds no words @returns {boolean} whether it was taken
      */
     paste(e, empty) {

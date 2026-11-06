@@ -9,7 +9,7 @@ import { addressParts, KEY_BLANK } from './address.js';
 import { record } from './agent/log.js';
 import { readAppSettings, updateAppSettings } from './settings.js';
 import { logEvent } from './events.js';
-import { readZip, ZipReader, ZipWriter } from './zip.js';
+import { ZipReader, ZipWriter } from './zip.js';
 import { xmlElements, xmlText } from './xml.js';
 import { TargetError, checkStorageType, backupFileName, parseBackupFileName, readAnswer } from './storage-types.js';
 import { PluginError, TAKEN, NOT_OWN, KEYED, NAMED, isPluginBug, compareRanks, takenShown, notOwnShown } from './registry.js';
@@ -42,7 +42,7 @@ export const MAX_START_FAILURES = 3;
 const STATE = '/installed.json';
 /** Where a package's translations are, inside it: l10n/<tag>.json. */
 const WORDS = 'l10n/';
-/** A package's secret holding the address it came from, keys and all (fix pass 8a-1); annai's alone, as a plugin's are plugin:<id>:… (Reset R1). @param {string} id */
+/** A package's secret holding the address it came from, keys and all; annai's alone, as a plugin's are plugin:<id>:…. @param {string} id */
 const ADDRESS = (id) => /* en */ `package:${id}:address`;
 /** A plugin's settings file in sys:settings (spec §5.4). @param {string} id */
 const SETTINGS = (id) => /* en */ `/plugin-settings/${id}.json`;
@@ -104,7 +104,7 @@ export class PluginHost {
   #services = {};
   /** @type {Map<string, Promise<void>>} plugins starting now, so a second start waits instead of activating twice */
   #starting = new Map();
-  /** @type {Set<string>} ids being removed: their start's later writes are skipped, and they don't start again (fix pass 8a-2) */
+  /** @type {Set<string>} ids being removed: their start's later writes are skipped, and they don't start again */
   #removing = new Set();
   /** @type {Map<string, ReturnType<typeof wordsOf>>} each running plugin's words for the screens */
   #words = new Map();
@@ -163,19 +163,6 @@ export class PluginHost {
    */
   async installed() {
     return (this.#known = (await this.ws.readJSON(SYS_PLUGINS, STATE)) ?? {});
-  }
-
-  /** Installs (or replaces) a package from a zip file. @param {Uint8Array} bytes @param {{ source?: 'file' | 'url' | 'official', file?: string, url?: string }} [opts] */
-  async installZip(bytes, opts) {
-    /** @type {Map<string, Uint8Array>} */
-    let files;
-    try {
-      files = await readZip(bytes, { maxTotal: this.maxPackageBytes });
-    } catch (e) {
-      const why = /** @type {any} */ (e)?.message ?? e;
-      throw new PluginError('plugin', /* en */ `this file isn't a plugin package annai can open: ${why}`, { shown: t`this file isn't a plugin package annai can open: ${why}`, en: String(why) });
-    }
-    return this.install(files, opts);
   }
 
   /**
@@ -282,15 +269,15 @@ export class PluginHost {
     await this.stop(id);
     const state = await this.installed();
     const before = state[id];
-    // annai's own plugin keeps its name: a package from elsewhere never replaces it (security review), nor annai's one from elsewhere.
+    // annai's own plugin keeps its name: a package from elsewhere never replaces it, nor annai's one from elsewhere.
     if (before?.source === 'official' && source !== 'official') throw new PluginError(id, TAKEN, { shown: takenShown() });
     if (before && before.source !== 'official' && source === 'official') throw new PluginError(id, NOT_OWN, { shown: notOwnShown() });
-    // An address's keys go to the package's secret; installed.json and the log keep it with «key» in their places (fix pass 8a-1).
+    // An address's keys go to the package's secret; installed.json and the log keep it with «key» in their places.
     const shown = await this.#keepAddress(id, url);
     state[id] = {
-      // A new version of one that is off stays off (fix pass 8a-5); it keeps when it was first installed, its rank.
+      // A new version of one that is off stays off; it keeps when it was first installed, its rank.
       version: pkg.version, name: pkg.name, kind: pkg.kind, enabled: before ? before.enabled !== false : true, installed: before?.installed ?? this.ws.now(), source, fingerprint: pkg.fingerprint, skills: pkg.skills.map((x) => x.name),
-      // Where its provider sends keys, as agreed to now: an update is compared with this (security review).
+      // Where its provider sends keys, as agreed to now: an update is compared with this.
       ...(pkg.provider || pkg.search ? { origins: originsOf(pkg.manifest) } : {}), provides: pkg.manifest.provides ?? {},
       ...(file ? { file } : {}), ...(shown ? { url: shown } : {}), ...(before?.tools ? { tools: before.tools } : {}),
     };
@@ -318,9 +305,8 @@ export class PluginHost {
   }
 
   /**
-   * Keeps the address a package came from: in its secret when the address holds a key, so annai can
-   * look there for updates (fix pass 8a-1); none, without an address. Returns the address as
-   * installed.json and the log keep it.
+   * Keeps the address a package came from: in its secret when the address holds a key, so annai can look there for
+   * updates; none, without an address. Returns the address as installed.json and the log keep it.
    * @param {string} id @param {string | undefined} url
    */
   async #keepAddress(id, url) {
@@ -337,9 +323,8 @@ export class PluginHost {
   }
 
   /**
-   * The address a package installed from one came from, keys and all, or null. One kept raw in
-   * installed.json before fix pass 8a-1 moves into its secret now, and the old versions of
-   * installed.json, which held it, are forgotten.
+   * The address a package installed from one came from, keys and all, or null. One an older annai kept raw in
+   * installed.json moves into its secret now, and the old versions of installed.json, which held it, are forgotten.
    * @param {string} id @returns {Promise<string | null>}
    */
   async address(id) {
@@ -349,7 +334,7 @@ export class PluginHost {
     const kept = await this.ws.store.tx(['secrets'], 'readwrite', async (/** @type {any} */ t) => {
       const now = await t.getSecret(ADDRESS(id));
       if (typeof now?.address === 'string') return now.address;
-      // Kept among the plugin's own before Reset R1 (or by a backup from then): moved when it is surely annai's.
+      // Kept among the plugin's own by an older annai (or a backup from then): moved when it is surely annai's.
       /* en */ const old = await t.getSecret(`plugin:${id}:address`);
       if (!shownUrl.includes(KEY_BLANK) || typeof old?.address !== 'string' || !Array.isArray(old.keys) || !old.keys.every((k) => typeof k === 'string')) return null;
       await t.putSecret(ADDRESS(id), { address: old.address, keys: old.keys });
@@ -392,7 +377,7 @@ export class PluginHost {
   async startInstalled() {
     const failures = [];
     this.#uses = (await readAppSettings(this.ws)).uses ?? {};
-    // An address kept raw before fix pass 8a-1 moves into its package's secret.
+    // An address an older annai kept raw moves into its package's secret.
     for (const [id, s] of Object.entries(await this.installed())) if (s.source === 'url') await this.address(id).catch(() => {});
     // What a plugin provides, kept with its record (read now for one installed before): an official plugin's stays annai's while it is
     // off, and a backup place's kind is named by the plugin that provides it.
@@ -597,7 +582,7 @@ export class PluginHost {
 
   /**
    * What Reset would clear: whether the plugin's settings file, or a version of it, is stored; the
-   * file's keys; its secrets' names (the address it came from is annai's, R1). null for the MCP client.
+   * file's keys; its secrets' names (the address it came from is annai's). null for the MCP client.
    * @param {string} id @returns {Promise<{ file: boolean, keys: string[], secrets: string[] } | null>}
    */
   async saved(id) {
@@ -613,7 +598,7 @@ export class PluginHost {
   }
 
   /**
-   * Reset on a plugin's page (the user's ask, 2026-10-18; removing means removing): its settings file
+   * Reset on a plugin's page (removing means removing): its settings file
    * and that file's history, and all its secrets (the address it came from is annai's). Its package, its on/off
    * state, its tools' switches and what it wrote into trips stay. It keeps running, and what it reads
    * next is its schema's defaults and no secrets. The system log names what went, never its values.
@@ -631,7 +616,7 @@ export class PluginHost {
     if (had.file || had.secrets.length) {
       const m = this.builtins.get(id) ?? (await this.#stored(id).catch(() => null));
       const props = m?.settings?.properties && typeof m.settings.properties === 'object' ? m.settings.properties : {};
-      // Only names its schema gives; others are counted, since a plugin could name one after the user's data (M6).
+      // Only names its schema gives; others are counted, since a plugin could name one after the user's data.
       const settings = had.keys.filter((k) => Object.hasOwn(props, k));
       const secrets = had.secrets.filter((k) => Object.hasOwn(props, k) && props[k]?.writeOnly);
       await logEvent(this.ws.store, SYS, { type: 'plugin.reset', actor: 'user', data: {
@@ -694,9 +679,9 @@ export class PluginHost {
         lang: w?.lang ?? m?.language ?? 'en',
         enabled: Boolean(s.enabled), active, failing: this.registry.isDisabled(id), problem, restart: this.#stale.has(id),
         kind: kindOfState(s), ...sourceOf(s), author: m?.author, homepage: m?.homepage, code: Boolean(m?.entry), settings: shown?.settings ?? null,
-        // A model provider's plugin, and what it requires (milestone 1).
+        // A model provider's plugin, and what it requires.
         provider: Boolean(m?.provider), requires: Array.isArray(m?.requires) ? m.requires : [],
-        // Off, the skills it has (minors 18).
+        // Off, the skills it has.
         skills: active ? skillsOf(id) : Array.isArray(s.skills) ? s.skills.map(String) : await this.#skillNames(id),
       });
     }
@@ -838,7 +823,7 @@ export class PluginHost {
     this.#services = { ...this.#services, ...services };
   }
 
-  /** The object a plugin's activate() receives (milestone 1 subset of spec §5.4). @param {string} id @param {any} manifest */
+  /** The object a plugin's activate() receives (spec §5.4). @param {string} id @param {any} manifest */
   #api(id, manifest) {
     const registry = this.registry;
     const need = (/** @type {'llm' | 'agent' | 'notices'} */ what) => {
@@ -941,7 +926,7 @@ export class PluginHost {
       }),
       cache: Object.freeze({ state: () => need('agent').cacheState() }),
       settings: Object.freeze({
-        /** What is saved, over the schema's defaults: what the form shows (plugin reset, choice 2). */
+        /** What is saved, over the schema's defaults: what the form shows. */
         get: async () => ({ ...defaultsOf(manifest.settings), ...(await this.ws.readJSON(SYS_SETTINGS, SETTINGS(id))) }),
         set: (/** @type {Record<string, any>} */ changes) => this.ws.patch(SYS_SETTINGS, SETTINGS(id), changes, { author: `plugin:${id}`, create: true }),
       }),
@@ -1027,7 +1012,7 @@ export class PluginHost {
     await this.#starting.get(id)?.catch(() => {});
   }
 
-  /** Changes a plugin's record; one removed meanwhile gets none back (fix pass 8a-2). @param {string} id @param {Record<string, any>} changes */
+  /** Changes a plugin's record; one removed meanwhile gets none back. @param {string} id @param {Record<string, any>} changes */
   async #updateState(id, changes) {
     if (this.#removing.has(id) || !(await this.installed())[id]) return;
     await this.ws.patch(SYS_PLUGINS, STATE, { [id]: changes }, { author: 'system', create: true });

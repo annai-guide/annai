@@ -5,10 +5,9 @@ import { cut } from '../../core/web-search.js';
 import { t } from '../../core/l10n.js';
 
 /**
- * annai's free search (the user, 2026-10-23): three services that answer a web app's search with no key,
- * Exa, Parallel and Firecrawl, each through its MCP address, and a floor of Wikivoyage, Wikipedia and
- * Nominatim that is always there. They are annai's own search providers, not MCP servers the user
- * added: Shiori sees only web_search. Only the words searched go to them.
+ * annai's free search: Exa, Parallel and Firecrawl, which answer a web app's search with no key, each through its MCP address,
+ * and a floor of Wikivoyage, Wikipedia and Nominatim that is always there. They are annai's own search providers, not MCP
+ * servers the user added: Shiori sees only web_search. Only the words searched go to them.
  */
 
 /** The longest a free service has to answer before the next one is tried. */

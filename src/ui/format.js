@@ -69,7 +69,7 @@ export const bookingHref = (id, path, from) => `#/trip/${encodeURIComponent(id)}
 export const itemHref = (id, path, from) => `#/trip/${encodeURIComponent(id)}/item?path=${encodeURIComponent(path)}${from ? `&from=${encodeURIComponent(from)}` : ''}`;
 /**
  * Where a link to a trip's file goes: a file the user gave (/files/x) or a booking opens the details screen, a plan item its details, never
- * the raw form (the user, 2026-10-28: "it just shows me the json"); any other file, its own screen. @param {string} id @param {string} path in the trip @param {string} [from]
+ * the raw form; any other file, its own screen. @param {string} id @param {string} path in the trip @param {string} [from]
  */
 export const recordHref = (id, path, from) => (BOOKING_FILE.test(path) || isGivenFile(path) ? bookingHref(id, path, from) : PLAN_FILE.test(path) ? itemHref(id, path, from) : fileHref(id, path, from));
 /**
@@ -78,7 +78,7 @@ export const recordHref = (id, path, from) => (BOOKING_FILE.test(path) || isGive
  */
 export const detailsHref = (id, r, from) => (r.booking && r.bookingPath ? bookingHref(id, r.bookingPath, from) : itemHref(id, r.path, from));
 /**
- * A Plan row's name: a set's start and end say what they are (the drive-test follow-ups, section 2): a stay's Check in and Check out, a
+ * A Plan row's name: a set's start and end say what they are: a stay's Check in and Check out, a
  * car's Pick up and Return, a flight's or train's Arrive, anything else's Ends. @param {import('../core/plan.js').PlanRow} r
  */
 export function rowName(r) {

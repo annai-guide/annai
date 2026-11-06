@@ -229,9 +229,8 @@ const originOf = (url) => {
 };
 
 /**
- * A request a protocol built goes only to its ability's address (fix pass, Critical): tunables such as
- * path and listPath are joined into the URL, so a description could otherwise send the key to another
- * host while every check names the right one. annai calls this before it fetches what a protocol built.
+ * A request a protocol built goes only to its ability's address: tunables such as path and listPath are joined into the URL, so a
+ * description could otherwise send the key to another host while every check names the right one. annai calls this before it fetches.
  * @param {{ name?: string, ability?: string, baseUrl: string }} endpoint @param {string} url
  */
 export function sameOrigin(endpoint, url) {
@@ -243,7 +242,7 @@ export function sameOrigin(endpoint, url) {
     { said: { code: 'origin', name: endpoint.name ?? '', ability: endpoint.ability ?? '', to: got, want: where } });
 }
 
-/** A keyed request never follows a redirect: it'd take x-api-key and the body elsewhere (fix pass). @param {Response} res @param {{ name?: string }} endpoint */
+/** A keyed request never follows a redirect: it'd take x-api-key and the body elsewhere. @param {Response} res @param {{ name?: string }} endpoint */
 export function noRedirect(res, endpoint) {
   if (res.type === 'opaqueredirect' || (res.status >= 300 && res.status < 400)) {
     throw new ProviderError('redirect', /* en */ `${endpoint.name ?? 'The provider'} answered with a redirect, which annai doesn't follow with your key. Check its address.`, { status: res.status, provider: endpoint.name, said: { code: 'kind' } });
@@ -301,7 +300,7 @@ function retryDelayOf(body) {
 
 /**
  * A 400 that says the key is wrong, as Google answers one: the error's own words, side by side ("Invalid Auth key.",
- * "API key not valid"), or its reason API_KEY_INVALID; never words elsewhere in the body, such as a model's (review R2).
+ * "API key not valid"), or its reason API_KEY_INVALID; never words elsewhere in the body, such as a model's.
  */
 const BAD_KEY = /\binvalid (?:api|auth)[ _-]?key\b|\b(?:api|auth)[ _-]?key (?:is )?(?:not valid|invalid)\b/i;
 const BAD_KEY_REASON = /"reason"\s*:\s*"API_KEY_INVALID"/;
@@ -382,9 +381,8 @@ export function portable(messages, modelKey) {
 }
 
 /**
- * What the native at parts[i] adds to a request beyond the parts it covers, in JSON characters: its size less theirs, at least 0 (the
- * keep-reasoning design §6). A reply as its provider returned it holds the reply's parts again, so counting both would count them twice; what is
- * left is the reasoning the parts don't hold. @param {Part[]} parts @param {number} i @returns {number}
+ * What the native at parts[i] adds to a request beyond the parts it covers, in JSON characters: its size less theirs, at least 0
+ * (the keep-reasoning design §6): the reasoning the parts don't hold. @param {Part[]} parts @param {number} i @returns {number}
  */
 export function nativeExtra(parts, i) {
   const p = /** @type {Extract<Part, { type: 'native' }>} */ (parts[i]);
@@ -435,7 +433,7 @@ export function safeId(id) {
  * @property {(status: number, body: string) => ErrorKind | null} [classify]  a sharper kind for an error response, or null
  * @property {(c: { model: import('./config.js').Model, tunables: Record<string, any> }) => string} [nativeScope]  who of an endpoint's models can read
  *   the natives one of them made (default: all of them): a string, equal for models that read each other's, which annai adds to the endpoint and key a
- *   native is kept for, so a model outside the scope is sent exactly what it was before natives (the keep-reasoning review, F3)
+ *   native is kept for, so a model outside the scope is sent exactly what it was before natives
  * @property {(body: string) => number | undefined} [retryAfter]  ms an error response's words ask to wait, when no header says
  * @property {(status: number, body: string, c: CallSpec) => string | null} [refusal]  an error response that is the model declining (a safety block):
  *   its words, which end the turn as a reply that stops with 'refusal', so no other model is tried; null for any other error. c: the call,
@@ -454,7 +452,7 @@ export function safeId(id) {
  *   its look-up of one kept turn (200: it is there, 404: it is not), asked before a missing one is read as a server that stores nothing
  * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null }) => Promise<ListedModel[]>} [list]  for types with run
  * @property {'in' | 'out'} [speech]  a speech type (spec §9.1, §10): 'in' transcribes speech, 'out' is a voice
- * @property {(c: SpeechSpec & { audio: { data: Uint8Array, mediaType: string }, languages?: Languages }) => { url: string, headers: Record<string, string>, body: any }} [transcribeRequest]  languages: what the user speaks (phase 2)
+ * @property {(c: SpeechSpec & { audio: { data: Uint8Array, mediaType: string }, languages?: Languages }) => { url: string, headers: Record<string, string>, body: any }} [transcribeRequest]  languages: what the user speaks
  * @property {(res: Response, c: SpeechSpec) => Promise<{ text: string }>} [readTranscript]
  * @property {(c: SpeechSpec & { text: string }) => { url: string, headers: Record<string, string>, body: any }} [speechRequest]
  * @property {(res: Response, c: SpeechSpec) => Promise<{ data: Uint8Array, mediaType: string }>} [readSpeech]
@@ -474,7 +472,7 @@ export function safeId(id) {
  * @typedef {{ rate: number, chunks: AsyncIterable<Int16Array> }} SpeechStream  a voice's 16-bit PCM as it arrives, at rate (G3)
  * @typedef {{ format: 'pcm16' | 'pcmu' | 'pcma', rate: number }} AudioFormat
  * @typedef {{ spoken: import('../languages.js').Language[], answer: import('../languages.js').Language | null }} Languages  the languages the user speaks, in order, each with the
- *   codes models take (iso, live, google, locale), and the one Shiori answers in (null: she follows the user) (phase 2; spec §10.9)
+ *   codes models take (iso, live, google, locale), and the one Shiori answers in (null: she follows the user) (spec §10.9)
  * @typedef {{ instructions: string, context: string, tools: ToolDef[], resume?: string, audioIn: AudioFormat, audioOut: AudioFormat, languages?: Languages }} LiveSetup  languages: for the
  *   protocol's own language fields (the words it is told are in instructions); resume: a handle
  * @typedef {{ send(data: string | Uint8Array): void, on(fn: (data: string | Uint8Array) => void): void }} LiveSocket  on: set as it attaches

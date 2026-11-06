@@ -5,7 +5,7 @@ import { t } from '../l10n.js';
  * when the prompt is longer than its `above` tokens, as some providers charge more for long prompts.
  * @typedef {import('./contract.js').Usage} Usage
  * @typedef {{ input?: number, output?: number, cacheRead?: number, cacheWrite?: number, cacheWrite1h?: number, audioIn?: number, audioOut?: number, image?: number, cacheReadAudio?: number, cacheReadImage?: number }} PriceSet
- *   audioIn, audioOut, image: a realtime model's audio tokens, and its image and video tokens (K4), else priced as input and output; cacheReadAudio, cacheReadImage: cached audio and images (K6)
+ *   audioIn, audioOut, image: a realtime model's audio tokens, and its image and video tokens, else priced as input and output; cacheReadAudio, cacheReadImage: cached audio and images
  * @typedef {PriceSet & { tiers?: (PriceSet & { above: number })[], perMinute?: number, perMillionChars?: number, minSeconds?: number }} PriceFields
  * @typedef {PriceFields & { schedule?: (PriceFields & { from: string })[] }} Prices
  *   perMinute: USD per minute of audio transcribed (at least minSeconds a request); perMillionChars: USD per million characters a voice says;

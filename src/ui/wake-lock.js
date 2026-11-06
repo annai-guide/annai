@@ -1,9 +1,8 @@
 import { readAppSettings, updateAppSettings } from '../core/settings.js';
 
 /**
- * The screen kept on while GPS is on (the user, the second drive: "Keep the screen on while GPS is on"): one setting, on unless the
- * user turned it off, kept in the app settings. The lock is held while GPS is on, annai is on screen, and the setting says so; the
- * browser lets it go off screen, and it is asked for again on coming back.
+ * The screen kept on while GPS is on: one setting, on unless the user turned it off, kept in the app settings. The lock is held while
+ * GPS is on, annai is on screen, and the setting says so; the browser lets it go off screen, and it is asked for again on coming back.
  * @param {{ live: { on: boolean, shown: boolean, onChange: (fn: () => void) => unknown },
  *   ws: import('../core/workspace.js').Workspace, lock?: { request: (type: 'screen') => Promise<any> } | null }} c
  */

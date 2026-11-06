@@ -4,10 +4,9 @@ import { listTrips } from '../core/scopes.js';
 import { readAppSettings } from '../core/settings.js';
 
 /**
- * Where annai opens (the user, 2026-10-21: "the trip you had open"): a fresh start at "/" goes to the trip's screen that was
- * open, and shows Trips only when that trip is gone, archived or removed. The screen is noted as it is drawn: a screen of a trip
- * (its page, plan, files, booking, recap, replay, a plugin's tab) or the Now, Plan and Conversation tabs, which are the open
- * trip's; Trips clears it, since leaving for Trips is leaving the trip. A link, a share or a notification that points at a
+ * Where annai opens: a fresh start at "/" goes to the trip's screen that was open, and shows Trips only when that trip is gone,
+ * archived or removed. The screen is noted as it is drawn: a screen of a trip or the Now, Plan and Conversation tabs, which are the
+ * open trip's; Trips clears it, since leaving for Trips is leaving the trip. A link, a share or a notification that points at a
  * screen is never redirected (plainStart), and the welcome comes first at the first start.
  * @typedef {{ getItem(k: string): string | null, setItem(k: string, v: string): void, removeItem(k: string): void }} KeyValue
  */

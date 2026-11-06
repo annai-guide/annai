@@ -31,7 +31,7 @@ export async function renderPlan(ctx, route) {
   const bookings = await records(ctx, id, '/bookings/', BOOKING_FILE);
   const rows = planRows(plan.list.map((x) => ({ path: x.path, item: x.value })), bookings.list.map((x) => ({ path: x.path, booking: x.value })), { fallbackTz });
   const { days, untimed, notOnDay } = planDays(rows, trip);
-  // Plan files Shiori changed last, and what Undo does (choice 9), from one read of the log.
+  // Plan files Shiori changed last, and what Undo does, from one read of the log.
   const undo = await shioriUndos(ctx.ws, id, plan.list);
   const links = await loadLinks({ ws: ctx.ws }).catch(() => null);
 
@@ -112,7 +112,7 @@ function timetable(ctx, id, rows, links, undo, here) {
 /** @param {any} ctx @param {string} id @param {import('../../core/plan.js').PlanRow} r @param {Map<string, { restore: string } | { remove: true }>} undo @param {string} here */
 function row(ctx, id, r, undo, here) {
   const it = r.item;
-  // "Staying at Hotel Aurora Test · night 2 of 7", "Car · day 3 of 8": a quiet line, not a link (mockup 2b).
+  // "Staying at Hotel Aurora Test · night 2 of 7", "Car · day 3 of 8": a quiet line, not a link.
   if (r.line) return h('li', { class: 'plan-row night' }, h('span', { class: 'stay', text: lineName(r) }));
   // "22:00–05:30 +1 EST": an end on a later day, or in another zone, says so; so does an Arrive row ("07:30 EST").
   const later = r.endDays ? `${r.endDays > 0 ? '+' : '−'}${Math.abs(r.endDays)}` : '';
@@ -127,7 +127,7 @@ function row(ctx, id, r, undo, here) {
       it.place?.name ? h('span', { class: 'sub', dir: 'auto', text: String(it.place.name) }) : null),
     r.check || r.checkFields.length || r.missing || undo.has(r.path) ? h('span', { class: 'chips' },
       r.check ? h('a', { class: 'chip check', href: detailsHref(id, r, here) }, t`Check this`) : null,
-      // Just the fields Shiori is unsure of (My call 1): the details mark which.
+      // Just the fields Shiori is unsure of: the details mark which.
       r.checkFields.length ? h('a', { class: 'chip check', href: detailsHref(id, r, here) }, plural(r.checkFields.length, 'Check # detail', 'Check # details')) : null,
       r.missing ? h('span', { class: 'chip warn', text: t`Booking missing` }) : null,
       undoChip(ctx, id, r, undo.get(r.path))) : null,

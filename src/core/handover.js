@@ -75,7 +75,7 @@ export function handoverOf(wakes) {
  */
 export async function filesToRead(store, scope) {
   return store.tx(['events', 'files'], 'readonly', async (t) => {
-    // From her last turn on, by type: a long trip's log is never walked whole (A6).
+    // From her last turn on, by type: a long trip's log is never walked whole.
     const [last] = await t.listEvents(scope, { types: ['model.turn'], reverse: true, limit: 1 });
     const after = await t.listEvents(scope, { types: ['wake'], ...(last ? { after: last.seq } : {}) });
     /** @type {string[]} */
@@ -91,9 +91,8 @@ export async function filesToRead(store, scope) {
 }
 
 /**
- * What Undo of a hand-over finds in a scope (My call 2 of the bookings-and-trips design): her writes and deletes with it, but for her
- * short names and moves, by path; the moves it made, out of this scope and into it; whether she started the scope's trip for it; and
- * whether it was undone already.
+ * What Undo of a hand-over finds in a scope: her writes and deletes with it, but for her short names and moves, by path; the moves it
+ * made, out of this scope and into it; whether she started the scope's trip for it; and whether it was undone already.
  * @param {import('./types.js').Store} store @param {string} scope @param {string} handover
  */
 async function undoFacts(store, scope, handover) {
@@ -137,10 +136,9 @@ async function undoFacts(store, scope, handover) {
       const h = hers.get(String(e.data?.path));
       if (h && e.seq > h.last && !its(e) && e.data?.undo !== handover) changed.add(String(e.data.path));
     }
-    // The user's own in it: a message or words of theirs not of this hand-over, or a file they wrote without it (its name and memory too);
-    // annai's own writes (system: names kept in step) are no one's work.
-    // A message copied in from where it was handed (from) is the hand-over's, not work done here; a write an Undo made is no one's (its own
-    // moves back carry its id); a file another hand-over moved in is the user's, as theirs to keep.
+    // The user's own in it: a message or words of theirs not of this hand-over, or a file they wrote without it (its name and memory too).
+    // No one's work: annai's own writes (system: names kept in step), a message copied in from where it was handed (from), a write an
+    // Undo made (its own moves back carry its id). A file another hand-over moved in is the user's, as theirs to keep.
     const theirs = events.some((e) => (e.type === 'msg.user' && e.data?.handover !== handover && !e.data?.from) || (e.type === 'heard' && !e.data?.dismissed)
       || (e.type === 'file.write' && e.actor === 'user' && e.data?.handover !== handover && !e.data?.undo));
     // The files it brought with no mark of where from (written before moves were marked): they go back to wait if the trip goes.
@@ -216,10 +214,10 @@ async function moveBack(ws, at, back, handover) {
 }
 
 /**
- * Takes back exactly what Shiori wrote for a hand-over in a scope, and nothing of the user's: each file she wrote or deleted for it
- * goes back to how it was before (one she added goes), as the user, with its short name, unless it changed since; a file moved out
- * of or into it goes back where it came from, unless it was changed where it went (never in both places). Said once in the log
- * (handover.undo), last, so an Undo cut off can finish; a second Undo does nothing more than say whether a trip it emptied still waits to go.
+ * Takes back exactly what Shiori wrote for a hand-over in a scope, and nothing of the user's: each file she wrote or deleted for it goes
+ * back to how it was, as the user, with its short name, unless it changed since; a file moved out or in goes back where it came from,
+ * unless changed where it went. Said once in the log (handover.undo), last, so an Undo cut off can finish; a second Undo does nothing
+ * more than say whether a trip it emptied still waits to go.
  * @param {import('./workspace.js').Workspace} ws @param {string} scope @param {string} handover
  * @param {{ log?: (ev: { type: string, actor: string, data: any }) => Promise<unknown>, removed?: string[], mark?: boolean }} [o] log: the open
  *   conversation's, when it is this scope; removed: the titles of trips she started for it that this Undo removed, said on its mark;
@@ -309,10 +307,9 @@ async function holdsOthers(store, scope, handover) {
 }
 
 /**
- * Undo, as the Conversation's button runs it, for a hand-over in a conversation: the trips its files went to first, then the conversation
- * itself, then the one it was handed in (a trip's copy of the message says which). A trip it empties is removed by `remove` (its
- * waiting files sent back first). Each conversation still there is then told what was taken back, the trips removed named, last: a step
- * that fails leaves no mark, so the user can tap Undo again.
+ * Undo, as the Conversation's button runs it: the trips its files went to first, then the conversation itself, then the one it was handed
+ * in. A trip it empties is removed by `remove` (its waiting files sent back first). Each conversation still there is then told what was
+ * taken back, last: a step that fails leaves no mark, so the user can tap Undo again.
  * @param {import('./workspace.js').Workspace} ws @param {string} scope the conversation's @param {string} handover
  * @param {{ remove: (scope: string) => Promise<{ title: string }>, log?: (scope: string) => ((ev: any) => Promise<unknown>) | undefined }} o
  *   remove: removes a trip as Remove trip does; log: the open conversation's log, for the scope it is open on
