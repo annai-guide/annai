@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { planRows } from '../../src/core/plan.js';
 import { upcoming, routeStrip, sunPlace } from '../../src/core/now.js';
-import { todayOf, nowOf } from '../../src/ui/today.js';
+import { todayOf, nowOf, takeover, driveBack } from '../../src/ui/today.js';
 import { dayIn, deviceZone } from '../../src/core/time.js';
 import { at, iso, LA, BIXBY, NEPENTHE, RIVER_INN } from './live-kit.js';
 
@@ -57,4 +57,24 @@ test("today is live mode's: a simulation's clock and zone while one runs, so the
 
 test('today without live mode is the phone\'s own', () => {
   assert.equal(todayOf(undefined), dayIn(Date.now(), deviceZone()));
+});
+
+const go = { activity: 'moving-fast', was: 'walking', screens: [], on: true, hash: '#/trips', typing: false, trip: 'trip-a' };
+test('moving fast begins: Driving takes over from home, the conversation, the Itinerary and Now', () => {
+  for (const hash of ['', '#/trips', '#/talk', '#/plan', '#/trip/trip-a/plan', '#/now']) assert.equal(takeover({ ...go, hash }), '#/drive', hash);
+});
+test('it stays put elsewhere, while typing, with GPS off, and with nothing open', () => {
+  for (const o of [{ hash: '#/settings' }, { hash: '#/trip/trip-a' }, { hash: '#/drive' }, { typing: true }, { on: false }, { trip: null }]) assert.equal(takeover({ ...go, ...o }), null);
+});
+test('once: a drive already going takes nobody over', () => {
+  assert.equal(takeover({ ...go, was: 'moving-fast' }), null);
+});
+test("a plugin's screen for the activity takes over, with no trip open too", () => {
+  const screens = [{ pluginId: 'p', item: { id: 's', homeFor: 'walking' } }];
+  assert.equal(takeover({ ...go, activity: 'walking', was: 'still', screens, trip: null }), '#/ext/p/s');
+});
+test('← on Driving: Now by name, anywhere else as Back, and Now when nothing says where it was entered from', () => {
+  assert.deepEqual(driveBack(undefined), { href: '#/now', label: 'Now' });
+  assert.deepEqual(driveBack('#/now'), { href: '#/now', label: 'Now' });
+  assert.deepEqual(driveBack('#/trip/trip-a/plan'), { href: '#/trip/trip-a/plan', label: 'Back' });
 });

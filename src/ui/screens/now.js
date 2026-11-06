@@ -8,13 +8,12 @@ import { shownCard, cardWho } from '../cards.js';
 import { tripRows } from '../trip-rows.js';
 import { detailsHref, rowName, wording, sentenceGap } from '../format.js';
 import { packLine } from '../offline-pack.js';
-import { component, mount, slotEntries } from '../slots.js';
-import { nowOf, todayTop, handover } from '../today.js';
+import { component, mount } from '../slots.js';
+import { nowOf, todayTop } from '../today.js';
 
 /**
  * Now (spec §16.2), the home screen during a trip: where you are, golden hour and other chips, the
- * next items as a timetable, and the latest card. When live mode says moving fast, it hands over
- * to Driving.
+ * next items as a timetable, and the latest card.
  * @param {any} ctx
  */
 export async function renderNow(ctx) {
@@ -30,7 +29,7 @@ export async function renderNow(ctx) {
   const latest = await latestCard(ctx, id);
   const title = String(scope?.title ?? t`Now`);
   const pack = await packLine(ctx, id);
-  const screen = h('div', { class: 'screen now' },
+  return h('div', { class: 'screen now' },
     h('h1', { class: 'title', text: title }),
     todayTop(ctx, { title, rows, tz }),
     h('section', { 'aria-label': tc('coming up')`Next` },
@@ -40,19 +39,6 @@ export async function renderNow(ctx) {
     pack,
     latest ? h('section', { 'aria-label': t`Latest` }, h('h2', { class: 'section', text: t`Latest` }), latest) : null,
     h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/drive' }, t`Driving`)));
-  // Hands over when moving fast begins while Now is on screen (or to a plugin's screen for its
-  // activity): not on every fix of a drive already going, so "← Now" stays on Now.
-  let was = live?.activity;
-  const off = live?.onChange(() => {
-    if (!screen.isConnected) {
-      off?.();
-      return;
-    }
-    const to = handover(live.activity, was, slotEntries(ctx, 'ui:screen'));
-    was = live.activity;
-    if (to && live.on && location.hash.startsWith('#/now')) ctx.go(to);
-  });
-  return screen;
 }
 
 /**

@@ -32,6 +32,7 @@ import { createDock } from './dock.js';
 import { tapKeepsKeyboard } from './tap-keeps-keyboard.js';
 import { dockHidesWhileTyping } from './dock-hides.js';
 import { noteScreen } from './resume.js';
+import { takeover, isField } from './today.js';
 import { renderExt, renderPluginPage, renderTripTab } from './screens/ext.js';
 import { renderMcp } from './screens/mcp.js';
 import { renderWelcome } from './screens/welcome.js';
@@ -240,6 +241,8 @@ export function startShell(root, core) {
     }
     // The screen you are on stays in view in the top bar, however far along it is.
     const on = links.find((a) => a.hasAttribute('aria-current'));
+    // Where Driving's ← goes: the screen it was entered from, by a take-over or a link.
+    if (route.name === 'drive' && shown.name && shown.name !== 'drive') /** @type {any} */ (ctx).drivingFrom = shown.hash || '#/trips';
     shown = { tab: on?.getAttribute('href') ?? null, hash: location.hash, name: route.name };
     noteScreen(location.hash);
     // The welcome is a page of its own: the install warning waits for its last step, which says the same.
@@ -306,7 +309,7 @@ export function startShell(root, core) {
   /** What a redraw now would lose: a field being typed in, a key typed and not saved, an error shown, or a list being dragged. */
   const typing = () => {
     const a = document.activeElement;
-    if (a && main.contains(a) && a.matches('textarea, input:not([type=checkbox]):not([type=radio]):not([type=file])')) return true;
+    if (a && main.contains(a) && isField(a)) return true;
     if (main.querySelector('.role-item.dragging')) return true; // a list being dragged
     return [...main.querySelectorAll('input[type=password]')].some((i) => /** @type {HTMLInputElement} */ (i).value)
       || Boolean(main.querySelector('[role=alert]:not([hidden]):not(:empty)'));
@@ -350,6 +353,14 @@ export function startShell(root, core) {
   // nothing typed would be lost.
   /** @type {any} */ (core.agent)?.on?.('went', () => redraw());
   render({ moved: true });
+  // Driving, or a plugin's screen for the activity, takes over once as the activity changes. The dock's box is outside main, so
+  // typing there counts here, and not in typing().
+  let was = core.live?.activity;
+  core.live?.onChange(() => {
+    const to = takeover({ activity: core.live.activity, was, screens: slotEntries(ctx, 'ui:screen'), on: core.live.on, hash: location.hash, typing: isField(document.activeElement), trip: core.agent?.trip ?? null });
+    was = core.live.activity;
+    if (to) ctx.go(to);
+  });
   let readyCard = () => {};
   return {
     notices,
