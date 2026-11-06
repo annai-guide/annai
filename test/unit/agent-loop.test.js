@@ -11,6 +11,8 @@ import { NETWORK_RETRIES } from '../../src/core/llm/fallback.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { useClock } from './clock.js';
 import { noReader } from '../../src/core/agent/reading.js';
+import { askIn } from '../../src/ui/today.js';
+import { askAbout } from '../../src/ui/composer.js';
 
 const say = (/** @type {string} */ text) => ({ toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }] });
 
@@ -1901,4 +1903,108 @@ test("a reader's words name a blank page as blank, not as unread (round 8)", asy
   await k.agent.idle();
   const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
   assert.match(r.data.content, /told by model-u from pictures of pages 1–2 of 3; page 3 is blank, as you can't read PDFs\): Flight AN 123\.$/);
+});
+
+/** A real store whose log read of one scope fails once, after gate if given. @param {any} k @param {string} scope @param {Promise<unknown>} [gate] */
+function failOnce(k, scope, gate) {
+  const real = k.store.tx.bind(k.store);
+  let armed = true;
+  const reached = new Promise((reach) => {
+    k.store.tx = (/** @type {any} */ s, /** @type {any} */ m, /** @type {any} */ f) => real(s, m, (/** @type {any} */ t) => f(new Proxy(t, {
+      get: (o, p) => (p !== 'listEvents' ? (typeof o[p] === 'function' ? o[p].bind(o) : o[p]) : async (/** @type {string} */ id, /** @type {any} */ q) => {
+        if (!armed || id !== scope) return o.listEvents(id, q);
+        armed = false;
+        reach(undefined);
+        await gate;
+        throw new Error('IDB read failed');
+      }),
+    })));
+  });
+  return reached;
+}
+
+/** @param {any} k @param {string} scope */
+const typed = async (k, scope) => (await k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types: ['msg.user'] }))).map((/** @type {any} */ e) => e.data.text);
+
+test('a failed open puts the target back, so Try again opens the trip and the line is in it', async () => {
+  const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] }]);
+  const road = await createTrip(k.ws, { title: 'Road' });
+  failOnce(k, road);
+  const ctx = { ws: k.ws, agent: k.agent };
+  await assert.rejects(askIn(ctx, road, 'Fuel?'), /IDB read failed/);
+  assert.equal(k.agent.target, k.trip, 'the open conversation is still the one the user is in');
+  await askIn(ctx, road, 'Fuel?');
+  await k.agent.idle();
+  assert.equal(k.agent.trip, road);
+  assert.deepEqual(await typed(k, road), ['Fuel?']);
+  assert.deepEqual(await typed(k, k.trip), []);
+});
+
+test("Ask Shiori about this after a failed open: the second tap opens the trip", async () => {
+  const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] }]);
+  const road = await createTrip(k.ws, { title: 'Road' });
+  failOnce(k, road);
+  /** @type {any[]} */
+  const cards = [];
+  const ctx = { ws: k.ws, agent: k.agent, notices: { card: (/** @type {any} */ c) => cards.push(c) }, dock: { attach() {}, openTyping() {} }, go() {} };
+  await askAbout(ctx, { scope: road, path: '/notes.md', name: 'Notes' });
+  assert.equal(cards.length, 1, 'told');
+  await askAbout(ctx, { scope: road, path: '/notes.md', name: 'Notes' });
+  assert.equal(k.agent.trip, road);
+  assert.equal(cards.length, 1);
+});
+
+test('a failed open with a newer one under way leaves the newer one its target', async () => {
+  const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] }]);
+  const road = await createTrip(k.ws, { title: 'Road' });
+  const other = await createTrip(k.ws, { title: 'Other' });
+  /** @type {() => void} */
+  let go = () => {};
+  const reached = failOnce(k, road, new Promise((r) => { go = () => r(undefined); }));
+  const first = k.agent.open(road);
+  await reached;
+  const second = k.agent.open(other);
+  go();
+  await assert.rejects(first, /IDB read failed/);
+  assert.equal(k.agent.target, other, 'the failure of the older one changes nothing');
+  await second;
+  k.agent.send('Fuel?');
+  await k.agent.idle();
+  assert.equal(k.agent.trip, other);
+  assert.deepEqual(await typed(k, other), ['Fuel?']);
+});
+
+test('the newest open failing goes back to what is open, whatever came before it', async () => {
+  const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] }]);
+  const road = await createTrip(k.ws, { title: 'Road' });
+  const other = await createTrip(k.ws, { title: 'Other' });
+  failOnce(k, road);
+  const first = k.agent.open(other);
+  const second = k.agent.open(road);
+  await first;
+  await assert.rejects(second, /IDB read failed/);
+  assert.equal(k.agent.target, k.agent.trip);
+  assert.equal(k.agent.trip, k.trip, 'the older open stood aside for it, so nothing moved');
+});
+
+test("Koe's open failing while Kokoro's holds: the next line opens Koe there first, and lands in the trip", async () => {
+  const sleeps = { rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] };
+  const k = await agentKit([sleeps], { halves: true, koe: { type: sleeps } });
+  const road = await createTrip(k.ws, { title: 'Road' });
+  k.agent.send('Hi');
+  await k.agent.idle();
+  assert.equal(k.agent.koe.trip, k.trip);
+  let armed = true;
+  k.agent.koe.store = new Proxy(k.store, {
+    get: (o, p) => (p === 'tx' && armed ? () => { armed = false; throw new Error('IDB read failed'); } : typeof o[p] === 'function' ? o[p].bind(o) : o[p]),
+  });
+  await assert.rejects(k.agent.open(road), /IDB read failed/);
+  assert.equal(k.agent.target, road, "Kokoro's opened");
+  assert.equal(k.agent.koe.target, k.trip);
+  k.agent.send('Fuel?');
+  await k.agent.idle();
+  assert.equal(k.agent.koe.trip, road);
+  assert.deepEqual(await typed(k, road), ['Fuel?']);
+  assert.deepEqual(await typed(k, k.trip), ['Hi']);
+  k.agent.hush('away');
 });
