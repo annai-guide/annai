@@ -131,6 +131,23 @@ test("Driving's ← goes where it was entered from, not where an earlier take-ov
   await expect.poll(() => new URL(page.url()).hash).toBe('#/now');
 });
 
+test("a fix on Driving keeps the quick asks and the maps links under a finger: a tap across one isn't lost, and the links start from the new place", async ({ page, context }) => {
+  const trip = await atTheStart(page, context);
+  const lunch = new Date(Date.now() + 2 * 3_600_000).toISOString().replace(/\.\d+Z$/, 'Z');
+  await writeRecords(page, trip, { write: { '/plan/lunch.json': { id: 'lunch', title: 'Lunch at Nepenthe', fixed: true, start: { at: lunch, tz: 'UTC' }, place: { name: 'Nepenthe', lat: 36.2213, lng: -121.7567 } } } });
+  await page.goto('/#/drive');
+  const fuel = page.getByRole('button', { name: 'Fuel' });
+  const map = page.getByRole('link', { name: 'Apple Maps' });
+  await roll(page, context, 0, 1); // the first fix: a start for the links
+  await expect(map).toHaveAttribute('href', /saddr=/);
+  const was = await map.getAttribute('href');
+  for (const el of [fuel, map]) await el.evaluate((x) => { /** @type {any} */ (x).marker = true; });
+  await roll(page, context, 2, 3);
+  await expect(map).not.toHaveAttribute('href', /** @type {string} */ (was));
+  expect(await fuel.evaluate((x) => /** @type {any} */ (x).marker)).toBe(true);
+  expect(await map.evaluate((x) => /** @type {any} */ (x).marker)).toBe(true);
+});
+
 test("a quick chat open as moving fast begins: Driving shows the trip in play's road, and a quick ask opens that trip first", async ({ page, context }) => {
   const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }])), sse(anthropicToolReply([{ name: 'sleep', input: {} }])), sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });
   try {

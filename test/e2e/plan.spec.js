@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, filterTrace, happeningTrip } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, filterTrace, happeningTrip, writeRecords, catchAgent } from './helpers.js';
 import { ZipWriter } from '../../src/core/zip.js';
 import { utf8 } from '../../src/core/bytes.js';
 
@@ -237,6 +237,160 @@ test("Driving is linked from the trip in play's today, not from the open trip's 
   await expect(page.locator('.today-top').getByRole('link', { name: 'Driving' })).toHaveCount(0);
   await page.goto(`/#/trip/${encodeURIComponent(playing)}/plan`);
   await expect(page.locator('.today-top').getByRole('link', { name: 'Driving' })).toBeVisible();
+});
+
+/** A day's rows, enough to scroll past on a phone. @param {string} day @param {string} stem */
+const manyRows = (day, stem) => Object.fromEntries(Array.from({ length: 14 }, (_, i) => {
+  const at = `${day}T${String(8 + i).padStart(2, '0')}:00:00Z`;
+  return [`/plan/${stem}${i}.json`, { id: `${stem}${i}`, title: `${stem} stop ${i}`, fixed: false, start: { at, tz: 'UTC' } }];
+}));
+
+/**
+ * A two-week trip around today, longer than the strip on a phone, whose today and late day have many rows, one on each changed by Shiori. Its Itinerary is shown, by the top bar.
+ * @param {import('@playwright/test').Page} page
+ */
+async function longTrip(page) {
+  await openApp(page);
+  const trip = await startTrip(page, 'Long way');
+  const write = { ...manyRows('2030-11-27', 'today'), ...manyRows('2030-12-02', 'late') };
+  await records(page, trip, { patch: { '/trip.json': { start: '2030-11-20', end: '2030-12-03' } }, write });
+  const changed = (/** @type {string} */ path) => ({ ...write[path], notes: 'Shiori was here.' });
+  await writeRecords(page, trip, { author: 'shiori', write: { '/plan/today6.json': changed('/plan/today6.json'), '/plan/late6.json': changed('/plan/late6.json') } });
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
+  await expect(page.getByRole('tab', { selected: true })).toHaveText(TODAY_TAB);
+  return trip;
+}
+
+const TODAY_TAB = 'Wed, Nov 27';
+const LATE_TAB = 'Mon, Dec 2';
+/** Where the Itinerary stands: the tab shown, and where the page, the strip and the top bar are scrolled to. @param {import('@playwright/test').Page} page */
+const place = (page) => page.evaluate(() => ({
+  tab: document.querySelector('[role=tab][aria-selected=true]')?.textContent,
+  y: Math.round(scrollY),
+  strip: Math.round(/** @type {HTMLElement} */ (document.querySelector('.tabs')).scrollLeft),
+  bar: Math.round(/** @type {HTMLElement} */ (document.querySelector('.topnav')).scrollLeft),
+}));
+/** Whether the tab shown is inside the strip, whole. @param {import('@playwright/test').Page} page */
+const tabInView = (page) => page.evaluate(() => {
+  const b = /** @type {HTMLElement} */ (document.querySelector('[role=tab][aria-selected=true]')).getBoundingClientRect();
+  const s = /** @type {HTMLElement} */ (document.querySelector('.tabs')).getBoundingClientRect();
+  return b.left >= s.left - 1 && b.right <= s.right + 1;
+});
+
+test('on a phone, Undo on a late day leaves everything where it was: the tab, the page, the strip and the top bar', async ({ page }) => {
+  await page.clock.setFixedTime(NOON);
+  await longTrip(page);
+  await page.getByRole('tab', { name: LATE_TAB }).click();
+  const undo = page.getByRole('button', { name: 'Changed by Shiori · Undo' });
+  await undo.scrollIntoViewIfNeeded();
+  await page.evaluate(() => { /** @type {HTMLElement} */ (document.querySelector('.tabs')).scrollLeft -= 40; document.querySelector('.topnav')?.scrollBy(60, 0); });
+  const before = await place(page);
+  expect(before.strip).toBeGreaterThan(0);
+  expect(before.y).toBeGreaterThan(0);
+  expect(before.bar).toBeGreaterThan(0);
+  await undo.click();
+  await expect(undo).toHaveCount(0); // the redraw landed
+  await expect.poll(() => page.evaluate(() => new Promise((done) => { requestAnimationFrame(() => requestAnimationFrame(done)); })).then(() => place(page))).toEqual(before);
+});
+
+test('on a phone, a row opened from a late day and Back: the same tab, the same place on the page, and the tab in view', async ({ page }) => {
+  await page.clock.setFixedTime(NOON);
+  await longTrip(page);
+  await page.getByRole('tab', { name: LATE_TAB }).click();
+  const row = page.getByRole('link', { name: /late stop 9/ });
+  await row.scrollIntoViewIfNeeded();
+  const { tab, y } = await place(page);
+  await row.click();
+  await expect(page.getByRole('tab')).toHaveCount(0);
+  await page.goBack();
+  await expect(page.getByRole('tab', { selected: true })).toHaveText(LATE_TAB);
+  await expect.poll(async () => { const p = await place(page); return [p.tab, p.y]; }).toEqual([tab, y]);
+  await expect.poll(() => tabInView(page)).toBe(true);
+});
+
+test("on a phone, leaving the Itinerary and coming back by the top bar opens today's, in view, whatever was picked", async ({ page }) => {
+  await page.clock.setFixedTime(NOON);
+  await longTrip(page);
+  await page.getByRole('tab', { name: LATE_TAB }).click();
+  const bar = page.getByRole('navigation', { name: 'Main' });
+  await bar.getByRole('link', { name: 'Trips' }).click();
+  await expect(page.getByRole('tab')).toHaveCount(0);
+  await bar.getByRole('link', { name: 'Itinerary' }).click();
+  await expect(page.getByRole('tab', { selected: true })).toHaveText(TODAY_TAB);
+  await expect.poll(() => tabInView(page)).toBe(true);
+});
+
+test("on a phone, a reload opens today's, whatever was picked", async ({ page }) => {
+  await page.clock.setFixedTime(NOON);
+  await longTrip(page);
+  await page.getByRole('tab', { name: LATE_TAB }).click();
+  await page.reload();
+  await expect(page.getByRole('tab', { selected: true })).toHaveText(TODAY_TAB);
+  await expect.poll(() => tabInView(page)).toBe(true);
+});
+
+test('nothing picked, the clock past midnight, Undo: the new today, not the day it was', async ({ page }) => {
+  await page.clock.setFixedTime(NOON);
+  await longTrip(page);
+  await page.clock.setFixedTime(new Date('2030-11-28T00:30:00Z'));
+  await page.getByRole('button', { name: 'Changed by Shiori · Undo' }).click();
+  await expect(page.getByRole('tab', { selected: true })).toHaveText('Thu, Nov 28');
+});
+
+test("play moving to the trip on screen shows its Driving link in place: a row keeps what was drawn on it, and nothing below moves", async ({ page }) => {
+  await page.clock.setFixedTime(NOON);
+  await openApp(page);
+  const first = await happeningTrip(page, 'First');
+  const second = await happeningTrip(page, 'Second');
+  await records(page, second, { write: HAPPENING.write });
+  await catchAgent(page);
+  /** A line heard with the microphone on: voice is how play moves with the Itinerary still on screen. @param {string} text */
+  const hear = (text) => page.evaluate((text) => /** @type {any} */ (window).agent.log({ type: 'heard', actor: 'user', data: { id: text, text, ms: 900, source: 'live' } }), text);
+  await page.goto(`/#/trip/${encodeURIComponent(first)}`);
+  await expect(page.getByRole('heading', { name: 'First' })).toBeVisible();
+  await hear('Good morning');
+  await page.goto(`/#/trip/${encodeURIComponent(second)}`); // looking: it opens, and play stays with the other
+  await expect(page.getByRole('heading', { name: 'Second' })).toBeVisible();
+  await page.getByRole('link', { name: 'Itinerary' }).first().click();
+  const link = page.locator('.today-top').getByRole('link', { name: 'Driving' });
+  const row = page.locator('.plan-row').first();
+  await expect(row).toBeVisible();
+  await expect(link).toHaveCount(0);
+  await row.evaluate((el) => { /** @type {any} */ (el).marker = true; });
+  const top = (await row.boundingBox())?.y;
+  await page.clock.setFixedTime(new Date(NOON.getTime() + 60_000));
+  await hear('Are we still on for lunch?');
+  await expect(link).toBeVisible(); // the line moved play
+  await page.waitForTimeout(500); // a redraw has no sign of its own to wait for: it would have landed
+  expect(await row.evaluate((el) => /** @type {any} */ (el).marker)).toBe(true);
+  expect((await row.boundingBox())?.y).toBe(top);
+});
+
+test("a fix that changes how today's top wraps leaves the rows you're reading where they are", async ({ page, context }) => {
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation({ latitude: 36.3715, longitude: -121.9017, accuracy: 10 });
+  await page.clock.install({ time: NOON });
+  await openApp(page);
+  const trip = await startTrip(page, 'Testville');
+  await records(page, trip, {
+    patch: HAPPENING.patch,
+    write: { ...manyRows('2030-11-27', 'today'), '/plan/bridge.json': { ...HAPPENING.write['/plan/bridge.json'], place: { name: 'The Long Named Testville Bridge', lat: 36.3715, lng: -121.9017 } } },
+  });
+  await page.reload();
+  await expect(page.locator('main.view > *')).toBeVisible();
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
+  await page.locator('.live-chip').click();
+  await expect(page.locator('.today-top .now-place')).toHaveText('At The Long Named Testville Bridge');
+  const row = page.getByRole('link', { name: /today stop 9/ });
+  await row.scrollIntoViewIfNeeded();
+  await page.evaluate(() => scrollBy(0, document.querySelector('.today-top')?.getBoundingClientRect().bottom ?? 0)); // the top is above the screen
+  const y = (await row.boundingBox())?.y;
+  const lines = await page.locator('.today-top .now-place').evaluate((el) => el.getBoundingClientRect().height);
+  await context.setGeolocation({ latitude: 36.3695, longitude: -121.9017, accuracy: 10 }); // about 220 m off: "Near …, ≈ …"
+  await page.clock.fastForward(5000);
+  await expect(page.locator('.today-top .now-place')).toContainText('Near The Long Named Testville Bridge');
+  expect(await page.locator('.today-top .now-place').evaluate((el) => el.getBoundingClientRect().height)).toBeGreaterThan(lines);
+  expect((await row.boundingBox())?.y).toBe(y);
 });
 
 test('a trip that ended has no today top', async ({ page }) => {

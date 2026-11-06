@@ -247,12 +247,12 @@ export function startShell(root, core) {
     noteScreen(location.hash);
     // The welcome is a page of its own: the install warning waits for its last step, which says the same.
     document.body.classList.toggle('welcoming', route.name === 'welcome');
-    if (on) nav.scrollLeft = Math.max(0, Math.min(nav.scrollLeft, on.offsetLeft - nav.offsetLeft), on.offsetLeft - nav.offsetLeft + on.offsetWidth - nav.clientWidth + 32); // clear of the fade
+    if (on && o.moved) nav.scrollLeft = Math.max(0, Math.min(nav.scrollLeft, on.offsetLeft - nav.offsetLeft), on.offsetLeft - nav.offsetLeft + on.offsetWidth - nav.clientWidth + 32); // clear of the fade
     showMore();
     const screen = SCREENS[route.name] ?? SCREENS.trips;
     try {
       // Its screen's ctx says which render it is, so what it draws after a newer one began is cleaned up at once.
-      const node = await screen(Object.create(ctx, { seq: { value: my }, moved: { value: o.moved === true } }), route);
+      const node = await screen(Object.create(ctx, { seq: { value: my }, moved: { value: o.moved === true }, entry: { value: entry } }), route);
       if (my !== seq) return superseded(my);
       main.replaceChildren(node);
       if (pending !== null) {
@@ -355,8 +355,8 @@ export function startShell(root, core) {
   render({ moved: true });
   // Driving, or a plugin's screen for the activity, takes over once per drive. The dock's box is outside main, so typing there counts here.
   const seedActivity = followDrive(core.live, { screens: () => slotEntries(ctx, 'ui:screen'), hash: () => location.hash, typing: () => isField(document.activeElement), trip: () => drivingTrip(core), go: (to) => ctx.go(to) });
-  // Driving and the Itinerary's link to it show the trip in play, which a reload learns late and midnight can change.
-  followPlay(core.live, () => drivingTrip(core), () => { if (shown.name === 'drive' || shown.name === 'plan') redraw(); });
+  // Driving shows the trip in play, which a reload learns late, midnight can change and a line said moves.
+  followPlay(core.live, () => drivingTrip(core), () => { if (shown.name === 'drive') redraw(); });
   let readyCard = () => {};
   return {
     notices,

@@ -129,7 +129,9 @@ export function todayTop(ctx, { title, rows, tz }) {
       off?.();
       return;
     }
+    const was = top.getBoundingClientRect();
     draw();
+    if (was.top < 0) scrollBy(0, top.getBoundingClientRect().bottom - was.bottom); // no anchoring here (base.css): rows being read hold still
   });
   const card = component(ctx, 'now-card');
   if (card) {
