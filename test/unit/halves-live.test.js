@@ -9,7 +9,7 @@ import { quiet, cat } from './voice-kit.js';
 import { createTrip } from '../../src/core/scopes.js';
 import { Live } from '../../src/core/live/live.js';
 import { ManualClock } from '../../src/core/live/clock.js';
-import { at, off, LA, BIXBY } from './live-kit.js';
+import { at, iso, off, LA, BIXBY } from './live-kit.js';
 
 // Task 1: choosing the pathway.
 test("a realtime model first in Koe's list: Koe is live; resting, the text model after it talks", async () => {
@@ -684,9 +684,62 @@ test("a reminder for another conversation while a live session's voice plays: sh
   }
 });
 
-test("a cue from another conversation stays out of a voiced session: it's shown, and hers to let pass; a reminder beside it still goes in", async () => {
-  const CUE = 'You have reached the pass';
+test("a plan's cue from another conversation stays out of a voiced session: it's shown, and hers to let pass; a reminder beside it still goes in", async () => {
   const k = await liveKit([{ said: 'Hello there.', audio: tone(1) }, { said: 'Check-out is at eleven.', audio: tone(0.2) }]);
+  const clock = new ManualClock(at('08:30'));
+  const live = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent: k.agent, clock, timeZone: () => LA });
+  try {
+    await updateAppSettings(k.ws, { live: { on: true } });
+    const other = await createTrip(k.ws, { title: 'Other', start: '2026-11-27', end: '2026-11-28' });
+    await k.ws.write(other, '/plan/bixby.json', { id: 'bixby', title: 'Bixby stop', fixed: true, start: { at: iso('08:40'), tz: LA }, end: { at: iso('09:10'), tz: LA }, place: { name: 'Bixby Bridge', lat: BIXBY.lat, lng: BIXBY.lng } }, { author: 'user' });
+    await live.start();
+    await live.settled();
+    assert.equal(live.play, other);
+    live.fixed({ ...off(BIXBY, 0, 2000), accuracy: 8 });
+    await live.settled();
+    await k.voice.unlock();
+    k.agent.send('Hi');
+    await soon(async () => k.agent.live.voiced);
+    for (const t of ['08:39', '08:40', '08:41', '08:42', '08:43', '08:44', '08:45', '08:46']) { // arrived needs a dwell
+      await clock.advanceTo(at(t), () => live.settled());
+      live.fixed({ ...BIXBY, accuracy: 8 });
+      await live.settled();
+      if (!k.agent.live.voiced) { k.agent.send('Still here'); await soon(async () => k.agent.live.voiced); }
+    }
+    assert.ok((await k.store.tx(['events'], 'readonly', (t) => t.listEvents(other, { types: ['trigger.fired'] }))).some((e) => e.data.watch === 'plan:bixby:arrived'), 'the plan cue fired');
+    assert.ok(k.notices.some((/** @type {any} */ n) => n.title === 'Reminder' && /Bixby Bridge/.test(n.body)), 'shown');
+    await new Promise((r) => { setTimeout(r, 200); });
+    assert.ok(!texts(k).some((x) => /^Reminders for the user/.test(x)), 'nothing goes in for a plan cue alone');
+    const CUE = 'You have reached the pass';
+    k.agent.send('Again');
+    await soon(async () => k.agent.live.voiced);
+    await k.agent.remind([{ watch: 'a', text: CUE, cue: true, plan: /** @type {any} */ ({ event: 'arrived' }) }, { watch: 'b', text: 'Check-out at 11:00' }], 'elsewhere');
+    await soon(async () => texts(k).some((x) => x.includes('Check-out at 11:00')));
+    assert.ok(!texts(k).some((x) => x.includes(CUE)));
+  } finally {
+    live.dispose();
+    await k.done();
+  }
+});
+
+test('an urgent enter watch (a cue to Live, but asked for by name) from another conversation goes into a voiced live session at once', async () => {
+  const k = await liveKit([{ said: 'Hello there.', audio: tone(0.2) }, { said: 'Turn now.', audio: tone(0.2) }]);
+  try {
+    await k.voice.unlock();
+    k.agent.send('Hi');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await k.agent.live.idle();
+    const before = texts(k).length;
+    await k.agent.remind([{ watch: 'w', text: 'Turn-off coming up', cue: true }], 'elsewhere', { urgent: true });
+    await soon(async () => texts(k).length > before);
+    assert.match(texts(k).at(-1) ?? '', /Turn-off coming up/);
+  } finally {
+    await k.done();
+  }
+});
+
+test("the trip in play's own urgent enter watch goes into a voiced live session beside a quick chat", async () => {
+  const k = await liveKit([{ said: 'Hello there.', audio: tone(1) }, { said: 'Turn now.', audio: tone(0.2) }]);
   const clock = new ManualClock(at('08:30'));
   const live = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent: k.agent, clock, timeZone: () => LA });
   try {
@@ -695,7 +748,7 @@ test("a cue from another conversation stays out of a voiced session: it's shown,
     await live.start();
     await live.settled();
     assert.equal(live.play, other);
-    await live.setWatch(other, { when: { type: 'enter', lat: BIXBY.lat, lng: BIXBY.lng, radius: 300 }, fallback: CUE });
+    await live.setWatch(other, { when: { type: 'enter', lat: BIXBY.lat, lng: BIXBY.lng, radius: 300 }, fallback: 'Turn-off coming up', urgent: true });
     live.fixed({ ...off(BIXBY, 0, 2000), accuracy: 8 });
     await live.settled();
     await k.voice.unlock();
@@ -704,15 +757,7 @@ test("a cue from another conversation stays out of a voiced session: it's shown,
     await clock.advanceTo(at('08:35'), () => live.settled());
     live.fixed({ ...BIXBY, accuracy: 8 });
     await live.settled();
-    await soon(async () => k.notices.some((/** @type {any} */ n) => n.body === CUE));
-    await soon(async () => !k.agent.live.voiced);
-    await new Promise((r) => { setTimeout(r, 200); });
-    assert.ok(!texts(k).some((x) => x.includes(CUE) || /^Reminders for the user/.test(x)), 'nothing goes in for a list of cues alone');
-    k.agent.send('Again');
-    await soon(async () => k.agent.live.voiced);
-    await k.agent.remind([{ watch: 'a', text: CUE, cue: true }, { watch: 'b', text: 'Check-out at 11:00' }], 'elsewhere');
-    await soon(async () => texts(k).some((x) => x.includes('Check-out at 11:00')));
-    assert.ok(!texts(k).some((x) => x.includes(CUE)));
+    await soon(async () => texts(k).some((x) => /Reminders for the user.*Turn-off coming up/.test(x)));
   } finally {
     live.dispose();
     await k.done();
