@@ -857,7 +857,7 @@ export class Halves {
 
   /** The half that talks (its tap unlocks sound, an iPhone rule); a live Koe's session. */
   #tapNow() {
-    if (this.koeState === 'text') this.#koeOpen(); // a failed open of Koe's is retried before it hears
+    if (this.koeState === 'text') this.#koeOpen(); // retries a failed open
     if (this.koeState !== 'live') return this.talking.tap();
     this.#ownCued = false;
     this.voice?.unlock();

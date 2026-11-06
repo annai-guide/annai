@@ -14,6 +14,7 @@ import { packPanel } from '../offline-pack.js';
 import { tripStamps, stampMarks, factsWords } from '../stamps.js';
 import { stampCount } from '../../core/after/stamps.js';
 import { slotEntries } from '../slots.js';
+import { openOrTell } from '../composer.js';
 
 export { fileHref };
 
@@ -27,7 +28,7 @@ export async function renderTrip(ctx, route) {
   // Opening a trip makes it the one Shiori talks about (spec §4.3: /trip/ is the active trip).
   if (ctx.agent && ctx.agent.target !== id) {
     updateAppSettings(ctx.ws, { activeTrip: id }).catch(() => {});
-    ctx.agent.open(id).catch(() => {});
+    openOrTell(ctx, id);
   }
   const trip = await ctx.ws.readJSON(id, '/trip.json').catch(() => null);
   const files = (await ctx.ws.list(id, '/')).filter((/** @type {any} */ f) => !f.path.startsWith('/offline/')); // the pack has its own panel

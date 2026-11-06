@@ -196,6 +196,12 @@ export function createComposer(ctx, o = {}) {
 /** Whether annai's own dock is there to ask Shiori in (a plugin's dock has no box with chips, so no button asks). @param {any} ctx */
 export const canAsk = (ctx) => typeof ctx.dock?.attach === 'function';
 
+/** Opens a conversation, or says it didn't and is false. @param {any} ctx @param {string | null} id */
+export const openOrTell = (ctx, id) => ctx.agent.open(id).then(() => true, (/** @type {unknown} */ e) => {
+  ctx.notices.card({ tone: 'warn', title: t`That conversation didn't open`, body: messageOf(e) });
+  return false;
+});
+
 /**
  * Ask Shiori about this (goal 7): the file goes in the box as a chip, the box opens, and the Conversation shows. A trip's file opens
  * that trip first; a file waiting with Shiori is asked about with no trip open, where she sees it.
@@ -207,7 +213,7 @@ export async function askAbout(ctx, refs, o = {}) {
   const want = list[0].scope === SYS_WAITING ? null : list[0].scope;
   if (ctx.agent.target !== want) {
     await updateAppSettings(ctx.ws, { activeTrip: want });
-    await ctx.agent.open(want).catch((/** @type {unknown} */ e) => ctx.notices.card({ tone: 'warn', title: t`That conversation didn't open`, body: messageOf(e) }));
+    if (!await openOrTell(ctx, want)) return;
   }
   ctx.dock.attach(list, o);
   ctx.dock.openTyping();
