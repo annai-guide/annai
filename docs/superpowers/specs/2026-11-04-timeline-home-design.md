@@ -21,7 +21,7 @@ The user: "a bit messy screens and tabs here and there"; "everything come back t
 
 **Existing data:**
 - `trip-*` scopes: untouched.
-- `me`: keeps profile, memory, personalities, instructions. Its old lines become a read-only row, "Shiori, no trip" (`#/talk/me`); it takes no more turns (Q1). `agent.open(null)` stays as "nothing open": `send` and `tap` then make a chat first, in `Halves`, so `ui.shiori.send` works too. `me`'s log is also written by `remind`, `setLive`'s `state`, catch-ups, `/me/` file writes and `composer`, and old `me` watches and owed restarts would run turns. So one guard in the loop: with target null, wakes log and `remind` fires, with no turn and nothing owed.
+- `me`: keeps profile, memory, personalities, instructions. Its old lines become a read-only row, "Shiori, no trip" (`#/talk/me`); it takes no more turns. `agent.open(null)` stays as "nothing open": `send` and `tap` then make a chat first, in `Halves`, so `ui.shiori.send` works too. `me`'s log is also written by `remind`, `setLive`'s `state`, catch-ups, `/me/` file writes and `composer`, and old `me` watches and owed restarts would run turns. So one guard in the loop: with target null, wakes log and `remind` fires, with no turn and nothing owed.
 - `sys:waiting`: at each start its files move into one chat, "Waiting with Shiori", with a `file` wake so she reads them on opening. `moveFile` writes before it drops; a cut-off run resumes. A restored backup's waiting files, and an Undo whose chat is gone, go the same way.
 
 ## The timeline
@@ -60,9 +60,9 @@ An undated chat's snapshot says: if this is about one of their trips, read it fi
 
 1. `open_trip`'s guard (`trip-tools.js`) now refuses only in a dated trip.
 2. `filesOf`: those named, else the hand-over's fresh `/trip/files/…`.
-3. `writeInto` carries the user's lines since her last turn, or all of them if tiny, as `msg.user` and `heard` wakes. Today it carries only hand-overs.
+3. `writeInto` carries her recap and the user's last line, as a `msg.user` wake. Today it carries only hand-overs, so this is a new branch.
 4. `openWhenDone` opens the trip once both halves are done, unless the user opened another. The log ends unanswered, so `#open` owes a turn and she answers there.
-5. Tiny means undated, at most three user lines, no files left, no plan, bookings, notes or watches. It is removed as Remove does (`removeTripNow` moves to core). Anything else stays, ending "Shiori moved this to Kyoto".
+5. The chat always stays, ending "Shiori moved this to Kyoto".
 6. `went`: the shell replaces the address if you're on home or that chat.
 
 `list_trips` gives dated trips and the 30 newest chats, so she can read the right one for "what was that ramen place?".
@@ -71,10 +71,11 @@ An undated chat's snapshot says: if this is about one of their trips, read it fi
 
 The user, after the design's doubts about forgetting and the slow route: "with user approval, shiori can just read another trip's files? this includes trascripts and stuff so she just able to know what you are talking about without going to the other trip? she should still have the capability to do so but this will allow user to mention another trip and continue in the current trip". Picked: "Once per chat, or always for mine (Recommended)". This replaces an earlier pick of moving as the only route; moving stays.
 
-- One new tool, Kokoro's only and not in `KOE_TOOLS`: `read_trip({ trip, path?, query? })`, read-only, for a trip's text and JSON files and its conversation (Q3 covers photos and PDFs: `record` throws on a hash the scope doesn't reach). She writes only in the open conversation. `read`, `list`, `recall`, `resolvePath` and `reach.js` stay untouched, so the walls hold as they are. It's in `UNTIMED`.
-- Its `run` shows annai's own card, built from the scope's title with fixed options ("Read Kyoto in April?": Allow, Always for my trips, Not now), and logs a grant entry only on `got.chosen`. `ask` can't do this: it's model-authored, and no model text may grant (RULES 9). A late tap (`send` with `chose`) grants nothing. A spoken yes depends on Q1.
+- One new tool, Kokoro's only and not in `KOE_TOOLS`: `read_trip({ trip, path?, query? })`, read-only, for a trip's text and JSON files and its conversation. Photos and PDFs aren't read: `record` throws on a hash the scope doesn't reach, and she says so and offers to move. She writes only in the open conversation. `read`, `list`, `recall`, `resolvePath` and `reach.js` stay untouched, so the walls hold as they are. It's in `UNTIMED`.
+- Its `run` shows annai's own card, built from the scope's title with fixed options ("Read Kyoto in April?": Allow, Always for my trips, Not now), and logs a grant entry only on `got.chosen`. `ask` can't do this: it's model-authored, and no model text may grant (RULES 9). A late tap (`send` with `chose`) grants nothing. 
+- A spoken yes: annai's own strict word list on the heard line, inside the window after she asks, with no model involved.
 - Allow lasts for this conversation, stored in its log, so a reload keeps it; restored trips get new ids, so she asks again. "Always for my trips" is a setting, changeable in Settings.
-- Trips other people shared always ask. Nothing marks them today, so import stamps `imported: true` on the scope record (`madeBy` is unticked by default, so it can't serve).
+- Trips other people shared always ask. Nothing marks them today, so import stamps `imported: true` on the scope record.
 - Every read is in the Trace, and the screen shows a quiet line ("Shiori read Kyoto in April").
 - A new chat's snapshot names the happening trip and the recent conversations, so she knows what to ask for.
 - Files from another trip are information, not instructions, as now.
@@ -92,7 +93,7 @@ Forced: `live.js` follows only the open conversation for plan watches (`#loadPla
 
 - **Home showing:** nothing changes; a voice session goes on.
 - **Nothing open:** GPS keeps no points; time watches fire.
-- **Driving:** `handover()` moves to shell.js and runs from home, conversation and Itinerary as moving fast begins, not while typing (Q3). Quick asks open the trip in play first, only with no live session: `Halves.open` closes it.
+- **Driving:** `handover()` moves to shell.js and runs from home, conversation and Itinerary as moving fast begins, not while typing. Quick asks open the trip in play first, only with no live session: `Halves.open` closes it.
 
 ## Notifications, imports, exports
 
@@ -111,10 +112,6 @@ Additive, so `api` stays; `docs/plugins.md` and LESSONS.md change.
 | `ui:screen` `homeFor` | shell's take-over; its crumb goes home |
 | `ui.go('#/now')` | today's Itinerary of the trip in play, else home |
 
-## Nickname and sharing
-
-"What should Shiori call you?" (Settings → Shiori) edits the `- What to call me:` line of `/me/profile.md`. Forced: she must still change it when told, and a second store would disagree. Share mode in `export-panel.js` adds an unticked "Show who made it"; `exportArchive` writes `madeBy` into the shared copy's trip.json only. Rows and Details show "From Mia".
-
 ## Words
 
 Display only: files and tools keep `plan`. `l10n/glossary.tsv` changes Plan to Itinerary. Details, now (いま, 此刻) and Next (次の予定, 接下来, 接下來) are already translated.
@@ -123,8 +120,6 @@ Display only: files and tools keep `plan`. `l10n/glossary.tsv` changes Plan to I
 |---|---|---|---|
 | Itinerary | 旅程 | 行程 | 行程 |
 | New conversation (the +'s name) | 新しい会話 | 新对话 | 新對話 |
-| What should Shiori call you? | Shiori に呼んでほしい名前 | 希望 Shiori 怎么称呼你 | 希望 Shiori 怎麼稱呼你 |
-| From Mia | Mia さんから | 来自 Mia | 來自 Mia |
 
 ## What goes
 
@@ -151,10 +146,9 @@ Each passes `npm run check` and e2e, and leaves annai working.
 3. Conversation address, header, Next, Details, notification target.
 4. Chats, +, the timeline, with the top bar still there. **First phone test:** the gesture, forgetting, 500 chats.
 5. Reading another trip.
-6. Moving, cut by what stage 5 shows (Q2).
+6. Moving, cut by what stage 5 shows.
 7. Opening rule, `me` read-only, the waiting move, no-trip paths out.
 8. The top bar goes, gear and Trace, with the e2e rewrite as its own stage: 133 `#/trips`, 68 `#/talk` and 22 `#/now` lines, 98 h1 assertions, 43 nav clicks in 21 files, `startTrip` used 130 times (it becomes `createTrip` in the page), and 6 e2e and 30 unit files touching no-trip paths.
-9. Nickname and sharing (Q4).
 
 Also removable: `start_trip` in chats, the `/waiting` branches (files plugin, `file.js`, `names.js`), hand-over's back-to-waiting Undo, `swipeTabs`.
 
@@ -166,14 +160,14 @@ Also removable: `start_trip` in chats, the `/waiting` branches (files plugin, `f
 - **Tapping another conversation while Kokoro works:** "Stop until you come back (Recommended)". A known limitation, written when this ships; revisit if drives show it.
 - **Voice:** "On/off, plus on while driving (Recommended)". See section 6 of the second-drive design; the dock's chips follow it.
 
-## Waiting for the user
+## Decided by the user, after the spec check (2026-11-05)
 
-From the spec check, each changing what gets built. Recommendation first.
-
-- **Q1. A spoken yes for reading another trip.** (a) annai's own strict word list on the heard line, inside its window, with no model involved: a passenger or song could grant, read-only. (b) Tap only, with "Always" as the driver's route.
-- **Q2. After moving, the chat.** (a) Always stays; the trip gets her recap and the user's last line only. Reading covers the rest, and tiny, `removeTripNow`'s move and line carrying go. (b) As designed: a tiny chat disappears.
-- **Q3. Another trip's photos and PDFs.** (a) Not read; she says so and offers moving. (b) Copied into this chat, so they travel with its Share.
-- **Q4. Nickname and "From Mia".** (a) Later, as their own change. (b) In this build.
+- **A spoken yes for reading another trip:** "Yes, a strict word list (Recommended)". annai itself checks the heard line, inside the window after she asks, with no model involved. A passenger or song could grant, read-only.
+- **After moving, the chat:** "It stays (Recommended)". The trip gets her recap and the user's last line only. Reading covers the rest, so tiny, `removeTripNow`'s move and line carrying go. (This replaces the earlier "the tiny chat disappears", from the first round.)
+- **Another trip's photos and PDFs:** "Not read; she offers to move (Recommended)".
+- **Nickname and "From Mia":** "Later, as its own change (Recommended)". Stage 9 goes.
+- **How it ships:** "Release in stages; tabs go last (Recommended)". Each stage is reviewed and released when green, with the tabs still there. The user tries the timeline on a phone at stage 4, and the tabs go only after they've said it's right.
+- **Before it starts:** "Yes, cleanup first (Recommended)".
 
 ## The main session's additions
 
@@ -187,6 +181,6 @@ From the spec check, each changing what gets built. Recommendation first.
 - The Itinerary is a screen drawn as a sheet, not a true overlay.
 - Card means dated, so an old undated trip with files is a line.
 - "Used" for the 12 hours means the last user line.
-- Tiny's limit, the fold's limit, the 30 in `list_trips`, the Share box unticked.
+- The fold's limit, the 30 in `list_trips`, the Share box unticked.
 
-**Calls to confirm (changed APIs):** routes `#/trip/<id>/talk`, `#/talk/me`, `#/now`; `tab`, `homeFor`; `open_trip` in chats; `draft`, `trip.changed`, `madeBy`.
+**Calls to confirm (changed APIs):** routes `#/trip/<id>/talk`, `#/talk/me`, `#/now`; `tab`, `homeFor`; `open_trip` in chats; `draft`, `imported`, `read_trip`.
