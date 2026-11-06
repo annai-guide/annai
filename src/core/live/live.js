@@ -113,8 +113,8 @@ export class Live {
    */
   #late = false;
   /**
-   * The record says moving fast but is too old to: the tracker holds it as for any gap, and until a reading decides, unknown shows and voice isn't held.
-   * 'owed': voice is yet to hear the drive's end, at its change; 'told': it did, or a choice of voice's cancelled it.
+   * The record says moving fast but is too old to: held as for any gap; until a reading decides, unknown shows and voice isn't held.
+   * 'owed': voice is yet to hear the end, at its change; 'told': it did, a voice choice cancelled it, or a silent end left nothing to tell.
    * @type {'owed' | 'told' | null}
    */
   #stale = null;
@@ -927,7 +927,7 @@ export class Live {
         this.#tellActivity();
       }
       if (unsure && !this.#tracker.unsure) { // a gap decided: the record is fresh again
-        if (this.#tracker.activity !== 'moving-fast' && this.#tracker.activity !== 'unknown' && this.#voiceLapse === null) this.#hushed = false; // past a bound's end, and it says stopped
+        if (this.#tracker.activity !== 'moving-fast' && this.#tracker.activity !== 'unknown' && this.#voiceLapse === null) this.#hushed = false; // past a bound's end, stopped
         this.#keepRecord();
       }
       // A late end dies if she is driving: the tracker's speed, else the way from the record's place; with neither, the next good fix says.
@@ -1414,7 +1414,10 @@ export class Live {
     this.#odo = r?.odo ?? null;
     if (!this.on) return;
     this.#stateAt = r?.at ?? now; // the beats go on as if the page had not been away
-    if (!r || r.activity === 'unknown') { this.#hushed = r?.hushed === true && now - r.at < SAME_DRIVE_MS; return; } // a voice-off kept inside a silent end's 30 s
+    if (!r || r.activity === 'unknown') { // a silent end's 30 s go on
+      if (r?.stale && now - r.at < SAME_DRIVE_MS) { this.#hushed = r.hushed === true; this.#stale = r.stale; }
+      return;
+    }
     // A drive's end not yet told to voice is told whatever the record's age (a page killed in the hold has not said it): on time when it is still ahead, else at the first good fix.
     if (typeof r.due === 'number') {
       this.#voiceLapse = r.due;

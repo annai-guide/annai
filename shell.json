@@ -1,5 +1,5 @@
 {
-  "build": "fb509a321bd9",
+  "build": "c38521c254c4",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -93,10 +93,10 @@
     "/src/core/llm/trace.js": "256c3fe59b0f",
     "/src/core/llm/uploads.js": "7c2609587e19",
     "/src/core/llm/kept.js": "069ca9edcb98",
-    "/src/core/live/activity.js": "c22276b4338f",
+    "/src/core/live/activity.js": "1f6684dc23d7",
     "/src/core/live/clock.js": "3a80893f52a5",
     "/src/core/live/geo.js": "018e805b07f7",
-    "/src/core/live/live.js": "40fbccca5bbf",
+    "/src/core/live/live.js": "6c587dd18683",
     "/src/core/live/plan-watches.js": "86e5053be983",
     "/src/core/live/sim-run.js": "7a6c3579a014",
     "/src/core/live/simulate.js": "b7a9e9c0442c",
