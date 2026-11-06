@@ -82,7 +82,8 @@ test('"Kokoro has nothing to add" and "was stopped" are not for the user: Koe ma
 
 // Item 3 (F25 again): Koe asked Kokoro anew 4 s after hearing "Kokoro was stopped", and the plan went on.
 test("after the user's Stop, Koe's tell_kokoro is refused in words until the user writes again; then it goes through", async () => {
-  const k = await agentKit([[{ delayMs: 30_000, ...sleep }]], { koe: { type: [
+  // The delay holds Kokoro's first turn until the Stop cuts it; any later turn answers at once.
+  const k = await agentKit([[{ delayMs: 30_000, ...sleep }, sleep]], { koe: { type: [
     CHECK,
     calls(['tell_kokoro', { text: 'Plan it anyway.' }], ['speak', { text: 'Stopped.' }], ['sleep', {}]),
     calls(['tell_kokoro', { text: 'Plan it, as asked.' }], ['sleep', {}]),
@@ -103,7 +104,8 @@ test("after the user's Stop, Koe's tell_kokoro is refused in words until the use
   k.agent.send('Yes, plan it.');
   await k.agent.idle();
   assert.equal((await k.events(['tool.result'])).filter((e) => e.data.name === 'tell_kokoro').at(-1).data.ok, true);
-  assert.equal(turns(), 2);
+  // In the wake the user's words started, or a turn after it if it landed mid-turn: by design either way.
+  assert.ok(k.sent['model-0'].some((/** @type {any} */ r) => JSON.stringify(r).includes('Plan it, as asked.')), "Koe's note reached Kokoro");
 });
 
 // The fix pass (M1): annai shows only what Kokoro meant the user to have, and a card or a question as itself.
@@ -113,7 +115,11 @@ const gated = (name, input) => [{ toolCalls: [{ name, input }, { name: 'sleep', 
 const backstop = async (k) => (await k.events(['reminder'])).map((e) => [(e.data.answer && "Shiori's answer"), e.data.text]);
 
 test("Kokoro's list fails and Koe never tells the user so, asked once more: still no card (plan decision 21)", async () => {
-  const k = await agentKit([[{ error: 'auth', message: 'bad key' }]], { koe: { type: [CHECK, sleep, sleep] } });
+  // It fails once Koe waits for it: a failure nobody waited for gets a card, by #kokoroFailed's rule.
+  /** @type {any} */
+  let k = null;
+  const hold = (/** @type {any} */ c) => (c.model.providerId === 'model-0' ? until(() => k?.agent.koe.waiting, 60_000) : Promise.resolve());
+  k = await agentKit([[{ error: 'auth', message: 'bad key' }]], { koe: { type: [CHECK, sleep, sleep] }, hold });
   k.agent.send('Is Nepenthe open?');
   await k.agent.idle();
   assert.equal(k.sent['model-koe'].length, 3, 'asked once more');

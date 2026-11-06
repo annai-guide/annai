@@ -66,7 +66,9 @@ export function fakeCodec(formats) {
  *   voice?: { mode?: 'on' | 'off' | 'auto', speechIn?: string[], hears?: string[], failing?: string[], decide?: any[], dictation?: boolean, keepClips?: boolean, playMs?: number, micFails?: string,
  *     encoder?: { makes: string[] }, plays?: string[] },
  *   halves?: boolean, koe?: { type?: any[] | Record<string, any>, talk?: any[] | Record<string, any>, input?: string[], model?: Record<string, any> },
- *   live?: { origin: string, first?: boolean, second?: boolean, key?: string, tunables?: Record<string, any>, type?: 'gemini-live' | 'openai-realtime' }, fetch?: import('../../src/core/llm/call.js').Fetch }} [opts]
+ *   live?: { origin: string, first?: boolean, second?: boolean, key?: string, tunables?: Record<string, any>, type?: 'gemini-live' | 'openai-realtime' }, fetch?: import('../../src/core/llm/call.js').Fetch,
+ *   hold?: (c: any) => Promise<unknown> }} [opts]
+ *   hold: a scripted call waits for this before it answers, so a test sets an order without a delay
  *   uploading: whether the main model's provider takes photos by upload; a script (or koe's type) with an ability is a model on that
  *   endpoint type (anthropic-messages, chat-completions), its requests sent through fetch (a stand-in)
  *   utility: a script for one more scripted model, in the utility role; utilityModel: what its model record has besides (its input)
@@ -78,7 +80,7 @@ export function fakeCodec(formats) {
  *   first false chooses Koe · Classic; key and tunables, for the real service (test/live); type: OpenAI's protocol
  *   (gpt-realtime-2.1, at <origin>/v1) in place of Gemini's
  */
-export async function agentKit(scripts, { models = [], open = true, agent: agentOpts = {}, utility, utilityModel = {}, codecFormats, uploading = false, voice: v, halves = false, koe, live, fetch } = {}) {
+export async function agentKit(scripts, { models = [], open = true, agent: agentOpts = {}, utility, utilityModel = {}, codecFormats, uploading = false, voice: v, halves = false, koe, live, fetch, hold } = {}) {
   const registry = new Registry();
   const store = createMemoryStore();
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
@@ -95,7 +97,14 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
   const requests = [];
   /** @type {Record<string, any[]>} the requests each provider model got */
   const sent = {};
-  const watched = { ...type, run: (/** @type {any} */ c) => { requests.push(structuredClone(c.request)); (sent[c.model.providerId] ??= []).push(structuredClone(c.request)); return type.run(c); } };
+  const watched = {
+    ...type,
+    run: (/** @type {any} */ c) => {
+      requests.push(structuredClone(c.request));
+      (sent[c.model.providerId] ??= []).push(structuredClone(c.request));
+      return hold ? (async function* () { await hold(c); yield* type.run(c); })() : type.run(c);
+    },
+  };
   /** @type {any} */
   const config = { providers: {}, models: {}, roles: { main: { models: [], level: 'medium' }, utility: { models: [], level: 'low' }, decide: { models: [], level: 'off' } } };
   /** A provider with one ability, and one model on it. @param {string} p @param {string} m @param {string} name @param {any} ability @param {any} user */

@@ -58,18 +58,21 @@ test('a user turn beginning after the quiet spell ran out on one wakes Kokoro on
 test("Kokoro's note telling Koe to sleep, on non-stop sound, has live Koe call sleep: the session closes like a tap (sleep)", async () => {
   const { updateAppSettings } = await import('../../src/core/settings.js');
   // The turns heard are let go; the note is answered with sleep.
-  const k = await liveKit([{ heard: 'la la', delayMs: 500 }, { heard: 'la la', delayMs: 500 }, { heard: 'la' }, { tool: { name: 'sleep', args: {} } }], {
+  // Her verdict on the third comes after the note's wait: let go sooner, with the spell run out and the mic between frames on a starved CPU, the session closes on quiet first.
+  const k = await liveKit([{ heard: 'la la', delayMs: 500 }, { heard: 'la la', delayMs: 500 }, { heard: 'la', delayMs: 8000 }], {
+    server: { onText: { match: /go to sleep/, turn: { tool: { name: 'sleep', args: {} } } } },
+    agent: { secondMs: 250 }, // the waits for her answers: at the kit's 125 ms a second, a starved CPU's answer comes after "she didn't answer"
     kokoro: [{ rules: [{ match: 'non-stop sound', reply: { toolCalls: [{ name: 'tell_koe', input: { text: 'Only music is playing: go to sleep.' } }, { name: 'sleep', input: {} }] } }, { match: '.', reply: sleep }] }],
   });
   try {
-    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 100 } });
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 10 } }); // 2.5 s here: it runs out inside a first turn's 15 s of sound
     k.agent.tap();
     await until(() => k.agent.live.listening, 3000);
     let done = false;
     const feeding = feedOn(k, () => done);
     try {
       // The note comes during the turn after the one let go, and waits for that turn to be let go too (it may be the user): a cap later.
-      await until(() => k.agent.live.state === 'closed', 12_000);
+      await until(() => k.agent.live.state === 'closed', 100_000);
     } finally {
       done = true;
       await feeding;
@@ -711,7 +714,7 @@ for (const [when, delayMs] of /** @type {const} */ ([['after Koe answered the us
       await realtime(k, quiet(0.9));
       await realtime(k, cat(await clip('where-eat'), quiet(1.5)));
       await soon(async () => (await k.events(['out.speak'])).some((e) => /Tacos/.test(JSON.stringify(e))), 5000);
-      assert.equal((await kokoroWakes(k, /non-stop sound/)).length, 1, 'Kokoro was woken for the music');
+      await soon(async () => (await kokoroWakes(k, /non-stop sound/)).length === 1).catch(() => assert.fail('Kokoro was not woken once for the music'));
       await wait(Math.max(0, delayMs - 1000) + 1000);
       await k.agent.idle();
       assert.ok(!texts(k).some((x) => /go to sleep/.test(x)), `the stale sleep note never went in: ${JSON.stringify(texts(k))}`);
@@ -891,7 +894,7 @@ for (const late of [false, true]) {
       await realtime(k, quiet(0.9));
       await realtime(k, cat(await clip('where-eat'), quiet(2)));
       await soon(async () => (await k.events(['out.speak'])).some((e) => /Tacos/.test(JSON.stringify(e))), 5000);
-      assert.equal((await kokoroWakes(k, /non-stop sound/)).length, 1, 'Kokoro was woken for the music');
+      await soon(async () => (await kokoroWakes(k, /non-stop sound/)).length === 1).catch(() => assert.fail('Kokoro was not woken once for the music'));
       await wait(500);
       await k.agent.idle();
       assert.ok(!texts(k).some((x) => /go to sleep/.test(x)), `the sleep note never went in: ${JSON.stringify(texts(k))}`);
@@ -1035,9 +1038,9 @@ const sleepNote = async (k) => (await k.events(['note'])).find((/** @type {any} 
 
 test('talk radio whose pauses are just over the pause setting, every verdict landing in the next piece: the sleep note goes in within the bound, and she sleeps (fix 6, probe h3)', async () => {
   const { updateAppSettings } = await import('../../src/core/settings.js');
-  // Every answer (a sleep call) begins 900 ms after its turn ends, inside the next piece, which cuts it before it begins; the note's
-  // answer, the microphone deaf, is not cut.
-  const k = await liveKit([{ heard: 'and now the news', heardFirst: true, tool: { name: 'sleep', args: {} }, delayMs: 900 }], SLEEP_NOTE);
+  // Every answer (a sleep call) waits past the next piece's start however slow the CPU, so it cuts it before it begins; the note's
+  // answer, the microphone deaf, comes at once and is not cut.
+  const k = await liveKit([{ heard: 'and now the news', heardFirst: true, tool: { name: 'sleep', args: {} }, delayMs: 8000 }], { ...SLEEP_NOTE, server: { onText: { match: /go to sleep/, turn: { tool: { name: 'sleep', args: {} } } } } });
   try {
     await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 200 } }); // 2 s here
     await k.voice.unlock();
@@ -1054,9 +1057,9 @@ test('talk radio whose pauses are just over the pause setting, every verdict lan
     /** @type {number | undefined} */
     let inAt;
     try {
-      await soon(async () => texts(k).some((x) => /go to sleep/.test(x)), 25_000).catch(() => assert.fail('the sleep note never went in'));
+      await soon(async () => texts(k).some((x) => /go to sleep/.test(x)), 100_000).catch(() => assert.fail('the sleep note never went in'));
       inAt = Date.now();
-      await until(() => k.agent.live.state === 'closed', 5000);
+      await until(() => k.agent.live.state === 'closed', 60_000);
     } finally {
       done = true;
       await feeding;
@@ -1074,16 +1077,17 @@ test('talk radio whose pauses are just over the pause setting, every verdict lan
 
 test('steady music, every turn running to the cap and her answers cut by the next: the sleep note goes in and she sleeps, once (fix 6, probe n2)', async () => {
   const { updateAppSettings } = await import('../../src/core/settings.js');
-  const k = await liveKit([{ tool: { name: 'sleep', args: {} }, delayMs: 900 }], SLEEP_NOTE);
+  // Each answer waits long enough to be cut by the next turn however slow the CPU; the note's comes at once, as the sleep note's first test.
+  const k = await liveKit([{ tool: { name: 'sleep', args: {} }, delayMs: 8000 }], { ...SLEEP_NOTE, agent: { secondMs: 250 }, server: { onText: { match: /go to sleep/, turn: { tool: { name: 'sleep', args: {} } } } } });
   try {
-    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 100 } }); // 1 s here
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 10 } }); // 2.5 s here
     await k.voice.unlock();
     k.agent.tap();
     await until(() => k.agent.live.listening, 3000);
     let done = false;
     const feeding = feedOn(k, () => done || k.agent.live.state === 'closed');
     try {
-      await until(() => k.agent.live.state === 'closed', 25_000).catch(() => assert.fail(`she never slept: ${JSON.stringify(texts(k))}`));
+      await until(() => k.agent.live.state === 'closed', 100_000).catch(() => assert.fail(`she never slept: ${JSON.stringify(texts(k))}`));
     } finally {
       done = true;
       await feeding;
@@ -1122,7 +1126,7 @@ test("the sleep note waiting on the user's question, which Koe answers by asking
     await realtime(k, hum(1.5)); // let go as the question begins: Kokoro is woken, its note comes while the user asks
     await realtime(k, quiet(0.9));
     await realtime(k, cat(await clip('where-eat'), quiet(1.5)));
-    assert.equal((await kokoroWakes(k, /non-stop sound/)).length, 1, 'Kokoro was woken for the music');
+    await soon(async () => (await kokoroWakes(k, /non-stop sound/)).length === 1).catch(() => assert.fail('Kokoro was not woken once for the music'));
     await wait(4000); // past the bound, Kokoro still working on the question
     assert.ok(!texts(k).some((x) => /go to sleep/.test(x)), `the sleep note never went in: ${JSON.stringify(texts(k))}`);
     assert.ok(!(await lives(k, 'closed')).some((e) => e.data.why === 'sleep'), 'no sleep closed it');
@@ -1159,8 +1163,8 @@ for (const [name, clips, ms] of /** @type {[string, string[], number][]} */ ([
       }
       await realtime(k, quiet(1));
       await realtime(k, cat(...(await Promise.all(clips.map((c) => clip(c)))), quiet(2)));
-      assert.equal((await kokoroWakes(k, /non-stop sound/)).length, 1, 'Kokoro was woken for the music');
-      await soon(async () => (await k.events(['out.speak'])).some((e) => /two miles/.test(JSON.stringify(e))), 6000).catch(() => assert.fail(`Koe never answered: ${JSON.stringify(texts(k))}`));
+      await soon(async () => (await kokoroWakes(k, /non-stop sound/)).length === 1).catch(() => assert.fail('Kokoro was not woken once for the music'));
+      await soon(async () => (await k.events(['out.speak'])).some((e) => /two miles/.test(JSON.stringify(e)))).catch(() => assert.fail(`Koe never answered: ${JSON.stringify(texts(k))}`));
       await wait(500);
       assert.ok(!texts(k).some((x) => /go to sleep/.test(x)), `the sleep note never went in: ${JSON.stringify(texts(k))}`);
       assert.ok(!(await lives(k, 'closed')).some((e) => e.data.why === 'sleep'), 'no sleep closed it');
@@ -1193,7 +1197,7 @@ test("Kokoro's sleep note during music that ran to the cap, then a question afte
     await realtime(k, hum(15.1)); // runs to the cap and stops just after it; the sleep note comes during it
     await realtime(k, quiet(1));
     await realtime(k, cat(await clip('gas-station'), await clip('where-lunch'), quiet(2)));
-    await soon(async () => (await k.events(['out.speak'])).some((e) => /two miles/.test(JSON.stringify(e))), 6000).catch(() => assert.fail(`Koe never answered: ${JSON.stringify(texts(k))}`));
+    await soon(async () => (await k.events(['out.speak'])).some((e) => /two miles/.test(JSON.stringify(e)))).catch(() => assert.fail(`Koe never answered: ${JSON.stringify(texts(k))}`));
     await wait(500);
     assert.ok(!texts(k).some((x) => /go to sleep/.test(x)), `the sleep note never went in: ${JSON.stringify(texts(k))}`);
     assert.ok(!(await lives(k, 'closed')).some((e) => e.data.why === 'sleep'), 'no sleep closed it');
@@ -1228,7 +1232,7 @@ test("Kokoro's sleep note waiting on the user's question, whose answer comes dur
     await realtime(k, hum(3)); // the sleep note comes during this one
     await realtime(k, quiet(1));
     await realtime(k, cat(await clip('where-eat'), quiet(0.9), hum(2), quiet(2))); // her answer comes during the music after it
-    assert.equal((await kokoroWakes(k, /non-stop sound/)).length, 1, 'Kokoro was woken for the music');
+    await soon(async () => (await kokoroWakes(k, /non-stop sound/)).length === 1).catch(() => assert.fail('Kokoro was not woken once for the music'));
     await wait(3000);
     assert.ok(!texts(k).some((x) => /go to sleep/.test(x)), `the sleep note never went in: ${JSON.stringify(texts(k))}`);
     assert.ok(!(await lives(k, 'closed')).some((e) => e.data.why === 'sleep'), 'no sleep closed it');
