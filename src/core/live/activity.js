@@ -44,6 +44,17 @@ const RECENT_MS = 60_000;
 /** m/s from a to b, less what the accuracy of both could explain: jitter at a stop reads as no speed. @param {Fix} a @param {Fix} b */
 export const waySpeed = (a, b) => (b.at > a.at ? Math.max(0, meters(a, b) - (a.accuracy + b.accuracy)) / ((b.at - a.at) / 1000) : 0);
 
+/**
+ * What a way says over a gap, in m/s, or null if it can't: under SPAN_MS, or slow only by what waySpeed takes off, when the same way with that accuracy added could be fast.
+ * @param {Fix} a @param {Fix} b @returns {number | null}
+ */
+function wayOver(a, b) {
+  const ms = b.at - a.at;
+  if (ms < SPAN_MS) return null;
+  const way = waySpeed(a, b);
+  return way >= FAST_FROM || (meters(a, b) + a.accuracy + b.accuracy) / (ms / 1000) < FAST_FROM ? way : null;
+}
+
 export class ActivityTracker {
   /** @type {Activity} */
   activity = 'unknown';
@@ -86,8 +97,9 @@ export class ActivityTracker {
     this.#recent = [...(near.length ? near : before.slice(-1)), fix];
     this.#lastAt = fix.at;
     const from = this.#before;
-    const way = from && fix.at - from.at >= SPAN_MS ? waySpeed(from, fix) : null; // null: too short to say
-    const went = way !== null && way >= FAST_FROM;
+    const way = from && wayOver(from, fix);
+    const went = way !== null && way >= FAST_FROM; // the drive went on
+    const moved = way !== null && way >= WALK_BELOW; // the car went on, for how a hold is dated: 4 m/s with lights is a city, not a stop
     const speed = this.#speedAt(fix);
     if (speed === null) {
       this.#counts.none++; // nothing to read a speed from yet
@@ -96,7 +108,7 @@ export class ActivityTracker {
           this.#before = fix;
           this.#leaving = null;
           this.#stillSeen = false;
-        } else this.#gapOver(from, false);
+        } else this.#gapOver(from, moved);
       }
       return null;
     }
@@ -108,20 +120,20 @@ export class ActivityTracker {
     if (this.#seen === null) { // only that she is moving: the bound is for a GPS that gives nothing, so it starts again
       if (this.#backAt !== null) this.#backAt = Math.max(this.#backAt, fix.at);
     } else {
-      // An old record, a fast speed, and the way says no: that drive ended unseen.
-      const unseen = kind === 'fast' && this.#backAt === Infinity && from && way !== null && !went && fix.at - from.at >= SAME_DRIVE_MS;
+      // An old record, a fast speed, and a way that says no: that drive ended unseen, or a city or a winding road only looks slow in a straight line.
+      // Which one nothing can say, so nothing is told: this reads as a drive starting, and "stops" waits for a real stop.
+      if (kind === 'fast' && this.#backAt === Infinity && from && way !== null && !went && fix.at - from.at >= SAME_DRIVE_MS) this.activity = 'unknown';
       // Past a bound's end, on the road: moving fast is back at once.
       const back = kind === 'fast' && this.activity !== 'moving-fast' && from && (way === null || went);
-      this.#gapOver(from, went);
-      if (unseen) return this.#become('still', fix.at, gap);
+      this.#gapOver(from, moved);
       if (back) return this.#become('moving-fast', fix.at, gap);
     }
     return this.#decide(fix.at, gap);
   }
 
-  /** A gap, if any, is over: a hold starts afresh if the drive went on, else leaving moving fast dates from the last evidence. @param {Fix | null} from @param {boolean} went */
-  #gapOver(from, went) {
-    if (went) {
+  /** A gap, if any, is over: a hold starts afresh if the car went on, else leaving moving fast dates from the last evidence, so a parked phone ends at once. @param {Fix | null} from @param {boolean} moved */
+  #gapOver(from, moved) {
+    if (moved) {
       this.#leaving = null;
       this.#stillSeen = false;
     } else if (this.activity === 'moving-fast') this.#leaving ??= from?.at ?? null;
@@ -142,7 +154,7 @@ export class ActivityTracker {
       return { ...this.#become('still', now, gap), noFix: true };
     }
     if ((this.#quiet() && gap >= QUIET_STILL_MS) || (this.activity !== 'still' && gap >= NO_FIX_STILL_MS)) return this.#become('still', now, gap);
-    return this.#leaving === null ? null : this.#decide(now, gap); // only a fix starts a hold
+    return this.#leaving === null ? null : this.#decide(now, gap); // only a fix starts a hold: a last speed from before a quiet GPS says nothing new
   }
 
   /** annai started again, knowing the activity from before: no fix yet, and a gap counting from now. @param {Activity} activity @param {number} now @param {Fix | null} [from] the last place it knows @param {boolean} [old] too old to say so: a hold with no bound */
@@ -174,6 +186,11 @@ export class ActivityTracker {
   /** No reading has said what became of the drive: held, or past a bound's end. */
   get unsure() {
     return this.#backAt !== null || this.#before !== null;
+  }
+
+  /** The way says moving fast ended over a gap, and no speed has said so yet: only silence or the next reading is left to end it. */
+  get stopped() {
+    return this.activity === 'moving-fast' && this.#backAt === null && this.#leaving !== null && this.speed === null;
   }
 
   /** When tick could next change something, or null. @returns {number | null} */

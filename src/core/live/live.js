@@ -910,24 +910,24 @@ export class Live {
     const fix = fixOf(raw, this.clock.now());
     if (!fix) return;
     await this.#follow();
-    /** @type {Change | null} */
+    /** @type {Moment['change']} */
     let change = null;
     if (fix.source !== 'manual') {
       this.gps = 'ok';
       const unsure = this.#tracker.unsure;
       const c = this.#tracker.feed(fix);
       const fast = (this.#tracker.speed ?? 0) >= FAST_FROM;
-      if (this.#stale === 'owed' && !fast && !this.#tracker.holding) { // the first reading that says the drive ended unseen
+      if (this.#stale === 'owed' && this.#tracker.stopped) { // no change yet, and the first reading to say the drive ended unseen; any other end is told at its change
         this.#stale = 'told';
         this.#voiceLapse = fix.at;
       }
       if (c) {
-        change = c;
+        change = this.#stale ? c : { ...c, at: undefined };
         this.activity = c.to;
         await this.#log(this.#changeData(c));
-      } else if (this.#stale && fast) { // the same drive: nothing is heard
+      } else if (this.#stale && fast) { // the same drive, or by the way one that ended unseen: nothing is heard
         this.#stale = null;
-        this.activity = 'moving-fast';
+        this.activity = this.#tracker.activity;
         this.#tellActivity();
       }
       if (unsure && !this.#tracker.unsure) { // a gap decided: the record is fresh again
@@ -953,8 +953,11 @@ export class Live {
       // A point that can't be written is told, and the checks go on (reminders don't wait for the log).
       if (this.#trip && this.#inPlay(this.#trip)) await logEvent(this.store, this.#trip, { type: 'location', actor: 'system', data: pointData(fix) }, fix.at).catch((e) => this.#fail(e));
     }
-    // The odometer counts only while moving, so GPS jitter at a stop adds nothing (choice 13); walking, only steps longer than twice the accuracy.
-    // The first fix after annai was away counts the way since then at once, in the catch-up (spec §11.4) if in time. One too coarse leaves it to the first good enough.
+    // The odometer counts only while moving, so GPS jitter at a stop adds nothing (choice 13); walking,
+    // only steps longer than twice the accuracy, which jitter doesn't make. The first fix after annai was
+    // away counts the way since then at once, in the catch-up (spec §11.4) when it comes in time, not as a
+    // jump when the user next moves; one after FIX_WAIT_MS does too, as the catch-up has gone.
+    // A fix too coarse to count (a cell tower's) leaves it to the first that is good enough.
     const good = fix.accuracy <= 100;
     const back = this.#back && good;
     if (good) this.#back = false;
@@ -1194,7 +1197,7 @@ export class Live {
     for (const map of [this.#mem, this.#fired]) for (const k of [...map.keys()]) if (!keep.has(k)) map.delete(k);
   }
 
-  /** The moment checks see. @param {{ newFix?: boolean, change?: Change | null, past?: boolean }} [o] @returns {Moment} */
+  /** The moment checks see. @param {{ newFix?: boolean, change?: Moment['change'], past?: boolean }} [o] @returns {Moment} */
   #moment(o = {}) {
     const now = this.clock.now();
     const c = this.#catch;
@@ -1266,7 +1269,7 @@ export class Live {
     return Boolean(type) && this.#inPlay(scope) && !(type?.gps && !this.on) && (scope === this.#scope() || type?.type === 'time');
   }
 
-  /** Looks at every watch now (spec §11.3), fires what is due as one wake, and sets the clock for the next. @param {{ newFix?: boolean, change?: Change | null, past?: boolean }} [o] */
+  /** Looks at every watch now (spec §11.3), fires what is due as one wake, and sets the clock for the next. @param {{ newFix?: boolean, change?: Moment['change'], past?: boolean }} [o] */
   async #check(o = {}) {
     if (this.#elsewhere()) return;
     await this.#follow();
@@ -1343,34 +1346,37 @@ export class Live {
     }
   }
 
-  /** The activity, asked without a new fix: a held change completes on time, and a quiet GPS after a slow speed is still. @returns {Change | null} */
+  /** The activity, asked without a new fix: a held change completes on time, and a quiet GPS after a slow speed is still. @returns {Moment['change']} */
   #settle() {
     if (!this.on || !this.shown) return null;
     const c = this.#tracker.tick(this.clock.now());
     if (!c) return null;
+    const heard = this.#stale ? c : { ...c, at: undefined }; // the triggers read a change's time only from a stale record
     this.activity = c.to;
     this.#log(this.#changeData(c));
     this.#tellActivity();
     this.#tell();
-    return c;
+    return heard;
   }
 
   /**
-   * A change of activity as the log keeps it (no position); moving fast ending starts the clocks the triggers and voice read: no hold for voice past a bound, nor from a stale record.
+   * A change of activity as the log keeps it (no position); moving fast ending starts the clocks the triggers and voice read: no hold for voice past a bound, nor from a stale record,
+   * whose end is told now unless it was, or a choice of voice's cancelled it.
    * @param {Change} c
    */
   #changeData(c) {
     if (c.from === 'moving-fast') {
       this.#fastEnded = c.at;
       if (this.#stale) this.#hushed = false;
-      else this.#voiceLapse = c.noFix ? c.at : c.at + VOICE_HOLD_MS;
+      if (this.#stale !== 'told') this.#voiceLapse = c.noFix || this.#stale ? c.at : c.at + VOICE_HOLD_MS;
     } else if (c.to === 'moving-fast') this.#voiceLapse = null;
     this.#stale = null;
     return { from: c.from, ...(c.from === 'moving-fast' ? { ended: c.at } : {}), ...c.why };
   }
 
   /**
-   * Each change of activity, each HEARTBEAT_MS it stays, each km and going off screen: the record a restart reads, and a state entry for the Trace, not read back. A simulation's are not kept.
+   * Each change of activity, each HEARTBEAT_MS it stays, each km of way and going off screen: the one record a restart reads (odometer and odo
+   * of one moment, so the way since counts at the first fix back), and a state entry for the Trace, not read back. A simulation's are not kept.
    * @param {Record<string, any>} [extra]
    */
   async #log(extra = {}) {
@@ -1397,7 +1403,10 @@ export class Live {
     this.keep.set({ at, odometer: round3(this.odometer), odo: o && { lat: o.lat, lng: o.lng, at: o.at, accuracy: o.accuracy }, activity: this.#tracker.activity, ended: this.#fastEnded, due: this.#voiceLapse, hushed: this.#hushed, stale: this.#stale });
   }
 
-  /** annai started: the odometer and its place, whatever the record's age; with GPS on, the activity and when moving fast ended, if under SAME_DRIVE_MS old. */
+  /**
+   * annai started: the odometer and its place, whatever the record's age; with GPS on, the activity and when moving fast ended, if under SAME_DRIVE_MS old.
+   * Older, or stale already, a record that says moving fast goes to the tracker as a gap with no bound (#stale): nothing shows and nothing fires until a reading says; silence never does.
+   */
   #restore() {
     const now = this.clock.now();
     const r = this.keep.get();
@@ -1406,10 +1415,10 @@ export class Live {
     if (!this.on) return;
     this.#stateAt = r?.at ?? now; // the beats go on as if the page had not been away
     if (!r || r.activity === 'unknown') return;
-    // A drive's end not yet told: on time when still ahead, else at the first good fix.
+    // A drive's end not yet told to voice is told whatever the record's age (a page killed in the hold has not said it): on time when it is still ahead, else at the first good fix.
     if (typeof r.due === 'number') {
       this.#voiceLapse = r.due;
-      if (r.due <= now) this.#late = true;
+      if (r.due <= now) this.#late = true; // she may be driving again by now: the first good fix says
     }
     this.#hushed = r.hushed === true && (r.activity === 'moving-fast' || this.#voiceLapse !== null);
     const old = now - r.at >= SAME_DRIVE_MS;

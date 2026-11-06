@@ -12,7 +12,7 @@ import { meters, kmText } from './geo.js';
  *   fired: (id: string) => boolean }} Moment
  *   fix: where the user is, when annai knows (live mode on, and not too old); newFix: this check came with that fix;
  *   past: a catch-up's first look, from where the user was when annai went off screen (spec §11.4): only what the clock makes due fires;
- *   change: the activity just changed, and when; odometer: km travelled while live; stop: where the user has stayed, while live;
+ *   change: the activity just changed; at: when, for one found late on a stale record; odometer: km travelled while live; stop: where the user has stayed, while live;
  *   gap: annai was off screen, or closed, and is catching up; fastEnded: when moving fast last ended (live mode's, one for all watches and voice);
  *   near: the place a point is near, when annai knows one; fired: whether a watch of this conversation has fired
  * @typedef {{ name?: string, lat: number, lng: number }} Place
@@ -190,7 +190,7 @@ function startSide(w, m, mem) {
   describe: (w) => `when ${words(w.activity)} ${w.edge === 'stop' ? 'stops' : 'starts'}`,
   check: (w, m, mem) => {
     const c = m.change;
-    if (!c || ((c.at ?? m.now) < mem.set && mem.set <= m.now)) return null; // what ended before it was set is not for it (a simulation's clock may run behind)
+    if (!c || (c.at ?? Infinity) < mem.set) return null; // a stale record's drive ended before it was set: not for it
     if (w.edge === 'stop' ? c.from !== w.activity : c.to !== w.activity) return null;
     if (w.edge !== 'stop' && w.activity === 'moving-fast' && m.fastEnded !== null && m.now - m.fastEnded < SAME_DRIVE_MS) return null;
     /* en */ return { text: `the activity is now ${words(c.to)} (it was ${words(c.from)})` };

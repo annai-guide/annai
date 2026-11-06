@@ -811,7 +811,7 @@ test('a first fix with no speed, killed on the road: it waits for the next good 
   assert.equal(stops(), 0);
 });
 
-test('a first fix with no speed, killed, then parked with a way above 5 m/s: the next fix at speed 0 tells the end once, and "stops" waits for the readings to settle', async () => {
+test('a first fix with no speed, killed, then parked with a way above 5 m/s: the way says the drive went on, so the end is told once, at the change, with "stops"', async () => {
   const k = await liveKit({ start: at('09:00') });
   const stops = await stopsWatch(k);
   const y = await road(k, at('09:00'), 0, 60);
@@ -822,7 +822,7 @@ test('a first fix with no speed, killed, then parked with a way above 5 m/s: the
   await k.fix(at('09:11:05'), north(y + 4000), { speed: null });
   assert.equal(told(), 0);
   await k.fix(at('09:11:10'), north(y + 4000), { speed: 0 });
-  assert.equal(told(), 1);
+  assert.equal(told(), 0, 'it may be a light');
   assert.equal(stops(), 0);
   await k.stay(north(y + 4000), at('09:11:15'), at('09:12:30'));
   assert.equal(told(), 1);
@@ -861,9 +861,9 @@ test('killed, and a GPS that never gives its own speed: the tracker\'s speed dec
   await p.to(at('09:11'));
   await p.restart();
   const pTold = ends(p);
-  for (const s of [5, 25, 30]) await p.fix(at('09:11') + s * 1000, north(z + 4000), { speed: null });
+  for (const s of [5, 25, 30, 50, 70]) await p.fix(at('09:11') + s * 1000, north(z + 4000), { speed: null });
   assert.notEqual(p.live.activity, 'moving-fast');
-  assert.equal(pTold(), 1);
+  assert.equal(pTold(), 1, 'at the change');
 });
 
 test('a bound end, and a first fix with no speed on the road: it waits, and the next good fix says the same drive, with no "starts"', async () => {

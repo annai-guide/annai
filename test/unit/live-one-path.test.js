@@ -31,9 +31,9 @@ const show = async (k) => { k.sensors.visible(true); await k.settle(); };
 const sensor = (k) => k.registry.list('activity').at(-1);
 /** @param {any} k */
 const held = (k) => sensor(k).held();
-/** "When moving fast stops" or "starts", repeating, and how many times it has fired. @param {any} k @param {'stop' | 'start'} edge */
-async function watch(k, edge) {
-  const w = await k.live.setWatch(k.trip, { when: { type: 'activity', activity: 'moving-fast', ...(edge === 'stop' ? { edge } : {}) }, repeat: true, fallback: 'x' });
+/** "When moving fast stops" or "starts", and how many times it has fired. @param {any} k @param {'stop' | 'start'} edge */
+async function watch(k, edge, repeat = true) {
+  const w = await k.live.setWatch(k.trip, { when: { type: 'activity', activity: 'moving-fast', ...(edge === 'stop' ? { edge } : {}) }, repeat, fallback: 'x' });
   return () => k.agent.wakes.filter((/** @type {any} */ x) => x.text.includes(w.id)).length;
 }
 /** How many times voice has been told the drive ended. @param {any} k */
@@ -390,17 +390,61 @@ test('K3: a reading of 3 to 5 m/s after a kill says nothing, and silence then fi
 
 // K4: the new drive
 
-test('K4: reopened on a new drive: "stops" for the old drive at the first reading, then "starts" for the new one, and no drive end told on the road', async () => {
-  const { k, stops, starts, told, y } = await killed();
-  const there = y + NEAR;
-  await k.fix(at('10:00:05'), north(there), { speed: SPEED });
-  assert.equal(stops(), 1);
-  assert.equal(starts(), 0);
-  assert.notEqual(k.live.activity, 'moving-fast');
-  await road(k, at('10:00:10'), there + 70, 35);
+for (const [name, mins, way] of /** @type {[string, number, number][]} */ ([['a city grid', 12, 4.5], ['a winding road', 20, 4], ['an errand loop back near the record', 30, 0.3]])) {
+  test(`K4: killed and reopened still driving on ${name}: the way looks slow, so the old drive ends silently: no "stops" on the road, no end told, one "starts", and a one-time "stops" fires at the real stop`, async () => {
+    const { k, stops, starts, y } = await driving();
+    const once = await watch(k, 'stop', false);
+    await hide(k);
+    const t = at('09:01') + mins * 60_000;
+    await k.to(t);
+    await k.restart();
+    const told = ends(k);
+    let there = y + way * mins * 60;
+    for (let s = 3; s < 30; s += 5) {
+      await k.fix(t + s * 1000, north(there), { speed: SPEED });
+      there += SPEED * 5;
+      assert.equal(k.live.activity, 'unknown', 'no still on the road');
+    }
+    there = await road(k, t + 33_000, there, 30);
+    assert.equal(k.live.activity, 'moving-fast');
+    assert.equal(held(k), true);
+    assert.deepEqual([stops(), once(), starts(), told()], [0, 0, 1, 0]);
+    await k.stay(north(there), t + 180_000, t + 280_000, 5);
+    assert.equal(k.live.activity, 'still');
+    assert.deepEqual([stops(), once(), starts()], [1, 1, 1]);
+    await k.to(t + 400_000); // voice's 2 minutes after a real stop
+    assert.equal(told(), 1);
+  });
+}
+
+test('K4: reopened on a new drive: the cost, as today: no "stops" for the old drive, and a one-time "stops" waits for the end of this one', async () => {
+  const { k, stops, starts, y } = await driving();
+  const once = await watch(k, 'stop', false);
+  await hide(k);
+  await k.to(at('11:00'));
+  await k.restart();
+  const told = ends(k);
+  const there = await road(k, at('11:00:05'), y + 500, 60);
   assert.equal(k.live.activity, 'moving-fast');
-  assert.equal(held(k), true);
-  assert.deepEqual([stops(), starts(), told()], [1, 1, 0]);
+  assert.deepEqual([stops(), once(), starts(), told()], [0, 0, 1, 0]);
+  await k.stay(north(there), at('11:05'), at('11:07'), 5);
+  assert.deepEqual([stops(), once()], [1, 1]);
+  await k.to(at('11:09'));
+  assert.equal(told(), 1);
+});
+
+test('K4: a reload in the 30 s before "starts": it still fires once, and nothing else does', async () => {
+  const { k, stops, starts, y } = await driving();
+  await hide(k);
+  await k.to(at('09:13'));
+  await k.restart();
+  const told = ends(k);
+  const there = await road(k, at('09:13:03'), y + 3200, 10);
+  await k.restart();
+  const told2 = ends(k);
+  await road(k, at('09:13:15'), there, 40);
+  assert.equal(k.live.activity, 'moving-fast');
+  assert.deepEqual([stops(), starts(), told(), told2()], [0, 1, 0, 0]);
 });
 
 // K5: a chain of reloads
@@ -418,6 +462,235 @@ test('K5: reloads with no reading: under 5 minutes from the last evidence each r
   await k.to(at('10:00'));
   assert.equal(k.live.activity, 'unknown');
   assert.equal(stops(), 0);
+});
+
+// A change's time is a stale record's alone: any other stop is the watch's, however early its hold is dated
+
+for (const repeat of [true, false]) {
+  const kind = repeat ? 'repeating' : 'one-time';
+  test(`a ${kind} watch set after a slow reading at a corner, in a stretch of 3 to 5 m/s, fires at the real stop`, async () => {
+    const k = await liveKit({ start: at('09:00') });
+    let y = await road(k, at('09:00'), 0, 60);
+    let t = at('09:01:05');
+    await k.fix(t, north(y), { speed: 2 });
+    for (let s = 5; s <= 300; s += 5) await k.fix(t += 5000, north(y += 20), { speed: 4 });
+    const stops = await watch(k, 'stop', repeat);
+    for (let s = 5; s <= 180; s += 5) await k.fix(t += 5000, north(y += 20), { speed: 4 });
+    assert.equal(k.live.activity, 'moving-fast');
+    for (let s = 5; s <= 90; s += 5) await k.fix(t += 5000, north(y), { speed: 0 });
+    assert.equal(k.live.activity, 'still');
+    assert.equal(stops(), 1);
+  });
+
+  test(`a ${kind} watch set in a hold after an unlock, the first reading slow with a slow way: it fires`, async () => {
+    const k = await liveKit({ start: at('09:00') });
+    const y = await road(k, at('09:00'), 0, 60);
+    await hide(k);
+    await k.to(at('09:10'));
+    await show(k);
+    const stops = await watch(k, 'stop', repeat);
+    await k.fix(at('09:10:40'), north(y + 1500), { speed: 0 });
+    await k.to(at('09:12'));
+    assert.equal(k.live.activity, 'still');
+    assert.equal(stops(), 1);
+  });
+
+  test(`a ${kind} watch whose file has no \`created\`, a reload, a stop: it fires`, async () => {
+    const k = await liveKit({ start: at('09:00') });
+    const set = await k.live.setWatch(k.trip, { when: { type: 'activity', activity: 'moving-fast', edge: 'stop' }, repeat, fallback: 'x' });
+    const y = await road(k, at('09:00'), 0, 60);
+    const { created: _, ...file } = await k.ws.readJSON(k.trip, `/watches/${set.id}.json`);
+    await k.ws.write(k.trip, `/watches/${set.id}.json`, file, { author: 'user' });
+    await k.settle();
+    await hide(k);
+    await k.to(at('09:03:30'));
+    await k.restart();
+    await k.stay(north(y + 40), at('09:03:35'), at('09:05'), 5);
+    assert.equal(k.live.activity, 'still');
+    assert.equal(k.agent.wakes.filter((/** @type {any} */ x) => x.text.includes(set.id)).length, 1);
+  });
+}
+
+// At a light, after a gap with a city way: the car went on, so the hold starts at the reading
+
+for (const secs of [90, 150, 200, 280]) {
+  test(`reloaded at a 30 s light after ${secs} s locked, a way of 4 m/s: no "stops", no end told, voice held, and green is the same drive`, async () => {
+    const { k, stops, starts, y } = await driving();
+    await hide(k);
+    await k.to(at('09:01') + secs * 1000);
+    await k.restart();
+    const told = ends(k);
+    const t = at('09:01') + (secs + 3) * 1000;
+    const there = y + 4 * (secs + 3);
+    await k.fix(t, north(there), { speed: 0 });
+    assert.equal(k.live.activity, 'moving-fast');
+    assert.equal(held(k), true);
+    await k.fix(t + 25_000, north(there), { speed: 0 });
+    await road(k, t + 30_000, there, 50);
+    assert.equal(k.live.activity, 'moving-fast');
+    assert.equal(held(k), true);
+    assert.deepEqual([stops(), starts(), told()], [0, 0, 0]);
+  });
+}
+
+for (const secs of [90, 280, 600]) {
+  test(`unlocked at a 30 s light after ${secs} s locked, a way of 4 m/s: the same`, async () => {
+    const { k, stops, starts, y } = await driving();
+    const told = ends(k);
+    await hide(k);
+    await k.to(at('09:01') + secs * 1000);
+    await show(k);
+    const t = at('09:01') + (secs + 3) * 1000;
+    const there = y + 4 * (secs + 3);
+    await k.fix(t, north(there), { speed: 0 });
+    assert.equal(k.live.activity, 'moving-fast');
+    await k.fix(t + 25_000, north(there), { speed: 0 });
+    await road(k, t + 30_000, there, 50);
+    assert.equal(k.live.activity, 'moving-fast');
+    assert.equal(held(k), true);
+    assert.deepEqual([stops(), starts(), told()], [0, 0, 0]);
+  });
+}
+
+test('killed, reopened at a 30 s light, a way of 4 m/s: no "stops", no end told, and green is the same drive', async () => {
+  const { k, stops, starts, y } = await driving();
+  await hide(k);
+  await k.to(at('09:11'));
+  await k.restart();
+  const told = ends(k);
+  const there = y + 4 * 600;
+  await k.fix(at('09:11:03'), north(there), { speed: 0 });
+  await k.fix(at('09:11:28'), north(there), { speed: 0 });
+  await road(k, at('09:11:33'), there, 55);
+  assert.equal(k.live.activity, 'moving-fast');
+  assert.equal(held(k), true);
+  assert.deepEqual([stops(), starts(), told()], [0, 0, 0]);
+});
+
+for (const gap of /** @type {const} */ (['reload', 'unlock'])) {
+  test(`parked behind a ${gap}, a way near zero: the first reading still ends it at once`, async () => {
+    const { k, stops, y } = await driving();
+    await hide(k);
+    await k.to(at('09:04'));
+    if (gap === 'reload') await k.restart();
+    else await show(k);
+    await k.fix(at('09:04:03'), north(y + 200), { speed: 0 });
+    assert.equal(k.live.activity, 'still');
+    assert.equal(stops(), 1);
+  });
+}
+
+// When a stale record's end is told
+
+test('killed, a far way, reopened at a 30 s light: no end told, so a saved Voice On stays; green is the same drive', async () => {
+  const { k, stops, starts, y } = await driving();
+  await hide(k);
+  await k.to(at('09:11'));
+  await k.restart();
+  const told = ends(k);
+  const there = y + SPEED * 590;
+  await k.fix(at('09:11:03'), north(there), { speed: 0 });
+  assert.equal(told(), 0);
+  await k.fix(at('09:11:28'), north(there), { speed: 0 });
+  await road(k, at('09:11:33'), there, 55);
+  assert.equal(k.live.activity, 'moving-fast');
+  assert.equal(held(k), true);
+  assert.deepEqual([stops(), starts(), told()], [0, 0, 0]);
+});
+
+for (const [name, way] of /** @type {[string, number][]} */ ([['a far way', FAR], ['a way of 4 m/s', 4 * 3540]])) {
+  test(`killed, ${name}, parked: the end is told once, at the change, with the late "stops"`, async () => {
+    const { k, stops, starts, y } = await driving();
+    await hide(k);
+    await k.to(at('10:00'));
+    await k.restart();
+    const told = ends(k);
+    const there = y + way;
+    for (let t = at('10:00:05'); t < at('10:01:05'); t += 10_000) {
+      await k.fix(t, north(there), { speed: 0 });
+      assert.equal(told(), 0);
+      assert.equal(stops(), 0);
+    }
+    await k.stay(north(there), at('10:01:05'), at('10:02:30'), 10);
+    assert.equal(k.live.activity, 'still');
+    assert.deepEqual([stops(), starts(), told()], [1, 0, 1]);
+  });
+}
+
+for (const speed of [1, null]) {
+  test(`killed, a way of 4 m/s, reopened at a light, the first reading ${speed === null ? 'with no speed' : 'at 1 m/s'}: no end told at it, and green tells none`, async () => {
+    const { k, stops, starts, y } = await driving();
+    await hide(k);
+    await k.to(at('09:11'));
+    await k.restart();
+    const told = ends(k);
+    const there = y + 4 * 600;
+    await k.fix(at('09:11:03'), north(there), { speed });
+    assert.equal(told(), 0);
+    await k.fix(at('09:11:20'), north(there), { speed: 0 });
+    assert.equal(told(), 0);
+    await road(k, at('09:11:33'), there, 55);
+    assert.equal(k.live.activity, 'moving-fast');
+    assert.equal(held(k), true);
+    assert.deepEqual([stops(), starts(), told()], [0, 0, 0]);
+  });
+}
+
+test('killed, a near way, parked: told at the first reading, whether it has a speed or not', async () => {
+  for (const speed of [0, null]) {
+    const { k, y } = await driving();
+    await hide(k);
+    await k.to(at('10:00'));
+    await k.restart();
+    const told = ends(k);
+    await k.fix(at('10:00:05'), north(y + NEAR), { speed });
+    assert.equal(told(), 1, String(speed));
+  }
+});
+
+test('killed, a far way, a light, and a voice choice before the change: it cancels the end; the "stops" still fires', async () => {
+  const { k, stops, y } = await driving();
+  await hide(k);
+  await k.to(at('10:00'));
+  await k.restart();
+  const told = ends(k);
+  const there = y + FAR;
+  await k.fix(at('10:00:05'), north(there), { speed: 0 });
+  sensor(k).hush(false);
+  await k.settle();
+  await k.stay(north(there), at('10:00:15'), at('10:02:30'), 10);
+  assert.deepEqual([stops(), told()], [1, 0]);
+});
+
+// A way too short for its accuracy (R3 and R4)
+
+test('a no-speed fix at ±100 m over 16 s at 10 m/s, then 125 s of silence: too short to say, so no false "stops"', async () => {
+  const k = await liveKit({ start: at('09:00') });
+  const stops = await watch(k, 'stop');
+  const v = 10;
+  const y = await road(k, at('09:00'), 0, 60);
+  await k.to(at('09:01:02'));
+  await k.reload();
+  const told = ends(k);
+  const t = at('09:01:16');
+  await k.fix(t, north(y + v * 11), { speed: null, accuracy: 100 });
+  await k.to(t + 125_000);
+  assert.equal(k.live.activity, 'moving-fast');
+  assert.equal(held(k), true);
+  assert.deepEqual([stops(), told()], [0, 0]);
+});
+
+test('a parked phone: the same fix over 16 s can\'t say, and 2 minutes of silence ends nothing; over 25 s it can, and R4 stands', async () => {
+  for (const [secs, ended] of /** @type {[number, boolean][]} */ ([[16, false], [25, true]])) {
+    const k = await liveKit({ start: at('09:00') });
+    const y = await road(k, at('09:00'), 0, 60);
+    await k.to(at('09:01:02'));
+    await k.reload();
+    const t = at('09:01') + secs * 1000;
+    await k.fix(t, north(y - SPEED * 5), { speed: null, accuracy: 100 });
+    await k.to(t + 125_000);
+    assert.equal(k.live.activity, ended ? 'still' : 'moving-fast', `${secs} s`);
+  }
 });
 
 // R1, R2, R5
