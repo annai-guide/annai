@@ -283,10 +283,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### Only the trip in play reminds
 - **Kind:** known limitation.
-- **What the user sees:** with two trips happening at once, the other's itinerary and location reminders wait until it's opened, and anything whose moment passes meanwhile doesn't come later. Time watches fire for both, and copies already at the relay still push.
+- **What the user sees:** with two trips happening at once, the other's itinerary and location reminders wait until the user talks in it, and anything whose moment passes meanwhile doesn't come later. Opening it isn't enough. Time watches fire for both, and copies already at the relay still push.
 - **Why:** one plan is followed at a time.
 - **Revisit when:** someone misses one.
-- **Approved:** 2026-11-05, the user picked "Only the one in play (Recommended)". The wider wording: 2026-11-06, the user picked "Yes, widen it (Recommended)".
+- **Approved:** 2026-11-05, the user picked "Only the one in play (Recommended)". The wider wording: 2026-11-06, the user picked "Yes, widen it (Recommended)". Until they talk in it, not until it's opened: 2026-11-06, the user picked "Talking moves it".
 
 ### A turn cut by a failed open doesn't resume on its own
 - **Kind:** known limitation.

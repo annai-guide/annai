@@ -158,7 +158,7 @@ test('an archive from a released copy lands mirrored', async () => { /* import a
 
 **Interfaces:**
 - Consumes: `phaseOf`, `nextDay`, the mirror.
-- Produces: `get play(): string | null`, public, synchronous, always current. `#play()` private: `#sim?.trip`; else the open conversation if happening; else the happening trip last talked in, out of `#still`; else the open conversation.
+- Produces: `get play(): string | null`, public, synchronous, always current. `#play()` private: `#sim?.trip`; else the happening trip last talked in, out of `#still`; else the open conversation (2026-11-06, the user: "Talking moves it"; a line said moves it at once).
 
 **The list.** `#scope()` still means the open conversation. `#trip` now means the trip in play.
 
@@ -193,7 +193,7 @@ test("quick chat during the trip: open changes, play doesn't", async () => {
 });
 test("a quick chat's own GPS and time watches still fire there", async () => {});
 test('another open trip that is not happening: play stays', async () => {});
-test('two happening: the open one; opened elsewhere, the one last talked in, whose plan reminds alone; time watches fire for both', async () => {});
+test('two happening: the one last talked in, whichever is open, whose plan reminds alone; time watches fire for both', async () => {});
 test('nothing open, nothing happening: no point is kept, a time watch fires', async () => {});
 test('nothing open, a trip happening: it is in play', async () => {});
 test('midnight alarm: GPS off, no watches, a trip starting tomorrow: its first reminder comes with nothing else happening', async () => {});
@@ -231,6 +231,6 @@ With a happening trip in play and a second, undated trip open: moving fast takes
 
 - [ ] **Step 3: Write the approved limitation**
 
-`docs/limitations.md`, `### Only the trip in play reminds`: kind known limitation. What the operator sees: with two trips happening at once, the other's itinerary reminders wait until it's opened; time watches fire for both. Why: one plan is followed at a time. Revisit when someone misses one. Approved 2026-11-05: "Only the one in play (Recommended)". One line in the README's limits if it has such a list.
+`docs/limitations.md`, `### Only the trip in play reminds`: kind known limitation. What the operator sees: with two trips happening at once, the other's itinerary reminders wait until the user talks in it; time watches fire for both. Why: one plan is followed at a time. Revisit when someone misses one. Approved 2026-11-05: "Only the one in play (Recommended)". One line in the README's limits if it has such a list.
 
 - [ ] **Step 4: Run all, then e2e whole.** Raise the budget. Expected: PASS. `git commit -m "Driving shows the trip in play; a quick ask opens it first, not over a live session"`.

@@ -89,7 +89,7 @@ With this, "what's on tomorrow?" in a new chat during a trip is answered in plac
 
 ## GPS, voice and watches
 
-Forced: `live.js` follows only the open conversation for plan watches (`#loadPlan`), GPS watches (`#looked`) and points. A quick chat during Kyoto would silence "leave soon" and put its points in the chat. So it follows the **trip in play**, `#play` (`#inPlay` already means simulation): the open conversation if happening; else the happening trip last talked in; else the open conversation. It leaves out `simulation` and archived trips. Plan logic reads `#scope()` and `open` in about ten places, which change with it, not only `#follow`: `#schedule` needs a midnight alarm, and `#changed` must handle trip.json. `#looked` is `scope === open || scope === play`, so a quick chat's own GPS watch still fires. Plan and points use `play`. `annai.drive` is device-level, unaffected. Its reminders while elsewhere use the existing path (`#deliver`): annai says them, and the wake waits there.
+Forced: `live.js` follows only the open conversation for plan watches (`#loadPlan`), GPS watches (`#looked`) and points. A quick chat during Kyoto would silence "leave soon" and put its points in the chat. So it follows the **trip in play**, `#play` (`#inPlay` already means simulation): the happening trip last talked in; else the open conversation. Looking at a trip moves nothing; a line said in another happening trip moves it at once. It leaves out `simulation` and archived trips. Plan logic reads `#scope()` and `open` in about ten places, which change with it, not only `#follow`: `#schedule` needs a midnight alarm, and `#changed` must handle trip.json. `#looked` is the play's, or the open conversation's while it isn't happening, so a quick chat's own GPS watch still fires and looking at another happening trip fires nothing. Plan and points use `play`. `annai.drive` is device-level, unaffected. Its reminders while elsewhere use the existing path (`#deliver`): annai says them, and the wake waits there.
 
 - **Home showing:** nothing changes; a voice session goes on.
 - **Nothing open:** GPS keeps no points; time watches fire.
@@ -155,7 +155,7 @@ Also removable: `start_trip` in chats, the `/waiting` branches (files plugin, `f
 ## Decided by the user (2026-11-05)
 
 - **The old no-trip conversation:** "Read-only row (Recommended)". You can read it; talking starts a new chat.
-- **Two trips happening at once:** "Only the one in play (Recommended)". The other's itinerary reminders wait until it's opened; time watches fire for both. A known limitation, written to docs/limitations.md when this ships; revisit if someone misses one.
+- **Two trips happening at once:** "Only the one in play (Recommended)". The other's itinerary reminders wait until it's opened (since 2026-11-06, until the user talks in it: see below); time watches fire for both. A known limitation, written to docs/limitations.md when this ships; revisit if someone misses one.
 - **Moving fast while in the conversation:** "Driving takes over, once (Recommended)". ← returns.
 - **Tapping another conversation while Kokoro works:** "Stop until you come back (Recommended)". A known limitation, written when this ships; revisit if drives show it.
 - **Voice:** "On/off, plus on while driving (Recommended)". See section 6 of the second-drive design; the dock's chips follow it.
@@ -168,6 +168,11 @@ Also removable: `start_trip` in chats, the `/waiting` branches (files plugin, `f
 - **Nickname and "From Mia":** "Later, as its own change (Recommended)". Stage 9 goes.
 - **How it ships:** "Release in stages; tabs go last (Recommended)". Each stage is reviewed and released when green, with the tabs still there. The user tries the timeline on a phone at stage 4, and the tabs go only after they've said it's right.
 - **Before it starts:** "Yes, cleanup first (Recommended)".
+
+## Decided by the user (2026-11-06)
+
+- **Looking at a trip:** "Talking moves it". Looking at a trip never changes the trip in play; it moves only when they talk in another happening trip. This replaces "the open conversation if happening". A line counts as `talks` says: typed or heard, not dismissed. A happening trip that's open but not in play reminds of nothing until then, so its plan stays off the relay's list and its waiting copies stay; an open trip that isn't happening yet still reaches the relay.
+- **What no user would want (the rule for review):** a tossup can be a limitation, but what no user would ever want, such as a screen jumping while browsing, gets fixed.
 
 ## The main session's additions
 
