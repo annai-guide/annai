@@ -404,23 +404,23 @@ u0vojx	ok	Use it here	ここで使う	src/app/main.js:86
 p4x3of	ok	annai was opened in another tab	annai が別のタブで開かれました	src/app/main.js:91	
 11qyuy7	ok	This tab has stopped, so your trips stay consistent.	旅のデータを食い違わせないため、このタブは止まりました。	src/app/main.js:92	
 1ku6bv3	ok	Use it here instead	こちらで使う	src/app/main.js:93	
-fki4un	ok	Notifications	通知	src/app/main.js:232	
-1clzv4	ok	Settings → Models changed	設定 → モデルが変わりました	src/app/main.js:235	
-1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai はプロバイダーごとに設定するようになりました。1つのアドレスと1つのキーで、そのプロバイダーのすべてを使えます。エンドポイント（{0}）とそのキーは削除しました。設定 → モデルで追加し直してください。	src/app/main.js:236	{0} = list(moved.names, 'plain')
-whpd9d	ok	Open Models	モデルを開く	src/app/main.js:237	
-10renyj	ok	Plugins	プラグイン	src/app/main.js:248	
-1sp21de	ok	A new version of the {0} personality	性格「{0}」の新しいバージョン	src/app/main.js:339	{0} = o.name
-1yoe82	ok	Yours has your own edits, so it was kept as it is.	あなたが編集しているため、今のまま残しました。	src/app/main.js:340	
-1n8cxuc	ok	Compare	比較	src/app/main.js:342	
-rzp4o3	ok	Keep mine	自分のものを残す	src/app/main.js:343	
-1j662as	ok	Let Shiori merge	Shiori に統合してもらう	src/app/main.js:344	
-x0ig66	ok	Something went wrong	問題が起きました	src/app/main.js:396	
-1oy79dy	ok	annai kept running. The details are in Trace.	annai は動き続けています。詳しくは記録にあります。	src/app/main.js:397	
-c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai は動き続けていますが、何が起きたかを書き残せなかったため、記録にもありません。何度も起きる場合は、annai を閉じて開き直してください。	src/app/main.js:397	
-11n1kcg	ok	Open Trace	記録を開く	src/app/main.js:398	
-gt9ssw	ok	annai couldn't start	annai を起動できませんでした	src/app/main.js:409	
-6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	何度も起きる場合は、ブラウザが保存をブロックしているのかもしれません（プライベートウインドウなど）。	src/app/main.js:411	
-982hh6	ok	Try again	再試行	src/app/main.js:412	
+fki4un	ok	Notifications	通知	src/app/main.js:234	
+1clzv4	ok	Settings → Models changed	設定 → モデルが変わりました	src/app/main.js:237	
+1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai はプロバイダーごとに設定するようになりました。1つのアドレスと1つのキーで、そのプロバイダーのすべてを使えます。エンドポイント（{0}）とそのキーは削除しました。設定 → モデルで追加し直してください。	src/app/main.js:238	{0} = list(moved.names, 'plain')
+whpd9d	ok	Open Models	モデルを開く	src/app/main.js:239	
+10renyj	ok	Plugins	プラグイン	src/app/main.js:250	
+1sp21de	ok	A new version of the {0} personality	性格「{0}」の新しいバージョン	src/app/main.js:341	{0} = o.name
+1yoe82	ok	Yours has your own edits, so it was kept as it is.	あなたが編集しているため、今のまま残しました。	src/app/main.js:342	
+1n8cxuc	ok	Compare	比較	src/app/main.js:344	
+rzp4o3	ok	Keep mine	自分のものを残す	src/app/main.js:345	
+1j662as	ok	Let Shiori merge	Shiori に統合してもらう	src/app/main.js:346	
+x0ig66	ok	Something went wrong	問題が起きました	src/app/main.js:398	
+1oy79dy	ok	annai kept running. The details are in Trace.	annai は動き続けています。詳しくは記録にあります。	src/app/main.js:399	
+c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai は動き続けていますが、何が起きたかを書き残せなかったため、記録にもありません。何度も起きる場合は、annai を閉じて開き直してください。	src/app/main.js:399	
+11n1kcg	ok	Open Trace	記録を開く	src/app/main.js:400	
+gt9ssw	ok	annai couldn't start	annai を起動できませんでした	src/app/main.js:411	
+6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	何度も起きる場合は、ブラウザが保存をブロックしているのかもしれません（プライベートウインドウなど）。	src/app/main.js:413	
+982hh6	ok	Try again	再試行	src/app/main.js:414	
 1u3dm1p	ok	This address holds a name or password before an @. Leave it out.	このアドレスには @ の前に名前かパスワードが含まれています。外してください。	src/core/address.js:68	
 1f8b0m5	ok	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	滞在した場所と滞在時間（名前で。名前のない場所は約100 mに丸めた位置で）。GPS の軌跡そのものは送りません。	src/core/after/recap.js:54	Note: a stay is any stop in the record, so 滞在した, not 泊まった (overnight).
 imb4zw	draft	How far you drove or walked between, the stamps, and the itinerary.	その間に車や徒歩で移動した距離、スタンプ、旅程。	src/core/after/recap.js:55	English was: How far you drove or walked between, the stamps, and the plan.
@@ -538,26 +538,26 @@ uc7dg2	ok	annai couldn't reach {0}. Is the device offline?	annai は {0} につ�
 1bw0b6k	ok	This file is not encrypted.	このファイルは暗号化されていません。	src/core/archive-crypto.js:90	
 1nzwtma	ok	This file is damaged.	このファイルは壊れています。	src/core/archive-crypto.js:91	
 qh6gdt	ok	Wrong passphrase, or the file is damaged.	パスフレーズが違うか、ファイルが壊れています。	src/core/archive-crypto.js:104	
-4ngq1	ok	annai couldn't build a file it could open again: {0}	annai は、もう一度開けるファイルを作れませんでした：{0}	src/core/archive.js:65	{0} = s.why; Note: {0} is a developer's detail, in English.
-gtgen1	ok	The content of {0} is missing from storage, so it can't be exported.	{0} の内容がストレージにないため、エクスポートできません。	src/core/archive.js:66	{0} = s.path
-13a6l3r	ok	There is nothing to export.	エクスポートするものがありません。	src/core/archive.js:67	
-am2v0c	ok	API keys can only be included in an encrypted backup of everything.	API キーを含められるのは、すべてを含む暗号化バックアップだけです。	src/core/archive.js:67	Note: "a backup of everything" is the kind (everything, not one trip); すべてを暗号化した read as "encrypted everything".
-4ohc37	ok	This file is encrypted. Enter its passphrase to open it.	このファイルは暗号化されています。開くにはパスフレーズを入力してください。	src/core/archive.js:87	
-1oint3e	ok	This file was made by a newer version of annai. Update annai, then open it again.	このファイルは新しいバージョンの annai で作られています。annai をアップデートしてから、もう一度開いてください。	src/core/archive.js:442	
-q7ee2s	ok	This file is damaged: {0}	このファイルは壊れています：{0}	src/core/archive.js:446	{0} = errors; Note: {0} is a developer's detail, in English.
-4er14u	ok	This file contains an unsafe file path ({0}), so annai won't open it.	このファイルには安全でないファイルパス（{0}）が含まれているため、annai は開きません。	src/core/archive.js:449	{0} = path
-hwph32	ok	This file isn't an annai file, or it is damaged ({0}).	このファイルは annai のファイルではないか、壊れています（{0}）。	src/core/archive.js:472	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1cut10v	ok	This zip isn't an annai file: it has no annai-archive.json.	この zip は annai のファイルではありません。annai-archive.json がありません。	src/core/archive.js:474	
-j0v5kk	ok	This file is damaged: its manifest is not readable.	このファイルは壊れています：マニフェストを読めません。	src/core/archive.js:481	
-lfeohr#other	ok	This file is damaged: {0} are missing.	このファイルは壊れています：{0}がありません。	src/core/archive.js:487	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
-1ujco5p	ok	This file is damaged: its keys are not readable.	このファイルは壊れています：キーを読めません。	src/core/archive.js:503	
-1aqa7w5	ok	This file is damaged ({0}).	このファイルは壊れています（{0}）。	src/core/archive.js:515	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1txsojx	ok	This file is damaged: {0} was changed.	このファイルは壊れています：{0} が変更されています。	src/core/archive.js:520	{0} = name
-21t6o3	ok	This file is damaged: line {0} of {1} is not readable.	このファイルは壊れています：{1} の{0}行目を読めません。	src/core/archive.js:546	{0} = i + 1; {1} = name
-1ln7rqe	ok	This file is damaged: line {0} of {1}: {2}	このファイルは壊れています：{1} の{0}行目：{2}	src/core/archive.js:550	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
-syvqmc	ok	This file is damaged: its plugin list is not readable.	このファイルは壊れています：プラグインの一覧を読めません。	src/core/archive.js:634	
-qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	読み込み中にこのファイルの内容の一部がこの端末から削除されたため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:734	
-cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	読み込み中に、このファイルが置き換えるものがこの端末で変わったため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:735	
+4ngq1	ok	annai couldn't build a file it could open again: {0}	annai は、もう一度開けるファイルを作れませんでした：{0}	src/core/archive.js:66	{0} = s.why; Note: {0} is a developer's detail, in English.
+gtgen1	ok	The content of {0} is missing from storage, so it can't be exported.	{0} の内容がストレージにないため、エクスポートできません。	src/core/archive.js:67	{0} = s.path
+13a6l3r	ok	There is nothing to export.	エクスポートするものがありません。	src/core/archive.js:68	
+am2v0c	ok	API keys can only be included in an encrypted backup of everything.	API キーを含められるのは、すべてを含む暗号化バックアップだけです。	src/core/archive.js:68	Note: "a backup of everything" is the kind (everything, not one trip); すべてを暗号化した read as "encrypted everything".
+4ohc37	ok	This file is encrypted. Enter its passphrase to open it.	このファイルは暗号化されています。開くにはパスフレーズを入力してください。	src/core/archive.js:88	
+1oint3e	ok	This file was made by a newer version of annai. Update annai, then open it again.	このファイルは新しいバージョンの annai で作られています。annai をアップデートしてから、もう一度開いてください。	src/core/archive.js:444	
+q7ee2s	ok	This file is damaged: {0}	このファイルは壊れています：{0}	src/core/archive.js:448	{0} = errors; Note: {0} is a developer's detail, in English.
+4er14u	ok	This file contains an unsafe file path ({0}), so annai won't open it.	このファイルには安全でないファイルパス（{0}）が含まれているため、annai は開きません。	src/core/archive.js:451	{0} = path
+hwph32	ok	This file isn't an annai file, or it is damaged ({0}).	このファイルは annai のファイルではないか、壊れています（{0}）。	src/core/archive.js:474	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1cut10v	ok	This zip isn't an annai file: it has no annai-archive.json.	この zip は annai のファイルではありません。annai-archive.json がありません。	src/core/archive.js:476	
+j0v5kk	ok	This file is damaged: its manifest is not readable.	このファイルは壊れています：マニフェストを読めません。	src/core/archive.js:483	
+lfeohr#other	ok	This file is damaged: {0} are missing.	このファイルは壊れています：{0}がありません。	src/core/archive.js:489	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
+1ujco5p	ok	This file is damaged: its keys are not readable.	このファイルは壊れています：キーを読めません。	src/core/archive.js:505	
+1aqa7w5	ok	This file is damaged ({0}).	このファイルは壊れています（{0}）。	src/core/archive.js:517	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1txsojx	ok	This file is damaged: {0} was changed.	このファイルは壊れています：{0} が変更されています。	src/core/archive.js:522	{0} = name
+21t6o3	ok	This file is damaged: line {0} of {1} is not readable.	このファイルは壊れています：{1} の{0}行目を読めません。	src/core/archive.js:548	{0} = i + 1; {1} = name
+1ln7rqe	ok	This file is damaged: line {0} of {1}: {2}	このファイルは壊れています：{1} の{0}行目：{2}	src/core/archive.js:552	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
+syvqmc	ok	This file is damaged: its plugin list is not readable.	このファイルは壊れています：プラグインの一覧を読めません。	src/core/archive.js:636	
+qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	読み込み中にこのファイルの内容の一部がこの端末から削除されたため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:738	
+cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	読み込み中に、このファイルが置き換えるものがこの端末で変わったため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:739	
 e0756x	ok	annai tries again later.	annai はあとでもう一度試します。	src/core/backup.js:42	
 pak6iu	ok	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} のプラグインが動いていません。設定 → バックアップでこのバックアップ先を開いて、オンにしてください。	src/core/backup.js:44	{0} = name
 al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	{0} の暗号化バックアップ用のパスフレーズを入力して、保存してください。	src/core/backup.js:45	{0} = name
@@ -611,7 +611,7 @@ bgn4sv	ok	Shiori answers in the language you speak to her	Shiori は話しかけ
 1qt7a9v	ok	Shiori answers in	Shiori が答える言語	src/core/languages.js:351	Note: A label for a menu of languages, so a noun: "the language Shiori answers in".
 k4u05v	ok	The language you speak to her	話しかけた言語	src/core/languages.js:352	
 cc69cl	ok	None picked: annai uses the browser’s language.	未選択：annai はブラウザの言語を使います。	src/core/languages.js:353	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
-1dyfzsg	ok	A simulation is already running.	シミュレーションはすでに実行中です。	src/core/live/live.js:289	
+1dyfzsg	ok	A simulation is already running.	シミュレーションはすでに実行中です。	src/core/live/live.js:298	
 157qf8n	ok	Flight {0} departs {1}, {2}	フライト {0}、{1} 出発、{2}	src/core/live/plan-watches.js:138	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
 1tvx4k9	ok	Flight {0} departs {1}	フライト {0}、{1} 出発	src/core/live/plan-watches.js:138	{0} = w.flight; {1} = time
 1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}、{2}）	src/core/live/plan-watches.js:139	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
@@ -846,11 +846,11 @@ j773ua	ok	needs {0}, which isn't installed. Install it first, then try again.	�
 gvuaip	ok	isn't in annai's catalog.	annai のカタログにありません。	src/core/requires.js:203	
 olo1mq	ok	is installed from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.	ほかからインストールされたもので、annai 自身のものではありません。annai のものを追加するには、設定 → プラグインで削除してください。	src/core/requires.js:206	
 seoih8	ok	{0}, which you turned off, isn't switched on by adding it.	オフにした {0} は、追加してもオンになりません。	src/core/requires.js:208	{0} = officialName(entry.id, entry.name)
-stkvyf	ok	Me	自分	src/core/scopes.js:43	Note: the conversation that is not a trip's (Shiori and you), as the Trace's list names it.
-1imxpae	ok	System log	システムログ	src/core/scopes.js:44	
-ktdb8o	ok	Settings	設定	src/core/scopes.js:45	
-13w3r95	ok	This device	この端末	src/core/scopes.js:47	
-1jqhjwe	ok	Waiting with Shiori	Shiori が預かっているファイル	src/core/scopes.js:48	Note: the files handed to Shiori while no trip was open, which she holds until she files them: 預かる (holds for you), with ファイル so a heading says what is listed.
+stkvyf	ok	Me	自分	src/core/scopes.js:58	Note: the conversation that is not a trip's (Shiori and you), as the Trace's list names it.
+1imxpae	ok	System log	システムログ	src/core/scopes.js:59	
+ktdb8o	ok	Settings	設定	src/core/scopes.js:60	
+13w3r95	ok	This device	この端末	src/core/scopes.js:62	
+1jqhjwe	ok	Waiting with Shiori	Shiori が預かっているファイル	src/core/scopes.js:63	Note: the files handed to Shiori while no trip was open, which she holds until she files them: 預かる (holds for you), with ファイル so a heading says what is listed.
 ulzb3n	ok	Midnight sun	白夜	src/core/sun.js:78	
 1fjho8h	ok	Polar night	極夜	src/core/sun.js:79	
 tqn1pi	ok	Sunrise {0}	日の出 {0}	src/core/sun.js:82	{0} = hm(sunrise)
@@ -1599,22 +1599,22 @@ iw9ebk	ok	Restroom	トイレ	src/ui/screens/drive.js:17
 18wvy25	ok	How long until our next stop?	次の立ち寄り先まで、あとどのくらいですか？	src/ui/screens/drive.js:18	
 1r191hj	ok	How long until we reach {0}?	{0}まで、あとどのくらいですか？	src/ui/screens/drive.js:18	{0} = next.name
 1xb4fg	ok	about {0}	約{0}	src/ui/screens/drive.js:22	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000)
-12d1x1g	draft	An itinerary place	旅程の場所	src/ui/screens/drive.js:35	
-7quqpk	ok	Go to Trips	「旅」へ	src/ui/screens/drive.js:52	
-ov2ou9	ok	Open a trip to see the road ahead.	旅を開くと、この先の道が表示されます。	src/ui/screens/drive.js:52	
-sxc7mr	ok	The road ahead	この先の道	src/ui/screens/drive.js:58	
-1b4mdx5	ok	You (finding where)	あなた（現在地を確認中）	src/ui/screens/drive.js:70	
-1efd4xo	ok	You	あなた	src/ui/screens/drive.js:70	
-591tvw	ok	You (GPS off)	あなた（GPS オフ）	src/ui/screens/drive.js:70	
-ugf9pe	ok	at {0}	{0}予定	src/ui/screens/drive.js:73	{0} = s.row.time; Note: A stop's time on the plan, on the road ahead ("at 14:00").
-102oezx	ok	Nothing more is planned with a place.	場所のある予定はもうありません。	src/ui/screens/drive.js:74	
-l329ve	ok	Directions to {0}	{0}への経路	src/ui/screens/drive.js:77	{0} = next.name
-kb2apf	ok	annai hasn't downloaded its maps links yet; it needs to be online once.	annai はまだ地図のリンクをダウンロードしていません。一度オンラインになる必要があります。	src/ui/screens/drive.js:80	
-1tuqp1	ok	Asked Shiori: {0}	Shiori に聞きました：{0}	src/ui/screens/drive.js:85	{0} = text
-ah9gez	ok	Turn GPS on	GPS をオンにする	src/ui/screens/drive.js:88	
-14ltb7u	draft	The itinerary has no places to choose from yet.	旅程にはまだ選べる場所がありません。	src/ui/screens/drive.js:91	English was: The plan has no places to choose from yet.
-1sedy1m	ok	Where are you?	いまどこにいますか？	src/ui/screens/drive.js:91	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
-1w8zbso	ok	annai now knows you're at {0}.	annai はあなたが{0}にいると認識しました。	src/ui/screens/drive.js:96	{0} = p.name
+12d1x1g	draft	An itinerary place	旅程の場所	src/ui/screens/drive.js:33	
+7quqpk	ok	Go to Trips	「旅」へ	src/ui/screens/drive.js:50	
+ov2ou9	ok	Open a trip to see the road ahead.	旅を開くと、この先の道が表示されます。	src/ui/screens/drive.js:50	
+sxc7mr	ok	The road ahead	この先の道	src/ui/screens/drive.js:56	
+1b4mdx5	ok	You (finding where)	あなた（現在地を確認中）	src/ui/screens/drive.js:68	
+1efd4xo	ok	You	あなた	src/ui/screens/drive.js:68	
+591tvw	ok	You (GPS off)	あなた（GPS オフ）	src/ui/screens/drive.js:68	
+ugf9pe	ok	at {0}	{0}予定	src/ui/screens/drive.js:71	{0} = s.row.time; Note: A stop's time on the plan, on the road ahead ("at 14:00").
+102oezx	ok	Nothing more is planned with a place.	場所のある予定はもうありません。	src/ui/screens/drive.js:72	
+l329ve	ok	Directions to {0}	{0}への経路	src/ui/screens/drive.js:75	{0} = next.name
+kb2apf	ok	annai hasn't downloaded its maps links yet; it needs to be online once.	annai はまだ地図のリンクをダウンロードしていません。一度オンラインになる必要があります。	src/ui/screens/drive.js:78	
+1tuqp1	ok	Asked Shiori: {0}	Shiori に聞きました：{0}	src/ui/screens/drive.js:83	{0} = text
+ah9gez	ok	Turn GPS on	GPS をオンにする	src/ui/screens/drive.js:86	
+14ltb7u	draft	The itinerary has no places to choose from yet.	旅程にはまだ選べる場所がありません。	src/ui/screens/drive.js:89	English was: The plan has no places to choose from yet.
+1sedy1m	ok	Where are you?	いまどこにいますか？	src/ui/screens/drive.js:89	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
+1w8zbso	ok	annai now knows you're at {0}.	annai はあなたが{0}にいると認識しました。	src/ui/screens/drive.js:94	{0} = p.name
 amdsnu	ok	Swipe sideways to move between tabs	横にスワイプしてタブを移動	src/ui/screens/experimental.js:14	
 1py6vf8	ok	Unfinished translations	未完成の翻訳	src/ui/screens/experimental.js:19	
 13a0vz9	ok	Features that are still being tried. They may have bugs, and their fixes may come slower than the rest of annai.	まだ試している機能です。不具合があるかもしれず、修正は annai のほかの部分より遅れることがあります。	src/ui/screens/experimental.js:25	
@@ -2738,11 +2738,11 @@ q69pp5	ok	{0} didn't answer: {1}. No other model was asked.	{0}は答えませ�
 1cam7ic	ok	Message	メッセージ	src/ui/talk-panel.js:74	
 vy4apn	ok	Try this model	このモデルを試す	src/ui/talk-panel.js:75	
 1k3coi2	ok	A short conversation with this model alone: if it fails, no other model answers. Each reply shows its tokens and cost. Nothing is kept but the Trace.	このモデルだけとの短い会話です。失敗しても、ほかのモデルは答えません。返事ごとにトークン数と費用を表示します。記録以外には何も残りません。	src/ui/talk-panel.js:77	
-1tzspvr	ok	GPS is off, so annai isn't following where you are.	GPS がオフなので、annai は現在地を追っていません。	src/ui/today.js:18	
-1sflilm	draft	Location isn't allowed for annai. Open Driving to say where you are.	annai に位置情報が許可されていません。「運転中」を開いて、現在地を伝えてください。	src/ui/today.js:21	
-1770v5g	ok	Finding where you are…	現在地を確認しています…	src/ui/today.js:22	
-vlhm27	draft	No GPS signal right now. Open Driving to say where you are.	いま GPS の信号がありません。「運転中」を開いて、現在地を伝えてください。	src/ui/today.js:22	
-ue501f	ok	Near {0}, ≈ {1}	{0}の近く（≈ {1}）	src/ui/today.js:25	{0} = near.name; {1} = distance(near.m / 1000)
+1tzspvr	ok	GPS is off, so annai isn't following where you are.	GPS がオフなので、annai は現在地を追っていません。	src/ui/today.js:19	
+1sflilm	draft	Location isn't allowed for annai. Open Driving to say where you are.	annai に位置情報が許可されていません。「運転中」を開いて、現在地を伝えてください。	src/ui/today.js:22	
+1770v5g	ok	Finding where you are…	現在地を確認しています…	src/ui/today.js:23	
+vlhm27	draft	No GPS signal right now. Open Driving to say where you are.	いま GPS の信号がありません。「運転中」を開いて、現在地を伝えてください。	src/ui/today.js:23	
+ue501f	ok	Near {0}, ≈ {1}	{0}の近く（≈ {1}）	src/ui/today.js:26	{0} = near.name; {1} = distance(near.m / 1000)
 1sva5r0	ok	The check took too long. Check the connection, and try again.	確認に時間がかかりすぎました。接続を確かめて、もう一度お試しください。	src/ui/updates.js:122	
 14d6ut8	ok	annai's offline service hasn't started yet, so annai itself wasn't checked. Try again in a moment.	annai のオフラインサービスがまだ起動していないため、annai 自体は確認していません。少ししてから、もう一度お試しください。	src/ui/updates.js:140	
 16l98jx	ok	annai couldn't check for a new version of itself. Check the connection and try again.	annai は自分の新しいバージョンを確認できませんでした。接続を確かめて、もう一度お試しください。	src/ui/updates.js:141	

@@ -2,7 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { planRows } from '../../src/core/plan.js';
 import { upcoming, routeStrip, sunPlace } from '../../src/core/now.js';
-import { todayOf, nowOf, takeover, driveBack } from '../../src/ui/today.js';
+import { todayOf, nowOf, takeover, driveBack, drivingTrip, askIn } from '../../src/ui/today.js';
+import { createMemoryStore } from '../../src/core/store-memory.js';
+import { Workspace } from '../../src/core/workspace.js';
+import { ensureBaseScopes } from '../../src/core/scopes.js';
+import { readAppSettings } from '../../src/core/settings.js';
 import { dayIn, deviceZone } from '../../src/core/time.js';
 import { at, iso, LA, BIXBY, NEPENTHE, RIVER_INN } from './live-kit.js';
 
@@ -77,4 +81,51 @@ test('← on Driving: Now by name, anywhere else as Back, and Now when nothing s
   assert.deepEqual(driveBack(undefined), { href: '#/now', label: 'Now' });
   assert.deepEqual(driveBack('#/now'), { href: '#/now', label: 'Now' });
   assert.deepEqual(driveBack('#/trip/trip-a/plan'), { href: '#/trip/trip-a/plan', label: 'Back' });
+});
+
+test('Driving shows the trip in play, else the open one, else nothing', () => {
+  assert.equal(drivingTrip({ live: { play: 'trip-a' }, agent: { trip: 'trip-chat' } }), 'trip-a');
+  assert.equal(drivingTrip({ live: { play: null }, agent: { trip: 'trip-chat' } }), 'trip-chat');
+  assert.equal(drivingTrip({ agent: { trip: 'trip-chat' } }), 'trip-chat');
+  assert.equal(drivingTrip({ live: { play: null }, agent: { trip: null } }), null);
+  assert.equal(drivingTrip({}), null);
+});
+
+/** Driving's ctx, with an agent that records. @param {string | null} target @param {string} [koeState] */
+async function asking(target, koeState = 'off') {
+  const ws = new Workspace(createMemoryStore());
+  await ensureBaseScopes(ws);
+  /** @type {any[]} */
+  const did = [];
+  const agent = {
+    target, koeState,
+    async open(/** @type {string} */ id) { did.push(['open', id, (await readAppSettings(ws)).activeTrip]); agent.target = id; },
+    send(/** @type {string} */ text, /** @type {any} */ o) { did.push(['send', text, o, agent.target]); },
+  };
+  return { ctx: { ws, agent }, did };
+}
+
+test("a quick ask from a quick chat opens the trip first, saved as the open one, then asks there", async () => {
+  const { ctx, did } = await asking('trip-chat');
+  await askIn(ctx, 'trip-a', 'Fuel?');
+  assert.deepEqual(did, [['open', 'trip-a', 'trip-a'], ['send', 'Fuel?', { chose: true }, 'trip-a']]);
+});
+
+test('a quick ask in the trip already open just asks', async () => {
+  const { ctx, did } = await asking('trip-a');
+  await askIn(ctx, 'trip-a', 'Fuel?');
+  assert.deepEqual(did, [['send', 'Fuel?', { chose: true }, 'trip-a']]);
+});
+
+test('a quick ask over a live session goes to the open conversation: opening would close the session', async () => {
+  const { ctx, did } = await asking('trip-chat', 'live');
+  await askIn(ctx, 'trip-a', 'Fuel?');
+  assert.deepEqual(did, [['send', 'Fuel?', { chose: true }, 'trip-chat']]);
+});
+
+test("a conversation that doesn't open still leaves the question asked", async () => {
+  const { ctx, did } = await asking('trip-chat');
+  ctx.agent.open = async () => { throw new Error('no'); };
+  await askIn(ctx, 'trip-a', 'Fuel?');
+  assert.deepEqual(did, [['send', 'Fuel?', { chose: true }, 'trip-chat']]);
 });

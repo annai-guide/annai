@@ -6,6 +6,7 @@ import { liveText, knownFix } from './live-chip.js';
 import { distance } from './format.js';
 import { component, mount, slotEntries } from './slots.js';
 import { parseHash } from './router.js';
+import { updateAppSettings } from '../core/settings.js';
 
 /** Now, by live mode's own clock: a simulation's while one runs (spec §13). @param {any} live */
 export const nowOf = (live) => live?.clock?.now() ?? Date.now();
@@ -42,8 +43,8 @@ export function handover(activity, was, screens) {
 const TAKEN_FROM = new Set(['trips', 'talk', 'plan', 'now']);
 
 /**
- * Where the shell goes as the activity changes, or null. Once per change, and never from under someone typing. Driving shows the open
- * trip, so it needs one; a plugin's screen doesn't.
+ * Where the shell goes as the activity changes, or null. Once per change, and never from under someone typing. Driving shows a trip
+ * (drivingTrip), so it needs one; a plugin's screen doesn't.
  * @param {{ activity: string, was: string | undefined, screens: { pluginId: string, item: any }[], on: boolean, hash: string, typing: boolean, trip: string | null }} o
  * @returns {string | null}
  */
@@ -51,6 +52,21 @@ export function takeover({ activity, was, screens, on, hash, typing, trip }) {
   const to = handover(activity, was, screens);
   if (!to || !on || typing || !TAKEN_FROM.has(parseHash(hash).name)) return null;
   return to === '#/drive' && !trip ? null : to;
+}
+
+/** The trip Driving shows: the one in play, else the open one. A quick chat doesn't take the road with it. @param {any} ctx @returns {string | null} */
+export const drivingTrip = (ctx) => ctx.live?.play ?? ctx.agent?.trip ?? null;
+
+/**
+ * A quick ask from Driving, in the trip it shows: opened first, unless a live session is running, which opening would close; it then goes to the
+ * open conversation. @param {any} ctx @param {string} id @param {string} text
+ */
+export async function askIn(ctx, id, text) {
+  if (id !== ctx.agent.target && ctx.agent.koeState !== 'live') {
+    await updateAppSettings(ctx.ws, { activeTrip: id });
+    await ctx.agent.open(id).catch(() => {}); // she is still asked, where she is
+  }
+  ctx.agent.send(text, { chose: true });
 }
 
 /** A field being typed in. @param {Element | null} el */

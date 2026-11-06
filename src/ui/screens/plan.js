@@ -7,7 +7,7 @@ import { readAppSettings } from '../../core/settings.js';
 import { tripZoneOf } from '../../core/trip-files.js';
 import { platform } from '../platform.js';
 import { saveFile } from '../save.js';
-import { todayOf, todayTop } from '../today.js';
+import { todayOf, todayTop, drivingTrip } from '../today.js';
 import { ask } from '../ask.js';
 import { detailsHref, rowName, lineName, dateRange, day, distance, num, list, sentences, sentenceGap } from '../format.js';
 
@@ -39,12 +39,12 @@ export async function renderPlan(ctx, route) {
   const today = todayOf(ctx.live);
   const first = tabs.find((x) => x.key === today) ?? tabs.find((x) => x.rows.length) ?? tabs[0];
   const panel = h('div', { class: 'plan-day', role: 'tabpanel' });
-  // Today's tab opens with what Now opens with. Driving shows the open trip, so only that trip links to it.
+  // Today's tab opens with what Now opens with. Driving shows one trip, so only that trip links to it.
   let top = null;
   if (tabs.some((x) => x.key === today)) {
     await ctx.agent?.opening.catch(() => {});
     top = h('div', { class: 'today-top' }, todayTop(ctx, { title: scope.title, rows, tz: fallbackTz }),
-      id === ctx.agent?.trip ? h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/drive' }, t`Driving`)) : null);
+      id === drivingTrip(ctx) ? h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/drive' }, t`Driving`)) : null);
   }
   /** @type {HTMLButtonElement[]} */
   const buttons = tabs.map((x) => h('button', { type: 'button', role: 'tab', class: 'tab', onclick: () => show(x) }, x.label));

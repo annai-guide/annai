@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
-import { openApp, waitForServiceWorker, addProvider, pickProvider, savedBy, leaveSaved, startModelServer, anthropicToolReply, fakeMicrophone, filterTrace } from './helpers.js';
+import { openApp, waitForServiceWorker, addProvider, pickProvider, savedBy, leaveSaved, startModelServer, anthropicToolReply, fakeMicrophone, filterTrace, happeningTrip, userLines } from './helpers.js';
 import { startRealtimeServer } from '../fakes/realtime-server.js';
 
 // Koe live (the Koe and Kokoro plan, K5): Gemini Live as Koe, against the stand-in realtime server, with a
@@ -107,6 +107,27 @@ test('voice on, a tap: "Listening live"; a spoken question gets "checking" aloud
     await expect(closed).toContainText('voice off');
     await expect(closed).toContainText(/\d+ kB in, \d+ kB out · \$0\.\d+/);
     expect(await page.content()).not.toContain(KEY);
+  } finally {
+    await s.stop();
+    await kokoro.stop();
+  }
+});
+
+test("a quick ask from Driving over a live session goes to the open conversation, and the session stays open", async ({ page }) => {
+  const s = await startRealtimeServer({ flavour: 'gemini', key: KEY, turns: [{ said: 'The next fuel is in Carmel.', audio: voice(0.6), usage }] });
+  const kokoro = await startModelServer({ '/kokoro/v1/messages': [sse([sleep]), sse([sleep])] });
+  try {
+    await fakeMicrophone(page, [clipPath('where-eat')]);
+    await liveSetUp(page, kokoro.origin, s.origin);
+    const chat = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+    const road = await happeningTrip(page, 'The coast'); // Big Sur stays open: undated, with this trip in play
+    await page.getByRole('button', { name: 'Shiori' }).click();
+    await expect(page.locator('.voice-chip')).toHaveText('Listening live');
+    await page.goto('/#/drive');
+    await page.getByRole('button', { name: 'Fuel' }).click();
+    await expect.poll(() => userLines(page, chat)).toContainEqual(expect.stringContaining('Where is the next fuel station or charger?'));
+    expect(await userLines(page, road)).toEqual([]);
+    await expect(page.locator('.voice-chip')).toHaveText('Listening live');
   } finally {
     await s.stop();
     await kokoro.stop();

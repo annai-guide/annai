@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, startTrip, writeRecords } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, startTrip, writeRecords, happeningTrip, userLines } from './helpers.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 
@@ -115,4 +115,34 @@ test("Driving's ← goes where it was entered from, not where an earlier take-ov
   await page.getByRole('main').getByRole('link', { name: 'Driving' }).click();
   await page.getByRole('main').getByRole('link', { name: 'Now', exact: true }).click();
   await expect.poll(() => new URL(page.url()).hash).toBe('#/now');
+});
+
+test("a quick chat open as moving fast begins: Driving shows the trip in play's road, and a quick ask opens that trip first", async ({ page, context }) => {
+  const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }])), sse(anthropicToolReply([{ name: 'sleep', input: {} }])), sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });
+  try {
+    await context.grantPermissions(['geolocation']);
+    await context.setGeolocation({ latitude: 36.60, longitude: -121.89, accuracy: 10 });
+    await page.clock.install({ time: new Date() });
+    await openApp(page, '#/models');
+    await waitForServiceWorker(page);
+    await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${llm.origin}/b`, key: 'sk-test-b', model: 'b-model' });
+    await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
+    await page.getByRole('button', { name: 'Add to main' }).click();
+    await page.goto('/#/trips');
+    const road = await happeningTrip(page, 'Big Sur');
+    const lunch = new Date(Date.now() + 2 * 3_600_000).toISOString().replace(/\.\d+Z$/, 'Z');
+    await writeRecords(page, road, { write: { '/plan/lunch.json': { id: 'lunch', title: 'Lunch at Nepenthe', fixed: true, start: { at: lunch, tz: 'UTC' }, place: { name: 'Nepenthe', lat: 36.2213, lng: -121.7567 } } } });
+    const chat = await startTrip(page, 'Ramen');
+    await page.locator('.live-chip').click();
+    await expect(page.locator('.live-chip')).toHaveText(/^GPS on\b/);
+    await page.goto('/#/talk');
+    await roll(page, context, 1, 10);
+    await expect(page.getByRole('heading', { name: 'Driving' })).toBeVisible();
+    await expect(page.getByRole('list', { name: 'The road ahead' })).toContainText('Nepenthe');
+    await page.getByRole('button', { name: 'Fuel' }).click();
+    await expect.poll(() => userLines(page, road)).toContainEqual(expect.stringContaining('Where is the next fuel station or charger?'));
+    expect(await userLines(page, chat)).toEqual([]);
+  } finally {
+    await llm.stop();
+  }
 });
