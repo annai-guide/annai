@@ -113,11 +113,6 @@ export const LIVE_ANSWER_S = 8;
 const IGNORING_HOLD_S = 3;
 /** How long a tap lifts the level check: for a time, not a turn, as the next lyric would take a turn's lift and leave the soft word out. */
 const LIFT_S = LIVE_ANSWER_S;
-/**
- * A model that needs a thinking level, which annai deliberately never sends (plugins-official/gemini-live), rests this long: asking again can't help until
- * annai or its plugin changes. Any other refusal of a setup rests as a failure does: it may pass.
- */
-export const REFUSED_REST_MS = 6 * 3_600_000;
 /** Past the end of her sound, the wait for the turnComplete of a turn whose tool call was answered silently (measured: the design, section 3, item 6). */
 const TURN_END_S = 2;
 
@@ -437,7 +432,7 @@ export class LiveKoe {
     await this.c.koe.opening.catch(() => {}); // its lines go into Koe's conversation
     // One that can't open rests its model, as a failed call's does: Koe's next model answers meanwhile.
     const over = await this.#over(); // its own card says why; the model isn't at fault
-    const s = over ? null : await this.#resume(id, this.#handle, why).catch((e) => { this.c.llm.bench?.bench(id, e?.kind === 'bad-request' && /thinking level/i.test(String(e.message)) ? REFUSED_REST_MS : COOLDOWN_MS); return null; });
+    const s = over ? null : await this.#resume(id, this.#handle, why).catch((e) => { this.c.llm.bench?.bench(id, COOLDOWN_MS); return null; });
     if (s) await this.c.voiceOut?.(); // one that began while the socket connected finishes first too: the session hasn't let go of the speech pipeline yet
     if (gen !== this.#gen || !s) {
       this.#failed = !s && !over && gen === this.#gen;

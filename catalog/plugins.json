@@ -81,7 +81,7 @@
     {
       "id": "gemini-live",
       "name": "Gemini Live",
-      "version": "0.4.2",
+      "version": "0.4.3",
       "description": "Talks to Gemini's Live API: a voice conversation in one stream, both ways, for Koe.",
       "category": "developer",
       "keywords": [],
@@ -89,7 +89,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 11830,
+      "size": 11284,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -97,8 +97,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "980508d325ec31438ff8e4a8689683edbf808d975017afd3b88bcac3aefd7fc9",
-        "index.js": "2f0e0ef220828d1629074ebdf0b42debd1f268935e4da2335baa47a1d554043b"
+        "annai-plugin.json": "9f9d9dfce8488aa3e740d328ac27fb184a99737c121df6a5ad8d090b610dd4a5",
+        "index.js": "7579b433e41eb2bad642f97df384b5eea64ec0d41dbc5f781bd14026e86e0861"
       }
     },
     {
@@ -280,7 +280,7 @@
     {
       "id": "provider-gemini",
       "name": "Google Gemini",
-      "version": "2.7.2",
+      "version": "2.8.0",
       "description": "Gemini models through Google's own API, with Google Search on a paid key, its transcription and voices, and Gemini Live for a voice conversation.",
       "category": "providers",
       "keywords": [],
@@ -293,7 +293,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 11731,
+      "size": 11288,
       "requires": [
         {
           "id": "gemini-api",
@@ -302,7 +302,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "9fbad9b868b0e1df5c0b6c0fcb00dbcb5271dc9437351bf46263577b1179f6a9"
+        "annai-plugin.json": "6e70e9f7aba42183dda5759c585434890bf20edb4ccdfdb135357d2a959d5c9e"
       }
     },
     {

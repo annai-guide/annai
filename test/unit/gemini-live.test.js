@@ -256,21 +256,3 @@ test("by default a session asks for Sulafat, Shiori's voice in Classic too, so K
     await s.stop();
   }
 });
-
-test('Extended Thinking is refused as a bad request, so Koe goes on to its next model: no level is sent (it can reach no tool, 2026-11-05)', async () => {
-  const server = await startRealtimeServer({ flavour: 'gemini', turns: [{ said: 'OK.' }], needsThinking: ['gemini-3.8-live-extended-thinking'] });
-  const type = geminiLive();
-  const open = (/** @type {string} */ providerId) => openLive({
-    type, endpoint: { id: 'e', provider: 'p', ability: 'a', type: 'gemini-live', name: 'G', baseUrl: server.origin, headers: {}, tunables: type.tunables, extraBody: {} },
-    model: /** @type {any} */ ({ id: 'm', provider: 'p', ability: 'a', name: providerId, providerId, input: ['text'], tools: true, reasoning: {}, tunables: {}, extraBody: {}, prices: null }),
-    key: KEY, tunables: { ...type.tunables }, setup: { instructions: 'x', context: '', tools: [] }, trace: modelTrace(createMemoryStore(), SYS),
-  });
-  try {
-    await assert.rejects(open('gemini-3.8-live-extended-thinking').ready, (/** @type {any} */ e) => e.kind === 'bad-request');
-    const plain = open('gemini-3.8-live');
-    await plain.ready;
-    plain.close();
-  } finally {
-    await server.stop();
-  }
-});
