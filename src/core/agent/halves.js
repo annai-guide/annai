@@ -728,7 +728,7 @@ export class Halves {
   }
 
   #koeOpen() {
-    if (this.#koeTrip === this.kokoro.target) return;
+    if (this.#koeTrip === this.kokoro.target && this.koe.target === this.#koeTrip) return; // an open of Koe's that failed left it behind
     this.#koeTrip = this.kokoro.target;
     this.koe.open(this.kokoro.target).catch((e) => console.warn(/* en */ 'Koe could not open the conversation', e));
   }

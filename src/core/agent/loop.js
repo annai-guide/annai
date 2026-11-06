@@ -624,7 +624,10 @@ export class Agent {
     if (this.#turning && trip !== this.trip && !o.quiet) this.#cutByOpen = true;
     if (this.#busy) this.#halt();
     this.#clearTimer();
-    this.opening = this.opening.catch(() => {}).then(() => this.#open(trip, generation)).finally(() => {
+    this.opening = this.opening.catch(() => {}).then(() => this.#open(trip, generation)).catch((e) => {
+      if (generation === this.#generation) this.#target = this.trip; // it stays the one open, so opening it is asked for again
+      throw e;
+    }).finally(() => {
       this.#opens--;
       if (!this.#opens) this.#drain();
     });
