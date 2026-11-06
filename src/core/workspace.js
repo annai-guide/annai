@@ -372,6 +372,7 @@ async function putVersion(t, scope, path, version, opts, now) {
  * Stores bytes under their hash in transaction t, unless that content is stored whole already. A record without its bytes (an older annai
  * kept a string or an ArrayBuffer given to a log entry so) is written again with them. The held record is read whole to know: IndexedDB
  * returns whole records, and its size can be right while its bytes are missing, so no index can tell.
+ * Held content is rarely written again, and texts are small.
  * @param {Tx} t @param {string} hash @param {string} type @param {Uint8Array} bytes
  */
 export async function keepBlob(t, hash, type, bytes) {

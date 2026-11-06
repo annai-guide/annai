@@ -1,4 +1,4 @@
-import { MANIFEST_FILE, PLUGIN_MAX_BYTES, checkManifest, inspectPackage, skillManifest, addedParts, originsOf, wordsOf, translationFor } from './packages.js';
+import { MANIFEST_FILE, checkManifest, inspectPackage, skillManifest, addedParts, originsOf, wordsOf, translationFor } from './packages.js';
 import { parseSkill, SKILL_FILE } from './skills.js';
 import { forget } from './forget.js';
 import { checkSlot, checkCardType, checkComponent, checkScreen, checkTheme, COMPONENTS } from './ui-slots.js';
@@ -127,16 +127,15 @@ export class PluginHost {
 
   /**
    * @param {{ registry: Registry, workspace: Workspace, importModule?: (url: string) => Promise<any>,
-   *   pluginUrl?: (id: string, file: string) => string, startTimeout?: number, maxPackageBytes?: number }} deps
+   *   pluginUrl?: (id: string, file: string) => string, startTimeout?: number }} deps
    */
   constructor({ registry, workspace, importModule = (url) => import(url), pluginUrl = (id, file) => `/plugins/${encodeURIComponent(id)}/${file}`,
-    startTimeout = START_TIMEOUT, maxPackageBytes = PLUGIN_MAX_BYTES }) {
+    startTimeout = START_TIMEOUT }) {
     this.registry = registry;
     this.ws = workspace;
     this.importModule = importModule;
     this.pluginUrl = pluginUrl;
     this.startTimeout = startTimeout;
-    this.maxPackageBytes = maxPackageBytes;
     registry.setRules(this.#rules);
     // Switched off after repeated errors (spec §5.5): an installed plugin is stopped too, so its timers and requests end
     // with its cleanup; Turn on starts it again. A built-in can only start with annai, so it stays as it is.
@@ -173,7 +172,7 @@ export class PluginHost {
    * @returns {Promise<import('./packages.js').Package & { previous: { version: string, kind: string, added: import('./packages.js').Added, from: { source: string, file?: string, url?: string } } | null }>}
    */
   async inspect(files) {
-    const pkg = await inspectPackage(files, { maxBytes: this.maxPackageBytes });
+    const pkg = await inspectPackage(files);
     const id = pkg.id;
     if (this.builtins.has(id)) {
       /* en */

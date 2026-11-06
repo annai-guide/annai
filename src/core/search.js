@@ -35,12 +35,6 @@ function at(q, f) {
   return false;
 }
 
-/** @param {string} query @param {string} field */
-export const matchAt = (query, field) => {
-  const q = squash(query).text;
-  return Boolean(q) && at(q, squash(field));
-};
-
 /** Each entry's fields, squashed the first time it is searched: typing searches the same entries again. @type {WeakMap<object, { name: Squashed, keywords: Squashed[], description: Squashed, abilities: Squashed[] }>} */
 const squashed = new WeakMap();
 const FREE = squash('free');
@@ -73,9 +67,6 @@ function rankRead(e, q) {
   const why = score ? ranks.find((r) => r.why)?.why : undefined;
   return why ? { score, why } : { score };
 }
-
-/** 3 its name, 2 a keyword, 1 its description, an ability or "free"; 0 no match. @param {SearchEntry} e @param {string} query */
-export const rankEntry = (e, query) => rankRead(e, read(query));
 
 /** Whether the filters keep an entry. @param {SearchEntry} e @param {Filters} f */
 const keeps = (e, f) => (!f.kind || e.category === f.kind) && (!f.ability || e.abilities.includes(f.ability))

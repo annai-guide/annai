@@ -63,6 +63,15 @@ test('a zip address: its files, whatever the address ends with', async () => {
   assert.deepEqual(names(await fetchPackage(`${T}/download?id=7`, { fetch })), ['tide-pools/SKILL.md']);
 });
 
+test('a zip address: what it unpacks to counts against the same limit as the download', async () => {
+  const z = new ZipWriter();
+  await z.add('a.txt', utf8('a'.repeat(5000)));
+  await z.add('b.txt', utf8('b'.repeat(5000)));
+  const { fetch } = web({ [`${T}/big.zip`]: new Uint8Array(await z.finish().arrayBuffer()) });
+  await assert.rejects(fetchPackage(`${T}/big.zip`, { fetch, max: 8000 }), /too large/);
+  assert.equal((await fetchPackage(`${T}/big.zip`, { fetch, max: 10_000 })).size, 2);
+});
+
 test("a GitHub page's address is read from GitHub's raw files", () => {
   assert.equal(rawAddress('https://github.com/o/r/blob/main/skills/x/SKILL.md'), 'https://raw.githubusercontent.com/o/r/main/skills/x/SKILL.md');
   assert.equal(rawAddress('https://github.com/o/r/raw/v1/annai-plugin.json'), 'https://raw.githubusercontent.com/o/r/v1/annai-plugin.json');

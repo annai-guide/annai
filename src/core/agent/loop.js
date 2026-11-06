@@ -937,7 +937,7 @@ export class Agent {
     });
   }
 
-  /** A live session's tools (K5): this half's now, less speak, wait and sleep (plan decision 29). */
+  /** A live session's tools (K5): this half's now, less speak and wait (plan decision 29; the drive-test design gave it back sleep). */
   async liveTools() {
     // A live session's sleep closes it, the microphone with it, as a tap does (the drive-test follow-ups).
     return (await this.#toolsNow()).tools.filter((t) => !['speak', 'wait'].includes(t.name)).map((t) => (t.name === 'sleep' ? { ...t, description: LIVE_SLEEP } : t));

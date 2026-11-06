@@ -256,6 +256,7 @@ export class ActivityTracker {
   /** @param {Activity} to @param {number} at @param {number} gap ms since the fix before @returns {Change} */
   #become(to, at, gap) {
     const why = { heldS: this.#leaving === null ? 0 : Math.round((at - this.#leaving) / 1000), gapS: Math.round(gap / 1000), readings: this.#counts, heards: this.#heards };
+    // `#ended` first, hold or no hold: a no-speed reading on an old record has `#leaving` null and needs the date.
     const ended = this.activity !== 'moving-fast' ? at : this.#ended ?? (this.#leaving !== null ? Math.min(at, this.#leaving + LEAVE_FAST_MS) : at);
     const change = { from: this.activity, to, at: ended, why };
     this.#counts = zero();

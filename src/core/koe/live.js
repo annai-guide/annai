@@ -1599,6 +1599,7 @@ export class LiveKoe {
    * is over. Else it goes in on the urgent path, so the next turn of the music can't cut her sleep call; never owed. Her own turn, a tool
    * call or an urgent note goes first. A user turn going on, or awaiting her verdict, may be the user talking to her: it waits for that
    * verdict, at most STRETCH_WAIT_MS after that turn ends, and once more past that bound; then nothing holds it (that turn is cut).
+   * Dismissed, it goes in at once.
    */
   #sleepy() {
     const n = this.#late;

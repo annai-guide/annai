@@ -71,7 +71,7 @@ test("Kokoro's note telling Koe to sleep, on non-stop sound, has live Koe call s
     let done = false;
     const feeding = feedOn(k, () => done);
     try {
-      // The note comes during the turn after the one let go, and waits for that turn to be let go too (it may be the user): a cap later.
+      // The note comes during the turn after the one let go, whose verdict is late (8 s): it waits for that, up to its bounds, then goes in.
       await until(() => k.agent.live.state === 'closed', 100_000);
     } finally {
       done = true;
@@ -1180,7 +1180,7 @@ test("Kokoro's sleep note during music that ran to the cap, then a question afte
   const { updateAppSettings } = await import('../../src/core/settings.js');
   const { clip } = await import('./voice-kit.js');
   const k = await liveKit([
-    ...Array.from({ length: 4 }, () => ({ heard: 'la la', delayMs: 1000 })),
+    ...Array.from({ length: 4 }, (_, i) => ({ heard: 'la la', delayMs: i === 3 ? 2500 : 1000 })),
     { heard: 'is there a gas station', said: 'There is one in two miles.', audio: tone(0.8), delayMs: 1000 },
     { tool: { name: 'sleep', args: {} } },
   ], { agent: { secondMs: 200 }, kokoro: [{ rules: [{ match: 'non-stop sound', reply: { delayMs: 1500, toolCalls: [{ name: 'tell_koe', input: { text: 'Only music: go to sleep.' } }, { name: 'sleep', input: {} }] } }, { match: '.', reply: sleep }] }] });
