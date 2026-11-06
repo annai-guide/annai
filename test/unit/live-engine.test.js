@@ -196,7 +196,7 @@ test('another trip opened: its watches and its log; a time watch of the first st
   const first = k.trip;
   const w1 = await k.live.setWatch(first, { when: { type: 'time', at: iso('09:00') }, fallback: 'Pack the snacks.' });
   const w2 = await k.live.setWatch(first, { when: { type: 'every', minutes: 10 }, fallback: 'Every ten.' });
-  const second = await createTrip(k.ws, { title: 'Cambria' });
+  const second = await createTrip(k.ws, { title: 'Cambria', start: '2026-11-27', end: '2026-11-27' });
   k.agent.target = second;
   await k.live.setLive(true);
   await k.fix(at('08:40'), CAMBRIA);
@@ -275,7 +275,7 @@ test('off screen nothing runs: GPS stops and the clock waits; back on screen bot
 
 test('opening another trip makes live mode look at its plan at once, even with nothing else to wake it', async () => {
   const k = await liveKit({ live: false });
-  const second = await createTrip(k.ws, { title: 'Cambria' });
+  const second = await createTrip(k.ws, { title: 'Cambria', start: '2026-11-27', end: '2026-11-27' });
   await k.ws.write(second, '/plan/tea.json', { id: 'tea', title: 'Tea at the inn', fixed: true, start: { at: iso('09:00'), tz: LA } }, { author: 'user' });
   k.agent.opened(second);
   await k.settle();

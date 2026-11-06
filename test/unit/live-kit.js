@@ -1,7 +1,7 @@
 import { createMemoryStore } from '../../src/core/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
-import { kindOf, ensureBaseScopes, createTrip } from '../../src/core/scopes.js';
+import { kindOf, ensureBaseScopes, createTrip, syncTripTitles } from '../../src/core/scopes.js';
 import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
 import { updateAppSettings } from '../../src/core/settings.js';
@@ -111,6 +111,7 @@ export async function liveKit({ plan = {}, bookings = {}, live = true, start = a
   const store = createMemoryStore();
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
   await ensureBaseScopes(ws);
+  syncTripTitles(ws); // main.js's: the record's dates follow trip.json
   const host = new PluginHost({ registry, workspace: ws, importModule: (/** @type {string} */ u) => import(u) });
   await host.addBuiltin(new URL('../../src/plugins/core-schemas/index.js', import.meta.url).href);
   const trip = await createTrip(ws, { title: 'Big Sur', start: '2026-11-27', end: '2026-11-28' });
@@ -144,6 +145,8 @@ export async function liveKit({ plan = {}, bookings = {}, live = true, start = a
       await settle();
       return k.restart();
     },
+    /** A second scope for a test to open: a quick chat, or with dates another trip. @param {string} title @param {{ start?: string, end?: string }} [dates] */
+    chat: (title, dates = {}) => createTrip(ws, { title, ...dates }),
     /** Moves the clock to t, firing the timers that come due on the way. @param {number} t */
     to: (t) => clock.advanceTo(t, settle),
     /** A GPS fix at p, at t. @param {number} t @param {{ lat: number, lng: number }} p @param {Record<string, any>} [o] */

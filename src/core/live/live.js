@@ -6,9 +6,10 @@ import { readWatches, saveWatch, removeWatch, newWatchId, expired, watchPath, WA
 import { realClock } from './clock.js';
 import { readAppSettings, updateAppSettings } from '../settings.js';
 import { logEvent } from '../events.js';
-import { ME, SYS_DEVICE, ensureDeviceScope, listTrips } from '../scopes.js';
+import { ME, SYS_DEVICE, ensureDeviceScope, listTrips, tripMirror } from '../scopes.js';
 import { PLAN_FILE, BOOKING_FILE } from '../plan.js';
-import { validZone, deviceZone, isoInZone, timeIn } from '../time.js';
+import { validZone, deviceZone, isoInZone, timeIn, nextDay } from '../time.js';
+import { phaseOf } from '../timeline.js';
 import { validate } from '../schema.js';
 import { tsv } from '../tsv.js';
 import { isPluginBug } from '../plugins.js';
@@ -133,11 +134,13 @@ export class Live {
   #kept = null;
   /** @type {Fix | null} where the odometer last counted from */
   #odo = null;
-  /** @type {string | null | undefined} the trip whose plan is loaded; undefined: none yet */
+  /** @type {string | null | undefined} the trip in play (#play) as last followed: its plan is loaded and the road goes into it; undefined: none yet */
   #trip = undefined;
+  /** @type {Map<string, { start?: string, end?: string, talked: number | null }>} the active trips, as #play chooses among them */
+  #rows = new Map();
   /** @type {Map<string, Watch[]>} by scope */
   #watches = new Map();
-  /** @type {Watch[]} the open trip's plan watches */
+  /** @type {Watch[]} the trip in play's plan watches */
   #plan = [];
   /** @type {{ name: string, lat: number, lng: number }[]} */
   #places = [];
@@ -232,8 +235,9 @@ export class Live {
         },
       }),
       this.ws.onChange((c) => this.#changed(c)),
-      // Another trip opened: its plan's reminders are looked at at once, not at the next fix (spec §11.3).
+      // Another trip opened: its plan's reminders are looked at at once, not at the next fix (spec §11.3). Last talked moves as conversations are left.
       this.agent.on('open', () => this.#bg(async () => {
+        await this.#loadRows();
         await this.#check();
         this.#tellReminders('prompt');
       })),
@@ -271,6 +275,11 @@ export class Live {
   /** What live mode remembers of watches, their memories and last firings, by scope and id: only for watches there are. */
   get held() {
     return [...new Set([...this.#mem.keys(), ...this.#fired.keys()])];
+  }
+
+  /** The trip in play, always current: whose plan reminds and where the road goes. The open conversation keeps its meaning everywhere else. */
+  get play() {
+    return this.#play();
   }
 
   /** A simulation has live mode now (spec §13). */
@@ -494,7 +503,7 @@ export class Live {
     return parts.join(' ');
   }
 
-  /** The watches of a conversation, hers and (for the open trip) the plan's, as TSV (spec §7.2 watch.list). @param {string} scope */
+  /** The watches of a conversation, hers and (for the trip in play) the plan's, as TSV (spec §7.2 watch.list). @param {string} scope */
   async listWatches(scope) {
     await this.settled();
     const types = this.types();
@@ -502,7 +511,7 @@ export class Live {
     for (const w of this.#watches.get(scope) ?? []) {
       rows.push([w.id, w.owner, `${this.#describe(types.get(w.when?.type), w)}${w.urgent === true ? /* en */ ', urgent' : ''}`, w.repeat ? 'yes' : 'no', w.fallback, w.expires ?? '', this.#lastFired(scope, w.id)]);
     }
-    if (scope === this.#scope()) for (const w of this.#plan) rows.push([w.id, 'system', PLAN.describe(w.when), w.repeat ? 'yes' : 'no', w.fallback, '', this.#lastFired(scope, w.id)]);
+    if (scope === (this.#trip ?? ME)) for (const w of this.#plan) rows.push([w.id, 'system', PLAN.describe(w.when), w.repeat ? 'yes' : 'no', w.fallback, '', this.#lastFired(scope, w.id)]);
     return rows.length ? tsv(['id', 'owner', 'when', 'repeat', 'reminder', 'expires', 'last_fired'], rows) : /* en */ 'No watches.';
   }
 
@@ -518,8 +527,8 @@ export class Live {
   }
 
   /**
-   * What a closed annai can still say through the push relay (spec §11.6, 6b choices 1 and 2): time watches in every conversation, and the open
-   * trip's "coming up" and "leave soon". Null until live mode has loaded, and while a simulation runs: the user's stay at the relay as they are.
+   * What a closed annai can still say through the push relay (spec §11.6, 6b choices 1 and 2): time watches in every conversation, and the trip
+   * in play's "coming up" and "leave soon". Null until live mode has loaded, and while a simulation runs: the user's stay at the relay as they are.
    * Read in its own queue, so never half of a list being reloaded. held hears the other trips whose plan reminders live mode doesn't follow now, so what waits for them stays.
    * @param {{ held?: (scopes: Set<string>) => void }} [o] @returns {Promise<Mirrored[] | null>}
    */
@@ -527,7 +536,8 @@ export class Live {
     return this.#run(async () => {
       if (!this.#loaded || this.#sim) return null;
       await this.#follow(); // a trip being opened: its own plan, never the last one's under its name
-      if (o.held) o.held(new Set((await listTrips(this.store)).active.map((t) => t.id).filter((id) => id !== this.#scope() && this.#inPlay(id))));
+      const play = this.#trip ?? ME;
+      if (o.held) o.held(new Set((await listTrips(this.store)).active.map((t) => t.id).filter((id) => id !== play && this.#inPlay(id))));
       const m = this.#moment();
       const time = this.types().get('time');
       /** @type {Mirrored[]} */
@@ -540,19 +550,18 @@ export class Live {
           if (Number.isFinite(due) && !expired(w, due)) out.push({ key: this.#keyOf(scope, w), scope, watch: w.id, due, text: w.fallback });
         }
       }
-      const open = this.#scope();
-      for (const w of this.#inPlay(open) ? this.#plan : []) {
+      for (const w of this.#inPlay(play) ? this.#plan : []) {
         const event = /** @type {any} */ (w.when).event;
-        if ((event !== 'coming-up' && event !== 'leave') || this.#spent(open, w)) continue;
+        if ((event !== 'coming-up' && event !== 'leave') || this.#spent(play, w)) continue;
         /** @type {number | null} */
         let due = null;
         try {
-          due = PLAN.next?.(w.when, m, this.#mem.get(this.#key(open, w.id)) ?? {}) ?? null;
+          due = PLAN.next?.(w.when, m, this.#mem.get(this.#key(play, w.id)) ?? {}) ?? null;
         } catch {
           due = null;
         }
         const say = /** @type {import('./plan-watches.js').PlanSay} */ (w.say);
-        if (typeof due === 'number' && Number.isFinite(due)) out.push({ key: this.#keyOf(open, w), scope: open, watch: w.id, due, text: w.fallback, shown: planWords(say), ...(event === 'coming-up' ? { start: forAt(w) ?? undefined, what: planItemWords(say) } : {}) });
+        if (typeof due === 'number' && Number.isFinite(due)) out.push({ key: this.#keyOf(play, w), scope: play, watch: w.id, due, text: w.fallback, shown: planWords(say), ...(event === 'coming-up' ? { start: forAt(w) ?? undefined, what: planItemWords(say) } : {}) });
       }
       return out.sort((a, b) => a.due - b.due);
     });
@@ -573,10 +582,12 @@ export class Live {
   forget(scope) {
     return this.#run(async () => {
       this.#watches.delete(scope);
+      this.#rows.delete(scope);
       const prefix = `${scope}\n`;
       for (const k of [...this.#mem.keys()]) if (k.startsWith(prefix)) this.#mem.delete(k);
       for (const k of [...this.#fired.keys()]) if (k.startsWith(prefix)) this.#fired.delete(k);
       for (const k of [...this.#said.keys()]) if (k.startsWith(`${scope}|`)) this.#said.delete(k);
+      await this.#follow(); // nothing more goes into it
       this.#tellReminders('urgent');
     });
   }
@@ -652,6 +663,22 @@ export class Live {
   /** The conversation open now: the trip's, or "me". */
   #scope() {
     return this.agent.target ?? ME;
+  }
+
+  /**
+   * The trip in play (spec: GPS, voice and watches): during a simulation its trip; else the open conversation if it is happening; else the happening trip
+   * last talked in; else the open conversation. Simulations' trips outside their run are never chosen. Dates are read on live mode's clock and zone.
+   * @returns {string | null}
+   */
+  #play() {
+    if (this.#sim) return this.#sim.trip;
+    const now = this.clock.now();
+    const zone = this.timeZone();
+    const happening = (/** @type {string} */ id) => !this.#still.has(id) && phaseOf(this.#rows.get(id), now, zone) === 'happening';
+    const open = this.agent.target;
+    if (open && happening(open)) return open;
+    const [best] = [...this.#rows].filter(([id]) => happening(id)).sort(lastTalked);
+    return best?.[0] ?? open;
   }
 
   /** @param {string} scope @param {string} id */
@@ -990,14 +1017,18 @@ export class Live {
     }
   }
 
-  /** When annai last ran in the open conversation, and the last point it kept (spec §11.4, after a restart). */
+  /**
+   * When annai last ran, by the newer of the open conversation's log and the play's (the older alone would make a quick chat's catch-up claim a longer gap),
+   * and the last point it kept, in the play (spec §11.4, after a restart).
+   */
   async #lastSeen() {
-    const scope = this.#scope();
-    const [last] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { reverse: true, limit: 1 }));
-    const [point] = this.#trip ? await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['location'], reverse: true, limit: 1 })) : [];
+    const trip = this.#trip;
+    const last = (/** @type {string} */ scope, types = {}) => this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { ...types, reverse: true, limit: 1 }));
+    const seen = [...await last(this.#scope()), ...await last(trip ?? ME)].map((e) => e.ts);
+    const [point] = trip ? await last(trip, { types: ['location'] }) : [];
     const from = point ? fixOf({ ...point.data, at: point.ts }, point.ts) : null;
     if (from) this.#kept = from;
-    return { since: last ? last.ts : null, from };
+    return { since: seen.length ? Math.max(...seen) : null, from };
   }
 
   /**
@@ -1048,12 +1079,19 @@ export class Live {
     return /* en */ `${head}, and the user moved ${kmText(moved)}${a ? /* en */ ` from near ${a.name}` : ''}${b ? /* en */ ` to near ${b.name}` : ''}.`;
   }
 
-  /** A watch or the plan changed on disk. @param {{ scope: string, path: string }} c */
+  /** A watch, the plan or a trip's dates changed on disk. @param {{ scope: string, path: string }} c */
   #changed(c) {
     if (WATCH_FILE.test(c.path)) {
       this.#bg(async () => {
         await this.#loadScope(c.scope);
         this.#prune();
+        await this.#check();
+        this.#tellReminders('prompt');
+      });
+    } else if (c.path === '/trip.json') {
+      this.#bg(async () => {
+        await this.#loadRow(c.scope);
+        if (c.scope === this.#trip) await this.#loadPlan();
         await this.#check();
         this.#tellReminders('prompt');
       });
@@ -1066,21 +1104,39 @@ export class Live {
     }
   }
 
-  /** Another conversation opened: its plan, and everyone's watches afresh. */
+  /** Another trip came into play: its plan. Everyone's watches stay as they are: #changed keeps them current. */
   async #follow() {
-    const trip = this.agent.target;
+    const trip = this.#play();
     if (trip === this.#trip) return;
-    const first = this.#trip === undefined;
     this.#trip = trip;
     this.#kept = null;
     this.stop = null;
-    if (!first) await this.#loadAll();
     await this.#loadPlan();
   }
 
-  /** Every conversation's watches, and what has fired. */
-  async #loadAll() {
+  /** The active trips as #play chooses among them, in one read of the records. */
+  async #loadRows() {
     const { active } = await listTrips(this.store);
+    this.#rows = new Map(active.map((s) => [s.id, { ...tripMirror(s), talked: s.talked ?? null }]));
+    return active;
+  }
+
+  /** One trip's row, from its file: the hook writing the record may not have finished. A trip that isn't active has none. @param {string} scope */
+  async #loadRow(scope) {
+    const rec = await this.store.tx(['scopes'], 'readonly', (t) => t.getScope(scope));
+    if (rec?.kind !== 'trip' || rec.status !== 'active') {
+      this.#rows.delete(scope);
+      return;
+    }
+    const info = await this.ws.readJSON(scope, '/trip.json').catch(() => null);
+    if (info?.simulation === true) this.#still.add(scope);
+    else this.#still.delete(scope);
+    this.#rows.set(scope, { ...tripMirror(info), talked: rec.talked ?? null });
+  }
+
+  /** Every conversation's watches, what has fired, and the trips' rows. */
+  async #loadAll() {
+    const active = await this.#loadRows();
     const scopes = [ME, ...active.map((s) => s.id)];
     this.#watches.clear();
     for (const scope of scopes) {
@@ -1114,7 +1170,7 @@ export class Live {
     else this.#watches.delete(scope);
   }
 
-  /** The open trip's plan, as the plan's own watches. */
+  /** The trip in play's plan, as the plan's own watches. */
   async #loadPlan() {
     const trip = this.#trip;
     this.#plan = [];
@@ -1164,7 +1220,7 @@ export class Live {
 
   /** Forgets the memories and firings of watches that are gone: hers that fired or were cancelled, plan items no longer planned, other trips' plans. */
   #prune() {
-    const keep = new Set(this.#plan.map((w) => this.#key(this.#scope(), w.id)));
+    const keep = new Set(this.#plan.map((w) => this.#key(this.#trip ?? ME, w.id)));
     for (const [scope, list] of this.#watches) for (const w of list) keep.add(this.#key(scope, w.id));
     for (const map of [this.#mem, this.#fired]) for (const k of [...map.keys()]) if (!keep.has(k)) map.delete(k);
   }
@@ -1177,11 +1233,11 @@ export class Live {
     const past = Boolean(o.past) && c !== null;
     const f = past && c ? c.from : this.fix;
     const fix = this.on && f && (past || f.source === 'manual' || now - f.at <= FRESH_MS) ? f : null;
-    const scope = this.#scope();
+    const play = this.#trip ?? ME;
     return {
       now, fix, newFix: !past && Boolean(o.newFix) && Boolean(fix), past, live: this.on, activity: this.on ? this.activity : 'unknown', change: o.change ?? null,
       odometer: this.odometer, stop: this.on && !past ? this.stop : null, gap: c ? { since: c.since, from: c.from } : null, fastEnded: this.#fastEnded, near: (p) => this.near(p),
-      fired: (id) => this.#fired.has(this.#key(scope, id)),
+      fired: (id) => this.#fired.has(this.#key(play, id)),
     };
   }
 
@@ -1235,9 +1291,9 @@ export class Live {
     });
   }
 
-  /** Whether a watch is looked at now: its conversation's, live mode for GPS, and time watches anywhere (choices 2 and 3). @param {TriggerType | undefined} type @param {string} scope */
+  /** Whether a watch is looked at now: the open conversation's or the trip in play's, live mode for GPS, and time watches anywhere (choices 2 and 3). @param {TriggerType | undefined} type @param {string} scope */
   #looked(type, scope) {
-    return Boolean(type) && this.#inPlay(scope) && !(type?.gps && !this.on) && (scope === this.#scope() || type?.type === 'time');
+    return Boolean(type) && this.#inPlay(scope) && !(type?.gps && !this.on) && (scope === this.#scope() || scope === this.#trip || type?.type === 'time');
   }
 
   /** Looks at every watch now (spec §11.3), fires what is due as one wake, and sets the clock for the next. @param {{ newFix?: boolean, change?: Moment['change'], past?: boolean }} [o] */
@@ -1259,11 +1315,10 @@ export class Live {
       this.#driveEnding = true;
     }
     if (this.on && this.shown && this.#stateAt !== null && m.now - this.#stateAt >= HEARTBEAT_MS) this.#log(this.#tracker.beat(m.now));
-    const open = this.#scope();
     /** @type {Fired[]} */
     const fired = [];
     try {
-      await this.#look(m, open, fired);
+      await this.#look(m, this.#trip ?? ME, fired);
     } finally {
       this.#schedule(m); // whatever failed, the clock goes on
       if (ended) this.#driveEnd();
@@ -1420,8 +1475,8 @@ export class Live {
     return this.#run(() => logEvent(this.store, SYS_DEVICE, { type: 'app.start', actor: 'system', data: { gps: this.on ? 'on' : 'off', activity: this.#restored ?? 'unknown' } }, this.clock.now()).catch((e) => this.#fail(e)));
   }
 
-  /** The watches and the plan looked at (#check), and what fired fired. @param {Moment} m @param {string} open @param {Fired[]} fired */
-  async #look(m, open, fired) {
+  /** The watches and the plan looked at (#check), and what fired fired. @param {Moment} m @param {string} play @param {Fired[]} fired */
+  async #look(m, play, fired) {
     const types = this.types();
     for (const [scope, list] of [...this.#watches]) {
       if (!this.#inPlay(scope)) continue; // the user's own watches aren't due, or expired, on a simulation's clock
@@ -1437,9 +1492,9 @@ export class Live {
       }
     }
     for (const w of this.#plan) {
-      if (!w.repeat && this.#spent(open, w)) continue;
-      const f = this.#try(PLAN, w, open, m);
-      if (f) fired.push(this.#firedOf(open, w, PLAN, f, m.now));
+      if (!w.repeat && this.#spent(play, w)) continue;
+      const f = this.#try(PLAN, w, play, m);
+      if (f) fired.push(this.#firedOf(play, w, PLAN, f, m.now));
     }
     if (fired.length) await this.#fire(fired, m.now);
   }
@@ -1636,7 +1691,7 @@ export class Live {
     this.#tellReminders('urgent');
   }
 
-  /** One timer, for the next due watch (spec §11.2); while live, at least once a minute. Off screen, none. @param {Moment} m */
+  /** One timer, for the next due watch (spec §11.2); while live, at least once a minute; at midnight, when another trip may come into play. Off screen, none. @param {Moment} m */
   #schedule(m) {
     this.#clearTimer();
     if (!this.shown) return;
@@ -1648,8 +1703,9 @@ export class Live {
     if (this.on) consider(this.#voiceLapse); // voice's hold after moving fast
     if (this.on && this.#late) consider(this.#dueBy); // a late end's wait for a fix
     if (this.on && !this.#sim && this.#stateAt !== null) consider(this.#stateAt + HEARTBEAT_MS);
+    consider(nextDay(m.now, this.timeZone()));
     const types = this.types();
-    const open = this.#scope();
+    const play = this.#trip ?? ME;
     for (const [scope, list] of this.#watches) {
       if (!this.#inPlay(scope)) continue;
       for (const w of list) {
@@ -1665,8 +1721,8 @@ export class Live {
       }
     }
     for (const w of this.#plan) {
-      const mem = this.#mem.get(this.#key(open, w.id));
-      if (mem && (w.repeat || !this.#spent(open, w))) consider(PLAN.next?.(w.when, m, mem));
+      const mem = this.#mem.get(this.#key(play, w.id));
+      if (mem && (w.repeat || !this.#spent(play, w))) consider(PLAN.next?.(w.when, m, mem));
     }
     if (next === Infinity) return;
     this.#timer = this.clock.set(() => {
@@ -1679,6 +1735,14 @@ export class Live {
     if (this.#timer !== null) this.clock.clear(this.#timer);
     this.#timer = null;
   }
+}
+
+/**
+ * Sorts trips last talked in first; ties go to the later start, then the id, so the choice is stable.
+ * @param {[string, { start?: string, talked: number | null }]} a @param {[string, { start?: string, talked: number | null }]} b
+ */
+function lastTalked([a, x], [b, y]) {
+  return (y.talked ?? 0) - (x.talked ?? 0) || String(y.start).localeCompare(String(x.start)) || b.localeCompare(a);
 }
 
 /** For the plan's reminders bound to an item's time (leave, late, coming up): that time; else null. @param {Watch} w @returns {number | null} */

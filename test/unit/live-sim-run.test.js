@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit } from './agent-kit.js';
 import { liveKit, at, LA, MONTEREY, BIXBY } from './live-kit.js';
@@ -55,11 +55,21 @@ test("the Agent on a simulation's clock stamps the conversation in its time, the
   assert.notEqual(k.agent.now(), t);
 });
 
+/** @type {Live[]} live mode on the real clock always has its midnight timer set, which would keep this file running */
+const lives = [];
+afterEach(async () => {
+  for (const l of lives.splice(0)) {
+    await l.settled();
+    l.dispose();
+  }
+});
+
 /** A memory annai as the app has it: an Agent with Shiori's scripted rules, live mode on the real clock, the phone's sensors, and a SimRun. */
 async function anApp(/** @type {any} */ o = {}) {
   const k = await agentKit([{ rules: RULES }], { agent: { fetch: places }, voice: { mode: 'auto' } });
   await k.host.addBuiltin(new URL('../../src/plugins/places/index.js', import.meta.url).href);
   const live = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent: k.agent });
+  lives.push(live);
   k.agent.addLoopTools(watchTools(live));
   k.agent.sense = () => live.nowInfo();
   await live.start();
