@@ -24,6 +24,21 @@ export function kindOf(scope) {
   return 'other';
 }
 
+/** A line the user said to a conversation: typed, or heard and not dismissed. What "last talked in" counts. @param {{ type: string, data?: any }} e */
+export const talks = (e) => e.type === 'msg.user' || (e.type === 'heard' && !e.data?.dismissed);
+
+/**
+ * What a trip's record mirrors of its trip.json, so "which trips matter now" needs no file opened: its dates, when they are dates.
+ * @param {unknown} trip trip.json as read, whatever is in it @returns {{ start?: string, end?: string }}
+ */
+export function tripMirror(trip) {
+  const t = /** @type {any} */ (trip);
+  /** @type {{ start?: string, end?: string }} */
+  const out = {};
+  for (const k of /** @type {const} */ (['start', 'end'])) if (typeof t?.[k] === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(t[k])) out[k] = t[k];
+  return out;
+}
+
 /** A sortable, collision-resistant id: "<prefix>-<time base36><8 random base36>". @param {string} prefix */
 export function newId(prefix) {
   let r = '';
@@ -103,7 +118,7 @@ export async function createTrip(ws, { title, start, end, places, timezones }, o
   const author = o.author ?? 'user';
   const handover = o.handover ? { handover: o.handover } : {};
   await ws.store.tx(['scopes', 'events'], 'readwrite', async (t) => {
-    await t.putScope({ id, kind: 'trip', title: clean, status: 'active', created: now, updated: now, format: FORMAT, tripId });
+    await t.putScope({ id, kind: 'trip', title: clean, status: 'active', created: now, updated: now, format: FORMAT, tripId, ...tripMirror({ start, end }), talked: null });
     await t.appendEvent(id, { ts: now, type: 'scope.create', actor: author, data: { title: clean, ...handover } });
   });
   try {
@@ -222,16 +237,54 @@ export async function backupState(store, id) {
   });
 }
 
-/** Keeps each trip scope's title equal to the title in its trip.json. @param {Workspace} ws */
+/** Keeps each trip scope's title equal to the title in its trip.json, and its dates mirrored; a file with no title keeps the record's. @param {Workspace} ws */
 export function syncTripTitles(ws) {
   return ws.onChange(async ({ op, scope, path }) => {
     if (op !== 'write' || kindOf(scope) !== 'trip' || path !== '/trip.json') return;
-    const trip = await ws.readJSON(scope, '/trip.json');
+    const trip = await ws.readJSON(scope, '/trip.json').catch(() => null);
     const title = String(trip?.title ?? '').trim();
-    if (!title) return;
+    const dates = tripMirror(trip);
     await ws.store.tx(['scopes'], 'readwrite', async (t) => {
       const rec = await t.getScope(scope);
-      if (rec && rec.title !== title) await t.putScope({ ...rec, title });
+      if (!rec) return;
+      const { start: _s, end: _e, ...rest } = rec;
+      const next = { ...rest, ...dates, title: title || rec.title };
+      if (next.title !== rec.title || next.start !== rec.start || next.end !== rec.end) await t.putScope(next);
     });
   });
+}
+
+/** How many of a log's lines backfillTrips reads at a time. */
+const PAGE = 200;
+
+/** When the user last talked in a trip, read back from its log; null when nobody has. @param {Store} store @param {string} scope @returns {Promise<number | null>} */
+async function lastTalked(store, scope) {
+  /** @type {number | undefined} */
+  let before;
+  for (;;) {
+    const at = before;
+    const page = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['msg.user', 'heard'], reverse: true, limit: PAGE, ...(at === undefined ? {} : { before: at }) }));
+    const line = page.find(talks);
+    if (line) return line.ts;
+    if (page.length < PAGE) return null;
+    before = page[page.length - 1].seq;
+  }
+}
+
+/**
+ * Fills the mirror on records that have none: released copies wrote no talked key, and an archive's may come without. Once each, archived ones too: the
+ * key is what says it was done, so a later run reads no file. A line said meanwhile has written the key, and stands.
+ * @param {Workspace} ws
+ */
+export async function backfillTrips(ws) {
+  const { store } = ws;
+  for (const s of await store.tx(['scopes'], 'readonly', (t) => t.listScopes())) {
+    if (s.kind !== 'trip' || 'talked' in s) continue;
+    const dates = tripMirror(await ws.readJSON(s.id, '/trip.json').catch(() => null));
+    const talked = await lastTalked(store, s.id);
+    await store.tx(['scopes'], 'readwrite', async (t) => {
+      const rec = await t.getScope(s.id);
+      if (rec && !('talked' in rec)) await t.putScope({ ...rec, ...dates, talked });
+    });
+  }
 }
