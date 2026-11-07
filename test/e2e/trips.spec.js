@@ -97,8 +97,10 @@ test('a full device says what to do, and nothing is half-saved', async ({ page }
 });
 
 test("a trip link can't open your profile or annai's own files", async ({ page }) => {
-  await openApp(page, '#/trip/me/file?path=%2Fprofile.md');
-  await expect(page.getByRole('heading', { name: "This trip isn't on this device" })).toBeVisible();
+  await openApp(page, '#/trip/me/file?path=%2Fprofile.md'); // not a trip: it has no screen, and goes to Trips in its place
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  expect(hashOf(page)).toBe('#/trips');
+  await expect(page.getByRole('heading', { name: '/profile.md' })).toHaveCount(0);
 });
 
 test('a trip card says when the trip was last backed up, and when it changed since', async ({ page }) => {
