@@ -142,6 +142,8 @@ export class Live {
   #watches = new Map();
   /** @type {Watch[]} the trip in play's plan watches */
   #plan = [];
+  /** @type {number | null} when a failed read left the plan short, else null */
+  #short = null;
   /** @type {{ name: string, lat: number, lng: number }[]} */
   #places = [];
   /** @type {Map<string, Record<string, any>>} each watch's memory, by scope and id */
@@ -531,8 +533,9 @@ export class Live {
   /**
    * What a closed annai can still say through the push relay (spec §11.6, 6b choices 1 and 2): time watches in every conversation, and the "coming up" and "leave soon" of the trip
    * in play and of an open conversation that isn't happening; null until live mode has loaded, and during a simulation.
-   * held hears what the plans of the trips in waiting say, by key: of those that wait to be talked in, the ones with copies at the relay.
-   * @param {{ waiting: Set<string>, held: (says: Map<string, string>) => void }} [o] @returns {Promise<Mirrored[] | null>}
+   * held hears what the plans of the trips in waiting say, by key: of those that wait to be talked in, the ones with copies at the relay;
+   * and unread, the trips whose plan a failed read left short: their copies stay.
+   * @param {{ waiting: Set<string>, held: (says: Map<string, string>, unread: Set<string>) => void }} [o] @returns {Promise<Mirrored[] | null>}
    */
   reminders(o) {
     return this.#run(async () => {
@@ -540,11 +543,15 @@ export class Live {
       await this.#follow(); // a trip being opened: its own plan, never the last one's under its name
       const play = this.#trip ?? ME;
       const open = this.agent.target;
+      /** @type {Set<string>} */
+      const unread = new Set();
+      if (this.#short !== null) unread.add(play);
       // The open one's plan too: a trip starting tomorrow, opened tonight, must still wake a closed annai. A happening one waits to be talked in: looking fires nothing.
       /** @type {[string, Watch[]][]} */
       const plans = [[play, this.#plan]];
       if (open && open !== play && this.#rows.has(open) && this.#inPlay(open) && !this.#happening(open)) {
-        const { watches } = await this.#planOf(open);
+        const { watches, whole } = await this.#planOf(open);
+        if (!whole) unread.add(open);
         await this.#recallPlan(open, watches);
         plans.push([open, watches]);
       }
@@ -554,9 +561,11 @@ export class Live {
         const says = new Map();
         for (const { id } of (await listTrips(this.store)).active) {
           if (!o.waiting.has(id) || plans.some(([scope]) => scope === id)) continue;
-          for (const w of (await this.#planOf(id)).watches) says.set(this.#keyOf(id, w), saysOf(w));
+          const { watches, whole } = await this.#planOf(id);
+          if (!whole) unread.add(id);
+          else for (const w of watches) says.set(this.#keyOf(id, w), saysOf(w));
         }
-        o.held(says);
+        o.held(says, unread);
       }
       const m = this.#moment();
       const time = this.types().get('time');
@@ -1131,7 +1140,14 @@ export class Live {
   /** Another trip came into play: its plan. Watches stay: #changed keeps them current. */
   async #follow() {
     const trip = this.#play();
-    if (trip === this.#trip) return;
+    if (trip === this.#trip) {
+      // A plan a failed read left short is read again, once a minute at most.
+      if (this.#short !== null && this.clock.now() - this.#short >= RECHECK_MS) {
+        await this.#loadPlan();
+        if (this.#short === null) this.#tellReminders('prompt');
+      }
+      return;
+    }
     this.#trip = trip;
     this.#kept = null;
     this.stop = null;
@@ -1206,14 +1222,16 @@ export class Live {
     const trip = this.#trip;
     this.#plan = [];
     this.#places = [];
+    this.#short = null;
     if (!trip) return;
     const info = await this.ws.readJSON(trip, '/trip.json').catch(() => null);
     this.#setStill(trip, info);
     if (!this.#inPlay(trip)) return; // a simulation's plan reminds only during its run
     // An archived trip, open or not, reminds of nothing: its watches aren't loaded either (#loadAll).
     if ((await this.store.tx(['scopes'], 'readonly', (t) => t.getScope(trip)))?.status === 'archived') return;
-    const { items, watches } = await this.#planOf(trip);
+    const { items, watches, whole } = await this.#planOf(trip);
     this.#plan = watches;
+    if (!whole) this.#short = this.clock.now();
     await this.#recallPlan(trip, watches);
     for (const { item } of items) {
       const p = item.place;
@@ -1224,26 +1242,32 @@ export class Live {
 
   /**
    * A trip's plan as it stands: its items, and the watches they make (planWatches), with its bookings and its zone.
-   * @param {string} trip @returns {Promise<{ items: { path: string, item: any }[], watches: Watch[] }>}
+   * @param {string} trip @returns {Promise<{ items: { path: string, item: any }[], watches: Watch[], whole: boolean }>}
    */
   async #planOf(trip) {
     /** @type {{ path: string, item: any }[]} */
     const items = [];
     /** @type {Map<string, any>} */
     const bookings = new Map();
+    let whole = true;
+    // A file that isn't JSON answered (no plan item); any other failure didn't.
+    const read = (/** @type {string} */ path) => this.ws.readJSON(trip, path).catch((/** @type {unknown} */ e) => {
+      if (!(e instanceof SyntaxError)) whole = false;
+      return null;
+    });
     for (const f of await this.ws.list(trip, '/plan/')) {
       if (!PLAN_FILE.test(f.path)) continue;
-      const item = await this.ws.readJSON(trip, f.path).catch(() => null);
+      const item = await read(f.path);
       if (item && typeof item === 'object') items.push({ path: f.path, item });
     }
     for (const f of await this.ws.list(trip, '/bookings/')) {
       if (!BOOKING_FILE.test(f.path)) continue;
-      const b = await this.ws.readJSON(trip, f.path).catch(() => null);
+      const b = await read(f.path);
       if (b && typeof b === 'object') bookings.set(f.path, b);
     }
-    const info = await this.ws.readJSON(trip, '/trip.json').catch(() => null);
+    const info = await read('/trip.json');
     const fallbackTz = [info?.timezones?.[0], this.timeZone()].find(validZone) ?? 'UTC';
-    return { items, watches: planWatches(items, bookings, { fallbackTz }) };
+    return { items, watches: planWatches(items, bookings, { fallbackTz }), whole };
   }
 
   /** Forgets the memories and firings of watches that are gone: hers that fired or were cancelled, plan items no longer planned, other trips' plans. */
@@ -1781,7 +1805,8 @@ function forAt(w) {
 
 /**
  * What a trip's plan says of a reminder, for telling whether a copy at the relay still holds: the item and its place, as data, which no
- * language, clock, position or phone zone changes. @param {Watch} w
+ * language, clock, position or phone zone changes. Every waiting copy carries a digest of this text: changing what it holds (a field
+ * in `What`, an order) calls off all of them at that release's first sync. A test pins one digest. @param {Watch} w
  */
 const saysOf = (w) => JSON.stringify([/** @type {any} */ (w.when).short, /** @type {any} */ (w.when).place]);
 

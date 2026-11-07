@@ -301,3 +301,30 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** annai can't tell an answer to A's reminder from a new line about B, and a timing rule for it would go into the hardest logic here.
 - **Revisit when:** a user reports it, or overlapping trips get common.
 - **Approved:** 2026-11-06, the user picked "Accept for now (Recommended)".
+
+### The language changes while a reminder waits at the relay for a trip not in play
+- **Kind:** known limitation.
+- **What the user sees:** two trips are happening, one is in play, and the other's reminder already waits at the relay. The screens' language changes. The reminder arrives in the old language, or mixed ("a leave soon" in the old one, a "coming up" with the old words and the minutes left in the new).
+- **Why:** changing it means calling a good reminder off, or a trip not in play sending.
+- **Revisit when:** anyone reports it.
+- **Approved:** 2026-11-06, the user picked "Accept for now (Recommended)".
+
+### The trip is renamed while a reminder waits at the relay for it, and it is not in play
+- **Kind:** known limitation.
+- **What the user sees:** the notification's title shows the old trip name. The stop's words are right.
+- **Why:** calling them off would lose every waiting reminder of that trip over a name.
+- **Revisit when:** anyone reports it.
+- **Approved:** 2026-11-06, the user picked "Accept for now (Recommended)".
+
+### A stop is added before a "leave soon" stop while its trip waits at the relay, not in play
+- **Kind:** known limitation.
+- **What the user sees:** the "leave soon" reminder keeps its old time and can come late. Its words are right. Talking in that trip corrects it.
+- **Why:** a leave time is an estimate, a waiting reminder doesn't follow the GPS either, and calling it off loses a reminder for a stop nobody touched.
+- **Revisit when:** anyone reports it.
+- **Approved:** 2026-11-06, the user picked "Accept for now (Recommended)".
+
+### `item.says ??= hash` in the push mirror can go
+- **Kind:** deferred.
+- **What the user sees:** nothing. A copy sent before copies carried `says` takes the plan's digest at its first sync, once; the line that does it stays in the code.
+- **Why:** a copy waits at the relay 29 days at most, so after 30 days from the release that added `says` no such copy is left.
+- **Revisit when:** 30 days after this release ships: remove the line in `#wanted` and its adoption tests.
