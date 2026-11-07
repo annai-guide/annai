@@ -490,7 +490,7 @@ test('files waiting with Shiori are listed on Trips: one opens, one is asked abo
   const row = (/** @type {string} */ name) => page.locator('.waiting-file', { hasText: name });
   await row('hotel.txt').getByRole('link', { name: 'Open' }).click();
   await expect(page.getByRole('heading', { name: 'hotel.txt' })).toBeVisible();
-  await page.getByRole('link', { name: 'Trips' }).first().click();
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).first().click();
   await expect(page.getByRole('heading', { name: 'Waiting with Shiori' })).toBeVisible();
   await row('note.txt').getByRole('button', { name: 'Delete' }).click();
   await row('note.txt').getByRole('button', { name: 'Tap again to delete' }).click();

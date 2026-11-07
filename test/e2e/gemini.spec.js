@@ -285,7 +285,7 @@ test('Google Search (G4): Shiori\'s request offers it; a grounded reply shows "F
     await expect(page.getByRole('heading', { level: 1, name: 'Google Gemini' })).toBeVisible();
     await expect(search).toBeDisabled();
     await expect(search).not.toBeChecked();
-    await page.getByRole('link', { name: 'Conversation' }).click();
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Conversation' }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Conversation' })).toBeVisible();
     const before = s.bodies().length;
     await type(page, 'And tomorrow?');

@@ -59,7 +59,7 @@ test("the user's evening: on Trips with no trip open, + with the flight PDF and 
     await page.getByRole('button', { name: 'Send', exact: true }).click();
     // 2. She started the trip, and it opened.
     await expect(page.locator('.convo').getByText('Your flights and the stay are on the plan. Is check-out at 11:00?')).toBeVisible({ timeout: 60_000 });
-    await expect(page.locator('.screen > .sub').first()).toHaveText(TITLE);
+    await expect(page.locator('.talk-head .talk-name')).toHaveText(TITLE); // the trip's name heads its conversation (timeline stage 3)
     // 6. Nothing asked where a file goes.
     await expect(page.locator('.convo .shiori .acts button')).toHaveCount(0);
 

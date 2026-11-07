@@ -120,7 +120,7 @@ for (const width of [390, 320]) {
     await page.evaluate(() => scrollTo(0, 0));
     const toggle = page.getByRole('button', { name: 'Tidy up the conversation', exact: true });
     await expect(toggle).toHaveText('⋯');
-    const title = /** @type {any} */ (await page.getByRole('heading', { name: 'Conversation' }).boundingBox());
+    const title = /** @type {any} */ (await page.locator('.talk-head .talk-name').boundingBox()); // the trip's name heads its conversation (timeline stage 3)
     const at = /** @type {any} */ (await toggle.boundingBox());
     // On the title's line, at its right, above the conversation's first line.
     expect(at.y).toBeLessThan(title.y + title.height);
@@ -162,11 +162,11 @@ for (const width of [390, 320]) {
     const toggle = page.getByRole('button', { name: 'Tidy up the conversation', exact: true });
     await expect(toggle).toBeInViewport({ ratio: 1 });
     const bar = /** @type {any} */ (await page.locator('header.topbar').boundingBox());
-    const row = /** @type {any} */ (await page.locator('.screen > .title-row').boundingBox());
-    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeInViewport({ ratio: 1 });
+    const row = /** @type {any} */ (await page.locator('.screen > .talk-head').boundingBox());
+    await expect(page.locator('.talk-head .talk-name')).toBeInViewport({ ratio: 1 });
     expect(Math.abs(row.y - (bar.y + bar.height))).toBeLessThanOrEqual(5); // the row's 4 px of padding is under the bar's edge
     // Opaque: what is under a point of the row, between its text and the lines, is the row, not a line.
-    const covered = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('.title-row') !== null, [width / 2, row.y + 2]);
+    const covered = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('.talk-head') !== null, [width / 2, row.y + 2]);
     expect(covered).toBe(true);
     await toggle.click();
     const menu = page.getByRole('group', { name: 'Tidy up the conversation' });
@@ -176,7 +176,7 @@ for (const width of [390, 320]) {
     await page.keyboard.press('Escape');
     await page.evaluate(() => scrollTo(0, 0));
     const first = /** @type {any} */ (await page.locator('.convo > li').first().boundingBox());
-    const top = /** @type {any} */ (await page.locator('.screen > .title-row').boundingBox());
+    const top = /** @type {any} */ (await page.locator('.screen > .talk-head').boundingBox());
     expect(top.y + top.height).toBeLessThanOrEqual(first.y + 4);
   });
 }
