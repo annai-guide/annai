@@ -75,7 +75,7 @@ test('opening an overlapping trip leaves play and its reminders alone: the road 
   assert.equal(k.live.play, k.road, 'looking moves nothing');
   const m = await k.mirrored();
   assert.deepEqual([...m.plans], [k.road], 'what waits at the relay is the trip in play\'s');
-  assert.ok(m.held.has(k.side), 'copies of the open one already at the relay stay there');
+  assert.ok([...m.held].some((x) => x.startsWith(`${k.side}|plan:tea`)), 'copies of the open one already at the relay stay there, while its plan still has them');
   await k.to(at('10:45')); // tea's coming-up
   assert.deepEqual(await k.fired(k.side), [], 'its plan waits');
   k.sensors.fix({ lat: off(BIXBY, 0, 2000).lat, lng: off(BIXBY, 0, 2000).lng, accuracy: 8, speed: 0 });

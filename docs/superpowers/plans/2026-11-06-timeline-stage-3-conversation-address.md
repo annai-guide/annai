@@ -47,6 +47,7 @@
 3. **An address whose trip is gone** (removed here, an old notification, a bookmark): home, and Back doesn't return to it. Test in Task 1.
 4. **A notification with a hostile or old payload:** `me`, `trip-../x`, `TRIP-A`, nothing, `trip-a/../..`: home. Test in Task 5.
 5. **Clearing the dates in Details:** a blank field sends `null`, never `''`, which the schema refuses. End before start says so. A blank name says so. Test in Task 4.
+6. **A hand-over copy isn't talking** (`data.from`, see the spec's 2026-11-06 decisions): stage 3's undated rows sit at "last user line", so a hand-over into an undated trip won't lift its row. Check this is what a user wants.
 
 ---
 

@@ -20,7 +20,7 @@ export function whereWords(live) {
   const f = knownFix(live);
   if (!f) {
     if (live.gps === 'denied') return t`Location isn't allowed for annai. Open Driving to say where you are.`;
-    return live.gps === 'unavailable' ? t`No GPS signal right now. Open Driving to say where you are.` : t`Finding where you are…`;
+    return live.gps === 'unavailable' ? t`No GPS signal right now.` : t`Finding where you are…`;
   }
   const near = live.near(f);
   if (near) return near.m < 100 ? t`At ${near.name}` : t`Near ${near.name}, ≈ ${distance(near.m / 1000)}`;
@@ -119,9 +119,9 @@ export function todayTop(ctx, { title, rows, tz }) {
     const now = nowOf(live);
     place.textContent = whereWords(live);
     const here = live ? knownFix(live, now) : null;
-    place.classList.toggle('at', Boolean(here));
+    place.classList.toggle('one-line', Boolean(here || (live?.on && live.gps === 'unavailable'))); // GPS off and not allowed change only when the user acts, so they wrap and are read whole
     const sunAt = sunPlace(here, rows, now);
-    const words = [live ? liveText(live) : null, ...(sunAt ? sunChips(now, sunAt.lat, sunAt.lng, tz) : []), live && !live.online ? t`Offline · reminders still work` : null];
+    const words = [live ? liveText(live) : null, ...(sunAt ? sunChips(now, sunAt.lat, sunAt.lng, tz) : [])];
     chips.replaceChildren(...words.filter(Boolean).map((w) => h('span', { class: 'chip', text: String(w) })));
     start.replaceChildren(...(live && !live.on ? [h('button', { class: 'btn pri', type: 'button', onclick: () => live.setLive(true) }, t`Turn GPS on`)] : []));
   };
@@ -134,11 +134,11 @@ export function todayTop(ctx, { title, rows, tz }) {
     const was = top.getBoundingClientRect();
     draw();
     const by = top.getBoundingClientRect().bottom - was.bottom;
-    if (was.top < 0 && by) scrollBy(0, by); // no anchoring here (base.css): rows being read hold still; nothing to move, no scroll (a flick on an older iPhone)
+    if (was.top < 0 && by) scrollBy(0, by); // rows being read hold still: Chromium keeps them itself even with overflow-anchor none (base.css), WebKit doesn't, hence this; nothing to move, no scroll (a flick on an older iPhone)
   });
   const card = component(ctx, 'now-card');
   if (card) {
-    const words = [live ? liveText(live) : null, live && !live.online ? t`Offline · reminders still work` : null].filter(Boolean);
+    const words = [live ? liveText(live) : null].filter(Boolean);
     mount(ctx, card, top, (ui) => card.item.render(top, ui, { title, place: whereWords(live), chips: words, liveOn: Boolean(live?.on) }), {
       what: 'now-card', onFail: () => { top.hidden = false; top.replaceChildren(place, chips, start); },
     });

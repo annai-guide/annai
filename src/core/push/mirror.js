@@ -124,10 +124,10 @@ export function plan(items, wanted, now, held = new Set()) {
 }
 
 /**
- * Whether a reminder at the relay is a plan reminder of a trip in held (waiting to be talked in), which stays as it is while it may
+ * Whether a reminder at the relay is a plan reminder of a trip in held (waiting to be talked in; an open one by the keys its plan still has), which stays as it is while it may
  * still come: until it is long sent. @param {string} key @param {Item} item @param {Set<string>} held @param {number} now
  */
-const stays = (key, item, held, now) => held.has(item.scope) && key.startsWith(`${item.scope}|plan:`) && item.sendAt + LONG_SENT_MS > now;
+const stays = (key, item, held, now) => (held.has(item.scope) || held.has(key)) && key.startsWith(`${item.scope}|plan:`) && item.sendAt + LONG_SENT_MS > now;
 
 /** The relay's name for a subscription's object: the SHA-256 of its endpoint. @param {string} endpoint */
 export async function subscriptionName(endpoint) {

@@ -301,3 +301,9 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** annai can't tell an answer to A's reminder from a new line about B, and a timing rule for it would go into the hardest logic here.
 - **Revisit when:** a user reports it, or overlapping trips get common.
 - **Approved:** 2026-11-06, the user picked "Accept for now (Recommended)".
+
+### A restore that changes a trip that isn't open leaves its old reminders at the relay
+- **Kind:** deferred.
+- **What the user sees:** two trips are happening and a backup is restored over the one that isn't open and isn't in play. A stop the restore removed or moved still has its reminder at the relay, and it pushes at the old time, until the user talks in that trip or opens it. Opening it fixes it, as an edit there does.
+- **Why:** only the open trip's plan is read to decide which waiting reminders of a trip that isn't in play still belong; reading every trip's plan at each sync costs more than a case this rare is worth.
+- **Revisit when:** a restore is seen to leave one, or the relay sync reads every happening trip's plan anyway.
