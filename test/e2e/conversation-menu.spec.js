@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, startTrip, writeRecords, writeEvent, goToHash } from './helpers.js';
 
 // "do you think we should have some way to let the user compact or clear the transcript / session manually?" (the user, 2026-10-23):
 // a menu on the Conversation screen, Summarize now and Start fresh (spec §6.5, §16.2).
@@ -163,4 +163,62 @@ test('the menu closes on Escape and on a tap elsewhere', async ({ page }) => {
     for (const type of ['pointerdown', 'pointerup']) el.dispatchEvent(new PointerEvent(type, { bubbles: true, isPrimary: true, pointerType: 'touch' }));
   });
   await expect(menu).toBeHidden({ timeout: 2000 });
+});
+
+// Timeline stage 3: the conversation's header, sticky (←, the name, ⋯), and the Next line.
+test('the header: ← goes home, the name goes to Details, the ⋯ is there', async ({ page }) => {
+  await openApp(page);
+  const id = await startTrip(page, 'Big Sur');
+  await goToHash(page, `#/trip/${id}/talk`);
+  await expect(page.getByRole('heading', { level: 1, name: 'Conversation' })).toBeVisible(); // hidden, for stage 8
+  const head = page.locator('.talk-head');
+  await expect(head.getByRole('button', { name: 'Tidy up the conversation', exact: true })).toBeVisible();
+  await head.getByRole('link', { name: 'Big Sur' }).click();
+  await expect.poll(() => new URL(page.url()).hash).toBe(`#/trip/${id}`);
+  await page.goBack();
+  await head.getByRole('link', { name: 'Back to Trips' }).click();
+  await expect.poll(() => new URL(page.url()).hash).toBe('#/trips');
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+});
+
+test('a trip with plan rows shows "Next: 13:00 Lunch", which opens the Itinerary; none, no line', async ({ page }) => {
+  await openApp(page);
+  const none = await startTrip(page, 'Nothing planned');
+  await goToHash(page, `#/trip/${none}/talk`);
+  await expect(page.locator('.talk-head')).toBeVisible();
+  await expect(page.locator('.next-line')).toHaveCount(0);
+  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  const id = await startTrip(page, 'Big Sur');
+  await writeRecords(page, id, { write: {
+    '/plan/lunch.json': { id: 'lunch', title: 'Lunch', fixed: true, start: { at: '2099-03-03T13:00:00Z', tz: 'UTC' } },
+    '/plan/dinner.json': { id: 'dinner', title: 'Dinner', fixed: true, start: { at: '2099-03-03T19:00:00Z', tz: 'UTC' } },
+    '/plan/gone.json': { id: 'gone', title: 'Breakfast long ago', fixed: true, start: { at: '2020-03-03T08:00:00Z', tz: 'UTC' } },
+  } });
+  await goToHash(page, `#/trip/${id}/talk`);
+  const next = page.locator('.next-line').getByRole('link');
+  await expect(next).toHaveText('Next: Tue, Mar 3 13:00 Lunch'); // not today: its day too
+  await next.click();
+  await expect.poll(() => new URL(page.url()).hash).toBe(`#/trip/${id}/plan`);
+  // Today's says only its time.
+  const soon = new Date(Date.now() + 90 * 60_000);
+  const hm = soon.toISOString().slice(11, 16);
+  await writeRecords(page, id, { write: { '/plan/tea.json': { id: 'tea', title: 'Tea', fixed: true, start: { at: soon.toISOString().replace(/\.\d+Z$/, 'Z'), tz: 'UTC' } } } });
+  await goToHash(page, `#/trip/${id}/talk`);
+  await expect(next).toHaveText(new RegExp(`^Next: (\\w+, \\w+ \\d+ )?${hm} Tea$`)); // a day only when UTC's date isn't the phone's
+});
+
+test('the header stays in view as the conversation scrolls', async ({ page }) => {
+  await openApp(page);
+  const id = await startTrip(page, 'Big Sur');
+  for (let i = 0; i < 40; i++) await writeEvent(page, id, { type: 'out.speak', data: { id: `s${i}`, text: `Line ${i} of a long conversation, long enough to fill the screen.` } });
+  await goToHash(page, `#/trip/${id}/talk`);
+  await expect(page.locator('.convo > li')).toHaveCount(40);
+  await page.evaluate(() => scrollTo(0, 0));
+  await page.evaluate(() => scrollTo(0, document.body.scrollHeight));
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(400);
+  const head = page.locator('.talk-head');
+  await expect(head.getByRole('link', { name: 'Back to Trips' })).toBeInViewport();
+  const top = await head.evaluate((el) => el.getBoundingClientRect().top);
+  const bar = await page.locator('header.topbar').evaluate((el) => el.getBoundingClientRect().bottom);
+  expect(Math.abs(top - bar)).toBeLessThanOrEqual(2);
 });

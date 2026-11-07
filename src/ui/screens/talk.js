@@ -10,7 +10,11 @@ import { storedTexts } from '../../core/agent/log.js';
 import { blobBytes } from '../../core/reach.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { undoTuning } from '../../core/agent/personalities.js';
-import { formatCost, wording, mark, sentences, sentenceGap, list as listed, recordHref, waitingHref } from '../format.js';
+import { formatCost, wording, mark, sentences, sentenceGap, list as listed, recordHref, waitingHref, rowName } from '../format.js';
+import { day } from '../../core/intl.js';
+import { upcoming, over } from '../../core/now.js';
+import { tripRows } from '../trip-rows.js';
+import { nowOf, todayOf } from '../today.js';
 import { ask } from '../ask.js';
 import { ME, SYS_WAITING } from '../../core/scopes.js';
 import { readNames } from '../../core/names.js';
@@ -560,10 +564,22 @@ export async function renderTalk(ctx, route) {
   built = true;
   showCost();
   const tidy = tidyMenu(ctx);
+  const trip = agent.trip;
   const screen = h('div', { class: 'screen' },
-    // Tidy up is a ⋯ by the title, out of the conversation's way, and stays under the app's bar on a long conversation.
-    h('div', { class: 'title-row' }, h('h1', { class: 'title', text: t`Conversation` }), tidy.el, tidy.status),
-    h('p', { class: 'sub', text: agent.trip ? title : t`No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.` }),
+    // A trip's: ← home (never opening anything), its name to Details, and Tidy up's ⋯, staying under the app's bar on a long
+    // conversation. The heading stays for the top bar's tests until it goes (stage 8).
+    ...(trip ? [
+      h('div', { class: 'talk-head' },
+        h('a', { class: 'btn ghost talk-back', href: '#/trips', 'aria-label': t`Back to Trips`, text: '←' }),
+        h('a', { class: 'talk-name', href: `#/trip/${encodeURIComponent(trip)}`, dir: 'auto', text: title }),
+        tidy.el, tidy.status),
+      h('h1', { class: 'visually-hidden', text: t`Conversation` }),
+      await nextLine(ctx, trip),
+    ] : [
+      // Tidy up is a ⋯ by the title, out of the conversation's way, and stays under the app's bar on a long conversation.
+      h('div', { class: 'title-row' }, h('h1', { class: 'title', text: t`Conversation` }), tidy.el, tidy.status),
+      h('p', { class: 'sub', text: t`No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.` }),
+    ]),
     cost,
     list.childElementCount ? null : empty,
     list,
@@ -583,6 +599,30 @@ export async function renderTalk(ctx, route) {
     urls.splice(0).forEach((u) => URL.revokeObjectURL(u));
   });
   return screen;
+}
+
+/**
+ * The conversation's Next line, "Next: 13:00 Lunch" (a day first when it isn't today), opening the trip's Itinerary; null when nothing more
+ * is planned. When its row is over it draws the next one, by its own timer: live mode may never change with GPS off.
+ * @param {any} ctx @param {string} id the trip @returns {Promise<HTMLElement | null>}
+ */
+export async function nextLine(ctx, id) {
+  const line = h('p', { class: 'next-line' });
+  const fill = async () => {
+    const { rows } = await tripRows(ctx, id);
+    const now = nowOf(ctx.live);
+    const [r] = upcoming(rows, now, 1);
+    line.hidden = !r;
+    if (!r) return;
+    const name = rowName(r);
+    line.replaceChildren(h('a', { href: `#/trip/${encodeURIComponent(id)}/plan`, dir: 'auto' },
+      r.day && r.day !== todayOf(ctx.live) ? t`Next: ${day(r.day, true)} ${r.time} ${name}` : t`Next: ${r.time} ${name}`));
+    // A timer holds at most about 24 days; a longer wait draws the same row again then, and waits on.
+    // Gone from the page, it stops.
+    setTimeout(() => { if (line.isConnected) fill().catch(() => {}); }, Math.min(Math.max(over(r) - now, 0) + 1000, 2 ** 31 - 1));
+  };
+  await fill();
+  return line.hidden ? null : line;
 }
 
 /**

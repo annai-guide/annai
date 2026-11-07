@@ -12,7 +12,7 @@ const MIN = 60_000;
 /** @param {any} p @returns {p is Point} */
 const hasPoint = (p) => Boolean(p) && typeof p.lat === 'number' && typeof p.lng === 'number' && Number.isFinite(p.lat) && Number.isFinite(p.lng);
 /** When an item is over: its end, or half an hour after its start. @param {PlanRow} r */
-function over(r) {
+export function over(r) {
   const start = /** @type {number} */ (r.at);
   // An end with no zone of its own is on the start's clock, as the Plan and the reminders read it.
   const zone = [r.item.end?.tz, r.item.start?.tz].find(validZone) ?? 'UTC';
