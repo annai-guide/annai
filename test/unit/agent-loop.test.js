@@ -1942,6 +1942,7 @@ test('a failed open puts the target back, so Try again opens the trip and the li
 });
 
 test("Ask Shiori about this after a failed open: the second tap opens the trip", async () => {
+  globalThis.location ??= /** @type {any} */ ({ hash: '#/trips', replace: () => {} }); // askAbout shows the conversation
   const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] }]);
   const road = await createTrip(k.ws, { title: 'Road' });
   failOnce(k, road);
