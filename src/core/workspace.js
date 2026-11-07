@@ -7,6 +7,12 @@ import { reachable, refused } from './reach.js';
 
 export { StorageFullError } from './errors.js';
 
+/** A readJSON's catch: a file that isn't JSON answered; any other failure didn't. @param {unknown} e @returns {null} */
+export function notJSON(e) {
+  if (e instanceof SyntaxError) return null;
+  throw e;
+}
+
 /**
  * @typedef {import('./types.js').Store} Store
  * @typedef {import('./types.js').Tx} Tx

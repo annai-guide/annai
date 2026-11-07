@@ -4,6 +4,7 @@ import { utf8, toBase64Url, hex, ownBuffer } from '../bytes.js';
 import { encryptPush } from './webpush.js';
 import { relayClient, relayAddress, relayWords, RelayError, DEFAULT_RELAY, ADDRESS } from './relay-client.js';
 import { tracedFetch, withoutSecrets } from '../agent/net.js';
+import { notJSON } from '../workspace.js';
 import { forget } from '../forget.js';
 import { realClock } from '../live/clock.js';
 import { t, lang } from '../l10n.js';
@@ -20,7 +21,7 @@ import { sentences } from '../intl.js';
  * @typedef {{ supported: () => 'yes' | 'install' | 'no', permission: () => string, ask: () => Promise<string>,
  *   get: () => Promise<Sub | null>, subscribe: (key: string) => Promise<Sub>, unsubscribe: () => Promise<void> }} Source
  *   the phone's push subscription and notification permission (src/ui/push.js; a fake in tests)
- * @typedef {{ reminders: (o?: { waiting: Set<string>, held: (says: Map<string, string>, unread: Set<string>) => void }) => Promise<Mirrored[] | null>, onReminders: (fn: (level: 'calm' | 'prompt' | 'urgent') => void) => () => void,
+ * @typedef {{ reminders: (o?: { waiting: Set<string>, held: (says: Map<string, string>) => void }) => Promise<Mirrored[] | null>, onReminders: (fn: (level: 'calm' | 'prompt' | 'urgent') => void) => () => void,
  *   given?: () => [string, number][] }} LiveLike
  * @typedef {{ id: string, due: number, sendAt: number, hash: string, scope: string, says?: string, sending?: boolean }} Item
  *   a reminder at the relay; says: the digest of what its plan said of it, while it was wanted (hash holds the screens' language and the trip's
@@ -140,12 +141,6 @@ function turnOnError(e) {
   if (!(e instanceof RelayError)) return e;
   e.shown = sentences(e.shown, e.passing ? t`Nothing was turned on: check the connection, then tap Turn on notifications again.` : t`Nothing was turned on: tap Turn on notifications again once that is fixed.`);
   return e;
-}
-
-/** A file that isn't JSON is no state. @param {unknown} e @returns {null} */
-function notJSON(e) {
-  if (e instanceof SyntaxError) return null;
-  throw e;
 }
 
 /** @param {number} n */
@@ -375,7 +370,7 @@ export class PushMirror {
 
   /**
    * Brings the relay into step with live mode. One waiting to run is enough: more asked meanwhile (timers firing while a slow request
-   * fails) join it, rather than pile up.
+   * fails) join it, rather than pile up. One a failed read stops is tried again.
    * @returns {Promise<void>}
    */
   sync() {
@@ -385,6 +380,7 @@ export class PushMirror {
       return this.#sync();
     });
     this.#queued = job;
+    job.catch(() => this.#soon('calm'));
     return job;
   }
 
@@ -505,11 +501,8 @@ export class PushMirror {
   async #wanted(held, items) {
     /** @type {Map<string, string>} */
     let waiting = new Map();
-    /** @type {Set<string>} */
-    let unread = new Set();
-    const list = await this.live.reminders({ waiting: new Set(Object.values(items).map((i) => i.scope)), held: (says, u) => { waiting = says; unread = u; } });
+    const list = await this.live.reminders({ waiting: new Set(Object.values(items).map((i) => i.scope)), held: (says) => { waiting = says; } });
     if (!list) return null;
-    for (const [key, item] of Object.entries(items)) if (unread.has(item.scope)) held.add(key);
     for (const [key, says] of waiting) {
       const item = items[key];
       if (!item) continue;
@@ -524,7 +517,6 @@ export class PushMirror {
     /** @type {Map<string, string>} */
     const titles = new Map();
     for (const m of list) {
-      if (items[m.key] && unread.has(m.scope)) continue;
       const sendAt = m.due + GRACE_MS;
       if (sendAt <= now + 5000 || sendAt > now + AHEAD_MS) continue; // about to be said on screen, or too far
       if (out.size >= room) break;
@@ -532,9 +524,10 @@ export class PushMirror {
       // The user's words: a plan reminder's in the screens' language (shown), Shiori's as she wrote them.
       const body = String(m.shown ?? m.text).slice(0, 500);
       const says = m.says && (await this.#hash(m.says));
-      if (items[m.key]) items[m.key].says = says; // a small change leaves a wanted copy where it is, and it still says what its plan says
       out.set(m.key, { m, sendAt, title, body, hash: await this.#hash(`${title}\n${body}`), says });
     }
+    // A small change leaves a wanted copy where it is, and it still says what its plan says. Last: a failed title read decides nothing.
+    for (const [key, w] of out) if (items[key]) items[key].says = w.says;
     return out;
   }
 
@@ -553,7 +546,7 @@ export class PushMirror {
     if (scope === ME) return t`Reminder`;
     const had = cache.get(scope);
     if (had !== undefined) return had;
-    const rec = await this.store.tx(['scopes'], 'readonly', (x) => x.getScope(scope)).catch(() => null);
+    const rec = await this.store.tx(['scopes'], 'readonly', (x) => x.getScope(scope));
     const title = String(rec?.title ?? t`Reminder`).slice(0, 120);
     cache.set(scope, title);
     return title;

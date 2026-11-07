@@ -132,11 +132,12 @@ export async function pushKit(o) {
 }
 
 /**
- * Makes reads of the kit's store fail, as an aborted IndexedDB read does: a rejection. fails(op, key, path) decides for one read:
- * op is 'getFile' (key: scope, path: file), 'listFiles' (key: scope, path: prefix) or 'getSecret' (key: id). Writes pass.
+ * Makes reads of the kit's store fail, as an aborted IndexedDB read does: a rejection. fails(op, key, path) decides for one read, of any call a
+ * read-only transaction makes, with that call's name and arguments: 'getFile' (key: scope, path: file), 'listFiles' (key: scope, path: prefix),
+ * 'getSecret', 'getScope', 'getBlob' (key: its id), 'listEvents' (key: scope), 'listScopes'. Writes pass.
  * The memory store's reads never fail, so a test that wants one breaks it here.
  * @param {{ store: import('../../src/core/types.js').Store }} k
- * @param {(op: 'getFile' | 'listFiles' | 'getSecret', key: string, path?: string) => boolean} fails
+ * @param {(op: string, key: string, path?: any) => boolean} fails
  * @returns {{ log: string[], heal: () => void }}
  */
 export function breakReads(k, fails) {
@@ -144,28 +145,17 @@ export function breakReads(k, fails) {
   /** @type {string[]} */
   const log = [];
   const abort = () => new DOMException('The transaction was aborted, so the request cannot be fulfilled.', 'AbortError');
-  /** @type {any} */ (k.store).tx = (/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => real(stores, mode, (/** @type {any} */ t) => fn(new Proxy(t, {
+  /** @type {any} */ (k.store).tx = (/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => real(stores, mode, mode !== 'readonly' ? fn : (/** @type {any} */ t) => fn(new Proxy(t, {
     get(o, name) {
-      if (name === 'getFile' || name === 'listFiles') {
-        return async (/** @type {string} */ scope, /** @type {string} */ path) => {
-          if (fails(name, scope, path)) {
-            log.push(`${name} ${path}`);
-            throw abort();
-          }
-          return o[name](scope, path);
-        };
-      }
-      if (name === 'getSecret') {
-        return async (/** @type {string} */ id) => {
-          if (fails('getSecret', id)) {
-            log.push(`getSecret ${id}`);
-            throw abort();
-          }
-          return o.getSecret(id);
-        };
-      }
       const v = o[name];
-      return typeof v === 'function' ? v.bind(o) : v;
+      if (typeof v !== 'function') return v;
+      return async (/** @type {any[]} */ ...a) => {
+        if (fails(String(name), a[0], a[1])) {
+          log.push(`${String(name)} ${typeof a[1] === 'string' ? a[1] : a[0]}`);
+          throw abort();
+        }
+        return v.apply(o, a);
+      };
     },
   })));
   return { log, heal: () => { /** @type {any} */ (k.store).tx = real; } };

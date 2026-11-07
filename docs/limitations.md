@@ -328,3 +328,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** nothing. A copy sent before copies carried `says` takes the plan's digest at its first sync, once; the line that does it stays in the code.
 - **Why:** a copy waits at the relay 29 days at most, so after 30 days from the release that added `says` no such copy is left.
 - **Revisit when:** 30 days after this release ships: remove the line in `#wanted` and its adoption tests.
+
+### An edit in a waiting trip can miss its call-off if annai closes right after a failed read
+- **Kind:** known limitation.
+- **What the user sees:** a trip isn't in play and has a reminder waiting at the relay. They edit that stop, the sync that would call the copy off hits a failed read, and annai is closed before the retry. The old words can arrive, until annai next opens.
+- **Why:** nothing runs while annai is closed, and calling off on doubt would lose good reminders to one failed read.
+- **Revisit when:** a phone log shows reads failing this way.
+- **Approved:** 2026-11-06, the user picked "Accept for now (Recommended)".

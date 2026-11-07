@@ -5,6 +5,7 @@ import { PLAN, planWatches, planWords, planItemWords } from './plan-watches.js';
 import { readWatches, saveWatch, removeWatch, newWatchId, expired, watchPath, WATCH_FILE } from './watches.js';
 import { realClock } from './clock.js';
 import { readAppSettings, updateAppSettings } from '../settings.js';
+import { notJSON } from '../workspace.js';
 import { logEvent } from '../events.js';
 import { ME, SYS_DEVICE, ensureDeviceScope, listTrips, talks, tripMirror } from '../scopes.js';
 import { PLAN_FILE, BOOKING_FILE } from '../plan.js';
@@ -142,8 +143,8 @@ export class Live {
   #watches = new Map();
   /** @type {Watch[]} the trip in play's plan watches */
   #plan = [];
-  /** @type {number | null} when a failed read left the plan short, else null */
-  #short = null;
+  /** Live may be older than the store: nothing read yet, or a read after a change failed. */
+  #behind = true;
   /** @type {{ name: string, lat: number, lng: number }[]} */
   #places = [];
   /** @type {Map<string, Record<string, any>>} each watch's memory, by scope and id */
@@ -180,7 +181,7 @@ export class Live {
   #offlineSince = null;
   /** @type {Set<(level: 'calm' | 'prompt' | 'urgent') => void>} */
   #reminderChanges = new Set();
-  /** The watches and the plan are loaded (start). */
+  /** start has tried its first read. */
   #loaded = false;
   /** start() is starting the sensors: what they say at once is so before its catch-up. */
   #starting = false;
@@ -244,10 +245,9 @@ export class Live {
     );
     await this.#run(async () => {
       await ensureDeviceScope(this.store, this.clock.now());
-      await this.#loadAll();
       await this.#follow();
       this.#loaded = true;
-      const last = await this.#lastSeen();
+      const last = await this.#lastSeen().catch((e) => { this.#fail(e); return { since: null, from: null }; });
       this.#starting = true;
       try {
         this.#sensors();
@@ -307,8 +307,7 @@ export class Live {
       this.timeZone = timeZone;
       this.#fresh(false);
       // Its trip's plan and watches are in play now (they were still while it was being opened).
-      await this.#loadScope(trip);
-      if (this.#trip === trip) await this.#loadPlan();
+      this.#behind = true;
       await this.#check();
     });
     let given = false;
@@ -327,8 +326,8 @@ export class Live {
         this.odometer = this.#savedKm = was.odometer; // the simulation's own stayed apart
         if (this.on) this.#stateAt = this.clock.now();
         // Its trip is still again: its watches and plan wait for no real clock.
-        await this.#loadScope(was.trip);
-        await this.#loadPlan();
+        await this.#loadPlan(null);
+        this.#behind = true;
         if (this.on && this.shown) this.#gpsStart();
         await this.#check();
         this.#tellReminders('prompt'); // the relay follows real time again
@@ -533,25 +532,21 @@ export class Live {
   /**
    * What a closed annai can still say through the push relay (spec §11.6, 6b choices 1 and 2): time watches in every conversation, and the "coming up" and "leave soon" of the trip
    * in play and of an open conversation that isn't happening; null until live mode has loaded, and during a simulation.
-   * held hears what the plans of the trips in waiting say, by key: of those that wait to be talked in, the ones with copies at the relay;
-   * and unread, the trips whose plan a failed read left short: their copies stay.
-   * @param {{ waiting: Set<string>, held: (says: Map<string, string>, unread: Set<string>) => void }} [o] @returns {Promise<Mirrored[] | null>}
+   * held hears what the plans of the trips in waiting say, by key: of those that wait to be talked in, the ones with copies at the relay.
+   * A read that fails rejects.
+   * @param {{ waiting: Set<string>, held: (says: Map<string, string>) => void }} [o] @returns {Promise<Mirrored[] | null>}
    */
   reminders(o) {
     return this.#run(async () => {
       if (!this.#loaded || this.#sim) return null;
-      await this.#follow(); // a trip being opened: its own plan, never the last one's under its name
+      await this.#readPlay(); // a trip being opened: its own plan, never the last one's under its name
       const play = this.#trip ?? ME;
       const open = this.agent.target;
-      /** @type {Set<string>} */
-      const unread = new Set();
-      if (this.#short !== null) unread.add(play);
       // The open one's plan too: a trip starting tomorrow, opened tonight, must still wake a closed annai. A happening one waits to be talked in: looking fires nothing.
       /** @type {[string, Watch[]][]} */
       const plans = [[play, this.#plan]];
       if (open && open !== play && this.#rows.has(open) && this.#inPlay(open) && !this.#happening(open)) {
-        const { watches, whole } = await this.#planOf(open);
-        if (!whole) unread.add(open);
+        const { watches } = await this.#planOf(open);
         await this.#recallPlan(open, watches);
         plans.push([open, watches]);
       }
@@ -561,11 +556,9 @@ export class Live {
         const says = new Map();
         for (const { id } of (await listTrips(this.store)).active) {
           if (!o.waiting.has(id) || plans.some(([scope]) => scope === id)) continue;
-          const { watches, whole } = await this.#planOf(id);
-          if (!whole) unread.add(id);
-          else for (const w of watches) says.set(this.#keyOf(id, w), saysOf(w));
+          for (const w of (await this.#planOf(id)).watches) says.set(this.#keyOf(id, w), saysOf(w));
         }
-        o.held(says, unread);
+        o.held(says);
       }
       const m = this.#moment();
       const time = this.types().get('time');
@@ -618,7 +611,8 @@ export class Live {
       for (const k of [...this.#mem.keys()]) if (k.startsWith(prefix)) this.#mem.delete(k);
       for (const k of [...this.#fired.keys()]) if (k.startsWith(prefix)) this.#fired.delete(k);
       for (const k of [...this.#said.keys()]) if (k.startsWith(`${scope}|`)) this.#said.delete(k);
-      await this.#follow(); // nothing more goes into it
+      if (scope === this.#trip) await this.#loadPlan(null); // nothing more goes into it
+      await this.#check();
       this.#tellReminders('urgent');
     });
   }
@@ -629,8 +623,7 @@ export class Live {
    */
   tripsChanged() {
     return this.#run(async () => {
-      await this.#loadAll();
-      await this.#loadPlan();
+      this.#behind = true;
       await this.#check();
       this.#tellReminders('urgent');
     });
@@ -1074,7 +1067,7 @@ export class Live {
     if (this.#late) this.#dueBy = this.clock.now() + FIX_WAIT_MS;
     this.#back = true;
     // What the phone's notifications did meanwhile, before the firings that may be theirs (spec §11.6).
-    const doubles = await this.#hear(await this.#readNews());
+    const doubles = await this.#hear(await this.#readNews()).catch((e) => { this.#fail(e); return []; });
     if (doubles.length) this.close(doubles);
     await this.#check({ past: true });
     if (this.on && this.shown && this.#gpsOn.size && this.gps !== 'denied') {
@@ -1112,55 +1105,52 @@ export class Live {
   /** A watch, the plan or a trip's dates changed on disk. @param {{ scope: string, path: string }} c */
   #changed(c) {
     if (WATCH_FILE.test(c.path)) {
-      this.#bg(async () => {
+      this.#reread(async () => {
         await this.#loadScope(c.scope);
         this.#prune();
-        await this.#check();
-        this.#tellReminders('prompt');
       });
     } else if (c.path === '/trip.json') {
-      this.#bg(async () => {
+      this.#reread(async () => {
         await this.#loadRows();
         await this.#loadScope(c.scope);
-        if (c.scope === this.#trip) await this.#loadPlan();
-        await this.#check();
-        this.#tellReminders('prompt');
+        if (c.scope === this.#trip) await this.#loadPlan(c.scope);
       });
     } else if (c.scope === this.#trip && (PLAN_FILE.test(c.path) || BOOKING_FILE.test(c.path))) {
-      this.#bg(async () => {
-        await this.#loadPlan();
-        await this.#check();
-        this.#tellReminders('prompt');
-      });
+      this.#reread(() => this.#loadPlan(this.#trip));
     } else if (PLAN_FILE.test(c.path) || BOOKING_FILE.test(c.path)) {
       this.#tellReminders('prompt'); // a trip that isn't in play: reminders() reads its plan itself
     }
   }
 
-  /** Another trip came into play: its plan. Watches stay: #changed keeps them current. */
-  async #follow() {
-    const trip = this.#play();
-    if (trip === this.#trip) {
-      // A plan a failed read left short is read again, once a minute at most.
-      if (this.#short !== null && this.clock.now() - this.#short >= RECHECK_MS) {
-        await this.#loadPlan();
-        if (this.#short === null) this.#tellReminders('prompt');
-      }
-      return;
-    }
-    this.#trip = trip;
-    this.#kept = null;
-    this.stop = null;
-    await this.#loadPlan();
+  /** What changed is read again, then looked at; a read that fails is owed. @param {() => Promise<unknown>} read */
+  #reread(read) {
+    this.#bg(async () => {
+      await read().catch((e) => { this.#behind = true; this.#fail(e); });
+      await this.#check();
+      this.#tellReminders('prompt');
+    });
+  }
+
+  /** A read is owed: Live is behind, or holds another trip's plan. */
+  #owed() {
+    return this.#behind || this.#play() !== this.#trip;
+  }
+
+  /** Another trip came into play, or a read is owed. A read that fails rejects with nothing changed, and the next call tries again. Watches stay: #changed keeps them current. */
+  async #readPlay() {
+    if (this.#behind) await this.#loadAll();
+    if (this.#owed()) await this.#loadPlan(this.#play());
+    this.#behind = false;
+  }
+
+  /** #readPlay, for those who go on with what Live has. */
+  #follow() {
+    return this.#readPlay().catch((e) => this.#fail(e));
   }
 
   /** What #play chooses from may have changed: the rows read again, and whatever came with it looked at. */
   #rowsMoved() {
-    this.#bg(async () => {
-      await this.#loadRows();
-      await this.#check();
-      this.#tellReminders('prompt');
-    });
+    this.#reread(() => this.#loadRows());
   }
 
   /** Whether a trip is a simulation's, from its trip.json as read. @param {string} scope @param {any} info */
@@ -1176,15 +1166,15 @@ export class Live {
     return active;
   }
 
-  /** Every conversation's watches, what has fired, and the trips' rows. */
+  /** Every conversation's watches, what has fired, and the trips' rows; a read that fails leaves a scope's watches as they are. */
   async #loadAll() {
     const active = await this.#loadRows();
-    const scopes = [ME, ...active.map((s) => s.id)];
-    this.#watches.clear();
+    const scopes = new Set([ME, ...active.map((s) => s.id)]);
     for (const scope of scopes) {
       await this.#loadScope(scope);
       await this.#recall(scope);
     }
+    for (const scope of this.#watches.keys()) if (!scopes.has(scope)) this.#watches.delete(scope);
   }
 
   /** A plan item removed and made again remembers what it fired, as the log does, and as annai's next start reads it. @param {string} scope @param {Watch[]} watches */
@@ -1204,7 +1194,7 @@ export class Live {
   /** @param {string} scope */
   async #loadScope(scope) {
     // A simulation's trip: its watches are its run's alone.
-    const info = scope === ME ? null : await this.ws.readJSON(scope, '/trip.json').catch(() => null);
+    const info = scope === ME ? null : await this.ws.readJSON(scope, '/trip.json').catch(notJSON);
     this.#setStill(scope, info);
     // An archived trip's, which a change to its watch file brings here too, wait until it is unarchived.
     const archived = scope !== ME && (await this.store.tx(['scopes'], 'readonly', (t) => t.getScope(scope)))?.status === 'archived';
@@ -1217,44 +1207,34 @@ export class Live {
     else this.#watches.delete(scope);
   }
 
-  /** The trip in play's plan, as the plan's own watches. */
-  async #loadPlan() {
-    const trip = this.#trip;
-    this.#plan = [];
-    this.#places = [];
-    this.#short = null;
-    if (!trip) return;
-    const info = await this.ws.readJSON(trip, '/trip.json').catch(() => null);
-    this.#setStill(trip, info);
-    if (!this.#inPlay(trip)) return; // a simulation's plan reminds only during its run
-    // An archived trip, open or not, reminds of nothing: its watches aren't loaded either (#loadAll).
-    if ((await this.store.tx(['scopes'], 'readonly', (t) => t.getScope(trip)))?.status === 'archived') return;
-    const { items, watches, whole } = await this.#planOf(trip);
+  /** A trip and its plan, as the plan's own watches, come into play together: a read that fails rejects with nothing changed. @param {string | null | undefined} trip */
+  async #loadPlan(trip) {
+    if (trip) this.#setStill(trip, await this.ws.readJSON(trip, '/trip.json').catch(notJSON));
+    // A simulation's plan reminds only during its run. An archived trip, open or not, reminds of nothing: its watches aren't loaded either (#loadAll).
+    const reminds = trip && this.#inPlay(trip) && (await this.store.tx(['scopes'], 'readonly', (t) => t.getScope(trip)))?.status !== 'archived';
+    const { items, watches } = reminds ? await this.#planOf(trip) : { items: [], watches: [] };
+    if (reminds) await this.#recallPlan(trip, watches);
+    if (trip !== this.#trip) this.#kept = this.stop = null;
+    this.#trip = trip;
     this.#plan = watches;
-    if (!whole) this.#short = this.clock.now();
-    await this.#recallPlan(trip, watches);
+    this.#places = [];
     for (const { item } of items) {
       const p = item.place;
       if (p && typeof p.lat === 'number' && typeof p.lng === 'number') this.#places.push({ name: String(p.name ?? item.title ?? /* en */ 'a plan place'), lat: p.lat, lng: p.lng });
     }
-    this.#prune();
+    if (reminds) this.#prune();
   }
 
   /**
-   * A trip's plan as it stands: its items, and the watches they make (planWatches), with its bookings and its zone.
-   * @param {string} trip @returns {Promise<{ items: { path: string, item: any }[], watches: Watch[], whole: boolean }>}
+   * A trip's plan as it stands: its items, and the watches they make (planWatches), with its bookings and its zone. A read that fails rejects.
+   * @param {string} trip @returns {Promise<{ items: { path: string, item: any }[], watches: Watch[] }>}
    */
   async #planOf(trip) {
     /** @type {{ path: string, item: any }[]} */
     const items = [];
     /** @type {Map<string, any>} */
     const bookings = new Map();
-    let whole = true;
-    // A file that isn't JSON answered (no plan item); any other failure didn't.
-    const read = (/** @type {string} */ path) => this.ws.readJSON(trip, path).catch((/** @type {unknown} */ e) => {
-      if (!(e instanceof SyntaxError)) whole = false;
-      return null;
-    });
+    const read = (/** @type {string} */ path) => this.ws.readJSON(trip, path).catch(notJSON);
     for (const f of await this.ws.list(trip, '/plan/')) {
       if (!PLAN_FILE.test(f.path)) continue;
       const item = await read(f.path);
@@ -1267,7 +1247,7 @@ export class Live {
     }
     const info = await read('/trip.json');
     const fallbackTz = [info?.timezones?.[0], this.timeZone()].find(validZone) ?? 'UTC';
-    return { items, watches: planWatches(items, bookings, { fallbackTz }), whole };
+    return { items, watches: planWatches(items, bookings, { fallbackTz }) };
   }
 
   /** Forgets the memories and firings of watches that are gone: hers that fired or were cancelled, plan items no longer planned, other trips' plans. */
@@ -1564,7 +1544,7 @@ export class Live {
     /** @type {Fired[]} */
     const done = [];
     for (const x of list) {
-      if (x.scope !== open && !(await this.#exists(x.scope))) {
+      if (x.scope !== open && !(await this.#exists(x.scope).catch(() => true))) { // a failed read isn't a removed trip
         this.#watches.delete(x.scope); // a trip that was removed: nothing more goes into it (spec §4.9)
         continue;
       }
@@ -1743,11 +1723,11 @@ export class Live {
     this.#tellReminders('urgent');
   }
 
-  /** One timer, for the next due watch (spec §11.2); while live, at least once a minute; at midnight, when play may change. Off screen, none. @param {Moment} m */
+  /** One timer, for the next due watch (spec §11.2); while live or a read is owed, at least once a minute; at midnight, when play may change. Off screen, none. @param {Moment} m */
   #schedule(m) {
     this.#clearTimer();
     if (!this.shown) return;
-    let next = this.on ? m.now + RECHECK_MS : Infinity;
+    let next = this.on || this.#owed() ? m.now + RECHECK_MS : Infinity;
     const consider = (/** @type {number | null | undefined} */ t) => {
       if (typeof t === 'number' && Number.isFinite(t) && t > m.now && t < next) next = t;
     };
