@@ -21,10 +21,7 @@ import { cameFrom, backLabel } from './file.js';
 export async function renderBooking(ctx, route) {
   const id = route.parts[1];
   const path = route.params.path ?? '';
-  const scope = await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ x) => x.getScope(id));
-  if (!scope || scope.kind !== 'trip') {
-    return h('div', { class: 'screen' }, h('h1', { class: 'title', text: t`This trip isn't on this device` }), h('p', {}, h('a', { href: '#/trips' }, t`Back to Trips`)));
-  }
+  const scope = ctx.tripScope;
   const crumbs = backCrumb(ctx, id, route.params.from, { trip: scope.title });
   const all = await readTripFiles(ctx.ws, ctx.store, id);
   const d = fileDetails(all, path);

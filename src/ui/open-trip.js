@@ -11,23 +11,17 @@ export const openOrTell = (ctx, id) => ctx.agent.open(id).then(() => true, (/** 
 
 /**
  * A screen at a trip's own address (its conversation, Itinerary or Details) opens that trip's conversation, and only when the user
- * moved there: a redraw opens nothing, as `open` stops a turn and closes voice, and Shiori may have moved on meanwhile. A trip that
- * isn't here (removed, an old notification, a bookmark) goes home in place of this entry, so Back doesn't return to it; reached by Back or
- * Forward, the shell goes on the same way (shell.js `leave`).
- * @param {any} ctx the screen's: `moved` says it's a move, not a redraw @param {string} id
- * @returns {Promise<any>} the trip's scope record; null: it went home, and the screen draws nothing
+ * moved there: a redraw opens nothing, as `open` stops a turn and closes voice, and Shiori may have moved on meanwhile.
+ * @param {any} ctx the screen's: `moved` says it's a move, not a redraw; `tripScope` the trip's record (the shell sees to it it's here)
+ * @returns {any} the trip's scope record
  */
-export async function openTrip(ctx, id) {
-  const scope = await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ x) => x.getScope(id));
-  if (!scope || scope.kind !== 'trip') {
-    ctx.goneTrip();
-    return null;
-  }
+export function openTrip(ctx) {
+  const { id } = ctx.tripScope;
   if (ctx.agent && ctx.moved && ctx.agent.target !== id) {
     updateAppSettings(ctx.ws, { activeTrip: id }).catch(() => {});
     openOrTell(ctx, id);
   }
-  return scope;
+  return ctx.tripScope;
 }
 
 /** The address of the conversation being opened, or open: a trip's own, else the one outside any trip. @param {any} ctx */

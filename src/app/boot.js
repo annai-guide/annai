@@ -3,6 +3,11 @@
 import { setWords, dir, chooseTag, t } from '../core/l10n.js';
 import { SHIPPED, EXPERIMENTAL } from '../core/l10n-list.js';
 
+// A reminder tapped before main.js is there to hear it (the worker's messages start at DOMContentLoaded) is kept, and given to it.
+/** @type {Event[]} */
+const tapped = [];
+const keep = (/** @type {Event} */ e) => tapped.push(e);
+navigator.serviceWorker?.addEventListener('message', keep);
 const html = document.documentElement;
 let own;
 try { own = localStorage.getItem('annai.ui'); } catch { own = 'en'; /* blocked storage is English */ }
@@ -31,3 +36,5 @@ html.dir = dir();
 // Shiori's mark while annai opens (index.html) says so in the screens' words.
 document.querySelector('.booting')?.setAttribute('alt', t`Opening annai…`);
 await import('./main.js');
+navigator.serviceWorker?.removeEventListener('message', keep);
+for (const e of tapped) navigator.serviceWorker.dispatchEvent(new MessageEvent('message', { data: /** @type {MessageEvent} */ (e).data }));

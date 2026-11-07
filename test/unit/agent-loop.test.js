@@ -1974,7 +1974,8 @@ test("the trip screen's open failing says so, as Ask Shiori does", async () => {
   /** @type {any[]} */
   const cards = [];
   // The screen is drawn with a DOM, which the unit tests don't have: its open comes first, and that is what is checked.
-  await renderTrip({ ws: k.ws, store: k.store, agent: k.agent, moved: true, notices: { card: (/** @type {any} */ c) => cards.push(c) } }, { parts: ['trip', road] }).catch(() => {});
+  const tripScope = await k.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(road)); // the shell has read it
+  await renderTrip({ ws: k.ws, store: k.store, agent: k.agent, moved: true, tripScope, notices: { card: (/** @type {any} */ c) => cards.push(c) } }, { parts: ['trip', road] }).catch(() => {});
   await until(() => cards.length > 0);
   assert.match(cards[0].title, /didn't open/);
   assert.equal(k.agent.target, k.trip, 'the conversation before is still the one open');
@@ -1994,7 +1995,8 @@ test("the trip screen opens a trip when you come to it, never at a redraw: Shior
   assert.equal(k.agent.target, other);
   /** @type {any[]} */
   const cards = [];
-  const redraw = { ws: k.ws, store: k.store, agent: k.agent, moved: false, notices: { card: (/** @type {any} */ c) => cards.push(c) } };
+  const tripScope = await k.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(road)); // the shell has read it
+  const redraw = { ws: k.ws, store: k.store, agent: k.agent, moved: false, tripScope, notices: { card: (/** @type {any} */ c) => cards.push(c) } };
   await renderTrip(redraw, { parts: ['trip', road] }).catch(() => {}); // what `went` does on Road's screen
   await k.agent.idle();
   assert.equal(k.agent.target, other, 'not bounced back to Road');

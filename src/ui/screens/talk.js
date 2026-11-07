@@ -242,8 +242,8 @@ export async function follow(agent, scope, { read, show, state }) {
  */
 export async function renderTalk(ctx, route) {
   const agent = ctx.agent;
-  // At a trip's own address (#/trip/<id>/talk), moving there opens that trip; a trip that's gone goes home.
-  if (route?.parts[0] === 'trip' && !await openTrip(ctx, route.parts[1])) return h('div', { class: 'screen' });
+  // At a trip's own address (#/trip/<id>/talk), moving there opens that trip.
+  if (route?.parts[0] === 'trip') openTrip(ctx);
   await agent.opening.catch(() => {}); // after a start or a trip change, the conversation is still being read
   // What Shiori's halves tell each other shows, and her spoken lines show their words, unless Settings say not (spec §16.1).
   const app = await readAppSettings(ctx.ws);

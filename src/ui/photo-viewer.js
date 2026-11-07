@@ -1,4 +1,4 @@
-import { h, t } from './dom.js';
+import { h, t, overlayEntry } from './dom.js';
 
 const MAX_ZOOM = 8;
 
@@ -143,7 +143,7 @@ export function openPhotoViewer(src, label, opts = {}) {
     leave();
   });
   addEventListener('keydown', onKey);
-  history.pushState({ annaiViewer: true }, '');
+  history.pushState(overlayEntry({ annaiViewer: true }), '');
   addEventListener('popstate', done);
   addEventListener('hashchange', done); // any navigation closes it too
   document.body.append(root);

@@ -20,10 +20,7 @@ const writing = new Map();
  */
 export async function renderRecap(ctx, route) {
   const id = route.parts[1];
-  const scope = await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(id));
-  if (!scope || scope.kind !== 'trip') {
-    return h('div', { class: 'screen' }, h('h1', { class: 'title', text: t`This trip isn't on this device` }), h('p', {}, h('a', { href: '#/trips' }, t`Back to Trips`)));
-  }
+  const scope = ctx.tripScope;
   const got = await ctx.ws.read(id, RECAP_FILE).catch(() => undefined);
   const recap = got ? text(got.bytes) : '';
   const stamps = await tripStamps(ctx, id);

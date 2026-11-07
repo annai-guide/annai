@@ -106,6 +106,13 @@ export function startShell(root, core) {
     go: (/** @type {string} */ hash) => { if (location.hash === hash) render(); else location.hash = hash; },
     render: () => render(),
     replace: (/** @type {string} */ hash) => replaceHash(hash),
+    /** A trip was removed: leaves its screens the way Back does (see `render`); at the first entry, Trips there. */
+    removed: () => {
+      if (lastIdx > 0) {
+        removing = passing = true;
+        history.back();
+      } else replaceHash('#/trips');
+    },
   };
   // The dock sits at the bottom of every screen (spec §16.2).
   // A plugin may make the whole dock (spec §16.4: named components); when its dock fails, annai's own is used.
@@ -195,17 +202,23 @@ export function startShell(root, core) {
   /** Where a screen still being drawn should scroll to: whichever drawing finishes first after a move uses it. @type {number | null} */
   let pending = null;
   // Each entry numbers its place in the history (annaiIdx): a new one is one past the entry drawn last, and the shell's own replace keeps it
-  // (location.replace drops history.state). `top` is the newest entry known at or ahead of the one drawn.
+  // (location.replace drops history.state); what opens over a screen takes one between (dom.js). `top`: the newest at or ahead.
   let lastIdx = -1;
   let top = -1;
-  /** A trip that isn't here: Back or Forward over its entry goes on, so Back never stops on Trips once for each entry of it. @type {(() => void) | null} */
-  let goOn = null;
+  /** The last move: -1 Back, 1 Forward, 0 a replace or not known (an unnumbered entry). */
+  let way = 0;
+  /** A Back or Forward is passing entries it doesn't draw. */
+  let passing = false;
+  /** A trip was removed: Back goes on over its entries and Trips'. */
+  let removing = false;
+  /** The address of the draw begun last. */
+  let lastHash = '';
   /** This history entry's key, and where to scroll to on it. @returns {number} */
   const arrive = () => {
     const st = history.state ?? {};
     const seen = typeof st.annaiScroll === 'string';
-    const idx = typeof st.annaiIdx === 'number' ? st.annaiIdx : seen ? -1 : lastIdx + 1; // -1: from before entries were numbered
-    goOn = idx < 0 || lastIdx < 0 ? null : idx < lastIdx && idx > 0 ? () => history.back() : idx > lastIdx && idx < top ? () => history.forward() : null;
+    const idx = typeof st.annaiIdx === 'number' ? st.annaiIdx : seen ? -1 : Math.floor(lastIdx) + 1; // -1: from before entries were numbered
+    way = idx < 0 || lastIdx < 0 ? 0 : Math.sign(idx - lastIdx);
     top = seen || 'annaiIdx' in st ? Math.max(top, idx) : idx; // a new entry cuts off what was ahead
     lastIdx = idx;
     if (seen) {
@@ -255,13 +268,38 @@ export function startShell(root, core) {
       ?? (!o.moved && asked.name === 'talk' && asked.parts[0] === 'trip' && asked.parts[1] !== target ? talkOf(ctx) : null);
     if (to) return replaceHash(to);
     const my = ++seq;
+    lastHash = location.hash;
     if (o.moved) {
       // Where you were on the screen you're leaving, now: a scroll event can come a frame late, after the move.
       if (entry) scrolls.set(entry, scrollY);
       if (shown.tab && !PASSING.has(shown.name)) lastIn.set(shown.tab, { hash: shown.hash, y: scrollY });
       pending = arrive();
     }
-    const goneOn = o.moved ? goOn : null; // a redraw is no move
+    // A trip that isn't here has no screen at any of its addresses; a failed read is not "gone": the screen draws and says so itself.
+    let scope = null;
+    let gone = false;
+    if (asked.parts[0] === 'trip') {
+      try {
+        scope = await core.store.tx(['scopes'], 'readonly', (/** @type {any} */ x) => x.getScope(asked.parts[1] ?? ''));
+        gone = scope?.kind !== 'trip';
+      } catch { /* not looked at */ }
+      if (my !== seq) return superseded(my);
+    }
+    if (gone && !o.moved) return replaceHash('#/trips');
+    if (o.moved) {
+      // Back or Forward goes on over a gone trip's entries, then over those at the address it left, which would show it again.
+      const skip = gone || (passing && lastHash === shown.hash) || (removing && asked.name === 'trips');
+      if (skip || removing) {
+        const on = skip && (way < 0 ? lastIdx > 0 : way > 0 && lastIdx < top);
+        passing = on;
+        removing &&= on;
+        if (on) history.go(way);
+        else if (skip) return replaceHash('#/trips'); // the end of the history: Trips in its place
+        else location.hash = '#/trips'; // removing, on the first other screen: Trips after it, which cuts off the trip's entries ahead
+        return landing.promise;
+      }
+      passing = false;
+    }
     cleanUp('screen', my); // what plugins drew on the screen before
     const route = asked;
     // A file opened from the Plan, a booking or Now is in that tab.
@@ -286,7 +324,7 @@ export function startShell(root, core) {
     const screen = SCREENS[route.name] ?? SCREENS.trips;
     try {
       // Its screen's ctx says which render it is, so what it draws after a newer one began is cleaned up at once.
-      const node = await screen(Object.create(ctx, { seq: { value: my }, moved: { value: o.moved === true }, entry: { value: entry }, goneTrip: { value: () => (goneOn ? goneOn() : replaceHash('#/trips')) } }), route);
+      const node = await screen(Object.create(ctx, { seq: { value: my }, moved: { value: o.moved === true }, entry: { value: entry }, tripScope: { value: scope } }), route);
       if (my !== seq) return superseded(my);
       main.replaceChildren(node);
       if (pending !== null) {
@@ -309,6 +347,8 @@ export function startShell(root, core) {
     }
   }
   addEventListener('hashchange', () => render({ moved: true }));
+  // Passing can land on an entry at the same address, which fires no hashchange.
+  addEventListener('popstate', () => { if (passing && location.hash === lastHash) render({ moved: true }); });
 
   // Swiping a screen sideways moves to the next or the previous tab of the top bar. Not from the screen's edges
   // (the phone's own back gesture), nor on anything that moves sideways itself.

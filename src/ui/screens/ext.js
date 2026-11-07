@@ -52,7 +52,5 @@ export async function renderPluginPage(ctx, route) {
 /** A trip tab a plugin adds; its drawing gets the trip's id as a third argument. @param {any} ctx @param {{ parts: string[] }} route */
 export async function renderTripTab(ctx, route) {
   const trip = route.parts[1];
-  const scope = await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ tx) => tx.getScope(trip)).catch(() => null);
-  const label = scope ? scope.title : t`Trips`;
-  return page(ctx, 'ui:trip-tab', route.parts[3], route.parts[4], scope ? `#/trip/${encodeURIComponent(trip)}` : '#/trips', label, [{ trip }]);
+  return page(ctx, 'ui:trip-tab', route.parts[3], route.parts[4], `#/trip/${encodeURIComponent(trip)}`, ctx.tripScope.title, [{ trip }]);
 }
