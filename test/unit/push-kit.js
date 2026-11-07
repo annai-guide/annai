@@ -130,3 +130,43 @@ export async function pushKit(o) {
   };
   return kit;
 }
+
+/**
+ * Makes reads of the kit's store fail, as an aborted IndexedDB read does: a rejection. fails(op, key, path) decides for one read:
+ * op is 'getFile' (key: scope, path: file), 'listFiles' (key: scope, path: prefix) or 'getSecret' (key: id). Writes pass.
+ * The memory store's reads never fail, so a test that wants one breaks it here.
+ * @param {{ store: import('../../src/core/types.js').Store }} k
+ * @param {(op: 'getFile' | 'listFiles' | 'getSecret', key: string, path?: string) => boolean} fails
+ * @returns {{ log: string[], heal: () => void }}
+ */
+export function breakReads(k, fails) {
+  const real = k.store.tx.bind(k.store);
+  /** @type {string[]} */
+  const log = [];
+  const abort = () => new DOMException('The transaction was aborted, so the request cannot be fulfilled.', 'AbortError');
+  /** @type {any} */ (k.store).tx = (/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => real(stores, mode, (/** @type {any} */ t) => fn(new Proxy(t, {
+    get(o, name) {
+      if (name === 'getFile' || name === 'listFiles') {
+        return async (/** @type {string} */ scope, /** @type {string} */ path) => {
+          if (fails(name, scope, path)) {
+            log.push(`${name} ${path}`);
+            throw abort();
+          }
+          return o[name](scope, path);
+        };
+      }
+      if (name === 'getSecret') {
+        return async (/** @type {string} */ id) => {
+          if (fails('getSecret', id)) {
+            log.push(`getSecret ${id}`);
+            throw abort();
+          }
+          return o.getSecret(id);
+        };
+      }
+      const v = o[name];
+      return typeof v === 'function' ? v.bind(o) : v;
+    },
+  })));
+  return { log, heal: () => { /** @type {any} */ (k.store).tx = real; } };
+}

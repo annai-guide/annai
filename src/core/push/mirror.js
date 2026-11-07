@@ -142,6 +142,12 @@ function turnOnError(e) {
   return e;
 }
 
+/** A file that isn't JSON is no state. @param {unknown} e @returns {null} */
+function notJSON(e) {
+  if (e instanceof SyntaxError) return null;
+  throw e;
+}
+
 /** @param {number} n */
 const random = (n) => toBase64Url(crypto.getRandomValues(new Uint8Array(n)));
 
@@ -759,14 +765,14 @@ export class PushMirror {
   /** @returns {Promise<State>} */
   async #read() {
     await ensureDeviceScope(this.store, this.clock.now());
-    const st = stateOf(await this.ws.readJSON(SYS_DEVICE, FILE).catch(() => null));
+    const st = stateOf(await this.ws.readJSON(SYS_DEVICE, FILE).catch(notJSON)); // a failed read says nothing of the file: it stops the sync
     this.#lastState = JSON.stringify(st);
     return st;
   }
 
   /** @returns {Promise<Record<string, string>>} */
   async #readTokens() {
-    const v = await this.store.tx(['secrets'], 'readonly', (t) => t.getSecret(TOKENS)).catch(() => null);
+    const v = await this.store.tx(['secrets'], 'readonly', (t) => t.getSecret(TOKENS));
     /** @type {Record<string, string>} */
     const out = {};
     if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) if (typeof x === 'string') out[k] = x;
