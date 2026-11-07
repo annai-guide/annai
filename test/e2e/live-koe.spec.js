@@ -84,7 +84,7 @@ test('voice on, a tap: "Listening live"; a spoken question gets "checking" aloud
     expect(kokoroSaw).toContain('Is Nepenthe open now?');
     expect(kokoroSaw).toContain('[Koe asks]');
     expect(kokoroSaw).toContain('A live voice session opened');
-    await page.getByRole('link', { name: 'Conversation' }).click();
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Conversation' }).click();
     await expect(page.locator('.convo .you:not(.quiet) p')).toHaveText(['Is Nepenthe open now?']);
     const said = page.locator('.convo .shiori.said');
     await expect(said).toHaveCount(2, { timeout: 20_000 });
@@ -176,7 +176,7 @@ test("on the phone's speaker, her voice coming back into the microphone never cu
     await liveSetUp(page, kokoro.origin, s.origin);
     await page.getByRole('button', { name: 'Shiori' }).click();
     await expect(page.locator('.voice-chip')).toHaveText('Listening live');
-    await page.getByRole('link', { name: 'Conversation' }).click();
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Conversation' }).click();
     const said = page.locator('.convo .shiori.said');
     await expect(said).toHaveCount(1, { timeout: 20_000 });
     await page.waitForTimeout(1500); // her echo's tail
@@ -210,7 +210,7 @@ test('in Koe · Live the bubble over Shiori holds her words while she speaks, be
     await page.getByRole('button', { name: 'Shiori' }).click();
     await expect.poll(() => page.evaluate(() => /** @type {any} */ (window).sawBubble), { timeout: 20_000 }).toBe(words);
     await expect(page.locator('.dock .caption')).toHaveAttribute('aria-live', 'off');
-    await page.getByRole('link', { name: 'Conversation' }).click();
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Conversation' }).click();
     await expect(page.locator('.convo .shiori.said')).toContainText(words, { timeout: 20_000 });
   } finally {
     await s.stop();
@@ -272,7 +272,7 @@ test("OpenAI Realtime as Koe: the same conversation: \"Listening live\", a spoke
     expect(kinds.filter((/** @type {string} */ k) => k === 'input_audio_buffer.commit')).toHaveLength(1);
     expect(kinds.filter((/** @type {string} */ k) => k === 'input_audio_buffer.append').length).toBeGreaterThan(5);
     expect(kinds.lastIndexOf('input_audio_buffer.append')).toBeLessThan(kinds.indexOf('input_audio_buffer.commit'));
-    await page.getByRole('link', { name: 'Conversation' }).click();
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Conversation' }).click();
     await expect(page.locator('.convo .you:not(.quiet) p')).toHaveText(['Is Nepenthe open now?']);
     const said = page.locator('.convo .shiori.said');
     await expect(said).toHaveCount(2, { timeout: 20_000 });

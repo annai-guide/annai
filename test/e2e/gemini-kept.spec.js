@@ -131,7 +131,7 @@ test('turning the switch off deletes what Google keeps, and later turns are sent
     await expect(savedBy(keep)).toHaveText('Saved');
     await expect.poll(() => s.deleted().length, { timeout: 15_000 }).toBe(1);
     expect(s.stored()).toEqual([]);
-    await page.getByRole('link', { name: 'Conversation' }).click();
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Conversation' }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Conversation' })).toBeVisible();
     await page.getByRole('button', { name: 'Type' }).click();
     await say(page, 'And the bus stop?', 2);

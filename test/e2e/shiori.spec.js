@@ -446,7 +446,7 @@ test('done: a conversation with tool use, with fallback across two providers, su
     await expect(page.locator('.convo .shiori p').last()).toHaveText('Yes, still here.', { timeout: 15_000 });
 
     // The note is a file in the trip.
-    await page.getByRole('link', { name: 'Trips' }).click();
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
     await page.getByRole('link', { name: /Big Sur/ }).click();
     await allFiles(page);
     await expect(page.getByText('/notes/dinner.md')).toBeVisible();

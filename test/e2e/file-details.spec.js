@@ -335,7 +335,7 @@ test('a PDF Shiori read in the conversation: Delete keeps it under Deleted, and 
     await page.getByLabel('Add photos or files').setInputFiles({ name: 'booking.pdf', mimeType: 'application/pdf', buffer: await readFile(new URL('../fixtures/pdf/booking.pdf', import.meta.url)) });
     await expect.poll(() => llm.bodies('/b/v1/messages').length, { timeout: 60_000 }).toBeGreaterThanOrEqual(2);
     expect(JSON.stringify(llm.bodies('/b/v1/messages')[1])).toContain('"type":"document"');
-    await page.getByRole('link', { name: 'Conversation' }).click();
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Conversation' }).click();
     await expect(page.getByText('A stay at Hotel Aurora Test.')).toBeVisible({ timeout: 30_000 });
     await writeRecords(page, trip, { write: {
       '/bookings/stay.json': { id: 'stay', kind: 'lodging', status: 'confirmed', source: '/trip/files/booking.pdf', title: 'Hotel Aurora Test', unsure: [] },

@@ -92,7 +92,7 @@ test('with no trip open, + hands Shiori a flight PDF and a hotel screenshot: she
   try {
     await setUp(page, llm.origin);
     await handAnchorage(page);
-    await expect(page.locator('.screen > .sub').first()).toHaveText(TITLE);
+    await expect(page.locator('.talk-head .talk-name')).toHaveText(TITLE); // the trip's name heads its conversation (timeline stage 3)
     const lines = page.locator('.convo > li');
     await expect(lines.nth(0)).toHaveClass(/you/);
     await expect(lines.nth(0).locator('.attach-chip')).toHaveText(['flight.pdf', 'hotel.png']);
@@ -308,7 +308,7 @@ test('Ask Shiori about this: the booking is a chip in the type box with Read it 
     // The chip on the sent line opens the booking's details, never its raw JSON (the review of seeing-bookings, E1).
     const chip = page.locator('.convo .chips.handed .attach-chip').first();
     await expect(chip).toHaveAttribute('href', /\/booking\?path=/);
-    await expect(chip).toHaveAttribute('href', /from=%23%2Ftalk/);
+    await expect(chip).toHaveAttribute('href', /from=%23%2Ftrip%2F[^&]*%2Ftalk$/); // back to its conversation, by its own address
     await chip.click();
     await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
     await expect(page.locator('textarea')).toHaveCount(0);

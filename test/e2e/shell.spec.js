@@ -51,7 +51,7 @@ test('an unexpected error shows a card and annai keeps running', async ({ page }
   await page.evaluate(() => { setTimeout(() => { throw new Error('test boom'); }, 0); });
   await expect(page.getByText('Something went wrong')).toBeVisible();
   await expect(page.getByText('annai kept running. The details are in Trace.')).toBeVisible();
-  await page.getByRole('link', { name: 'Trips' }).click();
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
   await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
 });
 
