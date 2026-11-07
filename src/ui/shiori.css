@@ -289,3 +289,5 @@ body:has(.dock:not(.seat)) .toasts { bottom: calc(var(--dock-h, 140px) + 8px); }
 .dock:not(.seat):has(.voice-menu:not([hidden])) { z-index: 30; }
 /* The working sign steps aside while a menu from the bar is open: the menu opens where the sign floats, and its buttons take the taps. */
 .dock:not(.seat):has(.voice-menu:not([hidden])) .halves-sign { visibility: hidden; }
+/* A trip's Itinerary is drawn as a sheet over its conversation: a rounded top edge, raised a little off the page. */
+.screen.sheet { background: var(--sheet); border-radius: 18px 18px 0 0; box-shadow: 0 -2px 14px rgb(0 0 0 / .10); margin-inline: -8px; padding: 12px 8px 0; }
