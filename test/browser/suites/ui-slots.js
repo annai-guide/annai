@@ -300,15 +300,29 @@ export default function (test, assert) {
     }
   });
 
-  // Last: it starts a shell, which follows this page's address from then on.
   test("minors 15: what a render the shell gave up on drew is cleaned up as it comes, not at the next render", async () => {
+    const { ctx } = kit();
+    const entry = { pluginId: 'tides', item: {} };
+    /** @type {string[]} */
+    const cleaned = [];
+    cleanUp('screen', 7); // render 7 is the screen's now
+    mount({ ...ctx, seq: 6 }, entry, document.createElement('div'), () => () => { cleaned.push('given up'); });
+    assert.deepEqual(cleaned, ['given up'], 'a drawing of render 6, which render 7 superseded, is cleaned up at once');
+    mount({ ...ctx, seq: 7 }, entry, document.createElement('div'), () => () => { cleaned.push('shown'); });
+    assert.deepEqual(cleaned, ['given up'], 'the screen shown is kept');
+    cleanUp('screen', 8);
+    assert.deepEqual(cleaned, ['given up', 'shown'], 'and cleaned up when the next is drawn');
+  });
+
+  // Last: it starts a shell, which follows this page's address from then on.
+  test("minors 15: a trip tab given up while the shell reads its trip is never drawn; the screen drawn next is cleaned up when the one after it is", async () => {
     const registry = new Registry();
     /** @type {string[]} */
     const cleaned = [];
     registry.add('tides', 'ui:trip-tab', { id: 'table', title: 'Tide table', render: () => () => { cleaned.push('table'); } });
     registry.add('tides', 'ui:screen', { id: 'now', title: 'Tides now', render: () => () => { cleaned.push('now'); } });
-    // The trip tab reads its trip first, slowly: the next render starts meanwhile.
-    const store = { tx: () => new Promise((done) => setTimeout(() => done({ title: 'Big Sur' }), 150)) };
+    // The shell reads the tab's trip first, slowly: the next render starts meanwhile.
+    const store = { tx: () => new Promise((done) => setTimeout(() => done({ id: 't1', kind: 'trip', title: 'Big Sur' }), 150)) };
     const root = document.createElement('div');
     document.body.append(root);
     await new Promise((done) => {
@@ -320,9 +334,9 @@ export default function (test, assert) {
     location.hash = '#/ext/tides/now';
     await new Promise((done) => setTimeout(done, 300));
     assert.ok(root.textContent?.includes('Tides now'), String(root.textContent));
-    assert.deepEqual(cleaned, ['table'], `the tab's drawing, drawn after its render was given up, is cleaned up at once: ${JSON.stringify(cleaned)}`);
+    assert.deepEqual(cleaned, [], `the tab was given up before it was drawn: ${JSON.stringify(cleaned)}`);
     location.hash = '#/ext/tides/table';
     await new Promise((done) => setTimeout(done, 100));
-    assert.deepEqual(cleaned, ['table', 'now'], "the screen shown is cleaned up when the next is drawn");
+    assert.deepEqual(cleaned, ['now'], "the screen shown is cleaned up when the next is drawn");
   });
 }
