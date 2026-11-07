@@ -721,10 +721,12 @@ test('Details changes the name and the dates; a cleared date goes, a backward ra
   await form.getByRole('button', { name: 'Save' }).click();
   await expect.poll(async () => 'end' in (await tripJson(page, id))).toBe(false);
   expect((await tripJson(page, id)).start).toBe('2027-04-01');
-  // Backward: said, and nothing is written.
-  await form.getByLabel('Ends').fill('2027-03-30');
-  await form.getByRole('button', { name: 'Save' }).click();
-  await expect(form.getByRole('alert')).toHaveText("The trip can't end before it starts.");
+  // Backward: said, and nothing is written. (The form is drawn again after a Save; on a slow run a fill can land on the old one, so the step is tried again.)
+  await expect(async () => {
+    await form.getByLabel('Ends').fill('2027-03-30');
+    await form.getByRole('button', { name: 'Save' }).click();
+    await expect(form.getByRole('alert')).toHaveText("The trip can't end before it starts.", { timeout: 2000 });
+  }).toPass();
   expect('end' in (await tripJson(page, id))).toBe(false);
   // A blank name: said, and nothing is written.
   await form.getByLabel('Ends').fill('');
