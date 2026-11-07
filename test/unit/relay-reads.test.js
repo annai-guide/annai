@@ -1003,7 +1003,7 @@ everyRead('as a stop is edited in the trip in play', inSide, ({ k, side }) => k.
 everyRead('as a booking is edited in the trip in play', inSide, ({ k, side }) => k.ws.write(side, '/bookings/ua1.json', { ...UA1, fields: { terminal: 'T3' } }, { author: 'user' }));
 everyRead('as a reminder is set', overlap, ({ k, side }) => k.live.setWatch(side, { when: { type: 'time', at: iso('15:00') }, fallback: 'Call Mum.' }));
 // start() reads too: a repeating watch that fired at 09:20 must not fire again at 09:25 because a read of its firings failed.
-everyRead('as annai starts again, with an hourly watch fired at 09:20', async () => {
+everyRead('as annai starts again, with a 20-minute watch fired at 09:20', async () => {
   const o = await overlap({ live: true });
   o.k.agent.opened(null); // the watch is Me's
   await o.k.flush();
@@ -1011,7 +1011,7 @@ everyRead('as annai starts again, with an hourly watch fired at 09:20', async ()
   await o.k.to(at('09:21'));
   await o.k.flush();
   return o;
-}, async ({ k }) => { await k.to(at('09:25')); await k.reopen().catch(() => {}); },
+}, async ({ k }) => { await k.to(at('09:25')); await k.reopen({ mirrorMayFail: true }); },
 // A repeating watch has no copy at the relay: what shows a false firing is the log of firings.
 async ({ k }) => (await k.events(['trigger.fired'], 'me')).map((e) => new Date(e.ts).toISOString().slice(11, 16)));
 everyRead('as a stop with no copy comes into play', async () => {

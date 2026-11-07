@@ -253,3 +253,83 @@ test('F6 turnOn whose following sync meets a failed read resolves: it is on, and
     await k.stop();
   }
 }));
+
+// Fix pass 11. R1: a Trace line whose write fails keeps its time and waits until it can be written.
+for (const shape of ['reads only', 'reads and writes', 'writes heal 20 s before reads']) {
+  test(`R1 three minutes of failing, ${shape}: the Trace gets both lines, Live's and the stopped sync's, and no card`, () => quiet(async () => {
+    const problems = [];
+    const k = await pushKit({ plan: ROAD, live: true, problem: (e) => problems.push(e) });
+    try {
+      const side = await createTrip(k.ws, { title: 'Side', start: '2026-12-01', end: '2026-12-02' });
+      await k.ws.write(side, '/plan/plain.json', PLAIN, { author: 'user' });
+      await k.mirror.turnOn(RELAY);
+      await k.flush();
+      const t0 = k.clock.now();
+      const writes = (/** @type {string[]} */ _stores) => shape === 'reads and writes' || (shape !== 'reads only' && k.clock.now() < t0 + 160_000);
+      const b = breakReads(k, () => true, writes);
+      await k.live.tripsChanged().catch(() => {});
+      await k.settle();
+      for (let s = 1; s <= 180; s += 1) await k.fix(t0 + s * 1000, RIVER_INN, { speed: 0 });
+      await k.mirror.settled();
+      b.heal();
+      await k.flush(70_000);
+      assert.deepEqual(problems, [], 'no card');
+      assert.equal((await readLines(k)).length, 2);
+    } finally {
+      await k.stop();
+    }
+  }));
+}
+
+// R3. The first read of start() failing: Live starts, with GPS off for that page load, and says so in the Trace.
+for (const fail of [false, true]) {
+  test(`R3 the settings read at Live's start failing=${fail}: Live starts, the 09:30 watch is said, ${fail ? 'one' : 'no'} Trace line`, () => quiet(async () => {
+    const k = await pushKit({ plan: ROAD, live: true });
+    try {
+      await k.mirror.turnOn(RELAY);
+      await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('09:30') }, fallback: 'Call Mum.' });
+      await k.flush();
+      let left = fail ? 1 : 0;
+      const b = breakReads(k, (op, key, path) => op === 'getFile' && key === 'sys:settings' && path === '/app.json' && left-- > 0);
+      await k.reopen();
+      b.heal();
+      assert.equal(b.log.length, fail ? 1 : 0, 'the read failed once');
+      await k.to(at('09:40'));
+      await k.flush(120_000);
+      assert.deepEqual(said(k), ['Call Mum.']);
+      assert.equal((await readLines(k)).length, fail ? 1 : 0);
+    } finally {
+      await k.stop();
+    }
+  }));
+}
+
+// R4. A watch is never looked at without its firings, by #changed either: a new reminder while the log's read still fails.
+for (const fail of [false, true]) {
+  test(`R4 a new reminder in Me while the firings read fails=${fail} after a start that failed it: the 60-minute watch does not fire at 09:40`, () => quiet(async () => {
+    const k = await liveKit({ live: false });
+    k.agent.opened(null);
+    await k.settle();
+    await k.live.setWatch('me', { when: { type: 'every', minutes: 60 }, fallback: 'Hourly stretch.' });
+    await k.settle();
+    await k.to(at('09:31'));
+    await k.settle();
+    assert.deepEqual(said(k), ['Hourly stretch.'], 'fired at 09:30');
+    await k.to(at('09:40'));
+    await k.settle();
+    const b = fail ? breakReads(k, (op, key, o) => op === 'listEvents' && key === 'me' && o?.types?.[0] === 'trigger.fired') : null;
+    await k.restart();
+    await k.to(at('09:40:10'));
+    await k.settle();
+    await k.live.setWatch('me', { when: { type: 'time', at: iso('15:00') }, fallback: 'Call Mum.' });
+    await k.settle();
+    await k.to(at('09:41'));
+    await k.settle();
+    b?.heal();
+    assert.deepEqual(said(k), ['Hourly stretch.']);
+    await k.to(at('10:00'));
+    await k.settle();
+    assert.deepEqual(said(k), ['Hourly stretch.']);
+    k.live.dispose();
+  }));
+}
