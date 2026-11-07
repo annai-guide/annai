@@ -146,14 +146,14 @@ test("tapping it opens annai, after writing the tap down, so a launch that ignor
   const notification = { title: 'Big Sur', body: 'Tea time.', data: { key: 'trip-1|w-1', scope: 'trip-1', watch: 'w-1', at: 1 }, close: () => { closed++; } };
   await none.fire('notificationclick', { notification });
   assert.equal(closed, 1);
-  assert.deepEqual(none.opened, ['/']);
+  assert.deepEqual(none.opened, ['/#/trip/trip-1/talk']);
   const [news] = none.news();
   assert.deepEqual({ kind: news.kind, key: news.key, scope: news.scope, watch: news.watch, title: news.title, body: news.body }, { kind: 'opened', key: 'trip-1|w-1', scope: 'trip-1', watch: 'w-1', title: 'Big Sur', body: 'Tea time.' });
   const open = await swKit({ windows: 1 });
   await open.fire('notificationclick', { notification: { ...notification, close: () => {} } });
   assert.deepEqual(open.opened, [], 'an open annai is brought forward instead');
   assert.equal(open.focused(), 1);
-  assert.deepEqual(open.posted.map((m) => m.kind), ['opened']);
+  assert.deepEqual(open.posted.filter((m) => m.type === 'annai.push').map((m) => m.kind), ['opened']);
 });
 
 test('a renewed subscription: subscribed again with the old key, and annai sends everything again at its next start', async () => {
@@ -173,7 +173,51 @@ test('a renewed subscription: subscribed again with the old key, and annai sends
 test("an open annai that can't be brought forward (focus refused): annai is opened instead, so the tap always leads somewhere", async () => {
   const k = await swKit({ windows: 1, focusFails: true });
   await k.fire('notificationclick', { notification: { title: 'Big Sur', body: 'Tea time.', data: { key: 'trip-1|w-1', scope: 'trip-1', watch: 'w-1', at: 1 }, close: () => {} } });
-  assert.deepEqual(k.opened, ['/']);
+  assert.deepEqual(k.opened, ['/#/trip/trip-1/talk']);
+});
+
+// Timeline stage 3: a notification opens its conversation. The scope comes from the payload, so only a trip's strict id is used.
+/** A tap on a reminder of scope. @param {unknown} scope */
+const tapOf = (scope) => ({ notification: { title: 'Big Sur', body: 'Tea time.', data: { key: 'k|w-1', scope, watch: 'w-1', at: 1 }, close: () => {} } });
+
+test('a tap with an open window focuses it and posts the scope', async () => {
+  const k = await swKit({ windows: 1 });
+  await k.fire('notificationclick', tapOf('trip-abc1'));
+  assert.equal(k.focused(), 1);
+  assert.deepEqual(k.opened, []);
+  assert.deepEqual(k.posted.filter((m) => m.type === 'annai.open').map((m) => ({ ...m })), [{ type: 'annai.open', scope: 'trip-abc1' }]);
+});
+
+test('a tap with none open opens that conversation', async () => {
+  const k = await swKit();
+  await k.fire('notificationclick', tapOf('trip-abc1'));
+  assert.deepEqual(k.opened, ['/#/trip/trip-abc1/talk']);
+});
+
+for (const scope of ['me', 'sys:waiting', 'trip-../x', 'TRIP-A', 'trip-', 'trip-a/../..', 'trip-a?x=1', 'trip-a#/settings', '', undefined, 7, null]) {
+  test(`${String(scope)} opens home, and posts nothing`, async () => {
+    const none = await swKit();
+    await none.fire('notificationclick', tapOf(scope));
+    assert.deepEqual(none.opened, ['/#/trips']);
+    const open = await swKit({ windows: 1 });
+    await open.fire('notificationclick', tapOf(scope));
+    assert.equal(open.focused(), 1);
+    assert.deepEqual(open.opened, []);
+    assert.deepEqual(open.posted.filter((m) => m.type === 'annai.open'), []);
+  });
+}
+
+test('a tap with no data at all opens home', async () => {
+  const k = await swKit();
+  await k.fire('notificationclick', { notification: { title: 'annai', body: 'x', close: () => {} } });
+  assert.deepEqual(k.opened, ['/#/trips']);
+});
+
+test('the tap is written down first, as today', async () => {
+  const k = await swKit({ windows: 1 });
+  await k.fire('notificationclick', tapOf('trip-abc1'));
+  assert.deepEqual(k.posted.map((m) => m.type), ['annai.push', 'annai.open']);
+  assert.equal(k.news()[0].kind, 'opened');
 });
 
 // The emulator pass (m6 #11): a "coming up" push held by the phone came 4 minutes late, still saying "In 15 min". The minutes are

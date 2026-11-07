@@ -129,6 +129,17 @@ export function onPushMessage(fn) {
   });
 }
 
+/**
+ * Hears a reminder tapped while annai is open: the service worker says which trip's conversation (sw.js openReminder), only ever a
+ * trip's strict id. Checked again here, as the page and the worker ship apart. @param {(scope: string) => void} fn
+ */
+export function onReminderOpened(fn) {
+  navigator.serviceWorker?.addEventListener('message', (e) => {
+    const d = e.data;
+    if (d && typeof d === 'object' && d.type === 'annai.open' && typeof d.scope === 'string' && /^trip-[0-9a-z]+$/.test(d.scope)) fn(d.scope);
+  });
+}
+
 /** Closes the notifications for reminders annai already said on screen. @param {string[]} keys */
 export async function closeNotifications(keys) {
   if (!keys.length) return;
