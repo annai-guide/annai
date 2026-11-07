@@ -79,7 +79,8 @@ export async function pushKit(o) {
   const source = fakeSource(service);
   /** @type {any[]} */
   const notices = [];
-  const mirror = new PushMirror({ store: k.store, ws: k.ws, live: k.live, source, fetch: tracedFetch(k.store, SYS_DEVICE, { tool: 'push relay' }, relayFetch), clock: k.clock, notice: (n) => notices.push(n), online: () => net.online });
+  const make = () => new PushMirror({ store: k.store, ws: k.ws, live: k.live, source, fetch: tracedFetch(k.store, SYS_DEVICE, { tool: 'push relay' }, relayFetch), clock: k.clock, notice: (n) => notices.push(n), online: () => net.online });
+  const mirror = make();
   await mirror.start().catch(async (e) => {
     await service.stop();
     throw e;
@@ -96,16 +97,25 @@ export async function pushKit(o) {
       for (;;) {
         const step = Math.min(end, k.clock.now() + 5000);
         await k.to(step);
-        await mirror.settled();
+        await kit.mirror.settled();
         await k.settle();
-        await mirror.settled();
+        await kit.mirror.settled();
         if (step >= end) break;
       }
       // News that came while settling set a half-second timer: one more short step meets it.
       await k.to(k.clock.now() + 600);
-      await mirror.settled();
+      await kit.mirror.settled();
       await k.settle();
-      await mirror.settled();
+      await kit.mirror.settled();
+    },
+    /** The page reloads, mirror and all (restart is Live alone): both stop, and new ones start over the same store and relay. */
+    async reopen() {
+      kit.mirror.dispose();
+      await k.restart();
+      kit.live = k.live;
+      kit.mirror = make();
+      await kit.mirror.start();
+      await kit.mirror.settled();
     },
     /** What waits at the relay, every subscription. @returns {Promise<any[]>} */
     waiting: () => env.RELAY.waiting(),
@@ -123,7 +133,7 @@ export async function pushKit(o) {
     /** What the push service delivered, opened. */
     pushed: () => service.received.filter((r) => r.status === 201).map((r) => JSON.parse(String(r.plaintext))),
     async stop() {
-      mirror.dispose();
+      kit.mirror.dispose();
       k.live.dispose();
       await service.stop();
     },

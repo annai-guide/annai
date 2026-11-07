@@ -958,8 +958,9 @@ const relayState = async (k, trips = []) => {
 
 /**
  * @param {string} name @param {() => Promise<{ k: Kit, side: string }>} make @param {(o: { k: Kit, side: string }) => Promise<unknown>} act
+ * @param {(o: { k: Kit, side: string }) => Promise<unknown>} [also] more that must end as the healthy run's did, where the relay can't show it
  */
-function everyRead(name, make, act) {
+function everyRead(name, make, act, also) {
   test(`every read failed in turn, ${name}: the relay ends as the healthy run did`, () => quiet(async () => {
     const run = async (/** @type {(seen: number) => boolean} */ fails) => {
       const o = await make();
@@ -970,7 +971,7 @@ function everyRead(name, make, act) {
         await o.k.flush(5000);
         b.heal();
         await o.k.flush(70_000);
-        return { state: await relayState(o.k, [o.k.trip, o.side]), reads: seen, log: b.log };
+        return { state: [await relayState(o.k, [o.k.trip, o.side]), await also?.(o)], reads: seen, log: b.log };
       } finally {
         await o.k.stop();
       }
@@ -1001,6 +1002,18 @@ everyRead('as a stop is edited in a waiting trip', overlap, ({ k, side }) => k.w
 everyRead('as a stop is edited in the trip in play', inSide, ({ k, side }) => k.ws.write(side, '/plan/plain.json', { ...PLAIN, title: 'Renamed' }, { author: 'user' }));
 everyRead('as a booking is edited in the trip in play', inSide, ({ k, side }) => k.ws.write(side, '/bookings/ua1.json', { ...UA1, fields: { terminal: 'T3' } }, { author: 'user' }));
 everyRead('as a reminder is set', overlap, ({ k, side }) => k.live.setWatch(side, { when: { type: 'time', at: iso('15:00') }, fallback: 'Call Mum.' }));
+// start() reads too: a repeating watch that fired at 09:20 must not fire again at 09:25 because a read of its firings failed.
+everyRead('as annai starts again, with an hourly watch fired at 09:20', async () => {
+  const o = await overlap({ live: true });
+  o.k.agent.opened(null); // the watch is Me's
+  await o.k.flush();
+  await o.k.live.setWatch('me', { when: { type: 'every', minutes: 20 }, fallback: 'Stretch.' });
+  await o.k.to(at('09:21'));
+  await o.k.flush();
+  return o;
+}, async ({ k }) => { await k.to(at('09:25')); await k.reopen().catch(() => {}); },
+// A repeating watch has no copy at the relay: what shows a false firing is the log of firings.
+async ({ k }) => (await k.events(['trigger.fired'], 'me')).map((e) => new Date(e.ts).toISOString().slice(11, 16)));
 everyRead('as a stop with no copy comes into play', async () => {
   const o = await noCopy();
   await o.k.ws.write(o.side, '/plan/fly.json', FLIGHT, { author: 'user' });

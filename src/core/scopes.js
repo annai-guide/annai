@@ -1,4 +1,4 @@
-import { ValidationError, NotFoundError } from './workspace.js';
+import { ValidationError, NotFoundError, notJSON } from './workspace.js';
 import { t } from './l10n.js';
 
 /** @typedef {import('./types.js').Store} Store @typedef {import('./types.js').ScopeRecord} ScopeRecord @typedef {import('./types.js').Tx} Tx */
@@ -238,7 +238,7 @@ export async function backupState(store, id) {
 export function syncTripTitles(ws) {
   return ws.onChange(async ({ op, scope, path }) => {
     if (op !== 'write' || kindOf(scope) !== 'trip' || path !== '/trip.json') return;
-    const trip = await ws.readJSON(scope, '/trip.json').catch(() => null);
+    const trip = await ws.readJSON(scope, '/trip.json').catch(notJSON); // a failed read says nothing of its dates: the record stays
     const title = String(trip?.title ?? '').trim();
     const dates = tripMirror(trip);
     await ws.store.tx(['scopes'], 'readwrite', async (t) => {
@@ -266,7 +266,7 @@ export async function backfillTrips(ws) {
   const { store } = ws;
   for (const s of await store.tx(['scopes'], 'readonly', (t) => t.listScopes())) {
     if (s.kind !== 'trip' || 'talked' in s) continue;
-    const dates = tripMirror(await ws.readJSON(s.id, '/trip.json').catch(() => null));
+    const dates = tripMirror(await ws.readJSON(s.id, '/trip.json').catch(notJSON));
     const talked = await lastTalked(store, s.id);
     await store.tx(['scopes'], 'readwrite', async (t) => {
       const rec = await t.getScope(s.id);

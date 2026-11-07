@@ -329,9 +329,16 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** a copy waits at the relay 29 days at most, so after 30 days from the release that added `says` no such copy is left.
 - **Revisit when:** 30 days after this release ships: remove the line in `#wanted` and its adoption tests.
 
-### An edit in a waiting trip can miss its call-off if annai closes right after a failed read
+### An edit or a new reminder can miss the relay if annai closes right after a failed read
 - **Kind:** known limitation.
-- **What the user sees:** a trip isn't in play and has a reminder waiting at the relay. They edit that stop, the sync that would call the copy off hits a failed read, and annai is closed before the retry. The old words can arrive, until annai next opens.
-- **Why:** nothing runs while annai is closed, and calling off on doubt would lose good reminders to one failed read.
-- **Revisit when:** a phone log shows reads failing this way.
+- **What the user sees:** reads are failing, and annai is closed before the retry. An edit to a stop in any trip, the one in play too, can leave its old words at the relay, and they can arrive until annai next opens. A reminder just set may not reach the relay at all, so it doesn't arrive while annai is closed. One failed read of any trip stops the whole sync, which is why the trip in play and a new reminder are caught too. A locked phone may count as closed; that is traced in the code, not tried on a phone.
+- **Why:** nothing runs while annai is closed, and calling off on doubt would lose good reminders to one failed read. It corrects itself when annai next opens.
+- **Revisit when:** the Trace shows reads failing (an `error` entry of kind `read` in the device's log, under the Errors kind).
+- **Approved:** 2026-11-06, the user picked "Accept for now (Recommended)", for an edit in a trip that isn't in play. Widened: 2026-11-06, the user picked "Yes, widen it (Recommended)": it covers the trip in play too. Then, 2026-11-06, the user picked "Yes, widen it (Recommended)", told: "With reads failing and annai then closed, an edit in any trip can leave old words at the relay, and a reminder you've just set may not reach the relay at all, so it wouldn't arrive while annai is closed. A locked phone may count as closed; that's traced in the code, not tried on a phone."
+
+### A stop deleted just before reads fail can be said once from the old plan
+- **Kind:** known limitation.
+- **What the user sees:** a stop is deleted, the reload and its retry both fail, and the stop's moment comes while reads are still failing: its reminder is said once, at its time. It stops once reads work.
+- **Why:** while reads are failing annai keeps the plan it has. Pausing the plan while behind would hold back every good reminder during any failure.
+- **Revisit when:** the Trace shows it (an `error` entry of kind `read` in the device's log).
 - **Approved:** 2026-11-06, the user picked "Accept for now (Recommended)".

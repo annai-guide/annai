@@ -5,6 +5,7 @@ import { forget } from '../../../src/core/forget.js';
 import { Workspace } from '../../../src/core/workspace.js';
 import { ensureBaseScopes, createTrip } from '../../../src/core/scopes.js';
 import { snapshot } from '../../contract/snapshot.js';
+import { exportArchive, peekArchive, importArchive, PRESETS } from '../../../src/core/archive.js';
 
 /**
  * Aborts the next requests on the files store in flight, as a browser can: the request is placed, then its transaction goes.
@@ -163,6 +164,40 @@ export default function (test, assert) {
     b.heal();
     assert.equal(b.aborted(), 2);
     s.close();
+  });
+
+  test('idb: an import whose write the browser aborts once lists each trip once: a retry starts the result over', async () => {
+    const a = await fresh();
+    const wa = new Workspace(a);
+    await ensureBaseScopes(wa);
+    for (const title of ['Road', 'Side']) await wa.write(await createTrip(wa, { title }), '/notes.md', title, { author: 'user' });
+    const { blob } = await exportArchive(a, { kind: 'everything', include: PRESETS.backup, app: '0.1.0' });
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    a.close();
+    const b = await fresh();
+    // The second trip's record is put, and its transaction goes: the first try has listed both trips by then.
+    const put = IDBObjectStore.prototype.put;
+    let trips = 0;
+    let aborted = 0;
+    IDBObjectStore.prototype.put = function (/** @type {any[]} */ ...x) {
+      const r = put.apply(this, /** @type {[any, any]} */ (x));
+      if (this.name === 'scopes' && x[0]?.kind === 'trip' && ++trips === 2 && !aborted) {
+        aborted++;
+        this.transaction.abort();
+      }
+      return r;
+    };
+    let result;
+    try {
+      result = await importArchive(b, await peekArchive(bytes), { me: 'replace', settings: 'replace' });
+    } finally {
+      IDBObjectStore.prototype.put = put;
+    }
+    assert.equal(aborted, 1);
+    assert.equal((await b.tx(['scopes'], 'readonly', (t) => t.listScopes())).filter((x) => x.kind === 'trip').length, 2);
+    assert.equal(result.trips.length, 2, 'two trips stored, two listed');
+    assert.equal(new Set(result.trips).size, 2);
+    b.close();
   });
 
   test('idb: opening waits while another connection blocks an upgrade, instead of failing', async () => {
