@@ -108,7 +108,7 @@ function newTripForm(ctx) {
         ctx.go(`#/trip/${encodeURIComponent(id)}`);
       } catch (err) {
         explainStorageFull(ctx, err);
-        error.textContent = explain(err);
+        error.textContent = explainTrip(err);
         error.hidden = false;
       }
     },
@@ -121,8 +121,8 @@ function newTripForm(ctx) {
   h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'submit' }, t`Start trip`)));
 }
 
-/** @param {any} err */
-function explain(err) {
+/** What went wrong with a trip's name or dates, in words, for Start a trip and Details. @param {any} err */
+export function explainTrip(err) {
   if (!(err instanceof ValidationError)) return messageOf(err);
   if (err.errors.some((m) => m.startsWith('$.title'))) return t`Give the trip a name.`;
   if (err.errors.some((m) => /date/.test(m))) return t`Use real dates for the start and end.`;

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, startTrip, watchConsole } from './helpers.js';
+import { openApp, startTrip, watchConsole, writeRecords } from './helpers.js';
 import { seedMorning, at } from './after-kit.js';
 
 test('the replay: the timeline, the route on a flat map and in words, scrubbing and playback (spec §13, §16.5)', async ({ page }) => {
@@ -7,6 +7,8 @@ test('the replay: the timeline, the route on a flat map and in words, scrubbing 
   await openApp(page);
   const trip = await startTrip(page, 'Big Sur');
   await seedMorning(page, trip);
+  await writeRecords(page, trip, { patch: { '/trip.json': { start: '2026-11-27', end: '2026-11-27' } } }); // Details offers a replay once dated
+  await page.goto('/#/trips'); // and back: Details is drawn again, dated
   await page.goto(`/#/trip/${encodeURIComponent(trip)}`);
   await page.getByRole('link', { name: 'Replay' }).click();
   await expect(page.getByRole('heading', { name: 'Replay' })).toBeVisible();
