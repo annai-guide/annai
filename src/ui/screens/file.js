@@ -48,11 +48,8 @@ export async function renderFile(ctx, route) {
   // Back is where the file was opened from (Plan → Check this → Open the original), else the trip.
   const from = cameFrom(route.params.from, id, ctx.agent?.trip ?? null);
   const back = from?.hash ?? `#/trip/${encodeURIComponent(id)}`;
-  // Only trips open here: a link must not lead someone into editing their profile or annai's own files.
-  const scope = await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(id));
-  if (!scope || scope.kind !== 'trip') {
-    return h('div', { class: 'screen' }, h('h1', { class: 'title', text: t`This trip isn't on this device` }), h('p', {}, h('a', { href: '#/trips' }, t`Back to Trips`)));
-  }
+  // Only trips open here (the shell sees to it): a link must not lead someone into editing their profile or annai's own files.
+  const scope = ctx.tripScope;
   const names = await readNames(ctx.ws, id);
   const r = await ctx.ws.read(id, path);
   const history = await ctx.ws.history(id, path);

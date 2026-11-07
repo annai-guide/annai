@@ -30,7 +30,9 @@ test('boot.js imports only the words runtime, the list of languages, the pseudo-
   const pseudo = await importsOf('src/core/l10n-pseudo.js');
   assert.deepEqual([...pseudo.static, ...pseudo.dynamic], [], 'the pseudo-locales need nothing');
   assert.match(boot.src, /\['localhost', '127\.0\.0\.1'\]\.includes\(location\.hostname\)[\s\S]*import\('\.\.\/core\/l10n-pseudo\.js'\)/, 'the pseudo-locales load in development only');
-  assert.ok(boot.src.trimEnd().endsWith("await import('./main.js');"), 'the app comes last');
+  // The app comes last: after it, boot.js only hands it the reminders tapped while it loaded.
+  const after = boot.src.slice(boot.src.indexOf("await import('./main.js');") + "await import('./main.js');".length);
+  assert.ok(boot.src.includes("await import('./main.js');") && !/import\(/.test(after) && !/setWords|html\./.test(after), 'the app comes last');
 });
 
 test('index.html starts annai through boot.js, and names main.js nowhere', async () => {

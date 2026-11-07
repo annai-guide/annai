@@ -1,4 +1,4 @@
-import { h, t } from './dom.js';
+import { h, t, overlayEntry } from './dom.js';
 import { platform } from './platform.js';
 
 let n = 0;
@@ -41,7 +41,7 @@ export function ask({ title, body, yes, no = t`Cancel` }) {
     if (modal) dialog.showModal();
     else release = openPlain(dialog, back);
     if (closeWatcher) return;
-    history.pushState({ annaiAsk: id }, '');
+    history.pushState(overlayEntry({ annaiAsk: id }), '');
     addEventListener('popstate', back);
   });
 }

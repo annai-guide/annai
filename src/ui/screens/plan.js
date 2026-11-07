@@ -26,9 +26,8 @@ export const startTab = (tabs, today, keep) => tabs.find((x) => x.key === keep) 
 export async function renderPlan(ctx, route) {
   const own = route.parts[0] === 'trip';
   const id = own ? route.parts[1] : (ctx.agent?.target ?? (await readAppSettings(ctx.ws)).activeTrip ?? null);
-  // At a trip's own address, its conversation opens, as on its other screens; a trip that's gone goes home.
-  const scope = own ? await openTrip(ctx, id) : id ? await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(id)) : null;
-  if (own && !scope) return h('div', { class: 'screen' });
+  // At a trip's own address, its conversation opens, as on its other screens.
+  const scope = own ? openTrip(ctx) : id ? await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(id)) : null;
   if (!id || !scope || scope.kind !== 'trip') {
     return h('div', { class: 'screen' }, h('h1', { class: 'title', text: t`Itinerary` }), h('p', { class: 'empty' }, t`Open a trip to see its itinerary.`, sentenceGap(), h('a', { href: '#/trips' }, t`Go to Trips`)));
   }

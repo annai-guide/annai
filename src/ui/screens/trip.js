@@ -16,6 +16,7 @@ import { stampCount } from '../../core/after/stamps.js';
 import { RECAP_FILE } from '../../core/after/recap.js';
 import { slotEntries } from '../slots.js';
 import { openTrip } from '../open-trip.js';
+import { mergePatch } from '../../core/patch.js';
 import { explainTrip } from './trips.js';
 import { costs } from '../../core/agent/budgets.js';
 
@@ -25,8 +26,7 @@ export { fileHref };
 export async function renderTrip(ctx, route) {
   const id = route.parts[1];
   // Opening a trip makes it the one Shiori talks about (spec §4.3: /trip/ is the active trip).
-  const scope = await openTrip(ctx, id);
-  if (!scope) return h('div', { class: 'screen' });
+  const scope = openTrip(ctx);
   const trip = await ctx.ws.readJSON(id, '/trip.json').catch(() => null);
   const files = (await ctx.ws.list(id, '/')).filter((/** @type {any} */ f) => !f.path.startsWith('/offline/')); // the pack has its own panel
   const archived = scope.status === 'archived';
@@ -61,6 +61,9 @@ export async function renderTrip(ctx, route) {
     allFiles(id, fileList(id, files), newFile(ctx, id)));
 }
 
+/** A save that would leave the trip ending before it starts. */
+const backward = new Error('backward');
+
 /**
  * The trip's name and dates, changed here. A date left blank is taken out of trip.json (a merge patch's null), never written as '',
  * which its format refuses; a blank name, or an end before the start, is said and nothing is written.
@@ -84,14 +87,23 @@ function editForm(ctx, id, title, trip) {
       error.hidden = true;
       const clean = name.value.trim();
       if (!clean) return say(t`Give the trip a name.`);
-      if (start.value && end.value && end.value < start.value) return say(t`The trip can't end before it starts.`);
       // Only what was changed here: Shiori may have written the name or the dates since this was drawn.
       const changed = Object.fromEntries(Object.entries({ title: clean, start: start.value, end: end.value }).filter(([k, v]) => v !== drawn[k]).map(([k, v]) => [k, v || null]));
+      // Held while it saves and is drawn again: what is typed then would be drawn over.
+      const hold = (/** @type {boolean} */ on) => { for (const f of [name, start, end]) f.readOnly = on; };
+      hold(true);
       try {
-        await ctx.ws.patch(id, '/trip.json', changed, { author: 'user' });
+        // The order is checked on the merged file, in its lock: the dates may have changed since this was drawn.
+        await ctx.ws.update(id, '/trip.json', (/** @type {any} */ now) => {
+          const next = mergePatch(now, changed);
+          if (next.start && next.end && next.end < next.start) throw backward;
+          return next;
+        }, { author: 'user' });
         ctx.notices.toast(t`Saved.`);
         await ctx.render();
       } catch (err) {
+        hold(false);
+        if (err === backward) return say(t`The trip can't end before it starts.`);
         explainStorageFull(ctx, err);
         say(explainTrip(err));
       }
@@ -212,11 +224,11 @@ async function askAndRemove(ctx, id, scope) {
   try {
     const { bytes: freed } = await removeTripNow(ctx, id);
     ctx.notices.toast(t`Removed ${scope.title}. ${size(freed)} freed.`);
-    ctx.go('#/trips');
+    ctx.removed();
   } catch (e) {
     if (e instanceof NotFoundError) {
       ctx.notices.toast(t`That trip was already removed.`);
-      ctx.go('#/trips');
+      ctx.removed();
     } else if (!explainStorageFull(ctx, e)) {
       const why = messageOf(e).replace(/[.!?]?$/, '.');
       ctx.notices.card({ tone: 'warn', title: t`That trip wasn't removed`, body: sentences(why, t`Nothing was removed. Try again.`) });

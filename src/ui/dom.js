@@ -5,6 +5,12 @@ import { parseNum } from '../core/intl.js';
 /** A lang attribute for words in a language that may not be the screens' (a plugin's): the tag, else none. @param {string} [tag] */
 export const otherLang = (tag) => (tag && tag !== lang() ? tag : undefined);
 
+/** The history entry of something opened over a screen: its screen's key, and a number between its screen's and the next (shell.js `arrive`). @param {Record<string, unknown>} mine */
+export function overlayEntry(mine) {
+  const { annaiIdx: idx, annaiScroll: key } = history.state ?? {};
+  return typeof idx === 'number' && typeof key === 'string' ? { ...mine, annaiScroll: key, annaiIdx: (idx + Math.floor(idx) + 1) / 2 } : mine;
+}
+
 /**
  * Builds DOM without innerHTML (the CSP and spec §15 forbid it).
  * attrs: class (string | string[]), text (textContent), style (object → setProperty, never a style attribute),

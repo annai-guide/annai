@@ -139,10 +139,10 @@ test('Undo takes back what she did; the trip she started goes, and the files wai
     await expect(page.locator('.trip-card', { hasText: TITLE })).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Waiting with Shiori' })).toBeVisible();
     await expect(page.locator('.waiting-file .path')).toHaveText([/^flight\.pdf$/, /^hotel\.[a-z]+$/]);
-    // Back skips the removed trip's conversation: it lands on the Trips the files were handed from, not on Trips once more.
+    // Back skips the removed trip's conversation and the Trips the files were handed from, which is the screen it left: it lands on the one before.
     await page.goBack();
-    await expect.poll(entry).toBe(first);
-    await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
+    await expect.poll(entry).toBe(/** @type {number} */ (first) - 1);
+    await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toHaveCount(0);
   } finally {
     await llm.stop();
   }
