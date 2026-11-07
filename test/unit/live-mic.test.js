@@ -460,7 +460,7 @@ test("the dismissed run held for a moment when the spell runs out is looked at a
     // A short click as the spell runs out: a held run, let go as no turn.
     k.platform.mic.feed(hum(0.12, 0.2), RATE);
     await realtime(k, quiet(2));
-    await until(() => k.agent.live.state === 'closed', 3000);
+    await soon(async () => (await lives(k, 'closed')).length === 1, 3000);
     assert.equal((await lives(k, 'closed'))[0].data.why, 'quiet');
   } finally {
     await k.done();
@@ -625,7 +625,7 @@ test("a turn let go after the quiet spell ran out, while the detector holds a ru
     await realtime(k, quiet(1.0));
     k.platform.mic.feed(hum(0.12, 0.2), RATE); // a click, held as her verdict (let go) comes, then discarded
     await realtime(k, quiet(1));
-    await until(() => k.agent.live.state === 'closed', 3000);
+    await soon(async () => (await lives(k, 'closed')).length === 1, 3000);
     assert.equal((await lives(k, 'closed'))[0].data.why, 'quiet');
   } finally {
     await k.done();
