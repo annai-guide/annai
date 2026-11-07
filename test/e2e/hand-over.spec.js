@@ -130,6 +130,8 @@ test('Undo takes back what she did; the trip she started goes, and the files wai
   const llm = await startModelServer({ [MESSAGES]: anchorage() });
   try {
     await setUp(page, llm.origin);
+    const entry = () => page.evaluate(() => history.state?.annaiIdx ?? null); // which entry of the shell's history this is
+    const first = await entry();
     await handAnchorage(page);
     await page.getByRole('button', { name: 'Undo what Shiori did with these files' }).click();
     await expect(page.getByText(`Undone. ${TITLE} is removed, and your files are waiting with Shiori.`)).toBeVisible();
@@ -137,6 +139,10 @@ test('Undo takes back what she did; the trip she started goes, and the files wai
     await expect(page.locator('.trip-card', { hasText: TITLE })).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Waiting with Shiori' })).toBeVisible();
     await expect(page.locator('.waiting-file .path')).toHaveText([/^flight\.pdf$/, /^hotel\.[a-z]+$/]);
+    // Back skips the removed trip's conversation: it lands on the Trips the files were handed from, not on Trips once more.
+    await page.goBack();
+    await expect.poll(entry).toBe(first);
+    await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
   } finally {
     await llm.stop();
   }

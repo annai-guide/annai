@@ -79,6 +79,9 @@ const used = () => /** @type {any} */ (navigator).userActivation?.hasBeenActive 
 let running = null;
 
 async function boot() {
+  // A reminder tapped while annai is open shows its conversation; one whose trip is gone goes home from there. First thing, so a tap
+  // while the window is still starting isn't lost.
+  onReminderOpened((scope) => { location.hash = talkHref(scope); });
   const held = await acquireInstanceLock({
     onHeldElsewhere: () => showBlocking(root, {
       title: t`annai is open in another tab`,
@@ -259,8 +262,6 @@ async function boot() {
     // In live mode's own queue (news() above reads it, and tells the mirror), so a catch-up starting now reads it once.
     closeNotifications(await live.newsArrived()).catch(() => {});
   });
-  // A reminder tapped while annai is open shows its conversation; one whose trip is gone goes home from there.
-  onReminderOpened((scope) => { location.hash = talkHref(scope); });
   addEventListener('online', () => { push?.sync().catch(() => {}); });
   // Deletions of what providers keep of the conversations, waiting for a connection.
   addEventListener('online', () => { llm.drainKept().catch(() => {}); });

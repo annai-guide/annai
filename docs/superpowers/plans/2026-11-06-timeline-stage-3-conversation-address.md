@@ -47,7 +47,7 @@
 3. **An address whose trip is gone** (removed here, an old notification, a bookmark): home, and Back doesn't return to it. Test in Task 1.
 4. **A notification with a hostile or old payload:** `me`, `trip-../x`, `TRIP-A`, nothing, `trip-a/../..`: home. Test in Task 5.
 5. **Clearing the dates in Details:** a blank field sends `null`, never `''`, which the schema refuses. End before start says so. A blank name says so. Test in Task 4.
-6. **A hand-over copy isn't talking** (`data.from`, see the spec's 2026-11-06 decisions): stage 3's undated rows sit at "last user line", so a hand-over into an undated trip won't lift its row. Check this is what a user wants.
+6. **A hand-over copy counts as talking** (reversed 2026-11-07, the user picked "Count it as talking (Recommended)"; see the spec's decisions): `talks` no longer leaves out `data.from`, so a hand-over into an undated trip lifts its row to now, and a happening trip's reminders follow it. The copy carries the hand-over's time. Undo leaves `talked` alone. Tests in `live-talking.test.js` and `trip-mirror.test.js`.
 
 ---
 
@@ -174,7 +174,7 @@ test('the crumb goes back to the conversation', async ({ page }) => {});
 
 - [ ] **Step 2: Implement**
 
-Order of the screen: crumb to `talkHref(id)` labelled t`Conversation`; a form with name, Starts, Ends and Save; the Itinerary button; Recap and Replay when `trip?.start`; plugins' `ui:trip-tab` buttons at the same address; Share, Archive, Remove; cost; files. Save is `ws.patch(id, '/trip.json', { title, start: start.value || null, end: end.value || null }, { author: 'user' })`: `mergePatch` follows RFC 7396, so `null` removes. Refuse `end < start` and a blank name before patching, in `trips.js`'s `explain` words. Move `explain` to a place both import. Cost: `(await costs(ctx.store, id)).total`, shown as Trace shows it.
+Order of the screen: crumb to `talkHref(id)` labelled t`Conversation`; a form with name, Starts, Ends and Save; the Itinerary button; Recap when `trip?.start` or the files list holds `/recap.md`, Replay when `trip?.start` (2026-11-07, the user's pick "Recap if dated or made"); plugins' `ui:trip-tab` buttons at the same address; Share, Archive, Remove; cost; files. Save is `ws.patch(id, '/trip.json', { title, start: start.value || null, end: end.value || null }, { author: 'user' })`: `mergePatch` follows RFC 7396, so `null` removes. Refuse `end < start` and a blank name before patching, in `trips.js`'s `explain` words. Move `explain` to a place both import. Cost: `(await costs(ctx.store, id)).total`, shown as Trace shows it.
 
 - [ ] **Step 3: Run and commit.** Expected: PASS. `git commit -m "Details: the name and dates can change here; Recap and Replay once dated; cost"`.
 

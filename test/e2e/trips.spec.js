@@ -613,14 +613,14 @@ test('Back from a conversation reached by #/talk goes to where you came from', a
   const id = await startNamed(page, 'Kyoto');
   await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
-  await page.getByRole('link', { name: 'Conversation', exact: true }).first().click();
+  await goToHash(page, '#/talk'); // a link to the plain address (the top bar's tabs go straight to the trip's own)
   await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}/talk`);
   await expect(page.getByRole('link', { name: 'Conversation', exact: true }).first()).toHaveAttribute('aria-current', 'page'); // its tab stays lit
   await page.goBack();
   await expect.poll(() => hashOf(page)).toBe('#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
   // #/plan the same way.
-  await page.getByRole('link', { name: 'Itinerary', exact: true }).first().click();
+  await goToHash(page, '#/plan');
   await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}/plan`);
   await page.goBack();
   await expect.poll(() => hashOf(page)).toBe('#/settings');
@@ -755,6 +755,20 @@ test('Recap and Replay show once dated', async ({ page }) => {
   await expect(page.getByRole('main').getByRole('link', { name: 'Replay', exact: true })).toBeVisible();
 });
 
+test('an undated trip with a recap shows Recap, and never Replay; one with neither shows neither', async ({ page }) => {
+  await openApp(page);
+  const id = await startNamed(page, 'Kyoto');
+  const link = (/** @type {string} */ name) => page.getByRole('main').getByRole('link', { name, exact: true });
+  await expect(link('Itinerary')).toBeVisible();
+  await expect(link('Recap')).toHaveCount(0); // undated, no recap
+  await expect(link('Replay')).toHaveCount(0);
+  await writeRecords(page, id, { text: { '/recap.md': '# Kyoto\nTea.' } });
+  await page.reload();
+  await expect(link('Recap')).toBeVisible(); // undated, with its recap
+  await expect(link('Replay')).toHaveCount(0);
+  await expect(link('Recap')).toHaveAttribute('href', `#/trip/${id}/recap`);
+});
+
 test('Details shows what the trip has cost', async ({ page }) => {
   await openApp(page);
   const id = await startNamed(page, 'Kyoto');
@@ -770,4 +784,182 @@ test('the crumb goes back to the conversation', async ({ page }) => {
   await expect(crumb).toContainText('Conversation');
   await crumb.click();
   await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}/talk`);
+});
+
+test('a tab tapped again on its own screen adds nothing for Back to show again', async ({ page }) => {
+  await openApp(page);
+  const id = await startNamed(page, 'Kyoto'); // on its Details
+  const tab = (/** @type {string} */ name) => page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name, exact: true });
+  for (const [name, sub] of [['Conversation', 'talk'], ['Itinerary', 'plan']]) {
+    await tab(name).click();
+    await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}/${sub}`);
+    await tab(name).click();
+    await page.waitForTimeout(300);
+    await page.goBack();
+    await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}`);
+  }
+});
+
+test("Save in Details writes only what was changed there, so dates Shiori wrote meanwhile stay", async ({ page }) => {
+  await openApp(page);
+  const id = await startNamed(page, 'Kyoto'); // Details, undated
+  await writeRecords(page, id, { patch: { '/trip.json': { start: '2027-04-01', end: '2027-04-05' } } }); // her patch, with Details still drawn
+  const form = page.locator('form.trip-edit');
+  await form.getByLabel('Name', { exact: true }).fill('Kyoto in spring');
+  await form.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Kyoto in spring' })).toBeVisible();
+  expect(await tripJson(page, id)).toMatchObject({ title: 'Kyoto in spring', start: '2027-04-01', end: '2027-04-05' });
+  // And the other way: a date changed here leaves a name she wrote.
+  await writeRecords(page, id, { patch: { '/trip.json': { title: 'Kyoto and Nara' } } });
+  await form.getByLabel('Ends').fill('2027-04-06');
+  await form.getByRole('button', { name: 'Save' }).click();
+  await expect.poll(async () => (await tripJson(page, id)).end).toBe('2027-04-06');
+  expect((await tripJson(page, id)).title).toBe('Kyoto and Nara');
+});
+
+// Back and Forward over a removed trip's entries (timeline stage 3 fix pass): they go on to the screen on the other side, never
+// stopping on Trips once for each entry. The shell numbers its history entries (history.state.annaiIdx); the tests wait on that number.
+/** Which entry of the shell's history this is. @param {import('@playwright/test').Page} page */
+const idxOf = (page) => page.evaluate(() => history.state?.annaiIdx ?? null);
+/** Whether Forward goes anywhere (a hash-only move gives Playwright no response to tell by). @param {import('@playwright/test').Page} page */
+const forwardMoves = (page) => page.evaluate(() => new Promise((resolve) => {
+  addEventListener('popstate', () => resolve(true), { once: true });
+  history.forward();
+  setTimeout(() => resolve(false), 400);
+}));
+/** Settings, then Trips, a trip started and opened, its conversation, its name (Details again), then Remove trip: the app is on Trips. @returns {Promise<string>} the trip's id */
+async function removedAfterVisits(/** @type {import('@playwright/test').Page} */ page) {
+  await openApp(page);
+  await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  const id = await startNamed(page, 'Kyoto'); // its Details
+  await page.getByRole('main').locator('.crumbs a').click(); // its conversation
+  await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}/talk`);
+  await page.locator('.talk-head .talk-name').click(); // its Details again
+  await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}`);
+  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await page.getByRole('dialog', { name: 'Kyoto' }).getByRole('button', { name: 'Remove' }).click();
+  await page.getByRole('dialog', { name: 'Not backed up' }).getByRole('button', { name: 'Remove anyway' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  await expect.poll(() => hashOf(page)).toBe('#/trips');
+  return id;
+}
+
+test("Back from Trips after Remove trip lands on the screen before the trip's first entry, in one Back", async ({ page }) => {
+  await removedAfterVisits(page);
+  expect(await idxOf(page)).toBe(6); // Trips, Settings, Trips, Details, conversation, Details, Trips
+  await page.goBack();
+  await expect.poll(() => idxOf(page)).toBe(2); // the Trips the trip was started from
+  await expect.poll(() => hashOf(page)).toBe('#/trips');
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  await page.goBack();
+  await expect.poll(() => hashOf(page)).toBe('#/settings');
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+});
+
+test("Forward over a removed trip's entries lands on Trips after the removal, and goes no further", async ({ page }) => {
+  await removedAfterVisits(page);
+  await page.goBack();
+  await expect.poll(() => idxOf(page)).toBe(2);
+  await page.goBack();
+  await expect.poll(() => hashOf(page)).toBe('#/settings');
+  await page.goForward();
+  await expect.poll(() => idxOf(page)).toBe(2);
+  await page.goForward(); // past the three entries of the removed trip
+  await expect.poll(() => idxOf(page)).toBe(6);
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  expect(await forwardMoves(page)).toBe(false); // nothing is left ahead
+});
+
+test("a removed trip's entry that is the newest, reached by Forward, becomes Trips: the screen is never blank", async ({ page }) => {
+  await openApp(page);
+  const id = await startNamed(page, 'Kyoto'); // Trips, then its Details
+  await page.goBack();
+  await expect.poll(() => idxOf(page)).toBe(0);
+  await page.evaluate(async (id) => { // removed some other way than the button: its Details entry waits ahead, the newest
+    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+    const { removeTrip } = await import(/** @type {string} */ ('/src/core/scopes.js'));
+    const store = await createIdbStore();
+    await removeTrip(store, id);
+    store.close();
+  }, id);
+  await page.goForward();
+  await expect.poll(() => hashOf(page)).toBe('#/trips');
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  expect(await idxOf(page)).toBe(1); // in the entry's place
+});
+
+test("a removed trip's entry that is the first, reached by Back, becomes Trips: Back never leaves annai from a blank screen", async ({ page, context }) => {
+  await openApp(page);
+  const id = await startNamed(page, 'Kyoto');
+  await page.close(); // annai runs in one tab at a time
+  const second = await context.newPage();
+  await second.addInitScript(() => { try { localStorage.setItem('annai.forceDownload', '1'); } catch { /* storage blocked */ } });
+  await second.goto(`/#/trip/${id}`); // the trip's Details is the first entry
+  await expect(second.getByRole('heading', { level: 1, name: 'Kyoto' })).toBeVisible();
+  await second.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  await expect(second.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  await second.evaluate(async (id) => {
+    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+    const { removeTrip } = await import(/** @type {string} */ ('/src/core/scopes.js'));
+    const store = await createIdbStore();
+    await removeTrip(store, id);
+    store.close();
+  }, id);
+  await second.goBack();
+  await expect.poll(() => hashOf(second)).toBe('#/trips');
+  await expect(second.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  expect(await idxOf(second)).toBe(0); // in the entry's place
+});
+
+test("a removed trip's address as the first entry is replaced by Trips, and keeps its place", async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('annai.forceDownload', '1'); } catch { /* storage blocked */ } });
+  await page.goto('/#/trip/trip-gone1/talk');
+  await expect.poll(() => hashOf(page)).toBe('#/trips');
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  expect(await idxOf(page)).toBe(0);
+});
+
+// A reminder tapped while annai is open: the service worker says which trip (sw.js checks it is a trip's strict id); the page opens
+// whatever string it is given safely, as an address that names no trip goes home.
+test("a tapped reminder shows its trip's conversation; a hostile scope posted to the page opens nothing but Trips", async ({ page }) => {
+  await openApp(page);
+  const id = await startNamed(page, 'Kyoto');
+  /** @param {unknown} scope */
+  const tapped = (scope) => page.evaluate((scope) => navigator.serviceWorker.dispatchEvent(new MessageEvent('message', { data: { type: 'annai.open', scope } })), scope);
+  await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  await page.evaluate(() => { /** @type {any} */ (window).sameDocument = true; });
+  await tapped(id);
+  await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}/talk`);
+  for (const scope of ['me', 'sys:waiting', 'trip-gone1', 'trip-../x', 'TRIP-A', 'trip-a/../..', 'trip-a?x=1', 'trip-a#/settings', '#/settings', '../..', '']) {
+    await goToHash(page, '#/settings');
+    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+    await tapped(scope);
+    await expect.poll(() => hashOf(page), scope).toBe('#/trips');
+    await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  }
+  // Anything that isn't a string is ignored.
+  await goToHash(page, '#/settings');
+  for (const scope of [7, null, { a: 1 }]) await tapped(scope);
+  await page.waitForTimeout(300);
+  expect(await hashOf(page)).toBe('#/settings');
+  expect(await page.evaluate(() => /** @type {any} */ (window).sameDocument)).toBe(true); // nothing navigated away
+});
+
+test("annai listens for a tapped reminder before it opens its storage, so a tap while the window is starting isn't lost", async ({ page }) => {
+  await page.addInitScript(() => {
+    /** @type {string[]} */
+    const order = [];
+    /** @type {any} */ (window).startOrder = order;
+    const open = IDBFactory.prototype.open;
+    IDBFactory.prototype.open = function (/** @type {any[]} */ ...a) { order.push('storage'); return open.apply(this, /** @type {any} */ (a)); };
+    const add = ServiceWorkerContainer.prototype.addEventListener;
+    ServiceWorkerContainer.prototype.addEventListener = function (/** @type {any} */ type, /** @type {any[]} */ ...a) { if (type === 'message') order.push('tap'); return add.call(this, type, .../** @type {[any]} */ (a)); };
+  });
+  await openApp(page);
+  const order = await page.evaluate(() => /** @type {any} */ (window).startOrder);
+  expect(order.indexOf('tap')).toBeGreaterThanOrEqual(0);
+  expect(order.indexOf('tap')).toBeLessThan(order.indexOf('storage'));
 });

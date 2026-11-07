@@ -139,7 +139,7 @@ async function undoFacts(store, scope, handover) {
     // The user's own in it: a message or words of theirs not of this hand-over, or a file they wrote without it (its name and memory too).
     // No one's work: annai's own writes (system: names kept in step), a message copied in from where it was handed (from), a write an
     // Undo made (its own moves back carry its id). A file another hand-over moved in is the user's, as theirs to keep.
-    const theirs = events.some((e) => (talks(e) && e.data?.handover !== handover)
+    const theirs = events.some((e) => (talks(e) && !e.data?.from && e.data?.handover !== handover)
       || (e.type === 'file.write' && e.actor === 'user' && e.data?.handover !== handover && !e.data?.undo));
     // The files it brought with no mark of where from (written before moves were marked): they go back to wait if the trip goes.
     const brought = [...new Set(events.filter((e) => its(e) && e.type === 'file.write' && e.actor === 'user' && String(e.data.path).startsWith('/files/')

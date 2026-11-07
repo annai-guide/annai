@@ -66,6 +66,14 @@ export function startShell(root, core) {
   /** @type {HTMLAnchorElement[]} the top bar's links: annai's, then plugins' screens with a tab */
   let links = builtIn;
   const nav = h('nav', { class: 'topnav', 'aria-label': t`Main` }, ...links);
+  // A tab naming no trip goes straight to the open trip's own address, so tapped on its own screen it adds no entry for Back to show again.
+  nav.addEventListener('click', (e) => {
+    const a = /** @type {Element} */ (e.target).closest('a');
+    const to = a && redirectOf(parseHash(a.getAttribute('href') ?? ''), core.agent?.target ?? null);
+    if (!to || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    if (location.hash !== to) location.hash = to;
+  });
   const header = h('header', { class: 'topbar' },
     /* en */ h('a', { class: 'brand', href: '#/trips', 'aria-label': 'annai' }, 'ann', h('span', { class: 'brand-ai' }, 'ai')),
     nav);
@@ -97,6 +105,7 @@ export function startShell(root, core) {
     ...core, notices, setSwipes,
     go: (/** @type {string} */ hash) => { if (location.hash === hash) render(); else location.hash = hash; },
     render: () => render(),
+    replace: (/** @type {string} */ hash) => replaceHash(hash),
   };
   // The dock sits at the bottom of every screen (spec §16.2).
   // A plugin may make the whole dock (spec §16.4: named components); when its dock fails, annai's own is used.
@@ -185,18 +194,34 @@ export function startShell(root, core) {
   };
   /** Where a screen still being drawn should scroll to: whichever drawing finishes first after a move uses it. @type {number | null} */
   let pending = null;
+  // Each entry numbers its place in the history (annaiIdx): a new one is one past the entry drawn last, and the shell's own replace keeps it
+  // (location.replace drops history.state). `top` is the newest entry known at or ahead of the one drawn.
+  let lastIdx = -1;
+  let top = -1;
+  /** A trip that isn't here: Back or Forward over its entry goes on, so Back never stops on Trips once for each entry of it. @type {(() => void) | null} */
+  let goOn = null;
   /** This history entry's key, and where to scroll to on it. @returns {number} */
   const arrive = () => {
-    const had = history.state?.annaiScroll;
-    if (typeof had === 'string') {
-      entry = had;
-      return scrolls.get(had) ?? 0;
+    const st = history.state ?? {};
+    const seen = typeof st.annaiScroll === 'string';
+    const idx = typeof st.annaiIdx === 'number' ? st.annaiIdx : seen ? -1 : lastIdx + 1; // -1: from before entries were numbered
+    goOn = idx < 0 || lastIdx < 0 ? null : idx < lastIdx && idx > 0 ? () => history.back() : idx > lastIdx && idx < top ? () => history.forward() : null;
+    top = seen || 'annaiIdx' in st ? Math.max(top, idx) : idx; // a new entry cuts off what was ahead
+    lastIdx = idx;
+    if (seen) {
+      entry = st.annaiScroll;
+      return scrolls.get(entry) ?? 0;
     }
     entry = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-    history.replaceState({ ...(history.state ?? {}), annaiScroll: entry }, '');
+    history.replaceState({ ...st, annaiScroll: entry, annaiIdx: idx }, '');
     const y = swipedTo ?? 0;
     swipedTo = null;
     return y;
+  };
+  /** This entry becomes another address, keeping its number, and is drawn. @param {string} to */
+  const replaceHash = (to) => {
+    history.replaceState(typeof history.state?.annaiIdx === 'number' ? { annaiIdx: history.state.annaiIdx } : null, '', to);
+    return render({ moved: true });
   };
 
   const nextLanding = () => {
@@ -228,10 +253,7 @@ export function startShell(root, core) {
     const target = core.agent?.target ?? null;
     const to = redirectOf(asked, target)
       ?? (!o.moved && asked.name === 'talk' && asked.parts[0] === 'trip' && asked.parts[1] !== target ? talkOf(ctx) : null);
-    if (to) {
-      location.replace(to);
-      return landing.promise; // its hashchange draws it
-    }
+    if (to) return replaceHash(to);
     const my = ++seq;
     if (o.moved) {
       // Where you were on the screen you're leaving, now: a scroll event can come a frame late, after the move.
@@ -239,6 +261,7 @@ export function startShell(root, core) {
       if (shown.tab && !PASSING.has(shown.name)) lastIn.set(shown.tab, { hash: shown.hash, y: scrollY });
       pending = arrive();
     }
+    const goneOn = o.moved ? goOn : null; // a redraw is no move
     cleanUp('screen', my); // what plugins drew on the screen before
     const route = asked;
     // A file opened from the Plan, a booking or Now is in that tab.
@@ -263,7 +286,7 @@ export function startShell(root, core) {
     const screen = SCREENS[route.name] ?? SCREENS.trips;
     try {
       // Its screen's ctx says which render it is, so what it draws after a newer one began is cleaned up at once.
-      const node = await screen(Object.create(ctx, { seq: { value: my }, moved: { value: o.moved === true }, entry: { value: entry } }), route);
+      const node = await screen(Object.create(ctx, { seq: { value: my }, moved: { value: o.moved === true }, entry: { value: entry }, goneTrip: { value: () => (goneOn ? goneOn() : replaceHash('#/trips')) } }), route);
       if (my !== seq) return superseded(my);
       main.replaceChildren(node);
       if (pending !== null) {

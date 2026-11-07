@@ -13,6 +13,7 @@ import { updateAppSettings } from '../../core/settings.js';
 import { packPanel } from '../offline-pack.js';
 import { tripStamps, stampMarks, factsWords } from '../stamps.js';
 import { stampCount } from '../../core/after/stamps.js';
+import { RECAP_FILE } from '../../core/after/recap.js';
 import { slotEntries } from '../slots.js';
 import { openTrip } from '../open-trip.js';
 import { explainTrip } from './trips.js';
@@ -41,11 +42,9 @@ export async function renderTrip(ctx, route) {
     editForm(ctx, id, String(trip?.title ?? scope.title), trip),
     h('div', { class: 'acts' },
       h('a', { class: 'btn pri', href: `#/trip/${encodeURIComponent(id)}/plan` }, t`Itinerary`),
-      // A recap and a replay are of days: an undated trip has none yet.
-      ...(trip?.start ? [
-        h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/recap` }, t`Recap`),
-        h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/replay` }, t`Replay`),
-      ] : []),
+      // A recap and a replay are of days: an undated trip has none yet, but one that has its recap still shows it.
+      ...(trip?.start || files.some((/** @type {any} */ f) => f.path === RECAP_FILE) ? [h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/recap` }, t`Recap`)] : []),
+      ...(trip?.start ? [h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/replay` }, t`Replay`)] : []),
       // Plugins' trip tabs (spec §16.4), each a page of its own.
       ...slotEntries(ctx, 'ui:trip-tab').map((e) => h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/ext/${encodeURIComponent(e.pluginId)}/${encodeURIComponent(e.item.id)}`, text: String(e.item.title) })),
       ...tripActions(ctx, id, scope, extra),
@@ -76,6 +75,8 @@ function editForm(ctx, id, title, trip) {
     error.textContent = why;
     error.hidden = false;
   };
+  /** @type {Record<string, string>} */
+  const drawn = { title: name.value, start: start.value, end: end.value };
   return h('form', {
     class: 'panel trip-edit',
     onsubmit: async (/** @type {Event} */ e) => {
@@ -84,8 +85,10 @@ function editForm(ctx, id, title, trip) {
       const clean = name.value.trim();
       if (!clean) return say(t`Give the trip a name.`);
       if (start.value && end.value && end.value < start.value) return say(t`The trip can't end before it starts.`);
+      // Only what was changed here: Shiori may have written the name or the dates since this was drawn.
+      const changed = Object.fromEntries(Object.entries({ title: clean, start: start.value, end: end.value }).filter(([k, v]) => v !== drawn[k]).map(([k, v]) => [k, v || null]));
       try {
-        await ctx.ws.patch(id, '/trip.json', { title: clean, start: start.value || null, end: end.value || null }, { author: 'user' });
+        await ctx.ws.patch(id, '/trip.json', changed, { author: 'user' });
         ctx.notices.toast(t`Saved.`);
         await ctx.render();
       } catch (err) {

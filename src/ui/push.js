@@ -130,13 +130,14 @@ export function onPushMessage(fn) {
 }
 
 /**
- * Hears a reminder tapped while annai is open: the service worker says which trip's conversation (sw.js openReminder), only ever a
- * trip's strict id. Checked again here, as the page and the worker ship apart. @param {(scope: string) => void} fn
+ * Hears a reminder tapped while annai is open: the service worker says which trip's conversation (sw.js openReminder, which checks it is
+ * a trip's strict id). Any string is safe here: talkHref encodes it, and a screen opens only a trip that is on the device.
+ * @param {(scope: string) => void} fn
  */
 export function onReminderOpened(fn) {
   navigator.serviceWorker?.addEventListener('message', (e) => {
     const d = e.data;
-    if (d && typeof d === 'object' && d.type === 'annai.open' && typeof d.scope === 'string' && /^trip-[0-9a-z]+$/.test(d.scope)) fn(d.scope);
+    if (d && typeof d === 'object' && d.type === 'annai.open' && typeof d.scope === 'string') fn(d.scope);
   });
 }
 

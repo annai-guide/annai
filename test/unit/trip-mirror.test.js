@@ -133,7 +133,7 @@ test('the first user line and a heard line stamp talked; dismissed lines, wakes 
   await record(store, id, { type: 'heard', actor: 'user', data: { id: 'h2', text: 'hi' }, now: 400 });
   assert.equal(/** @type {any} */ (await scope(id)).talked, 400);
   await record(store, id, { type: 'msg.user', actor: 'user', data: { from: 'trip-other', handover: 'h1' }, texts: [['text', 'the booking']], now: 450 });
-  assert.equal(/** @type {any} */ (await scope(id)).talked, 400, "a hand-over's copy of a line is not talking");
+  assert.equal(/** @type {any} */ (await scope(id)).talked, 450, "a hand-over's copy of a line is talking: it stamps the time it was written");
 });
 
 test('a line in me or a sys scope writes no talked', async () => {
@@ -158,7 +158,7 @@ test('a record from a released copy is filled once, archived ones too, and a sec
   for (const id of [a, b, silent]) await released(id);
   await backfillTrips(ws);
   const ra = /** @type {any} */ (await scope(a));
-  assert.deepEqual([ra.start, ra.end, ra.talked, ra.title], ['2026-11-20', '2026-11-22', 150, 'A']);
+  assert.deepEqual([ra.start, ra.end, ra.talked, ra.title], ['2026-11-20', '2026-11-22', 180, 'A'], "the copy is the last real line, behind the dismissed ones");
   const rb = /** @type {any} */ (await scope(b));
   assert.deepEqual([rb.start, rb.talked, rb.status], ['2026-11-25', null, 'archived']);
   assert.equal(/** @type {any} */ (await scope(silent)).talked, null);
