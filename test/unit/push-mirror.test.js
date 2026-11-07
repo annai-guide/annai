@@ -590,7 +590,7 @@ test('a new relay address with the same subscription gets its own "on" notificat
 
 // The emulator pass: opening Yosemite sent a DELETE for one of Big Sur's waiting reminders, and reopening Big Sur
 // sent it again. Spec §11.6 doesn't say which trips' reminders wait; the user's call: every trip's stay.
-test("opening another trip keeps the open one's plan reminders at the relay; only a removed or archived trip's go", async () => {
+test("opening another trip keeps the open one's plan reminders at the relay, and an archived trip's go", async () => {
   const { createTrip, setTripStatus } = await import('../../src/core/scopes.js');
   const k = await pushKit({ plan: { tea: TEA }, live: false });
   try {
@@ -622,7 +622,7 @@ test("opening another trip keeps the open one's plan reminders at the relay; onl
 });
 
 // Road and Side both happening; Side's reminder is at the relay, then the user talks in Road. Looking at Side changes no copy;
-// deleting or moving its stop while looking calls the copy off, though Side is not in play and sends nothing.
+// deleting or moving its stop while looking calls the copy off, though Side is not in play and sends nothing. The whole rule: push-waiting.test.js.
 for (const how of ['delete', 'move']) {
   test(`a stop ${how === 'delete' ? 'deleted' : 'moved'} in an open trip that is not in play calls its copy off; a look and a line in the other trip do not`, async () => {
     const { createTrip } = await import('../../src/core/scopes.js');
@@ -657,9 +657,19 @@ for (const how of ['delete', 'move']) {
       await k.flush();
       assert.equal(k.live.play, k.trip, 'still not in play');
       assert.deepEqual(await sends(), after.filter((x) => x !== cake), 'the old copy is called off, nothing is sent for side');
+      await k.to(at('10:00'));
+      await line(side, at('10:00'));
+      k.agent.opened(side);
+      await k.flush();
+      assert.equal(k.live.play, side);
+      const now = [...after.filter((x) => x !== cake), ...(how === 'move' ? [at('19:45') + GRACE_MS] : [])].sort();
+      assert.deepEqual(await sends(), now, 'talking there sends what its plan says now');
+      await k.to(at('11:00'));
+      await line(k.trip, at('11:00'));
       k.agent.opened(k.trip);
       await k.flush();
-      assert.deepEqual(await sends(), after.filter((x) => x !== cake), 'moving back doubles nothing');
+      assert.equal(k.live.play, k.trip);
+      assert.deepEqual(await sends(), now, 'really moving back doubles nothing and calls nothing off');
     } finally { await k.stop(); }
   });
 }
@@ -685,12 +695,13 @@ test("a held trip's plan reminder is forgotten once it is long sent", () => {
   const now = at('12:00');
   const item = (/** @type {number} */ sendAt) => ({ id: 'x', due: sendAt - GRACE_MS, sendAt, hash: 'h', scope: 'trip-b' });
   const items = { 'trip-b|plan:tea:coming-up|1': item(now - LONG_SENT_MS - 1000), 'trip-b|plan:walk:coming-up|2': item(now + 60_000) };
-  const p = plan(items, new Map(), now, new Set(['trip-b']));
+  const p = plan(items, new Map(), now, new Set(Object.keys(items)));
   assert.deepEqual(p.off, ['trip-b|plan:tea:coming-up|1']);
 });
 
 test("a held trip's plan reminders count toward the 150 waiting at the relay", async () => {
   const { createTrip } = await import('../../src/core/scopes.js');
+  const { record } = await import('../../src/core/agent/log.js');
   const k = await pushKit({ live: false });
   try {
     await k.mirror.turnOn(RELAY);
@@ -700,8 +711,12 @@ test("a held trip's plan reminders count toward the 150 waiting at the relay", a
     }
     await k.flush(5 * MIN);
     assert.equal((await k.waiting()).length, 100);
-    k.agent.opened(await createTrip(k.ws, { title: 'Yosemite' }));
+    const yosemite = await createTrip(k.ws, { title: 'Yosemite', start: '2026-11-27', end: '2026-11-28' });
+    await record(k.store, yosemite, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'hello']], now: k.clock.now() });
+    k.agent.opened(yosemite);
     await k.flush(MIN);
+    assert.equal(k.live.play, yosemite);
+    assert.equal((await k.waiting()).length, 100, 'the first trip waits to be talked in, and its copies stay');
     for (let i = 0; i < 100; i++) {
       await k.live.setWatch(ME, { when: { type: 'time', at: new Date(at('10:30') + i * 600_000).toISOString().replace('.000Z', 'Z') }, fallback: `No. ${i}` });
     }

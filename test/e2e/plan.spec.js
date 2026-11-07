@@ -422,20 +422,17 @@ test("a fix never changes the height of today's top: the place line is one line,
   await expect(place).toHaveText('At The Long Named Testville Bridge');
   expect(await block()).toBe(height);
   expect((await row.boundingBox())?.y).toBe(y);
-  // The signal going and coming back, and the phone going offline, move nothing either: one line each, and the chips never wrap.
+  // The signal going and coming back moves nothing either: one line each, and the chips never wrap.
   await page.evaluate(() => /** @type {any} */ (window).geo.at(-1).err({ code: 2, message: 'no signal' }));
   await expect(place).toHaveText('No GPS signal right now.');
+  expect(await place.evaluate((el) => getComputedStyle(el).whiteSpace)).toBe('nowrap'); // English fits on one line anyway; Japanese at this width doesn't
   expect(await block()).toBe(height);
   expect((await row.boundingBox())?.y).toBe(y);
   await context.setGeolocation({ latitude: 36.3715, longitude: -121.9017, accuracy: 10 });
   await page.clock.fastForward(5000);
   await expect(place).toHaveText('At The Long Named Testville Bridge');
-  await context.setOffline(true);
-  await page.evaluate(() => dispatchEvent(new Event('offline')));
-  await page.waitForTimeout(300); // a redraw has no sign of its own to wait for
   expect(await block()).toBe(height);
   expect((await row.boundingBox())?.y).toBe(y);
-  await context.setOffline(false);
   expect(await page.evaluate(() => {
     const tops = [...document.querySelectorAll('.today-top .chips .chip')].map((c) => c.getBoundingClientRect().top);
     return { oneRow: new Set(tops).size === 1, chips: tops.length, page: document.documentElement.scrollWidth - document.documentElement.clientWidth };

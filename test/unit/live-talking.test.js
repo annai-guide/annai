@@ -4,7 +4,7 @@ import { agentKit, until } from './agent-kit.js';
 import { fakeSensors, at, iso, off, LA, BIXBY } from './live-kit.js';
 import { Live } from '../../src/core/live/live.js';
 import { ManualClock } from '../../src/core/live/clock.js';
-import { createTrip } from '../../src/core/scopes.js';
+import { createTrip, listTrips } from '../../src/core/scopes.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 
 // "Talking moves it" (the user, 2026-11-06): looking at a trip never changes the trip in play; only talking in another happening trip does.
@@ -43,12 +43,12 @@ async function twoTrips(o = {}) {
   k.agent.send('Good morning');
   await settle();
   assert.equal(live.play, road);
-  /** The trip in play's and the open one's plan reminders, and the trips held. */
+  /** The trip in play's and the open one's plan reminders, and the trips whose copies are held to what their plan says, every trip having some. */
   const mirrored = async () => {
-    /** @type {Set<string>} */
-    let held = new Set();
-    const list = (await live.reminders({ held: (s) => { held = s; } })) ?? [];
-    return { plans: new Set(list.filter((r) => r.watch.startsWith('plan:')).map((r) => r.scope)), held, keys: list.map((r) => r.key) };
+    /** @type {Map<string, string>} */
+    let says = new Map();
+    const list = (await live.reminders({ waiting: new Set((await listTrips(k.store)).active.map((t) => t.id)), held: (s) => { says = s; } })) ?? [];
+    return { plans: new Set(list.filter((r) => r.watch.startsWith('plan:')).map((r) => r.scope)), held: new Set([...says.keys()].map((key) => key.split('|')[0])), keys: list.map((r) => r.key) };
   };
   const fired = async (/** @type {string} */ scope) => (await k.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['trigger.fired'] }))).map((e) => e.data.watch);
   const to = (/** @type {number} */ t) => clock.advanceTo(t, settle);
@@ -75,7 +75,7 @@ test('opening an overlapping trip leaves play and its reminders alone: the road 
   assert.equal(k.live.play, k.road, 'looking moves nothing');
   const m = await k.mirrored();
   assert.deepEqual([...m.plans], [k.road], 'what waits at the relay is the trip in play\'s');
-  assert.ok([...m.held].some((x) => x.startsWith(`${k.side}|plan:tea`)), 'copies of the open one already at the relay stay there, while its plan still has them');
+  assert.ok(m.held.has(k.side), 'copies of the open one already at the relay stay there, while its plan says the same');
   await k.to(at('10:45')); // tea's coming-up
   assert.deepEqual(await k.fired(k.side), [], 'its plan waits');
   k.sensors.fix({ lat: off(BIXBY, 0, 2000).lat, lng: off(BIXBY, 0, 2000).lng, accuracy: 8, speed: 0 });

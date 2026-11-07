@@ -1,5 +1,5 @@
 {
-  "build": "afab8c18e470",
+  "build": "c6b2f9959b8a",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -96,7 +96,7 @@
     "/src/core/live/activity.js": "d1fe254c6571",
     "/src/core/live/clock.js": "e8699d74a329",
     "/src/core/live/geo.js": "018e805b07f7",
-    "/src/core/live/live.js": "b91e3ab24ebb",
+    "/src/core/live/live.js": "9388b6faae9a",
     "/src/core/live/plan-watches.js": "68c90d26e6bd",
     "/src/core/live/sim-run.js": "f8b67a029a00",
     "/src/core/live/simulate.js": "d42f97c8d368",
@@ -136,7 +136,7 @@
     "/src/core/paths.js": "b519fae60471",
     "/src/core/plan.js": "9af5a8633203",
     "/src/core/plugins.js": "07e014558d09",
-    "/src/core/push/mirror.js": "e2ae3b15119c",
+    "/src/core/push/mirror.js": "aa5531501f04",
     "/src/core/push/relay-client.js": "a2f4fe58a177",
     "/src/core/push/webpush.js": "7273918284c6",
     "/src/core/reach.js": "04af21f21297",
