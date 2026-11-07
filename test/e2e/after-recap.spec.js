@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, startTrip, watchConsole } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, startTrip, watchConsole, writeRecords } from './helpers.js';
 import { seedMorning } from './after-kit.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
@@ -31,6 +31,9 @@ test('the recap: written by the utility model from the trip in words, shown safe
     await page.goto('/#/trips');
     const trip = await startTrip(page, 'Big Sur');
     await seedMorning(page, trip);
+    await writeRecords(page, trip, { patch: { '/trip.json': { start: '2026-11-27', end: '2026-11-27' } } }); // Details offers a recap once dated
+    await page.goto('/#/trips'); // and back: Details is drawn again, dated
+    await page.goto(`/#/trip/${encodeURIComponent(trip)}`);
     await page.getByRole('link', { name: 'Recap' }).click();
     await expect(page.getByRole('heading', { name: 'Recap' })).toBeVisible();
     await expect(page.getByText('No recap yet.')).toBeVisible();

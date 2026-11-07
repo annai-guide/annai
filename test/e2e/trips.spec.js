@@ -695,3 +695,79 @@ test('a reload on #/trip/<id>/talk shows that conversation, not the last one act
   expect(hashOf(page)).toBe(`#/trip/${b}/talk`);
 });
 
+// Timeline stage 3: Details is the trip's page: its name and dates change here; Recap and Replay once dated; what it has cost.
+/** The trip's trip.json, as stored. @param {import('@playwright/test').Page} page @param {string} trip */
+const tripJson = (page, trip) => page.evaluate(async (trip) => {
+  const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+  const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+  const store = await createIdbStore();
+  const v = await new Workspace(store).readJSON(trip, '/trip.json');
+  store.close();
+  return v;
+}, trip);
+
+test('Details changes the name and the dates; a cleared date goes, a backward range and a blank name say why', async ({ page }) => {
+  await openApp(page);
+  const id = await startNamed(page, 'Kyoto');
+  const form = page.locator('form.trip-edit');
+  await form.getByLabel('Name', { exact: true }).fill('Kyoto in spring');
+  await form.getByLabel('Starts').fill('2027-04-01');
+  await form.getByLabel('Ends').fill('2027-04-05');
+  await form.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Kyoto in spring' })).toBeVisible();
+  expect(await tripJson(page, id)).toMatchObject({ title: 'Kyoto in spring', start: '2027-04-01', end: '2027-04-05' });
+  // A cleared date goes from the file: a blank is never written (the schema refuses '').
+  await form.getByLabel('Ends').fill('');
+  await form.getByRole('button', { name: 'Save' }).click();
+  await expect.poll(async () => 'end' in (await tripJson(page, id))).toBe(false);
+  expect((await tripJson(page, id)).start).toBe('2027-04-01');
+  // Backward: said, and nothing is written.
+  await form.getByLabel('Ends').fill('2027-03-30');
+  await form.getByRole('button', { name: 'Save' }).click();
+  await expect(form.getByRole('alert')).toHaveText("The trip can't end before it starts.");
+  expect('end' in (await tripJson(page, id))).toBe(false);
+  // A blank name: said, and nothing is written.
+  await form.getByLabel('Ends').fill('');
+  await form.getByLabel('Name', { exact: true }).fill('  ');
+  await form.getByRole('button', { name: 'Save' }).click();
+  await expect(form.getByRole('alert')).toHaveText('Give the trip a name.');
+  expect((await tripJson(page, id)).title).toBe('Kyoto in spring');
+  // Both dates cleared: an undated trip again.
+  await form.getByLabel('Name', { exact: true }).fill('Kyoto in spring');
+  await form.getByLabel('Starts').fill('');
+  await form.getByRole('button', { name: 'Save' }).click();
+  await expect.poll(async () => 'start' in (await tripJson(page, id))).toBe(false);
+  // Shown on Trips by its new name.
+  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  await expect(page.locator('.trip-card', { hasText: 'Kyoto in spring' })).toBeVisible();
+});
+
+test('Recap and Replay show once dated', async ({ page }) => {
+  await openApp(page);
+  await startNamed(page, 'Kyoto');
+  await expect(page.getByRole('main').getByRole('link', { name: 'Itinerary', exact: true })).toBeVisible();
+  await expect(page.getByRole('main').getByRole('link', { name: 'Recap', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('main').getByRole('link', { name: 'Replay', exact: true })).toHaveCount(0);
+  const form = page.locator('form.trip-edit');
+  await form.getByLabel('Starts').fill('2027-04-01');
+  await form.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('main').getByRole('link', { name: 'Recap', exact: true })).toBeVisible();
+  await expect(page.getByRole('main').getByRole('link', { name: 'Replay', exact: true })).toBeVisible();
+});
+
+test('Details shows what the trip has cost', async ({ page }) => {
+  await openApp(page);
+  const id = await startNamed(page, 'Kyoto');
+  await writeEvent(page, id, { type: 'model.turn', data: { cost: 0.42 } });
+  await page.reload();
+  await expect(page.getByRole('main')).toContainText('This trip so far: $0.42');
+});
+
+test('the crumb goes back to the conversation', async ({ page }) => {
+  await openApp(page);
+  const id = await startNamed(page, 'Kyoto');
+  const crumb = page.getByRole('main').locator('.crumbs a');
+  await expect(crumb).toContainText('Conversation');
+  await crumb.click();
+  await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}/talk`);
+});

@@ -4,7 +4,7 @@ import { ask } from '../ask.js';
 import { normPath } from '../../core/paths.js';
 import { ValidationError, NotFoundError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
-import { relTime, size, num, list, sentences, dateRange, fileHref, bookingHref, pathParts, authorName, fileLine } from '../format.js';
+import { relTime, size, num, list, sentences, dateRange, fileHref, bookingHref, pathParts, authorName, fileLine, talkHref, formatCost } from '../format.js';
 import { fileRows, readTripFiles, deletedFiles, deletesOf } from '../../core/trip-files.js';
 import { versionText } from './file.js';
 import { exportPanel } from '../export-panel.js';
@@ -15,6 +15,8 @@ import { tripStamps, stampMarks, factsWords } from '../stamps.js';
 import { stampCount } from '../../core/after/stamps.js';
 import { slotEntries } from '../slots.js';
 import { openTrip } from '../open-trip.js';
+import { explainTrip } from './trips.js';
+import { costs } from '../../core/agent/budgets.js';
 
 export { fileHref };
 
@@ -29,15 +31,21 @@ export async function renderTrip(ctx, route) {
   const archived = scope.status === 'archived';
   const stamps = await tripStamps(ctx, id);
   const extra = h('div', {}); // the export panel opens here
+  const { total } = await costs(ctx.store, id);
+  // Details, the trip's page: back to its conversation; its name and dates; what opens from it; Share, Archive and Remove; its cost and files.
   return h('div', { class: 'screen' },
-    h('p', { class: 'crumbs' }, crumb('#/trips', t`Trips`)),
+    h('p', { class: 'crumbs' }, crumb(talkHref(id), t`Conversation`)),
     h('h1', { class: 'title', dir: 'auto', text: scope.title }),
     h('p', { class: 'sub' }, ...factsWords([trip?.start ? dateRange(trip.start, trip.end) : null, archived ? t`Archived` : null, plural(files.length, '# file', '# files'), stamps.length ? { stamps: stampCount(stamps.length) } : null])),
     stampMarks(stamps, { max: 24, big: true }),
+    editForm(ctx, id, String(trip?.title ?? scope.title), trip),
     h('div', { class: 'acts' },
       h('a', { class: 'btn pri', href: `#/trip/${encodeURIComponent(id)}/plan` }, t`Itinerary`),
-      h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/recap` }, t`Recap`),
-      h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/replay` }, t`Replay`),
+      // A recap and a replay are of days: an undated trip has none yet.
+      ...(trip?.start ? [
+        h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/recap` }, t`Recap`),
+        h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/replay` }, t`Replay`),
+      ] : []),
       // Plugins' trip tabs (spec §16.4), each a page of its own.
       ...slotEntries(ctx, 'ui:trip-tab').map((e) => h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/ext/${encodeURIComponent(e.pluginId)}/${encodeURIComponent(e.item.id)}`, text: String(e.item.title) })),
       ...tripActions(ctx, id, scope, extra),
@@ -47,10 +55,49 @@ export async function renderTrip(ctx, route) {
         : twoStep(t`Archive trip`, t`Tap again to archive`, async () => { await setTripStatus(ctx.store, id, 'archived'); await ctx.live?.tripsChanged().catch(() => {}); ctx.go('#/trips'); }),
       h('button', { class: 'btn danger', type: 'button', onclick: (/** @type {Event} */ e) => removeFlow(ctx, id, scope, /** @type {HTMLButtonElement} */ (e.currentTarget)) }, t`Remove trip`)),
     extra,
+    h('p', { class: 'sub trip-cost', text: t`This trip so far: ${formatCost(total)}` }),
     await filesSection(ctx, id),
     await packPanel(ctx, id),
     // Every file by folder, and the box that adds one by path: the full list, folded below the everyday one.
     allFiles(id, fileList(id, files), newFile(ctx, id)));
+}
+
+/**
+ * The trip's name and dates, changed here. A date left blank is taken out of trip.json (a merge patch's null), never written as '',
+ * which its format refuses; a blank name, or an end before the start, is said and nothing is written.
+ * @param {any} ctx @param {string} id @param {string} title @param {any} trip its trip.json
+ */
+function editForm(ctx, id, title, trip) {
+  const name = h('input', { id: 'trip-edit-title', name: 'title', maxlength: '200', autocomplete: 'off', value: title });
+  const start = h('input', { id: 'trip-edit-start', name: 'start', type: 'date', value: typeof trip?.start === 'string' ? trip.start : '' });
+  const end = h('input', { id: 'trip-edit-end', name: 'end', type: 'date', value: typeof trip?.end === 'string' ? trip.end : '' });
+  const error = h('p', { class: 'error', role: 'alert', hidden: true });
+  const say = (/** @type {string} */ why) => {
+    error.textContent = why;
+    error.hidden = false;
+  };
+  return h('form', {
+    class: 'panel trip-edit',
+    onsubmit: async (/** @type {Event} */ e) => {
+      e.preventDefault();
+      error.hidden = true;
+      const clean = name.value.trim();
+      if (!clean) return say(t`Give the trip a name.`);
+      if (start.value && end.value && end.value < start.value) return say(t`The trip can't end before it starts.`);
+      try {
+        await ctx.ws.patch(id, '/trip.json', { title: clean, start: start.value || null, end: end.value || null }, { author: 'user' });
+        ctx.notices.toast(t`Saved.`);
+        await ctx.render();
+      } catch (err) {
+        explainStorageFull(ctx, err);
+        say(explainTrip(err));
+      }
+    },
+  },
+  field(t`Name`, name),
+  h('div', { class: 'row' }, field(t`Starts`, start), field(t`Ends`, end)),
+  error,
+  h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'submit' }, t`Save`)));
 }
 
 /** The trips whose All files is open, kept while annai runs: adding a file redraws the screen, and the fold stays as it was. */
