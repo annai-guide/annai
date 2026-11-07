@@ -118,7 +118,9 @@ export function todayTop(ctx, { title, rows, tz }) {
   const draw = () => {
     const now = nowOf(live);
     place.textContent = whereWords(live);
-    const sunAt = sunPlace(live ? knownFix(live, now) : null, rows, now);
+    const here = live ? knownFix(live, now) : null;
+    place.classList.toggle('at', Boolean(here));
+    const sunAt = sunPlace(here, rows, now);
     const words = [live ? liveText(live) : null, ...(sunAt ? sunChips(now, sunAt.lat, sunAt.lng, tz) : []), live && !live.online ? t`Offline · reminders still work` : null];
     chips.replaceChildren(...words.filter(Boolean).map((w) => h('span', { class: 'chip', text: String(w) })));
     start.replaceChildren(...(live && !live.on ? [h('button', { class: 'btn pri', type: 'button', onclick: () => live.setLive(true) }, t`Turn GPS on`)] : []));
@@ -131,7 +133,8 @@ export function todayTop(ctx, { title, rows, tz }) {
     }
     const was = top.getBoundingClientRect();
     draw();
-    if (was.top < 0) scrollBy(0, top.getBoundingClientRect().bottom - was.bottom); // no anchoring here (base.css): rows being read hold still
+    const by = top.getBoundingClientRect().bottom - was.bottom;
+    if (was.top < 0 && by) scrollBy(0, by); // no anchoring here (base.css): rows being read hold still; nothing to move, no scroll (a flick on an older iPhone)
   });
   const card = component(ctx, 'now-card');
   if (card) {

@@ -172,6 +172,9 @@ Also removable: `start_trip` in chats, the `/waiting` branches (files plugin, `f
 ## Decided by the user (2026-11-06)
 
 - **Looking at a trip:** "Talking moves it". Looking at a trip never changes the trip in play; it moves only when they talk in another happening trip. This replaces "the open conversation if happening". A line counts as `talks` says: typed or heard, not dismissed. A happening trip that's open but not in play reminds of nothing until then, so its plan stays off the relay's list and its waiting copies stay; an open trip that isn't happening yet still reaches the relay.
+- **A hand-over copy isn't talking** (the main session's call, to confirm): the copy of a line that Shiori's `start_trip` writes into another trip carries `data.from`, and `talks` leaves it out. It stamps no `talked` and moves nothing; the user's next line in that trip does. A line kept for a conversation that isn't open (a line with files, a failed open) is talking, and moves play at once, not at the next look or reload.
+- **The place line is one line** ("One line, cut with … (Recommended)"): `.now-place` doesn't wrap when it names where you are, so a fix never changes the block's height. A long name ends in …, and on the longest the "about 40 m" can be cut too. The sentences shown when there is no fix (GPS off, not allowed, no signal) still wrap, so they're read whole.
+- **Only the trip in play reminds, and an answer goes where the user talks** ("Accept for now (Recommended)", a known limitation, in docs/limitations.md): with two trips happening and the other left open after a look, an answer to the first's reminder lands in the open one and moves play there.
 - **What no user would want (the rule for review):** a tossup can be a limitation, but what no user would ever want, such as a screen jumping while browsing, gets fixed.
 
 ## The main session's additions

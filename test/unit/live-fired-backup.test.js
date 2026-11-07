@@ -15,6 +15,7 @@ async function backup(k) {
  */
 async function restored(opened, now, how) {
   const k = await liveKit({ start: now });
+  await k.ws.patch(k.trip, '/trip.json', { start: '2026-11-01', end: '2026-11-02' }, { author: 'user' }); // over: with the copy the only trip happening, it is in play by itself, not by winning a tie
   const { trips: [copy] } = await importArchive(k.store, opened, { now });
   k.agent.target = copy; // the imported trip is the one open: every kind of watch is looked at
   if (how === 'restart') await k.restart();

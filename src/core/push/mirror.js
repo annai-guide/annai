@@ -100,7 +100,7 @@ export function moves(was, due, now) {
 
 /**
  * What to change at the relay: reminders no longer wanted, reworded or moved are called off; new and moved ones are sent; one written
- * down but not known to have arrived is sent again as it was. A plan reminder of a trip in held (one not open now) stays as it is:
+ * down but not known to have arrived is sent again as it was. A plan reminder of a trip in held (one that waits to be talked in: not the one in play, and not an open one that isn't happening yet) stays as it is:
  * only a removed or archived trip's go.
  * @param {Record<string, Item>} items @param {Map<string, Want>} wanted @param {number} now @param {Set<string>} [held]
  * @returns {{ off: string[], send: Want[] }}
@@ -124,7 +124,7 @@ export function plan(items, wanted, now, held = new Set()) {
 }
 
 /**
- * Whether a reminder at the relay is a plan reminder of a trip in held (not open now), which stays as it is while it may
+ * Whether a reminder at the relay is a plan reminder of a trip in held (waiting to be talked in), which stays as it is while it may
  * still come: until it is long sent. @param {string} key @param {Item} item @param {Set<string>} held @param {number} now
  */
 const stays = (key, item, held, now) => held.has(item.scope) && key.startsWith(`${item.scope}|plan:`) && item.sendAt + LONG_SENT_MS > now;

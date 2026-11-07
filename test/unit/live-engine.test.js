@@ -196,6 +196,7 @@ test('another trip opened: its watches and its log; a time watch of the first st
   const first = k.trip;
   const w1 = await k.live.setWatch(first, { when: { type: 'time', at: iso('09:00') }, fallback: 'Pack the snacks.' });
   const w2 = await k.live.setWatch(first, { when: { type: 'every', minutes: 10 }, fallback: 'Every ten.' });
+  // Both trips are happening and nobody has talked in either: Cambria, made later, wins the tie and is in play. (The open alone doesn't move play.)
   const second = await createTrip(k.ws, { title: 'Cambria', start: '2026-11-27', end: '2026-11-27' });
   k.agent.target = second;
   await k.live.setLive(true);
@@ -275,8 +276,11 @@ test('off screen nothing runs: GPS stops and the clock waits; back on screen bot
 
 test('opening another trip makes live mode look at its plan at once, even with nothing else to wake it', async () => {
   const k = await liveKit({ live: false });
-  const second = await createTrip(k.ws, { title: 'Cambria', start: '2026-11-27', end: '2026-11-27' });
+  // Nothing is happening: the first trip ended last week, so with no trip talked in, play is the open conversation, and only the open makes live mode look at the second.
+  await k.ws.patch(k.trip, '/trip.json', { start: '2026-11-01', end: '2026-11-02' }, { author: 'user' });
+  const second = await createTrip(k.ws, { title: 'Cambria' });
   await k.ws.write(second, '/plan/tea.json', { id: 'tea', title: 'Tea at the inn', fixed: true, start: { at: iso('09:00'), tz: LA } }, { author: 'user' });
+  await k.restart();
   k.agent.opened(second);
   await k.settle();
   await k.to(at('08:45'));
@@ -813,6 +817,7 @@ test('parked for two hours with 30 m of jitter, a 1 km moved watch does not fire
 for (const where of /** @type {const} */ (['me', 'another trip'])) {
   test(`a moved watch in ${where} counts the same, across reloads and while another conversation is open (re-review)`, async () => {
     const k = await liveKit({ start: at('09:00') });
+    // Both trips are happening and nobody has talked: Elsewhere, made later, wins the tie.
     const other = await createTrip(k.ws, { title: 'Elsewhere', start: '2026-11-27', end: '2026-11-28' });
     const scope = where === 'me' ? ME : other;
     const w = await k.live.setWatch(scope, { when: { type: 'moved', km: 5 }, fallback: 'Narrate.' });

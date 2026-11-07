@@ -62,7 +62,7 @@ export async function renderDrive(ctx) {
   const where = h('div', { class: 'acts' });
   const places = await planPlaces(ctx, id);
   const latest = h('div', { class: 'drive-latest', 'aria-live': 'polite' });
-  /** @type {string | undefined} */
+  /** @type {string | null | undefined} */
   let asked; // the stop they're for: a fix moves their start, and rebuilds nothing under a finger
   const draw = () => {
     const here = live ? knownFix(live) : null; // not a position from before the GPS was lost
@@ -75,7 +75,7 @@ export async function renderDrive(ctx) {
       ...(stops.length ? [] : [h('li', { class: 'empty', text: t`Nothing more is planned with a place.` })]));
     const next = stops[0];
     const go = next && links ? mapsLinks(links, { destination: `${next.place.lat},${next.place.lng}`, ...(here ? { origin: `${here.lat},${here.lng}` } : {}), mode: 'drive' }) : [];
-    if (asked === (asked = next?.name ?? '')) maps.querySelectorAll('a').forEach((a, i) => { a.href = go[i].url; });
+    if (asked === (asked = next ? next.name : null)) maps.querySelectorAll('a').forEach((a, i) => { a.href = go[i].url; });
     else {
       maps.replaceChildren(...(!next ? [] : links ? [
         h('strong', { class: 'card-title', text: t`Directions to ${next.name}` }),

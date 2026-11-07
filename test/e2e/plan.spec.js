@@ -366,7 +366,8 @@ test("play moving to the trip on screen shows its Driving link in place: a row k
   expect((await row.boundingBox())?.y).toBe(top);
 });
 
-test("a fix that changes how today's top wraps leaves the rows you're reading where they are", async ({ page, context }) => {
+/** Today's top with a long place name and GPS on at it, on a page whose clock the test moves. @param {import('@playwright/test').Page} page @param {import('@playwright/test').BrowserContext} context */
+async function longBridge(page, context) {
   await context.grantPermissions(['geolocation']);
   await context.setGeolocation({ latitude: 36.3715, longitude: -121.9017, accuracy: 10 });
   await page.clock.install({ time: NOON });
@@ -381,16 +382,70 @@ test("a fix that changes how today's top wraps leaves the rows you're reading wh
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
   await page.locator('.live-chip').click();
   await expect(page.locator('.today-top .now-place')).toHaveText('At The Long Named Testville Bridge');
-  const row = page.getByRole('link', { name: /today stop 9/ });
-  await row.scrollIntoViewIfNeeded();
-  await page.evaluate(() => scrollBy(0, document.querySelector('.today-top')?.getBoundingClientRect().bottom ?? 0)); // the top is above the screen
+}
+
+/** Waits until the page has stopped scrolling by itself (arriving restores the place for a moment). @param {import('@playwright/test').Page} page */
+async function scrollRests(page) {
+  let same = 0;
+  let last = NaN;
+  for (let i = 0; i < 60 && same < 12; i++) {
+    const y = await page.evaluate(() => scrollY);
+    same = y === last ? same + 1 : 0;
+    last = y;
+    await page.waitForTimeout(100);
+  }
+  expect(same).toBeGreaterThanOrEqual(12);
+}
+
+test("a fix never changes the height of today's top: the place line is one line, a long name ends in …, and the rows below hold", async ({ page, context }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await longBridge(page, context);
+  const row = page.locator('.plan-row').first();
+  await scrollRests(page);
+  const place = page.locator('.today-top .now-place');
+  const block = () => page.locator('.today-top .now-card').evaluate((el) => el.getBoundingClientRect().height);
   const y = (await row.boundingBox())?.y;
-  const lines = await page.locator('.today-top .now-place').evaluate((el) => el.getBoundingClientRect().height);
+  const height = await block();
+  expect(await place.evaluate((el) => ({ cut: el.scrollWidth > el.clientWidth, overflow: getComputedStyle(el).textOverflow }))).toEqual({ cut: true, overflow: 'ellipsis' });
   await context.setGeolocation({ latitude: 36.3695, longitude: -121.9017, accuracy: 10 }); // about 220 m off: "Near …, ≈ …"
   await page.clock.fastForward(5000);
-  await expect(page.locator('.today-top .now-place')).toContainText('Near The Long Named Testville Bridge');
-  expect(await page.locator('.today-top .now-place').evaluate((el) => el.getBoundingClientRect().height)).toBeGreaterThan(lines);
+  await expect(place).toContainText('Near The Long Named Testville Bridge');
+  expect(await block()).toBe(height);
   expect((await row.boundingBox())?.y).toBe(y);
+  await context.setGeolocation({ latitude: 36.3715, longitude: -121.9017, accuracy: 10 });
+  await page.clock.fastForward(5000);
+  await expect(place).toHaveText('At The Long Named Testville Bridge');
+  expect(await block()).toBe(height);
+  expect((await row.boundingBox())?.y).toBe(y);
+});
+
+test('with the top above the screen, a fix that moves nothing scrolls nothing, and a change that does move rows leaves the ones you read where they are', async ({ page, context }) => {
+  await page.setViewportSize({ width: 320, height: 700 }); // narrow: the Offline chip wraps onto a row of its own
+  await longBridge(page, context);
+  await page.evaluate(() => {
+    const w = /** @type {any} */ (window);
+    w.scrolls = [];
+    const real = window.scrollBy.bind(window);
+    window.scrollBy = (/** @type {any[]} */ ...a) => { w.scrolls.push(a); return /** @type {any} */ (real)(...a); }; // a scroll, even by nothing, can stop a flick on an older iPhone
+  });
+  const row = page.getByRole('link', { name: /today stop 9/ });
+  await scrollRests(page);
+  await row.scrollIntoViewIfNeeded();
+  await page.evaluate(() => scrollBy(0, document.querySelector('.today-top')?.getBoundingClientRect().bottom ?? 0)); // the top is above the screen
+  await scrollRests(page);
+  await page.evaluate(() => { /** @type {any} */ (window).scrolls.length = 0; });
+  for (let i = 1; i <= 3; i++) {
+    await context.setGeolocation({ latitude: 36.3715 + 0.00002 * i, longitude: -121.9017, accuracy: 10 });
+    await page.clock.fastForward(3000);
+  }
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => done(undefined))));
+  expect(await page.evaluate(() => /** @type {any} */ (window).scrolls)).toEqual([]);
+  const y = (await row.boundingBox())?.y;
+  await context.setOffline(true);
+  await page.evaluate(() => dispatchEvent(new Event('offline')));
+  await expect(page.locator('.today-top .chip', { hasText: 'Offline' })).toBeVisible();
+  expect((await row.boundingBox())?.y).toBe(y);
+  await context.setOffline(false);
 });
 
 test('a trip that ended has no today top', async ({ page }) => {

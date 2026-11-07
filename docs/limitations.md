@@ -294,3 +294,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** a restart there adds a wake when the store is probably failing anyway; the released copy cuts the turn the same way.
 - **Revisit when:** a failed open shows up in real use.
 - **Approved:** 2026-11-06, the user picked "Accept for now (Recommended)".
+
+### An answer to a reminder goes to the trip left open, and moves play there
+- **Kind:** known limitation.
+- **What the user sees:** two trips are happening, A is in play, and B was left open after a look. A's itinerary reminder is said, the user taps Shiori and answers. The line goes to B's conversation and moves play to B: A's itinerary and location reminders stop, and Driving shows B, until they talk in A.
+- **Why:** annai can't tell an answer to A's reminder from a new line about B, and a timing rule for it would go into the hardest logic here.
+- **Revisit when:** a user reports it, or overlapping trips get common.
+- **Approved:** 2026-11-06, the user picked "Accept for now (Recommended)".

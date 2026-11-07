@@ -114,6 +114,19 @@ test('moved by a line, the listeners hear it: Driving and the Itinerary link lea
   assert.ok(heard.includes(k.side));
 });
 
+test('a line that moves play tells the relay to sync soon ("prompt"), not only at the calm pace', async () => {
+  const k = await twoTrips();
+  await k.agent.open(k.side);
+  await k.settle();
+  await k.to(at('08:40'));
+  /** @type {string[]} */
+  const levels = [];
+  k.live.onReminders((level) => { levels.push(level); });
+  k.agent.send('Is the tea still on?');
+  await k.settle();
+  assert.ok(levels.includes('prompt'), levels.join());
+});
+
 test('with two halves, a line typed or heard moves play too', async () => {
   const k = await twoTrips({ koe: { type: sleeps } });
   await k.agent.split();
@@ -207,4 +220,58 @@ test("a quick chat's own location reminder still fires while it's open, and an o
   const m = await k.mirrored();
   assert.deepEqual([...m.plans].sort(), [k.road, next].sort());
   assert.ok(!m.held.has(next));
+});
+
+test("a line kept for another conversation moves play at once, not at the next look or reload", async () => {
+  const k = await twoTrips();
+  await k.to(at('08:40'));
+  // The route of a line with files, sent while another conversation opens: it is written into the trip it was typed in.
+  await k.agent.wake({ kind: 'user', text: 'Is the tea still on?', scope: k.side });
+  await k.settle();
+  assert.equal(k.live.play, k.side);
+});
+
+test("a hand-over's copy in a happening trip isn't talking: a look there leaves play on the road, and so does a reload", async () => {
+  const k = await twoTrips();
+  await k.to(at('08:40'));
+  await k.agent.wake({ kind: 'user', text: 'Here is the booking', handover: 'h1', fromScope: k.road, scope: k.side });
+  await k.settle();
+  const rec = await k.store.tx(['scopes'], 'readonly', (t) => t.getScope(k.side));
+  assert.equal(rec.talked, null, 'stamped nothing');
+  await k.agent.open(k.side);
+  await k.settle();
+  assert.equal(k.live.play, k.road, 'a look');
+  await k.agent.open(k.road);
+  await k.settle();
+  assert.equal(k.live.play, k.road);
+  const again = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent: k.agent, clock: k.clock, timeZone: () => LA });
+  await again.start();
+  assert.equal(again.play, k.road, 'a reload');
+  again.dispose();
+  await k.agent.open(k.side);
+  await k.type('Is the tea still on?');
+  assert.equal(k.live.play, k.side, 'the next line of theirs there moves it');
+});
+
+test("midnight passes while the phone sleeps: Side, open and starting today, reaches the relay at the first look, with no timer having run", async () => {
+  const clock = new ManualClock(at('23:30'));
+  let jump = 0;
+  const real = clock.now;
+  clock.now = () => jump || real();
+  const k = await agentKit([sleeps], { agent: { now: () => clock.now(), timeZone: () => LA } });
+  const road = await createTrip(k.ws, { title: 'Road', start: '2026-11-27', end: '2026-11-27' });
+  const side = await createTrip(k.ws, { title: 'Side', start: '2026-11-28', end: '2026-11-28' });
+  await k.ws.write(road, '/plan/lunch.json', item('lunch', '12:00'), { author: 'user' });
+  await k.ws.write(side, '/plan/tea.json', { id: 'tea', title: 'tea', fixed: true, start: { at: iso('07:00', '2026-11-28'), tz: LA } }, { author: 'user' });
+  await updateAppSettings(k.ws, { live: { on: true } });
+  fakeSensors(k.registry);
+  const live = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent: k.agent, clock, timeZone: () => LA });
+  await k.agent.open(side);
+  await live.start();
+  await live.settled();
+  const plans = async () => ((await live.reminders()) ?? []).filter((m) => m.watch.startsWith('plan:')).map((m) => `${m.scope === road ? 'road' : 'side'}:${m.watch}`);
+  assert.deepEqual((await plans()).sort(), ['road:plan:lunch:coming-up', 'side:plan:tea:coming-up'], 'Road is in play; Side, opened and not yet happening, still reaches the relay');
+  jump = at('00:10', '2026-11-28'); // the sleeping phone wakes in the new day; no timer ran in between
+  assert.deepEqual(await plans(), ['side:plan:tea:coming-up'], 'Road is over, and Side is in play');
+  live.dispose();
 });

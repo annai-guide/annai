@@ -2111,6 +2111,37 @@ test("a line typed during an open that fails, its write failing too, stays queue
   assert.equal(k.agent.trip, road);
 });
 
+test("a heard line and a typed one queued together, the typed one's write failing: the heard line is written once, not again with the retry", async () => {
+  const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'speak', input: { text: 'ok' } }, { name: 'sleep', input: {} }] } }] }]);
+  const road = await createTrip(k.ws, { title: 'Road' });
+  /** @type {() => void} */
+  let go = () => {};
+  const reached = failOnce(k, road, new Promise((r) => { go = () => r(undefined); }));
+  const opening = k.agent.open(road);
+  await reached;
+  k.agent.enqueue({ kind: 'heard', heard: { id: 'h1', text: 'Is the fuel far?', ms: 900, source: 'live' }, scope: road });
+  k.agent.send('Typed during the open');
+  const real = k.store.tx;
+  let armed = true;
+  k.store.tx = /** @type {any} */ ((/** @type {any} */ s, /** @type {any} */ m, /** @type {any} */ f) => real.call(k.store, s, m, (/** @type {any} */ t) => f(new Proxy(t, {
+    get: (o, p) => (p !== 'appendEvent' ? (typeof o[p] === 'function' ? o[p].bind(o) : o[p]) : async (/** @type {string} */ id, /** @type {any} */ ev) => {
+      if (armed && ev.type === 'msg.user') {
+        armed = false;
+        throw new Error('QuotaExceededError');
+      }
+      return o.appendEvent(id, ev);
+    }),
+  }))));
+  go();
+  await opening.catch(() => {});
+  k.store.tx = real;
+  await k.agent.open(road);
+  await k.agent.idle();
+  const heard = await k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(road, { types: ['heard'] }));
+  assert.equal(heard.length, 1);
+  assert.deepEqual(await typed(k, road), ['Typed during the open']);
+});
+
 test("Koe's open failing while Kokoro's holds: a tap and the words spoken after it land in the trip, not the old conversation", async () => {
   const sleeps = { rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] };
   const k = await agentKit([sleeps], { halves: true, koe: { type: sleeps }, voice: { mode: 'on', speechIn: ['m-hear'], hears: ['Where is the fuel'] } });

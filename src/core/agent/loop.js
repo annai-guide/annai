@@ -685,15 +685,24 @@ export class Agent {
     const elsewhere = this.#queue.filter((w) => w.scope !== scope);
     for (const s of new Set(elsewhere.map((w) => /** @type {string} */ (w.scope)))) {
       const those = elsewhere.filter((w) => w.scope === s);
-      await this.#logWakes(those, newId('w'), false, (ev) => record(this.store, s, { now: this.#stamp(s), ...ev }), s === ME ? null : s);
+      await this.#logWakes(those, newId('w'), false, this.#keptIn(s), s === ME ? null : s);
       this.#queue = this.#queue.filter((w) => !those.includes(w)); // a failed write keeps them
     }
+  }
+
+  /** A writer for a conversation that isn't open, whose lines are heard like the open one's. @param {string} scope */
+  #keptIn(scope) {
+    return async (/** @type {any} */ ev) => {
+      const stored = await record(this.store, scope, { now: this.#stamp(scope), ...ev });
+      this.#emit('event', stored);
+      return stored;
+    };
   }
 
   /** Writes a wake into a conversation that isn't open. idle() waits for it, and so can the caller. @param {string} scope @param {Wake} w */
   #keepFor(scope, w) {
     this.#checking++;
-    return this.#logWakes([{ ...w, scope }], newId('w'), false, (ev) => record(this.store, scope, { now: this.#stamp(scope), ...ev }), scope === ME ? null : scope)
+    return this.#logWakes([{ ...w, scope }], newId('w'), false, this.#keptIn(scope), scope === ME ? null : scope)
       .catch(() => {})
       .finally(() => {
         this.#checking--;
