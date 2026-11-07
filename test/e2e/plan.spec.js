@@ -775,3 +775,35 @@ test("a plan item's notes on the booking it stands for show on the booking's det
   // In reading order: after what she read, before the file.
   expect(await notes.evaluate((el) => Boolean(/** @type {Node} */ (document.querySelector('dl.facts')).compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
 });
+
+// Timeline stage 3: the Itinerary is a trip's sheet, with a history entry of its own, its crumb back to the conversation.
+test('the Itinerary opens over the conversation: phone Back closes it, the dock stays', async ({ page }) => {
+  await openApp(page);
+  const id = await startTrip(page, 'Big Sur');
+  await records(page, id, { write: { '/plan/lunch.json': { id: 'lunch', title: 'Lunch', fixed: true, start: { at: '2099-03-03T13:00:00Z', tz: 'UTC' } } } });
+  await page.evaluate((id) => { location.hash = `#/trip/${id}/talk`; }, id);
+  await page.getByRole('link', { name: /^Next:/ }).click();
+  await expect(page.locator('.screen.sheet')).toBeVisible();
+  await expect(page.locator('nav.dock')).toBeVisible();
+  await expect(page.getByRole('main').locator('.crumbs a')).toHaveAttribute('href', `#/trip/${id}/talk`);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/talk$/);
+  await expect(page.locator('.screen.sheet')).toHaveCount(0);
+});
+
+test('#/trip/<id>/plan of another trip opens that conversation', async ({ page }) => {
+  await openApp(page);
+  const a = await startTrip(page, 'Big Sur');
+  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  const b = await startTrip(page, 'Point Reyes');
+  await page.evaluate((a) => { location.hash = `#/trip/${a}/talk`; }, a);
+  await expect(page.locator('.talk-head')).toContainText('Big Sur');
+  await page.evaluate((b) => { location.hash = `#/trip/${b}/plan`; }, b);
+  await expect(page.getByRole('heading', { level: 1, name: 'Itinerary' })).toBeVisible();
+  await page.getByRole('main').locator('.crumbs a').click();
+  await expect(page).toHaveURL(new RegExp(`/trip/${b}/talk$`));
+  await expect(page.locator('.talk-head')).toContainText('Point Reyes');
+  // The plain #/talk is now that one.
+  await page.evaluate(() => { location.hash = '#/talk'; });
+  await expect(page).toHaveURL(new RegExp(`/trip/${b}/talk$`));
+});

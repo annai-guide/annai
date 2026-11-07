@@ -10,7 +10,7 @@ import { saveFile } from '../save.js';
 import { todayOf, todayTop, drivingTrip } from '../today.js';
 import { ask } from '../ask.js';
 import { openTrip } from '../open-trip.js';
-import { detailsHref, rowName, lineName, dateRange, day, distance, num, list, sentences, sentenceGap } from '../format.js';
+import { detailsHref, rowName, lineName, dateRange, day, distance, num, list, sentences, sentenceGap, talkHref } from '../format.js';
 
 /** The tab picked on each history entry, per trip: a redraw or coming back keeps it, a new entry opens today's. @type {Map<string, string>} */
 const kept = new Map();
@@ -88,8 +88,9 @@ export async function renderPlan(ctx, route) {
   const broken = plan.broken + bookings.broken;
   // "1 plan file and 2 booking files": each counted as what it is.
   const unread = list([plan.broken ? plural(plan.broken, '# itinerary file', '# itinerary files') : '', bookings.broken ? plural(bookings.broken, '# booking file', '# booking files') : ''].filter(Boolean));
-  return h('div', { class: 'screen' },
-    h('p', { class: 'crumbs' }, crumb(`#/trip/${encodeURIComponent(id)}`, h('span', { dir: 'auto', text: scope.title }))),
+  // At the trip's own address it is the conversation's sheet, a history entry of its own (phone Back closes it), its crumb back there.
+  return h('div', { class: own ? 'screen sheet' : 'screen' },
+    h('p', { class: 'crumbs' }, crumb(own ? talkHref(id) : `#/trip/${encodeURIComponent(id)}`, h('span', { dir: 'auto', text: scope.title }))),
     h('h1', { class: 'title', text: t`Itinerary` }),
     h('p', { class: 'sub', text: [scope.title, trip.start ? dateRange(trip.start, trip.end) : null].filter(Boolean).join(' · ') }),
     notOnDay.length ? h('section', { class: 'not-on-day', 'aria-label': t`Not on a day` },
