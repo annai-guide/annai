@@ -1,5 +1,5 @@
 {
-  "build": "eb73226c1e40",
+  "build": "3e5543b19a08",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -96,7 +96,7 @@
     "/src/core/live/activity.js": "d1fe254c6571",
     "/src/core/live/clock.js": "e8699d74a329",
     "/src/core/live/geo.js": "018e805b07f7",
-    "/src/core/live/live.js": "8e43522598be",
+    "/src/core/live/live.js": "6faa64749afe",
     "/src/core/live/plan-watches.js": "68c90d26e6bd",
     "/src/core/live/sim-run.js": "f8b67a029a00",
     "/src/core/live/simulate.js": "d42f97c8d368",
@@ -136,7 +136,7 @@
     "/src/core/paths.js": "b519fae60471",
     "/src/core/plan.js": "9af5a8633203",
     "/src/core/plugins.js": "07e014558d09",
-    "/src/core/push/mirror.js": "dcaea777b656",
+    "/src/core/push/mirror.js": "0f89cc7028ce",
     "/src/core/push/relay-client.js": "a2f4fe58a177",
     "/src/core/push/webpush.js": "7273918284c6",
     "/src/core/reach.js": "04af21f21297",
@@ -146,7 +146,7 @@
     "/src/core/request-photos.js": "0a710cf1cc55",
     "/src/core/schema.js": "8a2e0d7a3bf3",
     "/src/core/search.js": "62a0a393233e",
-    "/src/core/scopes.js": "ed9316f03fb8",
+    "/src/core/scopes.js": "525cb2756bc2",
     "/src/core/settings.js": "7291aae0a8cd",
     "/src/core/shown.js": "450af0a8c563",
     "/src/core/signals.js": "1ba83a24e15c",

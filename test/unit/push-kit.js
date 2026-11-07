@@ -109,12 +109,12 @@ export async function pushKit(o) {
       await kit.mirror.settled();
     },
     /** The page reloads, mirror and all (restart is Live alone): both stop, and new ones start over the same store and relay. */
-    async reopen() {
+    async reopen(/** @type {{ mirrorMayFail?: boolean }} */ o = {}) {
       kit.mirror.dispose();
-      await k.restart();
+      await k.restart(); // Live's start never fails quietly here: a sweep over start() must not pass because Live never started
       kit.live = k.live;
       kit.mirror = make();
-      await kit.mirror.start();
+      await kit.mirror.start().catch((e) => { if (!o.mirrorMayFail) throw e; }); // a failed first sync tries again by itself
       await kit.mirror.settled();
     },
     /** What waits at the relay, every subscription. @returns {Promise<any[]>} */
@@ -146,16 +146,18 @@ export async function pushKit(o) {
  * read-only transaction makes, with that call's name and arguments: 'getFile' (key: scope, path: file), 'listFiles' (key: scope, path: prefix),
  * 'getSecret', 'getScope', 'getBlob' (key: its id), 'listEvents' (key: scope), 'listScopes'. Writes pass.
  * The memory store's reads never fail, so a test that wants one breaks it here.
+ * Writes pass, unless writesFail(stores) says a read-write transaction on those stores fails too (a lost connection takes both).
  * @param {{ store: import('../../src/core/types.js').Store }} k
  * @param {(op: string, key: string, path?: any) => boolean} fails
+ * @param {(stores: string[]) => boolean} [writesFail]
  * @returns {{ log: string[], heal: () => void }}
  */
-export function breakReads(k, fails) {
+export function breakReads(k, fails, writesFail = () => false) {
   const real = k.store.tx.bind(k.store);
   /** @type {string[]} */
   const log = [];
   const abort = () => new DOMException('The transaction was aborted, so the request cannot be fulfilled.', 'AbortError');
-  /** @type {any} */ (k.store).tx = (/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => real(stores, mode, mode !== 'readonly' ? fn : (/** @type {any} */ t) => fn(new Proxy(t, {
+  /** @type {any} */ (k.store).tx = (/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => mode !== 'readonly' && writesFail(stores) ? (log.push(`write ${stores}`), Promise.reject(abort())) : real(stores, mode, mode !== 'readonly' ? fn : (/** @type {any} */ t) => fn(new Proxy(t, {
     get(o, name) {
       const v = o[name];
       if (typeof v !== 'function') return v;

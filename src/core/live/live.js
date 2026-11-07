@@ -143,7 +143,7 @@ export class Live {
   #watches = new Map();
   /** @type {Watch[]} the trip in play's plan watches */
   #plan = [];
-  /** Live may be older than the store: a read after a change failed. */
+  /** Live may be older than the store: it has not read yet, or a read after a change failed. */
   #behind = true;
   /** @type {{ name: string, lat: number, lng: number }[]} */
   #places = [];
@@ -220,7 +220,7 @@ export class Live {
 
   /** Follows the sensors, the watches and the plan, from the switch as it was left (choice 11). */
   async start() {
-    this.on = Boolean((await readAppSettings(this.ws)).live?.on);
+    this.on = Boolean((await readAppSettings(this.ws).catch((e) => { this.#missed(e); return null; }))?.live?.on); // a failed read: Live starts with GPS off, rather than not at all
     this.#restore(); // before anyone can read the activity
     this.#offs.push(
       this.registry.add('live', 'activity', {
@@ -739,7 +739,11 @@ export class Live {
 
   /** A read failed and is tried again by itself: the Trace has it, once a kind, and no card. @param {unknown} e */
   #missed(e) {
-    if (this.#isNew(e)) logEvent(this.store, SYS_DEVICE, { type: 'error', actor: 'system', data: { kind: 'read', message: String(/** @type {any} */ (e)?.message ?? e) } }, this.clock.now()).catch(() => {});
+    if (!this.#isNew(e)) return;
+    const at = this.clock.now();
+    // What failed may be the writing too: the line waits until it can be written.
+    const write = () => logEvent(this.store, SYS_DEVICE, { type: 'error', actor: 'system', data: { kind: 'read', message: String(/** @type {any} */ (e)?.message ?? e) } }, at).catch(() => this.clock.set(write, RECHECK_MS));
+    write();
   }
 
   /** Live mode's own work failed: told once for each problem, so a card says so (spec §17 rule 4), and it goes on. @param {unknown} e */
@@ -1180,7 +1184,6 @@ export class Live {
     const active = await this.#loadRows();
     const scopes = new Set([ME, ...active.map((s) => s.id)]);
     for (const scope of scopes) {
-      await this.#recall(scope); // first: a watch is never looked at without its firings
       await this.#loadScope(scope);
     }
     for (const scope of this.#watches.keys()) if (!scopes.has(scope)) this.#watches.delete(scope);
@@ -1202,6 +1205,7 @@ export class Live {
 
   /** @param {string} scope */
   async #loadScope(scope) {
+    if (this.#behind) await this.#recall(scope); // first: a watch is never looked at without its firings
     // A simulation's trip: its watches are its run's alone.
     const info = scope === ME ? null : await this.ws.readJSON(scope, '/trip.json').catch(notJSON);
     this.#setStill(scope, info);

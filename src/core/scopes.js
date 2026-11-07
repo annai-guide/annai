@@ -237,17 +237,21 @@ export async function backupState(store, id) {
 /** Keeps each trip scope's title and dates equal to its trip.json's; a file with no title keeps the record's. @param {Workspace} ws */
 export function syncTripTitles(ws) {
   return ws.onChange(async ({ op, scope, path }) => {
-    if (op !== 'write' || kindOf(scope) !== 'trip' || path !== '/trip.json') return;
-    const trip = await ws.readJSON(scope, '/trip.json').catch(notJSON); // a failed read says nothing of its dates: the record stays
-    const title = String(trip?.title ?? '').trim();
-    const dates = tripMirror(trip);
-    await ws.store.tx(['scopes'], 'readwrite', async (t) => {
-      const rec = await t.getScope(scope);
-      if (!rec) return;
-      const { start: _s, end: _e, ...rest } = rec;
-      const next = { ...rest, ...dates, title: title || rec.title };
-      if (next.title !== rec.title || next.start !== rec.start || next.end !== rec.end) await t.putScope(next);
-    });
+    if (op === 'write' && kindOf(scope) === 'trip' && path === '/trip.json') await mirrorTrip(ws, scope);
+  });
+}
+
+/** @param {Workspace} ws @param {string} scope */
+async function mirrorTrip(ws, scope) {
+  const trip = await ws.readJSON(scope, '/trip.json').catch(notJSON); // a failed read says nothing of its dates: the record stays, and the next start looks again
+  const title = String(trip?.title ?? '').trim();
+  const dates = tripMirror(trip);
+  await ws.store.tx(['scopes'], 'readwrite', async (t) => {
+    const rec = await t.getScope(scope);
+    if (!rec) return;
+    const { start: _s, end: _e, ...rest } = rec;
+    const next = { ...rest, ...dates, title: title || rec.title };
+    if (next.title !== rec.title || next.start !== rec.start || next.end !== rec.end) await t.putScope(next);
   });
 }
 
@@ -265,7 +269,11 @@ async function lastTalked(store, scope) {
 export async function backfillTrips(ws) {
   const { store } = ws;
   for (const s of await store.tx(['scopes'], 'readonly', (t) => t.listScopes())) {
-    if (s.kind !== 'trip' || 'talked' in s) continue;
+    if (s.kind !== 'trip') continue;
+    if ('talked' in s) {
+      await mirrorTrip(ws, s.id);
+      continue;
+    }
     const dates = tripMirror(await ws.readJSON(s.id, '/trip.json').catch(notJSON));
     const talked = await lastTalked(store, s.id);
     await store.tx(['scopes'], 'readwrite', async (t) => {

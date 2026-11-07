@@ -386,7 +386,9 @@ export class PushMirror {
       this.#soon('calm');
       if (this.#stopped) return;
       this.#stopped = true; // one Trace line a run
-      logEvent(this.store, SYS_DEVICE, { type: 'error', actor: 'system', data: { kind: 'read', message: String(e?.message ?? e) } }, this.clock.now()).catch(() => {});
+      const at = this.clock.now();
+      const write = () => logEvent(this.store, SYS_DEVICE, { type: 'error', actor: 'system', data: { kind: 'read', message: String(e?.message ?? e) } }, at).catch(() => this.clock.set(write, MIN)); // what failed may be the writing too
+      write();
     });
     return job;
   }

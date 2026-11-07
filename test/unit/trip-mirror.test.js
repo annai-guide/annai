@@ -219,3 +219,31 @@ test('a line said on a record the backfill has not reached does not mark it done
   const rb = /** @type {any} */ (await scope(b));
   assert.deepEqual([rb.start, rb.end, rb.talked], ['2026-11-27', '2026-11-28', null]);
 });
+
+test('a date edit whose read failed is healed at the next start: backfill mirrors every trip that has a talked key, and writes only if something differs', async () => {
+  const { ws, scope, store } = await kit();
+  const id = await createTrip(ws, { title: 'Past', start: '2026-11-20', end: '2026-11-21' });
+  const read = ws.readJSON.bind(ws);
+  let reads = 0;
+  ws.readJSON = async (/** @type {string} */ s, /** @type {string} */ p) => {
+    if (++reads === 2) throw new Error('the content of /trip.json is missing from storage'); // the listener's read, after the patch's own
+    return read(s, p);
+  };
+  const warn = console.warn;
+  console.warn = () => {};
+  try {
+    await ws.patch(id, '/trip.json', { start: '2026-11-27', end: '2026-11-28', title: 'Moved' }, { author: 'user' });
+  } finally {
+    console.warn = warn;
+  }
+  ws.readJSON = read;
+  let r = /** @type {any} */ (await scope(id));
+  assert.deepEqual([r.start, r.end, r.title], ['2026-11-20', '2026-11-21', 'Past'], 'the record is behind the file');
+  assert.ok('talked' in r, 'a record that backfill has already filled');
+  await backfillTrips(ws);
+  r = await scope(id);
+  assert.deepEqual([r.start, r.end, r.title], ['2026-11-27', '2026-11-28', 'Moved']);
+  const puts = countMirrorWrites(store);
+  await backfillTrips(ws);
+  assert.equal(puts(), 0, 'nothing differs: nothing written');
+});

@@ -336,9 +336,9 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** the Trace shows reads failing (an `error` entry of kind `read` in the device's log, under the Errors kind).
 - **Approved:** 2026-11-06, the user picked "Accept for now (Recommended)", for an edit in a trip that isn't in play. Widened: 2026-11-06, the user picked "Yes, widen it (Recommended)": it covers the trip in play too. Then, 2026-11-06, the user picked "Yes, widen it (Recommended)", told: "With reads failing and annai then closed, an edit in any trip can leave old words at the relay, and a reminder you've just set may not reach the relay at all, so it wouldn't arrive while annai is closed. A locked phone may count as closed; that's traced in the code, not tried on a phone."
 
-### A stop deleted just before reads fail can be said once from the old plan
+### A stop deleted or changed just before reads fail can be said once from the old plan
 - **Kind:** known limitation.
-- **What the user sees:** a stop is deleted, the reload and its retry both fail, and the stop's moment comes while reads are still failing: its reminder is said once, at its time. It stops once reads work.
+- **What the user sees:** a stop is deleted, or moved or changed, the reload and its retry both fail, and the stop's old moment comes while reads are still failing: its reminder is said once, at the old time and in the old words. It stops once reads work.
 - **Why:** while reads are failing annai keeps the plan it has. Pausing the plan while behind would hold back every good reminder during any failure.
 - **Revisit when:** the Trace shows it (an `error` entry of kind `read` in the device's log).
-- **Approved:** 2026-11-06, the user picked "Accept for now (Recommended)".
+- **Approved:** 2026-11-06, the user picked "Accept for now (Recommended)", for a deleted stop. Widened: 2026-11-06, the user picked "Yes, widen it (Recommended)": a stop moved or changed, with its reload and retry failing, is said once at the old time, in the old words, if reads are still failing then.
