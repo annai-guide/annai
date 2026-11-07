@@ -34,6 +34,7 @@
 - `tap()` returns `stopped`, not `listening`, when the state is still `thinking`. `open` halts a turn but the state may lag, and + over a running turn could leave the mic shut.
 - The spec's "as sketched" has no sketch in the repo: `docs/mockups/` and `.superpowers/brainstorm/` hold none of the timeline's dock. Task 4 says what to build, and the phone test judges it.
 - `#loadAll` reads about four transactions a scope. Dropped from `#follow` in stage 2; at start it still runs, so Task 7 narrows it.
+- `backfillTrips` mirrors every filled trip at each start (stage 2's heal for a date edit whose read failed): two transactions a trip, one read-write, awaited at `src/app/main.js:199` before the first screen. Task 7 counts and narrows it too.
 - The Start a trip form and `startTrip`, used 130 times, stay until stage 8, which rewrites that helper anyway. The no-trip card and Waiting panel stay until stage 7. All three sit in the foot. The phone test will show them; they aren't the design.
 
 **This plan's calls**
@@ -285,7 +286,7 @@ E2e: Shiori's patch dates the open chat: the row moves and becomes a card on hom
 
 **Files:**
 - Create: `scripts/chats-fixture.mjs`
-- Modify: `src/core/live/live.js` (`#loadAll`), `src/ui/screens/trips.js`, `src/ui/screens/trace.js:47-75`, `src/ui/screens/import.js` (`preview`), `src/ui/screens/simulate.js`, `src/core/live/sim-run.js` if `ownTitle` walks every trip
+- Modify: `src/core/live/live.js` (`#loadAll`), `src/core/scopes.js` (`backfillTrips`, `mirrorTrip`), `src/ui/screens/trips.js`, `src/ui/screens/trace.js:47-75`, `src/ui/screens/import.js` (`preview`), `src/ui/screens/simulate.js`, `src/core/live/sim-run.js` if `ownTitle` walks every trip
 - Test: `test/unit/scale.test.js`
 
 - [ ] **Step 1: Write the failing test, counting transactions, not milliseconds**
@@ -294,6 +295,7 @@ E2e: Shiori's patch dates the open chat: the row moves and becomes a card on hom
 test('500 chats: transactions do not follow chats', async () => {
   // wrap store.tx with a counter; 500 undated chats, 3 dated trips, one with a watch
   // open change: at most 3; the timeline's reads: at most 3 + a constant per card; live start: at most 5 + a constant per scope with watches
+  // a start, counted from before backfillTrips (src/app/main.js:199) through live.start(): with nothing to mirror, no read-write transaction, and none per chat
 });
 ```
 
@@ -302,6 +304,7 @@ test('500 chats: transactions do not follow chats', async () => {
 - [ ] **Step 3: Implement, each only as far as it needs**
 
 - `#loadAll`: one transaction lists which scopes hold `/watches/` files; `#loadScope` and `#recall` run for those and dated trips only.
+- `backfillTrips`: compare each filled trip against the record `listScopes` already gave, and open a read-write transaction only for one that differs. A trip whose read fails still waits for the next start, and the rest still fill.
 - Trace: the select shows dated trips, the 30 newest chats, `me`, `sys` and the one in the address. Everything keeps its meaning: one transaction for every scope's query, and `costs` only for the scopes of the 300 rows shown.
 - Import's preview: undated trips are one row with one choice; afterwards one "Go to the timeline" when more than three came in, in place of an Open each.
 - Simulate: dated trips only.
