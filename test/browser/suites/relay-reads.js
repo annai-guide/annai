@@ -103,6 +103,26 @@ function abortReads(count, match) {
   return { seen, heal: () => { IDBObjectStore.prototype.get = get; } };
 }
 
+/** Aborts the next lists of a scope's files, in flight. @param {number} count @param {(lower: any) => boolean} match */
+function abortLists(count, match) {
+  const getAll = IDBObjectStore.prototype.getAll;
+  let left = count;
+  /** @type {any[]} */
+  const seen = [];
+  IDBObjectStore.prototype.getAll = function (q, c) {
+    const r = getAll.call(this, q, c);
+    if (left > 0 && this.name === 'files' && q && match(/** @type {IDBKeyRange} */ (q).lower)) {
+      left--;
+      seen.push(/** @type {IDBKeyRange} */ (q).lower);
+      this.transaction.abort();
+    }
+    return r;
+  };
+  return { seen, heal: () => { IDBObjectStore.prototype.getAll = getAll; } };
+}
+/** The plan's watches Live holds for a scope: none but the trip in play's. @param {any} k @param {string} scope */
+const planIn = async (k, scope) => (await k.live.listWatches(scope)).split('\n').slice(1).map((/** @type {string} */ l) => l.split('\t')[0]).filter((/** @type {string} */ id) => id.startsWith('plan:'));
+
 /** @param {any} test @param {any} assert */
 export default function (test, assert) {
   test('a look with nothing failing changes no copy (control)', async () => {
@@ -177,6 +197,61 @@ export default function (test, assert) {
       assert.deepEqual(await copies(side), before);
       await flush(120_000);
       assert.equal(deletes(), off);
+      assert.ok((await planIn(k, side)).includes('plan:cake:leave'), 'and it comes back whole, by itself');
+    } finally {
+      stop();
+    }
+  });
+
+  test('the list of /plan/ aborted as play moves: Live stays on the plan it has, and the plan comes back by itself', async () => {
+    const { k, side, flush, talk, deletes, copies, stop } = await overlap();
+    try {
+      const before = await copies(side);
+      const off = deletes();
+      const b = abortLists(4, (lower) => lower[0] === side && lower[1] === '/plan/');
+      await talk(side, at('09:30'));
+      b.heal();
+      assert.equal(b.seen.length, 4, 'each try, and the store\'s retry of it');
+      assert.deepEqual(await planIn(k, side), []);
+      assert.ok((await planIn(k, k.trip)).includes('plan:tea:coming-up'), 'Road\'s, whole');
+      await flush(70_000);
+      assert.ok((await planIn(k, side)).includes('plan:cake:leave'));
+      assert.equal(deletes(), off);
+      assert.deepEqual(await copies(side), before);
+    } finally {
+      stop();
+    }
+  });
+
+  test('a plan file aborted as play moves, then the list at the next try: 0 DELETE, and the plan comes back by itself', async () => {
+    const { k, side, flush, talk, deletes, copies, stop } = await overlap();
+    try {
+      const before = await copies(side);
+      const off = deletes();
+      const a = abortReads(2, (key) => key[0] === side && key[1] === '/plan/cake.json');
+      const b = abortLists(2, (lower) => lower[0] === side && lower[1] === '/plan/');
+      await talk(side, at('09:30'));
+      a.heal();
+      b.heal();
+      await flush(70_000);
+      assert.ok((await planIn(k, side)).includes('plan:cake:leave'));
+      assert.equal(deletes(), off);
+      assert.deepEqual(await copies(side), before);
+    } finally {
+      stop();
+    }
+  });
+
+  test('Live off, on screen, a read aborted twice as a watch comes due: it still fires', async () => {
+    const { k, stop } = await overlap();
+    try {
+      await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('09:20') }, fallback: 'Tea time.' });
+      await k.ws.write(k.trip, '/plan/tea.json', { id: 'tea', ...ROAD.tea, notes: 'x' }, { author: 'user' });
+      const b = abortLists(2, (lower) => lower[0] === k.trip && lower[1] === '/plan/');
+      await k.to(at('09:20'));
+      await k.settle();
+      b.heal();
+      assert.deepEqual(k.agent.wakes.flatMap((/** @type {any} */ w) => w.fallbacks ?? []).map((/** @type {any} */ r) => r.text), ['Tea time.']);
     } finally {
       stop();
     }

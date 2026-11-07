@@ -1,4 +1,5 @@
 import { newId } from '../scopes.js';
+import { notJSON } from '../workspace.js';
 
 /**
  * Watches (spec §4.4: "stored as a record so it survives reloads"): /watches/<id>.json in the
@@ -33,7 +34,7 @@ export const newWatchId = () => newId('w');
 export const watchPath = (id) => `${WATCH_DIR}${id}.json`;
 
 /**
- * The watches stored in a scope, and how many files there couldn't be read as one.
+ * The watches stored in a scope, and how many files there aren't one. A read that fails rejects.
  * @param {Workspace} ws @param {string} scope @returns {Promise<{ watches: Watch[], broken: number }>}
  */
 export async function readWatches(ws, scope) {
@@ -42,14 +43,10 @@ export async function readWatches(ws, scope) {
   let broken = 0;
   for (const f of await ws.list(scope, WATCH_DIR)) {
     if (!WATCH_FILE.test(f.path)) continue;
-    try {
-      const w = await ws.readJSON(scope, f.path);
-      if (w && typeof w === 'object' && typeof w.id === 'string' && typeof w.when?.type === 'string' && typeof w.fallback === 'string' && w.fallback.trim()) {
-        watches.push({ ...w, path: f.path });
-      } else broken++;
-    } catch {
-      broken++;
-    }
+    const w = await ws.readJSON(scope, f.path).catch(notJSON);
+    if (w && typeof w === 'object' && typeof w.id === 'string' && typeof w.when?.type === 'string' && typeof w.fallback === 'string' && w.fallback.trim()) {
+      watches.push({ ...w, path: f.path });
+    } else broken++;
   }
   // In the order they were set (ties by id): simultaneous firings keep one order.
   watches.sort((a, b) => String(a.created ?? '').localeCompare(String(b.created ?? '')));
