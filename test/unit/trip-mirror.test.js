@@ -116,6 +116,8 @@ test('the first user line and a heard line stamp talked; dismissed lines, wakes 
   assert.equal(/** @type {any} */ (await scope(id)).talked, 100);
   await record(store, id, { type: 'heard', actor: 'user', data: { id: 'h2', text: 'hi' }, now: 400 });
   assert.equal(/** @type {any} */ (await scope(id)).talked, 400);
+  await record(store, id, { type: 'msg.user', actor: 'user', data: { from: 'trip-other', handover: 'h1' }, texts: [['text', 'the booking']], now: 450 });
+  assert.equal(/** @type {any} */ (await scope(id)).talked, 400, "a hand-over's copy of a line is not talking");
 });
 
 test('a line in me or a sys scope writes no talked', async () => {
@@ -133,6 +135,7 @@ test('a record from a released copy is filled once, archived ones too, and a sec
   const silent = await createTrip(ws, { title: 'Nobody spoke' });
   await record(store, a, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'hello']], now: 100 });
   await record(store, a, { type: 'heard', actor: 'user', data: { id: 'h', text: 'yes' }, now: 150 });
+  await record(store, a, { type: 'msg.user', actor: 'user', data: { from: 'trip-other' }, texts: [['text', 'a hand-over copy']], now: 180 });
   // The last real line is behind more than a page of lines that are not hers to count.
   for (let i = 0; i < 250; i++) await record(store, a, { type: 'heard', actor: 'user', data: { id: `d${i}`, dismissed: true }, now: 200 + i });
   await setTripStatus(store, b, 'archived');

@@ -247,6 +247,7 @@ button.chip.filter[aria-pressed='true'] { background: var(--ai); color: var(--ai
 .leg { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0 6px calc(6.5em + 1.2em + 16px); color: var(--ink-2); font-size: 14px; border-bottom: 1px dashed var(--line); }
 /* Now and Driving (spec §16.2) */
 .now-place { font-family: var(--f-display); font-weight: 700; font-size: 20px; overflow-wrap: anywhere; }
+.now-place.at { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* where you are: one line, so a fix never changes the block's height, and a long name ends in … (the sentences when there is no fix wrap) */
 .shiori-card { display: flex; flex-direction: column; gap: 6px; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--sheet); }
 .shiori-card p { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
 .route-strip { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 3px solid var(--ai); display: flex; flex-direction: column; gap: 10px; }
