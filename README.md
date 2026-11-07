@@ -63,7 +63,7 @@ memories afterwards.
 - Turn on Settings → Notifications, and Shiori's reminders for a time, and the itinerary's "coming up" and "leave soon", reach you as notifications while annai is closed. Tapping one opens annai, and Shiori catches up.
 - They go through a small relay, `push.annai.guide` (its code is in [`relay/`](relay/README.md), to run your own). annai encrypts each reminder on the phone and pads it to one size: the relay learns only the phone's push address, when each reminder is due and how many are waiting. Reminders about places never leave the phone.
 - With annai open on screen, annai says a reminder itself and the relay's copy is called off, so it never comes twice.
-- If the phone's storage fails to read and annai closes right after, an edit to a stop in any trip can miss its call-off, so the old words arrive until annai next opens, and a reminder you just set may not reach the relay, so it doesn't arrive while annai is closed. While reads are still failing, a stop deleted or changed just before can be said once, at its old time and in its old words.
+- If the phone's storage fails to read and annai closes right after, an edit to a stop in any trip can miss its call-off, so the old words arrive until annai next opens, and a reminder you just set may not reach the relay, so it doesn't arrive while annai is closed. While reads are still failing, a stop deleted or changed just before can be said once, at its old time and in its old words. If annai's settings can't be read as it starts, Live starts with GPS off until a reload.
 
 ## Skills, MCP servers and plugins
 

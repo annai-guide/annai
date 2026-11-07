@@ -271,7 +271,7 @@ export async function backfillTrips(ws) {
   for (const s of await store.tx(['scopes'], 'readonly', (t) => t.listScopes())) {
     if (s.kind !== 'trip') continue;
     if ('talked' in s) {
-      await mirrorTrip(ws, s.id);
+      await mirrorTrip(ws, s.id).catch(() => {});
       continue;
     }
     const dates = tripMirror(await ws.readJSON(s.id, '/trip.json').catch(notJSON));

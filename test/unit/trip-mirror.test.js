@@ -220,6 +220,24 @@ test('a line said on a record the backfill has not reached does not mark it done
   assert.deepEqual([rb.start, rb.end, rb.talked], ['2026-11-27', '2026-11-28', null]);
 });
 
+test('backfill: a filled trip whose read fails does not stop a later trip\'s first fill', async () => {
+  const { ws, scope, released } = await kit({ schemas: false });
+  const a = await createTrip(ws, { title: 'Filled', start: '2026-11-20', end: '2026-11-21' });
+  const b = await createTrip(ws, { title: 'Old copy', start: '2026-11-27', end: '2026-11-28' });
+  await released(b);
+  const read = ws.readJSON.bind(ws);
+  ws.readJSON = async (/** @type {string} */ s, /** @type {string} */ p) => {
+    if (s === a) throw new Error('the content of /trip.json is missing from storage');
+    return read(s, p);
+  };
+  await backfillTrips(ws);
+  ws.readJSON = read;
+  const ra = /** @type {any} */ (await scope(a));
+  assert.deepEqual([ra.start, ra.end, ra.talked], ['2026-11-20', '2026-11-21', null], 'the unreadable trip keeps its record');
+  const rb = /** @type {any} */ (await scope(b));
+  assert.deepEqual([rb.start, rb.end, rb.talked], ['2026-11-27', '2026-11-28', null]);
+});
+
 test('a date edit whose read failed is healed at the next start: backfill mirrors every trip that has a talked key, and writes only if something differs', async () => {
   const { ws, scope, store } = await kit();
   const id = await createTrip(ws, { title: 'Past', start: '2026-11-20', end: '2026-11-21' });

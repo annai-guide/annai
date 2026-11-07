@@ -342,3 +342,28 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** while reads are failing annai keeps the plan it has. Pausing the plan while behind would hold back every good reminder during any failure.
 - **Revisit when:** the Trace shows it (an `error` entry of kind `read` in the device's log).
 - **Approved:** 2026-11-06, the user picked "Accept for now (Recommended)", for a deleted stop. Widened: 2026-11-06, the user picked "Yes, widen it (Recommended)": a stop moved or changed, with its reload and retry failing, is said once at the old time, in the old words, if reads are still failing then.
+
+### Live starts with GPS off when its settings can't be read at start
+- **Kind:** known limitation.
+- **What the user sees:** the phone's storage fails to read annai's settings at the moment Live starts, past the store's own retry: Live starts with GPS off for that page load, even if it was on, and runs as it does with GPS off. A reload, or turning GPS on, brings it back. Nothing writes the "off" back: the saved setting stays as it was.
+- **Why:** a failed read says nothing of the setting. Before, the same failure left no Live at all for that page load; starting with GPS off keeps everything else running.
+- **Revisit when:** the Trace shows it (an `error` entry of kind `read` in the device's log), or the user meets it.
+- **Approved:** 2026-11-07, the user picked "Accept for now (Recommended)".
+
+### The boot cost of healing trips' dates
+- **Kind:** deferred.
+- **What the user sees:** nothing with a handful of trips. Each start reads every trip's `/trip.json` and opens a write for each, before the first screen: 300 to 570 ms at 500 trips on desktop engines, likely more on a phone (not measured).
+- **Why:** the heal for a date edit whose read failed (`backfillTrips` calling `mirrorTrip`) came at stage 2; stage 4 brings up to 500 chats, which are trip scopes, and already has a scale check.
+- **Revisit when:** stage 4, Task 7: count a start's transactions from before `backfillTrips`, and open a write only for a trip whose record differs from the one `listScopes` gave.
+
+### A watch written back with its old id can fire again
+- **Kind:** deferred.
+- **What the user sees:** a repeating watch in Me fires, is deleted, then comes back with the same id (a restored file or an Undo) before its next time: it is said again at once. After a reload it isn't.
+- **Why:** deleting a watch drops its firing from memory, and `#loadScope` reads firings from the log only while a read is owed. Every other way in is covered. Which screens can write a watch back with its id is not checked yet.
+- **Revisit when:** the next timeline stage that touches watches: in `#loadScope`, recall the ids `#fired` lacks, as `#recallPlan` does for plan items.
+
+### A failed Trace line can wait forever after a fast simulation
+- **Kind:** deferred.
+- **What the user sees:** only in a "fast" simulation: a read fails past the retry, the Trace line's own write fails too, and the run ends. The line is never written, because its retry waits on the simulation's clock, which nothing advances after the run.
+- **Why:** it needs a simulation and two failures at once, and the line is developer-facing.
+- **Revisit when:** the next change to Live's Trace lines: set the retry on `this.#sim?.clock ?? this.clock`.
