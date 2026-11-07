@@ -5,6 +5,7 @@ import { fakeSensors, at, iso, off, LA, BIXBY } from './live-kit.js';
 import { Live } from '../../src/core/live/live.js';
 import { ManualClock } from '../../src/core/live/clock.js';
 import { createTrip, listTrips } from '../../src/core/scopes.js';
+import { undoHandover } from '../../src/core/handover.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 
 // "Talking moves it" (the user, 2026-11-06): looking at a trip never changes the trip in play; only talking in another happening trip does.
@@ -231,26 +232,36 @@ test("a line kept for another conversation moves play at once, not at the next l
   assert.equal(k.live.play, k.side);
 });
 
-test("a hand-over's copy in a happening trip isn't talking: a look there leaves play on the road, and so does a reload", async () => {
+test("a hand-over's copy in a happening trip is talking, as a typed line is: it stamps the time the copy was written, and moves play at once", async () => {
+  const k = await twoTrips();
+  await k.type('Here is the booking'); // the original line, in the road's conversation
+  const said = k.clock.now();
+  await k.to(said + 60_000);
+  await k.agent.wake({ kind: 'user', text: 'Here is the booking', handover: 'h1', fromScope: k.road, scope: k.side });
+  await k.settle();
+  const rec = await k.store.tx(['scopes'], 'readonly', (t) => t.getScope(k.side));
+  assert.equal(rec.talked, said + 60_000, "the time the hand-over wrote the copy, not the original line's");
+  assert.equal(k.live.play, k.side, 'moved at once, with no look and no reload');
+  const again = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent: k.agent, clock: k.clock, timeZone: () => LA });
+  await again.start();
+  assert.equal(again.play, k.side, 'and a reload keeps it');
+  again.dispose();
+});
+
+test("Undo of a hand-over leaves the copy's talked alone: play stays where the copy put it", async () => {
   const k = await twoTrips();
   await k.to(at('08:40'));
   await k.agent.wake({ kind: 'user', text: 'Here is the booking', handover: 'h1', fromScope: k.road, scope: k.side });
   await k.settle();
-  const rec = await k.store.tx(['scopes'], 'readonly', (t) => t.getScope(k.side));
-  assert.equal(rec.talked, null, 'stamped nothing');
-  await k.agent.open(k.side);
+  await k.ws.write(k.side, '/notes/trip.md', 'A note', { author: 'shiori', handover: 'h1' }); // her work for it
+  const talked = async () => (await k.store.tx(['scopes'], 'readonly', (t) => t.getScope(k.side))).talked;
+  const was = await talked();
+  assert.ok(was, 'the copy stamped it');
+  const out = await undoHandover(k.ws, k.side, 'h1');
   await k.settle();
-  assert.equal(k.live.play, k.road, 'a look');
-  await k.agent.open(k.road);
-  await k.settle();
-  assert.equal(k.live.play, k.road);
-  const again = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent: k.agent, clock: k.clock, timeZone: () => LA });
-  await again.start();
-  assert.equal(again.play, k.road, 'a reload');
-  again.dispose();
-  await k.agent.open(k.side);
-  await k.type('Is the tea still on?');
-  assert.equal(k.live.play, k.side, 'the next line of theirs there moves it');
+  assert.deepEqual(out.undone, ['/notes/trip.md']);
+  assert.equal(await talked(), was);
+  assert.equal(k.live.play, k.side);
 });
 
 test("midnight passes while the phone sleeps: Side, open and starting today, reaches the relay at the first look, with no timer having run", async () => {

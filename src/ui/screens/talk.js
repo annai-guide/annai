@@ -612,17 +612,18 @@ export async function nextLine(ctx, id) {
     const { rows } = await tripRows(ctx, id);
     const now = nowOf(ctx.live);
     const [r] = upcoming(rows, now, 1);
-    line.hidden = !r;
-    if (!r) return;
+    // Once drawn, the line keeps its place when nothing more is planned, so the conversation under it doesn't move.
+    line.style.visibility = r ? '' : 'hidden';
+    if (!r) return false;
     const name = rowName(r);
     line.replaceChildren(h('a', { href: `#/trip/${encodeURIComponent(id)}/plan`, dir: 'auto' },
       r.day && r.day !== todayOf(ctx.live) ? t`Next: ${day(r.day, true)} ${r.time} ${name}` : t`Next: ${r.time} ${name}`));
     // A timer holds at most about 24 days; a longer wait draws the same row again then, and waits on.
     // Gone from the page, it stops.
     setTimeout(() => { if (line.isConnected) fill().catch(() => {}); }, Math.min(Math.max(over(r) - now, 0) + 1000, 2 ** 31 - 1));
+    return true;
   };
-  await fill();
-  return line.hidden ? null : line;
+  return (await fill()) ? line : null;
 }
 
 /**

@@ -222,3 +222,29 @@ test('the header stays in view as the conversation scrolls', async ({ page }) =>
   const bar = await page.locator('header.topbar').evaluate((el) => el.getBoundingClientRect().bottom);
   expect(Math.abs(top - bar)).toBeLessThanOrEqual(2);
 });
+
+test("the Next line keeps its place when the trip's last row ends, so the conversation doesn't move", async ({ page }) => {
+  await openApp(page);
+  const id = await startTrip(page, 'Big Sur');
+  for (let i = 0; i < 3; i++) await writeEvent(page, id, { type: 'out.speak', data: { id: `s${i}`, text: `Line ${i}.` } });
+  const iso = (/** @type {number} */ ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
+  await writeRecords(page, id, { write: {
+    '/plan/tea.json': { id: 'tea', title: 'Tea', fixed: true, start: { at: iso(Date.now() - 10 * 60_000), tz: 'UTC' }, end: { at: iso(Date.now() + 8_000), tz: 'UTC' } }, // room to measure first, even on a cold start
+  } });
+  await goToHash(page, `#/trip/${id}/talk`);
+  await expect(page.locator('.next-line a')).toHaveText(/^Next: .*Tea$/);
+  // Scrolled to the top, where the page stays: a wheel turn (as the user's) stops the conversation following its last line down. At the
+  // bottom a shrinking page only clamps the scroll, and nothing would show.
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => { // after it first goes to the end
+    dispatchEvent(new Event('wheel'));
+    scrollTo(0, 0);
+    done(undefined);
+  }))));
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
+  const top = () => page.locator('.convo > li').first().evaluate((el) => Math.round(el.getBoundingClientRect().top));
+  const was = await top();
+  await expect(page.locator('.next-line a')).toBeVisible(); // measured before the row ended
+  await expect(page.locator('.next-line a')).toBeHidden({ timeout: 15_000 }); // over: the line says nothing
+  expect(await page.evaluate(() => scrollY)).toBe(0);
+  expect(await top()).toBe(was);
+});

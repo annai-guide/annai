@@ -43,7 +43,7 @@ async function phone(o = {}) {
   ws.write = (/** @type {string} */ scope, /** @type {string} */ path, /** @type {any} */ c, /** @type {any} */ opts) => (path === o.full ? Promise.reject(new StorageFullError()) : real.write(scope, path, c, opts));
   /** @type {any[]} */ const sent = [];
   /** @type {any[]} */ const cards = [];
-  const ctx = { ws, store, agent: { target: trip, send: (/** @type {string} */ text, /** @type {any} */ x) => sent.push({ text, ...x }) }, notices: { card: (/** @type {any} */ c) => cards.push(c), toast: () => {} }, go: () => {} };
+  const ctx = { ws, store, agent: { target: trip, send: (/** @type {string} */ text, /** @type {any} */ x) => sent.push({ text, ...x }) }, notices: { card: (/** @type {any} */ c) => cards.push(c), toast: () => {} }, go: () => {}, replace: () => {} };
   return { ctx, trip, other, sent, cards, ws: real };
 }
 const file = (/** @type {string} */ name, /** @type {string} */ body) => ({ file: Object.assign(new Blob([body], { type: 'text/plain' }), { name }) });

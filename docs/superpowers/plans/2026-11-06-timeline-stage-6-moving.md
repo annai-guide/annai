@@ -53,7 +53,7 @@
 
 **Files:** Modify `src/core/agent/trip-tools.js` (`writeInto`, `moved`), `src/core/agent/transcript.js` if the wake needs a label, `src/ui/screens/talk.js`, `src/core/agent/loop.js` only if `#open`'s owing needs it; test `test/unit/trip-tools.test.js`, `test/unit/halves*.test.js`, `test/unit/realtime-*.test.js`.
 
-**Decided:** with no hand-over in this turn, `writeInto` finds the user's last line (`msg.user`, or `heard` not dismissed) in `call.scope` and writes it with `app.wake({ kind: 'user', text, handed: [], fromScope: call.scope, scope: to })`, then the existing `file` wake with the recap. The log there ends unanswered, so `#open` owes the turn. The chat ends with `conversation.moved`, shown with `movedWords`' new sibling: t`Shiori moved this to ${title}.`, with a link, or the "since removed" wording when the trip is gone.
+**Decided:** with no hand-over in this turn, `writeInto` finds the user's last line (`msg.user`, or `heard` not dismissed) in `call.scope` and writes it with `app.wake({ kind: 'user', text, handed: [], fromScope: call.scope, scope: to })`, then the existing `file` wake with the recap. The copy counts as the user's talking (2026-11-07, the spec's decisions), so the trip's `talked` moves with it. The log there ends unanswered, so `#open` owes the turn. The chat ends with `conversation.moved`, shown with `movedWords`' new sibling: t`Shiori moved this to ${title}.`, with a link, or the "since removed" wording when the trip is gone.
 
 - [ ] Failing tests: Review Focus 1, 2, 3; `talked` on the trip moves with the line; the trip gets exactly recap and last line, no other chat lines; the recap reaches her as what it is, never as the user's words.
 - [ ] Implement. Run. Commit.

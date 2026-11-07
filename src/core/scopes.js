@@ -24,8 +24,8 @@ export function kindOf(scope) {
   return 'other';
 }
 
-/** A line the user said: typed, or heard and not dismissed, but not the copy a hand-over writes into another trip (data.from); what "last talked in" counts. @param {{ type: string, data?: any }} e */
-export const talks = (e) => (e.type === 'msg.user' && !e.data?.from) || (e.type === 'heard' && !e.data?.dismissed);
+/** A line the user said: typed, or heard and not dismissed; a hand-over's copy in another trip (data.from) counts too. What "last talked in" counts. @param {{ type: string, data?: any }} e */
+export const talks = (e) => e.type === 'msg.user' || (e.type === 'heard' && !e.data?.dismissed);
 
 /** What a trip's record mirrors of its trip.json, so no file is opened to tell which trips matter now: its dates, when they are dates. @param {unknown} trip @returns {{ start?: string, end?: string }} */
 export function tripMirror(trip) {

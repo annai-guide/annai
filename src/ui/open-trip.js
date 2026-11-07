@@ -12,14 +12,15 @@ export const openOrTell = (ctx, id) => ctx.agent.open(id).then(() => true, (/** 
 /**
  * A screen at a trip's own address (its conversation, Itinerary or Details) opens that trip's conversation, and only when the user
  * moved there: a redraw opens nothing, as `open` stops a turn and closes voice, and Shiori may have moved on meanwhile. A trip that
- * isn't here (removed, an old notification, a bookmark) goes home in place of this entry, so Back doesn't return to it.
+ * isn't here (removed, an old notification, a bookmark) goes home in place of this entry, so Back doesn't return to it; reached by Back or
+ * Forward, the shell goes on the same way (shell.js `leave`).
  * @param {any} ctx the screen's: `moved` says it's a move, not a redraw @param {string} id
  * @returns {Promise<any>} the trip's scope record; null: it went home, and the screen draws nothing
  */
 export async function openTrip(ctx, id) {
   const scope = await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ x) => x.getScope(id));
   if (!scope || scope.kind !== 'trip') {
-    location.replace('#/trips');
+    ctx.goneTrip();
     return null;
   }
   if (ctx.agent && ctx.moved && ctx.agent.target !== id) {
@@ -39,6 +40,6 @@ export const talkOf = (ctx) => (ctx.agent?.target ? talkHref(ctx.agent.target) :
 export function toTalk(ctx) {
   const want = talkOf(ctx);
   if (location.hash === want) return;
-  if (parseHash(location.hash).name === 'talk') location.replace(want);
+  if (parseHash(location.hash).name === 'talk') ctx.replace(want);
   else ctx.go(want);
 }
