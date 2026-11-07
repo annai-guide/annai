@@ -621,6 +621,49 @@ test("opening another trip keeps the open one's plan reminders at the relay; onl
   }
 });
 
+// Road and Side both happening; Side's reminder is at the relay, then the user talks in Road. Looking at Side changes no copy;
+// deleting or moving its stop while looking calls the copy off, though Side is not in play and sends nothing.
+for (const how of ['delete', 'move']) {
+  test(`a stop ${how === 'delete' ? 'deleted' : 'moved'} in an open trip that is not in play calls its copy off; a look and a line in the other trip do not`, async () => {
+    const { createTrip } = await import('../../src/core/scopes.js');
+    const { record } = await import('../../src/core/agent/log.js');
+    const CAKE = { id: 'cake', title: 'Cake', fixed: true, start: { at: iso('17:00'), tz: LA } };
+    const line = (/** @type {string} */ scope, /** @type {number} */ t) => record(k.store, scope, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'hello']], now: t });
+    const sends = async () => (await k.waiting()).map((x) => x.sendAt).sort();
+    const k = await pushKit({ plan: { tea: TEA }, live: false });
+    try {
+      const side = await createTrip(k.ws, { title: 'Side', start: '2026-11-27', end: '2026-11-28' });
+      await k.ws.write(side, '/plan/cake.json', CAKE, { author: 'user' });
+      await line(side, at('08:31'));
+      k.agent.opened(side);
+      await k.settle();
+      await k.mirror.turnOn(RELAY);
+      await k.flush();
+      const cake = at('16:45') + GRACE_MS;
+      assert.ok((await sends()).includes(cake), 'side is in play: its cake waits');
+      await k.to(at('09:00'));
+      await line(k.trip, at('09:00'));
+      k.agent.opened(k.trip);
+      await k.flush();
+      assert.equal(k.live.play, k.trip);
+      const after = await sends();
+      assert.ok(after.includes(cake), 'talking in the road keeps side\'s copy');
+      k.agent.opened(side);
+      await k.flush();
+      assert.deepEqual(await sends(), after, 'a look changes no copy');
+      assert.equal(k.net.calls.filter((c) => c.method === 'DELETE').length, 0);
+      if (how === 'delete') await k.ws.delete(side, '/plan/cake.json', { author: 'user' });
+      else await k.ws.write(side, '/plan/cake.json', { ...CAKE, start: { at: iso('20:00'), tz: LA } }, { author: 'user' });
+      await k.flush();
+      assert.equal(k.live.play, k.trip, 'still not in play');
+      assert.deepEqual(await sends(), after.filter((x) => x !== cake), 'the old copy is called off, nothing is sent for side');
+      k.agent.opened(k.trip);
+      await k.flush();
+      assert.deepEqual(await sends(), after.filter((x) => x !== cake), 'moving back doubles nothing');
+    } finally { await k.stop(); }
+  });
+}
+
 test('a "coming up" reminder at the relay carries its item\'s start, for the phone to count the minutes left (m6 #11)', async () => {
   const k = await pushKit({ plan: { tea: TEA }, live: false });
   try {

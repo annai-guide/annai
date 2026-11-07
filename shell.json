@@ -1,5 +1,5 @@
 {
-  "build": "62edf4610785",
+  "build": "afab8c18e470",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -68,7 +68,7 @@
     "/src/core/errors.js": "da2a5ee37cc1",
     "/src/core/events.js": "96ea2d451049",
     "/src/core/forget.js": "908a7cc35221",
-    "/src/core/handover.js": "1a5018fd57d7",
+    "/src/core/handover.js": "491a31cad231",
     "/src/core/hash.js": "e3cf309df8cf",
     "/src/core/hooks.js": "61bf90a384c1",
     "/src/core/html-text.js": "ad9b5709befa",
@@ -96,7 +96,7 @@
     "/src/core/live/activity.js": "d1fe254c6571",
     "/src/core/live/clock.js": "e8699d74a329",
     "/src/core/live/geo.js": "018e805b07f7",
-    "/src/core/live/live.js": "decfe99703c5",
+    "/src/core/live/live.js": "b91e3ab24ebb",
     "/src/core/live/plan-watches.js": "68c90d26e6bd",
     "/src/core/live/sim-run.js": "f8b67a029a00",
     "/src/core/live/simulate.js": "d42f97c8d368",
@@ -136,7 +136,7 @@
     "/src/core/paths.js": "b519fae60471",
     "/src/core/plan.js": "9af5a8633203",
     "/src/core/plugins.js": "07e014558d09",
-    "/src/core/push/mirror.js": "099378aa79c4",
+    "/src/core/push/mirror.js": "e2ae3b15119c",
     "/src/core/push/relay-client.js": "a2f4fe58a177",
     "/src/core/push/webpush.js": "7273918284c6",
     "/src/core/reach.js": "04af21f21297",
@@ -199,7 +199,7 @@
     "/src/plugins/voice-browser/index.js": "ed37336e633a",
     "/src/plugins/web/free.js": "6e64bf67dfb5",
     "/src/plugins/web/index.js": "6d77440aa5bb",
-    "/src/ui/base.css": "781fe4455849",
+    "/src/ui/base.css": "931386b2b775",
     "/src/ui/cards.js": "cc78cef84d11",
     "/src/ui/composer.js": "137bfef0d878",
     "/src/ui/credits.js": "23f63db27792",
@@ -286,7 +286,7 @@
     "/src/ui/talk-panel.js": "cc1fb4a04f43",
     "/src/ui/tap-keeps-keyboard.js": "6693e1e90f5c",
     "/src/ui/dock-hides.js": "46b1046df0fc",
-    "/src/ui/today.js": "be569917dff0",
+    "/src/ui/today.js": "8ea54e2b6185",
     "/src/ui/trip-rows.js": "2ed4ee25799b",
     "/src/ui/tokens.css": "6610187f555d",
     "/src/ui/unlock.js": "c1b491262a90",
@@ -294,8 +294,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "a2a2a7f2bde9",
-    "/l10n/zh-Hans.json": "e7567019eb25",
-    "/l10n/zh-Hant.json": "0c4e2c48870e"
+    "/l10n/ja.json": "536d925ce2bd",
+    "/l10n/zh-Hans.json": "651b67cfa0da",
+    "/l10n/zh-Hant.json": "400532218482"
   }
 }

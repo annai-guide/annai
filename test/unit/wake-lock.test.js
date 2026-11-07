@@ -111,7 +111,7 @@ test('a GPS position from before the GPS was lost, or too old, is not shown as w
   assert.equal(liveText({ on: true, gps: 'ok', activity: 'still', fix: { ...old, at: now - 11 * 60_000 } }), 'GPS on · finding you');
   const live = (/** @type {any} */ o) => ({ on: true, activity: 'still', near: () => ({ name: 'Bixby Creek Bridge', m: 10 }), ...o });
   assert.equal(whereWords(live({ gps: 'denied', fix: old })), "Location isn't allowed for annai. Open Driving to say where you are.");
-  assert.equal(whereWords(live({ gps: 'unavailable', fix: old })), 'No GPS signal right now. Open Driving to say where you are.');
+  assert.equal(whereWords(live({ gps: 'unavailable', fix: old })), 'No GPS signal right now.');
   assert.equal(whereWords(live({ gps: 'ok', fix: { ...old, at: now - 11 * 60_000 } })), 'Finding where you are…');
   assert.equal(whereWords(live({ gps: 'ok', fix: { ...old, at: now } })), 'At Bixby Creek Bridge');
   assert.equal(whereWords(live({ gps: 'denied', fix: { ...old, source: 'manual' } })), 'At Bixby Creek Bridge');

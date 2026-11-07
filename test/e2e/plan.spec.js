@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, filterTrace, happeningTrip, writeRecords, catchAgent } from './helpers.js';
+import { openApp, turnOnSwipes, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, filterTrace, happeningTrip, writeRecords, catchAgent } from './helpers.js';
 import { ZipWriter } from '../../src/core/zip.js';
 import { utf8 } from '../../src/core/bytes.js';
 
@@ -368,6 +368,11 @@ test("play moving to the trip on screen shows its Driving link in place: a row k
 
 /** Today's top with a long place name and GPS on at it, on a page whose clock the test moves. @param {import('@playwright/test').Page} page @param {import('@playwright/test').BrowserContext} context */
 async function longBridge(page, context) {
+  await page.addInitScript(() => { // the watch's callbacks, so a test can send "no signal" (a real sensor's error can't be asked for)
+    const real = navigator.geolocation.watchPosition.bind(navigator.geolocation);
+    /** @type {any} */ (window).geo = [];
+    navigator.geolocation.watchPosition = (ok, err, o) => { /** @type {any} */ (window).geo.push({ ok, err }); return real(ok, err, o); };
+  });
   await context.grantPermissions(['geolocation']);
   await context.setGeolocation({ latitude: 36.3715, longitude: -121.9017, accuracy: 10 });
   await page.clock.install({ time: NOON });
@@ -417,10 +422,58 @@ test("a fix never changes the height of today's top: the place line is one line,
   await expect(place).toHaveText('At The Long Named Testville Bridge');
   expect(await block()).toBe(height);
   expect((await row.boundingBox())?.y).toBe(y);
+  // The signal going and coming back, and the phone going offline, move nothing either: one line each, and the chips never wrap.
+  await page.evaluate(() => /** @type {any} */ (window).geo.at(-1).err({ code: 2, message: 'no signal' }));
+  await expect(place).toHaveText('No GPS signal right now.');
+  expect(await block()).toBe(height);
+  expect((await row.boundingBox())?.y).toBe(y);
+  await context.setGeolocation({ latitude: 36.3715, longitude: -121.9017, accuracy: 10 });
+  await page.clock.fastForward(5000);
+  await expect(place).toHaveText('At The Long Named Testville Bridge');
+  await context.setOffline(true);
+  await page.evaluate(() => dispatchEvent(new Event('offline')));
+  await page.waitForTimeout(300); // a redraw has no sign of its own to wait for
+  expect(await block()).toBe(height);
+  expect((await row.boundingBox())?.y).toBe(y);
+  await context.setOffline(false);
+  expect(await page.evaluate(() => {
+    const tops = [...document.querySelectorAll('.today-top .chips .chip')].map((c) => c.getBoundingClientRect().top);
+    return { oneRow: new Set(tops).size === 1, chips: tops.length, page: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+  })).toMatchObject({ oneRow: true, page: 0 });
+});
+
+test('the sentences shown with no fix wrap so they are read whole; only a name and the short no-signal line are cut to one line', async ({ page, context }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await longBridge(page, context);
+  const place = page.locator('.today-top .now-place');
+  const style = () => place.evaluate((el) => ({ white: getComputedStyle(el).whiteSpace, cut: el.scrollWidth > el.clientWidth }));
+  expect(await style()).toEqual({ white: 'nowrap', cut: true });
+  await page.locator('.live-chip').click(); // GPS off
+  await expect(place).toContainText('GPS is off');
+  expect(await style()).toEqual({ white: 'normal', cut: false });
+});
+
+test('a sideways swipe on the chips does not turn into the tab swipe', async ({ page, context }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await longBridge(page, context);
+  await turnOnSwipes(page);
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
+  const chips = page.locator('.today-top .chips');
+  await expect(chips).toBeVisible();
+  await chips.evaluate((el) => { for (const w of ['One long chip to swipe past', 'Another long chip', 'And a third one']) el.append(Object.assign(document.createElement('span'), { className: 'chip', textContent: w })); });
+  expect(await chips.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+  await page.evaluate(() => {
+    const el = /** @type {Element} */ (document.querySelector('.today-top .chips .chip'));
+    const o = (/** @type {number} */ x) => ({ bubbles: true, pointerType: 'touch', isPrimary: true, clientX: x, clientY: el.getBoundingClientRect().top + 5, pointerId: 7 });
+    el.dispatchEvent(new PointerEvent('pointerdown', o(280)));
+    el.dispatchEvent(new PointerEvent('pointerup', o(120)));
+  });
+  await page.waitForTimeout(300);
+  await expect(page.locator('.topnav a[aria-current="page"]')).toHaveText('Itinerary');
 });
 
 test('with the top above the screen, a fix that moves nothing scrolls nothing, and a change that does move rows leaves the ones you read where they are', async ({ page, context }) => {
-  await page.setViewportSize({ width: 320, height: 700 }); // narrow: the Offline chip wraps onto a row of its own
+  await page.setViewportSize({ width: 320, height: 700 }); // narrow: GPS off swaps the one-line place for a sentence that wraps, and adds a button
   await longBridge(page, context);
   await page.evaluate(() => {
     const w = /** @type {any} */ (window);
@@ -441,11 +494,10 @@ test('with the top above the screen, a fix that moves nothing scrolls nothing, a
   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => done(undefined))));
   expect(await page.evaluate(() => /** @type {any} */ (window).scrolls)).toEqual([]);
   const y = (await row.boundingBox())?.y;
-  await context.setOffline(true);
-  await page.evaluate(() => dispatchEvent(new Event('offline')));
-  await expect(page.locator('.today-top .chip', { hasText: 'Offline' })).toBeVisible();
+  await page.locator('.live-chip').click(); // GPS off: the block grows by lines it didn't have
+  await expect(page.locator('.today-top .now-place')).toContainText('GPS is off');
+  await expect(page.locator('.today-top').getByRole('button', { name: 'Turn GPS on' })).toBeVisible();
   expect((await row.boundingBox())?.y).toBe(y);
-  await context.setOffline(false);
 });
 
 test('a trip that ended has no today top', async ({ page }) => {

@@ -530,7 +530,7 @@ export class Live {
 
   /**
    * What a closed annai can still say through the push relay (spec §11.6, 6b choices 1 and 2): time watches in every conversation, and the "coming up" and "leave soon" of the trip
-   * in play and of an open conversation that isn't happening; null until live mode has loaded, and during a simulation. held hears the other trips, whose waiting plan reminders stay.
+   * in play and of an open conversation that isn't happening; null until live mode has loaded, and during a simulation. held hears the other trips, whose waiting plan reminders stay (the open one's, only those its plan still has, by key).
    * @param {{ held?: (scopes: Set<string>) => void }} [o] @returns {Promise<Mirrored[] | null>}
    */
   reminders(o = {}) {
@@ -542,12 +542,15 @@ export class Live {
       // The open one's plan too: a trip starting tomorrow, opened tonight, must still wake a closed annai. A happening one waits to be talked in: looking fires nothing.
       /** @type {[string, Watch[]][]} */
       const plans = [[play, this.#plan]];
-      if (open && open !== play && this.#rows.has(open) && this.#inPlay(open) && !this.#happening(open)) {
+      /** The open happening trip's copies that its plan still has: a look keeps them all; a stop removed or moved takes its copy with it. @type {string[] | null} */
+      let wants = null;
+      if (open && open !== play && this.#rows.has(open) && this.#inPlay(open)) {
         const { watches } = await this.#planOf(open);
         await this.#recallPlan(open, watches);
-        plans.push([open, watches]);
+        if (this.#happening(open)) wants = watches.filter((w) => !this.#spent(open, w)).map((w) => this.#keyOf(open, w));
+        else plans.push([open, watches]);
       }
-      if (o.held) o.held(new Set((await listTrips(this.store)).active.map((t) => t.id).filter((id) => !plans.some(([scope]) => scope === id) && this.#inPlay(id))));
+      if (o.held) o.held(new Set([...(await listTrips(this.store)).active.map((t) => t.id).filter((id) => !plans.some(([scope]) => scope === id) && this.#inPlay(id) && !(wants && id === open)), ...(wants ?? [])]));
       const m = this.#moment();
       const time = this.types().get('time');
       /** @type {Mirrored[]} */
@@ -1113,6 +1116,8 @@ export class Live {
         await this.#check();
         this.#tellReminders('prompt');
       });
+    } else if (c.scope === this.agent.target && (PLAN_FILE.test(c.path) || BOOKING_FILE.test(c.path))) {
+      this.#tellReminders('prompt'); // the open trip that isn't in play: reminders() reads its plan itself
     }
   }
 
