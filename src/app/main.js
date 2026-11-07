@@ -10,7 +10,7 @@ import { logEvent } from '../core/events.js';
 import { acquireInstanceLock } from '../core/lock.js';
 import { startShell, showBlocking } from '../ui/shell.js';
 import { h, t, messageOf } from '../ui/dom.js';
-import { list } from '../ui/format.js';
+import { list, talkHref } from '../ui/format.js';
 import { isStandalone, requestPersist, watchForUpdates, restartInto, platform, deviceName, connectionOf } from '../ui/platform.js';
 import { explainStorageFull } from '../ui/storage-full.js';
 import { StorageFullError } from '../core/errors.js';
@@ -44,7 +44,7 @@ import { createBackups } from '../core/backup.js';
 import { ensureProvided } from '../core/llm/official.js';
 import { startBackups } from '../ui/auto-backup.js';
 import { PushMirror } from '../core/push/mirror.js';
-import { browserSource, takeNews, onPushMessage, closeNotifications } from '../ui/push.js';
+import { browserSource, takeNews, onPushMessage, onReminderOpened, closeNotifications } from '../ui/push.js';
 import { shouldWelcome } from '../ui/welcome.js';
 import { screenToResume } from '../ui/resume.js';
 import { controllerReady as taken, pluginsMayLoad } from './claim.js';
@@ -259,6 +259,8 @@ async function boot() {
     // In live mode's own queue (news() above reads it, and tells the mirror), so a catch-up starting now reads it once.
     closeNotifications(await live.newsArrived()).catch(() => {});
   });
+  // A reminder tapped while annai is open shows its conversation; one whose trip is gone goes home from there.
+  onReminderOpened((scope) => { location.hash = talkHref(scope); });
   addEventListener('online', () => { push?.sync().catch(() => {}); });
   // Deletions of what providers keep of the conversations, waiting for a connection.
   addEventListener('online', () => { llm.drainKept().catch(() => {}); });

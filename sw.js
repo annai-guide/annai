@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = '8b7e3cb38c46';
+const BUILD = 'f800c4bc2f35';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
@@ -708,7 +708,7 @@ async function readJson(scope, path) {
   }
 }
 
-// Tapping one opens annai, whose catch-up says "opened the reminder for …" (spec §11.6). The tap is
+// Tapping one opens annai at its conversation, whose catch-up says "opened the reminder for …" (spec §11.6). The tap is
 // written down first: on iPhone the app may open at its start URL, and a message may not arrive.
 sw.addEventListener('notificationclick', (event) => {
   const e = /** @type {any} */ (event);
@@ -720,12 +720,21 @@ sw.addEventListener('notificationclick', (event) => {
 async function openReminder(n) {
   const info = n.data && typeof n.data === 'object' ? n.data : {};
   await keepNews({ kind: 'opened', ...info, title: String(n.title ?? ''), body: String(n.body ?? ''), t: Date.now() });
+  // The payload's scope is outside text: only a trip's strict id names a conversation; anything else ('me' too) opens home.
+  const scope = typeof info.scope === 'string' && TRIP.test(info.scope) ? info.scope : null;
   const windows = await sw.clients.matchAll({ type: 'window', includeUncontrolled: true });
   const open = windows.find((c) => new URL(c.url).origin === sw.location.origin);
-  // An open annai comes forward; where the browser won't allow that, annai is opened, so the tap always leads somewhere.
-  if (open && (await open.focus().then(() => true, () => false))) return;
-  await sw.clients.openWindow('/');
+  // An open annai comes forward and is told which conversation; where the browser won't allow that, annai is opened at it, so the
+  // tap always leads somewhere.
+  if (open && (await open.focus().then(() => true, () => false))) {
+    if (scope) open.postMessage({ type: 'annai.open', scope });
+    return;
+  }
+  await sw.clients.openWindow(scope ? `/#/trip/${scope}/talk` : '/#/trips');
 }
+
+/** A trip's id, as annai makes them (scopes.js newId): nothing else is put in an address. */
+const TRIP = /^trip-[0-9a-z]+$/;
 
 // Chrome and Firefox renew a subscription themselves; annai sends its reminders to the new one next time it runs.
 sw.addEventListener('pushsubscriptionchange', (event) => {
