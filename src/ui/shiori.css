@@ -214,6 +214,13 @@ a.attach-chip, .attach-chip.gone { padding-inline: 12px; text-decoration: none; 
 .title-row > .tidy-status { flex-basis: 100%; order: 3; margin-top: -4px; }
 /* On the Conversation, the title and its ⋯ stay under the app's bar (--topbar-h, shell.js) as the lines scroll under them. */
 .screen > .title-row { position: sticky; top: var(--topbar-h, 0px); z-index: 4; background: var(--paper); padding-block: 4px; margin-block: -4px; }
+/* A trip's conversation: ← home, its name (to Details), and the ⋯, staying under the app's bar the same way. */
+.screen > .talk-head { position: sticky; top: var(--topbar-h, 0px); z-index: 4; background: var(--paper); display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px; padding-block: 4px; margin-block: -4px 0; }
+.btn.talk-back { flex: none; min-width: 44px; min-height: 44px; padding: 0 10px; font-size: 22px; line-height: 1; }
+.talk-name { flex: 1 1 0; min-width: 0; font-size: 20px; font-weight: 600; color: inherit; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 44px; }
+.talk-head > .tidy-status { flex-basis: 100%; order: 3; margin-top: -4px; }
+.next-line { margin: 4px 0 8px; }
+.next-line a { display: inline-flex; align-items: center; min-height: 44px; }
 .tidy { position: relative; flex: none; }
 .btn.tidy-toggle { min-width: 44px; min-height: 44px; padding: 0 10px; font-size: 22px; line-height: 1; }
 .tidy-menu { position: absolute; top: 100%; right: 0; z-index: 5; width: min(300px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 6px; padding: 10px; background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 4px 16px rgb(0 0 0 / .12); }
