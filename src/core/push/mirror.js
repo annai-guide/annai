@@ -199,6 +199,8 @@ export class PushMirror {
   /** @type {Promise<void> | null} a sync waiting to run */
   #queued = null;
   #lastTokens = '';
+  /** A sync stopped, and none has gone through since */
+  #stopped = false;
 
   /**
    * @param {{ store: Store, ws: Workspace, live: LiveLike, source: Source, fetch?: (url: string, init?: RequestInit) => Promise<Response>,
@@ -262,7 +264,7 @@ export class PushMirror {
    * notification at once, then sends every reminder. @param {string} [relay] its address; the one kept if not given
    */
   turnOn(relay) {
-    return this.#run(() => this.#turnOn(relay).catch((e) => { throw turnOnError(e); })).then(() => this.sync());
+    return this.#run(() => this.#turnOn(relay).catch((e) => { throw turnOnError(e); })).then(() => this.sync().catch((e) => console.warn(/* en */ 'push: a sync failed', e)));
   }
 
   /** @param {string} [relay] */
@@ -380,7 +382,12 @@ export class PushMirror {
       return this.#sync();
     });
     this.#queued = job;
-    job.catch(() => this.#soon('calm'));
+    job.catch((e) => {
+      this.#soon('calm');
+      if (this.#stopped) return;
+      this.#stopped = true; // one Trace line a run
+      logEvent(this.store, SYS_DEVICE, { type: 'error', actor: 'system', data: { kind: 'read', message: String(e?.message ?? e) } }, this.clock.now()).catch(() => {});
+    });
     return job;
   }
 
@@ -442,6 +449,7 @@ export class PushMirror {
       const data = { relay: new URL(st.relay).host, sent, calledOff, waiting: Object.keys(st.items).length, ...(error ? { error: st.problem?.message ?? '' } : {}) };
       await logEvent(this.store, SYS_DEVICE, { type: 'push.sync', actor: 'system', data }, this.clock.now()).catch(() => {});
     }
+    this.#stopped = false;
     this.#tell();
     if (this.#dirty) this.#soon('prompt');
   }

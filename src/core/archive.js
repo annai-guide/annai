@@ -749,6 +749,7 @@ const changedMeanwhile = () => new ArchiveError(/* en */ `What this file replace
  */
 async function commitImport(store, { manifest, plan, overrides, secrets, now, result, content, own, sizes }) {
   await store.tx(['blobs', 'files', 'events', 'scopes', 'secrets'], 'readwrite', async (t) => {
+    Object.assign(result, { trips: [], archived: [], keptSecrets: [], secrets: 0 }); // a store that tries again starts over
     // Content stored earlier, or found already here, may have gone since: a trip removed meanwhile (spec §4.9).
     for (const h of content.keys()) {
       if (!(await t.hasBlob(h))) throw goneMeanwhile();

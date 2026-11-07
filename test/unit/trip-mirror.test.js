@@ -78,9 +78,9 @@ test('a date that is no date is not copied, and nothing readable leaves it undat
   assert.deepEqual(tripMirror('text'), {});
 });
 
-test('an unreadable trip.json clears the dates and keeps the rest', async () => {
+test('a trip.json whose read fails leaves the record as it was: a read that failed says nothing of its dates', async () => {
   const { ws, scope } = await kit();
-  const id = await createTrip(ws, { title: 'Testville', start: '2026-11-20' });
+  const id = await createTrip(ws, { title: 'Testville', start: '2026-11-20', end: '2026-11-22' });
   // The patch's own read goes through, and the hook's read after it fails, as a file whose bytes are gone does.
   const read = ws.readJSON.bind(ws);
   let reads = 0;
@@ -88,9 +88,25 @@ test('an unreadable trip.json clears the dates and keeps the rest', async () => 
     if (++reads > 1) throw new Error('the content of /trip.json is missing from storage');
     return read(s, p);
   };
-  await ws.patch(id, '/trip.json', { start: '2026-11-21' }, { author: 'user' });
+  const warn = console.warn;
+  console.warn = () => {}; // the listener's failure is warned of
+  try {
+    await ws.patch(id, '/trip.json', { start: '2026-11-21', title: 'Renamed' }, { author: 'user' });
+  } finally {
+    console.warn = warn;
+  }
+  const r = /** @type {any} */ (await scope(id));
+  assert.deepEqual([r.start, r.end, r.title], ['2026-11-20', '2026-11-22', 'Testville']);
+});
+
+test('a trip.json that is not JSON is an answer: it clears the dates and keeps the rest', async () => {
+  const { ws, scope } = await kit({ schemas: false });
+  const id = await createTrip(ws, { title: 'Testville', start: '2026-11-20', end: '2026-11-22' });
+  await ws.write(id, '/trip.json', 'this is { not json', { author: 'user', type: 'text/plain' });
+  await settled();
   const r = /** @type {any} */ (await scope(id));
   assert.equal('start' in r, false);
+  assert.equal('end' in r, false);
   assert.equal(r.title, 'Testville');
 });
 
@@ -152,22 +168,35 @@ test('a record from a released copy is filled once, archived ones too, and a sec
   assert.equal(puts(), 0);
 });
 
-test('backfill: a bad date in trip.json is not copied, and an unreadable one leaves the trip undated', async () => {
-  const { store, ws, scope, released } = await kit({ schemas: false });
+test('backfill: a bad date in trip.json is not copied, and a trip.json that is not JSON leaves the trip undated', async () => {
+  const { ws, scope, released } = await kit({ schemas: false });
   const bad = await createTrip(ws, { title: 'Bad', start: '2026-11-20' });
   await ws.write(bad, '/trip.json', { title: 'Bad', start: 'next week', end: '2026-11-22' }, { author: 'user' });
   const broken = await createTrip(ws, { title: 'Broken', start: '2026-11-20' });
+  await ws.write(broken, '/trip.json', 'this is { not json', { author: 'user', type: 'text/plain' });
   await settled();
   await released(bad);
   await released(broken);
-  // Its bytes gone from storage: reading it throws.
-  const hash = /** @type {any} */ (await ws.read(broken, '/trip.json')).entry.hash;
-  await store.tx(['blobs'], 'readwrite', (t) => t.deleteBlob(hash));
   await backfillTrips(ws);
   const rb = /** @type {any} */ (await scope(bad));
   assert.deepEqual([rb.start, rb.end, rb.talked], [undefined, '2026-11-22', null]);
   const rk = /** @type {any} */ (await scope(broken));
   assert.deepEqual([rk.start, rk.talked], [undefined, null]);
+});
+
+test('backfill: a trip.json whose read fails stops it, with no talked written: the next start finishes it', async () => {
+  const { ws, scope, released } = await kit({ schemas: false });
+  const id = await createTrip(ws, { title: 'Road', start: '2026-11-20', end: '2026-11-22' });
+  await released(id);
+  const read = ws.readJSON.bind(ws);
+  ws.readJSON = async () => { throw new Error('the content of /trip.json is missing from storage'); };
+  await assert.rejects(backfillTrips(ws), /missing from storage/);
+  ws.readJSON = read;
+  let r = /** @type {any} */ (await scope(id));
+  assert.equal('talked' in r, false, 'not marked done');
+  await backfillTrips(ws);
+  r = await scope(id);
+  assert.deepEqual([r.start, r.end, r.talked], ['2026-11-20', '2026-11-22', null]);
 });
 
 test('a line said on a record the backfill has not reached does not mark it done: the next backfill still dates it', async () => {

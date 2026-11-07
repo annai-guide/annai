@@ -143,7 +143,7 @@ export class Live {
   #watches = new Map();
   /** @type {Watch[]} the trip in play's plan watches */
   #plan = [];
-  /** Live may be older than the store: nothing read yet, or a read after a change failed. */
+  /** Live may be older than the store: a read after a change failed. */
   #behind = true;
   /** @type {{ name: string, lat: number, lng: number }[]} */
   #places = [];
@@ -247,7 +247,7 @@ export class Live {
       await ensureDeviceScope(this.store, this.clock.now());
       await this.#follow();
       this.#loaded = true;
-      const last = await this.#lastSeen().catch((e) => { this.#fail(e); return { since: null, from: null }; });
+      const last = await this.#lastSeen().catch((e) => { this.#missed(e); return { since: null, from: null }; });
       this.#starting = true;
       try {
         this.#sensors();
@@ -728,13 +728,23 @@ export class Live {
     this.#run(fn).catch((e) => this.#fail(e));
   }
 
-  /** Live mode's own work failed: told once for each problem, so a card says so (spec §17 rule 4), and it goes on. @param {unknown} e */
-  #fail(e) {
-    // The same problem whatever its numbers say ("12 bytes left", a seq), and told once; the list stays short.
+  /** Whether this problem is new, whatever its numbers say ("12 bytes left", a seq). @param {unknown} e */
+  #isNew(e) {
     const key = `${/** @type {any} */ (e)?.name}: ${String(/** @type {any} */ (e)?.message ?? e).replace(/\d+/g, '#')}`;
-    if (this.#told.has(key)) return;
+    if (this.#told.has(key)) return false;
     if (this.#told.size >= 50) this.#told.clear();
     this.#told.add(key);
+    return true;
+  }
+
+  /** A read failed and is tried again by itself: the Trace has it, once a kind, and no card. @param {unknown} e */
+  #missed(e) {
+    if (this.#isNew(e)) logEvent(this.store, SYS_DEVICE, { type: 'error', actor: 'system', data: { kind: 'read', message: String(/** @type {any} */ (e)?.message ?? e) } }, this.clock.now()).catch(() => {});
+  }
+
+  /** Live mode's own work failed: told once for each problem, so a card says so (spec §17 rule 4), and it goes on. @param {unknown} e */
+  #fail(e) {
+    if (!this.#isNew(e)) return;
     console.warn(/* en */ 'live mode: a check failed', e);
     try {
       this.problem(e);
@@ -1115,17 +1125,16 @@ export class Live {
         await this.#loadScope(c.scope);
         if (c.scope === this.#trip) await this.#loadPlan(c.scope);
       });
-    } else if (c.scope === this.#trip && (PLAN_FILE.test(c.path) || BOOKING_FILE.test(c.path))) {
-      this.#reread(() => this.#loadPlan(this.#trip));
     } else if (PLAN_FILE.test(c.path) || BOOKING_FILE.test(c.path)) {
-      this.#tellReminders('prompt'); // a trip that isn't in play: reminders() reads its plan itself
+      // In the queue: #trip moves only when a load ends, and that load may have read past this file.
+      this.#reread(async () => { if (c.scope === this.#trip) await this.#loadPlan(c.scope); });
     }
   }
 
   /** What changed is read again, then looked at; a read that fails is owed. @param {() => Promise<unknown>} read */
   #reread(read) {
     this.#bg(async () => {
-      await read().catch((e) => { this.#behind = true; this.#fail(e); });
+      await read().catch((e) => { this.#behind = true; this.#missed(e); });
       await this.#check();
       this.#tellReminders('prompt');
     });
@@ -1136,7 +1145,7 @@ export class Live {
     return this.#behind || this.#play() !== this.#trip;
   }
 
-  /** Another trip came into play, or a read is owed. A read that fails rejects with nothing changed, and the next call tries again. Watches stay: #changed keeps them current. */
+  /** Another trip came into play, or a read is owed. A read that fails rejects with nothing changed; the next call tries again. */
   async #readPlay() {
     if (this.#behind) await this.#loadAll();
     if (this.#owed()) await this.#loadPlan(this.#play());
@@ -1145,7 +1154,7 @@ export class Live {
 
   /** #readPlay, for those who go on with what Live has. */
   #follow() {
-    return this.#readPlay().catch((e) => this.#fail(e));
+    return this.#readPlay().catch((e) => this.#missed(e));
   }
 
   /** What #play chooses from may have changed: the rows read again, and whatever came with it looked at. */
@@ -1166,13 +1175,13 @@ export class Live {
     return active;
   }
 
-  /** Every conversation's watches, what has fired, and the trips' rows; a read that fails leaves a scope's watches as they are. */
+  /** Every conversation's watches, what has fired, and the trips' rows. */
   async #loadAll() {
     const active = await this.#loadRows();
     const scopes = new Set([ME, ...active.map((s) => s.id)]);
     for (const scope of scopes) {
+      await this.#recall(scope); // first: a watch is never looked at without its firings
       await this.#loadScope(scope);
-      await this.#recall(scope);
     }
     for (const scope of this.#watches.keys()) if (!scopes.has(scope)) this.#watches.delete(scope);
   }
@@ -1207,10 +1216,10 @@ export class Live {
     else this.#watches.delete(scope);
   }
 
-  /** A trip and its plan, as the plan's own watches, come into play together: a read that fails rejects with nothing changed. @param {string | null | undefined} trip */
+  /** A trip and its plan come into play together: a read that fails rejects with nothing changed. @param {string | null | undefined} trip */
   async #loadPlan(trip) {
     if (trip) this.#setStill(trip, await this.ws.readJSON(trip, '/trip.json').catch(notJSON));
-    // A simulation's plan reminds only during its run. An archived trip, open or not, reminds of nothing: its watches aren't loaded either (#loadAll).
+    // A simulation's plan reminds only during its run. An archived trip reminds of nothing: its watches aren't loaded (#loadAll).
     const reminds = trip && this.#inPlay(trip) && (await this.store.tx(['scopes'], 'readonly', (t) => t.getScope(trip)))?.status !== 'archived';
     const { items, watches } = reminds ? await this.#planOf(trip) : { items: [], watches: [] };
     if (reminds) await this.#recallPlan(trip, watches);
@@ -1544,7 +1553,7 @@ export class Live {
     /** @type {Fired[]} */
     const done = [];
     for (const x of list) {
-      if (x.scope !== open && !(await this.#exists(x.scope).catch(() => true))) { // a failed read isn't a removed trip
+      if (x.scope !== open && !(await this.#exists(x.scope))) {
         this.#watches.delete(x.scope); // a trip that was removed: nothing more goes into it (spec §4.9)
         continue;
       }
@@ -1677,7 +1686,7 @@ export class Live {
 
   /** @param {string} scope */
   async #exists(scope) {
-    return scope === ME || Boolean(await this.store.tx(['scopes'], 'readonly', (t) => t.getScope(scope)));
+    return scope === ME || Boolean(await this.store.tx(['scopes'], 'readonly', (t) => t.getScope(scope)).catch(() => true)); // a failed read isn't a removed trip
   }
 
   /**
