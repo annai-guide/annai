@@ -5,6 +5,7 @@ import { SYS_WAITING, ME, newId } from '../core/scopes.js';
 import { FILES_ONLY } from '../core/handover.js';
 import { updateAppSettings, readAppSettings } from '../core/settings.js';
 import { speaksScreens } from './format.js';
+import { openOrTell, toTalk } from './open-trip.js';
 
 /**
  * The type box's attachments (the bookings-and-trips design, goal 1): a + picks photos or files, and a pasted confirmation email
@@ -88,7 +89,7 @@ export async function handOver(ctx, text, items, o = {}) {
     return;
   }
   ctx.agent.send(text, handover);
-  if (!location.hash.startsWith('#/talk')) ctx.go('#/talk');
+  toTalk(ctx);
 }
 
 /**
@@ -196,11 +197,7 @@ export function createComposer(ctx, o = {}) {
 /** Whether annai's own dock is there to ask Shiori in (a plugin's dock has no box with chips, so no button asks). @param {any} ctx */
 export const canAsk = (ctx) => typeof ctx.dock?.attach === 'function';
 
-/** Opens a conversation, or says it didn't and is false. @param {any} ctx @param {string | null} id */
-export const openOrTell = (ctx, id) => ctx.agent.open(id).then(() => true, (/** @type {unknown} */ e) => {
-  ctx.notices.card({ tone: 'warn', title: t`That conversation didn't open`, body: messageOf(e) });
-  return false;
-});
+export { openOrTell };
 
 /**
  * Ask Shiori about this (goal 7): the file goes in the box as a chip, the box opens, and the Conversation shows. A trip's file opens
@@ -217,7 +214,7 @@ export async function askAbout(ctx, refs, o = {}) {
   }
   ctx.dock.attach(list, o);
   ctx.dock.openTyping();
-  ctx.go('#/talk');
+  toTalk(ctx);
 }
 
 /**

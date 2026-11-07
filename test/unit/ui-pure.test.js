@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import { isArchiveName, takePendingImport, leaveSignal, toldIfLeft } from '../../src/ui/import-state.js';
 import assert from 'node:assert/strict';
-import { parseHash } from '../../src/ui/router.js';
+import { parseHash, redirectOf } from '../../src/ui/router.js';
 import { planRows } from '../../src/core/plan.js';
-import { relTime, size, dateRange, backupText, formatCost, outcomeText, bookingFacts, placeStatus, holdNote, newerText, placeHref, limitFromField, limitField, limitText, localDay, fileLine, recordHref } from '../../src/ui/format.js';
+import { relTime, size, dateRange, backupText, formatCost, outcomeText, bookingFacts, placeStatus, holdNote, newerText, placeHref, limitFromField, limitField, limitText, localDay, fileLine, recordHref, talkHref } from '../../src/ui/format.js';
 import { explainStorageFull } from '../../src/ui/storage-full.js';
 import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
@@ -55,6 +55,23 @@ test('parseHash: a mangled link opens Trips instead of failing', () => {
   assert.deepEqual(parseHash('#/trip/%E6'), trips);
   assert.deepEqual(parseHash('#/trip/trip-1/file?path=%E6%A1'), { name: 'file', parts: ['trip', 'trip-1', 'file'], params: { path: '�' } });
   assert.deepEqual(parseHash('#import=%ZZ'), trips);
+});
+
+test('the conversation has an address', () => {
+  assert.equal(parseHash('#/trip/trip-a/talk').name, 'talk');
+  assert.deepEqual(parseHash('#/trip/trip-a/talk').parts, ['trip', 'trip-a', 'talk']);
+  assert.equal(talkHref('trip-a'), '#/trip/trip-a/talk');
+  assert.deepEqual(parseHash(talkHref('trip a/b')).parts, ['trip', 'trip a/b', 'talk']);
+});
+
+test('#/talk and #/plan redirect only while a trip is open', () => {
+  assert.equal(redirectOf(parseHash('#/talk'), 'trip-a'), '#/trip/trip-a/talk');
+  assert.equal(redirectOf(parseHash('#/plan'), 'trip-a'), '#/trip/trip-a/plan');
+  assert.equal(redirectOf(parseHash('#/talk'), null), null);
+  assert.equal(redirectOf(parseHash('#/plan'), null), null);
+  assert.equal(redirectOf(parseHash('#/trip/trip-b/talk'), 'trip-a'), null);
+  assert.equal(redirectOf(parseHash('#/trip/trip-b/plan'), 'trip-a'), null);
+  assert.equal(redirectOf(parseHash('#/trips'), 'trip-a'), null);
 });
 
 test('a full device gets advice that frees space: removing a trip does, deleting inside one does not (spec §4.9)', () => {

@@ -13,6 +13,7 @@ import { blobBytes } from '../../core/reach.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { saveFile } from '../save.js';
 import { parseHash } from '../router.js';
+import { toTalk } from '../open-trip.js';
 import { SYS_WAITING } from '../../core/scopes.js';
 import { dropWaiting } from '../../core/waiting.js';
 import { fileCard, pdfPages, imgDrawsPdf } from '../preview.js';
@@ -224,7 +225,7 @@ function preview(ctx, id, entry, content) {
         onShowPart: async (/** @type {number[]} */ region) => {
           const shown = `/trip${entry.path}`;
           ctx.agent.send(asUser(speaksScreens(await readAppSettings(ctx.ws)))`Look at this part of ${shown}.`, { photos: [{ path: shown, region }] });
-          ctx.go('#/talk');
+          toTalk(ctx);
         },
       } : {}),
     }, img),
