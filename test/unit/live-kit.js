@@ -102,13 +102,13 @@ export function memoryKeep(first = null) {
 }
 
 /**
- * A memory annai in live mode: a trip with the plan and bookings given, a Live engine on a manual
+ * An annai in live mode (on the memory store, or the store given): a trip with the plan and bookings given, a Live engine on a manual
  * clock (08:30 on the day of the drive), sensors driven by hand, and an agent that records.
- * @param {{ plan?: Record<string, any>, bookings?: Record<string, any>, live?: boolean, start?: number, news?: () => Promise<any[]>, problem?: (e: unknown) => void }} [o]
+ * @param {{ store?: import('../../src/core/types.js').Store, plan?: Record<string, any>, bookings?: Record<string, any>, live?: boolean, start?: number, news?: () => Promise<any[]>, problem?: (e: unknown) => void }} [o]
  */
-export async function liveKit({ plan = {}, bookings = {}, live = true, start = at('08:30'), news, problem } = {}) {
+export async function liveKit({ store: given, plan = {}, bookings = {}, live = true, start = at('08:30'), news, problem } = {}) {
   const registry = new Registry();
-  const store = createMemoryStore();
+  const store = given ?? createMemoryStore();
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
   await ensureBaseScopes(ws);
   syncTripTitles(ws); // main.js's: the record's dates follow trip.json

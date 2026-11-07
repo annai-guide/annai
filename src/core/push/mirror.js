@@ -20,7 +20,7 @@ import { sentences } from '../intl.js';
  * @typedef {{ supported: () => 'yes' | 'install' | 'no', permission: () => string, ask: () => Promise<string>,
  *   get: () => Promise<Sub | null>, subscribe: (key: string) => Promise<Sub>, unsubscribe: () => Promise<void> }} Source
  *   the phone's push subscription and notification permission (src/ui/push.js; a fake in tests)
- * @typedef {{ reminders: (o?: { waiting: Set<string>, held: (says: Map<string, string>) => void }) => Promise<Mirrored[] | null>, onReminders: (fn: (level: 'calm' | 'prompt' | 'urgent') => void) => () => void,
+ * @typedef {{ reminders: (o?: { waiting: Set<string>, held: (says: Map<string, string>, unread: Set<string>) => void }) => Promise<Mirrored[] | null>, onReminders: (fn: (level: 'calm' | 'prompt' | 'urgent') => void) => () => void,
  *   given?: () => [string, number][] }} LiveLike
  * @typedef {{ id: string, due: number, sendAt: number, hash: string, scope: string, says?: string, sending?: boolean }} Item
  *   a reminder at the relay; says: the digest of what its plan said of it, while it was wanted (hash holds the screens' language and the trip's
@@ -505,8 +505,11 @@ export class PushMirror {
   async #wanted(held, items) {
     /** @type {Map<string, string>} */
     let waiting = new Map();
-    const list = await this.live.reminders({ waiting: new Set(Object.values(items).map((i) => i.scope)), held: (says) => { waiting = says; } });
+    /** @type {Set<string>} */
+    let unread = new Set();
+    const list = await this.live.reminders({ waiting: new Set(Object.values(items).map((i) => i.scope)), held: (says, u) => { waiting = says; unread = u; } });
     if (!list) return null;
+    for (const [key, item] of Object.entries(items)) if (unread.has(item.scope)) held.add(key);
     for (const [key, says] of waiting) {
       const item = items[key];
       if (!item) continue;
@@ -521,6 +524,7 @@ export class PushMirror {
     /** @type {Map<string, string>} */
     const titles = new Map();
     for (const m of list) {
+      if (items[m.key] && unread.has(m.scope)) continue;
       const sendAt = m.due + GRACE_MS;
       if (sendAt <= now + 5000 || sendAt > now + AHEAD_MS) continue; // about to be said on screen, or too far
       if (out.size >= room) break;
