@@ -339,19 +339,21 @@ test('a watch written in a conversation that is not open, with #loadAll gone fro
   assert.deepEqual((await k.events(['trigger.fired'], chat)).map((e) => e.data.fallback), ['Tea.', 'By hand.']);
 });
 
-test('the plan and the mirrored reminders follow play: reminders() lists its leave-soon, held names the other', async () => {
+test('the plan and the mirrored reminders follow play: reminders() lists its leave-soon, held tells what the other trips with copies say', async () => {
   const k = await liveKit({ plan: { bixby: BIX, nepenthe: NEP } });
   const chat = await k.chat('Ramen');
   const other = await k.chat('Elsewhere');
+  const none = await k.chat('Nothing at the relay');
+  for (const scope of [chat, other, none]) await k.ws.write(scope, '/plan/tea.json', { id: 'tea', title: 'Tea', fixed: true, start: { at: iso('10:00'), tz: LA } }, { author: 'user' });
   k.agent.opened(chat);
   await k.settle();
-  /** @type {Set<string>} */
-  let held = new Set();
-  const list = await k.live.reminders({ held: (s) => { held = s; } });
+  /** @type {Map<string, string>} */
+  let held = new Map();
+  const list = await k.live.reminders({ waiting: new Set([k.trip, chat, other]), held: (s) => { held = s; } });
   const leave = list?.find((r) => r.watch === LEAVE);
   assert.equal(leave?.scope, k.trip);
   assert.ok(leave?.key.startsWith(`${k.trip}|`));
-  assert.deepEqual([...held], [other], 'the open conversation is followed too, so only the other is held');
+  assert.deepEqual([...held.keys()], [`${other}|plan:tea:coming-up|${at('10:00')}`], 'the open conversation is followed too, so only the other is held');
   assert.match(await k.live.listWatches(k.trip), /plan:nepenthe:leave/);
 });
 
@@ -363,11 +365,11 @@ test("a closed annai is told of the open trip's first morning too, while another
   k.agent.opened(next);
   await k.settle();
   assert.equal(k.live.play, k.trip, 'the trip happening today stays in play');
-  /** @type {Set<string>} */
-  let held = new Set();
-  const list = (await k.live.reminders({ held: (s) => { held = s; } })) ?? [];
+  /** @type {Map<string, string>} */
+  let held = new Map();
+  const list = (await k.live.reminders({ waiting: new Set([next]), held: (s) => { held = s; } })) ?? [];
   assert.ok(list.some((r) => r.scope === next && r.watch === 'plan:fly:coming-up'), 'the flight reaches the relay');
-  assert.ok(!held.has(next), 'followed now, so not held');
+  assert.equal(held.size, 0, 'followed now, so not held');
   k.agent.opened(k.trip);
   await k.settle();
   const own = (await k.live.reminders()) ?? [];

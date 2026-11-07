@@ -283,10 +283,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### Only the trip in play reminds
 - **Kind:** known limitation.
-- **What the user sees:** with two trips happening at once, the other's itinerary and location reminders wait until the user talks in it, and anything whose moment passes meanwhile doesn't come later. Opening it isn't enough. Time watches fire for both, and copies already at the relay still push.
+- **What the user sees:** with two trips happening at once, the other's itinerary and location reminders wait until the user talks in it, and anything whose moment passes meanwhile doesn't come later. Opening it isn't enough. Time watches fire for both, and copies already at the relay still push. A stop changed meanwhile loses its copy, and has no reminder until they talk in that trip.
 - **Why:** one plan is followed at a time.
 - **Revisit when:** someone misses one.
-- **Approved:** 2026-11-05, the user picked "Only the one in play (Recommended)". The wider wording: 2026-11-06, the user picked "Yes, widen it (Recommended)". Until they talk in it, not until it's opened: 2026-11-06, the user picked "Talking moves it".
+- **Approved:** 2026-11-05, the user picked "Only the one in play (Recommended)". The wider wording: 2026-11-06, the user picked "Yes, widen it (Recommended)". Until they talk in it, not until it's opened: 2026-11-06, the user picked "Talking moves it". A changed stop's copy goes: 2026-11-06, the user picked "Call it off (Recommended)".
 
 ### A turn cut by a failed open doesn't resume on its own
 - **Kind:** known limitation.
@@ -301,9 +301,3 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** annai can't tell an answer to A's reminder from a new line about B, and a timing rule for it would go into the hardest logic here.
 - **Revisit when:** a user reports it, or overlapping trips get common.
 - **Approved:** 2026-11-06, the user picked "Accept for now (Recommended)".
-
-### A restore that changes a trip that isn't open leaves its old reminders at the relay
-- **Kind:** deferred.
-- **What the user sees:** two trips are happening and a backup is restored over the one that isn't open and isn't in play. A stop the restore removed or moved still has its reminder at the relay, and it pushes at the old time, until the user talks in that trip or opens it. Opening it fixes it, as an edit there does.
-- **Why:** only the open trip's plan is read to decide which waiting reminders of a trip that isn't in play still belong; reading every trip's plan at each sync costs more than a case this rare is worth.
-- **Revisit when:** a restore is seen to leave one, or the relay sync reads every happening trip's plan anyway.

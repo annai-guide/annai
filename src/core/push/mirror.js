@@ -20,11 +20,12 @@ import { sentences } from '../intl.js';
  * @typedef {{ supported: () => 'yes' | 'install' | 'no', permission: () => string, ask: () => Promise<string>,
  *   get: () => Promise<Sub | null>, subscribe: (key: string) => Promise<Sub>, unsubscribe: () => Promise<void> }} Source
  *   the phone's push subscription and notification permission (src/ui/push.js; a fake in tests)
- * @typedef {{ reminders: (o?: { held?: (scopes: Set<string>) => void }) => Promise<Mirrored[] | null>, onReminders: (fn: (level: 'calm' | 'prompt' | 'urgent') => void) => () => void,
+ * @typedef {{ reminders: (o?: { waiting: Set<string>, held: (says: Map<string, string>) => void }) => Promise<Mirrored[] | null>, onReminders: (fn: (level: 'calm' | 'prompt' | 'urgent') => void) => () => void,
  *   given?: () => [string, number][] }} LiveLike
- * @typedef {{ id: string, due: number, sendAt: number, hash: string, scope: string, sending?: boolean }} Item
- *   a reminder at the relay; sending: written down before it was sent, not yet known to have arrived
- * @typedef {{ m: Mirrored, sendAt: number, title: string, body: string, hash: string, reuse?: boolean }} Want
+ * @typedef {{ id: string, due: number, sendAt: number, hash: string, scope: string, says?: string, sending?: boolean }} Item
+ *   a reminder at the relay; says: the digest of what its plan said of it, while it was wanted (hash holds the screens' language and the trip's
+ *   name, which a waiting copy outlives); sending: written down before it was sent, not yet known to have arrived
+ * @typedef {{ m: Mirrored, sendAt: number, title: string, body: string, hash: string, says?: string, reuse?: boolean }} Want
  * @typedef {{ message: string, at: number, needsYou: boolean, said?: import('./relay-client.js').Said, again?: boolean }} Problem
  *   message: in English, for the log; said: what it was, as data, which the screen's words are made from (one kept before said
  *   is shown as it was written, in English); again: annai tries again by itself
@@ -100,8 +101,8 @@ export function moves(was, due, now) {
 
 /**
  * What to change at the relay: reminders no longer wanted, reworded or moved are called off; new and moved ones are sent; one written
- * down but not known to have arrived is sent again as it was. A plan reminder of a trip in held (one that waits to be talked in: not the one in play, and not an open one that isn't happening yet) stays as it is:
- * only a removed or archived trip's go.
+ * down but not known to have arrived is sent again as it was. One in held stays as it is, sending nothing: a copy of a trip that waits to be
+ * talked in, while its plan still says the same.
  * @param {Record<string, Item>} items @param {Map<string, Want>} wanted @param {number} now @param {Set<string>} [held]
  * @returns {{ off: string[], send: Want[] }}
  */
@@ -123,11 +124,8 @@ export function plan(items, wanted, now, held = new Set()) {
   return { off, send };
 }
 
-/**
- * Whether a reminder at the relay is a plan reminder of a trip in held (waiting to be talked in; an open one by the keys its plan still has), which stays as it is while it may
- * still come: until it is long sent. @param {string} key @param {Item} item @param {Set<string>} held @param {number} now
- */
-const stays = (key, item, held, now) => (held.has(item.scope) || held.has(key)) && key.startsWith(`${item.scope}|plan:`) && item.sendAt + LONG_SENT_MS > now;
+/** Whether a reminder at the relay stays as it is: held, while it may still come, until it is long sent. @param {string} key @param {Item} item @param {Set<string>} held @param {number} now */
+const stays = (key, item, held, now) => held.has(key) && item.sendAt + LONG_SENT_MS > now;
 
 /** The relay's name for a subscription's object: the SHA-256 of its endpoint. @param {string} endpoint */
 export async function subscriptionName(endpoint) {
@@ -495,12 +493,21 @@ export class PushMirror {
   }
 
   /**
-   * What should wait at the relay now: the nearest reminders within reach, as many as the held trips' leave
-   * room for. null: live mode hasn't loaded. @param {Set<string>} held @param {Record<string, Item>} items
+   * What should wait at the relay now: the nearest reminders within reach, as many as the held copies leave
+   * room for. null: live mode hasn't loaded. @param {Set<string>} held filled with the copies that stay @param {Record<string, Item>} items
    */
   async #wanted(held, items) {
-    const list = await this.live.reminders({ held: (s) => { for (const x of s) held.add(x); } });
+    /** @type {Map<string, string>} */
+    let waiting = new Map();
+    const list = await this.live.reminders({ waiting: new Set(Object.values(items).map((i) => i.scope)), held: (says) => { waiting = says; } });
     if (!list) return null;
+    for (const [key, says] of waiting) {
+      const item = items[key];
+      if (!item) continue;
+      const hash = await this.#hash(says);
+      item.says ??= hash; // sent before copies carried this: it can only be held to what its plan says from now on
+      if (item.says === hash) held.add(key);
+    }
     const now = this.clock.now();
     const room = MAX_WAITING - Object.entries(items).filter(([key, item]) => stays(key, item, held, now)).length;
     /** @type {Map<string, Want>} */
@@ -514,7 +521,9 @@ export class PushMirror {
       const title = await this.#title(m.scope, titles);
       // The user's words: a plan reminder's in the screens' language (shown), Shiori's as she wrote them.
       const body = String(m.shown ?? m.text).slice(0, 500);
-      out.set(m.key, { m, sendAt, title, body, hash: await this.#hash(`${title}\n${body}`) });
+      const says = m.says && (await this.#hash(m.says));
+      if (items[m.key]) items[m.key].says = says; // a small change leaves a wanted copy where it is, and it still says what its plan says
+      out.set(m.key, { m, sendAt, title, body, hash: await this.#hash(`${title}\n${body}`), says });
     }
     return out;
   }
@@ -620,7 +629,7 @@ export class PushMirror {
       if (w.reuse) continue;
       const id = `${name}.${random(16)}`;
       tokens[id] = random(32);
-      st.items[w.m.key] = { id, due: w.m.due, sendAt: w.sendAt, hash: w.hash, scope: w.m.scope, sending: true };
+      st.items[w.m.key] = { id, due: w.m.due, sendAt: w.sendAt, hash: w.hash, scope: w.m.scope, says: w.says, sending: true };
     }
     await this.#save(st, tokens);
     const client = this.#client(st.relay);
