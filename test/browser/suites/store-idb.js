@@ -6,6 +6,24 @@ import { Workspace } from '../../../src/core/workspace.js';
 import { ensureBaseScopes, createTrip } from '../../../src/core/scopes.js';
 import { snapshot } from '../../contract/snapshot.js';
 
+/**
+ * Aborts the next requests on the files store in flight, as a browser can: the request is placed, then its transaction goes.
+ * @param {'get' | 'put'} method @param {number} count
+ */
+function abortNext(method, count) {
+  const real = /** @type {any} */ (IDBObjectStore.prototype)[method];
+  let done = 0;
+  /** @type {any} */ (IDBObjectStore.prototype)[method] = function (/** @type {any[]} */ ...a) {
+    const r = real.apply(this, a);
+    if (done < count && this.name === 'files') {
+      done++;
+      this.transaction.abort();
+    }
+    return r;
+  };
+  return { aborted: () => done, heal: () => { /** @type {any} */ (IDBObjectStore.prototype)[method] = real; } };
+}
+
 /** @param {any} test @param {any} assert */
 export default function (test, assert) {
   let n = 0;
@@ -95,6 +113,55 @@ export default function (test, assert) {
       await t.putFile(rec);
     });
     assert.equal((await s.tx(['files'], 'readonly', (t) => t.getFile('trip-1', '/a.md')))?.hash, 'h1');
+    s.close();
+  });
+
+  test('idb: a read the browser aborts in flight is tried once more, and the connection it was on closes', async () => {
+    const name = `annai-test-abort-${Date.now()}`;
+    /** @type {IDBDatabase[]} */
+    const connections = [];
+    const s = await createIdbStore(name, { onOpen: (db) => connections.push(db) });
+    await s.tx(['files'], 'readwrite', (t) => t.putFile(rec));
+    const b = abortNext('get', 1);
+    const f = await s.tx(['files'], 'readonly', (t) => t.getFile('trip-1', '/a.md'));
+    b.heal();
+    assert.equal(b.aborted(), 1);
+    assert.equal(f.hash, 'h1');
+    assert.equal(connections.length, 2);
+    let closed = '';
+    try {
+      connections[0].transaction(['files']);
+    } catch (e) {
+      closed = /** @type {any} */ (e).name;
+    }
+    assert.equal(closed, 'InvalidStateError', 'the old connection is closed');
+    s.close();
+    await eraseDatabase(name);
+  });
+
+  test('idb: a write the browser aborts in flight is tried once more, and stored once', async () => {
+    const s = await fresh();
+    let runs = 0;
+    const b = abortNext('put', 1);
+    await s.tx(['files', 'events'], 'readwrite', async (t) => {
+      runs++;
+      await t.putFile(rec);
+      await t.appendEvent('trip-1', { ts: 1, type: 'file.write', actor: 'user' });
+    });
+    b.heal();
+    assert.equal(b.aborted(), 1);
+    assert.equal(runs, 2);
+    assert.equal((await s.tx(['files'], 'readonly', (t) => t.getFile('trip-1', '/a.md')))?.hash, 'h1');
+    assert.equal((await s.tx(['events'], 'readonly', (t) => t.listEvents('trip-1'))).length, 1);
+    s.close();
+  });
+
+  test('idb: a read aborted twice rejects: the retry is one', async () => {
+    const s = await fresh();
+    const b = abortNext('get', 2);
+    await assert.rejects(s.tx(['files'], 'readonly', (t) => t.getFile('trip-1', '/a.md')), (/** @type {any} */ e) => e.name === 'AbortError');
+    b.heal();
+    assert.equal(b.aborted(), 2);
     s.close();
   });
 

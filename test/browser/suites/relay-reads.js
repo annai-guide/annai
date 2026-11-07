@@ -6,7 +6,8 @@ import { record } from '../../../src/core/agent/log.js';
 import { toBase64Url } from '../../../src/core/bytes.js';
 
 // A read that fails in a sync, on the real IndexedDB: a transaction aborted in flight rejects the read. It must not take a copy at the relay
-// off, nor the push file's state. The unit tests make a read fail on the memory store; this is the real thing.
+// off, nor the push file's state. The unit tests make a read fail on the memory store; this is the real thing. The store tries an aborted
+// transaction once more, so a read that fails is one aborted twice.
 
 const RELAY = 'https://push.annai.guide';
 let n = 0;
@@ -124,11 +125,11 @@ export default function (test, assert) {
     try {
       const before = await copies(side);
       const off = deletes();
-      const b = abortReads(1, (key) => key[0] === side && key[1] === '/plan/cake.json');
+      const b = abortReads(2, (key) => key[0] === side && key[1] === '/plan/cake.json');
       k.agent.opened(side);
       await flush();
       b.heal();
-      assert.equal(b.seen.length, 1, 'the read was aborted');
+      assert.equal(b.seen.length, 2, 'the read and its retry were aborted');
       assert.equal(deletes(), off);
       assert.deepEqual(await copies(side), before);
       await flush(120_000);
@@ -148,11 +149,11 @@ export default function (test, assert) {
       const before = await k.ws.readText(SYS_DEVICE, FILE);
       assert.equal(JSON.parse(String(before)).on, true);
       const off = deletes();
-      const b = abortReads(1, (key) => key[0] === SYS_DEVICE && key[1] === FILE);
+      const b = abortReads(2, (key) => key[0] === SYS_DEVICE && key[1] === FILE);
       let failed = '';
       await mirror.sync().catch((/** @type {any} */ e) => { failed = e?.name; });
       b.heal();
-      assert.equal(b.seen.length, 1);
+      assert.equal(b.seen.length, 2);
       assert.equal(failed, 'AbortError', 'the sync stops');
       assert.equal(await k.ws.readText(SYS_DEVICE, FILE), before);
       assert.equal((await mirror.status()).on, true);
@@ -167,10 +168,10 @@ export default function (test, assert) {
     try {
       const before = await copies(side);
       const off = deletes();
-      const b = abortReads(1, (key) => key[0] === side && key[1] === '/plan/cake.json');
+      const b = abortReads(2, (key) => key[0] === side && key[1] === '/plan/cake.json');
       await talk(side, at('09:30'));
       b.heal();
-      assert.equal(b.seen.length, 1);
+      assert.equal(b.seen.length, 2);
       assert.equal(k.live.play, side);
       assert.equal(deletes(), off);
       assert.deepEqual(await copies(side), before);

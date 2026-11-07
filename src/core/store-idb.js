@@ -91,6 +91,7 @@ export async function createIdbStore(name = DB_NAME, hooks = {}) {
         } catch (e) {
           if (attempt === 0 && connectionLost(e)) {
             if (db === d) db = null;
+            d.close(); // a healthy one would stay open
             continue;
           }
           throw storeError(e);
@@ -108,12 +109,12 @@ export async function createIdbStore(name = DB_NAME, hooks = {}) {
 /**
  * A transaction that failed because the connection went away: a closed connection
  * throws InvalidStateError, and WebKit fails the transaction in flight with
- * "UnknownError: Connection to Indexed Database server lost". Nothing was committed
- * either way, so one retry is safe.
+ * "UnknownError: Connection to Indexed Database server lost"; or that the browser
+ * aborted (AbortError). Nothing was committed, so one retry is safe.
  * @param {any} e
  */
 function connectionLost(e) {
-  return e?.name === 'InvalidStateError' || e?.name === 'UnknownError' || /connection (is )?(lost|closing|closed)|server lost|database (is )?clos/i.test(String(e?.message));
+  return e?.name === 'InvalidStateError' || e?.name === 'UnknownError' || e?.name === 'AbortError' || /connection (is )?(lost|closing|closed)|server lost|database (is )?clos/i.test(String(e?.message));
 }
 
 /**
