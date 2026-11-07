@@ -14,22 +14,16 @@ import { packPanel } from '../offline-pack.js';
 import { tripStamps, stampMarks, factsWords } from '../stamps.js';
 import { stampCount } from '../../core/after/stamps.js';
 import { slotEntries } from '../slots.js';
-import { openOrTell } from '../composer.js';
+import { openTrip } from '../open-trip.js';
 
 export { fileHref };
 
 /** @param {any} ctx @param {{ parts: string[] }} route */
 export async function renderTrip(ctx, route) {
   const id = route.parts[1];
-  const scope = await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(id));
-  if (!scope || scope.kind !== 'trip') {
-    return h('div', { class: 'screen' }, h('h1', { class: 'title', text: t`This trip isn't on this device` }), h('p', {}, h('a', { href: '#/trips' }, t`Back to Trips`)));
-  }
   // Opening a trip makes it the one Shiori talks about (spec §4.3: /trip/ is the active trip).
-  if (ctx.agent && ctx.moved && ctx.agent.target !== id) {
-    updateAppSettings(ctx.ws, { activeTrip: id }).catch(() => {});
-    openOrTell(ctx, id);
-  }
+  const scope = await openTrip(ctx, id);
+  if (!scope) return h('div', { class: 'screen' });
   const trip = await ctx.ws.readJSON(id, '/trip.json').catch(() => null);
   const files = (await ctx.ws.list(id, '/')).filter((/** @type {any} */ f) => !f.path.startsWith('/offline/')); // the pack has its own panel
   const archived = scope.status === 'archived';

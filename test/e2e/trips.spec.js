@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, buildAndSave, writeEvent, writeRecords, startTrip as startNamed, allFiles, putFile, breakOpen } from './helpers.js';
+import { openApp, buildAndSave, writeEvent, writeRecords, startTrip as startNamed, allFiles, putFile, breakOpen, catchAgent, goToHash, modelSetUp, startModelServer, anthropicToolReply } from './helpers.js';
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
 
@@ -453,9 +453,9 @@ test('a fresh start reopens the trip screen that was open, and shows Trips when 
     store.close();
   });
   await page.getByRole('link', { name: 'Itinerary', exact: true }).first().click();
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('annai.resume'))).toContain('#/plan'); // drawn, and noted
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('annai.resume'))).toContain('/plan"'); // drawn at the trip's own address, and noted
   await page.goto('/'); // a new launch from the Home Screen icon
-  await expect.poll(() => page.url()).toMatch(/#\/plan$/);
+  await expect.poll(() => page.url()).toMatch(/\/plan$/);
   // A link that points at a screen is respected.
   await page.goto('/#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
@@ -584,3 +584,114 @@ test('All files is folded below Files, and still has notes, memory, the raw reco
   // The fold stays open while annai runs.
   await expect(page.getByRole('link', { name: /^\/notes\/day1\.md/ })).toBeVisible();
 });
+
+// Timeline stage 3: each conversation has its own address, #/trip/<id>/talk, and only a move there opens it.
+const hashOf = (/** @type {import('@playwright/test').Page} */ page) => new URL(page.url()).hash;
+/** The conversation on screen. @param {import('@playwright/test').Page} page */
+const convo = (page) => page.locator('main .screen:has(.convo)');
+/** What Shiori said in a scope's log, as the page's store has it. @param {import('@playwright/test').Page} page @param {string} scope */
+const herLines = (page, scope) => page.evaluate(async (scope) => {
+  const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+  const store = await createIdbStore();
+  const lines = await store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types: ['out.speak'] }));
+  store.close();
+  return lines.map((/** @type {any} */ e) => String(e.data?.text ?? ''));
+}, scope);
+/** Counts the conversations opened from now on, as window.opens. @param {import('@playwright/test').Page} page */
+const countOpens = (page) => page.evaluate(async () => {
+  const { Halves } = await import(/** @type {string} */ ('/src/core/agent/halves.js'));
+  const open = Halves.prototype.open;
+  /** @type {any} */ (window).opens = [];
+  Halves.prototype.open = function (/** @type {any[]} */ ...a) {
+    /** @type {any} */ (window).opens.push(a[0]);
+    return open.apply(this, a);
+  };
+});
+
+test('Back from a conversation reached by #/talk goes to where you came from', async ({ page }) => {
+  await openApp(page);
+  const id = await startNamed(page, 'Kyoto');
+  await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  await page.getByRole('link', { name: 'Conversation', exact: true }).first().click();
+  await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}/talk`);
+  await expect(page.getByRole('link', { name: 'Conversation', exact: true }).first()).toHaveAttribute('aria-current', 'page'); // its tab stays lit
+  await page.goBack();
+  await expect.poll(() => hashOf(page)).toBe('#/settings');
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  // #/plan the same way.
+  await page.getByRole('link', { name: 'Itinerary', exact: true }).first().click();
+  await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}/plan`);
+  await page.goBack();
+  await expect.poll(() => hashOf(page)).toBe('#/settings');
+});
+
+test('an address whose trip is gone goes home, and Back does not return to it', async ({ page }) => {
+  await openApp(page);
+  await startNamed(page, 'Kyoto');
+  await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  for (const gone of ['#/trip/trip-gone1/talk', '#/trip/trip-gone1/plan', '#/trip/trip-gone1', '#/trip/me/talk']) {
+    await goToHash(page, gone);
+    await expect.poll(() => hashOf(page)).toBe('#/trips');
+    await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+    await page.goBack();
+    await expect.poll(() => hashOf(page)).toBe('#/settings');
+  }
+});
+
+test('opening #/trip/<b>/talk with a turn running in a stops it; a redraw of a trip screen after Shiori moved on opens nothing', async ({ page }) => {
+  const speak = anthropicToolReply([{ name: 'speak', input: { text: 'From the slow turn.' } }, { name: 'sleep', input: {} }]);
+  const llm = await startModelServer({ '/b/v1/messages': { status: 200, type: 'text/event-stream', body: speak, delayMs: 4000 } });
+  try {
+    await modelSetUp(page, llm.origin, 'Kyoto');
+    const a = decodeURIComponent(hashOf(page).split('/')[2]);
+    await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+    const b = await startNamed(page, 'Osaka');
+    await goToHash(page, `#/trip/${a}/talk`);
+    await expect(convo(page)).toContainText('Kyoto');
+    await page.getByRole('button', { name: 'Type', exact: true }).click();
+    await page.getByLabel('Message to Shiori').fill('Where is the temple?');
+    await page.getByRole('button', { name: 'Send', exact: true }).click();
+    await expect.poll(() => llm.bodies('/b/v1/messages').length).toBeGreaterThan(0); // her turn is waiting on the model
+    await countOpens(page);
+    await goToHash(page, `#/trip/${b}/talk`);
+    await expect(convo(page)).toContainText('Osaka');
+    await page.waitForTimeout(5000); // past the model's reply
+    expect(await herLines(page, a)).toEqual([]); // stopped: its reply wrote nothing
+    expect(await page.evaluate(() => /** @type {any} */ (window).opens)).toEqual([b]);
+    // Shiori moves the conversation to Kyoto (a hand-over's openWhenDone): the screen goes there, and nothing opens Osaka again.
+    await catchAgent(page);
+    await goToHash(page, `#/trip/${a}`);
+    await goToHash(page, `#/trip/${b}/talk`);
+    await expect(convo(page)).toContainText('Osaka');
+    await page.evaluate(async () => { /** @type {any} */ (window).opens = []; });
+    await page.evaluate((a) => /** @type {any} */ (window).agent.openWhenDone(a), a);
+    await expect.poll(() => hashOf(page)).toBe(`#/trip/${a}/talk`);
+    await expect(convo(page)).toContainText('Kyoto');
+    await page.waitForTimeout(500);
+    expect(await page.evaluate(() => /** @type {any} */ (window).opens)).toEqual([a]); // hers only
+    // The move replaced the old entry: Back goes to Kyoto's Details, not to Osaka's conversation.
+    await page.goBack();
+    await expect.poll(() => hashOf(page)).toBe(`#/trip/${a}`);
+  } finally {
+    await llm.stop();
+  }
+});
+
+test('a reload on #/trip/<id>/talk shows that conversation, not the last one active', async ({ page }) => {
+  await openApp(page);
+  const a = await startNamed(page, 'Kyoto');
+  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  const b = await startNamed(page, 'Osaka');
+  await writeEvent(page, a, { type: 'out.speak', data: { id: 's1', text: 'A line in Kyoto.' } });
+  await writeEvent(page, b, { type: 'out.speak', data: { id: 's2', text: 'A line in Osaka.' } });
+  await goToHash(page, `#/trip/${a}`); // Kyoto is the active trip now
+  await expect(page.getByRole('heading', { level: 1, name: 'Kyoto' })).toBeVisible();
+  await page.goto(`/#/trip/${b}/talk`);
+  await page.reload();
+  await expect(page.locator('.convo')).toContainText('A line in Osaka.');
+  await expect(page.locator('.convo')).not.toContainText('A line in Kyoto.');
+  expect(hashOf(page)).toBe(`#/trip/${b}/talk`);
+});
+

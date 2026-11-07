@@ -77,23 +77,26 @@ async function roll(page, context, from, to) {
 
 for (const [where, at] of [['home', '#/trips'], ['the conversation', '#/talk'], ['the Itinerary', '#/plan']]) {
   test(`moving fast begun on ${where}: Driving takes over once, ← returns there, and the next fixes leave you there`, async ({ page, context }) => {
-    await atTheStart(page, context);
+    const trip = await atTheStart(page, context);
     await page.goto(`/${at}`);
+    const here = at === '#/trips' ? at : `#/trip/${trip}/${at.slice(2)}`; // the open trip's own address (timeline stage 3)
+    await expect.poll(() => new URL(page.url()).hash).toBe(here);
     await roll(page, context, 1, 10);
     await expect(page.getByRole('heading', { name: 'Driving' })).toBeVisible();
     await page.getByRole('main').getByRole('link', { name: 'Back', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Driving' })).toHaveCount(0);
-    await expect.poll(() => new URL(page.url()).hash).toBe(at);
+    await expect.poll(() => new URL(page.url()).hash).toBe(here);
     await roll(page, context, 11, 13);
     await expect(page.locator('.live-chip')).toHaveText('GPS on');
     await expect(page.getByRole('heading', { name: 'Driving' })).toHaveCount(0);
-    await expect.poll(() => new URL(page.url()).hash).toBe(at);
+    await expect.poll(() => new URL(page.url()).hash).toBe(here);
   });
 }
 
 test('a reload after leaving Driving: the drive goes on and Driving stays away', async ({ page, context }) => {
-  await atTheStart(page, context);
+  const trip = await atTheStart(page, context);
   await page.goto('/#/talk');
+  await expect.poll(() => new URL(page.url()).hash).toBe(`#/trip/${trip}/talk`);
   await roll(page, context, 1, 10);
   await expect(page.getByRole('heading', { name: 'Driving' })).toBeVisible();
   await page.getByRole('main').getByRole('link', { name: 'Back', exact: true }).click();
@@ -102,7 +105,7 @@ test('a reload after leaving Driving: the drive goes on and Driving stays away',
   await expect(page.locator('.live-chip')).toHaveText(/^GPS on\b/);
   await roll(page, context, 11, 13);
   await expect(page.getByRole('heading', { name: 'Driving' })).toHaveCount(0);
-  await expect.poll(() => new URL(page.url()).hash).toBe('#/talk');
+  await expect.poll(() => new URL(page.url()).hash).toBe(`#/trip/${trip}/talk`);
 });
 
 test("typing in the dock's box as moving fast begins: no take-over, the box keeps its words, and that drive doesn't take over later", async ({ page, context }) => {

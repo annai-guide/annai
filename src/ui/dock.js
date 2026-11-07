@@ -11,6 +11,7 @@ import { storedTexts } from '../core/agent/log.js';
 import { component, mount, cleanUp, slotEntries, runAction, made } from './slots.js';
 import { onTap } from './dock-hides.js';
 import { createComposer, handOver } from './composer.js';
+import { toTalk } from './open-trip.js';
 
 /** How long her last words stay in the bubble once she has stopped, to read them. */
 const CAPTION_LINGER_MS = 2500;
@@ -95,7 +96,7 @@ export function createDock(ctx) {
         done();
         if (items.length) return void handOver(ctx, text, items).catch((/** @type {unknown} */ x) => ctx.notices.card({ tone: 'warn', title: t`Your files didn't reach Shiori`, body: messageOf(x) }));
         ctx.agent.send(text);
-        if (!location.hash.startsWith('#/talk')) ctx.go('#/talk');
+        toTalk(ctx);
         return;
       }
       keepingNow = true;
@@ -159,7 +160,7 @@ export function createDock(ctx) {
       // Snap and ask: the photo goes to Shiori, who guesses why it was taken (spec §16.2).
       ctx.agent.typing?.(false); // text left in the box isn't being typed now
       ctx.agent.send('', { photos: paths.map((/** @type {string} */ p) => ({ path: `/trip${p}` })) });
-      ctx.go('#/talk');
+      toTalk(ctx);
     } catch (e) {
       ctx.notices.card({ tone: 'warn', title: t`The photo wasn't added`, body: messageOf(e) });
     } finally {

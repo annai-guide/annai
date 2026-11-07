@@ -49,7 +49,7 @@ async function phone(o = {}) {
 const file = (/** @type {string} */ name, /** @type {string} */ body) => ({ file: Object.assign(new Blob([body], { type: 'text/plain' }), { name }) });
 
 test('handOver keeps the files one at a time, saying how far it is, then hands them all over at once', async () => {
-  globalThis.location ??= /** @type {any} */ ({ hash: '#/talk' });
+  globalThis.location ??= /** @type {any} */ ({ hash: '#/talk', replace: () => {} });
   const { ctx, sent } = await phone();
   /** @type {number[][]} */ const said = [];
   await handOver(ctx, 'Our bookings', [file('a.txt', 'a'), file('b.txt', 'b'), file('c.txt', 'c')], { progress: (done, total) => said.push([done, total]) });
@@ -59,7 +59,7 @@ test('handOver keeps the files one at a time, saying how far it is, then hands t
 });
 
 test('a file that runs out of room part-way: what was kept is handed over, and a card says what was not', async () => {
-  globalThis.location ??= /** @type {any} */ ({ hash: '#/talk' });
+  globalThis.location ??= /** @type {any} */ ({ hash: '#/talk', replace: () => {} });
   const { ctx, sent, cards, trip, ws } = await phone({ full: '/files/b.txt' });
   await handOver(ctx, '', [file('a.txt', 'a'), file('b.txt', 'b'), file('c.txt', 'c')]);
   assert.deepEqual(sent[0].handed.map((/** @type {any} */ f) => f.path), ['/trip/files/a.txt']);
@@ -69,7 +69,7 @@ test('a file that runs out of room part-way: what was kept is handed over, and a
 });
 
 test("a file asked about from another conversation isn't handed over in this one: its chip names the other trip's file", async () => {
-  globalThis.location ??= /** @type {any} */ ({ hash: '#/talk' });
+  globalThis.location ??= /** @type {any} */ ({ hash: '#/talk', replace: () => {} });
   const { ctx, sent, other, ws } = await phone();
   await ws.write(other, '/files/temple.pdf', 'temple', { author: 'user', type: 'application/pdf' });
   await handOver(ctx, 'And this?', [{ scope: other, path: '/files/temple.pdf' }]);
@@ -77,7 +77,7 @@ test("a file asked about from another conversation isn't handed over in this one
 });
 
 test('a calendar file kept in a trip says how many of its events went on the plan', async () => {
-  globalThis.location ??= /** @type {any} */ ({ hash: '#/talk' });
+  globalThis.location ??= /** @type {any} */ ({ hash: '#/talk', replace: () => {} });
   const { ctx, sent } = await phone();
   const ics = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:a@test.invalid\r\nDTSTART:20261120T180000Z\r\nDTEND:20261120T190000Z\r\nSUMMARY:Dinner\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n';
   await handOver(ctx, '', [{ file: Object.assign(new Blob([ics], { type: 'text/calendar' }), { name: 'dinner.ics' }) }, file('a.txt', 'a')]);
@@ -85,7 +85,7 @@ test('a calendar file kept in a trip says how many of its events went on the pla
 });
 
 test('another conversation opened while the files were kept: the message goes to the one they were kept for, written into it', async () => {
-  globalThis.location ??= /** @type {any} */ ({ hash: '#/talk' });
+  globalThis.location ??= /** @type {any} */ ({ hash: '#/talk', replace: () => {} });
   const { ctx, sent, other } = await phone();
   /** @type {any[]} */ const woken = [];
   const agent = /** @type {any} */ (ctx.agent);
@@ -99,7 +99,7 @@ test('another conversation opened while the files were kept: the message goes to
 });
 
 test("a booking's chip is named by its title; its HandedFile is a reference", async () => {
-  globalThis.location ??= /** @type {any} */ ({ hash: '#/talk' });
+  globalThis.location ??= /** @type {any} */ ({ hash: '#/talk', replace: () => {} });
   assert.deepEqual(handedOf({ scope: 'trip-x', path: '/bookings/flight.json' }, { type: 'application/json', name: 'ANNAI AIR AN 123' }), { path: '/trip/bookings/flight.json', type: 'application/json', name: 'ANNAI AIR AN 123', new: false });
   const { ctx, sent, trip, ws } = await phone();
   await ws.write(trip, '/bookings/flight.json', { id: 'flight', kind: 'flight', status: 'unverified', source: '/files/flight.pdf', title: 'ANNAI AIR AN 123', unsure: [] }, { author: 'user' });

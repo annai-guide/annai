@@ -1,5 +1,6 @@
 import { h, t, messageOf } from './dom.js';
-import { parseHash } from './router.js';
+import { parseHash, redirectOf } from './router.js';
+import { talkOf } from './open-trip.js';
 import { createNotices } from './notices.js';
 import { installBanner } from './install.js';
 import { setPendingImport } from './import-state.js';
@@ -46,7 +47,7 @@ import { uiSignature, syncThemes, cleanUp, slotEntries, component, dockKey, plug
 /** @type {Record<string, (ctx: any, route: any) => Promise<Node>>} */
 /** The top bar's tab each screen belongs to, where it isn't the screen's own name. */
 const SECTION = /** @type {Record<string, string>} */ ({
-  sees: 'talk',
+  sees: 'talk', talk: 'talk',
   trip: 'trips', file: 'trips', 'waiting-file': 'trips', booking: 'plan', item: 'plan', plan: 'plan', recap: 'trips', replay: 'trips', 'trip-ext': 'trips', import: 'trips', drive: 'now',
   plugins: 'settings', add: 'settings', 'plugin-install': 'settings', 'plugin-page': 'settings', models: 'settings', shiori: 'settings', tools: 'settings',
   voice: 'settings', languages: 'settings', backups: 'settings', notifications: 'settings', simulate: 'settings', mcp: 'settings', about: 'settings', experimental: 'settings', updates: 'settings',
@@ -221,6 +222,16 @@ export function startShell(root, core) {
   const superseded = (my) => (landedAt > my ? undefined : landing.promise);
   /** @param {{ moved?: boolean }} [o] moved: a new screen or an entry of the history, not a redraw of this one */
   async function render(o = {}) {
+    // An address that names no trip goes to the open one's, in place of this entry, so Back never lands on it again and bounces. A
+    // redraw of another trip's conversation (Shiori moved on: a hand-over, an Undo) goes to the open one's the same way, opening nothing.
+    const asked = parseHash(location.hash);
+    const target = core.agent?.target ?? null;
+    const to = redirectOf(asked, target)
+      ?? (!o.moved && asked.name === 'talk' && asked.parts[0] === 'trip' && asked.parts[1] !== target ? talkOf(ctx) : null);
+    if (to) {
+      location.replace(to);
+      return landing.promise; // its hashchange draws it
+    }
     const my = ++seq;
     if (o.moved) {
       // Where you were on the screen you're leaving, now: a scroll event can come a frame late, after the move.
@@ -229,7 +240,7 @@ export function startShell(root, core) {
       pending = arrive();
     }
     cleanUp('screen', my); // what plugins drew on the screen before
-    const route = parseHash(location.hash);
+    const route = asked;
     // A file opened from the Plan, a booking or Now is in that tab.
     const from = ['file', 'booking', 'item'].includes(route.name) ? cameFrom(route.params.from, route.parts[1], core.agent?.trip ?? null) : null;
     const at = from ? parseHash(from.hash) : route;

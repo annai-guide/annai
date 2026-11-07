@@ -182,7 +182,7 @@ test('Back from Now and from the Conversation', async ({ page }) => {
   await openAt(page, trip, '/bookings/stay.json', '#/talk');
   await expect(crumbOf(page)).toContainText('Conversation');
   await crumbOf(page).click();
-  await expect(page).toHaveURL(/#\/talk$/);
+  await expect(page).toHaveURL(/\/talk$/);
 });
 
 test("Back from a plan item's details, both ways; Open and Change it come back here", async ({ page }) => {

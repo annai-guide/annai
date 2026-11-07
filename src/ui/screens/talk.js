@@ -17,7 +17,7 @@ import { readNames } from '../../core/names.js';
 import { FILES_ONLY, undoable, undoEverywhere } from '../../core/handover.js';
 import { removeTripNow } from './trip.js';
 import { onTap } from '../dock-hides.js';
-import { openOrTell } from '../composer.js';
+import { openOrTell, openTrip, toTalk, talkOf } from '../open-trip.js';
 import { lineKind, lineClass, lineLabel, modelWords, kokorosWords } from '../line-kind.js';
 import { NOT_TRANSCRIBED } from '../../core/voice/resolve.js';
 
@@ -234,10 +234,12 @@ export async function follow(agent, scope, { read, show, state }) {
 /**
  * The conversation (spec §16.2): what the user wrote, what Shiori said and showed, her questions,
  * and system cards. Her private text and reasoning stay in the trace (§7.1).
- * @param {any} ctx
+ * @param {any} ctx @param {{ parts: string[] }} [route] "#/trip/<id>/talk", or "#/talk" while no trip is open
  */
-export async function renderTalk(ctx) {
+export async function renderTalk(ctx, route) {
   const agent = ctx.agent;
+  // At a trip's own address (#/trip/<id>/talk), moving there opens that trip; a trip that's gone goes home.
+  if (route?.parts[0] === 'trip' && !await openTrip(ctx, route.parts[1])) return h('div', { class: 'screen' });
   await agent.opening.catch(() => {}); // after a start or a trip change, the conversation is still being read
   // What Shiori's halves tell each other shows, and her spoken lines show their words, unless Settings say not (spec §16.1).
   const app = await readAppSettings(ctx.ws);
@@ -347,7 +349,7 @@ export async function renderTalk(ctx) {
       const shown = m && Object.hasOwn(theirs, m[2]) ? theirs[m[2]] : own;
       const name = h('span', { class: 'attach-name', dir: 'auto', text: shown });
       const title = shown !== own ? own : undefined;
-      chips.push(there && m ? h('a', { class: 'attach-chip', title, href: where === SYS_WAITING ? waitingHref(m[2]) : recordHref(/** @type {string} */ (where), m[2], '#/talk') }, name) : h('span', { class: 'attach-chip gone' }, name));
+      chips.push(there && m ? h('a', { class: 'attach-chip', title, href: where === SYS_WAITING ? waitingHref(m[2]) : recordHref(/** @type {string} */ (where), m[2], talkOf(ctx)) }, name) : h('span', { class: 'attach-chip gone' }, name));
     }
     return h('div', { class: 'chips handed' }, ...chips);
   };
@@ -623,8 +625,8 @@ function undoLine(ctx, scope, list) {
       if (!waiting && back.length) {
         await updateAppSettings(ctx.ws, { activeTrip: back[0].id });
         await openOrTell(ctx, back[0].id);
-        if (!location.hash.startsWith('#/talk')) ctx.go('#/talk');
-        else await ctx.render();
+        if (location.hash === talkOf(ctx)) await ctx.render();
+        else toTalk(ctx);
       } else if (waiting || removed.length) ctx.go('#/trips');
     } catch (e) {
       button.disabled = false;

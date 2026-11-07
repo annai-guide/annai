@@ -9,6 +9,7 @@ import { platform } from '../platform.js';
 import { saveFile } from '../save.js';
 import { todayOf, todayTop, drivingTrip } from '../today.js';
 import { ask } from '../ask.js';
+import { openTrip } from '../open-trip.js';
 import { detailsHref, rowName, lineName, dateRange, day, distance, num, list, sentences, sentenceGap } from '../format.js';
 
 /** The tab picked on each history entry, per trip: a redraw or coming back keeps it, a new entry opens today's. @type {Map<string, string>} */
@@ -23,8 +24,11 @@ export const startTab = (tabs, today, keep) => tabs.find((x) => x.key === keep) 
  * @param {any} ctx @param {{ parts: string[] }} route
  */
 export async function renderPlan(ctx, route) {
-  const id = route.parts[0] === 'trip' ? route.parts[1] : (ctx.agent?.target ?? (await readAppSettings(ctx.ws)).activeTrip ?? null);
-  const scope = id ? await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(id)) : null;
+  const own = route.parts[0] === 'trip';
+  const id = own ? route.parts[1] : (ctx.agent?.target ?? (await readAppSettings(ctx.ws)).activeTrip ?? null);
+  // At a trip's own address, its conversation opens, as on its other screens; a trip that's gone goes home.
+  const scope = own ? await openTrip(ctx, id) : id ? await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(id)) : null;
+  if (own && !scope) return h('div', { class: 'screen' });
   if (!id || !scope || scope.kind !== 'trip') {
     return h('div', { class: 'screen' }, h('h1', { class: 'title', text: t`Itinerary` }), h('p', { class: 'empty' }, t`Open a trip to see its itinerary.`, sentenceGap(), h('a', { href: '#/trips' }, t`Go to Trips`)));
   }
