@@ -1,5 +1,5 @@
 {
-  "build": "ded868030c60",
+  "build": "c6ecc26c5114",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -68,7 +68,7 @@
     "/src/core/errors.js": "da2a5ee37cc1",
     "/src/core/events.js": "96ea2d451049",
     "/src/core/forget.js": "908a7cc35221",
-    "/src/core/handover.js": "2bfe73fd8215",
+    "/src/core/handover.js": "bc3888136d01",
     "/src/core/hash.js": "e3cf309df8cf",
     "/src/core/hooks.js": "61bf90a384c1",
     "/src/core/html-text.js": "ad9b5709befa",
