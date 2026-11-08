@@ -4,7 +4,7 @@ import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip, listTrips, syncTripTitles, scopeTitle, ME } from '../../src/core/scopes.js';
-import { ensureDraft, chatName, Chats, DRAFT_TITLE } from '../../src/core/chats.js';
+import { ensureDraft, chatName, Chats, DRAFT_TITLE, herDating, undoDating } from '../../src/core/chats.js';
 import { record, INLINE_MAX } from '../../src/core/agent/log.js';
 import { NOT_TRANSCRIBED } from '../../src/core/voice/resolve.js';
 import { PHOTO_ONLY } from '../../src/core/agent/loop.js';
@@ -219,6 +219,58 @@ test('no draft ready yet: whenReady waits for one', async () => {
   chats.start();
   const id = await waited;
   assert.equal(id, chats.ready);
+});
+
+/** A conversation started by voice: heard with no words, so the draft is spent unnamed; she dates it in her turn; the words come after the turn (heard.text). */
+async function voiceFirst(/** @type {Record<string, unknown>} */ patch) {
+  const k = await kit();
+  await k.chats.start();
+  const draft = /** @type {string} */ (k.chats.ready);
+  await k.agent.log(draft, { type: 'heard', actor: 'user', data: { id: 'h1' } });
+  await k.spent(draft);
+  await k.ws.patch(draft, '/trip.json', patch, { author: 'shiori' });
+  await k.agent.log(draft, { type: 'heard.text', actor: 'system', data: { of: 'h1', text: 'Plan our weekend in Testville. The 20th to the 22nd.' } });
+  await k.settle();
+  return { ...k, draft };
+}
+
+test("her dating of a voice-first chat: the dates line follows the dates, not trip.json's newest author, and Undo keeps the name given after (dates only)", async () => {
+  const { ws, store, draft } = await voiceFirst({ start: '2027-03-20', end: '2027-03-22' });
+  const now = await store.tx(['files'], 'readonly', (t) => t.getFile(draft, '/trip.json'));
+  assert.equal(now?.author, 'system', 'the naming write came after hers');
+  assert.equal((await ws.readJSON(draft, '/trip.json')).title, 'Plan our weekend in Testville.');
+  const before = await herDating(store, draft);
+  assert.ok(before, 'still hers to undo');
+  await undoDating(ws, draft, before);
+  const trip = await ws.readJSON(draft, '/trip.json');
+  assert.equal(trip.title, 'Plan our weekend in Testville.', 'the name stays');
+  assert.equal(trip.start, undefined);
+  assert.equal(trip.end, undefined);
+  assert.equal((await store.tx(['files'], 'readonly', (t) => t.getFile(draft, '/trip.json')))?.author, 'user');
+  assert.equal(await herDating(store, draft), null, 'undone');
+});
+
+test("her dating of a voice-first chat that also named it: Undo puts the dates back and keeps her title, not the draft's", async () => {
+  const { ws, store, draft } = await voiceFirst({ title: 'Testville', start: '2027-03-20', end: '2027-03-22' });
+  assert.equal((await ws.readJSON(draft, '/trip.json')).title, 'Testville', 'the words came after, and named nothing');
+  const before = await herDating(store, draft);
+  assert.ok(before);
+  await undoDating(ws, draft, before);
+  const trip = await ws.readJSON(draft, '/trip.json');
+  assert.equal(trip.title, 'Testville');
+  assert.equal(trip.start, undefined);
+  assert.equal(await herDating(store, draft), null);
+});
+
+test('the dates line goes when the dates are no longer hers: changed by the user after, or never hers', async () => {
+  const { ws, store, draft } = await voiceFirst({ start: '2027-03-20', end: '2027-03-22' });
+  assert.ok(await herDating(store, draft));
+  await ws.patch(draft, '/trip.json', { end: '2027-03-23' }, { author: 'user' });
+  assert.equal(await herDating(store, draft), null, 'the user moved the end');
+  const own = await createTrip(ws, { title: 'Big Sur', start: '2027-04-01', end: '2027-04-03' });
+  assert.equal(await herDating(store, own), null, 'a trip dated when it was made');
+  const chat = await createTrip(ws, { title: 'Ramen' });
+  assert.equal(await herDating(store, chat), null, 'a chat');
 });
 
 test('a draft that cannot be made: whenReady rejects, and the next call tries again', async () => {

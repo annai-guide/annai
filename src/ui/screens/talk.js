@@ -8,6 +8,7 @@ import { tidyFailed, PHOTO_ONLY } from '../../core/agent/loop.js';
 import { planWords } from '../../core/live/plan-watches.js';
 import { storedTexts } from '../../core/agent/log.js';
 import { blobBytes } from '../../core/reach.js';
+import { herDating, undoDating } from '../../core/chats.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { undoTuning } from '../../core/agent/personalities.js';
 import { formatCost, wording, mark, sentences, sentenceGap, list as listed, recordHref, waitingHref, rowName } from '../format.js';
@@ -638,8 +639,8 @@ export async function nextLine(ctx, id) {
 }
 
 /**
- * "Shiori set the dates", with Undo, while trip.json is her patch that first dated it: a chat became a trip. Read from that write's log entry, which
- * keeps the version before; Undo puts it back as the user's, so the row goes back to a line. Drawn again whenever trip.json changes.
+ * "Shiori set the dates", with Undo, while the dates are the ones her patch gave a chat: it became a trip. Undo puts the dates back as the user's, so
+ * the row goes back to a line, and keeps a name given since (herDating, undoDating). Drawn again whenever trip.json changes.
  * @param {any} ctx @param {string} scope @returns {{ el: HTMLElement, off: () => void }}
  */
 function datesLine(ctx, scope) {
@@ -647,15 +648,15 @@ function datesLine(ctx, scope) {
   let drawn = 0;
   const draw = async () => {
     const mine = ++drawn;
-    const e = await herDating(ctx.store, scope).catch(() => null);
+    const before = await herDating(ctx.store, scope).catch(() => null);
     if (mine !== drawn) return;
-    el.hidden = !e;
-    if (!e) return void el.replaceChildren();
+    el.hidden = !before;
+    if (!before) return void el.replaceChildren();
     const undo = h('button', {
       class: 'btn ghost', type: 'button', 'aria-label': t`Undo the dates Shiori set`,
       onclick: async () => {
         undo.disabled = true;
-        await ctx.ws.restore(scope, '/trip.json', e.data.old, { author: 'user' }).catch((/** @type {unknown} */ x) => {
+        await undoDating(ctx.ws, scope, before).catch((/** @type {unknown} */ x) => {
           undo.disabled = false;
           ctx.notices.toast(messageOf(x));
         });
@@ -666,30 +667,6 @@ function datesLine(ctx, scope) {
   draw();
   const off = ctx.ws.onChange((/** @type {{ scope: string, path: string }} */ c) => { if (c.scope === scope && c.path === '/trip.json') draw(); });
   return { el, off };
-}
-
-/**
- * The write of Shiori's that dated a conversation, while it is still trip.json's version: her patch, whose version before had no start and whose own has one.
- * @param {any} store @param {string} scope @returns {Promise<any | null>} its file.write entry
- */
-async function herDating(store, scope) {
-  const { now, e } = await store.tx(['files', 'events'], 'readonly', async (/** @type {any} */ x) => {
-    const now = await x.getFile(scope, '/trip.json');
-    if (now?.author !== 'shiori') return { now, e: null }; // most conversations: one read, no log
-    const writes = await x.listEvents(scope, { types: ['file.write'], reverse: true });
-    return { now, e: writes.find((/** @type {any} */ w) => w.data?.path === '/trip.json') ?? null };
-  });
-  if (!e || e.actor !== 'shiori' || e.data?.new !== now?.hash || typeof e.data?.old !== 'string') return null;
-  const json = async (/** @type {string} */ hash) => {
-    const bytes = await blobBytes(store, scope, hash);
-    try {
-      return bytes ? JSON.parse(new TextDecoder().decode(bytes)) : null;
-    } catch {
-      return null;
-    }
-  };
-  const [before, after] = await Promise.all([json(e.data.old), json(e.data.new)]);
-  return !before?.start && after?.start ? e : null;
 }
 
 /**

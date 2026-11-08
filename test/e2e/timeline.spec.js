@@ -217,7 +217,7 @@ test('voice on: an open mic can be stopped from home, and ← leaves voice on', 
   }
 });
 
-test("Shiori's patch dates the open chat: its row becomes a card below now, and the conversation says so with Undo; Undo puts it back as a line, after a reload too; a date set in Details says nothing", async ({ page }) => {
+test("Shiori's patch dates the open chat: its row becomes a card below now, and the conversation says so with Undo; Undo takes the dates back, so it is a line again, named as she named it, after a reload too; a date set in Details says nothing", async ({ page }) => {
   await openApp(page, '#/trips');
   const [start, end] = await page.evaluate(async () => {
     const { dayIn, deviceZone } = await import(/** @type {string} */ ('/src/core/time.js'));
@@ -246,10 +246,10 @@ test("Shiori's patch dates the open chat: its row becomes a card below now, and 
     await line.getByRole('button', { name: 'Undo' }).click();
     await expect(line).toBeHidden();
     await page.getByRole('link', { name: 'Back to Trips' }).click();
-    await expect(row(page, 'Plan our weekend in Testville')).toHaveClass(/\bline\b/);
+    await expect(row(page, 'Testville')).toHaveClass(/\bline\b/); // her title stays: Undo takes back the dates
     await page.reload();
-    await expect(row(page, 'Plan our weekend in Testville')).toHaveClass(/\bline\b/);
-    await row(page, 'Plan our weekend in Testville').click();
+    await expect(row(page, 'Testville')).toHaveClass(/\bline\b/);
+    await row(page, 'Testville').click();
     await expect(page.locator('.convo')).toContainText('I set it for the 10th to the 12th.');
     await expect(line).toBeHidden();
     // The user's own dates, from Details: no such line.

@@ -10,7 +10,7 @@
 
 import { NAMES_FILE, readNames } from './names.js';
 import { moveFile } from './waiting.js';
-import { blobBytes } from './reach.js';
+import { blobJSON } from './reach.js';
 import { SYS_WAITING, talks } from './scopes.js';
 import { FILE_BOOKING } from './bookings.js';
 
@@ -175,13 +175,8 @@ async function nameBefore(ws, scope, path, seq) {
   const [version] = (await ws.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['file.write'], before: seq, reverse: true })))
     .filter((e) => e.data?.path === NAMES_FILE);
   if (!version?.data?.new) return null;
-  const bytes = await blobBytes(ws.store, scope, version.data.new, { quiet: true });
-  try {
-    const names = bytes ? JSON.parse(new TextDecoder().decode(bytes)) : null;
-    return typeof names?.[path] === 'string' ? names[path] : null;
-  } catch {
-    return null;
-  }
+  const names = await blobJSON(ws.store, scope, version.data.new, { quiet: true });
+  return typeof names?.[path] === 'string' ? names[path] : null;
 }
 
 /**
