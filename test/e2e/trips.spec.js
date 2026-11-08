@@ -1097,6 +1097,26 @@ test("a reload while the photo viewer is open shows its file, and Back then goes
   await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}`);
 });
 
+test("a reload while the photo viewer is open, after the screen ahead of its file was cut off: Forward does nothing, and Back goes on to the screen before", async ({ page }) => {
+  await openApp(page);
+  const id = await startNamed(page, 'Kyoto');
+  const screen = await viewerOverFile(page);
+  await page.goBack(); // closes the viewer
+  await expect(page.getByRole('dialog', { name: /^Photo / })).toHaveCount(0);
+  await goToHash(page, '#/settings'); // a screen ahead of the file
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  await page.goBack();
+  await page.getByRole('button', { name: 'Open the photo full size' }).click(); // its entry cuts Settings off
+  await expect(page.getByRole('dialog', { name: /^Photo / })).toBeVisible();
+  await page.reload(); // as an iPhone reloads an app it set aside
+  await expect(page.getByRole('button', { name: 'Open the photo full size' })).toBeVisible();
+  await expect.poll(() => idxOf(page)).toBe(screen);
+  await page.goForward(); // only the closed viewer's entry is ahead
+  await expect.poll(() => idxOf(page)).toBe(screen);
+  await page.goBack(); // a different screen, not the file again
+  await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}`);
+});
+
 test("Back past the entry a photo viewer left behind lands on its screen once, not twice", async ({ page }) => {
   await openApp(page);
   const nara = await startNamed(page, 'Nara');
