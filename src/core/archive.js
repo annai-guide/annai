@@ -181,9 +181,9 @@ export async function exportArchive(store, opts) {
   }
   const all = await store.tx(['scopes'], 'readonly', (t) => t.listScopes());
   const scopes = opts.kind === 'trip'
-    ? all.filter((s) => s.kind === 'trip' && (opts.scopes ?? []).includes(s.id))
-    // This device's own scope never travels (spec §12.4); the system log goes only with history.
-    : all.filter((s) => s.id !== SYS_DEVICE && (s.id !== SYS || include.history));
+    ? all.filter((s) => s.kind === 'trip' && !s.draft && (opts.scopes ?? []).includes(s.id))
+    // This device's own scope never travels (spec §12.4), nor the standing draft, which is no conversation yet; the system log goes only with history.
+    : all.filter((s) => s.id !== SYS_DEVICE && !s.draft && (s.id !== SYS || include.history));
   if (!scopes.length) throw new ArchiveError(/* en */ `There is nothing to export.`, { said: { code: 'nothing' } });
 
   /** @type {Manifest} */

@@ -58,7 +58,7 @@ const SCREENS = { sees: renderSees, trips: renderTrips, trip: renderTrip, file: 
 /**
  * @param {HTMLElement} root
  * @param {{ store: any, ws: any, registry: any, plugins: any, llm?: any, agent?: any, voice?: any, live?: any, awake?: any, pack?: any, presets?: Record<string, string>, backups?: any, sim?: any, push?: any,
- *   updates: import('./updates.js').Updates, version: string }} core
+ *   updates: import('./updates.js').Updates, chats?: import('../core/chats.js').Chats, version: string }} core
  */
 export function startShell(root, core) {
   const notices = createNotices();
