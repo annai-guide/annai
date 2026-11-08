@@ -395,6 +395,36 @@ test('on Android with no CloseWatcher, the question is not a modal dialog: the p
   await expect(question).toBeVisible();
 });
 
+for (const iphone of [false, true]) {
+  test(`a question open when the user moves to another screen closes as Cancel: a Forward, a tapped reminder${iphone ? ' (no CloseWatcher, as on an iPhone)' : ''}`, async ({ page }) => {
+    if (iphone) await page.addInitScript(() => { delete (/** @type {any} */ (window)).CloseWatcher; });
+    await openApp(page);
+    const nara = await startNamed(page, 'Nara');
+    await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+    const kyoto = await startNamed(page, 'Kyoto');
+    const question = page.getByRole('dialog', { name: 'Kyoto' });
+    if (!iphone && await page.evaluate(() => 'CloseWatcher' in window)) { // no entry of its own: Settings is still ahead
+      await goToHash(page, '#/settings');
+      await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+      await page.goBack();
+      await page.getByRole('button', { name: 'Remove trip' }).click();
+      await expect(question).toBeVisible();
+      await page.goForward();
+      await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+      await expect(question).toHaveCount(0);
+      await page.goBack();
+    }
+    await page.getByRole('button', { name: 'Remove trip' }).click();
+    await expect(question).toBeVisible();
+    await page.evaluate((id) => navigator.serviceWorker.dispatchEvent(new MessageEvent('message', { data: { type: 'annai.open', scope: id } })), nara);
+    await expect.poll(() => hashOf(page)).toBe(`#/trip/${nara}/talk`);
+    await expect(question).toHaveCount(0);
+    await page.goBack(); // over the question's entry, if it had one: Kyoto's Details, still there
+    await expect(page.getByRole('heading', { level: 1, name: 'Kyoto' })).toBeVisible();
+    expect(hashOf(page)).toBe(`#/trip/${kyoto}`);
+  });
+}
+
 test('where the browser closes a question on Back itself (CloseWatcher), annai adds no history entry of its own', async ({ page }) => {
   await openApp(page);
   test.skip(!(await page.evaluate(() => 'CloseWatcher' in window)), 'this browser has no CloseWatcher');

@@ -168,6 +168,24 @@ test('a screen the user goes to while Undo runs is kept: Undo from the no-trip c
   }
 });
 
+test("a screen of the trip Undo removes, gone to while it runs, is left the way Remove trip leaves it, not kept", async ({ page }) => {
+  const llm = await startModelServer({ [MESSAGES]: anchorage() });
+  try {
+    await setUp(page, llm.origin);
+    await handAnchorage(page); // in Anchorage's conversation: Undo takes the trip away
+    await expect(page.getByRole('button', { name: 'Undo what Shiori did with these files' })).toBeVisible();
+    await page.evaluate(() => { // Undo, and in the same moment the trip's Itinerary: Undo ends after it
+      /** @type {HTMLButtonElement} */ (document.querySelector('button[aria-label="Undo what Shiori did with these files"]')).click();
+      /** @type {HTMLAnchorElement} */ (document.querySelector('nav.topnav a[href="#/plan"]')).click();
+    });
+    await expect(page.getByText(`Undone. ${TITLE} is removed, and your files are waiting with Shiori.`)).toBeVisible();
+    await expect.poll(() => new URL(page.url()).hash).toBe('#/trips');
+    await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
+  } finally {
+    await llm.stop();
+  }
+});
+
 test('Undo takes back what she did; the trip she started goes, and the files wait with Shiori again', async ({ page }) => {
   const llm = await startModelServer({ [MESSAGES]: anchorage() });
   try {

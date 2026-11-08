@@ -22,6 +22,7 @@ import { FILES_ONLY, undoable, undoEverywhere } from '../../core/handover.js';
 import { removeTripNow } from './trip.js';
 import { onTap } from '../dock-hides.js';
 import { openOrTell, openTrip, toTalk, talkOf } from '../open-trip.js';
+import { parseHash } from '../router.js';
 import { lineKind, lineClass, lineLabel, modelWords, kokorosWords } from '../line-kind.js';
 import { NOT_TRANSCRIBED } from '../../core/voice/resolve.js';
 
@@ -651,9 +652,10 @@ function undoLine(ctx, scope, list) {
     try {
       await settled(ctx.agent);
       // The trips its files went to, this conversation, and the one it was handed in: each told, through its own log while it is open.
-      let leaving = false; // this conversation's own trip goes: left as Remove trip leaves it
+      /** @type {Set<string>} the trips it removes: a screen of one is left as Remove trip leaves it, wherever the user tapped */
+      const gone = new Set();
       const { removed, kept, waiting, back } = await undoEverywhere(ctx.ws, scope, hh, {
-        remove: (s) => { leaving ||= s === scope; return removeTripNow(ctx, s); },
+        remove: (s) => { gone.add(s); return removeTripNow(ctx, s); },
         log: (s) => (s === ctx.agent.scope ? (/** @type {any} */ ev) => ctx.agent.log(ev) : undefined),
       });
       done();
@@ -665,15 +667,17 @@ function undoLine(ctx, scope, list) {
             : plural(removed.length, 'Undone. {0} is removed.', 'Undone. {0} are removed.', listed(removed))
         : waiting ? t`Undone. Your files are waiting with Shiori again.` : back.length ? t`Undone. Your files are back in ${home}.` : t`Undone.`;
       ctx.notices.toast(kept ? sentences(said, plural(kept, 'Left # file as you changed it.', 'Left # files as you changed them.')) : said);
+      const on = () => { const at = parseHash(location.hash); return at.parts[0] === 'trip' && gone.has(at.parts[1] ?? '') ? at.parts[1] : null; };
       if (!waiting && back.length) {
         await updateAppSettings(ctx.ws, { activeTrip: back[0].id });
         await openOrTell(ctx, back[0].id);
-        if (location.hash !== here && location.hash !== talkOf(ctx)) return;
+        if (location.hash !== here && !on() && location.hash !== talkOf(ctx)) return;
         if (location.hash === talkOf(ctx)) await ctx.render();
         else toTalk(ctx);
-      } else if (location.hash !== here) return;
+      } else if (location.hash !== here && !on()) return;
       else if (waiting || removed.length) {
-        if (leaving) ctx.removed(scope);
+        const id = on();
+        if (id) ctx.removed(id);
         else ctx.go('#/trips');
       }
     } catch (e) {
