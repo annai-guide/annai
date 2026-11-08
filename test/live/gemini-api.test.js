@@ -1,7 +1,7 @@
 // Opt-in: Gemini's own API (the gemini-api plugin, G1 to G4) with your own key. Never in CI.
-//   GEMINI_KEY="$(sed -n 1p /root/annai-test-keys/gemini)" node --test test/live/gemini-api.test.js
+//   GEMINI_KEY="$(sed -n 1p /root/keys/gemini)" node --test test/live/gemini-api.test.js
 // Google Search (G4) needs a key on a paid project, as GEMINI_PAID_KEY: a free key's request with it is refused at once.
-//   GEMINI_PAID_KEY="$(sed -n 2p /root/annai-test-keys/gemini)" node --test --test-name-pattern="Google Search" test/live/gemini-api.test.js
+//   GEMINI_PAID_KEY="$(sed -n 2p /root/keys/gemini)" node --test --test-name-pattern="Google Search" test/live/gemini-api.test.js
 // GEMINI_RECORD=1 keeps the write-and-patch test's two streamed answers as test/fixtures/gemini/tools-*.sse (no key in them).
 // It pauses 13 s between calls to one model (a free key's flash allows 5 a minute; flash-lite more), and skips, saying
 // so, when the free day is used up. What Google changes in the Interactions API shows up here first.
