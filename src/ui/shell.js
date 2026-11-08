@@ -298,11 +298,17 @@ export function startShell(root, core) {
       if (returning) { // back at the entry it left, whose screen is still shown
         returning = passing = false;
         steps = 0;
+        pending = null; // nothing is drawn: a later redraw keeps its place
         return;
+      }
+      const overlay = history.state?.annaiViewer || history.state?.annaiAsk;
+      if (overlay && !shown.name) { // a reload on what was open over a screen: that screen, the entry behind
+        passing = true;
+        history.back();
+        return landing.promise;
       }
       // Back or Forward goes on over a gone trip's entries, those at the address it left, and an overlay's entry reached from another address.
       const canGo = way < 0 ? lastIdx > 0 : way > 0 && lastIdx < top;
-      const overlay = way !== 0 && (history.state?.annaiViewer || history.state?.annaiAsk);
       const skip = gone || (canGo && overlay) || (passing && lastHash === shown.hash) || (removing && asked.name === 'trips');
       if (skip || removing) {
         const on = skip && canGo;
@@ -373,10 +379,12 @@ export function startShell(root, core) {
   addEventListener('hashchange', () => render({ moved: true }));
   // Passing can land on an entry at the same address, which fires no hashchange.
   addEventListener('popstate', () => {
-    if (passing && location.hash === lastHash) render({ moved: true });
-    // Forward onto an overlay's entry once its viewer or question is closed: on to what is ahead, or back, so it shows nothing twice.
     const st = history.state;
-    if (!passing && (st?.annaiViewer || st?.annaiAsk) && st.annaiIdx > lastIdx && !document.querySelector('.viewer, dialog.ask')) history.go(st.annaiIdx < top ? 1 : -1);
+    if (location.hash !== lastHash) return; // a hashchange follows
+    if (passing) render({ moved: true });
+    else if (st?.annaiIdx === lastIdx) top = lastIdx; // back from what was open over this screen: its entry was the newest
+    // Forward onto an overlay's entry, closed (each closes at any popstate): on to what is ahead, or back, so it shows nothing twice.
+    else if ((st?.annaiViewer || st?.annaiAsk) && st.annaiIdx > lastIdx) history.go(st.annaiIdx < top ? 1 : -1);
   });
 
   // Swiping a screen sideways moves to the next or the previous tab of the top bar. Not from the screen's edges

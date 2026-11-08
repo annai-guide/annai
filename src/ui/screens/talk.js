@@ -646,6 +646,7 @@ function undoLine(ctx, scope, list) {
   };
   const run = async () => {
     const hh = /** @type {string} */ (handover);
+    const here = location.hash; // a screen the user goes to while it runs stands
     button.disabled = true;
     try {
       await settled(ctx.agent);
@@ -667,9 +668,11 @@ function undoLine(ctx, scope, list) {
       if (!waiting && back.length) {
         await updateAppSettings(ctx.ws, { activeTrip: back[0].id });
         await openOrTell(ctx, back[0].id);
+        if (location.hash !== here && location.hash !== talkOf(ctx)) return;
         if (location.hash === talkOf(ctx)) await ctx.render();
         else toTalk(ctx);
-      } else if (waiting || removed.length) {
+      } else if (location.hash !== here) return;
+      else if (waiting || removed.length) {
         if (leaving) ctx.removed(scope);
         else ctx.go('#/trips');
       }

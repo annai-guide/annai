@@ -147,6 +147,27 @@ test('Undo from a start on Trips leaves the trip the way Back does: Trips is the
   }
 });
 
+test('a screen the user goes to while Undo runs is kept: Undo from the no-trip conversation does not take them to Trips', async ({ page }) => {
+  const llm = await startModelServer({ [MESSAGES]: anchorage() });
+  try {
+    await setUp(page, llm.origin);
+    await handAnchorage(page);
+    await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+    await page.getByRole('button', { name: /Shiori, no trip/ }).click();
+    await expect(page.getByRole('button', { name: 'Undo what Shiori did with these files' })).toBeVisible();
+    await page.evaluate(() => { // Undo, and in the same moment a tap on Settings: Undo ends after it
+      /** @type {HTMLButtonElement} */ (document.querySelector('button[aria-label="Undo what Shiori did with these files"]')).click();
+      /** @type {HTMLAnchorElement} */ (document.querySelector('nav.topnav a[href="#/settings"]')).click();
+    });
+    await expect(page.getByText(`Undone. ${TITLE} is removed, and your files are waiting with Shiori.`)).toBeVisible();
+    await page.waitForTimeout(400);
+    expect(new URL(page.url()).hash).toBe('#/settings');
+    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  } finally {
+    await llm.stop();
+  }
+});
+
 test('Undo takes back what she did; the trip she started goes, and the files wait with Shiori again', async ({ page }) => {
   const llm = await startModelServer({ [MESSAGES]: anchorage() });
   try {
