@@ -197,4 +197,7 @@ test("an undated conversation's system text says how it becomes a trip, a dated 
   assert.equal(systemText(kept), systemText(undated));
   const dated = await takeSnapshot({ ws, registry, trip, personalityName: 'shiori' });
   assert.doesNotMatch(systemText(dated), /no dates/);
+  assert.doesNotMatch(systemText(dated), /# No trip is open/, 'a dated trip is open');
+  assert.doesNotMatch(systemText(undated), /# No trip is open/, 'so is a chat');
+  assert.match(systemText(await takeSnapshot({ ws, registry, trip: null, personalityName: 'shiori' })), /# No trip is open/);
 });
