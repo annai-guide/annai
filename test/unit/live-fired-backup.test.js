@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { liveKit, at, iso, off, MONTEREY } from './live-kit.js';
 import { exportArchive, peekArchive, importArchive, PRESETS } from '../../src/core/archive.js';
 import { readWatches, watchPath } from '../../src/core/live/watches.js';
+import { ME } from '../../src/core/scopes.js';
 
 /** A fired one-time reminder stays fired, across a backup and its import (the user, 2026-11-05): it rests on deletion: a fired one's file is gone, so a backup has none to fire. @param {any} k */
 async function backup(k) {
@@ -84,3 +85,24 @@ test('a repeating watch that has fired, rewritten as one-time under the same id 
   assert.equal(reminded(k, w.id), before + 1);
   assert.equal(await k.ws.read(k.trip, watchPath(w.id)), undefined, 'and goes');
 });
+
+for (const where of /** @type {const} */ (['the trip', 'Me'])) {
+  test(`a repeating watch that fired, deleted, then written back under its old id (${where}): it goes on from its last firing, not at once`, async () => {
+    const k = await liveKit({ start: at('09:00') });
+    const scope = where === 'Me' ? ME : k.trip;
+    k.agent.target = scope; // every kind of watch is looked at in the open conversation
+    const w = await k.live.setWatch(scope, { when: { type: 'every', minutes: 5 }, fallback: 'Stretch.' });
+    await k.to(at('09:06')); // fired once, at 09:05
+    assert.equal(reminded(k, w.id), 1);
+    const was = await k.ws.readJSON(scope, watchPath(w.id));
+    await k.ws.delete(scope, watchPath(w.id), { author: 'user' });
+    await k.settle();
+    await k.to(at('09:07'));
+    await k.ws.write(scope, watchPath(w.id), was, { author: 'user' }); // a restored file, or an Undo
+    await k.settle();
+    await k.to(at('09:08'));
+    assert.equal(reminded(k, w.id), 1, 'not said again at once');
+    await k.to(at('09:11'));
+    assert.equal(reminded(k, w.id), 2, 'the next one comes five minutes after the last');
+  });
+}

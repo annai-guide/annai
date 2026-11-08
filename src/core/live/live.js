@@ -1236,7 +1236,8 @@ export class Live {
 
   /** @param {string} scope */
   async #loadScope(scope) {
-    if (this.#behind) await this.#recall(scope); // first: a watch is never looked at without its firings
+    const owed = this.#behind;
+    if (owed) await this.#recall(scope); // first: a watch is never looked at without its firings
     // A simulation's trip: its watches are its run's alone.
     const info = scope === ME ? null : await this.ws.readJSON(scope, '/trip.json').catch(notJSON);
     this.#setStill(scope, info);
@@ -1247,6 +1248,8 @@ export class Live {
       return;
     }
     const { watches } = await readWatches(this.ws, scope);
+    // One written back under its old id (a restored file, an Undo) after its firing was dropped goes on from it, as a plan item made again does.
+    if (watches.length && !owed) await this.#recallPlan(scope, watches);
     if (watches.length) this.#watches.set(scope, watches);
     else this.#watches.delete(scope);
   }
