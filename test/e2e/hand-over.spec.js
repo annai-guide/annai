@@ -223,6 +223,43 @@ test("Undo that sends a file back to this trip, with a tap on the trip it remove
   }
 });
 
+test("after a reload on the conversation Undo left, a Forward over the removed trip's entry still reaches the screen ahead", async ({ page }) => {
+  const llm = await startModelServer({ [MESSAGES]: [
+    sse(anthropicToolReply([{ name: 'list_trips', input: {} }])),
+    sse(anthropicToolReply([{ name: 'start_trip', input: { title: 'Kyoto', start: '2026-12-01', end: '2026-12-05', places: ['Kyoto'], files: ['/trip/files/flight.pdf'] } }])),
+    sse(anthropicToolReply([{ name: 'speak', input: { text: 'That one is for Kyoto: I started it.' } }, { name: 'sleep', input: {} }])),
+    sse(anthropicToolReply([{ name: 'sleep', input: {} }])),
+  ] });
+  const hash = () => new URL(page.url()).hash;
+  try {
+    await modelSetUp(page, llm.origin, 'Big Sur');
+    const details = hash();
+    await handOver(page, [await fixture('flight.pdf', 'application/pdf')]);
+    await expect(page.locator('.convo').getByText('That one is for Kyoto: I started it.')).toBeVisible({ timeout: 60_000 });
+    await page.evaluate(() => { // as in the test above: Big Sur's conversation, then Kyoto's Details (gone), then the conversation again
+      /** @type {HTMLButtonElement} */ (document.querySelector('button[aria-label="Undo what Shiori did with these files"]')).click();
+      /** @type {HTMLAnchorElement} */ ([...document.querySelectorAll('.convo a')].find((a) => a.textContent === 'Shiori started Kyoto with these files.')).click();
+    });
+    await expect(page.getByText('Undone. Kyoto is removed, and your files are back in Big Sur.')).toBeVisible();
+    await expect.poll(hash).toBe(`${details}/talk`);
+    await page.getByRole('link', { name: 'Settings', exact: true }).click(); // a screen ahead
+    await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
+    await page.goBack();
+    await expect(page.locator('.talk-head .talk-name')).toHaveText('Big Sur');
+    await page.reload(); // as an iPhone reloads an app it set aside
+    await expect(page.locator('.talk-head .talk-name')).toHaveText('Big Sur', { timeout: 30_000 });
+    await page.goBack(); // over Kyoto's Details and the conversation's entry before it
+    await expect(page.getByRole('button', { name: 'Remove trip' })).toBeVisible();
+    await page.goForward();
+    await expect(page.locator('.talk-head .talk-name')).toHaveText('Big Sur');
+    await page.goForward(); // over Kyoto's Details and this conversation again, to Settings
+    await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
+    expect(hash()).toBe('#/settings');
+  } finally {
+    await llm.stop();
+  }
+});
+
 for (const iphone of [false, true]) {
   test(`"Start fresh?" open when Shiori opens the trip she started closes as Cancel: the conversation under it is another one${iphone ? ' (no CloseWatcher, as on an iPhone)' : ''}`, async ({ page }) => {
     if (iphone) await page.addInitScript(() => { delete (/** @type {any} */ (window)).CloseWatcher; });
