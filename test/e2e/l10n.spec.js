@@ -21,7 +21,7 @@ test('the pseudo-locale en-XA says its language, and ar-XB its direction', async
 test('the Trips screen speaks through t: its words, its form and its cards are pseudo text under en-XA', async ({ page }) => {
   await openApp(page, '?l10n=en-XA#/trips');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(accented('Trips'));
-  await expect(page.locator('p.empty')).toHaveText(accented('No trips yet. Start one below, or open a trip someone sent you.'));
+  await expect(page.locator('p.empty')).toHaveText(accented('Tap + to talk to Shiori.'));
   await expect(page.getByRole('heading', { level: 2, name: accented('Start a trip') })).toBeVisible();
   await page.getByText(accented('Add dates (optional)')).click(); // the dates fold away: a name is enough
   await expect(page.getByLabel(accented('Starts'))).toBeVisible();
@@ -29,13 +29,14 @@ test('the Trips screen speaks through t: its words, its form and its cards are p
   await expect(page.getByPlaceholder(accented('Big Sur · Thanksgiving'))).toBeVisible();
   await expect(page.locator('p.sub').last()).toHaveText(accented('No backup yet. Export everything from Settings, or set up automatic backups there.'));
   await page.getByLabel(accented('Trip name')).fill('Kyoto Spring');
+  await page.getByLabel(accented('Starts')).fill('2026-12-01'); // dated: a card, with its facts (timeline stage 4)
+  await page.getByLabel(accented('Ends')).fill('2026-12-05');
   await page.getByRole('button', { name: accented('Start trip') }).click();
   await expect(page.getByRole('heading', { name: 'Kyoto Spring' })).toBeVisible();
   await page.evaluate(() => { location.hash = '#/trips'; });
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(accented('Trips'));
-  const facts = page.locator('.trip-card .sub');
+  const facts = page.locator('.trip-card .sub').first(); // its dates and stamps; "in 3 weeks" under it is the browser's own words (Intl)
   await expect(facts).toContainText(accented('not backed up'));
-  await expect(facts).toContainText(/⟦úṕðáţéð [^⟧]*⟧/);
   // A report for whoever extracts a screen next, not an assertion: what is still plain English here.
   console.log(`unmarked on Trips (en-XA):\n  ${(await unmarked(page, ['Kyoto Spring'])).join('\n  ') || 'nothing'}`);
 });

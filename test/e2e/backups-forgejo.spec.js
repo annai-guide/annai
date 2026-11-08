@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, filterTrace, pastWelcome, allFiles } from './helpers.js';
+import { openApp, filterTrace, pastWelcome, allFiles, startTrip, goToHash } from './helpers.js';
 import { startForgejo } from '../fakes/forgejo.js';
 
 const REPO = 'me/annai-backup';
@@ -37,8 +37,7 @@ test('backups go to a Forgejo server, only what changed is sent, and a wiped pho
   try {
     await fastBackups(page);
     await openApp(page);
-    await page.getByLabel('Trip name').fill('Big Sur');
-    await page.getByRole('button', { name: 'Start trip' }).click();
+    const bigSur = await startTrip(page, 'Big Sur');
     await allFiles(page);
     await page.getByLabel('File path').fill('/notes/bixby.md');
     await page.getByRole('button', { name: 'Create' }).click();
@@ -61,8 +60,7 @@ test('backups go to a Forgejo server, only what changed is sent, and a wiped pho
     expect(files.has('annai-archive.json')).toBe(true);
 
     // A change goes up by itself too, and the photo isn't sent again.
-    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
-    await page.getByRole('link', { name: /Big Sur/ }).click();
+    await goToHash(page, `#/trip/${bigSur}`); // a row's tap opens its conversation (timeline stage 4)
     await page.getByRole('link', { name: /bixby\.md/ }).click();
     await page.getByLabel('Content').fill('Bixby Bridge, 1932, at dawn');
     await page.getByRole('button', { name: 'Save' }).click();
@@ -83,7 +81,7 @@ test('backups go to a Forgejo server, only what changed is sent, and a wiped pho
     await page.getByLabel('Type ERASE to confirm').fill('ERASE');
     await page.getByRole('button', { name: 'Erase now' }).click();
     await pastWelcome(page);
-    await expect(page.getByText('No trips yet.')).toBeVisible();
+    await expect(page.getByText('Tap + to talk to Shiori.')).toBeVisible();
     const mark = fj.log.length;
     /** The files of the backup the stand-in has sent since the wipe: every file but the manifest. */
     const sentFiles = () => fj.log.slice(mark).filter((l) => l.method === 'GET' && l.path.includes('/media/') && !l.path.endsWith('/media/annai-archive.json')).length;

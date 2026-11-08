@@ -133,6 +133,12 @@ export function startShell(root, core) {
   // The + is the shell's, shown on home whatever the dock (a plugin's has none): a new conversation, with no naming step.
   const plus = core.agent && core.chats ? h('button', { class: 'plus', type: 'button', 'aria-label': t`New conversation`, title: t`New conversation`, onclick: () => newConversation(ctx) }, '+') : null;
   root.replaceChildren(header, notices.el, installBanner(), main, notices.toasts, ...(dock ? [dock.el] : []), ...(plus ? [plus] : []));
+  // She speaks, listens or works: on home the whole dock shows, so an open microphone can be stopped there (shiori.css).
+  const busy = (/** @type {{ name: string }} */ s) => document.body.classList.toggle('dock-busy', s.name !== 'sleeping' && s.name !== 'offline');
+  if (core.agent) {
+    busy(core.agent.state);
+    core.agent.on('state', busy);
+  }
   // A screen's own sticky row (the Conversation's title and ⋯) sits right under the bar, however tall it is on this phone.
   if (typeof ResizeObserver === 'function') {
     new ResizeObserver(([e]) => document.documentElement.style.setProperty('--topbar-h', `${Math.floor(/** @type {HTMLElement} */ (e.target).getBoundingClientRect().height)}px`)).observe(header);
@@ -236,6 +242,8 @@ export function startShell(root, core) {
   let removing = false;
   /** The address of the draw begun last. */
   let lastHash = '';
+  /** The entry arrived at last is new: no place on it to come back to. */
+  let firstVisit = false;
   /** This history entry's key, and where to scroll to on it. @returns {number} */
   const arrive = () => {
     const st = history.state ?? {};
@@ -244,6 +252,7 @@ export function startShell(root, core) {
     way = idx < 0 || lastIdx < 0 ? 0 : Math.sign(idx - lastIdx);
     keepTop(seen || 'annaiIdx' in st ? Math.max(top, idx) : idx); // a new entry cuts off what was ahead
     lastIdx = idx;
+    firstVisit = !seen;
     if (seen) {
       entry = st.annaiScroll;
       return scrolls.get(entry) ?? 0;
@@ -382,10 +391,13 @@ export function startShell(root, core) {
       if (pending !== null) {
         const want = pending;
         pending = null;
-        scrollTo(0, want);
+        // Home, newly come to, opens with the now line 40% down; Back brings you to where you were on it. With nothing past there is
+        // nothing to scroll past: the screen stays at its top, its notices in view.
+        const now = route.name === 'trips' && firstVisit && !want && main.querySelector('.past > li') ? main.querySelector('.now-line') : null;
+        scrollTo(0, now ? Math.max(0, scrollY + now.getBoundingClientRect().top - 0.4 * innerHeight) : want);
         // A screen that fills in a moment later is scrolled again as it grows, for up to 2 seconds or until you
-        // touch it; not the Conversation, which goes to its last message itself.
-        if (want && route.name !== 'talk') follow(my, want);
+        // touch it; not the Conversation, which goes to its last message itself, nor home, drawn whole.
+        if (want && route.name !== 'talk' && route.name !== 'trips') follow(my, want);
       }
       land(my);
     } catch (e) {

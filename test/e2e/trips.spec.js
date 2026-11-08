@@ -12,6 +12,7 @@ async function startTrip(page, title) {
   await page.getByLabel('Ends').fill('2026-11-29');
   await page.getByRole('button', { name: 'Start trip' }).click();
   await expect(page.getByRole('heading', { name: title })).toBeVisible();
+  return decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
 }
 
 test('create a trip, edit a note, and restore an earlier version', async ({ page }) => {
@@ -105,17 +106,17 @@ test("a trip link can't open your profile or annai's own files", async ({ page }
 
 test('a trip card says when the trip was last backed up, and when it changed since', async ({ page }) => {
   await openApp(page);
-  await startTrip(page, 'Big Sur');
+  const id = await startTrip(page, 'Big Sur');
   const card = page.getByRole('link', { name: /Big Sur/ });
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
   await expect(card).toContainText('not backed up');
-  await card.click();
+  await goToHash(page, `#/trip/${id}`); // a card's tap opens its conversation (timeline stage 4)
   await page.getByRole('button', { name: 'Export trip' }).click();
   await buildAndSave(page);
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
   await expect(card).toContainText('backed up just now');
   await expect(card).not.toContainText('changed since');
-  await card.click();
+  await goToHash(page, `#/trip/${id}`); // a card's tap opens its conversation (timeline stage 4)
   await allFiles(page);
   await page.getByLabel('File path').fill('/notes/day1.md');
   await page.getByRole('button', { name: 'Create' }).click();
@@ -285,7 +286,7 @@ test('a trip card shows the stamps its arrivals earned, and the trip page all of
     return read(el);
   });
   expect(name.match(/3 stamps/g)?.length).toBe(1);
-  await card.click();
+  await goToHash(page, `#/trip/${id}`); // a card's tap opens its conversation (timeline stage 4)
   await expect(page.getByRole('img', { name: /^3 stamps:/ })).toBeVisible();
   const facts = await page.locator('p.sub').filter({ hasText: 'files' }).first().evaluate((p) => [...p.querySelectorAll('[aria-hidden="true"]')].map((e) => e.textContent));
   expect(facts).toEqual(['3 stamps']);
@@ -317,7 +318,7 @@ test("each stamp shows its whole word inside its own ring, on a card on a phone 
   const card = page.getByRole('link', { name: /Big Sur on Highway 1/ }).getByRole('img', { name: /^8 stamps:/ });
   await expect(card).toBeVisible();
   expect(await fits(card)).toEqual(['Nepenthe', 'Westmins', '+6']); // a long word: its start, at a type that still reads
-  await page.getByRole('link', { name: /Big Sur on Highway 1/ }).click();
+  await goToHash(page, `#/trip/${id}`); // a card's tap opens its conversation (timeline stage 4)
   await expect(page.getByRole('heading', { level: 1, name: 'Big Sur on Highway 1: Monterey to Cambria' })).toBeVisible();
   const all = page.getByRole('img', { name: /^8 stamps:/ });
   await expect(all).toBeVisible();
@@ -504,14 +505,15 @@ test('a fresh start reopens the trip screen that was open, and shows Trips when 
   expect(page.url()).not.toContain('/trip/');
 });
 
-test('Start a trip needs only a name: the trip opens with no dates, and its card says none', async ({ page }) => {
+test('Start a trip needs only a name: the trip opens with no dates, and on Trips it is a conversation\'s line, not a card (timeline stage 4)', async ({ page }) => {
   await openApp(page);
   await expect(page.getByLabel('Starts')).toBeHidden(); // folded under Add dates (optional)
   await startNamed(page, 'Somewhere north');
   await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
   await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
   const card = page.locator('.trip-card', { hasText: 'Somewhere north' });
-  await expect(card.locator('.sub')).toHaveText(/^updated /);
+  await expect(card).toHaveClass(/\bline\b/);
+  await expect(card.locator('.sub')).not.toHaveText(/^updated /); // a line says when it was last talked in, not a card's facts
 });
 
 test('files waiting with Shiori are listed on Trips: one opens, one is asked about (a chip in the type box), one is deleted', async ({ page }) => {
@@ -537,7 +539,7 @@ test('files waiting with Shiori are listed on Trips: one opens, one is asked abo
 
 test("a trip's card says when a file is waiting to be read", async ({ page }) => {
   await openApp(page);
-  const trip = await startNamed(page, 'Kyoto');
+  const trip = await startNamed(page, 'Kyoto', { start: '2026-12-01', end: '2026-12-05' }); // dated: a card, which says what waits to be read
   await writeRecords(page, trip, { text: { '/files/temple.txt': 'Temple tickets' } });
   await writeEvent(page, trip, { type: 'wake', data: { id: 'w-1', reasons: [{ kind: 'file', text: 'A file was moved here.', files: ['/files/temple.txt'] }] } });
   await page.goto('/#/trips');
@@ -1337,7 +1339,7 @@ test("Back after a trip is removed passes the entry its photo viewer left behind
   await openApp(page);
   const nara = await startNamed(page, 'Nara'); // Trips, Nara's Details
   await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
-  await startNamed(page, 'Kyoto'); // Trips again, Kyoto's Details
+  const kyoto = await startNamed(page, 'Kyoto'); // Trips again, Kyoto's Details
   const screen = await viewerOverFile(page); // Kyoto's file, and over it the viewer
   expect(await idxOf(page)).toBe(screen + 0.5); // between the file's entry and the next
   // A tapped reminder of Nara (the worker's message) opens Nara's conversation while the viewer is open: its entry stays behind.
@@ -1347,7 +1349,7 @@ test("Back after a trip is removed passes the entry its photo viewer left behind
   await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
   await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
-  await page.locator('a.trip-card', { hasText: 'Kyoto' }).click();
+  await goToHash(page, `#/trip/${kyoto}`); // its row opens its conversation (timeline stage 4): Details by address, as a link would
   await removeFromDetails(page, 'Kyoto');
   await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
   await page.goBack();

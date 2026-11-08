@@ -44,7 +44,7 @@ test('everything survives export, erase and import', async ({ page }) => {
   await page.getByLabel('Type ERASE to confirm').fill('ERASE');
   await page.getByRole('button', { name: 'Erase now' }).click();
   await pastWelcome(page);
-  await expect(page.getByText('No trips yet.')).toBeVisible();
+  await expect(page.getByText('Tap + to talk to Shiori.')).toBeVisible();
 
   await page.getByLabel('Open a trip someone sent you').setInputFiles(file);
   await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible();

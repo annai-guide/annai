@@ -445,9 +445,17 @@ export async function fakeMicrophone(page, clips, { loopback = false } = {}) {
   }, /** @type {[string[], boolean]} */ ([data, loopback]));
 }
 
-/** Starts a trip from the Trips screen and returns its id. @param {import('@playwright/test').Page} page @param {string} title */
-export async function startTrip(page, title) {
+/**
+ * Starts a trip from the Trips screen and returns its id. With dates it is a card on the timeline; without, a conversation's row (timeline stage 4).
+ * @param {import('@playwright/test').Page} page @param {string} title @param {{ start: string, end: string }} [dates] yyyy-mm-dd
+ */
+export async function startTrip(page, title, dates) {
   await page.getByLabel('Trip name').fill(title);
+  if (dates) {
+    await page.getByText('Add dates (optional)').click();
+    await page.getByLabel('Starts').fill(dates.start);
+    await page.getByLabel('Ends').fill(dates.end);
+  }
   await page.getByRole('button', { name: 'Start trip' }).click();
   await expect(page.getByRole('heading', { name: title })).toBeVisible();
   return decodeURIComponent(new URL(page.url()).hash.split('/')[2]);

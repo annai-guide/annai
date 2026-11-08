@@ -44,7 +44,7 @@ async function wipedPhone(page, fj) {
   await page.getByLabel('Type ERASE to confirm').fill('ERASE');
   await page.getByRole('button', { name: 'Erase now' }).click();
   await pastWelcome(page);
-  await expect(page.getByText('No trips yet.')).toBeVisible();
+  await expect(page.getByText('Tap + to talk to Shiori.')).toBeVisible();
   await addForgejo(page, fj);
   await expect(page.getByRole('heading', { name: 'A backup is already here' })).toBeVisible();
 }
@@ -121,7 +121,7 @@ for (const way of ['Cancel', 'the crumb']) {
       await page.waitForTimeout(1500);
       expect(fileReads(fj) - before).toBe(inFlight);
       await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
-      await expect(page.getByText('No trips yet.')).toBeVisible();
+      await expect(page.getByText('Tap + to talk to Shiori.')).toBeVisible();
     } finally {
       await fj.stop();
     }

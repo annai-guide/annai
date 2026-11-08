@@ -5,8 +5,8 @@ import { voiceChip } from './voice-chip.js';
 import { liveChip } from './live-chip.js';
 import { readAppSettings } from '../core/settings.js';
 import { shownSettings } from '../core/shown.js';
-import { wording, mark } from './format.js';
-import { SYS_SETTINGS } from '../core/scopes.js';
+import { wording, mark, talkHref } from './format.js';
+import { SYS_SETTINGS, scopeTitle } from '../core/scopes.js';
 import { storedTexts } from '../core/agent/log.js';
 import { component, mount, cleanUp, slotEntries, runAction, made } from './slots.js';
 import { onTap } from './dock-hides.js';
@@ -257,11 +257,27 @@ export function createDock(ctx) {
     halves.classList.toggle('idle', !ctx.agent.kokoroWorking);
     offs.push(ctx.agent.on('halves', (/** @type {{ kokoroWorking: boolean }} */ x) => { halves.classList.toggle('idle', !x.kokoroWorking); }));
   }
+  // On home, while she speaks, listens or works, the whole dock shows and says which conversation it is in (shiori.css: body.home.dock-busy).
+  const inConvo = h('a', { class: 'in-convo', href: '#/trips' });
+  let naming = 0;
+  const nameConvo = async () => {
+    const mine = ++naming;
+    const id = ctx.agent.target;
+    const rec = id ? await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ x) => x.getScope(id)).catch(() => null) : null;
+    if (mine !== naming) return;
+    inConvo.hidden = !rec;
+    if (!rec) return;
+    inConvo.href = talkHref(rec.id);
+    inConvo.textContent = t`In ${scopeTitle(rec)} ›`;
+  };
+  nameConvo();
+  offs.push(ctx.agent.on('state', () => { nameConvo(); }));
   // Plugins' status chips and dock actions (spec §16.4), drawn again whenever they change (refreshSlots).
   const pluginChips = h('span', { class: 'plugin-chips' });
   const pluginActions = h('span', { class: 'plugin-actions' });
   // The buttons used most sit above; the states line, used less, at the very bottom, which is harder to reach.
   const el = h('nav', { class: 'dock', 'aria-label': t`Shiori` },
+    inConvo,
     sheet,
     caption, // under the text panel, right above Shiori: its tail points at her
     h('div', { class: 'dock-row' },

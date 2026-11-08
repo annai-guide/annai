@@ -107,7 +107,7 @@ test("Erase names what Google keeps before the tap, and asks Google to delete it
     await expect(erase.getByText("First, annai asks Google to delete the 1 turn of your conversations it keeps; any it can't in 10 seconds, Google keeps until it expires, up to 55 days.")).toBeVisible();
     await erase.getByRole('button', { name: 'Erase now' }).click();
     await pastWelcome(page);
-    await expect(page.getByText('No trips yet.')).toBeVisible();
+    await expect(page.getByText('Tap + to talk to Shiori.')).toBeVisible();
     // Nothing of annai is left to say which: Google's copy went before the reload.
     expect(s.stored()).toEqual([]);
     expect(s.deleted().length).toBe(1);
