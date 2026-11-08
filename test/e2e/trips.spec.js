@@ -1473,3 +1473,35 @@ test('Details holds its fields while it saves, so nothing typed then is drawn ov
   await ends.fill('2027-04-06');
   await expect(ends).toHaveValue('2027-04-06');
 });
+
+test("annai opened again in the same tab, then Back into the older load and Forward over a trip removed meanwhile: the older load's numbers don't leave a screen under the trip's address", async ({ page }) => {
+  await openApp(page, '#/settings'); // the first load: Settings, About, Trips
+  await page.evaluate(() => { location.hash = '#/about'; });
+  await expect.poll(() => idxOf(page)).toBe(1);
+  await page.evaluate(() => { location.hash = '#/trips'; });
+  await expect.poll(() => idxOf(page)).toBe(2);
+  await page.goto('/index.html#/trips'); // opened again, by an address (a new page: the same address would only be a fragment move): Trips, then the trip
+  await expect.poll(() => idxOf(page)).toBe(0);
+  const id = await startNamed(page, 'Kyoto');
+  await expect.poll(() => idxOf(page)).toBe(1);
+  await page.goBack();
+  await expect.poll(() => hashOf(page)).toBe('#/trips');
+  await page.goBack(); // into the first load's newest entry
+  await expect.poll(() => hashOf(page)).toBe('#/trips');
+  await expect.poll(() => idxOf(page)).toBe(2);
+  // Each load drawn again from the start, as a phone does with a page it set aside (a browser's back-forward cache would keep each one's own
+  // number in memory and hide the mix-up): the first load keeps its newest number for the tab, and the second reads it.
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  await page.goForward(); // the second load's Trips
+  await expect.poll(() => idxOf(page)).toBe(0);
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  await removeBehind(page, id);
+  await markTrips(page);
+  await page.goForward(); // the trip's entry, the newest of its load: Trips stays, under its own address
+  await page.waitForTimeout(500);
+  expect(hashOf(page)).toBe('#/trips');
+  expect(await idxOf(page)).toBe(0);
+  expect(await stillMarked(page)).toBe(true);
+});
