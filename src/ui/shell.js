@@ -401,7 +401,13 @@ export function startShell(root, core) {
       // Its screen's ctx says which render it is, so what it draws after a newer one began is cleaned up at once.
       const node = await screen(Object.create(ctx, { seq: { value: my }, moved: { value: o.moved === true }, entry: { value: entry }, tripScope: { value: scope } }), route);
       if (my !== seq) return superseded(my);
+      // Home drawn again in place (the clock, a hand-over, a Delete): the row you were looking at stays where it was, whatever came or went above it.
+      const seen = pending === null && route.name === 'trips' && drawnHash === shown.hash ? [...main.querySelectorAll('.rows a[href]')].find((a) => a.getBoundingClientRect().bottom > 0) : null;
+      const was = seen?.getBoundingClientRect().top ?? 0;
       main.replaceChildren(node);
+      const same = seen && [...node.querySelectorAll('.rows a[href]')].find((a) => a.getAttribute('href') === seen.getAttribute('href') && a.getClientRects().length);
+      const by = same ? same.getBoundingClientRect().top - was : 0;
+      if (by) scrollBy(0, by); // only when it moved
       drawnHash = shown.hash;
       if (pending !== null) {
         const want = pending;

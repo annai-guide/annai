@@ -478,3 +478,23 @@ test("the cutoff day of the day headings: its chats all show a time alone, which
   expect(subs).toHaveLength(2);
   for (const sub of subs) expect(sub).not.toContain(','); // no month and day, which the day's heading says
 });
+
+test('home drawn again past midnight keeps the row you were looking at, though a day went into its month\'s fold above it', async ({ page }) => {
+  const late = new Date();
+  late.setHours(23, 58, 30, 0);
+  await page.clock.install({ time: late });
+  await openApp(page, '#/settings');
+  /** @type {Record<string, number>} */
+  const chats = {};
+  for (let i = 0; i < 5; i++) chats[`Edge ${i}`] = 30 * 1440 + 60 + i; // on the last day with a heading of its own: after midnight, in its month's fold
+  for (let i = 0; i < 24; i++) chats[`Chat ${i}`] = 1440 * i + 5;
+  await seed(page, { chats });
+  await page.goto('/#/trips');
+  await expect(page.locator('.now-line')).toBeVisible();
+  await expect(row(page, 'Edge 0')).toBeVisible();
+  const at = () => row(page, 'Chat 3').evaluate((el) => Math.round(el.getBoundingClientRect().top));
+  const before = await at();
+  await page.clock.fastForward('02:00');
+  await expect(row(page, 'Edge 0')).toBeHidden(); // in the month's fold, shut
+  expect(Math.abs((await at()) - before)).toBeLessThanOrEqual(1); // a device pixel's rounding
+});
