@@ -249,6 +249,8 @@ export function startShell(root, core) {
   let removing = false;
   /** The address of the draw begun last. */
   let lastHash = '';
+  /** The address of the screen on show, whose draw landed. */
+  let drawnHash = '';
   /** The entry arrived at last is new: no place on it to come back to. */
   let firstVisit = false;
   /** This history entry's key, and where to scroll to on it. @returns {number} */
@@ -334,8 +336,10 @@ export function startShell(root, core) {
       if (returning) { // back at the entry it left, whose screen is still shown
         returning = passing = false;
         steps = 0;
-        pending = null; // nothing is drawn: a later redraw keeps its place
-        return;
+        if (location.hash === drawnHash) {
+          pending = null; // nothing is drawn: a later redraw keeps its place
+          return;
+        } // its draw was superseded (a Forward inside it): drawn now
       }
       const overlay = history.state?.annaiViewer || history.state?.annaiAsk;
       if (overlay && !shown.name) { // a reload on what was open over a screen: that screen, the entry behind
@@ -395,6 +399,7 @@ export function startShell(root, core) {
       const node = await screen(Object.create(ctx, { seq: { value: my }, moved: { value: o.moved === true }, entry: { value: entry }, tripScope: { value: scope } }), route);
       if (my !== seq) return superseded(my);
       main.replaceChildren(node);
+      drawnHash = shown.hash;
       if (pending !== null) {
         const want = pending;
         pending = null;
@@ -413,6 +418,7 @@ export function startShell(root, core) {
         h('h1', { class: 'title', text: t`This screen couldn't open` }),
         h('p', { text: messageOf(e) }),
         h('p', {}, h('a', { href: '#/trips' }, t`Back to Trips`))));
+      drawnHash = shown.hash;
       land(my);
       dispatchEvent(new ErrorEvent('error', { error: e, message: String(e) }));
     }

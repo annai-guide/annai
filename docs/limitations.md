@@ -377,9 +377,3 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** one hand-over sent files to a trip Shiori started and to another trip that stays (one of the user's own). Undo in the started trip's conversation removes that trip and also takes the hand-over's files and bookings out of the other trip, but its message names only the trip it removed.
 - **Why:** naming them needs new strings in every language, and the takeback itself is right (spec goal 2: Undo takes back exactly what Shiori wrote from that hand-over).
 - **Revisit when:** the next version: in talk.js's Undo message, name each trip `undoEverywhere` changed but didn't remove.
-
-### A Forward pressed while a screen is still drawing can leave the screen before it under the new address
-- **Kind:** deferred.
-- **What the user sees:** on a desktop browser, two Forwards within a few milliseconds over a removed trip's entry: the second supersedes the first one's draw, and the shell's "back to the entry it left" leaves the earlier screen drawn under the address of the one it went back to. A redraw (any tap) puts it right.
-- **Why:** it needs two Forwards inside one draw; on a phone, Forward is only in Android Chrome's menu, and an installed iPhone app has none.
-- **Revisit when:** the next version: let a superseded draw end the pass (`returning`, `steps`) before the newer move starts.
