@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { activate } from '../../plugins-official/speech-openai/index.js';
 import { ProviderError, errorFromResponse, endpointTypes } from '../../src/core/llm/contract.js';
 import { mergePatch } from '../../src/core/patch.js';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, SYS_PLUGINS } from '../../src/core/scopes.js';

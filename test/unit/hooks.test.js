@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { watchAppends, deliverHooks, causedBy, HOOK_LIMIT } from '../../src/core/hooks.js';
 import { Registry } from '../../src/core/registry.js';
 import { SYS } from '../../src/core/scopes.js';

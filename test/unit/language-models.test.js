@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { SYS } from '../../src/core/scopes.js';
 import { ProviderError, errorFromResponse } from '../../src/core/llm/contract.js';
 import { modelTrace } from '../../src/core/llm/trace.js';

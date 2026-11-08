@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes, SYS, SYS_SETTINGS } from '../../src/core/scopes.js';
 import { readConfig, saveRoles, newProvider, newModel, saveProvider, setKey } from '../../src/core/llm/config.js';

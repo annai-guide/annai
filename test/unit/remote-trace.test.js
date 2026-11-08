@@ -3,7 +3,7 @@ import { relative, join } from 'node:path';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { utf8 } from '../../src/core/bytes.js';
 import { logEvent } from '../../src/core/events.js';
 import { withoutSecretsIn } from '../../src/core/agent/net.js';

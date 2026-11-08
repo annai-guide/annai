@@ -86,7 +86,7 @@ test("reasoning levels: the model's own, else the nearest, the cheaper on a tie 
 test("a provider marked free tier costs nothing: a call's reply and trace, and a speech call's (the free-tier switch)", async () => {
   const { callOnce } = await import('../../src/core/llm/call.js');
   const { speechCall } = await import('../../src/core/llm/speech.js');
-  const { createMemoryStore } = await import('../../src/core/store-memory.js');
+  const { createMemoryStore } = await import('../fakes/store-memory.js');
   const { modelTrace } = await import('../../src/core/llm/trace.js');
   const { SYS } = await import('../../src/core/scopes.js');
   const { providerOf, endpointOf, newProvider } = await import('../../src/core/llm/config.js');
@@ -169,7 +169,7 @@ test("a call is priced at the time it was made: the same Gemini 3.8 Flash call c
 
 test("a model's prices with a schedule are valid when each entry has a real date and prices that are not negative; anything else is refused", async () => {
   const { saveModel, newModel, saveProvider, newProvider } = await import('../../src/core/llm/config.js');
-  const { createMemoryStore } = await import('../../src/core/store-memory.js');
+  const { createMemoryStore } = await import('../fakes/store-memory.js');
   const { Workspace } = await import('../../src/core/workspace.js');
   const { ensureBaseScopes } = await import('../../src/core/scopes.js');
   const ws = new Workspace(createMemoryStore());
@@ -188,7 +188,7 @@ test("a model's prices with a schedule are valid when each entry has a real date
 /** A scheduled model as a description gives it, and a way to save the user's changes to it. */
 async function scheduledModel() {
   const { saveModel, saveProvider, newProvider, newModel } = await import('../../src/core/llm/config.js');
-  const { createMemoryStore } = await import('../../src/core/store-memory.js');
+  const { createMemoryStore } = await import('../fakes/store-memory.js');
   const { Workspace } = await import('../../src/core/workspace.js');
   const { ensureBaseScopes } = await import('../../src/core/scopes.js');
   const ws = new Workspace(createMemoryStore());

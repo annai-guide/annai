@@ -6,7 +6,7 @@ import { Uploads } from '../../src/core/llm/uploads.js';
 import { sha256Hex } from '../../src/core/hash.js';
 import { callRole, Bench } from '../../src/core/llm/fallback.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes, SYS_DEVICE } from '../../src/core/scopes.js';
 import { activate } from '../../plugins-official/openai-responses/index.js';

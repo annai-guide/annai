@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { TRIGGERS, margin } from '../../src/core/live/triggers.js';
 import { readWatches, saveWatch, removeWatch, expired, newWatchId, watchPath } from '../../src/core/live/watches.js';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip, ME } from '../../src/core/scopes.js';

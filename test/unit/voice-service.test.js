@@ -5,7 +5,7 @@ import { voiceSettings } from '../../src/core/voice/settings.js';
 import { Registry } from '../../src/core/registry.js';
 import { ProviderError } from '../../src/core/llm/contract.js';
 import { Bench, COOLDOWN_MS } from '../../src/core/llm/fallback.js';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes } from '../../src/core/scopes.js';

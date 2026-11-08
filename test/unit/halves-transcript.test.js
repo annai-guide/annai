@@ -1,7 +1,7 @@
 // K1 Task 3: one log, two transcripts (Koe and Kokoro design, "What each half sees"; plan decisions 3, 5 and 14).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { record, TALK_TAG, KOE_TAG } from '../../src/core/agent/log.js';
 import { Transcript, resolveEvent, repair } from '../../src/core/agent/transcript.js';

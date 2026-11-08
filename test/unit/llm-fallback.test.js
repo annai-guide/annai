@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { setWords, key } from '../../src/core/l10n.js';
 import { timeIn, deviceZone } from '../../src/core/time.js';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { SYS } from '../../src/core/scopes.js';
 import { ProviderError, errorFromResponse } from '../../src/core/llm/contract.js';
 import { sse } from '../../src/core/llm/sse.js';

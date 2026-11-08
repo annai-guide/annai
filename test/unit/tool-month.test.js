@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { callOnce, billMonth } from '../../src/core/llm/call.js';
 import { gap } from '../../src/core/llm/fallback.js';
 import { ProviderError } from '../../src/core/llm/contract.js';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes, SYS_DEVICE, SYS_SETTINGS } from '../../src/core/scopes.js';
 

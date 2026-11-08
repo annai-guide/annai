@@ -2,7 +2,7 @@
 // named "Realtime / Classic"; before, one list from 2026-10-19, and two lists for talking and typing before that).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes, SYS_SETTINGS } from '../../src/core/scopes.js';
 import { readConfig, saveRoles, saveKoeMode, removeModel, removeProviderRecords, splitOldKoe, modelOf, KOE_REALTIME, KOE_CLASSIC, KOE_ROLES, CHAT_ROLES } from '../../src/core/llm/config.js';

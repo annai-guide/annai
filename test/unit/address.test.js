@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { addressParts, fullAddress, refuseUserinfo } from '../../src/core/address.js';
 import { tracedFetch } from '../../src/core/agent/net.js';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { SYS } from '../../src/core/scopes.js';
 
 // An address's keys, for MCP servers and packages alike (milestone 8c's third finding; fix passes 8c-2 and 8a-1).

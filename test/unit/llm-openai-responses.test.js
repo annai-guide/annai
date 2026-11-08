@@ -8,7 +8,7 @@ import { retry } from '../../src/core/llm/retry.js';
 import { ProviderError, errorFromResponse } from '../../src/core/llm/contract.js';
 import { applyPatches, callOnce } from '../../src/core/llm/call.js';
 import { testModel } from '../../src/core/llm/check.js';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes } from '../../src/core/scopes.js';
 import { readConfig, modelOf as recordModel, providerOf } from '../../src/core/llm/config.js';
