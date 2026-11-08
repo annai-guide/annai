@@ -49,6 +49,28 @@ test('undo takes back her bookings and plan items from the hand-over: added ones
   assert.deepEqual([undo.actor, undo.data], ['user', { handover: 'h-1', undone: 3, kept: [] }]);
 });
 
+test("a voice-first chat: the system's naming write after her turn is not the user's change; Undo takes back her dates and keeps the name", async () => {
+  const { ws } = await kit();
+  const chat = await createTrip(ws, { title: 'New conversation' });
+  await ws.write(chat, '/bookings/flight.json', flightBooking, HERS);
+  await ws.patch(chat, '/trip.json', { start: '2026-11-20', end: '2026-11-27' }, HERS);
+  await ws.patch(chat, '/trip.json', { title: 'Plan our weekend in Testville' }, { author: 'system' }); // the heard line's words came after her turn
+  const out = await undoHandover(ws, chat, 'h-1');
+  assert.deepEqual(out.kept, [], 'no change of the user');
+  assert.deepEqual(out.undone.sort(), ['/bookings/flight.json', '/trip.json']);
+  const trip = await ws.readJSON(chat, '/trip.json');
+  assert.equal(trip.start, undefined);
+  assert.equal(trip.end, undefined);
+  assert.equal(trip.title, 'Plan our weekend in Testville', 'the name stays');
+  assert.equal(await ws.read(chat, '/bookings/flight.json'), undefined);
+  assert.equal((await ws.history(chat, '/trip.json')).at(-1)?.actor, 'user');
+  // A user's own rename after her turn is still a change of theirs: kept as it is.
+  const other = await createTrip(ws, { title: 'New conversation' });
+  await ws.patch(other, '/trip.json', { start: '2026-11-20', end: '2026-11-27' }, HERS);
+  await ws.patch(other, '/trip.json', { title: 'Weekend' }, { author: 'user' });
+  assert.deepEqual((await undoHandover(ws, other, 'h-1')).kept, ['/trip.json']);
+});
+
 test('undo leaves what the user changed since, and names it', async () => {
   const { ws, trip } = await kit();
   await ws.write(trip, '/bookings/flight.json', flightBooking, HERS);
