@@ -467,3 +467,22 @@ test('a moved file back in the trip it came from is said to be back there, a tri
   const again = await undoEverywhere(b.ws, ME, 'h-1', { remove: async (s) => removeTrip(b.store, s) });
   assert.deepEqual([again.removed, again.waiting], [['Anchorage'], true]);
 });
+
+test('Undo reaches a trip two conversations away: files that went on from a sibling trip she started into a third trip come back, and its booking goes', async () => {
+  const { store, ws, trip: third } = await kit();
+  const a = await startedFrom(ws, store, ME, 'h-1', 'Anchorage stay');
+  const b = await startedFrom(ws, store, ME, 'h-1', 'Kyoto');
+  for (const [name, to] of [['a.pdf', a], ['b.pdf', b]]) {
+    await ws.write(SYS_WAITING, `/files/${name}`, utf8(name), { author: 'user', type: 'application/pdf' });
+    await moveFile(ws, { scope: SYS_WAITING, path: `/files/${name}` }, to, { handover: 'h-1' });
+  }
+  // In Kyoto's turn, for the same hand-over, she sent b.pdf on into the user's own trip and filed a booking there.
+  await moveFile(ws, { scope: b, path: '/files/b.pdf' }, third, { handover: 'h-1' });
+  await record(store, b, { type: 'handover.moved', actor: 'shiori', data: { handover: 'h-1', to: third, started: false, count: 1 } });
+  await ws.write(third, '/bookings/b.json', { ...flightBooking, id: 'b', source: '/files/b.pdf' }, HERS);
+  const out = await undoEverywhere(ws, a, 'h-1', { remove: async (s) => removeTrip(store, s) });
+  assert.deepEqual(out.removed.sort(), ['Anchorage stay', 'Kyoto']);
+  assert.equal(await ws.read(third, '/bookings/b.json'), undefined, 'no booking left naming a file it took back');
+  assert.equal(await ws.read(third, '/files/b.pdf'), undefined);
+  assert.deepEqual((await ws.list(SYS_WAITING, '/files/')).map((f) => f.path).sort(), ['/files/a.pdf', '/files/b.pdf']);
+});
