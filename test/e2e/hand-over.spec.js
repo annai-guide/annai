@@ -186,6 +186,68 @@ test("a screen of the trip Undo removes, gone to while it runs, is left the way 
   }
 });
 
+test("Undo that sends a file back to this trip, with a tap on the trip it removes: this conversation, and a Forward later shows nothing new", async ({ page }) => {
+  const llm = await startModelServer({ [MESSAGES]: [
+    sse(anthropicToolReply([{ name: 'list_trips', input: {} }])),
+    sse(anthropicToolReply([{ name: 'start_trip', input: { title: 'Kyoto', start: '2026-12-01', end: '2026-12-05', places: ['Kyoto'], files: ['/trip/files/flight.pdf'] } }])),
+    sse(anthropicToolReply([{ name: 'speak', input: { text: 'That one is for Kyoto: I started it.' } }, { name: 'sleep', input: {} }])),
+    sse(anthropicToolReply([{ name: 'sleep', input: {} }])),
+  ] });
+  const hash = () => new URL(page.url()).hash;
+  try {
+    await modelSetUp(page, llm.origin, 'Big Sur');
+    const details = hash();
+    await handOver(page, [await fixture('flight.pdf', 'application/pdf')]);
+    await expect(page.locator('.convo').getByText('That one is for Kyoto: I started it.')).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole('button', { name: 'Undo what Shiori did with these files' })).toBeVisible();
+    await page.evaluate(() => { // Undo, and in the same moment the line's link to the trip it removes: Undo ends after it
+      /** @type {HTMLButtonElement} */ (document.querySelector('button[aria-label="Undo what Shiori did with these files"]')).click();
+      /** @type {HTMLAnchorElement} */ ([...document.querySelectorAll('.convo a')].find((a) => a.textContent === 'Shiori started Kyoto with these files.')).click();
+    });
+    await expect(page.getByText('Undone. Kyoto is removed, and your files are back in Big Sur.')).toBeVisible();
+    await expect.poll(hash).toBe(`${details}/talk`);
+    await page.goBack(); // over Kyoto's Details and the conversation's entry before it
+    await expect.poll(hash).toBe(details);
+    await expect(page.getByRole('button', { name: 'Remove trip' })).toBeVisible();
+    await page.goForward();
+    await expect.poll(hash).toBe(`${details}/talk`);
+    await expect(page.locator('.talk-head .talk-name')).toHaveText('Big Sur'); // drawn: a Forward inside its drawing is not one a person makes
+    const at = await page.evaluate(() => history.state?.annaiIdx);
+    await page.goForward(); // Kyoto's Details, then this conversation again: nothing new ahead
+    await page.waitForTimeout(500);
+    expect(hash()).toBe(`${details}/talk`);
+    expect(await page.evaluate(() => history.state?.annaiIdx)).toBe(at);
+    await expect(page.locator('.talk-head .talk-name')).toHaveText('Big Sur');
+  } finally {
+    await llm.stop();
+  }
+});
+
+for (const iphone of [false, true]) {
+  test(`"Start fresh?" open when Shiori opens the trip she started closes as Cancel: the conversation under it is another one${iphone ? ' (no CloseWatcher, as on an iPhone)' : ''}`, async ({ page }) => {
+    if (iphone) await page.addInitScript(() => { delete (/** @type {any} */ (window)).CloseWatcher; });
+    const replies = /** @type {any[]} */ (anchorage());
+    /** @type {() => void} */
+    let finish = () => {};
+    replies[2] = { ...replies[2], until: new Promise((resolve) => { finish = () => resolve(undefined); }) }; // she is still at work while the question opens
+    const llm = await startModelServer({ [MESSAGES]: replies });
+    try {
+      await setUp(page, llm.origin);
+      await handOver(page, [await fixture('flight.pdf', 'application/pdf'), await fixture('hotel.png', 'image/png')]);
+      await page.getByRole('button', { name: 'Tidy up the conversation', exact: true }).click();
+      await page.getByRole('group', { name: 'Tidy up the conversation' }).getByRole('button', { name: 'Start fresh' }).click();
+      const question = page.getByRole('dialog', { name: 'Start fresh?' });
+      await expect(question).toBeVisible();
+      finish(); // she opens the trip she started
+      await expect(page.locator('.talk-head .talk-name')).toHaveText(TITLE, { timeout: 60_000 }); // in this entry's place: a replace, no popstate
+      await expect(question).toHaveCount(0);
+      await expect(page.locator('.convo .fresh-divider')).toHaveCount(0);
+    } finally {
+      await llm.stop();
+    }
+  });
+}
+
 test('Undo takes back what she did; the trip she started goes, and the files wait with Shiori again', async ({ page }) => {
   const llm = await startModelServer({ [MESSAGES]: anchorage() });
   try {
