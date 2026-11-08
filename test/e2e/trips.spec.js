@@ -1075,14 +1075,17 @@ test("Back past the entry a photo viewer left behind lands on its screen once, n
   const screen = await viewerOverFile(page);
   await page.evaluate((id) => navigator.serviceWorker.dispatchEvent(new MessageEvent('message', { data: { type: 'annai.open', scope: id } })), nara);
   await expect.poll(() => hashOf(page)).toBe(`#/trip/${nara}/talk`);
+  await expect(convo(page)).toBeVisible(); // drawn: a Back inside the few ms before it is drawn is not one a person makes
   await page.goBack(); // over the viewer's entry, which nothing is open over now
   await expect.poll(() => idxOf(page)).toBe(screen);
   await expect(page.getByRole('button', { name: 'Open the photo full size' })).toBeVisible();
   await expect(page.getByRole('dialog', { name: /^Photo / })).toHaveCount(0);
   await page.goForward(); // over the viewer's entry again, on to Nara's conversation
   await expect.poll(() => hashOf(page)).toBe(`#/trip/${nara}/talk`);
+  await expect(convo(page)).toBeVisible();
   await page.goBack();
   await expect.poll(() => idxOf(page)).toBe(screen);
+  await expect(page.getByRole('button', { name: 'Open the photo full size' })).toBeVisible();
   await page.goBack(); // a different screen, not the file again
   await expect.poll(() => hashOf(page)).toBe(`#/trip/${kyoto}`);
 });
