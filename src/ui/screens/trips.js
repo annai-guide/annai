@@ -1,4 +1,4 @@
-import { h, field, t, plural, twoStep, messageOf } from '../dom.js';
+import { h, field, t, plural, twoStep, messageOf, whenGone } from '../dom.js';
 import { listTrips, createTrip, backupState, scopeTitle, SYS_WAITING } from '../../core/scopes.js';
 import { readNames, shortName } from '../../core/names.js';
 import { waitingFiles, dropWaiting } from '../../core/waiting.js';
@@ -13,8 +13,8 @@ import { openFileButton } from '../open-file.js';
 import { tripStamps, stampMarks, factsWords } from '../stamps.js';
 import { stampCount } from '../../core/after/stamps.js';
 import { timelineRows, dayOfTrip, RECENT_DAYS } from '../../core/timeline.js';
-import { upcoming } from '../../core/now.js';
-import { dayIn, deviceZone } from '../../core/time.js';
+import { upcoming, over } from '../../core/now.js';
+import { dayIn, deviceZone, nextDay } from '../../core/time.js';
 import { storedTexts } from '../../core/agent/log.js';
 import { tripRows } from '../trip-rows.js';
 import { nowOf } from '../today.js';
@@ -32,7 +32,9 @@ export async function renderTrips(ctx) {
   const settings = await readAppSettings(ctx.ws);
   const places = ctx.backups ? await ctx.backups.list() : [];
   const latest = places.filter((/** @type {any} */ p) => p.last).sort((/** @type {any} */ a, /** @type {any} */ b) => b.last.at - a.last.at)[0];
-  const o = { say: wording(settings), now: nowOf(ctx.live), zone: ctx.live?.timeZone?.() ?? deviceZone() };
+  /** due: when a card's Next stops being next, pushed by the happening cards as they are drawn. @type {number[]} */
+  const due = [];
+  const o = { say: wording(settings), now: nowOf(ctx.live), zone: ctx.live?.timeZone?.() ?? deviceZone(), due };
   const { above, happening, below } = timelineRows(active, o.now, o.zone);
   const byId = new Map(active.map((s) => [s.id, s]));
   const row = (/** @type {Row} */ r) => (r.card ? tripCard(ctx, byId.get(r.id), r, o) : chatLine(byId.get(r.id), r, o));
@@ -48,7 +50,7 @@ export async function renderTrips(ctx) {
   const ahead = await Promise.all([...happening, ...below].map(row));
   const archivedCards = await Promise.all(archived.map((s) => tripCard(ctx, s, null, o)));
   const waiting = await waitingFiles(ctx.ws);
-  return h('div', { class: 'screen timeline' },
+  const screen = h('div', { class: 'screen timeline' },
     h('h1', { class: 'title', text: t`Trips` }),
     // The shell scrolls the now line 40% down; with less past than that above it, it sits higher, with no blank space over it (a notice there stays in view).
     h('ul', { class: 'cards rows past' }, ...past),
@@ -64,6 +66,29 @@ export async function renderTrips(ctx) {
     openFileButton(ctx),
     h('p', { class: 'sub', text: latest ? t`Last backup ${relTime(latest.last.at)}, to ${latest.name}.`
       : settings.lastExportAt ? t`Last export ${relTime(settings.lastExportAt)}.` : t`No backup yet. Export everything from Settings, or set up automatic backups there.` }));
+  followClock(ctx, screen, o);
+  return screen;
+}
+
+/**
+ * Home is drawn for an instant: its Next, "Day 3 of 8" and which trips are happening go stale as time passes. It draws itself again, in place, when
+ * the earliest of them changes (a Next item ends, or midnight, where a trip starts or ends and the day count moves: the 1 s is for a timer a hair early)
+ * and when annai comes back to the front, which a phone's timers may have slept through. Only while it is the screen shown, and never over a
+ * trip name or dates being typed in the Start a trip form; its folds and the place stay (the redraw is not a move, and `fold` keeps what is open).
+ * @param {any} ctx @param {HTMLElement} screen @param {{ now: number, zone: string, due: number[] }} o
+ */
+function followClock(ctx, screen, o) {
+  const redraw = () => {
+    if (!screen.isConnected || [...screen.querySelectorAll('input')].some((i) => i.value)) return;
+    ctx.render();
+  };
+  const timer = setTimeout(redraw, Math.max(Math.min(nextDay(o.now, o.zone), ...o.due) - o.now, 0) + 1000);
+  const front = () => { if (document.visibilityState === 'visible') redraw(); };
+  document.addEventListener('visibilitychange', front);
+  whenGone(screen, () => {
+    clearTimeout(timer);
+    document.removeEventListener('visibilitychange', front);
+  });
 }
 
 /** Home's folds that are open (a month's, 'archived'), kept so while annai runs: Back, or a redraw, finds home as it was. */
@@ -94,9 +119,9 @@ function chatLine(s, r, { say, now, zone }) {
  * A trip's card (spec §16.2, the timeline design): its name and dates, its stamps (spec §13), files waiting to be read there, and when it was last
  * backed up (§4.9); happening, tinted, "Day 3 of 8" and its Next; ahead, how soon and her last line there. A tap opens its conversation; an archived
  * one's opens Details, where Unarchive is. @param {any} ctx @param {any} s its record @param {Row | null} r its row; null: archived
- * @param {{ say: ReturnType<typeof wording>, now: number, zone: string }} o say: the name is the user's words: its own language, not the screens'
+ * @param {{ say: ReturnType<typeof wording>, now: number, zone: string, due?: number[] }} o say: the name is the user's words; due: where a Next's end goes: its own language, not the screens'
  */
-async function tripCard(ctx, s, r, { say, now, zone }) {
+async function tripCard(ctx, s, r, { say, now, zone, due }) {
   const [backup, stamps, unread] = await Promise.all([backupState(ctx.store, s.id), tripStamps(ctx, s.id), r ? filesToRead(ctx.store, s.id).then((f) => f.length) : 0]);
   /** @type {HTMLElement[]} */
   const more = [];
@@ -104,6 +129,7 @@ async function tripCard(ctx, s, r, { say, now, zone }) {
     const d = dayOfTrip(s, now, zone);
     if (d) more.push(h('span', { class: 'sub day-of', text: t`Day ${d.day} of ${d.of}` }));
     const [next] = upcoming((await tripRows(ctx, s.id).catch(() => ({ rows: [] }))).rows, now, 1);
+    if (next) due?.push(over(next));
     if (next) more.push(h('span', { class: 'sub next', dir: 'auto', text: next.day && next.day !== dayIn(now, zone) ? t`Next: ${day(next.day, true)} ${next.time} ${rowName(next)}` : t`Next: ${next.time} ${rowName(next)}` }));
   } else if (r?.phase === 'future') {
     more.push(h('span', { class: 'sub soon', text: relTime(r.at, now) }));
