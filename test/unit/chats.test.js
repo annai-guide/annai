@@ -262,6 +262,20 @@ test("her dating of a voice-first chat that also named it: Undo puts the dates b
   assert.equal(await herDating(store, draft), null);
 });
 
+test('the dates line follows the hand-over Undo line: it shows until the user writes or speaks again after her dating', async () => {
+  const { ws, store, agent, draft } = await voiceFirst({ start: '2027-03-20', end: '2027-03-22' });
+  assert.ok(await herDating(store, draft), 'right after her turn');
+  // Her own later lines, a dismissed line (chatter, no one spoke to her) and her files after it change nothing.
+  await agent.log(draft, { type: 'heard', actor: 'user', data: { id: 'h9', text: 'just us talking', dismissed: true } });
+  await ws.write(draft, '/files/tickets.pdf', '%PDF', { author: 'shiori', type: 'application/pdf' });
+  assert.ok(await herDating(store, draft), 'still there');
+  await agent.log(draft, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'And dinner?']] });
+  assert.equal(await herDating(store, draft), null, 'the user wrote again: it goes, though the dates are still hers');
+  const next = await voiceFirst({ start: '2027-05-01' });
+  await next.agent.log(next.draft, { type: 'heard', actor: 'user', data: { id: 'h10', text: 'Thanks' } });
+  assert.equal(await herDating(next.store, next.draft), null, 'the user spoke again');
+});
+
 test('the dates line goes when the dates are no longer hers: changed by the user after, or never hers', async () => {
   const { ws, store, draft } = await voiceFirst({ start: '2027-03-20', end: '2027-03-22' });
   assert.ok(await herDating(store, draft));

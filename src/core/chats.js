@@ -28,23 +28,22 @@ export async function ensureDraft(ws) {
 }
 
 /**
- * How many of a conversation's newest file writes herDating reads for Shiori's dating of it. A guess, not a measurement: a hand-over writes
- * a handful of files (the file, its name, bookings), and the dating comes in the same turn, so 300 reaches back through about ten hand-overs;
- * the line is for the moment after her turn, and Details takes the dates back later. Revisit with a long trip's trace.
- */
-const DATING_LOOK = 300;
-
-/**
- * The dates a conversation had before Shiori's newest dating write of it, while its dates are still the ones that write set: whoever wrote trip.json
- * since (the naming write, or a title of the user's), a dates line with Undo stays for as long as the dates are hers. Her dating write is one whose
- * version before had no start and whose own has one. Null: no such write, or the dates changed since (Undo would take back more than hers).
+ * The dates a conversation had before Shiori's newest dating write of it, while the line that says so is to show: as the hand-over's Undo line,
+ * until the user writes or speaks again after her write, and while the dates are still the ones that write set (a later title doesn't change
+ * them; the user's own date edit does). Her dating write is one whose version before had no start and whose own has one. Only the file writes
+ * since the user's last line are read. Null: none, or not to show.
  * @param {any} store @param {string} scope @returns {Promise<{ start?: string, end?: string } | null>}
  */
 export async function herDating(store, scope) {
-  const [now, writes] = await store.tx(['files', 'events'], 'readonly', async (/** @type {any} */ x) => [
-    await x.getFile(scope, '/trip.json'),
-    (await x.listEvents(scope, { types: ['file.write'], reverse: true, limit: DATING_LOOK })).filter((/** @type {any} */ e) => e.data?.path === '/trip.json'),
-  ]);
+  const [now, writes] = await store.tx(['files', 'events'], 'readonly', async (/** @type {any} */ x) => {
+    const [typed] = await x.listEvents(scope, { types: ['msg.user'], reverse: true, limit: 1 });
+    const spoken = (await x.listEvents(scope, { types: ['heard'], ...(typed ? { after: typed.seq } : {}) })).filter((/** @type {any} */ e) => talks(e));
+    const last = Math.max(typed?.seq ?? 0, ...spoken.map((/** @type {any} */ e) => e.seq));
+    return [
+      await x.getFile(scope, '/trip.json'),
+      (await x.listEvents(scope, { types: ['file.write'], reverse: true, after: last })).filter((/** @type {any} */ e) => e.data?.path === '/trip.json'),
+    ];
+  });
   const current = await blobJSON(store, scope, now?.hash, { quiet: true });
   if (!current?.start) return null; // most conversations: undated
   for (const e of writes) {

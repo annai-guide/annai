@@ -17,7 +17,7 @@ import { upcoming, over } from '../../core/now.js';
 import { tripRows } from '../trip-rows.js';
 import { nowOf, todayOf } from '../today.js';
 import { ask } from '../ask.js';
-import { ME, SYS_WAITING, scopeTitle } from '../../core/scopes.js';
+import { ME, SYS_WAITING, scopeTitle, talks } from '../../core/scopes.js';
 import { readNames } from '../../core/names.js';
 import { FILES_ONLY, undoable, undoEverywhere } from '../../core/handover.js';
 import { removeTripNow } from './trip.js';
@@ -639,8 +639,9 @@ export async function nextLine(ctx, id) {
 }
 
 /**
- * "Shiori set the dates", with Undo, while the dates are the ones her patch gave a chat: it became a trip. Undo puts the dates back as the user's, so
- * the row goes back to a line, and keeps a name given since (herDating, undoDating). Drawn again whenever trip.json changes.
+ * "Shiori set the dates", with Undo, after her patch gave a chat its dates (it became a trip), until the user writes or speaks again, as the hand-over's Undo
+ * line goes. Undo puts the dates back as the user's, so the row goes back to a line, and keeps a name given since (herDating, undoDating). Drawn again
+ * whenever trip.json changes and whenever the user says something.
  * @param {any} ctx @param {string} scope @returns {{ el: HTMLElement, off: () => void }}
  */
 function datesLine(ctx, scope) {
@@ -665,8 +666,9 @@ function datesLine(ctx, scope) {
     el.replaceChildren(h('span', { text: t`Shiori set the dates` }), ' ', undo);
   };
   draw();
-  const off = ctx.ws.onChange((/** @type {{ scope: string, path: string }} */ c) => { if (c.scope === scope && c.path === '/trip.json') draw(); });
-  return { el, off };
+  const offFile = ctx.ws.onChange((/** @type {{ scope: string, path: string }} */ c) => { if (c.scope === scope && c.path === '/trip.json') draw(); });
+  const offLine = ctx.agent.on('event', (/** @type {any} */ e) => { if (e.scope === scope && talks(e)) draw(); }); // the user wrote or spoke again: it goes
+  return { el, off: () => { offFile?.(); offLine?.(); } };
 }
 
 /**
