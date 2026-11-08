@@ -564,3 +564,39 @@ test("the dock's name of the open conversation has one source, trip.json: a stat
     await llm.stop();
   }
 });
+
+test("Shiori set the dates goes when the user writes again, and stays gone after a reload", async ({ page }) => {
+  await openApp(page, '#/trips');
+  const [start, end] = await page.evaluate(async () => {
+    const { dayIn, deviceZone } = await import(/** @type {string} */ ('/src/core/time.js'));
+    return [10, 12].map((n) => dayIn(Date.now() + n * 86_400_000, deviceZone()));
+  });
+  const reply = [
+    { status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'patch', input: { path: '/trip/trip.json', changes: { title: 'Testville', start, end } } }]) },
+    { status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'speak', input: { text: 'I set it for the 10th to the 12th.' } }, { name: 'sleep', input: {} }]) },
+    { status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'speak', input: { text: 'Dinner is at seven.' } }, { name: 'sleep', input: {} }]) },
+  ];
+  const llm = await startModelServer({ '/b/v1/messages': reply });
+  try {
+    await modelSetUp(page, llm.origin, 'Elsewhere');
+    await page.goto('/#/trips');
+    await plus(page).click();
+    const id = draftOf(page.url());
+    await box(page).fill('Plan our weekend in Testville');
+    await box(page).press('Enter');
+    const line = page.locator('.dates-line');
+    await expect(line).toContainText('Shiori set the dates');
+    await expect(page.locator('.convo')).toContainText('I set it for the 10th to the 12th.');
+    await box(page).isVisible() || await page.getByRole('button', { name: 'Type', exact: true }).click();
+    await box(page).fill('And dinner?');
+    await box(page).press('Enter');
+    await expect(line).toBeHidden();
+    await expect(page.locator('.convo')).toContainText('Dinner is at seven.');
+    await page.reload();
+    await expect(page.locator('.convo')).toContainText('Dinner is at seven.');
+    await expect(line).toBeHidden();
+    await expect(page).toHaveURL(new RegExp(`#/trip/${id}/talk$`));
+  } finally {
+    await llm.stop();
+  }
+});
