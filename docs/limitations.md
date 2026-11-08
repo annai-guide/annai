@@ -275,6 +275,14 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** those readings look the same as a real stop behind a gap.
 - **Revisit when:** it shows in a drive trace.
 - **Approved:** 2026-11-06, the user picked "Check it, then accept (Recommended)"; checked by reading `#driveEnded` in src/core/voice/voice.js.
+
+### A turn stops when another conversation is tapped
+- **Kind:** known limitation.
+- **What the user sees:** tapping another conversation (a row on the timeline, or +) while Kokoro works stops her turn there until the user comes back to it.
+- **Why:** conversations don't run side by side, and `open` stops a turn.
+- **Revisit when:** drives show it.
+- **Approved:** 2026-11-05, the user picked "Stop until you come back (Recommended)".
+
 ### Only the trip in play reminds
 - **Kind:** known limitation.
 - **What the user sees:** with two trips happening at once, the other's itinerary and location reminders wait until the user talks in it, and anything whose moment passes meanwhile doesn't come later. Opening it isn't enough. Time watches fire for both, and copies already at the relay still push. A stop changed meanwhile loses its copy, and has no reminder until they talk in that trip.
