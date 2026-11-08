@@ -342,9 +342,9 @@ test('a booking read failing as play moves sends no short words: no copy goes, t
 }));
 
 test('the same for an open trip that isn\'t happening: no short words go', () => quiet(async () => {
-  const { k, side } = await noCopy({ start: '2026-12-20', end: '2026-12-21' });
+  const { k, side } = await noCopy({ start: '2026-11-28', end: '2026-12-21' }); // starts while Big Sur runs: not followed as the next trip
   try {
-    await k.ws.write(side, '/plan/fly.json', { ...FLIGHT, start: { at: iso('19:00', '2026-12-20'), tz: LA } }, { author: 'user' });
+    await k.ws.write(side, '/plan/fly.json', { ...FLIGHT, start: { at: iso('19:00', '2026-11-28'), tz: LA } }, { author: 'user' });
     await k.flush();
     const was = calls(k);
     const b = breakReads(k, (op, scope, path) => op === 'getFile' && scope === side && path === '/bookings/ua1.json');

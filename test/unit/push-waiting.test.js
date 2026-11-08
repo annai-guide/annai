@@ -280,17 +280,18 @@ test('a new stop in a waiting trip sends nothing, and an open trip that is only 
     await k.flush();
     assert.deepEqual(calls(k), was);
     assert.deepEqual(await events(k, side), ['cake:coming-up']);
-    const next = await createTrip(k.ws, { title: 'Next', start: '2026-12-01', end: '2026-12-02' });
+    // It starts while the trip in play still runs, so it isn't followed as the next trip is (live.js #nextTrips).
+    const next = await createTrip(k.ws, { title: 'Next', start: '2026-11-28', end: '2026-12-02' });
     k.agent.opened(next);
     await k.flush();
-    await k.ws.write(next, '/plan/fly.json', { ...PLAIN, id: 'fly', title: 'Fly', start: { at: iso('09:00', '2026-12-01'), tz: LA } }, { author: 'user' });
+    await k.ws.write(next, '/plan/fly.json', { ...PLAIN, id: 'fly', title: 'Fly', start: { at: iso('09:00', '2026-11-28'), tz: LA } }, { author: 'user' });
     await k.flush();
     assert.deepEqual(await events(k, next), ['fly:coming-up']);
     assert.deepEqual(calls(k), { off: was.off, sent: was.sent + 1 });
     k.agent.opened(k.trip);
     await k.flush();
     assert.deepEqual(await events(k, next), ['fly:coming-up'], 'left, it waits as any trip does');
-    await k.ws.write(next, '/plan/fly.json', { ...PLAIN, id: 'fly', title: 'Flight', start: { at: iso('09:00', '2026-12-01'), tz: LA } }, { author: 'user' });
+    await k.ws.write(next, '/plan/fly.json', { ...PLAIN, id: 'fly', title: 'Flight', start: { at: iso('09:00', '2026-11-28'), tz: LA } }, { author: 'user' });
     await k.flush();
     assert.deepEqual(await copies(k, next), {}, 'and goes as any trip\'s does');
   } finally { await k.stop(); }
