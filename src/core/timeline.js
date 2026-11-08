@@ -19,6 +19,9 @@ export const RECENT_DAYS = 30;
 export const FOLD_OVER = 3;
 const DAY = 86_400_000;
 
+/** The first day with a heading of its own: 30 days back, by the calendar in zone. A row before it sits under a month's. @param {number} now @param {string} zone */
+export const recentFrom = (now, zone) => /** @type {string} */ (dayIn(now - RECENT_DAYS * DAY, zone));
+
 /**
  * @typedef {{ id: string, title: string, phase: 'undated' | 'past' | 'happening' | 'future', at: number, card: boolean }} Row
  *   at: where it sits, in ms (a date sits at noon of that day in the zone, so it falls in the right day beside a chat's moments); card: dated
@@ -42,7 +45,7 @@ export function timelineRows(trips, now, zone) {
   });
   const order = (/** @type {Row} */ a, /** @type {Row} */ b) => a.at - b.at || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
   const past = all.filter((r) => r.phase === 'past' || r.phase === 'undated').sort(order);
-  const recent = /** @type {string} */ (dayIn(now - RECENT_DAYS * DAY, zone));
+  const recent = recentFrom(now, zone);
   /** Its heading: the day in the last 30 days, else the month. @param {Row} r */
   const headOf = (r) => {
     const day = /** @type {string} */ (dayIn(r.at, zone));
