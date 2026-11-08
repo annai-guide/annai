@@ -13,14 +13,15 @@ import { explainStorageFull } from '../storage-full.js';
 import { restartAnnai } from './plugins.js';
 import { keyNames } from './plugin-install.js';
 import { keepUiFrom } from '../languages.js';
+import { FOLD_OVER } from '../../core/timeline.js';
 
 /** The file to open. A Blob, never its bytes: archives are read a piece at a time (spec §12.1). @typedef {{ name: string, blob: Blob, from?: import('../import-state.js').From | null }} Source
  *   from: the backup place it came from (spec §12.4) */
 
 /** @typedef {{ key: Request | null, file: File }} InboxFile  key: its entry in the share inbox, if it came that way */
 
-/** More chats than this in a file are one row in its preview, and more trips than this one link to the timeline afterwards: three rows read at a glance (the timeline's fold). */
-const MANY = 3;
+/** More chats than this in a file are one row in its preview, and more trips than this one link to the timeline afterwards: the timeline's fold count, three rows read at a glance. */
+const MANY = FOLD_OVER;
 
 /** @param {any} ctx @param {{ params: Record<string, string> }} route */
 export async function renderImport(ctx, route) {

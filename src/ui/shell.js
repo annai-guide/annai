@@ -131,7 +131,7 @@ export function startShell(root, core) {
   /** @type {any} */ (ctx).dock = dock;
   // The cards sit under the top bar, in the page (base.css: what a landing card moves follows them).
   // The + is the shell's, shown on home whatever the dock (a plugin's has none): a new conversation, with no naming step.
-  const plus = core.agent && core.chats ? h('button', { class: 'plus', type: 'button', 'aria-label': t`New conversation`, title: t`New conversation`, onclick: () => newConversation(ctx) }, '+') : null;
+  const plus = core.agent && core.chats ? h('button', { class: 'plus', type: 'button', 'aria-label': t`New conversation`, onclick: () => newConversation(ctx) }, '+') : null;
   root.replaceChildren(header, notices.el, installBanner(), main, notices.toasts, ...(dock ? [dock.el] : []), ...(plus ? [plus] : []));
   // She speaks, listens or works: on home the whole dock shows, so an open microphone can be stopped there (shiori.css).
   const busy = (/** @type {{ name: string }} */ s) => document.body.classList.toggle('dock-busy', s.name !== 'sleeping' && s.name !== 'offline');

@@ -90,7 +90,7 @@ export function chatName({ text = '', file, photo, voice, at, tz }) {
     const name = clip(s.slice(0, sentenceEnd(s, from)));
     if (name) return name;
   }
-  if (file) return clip(file.split('/').pop() ?? file) || file;
+  if (file) return clip(/** @type {string} */ (file.split('/').pop())) || file; // a split always has a last part
   const time = timeIn(at, tz);
   if (photo) return t`Photo · ${time}`;
   if (voice) return t`Voice · ${time}`;
