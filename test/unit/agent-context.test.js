@@ -184,3 +184,17 @@ test('under screens not in English the languages section ends with their names, 
     setWords('en', null);
   }
 });
+
+test("an undated conversation's system text says how it becomes a trip, a dated one's does not, and it is the same on every turn", async () => {
+  const { ws, trip, registry } = await setup();
+  const chat = await createTrip(ws, { title: 'Where should we eat?' });
+  const undated = await takeSnapshot({ ws, registry, trip: chat, personalityName: 'shiori' });
+  assert.match(systemText(undated), /# This conversation has no dates\n.*patch \/trip\/trip\.json/);
+  assert.equal(systemText(undated), systemText(await takeSnapshot({ ws, registry, trip: chat, personalityName: 'shiori' })), 'nothing in it moves from turn to turn');
+  // The snapshot it follows is kept while the cache is warm, so a patch mid-conversation doesn't rewrite the prefix.
+  await ws.patch(chat, '/trip.json', { start: '2027-01-01' }, { author: 'shiori' });
+  const kept = nextSnapshot(undated, await takeSnapshot({ ws, registry, trip: chat, personalityName: 'shiori' }), { cold: false });
+  assert.equal(systemText(kept), systemText(undated));
+  const dated = await takeSnapshot({ ws, registry, trip, personalityName: 'shiori' });
+  assert.doesNotMatch(systemText(dated), /no dates/);
+});

@@ -200,6 +200,9 @@ export function tripTools(app) {
       description: "Start a trip, named and dated from the bookings (\"Anchorage · Nov 20–27\"), for files the user handed you that fit no trip. Only a title is needed; with no trip open, the files the user just handed you go with it unless you name others. With no trip open, it opens once you are done here, its conversation beginning with the hand-over; with one open, it doesn't open, and its files wait to be read there.",
       input: START,
       run: async (/** @type {any} */ i, /** @type {ToolCall} */ call) => {
+        // In a chat it would start a second trip without opening it: a chat becomes a trip by its own trip.json.
+        /* en */
+        if (call.trip && !(await ws.readJSON(call.trip, '/trip.json').catch(() => null))?.start) throw new Error("This conversation has no dates yet, so it can't start another trip. If it is becoming a trip, patch /trip/trip.json with its title and dates.");
         check(START, i);
         const title = String(i.title).trim();
         /* en */

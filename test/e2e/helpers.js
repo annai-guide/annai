@@ -574,18 +574,17 @@ export async function zipOf(files, top) {
 /**
  * Shiori's main model on a stand-in Anthropic server at origin (/b), through Custom provider and its
  * Anthropic Messages ability, and a trip, from a fresh start. look: false for an address with nothing there.
- * @param {import('@playwright/test').Page} page @param {string} origin @param {string} [trip] @param {{ look?: boolean }} [o]
+ * dates: a trip, not a chat, which may start another (timeline stage 4).
+ * @param {import('@playwright/test').Page} page @param {string} origin @param {string} [trip] @param {{ look?: boolean, dates?: { start: string, end: string } }} [o]
  */
-export async function modelSetUp(page, origin, trip = 'Big Sur', { look = true } = {}) {
+export async function modelSetUp(page, origin, trip = 'Big Sur', { look = true, dates } = {}) {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
   await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model', look });
   await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
   await page.goto('/#/trips');
-  await page.getByLabel('Trip name').fill(trip);
-  await page.getByRole('button', { name: 'Start trip' }).click();
-  await expect(page.getByRole('heading', { name: trip })).toBeVisible();
+  await startTrip(page, trip, dates);
 }
 
 /**
