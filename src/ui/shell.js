@@ -253,6 +253,8 @@ export function startShell(root, core) {
   let drawnHash = '';
   /** The entry arrived at last is new: no place on it to come back to. */
   let firstVisit = false;
+  /** Where you were on home when you last left it, in this page. @type {number | null} */
+  let homeY = null;
   /** This history entry's key, and where to scroll to on it. @returns {number} */
   const arrive = () => {
     const st = history.state ?? {};
@@ -314,6 +316,7 @@ export function startShell(root, core) {
     if (o.moved) {
       // Where you were on the screen you're leaving, now: a scroll event can come a frame late, after the move.
       if (shown.entry) scrolls.set(shown.entry, scrollY); // the screen's, not an entry passed over without drawing
+      if (shown.name === 'trips') homeY = scrollY;
       if (shown.tab && !PASSING.has(shown.name)) lastIn.set(shown.tab, { hash: shown.hash, y: scrollY });
       pending = arrive();
     }
@@ -403,10 +406,11 @@ export function startShell(root, core) {
       if (pending !== null) {
         const want = pending;
         pending = null;
-        // Home, newly come to, opens with the now line 40% down; Back brings you to where you were on it. With nothing past there is
-        // nothing to scroll past: the screen stays at its top, its notices in view.
-        const now = route.name === 'trips' && firstVisit && !want && main.querySelector('.past > li') ? main.querySelector('.now-line') : null;
-        scrollTo(0, now ? Math.max(0, scrollY + now.getBoundingClientRect().top - 0.4 * innerHeight) : want);
+        // Home, newly come to, opens with the now line 40% down, or where you last were on it (← is a new entry); Back brings you to where
+        // you were on it. With nothing past there is nothing to scroll past: the screen stays at its top, its notices in view.
+        const home = route.name === 'trips' && firstVisit && !want;
+        const now = home && homeY === null && main.querySelector('.past > li') ? main.querySelector('.now-line') : null;
+        scrollTo(0, now ? Math.max(0, scrollY + now.getBoundingClientRect().top - 0.4 * innerHeight) : home && homeY !== null ? homeY : want);
         // A screen that fills in a moment later is scrolled again as it grows, for up to 2 seconds or until you
         // touch it; not the Conversation, which goes to its last message itself, nor home, drawn whole.
         if (want && route.name !== 'talk' && route.name !== 'trips') follow(my, want);
