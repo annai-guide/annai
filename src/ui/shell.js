@@ -31,6 +31,7 @@ import { renderReplay } from './screens/replay.js';
 import { renderSimulate } from './screens/simulate.js';
 import { renderNotifications } from './screens/notifications.js';
 import { createDock } from './dock.js';
+import { newConversation } from './plus.js';
 import { tapKeepsKeyboard } from './tap-keeps-keyboard.js';
 import { dockHidesWhileTyping } from './dock-hides.js';
 import { noteScreen } from './resume.js';
@@ -129,7 +130,9 @@ export function startShell(root, core) {
   let dockMadeFor = dockKey(ctx);
   /** @type {any} */ (ctx).dock = dock;
   // The cards sit under the top bar, in the page (base.css: what a landing card moves follows them).
-  root.replaceChildren(header, notices.el, installBanner(), main, notices.toasts, ...(dock ? [dock.el] : []));
+  // The + is the shell's, shown on home whatever the dock (a plugin's has none): a new conversation, with no naming step.
+  const plus = core.agent && core.chats ? h('button', { class: 'plus', type: 'button', 'aria-label': t`New conversation`, title: t`New conversation`, onclick: () => newConversation(ctx) }, '+') : null;
+  root.replaceChildren(header, notices.el, installBanner(), main, notices.toasts, ...(dock ? [dock.el] : []), ...(plus ? [plus] : []));
   // A screen's own sticky row (the Conversation's title and ⋯) sits right under the bar, however tall it is on this phone.
   if (typeof ResizeObserver === 'function') {
     new ResizeObserver(([e]) => document.documentElement.style.setProperty('--topbar-h', `${Math.floor(/** @type {HTMLElement} */ (e.target).getBoundingClientRect().height)}px`)).observe(header);
@@ -366,6 +369,7 @@ export function startShell(root, core) {
     noteScreen(location.hash);
     // The welcome is a page of its own: the install warning waits for its last step, which says the same.
     document.body.classList.toggle('welcoming', route.name === 'welcome');
+    document.body.classList.toggle('home', route.name === 'trips');
     if (on && o.moved) nav.scrollLeft = Math.max(0, Math.min(nav.scrollLeft, on.offsetLeft - nav.offsetLeft), on.offsetLeft - nav.offsetLeft + on.offsetWidth - nav.clientWidth + 32); // clear of the fade
     showMore();
     const screen = SCREENS[route.name] ?? SCREENS.trips;

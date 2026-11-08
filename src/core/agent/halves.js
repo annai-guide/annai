@@ -747,7 +747,14 @@ export class Halves {
         this.#route(() => this.#refresh());
       }
     }
+    const other = trip !== this.kokoro.target;
     const opening = this.kokoro.open(trip, o);
+    if (other) {
+      // Until it is open, what the conversation left was doing (stopped by the open) answers no tap: + opens and taps at once.
+      const mark = {};
+      this.#switching = mark;
+      opening.finally(() => { if (this.#switching === mark) this.#switching = null; }).catch(() => {});
+    }
     this.#emitHalves(); // the left one's turn isn't this one's sign
     opening.finally(() => this.#emitHalves()).catch(() => {});
     if (this.#koeTrip !== undefined) {
@@ -856,10 +863,13 @@ export class Halves {
     /** @type {any} */ (setTimeout(() => this.#endTapHold(), 3 * this.secondMs)).unref?.();
   }
 
+  /** @type {object | null} set while a conversation opened from another is opening */
+  #switching = null;
+
   /** The half that talks (its tap unlocks sound, an iPhone rule); a live Koe's session. */
   #tapNow() {
     if (this.koeState === 'text') this.#koeOpen(); // retries a failed open
-    if (this.koeState !== 'live') return this.talking.tap();
+    if (this.koeState !== 'live') return this.talking.tap({ fresh: Boolean(this.#switching) });
     this.#ownCued = false;
     this.voice?.unlock();
     this.#koeOpen();

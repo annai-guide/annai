@@ -3166,12 +3166,18 @@ export class Agent {
 
   /**
    * Tapping Shiori (spec §6.7, §10.4): while she speaks, stops her and opens the microphone; while she listens or works, stops
-   * her turn; otherwise, with voice on, starts listening (with voice off, typing opens).
-   * @returns {'cut' | 'stopped' | 'listening' | 'typing'}
+   * her turn; otherwise, with voice on, starts listening (with voice off, typing opens). fresh: another conversation was just opened, whose open
+   * stopped what the one left was doing; its state may lag, and answers no tap here.
+   * @param {{ fresh?: boolean }} [o] @returns {'cut' | 'stopped' | 'listening' | 'typing'}
    */
-  tap() {
+  tap({ fresh = false } = {}) {
     this.voice?.unlock(); // inside the tap: sound may play from now on (spec §10.1)
     const voiceOn = Boolean(this.voice?.on);
+    if (fresh) {
+      if (!voiceOn) return 'typing';
+      this.#tapListen();
+      return 'listening';
+    }
     if (this.voice?.speaker.speaking) {
       this.voice.speaker.stop();
       for (const u of this.#utterances.values()) u.stop();
