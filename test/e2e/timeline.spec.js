@@ -530,3 +530,37 @@ test("a trip ahead says how soon, and the words follow the clock between midnigh
   await page.clock.fastForward('01:00:00');
   await expect(soon).toHaveText('in 21 hours');
 });
+
+test("the dock's name of the open conversation has one source, trip.json: a state change never shows the record's older title", async ({ page }) => {
+  const speak = (/** @type {string} */ text) => anthropicToolReply([{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }]);
+  const llm = await startModelServer({ '/b/v1/messages': [
+    { status: 200, type: 'text/event-stream', body: speak('Down the road.') },
+    { status: 200, type: 'text/event-stream', body: speak('The market is open.'), delayMs: 25_000 },
+  ] });
+  try {
+    await modelSetUp(page, llm.origin, 'Elsewhere');
+    await page.goto('/#/trips');
+    await plus(page).click();
+    const id = draftOf(page.url());
+    await box(page).fill('Where is the pier?');
+    await box(page).press('Enter');
+    await expect(page.locator('.convo')).toContainText('Down the road.');
+    await expect(page.locator('.talk-name')).toHaveText('Where is the pier?');
+    // The record's mirror of the title lags trip.json's by a moment, as it does while a first line names a chat: made stale by hand here.
+    await page.evaluate(async (id) => {
+      const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+      const store = await createIdbStore();
+      await store.tx(['scopes'], 'readwrite', async (/** @type {any} */ t) => t.putScope({ ...(await t.getScope(id)), title: 'Older name' }));
+      store.close();
+    }, id);
+    await box(page).isVisible() || await page.getByRole('button', { name: 'Type', exact: true }).click();
+    await box(page).fill('And the market?');
+    await page.getByRole('button', { name: 'Send', exact: true }).click(); // a state change, after the record went stale
+    await expect.poll(() => llm.bodies('/b/v1/messages').length).toBeGreaterThan(1);
+    await page.getByRole('link', { name: 'Back to Trips' }).click();
+    await expect(page.locator('body')).toHaveClass(/\bdock-busy\b/);
+    await expect(page.locator('.dock .in-convo')).toHaveText('In Where is the pier? ›');
+  } finally {
+    await llm.stop();
+  }
+});
