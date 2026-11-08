@@ -353,12 +353,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Approved:** 2026-11-07, the user picked "Accept for now (Recommended)".
 
 
-### A watch written back with its old id can fire again
-- **Kind:** deferred.
-- **What the user sees:** a repeating watch in Me fires, is deleted, then comes back with the same id (a restored file or an Undo) before its next time: it is said again at once. After a reload it isn't.
-- **Why:** deleting a watch drops its firing from memory, and `#loadScope` reads firings from the log only while a read is owed. Every other way in is covered. Which screens can write a watch back with its id is not checked yet.
-- **Revisit when:** the next timeline stage that touches watches: in `#loadScope`, recall the ids `#fired` lacks, as `#recallPlan` does for plan items.
-
 ### A failed Trace line can wait forever after a fast simulation
 - **Kind:** deferred.
 - **What the user sees:** only in a "fast" simulation: a read fails past the retry, the Trace line's own write fails too, and the run ends. The line is never written, because its retry waits on the simulation's clock, which nothing advances after the run.
