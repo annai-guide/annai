@@ -2,7 +2,7 @@ import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { setWords, plural, key } from '../../src/core/l10n.js';
 import {
-  locale, sentences, sentenceGap, num, numField, parseNum, money, size, distance, setDistances, duration, seconds, relTime, day, dateRange, when, zone, list, languageName, sortWords, formatCost,
+  locale, sentences, sentenceGap, num, numField, parseNum, money, size, distance, setDistances, duration, seconds, relTime, relChange, day, dateRange, when, zone, list, languageName, sortWords, formatCost,
 } from '../../src/ui/format.js';
 
 // The helpers speak the interface language with the phone's region: `as('en', 'de-DE')` is English screens on a German phone.
@@ -219,6 +219,23 @@ test('relTime says "just now" under a minute, "in 1 minute" for a minute ahead, 
   assert.equal(relTime(now - 2 * 3600_000, now), '2 時間前');
   assert.equal(relTime(now - 10_000, now), 'just now', 'until a translation says it');
   assert.equal(relTime(now + 10_000, now), '1 分後');
+});
+
+test("relChange: the next moment relTime's words change, for a moment ahead and one behind, in every unit", () => {
+  as('en', 'en-US');
+  const base = Date.UTC(2026, 9, 15, 12);
+  const MIN = 60_000;
+  // Moments ahead and behind, from seconds to years, with the boundaries between units and between roundings.
+  const gaps = [10_000, 59_000, 61_000, 89_000, 90_000, 119_000, 5 * MIN, 59 * MIN, 61 * MIN, 89 * MIN, 91 * MIN, 21 * 60 * MIN + 17, 23.5 * 60 * MIN,
+    24 * 60 * MIN, 30 * 60 * MIN, 47 * 60 * MIN, 6.4 * 86_400_000, 7 * 86_400_000, 20 * 86_400_000, 45 * 86_400_000, 400 * 86_400_000];
+  for (const gap of gaps) for (const sign of [1, -1]) {
+    const ts = base + sign * gap;
+    const words = relTime(ts, base);
+    const at = relChange(ts, base);
+    assert.ok(at >= base, `${sign * gap}: not in the past`);
+    assert.equal(relTime(ts, at - 1), words, `${sign * gap}: the words hold until it says`);
+    assert.notEqual(relTime(ts, at + 1), words, `${sign * gap}: and change then`);
+  }
 });
 
 test('dates: plain days, ranges, instants in a zone, and the zone\'s name', () => {

@@ -7,7 +7,7 @@ import { askAbout, canAsk, openOrTell } from '../composer.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { ValidationError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
-import { relTime, dateRange, backupText, wording, size, waitingHref, talkHref, day, when, rowName } from '../format.js';
+import { relTime, relChange, dateRange, backupText, wording, size, waitingHref, talkHref, day, when, rowName } from '../format.js';
 import { requestPersist } from '../platform.js';
 import { openFileButton } from '../open-file.js';
 import { tripStamps, stampMarks, factsWords } from '../stamps.js';
@@ -50,6 +50,8 @@ export async function renderTrips(ctx) {
   const ahead = await Promise.all([...happening, ...below].map(row));
   const archivedCards = await Promise.all(archived.map((s) => tripCard(ctx, s, null, o)));
   const waiting = await waitingFiles(ctx.ws);
+  // The last backup's and export's "2 hours ago" change their words too (they say it by the device's clock, not live mode's: due is on live mode's).
+  for (const at of [latest?.last.at, settings.lastExportAt]) if (at) due.push(o.now + relChange(at, Date.now()) - Date.now());
   const screen = h('div', { class: 'screen timeline' },
     h('h1', { class: 'title', text: t`Trips` }),
     // The shell scrolls the now line 40% down; with less past than that above it, it sits higher, with no blank space over it (a notice there stays in view).
@@ -138,6 +140,7 @@ async function tripCard(ctx, s, r, { say, now, zone, due }) {
     if (next) more.push(h('span', { class: 'sub next', dir: 'auto', text: next.day && next.day !== dayIn(now, zone) ? t`Next: ${day(next.day, true)} ${next.time} ${rowName(next)}` : t`Next: ${next.time} ${rowName(next)}` }));
   } else if (r?.phase === 'future') {
     more.push(h('span', { class: 'sub soon', text: relTime(r.at, now) }));
+    due?.push(relChange(r.at, now));
     const last = await herLast(ctx, s.id);
     if (last) more.push(h('span', { class: 'sub her-last', ...say(last), text: last }));
   }
