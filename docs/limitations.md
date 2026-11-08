@@ -371,3 +371,9 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** one hand-over sent files to a trip Shiori started and to another trip that stays (one of the user's own). Undo in the started trip's conversation removes that trip and also takes the hand-over's files and bookings out of the other trip, but its message names only the trip it removed.
 - **Why:** naming them needs new strings in every language, and the takeback itself is right (spec goal 2: Undo takes back exactly what Shiori wrote from that hand-over).
 - **Revisit when:** the next version: in talk.js's Undo message, name each trip `undoEverywhere` changed but didn't remove.
+
+### A hand-over cycle (A, then B, then A) leaves the file in B after Undo
+- **Kind:** deferred.
+- **What the user sees:** a file Shiori moved from conversation A to B and later back to A: Undo in A says "Your files are back in B and A", and the file is in B, where the user never put it. Found in review of stage 4; it was already so at 2ec13f79.
+- **Why:** every move is undone from both of its ends (A's `into`, B's `out`); in a cycle the second undo of B to A finds the file in A, put there by the undo of A to B, and moves it again.
+- **Revisit when:** the next version: in `moveBack` (handover.js), a file whose last write at `at.path` is this Undo's own (`undo === handover`) is home already.
