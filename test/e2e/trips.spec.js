@@ -995,6 +995,21 @@ test("Forward over a trip removed some other way ends on the Trips it began on, 
   expect(await stillMarked(page)).toBe(true);
 });
 
+test("Forward after the photo viewer is closed does nothing: its entry is passed, and nothing is drawn again", async ({ page }) => {
+  await openApp(page);
+  await startNamed(page, 'Kyoto');
+  const screen = await viewerOverFile(page);
+  await page.goBack(); // closes the viewer: its entry waits ahead
+  await expect(page.getByRole('dialog', { name: /^Photo / })).toHaveCount(0);
+  await expect.poll(() => idxOf(page)).toBe(screen);
+  await mark(page);
+  await page.goForward();
+  await page.waitForTimeout(500);
+  expect(await idxOf(page)).toBe(screen);
+  expect(await stillMarked(page)).toBe(true);
+  await expect(page.getByRole('dialog', { name: /^Photo / })).toHaveCount(0);
+});
+
 test("Back past the entry a photo viewer left behind lands on its screen once, not twice", async ({ page }) => {
   await openApp(page);
   const nara = await startNamed(page, 'Nara');
@@ -1007,8 +1022,48 @@ test("Back past the entry a photo viewer left behind lands on its screen once, n
   await expect.poll(() => idxOf(page)).toBe(screen);
   await expect(page.getByRole('button', { name: 'Open the photo full size' })).toBeVisible();
   await expect(page.getByRole('dialog', { name: /^Photo / })).toHaveCount(0);
+  await page.goForward(); // over the viewer's entry again, on to Nara's conversation
+  await expect.poll(() => hashOf(page)).toBe(`#/trip/${nara}/talk`);
+  await page.goBack();
+  await expect.poll(() => idxOf(page)).toBe(screen);
   await page.goBack(); // a different screen, not the file again
   await expect.poll(() => hashOf(page)).toBe(`#/trip/${kyoto}`);
+});
+
+test("Back after Remove trip shows the screen before where it was left, not where Details was", async ({ page }) => {
+  await openApp(page);
+  await goToHash(page, '#/settings');
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  await page.evaluate(() => scrollTo(0, 120));
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(120);
+  await goToHash(page, '#/trips');
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  await startNamed(page, 'Kyoto');
+  await page.getByRole('button', { name: 'Remove trip' }).scrollIntoViewIfNeeded();
+  await page.evaluate(() => scrollBy(0, 400));
+  expect(await page.evaluate(() => scrollY)).toBeGreaterThan(200); // Details is further down than Settings was
+  await removeFromDetails(page, 'Kyoto');
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(120);
+});
+
+test("a screen the user goes to while Remove trip runs is kept: the removal doesn't take them back", async ({ page }) => {
+  await openApp(page);
+  await startNamed(page, 'Kyoto');
+  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await page.getByRole('dialog', { name: 'Kyoto' }).getByRole('button', { name: 'Remove' }).click();
+  await expect(page.getByRole('dialog', { name: 'Not backed up' })).toBeVisible();
+  // "Remove anyway", and in the same moment a tap on Settings: the removal ends after it.
+  await page.evaluate(() => {
+    /** @type {HTMLButtonElement} */ ([...document.querySelectorAll('dialog button')].find((b) => b.textContent === 'Remove anyway')).click();
+    /** @type {HTMLAnchorElement} */ (document.querySelector('nav.topnav a[href="#/settings"]')).click();
+  });
+  await expect(page.getByText(/^Removed Kyoto\./)).toBeVisible();
+  await page.evaluate(() => new Promise((done) => setTimeout(done, 400))); // a walk back would be under way by now
+  expect(hashOf(page)).toBe('#/settings');
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
 });
 
 test("Remove trip goes back over the Trips between, to the screen of the other trip before it", async ({ page }) => {
@@ -1040,22 +1095,21 @@ test("Back over a removed trip's entries also passes the Trips it left, which wo
   expect(await idxOf(page)).toBe(1);
 });
 
-test("a removed trip's entry that is the newest, reached by Forward, becomes Trips: the screen is never blank", async ({ page }) => {
+test("a removed trip's entry that is the newest, reached by Forward from another screen, becomes Trips: the screen is never blank", async ({ page }) => {
   await openApp(page);
   const id = await startNamed(page, 'Kyoto'); // Trips, then its Details
+  await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  await goToHash(page, `#/trip/${id}`); // Settings, then Details again: the newest entry
+  await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}`);
   await page.goBack();
-  await expect.poll(() => idxOf(page)).toBe(0);
-  await page.evaluate(async (id) => { // removed some other way than the button: its Details entry waits ahead, the newest
-    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
-    const { removeTrip } = await import(/** @type {string} */ ('/src/core/scopes.js'));
-    const store = await createIdbStore();
-    await removeTrip(store, id);
-    store.close();
-  }, id);
+  await expect.poll(() => hashOf(page)).toBe('#/settings');
+  const at = await idxOf(page);
+  await removeBehind(page, id); // removed some other way than the button: its Details entry waits ahead
   await page.goForward();
   await expect.poll(() => hashOf(page)).toBe('#/trips');
   await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
-  expect(await idxOf(page)).toBe(1); // in the entry's place
+  expect(await idxOf(page)).toBe(/** @type {number} */ (at) + 1); // in the entry's place
 });
 
 test("a removed trip's entry that is the first, reached by Back, becomes Trips: Back never leaves annai from a blank screen", async ({ page, context }) => {
@@ -1079,6 +1133,26 @@ test("a removed trip's entry that is the first, reached by Back, becomes Trips: 
   await expect.poll(() => hashOf(second)).toBe('#/trips');
   await expect(second.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
   expect(await idxOf(second)).toBe(0); // in the entry's place
+});
+
+test("a trip screen whose trip can't be read says what failed", async ({ page }) => {
+  await openApp(page);
+  const id = await startNamed(page, 'Kyoto');
+  await page.evaluate((id) => { // the trip's record can't be read, as when WebKit loses its IndexedDB connection
+    const get = IDBObjectStore.prototype.get;
+    IDBObjectStore.prototype.get = function (/** @type {any} */ k) {
+      if (this.name === 'scopes' && k === id) throw new DOMException('Connection to Indexed Database server lost. Refresh the page to try again', 'UnknownError');
+      return get.call(this, k);
+    };
+  }, id);
+  for (const to of [`#/trip/${id}`, `#/trip/${id}/talk`, `#/trip/${id}/recap`]) {
+    await goToHash(page, '#/settings');
+    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+    await goToHash(page, to);
+    await expect(page.getByRole('heading', { level: 1, name: "This screen couldn't open" })).toBeVisible();
+    await expect(page.getByRole('main')).toContainText('Connection to Indexed Database server lost');
+    expect(hashOf(page)).toBe(to); // not taken for gone
+  }
 });
 
 test("a removed trip's address as the first entry is replaced by Trips, and keeps its place", async ({ page }) => {

@@ -126,6 +126,27 @@ test('the no-trip conversation keeps its lines, and one saying where the files w
   }
 });
 
+test('Undo from a start on Trips leaves the trip the way Back does: Trips is the first entry, and Back leaves annai', async ({ page, context }) => {
+  const llm = await startModelServer({ [MESSAGES]: anchorage() });
+  try {
+    await setUp(page, llm.origin);
+    await page.close(); // annai runs in one tab at a time: a new one opens on Trips, its first entry
+    const tab = await context.newPage();
+    await tab.addInitScript(() => { try { localStorage.setItem('annai.forceDownload', '1'); } catch { /* storage blocked */ } });
+    await tab.goto('/#/trips');
+    await expect(tab.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
+    await handAnchorage(tab);
+    await tab.getByRole('button', { name: 'Undo what Shiori did with these files' }).click();
+    await expect(tab.getByText(`Undone. ${TITLE} is removed, and your files are waiting with Shiori.`)).toBeVisible();
+    await expect(tab.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
+    await expect.poll(() => tab.evaluate(() => history.state?.annaiIdx ?? null)).toBe(0);
+    await tab.goBack();
+    expect(tab.url().startsWith('http://127.0.0.1:8790/')).toBe(false); // no second Trips before annai is left
+  } finally {
+    await llm.stop();
+  }
+});
+
 test('Undo takes back what she did; the trip she started goes, and the files wait with Shiori again', async ({ page }) => {
   const llm = await startModelServer({ [MESSAGES]: anchorage() });
   try {
