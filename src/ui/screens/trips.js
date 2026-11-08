@@ -96,11 +96,11 @@ function followClock(ctx, screen, o) {
   });
 }
 
-/** Home's folds that are open (a month's, 'archived'), kept so while annai runs: Back, or a redraw, finds home as it was. */
+/** Home's folds that are open (a month's, 'archived', the form's 'dates'), kept so while annai runs: Back, or a redraw, finds home as it was. */
 const unfolded = new Set();
 /** @param {string} key @param {...HTMLElement} parts */
 function fold(key, ...parts) {
-  const el = h('details', { class: key === 'archived' ? key : undefined, open: unfolded.has(key) }, ...parts);
+  const el = h('details', { class: key === 'archived' || key === 'dates' ? key : undefined, open: unfolded.has(key) }, ...parts);
   el.addEventListener('toggle', () => (el.open ? unfolded.add(key) : unfolded.delete(key)));
   return el;
 }
@@ -219,7 +219,7 @@ function newTripForm(ctx) {
   h('h2', { class: 'section', text: t`Start a trip` }),
   field(t`Trip name`, title),
   // A name is enough (goal 3): Shiori fills the dates in from the bookings.
-  h('details', { class: 'dates' }, h('summary', { text: t`Add dates (optional)` }), h('div', { class: 'row' }, field(t`Starts`, start), field(t`Ends`, end))),
+  fold('dates', h('summary', { text: t`Add dates (optional)` }), h('div', { class: 'row' }, field(t`Starts`, start), field(t`Ends`, end))),
   error,
   h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'submit' }, t`Start trip`)));
 }

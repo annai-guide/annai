@@ -511,3 +511,13 @@ test("a redraw skipped over typing comes once the typing is gone: the card is ri
   await expect(card.locator('.next')).toContainText('Lunch');
 });
 
+test("the Start a trip form's Add dates fold stays open across the clock's redraw", async ({ page }) => {
+  await morning(page);
+  const card = row(page, 'Testville');
+  await page.getByText('Add dates (optional)').click();
+  await expect(page.locator('details.dates')).toHaveAttribute('open', '');
+  await page.clock.fastForward('01:31:00');
+  await expect(card.locator('.next')).toContainText('Lunch'); // drawn again
+  await expect(page.locator('details.dates')).toHaveAttribute('open', '');
+});
+
