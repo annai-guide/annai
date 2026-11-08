@@ -5,10 +5,10 @@ import { parseNum } from '../core/intl.js';
 /** A lang attribute for words in a language that may not be the screens' (a plugin's): the tag, else none. @param {string} [tag] */
 export const otherLang = (tag) => (tag && tag !== lang() ? tag : undefined);
 
-/** The history entry of something opened over a screen: its screen's key, and a number between its screen's and the next (shell.js `arrive`). @param {Record<string, unknown>} mine */
+/** The history entry of something opened over a screen: its screen's key and load, and a number between its screen's and the next (shell.js `arrive`). @param {Record<string, unknown>} mine */
 export function overlayEntry(mine) {
-  const { annaiIdx: idx, annaiScroll: key } = history.state ?? {};
-  return typeof idx === 'number' && typeof key === 'string' ? { ...mine, annaiScroll: key, annaiIdx: (idx + Math.floor(idx) + 1) / 2 } : mine;
+  const { annaiIdx: idx, annaiScroll: key, annaiLoad } = history.state ?? {};
+  return typeof idx === 'number' && typeof key === 'string' ? { ...mine, annaiScroll: key, annaiIdx: (idx + Math.floor(idx) + 1) / 2, annaiLoad } : mine;
 }
 
 /**

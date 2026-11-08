@@ -383,9 +383,3 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** on a desktop browser, two Forwards within a few milliseconds over a removed trip's entry: the second supersedes the first one's draw, and the shell's "back to the entry it left" leaves the earlier screen drawn under the address of the one it went back to. A redraw (any tap) puts it right.
 - **Why:** it needs two Forwards inside one draw; on a phone, Forward is only in Android Chrome's menu, and an installed iPhone app has none.
 - **Revisit when:** the next version: let a superseded draw end the pass (`returning`, `steps`) before the newer move starts.
-
-### annai opened again in the same tab, then Back into the older load: a Forward can leave a screen under a removed trip's address
-- **Kind:** deferred.
-- **What the user sees:** annai is opened a second time in the same tab (a typed address or a bookmark), the user goes Back into the first load and Forward again, and a trip of the second load has been removed meanwhile. A Forward over that trip's last entry leaves the screen before it drawn under the trip's address, and the next redraw jumps to Trips. Before the newest entry was kept through reloads, Trips showed in its place at once.
-- **Why:** the newest entry known is kept per tab (`annai-top` in sessionStorage), but entry numbers start again at 0 in each load, so one load reads the other's number. The fix needs about 200 bytes the size budget doesn't have in this release, and the chain needs a second load in the same tab.
-- **Revisit when:** the next version: keep the number with a per-load id that `arrive` adds to `history.state` (and `overlayEntry` copies), and read it only when the ids match; or keep it in each entry's own `history.state` (Safari limits how often `replaceState` may run).

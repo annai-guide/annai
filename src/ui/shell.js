@@ -217,17 +217,24 @@ export function startShell(root, core) {
   // (location.replace drops history.state); what opens over a screen takes one between (dom.js). `top`: the newest at or ahead.
   let lastIdx = -1;
   let top = -1;
-  // `top` is kept for the tab's life as it changes, so a Forward after a reload still knows what is ahead.
+  // `top` is kept for the tab's life as it changes, so a Forward after a reload still knows what is ahead. Each load of annai in the tab numbers its
+  // entries from 0 and marks them with its own id (annaiLoad), kept through reloads; `top` is kept by that id, so Back into an older load reads its own.
   const TOP = 'annai-top';
-  try {
-    top = Number(sessionStorage.getItem(TOP)) || -1;
-  } catch {
-    // not kept: after a reload, as far as the entry reloaded
-  }
+  const load = typeof history.state?.annaiLoad === 'string' ? history.state.annaiLoad : Math.random().toString(36).slice(2, 10);
+  /** @returns {Record<string, number>} */
+  const tops = () => {
+    try {
+      const v = JSON.parse(sessionStorage.getItem(TOP) ?? '{}');
+      return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; // a number: an older annai's, of no load known
+    } catch {
+      return {}; // not kept: after a reload, as far as the entry reloaded
+    }
+  };
+  top = typeof tops()[load] === 'number' ? tops()[load] : -1;
   const keepTop = (/** @type {number} */ v) => {
     top = v;
     try {
-      sessionStorage.setItem(TOP, String(v));
+      sessionStorage.setItem(TOP, JSON.stringify({ ...tops(), [load]: v }));
     } catch {
       // not kept
     }
@@ -258,7 +265,7 @@ export function startShell(root, core) {
       return scrolls.get(entry) ?? 0;
     }
     entry = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-    history.replaceState({ ...st, annaiScroll: entry, annaiIdx: idx }, '');
+    history.replaceState({ ...st, annaiScroll: entry, annaiIdx: idx, annaiLoad: load }, '');
     const y = swipedTo ?? 0;
     swipedTo = null;
     return y;
@@ -266,7 +273,7 @@ export function startShell(root, core) {
   /** This entry becomes another address, keeping its number, and is drawn. @param {string} to */
   const replaceHash = (to) => {
     closeQuestions();
-    history.replaceState(typeof history.state?.annaiIdx === 'number' ? { annaiIdx: history.state.annaiIdx } : null, '', to);
+    history.replaceState(typeof history.state?.annaiIdx === 'number' ? { annaiIdx: history.state.annaiIdx, annaiLoad: load } : null, '', to);
     return render({ moved: true });
   };
 
