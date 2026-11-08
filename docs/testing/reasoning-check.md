@@ -60,7 +60,7 @@ the 360 KB limit (`KEPT_SENT_MAX` in `src/core/agent/loop.js`, the design §6) l
 From the repository root:
 
 ```
-node scripts/reasoning-check.mjs run --anthropic-key /root/annai-test-keys/anthropic --openrouter-key /root/annai-test-keys/openrouter
+node scripts/reasoning-check.mjs run --anthropic-key /root/keys/anthropic --openrouter-key /root/keys/openrouter
 ```
 
 Either key may be left out; at least one is needed. Each key file's first line is the key. It is read inside the run only
