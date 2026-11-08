@@ -40,8 +40,8 @@ export function ask({ title, body, yes, no = t`Cancel` }) {
     document.body.append(dialog);
     if (modal) dialog.showModal();
     else release = openPlain(dialog, back);
-    if (closeWatcher) return;
-    history.pushState(overlayEntry({ annaiAsk: id }), '');
+    if (!closeWatcher) history.pushState(overlayEntry({ annaiAsk: id }), '');
+    // Any move closes it, as Cancel, also with CloseWatcher: a Forward, a new address (which fires popstate too: a tapped reminder, Driving).
     addEventListener('popstate', back);
   });
 }
