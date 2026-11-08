@@ -1,5 +1,5 @@
 {
-  "build": "038d809ba436",
+  "build": "c486b225edb6",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -155,7 +155,7 @@
     "/src/core/storage-types.js": "e20d91a457a9",
     "/src/core/sun.js": "e180f3df7e21",
     "/src/core/time.js": "1580b6a15bfd",
-    "/src/core/timeline.js": "ec7b3b598724",
+    "/src/core/timeline.js": "ab919fb0aa01",
     "/src/core/xml.js": "8b39081ef29a",
     "/src/core/trip-files.js": "b4d488a07762",
     "/src/core/tsv.js": "f2206ca7c32f",
