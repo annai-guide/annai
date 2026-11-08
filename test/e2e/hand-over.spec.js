@@ -234,6 +234,7 @@ for (const iphone of [false, true]) {
     try {
       await setUp(page, llm.origin);
       await handOver(page, [await fixture('flight.pdf', 'application/pdf'), await fixture('hotel.png', 'image/png')]);
+      await expect(page.getByRole('link', { name: `Shiori started ${TITLE} with these files.` })).toBeVisible(); // the trip is started, her reply held: the line it adds has redrawn the conversation
       await page.getByRole('button', { name: 'Tidy up the conversation', exact: true }).click();
       await page.getByRole('group', { name: 'Tidy up the conversation' }).getByRole('button', { name: 'Start fresh' }).click();
       const question = page.getByRole('dialog', { name: 'Start fresh?' });
