@@ -4,7 +4,7 @@ import { parseIcs, planItems, planToIcs, MAX_EVENTS, MAX_ICS_BYTES } from '../..
 import { importCalendar, newFilesText } from '../../src/core/imports.js';
 import { validate } from '../../src/core/schema.js';
 import { PLAN_ITEM_SCHEMA, CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip } from '../../src/core/scopes.js';

@@ -15,7 +15,7 @@ import { STAND_IN_SIGNATURE } from '../../plugins-official/gemini-api/steps.js';
 import { TEST_IMAGE } from '../../src/core/llm/check.js';
 import { callRole, Bench } from '../../src/core/llm/fallback.js';
 import { Kept, keyPrint } from '../../src/core/llm/kept.js';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes } from '../../src/core/scopes.js';
 import { loadGemini, loadTypes, endpointOf, modelOf, tripFiles } from '../unit/gemini-kit.js';

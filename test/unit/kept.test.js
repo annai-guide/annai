@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { Kept, fingerprint, keyPrint, MAX_TURNS } from '../../src/core/llm/kept.js';
 import { callRole, Bench } from '../../src/core/llm/fallback.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes, SYS_DEVICE } from '../../src/core/scopes.js';
 import { loadGemini, KEY, endpointOf } from './gemini-kit.js';

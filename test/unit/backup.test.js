@@ -3,7 +3,7 @@ import { relative, join } from 'node:path';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip, removeTrip, backupState, SYS } from '../../src/core/scopes.js';

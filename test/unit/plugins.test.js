@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace, ValidationError, StorageFullError } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip, SYS_PLUGINS } from '../../src/core/scopes.js';

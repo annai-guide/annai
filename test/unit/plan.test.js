@@ -4,7 +4,7 @@ import { bookingRef, planRows, planDays, legKm, PLAN_FILE, BOOKING_FILE, beforeS
 import { upcoming } from '../../src/core/now.js';
 import { tripRows } from '../../src/ui/trip-rows.js';
 import { setWords } from '../../src/core/l10n.js';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes, createTrip } from '../../src/core/scopes.js';
 import { logEvent } from '../../src/core/events.js';

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { keepAwake } from '../../src/ui/wake-lock.js';
 import { liveText, knownFix } from '../../src/ui/live-chip.js';
 import { whereWords } from '../../src/ui/today.js';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes } from '../../src/core/scopes.js';
 import { readAppSettings, updateAppSettings } from '../../src/core/settings.js';

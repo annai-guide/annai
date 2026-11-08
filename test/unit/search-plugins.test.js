@@ -183,7 +183,7 @@ test('SearXNG, against a stand-in instance: a plain GET of /search with format=j
 test('a plugin\'s search provider joins the chain before the free services, and the user can switch it off', async () => {
   for (const id of ['tavily', 'serper', 'searxng', 'exa', 'parallel', 'firecrawl', 'wiki']) cooldowns.clear(id);
   const { PluginHost } = await import('../../src/core/plugins.js');
-  const { createMemoryStore } = await import('../../src/core/store-memory.js');
+  const { createMemoryStore } = await import('../fakes/store-memory.js');
   const { Workspace } = await import('../../src/core/workspace.js');
   const { ensureBaseScopes } = await import('../../src/core/scopes.js');
   const { updateAppSettings } = await import('../../src/core/settings.js');

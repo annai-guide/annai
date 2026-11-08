@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes, SYS } from '../../src/core/scopes.js';
 import { readConfig, modelOf, providerOf, getKey, saveProvider, saveModel, saveRoles, removeModel, removeProviderRecords, diffLayer, providerBase } from '../../src/core/llm/config.js';

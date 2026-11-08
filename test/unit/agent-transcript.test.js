@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { record, INLINE_MAX, TALK_TAG } from '../../src/core/agent/log.js';
 import { Transcript, resolveEvent, repair } from '../../src/core/agent/transcript.js';

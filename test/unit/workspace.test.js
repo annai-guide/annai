@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace, ValidationError, NotFoundError, StorageFullError } from '../../src/core/workspace.js';
 import { PathError } from '../../src/core/paths.js';
 import { sha256Hex } from '../../src/core/hash.js';

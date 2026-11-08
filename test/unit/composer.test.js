@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { pasteBecomesFile, pastedName, handedOf, shownPath, handOver } from '../../src/ui/composer.js';
 import { SYS_WAITING, ensureBaseScopes, createTrip, kindOf } from '../../src/core/scopes.js';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace, StorageFullError } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';

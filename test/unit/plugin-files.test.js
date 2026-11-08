@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import { ZipWriter } from '../../src/core/zip.js';
 import assert from 'node:assert/strict';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip, ME, SYS_WAITING } from '../../src/core/scopes.js';

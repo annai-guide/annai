@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { HeardMemory, listenKind, resolveSpeech, textVersion, audioFor, NOT_TRANSCRIBED } from '../../src/core/voice/resolve.js';
 import { Voice, audioIn } from '../../src/core/voice/voice.js';
 import { Registry } from '../../src/core/registry.js';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes } from '../../src/core/scopes.js';

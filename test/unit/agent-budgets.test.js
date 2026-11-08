@@ -5,7 +5,7 @@ import { inQuiet, quietEnds, spentToday, costs, UNWATCHED_STEPS } from '../../sr
 import { isWatched } from '../../src/core/agent/loop.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes, ME } from '../../src/core/scopes.js';
 import { logEvent } from '../../src/core/events.js';

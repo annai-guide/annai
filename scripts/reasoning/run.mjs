@@ -2,7 +2,7 @@
 // and through OpenRouter, a synthetic trip, then what each request sent and got back, checked. Nothing of a request's body is kept, and
 // every text written or printed passes the keys' scrub first.
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../../test/fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip } from '../../src/core/scopes.js';

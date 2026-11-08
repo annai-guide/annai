@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { activate } from '../../plugins-official/storage-forgejo/index.js';
 import { TargetError, readAnswer } from '../../src/core/storage-types.js';
 import { ZipReader, ZipWriter, readZip } from '../../src/core/zip.js';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip } from '../../src/core/scopes.js';

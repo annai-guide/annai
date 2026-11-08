@@ -1,5 +1,5 @@
-/** @typedef {import('./types.js').Store} Store @typedef {import('./types.js').Tx} Tx */
-import { storeError, StoppedError } from './errors.js';
+/** @typedef {import('../../src/core/types.js').Store} Store @typedef {import('../../src/core/types.js').Tx} Tx */
+import { storeError, StoppedError } from '../../src/core/errors.js';
 
 /**
  * An in-memory Store with the same contract as the IndexedDB store, for unit

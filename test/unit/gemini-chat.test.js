@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { loadGemini, spec, endpointOf, modelOf, KEY, memorySettings } from './gemini-kit.js';
 import { applyPatches, callOnce } from '../../src/core/llm/call.js';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { SYS } from '../../src/core/scopes.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { levelsFor } from '../../plugins-official/gemini-api/levels.js';

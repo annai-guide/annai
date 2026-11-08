@@ -47,7 +47,7 @@ export const spec = (type, over = {}) => ({ endpoint: endpointOf(type), model: m
  */
 export async function tripFiles() {
   const { Registry } = await import('../../src/core/registry.js');
-  const { createMemoryStore } = await import('../../src/core/store-memory.js');
+  const { createMemoryStore } = await import('../fakes/store-memory.js');
   const { Workspace } = await import('../../src/core/workspace.js');
   const { makeSchemaFor } = await import('../../src/core/schema.js');
   const { kindOf, ensureBaseScopes, createTrip } = await import('../../src/core/scopes.js');

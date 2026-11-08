@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { planRows } from '../../src/core/plan.js';
 import { upcoming, routeStrip, sunPlace } from '../../src/core/now.js';
 import { todayOf, nowOf, takeover, driveBack, drivingTrip, askIn } from '../../src/ui/today.js';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes } from '../../src/core/scopes.js';
 import { readAppSettings } from '../../src/core/settings.js';

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace, NotFoundError } from '../../src/core/workspace.js';
 import { ensureBaseScopes, createTrip, ME, SYS_WAITING } from '../../src/core/scopes.js';
 import { canRead } from '../../src/core/reach.js';

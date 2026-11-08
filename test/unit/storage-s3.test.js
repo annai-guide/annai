@@ -7,7 +7,7 @@ import { TargetError, backupFileName, parseBackupFileName, readAnswer } from '..
 import { xmlElements, xmlText } from '../../src/core/xml.js';
 import { startS3, ACCESS, SECRET } from '../fakes/s3.js';
 import { readFile, readdir } from 'node:fs/promises';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip } from '../../src/core/scopes.js';

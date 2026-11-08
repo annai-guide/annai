@@ -12,7 +12,7 @@ import { retry } from '../../src/core/llm/retry.js';
 import { ProviderError, errorFromResponse, sameOrigin } from '../../src/core/llm/contract.js';
 import { Uploads } from '../../src/core/llm/uploads.js';
 import { mergePatch } from '../../src/core/patch.js';
-import { createMemoryStore } from '../../src/core/store-memory.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes } from '../../src/core/scopes.js';
 
