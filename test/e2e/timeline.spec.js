@@ -215,3 +215,50 @@ test('voice on: an open mic can be stopped from home, and ← leaves voice on', 
     await server.stop();
   }
 });
+
+test("Shiori's patch dates the open chat: its row becomes a card below now, and the conversation says so with Undo; Undo puts it back as a line, after a reload too; a date set in Details says nothing", async ({ page }) => {
+  await openApp(page, '#/trips');
+  const [start, end] = await page.evaluate(async () => {
+    const { dayIn, deviceZone } = await import(/** @type {string} */ ('/src/core/time.js'));
+    return [10, 12].map((n) => dayIn(Date.now() + n * 86_400_000, deviceZone()));
+  });
+  const reply = [
+    { status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'patch', input: { path: '/trip/trip.json', changes: { title: 'Testville', start, end } } }]) },
+    { status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'speak', input: { text: 'I set it for the 10th to the 12th.' } }, { name: 'sleep', input: {} }]) },
+  ];
+  const llm = await startModelServer({ '/b/v1/messages': reply });
+  try {
+    await modelSetUp(page, llm.origin, 'Elsewhere');
+    await page.goto('/#/trips');
+    await plus(page).click();
+    const id = draftOf(page.url());
+    await box(page).fill('Plan our weekend in Testville');
+    await box(page).press('Enter');
+    const line = page.locator('.dates-line');
+    await expect(line).toContainText('Shiori set the dates');
+    await expect(page.locator('.convo')).toContainText('I set it for the 10th to the 12th.');
+    await page.getByRole('link', { name: 'Back to Trips' }).click();
+    await expect(row(page, 'Testville')).not.toHaveClass(/\bline\b/);
+    await expect(page.locator('.ahead').locator('.trip-card .name')).toContainText(['Testville']);
+    await row(page, 'Testville').click();
+    await expect(page).toHaveURL(new RegExp(`#/trip/${id}/talk$`));
+    await line.getByRole('button', { name: 'Undo' }).click();
+    await expect(line).toBeHidden();
+    await page.getByRole('link', { name: 'Back to Trips' }).click();
+    await expect(row(page, 'Plan our weekend in Testville')).toHaveClass(/\bline\b/);
+    await page.reload();
+    await expect(row(page, 'Plan our weekend in Testville')).toHaveClass(/\bline\b/);
+    await row(page, 'Plan our weekend in Testville').click();
+    await expect(page.locator('.convo')).toContainText('I set it for the 10th to the 12th.');
+    await expect(line).toBeHidden();
+    // The user's own dates, from Details: no such line.
+    await page.goto(`/#/trip/${id}`);
+    await page.getByLabel('Starts').fill(start);
+    await page.getByRole('button', { name: 'Save' }).click();
+    await page.goto(`/#/trip/${id}/talk`);
+    await expect(page.locator('.convo')).toContainText('I set it for the 10th to the 12th.');
+    await expect(line).toBeHidden();
+  } finally {
+    await llm.stop();
+  }
+});

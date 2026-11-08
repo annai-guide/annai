@@ -74,8 +74,19 @@ export function systemText(s, part = '') {
   if (s.memory.trim()) /* en */ parts.push(`# What you remember (/me/memory.md)\n${s.memory.trim()}`);
   if (s.skills.length) /* en */ parts.push(`# Skills (load one with the skill tool)\n${s.skills.map((k) => `${k.name}: ${k.description}`).join('\n')}`);
   if (s.trip) /* en */ parts.push(`# This trip (/trip/trip.json)\n${s.tripInfo}`, s.tripMemory.trim() ? `${s.tripMemory.trim()}` : '# Trip memory\n(empty)');
+  // From the snapshot, so it stays the same from turn to turn and the cached prefix holds.
+  if (s.trip && !datedInfo(s.tripInfo)) /* en */ parts.push('# This conversation has no dates\nIts name is a first guess: patch /trip/trip.json when you know a better one. If it becomes a trip, patch its title and dates there.');
   else /* en */ parts.push('# No trip is open\n/trip/ is empty. The user can open a trip from Trips.');
   return parts.join('\n\n');
+}
+
+/** Whether a snapshot's trip.json has a start. @param {string} info */
+function datedInfo(info) {
+  try {
+    return Boolean(JSON.parse(info)?.start);
+  } catch {
+    return false;
+  }
 }
 
 /** The next plan items, as TSV rows: start, title, fixed, place. @param {import('../workspace.js').Workspace} ws @param {string | null} trip @param {number} now */

@@ -2369,39 +2369,41 @@ e34nbi	ok	Started fresh	已重新開始	src/ui/screens/talk.js:469	Note: the div
 1p4yyw7	ok	Her turn ended	她的這一輪結束了	src/ui/screens/talk.js:480	
 1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	還沒有內容。點一下下方的 Shiori 或「輸入」來對話。	src/ui/screens/talk.js:495	Note: "Type" is the dock's button: its words must match it.
 4fzxin	ok	From {0}.	來自{0}。	src/ui/screens/talk.js:551	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
-1pm5i13	ok	Back to Trips	返回「旅行」	src/ui/screens/talk.js:574	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
-15g4wel	ok	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	沒有開啟的旅行。請從「旅行」中開啟一個，或在這裡對話：Shiori 仍可使用 /me/。	src/ui/screens/talk.js:582	Note: The Trips screen, quoted so it reads apart from a trip.
-16zeyyr	draft	Next: {0} {1}	接下來：{0} {1}	src/ui/screens/talk.js:621	{0} = r.time; {1} = name
-puj2r7	draft	Next: {0} {1} {2}	接下來：{0} {1} {2}	src/ui/screens/talk.js:621	{0} = day(r.day, true); {1} = r.time; {2} = name
-159f82q	ok	Undone	已復原	src/ui/screens/talk.js:646	
-141utsf#other	ok	Undone. {0} are removed, and your files are waiting with Shiori.	已復原。{0}已被移除，你的檔案由 Shiori 暫存。	src/ui/screens/talk.js:665	plural; # = removed.length; {0} = listed(removed); English: "Undone. {0} is removed, and your files are waiting with Shiori." (one), "Undone. {0} are removed, and your files are waiting with Shiori." (other); Note: Taiwan wording: 已復原, 暫存, 檔案; {0} is the trips' names as a list.
-1d428yv#other	ok	Undone. {0} are removed, and your files are back in {1}.	已復原。{0}已被移除，你的檔案回到了{1}。	src/ui/screens/talk.js:666	plural; # = removed.length; {0} = listed(removed); {1} = home; English: "Undone. {0} is removed, and your files are back in {1}." (one), "Undone. {0} are removed, and your files are back in {1}." (other); Note: Taiwan wording: 已復原, 檔案; {0} and {1} are trip names as lists.
-svlg0f#other	ok	Undone. {0} are removed.	已復原。{0}已被移除。	src/ui/screens/talk.js:667	plural; # = removed.length; {0} = listed(removed); English: "Undone. {0} is removed." (one), "Undone. {0} are removed." (other); Note: Undo removed the trips she started, with no files to put anywhere; {0} is their names as a list.
-184j8yg	ok	Undone. Your files are back in {0}.	已復原。你的檔案回到了{0}。	src/ui/screens/talk.js:668	{0} = home; Note: Taiwan wording: 已復原, 檔案.
-1a3hizo	ok	Undone.	已復原。	src/ui/screens/talk.js:668	Note: as the Undone row, a sentence.
-mpifrf	ok	Undone. Your files are waiting with Shiori again.	已復原。你的檔案又由 Shiori 暫存了。	src/ui/screens/talk.js:668	Note: Taiwan wording: 已復原, 檔案, 暫存 as Waiting with Shiori.
-urusz7#other	ok	Left # files as you changed them.	你改過的 # 個檔案保持原樣。	src/ui/screens/talk.js:669	plural; # = kept; English: "Left # file as you changed it." (one), "Left # files as you changed them." (other); Note: Taiwan wording: 個檔案, 改過.
-1v37fcy	ok	Undo what Shiori did with these files	復原 Shiori 對這些檔案所做的事	src/ui/screens/talk.js:688	Note: Taiwan wording: 復原 as Undo, 檔案.
-bomkf4	ok	Tidy up the conversation	整理對話	src/ui/screens/talk.js:729	
-7flpxf	ok	Summarizing…	正在總結…	src/ui/screens/talk.js:744	
-12707g	ok	She couldn't summarize it. A card says why.	她沒能總結。卡片上寫了原因。	src/ui/screens/talk.js:746	
-5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	已總結之前的對話。每一行都留在這裡，她也仍能查到。	src/ui/screens/talk.js:746	
-u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在工作。請稍後再試。	src/ui/screens/talk.js:746	
-va2k72	ok	There is not enough yet to summarize.	內容還不夠總結。	src/ui/screens/talk.js:746	
-mienoe	ok	Summarize now	立即總結	src/ui/screens/talk.js:749	
-10sfmur	ok	Starting fresh…	正在重新開始…	src/ui/screens/talk.js:751	
-va77q0	ok	Start fresh?	重新開始？	src/ui/screens/talk.js:764	
-19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 會從這裡重新開始，不再記著之前的內容。它們都留在對話裡，供你閱讀和搜尋，她也仍能查到：什麼都不會刪除。即時語音連線也會重新開始。	src/ui/screens/talk.js:765	Note: "A live voice session" is the glossary's Live voice (即時語音) and a live session (即時連線), not a voice she speaks with.
-czdqlz	ok	Start fresh	重新開始	src/ui/screens/talk.js:766	
-1h9wwbn	ok	She couldn't start fresh: {0}	她沒能重新開始：{0}	src/ui/screens/talk.js:776	{0} = messageOf(e)
-1thzla3	ok	Already fresh: nothing has been said since.	已經是新的開始：之後還沒說過話。	src/ui/screens/talk.js:779	
-3fntk0	ok	Started fresh.	已重新開始。	src/ui/screens/talk.js:779	
-mg70bg	ok	The conversation is still opening. Try again in a moment.	對話還在開啟。請稍後再試。	src/ui/screens/talk.js:779	
-p5pj7b	ok	There is nothing to start fresh from yet.	還沒有可以重新開始的內容。	src/ui/screens/talk.js:779	
-1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即總結：Shiori 現在就把之前的對話總結一下，讓它保持簡短。每一行都留在這裡，她也仍能查到。	src/ui/screens/talk.js:799	
-18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新開始：Shiori 不再記著之前的內容，從這裡重新開始。每一行都留在分隔線上方。	src/ui/screens/talk.js:800	
-15ve7m7	draft	What each half sees	各個分身看到的內容	src/ui/screens/talk.js:801	
-16pl3gf	ok	Undone. Her old personality applies at her next wake.	已復原。她原來的性格在下次喚醒時生效。	src/ui/screens/talk.js:823	
+1pm5i13	ok	Back to Trips	返回「旅行」	src/ui/screens/talk.js:575	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
+15g4wel	ok	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	沒有開啟的旅行。請從「旅行」中開啟一個，或在這裡對話：Shiori 仍可使用 /me/。	src/ui/screens/talk.js:583	Note: The Trips screen, quoted so it reads apart from a trip.
+16zeyyr	draft	Next: {0} {1}	接下來：{0} {1}	src/ui/screens/talk.js:624	{0} = r.time; {1} = name
+puj2r7	draft	Next: {0} {1} {2}	接下來：{0} {1} {2}	src/ui/screens/talk.js:624	{0} = day(r.day, true); {1} = r.time; {2} = name
+1frlw7l	draft	Undo the dates Shiori set	復原 Shiori 設定的日期	src/ui/screens/talk.js:648	
+1l3merh	draft	Shiori set the dates	Shiori 設定了日期	src/ui/screens/talk.js:657	
+159f82q	ok	Undone	已復原	src/ui/screens/talk.js:704	
+141utsf#other	ok	Undone. {0} are removed, and your files are waiting with Shiori.	已復原。{0}已被移除，你的檔案由 Shiori 暫存。	src/ui/screens/talk.js:723	plural; # = removed.length; {0} = listed(removed); English: "Undone. {0} is removed, and your files are waiting with Shiori." (one), "Undone. {0} are removed, and your files are waiting with Shiori." (other); Note: Taiwan wording: 已復原, 暫存, 檔案; {0} is the trips' names as a list.
+1d428yv#other	ok	Undone. {0} are removed, and your files are back in {1}.	已復原。{0}已被移除，你的檔案回到了{1}。	src/ui/screens/talk.js:724	plural; # = removed.length; {0} = listed(removed); {1} = home; English: "Undone. {0} is removed, and your files are back in {1}." (one), "Undone. {0} are removed, and your files are back in {1}." (other); Note: Taiwan wording: 已復原, 檔案; {0} and {1} are trip names as lists.
+svlg0f#other	ok	Undone. {0} are removed.	已復原。{0}已被移除。	src/ui/screens/talk.js:725	plural; # = removed.length; {0} = listed(removed); English: "Undone. {0} is removed." (one), "Undone. {0} are removed." (other); Note: Undo removed the trips she started, with no files to put anywhere; {0} is their names as a list.
+184j8yg	ok	Undone. Your files are back in {0}.	已復原。你的檔案回到了{0}。	src/ui/screens/talk.js:726	{0} = home; Note: Taiwan wording: 已復原, 檔案.
+1a3hizo	ok	Undone.	已復原。	src/ui/screens/talk.js:726	Note: as the Undone row, a sentence.
+mpifrf	ok	Undone. Your files are waiting with Shiori again.	已復原。你的檔案又由 Shiori 暫存了。	src/ui/screens/talk.js:726	Note: Taiwan wording: 已復原, 檔案, 暫存 as Waiting with Shiori.
+urusz7#other	ok	Left # files as you changed them.	你改過的 # 個檔案保持原樣。	src/ui/screens/talk.js:727	plural; # = kept; English: "Left # file as you changed it." (one), "Left # files as you changed them." (other); Note: Taiwan wording: 個檔案, 改過.
+1v37fcy	ok	Undo what Shiori did with these files	復原 Shiori 對這些檔案所做的事	src/ui/screens/talk.js:746	Note: Taiwan wording: 復原 as Undo, 檔案.
+bomkf4	ok	Tidy up the conversation	整理對話	src/ui/screens/talk.js:787	
+7flpxf	ok	Summarizing…	正在總結…	src/ui/screens/talk.js:802	
+12707g	ok	She couldn't summarize it. A card says why.	她沒能總結。卡片上寫了原因。	src/ui/screens/talk.js:804	
+5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	已總結之前的對話。每一行都留在這裡，她也仍能查到。	src/ui/screens/talk.js:804	
+u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在工作。請稍後再試。	src/ui/screens/talk.js:804	
+va2k72	ok	There is not enough yet to summarize.	內容還不夠總結。	src/ui/screens/talk.js:804	
+mienoe	ok	Summarize now	立即總結	src/ui/screens/talk.js:807	
+10sfmur	ok	Starting fresh…	正在重新開始…	src/ui/screens/talk.js:809	
+va77q0	ok	Start fresh?	重新開始？	src/ui/screens/talk.js:822	
+19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 會從這裡重新開始，不再記著之前的內容。它們都留在對話裡，供你閱讀和搜尋，她也仍能查到：什麼都不會刪除。即時語音連線也會重新開始。	src/ui/screens/talk.js:823	Note: "A live voice session" is the glossary's Live voice (即時語音) and a live session (即時連線), not a voice she speaks with.
+czdqlz	ok	Start fresh	重新開始	src/ui/screens/talk.js:824	
+1h9wwbn	ok	She couldn't start fresh: {0}	她沒能重新開始：{0}	src/ui/screens/talk.js:834	{0} = messageOf(e)
+1thzla3	ok	Already fresh: nothing has been said since.	已經是新的開始：之後還沒說過話。	src/ui/screens/talk.js:837	
+3fntk0	ok	Started fresh.	已重新開始。	src/ui/screens/talk.js:837	
+mg70bg	ok	The conversation is still opening. Try again in a moment.	對話還在開啟。請稍後再試。	src/ui/screens/talk.js:837	
+p5pj7b	ok	There is nothing to start fresh from yet.	還沒有可以重新開始的內容。	src/ui/screens/talk.js:837	
+1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即總結：Shiori 現在就把之前的對話總結一下，讓它保持簡短。每一行都留在這裡，她也仍能查到。	src/ui/screens/talk.js:857	
+18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新開始：Shiori 不再記著之前的內容，從這裡重新開始。每一行都留在分隔線上方。	src/ui/screens/talk.js:858	
+15ve7m7	draft	What each half sees	各個分身看到的內容	src/ui/screens/talk.js:859	
+16pl3gf	ok	Undone. Her old personality applies at her next wake.	已復原。她原來的性格在下次喚醒時生效。	src/ui/screens/talk.js:881	
 11gkctr	ok	Places	地點	src/ui/screens/tools.js:11	context: tool group
 13mxqrp	ok	Talk	對話	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	ok	Go	出遊	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).
@@ -2723,9 +2725,9 @@ f2eaqi	ok	Find a search plugin	尋找搜尋外掛程式	src/ui/search-panel.js:9
 do1m5o	ok	{0}: annai can't show this setting.	{0}：annai 無法顯示此設定。	src/ui/settings-form.js:116	{0} = f.label
 1qrgqx0	ok	saved	已儲存	src/ui/settings-form.js:121	
 phutrz	ok	{0} wasn't saved: {1}	{0}未儲存：{1}	src/ui/settings-form.js:130	{0} = f.label; {1} = messageOf(e)
-1skw031	ok	This screen couldn't open	無法開啟此頁面	src/ui/shell.js:405	
-1z00dfe	ok	An update is ready	更新已就緒	src/ui/shell.js:515	
-gt0nrj	ok	It will be used the next time annai starts.	下次啟動 annai 時生效。	src/ui/shell.js:515	
+1skw031	ok	This screen couldn't open	無法開啟此頁面	src/ui/shell.js:406	
+1z00dfe	ok	An update is ready	更新已就緒	src/ui/shell.js:516	
+gt0nrj	ok	It will be used the next time annai starts.	下次啟動 annai 時生效。	src/ui/shell.js:516	
 sntfon	ok	Hello! This is how I sound when I talk to you.	你好！我和你說話時就是這樣的聲音。	src/ui/speech-check.js:10	Note: spoken by the voice being tested, so it is heard in the screens' language.
 n8hyke	ok	{0}. {1}	{0}。{1}	src/ui/speech-check.js:16	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
 1a27ynt	ok	Last tested {0}: it worked.	上次測試於{0}：可用。	src/ui/speech-check.js:26	{0} = relTime(verified.at)

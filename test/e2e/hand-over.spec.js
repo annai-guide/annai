@@ -196,7 +196,7 @@ test("Undo that sends a file back to this trip, with a tap on the trip it remove
   ] });
   const hash = () => new URL(page.url()).hash;
   try {
-    await modelSetUp(page, llm.origin, 'Big Sur');
+    await modelSetUp(page, llm.origin, 'Big Sur', { dates: { start: '2026-11-20', end: '2026-11-27' } }); // a trip, which may start another
     const details = hash();
     await handOver(page, [await fixture('flight.pdf', 'application/pdf')]);
     await expect(page.locator('.convo').getByText('That one is for Kyoto: I started it.')).toBeVisible({ timeout: 60_000 });
@@ -233,7 +233,7 @@ test("after a reload on the conversation Undo left, a Forward over the removed t
   ] });
   const hash = () => new URL(page.url()).hash;
   try {
-    await modelSetUp(page, llm.origin, 'Big Sur');
+    await modelSetUp(page, llm.origin, 'Big Sur', { dates: { start: '2026-11-20', end: '2026-11-27' } }); // a trip, which may start another
     const details = hash();
     await handOver(page, [await fixture('flight.pdf', 'application/pdf')]);
     await expect(page.locator('.convo').getByText('That one is for Kyoto: I started it.')).toBeVisible({ timeout: 60_000 });

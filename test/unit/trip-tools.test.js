@@ -73,6 +73,7 @@ test('start_trip while a trip is open: the new trip keeps its files waiting to b
   useClock(t);
   const k = await agentKit([[call('start_trip', { title: 'Kyoto · Apr', files: ['/trip/files/temple.pdf'] }), say('That one is for Kyoto: I started a trip for it.')]], { halves: true });
   k.agent.addLoopTools(tripTools(k.agent));
+  await k.ws.patch(k.trip, '/trip.json', { start: '2026-11-20', end: '2026-11-27' }, { author: 'user' }); // a trip, not a chat: it may start another
   await k.ws.write(k.trip, '/files/temple.pdf', utf8('%PDF temple'), { author: 'user', type: 'application/pdf' });
   k.agent.send('', { handed: [{ path: '/trip/files/temple.pdf', type: 'application/pdf', name: 'temple.pdf', new: true }], handover: 'h-1' });
   await k.agent.idle();
@@ -169,6 +170,7 @@ test('a trip she started opens later with its hand-over owed: the turn that take
     { toolCalls: [{ name: 'write', input: { path: '/trip/notes/temple.md', content: 'Temple, Apr 3' } }, { name: 'speak', input: { text: 'Filed.' } }, { name: 'sleep', input: {} }] },
   ]], { halves: true });
   k.agent.addLoopTools(tripTools(k.agent));
+  await k.ws.patch(k.trip, '/trip.json', { start: '2026-11-20', end: '2026-11-27' }, { author: 'user' }); // a trip, not a chat: it may start another
   await k.ws.write(k.trip, '/files/temple.pdf', utf8('%PDF temple'), { author: 'user', type: 'application/pdf' });
   k.agent.send('', { handed: [{ path: '/trip/files/temple.pdf', type: 'application/pdf', name: 'temple.pdf', new: true }], handover: 'h-1' });
   await k.agent.idle();
@@ -337,4 +339,24 @@ test("a waiting calendar file filed by start_trip has its events planned in the 
   assert.equal(copy.data.handed[0].planned, 2);
   await undoHandover(k.ws, trip.id, 'h-1');
   assert.deepEqual(await k.ws.list(trip.id, '/plan/'), []);
+});
+
+test('start_trip is refused in an undated conversation, and says to patch /trip/trip.json', async (t) => {
+  useClock(t);
+  const k = await agentKit([[sleep]], { halves: true });
+  k.agent.addLoopTools(tripTools(k.agent));
+  await k.agent.opening;
+  const before = (await listTrips(k.store)).active.length;
+  await assert.rejects(run(k, 'start_trip', { title: 'Testville' }), /patch \/trip\/trip\.json/);
+  assert.equal((await listTrips(k.store)).active.length, before);
+});
+
+test('in a dated trip start_trip works as today', async (t) => {
+  useClock(t);
+  const k = await agentKit([[sleep]], { halves: true });
+  k.agent.addLoopTools(tripTools(k.agent));
+  await k.ws.patch(k.trip, '/trip.json', { start: '2026-11-20', end: '2026-11-27' }, { author: 'user' });
+  await k.agent.opening;
+  await run(k, 'start_trip', { title: 'Testville' });
+  assert.ok(await tripNamed(k, 'Testville'));
 });
