@@ -670,7 +670,7 @@ function undoLine(ctx, scope, list) {
         if (location.hash === talkOf(ctx)) await ctx.render();
         else toTalk(ctx);
       } else if (waiting || removed.length) {
-        if (leaving) ctx.removed();
+        if (leaving) ctx.removed(scope);
         else ctx.go('#/trips');
       }
     } catch (e) {

@@ -106,8 +106,10 @@ export function startShell(root, core) {
     go: (/** @type {string} */ hash) => { if (location.hash === hash) render(); else location.hash = hash; },
     render: () => render(),
     replace: (/** @type {string} */ hash) => replaceHash(hash),
-    /** A trip was removed: leaves its screens the way Back does (see `render`); at the first entry, Trips there. */
-    removed: () => {
+    /** Trip id was removed: leaves its screens the way Back does (see `render`); at the first entry, Trips there. Not if the user went elsewhere meanwhile. @param {string} id */
+    removed: (id) => {
+      const at = parseHash(location.hash);
+      if (at.parts[0] !== 'trip' || at.parts[1] !== id) return;
       if (lastIdx > 0) {
         removing = passing = true;
         history.back();
@@ -168,8 +170,8 @@ export function startShell(root, core) {
   // Each tab's screen you last had open, and where you were on it: swiping into the tab brings you back there.
   /** @type {Map<string, { hash: string, y: number }>} by the tab's link */
   const lastIn = new Map();
-  /** The tab, the address and the name of the screen drawn now. @type {{ tab: string | null, hash: string, name: string }} */
-  let shown = { tab: null, hash: '', name: '' };
+  /** The tab, the address, the name and the entry's key of the screen drawn now. @type {{ tab: string | null, hash: string, name: string, entry: string }} */
+  let shown = { tab: null, hash: '', name: '', entry: '' };
   /** Screens passed through, never the one a swipe brings back: opening a file or a link to one, installing a plugin. */
   const PASSING = new Set(['import', 'plugin-install', 'welcome']);
   /** Where a swipe's new history entry scrolls to, once. @type {number | null} */
@@ -273,18 +275,22 @@ export function startShell(root, core) {
     lastHash = location.hash;
     if (o.moved) {
       // Where you were on the screen you're leaving, now: a scroll event can come a frame late, after the move.
-      if (entry) scrolls.set(entry, scrollY);
+      if (shown.entry) scrolls.set(shown.entry, scrollY); // the screen's, not an entry passed over without drawing
       if (shown.tab && !PASSING.has(shown.name)) lastIn.set(shown.tab, { hash: shown.hash, y: scrollY });
       pending = arrive();
     }
-    // A trip that isn't here has no screen at any of its addresses; a failed read is not "gone": the screen draws and says so itself.
+    // A trip that isn't here has no screen at any of its addresses; a failed read is not "gone": its error is the screen's (below).
     let scope = null;
     let gone = false;
+    /** @type {{ error: unknown } | null} */
+    let failed = null;
     if (asked.parts[0] === 'trip') {
       try {
         scope = await core.store.tx(['scopes'], 'readonly', (/** @type {any} */ x) => x.getScope(asked.parts[1] ?? ''));
         gone = scope?.kind !== 'trip';
-      } catch { /* not looked at */ }
+      } catch (error) {
+        failed = { error };
+      }
       if (my !== seq) return superseded(my);
     }
     if (gone && !o.moved) return replaceHash('#/trips');
@@ -332,7 +338,7 @@ export function startShell(root, core) {
     const on = links.find((a) => a.hasAttribute('aria-current'));
     // Where Driving's ← goes: the screen it was entered from.
     if (route.name === 'drive' && shown.name && shown.name !== 'drive') /** @type {any} */ (ctx).drivingFrom = shown.hash || '#/trips';
-    shown = { tab: on?.getAttribute('href') ?? null, hash: location.hash, name: route.name };
+    shown = { tab: on?.getAttribute('href') ?? null, hash: location.hash, name: route.name, entry };
     noteScreen(location.hash);
     // The welcome is a page of its own: the install warning waits for its last step, which says the same.
     document.body.classList.toggle('welcoming', route.name === 'welcome');
@@ -340,6 +346,7 @@ export function startShell(root, core) {
     showMore();
     const screen = SCREENS[route.name] ?? SCREENS.trips;
     try {
+      if (failed) throw failed.error;
       // Its screen's ctx says which render it is, so what it draws after a newer one began is cleaned up at once.
       const node = await screen(Object.create(ctx, { seq: { value: my }, moved: { value: o.moved === true }, entry: { value: entry }, tripScope: { value: scope } }), route);
       if (my !== seq) return superseded(my);
@@ -365,7 +372,12 @@ export function startShell(root, core) {
   }
   addEventListener('hashchange', () => render({ moved: true }));
   // Passing can land on an entry at the same address, which fires no hashchange.
-  addEventListener('popstate', () => { if (passing && location.hash === lastHash) render({ moved: true }); });
+  addEventListener('popstate', () => {
+    if (passing && location.hash === lastHash) render({ moved: true });
+    // Forward onto an overlay's entry once its viewer or question is closed: on to what is ahead, or back, so it shows nothing twice.
+    const st = history.state;
+    if (!passing && (st?.annaiViewer || st?.annaiAsk) && st.annaiIdx > lastIdx && !document.querySelector('.viewer, dialog.ask')) history.go(st.annaiIdx < top ? 1 : -1);
+  });
 
   // Swiping a screen sideways moves to the next or the previous tab of the top bar. Not from the screen's edges
   // (the phone's own back gesture), nor on anything that moves sideways itself.

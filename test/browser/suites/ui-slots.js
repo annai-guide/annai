@@ -315,12 +315,14 @@ export default function (test, assert) {
   });
 
   // Last: it starts a shell, which follows this page's address from then on.
-  test("minors 15: a trip tab given up while the shell reads its trip is never drawn; the screen drawn next is cleaned up when the one after it is", async () => {
+  test("minors 15: a trip tab given up while the shell reads its trip is never drawn; the screen drawn next is cleaned up when the one after it is; a drawing that comes after a newer render began is cleaned up at once", async () => {
     const registry = new Registry();
     /** @type {string[]} */
     const cleaned = [];
     registry.add('tides', 'ui:trip-tab', { id: 'table', title: 'Tide table', render: () => () => { cleaned.push('table'); } });
     registry.add('tides', 'ui:screen', { id: 'now', title: 'Tides now', render: () => () => { cleaned.push('now'); } });
+    // A screen whose drawing comes later: the shell's ctx tells it which render it is, so it is cleaned up as it comes if a newer one began.
+    registry.add('tides', 'ui:screen', { id: 'slow', title: 'Tides slowly', render: () => new Promise((done) => setTimeout(() => done(() => { cleaned.push('slow'); }), 150)) });
     // The shell reads the tab's trip first, slowly: the next render starts meanwhile.
     const store = { tx: () => new Promise((done) => setTimeout(() => done({ id: 't1', kind: 'trip', title: 'Big Sur' }), 150)) };
     const root = document.createElement('div');
@@ -338,5 +340,10 @@ export default function (test, assert) {
     location.hash = '#/ext/tides/table';
     await new Promise((done) => setTimeout(done, 100));
     assert.deepEqual(cleaned, ['now'], "the screen shown is cleaned up when the next is drawn");
+    location.hash = '#/ext/tides/slow';
+    await new Promise((done) => setTimeout(done, 30));
+    location.hash = '#/ext/tides/now'; // before the slow screen's drawing has come
+    await new Promise((done) => setTimeout(done, 300));
+    assert.deepEqual(cleaned, ['now', 'slow'], `the slow drawing, come after the next render began, is cleaned up at once: ${JSON.stringify(cleaned)}`);
   });
 }

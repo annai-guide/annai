@@ -224,11 +224,11 @@ async function askAndRemove(ctx, id, scope) {
   try {
     const { bytes: freed } = await removeTripNow(ctx, id);
     ctx.notices.toast(t`Removed ${scope.title}. ${size(freed)} freed.`);
-    ctx.removed();
+    ctx.removed(id);
   } catch (e) {
     if (e instanceof NotFoundError) {
       ctx.notices.toast(t`That trip was already removed.`);
-      ctx.removed();
+      ctx.removed(id);
     } else if (!explainStorageFull(ctx, e)) {
       const why = messageOf(e).replace(/[.!?]?$/, '.');
       ctx.notices.card({ tone: 'warn', title: t`That trip wasn't removed`, body: sentences(why, t`Nothing was removed. Try again.`) });
