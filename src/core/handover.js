@@ -131,10 +131,15 @@ async function undoFacts(store, scope, handover) {
     // Changed since: any later write or delete of the path that isn't hers for this hand-over.
     /** @type {Set<string>} */
     const changed = new Set();
+    // The system's naming of a conversation (trip.json, after her turn: a voice line's words come then) is no one's change: her dates go, the name stays.
+    /** @type {Set<string>} */
+    const named = new Set();
     for (const e of events) {
       if (e.type !== 'file.write' && e.type !== 'file.delete') continue;
       const h = hers.get(String(e.data?.path));
-      if (h && e.seq > h.last && !its(e) && e.data?.undo !== handover) changed.add(String(e.data.path));
+      if (!h || e.seq <= h.last || its(e) || e.data?.undo === handover) continue;
+      if (e.actor === 'system' && e.type === 'file.write' && e.data.path === '/trip.json') named.add('/trip.json');
+      else changed.add(String(e.data.path));
     }
     // The user's own in it: a message or words of theirs not of this hand-over, or a file they wrote without it (its name and memory too).
     // No one's work: annai's own writes (system: names kept in step), a message copied in from where it was handed (from), a write an
@@ -144,7 +149,7 @@ async function undoFacts(store, scope, handover) {
     // The files it brought with no mark of where from (written before moves were marked): they go back to wait if the trip goes.
     const brought = [...new Set(events.filter((e) => its(e) && e.type === 'file.write' && e.actor === 'user' && String(e.data.path).startsWith('/files/')
       && !e.data.moved).map((e) => String(e.data.path)))];
-    return { done, keptBefore, started, hers, out, into, changed, theirs, brought, movedAway };
+    return { done, keptBefore, started, hers, out, into, changed, named, theirs, brought, movedAway };
   });
 }
 
@@ -242,8 +247,14 @@ export async function undoHandover(ws, scope, handover, o = {}) {
       kept.set(path, `${scope}\n${path}`);
       continue;
     }
+    const dates = f.named.has(path) && before !== null ? await blobJSON(ws.store, scope, before, { quiet: true }) : null;
     if (before === null) await ws.delete(scope, path, { author: 'user', undo: handover });
-    else {
+    else if (dates) { // only the dates go back; the name given since stays
+      await ws.update(scope, path, (/** @type {any} */ trip) => {
+        const { start: _s, end: _e, ...rest } = trip;
+        return { ...rest, ...(dates.start === undefined ? {} : { start: dates.start }), ...(dates.end === undefined ? {} : { end: dates.end }) };
+      }, { author: 'user', undo: handover });
+    } else {
       await ws.restore(scope, path, before, { author: 'user', undo: handover });
       const name = path.startsWith('/files/') ? await nameBefore(ws, scope, path, first) : null;
       if (name && !Object.hasOwn(await readNames(ws, scope), path)) await ws.patch(scope, NAMES_FILE, { [path]: name }, { author: 'user', create: true });
