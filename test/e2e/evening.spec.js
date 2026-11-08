@@ -112,3 +112,50 @@ test("the user's evening: on Trips with no trip open, + with the flight PDF and 
     await llm.stop();
   }
 });
+
+/** The evening through + (timeline stage 4): her bookings from the files, in the new conversation. @param {string} hotel its path in it */
+const plusBookings = (/** @type {string} */ hotel) => [
+  { name: 'write', input: { path: '/trip/bookings/an123.json', content: { id: 'an123', kind: 'flight', status: 'unverified', source: '/files/flight.pdf', title: 'ANNAI AIR AN 123', confirmation: 'TESTQ1', unsure: ['seat'],
+    start: { at: '2026-11-20T11:20:00-08:00', tz: LA }, end: { at: '2026-11-20T14:05:00-09:00', tz: AK }, fields: { from: 'Seattle (SEA)', to: 'Anchorage (ANC)', flight: 'AN 123', airline: 'ANNAI AIR', seat: '14C' } } } },
+  { name: 'write', input: { path: '/trip/bookings/stay.json', content: { id: 'stay', kind: 'lodging', status: 'unverified', source: hotel, title: 'Hotel Aurora Test', unsure: ['end'],
+    place: { name: 'Hotel Aurora Test', address: '1 Test Way, Testville' }, start: { at: '2026-11-20T15:00:00-09:00', tz: AK }, end: { at: '2026-11-27T11:00:00-09:00', tz: AK } } } },
+  { name: 'speak', input: { text: 'Your flight and the stay are on the plan.' } },
+  { name: 'sleep', input: {} },
+];
+
+test("the user's evening from home: + with the files, no words; she dates the new conversation by a patch, its header names it, it is a card below now, and its Plan has the flight", async ({ page }) => {
+  const llm = await startModelServer({ [MESSAGES]: [
+    sse(anthropicToolReply([{ name: 'patch', input: { path: '/trip/trip.json', changes: { title: TITLE, start: '2026-11-20', end: '2026-11-27' } } }])),
+    (/** @type {any} */ body) => sse(anthropicToolReply(plusBookings((/\/trip(\/files\/hotel\.[a-z]+)/.exec(asText(body))?.[1]) ?? '/files/hotel.png'))),
+    sse(anthropicToolReply([{ name: 'sleep', input: {} }])),
+  ] });
+  try {
+    await openApp(page, '#/models');
+    await waitForServiceWorker(page);
+    await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${llm.origin}/b`, key: 'sk-test-b', model: 'b-model' });
+    await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
+    await page.getByRole('button', { name: 'Add to main' }).click();
+    await expect(page.getByLabel('Add a model to main').locator('option', { hasText: 'b-model' })).toHaveCount(0);
+    await page.goto('/#/trips');
+    await page.getByRole('button', { name: 'New conversation', exact: true }).click();
+    await expect(page).toHaveURL(/#\/trip\/trip-[0-9a-z]+\/talk$/);
+    const id = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+    await expect(page.getByLabel('Message to Shiori')).toBeFocused();
+    await page.getByLabel('Give Shiori photos or files').setInputFiles([await fixture('flight.pdf', 'application/pdf'), await fixture('hotel.png', 'image/png')]);
+    await expect(page.locator('.type-sheet .attach-chip')).toHaveCount(2);
+    await page.getByRole('button', { name: 'Send', exact: true }).click();
+    await expect(page.locator('.convo').getByText('Your flight and the stay are on the plan.')).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator('.talk-head .talk-name')).toHaveText(TITLE);
+    await expect(page.locator('.dates-line')).toContainText('Shiori set the dates');
+    expect(new URL(page.url()).hash).toBe(`#/trip/${id}/talk`); // the same conversation, now a trip
+    await page.getByRole('link', { name: 'Back to Trips' }).click();
+    const card = page.locator('.trip-card', { has: page.locator('.name', { hasText: TITLE }) });
+    await expect(card).not.toHaveClass(/\bline\b/);
+    await expect(page.locator('.ahead .trip-card .name')).toContainText([TITLE]);
+    await page.goto(`/#/trip/${id}/plan`);
+    await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();
+    await expect(page.getByRole('tabpanel').locator('.plan-row', { hasText: 'ANNAI AIR AN 123' })).toBeVisible();
+  } finally {
+    await llm.stop();
+  }
+});
