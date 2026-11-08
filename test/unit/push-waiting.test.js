@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { pushKit, RELAY, at, iso, LA } from './push-kit.js';
 import { BIXBY, MONTEREY, RIVER_INN, CAMBRIA } from './live-kit.js';
-import { FILE } from '../../src/core/push/mirror.js';
+import { FILE, GRACE_MS } from '../../src/core/push/mirror.js';
 import { createTrip, listTrips, removeTrip, setTripStatus, SYS_DEVICE } from '../../src/core/scopes.js';
 import { record } from '../../src/core/agent/log.js';
 import { setWords } from '../../src/core/l10n.js';
@@ -397,5 +397,27 @@ test("a stop's earlier version restored in a trip that isn't open and isn't in p
     await k.ws.restore(side, '/plan/cake.json', first, { author: 'user' });
     await k.flush();
     assert.deepEqual(await copies(k, side), {});
+  } finally { await k.stop(); }
+});
+
+test("an undated trip open while another is in play: a sync within 5 s of its reminder's send time keeps the copy, which annai won't say itself (the deferred gap, closed at stage 4)", async () => {
+  const k = await pushKit({ plan: ROAD });
+  try {
+    const open = await createTrip(k.ws, { title: 'Undated, with a plan' });
+    await k.ws.write(open, '/plan/cake.json', PLAIN, { author: 'user' });
+    await k.mirror.turnOn(RELAY);
+    k.agent.opened(open);
+    await k.flush();
+    assert.equal(k.live.play, k.trip, 'looking moves nothing');
+    const mine = ((await k.live.reminders()) ?? []).find((r) => r.scope === open && r.watch === 'plan:cake:coming-up');
+    assert.equal(mine?.here, false);
+    assert.equal(Object.keys(await copies(k, open)).length, 1, 'at the relay');
+    await k.to(/** @type {number} */ (mine?.due) + GRACE_MS - 3000);
+    await k.mirror.settled();
+    const before = calls(k).off;
+    await k.mirror.sync();
+    await k.mirror.settled();
+    assert.equal(calls(k).off, before, 'not called off');
+    assert.equal(Object.keys(await copies(k, open)).length, 1, 'still waiting there, to be sent');
   } finally { await k.stop(); }
 });

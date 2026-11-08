@@ -37,11 +37,13 @@ import { t } from '../l10n.js';
  * @typedef {{ kind: 'location' | 'visibility' | 'connectivity', start: (emit: (x: any) => void) => (() => void) | void }} Sensor
  *   location emits { lat, lng, accuracy, speed?, heading? }, or { error: 'denied' | 'unavailable', message };
  *   visibility emits true or false; connectivity true (online) or false
- * @typedef {{ key: string, scope: string, watch: string, due: number, text: string, shown?: string, start?: number, what?: string, says?: string }} Mirrored
+ * @typedef {{ key: string, scope: string, watch: string, due: number, text: string, shown?: string, start?: number, what?: string, says?: string, here?: boolean }} Mirrored
  *   a reminder a closed annai can still give through the push relay (spec §11.6): key names it and, for the plan's, the item's time;
  *   text: what Koe's view reads (a plan's in annai's English; Shiori's as she wrote them), and shown a plan's in the screens' words, made
  *   from its data, for the push (the shown rule); start and what: a "coming up" item's, for the minutes left and the item in the screens'
- *   words, which the service worker words (sw.js); says: a plan reminder's (saysOf)
+ *   words, which the service worker words (sw.js); says: a plan reminder's (saysOf); here: annai says it itself when its time comes while it is open
+ *   (time watches, and the plan of the trip in play), so a sync just before it leaves it to annai; false for the plans of an open trip that isn't
+ *   happening and of the next trip, which only the relay gives
  * @typedef {{ kind: 'shown' | 'opened' | 'changed', key?: string, scope?: string, watch?: string, at?: number, title?: string, body?: string, test?: boolean, stale?: boolean, t?: number }} PushNews
  *   what the service worker saw: a notification shown or opened, or the subscription renewed; t, when
  */
@@ -545,12 +547,15 @@ export class Live {
       const play = this.#trip ?? ME;
       const open = this.agent.target;
       // The open one's plan too: a trip starting tomorrow, opened tonight, must still wake a closed annai. A happening one waits to be talked in: looking fires nothing.
-      /** @type {[string, Watch[]][]} */
-      const plans = [[play, this.#plan]];
-      if (open && open !== play && this.#rows.has(open) && this.#inPlay(open) && !this.#happening(open)) {
-        const { watches } = await this.#planOf(open);
-        await this.#recallPlan(open, watches);
-        plans.push([open, watches]);
+      // With nothing happening, the next trip's too, whichever conversation is open: a quick chat the evening before is no reason to miss its first morning.
+      /** @type {[string, Watch[], boolean][]} each plan, and whether annai says it itself (the trip in play's) */
+      const plans = [[play, this.#plan, true]];
+      const others = open && open !== play && this.#rows.has(open) && this.#inPlay(open) && !this.#happening(open) ? [open] : [];
+      if (!this.#happening(play)) for (const id of this.#nextTrips()) if (id !== play && !others.includes(id)) others.push(id);
+      for (const id of others) {
+        const { watches } = await this.#planOf(id);
+        await this.#recallPlan(id, watches);
+        plans.push([id, watches, false]);
       }
       if (o) {
         // Read at every sync, whichever trip is open: a look can't change a copy, and an edit no sync saw is still found.
@@ -571,10 +576,10 @@ export class Live {
         for (const w of list) {
           if (w.when?.type !== 'time' || !time || this.#broken(time, w)) continue;
           const due = Date.parse(w.when.at);
-          if (Number.isFinite(due) && !expired(w, due)) out.push({ key: this.#keyOf(scope, w), scope, watch: w.id, due, text: w.fallback });
+          if (Number.isFinite(due) && !expired(w, due)) out.push({ key: this.#keyOf(scope, w), scope, watch: w.id, due, text: w.fallback, here: true });
         }
       }
-      for (const [scope, list] of plans) {
+      for (const [scope, list, here] of plans) {
         for (const w of list) {
           const event = /** @type {any} */ (w.when).event;
           if ((event !== 'coming-up' && event !== 'leave') || this.#spent(scope, w)) continue;
@@ -586,7 +591,7 @@ export class Live {
             due = null;
           }
           const say = /** @type {import('./plan-watches.js').PlanSay} */ (w.say);
-          if (typeof due === 'number' && Number.isFinite(due)) out.push({ key: this.#keyOf(scope, w), scope, watch: w.id, due, text: w.fallback, shown: planWords(say), says: saysOf(w), ...(event === 'coming-up' ? { start: forAt(w) ?? undefined, what: planItemWords(say) } : {}) });
+          if (typeof due === 'number' && Number.isFinite(due)) out.push({ key: this.#keyOf(scope, w), scope, watch: w.id, due, text: w.fallback, shown: planWords(say), says: saysOf(w), here, ...(event === 'coming-up' ? { start: forAt(w) ?? undefined, what: planItemWords(say) } : {}) });
         }
       }
       return out.sort((a, b) => a.due - b.due);
@@ -689,6 +694,14 @@ export class Live {
   /** The conversation open now: the trip's, or "me". */
   #scope() {
     return this.agent.target ?? ME;
+  }
+
+  /** The trips that start next, after today: the soonest start, ties all. Never a simulation's. */
+  #nextTrips() {
+    const now = this.clock.now();
+    const ahead = [...this.#rows].filter(([id, r]) => !this.#still.has(id) && phaseOf(r, now, this.timeZone()) === 'future');
+    const first = ahead.reduce((m, [, r]) => (m === null || String(r.start) < m ? String(r.start) : m), /** @type {string | null} */ (null));
+    return ahead.filter(([, r]) => r.start === first).map(([id]) => id);
   }
 
   /** Whether a trip's dates hold today; a simulation's never do. @param {string} id */

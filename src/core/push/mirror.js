@@ -528,7 +528,8 @@ export class PushMirror {
     const titles = new Map();
     for (const m of list) {
       const sendAt = m.due + GRACE_MS;
-      if (sendAt <= now + 5000 || sendAt > now + AHEAD_MS) continue; // about to be said on screen, or too far
+      // About to be said on screen, or too far; one annai won't say itself still goes while its time is ahead.
+      if ((m.here !== false ? sendAt <= now + 5000 : sendAt <= now) || sendAt > now + AHEAD_MS) continue;
       if (out.size >= room) break;
       const title = await this.#title(m.scope, titles);
       // The user's words: a plan reminder's in the screens' language (shown), Shiori's as she wrote them.
