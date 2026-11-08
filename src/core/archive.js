@@ -792,8 +792,8 @@ async function commitImport(store, { manifest, plan, overrides, secrets, now, re
       if (p.mode === 'system') await t.deleteScope(p.target);
       // The target decides the kind: a record that calls "me" a trip must not make it one.
       const kind = p.target === ME ? 'me' : p.mode === 'system' ? 'sys' : 'trip';
-      // This device hasn't backed it up; the mirror is read from what came (backfillTrips).
-      const { backup: _b, start: _s, end: _e, talked: _t, ...rec } = p.rec;
+      // This device hasn't backed it up; the mirror is read from what came (backfillTrips). No annai sends a draft: a record that says so is a conversation.
+      const { backup: _b, start: _s, end: _e, talked: _t, draft: _d, ...rec } = p.rec;
       await t.putScope({ ...rec, id: p.target, kind, status: 'active', updated: now });
       for (const f of p.files) {
         const hash = overrides.get(f.name)?.hash ?? f.hash;

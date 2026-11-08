@@ -20,7 +20,8 @@ const noon = Date.parse('2026-11-27T12:00:00-08:00');
 
 async function kit() {
   const store = createMemoryStore();
-  const ws = new Workspace(store, { schemaFor: makeSchemaFor({ list: (/** @type {string} */ k) => (k === 'schema' ? CORE_SCHEMAS : []) }, kindOf) });
+  // On the log's clock: a conversation's moments and its record's agree, as in the app.
+  const ws = new Workspace(store, { schemaFor: makeSchemaFor({ list: (/** @type {string} */ k) => (k === 'schema' ? CORE_SCHEMAS : []) }, kindOf), now: () => noon });
   await ensureBaseScopes(ws);
   syncTripTitles(ws);
   /** @type {Set<(e: any) => void>} */
@@ -70,6 +71,7 @@ test('names', () => {
   assert.equal(chatName({ voice: true, at: noon, tz }), 'Voice · 12:00');
   assert.equal(chatName({ text: 'first line\nsecond', at, tz }), 'first line');
   assert.equal(chatName({ text: '...so, where now', at, tz }), '...so, where now');
+  for (const text of ['Is 3.5 km too far to walk?', 'Dinner at 7.30 tonight', 'U.S. visa questions', 'Check booking.com for a hotel']) assert.equal(chatName({ text, at, tz }), text, 'a dot inside a word ends no sentence');
   assert.equal(chatName({ text: '?!', at, tz }), '?!', 'punctuation alone and nothing else: kept, never blank');
   assert.ok(chatName({ text: '', at, tz }).length > 0);
   // A surrogate pair is never split: 40 code points of emoji with no joiners.
@@ -204,7 +206,7 @@ test('a long first line, kept as a blob, is read back for the name', async () =>
   const { ws, agent, chats, spent } = await kit();
   await chats.start();
   const draft = /** @type {string} */ (chats.ready);
-  const long = `Plan the day. ${'x'.repeat(INLINE_MAX + 10)}`;
+  const long = `Plan the day. ${'X'.repeat(INLINE_MAX + 10)}`; // a capital after the stop: a new sentence (a lower-case word goes on with this one)
   const e = await agent.log(draft, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', long]] });
   assert.deepEqual(e.data.stored, ['text']);
   await spent(draft);
@@ -243,4 +245,76 @@ test('exports and changedSince leave a draft out; a backup restored with activeT
   // main.js opens activeTrip only when its scope is there.
   assert.equal(await b.scope(/** @type {string} */ (active)), undefined);
   assert.equal((await listTrips(b.store)).draft, null);
+});
+
+test('words typed with a file name it, as the box sends them: the file is kept first, then the line comes; a file alone keeps its name', async () => {
+  const { ws, agent, chats, spent, settle } = await kit();
+  await chats.start();
+  const draft = /** @type {string} */ (chats.ready);
+  await ws.write(draft, '/files/UA1-booking.pdf', '%PDF', { author: 'user', type: 'application/pdf' });
+  await agent.log(draft, { type: 'msg.user', actor: 'user', data: { handover: 'h1', handed: [{ path: '/trip/files/UA1-booking.pdf', type: 'application/pdf', name: 'UA1-booking.pdf', new: true }] }, texts: [['text', 'Our flights to Testville. Can you file them?']] });
+  await spent(draft);
+  await settle();
+  assert.equal((await ws.readJSON(draft, '/trip.json')).title, 'Our flights to Testville.');
+  const next = /** @type {string} */ (chats.ready);
+  await ws.write(next, '/files/menu.pdf', '%PDF', { author: 'user', type: 'application/pdf' });
+  await spent(next);
+  await agent.log(next, { type: 'msg.user', actor: 'user', data: { handover: 'h2', handed: [{ path: '/trip/files/menu.pdf', type: 'application/pdf', name: 'menu.pdf', new: true }] }, texts: [['text', '']] });
+  await settle();
+  assert.equal((await ws.readJSON(next, '/trip.json')).title, 'menu.pdf');
+  // A file shared in on its own (no line with it), then a line later: the file's name stays.
+  const shared = /** @type {string} */ (chats.ready);
+  await ws.write(shared, '/files/ticket.pdf', '%PDF', { author: 'user', type: 'application/pdf' });
+  await spent(shared);
+  await agent.log(shared, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'Is this for Saturday?']] });
+  await settle();
+  assert.equal((await ws.readJSON(shared, '/trip.json')).title, 'ticket.pdf');
+});
+
+test("a heard line's words that come after a reload still name it", async () => {
+  const k = await kit();
+  await k.chats.start();
+  const draft = /** @type {string} */ (k.chats.ready);
+  await k.agent.log(draft, { type: 'heard', actor: 'user', data: { id: 'h9' } });
+  await k.spent(draft);
+  /** @type {Set<(e: any) => void>} */
+  const listeners = new Set();
+  const again = new Chats({ ws: k.ws, agent: { on: (_k, fn) => { listeners.add(fn); return () => listeners.delete(fn); } }, tz: () => LA });
+  await again.start();
+  const e = await record(k.store, draft, { now: noon, type: 'heard.text', actor: 'system', data: { of: 'h9', text: 'Is the museum open today? Lets see' } });
+  for (const fn of listeners) fn(e);
+  await k.settle();
+  assert.equal((await k.ws.readJSON(draft, '/trip.json')).title, 'Is the museum open today?');
+});
+
+test('a draft whose making was cut off before its trip.json (a reload) is made whole, and its first line names it', async () => {
+  const { store, ws, agent, chats, spent, settle } = await kit();
+  // createTrip's first transaction, with the page gone before its trip.json was written.
+  await store.tx(['scopes', 'events'], 'readwrite', async (t) => {
+    await t.putScope({ id: 'trip-cut', kind: 'trip', title: DRAFT_TITLE, status: 'active', created: noon, updated: noon, format: 1, tripId: 't-cut', talked: null, draft: true });
+    await t.appendEvent('trip-cut', { ts: noon, type: 'scope.create', actor: 'user', data: { title: DRAFT_TITLE } });
+  });
+  await chats.start();
+  assert.equal(chats.ready, 'trip-cut');
+  assert.deepEqual(await ws.readJSON('trip-cut', '/trip.json'), { id: 't-cut', title: DRAFT_TITLE, places: [], party: [] });
+  await agent.log('trip-cut', { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'Where is good for ramen?']] });
+  await spent('trip-cut');
+  await settle();
+  assert.equal((await ws.readJSON('trip-cut', '/trip.json')).title, 'Where is good for ramen?');
+});
+
+test("a file whose trip says it is a draft imports a conversation like any other: never hidden, and never what + opens", async () => {
+  const a = await kit();
+  const trip = await createTrip(a.ws, { title: 'Their trip' });
+  const { blob } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: '0.1.0' });
+  const b = await kit();
+  await b.chats.start();
+  const mine = /** @type {string} */ (b.chats.ready);
+  const opened = await peekArchive(new Uint8Array(await blob.arrayBuffer()));
+  /** @type {any} */ (opened.manifest.scopes[0].record).draft = true; // no annai writes it: a hand-made file
+  const { trips: [came] } = await importArchive(b.store, opened, {});
+  assert.deepEqual((await listTrips(b.store)).active.map((s) => s.id), [came]);
+  await b.agent.log(mine, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'my first line']] });
+  await b.spent(mine);
+  assert.notEqual(b.chats.ready, came);
 });
