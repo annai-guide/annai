@@ -63,13 +63,11 @@ export function chatName({ text = '', file, photo, voice, at, tz }) {
 export class Chats {
   /** @type {string | null} the draft + opens; null while the next is made */
   ready = null;
-  /** @type {Set<(id: string) => void>} */
-  #waiting = new Set();
   /** @type {Map<string, { name: string, path: string }>} conversations a kept file spent, this page load: the name it gave, and the file as a line hands it */
   #byFile = new Map();
   /** @type {Promise<unknown>} events are taken one at a time, in order: a heard line before its words, a half's copy after the first */
   #queue = Promise.resolve();
-  /** @type {Promise<void> | null} */
+  /** @type {Promise<string> | null} */
   #making = null;
 
   /** @param {{ ws: Workspace, agent: { on: (kind: 'event', fn: (e: any) => void) => () => void }, tz: () => string }} c */
@@ -87,19 +85,14 @@ export class Chats {
     await this.#make();
   }
 
-  /** The draft, once one is ready; a draft that couldn't be made is tried again here. @returns {Promise<string>} */
+  /** The draft, once one is ready. A draft that can't be made rejects, and the next call tries again. @returns {Promise<string>} */
   whenReady() {
-    if (this.ready) return Promise.resolve(this.ready);
-    if (!this.#making) this.#make().catch(() => {});
-    return new Promise((r) => this.#waiting.add(r));
+    return this.ready ? Promise.resolve(this.ready) : this.#make();
   }
 
+  /** @returns {Promise<string>} */
   #make() {
-    this.#making ??= ensureDraft(this.ws).then((id) => {
-      this.ready = id;
-      for (const r of this.#waiting) r(id);
-      this.#waiting.clear();
-    }).finally(() => { this.#making = null; });
+    this.#making ??= ensureDraft(this.ws).then((id) => (this.ready = id)).finally(() => { this.#making = null; });
     return this.#making;
   }
 
