@@ -377,3 +377,9 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** a file Shiori moved from conversation A to B and later back to A: Undo in A says "Your files are back in B and A", and the file is in B, where the user never put it. Found in review of stage 4; it was already so at 2ec13f79.
 - **Why:** every move is undone from both of its ends (A's `into`, B's `out`); in a cycle the second undo of B to A finds the file in A, put there by the undo of A to B, and moves it again.
 - **Revisit when:** the next version: in `moveBack` (handover.js), a file whose last write at `at.path` is this Undo's own (`undo === handover`) is home already.
+
+### A redraw of home drops an armed "Tap again to delete" and the keyboard focus
+- **Kind:** deferred.
+- **What the user sees:** on home, a two-step button (Waiting with Shiori's Delete) tapped once, or a focused field, is reset when home draws itself again (Shiori's `went`, a plugin's screens, Waiting's own Delete, and since stage 4 the clock's redraw, a few times a day). The armed row says "Delete" again and the keyboard closes; nothing is lost but the first tap.
+- **Why:** home is rebuilt as a whole in place; its open folds and its place are kept (the shell scrolls to the row in view, `fold` keeps what is open), but an armed row and the focus are not. Older than the clock's redraw.
+- **Revisit when:** the next version: keep the armed row and the focused element across home's redraws.
