@@ -1,6 +1,7 @@
 import { h, t, messageOf } from './dom.js';
 import { parseHash, redirectOf } from './router.js';
 import { talkOf } from './open-trip.js';
+import { closeQuestions } from './ask.js';
 import { createNotices } from './notices.js';
 import { installBanner } from './install.js';
 import { setPendingImport } from './import-state.js';
@@ -237,6 +238,7 @@ export function startShell(root, core) {
   };
   /** This entry becomes another address, keeping its number, and is drawn. @param {string} to */
   const replaceHash = (to) => {
+    closeQuestions();
     history.replaceState(typeof history.state?.annaiIdx === 'number' ? { annaiIdx: history.state.annaiIdx } : null, '', to);
     return render({ moved: true });
   };
@@ -316,7 +318,7 @@ export function startShell(root, core) {
         passing = on;
         removing &&= on;
         if (on) history.go(way);
-        else if (skip && way > 0 && shown.name === 'trips') { // Forward would draw Trips again: back to the entry it left instead
+        else if (skip && way > 0 && (shown.name === 'trips' || lastHash === shown.hash)) { // Forward would draw Trips or the screen again: back to the entry it left
           passing = returning = true;
           history.go(-steps);
         } else {

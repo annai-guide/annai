@@ -652,7 +652,7 @@ function undoLine(ctx, scope, list) {
     try {
       await settled(ctx.agent);
       // The trips its files went to, this conversation, and the one it was handed in: each told, through its own log while it is open.
-      /** @type {Set<string>} the trips it removes: a screen of one is left as Remove trip leaves it, wherever the user tapped */
+      /** @type {Set<string>} the trips it removes: a screen of one is left for the files' conversation, else as Remove does */
       const gone = new Set();
       const { removed, kept, waiting, back } = await undoEverywhere(ctx.ws, scope, hh, {
         remove: (s) => { gone.add(s); return removeTripNow(ctx, s); },

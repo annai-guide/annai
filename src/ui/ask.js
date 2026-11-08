@@ -46,6 +46,9 @@ export function ask({ title, body, yes, no = t`Cancel` }) {
   });
 }
 
+/** A replace fires no popstate: questions close as Cancel. */
+export const closeQuestions = () => document.querySelectorAll('dialog.ask[open]').forEach((d) => /** @type {HTMLDialogElement} */ (d).close('no'));
+
 /** The questions open without being modal, and the parts of the page they made inert. @type {{ n: number, behind: Element[] }} */
 const open = { n: 0, behind: [] };
 

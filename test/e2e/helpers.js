@@ -136,13 +136,13 @@ export async function buildAndSave(page) {
 /**
  * A stand-in model server on its own port, for tests that need real CORS (WebKit can't route
  * requests from a page a service worker controls). A route is a reply, or a list of replies served
- * in turn (the last repeats); a reply may wait delayMs. bodies(path) gives what was posted: parsed JSON, or the bytes.
+ * in turn (the last repeats); a reply may wait delayMs, and may wait for a promise (until) the test settles when its state is reached. bodies(path) gives what was posted: parsed JSON, or the bytes.
  * An empty request (no model: {}, or only an output limit), as Custom provider sends to look for what a server
  * offers, is refused with 400 on a route it has, as a real server refuses it, and is neither served a reply nor kept
  * among the bodies.
  * A reply may be a function of the request's body, for a reply that names what annai chose (a stored file's path, a trip's id).
  * @param {Record<string, Reply | Reply[]>} routes
- * @typedef {{ status: number, type: string, body: string | Buffer, delayMs?: number } | ((body: any) => { status: number, type: string, body: string | Buffer, delayMs?: number })} Reply
+ * @typedef {{ status: number, type: string, body: string | Buffer, delayMs?: number, until?: Promise<unknown> } | ((body: any) => { status: number, type: string, body: string | Buffer, delayMs?: number, until?: Promise<unknown> })} Reply
  */
 export async function startModelServer(routes) {
   /** @type {Map<any, number>} */
@@ -189,9 +189,9 @@ export async function startModelServer(routes) {
         res.writeHead(404, cors).end('not found');
         return;
       }
-      setTimeout(() => {
+      void Promise.resolve(r.until).then(() => setTimeout(() => {
         if (!res.destroyed) res.writeHead(r.status, { ...cors, 'content-type': r.type }).end(r.body);
-      }, r.delayMs ?? 0);
+      }, r.delayMs ?? 0));
     });
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(undefined)));

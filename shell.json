@@ -1,5 +1,5 @@
 {
-  "build": "e21ca14d040d",
+  "build": "ded868030c60",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -206,7 +206,7 @@
     "/src/ui/dom.js": "97bbc75515fe",
     "/src/ui/add-files.js": "9aa460e42e98",
     "/src/ui/auto-backup.js": "94bd1244a50a",
-    "/src/ui/ask.js": "8a246bd577d7",
+    "/src/ui/ask.js": "1e2b52f84164",
     "/src/ui/avatar.js": "43b050c9bb13",
     "/src/ui/bring-in.js": "359195ba93c5",
     "/src/ui/export-panel.js": "ded8262ee329",
@@ -268,7 +268,7 @@
     "/src/ui/screens/simulate.js": "4406f996518e",
     "/src/ui/screens/shiori.js": "fd710decde02",
     "/src/ui/screens/sees.js": "6a674fc473ae",
-    "/src/ui/screens/talk.js": "4bbf5d7916ff",
+    "/src/ui/screens/talk.js": "cdae361e278e",
     "/src/ui/screens/tools.js": "af43e4da0f2e",
     "/src/ui/screens/trace.js": "eb5261ad71fd",
     "/src/ui/screens/trip.js": "2ec2553099ff",
@@ -277,7 +277,7 @@
     "/src/ui/screens/voice.js": "44c2b580e9d2",
     "/src/ui/screens/welcome.js": "36befc19824a",
     "/src/ui/search-panel.js": "7582a4612640",
-    "/src/ui/shell.js": "4635dd9ae623",
+    "/src/ui/shell.js": "01e8b2c939f2",
     "/src/ui/slots.js": "4fee1465e94c",
     "/src/ui/stamps.js": "f1bfb4fd255f",
     "/src/ui/shiori.css": "be8119a62c63",
