@@ -933,12 +933,18 @@ const mark = (page) => page.evaluate(() => { document.querySelector('main .scree
 /** Whether the screen is the one marked, and nothing newer replaced it. @param {import('@playwright/test').Page} page */
 const stillMarked = (page) => page.locator('main .screen[data-drawn-once=yes]').count().then((n) => n === 1);
 
+/** Marks the screen once what a removal sets going (a redraw of Trips a moment later) has settled. @param {import('@playwright/test').Page} page */
+const markWhenQuiet = async (page) => {
+  await page.waitForTimeout(800);
+  await mark(page);
+};
+
 test("Forward with nothing new ahead does nothing: after Remove trip from a fresh start, Trips stays the one drawn", async ({ page }) => {
   await openApp(page);
   await startNamed(page, 'Kyoto');
   await removeFromDetails(page, 'Kyoto');
   await expect.poll(() => idxOf(page)).toBe(0);
-  await mark(page);
+  await markWhenQuiet(page);
   await page.goForward(); // the removed trip's entry is ahead: nothing to show
   await page.waitForTimeout(500);
   expect(await idxOf(page)).toBe(0);
@@ -965,7 +971,7 @@ test("Forward after Remove trip from a resumed start does nothing, twice", async
   await goToHash(page, `#/trip/${id}`);
   await removeFromDetails(page, 'Kyoto');
   await expect.poll(() => idxOf(page)).toBe(0);
-  await mark(page);
+  await markWhenQuiet(page);
   for (let i = 0; i < 2; i++) {
     await page.goForward();
     await page.waitForTimeout(500);
