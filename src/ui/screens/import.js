@@ -1,9 +1,10 @@
-import { h, crumb, t, plural, linkIn, field, checkbox, radios, messageOf } from '../dom.js';
+import { h, crumb, t, plural, field, checkbox, radios, messageOf } from '../dom.js';
 import { peekArchive, describeArchive, importArchive, NeedsPassphraseError } from '../../core/archive.js';
 import { PassphraseError } from '../../core/archive-crypto.js';
 import { takePendingImport, setPendingImport, isArchiveName, leaveSignal, toldIfLeft } from '../import-state.js';
 import { openFileButton } from '../open-file.js';
-import { relTime, size, num, list, sentences, placeHref, gettingFiles } from '../format.js';
+import { relTime, size, num, list, sentences, placeHref, gettingFiles, talkHref } from '../format.js';
+import { updateAppSettings } from '../../core/settings.js';
 import { listTrips } from '../../core/scopes.js';
 import { isPhotoType } from '../../core/photos.js';
 import { typeForPath } from '../../core/paths.js';
@@ -306,19 +307,25 @@ function fileInbox(ctx, items, trips, archives) {
   // What came, as the title and the toast name it: a noun with its count, which they hold as a value.
   const what = others.length ? (n === 1 ? t`a file` : plural(n, '# file', '# files')) : plural(n, '# photo', '# photos');
   const status = h('p', { class: 'sub', role: 'status' });
+  // The dated trips, and a new conversation: with chats there could be hundreds of undated ones, and a share opens one of its own.
   /** @type {HTMLButtonElement[]} */
-  const buttons = trips.map((trip) => h('button', { class: 'btn pri', type: 'button', onclick: () => add(trip) }, t`Add to ${trip.title}`));
-  /** @param {any} trip */
-  async function add(trip) {
+  const buttons = [
+    ...trips.filter((trip) => trip.start).map((trip) => h('button', { class: 'btn pri', type: 'button', onclick: () => add(() => trip.id, false) }, t`Add to ${trip.title}`)),
+    ...(ctx.chats ? [h('button', { class: 'btn', type: 'button', onclick: () => add(() => ctx.chats.whenReady(), true) }, t`New conversation`)] : []),
+  ];
+  /** @param {() => string | Promise<string>} which the trip's id @param {boolean} chat a new conversation: it opens, as the + does */
+  async function add(which, chat) {
     for (const b of buttons) b.disabled = true;
     try {
-      const { notes, problems, planned } = await bringIn(ctx, trip.id, items.map((i) => i.file), (done, total) => {
+      const id = await which();
+      const { notes, problems, planned } = await bringIn(ctx, id, items.map((i) => i.file), (done, total) => {
         status.textContent = t`Adding ${num(Math.min(done + 1, total))} of ${num(total)}…`;
       });
       const inbox = await caches.open('annai-inbox');
       for (const i of items) if (i.key) await inbox.delete(i.key);
       for (const url of urls) URL.revokeObjectURL(url);
-      ctx.go(`#/trip/${encodeURIComponent(trip.id)}`);
+      if (chat) updateAppSettings(ctx.ws, { activeTrip: id }).catch(() => {});
+      ctx.go(chat ? talkHref(id) : `#/trip/${encodeURIComponent(id)}`);
       for (const note of notes) ctx.notices.card({ tone: 'warn', title: t`A photo was kept as it is`, body: note });
       for (const problem of problems) ctx.notices.card({ tone: 'warn', title: t`A calendar file couldn't be read`, body: problem });
       ctx.notices.toast(planned.length ? plural(planned.length, 'Added {0}, and # itinerary item from the calendar', 'Added {0}, and # itinerary items from the calendar', what) : t`Added ${what}`);
@@ -337,7 +344,6 @@ function fileInbox(ctx, items, trips, archives) {
   }
   const shown = photos.slice(0, 12);
   const urls = shown.map((i) => URL.createObjectURL(i.file));
-  const goTrips = t`Go to Trips`;
   return h('div', { class: 'screen' },
     h('h1', { class: 'title', text: t`Add ${what}` }),
     shown.length ? h('ul', { class: 'thumbs' }, ...shown.map((i, k) => h('li', {}, h('img', { src: urls[k], alt: i.file.name, decoding: 'async' })))) : null,
@@ -345,9 +351,7 @@ function fileInbox(ctx, items, trips, archives) {
     others.length ? h('ul', { class: 'file-names' }, ...others.map((i) => h('li', {}, h('span', { text: `${i.file.name} · ${size(i.file.size)}` }), sharedText(i.file)))) : null,
     // Any site can post to the share target (spec §12.3), so the user is asked to add only their own share.
     items.some((i) => i.key) ? h('p', { class: 'sub', text: t`Add only what you just shared yourself.` }) : null,
-    trips.length
-      ? h('div', { class: 'acts' }, ...buttons)
-      : h('p', { class: 'empty' }, ...linkIn(sentences(n === 1 ? t`Start a trip first, then share it again.` : t`Start a trip first, then share them again.`, goTrips), h('a', { href: '#/trips', text: goTrips }))),
+    h('div', { class: 'acts' }, ...buttons),
     status,
     ...archives.map((a) => h('div', { class: 'panel' },
       h('p', { text: t`Also here: ${a.file.name}, an annai backup or trip. It isn't added with the rest; open it on its own.` }),

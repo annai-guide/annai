@@ -577,9 +577,9 @@ tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	暗号化バ�
 107ikf9	ok	Works.	動作しています。	src/core/backup.js:467	Note: the result of Save and test when the place says nothing itself.
 1w4k6nl	ok	This backup was made by a newer annai: update annai first.	このバックアップは新しい annai で作られています。先に annai をアップデートしてください。	src/core/backup.js:517	
 173rmiu	ok	This backup is damaged.	このバックアップは壊れています。	src/core/backup.js:518	
-1lbu7g8	draft	Photo · {0}	写真 · {0}	src/core/chats.js:38	{0} = time
-1nqtd5y	draft	Voice · {0}	音声 · {0}	src/core/chats.js:39	{0} = time
-146ozuk	draft	New conversation	新しい会話	src/core/chats.js:40	
+1lbu7g8	draft	Photo · {0}	写真 · {0}	src/core/chats.js:39	{0} = time
+1nqtd5y	draft	Voice · {0}	音声 · {0}	src/core/chats.js:40	{0} = time
+146ozuk	draft	New conversation	新しい会話	src/core/chats.js:41	
 14zz5l	ok	annai's storage on this device is full. Remove a trip you no longer need (back it up first), or free up space on this device.	この端末の annai の保存領域がいっぱいです。不要になった旅を削除する（先にバックアップしてください）か、この端末の空き容量を増やしてください。	src/core/errors.js:39	
 1rgff8l	ok	annai has stopped in this tab because it was opened in another one. Reload this tab to use annai here.	annai が別のタブで開かれたため、このタブでは止まりました。ここで annai を使うには、このタブを再読み込みしてください。	src/core/errors.js:40	
 gnrtev	ok	Shiori can't reach her model.	Shiori がモデルにつながりません。	src/core/errors.js:41	
@@ -1671,56 +1671,54 @@ twulcv	ok	Version restored	バージョンを戻しました	src/ui/screens/file
 w8mx56	ok	Deleted by {0} {1}	{0} が削除（{1}）	src/ui/screens/file.js:294	{0} = who; {1} = ago; Note: {0} is Shiori or annai.
 1cdkli8	ok	Saved by you {0}	あなたが保存（{0}）	src/ui/screens/file.js:295	{0} = ago
 1xtgqpw	ok	Saved by {0} {1}	{0} が保存（{1}）	src/ui/screens/file.js:295	{0} = who; {1} = ago; Note: {0} is Shiori or annai.
-f0ig49	ok	Open a trip	旅を開く	src/ui/screens/import.js:36	
-1azyvjt	ok	Choose a file instead	代わりにファイルを選ぶ	src/ui/screens/import.js:39	
-18kfutv	ok	Choose an annai file (.annai.zip or .annai) to open it.	開くには annai のファイル（.annai.zip または .annai）を選んでください。	src/ui/screens/import.js:52	
-s6np2n	ok	Choose a file	ファイルを選ぶ	src/ui/screens/import.js:52	
-9pczbj	ok	Choose another file	別のファイルを選ぶ	src/ui/screens/import.js:56	
-vpnx22	ok	annai couldn't download that file. The site may not allow other web apps to download it.	annai はそのファイルをダウンロードできませんでした。そのサイトは、ほかの Web アプリからのダウンロードを許可していないかもしれません。	src/ui/screens/import.js:76	
-9ekzd	ok	The download failed ({0} {1}).	ダウンロードに失敗しました（{0} {1}）。	src/ui/screens/import.js:79	{0} = res.status; {1} = res.statusText
-v8ip62	ok	trip	旅	src/ui/screens/import.js:80	Note: A file's name when its address has none.
-1i00iqj	ok	Reading {0}…	{0}を読んでいます…	src/ui/screens/import.js:88	{0} = source.name
-1fn8tif	ok	This backup changed on the server while annai was getting it. Open it again from the backups.	annai が取得している間に、このバックアップがサーバー上で変わりました。バックアップからもう一度開いてください。	src/ui/screens/import.js:135	
-t5o4f	ok	{0} is encrypted.	{0}は暗号化されています。	src/ui/screens/import.js:147	{0} = source.name
-17ezgqd	ok	Unlock	ロックを解除	src/ui/screens/import.js:150	
-mp7avp	ok	with history	履歴あり	src/ui/screens/import.js:167	
-wa8d8i#other	ok	# files	ファイル#件	src/ui/screens/import.js:167	plural; # = trip.files; English: "# file" (one), "# files" (other)
-1z02pm0	ok	You already have "{0}"	「{0}」はすでにあります	src/ui/screens/import.js:169	{0} = trip.existingTitle
-s27n78	ok	Add as a new trip	新しい旅として追加	src/ui/screens/import.js:169	
-wr63q8	ok	Replace mine (yours moves to archived trips)	自分のものを置き換える（自分のものはアーカイブした旅に移ります）	src/ui/screens/import.js:169	
-1og8gcf	ok	Replace my profile and memory with the ones in this file	プロフィールと記憶を、このファイルのものに置き換える	src/ui/screens/import.js:172	Note: Shiori's memory is 記憶, as on the export list.
-rfnd00	ok	Replace my settings	設定を置き換える	src/ui/screens/import.js:173	
-1ai6503	ok	Replace my plugins	プラグインを置き換える	src/ui/screens/import.js:174	
-z9765v	ok	Restore API keys (keys already on this device are kept)	API キーを復元（この端末にすでにあるキーは残します）	src/ui/screens/import.js:175	
-tlkozp	ok	Reading…	読んでいます…	src/ui/screens/import.js:184	
-jbong3	ok	Reading {0} of {1}…	読んでいます：{0} / {1}…	src/ui/screens/import.js:197	{0} = num(Math.min(done + 1, total)); {1} = num(total)
-i4v1g5	ok	Installing the plugins your providers use…	プロバイダーが使うプラグインをインストールしています…	src/ui/screens/import.js:205	
-1fnonn8	ok	Open trip	旅を開く	src/ui/screens/import.js:215	
-m9iea3#other	ok	# older copies moved to archived trips.	#件の古いコピーをアーカイブした旅に移しました。	src/ui/screens/import.js:216	plural; # = result.archived.length; English: "# older copy moved to archived trips." (one), "# older copies moved to archived trips." (other)
-j0c8lo	ok	Imported plugins arrive switched off. Turn on the ones you trust in Plugins.	読み込んだプラグインはオフの状態で入ります。信頼できるものをプラグインでオンにしてください。	src/ui/screens/import.js:219	
-3qem9k	ok	annai's next backup to that place builds on this one.	annai がその場所に次にバックアップするときは、これを元にします。	src/ui/screens/import.js:221	
-o7fto4	ok	Import	読み込む	src/ui/screens/import.js:229	
-18d2xm5	ok	A backup of everything exported {0} from annai {1}.	すべてのバックアップ。annai {1}からエクスポート（{0}）。	src/ui/screens/import.js:232	{0} = ago; {1} = app; Note: {0} is a relative time (たった今, 3日前), which can't always take に, so it goes in brackets.
-6fr2dj	ok	A backup of everything exported {0} from annai {1}, encrypted.	すべてのバックアップ。annai {1}からエクスポート（{0}）、暗号化済み。	src/ui/screens/import.js:232	{0} = ago; {1} = app; Note: {0} is a relative time, in brackets.
-1uhzqqs	ok	A trip exported {0} from annai {1}, encrypted.	旅。annai {1}からエクスポート（{0}）、暗号化済み。	src/ui/screens/import.js:233	{0} = ago; {1} = app; Note: {0} is a relative time, in brackets.
-1ut7u54	ok	A trip exported {0} from annai {1}.	旅。annai {1}からエクスポート（{0}）。	src/ui/screens/import.js:233	{0} = ago; {1} = app; Note: {0} is a relative time, in brackets.
-7ns57f	ok	There are no trips in this file.	このファイルに旅はありません。	src/ui/screens/import.js:236	
-1y35b48	ok	Restarting…	再起動しています…	src/ui/screens/import.js:252	
-5wjjb4	ok	Restart annai to use the imported settings and plugins.	読み込んだ設定とプラグインを使うには、annai を再起動してください。	src/ui/screens/import.js:257	
-1p9jpyr	ok	Installed what your providers use: {0}.	プロバイダーが使うものをインストールしました：{0}。	src/ui/screens/import.js:267	{0} = list(g.installed, 'plain')
-c0u62t#other	ok	Kept your own API keys for {0}; the ones in the file weren't used.	{0}の API キーは自分のものを残しました。ファイルのキーは使っていません。	src/ui/screens/import.js:276	plural; # = n; {0} = list(names, 'plain'); English: "Kept your own API key for {0}; the one in the file wasn't used." (one), "Kept your own API keys for {0}; the ones in the file weren't used." (other)
-jsttcj#other	ok	Kept your own API keys; the ones in the file weren't used.	API キーは自分のものを残しました。ファイルのキーは使っていません。	src/ui/screens/import.js:277	plural; # = n; English: "Kept your own API key; the one in the file wasn't used." (one), "Kept your own API keys; the ones in the file weren't used." (other)
-151rypw#other	ok	# photos	#枚の写真	src/ui/screens/import.js:307	plural; # = n; English: "# photo" (one), "# photos" (other)
-8w8k36	ok	a file	ファイル	src/ui/screens/import.js:307	
-ci7mt7	ok	Add to {0}	{0}に追加	src/ui/screens/import.js:310	{0} = trip.title
-odevmc	ok	Adding {0} of {1}…	追加しています（{0}/{1}）…	src/ui/screens/import.js:316	{0} = num(Math.min(done + 1, total)); {1} = num(total)
-6u51xq#other	draft	Added {0}, and # itinerary items from the calendar	{0}と、カレンダーから旅程の項目#件を追加しました	src/ui/screens/import.js:324	plural; # = planned.length; {0} = what; English: "Added {0}, and # itinerary item from the calendar" (one), "Added {0}, and # itinerary items from the calendar" (other); English was: Added {0}, and # itinerary items from the calendar; Note: {0} is a file's path, or how many files ("2 files").
-f30m7u#other	ok	and # more photos	ほか#枚の写真	src/ui/screens/import.js:344	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
-1cj3r6h	ok	Add only what you just shared yourself.	自分で共有したものだけを追加してください。	src/ui/screens/import.js:347	
-17udxx8	ok	Start a trip first, then share it again.	先に旅を始めてから、もう一度共有してください。	src/ui/screens/import.js:350	
-19xnnmt	ok	Start a trip first, then share them again.	先に旅を始めてから、もう一度共有してください。	src/ui/screens/import.js:350	
-sc64d2	ok	Also here: {0}, an annai backup or trip. It isn't added with the rest; open it on its own.	ここにもあります：{0}（annai のバックアップか旅）。ほかのものと一緒には追加されないので、単独で開いてください。	src/ui/screens/import.js:353	{0} = a.file.name
-3wbwnq	ok	Open it	開く	src/ui/screens/import.js:354	
+f0ig49	ok	Open a trip	旅を開く	src/ui/screens/import.js:37	
+1azyvjt	ok	Choose a file instead	代わりにファイルを選ぶ	src/ui/screens/import.js:40	
+18kfutv	ok	Choose an annai file (.annai.zip or .annai) to open it.	開くには annai のファイル（.annai.zip または .annai）を選んでください。	src/ui/screens/import.js:53	
+s6np2n	ok	Choose a file	ファイルを選ぶ	src/ui/screens/import.js:53	
+9pczbj	ok	Choose another file	別のファイルを選ぶ	src/ui/screens/import.js:57	
+vpnx22	ok	annai couldn't download that file. The site may not allow other web apps to download it.	annai はそのファイルをダウンロードできませんでした。そのサイトは、ほかの Web アプリからのダウンロードを許可していないかもしれません。	src/ui/screens/import.js:77	
+9ekzd	ok	The download failed ({0} {1}).	ダウンロードに失敗しました（{0} {1}）。	src/ui/screens/import.js:80	{0} = res.status; {1} = res.statusText
+v8ip62	ok	trip	旅	src/ui/screens/import.js:81	Note: A file's name when its address has none.
+1i00iqj	ok	Reading {0}…	{0}を読んでいます…	src/ui/screens/import.js:89	{0} = source.name
+1fn8tif	ok	This backup changed on the server while annai was getting it. Open it again from the backups.	annai が取得している間に、このバックアップがサーバー上で変わりました。バックアップからもう一度開いてください。	src/ui/screens/import.js:136	
+t5o4f	ok	{0} is encrypted.	{0}は暗号化されています。	src/ui/screens/import.js:148	{0} = source.name
+17ezgqd	ok	Unlock	ロックを解除	src/ui/screens/import.js:151	
+mp7avp	ok	with history	履歴あり	src/ui/screens/import.js:168	
+wa8d8i#other	ok	# files	ファイル#件	src/ui/screens/import.js:168	plural; # = trip.files; English: "# file" (one), "# files" (other)
+1z02pm0	ok	You already have "{0}"	「{0}」はすでにあります	src/ui/screens/import.js:170	{0} = trip.existingTitle
+s27n78	ok	Add as a new trip	新しい旅として追加	src/ui/screens/import.js:170	
+wr63q8	ok	Replace mine (yours moves to archived trips)	自分のものを置き換える（自分のものはアーカイブした旅に移ります）	src/ui/screens/import.js:170	
+1og8gcf	ok	Replace my profile and memory with the ones in this file	プロフィールと記憶を、このファイルのものに置き換える	src/ui/screens/import.js:173	Note: Shiori's memory is 記憶, as on the export list.
+rfnd00	ok	Replace my settings	設定を置き換える	src/ui/screens/import.js:174	
+1ai6503	ok	Replace my plugins	プラグインを置き換える	src/ui/screens/import.js:175	
+z9765v	ok	Restore API keys (keys already on this device are kept)	API キーを復元（この端末にすでにあるキーは残します）	src/ui/screens/import.js:176	
+tlkozp	ok	Reading…	読んでいます…	src/ui/screens/import.js:185	
+jbong3	ok	Reading {0} of {1}…	読んでいます：{0} / {1}…	src/ui/screens/import.js:198	{0} = num(Math.min(done + 1, total)); {1} = num(total)
+i4v1g5	ok	Installing the plugins your providers use…	プロバイダーが使うプラグインをインストールしています…	src/ui/screens/import.js:206	
+1fnonn8	ok	Open trip	旅を開く	src/ui/screens/import.js:216	
+m9iea3#other	ok	# older copies moved to archived trips.	#件の古いコピーをアーカイブした旅に移しました。	src/ui/screens/import.js:217	plural; # = result.archived.length; English: "# older copy moved to archived trips." (one), "# older copies moved to archived trips." (other)
+j0c8lo	ok	Imported plugins arrive switched off. Turn on the ones you trust in Plugins.	読み込んだプラグインはオフの状態で入ります。信頼できるものをプラグインでオンにしてください。	src/ui/screens/import.js:220	
+3qem9k	ok	annai's next backup to that place builds on this one.	annai がその場所に次にバックアップするときは、これを元にします。	src/ui/screens/import.js:222	
+o7fto4	ok	Import	読み込む	src/ui/screens/import.js:230	
+18d2xm5	ok	A backup of everything exported {0} from annai {1}.	すべてのバックアップ。annai {1}からエクスポート（{0}）。	src/ui/screens/import.js:233	{0} = ago; {1} = app; Note: {0} is a relative time (たった今, 3日前), which can't always take に, so it goes in brackets.
+6fr2dj	ok	A backup of everything exported {0} from annai {1}, encrypted.	すべてのバックアップ。annai {1}からエクスポート（{0}）、暗号化済み。	src/ui/screens/import.js:233	{0} = ago; {1} = app; Note: {0} is a relative time, in brackets.
+1uhzqqs	ok	A trip exported {0} from annai {1}, encrypted.	旅。annai {1}からエクスポート（{0}）、暗号化済み。	src/ui/screens/import.js:234	{0} = ago; {1} = app; Note: {0} is a relative time, in brackets.
+1ut7u54	ok	A trip exported {0} from annai {1}.	旅。annai {1}からエクスポート（{0}）。	src/ui/screens/import.js:234	{0} = ago; {1} = app; Note: {0} is a relative time, in brackets.
+7ns57f	ok	There are no trips in this file.	このファイルに旅はありません。	src/ui/screens/import.js:237	
+1y35b48	ok	Restarting…	再起動しています…	src/ui/screens/import.js:253	
+5wjjb4	ok	Restart annai to use the imported settings and plugins.	読み込んだ設定とプラグインを使うには、annai を再起動してください。	src/ui/screens/import.js:258	
+1p9jpyr	ok	Installed what your providers use: {0}.	プロバイダーが使うものをインストールしました：{0}。	src/ui/screens/import.js:268	{0} = list(g.installed, 'plain')
+c0u62t#other	ok	Kept your own API keys for {0}; the ones in the file weren't used.	{0}の API キーは自分のものを残しました。ファイルのキーは使っていません。	src/ui/screens/import.js:277	plural; # = n; {0} = list(names, 'plain'); English: "Kept your own API key for {0}; the one in the file wasn't used." (one), "Kept your own API keys for {0}; the ones in the file weren't used." (other)
+jsttcj#other	ok	Kept your own API keys; the ones in the file weren't used.	API キーは自分のものを残しました。ファイルのキーは使っていません。	src/ui/screens/import.js:278	plural; # = n; English: "Kept your own API key; the one in the file wasn't used." (one), "Kept your own API keys; the ones in the file weren't used." (other)
+151rypw#other	ok	# photos	#枚の写真	src/ui/screens/import.js:308	plural; # = n; English: "# photo" (one), "# photos" (other)
+8w8k36	ok	a file	ファイル	src/ui/screens/import.js:308	
+ci7mt7	ok	Add to {0}	{0}に追加	src/ui/screens/import.js:313	{0} = trip.title
+odevmc	ok	Adding {0} of {1}…	追加しています（{0}/{1}）…	src/ui/screens/import.js:322	{0} = num(Math.min(done + 1, total)); {1} = num(total)
+6u51xq#other	draft	Added {0}, and # itinerary items from the calendar	{0}と、カレンダーから旅程の項目#件を追加しました	src/ui/screens/import.js:331	plural; # = planned.length; {0} = what; English: "Added {0}, and # itinerary item from the calendar" (one), "Added {0}, and # itinerary items from the calendar" (other); English was: Added {0}, and # itinerary items from the calendar; Note: {0} is a file's path, or how many files ("2 files").
+f30m7u#other	ok	and # more photos	ほか#枚の写真	src/ui/screens/import.js:350	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
+1cj3r6h	ok	Add only what you just shared yourself.	自分で共有したものだけを追加してください。	src/ui/screens/import.js:353	
+sc64d2	ok	Also here: {0}, an annai backup or trip. It isn't added with the rest; open it on its own.	ここにもあります：{0}（annai のバックアップか旅）。ほかのものと一緒には追加されないので、単独で開いてください。	src/ui/screens/import.js:357	{0} = a.file.name
+3wbwnq	ok	Open it	開く	src/ui/screens/import.js:358	
 qqpumv	draft	This isn't on the itinerary	旅程にありません	src/ui/screens/item.js:24	English was: This isn't on the plan; Note: a heading where a link names no plan item.
 15biluu	draft	Go to the itinerary	旅程へ	src/ui/screens/item.js:25	Note: a link to the trip's Itinerary (旅程).
 1wp3w0c	ok	All day, {0}	終日（{0}）	src/ui/screens/item.js:41	{0} = start; Note: {0} is the day.

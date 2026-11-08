@@ -3,6 +3,7 @@ import { storedTexts } from './agent/log.js';
 import { NOT_TRANSCRIBED } from './voice/resolve.js';
 import { PHOTO_ONLY } from './agent/loop.js';
 import { timeIn } from './time.js';
+import { isPhotoType } from './photos.js';
 import { t } from './l10n.js';
 
 /** @typedef {import('./workspace.js').Workspace} Workspace */
@@ -41,7 +42,7 @@ export function chatName({ text = '', file, photo, voice, at, tz }) {
 }
 
 /**
- * Keeps the draft ready and spends it on first use: the first user line (typed, or heard and not dismissed) or a file handed in, in the draft's conversation.
+ * Keeps the draft ready and spends it on first use: the first user line (typed, or heard and not dismissed) or a file kept in it.
  * Spending clears the flag first, so the row shows at once, then names it as system, then makes the next draft.
  */
 export class Chats {
@@ -64,7 +65,10 @@ export class Chats {
   }
 
   async start() {
-    this.agent.on('event', (e) => { this.#queue = this.#queue.then(() => this.#took(e)).catch((err) => console.warn(/* en */ "a chat couldn't be named", err)); });
+    const take = (/** @type {any} */ e) => { this.#queue = this.#queue.then(() => this.#took(e)).catch((err) => console.warn(/* en */ "a chat couldn't be named", err)); };
+    this.agent.on('event', take);
+    // A file kept in it, with or without a line or a model to wake (the camera, the Share target, Details): never hidden in a draft.
+    this.ws.onChange((c) => { if (c.op === 'write' && c.path.startsWith('/files/')) take({ type: 'file', scope: c.scope, path: c.path, entry: c.entry, ts: this.ws.now() }); });
     await this.#make();
   }
 
@@ -84,7 +88,7 @@ export class Chats {
     return this.#making;
   }
 
-  /** @param {any} e a logged entry, with its scope */
+  /** @param {any} e a logged entry, with its scope; or a file kept ({ type: 'file', scope, path, entry, ts }) */
   async #took(e) {
     const tz = this.tz();
     if (e.type === 'heard.text') {
@@ -104,8 +108,7 @@ export class Chats {
       const photo = Boolean(e.data?.images?.length);
       return this.#spend(e.scope, chatName({ text: text === PHOTO_ONLY ? '' : text, photo, voice: e.type === 'heard', at: e.ts, tz }));
     }
-    const file = e.type === 'wake' ? e.data?.reasons?.find((/** @type {any} */ r) => r.kind === 'file' && r.files?.length)?.files[0] : null;
-    if (file) return this.#spend(e.scope, chatName({ file, at: e.ts, tz }));
+    if (e.type === 'file') return this.#spend(e.scope, chatName(isPhotoType(e.entry?.type) ? { photo: true, at: e.ts, tz } : { file: e.path, at: e.ts, tz }));
   }
 
   /** @param {string} scope @param {string | null} name null: its words are still to come */

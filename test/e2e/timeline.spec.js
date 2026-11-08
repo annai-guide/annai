@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { writeFile } from 'node:fs/promises';
+import { writeFile, readFile } from 'node:fs/promises';
 import { openApp, startModelServer, modelSetUp, anthropicToolReply, fakeMicrophone, waitForServiceWorker, addProvider } from './helpers.js';
 import { encodeWav } from '../../src/core/voice/pcm.js';
 
@@ -261,4 +261,33 @@ test("Shiori's patch dates the open chat: its row becomes a card below now, and 
   } finally {
     await llm.stop();
   }
+});
+
+test('Share offers the dated trips and New conversation, never every chat: New conversation adds the photo to the draft, which is named by it and opens', async ({ page }) => {
+  await openApp(page, '#/settings');
+  await waitForServiceWorker(page);
+  /** @type {Record<string, number>} */
+  const chats = {};
+  for (let i = 0; i < 40; i++) chats[`Chat ${i}`] = 60 * i + 5;
+  await seed(page, { chats, trips: { Testville: { from: -1, to: 2 }, Laterton: { from: 20, to: 24 } } });
+  const png = await readFile(new URL('../fixtures/photos/screenshot.png', import.meta.url));
+  await page.evaluate(async (bytes) => {
+    const form = new FormData();
+    form.append('files', new File([new Uint8Array(bytes)], 'screenshot.png', { type: 'image/png' }));
+    await fetch('/share-target', { method: 'POST', body: form, redirect: 'manual' });
+  }, [...png]);
+  await page.goto('/#/import?inbox=1');
+  await expect(page.getByRole('heading', { name: 'Add 1 photo' })).toBeVisible();
+  const acts = page.getByRole('main').locator('.acts').last();
+  await expect(acts.getByRole('button')).toHaveCount(3);
+  expect((await acts.getByRole('button').allTextContents()).sort()).toEqual(['Add to Laterton', 'Add to Testville', 'New conversation']);
+  await expect(page.getByText(/Start a trip first/)).toHaveCount(0);
+  await acts.getByRole('button', { name: 'New conversation' }).click();
+  await expect(page).toHaveURL(/\/talk$/);
+  const id = draftOf(page.url());
+  await expect(page.locator('.talk-head .talk-name')).toHaveText(/^Photo · /);
+  const rec = await record(page, id);
+  expect(rec.draft).toBeUndefined();
+  await page.goto('/#/trips');
+  await expect(row(page, 'Photo · ')).toHaveCount(1);
 });

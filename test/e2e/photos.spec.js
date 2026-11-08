@@ -11,9 +11,14 @@ async function photo(name) {
   return { name, mimeType, buffer: await readFile(new URL(`../fixtures/photos/${name}`, import.meta.url)) };
 }
 
-/** @param {import('@playwright/test').Page} page @param {string} title */
-async function startTrip(page, title) {
+/** @param {import('@playwright/test').Page} page @param {string} title @param {{ start: string, end: string }} [dates] */
+async function startTrip(page, title, dates) {
   await page.getByLabel('Trip name').fill(title);
+  if (dates) {
+    await page.getByText('Add dates (optional)').click();
+    await page.getByLabel('Starts').fill(dates.start);
+    await page.getByLabel('Ends').fill(dates.end);
+  }
   await page.getByRole('button', { name: 'Start trip' }).click();
   await expect(page.getByRole('heading', { name: title })).toBeVisible();
 }
@@ -209,7 +214,7 @@ test('a Share without places greys out History, with the reason; places on enabl
 test('photos shared from another app go to the trip you choose', async ({ page }) => {
   await openApp(page);
   await waitForServiceWorker(page);
-  await startTrip(page, 'Big Sur');
+  await startTrip(page, 'Big Sur', { start: '2026-11-25', end: '2026-11-29' }); // Share offers dated trips (timeline stage 4)
   const shared = [await photo('portrait.jpg'), await photo('screenshot.png')].map((p) => ({ name: p.name, type: p.mimeType, bytes: [...p.buffer] }));
   await page.evaluate(async (files) => {
     const form = new FormData();
