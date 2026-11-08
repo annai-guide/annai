@@ -410,3 +410,25 @@ test('no location point goes into an open draft; a used draft takes points like 
   await k.fix(at('08:50', '2026-12-05'), MONTEREY);
   assert.equal((await k.events(['location'], draft)).length, 1);
 });
+
+test("a quick chat open the evening before a trip: the trip's first-morning reminder reaches the relay, though neither open nor play is that trip; annai won't say it itself", async () => {
+  const k = await liveKit({ start: at('20:00', '2026-12-05') }); // Big Sur is over: nothing is happening tonight
+  const next = await k.chat('Next', { start: '2026-12-06', end: '2026-12-08' });
+  await k.ws.write(next, '/plan/fly.json', { id: 'fly', title: 'Flight', fixed: true, start: { at: iso('09:00', '2026-12-06'), tz: LA } }, { author: 'user' });
+  const later = await k.chat('Later', { start: '2026-12-20', end: '2026-12-22' });
+  await k.ws.write(later, '/plan/boat.json', { id: 'boat', title: 'Boat', fixed: true, start: { at: iso('09:00', '2026-12-20'), tz: LA } }, { author: 'user' });
+  const chat = await k.chat('Ramen');
+  k.agent.opened(chat);
+  await k.settle();
+  assert.equal(k.live.play, chat);
+  const list = (await k.live.reminders({ waiting: new Set(), held: () => {} })) ?? [];
+  const fly = list.find((r) => r.scope === next && r.watch === 'plan:fly:coming-up');
+  assert.ok(fly, 'the flight reaches the relay');
+  assert.equal(fly?.here, false, "it isn't annai's to say: the trip isn't in play");
+  assert.ok(!list.some((r) => r.scope === later), 'only the next trip');
+  // Its day comes: it is in play, and annai says it.
+  await k.to(at('00:05', '2026-12-06'));
+  assert.equal(k.live.play, next);
+  const own = (await k.live.reminders()) ?? [];
+  assert.equal(own.find((r) => r.watch === 'plan:fly:coming-up')?.here, true);
+});
