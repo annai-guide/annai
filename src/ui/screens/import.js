@@ -19,6 +19,9 @@ import { keepUiFrom } from '../languages.js';
 
 /** @typedef {{ key: Request | null, file: File }} InboxFile  key: its entry in the share inbox, if it came that way */
 
+/** More chats than this in a file are one row in its preview, and more trips than this one link to the timeline afterwards: three rows read at a glance (the timeline's fold). */
+const MANY = 3;
+
 /** @param {any} ctx @param {{ params: Record<string, string> }} route */
 export async function renderImport(ctx, route) {
   const pending = route.params.inbox ? null : takePendingImport();
@@ -161,8 +164,17 @@ function passphraseForm(ctx, body, source, problem) {
 function preview(ctx, body, opened, desc, from, fresh, bring = null) {
   /** @type {Record<string, 'new'|'replace'>} */
   const trips = {};
-  const rows = desc.trips.map((/** @type {any} */ trip) => {
-    trips[trip.scope] = 'new';
+  for (const trip of desc.trips) trips[trip.scope] = 'new';
+  // Many chats are one row with one choice: a backup of a year's chats would be hundreds of rows.
+  const chats = desc.trips.filter((/** @type {any} */ trip) => trip.dated === false);
+  const grouped = chats.length > MANY ? chats : [];
+  const group = grouped.length ? [h('li', { class: 'card' },
+    h('span', { class: 'name', text: plural(grouped.length, '# conversation', '# conversations') }),
+    h('span', { class: 'sub', text: size(grouped.reduce((n, /** @type {any} */ c) => n + c.bytes, 0)) }),
+    grouped.some((/** @type {any} */ c) => c.existing)
+      ? radios(t`You already have some of them`, [['new', t`Add as new ones`], ['replace', t`Replace mine (yours move to archived trips)`]], 'new', (v) => { for (const c of grouped) if (c.existing) trips[c.scope] = /** @type {any} */ (v); })
+      : null)] : [];
+  const rows = desc.trips.filter((/** @type {any} */ trip) => !grouped.includes(trip)).map((/** @type {any} */ trip) => {
     return h('li', { class: 'card' },
       h('span', { class: 'name', text: trip.title }),
       h('span', { class: 'sub', text: [plural(trip.files, '# file', '# files'), size(trip.bytes), trip.history ? t`with history` : null].filter(Boolean).join(' · ') }),
@@ -213,7 +225,8 @@ function preview(ctx, body, opened, desc, from, fresh, bring = null) {
         toldIfLeft(ctx, quit.signal, titles, from ? (await ctx.backups?.get(from.target).catch(() => null))?.name : null);
         body.replaceChildren(h('div', { class: 'panel' },
           h('p', { role: 'status', text: t`Imported.` }),
-          h('div', { class: 'acts' }, ...result.trips.map((id, i) => h('a', { class: 'btn pri', href: `#/trip/${encodeURIComponent(id)}` }, titles[i] ? t`Open ${titles[i]}` : t`Open trip`))),
+          h('div', { class: 'acts' }, ...(result.trips.length > MANY ? [h('a', { class: 'btn pri', href: '#/trips' }, t`Go to the timeline`)]
+            : result.trips.map((id, i) => h('a', { class: 'btn pri', href: `#/trip/${encodeURIComponent(id)}` }, titles[i] ? t`Open ${titles[i]}` : t`Open trip`)))),
           result.archived.length ? h('p', { class: 'sub', text: plural(result.archived.length, '# older copy moved to archived trips.', '# older copies moved to archived trips.') }) : null,
           plugged,
           result.settings || result.plugins ? restartPanel(ctx) : null,
@@ -234,7 +247,7 @@ function preview(ctx, body, opened, desc, from, fresh, bring = null) {
     : desc.encrypted ? t`A trip exported ${ago} from annai ${app}, encrypted.` : t`A trip exported ${ago} from annai ${app}.`;
   return h('div', { class: 'panel' },
     h('p', { text: what }),
-    rows.length ? h('ul', { class: 'cards' }, ...rows) : h('p', { class: 'sub', text: t`There are no trips in this file.` }),
+    rows.length + group.length ? h('ul', { class: 'cards' }, ...rows, ...group) : h('p', { class: 'sub', text: t`There are no trips in this file.` }),
     h('div', { class: 'checks' }, me?.el ?? null, settings?.el ?? null, plugins?.el ?? null, keys?.el ?? null),
     h('div', { class: 'acts' }, go, h('a', { class: 'btn', href: leave(from), onclick: () => quit.abort() }, t`Cancel`)),
     status);

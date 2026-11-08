@@ -557,23 +557,35 @@ function readLog(name, bytes) {
 }
 
 /**
- * What the import preview shows, including which trips already exist here.
+ * What the import preview shows, including which trips already exist here, and which are dated (a chat isn't): read from each trip.json when the
+ * archive is open, null when only its manifest is (or the file can't be read).
  * @param {Store} store
- * @param {Pick<OpenedArchive, 'manifest'>} opened a backup that is only previewed has its manifest alone
+ * @param {Pick<OpenedArchive, 'manifest'> & { zip?: ZipReader }} opened a backup that is only previewed has its manifest alone
  */
-export async function describeArchive(store, { manifest }) {
+export async function describeArchive(store, { manifest, zip }) {
   const local = await store.tx(['scopes'], 'readonly', (t) => t.listScopes());
-  const trips = manifest.scopes
+  /** @param {string} id @returns {Promise<boolean | null>} */
+  const dated = async (id) => {
+    const f = manifest.files.find((x) => x.scope === id && x.path === '/trip.json');
+    if (!zip) return null;
+    if (!f) return false;
+    try {
+      return Boolean(JSON.parse(text(await zip.read(f.name)))?.start);
+    } catch {
+      return null;
+    }
+  };
+  const trips = await Promise.all(manifest.scopes
     .filter((s) => s.record.kind === 'trip')
-    .map((s) => {
+    .map(async (s) => {
       const files = manifest.files.filter((f) => f.scope === s.record.id);
       const existing = local.find((l) => l.kind === 'trip' && l.status === 'active' && l.tripId && l.tripId === s.record.tripId);
       return {
         scope: s.record.id, title: s.record.title, files: files.length,
         bytes: files.reduce((n, f) => n + f.size, 0), history: Boolean(s.events),
-        existing: existing?.id ?? null, existingTitle: existing?.title ?? null,
+        existing: existing?.id ?? null, existingTitle: existing?.title ?? null, dated: await dated(s.record.id),
       };
-    });
+    }));
   const has = (/** @type {string} */ id) => manifest.scopes.some((s) => s.record.id === id);
   return {
     kind: manifest.kind, created: manifest.created, app: manifest.app, include: manifest.include,

@@ -350,11 +350,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** the Trace shows it (an `error` entry of kind `read` in the device's log), or the user meets it.
 - **Approved:** 2026-11-07, the user picked "Accept for now (Recommended)".
 
-### The boot cost of healing trips' dates
-- **Kind:** deferred.
-- **What the user sees:** nothing with a handful of trips. Each start reads every trip's `/trip.json` and opens a write for each, before the first screen: 300 to 570 ms at 500 trips on desktop engines, likely more on a phone (not measured).
-- **Why:** the heal for a date edit whose read failed (`backfillTrips` calling `mirrorTrip`) came at stage 2; stage 4 brings up to 500 chats, which are trip scopes, and already has a scale check.
-- **Revisit when:** stage 4, Task 7: count a start's transactions from before `backfillTrips`, and open a write only for a trip whose record differs from the one `listScopes` gave.
 
 ### A watch written back with its old id can fire again
 - **Kind:** deferred.

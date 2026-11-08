@@ -555,9 +555,9 @@ lfeohr#other	ok	This file is damaged: {0} are missing.	此檔案已損壞：缺�
 1txsojx	ok	This file is damaged: {0} was changed.	此檔案已損壞：{0} 已被更改。	src/core/archive.js:522	{0} = name
 21t6o3	ok	This file is damaged: line {0} of {1} is not readable.	此檔案已損壞：無法讀取 {1} 的第 {0} 行。	src/core/archive.js:548	{0} = i + 1; {1} = name
 1ln7rqe	ok	This file is damaged: line {0} of {1}: {2}	此檔案已損壞：{1} 的第 {0} 行：{2}	src/core/archive.js:552	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
-syvqmc	ok	This file is damaged: its plugin list is not readable.	此檔案已損壞：無法讀取其外掛程式清單。	src/core/archive.js:636	
-qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	匯入期間，此檔案的部分內容已從本裝置中刪除，因此沒有匯入任何內容。請重新匯入。	src/core/archive.js:738	
-cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	匯入期間，此檔案要替換的內容在本裝置上發生了變化，因此沒有匯入任何內容。請重新匯入。	src/core/archive.js:739	
+syvqmc	ok	This file is damaged: its plugin list is not readable.	此檔案已損壞：無法讀取其外掛程式清單。	src/core/archive.js:648	
+qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	匯入期間，此檔案的部分內容已從本裝置中刪除，因此沒有匯入任何內容。請重新匯入。	src/core/archive.js:750	
+cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	匯入期間，此檔案要替換的內容在本裝置上發生了變化，因此沒有匯入任何內容。請重新匯入。	src/core/archive.js:751	
 e0756x	ok	annai tries again later.	annai 稍後會再試。	src/core/backup.js:42	
 pak6iu	ok	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} 的外掛程式沒有執行。請在設定 → 備份中開啟此備份位置，把外掛程式開啟。	src/core/backup.js:44	{0} = name; Note: "it" is the plugin: the backup place's screen turns its plugin on.
 al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	請輸入 {0} 加密備份的密碼片語，然後儲存。	src/core/backup.js:45	{0} = name
@@ -849,11 +849,11 @@ j773ua	ok	needs {0}, which isn't installed. Install it first, then try again.	�
 gvuaip	ok	isn't in annai's catalog.	不在 annai 的目錄中。	src/core/requires.js:203	
 olo1mq	ok	is installed from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.	它是從別處安裝的，不是 annai 自己的。要新增 annai 的，請在設定 → 外掛程式中移除它。	src/core/requires.js:206	Note: Remove → 移除, as annai's Remove buttons say.
 seoih8	ok	{0}, which you turned off, isn't switched on by adding it.	你已關閉的 {0} 不會因為新增而開啟。	src/core/requires.js:208	{0} = officialName(entry.id, entry.name)
-stkvyf	ok	Me	我	src/core/scopes.js:58	Note: the conversation that is not a trip's (Shiori and you), as the Trace's list names it.
-1imxpae	ok	System log	系統日誌	src/core/scopes.js:59	
-ktdb8o	ok	Settings	設定	src/core/scopes.js:60	
-13w3r95	ok	This device	這台裝置	src/core/scopes.js:62	
-1jqhjwe	ok	Waiting with Shiori	Shiori 暫存的檔案	src/core/scopes.js:63	Note: Taiwan wording: 檔案 for files (glossary Files), 暫存 for held for now.
+stkvyf	ok	Me	我	src/core/scopes.js:59	Note: the conversation that is not a trip's (Shiori and you), as the Trace's list names it.
+1imxpae	ok	System log	系統日誌	src/core/scopes.js:60	
+ktdb8o	ok	Settings	設定	src/core/scopes.js:61	
+13w3r95	ok	This device	這台裝置	src/core/scopes.js:63	
+1jqhjwe	ok	Waiting with Shiori	Shiori 暫存的檔案	src/core/scopes.js:64	Note: Taiwan wording: 檔案 for files (glossary Files), 暫存 for held for now.
 ulzb3n	ok	Midnight sun	極晝	src/core/sun.js:78	
 1fjho8h	ok	Polar night	極夜	src/core/sun.js:79	
 tqn1pi	ok	Sunrise {0}	日出 {0}	src/core/sun.js:82	{0} = hm(sunrise)
@@ -1671,54 +1671,59 @@ twulcv	ok	Version restored	已還原版本	src/ui/screens/file.js:280
 w8mx56	ok	Deleted by {0} {1}	{0} {1}刪除	src/ui/screens/file.js:294	{0} = who; {1} = ago
 1cdkli8	ok	Saved by you {0}	你{0}儲存	src/ui/screens/file.js:295	{0} = ago
 1xtgqpw	ok	Saved by {0} {1}	{0} {1}儲存	src/ui/screens/file.js:295	{0} = who; {1} = ago
-f0ig49	ok	Open a trip	開啟旅行	src/ui/screens/import.js:37	
-1azyvjt	ok	Choose a file instead	改為選擇檔案	src/ui/screens/import.js:40	
-18kfutv	ok	Choose an annai file (.annai.zip or .annai) to open it.	選擇一個 annai 檔案（.annai.zip 或 .annai）即可開啟。	src/ui/screens/import.js:53	
-s6np2n	ok	Choose a file	選擇檔案	src/ui/screens/import.js:53	
-9pczbj	ok	Choose another file	選擇其他檔案	src/ui/screens/import.js:57	
-vpnx22	ok	annai couldn't download that file. The site may not allow other web apps to download it.	annai 無法下載該檔案。該網站可能不允許其他網頁應用程式下載它。	src/ui/screens/import.js:77	
-9ekzd	ok	The download failed ({0} {1}).	下載失敗（{0} {1}）。	src/ui/screens/import.js:80	{0} = res.status; {1} = res.statusText
-v8ip62	ok	trip	旅行	src/ui/screens/import.js:81	Note: A file's name when its address has none.
-1i00iqj	ok	Reading {0}…	正在讀取{0}…	src/ui/screens/import.js:89	{0} = source.name
-1fn8tif	ok	This backup changed on the server while annai was getting it. Open it again from the backups.	在 annai 取得期間，此備份在伺服器上發生了變化。請從備份重新開啟它。	src/ui/screens/import.js:136	
-t5o4f	ok	{0} is encrypted.	{0}已加密。	src/ui/screens/import.js:148	{0} = source.name
-17ezgqd	ok	Unlock	解鎖	src/ui/screens/import.js:151	
-mp7avp	ok	with history	含歷史	src/ui/screens/import.js:168	
-wa8d8i#other	ok	# files	#個檔案	src/ui/screens/import.js:168	plural; # = trip.files; English: "# file" (one), "# files" (other); Note: zh with no space, as it sits inside 新增{0} and 已新增{0}, as #張照片 does.
-1z02pm0	ok	You already have "{0}"	你已經有「{0}」	src/ui/screens/import.js:170	{0} = trip.existingTitle
-s27n78	ok	Add as a new trip	作為新旅行新增	src/ui/screens/import.js:170	
-wr63q8	ok	Replace mine (yours moves to archived trips)	替換我的（現有的會移到已封存的旅行）	src/ui/screens/import.js:170	Note: "yours" is the trip already here: it is archived, not lost.
-1og8gcf	ok	Replace my profile and memory with the ones in this file	用此檔案中的個人資料和記憶替換我的	src/ui/screens/import.js:173	Note: profile → 個人資料, as elsewhere.
-rfnd00	ok	Replace my settings	替換我的設定	src/ui/screens/import.js:174	
-1ai6503	ok	Replace my plugins	替換我的外掛程式	src/ui/screens/import.js:175	
-z9765v	ok	Restore API keys (keys already on this device are kept)	還原 API 金鑰（此裝置上已有的金鑰會保留）	src/ui/screens/import.js:176	
-tlkozp	ok	Reading…	正在讀取…	src/ui/screens/import.js:185	
-jbong3	ok	Reading {0} of {1}…	正在讀取 {0}/{1}…	src/ui/screens/import.js:198	{0} = num(Math.min(done + 1, total)); {1} = num(total)
-i4v1g5	ok	Installing the plugins your providers use…	正在安裝你的供應商使用的外掛程式…	src/ui/screens/import.js:206	
-1fnonn8	ok	Open trip	開啟旅行	src/ui/screens/import.js:216	
-m9iea3#other	ok	# older copies moved to archived trips.	已將 # 個較早的副本移到已封存的旅行。	src/ui/screens/import.js:217	plural; # = result.archived.length; English: "# older copy moved to archived trips." (one), "# older copies moved to archived trips." (other)
-j0c8lo	ok	Imported plugins arrive switched off. Turn on the ones you trust in Plugins.	匯入的外掛程式處於關閉狀態。請在外掛程式中開啟你信任的那些。	src/ui/screens/import.js:220	
-3qem9k	ok	annai's next backup to that place builds on this one.	annai 下次備份到那個位置時，會以此為基礎。	src/ui/screens/import.js:222	
-o7fto4	ok	Import	匯入	src/ui/screens/import.js:230	
-18d2xm5	ok	A backup of everything exported {0} from annai {1}.	全部內容的備份，{0}從 annai {1} 匯出。	src/ui/screens/import.js:233	{0} = ago; {1} = app
-6fr2dj	ok	A backup of everything exported {0} from annai {1}, encrypted.	全部內容的備份，{0}從 annai {1} 匯出，已加密。	src/ui/screens/import.js:233	{0} = ago; {1} = app
-1uhzqqs	ok	A trip exported {0} from annai {1}, encrypted.	一個旅行，{0}從 annai {1} 匯出，已加密。	src/ui/screens/import.js:234	{0} = ago; {1} = app
-1ut7u54	ok	A trip exported {0} from annai {1}.	一個旅行，{0}從 annai {1} 匯出。	src/ui/screens/import.js:234	{0} = ago; {1} = app
-7ns57f	ok	There are no trips in this file.	此檔案中沒有旅行。	src/ui/screens/import.js:237	
-1y35b48	ok	Restarting…	正在重新啟動…	src/ui/screens/import.js:253	
-5wjjb4	ok	Restart annai to use the imported settings and plugins.	重新啟動 annai 以使用匯入的設定和外掛程式。	src/ui/screens/import.js:258	
-1p9jpyr	ok	Installed what your providers use: {0}.	已安裝你的供應商使用的內容：{0}。	src/ui/screens/import.js:268	{0} = list(g.installed, 'plain')
-c0u62t#other	ok	Kept your own API keys for {0}; the ones in the file weren't used.	保留了你自己的 {0} API 金鑰；檔案中的未被使用。	src/ui/screens/import.js:277	plural; # = n; {0} = list(names, 'plain'); English: "Kept your own API key for {0}; the one in the file wasn't used." (one), "Kept your own API keys for {0}; the ones in the file weren't used." (other)
-jsttcj#other	ok	Kept your own API keys; the ones in the file weren't used.	保留了你自己的 API 金鑰；檔案中的未被使用。	src/ui/screens/import.js:278	plural; # = n; English: "Kept your own API key; the one in the file wasn't used." (one), "Kept your own API keys; the ones in the file weren't used." (other)
-151rypw#other	ok	# photos	#張照片	src/ui/screens/import.js:308	plural; # = n; English: "# photo" (one), "# photos" (other); Note: zh with no space, as it sits inside 新增{0} and 已新增{0}.
-8w8k36	ok	a file	一個檔案	src/ui/screens/import.js:308	
-ci7mt7	ok	Add to {0}	新增到{0}	src/ui/screens/import.js:313	{0} = trip.title
-odevmc	ok	Adding {0} of {1}…	正在新增（{0}/{1}）…	src/ui/screens/import.js:322	{0} = num(Math.min(done + 1, total)); {1} = num(total)
-6u51xq#other	draft	Added {0}, and # itinerary items from the calendar	已新增{0}，以及行事曆中的 # 項行程	src/ui/screens/import.js:331	plural; # = planned.length; {0} = what; English: "Added {0}, and # itinerary item from the calendar" (one), "Added {0}, and # itinerary items from the calendar" (other); English was: Added {0}, and # itinerary items from the calendar; Note: {0} is a file's path, or how many files ("2 files").
-f30m7u#other	ok	and # more photos	還有 # 張照片	src/ui/screens/import.js:350	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
-1cj3r6h	ok	Add only what you just shared yourself.	只新增你自己剛剛分享的內容。	src/ui/screens/import.js:353	
-sc64d2	ok	Also here: {0}, an annai backup or trip. It isn't added with the rest; open it on its own.	這裡還有：{0}，一個 annai 備份或旅行。它不會和其他內容一起新增；請單獨開啟。	src/ui/screens/import.js:357	{0} = a.file.name
-3wbwnq	ok	Open it	開啟	src/ui/screens/import.js:358	
+f0ig49	ok	Open a trip	開啟旅行	src/ui/screens/import.js:40	
+1azyvjt	ok	Choose a file instead	改為選擇檔案	src/ui/screens/import.js:43	
+18kfutv	ok	Choose an annai file (.annai.zip or .annai) to open it.	選擇一個 annai 檔案（.annai.zip 或 .annai）即可開啟。	src/ui/screens/import.js:56	
+s6np2n	ok	Choose a file	選擇檔案	src/ui/screens/import.js:56	
+9pczbj	ok	Choose another file	選擇其他檔案	src/ui/screens/import.js:60	
+vpnx22	ok	annai couldn't download that file. The site may not allow other web apps to download it.	annai 無法下載該檔案。該網站可能不允許其他網頁應用程式下載它。	src/ui/screens/import.js:80	
+9ekzd	ok	The download failed ({0} {1}).	下載失敗（{0} {1}）。	src/ui/screens/import.js:83	{0} = res.status; {1} = res.statusText
+v8ip62	ok	trip	旅行	src/ui/screens/import.js:84	Note: A file's name when its address has none.
+1i00iqj	ok	Reading {0}…	正在讀取{0}…	src/ui/screens/import.js:92	{0} = source.name
+1fn8tif	ok	This backup changed on the server while annai was getting it. Open it again from the backups.	在 annai 取得期間，此備份在伺服器上發生了變化。請從備份重新開啟它。	src/ui/screens/import.js:139	
+t5o4f	ok	{0} is encrypted.	{0}已加密。	src/ui/screens/import.js:151	{0} = source.name
+17ezgqd	ok	Unlock	解鎖	src/ui/screens/import.js:154	
+bqwneo#other	draft	# conversations	# 個對話	src/ui/screens/import.js:172	plural; # = grouped.length; English: "# conversation" (one), "# conversations" (other)
+19fmt2v	draft	Add as new ones	以新的新增	src/ui/screens/import.js:175	
+3ht74t	draft	Replace mine (yours move to archived trips)	替換我的（現有的會移到已封存的旅行）	src/ui/screens/import.js:175	
+voh4dn	draft	You already have some of them	其中一些你已經有了	src/ui/screens/import.js:175	
+mp7avp	ok	with history	含歷史	src/ui/screens/import.js:180	
+wa8d8i#other	ok	# files	#個檔案	src/ui/screens/import.js:180	plural; # = trip.files; English: "# file" (one), "# files" (other); Note: zh with no space, as it sits inside 新增{0} and 已新增{0}, as #張照片 does.
+1z02pm0	ok	You already have "{0}"	你已經有「{0}」	src/ui/screens/import.js:182	{0} = trip.existingTitle
+s27n78	ok	Add as a new trip	作為新旅行新增	src/ui/screens/import.js:182	
+wr63q8	ok	Replace mine (yours moves to archived trips)	替換我的（現有的會移到已封存的旅行）	src/ui/screens/import.js:182	Note: "yours" is the trip already here: it is archived, not lost.
+1og8gcf	ok	Replace my profile and memory with the ones in this file	用此檔案中的個人資料和記憶替換我的	src/ui/screens/import.js:185	Note: profile → 個人資料, as elsewhere.
+rfnd00	ok	Replace my settings	替換我的設定	src/ui/screens/import.js:186	
+1ai6503	ok	Replace my plugins	替換我的外掛程式	src/ui/screens/import.js:187	
+z9765v	ok	Restore API keys (keys already on this device are kept)	還原 API 金鑰（此裝置上已有的金鑰會保留）	src/ui/screens/import.js:188	
+tlkozp	ok	Reading…	正在讀取…	src/ui/screens/import.js:197	
+jbong3	ok	Reading {0} of {1}…	正在讀取 {0}/{1}…	src/ui/screens/import.js:210	{0} = num(Math.min(done + 1, total)); {1} = num(total)
+i4v1g5	ok	Installing the plugins your providers use…	正在安裝你的供應商使用的外掛程式…	src/ui/screens/import.js:218	
+mu070y	draft	Go to the timeline	前往時間軸	src/ui/screens/import.js:228	
+1fnonn8	ok	Open trip	開啟旅行	src/ui/screens/import.js:229	
+m9iea3#other	ok	# older copies moved to archived trips.	已將 # 個較早的副本移到已封存的旅行。	src/ui/screens/import.js:230	plural; # = result.archived.length; English: "# older copy moved to archived trips." (one), "# older copies moved to archived trips." (other)
+j0c8lo	ok	Imported plugins arrive switched off. Turn on the ones you trust in Plugins.	匯入的外掛程式處於關閉狀態。請在外掛程式中開啟你信任的那些。	src/ui/screens/import.js:233	
+3qem9k	ok	annai's next backup to that place builds on this one.	annai 下次備份到那個位置時，會以此為基礎。	src/ui/screens/import.js:235	
+o7fto4	ok	Import	匯入	src/ui/screens/import.js:243	
+18d2xm5	ok	A backup of everything exported {0} from annai {1}.	全部內容的備份，{0}從 annai {1} 匯出。	src/ui/screens/import.js:246	{0} = ago; {1} = app
+6fr2dj	ok	A backup of everything exported {0} from annai {1}, encrypted.	全部內容的備份，{0}從 annai {1} 匯出，已加密。	src/ui/screens/import.js:246	{0} = ago; {1} = app
+1uhzqqs	ok	A trip exported {0} from annai {1}, encrypted.	一個旅行，{0}從 annai {1} 匯出，已加密。	src/ui/screens/import.js:247	{0} = ago; {1} = app
+1ut7u54	ok	A trip exported {0} from annai {1}.	一個旅行，{0}從 annai {1} 匯出。	src/ui/screens/import.js:247	{0} = ago; {1} = app
+7ns57f	ok	There are no trips in this file.	此檔案中沒有旅行。	src/ui/screens/import.js:250	
+1y35b48	ok	Restarting…	正在重新啟動…	src/ui/screens/import.js:266	
+5wjjb4	ok	Restart annai to use the imported settings and plugins.	重新啟動 annai 以使用匯入的設定和外掛程式。	src/ui/screens/import.js:271	
+1p9jpyr	ok	Installed what your providers use: {0}.	已安裝你的供應商使用的內容：{0}。	src/ui/screens/import.js:281	{0} = list(g.installed, 'plain')
+c0u62t#other	ok	Kept your own API keys for {0}; the ones in the file weren't used.	保留了你自己的 {0} API 金鑰；檔案中的未被使用。	src/ui/screens/import.js:290	plural; # = n; {0} = list(names, 'plain'); English: "Kept your own API key for {0}; the one in the file wasn't used." (one), "Kept your own API keys for {0}; the ones in the file weren't used." (other)
+jsttcj#other	ok	Kept your own API keys; the ones in the file weren't used.	保留了你自己的 API 金鑰；檔案中的未被使用。	src/ui/screens/import.js:291	plural; # = n; English: "Kept your own API key; the one in the file wasn't used." (one), "Kept your own API keys; the ones in the file weren't used." (other)
+151rypw#other	ok	# photos	#張照片	src/ui/screens/import.js:321	plural; # = n; English: "# photo" (one), "# photos" (other); Note: zh with no space, as it sits inside 新增{0} and 已新增{0}.
+8w8k36	ok	a file	一個檔案	src/ui/screens/import.js:321	
+ci7mt7	ok	Add to {0}	新增到{0}	src/ui/screens/import.js:326	{0} = trip.title
+odevmc	ok	Adding {0} of {1}…	正在新增（{0}/{1}）…	src/ui/screens/import.js:335	{0} = num(Math.min(done + 1, total)); {1} = num(total)
+6u51xq#other	draft	Added {0}, and # itinerary items from the calendar	已新增{0}，以及行事曆中的 # 項行程	src/ui/screens/import.js:344	plural; # = planned.length; {0} = what; English: "Added {0}, and # itinerary item from the calendar" (one), "Added {0}, and # itinerary items from the calendar" (other); English was: Added {0}, and # itinerary items from the calendar; Note: {0} is a file's path, or how many files ("2 files").
+f30m7u#other	ok	and # more photos	還有 # 張照片	src/ui/screens/import.js:363	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
+1cj3r6h	ok	Add only what you just shared yourself.	只新增你自己剛剛分享的內容。	src/ui/screens/import.js:366	
+sc64d2	ok	Also here: {0}, an annai backup or trip. It isn't added with the rest; open it on its own.	這裡還有：{0}，一個 annai 備份或旅行。它不會和其他內容一起新增；請單獨開啟。	src/ui/screens/import.js:370	{0} = a.file.name
+3wbwnq	ok	Open it	開啟	src/ui/screens/import.js:371	
 qqpumv	draft	This isn't on the itinerary	這不在行程中	src/ui/screens/item.js:24	English was: This isn't on the plan; Note: Taiwan wording; Plan is 行程.
 15biluu	draft	Go to the itinerary	前往行程	src/ui/screens/item.js:25	Note: Taiwan wording; Plan is 行程.
 1wp3w0c	ok	All day, {0}	全天（{0}）	src/ui/screens/item.js:41	{0} = start; Note: Taiwan wording; {0} is the day.
@@ -2433,104 +2438,104 @@ s81kp3	ok	Save key	儲存金鑰	src/ui/screens/tools.js:87
 r654x7	ok	Servers that give Shiori tools of their own, with a token or headers kept on this device.	為 Shiori 提供專屬工具的伺服器，權杖或請求標頭儲存在此裝置上。	src/ui/screens/tools.js:93	
 vayo7x	ok	Tool switches	工具開關	src/ui/screens/tools.js:95	
 a2pqv8	ok	Every tool Shiori has, including plugins' tools. A switched-off tool is left out of her next request.	Shiori 擁有的所有工具，包括外掛程式的工具。關閉的工具不會出現在她的下一個請求中。	src/ui/screens/tools.js:97	
-1unt64g	ok	Everything	全部	src/ui/screens/trace.js:32	
-6qsrkg	ok	Halves	分身	src/ui/screens/trace.js:32	Note: Shiori's two halves (glossary: halves).
-1swmtuu	ok	Errors	錯誤	src/ui/screens/trace.js:33	
-pghiva	ok	Location	位置	src/ui/screens/trace.js:33	
-1ocm8xt	ok	System · {0}	系統 · {0}	src/ui/screens/trace.js:48	{0} = scopeTitle(s)
-1jije2k	ok	Nothing here yet.	這裡還沒有內容。	src/ui/screens/trace.js:76	
-zixzwp	ok	Everything annai recorded: file changes, model calls, imports, plugin problems and errors. Newest first.	annai 記錄的一切：檔案變更、模型呼叫、匯入、外掛程式問題和錯誤。最新的在前。	src/ui/screens/trace.js:87	
-vv1pu6	ok	Type contains	事件類型包含	src/ui/screens/trace.js:88	Note: The entry's type (a code like file.write), apart from the Kind filter just before it (種類 / 型別).
-g9esrd	ok	a newer backup from an Android phone is there	有一個來自 Android 手機的更新備份	src/ui/screens/trace.js:146	
-obwhc7	ok	a newer backup from an iPhone is there	有一個來自 iPhone 的更新備份	src/ui/screens/trace.js:146	
-oh532o	ok	a newer backup from an iPad is there	有一個來自 iPad 的更新備份	src/ui/screens/trace.js:146	
-1ds6m85	ok	a newer backup from a computer is there	有一個來自電腦的更新備份	src/ui/screens/trace.js:147	
-1r6qy12	ok	the user wrote	使用者寫了	src/ui/screens/trace.js:168	
-yyq6of	ok	the user tapped a choice	使用者點選了一個選項	src/ui/screens/trace.js:168	
-1eo2nlm	ok	Kokoro to Koe	Kokoro 給 Koe	src/ui/screens/trace.js:172	
-l7yvjm	ok	Koe to Kokoro	Koe 給 Kokoro	src/ui/screens/trace.js:172	
-omff16	ok	annai to Kokoro	annai 給 Kokoro	src/ui/screens/trace.js:173	
-hnbn63	draft	this was for Shiori	這是對 Shiori 說的	src/ui/screens/trace.js:174	
-1larmkq	ok	phone dictation	手機語音輸入	src/ui/screens/trace.js:177	Note: Phone dictation as its row in Settings → Voice says (手機語音輸入).
-piy3vo	ok	{0} from the microphone	麥克風錄音 {0}	src/ui/screens/trace.js:177	{0} = duration(d.ms ?? 0); Note: {0} is how long the recording was.
-1sfeb1g	ok	an answer	一個回答	src/ui/screens/trace.js:178	
-1x13vat	ok	not for Shiori	不是給 Shiori 的	src/ui/screens/trace.js:178	
-k9shc3	ok	while she was thinking	在她思考時	src/ui/screens/trace.js:178	
-mj6pnh	draft	she didn't answer	她沒有回答	src/ui/screens/trace.js:178	
-an9lly	ok	clip kept: {0}, {1}	已保留片段：{0}，{1}	src/ui/screens/trace.js:179	{0} = d.clipFormat; {1} = size(d.clipBytes ?? 0)
-voav2t	ok	clip kept	已保留片段	src/ui/screens/trace.js:179	
-1gqj9yn	ok	written down by {0}	由 {0} 轉錄	src/ui/screens/trace.js:181	{0} = d.by
-o1nqez	ok	from {0}	來自 {0}	src/ui/screens/trace.js:184	{0} = d.source
-v0l7oi#other	ok	# links	# 個連結	src/ui/screens/trace.js:184	plural; # = (d.links ?? []).length; English: "# link" (one), "# links" (other)
-9bb0pd	ok	error	錯誤	src/ui/screens/trace.js:186	
-scvxkf	ok	ok	成功	src/ui/screens/trace.js:186	
-1qafm6e	ok	kept turn not deleted yet	保留的輪次尚未刪除	src/ui/screens/trace.js:190	Note: A kept turn is one of the conversation turns a provider keeps (輪), as the provider screen says.
-7lsal4	ok	no answer	沒有回應	src/ui/screens/trace.js:190	
-udpknx	ok	kept turn deleted	保留的輪次已刪除	src/ui/screens/trace.js:190	Note: A kept turn is one of the conversation turns a provider keeps (輪).
-hnu5xn	ok	kept turn looked up	已查詢保留的輪次	src/ui/screens/trace.js:191	Note: A kept turn is one of the conversation turns a provider keeps (輪).
-1t1zawl	ok	a refused photo sent again as a new copy ({0})	被拒的照片作為新副本重新傳送（{0}）	src/ui/screens/trace.js:192	{0} = d.mediaType
-gjjwcl	ok	a PDF's words kept for models that can't read PDFs	為無法讀取 PDF 的模型保留的 PDF 文字內容	src/ui/screens/trace.js:194	Note: a Trace line: what was kept of a PDF, told in words, for models that can't read PDFs.
-kbptqr	ok	a photo's description kept for models that can't see photos	為無法看照片的模型保留的照片描述	src/ui/screens/trace.js:194	Note: a Trace line, as above, for a photo's description.
-y6qkfy	ok	a PDF's pages kept for models that can't read PDFs	為無法讀取 PDF 的模型保留的 PDF 頁面圖片	src/ui/screens/trace.js:194	Note: a Trace line, as above, for a PDF's pages as pictures.
-12y45gf	ok	from a backup, annai {0}	來自備份，annai {0}	src/ui/screens/trace.js:198	{0} = app
-13f9wx2	ok	from a trip's file, annai {0}	來自旅行的檔案，annai {0}	src/ui/screens/trace.js:198	{0} = app
-fgylb4#other	ok	# pieces of content it didn't hold left out	略去了 # 項它沒有的內容	src/ui/screens/trace.js:199	plural; # = n; English: "# piece of content it didn't hold left out" (one), "# pieces of content it didn't hold left out" (other)
-1smvlg5	ok	asked for content that isn't this trip's, and got none	請求了不屬於這個旅行的內容，什麼也沒得到	src/ui/screens/trace.js:202	
-1vkhbgw	ok	asked for content that isn't here, and got none	請求了不在這裡的內容，什麼也沒得到	src/ui/screens/trace.js:202	
-17ybebf	ok	a turn cut off by opening another conversation	因開啟另一個對話而中斷的回合	src/ui/screens/trace.js:203	
-130nh2w	ok	events {0}–{1} summarized ({2})	已總結事件 {0}–{1}（{2}）	src/ui/screens/trace.js:204	{0} = d.from; {1} = d.to; {2} = d.mode
-vgv0s2	ok	started fresh after event {0}	在事件 {0} 之後重新開始	src/ui/screens/trace.js:204	{0} = d.to
-1nulaw8	ok	late by {0} min	晚了 {0} 分鐘	src/ui/screens/trace.js:206	{0} = d.late
-1vzfabu	ok	no connection	無網路連線	src/ui/screens/trace.js:206	
-1l7ac5y	ok	shown	已顯示	src/ui/screens/trace.js:207	
-1yfde5	ok	no name	無名稱	src/ui/screens/trace.js:209	
-1nk1wxu	ok	audio route {0}	音訊路由 {0}	src/ui/screens/trace.js:210	{0} = d.route
-1yo1hz0	ok	the microphone in use: {0}	正在使用的麥克風：{0}	src/ui/screens/trace.js:210	{0} = d.using || unnamed
-bt7zey	ok	from the devices present	來自現有的裝置	src/ui/screens/trace.js:210	
-1rzyxvu	draft	disconnected: {0}	已中斷連線：{0}	src/ui/screens/trace.js:211	{0} = d.gone.join(', ')
-3gdj21	ok	no devices	無裝置	src/ui/screens/trace.js:211	
-1ijsnzq	ok	voice on	語音開啟	src/ui/screens/trace.js:226	Note: The glossary's Voice on mode (語音開啟).
-z2w914	ok	voice off	語音關閉	src/ui/screens/trace.js:226	Note: The glossary's Voice off mode (語音關閉).
-1g1k3by	ok	{0} waiting	{0} 則等待中	src/ui/screens/trace.js:229	{0} = d.waiting ?? 0
-xy6oxk	ok	{0} sent, {1} called off	已傳送 {0} 則，已取消 {1} 則	src/ui/screens/trace.js:229	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
-1efflnv	ok	notification shown	通知已顯示	src/ui/screens/trace.js:230	
-cjmncb	ok	notification opened	通知已開啟	src/ui/screens/trace.js:231	
-3m7wpo#other	ok	# attempts	嘗試 # 次	src/ui/screens/trace.js:241	plural; # = n; English: "# attempt" (one), "# attempts" (other)
-r42rpw	ok	{0} ms processing latency	處理延遲 {0} ms	src/ui/screens/trace.js:245	{0} = Math.round(d.baseLatency * 1000)
-1y5g6mq	ok	{0} ms output latency	輸出延遲 {0} ms	src/ui/screens/trace.js:246	{0} = Math.round(d.outputLatency * 1000)
-a1oech	ok	live session {0}	即時連線 {0}	src/ui/screens/trace.js:247	{0} = d.state; Note: a live session is 即時連線, as the model check's 正在開啟即時連線.
-beya44	ok	sound at {0} kHz	聲音 {0} kHz	src/ui/screens/trace.js:249	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
-1u50qqt	ok	her voice: {0} played	她的聲音：已播放 {0}	src/ui/screens/trace.js:254	{0} = duration(d.ms ?? 0)
-1wcl60z	ok	cut	已中斷	src/ui/screens/trace.js:254	
-njy1uz	ok	her voice: cut before it played	她的聲音：播放前被中斷	src/ui/screens/trace.js:254	
-9atabi	ok	started after {0} ms	{0} ms 後開始	src/ui/screens/trace.js:255	{0} = d.waitMs
-j43x3k	ok	stalled	卡住	src/ui/screens/trace.js:255	
-1qyanji#other	ok	# holes, {0} ms	# 處空白，{0} ms	src/ui/screens/trace.js:256	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中斷).
-gw0cwm#other	ok	# holes	# 處空白	src/ui/screens/trace.js:256	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中斷).
-1bx4bl6	ok	on {0}	在 {0} 上	src/ui/screens/trace.js:257	{0} = d.player
-1jhbzkn	draft	your voice {0} dB, least to start {1} dB, {2} frames kept out (loudest {3} dB)	你的聲音 {0} dB，開始所需最低 {1} dB，{2} 影格被擋在外（最響 {3} dB）	src/ui/screens/trace.js:262	{0} = d.voiceDb ?? '?'; {1} = d.minDb ?? '–'; {2} = d.keptFrames; {3} = d.keptPeakDb ?? '?'
-1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	你的回合結束：{0} · 已傳送 {1} · 底噪 {2} dB，最響 {3} dB	src/ui/screens/trace.js:263	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
-7ovnj9	draft	no turn	沒有開始一輪	src/ui/screens/trace.js:263	
-khxbvb	ok	audio: {0}	音訊：{0}	src/ui/screens/trace.js:267	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
-1wy37ql	ok	{0} sent	已傳送 {0}	src/ui/screens/trace.js:269	{0} = size(d.bytes)
-l04i5	ok	{0} sent, after a kept turn	已傳送 {0}，接在保留的輪次之後	src/ui/screens/trace.js:269	{0} = size(d.bytes); Note: A kept turn is one of the conversation turns a provider keeps (輪).
-1n96vkk	ok	earlier thinking not sent: something before it changed	未傳送之前的思考：它之前的內容有變動	src/ui/screens/trace.js:271	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
-yfywm0#other	ok	thinking of # earlier steps sent back	已傳回之前 # 步的思考	src/ui/screens/trace.js:271	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
-15hqi4k#other	ok	# guides	# 份指南	src/ui/screens/trace.js:275	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
-4k86ja	ok	{0} failed	{0} 個失敗	src/ui/screens/trace.js:275	{0} = d.failed
-1waoe51	ok	at its limit	已達上限	src/ui/screens/trace.js:276	
-66h5i6	ok	by itself on Wi-Fi	在 Wi-Fi 下自動	src/ui/screens/trace.js:276	
-rfe2ef	ok	{0} files sent, {1}	已傳送 {0} 個檔案，{1}	src/ui/screens/trace.js:278	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
-2601w8	ok	a newer backup from another device is there	有一個來自另一台裝置的更新備份	src/ui/screens/trace.js:279	
-uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	已下載 {0}，{1}，隨後停止：已丟棄	src/ui/screens/trace.js:281	{0} = d.backup; {1} = size(d.bytes ?? 0)
-wgniil	ok	downloaded {0}, {1}	已下載 {0}，{1}	src/ui/screens/trace.js:281	{0} = d.backup; {1} = size(d.bytes ?? 0)
-1gauo2f	ok	{0} can't be opened: {1}	{0} 無法開啟：{1}	src/ui/screens/trace.js:282	{0} = d.backup; {1} = cut(d.problem)
-1rrq0vn	ok	deleted an older backup, {0}	已刪除一個較早的備份：{0}	src/ui/screens/trace.js:283	{0} = d.backup
-57gz9u#other	ok	# secrets	# 個機密	src/ui/screens/trace.js:285	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
-scekw#other	ok	# settings	# 項設定	src/ui/screens/trace.js:285	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
-mp7j1w#other	ok	({0}, # bytes)	（{0}，# 位元組）	src/ui/screens/trace.js:308	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
-tqj8t3	ok	(no longer stored)	（已不再儲存）	src/ui/screens/trace.js:308	
-1kfziuy	ok	Show what was stored	顯示儲存的內容	src/ui/screens/trace.js:325	
+1unt64g	ok	Everything	全部	src/ui/screens/trace.js:35	
+6qsrkg	ok	Halves	分身	src/ui/screens/trace.js:35	Note: Shiori's two halves (glossary: halves).
+1swmtuu	ok	Errors	錯誤	src/ui/screens/trace.js:36	
+pghiva	ok	Location	位置	src/ui/screens/trace.js:36	
+1ocm8xt	ok	System · {0}	系統 · {0}	src/ui/screens/trace.js:51	{0} = scopeTitle(s)
+1jije2k	ok	Nothing here yet.	這裡還沒有內容。	src/ui/screens/trace.js:88	
+zixzwp	ok	Everything annai recorded: file changes, model calls, imports, plugin problems and errors. Newest first.	annai 記錄的一切：檔案變更、模型呼叫、匯入、外掛程式問題和錯誤。最新的在前。	src/ui/screens/trace.js:99	
+vv1pu6	ok	Type contains	事件類型包含	src/ui/screens/trace.js:100	Note: The entry's type (a code like file.write), apart from the Kind filter just before it (種類 / 型別).
+g9esrd	ok	a newer backup from an Android phone is there	有一個來自 Android 手機的更新備份	src/ui/screens/trace.js:158	
+obwhc7	ok	a newer backup from an iPhone is there	有一個來自 iPhone 的更新備份	src/ui/screens/trace.js:158	
+oh532o	ok	a newer backup from an iPad is there	有一個來自 iPad 的更新備份	src/ui/screens/trace.js:158	
+1ds6m85	ok	a newer backup from a computer is there	有一個來自電腦的更新備份	src/ui/screens/trace.js:159	
+1r6qy12	ok	the user wrote	使用者寫了	src/ui/screens/trace.js:180	
+yyq6of	ok	the user tapped a choice	使用者點選了一個選項	src/ui/screens/trace.js:180	
+1eo2nlm	ok	Kokoro to Koe	Kokoro 給 Koe	src/ui/screens/trace.js:184	
+l7yvjm	ok	Koe to Kokoro	Koe 給 Kokoro	src/ui/screens/trace.js:184	
+omff16	ok	annai to Kokoro	annai 給 Kokoro	src/ui/screens/trace.js:185	
+hnbn63	draft	this was for Shiori	這是對 Shiori 說的	src/ui/screens/trace.js:186	
+1larmkq	ok	phone dictation	手機語音輸入	src/ui/screens/trace.js:189	Note: Phone dictation as its row in Settings → Voice says (手機語音輸入).
+piy3vo	ok	{0} from the microphone	麥克風錄音 {0}	src/ui/screens/trace.js:189	{0} = duration(d.ms ?? 0); Note: {0} is how long the recording was.
+1sfeb1g	ok	an answer	一個回答	src/ui/screens/trace.js:190	
+1x13vat	ok	not for Shiori	不是給 Shiori 的	src/ui/screens/trace.js:190	
+k9shc3	ok	while she was thinking	在她思考時	src/ui/screens/trace.js:190	
+mj6pnh	draft	she didn't answer	她沒有回答	src/ui/screens/trace.js:190	
+an9lly	ok	clip kept: {0}, {1}	已保留片段：{0}，{1}	src/ui/screens/trace.js:191	{0} = d.clipFormat; {1} = size(d.clipBytes ?? 0)
+voav2t	ok	clip kept	已保留片段	src/ui/screens/trace.js:191	
+1gqj9yn	ok	written down by {0}	由 {0} 轉錄	src/ui/screens/trace.js:193	{0} = d.by
+o1nqez	ok	from {0}	來自 {0}	src/ui/screens/trace.js:196	{0} = d.source
+v0l7oi#other	ok	# links	# 個連結	src/ui/screens/trace.js:196	plural; # = (d.links ?? []).length; English: "# link" (one), "# links" (other)
+9bb0pd	ok	error	錯誤	src/ui/screens/trace.js:198	
+scvxkf	ok	ok	成功	src/ui/screens/trace.js:198	
+1qafm6e	ok	kept turn not deleted yet	保留的輪次尚未刪除	src/ui/screens/trace.js:202	Note: A kept turn is one of the conversation turns a provider keeps (輪), as the provider screen says.
+7lsal4	ok	no answer	沒有回應	src/ui/screens/trace.js:202	
+udpknx	ok	kept turn deleted	保留的輪次已刪除	src/ui/screens/trace.js:202	Note: A kept turn is one of the conversation turns a provider keeps (輪).
+hnu5xn	ok	kept turn looked up	已查詢保留的輪次	src/ui/screens/trace.js:203	Note: A kept turn is one of the conversation turns a provider keeps (輪).
+1t1zawl	ok	a refused photo sent again as a new copy ({0})	被拒的照片作為新副本重新傳送（{0}）	src/ui/screens/trace.js:204	{0} = d.mediaType
+gjjwcl	ok	a PDF's words kept for models that can't read PDFs	為無法讀取 PDF 的模型保留的 PDF 文字內容	src/ui/screens/trace.js:206	Note: a Trace line: what was kept of a PDF, told in words, for models that can't read PDFs.
+kbptqr	ok	a photo's description kept for models that can't see photos	為無法看照片的模型保留的照片描述	src/ui/screens/trace.js:206	Note: a Trace line, as above, for a photo's description.
+y6qkfy	ok	a PDF's pages kept for models that can't read PDFs	為無法讀取 PDF 的模型保留的 PDF 頁面圖片	src/ui/screens/trace.js:206	Note: a Trace line, as above, for a PDF's pages as pictures.
+12y45gf	ok	from a backup, annai {0}	來自備份，annai {0}	src/ui/screens/trace.js:210	{0} = app
+13f9wx2	ok	from a trip's file, annai {0}	來自旅行的檔案，annai {0}	src/ui/screens/trace.js:210	{0} = app
+fgylb4#other	ok	# pieces of content it didn't hold left out	略去了 # 項它沒有的內容	src/ui/screens/trace.js:211	plural; # = n; English: "# piece of content it didn't hold left out" (one), "# pieces of content it didn't hold left out" (other)
+1smvlg5	ok	asked for content that isn't this trip's, and got none	請求了不屬於這個旅行的內容，什麼也沒得到	src/ui/screens/trace.js:214	
+1vkhbgw	ok	asked for content that isn't here, and got none	請求了不在這裡的內容，什麼也沒得到	src/ui/screens/trace.js:214	
+17ybebf	ok	a turn cut off by opening another conversation	因開啟另一個對話而中斷的回合	src/ui/screens/trace.js:215	
+130nh2w	ok	events {0}–{1} summarized ({2})	已總結事件 {0}–{1}（{2}）	src/ui/screens/trace.js:216	{0} = d.from; {1} = d.to; {2} = d.mode
+vgv0s2	ok	started fresh after event {0}	在事件 {0} 之後重新開始	src/ui/screens/trace.js:216	{0} = d.to
+1nulaw8	ok	late by {0} min	晚了 {0} 分鐘	src/ui/screens/trace.js:218	{0} = d.late
+1vzfabu	ok	no connection	無網路連線	src/ui/screens/trace.js:218	
+1l7ac5y	ok	shown	已顯示	src/ui/screens/trace.js:219	
+1yfde5	ok	no name	無名稱	src/ui/screens/trace.js:221	
+1nk1wxu	ok	audio route {0}	音訊路由 {0}	src/ui/screens/trace.js:222	{0} = d.route
+1yo1hz0	ok	the microphone in use: {0}	正在使用的麥克風：{0}	src/ui/screens/trace.js:222	{0} = d.using || unnamed
+bt7zey	ok	from the devices present	來自現有的裝置	src/ui/screens/trace.js:222	
+1rzyxvu	draft	disconnected: {0}	已中斷連線：{0}	src/ui/screens/trace.js:223	{0} = d.gone.join(', ')
+3gdj21	ok	no devices	無裝置	src/ui/screens/trace.js:223	
+1ijsnzq	ok	voice on	語音開啟	src/ui/screens/trace.js:238	Note: The glossary's Voice on mode (語音開啟).
+z2w914	ok	voice off	語音關閉	src/ui/screens/trace.js:238	Note: The glossary's Voice off mode (語音關閉).
+1g1k3by	ok	{0} waiting	{0} 則等待中	src/ui/screens/trace.js:241	{0} = d.waiting ?? 0
+xy6oxk	ok	{0} sent, {1} called off	已傳送 {0} 則，已取消 {1} 則	src/ui/screens/trace.js:241	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
+1efflnv	ok	notification shown	通知已顯示	src/ui/screens/trace.js:242	
+cjmncb	ok	notification opened	通知已開啟	src/ui/screens/trace.js:243	
+3m7wpo#other	ok	# attempts	嘗試 # 次	src/ui/screens/trace.js:253	plural; # = n; English: "# attempt" (one), "# attempts" (other)
+r42rpw	ok	{0} ms processing latency	處理延遲 {0} ms	src/ui/screens/trace.js:257	{0} = Math.round(d.baseLatency * 1000)
+1y5g6mq	ok	{0} ms output latency	輸出延遲 {0} ms	src/ui/screens/trace.js:258	{0} = Math.round(d.outputLatency * 1000)
+a1oech	ok	live session {0}	即時連線 {0}	src/ui/screens/trace.js:259	{0} = d.state; Note: a live session is 即時連線, as the model check's 正在開啟即時連線.
+beya44	ok	sound at {0} kHz	聲音 {0} kHz	src/ui/screens/trace.js:261	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
+1u50qqt	ok	her voice: {0} played	她的聲音：已播放 {0}	src/ui/screens/trace.js:266	{0} = duration(d.ms ?? 0)
+1wcl60z	ok	cut	已中斷	src/ui/screens/trace.js:266	
+njy1uz	ok	her voice: cut before it played	她的聲音：播放前被中斷	src/ui/screens/trace.js:266	
+9atabi	ok	started after {0} ms	{0} ms 後開始	src/ui/screens/trace.js:267	{0} = d.waitMs
+j43x3k	ok	stalled	卡住	src/ui/screens/trace.js:267	
+1qyanji#other	ok	# holes, {0} ms	# 處空白，{0} ms	src/ui/screens/trace.js:268	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中斷).
+gw0cwm#other	ok	# holes	# 處空白	src/ui/screens/trace.js:268	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中斷).
+1bx4bl6	ok	on {0}	在 {0} 上	src/ui/screens/trace.js:269	{0} = d.player
+1jhbzkn	draft	your voice {0} dB, least to start {1} dB, {2} frames kept out (loudest {3} dB)	你的聲音 {0} dB，開始所需最低 {1} dB，{2} 影格被擋在外（最響 {3} dB）	src/ui/screens/trace.js:274	{0} = d.voiceDb ?? '?'; {1} = d.minDb ?? '–'; {2} = d.keptFrames; {3} = d.keptPeakDb ?? '?'
+1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	你的回合結束：{0} · 已傳送 {1} · 底噪 {2} dB，最響 {3} dB	src/ui/screens/trace.js:275	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
+7ovnj9	draft	no turn	沒有開始一輪	src/ui/screens/trace.js:275	
+khxbvb	ok	audio: {0}	音訊：{0}	src/ui/screens/trace.js:279	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
+1wy37ql	ok	{0} sent	已傳送 {0}	src/ui/screens/trace.js:281	{0} = size(d.bytes)
+l04i5	ok	{0} sent, after a kept turn	已傳送 {0}，接在保留的輪次之後	src/ui/screens/trace.js:281	{0} = size(d.bytes); Note: A kept turn is one of the conversation turns a provider keeps (輪).
+1n96vkk	ok	earlier thinking not sent: something before it changed	未傳送之前的思考：它之前的內容有變動	src/ui/screens/trace.js:283	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
+yfywm0#other	ok	thinking of # earlier steps sent back	已傳回之前 # 步的思考	src/ui/screens/trace.js:283	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
+15hqi4k#other	ok	# guides	# 份指南	src/ui/screens/trace.js:287	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
+4k86ja	ok	{0} failed	{0} 個失敗	src/ui/screens/trace.js:287	{0} = d.failed
+1waoe51	ok	at its limit	已達上限	src/ui/screens/trace.js:288	
+66h5i6	ok	by itself on Wi-Fi	在 Wi-Fi 下自動	src/ui/screens/trace.js:288	
+rfe2ef	ok	{0} files sent, {1}	已傳送 {0} 個檔案，{1}	src/ui/screens/trace.js:290	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
+2601w8	ok	a newer backup from another device is there	有一個來自另一台裝置的更新備份	src/ui/screens/trace.js:291	
+uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	已下載 {0}，{1}，隨後停止：已丟棄	src/ui/screens/trace.js:293	{0} = d.backup; {1} = size(d.bytes ?? 0)
+wgniil	ok	downloaded {0}, {1}	已下載 {0}，{1}	src/ui/screens/trace.js:293	{0} = d.backup; {1} = size(d.bytes ?? 0)
+1gauo2f	ok	{0} can't be opened: {1}	{0} 無法開啟：{1}	src/ui/screens/trace.js:294	{0} = d.backup; {1} = cut(d.problem)
+1rrq0vn	ok	deleted an older backup, {0}	已刪除一個較早的備份：{0}	src/ui/screens/trace.js:295	{0} = d.backup
+57gz9u#other	ok	# secrets	# 個機密	src/ui/screens/trace.js:297	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
+scekw#other	ok	# settings	# 項設定	src/ui/screens/trace.js:297	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
+mp7j1w#other	ok	({0}, # bytes)	（{0}，# 位元組）	src/ui/screens/trace.js:320	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
+tqj8t3	ok	(no longer stored)	（已不再儲存）	src/ui/screens/trace.js:320	
+1kfziuy	ok	Show what was stored	顯示儲存的內容	src/ui/screens/trace.js:337	
 1cnmmj7	ok	Archived	已封存	src/ui/screens/trip.js:40	
 jz8mjk	ok	Unarchive	取消封存	src/ui/screens/trip.js:52	
 qeuftp	ok	Tap again to archive	再點一次以封存	src/ui/screens/trip.js:54	
