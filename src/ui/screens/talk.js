@@ -650,8 +650,9 @@ function undoLine(ctx, scope, list) {
     try {
       await settled(ctx.agent);
       // The trips its files went to, this conversation, and the one it was handed in: each told, through its own log while it is open.
+      let leaving = false; // this conversation's own trip goes: left as Remove trip leaves it
       const { removed, kept, waiting, back } = await undoEverywhere(ctx.ws, scope, hh, {
-        remove: (s) => removeTripNow(ctx, s),
+        remove: (s) => { leaving ||= s === scope; return removeTripNow(ctx, s); },
         log: (s) => (s === ctx.agent.scope ? (/** @type {any} */ ev) => ctx.agent.log(ev) : undefined),
       });
       done();
@@ -668,7 +669,10 @@ function undoLine(ctx, scope, list) {
         await openOrTell(ctx, back[0].id);
         if (location.hash === talkOf(ctx)) await ctx.render();
         else toTalk(ctx);
-      } else if (waiting || removed.length) ctx.go('#/trips');
+      } else if (waiting || removed.length) {
+        if (leaving) ctx.removed();
+        else ctx.go('#/trips');
+      }
     } catch (e) {
       button.disabled = false;
       ctx.notices.toast(messageOf(e));
