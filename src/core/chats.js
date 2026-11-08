@@ -4,6 +4,7 @@ import { NOT_TRANSCRIBED } from './voice/resolve.js';
 import { PHOTO_ONLY } from './agent/loop.js';
 import { timeIn } from './time.js';
 import { isPhotoType } from './photos.js';
+import { blobJSON } from './reach.js';
 import { t } from './l10n.js';
 
 /** @typedef {import('./workspace.js').Workspace} Workspace */
@@ -24,6 +25,46 @@ export async function ensureDraft(ws) {
     await ws.write(id, '/trip.json', { id: rec?.tripId, title: DRAFT_TITLE, places: [], party: [] }, { author: 'user' });
   }
   return id;
+}
+
+/**
+ * How many of a conversation's newest file writes herDating reads for Shiori's dating of it. A guess, not a measurement: a hand-over writes
+ * a handful of files (the file, its name, bookings), and the dating comes in the same turn, so 300 reaches back through about ten hand-overs;
+ * the line is for the moment after her turn, and Details takes the dates back later. Revisit with a long trip's trace.
+ */
+const DATING_LOOK = 300;
+
+/**
+ * The dates a conversation had before Shiori's newest dating write of it, while its dates are still the ones that write set: whoever wrote trip.json
+ * since (the naming write, or a title of the user's), a dates line with Undo stays for as long as the dates are hers. Her dating write is one whose
+ * version before had no start and whose own has one. Null: no such write, or the dates changed since (Undo would take back more than hers).
+ * @param {any} store @param {string} scope @returns {Promise<{ start?: string, end?: string } | null>}
+ */
+export async function herDating(store, scope) {
+  const [now, writes] = await store.tx(['files', 'events'], 'readonly', async (/** @type {any} */ x) => [
+    await x.getFile(scope, '/trip.json'),
+    (await x.listEvents(scope, { types: ['file.write'], reverse: true, limit: DATING_LOOK })).filter((/** @type {any} */ e) => e.data?.path === '/trip.json'),
+  ]);
+  const current = await blobJSON(store, scope, now?.hash, { quiet: true });
+  if (!current?.start) return null; // most conversations: undated
+  for (const e of writes) {
+    if (e.actor !== 'shiori' || typeof e.data?.old !== 'string') continue;
+    const [before, after] = await Promise.all([blobJSON(store, scope, e.data.old, { quiet: true }), blobJSON(store, scope, e.data.new, { quiet: true })]);
+    if (before?.start || !after?.start) continue;
+    return after.start === current.start && after.end === current.end ? { start: before?.start, end: before?.end } : null;
+  }
+  return null;
+}
+
+/**
+ * Puts a conversation's dates back to what they were before Shiori's dating (herDating's), as the user's write: only the dates, so a name given since stays.
+ * @param {Workspace} ws @param {string} scope @param {{ start?: string, end?: string }} before
+ */
+export async function undoDating(ws, scope, before) {
+  await ws.update(scope, '/trip.json', (trip) => {
+    const { start: _s, end: _e, ...rest } = trip;
+    return { ...rest, ...(before.start === undefined ? {} : { start: before.start }), ...(before.end === undefined ? {} : { end: before.end }) };
+  }, { author: 'user' });
 }
 
 const graphemes = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null;

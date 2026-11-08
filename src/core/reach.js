@@ -55,6 +55,16 @@ export async function blobBytes(store, scope, hash, o) {
   return b ? new Uint8Array(b.data) : null;
 }
 
+/** A blob's JSON, or null: unreadable, or not JSON. @param {Store} store @param {string} scope @param {unknown} hash @param {Parameters<typeof readBlob>[3]} [o] */
+export async function blobJSON(store, scope, hash, o) {
+  const bytes = await blobBytes(store, scope, hash, o);
+  try {
+    return bytes ? JSON.parse(new TextDecoder().decode(bytes)) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** The refusals each store has logged while annai runs. @type {WeakMap<Store, Set<string>>} */
 const told = new WeakMap();
 
