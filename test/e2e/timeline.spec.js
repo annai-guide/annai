@@ -387,8 +387,8 @@ test("the conversation's name follows its first line while it shows, and Shiori'
   }
 });
 
-/** Nine in the morning today, on the page's clock, with a trip happening (Museum at 10:00, Lunch at 12:00), 24 chats, and a month's fold of six old ones. @param {import('@playwright/test').Page} page */
-async function morning(page) {
+/** Nine in the morning today, on the page's clock, with a trip happening (Museum at 10:00, Lunch at 12:00), 24 chats, and a month's fold of six old ones. @param {import('@playwright/test').Page} page @param {Record<string, any>} [trips] more trips, as seed takes them */
+async function morning(page, trips = {}) {
   const nine = new Date();
   nine.setHours(9, 0, 0, 0);
   await page.clock.install({ time: nine });
@@ -397,7 +397,7 @@ async function morning(page) {
   const chats = {};
   for (let i = 0; i < 6; i++) chats[`Old ${i}`] = 60 * 24 * (60 + i);
   for (let i = 0; i < 24; i++) chats[`Chat ${i}`] = 60 * 24 * i + 5;
-  await seed(page, { chats, trips: { Testville: { from: -2, to: 5, items: { Museum: 60, Lunch: 180 } } } });
+  await seed(page, { chats, trips: { Testville: { from: -2, to: 5, items: { Museum: 60, Lunch: 180 } }, ...trips } });
   await page.goto('/#/trips');
   await expect(page.locator('.now-line')).toBeVisible();
 }
@@ -498,3 +498,16 @@ test('home drawn again past midnight keeps the row you were looking at, though a
   await expect(row(page, 'Edge 0')).toBeHidden(); // in the month's fold, shut
   expect(Math.abs((await at()) - before)).toBeLessThanOrEqual(1); // a device pixel's rounding
 });
+
+test("a redraw skipped over typing comes once the typing is gone: the card is right when the name is cleared, with no lock and unlock", async ({ page }) => {
+  await morning(page);
+  const card = row(page, 'Testville');
+  await expect(card.locator('.next')).toContainText('Museum');
+  await page.getByLabel('Trip name').fill('Tokyo');
+  await page.clock.fastForward('01:31:00'); // Museum is over: the redraw waits for the typing
+  await page.waitForTimeout(300);
+  await expect(card.locator('.next')).toContainText('Museum');
+  await page.getByLabel('Trip name').fill('');
+  await expect(card.locator('.next')).toContainText('Lunch');
+});
+
