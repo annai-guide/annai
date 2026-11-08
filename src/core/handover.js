@@ -319,10 +319,24 @@ async function holdsOthers(store, scope, handover) {
 export async function undoEverywhere(ws, scope, handover, o) {
   const [went, came, sibs] = await ws.store.tx(['events'], 'readonly', async (t) => {
     const moved = async (/** @type {string} */ s) => (await t.listEvents(s, { types: ['handover.moved'] })).filter((e) => e.data?.handover === handover).map((e) => String(e.data.to));
+    /** Every trip the hand-over's files went to from these, and on from those, to a fixed point: nearest first. @param {string[]} starts */
+    const reach = async (starts) => {
+      const seen = new Set(starts);
+      /** @type {string[]} */
+      const out = [];
+      for (let i = 0, list = [...starts]; i < list.length; i++) {
+        for (const to of await moved(list[i])) {
+          if (seen.has(to)) continue;
+          seen.add(to);
+          out.push(to);
+          list.push(to);
+        }
+      }
+      return out;
+    };
     const from = (await t.listEvents(scope, { types: ['msg.user'] })).filter((e) => e.data?.handover === handover && typeof e.data?.from === 'string').map((e) => String(e.data.from));
-    const sibs = []; // the trips the conversation it came from sent files to for it: Undo here takes them back too
-    for (const c of from) sibs.push(...await moved(c));
-    return [await moved(scope), from, sibs];
+    // The trips the conversation it came from sent files to for it, and on: Undo here takes them back too. The farthest are undone first.
+    return [(await reach([scope])).reverse(), from, (await reach([...from, scope])).reverse()];
   });
   /** @type {string[]} */
   const removed = [];

@@ -378,12 +378,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** naming them needs new strings in every language, and the takeback itself is right (spec goal 2: Undo takes back exactly what Shiori wrote from that hand-over).
 - **Revisit when:** the next version: in talk.js's Undo message, name each trip `undoEverywhere` changed but didn't remove.
 
-### Undo can leave a booking naming a file it took back, two conversations away
-- **Kind:** deferred.
-- **What the user sees:** a hand-over whose files went on from a trip Shiori started into a third trip, for the same hand-over: Undo in the first trip doesn't reach that third trip, so a booking there can name a file that is now back with Shiori.
-- **Why:** `undoEverywhere` reads the hand-over's moves in this conversation and in the ones it came from, one level up only. Traced, not run: no flow is known to make such a chain.
-- **Revisit when:** the next version: follow `handover.moved` to a fixed point instead of one level.
-
 ### A Forward pressed while a screen is still drawing can leave the screen before it under the new address
 - **Kind:** deferred.
 - **What the user sees:** on a desktop browser, two Forwards within a few milliseconds over a removed trip's entry: the second supersedes the first one's draw, and the shell's "back to the entry it left" leaves the earlier screen drawn under the address of the one it went back to. A redraw (any tap) puts it right.
