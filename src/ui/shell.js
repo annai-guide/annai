@@ -207,8 +207,10 @@ export function startShell(root, core) {
   let top = -1;
   /** The last move: -1 Back, 1 Forward, 0 a replace or not known (an unnumbered entry). */
   let way = 0;
-  /** A Back or Forward is passing entries it doesn't draw. */
+  /** A Back or Forward is passing entries it doesn't draw: how many, and whether it is going back to the last drawn. */
   let passing = false;
+  let steps = 0;
+  let returning = false;
   /** A trip was removed: Back goes on over its entries and Trips'. */
   let removing = false;
   /** The address of the draw begun last. */
@@ -287,18 +289,33 @@ export function startShell(root, core) {
     }
     if (gone && !o.moved) return replaceHash('#/trips');
     if (o.moved) {
-      // Back or Forward goes on over a gone trip's entries, then over those at the address it left, which would show it again.
-      const skip = gone || (passing && lastHash === shown.hash) || (removing && asked.name === 'trips');
+      if (returning) { // back at the entry it left, whose screen is still shown
+        returning = passing = false;
+        steps = 0;
+        return;
+      }
+      // Back or Forward goes on over a gone trip's entries, those at the address it left, and an overlay's entry reached from another address.
+      const canGo = way < 0 ? lastIdx > 0 : way > 0 && lastIdx < top;
+      const overlay = way !== 0 && (history.state?.annaiViewer || history.state?.annaiAsk);
+      const skip = gone || (canGo && overlay) || (passing && lastHash === shown.hash) || (removing && asked.name === 'trips');
       if (skip || removing) {
-        const on = skip && (way < 0 ? lastIdx > 0 : way > 0 && lastIdx < top);
+        const on = skip && canGo;
+        if (skip) steps++;
         passing = on;
         removing &&= on;
         if (on) history.go(way);
-        else if (skip) return replaceHash('#/trips'); // the end of the history: Trips in its place
-        else location.hash = '#/trips'; // removing, on the first other screen: Trips after it, which cuts off the trip's entries ahead
+        else if (skip && way > 0 && shown.name === 'trips') { // Forward would draw Trips again: back to the entry it left instead
+          passing = returning = true;
+          history.go(-steps);
+        } else {
+          steps = 0;
+          if (skip) return replaceHash('#/trips'); // the end of the history: Trips in its place
+          location.hash = '#/trips'; // removing, on the first other screen: Trips after it, which cuts off the trip's entries ahead
+        }
         return landing.promise;
       }
       passing = false;
+      steps = 0;
     }
     cleanUp('screen', my); // what plugins drew on the screen before
     const route = asked;

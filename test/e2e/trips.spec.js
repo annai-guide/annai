@@ -928,6 +928,89 @@ test("Remove trip on the first entry of the history shows Trips there, and goes 
   expect(second.url().startsWith('http://127.0.0.1:8790/')).toBe(true); // still annai
 });
 
+/** Marks the screen drawn now, so a later check can tell whether it was drawn again. @param {import('@playwright/test').Page} page */
+const mark = (page) => page.evaluate(() => { document.querySelector('main .screen')?.setAttribute('data-drawn-once', 'yes'); });
+/** Whether the screen is the one marked, and nothing newer replaced it. @param {import('@playwright/test').Page} page */
+const stillMarked = (page) => page.locator('main .screen[data-drawn-once=yes]').count().then((n) => n === 1);
+
+test("Forward with nothing new ahead does nothing: after Remove trip from a fresh start, Trips stays the one drawn", async ({ page }) => {
+  await openApp(page);
+  await startNamed(page, 'Kyoto');
+  await removeFromDetails(page, 'Kyoto');
+  await expect.poll(() => idxOf(page)).toBe(0);
+  await mark(page);
+  await page.goForward(); // the removed trip's entry is ahead: nothing to show
+  await page.waitForTimeout(500);
+  expect(await idxOf(page)).toBe(0);
+  expect(hashOf(page)).toBe('#/trips');
+  expect(await stillMarked(page)).toBe(true);
+});
+
+test("Forward after Remove trip from a resumed start does nothing, twice", async ({ page }) => {
+  await openApp(page);
+  const id = await startNamed(page, 'Kyoto');
+  await page.evaluate(async (id) => {
+    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+    const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+    const { updateAppSettings } = await import(/** @type {string} */ ('/src/core/settings.js'));
+    const store = await createIdbStore();
+    await updateAppSettings(new Workspace(store), { welcomedAt: Date.now() });
+    store.close();
+    localStorage.setItem('annai.resume', JSON.stringify({ hash: `#/trip/${id}/talk`, trip: id }));
+  }, id);
+  await page.goto('/');
+  await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}/talk`);
+  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  await goToHash(page, `#/trip/${id}`);
+  await removeFromDetails(page, 'Kyoto');
+  await expect.poll(() => idxOf(page)).toBe(0);
+  await mark(page);
+  for (let i = 0; i < 2; i++) {
+    await page.goForward();
+    await page.waitForTimeout(500);
+    expect(hashOf(page)).toBe('#/trips');
+    expect(await stillMarked(page), `Forward ${i + 1}`).toBe(true);
+  }
+});
+
+test("Forward over a trip removed some other way ends on the Trips it began on, and draws nothing new", async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  const id = await startNamed(page, 'Kyoto'); // Trips, Settings, Trips, Details
+  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  await removeBehind(page, id);
+  await page.goBack();
+  await expect.poll(() => hashOf(page)).toBe('#/settings');
+  await page.goForward(); // the Trips before the trip
+  await expect.poll(() => idxOf(page)).toBe(2);
+  await mark(page);
+  await page.goForward(); // the trip's entry, then the Trips after it: the screen it left
+  await page.waitForTimeout(500);
+  expect(await idxOf(page)).toBe(2);
+  expect(hashOf(page)).toBe('#/trips');
+  expect(await stillMarked(page)).toBe(true);
+});
+
+test("Back past the entry a photo viewer left behind lands on its screen once, not twice", async ({ page }) => {
+  await openApp(page);
+  const nara = await startNamed(page, 'Nara');
+  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  const kyoto = await startNamed(page, 'Kyoto');
+  const screen = await viewerOverFile(page);
+  await page.evaluate((id) => navigator.serviceWorker.dispatchEvent(new MessageEvent('message', { data: { type: 'annai.open', scope: id } })), nara);
+  await expect.poll(() => hashOf(page)).toBe(`#/trip/${nara}/talk`);
+  await page.goBack(); // over the viewer's entry, which nothing is open over now
+  await expect.poll(() => idxOf(page)).toBe(screen);
+  await expect(page.getByRole('button', { name: 'Open the photo full size' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: /^Photo / })).toHaveCount(0);
+  await page.goBack(); // a different screen, not the file again
+  await expect.poll(() => hashOf(page)).toBe(`#/trip/${kyoto}`);
+});
+
 test("Remove trip goes back over the Trips between, to the screen of the other trip before it", async ({ page }) => {
   await openApp(page);
   const a = await startNamed(page, 'Osaka'); // Trips, Osaka's Details
