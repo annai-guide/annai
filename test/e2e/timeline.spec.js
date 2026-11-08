@@ -41,8 +41,8 @@ test('+ on home, voice off: the draft opens with the box ready; the first line n
 
 /**
  * Trips and chats made as the app makes them, then the page loads again. chats: name → minutes ago it was last talked in; trips: name → [start, end]
- * in days from today, and what her last line there says. @param {import('@playwright/test').Page} page
- * @param {{ chats?: Record<string, number>, trips?: Record<string, { from: number, to?: number, plan?: string, said?: string }> }} c @returns {Promise<Record<string, string>>} ids by name
+ * in days from today, and what her last line there says; items: plan items today, by name → minutes from now they start (each lasts the default half hour). @param {import('@playwright/test').Page} page
+ * @param {{ chats?: Record<string, number>, trips?: Record<string, { from: number, to?: number, plan?: string, items?: Record<string, number>, said?: string }> }} c @returns {Promise<Record<string, string>>} ids by name
  */
 async function seed(page, { chats = {}, trips = {} }) {
   const ids = await page.evaluate(async ({ chats, trips }) => {
@@ -66,6 +66,7 @@ async function seed(page, { chats = {}, trips = {} }) {
     for (const [title, t] of Object.entries(trips)) {
       const id = await createTrip(ws, { title, start: dayFrom(t.from), ...(t.to !== undefined ? { end: dayFrom(t.to) } : {}) });
       if (t.plan) await ws.write(id, '/plan/next.json', { id: 'next', title: t.plan, fixed: true, start: { at: isoInZone(Date.now() + 86_400_000, zone), tz: zone } }, { author: 'user' });
+      for (const [name, min] of Object.entries(t.items ?? {})) await ws.write(id, `/plan/${name}.json`, { id: name, title: name, fixed: true, start: { at: isoInZone(Date.now() + min * 60_000, zone), tz: zone } }, { author: 'user' });
       if (t.said) await record(store, id, { type: 'out.speak', actor: 'shiori', data: { text: t.said } });
       out[title] = id;
     }
@@ -384,4 +385,58 @@ test("the conversation's name follows its first line while it shows, and Shiori'
   } finally {
     await llm.stop();
   }
+});
+
+/** Nine in the morning today, on the page's clock, with a trip happening (Museum at 10:00, Lunch at 12:00), 24 chats, and a month's fold of six old ones. @param {import('@playwright/test').Page} page */
+async function morning(page) {
+  const nine = new Date();
+  nine.setHours(9, 0, 0, 0);
+  await page.clock.install({ time: nine });
+  await openApp(page, '#/settings');
+  /** @type {Record<string, number>} */
+  const chats = {};
+  for (let i = 0; i < 6; i++) chats[`Old ${i}`] = 60 * 24 * (60 + i);
+  for (let i = 0; i < 24; i++) chats[`Chat ${i}`] = 60 * 24 * i + 5;
+  await seed(page, { chats, trips: { Testville: { from: -2, to: 5, items: { Museum: 60, Lunch: 180 } } } });
+  await page.goto('/#/trips');
+  await expect(page.locator('.now-line')).toBeVisible();
+}
+
+test("a trip card's Next and its day follow the clock while home stays open, with no jump and no fold shut", async ({ page }) => {
+  await morning(page);
+  const card = row(page, 'Testville');
+  await expect(card.locator('.next')).toContainText('Museum');
+  await expect(card.locator('.day-of')).toHaveText('Day 3 of 8');
+  await page.locator('.rows > .fold details summary').click();
+  await expect(page.locator('.rows > .fold details')).toHaveAttribute('open', '');
+  await row(page, 'Chat 20').scrollIntoViewIfNeeded();
+  const y = await page.evaluate(() => scrollY);
+  await page.clock.fastForward('01:31:00'); // Museum (10:00, half an hour) is over
+  await expect(card.locator('.next')).toContainText('Lunch');
+  await expect(page.locator('.rows > .fold details')).toHaveAttribute('open', '');
+  expect(await page.evaluate(() => scrollY)).toBe(y);
+  await page.clock.fastForward('15:00:00'); // past midnight
+  await expect(card.locator('.day-of')).toHaveText('Day 4 of 8');
+  await expect(page.locator('.rows > .fold details')).toHaveAttribute('open', '');
+  expect(await page.evaluate(() => scrollY)).toBe(y);
+});
+
+test("a trip card follows the clock when annai comes back to the front after a while, and leaves a half-typed trip name alone", async ({ page }) => {
+  await morning(page);
+  const card = row(page, 'Testville');
+  await expect(card.locator('.next')).toContainText('Museum');
+  const back = async () => {
+    await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  };
+  await page.getByLabel('Trip name').fill('Tokyo');
+  const noon = new Date();
+  noon.setHours(11, 0, 0, 0);
+  await page.clock.setSystemTime(noon); // the phone was locked: no timer ran
+  await back();
+  await page.waitForTimeout(300);
+  await expect(card.locator('.next')).toContainText('Museum'); // not redrawn over the typing
+  await expect(page.getByLabel('Trip name')).toHaveValue('Tokyo');
+  await page.getByLabel('Trip name').fill('');
+  await back();
+  await expect(card.locator('.next')).toContainText('Lunch');
 });
