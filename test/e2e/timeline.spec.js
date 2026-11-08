@@ -307,7 +307,7 @@ test("500 chats: home's reads don't follow the chats, and + stays instant", asyn
       const id = await createTrip(ws, { title: `Chat ${i}` });
       await record(store, id, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', `Line ${i}`]], now: Date.now() - i * 17 * 3_600_000 });
     }
-    for (const [title, n] of [['Testville', -40], ['Laterton', 20]]) await createTrip(ws, { title, start: dayIn(Date.now() + n * 86_400_000, deviceZone()) });
+    for (const [title, n] of /** @type {[string, number][]} */ ([['Testville', -40], ['Laterton', 20]])) await createTrip(ws, { title, start: dayIn(Date.now() + n * 86_400_000, deviceZone()) });
     store.close();
   });
   await page.reload();
