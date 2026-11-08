@@ -67,7 +67,7 @@ test('S3: encrypted automatic backups, and a wiped phone restores one with its p
     await page.getByLabel('Type ERASE to confirm').fill('ERASE');
     await page.getByRole('button', { name: 'Erase now' }).click();
     await pastWelcome(page);
-    await expect(page.getByText('No trips yet.')).toBeVisible();
+    await expect(page.getByText('Tap + to talk to Shiori.')).toBeVisible();
     await addPlace(page, 'S3-compatible storage', fields);
     await page.getByRole('button', { name: 'Save and test' }).click();
     await expect(page.getByRole('heading', { name: 'A backup is already here' })).toBeVisible();

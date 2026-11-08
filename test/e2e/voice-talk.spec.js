@@ -87,7 +87,7 @@ async function setUpVoice(page, origin, { decide = false } = {}) {
   }
   await page.locator('.voice-chip').click();
   await expect(page.locator('.voice-chip')).toHaveText('Voice on');
-  await page.goto('/#/trips'); // the Models screen has a Send button of its own
+  await page.goto('/#/talk'); // the Models screen has a Send button of its own; home's dock at rest has no type button (timeline stage 4)
 }
 
 test('cutting her off: a tap stops her mid-sentence and listens; she hears where she was stopped (spec §10.4)', async ({ page }) => {

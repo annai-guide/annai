@@ -5,16 +5,16 @@ import { openApp } from './helpers.js';
 // button? maybe click on the keyboard button again closes the input box? … maybe we can also close the box when the message is sent?
 // let's make the text box only there when it is needed and reduce the amount the user need to interact with the screen (make it 'smart')"
 
-/** @param {import('@playwright/test').Page} page */
-async function onTrips(page) {
-  await openApp(page, '#/trips');
-  await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
+/** In a conversation: on home at rest the dock is the chips and the + alone (timeline stage 4). @param {import('@playwright/test').Page} page */
+async function inConversation(page) {
+  await openApp(page, '#/talk');
+  await expect(page.getByRole('heading', { name: 'Conversation', exact: true })).toBeVisible();
 }
 const typeButton = (/** @type {import('@playwright/test').Page} */ page) => page.getByRole('button', { name: 'Type', exact: true });
 const box = (/** @type {import('@playwright/test').Page} */ page) => page.getByLabel('Message to Shiori');
 
 test('the keyboard button opens the box with focus, and tapping it again closes it; there is no Close button', async ({ page }) => {
-  await onTrips(page);
+  await inConversation(page);
   await expect(box(page)).toBeHidden();
   await expect(typeButton(page)).toHaveAttribute('aria-expanded', 'false');
   await typeButton(page).click();
@@ -28,7 +28,7 @@ test('the keyboard button opens the box with focus, and tapping it again closes 
 });
 
 test('the box is a single line whose keyboard key says Send; Enter sends, and the box closes after sending', async ({ page }) => {
-  await onTrips(page);
+  await inConversation(page);
   await typeButton(page).click();
   await expect(box(page)).toHaveJSProperty('tagName', 'INPUT');
   await expect(box(page)).toHaveAttribute('enterkeyhint', 'send');
@@ -43,7 +43,7 @@ test('the box is a single line whose keyboard key says Send; Enter sends, and th
 });
 
 test('a small send arrow sits inside the box, on its right, for a keyboard with no send key and for a mouse; it sends and closes the box', async ({ page }) => {
-  await onTrips(page);
+  await inConversation(page);
   await typeButton(page).click();
   const send = page.getByRole('button', { name: 'Send', exact: true });
   await expect(send).toBeVisible();
@@ -62,7 +62,7 @@ test('a small send arrow sits inside the box, on its right, for a keyboard with 
 });
 
 test('Escape closes the box and keeps the draft', async ({ page }) => {
-  await onTrips(page);
+  await inConversation(page);
   await typeButton(page).click();
   await box(page).fill('half a thought');
   await box(page).press('Escape');
@@ -72,7 +72,7 @@ test('Escape closes the box and keeps the draft', async ({ page }) => {
 });
 
 test('a tap elsewhere on the page closes the box when it is empty, and leaves it, with its draft, when it is not', async ({ page }) => {
-  await onTrips(page);
+  await inConversation(page);
   await typeButton(page).click();
   await expect(box(page)).toBeVisible();
   await page.locator('main').click({ position: { x: 5, y: 5 }, force: true });
@@ -88,7 +88,7 @@ test('a tap elsewhere on the page closes the box when it is empty, and leaves it
 });
 
 test("the dock steps aside for a field outside it on a touch screen, but never for its own box (the box's own input is still in the dock)", async ({ page }) => {
-  await onTrips(page);
+  await inConversation(page);
   await typeButton(page).click();
   await box(page).fill('hi');
   await expect(page.locator('html')).not.toHaveClass(/typing-elsewhere/);
@@ -96,7 +96,7 @@ test("the dock steps aside for a field outside it on a touch screen, but never f
 });
 
 test('the box and its send arrow are labelled for a screen reader, and the keyboard button says whether the box is open', async ({ page }) => {
-  await onTrips(page);
+  await inConversation(page);
   await typeButton(page).click();
   await expect(page.getByRole('textbox', { name: 'Message to Shiori' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Send', exact: true })).toBeVisible();
@@ -105,7 +105,7 @@ test('the box and its send arrow are labelled for a screen reader, and the keybo
 
 // The user types Chinese and Japanese: Enter that picks a candidate in an IME must never send the half-composed text.
 test('Enter while an IME is composing does not send; nothing is sent until a real Enter after the composition ends', async ({ page }) => {
-  await onTrips(page);
+  await inConversation(page);
   await typeButton(page).click();
   await box(page).fill('にほん');
   const prevented = await page.evaluate(() => {
@@ -121,7 +121,7 @@ test('Enter while an IME is composing does not send; nothing is sent until a rea
   expect(prevented).toBe(true);
   await expect(box(page)).toBeVisible();
   await expect(box(page)).toHaveValue('にほん');
-  await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
+  await expect(page.locator('.convo .you')).toHaveCount(0); // nothing sent
   await page.evaluate(() => {
     const input = /** @type {HTMLInputElement} */ (document.getElementById('dock-text'));
     input.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
@@ -131,7 +131,7 @@ test('Enter while an IME is composing does not send; nothing is sent until a rea
     return b.defaultPrevented;
   }).then((p) => expect(p, 'the 229 Enter is not allowed to submit the form').toBe(true));
   await expect(box(page)).toHaveValue('にほん');
-  await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
+  await expect(page.locator('.convo .you')).toHaveCount(0); // nothing sent
   // A real Enter, later, sends.
   await page.waitForTimeout(300);
   await box(page).press('Enter');
@@ -141,7 +141,7 @@ test('Enter while an IME is composing does not send; nothing is sent until a rea
 
 // Fix pass 2, item 7: focus after a send goes to the keyboard button, never into the hidden box.
 test('after a send from the box, focus is on the keyboard button, and keys typed then go nowhere hidden', async ({ page }) => {
-  await onTrips(page);
+  await inConversation(page);
   await typeButton(page).click();
   await box(page).fill('first');
   await box(page).press('Enter');
@@ -154,10 +154,10 @@ test('after a send from the box, focus is on the keyboard button, and keys typed
 
 // Fix pass 2, item 11: a press elsewhere never closes the box under the finger: it closes with the press's click.
 test('a press elsewhere closes the empty box only with its click, so nothing moves under the finger while it is down', async ({ page }) => {
-  await onTrips(page);
+  await inConversation(page);
   await typeButton(page).click();
   await expect(box(page)).toBeVisible();
-  const at = /** @type {{ x: number, y: number }} */ (await page.getByRole('heading', { name: 'Trips', exact: true }).boundingBox());
+  const at = /** @type {{ x: number, y: number }} */ (await page.getByRole('heading', { name: 'Conversation', exact: true }).boundingBox());
   await page.mouse.move(at.x + 5, at.y + 5);
   await page.mouse.down();
   await page.waitForTimeout(100);
@@ -170,7 +170,7 @@ test('a press elsewhere closes the empty box only with its click, so nothing mov
 // held back only while composing, or right after a composition ended (Safari's confirming Enter), and a composition the box lost (blur,
 // closed) holds nothing back afterwards.
 test("Enter as keyCode 229 holds back only while composing or right after a composition ended; with none, an Android keyboard's Enter is let through", async ({ page }) => {
-  await onTrips(page);
+  await inConversation(page);
   await typeButton(page).click();
   await box(page).fill('hello');
   // The whole sequence in the page: the box holds a 229 Enter back for 100 ms after a composition ended (by the events' own time stamps),
@@ -200,7 +200,7 @@ test("Enter as keyCode 229 holds back only while composing or right after a comp
 });
 
 test('a composition the box lost (it closed, or lost focus) holds back nothing: a real Enter afterwards sends', async ({ page }) => {
-  await onTrips(page);
+  await inConversation(page);
   for (const lose of ['close', 'blur']) {
     await typeButton(page).click();
     await box(page).fill(`words after ${lose}`);
@@ -218,7 +218,7 @@ test('a composition the box lost (it closed, or lost focus) holds back nothing: 
 
 // Fix pass 3, item 6: iOS sends no click for a tap on plain content, or a drag: the box closes NO_CLICK_MS after the pointer is up.
 test('a press elsewhere that brings no click (iOS, on plain content) still closes the empty box, a moment after it ends', async ({ page }) => {
-  await onTrips(page);
+  await inConversation(page);
   await typeButton(page).click();
   await expect(box(page)).toBeVisible();
   // It is still open 100 ms after the pointer is up, looked at in the page: the box closes 400 ms after, by its own timer, and a look from the
@@ -236,7 +236,7 @@ test('a press elsewhere that brings no click (iOS, on plain content) still close
 
 // Follow-up 4: a drag (the pointer moved) or a mouse (which always sends its click) is no tap elsewhere.
 test('a drag elsewhere, or a mouse press with no click, leaves the empty box open', async ({ page }) => {
-  await onTrips(page);
+  await inConversation(page);
   await typeButton(page).click();
   await expect(box(page)).toBeVisible();
   await page.evaluate(() => {

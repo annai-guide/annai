@@ -1,5 +1,5 @@
 import { test, expect, devices } from '@playwright/test';
-import { openApp, filterTrace, pastWelcome, allFiles } from './helpers.js';
+import { openApp, filterTrace, pastWelcome, allFiles, startTrip, goToHash } from './helpers.js';
 import { startGitHub } from '../fakes/github.js';
 
 const REPO = 'me/annai-backup';
@@ -14,13 +14,6 @@ async function fastBackups(page) {
       // storage blocked
     }
   });
-}
-
-/** @param {import('@playwright/test').Page} page @param {string} title */
-async function startTrip(page, title) {
-  await page.getByLabel('Trip name').fill(title);
-  await page.getByRole('button', { name: 'Start trip' }).click();
-  await expect(page.getByRole('heading', { name: title })).toBeVisible();
 }
 
 /** @param {import('@playwright/test').Page} page @param {string} path @param {string} content */
@@ -54,7 +47,7 @@ test('automatic backups go to GitHub, only what changed is sent, and a wiped pho
   try {
     await fastBackups(page);
     await openApp(page);
-    await startTrip(page, 'Big Sur');
+    const bigSur = await startTrip(page, 'Big Sur', { start: '2026-12-01', end: '2026-12-05' }); // dated: a card, which says when it was backed up
     await writeNote(page, '/notes/bixby.md', 'Bixby Bridge, 1932');
     await page.getByRole('link', { name: 'Back to trip', exact: true }).click();
     await page.getByLabel('Add photos or files').setInputFiles({ name: 'gate.png', mimeType: 'image/png', buffer: PNG });
@@ -74,7 +67,7 @@ test('automatic backups go to GitHub, only what changed is sent, and a wiped pho
     await expect(page.getByText(/backed up (just now|\d+ seconds? ago)/)).toBeVisible();
 
     // A change goes up by itself too, and the photo isn't sent again.
-    await page.getByRole('link', { name: /Big Sur/ }).click();
+    await goToHash(page, `#/trip/${bigSur}`); // a card's tap opens its conversation (timeline stage 4)
     await page.getByRole('link', { name: /bixby\.md/ }).click();
     await page.getByLabel('Content').fill('Bixby Bridge, 1932, at dawn');
     await page.getByRole('button', { name: 'Save' }).click();
@@ -93,7 +86,7 @@ test('automatic backups go to GitHub, only what changed is sent, and a wiped pho
     await page.getByLabel('Type ERASE to confirm').fill('ERASE');
     await page.getByRole('button', { name: 'Erase now' }).click();
     await pastWelcome(page);
-    await expect(page.getByText('No trips yet.')).toBeVisible();
+    await expect(page.getByText('Tap + to talk to Shiori.')).toBeVisible();
     await addGitHub(page, gh);
     await expect(page.getByRole('heading', { name: 'A backup is already here' })).toBeVisible();
     await expect(page.getByText(/^An? (iPhone|Android phone|computer) backed up to me\/annai-backup/)).toBeVisible();
@@ -132,7 +125,7 @@ test('a newer backup from another phone pauses this one, and comes in as a copy 
   try {
     await fastBackups(page);
     await openApp(page);
-    await startTrip(page, 'Kyoto');
+    const kyoto = await startTrip(page, 'Kyoto');
     await addGitHub(page, gh);
     await expect.poll(() => gh.commits(REPO).length, { timeout: 30_000 }).toBe(2);
 
@@ -153,8 +146,7 @@ test('a newer backup from another phone pauses this one, and comes in as a copy 
 
     // The first phone's next backup meets it: a card, and nothing is overwritten.
     const commits = gh.commits(REPO).length;
-    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
-    await page.getByRole('link', { name: /Kyoto/ }).click();
+    await goToHash(page, `#/trip/${kyoto}`); // a row's tap opens its conversation (timeline stage 4)
     await writeNote(page, '/notes/kiyomizu.md', 'Kiyomizu-dera');
     await expect(page.getByText('A newer backup is on GitHub')).toBeVisible({ timeout: 30_000 });
     // On both phones (Pixel 7, iPhone 15) the card shows its title and its three buttons, and its words behind More (phone-fixes-1's reviews).

@@ -36,8 +36,8 @@ async function setUp(page, origin, { reader = false } = {}) {
     await page.getByLabel('Takes PDFs').check();
     await expect(savedBy(page.getByLabel('Takes PDFs'))).toHaveText('Saved');
   }
-  await page.goto('/#/trips');
-  await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
+  await page.goto('/#/talk'); // the no-trip conversation: the dock at rest on home has no type button (timeline stage 4)
+  await expect(page.getByRole('heading', { name: 'Conversation', exact: true })).toBeVisible();
 }
 
 /** Hands Shiori files from the type box, with words or none. @param {import('@playwright/test').Page} page @param {any[]} files @param {string} [words] */
@@ -134,8 +134,8 @@ test('Undo from a start on Trips leaves the trip the way Back does: Trips is the
     await page.close(); // annai runs in one tab at a time: a new one opens on Trips, its first entry
     const tab = await context.newPage();
     await tab.addInitScript(() => { try { localStorage.setItem('annai.forceDownload', '1'); } catch { /* storage blocked */ } });
-    await tab.goto('/#/trips');
-    await expect(tab.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
+    await tab.goto('/#/talk'); // the no-trip conversation: the dock at rest on home has no type button (timeline stage 4)
+    await expect(tab.getByRole('heading', { name: 'Conversation', exact: true })).toBeVisible();
     await handAnchorage(tab);
     await tab.getByRole('button', { name: 'Undo what Shiori did with these files' }).click();
     await expect(tab.getByText(`Undone. ${TITLE} is removed, and your files are waiting with Shiori.`)).toBeVisible();
@@ -394,7 +394,7 @@ test("a booking for another trip, while in a trip: she moves the file there and 
     await modelSetUp(page, llm.origin, 'Big Sur');
     const bigSur = page.url();
     await page.goto('/#/trips');
-    await startTrip(page, 'Kyoto');
+    await startTrip(page, 'Kyoto', { start: '2026-12-01', end: '2026-12-05' }); // dated: a card, which says what waits to be read
     await page.goto(bigSur);
     await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
     await handOver(page, [await fixture('flight.pdf', 'application/pdf')]);
@@ -433,7 +433,7 @@ test("Undo sends the file back to a trip that then won't open: a card says so", 
 });
 
 test('a short paste stays words; a long one into an empty box becomes a chip, which can be put back as words', async ({ page }) => {
-  await openApp(page);
+  await openApp(page, '#/talk'); // the dock at rest on home has no type button (timeline stage 4)
   await paste(page, 'Seat 14D\nAisle, please');
   await expect(page.locator('.type-sheet .attach-chip')).toHaveCount(0);
   const text = (await fixture('confirmation.txt', 'text/plain')).buffer.toString('utf8');

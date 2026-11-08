@@ -95,7 +95,7 @@ test('Erase everything starts annai again as on a new device, the welcome then a
   await page.getByLabel('Type ERASE to confirm').fill('ERASE');
   await page.getByRole('button', { name: 'Erase now' }).click();
   await pastWelcome(page);
-  await expect(page.getByText('No trips yet.')).toBeVisible();
+  await expect(page.getByText('Tap + to talk to Shiori.')).toBeVisible();
   expect(await page.evaluate(() => sessionStorage.getItem('erase-error'))).toBeNull();
 });
 

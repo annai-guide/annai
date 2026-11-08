@@ -238,7 +238,7 @@ test("her art is kept for offline use: after the first visit she shows with no n
   // A port for each worker running at once, as both browsers may run this test together.
   const server = await startServer(8811 + testInfo.parallelIndex);
   try {
-    await page.goto(`${server.origin}/#/trips`);
+    await page.goto(`${server.origin}/#/talk`); // her avatar is in the dock there; on home at rest the dock is the chips and the + (timeline stage 4)
     await expect(page.getByRole('navigation', { name: 'Shiori' })).toBeVisible();
     await waitForServiceWorker(page);
     await server.stop();
@@ -447,7 +447,8 @@ test('done: a conversation with tool use, with fallback across two providers, su
 
     // The note is a file in the trip.
     await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
-    await page.getByRole('link', { name: /Big Sur/ }).click();
+    await page.getByRole('link', { name: /Big Sur/ }).click(); // its conversation (timeline stage 4)
+    await page.locator('.talk-head .talk-name').click(); // its Details
     await allFiles(page);
     await expect(page.getByText('/notes/dinner.md')).toBeVisible();
 

@@ -49,10 +49,10 @@ test("the user's evening: on Trips with no trip open, + with the flight PDF and 
     await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
     await page.getByRole('button', { name: 'Add to main' }).click();
     await expect(page.getByLabel('Add a model to main').locator('option', { hasText: 'b-model' })).toHaveCount(0);
-    await page.goto('/#/trips');
-    await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
+    await page.goto('/#/talk'); // the no-trip conversation: the dock at rest on home has no type button (timeline stage 4)
+    await expect(page.getByRole('heading', { name: 'Conversation', exact: true })).toBeVisible();
 
-    // 1. On Trips, no trip open: + with the flight PDF and the hotel screenshot, no words.
+    // 1. No trip open: + with the flight PDF and the hotel screenshot, no words.
     await page.getByRole('button', { name: 'Type', exact: true }).click();
     await page.getByLabel('Give Shiori photos or files').setInputFiles([await fixture('flight.pdf', 'application/pdf'), await fixture('hotel.png', 'image/png')]);
     await expect(page.locator('.type-sheet .attach-chip')).toHaveCount(2);

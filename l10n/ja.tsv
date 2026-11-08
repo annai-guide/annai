@@ -1014,7 +1014,8 @@ drtui7	ok	Open a trip first	先に旅を開いてください	src/ui/dock.js:154
 1xmvmzh	ok	Kokoro is working	Kokoro が作業中	src/ui/dock.js:254	
 1ndyc8s	ok	Stop Kokoro	Kokoro を止める	src/ui/dock.js:255	
 ky4lc5	ok	Stop	停止	src/ui/dock.js:255	
-1s6dmy6	ok	Camera	カメラ	src/ui/dock.js:268	
+snj02s	draft	In {0} ›	{0} の会話 ›	src/ui/dock.js:271	{0} = scopeTitle(rec)
+1s6dmy6	ok	Camera	カメラ	src/ui/dock.js:284	
 1rm0t76	ok	{0} isn't valid JSON.	{0}が正しい JSON ではありません。	src/ui/dom.js:153	{0} = label; Note: {0} is a field's label.
 1a791in	ok	{0} has to be an object: { … }.	{0}はオブジェクト（{ … }）にしてください。	src/ui/dom.js:155	{0} = label; Note: {0} is a field's label.
 1gkm7i5	ok	Saving…	保存しています…	src/ui/dom.js:264	
@@ -2564,20 +2565,21 @@ knyqwh	ok	Add photos or files	写真やファイルを追加	src/ui/screens/trip
 ecy82r	ok	Add a file	ファイルを追加	src/ui/screens/trip.js:335	
 1bmm5eq	ok	File path	ファイルのパス	src/ui/screens/trip.js:336	
 16gte2l	ok	Create	作成	src/ui/screens/trip.js:338	
-yeiyfl	ok	No trips yet. Start one below, or open a trip someone sent you.	まだ旅はありません。下で始めることも、送られてきた旅を開くこともできます。	src/ui/screens/trips.js:29	Note: Keeps the glossary's 送られてきた旅を開く, the button's own words below it.
-33pqd9	ok	Last backup {0}, to {1}.	前回のバックアップ：{0}（{1}）	src/ui/screens/trips.js:33	{0} = relTime(latest.last.at); {1} = latest.name; Note: Label and value, no 。, as "Last export" beside it.
-in89ko	ok	No backup yet. Export everything from Settings, or set up automatic backups there.	まだバックアップはありません。設定ですべてをエクスポートするか、自動バックアップを設定してください。	src/ui/screens/trips.js:34	
-sjnfyu	ok	Archived trips ({0})	アーカイブした旅（{0}）	src/ui/screens/trips.js:36	{0} = archived.length
-1q78pfk#other	ok	# files waiting to be read	読まれていないファイル#件	src/ui/screens/trips.js:51	plural; # = unread; English: "# file waiting to be read" (one), "# files waiting to be read" (other); Note: on a trip's card: files Shiori moved there that its conversation hasn't read yet; 件 counts files.
-ru2yru	ok	updated {0}	更新：{0}	src/ui/screens/trips.js:51	{0} = relTime(s.updated); Note: Label and value, as "backed up {0}".
-9q9lbc	ok	Talk with her outside any trip.	旅の外で Shiori と話します。	src/ui/screens/trips.js:67	Note: under Shiori, no trip on Trips: the conversation that is no trip's. Shiori named, as 彼女 reads distant.
-v84pjn	ok	Shiori, no trip	Shiori（旅なし）	src/ui/screens/trips.js:67	Note: the way back from a trip to the conversation outside any trip, above the trip cards on Trips; 旅 / 旅行 as the glossary's trip.
-1ceddv5	ok	Big Sur · Thanksgiving	京都・紅葉	src/ui/screens/trips.js:96	Note: An example trip name (the field's placeholder): a Japanese one, written with ・ as Japanese names are.
-axugy7	ok	Start a trip	旅を始める	src/ui/screens/trips.js:116	
-ero67x	ok	Trip name	旅の名前	src/ui/screens/trips.js:117	
-1776dho	ok	Add dates (optional)	日付を追加（任意）	src/ui/screens/trips.js:119	Note: folds the Starts and Ends fields under Start a trip: a name is enough; 任意 as forms say optional.
-1baslgi	ok	Start trip	旅を始める	src/ui/screens/trips.js:121	Note: The same words as the form's heading, "Start a trip".
-152lnj5	ok	Use real dates for the start and end.	開始日と終了日に正しい日付を入力してください。	src/ui/screens/trips.js:128	
+aoc0k0#other	draft	{0}: # chats	{0}：チャット # 件	src/ui/screens/trips.js:43	plural; # = e.fold.rows.length; {0} = monthName(e.fold.month); English: "{0}: # chat" (one), "{0}: # chats" (other)
+cvvz5z	draft	Tap + to talk to Shiori.	＋ をタップして Shiori と話しましょう。	src/ui/screens/trips.js:57	
+sjnfyu	ok	Archived trips ({0})	アーカイブした旅（{0}）	src/ui/screens/trips.js:62	{0} = archived.length
+33pqd9	ok	Last backup {0}, to {1}.	前回のバックアップ：{0}（{1}）	src/ui/screens/trips.js:65	{0} = relTime(latest.last.at); {1} = latest.name; Note: Label and value, no 。, as "Last export" beside it.
+in89ko	ok	No backup yet. Export everything from Settings, or set up automatic backups there.	まだバックアップはありません。設定ですべてをエクスポートするか、自動バックアップを設定してください。	src/ui/screens/trips.js:66	
+1rrn1xn	draft	Day {0} of {1}	{1} 日間の {0} 日目	src/ui/screens/trips.js:96	{0} = d.day; {1} = d.of
+1q78pfk#other	ok	# files waiting to be read	読まれていないファイル#件	src/ui/screens/trips.js:107	plural; # = unread; English: "# file waiting to be read" (one), "# files waiting to be read" (other); Note: on a trip's card: files Shiori moved there that its conversation hasn't read yet; 件 counts files.
+9q9lbc	ok	Talk with her outside any trip.	旅の外で Shiori と話します。	src/ui/screens/trips.js:130	Note: under Shiori, no trip on Trips: the conversation that is no trip's. Shiori named, as 彼女 reads distant.
+v84pjn	ok	Shiori, no trip	Shiori（旅なし）	src/ui/screens/trips.js:130	Note: the way back from a trip to the conversation outside any trip, above the trip cards on Trips; 旅 / 旅行 as the glossary's trip.
+1ceddv5	ok	Big Sur · Thanksgiving	京都・紅葉	src/ui/screens/trips.js:159	Note: An example trip name (the field's placeholder): a Japanese one, written with ・ as Japanese names are.
+axugy7	ok	Start a trip	旅を始める	src/ui/screens/trips.js:179	
+ero67x	ok	Trip name	旅の名前	src/ui/screens/trips.js:180	
+1776dho	ok	Add dates (optional)	日付を追加（任意）	src/ui/screens/trips.js:182	Note: folds the Starts and Ends fields under Start a trip: a name is enough; 任意 as forms say optional.
+1baslgi	ok	Start trip	旅を始める	src/ui/screens/trips.js:184	Note: The same words as the form's heading, "Start a trip".
+152lnj5	ok	Use real dates for the start and end.	開始日と終了日に正しい日付を入力してください。	src/ui/screens/trips.js:191	
 ric74d	ok	Checking annai and its plugins…	annai とプラグインを確認しています…	src/ui/screens/updates.js:18	
 1mk4lgq	ok	annai hasn't checked since it started.	annai は起動してからまだ確認していません。	src/ui/screens/updates.js:19	
 cmuwtk	ok	Last checked {0}.	最終確認：{0}。	src/ui/screens/updates.js:19	{0} = relTime(checkedAt, now)
@@ -2661,7 +2663,7 @@ bewa4v	ok	What she says	Shiori の言葉	src/ui/screens/voice.js:183
 9dx265	ok	Welcome to annai	annai へようこそ	src/ui/screens/welcome.js:20	
 1r8f7ib	ok	annai is a free, open-source travel guide that lives on your phone.	annai は、スマートフォンの中で動く、無料のオープンソースの旅行ガイドです。	src/ui/screens/welcome.js:45	Note: スマートフォン, as the other screens say it (not スマホ).
 119pjng	ok	Its guide is Shiori. She plans the trip with you, keeps your bookings and notes, reminds you at the right time and place, talks with you on the road, and makes a recap afterwards.	ガイドは Shiori です。いっしょに旅を計画し、予約やメモを保管し、ちょうどいい時間と場所でリマインドし、道中で話し相手になり、旅のあとに振り返りを作ります。	src/ui/screens/welcome.js:46	
-1re677m	ok	She is at the bottom of every screen: tap her to talk, or type.	Shiori はどの画面でも下にいます。タップして話すか、入力してください。	src/ui/screens/welcome.js:47	
+gs9dqm	draft	Tap + on the timeline to talk to her, or tap her in any conversation.	タイムラインの ＋ をタップして話しかけるか、どの会話でも彼女をタップしてください。	src/ui/screens/welcome.js:47	
 1kzszxn	ok	annai (案内) is Japanese for "guidance; showing someone around".	annai の名前は、日本語の「案内」（人を案内すること、連れて回ること）から来ています。	src/ui/screens/welcome.js:48	Note: "案内 is Japanese for…" reads circular to a Japanese reader, so it says where the name comes from; keeps 案内 as the glossary asks.
 u671cl	ok	Shiori is your guide. She has two halves that work together.	Shiori はあなたのガイドです。いっしょに働く2つの半身があります。	src/ui/screens/welcome.js:56	
 5swud	ok	Koe ({0}, voice)	Koe（{0}）	src/ui/screens/welcome.js:58	{0} = KOE; Note: {0} is 声, Koe's name in Japanese; ja needs no gloss.
@@ -2721,9 +2723,9 @@ f2eaqi	ok	Find a search plugin	検索プラグインを探す	src/ui/search-pane
 do1m5o	ok	{0}: annai can't show this setting.	{0}：annai ではこの設定を表示できません。	src/ui/settings-form.js:116	{0} = f.label
 1qrgqx0	ok	saved	保存済み	src/ui/settings-form.js:121	
 phutrz	ok	{0} wasn't saved: {1}	{0}を保存できませんでした：{1}	src/ui/settings-form.js:130	{0} = f.label; {1} = messageOf(e)
-1skw031	ok	This screen couldn't open	この画面を開けませんでした	src/ui/shell.js:394	
-1z00dfe	ok	An update is ready	アップデートの準備ができました	src/ui/shell.js:504	
-gt0nrj	ok	It will be used the next time annai starts.	次に annai を起動したときに使われます。	src/ui/shell.js:504	
+1skw031	ok	This screen couldn't open	この画面を開けませんでした	src/ui/shell.js:405	
+1z00dfe	ok	An update is ready	アップデートの準備ができました	src/ui/shell.js:515	
+gt0nrj	ok	It will be used the next time annai starts.	次に annai を起動したときに使われます。	src/ui/shell.js:515	
 sntfon	ok	Hello! This is how I sound when I talk to you.	こんにちは。あなたと話すときは、こんな声です。	src/ui/speech-check.js:10	Note: spoken by the voice being tested, so it is heard in the screens' language.
 n8hyke	ok	{0}. {1}	{0}。{1}	src/ui/speech-check.js:16	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
 1a27ynt	ok	Last tested {0}: it worked.	最終テスト（{0}）：動作しました。	src/ui/speech-check.js:26	{0} = relTime(verified.at); Note: {0} is a relative time, in brackets as on a model's test line.

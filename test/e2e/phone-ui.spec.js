@@ -263,7 +263,7 @@ for (const scheme of ['light', 'dark']) {
     await page.addInitScript(() => {
       if (typeof MediaDevices !== 'undefined') MediaDevices.prototype.enumerateDevices = async () => /** @type {any} */ ([{ kind: 'audioinput', label: 'AirPods Pro', deviceId: '1', groupId: '1' }]);
     });
-    await openApp(page, '#/trips');
+    await openApp(page, '#/talk'); // the dock at rest on home is the chips and the + (timeline stage 4)
     await page.locator('.voice-chip').click();
     await expect(page.locator('.voice-chip')).toHaveText('Voice on');
     // There is no Captions chip any more (the user, 2026-10-23): the bubble shows by itself while she speaks. Here it is shown by hand, for its look.

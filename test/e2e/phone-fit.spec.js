@@ -101,7 +101,7 @@ test("a plugin with a long word in its description, its name and keyword, and fr
 
 test('the dock keeps camera, Shiori and type apart, Shiori in the middle', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 700 });
-  await openApp(page);
+  await openApp(page, '#/talk'); // the dock at rest on home is the chips and the + (timeline stage 4)
   const box = async (/** @type {string} */ sel) => {
     const b = await page.locator(sel).first().boundingBox();
     expect(b, sel).toBeTruthy();
@@ -511,7 +511,7 @@ for (const [width, height] of [[360, 760], [320, 544]]) {
 
 test('on a short screen (an iPhone SE, 320 × 544) the dock is compact: under a fifth of the height; voice still enlarges it, at the bottom (spec §16.2)', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 544 });
-  await openApp(page);
+  await openApp(page, '#/talk'); // the dock at rest on home is the chips and the + (timeline stage 4)
   const dock = page.locator('nav.dock');
   const quiet = /** @type {{ y: number, height: number }} */ (await dock.boundingBox());
   expect(quiet.height).toBeLessThan(544 / 5);
@@ -594,7 +594,8 @@ test('the type box with three chips, Trips with files waiting, and a trip withou
   await page.goto('/#/trips');
   await expect(page.locator('.waiting-file')).toHaveCount(3);
   expect(await wide()).toBeLessThanOrEqual(0);
-  // Three chips in the type box: a long name, cut, and two short.
+  // Three chips in the type box: a long name, cut, and two short. In a conversation: the dock at rest on home has no type button (timeline stage 4).
+  await page.goto('/#/talk');
   await page.locator('.dock .ib[aria-expanded]').click();
   await page.getByLabel('Shiori に写真やファイルを渡す').setInputFiles([
     { name: long, mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4') },

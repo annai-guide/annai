@@ -1,5 +1,5 @@
 import { h, field, t, plural, twoStep, messageOf } from '../dom.js';
-import { listTrips, createTrip, backupState, SYS_WAITING } from '../../core/scopes.js';
+import { listTrips, createTrip, backupState, scopeTitle, SYS_WAITING } from '../../core/scopes.js';
 import { readNames, shortName } from '../../core/names.js';
 import { waitingFiles, dropWaiting } from '../../core/waiting.js';
 import { filesToRead } from '../../core/handover.js';
@@ -7,49 +7,112 @@ import { askAbout, canAsk, openOrTell } from '../composer.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { ValidationError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
-import { relTime, dateRange, backupText, wording, size, waitingHref } from '../format.js';
+import { relTime, dateRange, backupText, wording, size, waitingHref, talkHref, day, when, rowName } from '../format.js';
 import { requestPersist } from '../platform.js';
 import { openFileButton } from '../open-file.js';
 import { tripStamps, stampMarks, factsWords } from '../stamps.js';
 import { stampCount } from '../../core/after/stamps.js';
+import { timelineRows, dayOfTrip, RECENT_DAYS } from '../../core/timeline.js';
+import { upcoming } from '../../core/now.js';
+import { dayIn, deviceZone } from '../../core/time.js';
+import { storedTexts } from '../../core/agent/log.js';
+import { tripRows } from '../trip-rows.js';
+import { nowOf } from '../today.js';
 
-/** @param {any} ctx */
+/** @typedef {import('../../core/timeline.js').Row} Row */
+
+/**
+ * Home: the timeline of trips and chats (the timeline design), old to new, the trips happening at the now line and only dated trips below it.
+ * A tap opens a row's conversation. What a card shows beyond its dates is read for cards alone, so chats cost no reads. The foot keeps, until
+ * the later stages, the no-trip card, the waiting panel and Start a trip; then the archived trips, Open a file and the last backup.
+ * @param {any} ctx
+ */
 export async function renderTrips(ctx) {
   const { active, archived } = await listTrips(ctx.store);
   const settings = await readAppSettings(ctx.ws);
   const places = ctx.backups ? await ctx.backups.list() : [];
   const latest = places.filter((/** @type {any} */ p) => p.last).sort((/** @type {any} */ a, /** @type {any} */ b) => b.last.at - a.last.at)[0];
-  const say = wording(settings);
-  const cards = await Promise.all(active.map(async (s) => tripCard(s, await ctx.ws.readJSON(s.id, '/trip.json').catch(() => null), await backupState(ctx.store, s.id), await tripStamps(ctx, s.id), say, (await filesToRead(ctx.store, s.id)).length)));
-  const archivedCards = await Promise.all(archived.map(async (s) => tripCard(s, null, await backupState(ctx.store, s.id), await tripStamps(ctx, s.id), say, 0)));
+  const o = { say: wording(settings), now: nowOf(ctx.live), zone: ctx.live?.timeZone?.() ?? deviceZone() };
+  const { above, happening, below } = timelineRows(active, o.now, o.zone);
+  const byId = new Map(active.map((s) => [s.id, s]));
+  const row = (/** @type {Row} */ r) => (r.card ? tripCard(ctx, byId.get(r.id), r, o) : chatLine(byId.get(r.id), r, o));
+  const past = await Promise.all(above.map(async (e) => {
+    if (e.heading) return h('li', { class: 'when' }, h('h2', { class: 'section', text: e.heading.kind === 'day' ? day(e.heading.key, true) : monthName(e.heading.key) }));
+    if (e.fold) {
+      return h('li', { class: 'fold' }, h('details', {},
+        h('summary', { text: plural(e.fold.rows.length, '{0}: # chat', '{0}: # chats', monthName(e.fold.month)) }),
+        h('ul', { class: 'cards' }, ...e.fold.rows.map((r) => chatLine(byId.get(r.id), r, o)))));
+    }
+    return row(/** @type {Row} */ (e.row));
+  }));
+  const ahead = await Promise.all([...happening, ...below].map(row));
+  const archivedCards = await Promise.all(archived.map((s) => tripCard(ctx, s, null, o)));
   const waiting = await waitingFiles(ctx.ws);
-  return h('div', { class: 'screen' },
+  return h('div', { class: 'screen timeline' },
     h('h1', { class: 'title', text: t`Trips` }),
+    // The shell scrolls the now line 40% down; with less past than that above it, it sits higher, with no blank space over it (a notice there stays in view).
+    h('ul', { class: 'cards rows past' }, ...past),
+    h('p', { class: 'now-line' }, h('span', { text: t`Now` })),
+    h('ul', { class: 'cards rows ahead' }, ...ahead),
+    active.length ? null : h('p', { class: 'empty', text: t`Tap + to talk to Shiori.` }),
     noTrip(ctx),
-    active.length ? h('ul', { class: 'cards' }, ...cards) : h('p', { class: 'empty', text: t`No trips yet. Start one below, or open a trip someone sent you.` }),
     waiting.length ? waitingList(ctx, waiting, await readNames(ctx.ws, SYS_WAITING)) : null,
     newTripForm(ctx),
-    openFileButton(ctx),
-    h('p', { class: 'sub', text: latest ? t`Last backup ${relTime(latest.last.at)}, to ${latest.name}.`
-      : settings.lastExportAt ? t`Last export ${relTime(settings.lastExportAt)}.` : t`No backup yet. Export everything from Settings, or set up automatic backups there.` }),
     archived.length
       ? h('details', { class: 'archived' }, h('summary', { text: t`Archived trips (${archived.length})` }), h('ul', { class: 'cards' }, ...archivedCards))
-      : null);
+      : null,
+    openFileButton(ctx),
+    h('p', { class: 'sub', text: latest ? t`Last backup ${relTime(latest.last.at)}, to ${latest.name}.`
+      : settings.lastExportAt ? t`Last export ${relTime(settings.lastExportAt)}.` : t`No backup yet. Export everything from Settings, or set up automatic backups there.` }));
+}
+
+/** "October 2026", for a "YYYY-MM". @param {string} key */
+const monthName = (key) => when(Date.parse(`${key}-01T00:00:00Z`), 'UTC', { month: 'long', year: 'numeric' });
+
+/**
+ * A chat: one line, its name and its time (under a month's heading, its day too); a tap opens its conversation.
+ * @param {any} s @param {Row} r @param {{ say: ReturnType<typeof wording>, now: number, zone: string }} o
+ */
+function chatLine(s, r, { say, now, zone }) {
+  const name = scopeTitle(s);
+  const monthly = r.at < now - RECENT_DAYS * 86_400_000;
+  return h('li', {}, h('a', { class: 'card trip-card line', href: talkHref(s.id) },
+    h('span', { class: 'name', ...say(name), text: name }),
+    h('span', { class: 'sub', text: when(r.at, zone, { ...(monthly ? { month: 'short', day: 'numeric' } : {}), hour: '2-digit', minute: '2-digit' }) })));
 }
 
 /**
- * A trip card (spec §16.2): its name and dates, its stamps (spec §13), files waiting to be read there, and when it was last backed up (§4.9).
- * @param {any} s @param {any} trip @param {{ at: number | null, changed: boolean }} backup @param {import('../stamps.js').Stamp[]} stamps
- * @param {ReturnType<typeof wording>} say the name is the user's words: its own language, not the screens'
- * @param {number} unread files Shiori moved or added there that its conversation hasn't read yet (filesToRead)
+ * A trip's card (spec §16.2, the timeline design): its name and dates, its stamps (spec §13), files waiting to be read there, and when it was last
+ * backed up (§4.9); happening, tinted, "Day 3 of 8" and its Next; ahead, how soon and her last line there. A tap opens its conversation; an archived
+ * one's opens Details, where Unarchive is. @param {any} ctx @param {any} s its record @param {Row | null} r its row; null: archived
+ * @param {{ say: ReturnType<typeof wording>, now: number, zone: string }} o say: the name is the user's words: its own language, not the screens'
  */
-function tripCard(s, trip, backup, stamps, say, unread) {
-  const when = trip?.start ? dateRange(trip.start, trip.end) : null;
-  return h('li', {}, h('a', { class: 'card trip-card', href: `#/trip/${encodeURIComponent(s.id)}` },
+async function tripCard(ctx, s, r, { say, now, zone }) {
+  const [backup, stamps, unread] = await Promise.all([backupState(ctx.store, s.id), tripStamps(ctx, s.id), r ? filesToRead(ctx.store, s.id).then((f) => f.length) : 0]);
+  /** @type {HTMLElement[]} */
+  const more = [];
+  if (r?.phase === 'happening') {
+    const d = dayOfTrip(s, now, zone);
+    if (d) more.push(h('span', { class: 'sub day-of', text: t`Day ${d.day} of ${d.of}` }));
+    const [next] = upcoming((await tripRows(ctx, s.id).catch(() => ({ rows: [] }))).rows, now, 1);
+    if (next) more.push(h('span', { class: 'sub next', dir: 'auto', text: next.day && next.day !== dayIn(now, zone) ? t`Next: ${day(next.day, true)} ${next.time} ${rowName(next)}` : t`Next: ${next.time} ${rowName(next)}` }));
+  } else if (r?.phase === 'future') {
+    more.push(h('span', { class: 'sub soon', text: relTime(r.at, now) }));
+    const last = await herLast(ctx, s.id);
+    if (last) more.push(h('span', { class: 'sub her-last', ...say(last), text: last }));
+  }
+  return h('li', {}, h('a', { class: ['card', 'trip-card', r?.phase === 'happening' ? 'happening' : ''], href: r ? talkHref(s.id) : `#/trip/${encodeURIComponent(s.id)}` },
     h('span', { class: 'trip-card-text' },
       h('span', { class: 'name', ...say(s.title), text: s.title }),
-      h('span', { class: 'sub' }, ...factsWords([when, stamps.length ? { stamps: stampCount(stamps.length) } : null, unread ? plural(unread, '# file waiting to be read', '# files waiting to be read') : null, t`updated ${relTime(s.updated)}`, backupText(backup)]))),
+      h('span', { class: 'sub' }, ...factsWords([s.start ? dateRange(s.start, s.end) : null, stamps.length ? { stamps: stampCount(stamps.length) } : null, unread ? plural(unread, '# file waiting to be read', '# files waiting to be read') : null, backupText(backup)])),
+      ...more),
     stampMarks(stamps)));
+}
+
+/** Her last line in a conversation. @param {any} ctx @param {string} scope @returns {Promise<string>} */
+async function herLast(ctx, scope) {
+  const [e] = await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(scope, { types: ['out.speak'], reverse: true, limit: 1 }));
+  return e ? String({ ...e.data, ...(await storedTexts(ctx.store, e)) }.text ?? '') : '';
 }
 
 /**

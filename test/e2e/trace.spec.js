@@ -10,9 +10,12 @@ test('the trace shows what happened, newest first, and filters by type', async (
   await expect(page.getByRole('heading', { name: 'Trace' })).toBeVisible();
   await expect(page.getByText('/trip.json').first()).toBeVisible();
   await page.getByLabel('Type contains').fill('scope.create');
-  await expect(page.locator('.trace li')).toHaveCount(1);
-  await page.locator('.trace summary').first().click();
-  await expect(page.locator('.trace pre').first()).toContainText('"type": "scope.create"');
+  // The trip's, and the standing draft's: + opens one, made ready as annai starts (timeline stage 4).
+  await expect(page.locator('.trace li')).toHaveCount(2);
+  const made = page.locator('.trace li', { hasText: 'Trace trip' });
+  await expect(made).toHaveCount(1);
+  await made.locator('summary').click();
+  await expect(made.locator('pre')).toContainText('"type": "scope.create"');
 });
 
 test('a read that failed and tried again by itself is a line in the Trace under Errors, "read: …", in the device log', async ({ page }) => {

@@ -238,7 +238,7 @@ test('the languages are told to the model: Shiori\'s system text holds them, and
     await add.selectOption('ja');
     await addButton.click();
     await expect(panel.getByRole('status')).toHaveText('Added Japanese. Saved');
-    await page.goto('/#/trips');
+    await page.goto('/#/talk'); // the dock at rest on home has no type button (timeline stage 4)
     await page.getByRole('button', { name: 'Type' }).click();
     await page.getByLabel('Message to Shiori').fill('Hi');
     await page.getByRole('button', { name: 'Send' }).click();
@@ -251,7 +251,7 @@ test('the languages are told to the model: Shiori\'s system text holds them, and
     await page.getByLabel('Add a language').selectOption('zh');
     await page.getByRole('button', { name: 'Add', exact: true }).click();
     await expect(page.getByRole('region', { name: 'Languages', exact: true }).getByRole('status')).toHaveText('Added Chinese (Simplified). Saved');
-    await page.goto('/#/trips');
+    await page.goto('/#/talk'); // the dock at rest on home has no type button (timeline stage 4)
     await page.getByRole('button', { name: 'Type' }).click();
     await page.getByLabel('Message to Shiori').fill('And dinner?');
     await page.getByRole('button', { name: 'Send' }).click();

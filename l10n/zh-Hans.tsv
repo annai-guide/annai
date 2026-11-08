@@ -1014,7 +1014,8 @@ drtui7	ok	Open a trip first	请先打开一个旅行	src/ui/dock.js:154
 1xmvmzh	ok	Kokoro is working	Kokoro 正在工作	src/ui/dock.js:254	
 1ndyc8s	ok	Stop Kokoro	停止 Kokoro	src/ui/dock.js:255	
 ky4lc5	ok	Stop	停止	src/ui/dock.js:255	
-1s6dmy6	ok	Camera	相机	src/ui/dock.js:268	
+snj02s	draft	In {0} ›	{0} 的对话 ›	src/ui/dock.js:271	{0} = scopeTitle(rec)
+1s6dmy6	ok	Camera	相机	src/ui/dock.js:284	
 1rm0t76	ok	{0} isn't valid JSON.	{0}不是有效的 JSON。	src/ui/dom.js:153	{0} = label; Note: {0} is a field's label.
 1a791in	ok	{0} has to be an object: { … }.	{0}必须是对象：{ … }。	src/ui/dom.js:155	{0} = label; Note: {0} is a field's label.
 1gkm7i5	ok	Saving…	正在保存…	src/ui/dom.js:264	
@@ -2564,20 +2565,21 @@ knyqwh	ok	Add photos or files	添加照片或文件	src/ui/screens/trip.js:304
 ecy82r	ok	Add a file	添加文件	src/ui/screens/trip.js:335	
 1bmm5eq	ok	File path	文件路径	src/ui/screens/trip.js:336	
 16gte2l	ok	Create	创建	src/ui/screens/trip.js:338	
-yeiyfl	ok	No trips yet. Start one below, or open a trip someone sent you.	还没有旅行。在下方开始一个，或打开别人发来的旅行。	src/ui/screens/trips.js:29	
-33pqd9	ok	Last backup {0}, to {1}.	上次备份：{0}，备份到{1}。	src/ui/screens/trips.js:33	{0} = relTime(latest.last.at); {1} = latest.name; Note: {1} is the backup place's name.
-in89ko	ok	No backup yet. Export everything from Settings, or set up automatic backups there.	还没有备份。请在设置中导出全部内容，或设置自动备份。	src/ui/screens/trips.js:34	
-sjnfyu	ok	Archived trips ({0})	已归档的旅行（{0}）	src/ui/screens/trips.js:36	{0} = archived.length
-1q78pfk#other	ok	# files waiting to be read	# 个文件等待读取	src/ui/screens/trips.js:51	plural; # = unread; English: "# file waiting to be read" (one), "# files waiting to be read" (other); Note: on a trip's card: files Shiori moved there that she hasn't read there yet.
-ru2yru	ok	updated {0}	{0}更新	src/ui/screens/trips.js:51	{0} = relTime(s.updated)
-9q9lbc	ok	Talk with her outside any trip.	在旅行之外和她聊。	src/ui/screens/trips.js:67	Note: under Shiori, no trip: the conversation outside any trip.
-v84pjn	ok	Shiori, no trip	Shiori（不在旅行中）	src/ui/screens/trips.js:67	Note: the way back from a trip to the conversation outside any trip, above the trip cards on Trips; 旅 / 旅行 as the glossary's trip.
-1ceddv5	ok	Big Sur · Thanksgiving	云南 · 国庆	src/ui/screens/trips.js:96	Note: An example trip name (the field's placeholder): a Chinese one (Yunnan, the National Day week).
-axugy7	ok	Start a trip	开始旅行	src/ui/screens/trips.js:116	
-ero67x	ok	Trip name	旅行名称	src/ui/screens/trips.js:117	
-1776dho	ok	Add dates (optional)	添加日期（可选）	src/ui/screens/trips.js:119	Note: 添加 as the glossary's Add; 可选 as forms say optional.
-1baslgi	ok	Start trip	开始旅行	src/ui/screens/trips.js:121	Note: The same words as the form's heading, "Start a trip".
-152lnj5	ok	Use real dates for the start and end.	请填写有效的开始和结束日期。	src/ui/screens/trips.js:128	
+aoc0k0#other	draft	{0}: # chats	{0}：# 个聊天	src/ui/screens/trips.js:43	plural; # = e.fold.rows.length; {0} = monthName(e.fold.month); English: "{0}: # chat" (one), "{0}: # chats" (other)
+cvvz5z	draft	Tap + to talk to Shiori.	轻点 + 与 Shiori 交谈。	src/ui/screens/trips.js:57	
+sjnfyu	ok	Archived trips ({0})	已归档的旅行（{0}）	src/ui/screens/trips.js:62	{0} = archived.length
+33pqd9	ok	Last backup {0}, to {1}.	上次备份：{0}，备份到{1}。	src/ui/screens/trips.js:65	{0} = relTime(latest.last.at); {1} = latest.name; Note: {1} is the backup place's name.
+in89ko	ok	No backup yet. Export everything from Settings, or set up automatic backups there.	还没有备份。请在设置中导出全部内容，或设置自动备份。	src/ui/screens/trips.js:66	
+1rrn1xn	draft	Day {0} of {1}	第 {0} 天，共 {1} 天	src/ui/screens/trips.js:96	{0} = d.day; {1} = d.of
+1q78pfk#other	ok	# files waiting to be read	# 个文件等待读取	src/ui/screens/trips.js:107	plural; # = unread; English: "# file waiting to be read" (one), "# files waiting to be read" (other); Note: on a trip's card: files Shiori moved there that she hasn't read there yet.
+9q9lbc	ok	Talk with her outside any trip.	在旅行之外和她聊。	src/ui/screens/trips.js:130	Note: under Shiori, no trip: the conversation outside any trip.
+v84pjn	ok	Shiori, no trip	Shiori（不在旅行中）	src/ui/screens/trips.js:130	Note: the way back from a trip to the conversation outside any trip, above the trip cards on Trips; 旅 / 旅行 as the glossary's trip.
+1ceddv5	ok	Big Sur · Thanksgiving	云南 · 国庆	src/ui/screens/trips.js:159	Note: An example trip name (the field's placeholder): a Chinese one (Yunnan, the National Day week).
+axugy7	ok	Start a trip	开始旅行	src/ui/screens/trips.js:179	
+ero67x	ok	Trip name	旅行名称	src/ui/screens/trips.js:180	
+1776dho	ok	Add dates (optional)	添加日期（可选）	src/ui/screens/trips.js:182	Note: 添加 as the glossary's Add; 可选 as forms say optional.
+1baslgi	ok	Start trip	开始旅行	src/ui/screens/trips.js:184	Note: The same words as the form's heading, "Start a trip".
+152lnj5	ok	Use real dates for the start and end.	请填写有效的开始和结束日期。	src/ui/screens/trips.js:191	
 ric74d	ok	Checking annai and its plugins…	正在检查 annai 及其插件…	src/ui/screens/updates.js:18	
 1mk4lgq	ok	annai hasn't checked since it started.	annai 启动后还没有检查过。	src/ui/screens/updates.js:19	
 cmuwtk	ok	Last checked {0}.	上次检查：{0}。	src/ui/screens/updates.js:19	{0} = relTime(checkedAt, now)
@@ -2661,7 +2663,7 @@ bewa4v	ok	What she says	她说的话	src/ui/screens/voice.js:183
 9dx265	ok	Welcome to annai	欢迎使用 annai	src/ui/screens/welcome.js:20	
 1r8f7ib	ok	annai is a free, open-source travel guide that lives on your phone.	annai 是一款住在你手机里的免费开源旅行向导。	src/ui/screens/welcome.js:45	
 119pjng	ok	Its guide is Shiori. She plans the trip with you, keeps your bookings and notes, reminds you at the right time and place, talks with you on the road, and makes a recap afterwards.	它的向导是 Shiori。她和你一起规划旅行，保管你的预订和笔记，在合适的时间和地点提醒你，在路上和你聊天，旅行结束后为你做回顾。	src/ui/screens/welcome.js:46	
-1re677m	ok	She is at the bottom of every screen: tap her to talk, or type.	她在每个屏幕的底部：轻点她来说话，或者打字。	src/ui/screens/welcome.js:47	
+gs9dqm	draft	Tap + on the timeline to talk to her, or tap her in any conversation.	在时间线上轻点 + 与她交谈，或在任何对话中轻点她。	src/ui/screens/welcome.js:47	
 1kzszxn	ok	annai (案内) is Japanese for "guidance; showing someone around".	annai（案内）是日语，意思是“引导；带人四处看看”。	src/ui/screens/welcome.js:48	
 u671cl	ok	Shiori is your guide. She has two halves that work together.	Shiori 是你的向导。她有两个协同工作的分身。	src/ui/screens/welcome.js:56	
 5swud	ok	Koe ({0}, voice)	Koe（{0}，声音）	src/ui/screens/welcome.js:58	{0} = KOE; Note: {0} is 声, Koe's name in Japanese; ja needs no gloss.
@@ -2721,9 +2723,9 @@ f2eaqi	ok	Find a search plugin	查找搜索插件	src/ui/search-panel.js:93
 do1m5o	ok	{0}: annai can't show this setting.	{0}：annai 无法显示此设置。	src/ui/settings-form.js:116	{0} = f.label
 1qrgqx0	ok	saved	已保存	src/ui/settings-form.js:121	
 phutrz	ok	{0} wasn't saved: {1}	{0}未保存：{1}	src/ui/settings-form.js:130	{0} = f.label; {1} = messageOf(e)
-1skw031	ok	This screen couldn't open	无法打开此页面	src/ui/shell.js:394	
-1z00dfe	ok	An update is ready	更新已就绪	src/ui/shell.js:504	
-gt0nrj	ok	It will be used the next time annai starts.	下次启动 annai 时生效。	src/ui/shell.js:504	
+1skw031	ok	This screen couldn't open	无法打开此页面	src/ui/shell.js:405	
+1z00dfe	ok	An update is ready	更新已就绪	src/ui/shell.js:515	
+gt0nrj	ok	It will be used the next time annai starts.	下次启动 annai 时生效。	src/ui/shell.js:515	
 sntfon	ok	Hello! This is how I sound when I talk to you.	你好！我和你说话时就是这样的声音。	src/ui/speech-check.js:10	Note: spoken by the voice being tested, so it is heard in the screens' language.
 n8hyke	ok	{0}. {1}	{0}。{1}	src/ui/speech-check.js:16	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
 1a27ynt	ok	Last tested {0}: it worked.	上次测试于{0}：可用。	src/ui/speech-check.js:26	{0} = relTime(verified.at)

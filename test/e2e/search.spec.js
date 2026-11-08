@@ -110,8 +110,7 @@ test('free search through Shiori: Exa at its limit hands on to Parallel and rest
     await page.getByRole('checkbox', { name: 'Use Parallel' }).uncheck();
     await expect.poll(async () => (await appSettings(page)).web?.searchOff).toEqual(['parallel']);
     await expect(page.locator('#search-order li', { hasText: 'Exa' })).toContainText('resting after a failure');
-    await page.goto('/#/trips');
-    await page.getByRole('button', { name: 'Big Sur' }).click().catch(() => {});
+    await page.goto('/#/talk'); // Big Sur's conversation: the dock at rest on home has no type button (timeline stage 4)
     await page.getByRole('button', { name: 'Type' }).click();
     await page.getByLabel('Message to Shiori').fill('Where is the best Bixby Bridge viewpoint?');
     await page.getByRole('button', { name: 'Send' }).click();
