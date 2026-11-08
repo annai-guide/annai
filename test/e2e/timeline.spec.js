@@ -440,3 +440,27 @@ test("a trip card follows the clock when annai comes back to the front after a w
   await back();
   await expect(card.locator('.next')).toContainText('Lunch');
 });
+
+test('home while she works: the dock says the name of the conversation as it is now (the first line names it; a rename in Details)', async ({ page }) => {
+  const speak = anthropicToolReply([{ name: 'speak', input: { text: 'The pier is a short walk.' } }, { name: 'sleep', input: {} }]);
+  const llm = await startModelServer({ '/b/v1/messages': { status: 200, type: 'text/event-stream', body: speak, delayMs: 25_000 } });
+  try {
+    await modelSetUp(page, llm.origin, 'Elsewhere');
+    await page.goto('/#/trips');
+    await plus(page).click();
+    const id = draftOf(page.url());
+    await box(page).fill('Where is the pier?');
+    await box(page).press('Enter');
+    await expect.poll(() => llm.bodies('/b/v1/messages').length).toBeGreaterThan(0); // her turn waits on the model
+    await page.getByRole('link', { name: 'Back to Trips' }).click();
+    await expect(page.locator('.dock .in-convo')).toHaveText('In Where is the pier? ›');
+    await page.goto(`/#/trip/${id}`); // Details, while her turn goes on
+    await page.getByLabel('Name', { exact: true }).fill('Harbour');
+    await page.getByRole('button', { name: 'Save' }).click();
+    await page.goto('/#/trips');
+    await expect(page.locator('body')).toHaveClass(/\bdock-busy\b/); // her turn is still on
+    await expect(page.locator('.dock .in-convo')).toHaveText('In Harbour ›');
+  } finally {
+    await llm.stop();
+  }
+});

@@ -260,7 +260,8 @@ export function createDock(ctx) {
   // On home, while she speaks, listens or works, the whole dock shows and says which conversation it is in (shiori.css: body.home.dock-busy).
   const inConvo = h('a', { class: 'in-convo', href: '#/trips' });
   let naming = 0;
-  const nameConvo = async () => {
+  /** @param {string} [title] the title in trip.json, read at once when it changes: the record's follows a moment later */
+  const nameConvo = async (title) => {
     const mine = ++naming;
     const id = ctx.agent.target;
     const rec = id ? await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ x) => x.getScope(id)).catch(() => null) : null;
@@ -268,10 +269,15 @@ export function createDock(ctx) {
     inConvo.hidden = !rec;
     if (!rec) return;
     inConvo.href = talkHref(rec.id);
-    inConvo.textContent = t`In ${scopeTitle(rec)} ›`;
+    inConvo.textContent = t`In ${scopeTitle(title === undefined ? rec : { ...rec, title })} ›`;
   };
   nameConvo();
   offs.push(ctx.agent.on('state', () => { nameConvo(); }));
+  // Named, or renamed, while the turn goes on and the state stays: the first line, Shiori's patch, Details.
+  offs.push(ctx.ws?.onChange?.((/** @type {{ scope: string, path: string }} */ c) => {
+    if (c.path !== '/trip.json' || c.scope !== ctx.agent.target) return;
+    ctx.ws.readJSON(c.scope, '/trip.json').then((/** @type {any} */ j) => { if (typeof j?.title === 'string' && c.scope === ctx.agent.target) nameConvo(j.title); }, () => {});
+  }));
   // Plugins' status chips and dock actions (spec §16.4), drawn again whenever they change (refreshSlots).
   const pluginChips = h('span', { class: 'plugin-chips' });
   const pluginActions = h('span', { class: 'plugin-actions' });
