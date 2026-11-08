@@ -137,14 +137,21 @@ test('heard: a dismissed line does nothing; one with no text names it when heard
   assert.equal((await ws.readJSON(third, '/trip.json')).title, 'Dictated words');
 });
 
-test('a file wake is first use, named from the file', async () => {
-  const { ws, agent, chats, scope, spent } = await kit();
+test('a file kept in it is first use, named from the file, with no line or model to wake; a photo is Photo · hh:mm', async () => {
+  const { ws, chats, scope, spent } = await kit();
   await chats.start();
   const draft = /** @type {string} */ (chats.ready);
-  await agent.log(draft, { type: 'wake', actor: 'system', data: { id: 'w1', reasons: [{ kind: 'file', text: 'New files', files: ['/files/tickets.pdf'] }] } });
+  await ws.write(draft, '/names.json', {}, { author: 'shiori' });
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(chats.ready, draft, 'not a file of its own');
+  await ws.write(draft, '/files/tickets.pdf', '%PDF', { author: 'user', type: 'application/pdf' });
   await spent(draft);
   assert.ok(!(await scope(draft))?.draft);
   assert.equal((await ws.readJSON(draft, '/trip.json')).title, 'tickets.pdf');
+  const next = /** @type {string} */ (chats.ready);
+  await ws.write(next, '/files/2026-11-27-1200.jpg', new Uint8Array([0xff, 0xd8, 0xff]), { author: 'user', type: 'image/jpeg' });
+  await spent(next);
+  assert.match((await ws.readJSON(next, '/trip.json')).title, /^Photo · \d\d:\d\d$/);
 });
 
 test('a photo with no words is Photo · hh:mm', async () => {

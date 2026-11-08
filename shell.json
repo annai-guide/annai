@@ -1,5 +1,5 @@
 {
-  "build": "01f7fb7b0f95",
+  "build": "095951370a4b",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -147,7 +147,7 @@
     "/src/core/schema.js": "8a2e0d7a3bf3",
     "/src/core/search.js": "62a0a393233e",
     "/src/core/scopes.js": "9106a1453291",
-    "/src/core/chats.js": "f02b9ccfa115",
+    "/src/core/chats.js": "8d049d665b45",
     "/src/core/settings.js": "7291aae0a8cd",
     "/src/core/shown.js": "450af0a8c563",
     "/src/core/signals.js": "1ba83a24e15c",
@@ -252,7 +252,7 @@
     "/src/ui/screens/experimental.js": "9f8609693e3b",
     "/src/ui/screens/ext.js": "83c0244cf0d6",
     "/src/ui/screens/file.js": "bdbf73cc6a7e",
-    "/src/ui/screens/import.js": "fdd9643e8859",
+    "/src/ui/screens/import.js": "1daa2f48bd7c",
     "/src/ui/screens/item.js": "dc9f5e4a9fc6",
     "/src/ui/screens/mcp.js": "8594db2419e8",
     "/src/ui/screens/model.js": "6976470d905a",
@@ -296,8 +296,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "b5666f3b806d",
-    "/l10n/zh-Hans.json": "30f870b9c323",
-    "/l10n/zh-Hant.json": "846bc1866757"
+    "/l10n/ja.json": "ab619a79debc",
+    "/l10n/zh-Hans.json": "c9da3318274e",
+    "/l10n/zh-Hant.json": "9c8cdfe4e648"
   }
 }
