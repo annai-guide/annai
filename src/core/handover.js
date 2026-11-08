@@ -317,10 +317,13 @@ async function holdsOthers(store, scope, handover) {
  *   removed; kept: files left as the user changed them; waiting: files went back to wait with her; back: the trips files went back to
  */
 export async function undoEverywhere(ws, scope, handover, o) {
-  const [went, came] = await ws.store.tx(['events'], 'readonly', async (t) => [
-    (await t.listEvents(scope, { types: ['handover.moved'] })).filter((e) => e.data?.handover === handover).map((e) => String(e.data.to)),
-    (await t.listEvents(scope, { types: ['msg.user'] })).filter((e) => e.data?.handover === handover && typeof e.data?.from === 'string').map((e) => String(e.data.from)),
-  ]);
+  const [went, came, sibs] = await ws.store.tx(['events'], 'readonly', async (t) => {
+    const moved = async (/** @type {string} */ s) => (await t.listEvents(s, { types: ['handover.moved'] })).filter((e) => e.data?.handover === handover).map((e) => String(e.data.to));
+    const from = (await t.listEvents(scope, { types: ['msg.user'] })).filter((e) => e.data?.handover === handover && typeof e.data?.from === 'string').map((e) => String(e.data.from));
+    const sibs = []; // the trips the conversation it came from sent files to for it: Undo here takes them back too
+    for (const c of from) sibs.push(...await moved(c));
+    return [await moved(scope), from, sibs];
+  });
   /** @type {string[]} */
   const removed = [];
   /** Each file left as the user changed it, once, though both ends of a move may say so. @type {Set<string>} */
@@ -329,7 +332,7 @@ export async function undoEverywhere(ws, scope, handover, o) {
   const marks = [];
   /** Where the files went back to: the waiting space, or trips. @type {Set<string>} */
   const returned = new Set();
-  for (const s of [...new Set([...went.filter((x) => x !== scope), scope, ...came.filter((x) => x !== scope && !went.includes(x))])]) {
+  for (const s of [...new Set([...went.filter((x) => x !== scope), ...sibs.filter((x) => x !== scope), scope, ...came.filter((x) => x !== scope && !went.includes(x))])]) {
     const out = await undoHandover(ws, s, handover, { mark: false });
     for (const k of out.keptKeys) kept.add(k);
     for (const r of out.returned ?? []) returned.add(r);

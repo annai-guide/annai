@@ -367,6 +367,20 @@ test("the open conversation's mark is written only once its trips are removed: a
   assert.doesNotMatch(words, /0 files/);
 });
 
+test('Undo in the first of two trips she started from one conversation for one hand-over takes the second away too, and the files wait again', async () => {
+  const { store, ws } = await kit();
+  const a = await startedFrom(ws, store, ME, 'h-1', 'Anchorage');
+  const b = await startedFrom(ws, store, ME, 'h-1', 'Kyoto');
+  for (const [name, to] of [['a.pdf', a], ['b.pdf', b]]) {
+    await ws.write(SYS_WAITING, `/files/${name}`, utf8(name), { author: 'user', type: 'application/pdf' });
+    await moveFile(ws, { scope: SYS_WAITING, path: `/files/${name}` }, to, { handover: 'h-1' });
+  }
+  const out = await undoEverywhere(ws, a, 'h-1', { remove: async (s) => removeTrip(store, s) });
+  assert.deepEqual(out.removed.sort(), ['Anchorage', 'Kyoto']);
+  assert.equal(await store.tx(['scopes'], 'readonly', (t) => t.getScope(b)), undefined);
+  assert.deepEqual((await ws.list(SYS_WAITING, '/files/')).map((f) => f.path).sort(), ['/files/a.pdf', '/files/b.pdf']);
+});
+
 test('one Undo that removes two trips names both', async () => {
   const { store, ws } = await kit();
   const a = await startedFrom(ws, store, ME, 'h-1', 'Anchorage');
