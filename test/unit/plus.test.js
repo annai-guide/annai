@@ -54,3 +54,20 @@ test('no draft ready yet (the first moments): it waits for one, then goes', asyn
   assert.deepEqual(log, ['open trip-late', 'tap']);
   assert.equal(location.hash, '#/trip/trip-late/talk');
 });
+
+test("no draft could be made: the card says so, and a + tapped meanwhile fires nothing later", async () => {
+  /** @type {(e: Error) => void} */
+  let fail = () => {};
+  const made = new Promise((_, no) => { fail = no; }); // one make, shared by every tap, as Chats' is
+  const { ctx, log, location } = kit({ ready: null, whenReady: () => /** @type {Promise<string>} */ (made) });
+  newConversation(ctx);
+  newConversation(ctx);
+  fail(new Error('the disk is full'));
+  await new Promise((r) => setTimeout(r, 0));
+  assert.deepEqual(log, ["card That conversation didn't open", "card That conversation didn't open"]);
+  assert.equal(location.hash, '#/trips');
+  ctx.chats.ready = 'trip-late'; // a later try works: nothing tapped before goes now
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(log.length, 2);
+  assert.equal(location.hash, '#/trips');
+});

@@ -3,9 +3,12 @@ import { parseHash } from './router.js';
 import { talkHref } from './format.js';
 import { updateAppSettings } from '../core/settings.js';
 
+/** The card for a conversation that didn't open. @param {any} ctx @param {unknown} e */
+export const tellNotOpen = (ctx, e) => ctx.notices.card({ tone: 'warn', title: t`That conversation didn't open`, body: messageOf(e) });
+
 /** Opens a conversation, or says it didn't and is false. @param {any} ctx @param {string | null} id */
 export const openOrTell = (ctx, id) => ctx.agent.open(id).then(() => true, (/** @type {unknown} */ e) => {
-  ctx.notices.card({ tone: 'warn', title: t`That conversation didn't open`, body: messageOf(e) });
+  tellNotOpen(ctx, e);
   return false;
 });
 

@@ -221,6 +221,20 @@ test('no draft ready yet: whenReady waits for one', async () => {
   assert.equal(id, chats.ready);
 });
 
+test('a draft that cannot be made: whenReady rejects, and the next call tries again', async () => {
+  const { chats, store } = await kit();
+  const real = store.tx.bind(store);
+  let failing = true;
+  store.tx = /** @type {any} */ ((/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => (failing && mode === 'readwrite' ? Promise.reject(new Error('the disk is full')) : real(stores, mode, fn)));
+  await assert.rejects(chats.whenReady(), /the disk is full/);
+  assert.equal(chats.ready, null);
+  await assert.rejects(chats.whenReady(), /the disk is full/, 'tried again, and failed again: not left waiting');
+  failing = false;
+  const id = await chats.whenReady();
+  assert.equal(id, chats.ready);
+  assert.equal(await chats.whenReady(), id);
+});
+
 test('exports and changedSince leave a draft out; a backup restored with activeTrip on it opens nothing', async () => {
   const a = await kit();
   const trip = await createTrip(a.ws, { title: 'Testville', start: '2027-01-01' });
