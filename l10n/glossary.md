@@ -4,7 +4,7 @@ annai's names for its screens and things in Japanese (ja), Chinese, Simplified (
 
 This page is a review aid. The source is [`glossary.tsv`](glossary.tsv): one row per term, with where the English shows on screen and a note on why each word was chosen. Rows are in this order of kind (screen, thing, mode, platform, never), then by English. Its English is matched as written, so `Voice` (the screen) and `voice` (one she speaks with) are two rows. Some terms are also ordinary words (Now, Add, Ask, Allow, Share, Main, key, card): the strings check should take them as names only where a message uses them as one.
 
-120 rows: 31 screen, 38 thing, 7 mode, 28 platform, 16 never.
+121 rows: 31 screen, 39 thing, 7 mode, 28 platform, 16 never.
 
 ## Screens and sections
 
@@ -59,6 +59,7 @@ This page is a review aid. The source is [`glossary.tsv`](glossary.tsv): one row
 | Housekeeping | 会話の整理 | 对话整理 | 對話整理 |
 | key | キー | 密钥 | 金鑰 |
 | Main | メイン | 主要 | 主要 |
+| New conversation | 新しい会話 | 新对话 | 新對話 |
 | Offline pack | オフラインパック | 离线包 | 離線資料包 |
 | Open a trip someone sent you | 送られてきた旅を開く | 打开别人发来的旅行 | 開啟別人傳來的旅行 |
 | passphrase | パスフレーズ | 密码短语 | 密碼片語 |

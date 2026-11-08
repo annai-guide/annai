@@ -22,6 +22,8 @@ import { secretFreeLog, tracedFetch, shownWithoutSecrets } from '../core/agent/n
 import { disabledCard, reloadCard, startCards, NEEDS_RELOAD, pluginsHeld } from '../ui/plugin-cards.js';
 import { Updates, DAILY } from '../ui/updates.js';
 import { Halves } from '../core/agent/halves.js';
+import { Chats } from '../core/chats.js';
+import { deviceZone } from '../core/time.js';
 import { codec } from '../ui/photo-codec.js';
 import { selfTools } from '../core/agent/self-tools.js';
 import { syncNames } from '../core/names.js';
@@ -158,6 +160,9 @@ async function boot() {
   agent.addLoopTools(selfTools(agent.kokoro));
   // Starting, opening and listing trips, and moving a file into one, for what the user hands her (the bookings-and-trips design).
   agent.addLoopTools(tripTools(agent));
+  // The standing draft + opens, spent and named by its first line; ready in the first moments, and + waits for it until then.
+  const chats = new Chats({ ws, agent, tz: deviceZone });
+  chats.start().catch((e) => console.warn(/* en */ "the new conversation couldn't be made ready", e));
   // Live mode (spec §11); the phone's sensors come in a plugin. Notifications for a closed annai (§11.6): what the
   // service worker saw is read at each catch-up; the mirror keeps the push relay in step with live mode.
   /** @type {PushMirror | null} */
@@ -228,7 +233,7 @@ async function boot() {
   const updates = new Updates({ host: plugins, env: { addressFetch: tracedFetch(store, SYS, { tool: /* en */ 'plugin updates' }), next: nextScreens } });
   updates.agent = agent;
   updates.voice = voice;
-  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, awake, pack, presets, backups, sim, push, updates, version: VERSION });
+  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, awake, pack, presets, backups, sim, push, updates, chats, version: VERSION });
   updates.notices = shell.notices;
   // A reload mid-drive starts the shell before live mode has restored the drive; that isn't a change to take over for.
   liveStarted.then(shell.seedActivity, () => {});

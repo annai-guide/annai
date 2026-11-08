@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { liveKit, at, iso, off, LA, MONTEREY, BIXBY, NEPENTHE } from './live-kit.js';
 import { removeTrip, setTripStatus, ME } from '../../src/core/scopes.js';
+import { ensureDraft } from '../../src/core/chats.js';
 import { record } from '../../src/core/agent/log.js';
 import { ManualClock } from '../../src/core/live/clock.js';
 
@@ -387,4 +388,25 @@ test("an urgent watch of a trip that isn't open hands its reminders on urgent; a
   await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea.' });
   await k.to(at('10:00'));
   assert.deepEqual(k.agent.reminders.map((r) => [r.text, r.scope, r.urgent]), [['Leave now.', k.trip, true], ['Tea.', k.trip, undefined]]);
+});
+
+test('no location point goes into an open draft; a used draft takes points like any chat', async () => {
+  const k = await liveKit({ start: at('08:30', '2026-12-05') });
+  const draft = await ensureDraft(k.ws);
+  k.agent.opened(draft);
+  await k.settle();
+  assert.equal(k.live.play, null, 'nothing happening, and the draft is no conversation yet');
+  await k.fix(at('08:40', '2026-12-05'), MONTEREY);
+  await k.fix(at('08:45', '2026-12-05'), BIXBY);
+  assert.deepEqual(await k.events(['location'], draft), []);
+  // Its first line spends it (chats.js); the next draft is made, which is how live mode hears of it.
+  await k.store.tx(['scopes'], 'readwrite', async (t) => {
+    const { draft: _, ...rec } = /** @type {any} */ (await t.getScope(draft));
+    await t.putScope(rec);
+  });
+  await ensureDraft(k.ws);
+  await k.settle();
+  assert.equal(k.live.play, draft);
+  await k.fix(at('08:50', '2026-12-05'), MONTEREY);
+  assert.equal((await k.events(['location'], draft)).length, 1);
 });

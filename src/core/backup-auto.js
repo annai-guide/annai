@@ -36,7 +36,7 @@ export const TIMINGS = Object.freeze({
 export function changedSince(store, seqs, now = Date.now()) {
   return store.tx(['scopes', 'events'], 'readonly', async (t) => {
     const counted = (/** @type {string} */ id) => id !== SYS && id !== SYS_DEVICE;
-    const scopes = (await t.listScopes()).filter((s) => counted(s.id));
+    const scopes = (await t.listScopes()).filter((s) => counted(s.id) && !s.draft); // a draft is never in a backup
     let changed = !seqs;
     /** @type {number | null} */
     let lastChangeAt = null;

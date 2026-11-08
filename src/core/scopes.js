@@ -43,6 +43,9 @@ export function newId(prefix) {
   return `${prefix}-${Date.now().toString(36)}${r}`;
 }
 
+/** A draft's stored name until its first line names it (chats.js); the screens show it in theirs. */
+export const DRAFT_TITLE = /* en */ 'New conversation';
+
 /* en */
 const PROFILE = '# Profile\n\n- What to call me:\n- Language: English\n- Units:\n- Preferences:\n';
 
@@ -58,7 +61,7 @@ export function scopeTitle(rec) {
     case SYS_PLUGINS: return t`Plugins`;
     case SYS_DEVICE: return t`This device`;
     case SYS_WAITING: return t`Waiting with Shiori`;
-    default: return rec.title;
+    default: return rec.title === DRAFT_TITLE ? t`New conversation` : rec.title;
   }
 }
 
@@ -103,7 +106,8 @@ export async function ensureDeviceScope(store, now = Date.now()) {
  * A new trip: a name is enough. Shiori starts one for a hand-over as hers (the bookings-and-trips design), its first entries carrying it.
  * @param {Workspace} ws
  * @param {{ title: string, start?: string, end?: string, places?: string[], timezones?: string[] }} trip
- * @param {{ author?: 'user' | 'shiori', handover?: string }} [o] author: who starts it (the user, unless Shiori did); handover: the hand-over she started it for
+ * @param {{ author?: 'user' | 'shiori', handover?: string, draft?: boolean }} [o] author: who starts it (the user, unless Shiori did); handover: the hand-over she started it for;
+ *   draft: the standing draft (chats.js), unless one is there already, whose id it then gives
  * @returns {Promise<string>} the new scope id
  */
 export async function createTrip(ws, { title, start, end, places, timezones }, o = {}) {
@@ -114,10 +118,14 @@ export async function createTrip(ws, { title, start, end, places, timezones }, o
   const tripId = newId('t');
   const author = o.author ?? 'user';
   const handover = o.handover ? { handover: o.handover } : {};
-  await ws.store.tx(['scopes', 'events'], 'readwrite', async (t) => {
-    await t.putScope({ id, kind: 'trip', title: clean, status: 'active', created: now, updated: now, format: FORMAT, tripId, ...tripMirror({ start, end }), talked: null });
+  const had = await ws.store.tx(['scopes', 'events'], 'readwrite', async (t) => {
+    const draft = o.draft ? (await t.listScopes()).find((s) => s.draft) : null;
+    if (draft) return draft.id;
+    await t.putScope({ id, kind: 'trip', title: clean, status: 'active', created: now, updated: now, format: FORMAT, tripId, ...tripMirror({ start, end }), talked: null, ...(o.draft ? { draft: /** @type {const} */ (true) } : {}) });
     await t.appendEvent(id, { ts: now, type: 'scope.create', actor: author, data: { title: clean, ...handover } });
+    return null;
   });
+  if (had) return had;
   try {
     const record = { id: tripId, title: clean, ...(start ? { start } : {}), ...(end ? { end } : {}), places: places ?? [], ...(timezones?.length ? { timezones } : {}), party: [] };
     await ws.write(id, '/trip.json', record, { author, ...handover });
@@ -129,11 +137,11 @@ export async function createTrip(ws, { title, start, end, places, timezones }, o
   return id;
 }
 
-/** @param {Store} store */
+/** The trips and chats, newest change first, and the standing draft apart: it is no conversation until it is used. @param {Store} store */
 export async function listTrips(store) {
   const all = await store.tx(['scopes'], 'readonly', (t) => t.listScopes());
-  const trips = all.filter((s) => s.kind === 'trip').sort((a, b) => b.updated - a.updated);
-  return { active: trips.filter((s) => s.status === 'active'), archived: trips.filter((s) => s.status === 'archived') };
+  const trips = all.filter((s) => s.kind === 'trip' && !s.draft).sort((a, b) => b.updated - a.updated);
+  return { active: trips.filter((s) => s.status === 'active'), archived: trips.filter((s) => s.status === 'archived'), draft: all.find((s) => s.kind === 'trip' && s.draft)?.id ?? null };
 }
 
 /** @param {Store} store @param {string} id @param {'active'|'archived'} status */

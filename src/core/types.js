@@ -12,9 +12,10 @@
  *   Entries from before `at` existed, or imported from such a backup, have none.
  * @typedef {{ ts: number, type: string, actor: string, data?: any, refs?: string[] }} NewEvent
  * @typedef {{ id: string, kind: 'me'|'trip'|'sys', title: string, status: 'active'|'archived',
- *   created: number, updated: number, format: number, tripId?: string, backup?: { at: number, seq: number }, start?: string, end?: string, talked?: number | null }} ScopeRecord
+ *   created: number, updated: number, format: number, tripId?: string, backup?: { at: number, seq: number }, start?: string, end?: string, talked?: number | null, draft?: true }} ScopeRecord
  *   backup: the last saved Backup that held this trip: when, and the last history entry it holds (spec §4.9).
  *   start, end: the trip's dates mirrored from trip.json; talked: when the user last spoke in it, null when nobody has, no key: not filled yet (scopes.js).
+ *   draft: the standing draft + opens, not a conversation until its first use (chats.js); exports and the lists leave it out.
  * @typedef {{ after?: number, before?: number, limit?: number, reverse?: boolean, types?: string[], notTypes?: string[] }} EventQuery
  *
  * @typedef {object} Tx

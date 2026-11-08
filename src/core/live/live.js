@@ -139,6 +139,8 @@ export class Live {
   #trip = undefined;
   /** @type {Map<string, { start?: string, end?: string, talked: number | null }>} the active trips #play chooses among */
   #rows = new Map();
+  /** @type {string | null} the standing draft: open, it takes no points and isn't play (chats.js) */
+  #draft = null;
   /** @type {Map<string, Watch[]>} by scope */
   #watches = new Map();
   /** @type {Watch[]} the trip in play's plan watches */
@@ -695,14 +697,14 @@ export class Live {
   }
 
   /**
-   * The trip in play: a simulation's during its run; else the happening trip last talked in (looking at one moves nothing); else the open conversation.
+   * The trip in play: a simulation's during its run; else the happening trip last talked in (looking at one moves nothing); else the open conversation, unless it is the unused draft.
    * A simulation's trip is never the happening one, but open it is play; #inPlay keeps its plan quiet outside its run.
    * @returns {string | null}
    */
   #play() {
     if (this.#sim) return this.#sim.trip;
     const [best] = [...this.#rows].filter(([id]) => this.#happening(id)).sort(lastTalked);
-    return best?.[0] ?? this.agent.target;
+    return best?.[0] ?? (this.agent.target === this.#draft ? null : this.agent.target);
   }
 
   /** @param {string} scope @param {string} id */
@@ -1174,8 +1176,9 @@ export class Live {
 
   /** The active trips as #play chooses among them, in one read of the records. */
   async #loadRows() {
-    const { active } = await listTrips(this.store);
+    const { active, draft } = await listTrips(this.store);
     this.#rows = new Map(active.map((s) => [s.id, { ...tripMirror(s), talked: s.talked ?? null }]));
+    this.#draft = draft;
     return active;
   }
 
