@@ -208,6 +208,21 @@ export function startShell(root, core) {
   // (location.replace drops history.state); what opens over a screen takes one between (dom.js). `top`: the newest at or ahead.
   let lastIdx = -1;
   let top = -1;
+  // `top` is kept for the tab's life as it changes, so a Forward after a reload still knows what is ahead.
+  const TOP = 'annai-top';
+  try {
+    top = Number(sessionStorage.getItem(TOP)) || -1;
+  } catch {
+    // not kept: after a reload, as far as the entry reloaded
+  }
+  const keepTop = (/** @type {number} */ v) => {
+    top = v;
+    try {
+      sessionStorage.setItem(TOP, String(v));
+    } catch {
+      // not kept
+    }
+  };
   /** The last move: -1 Back, 1 Forward, 0 a replace or not known (an unnumbered entry). */
   let way = 0;
   /** A Back or Forward is passing entries it doesn't draw: how many, and whether it is going back to the last drawn. */
@@ -224,7 +239,7 @@ export function startShell(root, core) {
     const seen = typeof st.annaiScroll === 'string';
     const idx = typeof st.annaiIdx === 'number' ? st.annaiIdx : seen ? -1 : Math.floor(lastIdx) + 1; // -1: from before entries were numbered
     way = idx < 0 || lastIdx < 0 ? 0 : Math.sign(idx - lastIdx);
-    top = seen || 'annaiIdx' in st ? Math.max(top, idx) : idx; // a new entry cuts off what was ahead
+    keepTop(seen || 'annaiIdx' in st ? Math.max(top, idx) : idx); // a new entry cuts off what was ahead
     lastIdx = idx;
     if (seen) {
       entry = st.annaiScroll;
@@ -384,7 +399,7 @@ export function startShell(root, core) {
     const st = history.state;
     if (location.hash !== lastHash) return; // a hashchange follows
     if (passing) render({ moved: true });
-    else if (st?.annaiIdx === lastIdx) top = lastIdx; // back from what was open over this screen: its entry was the newest
+    else if (st?.annaiIdx === lastIdx) keepTop(lastIdx); // back from what was open over this screen: its entry was the newest
     // Forward onto an overlay's entry, closed (each closes at any popstate): on to what is ahead, or back, so it shows nothing twice.
     else if ((st?.annaiViewer || st?.annaiAsk) && st.annaiIdx > lastIdx) history.go(st.annaiIdx < top ? 1 : -1);
   });
