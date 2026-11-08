@@ -30,6 +30,7 @@ async function setUp(page, origin, { reader = false } = {}) {
     await expect(page.getByLabel('Add a model to utility').locator('option', { hasText: 'u-model' })).toHaveCount(0);
     // The reader takes PDFs, set on its page (a custom model takes text alone until told).
     await page.getByRole('link', { name: /Reader/ }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Reader' })).toBeVisible(); // a tap inside the draw lands on the Models screen going away
     await page.getByRole('link', { name: /^u-model/ }).click();
     await expect(page.getByLabel('Provider model id')).toHaveValue('u-model');
     await page.getByLabel('Takes PDFs').check();
