@@ -250,20 +250,26 @@ test('item 10: a session hushed while it moves to a new connection (GoAway) clos
   const k = await liveKit([{ said: 'Hello there.', audio: tone(0.1), handle: 'h-2', goAway: 10 }]);
   try {
     const live = k.llm.live;
+    let moving = false;
     k.llm.live = async (/** @type {string} */ id, /** @type {any} */ setup, /** @type {any} */ o) => {
-      if (k.sessions.length) await wait(400); // the new connection takes a while
+      if (k.sessions.length) {
+        moving = true;
+        await wait(400); // the new connection takes a while
+      }
       return live(id, setup, o);
     };
     k.agent.send('Hi');
     await until(() => k.agent.live.busy && k.sessions.length === 1, 3000);
     await soon(async () => (await lives(k, 'goaway')).length === 1);
-    await wait(50); // the move has begun
-    /** @type {any} */
-    let closed = null;
-    k.sessions[0].closed.then((/** @type {any} */ c) => { closed = c; });
+    await until(() => moving, 3000); // the move has begun
+    // Asked to close in hush itself: waiting for the socket's close handshake timed out under a loaded host (2026-11-08).
+    const old = k.sessions[0];
+    const close = old.close.bind(old);
+    let asked = false;
+    old.close = (/** @type {string} */ why) => { asked = true; return close(why); };
     k.agent.hush('away');
-    await wait(100);
-    assert.ok(closed, 'the old connection closed at once');
+    assert.ok(asked, 'the old connection closed at once');
+    await old.closed;
   } finally {
     await k.done();
   }
