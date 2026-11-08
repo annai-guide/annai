@@ -364,3 +364,24 @@ test("← from a conversation comes back to where you were on home, as Back does
   await expect(fold).toHaveAttribute('open', '');
   await expect.poll(() => page.evaluate(() => scrollY)).toBe(y);
 });
+
+test("the conversation's name follows its first line while it shows, and Shiori's rename", async ({ page }) => {
+  const llm = await startModelServer({ '/b/v1/messages': [
+    { status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'patch', input: { path: '/trip/trip.json', changes: { title: 'Quiet dinner' } } }]) },
+    { status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'speak', input: { text: 'I called it Quiet dinner.' } }, { name: 'sleep', input: {} }]) },
+  ] });
+  try {
+    await modelSetUp(page, llm.origin, 'Elsewhere');
+    await page.goto('/#/trips');
+    await plus(page).click();
+    const name = page.locator('.talk-head .talk-name');
+    await expect(name).toHaveText('New conversation');
+    await box(page).fill('Where should we eat tonight? Somewhere quiet.');
+    await box(page).press('Enter');
+    await expect(name).toHaveText(/^(Where should we eat tonight\?|Quiet dinner)$/); // named by its first line, then hers: the header follows
+    await expect(page.locator('.convo')).toContainText('I called it Quiet dinner.');
+    await expect(name).toHaveText('Quiet dinner');
+  } finally {
+    await llm.stop();
+  }
+});

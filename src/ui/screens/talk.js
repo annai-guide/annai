@@ -16,7 +16,7 @@ import { upcoming, over } from '../../core/now.js';
 import { tripRows } from '../trip-rows.js';
 import { nowOf, todayOf } from '../today.js';
 import { ask } from '../ask.js';
-import { ME, SYS_WAITING } from '../../core/scopes.js';
+import { ME, SYS_WAITING, scopeTitle } from '../../core/scopes.js';
 import { readNames } from '../../core/names.js';
 import { FILES_ONLY, undoable, undoEverywhere } from '../../core/handover.js';
 import { removeTripNow } from './trip.js';
@@ -253,7 +253,8 @@ export async function renderTalk(ctx, route) {
   const mine = wording(app);
   const hers = wording(app, true);
   const scope = agent.scope;
-  const title = agent.trip ? (await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ tx) => tx.getScope(agent.trip)))?.title ?? t`Trip` : '';
+  const rec = agent.trip ? await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ tx) => tx.getScope(agent.trip)) : null;
+  const title = agent.trip ? (rec ? scopeTitle(rec) : t`Trip`) : '';
   // Not a live region: `announce` says each line of hers once, spoken or not, whatever "Show what she says" is, and words heard once
   // they are in; never what you typed, nor the halves' notes.
   const list = h('ol', { class: 'convo' });
@@ -567,13 +568,18 @@ export async function renderTalk(ctx, route) {
   const tidy = tidyMenu(ctx);
   const trip = agent.trip;
   const dates = trip ? datesLine(ctx, trip) : null;
+  const name = h('a', { class: 'talk-name', href: `#/trip/${encodeURIComponent(trip)}`, dir: 'auto', text: title });
+  // The name follows trip.json while it shows: the first line names a new conversation, and Shiori may rename it.
+  const offName = trip ? ctx.ws.onChange((/** @type {{ scope: string, path: string }} */ c) => {
+    if (c.scope === trip && c.path === '/trip.json') ctx.ws.readJSON(trip, '/trip.json').then((/** @type {any} */ j) => { name.textContent = scopeTitle({ id: trip, title: String(j?.title ?? title) }); }, () => {});
+  }) : null;
   const screen = h('div', { class: 'screen' },
     // A trip's: ← home (never opening anything), its name to Details, and Tidy up's ⋯, staying under the app's bar on a long
     // conversation. The heading stays for the top bar's tests until it goes (stage 8).
     ...(trip ? [
       h('div', { class: 'talk-head' },
         h('a', { class: 'btn ghost talk-back', href: '#/trips', 'aria-label': t`Back to Trips`, text: '←' }),
-        h('a', { class: 'talk-name', href: `#/trip/${encodeURIComponent(trip)}`, dir: 'auto', text: title }),
+        name,
         tidy.el, tidy.status),
       h('h1', { class: 'visually-hidden', text: t`Conversation` }),
       await nextLine(ctx, trip),
@@ -596,6 +602,7 @@ export async function renderTalk(ctx, route) {
   whenGone(screen, () => {
     stop();
     dates?.off();
+    offName?.();
     for (const timer of hearing.values()) clearTimeout(timer);
     removeEventListener('message', fit);
     for (const type of USER) removeEventListener(type, own);
