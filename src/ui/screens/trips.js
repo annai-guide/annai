@@ -71,17 +71,22 @@ export async function renderTrips(ctx) {
 }
 
 /**
- * Home is drawn for an instant: its Next, "Day 3 of 8" and which trips are happening go stale as time passes. It draws itself again, in place, when
- * the earliest of them changes (a Next item ends, or midnight, where a trip starts or ends and the day count moves: the 1 s is for a timer a hair early)
- * and when annai comes back to the front, which a phone's timers may have slept through. Only while it is the screen shown, and never over a
- * trip name or dates being typed in the Start a trip form; its folds and the place stay (the redraw is not a move, and `fold` keeps what is open).
+ * Home is drawn for an instant: its Next, "Day 3 of 8", which trips are happening, and the "in 21 hours" and "2 hours ago" it says go stale as time
+ * passes. It draws itself again, in place, at the earliest of the moments they change (one timer: a Next item ends, a shown relative time changes its words,
+ * or midnight, where a trip starts or ends and the day count moves; the 1 s is for a timer a hair early) and when annai comes back to the front, which a
+ * phone's timers may have slept through. Only while it is the screen shown, and never over a trip name or dates being typed in the Start a trip form:
+ * then it waits, and draws once the form's inputs are empty again. Its folds and the place stay (the redraw is not a move, and `fold` keeps what is open).
  * @param {any} ctx @param {HTMLElement} screen @param {{ now: number, zone: string, due: number[] }} o
  */
 function followClock(ctx, screen, o) {
+  const typed = () => [...screen.querySelectorAll('input')].some((i) => i.value);
+  let waiting = false;
   const redraw = () => {
-    if (!screen.isConnected || [...screen.querySelectorAll('input')].some((i) => i.value)) return;
-    ctx.render();
+    if (!screen.isConnected) return;
+    if (typed()) waiting = true; // drawn once the typing is gone (below)
+    else ctx.render();
   };
+  screen.addEventListener('input', () => { if (waiting && !typed()) redraw(); });
   const timer = setTimeout(redraw, Math.max(Math.min(nextDay(o.now, o.zone), ...o.due) - o.now, 0) + 1000);
   const front = () => { if (document.visibilityState === 'visible') redraw(); };
   document.addEventListener('visibilitychange', front);
