@@ -933,9 +933,9 @@ const mark = (page) => page.evaluate(() => { document.querySelector('main .scree
 /** Whether the screen is the one marked, and nothing newer replaced it. @param {import('@playwright/test').Page} page */
 const stillMarked = (page) => page.locator('main .screen[data-drawn-once=yes]').count().then((n) => n === 1);
 
-/** Marks the screen once what a removal sets going (a redraw of Trips a moment later) has settled. @param {import('@playwright/test').Page} page */
-const markWhenQuiet = async (page) => {
-  await page.waitForTimeout(800);
+/** Marks Trips once it is drawn: the walk's number reads 0 a moment before its one drawing of Trips lands. @param {import('@playwright/test').Page} page */
+const markTrips = async (page) => {
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
   await mark(page);
 };
 
@@ -944,7 +944,7 @@ test("Forward with nothing new ahead does nothing: after Remove trip from a fres
   await startNamed(page, 'Kyoto');
   await removeFromDetails(page, 'Kyoto');
   await expect.poll(() => idxOf(page)).toBe(0);
-  await markWhenQuiet(page);
+  await markTrips(page);
   await page.goForward(); // the removed trip's entry is ahead: nothing to show
   await page.waitForTimeout(500);
   expect(await idxOf(page)).toBe(0);
@@ -971,7 +971,7 @@ test("Forward after Remove trip from a resumed start does nothing, twice", async
   await goToHash(page, `#/trip/${id}`);
   await removeFromDetails(page, 'Kyoto');
   await expect.poll(() => idxOf(page)).toBe(0);
-  await markWhenQuiet(page);
+  await markTrips(page);
   for (let i = 0; i < 2; i++) {
     await page.goForward();
     await page.waitForTimeout(500);
@@ -993,7 +993,7 @@ test("Forward over a trip removed some other way ends on the Trips it began on, 
   await expect.poll(() => hashOf(page)).toBe('#/settings');
   await page.goForward(); // the Trips before the trip
   await expect.poll(() => idxOf(page)).toBe(2);
-  await mark(page);
+  await markTrips(page);
   await page.goForward(); // the trip's entry, then the Trips after it: the screen it left
   await page.waitForTimeout(500);
   expect(await idxOf(page)).toBe(2);
@@ -1014,6 +1014,57 @@ test("Forward after the photo viewer is closed does nothing: its entry is passed
   expect(await idxOf(page)).toBe(screen);
   expect(await stillMarked(page)).toBe(true);
   await expect(page.getByRole('dialog', { name: /^Photo / })).toHaveCount(0);
+});
+
+test("Forward after the photo viewer is closed does nothing, also when a screen was visited ahead of its file before it opened", async ({ page }) => {
+  await openApp(page);
+  const id = await startNamed(page, 'Kyoto');
+  const screen = await viewerOverFile(page);
+  await page.goBack(); // closes the viewer
+  await expect(page.getByRole('dialog', { name: /^Photo / })).toHaveCount(0);
+  await goToHash(page, '#/settings'); // a screen ahead of the file
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  await page.goBack();
+  await page.getByRole('button', { name: 'Open the photo full size' }).click(); // its entry cuts Settings off
+  await expect(page.getByRole('dialog', { name: /^Photo / })).toBeVisible();
+  await page.getByRole('button', { name: 'Close' }).click();
+  await expect(page.getByRole('dialog', { name: /^Photo / })).toHaveCount(0);
+  await expect.poll(() => idxOf(page)).toBe(screen);
+  await page.goForward(); // only the closed viewer's entry is ahead
+  await expect.poll(() => idxOf(page)).toBe(screen);
+  await page.goBack(); // a different screen, not the file again
+  await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}`);
+});
+
+test("after a Forward that does nothing, Trips drawn again keeps its place", async ({ page }) => {
+  await openApp(page);
+  await writeRecords(page, 'sys:waiting', { text: Object.fromEntries([...Array(8).keys()].map((i) => [`/files/note-${i}.txt`, `note ${i}`])) });
+  await startNamed(page, 'Kyoto');
+  await removeFromDetails(page, 'Kyoto');
+  await markTrips(page);
+  await page.goForward(); // the removed trip's entry is ahead: nothing to show
+  await page.waitForTimeout(500);
+  expect(await stillMarked(page)).toBe(true);
+  await page.locator('.waiting-file .two-step').last().scrollIntoViewIfNeeded();
+  const y = await page.evaluate(() => scrollY);
+  expect(y).toBeGreaterThan(200);
+  await page.locator('.waiting-file .two-step').last().click();
+  await page.locator('.waiting-file .two-step').last().click(); // Tap again to delete: Trips is drawn again
+  await expect(page.locator('.waiting-file')).toHaveCount(7);
+  await page.waitForTimeout(300);
+  expect(await page.evaluate(() => scrollY)).toBeGreaterThan(y - 120); // not back where it was at the Forward
+});
+
+test("a reload while the photo viewer is open shows its file, and Back then goes on to the screen before", async ({ page }) => {
+  await openApp(page);
+  const id = await startNamed(page, 'Kyoto');
+  const screen = await viewerOverFile(page);
+  await page.reload(); // as an iPhone reloads an app it set aside
+  await expect(page.getByRole('button', { name: 'Open the photo full size' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: /^Photo / })).toHaveCount(0);
+  await expect.poll(() => idxOf(page)).toBe(screen);
+  await page.goBack();
+  await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}`);
 });
 
 test("Back past the entry a photo viewer left behind lands on its screen once, not twice", async ({ page }) => {
