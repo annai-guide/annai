@@ -367,3 +367,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** only in a "fast" simulation: a read fails past the retry, the Trace line's own write fails too, and the run ends. The line is never written, because its retry waits on the simulation's clock, which nothing advances after the run.
 - **Why:** it needs a simulation and two failures at once, and the line is developer-facing.
 - **Revisit when:** the next change to Live's Trace lines: set the retry on `this.#sim?.clock ?? this.clock`.
+
+### Back shows Trips once more when a trip removed elsewhere had only Trips before it
+- **Kind:** known limitation.
+- **What the user sees:** annai opened on Trips, the user opened a trip, then came back to Trips, and the trip was removed somewhere other than its own screen (in a second annai tab, for example). Back on Trips passes the trip's entries and shows Trips once more, in place; the next Back leaves annai.
+- **Why:** the first entry is Trips, and a page can't close itself or step back past its first entry, so the last Back has to land on something.
+- **Revisit when:** browsers let a page leave its own first entry, or a user reports it.
+- **Approved:** 2026-11-07, the user picked "Accept for now (Recommended)".
