@@ -3,9 +3,12 @@ import { openApp, waitForServiceWorker, allFiles } from './helpers.js';
 import { ZipWriter } from '../../src/core/zip.js';
 import { utf8 } from '../../src/core/bytes.js';
 
-/** @param {import('@playwright/test').Page} page @param {string} title */
+/** A dated trip: Share and a dropped file offer dated trips (timeline stage 4). @param {import('@playwright/test').Page} page @param {string} title */
 async function startTrip(page, title) {
   await page.getByLabel('Trip name').fill(title);
+  await page.getByText('Add dates (optional)').click();
+  await page.getByLabel('Starts').fill('2026-11-25');
+  await page.getByLabel('Ends').fill('2026-11-29');
   await page.getByRole('button', { name: 'Start trip' }).click();
   await expect(page.getByRole('heading', { name: title })).toBeVisible();
 }
