@@ -12,7 +12,10 @@ export function newConversation(ctx) {
   const id = ctx.chats?.ready;
   if (!id) return void ctx.chats?.whenReady().then(() => newConversation(ctx));
   updateAppSettings(ctx.ws, { activeTrip: id }).catch(() => {});
-  openOrTell(ctx, id);
-  if (!ctx.voice?.on || ctx.agent.tap() === 'typing') ctx.dock?.openTyping?.();
+  // Already open (+ again before a word was said): opening it again would close its microphone, and a tap on one listening stops it.
+  const here = ctx.agent.target === id;
+  if (!here) openOrTell(ctx, id);
+  const listening = here && ['listening', 'hearing'].includes(ctx.agent.state?.name);
+  if (!ctx.voice?.on || (!listening && ctx.agent.tap() === 'typing')) ctx.dock?.openTyping?.();
   location.hash = talkHref(id);
 }

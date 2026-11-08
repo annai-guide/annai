@@ -887,3 +887,22 @@ test('+ over a turn running in another conversation: open, then tap at once, voi
   assert.deepEqual((await k.events(['out.speak'])).map((e) => e.data.text), [], "the left one's turn stopped, with nothing said");
   assert.deepEqual((await k.store.tx(['events'], 'readonly', (tx) => tx.listEvents(chat, { types: ['out.speak'] }))).map((e) => e.data.text), ['Ramen is close.'], 'she answers there');
 });
+
+test('+ again while the new conversation still listens (← home with the mic open, then +): the mic stays open, and what is heard is logged there', async (t) => {
+  useClock(t);
+  const { newConversation } = await import('../../src/ui/plus.js');
+  const { createTrip } = await import('../../src/core/scopes.js');
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { halves: true, voice: { speechIn: ['m-hear'], hears: ['where can we eat'] } });
+  const draft = await createTrip(k.ws, { title: 'New conversation' });
+  /** @type {any} */ (globalThis).location = { hash: '#/trips' };
+  const ctx = { chats: { ready: draft, whenReady: () => Promise.resolve(draft) }, agent: k.agent, voice: k.voice, ws: k.ws, notices: { card: () => {} }, dock: { openTyping: () => {} } };
+  newConversation(ctx);
+  await until(() => k.agent.state.name === 'listening');
+  await k.agent.kokoro.opening;
+  newConversation(ctx); // the draft is unspent: the same one, open and listening
+  assert.equal(k.agent.state.name, 'listening', 'a second + is no tap that stops it');
+  await hear(k, 'where-eat');
+  await until(() => !k.agent.busy, 5000);
+  const heard = await k.store.tx(['events'], 'readonly', (tx) => tx.listEvents(draft, { types: ['heard'] }));
+  assert.equal(heard.length, 1, 'heard in it');
+});
