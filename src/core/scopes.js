@@ -301,13 +301,15 @@ export async function backfillTrips(ws) {
     }
     return out;
   }).catch(() => null) : null;
-  for (const s of files ? filled : []) {
-    if (!files?.has(s.id) || !mirrored(s, files.get(s.id))) continue;
-    await store.tx(['scopes'], 'readwrite', async (t) => {
-      const rec = await t.getScope(s.id);
-      const next = rec && mirrored(rec, files?.get(s.id));
-      if (next) await t.putScope(next);
-    }).catch(() => {});
+  if (files) {
+    for (const s of filled) {
+      if (!files.has(s.id) || !mirrored(s, files.get(s.id))) continue;
+      await store.tx(['scopes'], 'readwrite', async (t) => {
+        const rec = await t.getScope(s.id);
+        const next = rec && mirrored(rec, files.get(s.id));
+        if (next) await t.putScope(next);
+      }).catch(() => {});
+    }
   }
   for (const s of trips.filter((x) => !('talked' in x))) {
     const dates = tripMirror(await ws.readJSON(s.id, '/trip.json').catch(notJSON));
