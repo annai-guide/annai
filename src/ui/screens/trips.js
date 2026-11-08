@@ -12,7 +12,7 @@ import { requestPersist } from '../platform.js';
 import { openFileButton } from '../open-file.js';
 import { tripStamps, stampMarks, factsWords } from '../stamps.js';
 import { stampCount } from '../../core/after/stamps.js';
-import { timelineRows, dayOfTrip, RECENT_DAYS } from '../../core/timeline.js';
+import { timelineRows, dayOfTrip, recentFrom } from '../../core/timeline.js';
 import { upcoming, over } from '../../core/now.js';
 import { dayIn, deviceZone, nextDay } from '../../core/time.js';
 import { storedTexts } from '../../core/agent/log.js';
@@ -109,7 +109,7 @@ const monthName = (key) => when(Date.parse(`${key}-01T00:00:00Z`), 'UTC', { mont
  */
 function chatLine(s, r, { say, now, zone }) {
   const name = scopeTitle(s);
-  const monthly = r.at < now - RECENT_DAYS * 86_400_000;
+  const monthly = /** @type {string} */ (dayIn(r.at, zone)) < recentFrom(now, zone); // as its heading: by the calendar day, not by 30 times 24 hours
   return h('li', {}, h('a', { class: 'card trip-card line', href: talkHref(s.id) },
     h('span', { class: 'name', ...say(name), text: name }),
     h('span', { class: 'sub', text: when(r.at, zone, { ...(monthly ? { month: 'short', day: 'numeric' } : {}), hour: '2-digit', minute: '2-digit' }) })));

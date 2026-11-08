@@ -464,3 +464,17 @@ test('home while she works: the dock says the name of the conversation as it is 
     await llm.stop();
   }
 });
+
+test("the cutoff day of the day headings: its chats all show a time alone, whichever side of the hour they are", async ({ page }) => {
+  const three = new Date();
+  three.setHours(15, 0, 0, 0);
+  await page.clock.install({ time: three });
+  await openApp(page, '#/settings');
+  // 30 days back is the first day with a heading of its own: one chat before the time of day now (13:00), one after (16:00).
+  await seed(page, { chats: { Early: 30 * 1440 + 120, Late: 30 * 1440 - 60 } });
+  await page.goto('/#/trips');
+  await expect(page.locator('.now-line')).toBeVisible();
+  const subs = await page.locator('.past .trip-card .sub').allTextContents();
+  expect(subs).toHaveLength(2);
+  for (const sub of subs) expect(sub).not.toContain(','); // no month and day, which the day's heading says
+});
