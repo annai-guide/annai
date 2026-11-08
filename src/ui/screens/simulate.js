@@ -110,7 +110,7 @@ async function form(ctx) {
   const { active, archived } = await listTrips(ctx.store);
   /** @type {{ id: string, title: string }[]} */
   const recorded = [];
-  for (const trip of [...active, ...archived]) {
+  for (const trip of [...active, ...archived].filter((s) => s.start)) { // dated trips: chats would be a read each, by the hundred
     const two = await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(trip.id, { types: ['location'], limit: 2 }));
     if (two.length >= 2) recorded.push({ id: trip.id, title: trip.title });
   }

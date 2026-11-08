@@ -1,5 +1,6 @@
 import { ValidationError, NotFoundError, notJSON } from './workspace.js';
 import { t } from './l10n.js';
+import { text } from './bytes.js';
 
 /** @typedef {import('./types.js').Store} Store @typedef {import('./types.js').ScopeRecord} ScopeRecord @typedef {import('./types.js').Tx} Tx */
 /** @typedef {import('./workspace.js').Workspace} Workspace */
@@ -252,15 +253,20 @@ export function syncTripTitles(ws) {
 /** @param {Workspace} ws @param {string} scope */
 async function mirrorTrip(ws, scope) {
   const trip = await ws.readJSON(scope, '/trip.json').catch(notJSON); // a failed read says nothing of its dates: the record stays, and the next start looks again
-  const title = String(trip?.title ?? '').trim();
-  const dates = tripMirror(trip);
   await ws.store.tx(['scopes'], 'readwrite', async (t) => {
     const rec = await t.getScope(scope);
-    if (!rec) return;
-    const { start: _s, end: _e, ...rest } = rec;
-    const next = { ...rest, ...dates, title: title || rec.title };
-    if (next.title !== rec.title || next.start !== rec.start || next.end !== rec.end) await t.putScope(next);
+    const next = rec && mirrored(rec, trip);
+    if (next) await t.putScope(next);
   });
+}
+
+/** The record with trip.json's title and dates, or null when it has them already; a file with no title keeps the record's. @param {ScopeRecord} rec @param {unknown} trip */
+function mirrored(rec, trip) {
+  const title = String(/** @type {any} */ (trip)?.title ?? '').trim();
+  const dates = tripMirror(trip);
+  const { start: _s, end: _e, ...rest } = rec;
+  const next = { ...rest, ...dates, title: title || rec.title };
+  return next.title !== rec.title || next.start !== rec.start || next.end !== rec.end ? next : null;
 }
 
 /** When the user last talked in a trip, from its log; null when nobody has. @param {Store} store @param {string} scope @returns {Promise<number | null>} */
@@ -271,17 +277,39 @@ async function lastTalked(store, scope) {
 
 /**
  * Fills the mirror on records without it (released copies, some archives), archived too. The talked key says it was done; only this writes it on a record
- * without one, so a run that failed halfway is finished by the next.
+ * without one, so a run that failed halfway is finished by the next. A filled record is checked against its trip.json, every trip's read in one
+ * transaction, and written only where it differs (the heal for a date edit whose mirror failed): with hundreds of chats, a start costs no transaction per chat.
  * @param {Workspace} ws
  */
 export async function backfillTrips(ws) {
   const { store } = ws;
-  for (const s of await store.tx(['scopes'], 'readonly', (t) => t.listScopes())) {
-    if (s.kind !== 'trip') continue;
-    if ('talked' in s) {
-      await mirrorTrip(ws, s.id).catch(() => {});
-      continue;
+  const trips = (await store.tx(['scopes'], 'readonly', (t) => t.listScopes())).filter((s) => s.kind === 'trip');
+  const filled = trips.filter((s) => 'talked' in s);
+  // A read that fails says nothing of the dates: those records wait for the next start.
+  const files = filled.length ? await store.tx(['files', 'blobs'], 'readonly', async (t) => {
+    /** @type {Map<string, unknown>} */
+    const out = new Map();
+    for (const s of filled) {
+      const f = await t.getFile(s.id, '/trip.json');
+      const b = f && (await t.getBlob(f.hash));
+      if (f && !b) continue; // its content is missing: nothing said of its dates
+      try {
+        out.set(s.id, b ? JSON.parse(text(new Uint8Array(b.data))) : undefined);
+      } catch {
+        out.set(s.id, null); // not JSON: an answer, as notJSON reads it
+      }
     }
+    return out;
+  }).catch(() => null) : null;
+  for (const s of files ? filled : []) {
+    if (!files?.has(s.id) || !mirrored(s, files.get(s.id))) continue;
+    await store.tx(['scopes'], 'readwrite', async (t) => {
+      const rec = await t.getScope(s.id);
+      const next = rec && mirrored(rec, files?.get(s.id));
+      if (next) await t.putScope(next);
+    }).catch(() => {});
+  }
+  for (const s of trips.filter((x) => !('talked' in x))) {
     const dates = tripMirror(await ws.readJSON(s.id, '/trip.json').catch(notJSON));
     const talked = await lastTalked(store, s.id);
     await store.tx(['scopes'], 'readwrite', async (t) => {

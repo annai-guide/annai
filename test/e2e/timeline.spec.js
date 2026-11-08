@@ -291,3 +291,46 @@ test('Share offers the dated trips and New conversation, never every chat: New c
   await page.goto('/#/trips');
   await expect(row(page, 'Photo · ')).toHaveCount(1);
 });
+
+test("500 chats: home's reads don't follow the chats, and + stays instant", async ({ page }) => {
+  await openApp(page, '#/settings');
+  await page.evaluate(async () => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const { createTrip } = await load('/src/core/scopes.js');
+    const { record } = await load('/src/core/agent/log.js');
+    const { dayIn, deviceZone } = await load('/src/core/time.js');
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    for (let i = 0; i < 500; i++) {
+      const id = await createTrip(ws, { title: `Chat ${i}` });
+      await record(store, id, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', `Line ${i}`]], now: Date.now() - i * 17 * 3_600_000 });
+    }
+    for (const [title, n] of [['Testville', -40], ['Laterton', 20]]) await createTrip(ws, { title, start: dayIn(Date.now() + n * 86_400_000, deviceZone()) });
+    store.close();
+  });
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  // Every transaction the page opens from here, counted at IndexedDB itself.
+  await page.evaluate(() => {
+    const w = /** @type {any} */ (window);
+    w.__tx = 0;
+    const real = IDBDatabase.prototype.transaction;
+    IDBDatabase.prototype.transaction = function (/** @type {any[]} */ ...a) { w.__tx++; return /** @type {any} */ (real).apply(this, a); };
+  });
+  await page.evaluate(() => { location.hash = '#/trips'; });
+  await expect(page.locator('.rows .trip-card')).toHaveCount(502);
+  const reads = await page.evaluate(() => /** @type {any} */ (window).__tx);
+  // Measured 13 (2026-11-08): the list, then 5 for each card. A read per chat would be over 500; 50 leaves room for a backup's or live
+  // mode's read landing while home draws, and still fails at one read for every ten chats.
+  expect(reads, `home drew 500 chats and 2 trips in ${reads} transactions`).toBeLessThanOrEqual(50);
+  const started = await page.evaluate(() => performance.now());
+  await plus(page).click();
+  await expect(page).toHaveURL(/\/talk$/);
+  await expect(box(page)).toBeFocused();
+  const took = await page.evaluate((t) => performance.now() - t, started);
+  // The draft is made ahead, so + is an open and a focus whatever the chats: measured 247 ms here (2026-11-08). 2 s leaves room for a
+  // loaded test machine and still fails a + that waits seconds.
+  expect(took).toBeLessThan(2000);
+});

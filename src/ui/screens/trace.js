@@ -27,6 +27,9 @@ const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Backups: ['backup', 'backup.newer', 'backup.error', 'backup.download', 'backup.peek', 'backup.prune'],
   Notifications: ['push.sync', 'push.shown', 'push.opened'],
 });
+/** The undated conversations the Show list names, newest first: the rest are still in Everything. */
+const CHATS_LISTED = 30;
+
 /** The kinds as the filter shows them. @type {Record<string, string>} */
 const KIND_NAMES = {
   Everything: t`Everything`, Conversation: t`Conversation`, Halves: t`Halves`, Tools: t`Tools`, Web: t`Web`, Models: t`Models`, Housekeeping: t`Housekeeping`,
@@ -46,8 +49,11 @@ export function newestFirst(events, limit) {
 export async function renderTrace(ctx, route) {
   const scopes = await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.listScopes());
   const titles = new Map(scopes.map((/** @type {any} */ s) => [s.id, s.kind === 'sys' ? t`System · ${scopeTitle(s)}` : scopeTitle(s)]));
+  // To choose from: me, the system scopes, the dated trips, the 30 newest chats, and the one asked for. Everything still means every scope.
+  const chats = scopes.filter((/** @type {any} */ s) => s.kind === 'trip' && !s.start).sort((/** @type {any} */ a, /** @type {any} */ b) => b.updated - a.updated).slice(0, CHATS_LISTED);
+  const listed = scopes.filter((/** @type {any} */ s) => (s.kind !== 'trip' || s.start || chats.includes(s) || s.id === route.params.scope));
   const select = h('select', { id: 'trace-scope' }, h('option', { value: '', text: t`Everything` }),
-    ...scopes.map((/** @type {any} */ s) => h('option', { value: s.id, text: titles.get(s.id) })));
+    ...listed.map((/** @type {any} */ s) => h('option', { value: s.id, text: titles.get(s.id) })));
   select.value = route.params.scope ?? '';
   const kind = h('select', { id: 'trace-kind' }, ...Object.keys(KINDS).map((k) => h('option', { value: k, text: KIND_NAMES[k] ?? k })));
   kind.value = route.params.kind && KINDS[route.params.kind] !== undefined ? route.params.kind : /* en */ 'Everything';
@@ -66,13 +72,19 @@ export async function renderTrace(ctx, route) {
     // With a kind, "Type contains" narrows the query itself, so the newest 300 are all of what is asked for.
     const wanted = types ? types.filter((type) => !f || type.includes(f)) : null;
     const query = wanted ? { types: wanted } : f && 'location'.includes(f) ? {} : { notTypes: ['location'] };
-    const all = (await Promise.all(ids.map((/** @type {string} */ id) => ctx.store.tx(['events'], 'readonly', (/** @type {any} */ tx) => tx.listEvents(id, { reverse: true, limit: 300, ...query }))))).flat();
+    // One transaction for every scope's query: with hundreds of chats, one per scope would be hundreds.
+    const all = await ctx.store.tx(['events'], 'readonly', async (/** @type {any} */ tx) => {
+      /** @type {any[]} */
+      const out = [];
+      for (const id of ids) out.push(...(await tx.listEvents(id, { reverse: true, limit: 300, ...query })));
+      return out;
+    });
     if (my !== pending) return;
-    /** @type {Map<string, number>} the cost of each wake shown (spec §6.6: cost is always visible) */
+    const rows = newestFirst(all.filter((/** @type {any} */ e) => (!types || types.includes(e.type)) && (!f || e.type.includes(f))), 300);
+    /** @type {Map<string, number>} the cost of each wake shown (spec §6.6: cost is always visible), read for the scopes of the rows shown */
     const perWake = new Map();
-    for (const id of ids) for (const [w, c] of (await costs(ctx.store, id)).byWake) perWake.set(w, c);
+    for (const id of new Set(rows.map((e) => e.scope))) for (const [w, c] of (await costs(ctx.store, id)).byWake) perWake.set(w, c);
     if (my !== pending) return;
-    const rows = newestFirst(all.filter((e) => (!types || types.includes(e.type)) && (!f || e.type.includes(f))), 300);
     entries.replaceChildren(...(rows.length ? rows.map((e) => row(ctx, e, titles, perWake)) : [h('li', { class: 'empty', text: t`Nothing here yet.` })]));
     entries.setAttribute('aria-busy', 'false');
   };

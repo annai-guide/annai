@@ -2,7 +2,7 @@ import { meters, keep, fixOf, kmText, span, KEEP_M } from './geo.js';
 import { ActivityTracker, STILL_BELOW, FAST_FROM, SETTLE_MS, waySpeed } from './activity.js';
 import { TRIGGERS, SAME_DRIVE_MS, sameDrive } from './triggers.js';
 import { PLAN, planWatches, planWords, planItemWords } from './plan-watches.js';
-import { readWatches, saveWatch, removeWatch, newWatchId, expired, watchPath, WATCH_FILE } from './watches.js';
+import { readWatches, saveWatch, removeWatch, newWatchId, expired, watchPath, WATCH_FILE, WATCH_DIR } from './watches.js';
 import { realClock } from './clock.js';
 import { readAppSettings, updateAppSettings } from '../settings.js';
 import { notJSON } from '../workspace.js';
@@ -1182,10 +1182,19 @@ export class Live {
     return active;
   }
 
-  /** Every conversation's watches, what has fired, and the trips' rows. */
+  /**
+   * Every conversation's watches, what has fired, and the trips' rows. One read says which conversations hold watch files: only those, me and the
+   * dated trips (whose plans remind) are read, so hundreds of chats cost no more than the trips with watches.
+   */
   async #loadAll() {
     const active = await this.#loadRows();
-    const scopes = new Set([ME, ...active.map((s) => s.id)]);
+    const watched = new Set(await this.store.tx(['files'], 'readonly', async (t) => {
+      /** @type {string[]} */
+      const out = [];
+      for (const s of active) if ((await t.listFiles(s.id, WATCH_DIR)).length) out.push(s.id);
+      return out;
+    }));
+    const scopes = new Set([ME, ...active.filter((s) => watched.has(s.id) || s.start).map((s) => s.id)]);
     for (const scope of scopes) {
       await this.#loadScope(scope);
     }
