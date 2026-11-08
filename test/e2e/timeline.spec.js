@@ -521,3 +521,12 @@ test("the Start a trip form's Add dates fold stays open across the clock's redra
   await expect(page.locator('details.dates')).toHaveAttribute('open', '');
 });
 
+test("a trip ahead says how soon, and the words follow the clock between midnights", async ({ page }) => {
+  await morning(page, { Laterton: { from: 1, to: 2 } });
+  const soon = row(page, 'Laterton').locator('.soon');
+  await expect(soon).toHaveText('tomorrow'); // noon tomorrow, from 09:00: 27 hours
+  await page.clock.fastForward('05:00:00'); // 14:00: 22 hours, said in hours; the other timers (Museum, Lunch) ended earlier, so only this one says so
+  await expect(soon).toHaveText('in 22 hours');
+  await page.clock.fastForward('01:00:00');
+  await expect(soon).toHaveText('in 21 hours');
+});

@@ -130,6 +130,23 @@ export function relTime(ts, now = Date.now()) {
   return diff > 0 ? rtf().format(1, 'minute') : t`just now`;
 }
 
+/**
+ * The first instant at which relTime(ts, ...) says something other than it says at now: where its rounded count or its unit changes. A screen that
+ * shows it draws again then. Under a minute ahead it says "in 1 minute" until ts, and after ts "just now" for a minute. @param {number} ts @param {number} [now]
+ */
+export function relChange(ts, now = Date.now()) {
+  const diff = (ts - now) / 1000;
+  const ahead = diff > 0;
+  const i = UNITS.findIndex(([, s]) => Math.abs(diff) >= s);
+  if (i < 0) return ahead ? ts : ts + 60_000;
+  const s = UNITS[i][1];
+  const k = Math.abs(Math.round(diff / s)); // as relTime rounds: halves toward later
+  // Ahead: down to (k - 1/2) units, or to one unit when k is 1 (the next unit down speaks then; a minute says "in 1 minute" to the end).
+  if (ahead) return i === UNITS.length - 1 && k === 1 ? ts : ts - (k === 1 ? s : (k - 0.5) * s) * 1000;
+  // Behind: up to (k + 1/2) units, or to the next unit up, whichever comes first.
+  return ts + Math.min((k + 0.5) * s, i > 0 ? UNITS[i - 1][1] : Infinity) * 1000;
+}
+
 const PLAIN_DAY = /** @type {Intl.DateTimeFormatOptions} */ ({ month: 'short', day: 'numeric', timeZone: 'UTC' });
 /** "Nov 25", or "Wed, Nov 25": a plain date (YYYY-MM-DD) as written, with no time-zone shift. @param {string} key @param {boolean} [weekday] */
 export const day = (key, weekday = false) => make(Intl.DateTimeFormat, weekday ? { ...PLAIN_DAY, weekday: 'short' } : PLAIN_DAY).format(Date.parse(`${key}T00:00:00Z`));
