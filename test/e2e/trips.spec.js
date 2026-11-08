@@ -984,6 +984,58 @@ test("Forward with nothing new ahead does nothing: after Remove trip from a fres
   expect(await stillMarked(page)).toBe(true);
 });
 
+/**
+ * Holds the store's trip records for ms, as a slow phone's storage would, so a draw begun now is still in flight when the next move comes;
+ * then two Forwards, gap ms apart. @param {import('@playwright/test').Page} page
+ */
+const forwardTwiceInOneDraw = (page, ms = 300, gap = 30) => page.evaluate(async ({ ms, gap }) => {
+  const db = await new Promise((r) => { const q = indexedDB.open('annai'); q.onsuccess = () => r(q.result); });
+  const scopes = /** @type {IDBDatabase} */ (db).transaction(['scopes'], 'readwrite').objectStore('scopes');
+  const until = performance.now() + ms;
+  const spin = () => { if (performance.now() < until) scopes.count().onsuccess = spin; };
+  spin();
+  history.forward();
+  setTimeout(() => history.forward(), gap);
+}, { ms, gap });
+
+test("two Forwards inside Trips' draw, over a removed trip's entry at the end: Trips is drawn under its own address, not the screen before it", async ({ page }) => {
+  await openApp(page, '#/settings');
+  await goToHash(page, '#/trips');
+  const id = await startNamed(page, 'Kyoto'); // Settings 0, Trips 1, Kyoto 2
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  await removeBehind(page, id);
+  await forwardTwiceInOneDraw(page); // the second lands on Kyoto's entry while Trips draws: back to Trips, which must still be drawn
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  await page.waitForTimeout(500);
+  expect([hashOf(page), await idxOf(page)]).toEqual(['#/trips', 1]);
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+});
+
+test("two Forwards from Trips inside a trip's draw, over a removed trip's entry at the end: that trip is drawn under its own address, not Trips", async ({ page }) => {
+  await openApp(page);
+  const nara = await startNamed(page, 'Nara');
+  await goToHash(page, '#/trips');
+  const kyoto = await startNamed(page, 'Kyoto'); // Trips 0, Nara 1, Trips 2, Kyoto 3
+  await page.goBack();
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1, name: 'Nara' })).toBeVisible();
+  await goToHash(page, `#/trip/${kyoto}`); // Trips 0, Nara 1, Kyoto 2: cuts the rest off
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1, name: 'Nara' })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  await expect.poll(() => idxOf(page)).toBe(0);
+  await removeBehind(page, kyoto);
+  await forwardTwiceInOneDraw(page); // the second lands on Kyoto's entry while Nara draws: back to Nara, which must still be drawn
+  await expect(page.getByRole('heading', { level: 1, name: 'Nara' })).toBeVisible();
+  await page.waitForTimeout(500);
+  expect([hashOf(page), await idxOf(page)]).toEqual([`#/trip/${nara}`, 1]);
+  await expect(page.getByRole('heading', { level: 1, name: 'Nara' })).toBeVisible();
+});
+
 test("Forward after Remove trip from a resumed start does nothing, twice", async ({ page }) => {
   await openApp(page);
   const id = await startNamed(page, 'Kyoto');
