@@ -22,7 +22,7 @@ const DAY = 86_400_000;
 /**
  * @typedef {{ id: string, title: string, phase: 'undated' | 'past' | 'happening' | 'future', at: number, card: boolean }} Row
  *   at: where it sits, in ms (a date sits at noon of that day in the zone, so it falls in the right day beside a chat's moments); card: dated
- * @typedef {{ heading: { kind: 'day' | 'month', key: string } } | { row: Row } | { fold: { month: string, rows: Row[] } }} Entry
+ * @typedef {{ heading?: { kind: 'day' | 'month', key: string }, row?: Row, fold?: { month: string, rows: Row[] } }} Entry  one of the three
  */
 
 /** Noon of a "YYYY-MM-DD" in zone. @param {string} d @param {string} zone */

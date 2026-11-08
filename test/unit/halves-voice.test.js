@@ -865,3 +865,25 @@ test('a tap that reaches Agent.send as a message is stored as chosen, and Kokoro
   assert.deepEqual([line.data.chose, line.data.split], [true, true]);
   assert.match(JSON.stringify(k.sent['model-0']), /\[the user chose\] \\"Tell me more\\"/);
 });
+
+test('+ over a turn running in another conversation: open, then tap at once, voice on: the turn stops, the microphone opens in the new one, and what is heard is logged there', async (t) => {
+  useClock(t);
+  const { createTrip } = await import('../../src/core/scopes.js');
+  const k = await agentKit([{ rules: [{ match: 'the user wrote', reply: { delayMs: 60_000, toolCalls: [{ name: 'speak', input: { text: 'Once upon a time.' } }] } }, { match: 'the user spoke', reply: calls(['speak', { text: 'Ramen is close.' }]) }] }], {
+    halves: true, voice: { speechIn: ['m-hear'], hears: ['where can we eat'] },
+  });
+  k.agent.send('Tell me a long story');
+  await until(() => k.agent.kokoro.busy);
+  const chat = await createTrip(k.ws, { title: 'New conversation' });
+  k.agent.open(chat);
+  assert.equal(k.agent.tap(), 'listening', 'the tap is for the conversation just opened, whatever the one left was doing');
+  await until(() => k.agent.state.name === 'listening');
+  assert.equal(k.agent.target, chat);
+  await hear(k, 'where-eat');
+  await until(() => !k.agent.busy, 5000);
+  const inChat = await k.store.tx(['events'], 'readonly', (tx) => tx.listEvents(chat, { types: ['heard'] }));
+  assert.equal(inChat.length, 1, 'heard in the new conversation');
+  assert.deepEqual(await k.events(['heard']), [], 'nothing heard in the one left');
+  assert.deepEqual((await k.events(['out.speak'])).map((e) => e.data.text), [], "the left one's turn stopped, with nothing said");
+  assert.deepEqual((await k.store.tx(['events'], 'readonly', (tx) => tx.listEvents(chat, { types: ['out.speak'] }))).map((e) => e.data.text), ['Ramen is close.'], 'she answers there');
+});
