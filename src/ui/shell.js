@@ -321,6 +321,7 @@ export function startShell(root, core) {
       const overlay = history.state?.annaiViewer || history.state?.annaiAsk;
       if (overlay && !shown.name) { // a reload on what was open over a screen: that screen, the entry behind
         passing = true;
+        keepTop(lastIdx); // its push cut off what was ahead
         history.back();
         return landing.promise;
       }
