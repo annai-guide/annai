@@ -547,11 +547,11 @@ export class Live {
       const play = this.#trip ?? ME;
       const open = this.agent.target;
       // The open one's plan too: a trip starting tomorrow, opened tonight, must still wake a closed annai. A happening one waits to be talked in: looking fires nothing.
-      // With nothing happening, the next trip's too, whichever conversation is open: a quick chat the evening before is no reason to miss its first morning.
+      // The next trip's too, whichever conversation is open: a quick chat the evening before, or a trip ending today, is no reason to miss its first morning.
       /** @type {[string, Watch[], boolean][]} each plan, and whether annai says it itself (the trip in play's) */
       const plans = [[play, this.#plan, true]];
       const others = open && open !== play && this.#rows.has(open) && this.#inPlay(open) && !this.#happening(open) ? [open] : [];
-      if (!this.#happening(play)) for (const id of this.#nextTrips()) if (id !== play && !others.includes(id)) others.push(id);
+      for (const id of this.#nextTrips()) if (id !== play && !others.includes(id)) others.push(id);
       for (const id of others) {
         const { watches } = await this.#planOf(id);
         await this.#recallPlan(id, watches);
@@ -696,11 +696,17 @@ export class Live {
     return this.agent.target ?? ME;
   }
 
-  /** The trips that start next, after today: the soonest start, ties all. Never a simulation's. */
+  /**
+   * The trips that start next, after today: the soonest start, ties all. None while a trip happening now lasts into that day: it stays in play
+   * there, and only the trip in play reminds. Never a simulation's.
+   */
   #nextTrips() {
     const now = this.clock.now();
-    const ahead = [...this.#rows].filter(([id, r]) => !this.#still.has(id) && phaseOf(r, now, this.timeZone()) === 'future');
+    const zone = this.timeZone();
+    const rows = [...this.#rows].filter(([id]) => !this.#still.has(id));
+    const ahead = rows.filter(([, r]) => phaseOf(r, now, zone) === 'future');
     const first = ahead.reduce((m, [, r]) => (m === null || String(r.start) < m ? String(r.start) : m), /** @type {string | null} */ (null));
+    if (first === null || rows.some(([, r]) => phaseOf(r, now, zone) === 'happening' && String(r.end ?? r.start) >= first)) return [];
     return ahead.filter(([, r]) => r.start === first).map(([id]) => id);
   }
 

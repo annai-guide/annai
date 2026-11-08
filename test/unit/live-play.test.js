@@ -375,8 +375,27 @@ test("a closed annai is told of the open trip's first morning too, while another
   await k.settle();
   const own = (await k.live.reminders()) ?? [];
   assert.equal(new Set(own.map((r) => r.key)).size, own.length, 'no key twice');
-  assert.ok(own.every((r) => r.scope !== next), 'the trip no longer open is the relay-held one, not listed');
+  // Big Sur ends today and Next starts tomorrow: Next is the next trip, followed whichever conversation is open, and never annai's to say tonight.
+  assert.deepEqual(own.filter((r) => r.scope === next).map((r) => [r.watch, r.here]), [['plan:fly:coming-up', false]]);
   assert.ok(own.some((r) => r.scope === k.trip));
+});
+
+test("back to back: the trip in play ends today and the next starts tomorrow, never opened: its first morning reaches the relay; one that starts while the trip in play still runs doesn't", async () => {
+  const k = await liveKit({ start: at('20:00', '2026-11-28'), plan: { nepenthe: NEP } }); // Big Sur's last day
+  const next = await k.chat('Next', { start: '2026-11-29', end: '2026-12-01' });
+  await k.ws.write(next, '/plan/fly.json', { id: 'fly', title: 'Flight', fixed: true, start: { at: iso('09:00', '2026-11-29'), tz: LA } }, { author: 'user' });
+  k.agent.opened(k.trip);
+  await k.settle();
+  assert.equal(k.live.play, k.trip);
+  const list = (await k.live.reminders({ waiting: new Set(), held: () => {} })) ?? [];
+  assert.deepEqual(list.filter((r) => r.scope === next).map((r) => [r.watch, r.here]), [['plan:fly:coming-up', false]], 'annai closed tonight: only the relay can give it');
+  // A trip starting on Big Sur's last day overlaps it: Big Sur stays in play there, and only the trip in play reminds.
+  const k2 = await liveKit({ start: at('20:00', '2026-11-27'), plan: { nepenthe: NEP } });
+  const over = await k2.chat('Over', { start: '2026-11-28', end: '2026-11-30' });
+  await k2.ws.write(over, '/plan/fly.json', { id: 'fly', title: 'Flight', fixed: true, start: { at: iso('09:00', '2026-11-28'), tz: LA } }, { author: 'user' });
+  k2.agent.opened(k2.trip);
+  await k2.settle();
+  assert.ok(!((await k2.live.reminders({ waiting: new Set(), held: () => {} })) ?? []).some((r) => r.scope === over));
 });
 
 test("an urgent watch of a trip that isn't open hands its reminders on urgent; a plain one doesn't", async () => {
