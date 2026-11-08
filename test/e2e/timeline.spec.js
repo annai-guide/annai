@@ -334,3 +334,33 @@ test("500 chats: home's reads don't follow the chats, and + stays instant", asyn
   // loaded test machine and still fails a + that waits seconds.
   expect(took).toBeLessThan(2000);
 });
+
+test("← from a conversation comes back to where you were on home, as Back does; a month's fold you opened stays open", async ({ page }) => {
+  await openApp(page, '#/settings');
+  /** @type {Record<string, number>} */
+  const chats = {};
+  for (let i = 0; i < 6; i++) chats[`Old ${i}`] = 60 * 24 * (60 + i); // one month before the last 30 days: a fold
+  for (let i = 0; i < 24; i++) chats[`Chat ${i}`] = 60 * 24 * i + 5;
+  await seed(page, { chats, trips: { Laterton: { from: 3, to: 4 } } });
+  await page.goto('/#/trips');
+  await expect(page.locator('.now-line')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0); // the now line, 40% down
+  const fold = page.locator('.rows > .fold details');
+  await fold.locator('summary').click();
+  await expect(fold).toHaveAttribute('open', '');
+  await row(page, 'Chat 20').scrollIntoViewIfNeeded(); // in the past, well above the now line
+  const at = await page.evaluate(() => scrollY);
+  await row(page, 'Chat 20').click();
+  await expect(page).toHaveURL(/\/talk$/);
+  await page.getByRole('link', { name: 'Back to Trips' }).click(); // the conversation's ←: a new entry, home's
+  await expect(page.locator('.now-line')).toBeVisible();
+  await expect(fold).toHaveAttribute('open', '');
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(at);
+  await row(page, 'Old 3').scrollIntoViewIfNeeded();
+  const y = await page.evaluate(() => scrollY);
+  await row(page, 'Old 3').click();
+  await expect(page).toHaveURL(/\/talk$/);
+  await page.goBack(); // Back to the open fold, at the row tapped
+  await expect(fold).toHaveAttribute('open', '');
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(y);
+});

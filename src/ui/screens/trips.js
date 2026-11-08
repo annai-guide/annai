@@ -39,7 +39,7 @@ export async function renderTrips(ctx) {
   const past = await Promise.all(above.map(async (e) => {
     if (e.heading) return h('li', { class: 'when' }, h('h2', { class: 'section', text: e.heading.kind === 'day' ? day(e.heading.key, true) : monthName(e.heading.key) }));
     if (e.fold) {
-      return h('li', { class: 'fold' }, h('details', {},
+      return h('li', { class: 'fold' }, fold(e.fold.month,
         h('summary', { text: plural(e.fold.rows.length, '{0}: # chat', '{0}: # chats', monthName(e.fold.month)) }),
         h('ul', { class: 'cards' }, ...e.fold.rows.map((r) => chatLine(byId.get(r.id), r, o)))));
     }
@@ -59,11 +59,20 @@ export async function renderTrips(ctx) {
     waiting.length ? waitingList(ctx, waiting, await readNames(ctx.ws, SYS_WAITING)) : null,
     newTripForm(ctx),
     archived.length
-      ? h('details', { class: 'archived' }, h('summary', { text: t`Archived trips (${archived.length})` }), h('ul', { class: 'cards' }, ...archivedCards))
+      ? fold('archived', h('summary', { text: t`Archived trips (${archived.length})` }), h('ul', { class: 'cards' }, ...archivedCards))
       : null,
     openFileButton(ctx),
     h('p', { class: 'sub', text: latest ? t`Last backup ${relTime(latest.last.at)}, to ${latest.name}.`
       : settings.lastExportAt ? t`Last export ${relTime(settings.lastExportAt)}.` : t`No backup yet. Export everything from Settings, or set up automatic backups there.` }));
+}
+
+/** Home's folds that are open (a month's, 'archived'), kept so while annai runs: Back, or a redraw, finds home as it was. */
+const unfolded = new Set();
+/** @param {string} key @param {...HTMLElement} parts */
+function fold(key, ...parts) {
+  const el = h('details', { class: key === 'archived' ? key : undefined, open: unfolded.has(key) }, ...parts);
+  el.addEventListener('toggle', () => (el.open ? unfolded.add(key) : unfolded.delete(key)));
+  return el;
 }
 
 /** "October 2026", for a "YYYY-MM". @param {string} key */
