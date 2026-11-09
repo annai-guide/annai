@@ -502,6 +502,47 @@ test("home scrolled on a small phone, a card that needs more room than sticks, a
   expect(Math.abs(after.now - before.now)).toBeLessThanOrEqual(1); // the rows stayed: no jump to the top
 });
 
+for (const [width, height] of [[320, 568], [360, 640]]) {
+  test(`a card whose buttons need more than a quarter of the screen sticks while it fits in half the screen under the bar (${width} x ${height}): in view, the rows stay, nothing stays covered`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await scrolledHome(page);
+    const state = () => page.evaluate(() => {
+      const box = /** @type {HTMLElement} */ (document.querySelector('.notices'));
+      const bar = /** @type {HTMLElement} */ (document.querySelector('.topbar')).getBoundingClientRect();
+      const hit = document.elementFromPoint(innerWidth / 2, bar.bottom + 4);
+      const r = box.getBoundingClientRect();
+      return { y: Math.round(scrollY), now: Math.round(/** @type {Element} */ (document.querySelector('.now-line')).getBoundingClientRect().top), pos: getComputedStyle(box).position,
+        top: r.top, bottom: r.bottom, barBottom: bar.bottom, room: innerHeight - bar.bottom, hitBox: hit?.closest('.notices') !== null, grow: box.querySelectorAll('.notice.grow').length };
+    });
+    const before = await state();
+    await page.evaluate(() => /** @type {any} */ (window).__n.card({ tone: 'warn', title: 'A newer backup is on Test place', body: 'A backup made on another phone is newer than this one. Import it as a copy, or back this phone up over it.',
+      actions: [{ label: 'Import it as a copy', primary: true, run() {} }, { label: 'Back up this phone over it', run() {} }] }));
+    await expect(page.locator('.notices .notice.grow')).toHaveCount(1); // it needs more than the box's quarter
+    await expect.poll(async () => (await state()).pos).toBe('sticky');
+    await expect(page.locator('.notices.landed, .notices.over')).toHaveCount(0);
+    const shown = await state();
+    expect(shown.bottom - shown.top).toBeLessThanOrEqual(shown.room / 2 + 1); // half the screen under the bar, at most
+    expect(Math.abs(shown.top - shown.barBottom)).toBeLessThanOrEqual(1); // under the bar
+    expect(shown.bottom).toBeLessThan(height); // in view
+    expect(shown.hitBox).toBe(true);
+    expect(Math.abs(shown.now - before.now)).toBeLessThanOrEqual(1); // the rows stayed
+    await page.locator('.notices .notice').getByRole('button', { name: 'Dismiss' }).click();
+    await expect(page.locator('.notices .notice')).toHaveCount(0);
+    const gone = await state();
+    expect(gone.hitBox).toBe(false); // nothing stays covered
+    expect(Math.abs(gone.now - before.now)).toBeLessThanOrEqual(1);
+  });
+}
+
+test("a box taller than half the screen under the bar stays in the page, as before", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await scrolledHome(page);
+  await page.evaluate(() => { for (let i = 0; i < 2; i++) /** @type {any} */ (window).__n.card({ tone: 'warn', title: `A newer backup is on Place ${i}`, body: 'A backup made on another phone is newer than this one. Import it as a copy, or back this phone up over it.',
+    actions: [{ label: 'Import it as a copy', primary: true, run() {} }, { label: 'Back up this phone over it', run() {} }] }); });
+  await expect(page.locator('.notices .notice.grow')).toHaveCount(2);
+  expect((await placeOf(page)).pos).toBe('static');
+});
+
 test("a stuck card opened on home, then another screen: a card that comes there leaves what is seen where it was", async ({ page }) => {
   await scrolledHome(page);
   await page.evaluate(() => /** @type {any} */ (window).__n.card({ title: 'A long card', body: 'These are many words, and more of them. '.repeat(30) }));
