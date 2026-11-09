@@ -5,7 +5,7 @@
  * out, as Cloudflare's storage does. Given a file, every change is written there before it is
  * answered, and load() brings it all back after a restart. Not used on Cloudflare.
  */
-import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
+import { readFile, open, rename, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
 /** The longest wait setTimeout holds; a longer one is waited in steps. */
@@ -110,11 +110,27 @@ function fileSaver(file, contents) {
   let next = null;
   /** @type {Promise<void>} */
   let last = Promise.resolve();
+  // The new file is on the disk before it replaces the old, and the replacing before the change is
+  // answered: after a crash, XFS can bring back a file renamed in its last half minute empty, and the
+  // relay would then refuse to start.
   const write = async () => {
-    await mkdir(dirname(file), { recursive: true, mode: 0o700 });
+    const dir = dirname(file);
+    await mkdir(dir, { recursive: true, mode: 0o700 });
     const tmp = `${file}.${process.pid}.tmp`;
-    await writeFile(tmp, JSON.stringify(contents()), { mode: 0o600 });
+    const fh = await open(tmp, 'w', 0o600);
+    try {
+      await fh.writeFile(JSON.stringify(contents()));
+      await fh.sync();
+    } finally {
+      await fh.close();
+    }
     await rename(tmp, file);
+    const folder = await open(dir, 'r');
+    try {
+      await folder.sync();
+    } finally {
+      await folder.close();
+    }
   };
   return () => {
     if (next) return next;

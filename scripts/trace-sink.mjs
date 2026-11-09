@@ -7,7 +7,7 @@
 // The token may come from TRACE_SINK_TOKEN instead; a file or the environment keeps it out of shell history and ps.
 // It listens on 127.0.0.1 only: a phone reaches it through an https proxy, such as `tailscale serve`.
 import http from 'node:http';
-import { appendFile, chmod, readFile, mkdir, rename, rm, statfs, writeFile } from 'node:fs/promises';
+import { appendFile, chmod, readFile, mkdir, open, rename, rm, statfs } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { realpathSync } from 'node:fs';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
@@ -48,6 +48,31 @@ export const deviceFolder = (name) => String(name ?? '').slice(0, 64).replace(/[
 const digest = (/** @type {string} */ s) => createHash('sha256').update(s).digest();
 
 /**
+ * Writes bytes to file (flag 'w': a new file, 'a': at its end) and waits until they are on the disk: the plugin forgets
+ * what the sink answered for, and a crash of this machine would otherwise lose the last half minute of it.
+ * @param {string} file @param {string | Buffer} bytes @param {string} flag @param {number} mode
+ */
+async function onDisk(file, bytes, flag, mode) {
+  const fh = await open(file, flag, mode);
+  try {
+    await fh.writeFile(bytes);
+    await fh.sync();
+  } finally {
+    await fh.close();
+  }
+}
+
+/** Waits until a folder's names (a file renamed into it) are on the disk. @param {string} dir */
+async function namesOnDisk(dir) {
+  const fh = await open(dir, 'r');
+  try {
+    await fh.sync();
+  } finally {
+    await fh.close();
+  }
+}
+
+/**
  * Starts the sink on a port of this machine. log: each batch, in a line for the console; append: how lines reach the file; write: how a clip's bytes do;
  * free: the bytes free on the disk of a folder; floor: the least a clip may leave free. The log file is private (0600), as it holds the screen text.
  * @param {{ port?: number, token: string, out: string, origins?: string[], now?: () => number, log?: (line: string) => void,
@@ -55,7 +80,7 @@ const digest = (/** @type {string} */ s) => createHash('sha256').update(s).diges
  *   free?: (dir: string) => Promise<number>, floor?: number }} o
  */
 export async function startSink({
-  port = 0, token, out, origins = [], now = () => Date.now(), log = () => {}, append = (file, text) => appendFile(file, text, { mode: 0o600 }), write = writeFile,
+  port = 0, token, out, origins = [], now = () => Date.now(), log = () => {}, append = (file, text) => onDisk(file, text, 'a', 0o600), write = (file, bytes, { mode }) => onDisk(file, bytes, 'w', mode),
   free = async (dir) => { const f = await statfs(dir); return f.bavail * f.bsize; }, floor = FREE_FLOOR,
 }) {
   await chmod(out, 0o600).catch(() => {}); // a file from before is made private too
@@ -149,6 +174,7 @@ export async function startSink({
           .then(() => mkdir(dirname(file), { recursive: true, mode: 0o700 }))
           .then(() => write(part, Buffer.concat(chunks), { mode: 0o600 }))
           .then(() => rename(part, file))
+          .then(() => namesOnDisk(dirname(file)))
           .then(() => {
             log(`${new Date(now()).toISOString()} ${name}: ${size} bytes`);
             answer(200, { file: name });
