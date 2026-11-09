@@ -639,8 +639,8 @@ export async function nextLine(ctx, id) {
 }
 
 /**
- * "Shiori set the dates", with Undo, after her patch gave a chat its dates (it became a trip), until the user writes or speaks again, as the hand-over's Undo
- * line goes. Undo puts the dates back as the user's, so the row goes back to a line, and keeps a name given since (herDating, undoDating). Drawn again
+ * "Shiori set the dates", with Undo, after her patch gave a chat its dates (it became a trip), until the user writes or speaks again: then it goes for good (the
+ * hand-over's Undo line differs: it stays in the conversation at its place). Undo puts the dates back as the user's, so the row goes back to a line, and keeps a name given since (herDating, undoDating). Drawn again
  * whenever trip.json changes and whenever the user says something.
  * @param {any} ctx @param {string} scope @returns {{ el: HTMLElement, off: () => void }}
  */
