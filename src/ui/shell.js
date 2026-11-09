@@ -402,10 +402,12 @@ export function startShell(root, core) {
       const node = await screen(Object.create(ctx, { seq: { value: my }, moved: { value: o.moved === true }, entry: { value: entry }, tripScope: { value: scope } }), route);
       if (my !== seq) return superseded(my);
       // Home drawn again in place (the clock, a hand-over, a Delete): the first row in view that is still shown stays where it was, whatever came
-      // or went above it. Not a shut fold's rows: the engines give them boxes too, unseen.
+      // or went above it. Not a shut fold's rows: the engines give them boxes too, unseen. Nor one under the top bar or the notices box stuck
+      // under it (base.css): a row that came or went under those would move every row the user sees.
       const rows = (/** @type {Element} */ el) => [...el.querySelectorAll('.rows a[href]')].filter((a) => !a.closest('details:not([open])'));
+      const under = () => Math.max(header.getBoundingClientRect().bottom, notices.el.getBoundingClientRect().bottom);
       const seen = pending === null && route.name === 'trips' && drawnHash === shown.hash
-        ? rows(main).map((a) => ({ href: a.getAttribute('href'), box: a.getBoundingClientRect() })).filter((r) => r.box.bottom > 0) : [];
+        ? ((top) => rows(main).map((a) => ({ href: a.getAttribute('href'), box: a.getBoundingClientRect() })).filter((r) => r.box.bottom > top))(under()) : [];
       main.replaceChildren(node);
       const fresh = new Map(rows(node).map((a) => [a.getAttribute('href'), a]));
       const kept = seen.find((r) => fresh.has(r.href));

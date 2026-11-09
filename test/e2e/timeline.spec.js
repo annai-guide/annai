@@ -567,6 +567,37 @@ async function morning(page, trips = {}) {
   await expect(page.locator('.now-line')).toBeVisible();
 }
 
+test("home drawn again in place with a card stuck under the top bar: a row that joins under the card doesn't move the rows the user sees", async ({ page }) => {
+  await morning(page, { Laterton: { from: 3, to: 4 }, Farville: { from: 10, to: 12 } });
+  await page.evaluate(() => dispatchEvent(new ErrorEvent('error', { error: new Error('A test card') })));
+  await expect(page.locator('.notices .notice')).toBeVisible();
+  await expect(page.locator('.notices.landed, .notices.over')).toHaveCount(0);
+  // The user scrolled on to what is ahead: the now line, and the newest chats over it, are under the card.
+  await page.evaluate(() => {
+    const box = /** @type {Element} */ (document.querySelector('.notices')).getBoundingClientRect();
+    scrollBy(0, /** @type {Element} */ (document.querySelector('.now-line')).getBoundingClientRect().top - (box.top + box.height / 2));
+  });
+  const topOf = () => row(page, 'Testville').evaluate((el) => Math.round(el.getBoundingClientRect().top));
+  const was = await topOf();
+  const box = await page.locator('.notices').evaluate((el) => el.getBoundingClientRect().bottom);
+  expect(await row(page, 'Testville').evaluate((el) => el.getBoundingClientRect().bottom)).toBeGreaterThan(box + 40); // in view, under the card
+  // A chat talked in just now joins the past's end, under the card; then Next ends and home is drawn again in place.
+  await page.evaluate(async () => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const { createTrip } = await load('/src/core/scopes.js');
+    const { record } = await load('/src/core/agent/log.js');
+    const store = await createIdbStore();
+    const id = await createTrip(new Workspace(store), { title: 'Just now' });
+    await record(store, id, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'Just now']], now: Date.now() });
+    store.close();
+  });
+  await page.clock.fastForward('01:31:00');
+  await expect(row(page, 'Just now')).toHaveCount(1);
+  expect(Math.abs((await topOf()) - was)).toBeLessThanOrEqual(1);
+});
+
 test("a trip card's Next and its day follow the clock while home stays open, with no jump and no fold shut", async ({ page }) => {
   await morning(page);
   const card = row(page, 'Testville');
