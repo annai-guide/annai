@@ -71,11 +71,28 @@ const sentences = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(unde
 /** @param {string} s */
 const clip = (s) => (graphemes ? [...graphemes.segment(s)].map((g) => g.segment) : [...s]).slice(0, NAME_MAX).join('').trim();
 
-/** Where the sentence holding index i ends: as the browser breaks sentences (never inside 3.5, 7.30, U.S. or booking.com), else at . ! ? 。！？ or a new line. @param {string} s @param {number} i */
+/**
+ * The English rule: a full stop (ASCII only) straight after a word of one or two letters (Mt., St., Dr.) is an abbreviation's, not a sentence's end. The cost: a
+ * sentence that really ends on a short word ("We land in LA.") runs on into the next, and is cut at NAME_MAX as a long name is. A new line still ends it.
+ * @param {string} s @param {number} end index just past a sentence's end mark
+ */
+const shortWordStop = (s, end) => /(?:^|[^\p{L}])\p{L}{1,2}\.[ \t]*$/u.test(s.slice(0, end));
+
+/** Where the sentence holding index i ends: as the browser breaks sentences (never inside 3.5, 7.30, U.S. or booking.com), else at . ! ? 。！？ or a new line; but not after Mt. @param {string} s @param {number} i */
 function sentenceEnd(s, i) {
-  if (sentences) for (const x of sentences.segment(s)) if (x.index + x.segment.length > i) return x.index + x.segment.length;
-  const end = s.slice(i).search(/[.!?。！？\n]/u);
-  return end < 0 ? s.length : i + end + 1;
+  if (sentences) {
+    for (const x of sentences.segment(s)) {
+      const end = x.index + x.segment.length;
+      if (end > i && !shortWordStop(s, end)) return end;
+    }
+    return s.length;
+  }
+  for (let at = i; ; ) {
+    const stop = s.slice(at).search(/[.!?。！？\n]/u);
+    if (stop < 0) return s.length;
+    at += stop + 1;
+    if (!shortWordStop(s, at)) return at;
+  }
 }
 
 /**

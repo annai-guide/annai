@@ -383,3 +383,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** on home, Waiting with Shiori's Delete tapped once is reset when home draws itself again (Shiori's `went`, a plugin's screens, Waiting's own Delete, and since stage 4 the clock's redraw: a few times a day, and once a minute in the hour after a backup or an export, as "Last backup … ago" changes its words). The row says "Delete" again; nothing is lost but the first tap. A focused field is not redrawn over: each of these waits for it.
 - **Why:** home is rebuilt as a whole in place; its open folds and its place are kept (the shell scrolls to the row in view, `fold` keeps what is open), and the redraws wait for a focused field, but an armed row is not kept. Older than the clock's redraw.
 - **Revisit when:** the next version: keep the armed row across home's redraws.
+
+### A chat whose first sentence ends on a one- or two-letter word is named with the next sentence too
+- **Kind:** known limitation.
+- **What the user sees:** a chat is named from its first line's first sentence. A full stop after a word of one or two letters (Mt., St., Dr.) doesn't end it, so "Mt. Fuji on Tuesday. Then lunch" is named "Mt. Fuji on Tuesday." The cost: a first sentence that really ends on a short word ("We land in LA. Then…") runs on into the next one, and the name is cut at 40 characters as long names are. A word of three letters (Mrs.), and `?`, `!`, `。` and a new line, still end it. The user can rename the chat.
+- **Why:** the browser's sentence breaker has no list of English abbreviations (it breaks after "Mt."), and a list of our own would need every language's abbreviations. The rule is one line in `chats.js`.
+- **Revisit when:** a user finds a name that reads worse than before.
+- **Approved:** 2026-11-08, the user chose "English rule" (a full stop after a word of one or two letters doesn't end the sentence).
