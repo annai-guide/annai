@@ -154,17 +154,15 @@ pre.code { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--pap
 .notice > * { flex-shrink: 0; }
 /* A card whose title and buttons need more than the box grows, and the box with it (notices.js). */
 .notices > .notice.open, .notices > .notice.grow { max-height: none; }
-.notices:has(> .notice.grow) { max-height: none; }
 .notices.landed ~ :is(.risk, .view) { pointer-events: none; }
 /* On home only, the box sticks under the top bar (--topbar-h, shell.js) while it holds a card: home opens scrolled to the now line, and a card that arrives
-   there is in view instead of above it. Empty, it takes no room and covers nothing. A box taller than half the screen under the bar (.tall, notices.js)
-   can't stick: that is a box in the page, as on any screen. A card the user opens (More, Show) opens where the box is: stuck, inside it, at most that
-   half, scrolling inside itself, so the page never moves. The half is 100svh, the page's height with a browser's bars shown, as notices.js's
-   clientHeight is. A swipe past the open card's end stays in the box (overscroll-behavior): the rows behind it don't scroll away from the user's
-   place. A card that lands over the rows ignores taps a moment (.over, notices.js),
-   as the rows do when it moves them. */
-body.home .notices:not(:empty, .tall) { position: sticky; top: var(--topbar-h, 0px); z-index: 4; background: var(--paper); }
-body.home .notices:not(.tall):has(> .notice.open, .stack-list:not([hidden])) { max-height: calc((100svh - var(--topbar-h, 0px)) / 2); overscroll-behavior-y: contain; }
+   there is in view instead of above it. Empty, it takes no room and covers nothing. Where a card lifts the box's quarter (below: it needs more, or the
+   user opened it), the box is at most half the room under the bar (the user, "Cap every box at half") and scrolls inside itself: it never goes into
+   the page above, and the page never moves. The half is of 100svh, the page's height with a browser's bars shown, so it doesn't follow those bars. A swipe
+   on a box that scrolls stays in it (.scrolls, notices.js): the rows behind it don't scroll away from the user's place. A card that lands over the rows
+   ignores taps a moment (.over, notices.js), as the rows do when it moves them. */
+body.home .notices:not(:empty) { position: sticky; top: var(--topbar-h, 0px); z-index: 4; background: var(--paper); --lifted: calc((100svh - var(--topbar-h, 0px)) / 2); }
+body.home .notices.scrolls { overscroll-behavior-y: contain; }
 .notices.over > .notice { pointer-events: none; }
 /* A toast floats above the dock for a moment; a tap goes through it to what is under it. */
 .toasts { position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; display: flex; flex-direction: column; gap: 8px; padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0px)); pointer-events: none; align-items: center; }
@@ -181,8 +179,11 @@ body.home .notices:not(.tall):has(> .notice.open, .stack-list:not([hidden])) { m
 .notice .acts { position: sticky; bottom: 0; background: var(--sheet); padding-top: 4px; }
 /* A card longer than the box shows its first lines until More opens it (notices.js); open, the box's cap is lifted. */
 .notice.clamp:not(.open) p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--lines, 3); line-clamp: var(--lines, 3); overflow: hidden; }
-/* An opened card, or an opened stack, lifts the box's cap: each card in it shows whole. */
-.notices:has(.notice.open, .stack-list:not([hidden])) { max-height: none; }
+/* A card whose title and buttons need more than the box, an opened card, or an opened stack lifts the box's quarter: each card in it shows whole (on
+   home, up to half the room under the bar: --lifted, above). Such a card is no scroll box of its own, so its buttons stay at the box's edge (the user,
+   "Keep buttons at edge"): a choice that changes the user's data is never out of sight, even in a card taller than the box. */
+.notices:has(> .notice.grow, .notice.open, .stack-list:not([hidden])) { max-height: var(--lifted, none); }
+.notices > .notice:is(.open, .grow) { overflow: visible; }
 .notice .more { align-self: flex-start; min-height: 36px; padding: 4px 10px; margin-inline-start: -10px; } /* its word under the text's first letter */
 .notice .acts .more { margin-inline-start: 0; align-self: center; }
 /* Words behind More: out of sight, still read by a screen reader. */

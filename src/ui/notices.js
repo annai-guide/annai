@@ -14,42 +14,28 @@ export function createNotices() {
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let settle;
   const sticky = () => getComputedStyle(el).position === 'sticky';
-  /** The top bar's height (shell.js), what covers the page's top. */
-  const barHeight = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--topbar-h')) || 0;
-  /** A card open (More) or a stack shown (Show). */
-  const opened = () => el.querySelector(':scope > .notice.open, .stack-list:not([hidden])') !== null;
   /**
-   * A box that a card lifted the cap of (it needs more than the box's quarter of the screen) sticks on home while it fits in half the screen under the top
-   * bar (base.css: not .tall); taller, it is in the page. The half is the user's choice ("Stick up to half"), to be confirmed on their phone: it leaves
-   * the other half for rows. Looked at after each change and when the screen changes size. The screen is the page's own height, the one with a browser's
-   * bars shown, as the box's quarter is (25svh): innerHeight changes as those bars hide and show while the page scrolls, and the box would go in and out of view.
-   * A card the user opened (More, Show) opens where the box is: stuck, inside it, at most the same half (base.css), scrolling inside itself; in the
-   * page, there. So an open box is not looked at again until it closes: opening never moves the box, nor the page.
+   * A box that holds more than its cap (a quarter of the screen, or on home half the room under the top bar: base.css) scrolls inside itself, and a swipe
+   * on it stays there (.scrolls). One that holds less passes a swipe on to the page: kept in, it would be a patch of home that doesn't scroll. Looked at
+   * after each change and when the screen changes size.
    */
-  const settleTall = () => {
-    if (opened()) return;
-    el.classList.remove('tall');
-    el.classList.toggle('tall', el.getBoundingClientRect().height > (document.documentElement.clientHeight - barHeight()) / 2);
-  };
+  const scrolls = () => el.classList.toggle('scrolls', el.scrollHeight > el.clientHeight + 1);
   /**
    * A card comes, goes, opens or closes: scrolled down, what is seen stays put; at the top, what moved ignores taps a moment (.landed). On home the box
-   * sticks while it holds a card (base.css), so a card that comes, or one opened inside it, lands in view over the rows and ignores taps a moment (.over)
-   * instead. A card that arrives needing more room than sticks never moves the page: it is in the page, above. @param {() => void} change
+   * sticks while it holds a card, at most half the room under the top bar (base.css), so a card that comes, or one opened inside it, lands in view over
+   * the rows and ignores taps a moment (.over) instead. Nothing a card does moves the box into the page above, nor the page. @param {() => void} change
    */
   const keep = (change) => {
     const y = scrollY;
     const was = el.getBoundingClientRect().height;
-    const stuck = sticky();
     change();
-    settleTall();
+    scrolls();
     const by = el.getBoundingClientRect().height - was;
-    const over = sticky();
     if (by && y > 0) scrollTo(0, y + by);
     // A card that arrives moved the screen (at its top: .landed, what moved ignores taps) or sits over it (stuck: .over, the card ignores taps), so a
-    // tap meant for a row doesn't land on the card's button; the rows it doesn't cover didn't move and take taps. So does a box that sticks again as one
-    // goes (one left that fits in half the screen): its cards come over the rows as one that arrives does.
-    if (y > 0 ? over && (by > 0 || !stuck) : by > 0) {
-      el.classList.add(over && y > 0 ? 'over' : 'landed');
+    // tap meant for a row doesn't land on the card's button; the rows it doesn't cover didn't move and take taps.
+    if (by > 0 && (y === 0 || sticky())) {
+      el.classList.add(y > 0 ? 'over' : 'landed');
       clearTimeout(settle);
       // 400 ms (79cadd29, 2026-10-21): for that long what moved ignores taps, so a tap meant for it doesn't land on what slid under the finger.
       settle = setTimeout(() => el.classList.remove('landed', 'over'), 400);
@@ -57,7 +43,7 @@ export function createNotices() {
   };
   /**
    * A card whose text is more than three lines shows three and a More, which opens it to its full height, and a Less, which closes
-   * it. Open, the box's cap is lifted (stuck on home, to half the room under the bar, scrolling inside); the buttons stay at the card's foot, Dismiss in reach. Looked at once the card is drawn (one in
+   * it. Open, the box's cap is lifted (on home, to half the room under the bar, scrolling inside); the buttons stay at the box's edge, Dismiss in reach. Looked at once the card is drawn (one in
    * a closed stack, when it opens) and when the screen changes size.
    * @type {WeakMap<HTMLElement, () => void>}
    */
@@ -108,7 +94,7 @@ export function createNotices() {
     node.classList.remove('grow');
     if (node.querySelector(':scope > .stack-list')?.hasAttribute('hidden') && node.offsetHeight > el.clientHeight - 16 + 1) node.classList.add('grow');
   };
-  addEventListener('resize', () => { for (const n of el.querySelectorAll('.notice')) fitters.get(/** @type {HTMLElement} */ (n))?.(); settleTall(); });
+  addEventListener('resize', () => { for (const n of el.querySelectorAll('.notice')) fitters.get(/** @type {HTMLElement} */ (n))?.(); scrolls(); });
   /** One kind of card: the same title and tone. Cards don't say which trip raised them, so that is not part of it. @param {string} title @param {string} tone */
   const kindOf = (title, tone) => `${tone}\n${title}`;
   /** The lone card of a kind, while there is only one. @type {Map<string, HTMLElement>} */
@@ -217,7 +203,12 @@ let lone = 0;
     const kind = actions.length ? `${kindOf(title, tone)}\n${++lone}` : kindOf(title, tone);
     const more = h('button', { class: 'btn ghost more', type: 'button', hidden: true, 'aria-expanded': 'false', onclick: () => keep(() => {
       const open = node.classList.toggle('open');
-      if (!open) fitters.get(node)?.(); // closed again, it fits the screen as it is now (it may have turned meanwhile)
+      const focused = document.activeElement === more;
+      // Open, Less joins the buttons, which stay at the box's edge (base.css): in reach, and never under them. Closed again, it fits the screen as it is
+      // now (it may have turned meanwhile), which puts More back where the words need it.
+      if (open) node.querySelector(':scope > .acts')?.append(more);
+      else fitters.get(node)?.();
+      if (focused) more.focus({ preventScroll: true }); // moved: a keyboard's focus on it stays
       more.textContent = open ? t`Less` : t`More`;
       more.setAttribute('aria-expanded', String(open));
     }) }, t`More`);
