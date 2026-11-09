@@ -5,7 +5,8 @@ import { num } from './format.js';
 
 /**
  * System cards and toasts. These are never in Shiori's voice (spec §16.1). Cards of one kind fold into one. Cards (el) sit in the page at its top,
- * under the top bar, and scroll away with it, so they never cover a screen's buttons; toasts float above the dock.
+ * under the top bar, and scroll away with it, so they never cover a screen's buttons; on home the box sticks under the bar while it holds a card
+ * (base.css). Toasts float above the dock.
  */
 export function createNotices() {
   const el = h('div', { class: 'notices', role: 'status', 'aria-live': 'polite' });
@@ -19,10 +20,14 @@ export function createNotices() {
     change();
     const by = el.getBoundingClientRect().height - was;
     if (by && y > 0) scrollTo(0, y + by);
-    else if (by > 0) {
+    // A card that arrives moved the screen (at its top) or sits over it (the box sticks on home): what it covers ignores taps a moment, so a tap
+    // meant for a row doesn't land on the card's button.
+    const over = y > 0 && getComputedStyle(el).position === 'sticky';
+    if (by > 0 && (y <= 0 || over)) {
       el.classList.add('landed');
+      el.classList.toggle('over', over);
       clearTimeout(settle);
-      settle = setTimeout(() => el.classList.remove('landed'), 400);
+      settle = setTimeout(() => el.classList.remove('landed', 'over'), 400);
     }
   };
   /**
