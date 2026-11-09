@@ -324,6 +324,8 @@ const cardsShown = (page) => page.evaluate(async () => {
     document.querySelector('header.topbar')?.after(n.el);
     make(n);
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    // A card that just came ignores taps a moment (.over, .landed: notices.js), so it isn't on top for a hit test until then.
+    while (n.el.matches('.over, .landed')) await new Promise((r) => setTimeout(r, 50));
     scrollTo(0, 0);
     const card = /** @type {HTMLElement} */ (n.el.firstElementChild);
     const r = (/** @type {Element} */ el) => el.getBoundingClientRect();
@@ -390,7 +392,10 @@ const ownBox = (page) => page.evaluate(async () => {
     actions: [{ label: 'Import it as a copy', primary: true, run() {} }, { label: 'Back up this phone over it', run() {} }] });
 });
 /** Whether a part shows on top, as things are now. @param {import('@playwright/test').Locator} part */
-const onTop = (part) => part.evaluate((el) => {
+const onTop = (part) => part.evaluate(async (el) => {
+  // A card that just came or moved ignores taps a moment (.over, .landed: notices.js): hit-test once that has passed.
+  const box = el.closest('.notices');
+  while (box?.matches('.over, .landed')) await new Promise((r) => setTimeout(r, 50));
   const b = el.getBoundingClientRect();
   const hit = document.elementFromPoint(b.left + Math.min(6, b.width / 2), b.top + b.height / 2);
   return b.height > 0 && b.top >= 0 && b.bottom <= innerHeight && Boolean(hit && el.contains(hit));
