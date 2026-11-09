@@ -588,6 +588,25 @@ test("a box taller than half the screen under the bar stays in the page, as befo
   expect((await placeOf(page)).pos).toBe('static');
 });
 
+test("a box that sticks again as a card goes (one left fits in half the screen): its card comes over the rows and ignores taps a moment, as one that arrives does", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await scrolledHome(page);
+  await page.evaluate(() => {
+    const w = /** @type {any} */ (window);
+    w.gone = w.__n.card({ tone: 'warn', title: 'A test card', body: 'Check the key.' }); // as Shiori's named card, taken down when a later turn works
+    w.__n.card({ tone: 'warn', title: 'A newer backup is on Test place', body: 'A backup made on another phone is newer than this one. Import it as a copy, or back this phone up over it.',
+      actions: [{ label: 'Import it as a copy', primary: true, run() {} }, { label: 'Back up this phone over it', run() {} }] });
+  });
+  await expect.poll(async () => (await placeOf(page)).pos).toBe('static'); // the two are taller than half: in the page, above
+  await expect(page.locator('.notices.landed, .notices.over')).toHaveCount(0);
+  const before = await placeOf(page);
+  await page.evaluate(() => /** @type {any} */ (window).gone());
+  expect((await placeOf(page)).pos).toBe('sticky'); // the backup card alone fits: it comes over the rows
+  await expect(page.locator('.notices.over')).toHaveCount(1); // and ignores a tap meant for a row a moment
+  expect(Math.abs((await placeOf(page)).now - before.now)).toBeLessThanOrEqual(1); // the rows stayed
+  await expect(page.locator('.notices.over')).toHaveCount(0);
+});
+
 test("a stuck card opened on home, then another screen: a card that comes there leaves what is seen where it was", async ({ page }) => {
   await scrolledHome(page);
   await page.evaluate(() => /** @type {any} */ (window).__n.card({ title: 'A long card', body: 'These are many words, and more of them. '.repeat(30) }));
