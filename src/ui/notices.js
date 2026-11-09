@@ -16,6 +16,8 @@ export function createNotices() {
   /** Where home was when the user opened a stuck card past what sticks (More, Show) and the page went to its top: closed, the page goes back. @type {{ y: number, h: number } | null} */
   let back = null;
   const sticky = () => getComputedStyle(el).position === 'sticky';
+  /** The top bar's height (shell.js), what covers the page's top. */
+  const barHeight = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--topbar-h')) || 0;
   /**
    * A box that a card lifted the cap of (it needs more than the box's quarter of the screen) sticks on home while it fits in half the screen under the top
    * bar (base.css: not .tall); taller, it is in the page. The half is the user's choice ("Stick up to half"), to be confirmed on their phone: it leaves
@@ -24,34 +26,38 @@ export function createNotices() {
    */
   const settleTall = () => {
     el.classList.remove('tall');
-    const bar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--topbar-h')) || 0;
-    el.classList.toggle('tall', el.getBoundingClientRect().height > (document.documentElement.clientHeight - bar) / 2);
+    el.classList.toggle('tall', el.getBoundingClientRect().height > (document.documentElement.clientHeight - barHeight()) / 2);
   };
+  /** A card open (More) or a stack shown (Show): the box is in the page, and closing it is what goes back. */
+  const opened = () => el.querySelector(':scope > .notice.open, .stack-list:not([hidden])') !== null;
   /**
    * A card comes or goes: scrolled down, what is seen stays put; at the top, what moved ignores taps a moment (.landed). On home the box sticks while it
    * holds a card (base.css), so a card that comes lands in view, over the rows, and ignores taps a moment (.over) instead. One the user opens past what
    * sticks (opening: More, Show) is in the page at its top, and the page goes there; closed again (Less, Hide, Dismiss), the page goes back to where it
-   * was. A card that arrives needing more room than sticks never moves the page: it is in the page, above. @param {() => void} change @param {boolean} [opening]
+   * was. Only that close, and only while the box is in view: one the user scrolled away from, or a card that goes later, leaves the page where the user is.
+   * A card that arrives needing more room than sticks never moves the page: it is in the page, above. @param {() => void} change @param {boolean} [opening]
    */
   const keep = (change, opening = false) => {
     const y = scrollY;
-    const was = el.getBoundingClientRect().height;
+    const box = el.getBoundingClientRect();
+    const was = box.height;
     const stuck = sticky();
+    const open = opened();
     change();
     settleTall();
     const now = el.getBoundingClientRect().height;
     const by = now - was;
     const over = sticky();
     const empty = el.matches(':empty');
+    const closed = open && !opened();
     const home = document.body.classList.contains('home');
     if (opening && stuck && !over && y > 0 && !empty) {
       back = { y, h: was };
       scrollTo(0, 0); // opened: no longer stuck, it would leave the view
-    } else if (back && home && (over || empty)) {
+    } else if (back && home && closed && box.bottom > barHeight()) {
       scrollTo(0, Math.max(0, back.y + now - back.h)); // the rows as they were before it opened
-      back = null;
     } else if (by && y > 0) scrollTo(0, y + by);
-    if (!home) back = null; // another screen: its own place
+    if (closed || !home) back = null; // used by the close that follows the open, or not at all; another screen: its own place
     // A card that arrives moved the screen (at its top: .landed, what moved ignores taps) or sits over it (stuck: .over, the card ignores taps), so a
     // tap meant for a row doesn't land on the card's button; the rows it doesn't cover didn't move and take taps. So does a box that sticks again as one
     // goes (one left that fits in half the screen): its cards come over the rows as one that arrives does.

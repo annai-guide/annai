@@ -516,6 +516,43 @@ test("home scrolled, a stuck stack that opens (Show) is in the page at its top, 
   expect(Math.abs((await placeOf(page)).now - before.now)).toBeLessThanOrEqual(1);
 });
 
+/** Home scrolled, a long card stuck with its More, and the dismiss Shiori's code would hold (her model card is taken down when a later turn works). @param {import('@playwright/test').Page} page */
+async function openedLongCard(page) {
+  await scrolledHome(page);
+  await page.evaluate(() => { const w = /** @type {any} */ (window); w.gone = w.__n.card({ title: 'A long card', body: 'These are many words, and more of them. '.repeat(30), actions: [{ label: 'Go on', run() {} }] }); });
+  await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
+  await expect(page.locator('.notices.landed, .notices.over')).toHaveCount(0);
+  const before = await placeOf(page);
+  const card = page.locator('.notices .notice', { hasText: 'A long card' });
+  await card.getByRole('button', { name: 'More' }).click();
+  await expect.poll(async () => (await placeOf(page)).y).toBe(0);
+  return { before, card };
+}
+
+test("a card opened (More), then one that makes the box taller than half: Less puts home back where it was, and a card that goes later leaves home where the user is", async ({ page }) => {
+  const { before, card } = await openedLongCard(page);
+  await page.evaluate(() => /** @type {any} */ (window).__n.card({ tone: 'warn', title: 'A newer backup is on Test place', body: 'A backup made on another phone is newer than this one. Import it as a copy, or back this phone up over it.',
+    actions: [{ label: 'Import it as a copy', primary: true, run() {} }, { label: 'Back up this phone over it', run() {} }] }));
+  await expect(page.locator('.notices.landed, .notices.over')).toHaveCount(0);
+  await card.getByRole('button', { name: 'Less' }).click();
+  await expect(page.locator('.notices')).toHaveClass(/\btall\b/); // the two are taller than half: in the page, above
+  await expect.poll(async () => Math.abs((await placeOf(page)).now - before.now)).toBeLessThanOrEqual(1); // closed: the rows as they were
+  await page.evaluate(() => scrollTo(0, 1200)); // the user scrolls on, into the past (as a finger would; mobile WebKit has no wheel)
+  const there = await placeOf(page);
+  await page.evaluate(() => /** @type {any} */ (window).gone()); // the long card is taken down by code
+  expect((await placeOf(page)).pos).toBe('sticky'); // the backup card alone fits: it comes over the rows
+  expect(Math.abs((await placeOf(page)).now - there.now)).toBeLessThanOrEqual(1); // and home stays where the user is
+});
+
+test("a card opened (More) that the user scrolls away from, taken down by code, leaves home where the user is", async ({ page }) => {
+  await openedLongCard(page);
+  await page.evaluate(() => scrollTo(0, 1200)); // on into the past, the opened card above, out of view
+  const there = await placeOf(page);
+  await page.evaluate(() => /** @type {any} */ (window).gone());
+  await expect(page.locator('.notices .notice')).toHaveCount(0);
+  expect(Math.abs((await placeOf(page)).now - there.now)).toBeLessThanOrEqual(1);
+});
+
 test("home scrolled on a small phone, a card that needs more room than sticks, arriving while another is stuck, leaves home where it was", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
   await scrolledHome(page);
