@@ -630,6 +630,31 @@ test("the Start a trip form's Add dates fold stays open across the clock's redra
   await expect(page.locator('details.dates')).toHaveAttribute('open', '');
 });
 
+test("the Start a trip form's error stays across the clock's redraw, until the user types into the form or leaves home", async ({ page }) => {
+  await morning(page);
+  const card = row(page, 'Testville');
+  const error = page.locator('form.panel p.error');
+  await page.getByRole('button', { name: 'Start trip' }).click(); // no name
+  await expect(error).toHaveText('Give the trip a name.');
+  await page.clock.fastForward('01:31:00');
+  await expect(card.locator('.next')).toContainText('Lunch'); // drawn again
+  await expect(error).toHaveText('Give the trip a name.'); // not wiped by it
+  await page.getByLabel('Trip name').fill('Kyoto');
+  await expect(error).toBeHidden(); // the user types: it goes, and a redraw doesn't bring it back
+  await page.getByLabel('Trip name').fill('');
+  await page.getByLabel('Trip name').blur();
+  await page.clock.fastForward('02:00:00');
+  await expect(error).toBeHidden();
+  // Leaving home takes it too: Start trip with no name, on to Settings and back.
+  await page.getByRole('button', { name: 'Start trip' }).click();
+  await expect(error).toHaveText('Give the trip a name.');
+  await page.goto('/#/settings');
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  await page.goBack();
+  await expect(page.locator('.now-line')).toBeVisible();
+  await expect(error).toBeHidden();
+});
+
 test("a trip ahead says how soon, and the words follow the clock between midnights", async ({ page }) => {
   await morning(page, { Laterton: { from: 1, to: 2 } });
   const soon = row(page, 'Laterton').locator('.soon');
