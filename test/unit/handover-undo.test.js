@@ -71,6 +71,24 @@ test("a voice-first chat: the system's naming write after her turn is not the us
   assert.deepEqual((await undoHandover(ws, other, 'h-1')).kept, ['/trip.json']);
 });
 
+test("a voice-first chat she named and dated in one write, before its words came: Undo takes back what she wrote but keeps her name, never \"New conversation\"", async () => {
+  const { ws } = await kit();
+  const chat = await createTrip(ws, { title: 'New conversation' });
+  await ws.patch(chat, '/trip.json', { title: 'Testville weekend', start: '2026-11-20', end: '2026-11-27', places: ['Testville'] }, HERS);
+  // The heard line's words come after her turn: the chat has a name already, so the system writes nothing.
+  const out = await undoHandover(ws, chat, 'h-1');
+  assert.deepEqual([out.undone, out.kept], [['/trip.json'], []]);
+  const trip = await ws.readJSON(chat, '/trip.json');
+  assert.deepEqual([trip.title, trip.start, trip.end, trip.places], ['Testville weekend', undefined, undefined, []]); // her places go too: they were hers
+  assert.equal((await ws.history(chat, '/trip.json')).at(-1)?.actor, 'user');
+  // A chat named before her turn (its first line typed) gets that name back, as before.
+  const typed = await createTrip(ws, { title: 'Plan our weekend' });
+  await ws.patch(typed, '/trip.json', { title: 'Testville weekend', start: '2026-11-20' }, HERS);
+  await undoHandover(ws, typed, 'h-1');
+  const back = await ws.readJSON(typed, '/trip.json');
+  assert.deepEqual([back.title, back.start], ['Plan our weekend', undefined]);
+});
+
 test('undo leaves what the user changed since, and names it', async () => {
   const { ws, trip } = await kit();
   await ws.write(trip, '/bookings/flight.json', flightBooking, HERS);
