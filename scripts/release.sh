@@ -32,7 +32,7 @@ fi
 ln -sfn "releases/$c" "$R/current.new"
 mv -f -T "$R/current.new" "$R/current"
 # The new link and the old one's removal can sit on different disks of the pool: both on the disk before the
-# services start, so a crash leaves exactly one "current".
+# services start, so a crash from here on leaves exactly one "current" (before, a disk could hold that for a minute).
 sync
 systemctl restart annai-site annai-relay
 # The trace sink runs from the release too; a sink turned off stays off. The plugin sends again what a restart misses.
