@@ -408,3 +408,9 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** only for a developer playing a simulation faster than real time (x N): home's timer counts the simulation's milliseconds and waits real ones, so a Next that ends, midnight, and "in N hours" are redrawn N times late. Live use is not affected.
 - **Why:** developer-only, and the clock the timer reads is live mode's.
 - **Revisit when:** the next change to home's timer: wait the simulation's delay divided by its speed.
+
+### The dates line's Undo goes at the user's next line
+- **Kind:** deferred.
+- **What the user sees:** when Shiori sets a chat's dates, the line "Shiori set the dates" with its Undo goes for good once the user writes or speaks again. A user who replies "Thanks" and then sees she set the wrong week has only Details to change the dates back. The hand-over's Undo line stays in the conversation at its place and can still be tapped.
+- **Why:** the user chose (2026-11-08, "Stay, next version") a line that stays in the conversation like the hand-over's, built in the next version; stage 4 ships the line as built.
+- **Revisit when:** the next version: make the dates line a conversation line at its place, like the hand-over's Undo.
