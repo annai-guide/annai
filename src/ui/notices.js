@@ -13,19 +13,25 @@ export function createNotices() {
   const toasts = h('div', { class: 'toasts', role: 'status', 'aria-live': 'polite' });
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let settle;
-  /** A card comes or goes: scrolled down, what is seen stays put; at the top, what moved ignores taps a moment (.landed). @param {() => void} change */
+  /**
+   * A card comes or goes: scrolled down, what is seen stays put; at the top, what moved ignores taps a moment (.landed). On home the box sticks while it
+   * holds a card (base.css), so a card that comes lands in view, over the rows; one that opens past what sticks is in the page at its top, and the page
+   * goes there. @param {() => void} change
+   */
   const keep = (change) => {
     const y = scrollY;
     const was = el.getBoundingClientRect().height;
+    const stuck = getComputedStyle(el).position === 'sticky';
     change();
     const by = el.getBoundingClientRect().height - was;
-    if (by && y > 0) scrollTo(0, y + by);
-    // A card that arrives moved the screen (at its top) or sits over it (the box sticks on home): what it covers ignores taps a moment, so a tap
-    // meant for a row doesn't land on the card's button.
-    const over = y > 0 && getComputedStyle(el).position === 'sticky';
+    const over = getComputedStyle(el).position === 'sticky';
+    if (stuck && !over && y > 0 && !el.matches(':empty')) scrollTo(0, 0); // opened: no longer stuck, it would leave the view
+    else if (by && y > 0) scrollTo(0, y + by);
+    // A card that arrives moved the screen (at its top) or sits over it (stuck): what it covers ignores taps a moment, so a tap meant for a row
+    // doesn't land on the card's button.
     if (by > 0 && (y <= 0 || over)) {
       el.classList.add('landed');
-      el.classList.toggle('over', over);
+      el.classList.toggle('over', over && y > 0);
       clearTimeout(settle);
       settle = setTimeout(() => el.classList.remove('landed', 'over'), 400);
     }
