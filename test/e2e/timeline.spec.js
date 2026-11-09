@@ -402,7 +402,7 @@ test("home opened at the now line: a card that arrives sticks under the top bar,
   await page.evaluate(() => dispatchEvent(new ErrorEvent('error', { error: new Error('A test card') })));
   const card = page.locator('.notices .notice');
   await expect(card).toBeVisible();
-  await expect(page.locator('.notices.landed')).toHaveCount(0); // the moment that ignores taps is over
+  await expect(page.locator('.notices.landed, .notices.over')).toHaveCount(0); // the moment that ignores taps is over
   const shown = await under();
   expect(shown.card?.top).toBeGreaterThanOrEqual(shown.barBottom - 1); // under the bar, not over it
   expect(shown.card?.top).toBeLessThanOrEqual(shown.barBottom + 1); // and sticking to it
@@ -437,15 +437,98 @@ test("home scrolled, a stuck card that opens (More) is in the page at its top, w
   });
   const more = page.getByRole('button', { name: 'More' });
   await expect(more).toBeVisible();
-  const where = () => page.evaluate(() => ({ y: scrollY, box: document.querySelector('.notices')?.getBoundingClientRect().top, bar: document.querySelector('.topbar')?.getBoundingClientRect().bottom, pos: getComputedStyle(/** @type {Element} */ (document.querySelector('.notices'))).position }));
+  const where = () => page.evaluate(() => ({ y: scrollY, box: document.querySelector('.notices')?.getBoundingClientRect().top, bar: document.querySelector('.topbar')?.getBoundingClientRect().bottom, pos: getComputedStyle(/** @type {Element} */ (document.querySelector('.notices'))).position, now: Math.round(/** @type {Element} */ (document.querySelector('.now-line')).getBoundingClientRect().top) }));
   expect((await where()).pos).toBe('sticky');
   await expect.poll(async () => (await where()).box).toBeLessThanOrEqual(((await where()).bar ?? 0) + 1);
+  await expect(page.locator('.notices.landed, .notices.over')).toHaveCount(0); // the card takes taps again
+  const before = await where();
   await more.click();
   await expect(page.getByRole('button', { name: 'Less' })).toBeVisible();
   await expect.poll(async () => (await where()).y).toBe(0); // the opened card is in the page at its top: the page goes there
   await expect(page.locator('.notices .notice p')).toBeInViewport();
   await page.getByRole('button', { name: 'Less' }).click();
   await expect.poll(async () => (await where()).pos).toBe('sticky');
+  // Closed, home is back where it was before More: the user's place in the timeline is not lost.
+  await expect.poll(async () => (await where()).y).toBe(before.y);
+  expect(Math.abs((await where()).now - before.now)).toBeLessThanOrEqual(1);
+});
+
+/** Home with a long past, opened at the now line, its box replaced by one the test fills (createNotices). @param {import('@playwright/test').Page} page */
+async function scrolledHome(page) {
+  await openApp(page, '#/settings');
+  /** @type {Record<string, number>} */
+  const chats = {};
+  for (let i = 0; i < 24; i++) chats[`Chat ${i}`] = 60 * 24 * i + 5;
+  await seed(page, { chats, trips: { Laterton: { from: 3, to: 4 } } });
+  await page.goto('/#/trips');
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(300);
+  await page.evaluate(async () => {
+    const { createNotices } = await import(/** @type {string} */ ('/src/ui/notices.js'));
+    const n = createNotices();
+    document.querySelector('.notices')?.replaceWith(n.el);
+    /** @type {any} */ (window).__n = n;
+  });
+}
+const placeOf = (/** @type {import('@playwright/test').Page} */ page) => page.evaluate(() => ({ y: Math.round(scrollY), now: Math.round(/** @type {Element} */ (document.querySelector('.now-line')).getBoundingClientRect().top),
+  pos: getComputedStyle(/** @type {Element} */ (document.querySelector('.notices'))).position }));
+
+test("home scrolled, a stuck stack that opens (Show) is in the page at its top, each card in view; Hide puts home back where it was", async ({ page }) => {
+  await scrolledHome(page);
+  await page.evaluate(() => { for (let i = 0; i < 2; i++) /** @type {any} */ (window).__n.card({ tone: 'warn', title: 'A photo was kept as it is', body: `Photo ${i} is kept as it is.` }); });
+  await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
+  await expect(page.locator('.notices.landed, .notices.over')).toHaveCount(0);
+  const before = await placeOf(page);
+  await page.locator('.notice-stack').getByRole('button', { name: /^Show/ }).click();
+  await expect.poll(async () => (await placeOf(page)).y).toBe(0);
+  await expect(page.locator('.stack-list > .notice').first()).toBeInViewport();
+  await page.locator('.notice-stack').getByRole('button', { name: /^Hide/ }).click();
+  await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
+  await expect.poll(async () => (await placeOf(page)).y).toBe(before.y);
+  expect(Math.abs((await placeOf(page)).now - before.now)).toBeLessThanOrEqual(1);
+});
+
+test("home scrolled on a small phone, a card that needs more room than sticks, arriving while another is stuck, leaves home where it was", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await scrolledHome(page);
+  await page.evaluate(() => /** @type {any} */ (window).__n.card({ tone: 'warn', title: 'A test card', body: 'Check the key.' }));
+  await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
+  const before = await placeOf(page);
+  // Two buttons that wrap at 320 px: its title and buttons need more than the box's quarter of the screen (.grow).
+  await page.evaluate(() => /** @type {any} */ (window).__n.card({ tone: 'warn', title: 'A newer backup is on Test place', body: 'A backup made on another phone is newer than this one. Import it as a copy, or back this phone up over it.',
+    actions: [{ label: 'Import it as a copy', primary: true, run() {} }, { label: 'Back up this phone over it', run() {} }] }));
+  await expect(page.locator('.notices .notice.grow')).toHaveCount(1);
+  const after = await placeOf(page);
+  expect(after.y).toBeGreaterThan(before.y); // not to the top: the page took the box's new height
+  expect(Math.abs(after.now - before.now)).toBeLessThanOrEqual(1); // the rows stayed: no jump to the top
+});
+
+test("a stuck card opened on home, then another screen: a card that comes there leaves what is seen where it was", async ({ page }) => {
+  await scrolledHome(page);
+  await page.evaluate(() => /** @type {any} */ (window).__n.card({ title: 'A long card', body: 'These are many words, and more of them. '.repeat(30) }));
+  await expect(page.locator('.notices.landed, .notices.over')).toHaveCount(0);
+  await page.getByRole('button', { name: 'More' }).click();
+  await expect.poll(async () => (await placeOf(page)).y).toBe(0); // opened: home went to its top
+  await page.evaluate(() => { location.hash = '#/settings'; });
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  await page.evaluate(() => scrollTo(0, 1600));
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(1200);
+  const at = () => page.locator('main h2').first().evaluate((el) => Math.round(el.getBoundingClientRect().top));
+  const was = await at();
+  await page.evaluate(() => /** @type {any} */ (window).__n.card({ tone: 'warn', title: 'A test card', body: 'Check the key.' }));
+  await expect(page.locator('.notices .notice')).toHaveCount(2);
+  expect(Math.abs((await at()) - was)).toBeLessThanOrEqual(1);
+});
+
+test("a card that lands stuck over the rows ignores taps a moment; the rows it doesn't cover still take them", async ({ page }) => {
+  await scrolledHome(page);
+  const right = await page.evaluate(() => {
+    /** @type {any} */ (window).__n.card({ tone: 'warn', title: 'A test card', body: 'Check the key.' });
+    const box = /** @type {HTMLElement} */ (document.querySelector('.notices'));
+    return { over: box.classList.contains('over'), card: getComputedStyle(/** @type {Element} */ (box.querySelector('.notice'))).pointerEvents,
+      rows: getComputedStyle(/** @type {Element} */ (document.querySelector('main'))).pointerEvents };
+  });
+  expect(right).toEqual({ over: true, card: 'none', rows: 'auto' });
+  await expect(page.locator('.notices.over')).toHaveCount(0); // a moment: 400 ms
 });
 
 test("the conversation's name follows its first line while it shows, and Shiori's rename", async ({ page }) => {

@@ -31,6 +31,8 @@ class El extends Node {
     return c;
   }
   getBoundingClientRect() { return { height: 0 }; }
+  /** @param {string} sel only ':empty', for the notices box's keep() */
+  matches(sel) { return sel === ':empty' && !this.children.length; }
   remove() {}
   /** @param {any} other */
   replaceWith(other) { const parent = this.parent; const at = parent?.children.indexOf(this) ?? -1; if (parent && at >= 0) { other.parent = parent; parent.children[at] = other; } }
@@ -44,7 +46,7 @@ class El extends Node {
   get textContent() { return this.children.map((c) => c.text ?? c.textContent).join(''); }
   addEventListener() {}
 }
-Object.assign(globalThis, { Node, addEventListener() {}, scrollY: 0, scrollTo() {}, getComputedStyle: () => ({ position: 'static' }), document: { createElement: (/** @type {string} */ t) => new El(t), createTextNode: (/** @type {string} */ text) => ({ text }) } });
+Object.assign(globalThis, { Node, addEventListener() {}, scrollY: 0, scrollTo() {}, getComputedStyle: () => ({ position: 'static' }), document: { body: new El('body'), createElement: (/** @type {string} */ t) => new El(t), createTextNode: (/** @type {string} */ text) => ({ text }) } });
 
 const { PluginError } = await import('../../src/core/registry.js');
 const { EnglishError } = await import('../../src/core/errors.js');
