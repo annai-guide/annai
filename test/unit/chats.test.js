@@ -73,6 +73,17 @@ test('names', () => {
   assert.equal(chatName({ text: '...so, where now', at, tz }), '...so, where now');
   for (const text of ['Is 3.5 km too far to walk?', 'Dinner at 7.30 tonight', 'U.S. visa questions', 'Check booking.com for a hotel']) assert.equal(chatName({ text, at, tz }), text, 'a dot inside a word ends no sentence');
   assert.equal(chatName({ text: '?!', at, tz }), '?!', 'punctuation alone and nothing else: kept, never blank');
+  // The English rule: a full stop after a word of one or two letters (Mt., St., Dr.) ends no sentence; a word of three letters (Mrs.) still does.
+  assert.equal(chatName({ text: 'Mt. Fuji on Tuesday. Then lunch', at, tz }), 'Mt. Fuji on Tuesday.');
+  assert.equal(chatName({ text: 'Dr. Lee at St. Mark on Friday. Then lunch', at, tz }), 'Dr. Lee at St. Mark on Friday.');
+  assert.equal(chatName({ text: 'Mrs. Smith is here. Then lunch', at, tz }), 'Mrs.');
+  // The cost the user accepted: a first sentence that ends on a short word runs on into the next, and is cut at 40 as long names are.
+  assert.equal(chatName({ text: 'We land in LA. Then lunch. Then the beach', at, tz }), 'We land in LA. Then lunch.');
+  assert.equal(chatName({ text: 'We land in LA. Then we drive to the coast, and then on', at, tz }), 'We land in LA. Then we drive to the coas');
+  // Only the ASCII full stop: the other ends of sentences, and a new line, stay as they are.
+  assert.equal(chatName({ text: 'Is it Mt? Then lunch', at, tz }), 'Is it Mt?');
+  assert.equal(chatName({ text: '東京は雨。次は京都', at, tz }), '東京は雨。');
+  assert.equal(chatName({ text: 'Ask Dr.\nThen lunch', at, tz }), 'Ask Dr.');
   assert.ok(chatName({ text: '', at, tz }).length > 0);
   // A surrogate pair is never split: 40 code points of emoji with no joiners.
   const name = chatName({ text: '🍜'.repeat(50), at, tz });
