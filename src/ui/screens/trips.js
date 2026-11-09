@@ -136,6 +136,8 @@ function chatLine(s, r, { say, now, zone }) {
  */
 async function tripCard(ctx, s, r, { say, now, zone, due }) {
   const [backup, stamps, unread] = await Promise.all([backupState(ctx.store, s.id), tripStamps(ctx, s.id), r ? filesToRead(ctx.store, s.id).then((f) => f.length) : 0]);
+  // Its "backed up … ago" is on the device's clock, and its moment is its own: the footer line's is another place's (or an export's), and a trip's backup can outlive its place.
+  if (backup.at !== null) due?.push(now + relChange(backup.at, Date.now()) - Date.now());
   /** @type {HTMLElement[]} */
   const more = [];
   if (r?.phase === 'happening') {
