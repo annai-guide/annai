@@ -415,6 +415,35 @@ test("home opened at the now line: a card that arrives sticks under the top bar,
   expect(await page.evaluate(() => document.querySelector('.notices')?.getBoundingClientRect().height)).toBe(0);
 });
 
+test("home scrolled, a stuck card that opens (More) is in the page at its top, whole, and Less puts it back under the bar", async ({ page }) => {
+  await openApp(page, '#/settings');
+  /** @type {Record<string, number>} */
+  const chats = {};
+  for (let i = 0; i < 24; i++) chats[`Chat ${i}`] = 60 * 24 * i + 5;
+  await seed(page, { chats, trips: { Laterton: { from: 3, to: 4 } } });
+  await page.goto('/#/trips');
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(300);
+  await page.evaluate(() => dispatchEvent(new ErrorEvent('error', { error: new Error('A test card') })));
+  await page.evaluate(async () => {
+    const { createNotices } = await import(/** @type {string} */ ('/src/ui/notices.js'));
+    const n = createNotices();
+    document.querySelector('.notices')?.replaceWith(n.el);
+    /** @type {any} */ (window).__n = n;
+    n.card({ title: 'A long card', body: 'These are many words, and more of them. '.repeat(30), actions: [{ label: 'Go on', run() {} }] });
+  });
+  const more = page.getByRole('button', { name: 'More' });
+  await expect(more).toBeVisible();
+  const where = () => page.evaluate(() => ({ y: scrollY, box: document.querySelector('.notices')?.getBoundingClientRect().top, bar: document.querySelector('.topbar')?.getBoundingClientRect().bottom, pos: getComputedStyle(/** @type {Element} */ (document.querySelector('.notices'))).position }));
+  expect((await where()).pos).toBe('sticky');
+  await expect.poll(async () => (await where()).box).toBeLessThanOrEqual(((await where()).bar ?? 0) + 1);
+  await more.click();
+  await expect(page.getByRole('button', { name: 'Less' })).toBeVisible();
+  await expect.poll(async () => (await where()).y).toBe(0); // the opened card is in the page at its top: the page goes there
+  await expect(page.locator('.notices .notice p')).toBeInViewport();
+  await page.getByRole('button', { name: 'Less' }).click();
+  await expect.poll(async () => (await where()).pos).toBe('sticky');
+});
+
 test("the conversation's name follows its first line while it shows, and Shiori's rename", async ({ page }) => {
   const llm = await startModelServer({ '/b/v1/messages': [
     { status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'patch', input: { path: '/trip/trip.json', changes: { title: 'Quiet dinner' } } }]) },
