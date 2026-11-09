@@ -500,6 +500,27 @@ test('home drawn again past midnight keeps the row you were looking at, though a
   expect(Math.abs((await at()) - before)).toBeLessThanOrEqual(1); // a device pixel's rounding
 });
 
+test('home drawn again past midnight, scrolled to the rows that go into the fold: the rows under them stay where they were', async ({ page }) => {
+  const late = new Date();
+  late.setHours(23, 58, 30, 0);
+  await page.clock.install({ time: late });
+  await openApp(page, '#/settings');
+  /** @type {Record<string, number>} */
+  const chats = {};
+  for (let m = 1; m <= 8; m++) for (let i = 0; i < 4; i++) chats[`Old ${m}-${i}`] = 1440 * (31 + 31 * m + i); // months of folds above: room to scroll back
+  for (let i = 0; i < 5; i++) chats[`Edge ${i}`] = 30 * 1440 + 60 + i;
+  for (let i = 0; i < 24; i++) chats[`Chat ${i}`] = 1440 * i + 5;
+  await seed(page, { chats });
+  await page.goto('/#/trips');
+  await expect(page.locator('.now-line')).toBeVisible();
+  await row(page, 'Edge 4').evaluate((el) => scrollBy(0, el.getBoundingClientRect().top - 60)); // the first row in view is one that folds
+  const at = () => row(page, 'Chat 23').evaluate((el) => Math.round(el.getBoundingClientRect().top));
+  const before = await at();
+  await page.clock.fastForward('02:00');
+  await expect(row(page, 'Edge 0')).toBeHidden();
+  expect(Math.abs((await at()) - before)).toBeLessThanOrEqual(1);
+});
+
 test("a redraw skipped over typing comes once the typing is gone: the card is right when the name is cleared and left, with no lock and unlock", async ({ page }) => {
   await morning(page);
   const card = row(page, 'Testville');
