@@ -28,7 +28,7 @@ import { nowOf, isField } from '../today.js';
  * @param {any} ctx
  */
 export async function renderTrips(ctx) {
-  if (ctx.moved) tripError = ''; // come to home anew: the form's last error is not shown again
+  if (ctx.moved) tripError = tripTyped.title = tripTyped.start = tripTyped.end = ''; // come to home anew: the form's last error and what was typed in it are not shown again
   const { active, archived } = await listTrips(ctx.store);
   const settings = await readAppSettings(ctx.ws);
   const places = ctx.backups ? await ctx.backups.list() : [];
@@ -210,17 +210,22 @@ function waitingList(ctx, files, names) {
  * submits again, or leaves home (renderTrips).
  */
 let tripError = '';
+/**
+ * What is typed in Start a trip, kept the same way: a redraw that doesn't wait for it (the shell's, when Shiori opens a trip, which doesn't wait on the kept
+ * error) draws it again, so a name or dates typed are never lost to a redraw. It goes when the user leaves home.
+ */
+const tripTyped = { title: '', start: '', end: '' };
 
 /** @param {any} ctx */
 function newTripForm(ctx) {
-  const title = h('input', { id: 'trip-title', name: 'title', maxlength: '200', autocomplete: 'off', placeholder: t`Big Sur · Thanksgiving` });
-  const start = h('input', { id: 'trip-start', name: 'start', type: 'date' });
-  const end = h('input', { id: 'trip-end', name: 'end', type: 'date' });
+  const title = h('input', { id: 'trip-title', name: 'title', maxlength: '200', autocomplete: 'off', placeholder: t`Big Sur · Thanksgiving`, value: tripTyped.title });
+  const start = h('input', { id: 'trip-start', name: 'start', type: 'date', value: tripTyped.start });
+  const end = h('input', { id: 'trip-end', name: 'end', type: 'date', value: tripTyped.end });
   // data-kept: home draws it again itself (tripError), so the shell's redraws need not wait for it to go.
   const error = h('p', { class: 'error', role: 'alert', 'data-kept': '', hidden: !tripError, text: tripError });
   return h('form', {
     class: 'panel',
-    oninput: () => { tripError = ''; error.hidden = true; },
+    oninput: () => { Object.assign(tripTyped, { title: title.value, start: start.value, end: end.value }); tripError = ''; error.hidden = true; },
     onsubmit: async (/** @type {Event} */ e) => {
       e.preventDefault();
       tripError = '';
