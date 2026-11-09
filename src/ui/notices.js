@@ -13,25 +13,37 @@ export function createNotices() {
   const toasts = h('div', { class: 'toasts', role: 'status', 'aria-live': 'polite' });
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let settle;
+  /** Where home was when the user opened a stuck card past what sticks (More, Show) and the page went to its top: closed, the page goes back. @type {{ y: number, h: number } | null} */
+  let back = null;
+  const sticky = () => getComputedStyle(el).position === 'sticky';
   /**
    * A card comes or goes: scrolled down, what is seen stays put; at the top, what moved ignores taps a moment (.landed). On home the box sticks while it
-   * holds a card (base.css), so a card that comes lands in view, over the rows; one that opens past what sticks is in the page at its top, and the page
-   * goes there. @param {() => void} change
+   * holds a card (base.css), so a card that comes lands in view, over the rows, and ignores taps a moment (.over) instead. One the user opens past what
+   * sticks (opening: More, Show) is in the page at its top, and the page goes there; closed again (Less, Hide, Dismiss), the page goes back to where it
+   * was. A card that arrives needing more room than sticks never moves the page: it is in the page, above. @param {() => void} change @param {boolean} [opening]
    */
-  const keep = (change) => {
+  const keep = (change, opening = false) => {
     const y = scrollY;
     const was = el.getBoundingClientRect().height;
-    const stuck = getComputedStyle(el).position === 'sticky';
+    const stuck = sticky();
     change();
-    const by = el.getBoundingClientRect().height - was;
-    const over = getComputedStyle(el).position === 'sticky';
-    if (stuck && !over && y > 0 && !el.matches(':empty')) scrollTo(0, 0); // opened: no longer stuck, it would leave the view
-    else if (by && y > 0) scrollTo(0, y + by);
-    // A card that arrives moved the screen (at its top) or sits over it (stuck): what it covers ignores taps a moment, so a tap meant for a row
-    // doesn't land on the card's button.
+    const now = el.getBoundingClientRect().height;
+    const by = now - was;
+    const over = sticky();
+    const empty = el.matches(':empty');
+    const home = document.body.classList.contains('home');
+    if (opening && stuck && !over && y > 0 && !empty) {
+      back = { y, h: was };
+      scrollTo(0, 0); // opened: no longer stuck, it would leave the view
+    } else if (back && home && (over || empty)) {
+      scrollTo(0, Math.max(0, back.y + now - back.h)); // the rows as they were before it opened
+      back = null;
+    } else if (by && y > 0) scrollTo(0, y + by);
+    if (!home) back = null; // another screen: its own place
+    // A card that arrives moved the screen (at its top: .landed, what moved ignores taps) or sits over it (stuck: .over, the card ignores taps), so a
+    // tap meant for a row doesn't land on the card's button; the rows it doesn't cover didn't move and take taps.
     if (by > 0 && (y <= 0 || over)) {
-      el.classList.add('landed');
-      el.classList.toggle('over', over && y > 0);
+      el.classList.add(over && y > 0 ? 'over' : 'landed');
       clearTimeout(settle);
       settle = setTimeout(() => el.classList.remove('landed', 'over'), 400);
     }
@@ -105,14 +117,14 @@ let lone = 0;
     const count = h('strong', {});
     // What joins a stack is announced here by its own words, as a card in the page would be.
     const said = h('span', { class: 'visually-hidden', role: 'status' });
-    const show = h('button', { class: 'btn', type: 'button', 'aria-expanded': 'false', 'aria-controls': id, onclick: () => {
+    const show = h('button', { class: 'btn', type: 'button', 'aria-expanded': 'false', 'aria-controls': id, onclick: () => keep(() => {
       const open = list.hidden;
       list.hidden = !open;
       show.textContent = open ? t`Hide` : t`Show`;
       show.setAttribute('aria-expanded', String(open));
       recount(stack);
       if (open) for (const m of stack.members) fitters.get(m)?.();
-    } }, t`Show`);
+    }, true) }, t`Show`);
     const all = h('button', { class: 'btn ghost', type: 'button', onclick: () => keep(() => { for (const m of [...stack.members]) leave(kind, m); }) }, t`Dismiss all`);
     const el = h('section', { class: 'notice notice-stack' }, count, said, h('div', { class: 'acts' }, show, all), list);
     /** @type {Stack} */
@@ -201,7 +213,7 @@ let lone = 0;
       if (!open) fitters.get(node)?.(); // closed again, it fits the screen as it is now (it may have turned meanwhile)
       more.textContent = open ? t`Less` : t`More`;
       more.setAttribute('aria-expanded', String(open));
-    }) }, t`More`);
+    }, true) }, t`More`);
     const node = h('section', { class: ['notice', `notice-${tone}`] },
       h('strong', { text: title, lang: otherLang(lang) }),
       body ? h('p', { lang: otherLang(lang) }, ...englishIn(body, ...errors)) : null,

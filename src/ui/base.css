@@ -159,9 +159,9 @@ pre.code { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--pap
 /* On home only, the box sticks under the top bar (--topbar-h, shell.js) while it holds a card: home opens scrolled to the now line, and a card that arrives
    there is in view instead of above it. Empty, it takes no room and covers nothing. Not while a card has lifted its caps (above: it must show whole, and a
    box taller than the screen can't stick): that is a box in the page, as on any screen, and keep() brings the page to it when it opens. A card that lands over
-   the rows ignores taps a moment (.landed .over, notices.js), as the rows do when it moves them. */
+   the rows ignores taps a moment (.over, notices.js), as the rows do when it moves them. */
 body.home .notices:not(:empty, :has(> .notice.grow, .notice.open, .stack-list:not([hidden]))) { position: sticky; top: var(--topbar-h, 0px); z-index: 4; background: var(--paper); }
-.notices.landed.over > .notice { pointer-events: none; }
+.notices.over > .notice { pointer-events: none; }
 /* A toast floats above the dock for a moment; a tap goes through it to what is under it. */
 .toasts { position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; display: flex; flex-direction: column; gap: 8px; padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0px)); pointer-events: none; align-items: center; }
 .notice, .toast { width: min(100%, 560px); padding: 14px 16px; border-radius: var(--radius); background: var(--sheet); border: 1px solid var(--line); box-shadow: 0 12px 30px -16px var(--shadow); display: flex; flex-direction: column; gap: 8px; }
