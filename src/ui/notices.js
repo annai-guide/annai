@@ -64,6 +64,7 @@ export function createNotices() {
     if (y > 0 ? over && (by > 0 || !stuck) : by > 0) {
       el.classList.add(over && y > 0 ? 'over' : 'landed');
       clearTimeout(settle);
+      // 400 ms (79cadd29, 2026-10-21): for that long what moved ignores taps, so a tap meant for it doesn't land on what slid under the finger.
       settle = setTimeout(() => el.classList.remove('landed', 'over'), 400);
     }
   };
