@@ -28,8 +28,8 @@ export async function ensureDraft(ws) {
 }
 
 /**
- * The dates a conversation had before Shiori's newest dating write of it, while the line that says so is to show: as the hand-over's Undo line,
- * until the user writes or speaks again after her write, and while the dates are still the ones that write set (a later title doesn't change
+ * The dates a conversation had before Shiori's newest dating write of it, while the line that says so is to show: until the user writes or speaks again
+ * after her write (then it goes for good; unlike the hand-over's Undo line, which stays in the conversation at its place), and while the dates are still the ones that write set (a later title doesn't change
  * them; the user's own date edit does). Her dating write is one whose version before had no start and whose own has one. Only the file writes
  * since the user's last line are read. Null: none, or not to show.
  * @param {any} store @param {string} scope @returns {Promise<{ start?: string, end?: string } | null>}
