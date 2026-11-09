@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker } from './helpers.js';
+import { openApp, FIRST_DRAW, waitForServiceWorker } from './helpers.js';
 import { SOURCES, FONTS, ART } from '../../src/ui/credits.js';
 
 // The welcome and Settings → About (the user, 2026-10-18).
@@ -164,7 +164,7 @@ test.describe('a link that opens a screen is never interrupted', () => {
   test('a share from another app opens on the import screen, with no welcome', async ({ page }) => {
     await page.goto('/#/import?inbox=1');
     await expect(h1(page)).not.toHaveText(STEPS[0]);
-    await expect(page.locator('main.view > *')).toBeVisible();
+    await expect(page.locator('main.view > *')).toBeVisible(FIRST_DRAW);
     expect(new URL(page.url()).hash).toBe('#/import?inbox=1');
     expect((await appSettings(page)).welcomedAt).toBeUndefined();
   });

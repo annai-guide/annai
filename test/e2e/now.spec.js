@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, startTrip, writeRecords, writeEvent } from './helpers.js';
+import { openApp, FIRST_DRAW, startTrip, writeRecords, writeEvent } from './helpers.js';
 
 /** An ISO time some minutes from now, in UTC. @param {number} min */
 const soon = (min) => new Date(Date.now() + min * 60_000).toISOString().replace(/\.\d+Z$/, 'Z');
@@ -17,7 +17,7 @@ test('Now: where you are, the sun, what is next and the latest card; live mode f
   });
   await writeEvent(page, trip, { type: 'reminder', data: { watch: 'plan:lunch:leave', text: 'Leave soon: Lunch at Nepenthe.' } });
   await page.reload(); // written outside the app's own files layer: live mode reads the plan again as it starts
-  await expect(page.locator('main.view > *')).toBeVisible();
+  await expect(page.locator('main.view > *')).toBeVisible(FIRST_DRAW);
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Now' }).click();
   await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
   await expect(page.locator('.now-place')).toHaveText("GPS is off, so annai isn't following where you are.");
@@ -66,7 +66,7 @@ test('a trip with thousands of location points: Now, the Plan and the conversati
     store.close();
   }, trip);
   await page.reload();
-  await expect(page.locator('main.view > *')).toBeVisible();
+  await expect(page.locator('main.view > *')).toBeVisible(FIRST_DRAW);
   await page.goto('/#/now');
   await expect(page.getByRole('region', { name: 'Latest' })).toContainText('Reminder: Leave soon: Lunch at Nepenthe.');
   await expect(page.getByRole('region', { name: 'Next' }).locator('.plan-row')).toContainText('Lunch at Nepenthe');

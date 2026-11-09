@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { writeFile, readFile } from 'node:fs/promises';
-import { openApp, startModelServer, modelSetUp, anthropicToolReply, fakeMicrophone, waitForServiceWorker, addProvider } from './helpers.js';
+import { openApp, FIRST_DRAW, startModelServer, modelSetUp, anthropicToolReply, fakeMicrophone, waitForServiceWorker, addProvider } from './helpers.js';
 import { encodeWav } from '../../src/core/voice/pcm.js';
 
 // Timeline stage 4: home is a timeline of trips and chats, and a + drops you into a new conversation with no naming step.
@@ -77,7 +77,7 @@ async function seed(page, { chats = {}, trips = {} }) {
     return out;
   }, { chats, trips });
   await page.reload();
-  await expect(page.locator('main.view > *')).toBeVisible();
+  await expect(page.locator('main.view > *')).toBeVisible(FIRST_DRAW);
   return ids;
 }
 const row = (/** @type {import('@playwright/test').Page} */ page, /** @type {string} */ name) => page.locator('.trip-card', { has: page.locator('.name', { hasText: name }) });

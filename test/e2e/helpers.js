@@ -48,6 +48,14 @@ export function watchConsole(page) {
 }
 
 /**
+ * How long a test waits for annai's first screen. Playwright's 10 s (playwright.config.js) is right for one step on a
+ * drawn screen, but the first draw parses the whole app: on 2026-11-09, with other test jobs on the host, Chromium sat on
+ * "Opening annai…" past 10 s in 192 of 209 failures of a full run, and the same tests passed alone in 18 s for 8.
+ * 30 s is the wait waitForServiceWorker already gives the same start.
+ */
+export const FIRST_DRAW = { timeout: 30_000 };
+
+/**
  * Opens annai and waits for the first screen. Exports always download in tests (no share sheet).
  * It opens Trips by its address, not annai's plain start, where a fresh device is welcomed first
  * (welcome.spec.js tests that).
@@ -56,7 +64,7 @@ export function watchConsole(page) {
 export async function openApp(page, hash = '#/trips') {
   await page.addInitScript(() => { try { localStorage.setItem('annai.forceDownload', '1'); } catch { /* storage blocked */ } });
   await page.goto('/' + hash);
-  await expect(page.locator('main.view > *')).toBeVisible();
+  await expect(page.locator('main.view > *')).toBeVisible(FIRST_DRAW);
 }
 
 /**
