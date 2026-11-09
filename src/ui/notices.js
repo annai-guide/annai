@@ -53,8 +53,9 @@ export function createNotices() {
     } else if (by && y > 0) scrollTo(0, y + by);
     if (!home) back = null; // another screen: its own place
     // A card that arrives moved the screen (at its top: .landed, what moved ignores taps) or sits over it (stuck: .over, the card ignores taps), so a
-    // tap meant for a row doesn't land on the card's button; the rows it doesn't cover didn't move and take taps.
-    if (by > 0 && (y <= 0 || over)) {
+    // tap meant for a row doesn't land on the card's button; the rows it doesn't cover didn't move and take taps. So does a box that sticks again as one
+    // goes (one left that fits in half the screen): its cards come over the rows as one that arrives does.
+    if (y > 0 ? over && (by > 0 || !stuck) : by > 0) {
       el.classList.add(over && y > 0 ? 'over' : 'landed');
       clearTimeout(settle);
       settle = setTimeout(() => el.classList.remove('landed', 'over'), 400);
