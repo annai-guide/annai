@@ -655,6 +655,27 @@ test("the Start a trip form's error stays across the clock's redraw, until the u
   await expect(error).toBeHidden();
 });
 
+test("a card's \"backed up … ago\" follows the clock on its own moment, whatever the footer line says", async ({ page }) => {
+  await morning(page); // no place, no export: the footer says "No backup yet"
+  // A trip marked by a backup whose place has since gone (or a backup that finished out of order): nothing but the card says when.
+  await page.evaluate(async () => {
+    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+    const store = await createIdbStore();
+    await store.tx(['scopes', 'events'], 'readwrite', async (/** @type {any} */ t) => {
+      const rec = (await t.listScopes()).find((/** @type {any} */ s) => s.title === 'Testville');
+      await t.putScope({ ...rec, backup: { at: Date.now() - 90_000, seq: await t.lastSeq(rec.id) } });
+    });
+    store.close();
+  });
+  await page.goto('/#/settings');
+  await page.goto('/#/trips');
+  const card = row(page, 'Testville');
+  await expect(card).toContainText('backed up 2 minutes ago');
+  await expect(page.getByText('No backup yet')).toBeVisible();
+  await page.clock.fastForward('03:00'); // 4 and a half minutes after it
+  await expect(card).toContainText(/backed up [45] minutes ago/);
+});
+
 test("a trip ahead says how soon, and the words follow the clock between midnights", async ({ page }) => {
   await morning(page, { Laterton: { from: 1, to: 2 } });
   const soon = row(page, 'Laterton').locator('.soon');
