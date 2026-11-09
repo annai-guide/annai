@@ -1,9 +1,9 @@
 #!/bin/sh
 # annai-release [commit]: unpacks a commit of the annai repository into its own release folder, writes the
 # brotli forms of its shipped files beside them (scripts/build-release.mjs, the release's own copy; a
-# commit older than that script is served as it is), switches the "current" link to it, restarts the site
-# and the relay (whose waiting reminders are in /var/lib/annai-relay and survive), and keeps the last 5
-# releases. It stops before switching when an official plugin changed under a version already released.
+# commit older than that script is served as it is), switches the "current" link to it, restarts the site,
+# the relay (whose waiting reminders are in /var/lib/annai-relay and survive) and a running trace sink, and
+# keeps the last 5 releases. It stops before switching when an official plugin changed under a version already released.
 # /usr/local/sbin/annai-release is a link to this file.
 set -eu
 REPO=/mnt/optane/work/annai
@@ -31,7 +31,12 @@ if [ -f "$R/releases/$c/scripts/catalog-versions.mjs" ] && [ -f "$R/current/cata
 fi
 ln -sfn "releases/$c" "$R/current.new"
 mv -f -T "$R/current.new" "$R/current"
+# The new link and the old one's removal can sit on different disks of the pool: both on the disk before the
+# services start, so a crash leaves exactly one "current".
+sync
 systemctl restart annai-site annai-relay
+# The trace sink runs from the release too; a sink turned off stays off. The plugin sends again what a restart misses.
+systemctl try-restart annai-trace
 ls -1t "$R/releases" | tail -n +6 | while read -r d; do
   [ "$d" = "$c" ] || rm -rf -- "${R:?}/releases/${d:?}"
 done
