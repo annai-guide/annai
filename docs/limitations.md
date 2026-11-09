@@ -378,8 +378,8 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** every move is undone from both of its ends (A's `into`, B's `out`); in a cycle the second undo of B to A finds the file in A, put there by the undo of A to B, and moves it again.
 - **Revisit when:** the next version: in `moveBack` (handover.js), a file whose last write at `at.path` is this Undo's own (`undo === handover`) is home already.
 
-### A redraw of home drops an armed "Tap again to delete" and the keyboard focus
+### A redraw of home drops an armed "Tap again to delete"
 - **Kind:** deferred.
-- **What the user sees:** on home, a two-step button (Waiting with Shiori's Delete) tapped once, or a focused field, is reset when home draws itself again (Shiori's `went`, a plugin's screens, Waiting's own Delete, and since stage 4 the clock's redraw, a few times a day). The armed row says "Delete" again and the keyboard closes; nothing is lost but the first tap.
-- **Why:** home is rebuilt as a whole in place; its open folds and its place are kept (the shell scrolls to the row in view, `fold` keeps what is open), but an armed row and the focus are not. Older than the clock's redraw.
-- **Revisit when:** the next version: keep the armed row and the focused element across home's redraws.
+- **What the user sees:** on home, Waiting with Shiori's Delete tapped once is reset when home draws itself again (Shiori's `went`, a plugin's screens, Waiting's own Delete, and since stage 4 the clock's redraw: a few times a day, and once a minute in the hour after a backup or an export, as "Last backup … ago" changes its words). The row says "Delete" again; nothing is lost but the first tap. A focused field is not redrawn over: each of these waits for it.
+- **Why:** home is rebuilt as a whole in place; its open folds and its place are kept (the shell scrolls to the row in view, `fold` keeps what is open), and the redraws wait for a focused field, but an armed row is not kept. Older than the clock's redraw.
+- **Revisit when:** the next version: keep the armed row across home's redraws.

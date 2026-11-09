@@ -17,7 +17,7 @@ import { upcoming, over } from '../../core/now.js';
 import { dayIn, deviceZone, nextDay } from '../../core/time.js';
 import { storedTexts } from '../../core/agent/log.js';
 import { tripRows } from '../trip-rows.js';
-import { nowOf } from '../today.js';
+import { nowOf, isField } from '../today.js';
 
 /** @typedef {import('../../core/timeline.js').Row} Row */
 
@@ -76,20 +76,25 @@ export async function renderTrips(ctx) {
  * Home is drawn for an instant: its Next, "Day 3 of 8", which trips are happening, and the "in 21 hours" and "2 hours ago" it says go stale as time
  * passes. It draws itself again, in place, at the earliest of the moments they change (one timer: a Next item ends, a shown relative time changes its words,
  * or midnight, where a trip starts or ends and the day count moves; the 1 s is for a timer a hair early) and when annai comes back to the front, which a
- * phone's timers may have slept through. Only while it is the screen shown, and never over a trip name or dates being typed in the Start a trip form:
- * then it waits, and draws once the form's inputs are empty again. Its folds and the place stay (the redraw is not a move, and `fold` keeps what is open).
+ * phone's timers may have slept through. Only while it is the screen shown and its address, and never over the Start a trip form while a field of it
+ * has focus or holds a name or dates: then it waits, and draws once the form is empty and left. Its folds and the place stay (the redraw is not a
+ * move, and `fold` keeps what is open).
  * @param {any} ctx @param {HTMLElement} screen @param {{ now: number, zone: string, due: number[] }} o
  */
 function followClock(ctx, screen, o) {
-  const typed = () => [...screen.querySelectorAll('input')].some((i) => i.value);
-  let waiting = false;
+  const at = location.hash;
+  // What a redraw would lose: a field of the form with the focus (the keyboard would close), or a name or dates typed in it.
+  const typing = () => (screen.contains(document.activeElement) && isField(document.activeElement)) || [...screen.querySelectorAll('input')].some((i) => i.value);
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let timer;
   const redraw = () => {
-    if (!screen.isConnected) return;
-    if (typed()) waiting = true; // drawn once the typing is gone (below)
+    clearTimeout(timer); // one wait at a time, whoever asked
+    if (!screen.isConnected || location.hash !== at) return; // gone, or going: a redraw now would send a tap's move back
+    // Looked at again in half a second, as the shell's own redraw does: soon after the keyboard goes, and each look is a few reads of the form.
+    if (typing()) timer = setTimeout(redraw, 500);
     else ctx.render();
   };
-  screen.addEventListener('input', () => { if (waiting && !typed()) redraw(); });
-  const timer = setTimeout(redraw, Math.max(Math.min(nextDay(o.now, o.zone), ...o.due) - o.now, 0) + 1000);
+  timer = setTimeout(redraw, Math.max(Math.min(nextDay(o.now, o.zone), ...o.due) - o.now, 0) + 1000);
   const front = () => { if (document.visibilityState === 'visible') redraw(); };
   document.addEventListener('visibilitychange', front);
   whenGone(screen, () => {

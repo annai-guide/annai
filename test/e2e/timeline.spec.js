@@ -437,6 +437,7 @@ test("a trip card follows the clock when annai comes back to the front after a w
   await expect(card.locator('.next')).toContainText('Museum'); // not redrawn over the typing
   await expect(page.getByLabel('Trip name')).toHaveValue('Tokyo');
   await page.getByLabel('Trip name').fill('');
+  await page.getByLabel('Trip name').blur(); // done with the form: the keyboard goes
   await back();
   await expect(card.locator('.next')).toContainText('Lunch');
 });
@@ -499,16 +500,54 @@ test('home drawn again past midnight keeps the row you were looking at, though a
   expect(Math.abs((await at()) - before)).toBeLessThanOrEqual(1); // a device pixel's rounding
 });
 
-test("a redraw skipped over typing comes once the typing is gone: the card is right when the name is cleared, with no lock and unlock", async ({ page }) => {
+test("a redraw skipped over typing comes once the typing is gone: the card is right when the name is cleared and left, with no lock and unlock", async ({ page }) => {
   await morning(page);
   const card = row(page, 'Testville');
+  const name = page.getByLabel('Trip name');
   await expect(card.locator('.next')).toContainText('Museum');
-  await page.getByLabel('Trip name').fill('Tokyo');
+  await name.click();
+  await page.keyboard.type('Tokyo');
   await page.clock.fastForward('01:31:00'); // Museum is over: the redraw waits for the typing
   await page.waitForTimeout(300);
   await expect(card.locator('.next')).toContainText('Museum');
-  await page.getByLabel('Trip name').fill('');
+  // Cleared to be typed again: the field keeps its focus and what is typed next.
+  for (let i = 0; i < 5; i++) await page.keyboard.press('Backspace');
+  await page.waitForTimeout(300);
+  await page.keyboard.type('Kyoto');
+  await expect(name).toHaveValue('Kyoto');
+  await expect(name).toBeFocused();
+  await expect(card.locator('.next')).toContainText('Museum');
+  await name.fill('');
+  await name.blur();
   await expect(card.locator('.next')).toContainText('Lunch');
+});
+
+test("the clock's redraw waits while a field of Start a trip has focus, empty: the keyboard stays up", async ({ page }) => {
+  await morning(page);
+  const card = row(page, 'Testville');
+  const name = page.getByLabel('Trip name');
+  await page.getByText('Add dates (optional)').click();
+  await name.focus();
+  await page.clock.fastForward('01:31:00');
+  await page.waitForTimeout(300);
+  await expect(name).toBeFocused();
+  await expect(card.locator('.next')).toContainText('Museum');
+  await page.getByLabel('Starts').focus(); // on to another field of the form: it waits still
+  await page.waitForTimeout(300);
+  await expect(page.getByLabel('Starts')).toBeFocused();
+  await page.getByLabel('Starts').blur();
+  await expect(card.locator('.next')).toContainText('Lunch');
+});
+
+test("a row tapped while a redraw waits for the form opens that row's conversation", async ({ page }) => {
+  await morning(page);
+  await page.getByLabel('Trip name').focus();
+  await page.clock.fastForward('01:31:00'); // the redraw waits, for the focus
+  await page.waitForTimeout(300);
+  await row(page, 'Chat 5').click(); // the focus leaves as the tap moves on
+  await expect(page.locator('.talk-name')).toHaveText('Chat 5');
+  await page.waitForTimeout(500);
+  await expect(page.locator('.talk-name')).toHaveText('Chat 5');
 });
 
 test("the Start a trip form's Add dates fold stays open across the clock's redraw", async ({ page }) => {
