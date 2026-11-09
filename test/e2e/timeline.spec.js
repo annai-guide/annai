@@ -779,6 +779,72 @@ for (const size of SIZES) {
   });
 }
 
+for (const how of ['two hold cards came on another screen', 'a card opened on home, then one came on another screen']) {
+  test(`back on home, a box that holds more than its cap keeps a swipe past its end: ${how}`, async ({ page, browserName }) => {
+    await page.setViewportSize({ width: 360, height: 640 });
+    await scrolledHome(page);
+    if (how.startsWith('a card opened')) {
+      await page.evaluate(() => /** @type {any} */ (window).__n.card({ title: 'A long card', body: 'These are many words, and more of them. '.repeat(30) }));
+      await settled(page);
+      await page.getByRole('button', { name: 'More' }).click();
+      await expect(page.getByRole('button', { name: 'Less' })).toBeAttached();
+    }
+    await page.evaluate(() => { location.hash = '#/settings'; }); // there the box has no cap: what it holds is measured as fitting
+    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+    if (how.startsWith('two')) {
+      await addBackup(page, 'Place 0');
+      await addBackup(page, 'Place 1');
+    } else await page.evaluate(() => /** @type {any} */ (window).__n.card({ tone: 'warn', title: 'A test card', body: 'Check the key.' }));
+    // A visit lasts some frames, as a person's does (WebKit headless can draw none in a few ms, and the box's size changes are seen at frames).
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    await page.goBack();
+    await expect(page.locator('.now-line')).toBeVisible();
+    const box = page.locator('.notices');
+    await expect.poll(() => box.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeGreaterThan(1); // on home, at its cap: it scrolls inside
+    if (browserName !== 'chromium') {
+      // Playwright's WebKit has neither touch scrolling nor a wheel: there, the rule itself.
+      await expect.poll(() => box.evaluate((el) => getComputedStyle(el).overscrollBehaviorY)).toBe('contain');
+      return;
+    }
+    await settled(page);
+    const before = await placeOf(page);
+    const swipe = await fingerOf(page);
+    const b = /** @type {{ x: number, y: number, width: number, height: number }} */ (await box.boundingBox());
+    for (let i = 0; i < 6; i++) await swipe(Math.round(b.x + b.width / 2), Math.round(b.y + b.height - 30), -200); // to the box's end, and past it
+    expect(await box.evaluate((el) => el.scrollHeight - el.clientHeight - el.scrollTop)).toBeLessThanOrEqual(1);
+    await rowsStayed(page, before);
+  });
+}
+
+for (const by of ['the user, tapping twice', 'code, as the user taps']) {
+  for (const [width, height] of PHONES) {
+    test(`a card that goes from the stuck box, by ${by}: the hold card that slides into its place ignores the tap meant for the one that went (${width} x ${height})`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await scrolledHome(page);
+      await page.evaluate(() => {
+        const w = /** @type {any} */ (window);
+        w.ran = [];
+        w.gone = w.__n.card({ tone: 'warn', title: "Shiori can't reach her model", body: 'The key was refused. Check it in Settings.' }); // taken down when a later turn works
+        w.__n.card({ tone: 'warn', title: 'A newer backup is on Test place', body: 'A backup made on another phone is newer than this one. Import it as a copy, or back this phone up over it.',
+          actions: [{ label: 'Import it as a copy', primary: true, run() { w.ran.push('import'); } }, { label: 'Back up this phone over it', run() { w.ran.push('over'); } }] });
+      });
+      await settled(page);
+      const d = /** @type {{ x: number, y: number, width: number, height: number }} */ (await page.locator('.notices > .notice').first().getByRole('button', { name: 'Dismiss' }).boundingBox());
+      const x = d.x + d.width / 2;
+      const y = d.y + d.height / 2;
+      if (by === 'code, as the user taps') await page.evaluate(() => /** @type {any} */ (window).gone());
+      else {
+        await page.touchscreen.tap(x, y); // Dismiss
+        await page.waitForTimeout(150);
+      }
+      await page.touchscreen.tap(x, y); // the tap meant for the card that went
+      await page.waitForTimeout(450);
+      expect(await page.evaluate(() => /** @type {any} */ (window).ran)).toEqual([]);
+      await expect(page.locator('.notices > .notice')).toHaveCount(1); // the hold card stays, its buttons untouched
+    });
+  }
+}
+
 test("a stuck card opened on home, then another screen: a card that comes there leaves what is seen where it was", async ({ page }) => {
   await scrolledHome(page);
   await page.evaluate(() => /** @type {any} */ (window).__n.card({ title: 'A long card', body: 'These are many words, and more of them. '.repeat(30) }));

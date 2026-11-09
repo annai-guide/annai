@@ -46,7 +46,7 @@ class El extends Node {
   get textContent() { return this.children.map((c) => c.text ?? c.textContent).join(''); }
   addEventListener() {}
 }
-Object.assign(globalThis, { Node, addEventListener() {}, scrollY: 0, scrollTo() {}, getComputedStyle: () => ({ position: 'static', getPropertyValue: () => '' }), innerHeight: 800, document: { body: new El('body'), documentElement: new El('html'), createElement: (/** @type {string} */ t) => new El(t), createTextNode: (/** @type {string} */ text) => ({ text }) } });
+Object.assign(globalThis, { Node, ResizeObserver: class { observe() {} }, addEventListener() {}, scrollY: 0, scrollTo() {}, getComputedStyle: () => ({ position: 'static', getPropertyValue: () => '' }), innerHeight: 800, document: { body: new El('body'), documentElement: new El('html'), createElement: (/** @type {string} */ t) => new El(t), createTextNode: (/** @type {string} */ text) => ({ text }) } });
 
 const { PluginError } = await import('../../src/core/registry.js');
 const { EnglishError } = await import('../../src/core/errors.js');
