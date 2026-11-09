@@ -216,7 +216,8 @@ function newTripForm(ctx) {
   const title = h('input', { id: 'trip-title', name: 'title', maxlength: '200', autocomplete: 'off', placeholder: t`Big Sur · Thanksgiving` });
   const start = h('input', { id: 'trip-start', name: 'start', type: 'date' });
   const end = h('input', { id: 'trip-end', name: 'end', type: 'date' });
-  const error = h('p', { class: 'error', role: 'alert', hidden: !tripError, text: tripError });
+  // data-kept: home draws it again itself (tripError), so the shell's redraws need not wait for it to go.
+  const error = h('p', { class: 'error', role: 'alert', 'data-kept': '', hidden: !tripError, text: tripError });
   return h('form', {
     class: 'panel',
     oninput: () => { tripError = ''; error.hidden = true; },
