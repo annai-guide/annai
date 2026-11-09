@@ -414,3 +414,33 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** when Shiori sets a chat's dates, the line "Shiori set the dates" with its Undo goes for good once the user writes or speaks again. A user who replies "Thanks" and then sees she set the wrong week has only Details to change the dates back. The hand-over's Undo line stays in the conversation at its place and can still be tapped.
 - **Why:** the user chose (2026-11-08, "Stay, next version") a line that stays in the conversation like the hand-over's, built in the next version; stage 4 ships the line as built.
 - **Revisit when:** the next version: make the dates line a conversation line at its place, like the hand-over's Undo.
+
+### Home's rows move when a phone rotates, or at the first resize after a tall card lands
+- **Kind:** deferred.
+- **What the user sees:** on home, a phone turned on its side moves the rows. In Chromium, the first resize after a card that needs more than a quarter of the screen (`.grow`) has landed in the page moves the rows by its excess over the quarter (167 to 211 px measured at 393 x 659); in a Chrome tab the URL bar's first hide is such a resize.
+- **Why:** cards are refit when the screen changes size, outside `keep()` in notices.js, which is what keeps the rows still when a card comes or goes. Older than stage 4's sticky box.
+- **Revisit when:** the next version: run the resize's refit through `keep()`.
+
+### Cards aren't refit when web fonts swap in
+- **Kind:** deferred.
+- **What the user sees:** when a web font swaps in after a card was fitted, its text may take a little more or less room than the fit assumed (a few px); the box is refit at the next change or resize.
+- **Why:** a font swap re-runs neither `fit` nor `settleTall`.
+- **Revisit when:** the next version, with the resize refit above.
+
+### Focusing a field doesn't scroll it clear of a stuck card
+- **Kind:** deferred.
+- **What the user sees:** on home, a field near the top of the screen (Start a trip's name, say, with the keyboard up) can sit under a stuck card. The box can be up to 232 px at 320 x 568 (a newer-backup card), against 142 px for a quarter of the screen.
+- **Why:** nothing tells the browser's focus scrolling about the top bar or the box (no `scroll-padding-top`).
+- **Revisit when:** the next version: `scroll-padding-top` of the top bar plus the box on home, or after the user's phone check of "Stick up to half".
+
+### A kept error drawn again may be read out again by a screen reader
+- **Kind:** deferred.
+- **What the user sees:** not verified. Start a trip's "Give the trip a name." is drawn again with each redraw of home as a new `role=alert`, which a screen reader may read out again.
+- **Why:** home rebuilds its form on a redraw, and the error is kept as state, not as the same element.
+- **Revisit when:** a screen-reader user reports it, or with the in-place redraw of home's relative times.
+
+### The install banner stays after desktop Chrome moves the tab into an app window
+- **Kind:** deferred.
+- **What the user sees:** after Install moves a desktop Chrome tab into an app window, the data-safety banner still says "annai isn't installed yet" until a reload, and a fresh home still opens at its top.
+- **Why:** the banner is drawn once per page, at start.
+- **Revisit when:** the next version: draw it again when the display mode changes.
