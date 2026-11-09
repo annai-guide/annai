@@ -74,9 +74,11 @@ const clip = (s) => (graphemes ? [...graphemes.segment(s)].map((g) => g.segment)
 /**
  * The English rule: a full stop (ASCII only) straight after a word of one or two letters (Mt., St., Dr.) is an abbreviation's, not a sentence's end. The cost: a
  * sentence that really ends on a short word ("We land in LA.") runs on into the next, and is cut at NAME_MAX as a long name is. A new line still ends it.
+ * The word is the letters after a space or a mark (U.S., p.m.), not the end of a longer word: 8pm., 3rd., Nobu's. and check-in. end a sentence. The spaces after it
+ * may be no-break ones (Mt.&nbsp;Fuji, as pasted text often has); a new line is not one.
  * @param {string} s @param {number} end index just past a sentence's end mark
  */
-const shortWordStop = (s, end) => /(?:^|[^\p{L}])\p{L}{1,2}\.[ \t]*$/u.test(s.slice(0, end));
+const shortWordStop = (s, end) => /(?:^|[^\p{L}\p{N}'’-])\p{L}{1,2}\.[\p{Zs}\t]*$/u.test(s.slice(0, end));
 
 /** Where the sentence holding index i ends: as the browser breaks sentences (never inside 3.5, 7.30, U.S. or booking.com), else at . ! ? 。！？ or a new line; but not after Mt. @param {string} s @param {number} i */
 function sentenceEnd(s, i) {
