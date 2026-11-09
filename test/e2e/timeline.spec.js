@@ -893,7 +893,7 @@ test("a card's \"backed up … ago\" follows the clock on its own moment, whatev
   await expect(card).toContainText(/backed up [45] minutes ago/);
 });
 
-test("home's Start a trip error doesn't hold back the shell's own redraw (a plugin's screen arrived, Shiori started a trip): home shows the trip", async ({ page }) => {
+test("home's Start a trip error doesn't hold back the shell's own redraw (a plugin's screen arrived, Shiori started a trip): home shows the trip, and keeps the dates typed", async ({ page }) => {
   // The real shell with a real store, and a registry the test can change: the shell draws again when what plugins add changes (as when Shiori opens a trip).
   await page.route('**/probe.html', (r) => r.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: '<!doctype html><html><head><meta charset="utf-8"><title>probe</title></head><body></body></html>' }));
   await page.goto('/probe.html#/trips');
@@ -911,6 +911,9 @@ test("home's Start a trip error doesn't hold back the shell's own redraw (a plug
     document.body.replaceChildren(root);
     startShell(root, { store: w.store, ws: w.ws, registry, plugins: { langOf: () => 'en' }, updates: { restart: async () => {}, waiting: false, plugins: async () => [] }, version: 'probe' });
   });
+  await page.getByText('Add dates (optional)').click();
+  await page.getByLabel('Starts').fill('2026-11-20');
+  await page.getByLabel('Ends').fill('2026-11-27');
   await page.getByRole('button', { name: 'Start trip' }).click(); // no name
   await expect(page.locator('form.panel p.error')).toHaveText('Give the trip a name.');
   await page.evaluate(async () => {
@@ -923,6 +926,9 @@ test("home's Start a trip error doesn't hold back the shell's own redraw (a plug
   });
   await expect(page.getByText('Testville').first()).toBeVisible({ timeout: 5000 }); // home drawn again, with no keystroke or leaving
   await expect(page.locator('form.panel p.error')).toHaveText('Give the trip a name.'); // the error stays
+  // The redraw didn't wait for the form, so it keeps what was typed in it: the user adds a name and starts the trip they meant.
+  await expect(page.getByLabel('Starts')).toHaveValue('2026-11-20');
+  await expect(page.getByLabel('Ends')).toHaveValue('2026-11-27');
 });
 
 test("a trip ahead says how soon, and the words follow the clock between midnights", async ({ page }) => {
