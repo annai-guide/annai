@@ -7,6 +7,9 @@ import { encodeWav } from '../../src/core/voice/pcm.js';
 
 // Timeline stage 4: home is a timeline of trips and chats, and a + drops you into a new conversation with no naming step.
 
+// Installed, unless a test says otherwise: a fresh home opens at the now line only then (in a browser tab it opens at its top, the data-safety banner first).
+test.beforeEach(async ({ page }) => { await page.addInitScript(() => Object.defineProperty(navigator, 'standalone', { value: true, configurable: true })); });
+
 const plus = (/** @type {import('@playwright/test').Page} */ page) => page.getByRole('button', { name: 'New conversation', exact: true });
 const box = (/** @type {import('@playwright/test').Page} */ page) => page.getByLabel('Message to Shiori');
 /** The page's own store, through annai's modules. @param {import('@playwright/test').Page} page @param {string} id */
@@ -107,6 +110,32 @@ test('happening: tinted, "Day 3 of 8", Next; future: "in 2 weeks", her last line
   await expect(later.locator('.her-last')).toHaveText('See you at the station.');
   // The happening trip and the one ahead sit below the now line, in that order.
   expect(await page.locator('.ahead .trip-card .name').allTextContents()).toEqual(['Testville', 'Laterton']);
+});
+
+/** Home with a long past, opened fresh, in a browser tab (the data-safety banner shows) or installed (it doesn't). @param {import('@playwright/test').Page} page @param {boolean} installed */
+async function freshHome(page, installed) {
+  await page.addInitScript((standalone) => Object.defineProperty(navigator, 'standalone', { value: standalone, configurable: true }), installed);
+  await openApp(page, '#/settings');
+  /** @type {Record<string, number>} */
+  const chats = {};
+  for (let i = 0; i < 24; i++) chats[`Chat ${i}`] = 60 * 24 * i + 5;
+  await seed(page, { chats });
+  await page.goto('/#/trips');
+  await expect(page.locator('.now-line')).toBeAttached();
+}
+
+test("while annai isn't installed, a fresh home opens at its top, the data-safety banner in view", async ({ page }) => {
+  await freshHome(page, false);
+  await expect(page.locator('section.risk')).toBeInViewport();
+  expect(await page.evaluate(() => scrollY)).toBe(0);
+  await expect(page.locator('.now-line')).not.toBeInViewport();
+});
+
+test('installed, a fresh home opens at the now line, as always', async ({ page }) => {
+  await freshHome(page, true);
+  await expect(page.locator('section.risk')).toHaveCount(0); // no banner once installed
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(300);
+  await expect(page.locator('.now-line')).toBeInViewport();
 });
 
 test('home opens with the now line 40% down; Back restores your place', async ({ page }) => {
@@ -349,7 +378,7 @@ test("← from a conversation comes back to where you were on home, as Back does
   const fold = page.locator('.rows > .fold details');
   await fold.locator('summary').click();
   await expect(fold).toHaveAttribute('open', '');
-  await row(page, 'Chat 20').scrollIntoViewIfNeeded(); // in the past, well above the now line
+  await row(page, 'Chat 20').evaluate((el) => el.scrollIntoView({ block: 'center' })); // in the past, well above the now line; mid-screen, so the tap below scrolls nothing
   const at = await page.evaluate(() => scrollY);
   // Each seeded chat's line is owed a turn, which fails here (no model is set): its card must land while the conversation shows, not on home in
   // the middle of the test, where the card keeps what is seen in place by moving scrollY, and home ignores taps for a moment (.landed).
@@ -368,7 +397,7 @@ test("← from a conversation comes back to where you were on home, as Back does
   // under it when the test's click scrolls to it.
   await page.locator('.notices .notice .acts button', { hasText: 'Dismiss' }).click();
   await expect(page.locator('.notices .notice')).toHaveCount(0);
-  await row(page, 'Old 3').scrollIntoViewIfNeeded();
+  await row(page, 'Old 3').evaluate((el) => el.scrollIntoView({ block: 'center' }));
   const y = await page.evaluate(() => scrollY);
   await row(page, 'Old 3').click();
   await expect(page).toHaveURL(/\/talk$/);

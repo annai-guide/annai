@@ -33,6 +33,7 @@ import { renderNotifications } from './screens/notifications.js';
 import { createDock } from './dock.js';
 import { newConversation } from './plus.js';
 import { tapKeepsKeyboard } from './tap-keeps-keyboard.js';
+import { isStandalone } from './platform.js';
 import { dockHidesWhileTyping } from './dock-hides.js';
 import { noteScreen } from './resume.js';
 import { followDrive, followPlay, isField, drivingTrip } from './today.js';
@@ -418,9 +419,10 @@ export function startShell(root, core) {
         const want = pending;
         pending = null;
         // Home, newly come to, opens with the now line 40% down, or where you last were on it (← is a new entry); Back brings you to where
-        // you were on it. With nothing past there is nothing to scroll past: the screen stays at its top, its notices in view.
+        // you were on it. With nothing past there is nothing to scroll past: the screen stays at its top, its notices in view. While annai isn't
+        // installed it opens at its top too, the data-safety banner first: a long past would put the banner far above the screen, unseen.
         const home = route.name === 'trips' && firstVisit && !want;
-        const now = home && homeY === null && main.querySelector('.past > li') ? main.querySelector('.now-line') : null;
+        const now = home && homeY === null && isStandalone() && main.querySelector('.past > li') ? main.querySelector('.now-line') : null;
         scrollTo(0, now ? Math.max(0, scrollY + now.getBoundingClientRect().top - 0.4 * innerHeight) : home && homeY !== null ? homeY : want);
         // A screen that fills in a moment later is scrolled again as it grows, for up to 2 seconds or until you
         // touch it; not the Conversation, which goes to its last message itself, nor home, drawn whole.
