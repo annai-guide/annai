@@ -364,6 +364,10 @@ test("← from a conversation comes back to where you were on home, as Back does
   await expect(page.locator('.now-line')).toBeVisible();
   await expect(fold).toHaveAttribute('open', '');
   await expect.poll(() => page.evaluate(() => scrollY)).toBe(at);
+  // The card stays on home, stuck under the top bar over the rows; this test is about the place, so it goes (the sticky box has its own test), and a row is not
+  // under it when the test's click scrolls to it.
+  await page.locator('.notices .notice .acts button', { hasText: 'Dismiss' }).click();
+  await expect(page.locator('.notices .notice')).toHaveCount(0);
   await row(page, 'Old 3').scrollIntoViewIfNeeded();
   const y = await page.evaluate(() => scrollY);
   await row(page, 'Old 3').click();
