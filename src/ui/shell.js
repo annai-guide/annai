@@ -479,13 +479,13 @@ export function startShell(root, core) {
     swipedTo = last?.y ?? null;
     location.hash = last?.hash ?? tab;
   });
-  /** What a redraw now would lose: a field being typed in, a key typed and not saved, an error shown, or a list being dragged. */
+  /** What a redraw now would lose: a field being typed in, a key typed and not saved, an error shown (not one the screen draws again itself: data-kept), or a list being dragged. */
   const typing = () => {
     const a = document.activeElement;
     if (a && main.contains(a) && isField(a)) return true;
     if (main.querySelector('.role-item.dragging')) return true; // a list being dragged
     return [...main.querySelectorAll('input[type=password]')].some((i) => /** @type {HTMLInputElement} */ (i).value)
-      || Boolean(main.querySelector('[role=alert]:not([hidden]):not(:empty)'));
+      || Boolean(main.querySelector('[role=alert]:not([hidden]):not(:empty):not([data-kept])'));
   };
   /** Draws the screen again once nothing typed would be lost, unless it was drawn meanwhile. */
   const redraw = (screen = main.firstElementChild) => {

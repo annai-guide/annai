@@ -823,6 +823,38 @@ test("a card's \"backed up … ago\" follows the clock on its own moment, whatev
   await expect(card).toContainText(/backed up [45] minutes ago/);
 });
 
+test("home's Start a trip error doesn't hold back the shell's own redraw (a plugin's screen arrived, Shiori started a trip): home shows the trip", async ({ page }) => {
+  // The real shell with a real store, and a registry the test can change: the shell draws again when what plugins add changes (as when Shiori opens a trip).
+  await page.route('**/probe.html', (r) => r.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: '<!doctype html><html><head><meta charset="utf-8"><title>probe</title></head><body></body></html>' }));
+  await page.goto('/probe.html#/trips');
+  await page.evaluate(async () => {
+    const w = /** @type {any} */ (window);
+    const at = (/** @type {string} */ p) => p; // an address the browser loads, not a module the checker follows
+    const { startShell } = await import(at('/src/ui/shell.js'));
+    const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+    const { Workspace } = await import(at('/src/core/workspace.js'));
+    w.store = await createIdbStore();
+    w.ws = new Workspace(w.store);
+    w.screens = [];
+    const registry = { entries: (/** @type {string} */ k) => (k === 'ui:screen' ? w.screens : []), onChange: (/** @type {() => void} */ fn) => { w.changed = fn; return () => {}; }, fail: () => {}, succeeded: () => {}, isDisabled: () => false, clashes: () => [] };
+    const root = document.createElement('div');
+    document.body.replaceChildren(root);
+    startShell(root, { store: w.store, ws: w.ws, registry, plugins: { langOf: () => 'en' }, updates: { restart: async () => {}, waiting: false, plugins: async () => [] }, version: 'probe' });
+  });
+  await page.getByRole('button', { name: 'Start trip' }).click(); // no name
+  await expect(page.locator('form.panel p.error')).toHaveText('Give the trip a name.');
+  await page.evaluate(async () => {
+    const w = /** @type {any} */ (window);
+    const at = (/** @type {string} */ p) => p;
+    const { createTrip } = await import(at('/src/core/scopes.js'));
+    await createTrip(w.ws, { title: 'Testville', start: '2026-11-20', end: '2026-11-27' });
+    w.screens = [{ pluginId: 'probe', item: { id: 'a', title: 'A', render: (/** @type {any} */ body) => { body.textContent = 'ext A'; } } }];
+    w.changed();
+  });
+  await expect(page.getByText('Testville').first()).toBeVisible({ timeout: 5000 }); // home drawn again, with no keystroke or leaving
+  await expect(page.locator('form.panel p.error')).toHaveText('Give the trip a name.'); // the error stays
+});
+
 test("a trip ahead says how soon, and the words follow the clock between midnights", async ({ page }) => {
   await morning(page, { Laterton: { from: 1, to: 2 } });
   const soon = row(page, 'Laterton').locator('.soon');
