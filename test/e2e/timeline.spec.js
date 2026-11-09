@@ -448,40 +448,6 @@ test("home opened at the now line: a card that arrives sticks under the top bar,
   expect(await page.evaluate(() => document.querySelector('.notices')?.getBoundingClientRect().height)).toBe(0);
 });
 
-test("home scrolled, a stuck card that opens (More) is in the page at its top, whole, and Less puts it back under the bar", async ({ page }) => {
-  await openApp(page, '#/settings');
-  /** @type {Record<string, number>} */
-  const chats = {};
-  for (let i = 0; i < 24; i++) chats[`Chat ${i}`] = 60 * 24 * i + 5;
-  await seed(page, { chats, trips: { Laterton: { from: 3, to: 4 } } });
-  await page.goto('/#/trips');
-  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(300);
-  await page.evaluate(() => dispatchEvent(new ErrorEvent('error', { error: new Error('A test card') })));
-  await page.evaluate(async () => {
-    const { createNotices } = await import(/** @type {string} */ ('/src/ui/notices.js'));
-    const n = createNotices();
-    document.querySelector('.notices')?.replaceWith(n.el);
-    /** @type {any} */ (window).__n = n;
-    n.card({ title: 'A long card', body: 'These are many words, and more of them. '.repeat(30), actions: [{ label: 'Go on', run() {} }] });
-  });
-  const more = page.getByRole('button', { name: 'More' });
-  await expect(more).toBeVisible();
-  const where = () => page.evaluate(() => ({ y: scrollY, box: document.querySelector('.notices')?.getBoundingClientRect().top, bar: document.querySelector('.topbar')?.getBoundingClientRect().bottom, pos: getComputedStyle(/** @type {Element} */ (document.querySelector('.notices'))).position, now: Math.round(/** @type {Element} */ (document.querySelector('.now-line')).getBoundingClientRect().top) }));
-  expect((await where()).pos).toBe('sticky');
-  await expect.poll(async () => (await where()).box).toBeLessThanOrEqual(((await where()).bar ?? 0) + 1);
-  await expect(page.locator('.notices.landed, .notices.over')).toHaveCount(0); // the card takes taps again
-  const before = await where();
-  await more.click();
-  await expect(page.getByRole('button', { name: 'Less' })).toBeVisible();
-  await expect.poll(async () => (await where()).y).toBe(0); // the opened card is in the page at its top: the page goes there
-  await expect(page.locator('.notices .notice p')).toBeInViewport();
-  await page.getByRole('button', { name: 'Less' }).click();
-  await expect.poll(async () => (await where()).pos).toBe('sticky');
-  // Closed, home is back where it was before More: the user's place in the timeline is not lost.
-  await expect.poll(async () => (await where()).y).toBe(before.y);
-  expect(Math.abs((await where()).now - before.now)).toBeLessThanOrEqual(1);
-});
-
 /** Home with a long past, opened at the now line, its box replaced by one the test fills (createNotices). @param {import('@playwright/test').Page} page */
 async function scrolledHome(page) {
   await openApp(page, '#/settings');
@@ -500,58 +466,136 @@ async function scrolledHome(page) {
 }
 const placeOf = (/** @type {import('@playwright/test').Page} */ page) => page.evaluate(() => ({ y: Math.round(scrollY), now: Math.round(/** @type {Element} */ (document.querySelector('.now-line')).getBoundingClientRect().top),
   pos: getComputedStyle(/** @type {Element} */ (document.querySelector('.notices'))).position }));
-
-test("home scrolled, a stuck stack that opens (Show) is in the page at its top, each card in view; Hide puts home back where it was", async ({ page }) => {
-  await scrolledHome(page);
-  await page.evaluate(() => { for (let i = 0; i < 2; i++) /** @type {any} */ (window).__n.card({ tone: 'warn', title: 'A photo was kept as it is', body: `Photo ${i} is kept as it is.` }); });
-  await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
-  await expect(page.locator('.notices.landed, .notices.over')).toHaveCount(0);
-  const before = await placeOf(page);
-  await page.locator('.notice-stack').getByRole('button', { name: /^Show/ }).click();
-  await expect.poll(async () => (await placeOf(page)).y).toBe(0);
-  await expect(page.locator('.stack-list > .notice').first()).toBeInViewport();
-  await page.locator('.notice-stack').getByRole('button', { name: /^Hide/ }).click();
-  await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
-  await expect.poll(async () => (await placeOf(page)).y).toBe(before.y);
-  expect(Math.abs((await placeOf(page)).now - before.now)).toBeLessThanOrEqual(1);
+/** The box as the user sees it: under the bar, at most half the room under it (the page's own height, as notices.js measures it), and what scrolls inside it. @param {import('@playwright/test').Page} page */
+const boxOf = (page) => page.evaluate(() => {
+  const box = /** @type {HTMLElement} */ (document.querySelector('.notices'));
+  const r = box.getBoundingClientRect();
+  const bar = /** @type {HTMLElement} */ (document.querySelector('.topbar')).getBoundingClientRect().bottom;
+  return { top: r.top, bottom: r.bottom, bar, half: (document.documentElement.clientHeight - bar) / 2, inside: box.scrollHeight - box.clientHeight };
 });
+/** The box is stuck under the bar, in view, at most half the room under it. @param {import('@playwright/test').Page} page */
+const stuckInHalf = async (page) => {
+  expect((await placeOf(page)).pos).toBe('sticky');
+  const b = await boxOf(page);
+  expect(Math.abs(b.top - b.bar)).toBeLessThanOrEqual(1);
+  expect(b.bottom - b.top).toBeLessThanOrEqual(b.half + 1);
+};
+/** The rows are where they were: the now line within 1 px. @param {import('@playwright/test').Page} page @param {{ now: number }} before */
+const rowsStayed = async (page, before) => expect(Math.abs((await placeOf(page)).now - before.now)).toBeLessThanOrEqual(1);
+/** The moment a card that came over the rows ignores taps (.landed, .over) is over. @param {import('@playwright/test').Page} page */
+const settled = (page) => expect(page.locator('.notices.landed, .notices.over')).toHaveCount(0);
+const PHONES = [[320, 568], [360, 640], [393, 659]];
 
-/** Home scrolled, a long card stuck with its More, and the dismiss Shiori's code would hold (her model card is taken down when a later turn works). @param {import('@playwright/test').Page} page */
-async function openedLongCard(page) {
+/** Home scrolled on a phone this size, a long card stuck (with the dismiss Shiori's code would hold: her model card is taken down when a later turn works), opened with More inside its box. @param {import('@playwright/test').Page} page @param {number[]} size @param {{ actions?: boolean }} [o] */
+async function openedLongCard(page, [width, height], { actions = true } = {}) {
+  await page.setViewportSize({ width, height });
   await scrolledHome(page);
-  await page.evaluate(() => { const w = /** @type {any} */ (window); w.gone = w.__n.card({ title: 'A long card', body: 'These are many words, and more of them. '.repeat(30), actions: [{ label: 'Go on', run() {} }] }); });
+  await page.evaluate((a) => { const w = /** @type {any} */ (window); w.gone = w.__n.card({ title: 'A long card', body: 'These are many words, and more of them. '.repeat(30), actions: a ? [{ label: 'Go on', run() {} }] : [] }); }, actions);
   await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
-  await expect(page.locator('.notices.landed, .notices.over')).toHaveCount(0);
+  await settled(page);
   const before = await placeOf(page);
   const card = page.locator('.notices .notice', { hasText: 'A long card' });
   await card.getByRole('button', { name: 'More' }).click();
-  await expect.poll(async () => (await placeOf(page)).y).toBe(0);
+  await expect(card.getByRole('button', { name: 'Less' })).toBeVisible();
+  await stuckInHalf(page); // opened inside the box, which keeps sticking
+  await rowsStayed(page, before); // the page didn't move
+  await settled(page);
   return { before, card };
 }
 
-test("a card opened (More), then one that makes the box taller than half: Less puts home back where it was, and a card that goes later leaves home where the user is", async ({ page }) => {
-  const { before, card } = await openedLongCard(page);
-  await page.evaluate(() => /** @type {any} */ (window).__n.card({ tone: 'warn', title: 'A newer backup is on Test place', body: 'A backup made on another phone is newer than this one. Import it as a copy, or back this phone up over it.',
-    actions: [{ label: 'Import it as a copy', primary: true, run() {} }, { label: 'Back up this phone over it', run() {} }] }));
-  await expect(page.locator('.notices.landed, .notices.over')).toHaveCount(0);
-  await card.getByRole('button', { name: 'Less' }).click();
-  await expect(page.locator('.notices')).toHaveClass(/\btall\b/); // the two are taller than half: in the page, above
-  await expect.poll(async () => Math.abs((await placeOf(page)).now - before.now)).toBeLessThanOrEqual(1); // closed: the rows as they were
-  await page.evaluate(() => scrollTo(0, 1200)); // the user scrolls on, into the past (as a finger would; mobile WebKit has no wheel)
-  const there = await placeOf(page);
-  await page.evaluate(() => /** @type {any} */ (window).gone()); // the long card is taken down by code
-  expect((await placeOf(page)).pos).toBe('sticky'); // the backup card alone fits: it comes over the rows
-  expect(Math.abs((await placeOf(page)).now - there.now)).toBeLessThanOrEqual(1); // and home stays where the user is
-});
+for (const size of PHONES) {
+  test(`home scrolled, More on a stuck card opens it inside the box, at most half the room under the bar; its end is reached by scrolling inside the box; Less closes it; the page never moves (${size.join(' x ')})`, async ({ page }) => {
+    const { before, card } = await openedLongCard(page, size);
+    expect((await boxOf(page)).inside).toBeGreaterThan(0); // the open card needs more: the box scrolls inside itself
+    await page.locator('.notices').evaluate((el) => { el.scrollTop = el.scrollHeight; }); // to the card's end, inside the box
+    await expect(card.getByRole('button', { name: 'Less' })).toBeInViewport();
+    await expect(card.getByRole('button', { name: 'Dismiss' })).toBeInViewport();
+    await rowsStayed(page, before);
+    await card.getByRole('button', { name: 'Less' }).click();
+    await expect(card.getByRole('button', { name: 'More' })).toBeVisible();
+    await stuckInHalf(page);
+    expect(Math.abs((await placeOf(page)).y - before.y)).toBeLessThanOrEqual(1); // closed: the page as it was (WebKit rounds a px)
+    await rowsStayed(page, before);
+  });
 
-test("a card opened (More) that the user scrolls away from, taken down by code, leaves home where the user is", async ({ page }) => {
-  await openedLongCard(page);
-  await page.evaluate(() => scrollTo(0, 1200)); // on into the past, the opened card above, out of view
-  const there = await placeOf(page);
-  await page.evaluate(() => /** @type {any} */ (window).gone());
-  await expect(page.locator('.notices .notice')).toHaveCount(0);
-  expect(Math.abs((await placeOf(page)).now - there.now)).toBeLessThanOrEqual(1);
-});
+  test(`home scrolled, Show on a stuck stack opens it inside the box, each card reached there; Hide folds it; the page never moves (${size.join(' x ')})`, async ({ page }) => {
+    await page.setViewportSize({ width: size[0], height: size[1] });
+    await scrolledHome(page);
+    await page.evaluate(() => { for (let i = 0; i < 3; i++) /** @type {any} */ (window).__n.card({ tone: 'warn', title: 'A photo was kept as it is', body: `Photo ${i} is kept as it is.` }); });
+    await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
+    await settled(page);
+    const before = await placeOf(page);
+    await page.locator('.notice-stack').getByRole('button', { name: /^Show/ }).click();
+    await expect(page.locator('.stack-list > .notice')).toHaveCount(3);
+    await stuckInHalf(page);
+    await rowsStayed(page, before);
+    for (const member of await page.locator('.stack-list > .notice').all()) {
+      await member.evaluate((m) => m.scrollIntoView({ block: 'nearest' })); // inside the box: the page is not what scrolls
+      await expect(member.locator('strong')).toBeInViewport();
+      await rowsStayed(page, before);
+    }
+    await settled(page);
+    await page.locator('.notice-stack').getByRole('button', { name: /^Hide/ }).click();
+    await expect(page.locator('.stack-list')).toBeHidden();
+    await stuckInHalf(page);
+    expect(Math.abs((await placeOf(page)).y - before.y)).toBeLessThanOrEqual(1);
+    await rowsStayed(page, before);
+  });
+
+  for (const by of ['the user', 'code']) {
+    test(`an opened stuck card dismissed by ${by} closes inside the box: the box empties, and the rows don't move (${size.join(' x ')})`, async ({ page }) => {
+      const { before, card } = await openedLongCard(page, size);
+      if (by === 'the user') {
+        await page.locator('.notices').evaluate((el) => { el.scrollTop = el.scrollHeight; }); // its Dismiss, at the card's foot, inside the box
+        await card.getByRole('button', { name: 'Dismiss' }).click();
+      } else await page.evaluate(() => /** @type {any} */ (window).gone());
+      await expect(page.locator('.notices .notice')).toHaveCount(0);
+      await rowsStayed(page, before);
+    });
+  }
+
+  test(`a card opened (More) inside the stuck box, then one that makes the box taller than half: Less leaves both in the page above, a card that goes later sticks the other again; the rows never move (${size.join(' x ')})`, async ({ page }) => {
+    const { before, card } = await openedLongCard(page, size);
+    await page.evaluate(() => /** @type {any} */ (window).__n.card({ tone: 'warn', title: 'A newer backup is on Test place', body: 'A backup made on another phone is newer than this one. Import it as a copy, or back this phone up over it.',
+      actions: [{ label: 'Import it as a copy', primary: true, run() {} }, { label: 'Back up this phone over it', run() {} }] }));
+    await expect(page.locator('.notices .notice')).toHaveCount(2);
+    await stuckInHalf(page); // open, the box keeps sticking, the new card inside it
+    await rowsStayed(page, before);
+    await settled(page);
+    await page.locator('.notices').evaluate((el) => { el.scrollTop = 0; });
+    await card.getByRole('button', { name: 'Less' }).click();
+    await expect(page.locator('.notices')).toHaveClass(/\btall\b/); // closed, the two are taller than half: in the page, above
+    await rowsStayed(page, before);
+    await page.evaluate(() => /** @type {any} */ (window).gone()); // the long card is taken down by code
+    expect((await placeOf(page)).pos).toBe('sticky'); // the backup card alone fits: it comes over the rows
+    await rowsStayed(page, before);
+  });
+
+  test(`a card opened (More) inside the stuck box, then one of its kind that folds it into a stack: the stack sticks, and the rows don't move (${size.join(' x ')})`, async ({ page }) => {
+    const { before } = await openedLongCard(page, size, { actions: false });
+    await page.evaluate(() => /** @type {any} */ (window).__n.card({ title: 'A long card', body: 'And another one of its kind.' }));
+    await expect(page.locator('.notice-stack')).toHaveCount(1);
+    await stuckInHalf(page);
+    await rowsStayed(page, before);
+  });
+
+  test(`a stack shown (Show) inside the stuck box, one of its two cards taken down by code: the one left is a card in the box, and the rows don't move (${size.join(' x ')})`, async ({ page }) => {
+    await page.setViewportSize({ width: size[0], height: size[1] });
+    await scrolledHome(page);
+    await page.evaluate(() => { const w = /** @type {any} */ (window); w.gone = w.__n.card({ tone: 'warn', title: 'A photo was kept as it is', body: 'Photo 0 is kept as it is.' }); w.__n.card({ tone: 'warn', title: 'A photo was kept as it is', body: 'Photo 1 is kept as it is.' }); });
+    await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
+    await settled(page);
+    const before = await placeOf(page);
+    await page.locator('.notice-stack').getByRole('button', { name: /^Show/ }).click();
+    await stuckInHalf(page);
+    await rowsStayed(page, before);
+    await page.evaluate(() => /** @type {any} */ (window).gone());
+    await expect(page.locator('.notice-stack')).toHaveCount(0);
+    await expect(page.locator('.notices > .notice')).toHaveCount(1);
+    await stuckInHalf(page);
+    await rowsStayed(page, before);
+  });
+}
 
 test("home scrolled on a small phone, a card that needs more room than sticks, arriving while another is stuck, leaves home where it was", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
@@ -649,7 +693,8 @@ test("a stuck card opened on home, then another screen: a card that comes there 
   await page.evaluate(() => /** @type {any} */ (window).__n.card({ title: 'A long card', body: 'These are many words, and more of them. '.repeat(30) }));
   await expect(page.locator('.notices.landed, .notices.over')).toHaveCount(0);
   await page.getByRole('button', { name: 'More' }).click();
-  await expect.poll(async () => (await placeOf(page)).y).toBe(0); // opened: home went to its top
+  await expect(page.getByRole('button', { name: 'Less' })).toBeVisible();
+  await stuckInHalf(page); // opened inside the box, which keeps sticking: home stays where it was
   await page.evaluate(() => { location.hash = '#/settings'; });
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
   await page.evaluate(() => scrollTo(0, 1600));

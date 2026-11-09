@@ -13,51 +13,38 @@ export function createNotices() {
   const toasts = h('div', { class: 'toasts', role: 'status', 'aria-live': 'polite' });
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let settle;
-  /** Where home was when the user opened a stuck card past what sticks (More, Show) and the page went to its top: closed, the page goes back. @type {{ y: number, h: number } | null} */
-  let back = null;
   const sticky = () => getComputedStyle(el).position === 'sticky';
   /** The top bar's height (shell.js), what covers the page's top. */
   const barHeight = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--topbar-h')) || 0;
+  /** A card open (More) or a stack shown (Show). */
+  const opened = () => el.querySelector(':scope > .notice.open, .stack-list:not([hidden])') !== null;
   /**
    * A box that a card lifted the cap of (it needs more than the box's quarter of the screen) sticks on home while it fits in half the screen under the top
    * bar (base.css: not .tall); taller, it is in the page. The half is the user's choice ("Stick up to half"), to be confirmed on their phone: it leaves
    * the other half for rows. Looked at after each change and when the screen changes size. The screen is the page's own height, the one with a browser's
    * bars shown, as the box's quarter is (25svh): innerHeight changes as those bars hide and show while the page scrolls, and the box would go in and out of view.
+   * A card the user opened (More, Show) opens where the box is: stuck, inside it, at most the same half (base.css), scrolling inside itself; in the
+   * page, there. So an open box is not looked at again until it closes: opening never moves the box, nor the page.
    */
   const settleTall = () => {
+    if (opened()) return;
     el.classList.remove('tall');
     el.classList.toggle('tall', el.getBoundingClientRect().height > (document.documentElement.clientHeight - barHeight()) / 2);
   };
-  /** A card open (More) or a stack shown (Show): the box is in the page, and closing it is what goes back. */
-  const opened = () => el.querySelector(':scope > .notice.open, .stack-list:not([hidden])') !== null;
   /**
-   * A card comes or goes: scrolled down, what is seen stays put; at the top, what moved ignores taps a moment (.landed). On home the box sticks while it
-   * holds a card (base.css), so a card that comes lands in view, over the rows, and ignores taps a moment (.over) instead. One the user opens past what
-   * sticks (opening: More, Show) is in the page at its top, and the page goes there; closed again (Less, Hide, Dismiss), the page goes back to where it
-   * was. Only that close, and only while the box is in view: one the user scrolled away from, or a card that goes later, leaves the page where the user is.
-   * A card that arrives needing more room than sticks never moves the page: it is in the page, above. @param {() => void} change @param {boolean} [opening]
+   * A card comes, goes, opens or closes: scrolled down, what is seen stays put; at the top, what moved ignores taps a moment (.landed). On home the box
+   * sticks while it holds a card (base.css), so a card that comes, or one opened inside it, lands in view over the rows and ignores taps a moment (.over)
+   * instead. A card that arrives needing more room than sticks never moves the page: it is in the page, above. @param {() => void} change
    */
-  const keep = (change, opening = false) => {
+  const keep = (change) => {
     const y = scrollY;
-    const box = el.getBoundingClientRect();
-    const was = box.height;
+    const was = el.getBoundingClientRect().height;
     const stuck = sticky();
-    const open = opened();
     change();
     settleTall();
-    const now = el.getBoundingClientRect().height;
-    const by = now - was;
+    const by = el.getBoundingClientRect().height - was;
     const over = sticky();
-    const empty = el.matches(':empty');
-    const closed = open && !opened();
-    const home = document.body.classList.contains('home');
-    if (opening && stuck && !over && y > 0 && !empty) {
-      back = { y, h: was };
-      scrollTo(0, 0); // opened: no longer stuck, it would leave the view
-    } else if (back && home && closed && box.bottom > barHeight()) {
-      scrollTo(0, Math.max(0, back.y + now - back.h)); // the rows as they were before it opened
-    } else if (by && y > 0) scrollTo(0, y + by);
-    if (closed || !home) back = null; // used by the close that follows the open, or not at all; another screen: its own place
+    if (by && y > 0) scrollTo(0, y + by);
     // A card that arrives moved the screen (at its top: .landed, what moved ignores taps) or sits over it (stuck: .over, the card ignores taps), so a
     // tap meant for a row doesn't land on the card's button; the rows it doesn't cover didn't move and take taps. So does a box that sticks again as one
     // goes (one left that fits in half the screen): its cards come over the rows as one that arrives does.
@@ -70,7 +57,7 @@ export function createNotices() {
   };
   /**
    * A card whose text is more than three lines shows three and a More, which opens it to its full height, and a Less, which closes
-   * it. Open, the box's cap is lifted; the buttons stay at the card's foot, Dismiss in reach. Looked at once the card is drawn (one in
+   * it. Open, the box's cap is lifted (stuck on home, to half the room under the bar, scrolling inside); the buttons stay at the card's foot, Dismiss in reach. Looked at once the card is drawn (one in
    * a closed stack, when it opens) and when the screen changes size.
    * @type {WeakMap<HTMLElement, () => void>}
    */
@@ -144,7 +131,7 @@ let lone = 0;
       show.setAttribute('aria-expanded', String(open));
       recount(stack);
       if (open) for (const m of stack.members) fitters.get(m)?.();
-    }, true) }, t`Show`);
+    }) }, t`Show`);
     const all = h('button', { class: 'btn ghost', type: 'button', onclick: () => keep(() => { for (const m of [...stack.members]) leave(kind, m); }) }, t`Dismiss all`);
     const el = h('section', { class: 'notice notice-stack' }, count, said, h('div', { class: 'acts' }, show, all), list);
     /** @type {Stack} */
@@ -233,7 +220,7 @@ let lone = 0;
       if (!open) fitters.get(node)?.(); // closed again, it fits the screen as it is now (it may have turned meanwhile)
       more.textContent = open ? t`Less` : t`More`;
       more.setAttribute('aria-expanded', String(open));
-    }, true) }, t`More`);
+    }) }, t`More`);
     const node = h('section', { class: ['notice', `notice-${tone}`] },
       h('strong', { text: title, lang: otherLang(lang) }),
       body ? h('p', { lang: otherLang(lang) }, ...englishIn(body, ...errors)) : null,

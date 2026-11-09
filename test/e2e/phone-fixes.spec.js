@@ -470,10 +470,12 @@ test('an opened stack in a small box shows each of its cards whole: no Dismiss o
   await frames(page);
   await page.locator('#tn .notice-stack').getByRole('button', { name: /^Show/ }).click();
   await frames(page);
-  // The box's cap is lifted, as for an opened card: it doesn't scroll, so no card's sticky Dismiss sits over another's title.
-  expect(await page.locator('#tn').evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1);
+  // On home the box opens in place: stuck, at most half the room under the bar, scrolling inside itself. Each card scrolled into view there shows whole:
+  // a card's sticky Dismiss stays inside its own card, never over another's title.
+  const half = await page.evaluate(() => (document.documentElement.clientHeight - /** @type {HTMLElement} */ (document.querySelector('.topbar')).getBoundingClientRect().bottom) / 2);
+  expect(await page.locator('#tn').evaluate((el) => el.getBoundingClientRect().height)).toBeLessThanOrEqual(half + 1);
   for (const member of await page.locator('#tn .stack-list > .notice').all()) {
-    await member.scrollIntoViewIfNeeded();
+    await member.evaluate((m) => m.scrollIntoView({ block: 'nearest' }));
     expect(await onTop(member.locator('strong'))).toBe(true);
   }
 });
