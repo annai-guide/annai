@@ -16,7 +16,12 @@ if [ ! -d "$R/releases/$c" ]; then
   if [ -f "$R/releases/$c.tmp/scripts/build-release.mjs" ]; then
     node "$R/releases/$c.tmp/scripts/build-release.mjs" "$R/releases/$c.tmp"
   fi
+  # On the disk before it takes the name that says it is whole, and that name before "current" points at it: after
+  # a crash, a file written in its last half minute can come back empty. A plain sync, since sync -f doesn't reach
+  # the disks under a FUSE folder such as a mergerfs pool.
+  sync
   mv -f -T "$R/releases/$c.tmp" "$R/releases/$c"
+  sync
 fi
 # An official plugin whose files changed under a version already released would read as a changed copy on a phone that has
 # it: such a release stops here, naming the plugins to give new versions (the release's own scripts/catalog-versions.mjs).
