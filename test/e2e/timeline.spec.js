@@ -351,8 +351,15 @@ test("← from a conversation comes back to where you were on home, as Back does
   await expect(fold).toHaveAttribute('open', '');
   await row(page, 'Chat 20').scrollIntoViewIfNeeded(); // in the past, well above the now line
   const at = await page.evaluate(() => scrollY);
+  // Each seeded chat's line is owed a turn, which fails here (no model is set): its card must land while the conversation shows, not on home in
+  // the middle of the test, where the card keeps what is seen in place by moving scrollY, and home ignores taps for a moment (.landed).
+  const settled = async () => {
+    await expect(page.locator('.convo').getByText("Shiori can't reach her model")).toBeVisible();
+    await expect(page.locator('.notices.landed')).toHaveCount(0);
+  };
   await row(page, 'Chat 20').click();
   await expect(page).toHaveURL(/\/talk$/);
+  await settled();
   await page.getByRole('link', { name: 'Back to Trips' }).click(); // the conversation's ←: a new entry, home's
   await expect(page.locator('.now-line')).toBeVisible();
   await expect(fold).toHaveAttribute('open', '');
@@ -361,6 +368,7 @@ test("← from a conversation comes back to where you were on home, as Back does
   const y = await page.evaluate(() => scrollY);
   await row(page, 'Old 3').click();
   await expect(page).toHaveURL(/\/talk$/);
+  await settled();
   await page.goBack(); // Back to the open fold, at the row tapped
   await expect(fold).toHaveAttribute('open', '');
   await expect.poll(() => page.evaluate(() => scrollY)).toBe(y);
