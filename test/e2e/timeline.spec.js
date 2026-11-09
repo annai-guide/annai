@@ -374,6 +374,47 @@ test("← from a conversation comes back to where you were on home, as Back does
   await expect.poll(() => page.evaluate(() => scrollY)).toBe(y);
 });
 
+test("home opened at the now line: a card that arrives sticks under the top bar, in view; once it goes, the first row is not covered, and nothing jumped", async ({ page }) => {
+  await openApp(page, '#/settings');
+  /** @type {Record<string, number>} */
+  const chats = {};
+  for (let i = 0; i < 24; i++) chats[`Chat ${i}`] = 60 * 24 * i + 5; // a long past: home opens scrolled to the now line
+  await seed(page, { chats, trips: { Laterton: { from: 3, to: 4 } } });
+  await page.goto('/#/trips');
+  await expect(page.locator('.now-line')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(300);
+  /** What is at the top of the screen, just under the top bar: the box (and its card), or home's own. */
+  const under = () => page.evaluate(() => {
+    const bar = /** @type {HTMLElement} */ (document.querySelector('.topbar')).getBoundingClientRect();
+    const hit = document.elementFromPoint(innerWidth / 2, bar.bottom + 4);
+    const card = document.querySelector('.notices:not(:empty)')?.getBoundingClientRect(); // the box: its card sits in its padding
+    return { barTop: bar.top, barBottom: bar.bottom, onBar: document.elementFromPoint(innerWidth / 2, bar.top + 4)?.closest('.topbar') !== null,
+      card: card ? { top: card.top, bottom: card.bottom } : null, hitCard: hit?.closest('.notices') !== null, onHome: hit?.closest('main') !== null,
+      kept: Math.round(document.querySelector('.now-line')?.getBoundingClientRect().top ?? NaN) };
+  });
+  const before = await under();
+  expect(before.onBar).toBe(true);
+  expect(before.hitCard).toBe(false);
+  await page.evaluate(() => dispatchEvent(new ErrorEvent('error', { error: new Error('A test card') })));
+  const card = page.locator('.notices .notice');
+  await expect(card).toBeVisible();
+  await expect(page.locator('.notices.landed')).toHaveCount(0); // the moment that ignores taps is over
+  const shown = await under();
+  expect(shown.card?.top).toBeGreaterThanOrEqual(shown.barBottom - 1); // under the bar, not over it
+  expect(shown.card?.top).toBeLessThanOrEqual(shown.barBottom + 1); // and sticking to it
+  expect(shown.card?.bottom).toBeLessThan(await page.evaluate(() => innerHeight)); // in view
+  expect(shown.hitCard).toBe(true);
+  expect(shown.onBar).toBe(true); // the top bar is not hidden
+  expect(Math.abs(shown.kept - before.kept)).toBeLessThanOrEqual(1); // the rows stayed where they were
+  await page.getByRole('button', { name: 'Dismiss' }).click();
+  await expect(card).toHaveCount(0);
+  const gone = await under();
+  expect(gone.hitCard).toBe(false); // an empty box takes no room and covers nothing: a row is under the bar
+  expect(gone.onHome).toBe(true);
+  expect(Math.abs(gone.kept - before.kept)).toBeLessThanOrEqual(1); // nothing jumped
+  expect(await page.evaluate(() => document.querySelector('.notices')?.getBoundingClientRect().height)).toBe(0);
+});
+
 test("the conversation's name follows its first line while it shows, and Shiori's rename", async ({ page }) => {
   const llm = await startModelServer({ '/b/v1/messages': [
     { status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'patch', input: { path: '/trip/trip.json', changes: { title: 'Quiet dinner' } } }]) },
