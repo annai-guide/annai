@@ -401,12 +401,15 @@ export function startShell(root, core) {
       // Its screen's ctx says which render it is, so what it draws after a newer one began is cleaned up at once.
       const node = await screen(Object.create(ctx, { seq: { value: my }, moved: { value: o.moved === true }, entry: { value: entry }, tripScope: { value: scope } }), route);
       if (my !== seq) return superseded(my);
-      // Home drawn again in place (the clock, a hand-over, a Delete): the row you were looking at stays where it was, whatever came or went above it.
-      const seen = pending === null && route.name === 'trips' && drawnHash === shown.hash ? [...main.querySelectorAll('.rows a[href]')].find((a) => a.getBoundingClientRect().bottom > 0) : null;
-      const was = seen?.getBoundingClientRect().top ?? 0;
+      // Home drawn again in place (the clock, a hand-over, a Delete): the first row in view that is still shown stays where it was, whatever came
+      // or went above it. Not a shut fold's rows: the engines give them boxes too, unseen.
+      const rows = (/** @type {Element} */ el) => [...el.querySelectorAll('.rows a[href]')].filter((a) => !a.closest('details:not([open])'));
+      const seen = pending === null && route.name === 'trips' && drawnHash === shown.hash
+        ? rows(main).map((a) => ({ href: a.getAttribute('href'), box: a.getBoundingClientRect() })).filter((r) => r.box.bottom > 0) : [];
       main.replaceChildren(node);
-      const same = seen && [...node.querySelectorAll('.rows a[href]')].find((a) => a.getAttribute('href') === seen.getAttribute('href') && a.getClientRects().length);
-      const by = same ? same.getBoundingClientRect().top - was : 0;
+      const fresh = new Map(rows(node).map((a) => [a.getAttribute('href'), a]));
+      const kept = seen.find((r) => fresh.has(r.href));
+      const by = kept ? /** @type {Element} */ (fresh.get(kept.href)).getBoundingClientRect().top - kept.box.top : 0;
       if (by) scrollBy(0, by); // only when it moved
       drawnHash = shown.hash;
       if (pending !== null) {
