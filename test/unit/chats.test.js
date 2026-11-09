@@ -77,6 +77,11 @@ test('names', () => {
   assert.equal(chatName({ text: 'Mt. Fuji on Tuesday. Then lunch', at, tz }), 'Mt. Fuji on Tuesday.');
   assert.equal(chatName({ text: 'Dr. Lee at St. Mark on Friday. Then lunch', at, tz }), 'Dr. Lee at St. Mark on Friday.');
   assert.equal(chatName({ text: 'Mrs. Smith is here. Then lunch', at, tz }), 'Mrs.');
+  assert.equal(chatName({ text: 'Mt.\u00a0Fuji on Tuesday. Then lunch', at, tz }), 'Mt.\u00a0Fuji on Tuesday.', 'a no-break space after it, as pasted text often has');
+  // A word of one or two letters, not the end of a longer one: a time, an ordinal, a possessive, a hyphenated word still end the sentence.
+  for (const [text, name] of [['Dinner at 8pm. We walk after.', 'Dinner at 8pm.'], ['Meet at 10am. Then the museum', 'Meet at 10am.'], ['Check in on the 3rd. Then lunch', 'Check in on the 3rd.'],
+    ["Dinner at Nobu's. Then drinks", "Dinner at Nobu's."], ['Dinner at Nobu’s. Then drinks', 'Dinner at Nobu’s.'], ['Late check-in. Then dinner', 'Late check-in.']]) assert.equal(chatName({ text, at, tz }), name);
+  assert.equal(chatName({ text: 'It is 5 p.m. Then dinner at the hotel. Then', at, tz }), 'It is 5 p.m. Then dinner at the hotel.', 'a letter after a dot (p.m., U.S.) is a short word');
   // The cost the user accepted: a first sentence that ends on a short word runs on into the next, and is cut at 40 as long names are.
   assert.equal(chatName({ text: 'We land in LA. Then lunch. Then the beach', at, tz }), 'We land in LA. Then lunch.');
   assert.equal(chatName({ text: 'We land in LA. Then we drive to the coast, and then on', at, tz }), 'We land in LA. Then we drive to the coas');
