@@ -417,21 +417,21 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### Home's rows move when a phone rotates, or at the first resize after a tall card lands
 - **Kind:** deferred.
-- **What the user sees:** on home, a phone turned on its side moves the rows. In Chromium, the first resize after a card that needs more than a quarter of the screen (`.grow`) has landed in the page moves the rows by its excess over the quarter (167 to 211 px measured at 393 x 659); in a Chrome tab the URL bar's first hide is such a resize.
-- **Why:** cards are refit when the screen changes size, outside `keep()` in notices.js, which is what keeps the rows still when a card comes or goes. Older than stage 4's sticky box. With a card open in the stuck box, its cap (half of 100svh) changes too: the rows moved 140 px when 360 x 640 turned to 640 x 360. The cap has already changed when `resize` fires, so the fix needs the box's last height kept.
+- **What the user sees:** on home, a phone turned on its side moves the rows. In Chromium, the first resize after a card that needs more than a quarter of the screen (`.grow`) has landed moves the rows by its excess over the quarter (167 to 211 px measured at 393 x 659, when such a card was in the page; not measured again since every box sticks at its cap); in a Chrome tab the URL bar's first hide is such a resize.
+- **Why:** cards are refit when the screen changes size, outside `keep()` in notices.js, which is what keeps the rows still when a card comes or goes. Older than stage 4's sticky box. With a card open in the stuck box, or a box at its cap, its cap (half of 100svh) changes too: the rows moved 140 px when 360 x 640 turned to 640 x 360. The cap has already changed when `resize` fires, so the fix needs the box's last height kept.
 - **Revisit when:** the next version: run the resize's refit through `keep()`.
 
 ### Cards aren't refit when web fonts swap in
 - **Kind:** deferred.
 - **What the user sees:** when a web font swaps in after a card was fitted, its text may take a little more or less room than the fit assumed (a few px); the box is refit at the next change or resize.
-- **Why:** a font swap re-runs neither `fit` nor `settleTall`.
+- **Why:** a font swap re-runs neither `fit` nor the box's scroll check (`.scrolls`, which decides whether a swipe on the box stays in it).
 - **Revisit when:** the next version, with the resize refit above.
 
 ### Focusing a field doesn't scroll it clear of a stuck card
 - **Kind:** deferred.
-- **What the user sees:** on home, a field near the top of the screen (Start a trip's name, say, with the keyboard up) can sit under a stuck card. The box can be up to 232 px at 320 x 568 (a newer-backup card), against 142 px for a quarter of the screen. The box can be up to half the room under the bar (256 px at 320 x 568, 292 at 360 x 640, 302 at 393 x 659), and a card opened in it makes it that tall. With a keyboard up (about 290 to 340 px), the bar and an open box can take all the room above it.
+- **What the user sees:** on home, a field near the top of the screen (Start a trip's name, say, with the keyboard up) can sit under a stuck card. The box can be up to half the room under the bar (256 px at 320 x 568, 292 at 360 x 640, 302 at 393 x 659), against 142 px for a quarter of the screen at 320 x 568; a newer-backup card (232 px at 320 x 568), two cards together, or a card opened in it makes it that tall. With a keyboard up (about 290 to 340 px), the bar and an open box can take all the room above it.
 - **Why:** nothing tells the browser's focus scrolling about the top bar or the box (no `scroll-padding-top`). `scroll-padding-top` alone can't place the field when the bar and the box take all the room above the keyboard.
-- **Revisit when:** the next version: `scroll-padding-top` of the top bar plus the box on home, or after the user's phone check of "Stick up to half".
+- **Revisit when:** the next version: `scroll-padding-top` of the top bar plus the box on home, or after the user's phone check of "Cap every box at half".
 
 ### A kept error drawn again may be read out again by a screen reader
 - **Kind:** deferred.
@@ -444,3 +444,16 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** after Install moves a desktop Chrome tab into an app window, the data-safety banner still says "annai isn't installed yet" until a reload, and a fresh home still opens at its top.
 - **Why:** the banner is drawn once per page, at start.
 - **Revisit when:** the next version: draw it again when the display mode changes.
+
+### In landscape, an opened stack is read by scrolling inside a short box
+- **Kind:** known limitation.
+- **What the user sees:** on a phone turned on its side (740 x 360), Show on a stuck stack opens it in a box of about 152 px, half the room under the top bar. A card of 168 to 193 px doesn't show whole: its title and Dismiss show, and its middle scrolls under the Dismiss; while a card's top is in the lower part of the box, its own Dismiss covers its title for a moment. In portrait every card shows whole.
+- **Why:** every stuck box on home is at most half the room under the bar, so the page never moves (the user's "Cap every box at half" and "Opens in place"); a short screen leaves a short box.
+- **Revisit when:** the user's phone check finds it in the way, or a landscape layout for home is designed.
+- **Approved:** 2026-11-09, the user chose "Known limitation".
+
+### A swipe on a card a px over its own cap doesn't scroll home
+- **Kind:** deferred.
+- **What the user sees:** on home, a swipe that starts on a stuck card whose height lands within a pixel over its cap (a quarter of the screen less the box's padding) scrolls nothing: measured at 360 x 640 with a one-line warn card ("A test card", "Check the key."), 142 px against 141. A swipe on the rows, or on any other card, scrolls home.
+- **Why:** each card is its own scroll box, so it is whole in a quarter-high box; `fit` accepts a card up to 1 px over (rounding), and the browser gives the whole swipe to the card that can scroll that px. Older than stage 4's sticky box.
+- **Revisit when:** the next version: let `fit`'s measure and the card's scroll agree (no 1 px a card can scroll).

@@ -554,23 +554,6 @@ for (const size of PHONES) {
     });
   }
 
-  test(`a card opened (More) inside the stuck box, then one that makes the box taller than half: Less leaves both in the page above, a card that goes later sticks the other again; the rows never move (${size.join(' x ')})`, async ({ page }) => {
-    const { before, card } = await openedLongCard(page, size);
-    await page.evaluate(() => /** @type {any} */ (window).__n.card({ tone: 'warn', title: 'A newer backup is on Test place', body: 'A backup made on another phone is newer than this one. Import it as a copy, or back this phone up over it.',
-      actions: [{ label: 'Import it as a copy', primary: true, run() {} }, { label: 'Back up this phone over it', run() {} }] }));
-    await expect(page.locator('.notices .notice')).toHaveCount(2);
-    await stuckInHalf(page); // open, the box keeps sticking, the new card inside it
-    await rowsStayed(page, before);
-    await settled(page);
-    await page.locator('.notices').evaluate((el) => { el.scrollTop = 0; });
-    await card.getByRole('button', { name: 'Less' }).click();
-    await expect(page.locator('.notices')).toHaveClass(/\btall\b/); // closed, the two are taller than half: in the page, above
-    await rowsStayed(page, before);
-    await page.evaluate(() => /** @type {any} */ (window).gone()); // the long card is taken down by code
-    expect((await placeOf(page)).pos).toBe('sticky'); // the backup card alone fits: it comes over the rows
-    await rowsStayed(page, before);
-  });
-
   test(`a card opened (More) inside the stuck box, then one of its kind that folds it into a stack: the stack sticks, and the rows don't move (${size.join(' x ')})`, async ({ page }) => {
     const { before } = await openedLongCard(page, size, { actions: false });
     await page.evaluate(() => /** @type {any} */ (window).__n.card({ title: 'A long card', body: 'And another one of its kind.' }));
@@ -597,7 +580,7 @@ for (const size of PHONES) {
   });
 }
 
-test("home scrolled on a small phone, a card that needs more room than sticks, arriving while another is stuck, leaves home where it was", async ({ page }) => {
+test("home scrolled on a small phone, a card that needs more than the box's quarter, arriving while another is stuck: the box grows to its cap, and home stays where it was", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
   await scrolledHome(page);
   await page.evaluate(() => /** @type {any} */ (window).__n.card({ tone: 'warn', title: 'A test card', body: 'Check the key.' }));
@@ -644,49 +627,157 @@ for (const [width, height] of [[320, 568], [360, 640]]) {
   });
 }
 
-test("in a browser tab, its bars hiding and showing as home scrolls (innerHeight changes, the page's height doesn't) leave a box stuck or in the page as it was", async ({ page }) => {
+test("in a browser tab, its bars hiding and showing as home scrolls (innerHeight changes, the page's height doesn't) leave the box stuck at its cap", async ({ page }) => {
   await page.setViewportSize({ width: 393, height: 659 }); // an iPhone 15 in Safari, its bars shown
   await scrolledHome(page);
-  // 331 px: more than half of 659 under the bar (301.5), less than half of 750 (347), about Safari's height with its bars hidden.
+  // 331 px together: more than half of 659 under the bar (301.5), less than half of 750 (347), about Safari's height with its bars hidden.
   await page.evaluate(() => {
     const n = /** @type {any} */ (window).__n;
     n.card({ title: 'A large backup is waiting', body: 'This backup uploads 812 MB to Test place. It waits for Wi-Fi.', actions: [{ label: 'Back up now', primary: true, run() {} }, { label: 'Open Backups', run() {} }] });
     n.card({ title: 'An update is ready', body: 'It will be used the next time annai starts.', actions: [{ label: 'Restart now', primary: true, run() {} }] });
   });
-  await expect.poll(async () => (await placeOf(page)).pos).toBe('static');
+  await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
+  const capped = await boxOf(page);
   for (const tall of [750, 659, 750]) {
     await page.evaluate((h) => { Object.defineProperty(window, 'innerHeight', { value: h, configurable: true }); dispatchEvent(new Event('resize')); }, tall);
-    expect((await placeOf(page)).pos).toBe('static');
+    expect((await placeOf(page)).pos).toBe('sticky');
+    const b = await boxOf(page);
+    expect(Math.abs((b.bottom - b.top) - (capped.bottom - capped.top))).toBeLessThanOrEqual(1);
   }
 });
 
-test("a box taller than half the screen under the bar stays in the page, as before", async ({ page }) => {
-  await page.setViewportSize({ width: 320, height: 568 });
-  await scrolledHome(page);
-  await page.evaluate(() => { for (let i = 0; i < 2; i++) /** @type {any} */ (window).__n.card({ tone: 'warn', title: `A newer backup is on Place ${i}`, body: 'A backup made on another phone is newer than this one. Import it as a copy, or back this phone up over it.',
-    actions: [{ label: 'Import it as a copy', primary: true, run() {} }, { label: 'Back up this phone over it', run() {} }] }); });
-  await expect(page.locator('.notices .notice.grow')).toHaveCount(2);
-  expect((await placeOf(page)).pos).toBe('static');
-});
+/** A "newer backup" hold card, two buttons: more than the box's quarter at every phone size. @param {import('@playwright/test').Page} page @param {string} [place] */
+const addBackup = (page, place = 'Test place') => page.evaluate((p) => { /** @type {any} */ (window).__n.card({ tone: 'warn', title: `A newer backup is on ${p}`,
+  body: 'A backup made on another phone is newer than this one. Import it as a copy, or back this phone up over it.',
+  actions: [{ label: 'Import it as a copy', primary: true, run() {} }, { label: 'Back up this phone over it', run() {} }] }); }, place);
+/** A finger's swipe, as a phone's touch events (CDP, Chromium only): dy < 0 reads on. @param {import('@playwright/test').Page} page */
+const fingerOf = async (page) => {
+  const cdp = await page.context().newCDPSession(page);
+  /** @param {number} x @param {number} y @param {number} dy */
+  return async (x, y, dy) => {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+    for (let i = 1; i <= 8; i++) {
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y + (dy * i) / 8 }] });
+      await page.waitForTimeout(12);
+    }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await page.waitForTimeout(700); // the fling ends
+  };
+};
+const SIZES = [...PHONES, [740, 360]];
 
-test("a box that sticks again as a card goes (one left fits in half the screen): its card comes over the rows and ignores taps a moment, as one that arrives does", async ({ page }) => {
+test("a card that goes from a box over half: the one left stays stuck under the bar, and the rows stay", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
   await scrolledHome(page);
-  await page.evaluate(() => {
-    const w = /** @type {any} */ (window);
-    w.gone = w.__n.card({ tone: 'warn', title: 'A test card', body: 'Check the key.' }); // as Shiori's named card, taken down when a later turn works
-    w.__n.card({ tone: 'warn', title: 'A newer backup is on Test place', body: 'A backup made on another phone is newer than this one. Import it as a copy, or back this phone up over it.',
-      actions: [{ label: 'Import it as a copy', primary: true, run() {} }, { label: 'Back up this phone over it', run() {} }] });
-  });
-  await expect.poll(async () => (await placeOf(page)).pos).toBe('static'); // the two are taller than half: in the page, above
-  await expect(page.locator('.notices.landed, .notices.over')).toHaveCount(0);
+  await page.evaluate(() => { const w = /** @type {any} */ (window); w.gone = w.__n.card({ tone: 'warn', title: 'A test card', body: 'Check the key.' }); }); // as Shiori's named card
+  await addBackup(page);
+  await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky'); // the two are taller than half: stuck, at its cap
+  await stuckInHalf(page);
+  await settled(page);
   const before = await placeOf(page);
   await page.evaluate(() => /** @type {any} */ (window).gone());
-  expect((await placeOf(page)).pos).toBe('sticky'); // the backup card alone fits: it comes over the rows
-  await expect(page.locator('.notices.over')).toHaveCount(1); // and ignores a tap meant for a row a moment
-  expect(Math.abs((await placeOf(page)).now - before.now)).toBeLessThanOrEqual(1); // the rows stayed
-  await expect(page.locator('.notices.over')).toHaveCount(0);
+  await stuckInHalf(page);
+  await rowsStayed(page, before);
 });
+
+for (const size of SIZES) {
+  test(`two cards together over half on a scrolled home: the box sticks under the bar, at most half, and scrolls inside; the rows don't move (${size.join(' x ')})`, async ({ page }) => {
+    await page.setViewportSize({ width: size[0], height: size[1] });
+    await scrolledHome(page);
+    const before = await placeOf(page);
+    await addBackup(page, 'Place 0');
+    await addBackup(page, 'Place 1');
+    await expect(page.locator('.notices > .notice')).toHaveCount(2);
+    await stuckInHalf(page);
+    expect((await boxOf(page)).inside).toBeGreaterThan(0); // more than its cap: it scrolls inside
+    await rowsStayed(page, before);
+    await page.locator('.notices').evaluate((el) => { el.scrollTop = el.scrollHeight; }); // the second card's buttons, inside the box
+    await expect(page.locator('.notices > .notice').nth(1).getByRole('button', { name: 'Dismiss' })).toBeInViewport();
+    await rowsStayed(page, before);
+  });
+
+  test(`a card that arrives while one is open lands in the box; Less leaves both there, stuck: nothing leaves the screen, and the rows don't move (${size.join(' x ')})`, async ({ page }) => {
+    const { before, card } = await openedLongCard(page, size);
+    await addBackup(page);
+    await expect(page.locator('.notices > .notice')).toHaveCount(2);
+    await stuckInHalf(page);
+    await rowsStayed(page, before);
+    await settled(page);
+    await page.locator('.notices').evaluate((el) => { el.scrollTop = 0; });
+    await card.getByRole('button', { name: 'Less' }).click();
+    await expect(card.getByRole('button', { name: 'More' })).toBeVisible();
+    await stuckInHalf(page); // closed, the two stay in the stuck box: neither goes into the page above
+    await rowsStayed(page, before);
+    await expect(card.locator('strong')).toBeInViewport(); // the card the user read is still in view
+    await page.locator('.notices').evaluate((el) => { el.scrollTop = el.scrollHeight; });
+    await expect(page.locator('.notices > .notice', { hasText: 'A newer backup' }).getByRole('button', { name: 'Dismiss' })).toBeInViewport(); // and the one that came
+    await page.evaluate(() => /** @type {any} */ (window).gone()); // the long card taken down by code
+    await stuckInHalf(page);
+    await rowsStayed(page, before);
+  });
+
+  test(`More on a two-button card: its buttons stay at the box's edge, whole, and a tap at Less's centre closes it (${size.join(' x ')})`, async ({ page }) => {
+    await page.setViewportSize({ width: size[0], height: size[1] });
+    await scrolledHome(page);
+    await addBackup(page);
+    await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
+    await settled(page);
+    const before = await placeOf(page);
+    const card = page.locator('.notices > .notice');
+    await card.getByRole('button', { name: 'More' }).click();
+    await settled(page);
+    const less = card.getByRole('button', { name: 'Less' });
+    const b = await boxOf(page);
+    for (const button of [less, card.getByRole('button', { name: 'Dismiss' })]) {
+      const r = /** @type {{ x: number, y: number, width: number, height: number }} */ (await button.boundingBox());
+      expect(r.y).toBeGreaterThanOrEqual(b.top - 1); // whole, inside the box
+      expect(r.y + r.height).toBeLessThanOrEqual(b.bottom + 1);
+    }
+    const r = /** @type {{ x: number, y: number, width: number, height: number }} */ (await less.boundingBox());
+    await page.touchscreen.tap(r.x + r.width / 2, r.y + r.height / 2);
+    await expect(card).not.toHaveClass(/\bopen\b/); // the tap ran Less
+    await rowsStayed(page, before);
+  });
+
+  test(`a swipe on a stuck box that holds less than its cap scrolls home; on one that holds more, it stays in the box (${size.join(' x ')})`, async ({ page, browserName }) => {
+    await page.setViewportSize({ width: size[0], height: size[1] });
+    await scrolledHome(page);
+    // A title and Dismiss: well inside its cap. (A card within a px of its own cap scrolls that px and keeps the swipe: docs/limitations.md.)
+    await page.evaluate(() => /** @type {any} */ (window).__n.card({ tone: 'warn', title: 'A test card' }));
+    await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
+    await settled(page);
+    const box = page.locator('.notices');
+    const rule = () => box.evaluate((el) => getComputedStyle(el).overscrollBehaviorY);
+    if (browserName !== 'chromium') {
+      // Playwright's WebKit has neither touch scrolling nor a wheel: there, the rule itself (Safari 16 and later keep a contained swipe in the box).
+      expect(await rule()).toBe('auto');
+      await addBackup(page, 'Place 0');
+      await addBackup(page, 'Place 1');
+      await expect(page.locator('.notices > .notice')).toHaveCount(3);
+      expect(await rule()).toBe('contain');
+      return;
+    }
+    expect(await rule()).toBe('auto');
+    const swipe = await fingerOf(page);
+    let before = await placeOf(page);
+    let b = /** @type {{ x: number, y: number, width: number, height: number }} */ (await box.boundingBox());
+    const x = Math.round(b.x + b.width / 2);
+    await swipe(x, Math.round(b.y + b.height / 2), -80); // on a box with nothing past its edge: home scrolls
+    expect((await placeOf(page)).y).toBeGreaterThan(before.y + 30);
+    await addBackup(page, 'Place 0');
+    await addBackup(page, 'Place 1');
+    await expect(page.locator('.notices > .notice')).toHaveCount(3);
+    await settled(page);
+    before = await placeOf(page);
+    b = /** @type {{ x: number, y: number, width: number, height: number }} */ (await box.boundingBox());
+    for (let i = 0; i < 6; i++) await swipe(x, Math.round(b.y + b.height - 30), -200); // to the box's end, and past it
+    expect(await box.evaluate((el) => el.scrollHeight - el.clientHeight - el.scrollTop)).toBeLessThanOrEqual(1);
+    await rowsStayed(page, before);
+    for (let i = 0; i < 6; i++) await swipe(x, Math.round(b.y + 30), 200); // back to its top, and past it
+    expect(await box.evaluate((el) => el.scrollTop)).toBe(0);
+    await rowsStayed(page, before);
+  });
+}
 
 test("a stuck card opened on home, then another screen: a card that comes there leaves what is seen where it was", async ({ page }) => {
   await scrolledHome(page);
@@ -722,17 +813,7 @@ test("home scrolled, a finger reading an opened stuck card past its end scrolls 
     return;
   }
   const before = await placeOf(page);
-  const cdp = await page.context().newCDPSession(page);
-  /** A finger's swipe, as a phone's touch events (CDP): dy < 0 reads on. @param {number} x @param {number} y @param {number} dy */
-  const swipe = async (x, y, dy) => {
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
-    for (let i = 1; i <= 8; i++) {
-      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y + (dy * i) / 8 }] });
-      await page.waitForTimeout(12);
-    }
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-    await page.waitForTimeout(700); // the fling ends
-  };
+  const swipe = await fingerOf(page);
   const b = /** @type {{ x: number, y: number, width: number, height: number }} */ (await box.boundingBox());
   const x = Math.round(b.x + b.width / 2);
   for (let i = 0; i < 6; i++) await swipe(x, Math.round(b.y + b.height - 30), -200); // on to the card's end, and past it
