@@ -418,7 +418,7 @@ Each entry here was approved by the user. Reviewers read this file first and don
 ### Home's rows move when a phone rotates, or at the first resize after a tall card lands
 - **Kind:** deferred.
 - **What the user sees:** on home, a phone turned on its side moves the rows. In Chromium, the first resize after a card that needs more than a quarter of the screen (`.grow`) has landed in the page moves the rows by its excess over the quarter (167 to 211 px measured at 393 x 659); in a Chrome tab the URL bar's first hide is such a resize.
-- **Why:** cards are refit when the screen changes size, outside `keep()` in notices.js, which is what keeps the rows still when a card comes or goes. Older than stage 4's sticky box.
+- **Why:** cards are refit when the screen changes size, outside `keep()` in notices.js, which is what keeps the rows still when a card comes or goes. Older than stage 4's sticky box. With a card open in the stuck box, its cap (half of 100svh) changes too: the rows moved 140 px when 360 x 640 turned to 640 x 360. The cap has already changed when `resize` fires, so the fix needs the box's last height kept.
 - **Revisit when:** the next version: run the resize's refit through `keep()`.
 
 ### Cards aren't refit when web fonts swap in
@@ -429,8 +429,8 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### Focusing a field doesn't scroll it clear of a stuck card
 - **Kind:** deferred.
-- **What the user sees:** on home, a field near the top of the screen (Start a trip's name, say, with the keyboard up) can sit under a stuck card. The box can be up to 232 px at 320 x 568 (a newer-backup card), against 142 px for a quarter of the screen.
-- **Why:** nothing tells the browser's focus scrolling about the top bar or the box (no `scroll-padding-top`).
+- **What the user sees:** on home, a field near the top of the screen (Start a trip's name, say, with the keyboard up) can sit under a stuck card. The box can be up to 232 px at 320 x 568 (a newer-backup card), against 142 px for a quarter of the screen. The box can be up to half the room under the bar (256 px at 320 x 568, 292 at 360 x 640, 302 at 393 x 659), and a card opened in it makes it that tall. With a keyboard up (about 290 to 340 px), the bar and an open box can take all the room above it.
+- **Why:** nothing tells the browser's focus scrolling about the top bar or the box (no `scroll-padding-top`). `scroll-padding-top` alone can't place the field when the bar and the box take all the room above the keyboard.
 - **Revisit when:** the next version: `scroll-padding-top` of the top bar plus the box on home, or after the user's phone check of "Stick up to half".
 
 ### A kept error drawn again may be read out again by a screen reader
