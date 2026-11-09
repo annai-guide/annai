@@ -706,6 +706,45 @@ test("a stuck card opened on home, then another screen: a card that comes there 
   expect(Math.abs((await at()) - was)).toBeLessThanOrEqual(1);
 });
 
+test("home scrolled, a finger reading an opened stuck card past its end scrolls only the box: the rows behind it stay; a swipe on the rows still scrolls home", async ({ page, browserName }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await scrolledHome(page);
+  await page.evaluate(() => /** @type {any} */ (window).__n.card({ title: 'A long card', body: 'These are many words, and more of them. '.repeat(30) }));
+  await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
+  await settled(page);
+  await page.getByRole('button', { name: 'More' }).click();
+  await expect(page.getByRole('button', { name: 'Less' })).toBeAttached();
+  await settled(page);
+  const box = page.locator('.notices');
+  if (browserName !== 'chromium') {
+    // Playwright's WebKit has neither touch scrolling nor a wheel: there, the rule itself (Safari 16 and later keep a contained swipe in the box).
+    expect(await box.evaluate((el) => getComputedStyle(el).overscrollBehaviorY)).toBe('contain');
+    return;
+  }
+  const before = await placeOf(page);
+  const cdp = await page.context().newCDPSession(page);
+  /** A finger's swipe, as a phone's touch events (CDP): dy < 0 reads on. @param {number} x @param {number} y @param {number} dy */
+  const swipe = async (x, y, dy) => {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+    for (let i = 1; i <= 8; i++) {
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y + (dy * i) / 8 }] });
+      await page.waitForTimeout(12);
+    }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await page.waitForTimeout(700); // the fling ends
+  };
+  const b = /** @type {{ x: number, y: number, width: number, height: number }} */ (await box.boundingBox());
+  const x = Math.round(b.x + b.width / 2);
+  for (let i = 0; i < 6; i++) await swipe(x, Math.round(b.y + b.height - 30), -200); // on to the card's end, and past it
+  expect(await box.evaluate((el) => el.scrollHeight - el.clientHeight - el.scrollTop)).toBeLessThanOrEqual(1); // the card read to its end
+  await rowsStayed(page, before);
+  for (let i = 0; i < 6; i++) await swipe(x, Math.round(b.y + 30), 200); // back to its top, and past it
+  expect(await box.evaluate((el) => el.scrollTop)).toBe(0);
+  await rowsStayed(page, before);
+  await swipe(x, Math.round(b.y + b.height + 60), -120); // the rows under the box: home scrolls
+  expect((await placeOf(page)).y).toBeGreaterThan(before.y + 50);
+});
+
 test("a card that lands stuck over the rows ignores taps a moment; the rows it doesn't cover still take them", async ({ page }) => {
   await scrolledHome(page);
   const right = await page.evaluate(() => {
