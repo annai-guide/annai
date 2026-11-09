@@ -358,7 +358,10 @@ test("one card taller than the box a quarter of the screen high shows its title 
   await card.locator('p').evaluate((p) => { p.textContent = Array.from({ length: 40 }, (_, i) => `Line ${i + 1} of what this card has to say.`).join('\n'); });
   await page.evaluate(() => dispatchEvent(new Event('resize')));
   /** Whether a part lies wholly in sight, and nothing covers it. @param {import('@playwright/test').Locator} part */
-  const inSight = (part) => part.evaluate((el) => {
+  const inSight = (part) => part.evaluate(async (el) => {
+    // A card that just came ignores taps a moment (.over, .landed: notices.js): hit-test once that has passed.
+    const box = el.closest('.notices');
+    while (box?.matches('.over, .landed')) await new Promise((r) => setTimeout(r, 50));
     const b = el.getBoundingClientRect();
     const top = document.elementFromPoint(b.left + 4, b.top + b.height / 2);
     return b.top >= 0 && b.bottom <= innerHeight && b.height > 20 && Boolean(top && el.contains(top));
