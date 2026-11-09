@@ -28,6 +28,7 @@ import { nowOf, isField } from '../today.js';
  * @param {any} ctx
  */
 export async function renderTrips(ctx) {
+  if (ctx.moved) tripError = ''; // come to home anew: the form's last error is not shown again
   const { active, archived } = await listTrips(ctx.store);
   const settings = await readAppSettings(ctx.ws);
   const places = ctx.backups ? await ctx.backups.list() : [];
@@ -202,16 +203,24 @@ function waitingList(ctx, files, names) {
     })));
 }
 
+/**
+ * What Start a trip last said went wrong, kept as `unfolded` is so a redraw of home (the clock's) draws it again: it goes when the user types into the form,
+ * submits again, or leaves home (renderTrips).
+ */
+let tripError = '';
+
 /** @param {any} ctx */
 function newTripForm(ctx) {
   const title = h('input', { id: 'trip-title', name: 'title', maxlength: '200', autocomplete: 'off', placeholder: t`Big Sur · Thanksgiving` });
   const start = h('input', { id: 'trip-start', name: 'start', type: 'date' });
   const end = h('input', { id: 'trip-end', name: 'end', type: 'date' });
-  const error = h('p', { class: 'error', role: 'alert', hidden: true });
+  const error = h('p', { class: 'error', role: 'alert', hidden: !tripError, text: tripError });
   return h('form', {
     class: 'panel',
+    oninput: () => { tripError = ''; error.hidden = true; },
     onsubmit: async (/** @type {Event} */ e) => {
       e.preventDefault();
+      tripError = '';
       error.hidden = true;
       requestPersist(); // inside the tap, so browsers that ask the user can
       try {
@@ -219,7 +228,8 @@ function newTripForm(ctx) {
         ctx.go(`#/trip/${encodeURIComponent(id)}`);
       } catch (err) {
         explainStorageFull(ctx, err);
-        error.textContent = explainTrip(err);
+        tripError = explainTrip(err);
+        error.textContent = tripError;
         error.hidden = false;
       }
     },
