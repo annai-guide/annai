@@ -457,3 +457,9 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** on home, a swipe that starts on a stuck card whose height lands within a pixel over its cap (a quarter of the screen less the box's padding) scrolls nothing: measured at 360 x 640 with a one-line warn card ("A test card", "Check the key."), 142 px against 141. A swipe on the rows, or on any other card, scrolls home.
 - **Why:** each card is its own scroll box, so it is whole in a quarter-high box; `fit` accepts a card up to 1 px over (rounding), and the browser gives the whole swipe to the card that can scroll that px. Older than stage 4's sticky box.
 - **Revisit when:** the next version: let `fit`'s measure and the card's scroll agree (no 1 px a card can scroll).
+
+### A card that arrives while one is open isn't seen arriving
+- **Kind:** deferred.
+- **What the user sees:** on home, with a card open in the stuck box (capped at half the screen), a new card is added below it inside the box. Nothing leaves the screen and the rows don't move, but nothing on screen shows it arrived (a screen reader announces it) until the user scrolls inside the box or taps Less.
+- **Why:** the box is already at its cap, so it doesn't grow; the user chose (2026-11-09, "Defer a hint") to ship it and add a sign in the next version.
+- **Revisit when:** the next version: a small sign at the box's bottom edge when a card arrives below what the user is reading.
