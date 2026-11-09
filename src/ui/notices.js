@@ -19,12 +19,13 @@ export function createNotices() {
   /**
    * A box that a card lifted the cap of (it needs more than the box's quarter of the screen) sticks on home while it fits in half the screen under the top
    * bar (base.css: not .tall); taller, it is in the page. The half is the user's choice ("Stick up to half"), to be confirmed on their phone: it leaves
-   * the other half for rows. Looked at after each change and when the screen changes size.
+   * the other half for rows. Looked at after each change and when the screen changes size. The screen is the page's own height, the one with a browser's
+   * bars shown, as the box's quarter is (25svh): innerHeight changes as those bars hide and show while the page scrolls, and the box would go in and out of view.
    */
   const settleTall = () => {
     el.classList.remove('tall');
     const bar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--topbar-h')) || 0;
-    el.classList.toggle('tall', el.getBoundingClientRect().height > (innerHeight - bar) / 2);
+    el.classList.toggle('tall', el.getBoundingClientRect().height > (document.documentElement.clientHeight - bar) / 2);
   };
   /**
    * A card comes or goes: scrolled down, what is seen stays put; at the top, what moved ignores taps a moment (.landed). On home the box sticks while it

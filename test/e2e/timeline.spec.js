@@ -563,6 +563,22 @@ for (const [width, height] of [[320, 568], [360, 640]]) {
   });
 }
 
+test("in a browser tab, its bars hiding and showing as home scrolls (innerHeight changes, the page's height doesn't) leave a box stuck or in the page as it was", async ({ page }) => {
+  await page.setViewportSize({ width: 393, height: 659 }); // an iPhone 15 in Safari, its bars shown
+  await scrolledHome(page);
+  // 331 px: more than half of 659 under the bar (301.5), less than half of 750 (347), about Safari's height with its bars hidden.
+  await page.evaluate(() => {
+    const n = /** @type {any} */ (window).__n;
+    n.card({ title: 'A large backup is waiting', body: 'This backup uploads 812 MB to Test place. It waits for Wi-Fi.', actions: [{ label: 'Back up now', primary: true, run() {} }, { label: 'Open Backups', run() {} }] });
+    n.card({ title: 'An update is ready', body: 'It will be used the next time annai starts.', actions: [{ label: 'Restart now', primary: true, run() {} }] });
+  });
+  await expect.poll(async () => (await placeOf(page)).pos).toBe('static');
+  for (const tall of [750, 659, 750]) {
+    await page.evaluate((h) => { Object.defineProperty(window, 'innerHeight', { value: h, configurable: true }); dispatchEvent(new Event('resize')); }, tall);
+    expect((await placeOf(page)).pos).toBe('static');
+  }
+});
+
 test("a box taller than half the screen under the bar stays in the page, as before", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
   await scrolledHome(page);
