@@ -37,6 +37,9 @@ The user: "a bit messy screens and tabs here and there"; "everything come back t
 
 - Old to new, top to bottom, with day or month headings. Overlaps are just rows.
 - Opens with the now line 40% down; Back restores your place (shell.js's `talk` exception extends to `trips`).
+- **Where it opens (the user, 2026-11-09, "Open home at top"):** while annai isn't installed (the data-safety banner shows), a fresh home opens at its top, the banner first: a long past would otherwise put the banner far above the screen, unseen. Installed (no banner), it opens with the now line 40% down as above. Back's and ←'s own place restore is unchanged: this is only where a fresh home opens.
+- **Where cards go on home (the user, 2026-11-08, "Stick under top bar"):** on home only, the notices box sticks under the top bar while it holds a card, so a card that arrives while home is scrolled (it opens at the now line) is in view, over the rows, which don't move. Empty, it takes no room and covers nothing. A card that lands over the rows ignores taps for a moment, so a tap meant for a row doesn't land on its button. Other screens keep the main spec's rule (§16.1): cards in the page, scrolling away with it.
+- **How tall a stuck box may be (the user, 2026-11-09, "Stick up to half"):** a box sticks while it fits in half the room under the top bar (measured against the page's height with a browser's bars shown); taller, it stays in the page, as before. A card the user opens (More, Show) is in the page, and the page goes to its top so it shows whole; closed, the page goes back to where home was. The half is to be confirmed on the user's phone.
 - Only dated trips sit below now, so one being planned stays right under the line, however many chats exist.
 - Before the last 30 days, a month with over three chats folds to "October: 14 chats". Cards never fold.
 - The foot: Archived (a fold, as today), Open a file, last backup.
