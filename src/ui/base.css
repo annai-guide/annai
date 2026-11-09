@@ -159,8 +159,8 @@ pre.code { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--pap
    there is in view instead of above it. Empty, it takes no room and covers nothing. Where a card lifts the box's quarter (below: it needs more, or the
    user opened it), the box is at most half the room under the bar (the user, "Cap every box at half") and scrolls inside itself: it never goes into
    the page above, and the page never moves. The half is of 100svh, the page's height with a browser's bars shown, so it doesn't follow those bars. A swipe
-   on a box that scrolls stays in it (.scrolls, notices.js): the rows behind it don't scroll away from the user's place. A card that lands over the rows
-   ignores taps a moment (.over, notices.js), as the rows do when it moves them. */
+   on a box that scrolls stays in it (.scrolls, notices.js): the rows behind it don't scroll away from the user's place. A card that lands over the rows,
+   or slides into the place of one that went, ignores taps a moment (.over, notices.js), as the rows do when it moves them. */
 body.home .notices:not(:empty) { position: sticky; top: var(--topbar-h, 0px); z-index: 4; background: var(--paper); --lifted: calc((100svh - var(--topbar-h, 0px)) / 2); }
 body.home .notices.scrolls { overscroll-behavior-y: contain; }
 .notices.over > .notice { pointer-events: none; }

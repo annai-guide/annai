@@ -13,17 +13,18 @@ export function createNotices() {
   const toasts = h('div', { class: 'toasts', role: 'status', 'aria-live': 'polite' });
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let settle;
-  const sticky = () => getComputedStyle(el).position === 'sticky';
   /**
    * A box that holds more than its cap (a quarter of the screen, or on home half the room under the top bar: base.css) scrolls inside itself, and a swipe
    * on it stays there (.scrolls). One that holds less passes a swipe on to the page: kept in, it would be a patch of home that doesn't scroll. Looked at
-   * after each change and when the screen changes size.
+   * after each change, and whenever the box's own size changes: its cap is half the room on home but none on other screens, so cards that came or opened
+   * there are measured again when home shows.
    */
   const scrolls = () => el.classList.toggle('scrolls', el.scrollHeight > el.clientHeight + 1);
+  new ResizeObserver(scrolls).observe(el);
   /**
-   * A card comes, goes, opens or closes: scrolled down, what is seen stays put; at the top, what moved ignores taps a moment (.landed). On home the box
-   * sticks while it holds a card, at most half the room under the top bar (base.css), so a card that comes, or one opened inside it, lands in view over
-   * the rows and ignores taps a moment (.over) instead. Nothing a card does moves the box into the page above, nor the page. @param {() => void} change
+   * A card comes, goes, opens or closes: scrolled down, what is seen stays put; what moved ignores taps a moment (the cards; at the top, the rows too).
+   * On home the box sticks while it holds a card, at most half the room under the top bar (base.css), so a card that comes, or one opened inside it,
+   * lands in view over the rows. Nothing a card does moves the box into the page above, nor the page. @param {() => void} change
    */
   const keep = (change) => {
     const y = scrollY;
@@ -32,10 +33,15 @@ export function createNotices() {
     scrolls();
     const by = el.getBoundingClientRect().height - was;
     if (by && y > 0) scrollTo(0, y + by);
-    // A card that arrives moved the screen (at its top: .landed, what moved ignores taps) or sits over it (stuck: .over, the card ignores taps), so a
-    // tap meant for a row doesn't land on the card's button; the rows it doesn't cover didn't move and take taps.
-    if (by > 0 && (y === 0 || sticky())) {
-      el.classList.add(y > 0 ? 'over' : 'landed');
+    // What moved ignores taps a moment, so a tap meant for it doesn't land on what slid under the finger. The cards, after any change (.over): one that
+    // comes lands where rows were (on home, over them), and one that goes slides the ones under it into its place, so a quick second tap on its Dismiss
+    // would land on the next card's button. At the page's top, the rows too, as the box pushed or pulled them (.landed); scrolled down, they didn't
+    // move and take taps.
+    const cards = !el.matches(':empty');
+    const rows = by !== 0 && y === 0;
+    if (cards || rows) {
+      if (cards) el.classList.add('over');
+      if (rows) el.classList.add('landed');
       clearTimeout(settle);
       // 400 ms (79cadd29, 2026-10-21): for that long what moved ignores taps, so a tap meant for it doesn't land on what slid under the finger.
       settle = setTimeout(() => el.classList.remove('landed', 'over'), 400);
