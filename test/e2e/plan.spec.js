@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, turnOnSwipes, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, filterTrace, happeningTrip, writeRecords, catchAgent } from './helpers.js';
+import { openApp, FIRST_DRAW, turnOnSwipes, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, filterTrace, happeningTrip, writeRecords, catchAgent } from './helpers.js';
 import { ZipWriter } from '../../src/core/zip.js';
 import { utf8 } from '../../src/core/bytes.js';
 
@@ -214,7 +214,7 @@ test("today's top keeps up after its tab is left and come back to", async ({ pag
   const trip = await startTrip(page, 'Testville');
   await records(page, trip, HAPPENING);
   await page.reload(); // written outside the app's own files layer: live mode reads the plan again as it starts
-  await expect(page.locator('main.view > *')).toBeVisible();
+  await expect(page.locator('main.view > *')).toBeVisible(FIRST_DRAW);
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
   await page.locator('.live-chip').click();
   await expect(page.locator('.today-top .now-place')).toHaveText('At Testville Bridge');
@@ -383,7 +383,7 @@ async function longBridge(page, context) {
     write: { ...manyRows('2030-11-27', 'today'), '/plan/bridge.json': { ...HAPPENING.write['/plan/bridge.json'], place: { name: 'The Long Named Testville Bridge', lat: 36.3715, lng: -121.9017 } } },
   });
   await page.reload();
-  await expect(page.locator('main.view > *')).toBeVisible();
+  await expect(page.locator('main.view > *')).toBeVisible(FIRST_DRAW);
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
   await page.locator('.live-chip').click();
   await expect(page.locator('.today-top .now-place')).toHaveText('At The Long Named Testville Bridge');

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, pastWelcome, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, startTrip, writeRecords, filterTrace } from './helpers.js';
+import { openApp, FIRST_DRAW, pastWelcome, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, startTrip, writeRecords, filterTrace } from './helpers.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 const sleep = { name: 'sleep', input: {} };
@@ -78,7 +78,7 @@ test("no model can be reached: annai shows the plan's reminder itself, and the c
     const trip = await setUp(page, llm.origin);
     await writeRecords(page, trip, { write: { '/plan/tea.json': { id: 'tea', title: 'Tea at the inn', fixed: true, start: { at: plus(start, 16), tz: 'UTC' } } } });
     await page.reload(); // written outside the app's own files layer: it reads the plan again as it starts
-    await expect(page.locator('main.view > *')).toBeVisible();
+    await expect(page.locator('main.view > *')).toBeVisible(FIRST_DRAW);
     await page.clock.fastForward(90_000); // the plan's "coming up" comes 15 minutes before
     await expect(page.locator('.notice', { hasText: 'Reminder' })).toContainText('In 15 min: Tea at the inn at');
     await expect(page.locator('.notice', { hasText: "Shiori can't reach her model" })).toBeVisible();
