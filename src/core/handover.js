@@ -11,7 +11,7 @@
 import { NAMES_FILE, readNames } from './names.js';
 import { moveFile } from './waiting.js';
 import { blobJSON } from './reach.js';
-import { SYS_WAITING, talks } from './scopes.js';
+import { SYS_WAITING, DRAFT_TITLE, talks } from './scopes.js';
 import { FILE_BOOKING } from './bookings.js';
 
 /** The stored words of a hand-over with no words of the user's (the screens show none). */
@@ -247,14 +247,12 @@ export async function undoHandover(ws, scope, handover, o = {}) {
       kept.set(path, `${scope}\n${path}`);
       continue;
     }
-    const dates = f.named.has(path) && before !== null ? await blobJSON(ws.store, scope, before, { quiet: true }) : null;
+    // trip.json goes back as it was before her, with the name it has now when that one was the draft's (no one had named it: her name stays) or
+    // the system named it since (a voice line's words come after her turn): Undo never brings "New conversation" back.
+    const was = path === '/trip.json' && before !== null ? await blobJSON(ws.store, scope, before, { quiet: true }) : null;
     if (before === null) await ws.delete(scope, path, { author: 'user', undo: handover });
-    else if (dates) { // only the dates go back; the name given since stays
-      await ws.update(scope, path, (/** @type {any} */ trip) => {
-        const { start: _s, end: _e, ...rest } = trip;
-        return { ...rest, ...(dates.start === undefined ? {} : { start: dates.start }), ...(dates.end === undefined ? {} : { end: dates.end }) };
-      }, { author: 'user', undo: handover });
-    } else {
+    else if (was && (f.named.has(path) || was.title === DRAFT_TITLE)) await ws.update(scope, path, (/** @type {any} */ trip) => ({ ...was, title: trip.title }), { author: 'user', undo: handover });
+    else {
       await ws.restore(scope, path, before, { author: 'user', undo: handover });
       const name = path.startsWith('/files/') ? await nameBefore(ws, scope, path, first) : null;
       if (name && !Object.hasOwn(await readNames(ws, scope), path)) await ws.patch(scope, NAMES_FILE, { [path]: name }, { author: 'user', create: true });
