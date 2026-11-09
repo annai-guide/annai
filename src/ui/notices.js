@@ -17,6 +17,16 @@ export function createNotices() {
   let back = null;
   const sticky = () => getComputedStyle(el).position === 'sticky';
   /**
+   * A box that a card lifted the cap of (it needs more than the box's quarter of the screen) sticks on home while it fits in half the screen under the top
+   * bar (base.css: not .tall); taller, it is in the page. The half is the user's choice ("Stick up to half"), to be confirmed on their phone: it leaves
+   * the other half for rows. Looked at after each change and when the screen changes size.
+   */
+  const settleTall = () => {
+    el.classList.remove('tall');
+    const bar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--topbar-h')) || 0;
+    el.classList.toggle('tall', el.getBoundingClientRect().height > (innerHeight - bar) / 2);
+  };
+  /**
    * A card comes or goes: scrolled down, what is seen stays put; at the top, what moved ignores taps a moment (.landed). On home the box sticks while it
    * holds a card (base.css), so a card that comes lands in view, over the rows, and ignores taps a moment (.over) instead. One the user opens past what
    * sticks (opening: More, Show) is in the page at its top, and the page goes there; closed again (Less, Hide, Dismiss), the page goes back to where it
@@ -27,6 +37,7 @@ export function createNotices() {
     const was = el.getBoundingClientRect().height;
     const stuck = sticky();
     change();
+    settleTall();
     const now = el.getBoundingClientRect().height;
     const by = now - was;
     const over = sticky();
@@ -101,7 +112,7 @@ export function createNotices() {
     node.classList.remove('grow');
     if (node.querySelector(':scope > .stack-list')?.hasAttribute('hidden') && node.offsetHeight > el.clientHeight - 16 + 1) node.classList.add('grow');
   };
-  addEventListener('resize', () => { for (const n of el.querySelectorAll('.notice')) fitters.get(/** @type {HTMLElement} */ (n))?.(); });
+  addEventListener('resize', () => { for (const n of el.querySelectorAll('.notice')) fitters.get(/** @type {HTMLElement} */ (n))?.(); settleTall(); });
   /** One kind of card: the same title and tone. Cards don't say which trip raised them, so that is not part of it. @param {string} title @param {string} tone */
   const kindOf = (title, tone) => `${tone}\n${title}`;
   /** The lone card of a kind, while there is only one. @type {Map<string, HTMLElement>} */
