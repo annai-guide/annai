@@ -22,6 +22,17 @@ export function createNotices() {
   const scrolls = () => el.classList.toggle('scrolls', el.scrollHeight > el.clientHeight + 1);
   new ResizeObserver(scrolls).observe(el);
   /**
+   * A card (or its stack) that came below what is read in the box: a sign at the box's bottom edge (.below) until its title is in view there, or it goes
+   * (the user, "Defer a hint"). A screen reader hears it come (role=status). @type {HTMLElement | null}
+   */
+  let arrived = null;
+  const below = () => {
+    const title = arrived?.isConnected ? arrived.querySelector(':scope > strong') : null;
+    if (!title || title.getBoundingClientRect().bottom <= el.getBoundingClientRect().top + el.clientTop + el.clientHeight + 1) arrived = null;
+    el.classList.toggle('below', arrived !== null);
+  };
+  el.addEventListener('scroll', () => { if (arrived) below(); }, { passive: true });
+  /**
    * A card comes, goes, opens or closes: scrolled down, what is seen stays put; what moved ignores taps a moment (the cards; at the top, the rows too).
    * On home the box sticks while it holds a card, at most half the room under the top bar (base.css), so a card that comes, or one opened inside it,
    * lands in view over the rows. Nothing a card does moves the box into the page above, nor the page. @param {() => void} change
@@ -31,6 +42,7 @@ export function createNotices() {
     const was = el.getBoundingClientRect().height;
     change();
     scrolls();
+    below();
     const by = el.getBoundingClientRect().height - was;
     if (by && y > 0) scrollTo(0, y + by);
     // What moved ignores taps a moment, so a tap meant for it doesn't land on what slid under the finger. The cards, after any change (.over): one that
@@ -144,7 +156,10 @@ let lone = 0;
   };
   /** What joins a stack is read out from its title and words, copied so their lang stays (not the buttons). @param {Stack} st @param {HTMLElement} node */
   const announce = (st, node) => st.said.replaceChildren(...[...node.querySelectorAll('strong, p')].map((n) => n.cloneNode(true)));
-  /** A card joins its kind: alone, or in a stack with the others. @param {string} kind @param {string} title @param {HTMLElement} node */
+  /**
+   * A card joins its kind: alone, or in a stack with the others. @param {string} kind @param {string} title @param {HTMLElement} node
+   * @returns {HTMLElement} what shows it: the card, or its stack while that is folded
+   */
   function place(kind, title, node) {
     const stack = stacks.get(kind);
     const lone = singles.get(kind);
@@ -153,7 +168,9 @@ let lone = 0;
       stack.list.append(node);
       recount(stack);
       announce(stack, node);
-    } else if (lone) {
+      return stack.list.hidden ? stack.el : node;
+    }
+    if (lone) {
       const made = makeStack(kind, title);
       stacks.set(kind, made);
       singles.delete(kind);
@@ -164,10 +181,11 @@ let lone = 0;
       }
       recount(made);
       announce(made, node);
-    } else {
-      singles.set(kind, node);
-      el.append(node);
+      return made.el;
     }
+    singles.set(kind, node);
+    el.append(node);
+    return node;
   }
   /** A card goes; a stack of one becomes the card again, and an empty one goes. @param {string} kind @param {HTMLElement} node */
   function leave(kind, node) {
@@ -230,7 +248,7 @@ let lone = 0;
     const dismiss = () => { if (node.isConnected) keep(() => leave(kind, node)); };
     // Fitted inside keep(): what it changes of the card's height is kept off what the user sees (scrolled down, the screen stays put).
     keep(() => {
-      place(kind, title, node);
+      arrived = place(kind, title, node);
       fitters.get(node)?.();
     });
     return dismiss;

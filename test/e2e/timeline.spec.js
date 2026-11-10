@@ -802,6 +802,52 @@ for (const size of SIZES) {
   });
 }
 
+for (const size of SIZES) {
+  test(`a card that arrives below what is read in the box shows a sign at its bottom edge, which goes once the card's title is in view there; the rows don't move (${size.join(' x ')})`, async ({ page }) => {
+    const { before } = await openedLongCard(page, size);
+    const box = page.locator('.notices');
+    await expect(box).not.toHaveClass(/\bbelow\b/);
+    await addBackup(page); // under the opened card, out of sight in the box
+    await expect(page.locator('.notices > .notice')).toHaveCount(2);
+    await expect(box).toHaveClass(/\bbelow\b/);
+    // The sign is at the box's bottom edge, inside it, and takes no room.
+    const sign = await box.evaluate((el) => {
+      const s = getComputedStyle(el, '::after');
+      return { content: s.content, position: s.position, inside: el.scrollHeight - el.clientHeight };
+    });
+    expect(sign.content).not.toBe('none');
+    expect(sign.position).toBe('sticky');
+    await rowsStayed(page, before);
+    const room = sign.inside;
+    await settled(page);
+    // Read on inside the box to the card that came: the sign goes, and what the box holds is as tall as with it.
+    await page.locator('.notices > .notice', { hasText: 'A newer backup' }).locator('strong').evaluate((t) => t.scrollIntoView({ block: 'nearest' }));
+    await expect(box).not.toHaveClass(/\bbelow\b/);
+    expect(await box.evaluate((el) => el.scrollHeight - el.clientHeight)).toBe(room);
+    await rowsStayed(page, before);
+  });
+}
+
+test("a card that arrives where it is seen shows no sign: alone in the box, or folded into a stack that shows", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await scrolledHome(page);
+  await page.evaluate(() => /** @type {any} */ (window).__n.card({ tone: 'warn', title: 'A photo was kept as it is', body: 'Photo 0 is kept as it is.' }));
+  await expect(page.locator('.notices > .notice')).toHaveCount(1);
+  await expect(page.locator('.notices')).not.toHaveClass(/\bbelow\b/);
+  await page.evaluate(() => /** @type {any} */ (window).__n.card({ tone: 'warn', title: 'A photo was kept as it is', body: 'Photo 1 is kept as it is.' }));
+  await expect(page.locator('.notice-stack')).toHaveCount(1); // it joins the first: the stack's title, in view, says two
+  await expect(page.locator('.notices')).not.toHaveClass(/\bbelow\b/);
+});
+
+test("a card that arrives below what is read, then goes by code before it is seen: the sign goes with it", async ({ page }) => {
+  const { before } = await openedLongCard(page, [360, 640]);
+  await page.evaluate(() => { const w = /** @type {any} */ (window); w.later = w.__n.card({ tone: 'warn', title: 'A test card', body: 'Check the key.' }); });
+  await expect(page.locator('.notices')).toHaveClass(/\bbelow\b/);
+  await page.evaluate(() => /** @type {any} */ (window).later());
+  await expect(page.locator('.notices')).not.toHaveClass(/\bbelow\b/);
+  await rowsStayed(page, before);
+});
+
 for (const how of ['two hold cards came on another screen', 'a card opened on home, then one came on another screen']) {
   test(`back on home, a box that holds more than its cap keeps a swipe past its end: ${how}`, async ({ page, browserName }) => {
     await page.setViewportSize({ width: 360, height: 640 });
