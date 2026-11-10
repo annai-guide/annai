@@ -1614,6 +1614,33 @@ test('live, through a session: the card is told when the user\'s turn begins and
 const KOE_CHAT = { rules: [{ match: 'the user wrote', reply: { toolCalls: [{ name: 'speak', input: { text: 'Let me look.' } }, { name: 'tell_kokoro', input: { text: 'Where did we eat in Testville?' } }, { name: 'wait', input: { seconds: 60 } }] } }, { match: '', reply: sleep }] };
 const KOKORO_ASKED = { rules: [{ match: 'Where did we eat', reply: call('read_trip', { trip: TV }), then: sleep }] };
 
+test('Koe on a chat model: a line begun while annai says the card\'s question, which Koe\'s microphone hears, is over her voice: it arms nothing and doesn\'t end the card, as a live session, deaf then, never hears one; a yes after the question grants (the fix round\'s Call 8)', async (t) => {
+  useClock(t);
+  const waits = { toolCalls: [{ name: 'wait', input: { seconds: 60 } }] };
+  const koe = { rules: [{ ...KOE_CHAT.rules[0], then: waits }, { match: '', reply: waits, then: waits }] };
+  const k = await gateKit(KOKORO_ASKED, { models: [{ input: ['text', 'image', 'audio'] }], koe: { type: koe, input: ['text', 'image', 'audio'] }, voice: { speechIn: ['send-audio', 'dictation'], playMs: 400 } });
+  // Written down by a model, in turn.
+  const words = ['Okay', 'Okay'];
+  const call = k.llm.call.bind(k.llm);
+  let n = 0;
+  k.llm.call = /** @type {any} */ (async (/** @type {any} */ c) => {
+    if (c.record?.tag !== 'transcribe') return call(c);
+    const i = n++;
+    return { reply: { text: words[i] ?? '', parts: [] }, modelId: c.prefer };
+  });
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1, 20_000);
+  await until(() => k.voice.speaker.speaking, 20_000);
+  await hear(k, 'first-one'); // an eager "Okay" over the question, which Koe keeps
+  await until(() => !k.voice.speaker.speaking, 20_000);
+  assert.equal((await readResults(k)).length, 0, 'the card waits');
+  await pause(1 * k.agent.secondMs);
+  await hear(k, 'first-one'); // "Okay", after the question
+  await pause(5 * k.agent.secondMs);
+  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }]);
+  k.agent.interrupt();
+});
+
 test('Koe on a chat model, classic voice: an "Okay" said to Koe before the card, whose entry comes after the question (a slow quick-decision gate), arms nothing: a line is judged by when it began, not when it was written (the final review, finding 2)', async (t) => {
   useClock(t);
   const k = await gateKit(KOKORO_ASKED, { koe: { type: KOE_CHAT }, voice: { speechIn: ['m-hear'], hears: ['Okay', 'Okay'], decide: gates(['A', 'A']) } });
@@ -1650,6 +1677,9 @@ test('Koe on a chat model, classic voice: an "Okay" said to Koe before the card,
 test('Koe on a chat model that takes the sound (Gemini): a line said to the card is written down for it when heard, since Koe\'s turn, which sends the sound, writes nothing down until it ends (the final fix; the real-speech check of finding 2)', async (t) => {
   useClock(t);
   const k = await gateKit(KOKORO_ASKED, { koe: { type: KOE_CHAT, input: ['text', 'image', 'audio'] }, voice: { speechIn: ['send-audio', 'm-hear'], hears: ['Okay'] } });
+  // "Send audio to the model" first: Koe's model writes it down (the scripted model's own reply would be empty).
+  const call = k.llm.call.bind(k.llm);
+  k.llm.call = /** @type {any} */ (async (/** @type {any} */ c) => (c.record?.tag === 'transcribe' && c.prefer === 'm-koe' ? { reply: { text: 'Okay', parts: [] }, modelId: 'm-koe' } : call(c)));
   k.agent.send('Where did we eat in Testville?');
   await until(() => k.asks.length === 1, 20_000);
   await until(() => !k.voice.speaker.speaking && k.agent.koe.state.name === 'listening', 20_000);
@@ -1658,6 +1688,104 @@ test('Koe on a chat model that takes the sound (Gemini): a line said to the card
   await pause(5 * k.agent.secondMs);
   assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }]);
   k.agent.interrupt();
+});
+
+/** Koe on a chat model that waits on and on (the real-speech run's looped on tell_kokoro and wait for 45 s): its own turn writes nothing down meanwhile. */
+const WAIT60 = { toolCalls: [{ name: 'wait', input: { seconds: 60 } }] };
+const KOE_WAITS = { rules: [{ ...KOE_CHAT.rules[0], then: WAIT60 }, { match: '', reply: WAIT60, then: WAIT60 }] };
+
+test('Koe on a chat model that takes the sound: "Yes." then "No, wait, not that one.", the yes written down 4 s slower than the take-back: the take-back still has the last word, as the newest line heard decides (the re-review)', async (t) => {
+  useClock(t);
+  const k = await gateKit(KOKORO_ASKED, { models: [{ input: ['text', 'image', 'audio'] }], koe: { type: KOE_WAITS, input: ['text', 'image', 'audio'] }, voice: { speechIn: ['send-audio', 'dictation'] } });
+  // The sound is written down by a model, in turn; a slow request for the yes (a retry, a busy server): begun later, the take-back's comes first.
+  const words = ['Yes.', 'No, wait, not that one.'];
+  const call = k.llm.call.bind(k.llm);
+  let n = 0;
+  k.llm.call = /** @type {any} */ (async (/** @type {any} */ c) => {
+    if (c.record?.tag !== 'transcribe') return call(c);
+    const i = n++;
+    if (i === 0) await pause(4 * k.agent.secondMs);
+    return { reply: { text: words[i] ?? '', parts: [] }, modelId: c.prefer };
+  });
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1, 20_000);
+  await until(() => !k.voice.speaker.speaking && k.agent.koe.state.name === 'listening', 20_000);
+  await pause(1 * k.agent.secondMs);
+  await hear(k, 'thanks'); // "Yes."
+  await pause(1.3 * k.agent.secondMs);
+  await hear(k, 'gas-station'); // "No, wait, not that one."
+  await pause(12 * k.agent.secondMs);
+  assert.equal((await grants(k, k.trip)).length, 0, 'taken back');
+  assert.match((await readResults(k))[0] ?? '', /^Not read: /, 'the take-back, which Koe kept, ends the card unanswered');
+  k.agent.interrupt();
+});
+
+test('both halves write down by sound (Kokoro and Koe on models that take audio): Koe\'s own write-down of the yes, later and in other words ("Yes!"), comes after the take-back\'s and arms nothing (the re-review)', async (t) => {
+  useClock(t);
+  // Koe waits on until both are heard, then ends its turn and writes them down, as its model heard them.
+  const koe = [{ toolCalls: [{ name: 'speak', input: { text: 'Let me look.' } }, { name: 'tell_kokoro', input: { text: 'Where did we eat in Testville?' } }, { name: 'wait', input: { seconds: 60 } }] }, WAIT60, sleep];
+  const k = await gateKit(KOKORO_ASKED, { models: [{ input: ['text', 'image', 'audio'] }], koe: { type: koe, input: ['text', 'image', 'audio'] }, voice: { speechIn: ['send-audio', 'dictation'] } });
+  // Each line is written down twice by a model, as "Send audio to the model" makes it: for the card as it is heard, then by Koe's turn as it
+  // ends, in other words for the yes.
+  const words = ['Yes.', 'No, wait, not that one.', 'Yes!', 'No, wait, not that one.'];
+  const call = k.llm.call.bind(k.llm);
+  let n = 0;
+  k.llm.call = /** @type {any} */ (async (/** @type {any} */ c) => {
+    if (c.record?.tag !== 'transcribe') return call(c);
+    const i = n++;
+    return { reply: { text: words[i] ?? '', parts: [] }, modelId: c.prefer };
+  });
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1, 20_000);
+  await until(() => !k.voice.speaker.speaking && k.agent.koe.state.name === 'listening', 20_000);
+  await pause(1 * k.agent.secondMs);
+  await hear(k, 'thanks'); // "Yes."
+  await pause(1.3 * k.agent.secondMs);
+  await hear(k, 'gas-station'); // "No, wait, not that one."
+  await pause(12 * k.agent.secondMs);
+  assert.deepEqual((await k.events(['heard.text'])).map((/** @type {any} */ e) => e.data.text), ['Yes!', 'No, wait, not that one.'], "Koe's own write-downs came");
+  assert.equal((await grants(k, k.trip)).length, 0, 'taken back');
+  assert.match((await readResults(k))[0] ?? '', /^Not read: /);
+  k.agent.interrupt();
+});
+
+test('a kept line that arms nothing ends the card only SETTLE_S after the line said after it: a passenger\'s kept line doesn\'t end the card before the words of the user\'s "Yes." said meanwhile come (the fix round\'s Call 4: 0.03 s short in the real-speech run)', async (t) => {
+  useClock(t);
+  // Koe on a chat model that takes the sound, waiting on: the card's words for its lines come from their write-down.
+  const waits = { toolCalls: [{ name: 'wait', input: { seconds: 60 } }] };
+  const koe = { rules: [{ ...KOE_CHAT.rules[0], then: waits }, { match: '', reply: waits, then: waits }] };
+  const k = await gateKit(KOKORO_ASKED, { models: [{ input: ['text', 'image', 'audio'] }], koe: { type: koe, input: ['text', 'image', 'audio'] }, voice: { speechIn: ['send-audio', 'dictation'] } });
+  // Written down by a model, in turn; the yes's words come 1 s after it ends, as a live transcript or a write-down does: after the passenger's
+  // line had its 3 s.
+  const words = ['Turn left at the light.', 'Yes.'];
+  const call = k.llm.call.bind(k.llm);
+  let n = 0;
+  k.llm.call = /** @type {any} */ (async (/** @type {any} */ c) => {
+    if (c.record?.tag !== 'transcribe') return call(c);
+    const i = n++;
+    if (i === 1) await pause(1 * k.agent.secondMs);
+    return { reply: { text: words[i] ?? '', parts: [] }, modelId: c.prefer };
+  });
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1, 20_000);
+  await until(() => !k.voice.speaker.speaking && k.agent.koe.state.name === 'listening', 20_000);
+  await pause(1 * k.agent.secondMs);
+  await hear(k, 'gas-station'); // a passenger's line, which Koe keeps
+  await pause(2.5 * k.agent.secondMs);
+  await hear(k, 'thanks'); // the user: "Yes."
+  await pause(8 * k.agent.secondMs);
+  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }]);
+  // A kept line with no yes after it still ends the card.
+  const k2 = await gateKit(KOKORO_ASKED, { koe: { type: koe, input: ['text', 'image', 'audio'] }, voice: { speechIn: ['m-hear'], hears: ['Turn left at the light.'] } });
+  k2.agent.send('Where did we eat in Testville?');
+  await until(() => k2.asks.length === 1, 20_000);
+  await until(() => !k2.voice.speaker.speaking && k2.agent.koe.state.name === 'listening', 20_000);
+  await pause(1 * k2.agent.secondMs);
+  await hear(k2, 'gas-station');
+  await pause(5 * k2.agent.secondMs);
+  assert.match((await readResults(k2))[0] ?? '', /^Not read: /);
+  k.agent.interrupt();
+  k2.agent.interrupt();
 });
 
 test('classic voice: a "Yes" begun after the window, routed behind another line\'s gate call that ran past it, is outside: the window is the line\'s own time, not the time it is routed (the final review, finding 3)', async (t) => {
@@ -1679,4 +1807,29 @@ test('classic voice: a "Yes" begun after the window, routed behind another line\
   assert.equal((await grants(k, k.trip)).length, 0);
   k.agent.interrupt();
   await k.agent.idle();
+});
+
+test('Koe on a chat model that takes the sound, Kokoro on one that takes none, speech in as it comes ("Send audio to the model", then dictation): the card has a line written down by Koe\'s model, so a yes is heard while Koe waits on (the re-review)', async (t) => {
+  useClock(t);
+  const waits = { toolCalls: [{ name: 'wait', input: { seconds: 60 } }] };
+  const koe = { rules: [{ ...KOE_CHAT.rules[0], then: waits }, { match: '', reply: waits, then: waits }] };
+  const k = await gateKit(KOKORO_ASKED, { koe: { type: koe, input: ['text', 'image', 'audio'] }, voice: { speechIn: ['send-audio', 'dictation'] } });
+  // Koe's model writes the sound down when asked; Kokoro's takes no audio, so asking it gets nothing (the request is never sent).
+  const call = k.llm.call.bind(k.llm);
+  /** @type {string[]} */
+  const asked = [];
+  k.llm.call = /** @type {any} */ (async (/** @type {any} */ c) => {
+    if (c.record?.tag !== 'transcribe') return call(c);
+    asked.push(`${c.role}: ${c.prefer}`);
+    return c.prefer === 'm-koe' ? { reply: { text: 'Okay', parts: [] }, modelId: 'm-koe' } : call(c);
+  });
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1, 20_000);
+  await until(() => !k.voice.speaker.speaking && k.agent.koe.state.name === 'listening', 20_000);
+  await pause(1 * k.agent.secondMs);
+  await hear(k, 'first-one'); // "Okay"
+  await pause(5 * k.agent.secondMs);
+  assert.deepEqual(asked, ['koe-classic: m-koe']);
+  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }]);
+  k.agent.interrupt();
 });

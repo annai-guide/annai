@@ -18,6 +18,8 @@ const GAP_MS = 80;
 const OVER_MS = 600;
 /** Since a turn's end, this many frames over the floor outside speech, or a run thrown away, make the room noisy (a word's start is 4 at most). */
 const NOISY_FRAMES = 6;
+/** The detector calls speech once 3 of 4 of its 20 ms frames are loud: within 80 ms of a loud start. */
+const CALL_MS = 80;
 
 export class LiveInput {
   /** Speech is being sent now. */
@@ -58,8 +60,9 @@ export class LiveInput {
   /** Runs thrown away before they were sent, and the detector's blips and those runs when the last turn ended. */
   #thrown = 0;
   #mark = 0;
-  /** The gate as half-duplex sets it, on any route. */
+  /** The gate as half-duplex sets it, on any route; and how long her sound has played without a break, in ms (tapped). */
   #herGate = 0;
+  #herMs = 0;
   /**
    * The run going on, or the last, may be hers (annai's card arms nothing on it): begun while her voice plays, or before the gate after it. Not
    * half-duplex's "unless a quiet came between": that tells her echo is over where it is 60 ms late (the phone's speaker); where annai hears while
@@ -145,10 +148,14 @@ export class LiveInput {
     return this.active ? this.#detector?.sinceMarkMs ?? 0 : 0;
   }
 
-  /** A tap stopped her voice: what is said at once is the user's, never begun over her (her tail ends with it: overHer too). */
+  /**
+   * A tap stopped her voice: what is said at once is the user's, never begun over her. Her tail (overHer) ends with it too once her sound has
+   * played long enough to be back already, if it comes back at all: the longest loop the tail covers, then CALL_MS. Begun more recently, her
+   * voice may still come back after the tap (the real-voice check's car: 400 ms), as a run of its own, and the tail stays.
+   */
   tapped() {
     this.#theirs = true;
-    this.#herGate = 0;
+    if (this.#herMs >= this.tailMs + GO_ON_MS + this.minSpeechMs + CALL_MS) this.#herGate = 0;
   }
 
   /** The turn going on ends now (its transcript stalled); the floor goes back to where it began. @param {TurnEnd} why */
@@ -178,6 +185,7 @@ export class LiveInput {
     const first = playing && !this.#was && (this.#held || d.stillMs < 40);
     this.#was = playing;
     this.#clock += pcm.length;
+    this.#herMs = playing ? this.#herMs + (pcm.length * 1000) / sampleRate : 0;
     if (playing) {
       this.#herEnd = this.#clock;
       this.#herGate = this.#clock + Math.round(((this.tailMs + GO_ON_MS) * sampleRate) / 1000);

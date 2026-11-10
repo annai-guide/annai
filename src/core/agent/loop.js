@@ -4,7 +4,7 @@ import { readAppSettings } from '../settings.js';
 import { languageSettings, strayLanguage } from '../languages.js';
 import { AllFailedError, estimateTokens, candidates, chatCandidates, whyOf, whyWords, levelOf } from '../llm/fallback.js';
 import { ProviderError } from '../llm/contract.js';
-import { modelOf, providerOf, updateModel } from '../llm/config.js';
+import { modelOf, providerOf, updateModel, KOE_CLASSIC } from '../llm/config.js';
 import { NotFoundError } from '../workspace.js';
 import { fromBase64, toBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
@@ -116,8 +116,8 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  * @property {(notes: Wake[]) => void} [left]  those a turn Start fresh stopped still owed: shown above its divider
  * @property {(wakes: Wake[]) => number} [hold]  how long a turn about to start waits for the user, in ms (Infinity: until their input changes); 0: go
  * @property {(wakeId: string) => void} [joined]  wakes joined its turn going on (the user's words, a choice, a photo, the other half, a trigger)
- * @property {(on: boolean, line?: { id: string, at: number }) => void} [speech]  its microphone hears someone begin to speak, or stop (line: with the
- *   segment they made, and when it began), for annai's card when the other half holds it
+ * @property {(on: boolean, line?: { id: string, at: number, her?: boolean }) => void} [speech]  its microphone hears someone begin to speak, or stop (line: with the
+ *   segment they made, when it began, and whether annai's voice was playing then), for annai's card when the other half holds it
  * @typedef {{ wakeId: string, ok: boolean, finalText: string, told: boolean, slept: boolean, spoke: boolean, kinds: string[], by: { name: string, first: string | null, tried: boolean } | null }} TurnEnd
  *   by: the model that answered the turn's last call
  *   finalText: a last reply's text with no tool calls; told: it told the other half (or a gated call did)
@@ -466,8 +466,9 @@ export class Agent {
   #gathering = false;
   /** The microphone hears the user now: from speech starting until its segment comes, or it wasn't speech (GATHER). */
   #speaking = false;
-  /** When the speech going on, or the last, began. */
+  /** When the speech going on, or the last, began, and whether annai's voice was playing then. */
   #spokeAt = 0;
+  #spokeOver = false;
   /** The role's list as the last turn found it: the warm model goes first only while the user hasn't changed it. @type {string | null} */
   #order = null;
   /**
@@ -995,29 +996,42 @@ export class Agent {
     if (x.kept !== undefined && line.kept !== x.kept) this.#askKept(p, line, x.kept);
   }
 
-  /** The other half's segment, written down for annai's card while it waits. @param {Pending} p @param {AskLine} line */
+  /**
+   * The other half's segment (a chat Koe's), written down for annai's card while it waits. "Send audio to the model" writes it down through
+   * Koe's role's model that takes audio, as Koe's own turn would: this half's model (Kokoro's) may take none. @param {Pending} p @param {AskLine} line
+   */
   async #askWriteDown(p, line) {
     const ask = /** @type {NonNullable<Pending['ask']>} */ (p.ask);
-    const r = this.voice ? await this.voice.writeDown(line.id, { scope: ask.scope, wake: ask.wake, hearer: await this.#hearer(this.#half.role) }).catch(() => null) : null;
+    const cfg = await this.llm.config();
+    const hearer = chatCandidates(cfg, KOE_CLASSIC).find((/** @type {string} */ id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes('audio'));
+    const r = this.voice ? await this.voice.writeDown(line.id, { scope: ask.scope, wake: ask.wake, role: KOE_CLASSIC, ...(hearer ? { hearer } : {}) }).catch(() => null) : null;
     if (r && this.#pending === p && line.text === undefined) this.#askWords(p, line, r.text);
   }
 
   /**
    * Someone began to speak, or stopped, while annai's card waits (this half's microphone, the other half's, a live session's turn): a yes
    * waits while they speak, since what they are saying may take it back, and has SETTLE_S again from when they stop, for those words to come.
-   * A no doesn't wait: declining is safe. @param {boolean} on
+   * A kept line's unanswered end has SETTLE_S again too when a line was just said (said: a segment or a turn, not a click), so the words of
+   * a yes said meanwhile come first; it doesn't wait while they speak, so steady sound can't hold the card. A no doesn't wait: declining is safe.
+   * @param {boolean} on @param {boolean} [said]
    */
-  confirmSpeech(on) {
+  confirmSpeech(on, said = false) {
     const p = this.#pending;
     if (!p?.ask) return;
     p.ask.speaking = on;
-    if (!on && p.ask.armed?.yes) this.#settleAsk(p);
+    if (!on && (p.ask.armed?.yes || (said && !p.ask.armed))) this.#settleAsk(p);
   }
 
-  /** A line's words came: listed, they arm, and the settle counts from now; others drop an armed yes (a no, only its own line's). @param {Pending} p @param {AskLine} line @param {string} text */
+  /**
+   * A line's words came: listed, they arm, and the settle counts from now; others drop an armed yes (a no, only its own line's). The newest line
+   * heard decides, whenever its words come: once a line heard after this one has words, this one's (written down late, or again by the other
+   * half) arm and drop nothing, so a yes written down after its take-back stays taken back. @param {Pending} p @param {AskLine} line @param {string} text
+   */
   #askWords(p, line, text) {
     const ask = /** @type {NonNullable<Pending['ask']>} */ (p.ask);
     line.text = text;
+    const lines = [...ask.heard.values()];
+    if (lines.slice(lines.indexOf(line) + 1).some((l) => l.text !== undefined)) return this.#askKept(p, line, line.kept);
     const chosen = askSaid(ask, line);
     if (chosen !== null) {
       ask.armed = { line, chosen, yes: ask.yes(text) !== null };
@@ -3252,19 +3266,24 @@ export class Agent {
 
   /**
    * Someone speaks into this half's microphone, or stopped (line: with a segment, and when it began): annai's card hears of it, its own or the
-   * other half's. @param {boolean} on @param {{ id: string, at: number }} [line]
+   * other half's. @param {boolean} on @param {{ id: string, at: number, her?: boolean }} [line]
    */
   #spoke(on, line) {
     this.#speaking = on;
-    if (on) this.#spokeAt = Date.now();
-    this.confirmSpeech(on);
+    if (on) {
+      this.#spokeAt = Date.now();
+      this.#spokeOver = Boolean(this.voice?.speaker.speaking);
+    }
+    this.confirmSpeech(on, Boolean(line));
     this.#half.speech?.(on, line);
   }
 
   /** What the microphone heard (spec §10.4), handled in order. @param {Heard} h */
   #heard(h) {
     const began = this.#spokeAt || h.at;
-    this.#spoke(false, { id: h.id, at: began }); // its segment came: they stopped
+    // Its segment came: they stopped. Begun while annai's voice played (a chat Koe's microphone stays open while the other half says the card's
+    // question), it is over her voice for the card, as a live session, deaf then, never hears it at all.
+    this.#spoke(false, { id: h.id, at: began, ...(this.#spokeOver ? { her: true } : {}) });
     this.poke();
     this.#hearing = this.#hearing.then(() => this.#route(h, began)).catch((e) => { console.warn(/* en */ 'heard speech was not handled', e); });
   }
