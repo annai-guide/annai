@@ -64,3 +64,17 @@ test("the compact view lists today's ends of things over several days at their t
   assert.match(view, /2026-11-26 11:00\t\tCheck out · Cliffside Test Inn\tyes\t\n2026-11-26 12:30\t\tLunch\tno\t\n2026-11-27 18:00\t\tReturn · Rental car\tyes\tAirport lot/);
   assert.doesNotMatch(view, /Pick up|day \d of/);
 });
+
+test("a conversation with no dates: the view says it has none and that the user's trips hold what is on, never \"nothing planned\" or \"none\", which read as the user's whole plan (real models, stage 5 finding 1)", async () => {
+  const k = await agentKit([[{ text: '' }]], { open: true });
+  const view = await compactView({ ws: k.ws, trip: k.trip, now, timeZone: LA, next: null });
+  assert.equal(view, "<today>\ntrip: Big Sur (a conversation with no dates: what is on, and where and when, is in the user's trips, which Kokoro reads)\nnext reminder: none\n</today>");
+  // What it does hold is listed, as ever.
+  await k.ws.write(k.trip, '/plan/lunch.json', { id: 'lunch', title: 'Lunch', fixed: false, start: at('2026-11-26T12:30:00') }, { author: 'user' });
+  assert.match(await compactView({ ws: k.ws, trip: k.trip, now, timeZone: LA, next: null }), /\(a conversation with no dates[^\n]*\nplan for 2026-11-26 and 2026-11-27:\nstart\tend\ttitle\tfixed\tplace\n2026-11-26 12:30\t\tLunch\tno\t\nnext reminder: none/);
+  // A dated trip with nothing today is a trip with nothing today.
+  const tj = await k.ws.readJSON(k.trip, '/trip.json');
+  await k.ws.write(k.trip, '/trip.json', { ...tj, start: '2026-11-25', end: '2026-11-28' }, { author: 'user' });
+  await k.ws.delete(k.trip, '/plan/lunch.json', { author: 'user' });
+  assert.equal(await compactView({ ws: k.ws, trip: k.trip, now, timeZone: LA, next: null }), '<today>\ntrip: Big Sur\nplan for 2026-11-26 and 2026-11-27:\nnothing planned\nbookings in the next 48 hours:\nnone\nnext reminder: none\n</today>');
+});

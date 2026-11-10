@@ -278,6 +278,36 @@ test("an undated conversation's text names the trip happening now and the 5 late
   assert.doesNotMatch(systemText(await takeSnapshot({ ws, registry, trip: happening, personalityName: 'shiori' })), /Happening now|read_trip first|latest other/);
 });
 
+test("an undated conversation with one trip happening says \"today\", \"tomorrow\" and \"the plan\" mean that trip, the same on every turn; with two, it says nothing of it (real models, stage 5 finding 5)", async () => {
+  const { ws, registry } = await setup();
+  const { dayIn, deviceZone } = await import('../../src/core/time.js');
+  const today = /** @type {string} */ (dayIn(Date.now(), deviceZone()));
+  const testville = await createTrip(ws, { title: 'Testville', start: today, end: today });
+  const chat = await createTrip(ws, { title: "What's on tomorrow?" });
+  const take = () => takeSnapshot({ ws, registry, trip: chat, personalityName: 'shiori' });
+  const text = systemText(await take());
+  assert.ok(text.includes(`Happening now: "Testville" (${testville}). Here "today", "tomorrow" and "the plan" mean that trip: read it rather than ask which place.`));
+  assert.equal(systemText(await take()), text);
+  await createTrip(ws, { title: 'Laterton', start: today, end: today });
+  assert.doesNotMatch(systemText(await take()), /mean that trip/, 'two happening: which one is hers to ask');
+});
+
+test("a dated conversation's text says a trip or place they name may be another of theirs, found with list_trips, and it is the same on every turn: it names no trip, so nothing elsewhere moves it (real models, stage 5 finding 2)", async () => {
+  const { ws, trip, registry } = await setup();
+  const take = () => takeSnapshot({ ws, registry, trip, personalityName: 'shiori' });
+  const first = await take();
+  const text = systemText(first);
+  assert.match(text, /\n# Their other trips\nA trip or place they name that isn't this one may be another of theirs: look in list_trips before you say it isn't there\.$/);
+  assert.equal(systemText(await take()), text, 'the same from turn to turn');
+  await createTrip(ws, { title: 'Laterton', start: '2026-04-10', end: '2026-04-17' });
+  await createTrip(ws, { title: 'Hi' });
+  const fresh = await take();
+  assert.equal(systemText(fresh), text, 'another trip or chat made meanwhile changes nothing');
+  assert.equal(systemText(nextSnapshot(first, fresh, { cold: true })), text);
+  // An undated one has its own list of them instead.
+  assert.doesNotMatch(systemText(await takeSnapshot({ ws, registry, trip: await createTrip(ws, { title: 'Where should we eat?' }), personalityName: 'shiori' })), /# Their other trips/);
+});
+
 test("an undated conversation's text cuts each other conversation's name to trip.json's 200 characters: a file's record can hold more (review finding 12)", async () => {
   const { ws, store, registry } = await setup();
   const long = await createTrip(ws, { title: 'x' });
@@ -287,4 +317,17 @@ test("an undated conversation's text cuts each other conversation's name to trip
   const text = systemText(await takeSnapshot({ ws, registry, trip: chat, personalityName: 'shiori' }));
   assert.ok(text.includes(`${JSON.stringify([...name].slice(0, 200).join(''))} (${long})`), 'its first 200, by character');
   assert.ok(!text.includes('y'.repeat(51)));
+});
+
+test("her instructions' plan item and booking are records of their formats, which a write of hers would take as they are (real models, the released app's F4)", async () => {
+  const { validate } = await import('../../src/core/schema.js');
+  const { PLAN_ITEM_SCHEMA, BOOKING_SCHEMA } = await import('../../src/plugins/core-schemas/schemas.js');
+  const { shioriBooking, unalias } = await import('../../src/core/bookings.js');
+  const [item, booking] = [/A plan item is like (\{.*?\}\}), and/, /and a booking like (\{.*?\}) \(kind/].map((re) => JSON.parse(/** @type {string} */ (re.exec(CORE)?.[1])));
+  assert.deepEqual(validate(PLAN_ITEM_SCHEMA, item), []);
+  assert.deepEqual(validate(BOOKING_SCHEMA, booking), []);
+  assert.deepEqual(shioriBooking(undefined, unalias(booking, { schema: BOOKING_SCHEMA }), { schema: BOOKING_SCHEMA }), booking, 'nothing renamed, nothing refused');
+  // What isn't a booking's own field goes in fields: the example shows it (three of four bookings in the rerun put rooms and guests beside id).
+  assert.equal(typeof booking.fields, 'object');
+  assert.ok(CORE.includes(`kind: ${BOOKING_SCHEMA.properties.kind.enum.slice(0, -1).join(', ')} or ${BOOKING_SCHEMA.properties.kind.enum.at(-1)};`), "the kinds are the format's");
 });

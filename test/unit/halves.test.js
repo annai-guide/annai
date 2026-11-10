@@ -177,6 +177,49 @@ test("Koe is down when Kokoro answers [tell_koe, sleep]: tell_koe is refused and
   assert.equal(k.notices.filter((/** @type {any} */ n) => /can't reach her model/.test(n.title)).length, 0);
 });
 
+test("a tell_koe after a call of its reply that failed isn't sent: it was written before the error came back, so it may call done what wasn't; Kokoro sees the error and tells Koe what holds (real models: Haiku told Koe \"Filed\" beside a write that failed)", async (t) => {
+  useClock(t);
+  // Kokoro's reply: a call that fails, a note written before its error came back, and sleep; then what holds, once it has seen the error.
+  const k = await agentKit([[
+    { toolCalls: [{ name: 'nope', input: {} }, { name: 'tell_koe', input: { text: 'Filed the booking.' } }, { name: 'sleep', input: {} }] },
+    calls(['tell_koe', { text: "The booking isn't filed yet: the write failed." }]),
+    sleep,
+  ]], { koe: { type: { rules: [
+    { match: 'the user wrote', reply: calls(['speak', { text: "I'm checking." }]) },
+    { match: 'a note from Kokoro', reply: calls(['speak', { text: 'Noted.' }]) },
+  ] } } });
+  k.agent.send('File my booking.');
+  await k.agent.idle();
+  const told = (await results(k, 'tell_koe')).map((/** @type {any} */ e) => [e.data.ok, e.data.content]);
+  assert.equal(told.length, 2);
+  assert.equal(told[0][0], false, 'the first note was not sent');
+  assert.match(told[0][1], /a call before it in this reply failed/);
+  assert.equal(told[1][0], true);
+  const notes = k.sent['model-koe'].flatMap(userTexts).filter((/** @type {string} */ x) => x.startsWith('<from_kokoro'));
+  assert.deepEqual(notes.map((/** @type {string} */ x) => x.replace(/<[^>]+>/g, '')), ["The booking isn't filed yet: the write failed."]);
+});
+
+test("a note held beside a failed call always gets the step it was promised: two failed writes in one turn, each beside a note and a sleep, end with the note that holds; one past the bound goes as written, never \"nothing to add\" (review of the real-model fix pass)", async (t) => {
+  useClock(t);
+  const bad = { toolCalls: [{ name: 'nope', input: {} }, { name: 'tell_koe', input: { text: 'Filed the booking.' } }, { name: 'sleep', input: {} }] };
+  const koe = { type: { rules: [
+    { match: 'the user wrote', reply: { toolCalls: [{ name: 'speak', input: { text: 'On it.' } }, { name: 'tell_kokoro', input: { text: 'File the booking.' } }, { name: 'wait', input: { seconds: 30 } }] } },
+    { match: 'a note from Kokoro', reply: calls(['speak', { text: 'Noted.' }]) },
+    { match: '.', reply: sleep },
+  ] } };
+  const notesOf = (/** @type {any} */ k) => k.sent['model-koe'].flatMap(userTexts).filter((/** @type {string} */ x) => x.startsWith('<from_kokoro')).map((/** @type {string} */ x) => x.replace(/<[^>]+>/g, ''));
+  const twice = await agentKit([[bad, bad, calls(['tell_koe', { text: "The booking isn't filed: the write failed twice." }]), sleep]], { koe });
+  twice.agent.send('File my booking.');
+  await twice.agent.idle();
+  assert.deepEqual((await results(twice, 'tell_koe')).map((/** @type {any} */ e) => e.data.ok), [false, false, true]);
+  assert.deepEqual(notesOf(twice), ["The booking isn't filed: the write failed twice."]);
+  const thrice = await agentKit([[bad, bad, bad, sleep]], { koe });
+  thrice.agent.send('File my booking.');
+  await thrice.agent.idle();
+  assert.deepEqual((await results(thrice, 'tell_koe')).map((/** @type {any} */ e) => e.data.ok), [false, false, true], 'past the bound her sleep ends the turn, so the note beside it is sent');
+  assert.deepEqual(notesOf(thrice), ['Filed the booking.']);
+});
+
 test("Koe failing twice while Kokoro works asks Kokoro to talk directly once, not twice (review a4: the drop in #talkDirectly)", async (t) => {
   useClock(t);
   let clock = Date.parse('2026-11-26T12:00:00Z');
@@ -371,6 +414,31 @@ test("a tap on Koe's question answers Koe, and Kokoro reads what was chosen; a t
   assert.deepEqual([chose?.data.split, chose?.data.chose], [true, true]);
   assert.ok(k.sent['model-0'].some((/** @type {any} */ r) => userTexts(r).includes('[the user chose] "Dinner"')), 'Kokoro reads it, and woke for it');
   assert.equal(k.agent.tap(), 'typing', 'no voice here: typing opens');
+});
+
+test("a note from Kokoro ends Koe's own question's wait, as it ends a wait: Koe says it now, and is told its question is closed (the screen takes its buttons, as for any ask that ended); a tap from elsewhere is the user's next line (real models, stage 5: u8-r3's correction was never said)", async (t) => {
+  useClock(t);
+  /** @type {any} */
+  let k;
+  k = await agentKit([{ rules: [
+    { match: 'the user wrote', reply: calls(['tell_koe', { text: 'Correction: tomorrow has the museum at 10 (Testville plan).', mode: 'immediate' }]) },
+    { match: '.', reply: sleep },
+  ] }], { koe: { type: { rules: [
+    { match: 'the user wrote', times: 1, reply: { toolCalls: [{ name: 'ask', input: { question: 'Want ideas for tomorrow?', options: ['Yes', 'No'] } }] } },
+    { match: 'a note from Kokoro', reply: calls(['speak', { text: 'Correction: tomorrow, the museum at 10.' }]) },
+    { match: 'the user', reply: calls(['speak', { text: 'Okay.' }]) },
+  ] } }, hold: async (/** @type {any} */ c) => { if (c.model.providerId === 'model-0') await until(() => k?.agent.koe.pendingId != null); } });
+  k.agent.send("What's on tomorrow?");
+  await until(() => (k.agent.koe.state.name === 'sleeping' || !k.agent.koe.busy) && !k.agent.kokoro.busy, 3000).catch(() => {});
+  await k.agent.idle();
+  const ask = (await results(k, 'ask'))[0];
+  assert.match(ask.data.content, /^Kokoro: see the note below\. Your question is closed, its buttons too: ask it again if it still matters\.$/);
+  assert.deepEqual((await shown(k)).filter(([type]) => type === 'out.speak').map(([, , text]) => text), ['Correction: tomorrow, the museum at 10.']);
+  const [asked] = await k.events(['out.ask']);
+  k.agent.answer(asked.data.id, 'No');
+  await k.agent.idle();
+  const chose = (await k.events(['msg.user'])).find((/** @type {any} */ e) => e.data.text === 'No');
+  assert.deepEqual([chose?.data.chose, chose?.data.answer], [true, undefined], 'a late tap: an ordinary line');
 });
 
 // Fix pass 2 (the review's reload-midturn probe): annai reloads while Koe waits on Kokoro and Kokoro is mid-call.
