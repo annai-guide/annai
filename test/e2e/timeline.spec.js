@@ -1396,3 +1396,43 @@ test("a trip file whose dates aren't on the calendar (9999-99-99) comes in as a 
   await expect(page.locator('#view').getByRole('heading', { level: 1, name: 'Itinerary' })).toBeVisible();
   await expect(couldnt).toHaveCount(0);
 });
+
+test("Details of a trip that came in with dates that aren't on the calendar: the dates read blank, and a new name saved there takes them out", async ({ page }) => {
+  // A hand-made file, as above: its workspace has no schema.
+  const { createMemoryStore } = await import('../fakes/store-memory.js');
+  const { Workspace } = await import('../../src/core/workspace.js');
+  const { ensureBaseScopes, createTrip } = await import('../../src/core/scopes.js');
+  const { exportArchive, PRESETS } = await import('../../src/core/archive.js');
+  const store = createMemoryStore();
+  const ws = new Workspace(store);
+  await ensureBaseScopes(ws);
+  const trip = await createTrip(ws, { title: 'Testville', start: '2026-11-20', end: '2026-11-22' });
+  await ws.patch(trip, '/trip.json', { start: '9999-99-99', end: '2026-02-31' }, { author: 'user' });
+  const { blob } = await exportArchive(store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0' });
+  await openApp(page, '#/trips');
+  await page.getByLabel('Open a trip someone sent you').setInputFiles({ name: 'testville.annai.zip', mimeType: 'application/zip', buffer: Buffer.from(await blob.arrayBuffer()) });
+  await page.getByRole('button', { name: 'Import' }).click();
+  await expect(page.getByText('Imported.')).toBeVisible();
+  await page.goto('/#/trips');
+  await row(page, 'Testville').click();
+  await page.locator('.talk-name').click();
+  await expect(page.getByLabel('Starts')).toHaveValue('');
+  await expect(page.getByLabel('Ends')).toHaveValue('');
+  await page.getByLabel('Name', { exact: true }).fill('Testville weekend');
+  await page.getByRole('button', { name: 'Save' }).click();
+  // Saved, not "Use real dates for the start and end." over two blank fields.
+  await expect(page.getByRole('heading', { level: 1, name: 'Testville weekend' })).toBeVisible();
+  await expect(page.locator('.trip-edit .error')).toBeHidden();
+  const id = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+  const file = await page.evaluate(async (id) => {
+    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+    const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+    const store = await createIdbStore();
+    const json = await new Workspace(store).readJSON(id, '/trip.json');
+    store.close();
+    return json;
+  }, id);
+  expect([file.title, 'start' in file, 'end' in file]).toEqual(['Testville weekend', false, false]);
+  await page.goto('/#/trips');
+  await expect(row(page, 'Testville weekend')).toHaveCount(1);
+});

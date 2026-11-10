@@ -79,8 +79,9 @@ function editForm(ctx, id, title, trip) {
     error.textContent = why;
     error.hidden = false;
   };
-  /** @type {Record<string, string>} */
-  const drawn = { title: name.value, start: start.value, end: end.value };
+  // As the file holds it: a date the field can't show (9999-99-99, from a file that came in) goes when Save keeps it blank.
+  /** @type {Record<string, unknown>} */
+  const drawn = { title: name.value, start: trip?.start ?? '', end: trip?.end ?? '' };
   return h('form', {
     class: 'panel trip-edit',
     onsubmit: async (/** @type {Event} */ e) => {
