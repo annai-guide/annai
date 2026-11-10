@@ -986,10 +986,20 @@ export class Agent {
       if (x.at === undefined) return; // heard before the card: its words came then
       line = { id: x.id, inside: ask.from > 0 && x.at >= ask.from && x.at <= ask.until };
       ask.heard.set(x.id, line);
+      // A chat Koe's segment comes as sound: its words exist once written down, which a Koe model that takes the sound does only as its turn
+      // ends, or never while it waits on. Written down now for the card, as classic voice's own (#route).
+      if (x.text === undefined) void this.#askWriteDown(p, line);
     }
     if (x.her) line.her = true;
     if (typeof x.text === 'string' && x.text !== line.text) this.#askWords(p, line, x.text);
     if (x.kept !== undefined && line.kept !== x.kept) this.#askKept(p, line, x.kept);
+  }
+
+  /** The other half's segment, written down for annai's card while it waits. @param {Pending} p @param {AskLine} line */
+  async #askWriteDown(p, line) {
+    const ask = /** @type {NonNullable<Pending['ask']>} */ (p.ask);
+    const r = this.voice ? await this.voice.writeDown(line.id, { scope: ask.scope, wake: ask.wake, hearer: await this.#hearer(this.#half.role) }).catch(() => null) : null;
+    if (r && this.#pending === p && line.text === undefined) this.#askWords(p, line, r.text);
   }
 
   /**

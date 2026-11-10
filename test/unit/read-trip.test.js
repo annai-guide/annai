@@ -1647,6 +1647,19 @@ test('Koe on a chat model, classic voice: an "Okay" said to Koe before the card,
   k.agent.interrupt();
 });
 
+test('Koe on a chat model that takes the sound (Gemini): a line said to the card is written down for it when heard, since Koe\'s turn, which sends the sound, writes nothing down until it ends (the final fix; the real-speech check of finding 2)', async (t) => {
+  useClock(t);
+  const k = await gateKit(KOKORO_ASKED, { koe: { type: KOE_CHAT, input: ['text', 'image', 'audio'] }, voice: { speechIn: ['send-audio', 'm-hear'], hears: ['Okay'] } });
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1, 20_000);
+  await until(() => !k.voice.speaker.speaking && k.agent.koe.state.name === 'listening', 20_000);
+  await pause(1 * k.agent.secondMs);
+  await hear(k, 'first-one'); // "Okay", into Koe's microphone while Koe waits: Koe's wait takes it as sound
+  await pause(5 * k.agent.secondMs);
+  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }]);
+  k.agent.interrupt();
+});
+
 test('classic voice: a "Yes" begun after the window, routed behind another line\'s gate call that ran past it, is outside: the window is the line\'s own time, not the time it is routed (the final review, finding 3)', async (t) => {
   useClock(t);
   const k = await gatedKit(['Turn left at the light', 'Yes'], ['B', 'B']);
