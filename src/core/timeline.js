@@ -13,6 +13,9 @@ export function phaseOf(trip, now, zone = deviceZone()) {
   return today > (trip?.end ?? start) ? 'past' : 'happening';
 }
 
+/** When a trip or chat was last talked in, else made: where home places a chat, what annai's card names it by and what list_trips gives her. @param {{ created: number, talked?: number | null }} s */
+export const talkedAt = (s) => s.talked ?? s.created;
+
 /** The days with a heading each: before them, months. */
 export const RECENT_DAYS = 30;
 /** A month before them with more chats than this folds them; cards never fold. */
@@ -40,7 +43,7 @@ export function timelineRows(trips, now, zone) {
   /** @type {Row[]} */
   const all = trips.map((s) => {
     const phase = phaseOf(s, now, zone);
-    const at = phase === 'undated' ? (s.talked ?? s.created) : noonOf(/** @type {string} */ (phase === 'past' ? s.end ?? s.start : s.start), zone);
+    const at = phase === 'undated' ? talkedAt(s) : noonOf(/** @type {string} */ (phase === 'past' ? s.end ?? s.start : s.start), zone);
     return { id: s.id, title: s.title, phase, at, card: phase !== 'undated' };
   });
   const order = (/** @type {Row} */ a, /** @type {Row} */ b) => a.at - b.at || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);

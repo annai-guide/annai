@@ -1,7 +1,7 @@
 import { CORE, DEFAULT_PERSONALITY } from './instructions.js';
 import { editedInstructions } from './her-instructions.js';
 import { ME, DRAFT_TITLE, listTrips } from '../scopes.js';
-import { phaseOf } from '../timeline.js';
+import { phaseOf, talkedAt } from '../timeline.js';
 import { deviceZone } from '../time.js';
 import { quote } from './blocks.js';
 import { tsv } from '../tsv.js';
@@ -62,7 +62,7 @@ async function elsewhere(ws, trip) {
   const others = (await listTrips(ws.store)).active.filter((s) => s.id !== trip);
   const happening = others.filter((s) => phaseOf(s, Date.now(), deviceZone()) === 'happening'); // as home's now line has them
   // The spec's "last few": five (the plan's call), placed as home places a chat.
-  const latest = others.filter((s) => !happening.includes(s)).sort((a, b) => (b.talked ?? b.created) - (a.talked ?? a.created)).slice(0, 5);
+  const latest = others.filter((s) => !happening.includes(s)).sort((a, b) => talkedAt(b) - talkedAt(a)).slice(0, 5);
   const named = (/** @type {import('../types.js').ScopeRecord} */ s) => `${quote([...s.title].slice(0, TITLE_MAX).join(''))} (${s.id})`;
   /* en */
   return [happening.length ? `Happening now: ${happening.map(named).join('; ')}.` : '', latest.length ? `Their latest other conversations: ${latest.map(named).join('; ')}` : ''].filter(Boolean).join('\n');
