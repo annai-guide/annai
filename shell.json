@@ -1,5 +1,5 @@
 {
-  "build": "19d88c0b5269",
+  "build": "090ade344134",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -148,7 +148,7 @@
     "/src/core/schema.js": "f21af27d5902",
     "/src/core/search.js": "62a0a393233e",
     "/src/core/scopes.js": "2ccdfe948461",
-    "/src/core/chats.js": "5e0c236aab02",
+    "/src/core/chats.js": "382f2a8c34a3",
     "/src/core/settings.js": "7291aae0a8cd",
     "/src/core/shown.js": "450af0a8c563",
     "/src/core/signals.js": "1ba83a24e15c",
@@ -272,7 +272,7 @@
     "/src/ui/screens/simulate.js": "cbdebdf221a5",
     "/src/ui/screens/shiori.js": "0a256d7308c6",
     "/src/ui/screens/sees.js": "6a674fc473ae",
-    "/src/ui/screens/talk.js": "e5cbb22d3df7",
+    "/src/ui/screens/talk.js": "d8daa5efbef9",
     "/src/ui/screens/tools.js": "af43e4da0f2e",
     "/src/ui/screens/trace.js": "50ccaba04a62",
     "/src/ui/screens/trip.js": "5a713e297946",

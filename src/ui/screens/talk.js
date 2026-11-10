@@ -8,7 +8,7 @@ import { tidyFailed, PHOTO_ONLY } from '../../core/agent/loop.js';
 import { planWords } from '../../core/live/plan-watches.js';
 import { storedTexts } from '../../core/agent/log.js';
 import { blobBytes } from '../../core/reach.js';
-import { herDating, undoDating } from '../../core/chats.js';
+import { herDatings, undoDating } from '../../core/chats.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { undoTuning } from '../../core/agent/personalities.js';
 import { formatCost, wording, mark, sentences, sentenceGap, list as listed, recordHref, waitingHref, rowName } from '../format.js';
@@ -662,55 +662,85 @@ export async function nextLine(ctx, id) {
 }
 
 /**
- * "Shiori set the dates", with Undo, after her patch gave a chat its dates (it became a trip): a line in the conversation at that write, under her
- * lines after it until the user's next line, as the hand-over's Undo line is; the user's later lines and a reload leave it there. It shows while
- * the dates are the ones that write set, so its Undo takes back only those, never a later change (herDating, undoDating). Undo puts the dates
- * back as the user's, so the row goes back to a line, and keeps a name given since. Drawn again whenever trip.json changes.
- * @param {any} ctx @param {string} scope @param {HTMLElement} list the conversation's lines
+ * "Shiori set the dates": a line in the conversation at each write of hers that gave a chat its dates (it became a trip), under her lines after it
+ * until the user's next line, as the hand-over's Undo line is. Each is a record of what happened, so it stays at its place whatever comes after,
+ * through a reload (the user, 2026-11-10, "Stay, without Undo"). Only the one whose dates still stand has Undo, which takes back only those
+ * (herDatings, undoDating), as the user's write, so the row goes back to a line and keeps a name given since. Once undone it says so in its place,
+ * as the hand-over's line does; once the dates were changed otherwise (by her, or the user in Details), it is the line alone. Drawn again whenever
+ * trip.json changes. @param {any} ctx @param {string} scope @param {HTMLElement} list the conversation's lines
  */
 function datesLine(ctx, scope, list) {
-  const line = h('li', { class: 'system-line dates-line' });
   /** Each line shown: its entry's seq, and whether it is the user's own or hers. @type {WeakMap<Element, { seq: number, talks: boolean, hers: boolean }>} */
   const shown = new WeakMap();
-  /** @type {Awaited<ReturnType<typeof herDating>>} */
-  let dating = null;
+  /** @typedef {Awaited<ReturnType<typeof herDatings>>[number]} Dating */
+  /** Each dating's line, by its seq, and what it shows. @type {Map<number, { li: HTMLElement, state: Dating['state'] }>} */
+  const lines = new Map();
+  /** The dating each of those lines is at. @type {WeakMap<Element, number>} */
+  const at = new WeakMap();
+  /** Her datings, oldest first. @type {Dating[]} */
+  let datings = [];
   /** The oldest line read, when the conversation has more than are read: a dating before it has no place among them. */
   let from = 0;
   const place = () => {
-    if (!dating || dating.seq < from) return void line.remove();
-    /** @type {Element | null} */
-    let after = null;
-    for (const node of list.children) {
-      const d = shown.get(node);
-      if (!d) continue;
-      if (d.seq > dating.seq && d.talks) break; // the user's next line: it stays above it
-      if (d.seq < dating.seq || d.hers) after = node;
+    for (const { seq } of datings) {
+      const li = /** @type {{ li: HTMLElement }} */ (lines.get(seq)).li;
+      if (seq < from) {
+        li.remove();
+        continue;
+      }
+      /** @type {Element | null} */
+      let after = null;
+      for (const node of list.children) {
+        const was = at.get(node);
+        if (was !== undefined) {
+          if (was < seq) after = node; // an earlier dating's line comes before it
+          continue;
+        }
+        const d = shown.get(node);
+        if (!d) continue;
+        if (d.seq > seq && d.talks) break; // the user's next line: it stays above it
+        if (d.seq < seq || d.hers) after = node;
+      }
+      if (after ? after.nextElementSibling !== li : list.firstElementChild !== li) {
+        if (after) after.after(li);
+        else list.prepend(li);
+      }
     }
-    if (after ? after.nextElementSibling !== line : list.firstElementChild !== line) {
-      if (after) after.after(line);
-      else list.prepend(line);
-    }
+  };
+  /** Its Undo, while its dates stand. @param {Dating} dating */
+  const undoOf = (dating) => {
+    const undo = h('button', {
+      class: 'btn ghost', type: 'button', 'aria-label': t`Undo the dates Shiori set`,
+      onclick: async () => {
+        undo.disabled = true;
+        // Said, as the hand-over's Undo is, and the line says Undone. A line drawn before a later change only loses its Undo.
+        await undoDating(ctx.ws, scope, dating).then((undone) => (undone ? ctx.notices.toast(t`Undone.`) : draw()), (/** @type {unknown} */ x) => {
+          undo.disabled = false;
+          ctx.notices.toast(messageOf(x));
+        });
+      },
+    }, t`Undo`);
+    return undo;
+  };
+  /** A dating's line as it is now; one that already shows it is left as it is (its Undo keeps focus). @param {Dating} dating */
+  const fill = (dating) => {
+    const had = lines.get(dating.seq);
+    if (had?.state === dating.state) return;
+    const li = had?.li ?? h('li', { class: 'system-line dates-line' });
+    at.set(li, dating.seq);
+    lines.set(dating.seq, { li, state: dating.state });
+    const said = h('span', { text: t`Shiori set the dates` });
+    if (dating.state === 'stands') li.replaceChildren(said, ' ', undoOf(dating));
+    else if (dating.state === 'undone') li.replaceChildren(said, ' ', h('span', { class: 'sub', role: 'status', text: t`Undone` }));
+    else li.replaceChildren(said);
   };
   let drawn = 0;
   const draw = async () => {
     const mine = ++drawn;
-    const now = await herDating(ctx.store, scope).catch(() => null);
-    if (mine !== drawn) return;
-    if (now && now.seq !== dating?.seq) {
-      const undo = h('button', {
-        class: 'btn ghost', type: 'button', 'aria-label': t`Undo the dates Shiori set`,
-        onclick: async () => {
-          undo.disabled = true;
-          // Said, as the hand-over's Undo is: the line goes with the dates. A line drawn before a later change only goes.
-          await undoDating(ctx.ws, scope, now).then((undone) => (undone ? ctx.notices.toast(t`Undone.`) : draw()), (/** @type {unknown} */ x) => {
-            undo.disabled = false;
-            ctx.notices.toast(messageOf(x));
-          });
-        },
-      }, t`Undo`);
-      line.replaceChildren(h('span', { text: t`Shiori set the dates` }), ' ', undo);
-    }
-    dating = now;
+    const now = await herDatings(ctx.store, scope).catch(() => null);
+    if (mine !== drawn || !now) return; // a read that failed changes nothing shown
+    for (const d of now) fill(d);
+    datings = now;
     place();
   };
   draw();

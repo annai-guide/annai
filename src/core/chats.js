@@ -27,33 +27,49 @@ export async function ensureDraft(ws) {
   return id;
 }
 
+/** A version of trip.json's dates. @param {any} v */
+const datesOf = (v) => ({ start: v.start, end: v.end });
+/** Two versions have the same dates when both their start and their end are. @param {{ start?: string, end?: string }} a @param {{ start?: string, end?: string }} b */
+const sameDates = (a, b) => a.start === b.start && a.end === b.end;
+
 /**
- * Shiori's dating of a conversation, while the dates are the ones it set: the write that set the dates it has now is hers, and gave it its
- * first dates (the version before had no start). Its line stays in the conversation at that write (seq), whatever the user says after, and
- * its Undo takes back only what it set: once anyone changed the dates since (she did, or the user in Details), it has none of its own left,
- * so it never overwrites a later change. A later name changes nothing. Null: undated (most conversations), or the dates aren't hers.
+ * Shiori's datings of a conversation, oldest first: each write of hers that gave it its first dates (the version before had no start).
+ * Each is a thing that happened, so its line stays in the conversation at that write (seq) whatever came after (the user, 2026-11-10,
+ * "Stay, without Undo"). What came of it is read from the writes after it, at the first that changed the dates:
+ * - 'stands': none did, so the dates are still the ones it set, and its Undo takes back only those (only the newest can stand);
+ * - 'undone': the user's, back to the dates before it (its Undo, written as the user's; or the same by hand in Details, or a restored version);
+ * - 'changed': anyone else's change (she did, or the user in Details): it has none of its own left, and never overwrites a later change.
+ * A later name, or any write that keeps the dates, changes nothing. A version that can't be read (an import that didn't carry it) is a
+ * change: nothing is taken back unless it is known to be hers. Empty: never dated by her (most conversations, a trip dated when made).
  * @param {any} store @param {string} scope
- * @returns {Promise<{ seq: number, before: { start?: string, end?: string }, set: { start?: string, end?: string } } | null>}
+ * @returns {Promise<{ seq: number, before: { start?: string, end?: string }, set: { start?: string, end?: string }, state: 'stands' | 'undone' | 'changed' }[]>}
  */
-export async function herDating(store, scope) {
-  const now = await store.tx(['files'], 'readonly', (/** @type {any} */ x) => x.getFile(scope, '/trip.json'));
-  const current = await blobJSON(store, scope, now?.hash, { quiet: true });
-  if (!current?.start) return null;
+export async function herDatings(store, scope) {
   const writes = (await store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(scope, { types: ['file.write'] })))
     .filter((/** @type {any} */ e) => e.data?.path === '/trip.json');
-  // From the version there now back to the write that set its dates: each one after it kept them.
-  for (let i = writes.findLastIndex((/** @type {any} */ e) => e.data?.new === now.hash); i >= 0; i--) {
-    const e = writes[i];
-    const before = typeof e.data?.old === 'string' ? await blobJSON(store, scope, e.data.old, { quiet: true }) : null;
-    if (before && before.start === current.start && before.end === current.end) continue;
-    return e.actor === 'shiori' && before && !before.start
-      ? { seq: e.seq, before: { start: before.start, end: before.end }, set: { start: current.start, end: current.end } } : null;
+  if (!writes.some((/** @type {any} */ e) => e.actor === 'shiori')) return [];
+  /** Each version's dates, read once (a write's old is the one before's new); null: not read. @type {Map<unknown, Promise<{ start?: string, end?: string } | null>>} */
+  const read = new Map();
+  const version = (/** @type {any} */ e, /** @type {unknown} */ hash) => {
+    if (!read.has(hash)) read.set(hash, blobJSON(store, scope, hash, { named: e, quiet: true }).then((v) => (v && typeof v === 'object' ? datesOf(v) : null)));
+    return /** @type {Promise<{ start?: string, end?: string } | null>} */ (read.get(hash));
+  };
+  /** @type {Awaited<ReturnType<typeof herDatings>>} */
+  const out = [];
+  /** The newest dating no write has changed the dates of since. @type {(typeof out)[number] | null} */
+  let open = null;
+  for (const e of writes) {
+    const [before, after] = await Promise.all([version(e, e.data.old), version(e, e.data.new)]);
+    if (before && after && sameDates(before, after)) continue;
+    if (open) open.state = e.actor === 'user' && after && sameDates(after, open.before) ? 'undone' : 'changed';
+    open = null;
+    if (e.actor === 'shiori' && before && !before.start && after?.start) out.push(open = { seq: e.seq, before, set: after, state: 'stands' });
   }
-  return null;
+  return out;
 }
 
 /**
- * Puts a conversation's dates back to what they were before Shiori's dating (herDating's), as the user's write: only the dates, so a name given
+ * Puts a conversation's dates back to what they were before Shiori's dating (herDatings' that stands), as the user's write: only the dates, so a name given
  * since stays; and only while they are still the ones it set (a tap on a line drawn before a later change changes nothing).
  * @param {Workspace} ws @param {string} scope @param {{ before: { start?: string, end?: string }, set: { start?: string, end?: string } }} dating
  * @returns {Promise<boolean>} whether it put them back
