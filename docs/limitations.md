@@ -439,12 +439,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** home rebuilds its form on a redraw, and the error is kept as state, not as the same element.
 - **Revisit when:** a screen-reader user reports it, or with the in-place redraw of home's relative times.
 
-### The install banner stays after desktop Chrome moves the tab into an app window
-- **Kind:** deferred.
-- **What the user sees:** after Install moves a desktop Chrome tab into an app window, the data-safety banner still says "annai isn't installed yet" until a reload, and a fresh home still opens at its top.
-- **Why:** the banner is drawn once per page, at start.
-- **Revisit when:** the next version: draw it again when the display mode changes.
-
 ### In landscape, an opened stack is read by scrolling inside a short box
 - **Kind:** known limitation.
 - **What the user sees:** on a phone turned on its side (740 x 360), Show on a stuck stack opens it in a box of about 152 px, half the room under the top bar. A card of 168 to 193 px doesn't show whole: its title and Dismiss show, and its middle scrolls under the Dismiss; while a card's top is in the lower part of the box, its own Dismiss covers its title for a moment. In portrait every card shows whole.
