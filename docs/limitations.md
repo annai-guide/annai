@@ -403,12 +403,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** cards are refit when the screen changes size, outside `keep()` in notices.js, which is what keeps the rows still when a card comes or goes. Older than stage 4's sticky box. With a card open in the stuck box, or a box at its cap, its cap (half of 100svh) changes too: the rows moved 140 px when 360 x 640 turned to 640 x 360. The cap has already changed when `resize` fires, so the fix needs the box's last height kept.
 - **Revisit when:** the next version: run the resize's refit through `keep()`.
 
-### Cards aren't refit when web fonts swap in
-- **Kind:** deferred.
-- **What the user sees:** when a web font swaps in after a card was fitted, its text may take a little more or less room than the fit assumed (a few px); the box is refit at the next change or resize.
-- **Why:** a font swap re-runs neither `fit` nor the box's scroll check (`.scrolls`, which decides whether a swipe on the box stays in it).
-- **Revisit when:** the next version, with the resize refit above.
-
 ### Focusing a field doesn't scroll it clear of a stuck card
 - **Kind:** deferred.
 - **What the user sees:** on home, a field near the top of the screen (Start a trip's name, say, with the keyboard up) can sit under a stuck card. The box can be up to half the room under the bar (256 px at 320 x 568, 292 at 360 x 640, 302 at 393 x 659), against 142 px for a quarter of the screen at 320 x 568; a newer-backup card (232 px at 320 x 568), two cards together, or a card opened in it makes it that tall. With a keyboard up (about 290 to 340 px), the bar and an open box can take all the room above it.

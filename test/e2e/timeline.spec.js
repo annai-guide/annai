@@ -868,6 +868,23 @@ test("a swipe on a stuck card within a px of its own cap scrolls home (360 x 640
   expect((await placeOf(page)).y).toBeGreaterThan(before.y + 30);
 });
 
+test("a web font that swaps in after a card was fitted fits it again: its words that no longer show go behind More", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await scrolledHome(page);
+  await page.evaluate(() => /** @type {any} */ (window).__n.card({ title: 'An update is ready', body: 'It is used at the next start.' }));
+  await settled(page);
+  const card = page.locator('.notices > .notice');
+  await expect(card.getByRole('button', { name: 'More' })).toBeHidden(); // its words show whole
+  // A web font swaps in late and its words take more room (here, larger: two lines where there was one); the browser says a font has loaded.
+  await page.evaluate(async () => {
+    /** @type {HTMLElement} */ (document.querySelector('.notices .notice p')).style.fontSize = '30px';
+    const face = new FontFace('Probe Mono', 'url(/assets/fonts/ibm-plex-mono-400.woff2)');
+    document.fonts.add(face);
+    await face.load();
+  });
+  await expect(card.getByRole('button', { name: 'More' })).toBeVisible();
+});
+
 for (const how of ['two hold cards came on another screen', 'a card opened on home, then one came on another screen']) {
   test(`back on home, a box that holds more than its cap keeps a swipe past its end: ${how}`, async ({ page, browserName }) => {
     await page.setViewportSize({ width: 360, height: 640 });
