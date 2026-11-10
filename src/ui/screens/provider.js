@@ -197,7 +197,7 @@ export async function renderProvider(ctx, id) {
           await ctx.llm.unbench(id);
           ctx.notices.toast(t`Key removed`);
           ctx.render();
-        }, warnKey) : null),
+        }, { onArm: warnKey }) : null),
       keyWarn,
       status),
     desc?.roles ? suggestionsPanel(ctx, id, /** @type {any} */ (src)) : null,
@@ -211,7 +211,7 @@ export async function renderProvider(ctx, id) {
         } catch (e) {
           showError(status, e);
         }
-      }, () => warnKept(ctx, removeWarn, { provider: id }))),
+      }, { onArm: () => warnKept(ctx, removeWarn, { provider: id }) })),
       removeWarn, // under the button, so arming it doesn't move it
       removing));
 }

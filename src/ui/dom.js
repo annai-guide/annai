@@ -94,10 +94,10 @@ export function radios(legend, options, value, onChange = () => {}) {
  * A destructive button that needs a second tap within eight seconds, the same everywhere; onArm: called at the first, to
  * say what goes. Both its words hold the same place, the one not shown hidden, so arming it never moves it: the second
  * tap lands where the first did. kept: drawn again for the same key (a screen's redraw), it is still armed for what is left of the eight seconds.
- * @param {string} label @param {string} confirmLabel @param {() => Promise<void> | void} action @param {() => unknown} [onArm]
- * @param {{ key: string, armed: Map<string, number> }} [kept]
+ * @param {string} label @param {string} confirmLabel @param {() => Promise<void> | void} action
+ * @param {{ onArm?: () => unknown, kept?: { key: string, armed: Map<string, number> } }} [o]
  */
-export function twoStep(label, confirmLabel, action, onArm, kept) {
+export function twoStep(label, confirmLabel, action, { onArm, kept } = {}) {
   let armed = false;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let timer;

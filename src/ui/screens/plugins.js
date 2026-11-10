@@ -126,6 +126,6 @@ export function pluginActions(ctx, r, update) {
           if (!explainStorageFull(ctx, e)) ctx.notices.card({ tone: 'warn', title: t`${r.name} wasn't removed`, body: sentences(message(e), t`Try again.`), errors: [e] });
         }
         ctx.go('#/plugins');
-      }, () => { if (r.provider) warnKept(ctx, kept, { plugin: r.id }); }),
+      }, { onArm: () => { if (r.provider) warnKept(ctx, kept, { plugin: r.id }); } }),
       kept);
 }
