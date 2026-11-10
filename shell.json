@@ -1,5 +1,5 @@
 {
-  "build": "1bf88672b6af",
+  "build": "0d41deaf140a",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -38,7 +38,7 @@
     "/src/core/agent/blocks.js": "c8b6aad85bd3",
     "/src/core/agent/budgets.js": "ec0a25e840fb",
     "/src/core/agent/compaction.js": "0525a91f19e9",
-    "/src/core/agent/context.js": "e8979a17d367",
+    "/src/core/agent/context.js": "b6b85ecc3d49",
     "/src/core/agent/halves.js": "b3d1e71b5a13",
     "/src/core/agent/instructions.js": "5a8bc872522c",
     "/src/core/agent/listen.js": "01152d2c0b22",
@@ -52,7 +52,7 @@
     "/src/core/agent/spoken-yes.js": "b5c2f7fffdb2",
     "/src/core/agent/net.js": "7ffda19e729b",
     "/src/core/agent/tools.js": "1e05339786c2",
-    "/src/core/agent/trip-tools.js": "b34a19eee47e",
+    "/src/core/agent/trip-tools.js": "15e52409150d",
     "/src/core/agent/transcript.js": "e1a74796ee1e",
     "/src/core/agent/via.js": "557657aae006",
     "/src/core/agent/warmth.js": "7f1be5368415",
@@ -281,7 +281,7 @@
     "/src/ui/screens/voice.js": "44c2b580e9d2",
     "/src/ui/screens/welcome.js": "befec09e6a02",
     "/src/ui/search-panel.js": "7582a4612640",
-    "/src/ui/shell.js": "43a4c141fec7",
+    "/src/ui/shell.js": "a24299beefa9",
     "/src/ui/slots.js": "4fee1465e94c",
     "/src/ui/stamps.js": "9c0f976db8fa",
     "/src/ui/shiori.css": "583329df1707",

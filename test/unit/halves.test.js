@@ -1046,3 +1046,24 @@ test('a move with Koe talking on a chat model: in the chat Koe says she is takin
   assert.deepEqual(await told(kyoto), ['Tell them the ramen place is by the station.']);
   assert.deepEqual((await log(kyoto, ['msg.user'])).map((/** @type {any} */ e) => e.data.text), ["Let's carry on in Kyoto"]);
 });
+
+// The loop's rules since the real-model fixes, against open_trip: a refused move beside a note and a sleep says nothing to Koe and ends nothing.
+test("open_trip refused in a dated trip beside tell_koe and sleep: the note isn't sent, her turn goes on to see why, and nothing moves", async (t) => {
+  useClock(t);
+  const KOE_TOLD = { rules: [{ match: 'the user wrote', reply: calls(['speak', { text: 'One moment.' }]) }, { match: 'a note from Kokoro', reply: calls(['speak', { text: 'Taking you to Kyoto.' }]) }] };
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { type: KOE_TOLD } });
+  k.agent.addLoopTools(tripTools(k.agent));
+  await k.ws.patch(k.trip, '/trip.json', { start: '2026-11-20', end: '2026-11-27' }, { author: 'user' }); // a trip, not a chat
+  const kyoto = await createTrip(k.ws, { title: 'Kyoto', start: '2027-04-01', end: '2027-04-08' });
+  await rescript(k, { rules: [{ match: 'the user wrote', reply: calls(['open_trip', { trip: kyoto }], ['tell_koe', { text: 'Say you are taking them to Kyoto.' }]) }] });
+  await k.agent.idle();
+  k.agent.send("Let's carry on in Kyoto");
+  await k.agent.idle();
+  assert.equal(k.agent.trip, k.trip, 'nothing opened');
+  const done = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.half === 'kokoro').map((/** @type {any} */ e) => [e.data.name, e.data.ok, String(e.data.content).slice(0, 24)]);
+  assert.deepEqual(done.slice(0, 3), [['open_trip', false, 'Error: A trip is open, s'], ['tell_koe', false, 'Not sent to Koe: a call '], ['sleep', true, 'Not asleep: a call in th']]);
+  assert.ok(done.length > 3, 'her turn went on past the refusal');
+  assert.deepEqual((await k.events(['note'])).filter((/** @type {any} */ e) => e.data.from === 'kokoro'), [], 'Koe was told nothing of a move');
+  assert.deepEqual((await shown(k)).filter(([type]) => type === 'out.speak').map(([, , text]) => text), ['One moment.']);
+  assert.deepEqual(await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(kyoto, { types: ['msg.user', 'wake'] })), []);
+});
