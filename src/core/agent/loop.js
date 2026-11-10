@@ -873,9 +873,11 @@ export class Agent {
     // A tap answers annai's own id, never the call's: a provider with no ids says call_0 every turn.
     const tap = newId('tap');
     await this.#log({ type: 'out.ask', actor: 'system', data: { id: call.id, tap, wake: call.wake, question, options, own: true, by: null } });
-    const queued = this.#queue.findIndex((w) => w.kind === 'user' && w.scope === this.scope);
+    // Typed or said before it (classic voice: heard while she thought) ends it too.
+    const queued = this.#queue.findIndex((w) => (w.kind === 'user' || w.kind === 'heard') && w.scope === this.scope);
+    const w = queued >= 0 ? this.#queue.splice(queued, 1)[0] : null;
     /** @type {Got} */
-    const got = queued >= 0 ? typedGot(this.#queue.splice(queued, 1)[0]) : await new Promise((resolve) => {
+    const got = w ? (w.heard ? { heard: w.heard, ...(w.gate ? { gate: w.gate } : {}) } : typedGot(w)) : await new Promise((resolve) => {
       /** @type {any} */
       let timer;
       /** @type {NonNullable<Pending['ask']>} */
