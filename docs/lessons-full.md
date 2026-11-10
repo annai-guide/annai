@@ -245,3 +245,9 @@ entries go last, in the same commit as the change:
 - Why we had to change: since stage 4 home places each chat by its record's `created`, or by the user's last line, and past a date's range `Intl` throws "Invalid time value". A hand-made `.annai.zip` with a line at `ts: 1e300`, or a trip record with `created: 1e300`, imported ("Imported."), and then home said "This screen couldn't open" at every draw, with no way to the trips but their addresses.
 - Original design was wrong because: it took "a number" for a time, but a time here is something code makes a date of, so the format has to promise what a date holds. The first reader to make a date of it (home, stage 4) was the first to meet a value only a hand-made file can carry, and by then it was stored.
 - Lesson: a field that is read as a date states a date's range in the format's schema, and a file with a value outside it is refused when it is read in, not guarded in each screen that draws it.
+
+## 2026-11-09 annai: twoStep's optional parts in one options object
+- Changed: `twoStep(label, confirmLabel, action, onArm)` became `twoStep(label, confirmLabel, action, { onArm, kept })` when home needed an armed Delete kept across its redraws (`kept`). The three callers that passed `onArm` (Plugins' Remove, a provider's Remove key and Remove provider) pass it by name.
+- Why we had to change: a second optional part had nowhere to go but a fifth position, so a caller wanting only `kept` would pass `undefined` for `onArm`.
+- Original design was wrong because: it gave its one optional argument its own position, as `PluginError` once did (2026-10-27): that lesson was written for errors and read as being about errors.
+- Lesson: the 2026-10-27 rule holds for any function shared between modules, not only errors: after the required arguments, anything optional goes in one options object, even when there is only one so far.

@@ -237,7 +237,7 @@ function waitingList(ctx, files, names) {
             const freed = await dropWaiting(ctx.ws, f.path);
             ctx.notices.toast(t`Deleted ${name}. ${size(freed)} freed.`);
             await ctx.render();
-          }, undefined, { key: f.path, armed })));
+          }, { kept: { key: f.path, armed } })));
     })));
 }
 
