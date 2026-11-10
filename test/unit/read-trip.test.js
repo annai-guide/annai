@@ -532,6 +532,73 @@ test('a trip removed while its card waits is said to be gone after Allow, not re
   assert.equal((await k.events(['trip.read'])).length, 0);
 });
 
+// ---- annai's card is annai's, not her reaching the user (the real-model pass, stage 5 finding 4). ----
+
+/** Her requests' toolRequired, in order. @param {any} k */
+const forced = (k) => k.requests.map((/** @type {any} */ r) => r.toolRequired);
+
+test("annai's card is no answer of hers: after it a tool call is still asked for, and a turn that then ends in words is asked once more, as one with no card is (real models, stage 5 finding 4)", async (t) => {
+  useClock(t);
+  const k = await gateKit([call('read_trip', { trip: TV }), { text: 'Tomorrow: the museum at 10.' }, say('Tomorrow: the museum at 10.')]);
+  k.agent.send("What's on tomorrow?");
+  await until(() => k.asks.length === 1);
+  k.agent.answer(k.asks[0].data.tap, 'Allow');
+  await k.agent.idle();
+  assert.deepEqual(forced(k), [true, true, true], 'forced until her own words reach the user, where the endpoint can say so');
+  assert.match(JSON.stringify(k.requests[2].messages.at(-1)), /hasn't been answered/, 'the one nudge');
+  assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Tomorrow: the museum at 10.']);
+  assert.deepEqual(k.notices, []);
+});
+
+test("annai's card is no answer of hers: a turn that ends in words twice after it gets the \"didn't answer\" card, as one with no card does, never silence", async (t) => {
+  useClock(t);
+  const k = await gateKit([call('read_trip', { trip: TV }), { text: 'Tomorrow: the museum at 10.' }, { text: 'Still words.' }]);
+  k.agent.send("What's on tomorrow?");
+  await until(() => k.asks.length === 1);
+  k.agent.answer(k.asks[0].data.tap, 'Allow');
+  await k.agent.idle();
+  assert.equal(k.requests.length, 3);
+  assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.title), ["Shiori didn't answer"]);
+});
+
+test("annai's card is no answer of hers, with voice on too: the question it says aloud settles nothing, and she is asked once more, then speaks", async (t) => {
+  useClock(t);
+  const k = await gateKit([call('read_trip', { trip: TV }), { text: 'Tomorrow: the museum at 10.' }, say('Tomorrow: the museum at 10.')], { voice: { speechIn: ['m-hear'] } });
+  k.agent.send("What's on tomorrow?");
+  await until(() => k.asks.length === 1 && k.agent.state.name === 'listening');
+  assert.ok(k.said.includes(ASKED));
+  k.agent.answer(k.asks[0].data.tap, 'Allow');
+  await k.agent.idle();
+  assert.deepEqual(forced(k), [true, true, true]);
+  assert.match(JSON.stringify(k.requests[2].messages.at(-1)), /hasn't been answered/);
+  assert.ok(k.said.includes('Tomorrow: the museum at 10.'), 'said aloud');
+});
+
+test("annai's card is no answer of hers, with Koe talking: Kokoro is still asked for a tool call after it, until it tells Koe", async (t) => {
+  useClock(t);
+  const k = await agentKit([{ rules: [{ match: 'the user wrote', reply: call('read_trip', { trip: TV }), then: { toolCalls: [{ name: 'tell_koe', input: { text: 'Tomorrow: the museum at 10 (Testville plan).' } }, { name: 'sleep', input: {} }] } }, { match: '.', reply: sleep }] }], { koe: { type: KOE } });
+  k.agent.addLoopTools(tripTools(k.agent));
+  await fixedTrip(k.ws, TV, { title: 'Testville', start: '2027-04-01', end: '2027-04-08' });
+  /** @type {any[]} */
+  const asks = [];
+  k.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'out.ask') asks.push(e); });
+  k.agent.send("What's on tomorrow?");
+  await until(() => asks.length === 1);
+  k.agent.answer(asks[0].data.tap, 'Allow');
+  await k.agent.idle();
+  assert.deepEqual(k.sent['model-0'].map((/** @type {any} */ r) => r.toolRequired), [true, true], 'the card told Koe nothing');
+});
+
+test("annai's card is no answer of hers: a reminder's turn that only drew the card still has annai say the reminder", async (t) => {
+  useClock(t);
+  const k = await gateKit([call('read_trip', { trip: TV }), sleep]);
+  k.agent.wake({ kind: 'trigger', text: 'a watch fired', fallbacks: [{ watch: 'w1', text: 'Leave for the station.' }] });
+  await until(() => k.asks.length === 1);
+  k.agent.answer(k.asks[0].data.tap, 'Not now');
+  await k.agent.idle();
+  assert.deepEqual((await k.events(['reminder'])).map((/** @type {any} */ e) => e.data.text), ['Leave for the station.']);
+});
+
 // ---- A spoken yes: annai's word list on the heard line, in the 20 s after the question ends, no model involved. ----
 
 const pause = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
