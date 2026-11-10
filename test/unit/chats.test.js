@@ -379,7 +379,8 @@ test("a heard line's words that come after a reload still name it", async () => 
   await again.start();
   const e = await record(k.store, draft, { now: noon, type: 'heard.text', actor: 'system', data: { of: 'h9', text: 'Is the museum open today? Lets see' } });
   for (const fn of listeners) fn(e);
-  await k.settle();
+  // Until it is named, not a fixed 20 ms: under a full run on a loaded host the write came later (2026-11-09: failed once in a full run, passed 12 of 12 alone).
+  for (let i = 0; i < 200 && (await k.ws.readJSON(draft, '/trip.json')).title === DRAFT_TITLE; i++) await new Promise((r) => setTimeout(r, 5));
   assert.equal((await k.ws.readJSON(draft, '/trip.json')).title, 'Is the museum open today?');
 });
 
