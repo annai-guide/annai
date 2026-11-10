@@ -7,6 +7,8 @@ import { openApp, waitForServiceWorker, addProvider, startModelServer, anthropic
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 const NOTE = 'Ramen at the corner of 3rd and Elm.';
 const SWITCH = 'Let Shiori read my other trips without asking';
+/** annai's question on Testville's card, with its dates as the screens write them ("Apr 1 – 8"). */
+const ASKED = /Read Testville, Apr 1\s–\s8\?/;
 
 /**
  * Her part: a user's line asks for Testville's food note; the result she gets back is said as it is, or that it wasn't read.
@@ -48,7 +50,7 @@ test('from a chat, Shiori reads Testville after a tap on annai\'s own card; the 
 
     // A chat: annai asks, with its own card; Allow, and she reads it here.
     await askIn(page, 'Ramen crawl', 'Where was the ramen place in Testville?');
-    const card = page.locator('.convo li').filter({ hasText: 'Read Testville?' });
+    const card = page.locator('.convo li').filter({ hasText: ASKED });
     await expect(card).toBeVisible({ timeout: 15_000 });
     await expect(card.getByRole('button')).toHaveText(['Allow', 'Always for my trips', 'Not now']);
     await card.getByRole('button', { name: 'Allow', exact: true }).click();
@@ -69,14 +71,14 @@ test('from a chat, Shiori reads Testville after a tap on annai\'s own card; the 
     await askIn(page, 'Museum day', 'And the ramen place?');
     await expect(page.locator('.convo .shiori p').last()).toHaveText(NOTE, { timeout: 15_000 });
     await expect(page.locator('.convo .system-line', { hasText: 'Shiori read Testville' })).toHaveCount(1);
-    await expect(page.getByText('Read Testville?')).toHaveCount(0);
+    await expect(page.getByText(ASKED)).toHaveCount(0);
 
     // Off again: a new chat asks again.
     await page.goto('/#/shiori');
     await page.getByLabel(SWITCH).uncheck();
     await expect(savedBy(page.getByLabel(SWITCH))).toHaveText('Saved');
     await askIn(page, 'Lunch', 'The ramen place again?');
-    const again = page.locator('.convo li').filter({ hasText: 'Read Testville?' });
+    const again = page.locator('.convo li').filter({ hasText: ASKED });
     await expect(again).toBeVisible({ timeout: 15_000 });
     await again.getByRole('button', { name: 'Not now', exact: true }).click();
     await expect(page.locator('.convo .shiori p').last()).toHaveText("I won't read it.", { timeout: 15_000 });

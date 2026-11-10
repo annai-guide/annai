@@ -15,6 +15,7 @@ import { spokenYes } from './spoken-yes.js';
 import { STOPPED } from './transcript.js';
 import { planItems } from './context.js';
 import { t } from '../l10n.js';
+import { dateRange, when } from '../intl.js';
 
 /**
  * Shiori's trip tools (the bookings-and-trips design, goals 2–4): she starts a trip for what the user handed her, opens one it fits,
@@ -293,6 +294,16 @@ export function tripTools(app) {
     /* en */
     return `${headOf(rec)}: the lines of its conversation with ${quote(query)}, newest first.\n${found.length ? theirs(found.map((l) => l.line).join('\n')) : `Nothing in its conversation has ${quote(query)}.`}`;
   };
+  /** The card's question, naming which trip as the screens do: a dated one by its dates; an undated one by when it was last talked in, if another shows its name. @param {import('../types.js').ScopeRecord} rec */
+  const asking = async (rec) => {
+    const title = scopeTitle(rec);
+    const { start, end } = tripMirror(rec);
+    if (start) return t`Read ${title}, ${dateRange(start, end)}?`;
+    const { active, archived } = await listTrips(store);
+    if (![...active, ...archived].some((s) => s.id !== rec.id && scopeTitle(s) === title)) return t`Read ${title}?`;
+    // As home's line for a chat says its time.
+    return t`Read ${title}, last talked ${when(rec.talked ?? rec.created, deviceZone(), { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}?`;
+  };
   /**
    * Whether she may read another trip here, by annai alone (RULES 9: no model's words, tool result or file grant it): a grant in this conversation's
    * log, the Always setting for a trip of the user's own (an imported one always asks), else annai's own card, its title the record's. A grant is
@@ -306,9 +317,8 @@ export function tripTools(app) {
     // Someone else's: marked as it came in, or, brought in before the mark existed, by its import entry of a trip's file.
     const shared = rec.imported || (await store.tx(['events'], 'readonly', (x) => x.listEvents(rec.id, { types: ['import'] }))).some((e) => e.data?.kind === 'trip');
     if (!shared && (await readAppSettings(ws)).readMyTrips === true) return null;
-    const title = scopeTitle(rec);
     const [allow, always, no] = [t`Allow`, t`Always for my trips`, t`Not now`];
-    const got = await app.confirm(call, { question: t`Read ${title}?`, options: shared ? [allow, no] : [allow, always, no], yes: (heard) => (spokenYes(heard) ? allow : null) });
+    const got = await app.confirm(call, { question: await asking(rec), options: shared ? [allow, no] : [allow, always, no], yes: (heard) => (spokenYes(heard) ? allow : null) });
     if (got.stopped) return { content: STOPPED, isError: true };
     if (got.chosen === allow || got.chosen === always) {
       await record(store, call.scope, { type: 'trip.grant', actor: 'user', now: ws.now(), data: { trip: rec.id, how: got.how ?? 'tap', ...(got.chosen === always ? { always: true } : {}) } });
