@@ -370,6 +370,23 @@ test('a Stop ends the card: the read is stopped, nothing is granted, and the doc
   assert.equal(k.agent.kokoro.pendingId, null);
 });
 
+test('a Stop that lands before the card is up leaves no wait behind: the next typed line wakes her', async (t) => {
+  useClock(t);
+  const k = await gateKit([sleep, sleep]);
+  const stop = new AbortController();
+  stop.abort(); // stopped while read_trip was still reading the log and the settings
+  const stopped = k.agent.kokoro.loopTools().find((/** @type {any} */ x) => x.name === 'read_trip').run({ trip: TV }, {
+    id: 'c-stopped', scope: k.agent.scope, trip: k.agent.trip, signal: stop.signal, model: null, wake: 'w', author: 'shiori',
+  });
+  assert.deepEqual(await stopped, { content: 'Stopped by the user.', isError: true });
+  assert.equal(k.asks.length, 0, 'no card drawn for it');
+  assert.equal(k.agent.kokoro.pendingId, null);
+  k.agent.send("What's the weather tomorrow?");
+  await k.agent.idle();
+  assert.ok(k.requests.length > 0, 'a turn answers it');
+  assert.equal((await k.events(['msg.user']))[0].data.answer, undefined, 'an ordinary line, not an answer to a card');
+});
+
 test("opening another conversation ends the card's wait, as a Stop: no turn hangs on a card nobody can answer there", async (t) => {
   useClock(t);
   const k = await gateKit([call('read_trip', { trip: TV }), sleep]);
