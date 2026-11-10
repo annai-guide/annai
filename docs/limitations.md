@@ -366,12 +366,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** browsers let a page leave its own first entry, or a user reports it.
 - **Approved:** 2026-11-07, the user picked "Accept for now (Recommended)".
 
-### Undo's message doesn't name a trip that stays but lost files
-- **Kind:** deferred.
-- **What the user sees:** one hand-over sent files to a trip Shiori started and to another trip that stays (one of the user's own). Undo in the started trip's conversation removes that trip and also takes the hand-over's files and bookings out of the other trip, but its message names only the trip it removed.
-- **Why:** naming them needs new strings in every language, and the takeback itself is right (spec goal 2: Undo takes back exactly what Shiori wrote from that hand-over).
-- **Revisit when:** the next version: in talk.js's Undo message, name each trip `undoEverywhere` changed but didn't remove.
-
 ### A redraw of home drops an armed "Tap again to delete"
 - **Kind:** deferred.
 - **What the user sees:** on home, Waiting with Shiori's Delete tapped once is reset when home draws itself again (Shiori's `went`, a plugin's screens, Waiting's own Delete, and since stage 4 the clock's redraw: a few times a day, and once a minute in the hour after a backup or an export, as "Last backup … ago" changes its words). The row says "Delete" again; nothing is lost but the first tap. A focused field is not redrawn over: each of these waits for it.
