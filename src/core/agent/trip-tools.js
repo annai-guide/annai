@@ -289,7 +289,9 @@ export function tripTools(app) {
    * @param {import('../types.js').ScopeRecord} rec @param {ToolCall} call @returns {Promise<null | string | import('./tools.js').ToolOutput>} null: allowed; else her result
    */
   const allowed = async (rec, call) => {
-    if ((await store.tx(['events'], 'readonly', (x) => x.listEvents(call.scope, { types: ['trip.grant'] }))).some((e) => e.data?.trip === rec.id)) return null;
+    // Only a grant given on this phone: one an archive brought (before its import entry) names ids from where the file was made, or ones its maker chose.
+    const log = await store.tx(['events'], 'readonly', (x) => x.listEvents(call.scope, { types: ['trip.grant', 'import'] }));
+    if (log.slice(log.findLastIndex((e) => e.type === 'import') + 1).some((e) => e.data?.trip === rec.id)) return null;
     if (!rec.imported && (await readAppSettings(ws)).readMyTrips === true) return null;
     const title = scopeTitle(rec);
     const [allow, always, no] = [t`Allow`, t`Always for my trips`, t`Not now`];

@@ -44,7 +44,7 @@
 | Imported | scope record | `imported: true` | kept by spreads, ignored |
 | Always | app settings | `readMyTrips: boolean` | ignored; confirm `sys:settings` isn't closed by a schema |
 
-Restored trips get new ids, so a grant's `trip` matches nothing and she asks again.
+A grant counts only when it was written after the conversation's last `import` entry. An imported conversation gets a new id, but the trips its log names keep theirs (every Share names its trip's id), so a grant it brought is no grant, and she asks again.
 
 ## Review Focus
 
