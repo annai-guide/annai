@@ -360,3 +360,95 @@ test('in a dated trip start_trip works as today', async (t) => {
   await run(k, 'start_trip', { title: 'Testville' });
   assert.ok(await tripNamed(k, 'Testville'));
 });
+
+// Timeline stage 6, Moving into a trip: open_trip works from a conversation with no dates, and is refused in a dated trip as before.
+
+/** Shiori in a chat (no dates), with her trip tools, and Kyoto, a dated trip of the user's. */
+async function chatKit() {
+  const k = await agentKit([[sleep]], { halves: true });
+  k.agent.addLoopTools(tripTools(k.agent));
+  const kyoto = await createTrip(k.ws, { title: 'Kyoto', start: '2027-04-01', end: '2027-04-08' });
+  await k.agent.opening;
+  return { ...k, kyoto };
+}
+/** A file the user handed in the chat. @param {any} k @param {string} name */
+const handIn = async (k, name) => {
+  await k.ws.write(k.trip, `/files/${name}`, utf8(`%PDF ${name}`), { author: 'user', type: 'application/pdf' });
+  return { path: `/trip/files/${name}`, type: 'application/pdf', name, new: true };
+};
+
+test('open_trip in a chat opens that trip once she is done; in a dated trip it is refused as before, and the trip stays', async (t) => {
+  useClock(t);
+  const k = await chatKit();
+  k.agent.send("Let's carry on in Kyoto");
+  await k.agent.idle();
+  assert.match(await run(k, 'open_trip', { trip: k.kyoto }), /opens when you are done/);
+  await k.agent.idle();
+  assert.equal(k.agent.trip, k.kyoto);
+  // In a dated trip: refused, nothing written there or here, and it stays open.
+  const tokyo = await createTrip(k.ws, { title: 'Tokyo' });
+  const before = (await eventsIn(k, tokyo)).length;
+  await assert.rejects(run(k, 'open_trip', { trip: tokyo }), /A trip is open[\s\S]*move_file/);
+  await k.agent.idle();
+  assert.equal(k.agent.trip, k.kyoto);
+  assert.equal((await eventsIn(k, tokyo)).length, before);
+});
+
+test("open_trip in a chat with no files named takes the hand-over's fresh files; with files named, only those", async (t) => {
+  useClock(t);
+  const k = await chatKit();
+  const [hotel, tickets] = [await handIn(k, 'hotel.pdf'), await handIn(k, 'tickets.pdf')];
+  k.agent.send('Our Kyoto stay', { handed: [hotel, tickets], handover: 'h-1' });
+  await k.agent.idle();
+  await run(k, 'open_trip', { trip: k.kyoto }, 'h-1');
+  assert.deepEqual((await k.ws.list(k.kyoto, '/files/')).map((/** @type {any} */ f) => f.path), ['/files/hotel.pdf', '/files/tickets.pdf']);
+  assert.deepEqual(await k.ws.list(k.trip, '/files/'), []);
+  const copy = (await eventsIn(k, k.kyoto, ['msg.user']))[0];
+  assert.deepEqual(copy.data.handed.map((/** @type {any} */ f) => f.path), ['/trip/files/hotel.pdf', '/trip/files/tickets.pdf']);
+
+  const k2 = await chatKit();
+  const [a, b] = [await handIn(k2, 'hotel.pdf'), await handIn(k2, 'tickets.pdf')];
+  k2.agent.send('Our Kyoto stay', { handed: [a, b], handover: 'h-1' });
+  await k2.agent.idle();
+  await run(k2, 'open_trip', { trip: k2.kyoto, files: ['/trip/files/tickets.pdf'] }, 'h-1');
+  assert.deepEqual((await k2.ws.list(k2.kyoto, '/files/')).map((/** @type {any} */ f) => f.path), ['/files/tickets.pdf']);
+  assert.deepEqual((await k2.ws.list(k2.trip, '/files/')).map((/** @type {any} */ f) => f.path), ['/files/hotel.pdf']);
+});
+
+test('open_trip in a chat with no hand-over moves no file, and the trip still opens', async (t) => {
+  useClock(t);
+  const k = await chatKit();
+  await handIn(k, 'hotel.pdf'); // the chat's own, from before: not handed in this turn
+  k.agent.send("Let's carry on in Kyoto");
+  await k.agent.idle();
+  assert.match(await run(k, 'open_trip', { trip: k.kyoto }), /opens when you are done/);
+  await k.agent.idle();
+  assert.equal(k.agent.trip, k.kyoto);
+  assert.deepEqual(await k.ws.list(k.kyoto, '/files/'), []);
+  assert.deepEqual((await k.ws.list(k.trip, '/files/')).map((/** @type {any} */ f) => f.path), ['/files/hotel.pdf']);
+});
+
+test('open_trip naming the conversation it is in is refused, and writes nothing', async (t) => {
+  useClock(t);
+  const k = await chatKit();
+  k.agent.send("Let's carry on here");
+  await k.agent.idle();
+  const before = (await eventsIn(k, k.trip)).length;
+  await assert.rejects(run(k, 'open_trip', { trip: k.trip }), /this conversation/);
+  assert.equal((await eventsIn(k, k.trip)).length, before);
+});
+
+test("start_trip in a dated trip with a hand-over and no files named moves none, as before: its files stay unless she names them", async (t) => {
+  useClock(t);
+  const k = await agentKit([[sleep]], { halves: true });
+  k.agent.addLoopTools(tripTools(k.agent));
+  await k.ws.patch(k.trip, '/trip.json', { start: '2026-11-20', end: '2026-11-27' }, { author: 'user' });
+  await k.agent.opening;
+  const hotel = await handIn(k, 'hotel.pdf');
+  k.agent.send('', { handed: [hotel], handover: 'h-1' });
+  await k.agent.idle();
+  await run(k, 'start_trip', { title: 'Kyoto' }, 'h-1');
+  const kyoto = await tripNamed(k, 'Kyoto');
+  assert.deepEqual(await k.ws.list(kyoto.id, '/files/'), []);
+  assert.deepEqual((await k.ws.list(k.trip, '/files/')).map((/** @type {any} */ f) => f.path), ['/files/hotel.pdf']);
+});
