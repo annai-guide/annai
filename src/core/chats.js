@@ -166,6 +166,11 @@ export class Chats {
     return this.#take({ type: 'used', scope });
   }
 
+  /** Settles once everything taken so far is handled, and what that took in turn (a draft spent, named, the next one made). */
+  async idle() {
+    for (let q = null; q !== this.#queue;) await (q = this.#queue);
+  }
+
   /** The draft, once one is ready. A draft that can't be made rejects, and the next call tries again. @returns {Promise<string>} */
   whenReady() {
     return this.ready ? Promise.resolve(this.ready) : this.#make();

@@ -40,7 +40,8 @@ async function kit() {
   const scope = (/** @type {string} */ id) => store.tx(['scopes'], 'readonly', (t) => t.getScope(id));
   /** Until the next draft is ready: spending is over. */
   const spent = async (/** @type {string} */ was) => { for (let i = 0; i < 200 && (chats.ready === was || !chats.ready); i++) await new Promise((r) => setTimeout(r, 2)); };
-  const settle = () => new Promise((r) => setTimeout(r, 20));
+  // Until Chats has handled what it was told (a line, its words, a write) and what that led to: a fixed wait came short under load.
+  const settle = () => chats.idle();
   return { store, ws, agent, chats, scope, spent, settle };
 }
 
@@ -119,7 +120,7 @@ test('a second copy of the first line (the other half joining it) spends nothing
   const e = await agent.log(draft, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'Hello there']] });
   await spent(draft);
   const next = chats.ready;
-  agent.log(draft, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'and again']] });
+  await agent.log(draft, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'and again']] });
   void e;
   await settle();
   assert.equal(chats.ready, next);

@@ -1,5 +1,5 @@
 {
-  "build": "084d6ecd90c9",
+  "build": "446e40e19079",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -148,7 +148,7 @@
     "/src/core/schema.js": "f21af27d5902",
     "/src/core/search.js": "62a0a393233e",
     "/src/core/scopes.js": "2ccdfe948461",
-    "/src/core/chats.js": "d2dd10270939",
+    "/src/core/chats.js": "5e0c236aab02",
     "/src/core/settings.js": "7291aae0a8cd",
     "/src/core/shown.js": "450af0a8c563",
     "/src/core/signals.js": "1ba83a24e15c",
