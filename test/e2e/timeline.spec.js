@@ -284,7 +284,7 @@ test('voice on: an open mic can be stopped from home, and ← leaves voice on', 
   }
 });
 
-test("Shiori's patch dates the open chat: its row becomes a card below now, and the conversation says so with Undo; Undo takes the dates back, so it is a line again, named as she named it, after a reload too; a date set in Details says nothing", async ({ page }) => {
+test("Shiori's patch dates the open chat: its row becomes a card below now, and the conversation says so with Undo; Undo takes the dates back, so it is a line again, named as she named it, and her line stays, undone, after a reload too; a date set in Details says nothing", async ({ page }) => {
   await openApp(page, '#/trips');
   const [start, end] = await page.evaluate(async () => {
     const { dayIn, deviceZone } = await import(/** @type {string} */ ('/src/core/time.js'));
@@ -311,7 +311,9 @@ test("Shiori's patch dates the open chat: its row becomes a card below now, and 
     await row(page, 'Testville').click();
     await expect(page).toHaveURL(new RegExp(`#/trip/${id}/talk$`));
     await line.getByRole('button', { name: 'Undo' }).click();
-    await expect(line).toBeHidden();
+    // It stays at its place as a record, its Undo gone, and says so, as the hand-over's Undo line does.
+    await expect(line).toHaveText('Shiori set the dates Undone');
+    await expect(line.getByRole('button')).toHaveCount(0);
     await expect(page.locator('.toasts').getByText('Undone.', { exact: true })).toBeVisible(); // said, as the hand-over's Undo is
     await page.getByRole('link', { name: 'Back to Trips' }).click();
     await expect(row(page, 'Testville')).toHaveClass(/\bline\b/); // her title stays: Undo takes back the dates
@@ -319,14 +321,15 @@ test("Shiori's patch dates the open chat: its row becomes a card below now, and 
     await expect(row(page, 'Testville')).toHaveClass(/\bline\b/);
     await row(page, 'Testville').click();
     await expect(page.locator('.convo')).toContainText('I set it for the 10th to the 12th.');
-    await expect(line).toBeHidden();
-    // The user's own dates, from Details: no such line.
+    await expect(line).toHaveText('Shiori set the dates Undone');
+    // The user's own dates, from Details: no such line, and hers stays as it was.
     await page.goto(`/#/trip/${id}`);
     await page.getByLabel('Starts').fill(start);
     await page.getByRole('button', { name: 'Save' }).click();
     await page.goto(`/#/trip/${id}/talk`);
     await expect(page.locator('.convo')).toContainText('I set it for the 10th to the 12th.');
-    await expect(line).toBeHidden();
+    await expect(line).toHaveCount(1);
+    await expect(line).toHaveText('Shiori set the dates Undone');
   } finally {
     await llm.stop();
   }
@@ -1636,7 +1639,7 @@ test("the dock's name of the open conversation has one source, trip.json: a stat
   }
 });
 
-test("Shiori set the dates stays at its place when the user writes again, and after a reload: its Undo, tapped late, still takes the dates back", async ({ page }) => {
+test("Shiori set the dates stays at its place when the user writes again, and after a reload: its Undo, tapped late, still takes the dates back, and the line stays, undone", async ({ page }) => {
   await openApp(page, '#/trips');
   const [start, end] = await page.evaluate(async () => {
     const { dayIn, deviceZone } = await import(/** @type {string} */ ('/src/core/time.js'));
@@ -1672,10 +1675,102 @@ test("Shiori set the dates stays at its place when the user writes again, and af
     await expect(page).toHaveURL(new RegExp(`#/trip/${id}/talk$`));
     await expect.poll(lines).toEqual(placed);
     await line.getByRole('button', { name: 'Undo' }).click();
-    await expect(line).toBeHidden();
+    const undone = placed.map((l) => (l === 'Shiori set the dates Undo' ? 'Shiori set the dates Undone' : l));
+    await expect.poll(lines).toEqual(undone);
     await expect(page.locator('.toasts').getByText('Undone.', { exact: true })).toBeVisible(); // said, as the hand-over's Undo is
+    await page.reload();
+    await expect(page.locator('.convo')).toContainText('Dinner is at seven.');
+    await expect.poll(lines).toEqual(undone);
     await page.getByRole('link', { name: 'Back to Trips' }).click();
     await expect(row(page, 'Testville')).toHaveClass(/\bline\b/);
+  } finally {
+    await llm.stop();
+  }
+});
+
+test("Shiori set the dates stays at its place without its Undo once the user changed the dates in Details, after a reload too", async ({ page }) => {
+  await openApp(page, '#/trips');
+  const [start, end, later] = await page.evaluate(async () => {
+    const { dayIn, deviceZone } = await import(/** @type {string} */ ('/src/core/time.js'));
+    return [10, 12, 11].map((n) => dayIn(Date.now() + n * 86_400_000, deviceZone()));
+  });
+  const llm = await startModelServer({ '/b/v1/messages': [
+    { status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'patch', input: { path: '/trip/trip.json', changes: { title: 'Testville', start, end } } }]) },
+    { status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'speak', input: { text: 'I set it for the 10th to the 12th.' } }, { name: 'sleep', input: {} }]) },
+  ] });
+  const lines = () => page.locator('.convo > li').evaluateAll((els) => els.map((el) => (el.querySelector('p') ?? el).textContent?.replace(/\s+/g, ' ').trim()));
+  const placed = ['Plan our weekend in Testville', 'I set it for the 10th to the 12th.', 'Shiori set the dates'];
+  try {
+    await modelSetUp(page, llm.origin, 'Elsewhere');
+    await page.goto('/#/trips');
+    await plus(page).click();
+    const id = draftOf(page.url());
+    await box(page).fill('Plan our weekend in Testville');
+    await box(page).press('Enter');
+    const line = page.locator('.dates-line');
+    await expect(line.getByRole('button', { name: 'Undo' })).toBeVisible();
+    await expect(page.locator('.convo')).toContainText('I set it for the 10th to the 12th.');
+    await page.goto(`/#/trip/${id}`);
+    await page.getByLabel('Starts').fill(later);
+    await page.getByRole('button', { name: 'Save' }).click();
+    await page.goto(`/#/trip/${id}/talk`);
+    await expect(page.locator('.convo')).toContainText('I set it for the 10th to the 12th.');
+    await expect.poll(lines).toEqual(placed);
+    await expect(line.getByRole('button')).toHaveCount(0);
+    await page.reload();
+    await expect(page.locator('.convo')).toContainText('I set it for the 10th to the 12th.');
+    await expect.poll(lines).toEqual(placed);
+    await expect(line.getByRole('button')).toHaveCount(0);
+    expect((await record(page, id))?.start).toBe(later);
+  } finally {
+    await llm.stop();
+  }
+});
+
+test("she dates the chat again: each of her datings keeps its line at its place, only the newest has Undo, her later change of the dates takes it away and adds no line, after a reload too", async ({ page }) => {
+  await openApp(page, '#/trips');
+  const days = await page.evaluate(async () => {
+    const { dayIn, deviceZone } = await import(/** @type {string} */ ('/src/core/time.js'));
+    return [10, 12, 20, 22, 21, 23].map((n) => dayIn(Date.now() + n * 86_400_000, deviceZone()));
+  });
+  const patch = (/** @type {Record<string, unknown>} */ changes) => ({ status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'patch', input: { path: '/trip/trip.json', changes } }]) });
+  const speak = (/** @type {string} */ text) => ({ status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }]) });
+  const llm = await startModelServer({ '/b/v1/messages': [
+    patch({ title: 'Testville', start: days[0], end: days[1] }), speak('I set it for the 10th to the 12th.'),
+    patch({ start: days[2], end: days[3] }), speak('Now the 20th to the 22nd.'),
+    patch({ start: days[4], end: days[5] }), speak('Moved to the 21st.'),
+  ] });
+  const lines = () => page.locator('.convo > li').evaluateAll((els) => els.map((el) => (el.querySelector('p') ?? el).textContent?.replace(/\s+/g, ' ').trim()));
+  const say = async (/** @type {string} */ text) => {
+    await box(page).isVisible() || await page.getByRole('button', { name: 'Type', exact: true }).click();
+    await box(page).fill(text);
+    await box(page).press('Enter');
+  };
+  try {
+    await modelSetUp(page, llm.origin, 'Elsewhere');
+    await page.goto('/#/trips');
+    await plus(page).click();
+    const id = draftOf(page.url());
+    await say('Plan our weekend in Testville');
+    const line = page.locator('.dates-line');
+    await expect(page.locator('.convo')).toContainText('I set it for the 10th to the 12th.');
+    await line.getByRole('button', { name: 'Undo' }).click();
+    await expect(line).toHaveText('Shiori set the dates Undone');
+    await say('Then the 20th to the 22nd.');
+    await expect(page.locator('.convo')).toContainText('Now the 20th to the 22nd.');
+    const twice = ['Plan our weekend in Testville', 'I set it for the 10th to the 12th.', 'Shiori set the dates Undone', 'Then the 20th to the 22nd.', 'Now the 20th to the 22nd.', 'Shiori set the dates Undo'];
+    await expect.poll(lines).toEqual(twice);
+    await expect(line.getByRole('button', { name: 'Undo' })).toHaveCount(1);
+    // Her change of the dates she set: that line loses its Undo, in place, and her change has none of its own.
+    await say('Make it the 21st to the 23rd.');
+    await expect(page.locator('.convo')).toContainText('Moved to the 21st.');
+    const changed = [...twice.slice(0, -1), 'Shiori set the dates', 'Make it the 21st to the 23rd.', 'Moved to the 21st.'];
+    await expect.poll(lines).toEqual(changed);
+    await expect(line.getByRole('button')).toHaveCount(0);
+    await page.reload();
+    await expect(page.locator('.convo')).toContainText('Moved to the 21st.');
+    await expect.poll(lines).toEqual(changed);
+    expect((await record(page, id))?.start).toBe(days[4]);
   } finally {
     await llm.stop();
   }

@@ -4,7 +4,7 @@ import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip, listTrips, setTripStatus, removeTrip, syncTripTitles, scopeTitle, ME } from '../../src/core/scopes.js';
-import { ensureDraft, chatName, Chats, DRAFT_TITLE, herDating, undoDating } from '../../src/core/chats.js';
+import { ensureDraft, chatName, Chats, DRAFT_TITLE, herDatings, undoDating } from '../../src/core/chats.js';
 import { record, INLINE_MAX } from '../../src/core/agent/log.js';
 import { NOT_TRANSCRIBED } from '../../src/core/voice/resolve.js';
 import { PHOTO_ONLY } from '../../src/core/agent/loop.js';
@@ -251,6 +251,13 @@ async function voiceFirst(/** @type {Record<string, unknown>} */ patch) {
   return { ...k, draft };
 }
 
+/** The dating whose dates still stand, the one line with Undo; null when none has. @param {any} store @param {string} scope */
+const herDating = async (store, scope) => (await herDatings(store, scope)).find((d) => d.state === 'stands') ?? null;
+/** The conversation's dates lines, oldest first: each dating's seq and what became of it. @param {any} store @param {string} scope */
+const datesLines = async (store, scope) => (await herDatings(store, scope)).map((d) => [d.seq, d.state]);
+/** Her writes of trip.json, oldest first. @param {any} store @param {string} scope */
+const herWrites = async (store, scope) => (await store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types: ['file.write'] }))).filter((/** @type {any} */ e) => e.actor === 'shiori' && e.data?.path === '/trip.json');
+
 test("her dating of a voice-first chat: the dates line follows the dates, not trip.json's newest author, and Undo keeps the name given after (dates only)", async () => {
   const { ws, store, draft } = await voiceFirst({ start: '2027-03-20', end: '2027-03-22' });
   const now = await store.tx(['files'], 'readonly', (t) => t.getFile(draft, '/trip.json'));
@@ -264,7 +271,8 @@ test("her dating of a voice-first chat: the dates line follows the dates, not tr
   assert.equal(trip.start, undefined);
   assert.equal(trip.end, undefined);
   assert.equal((await store.tx(['files'], 'readonly', (t) => t.getFile(draft, '/trip.json')))?.author, 'user');
-  assert.equal(await herDating(store, draft), null, 'undone');
+  assert.equal(await herDating(store, draft), null, 'undone: no Undo left');
+  assert.deepEqual(await datesLines(store, draft), [[before.seq, 'undone']], 'the line stays at its place and says it was undone, as the hand-over\'s does');
 });
 
 test("her dating of a voice-first chat that also named it: Undo puts the dates back and keeps her title, not the draft's", async () => {
@@ -277,6 +285,7 @@ test("her dating of a voice-first chat that also named it: Undo puts the dates b
   assert.equal(trip.title, 'Testville');
   assert.equal(trip.start, undefined);
   assert.equal(await herDating(store, draft), null);
+  assert.deepEqual(await datesLines(store, draft), [[before.seq, 'undone']]);
 });
 
 test('the dates line stays at its place, as the hand-over Undo line does: the user writing or speaking again after her dating leaves it there', async () => {
@@ -299,9 +308,10 @@ test("a late Undo takes back only what its line set: once she or the user change
   await agent.log(draft, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'We fly back on the 23rd']] });
   const late = await herDating(store, draft);
   assert.ok(late);
-  // She moves the end, as asked: the line has nothing of its own to take back.
+  // She moves the end, as asked: the line has nothing of its own to take back. It stays, as a record, without Undo.
   await ws.patch(draft, '/trip.json', { end: '2027-03-23' }, { author: 'shiori' });
   assert.equal(await herDating(store, draft), null, 'her later change');
+  assert.deepEqual(await datesLines(store, draft), [[late.seq, 'changed']], 'her change of the dates is no dating: no line of its own');
   // A tap on the line as it was drawn before that: no dates go, and it says so.
   assert.equal(await undoDating(ws, draft, /** @type {any} */ (late)), false);
   assert.deepEqual([(await ws.readJSON(draft, '/trip.json')).start, (await ws.readJSON(draft, '/trip.json')).end], ['2027-03-20', '2027-03-23']);
@@ -313,24 +323,106 @@ test("a late Undo takes back only what its line set: once she or the user change
   assert.equal((await other.ws.readJSON(other.draft, '/trip.json')).start, '2027-03-19', 'never over the user\'s later change');
   await other.ws.patch(other.draft, '/trip.json', { start: '2027-03-20' }, { author: 'user' });
   assert.equal(await herDating(other.store, other.draft), null, "set back by the user: theirs");
-  // Undone, then dated again by her: the line is the newer dating's.
+  assert.deepEqual(await datesLines(other.store, other.draft), [[drawn?.seq, 'changed']], 'the line stays, without Undo');
+  // Undone, then dated again by her: the Undo is the newer dating's, and the first line stays, undone.
   const again = await voiceFirst({ start: '2027-03-20', end: '2027-03-22' });
   assert.equal(await undoDating(again.ws, again.draft, /** @type {any} */ (await herDating(again.store, again.draft))), true);
   assert.equal((await again.ws.readJSON(again.draft, '/trip.json')).start, undefined);
   await again.ws.patch(again.draft, '/trip.json', { start: '2027-04-02', end: '2027-04-04' }, { author: 'shiori' });
   const writes = (await again.store.tx(['events'], 'readonly', (t) => t.listEvents(again.draft, { types: ['file.write'] }))).filter((/** @type {any} */ e) => e.actor === 'shiori');
   assert.equal((await herDating(again.store, again.draft))?.seq, writes.at(-1).seq);
+  assert.deepEqual(await datesLines(again.store, again.draft), [[writes.at(-2).seq, 'undone'], [writes.at(-1).seq, 'stands']]);
 });
 
-test('the dates line goes when the dates are no longer hers: changed by the user after, or never hers', async () => {
+test('the dates line loses its Undo when the dates are no longer hers (changed by the user after), and there is none where they never were', async () => {
   const { ws, store, draft } = await voiceFirst({ start: '2027-03-20', end: '2027-03-22' });
-  assert.ok(await herDating(store, draft));
+  const dated = await herDating(store, draft);
+  assert.ok(dated);
   await ws.patch(draft, '/trip.json', { end: '2027-03-23' }, { author: 'user' });
   assert.equal(await herDating(store, draft), null, 'the user moved the end');
+  assert.deepEqual(await datesLines(store, draft), [[dated.seq, 'changed']], 'the line stays at its place, without Undo');
   const own = await createTrip(ws, { title: 'Big Sur', start: '2027-04-01', end: '2027-04-03' });
-  assert.equal(await herDating(store, own), null, 'a trip dated when it was made');
+  assert.deepEqual(await herDatings(store, own), [], 'a trip dated when it was made');
   const chat = await createTrip(ws, { title: 'Ramen' });
-  assert.equal(await herDating(store, chat), null, 'a chat');
+  assert.deepEqual(await herDatings(store, chat), [], 'a chat');
+});
+
+test('the dates line stays without its Undo whoever changed the dates since, and a later name or a write that keeps the dates changes nothing', async () => {
+  // The user's change in Details: the dating stays, at the same write, with nothing of its own to take back.
+  const details = await voiceFirst({ start: '2027-03-20', end: '2027-03-22' });
+  const [dating] = await herWrites(details.store, details.draft);
+  await details.ws.patch(details.draft, '/trip.json', { title: 'Testville weekend' }, { author: 'user' });
+  await details.ws.patch(details.draft, '/trip.json', { places: ['Testville'] }, { author: 'shiori' });
+  assert.deepEqual(await datesLines(details.store, details.draft), [[dating.seq, 'stands']], 'a name, and her write that kept the dates');
+  await details.ws.patch(details.draft, '/trip.json', { start: '2027-03-21' }, { author: 'user' });
+  assert.deepEqual(await datesLines(details.store, details.draft), [[dating.seq, 'changed']]);
+  // Her own change of the dates: the same.
+  const hers = await voiceFirst({ start: '2027-03-20', end: '2027-03-22' });
+  await hers.ws.patch(hers.draft, '/trip.json', { start: '2027-03-19' }, { author: 'shiori' });
+  assert.deepEqual((await datesLines(hers.store, hers.draft)).map(([, s]) => s), ['changed']);
+  // She takes the dates out herself: not the user's Undo, so not undone.
+  const out = await voiceFirst({ start: '2027-03-20', end: '2027-03-22' });
+  await out.ws.patch(out.draft, '/trip.json', { start: null, end: null }, { author: 'shiori' });
+  assert.deepEqual((await datesLines(out.store, out.draft)).map(([, s]) => s), ['changed']);
+  // The user takes both dates out in Details, back to what they were before hers: that is her dating taken back, as Undo does.
+  const blank = await voiceFirst({ start: '2027-03-20', end: '2027-03-22' });
+  await blank.ws.patch(blank.draft, '/trip.json', { start: null, end: null }, { author: 'user' });
+  assert.deepEqual((await datesLines(blank.store, blank.draft)).map(([, s]) => s), ['undone']);
+  // A dating keeps what came of it: dates the user gives later are theirs, and give it no Undo back.
+  await blank.ws.patch(blank.draft, '/trip.json', { start: '2027-03-20', end: '2027-03-22' }, { author: 'user' });
+  assert.deepEqual((await datesLines(blank.store, blank.draft)).map(([, s]) => s), ['undone']);
+  assert.equal(await herDating(blank.store, blank.draft), null);
+});
+
+test('each dating of hers keeps its line: her change of the dates is none, and only the newest, while its dates stand, has Undo, which takes back only what it set', async () => {
+  const { ws, store, agent, draft } = await voiceFirst({ start: '2027-03-20', end: '2027-03-22' });
+  // She changes them (no new line), then takes them out, then dates it again.
+  await agent.log(draft, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'Make it the 21st']] });
+  await ws.patch(draft, '/trip.json', { start: '2027-03-21' }, { author: 'shiori' });
+  await agent.log(draft, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'Actually, no dates yet']] });
+  await ws.patch(draft, '/trip.json', { start: null, end: null }, { author: 'shiori' });
+  await agent.log(draft, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'The 2nd to the 4th of April']] });
+  await ws.patch(draft, '/trip.json', { start: '2027-04-02', end: '2027-04-04' }, { author: 'shiori' });
+  const [first, , , last] = await herWrites(store, draft);
+  assert.deepEqual(await datesLines(store, draft), [[first.seq, 'changed'], [last.seq, 'stands']]);
+  const standing = /** @type {any} */ (await herDating(store, draft));
+  assert.deepEqual([standing.before, standing.set], [{ start: undefined, end: undefined }, { start: '2027-04-02', end: '2027-04-04' }]);
+  assert.equal(await undoDating(ws, draft, standing), true);
+  const trip = await ws.readJSON(draft, '/trip.json');
+  assert.deepEqual([trip.start, trip.end, trip.title], [undefined, undefined, 'Plan our weekend in Testville.'], 'only what that write set');
+  assert.deepEqual(await datesLines(store, draft), [[first.seq, 'changed'], [last.seq, 'undone']], 'both lines stay');
+  // An older line's dating, tapped late, changes nothing.
+  const older = /** @type {any} */ ((await herDatings(store, draft))[0]);
+  assert.equal(await undoDating(ws, draft, older), false);
+});
+
+test("her datings come with a backup or a trip's file that keeps the history, and read the same there; a version restored by hand is the user's change", async () => {
+  const a = await voiceFirst({ start: '2027-03-20', end: '2027-03-22' });
+  await a.ws.patch(a.draft, '/trip.json', { start: null, end: null }, { author: 'user' });
+  await a.ws.patch(a.draft, '/trip.json', { start: '2027-04-02', end: '2027-04-04' }, { author: 'shiori' });
+  const lines = await datesLines(a.store, a.draft);
+  assert.deepEqual(lines.map(([, s]) => s), ['undone', 'stands']);
+  const { blob } = await exportArchive(a.store, { kind: 'trip', scopes: [a.draft], include: PRESETS.backup, app: '0.1.0' });
+  const b = await kit();
+  const { trips: [came] } = await importArchive(b.store, await peekArchive(new Uint8Array(await blob.arrayBuffer())), {});
+  assert.deepEqual(await datesLines(b.store, came), lines, 'the same lines, at the same writes');
+  // Its Undo works there too, as the user's write on this device.
+  assert.equal(await undoDating(b.ws, came, /** @type {any} */ (await herDating(b.store, came))), true);
+  assert.deepEqual((await datesLines(b.store, came)).map(([, s]) => s), ['undone', 'undone']);
+  // A Share keeps no history: no lines, as there is no conversation.
+  const { blob: shared } = await exportArchive(a.store, { kind: 'trip', scopes: [a.draft], include: PRESETS.share, app: '0.1.0' });
+  const c = await kit();
+  const { trips: [got] } = await importArchive(c.store, await peekArchive(new Uint8Array(await shared.arrayBuffer())), {});
+  assert.deepEqual(await herDatings(c.store, got), []);
+  // trip.json's history: the version from before her newest dating, restored by the user, takes it back as Undo would; her dates
+  // restored by the user after that are theirs, and give it no Undo back.
+  const [undated, dated] = (await a.ws.history(a.draft, '/trip.json')).filter((v) => v.type === 'file.write').slice(-2).map((v) => /** @type {string} */ (v.new));
+  await a.ws.restore(a.draft, '/trip.json', undated, { author: 'user' });
+  assert.deepEqual((await datesLines(a.store, a.draft)).map(([, s]) => s), ['undone', 'undone']);
+  await a.ws.restore(a.draft, '/trip.json', dated, { author: 'user' });
+  assert.equal((await a.ws.readJSON(a.draft, '/trip.json')).start, '2027-04-02');
+  assert.deepEqual((await datesLines(a.store, a.draft)).map(([, s]) => s), ['undone', 'undone']);
+  assert.equal(await herDating(a.store, a.draft), null);
 });
 
 test('a draft that cannot be made: whenReady rejects, and the next call tries again', async () => {
