@@ -118,7 +118,8 @@ export async function addToKoe(page, model) {
  * and quick-decision models Claude Haiku 5.5, which adding the provider put there; Koe is on Gemini Live as before, and Gemini's chat models are taken out of
  * Main, Utility and Quick decision so that no free model answers for a real one that fails.
  * koeChat (with classic): Koe on a chat model, Gemini 3.5 Flash Lite in Koe · Chat, so the two halves talk through classic voice.
- * asr (with classic, default true): speech in on the user's server; false leaves the speech-in list as annai sets it (send audio, then phone dictation).
+ * asr (with classic, default true): speech in on the user's server; false: no transcription model at all, the speech-in list annai starts with (send audio,
+ * then phone dictation), so the two that adding Gemini put last (Gemini 3.5 Transcribe, Gemini 3.5 Flash Lite (transcription)) are taken out.
  * @param {import('@playwright/test').Page} page @param {string} key @param {(s: string) => void} log @param {{ standIn?: string, card?: boolean, classic?: boolean, koeChat?: boolean, asr?: boolean, real?: { anthropic: string } | null }} [o]
  * @returns {Promise<{ testville?: string, chat: string }>} the trips' ids
  */
@@ -185,7 +186,14 @@ export async function setUp(page, key, log, { standIn, card = false, classic = f
       if (koeChat) await addToRole(page, 'Koe · Chat', 'Gemini 3.5 Flash Lite');
       await addVoiceStandIn(page, standIn);
       if (asr) await addTranscription(page, standIn);
-      log(`    providers: Kokoro on a stand-in, ${koeChat ? 'Koe on Gemini 3.5 Flash Lite (Koe · Chat)' : 'no Koe'}, the gate on Gemini 3.5 Flash Lite, speech in ${asr ? "on the user's server (through 127.0.0.1)" : 'as annai sets it (send audio, then phone dictation)'}, speech out on a stand-in voice`);
+      else {
+        for (const name of ['Gemini 3.5 Transcribe', 'Gemini 3.5 Flash Lite (transcription)']) {
+          const out = page.getByRole('button', { name: `Remove ${name} from speech-in`, exact: true });
+          await out.click();
+          await out.waitFor({ state: 'detached' });
+        }
+      }
+      log(`    providers: Kokoro on a stand-in, ${koeChat ? 'Koe on Gemini 3.5 Flash Lite (Koe · Chat)' : 'no Koe'}, the gate on Gemini 3.5 Flash Lite, speech in ${asr ? "on the user's server (through 127.0.0.1)" : 'as annai starts it (send audio, then phone dictation; no transcription model)'}, speech out on a stand-in voice`);
     } else {
       const live = page.getByRole('region', { name: 'Live voice', exact: true }).getByLabel('Use Live voice');
       await live.check();
@@ -543,6 +551,12 @@ export async function runScenario(browser, name, sc, env) {
           log(`    + ${(((at || Date.now()) - opened) / 1000).toFixed(1)} s  the question ${kind === 'ended' ? 'is said' : 'begins'}`);
         }
         await wait(ms);
+      } else if ('type' in step) {
+        // A typed line, in the box under the conversation (as the e2e's read-trip types one).
+        await page.getByRole('button', { name: 'Type', exact: true }).click();
+        await page.getByLabel('Message to Shiori').fill(step.type);
+        await page.getByRole('button', { name: 'Send', exact: true }).click();
+        log(`    + ${((Date.now() - opened) / 1000).toFixed(1)} s  types "${step.type}"`);
       } else if ('shiori' in step) {
         // A tap on Shiori: classic voice listens for a window at a time, and asleep she hears nothing until tapped.
         await page.getByRole('button', { name: 'Shiori' }).click({ timeout: 8000 }).catch(() => notes.push('no Shiori button to tap'));

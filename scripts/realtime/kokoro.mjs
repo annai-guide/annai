@@ -118,8 +118,8 @@ export async function startKokoro({ delayMs = 1500, port = 0, askClip, asr } = {
         log.push({ at: Date.now(), kind: result.denied ? 'read_trip denied' : 'read_trip read', text: result.text.slice(0, 160) });
         return void setTimeout(() => { if (!res.destroyed) res.writeHead(200, { ...cors, 'content-type': 'text/event-stream' }).end(toolReply([toUser(said), { name: 'sleep', input: {} }])); }, 300);
       }
-      // Only a question put to her (Koe's ask, or the user's own line in classic voice) that names Testville: what Koe says aloud afterwards may name it too.
-      if (tripId && /Testville/.test(last) && /\[Koe asks\]|\[heard\]|Koe asks:|The user wrote/.test(last) && !/"tool_result"/.test(last)) {
+      // Only a question put to her (Koe's ask, the user's own line in classic voice, or a typed one) that names Testville: what Koe says aloud afterwards may name it too.
+      if (tripId && /Testville/.test(last) && /\[Koe asks\]|\[heard\]|Koe asks:|The user wrote|\[the user typed\]/.test(last) && !/"tool_result"/.test(last)) {
         log.push({ at: Date.now(), kind: 'read_trip asked', text: last.slice(0, 160) });
         return void setTimeout(() => { if (!res.destroyed) res.writeHead(200, { ...cors, 'content-type': 'text/event-stream' }).end(toolReply([{ name: 'read_trip', input: { trip: tripId } }])); }, 300);
       }
