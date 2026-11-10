@@ -29,7 +29,7 @@
 **This plan's calls**
 - "Trips other people shared always ask": the Always setting doesn't cover them, and their card has no Always. A once-per-chat Allow still lasts the chat.
 - A spoken yes grants Allow only, never Always.
-- The heard line counts dismissed or not: the word list is the check, and the user accepted "a passenger or song could grant, read-only".
+- The heard line counts dismissed or not: the word list is the check, and the user accepted "a passenger or song could grant, read-only". Fix pass 2: with Koe talking, a kept line in the same settle outranks one set aside, so the user's "No." then a song's "yes" is no.
 - The window is 20 s from the question ending. A typed "yes" grants nothing: `ui.shiori.send` shares that path, so a plugin could write it. She is told to ask for a tap.
 - "The last few conversations" is 5, and only in an undated conversation's snapshot.
 - `imported` is stamped for archive kind `trip` only, and kept through an "everything" restore.
@@ -40,11 +40,11 @@
 |---|---|---|---|
 | Grant | conversation log, `trip.grant` | `{ trip, how: 'tap' \| 'voice', always?: true }`, actor `user` | not in `SHOWN`, not `SAID`: ignored |
 | Read | conversation log, `trip.read` | `{ trip, title, path?, query? }`, actor `system` | ignored, listed by Trace |
-| Card | conversation log, `out.ask` | today's, plus `own: true` | shown as today's card |
+| Card | conversation log, `out.ask` | today's, plus `own: true` and `tap` (annai's random id for the card, what a tap answers; fix pass 1) | shown as today's card; a tap there is an ordinary line |
 | Imported | scope record | `imported: true` | kept by spreads, ignored |
 | Always | app settings | `readMyTrips: boolean` | ignored; confirm `sys:settings` isn't closed by a schema |
 
-Restored trips get new ids, so a grant's `trip` matches nothing and she asks again.
+A grant counts only when it was written after the conversation's last `import` entry. An imported conversation gets a new id, but the trips its log names keep theirs (every Share names its trip's id), so a grant it brought is no grant, and she asks again.
 
 ## Review Focus
 
@@ -65,7 +65,7 @@ Restored trips get new ids, so a grant's `trip` matches nothing and she asks aga
 `list_trips` changes here, where she first needs it: dated trips and the 30 newest chats, read from the record (no `/trip.json` read per row), as TSV `id, title, start, end, places` with places blank for a chat.
 
 - [ ] Write failing tests for each line of Review Focus 3 and 4, for `list_trips` with 500 chats, and that `reach.js`'s behaviour didn't change: `read` of `/trip/…` still reaches only the open trip.
-- [ ] Implement, with the grant check from Task 2 stubbed to allowed. Read through `ws`, text only. Refusal words: `/* en */ 'That file is a photo or a PDF, which read_trip doesn\'t open. Offer to move to that trip to look at it.'`
+- [ ] Implement, with the grant check from Task 2 stubbed to allowed. Read through `ws`, text only. Refusal words, one sentence for every file it doesn't open (fix pass 1): `/* en */ "read_trip opens only text and JSON files, not photos, PDFs or other kinds. Offer to move to that trip to look at it."`
 - [ ] Run, commit `read_trip: another trip's text and conversation, read-only`.
 
 ### Task 2: The gate
@@ -73,8 +73,8 @@ Restored trips get new ids, so a grant's `trip` matches nothing and she asks aga
 **Files:** Modify `src/core/agent/loop.js`, `src/core/agent/halves.js`, `src/core/agent/trip-tools.js`, `src/core/settings` readers, `src/core/archive.js:779`; create `src/core/agent/spoken-yes.js`; test `test/unit/read-trip.test.js`, `test/unit/spoken-yes.test.js`, `test/unit/halves*.test.js`.
 
 **Interfaces:**
-- `Agent.confirm(call, { question: string, options: string[], yes?: (heard: string) => string | null }) -> Promise<{ chosen?: string, how?: 'tap' | 'voice', stopped?: boolean }>`, on the loop: logs the `out.ask` with `own: true`, says the question aloud with voice on through `remind`'s `aloud` path (annai's voice, never hers), waits with `#waitFor(call.id, 'ask', 0)`, and takes a heard line for 20 s. Classic voice hears through `#listenFor`, as `#askAloud` does. In a Koe session `Halves.#koeLogged` hands each `heard` and `heard.text` to the new `kokoro.confirmHeard(text)`, which resolves the wait only if `yes(text)` says so inside the window.
-- `spokenYes(text: string) -> boolean`: NFKC, lower case, punctuation and spaces out, then an exact match in one set. No substring, no model.
+- `Agent.confirm(call, { question: string, options: string[], yes?: (heard: string) => string | null }) -> Promise<{ chosen?: string, how?: 'tap' | 'voice', stopped?: boolean }>`, on the loop: logs the `out.ask` with `own: true`, says the question aloud with voice on through `remind`'s `aloud` path (annai's voice, never hers), waits with `#waitFor(call.id, 'ask', 0)`, and takes a heard line for 20 s. Classic voice hears through `#listenFor`, as `#askAloud` does. In a Koe session `Halves.#koeLogged` hands each `heard` and `heard.text` to the new `kokoro.confirmHeard(text)`, which resolves the wait with a yes only inside the window. Fix pass 1, one rule for both voice modes: a heard line kept as the user's that is no yes ends the card unanswered at any time (classic voice hears only in the card's 20 s), as typing does, and fix pass 2 adds one heard in classic voice while she thought, before the card went up, as a queued typed line; one set aside as chatter (classic voice: by the quick gate, as a spoken `ask`'s) leaves it listening. Fix pass 2, with Koe talking, and fix pass 3, in classic voice too (`#settleAsk`, one judge): one settle per card (3 s, `STALL_MIN_MS`), which each new or revised kept line (classic voice: each kept segment, once written down and past the gate) starts again and chatter set aside doesn't, while a line not judged yet and, in classic voice, speech going on hold it; then the newest kept line decides ("Yes." then "No, wait." is no), else a yes set aside, and the window counts from when a line was heard.
+- `spokenYes(text: string) -> boolean`: NFKC, lower case, punctuation and spaces out, then an exact match in one set. No substring, no model. A line that ends in a question mark is no yes (fix pass 1: "はい？" and "Yes?" say "pardon?").
 
 ```js
 const YES = ['yes', 'yeah', 'yep', 'sure', 'ok', 'okay', 'allow', 'allowit', 'goahead', 'yesplease',

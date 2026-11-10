@@ -29,7 +29,7 @@ import { NOT_TRANSCRIBED } from '../../core/voice/resolve.js';
 
 /** How long a heard line waits for more of its words before it is announced, once (Gemini revises them as it hears). */
 const HEARD_MS = 600;
-const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded', 'tool.result', 'wake', 'compaction', 'error', 'paused', 'reminder', 'note', 'halves', 'handover.moved', 'handover.undo'];
+const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded', 'tool.result', 'wake', 'compaction', 'error', 'paused', 'reminder', 'note', 'halves', 'handover.moved', 'handover.undo', 'trip.read'];
 /** Wakes that are lines of their own: the user's, typed or heard, and what the halves tell each other. */
 const NOT_WOKE = ['user', 'choice', 'heard', 'note', 'cue', 'halves'];
 /** Where a message puts a line's words, a node of their own: its translation places them where its language does (around). */
@@ -46,14 +46,14 @@ const around = (message, node) => {
  * A card with nothing to read says what it is. Nothing for what you typed or the halves' notes; any other line as written.
  * @param {string} type the event's @param {string} kind a plugin's kind of card, by the name its plugin gave it, else ''
  * @param {string} words the line's words without its label @param {string[]} [choices] buttons that answer it
- * @param {{ image?: unknown }} [card] the card, for one with no words
+ * @param {{ image?: unknown, own?: boolean }} [card] the card, for one with no words; own: a question that is annai's own (Agent.confirm)
  */
 export function announced(type, kind, words, choices = [], card = {}) {
   if (type === 'msg.user' || type === 'note' || type.startsWith('handover.')) return ['', '', ''];
   if (type !== 'out.speak' && type !== 'out.show' && type !== 'out.ask') return ['', words, ''];
   const said = words || (type === 'out.show' ? (card.image ? t`a photo` : t`a card`) : '');
   const pick = choices.length ? `${sentenceGap()}${t`Choices: ${listed(choices, 'plain')}.`}` : '';
-  const [before, , after] = around(type === 'out.ask' ? t`Shiori asks: ${WORDS}` : kind ? t`Shiori (${kind}): ${WORDS}` : t`Shiori: ${WORDS}`, '');
+  const [before, , after] = around(type === 'out.ask' ? (card.own ? t`annai asks: ${WORDS}` : t`Shiori asks: ${WORDS}`) : kind ? t`Shiori (${kind}): ${WORDS}` : t`Shiori: ${WORDS}`, '');
   return [before, said, `${after}${pick}`];
 }
 
@@ -443,9 +443,10 @@ export async function renderTalk(ctx, route) {
     }
     if (e.type === 'grounded') return groundedCard(d, texts, mine); // Google's words: by their script alone, not the language she answers in
     if (e.type === 'out.ask') {
-      const buttons = (Array.isArray(d.options) ? d.options : []).slice(0, 6).map((/** @type {string} */ o) => h('button', { ...hers(String(o)), class: 'btn', type: 'button', onclick: () => agent.answer(d.id, o) }, String(o)));
+      const buttons = (Array.isArray(d.options) ? d.options : []).slice(0, 6).map((/** @type {string} */ o) => h('button', { ...hers(String(o)), class: 'btn', type: 'button', onclick: () => agent.answer(d.tap ?? d.id, o) }, String(o)));
       const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: e.type, data: d }));
-      const node = h('li', { class: lineClass(line, 'shiori') }, h('span', { class: 'who', text: t`Shiori` }), h('p', { ...hers(String(d.question ?? '')), text: String(d.question ?? '') }), h('div', { class: 'acts' }, ...buttons), lineLabel(line));
+      // annai's own (Agent.confirm): the label says who asks.
+      const node = h('li', { class: lineClass(line, 'shiori') }, h('span', { class: 'who', text: d.own ? /* en */ 'annai' : t`Shiori` }), h('p', { ...hers(String(d.question ?? '')), text: String(d.question ?? '') }), h('div', { class: 'acts' }, ...buttons), lineLabel(line));
       asks.set(d.id, node);
       offered.set(d.id, (Array.isArray(d.options) ? d.options : []).map(String));
       return node;
@@ -482,6 +483,8 @@ export async function renderTalk(ctx, route) {
       if (d.handover === undo.handover) undo.done();
       return null;
     }
+    // Shiori read another trip (read_trip): a quiet line, by the name it had then.
+    if (e.type === 'trip.read') return h('li', { class: 'system-line', text: t`Shiori read ${scopeTitle({ id: String(d.trip), title: String(d.title ?? '') })}` });
     // Made from its type: the words stored with it are the card's English.
     if (e.type === 'paused') return h('li', { class: 'system-line', text: t`Shiori was in the middle of something. She picks it up when you come back.` });
     // "Start fresh" leaves a divider: everything above stays to read, search and recall; she no longer carries it in mind.
@@ -568,7 +571,7 @@ export async function renderTalk(ctx, route) {
             words = textOf(node, pick.length ? /* en */ '.who, .line-label, .card .acts button' : '.who, .line-label');
           }
           // Her words carry their language; annai's labels, errors and notes around and beside them do not.
-          const parts = announced(e.type, kind, words, pick, kind ? {} : e.data?.card ?? {});
+          const parts = announced(e.type, kind, words, pick, e.type === 'out.ask' ? { own: Boolean(e.data?.own) } : kind ? {} : e.data?.card ?? {});
           if (e.type === 'grounded') {
             const [title, text] = [node.querySelector('strong')?.textContent ?? '', node.querySelector('p')?.textContent ?? ''];
             const rest = words.replace(title, '').replace(text, '').trim();

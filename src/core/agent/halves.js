@@ -1,6 +1,6 @@
 import { Agent, GATHER, isTheirs, isForUser, checkCard, checkAsk, CAPS, capped, soundStuck } from './loop.js';
 import { TALK_TAG, KOE_TAG } from './log.js';
-import { asksOrNotes, quote, cardText, escapeTags, newNonce, koeLine, asideLabel, saidWithout, wrapNote, theirs } from './blocks.js';
+import { asksOrNotes, quote, cardText, escapeTags, newNonce, koeLine, asideLabel, saidWithout, wrapNote, theirs, conversationLines } from './blocks.js';
 import { linesOf } from './transcript.js';
 import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 import { systemText, nowBlock, takeSnapshot } from './context.js';
@@ -663,22 +663,8 @@ export class Halves {
     const scope = this.koe.scope;
     const fresh = (await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['compaction'], reverse: true }))).find((e) => e.data?.mode === 'fresh');
     const events = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: [...LINES, 'heard.text'], reverse: true, limit: 40, ...(fresh ? { after: fresh.seq } : {}) }));
-    /** @type {Map<string, string>} */
-    const later = new Map();
-    /** @type {string[]} */
-    const lines = [];
-    for (const e of events) {
-      const d = { ...e.data, ...(await storedTexts(this.store, e)) };
-      if (e.type === 'heard.text') later.set(d.of, later.get(d.of) ?? d.text);
-      const text = e.type === 'heard' ? later.get(d.id) ?? d.text : e.type === 'out.show' ? cardText(d.card) : e.type === 'out.ask' ? d.question : d.text;
-      if (e.type === 'heard.text' || !text || d.dismissed || lines.length >= 12) continue;
-      if (e.type === 'msg.user') {
-        lines.unshift(koeLine(d, text, { quoted: true }));
-        continue;
-      }
-      const who = e.type === 'heard' ? 'heard' : d.half === 'koe' ? /* en */ 'you said' : /* en */ 'said to the user';
-      lines.unshift(`[${who}] ${escapeTags(quote(text))}`);
-    }
+    const lines = (await conversationLines(this.store, events)).filter((l) => l.text).slice(-12).map(({ e, d, text }) => (e.type === 'msg.user' ? koeLine(d, text, { quoted: true })
+      : `[${e.type === 'heard' ? 'heard' : d.half === 'koe' ? /* en */ 'you said' : /* en */ 'said to the user'}] ${escapeTags(quote(text))}`));
     return lines.length ? /* en */ `The conversation so far:\n${lines.join('\n')}` : '';
   }
 
@@ -794,6 +780,9 @@ export class Halves {
       this.#notice({ tone: 'warn', title: t`Shiori answers as one half for now`, body: t`annai couldn't pass your message to Koe: ${String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)}` });
     });
   }
+
+  /** annai's own question for one of Kokoro's tools (Agent.confirm). @param {Parameters<Agent['confirm']>} a */
+  confirm(...a) { return this.kokoro.confirm(...a); }
 
   /** @param {string} callId @param {string} option */
   answer(callId, option) {
@@ -1165,6 +1154,7 @@ export class Halves {
    */
   async #koeLogged(e, r) {
     await this.kokoro.observe(e, r);
+    if (e.type === 'heard' || e.type === 'heard.text') this.kokoro.confirmHeard(e); // a spoken yes to annai's own question, Kokoro's
     const typed = e.type === 'msg.user' && e.data?.split;
     if (e.type.startsWith('out.')) this.#unsaid = []; // Koe reached the user: what it was told is passed on
     if (e.type === 'heard' && !e.data?.dismissed) this.#heardNow(false);

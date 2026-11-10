@@ -4,6 +4,7 @@
  */
 
 import { FILES_ONLY } from '../handover.js';
+import { storedTexts } from './log.js';
 
 /** The longest text Koe reads from one place (a guard). */
 export const MAX_TEXT = 100_000;
@@ -41,6 +42,18 @@ export function cardText(card) {
   const words = [c.title, c.text].filter((x) => typeof x === 'string' && x.trim()).join(': ');
   const out = words || JSON.stringify(c);
   return out.length > 300 ? `${out.slice(0, 300)}…` : out;
+}
+
+/**
+ * The conversation's lines among log entries, oldest first, none set aside, each with its words: a heard line's last written down. One reading for the
+ * gate, a live session's start and read_trip. @param {import('../types.js').Store} store @param {any[]} events @returns {Promise<{ e: any, d: any, text: any }[]>}
+ */
+export async function conversationLines(store, events) {
+  const all = [];
+  for (const e of [...events].sort((a, b) => a.seq - b.seq)) all.push({ e, d: { ...e.data, ...(await storedTexts(store, e)) } });
+  const later = new Map(all.filter((x) => x.e.type === 'heard.text').map((x) => [x.d.of, x.d.text]));
+  return all.filter(({ e, d }) => e.type !== 'heard.text' && !d.dismissed)
+    .map(({ e, d }) => ({ e, d, text: e.type === 'heard' ? later.get(d.id) ?? d.text : e.type === 'out.show' ? cardText(d.card) : e.type === 'out.ask' ? d.question : d.text }));
 }
 
 /** An ask in a line: the question and its options, quoted. @param {any} d */

@@ -1,6 +1,9 @@
 import { CORE, DEFAULT_PERSONALITY } from './instructions.js';
 import { editedInstructions } from './her-instructions.js';
-import { ME, DRAFT_TITLE } from '../scopes.js';
+import { ME, DRAFT_TITLE, listTrips } from '../scopes.js';
+import { phaseOf } from '../timeline.js';
+import { deviceZone } from '../time.js';
+import { quote } from './blocks.js';
 import { tsv } from '../tsv.js';
 import { sha256Hex } from '../hash.js';
 import { utf8 } from '../bytes.js';
@@ -15,8 +18,10 @@ import { lang, glossary } from '../l10n.js';
  * 3. the transcript, which only grows at the end;
  * 4. the now block, last, after the cache marker.
  * @typedef {{ trip: string | null, personalityName: string, personality: string, profile: string, memory: string,
- *   tripInfo: string, guessed?: boolean, tripMemory: string, skills: { name: string, description: string }[], languages?: string, edited?: Partial<Record<import('./her-instructions.js').InstructionId, string>> }} Snapshot
+ *   tripInfo: string, guessed?: boolean, tripMemory: string, skills: { name: string, description: string }[], languages?: string, edited?: Partial<Record<import('./her-instructions.js').InstructionId, string>>,
+ *   elsewhere?: string }} Snapshot
  *   languages: the languages section's words, from the languages setting; edited: the instructions the user changed (her-instructions.js);
+ *   elsewhere: for an undated one, what read_trip may mean (the happening trips, the latest others);
  *   guessed: the trip's name is annai's own first guess (a first line's words or a file's name, the system's write of trip.json, or the draft's placeholder), not one the user or she gave
  * @typedef {import('../llm/contract.js').Request} Request
  */
@@ -45,7 +50,22 @@ export async function takeSnapshot({ ws, registry, trip, personalityName, locale
     // Then the screens' names and a Distances choice.
     languages: [languagesText(languageSettings(app, locale)), screensText(lang(), glossary()), distancesText(app)].filter(Boolean).join(' '),
     edited: await editedInstructions(ws),
+    elsewhere: trip && !tripJson?.start ? await elsewhere(ws, trip) : '', // as systemText tells an undated one
   };
+}
+
+/** The longest name annai takes (start_trip, Start a trip, Details); a file's record can hold more. */
+const TITLE_MAX = 200;
+
+/** @param {import('../workspace.js').Workspace} ws @param {string} trip */
+async function elsewhere(ws, trip) {
+  const others = (await listTrips(ws.store)).active.filter((s) => s.id !== trip);
+  const happening = others.filter((s) => phaseOf(s, Date.now(), deviceZone()) === 'happening'); // as home's now line has them
+  // The spec's "last few": five (the plan's call), placed as home places a chat.
+  const latest = others.filter((s) => !happening.includes(s)).sort((a, b) => (b.talked ?? b.created) - (a.talked ?? a.created)).slice(0, 5);
+  const named = (/** @type {import('../types.js').ScopeRecord} */ s) => `${quote([...s.title].slice(0, TITLE_MAX).join(''))} (${s.id})`;
+  /* en */
+  return [happening.length ? `Happening now: ${happening.map(named).join('; ')}.` : '', latest.length ? `Their latest other conversations: ${latest.map(named).join('; ')}` : ''].filter(Boolean).join('\n');
 }
 
 /**
@@ -83,7 +103,7 @@ export function systemText(s, part = '') {
     /* en */ parts.push(`# This trip (/trip/trip.json)\n${s.tripInfo}`, s.tripMemory.trim() ? `${s.tripMemory.trim()}` : '# Trip memory\n(empty)');
     // From the snapshot, so it stays the same from turn to turn and the cached prefix holds.
     // Her name for it is only for a name annai guessed: one the user gave stays.
-    if (!datedInfo(s.tripInfo)) /* en */ parts.push(`# This conversation has no dates\n${s.guessed ? 'Its name is a first guess: patch /trip/trip.json when you know a better one. If it becomes a trip, patch its title and dates there.' : 'If it becomes a trip, patch /trip/trip.json with its dates.'}`);
+    if (!datedInfo(s.tripInfo)) /* en */ parts.push(`# This conversation has no dates\n${s.guessed ? 'Its name is a first guess: patch /trip/trip.json when you know a better one. If it becomes a trip, patch its title and dates there.' : 'If it becomes a trip, patch /trip/trip.json with its dates.'}\nIf this is about one of their trips, read it with read_trip first and answer here; if they want to carry on there, they can open it from Trips.${s.elsewhere ? `\n${s.elsewhere}` : ''}`);
   } else /* en */ parts.push('# No trip is open\n/trip/ is empty. The user can open a trip from Trips.');
   return parts.join('\n\n');
 }
@@ -97,18 +117,22 @@ function datedInfo(info) {
   }
 }
 
-/** The next plan items, as TSV rows: start, title, fixed, place. @param {import('../workspace.js').Workspace} ws @param {string | null} trip @param {number} now */
-export async function nextPlanItems(ws, trip, now, limit = 5) {
-  if (!trip) return [];
+/** A trip's plan items that have a start, soonest first. @param {import('../workspace.js').Workspace} ws @param {string} trip @returns {Promise<{ at: number, it: any }[]>} */
+export async function planItems(ws, trip) {
   const items = [];
   for (const f of await ws.list(trip, '/plan/')) {
     if (!f.path.endsWith('.json')) continue;
     const it = await ws.readJSON(trip, f.path).catch(() => null);
     const at = Date.parse(it?.start?.at ?? '');
-    if (Number.isFinite(at) && at >= now) items.push({ at, it });
+    if (Number.isFinite(at)) items.push({ at, it });
   }
-  items.sort((a, b) => a.at - b.at);
-  return items.slice(0, limit).map(({ it }) => [it.start.at, it.title, it.fixed ? 'yes' : 'no', it.place?.name ?? '']);
+  return items.sort((a, b) => a.at - b.at);
+}
+
+/** The next plan items, as TSV rows: start, title, fixed, place. @param {import('../workspace.js').Workspace} ws @param {string | null} trip @param {number} now */
+export async function nextPlanItems(ws, trip, now, limit = 5) {
+  if (!trip) return [];
+  return (await planItems(ws, trip)).filter((x) => x.at >= now).slice(0, limit).map(({ it }) => [it.start.at, it.title, it.fixed ? 'yes' : 'no', it.place?.name ?? '']);
 }
 
 /** @param {number} now @param {string} timeZone */
