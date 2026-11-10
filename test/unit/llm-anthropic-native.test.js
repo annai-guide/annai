@@ -101,9 +101,11 @@ const native = (/** @type {any[]} */ content, covers = 2) => ({ type: 'native', 
 
 test("build: a native's content in place of the parts it covers; two in one message (a paused turn); a kept now block as the tail was", () => {
   const paused = [{ type: 'thinking', thinking: '', signature: 'sig-p' }, { type: 'server_tool_use', id: 'srvtoolu_1', name: 'web_search', input: { q: 'x' } }];
+  // The continuation of a paused turn begins with the result of the search it left to run (the real API, 2026-11-10).
+  const continued = [{ type: 'web_search_tool_result', tool_use_id: 'srvtoolu_1', content: [] }, ...CONTENT];
   const s = spec({ request: { system: 'S', cacheTtl: '1h', tail: '<now>3</now>', messages: [
     { role: 'user', parts: [{ type: 'text', text: 'Hours?' }, { type: 'text', text: '<now>1</now>', now: true }] },
-    { role: 'assistant', parts: [native(paused, 1), { type: 'provider', block: paused[1], model: 'claude-sonnet-5-5' }, native(CONTENT, 3), { type: 'reasoning', text: 'Now the plan.' }, { type: 'text', text: 'Open daily till 10.' }, { type: 'tool_call', id: 'toolu_1', name: 'list', input: { path: '/trip/' } }] },
+    { role: 'assistant', parts: [native(paused, 1), { type: 'provider', block: paused[1], model: 'claude-sonnet-5-5' }, native(continued, 3), { type: 'reasoning', text: 'Now the plan.' }, { type: 'text', text: 'Open daily till 10.' }, { type: 'tool_call', id: 'toolu_1', name: 'list', input: { path: '/trip/' } }] },
     { role: 'user', parts: [{ type: 'tool_result', id: 'toolu_1', content: 'a.md' }, { type: 'text', text: '<now>2</now>', now: true }] },
     { role: 'assistant', parts: [native([{ type: 'thinking', thinking: '', signature: 'sig-3' }, { type: 'text', text: 'Done.' }], 1), { type: 'text', text: 'Done.' }] },
     { role: 'user', parts: [{ type: 'text', text: 'Thanks' }] },
@@ -112,7 +114,7 @@ test("build: a native's content in place of the parts it covers; two in one mess
   const ttl = { type: 'ephemeral', ttl: '1h' };
   assert.deepEqual(body.messages, [
     { role: 'user', content: [{ type: 'text', text: 'Hours?' }, { type: 'text', text: '<now>1</now>' }] },
-    { role: 'assistant', content: [...paused, ...CONTENT] },
+    { role: 'assistant', content: [...paused, ...continued] },
     { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_1', content: 'a.md' }, { type: 'text', text: '<now>2</now>' }] },
     { role: 'assistant', content: [{ type: 'thinking', thinking: '', signature: 'sig-3' }, { type: 'text', text: 'Done.' }] },
     { role: 'user', content: [{ type: 'text', text: 'Thanks', cache_control: ttl }, { type: 'text', text: '<now>3</now>' }] },
