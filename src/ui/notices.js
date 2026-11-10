@@ -20,10 +20,11 @@ export function createNotices() {
    * there are measured again when home shows.
    */
   const scrolls = () => el.classList.toggle('scrolls', el.scrollHeight > el.clientHeight + 1);
-  new ResizeObserver(scrolls).observe(el);
+  new ResizeObserver(() => { scrolls(); below(); }).observe(el);
   /**
    * A card (or its stack) that came below what is read in the box: a sign at the box's bottom edge (.below) until its title is in view there, or it goes
-   * (the user, "Defer a hint"). A screen reader hears it come (role=status). @type {HTMLElement | null}
+   * (the user, "Defer a hint"); looked at as the box scrolls or changes size (its cap is lifted on other screens). A screen reader hears it come
+   * (role=status). @type {HTMLElement | null}
    */
   let arrived = null;
   const below = () => {

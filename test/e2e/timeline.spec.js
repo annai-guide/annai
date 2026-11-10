@@ -1648,3 +1648,148 @@ test("a conversation stored as \"New conversation\" says it in the screens' lang
   await page.getByRole('button', { name: accented('Remove trip') }).click();
   await expect(page.getByRole('dialog', { name })).toBeVisible();
 });
+
+/** A trip's last backup, as a backup writes it: ago ms before now, and whether the trip changed since. @param {import('@playwright/test').Page} page @param {string} title @param {number} ago @param {boolean} [changed] */
+const backedUpAgo = (page, title, ago, changed = false) => page.evaluate(async ({ title, ago, changed }) => {
+  const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+  const store = await createIdbStore();
+  await store.tx(['scopes', 'events'], 'readwrite', async (/** @type {any} */ t) => {
+    const rec = (await t.listScopes()).find((/** @type {any} */ s) => s.title === title);
+    await t.putScope({ ...rec, backup: { at: Date.now() - ago, seq: (await t.lastSeq(rec.id)) - (changed ? 1 : 0) } });
+  });
+  store.close();
+}, { title, ago, changed });
+
+test("an export 46 days ago, or a trip backed up 400 days ago: home waits for their words' next change without a timer loop (setTimeout holds 24.8 days)", async ({ page }) => {
+  await page.addInitScript(() => {
+    const w = /** @type {any} */ (window);
+    w.overLong = 0;
+    const real = w.setTimeout.bind(w);
+    w.setTimeout = (/** @type {any} */ fn, /** @type {number} */ ms, /** @type {any[]} */ ...a) => { if (ms > 2 ** 31 - 1) w.overLong++; return real(fn, ms, ...a); };
+  });
+  await openApp(page, '#/settings');
+  await seed(page, { trips: { Oldtown: { from: -400, to: -398 } } });
+  await backedUpAgo(page, 'Oldtown', 400 * 86_400_000);
+  await page.evaluate(async () => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const { updateAppSettings } = await load('/src/core/settings.js');
+    const store = await createIdbStore();
+    await updateAppSettings(new Workspace(store), { lastExportAt: Date.now() - 46 * 86_400_000 });
+    store.close();
+  });
+  await page.goto('/#/settings');
+  await page.goto('/#/trips');
+  await expect(page.getByText('Last export 2 months ago.')).toBeVisible();
+  await expect(row(page, 'Oldtown')).toContainText('backed up last year');
+  await page.waitForTimeout(1000);
+  expect(await page.evaluate(() => /** @type {any} */ (window).overLong)).toBe(0); // before: about 120 a second, one after another
+});
+
+test("the phone's zone changes while annai is away (a flight): back at the front, home is drawn in the new zone", async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', "the zone of a page that runs is changed through Chromium's DevTools protocol");
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setTimezoneOverride', { timezoneId: 'Pacific/Honolulu' });
+  await openApp(page, '#/settings');
+  await seed(page, { chats: { Ramen: 30 } });
+  await page.goto('/#/trips');
+  const time = () => row(page, 'Ramen').locator('.sub').textContent();
+  const was = await time();
+  await cdp.send('Emulation.setTimezoneOverride', { timezoneId: 'Asia/Tokyo' }); // 19 hours ahead
+  await page.evaluate(() => {
+    for (const state of ['hidden', 'visible']) {
+      Object.defineProperty(document, 'visibilityState', { value: state, configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+    }
+  });
+  await expect.poll(time).not.toBe(was);
+});
+
+test("a card's \"backed up … ago\" above the rows in view takes another line as its words change: the rows the user sees stay where they were", async ({ page }) => {
+  const nine = new Date();
+  nine.setHours(9, 0, 0, 0);
+  await page.clock.install({ time: nine });
+  await openApp(page, '#/settings');
+  /** @type {Record<string, number>} */
+  const chats = {};
+  for (let i = 0; i < 24; i++) chats[`Chat ${i}`] = 60 * 24 * i + 5;
+  await seed(page, { chats, trips: { Testville: { from: -2, to: 5, items: { Museum: 300 } }, Laterton: { from: 3, to: 4 }, Farville: { from: 10, to: 12 }, Nexton: { from: 20, to: 22 }, Lastburg: { from: 30, to: 31 } } });
+  await backedUpAgo(page, 'Testville', 40_000, true); // "backed up just now, changed since"; "1 minute ago" in 20 s
+  await page.goto('/#/settings');
+  await page.goto('/#/trips');
+  await expect(row(page, 'Testville')).toContainText('backed up just now');
+  // A width where "1 minute ago" takes a line more on this card than "just now" (350 to 355 px, as measured).
+  let width = 0;
+  for (let w = 330; w <= 420 && !width; w++) {
+    await page.setViewportSize({ width: w, height: 740 });
+    if (await row(page, 'Testville').evaluate((card) => {
+      const sub = /** @type {HTMLElement} */ (card.querySelector('.trip-card-text > .sub'));
+      const kids = [...sub.childNodes]; // put back as they were: home keeps writing to its own node
+      const was = card.getBoundingClientRect().height;
+      sub.textContent = String(sub.textContent).replace('just now', '1 minute ago');
+      const grows = card.getBoundingClientRect().height > was;
+      sub.replaceChildren(...kids);
+      return grows;
+    })) width = w;
+  }
+  expect(width).toBeGreaterThan(0);
+  await page.setViewportSize({ width, height: 740 });
+  // Read on past Testville: it is above the top bar, the trips ahead in view.
+  await row(page, 'Testville').evaluate((el) => scrollBy(0, el.getBoundingClientRect().bottom - /** @type {Element} */ (document.querySelector('.topbar')).getBoundingClientRect().bottom + 20));
+  const topOf = () => row(page, 'Farville').evaluate((el) => Math.round(el.getBoundingClientRect().top));
+  const before = await topOf();
+  await page.clock.fastForward('00:25');
+  await expect(row(page, 'Testville')).toContainText('backed up 1 minute ago');
+  expect(Math.abs((await topOf()) - before)).toBeLessThanOrEqual(1); // before: 21 px down, under a finger about to tap
+});
+
+test("an automatic backup that ends while home shows: the card says so, not \"changed since\" from the one before", async ({ page }) => {
+  // The real shell with a real store, its backups a stand-in that says when one ends.
+  await page.route('**/probe.html', (r) => r.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: '<!doctype html><html><head><meta charset="utf-8"><title>probe</title></head><body></body></html>' }));
+  await page.goto('/probe.html#/trips');
+  await page.evaluate(async () => {
+    const at = (/** @type {string} */ p) => p; // an address the browser loads, not a module the checker follows
+    const w = /** @type {any} */ (window);
+    const { startShell } = await import(at('/src/ui/shell.js'));
+    const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+    const { Workspace } = await import(at('/src/core/workspace.js'));
+    const { createTrip } = await import(at('/src/core/scopes.js'));
+    const { dayIn, deviceZone } = await import(at('/src/core/time.js'));
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    const id = await createTrip(ws, { title: 'Testville', start: dayIn(Date.now() - 2 * 86_400_000, deviceZone()), end: dayIn(Date.now() + 5 * 86_400_000, deviceZone()) });
+    await store.tx(['scopes', 'events'], 'readwrite', async (/** @type {any} */ t) => {
+      const rec = await t.getScope(id);
+      await t.putScope({ ...rec, backup: { at: Date.now() - 50 * 60_000, seq: (await t.lastSeq(id)) - 1 } });
+    });
+    /** @type {Set<() => void>} */
+    const heard = new Set();
+    w.ran = async () => { // a backup of the trip ran and ended
+      await store.tx(['scopes', 'events'], 'readwrite', async (/** @type {any} */ t) => t.putScope({ ...(await t.getScope(id)), backup: { at: Date.now(), seq: await t.lastSeq(id) } }));
+      for (const fn of heard) fn();
+    };
+    const backups = { list: async () => [{ id: 'place', name: 'Test place', last: null }], progress: () => null, on: (/** @type {() => void} */ fn) => { heard.add(fn); return () => heard.delete(fn); } };
+    const registry = { entries: () => [], onChange: () => () => {}, fail: () => {}, succeeded: () => {}, isDisabled: () => false, clashes: () => [] };
+    const root = document.createElement('div');
+    document.body.replaceChildren(root);
+    startShell(root, { store, ws, registry, backups, plugins: { langOf: () => 'en' }, updates: { restart: async () => {}, waiting: false, plugins: async () => [] }, version: 'probe' });
+  });
+  const card = row(page, 'Testville');
+  await expect(card).toContainText('backed up 50 minutes ago, changed since');
+  await page.evaluate(() => /** @type {any} */ (window).ran());
+  await expect(card.locator('.sub').first()).toHaveText(/backed up just now$/); // before: "50 minutes ago, changed since" until midnight
+});
+
+for (const size of PHONES) {
+  test(`a card that came below an opened one, then the box's cap lifted on another screen: the sign goes, the card in view there (${size.join(' x ')})`, async ({ page }) => {
+    await openedLongCard(page, size);
+    await addBackup(page);
+    await expect(page.locator('.notices')).toHaveClass(/\bbelow\b/);
+    await page.evaluate(() => { location.hash = '#/settings'; });
+    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+    // Off home the box has no cap with a card open: it holds both whole, and nothing is below what it shows.
+    expect(await page.locator('.notices').evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1);
+    await expect(page.locator('.notices')).not.toHaveClass(/\bbelow\b/); // before: the sign stayed, pointing at Settings
+  });
+}
