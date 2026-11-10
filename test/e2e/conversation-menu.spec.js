@@ -34,11 +34,11 @@ test('the Conversation has a menu with Summarize now and Start fresh; Start fres
   try {
     await setUp(page, llm.origin);
     await say(page, 'Tell me about pelicans', 1);
-    const toggle = page.getByRole('button', { name: 'Tidy up the conversation', exact: true });
+    const toggle = page.getByRole('button', { name: 'Conversation menu', exact: true });
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await toggle.click();
     await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    const menu = page.getByRole('group', { name: 'Tidy up the conversation' });
+    const menu = page.getByRole('group', { name: 'Conversation menu' });
     await expect(menu.getByRole('button')).toHaveText(['Summarize now', 'Start fresh']);
     // Cancel changes nothing.
     await menu.getByRole('button', { name: 'Start fresh' }).click();
@@ -73,13 +73,13 @@ test('Summarize now: with too little said it says so; after a few exchanges it s
   try {
     await setUp(page, llm.origin);
     await say(page, 'First', 1);
-    await page.getByRole('button', { name: 'Tidy up the conversation', exact: true }).click();
+    await page.getByRole('button', { name: 'Conversation menu', exact: true }).click();
     await page.getByRole('button', { name: 'Summarize now' }).click();
     await expect(page.getByText('There is not enough yet to summarize.')).toBeVisible();
     await say(page, 'Second', 2);
     await say(page, 'Third', 3);
     await say(page, 'Fourth', 4);
-    await page.getByRole('button', { name: 'Tidy up the conversation', exact: true }).click();
+    await page.getByRole('button', { name: 'Conversation menu', exact: true }).click();
     await page.getByRole('button', { name: 'Summarize now' }).click();
     await expect(page.locator('.convo .system-line', { hasText: 'Earlier conversation summarized.' })).toBeVisible({ timeout: 20_000 });
     await expect(page.locator('.convo .you:not(.quiet) p')).toHaveText(['First', 'Second', 'Third', 'Fourth']);
@@ -96,12 +96,12 @@ test('Summarize now: with too little said it says so; after a few exchanges it s
 });
 
 // Fix pass 2, items 5, 7 and 8, and the menu's nits: the disclosure pattern, each action tied to what it does, focus kept, the divider named.
-test('Tidy up (⋯) is a disclosure whose buttons say what they do; Start fresh says it is working, keeps the focus on Tidy up when cancelled or done, and its divider is a list item that reads "Started fresh"', async ({ page }) => {
+test('the conversation menu (⋯) is a disclosure whose buttons say what they do; Start fresh says it is working, keeps the focus on the ⋯ when cancelled or done, and its divider is a list item that reads "Started fresh"', async ({ page }) => {
   const llm = await startModelServer({ '/b/v1/messages': [speak('Pelicans nest on the cliffs.')] });
   try {
     await setUp(page, llm.origin);
     await say(page, 'Tell me about pelicans', 1);
-    const toggle = page.getByRole('button', { name: 'Tidy up the conversation', exact: true });
+    const toggle = page.getByRole('button', { name: 'Conversation menu', exact: true });
     expect(await toggle.getAttribute('aria-haspopup')).toBeNull();
     await toggle.click();
     await expect(page.getByRole('button', { name: 'Summarize now' })).toHaveAccessibleDescription(/sums up/);
@@ -122,14 +122,14 @@ test('Tidy up (⋯) is a disclosure whose buttons say what they do; Start fresh 
     await expect(page.getByRole('listitem').filter({ hasText: 'Started fresh' })).toHaveCount(1);
     await expect(page.getByRole('separator')).toHaveCount(0);
     expect(await page.evaluate(() => /** @type {any} */ (window).busy)).toEqual(['Starting fresh…', 'Starting fresh…']);
-    await expect(page.getByRole('button', { name: 'Tidy up the conversation', exact: true })).toBeFocused();
-    await expect(page.getByRole('button', { name: 'Tidy up the conversation', exact: true })).not.toHaveAttribute('aria-busy', 'true');
+    await expect(page.getByRole('button', { name: 'Conversation menu', exact: true })).toBeFocused();
+    await expect(page.getByRole('button', { name: 'Conversation menu', exact: true })).not.toHaveAttribute('aria-busy', 'true');
     // Again at once: nothing has been said since, which it says, rather than that there is nothing at all.
-    await page.getByRole('button', { name: 'Tidy up the conversation', exact: true }).click();
+    await page.getByRole('button', { name: 'Conversation menu', exact: true }).click();
     await page.getByRole('button', { name: 'Start fresh' }).click();
     await page.getByRole('dialog', { name: 'Start fresh?' }).getByRole('button', { name: 'Start fresh' }).click();
     await expect(page.getByText('Already fresh: nothing has been said since.')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Tidy up the conversation', exact: true })).toBeFocused();
+    await expect(page.getByRole('button', { name: 'Conversation menu', exact: true })).toBeFocused();
   } finally {
     await llm.stop();
   }
@@ -138,8 +138,8 @@ test('Tidy up (⋯) is a disclosure whose buttons say what they do; Start fresh 
 test('the menu closes on Escape and on a tap elsewhere', async ({ page }) => {
   await openApp(page, '#/talk');
   await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
-  const toggle = page.getByRole('button', { name: 'Tidy up the conversation', exact: true });
-  const menu = page.getByRole('group', { name: 'Tidy up the conversation' });
+  const toggle = page.getByRole('button', { name: 'Conversation menu', exact: true });
+  const menu = page.getByRole('group', { name: 'Conversation menu' });
   await toggle.click();
   await expect(menu).toBeVisible();
   await page.keyboard.press('Escape');
@@ -172,7 +172,7 @@ test('the header: ← goes home, the name goes to Details, the ⋯ is there', as
   await goToHash(page, `#/trip/${id}/talk`);
   await expect(page.getByRole('heading', { level: 1, name: 'Conversation' })).toBeVisible(); // hidden, for stage 8
   const head = page.locator('.talk-head');
-  await expect(head.getByRole('button', { name: 'Tidy up the conversation', exact: true })).toBeVisible();
+  await expect(head.getByRole('button', { name: 'Conversation menu', exact: true })).toBeVisible();
   await head.getByRole('link', { name: 'Big Sur' }).click();
   await expect.poll(() => new URL(page.url()).hash).toBe(`#/trip/${id}`);
   await page.goBack();
