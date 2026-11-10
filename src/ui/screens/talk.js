@@ -29,7 +29,7 @@ import { NOT_TRANSCRIBED } from '../../core/voice/resolve.js';
 
 /** How long a heard line waits for more of its words before it is announced, once (Gemini revises them as it hears). */
 const HEARD_MS = 600;
-const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded', 'tool.result', 'wake', 'compaction', 'error', 'paused', 'reminder', 'note', 'halves', 'handover.moved', 'handover.undo'];
+const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded', 'tool.result', 'wake', 'compaction', 'error', 'paused', 'reminder', 'note', 'halves', 'handover.moved', 'handover.undo', 'trip.read'];
 /** Wakes that are lines of their own: the user's, typed or heard, and what the halves tell each other. */
 const NOT_WOKE = ['user', 'choice', 'heard', 'note', 'cue', 'halves'];
 /** Where a message puts a line's words, a node of their own: its translation places them where its language does (around). */
@@ -465,6 +465,8 @@ export async function renderTalk(ctx, route) {
       if (d.handover === undo.handover) undo.done();
       return null;
     }
+    // Shiori read another trip (read_trip): a quiet line, by the name it had then.
+    if (e.type === 'trip.read') return h('li', { class: 'system-line', text: t`Shiori read ${scopeTitle({ id: String(d.trip), title: String(d.title ?? '') })}` });
     // Made from its type: the words stored with it are the card's English.
     if (e.type === 'paused') return h('li', { class: 'system-line', text: t`Shiori was in the middle of something. She picks it up when you come back.` });
     // "Start fresh" leaves a divider: everything above stays to read, search and recall; she no longer carries it in mind.
