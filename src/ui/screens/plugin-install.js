@@ -11,6 +11,7 @@ import { NAMED } from '../../core/registry.js';
 import { readConfig, providerOf } from '../../core/llm/config.js';
 import { listTargets } from '../../core/backup-targets.js';
 import { kindNames } from '../../core/backup.js';
+import { comingNow, controllerReady } from '../../app/claim.js';
 
 /** The spec's own words for a package with code (§5.1). */
 export const FULL_ACCESS = t`This plugin gets full access to your trips and API keys.`;
@@ -45,6 +46,19 @@ export const keysRisk = (names) => (names.length ? t`It can read every key saved
 
 /** A plugin's code loads through the service worker (spec §5.3). */
 export const NO_SERVICE = t`Plugins load through annai's offline service, which isn't running yet. Reload annai and try again.`;
+/** The same while that service is still installing (claim.js): a reload wouldn't make it sooner. */
+export const GETTING_READY = t`Getting annai ready for offline use… This goes on by itself once it's ready.`;
+
+/** Before a plugin's code installs: annai's offline service on its way is waited for, a toast saying so; else a reload helps. @param {any} ctx */
+export async function serviceFirst(ctx) {
+  const sw = navigator.serviceWorker;
+  if (sw?.controller) return;
+  if (await comingNow(sw)) {
+    ctx.notices.toast(GETTING_READY);
+    if (await controllerReady(sw, 0)) return;
+  }
+  throw new Error(NO_SERVICE);
+}
 
 /** Items side by side with a semicolon, as this language writes one: for items that hold commas. @param {string[]} items */
 export const semicolons = (items) => (items.length ? items.reduce((a, b) => tc('semicolons')`${a}; ${b}`) : '');
@@ -313,9 +327,7 @@ async function installPending(ctx, buttons, { use = [], fresh = false }) {
   try {
     if (fresh) await ctx.plugins.forgetKept(pkg.id);
     // What it needs (annai's own, from its catalog) may be code too.
-    if ((pkg.code || pkg.requires?.length) && !navigator.serviceWorker?.controller) {
-      throw new Error(NO_SERVICE);
-    }
+    if (pkg.code || pkg.requires?.length) await serviceFirst(ctx);
     if (pkg.requires?.length) {
       // With what it requires, all or nothing, and started (spec §5.3).
       await installWith(ctx.plugins, p.files, p.from, { tap: true });

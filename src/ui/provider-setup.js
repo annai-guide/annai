@@ -6,7 +6,8 @@ import { setupOf } from '../core/llm/setup.js';
 import { descOrigins, addressShown } from '../core/llm/provider-desc.js';
 import { officialPlugins, makesProvider, pluginName, officialName } from '../core/llm/official.js';
 import { isPluginBug } from '../core/registry.js';
-import { NO_SERVICE } from './screens/plugin-install.js';
+import { NO_SERVICE, GETTING_READY } from './screens/plugin-install.js';
+import { comingNow } from '../app/claim.js';
 import { list, sentences } from './format.js';
 
 /**
@@ -166,9 +167,10 @@ export function featuredStart(ctx) {
   else {
     const wait = h('p', { class: 'sub' });
     slot.append(h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', disabled: true }, t`Getting the sign-in ready…`)), wait);
-    // Its plugin loads through the offline service: still none after a few seconds (or none in this browser), say so.
+    // Its plugin loads through the offline service: still none after a few seconds (or none in this browser), say so; one still installing
+    // (claim.js) is getting ready, and the sign-in comes by itself.
     const sw = globalThis.navigator?.serviceWorker;
-    if (!sw?.controller) setTimeout(() => { if (!sw?.controller) wait.textContent = NO_SERVICE; }, sw ? 3000 : 0);
+    if (!sw?.controller) setTimeout(async () => { if (!sw?.controller) wait.textContent = (await comingNow(sw)) ? GETTING_READY : NO_SERVICE; }, sw ? 3000 : 0);
     readyFeatured(ctx).then((f) => (f ? show(f) : section.remove()), (e) => {
       slot.replaceChildren();
       status.textContent = messageOf(e);

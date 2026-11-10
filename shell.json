@@ -1,5 +1,5 @@
 {
-  "build": "6a3b9687f469",
+  "build": "a27baafa9eb5",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -26,7 +26,7 @@
     "/skills/plan-a-trip/SKILL.md": "a64048ac57ba",
     "/skills/replanning/SKILL.md": "730751c952dd",
     "/src/app/boot.js": "58bba933ce37",
-    "/src/app/claim.js": "c5e1274bb492",
+    "/src/app/claim.js": "fc9e510c391d",
     "/src/app/main.js": "4b44ef963307",
     "/src/app/version.js": "07a31129e186",
     "/src/core/after/journey.js": "4e1443181825",
@@ -239,7 +239,7 @@
     "/src/ui/privacy.js": "c99b73d0421f",
     "/src/ui/plugin-cards.js": "e1f898788ff7",
     "/src/ui/plugin-pending.js": "d0de6d23ce7b",
-    "/src/ui/provider-setup.js": "95d00be62433",
+    "/src/ui/provider-setup.js": "6f2d272b63dc",
     "/src/ui/plugin-updates.js": "bbb5cc3cf0f7",
     "/src/ui/push.js": "5cd1775505bf",
     "/src/ui/resume.js": "1ffd3088ab7f",
@@ -247,7 +247,7 @@
     "/src/ui/save.js": "513ac16dd31a",
     "/src/ui/settings-form.js": "ac6299f98cf8",
     "/src/ui/screens/about.js": "0e66b672d8a1",
-    "/src/ui/screens/add.js": "53756dd00275",
+    "/src/ui/screens/add.js": "6d369b0c0548",
     "/src/ui/screens/backups.js": "cb4c5d840205",
     "/src/ui/screens/booking.js": "94aa34d8d5b8",
     "/src/ui/screens/drive.js": "630bc496b4e7",
@@ -262,7 +262,7 @@
     "/src/ui/screens/notifications.js": "f60250a3e468",
     "/src/ui/screens/now.js": "7200d78436c1",
     "/src/ui/screens/plan.js": "51f43c1d20e9",
-    "/src/ui/screens/plugin-install.js": "d978d8ecc033",
+    "/src/ui/screens/plugin-install.js": "e950e30118ce",
     "/src/ui/screens/plugin.js": "db6dce86872f",
     "/src/ui/screens/plugins.js": "5b9559133cf6",
     "/src/ui/screens/provider.js": "ed9889fe1617",
@@ -298,8 +298,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "aa0d9da7b298",
-    "/l10n/zh-Hans.json": "323461852c9b",
-    "/l10n/zh-Hant.json": "dff050383928"
+    "/l10n/ja.json": "182ac9686814",
+    "/l10n/zh-Hans.json": "968867904fad",
+    "/l10n/zh-Hant.json": "b7ee2a71ba4c"
   }
 }
