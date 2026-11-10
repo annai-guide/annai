@@ -432,3 +432,15 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** on a route where annai listens while she speaks (a car's hands-free, headphones) and her voice comes back into the microphone late, her own words can be written down as a heard line; if Koe keeps that line, annai's card ends unanswered ("Not read") with nobody having spoken, and the user is asked again or taps. It never grants: across 9 real-speech runs on the test's car route, no echo alone granted a read, and 4 cards ended this way. Measured only on the test's own loop (her output fed back 6 dB quieter and 400 ms late); no real car, speakerphone or headphones were measured.
 - **Why:** a line begun while she plays, or within 360 ms after (the half-duplex gate's own numbers: 300 ms echo tail plus 60 ms), counts as hers and neither arms nor ends the card; an echo 400 ms late outlasts that. The number was sized for a phone's own speaker.
 - **Revisit when:** the next version: measure the loop on a real car's hands-free and on headphones, then size the tail from it (or end the card only on a line that wasn't begun inside the measured loop).
+
+### Classic voice: a take-back said just after the 20 seconds isn't heard
+- **Kind:** deferred.
+- **What the user sees:** in classic voice (no live session), the microphone that listens for an answer to annai's card closes 20 seconds after the question. A "Yes" said in the last 3 of those seconds is still settling when it closes, so a "No, wait" said right after isn't recorded, and the trip is read. Live voice and a chat Koe keep hearing after the 20 seconds. Found by the final review (2026-11-10, run with the loop's clock); it needs a yes at the window's very end and a take-back within 3 seconds of it.
+- **Why:** the window's end closes the microphone at once, whether or not a yes is waiting; keeping it open until the yes settles would also hear a second "Yes" said after the window, which is outside it and would then drop the first: what that one should do has to be decided first.
+- **Revisit when:** the next version: the microphone stays open while a yes settles, and a line begun after the window can only take a yes back, never give one.
+
+### The avatar's eye highlight sometimes logs a console error
+- **Kind:** deferred.
+- **What the user sees:** nothing known. In 2 real-speech runs (2026-11-10) the browser's console logged an SVG error from the avatar's eye highlight (an ellipse given a negative radius); the screen and the run's outcome were right. Seen also in an earlier round; not reproduced on demand.
+- **Why:** not traced yet: the radius is computed from a value that can go below zero for a frame.
+- **Revisit when:** the next version: find the frame that computes it and clamp it at the source; the real-speech harness's no-errors check is the test.
