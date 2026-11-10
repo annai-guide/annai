@@ -19,6 +19,7 @@ import { storedTexts } from '../../core/agent/log.js';
 import { tripRows } from '../trip-rows.js';
 import { nowOf, isField } from '../today.js';
 import { realClock } from '../../core/live/clock.js';
+import { keepRows } from '../keep-rows.js';
 
 /** @typedef {import('../../core/timeline.js').Row} Row */
 /** Words saying how long ago (since): the node, its moment on the device's clock, its words at a moment. @typedef {{ node: Node, at: number, words: (now: number) => string }} Since */
@@ -121,7 +122,7 @@ function followClock(ctx, screen, o, places) {
     const now = Date.now();
     const changed = o.since.filter((s) => s.node.textContent !== s.words(now));
     // Words that take another line move what is under them: the rows in view stay where they were, as at a redraw (shell.js).
-    if (changed.length) keepRows(screen, () => { for (const s of changed) s.node.textContent = s.words(now); });
+    if (changed.length) keepRows(covered, screen, () => { for (const s of changed) s.node.textContent = s.words(now); });
     const change = Math.min(...o.since.map((s) => relChange(s.at, now)));
     if (change < Infinity) tick = real.set(words, change - now + 1000); // a second past, as the redraw's
   };
@@ -311,19 +312,6 @@ function clearOfBox(field) {
 
 /** Where the top bar and the notices box stuck under it end, on screen. */
 const covered = () => Math.max(...[...document.querySelectorAll('.topbar, .notices')].map((n) => n.getBoundingClientRect().bottom));
-
-/**
- * A change in place on home: the first row in view (not under the bar or the box, nor in a shut fold) stays where it was, as the shell keeps it at a
- * redraw. @param {HTMLElement} screen @param {() => void} change
- */
-function keepRows(screen, change) {
-  const under = covered();
-  const seen = [...screen.querySelectorAll('.rows a[href]')].find((a) => !a.closest('details:not([open])') && a.getBoundingClientRect().bottom > under);
-  const was = seen?.getBoundingClientRect().top ?? 0;
-  change();
-  const by = seen ? seen.getBoundingClientRect().top - was : 0;
-  if (by) scrollBy(0, by);
-}
 
 /** What went wrong with a trip's name or dates, in words, for Start a trip and Details. @param {any} err */
 export function explainTrip(err) {
