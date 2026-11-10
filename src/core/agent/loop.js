@@ -76,9 +76,9 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  *   what a turn's requests keep from its first step to its end (the keep-reasoning design §3): the system text (rebuilt only from a new snapshot,
  *   after housekeeping), the tools and provider tools, the reasoning level, the half's rule for its messages, and where the previous turn began
  * @typedef {{ id: string, kind: 'ask' | 'wait', resolve: (v: Got) => void, listening?: boolean, hold?: () => void, arm?: () => void, tool?: boolean,
- *   ask?: { yes: (heard: string) => string | null, open: boolean, ids: Set<string>, settle: Map<string, any> } }} Pending
+ *   ask?: { yes: (heard: string) => string | null, open: boolean, wake: string, heard: Map<string, { inside: boolean, kept: boolean }>, settle: Map<string, any> } }} Pending
  *   waiting for the user; listening: an answer may be spoken; hold and arm stop and start the silence limit; tool: the wait tool's;
- *   ask: annai's own question's (confirm): its word list, whether a heard line may answer it now, and the other half's lines heard meanwhile
+ *   ask: annai's own question's (confirm): its word list, whether a yes may answer it now, and the other half's lines heard meanwhile
  * @typedef {{ name: StateName, label: string, detail?: string }} State  label: the dock's words for it (LABELS); detail: what she is away doing (TIDYING, or a task's words)
  * @typedef {{ tone: 'warn' | 'info', title: string, body: string, actions?: { label: string, primary?: boolean, run: () => void | Promise<void> }[], key?: string, toast?: boolean }} Notice
  *   key: names a card a later turn takes down (the clear event, when that turn works): model, or silent:<its conversation>
@@ -866,8 +866,8 @@ export class Agent {
   /**
    * annai's own question for a tool (reading another trip, the timeline design): its card, annai's words and options, never a model's (RULES 9),
    * said with voice on as a reminder is. A tap on an option answers it, and so does a heard line, dismissed or not, that yes() takes for one, heard
-   * in the YES_S after the question ends. Anything else ends it unanswered, written as ask writes it: typing (a plugin can type), a late tap on another
-   * card, another heard line here (with Koe talking, heard lines are Koe's, and only a yes answers). A Stop ends it.
+   * in the YES_S after the question ends. A line set aside as chatter leaves it listening; anything else ends it unanswered, as ask does: typing
+   * (a plugin can type), a late tap on another card, any other heard line the user's (with Koe talking, Koe's heard lines). A Stop ends it.
    * @param {{ id: string, wake: string, signal?: AbortSignal }} call signal: the tool's; stopped before the card is up (a Stop as it was being drawn), it ends at once
    * @param {{ question: string, options: string[], yes?: (heard: string) => string | null }} o
    * @returns {Promise<{ chosen?: string, how?: 'tap' | 'voice', stopped?: boolean, said?: string, heard?: string[] }>} said, heard: the user's words instead, as a result gives them
@@ -876,14 +876,14 @@ export class Agent {
     if (call.signal?.aborted) return { stopped: true };
     await this.#log({ type: 'out.ask', actor: 'system', data: { id: call.id, wake: call.wake, question, options, own: true, by: null } });
     const queued = this.#queue.findIndex((w) => w.kind === 'user' && w.scope === this.scope);
-    /** @type {Got & { voiced?: string, inside?: boolean }} */
+    /** @type {Got} */
     const got = queued >= 0 ? typedGot(this.#queue.splice(queued, 1)[0]) : await new Promise((resolve) => {
       /** @type {any} */
       let timer;
       /** @type {NonNullable<Pending['ask']>} */
-      const ask = { yes, open: false, ids: new Set(), settle: new Map() };
+      const ask = { yes, open: false, wake: call.wake, heard: new Map(), settle: new Map() };
       /** @type {Pending} */
-      const p = { id: call.id, kind: 'ask', ask, resolve: (v) => { clearTimeout(timer); for (const x of ask.settle.values()) clearTimeout(x); resolve({ ...v, inside: ask.open }); } };
+      const p = { id: call.id, kind: 'ask', ask, resolve: (v) => { clearTimeout(timer); for (const x of ask.settle.values()) clearTimeout(x); resolve(v); } };
       // A Stop while the card was written found no wait to end: no wait is left behind to take the user's next line.
       if (call.signal?.aborted) return void p.resolve({ stopped: true });
       this.#pending = p;
@@ -909,21 +909,16 @@ export class Agent {
       });
     });
     if (got.stopped) return { stopped: true };
-    if (got.voiced) return { chosen: got.voiced, how: 'voice' }; // the other half's heard line, written already
     if (got.chosen !== undefined) {
       await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...this.#chose() }, texts: [['text', got.chosen]] });
       return { chosen: got.chosen, how: 'tap' };
     }
-    if (got.heard) {
-      // Words to check: dictation's, else written down now, by the speech-in list (no model judges them: the word list does).
-      const r = typeof got.heard.text === 'string' || !this.voice ? null : await this.voice.writeDown(got.heard.id, { scope: this.scope, wake: call.wake, hearer: await this.#hearer(this.#half.role) }).catch(() => null);
-      const words = r ? r.text : got.heard.text;
-      await this.#logHeard(r ? { ...got.heard, text: r.text } : got.heard, { wake: call.wake, answer: call.id });
-      if (r) this.voice?.memory.drop(got.heard.id, r.text);
-      const chosen = got.inside && typeof words === 'string' ? yes(words) : null;
-      /* en */
-      return chosen ? { chosen, how: 'voice' } : { said: 'The user said:', heard: [got.heard.id] };
-    }
+    if (got.heard) await this.#logHeard(got.heard, { wake: call.wake, answer: call.id, ...(got.gate ? { gate: got.gate } : {}) });
+    if (got.voiced) return { chosen: got.voiced, how: 'voice' };
+    /* en */
+    if (got.heard) return { said: 'The user said:', heard: [got.heard.id] };
+    /* en */
+    if (got.spoke) return { said: 'What the user said follows.' }; // the other half's line, in the log already: Kokoro hears all
     if (got.text === undefined) return { said: '' };
     const wrote = typedAs(got);
     await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...wrote.data }, texts: [['text', got.text]] });
@@ -931,24 +926,24 @@ export class Agent {
   }
 
   /**
-   * The other half heard something (Koe's heard and heard.text entries, Halves): a line heard while annai's own question listens answers it once
-   * yes() takes its words for an option, now or when they are written down. Anything else leaves the card waiting. @param {any} e
+   * The other half heard something while annai's own question waits (Koe's heard and heard.text entries, Halves), judged as confirm says once its
+   * words stop growing: "Yes," written first is no yes when "but not that one" follows. inside: heard while a yes may answer. @param {any} e
    */
   confirmHeard(e) {
     const p = this.#pending;
     const ask = p?.ask;
     if (!p || !ask) return;
     const id = e.type === 'heard' ? e.data?.id : e.data?.of;
-    if (e.type === 'heard' && ask.open) ask.ids.add(id);
-    if (!ask.ids.has(id) || typeof e.data?.text !== 'string') return;
-    // Judged once its words stop growing: "Yes," written first is no yes when "but not that one" follows.
+    if (e.type === 'heard') ask.heard.set(id, { inside: ask.open, kept: !e.data?.dismissed });
+    const line = ask.heard.get(id);
+    if (!line || typeof e.data?.text !== 'string') return;
     const text = e.data.text;
     clearTimeout(ask.settle.get(id));
     ask.settle.set(id, setTimeout(() => {
-      const chosen = ask.yes(text);
-      if (!chosen || this.#pending !== p) return;
+      const chosen = line.inside ? ask.yes(text) : null;
+      if ((!chosen && !line.kept) || this.#pending !== p) return;
       this.#pending = null;
-      p.resolve({ voiced: chosen });
+      p.resolve(chosen ? { voiced: chosen } : { spoke: id });
     }, SETTLE_S * this.secondMs));
   }
 
@@ -3142,8 +3137,20 @@ export class Agent {
     const tapped = this.#ear?.owner === 'tap';
     const p = this.#pending?.listening ? this.#pending : null;
     if (p) {
-      // annai's own question takes a heard line whoever it was for: its word list is the check (confirm).
-      const verdict = tapped || p.ask ? null : await this.#gate(h);
+      const ask = p.ask;
+      let voiced = null;
+      if (ask) {
+        // annai's own question (confirm): a yes by its word list, on words written down first (no model judges them), answers it whatever the gate
+        // thinks; until the line is judged, a tap still answers it.
+        const inside = ask.open;
+        const r = typeof h.text === 'string' || !this.voice ? null : await this.voice.writeDown(h.id, { scope: this.scope, wake: ask.wake, hearer: await this.#hearer(this.#half.role) }).catch(() => null);
+        if (r) {
+          h = { ...h, text: r.text };
+          this.voice?.memory.drop(h.id, r.text);
+        }
+        voiced = inside && typeof h.text === 'string' ? ask.yes(h.text) : null;
+      }
+      const verdict = tapped || voiced ? null : await this.#gate(h);
       if (this.#pending === p && verdict === 'chatter') {
         // Not for her: written at the turn's end, and she listens on, to the same deadline (the second-drive design): one such verdict must not close the microphone on the user.
         this.#chatter.push(h);
@@ -3155,7 +3162,7 @@ export class Agent {
         this.#pending = null;
         if (this.#ear) this.#ear.owner = 'turn';
         this.#setState('thinking');
-        p.resolve({ heard: h, ...(verdict ? { gate: verdict } : {}) });
+        p.resolve({ heard: h, ...(verdict ? { gate: verdict } : {}), ...(voiced ? { voiced } : {}) });
         return;
       }
     }
