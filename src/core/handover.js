@@ -201,17 +201,26 @@ async function moveBack(ws, scope, end, handover) {
       const x = (await log(to ?? from, path)).filter((y) => y.type !== e.type && y.data.moved && hop(to ?? from, y) === hop(s, e))[nth];
       if (x || (await t.getScope(to ?? from))) return x && { s: String(to ?? from), e: x };
       // A trip removed since took its log: the move into it, or on from it, is in another scope's, and only then is looked for there. A
-      // move into it is a delete (few in any log); a move on from it was written after this one left, in a scope changed since.
+      // move into it is a delete (few in any log), the last before this one; a move on from it, the first after it, in a scope changed since.
+      const on = e.type === 'file.delete';
+      /** @type {any} */ let near;
       for (const r of await t.listScopes()) {
-        if (e.type === 'file.delete' && r.updated < e.ts) continue;
-        const y = (await t.listEvents(r.id, { types: [e.type === 'file.delete' ? 'file.write' : 'file.delete'] })).find((y) => by(y) === by(e) && (y.data?.moved?.to ?? y.data?.moved?.from) === (to ?? from) && y.data.moved.path === path);
-        if (y) return { s: r.id, e: y };
+        if (on && r.updated < e.ts) continue;
+        for (const y of await t.listEvents(r.id, { types: [on ? 'file.write' : 'file.delete'] })) {
+          if (by(y) === by(e) && (y.data?.moved?.to ?? y.data?.moved?.from) === (to ?? from) && y.data.moved.path === path
+            && (on ? y.ts >= e.ts && !(near?.e.ts <= y.ts) : y.ts <= e.ts && !(near?.e.ts >= y.ts))) near = { s: r.id, e: y };
+        }
       }
+      return near;
     };
+    /** A walk stops at an arrival it passed: a clock set back can misorder a trip's passes. */
+    const seen = new Set();
+    const again = (/** @type {any} */ x) => seen.has(`${x.s}\n${x.e.seq}`) || !seen.add(`${x.s}\n${x.e.seq}`);
     // Back to the move that took it from where the hand-over found it: a place it came to by an earlier move of hers is not that.
     let a = end.type === 'file.write' ? { s: scope, e: end } : await other(scope, end);
     let d;
     while (a && (d = await other(a.s, a.e))) {
+      if (again(a)) return null;
       const came = (await log(d.s, d.e.data.path)).findLast((x) => x.seq < d.e.seq && x.type === 'file.write' && !x.data.old);
       if (!came?.data.moved || by(came) !== 'her') break;
       a = { s: d.s, e: came };
@@ -222,7 +231,9 @@ async function moveBack(ws, scope, end, handover) {
     const first = a.s; // where it first came for it
     // On to where it is now: anyone's write on the way but hers for it or this Undo's changed it.
     let changed = false;
+    seen.clear();
     for (let out; a; a = by(out) ? await other(a.s, out) : undefined) {
+      if (again(a)) return null;
       const after = (await log(a.s, a.e.data.path)).filter((x) => x.seq > a.e.seq);
       out = after.find((x) => x.type === 'file.delete' && x.data.moved);
       changed ||= after.some((x) => x.seq < (out?.seq ?? Infinity) && x.data.undo !== handover && !(x.actor === 'shiori' && x.data.handover === handover));
@@ -241,14 +252,15 @@ async function moveBack(ws, scope, end, handover) {
   if (found.changed) return { key, changed: true };
   const undo = { author: 'user', undo: handover };
   if (fresh === 'here') await ws.restore(at.s, at.path, origin.hash, undo);
-  if (at.s === origin.s) return { key, home: `${at.s}\n${at.path}` };
-  const path = await moveFile(ws, { scope: at.s, path: at.path }, origin.s, { ...undo, folder: origin.path.slice(0, origin.path.lastIndexOf('/') + 1), ...(origin.source ? { source: origin.source } : {}) });
+  // Back there already (a first tap cut off): only its version is left to put back.
+  const there = at.s === origin.s;
+  const path = there ? at.path : await moveFile(ws, { scope: at.s, path: at.path }, origin.s, { ...undo, folder: origin.path.slice(0, origin.path.lastIndexOf('/') + 1), ...(origin.source ? { source: origin.source } : {}) });
   if (fresh === 'home') await ws.restore(origin.s, path, origin.hash, undo);
   else if (fresh && fresh !== 'here') {
     const [bytes, entry] = [await blobBytes(ws.store, fresh, origin.hash, { quiet: true }), await ws.store.tx(['files'], 'readonly', (t) => t.getFile(origin.s, path))];
     if (bytes && entry) await ws.write(origin.s, path, bytes, { ...undo, type: entry.type, ...(entry.source ? { source: entry.source } : {}), ...(entry.meta ? { meta: entry.meta } : {}) });
   }
-  return { key, home: `${origin.s}\n${path}`, from: `${at.s}\n${at.path}` };
+  return { key, home: `${origin.s}\n${path}`, ...(there ? {} : { from: `${at.s}\n${at.path}` }) };
 }
 
 /**

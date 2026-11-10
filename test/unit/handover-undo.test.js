@@ -710,3 +710,87 @@ test("what she is told in each conversation: her writes it put back are counted 
   assert.match(await said(a), /: the files are back in "Anchorage"\./);
   assert.match(await said(b), /: 1 file put back as it was; the files are back in "Anchorage"\./, 'her booking there, and the file that left');
 });
+
+// Re-review of fix pass 1b.
+
+/** A device whose clock moves a second at each write (moves are tool calls, seconds apart), or by step, its scope list counted. */
+async function clocked(step = 1000) {
+  const store = createMemoryStore();
+  let lists = 0;
+  // A walk that never ends would starve the test's own timeout (the memory store answers at once): this turns it into a failure. A chain
+  // of five trips from either end looks through the scopes under 20 times; 200 is far past that.
+  const counted = { ...store, tx: (/** @type {any} */ names, /** @type {any} */ mode, /** @type {any} */ fn) => store.tx(names, mode, (t) => fn({ ...t,
+    listScopes: () => { if (++lists > 200) throw new Error('Undo walks without end'); return t.listScopes(); } })) };
+  let clock = 1_000_000;
+  const ws = new Workspace(/** @type {any} */ (counted), { schemaFor: makeSchemaFor({ list: (/** @type {string} */ k) => (k === 'schema' ? CORE_SCHEMAS : []) }, kindOf), now: () => (clock += step) });
+  await ensureBaseScopes(ws);
+  const a = await createTrip(ws, { title: 'Anchorage' });
+  await ws.write(a, '/files/flight.pdf', utf8('%PDF flight'), { author: 'user', type: 'application/pdf', handover: 'h-1' });
+  /** Her move for the hand-over, as open_trip logs it. @param {string} from @param {string} path @param {string} to */
+  const move = async (from, path, to) => {
+    await record(store, to, { type: 'msg.user', actor: 'user', data: { handed: [], handover: 'h-1', from }, texts: [['text', '(files)']] });
+    const there = await moveFile(ws, { scope: from, path }, to, { handover: 'h-1' });
+    await record(store, from, { type: 'handover.moved', actor: 'shiori', data: { handover: 'h-1', to, started: false, count: 1 } });
+    return there;
+  };
+  return { store, ws, a, move };
+}
+
+test('a file that passed a trip removed since twice: Undo ends, and puts it back from where it really is', async () => {
+  // A to B to A to B, then B removed: the file went with B, and Undo ends having nothing to bring back.
+  {
+    const { store, ws, a, move } = await clocked();
+    const b = await createTrip(ws, { title: 'Kyoto' });
+    let there = '/files/flight.pdf';
+    for (const [from, to] of [[a, b], [b, a], [a, b]]) there = await move(from, there, to);
+    await removeTrip(store, b);
+    const out = await undoEverywhere(ws, a, 'h-1', { remove: async (s) => removeTrip(store, s) });
+    assert.deepEqual([out.back, out.kept, (await ws.list(a, '/files/')).length], [[], 0, 0]);
+  }
+  // The same with a clock that stood still (as one set back can): the passes through B can't be told apart, and Undo still ends.
+  {
+    const { store, ws, a, move } = await clocked(0);
+    const b = await createTrip(ws, { title: 'Kyoto' });
+    let there = '/files/flight.pdf';
+    for (const [from, to] of [[a, b], [b, a], [a, b]]) there = await move(from, there, to);
+    await removeTrip(store, b);
+    assert.deepEqual((await undoEverywhere(ws, a, 'h-1', { remove: async (s) => removeTrip(store, s) })).back, []);
+  }
+  // A to B to C, back to B and on to D, then B removed: the file comes back from D to A.
+  {
+    const { store, ws, a, move } = await clocked();
+    const [b, c, d] = [await createTrip(ws, { title: 'Kyoto' }), await createTrip(ws, { title: 'Big Sur' }), await createTrip(ws, { title: 'Denali' })];
+    let there = '/files/flight.pdf';
+    for (const [from, to] of [[a, b], [b, c], [c, b], [b, d]]) there = await move(from, there, to);
+    await removeTrip(store, b);
+    const out = await undoEverywhere(ws, a, 'h-1', { remove: async (s) => removeTrip(store, s) });
+    assert.equal(await ws.readText(a, '/files/flight.pdf'), '%PDF flight');
+    assert.deepEqual([(await ws.list(c, '/files/')).length, (await ws.list(d, '/files/')).length, out.back], [0, 0, [{ id: a, title: 'Anchorage' }]]);
+  }
+});
+
+test('a first tap cut off once a waiting file she changed went back to wait, before its first version was written: the second tap writes it', async () => {
+  const { store, ws } = await kit();
+  await ws.write(SYS_WAITING, '/files/note.txt', utf8('temple at 9'), { author: 'user', type: 'text/plain' });
+  const started = await startedFrom(ws, store, ME, 'h-1', 'Testville');
+  const there = await moveFile(ws, { scope: SYS_WAITING, path: '/files/note.txt' }, started, { handover: 'h-1' });
+  await ws.write(started, there, utf8('temple at 10'), { author: 'shiori', type: 'text/plain', handover: 'h-1' });
+  const kyoto = await createTrip(ws, { title: 'Kyoto' });
+  await moveFile(ws, { scope: started, path: there }, kyoto, { handover: 'h-1' });
+  await record(store, started, { type: 'handover.moved', actor: 'shiori', data: { handover: 'h-1', to: kyoto, started: false, count: 1 } });
+  // The page goes as the first version is written back in Waiting (the move there done).
+  const write = ws.write.bind(ws);
+  ws.write = async (s, p, c, o) => {
+    if (s === SYS_WAITING && o.undo && !o.moved) {
+      ws.write = write;
+      throw new Error('cut off');
+    }
+    return write(s, p, c, o);
+  };
+  await assert.rejects(undoEverywhere(ws, ME, 'h-1', { remove: async (s) => removeTrip(store, s) }), /cut off/);
+  assert.equal(await ws.readText(SYS_WAITING, '/files/note.txt'), 'temple at 10');
+  const out = await undoEverywhere(ws, ME, 'h-1', { remove: async (s) => removeTrip(store, s) });
+  assert.deepEqual((await ws.list(SYS_WAITING, '/files/')).map((f) => f.path), ['/files/note.txt']);
+  assert.equal(await ws.readText(SYS_WAITING, '/files/note.txt'), 'temple at 9');
+  assert.deepEqual([out.removed, out.waiting], [['Testville'], true]);
+});
