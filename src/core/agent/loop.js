@@ -152,8 +152,10 @@ export const isForUser = (w) => w.kind === 'note' && w.from === 'kokoro' && !NOT
 const LISTEN_S = 8;
 /** The plan's call: room for a "yes" after a pause. */
 export const YES_S = 20;
-/** talk.js's HEARD_MS: a live line's first words come as Koe answers, the rest later. */
-const SETTLE_S = 0.6;
+/** When a streamed transcript has stopped growing, at least (review M3's rule): live.js ends a live turn on it, and annai's card judges a heard line on it. */
+export const STALL_MIN_MS = 3000;
+/** STALL_MIN_MS: a live line's last words can come seconds after its first. */
+const SETTLE_S = STALL_MIN_MS / 1000;
 /** The card when sound that worked stopped coming out (one name: a newer one replaces it, a tap takes it down). */
 export const soundStuck = () => ({ tone: /** @type {const} */ ('warn'), title: t`Tap the screen so Shiori can speak`, body: t`Her sound got stuck, and a tap brings it back. Her words are in the conversation.`, key: 'sound' });
 export const NOTE_UNSAID = /* en */ "Kokoro's note hasn't reached the user. Only what you say, show or ask reaches them; anything you write for yourself never does. Tell them what it adds, without changing what it claims; if you have already told them all of it, call already_told.";
