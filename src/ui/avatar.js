@@ -173,7 +173,9 @@ function eyes(gazes, first, still) {
     const from = shown;
     const start = performance.now();
     const step = (/** @type {number} */ now) => {
-      const k = Math.min(1, (now - start) / ms);
+      // A frame's time is when it began, which can be before this move was asked (a long task under load): read as no time passed, not as a
+      // move past its start, which overshot the target and gave the eyes' highlight a negative radius (an SVG error).
+      const k = Math.max(0, Math.min(1, (now - start) / ms));
       draw(shown = mix(from, target, k < 0.5 ? 2 * k * k : 1 - (2 - 2 * k) ** 2 / 2));
       if (k < 1) frame = requestAnimationFrame(step);
       else then?.();
