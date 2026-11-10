@@ -544,14 +544,14 @@ export async function runScenario(browser, name, sc, env) {
         log(`    + ${((Date.now() - opened) / 1000).toFixed(1)} s  taps Shiori`);
       } else if ('tap' in step) {
         if (step.afterHeard !== undefined) {
-          // Once annai has written down the line just said (Koe talking: its `heard` entry; classic voice, which writes the entry only when the card ends: the
-          // speech-to-text server's answer for the clip, as the stand-in saw it), and ms after.
+          // Once annai has the words of the line just said, where its card judges them (Koe talking: the session's transcript of it, which can come long
+          // before its `heard` entry; classic voice: the speech-to-text server's answer for the clip, as the stand-in saw it), and ms after.
           const end = Date.now() + 15_000;
           let heard = 0;
           while (Date.now() < end && !heard) {
             heard = classic
               ? (env.kokoro?.log.find((k) => k.kind === 'asr' && k.at + (k.ms ?? 0) >= lastAt)?.at ?? 0) + (env.kokoro?.log.find((k) => k.kind === 'asr' && k.at + (k.ms ?? 0) >= lastAt)?.ms ?? 0)
-              : (await eventsOf(page, ['heard'], lastAt - 200)).find((e) => e.at >= lastAt - 200)?.at ?? 0;
+              : (frames.find((f) => f.dir === 'in' && f.kind === 'heard' && f.at >= lastAt)?.at ?? 0);
             if (!heard) await wait(100);
           }
           if (!heard) notes.push('annai wrote nothing down within 15 s of the clip: tapped anyway');
