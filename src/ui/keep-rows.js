@@ -3,7 +3,7 @@ const rowsIn = (el) => [...el.querySelectorAll('.rows a[href]')].filter((a) => !
 
 /**
  * A change on home (a redraw, or words changed in place): the first row in view that is still shown stays where it was, whatever came or went above it, so a
- * finger's tap lands where it was aimed (html has `overflow-anchor: none`: annai keeps the screen in place itself). Not a row under the top bar or the
+ * finger's tap lands where it was aimed (no page scroll anchoring, base.css: annai keeps the screen in place itself). Not a row under the top bar or the
  * notices box stuck under it (base.css): one that came or went under those would move every row the user sees. A row is the same row by its address.
  * @param {() => number} under where the top bar and the box end, on screen
  * @param {Element} from the element whose rows are in view before @param {() => void} change @param {Element} [to] the element whose rows are in view after (default `from`)

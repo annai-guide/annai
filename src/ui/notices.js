@@ -80,9 +80,9 @@ export function createNotices() {
     const acts = /** @type {HTMLElement} */ (node.querySelector(':scope > .acts'));
     const focused = document.activeElement === more;
     // Measured from the start, the card is cut back to the box's quarter for a moment. The box keeps its height meanwhile, so the page under it doesn't
-    // rise and end sooner for that moment: the browsers would keep it (Chromium's scroll anchoring holds what it saw then, 72 px at 360 x 640 one trip
-    // ahead of the now line; WebKit leaves a page scrolled to its end scrolled back by the card's excess, 59 to 89 px at the phones' sizes). Its own
-    // scroll too: scrolled to its end, it is clamped by the excess, and held, its scroll anchoring doesn't give that back.
+    // rise and end sooner for that moment: the browsers would keep it (WebKit leaves a page scrolled to its end scrolled back by the card's excess, 59 to 89 px
+    // at the phones' sizes; Chromium's scroll anchoring held what it saw then, 72 px at 360 x 640 one trip ahead of the now line, until base.css turned the
+    // page's off). Its own scroll too: scrolled to its end, it is clamped by the excess, and held, its scroll anchoring doesn't give that back.
     const top = el.scrollTop;
     el.style.minHeight = `${el.getBoundingClientRect().height}px`;
     node.style.removeProperty('--lines');

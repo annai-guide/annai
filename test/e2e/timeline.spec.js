@@ -742,6 +742,24 @@ for (const [how, refit] of Object.entries(REFITS)) {
   }
 }
 
+// Chromium reads the page's scroll anchoring from body, html's being visible: with only html's `none`, it anchors the page to a box placed absolutely in
+// view (the "Open a file" input at home's foot) and keeps what it saw while the window was shorter (measured on ed966816: 33 and 102 px, WebKit 0).
+for (const long of [false, true]) {
+  test(`home at 430 x 932, its foot in view, ${long ? 'a long card' : 'a short card'} stuck; the window 300 px shorter and back: the rows don't move`, async ({ page }) => {
+    await page.setViewportSize({ width: 430, height: 932 });
+    await scrolledHome(page);
+    await page.evaluate((long) => /** @type {any} */ (window).__n.card(long ? { title: 'A long card', body: 'These are many words, and more of them. '.repeat(30), actions: [{ label: 'Go on', run() {} }] } : { title: 'Saved', body: 'One line.' }), long);
+    await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
+    await settled(page);
+    const before = await placeOf(page);
+    await page.setViewportSize({ width: 430, height: 632 });
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    await page.setViewportSize({ width: 430, height: 932 });
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    await rowsStayed(page, before);
+  });
+}
+
 for (const where of ['at the now line', 'at its end']) {
   test(`home ${where}, a short page, a folded stack whose title and buttons need more than the box's quarter stuck, then a resize: the rows don't move (320 x 568)`, async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 568 });
