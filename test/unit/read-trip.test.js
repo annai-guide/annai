@@ -537,3 +537,32 @@ test("imported: a trip's file stamps the trip it makes, and an everything restor
   for (const id of back) marks.set((await recordOf(next.store, id)).title, (await recordOf(next.store, id)).imported);
   assert.deepEqual([...marks.entries()].sort(), [['Lake week', undefined], ['Testville', true]]);
 });
+
+test("a grant an archive brought counts for nothing: a trip's file whose log says reading one of this phone's trips was allowed still gets annai's card", async (t) => {
+  useClock(t);
+  const { createMemoryStore } = await import('../fakes/store-memory.js');
+  const { Workspace } = await import('../../src/core/workspace.js');
+  const { ensureBaseScopes } = await import('../../src/core/scopes.js');
+  const { exportArchive, peekArchive, importArchive, PRESETS } = await import('../../src/core/archive.js');
+  // Another phone: a conversation whose log holds a grant for an id seen in a trip this user once shared (a Share names its trip's id).
+  const store = createMemoryStore();
+  const ws = new Workspace(store);
+  await ensureBaseScopes(ws);
+  const tips = await createTrip(ws, { title: 'Ramen tips' });
+  await record(store, tips, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'Read trip-testville for me.']] });
+  await record(store, tips, { type: 'trip.grant', actor: 'user', data: { trip: TV, how: 'tap' } });
+  const file = await exportArchive(store, { kind: 'trip', scopes: [tips], include: PRESETS.backup, app: 'test' });
+  const k = await gateKit([sleep]);
+  const [got] = (await importArchive(k.store, await peekArchive(new Uint8Array(await file.blob.arrayBuffer())))).trips;
+  await k.agent.open(got);
+  assert.equal((await grants(k, got)).length, 1, 'the entry came with the file, and stays in its log');
+  const base = { signal: new AbortController().signal, model: null, wake: 'w', author: 'shiori', scope: got, trip: got };
+  const tool = k.agent.kokoro.loopTools().find((/** @type {any} */ x) => x.name === 'read_trip');
+  const reading = tool.run({ trip: TV }, { ...base, id: 'c1' });
+  await until(() => k.asks.length === 1);
+  k.agent.answer(k.asks[0].data.id, 'Allow');
+  assert.match(words(await reading), /^From "Testville"/);
+  // The grant given here holds, after the import's entry.
+  assert.match(words(await tool.run({ trip: TV, path: '/notes/food.md' }, { ...base, id: 'c2' })), /Ramen at the corner/);
+  assert.equal(k.asks.length, 1);
+});

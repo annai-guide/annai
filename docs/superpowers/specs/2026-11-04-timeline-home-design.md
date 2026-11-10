@@ -77,7 +77,7 @@ The user, after the design's doubts about forgetting and the slow route: "with u
 - One new tool, Kokoro's only and not in `KOE_TOOLS`: `read_trip({ trip, path?, query? })`, read-only, for a trip's text and JSON files and its conversation. Photos and PDFs aren't read: `record` throws on a hash the scope doesn't reach, and she says so and offers to move. She writes only in the open conversation. `read`, `list`, `recall`, `resolvePath` and `reach.js` stay untouched, so the walls hold as they are. It's in `UNTIMED`.
 - Its `run` shows annai's own card, built from the scope's title with fixed options ("Read Kyoto in April?": Allow, Always for my trips, Not now), and logs a grant entry only on `got.chosen`. `ask` can't do this: it's model-authored, and no model text may grant (RULES 9). A late tap (`send` with `chose`) grants nothing. 
 - A spoken yes: annai's own strict word list on the heard line, inside the window after she asks, with no model involved.
-- Allow lasts for this conversation, stored in its log, so a reload keeps it; restored trips get new ids, so she asks again. "Always for my trips" is a setting, changeable in Settings.
+- Allow lasts for this conversation, stored in its log, so a reload keeps it; a grant an imported or restored log brought counts for nothing, so she asks again. "Always for my trips" is a setting, changeable in Settings.
 - Trips other people shared always ask. Nothing marks them today, so import stamps `imported: true` on the scope record.
 - Every read is in the Trace, and the screen shows a quiet line ("Shiori read Kyoto in April").
 - A new chat's snapshot names the happening trip and the recent conversations, so she knows what to ask for.
