@@ -168,6 +168,14 @@ const GATE_LINES = 6;
 export const FORCED_STEPS = 10;
 /** The most kept thinking and now blocks a turn's requests may carry in all, in characters (the keep-reasoning design §6): past it, the turn sends no more. */
 export const KEPT_SENT_MAX = 360 * 1024;
+/** A sleep in a reply whose call failed: the turn goes on, so the error is hers to act on (a malformed card ended a turn with nothing shown). */
+const AWAKE = /* en */ 'Not asleep: a call in this reply failed (its error is above), so your turn goes on.';
+/**
+ * Whether a call's result keeps her turn going past its reply's sleep: it failed, and it isn't a sleep or a note to the other half, whose
+ * failures have their own rules (an unsent tell_koe tells no one and is nudged; a tell_kokoro the user's Stop holds back stays held).
+ * @param {string} name @param {boolean} failed
+ */
+const breaks = (name, failed) => failed && !['sleep', 'tell_koe', 'tell_kokoro'].includes(name);
 /** Her turn for the user's own message ended with nothing said to them: she is asked once more (spec §7.1). */
 export const UNANSWERED = /* en */ "The user hasn't been answered. Only speak, show and ask reach them; anything else you write is your private notes, which they never see.";
 /** The words a Try again wakes her with. */
@@ -1971,6 +1979,8 @@ export class Agent {
     let failed = false;
     /** Calls of this turn sent with a tool call required while she hadn't reached the user. */
     let forced = 0;
+    /** Her turn went on past a sleep for a call that failed beside it: once a turn, so a reply that fails again ends it (a model repeating one can't loop). */
+    let woke = false;
     /** What the turn's requests keep from its first step (the keep-reasoning design §3). @type {Frozen | null} */
     let frozen = null;
     /** Claude's thinking still goes back this turn: one flag stops it, for a change, a refusal or the size (§5, §6). */
@@ -2154,19 +2164,25 @@ export class Agent {
         break;
       }
       const sleeping = calls.some((/** @type {any} */ c) => c.name === 'sleep');
-      if (sleeping) this.#facts.slept = true;
-      if (sleeping && calls.some((/** @type {any} */ c) => ['speak', 'show', 'ask'].includes(c.name))) this.#facts.closed = true; // sleep alone, or with a note told already, leaves the window open
       const ordered = [...calls.filter((/** @type {any} */ c) => c.name !== 'sleep'), ...calls.filter((/** @type {any} */ c) => c.name === 'sleep')];
       let stop = false;
       let endTurn = false;
+      /** A call of this reply failed: its sleep doesn't end the turn, once a turn, so she reads the error and has another step. */
+      let broke = false;
       /** This step's readings: two reads of one file in one reply read it once. @type {Map<string, Promise<import('./reading.js').Reading>>} */
       const reads = new Map();
       for (const [i, c] of ordered.entries()) {
         const more = Boolean(this.#half.listenLast) && ordered.slice(i + 1).some((/** @type {any} */ x) => x.name === 'tell_kokoro' || x.name === 'wait');
-        const output = await this.#runCall(c, tools, { wakeId, signal: abort.signal, model, sleeping, providerOff: via.off, more, last: i === ordered.length - 1, reads });
+        const awake = broke && !woke && c.name === 'sleep';
+        const output = await this.#runCall(c, tools, { wakeId, signal: abort.signal, model, sleeping, providerOff: via.off, more, last: i === ordered.length - 1, reads, awake });
+        if (breaks(c.name, Boolean(output.isError))) broke = true;
         if (output.endTurn) endTurn = this.#wentToSleep = true;
         if (stuck.see(c.name, c.input, output.content)) stop = true;
       }
+      const asleep = sleeping && !(broke && !woke);
+      if (sleeping && broke) woke = true;
+      if (asleep) this.#facts.slept = true;
+      if (asleep && calls.some((/** @type {any} */ c) => ['speak', 'show', 'ask'].includes(c.name))) this.#facts.closed = true; // sleep alone, or with a note told already, leaves the window open
       if (this.#reached !== before) this.#reachedTo = { scope: this.scope, to: context.to };
       // Koe has told the user what Kokoro's notes say already: they are settled, and annai doesn't show them.
       if (ordered.some((/** @type {any} */ c) => c.name === 'already_told')) notes = [];
@@ -2183,7 +2199,7 @@ export class Agent {
       }
       // A step that began owing the user and went on without reaching them: the cue comes now, not only when Koe ends, and two
       // steps more at most follow it before annai's backstop (a Koe that kept asking Kokoro was forced 25 times).
-      if (owing && !sleeping && !endTurn && !abort.signal.aborted && this.#half.voice()) {
+      if (owing && !asleep && !endTurn && !abort.signal.aborted && this.#half.voice()) {
         settle();
         if (owes() && !nudged) await cue();
         else if (owes() && ++after >= AFTER_CUE) {
@@ -2191,7 +2207,7 @@ export class Agent {
           break;
         }
       }
-      if (abort.signal.aborted || ((sleeping || endTurn) && !(await nudge()))) break;
+      if (abort.signal.aborted || ((asleep || endTurn) && !(await nudge()))) break;
       await this.#writeChatter(wakeId);
       const more = this.#take();
       settle();
@@ -2461,7 +2477,8 @@ export class Agent {
   /**
    * Runs one tool call and records it: tool.call, then tool.result with any photo or document it
    * returned kept as blobs the event names (spec §4.9).
-   * @param {any} c @param {LoopTool[]} tools @param {{ wakeId: string, signal: AbortSignal, model: any, sleeping: boolean, providerOff?: string[], more?: boolean, last?: boolean, live?: boolean, watched?: boolean, reads?: Map<string, Promise<import('./reading.js').Reading>> }} o
+   * @param {any} c @param {LoopTool[]} tools @param {{ wakeId: string, signal: AbortSignal, model: any, sleeping: boolean, providerOff?: string[], more?: boolean, last?: boolean, live?: boolean, watched?: boolean, reads?: Map<string, Promise<import('./reading.js').Reading>>, awake?: boolean }} o
+   *   awake: a sleep after a call of its reply failed, which doesn't run
    */
   async #runCall(c, tools, o) {
     const input = typeof c.input === 'object' && c.input !== null ? c.input : {};
@@ -2483,6 +2500,7 @@ export class Agent {
     else if (gated) output = { content: gated.content, ...(gated.isError ? { isError: true } : {}) };
     else if (!tool) output = { content: /* en */ `Error: there is no tool called ${c.name}, or it is switched off.`, isError: true };
     else if (typeof c.input !== 'object' || c.input === null) output = { content: /* en */ `Error: the input for ${c.name} wasn't valid JSON.`, isError: true };
+    else if (o.awake) output = { content: AWAKE };
     else {
       const scope = this.scope;
       const call = {
