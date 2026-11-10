@@ -4,7 +4,7 @@ import { readAppSettings } from '../settings.js';
 import { languageSettings, strayLanguage } from '../languages.js';
 import { AllFailedError, estimateTokens, candidates, chatCandidates, whyOf, whyWords, levelOf } from '../llm/fallback.js';
 import { ProviderError } from '../llm/contract.js';
-import { modelOf, providerOf, updateModel, KOE_CLASSIC } from '../llm/config.js';
+import { modelOf, providerOf, updateModel } from '../llm/config.js';
 import { NotFoundError } from '../workspace.js';
 import { fromBase64, toBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
@@ -996,15 +996,10 @@ export class Agent {
     if (x.kept !== undefined && line.kept !== x.kept) this.#askKept(p, line, x.kept);
   }
 
-  /**
-   * The other half's segment (a chat Koe's), written down for annai's card while it waits. "Send audio to the model" writes it down through
-   * Koe's role's model that takes audio, as Koe's own turn would: this half's model (Kokoro's) may take none. @param {Pending} p @param {AskLine} line
-   */
+  /** The other half's segment, written down for annai's card while it waits. @param {Pending} p @param {AskLine} line */
   async #askWriteDown(p, line) {
     const ask = /** @type {NonNullable<Pending['ask']>} */ (p.ask);
-    const cfg = await this.llm.config();
-    const hearer = chatCandidates(cfg, KOE_CLASSIC).find((/** @type {string} */ id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes('audio'));
-    const r = this.voice ? await this.voice.writeDown(line.id, { scope: ask.scope, wake: ask.wake, role: KOE_CLASSIC, ...(hearer ? { hearer } : {}) }).catch(() => null) : null;
+    const r = this.voice ? await this.voice.writeDown(line.id, { scope: ask.scope, wake: ask.wake, hearer: await this.#hearer(this.#half.role) }).catch(() => null) : null;
     if (r && this.#pending === p && line.text === undefined) this.#askWords(p, line, r.text);
   }
 
