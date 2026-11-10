@@ -665,3 +665,32 @@ test('a file in a trip she started whose trip of origin the user removed since: 
   assert.deepEqual([out.removed, out.waiting, out.back], [['Kyoto'], true, []]);
   assert.equal(await ws.readText(SYS_WAITING, '/files/flight.pdf'), '%PDF flight');
 });
+
+test("Undo looks through other scopes' logs only when a trip on a file's way is gone, and for the move on from it, only at scopes changed since", async () => {
+  for (const gone of [false, true]) {
+    const { store, ws: plain, trip: a } = await kit();
+    const before = [];
+    for (let i = 0; i < 20; i++) before.push(await createTrip(plain, { title: `Trip ${i}` }));
+    /** Which logs it reads: every scope listed, and whose writes. */
+    const reads = { lists: 0, writes: new Set() };
+    const counted = { ...store, tx: (/** @type {any} */ names, /** @type {any} */ mode, /** @type {any} */ fn) => store.tx(names, mode, (t) => fn({ ...t,
+      listScopes: () => { reads.lists++; return t.listScopes(); },
+      listEvents: (/** @type {string} */ s, /** @type {any} */ q) => { if (q?.types?.includes('file.write')) reads.writes.add(s); return t.listEvents(s, q); } })) };
+    const ws = new Workspace(/** @type {any} */ (counted), { schemaFor: makeSchemaFor({ list: (/** @type {string} */ k) => (k === 'schema' ? CORE_SCHEMAS : []) }, kindOf) });
+    const b = await createTrip(ws, { title: 'Kyoto' });
+    const c = await createTrip(ws, { title: 'Big Sur' });
+    let there = '/files/flight.pdf';
+    for (const [from, to] of [[a, b], [b, c]]) {
+      await record(store, to, { type: 'msg.user', actor: 'user', data: { handed: [], handover: 'h-1', from }, texts: [['text', '(files)']] });
+      there = await moveFile(ws, { scope: from, path: there }, to, { handover: 'h-1' });
+      await record(store, from, { type: 'handover.moved', actor: 'shiori', data: { handover: 'h-1', to, started: false, count: 1 } });
+    }
+    if (gone) await removeTrip(store, b);
+    reads.lists = 0;
+    reads.writes.clear();
+    await undoEverywhere(ws, a, 'h-1', { remove: async (s) => removeTrip(store, s) });
+    assert.equal(await ws.readText(a, '/files/flight.pdf'), '%PDF flight', `gone ${gone}`);
+    assert.equal(reads.lists > 0, gone, `gone ${gone}: looked through every scope`);
+    assert.deepEqual(before.filter((s) => reads.writes.has(s)), [], `gone ${gone}: read the writes of trips unchanged since`);
+  }
+});
