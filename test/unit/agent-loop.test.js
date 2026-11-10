@@ -765,7 +765,7 @@ test("a reply in which a call failed doesn't end her turn on its sleep: she read
   assert.deepEqual(k.notices, []);
 });
 
-test("a reply whose calls all worked ends her turn on its sleep, as ever; one that fails again ends it too: her turn goes on past a sleep once, so a model repeating a failing reply can't loop", async (t) => {
+test("a reply whose calls all worked ends her turn on its sleep, as ever; one that keeps failing ends it too: her turn goes on past a sleep twice at most, so a model repeating a failing reply can't loop", async (t) => {
   useClock(t);
   const k = await agentKit([[say('Hi.')]]);
   k.agent.send('Hi');
@@ -776,8 +776,8 @@ test("a reply whose calls all worked ends her turn on its sleep, as ever; one th
   const again = await agentKit([[bad]]);
   again.agent.send('Hi');
   await again.agent.idle();
-  assert.equal(again.requests.length, 2);
-  assert.deepEqual((await again.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'sleep').map((/** @type {any} */ e) => e.data.content.startsWith('Not asleep')), [true, false]);
+  assert.equal(again.requests.length, 3);
+  assert.deepEqual((await again.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'sleep').map((/** @type {any} */ e) => e.data.content.startsWith('Not asleep')), [true, true, false]);
 });
 
 test('with no steps-per-wake limit set, a long turn runs past 25 steps and reaches the user, with no step card', async (t) => {

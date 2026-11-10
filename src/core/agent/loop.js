@@ -170,6 +170,8 @@ export const FORCED_STEPS = 10;
 export const KEPT_SENT_MAX = 360 * 1024;
 /** A sleep in a reply whose call failed: the turn goes on, so the error is hers to act on (a malformed card ended a turn with nothing shown). */
 const AWAKE = /* en */ 'Not asleep: a call in this reply failed (its error is above), so your turn goes on.';
+/** How often a turn goes on past a sleep beside a failed call: a booking took Haiku two failed writes at most in the reruns (8 hand-overs). */
+const AWAKE_MAX = 2;
 /**
  * Whether a call's result keeps her turn going past its reply's sleep: it failed, and it isn't a sleep or a note to the other half, whose
  * failures have their own rules (an unsent tell_koe tells no one and is nudged; a tell_kokoro the user's Stop holds back stays held).
@@ -1983,8 +1985,8 @@ export class Agent {
     let failed = false;
     /** Calls of this turn sent with a tool call required while she hadn't reached the user. */
     let forced = 0;
-    /** Her turn went on past a sleep for a call that failed beside it: once a turn, so a reply that fails again ends it (a model repeating one can't loop). */
-    let woke = false;
+    /** How often her turn went on past a sleep beside a failed call: AWAKE_MAX at most, so a model repeating one can't loop. */
+    let woke = 0;
     /** What the turn's requests keep from its first step (the keep-reasoning design §3). @type {Frozen | null} */
     let frozen = null;
     /** Claude's thinking still goes back this turn: one flag stops it, for a change, a refusal or the size (§5, §6). */
@@ -2171,21 +2173,23 @@ export class Agent {
       const ordered = [...calls.filter((/** @type {any} */ c) => c.name !== 'sleep'), ...calls.filter((/** @type {any} */ c) => c.name === 'sleep')];
       let stop = false;
       let endTurn = false;
-      /** A call of this reply failed: its sleep doesn't end the turn, once a turn, so she reads the error and has another step. */
+      /** A call of this reply failed: its sleep doesn't end the turn (AWAKE_MAX a turn), so she reads the error and has another step. */
       let broke = false;
       /** This step's readings: two reads of one file in one reply read it once. @type {Map<string, Promise<import('./reading.js').Reading>>} */
       const reads = new Map();
       for (const [i, c] of ordered.entries()) {
         const more = Boolean(this.#half.listenLast) && ordered.slice(i + 1).some((/** @type {any} */ x) => x.name === 'tell_kokoro' || x.name === 'wait');
-        const awake = broke && !woke && c.name === 'sleep';
-        const unsent = broke && c.name === 'tell_koe';
+        const goesOn = broke && woke < AWAKE_MAX;
+        const awake = goesOn && c.name === 'sleep';
+        // Held only while her turn goes on: a held note her sleep then ended reached no one.
+        const unsent = broke && c.name === 'tell_koe' && (!sleeping || goesOn);
         const output = await this.#runCall(c, tools, { wakeId, signal: abort.signal, model, sleeping, providerOff: via.off, more, last: i === ordered.length - 1, reads, awake, unsent });
         if (breaks(c.name, Boolean(output.isError))) broke = true;
         if (output.endTurn) endTurn = this.#wentToSleep = true;
         if (stuck.see(c.name, c.input, output.content)) stop = true;
       }
-      const asleep = sleeping && !(broke && !woke);
-      if (sleeping && broke) woke = true;
+      const asleep = sleeping && !(broke && woke < AWAKE_MAX);
+      if (sleeping && broke) woke++;
       if (asleep) this.#facts.slept = true;
       if (asleep && calls.some((/** @type {any} */ c) => ['speak', 'show', 'ask'].includes(c.name))) this.#facts.closed = true; // sleep alone, or with a note told already, leaves the window open
       if (this.#reached !== before) this.#reachedTo = { scope: this.scope, to: context.to };
@@ -2807,7 +2811,7 @@ export class Agent {
           const got = await this.#waitFor(call.id, 'ask', 0);
           if (got.stopped) return { content: STOPPED, isError: true };
           /* en */
-          if (got.note) return `${got.note === 'koe' ? 'Koe' : 'Kokoro'}: see the note below. Your question stays up: a tap on it comes later, as their next line.`;
+          if (got.note) return `${got.note === 'koe' ? 'Koe' : 'Kokoro'}: see the note below. Your question is closed, its buttons too: ask it again if it still matters.`;
           if (got.chosen !== undefined) {
             await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...this.#chose() }, texts: [['text', got.chosen]] });
             return `The user chose: ${got.chosen}`;
