@@ -457,3 +457,9 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** with annai open in two tabs, a first line said in one tab spends the draft; the other tab still holds that conversation as its draft, so its next + opens it once, a conversation that already has the first tab's lines, instead of a new one. Traced by the final review of stage 4, not run.
 - **Why:** each tab's `Chats` keeps its own `ready` draft, and nothing tells it that another tab spent it.
 - **Revisit when:** the next version: `Chats` looks at the draft's flag again before + opens it, or a user reports it.
+
+### A move cut off halfway leaves the file in both trips
+- **Kind:** deferred.
+- **What the user sees:** if annai is closed in the few milliseconds between the two writes of a file's move (Shiori's, or Undo's moving it back), the file is in both trips. A second Undo then moves it again: "flight.pdf" and "flight (2).pdf".
+- **Why:** a move is two transactions, one per trip.
+- **Revisit when:** the next version: a move is one transaction (workspace.js), for Shiori's moves and Undo's alike. That is an API change, with its lessons entry.
