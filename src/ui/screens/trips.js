@@ -78,20 +78,20 @@ export async function renderTrips(ctx) {
  * passes. It draws itself again, in place, at the earliest of the moments they change (one timer: a Next item ends, a shown relative time changes its words,
  * or midnight, where a trip starts or ends and the day count moves; the 1 s is for a timer a hair early) and when annai comes back to the front, which a
  * phone's timers may have slept through. Only while it is the screen shown and its address, and never over the Start a trip form while a field of it
- * has focus or holds a name or dates: then it waits, and draws once the form is empty and left. Its folds and the place stay (the redraw is not a
- * move, and `fold` keeps what is open).
+ * has focus: then it waits, and draws once the field is left. What is typed in the form, its folds and the place stay (the redraw is not a
+ * move; `tripTyped` and `fold` keep what is typed and what is open).
  * @param {any} ctx @param {HTMLElement} screen @param {{ now: number, zone: string, due: number[] }} o
  */
 function followClock(ctx, screen, o) {
   const at = location.hash;
-  // What a redraw would lose: a field of the form with the focus (the keyboard would close), or a name or dates typed in it.
-  const typing = () => (screen.contains(document.activeElement) && isField(document.activeElement)) || [...screen.querySelectorAll('input')].some((i) => i.value);
+  // What a redraw would lose: the focus of a field of the form (the keyboard would close). A name or dates typed in it are drawn again (tripTyped).
+  const typing = () => screen.contains(document.activeElement) && isField(document.activeElement);
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let timer;
   const redraw = () => {
     clearTimeout(timer); // one wait at a time, whoever asked
     if (!screen.isConnected || location.hash !== at) return; // gone, or going: a redraw now would send a tap's move back
-    // Looked at again in half a second, as the shell's own redraw does: soon after the keyboard goes, and each look is a few reads of the form.
+    // Looked at again in half a second, as the shell's own redraw does: soon after the keyboard goes.
     if (typing()) timer = setTimeout(redraw, 500);
     else ctx.render();
   };
