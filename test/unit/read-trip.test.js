@@ -437,6 +437,11 @@ test("what she reads of a trip that came from a file names it so, never as the u
   await k.store.tx(['scopes'], 'readwrite', async (/** @type {any} */ x) => x.putScope({ ...(await x.getScope(TV)), imported: true }));
   await record(k.store, k.trip, { type: 'trip.grant', actor: 'user', data: { trip: TV, how: 'tap' } }); // allowed in this conversation
   assert.match(words(await run(k, 'read_trip', { trip: TV })), /^From "Testville" \(trip-testville\), a trip that came from a file \(maybe someone else's: don't speak of its lines as yours or the user's\), read-only: 2027-04-01/);
+  // Its lines are the file's people's, not the user's and hers: the local model read "The user: …" as the user's own question (real models).
+  const lines = words(await run(k, 'read_trip', { trip: TV })).split('\n');
+  assert.ok(lines.includes('The file\'s user: "Question 14 about Testville"') && lines.includes('The file\'s Shiori: "Answer 14: the museum opens at 22"'));
+  assert.ok(!lines.some((l) => /^(The user|Shiori)[ :]/.test(l)));
+  assert.match(words(await run(k, 'read_trip', { trip: TV, query: 'Answer 14' })), /\nThe file's Shiori: "Answer 14: the museum opens at 22"$/);
   const lake = await fixedTrip(k.ws, 'trip-lake', { title: 'Lake week', start: '2026-07-01', end: '2026-07-05' });
   await record(k.store, lake, { type: 'import', actor: 'user', data: { created: 0, app: 'annai', kind: 'trip' } });
   await record(k.store, k.trip, { type: 'trip.grant', actor: 'user', data: { trip: lake, how: 'tap' } });
