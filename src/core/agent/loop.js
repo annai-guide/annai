@@ -76,7 +76,7 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  *   what a turn's requests keep from its first step to its end (the keep-reasoning design §3): the system text (rebuilt only from a new snapshot,
  *   after housekeeping), the tools and provider tools, the reasoning level, the half's rule for its messages, and where the previous turn began
  * @typedef {{ id: string, kind: 'ask' | 'wait', resolve: (v: Got) => void, listening?: boolean, hold?: () => void, arm?: () => void, tool?: boolean,
- *   ask?: { yes: (heard: string) => string | null, open: boolean, ids: Set<string> } }} Pending
+ *   ask?: { yes: (heard: string) => string | null, open: boolean, ids: Set<string>, settle: Map<string, any> } }} Pending
  *   waiting for the user; listening: an answer may be spoken; hold and arm stop and start the silence limit; tool: the wait tool's;
  *   ask: annai's own question's (confirm): its word list, whether a heard line may answer it now, and the other half's lines heard meanwhile
  * @typedef {{ name: StateName, label: string, detail?: string }} State  label: the dock's words for it (LABELS); detail: what she is away doing (TIDYING, or a task's words)
@@ -153,6 +153,8 @@ export const isForUser = (w) => w.kind === 'note' && w.from === 'kokoro' && !NOT
 const LISTEN_S = 8;
 /** How long after annai's own question ends a heard line may answer it (confirm): the stage 5 plan's call, room for "yes" said after a pause. */
 export const YES_S = 20;
+/** How long the other half's heard line must keep its words before annai's word list judges them: talk.js's HEARD_MS, as long as the screen waits for more of a line's words (Gemini writes a line's first words as Koe answers, the rest later). */
+const SETTLE_S = 0.6;
 /** The card when sound that worked stopped coming out (one name: a newer one replaces it, a tap takes it down). */
 export const soundStuck = () => ({ tone: /** @type {const} */ ('warn'), title: t`Tap the screen so Shiori can speak`, body: t`Her sound got stuck, and a tap brings it back. Her words are in the conversation.`, key: 'sound' });
 export const NOTE_UNSAID = /* en */ "Kokoro's note hasn't reached the user. Only what you say, show or ask reaches them; anything you write for yourself never does. Tell them what it adds, without changing what it claims; if you have already told them all of it, call already_told.";
@@ -876,9 +878,10 @@ export class Agent {
     const got = queued >= 0 ? typedGot(this.#queue.splice(queued, 1)[0]) : await new Promise((resolve) => {
       /** @type {any} */
       let timer;
-      const ask = { yes, open: false, ids: new Set() };
+      /** @type {NonNullable<Pending['ask']>} */
+      const ask = { yes, open: false, ids: new Set(), settle: new Map() };
       /** @type {Pending} */
-      const p = { id: call.id, kind: 'ask', ask, resolve: (v) => { clearTimeout(timer); resolve({ ...v, inside: ask.open }); } };
+      const p = { id: call.id, kind: 'ask', ask, resolve: (v) => { clearTimeout(timer); for (const x of ask.settle.values()) clearTimeout(x); resolve({ ...v, inside: ask.open }); } };
       this.#pending = p;
       this.#setState('waiting');
       // As remind's aloud: said over a live session too (it holds back), or a user who isn't looking never learns a card waits.
@@ -933,10 +936,16 @@ export class Agent {
     if (!p || !ask) return;
     const id = e.type === 'heard' ? e.data?.id : e.data?.of;
     if (e.type === 'heard' && ask.open) ask.ids.add(id);
-    const chosen = ask.ids.has(id) && typeof e.data?.text === 'string' ? ask.yes(e.data.text) : null;
-    if (!chosen) return;
-    this.#pending = null;
-    p.resolve({ voiced: chosen });
+    if (!ask.ids.has(id) || typeof e.data?.text !== 'string') return;
+    // Judged once its words stop growing: "Yes," written first is no yes when "but not that one" follows.
+    const text = e.data.text;
+    clearTimeout(ask.settle.get(id));
+    ask.settle.set(id, setTimeout(() => {
+      const chosen = ask.yes(text);
+      if (!chosen || this.#pending !== p) return;
+      this.#pending = null;
+      p.resolve({ voiced: chosen });
+    }, SETTLE_S * this.secondMs));
   }
 
   /**
