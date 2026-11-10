@@ -200,10 +200,12 @@ async function moveBack(ws, scope, end, handover) {
       const nth = (await log(s, e.data.path)).filter((x) => x.type === e.type && x.data.moved && hop(s, x) === hop(s, e)).findIndex((x) => x.seq === e.seq);
       const x = (await log(to ?? from, path)).filter((y) => y.type !== e.type && y.data.moved && hop(to ?? from, y) === hop(s, e))[nth];
       if (x || (await t.getScope(to ?? from))) return x && { s: String(to ?? from), e: x };
-      // A trip removed since took its log: the move on from it, or into it, is in another scope's.
-      for (const { id } of await t.listScopes()) {
-        const y = (await t.listEvents(id, { types: [e.type === 'file.delete' ? 'file.write' : 'file.delete'] })).find((y) => by(y) === by(e) && (y.data?.moved?.to ?? y.data?.moved?.from) === (to ?? from) && y.data.moved.path === path);
-        if (y) return { s: id, e: y };
+      // A trip removed since took its log: the move into it, or on from it, is in another scope's, and only then is looked for there. A
+      // move into it is a delete (few in any log); a move on from it was written after this one left, in a scope changed since.
+      for (const r of await t.listScopes()) {
+        if (e.type === 'file.delete' && r.updated < e.ts) continue;
+        const y = (await t.listEvents(r.id, { types: [e.type === 'file.delete' ? 'file.write' : 'file.delete'] })).find((y) => by(y) === by(e) && (y.data?.moved?.to ?? y.data?.moved?.from) === (to ?? from) && y.data.moved.path === path);
+        if (y) return { s: r.id, e: y };
       }
     };
     // Back to the move that took it from where the hand-over found it: a place it came to by an earlier move of hers is not that.
