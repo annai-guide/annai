@@ -397,12 +397,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the user chose (2026-11-08, "Stay, next version") a line that stays in the conversation like the hand-over's, built in the next version; stage 4 ships the line as built.
 - **Revisit when:** the next version: make the dates line a conversation line at its place, like the hand-over's Undo.
 
-### Home's rows move at the first resize after a tall card lands
-- **Kind:** deferred.
-- **What the user sees:** on home, in Chromium, the first `resize` after a card that needs more than a quarter of the screen (`.grow`) has landed moves the rows once by the card's excess over the quarter. Measured again in the review's fix pass with a bare `resize` event and with real size changes: 72 px at 360 x 640 (the card's 232 px less the quarter, 160) with one trip ahead of the now line; no move at 320 x 568 or 393 x 659, with fourteen trips ahead, or in WebKit. In a Chrome tab the URL bar's first hide is such a resize. A phone turned on its side moves nothing (measured in both engines: the first row under the box stays 42 px under its edge before, during and after).
-- **Why:** cards are refit when the screen changes size, outside `keep()` in notices.js, which is what keeps the rows still when a card comes or goes; the box's height is the same before and after the refit, so `keep()` as it is wouldn't see it. Older than stage 4's sticky box. Not traced further.
-- **Revisit when:** the next version: find what the first refit changes (a diagnosis comes before a fix), and fix it where it starts.
-
 ### With a keyboard up, a field on home can sit under the stuck box
 - **Kind:** deferred.
 - **What the user sees:** not verified on a phone. A field of Start a trip focused on home (by a keyboard's Tab, or a screen reader) is scrolled clear of the top bar and the box stuck under it, its label too. But with a keyboard up (about 290 to 340 px), when the bar and a box that holds an opened card or two cards (up to half the room under the bar: 256 px at 320 x 568, 292 at 360 x 640, 302 at 393 x 659) take all the room above the keyboard, the field has nowhere to show, and the browser's own scrolling for the keyboard may put it back under the box.
