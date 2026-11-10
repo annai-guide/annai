@@ -415,7 +415,7 @@ test("with Koe talking, a yes Koe hears inside the 20 s after the card goes up a
     await until(() => k.asks.length === 1);
     await pause(at * k.agent.secondMs);
     await koeHeard(k, `h-${at}`, { text: 'Yes.' });
-    await pause(1);
+    await pause(k.agent.secondMs); // its words have stood still
     assert.equal((await grants(k, k.trip)).length, allowed ? 1 : 0, `at ${at} s`);
     if (allowed) {
       await k.agent.idle();
@@ -447,6 +447,23 @@ test("with Koe talking, a dismissed yes counts, and so do words written down aft
   await koeHeard(dismissed, 'h-1', { text: 'yes', dismissed: true, gate: 'chatter' });
   await dismissed.agent.idle();
   assert.equal((await grants(dismissed, dismissed.trip)).length, 1, 'the word list is the check, dismissed or not');
+});
+
+test('with Koe talking, a line is judged by its words once they stop growing: "Yes," then "Yes, but not that one" is no yes, and the card waits', async (t) => {
+  useClock(t);
+  const k = await gateKit(KOKORO, { koe: { type: KOE } });
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1);
+  // As live.js writes a line: its first words as Koe answers, the rest as heard.text.
+  await koeHeard(k, 'h-1', { text: 'Yes,' });
+  await k.agent.koe.log({ type: 'heard.text', actor: 'system', data: { of: 'h-1', text: 'Yes, but not that one, the Osaka trip.' } });
+  await pause(5 * k.agent.secondMs);
+  assert.equal((await grants(k, k.trip)).length, 0);
+  assert.equal(k.agent.kokoro.pendingId, k.asks[0].data.id, 'the card still waits');
+  // A yes whose words stand still allows it.
+  await koeHeard(k, 'h-2', { text: 'Yes.' });
+  await k.agent.idle();
+  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }]);
 });
 
 test('classic voice: annai says the question, listens, and a heard yes (written down by the speech-in list) allows it, whatever the quick gate thinks', async (t) => {
