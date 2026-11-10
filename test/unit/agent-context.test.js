@@ -278,6 +278,20 @@ test("an undated conversation's text names the trip happening now and the 5 late
   assert.doesNotMatch(systemText(await takeSnapshot({ ws, registry, trip: happening, personalityName: 'shiori' })), /Happening now|read_trip first|latest other/);
 });
 
+test("an undated conversation with one trip happening says \"today\", \"tomorrow\" and \"the plan\" mean that trip, the same on every turn; with two, it says nothing of it (real models, stage 5 finding 5)", async () => {
+  const { ws, registry } = await setup();
+  const { dayIn, deviceZone } = await import('../../src/core/time.js');
+  const today = /** @type {string} */ (dayIn(Date.now(), deviceZone()));
+  const testville = await createTrip(ws, { title: 'Testville', start: today, end: today });
+  const chat = await createTrip(ws, { title: "What's on tomorrow?" });
+  const take = () => takeSnapshot({ ws, registry, trip: chat, personalityName: 'shiori' });
+  const text = systemText(await take());
+  assert.ok(text.includes(`Happening now: "Testville" (${testville}). Here "today", "tomorrow" and "the plan" mean that trip: read it rather than ask which place.`));
+  assert.equal(systemText(await take()), text);
+  await createTrip(ws, { title: 'Laterton', start: today, end: today });
+  assert.doesNotMatch(systemText(await take()), /mean that trip/, 'two happening: which one is hers to ask');
+});
+
 test("a dated conversation's text says a trip or place they name may be another of theirs, found with list_trips, and it is the same on every turn: it names no trip, so nothing elsewhere moves it (real models, stage 5 finding 2)", async () => {
   const { ws, trip, registry } = await setup();
   const take = () => takeSnapshot({ ws, registry, trip, personalityName: 'shiori' });

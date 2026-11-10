@@ -65,7 +65,9 @@ async function elsewhere(ws, trip) {
   const latest = others.filter((s) => !happening.includes(s)).sort((a, b) => talkedAt(b) - talkedAt(a)).slice(0, 5);
   const named = (/** @type {import('../types.js').ScopeRecord} */ s) => `${quote([...s.title].slice(0, TITLE_MAX).join(''))} (${s.id})`;
   /* en */
-  return [happening.length ? `Happening now: ${happening.map(named).join('; ')}.` : '', latest.length ? `Their latest other conversations: ${latest.map(named).join('; ')}` : ''].filter(Boolean).join('\n');
+  // One trip happening is what "tomorrow" means here: Haiku asked "which place?" with it listed (stage 5's real-model pass).
+  const meant = happening.length === 1 ? ' Here "today", "tomorrow" and "the plan" mean that trip: read it rather than ask which place.' : '';
+  return [happening.length ? `Happening now: ${happening.map(named).join('; ')}.${meant}` : '', latest.length ? `Their latest other conversations: ${latest.map(named).join('; ')}` : ''].filter(Boolean).join('\n');
 }
 
 /**
