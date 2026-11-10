@@ -107,3 +107,51 @@ test('controllerReady says whether a worker took the page in time', async () => 
   assert.equal(await controllerReady(container({ takes: false }), 50), false);
   assert.equal(await controllerReady(undefined), true);
 });
+
+/**
+ * A first visit's navigator.serviceWorker: its worker installing, none active. install() takes it on as a browser does: installed,
+ * then active and activating, the page taken (sw.js claims as it activates), activated. fail() makes it redundant (a download failed).
+ */
+function firstVisit() {
+  const pause = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
+  const sw = /** @type {any} */ (new EventTarget());
+  sw.controller = null;
+  const worker = /** @type {any} */ (new EventTarget());
+  worker.state = 'installing';
+  const reg = /** @type {any} */ ({ installing: worker, waiting: null, active: null });
+  const step = (/** @type {string} */ state) => { worker.state = state; worker.dispatchEvent(new Event('statechange')); };
+  sw.getRegistration = () => Promise.resolve(reg);
+  sw.install = async () => {
+    reg.installing = null;
+    reg.waiting = worker;
+    step('installed');
+    await pause(5);
+    reg.waiting = null;
+    reg.active = worker;
+    step('activating');
+    await pause(5);
+    sw.controller = worker;
+    sw.dispatchEvent(new Event('controllerchange'));
+    step('activated');
+  };
+  sw.fail = () => { reg.installing = null; step('redundant'); };
+  return sw;
+}
+
+test("a first visit's worker still downloading when the time is up is waited for: the page is taken once its install ends, and isn't if the install fails", async () => {
+  const slow = firstVisit();
+  const taken = controllerReady(slow, 20);
+  assert.equal(await within(taken, 100), 'pending', 'still installing past the limit: no "needs a reload"');
+  await slow.install();
+  assert.equal(await taken, true);
+  const failing = firstVisit();
+  const lost = controllerReady(failing, 20);
+  assert.equal(await within(lost, 100), 'pending');
+  failing.fail();
+  assert.equal(await lost, false, 'a failed install takes no page: a reload tries it again');
+  // An update installing beside an active worker that doesn't take the page is no first visit: the limit holds.
+  const past = container({ takes: false });
+  const reg = await past.getRegistration();
+  past.getRegistration = () => Promise.resolve({ ...reg, installing: Object.assign(new EventTarget(), { state: 'installing' }) });
+  assert.equal(await within(controllerReady(past, 20), 300), false);
+});

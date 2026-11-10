@@ -373,7 +373,7 @@ async function startPlugins(plugins, shell) {
   return unloaded;
 }
 
-/** Whether a service worker controls this page, within 15 s: installed plugin files load through it (spec §5.3). */
+/** Whether a service worker controls this page, within 15 s or once a first visit's has installed: installed plugin files load through it (spec §5.3). */
 const controllerReady = () => taken(navigator.serviceWorker);
 
 /** @param {any} store @param {ReturnType<typeof startShell>} shell @param {Updates} updates */

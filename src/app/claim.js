@@ -12,7 +12,10 @@ export const RELOADED = 'annai.reloadedForWorker';
 /** @typedef {Pick<Storage, 'getItem' | 'setItem'>} KeyValue */
 
 /**
- * Whether a worker controls the page, within timeoutMs; it is asked to take the page.
+ * Whether a worker controls the page, within timeoutMs; it is asked to take the page. A worker still on its way at timeoutMs is waited
+ * for until it takes the page or its install fails: a first visit's (none active yet), which takes the page as it activates (sw.js) once
+ * its whole shell has downloaded, however long a slow connection makes that, and one activating. Giving up on it would say a reload is
+ * needed while none is.
  * @param {ServiceWorkerContainer | undefined} sw @returns {Promise<boolean>}
  */
 export function controllerReady(sw, timeoutMs = 15_000) {
@@ -23,7 +26,16 @@ export function controllerReady(sw, timeoutMs = 15_000) {
       sw.removeEventListener('controllerchange', done);
       resolve(Boolean(sw.controller));
     };
-    const t = setTimeout(done, timeoutMs);
+    // Looked at when the time is up, and again at each step of a worker on its way.
+    const look = () => {
+      if (sw.controller) return done();
+      sw.getRegistration().then((reg) => {
+        const coming = reg?.installing ?? reg?.waiting ?? reg?.active;
+        if (coming && (coming.state === 'activating' || (!reg?.active && coming.state !== 'redundant'))) coming.addEventListener('statechange', look, { once: true });
+        else done();
+      }, done);
+    };
+    const t = setTimeout(look, timeoutMs);
     sw.addEventListener('controllerchange', done);
     sw.getRegistration().then((reg) => reg?.active?.postMessage('claim')).catch(() => {});
   });
