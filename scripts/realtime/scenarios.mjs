@@ -150,11 +150,11 @@ function cardScenarios() {
     'card-hai-ja': { ...alone('hai', '"はい。" with Japanese in Languages', yes), languages: { spoken: ['en', 'ja'], answer: 'follow' } },
     'card-hai-q-ja': { ...alone('hai-q', '"はい？" said as a question, with Japanese in Languages', no), languages: { spoken: ['en', 'ja'], answer: 'follow' } },
     'card-hao-zh': { ...alone('hao', '"好的。" with Chinese in Languages', yes), languages: { spoken: ['en', 'zh'], answer: 'follow' } },
-    'card-mm-q-zh': { ...alone('mm-q', '"嗯？" said as a question, with Chinese in Languages', no), languages: { spoken: ['en', 'zh'], answer: 'follow' } },
+    'card-mm-q-zh': { ...alone('mm-q', '"嗯？" said as a question (嗯 is on neither list), with Chinese in Languages', no), languages: { spoken: ['en', 'zh'], answer: 'follow' } },
     // A known gap, a question for the user: neither Gemini nor the speech-to-text writes a rising "Yes?" with its mark, so it is written "Yes." and grants.
     'card-yes-q': alone('yes-q', '"Yes?" said as a question (known gap: written "Yes.", it grants)', yes),
     'card-hai-q': alone('hai-q', '"はい？" said as a question', no),
-    'card-mm-q': alone('mm-q', '"嗯？" said as a question', no),
+    'card-mm-q': alone('mm-q', '"嗯？" said as a question (嗯 is on neither list: also the filled pause)', no),
     'card-what': alone('what', '"What?"', no),
     'card-passenger': card('the card, a passenger\'s line ("Turn left at the next light."), then "Yes." 4.5 s after it began', [...go(), { say: 'passenger' }, { wait: 4500 }, { say: 'yes' }, { settled: 2500 }], { expect: yes }),
     'card-lyric': card('the card, song lyrics (lyric.wav), then "Yes." 9 s after they began', [...go(), { say: 'lyric' }, { wait: 9000 }, { say: 'yes' }, { settled: 2500 }], { expect: yes }),

@@ -5,7 +5,7 @@ import { spokenYes, spokenNo } from '../../src/core/agent/spoken-yes.js';
 // A spoken yes for reading another trip (the timeline design: "Yes, a strict word list"): annai's own list, the whole line, no model.
 
 test('a yes, as heard in each language: case, punctuation, spaces and full-width forms aside', () => {
-  for (const said of ['yes', 'Yes.', 'YES!', ' yeah ', 'OK', 'Okay.', 'Sure!', 'Go ahead.', 'Allow it', 'Yes, please.', 'はい。', 'はい', 'お願いします', 'いいよ！', '好的', '好的。', '可以', '是的', '嗯', 'ｙｅｓ', 'Yes　please']) {
+  for (const said of ['yes', 'Yes.', 'YES!', ' yeah ', 'OK', 'Okay.', 'Sure!', 'Go ahead.', 'Allow it', 'Yes, please.', 'はい。', 'はい', 'お願いします', 'いいよ！', '好的', '好的。', '可以', '是的', 'うん', 'うん。', 'ｙｅｓ', 'Yes　please']) {
     assert.equal(spokenYes(said), true, said);
   }
 });
@@ -13,6 +13,13 @@ test('a yes, as heard in each language: case, punctuation, spaces and full-width
 test('not a yes: one said as a question, which is how "pardon?" is said', () => {
   for (const said of ['はい？', 'はい?', '嗯？', 'ええ？', 'Yes?', 'Okay?', 'Sure?!', '好？', 'yes ?']) {
     assert.equal(spokenYes(said), false, said);
+  }
+});
+
+test('not a yes: a word that has another meaning as often (いいです: "no thanks" too; 嗯: the filled pause; ええ: surprise, and ええと), on neither list', () => {
+  for (const said of ['いいです', 'いいです。', '嗯', '嗯。', '嗯……', 'ええ', 'ええ。', 'ええ！', 'ええと']) {
+    assert.equal(spokenYes(said), false, said);
+    assert.equal(spokenNo(said), false, said);
   }
 });
 
