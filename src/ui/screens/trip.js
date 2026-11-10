@@ -1,5 +1,5 @@
 import { h, crumb, t, plural, field, twoStep, linkIn, messageOf } from '../dom.js';
-import { setTripStatus, removeTrip, backupState, tripMirror } from '../../core/scopes.js';
+import { setTripStatus, removeTrip, backupState, tripMirror, scopeTitle, DRAFT_TITLE } from '../../core/scopes.js';
 import { ask } from '../ask.js';
 import { normPath } from '../../core/paths.js';
 import { ValidationError, NotFoundError } from '../../core/workspace.js';
@@ -37,7 +37,7 @@ export async function renderTrip(ctx, route) {
   // Details, the trip's page: back to its conversation; its name and dates; what opens from it; Share, Archive and Remove; its cost and files.
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, crumb(talkHref(id), t`Conversation`)),
-    h('h1', { class: 'title', dir: 'auto', text: scope.title }),
+    h('h1', { class: 'title', dir: 'auto', text: scopeTitle(scope) }),
     h('p', { class: 'sub' }, ...factsWords([start ? dateRange(start, end) : null, archived ? t`Archived` : null, plural(files.length, '# file', '# files'), stamps.length ? { stamps: stampCount(stamps.length) } : null])),
     stampMarks(stamps, { max: 24, big: true }),
     editForm(ctx, id, String(trip?.title ?? scope.title), trip),
@@ -71,7 +71,10 @@ const backward = new Error('backward');
  * @param {any} ctx @param {string} id @param {string} title @param {any} trip its trip.json
  */
 function editForm(ctx, id, title, trip) {
-  const name = h('input', { id: 'trip-edit-title', name: 'title', maxlength: '200', autocomplete: 'off', value: title });
+  // A conversation not named yet is stored as annai's English "New conversation": its field is empty with the screens' words behind it, and Save with it
+  // empty keeps what is stored (it goes on following the screens' language until the user or Shiori names it).
+  const unnamed = title === DRAFT_TITLE;
+  const name = h('input', { id: 'trip-edit-title', name: 'title', maxlength: '200', autocomplete: 'off', value: unnamed ? '' : title, placeholder: unnamed ? scopeTitle({ id, title }) : undefined });
   const start = h('input', { id: 'trip-edit-start', name: 'start', type: 'date', value: typeof trip?.start === 'string' ? trip.start : '' });
   const end = h('input', { id: 'trip-edit-end', name: 'end', type: 'date', value: typeof trip?.end === 'string' ? trip.end : '' });
   const error = h('p', { class: 'error', role: 'alert', hidden: true });
@@ -81,13 +84,13 @@ function editForm(ctx, id, title, trip) {
   };
   // As the file holds it: a date the field can't show (9999-99-99, from a file that came in) goes when Save keeps it blank.
   /** @type {Record<string, unknown>} */
-  const drawn = { title: name.value, start: trip?.start ?? '', end: trip?.end ?? '' };
+  const drawn = { title, start: trip?.start ?? '', end: trip?.end ?? '' };
   return h('form', {
     class: 'panel trip-edit',
     onsubmit: async (/** @type {Event} */ e) => {
       e.preventDefault();
       error.hidden = true;
-      const clean = name.value.trim();
+      const clean = name.value.trim() || (unnamed ? title : '');
       if (!clean) return say(t`Give the trip a name.`);
       // Only what was changed here: Shiori may have written the name or the dates since this was drawn.
       const changed = Object.fromEntries(Object.entries({ title: clean, start: start.value, end: end.value }).filter(([k, v]) => v !== drawn[k]).map(([k, v]) => [k, v || null]));
@@ -166,7 +169,7 @@ async function filesSection(ctx, id) {
 function tripActions(ctx, id, scope, slot) {
   return [h('button', {
     class: 'btn', type: 'button',
-    onclick: () => slot.replaceChildren(...(slot.firstChild ? [] : [exportPanel(ctx, { kind: 'trip', scopes: [id], title: scope.title })])),
+    onclick: () => slot.replaceChildren(...(slot.firstChild ? [] : [exportPanel(ctx, { kind: 'trip', scopes: [id], title: scopeTitle(scope) })])),
   }, t`Export trip`)];
 }
 
@@ -218,7 +221,7 @@ async function askAndRemove(ctx, id, scope) {
     : navigator.onLine === false
       ? plural(n, "{0} keeps # turn of its conversations: annai asks for it to be deleted, once you're back online.", "{0} keeps # turns of its conversations: annai asks for them to be deleted, once you're back online.", who)
       : plural(n, '{0} keeps # turn of its conversations: annai asks for it to be deleted.', '{0} keeps # turns of its conversations: annai asks for them to be deleted.', who);
-  const sure = await ask({ title: scope.title, body: sentences(t`This removes everything in this trip from this device: its files, photos, notes and history.`, kept, t`Remove it?`), yes: t`Remove` });
+  const sure = await ask({ title: scopeTitle(scope), body: sentences(t`This removes everything in this trip from this device: its files, photos, notes and history.`, kept, t`Remove it?`), yes: t`Remove` });
   if (!sure) return;
   if ((await backupState(ctx.store, id)).changed) {
     const anyway = await ask({ title: t`Not backed up`, body: t`This trip hasn't been backed up since it last changed. Remove it anyway?`, yes: t`Remove anyway` });
@@ -226,7 +229,7 @@ async function askAndRemove(ctx, id, scope) {
   }
   try {
     const { bytes: freed } = await removeTripNow(ctx, id);
-    ctx.notices.toast(t`Removed ${scope.title}. ${size(freed)} freed.`);
+    ctx.notices.toast(t`Removed ${scopeTitle(scope)}. ${size(freed)} freed.`);
     ctx.removed(id);
   } catch (e) {
     if (e instanceof NotFoundError) {

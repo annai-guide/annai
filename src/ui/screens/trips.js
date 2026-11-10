@@ -18,8 +18,11 @@ import { dayIn, deviceZone, nextDay } from '../../core/time.js';
 import { storedTexts } from '../../core/agent/log.js';
 import { tripRows } from '../trip-rows.js';
 import { nowOf, isField } from '../today.js';
+import { realClock } from '../../core/live/clock.js';
+import { keepRows } from '../keep-rows.js';
 
 /** @typedef {import('../../core/timeline.js').Row} Row */
+/** Words saying how long ago (since): the node, its moment on the device's clock, its words at a moment. @typedef {{ node: Node, at: number, words: (now: number) => string }} Since */
 
 /**
  * Home: the timeline of trips and chats (the timeline design), old to new, the trips happening at the now line and only dated trips below it.
@@ -28,14 +31,16 @@ import { nowOf, isField } from '../today.js';
  * @param {any} ctx
  */
 export async function renderTrips(ctx) {
-  if (ctx.moved) tripError = tripTyped.title = tripTyped.start = tripTyped.end = ''; // come to home anew: the form's last error and what was typed in it are not shown again
+  if (ctx.moved) { // come to home anew: the form's last error, what was typed in it and a Delete tapped once are not shown again
+    tripError = tripTyped.title = tripTyped.start = tripTyped.end = '';
+    armed.clear();
+  }
   const { active, archived } = await listTrips(ctx.store);
   const settings = await readAppSettings(ctx.ws);
   const places = ctx.backups ? await ctx.backups.list() : [];
   const latest = places.filter((/** @type {any} */ p) => p.last).sort((/** @type {any} */ a, /** @type {any} */ b) => b.last.at - a.last.at)[0];
-  /** due: when a card's Next stops being next, pushed by the happening cards as they are drawn. @type {number[]} */
-  const due = [];
-  const o = { say: wording(settings), now: nowOf(ctx.live), zone: ctx.live?.timeZone?.() ?? deviceZone(), due };
+  /** due: when a card's Next stops being next, pushed by the happening cards as they are drawn. */
+  const o = { say: wording(settings), now: nowOf(ctx.live), zone: ctx.live?.timeZone?.() ?? deviceZone(), due: /** @type {number[]} */ ([]), since: /** @type {Since[]} */ ([]) };
   const { above, happening, below } = timelineRows(active, o.now, o.zone);
   const byId = new Map(active.map((s) => [s.id, s]));
   const row = (/** @type {Row} */ r) => (r.card ? tripCard(ctx, byId.get(r.id), r, o) : chatLine(byId.get(r.id), r, o));
@@ -51,8 +56,8 @@ export async function renderTrips(ctx) {
   const ahead = await Promise.all([...happening, ...below].map(row));
   const archivedCards = await Promise.all(archived.map((s) => tripCard(ctx, s, null, o)));
   const waiting = await waitingFiles(ctx.ws);
-  // The last backup's and export's "2 hours ago" change their words too (they say it by the device's clock, not live mode's: due is on live mode's).
-  for (const at of [latest?.last.at, settings.lastExportAt]) if (at) due.push(o.now + relChange(at, Date.now()) - Date.now());
+  const saved = latest ? { at: latest.last.at, words: (/** @type {number} */ now) => t`Last backup ${relTime(latest.last.at, now)}, to ${latest.name}.` }
+    : settings.lastExportAt ? { at: settings.lastExportAt, words: (/** @type {number} */ now) => t`Last export ${relTime(settings.lastExportAt, now)}.` } : null;
   const screen = h('div', { class: 'screen timeline' },
     h('h1', { class: 'title', text: t`Trips` }),
     // The shell scrolls the now line 40% down; with less past than that above it, it sits higher, with no blank space over it (a notice there stays in view).
@@ -67,40 +72,77 @@ export async function renderTrips(ctx) {
       ? fold('archived', h('summary', { text: t`Archived trips (${archived.length})` }), h('ul', { class: 'cards' }, ...archivedCards))
       : null,
     openFileButton(ctx),
-    h('p', { class: 'sub', text: latest ? t`Last backup ${relTime(latest.last.at)}, to ${latest.name}.`
-      : settings.lastExportAt ? t`Last export ${relTime(settings.lastExportAt)}.` : t`No backup yet. Export everything from Settings, or set up automatic backups there.` }));
-  followClock(ctx, screen, o);
+    saved ? since(o, h('p', { class: 'sub' }), saved.at, saved.words) : h('p', { class: 'sub', text: t`No backup yet. Export everything from Settings, or set up automatic backups there.` }));
+  followClock(ctx, screen, o, places);
   return screen;
 }
 
 /**
- * Home is drawn for an instant: its Next, "Day 3 of 8", which trips are happening, and the "tomorrow" and "2 hours ago" it says go stale as time
- * passes. It draws itself again, in place, at the earliest of the moments they change (one timer: a Next item ends, a shown relative time changes its words,
- * or midnight, where a trip starts or ends and the day count moves; the 1 s is for a timer a hair early) and when annai comes back to the front, which a
- * phone's timers may have slept through. Only while it is the screen shown and its address, and never over the Start a trip form while a field of it
- * has focus: then it waits, and draws once the field is left. What is typed in the form, its folds and the place stay (the redraw is not a
- * move; `tripTyped` and `fold` keep what is typed and what is open).
- * @param {any} ctx @param {HTMLElement} screen @param {{ now: number, zone: string, due: number[] }} o
+ * Words saying how long ago ("backed up 5 minutes ago"), on the device's clock: the node carries its moment and followClock changes its words as they
+ * change, with no redraw. @param {{ since: Since[] }} o @param {HTMLElement} node @param {number} at @param {(now: number) => string} words
  */
-function followClock(ctx, screen, o) {
+function since(o, node, at, words) {
+  node.textContent = words(Date.now());
+  o.since.push({ node, at, words });
+  return node;
+}
+
+/**
+ * Home is drawn for an instant: its Next, "Day 3 of 8", which trips are happening and the "tomorrow" it says go stale as time passes. It draws itself again,
+ * in place, at the earliest moment one of them changes (a Next item ends, or midnight; the 1 s is for a timer a hair early), on live mode's own timer, so a
+ * simulation played faster is drawn at its own moments (and again when one starts or ends: live mode's clock is another then); and when annai comes back to
+ * the front, which a phone's timers may have slept through and where the phone's zone may be another (a flight); and when a backup has run, which its
+ * card and the footer tell. Only while it is the screen shown and its address, and never over the Start a trip form while a field of it has focus: then it
+ * waits, and draws once the field is left. What is typed in the form, its folds and the place stay (`tripTyped`, `fold`). How long ago a backup was changes
+ * its words in place (since), the rows in view kept where they were.
+ * @param {any} ctx @param {HTMLElement} screen @param {{ now: number, zone: string, due: number[], since: Since[] }} o @param {{ id: string }[]} places backups'
+ */
+function followClock(ctx, screen, o, places) {
   const at = location.hash;
   // What a redraw would lose: the focus of a field of the form (the keyboard would close). A name or dates typed in it are drawn again (tripTyped).
   const typing = () => screen.contains(document.activeElement) && isField(document.activeElement);
   /** @type {ReturnType<typeof setTimeout> | undefined} */
-  let timer;
+  let wait;
   const redraw = () => {
-    clearTimeout(timer); // one wait at a time, whoever asked
+    clearTimeout(wait); // one wait at a time, whoever asked
     if (!screen.isConnected || location.hash !== at) return; // gone, or going: a redraw now would send a tap's move back
     // Looked at again in half a second, as the shell's own redraw does: soon after the keyboard goes.
-    if (typing()) timer = setTimeout(redraw, 500);
+    if (typing()) wait = setTimeout(redraw, 500);
     else ctx.render();
   };
-  timer = setTimeout(redraw, Math.max(Math.min(nextDay(o.now, o.zone), ...o.due) - o.now, 0) + 1000);
-  const front = () => { if (document.visibilityState === 'visible') redraw(); };
+  const clock = ctx.live?.clock ?? realClock();
+  const next = Math.min(nextDay(o.now, o.zone), ...o.due);
+  const timer = clock.set(redraw, Math.max(next - o.now, 0) + 1000);
+  // The device's clock, whatever live mode's is; it waits a change weeks ahead ("2 months ago") in steps: setTimeout holds 24.8 days at most.
+  const real = realClock();
+  /** @type {any} */
+  let tick;
+  const words = () => {
+    real.clear(tick);
+    const now = Date.now();
+    const changed = o.since.filter((s) => s.node.textContent !== s.words(now));
+    // Words that take another line move what is under them: the rows in view stay where they were, as at a redraw (shell.js).
+    if (changed.length) keepRows(covered, screen, () => { for (const s of changed) s.node.textContent = s.words(now); });
+    const change = Math.min(...o.since.map((s) => relChange(s.at, now)));
+    if (change < Infinity) tick = real.set(words, change - now + 1000); // a second past, as the redraw's
+  };
+  words();
+  const front = () => {
+    if (document.visibilityState !== 'visible') return;
+    words(); // at once, while a field's focus holds the redraw back
+    redraw();
+  };
   document.addEventListener('visibilitychange', front);
+  const swapped = ctx.sim?.onChange?.(() => { if ((ctx.live?.clock ?? clock) !== clock) redraw(); });
+  // A backup that ended: no place is running one (its progress emits too).
+  const backedUp = ctx.backups?.on?.(() => { if (!places.some((p) => ctx.backups.progress(p.id))) redraw(); });
   whenGone(screen, () => {
-    clearTimeout(timer);
+    clock.clear(timer);
+    clearTimeout(wait);
+    real.clear(tick);
     document.removeEventListener('visibilitychange', front);
+    swapped?.();
+    backedUp?.();
   });
 }
 
@@ -132,19 +174,20 @@ function chatLine(s, r, { say, now, zone }) {
  * A trip's card (spec §16.2, the timeline design): its name and dates, its stamps (spec §13), files waiting to be read there, and when it was last
  * backed up (§4.9); happening, tinted, "Day 3 of 8" and its Next; ahead, how soon and her last line there. A tap opens its conversation; an archived
  * one's opens Details, where Unarchive is. @param {any} ctx @param {any} s its record @param {Row | null} r its row; null: archived
- * @param {{ say: ReturnType<typeof wording>, now: number, zone: string, due?: number[] }} o say: the name is the user's words; due: where a Next's end goes: its own language, not the screens'
+ * @param {{ say: ReturnType<typeof wording>, now: number, zone: string, due: number[], since: Since[] }} o say: the name is the user's words, in their language, not the screens'
  */
-async function tripCard(ctx, s, r, { say, now, zone, due }) {
+async function tripCard(ctx, s, r, o) {
+  const { say, now, zone, due } = o;
   const [backup, stamps, unread] = await Promise.all([backupState(ctx.store, s.id), tripStamps(ctx, s.id), r ? filesToRead(ctx.store, s.id).then((f) => f.length) : 0]);
-  // Its "backed up … ago" is on the device's clock, and its moment is its own: the footer line's is another place's (or an export's), and a trip's backup can outlive its place.
-  if (backup.at !== null) due?.push(now + relChange(backup.at, Date.now()) - Date.now());
+  // Its "backed up … ago" is on its own moment: the footer line's is another place's (or an export's), and a trip's backup can outlive its place.
+  const backedUp = backup.at === null ? backupText(backup) : since(o, h('span', {}), backup.at, (now) => backupText(backup, now));
   /** @type {HTMLElement[]} */
   const more = [];
   if (r?.phase === 'happening') {
     const d = dayOfTrip(s, now, zone);
     if (d) more.push(h('span', { class: 'sub day-of', text: t`Day ${d.day} of ${d.of}` }));
     const [next] = upcoming((await tripRows(ctx, s.id).catch(() => ({ rows: [] }))).rows, now, 1);
-    if (next) due?.push(over(next));
+    if (next) due.push(over(next));
     if (next) more.push(h('span', { class: 'sub next', dir: 'auto', text: next.day && next.day !== dayIn(now, zone) ? t`Next: ${day(next.day, true)} ${next.time} ${rowName(next)}` : t`Next: ${next.time} ${rowName(next)}` }));
   } else if (r?.phase === 'future') {
     // In days, as its dates are: "tomorrow" all day, never "in 13 hours" the evening before. From today's date to its first day, so the words change at midnight, when home draws again.
@@ -153,10 +196,11 @@ async function tripCard(ctx, s, r, { say, now, zone, due }) {
     const last = await herLast(ctx, s.id);
     if (last) more.push(h('span', { class: 'sub her-last', ...say(last), text: last }));
   }
+  const name = scopeTitle(s); // one stored with the draft's name says "New conversation" in the screens' language
   return h('li', {}, h('a', { class: ['card', 'trip-card', r?.phase === 'happening' ? 'happening' : ''], href: r ? talkHref(s.id) : `#/trip/${encodeURIComponent(s.id)}` },
     h('span', { class: 'trip-card-text' },
-      h('span', { class: 'name', ...say(s.title), text: s.title }),
-      h('span', { class: 'sub' }, ...factsWords([s.start ? dateRange(s.start, s.end) : null, stamps.length ? { stamps: stampCount(stamps.length) } : null, unread ? plural(unread, '# file waiting to be read', '# files waiting to be read') : null, backupText(backup)])),
+      h('span', { class: 'name', ...say(name), text: name }),
+      h('span', { class: 'sub' }, ...factsWords([s.start ? dateRange(s.start, s.end) : null, stamps.length ? { stamps: stampCount(stamps.length) } : null, unread ? plural(unread, '# file waiting to be read', '# files waiting to be read') : null, backedUp])),
       ...more),
     stampMarks(stamps)));
 }
@@ -202,9 +246,12 @@ function waitingList(ctx, files, names) {
             const freed = await dropWaiting(ctx.ws, f.path);
             ctx.notices.toast(t`Deleted ${name}. ${size(freed)} freed.`);
             await ctx.render();
-          })));
+          }, { kept: { key: f.path, armed } })));
     })));
 }
+
+/** Waiting's Deletes tapped once, by file: a redraw of home (`went`, a plugin's screens, another Delete) leaves them armed (twoStep). @type {Map<string, number>} */
+const armed = new Map();
 
 /**
  * What Start a trip last said went wrong, kept as `unfolded` is so a redraw of home (the clock's) draws it again: it goes when the user types into the form,
@@ -222,10 +269,12 @@ function newTripForm(ctx) {
   const title = h('input', { id: 'trip-title', name: 'title', maxlength: '200', autocomplete: 'off', placeholder: t`Big Sur · Thanksgiving`, value: tripTyped.title });
   const start = h('input', { id: 'trip-start', name: 'start', type: 'date', value: tripTyped.start });
   const end = h('input', { id: 'trip-end', name: 'end', type: 'date', value: tripTyped.end });
-  // data-kept: home draws it again itself (tripError), so the shell's redraws need not wait for it to go.
-  const error = h('p', { class: 'error', role: 'alert', 'data-kept': '', hidden: !tripError, text: tripError });
+  // data-kept: home draws it again itself (tripError), so the shell's redraws need not wait for it to go. An alert when first said (onsubmit); drawn again with
+  // its words (no role) it is not one, or a screen reader would read it out at each redraw.
+  const error = h('p', { class: 'error', role: tripError ? false : 'alert', 'data-kept': '', hidden: !tripError, text: tripError });
   return h('form', {
     class: 'panel',
+    onfocusin: (/** @type {FocusEvent} */ e) => requestAnimationFrame(() => clearOfBox(e.target)),
     oninput: () => { Object.assign(tripTyped, { title: title.value, start: start.value, end: end.value }); tripError = ''; error.hidden = true; },
     onsubmit: async (/** @type {Event} */ e) => {
       e.preventDefault();
@@ -238,6 +287,7 @@ function newTripForm(ctx) {
       } catch (err) {
         explainStorageFull(ctx, err);
         tripError = explainTrip(err);
+        error.setAttribute('role', 'alert'); // before its words: they are said
         error.textContent = tripError;
         error.hidden = false;
       }
@@ -250,6 +300,20 @@ function newTripForm(ctx) {
   error,
   h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'submit' }, t`Start trip`)));
 }
+
+/**
+ * A field of the form focused under the top bar or the notices box stuck under it (a keyboard's Tab, a screen reader) is scrolled clear of them, its label
+ * too: the browser's own focus scrolling, done by then, doesn't know they cover it. @param {EventTarget | null} field
+ */
+function clearOfBox(field) {
+  if (!(field instanceof Element) || document.activeElement !== field) return;
+  const under = covered();
+  const top = (field.closest('label') ?? field).getBoundingClientRect().top;
+  if (top < under) scrollBy(0, top - under);
+}
+
+/** Where the top bar and the notices box stuck under it end, on screen. */
+const covered = () => Math.max(...[...document.querySelectorAll('.topbar, .notices')].map((n) => n.getBoundingClientRect().bottom));
 
 /** What went wrong with a trip's name or dates, in words, for Start a trip and Details. @param {any} err */
 export function explainTrip(err) {
