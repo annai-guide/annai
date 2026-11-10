@@ -861,7 +861,12 @@ test('an urgent watch firing with no live session (Koe in text) is answered as a
     await k.agent.idle();
     const koe = k.sent['model-koet'].map((/** @type {any} */ r) => JSON.stringify(r.messages ?? r).replace(/\b[wct]-[a-z0-9]+|\d{4}-\d\d-\d\dT[\d:.]+Z|scripted_\d+_\d+/g, 'ID'));
     assert.ok(koe.some((x) => ALERT.test(x)), 'Koe got it');
-    return { koe, events: (await k.events()).map((e) => e.type) };
+    // Each half's events in its own order (a model's requests by the model). The halves take the wake side by side, and which one's
+    // turn is written first is up to their own waits (a reply's hash comes from a thread of its own): not the code's order, so not compared.
+    /** @type {Record<string, string[]>} */
+    const own = {};
+    for (const e of await k.events()) (own[e.data?.half ?? e.data?.model ?? e.actor] ??= []).push(e.type);
+    return { koe, events: own };
   };
   assert.deepEqual(await run(true), await run(false));
 });
