@@ -145,9 +145,10 @@ export class LiveInput {
     return this.active ? this.#detector?.sinceMarkMs ?? 0 : 0;
   }
 
-  /** A tap stopped her voice: what is said at once is the user's, never begun over her. */
+  /** A tap stopped her voice: what is said at once is the user's, never begun over her (her tail ends with it: overHer too). */
   tapped() {
     this.#theirs = true;
+    this.#herGate = 0;
   }
 
   /** The turn going on ends now (its transcript stalled); the floor goes back to where it began. @param {TurnEnd} why */

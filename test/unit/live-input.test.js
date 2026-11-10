@@ -678,6 +678,26 @@ test('overHer, full duplex: a turn begun while her voice plays, or within its ta
   r.input.stop();
 });
 
+test('overHer, full duplex: a tap that stopped her ends her tail too: what the user says at once is theirs, as half-duplex has it (tapped)', async () => {
+  let playing = false;
+  const r = herRig({ speaking: () => playing, duplex: () => true });
+  await r.input.start();
+  r.feed(quiet(1));
+  playing = true;
+  r.feed(quiet(0.5));
+  playing = false; // a tap on Shiori stops her (LiveKoe.interrupt)
+  r.input.tapped();
+  r.feed(cat(quiet(0.1), yes, quiet(1.5)));
+  assert.deepEqual(r.edges, [['start', false], ['end', false]], 'begun 100 ms after the tap: the user\'s');
+  r.edges.length = 0;
+  playing = true;
+  r.feed(quiet(0.5));
+  playing = false;
+  r.feed(cat(quiet(0.1), yes, quiet(1.5)));
+  assert.deepEqual(r.edges, [['start', true], ['end', true]], 'her next words, no tap: their tail is hers again');
+  r.input.stop();
+});
+
 test('overHer, half-duplex: every turn it sends is the user\'s, as half-duplex already let go of hers; with no voice of hers at all, nothing is hers', async () => {
   let playing = false;
   const r = herRig({ speaking: () => playing });
