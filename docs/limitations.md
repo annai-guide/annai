@@ -397,11 +397,11 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the user chose (2026-11-08, "Stay, next version") a line that stays in the conversation like the hand-over's, built in the next version; stage 4 ships the line as built.
 - **Revisit when:** the next version: make the dates line a conversation line at its place, like the hand-over's Undo.
 
-### Home's rows move when a phone rotates, or at the first resize after a tall card lands
+### Home's rows move at the first resize after a tall card lands
 - **Kind:** deferred.
-- **What the user sees:** on home, a phone turned on its side moves the rows. In Chromium, the first resize after a card that needs more than a quarter of the screen (`.grow`) has landed moves the rows by its excess over the quarter (167 to 211 px measured at 393 x 659, when such a card was in the page; not measured again since every box sticks at its cap); in a Chrome tab the URL bar's first hide is such a resize.
-- **Why:** cards are refit when the screen changes size, outside `keep()` in notices.js, which is what keeps the rows still when a card comes or goes. Older than stage 4's sticky box. With a card open in the stuck box, or a box at its cap, its cap (half of 100svh) changes too: the rows moved 140 px when 360 x 640 turned to 640 x 360. The cap has already changed when `resize` fires, so the fix needs the box's last height kept.
-- **Revisit when:** the next version: run the resize's refit through `keep()`.
+- **What the user sees:** on home, in Chromium, the first `resize` after a card that needs more than a quarter of the screen (`.grow`) has landed moves the rows once by the card's excess over the quarter. Measured again in the review's fix pass with a bare `resize` event and with real size changes: 72 px at 360 x 640 (the card's 232 px less the quarter, 160) with one trip ahead of the now line; no move at 320 x 568 or 393 x 659, with fourteen trips ahead, or in WebKit. In a Chrome tab the URL bar's first hide is such a resize. A phone turned on its side moves nothing (measured in both engines: the first row under the box stays 42 px under its edge before, during and after).
+- **Why:** cards are refit when the screen changes size, outside `keep()` in notices.js, which is what keeps the rows still when a card comes or goes; the box's height is the same before and after the refit, so `keep()` as it is wouldn't see it. Older than stage 4's sticky box. Not traced further.
+- **Revisit when:** the next version: find what the first refit changes (a diagnosis comes before a fix), and fix it where it starts.
 
 ### With a keyboard up, a field on home can sit under the stuck box
 - **Kind:** deferred.
@@ -425,9 +425,3 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** Details of a chat says "Remove trip", "Archive trip" and "This trip so far", though a chat isn't a trip (the spec's anti-goal: no "trip" on small chats). Welcome and the import screen say "the timeline" where the screen and the top bar say "Trips".
 - **Why:** both are words on screens that change shape with the Start a trip form's going, so they change once, in every language.
 - **Revisit when:** stage 8.
-
-### A second annai tab's + may open a conversation the first tab has used
-- **Kind:** deferred.
-- **What the user sees:** with annai open in two tabs, a first line said in one tab spends the draft; the other tab still holds that conversation as its draft, so its next + opens it once, a conversation that already has the first tab's lines, instead of a new one. Traced by the final review of stage 4, not run.
-- **Why:** each tab's `Chats` keeps its own `ready` draft, and nothing tells it that another tab spent it.
-- **Revisit when:** the next version: `Chats` looks at the draft's flag again before + opens it, or a user reports it.
