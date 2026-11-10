@@ -697,3 +697,16 @@ test("Undo looks through other scopes' logs only when a trip on a file's way is 
     assert.deepEqual(before.filter((s) => reads.writes.has(s)), [], `gone ${gone}: read the writes of trips unchanged since`);
   }
 });
+
+test("what she is told in each conversation: her writes it put back are counted there, and a moved file is said by where it is, never counted too", async () => {
+  const { store, ws, trip: a } = await kit();
+  const b = await createTrip(ws, { title: 'Kyoto' });
+  await record(store, b, { type: 'msg.user', actor: 'user', data: { handed: [], handover: 'h-1', from: a }, texts: [['text', '(files)']] });
+  const there = await moveFile(ws, { scope: a, path: '/files/flight.pdf' }, b, { handover: 'h-1' });
+  await record(store, a, { type: 'handover.moved', actor: 'shiori', data: { handover: 'h-1', to: b, started: false, count: 1 } });
+  await ws.write(b, '/bookings/flight.json', { ...flightBooking, source: there }, HERS);
+  await undoEverywhere(ws, a, 'h-1', { remove: async (s) => removeTrip(store, s) });
+  const said = async (/** @type {string} */ s) => (await Transcript.load(store, s)).messages.flatMap((m) => m.parts.map((p) => /** @type {any} */ (p).text ?? '')).filter((x) => x.startsWith('[annai] The user tapped Undo')).join('\n');
+  assert.match(await said(a), /: the files are back in "Anchorage"\./);
+  assert.match(await said(b), /: 1 file put back as it was; the files are back in "Anchorage"\./, 'her booking there, and the file that left');
+});
