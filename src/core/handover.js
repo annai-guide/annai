@@ -142,10 +142,7 @@ async function undoFacts(store, scope, handover) {
     // Undo made (its own moves back carry its id). A file another hand-over moved in is the user's, as theirs to keep.
     const theirs = events.some((e) => (talks(e) && !e.data?.from && e.data?.handover !== handover)
       || (e.type === 'file.write' && e.actor === 'user' && e.data?.handover !== handover && !e.data?.undo));
-    // The files it brought with no mark of where from (written before moves were marked): they go back to wait if the trip goes.
-    const brought = [...new Set(events.filter((e) => its(e) && e.type === 'file.write' && e.actor === 'user' && String(e.data.path).startsWith('/files/')
-      && !e.data.moved).map((e) => String(e.data.path)))];
-    return { done, keptBefore, started, hers, moves, changed, named, theirs, brought, movedAway };
+    return { done, keptBefore, started, hers, moves, changed, named, theirs, movedAway };
   });
 }
 
@@ -164,8 +161,8 @@ export async function undoable(store, scope, handover) {
  *   placed: where the files it moved back went, or were found back already ("scope\npath": the waiting space, trips); left: where it took them from;
  *   undone: paths put back as they were before her first write for it; kept: paths changed since, left as they are; keptKeys: each kept
  *   file once, by the one place it is known by (a moved file: where it came from), to count across the scopes of one Undo; tripEmpty: she
- *   started the trip for it and nothing of the user's is in it, so the caller removes it; files: the files it brought from the waiting
- *   space, still there, for the caller to send back there when the trip goes
+ *   started the trip for it and nothing of the user's is in it, so the caller removes it; files: the files still in it then (brought
+ *   with no mark of where from, or from a trip removed since), for the caller to send to wait when the trip goes, never removed with it
  */
 
 /**
@@ -267,12 +264,8 @@ export async function undoHandover(ws, scope, handover, o = {}) {
   const f = await undoFacts(ws.store, scope, handover);
   if (!f) return { undone: [], kept: [], keptKeys: [], tripEmpty: false, files: [] };
   const fileNow = (/** @type {string} */ p) => ws.store.tx(['files'], 'readonly', (t) => t.getFile(scope, p));
-  /** The files it brought from the waiting space, there now (worked out once Undo has put back what it puts back). */
-  const brought = async () => {
-    /** @type {string[]} */ const out = [];
-    for (const p of f.brought) if (await fileNow(p)) out.push(p);
-    return out;
-  };
+  /** The files in it, once Undo has put back what it puts back: nothing of the user's is in a trip it empties, so they are the hand-over's. */
+  const brought = async () => (await ws.list(scope, '/files/')).map((e) => e.path);
   if (f.done) return f.started && !f.theirs && !f.keptBefore && !(await holdsOthers(ws.store, scope, handover)) ? { undone: [], kept: [], keptKeys: [], tripEmpty: true, files: await brought() } : { undone: [], kept: [], keptKeys: [], tripEmpty: false, files: [] };
   /** @type {Set<string>} */ const undone = new Set();
   /** Where the files it moved back are, or were found back already: in the waiting space, or trips ("scope\npath"); and where it took them from. @type {string[]} */ const placed = [];
@@ -305,11 +298,11 @@ export async function undoHandover(ws, scope, handover, o = {}) {
     if (r.home) placed.push(r.home);
     if (r.from) left.push(r.from);
   }
-  const files = await brought();
+  const tripEmpty = f.started && !f.theirs && !kept.size && !(await holdsOthers(ws.store, scope, handover));
   const out = { undone: [...undone], kept: [...kept.keys()], keptKeys: [...new Set(kept.values())], ...(placed.length ? { placed, left } : {}) };
   const mark = { type: 'handover.undo', actor: 'user', data: { handover, undone: out.undone.length, kept: out.kept, ...(o.removed?.length ? { removed: o.removed } : {}) } };
   if (o.mark !== false) await writeMark(ws, scope, mark, o.log);
-  return { ...out, tripEmpty: f.started && !f.theirs && !kept.size && !(await holdsOthers(ws.store, scope, handover)), files, ...(o.mark === false ? { mark } : {}) };
+  return { ...out, tripEmpty, files: tripEmpty ? await brought() : [], ...(o.mark === false ? { mark } : {}) };
 }
 
 /**
