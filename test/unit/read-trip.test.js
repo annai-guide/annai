@@ -630,6 +630,88 @@ test("with Koe talking, a tap that lands while a heard line's words settle wins 
   assert.match((await readResults(k))[0], /^From "Testville"/);
 });
 
+test('with Koe talking, one settle per card: "Yes." then "No, wait." as two lines inside it ends the card unanswered, and "No." then "Yes." allows it: the newest kept line decides (re-review PROBE TWO)', async (t) => {
+  useClock(t);
+  for (const [first, then, allowed] of /** @type {[string, string, boolean][]} */ ([['Yes.', 'No, wait.', false], ['No.', 'Yes.', true]])) {
+    const k = await gateKit(KOKORO, { koe: { type: KOE } });
+    k.agent.send('Where did we eat in Testville?');
+    await until(() => k.asks.length === 1);
+    await koeHeard(k, 'h-1', { text: first });
+    await pause(0.3 * k.agent.secondMs);
+    await koeHeard(k, 'h-2', { text: then });
+    await k.agent.idle();
+    assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), allowed ? [{ trip: TV, how: 'voice' }] : [], `${first} ${then}`);
+    assert.match((await readResults(k))[0], allowed ? /^From "Testville"/ : /^Not read: .* What the user said follows\.$/);
+  }
+});
+
+test('with Koe talking, a lone "Yes." allows it once the settle has passed, not before: its words may still grow', async (t) => {
+  useClock(t);
+  const k = await gateKit(KOKORO, { koe: { type: KOE } });
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1);
+  await koeHeard(k, 'h-1', { text: 'Yes.' });
+  await pause(2.5 * k.agent.secondMs);
+  assert.equal((await grants(k, k.trip)).length, 0);
+  assert.equal(k.agent.kokoro.pendingId, k.asks[0].data.tap, 'still settling');
+  await k.agent.idle();
+  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }]);
+});
+
+test('with Koe talking, a yes heard at 19 s is judged at 22 s, after the window shut, and allows it: the hearing counts, not the judging', async (t) => {
+  useClock(t);
+  const k = await gateKit(KOKORO, { koe: { type: KOE } });
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1);
+  await pause(19 * k.agent.secondMs);
+  await koeHeard(k, 'h-1', { text: 'Yes.' });
+  await pause(1.5 * k.agent.secondMs);
+  assert.equal((await grants(k, k.trip)).length, 0, 'the window has shut, the line still settles');
+  await k.agent.idle();
+  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }]);
+});
+
+test("with Koe talking, a line set aside neither puts off the settle nor outranks a kept line: \"Yes.\" then a passenger's lines allows it on time; \"No.\" then a song's \"yes\" ends it", async (t) => {
+  useClock(t);
+  const k = await gateKit(KOKORO, { koe: { type: KOE } });
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1);
+  await koeHeard(k, 'h-yes', { text: 'Yes.' });
+  for (const n of [1, 2]) {
+    await pause(k.agent.secondMs);
+    await koeHeard(k, `h-chatter-${n}`, { text: 'Turn left here.', dismissed: true, gate: 'chatter' });
+  }
+  await pause(1.5 * k.agent.secondMs); // 3.5 s after the yes, 1.5 s after the passenger
+  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }]);
+  await k.agent.idle();
+  const song = await gateKit(KOKORO, { koe: { type: KOE } });
+  song.agent.send('And the museum?');
+  await until(() => song.asks.length === 1);
+  await koeHeard(song, 'h-no', { text: 'No.' });
+  await pause(0.3 * song.agent.secondMs);
+  await koeHeard(song, 'h-song', { text: 'Yes', dismissed: true, gate: 'chatter' });
+  await song.agent.idle();
+  assert.equal((await grants(song, song.trip)).length, 0, 'the user said no');
+  assert.match((await readResults(song))[0], /^Not read: .* What the user said follows\.$/);
+});
+
+test('with Koe talking, a Stop while a yes settles ends the card, and the settle answers nothing after: not that card, not the next', async (t) => {
+  useClock(t);
+  const k = await gateKit(KOKORO, { koe: { type: KOE } });
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1);
+  await koeHeard(k, 'h-1', { text: 'Yes.' });
+  k.agent.stopKokoro();
+  await k.agent.idle();
+  assert.deepEqual(await readResults(k), ['Stopped by the user.']);
+  k.agent.send('And the museum?');
+  await until(() => k.asks.length === 2);
+  await k.agent.koe.log({ type: 'heard.text', actor: 'system', data: { of: 'h-1', text: 'Yes, please.' } }); // its late words: heard before this card, they answer nothing here
+  await pause(5 * k.agent.secondMs);
+  assert.equal((await grants(k, k.trip)).length, 0);
+  assert.equal(k.agent.kokoro.pendingId, k.asks[1].data.tap);
+});
+
 test('classic voice: annai says the question, listens, and a heard yes (written down by the speech-in list) allows it, whatever the quick gate thinks', async (t) => {
   useClock(t);
   const choose = (/** @type {string} */ letter) => ({ toolCalls: [{ name: 'decide', input: { option: letter } }] });
