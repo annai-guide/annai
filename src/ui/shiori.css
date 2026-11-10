@@ -307,7 +307,7 @@ body:has(.dock:not(.seat)) .toasts { bottom: calc(var(--dock-h, 140px) + 8px); }
 .trip-card.line .name { font-family: var(--f-body); font-weight: 500; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .trip-card.line .sub { flex: none; color: var(--ink-2); font-size: 13px; }
 .trip-card.happening { background: var(--ai-wash); border-color: color-mix(in srgb, var(--ai) 35%, var(--line)); }
-.trip-card .her-last { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.trip-card .her-last { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rows > .fold summary { color: var(--ink-2); cursor: pointer; padding: 6px 2px; }
 .rows > .fold .cards { margin-block: 8px 0; gap: 8px; }
 .now-line { display: flex; align-items: center; gap: 8px; margin: 12px 0; color: var(--ai); font-size: 12px; font-weight: 700; letter-spacing: 0.04em; }
