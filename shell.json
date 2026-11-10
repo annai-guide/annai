@@ -1,5 +1,5 @@
 {
-  "build": "7c979f34d58d",
+  "build": "75e4867671e4",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -273,8 +273,8 @@
     "/src/ui/screens/talk.js": "549b04d8e31b",
     "/src/ui/screens/tools.js": "af43e4da0f2e",
     "/src/ui/screens/trace.js": "f5659cdd6e4c",
-    "/src/ui/screens/trip.js": "91699f6d5b01",
-    "/src/ui/screens/trips.js": "6d1e71c70823",
+    "/src/ui/screens/trip.js": "26556eb6424a",
+    "/src/ui/screens/trips.js": "a9fa2da5f65f",
     "/src/ui/screens/updates.js": "663857e51861",
     "/src/ui/screens/voice.js": "44c2b580e9d2",
     "/src/ui/screens/welcome.js": "befec09e6a02",

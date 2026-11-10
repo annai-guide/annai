@@ -1436,3 +1436,18 @@ test("Details of a trip that came in with dates that aren't on the calendar: the
   await page.goto('/#/trips');
   await expect(row(page, 'Testville weekend')).toHaveCount(1);
 });
+
+test("a conversation stored as \"New conversation\" says it in the screens' language on its card, as the heading of its Details and in its Remove dialog", async ({ page }) => {
+  const { accented } = await import('../../src/core/l10n-pseudo.js');
+  await openApp(page, '?l10n=en-XA#/settings');
+  await seed(page, { trips: { 'New conversation': { from: 3, to: 4 } } }); // one a date in Details left unnamed: dated, so a card
+  await page.goto('/?l10n=en-XA#/trips');
+  const name = accented('New conversation');
+  await expect(row(page, name)).toHaveCount(1);
+  await expect(row(page, name).locator('.name')).toHaveText(name);
+  await row(page, name).click();
+  await page.locator('.talk-name').click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(name);
+  await page.getByRole('button', { name: accented('Remove trip') }).click();
+  await expect(page.getByRole('dialog', { name })).toBeVisible();
+});
