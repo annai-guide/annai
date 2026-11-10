@@ -1,6 +1,9 @@
 import { CORE, DEFAULT_PERSONALITY } from './instructions.js';
 import { editedInstructions } from './her-instructions.js';
-import { ME, DRAFT_TITLE } from '../scopes.js';
+import { ME, DRAFT_TITLE, listTrips } from '../scopes.js';
+import { phaseOf } from '../timeline.js';
+import { deviceZone } from '../time.js';
+import { quote } from './blocks.js';
 import { tsv } from '../tsv.js';
 import { sha256Hex } from '../hash.js';
 import { utf8 } from '../bytes.js';
@@ -15,8 +18,10 @@ import { lang, glossary } from '../l10n.js';
  * 3. the transcript, which only grows at the end;
  * 4. the now block, last, after the cache marker.
  * @typedef {{ trip: string | null, personalityName: string, personality: string, profile: string, memory: string,
- *   tripInfo: string, guessed?: boolean, tripMemory: string, skills: { name: string, description: string }[], languages?: string, edited?: Partial<Record<import('./her-instructions.js').InstructionId, string>> }} Snapshot
+ *   tripInfo: string, guessed?: boolean, tripMemory: string, skills: { name: string, description: string }[], languages?: string, edited?: Partial<Record<import('./her-instructions.js').InstructionId, string>>,
+ *   elsewhere?: string }} Snapshot
  *   languages: the languages section's words, from the languages setting; edited: the instructions the user changed (her-instructions.js);
+ *   elsewhere: an undated conversation's lines naming the trips happening now and the latest other conversations, so she knows what read_trip may read;
  *   guessed: the trip's name is annai's own first guess (a first line's words or a file's name, the system's write of trip.json, or the draft's placeholder), not one the user or she gave
  * @typedef {import('../llm/contract.js').Request} Request
  */
@@ -45,7 +50,18 @@ export async function takeSnapshot({ ws, registry, trip, personalityName, locale
     // Then the screens' names and a Distances choice.
     languages: [languagesText(languageSettings(app, locale)), screensText(lang(), glossary()), distancesText(app)].filter(Boolean).join(' '),
     edited: await editedInstructions(ws),
+    elsewhere: trip && !tripJson?.start ? await elsewhere(ws, trip) : '', // as systemText tells an undated one
   };
+}
+
+/** The other conversations an undated one may mean, from their records: those happening now, then the latest. @param {import('../workspace.js').Workspace} ws @param {string} trip */
+async function elsewhere(ws, trip) {
+  const others = (await listTrips(ws.store)).active.filter((s) => s.id !== trip);
+  const happening = others.filter((s) => phaseOf(s, Date.now(), deviceZone()) === 'happening'); // as home's now line has them
+  // The spec's "the last few conversations": five, the plan's call, by when the user last talked in each (else when it was made), as home places a chat.
+  const latest = others.filter((s) => !happening.includes(s)).sort((a, b) => (b.talked ?? b.created) - (a.talked ?? a.created)).slice(0, 5);
+  /* en */
+  return [happening.length ? `Happening now: ${happening.map((s) => `${quote(s.title)} (${s.id})`).join('; ')}.` : '', latest.length ? `Their latest other conversations: ${latest.map((s) => `${quote(s.title)} (${s.id})`).join('; ')}` : ''].filter(Boolean).join('\n');
 }
 
 /**
@@ -83,7 +99,7 @@ export function systemText(s, part = '') {
     /* en */ parts.push(`# This trip (/trip/trip.json)\n${s.tripInfo}`, s.tripMemory.trim() ? `${s.tripMemory.trim()}` : '# Trip memory\n(empty)');
     // From the snapshot, so it stays the same from turn to turn and the cached prefix holds.
     // Her name for it is only for a name annai guessed: one the user gave stays.
-    if (!datedInfo(s.tripInfo)) /* en */ parts.push(`# This conversation has no dates\n${s.guessed ? 'Its name is a first guess: patch /trip/trip.json when you know a better one. If it becomes a trip, patch its title and dates there.' : 'If it becomes a trip, patch /trip/trip.json with its dates.'}`);
+    if (!datedInfo(s.tripInfo)) /* en */ parts.push(`# This conversation has no dates\n${s.guessed ? 'Its name is a first guess: patch /trip/trip.json when you know a better one. If it becomes a trip, patch its title and dates there.' : 'If it becomes a trip, patch /trip/trip.json with its dates.'}\nIf this is about one of their trips, read it with read_trip first and answer here; if they want to carry on there, they can open it from Trips.${s.elsewhere ? `\n${s.elsewhere}` : ''}`);
   } else /* en */ parts.push('# No trip is open\n/trip/ is empty. The user can open a trip from Trips.');
   return parts.join('\n\n');
 }

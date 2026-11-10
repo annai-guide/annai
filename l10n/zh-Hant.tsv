@@ -2255,52 +2255,55 @@ jcy1qy	ok	Shiori, offline	Shiori，離線	src/ui/screens/shiori.js:21
 1imu4jh	draft	Back to the original. It applies at her next wake.	已還原原版。她下次喚醒時生效。	src/ui/screens/shiori.js:48	
 veugk0	ok	Reset to original	還原原版	src/ui/screens/shiori.js:50	Note: puts a personality back to annai's original text.
 1vcli95	ok	Ask me before Shiori changes her personality	Shiori 修改性格前先問我	src/ui/screens/shiori.js:62	
-1atbaso	ok	Show what the halves tell each other	顯示兩個分身之間的交流	src/ui/screens/shiori.js:66	
-1csnvhb	ok	Quiet until	安靜時段結束	src/ui/screens/shiori.js:74	Note: quiet hours' end, named after the glossary's quiet hours (安靜時段).
-1p3ttz9	ok	Quiet from	安靜時段開始	src/ui/screens/shiori.js:74	Note: quiet hours' start, named after the glossary's quiet hours (安靜時段).
-1ite7lp	ok	Set the other time too.	請把另一個時間也設好。	src/ui/screens/shiori.js:79	
-11mcr74	ok	Quiet hours need both times. Clear both for none.	安靜時段需要兩個時間。都清空則不設。	src/ui/screens/shiori.js:100	
-1qa55ez	ok	How she looks	她的樣子	src/ui/screens/shiori.js:107	
-15cdrhf	ok	Each state, as the dock shows her, with the words under her.	每種狀態在底部列中的樣子，以及下面的文字。	src/ui/screens/shiori.js:108	
-jq414z	ok	Personality	性格	src/ui/screens/shiori.js:110	
-efcvdh	ok	How Shiori behaves. She can adjust it herself through a reviewed change, and you can always undo it. A change applies at her next wake.	Shiori 的行為方式。她可以透過經你審閱的修改自行調整，你隨時可以復原。修改在她下次喚醒時生效。	src/ui/screens/shiori.js:111	
-1amzdg4	ok	The new original of "{0}"	「{0}」的新原版	src/ui/screens/shiori.js:118	{0} = compare
-pmpsfk	ok	Use the new original	使用新原版	src/ui/screens/shiori.js:121	
-eh67ee	ok	Saved. It applies at her next wake.	已儲存。她下次喚醒時生效。	src/ui/screens/shiori.js:130	
-3wot4g	ok	A name is lowercase letters, digits and dashes, like my-shiori.	名稱只能用小寫字母、數字和連字元，例如 my-shiori。	src/ui/screens/shiori.js:138	
-8vtmkf	ok	There is already a personality called "{0}".	已經有名為「{0}」的性格了。	src/ui/screens/shiori.js:138	{0} = name
-codbeh	ok	New from this one	以此建立	src/ui/screens/shiori.js:143	
-10pf3h4	ok	Name for a new one	新性格的名稱	src/ui/screens/shiori.js:144	
-185xhpb	ok	Her two halves	她的兩個分身	src/ui/screens/shiori.js:148	
-1vyft97	ok	Koe talks with you and answers at once; Kokoro thinks things through and does the work. They pass each other short notes. On: the notes show in the conversation as quiet lines. Off: they stay in the Trace.	Koe 和你說話，馬上回答；Kokoro 仔細思考並完成工作。兩者互相傳遞簡短的便條。開啟：便條以淺色行顯示在對話中。關閉：只留在記錄裡。	src/ui/screens/shiori.js:149	
-u36mv	ok	The languages you speak, and the one Shiori answers in, are in Settings → Languages.	你說的語言和 Shiori 回答所用語言，在設定 → 語言中。	src/ui/screens/shiori.js:151	Note: a link on Settings → Shiori to the Languages screen; 語言 as the glossary's screen name.
-is7afy	ok	How often she acts on her own	她主動行動的頻率	src/ui/screens/shiori.js:153	
-1mzkqw7	ok	Plugins, reminders and GPS wake her as well as you. None of these is set unless you set it: more wakes in an hour are skipped, quiet hours hold her until they end (reminders still come), and past the steps of one wake she stops, with a card.	除了你，外掛程式、提醒和 GPS 也會喚醒她。這些都只有你設了才生效：一小時內超出的喚醒會被跳過，安靜時段會讓她等到結束（提醒照常），一次喚醒超出步數時她會停下，並顯示一張卡片。	src/ui/screens/shiori.js:154	
-6a0cdc	ok	Wakes per hour is a whole number from 1; leave it empty for no limit.	每小時喚醒次數是從 1 起的整數；留空表示不限。	src/ui/screens/shiori.js:155	
-pd5jqf	ok	Wakes per hour, not counting yours	每小時喚醒次數（不算你的）	src/ui/screens/shiori.js:155	
-av9dc1	ok	Steps per wake	每次喚醒的步數	src/ui/screens/shiori.js:157	
-ro3vrl	ok	Steps per wake is a whole number from 1; leave it empty for no limit on what you ask; what she does on her own stops after 50.	每次喚醒的步數是從 1 起的整數；留空則你的請求不限步數；她主動做的事在 50 步後停止。	src/ui/screens/shiori.js:157	
-1oxfybk	draft	Shiori's core	Shiori 的核心	src/ui/screens/shiori.js:162	
-srktqx	draft	How she talks, how annai works, and her safety rules. Kokoro reads it, and Shiori when she is one half.	她的說話方式、annai 的運作方式和她的安全規則。Kokoro 會讀取，只有一個分身時 Shiori 也會讀取。	src/ui/screens/shiori.js:162	
-10gef26	draft	What Kokoro adds while Shiori is two halves: how it works behind Koe.	Shiori 有兩個分身時 Kokoro 額外讀取的內容：如何在 Koe 背後工作。	src/ui/screens/shiori.js:163	
-13snrep	draft	Kokoro's part	Kokoro 的部分	src/ui/screens/shiori.js:163	
-1t3wpe4	draft	Koe, chat	Koe（聊天）	src/ui/screens/shiori.js:164	
-1x7xmuu	draft	What Koe reads when its words go to a voice.	Koe 的話由語音朗讀時，Koe 讀取的內容。	src/ui/screens/shiori.js:164	
-777qwf	draft	What Koe reads in a live voice session.	Koe 在即時語音工作階段中讀取的內容。	src/ui/screens/shiori.js:165	
-mmvypk	draft	Koe, live	Koe（即時）	src/ui/screens/shiori.js:165	
-1eogfr1	draft	Her instructions	給 Shiori 的指示	src/ui/screens/shiori.js:170	
-1eoyx0p	draft	These hold how Shiori works, including her safety rules. Reset to original brings them back. A change applies at her next wake.	這些內容決定 Shiori 如何運作，包括她的安全規則。「還原原版」可以還原。變更在她下次喚醒時生效。	src/ui/screens/shiori.js:171	
-3w9he4	draft	Reset to original: {0}	還原原版：{0}	src/ui/screens/shiori.js:182	{0} = words.name
-1tc34br	draft	changed, and annai has a new original	已變更，annai 有新原版	src/ui/screens/shiori.js:196	
-jgug0r	draft	changed	已變更	src/ui/screens/shiori.js:196	
-kntv40	draft	The new original of {0}	{0} 的新原版	src/ui/screens/shiori.js:200	{0} = words.name
-1nh34lh	draft	Keep mine: {0}	保留我的：{0}	src/ui/screens/shiori.js:202	{0} = words.name
-1s0o9t8	draft	Use the new original: {0}	使用新原版：{0}	src/ui/screens/shiori.js:203	{0} = words.name
-b5wyro	draft	Save: {0}	儲存：{0}	src/ui/screens/shiori.js:215	{0} = words.name
-1mrunng	ok	{0} (from a plugin)	{0}（來自外掛程式）	src/ui/screens/shiori.js:237	{0} = p.name
-1px053l	ok	{0} (from {1})	{0}（來自 {1}）	src/ui/screens/shiori.js:237	{0} = p.name; {1} = p.plugin
-9xxzlu	ok	You already have a personality called "{0}".	你已經有名為「{0}」的性格了。	src/ui/screens/shiori.js:242	{0} = p.name
-fnme9h	ok	Added the personality "{0}". Choose it above.	已新增性格「{0}」。請在上方選擇。	src/ui/screens/shiori.js:246	{0} = p.name
+indiij	draft	Let Shiori read my other trips without asking	讓 Shiori 不必詢問即可讀取我的其他旅行	src/ui/screens/shiori.js:64	
+1atbaso	ok	Show what the halves tell each other	顯示兩個分身之間的交流	src/ui/screens/shiori.js:68	
+1csnvhb	ok	Quiet until	安靜時段結束	src/ui/screens/shiori.js:76	Note: quiet hours' end, named after the glossary's quiet hours (安靜時段).
+1p3ttz9	ok	Quiet from	安靜時段開始	src/ui/screens/shiori.js:76	Note: quiet hours' start, named after the glossary's quiet hours (安靜時段).
+1ite7lp	ok	Set the other time too.	請把另一個時間也設好。	src/ui/screens/shiori.js:81	
+11mcr74	ok	Quiet hours need both times. Clear both for none.	安靜時段需要兩個時間。都清空則不設。	src/ui/screens/shiori.js:102	
+1qa55ez	ok	How she looks	她的樣子	src/ui/screens/shiori.js:109	
+15cdrhf	ok	Each state, as the dock shows her, with the words under her.	每種狀態在底部列中的樣子，以及下面的文字。	src/ui/screens/shiori.js:110	
+jq414z	ok	Personality	性格	src/ui/screens/shiori.js:112	
+efcvdh	ok	How Shiori behaves. She can adjust it herself through a reviewed change, and you can always undo it. A change applies at her next wake.	Shiori 的行為方式。她可以透過經你審閱的修改自行調整，你隨時可以復原。修改在她下次喚醒時生效。	src/ui/screens/shiori.js:113	
+1amzdg4	ok	The new original of "{0}"	「{0}」的新原版	src/ui/screens/shiori.js:120	{0} = compare
+pmpsfk	ok	Use the new original	使用新原版	src/ui/screens/shiori.js:123	
+eh67ee	ok	Saved. It applies at her next wake.	已儲存。她下次喚醒時生效。	src/ui/screens/shiori.js:132	
+3wot4g	ok	A name is lowercase letters, digits and dashes, like my-shiori.	名稱只能用小寫字母、數字和連字元，例如 my-shiori。	src/ui/screens/shiori.js:140	
+8vtmkf	ok	There is already a personality called "{0}".	已經有名為「{0}」的性格了。	src/ui/screens/shiori.js:140	{0} = name
+codbeh	ok	New from this one	以此建立	src/ui/screens/shiori.js:145	
+10pf3h4	ok	Name for a new one	新性格的名稱	src/ui/screens/shiori.js:146	
+185xhpb	ok	Her two halves	她的兩個分身	src/ui/screens/shiori.js:150	
+1vyft97	ok	Koe talks with you and answers at once; Kokoro thinks things through and does the work. They pass each other short notes. On: the notes show in the conversation as quiet lines. Off: they stay in the Trace.	Koe 和你說話，馬上回答；Kokoro 仔細思考並完成工作。兩者互相傳遞簡短的便條。開啟：便條以淺色行顯示在對話中。關閉：只留在記錄裡。	src/ui/screens/shiori.js:151	
+1f0pz7g	draft	Your other trips	你的其他旅行	src/ui/screens/shiori.js:153	
+t5n8hu	draft	Before Shiori reads another of your trips or conversations, annai asks, once a conversation. On: she reads your own without asking. Trips someone sent you always ask.	Shiori 讀取你的其他旅行或對話之前，annai 會在每段對話中詢問一次。開啟後，她會直接讀取你自己的旅行。別人傳給你的旅行每次都會詢問。	src/ui/screens/shiori.js:154	
+u36mv	ok	The languages you speak, and the one Shiori answers in, are in Settings → Languages.	你說的語言和 Shiori 回答所用語言，在設定 → 語言中。	src/ui/screens/shiori.js:156	Note: a link on Settings → Shiori to the Languages screen; 語言 as the glossary's screen name.
+is7afy	ok	How often she acts on her own	她主動行動的頻率	src/ui/screens/shiori.js:158	
+1mzkqw7	ok	Plugins, reminders and GPS wake her as well as you. None of these is set unless you set it: more wakes in an hour are skipped, quiet hours hold her until they end (reminders still come), and past the steps of one wake she stops, with a card.	除了你，外掛程式、提醒和 GPS 也會喚醒她。這些都只有你設了才生效：一小時內超出的喚醒會被跳過，安靜時段會讓她等到結束（提醒照常），一次喚醒超出步數時她會停下，並顯示一張卡片。	src/ui/screens/shiori.js:159	
+6a0cdc	ok	Wakes per hour is a whole number from 1; leave it empty for no limit.	每小時喚醒次數是從 1 起的整數；留空表示不限。	src/ui/screens/shiori.js:160	
+pd5jqf	ok	Wakes per hour, not counting yours	每小時喚醒次數（不算你的）	src/ui/screens/shiori.js:160	
+av9dc1	ok	Steps per wake	每次喚醒的步數	src/ui/screens/shiori.js:162	
+ro3vrl	ok	Steps per wake is a whole number from 1; leave it empty for no limit on what you ask; what she does on her own stops after 50.	每次喚醒的步數是從 1 起的整數；留空則你的請求不限步數；她主動做的事在 50 步後停止。	src/ui/screens/shiori.js:162	
+1oxfybk	draft	Shiori's core	Shiori 的核心	src/ui/screens/shiori.js:167	
+srktqx	draft	How she talks, how annai works, and her safety rules. Kokoro reads it, and Shiori when she is one half.	她的說話方式、annai 的運作方式和她的安全規則。Kokoro 會讀取，只有一個分身時 Shiori 也會讀取。	src/ui/screens/shiori.js:167	
+10gef26	draft	What Kokoro adds while Shiori is two halves: how it works behind Koe.	Shiori 有兩個分身時 Kokoro 額外讀取的內容：如何在 Koe 背後工作。	src/ui/screens/shiori.js:168	
+13snrep	draft	Kokoro's part	Kokoro 的部分	src/ui/screens/shiori.js:168	
+1t3wpe4	draft	Koe, chat	Koe（聊天）	src/ui/screens/shiori.js:169	
+1x7xmuu	draft	What Koe reads when its words go to a voice.	Koe 的話由語音朗讀時，Koe 讀取的內容。	src/ui/screens/shiori.js:169	
+777qwf	draft	What Koe reads in a live voice session.	Koe 在即時語音工作階段中讀取的內容。	src/ui/screens/shiori.js:170	
+mmvypk	draft	Koe, live	Koe（即時）	src/ui/screens/shiori.js:170	
+1eogfr1	draft	Her instructions	給 Shiori 的指示	src/ui/screens/shiori.js:175	
+1eoyx0p	draft	These hold how Shiori works, including her safety rules. Reset to original brings them back. A change applies at her next wake.	這些內容決定 Shiori 如何運作，包括她的安全規則。「還原原版」可以還原。變更在她下次喚醒時生效。	src/ui/screens/shiori.js:176	
+3w9he4	draft	Reset to original: {0}	還原原版：{0}	src/ui/screens/shiori.js:187	{0} = words.name
+1tc34br	draft	changed, and annai has a new original	已變更，annai 有新原版	src/ui/screens/shiori.js:201	
+jgug0r	draft	changed	已變更	src/ui/screens/shiori.js:201	
+kntv40	draft	The new original of {0}	{0} 的新原版	src/ui/screens/shiori.js:205	{0} = words.name
+1nh34lh	draft	Keep mine: {0}	保留我的：{0}	src/ui/screens/shiori.js:207	{0} = words.name
+1s0o9t8	draft	Use the new original: {0}	使用新原版：{0}	src/ui/screens/shiori.js:208	{0} = words.name
+b5wyro	draft	Save: {0}	儲存：{0}	src/ui/screens/shiori.js:220	{0} = words.name
+1mrunng	ok	{0} (from a plugin)	{0}（來自外掛程式）	src/ui/screens/shiori.js:242	{0} = p.name
+1px053l	ok	{0} (from {1})	{0}（來自 {1}）	src/ui/screens/shiori.js:242	{0} = p.name; {1} = p.plugin
+9xxzlu	ok	You already have a personality called "{0}".	你已經有名為「{0}」的性格了。	src/ui/screens/shiori.js:247	{0} = p.name
+fnme9h	ok	Added the personality "{0}". Choose it above.	已新增性格「{0}」。請在上方選擇。	src/ui/screens/shiori.js:251	{0} = p.name
 aqber3	ok	600 times: an hour takes 6 seconds	600 倍：一小時只需 6 秒	src/ui/screens/simulate.js:10	
 u8l013	ok	10 times real time: an hour takes 6 minutes	實際時間的 10 倍：一小時只需 6 分鐘	src/ui/screens/simulate.js:10	
 zby7kj	ok	60 times: an hour takes a minute	60 倍：一小時只需一分鐘	src/ui/screens/simulate.js:10	
@@ -2369,47 +2372,48 @@ td8u17	ok	A photo you sent	你傳送的照片	src/ui/screens/talk.js:329
 9e5yo5	ok	(a photo)	（照片）	src/ui/screens/talk.js:375	
 fv3xhc	ok	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:446	Note: a note from Kokoro to Koe; its words follow.
 upsxi0	ok	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:446	Note: a note from Koe to Kokoro; its words follow.
-e34nbi	ok	Started fresh	已重新開始	src/ui/screens/talk.js:471	Note: the divider where a fresh start began.
-3r1u8z	ok	Earlier conversation summarized. The full log is in Trace.	已總結之前的對話。完整日誌在記錄中。	src/ui/screens/talk.js:472	
-1o41up	ok	A budget ended her turn	達到上限，她的這一輪結束了	src/ui/screens/talk.js:482	
-1p4yyw7	ok	Her turn ended	她的這一輪結束了	src/ui/screens/talk.js:482	
-1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	還沒有內容。點一下下方的 Shiori 或「輸入」來對話。	src/ui/screens/talk.js:497	Note: "Type" is the dock's button: its words must match it.
-4fzxin	ok	From {0}.	來自{0}。	src/ui/screens/talk.js:553	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
-1pm5i13	ok	Back to Trips	返回「旅行」	src/ui/screens/talk.js:582	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
-15g4wel	ok	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	沒有開啟的旅行。請從「旅行」中開啟一個，或在這裡對話：Shiori 仍可使用 /me/。	src/ui/screens/talk.js:590	Note: The Trips screen, quoted so it reads apart from a trip.
-16zeyyr	draft	Next: {0} {1}	接下來：{0} {1}	src/ui/screens/talk.js:632	{0} = r.time; {1} = name
-puj2r7	draft	Next: {0} {1} {2}	接下來：{0} {1} {2}	src/ui/screens/talk.js:632	{0} = day(r.day, true); {1} = r.time; {2} = name
-1frlw7l	draft	Undo the dates Shiori set	復原 Shiori 設定的日期	src/ui/screens/talk.js:657	
-1l3merh	draft	Shiori set the dates	Shiori 設定了日期	src/ui/screens/talk.js:666	
-159f82q	ok	Undone	已復原	src/ui/screens/talk.js:690	
-141utsf#other	ok	Undone. {0} are removed, and your files are waiting with Shiori.	已復原。{0}已被移除，你的檔案由 Shiori 暫存。	src/ui/screens/talk.js:709	plural; # = removed.length; {0} = listed(removed); English: "Undone. {0} is removed, and your files are waiting with Shiori." (one), "Undone. {0} are removed, and your files are waiting with Shiori." (other); Note: Taiwan wording: 已復原, 暫存, 檔案; {0} is the trips' names as a list.
-1d428yv#other	ok	Undone. {0} are removed, and your files are back in {1}.	已復原。{0}已被移除，你的檔案回到了{1}。	src/ui/screens/talk.js:710	plural; # = removed.length; {0} = listed(removed); {1} = home; English: "Undone. {0} is removed, and your files are back in {1}." (one), "Undone. {0} are removed, and your files are back in {1}." (other); Note: Taiwan wording: 已復原, 檔案; {0} and {1} are trip names as lists.
-svlg0f#other	ok	Undone. {0} are removed.	已復原。{0}已被移除。	src/ui/screens/talk.js:711	plural; # = removed.length; {0} = listed(removed); English: "Undone. {0} is removed." (one), "Undone. {0} are removed." (other); Note: Undo removed the trips she started, with no files to put anywhere; {0} is their names as a list.
-184j8yg	ok	Undone. Your files are back in {0}.	已復原。你的檔案回到了{0}。	src/ui/screens/talk.js:712	{0} = home; Note: Taiwan wording: 已復原, 檔案.
-1a3hizo	ok	Undone.	已復原。	src/ui/screens/talk.js:712	Note: as the Undone row, a sentence.
-mpifrf	ok	Undone. Your files are waiting with Shiori again.	已復原。你的檔案又由 Shiori 暫存了。	src/ui/screens/talk.js:712	Note: Taiwan wording: 已復原, 檔案, 暫存 as Waiting with Shiori.
-urusz7#other	ok	Left # files as you changed them.	你改過的 # 個檔案保持原樣。	src/ui/screens/talk.js:713	plural; # = kept; English: "Left # file as you changed it." (one), "Left # files as you changed them." (other); Note: Taiwan wording: 個檔案, 改過.
-1v37fcy	ok	Undo what Shiori did with these files	復原 Shiori 對這些檔案所做的事	src/ui/screens/talk.js:732	Note: Taiwan wording: 復原 as Undo, 檔案.
-bomkf4	ok	Tidy up the conversation	整理對話	src/ui/screens/talk.js:773	
-7flpxf	ok	Summarizing…	正在總結…	src/ui/screens/talk.js:788	
-12707g	ok	She couldn't summarize it. A card says why.	她沒能總結。卡片上寫了原因。	src/ui/screens/talk.js:790	
-5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	已總結之前的對話。每一行都留在這裡，她也仍能查到。	src/ui/screens/talk.js:790	
-u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在工作。請稍後再試。	src/ui/screens/talk.js:790	
-va2k72	ok	There is not enough yet to summarize.	內容還不夠總結。	src/ui/screens/talk.js:790	
-mienoe	ok	Summarize now	立即總結	src/ui/screens/talk.js:793	
-10sfmur	ok	Starting fresh…	正在重新開始…	src/ui/screens/talk.js:795	
-va77q0	ok	Start fresh?	重新開始？	src/ui/screens/talk.js:808	
-19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 會從這裡重新開始，不再記著之前的內容。它們都留在對話裡，供你閱讀和搜尋，她也仍能查到：什麼都不會刪除。即時語音連線也會重新開始。	src/ui/screens/talk.js:809	Note: "A live voice session" is the glossary's Live voice (即時語音) and a live session (即時連線), not a voice she speaks with.
-czdqlz	ok	Start fresh	重新開始	src/ui/screens/talk.js:810	
-1h9wwbn	ok	She couldn't start fresh: {0}	她沒能重新開始：{0}	src/ui/screens/talk.js:820	{0} = messageOf(e)
-1thzla3	ok	Already fresh: nothing has been said since.	已經是新的開始：之後還沒說過話。	src/ui/screens/talk.js:823	
-3fntk0	ok	Started fresh.	已重新開始。	src/ui/screens/talk.js:823	
-mg70bg	ok	The conversation is still opening. Try again in a moment.	對話還在開啟。請稍後再試。	src/ui/screens/talk.js:823	
-p5pj7b	ok	There is nothing to start fresh from yet.	還沒有可以重新開始的內容。	src/ui/screens/talk.js:823	
-1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即總結：Shiori 現在就把之前的對話總結一下，讓它保持簡短。每一行都留在這裡，她也仍能查到。	src/ui/screens/talk.js:843	
-18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新開始：Shiori 不再記著之前的內容，從這裡重新開始。每一行都留在分隔線上方。	src/ui/screens/talk.js:844	
-15ve7m7	draft	What each half sees	各個分身看到的內容	src/ui/screens/talk.js:845	
-16pl3gf	ok	Undone. Her old personality applies at her next wake.	已復原。她原來的性格在下次喚醒時生效。	src/ui/screens/talk.js:867	
+16ol023	draft	Shiori read {0}	Shiori 讀取了「{0}」	src/ui/screens/talk.js:469	{0} = scopeTitle({ id: String(d.trip), title: String(d.title ?? '') })
+e34nbi	ok	Started fresh	已重新開始	src/ui/screens/talk.js:473	Note: the divider where a fresh start began.
+3r1u8z	ok	Earlier conversation summarized. The full log is in Trace.	已總結之前的對話。完整日誌在記錄中。	src/ui/screens/talk.js:474	
+1o41up	ok	A budget ended her turn	達到上限，她的這一輪結束了	src/ui/screens/talk.js:484	
+1p4yyw7	ok	Her turn ended	她的這一輪結束了	src/ui/screens/talk.js:484	
+1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	還沒有內容。點一下下方的 Shiori 或「輸入」來對話。	src/ui/screens/talk.js:499	Note: "Type" is the dock's button: its words must match it.
+4fzxin	ok	From {0}.	來自{0}。	src/ui/screens/talk.js:555	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
+1pm5i13	ok	Back to Trips	返回「旅行」	src/ui/screens/talk.js:584	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
+15g4wel	ok	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	沒有開啟的旅行。請從「旅行」中開啟一個，或在這裡對話：Shiori 仍可使用 /me/。	src/ui/screens/talk.js:592	Note: The Trips screen, quoted so it reads apart from a trip.
+16zeyyr	draft	Next: {0} {1}	接下來：{0} {1}	src/ui/screens/talk.js:634	{0} = r.time; {1} = name
+puj2r7	draft	Next: {0} {1} {2}	接下來：{0} {1} {2}	src/ui/screens/talk.js:634	{0} = day(r.day, true); {1} = r.time; {2} = name
+1frlw7l	draft	Undo the dates Shiori set	復原 Shiori 設定的日期	src/ui/screens/talk.js:659	
+1l3merh	draft	Shiori set the dates	Shiori 設定了日期	src/ui/screens/talk.js:668	
+159f82q	ok	Undone	已復原	src/ui/screens/talk.js:692	
+141utsf#other	ok	Undone. {0} are removed, and your files are waiting with Shiori.	已復原。{0}已被移除，你的檔案由 Shiori 暫存。	src/ui/screens/talk.js:711	plural; # = removed.length; {0} = listed(removed); English: "Undone. {0} is removed, and your files are waiting with Shiori." (one), "Undone. {0} are removed, and your files are waiting with Shiori." (other); Note: Taiwan wording: 已復原, 暫存, 檔案; {0} is the trips' names as a list.
+1d428yv#other	ok	Undone. {0} are removed, and your files are back in {1}.	已復原。{0}已被移除，你的檔案回到了{1}。	src/ui/screens/talk.js:712	plural; # = removed.length; {0} = listed(removed); {1} = home; English: "Undone. {0} is removed, and your files are back in {1}." (one), "Undone. {0} are removed, and your files are back in {1}." (other); Note: Taiwan wording: 已復原, 檔案; {0} and {1} are trip names as lists.
+svlg0f#other	ok	Undone. {0} are removed.	已復原。{0}已被移除。	src/ui/screens/talk.js:713	plural; # = removed.length; {0} = listed(removed); English: "Undone. {0} is removed." (one), "Undone. {0} are removed." (other); Note: Undo removed the trips she started, with no files to put anywhere; {0} is their names as a list.
+184j8yg	ok	Undone. Your files are back in {0}.	已復原。你的檔案回到了{0}。	src/ui/screens/talk.js:714	{0} = home; Note: Taiwan wording: 已復原, 檔案.
+1a3hizo	ok	Undone.	已復原。	src/ui/screens/talk.js:714	Note: as the Undone row, a sentence.
+mpifrf	ok	Undone. Your files are waiting with Shiori again.	已復原。你的檔案又由 Shiori 暫存了。	src/ui/screens/talk.js:714	Note: Taiwan wording: 已復原, 檔案, 暫存 as Waiting with Shiori.
+urusz7#other	ok	Left # files as you changed them.	你改過的 # 個檔案保持原樣。	src/ui/screens/talk.js:715	plural; # = kept; English: "Left # file as you changed it." (one), "Left # files as you changed them." (other); Note: Taiwan wording: 個檔案, 改過.
+1v37fcy	ok	Undo what Shiori did with these files	復原 Shiori 對這些檔案所做的事	src/ui/screens/talk.js:734	Note: Taiwan wording: 復原 as Undo, 檔案.
+bomkf4	ok	Tidy up the conversation	整理對話	src/ui/screens/talk.js:775	
+7flpxf	ok	Summarizing…	正在總結…	src/ui/screens/talk.js:790	
+12707g	ok	She couldn't summarize it. A card says why.	她沒能總結。卡片上寫了原因。	src/ui/screens/talk.js:792	
+5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	已總結之前的對話。每一行都留在這裡，她也仍能查到。	src/ui/screens/talk.js:792	
+u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在工作。請稍後再試。	src/ui/screens/talk.js:792	
+va2k72	ok	There is not enough yet to summarize.	內容還不夠總結。	src/ui/screens/talk.js:792	
+mienoe	ok	Summarize now	立即總結	src/ui/screens/talk.js:795	
+10sfmur	ok	Starting fresh…	正在重新開始…	src/ui/screens/talk.js:797	
+va77q0	ok	Start fresh?	重新開始？	src/ui/screens/talk.js:810	
+19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 會從這裡重新開始，不再記著之前的內容。它們都留在對話裡，供你閱讀和搜尋，她也仍能查到：什麼都不會刪除。即時語音連線也會重新開始。	src/ui/screens/talk.js:811	Note: "A live voice session" is the glossary's Live voice (即時語音) and a live session (即時連線), not a voice she speaks with.
+czdqlz	ok	Start fresh	重新開始	src/ui/screens/talk.js:812	
+1h9wwbn	ok	She couldn't start fresh: {0}	她沒能重新開始：{0}	src/ui/screens/talk.js:822	{0} = messageOf(e)
+1thzla3	ok	Already fresh: nothing has been said since.	已經是新的開始：之後還沒說過話。	src/ui/screens/talk.js:825	
+3fntk0	ok	Started fresh.	已重新開始。	src/ui/screens/talk.js:825	
+mg70bg	ok	The conversation is still opening. Try again in a moment.	對話還在開啟。請稍後再試。	src/ui/screens/talk.js:825	
+p5pj7b	ok	There is nothing to start fresh from yet.	還沒有可以重新開始的內容。	src/ui/screens/talk.js:825	
+1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即總結：Shiori 現在就把之前的對話總結一下，讓它保持簡短。每一行都留在這裡，她也仍能查到。	src/ui/screens/talk.js:845	
+18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新開始：Shiori 不再記著之前的內容，從這裡重新開始。每一行都留在分隔線上方。	src/ui/screens/talk.js:846	
+15ve7m7	draft	What each half sees	各個分身看到的內容	src/ui/screens/talk.js:847	
+16pl3gf	ok	Undone. Her old personality applies at her next wake.	已復原。她原來的性格在下次喚醒時生效。	src/ui/screens/talk.js:869	
 11gkctr	ok	Places	地點	src/ui/screens/tools.js:11	context: tool group
 13mxqrp	ok	Talk	對話	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	ok	Go	出遊	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).
@@ -2486,59 +2490,63 @@ fgylb4#other	ok	# pieces of content it didn't hold left out	略去了 # 項它�
 1smvlg5	ok	asked for content that isn't this trip's, and got none	請求了不屬於這個旅行的內容，什麼也沒得到	src/ui/screens/trace.js:214	
 1vkhbgw	ok	asked for content that isn't here, and got none	請求了不在這裡的內容，什麼也沒得到	src/ui/screens/trace.js:214	
 17ybebf	ok	a turn cut off by opening another conversation	因開啟另一個對話而中斷的回合	src/ui/screens/trace.js:215	
-130nh2w	ok	events {0}–{1} summarized ({2})	已總結事件 {0}–{1}（{2}）	src/ui/screens/trace.js:216	{0} = d.from; {1} = d.to; {2} = d.mode
-vgv0s2	ok	started fresh after event {0}	在事件 {0} 之後重新開始	src/ui/screens/trace.js:216	{0} = d.to
-1nulaw8	ok	late by {0} min	晚了 {0} 分鐘	src/ui/screens/trace.js:218	{0} = d.late
-1vzfabu	ok	no connection	無網路連線	src/ui/screens/trace.js:218	
-1l7ac5y	ok	shown	已顯示	src/ui/screens/trace.js:219	
-1yfde5	ok	no name	無名稱	src/ui/screens/trace.js:221	
-1nk1wxu	ok	audio route {0}	音訊路由 {0}	src/ui/screens/trace.js:222	{0} = d.route
-1yo1hz0	ok	the microphone in use: {0}	正在使用的麥克風：{0}	src/ui/screens/trace.js:222	{0} = d.using || unnamed
-bt7zey	ok	from the devices present	來自現有的裝置	src/ui/screens/trace.js:222	
-1rzyxvu	draft	disconnected: {0}	已中斷連線：{0}	src/ui/screens/trace.js:223	{0} = d.gone.join(', ')
-3gdj21	ok	no devices	無裝置	src/ui/screens/trace.js:223	
-1ijsnzq	ok	voice on	語音開啟	src/ui/screens/trace.js:238	Note: The glossary's Voice on mode (語音開啟).
-z2w914	ok	voice off	語音關閉	src/ui/screens/trace.js:238	Note: The glossary's Voice off mode (語音關閉).
-1g1k3by	ok	{0} waiting	{0} 則等待中	src/ui/screens/trace.js:241	{0} = d.waiting ?? 0
-xy6oxk	ok	{0} sent, {1} called off	已傳送 {0} 則，已取消 {1} 則	src/ui/screens/trace.js:241	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
-1efflnv	ok	notification shown	通知已顯示	src/ui/screens/trace.js:242	
-cjmncb	ok	notification opened	通知已開啟	src/ui/screens/trace.js:243	
-3m7wpo#other	ok	# attempts	嘗試 # 次	src/ui/screens/trace.js:253	plural; # = n; English: "# attempt" (one), "# attempts" (other)
-r42rpw	ok	{0} ms processing latency	處理延遲 {0} ms	src/ui/screens/trace.js:257	{0} = Math.round(d.baseLatency * 1000)
-1y5g6mq	ok	{0} ms output latency	輸出延遲 {0} ms	src/ui/screens/trace.js:258	{0} = Math.round(d.outputLatency * 1000)
-a1oech	ok	live session {0}	即時連線 {0}	src/ui/screens/trace.js:259	{0} = d.state; Note: a live session is 即時連線, as the model check's 正在開啟即時連線.
-beya44	ok	sound at {0} kHz	聲音 {0} kHz	src/ui/screens/trace.js:261	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
-1u50qqt	ok	her voice: {0} played	她的聲音：已播放 {0}	src/ui/screens/trace.js:266	{0} = duration(d.ms ?? 0)
-1wcl60z	ok	cut	已中斷	src/ui/screens/trace.js:266	
-njy1uz	ok	her voice: cut before it played	她的聲音：播放前被中斷	src/ui/screens/trace.js:266	
-9atabi	ok	started after {0} ms	{0} ms 後開始	src/ui/screens/trace.js:267	{0} = d.waitMs
-j43x3k	ok	stalled	卡住	src/ui/screens/trace.js:267	
-1qyanji#other	ok	# holes, {0} ms	# 處空白，{0} ms	src/ui/screens/trace.js:268	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中斷).
-gw0cwm#other	ok	# holes	# 處空白	src/ui/screens/trace.js:268	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中斷).
-1bx4bl6	ok	on {0}	在 {0} 上	src/ui/screens/trace.js:269	{0} = d.player
-1jhbzkn	draft	your voice {0} dB, least to start {1} dB, {2} frames kept out (loudest {3} dB)	你的聲音 {0} dB，開始所需最低 {1} dB，{2} 影格被擋在外（最響 {3} dB）	src/ui/screens/trace.js:274	{0} = d.voiceDb ?? '?'; {1} = d.minDb ?? '–'; {2} = d.keptFrames; {3} = d.keptPeakDb ?? '?'
-1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	你的回合結束：{0} · 已傳送 {1} · 底噪 {2} dB，最響 {3} dB	src/ui/screens/trace.js:275	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
-7ovnj9	draft	no turn	沒有開始一輪	src/ui/screens/trace.js:275	
-khxbvb	ok	audio: {0}	音訊：{0}	src/ui/screens/trace.js:279	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
-1wy37ql	ok	{0} sent	已傳送 {0}	src/ui/screens/trace.js:281	{0} = size(d.bytes)
-l04i5	ok	{0} sent, after a kept turn	已傳送 {0}，接在保留的輪次之後	src/ui/screens/trace.js:281	{0} = size(d.bytes); Note: A kept turn is one of the conversation turns a provider keeps (輪).
-1n96vkk	ok	earlier thinking not sent: something before it changed	未傳送之前的思考：它之前的內容有變動	src/ui/screens/trace.js:283	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
-yfywm0#other	ok	thinking of # earlier steps sent back	已傳回之前 # 步的思考	src/ui/screens/trace.js:283	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
-15hqi4k#other	ok	# guides	# 份指南	src/ui/screens/trace.js:287	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
-4k86ja	ok	{0} failed	{0} 個失敗	src/ui/screens/trace.js:287	{0} = d.failed
-1waoe51	ok	at its limit	已達上限	src/ui/screens/trace.js:288	
-66h5i6	ok	by itself on Wi-Fi	在 Wi-Fi 下自動	src/ui/screens/trace.js:288	
-rfe2ef	ok	{0} files sent, {1}	已傳送 {0} 個檔案，{1}	src/ui/screens/trace.js:290	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
-2601w8	ok	a newer backup from another device is there	有一個來自另一台裝置的更新備份	src/ui/screens/trace.js:291	
-uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	已下載 {0}，{1}，隨後停止：已丟棄	src/ui/screens/trace.js:293	{0} = d.backup; {1} = size(d.bytes ?? 0)
-wgniil	ok	downloaded {0}, {1}	已下載 {0}，{1}	src/ui/screens/trace.js:293	{0} = d.backup; {1} = size(d.bytes ?? 0)
-1gauo2f	ok	{0} can't be opened: {1}	{0} 無法開啟：{1}	src/ui/screens/trace.js:294	{0} = d.backup; {1} = cut(d.problem)
-1rrq0vn	ok	deleted an older backup, {0}	已刪除一個較早的備份：{0}	src/ui/screens/trace.js:295	{0} = d.backup
-57gz9u#other	ok	# secrets	# 個機密	src/ui/screens/trace.js:297	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
-scekw#other	ok	# settings	# 項設定	src/ui/screens/trace.js:297	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
-mp7j1w#other	ok	({0}, # bytes)	（{0}，# 位元組）	src/ui/screens/trace.js:320	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
-tqj8t3	ok	(no longer stored)	（已不再儲存）	src/ui/screens/trace.js:320	
-1kfziuy	ok	Show what was stored	顯示儲存的內容	src/ui/screens/trace.js:337	
+z082y3	draft	read {0}	讀取了「{0}」	src/ui/screens/trace.js:217	{0} = d.title
+1g60658	draft	said	口頭	src/ui/screens/trace.js:218	
+1s3wptl	draft	reading {0} allowed	已允許讀取 {0}	src/ui/screens/trace.js:218	{0} = d.trip
+1t5e727	draft	always for their trips	其旅行一律允許	src/ui/screens/trace.js:218	
+130nh2w	ok	events {0}–{1} summarized ({2})	已總結事件 {0}–{1}（{2}）	src/ui/screens/trace.js:219	{0} = d.from; {1} = d.to; {2} = d.mode
+vgv0s2	ok	started fresh after event {0}	在事件 {0} 之後重新開始	src/ui/screens/trace.js:219	{0} = d.to
+1nulaw8	ok	late by {0} min	晚了 {0} 分鐘	src/ui/screens/trace.js:221	{0} = d.late
+1vzfabu	ok	no connection	無網路連線	src/ui/screens/trace.js:221	
+1l7ac5y	ok	shown	已顯示	src/ui/screens/trace.js:222	
+1yfde5	ok	no name	無名稱	src/ui/screens/trace.js:224	
+1nk1wxu	ok	audio route {0}	音訊路由 {0}	src/ui/screens/trace.js:225	{0} = d.route
+1yo1hz0	ok	the microphone in use: {0}	正在使用的麥克風：{0}	src/ui/screens/trace.js:225	{0} = d.using || unnamed
+bt7zey	ok	from the devices present	來自現有的裝置	src/ui/screens/trace.js:225	
+1rzyxvu	draft	disconnected: {0}	已中斷連線：{0}	src/ui/screens/trace.js:226	{0} = d.gone.join(', ')
+3gdj21	ok	no devices	無裝置	src/ui/screens/trace.js:226	
+1ijsnzq	ok	voice on	語音開啟	src/ui/screens/trace.js:241	Note: The glossary's Voice on mode (語音開啟).
+z2w914	ok	voice off	語音關閉	src/ui/screens/trace.js:241	Note: The glossary's Voice off mode (語音關閉).
+1g1k3by	ok	{0} waiting	{0} 則等待中	src/ui/screens/trace.js:244	{0} = d.waiting ?? 0
+xy6oxk	ok	{0} sent, {1} called off	已傳送 {0} 則，已取消 {1} 則	src/ui/screens/trace.js:244	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
+1efflnv	ok	notification shown	通知已顯示	src/ui/screens/trace.js:245	
+cjmncb	ok	notification opened	通知已開啟	src/ui/screens/trace.js:246	
+3m7wpo#other	ok	# attempts	嘗試 # 次	src/ui/screens/trace.js:256	plural; # = n; English: "# attempt" (one), "# attempts" (other)
+r42rpw	ok	{0} ms processing latency	處理延遲 {0} ms	src/ui/screens/trace.js:260	{0} = Math.round(d.baseLatency * 1000)
+1y5g6mq	ok	{0} ms output latency	輸出延遲 {0} ms	src/ui/screens/trace.js:261	{0} = Math.round(d.outputLatency * 1000)
+a1oech	ok	live session {0}	即時連線 {0}	src/ui/screens/trace.js:262	{0} = d.state; Note: a live session is 即時連線, as the model check's 正在開啟即時連線.
+beya44	ok	sound at {0} kHz	聲音 {0} kHz	src/ui/screens/trace.js:264	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
+1u50qqt	ok	her voice: {0} played	她的聲音：已播放 {0}	src/ui/screens/trace.js:269	{0} = duration(d.ms ?? 0)
+1wcl60z	ok	cut	已中斷	src/ui/screens/trace.js:269	
+njy1uz	ok	her voice: cut before it played	她的聲音：播放前被中斷	src/ui/screens/trace.js:269	
+9atabi	ok	started after {0} ms	{0} ms 後開始	src/ui/screens/trace.js:270	{0} = d.waitMs
+j43x3k	ok	stalled	卡住	src/ui/screens/trace.js:270	
+1qyanji#other	ok	# holes, {0} ms	# 處空白，{0} ms	src/ui/screens/trace.js:271	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中斷).
+gw0cwm#other	ok	# holes	# 處空白	src/ui/screens/trace.js:271	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中斷).
+1bx4bl6	ok	on {0}	在 {0} 上	src/ui/screens/trace.js:272	{0} = d.player
+1jhbzkn	draft	your voice {0} dB, least to start {1} dB, {2} frames kept out (loudest {3} dB)	你的聲音 {0} dB，開始所需最低 {1} dB，{2} 影格被擋在外（最響 {3} dB）	src/ui/screens/trace.js:277	{0} = d.voiceDb ?? '?'; {1} = d.minDb ?? '–'; {2} = d.keptFrames; {3} = d.keptPeakDb ?? '?'
+1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	你的回合結束：{0} · 已傳送 {1} · 底噪 {2} dB，最響 {3} dB	src/ui/screens/trace.js:278	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
+7ovnj9	draft	no turn	沒有開始一輪	src/ui/screens/trace.js:278	
+khxbvb	ok	audio: {0}	音訊：{0}	src/ui/screens/trace.js:282	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
+1wy37ql	ok	{0} sent	已傳送 {0}	src/ui/screens/trace.js:284	{0} = size(d.bytes)
+l04i5	ok	{0} sent, after a kept turn	已傳送 {0}，接在保留的輪次之後	src/ui/screens/trace.js:284	{0} = size(d.bytes); Note: A kept turn is one of the conversation turns a provider keeps (輪).
+1n96vkk	ok	earlier thinking not sent: something before it changed	未傳送之前的思考：它之前的內容有變動	src/ui/screens/trace.js:286	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
+yfywm0#other	ok	thinking of # earlier steps sent back	已傳回之前 # 步的思考	src/ui/screens/trace.js:286	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
+15hqi4k#other	ok	# guides	# 份指南	src/ui/screens/trace.js:290	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
+4k86ja	ok	{0} failed	{0} 個失敗	src/ui/screens/trace.js:290	{0} = d.failed
+1waoe51	ok	at its limit	已達上限	src/ui/screens/trace.js:291	
+66h5i6	ok	by itself on Wi-Fi	在 Wi-Fi 下自動	src/ui/screens/trace.js:291	
+rfe2ef	ok	{0} files sent, {1}	已傳送 {0} 個檔案，{1}	src/ui/screens/trace.js:293	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
+2601w8	ok	a newer backup from another device is there	有一個來自另一台裝置的更新備份	src/ui/screens/trace.js:294	
+uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	已下載 {0}，{1}，隨後停止：已丟棄	src/ui/screens/trace.js:296	{0} = d.backup; {1} = size(d.bytes ?? 0)
+wgniil	ok	downloaded {0}, {1}	已下載 {0}，{1}	src/ui/screens/trace.js:296	{0} = d.backup; {1} = size(d.bytes ?? 0)
+1gauo2f	ok	{0} can't be opened: {1}	{0} 無法開啟：{1}	src/ui/screens/trace.js:297	{0} = d.backup; {1} = cut(d.problem)
+1rrq0vn	ok	deleted an older backup, {0}	已刪除一個較早的備份：{0}	src/ui/screens/trace.js:298	{0} = d.backup
+57gz9u#other	ok	# secrets	# 個機密	src/ui/screens/trace.js:300	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
+scekw#other	ok	# settings	# 項設定	src/ui/screens/trace.js:300	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
+mp7j1w#other	ok	({0}, # bytes)	（{0}，# 位元組）	src/ui/screens/trace.js:323	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
+tqj8t3	ok	(no longer stored)	（已不再儲存）	src/ui/screens/trace.js:323	
+1kfziuy	ok	Show what was stored	顯示儲存的內容	src/ui/screens/trace.js:340	
 1cnmmj7	ok	Archived	已封存	src/ui/screens/trip.js:41	
 jz8mjk	ok	Unarchive	取消封存	src/ui/screens/trip.js:53	
 qeuftp	ok	Tap again to archive	再點一次以封存	src/ui/screens/trip.js:55	
