@@ -420,3 +420,9 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** Details of a chat says "Remove trip", "Archive trip" and "This trip so far", though a chat isn't a trip (the spec's anti-goal: no "trip" on small chats). Welcome and the import screen say "the timeline" where the screen and the top bar say "Trips".
 - **Why:** both are words on screens that change shape with the Start a trip form's going, so they change once, in every language.
 - **Revisit when:** stage 8.
+
+### A change made from home itself shows "changed since" on its card only at the next redraw
+- **Kind:** deferred.
+- **What the user sees:** with home on screen, a change Shiori makes to a trip through the dock leaves its card saying "backed up 10 minutes ago" with no "changed since" until home is next drawn: when a backup ends (a few minutes later with a backup place), the next time annai comes to the front, midnight, or a Next that ends. Without a backup place, the next of the other three. Before the branch that moved "… ago" into place, the next minute's redraw showed it. Traced by the review of a379a5f7..56612b84, not run.
+- **Why:** home draws again for a backup's end, each time annai comes to the front, midnight and a Next that ends, and changes the "… ago" words in place; it doesn't follow what the workspace writes.
+- **Revisit when:** the next version: home follows `ws.onChange` for trips' writes, coalesced, and draws again (or changes the card's words in place).
