@@ -1,5 +1,5 @@
 import { h, crumb, t, plural, field, twoStep, linkIn, messageOf } from '../dom.js';
-import { setTripStatus, removeTrip, backupState, tripMirror } from '../../core/scopes.js';
+import { setTripStatus, removeTrip, backupState, tripMirror, scopeTitle } from '../../core/scopes.js';
 import { ask } from '../ask.js';
 import { normPath } from '../../core/paths.js';
 import { ValidationError, NotFoundError } from '../../core/workspace.js';
@@ -37,7 +37,7 @@ export async function renderTrip(ctx, route) {
   // Details, the trip's page: back to its conversation; its name and dates; what opens from it; Share, Archive and Remove; its cost and files.
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, crumb(talkHref(id), t`Conversation`)),
-    h('h1', { class: 'title', dir: 'auto', text: scope.title }),
+    h('h1', { class: 'title', dir: 'auto', text: scopeTitle(scope) }),
     h('p', { class: 'sub' }, ...factsWords([start ? dateRange(start, end) : null, archived ? t`Archived` : null, plural(files.length, '# file', '# files'), stamps.length ? { stamps: stampCount(stamps.length) } : null])),
     stampMarks(stamps, { max: 24, big: true }),
     editForm(ctx, id, String(trip?.title ?? scope.title), trip),
@@ -218,7 +218,7 @@ async function askAndRemove(ctx, id, scope) {
     : navigator.onLine === false
       ? plural(n, "{0} keeps # turn of its conversations: annai asks for it to be deleted, once you're back online.", "{0} keeps # turns of its conversations: annai asks for them to be deleted, once you're back online.", who)
       : plural(n, '{0} keeps # turn of its conversations: annai asks for it to be deleted.', '{0} keeps # turns of its conversations: annai asks for them to be deleted.', who);
-  const sure = await ask({ title: scope.title, body: sentences(t`This removes everything in this trip from this device: its files, photos, notes and history.`, kept, t`Remove it?`), yes: t`Remove` });
+  const sure = await ask({ title: scopeTitle(scope), body: sentences(t`This removes everything in this trip from this device: its files, photos, notes and history.`, kept, t`Remove it?`), yes: t`Remove` });
   if (!sure) return;
   if ((await backupState(ctx.store, id)).changed) {
     const anyway = await ask({ title: t`Not backed up`, body: t`This trip hasn't been backed up since it last changed. Remove it anyway?`, yes: t`Remove anyway` });
@@ -226,7 +226,7 @@ async function askAndRemove(ctx, id, scope) {
   }
   try {
     const { bytes: freed } = await removeTripNow(ctx, id);
-    ctx.notices.toast(t`Removed ${scope.title}. ${size(freed)} freed.`);
+    ctx.notices.toast(t`Removed ${scopeTitle(scope)}. ${size(freed)} freed.`);
     ctx.removed(id);
   } catch (e) {
     if (e instanceof NotFoundError) {

@@ -464,12 +464,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the box is already at its cap, so it doesn't grow; the user chose (2026-11-09, "Defer a hint") to ship it and add a sign in the next version.
 - **Revisit when:** the next version: a small sign at the box's bottom edge when a card arrives below what the user is reading.
 
-### A conversation stored as "New conversation" reads in English on a card, in Details and in the Remove dialog
-- **Kind:** deferred.
-- **What the user sees:** on Japanese and Chinese screens, a conversation whose stored title is "New conversation" (an archived draft, one a file or a date in Details left unnamed, or a plugin's) reads "New conversation" in English on its card (`tripCard`), as the heading of its Details and in its Remove dialog, where the dock, the conversation's name and a chat's line say it in the screen's language.
-- **Why:** `scopeTitle` (scopes.js) turns the draft's English placeholder into the screen's words, and only some places call it; found in the final review of stage 4. With the draft's Details (review F1) an archived draft is one such row.
-- **Revisit when:** the next version: those three read a scope's title through `scopeTitle`.
-
 ### Details says "trip" on a chat, and Welcome and import say "the timeline" where the screen says "Trips"
 - **Kind:** deferred.
 - **What the user sees:** Details of a chat says "Remove trip", "Archive trip" and "This trip so far", though a chat isn't a trip (the spec's anti-goal: no "trip" on small chats). Welcome and the import screen say "the timeline" where the screen and the top bar say "Trips".

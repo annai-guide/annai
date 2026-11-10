@@ -153,9 +153,10 @@ async function tripCard(ctx, s, r, { say, now, zone, due }) {
     const last = await herLast(ctx, s.id);
     if (last) more.push(h('span', { class: 'sub her-last', ...say(last), text: last }));
   }
+  const name = scopeTitle(s); // one stored with the draft's name says "New conversation" in the screens' language
   return h('li', {}, h('a', { class: ['card', 'trip-card', r?.phase === 'happening' ? 'happening' : ''], href: r ? talkHref(s.id) : `#/trip/${encodeURIComponent(s.id)}` },
     h('span', { class: 'trip-card-text' },
-      h('span', { class: 'name', ...say(s.title), text: s.title }),
+      h('span', { class: 'name', ...say(name), text: name }),
       h('span', { class: 'sub' }, ...factsWords([s.start ? dateRange(s.start, s.end) : null, stamps.length ? { stamps: stampCount(stamps.length) } : null, unread ? plural(unread, '# file waiting to be read', '# files waiting to be read') : null, backupText(backup)])),
       ...more),
     stampMarks(stamps)));
