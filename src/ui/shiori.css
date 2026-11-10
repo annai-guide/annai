@@ -231,9 +231,9 @@ a.attach-chip, .attach-chip.gone { padding-inline: 12px; text-decoration: none; 
 .tidy-menu { position: absolute; top: 100%; right: 0; z-index: 5; width: min(300px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 6px; padding: 10px; background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 4px 16px rgb(0 0 0 / .12); }
 .tidy-menu[hidden] { display: none; }
 .tidy-menu .sub { margin: 4px 0 0; }
-/* On a small phone, or turned sideways, it scrolls rather than run off the bottom of the screen: the title and its ⋯ stay under the bar, so this fits whatever the screen is. */
-.tidy-menu { overflow-y: auto; max-height: calc(100vh - var(--topbar-h, 0px) - 64px); max-height: calc(100dvh - var(--topbar-h, 0px) - 64px); }
-.tidy-menu a.sees-link { display: flex; align-items: center; justify-content: center; min-height: 44px; font-size: 15px; text-align: center; }
+/* It scrolls rather than run off the bottom of the screen or under the dock: talk.js gives it a height (max-height) as it opens, from where the ⋯ is. */
+.tidy-menu { overflow-y: auto; }
+.tidy-menu a.btn { display: flex; align-items: center; justify-content: center; min-height: 44px; font-size: 15px; text-align: center; }
 .sees-switch a.btn[aria-current='page'] { background: var(--ai-wash); color: var(--ai); border-color: var(--ai); }
 .convo .fresh-divider { align-self: stretch; display: flex; align-items: center; gap: 10px; color: var(--ink-2); font-size: 13px; }
 .convo .fresh-divider::before, .convo .fresh-divider::after { content: ''; flex: 1; border-top: 1px solid var(--line); }
