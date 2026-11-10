@@ -668,15 +668,18 @@ test('a file in a trip she started whose trip of origin the user removed since: 
 
 test("Undo looks through other scopes' logs only when a trip on a file's way is gone, and for the move on from it, only at scopes changed since", async () => {
   for (const gone of [false, true]) {
-    const { store, ws: plain, trip: a } = await kit();
-    const before = [];
-    for (let i = 0; i < 20; i++) before.push(await createTrip(plain, { title: `Trip ${i}` }));
+    const { store, trip: a } = await kit();
     /** Which logs it reads: every scope listed, and whose writes. */
     const reads = { lists: 0, writes: new Set() };
     const counted = { ...store, tx: (/** @type {any} */ names, /** @type {any} */ mode, /** @type {any} */ fn) => store.tx(names, mode, (t) => fn({ ...t,
       listScopes: () => { reads.lists++; return t.listScopes(); },
       listEvents: (/** @type {string} */ s, /** @type {any} */ q) => { if (q?.types?.includes('file.write')) reads.writes.add(s); return t.listEvents(s, q); } })) };
-    const ws = new Workspace(/** @type {any} */ (counted), { schemaFor: makeSchemaFor({ list: (/** @type {string} */ k) => (k === 'schema' ? CORE_SCHEMAS : []) }, kindOf) });
+    // Trips last changed before the hand-over, then the hand-over a second later.
+    let clock = 1_000_000;
+    const ws = new Workspace(/** @type {any} */ (counted), { schemaFor: makeSchemaFor({ list: (/** @type {string} */ k) => (k === 'schema' ? CORE_SCHEMAS : []) }, kindOf), now: () => clock });
+    const before = [];
+    for (let i = 0; i < 20; i++) before.push(await createTrip(ws, { title: `Trip ${i}` }));
+    clock += 1000;
     const b = await createTrip(ws, { title: 'Kyoto' });
     const c = await createTrip(ws, { title: 'Big Sur' });
     let there = '/files/flight.pdf';
