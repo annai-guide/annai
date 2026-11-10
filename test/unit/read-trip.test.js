@@ -699,6 +699,28 @@ test("classic voice: a tap on Allow while a heard line is still being written do
   assert.deepEqual((await k.events(['heard'])).map((/** @type {any} */ e) => e.data.text), ['Hmm, the ramen place'], 'the line is the user\'s, not lost');
 });
 
+test("classic voice: a line the user said while she thought, before her card went up, ends the card unanswered as typing does, so it never waits behind a card nobody hears", async (t) => {
+  useClock(t);
+  const k = await gateKit([
+    { toolCalls: [{ name: 'speak', input: { text: 'Shall I look at Testville?' } }] },
+    { delayMs: 120, toolCalls: [{ name: 'read_trip', input: { trip: TV } }] },
+    say('Sunny tomorrow.'),
+  ], { voice: { speechIn: ['m-hear'], hears: ['go on', "Actually never mind, what's the weather?"] } });
+  k.agent.send('Lunch ideas?');
+  await until(() => k.agent.state.name === 'listening');
+  await hear(k, 'first-one');
+  await until(() => k.requests.length === 2);
+  await hear(k, 'gas-station'); // while she thinks: queued for her next call
+  await until(() => k.asks.length === 1);
+  await k.agent.idle();
+  assert.equal(k.agent.kokoro.pendingId, null);
+  assert.equal((await grants(k, k.trip)).length, 0);
+  assert.match((await readResults(k))[0], /^Not read: .* The user said:$/);
+  const heard = (await k.events(['heard'])).at(-1);
+  assert.equal(heard.data.answer, k.asks[0].data.id);
+  assert.match(JSON.stringify(k.requests.at(-1).messages.at(-1)), /what's the weather/, 'what they said reaches her');
+});
+
 // ---- imported: a trip from a trip's file always asks; a backup keeps what it held. ----
 
 test("in a live session annai says the question itself, as a reminder Koe didn't say is: a user who isn't looking still hears it, and a yes the session hears allows it", async () => {
