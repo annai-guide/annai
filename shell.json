@@ -1,5 +1,5 @@
 {
-  "build": "45ce11b8470e",
+  "build": "c83f4f0654e0",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -68,7 +68,7 @@
     "/src/core/errors.js": "da2a5ee37cc1",
     "/src/core/events.js": "96ea2d451049",
     "/src/core/forget.js": "908a7cc35221",
-    "/src/core/handover.js": "9d65f22130a0",
+    "/src/core/handover.js": "526cde8521aa",
     "/src/core/hash.js": "e3cf309df8cf",
     "/src/core/hooks.js": "61bf90a384c1",
     "/src/core/html-text.js": "ad9b5709befa",
@@ -147,7 +147,7 @@
     "/src/core/schema.js": "f21af27d5902",
     "/src/core/search.js": "62a0a393233e",
     "/src/core/scopes.js": "2ccdfe948461",
-    "/src/core/chats.js": "f91cfac559ff",
+    "/src/core/chats.js": "d2dd10270939",
     "/src/core/settings.js": "7291aae0a8cd",
     "/src/core/shown.js": "450af0a8c563",
     "/src/core/signals.js": "1ba83a24e15c",
@@ -270,7 +270,7 @@
     "/src/ui/screens/simulate.js": "cbdebdf221a5",
     "/src/ui/screens/shiori.js": "fd710decde02",
     "/src/ui/screens/sees.js": "6a674fc473ae",
-    "/src/ui/screens/talk.js": "bb7f6a553cc9",
+    "/src/ui/screens/talk.js": "ce5b9d4c319b",
     "/src/ui/screens/tools.js": "af43e4da0f2e",
     "/src/ui/screens/trace.js": "f5659cdd6e4c",
     "/src/ui/screens/trip.js": "91699f6d5b01",
