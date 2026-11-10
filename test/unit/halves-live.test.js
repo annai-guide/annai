@@ -440,6 +440,7 @@ test('GoAway: a new connection with the handle, and the conversation carries on 
     await soon(async () => (await lives(k, 'resumed')).length === 1);
     k.agent.send('Do you remember?');
     await soon(async () => (await k.events(['out.speak'])).length === 2);
+    await soon(async () => (await lives(k, 'closed')).length === 1); // the old socket's close handshake can end after the second reply
     const setups = got(k, 'setup');
     assert.equal(setups[1].setup.sessionResumption.handle, 'h-2');
     const order = k.server.received().map((/** @type {any} */ m) => (m.setup ? 'setup' : m.clientContent ? m.clientContent.turns[0].parts[0].text : Object.keys(m)[0]));

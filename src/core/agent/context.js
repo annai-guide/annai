@@ -1,7 +1,7 @@
 import { CORE, DEFAULT_PERSONALITY } from './instructions.js';
 import { editedInstructions } from './her-instructions.js';
 import { ME, DRAFT_TITLE, listTrips } from '../scopes.js';
-import { phaseOf } from '../timeline.js';
+import { phaseOf, talkedAt } from '../timeline.js';
 import { deviceZone } from '../time.js';
 import { quote } from './blocks.js';
 import { tsv } from '../tsv.js';
@@ -62,10 +62,12 @@ async function elsewhere(ws, trip) {
   const others = (await listTrips(ws.store)).active.filter((s) => s.id !== trip);
   const happening = others.filter((s) => phaseOf(s, Date.now(), deviceZone()) === 'happening'); // as home's now line has them
   // The spec's "last few": five (the plan's call), placed as home places a chat.
-  const latest = others.filter((s) => !happening.includes(s)).sort((a, b) => (b.talked ?? b.created) - (a.talked ?? a.created)).slice(0, 5);
+  const latest = others.filter((s) => !happening.includes(s)).sort((a, b) => talkedAt(b) - talkedAt(a)).slice(0, 5);
   const named = (/** @type {import('../types.js').ScopeRecord} */ s) => `${quote([...s.title].slice(0, TITLE_MAX).join(''))} (${s.id})`;
   /* en */
-  return [happening.length ? `Happening now: ${happening.map(named).join('; ')}.` : '', latest.length ? `Their latest other conversations: ${latest.map(named).join('; ')}` : ''].filter(Boolean).join('\n');
+  // One trip happening is what "tomorrow" means here: Haiku asked "which place?" with it listed (stage 5's real-model pass).
+  const meant = happening.length === 1 ? ' Here "today", "tomorrow" and "the plan" mean that trip: read it rather than ask which place.' : '';
+  return [happening.length ? `Happening now: ${happening.map(named).join('; ')}.${meant}` : '', latest.length ? `Their latest other conversations: ${latest.map(named).join('; ')}` : ''].filter(Boolean).join('\n');
 }
 
 /**
@@ -104,6 +106,9 @@ export function systemText(s, part = '') {
     // From the snapshot, so it stays the same from turn to turn and the cached prefix holds.
     // Her name for it is only for a name annai guessed: one the user gave stays.
     if (!datedInfo(s.tripInfo)) /* en */ parts.push(`# This conversation has no dates\n${s.guessed ? 'Its name is a first guess: patch /trip/trip.json when you know a better one. If it becomes a trip, patch its title and dates there.' : 'If it becomes a trip, patch /trip/trip.json with its dates.'}\nIf this is about one of their trips, read it with read_trip first and answer here; if they want to carry on there, they can open it from Trips.${s.elsewhere ? `\n${s.elsewhere}` : ''}`);
+    // A dated trip's text names no other trip (so nothing done elsewhere moves it), but says they exist: asked about another trip's
+    // hotel in a trip's own conversation, every model searched this one and said there was none (stage 5's real-model pass).
+    else /* en */ parts.push("# Their other trips\nA trip or place they name that isn't this one may be another of theirs: look in list_trips before you say it isn't there.");
   } else /* en */ parts.push('# No trip is open\n/trip/ is empty. The user can open a trip from Trips.');
   return parts.join('\n\n');
 }

@@ -752,6 +752,34 @@ test('a tool call is asked for only until she has reached the user in the turn: 
   assert.deepEqual(k.notices, [], 'it reached the user: no nudge');
 });
 
+test("a reply in which a call failed doesn't end her turn on its sleep: she reads the error and gets another step (real models, stage 5 finding 7)", async (t) => {
+  useClock(t);
+  const k = await agentKit([[{ toolCalls: [{ name: 'show', input: { card: 'Tomorrow, Wed 11 Nov: Testville' } }, { name: 'sleep', input: {} }] }, say('Tomorrow: the museum at 10.')]]);
+  k.agent.send("What's on tomorrow?");
+  await k.agent.idle();
+  assert.equal(k.requests.length, 2);
+  const results = (await k.events(['tool.result'])).map((/** @type {any} */ e) => [e.data.name, e.data.ok, e.data.content]);
+  assert.deepEqual(results.slice(0, 2).map(([name, ok]) => [name, ok]), [['show', false], ['sleep', true]]);
+  assert.match(results[1][2], /a call in this reply failed/i, 'her sleep says why her turn went on');
+  assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Tomorrow: the museum at 10.']);
+  assert.deepEqual(k.notices, []);
+});
+
+test("a reply whose calls all worked ends her turn on its sleep, as ever; one that keeps failing ends it too: her turn goes on past a sleep twice at most, so a model repeating a failing reply can't loop", async (t) => {
+  useClock(t);
+  const k = await agentKit([[say('Hi.')]]);
+  k.agent.send('Hi');
+  await k.agent.idle();
+  assert.equal(k.requests.length, 1);
+  // The last scripted reply repeats: a failing card beside a speak (never three identical calls in a row) and a sleep.
+  const bad = { toolCalls: [{ name: 'show', input: { card: 'no card' } }, { name: 'speak', input: { text: 'Here.' } }, { name: 'sleep', input: {} }] };
+  const again = await agentKit([[bad]]);
+  again.agent.send('Hi');
+  await again.agent.idle();
+  assert.equal(again.requests.length, 3);
+  assert.deepEqual((await again.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'sleep').map((/** @type {any} */ e) => e.data.content.startsWith('Not asleep')), [true, true, false]);
+});
+
 test('with no steps-per-wake limit set, a long turn runs past 25 steps and reaches the user, with no step card', async (t) => {
   useClock(t);
   const a = { toolCalls: [{ name: 'list', input: { path: '/trip/' } }] };
@@ -1314,7 +1342,7 @@ test("show: a plugin's card type joins the tool's card, its data is checked, and
     { name: 'show', input: { card: { type: 'tides', data: { low: 540 } } } },
     { name: 'show', input: { card: { type: 'ferries', data: {} } } },
     { name: 'sleep', input: {} },
-  ] }]]);
+  ] }, { toolCalls: [{ name: 'sleep', input: {} }] }]]); // two calls failed, so the sleep beside them doesn't end her turn: her next step sleeps
   k.registry.add('tides', 'ui:card-type', { type: 'tides', name: 'Tides', description: 'Low and high tides.', schema: { type: 'object', required: ['low'], properties: { low: { type: 'string' } } }, render: () => {} });
   k.agent.send('Tides?');
   await k.agent.idle();
@@ -1353,7 +1381,7 @@ test("show and ask take only so much (the second fix pass): a title of 200 chara
     { name: 'ask', input: { question: long(600), options: ['Yes'] } },
     { name: 'ask', input: { question: 'Which?', options: ['Yes', long(150)] } },
     { name: 'sleep', input: {} },
-  ] }]]);
+  ] }, { toolCalls: [{ name: 'sleep', input: {} }] }]]); // the asks failed, so the sleep beside them doesn't end her turn: her next step sleeps
   k.agent.send('Hi');
   await k.agent.idle();
   const [shown] = await k.events(['out.show']);

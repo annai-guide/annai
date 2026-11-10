@@ -47,15 +47,20 @@ export async function compactView({ ws, trip, now, timeZone, next }) {
     .filter((b) => at(b.start) >= now - 6 * 3_600_000 && at(b.start) <= now + 2 * DAY)
     .sort((a, b) => at(a.start) - at(b.start))
     .map((b) => [local(at(b.start), timeZone), e(b.kind), e(b.title), e(b.status), e(b.confirmation)]);
-  /* en */ const title = e((await ws.readJSON(trip, '/trip.json').catch(() => null))?.title ?? 'this trip');
+  const tj = await ws.readJSON(trip, '/trip.json').catch(() => null);
+  /* en */ const title = e(tj?.title ?? 'this trip');
+  // A conversation with no dates has no plan of its own: an empty one there says nothing of the user's trips, which Kokoro reads (Koe
+  // answered "nothing planned for tomorrow" from it, first and wrong, in stage 5's real-model pass).
+  const dated = Boolean(tj?.start);
   /** @param {number} n how many plan rows */
   const render = (n) => [
     '<today>',
-    `trip: ${title}`,
-    /* en */ `plan for ${days.join(' and ')}:`,
-    plan.length ? tsv(['start', 'end', 'title', 'fixed', 'place'], plan.slice(0, n)) + (n < plan.length ? /* en */ `\n…and ${plan.length - n} more (read /trip/plan/)` : '') : /* en */ 'nothing planned',
-    /* en */ 'bookings in the next 48 hours:',
-    bookings.length ? tsv(['start', 'kind', 'title', 'status', 'confirmation'], bookings) : 'none',
+    /* en */ `trip: ${title}${dated ? '' : " (a conversation with no dates: what is on, and where and when, is in the user's trips, which Kokoro reads)"}`,
+    ...(dated || plan.length ? [
+      /* en */ `plan for ${days.join(' and ')}:`,
+      plan.length ? tsv(['start', 'end', 'title', 'fixed', 'place'], plan.slice(0, n)) + (n < plan.length ? /* en */ `\n…and ${plan.length - n} more (read /trip/plan/)` : '') : /* en */ 'nothing planned',
+    ] : []),
+    ...(dated || bookings.length ? [/* en */ 'bookings in the next 48 hours:', bookings.length ? tsv(['start', 'kind', 'title', 'status', 'confirmation'], bookings) : 'none'] : []),
     /* en */ `next reminder: ${next ? `${local(next.due, timeZone)} ${e(next.text)}` : 'none'}`,
     '</today>',
   ].join('\n');

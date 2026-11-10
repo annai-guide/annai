@@ -13,7 +13,7 @@ import { updateAppSettings, readAppSettings } from '../../src/core/settings.js';
 import { utf8 } from '../../src/core/bytes.js';
 import { liveKit, soon, tone } from './koe-live-kit.js';
 import { dateRange, when } from '../../src/core/intl.js';
-import { deviceZone } from '../../src/core/time.js';
+import { deviceZone, isoInZone } from '../../src/core/time.js';
 
 /**
  * Reading another trip (the timeline design, "Reading another trip"; stage 5's plan, Task 1): read_trip, Kokoro's, read-only. What it gives back
@@ -68,7 +68,7 @@ test('read_trip with no path or query: the trip named, its dates and places, its
   assert.match(out, /\/notes\/food\.md/);
   assert.match(out, /\/trip\.json/);
   assert.doesNotMatch(out, /station\.jpg|ticket\.pdf|pass\.pkpass/, 'photos, PDFs and other files are counted, not listed');
-  assert.match(out, /Not opened by read_trip: 1 photo, 1 PDF, 1 other file\. Offer to move to that trip for them\./);
+  assert.match(out, /Not opened by read_trip: 1 photo, 1 PDF, 1 other file\. You can't open these from here; they can open that trip from Trips and ask there\./);
   const lines = out.split('\n').filter((l) => /^(The user|Shiori): /.test(l));
   assert.equal(lines.length, 12);
   assert.equal(lines[0], 'The user: "Question 9 about Testville"');
@@ -140,7 +140,7 @@ test("read_trip with a path: that text file, as that trip's data: an instruction
 test('read_trip refuses in words what it does not open: a photo, a PDF, another binary file, a path that is no path, a file that is not there, a removed or draft trip, the open one (Review Focus 4)', async (t) => {
   useClock(t);
   const k = await kit();
-  const refused = 'read_trip opens only text and JSON files, not photos, PDFs or other kinds. Offer to move to that trip to look at it.';
+  const refused = "read_trip opens only text and JSON files, not photos, PDFs or other kinds: you can't open this one from here. They can open that trip from Trips and ask about it there.";
   for (const path of ['/files/station.jpg', '/files/ticket.pdf', '/files/pass.pkpass']) assert.equal(words(await run(k, 'read_trip', { trip: TV, path })), refused, path);
   for (const path of ['/../me/profile.md', '/.annai/x', '/notes/a\\b.md']) await assert.rejects(run(k, 'read_trip', { trip: TV, path }), /isn't a path in that trip/, path);
   // Only that trip's own files: /me/ there is nothing of the user's own.
@@ -235,12 +235,12 @@ test("list_trips: the dated trips and the 30 newest chats, read from their recor
   const out = String(await run(k, 'list_trips', {}));
   k.ws.read = read;
   const rows = out.split('\n');
-  assert.equal(rows[0], 'id\ttitle\tstart\tend\tplaces');
-  assert.equal(rows[1], `${lake}\tLake week\t2026-07-01\t2026-07-05\tTestville Lake`);
-  assert.equal(rows[2], `${kyoto}\tKyoto\t2027-04-01\t2027-04-08\tKyoto, Nara`);
+  assert.equal(rows[0], 'id\ttitle\tstart\tend\tplaces\tlast talked');
+  assert.match(rows[1], new RegExp(`^${lake}\tLake week\t2026-07-01\t2026-07-05\tTestville Lake\t\\d{4}-\\d\\d-\\d\\dT[\\d:]+[+-]\\d\\d:\\d\\d$`));
+  assert.match(rows[2], new RegExp(`^${kyoto}\tKyoto\t2027-04-01\t2027-04-08\tKyoto, Nara\t\\d{4}-`));
   const listed = rows.slice(3).map((r) => r.split('\t'));
   assert.equal(listed.length, 30);
-  assert.deepEqual(listed[0], ['trip-chat499', 'Chat 499', '', '', '']);
+  assert.deepEqual(listed[0].slice(0, 5), ['trip-chat499', 'Chat 499', '', '', '']);
   // The newest 30 as home's timeline places them, the open conversation (Big Sur) left out.
   const { active } = await listTrips(k.store);
   const { above } = timelineRows(active.filter((s) => s.id !== k.trip), Date.now(), 'UTC');
@@ -248,6 +248,33 @@ test("list_trips: the dated trips and the 30 newest chats, read from their recor
   assert.deepEqual(listed.map((r) => r[0]), lines.sort((a, b) => b.at - a.at).slice(0, 30).map((r) => r.id));
   assert.ok(!out.includes(k.trip));
   assert.deepEqual(opened.sort(), [kyoto, lake].sort(), "only a dated trip's trip.json is read, for its places");
+});
+
+test("list_trips gives each row when it was last talked in, the value home places a chat by and the card names it with (talked, else made), so of two chats with one name she can tell the recent one (real models, stage 5 finding 3)", async (t) => {
+  useClock(t);
+  const k = await agentKit([[sleep]], { halves: true });
+  k.agent.addLoopTools(tripTools(k.agent));
+  const DAY = 86_400_000;
+  const now = Date.now();
+  /** @param {string} id @param {number | null} talked */
+  const hi = (id, talked) => k.store.tx(['scopes'], 'readwrite', (/** @type {any} */ x) => x.putScope({ id, kind: 'trip', title: 'Hi', status: 'active', created: now - 20 * DAY, updated: now, format: 1, tripId: `t-${id}`, talked }));
+  await hi('trip-hi-ramen', now - 4 * DAY);
+  await hi('trip-hi-visa', now - 9 * DAY);
+  await hi('trip-hi-never', null);
+  await fixedTrip(k.ws, 'trip-kyoto', { title: 'Kyoto', start: '2027-04-01', end: '2027-04-08', places: ['Kyoto'] });
+  const rows = String(await run(k, 'list_trips', {})).split('\n');
+  assert.equal(rows[0], 'id\ttitle\tstart\tend\tplaces\tlast talked');
+  const zone = deviceZone();
+  const of = (/** @type {string} */ id) => rows.find((r) => r.startsWith(`${id}\t`))?.split('\t');
+  assert.deepEqual(of('trip-hi-ramen'), ['trip-hi-ramen', 'Hi', '', '', '', isoInZone(now - 4 * DAY, zone)]);
+  assert.deepEqual(of('trip-hi-visa'), ['trip-hi-visa', 'Hi', '', '', '', isoInZone(now - 9 * DAY, zone)]);
+  assert.equal(of('trip-hi-never')?.at(-1), isoInZone(now - 20 * DAY, zone), 'never talked in: when it was made, as home places it');
+  const kyoto = (await k.store.tx(['scopes'], 'readonly', (/** @type {any} */ x) => x.getScope('trip-kyoto')));
+  assert.deepEqual(of('trip-kyoto'), ['trip-kyoto', 'Kyoto', '2027-04-01', '2027-04-08', 'Kyoto', isoInZone(kyoto.created, zone)]);
+  // One value for all three: home's row, the card, and this list.
+  const { active } = await listTrips(k.store);
+  const row = timelineRows(active.filter((s) => s.id !== k.trip), now, zone).above.flatMap((e) => (e.row ? [e.row] : [])).find((r) => r.id === 'trip-hi-ramen');
+  assert.equal(isoInZone(/** @type {any} */ (row).at, zone), of('trip-hi-ramen')?.at(-1));
 });
 
 test("list_trips and read_trip read a trip's dates as the timeline does: a date that isn't on the calendar (an archive's trip.json has no check) is none", async (t) => {
@@ -258,7 +285,7 @@ test("list_trips and read_trip read a trip's dates as the timeline does: a date 
   const { Workspace } = await import('../../src/core/workspace.js');
   await new Workspace(k.store).write('trip-odd', '/trip.json', { id: 't-trip-odd', title: 'Odd dates', start: '2026-02-30', end: '2026-13-01', places: [], party: [] }, { author: 'user' });
   await updateAppSettings(k.ws, { readMyTrips: true });
-  assert.match(String(await run(k, 'list_trips', {})), /^trip-odd\tOdd dates\t\t\t$/m, 'a chat, by its record');
+  assert.match(String(await run(k, 'list_trips', {})), /^trip-odd\tOdd dates\t\t\t\t\d{4}-[^\t]+$/m, 'a chat, by its record');
   assert.match(words(await run(k, 'read_trip', { trip: 'trip-odd' })), /^From "Odd dates" \(trip-odd\), another of the user's conversations, read-only, with no dates\./);
 });
 
@@ -409,11 +436,16 @@ test("what she reads of a trip that came from a file names it so, never as the u
   const k = await kit(); // Always on
   await k.store.tx(['scopes'], 'readwrite', async (/** @type {any} */ x) => x.putScope({ ...(await x.getScope(TV)), imported: true }));
   await record(k.store, k.trip, { type: 'trip.grant', actor: 'user', data: { trip: TV, how: 'tap' } }); // allowed in this conversation
-  assert.match(words(await run(k, 'read_trip', { trip: TV })), /^From "Testville" \(trip-testville\), a trip that came from a file, maybe someone else's, read-only: 2027-04-01/);
+  assert.match(words(await run(k, 'read_trip', { trip: TV })), /^From "Testville" \(trip-testville\), a trip that came from a file \(maybe someone else's: don't speak of its lines as yours or the user's\), read-only: 2027-04-01/);
+  // Its lines are the file's people's, not the user's and hers: the local model read "The user: …" as the user's own question (real models).
+  const lines = words(await run(k, 'read_trip', { trip: TV })).split('\n');
+  assert.ok(lines.includes('The file\'s user: "Question 14 about Testville"') && lines.includes('The file\'s Shiori: "Answer 14: the museum opens at 22"'));
+  assert.ok(!lines.some((l) => /^(The user|Shiori)[ :]/.test(l)));
+  assert.match(words(await run(k, 'read_trip', { trip: TV, query: 'Answer 14' })), /\nThe file's Shiori: "Answer 14: the museum opens at 22"$/);
   const lake = await fixedTrip(k.ws, 'trip-lake', { title: 'Lake week', start: '2026-07-01', end: '2026-07-05' });
   await record(k.store, lake, { type: 'import', actor: 'user', data: { created: 0, app: 'annai', kind: 'trip' } });
   await record(k.store, k.trip, { type: 'trip.grant', actor: 'user', data: { trip: lake, how: 'tap' } });
-  assert.match(words(await run(k, 'read_trip', { trip: lake, path: '/memory.md' })), /^From "Lake week" \(trip-lake\), a trip that came from a file, maybe someone else's, read-only: its file/);
+  assert.match(words(await run(k, 'read_trip', { trip: lake, path: '/memory.md' })), /^From "Lake week" \(trip-lake\), a trip that came from a file \(maybe someone else's: don't speak of its lines as yours or the user's\), read-only: its file/);
   const own = await fixedTrip(k.ws, 'trip-own', { title: 'Own week', start: '2026-08-01' });
   assert.match(words(await run(k, 'read_trip', { trip: own, query: 'museum' })), /^From "Own week" \(trip-own\), another of the user's trips, read-only: the lines/);
 });
@@ -530,6 +562,73 @@ test('a trip removed while its card waits is said to be gone after Allow, not re
   assert.match(out, /There is no trip "trip-testville"/);
   assert.doesNotMatch(out, /no text files|no lines yet/);
   assert.equal((await k.events(['trip.read'])).length, 0);
+});
+
+// ---- annai's card is annai's, not her reaching the user (the real-model pass, stage 5 finding 4). ----
+
+/** Her requests' toolRequired, in order. @param {any} k */
+const forced = (k) => k.requests.map((/** @type {any} */ r) => r.toolRequired);
+
+test("annai's card is no answer of hers: after it a tool call is still asked for, and a turn that then ends in words is asked once more, as one with no card is (real models, stage 5 finding 4)", async (t) => {
+  useClock(t);
+  const k = await gateKit([call('read_trip', { trip: TV }), { text: 'Tomorrow: the museum at 10.' }, say('Tomorrow: the museum at 10.')]);
+  k.agent.send("What's on tomorrow?");
+  await until(() => k.asks.length === 1);
+  k.agent.answer(k.asks[0].data.tap, 'Allow');
+  await k.agent.idle();
+  assert.deepEqual(forced(k), [true, true, true], 'forced until her own words reach the user, where the endpoint can say so');
+  assert.match(JSON.stringify(k.requests[2].messages.at(-1)), /hasn't been answered/, 'the one nudge');
+  assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Tomorrow: the museum at 10.']);
+  assert.deepEqual(k.notices, []);
+});
+
+test("annai's card is no answer of hers: a turn that ends in words twice after it gets the \"didn't answer\" card, as one with no card does, never silence", async (t) => {
+  useClock(t);
+  const k = await gateKit([call('read_trip', { trip: TV }), { text: 'Tomorrow: the museum at 10.' }, { text: 'Still words.' }]);
+  k.agent.send("What's on tomorrow?");
+  await until(() => k.asks.length === 1);
+  k.agent.answer(k.asks[0].data.tap, 'Allow');
+  await k.agent.idle();
+  assert.equal(k.requests.length, 3);
+  assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.title), ["Shiori didn't answer"]);
+});
+
+test("annai's card is no answer of hers, with voice on too: the question it says aloud settles nothing, and she is asked once more, then speaks", async (t) => {
+  useClock(t);
+  const k = await gateKit([call('read_trip', { trip: TV }), { text: 'Tomorrow: the museum at 10.' }, say('Tomorrow: the museum at 10.')], { voice: { speechIn: ['m-hear'] } });
+  k.agent.send("What's on tomorrow?");
+  await until(() => k.asks.length === 1 && k.agent.state.name === 'listening');
+  assert.ok(k.said.includes(ASKED));
+  k.agent.answer(k.asks[0].data.tap, 'Allow');
+  await k.agent.idle();
+  assert.deepEqual(forced(k), [true, true, true]);
+  assert.match(JSON.stringify(k.requests[2].messages.at(-1)), /hasn't been answered/);
+  assert.ok(k.said.includes('Tomorrow: the museum at 10.'), 'said aloud');
+});
+
+test("annai's card is no answer of hers, with Koe talking: Kokoro is still asked for a tool call after it, until it tells Koe", async (t) => {
+  useClock(t);
+  const k = await agentKit([{ rules: [{ match: 'the user wrote', reply: call('read_trip', { trip: TV }), then: { toolCalls: [{ name: 'tell_koe', input: { text: 'Tomorrow: the museum at 10 (Testville plan).' } }, { name: 'sleep', input: {} }] } }, { match: '.', reply: sleep }] }], { koe: { type: KOE } });
+  k.agent.addLoopTools(tripTools(k.agent));
+  await fixedTrip(k.ws, TV, { title: 'Testville', start: '2027-04-01', end: '2027-04-08' });
+  /** @type {any[]} */
+  const asks = [];
+  k.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'out.ask') asks.push(e); });
+  k.agent.send("What's on tomorrow?");
+  await until(() => asks.length === 1);
+  k.agent.answer(asks[0].data.tap, 'Allow');
+  await k.agent.idle();
+  assert.deepEqual(k.sent['model-0'].map((/** @type {any} */ r) => r.toolRequired), [true, true], 'the card told Koe nothing');
+});
+
+test("annai's card is no answer of hers: a reminder's turn that only drew the card still has annai say the reminder", async (t) => {
+  useClock(t);
+  const k = await gateKit([call('read_trip', { trip: TV }), sleep]);
+  k.agent.wake({ kind: 'trigger', text: 'a watch fired', fallbacks: [{ watch: 'w1', text: 'Leave for the station.' }] });
+  await until(() => k.asks.length === 1);
+  k.agent.answer(k.asks[0].data.tap, 'Not now');
+  await k.agent.idle();
+  assert.deepEqual((await k.events(['reminder'])).map((/** @type {any} */ e) => e.data.text), ['Leave for the station.']);
 });
 
 // ---- A spoken yes: annai's word list on the heard line, in the 20 s after the question ends, no model involved. ----

@@ -116,7 +116,7 @@ test("list_trips: only the other active trips' ids, titles, dates and places", a
   const old = await createTrip(k.ws, { title: 'Old trip' });
   await setTripStatus(k.store, old, 'archived');
   const result = await run(k, 'list_trips', {});
-  assert.equal(result, 'id\ttitle\tstart\tend\tplaces\n' + `${kyoto}\tKyoto\t2027-04-01\t2027-04-08\tKyoto, Nara`);
+  assert.match(result, new RegExp(`^id\ttitle\tstart\tend\tplaces\tlast talked\n${kyoto}\tKyoto\t2027-04-01\t2027-04-08\tKyoto, Nara\t[^\t\n]+$`));
   assert.doesNotMatch(result, /Big Sur|temple notes|Old trip/);
 });
 
