@@ -1280,7 +1280,7 @@ test("the dock's name of the open conversation has one source, trip.json: a stat
   }
 });
 
-test("Shiori set the dates goes when the user writes again, and stays gone after a reload", async ({ page }) => {
+test("Shiori set the dates stays at its place when the user writes again, and after a reload: its Undo, tapped late, still takes the dates back", async ({ page }) => {
   await openApp(page, '#/trips');
   const [start, end] = await page.evaluate(async () => {
     const { dayIn, deviceZone } = await import(/** @type {string} */ ('/src/core/time.js'));
@@ -1292,6 +1292,9 @@ test("Shiori set the dates goes when the user writes again, and stays gone after
     { status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'speak', input: { text: 'Dinner is at seven.' } }, { name: 'sleep', input: {} }]) },
   ];
   const llm = await startModelServer({ '/b/v1/messages': reply });
+  /** The conversation's lines, in order: their words, or a system line's text. */
+  const lines = () => page.locator('.convo > li').evaluateAll((els) => els.map((el) => (el.querySelector('p') ?? el).textContent?.replace(/\s+/g, ' ').trim()));
+  const placed = ['Plan our weekend in Testville', 'I set it for the 10th to the 12th.', 'Shiori set the dates Undo', 'And dinner?', 'Dinner is at seven.'];
   try {
     await modelSetUp(page, llm.origin, 'Elsewhere');
     await page.goto('/#/trips');
@@ -1305,12 +1308,17 @@ test("Shiori set the dates goes when the user writes again, and stays gone after
     await box(page).isVisible() || await page.getByRole('button', { name: 'Type', exact: true }).click();
     await box(page).fill('And dinner?');
     await box(page).press('Enter');
-    await expect(line).toBeHidden();
     await expect(page.locator('.convo')).toContainText('Dinner is at seven.');
+    await expect(line).toBeVisible();
+    await expect.poll(lines).toEqual(placed);
     await page.reload();
     await expect(page.locator('.convo')).toContainText('Dinner is at seven.');
-    await expect(line).toBeHidden();
     await expect(page).toHaveURL(new RegExp(`#/trip/${id}/talk$`));
+    await expect.poll(lines).toEqual(placed);
+    await line.getByRole('button', { name: 'Undo' }).click();
+    await expect(line).toBeHidden();
+    await page.getByRole('link', { name: 'Back to Trips' }).click();
+    await expect(row(page, 'Testville')).toHaveClass(/\bline\b/);
   } finally {
     await llm.stop();
   }

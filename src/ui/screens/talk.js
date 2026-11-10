@@ -377,6 +377,7 @@ export async function renderTalk(ctx, route) {
     return h('div', { class: 'chips handed' }, ...chips);
   };
   const undo = undoLine(ctx, scope, list);
+  const dates = agent.trip ? datesLine(ctx, agent.trip, list) : null;
   /** @param {any} e */
   const item = async (e) => {
     const d = e.data ?? {};
@@ -530,7 +531,11 @@ export async function renderTalk(ctx, route) {
   let built = false;
   let wasShown = false;
   const stop = await follow(agent, scope, {
-    read: async () => (await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ tx) => tx.listEvents(scope, { types: SHOWN, reverse: true, limit: 400 }))).reverse(),
+    read: async () => {
+      const got = (await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ tx) => tx.listEvents(scope, { types: SHOWN, reverse: true, limit: 400 }))).reverse();
+      if (got.length >= 400) dates?.from(got[0].seq);
+      return got;
+    },
     show: async (e) => {
       if (!SHOWN.includes(e.type)) return;
       // What the user just said is always followed; what comes after, while the user is at the end.
@@ -544,6 +549,7 @@ export async function renderTalk(ctx, route) {
         empty.remove();
         list.append(node);
         undo.saw(e);
+        dates?.saw(e, node);
         if (e.type === 'heard') {
           const l = unheard.get(e.data?.id);
           if (l && typeof e.data?.text === 'string') hearSoon(e.data.id, l);
@@ -584,7 +590,6 @@ export async function renderTalk(ctx, route) {
   showCost();
   const tidy = tidyMenu(ctx);
   const trip = agent.trip;
-  const dates = trip ? datesLine(ctx, trip) : null;
   const name = h('a', { class: 'talk-name', href: `#/trip/${encodeURIComponent(trip)}`, dir: 'auto', text: title });
   // The name follows trip.json while it shows: the first line names a new conversation, and Shiori may rename it.
   const offName = trip ? ctx.ws.onChange((/** @type {{ scope: string, path: string }} */ c) => {
@@ -608,7 +613,6 @@ export async function renderTalk(ctx, route) {
     cost,
     list.childElementCount ? null : empty,
     list,
-    dates?.el ?? null,
     announce);
   requestAnimationFrame(() => {
     if (!list.isConnected) return; // another screen opened while this one was built: whenGone stops it
@@ -655,36 +659,71 @@ export async function nextLine(ctx, id) {
 }
 
 /**
- * "Shiori set the dates", with Undo, after her patch gave a chat its dates (it became a trip), until the user writes or speaks again: then it goes for good (the
- * hand-over's Undo line differs: it stays in the conversation at its place). Undo puts the dates back as the user's, so the row goes back to a line, and keeps a name given since (herDating, undoDating). Drawn again
- * whenever trip.json changes and whenever the user says something.
- * @param {any} ctx @param {string} scope @returns {{ el: HTMLElement, off: () => void }}
+ * "Shiori set the dates", with Undo, after her patch gave a chat its dates (it became a trip): a line in the conversation at that write, under her
+ * lines after it until the user's next line, as the hand-over's Undo line is; the user's later lines and a reload leave it there. It shows while
+ * the dates are the ones that write set, so its Undo takes back only those, never a later change (herDating, undoDating). Undo puts the dates
+ * back as the user's, so the row goes back to a line, and keeps a name given since. Drawn again whenever trip.json changes.
+ * @param {any} ctx @param {string} scope @param {HTMLElement} list the conversation's lines
  */
-function datesLine(ctx, scope) {
-  const el = h('p', { class: 'system-line dates-line', hidden: true });
+function datesLine(ctx, scope, list) {
+  const line = h('li', { class: 'system-line dates-line' });
+  /** Each line shown: its entry's seq, and whether it is the user's own or hers. @type {WeakMap<Element, { seq: number, talks: boolean, hers: boolean }>} */
+  const shown = new WeakMap();
+  /** @type {Awaited<ReturnType<typeof herDating>>} */
+  let dating = null;
+  /** The oldest line read, when the conversation has more than are read: a dating before it has no place among them. */
+  let from = 0;
+  const place = () => {
+    if (!dating || dating.seq < from) return void line.remove();
+    /** @type {Element | null} */
+    let after = null;
+    for (const node of list.children) {
+      const d = shown.get(node);
+      if (!d) continue;
+      if (d.seq > dating.seq && d.talks) break; // the user's next line: it stays above it
+      if (d.seq < dating.seq || d.hers) after = node;
+    }
+    if (after ? after.nextElementSibling !== line : list.firstElementChild !== line) {
+      if (after) after.after(line);
+      else list.prepend(line);
+    }
+  };
   let drawn = 0;
   const draw = async () => {
     const mine = ++drawn;
-    const before = await herDating(ctx.store, scope).catch(() => null);
+    const now = await herDating(ctx.store, scope).catch(() => null);
     if (mine !== drawn) return;
-    el.hidden = !before;
-    if (!before) return void el.replaceChildren();
-    const undo = h('button', {
-      class: 'btn ghost', type: 'button', 'aria-label': t`Undo the dates Shiori set`,
-      onclick: async () => {
-        undo.disabled = true;
-        await undoDating(ctx.ws, scope, before).catch((/** @type {unknown} */ x) => {
-          undo.disabled = false;
-          ctx.notices.toast(messageOf(x));
-        });
-      },
-    }, t`Undo`);
-    el.replaceChildren(h('span', { text: t`Shiori set the dates` }), ' ', undo);
+    if (now && now.seq !== dating?.seq) {
+      const undo = h('button', {
+        class: 'btn ghost', type: 'button', 'aria-label': t`Undo the dates Shiori set`,
+        onclick: async () => {
+          undo.disabled = true;
+          await undoDating(ctx.ws, scope, now).catch((/** @type {unknown} */ x) => {
+            undo.disabled = false;
+            ctx.notices.toast(messageOf(x));
+          });
+        },
+      }, t`Undo`);
+      line.replaceChildren(h('span', { text: t`Shiori set the dates` }), ' ', undo);
+    }
+    dating = now;
+    place();
   };
   draw();
-  const offFile = ctx.ws.onChange((/** @type {{ scope: string, path: string }} */ c) => { if (c.scope === scope && c.path === '/trip.json') draw(); });
-  const offLine = ctx.agent.on('event', (/** @type {any} */ e) => { if (e.scope === scope && talks(e)) draw(); }); // the user wrote or spoke again: it goes
-  return { el, off: () => { offFile?.(); offLine?.(); } };
+  const off = ctx.ws.onChange((/** @type {{ scope: string, path: string }} */ c) => { if (c.scope === scope && c.path === '/trip.json') draw(); });
+  return {
+    /** A line just shown, where it is in the log. @param {any} e @param {Element} node */
+    saw(e, node) {
+      shown.set(node, { seq: e.seq, talks: talks(e), hers: ['out.speak', 'out.show', 'out.ask'].includes(e.type) });
+      place();
+    },
+    /** @param {number} seq the oldest line read, of more */
+    from(seq) {
+      from = seq;
+      place();
+    },
+    off,
+  };
 }
 
 /**
