@@ -689,6 +689,76 @@ const fingerOf = async (page) => {
 };
 const SIZES = [...PHONES, [740, 360]];
 
+/**
+ * The innerHeight and visual viewport a phone shows become `by` px taller and then are back, each with its resize events: the page's own height doesn't
+ * change. @param {import('@playwright/test').Page} page @param {number} by
+ */
+const viewportBy = (page, by) => page.evaluate(async (by) => {
+  const was = innerHeight;
+  for (const h of [was + by, was]) {
+    Object.defineProperty(window, 'innerHeight', { value: h, configurable: true });
+    if (visualViewport) Object.defineProperty(visualViewport, 'height', { value: h, configurable: true });
+    visualViewport?.dispatchEvent(new Event('resize'));
+    dispatchEvent(new Event('resize'));
+    await new Promise((r) => requestAnimationFrame(r));
+  }
+}, by);
+/** What fits the box's cards again on a phone (notices.js's refit), each as the page sees it. @type {Record<string, (page: import('@playwright/test').Page, size: number[]) => Promise<unknown>>} */
+const REFITS = {
+  'a bare resize event, as when a Chrome tab hides its URL bar': (page) => page.evaluate(() => dispatchEvent(new Event('resize'))),
+  'the window 1 px taller, and back': async (page, [width, height]) => {
+    await page.setViewportSize({ width, height: height + 1 });
+    await page.setViewportSize({ width, height });
+  },
+  'the keyboard up and down': (page) => viewportBy(page, -300), // a phone's keyboard: about 290 to 340 px
+  "Safari's bars hiding and showing": (page) => viewportBy(page, 91), // an iPhone 15's Safari: 659 px with its bars, about 750 without
+  'a web font swapping in': (page) => page.evaluate(async () => {
+    const face = new FontFace('Probe Mono', 'url(/assets/fonts/ibm-plex-mono-400.woff2)');
+    document.fonts.add(face);
+    await face.load();
+    await document.fonts.ready;
+  }),
+};
+// A fit measures a card from the start, cut back to the box's quarter: were the box to follow it for that moment, the page under it would rise by the
+// card's excess and come back, and the browsers keep such a moment (measured on 80100343 with these tests): Chromium's scroll anchoring holds what it
+// saw then, 72 px at 360 x 640 with one trip ahead of the now line; WebKit keeps the page's end clamped short, 59 to 89 px at the three sizes.
+for (const [how, refit] of Object.entries(REFITS)) {
+  for (const where of ['at the now line', 'at its end']) {
+    for (const size of PHONES) {
+      test(`home ${where}, a short page, a card that needs more than the box's quarter stuck, then ${how}: the rows don't move (${size.join(' x ')})`, async ({ page }) => {
+        await page.setViewportSize({ width: size[0], height: size[1] });
+        await scrolledHome(page); // one trip ahead of the now line: the page ends soon under it
+        await addBackup(page);
+        await expect(page.locator('.notices .notice.grow')).toHaveCount(1);
+        await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
+        await settled(page);
+        if (where === 'at its end') await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+        const before = await placeOf(page);
+        await refit(page, size);
+        await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+        await rowsStayed(page, before);
+      });
+    }
+  }
+}
+
+for (const where of ['at the now line', 'at its end']) {
+  test(`home ${where}, a short page, a folded stack whose title and buttons need more than the box's quarter stuck, then a resize: the rows don't move (320 x 568)`, async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await scrolledHome(page);
+    await page.evaluate(() => { for (let i = 0; i < 2; i++) /** @type {any} */ (window).__n.card({ tone: 'warn', title: 'The photos of this long trip were kept as they are', body: `Photo ${i} is kept as it is.` }); });
+    await expect(page.locator('.notices > .notice-stack.grow')).toHaveCount(1); // its title takes two lines
+    await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
+    await settled(page);
+    if (where === 'at its end') await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+    const before = await placeOf(page);
+    await page.evaluate(() => dispatchEvent(new Event('resize')));
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    await rowsStayed(page, before);
+    await expect(page.locator('.notices > .notice-stack.grow')).toHaveCount(1); // fitted as before
+  });
+}
+
 test("a card that goes from a box over half: the one left stays stuck under the bar, and the rows stay", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
   await scrolledHome(page);

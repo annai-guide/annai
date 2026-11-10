@@ -17,6 +17,7 @@ class El extends Node {
     this.dataset = {};
     this.offsetHeight = 0;
     this.classList = { add() {}, remove() {}, toggle() {}, contains: () => false };
+    /** @type {Record<string, unknown>} the box holds its height while a stack is measured (notices.js) */ this.style = { removeProperty() {} };
   }
   querySelector() { return null; }
   /** @param {string} sel tags, "a, b" @returns {any[]} */

@@ -79,6 +79,10 @@ export function createNotices() {
     const words = /** @type {HTMLElement[]} */ ([...node.querySelectorAll(':scope > p')]);
     const acts = /** @type {HTMLElement} */ (node.querySelector(':scope > .acts'));
     const focused = document.activeElement === more;
+    // Measured from the start, the card is cut back to the box's quarter for a moment. The box keeps its height meanwhile, so the page under it doesn't
+    // rise and end sooner for that moment: the browsers would keep it (Chromium's scroll anchoring holds what it saw then, 72 px at 360 x 640 one trip
+    // ahead of the now line; WebKit leaves a page scrolled to its end scrolled back by the card's excess, 59 to 89 px at the phones' sizes).
+    el.style.minHeight = `${el.getBoundingClientRect().height}px`;
     node.style.removeProperty('--lines');
     node.classList.remove('brief', 'grow');
     const cut = () => words.some((p) => p.scrollHeight > p.clientHeight + 1);
@@ -105,13 +109,20 @@ export function createNotices() {
       }
     }
     if (over()) node.classList.add('grow');
+    el.style.removeProperty('min-height');
     // More moved to measure: a keyboard's focus on it stays.
     if (focused && !more.hidden) more.focus({ preventScroll: true });
   };
-  /** A folded stack shows its title and buttons: past the box's quarter of the screen if they need it. @param {HTMLElement} node */
+  /**
+   * A folded stack shows its title and buttons: past the box's quarter of the screen if they need it, the room inside the box's cap (its max-height less
+   * its paddings and border, 17 px, as a card's own cap in base.css). The box keeps its height while the stack is measured, as fit's does.
+   * @param {HTMLElement} node
+   */
   const fitStack = (node) => () => {
+    el.style.minHeight = `${el.getBoundingClientRect().height}px`;
     node.classList.remove('grow');
-    if (node.querySelector(':scope > .stack-list')?.hasAttribute('hidden') && node.offsetHeight > el.clientHeight - 16 + 1) node.classList.add('grow');
+    if (node.querySelector(':scope > .stack-list')?.hasAttribute('hidden') && node.offsetHeight > parseFloat(getComputedStyle(el).maxHeight) - 17 + 1) node.classList.add('grow');
+    el.style.removeProperty('min-height');
   };
   // Every card fitted again when the screen changes size, or once web fonts swapped in (their words take other room; WebKit says `loading`, not `loadingdone`).
   const refit = () => { for (const n of el.querySelectorAll('.notice')) fitters.get(/** @type {HTMLElement} */ (n))?.(); scrolls(); };
