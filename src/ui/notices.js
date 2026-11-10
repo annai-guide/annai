@@ -52,13 +52,14 @@ export function createNotices() {
     // move and take taps.
     const cards = !el.matches(':empty');
     const rows = by !== 0 && y === 0;
-    if (cards || rows) {
-      if (cards) el.classList.add('over');
-      if (rows) el.classList.add('landed');
-      clearTimeout(settle);
-      // 400 ms (79cadd29, 2026-10-21): for that long what moved ignores taps, so a tap meant for it doesn't land on what slid under the finger.
-      settle = setTimeout(() => el.classList.remove('landed', 'over'), 400);
-    }
+    if (cards) still('over');
+    if (rows) still('landed');
+  };
+  /** What moved (.over: the cards; .landed: the rows) ignores taps for 400 ms (79cadd29, 2026-10-21), so a tap meant for what was there doesn't land on it. @param {string} what */
+  const still = (what) => {
+    el.classList.add(what);
+    clearTimeout(settle);
+    settle = setTimeout(() => el.classList.remove('landed', 'over'), 400);
   };
   /**
    * A card whose text is more than three lines shows three and a More, which opens it to its full height, and a Less, which closes
@@ -277,5 +278,7 @@ let lone = 0;
     toasts.append(shown);
     setTimeout(() => shown.remove(), 3500);
   }
-  return { el, toasts, card, toast };
+  /** The box stuck again over the rows (home, as typing ends: base.css): its cards ignore taps a moment, as when one lands. */
+  const hold = () => { if (!el.matches(':empty') && getComputedStyle(el).position === 'sticky') still('over'); };
+  return { el, toasts, card, toast, hold };
 }

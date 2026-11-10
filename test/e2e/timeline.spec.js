@@ -1018,7 +1018,7 @@ test("a web font that swaps in after a card was fitted fits it again: its words 
 });
 
 for (const size of PHONES) {
-  test(`on home, a field focused under the stuck box is scrolled clear of it and of the top bar (${size.join(' x ')})`, async ({ page }) => {
+  test(`on home, a field focused under the stuck box is clear of it and of the top bar: the box lets go while it is typed in (${size.join(' x ')})`, async ({ page }) => {
     await page.setViewportSize({ width: size[0], height: size[1] });
     await scrolledHome(page);
     await addBackup(page, 'Place 0');
@@ -1026,15 +1026,101 @@ for (const size of PHONES) {
     await expect(page.locator('.notices > .notice')).toHaveCount(2);
     await settled(page);
     const name = page.getByLabel('Trip name');
-    // Scrolled on until Start a trip's name is just under the top bar, under the box.
-    await name.evaluate((el) => scrollBy(0, el.getBoundingClientRect().top - /** @type {Element} */ (document.querySelector('.topbar')).getBoundingClientRect().bottom - 20));
+    // Scrolled on until Start a trip's name, its label first, is just under the top bar, under the box.
+    await name.evaluate((el) => scrollBy(0, /** @type {Element} */ (el.closest('label') ?? el).getBoundingClientRect().top - /** @type {Element} */ (document.querySelector('.topbar')).getBoundingClientRect().bottom - 20));
     const top = () => name.evaluate((el) => el.getBoundingClientRect().top);
     expect(await top()).toBeLessThan((await boxOf(page)).bottom); // covered
+    const y = await page.evaluate(() => scrollY);
     await name.focus(); // as a keyboard's Tab, or a screen reader, moves to it
     await expect.poll(top).toBeGreaterThanOrEqual((await boxOf(page)).bottom - 1);
+    // On a touch screen the box lets go while a field on home is typed in (the user, "Unstick while typing"), so the field needed no scroll; until
+    // then it was scrolled clear of the box, which a keyboard above it could leave no room for.
+    expect((await placeOf(page)).pos).toBe('static');
+    expect(await page.evaluate(() => scrollY)).toBe(y);
+    expect(await top()).toBeGreaterThanOrEqual(await page.evaluate(() => /** @type {Element} */ (document.querySelector('.topbar')).getBoundingClientRect().bottom));
+    await name.blur();
     await stuckInHalf(page);
   });
 }
+
+for (const size of [[320, 568], [393, 659]]) {
+  test(`typing in a field on home lets the stuck box go, so the keyboard's scrolling never leaves the field under it; it sticks again as typing ends, and nothing moves either time (${size.join(' x ')})`, async ({ page }) => {
+    await page.setViewportSize({ width: size[0], height: size[1] });
+    await scrolledHome(page);
+    await addBackup(page); // a tall card: 232 px at 320 wide
+    await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
+    await settled(page);
+    const name = page.getByLabel('Trip name');
+    // Start a trip's name in view under the box, where a finger taps it.
+    await name.evaluate((el) => scrollBy(0, el.getBoundingClientRect().top - /** @type {Element} */ (document.querySelector('.notices')).getBoundingClientRect().bottom - 40));
+    const at = () => page.evaluate(() => ({ y: Math.round(scrollY), top: Math.round(/** @type {Element} */ (document.getElementById('trip-title')).getBoundingClientRect().top) }));
+    const before = await at();
+    await name.focus(); // as a finger's tap leaves it (the keyboard is no part of Playwright's phones)
+    await fitted(page);
+    expect(await at()).toEqual(before); // the box let go, and the field stayed under the finger
+    // The keyboard comes up and the browser scrolls the field up to just under the top bar: nothing covers it.
+    await name.evaluate((el) => scrollBy(0, el.getBoundingClientRect().top - /** @type {Element} */ (document.querySelector('.topbar')).getBoundingClientRect().bottom - 4));
+    await fitted(page);
+    const field = await name.evaluate((el) => el.getBoundingClientRect().toJSON());
+    const box = await boxOf(page);
+    expect(field.top).toBeGreaterThanOrEqual(box.bottom); // before: the box stuck under the bar, over the field
+    // A button focused (Start trip, by a keyboard) is no typing: the box sticks, and the button is clear of it; a field again lets it go.
+    const start = page.getByRole('button', { name: 'Start trip' });
+    await start.focus();
+    await fitted(page);
+    expect((await placeOf(page)).pos).toBe('sticky');
+    expect(await start.evaluate((el) => el.getBoundingClientRect().top)).toBeGreaterThanOrEqual((await boxOf(page)).bottom - 1);
+    await name.focus();
+    await fitted(page);
+    expect((await placeOf(page)).pos).toBe('static');
+    // Typing ends (the keyboard's Done): the box sticks again, and nothing moves.
+    const typing = await at();
+    await name.evaluate((el) => el.blur());
+    await fitted(page);
+    expect((await placeOf(page)).pos).toBe('sticky');
+    expect(await at()).toEqual(typing);
+  });
+}
+
+test("as typing on home ends, the box sticks again over the rows, and its cards ignore taps a moment, as when a card lands", async ({ page }) => {
+  await openApp(page, '#/settings');
+  /** @type {Record<string, number>} */
+  const chats = {};
+  for (let i = 0; i < 24; i++) chats[`Chat ${i}`] = 60 * 24 * i + 5;
+  await seed(page, { chats, trips: { Laterton: { from: 3, to: 4 } } });
+  await page.goto('/#/trips');
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(300);
+  await page.evaluate(() => dispatchEvent(new ErrorEvent('error', { error: new Error('A test card') }))); // the app's own box
+  await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
+  await settled(page);
+  const name = page.getByLabel('Trip name');
+  await name.focus();
+  await expect.poll(async () => (await placeOf(page)).pos).toBe('static');
+  await name.evaluate((el) => el.blur());
+  await expect(page.locator('.notices.over')).toHaveCount(1);
+  expect((await placeOf(page)).pos).toBe('sticky');
+  await settled(page);
+});
+
+test("typing on home, a tap on a button of the let-go box, scrolled partly under the top bar, lands on it: the box sticks again at the tap's click, not under the finger", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await scrolledHome(page);
+  await addBackup(page);
+  await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
+  await settled(page);
+  // The field is in view: focused as a finger's tap leaves it. (A plain focus() makes WebKit reveal the field once more, up to half a second later,
+  // which would undo the scroll below; a finger scrolls long after that.)
+  await page.getByLabel('Trip name').evaluate((el) => /** @type {HTMLElement} */ (el).focus({ preventScroll: true }));
+  await expect.poll(async () => (await placeOf(page)).pos).toBe('static');
+  // Scrolled up while typing, until the box at the page's top is 60 px under the top bar: sticking now would move it 60 px down.
+  await page.evaluate(() => scrollBy(0, /** @type {Element} */ (document.querySelector('.notices')).getBoundingClientRect().top - /** @type {Element} */ (document.querySelector('.topbar')).getBoundingClientRect().bottom + 60));
+  const dismiss = page.locator('.notices > .notice').getByRole('button', { name: 'Dismiss' });
+  const r = /** @type {{ x: number, y: number, width: number, height: number }} */ (await dismiss.boundingBox());
+  expect(r.y).toBeGreaterThan((await boxOf(page)).bar); // in view
+  // A finger's tap (Chromium focuses a button at its press, which lets go of the field; the tap's click comes after).
+  await page.touchscreen.tap(r.x + r.width / 2, r.y + r.height / 2);
+  await expect(page.locator('.notices > .notice')).toHaveCount(0);
+});
 
 test("on home, a button focused inside the stuck box doesn't move the page: what sticks needs no room above it", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 640 });
