@@ -29,7 +29,7 @@ export function cardTable(recs, clips) {
   const rows = names.map((name) => {
     const runs = /** @type {{ rec: any, a: any, file: string }[]} */ (by.get(name));
     const kinds = runs.map((r) => r.a.card?.kind ?? 'none');
-    const tally = ['granted-voice', 'granted-tap', 'unanswered', 'not-now', 'stopped', 'none'].map((k) => [k, kinds.filter((x) => x === k).length]).filter(([, n]) => n).map(([k, n]) => `${k} ${n}`).join(', ');
+    const tally = ['granted-voice', 'granted-tap', 'declined-voice', 'unanswered', 'not-now', 'stopped', 'none'].map((k) => [k, kinds.filter((x) => x === k).length]).filter(([, n]) => n).map(([k, n]) => `${k} ${n}`).join(', ');
     // Right: every check of the card's own (not the general ones: errors and echo) held.
     const own = (/** @type {any} */ r) => r.a.checks.filter((/** @type {any} */ c) => !['no errors', 'no echo cut'].includes(c.name));
     const right = runs.filter((r) => own(r).every((/** @type {any} */ c) => c.ok)).length;

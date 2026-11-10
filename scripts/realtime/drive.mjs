@@ -464,10 +464,11 @@ export async function runScenario(browser, name, sc, env) {
     const trips = await setUp(page, env.key, log, env.standIn ? { standIn: env.standIn, card: sc.card === true, classic, ...(sc.real && env.real ? { real: { anthropic: env.real.anthropic } } : {}) } : {});
     if (sc.card && !sc.real) env.kokoro?.readTrip(trips.testville ?? null);
     // A real model is asked at most cap times (the 31st is refused, and the record says so): a runaway loop of tool calls stops here.
-    if (sc.real && env.real) {
+    const real = sc.real ? env.real : undefined;
+    if (real) {
       await context.route('https://api.anthropic.com/v1/messages*', (route) => {
         if (route.request().method() !== 'POST') return route.continue();
-        if (++modelRequests > env.real.cap) {
+        if (++modelRequests > real.cap) {
           capped = true;
           return route.abort('blockedbyclient');
         }

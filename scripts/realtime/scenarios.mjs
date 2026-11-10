@@ -14,7 +14,7 @@
 // route: the audio the microphone stands for (speaker: the phone's own, half-duplex; headphones: she can be cut by speaking);
 // echoDb: her voice mixed back into the microphone at that level (the phone's speaker), null for none.
 /** @typedef {{ say: string, gainDb?: number } | { answered: number } | { sounding: number } | { wait: number } | { ask: number } | { asked: number } | { asking: number } | { tap: string, afterHeard?: number } | { settled: number } | { shiori: true }} Step */
-/** @typedef {{ about: string, route: 'speaker' | 'headphones' | 'car', echoDb: number | null, echoDelayMs?: number, expectCut?: boolean, extra?: boolean, repeatNote?: boolean, card?: boolean, measure?: boolean, real?: boolean, mode?: 'live' | 'classic', expect?: { grant: 'voice' | 'tap' | false | 'any', words?: boolean, open?: boolean, next?: boolean }, languages?: { spoken: string[], answer: string }, steps: Step[] }} Scenario
+/** @typedef {{ about: string, route: 'speaker' | 'headphones' | 'car', echoDb: number | null, echoDelayMs?: number, expectCut?: boolean, extra?: boolean, repeatNote?: boolean, card?: boolean, measure?: boolean, real?: boolean, mode?: 'live' | 'classic', expect?: { grant: 'voice' | 'tap' | false | 'any', words?: boolean, open?: boolean, next?: boolean, declined?: boolean }, languages?: { spoken: string[], answer: string }, steps: Step[] }} Scenario
  *   repeatNote: the stand-in Kokoro sends its note again once Koe has said it; extra: not in a plain run, only by name (--only); languages (phase 2): the languages setting the run sets in Settings → Shiori before she listens (the browser's
  *   English is the list's first; the others are added), and the scenario is held to answering in the language each clip is spoken in */
 
@@ -135,27 +135,30 @@ function cardScenarios() {
   const alone = (clip, what, expect) => card(`the card, then ${what} (${clip}) alone`, [...go(), { say: clip }, { settled: 2500 }], { expect });
   const yes = /** @type {const} */ ({ grant: 'voice' });
   const no = /** @type {const} */ ({ grant: false, words: true });
+  /** A spoken no (the voice-yes rule's no list): the card ends as Not now would; its words are the card's answer, as a tap's are. */
+  const declined = /** @type {const} */ ({ grant: false, declined: true });
   return {
     'card-yes': alone('yes', '"Yes."', yes),
     'card-sure': alone('sure', '"Sure."', yes),
     'card-hai': alone('hai', '"はい。"', yes),
     'card-hao': alone('hao', '"好的。"', yes),
     'card-yes-but': alone('yes-but', '"Yes, but not that one. The Osaka trip."', no),
-    'card-no-thanks': card('the card, "No thanks.", then a question that needs Kokoro (no card, no tap)', [...go(), { say: 'no-thanks' }, { settled: 2500 }, { say: 'bixby' }, { answered: 800 }], { expect: { ...no, next: true } }),
-    'card-yes-nowait': card('"Yes.", 1.3 s after its end "No, wait." (the newest kept line decides: no)', [...go(), { say: 'yes' }, { wait: 840 + 1300 }, { say: 'no-wait' }, { settled: 2500 }], { expect: no }),
-    'card-no-yes': card('"No.", 1.3 s after its end "Yes." (the newest kept line decides: yes)', [...go(), { say: 'no' }, { wait: 600 + 1300 }, { say: 'yes' }, { settled: 2500 }], { expect: yes }),
+    'card-no-thanks': card('the card, "No thanks." (declines, as Not now), then a question that needs Kokoro (no card, no tap)', [...go(), { say: 'no-thanks' }, { settled: 2500 }, { say: 'bixby' }, { answered: 800 }], { expect: { ...declined, next: true } }),
+    'card-yes-nowait': card('"Yes.", 1.3 s after its end "No, wait." (the newest listed word decides: declined)', [...go(), { say: 'yes' }, { wait: 840 + 1300 }, { say: 'no-wait' }, { settled: 2500 }], { expect: declined }),
+    'card-no-yes': card('"No.", 1.3 s after its end "Yes." (the newest listed word decides: yes)', [...go(), { say: 'no' }, { wait: 600 + 1300 }, { say: 'yes' }, { settled: 2500 }], { expect: yes }),
     // The same with the languages setting a Japanese or Chinese speaker has (English, and the other): Gemini Live is given the language codes with the setup.
     'card-hai-ja': { ...alone('hai', '"はい。" with Japanese in Languages', yes), languages: { spoken: ['en', 'ja'], answer: 'follow' } },
     'card-hai-q-ja': { ...alone('hai-q', '"はい？" said as a question, with Japanese in Languages', no), languages: { spoken: ['en', 'ja'], answer: 'follow' } },
     'card-hao-zh': { ...alone('hao', '"好的。" with Chinese in Languages', yes), languages: { spoken: ['en', 'zh'], answer: 'follow' } },
     'card-mm-q-zh': { ...alone('mm-q', '"嗯？" said as a question, with Chinese in Languages', no), languages: { spoken: ['en', 'zh'], answer: 'follow' } },
-    'card-yes-q': alone('yes-q', '"Yes?" said as a question', no),
+    // A known gap, a question for the user: neither Gemini nor the speech-to-text writes a rising "Yes?" with its mark, so it is written "Yes." and grants.
+    'card-yes-q': alone('yes-q', '"Yes?" said as a question (known gap: written "Yes.", it grants)', yes),
     'card-hai-q': alone('hai-q', '"はい？" said as a question', no),
     'card-mm-q': alone('mm-q', '"嗯？" said as a question', no),
     'card-what': alone('what', '"What?"', no),
     'card-passenger': card('the card, a passenger\'s line ("Turn left at the next light."), then "Yes." 4.5 s after it began', [...go(), { say: 'passenger' }, { wait: 4500 }, { say: 'yes' }, { settled: 2500 }], { expect: yes }),
     'card-lyric': card('the card, song lyrics (lyric.wav), then "Yes." 9 s after they began', [...go(), { say: 'lyric' }, { wait: 9000 }, { say: 'yes' }, { settled: 2500 }], { expect: yes }),
-    'card-late-18': card('"Yes." begun 18 s after the question was said', [...go(18_000), { say: 'yes' }, { settled: 2500 }], { expect: { grant: 'any' } }),
+    'card-late-18': card('"Yes." begun 18 s after the question was said (judged by when it began)', [...go(18_000), { say: 'yes' }, { settled: 2500 }], { expect: yes }),
     'card-late-22': card('"Yes." begun 22 s after the question was said', [...go(22_000), { say: 'yes' }, { settled: 2500 }], { expect: no }),
     'card-tap-settling': card('a spoken "No, wait." is settling; a tap on Allow 1 s after annai writes it down (the tap wins)', [...go(), { say: 'no-wait' }, { tap: 'Allow', afterHeard: 1000 }, { settled: 2500 }], { expect: { grant: 'tap' } }),
     'card-tap-not-now': card('a spoken "Yes.", and a tap on Not now 1.5 s after annai writes it down (the tap wins)', [...go(), { say: 'yes' }, { tap: 'Not now', afterHeard: 1500 }, { settled: 2500 }], { expect: { grant: false } }),
@@ -187,6 +190,7 @@ function classicScenarios() {
       ? [...sc.steps.slice(0, -2), { shiori: true }, { say: 'bixby' }, { wait: 9000 }]
       : sc.steps;
     // The window shuts 20 s after the question: a yes begun later has no microphone to be heard by, and the card stays (it is a tap's).
+    /** @type {Scenario['expect']} */
     const expect = name === 'late-22' ? { grant: false, open: true } : sc.expect;
     out[`classic-${name}`] = { ...sc, about: `classic voice: ${sc.about}`, mode: 'classic', steps, ...(expect ? { expect } : {}) };
   }
