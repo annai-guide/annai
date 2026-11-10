@@ -1,5 +1,6 @@
 import { h, t, messageOf } from './dom.js';
 import { parseHash, redirectOf } from './router.js';
+import { talkHref } from './format.js';
 import { talkOf } from './open-trip.js';
 import { closeQuestions } from './ask.js';
 import { createNotices } from './notices.js';
@@ -517,9 +518,17 @@ export function startShell(root, core) {
     setPendingImport(files);
     ctx.go('#/import');
   });
-  // Shiori opened a trip she started or chose for a hand-over (Halves.openWhenDone): the screen shows it, its top bar the trip, once
-  // nothing typed would be lost.
-  /** @type {any} */ (core.agent)?.on?.('went', () => redraw());
+  // Shiori opened a trip she started or moved the user to (Halves.openWhenDone). From home the address follows into its conversation, as
+  // the user asked her to go there (the timeline design, "Moving into a trip"), once nothing typed would be lost; the conversation left goes
+  // to the open one at its redraw (render); any other screen (Details, Settings) stays, drawn again, its top bar the trip.
+  /** @type {any} */ (core.agent)?.on?.('went', (/** @type {{ trip: string }} */ { trip }) => {
+    const follow = () => {
+      if (parseHash(location.hash).name !== 'trips') return redraw();
+      if (typing()) return void setTimeout(follow, 500);
+      if (core.agent?.target === trip) replaceHash(talkHref(trip)); // the shell's own replace keeps the entry's number
+    };
+    follow();
+  });
   render({ moved: true });
   // Driving, or a plugin's screen for the activity, takes over once per drive. The dock's box is outside main, so typing there counts here.
   const seedActivity = followDrive(core.live, { screens: () => slotEntries(ctx, 'ui:screen'), hash: () => location.hash, typing: () => isField(document.activeElement), trip: () => drivingTrip(core), go: (to) => ctx.go(to) });
