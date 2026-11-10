@@ -1,5 +1,5 @@
 import { h, crumb, t, plural, field, twoStep, linkIn, messageOf } from '../dom.js';
-import { setTripStatus, removeTrip, backupState, tripMirror, scopeTitle } from '../../core/scopes.js';
+import { setTripStatus, removeTrip, backupState, tripMirror, scopeTitle, DRAFT_TITLE } from '../../core/scopes.js';
 import { ask } from '../ask.js';
 import { normPath } from '../../core/paths.js';
 import { ValidationError, NotFoundError } from '../../core/workspace.js';
@@ -71,7 +71,10 @@ const backward = new Error('backward');
  * @param {any} ctx @param {string} id @param {string} title @param {any} trip its trip.json
  */
 function editForm(ctx, id, title, trip) {
-  const name = h('input', { id: 'trip-edit-title', name: 'title', maxlength: '200', autocomplete: 'off', value: title });
+  // A conversation not named yet is stored as annai's English "New conversation": its field is empty with the screens' words behind it, and Save with it
+  // empty keeps what is stored (it goes on following the screens' language until the user or Shiori names it).
+  const unnamed = title === DRAFT_TITLE;
+  const name = h('input', { id: 'trip-edit-title', name: 'title', maxlength: '200', autocomplete: 'off', value: unnamed ? '' : title, placeholder: unnamed ? scopeTitle({ id, title }) : undefined });
   const start = h('input', { id: 'trip-edit-start', name: 'start', type: 'date', value: typeof trip?.start === 'string' ? trip.start : '' });
   const end = h('input', { id: 'trip-edit-end', name: 'end', type: 'date', value: typeof trip?.end === 'string' ? trip.end : '' });
   const error = h('p', { class: 'error', role: 'alert', hidden: true });
@@ -81,13 +84,13 @@ function editForm(ctx, id, title, trip) {
   };
   // As the file holds it: a date the field can't show (9999-99-99, from a file that came in) goes when Save keeps it blank.
   /** @type {Record<string, unknown>} */
-  const drawn = { title: name.value, start: trip?.start ?? '', end: trip?.end ?? '' };
+  const drawn = { title, start: trip?.start ?? '', end: trip?.end ?? '' };
   return h('form', {
     class: 'panel trip-edit',
     onsubmit: async (/** @type {Event} */ e) => {
       e.preventDefault();
       error.hidden = true;
-      const clean = name.value.trim();
+      const clean = name.value.trim() || (unnamed ? title : '');
       if (!clean) return say(t`Give the trip a name.`);
       // Only what was changed here: Shiori may have written the name or the dates since this was drawn.
       const changed = Object.fromEntries(Object.entries({ title: clean, start: start.value, end: end.value }).filter(([k, v]) => v !== drawn[k]).map(([k, v]) => [k, v || null]));
