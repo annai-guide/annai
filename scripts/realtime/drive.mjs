@@ -539,10 +539,13 @@ export async function runScenario(browser, name, sc, env) {
         const kind = 'asked' in step ? 'ended' : 'playing';
         const ms = 'asked' in step ? step.asked : step.asking;
         if (card.at) {
+          // The question's own clip: played after the stand-in voice was asked for it, so Koe's line said just before it (as a typed question gets) isn't taken for it.
+          const question = String((await eventsOf(page, ['out.ask'], began - 1000)).find((e) => e.data?.own === true)?.data?.question ?? '').slice(0, 120);
           const end = Date.now() + 20_000;
           let at = 0;
           while (Date.now() < end && !at) {
-            at = await mediaAfter(card.at - 50, kind);
+            const asked = env.kokoro?.log.find((k) => k.kind === 'speech' && k.at >= card.at - 50 && k.text === question)?.at ?? card.at - 50;
+            at = await mediaAfter(asked, kind);
             if (!at) await wait(50);
           }
           if (!at) notes.push(`annai's question was not heard ${kind === 'ended' ? 'to end' : 'to begin'} within 20 s of the card`);
