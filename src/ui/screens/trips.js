@@ -264,6 +264,7 @@ function newTripForm(ctx) {
   const error = h('p', { class: 'error', role: 'alert', 'data-kept': '', hidden: !tripError, text: tripError });
   return h('form', {
     class: 'panel',
+    onfocusin: (/** @type {FocusEvent} */ e) => requestAnimationFrame(() => clearOfBox(e.target)),
     oninput: () => { Object.assign(tripTyped, { title: title.value, start: start.value, end: end.value }); tripError = ''; error.hidden = true; },
     onsubmit: async (/** @type {Event} */ e) => {
       e.preventDefault();
@@ -287,6 +288,17 @@ function newTripForm(ctx) {
   fold('dates', h('summary', { text: t`Add dates (optional)` }), h('div', { class: 'row' }, field(t`Starts`, start), field(t`Ends`, end))),
   error,
   h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'submit' }, t`Start trip`)));
+}
+
+/**
+ * A field of the form focused under the top bar or the notices box stuck under it (a keyboard's Tab, a screen reader) is scrolled clear of them, its label
+ * too: the browser's own focus scrolling, done by then, doesn't know they cover it. @param {EventTarget | null} field
+ */
+function clearOfBox(field) {
+  if (!(field instanceof Element) || document.activeElement !== field) return;
+  const under = Math.max(...[...document.querySelectorAll('.topbar, .notices')].map((n) => n.getBoundingClientRect().bottom));
+  const top = (field.closest('label') ?? field).getBoundingClientRect().top;
+  if (top < under) scrollBy(0, top - under);
 }
 
 /** What went wrong with a trip's name or dates, in words, for Start a trip and Details. @param {any} err */

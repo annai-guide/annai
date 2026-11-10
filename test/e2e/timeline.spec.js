@@ -885,6 +885,37 @@ test("a web font that swaps in after a card was fitted fits it again: its words 
   await expect(card.getByRole('button', { name: 'More' })).toBeVisible();
 });
 
+for (const size of PHONES) {
+  test(`on home, a field focused under the stuck box is scrolled clear of it and of the top bar (${size.join(' x ')})`, async ({ page }) => {
+    await page.setViewportSize({ width: size[0], height: size[1] });
+    await scrolledHome(page);
+    await addBackup(page, 'Place 0');
+    await addBackup(page, 'Place 1'); // the box at its cap: half the room under the bar
+    await expect(page.locator('.notices > .notice')).toHaveCount(2);
+    await settled(page);
+    const name = page.getByLabel('Trip name');
+    // Scrolled on until Start a trip's name is just under the top bar, under the box.
+    await name.evaluate((el) => scrollBy(0, el.getBoundingClientRect().top - /** @type {Element} */ (document.querySelector('.topbar')).getBoundingClientRect().bottom - 20));
+    const top = () => name.evaluate((el) => el.getBoundingClientRect().top);
+    expect(await top()).toBeLessThan((await boxOf(page)).bottom); // covered
+    await name.focus(); // as a keyboard's Tab, or a screen reader, moves to it
+    await expect.poll(top).toBeGreaterThanOrEqual((await boxOf(page)).bottom - 1);
+    await stuckInHalf(page);
+  });
+}
+
+test("on home, a button focused inside the stuck box doesn't move the page: what sticks needs no room above it", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await scrolledHome(page);
+  await addBackup(page, 'Place 0');
+  await addBackup(page, 'Place 1');
+  await settled(page);
+  const before = await placeOf(page);
+  await page.locator('.notices > .notice').first().getByRole('button', { name: 'Dismiss' }).focus();
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  expect((await placeOf(page)).y).toBe(before.y);
+});
+
 for (const how of ['two hold cards came on another screen', 'a card opened on home, then one came on another screen']) {
   test(`back on home, a box that holds more than its cap keeps a swipe past its end: ${how}`, async ({ page, browserName }) => {
     await page.setViewportSize({ width: 360, height: 640 });
