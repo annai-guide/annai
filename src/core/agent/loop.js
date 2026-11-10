@@ -176,6 +176,8 @@ const AWAKE = /* en */ 'Not asleep: a call in this reply failed (its error is ab
  * @param {string} name @param {boolean} failed
  */
 const breaks = (name, failed) => failed && !['sleep', 'tell_koe', 'tell_kokoro'].includes(name);
+/** A note to Koe after a call of its reply failed: written before that error came back, it may call done what wasn't (Haiku told Koe "Filed" beside a write that failed). */
+const UNSENT = /* en */ 'Not sent to Koe: a call before it in this reply failed (its error is above), and you wrote this before you saw that. Tell Koe what holds now.';
 /** Her turn for the user's own message ended with nothing said to them: she is asked once more (spec §7.1). */
 export const UNANSWERED = /* en */ "The user hasn't been answered. Only speak, show and ask reach them; anything else you write is your private notes, which they never see.";
 /** The words a Try again wakes her with. */
@@ -2176,7 +2178,8 @@ export class Agent {
       for (const [i, c] of ordered.entries()) {
         const more = Boolean(this.#half.listenLast) && ordered.slice(i + 1).some((/** @type {any} */ x) => x.name === 'tell_kokoro' || x.name === 'wait');
         const awake = broke && !woke && c.name === 'sleep';
-        const output = await this.#runCall(c, tools, { wakeId, signal: abort.signal, model, sleeping, providerOff: via.off, more, last: i === ordered.length - 1, reads, awake });
+        const unsent = broke && c.name === 'tell_koe';
+        const output = await this.#runCall(c, tools, { wakeId, signal: abort.signal, model, sleeping, providerOff: via.off, more, last: i === ordered.length - 1, reads, awake, unsent });
         if (breaks(c.name, Boolean(output.isError))) broke = true;
         if (output.endTurn) endTurn = this.#wentToSleep = true;
         if (stuck.see(c.name, c.input, output.content)) stop = true;
@@ -2479,8 +2482,8 @@ export class Agent {
   /**
    * Runs one tool call and records it: tool.call, then tool.result with any photo or document it
    * returned kept as blobs the event names (spec §4.9).
-   * @param {any} c @param {LoopTool[]} tools @param {{ wakeId: string, signal: AbortSignal, model: any, sleeping: boolean, providerOff?: string[], more?: boolean, last?: boolean, live?: boolean, watched?: boolean, reads?: Map<string, Promise<import('./reading.js').Reading>>, awake?: boolean }} o
-   *   awake: a sleep after a call of its reply failed, which doesn't run
+   * @param {any} c @param {LoopTool[]} tools @param {{ wakeId: string, signal: AbortSignal, model: any, sleeping: boolean, providerOff?: string[], more?: boolean, last?: boolean, live?: boolean, watched?: boolean, reads?: Map<string, Promise<import('./reading.js').Reading>>, awake?: boolean, unsent?: boolean }} o
+   *   awake: a sleep after a call of its reply failed, which doesn't run; unsent: a tell_koe after one, which isn't sent
    */
   async #runCall(c, tools, o) {
     const input = typeof c.input === 'object' && c.input !== null ? c.input : {};
@@ -2503,6 +2506,7 @@ export class Agent {
     else if (!tool) output = { content: /* en */ `Error: there is no tool called ${c.name}, or it is switched off.`, isError: true };
     else if (typeof c.input !== 'object' || c.input === null) output = { content: /* en */ `Error: the input for ${c.name} wasn't valid JSON.`, isError: true };
     else if (o.awake) output = { content: AWAKE };
+    else if (o.unsent) output = { content: UNSENT, isError: true };
     else {
       const scope = this.scope;
       const call = {

@@ -177,6 +177,28 @@ test("Koe is down when Kokoro answers [tell_koe, sleep]: tell_koe is refused and
   assert.equal(k.notices.filter((/** @type {any} */ n) => /can't reach her model/.test(n.title)).length, 0);
 });
 
+test("a tell_koe after a call of its reply that failed isn't sent: it was written before the error came back, so it may call done what wasn't; Kokoro sees the error and tells Koe what holds (real models: Haiku told Koe \"Filed\" beside a write that failed)", async (t) => {
+  useClock(t);
+  // Kokoro's reply: a call that fails, a note written before its error came back, and sleep; then what holds, once it has seen the error.
+  const k = await agentKit([[
+    { toolCalls: [{ name: 'nope', input: {} }, { name: 'tell_koe', input: { text: 'Filed the booking.' } }, { name: 'sleep', input: {} }] },
+    calls(['tell_koe', { text: "The booking isn't filed yet: the write failed." }]),
+    sleep,
+  ]], { koe: { type: { rules: [
+    { match: 'the user wrote', reply: calls(['speak', { text: "I'm checking." }]) },
+    { match: 'a note from Kokoro', reply: calls(['speak', { text: 'Noted.' }]) },
+  ] } } });
+  k.agent.send('File my booking.');
+  await k.agent.idle();
+  const told = (await results(k, 'tell_koe')).map((/** @type {any} */ e) => [e.data.ok, e.data.content]);
+  assert.equal(told.length, 2);
+  assert.equal(told[0][0], false, 'the first note was not sent');
+  assert.match(told[0][1], /a call before it in this reply failed/);
+  assert.equal(told[1][0], true);
+  const notes = k.sent['model-koe'].flatMap(userTexts).filter((/** @type {string} */ x) => x.startsWith('<from_kokoro'));
+  assert.deepEqual(notes.map((/** @type {string} */ x) => x.replace(/<[^>]+>/g, '')), ["The booking isn't filed yet: the write failed."]);
+});
+
 test("Koe failing twice while Kokoro works asks Kokoro to talk directly once, not twice (review a4: the drop in #talkDirectly)", async (t) => {
   useClock(t);
   let clock = Date.parse('2026-11-26T12:00:00Z');
