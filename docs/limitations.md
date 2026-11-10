@@ -444,3 +444,17 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** nothing known. In 2 real-speech runs (2026-11-10) the browser's console logged an SVG error from the avatar's eye highlight (an ellipse given a negative radius); the screen and the run's outcome were right. Seen also in an earlier round; not reproduced on demand.
 - **Why:** not traced yet: the radius is computed from a value that can go below zero for a frame.
 - **Revisit when:** the next version: find the frame that computes it and clamp it at the source; the real-speech harness's no-errors check is the test.
+
+### A rising "Yes?" is heard as a yes by annai's card
+- **Kind:** known limitation.
+- **What the user sees:** annai asks aloud "Read <trip>?"; the user answers with a questioning "Yes?" (as in "pardon?"), and the card takes it as a yes: Shiori reads that trip. Both Gemini Live and the speech-to-text server write a rising "Yes?" as "Yes." (0 of 8 written lines kept a question mark in the real-voice check, 2026-11-10; only "What?" kept it, and only in Gemini). Whatever the user says next within 3 seconds still takes the yes back, and a tap on Not now wins at any time. The read is of the user's own trip, and reading changes nothing.
+- **Why:** the card judges the words as the recogniser writes them, by annai's own word list; the tone is not in the text. A stricter rule (two words, or a tap for the first read) would cost every spoken yes.
+- **Revisit when:** a recogniser annai uses marks questions in what it writes, or the user asks for a stricter spoken yes.
+- **Approved:** 2026-11-10, the user picked "Accept as known limitation (Recommended)".
+
+### Live voice: words that arrive after the next sentence has begun are taken as part of it
+- **Kind:** known limitation.
+- **What the user sees:** in live voice only, and only when the provider is late twice: the user says "Yes." to annai's card and then takes it back; if the words of the "Yes." reach annai after the take-back's turn has begun, they are written onto that turn's line, and if the take-back's own words then come more than 3 seconds after it ended, the trip is read. Not seen in about 500 real-speech runs (2026-11-10); found by reading the code. In the same way a late "Yes." can be lost (joined to the next line's words, or counted as outside the 20 seconds).
+- **Why:** Gemini Live sends a turn's transcript as text with no mark of which turn it belongs to, so annai appends it to the turn going on; there is no way to tell on annai's side.
+- **Revisit when:** the provider says which turn a transcript belongs to (Gemini's `finished` flag on transcripts isn't read yet: measure whether it settles this), or another live provider is added.
+- **Approved:** 2026-11-10, the user picked "Accept as known limitation (Recommended)".
