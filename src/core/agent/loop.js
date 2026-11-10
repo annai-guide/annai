@@ -835,7 +835,9 @@ export class Agent {
   #noted() {
     const p = this.#pending;
     const note = this.#queue.find((w) => w.kind === 'note' && w.scope === this.scope);
-    if (!note || !p || !(p.tool || (p.listening && p.kind === 'wait')) || this.state.name === 'hearing') return;
+    // A wait, and her own question waiting for a tap or typing (not annai's card): a note is always said, so it never waits behind an answer
+    // the user may never give (Koe's "want ideas?" held Kokoro's correction back in stage 5's real-model pass).
+    if (!note || !p || !(p.tool || (p.listening && p.kind === 'wait') || (p.kind === 'ask' && !p.ask && !p.listening)) || this.state.name === 'hearing') return;
     this.#pending = null;
     p.resolve({ note: note.from ?? 'kokoro' });
   }
@@ -2800,6 +2802,8 @@ export class Agent {
           if (call.voice && this.voice && !this.#aloudOnly && this.#half.voice()) return this.#askAloud(i.question, call);
           const got = await this.#waitFor(call.id, 'ask', 0);
           if (got.stopped) return { content: STOPPED, isError: true };
+          /* en */
+          if (got.note) return `${got.note === 'koe' ? 'Koe' : 'Kokoro'}: see the note below. Your question stays up: a tap on it comes later, as their next line.`;
           if (got.chosen !== undefined) {
             await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...this.#chose() }, texts: [['text', got.chosen]] });
             return `The user chose: ${got.chosen}`;
@@ -2846,8 +2850,8 @@ export class Agent {
   #waitFor(id, kind, ms) {
     const queued = this.#queue.findIndex((w) => w.kind === 'user' && w.scope === this.scope);
     if (queued >= 0) return Promise.resolve(typedGot(this.#queue.splice(queued, 1)[0]));
-    // A note already queued answers a wait.
-    const note = kind === 'wait' ? this.#queue.find((w) => w.kind === 'note' && w.scope === this.scope) : undefined;
+    // A note already queued answers a wait, and her own question.
+    const note = this.#queue.find((w) => w.kind === 'note' && w.scope === this.scope);
     if (note) return Promise.resolve({ note: note.from ?? 'kokoro' });
     // Only an ask waits for the user's OK; a wait is their turn, said so as the dock is told.
     this.#setState('waiting', undefined, kind === 'wait' ? t`Your turn` : undefined);
