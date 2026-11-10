@@ -655,3 +655,13 @@ test('a file from the waiting space that she changed in the trip she started, th
     assert.deepEqual([(await ws.list(kyoto, '/files/')).length, out.removed, out.waiting], [0, ['Testville'], true], end);
   }
 });
+
+test('a file in a trip she started whose trip of origin the user removed since: Undo removes the trip but sends the file to wait, and says so', async () => {
+  const { store, ws, trip: a } = await kit();
+  const started = await startedFrom(ws, store, a, 'h-1', 'Kyoto');
+  await moveFile(ws, { scope: a, path: '/files/flight.pdf' }, started, { handover: 'h-1' });
+  await removeTrip(store, a);
+  const out = await undoEverywhere(ws, started, 'h-1', { remove: async (s) => removeTrip(store, s) });
+  assert.deepEqual([out.removed, out.waiting, out.back], [['Kyoto'], true, []]);
+  assert.equal(await ws.readText(SYS_WAITING, '/files/flight.pdf'), '%PDF flight');
+});
