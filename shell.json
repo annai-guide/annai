@@ -1,5 +1,5 @@
 {
-  "build": "7c979f34d58d",
+  "build": "2bff506b427f",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -50,8 +50,8 @@
     "/src/core/agent/refusals.js": "ceda0646f351",
     "/src/core/agent/self-tools.js": "cf30ac06680a",
     "/src/core/agent/net.js": "7ffda19e729b",
-    "/src/core/agent/tools.js": "b91ba7e376dc",
-    "/src/core/agent/trip-tools.js": "a44e69cb0e25",
+    "/src/core/agent/tools.js": "1e05339786c2",
+    "/src/core/agent/trip-tools.js": "70929a830939",
     "/src/core/agent/transcript.js": "6480204b6213",
     "/src/core/agent/via.js": "557657aae006",
     "/src/core/agent/warmth.js": "7f1be5368415",
