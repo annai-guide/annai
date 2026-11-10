@@ -91,7 +91,8 @@ test('a server tool called beside a client tool: only tool results may follow, w
   const ss = { type: 'server_tool_use', id: 'srvtoolu_1', name: 'web_search', input: { query: 'ramen' } };
   const geocode = { type: 'tool_use', id: 'toolu_1', name: 'geocode', input: {} };
   const claude = anthropicStandIn((body) => (body.messages.length === 1 ? [ss, geocode] : [{ type: 'text', text: 'Here.' }]));
-  const send = (/** @type {any[]} */ messages) => claude.fetch('https://api.anthropic.com/v1/messages', { body: JSON.stringify({ model: 'claude-sonnet-5-5', messages }) });
+  const search = [{ type: 'web_search_20250305', name: 'web_search' }];
+  const send = (/** @type {any[]} */ messages, tools = search) => claude.fetch('https://api.anthropic.com/v1/messages', { body: JSON.stringify({ model: 'claude-sonnet-5-5', tools, messages }) });
   const ask = { role: 'user', content: [{ type: 'text', text: 'Ramen?' }] };
   const first = { role: 'assistant', content: await contentOf(await send([ask])) };
   assert.deepEqual(first.content.map((/** @type {any} */ b) => b.type), ['thinking', 'server_tool_use', 'tool_use']);
@@ -99,6 +100,10 @@ test('a server tool called beside a client tool: only tool results may follow, w
   const words = { type: 'text', text: '<now>10:00</now>' };
   const user = (/** @type {any[]} */ content) => ({ role: 'user', content });
   // Only the tool result after it: 200, and the reply begins with the search's result, then its thinking.
+  // Without the search's tool in the request that would run it: refused, as the API refuses it.
+  // (The thinking is left out, as after a turn: it is bound to the tools too.)
+  assert.equal((await send([ask, { role: 'assistant', content: first.content.filter((/** @type {any} */ b) => b.type !== 'thinking') }, user([result])], [])).status, 400);
+  assert.match(claude.refused.at(-1), /^`web_search` tool use with id `srvtoolu_1` was found without a corresponding `web_search_tool_result` block, but no `web_search` tool was provided$/);
   const answered = await send([ask, first, user([result])]);
   assert.equal(answered.status, 200);
   const second = { role: 'assistant', content: await contentOf(answered) };
@@ -124,7 +129,7 @@ test('a server tool called beside a client tool: only tool results may follow, w
 test('a web fetch called beside a client tool is left in the same way, and its result is a web_fetch_tool_result', async () => {
   const fetchUse = { type: 'server_tool_use', id: 'srvtoolu_2', name: 'web_fetch', input: { url: 'https://example.com/a' } };
   const claude = anthropicStandIn((body) => (body.messages.length === 1 ? [fetchUse, { type: 'tool_use', id: 'toolu_2', name: 'geocode', input: {} }] : [{ type: 'text', text: 'Here.' }]));
-  const send = (/** @type {any[]} */ messages) => claude.fetch('https://api.anthropic.com/v1/messages', { body: JSON.stringify({ model: 'claude-sonnet-5-5', messages }) });
+  const send = (/** @type {any[]} */ messages) => claude.fetch('https://api.anthropic.com/v1/messages', { body: JSON.stringify({ model: 'claude-sonnet-5-5', tools: [{ type: 'web_fetch_20250910', name: 'web_fetch' }], messages }) });
   const ask = { role: 'user', content: [{ type: 'text', text: 'Read it.' }] };
   const first = { role: 'assistant', content: await contentOf(await send([ask])) };
   const result = { type: 'tool_result', tool_use_id: 'toolu_2', content: 'x' };

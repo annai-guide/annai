@@ -88,7 +88,7 @@ function build({ endpoint, model, key, tunables: t, request }) {
   // The marks were for finding blocks: none is sent.
   for (const m of body.messages) m.content = m.content.map((/** @type {any} */ b) => { const { [AT]: _at, ...rest } = b; return rest; });
   // The now block comes after the marker, so the cached prefix of this request is a prefix of the next one (spec §6.3).
-  // A request that ends with Shiori's own message is a paused turn being continued, so it gets no tail; nor does one that answers a server
+  // A request that ends with Shiori's own message is a paused turn being continued, so it gets no tail; nor does one that runs a server
   // tool left waiting (settle): its last message holds the tool results alone.
   if (request.tail && !waiting) {
     if (last?.role === 'user') last.content.push({ type: 'text', text: request.tail });
@@ -166,48 +166,40 @@ function serverTools(model, request) {
  * "`web_search` tool use with id ... was found without a corresponding `web_search_tool_result` block", at the end of the history and in the
  * middle of it, though the reply after carries the result; and a call that no reply after answers fails the same way (the real API, Opus,
  * Sonnet and Haiku 5.5, 2026-11-10). So, whatever is stored, in the messages sent:
- * - the other blocks of that user message (the kept now block, lines, photos from tools) are not in it: they go to the first user message
- *   after the reply that answers it, in their order, after its tool results; until there is one, they wait, and the request has no tail;
- * - a call that no reply after it answers (the reply after it was another model's or Koe's words, as in a conversation stored by 0.5.0
- *   whose request was refused), that no tool result follows, or that this request would run with its tool missing (the API refuses that too:
- *   "but no `web_search` tool was provided"; web search switched off since), is left out of its reply; a reply left with nothing but thinking goes.
- * A last message that is the reply is a paused turn, which continues as it is. What is sent before a message is the same in every later
- * request, so the thinking and the cache bound to it stay valid.
+ * - a call whose user message holds the tool results alone is run by this request, which then has no tail; once the reply after it
+ *   answers it, that user message goes as it went, the tool results alone (a now block kept there since was never sent);
+ * - any other call is left out of its reply: one whose user message holds anything else (the user's line or Koe's, a photo, a heard
+ *   line: the model reads it all at once and searches again if it still wants to; that search is the only one, as the call left out
+ *   never ran), one no reply after it answers (another model's or Koe's words came next, as in a conversation stored by 0.5.0 whose
+ *   request was refused), or one this request would run with its tool missing (the API refuses that too: "but no `web_search` tool was
+ *   provided"; web search switched off since). A reply left with nothing but thinking goes.
+ * Nothing waits and nothing moves. A last message that is the reply is a paused turn, which continues as it is. What is sent before a
+ * message is the same in every later request, so the thinking and the cache bound to it stay valid.
  * @param {{ role: string, content: any[] }[]} out the messages, tool results first in a user message
  * @param {Set<string>} defined the names of the server tools this request defines (serverTools)
- * @returns {{ messages: { role: string, content: any[] }[], waiting: boolean }} waiting: the last message is the one that answers such a reply
+ * @returns {{ messages: { role: string, content: any[] }[], waiting: boolean }} waiting: this request runs such a call (its last message holds the results alone)
  */
 function settle(out, defined) {
-  let messages = out;
-  messages.forEach((m, i) => {
-    const open = i < messages.length - 1 ? unanswered(m) : [];
+  out.forEach((m, i) => {
+    const next = out[i + 1];
+    const open = next ? unanswered(m) : [];
     if (!open.length) return;
-    const next = messages[i + 1];
-    const after = messages[i + 2];
-    // Answered by the reply after, a call is a pair like any other; answered by this request, it needs its tool defined in it.
-    const gone = new Set(open.filter((b) => !(next.content.some((/** @type {any} */ x) => x.type === 'tool_result') && (after ? after.content.some((/** @type {any} */ r) => isResult(r) && r.tool_use_id === b.id) : defined.has(b.name)))).map((b) => b.id));
+    const after = out[i + 2];
+    const results = next.content.filter((/** @type {any} */ b) => b.type === 'tool_result');
+    // Answered by the reply after, a call was run as a pair; run by this request, its message holds the results alone and its tool is defined.
+    const runs = (/** @type {any} */ b) => results.length > 0 && (after ? after.content.some((/** @type {any} */ r) => isResult(r) && r.tool_use_id === b.id) : results.length === next.content.length && defined.has(b.name));
+    const gone = new Set(open.filter((b) => !runs(b)).map((b) => b.id));
+    if (gone.size < open.length) next.content = results;
     if (!gone.size) return;
     const rest = m.content.filter((/** @type {any} */ b) => !(b.type === 'server_tool_use' && gone.has(b.id)));
     m.content = rest.some((/** @type {any} */ b) => b.type !== 'thinking' && b.type !== 'redacted_thinking') ? rest : [];
   });
   // A reply left empty goes, and the user messages around it are one.
-  messages = messages.filter((m) => m.content.length).reduce((/** @type {typeof out} */ all, m) => {
+  const messages = out.filter((m) => m.content.length).reduce((/** @type {typeof out} */ all, m) => {
     if (all.at(-1)?.role === m.role) all.at(-1)?.content.push(...m.content);
     else all.push(m);
     return all;
   }, []);
-  let held = /** @type {any[]} */ ([]);
-  for (const [i, m] of messages.entries()) {
-    if (m.role !== 'user') continue;
-    const results = m.content.filter((/** @type {any} */ b) => b.type === 'tool_result');
-    if (unanswered(messages[i - 1] ?? { role: '', content: [] }).length) {
-      held.push(...m.content.filter((/** @type {any} */ b) => b.type !== 'tool_result'));
-      m.content = results;
-    } else if (held.length) {
-      m.content.splice(results.length, 0, ...held);
-      held = [];
-    }
-  }
   const last = messages.at(-1);
   return { messages, waiting: last?.role === 'user' && unanswered(messages.at(-2) ?? { role: '', content: [] }).length > 0 };
 }
