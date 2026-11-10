@@ -427,12 +427,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** the user's phone check finds it in the way, or a landscape layout for home is designed.
 - **Approved:** 2026-11-09, the user chose "Known limitation".
 
-### A swipe on a card a px over its own cap doesn't scroll home
-- **Kind:** deferred.
-- **What the user sees:** on home, a swipe that starts on a stuck card whose height lands within a pixel over its cap (a quarter of the screen less the box's padding) scrolls nothing: measured at 360 x 640 with a one-line warn card ("A test card", "Check the key."), 142 px against 141. A swipe on the rows, or on any other card, scrolls home.
-- **Why:** each card is its own scroll box, so it is whole in a quarter-high box; `fit` accepts a card up to 1 px over (rounding), and the browser gives the whole swipe to the card that can scroll that px. Older than stage 4's sticky box.
-- **Revisit when:** the next version: let `fit`'s measure and the card's scroll agree (no 1 px a card can scroll).
-
 ### Details says "trip" on a chat, and Welcome and import say "the timeline" where the screen says "Trips"
 - **Kind:** deferred.
 - **What the user sees:** Details of a chat says "Remove trip", "Archive trip" and "This trip so far", though a chat isn't a trip (the spec's anti-goal: no "trip" on small chats). Welcome and the import screen say "the timeline" where the screen and the top bar say "Trips".

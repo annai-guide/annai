@@ -765,7 +765,7 @@ for (const size of SIZES) {
   test(`a swipe on a stuck box that holds less than its cap scrolls home; on one that holds more, it stays in the box (${size.join(' x ')})`, async ({ page, browserName }) => {
     await page.setViewportSize({ width: size[0], height: size[1] });
     await scrolledHome(page);
-    // A title and Dismiss: well inside its cap. (A card within a px of its own cap scrolls that px and keeps the swipe: docs/limitations.md.)
+    // A title and Dismiss: well inside its cap.
     await page.evaluate(() => /** @type {any} */ (window).__n.card({ tone: 'warn', title: 'A test card' }));
     await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
     await settled(page);
@@ -846,6 +846,26 @@ test("a card that arrives below what is read, then goes by code before it is see
   await page.evaluate(() => /** @type {any} */ (window).later());
   await expect(page.locator('.notices')).not.toHaveClass(/\bbelow\b/);
   await rowsStayed(page, before);
+});
+
+test("a swipe on a stuck card within a px of its own cap scrolls home (360 x 640, a one-line warn card)", async ({ page, browserName }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await scrolledHome(page);
+  await page.evaluate(() => /** @type {any} */ (window).__n.card({ tone: 'warn', title: 'A test card', body: 'Check the key.' }));
+  await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
+  await settled(page);
+  const card = page.locator('.notices > .notice');
+  if (browserName !== 'chromium') {
+    // Playwright's WebKit has neither touch scrolling nor a wheel: there, the rule. However its fit rounds, no card is scrolled by a finger: what it can't
+    // show whole grows, and the box scrolls instead.
+    expect(await card.evaluate((c) => getComputedStyle(c).overflowY)).not.toMatch(/auto|scroll/);
+    return;
+  }
+  const before = await placeOf(page);
+  const b = /** @type {{ x: number, y: number, width: number, height: number }} */ (await card.boundingBox());
+  const swipe = await fingerOf(page);
+  await swipe(Math.round(b.x + b.width / 2), Math.round(b.y + b.height / 2), -80);
+  expect((await placeOf(page)).y).toBeGreaterThan(before.y + 30);
 });
 
 for (const how of ['two hold cards came on another screen', 'a card opened on home, then one came on another screen']) {
