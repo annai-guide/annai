@@ -990,7 +990,7 @@ test("a trip card's Next and its day follow the clock while home stays open, wit
   expect(await page.evaluate(() => scrollY)).toBe(y);
 });
 
-test("a trip card follows the clock when annai comes back to the front after a while, and leaves a half-typed trip name alone", async ({ page }) => {
+test("a trip card follows the clock when annai comes back to the front after a while, though a trip name was left half-typed, which is still there", async ({ page }) => {
   await morning(page);
   const card = row(page, 'Testville');
   await expect(card.locator('.next')).toContainText('Museum');
@@ -998,17 +998,13 @@ test("a trip card follows the clock when annai comes back to the front after a w
     await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   };
   await page.getByLabel('Trip name').fill('Tokyo');
+  await page.getByLabel('Trip name').blur(); // left half-typed: the keyboard goes
   const noon = new Date();
   noon.setHours(11, 0, 0, 0);
   await page.clock.setSystemTime(noon); // the phone was locked: no timer ran
   await back();
-  await page.waitForTimeout(300);
-  await expect(card.locator('.next')).toContainText('Museum'); // not redrawn over the typing
+  await expect(card.locator('.next')).toContainText('Lunch'); // a name left in the form holds no fact back: Museum is over
   await expect(page.getByLabel('Trip name')).toHaveValue('Tokyo');
-  await page.getByLabel('Trip name').fill('');
-  await page.getByLabel('Trip name').blur(); // done with the form: the keyboard goes
-  await back();
-  await expect(card.locator('.next')).toContainText('Lunch');
 });
 
 test('home while she works: the dock says the name of the conversation as it is now (the first line names it; a rename in Details)', async ({ page }) => {
@@ -1090,7 +1086,7 @@ test('home drawn again past midnight, scrolled to the rows that go into the fold
   expect(Math.abs((await at()) - before)).toBeLessThanOrEqual(1);
 });
 
-test("a redraw skipped over typing comes once the typing is gone: the card is right when the name is cleared and left, with no lock and unlock", async ({ page }) => {
+test("a redraw skipped over typing comes once the field is left: the card is right, and what was typed is still there, with no lock and unlock", async ({ page }) => {
   await morning(page);
   const card = row(page, 'Testville');
   const name = page.getByLabel('Trip name');
@@ -1107,9 +1103,9 @@ test("a redraw skipped over typing comes once the typing is gone: the card is ri
   await expect(name).toHaveValue('Kyoto');
   await expect(name).toBeFocused();
   await expect(card.locator('.next')).toContainText('Museum');
-  await name.fill('');
   await name.blur();
   await expect(card.locator('.next')).toContainText('Lunch');
+  await expect(name).toHaveValue('Kyoto');
 });
 
 test("the clock's redraw waits while a field of Start a trip has focus, empty: the keyboard stays up", async ({ page }) => {
