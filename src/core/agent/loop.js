@@ -76,8 +76,9 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  *   what a turn's requests keep from its first step to its end (the keep-reasoning design §3): the system text (rebuilt only from a new snapshot,
  *   after housekeeping), the tools and provider tools, the reasoning level, the half's rule for its messages, and where the previous turn began
  * @typedef {{ id: string, kind: 'ask' | 'wait', resolve: (v: Got) => void, listening?: boolean, hold?: () => void, arm?: () => void, tool?: boolean,
- *   ask?: { yes: (heard: string) => string | null, open: boolean, wake: string, heard: Map<string, { id: string, inside: boolean, kept: boolean, text?: string }>, settle: any } }} Pending
+ *   ask?: { yes: (heard: string) => string | null, open: boolean, wake: string, scope: string, heard: Map<string, AskLine>, settle: any, due: number } }} Pending
  *   waiting for the user; listening: an answer may be spoken; hold and arm stop and start the silence limit; tool: the wait tool's; ask: annai's own card's (confirm)
+ * @typedef {{ id: string, inside: boolean, kept: boolean, text?: string, h?: Heard, gate?: string }} AskLine  heard while annai's card waits; h: this half's own segment, once kept
  * @typedef {{ name: StateName, label: string, detail?: string }} State  label: the dock's words for it (LABELS); detail: what she is away doing (TIDYING, or a task's words)
  * @typedef {{ tone: 'warn' | 'info', title: string, body: string, actions?: { label: string, primary?: boolean, run: () => void | Promise<void> }[], key?: string, toast?: boolean }} Notice
  *   key: names a card a later turn takes down (the clear event, when that turn works): model, or silent:<its conversation>
@@ -224,6 +225,8 @@ const webLink = (l) => {
 const inside = (p, root) => typeof p === 'string' && root.test(p) && !p.split('/').some((x) => x === '..' || x === '.');
 /** Words: a string with something in it. @param {unknown} x @returns {x is string} */
 const words = (x) => typeof x === 'string' && x.trim() !== '';
+/** A word-list yes inside the card's window: the option it answers. @param {NonNullable<Pending['ask']>} ask @param {AskLine} l */
+const askYes = (ask, l) => (l.inside && l.text !== undefined ? ask.yes(l.text) : null);
 /** What a listen got from a user's message taken off the queue: its words, and a claim or a tap that came with them. @param {Wake} w @returns {Got} */
 const typedGot = (w) => ({ text: w.text, ...(w.claim ? { claim: w.claim } : {}), ...(w.chose ? { chose: true } : {}) });
 /** Typing a listen got, as the log and the model have it: plain, a claim ("This was for Shiori") or a tap that came as words. @param {Got} got @returns {{ data: Record<string, any>, said: string }} */
@@ -883,9 +886,16 @@ export class Agent {
       /** @type {any} */
       let timer;
       /** @type {NonNullable<Pending['ask']>} */
-      const ask = { yes, open: false, wake: call.wake, heard: new Map(), settle: undefined };
+      const ask = { yes, open: false, wake: call.wake, scope: this.scope, heard: new Map(), settle: undefined, due: 0 };
       /** @type {Pending} */
-      const p = { id: tap, kind: 'ask', ask, resolve: (v) => { clearTimeout(timer); clearTimeout(ask.settle); resolve(v); } };
+      const p = { id: tap, kind: 'ask', ask, resolve: (v) => {
+        clearTimeout(timer);
+        clearTimeout(ask.settle);
+        // Kept segments its answer doesn't carry go on as heard lines: nothing heard is lost.
+        const told = [v.heard, ...(v.also ?? []).map((x) => x.heard)];
+        for (const l of ask.heard.values()) if (l.h && !told.includes(l.h)) this.#queue.push({ kind: 'heard', text: '', heard: l.h, ...(l.gate ? { gate: l.gate } : {}), scope: ask.scope, at: Date.now() });
+        resolve(v);
+      } };
       // A Stop as the card was written found no wait to end: none may eat the user's next line.
       if (call.signal?.aborted) return void p.resolve({ stopped: true });
       this.#pending = p;
@@ -901,8 +911,12 @@ export class Agent {
           if (this.#ear?.owner === 'turn') this.#closeEar();
           if (this.#pending === p) this.#setState('waiting');
         };
-        p.hold = () => clearTimeout(timer); // someone is speaking: the window waits for their words
-        p.arm = () => { clearTimeout(timer); timer = setTimeout(shut, Math.max(0, until - Date.now())); };
+        p.hold = () => { clearTimeout(timer); clearTimeout(ask.settle); }; // someone is speaking: the window and a settle wait for their words
+        p.arm = () => {
+          clearTimeout(timer);
+          timer = setTimeout(shut, Math.max(0, until - Date.now()));
+          if (ask.due) this.#settleAsk(p, false);
+        };
         p.arm();
         if (this.#half.voice() && this.voice?.on && !(await this.#openEar('turn')) && this.#pending === p && ask.open) {
           p.listening = true;
@@ -915,10 +929,11 @@ export class Agent {
       await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...this.#chose() }, texts: [['text', got.chosen]] });
       return { chosen: got.chosen, how: 'tap' };
     }
-    if (got.heard) await this.#logHeard(got.heard, { wake: call.wake, answer: call.id, ...(got.gate ? { gate: got.gate } : {}) });
+    const said = got.heard ? [...(got.also ?? []), { heard: got.heard, gate: got.gate }] : [];
+    for (const x of said) await this.#logHeard(x.heard, { wake: call.wake, answer: call.id, ...(x.gate ? { gate: x.gate } : {}) });
     if (got.voiced) return { chosen: got.voiced, how: 'voice' };
     /* en */
-    if (got.heard) return { said: 'The user said:', heard: [got.heard.id] };
+    if (got.heard) return { said: 'The user said:', heard: said.map((x) => x.heard.id) };
     /* en */
     if (got.spoke) return { said: 'What the user said follows.' }; // the other half's line, in the log already: Kokoro hears all
     if (got.text === undefined) return { said: '' };
@@ -927,10 +942,7 @@ export class Agent {
     return { said: wrote.said };
   }
 
-  /**
-   * The other half's heard lines while annai's card waits (Halves): one settle per card, started again by each new or revised kept line, then the
-   * newest kept line decides ("Yes." then "No, wait." is no), else a yes set aside. Other lines set aside don't put it off. @param {any} e
-   */
+  /** The other half's heard lines while annai's card waits (Halves). @param {any} e */
   confirmHeard(e) {
     const p = this.#pending;
     const ask = p?.ask;
@@ -940,18 +952,30 @@ export class Agent {
     const line = ask.heard.get(id);
     if (!line) return; // heard before the card
     if (typeof e.data?.text === 'string') line.text = e.data.text;
-    /** @param {typeof line} l */
-    const yes = (l) => (l.inside && l.text !== undefined ? ask.yes(l.text) : null);
-    if (!line.kept && !yes(line)) return;
+    if (line.kept || askYes(ask, line)) this.#settleAsk(p);
+  }
+
+  /**
+   * annai's card, both voice modes: once nothing new is kept for SETTLE_S, the newest kept line decides ("Yes." then "No, wait." is no), else a yes set aside.
+   * A line not judged yet holds it. @param {Pending} p @param {boolean} [restart] else what is left of it
+   */
+  #settleAsk(p, restart = true) {
+    const ask = /** @type {NonNullable<Pending['ask']>} */ (p.ask);
     clearTimeout(ask.settle);
+    if (restart) ask.due = Date.now() + SETTLE_S * this.secondMs;
     ask.settle = setTimeout(() => {
       const lines = [...ask.heard.values()];
-      const last = lines.findLast((l) => l.kept) ?? lines.findLast(yes);
+      const last = lines.findLast((l) => l.kept) ?? lines.findLast((l) => askYes(ask, l));
       if (last?.text === undefined || this.#pending !== p) return; // its words to come start it again
-      const chosen = yes(last);
+      const chosen = askYes(ask, last);
       this.#pending = null;
-      p.resolve(chosen ? { voiced: chosen } : { spoke: last.id });
-    }, SETTLE_S * this.secondMs);
+      if (!last.h) return void p.resolve(chosen ? { voiced: chosen } : { spoke: last.id }); // the other half's line, in the log already
+      if (this.#ear) this.#ear.owner = 'turn';
+      this.#setState('thinking');
+      // A no carries all they said, in order; a yes, its own line.
+      const also = chosen ? [] : lines.flatMap((l) => (l.h && l !== last ? [{ heard: l.h, gate: l.gate }] : []));
+      p.resolve({ heard: last.h, ...(last.gate ? { gate: last.gate } : {}), ...(chosen ? { voiced: chosen } : {}), ...(also.length ? { also } : {}) });
+    }, Math.max(0, ask.due - Date.now()));
   }
 
   /**
@@ -3145,21 +3169,34 @@ export class Agent {
     const p = this.#pending?.listening ? this.#pending : null;
     if (p) {
       const ask = p.ask;
+      /** @type {AskLine | null} it holds the card's settle until judged */
+      const line = ask ? { id: h.id, inside: ask.open, kept: true } : null;
       let voiced = null;
-      if (ask) {
+      if (ask && line) {
+        ask.heard.set(h.id, line);
         // annai's card: its word list, not the gate, judges the words, written down first; a tap meanwhile still answers it.
-        const inside = ask.open;
         const r = typeof h.text === 'string' || !this.voice ? null : await this.voice.writeDown(h.id, { scope: this.scope, wake: ask.wake, hearer: await this.#hearer(this.#half.role) }).catch(() => null);
         if (r) {
           h = { ...h, text: r.text };
           this.voice?.memory.drop(h.id, r.text);
         }
-        voiced = inside && typeof h.text === 'string' ? ask.yes(h.text) : null;
+        voiced = line.inside && typeof h.text === 'string' ? ask.yes(h.text) : null;
       }
       const verdict = tapped || voiced ? null : await this.#gate(h);
       if (this.#pending === p && verdict === 'chatter') {
         // Not for her: written at the turn's end, and she listens on, to the same deadline (the second-drive design): one such verdict must not close the microphone on the user.
+        if (line) line.kept = false;
         this.#chatter.push(h);
+        if (line && this.#speaking) return; // more began meanwhile: the card's hold stands
+        if (this.state.name === 'hearing') this.#setState('listening');
+        p.arm?.();
+        return;
+      }
+      if (this.#pending === p && line) {
+        // Kept, yes or not: the newest decides once settled. No words written down is no yes.
+        Object.assign(line, { text: h.text ?? '', h, ...(verdict ? { gate: verdict } : {}) });
+        this.#settleAsk(p);
+        if (this.#speaking) return void p.hold?.();
         if (this.state.name === 'hearing') this.#setState('listening');
         p.arm?.();
         return;
