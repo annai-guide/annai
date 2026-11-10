@@ -347,7 +347,7 @@ async function strayInWindow(k) {
   await hear(k, 'where-eat');
   await until(() => k.agent.state.name === 'listening' && k.requests.length === 1);
   await hear(k, 'gas-station'); // passes the gate: a word, maybe not for her
-  await until(() => k.requests.length === 2);
+  await until(() => k.requests.length >= 2); // a reply whose call failed (already_told is no tool of hers alone) has one more step
   while (k.agent.busy) await new Promise((r) => setTimeout(r, 5));
 }
 
