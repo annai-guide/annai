@@ -580,3 +580,20 @@ test('Undo in a trip she started names each trip that stays and lost what she di
   await record(c.store, via, { type: 'handover.moved', actor: 'shiori', data: { handover: 'h-1', to: c.trip, started: false, count: 1 } });
   assert.deepEqual((await undoEverywhere(c.ws, c.trip, 'h-1', { remove: async (s) => removeTrip(c.store, s) })).changed, []);
 });
+
+test('a cycle where she changed the file in B for the hand-over (A to B, her change, back to A): Undo leaves it in A as it was handed, and nothing as the user changed it', async () => {
+  for (const end of ['A', 'B']) {
+    const { store, ws, trip: a } = await kit();
+    const b = await createTrip(ws, { title: 'Kyoto' });
+    const there = await moveFile(ws, { scope: a, path: '/files/flight.pdf' }, b, { handover: 'h-1' });
+    await record(store, a, { type: 'handover.moved', actor: 'shiori', data: { handover: 'h-1', to: b, started: false, count: 1 } });
+    await record(store, b, { type: 'msg.user', actor: 'user', data: { handed: [], handover: 'h-1', from: a }, texts: [['text', '(files)']] });
+    await ws.write(b, there, utf8('%PDF flight, tidied'), { author: 'shiori', type: 'application/pdf', handover: 'h-1' });
+    await moveFile(ws, { scope: b, path: there }, a, { handover: 'h-1' });
+    await record(store, b, { type: 'handover.moved', actor: 'shiori', data: { handover: 'h-1', to: a, started: false, count: 1 } });
+    const out = await undoEverywhere(ws, end === 'A' ? a : b, 'h-1', { remove: async (s) => removeTrip(store, s) });
+    assert.equal(await ws.readText(a, '/files/flight.pdf'), '%PDF flight', end);
+    assert.deepEqual((await ws.list(b, '/files/')).map((f) => f.path), [], end);
+    assert.deepEqual([out.kept, out.back], [0, [{ id: a, title: 'Anchorage' }]], end);
+  }
+});

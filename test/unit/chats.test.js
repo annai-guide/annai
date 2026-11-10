@@ -301,8 +301,8 @@ test("a late Undo takes back only what its line set: once she or the user change
   // She moves the end, as asked: the line has nothing of its own to take back.
   await ws.patch(draft, '/trip.json', { end: '2027-03-23' }, { author: 'shiori' });
   assert.equal(await herDating(store, draft), null, 'her later change');
-  // A tap on the line as it was drawn before that: no dates go.
-  await undoDating(ws, draft, /** @type {any} */ (late));
+  // A tap on the line as it was drawn before that: no dates go, and it says so.
+  assert.equal(await undoDating(ws, draft, /** @type {any} */ (late)), false);
   assert.deepEqual([(await ws.readJSON(draft, '/trip.json')).start, (await ws.readJSON(draft, '/trip.json')).end], ['2027-03-20', '2027-03-23']);
   // The user's own change in Details, then the dates set back by hand to hers: the dates are the user's, not the line's.
   const other = await voiceFirst({ start: '2027-03-20', end: '2027-03-22' });
@@ -314,7 +314,7 @@ test("a late Undo takes back only what its line set: once she or the user change
   assert.equal(await herDating(other.store, other.draft), null, "set back by the user: theirs");
   // Undone, then dated again by her: the line is the newer dating's.
   const again = await voiceFirst({ start: '2027-03-20', end: '2027-03-22' });
-  await undoDating(again.ws, again.draft, /** @type {any} */ (await herDating(again.store, again.draft)));
+  assert.equal(await undoDating(again.ws, again.draft, /** @type {any} */ (await herDating(again.store, again.draft))), true);
   assert.equal((await again.ws.readJSON(again.draft, '/trip.json')).start, undefined);
   await again.ws.patch(again.draft, '/trip.json', { start: '2027-04-02', end: '2027-04-04' }, { author: 'shiori' });
   const writes = (await again.store.tx(['events'], 'readonly', (t) => t.listEvents(again.draft, { types: ['file.write'] }))).filter((/** @type {any} */ e) => e.actor === 'shiori');

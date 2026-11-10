@@ -56,13 +56,17 @@ export async function herDating(store, scope) {
  * Puts a conversation's dates back to what they were before Shiori's dating (herDating's), as the user's write: only the dates, so a name given
  * since stays; and only while they are still the ones it set (a tap on a line drawn before a later change changes nothing).
  * @param {Workspace} ws @param {string} scope @param {{ before: { start?: string, end?: string }, set: { start?: string, end?: string } }} dating
+ * @returns {Promise<boolean>} whether it put them back
  */
 export async function undoDating(ws, scope, { before, set }) {
+  let undone = false;
   await ws.update(scope, '/trip.json', (trip) => {
     if (trip.start !== set.start || trip.end !== set.end) return trip;
+    undone = true;
     const { start: _s, end: _e, ...rest } = trip;
     return { ...rest, ...(before.start === undefined ? {} : { start: before.start }), ...(before.end === undefined ? {} : { end: before.end }) };
   }, { author: 'user' });
+  return undone;
 }
 
 const graphemes = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null;

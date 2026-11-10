@@ -207,7 +207,8 @@ async function moveBack(ws, at, back, handover) {
     return there?.hash === at.hash ? { was: 'home', path: back.path } : { was: 'gone' };
   }
   if (now.hash !== at.hash) {
-    if (!since.length || !since.every((e) => e.actor === 'shiori' && e.data?.handover === handover)) return { was: 'changed' };
+    // This Undo's own moves through it (in a cycle) are no one's change.
+    if (!since.length || !since.every((e) => (e.actor === 'shiori' && e.data?.handover === handover) || e.data?.undo === handover)) return { was: 'changed' };
     await ws.restore(at.scope, at.path, at.hash, { author: 'user', undo: handover });
   }
   const folder = back.path.slice(0, back.path.lastIndexOf('/') + 1);

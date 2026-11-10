@@ -274,6 +274,7 @@ test("Shiori's patch dates the open chat: its row becomes a card below now, and 
     await expect(page).toHaveURL(new RegExp(`#/trip/${id}/talk$`));
     await line.getByRole('button', { name: 'Undo' }).click();
     await expect(line).toBeHidden();
+    await expect(page.locator('.toasts').getByText('Undone.', { exact: true })).toBeVisible(); // said, as the hand-over's Undo is
     await page.getByRole('link', { name: 'Back to Trips' }).click();
     await expect(row(page, 'Testville')).toHaveClass(/\bline\b/); // her title stays: Undo takes back the dates
     await page.reload();
@@ -1317,6 +1318,7 @@ test("Shiori set the dates stays at its place when the user writes again, and af
     await expect.poll(lines).toEqual(placed);
     await line.getByRole('button', { name: 'Undo' }).click();
     await expect(line).toBeHidden();
+    await expect(page.locator('.toasts').getByText('Undone.', { exact: true })).toBeVisible(); // said, as the hand-over's Undo is
     await page.getByRole('link', { name: 'Back to Trips' }).click();
     await expect(row(page, 'Testville')).toHaveClass(/\bline\b/);
   } finally {

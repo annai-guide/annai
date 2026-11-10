@@ -698,7 +698,8 @@ function datesLine(ctx, scope, list) {
         class: 'btn ghost', type: 'button', 'aria-label': t`Undo the dates Shiori set`,
         onclick: async () => {
           undo.disabled = true;
-          await undoDating(ctx.ws, scope, now).catch((/** @type {unknown} */ x) => {
+          // Said, as the hand-over's Undo is: the line goes with the dates. A line drawn before a later change only goes.
+          await undoDating(ctx.ws, scope, now).then((undone) => (undone ? ctx.notices.toast(t`Undone.`) : draw()), (/** @type {unknown} */ x) => {
             undo.disabled = false;
             ctx.notices.toast(messageOf(x));
           });
