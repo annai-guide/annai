@@ -1,7 +1,7 @@
 {
   "id": "provider-anthropic",
   "name": "Anthropic",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "api": 1,
   "description": "Claude models through Anthropic's Messages API, with web search, and a cache that can last an hour.",
   "category": "providers",
@@ -238,6 +238,11 @@
               "high": {
                 "output_config": {
                   "effort": "high"
+                }
+              },
+              "max": {
+                "output_config": {
+                  "effort": "max"
                 }
               }
             }
