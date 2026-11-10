@@ -23,8 +23,9 @@ async function addForgejo(page, fj) {
 /**
  * A phone that backed a trip up to the stand-in, then was wiped and set up with the same place: on the place's screen,
  * a backup is already there. @param {import('@playwright/test').Page} page @param {any} fj
+ * @param {{ chats?: number }} [o] chats: conversations of the user's beside the trip, undated, a line each
  */
-async function wipedPhone(page, fj) {
+async function wipedPhone(page, fj, { chats = 0 } = {}) {
   await page.addInitScript(() => {
     try {
       localStorage.setItem('annai.backupTimings', JSON.stringify({ tickMs: 300, quietMs: 300, gapMs: 0 }));
@@ -38,6 +39,20 @@ async function wipedPhone(page, fj) {
   await page.getByLabel('Content').fill('Bixby Bridge, 1932');
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByText('Saved', { exact: true })).toBeVisible();
+  if (chats) {
+    await page.evaluate(async (n) => {
+      const load = (/** @type {string} */ url) => import(url);
+      const { createIdbStore } = await load('/src/core/store-idb.js');
+      const { Workspace } = await load('/src/core/workspace.js');
+      const { createTrip } = await load('/src/core/scopes.js');
+      const { record } = await load('/src/core/agent/log.js');
+      const store = await createIdbStore();
+      const ws = new Workspace(store);
+      for (let i = 0; i < n; i++) await record(store, await createTrip(ws, { title: `Chat ${i}` }), { type: 'msg.user', actor: 'user', data: {}, texts: [['text', `Line ${i}`]], now: Date.now() - i * 3_600_000 });
+      store.close();
+    }, chats);
+    await page.reload();
+  }
   await addForgejo(page, fj);
   await expect(page.getByText(/^Last backup/)).toBeVisible({ timeout: 30_000 });
   await page.getByRole('link', { name: 'Settings' }).click();
@@ -94,6 +109,28 @@ test('Import says how far the files are, and a manifest swapped between the prev
     await page.getByRole('button', { name: 'Import', exact: true }).click();
     await expect(page.getByText(/This backup changed on the server/)).toBeVisible();
     await expect(page.getByText('Imported.')).toHaveCount(0);
+  } finally {
+    await fj.stop();
+  }
+});
+
+test("many conversations in a git backup: its preview, from the manifest alone, folds the rows it can't tell apart under one, Import in reach; opened, each is there, and they all come", async ({ page, baseURL }) => {
+  const fj = await startForgejo({ repos: { [REPO]: {} }, cors: new URL(String(baseURL)).origin });
+  try {
+    await wipedPhone(page, fj, { chats: 6 });
+    await page.getByRole('button', { name: 'Import it as a copy' }).click();
+    await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible({ timeout: 30_000 });
+    const fold = page.locator('.cards > li.many');
+    await expect(fold.locator('summary .name')).toHaveText('7 trips and conversations');
+    await expect(page.locator('.panel > .cards > li')).toHaveCount(1); // the one row between the backup's words and its checks
+    await expect(page.getByText('Big Sur', { exact: true })).toBeHidden();
+    await fold.locator('summary').click();
+    await expect(fold.locator('.cards > li')).toHaveCount(7);
+    await expect(page.getByText('Big Sur', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Import', exact: true }).click();
+    await expect(page.getByText('Imported.')).toBeVisible();
+    await page.getByRole('link', { name: 'Go to the timeline' }).click();
+    await expect(page.locator('.rows .trip-card')).toHaveCount(7);
   } finally {
     await fj.stop();
   }

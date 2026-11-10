@@ -9,7 +9,7 @@ import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
 import { parseMarkdown, parseInline, MD_MAX } from '../../src/ui/markdown.js';
 import { mapsUrl, tripPath } from '../../src/ui/cards.js';
-import { follow, announced, wokeText, wokeTitles, reminderParts, movedWords, settled } from '../../src/ui/screens/talk.js';
+import { follow, announced, wokeText, wokeTitles, reminderParts, movedWords, settled, undoneWords } from '../../src/ui/screens/talk.js';
 import { visibleRegion } from '../../src/ui/photo-viewer.js';
 import { traceSummary, newestFirst } from '../../src/ui/screens/trace.js';
 import { micProblem } from '../../src/ui/mic-help.js';
@@ -872,6 +872,16 @@ test("the Trace's line marks what an entry keeps as written (English) apart from
   for (const x of [e('error', { kind: 'budget', message: 'x'.repeat(150) }), e('backup.peek', { type: 's3', backup: 'c2', problem: '$.files[0].hash: does not match' })]) {
     for (const kept of traceStored(x)) assert.ok(traceSummary(x).includes(kept), kept);
   }
+});
+
+test("undoneWords: what Undo of a hand-over did, and each trip that stays that it changed beyond where the files went back", () => {
+  const none = { removed: [], kept: 0, waiting: false, back: [], changed: [] };
+  assert.equal(undoneWords({ ...none, removed: ['Testville'], back: [{ id: 'a', title: 'Anchorage' }], changed: [{ id: 'k', title: 'Kyoto' }] }),
+    'Undone. Testville is removed, and your files are back in Anchorage. What Shiori did in Kyoto is undone too.');
+  assert.equal(undoneWords({ ...none, waiting: true, changed: [{ id: 'k', title: 'Kyoto' }, { id: 'b', title: 'Big Sur' }], kept: 1 }),
+    'Undone. Your files are waiting with Shiori again. What Shiori did in Kyoto and Big Sur is undone too. Left 1 file as you changed it.');
+  assert.equal(undoneWords({ ...none, back: [{ id: 'a', title: 'Anchorage' }] }), 'Undone. Your files are back in Anchorage.');
+  assert.equal(undoneWords(none), 'Undone.');
 });
 
 test('movedWords: started, took one, took several, and to a trip since removed', () => {

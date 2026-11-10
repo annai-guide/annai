@@ -28,42 +28,45 @@ export async function ensureDraft(ws) {
 }
 
 /**
- * The dates a conversation had before Shiori's newest dating write of it, while the line that says so is to show: until the user writes or speaks again
- * after her write (then it goes for good; unlike the hand-over's Undo line, which stays in the conversation at its place), and while the dates are still the ones that write set (a later title doesn't change
- * them; the user's own date edit does). Her dating write is one whose version before had no start and whose own has one. Only the file writes
- * since the user's last line are read. Null: none, or not to show.
- * @param {any} store @param {string} scope @returns {Promise<{ start?: string, end?: string } | null>}
+ * Shiori's dating of a conversation, while the dates are the ones it set: the write that set the dates it has now is hers, and gave it its
+ * first dates (the version before had no start). Its line stays in the conversation at that write (seq), whatever the user says after, and
+ * its Undo takes back only what it set: once anyone changed the dates since (she did, or the user in Details), it has none of its own left,
+ * so it never overwrites a later change. A later name changes nothing. Null: undated (most conversations), or the dates aren't hers.
+ * @param {any} store @param {string} scope
+ * @returns {Promise<{ seq: number, before: { start?: string, end?: string }, set: { start?: string, end?: string } } | null>}
  */
 export async function herDating(store, scope) {
-  const [now, writes] = await store.tx(['files', 'events'], 'readonly', async (/** @type {any} */ x) => {
-    const [typed] = await x.listEvents(scope, { types: ['msg.user'], reverse: true, limit: 1 });
-    const spoken = (await x.listEvents(scope, { types: ['heard'], ...(typed ? { after: typed.seq } : {}) })).filter((/** @type {any} */ e) => talks(e));
-    const last = Math.max(typed?.seq ?? 0, ...spoken.map((/** @type {any} */ e) => e.seq));
-    return [
-      await x.getFile(scope, '/trip.json'),
-      (await x.listEvents(scope, { types: ['file.write'], reverse: true, after: last })).filter((/** @type {any} */ e) => e.data?.path === '/trip.json'),
-    ];
-  });
+  const now = await store.tx(['files'], 'readonly', (/** @type {any} */ x) => x.getFile(scope, '/trip.json'));
   const current = await blobJSON(store, scope, now?.hash, { quiet: true });
-  if (!current?.start) return null; // most conversations: undated
-  for (const e of writes) {
-    if (e.actor !== 'shiori' || typeof e.data?.old !== 'string') continue;
-    const [before, after] = await Promise.all([blobJSON(store, scope, e.data.old, { quiet: true }), blobJSON(store, scope, e.data.new, { quiet: true })]);
-    if (before?.start || !after?.start) continue;
-    return after.start === current.start && after.end === current.end ? { start: before?.start, end: before?.end } : null;
+  if (!current?.start) return null;
+  const writes = (await store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(scope, { types: ['file.write'] })))
+    .filter((/** @type {any} */ e) => e.data?.path === '/trip.json');
+  // From the version there now back to the write that set its dates: each one after it kept them.
+  for (let i = writes.findLastIndex((/** @type {any} */ e) => e.data?.new === now.hash); i >= 0; i--) {
+    const e = writes[i];
+    const before = typeof e.data?.old === 'string' ? await blobJSON(store, scope, e.data.old, { quiet: true }) : null;
+    if (before && before.start === current.start && before.end === current.end) continue;
+    return e.actor === 'shiori' && before && !before.start
+      ? { seq: e.seq, before: { start: before.start, end: before.end }, set: { start: current.start, end: current.end } } : null;
   }
   return null;
 }
 
 /**
- * Puts a conversation's dates back to what they were before Shiori's dating (herDating's), as the user's write: only the dates, so a name given since stays.
- * @param {Workspace} ws @param {string} scope @param {{ start?: string, end?: string }} before
+ * Puts a conversation's dates back to what they were before Shiori's dating (herDating's), as the user's write: only the dates, so a name given
+ * since stays; and only while they are still the ones it set (a tap on a line drawn before a later change changes nothing).
+ * @param {Workspace} ws @param {string} scope @param {{ before: { start?: string, end?: string }, set: { start?: string, end?: string } }} dating
+ * @returns {Promise<boolean>} whether it put them back
  */
-export async function undoDating(ws, scope, before) {
+export async function undoDating(ws, scope, { before, set }) {
+  let undone = false;
   await ws.update(scope, '/trip.json', (trip) => {
+    if (trip.start !== set.start || trip.end !== set.end) return trip;
+    undone = true;
     const { start: _s, end: _e, ...rest } = trip;
     return { ...rest, ...(before.start === undefined ? {} : { start: before.start }), ...(before.end === undefined ? {} : { end: before.end }) };
   }, { author: 'user' });
+  return undone;
 }
 
 const graphemes = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null;

@@ -432,6 +432,29 @@ test("Undo sends the file back to a trip that then won't open: a card says so", 
   }
 });
 
+test("Undo names a trip of the user's that stays but lost what she did there: the file she moved to Kyoto and its booking", async ({ page }) => {
+  const llm = await startModelServer({ [MESSAGES]: [
+    sse(anthropicToolReply([{ name: 'list_trips', input: {} }])),
+    (/** @type {any} */ body) => sse(anthropicToolReply([{ name: 'move_file', input: { path: '/trip/files/flight.pdf', trip: /(trip-[a-z0-9]+)\\tKyoto/.exec(asText(body))?.[1] ?? 'none' } }])),
+    sse(anthropicToolReply([{ name: 'speak', input: { text: 'That one is for Kyoto: I moved it there.' } }, { name: 'sleep', input: {} }])),
+    sse(anthropicToolReply([{ name: 'sleep', input: {} }])),
+  ] });
+  try {
+    await modelSetUp(page, llm.origin, 'Big Sur');
+    const bigSur = page.url();
+    await page.goto('/#/trips');
+    await startTrip(page, 'Kyoto');
+    await page.goto(bigSur);
+    await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+    await handOver(page, [await fixture('flight.pdf', 'application/pdf')]);
+    await expect(page.locator('.convo').getByText('That one is for Kyoto: I moved it there.')).toBeVisible({ timeout: 60_000 });
+    await page.getByRole('button', { name: 'Undo what Shiori did with these files' }).click();
+    await expect(page.getByText('Undone. Your files are back in Big Sur. What Shiori did in Kyoto is undone too.', { exact: true })).toBeVisible();
+  } finally {
+    await llm.stop();
+  }
+});
+
 test('a short paste stays words; a long one into an empty box becomes a chip, which can be put back as words', async ({ page }) => {
   await openApp(page, '#/talk'); // the dock at rest on home has no type button (timeline stage 4)
   await paste(page, 'Seat 14D\nAisle, please');
