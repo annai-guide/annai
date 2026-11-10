@@ -281,7 +281,7 @@ export class Halves {
         voice: () => this.koeState === 'text',
         // annai's card, Kokoro's, with Koe on a chat model: who speaks into Koe's microphone, and when each line began (its entry comes later).
         speech: (on, line) => {
-          this.kokoro.confirmSpeech(on);
+          this.kokoro.confirmSpeech(on, Boolean(line));
           if (line) this.kokoro.confirmHeard(line);
         },
         system: (s) => koeSystem(s),
@@ -351,7 +351,7 @@ export class Halves {
       left: (notes) => this.#leftUnsaid(notes),
       noisy: (heard) => this.#wakeKokoro({ kind: 'cue', text: NONSTOP(heard), logged: true, input: true }),
       heard: (line) => this.kokoro.confirmHeard(line),
-      speech: (on) => this.kokoro.confirmSpeech(on),
+      speech: (on) => this.kokoro.confirmSpeech(on, !on), // a turn's end is a line said
     });
     this.voice?.onChange((_, first) => { if (!first) this.#route(() => this.#refresh()); });
     this.voice?.onSound((stuck) => {
