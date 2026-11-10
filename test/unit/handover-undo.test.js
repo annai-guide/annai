@@ -835,3 +835,18 @@ test("a file another hand-over moved on and that one's Undo brought back: Undo o
   await undoEverywhere(c.ws, c.a, 'h-1', { remove: async (s) => removeTrip(c.store, s) });
   assert.deepEqual([(await c.ws.list(c.a, '/files/')).length, (await c.ws.list(k, '/files/')).length], [0, 1]);
 });
+
+test("an Undo cut off at any point, then tapped again: the file moved for the hand-over is back where it came from, once, under its own name", async () => {
+  for (let cutAt = 0; cutAt < 8; cutAt++) {
+    let left = cutAt;
+    const { store, ws, trip } = await kit();
+    const kyoto = await createTrip(ws, { title: 'Kyoto' });
+    await moveFile(ws, { scope: trip, path: '/files/flight.pdf' }, kyoto, { handover: 'h-1' });
+    // The page closes after `left` writes of the first Undo; every later one is lost.
+    const cut = new Workspace({ ...store, tx: (/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => (mode === 'readwrite' && left-- <= 0 ? Promise.reject(new Error('the page closed')) : store.tx(stores, mode, fn)) }, { schemaFor: ws.schemaFor });
+    await undoEverywhere(cut, kyoto, 'h-1', { remove: async () => ({ title: '' }) }).catch(() => {});
+    await undoEverywhere(ws, kyoto, 'h-1', { remove: async () => ({ title: '' }) });
+    assert.deepEqual((await ws.list(trip, '/files/')).map((f) => f.path), ['/files/flight.pdf'], `cut after ${cutAt}`);
+    assert.deepEqual((await ws.list(kyoto, '/files/')).map((f) => f.path), [], `cut after ${cutAt}`);
+  }
+});

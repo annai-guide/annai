@@ -397,12 +397,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** read_trip's `path` gives a file whole, and the result's own cut is all that bounds it; `from` was left out of stage 5's tool (found in the build's review, finding 11).
 - **Revisit when:** the next version: read_trip takes `from`, as `read` does.
 
-### A move cut off halfway leaves the file in both trips
-- **Kind:** deferred.
-- **What the user sees:** if annai is closed in the few milliseconds between the two writes of a file's move (Shiori's, or Undo's moving it back), the file is in both trips. A second Undo then moves it again: "flight.pdf" and "flight (2).pdf".
-- **Why:** a move is two transactions, one per trip.
-- **Revisit when:** the next version: a move is one transaction (workspace.js), for Shiori's moves and Undo's alike. That is an API change, with its lessons entry.
-
 ### Turning the phone with home scrolled to its end leaves the page a little off its end
 - **Kind:** deferred.
 - **What the user sees:** with home scrolled to its very end (Start a trip's form, Open a file, the last backup line), turning the phone to landscape and back, or a window that gets shorter and comes back, leaves the page not quite at its end: 12 px in Chromium (45 px with a short card stuck), and in WebKit's emulation up to 285 px with an opened card. Mid-page nothing moves (0 px in 76 measured cases). Measured in the test browsers at four phone sizes (2026-11-10); a real iPhone's rotation was not looked at, and Playwright's resize is not a real rotation.

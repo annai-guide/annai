@@ -55,67 +55,71 @@ export async function forget(store, scope, match) {
 }
 
 /** @param {Store} store @param {string} scope @param {Match} match @returns {Promise<Forgot>} */
-function forgetIn(store, scope, match) {
-  return store.tx(['files', 'events', 'blobs', 'scopes'], 'readwrite', async (t) => {
-    const top = await t.lastSeq(scope);
-    /** @type {Set<string>} */
-    const named = new Set();
-    let files = 0;
-    if (match.files) {
-      for (const f of await t.listFiles(scope)) {
-        if (!match.files(f.path)) continue;
-        await t.deleteFile(scope, f.path);
-        named.add(f.hash);
-        files++;
-      }
+const forgetIn = (store, scope, match) => store.tx(['files', 'events', 'blobs', 'scopes'], 'readwrite', (t) => forgetWith(t, scope, match));
+
+/**
+ * The same in a transaction of files, events, blobs and scopes the caller holds (a move from waiting); no mustFree or dryRun there.
+ * @param {import('./types.js').Tx} t @param {string} scope @param {Match} match @returns {Promise<Forgot>}
+ */
+export async function forgetWith(t, scope, match) {
+  const top = await t.lastSeq(scope);
+  /** @type {Set<string>} */
+  const named = new Set();
+  let files = 0;
+  if (match.files) {
+    for (const f of await t.listFiles(scope)) {
+      if (!match.files(f.path)) continue;
+      await t.deleteFile(scope, f.path);
+      named.add(f.hash);
+      files++;
     }
-    /** @type {Map<number, EventRecord>} */
-    const doomed = new Map();
-    const history = match.history || match.mustFree ? await t.listEvents(scope, { types: HISTORY }) : [];
-    if (match.history) {
-      const live = match.onlyDeleted ? new Set((await t.listFiles(scope)).map((f) => f.path)) : null;
-      for (const e of history) {
-        const p = e.data?.path;
-        if (typeof p === 'string' && match.history(p, e) && !(live?.has(p) && match.onlyDeleted?.(p))) doomed.set(e.seq, e);
-      }
+  }
+  /** @type {Map<number, EventRecord>} */
+  const doomed = new Map();
+  const history = match.history || match.mustFree ? await t.listEvents(scope, { types: HISTORY }) : [];
+  if (match.history) {
+    const live = match.onlyDeleted ? new Set((await t.listFiles(scope)).map((f) => f.path)) : null;
+    for (const e of history) {
+      const p = e.data?.path;
+      if (typeof p === 'string' && match.history(p, e) && !(live?.has(p) && match.onlyDeleted?.(p))) doomed.set(e.seq, e);
     }
-    if (match.events) for (const e of await t.listEvents(scope)) if (match.events(e)) doomed.set(e.seq, e);
+  }
+  if (match.events) for (const e of await t.listEvents(scope)) if (match.events(e)) doomed.set(e.seq, e);
+  for (const e of doomed.values()) {
+    await t.deleteEvent(scope, e.seq);
+    for (const h of [e.data?.old, e.data?.new, ...(e.refs ?? [])]) if (typeof h === 'string') named.add(h);
+  }
+  if (match.mustFree) {
     for (const e of doomed.values()) {
-      await t.deleteEvent(scope, e.seq);
-      for (const h of [e.data?.old, e.data?.new, ...(e.refs ?? [])]) if (typeof h === 'string') named.add(h);
-    }
-    if (match.mustFree) {
-      for (const e of doomed.values()) {
-        if (typeof e.data?.path !== 'string' || !match.mustFree(e.data.path)) continue;
-        for (const h of [e.data.old, e.data.new]) {
-          if (typeof h !== 'string' || !(await t.blobInUse(h))) continue;
-          if (await t.blobInUse(h, { exceptScope: scope })) throw new Kept('elsewhere'); // rolls the transaction back
-          // Other file history names it: 'history' (even if the conversation does too); else 'here'.
-          const other = history.some((x) => !doomed.has(x.seq) && [x.data?.old, x.data?.new].includes(h));
-          throw new Kept(other ? 'history' : 'here');
-        }
+      if (typeof e.data?.path !== 'string' || !match.mustFree(e.data.path)) continue;
+      for (const h of [e.data.old, e.data.new]) {
+        if (typeof h !== 'string' || !(await t.blobInUse(h))) continue;
+        if (await t.blobInUse(h, { exceptScope: scope })) throw new Kept('elsewhere'); // rolls the transaction back
+        // Other file history names it: 'history' (even if the conversation does too); else 'here'.
+        const other = history.some((x) => !doomed.has(x.seq) && [x.data?.old, x.data?.new].includes(h));
+        throw new Kept(other ? 'history' : 'here');
       }
     }
-    let bytes = 0;
-    let blobs = 0;
-    // Each content freed is read for its size alone: never a list of every blob, which a push sync would pay each time.
-    for (const h of named) {
-      if (await t.blobInUse(h)) continue;
-      if (match.dryRun) { // it rolls back, so nothing is deleted, and a key read says whether there is something to free
-        if (await t.hasBlob(h) && !(await t.blobSized(h, 0))) blobs++; // a content of no bytes frees no space
-        continue;
-      }
-      const b = await t.getBlob(h);
-      if (!b) continue;
-      await t.deleteBlob(h);
-      bytes += Number(b.size) || 0;
+  }
+  let bytes = 0;
+  let blobs = 0;
+  // Each content freed is read for its size alone: never a list of every blob, which a push sync would pay each time.
+  for (const h of named) {
+    if (await t.blobInUse(h)) continue;
+    if (match.dryRun) { // it rolls back, so nothing is deleted, and a key read says whether there is something to free
+      if (await t.hasBlob(h) && !(await t.blobSized(h, 0))) blobs++; // a content of no bytes frees no space
+      continue;
     }
-    if (files || doomed.size) {
-      for (const e of await t.listEvents(scope, { types: ['forget'] })) if (!doomed.has(e.seq)) await t.deleteEvent(scope, e.seq);
-      const now = Date.now();
-      await t.putEvent({ scope, seq: top + 1, ts: now, at: now, type: 'forget', actor: 'system', data: { files, events: doomed.size, bytes } });
-    }
-    if (match.dryRun) throw new DryRun({ files, events: doomed.size, bytes, blobs, kept: null }); // rolls the transaction back
-    return { files, events: doomed.size, bytes, kept: null };
-  });
+    const b = await t.getBlob(h);
+    if (!b) continue;
+    await t.deleteBlob(h);
+    bytes += Number(b.size) || 0;
+  }
+  if (files || doomed.size) {
+    for (const e of await t.listEvents(scope, { types: ['forget'] })) if (!doomed.has(e.seq)) await t.deleteEvent(scope, e.seq);
+    const now = Date.now();
+    await t.putEvent({ scope, seq: top + 1, ts: now, at: now, type: 'forget', actor: 'system', data: { files, events: doomed.size, bytes } });
+  }
+  if (match.dryRun) throw new DryRun({ files, events: doomed.size, bytes, blobs, kept: null }); // rolls the transaction back
+  return { files, events: doomed.size, bytes, kept: null };
 }
