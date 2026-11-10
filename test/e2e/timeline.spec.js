@@ -759,6 +759,34 @@ for (const where of ['at the now line', 'at its end']) {
   });
 }
 
+// The box's own scroll, scrolled to its end: a fit's moment cuts the card above back to the quarter, and the box's scroll is clamped by its excess;
+// held at its height, the box's scroll anchoring doesn't give it back (measured on ed966816: 90, 71 and 60 px at the three sizes, both engines).
+for (const [how, refit] of Object.entries(REFITS)) {
+  for (const size of PHONES) {
+    test(`home scrolled, a card that needs more than the box's quarter over an opened card, the box scrolled inside to its end, then ${how}: what is read in the box stays (${size.join(' x ')})`, async ({ page }) => {
+      await page.setViewportSize({ width: size[0], height: size[1] });
+      await scrolledHome(page);
+      await addBackup(page);
+      await page.evaluate(() => { /** @type {any} */ (window).__n.card({ title: 'A long card', body: 'These are many words, and more of them. '.repeat(30), actions: [{ label: 'Go on', run() {} }] }); });
+      await expect(page.locator('.notices .notice.grow', { hasText: 'A newer backup' })).toHaveCount(1);
+      await settled(page);
+      const card = page.locator('.notices .notice', { hasText: 'A long card' });
+      await card.getByRole('button', { name: 'More' }).click();
+      await expect(card.getByRole('button', { name: 'Less' })).toBeVisible();
+      await settled(page);
+      const box = page.locator('.notices');
+      await box.evaluate((el) => { el.scrollTop = el.scrollHeight; }); // read on to the opened card's end, inside the box
+      const inside = await box.evaluate((el) => el.scrollTop);
+      expect(inside).toBeGreaterThan(0);
+      const before = await placeOf(page);
+      await refit(page, size);
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+      expect(Math.abs((await box.evaluate((el) => el.scrollTop)) - inside)).toBeLessThanOrEqual(1);
+      await rowsStayed(page, before);
+    });
+  }
+}
+
 test("a card that goes from a box over half: the one left stays stuck under the bar, and the rows stay", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
   await scrolledHome(page);
