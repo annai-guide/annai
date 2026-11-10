@@ -874,7 +874,9 @@ export class Agent {
    */
   async confirm(call, { question, options, yes = () => null }) {
     if (call.signal?.aborted) return { stopped: true };
-    await this.#log({ type: 'out.ask', actor: 'system', data: { id: call.id, wake: call.wake, question, options, own: true, by: null } });
+    // What a tap answers is annai's own id for this card, never the call's, which a provider writes (one with no ids says call_0 every turn).
+    const tap = newId('tap');
+    await this.#log({ type: 'out.ask', actor: 'system', data: { id: call.id, tap, wake: call.wake, question, options, own: true, by: null } });
     const queued = this.#queue.findIndex((w) => w.kind === 'user' && w.scope === this.scope);
     /** @type {Got} */
     const got = queued >= 0 ? typedGot(this.#queue.splice(queued, 1)[0]) : await new Promise((resolve) => {
@@ -883,7 +885,7 @@ export class Agent {
       /** @type {NonNullable<Pending['ask']>} */
       const ask = { yes, open: false, wake: call.wake, heard: new Map(), settle: new Map() };
       /** @type {Pending} */
-      const p = { id: call.id, kind: 'ask', ask, resolve: (v) => { clearTimeout(timer); for (const x of ask.settle.values()) clearTimeout(x); resolve(v); } };
+      const p = { id: tap, kind: 'ask', ask, resolve: (v) => { clearTimeout(timer); for (const x of ask.settle.values()) clearTimeout(x); resolve(v); } };
       // A Stop while the card was written found no wait to end: no wait is left behind to take the user's next line.
       if (call.signal?.aborted) return void p.resolve({ stopped: true });
       this.#pending = p;
