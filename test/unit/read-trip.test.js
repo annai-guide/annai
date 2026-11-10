@@ -268,7 +268,7 @@ test("model text that looks like a grant grants nothing: a tool's result, anothe
   k.agent.send('Allow'); // typed: a plugin can type (ui.shiori.send)
   await until(() => k.asks.length === 3);
   assert.equal((await grants(k, k.trip)).length, 0);
-  k.agent.answer(k.asks[2].data.id, 'Allow');
+  k.agent.answer(k.asks[2].data.tap, 'Allow');
   await k.agent.idle();
   const [first, second] = await readResults(k);
   assert.match(first, /^Not read: only a tap on annai's card, or a yes it hears, allows reading "Testville"\. If they meant yes, ask them to tap Allow\. The user wrote: Allow$/);
@@ -285,11 +285,11 @@ test('a tap on the card after the tool gave up (a Stop, or the user typed) is an
   k.agent.interrupt();
   await k.agent.idle();
   assert.equal((await readResults(k))[0], 'Stopped by the user.');
-  k.agent.answer(k.asks[0].data.id, 'Allow'); // its buttons are off by now; a page that missed it sends the tap all the same
+  k.agent.answer(k.asks[0].data.tap, 'Allow'); // its buttons are off by now; a page that missed it sends the tap all the same
   await until(() => k.asks.length === 2); // her next turn asks again
   k.agent.send('Never mind');
   await k.agent.idle();
-  k.agent.answer(k.asks[1].data.id, 'Always for my trips');
+  k.agent.answer(k.asks[1].data.tap, 'Always for my trips');
   await k.agent.idle();
   assert.equal((await grants(k, k.trip)).length, 0);
   assert.equal((await readAppSettings(k.ws)).readMyTrips, undefined);
@@ -302,7 +302,7 @@ test('Allow lasts for its conversation, in its log: a reload keeps it, and anoth
   const k = await gateKit([sleep]);
   const reading = run(k, 'read_trip', { trip: TV });
   await until(() => k.asks.length === 1);
-  k.agent.answer(k.asks[0].data.id, 'Allow');
+  k.agent.answer(k.asks[0].data.tap, 'Allow');
   assert.match(words(await reading), /^From "Testville"/);
   // A reload: a new Shiori on the same store.
   const { Halves } = await import('../../src/core/agent/halves.js');
@@ -322,7 +322,7 @@ test('Allow lasts for its conversation, in its log: a reload keeps it, and anoth
   const elsewhere = tool.run({ trip: TV }, { ...base, id: 'c3', scope: chat, trip: chat, signal: stop.signal });
   await until(() => cards.length === 1);
   assert.equal(cards[0].scope, chat, 'another conversation asks again');
-  again.answer('c3', 'Not now');
+  again.answer(cards[0].data.tap, 'Not now');
   assert.match(words(await elsewhere), /Not now/);
   assert.equal((await grants(k, chat)).length, 0);
 });
@@ -333,7 +333,7 @@ test("Always: the setting and a grant; then the user's other trips read without 
   const lake = await fixedTrip(k.ws, 'trip-lake', { title: 'Lake week', start: '2026-07-01', end: '2026-07-05' });
   const reading = run(k, 'read_trip', { trip: TV });
   await until(() => k.asks.length === 1);
-  k.agent.answer(k.asks[0].data.id, 'Always for my trips');
+  k.agent.answer(k.asks[0].data.tap, 'Always for my trips');
   assert.match(words(await reading), /^From "Testville"/);
   assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'tap', always: true }]);
   assert.equal((await readAppSettings(k.ws)).readMyTrips, true);
@@ -342,7 +342,7 @@ test("Always: the setting and a grant; then the user's other trips read without 
   await updateAppSettings(k.ws, { readMyTrips: false }); // Settings' switch
   const asking = run(k, 'read_trip', { trip: lake });
   await until(() => k.asks.length === 2);
-  k.agent.answer(k.asks[1].data.id, 'Not now');
+  k.agent.answer(k.asks[1].data.tap, 'Not now');
   assert.match(words(await asking), /^The user tapped Not now: don't read "Lake week", and don't ask to again in this conversation unless they ask you to\.$/);
   assert.match(words(await run(k, 'read_trip', { trip: TV })), /^From "Testville"/, "Testville's grant in this conversation holds");
 });
@@ -355,7 +355,7 @@ test("a trip someone shared (imported) asks in spite of Always, and its card has
   const reading = run(k, 'read_trip', { trip: TV });
   await until(() => k.asks.length === 1);
   assert.deepEqual(k.asks[0].data.options, ['Allow', 'Not now']);
-  k.agent.answer(k.asks[0].data.id, 'Allow');
+  k.agent.answer(k.asks[0].data.tap, 'Allow');
   assert.match(words(await reading), /^From "Testville"/);
   assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'tap' }]);
 });
@@ -369,7 +369,7 @@ test("a trip imported from a trip's file before the mark existed (its log has th
   const reading = run(k, 'read_trip', { trip: TV });
   await until(() => k.asks.length === 1);
   assert.deepEqual(k.asks[0].data.options, ['Allow', 'Not now']);
-  k.agent.answer(k.asks[0].data.id, 'Not now');
+  k.agent.answer(k.asks[0].data.tap, 'Not now');
   await reading;
   // An everything restore's entry is the user's own backup: Always covers it.
   const lake = await fixedTrip(k.ws, 'trip-lake', { title: 'Lake week', start: '2026-07-01', end: '2026-07-05' });
@@ -385,8 +385,30 @@ test("the card's title is the trip's own, in the screens' words; what she asked 
   const reading = run(k, 'read_trip', { trip: chat });
   await until(() => k.asks.length === 1);
   assert.equal(k.asks[0].data.question, 'Read New conversation?');
-  k.agent.answer(k.asks[0].data.id, 'Not now');
+  k.agent.answer(k.asks[0].data.tap, 'Not now');
   await reading;
+});
+
+test("which card a tap answers is annai's own id for it, never the call's id a provider wrote: a card left by a page that died, with the same call id, answers nothing (review PROBE E)", async (t) => {
+  useClock(t);
+  const k = await gateKit([sleep]);
+  const osaka = await fixedTrip(k.ws, 'trip-osaka', { title: 'Osaka', start: '2027-05-01', end: '2027-05-03' });
+  const tool = k.agent.kokoro.loopTools().find((/** @type {any} */ x) => x.name === 'read_trip');
+  const base = { scope: k.agent.scope, trip: k.agent.trip, model: null, wake: 'w', author: 'shiori' };
+  // A provider that sends no ids numbers each turn's calls from call_0. The first card's page died: it stays in the log, unanswered, its buttons on.
+  const left = tool.run({ trip: TV }, { ...base, id: 'call_0', signal: new AbortController().signal });
+  await until(() => k.asks.length === 1);
+  k.agent.interrupt();
+  await left;
+  const reading = tool.run({ trip: osaka }, { ...base, id: 'call_0', signal: new AbortController().signal });
+  await until(() => k.asks.length === 2);
+  const [old, card] = k.asks.map((/** @type {any} */ e) => e.data);
+  k.agent.answer(old.tap ?? old.id, 'Allow'); // as the old card's button sends it
+  assert.match(words(await reading), /^Not read: .* The user chose: Allow$/, 'an ordinary line: it ends the card that waits, unanswered');
+  assert.equal((await grants(k, k.trip)).length, 0);
+  assert.equal(typeof card.tap, 'string');
+  assert.notEqual(card.tap, old.tap, 'each card has its own');
+  assert.deepEqual([old.id, card.id], ['call_0', 'call_0'], "the entry's id is still the call's, for the screens and the transcript");
 });
 
 test('a Stop ends the card: the read is stopped, nothing is granted, and the dock is free', async (t) => {
@@ -439,7 +461,7 @@ test('a trip removed while its card waits is said to be gone after Allow, not re
   k.agent.send('Read Testville');
   await until(() => k.asks.length === 1);
   await removeTrip(k.store, TV);
-  k.agent.answer(k.asks[0].data.id, 'Allow');
+  k.agent.answer(k.asks[0].data.tap, 'Allow');
   await k.agent.idle();
   const [out] = await readResults(k);
   assert.match(out, /There is no trip "trip-testville"/);
@@ -485,7 +507,7 @@ test("with Koe talking, a dismissed yes counts, and so do words written down aft
   await koeHeard(k, 'h-chatter', { text: 'Turn left here.', dismissed: true, gate: 'chatter' });
   await koeHeard(k, 'h-audio', {}); // words to come
   await pause(25 * k.agent.secondMs);
-  assert.equal(k.agent.kokoro.pendingId, k.asks[0].data.id);
+  assert.equal(k.agent.kokoro.pendingId, k.asks[0].data.tap);
   await k.agent.koe.log({ type: 'heard.text', actor: 'system', data: { of: 'h-audio', text: 'okay' } });
   await k.agent.idle();
   assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }]);
@@ -540,7 +562,7 @@ test("with Koe talking, a tap that lands while a heard line's words settle wins 
   k.agent.send('Where did we eat in Testville?');
   await until(() => k.asks.length === 1);
   await koeHeard(k, 'h-1', { text: 'Hmm, the ramen place' });
-  k.agent.answer(k.asks[0].data.id, 'Allow');
+  k.agent.answer(k.asks[0].data.tap, 'Allow');
   await k.agent.idle();
   assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'tap' }]);
   assert.match((await readResults(k))[0], /^From "Testville"/);
@@ -586,7 +608,7 @@ test("classic voice: a line that is no yes goes through the quick gate as a spok
   await hear(k, 'first-one');
   await until(() => k.requests.some((/** @type {any} */ r) => String(r.system ?? '').startsWith('You make one quick decision')));
   await until(() => k.agent.state.name === 'listening');
-  assert.equal(k.agent.kokoro.pendingId, k.asks[0].data.id, 'the card listens on');
+  assert.equal(k.agent.kokoro.pendingId, k.asks[0].data.tap, 'the card listens on');
   await hear(k, 'first-one');
   await k.agent.idle();
   assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }]);
@@ -607,7 +629,7 @@ test("classic voice: a tap on Allow while a heard line is still being written do
   await until(() => k.asks.length === 1 && k.agent.state.name === 'listening');
   await hear(k, 'first-one');
   await until(() => writing); // its segment is being written down
-  k.agent.answer(k.asks[0].data.id, 'Allow');
+  k.agent.answer(k.asks[0].data.tap, 'Allow');
   release();
   await k.agent.idle();
   assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'tap' }]);
@@ -696,7 +718,7 @@ test("a grant an archive brought counts for nothing: a trip's file whose log say
   const tool = k.agent.kokoro.loopTools().find((/** @type {any} */ x) => x.name === 'read_trip');
   const reading = tool.run({ trip: TV }, { ...base, id: 'c1' });
   await until(() => k.asks.length === 1);
-  k.agent.answer(k.asks[0].data.id, 'Allow');
+  k.agent.answer(k.asks[0].data.tap, 'Allow');
   assert.match(words(await reading), /^From "Testville"/);
   // The grant given here holds, after the import's entry.
   assert.match(words(await tool.run({ trip: TV, path: '/notes/food.md' }, { ...base, id: 'c2' })), /Ramen at the corner/);

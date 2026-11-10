@@ -40,7 +40,7 @@
 |---|---|---|---|
 | Grant | conversation log, `trip.grant` | `{ trip, how: 'tap' \| 'voice', always?: true }`, actor `user` | not in `SHOWN`, not `SAID`: ignored |
 | Read | conversation log, `trip.read` | `{ trip, title, path?, query? }`, actor `system` | ignored, listed by Trace |
-| Card | conversation log, `out.ask` | today's, plus `own: true` | shown as today's card |
+| Card | conversation log, `out.ask` | today's, plus `own: true` and `tap` (annai's random id for the card, what a tap answers; fix pass 1) | shown as today's card; a tap there is an ordinary line |
 | Imported | scope record | `imported: true` | kept by spreads, ignored |
 | Always | app settings | `readMyTrips: boolean` | ignored; confirm `sys:settings` isn't closed by a schema |
 
