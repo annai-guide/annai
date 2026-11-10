@@ -1308,6 +1308,33 @@ test("the Start a trip form's error stays across the clock's redraw, until the u
   await expect(error).toBeHidden();
 });
 
+test("the Start a trip form's error is a new alert once, when first said: home drawn again with it kept draws it as words, not an alert a screen reader reads out again", async ({ page }) => {
+  await morning(page);
+  const card = row(page, 'Testville');
+  const error = page.locator('form.panel p.error');
+  // What a screen reader would hear: an alert (role) put on the page with words, or words put in one, counted as a change touches one.
+  await page.evaluate(() => {
+    const w = /** @type {any} */ (window);
+    w.said = 0;
+    const alertOf = (/** @type {Node} */ n) => { const el = n instanceof Element ? n : n.parentElement; return el?.closest('[role=alert]') ?? el?.querySelector('[role=alert]') ?? null; };
+    new MutationObserver((records) => { for (const r of records) if ([r.target, ...r.addedNodes].some((n) => alertOf(n)?.textContent)) w.said++; })
+      .observe(document.body, { subtree: true, childList: true, characterData: true });
+  });
+  const said = () => page.evaluate(() => /** @type {any} */ (window).said);
+  await page.getByRole('button', { name: 'Start trip' }).click(); // no name
+  await expect(page.getByRole('alert')).toHaveText('Give the trip a name.'); // first said: an alert
+  expect(await said()).toBe(1);
+  await page.clock.fastForward('01:31:00');
+  await expect(card.locator('.next')).toContainText('Lunch'); // drawn again
+  await expect(error).toHaveText('Give the trip a name.'); // kept, in view
+  await expect(page.getByRole('alert')).toHaveCount(0); // as words: before, drawn again as a new alert
+  expect(await said()).toBe(1);
+  // Said again after that (Start trip, still no name): an alert once more.
+  await page.getByRole('button', { name: 'Start trip' }).click();
+  await expect(page.getByRole('alert')).toHaveText('Give the trip a name.');
+  expect(await said()).toBe(2);
+});
+
 test("a card's \"backed up … ago\" follows the clock on its own moment, whatever the footer line says", async ({ page }) => {
   await morning(page); // no place, no export: the footer says "No backup yet"
   // A trip marked by a backup whose place has since gone (or a backup that finished out of order): nothing but the card says when.
