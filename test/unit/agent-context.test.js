@@ -318,3 +318,14 @@ test("an undated conversation's text cuts each other conversation's name to trip
   assert.ok(text.includes(`${JSON.stringify([...name].slice(0, 200).join(''))} (${long})`), 'its first 200, by character');
   assert.ok(!text.includes('y'.repeat(51)));
 });
+
+test("her instructions' plan item and booking are records of their formats, which a write of hers would take as they are (real models, the released app's F4)", async () => {
+  const { validate } = await import('../../src/core/schema.js');
+  const { PLAN_ITEM_SCHEMA, BOOKING_SCHEMA } = await import('../../src/plugins/core-schemas/schemas.js');
+  const { shioriBooking, unalias } = await import('../../src/core/bookings.js');
+  const [item, booking] = [/A plan item is like (\{.*?\}\}), and/, /and a booking like (\{.*?\]\}) \(kind/].map((re) => JSON.parse(/** @type {string} */ (re.exec(CORE)?.[1])));
+  assert.deepEqual(validate(PLAN_ITEM_SCHEMA, item), []);
+  assert.deepEqual(validate(BOOKING_SCHEMA, booking), []);
+  assert.deepEqual(shioriBooking(undefined, unalias(booking, { schema: BOOKING_SCHEMA }), { schema: BOOKING_SCHEMA }), booking, 'nothing renamed, nothing refused');
+  assert.ok(CORE.includes(`kind: ${BOOKING_SCHEMA.properties.kind.enum.slice(0, -1).join(', ')} or ${BOOKING_SCHEMA.properties.kind.enum.at(-1)};`), "the kinds are the format's");
+});
