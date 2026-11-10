@@ -13,7 +13,7 @@ import { updateAppSettings, readAppSettings } from '../../src/core/settings.js';
 import { utf8 } from '../../src/core/bytes.js';
 import { liveKit, soon, tone } from './koe-live-kit.js';
 import { dateRange, when } from '../../src/core/intl.js';
-import { deviceZone } from '../../src/core/time.js';
+import { deviceZone, isoInZone } from '../../src/core/time.js';
 
 /**
  * Reading another trip (the timeline design, "Reading another trip"; stage 5's plan, Task 1): read_trip, Kokoro's, read-only. What it gives back
@@ -235,12 +235,12 @@ test("list_trips: the dated trips and the 30 newest chats, read from their recor
   const out = String(await run(k, 'list_trips', {}));
   k.ws.read = read;
   const rows = out.split('\n');
-  assert.equal(rows[0], 'id\ttitle\tstart\tend\tplaces');
-  assert.equal(rows[1], `${lake}\tLake week\t2026-07-01\t2026-07-05\tTestville Lake`);
-  assert.equal(rows[2], `${kyoto}\tKyoto\t2027-04-01\t2027-04-08\tKyoto, Nara`);
+  assert.equal(rows[0], 'id\ttitle\tstart\tend\tplaces\tlast talked');
+  assert.match(rows[1], new RegExp(`^${lake}\tLake week\t2026-07-01\t2026-07-05\tTestville Lake\t\\d{4}-\\d\\d-\\d\\dT[\\d:]+[+-]\\d\\d:\\d\\d$`));
+  assert.match(rows[2], new RegExp(`^${kyoto}\tKyoto\t2027-04-01\t2027-04-08\tKyoto, Nara\t\\d{4}-`));
   const listed = rows.slice(3).map((r) => r.split('\t'));
   assert.equal(listed.length, 30);
-  assert.deepEqual(listed[0], ['trip-chat499', 'Chat 499', '', '', '']);
+  assert.deepEqual(listed[0].slice(0, 5), ['trip-chat499', 'Chat 499', '', '', '']);
   // The newest 30 as home's timeline places them, the open conversation (Big Sur) left out.
   const { active } = await listTrips(k.store);
   const { above } = timelineRows(active.filter((s) => s.id !== k.trip), Date.now(), 'UTC');
@@ -248,6 +248,33 @@ test("list_trips: the dated trips and the 30 newest chats, read from their recor
   assert.deepEqual(listed.map((r) => r[0]), lines.sort((a, b) => b.at - a.at).slice(0, 30).map((r) => r.id));
   assert.ok(!out.includes(k.trip));
   assert.deepEqual(opened.sort(), [kyoto, lake].sort(), "only a dated trip's trip.json is read, for its places");
+});
+
+test("list_trips gives each row when it was last talked in, the value home places a chat by and the card names it with (talked, else made), so of two chats with one name she can tell the recent one (real models, stage 5 finding 3)", async (t) => {
+  useClock(t);
+  const k = await agentKit([[sleep]], { halves: true });
+  k.agent.addLoopTools(tripTools(k.agent));
+  const DAY = 86_400_000;
+  const now = Date.now();
+  /** @param {string} id @param {number | null} talked */
+  const hi = (id, talked) => k.store.tx(['scopes'], 'readwrite', (/** @type {any} */ x) => x.putScope({ id, kind: 'trip', title: 'Hi', status: 'active', created: now - 20 * DAY, updated: now, format: 1, tripId: `t-${id}`, talked }));
+  await hi('trip-hi-ramen', now - 4 * DAY);
+  await hi('trip-hi-visa', now - 9 * DAY);
+  await hi('trip-hi-never', null);
+  await fixedTrip(k.ws, 'trip-kyoto', { title: 'Kyoto', start: '2027-04-01', end: '2027-04-08', places: ['Kyoto'] });
+  const rows = String(await run(k, 'list_trips', {})).split('\n');
+  assert.equal(rows[0], 'id\ttitle\tstart\tend\tplaces\tlast talked');
+  const zone = deviceZone();
+  const of = (/** @type {string} */ id) => rows.find((r) => r.startsWith(`${id}\t`))?.split('\t');
+  assert.deepEqual(of('trip-hi-ramen'), ['trip-hi-ramen', 'Hi', '', '', '', isoInZone(now - 4 * DAY, zone)]);
+  assert.deepEqual(of('trip-hi-visa'), ['trip-hi-visa', 'Hi', '', '', '', isoInZone(now - 9 * DAY, zone)]);
+  assert.equal(of('trip-hi-never')?.at(-1), isoInZone(now - 20 * DAY, zone), 'never talked in: when it was made, as home places it');
+  const kyoto = (await k.store.tx(['scopes'], 'readonly', (/** @type {any} */ x) => x.getScope('trip-kyoto')));
+  assert.deepEqual(of('trip-kyoto'), ['trip-kyoto', 'Kyoto', '2027-04-01', '2027-04-08', 'Kyoto', isoInZone(kyoto.created, zone)]);
+  // One value for all three: home's row, the card, and this list.
+  const { active } = await listTrips(k.store);
+  const row = timelineRows(active.filter((s) => s.id !== k.trip), now, zone).above.flatMap((e) => (e.row ? [e.row] : [])).find((r) => r.id === 'trip-hi-ramen');
+  assert.equal(isoInZone(/** @type {any} */ (row).at, zone), of('trip-hi-ramen')?.at(-1));
 });
 
 test("list_trips and read_trip read a trip's dates as the timeline does: a date that isn't on the calendar (an archive's trip.json has no check) is none", async (t) => {
@@ -258,7 +285,7 @@ test("list_trips and read_trip read a trip's dates as the timeline does: a date 
   const { Workspace } = await import('../../src/core/workspace.js');
   await new Workspace(k.store).write('trip-odd', '/trip.json', { id: 't-trip-odd', title: 'Odd dates', start: '2026-02-30', end: '2026-13-01', places: [], party: [] }, { author: 'user' });
   await updateAppSettings(k.ws, { readMyTrips: true });
-  assert.match(String(await run(k, 'list_trips', {})), /^trip-odd\tOdd dates\t\t\t$/m, 'a chat, by its record');
+  assert.match(String(await run(k, 'list_trips', {})), /^trip-odd\tOdd dates\t\t\t\t\d{4}-[^\t]+$/m, 'a chat, by its record');
   assert.match(words(await run(k, 'read_trip', { trip: 'trip-odd' })), /^From "Odd dates" \(trip-odd\), another of the user's conversations, read-only, with no dates\./);
 });
 
