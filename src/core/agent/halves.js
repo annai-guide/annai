@@ -279,6 +279,11 @@ export class Halves {
       half: {
         name: 'koe', tag: KOE_TAG, role: KOE_CLASSIC, registryTools: false, logVoice: false, housekeeping: false, listenLast: true, nonce: this.nonce, serial, ready,
         voice: () => this.koeState === 'text',
+        // annai's card, Kokoro's, with Koe on a chat model: who speaks into Koe's microphone, and when each line began (its entry comes later).
+        speech: (on, line) => {
+          this.kokoro.confirmSpeech(on);
+          if (line) this.kokoro.confirmHeard(line);
+        },
         system: (s) => koeSystem(s),
         tail: (now) => this.#koeTail(now),
         sendRule: () => this.#koeRule(),
@@ -346,6 +351,7 @@ export class Halves {
       left: (notes) => this.#leftUnsaid(notes),
       noisy: (heard) => this.#wakeKokoro({ kind: 'cue', text: NONSTOP(heard), logged: true, input: true }),
       heard: (line) => this.kokoro.confirmHeard(line),
+      speech: (on) => this.kokoro.confirmSpeech(on),
     });
     this.voice?.onChange((_, first) => { if (!first) this.#route(() => this.#refresh()); });
     this.voice?.onSound((stuck) => {
@@ -1155,9 +1161,10 @@ export class Halves {
    */
   async #koeLogged(e, r) {
     await this.kokoro.observe(e, r);
-    // annai's card, Kokoro's: Koe's verdict, and a text Koe's words (a live line's came with its transcript: LiveHost.heard), begun now as far as it knows.
+    // annai's card, Kokoro's: Koe's verdict, and a text Koe's words (a live line's came with its transcript: LiveHost.heard). When the line began came
+    // before, from where it was heard (the session's turn, Koe's microphone): an entry says nothing of it, written seconds after or before the card.
     const words = typeof e.data?.text === 'string' ? { text: e.data.text } : {};
-    if (e.type === 'heard') this.kokoro.confirmHeard({ id: e.data.id, ...words, kept: !e.data.dismissed, ...(e.data.source === 'live' ? {} : { at: Date.now() }) });
+    if (e.type === 'heard') this.kokoro.confirmHeard({ id: e.data.id, ...words, kept: !e.data.dismissed });
     else if (e.type === 'heard.text') this.kokoro.confirmHeard({ id: e.data.of, ...words });
     const typed = e.type === 'msg.user' && e.data?.split;
     if (e.type.startsWith('out.')) this.#unsaid = []; // Koe reached the user: what it was told is passed on

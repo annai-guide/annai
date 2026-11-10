@@ -632,7 +632,7 @@ function herRig(o) {
   return { input, edges, feed: (/** @type {Float32Array} */ pcm) => { for (let i = 0; i < pcm.length; i += 2048) /** @type {any} */ (frames)(pcm.subarray(i, i + 2048), RATE); } };
 }
 
-test('overHer, full duplex: a turn begun while her voice plays, or in its tail with no quiet since, is hers; a reply after a quiet of 80 ms or more is not', async () => {
+test('overHer, full duplex: a turn begun while her voice plays, or within its tail after it, quiet between or not, is hers (her voice comes back late where annai hears while she speaks); a reply after the tail is not', async () => {
   let playing = false;
   const r = herRig({ speaking: () => playing, duplex: () => true });
   await r.input.start();
@@ -647,7 +647,22 @@ test('overHer, full duplex: a turn begun while her voice plays, or in its tail w
   r.feed(quiet(0.5));
   playing = false;
   r.feed(cat(quiet(0.15), yes, quiet(1.5)));
-  assert.deepEqual(r.edges, [['start', false], ['end', false]], 'a quick reply 150 ms after her, after a quiet: the user\'s');
+  assert.deepEqual(r.edges, [['start', true], ['end', true]], 'begun 150 ms after her, after a quiet: it may be her voice coming back, so hers');
+  r.edges.length = 0;
+  playing = true;
+  r.feed(quiet(0.5));
+  playing = false;
+  r.feed(cat(quiet(0.5), yes, quiet(1.5)));
+  assert.deepEqual(r.edges, [['start', false], ['end', false]], 'a reply 500 ms after her, past the tail: the user\'s');
+  // Her short word (0.3 s: "Okay."), heard back 0.5 s late, as a car's loop gives it: it begins 200 ms after her voice ended, after a quiet.
+  r.edges.length = 0;
+  const word = lunch.slice(Math.round(RATE * 0.2), Math.round(RATE * 0.5));
+  const back = cat(quiet(0.5), word, quiet(1.5));
+  playing = true;
+  r.feed(back.slice(0, Math.round(RATE * 0.3)));
+  playing = false;
+  r.feed(back.slice(Math.round(RATE * 0.3)));
+  assert.deepEqual(r.edges, [['start', true], ['end', true]], 'her own word coming back after she stopped: hers');
   r.edges.length = 0;
   playing = true;
   r.feed(quiet(0.5));
