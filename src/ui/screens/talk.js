@@ -130,6 +130,22 @@ export function movedWords(d, title) {
 }
 
 /**
+ * What Undo of a hand-over did (undoEverywhere's outcome): the trips it removed and where the files are, each other trip that stays that it
+ * changed, and the files left as the user changed them.
+ * @param {Awaited<ReturnType<typeof undoEverywhere>>} o
+ */
+export function undoneWords({ removed, kept, waiting, back, changed }) {
+  const home = listed(back.map((b) => b.title));
+  const said = removed.length
+    ? waiting ? plural(removed.length, 'Undone. {0} is removed, and your files are waiting with Shiori.', 'Undone. {0} are removed, and your files are waiting with Shiori.', listed(removed))
+      : back.length ? plural(removed.length, 'Undone. {0} is removed, and your files are back in {1}.', 'Undone. {0} are removed, and your files are back in {1}.', listed(removed), home)
+        : plural(removed.length, 'Undone. {0} is removed.', 'Undone. {0} are removed.', listed(removed))
+    : waiting ? t`Undone. Your files are waiting with Shiori again.` : back.length ? t`Undone. Your files are back in ${home}.` : t`Undone.`;
+  return sentences(said, changed.length ? t`What Shiori did in ${listed(changed.map((c) => c.title))} is undone too.` : '',
+    kept ? plural(kept, 'Left # file as you changed it.', 'Left # files as you changed them.') : '');
+}
+
+/**
  * Shiori's turn, settled: Undo tapped while she works stops her turn first and waits for it, so nothing she writes for the hand-over
  * lands after Undo has looked. @param {{ busy: boolean, stopKokoro?: () => void, idle: () => Promise<void> }} agent
  */
@@ -698,19 +714,14 @@ function undoLine(ctx, scope, list) {
       // The trips its files went to, this conversation, and the one it was handed in: each told, through its own log while it is open.
       /** @type {Set<string>} the trips it removes: a screen of one is left for the files' conversation, else as Remove does */
       const gone = new Set();
-      const { removed, kept, waiting, back } = await undoEverywhere(ctx.ws, scope, hh, {
+      const outcome = await undoEverywhere(ctx.ws, scope, hh, {
         remove: (s) => { gone.add(s); return removeTripNow(ctx, s); },
         log: (s) => (s === ctx.agent.scope ? (/** @type {any} */ ev) => ctx.agent.log(ev) : undefined),
       });
+      const { removed, waiting, back } = outcome;
       done();
       // Said where the files went, whether or not a trip went, and shown there: a trip they went back to opens, Waiting is on Trips.
-      const home = listed(back.map((b) => b.title));
-      const said = removed.length
-        ? waiting ? plural(removed.length, 'Undone. {0} is removed, and your files are waiting with Shiori.', 'Undone. {0} are removed, and your files are waiting with Shiori.', listed(removed))
-          : back.length ? plural(removed.length, 'Undone. {0} is removed, and your files are back in {1}.', 'Undone. {0} are removed, and your files are back in {1}.', listed(removed), home)
-            : plural(removed.length, 'Undone. {0} is removed.', 'Undone. {0} are removed.', listed(removed))
-        : waiting ? t`Undone. Your files are waiting with Shiori again.` : back.length ? t`Undone. Your files are back in ${home}.` : t`Undone.`;
-      ctx.notices.toast(kept ? sentences(said, plural(kept, 'Left # file as you changed it.', 'Left # files as you changed them.')) : said);
+      ctx.notices.toast(undoneWords(outcome));
       const on = () => { const at = parseHash(location.hash); return at.parts[0] === 'trip' && gone.has(at.parts[1] ?? '') ? at.parts[1] : null; };
       if (!waiting && back.length) {
         await updateAppSettings(ctx.ws, { activeTrip: back[0].id });

@@ -545,3 +545,38 @@ test('a file she moved from A to B and later back to A, for one hand-over: Undo 
     assert.deepEqual([out.removed, out.waiting, out.back], [[], false, [{ id: a, title: 'Anchorage' }]], end);
   }
 });
+
+// Stage 5: Undo names the trips that stay that it changed.
+
+test('Undo in a trip she started names each trip that stays and lost what she did there, but not where the files went back, nor a trip a file only passed through', async () => {
+  const { store, ws, trip } = await kit();
+  await ws.write(trip, '/files/hotel.png', utf8('hotel'), { author: 'user', type: 'image/png', handover: 'h-1' });
+  const started = await startedFrom(ws, store, trip, 'h-1', 'Testville');
+  await moveFile(ws, { scope: trip, path: '/files/flight.pdf' }, started, { handover: 'h-1' });
+  // The hotel goes to one of the user's own trips, where she files its booking.
+  const kyoto = await createTrip(ws, { title: 'Kyoto' });
+  await moveFile(ws, { scope: trip, path: '/files/hotel.png' }, kyoto, { handover: 'h-1' });
+  await record(store, trip, { type: 'handover.moved', actor: 'shiori', data: { handover: 'h-1', to: kyoto, started: false, count: 1 } });
+  await record(store, kyoto, { type: 'msg.user', actor: 'user', data: { handed: [], handover: 'h-1', from: trip }, texts: [['text', '(files)']] });
+  await ws.write(kyoto, '/bookings/hotel.json', hotelBooking, HERS);
+  const out = await undoEverywhere(ws, started, 'h-1', { remove: async (s) => removeTrip(store, s) });
+  assert.deepEqual([out.removed, out.back, out.changed], [['Testville'], [{ id: trip, title: 'Anchorage' }], [{ id: kyoto, title: 'Kyoto' }]]);
+  assert.equal(await ws.read(kyoto, '/bookings/hotel.json'), undefined);
+  // Only her booking there, its file left as the user changed it: still named.
+  const b = await kit();
+  const big = await createTrip(b.ws, { title: 'Big Sur' });
+  const there = await moveFile(b.ws, { scope: b.trip, path: '/files/flight.pdf' }, big, { handover: 'h-1' });
+  await record(b.store, b.trip, { type: 'handover.moved', actor: 'shiori', data: { handover: 'h-1', to: big, started: false, count: 1 } });
+  await b.ws.write(big, '/bookings/flight.json', flightBooking, HERS);
+  await b.ws.write(big, there, utf8('%PDF flight, marked up'), { author: 'user', type: 'application/pdf' });
+  const kept = await undoEverywhere(b.ws, b.trip, 'h-1', { remove: async (s) => removeTrip(b.store, s) });
+  assert.deepEqual([kept.kept, kept.back, kept.changed], [1, [], [{ id: big, title: 'Big Sur' }]]);
+  // A trip the file went through and left again for the same hand-over (A to B and back to A) holds nothing of it: not named.
+  const c = await kit();
+  const via = await createTrip(c.ws, { title: 'Kyoto' });
+  await moveFile(c.ws, { scope: c.trip, path: '/files/flight.pdf' }, via, { handover: 'h-1' });
+  await record(c.store, c.trip, { type: 'handover.moved', actor: 'shiori', data: { handover: 'h-1', to: via, started: false, count: 1 } });
+  await moveFile(c.ws, { scope: via, path: '/files/flight.pdf' }, c.trip, { handover: 'h-1' });
+  await record(c.store, via, { type: 'handover.moved', actor: 'shiori', data: { handover: 'h-1', to: c.trip, started: false, count: 1 } });
+  assert.deepEqual((await undoEverywhere(c.ws, c.trip, 'h-1', { remove: async (s) => removeTrip(c.store, s) })).changed, []);
+});
