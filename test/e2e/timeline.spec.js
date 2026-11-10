@@ -1215,6 +1215,66 @@ test("a card's \"backed up … ago\" follows the clock on its own moment, whatev
   await expect(card).toContainText(/backed up [45] minutes ago/);
 });
 
+test("home's \"backed up … ago\" and its last export's change their words in place as the clock moves: home isn't drawn again for them", async ({ page }) => {
+  await morning(page); // no place: the footer says when the last export was
+  await page.evaluate(async () => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const { updateAppSettings } = await load('/src/core/settings.js');
+    const store = await createIdbStore();
+    await store.tx(['scopes', 'events'], 'readwrite', async (/** @type {any} */ t) => {
+      const rec = (await t.listScopes()).find((/** @type {any} */ s) => s.title === 'Testville');
+      await t.putScope({ ...rec, backup: { at: Date.now() - 90_000, seq: await t.lastSeq(rec.id) } });
+    });
+    await updateAppSettings(new Workspace(store), { lastExportAt: Date.now() - 90_000 });
+    store.close();
+  });
+  await page.goto('/#/settings');
+  await page.goto('/#/trips');
+  const card = row(page, 'Testville');
+  await expect(card).toContainText('backed up 2 minutes ago');
+  await expect(page.getByText('Last export 2 minutes ago.')).toBeVisible();
+  await page.locator('.screen.timeline').evaluate((el) => { el.dataset.drawn = 'once'; }); // this drawing of home
+  await page.clock.fastForward('03:00');
+  await expect(card).toContainText(/backed up [45] minutes ago/);
+  await expect(page.getByText(/^Last export [45] minutes ago\.$/)).toBeVisible();
+  await expect(page.locator('.screen.timeline[data-drawn=once]')).toHaveCount(1); // the same home: its words changed in place
+  await expect(card.locator('.next')).toContainText('Museum'); // and a fact that hasn't changed is still there
+});
+
+test("a simulation played at ten times real time: home is drawn again when a Next ends on its clock, not ten times late", async ({ page }) => {
+  const nine = new Date();
+  nine.setHours(9, 0, 0, 0);
+  await page.clock.install({ time: nine });
+  // The real shell with a real store, its live mode a stand-in on a simulation's clock at ten times real time.
+  await page.route('**/probe.html', (r) => r.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: '<!doctype html><html><head><meta charset="utf-8"><title>probe</title></head><body></body></html>' }));
+  await page.goto('/probe.html#/trips');
+  await page.evaluate(async () => {
+    const at = (/** @type {string} */ p) => p; // an address the browser loads, not a module the checker follows
+    const { startShell } = await import(at('/src/ui/shell.js'));
+    const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+    const { Workspace } = await import(at('/src/core/workspace.js'));
+    const { createTrip } = await import(at('/src/core/scopes.js'));
+    const { PlayClock } = await import(at('/src/core/live/clock.js'));
+    const { dayIn, deviceZone, isoInZone } = await import(at('/src/core/time.js'));
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    const zone = deviceZone();
+    const id = await createTrip(ws, { title: 'Testville', start: dayIn(Date.now() - 2 * 86_400_000, zone), end: dayIn(Date.now() + 5 * 86_400_000, zone) });
+    for (const [name, min] of /** @type {[string, number][]} */ ([['Museum', 60], ['Lunch', 180]])) await ws.write(id, `/plan/${name}.json`, { id: name, title: name, fixed: true, start: { at: isoInZone(Date.now() + min * 60_000, zone), tz: zone } }, { author: 'user' });
+    const live = { clock: new PlayClock(Date.now(), { speed: 10 }), timeZone: () => zone, onChange() {}, onReminders() {} };
+    const registry = { entries: () => [], onChange: () => () => {}, fail: () => {}, succeeded: () => {}, isDisabled: () => false, clashes: () => [] };
+    const root = document.createElement('div');
+    document.body.replaceChildren(root);
+    startShell(root, { store, ws, registry, live, plugins: { langOf: () => 'en' }, updates: { restart: async () => {}, waiting: false, plugins: async () => [] }, version: 'probe' });
+  });
+  const card = row(page, 'Testville');
+  await expect(card.locator('.next')).toContainText('Museum');
+  await page.clock.fastForward('09:30'); // 95 minutes on the simulation's clock: Museum (10:00, half an hour) is over
+  await expect(card.locator('.next')).toContainText('Lunch');
+});
+
 test("home's Start a trip error doesn't hold back the shell's own redraw (a plugin's screen arrived, Shiori started a trip): home shows the trip, and keeps the dates typed", async ({ page }) => {
   // The real shell with a real store, and a registry the test can change: the shell draws again when what plugins add changes (as when Shiori opens a trip).
   await page.route('**/probe.html', (r) => r.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: '<!doctype html><html><head><meta charset="utf-8"><title>probe</title></head><body></body></html>' }));

@@ -35,15 +35,15 @@ export function stampMarks(stamps, { max = 2, big = false } = {}) {
 
 /**
  * The words of a trip's facts joined by " · ", with the stamp count in a span a screen reader skips: the marks beside the line say
- * the count and the names, and a link holding both would say "3 stamps" twice.
- * @param {(string | { stamps: string } | null)[]} parts @returns {(string | HTMLElement)[]}
+ * the count and the names, and a link holding both would say "3 stamps" twice. A node is a fact that keeps its own words (home's "backed up … ago").
+ * @param {(string | Node | { stamps: string } | null)[]} parts @returns {(string | Node)[]}
  */
 export function factsWords(parts) {
-  /** @type {(string | HTMLElement)[]} */
+  /** @type {(string | Node)[]} */
   const out = [];
   for (const part of parts.filter(Boolean)) {
     if (out.length) out.push(' · ');
-    out.push(typeof part === 'string' ? part : h('span', { 'aria-hidden': 'true', text: /** @type {{ stamps: string }} */ (part).stamps }));
+    out.push(typeof part === 'string' || part instanceof Node ? part : h('span', { 'aria-hidden': 'true', text: /** @type {{ stamps: string }} */ (part).stamps }));
   }
   return out;
 }

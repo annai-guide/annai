@@ -93,19 +93,27 @@ export function radios(legend, options, value, onChange = () => {}) {
 /**
  * A destructive button that needs a second tap within eight seconds, the same everywhere; onArm: called at the first, to
  * say what goes. Both its words hold the same place, the one not shown hidden, so arming it never moves it: the second
- * tap lands where the first did.
+ * tap lands where the first did. kept: drawn again for the same key (a screen's redraw), it is still armed for what is left of the eight seconds.
  * @param {string} label @param {string} confirmLabel @param {() => Promise<void> | void} action @param {() => unknown} [onArm]
+ * @param {{ key: string, armed: Map<string, number> }} [kept]
  */
-export function twoStep(label, confirmLabel, action, onArm) {
+export function twoStep(label, confirmLabel, action, onArm, kept) {
   let armed = false;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let timer;
+  let until = 0;
   const first = h('span', { text: label });
   const again = h('span', { class: 'off', text: confirmLabel });
-  const arm = (/** @type {boolean} */ on) => {
+  const arm = (/** @type {boolean} */ on, ms = 8000) => {
     armed = on;
     first.classList.toggle('off', on);
     again.classList.toggle('off', !on);
+    clearTimeout(timer);
+    if (on) {
+      timer = setTimeout(() => arm(false), ms);
+      until = Date.now() + ms;
+      kept?.armed.set(kept.key, until);
+    } else if (kept?.armed.get(kept.key) === until) kept.armed.delete(kept.key); // its own arming, not the next button's
   };
   const btn = h('button', {
     class: 'btn danger two-step', type: 'button',
@@ -113,7 +121,6 @@ export function twoStep(label, confirmLabel, action, onArm) {
       if (!armed) {
         arm(true);
         onArm?.();
-        timer = setTimeout(() => arm(false), 8000);
         return;
       }
       clearTimeout(timer);
@@ -126,6 +133,8 @@ export function twoStep(label, confirmLabel, action, onArm) {
       }
     },
   }, first, again);
+  const left = (kept?.armed.get(kept.key) ?? 0) - Date.now();
+  if (left > 0) arm(true, left);
   return btn;
 }
 

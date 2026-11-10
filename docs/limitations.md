@@ -378,12 +378,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** every move is undone from both of its ends (A's `into`, B's `out`); in a cycle the second undo of B to A finds the file in A, put there by the undo of A to B, and moves it again.
 - **Revisit when:** the next version: in `moveBack` (handover.js), a file whose last write at `at.path` is this Undo's own (`undo === handover`) is home already.
 
-### A redraw of home drops an armed "Tap again to delete"
-- **Kind:** deferred.
-- **What the user sees:** on home, Waiting with Shiori's Delete tapped once is reset when home draws itself again (Shiori's `went`, a plugin's screens, Waiting's own Delete, and since stage 4 the clock's redraw: a few times a day, and once a minute in the hour after a backup or an export, as "Last backup … ago" changes its words). The row says "Delete" again; nothing is lost but the first tap. A focused field is not redrawn over: each of these waits for it.
-- **Why:** home is rebuilt as a whole in place; its open folds and its place are kept (the shell scrolls to the row in view, `fold` keeps what is open), and the redraws wait for a focused field, but an armed row is not kept. Older than the clock's redraw.
-- **Revisit when:** the next version: keep the armed row across home's redraws.
-
 ### A chat whose first sentence ends on a one- or two-letter word is named with the next sentence too
 - **Kind:** known limitation.
 - **What the user sees:** a chat is named from its first line's first sentence. A full stop after a word of one or two letters (Mt., St., Dr.) doesn't end it, so "Mt. Fuji on Tuesday. Then lunch" is named "Mt. Fuji on Tuesday." The cost: a first sentence that really ends on a short word ("We land in LA. Then…") runs on into the next one, and the name is cut at 40 characters as long names are. A word of three letters (Mrs.), and `?`, `!`, `。` and a new line, still end it. The user can rename the chat.
@@ -396,18 +390,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** restoring a year of chats from a Forgejo or GitHub backup, the preview before Import reads only the backup's manifest, so every chat is its own row and Import sits under hundreds of rows. An opened backup file groups them.
 - **Why:** grouping the rows there needs a dated field in the manifest, against the 2026-11-06 lesson (an archive's own copy of a fact could only be stale).
 - **Revisit when:** stage 5. The user chose "Defer to stage 5" on 2026-11-08.
-
-### Home's relative times redraw home
-- **Kind:** deferred.
-- **What the user sees:** "backed up 5 minutes ago", "Last backup 2 hours ago" and the day count follow the clock because home is drawn again, in place, when one of their words changes: a few times a day, and once a minute in the hour after a backup or an export. A trip ahead says "tomorrow", "in 3 days" or "in 2 weeks" (the user's choice, "Count in days", 2026-11-09), which change only at midnight, where home is drawn again anyway. The redraw keeps home's folds and place and waits for the Start a trip form, but it resets an armed "Tap again to delete" (see that entry), and not verified on a phone: it may lose VoiceOver's place, or replace the file input under an open picker.
-- **Why:** home is one render; changing the words in place is another part to keep right with it, and the redraw is what keeps every fact on a card in one place.
-- **Revisit when:** the next version: change the words in place (each time-bearing node carries its moment) instead of drawing home again.
-
-### A played simulation's clock redraws home late
-- **Kind:** deferred.
-- **What the user sees:** only for a developer playing a simulation faster than real time (x N): home's timer counts the simulation's milliseconds and waits real ones, so a Next that ends, midnight, and "in N hours" are redrawn N times late. Live use is not affected.
-- **Why:** developer-only, and the clock the timer reads is live mode's.
-- **Revisit when:** the next change to home's timer: wait the simulation's delay divided by its speed.
 
 ### The dates line's Undo goes at the user's next line
 - **Kind:** deferred.
@@ -435,10 +417,9 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### A kept error drawn again may be read out again by a screen reader
 - **Kind:** deferred.
-- **What the user sees:** not verified. Start a trip's "Give the trip a name." is drawn again with each redraw of home as a new `role=alert`, which a screen reader may read out again.
+- **What the user sees:** not verified. Start a trip's "Give the trip a name." is drawn again as a new `role=alert` each time home is drawn again while it shows, and a screen reader may read it out again then: at midnight, when a Next on a happening trip's card ends, when annai comes back to the front past one of those, when a simulation starts or ends, when Shiori opens a trip (`went`), when a plugin's screens change, and after a Delete in Waiting with Shiori. How long ago a backup or an export was no longer draws home again: its words change in place.
 - **Why:** home rebuilds its form on a redraw, and the error is kept as state, not as the same element.
-- **Revisit when:** a screen-reader user reports it, or with the in-place redraw of home's relative times.
-
+- **Revisit when:** stage 8, where the Start a trip form goes (the timeline design's "What goes") and its error with it; or a screen-reader user reports it first.
 ### In landscape, an opened stack is read by scrolling inside a short box
 - **Kind:** known limitation.
 - **What the user sees:** on a phone turned on its side (740 x 360), Show on a stuck stack opens it in a box of about 152 px, half the room under the top bar. A card of 168 to 193 px doesn't show whole: its title and Dismiss show, and its middle scrolls under the Dismiss; while a card's top is in the lower part of the box, its own Dismiss covers its title for a moment. In portrait every card shows whole.

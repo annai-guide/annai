@@ -537,6 +537,21 @@ test('files waiting with Shiori are listed on Trips: one opens, one is asked abo
   await expect(page.getByLabel('Message to Shiori')).toBeFocused();
 });
 
+test("a Delete in Waiting with Shiori tapped once stays armed when home is drawn again: another file's Delete draws it again", async ({ page }) => {
+  await openApp(page);
+  await writeRecords(page, 'sys:waiting', { text: { '/files/hotel.txt': 'Hotel Aurora Test, Nov 20–27', '/files/note.txt': 'Not a booking' } });
+  await page.reload();
+  const row = (/** @type {string} */ name) => page.locator('.waiting-file', { hasText: name });
+  await row('hotel.txt').getByRole('button', { name: 'Delete' }).click();
+  await row('note.txt').getByRole('button', { name: 'Delete' }).click();
+  await row('note.txt').getByRole('button', { name: 'Tap again to delete' }).click(); // deleted: home is drawn again
+  await expect(row('note.txt')).toHaveCount(0);
+  await expect(row('hotel.txt').getByRole('button', { name: 'Tap again to delete' })).toBeVisible(); // still armed: the next tap is the second
+  await row('hotel.txt').getByRole('button', { name: 'Tap again to delete' }).click();
+  await expect(page.getByText(/^Deleted hotel\.txt\./)).toBeVisible();
+  await expect(row('hotel.txt')).toHaveCount(0);
+});
+
 test("a trip's card says when a file is waiting to be read", async ({ page }) => {
   await openApp(page);
   const trip = await startNamed(page, 'Kyoto', { start: '2026-12-01', end: '2026-12-05' }); // dated: a card, which says what waits to be read
