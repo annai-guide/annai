@@ -379,12 +379,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** a user finds a name that reads worse than before.
 - **Approved:** 2026-11-08, the user chose "English rule" (a full stop after a word of one or two letters doesn't end the sentence).
 
-### A restore from a git backup lists every chat on its own row
-- **Kind:** deferred.
-- **What the user sees:** restoring a year of chats from a Forgejo or GitHub backup, the preview before Import reads only the backup's manifest, so every chat is its own row and Import sits under hundreds of rows. An opened backup file groups them.
-- **Why:** grouping the rows there needs a dated field in the manifest, against the 2026-11-06 lesson (an archive's own copy of a fact could only be stale).
-- **Revisit when:** stage 5. The user chose "Defer to stage 5" on 2026-11-08.
-
 ### Home's relative times redraw home
 - **Kind:** deferred.
 - **What the user sees:** "backed up 5 minutes ago", "Last backup 2 hours ago" and the day count follow the clock because home is drawn again, in place, when one of their words changes: a few times a day, and once a minute in the hour after a backup or an export. A trip ahead says "tomorrow", "in 3 days" or "in 2 weeks" (the user's choice, "Count in days", 2026-11-09), which change only at midnight, where home is drawn again anyway. The redraw keeps home's folds and place and waits for the Start a trip form, but it resets an armed "Tap again to delete" (see that entry), and not verified on a phone: it may lose VoiceOver's place, or replace the file input under an open picker.
