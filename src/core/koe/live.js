@@ -26,21 +26,25 @@ import { t } from '../l10n.js';
  * @typedef {{ sent: number, spoke: boolean, timer: any, idle?: boolean }} Mark  an urgent note's (LiveKoe's #urgent); idle: what waited, going in with nothing before it, so its turn is the next to end
  * @typedef {{ text: string, told?: boolean }} Waiting  what waits to go in (LiveKoe's #notes); told: annai's own line, which the log holds none of
  * @typedef {{ text: string, of: object, by: number, more: boolean, timer: any }} Late  the stretch's note waiting (LiveKoe's #late)
- * @typedef {{ id: string, text: string, at: number, ms: number, pcm: Int16Array[], logged: string | null, answered?: boolean, dismissed?: boolean, late?: boolean, own?: boolean, peak?: number, tapped?: boolean }} Hearing
- *   answered: her verdict came (dismissed: answered with nothing); own: its peak was at the user's own level (the level check); peak: its loudest, to learn from if she answers it; tapped: begun in a tap's lift
+ * @typedef {{ id: string, text: string, at: number, ms: number, pcm: Int16Array[], logged: string | null, answered?: boolean, dismissed?: boolean, late?: boolean, own?: boolean, peak?: number, tapped?: boolean,
+ *   her?: boolean }} Hearing
+ *   answered: her verdict came (dismissed: answered with nothing); own: its peak was at the user's own level (the level check); peak: its loudest, to learn from if she answers it; tapped: begun in a tap's lift;
+ *   her: begun over her voice (LiveInput's overHer)
  * @typedef {{ koe: import('../agent/loop.js').Agent, llm: any, voice: import('../voice/voice.js').Voice | null, store: import('../types.js').Store,
  *   nonce: string, model: () => string | null, setup: () => Promise<{ instructions: string, context: string, languages?: import('../llm/contract.js').Languages, known?: import('../languages.js').LanguageSettings }>, visible: () => boolean,
  *   release: () => void, notice: (n: import('../agent/loop.js').Notice) => void, told: (state: 'live-open' | 'live-closed') => void,
  *   dropped: (cut: boolean) => void, changed: () => void, budgets: () => Promise<any>, timeZone: () => string, asked: () => boolean, secondMs?: number,
  *   unsaid: (notes: Wake[]) => void, owed: (notes: Wake[]) => void, left?: (notes: Wake[]) => void, spoke?: () => void, ws?: import('../workspace.js').Workspace,
- *   held?: () => Promise<void> | null, voiceOut?: () => Promise<void> | null, saying?: (words: string) => void, noisy?: (heard: string) => void }} LiveHost
+ *   held?: () => Promise<void> | null, voiceOut?: () => Promise<void> | null, saying?: (words: string) => void, noisy?: (heard: string) => void,
+ *   heard?: (line: { id: string, text: string, at: number, her: boolean }) => void }} LiveHost
  *   Halves's: release: the speech pipeline lets go of the voice; asked: Kokoro works on Koe's question; unsaid: Kokoro's notes for the user Koe never
  *   passed on, asked once more; owed: those a session closed on before Koe passed them on, to hand on; left: those a switch to another
  *   conversation leaves, shown there; spoke: the user's spoken turn ended; ws: where this device keeps that the talk-over card was shown;
  *   held: Start fresh runs, until it settles: a session opens only after it, from the fresh start; voiceOut: annai's other voice is saying something, until it settles
  *   (a reminder finishes first); saying: her words so far, while she speaks
  *   them (the dock's bubble), as the transcript grows; her line is written once, at the end; noisy: sound never stopped
- *   (a user turn that began after the quiet spell ran out was let go), with what was heard: Kokoro decides whether Koe sleeps
+ *   (a user turn that began after the quiet spell ran out was let go), with what was heard: Kokoro decides whether Koe sleeps; heard: a line's words as its transcript
+ *   comes, long before its entry (Koe's turn's end), for annai's card
  */
 
 /** Tool answers that add no speech (decision 10). */
@@ -1082,13 +1086,14 @@ export class LiveKoe {
       this.#flushHeard(false);
       const before = this.#hear;
       this.#hear = hearing();
+      if (this.#input?.overHer) this.#hear.her = true;
       if (this.#lapsed) this.#hear.late = true; // the spell ran out before this turn began
       if (Date.now() < this.#liftBy) this.#hear.tapped = true;
       // The turn before, begun after the spell ran out, got nothing back before this one cut it (a sound, a word or a tool call would
       // have re-armed the spell): it was let go.
       if (this.#lapsed && before?.late && !before.answered) this.#stretched(before);
     } else {
-      if (this.#hear) this.#hear.ms = Date.now() - this.#hear.at;
+      if (this.#hear) Object.assign(this.#hear, { ms: Date.now() - this.#hear.at, ...(this.#input?.overHer ? { her: true } : {}) });
       this.#tell(this.#hear);
       this.#trail = null;
       this.#endedAt = Date.now();
@@ -1140,6 +1145,7 @@ export class LiveKoe {
     if (e.type === 'heard') {
       const h = (this.#hear ??= hearing());
       h.text += e.text;
+      if (realWord(h.text)) this.c.heard?.({ id: h.id, text: cleanSaid(h.text), at: h.at, her: Boolean(h.her) });
       if (this.#input?.active && e.text && s.heardLive && Date.now() - this.#turnAt >= HEARD_AFTER_MS) this.#stalls(this.#input, Math.max(STALL_MIN_MS, this.#pauseMs + STALL_MS));
       if (h.answered) this.#flushHeard(Boolean(h.dismissed)); // the last words can come after Koe's turn: added
     } else if (e.type === 'usage') this.#over().then((over) => { if (over) this.close('budget'); }, () => {});

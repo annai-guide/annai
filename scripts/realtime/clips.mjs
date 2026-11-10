@@ -14,8 +14,9 @@ const TTS_RATE = 24_000;
 /**
  * name → what is said. kind: question, yes (a quick answer), reply (a short English reply, for the languages check), sentence (one in
  * another language), pause (a sentence with a thinking pause: parts are speech and seconds of silence), long (a long question),
- * stray (words she should leave alone: silence is right), scold (told off for filler: silence is right, filler is the failure), silence (no sound: seconds). voice: one of Gemini's prebuilt voices. lang: the language it is spoken in (en unless said).
- * @typedef {{ kind: 'question' | 'scold' | 'yes' | 'reply' | 'sentence' | 'pause' | 'long' | 'silence' | 'stray', text?: string, parts?: (string | number)[], voice?: string, seconds?: number, lang?: 'en' | 'ja' | 'zh' | 'ko' }} ClipDef
+ * stray (words she should leave alone: silence is right), card (stage 5: a line for annai's read_trip card, or what its voice says), scold (told off for filler: silence is right, filler is the failure), silence (no sound: seconds). voice: one of Gemini's prebuilt voices. lang: the language it is spoken in (en unless said).
+ * say: what the TTS is asked to say when a tone is asked for (text stays what it means); first: only the speech before the first pause in it is kept.
+ * @typedef {{ kind: 'question' | 'scold' | 'yes' | 'reply' | 'sentence' | 'pause' | 'long' | 'silence' | 'stray' | 'card', text?: string, parts?: (string | number)[], voice?: string, seconds?: number, lang?: 'en' | 'ja' | 'zh' | 'ko', say?: string, first?: boolean }} ClipDef
  * @type {Record<string, ClipDef>}
  */
 export const CLIPS = {
@@ -47,6 +48,22 @@ export const CLIPS = {
   annoyed: { kind: 'scold', text: "You keep saying sorry and that you understand. Stop that, it's really annoying.", voice: 'Leda' },
   'ko-word': { kind: 'stray', text: '안녕하세요', voice: 'Aoede', lang: 'ko' },
   lyric: { kind: 'stray', text: 'Oh baby baby, dancing through the night, hold me till the morning light.', voice: 'Puck' },
+  // Stage 5's card (read_trip): the user's line that has Shiori read another trip, the answers to annai's question that are and are not a yes,
+  // what a passenger says, and annai's own question as its voice says it (a stand-in voice, so it plays through the page and can come back as echo).
+  // say: what Gemini's TTS is asked to say, when a tone must be asked for ("Say ...: text"); words: what the clip means to say.
+  tomorrow: { kind: 'card', text: "What's on tomorrow in Testville?", voice: 'Kore' },
+  'yes-but': { kind: 'card', text: 'Yes, but not that one. The Osaka trip.', voice: 'Kore' },
+  'no-wait': { kind: 'card', text: 'No, wait.', voice: 'Kore' },
+  'no-thanks': { kind: 'card', text: 'No thanks.', voice: 'Aoede' },
+  'yes-q': { kind: 'card', text: 'Yes?', say: 'Say with a questioning, rising tone, as if asking "pardon?": Yes?', voice: 'Kore' },
+  hai: { kind: 'card', text: 'はい。', say: 'Say in Japanese: はい。', voice: 'Kore', lang: 'ja' },
+  'hai-q': { kind: 'card', text: 'はい？', say: 'Say with a questioning, rising tone, as if asking "pardon?": はい？', voice: 'Kore', lang: 'ja' },
+  // The preview TTS answers a two-character text with text ("Model tried to generate text"; 2026-11-10, five tries on two keys): said with a second sentence, and cut at the pause between them.
+  hao: { kind: 'card', text: '好的。', say: '好的。没问题，谢谢你。', first: true, voice: 'Kore', lang: 'zh' },
+  'mm-q': { kind: 'card', text: '嗯？', say: '嗯？你说什么？', first: true, voice: 'Puck', lang: 'zh' },
+  passenger: { kind: 'stray', text: 'Turn left at the next light.', voice: 'Orus' },
+  favour: { kind: 'card', text: "Could you look at what's on tomorrow in Testville for me?", voice: 'Kore' },
+  'ask-q': { kind: 'card', text: 'Read Testville, Nov 10 to 17?', voice: 'Leda' },
   silence: { kind: 'silence', seconds: 8 },
 };
 
@@ -76,6 +93,28 @@ export function trimSilence(pcm, { thresholdDb = -45, marginMs = 120 } = {}) {
   if (first < 0) return new Float32Array(0);
   const margin = Math.round((marginMs * SEND_RATE) / 1000);
   return pcm.slice(Math.max(0, first - margin), Math.min(pcm.length, last + margin));
+}
+
+/**
+ * The speech up to its first pause (frames of 20 ms under thresholdDb, at least minMs of them in a row, after speech began), with a margin kept.
+ * @param {Float32Array} pcm @param {{ thresholdDb?: number, minMs?: number, marginMs?: number }} [o]
+ */
+export function firstPhrase(pcm, { thresholdDb = -45, minMs = 200, marginMs = 120 } = {}) {
+  const frame = Math.round(SEND_RATE * 0.02);
+  const limit = 10 ** (thresholdDb / 20);
+  const quietFrames = Math.ceil(minMs / 20);
+  let began = false;
+  let quiet = 0;
+  for (let at = 0; at < pcm.length; at += frame) {
+    let s = 0;
+    const end = Math.min(pcm.length, at + frame);
+    for (let i = at; i < end; i++) s += pcm[i] * pcm[i];
+    if (Math.sqrt(s / Math.max(1, end - at)) > limit) {
+      began = true;
+      quiet = 0;
+    } else if (began && ++quiet >= quietFrames) return pcm.slice(0, Math.min(pcm.length, at - (quietFrames - 1) * frame + Math.round((marginMs * SEND_RATE) / 1000)));
+  }
+  return pcm;
 }
 
 /** Gemini's speech (16-bit little-endian PCM at 24 kHz) as samples at 16 kHz. @param {Uint8Array} bytes */
@@ -111,6 +150,8 @@ export async function askTts({ text, voice, model = TTS_MODEL, keys, fetcher = f
     generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } },
   });
   let last = '';
+  /** Replies with no audio (a 5xx, or text where speech was asked): each costs a free key's request, so three end it, as the doc says "twice". */
+  let bare = 0;
   for (let attempt = 0; attempt < 8; attempt++) {
     const res = await fetcher(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': keys.key }, body,
@@ -135,6 +176,7 @@ export async function askTts({ text, voice, model = TTS_MODEL, keys, fetcher = f
     if (res.ok && data) return new Uint8Array(Buffer.from(data, 'base64'));
     last = res.ok ? 'no audio in the reply' : `${res.status} ${String(json?.error?.message ?? raw).slice(0, 160)}`;
     if (res.status >= 400 && res.status < 500) break;
+    if (++bare >= 3) break;
     await wait(pauseMs);
   }
   throw new Error(keys.scrub(`Gemini TTS failed: ${last}`));
@@ -167,14 +209,15 @@ export async function makeClips({ keys, only, force = false, model = TTS_MODEL, 
     }
     /** @type {(Float32Array | number)[]} */
     const pieces = [];
-    for (const part of def.parts ?? [def.text ?? '']) {
+    for (const part of def.parts ?? [def.say ?? def.text ?? '']) {
       if (typeof part === 'number') {
         pieces.push(part);
         continue;
       }
       if (calls++) await wait(pauseMs);
       log(`  TTS ${name}: "${part}" (${def.voice})`);
-      pieces.push(trimSilence(fromTts(await askTts({ text: part, voice: def.voice ?? 'Kore', model, keys, pauseMs, log }))));
+      const spoken = trimSilence(fromTts(await askTts({ text: part, voice: def.voice ?? 'Kore', model, keys, pauseMs, log })));
+      pieces.push(def.first ? firstPhrase(spoken) : spoken);
     }
     const wav = encodeWav(joinParts(pieces), SEND_RATE);
     await writeFile(new URL(`${name}.wav`, DIR), wav);

@@ -618,3 +618,65 @@ test('in a quiet room the wait holds her for a user going on after a thinking pa
   assert.equal(done.cut, false);
   assert.ok(done.waited !== null && done.waited >= HOLD_MS - 900 && done.waited <= HOLD_MS - 900 + 40, `waited ${done.waited} ms past her first word`);
 });
+
+// The voice-yes design: annai's card arms nothing on a line begun over her voice, by half-duplex's own rule, on every route (overHer).
+/** A rig that notes, at each activity edge, whether the run is hers. @param {Record<string, any>} o */
+function herRig(o) {
+  /** @type {any} */
+  let input = null;
+  /** @type {[string, boolean][]} */
+  const edges = [];
+  let frames = /** @type {((pcm: Float32Array, rate: number) => void) | null} */ (null);
+  const mic = { async open(/** @type {any} */ c) { frames = c.onFrames; return { close() {} }; } };
+  input = new LiveInput({ mic, send: { activity: (edge) => edges.push([edge, input.overHer]), audio: () => {} }, ...o });
+  return { input, edges, feed: (/** @type {Float32Array} */ pcm) => { for (let i = 0; i < pcm.length; i += 2048) /** @type {any} */ (frames)(pcm.subarray(i, i + 2048), RATE); } };
+}
+
+test('overHer, full duplex: a turn begun while her voice plays, or in its tail with no quiet since, is hers; a reply after a quiet of 80 ms or more is not', async () => {
+  let playing = false;
+  const r = herRig({ speaking: () => playing, duplex: () => true });
+  await r.input.start();
+  r.feed(quiet(1));
+  playing = true;
+  r.feed(lunch); // her voice, heard back at full loudness (the car): it starts a turn, as cutting in by voice does
+  playing = false;
+  r.feed(quiet(1.5));
+  assert.deepEqual(r.edges, [['start', true], ['end', true]], 'her echo, begun as she played');
+  r.edges.length = 0;
+  playing = true;
+  r.feed(quiet(0.5));
+  playing = false;
+  r.feed(cat(quiet(0.15), yes, quiet(1.5)));
+  assert.deepEqual(r.edges, [['start', false], ['end', false]], 'a quick reply 150 ms after her, after a quiet: the user\'s');
+  r.edges.length = 0;
+  playing = true;
+  r.feed(quiet(0.5));
+  playing = false;
+  r.feed(cat(quiet(0.04), yes, quiet(1.5)));
+  assert.deepEqual(r.edges, [['start', true], ['end', true]], 'begun 40 ms after her: taken for talking over her, as on the speaker');
+  r.edges.length = 0;
+  playing = true;
+  r.feed(lunch.map((x) => x * 0.5));
+  playing = false;
+  r.feed(cat(lunch.slice(0, Math.round(RATE * 0.25)).map((x) => x * 0.5), yes, quiet(1.5))); // her echo running on into a word, no quiet between
+  assert.equal(r.edges[0]?.[1], true, 'begun over her, no quiet since: hers');
+  r.input.stop();
+});
+
+test('overHer, half-duplex: every turn it sends is the user\'s, as half-duplex already let go of hers; with no voice of hers at all, nothing is hers', async () => {
+  let playing = false;
+  const r = herRig({ speaking: () => playing });
+  await r.input.start();
+  r.feed(quiet(1));
+  playing = true;
+  r.feed(lunch.map((x) => x * 0.3));
+  playing = false;
+  r.feed(cat(quiet(0.1), yes, quiet(1.5)));
+  assert.deepEqual(r.edges, [['start', false], ['end', false]]);
+  r.input.stop();
+  const none = herRig({ duplex: () => true });
+  await none.input.start();
+  none.feed(cat(quiet(1), lunch, quiet(1.5)));
+  assert.deepEqual(none.edges, [['start', false], ['end', false]]);
+  none.input.stop();
+});

@@ -11,7 +11,7 @@ import { timelineRows, talkedAt } from '../timeline.js';
 import { normPath, isTextType } from '../paths.js';
 import { theirs, quote, conversationLines } from './blocks.js';
 import { readAppSettings, updateAppSettings } from '../settings.js';
-import { spokenYes } from './spoken-yes.js';
+import { spokenYes, spokenNo } from './spoken-yes.js';
 import { STOPPED } from './transcript.js';
 import { planItems } from './context.js';
 import { t } from '../l10n.js';
@@ -310,7 +310,9 @@ export function tripTools(app) {
     if (log.slice(log.findLastIndex((e) => e.type === 'import') + 1).some((e) => e.data?.trip === rec.id)) return null;
     if (!rec.imported && (await readAppSettings(ws)).readMyTrips === true) return null;
     const [allow, always, no] = [t`Allow`, t`Always for my trips`, t`Not now`];
-    const got = await app.confirm(call, { question: await asking(rec), options: rec.imported ? [allow, no] : [allow, always, no], yes: (heard) => (spokenYes(heard) ? allow : null) });
+    const got = await app.confirm(call, {
+      question: await asking(rec), options: rec.imported ? [allow, no] : [allow, always, no], yes: (heard) => (spokenYes(heard) ? allow : null), no: (heard) => (spokenNo(heard) ? no : null),
+    });
     if (got.stopped) return { content: STOPPED, isError: true };
     if (got.chosen === allow || got.chosen === always) {
       await record(store, call.scope, { type: 'trip.grant', actor: 'user', now: ws.now(), data: { trip: rec.id, how: got.how ?? 'tap', ...(got.chosen === always ? { always: true } : {}) } });
@@ -318,7 +320,7 @@ export function tripTools(app) {
       return null;
     }
     /* en */
-    if (got.chosen === no) return `The user tapped Not now: don't read ${quote(rec.title)}, and don't ask to again in this conversation unless they ask you to.`;
+    if (got.chosen === no) return `The user ${got.how === 'voice' ? 'said no' : 'tapped Not now'}: don't read ${quote(rec.title)}, and don't ask to again in this conversation unless they ask you to.`;
     /* en */
     const why = `Not read: only a tap on annai's card, or a yes it hears, allows reading ${quote(rec.title)}. If they meant yes, ask them to tap Allow.`;
     return got.heard ? { content: `${why} ${got.said}`, heard: got.heard } : `${why}${got.said ? ` ${got.said}` : ''}`;

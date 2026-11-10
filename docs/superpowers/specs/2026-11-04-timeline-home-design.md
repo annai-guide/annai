@@ -76,7 +76,7 @@ The user, after the design's doubts about forgetting and the slow route: "with u
 
 - One new tool, Kokoro's only and not in `KOE_TOOLS`: `read_trip({ trip, path?, query? })`, read-only, for a trip's text and JSON files and its conversation. Photos and PDFs aren't read: `record` throws on a hash the scope doesn't reach, and she says so and offers to move. She writes only in the open conversation. `read`, `list`, `recall`, `resolvePath` and `reach.js` stay untouched, so the walls hold as they are. It's in `UNTIMED`.
 - Its `run` shows annai's own card, built from the scope's title with fixed options ("Read Kyoto in April?": Allow, Always for my trips, Not now), and logs a grant entry only on `got.chosen`. `ask` can't do this: it's model-authored, and no model text may grant (RULES 9). A late tap (`send` with `chose`) grants nothing. 
-- A spoken yes: annai's own strict word list on the heard line, inside the window after she asks, with no model involved.
+- A spoken answer: annai's own strict word lists judge a heard line when its words are written down (a live session's transcript as it arrives; classic voice's write-down), with no model involved, and no model's kept or set-aside verdict either. A yes begun inside the window after she asks (20 s), or a no at any time ("No thanks.", "No, wait.", "Not now"), arms its option, and the newest decides 3 s after its words: a yes grants Allow, a no declines as Not now. Any other line drops an armed yes; the card listens on. A line begun over her own voice arms nothing. A kept line that arms nothing ends the card unanswered, as typing does; one set aside leaves it. A tap wins at any time. (Rebuilt from the real-voice check, 2026-11-10.)
 - Allow lasts for this conversation, stored in its log, so a reload keeps it; a grant an imported or restored log brought counts for nothing, so she asks again. "Always for my trips" is a setting, changeable in Settings.
 - Trips other people shared always ask. Nothing marks them today, so import stamps `imported: true` on the scope record.
 - Every read is in the Trace, and the screen shows a quiet line ("Shiori read Kyoto in April").
@@ -210,6 +210,6 @@ The stage plans in `docs/superpowers/plans/2026-11-06-timeline-stage-*.md` read 
 - `#/talk` and `#/plan` redirect only while a trip is open, until stage 7.
 - `start_trip`'s refusal and snapshot text ship in stage 4 with chats; `list_trips` changes in stage 5.
 - Notifications open their trip through a new `annai.open` message, because `keepNews` and `onPushMessage` carry no scope.
-- A spoken yes needs `Agent.confirm` and `kokoro.confirmHeard`: `ask` is gated while Koe talks.
+- A spoken yes needs `Agent.confirm` and `kokoro.confirmHeard`: `ask` is gated while Koe talks. Halves feeds `confirmHeard` from Koe's entries (the verdict, and a text Koe's words) and, live, from the session's transcript as it arrives (`LiveHost.heard`), which is where the words first exist.
 - A moved conversation logs its own `conversation.moved` entry, because an old page would show `handover.moved` as "took 0 files".
 - The stage 8 counts above need a recount when it starts.

@@ -13,9 +13,13 @@ import { languageOf, vietnameseMarks } from '../../src/core/languages.js';
  * @typedef {{ at: number, type: string, data: any, text?: string }} TraceEntry  annai's own: live.turn, live.session, out.speak, heard, error
  * @typedef {{ scenario: string, route: string, echoDb: number | null, startedAt: number, endedAt: number, keyLine: number | null, plays: MicPlay[],
  *   frames: Frame[], level: number[][], micLevel?: number[][], trace: TraceEntry[], errors: string[], notes: string[], cards?: string[],
- *   languages?: { spoken: string[], answer: string, applied: boolean, why?: string } }} Rec  level: [at, rms of what annai plays];
+ *   languages?: { spoken: string[], answer: string, applied: boolean, why?: string },
+ *   media?: { at: number, kind: string, seconds: number, time: number }[], taps?: { at: number, label: string, ok: boolean }[],
+ *   lines?: { who: string, text: string, buttons: { name: string, disabled: boolean }[] }[], kokoro?: { at: number, kind: string, text?: string, heard?: string[], ms?: number, status?: number | null, bytes?: number }[],
+ *   mode?: 'live' | 'classic', model?: { requests: number, capped: boolean } }} Rec  level: [at, rms of what annai plays];
  *   micLevel: the same for what the microphone carried; cards: the titles of the cards annai showed once she was listening;
- *   languages: the setting the scenario asked for (phase 2), and whether this build took it (applied)
+ *   languages: the setting the scenario asked for (phase 2), and whether this build took it (applied); stage 5's card (card scenarios): media: the page's own player
+ *   (the question's playing and ending), taps: the taps on the card, lines: the conversation's lines as the page ends with them, kokoro: what the stand-in Kokoro was asked and did
  */
 
 /** The loudness (rms, 0..1) from which what annai plays is sound; and the quiet that ends a run of it. */
@@ -314,9 +318,18 @@ export function timeline(rec, a) {
   }
   for (const t of rec.trace) {
     const d = t.data ?? {};
-    const detail = t.type === 'live.turn' ? `${d.end} ${d.ms} ms floor ${d.floorDb} peak ${d.peakDb}` : t.type === 'live.session' ? `${d.state ?? ''}${d.why ? ` why=${d.why}` : ''}` : t.type === 'out.speak' ? `${d.cut ? 'CUT ' : ''}${d.voice ? 'voice ' : ''}${t.text ? `"${t.text.slice(0, 100)}"` : ''}` : t.type === 'heard' ? `"${String(d.text ?? t.text ?? '').slice(0, 100)}"${d.strayLanguage ? ` STRAY(${d.strayLanguage})` : ''}` : `${d.kind ?? ''} ${d.message ?? t.text ?? ''}`.trim();
+    const clip = (/** @type {unknown} */ x, n = 120) => String(x ?? '').replace(/\s+/g, ' ').slice(0, n);
+    const detail = t.type === 'heard.text' ? `"${clip(d.text, 140)}" (of ${clip(d.of, 20)})`
+      : t.type === 'out.ask' ? `${d.own ? 'OWN ' : ''}"${clip(d.question)}" ${(d.options ?? []).join(' / ')}`
+      : t.type === 'trip.grant' || t.type === 'trip.read' ? clip(JSON.stringify(d))
+      : t.type === 'tool.call' ? `${d.name} ${clip(JSON.stringify(d.input ?? {}), 100)}`
+      : t.type === 'tool.result' ? `${d.name} ${d.ok === false ? 'ERROR ' : ''}${clip(d.content, 140)}`
+      : t.type === 'live.turn' ? `${d.end} ${d.ms} ms floor ${d.floorDb} peak ${d.peakDb}` : t.type === 'live.session' ? `${d.state ?? ''}${d.why ? ` why=${d.why}` : ''}` : t.type === 'out.speak' ? `${d.cut ? 'CUT ' : ''}${d.voice ? 'voice ' : ''}${t.text ? `"${t.text.slice(0, 100)}"` : ''}` : t.type === 'heard' ? `"${String(d.text ?? t.text ?? '').slice(0, 100)}"${d.strayLanguage ? ` STRAY(${d.strayLanguage})` : ''}` : `${d.kind ?? ''} ${d.message ?? t.text ?? ''}`.trim();
     add(t.at, 'trace', `${t.type} ${detail}`.trimEnd());
   }
+  for (const m of rec.media ?? []) add(m.at, 'page', `her player ${m.kind} (${m.seconds} s clip, at ${m.time} s)`);
+  for (const k of rec.taps ?? []) add(k.at, 'tap', `a tap on "${k.label}"${k.ok ? '' : ' (no such button to tap)'}`);
+  for (const k of rec.kokoro ?? []) add(k.at, 'kokoro', `${k.kind}${k.text ? ` "${k.text.replace(/\s+/g, ' ').slice(0, 100)}"` : ''}${k.heard?.length ? ` seen: ${k.heard.map((x) => `[heard] ${x}`).join(' | ').slice(0, 160)}` : ''}`);
   rows.sort((x, y) => x.at - y.at);
   return rows.map((r) => `${secs(r.at - rec.startedAt).padStart(8)}  ${r.src.padEnd(6)} ${r.text}`).join('\n');
 }
@@ -339,6 +352,7 @@ export function detail(rec, a, about = '') {
     const mark = (/** @type {string | undefined} */ seen) => (seen && seen !== LANGUAGE_NAME[c.lang ?? 'en'] ? seen : '');
     out.push(`             heard: "${c.heard}"${c.heard ? ` (${Math.round(c.recall * 100)}% of the words)` : ''}${mark(c.heardLang) ? ` [heard as ${mark(c.heardLang)}]` : ''}${c.said ? `; she said: "${c.said.slice(0, 140)}"` : ''}${mark(c.saidLang) ? ` [answered in ${mark(c.saidLang)}]` : ''}`);
   }
+  for (const l of /** @type {string[]} */ (/** @type {any} */ (a).cardText ?? [])) out.push(l);
   for (const k of a.cuts) out.push(`   she was cut at ${secs(k.at - rec.startedAt)} s by ${k.cause === 'user' ? 'the user speaking over her' : k.cause === 'echo' ? 'HER OWN ECHO' : k.cause === 'noise' ? 'noise' : 'something else'}`);
   for (const c of a.checks) out.push(`   ${c.ok ? 'ok  ' : c.soft ? 'WARN' : 'FAIL'} ${c.name}: ${c.detail}`);
   for (const n of a.notes) out.push(`   note: ${n}`);

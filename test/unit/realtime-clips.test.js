@@ -77,7 +77,7 @@ test('the clip set: 5 to 10 travel questions, a quick yes, a sentence with a thi
   assert.match(CLIPS.ja.text ?? '', /[\u3040-\u30ff]/, 'kana');
   assert.match(CLIPS.zh.text ?? '', /[\u4e00-\u9fff]/);
   assert.doesNotMatch(CLIPS.zh.text ?? '', /[\u3040-\u30ff]/);
-  for (const [n, c] of Object.entries(CLIPS)) if (c.kind !== 'silence' && !['ja', 'zh', 'ko-word'].includes(n)) assert.ok((c.lang ?? 'en') === 'en', `${n} is English`);
+  for (const [n, c] of Object.entries(CLIPS)) if (c.kind !== 'silence' && !['ja', 'zh', 'ko-word', 'hai', 'hai-q', 'hao', 'mm-q'].includes(n)) assert.ok((c.lang ?? 'en') === 'en', `${n} is English`);
 });
 
 test('the cached clips are 16 kHz mono 16-bit WAV files, small, one for every clip that has speech, none with a key in it', async () => {
@@ -94,7 +94,8 @@ test('the cached clips are 16 kHz mono 16-bit WAV files, small, one for every cl
     assert.ok(w.pcm.reduce((m, x) => Math.max(m, Math.abs(x)), 0) > 0.05, `${f} is not silent`);
     assert.ok(!/AIza/.test(Buffer.from(bytes).toString('latin1')), `${f} holds a key`);
   }
-  assert.ok(total < 2_100_000, `${total} bytes in all`);
+  // 2.1 MB before stage 5's card; its eleven clips (a user's line, the answers that are and are not a yes, a passenger, annai's own question) are 0.5 MB more.
+  assert.ok(total < 2_800_000, `${total} bytes in all`);
   const loaded = await loadClips();
   assert.deepEqual(Object.keys(loaded).sort(), Object.keys(CLIPS).sort());
   assert.ok(loaded.lunch.pcm instanceof Float32Array && loaded.lunch.seconds > 0.5);
