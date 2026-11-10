@@ -430,7 +430,7 @@ export class Agent {
   #userStop = false;
   /** The turn running was cut by opening another conversation: the one left is told. */
   #cutByOpen = false;
-  /** Counts what reached the user (speak, show, ask, a reply shown as written): what was owed before it is settled. */
+  /** Counts what of hers reached the user (speak, show, ask, a reply shown as written; never annai's own card): what was owed before it is settled. */
   #reached = 0;
   /** The typing box holds text (the dock says so): a turn of theirs waits for them (GATHER). */
   #typing = false;
@@ -1720,8 +1720,10 @@ export class Agent {
       const stored = await record(this.store, this.scope, { now: this.#stamp(this.scope), ...ev, data: { ...ev.data, ...by, ...mark } });
       const r = await resolveEvent(this.store, stored);
       this.#apply(stored, r);
-      if (ev.type.startsWith('out.')) this.#facts.spoke = true;
-      if (ev.type.startsWith('out.') || ev.type === 'grounded') this.#reached++;
+      // annai's own card (confirm) is annai's, not her words: it neither answers the user nor settles what she owes them.
+      const hers = ev.type.startsWith('out.') && ev.actor !== 'system';
+      if (hers) this.#facts.spoke = true;
+      if (hers || ev.type === 'grounded') this.#reached++;
       this.#emit('event', stored);
       await this.#half.logged?.(stored, r);
       return stored;
