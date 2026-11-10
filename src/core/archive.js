@@ -96,7 +96,8 @@ const dirFor = (/** @type {string} */ id) => DIRS[id] ?? `trips/${id}`;
 
 const HASH = { type: 'string', pattern: '^[0-9a-f]{64}$' };
 const SIZE = { type: 'integer', minimum: 0 };
-const TIME = { type: 'number' };
+/** A moment, within what a Date holds (±8.64e15 ms, ECMA-262): beyond it Intl throws, and home places every row by its record's and its lines' times. */
+const TIME = { type: 'number', minimum: -8.64e15, maximum: 8.64e15 };
 const TEXT = { type: 'string' };
 const PHOTO_META = {
   type: 'object',

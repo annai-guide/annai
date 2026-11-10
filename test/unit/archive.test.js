@@ -322,6 +322,7 @@ test('an archive whose history log is damaged is refused before anything is impo
     '{"seq":99,"type":"file.write","actor":"user"}',
     '{"seq":99,"ts":1,"actor":"user"}',
     '{"seq":99,"ts":1,"at":"yesterday","type":"file.write","actor":"user"}',
+    '{"seq":99,"ts":1e300,"type":"msg.user","actor":"user"}', // no date: home places the row by the user's last line, and can't draw this one
     '{"seq":1,"ts":1,"type":"file.write","actor":"user"}', // a second seq 1 would silently replace the first
   ];
   for (const line of bad) {
@@ -345,6 +346,8 @@ test('an archive that describes its contents wrongly is refused', async () => {
     (m) => { m.files[0].size = 'big'; },
     (m) => { m.files[0].type = 7; },
     (m) => { m.files[0].created = null; },
+    (m) => { m.scopes[0].record.created = 1e300; }, // no date: home places an unused chat's row by it
+    (m) => { m.scopes[0].record.updated = -1e300; },
   ];
   for (const edit of edits) {
     await assert.rejects(peekArchive(await rewrite(blob, edit)), (e) => e instanceof ArchiveError && /damaged/.test(e.message), String(edit));
