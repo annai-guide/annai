@@ -403,12 +403,11 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** cards are refit when the screen changes size, outside `keep()` in notices.js, which is what keeps the rows still when a card comes or goes. Older than stage 4's sticky box. With a card open in the stuck box, or a box at its cap, its cap (half of 100svh) changes too: the rows moved 140 px when 360 x 640 turned to 640 x 360. The cap has already changed when `resize` fires, so the fix needs the box's last height kept.
 - **Revisit when:** the next version: run the resize's refit through `keep()`.
 
-### Focusing a field doesn't scroll it clear of a stuck card
+### With a keyboard up, a field on home can sit under the stuck box
 - **Kind:** deferred.
-- **What the user sees:** on home, a field near the top of the screen (Start a trip's name, say, with the keyboard up) can sit under a stuck card. The box can be up to half the room under the bar (256 px at 320 x 568, 292 at 360 x 640, 302 at 393 x 659), against 142 px for a quarter of the screen at 320 x 568; a newer-backup card (232 px at 320 x 568), two cards together, or a card opened in it makes it that tall. With a keyboard up (about 290 to 340 px), the bar and an open box can take all the room above it.
-- **Why:** nothing tells the browser's focus scrolling about the top bar or the box (no `scroll-padding-top`). `scroll-padding-top` alone can't place the field when the bar and the box take all the room above the keyboard.
-- **Revisit when:** the next version: `scroll-padding-top` of the top bar plus the box on home, or after the user's phone check of "Cap every box at half".
-
+- **What the user sees:** not verified on a phone. A field of Start a trip focused on home (by a keyboard's Tab, or a screen reader) is scrolled clear of the top bar and the box stuck under it, its label too. But with a keyboard up (about 290 to 340 px), when the bar and a box that holds an opened card or two cards (up to half the room under the bar: 256 px at 320 x 568, 292 at 360 x 640, 302 at 393 x 659) take all the room above the keyboard, the field has nowhere to show, and the browser's own scrolling for the keyboard may put it back under the box.
+- **Why:** the box is at most half the room under the bar (the user's "Cap every box at half"), not half the room above a keyboard; making it give way while a field has focus would change that design.
+- **Revisit when:** stage 8, where the Start a trip form, home's only fields, goes; or the user's phone check of "Cap every box at half" finds it first.
 ### A kept error drawn again may be read out again by a screen reader
 - **Kind:** deferred.
 - **What the user sees:** not verified. Start a trip's "Give the trip a name." is drawn again as a new `role=alert` each time home is drawn again while it shows, and a screen reader may read it out again then: at midnight, when a Next on a happening trip's card ends, when annai comes back to the front past one of those, when a simulation starts or ends, when Shiori opens a trip (`went`), when a plugin's screens change, and after a Delete in Waiting with Shiori. How long ago a backup or an export was no longer draws home again: its words change in place.
