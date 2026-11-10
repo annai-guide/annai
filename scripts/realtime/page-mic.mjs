@@ -67,7 +67,7 @@ export function installMic(o) {
       }
       for (const kind of ['playing', 'ended', 'pause', 'error']) this.addEventListener(kind, () => rt.media.push({ at: Date.now(), kind, seconds: Math.round((this.duration || 0) * 1000) / 1000, time: Math.round(this.currentTime * 1000) / 1000 }));
     }
-    return mediaPlay.apply(this, args);
+    return /** @type {any} */ (mediaPlay).apply(this, args);
   };
   const buf = new Float32Array(1024);
   const rms = (/** @type {AnalyserNode} */ a) => {

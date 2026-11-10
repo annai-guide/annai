@@ -104,9 +104,9 @@ export function cardOutcome(rec, base) {
   const read = rec.trace.find((t) => t.type === 'trip.read');
   const result = rec.trace.find((t) => t.type === 'tool.result' && t.data?.name === 'read_trip' && (!card || t.at >= card.at));
   const text = String(result?.data?.content ?? result?.text ?? '');
-  /** @type {'granted-voice' | 'granted-tap' | 'unanswered' | 'not-now' | 'stopped' | 'none'} */
+  /** @type {'granted-voice' | 'granted-tap' | 'declined-voice' | 'unanswered' | 'not-now' | 'stopped' | 'none'} */
   const kind = grant ? (grant.data?.how === 'tap' ? 'granted-tap' : 'granted-voice')
-    : !result ? 'none' : /tapped Not now/.test(text) ? 'not-now' : /^Not read:/.test(text) ? 'unanswered' : result.data?.ok === false ? 'stopped' : 'unanswered';
+    : !result ? 'none' : /tapped Not now/.test(text) ? 'not-now' : /^The user said no:/.test(text) ? 'declined-voice' : /^Not read:/.test(text) ? 'unanswered' : result.data?.ok === false ? 'stopped' : 'unanswered';
   const lastEnd = answers.at(-1)?.end ?? null;
   const firstAt = answers[0]?.at ?? null;
   const after = (/** @type {number | undefined | null} */ t) => (t == null || lastEnd === null ? null : t - lastEnd);
@@ -157,8 +157,9 @@ export function usageOf(rec) {
 const sec = (ms) => (ms == null ? '-' : `${(ms / 1000).toFixed(2)} s`);
 
 /**
- * The card's checks and a readable summary. sc.expect.grant: 'voice' | 'tap' | false (no grant); 'any' leaves it open (the report says what happened).
- * @param {import('./analyse.mjs').Rec} rec @param {ReturnType<import('./analyse.mjs').analyse>} base @param {{ expect?: { grant: 'voice' | 'tap' | false | 'any', words?: boolean, open?: boolean, next?: boolean } }} [sc]
+ * The card's checks and a readable summary. sc.expect.grant: 'voice' | 'tap' | false (no grant); 'any' leaves it open (the report says what happened);
+ * declined: a spoken no ended it, as Not now (the voice-yes rule).
+ * @param {import('./analyse.mjs').Rec} rec @param {ReturnType<import('./analyse.mjs').analyse>} base @param {{ expect?: { grant: 'voice' | 'tap' | false | 'any', words?: boolean, open?: boolean, next?: boolean, declined?: boolean } }} [sc]
  * @returns {{ checks: import('./analyse.mjs').Check[], text: string[], card: ReturnType<typeof cardOutcome> }}
  */
 export function analyseCard(rec, base, sc = {}) {
@@ -171,6 +172,7 @@ export function analyseCard(rec, base, sc = {}) {
   checks.push({ name: 'card resolved', ok: c.kind !== 'none' || sc.expect?.open === true, detail: c.kind === 'none' ? 'read_trip never got its result: the card was still waiting at the end' : `${c.kind}${c.resultAt ? `, ${((c.resultAt - rec.startedAt) / 1000).toFixed(2)} s in` : ''}` });
   const got = c.kind === 'granted-voice' ? 'voice' : c.kind === 'granted-tap' ? 'tap' : false;
   if (expect !== 'any') checks.push({ name: expect === false ? 'no grant' : `granted by ${expect}`, ok: got === expect, detail: `what the rule says: ${expect === false ? 'no grant' : `a grant by ${expect}`}; what happened: ${got === false ? c.kind : `a grant by ${got}`}` });
+  if (sc.expect?.declined === true) checks.push({ name: 'declined by voice', ok: c.kind === 'declined-voice', detail: `what happened: ${c.kind}` });
   if (sc.expect?.words === true) {
     // A line kept as the user's that is no yes goes on to Shiori as hers, once: the last request's [heard] lines hold each of its words once.
     const kept = c.lines.filter((l) => !l.dismissed && !l.yesFinal);
@@ -191,7 +193,7 @@ export function analyseCard(rec, base, sc = {}) {
   for (const a of c.answers) text.push(`   clip ${a.name}: ${((a.at - rec.startedAt) / 1000).toFixed(2)} to ${((a.end - rec.startedAt) / 1000).toFixed(2)} s${c.qEnd ? ` (${((a.at - c.qEnd) / 1000).toFixed(1)} s after the question was said)` : ''}`);
   for (const a of c.asr) text.push(`   speech to text for ${a.clip ? a.clip.name : '?'}: ${JSON.stringify(a.text)} (${a.ms} ms, ${a.status ?? 'failed'}; written down ${sec(a.afterClip)} after the clip ended)`);
   for (const l of rec.mode === 'classic' ? [] : c.lines) {
-    text.push(`   heard "${l.final}"${l.text0 !== l.final ? ` (first written "${l.text0}")` : ''} entry ${l.dismissed ? 'DISMISSED (set aside)' : 'kept'}${l.gate ? ` gate=${l.gate}` : ''} at ${l.clip ? sec(l.at - l.clip.end) : '?'} after its clip; revisions ${l.revisions.length ? l.revisions.map((r) => `${sec(r.at - l.at)} after the entry`).join(', ') : 'none'}; socket chunks ${l.chunks.length ? `${l.chunks.length}, ${l.clip ? `${sec(l.chunks[0].at - l.clip.end)} to ${sec(l.chunks.at(-1)?.at - l.clip.end)} after the clip` : ''}` : 'none'}; first words yes? ${l.yes0}, whole line yes? ${l.yesFinal}`);
+    text.push(`   heard "${l.final}"${l.text0 !== l.final ? ` (first written "${l.text0}")` : ''} entry ${l.dismissed ? 'DISMISSED (set aside)' : 'kept'}${l.gate ? ` gate=${l.gate}` : ''} at ${l.clip ? sec(l.at - l.clip.end) : '?'} after its clip; revisions ${l.revisions.length ? l.revisions.map((r) => `${sec(r.at - l.at)} after the entry`).join(', ') : 'none'}; socket chunks ${l.chunks.length ? `${l.chunks.length}, ${l.clip ? `${sec(l.chunks[0].at - l.clip.end)} to ${sec((l.chunks.at(-1)?.at ?? l.chunks[0].at) - l.clip.end)} after the clip` : ''}` : 'none'}; first words yes? ${l.yes0}, whole line yes? ${l.yesFinal}`);
   }
   text.push(`   outcome: ${c.kind}${c.grant ? ` (grant how=${c.grant.how}, ${sec(c.ms.grant)} after the last clip ended${c.ms.writeDown !== null && c.ms.grant !== null ? `, ${sec(c.ms.grant - c.ms.writeDown)} after it was written down` : ''}; read ${sec(c.ms.read)})` : c.resultAt ? ` (result ${sec(c.ms.result)} after the last clip ended)` : ''}`);
   for (const k of rec.taps ?? []) text.push(`   tap on "${k.label}" at ${((k.at - rec.startedAt) / 1000).toFixed(2)} s${k.ok ? '' : ' (no such button)'}${c.lastEnd ? `, ${sec(k.at - c.lastEnd)} after the last clip ended` : ''}`);

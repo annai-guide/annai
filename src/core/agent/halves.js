@@ -345,6 +345,7 @@ export class Halves {
       spoke: () => this.#retold(),
       left: (notes) => this.#leftUnsaid(notes),
       noisy: (heard) => this.#wakeKokoro({ kind: 'cue', text: NONSTOP(heard), logged: true, input: true }),
+      heard: (line) => this.kokoro.confirmHeard(line),
     });
     this.voice?.onChange((_, first) => { if (!first) this.#route(() => this.#refresh()); });
     this.voice?.onSound((stuck) => {
@@ -1154,7 +1155,10 @@ export class Halves {
    */
   async #koeLogged(e, r) {
     await this.kokoro.observe(e, r);
-    if (e.type === 'heard' || e.type === 'heard.text') this.kokoro.confirmHeard(e); // a spoken yes to annai's own question, Kokoro's
+    // annai's card, Kokoro's: Koe's verdict, and a text Koe's words (a live line's came with its transcript: LiveHost.heard), begun now as far as it knows.
+    const words = typeof e.data?.text === 'string' ? { text: e.data.text } : {};
+    if (e.type === 'heard') this.kokoro.confirmHeard({ id: e.data.id, ...words, kept: !e.data.dismissed, ...(e.data.source === 'live' ? {} : { at: Date.now() }) });
+    else if (e.type === 'heard.text') this.kokoro.confirmHeard({ id: e.data.of, ...words });
     const typed = e.type === 'msg.user' && e.data?.split;
     if (e.type.startsWith('out.')) this.#unsaid = []; // Koe reached the user: what it was told is passed on
     if (e.type === 'heard' && !e.data?.dismissed) this.#heardNow(false);
