@@ -44,7 +44,7 @@ The user: "a bit messy screens and tabs here and there"; "everything come back t
 - Before the last 30 days, a month with over three chats folds to "October: 14 chats". Cards never fold.
 - The foot: Archived (a fold, as today), Open a file, last backup.
 - Empty: the now line, "Tap + to talk to Shiori", Open a file. Welcome ends here; its "bottom of every screen" line changes.
-- Chat to trip: once dated it moves, becomes a card and gains Next. The conversation shows "Shiori set the dates" with Undo, from the `file.write` entry, which already holds `old`, undone by `ws.restore`.
+- Chat to trip: once dated it moves, becomes a card and gains Next. The conversation shows "Shiori set the dates" with Undo, from the `file.write` entry, which already holds `old`. Undo takes back only the dates (`undoDating`: the version before's `start` and `end`, written as the user's update of trip.json, so a name given since stays), and the line goes for good at the user's next line (docs/limitations.md, "The dates line's Undo goes at the user's next line").
 
 ## The conversation
 
