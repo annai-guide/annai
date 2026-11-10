@@ -383,6 +383,20 @@ test("opening another conversation ends the card's wait, as a Stop: no turn hang
   assert.equal((await grants(k, k.trip)).length + (await grants(k, chat)).length, 0);
 });
 
+test('a trip removed while its card waits is said to be gone after Allow, not read as an empty one', async (t) => {
+  useClock(t);
+  const k = await gateKit([call('read_trip', { trip: TV }), sleep]);
+  k.agent.send('Read Testville');
+  await until(() => k.asks.length === 1);
+  await removeTrip(k.store, TV);
+  k.agent.answer(k.asks[0].data.id, 'Allow');
+  await k.agent.idle();
+  const [out] = await readResults(k);
+  assert.match(out, /There is no trip "trip-testville"/);
+  assert.doesNotMatch(out, /no text files|no lines yet/);
+  assert.equal((await k.events(['trip.read'])).length, 0);
+});
+
 // ---- A spoken yes: annai's word list on the heard line, in the 20 s after the question ends, no model involved. ----
 
 const pause = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
