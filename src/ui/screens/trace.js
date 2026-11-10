@@ -11,7 +11,7 @@ const STAMP = /** @type {Intl.DateTimeFormatOptions} */ ({ year: 'numeric', mont
 /** What each kind of entry is, for the Kind filter, by its name in a link (#/trace?kind=Plugins). */
 const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Everything: null,
-  Conversation: ['wake', 'msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded', 'paused', 'trip.grant'],
+  Conversation: ['wake', 'msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded', 'paused', 'trip.grant', 'conversation.moved'],
   // What Shiori's two halves tell each other, and the blocks annai gives Kokoro (the Koe and Kokoro design).
   Halves: ['note', 'halves'],
   Tools: ['tool.call', 'tool.result', 'trip.read'],
@@ -216,6 +216,8 @@ export function traceSummary(e, { costs: perWake } = {}) {
   // Another trip read from here (read_trip), and the user's yes to it.
   if (e.type === 'trip.read') return line(t`read ${d.title}`, d.trip, d.path, d.query ? quoted(d.query) : null);
   if (e.type === 'trip.grant') return line(t`reading ${d.trip} allowed`, d.how === 'voice' ? t`said` : t`tapped`, d.always ? t`always for their trips` : null);
+  // Shiori took the user from here to another trip (open_trip).
+  if (e.type === 'conversation.moved') return line(t`moved to ${d.title}`, d.to);
   if (e.type === 'compaction') return d.mode === 'fresh' ? t`started fresh after event ${d.to}` : t`events ${d.from}–${d.to} summarized (${d.mode})`;
   if (e.type === 'location') return /* en */ `${d.lat}, ${d.lng} ±${d.accuracy} m${typeof d.speed === 'number' && d.speed > 0 ? ` · ${Math.round(d.speed * 3.6)} km/h` : ''}${d.source ? ` · ${d.source}` : ''}`;
   if (e.type === 'trigger.fired') return line(d.watch, cut(d.text), d.late ? t`late by ${d.late} min` : null, d.offline ? t`no connection` : null);

@@ -1067,14 +1067,17 @@ export class Halves {
   }
 
   /**
-   * Opens a trip Shiori started or chose for a hand-over once both halves are done, as the user would (it becomes the open trip):
-   * only if the user hasn't opened another conversation meanwhile. Then 'went' tells the screens. @param {string} trip
+   * Opens a trip Shiori started or moved the user to once both halves are done, as the user would (it becomes the open trip): only if the
+   * user hasn't opened another conversation meanwhile, and the trip is still there and not archived. Then 'went' tells the screens. @param {string} trip
    */
   openWhenDone(trip) {
     const from = this.target;
     const going = this.#quiet()
       .then(async () => {
         if (this.target !== from || this.target === trip) return;
+        // Removed or archived meanwhile: the conversation it was to leave stays open, and nothing names that trip.
+        const rec = await this.store.tx(['scopes'], 'readonly', (t) => t.getScope(trip));
+        if (rec?.kind !== 'trip' || rec.status !== 'active' || this.target !== from) return;
         await updateAppSettings(this.ws, { activeTrip: trip });
         await this.open(trip);
         this.#emit('went', { trip });
