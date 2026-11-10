@@ -373,6 +373,31 @@ test("a tap on Koe's question answers Koe, and Kokoro reads what was chosen; a t
   assert.equal(k.agent.tap(), 'typing', 'no voice here: typing opens');
 });
 
+test("a note from Kokoro ends Koe's own question's wait, as it ends a wait: Koe says it now, and a tap on the question later is the user's next line (real models, stage 5: u8-r3's correction was never said)", async (t) => {
+  useClock(t);
+  /** @type {any} */
+  let k;
+  k = await agentKit([{ rules: [
+    { match: 'the user wrote', reply: calls(['tell_koe', { text: 'Correction: tomorrow has the museum at 10 (Testville plan).', mode: 'immediate' }]) },
+    { match: '.', reply: sleep },
+  ] }], { koe: { type: { rules: [
+    { match: 'the user wrote', times: 1, reply: { toolCalls: [{ name: 'ask', input: { question: 'Want ideas for tomorrow?', options: ['Yes', 'No'] } }] } },
+    { match: 'a note from Kokoro', reply: calls(['speak', { text: 'Correction: tomorrow, the museum at 10.' }]) },
+    { match: 'the user', reply: calls(['speak', { text: 'Okay.' }]) },
+  ] } }, hold: async (/** @type {any} */ c) => { if (c.model.providerId === 'model-0') await until(() => k?.agent.koe.pendingId != null); } });
+  k.agent.send("What's on tomorrow?");
+  await until(() => (k.agent.koe.state.name === 'sleeping' || !k.agent.koe.busy) && !k.agent.kokoro.busy, 3000).catch(() => {});
+  await k.agent.idle();
+  const ask = (await results(k, 'ask'))[0];
+  assert.match(ask.data.content, /^Kokoro: see the note below\. Your question stays up: a tap on it comes later, as their next line\.$/);
+  assert.deepEqual((await shown(k)).filter(([type]) => type === 'out.speak').map(([, , text]) => text), ['Correction: tomorrow, the museum at 10.']);
+  const [asked] = await k.events(['out.ask']);
+  k.agent.answer(asked.data.id, 'No');
+  await k.agent.idle();
+  const chose = (await k.events(['msg.user'])).find((/** @type {any} */ e) => e.data.text === 'No');
+  assert.deepEqual([chose?.data.chose, chose?.data.answer], [true, undefined], 'a late tap: an ordinary line');
+});
+
 // Fix pass 2 (the review's reload-midturn probe): annai reloads while Koe waits on Kokoro and Kokoro is mid-call.
 test('after a reload mid-turn, Kokoro reads by its two-half rules from its first turn, and only Kokoro takes up the restart: Koe speaks once', async (t) => {
   useClock(t);
