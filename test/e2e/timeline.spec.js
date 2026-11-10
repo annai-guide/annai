@@ -1982,6 +1982,54 @@ test("an automatic backup that ends while home shows: the card says so, not \"ch
   await expect(card.locator('.sub').first()).toHaveText(/backed up just now$/); // before: "50 minutes ago, changed since" until midnight
 });
 
+/** How far the page is from its end, in px. @param {import('@playwright/test').Page} page */
+const endGap = (page) => page.evaluate(() => Math.round(document.documentElement.scrollHeight - document.documentElement.clientHeight - scrollY));
+/** Two frames and a moment: what a change fits is fitted. @param {import('@playwright/test').Page} page */
+const fitted = async (page) => {
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  await page.waitForTimeout(150);
+};
+/** The window turned on its side and back, as Playwright can (not a real phone's rotation): a resize, two frames, a resize, then fitted. @param {import('@playwright/test').Page} page @param {number[]} size */
+const turnAndBack = async (page, [w, h]) => {
+  await page.setViewportSize({ width: h, height: w });
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  await page.setViewportSize({ width: w, height: h });
+  await fitted(page);
+};
+
+for (const size of [[360, 640], [393, 659]]) {
+  test(`a page read to its end stays at its end when the window turns and back and when the dock grows; mid-page nothing moves (${size.join(' x ')})`, async ({ page }) => {
+    await page.setViewportSize({ width: size[0], height: size[1] });
+    await scrolledHome(page);
+    await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+    await fitted(page);
+    expect(await endGap(page)).toBe(0);
+    await turnAndBack(page, size);
+    expect(await endGap(page)).toBe(0); // before: 12 px off its end in Chromium (the dock, 41 px tall on its side, is 53 again a frame later), 34 in WebKit
+    // The dock grows (voice on, typing open): the page's end stays in view above it.
+    await page.evaluate(() => { const d = /** @type {HTMLElement} */ (document.querySelector('.dock')); d.style.minHeight = `${d.getBoundingClientRect().height + 40}px`; });
+    await fitted(page);
+    expect(await endGap(page)).toBe(0); // before: 40 px
+    // Mid-page nothing moves: the rows the user reads stay where they were.
+    await page.evaluate(() => scrollTo(0, Math.round(scrollY * 0.6)));
+    await fitted(page);
+    const before = await placeOf(page);
+    await turnAndBack(page, size);
+    await page.evaluate(() => { /** @type {HTMLElement} */ (document.querySelector('.dock')).style.minHeight = ''; });
+    await fitted(page);
+    expect((await placeOf(page)).now).toBe(before.now);
+    // Another screen with the dock: the same.
+    await page.evaluate(() => { location.hash = '#/settings'; });
+    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+    await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+    await fitted(page);
+    expect(await page.evaluate(() => scrollY)).toBeGreaterThan(0);
+    expect(await endGap(page)).toBe(0);
+    await turnAndBack(page, size);
+    expect(await endGap(page)).toBe(0);
+  });
+}
+
 test("a change made from home itself (her answer, through the dock, while home shows): the trip's card says \"changed since\" at once, not at the next redraw", async ({ page }) => {
   const speak = anthropicToolReply([{ name: 'speak', input: { text: 'The pier is a short walk.' } }, { name: 'sleep', input: {} }]);
   const llm = await startModelServer({ '/b/v1/messages': { status: 200, type: 'text/event-stream', body: speak, delayMs: 5000 } });

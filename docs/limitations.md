@@ -397,12 +397,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** read_trip's `path` gives a file whole, and the result's own cut is all that bounds it; `from` was left out of stage 5's tool (found in the build's review, finding 11).
 - **Revisit when:** the next version: read_trip takes `from`, as `read` does.
 
-### Turning the phone with home scrolled to its end leaves the page a little off its end
-- **Kind:** deferred.
-- **What the user sees:** with home scrolled to its very end (Start a trip's form, Open a file, the last backup line), turning the phone to landscape and back, or a window that gets shorter and comes back, leaves the page not quite at its end: 12 px in Chromium (45 px with a short card stuck), and in WebKit's emulation up to 285 px with an opened card. Mid-page nothing moves (0 px in 76 measured cases). Measured in the test browsers at four phone sizes (2026-11-10); a real iPhone's rotation was not looked at, and Playwright's resize is not a real rotation.
-- **Why:** two causes. The 12 px is annai's own: the dock is 53 px tall in portrait and 41 px in landscape, the shell's observer sets the page's bottom padding from it a frame after the resize, and nothing scrolls the page to its new end (so it is every screen with the dock, not only home). The rest is the engine clamping the scroll against the small size's layout before the notices box is fitted again; "was at its end" can't be told at the resize event, so a fix needs it remembered across the resize's steps. A first route (scroll to the new end after the fits) fixed only Chromium's short card.
-- **Revisit when:** the next version: a page read to its end stays at its end across a size change and a dock that changes height (remembered before the change, restored after the fits), after a look at a real phone's rotation.
-
 ### A spoken yes to annai's card is heard late when no model listed can write speech down
 - **Kind:** deferred.
 - **What the user sees:** in one setup (Koe on a chat model that takes sound, Kokoro on a model that takes no audio, and no transcription model in the speech-in list, with the question typed), a "Yes" said to annai's card gets its words only when Koe's own turn ends: of 7 real-speech runs, 5 were granted 16 to 49 seconds after the word, 1 ended unanswered, and 1 was still waiting after 45 seconds. A tap on the card works at once. With a transcription model listed (for example either of Gemini's), the yes is granted about 4 seconds after the word, as elsewhere.
