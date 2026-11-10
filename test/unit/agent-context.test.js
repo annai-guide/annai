@@ -278,6 +278,22 @@ test("an undated conversation's text names the trip happening now and the 5 late
   assert.doesNotMatch(systemText(await takeSnapshot({ ws, registry, trip: happening, personalityName: 'shiori' })), /Happening now|read_trip first|latest other/);
 });
 
+test("a dated conversation's text says a trip or place they name may be another of theirs, found with list_trips, and it is the same on every turn: it names no trip, so nothing elsewhere moves it (real models, stage 5 finding 2)", async () => {
+  const { ws, trip, registry } = await setup();
+  const take = () => takeSnapshot({ ws, registry, trip, personalityName: 'shiori' });
+  const first = await take();
+  const text = systemText(first);
+  assert.match(text, /\n# Their other trips\nA trip or place they name that isn't this one may be another of theirs: look in list_trips before you say it isn't there\.$/);
+  assert.equal(systemText(await take()), text, 'the same from turn to turn');
+  await createTrip(ws, { title: 'Laterton', start: '2026-04-10', end: '2026-04-17' });
+  await createTrip(ws, { title: 'Hi' });
+  const fresh = await take();
+  assert.equal(systemText(fresh), text, 'another trip or chat made meanwhile changes nothing');
+  assert.equal(systemText(nextSnapshot(first, fresh, { cold: true })), text);
+  // An undated one has its own list of them instead.
+  assert.doesNotMatch(systemText(await takeSnapshot({ ws, registry, trip: await createTrip(ws, { title: 'Where should we eat?' }), personalityName: 'shiori' })), /# Their other trips/);
+});
+
 test("an undated conversation's text cuts each other conversation's name to trip.json's 200 characters: a file's record can hold more (review finding 12)", async () => {
   const { ws, store, registry } = await setup();
   const long = await createTrip(ws, { title: 'x' });
