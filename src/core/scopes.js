@@ -1,6 +1,7 @@
 import { ValidationError, NotFoundError, notJSON } from './workspace.js';
 import { t } from './l10n.js';
 import { text } from './bytes.js';
+import { isDate } from './schema.js';
 
 /** @typedef {import('./types.js').Store} Store @typedef {import('./types.js').ScopeRecord} ScopeRecord @typedef {import('./types.js').Tx} Tx */
 /** @typedef {import('./workspace.js').Workspace} Workspace */
@@ -28,12 +29,16 @@ export function kindOf(scope) {
 /** A line the user said: typed, or heard and not dismissed; a hand-over's copy in another trip (data.from) counts too. What "last talked in" counts. @param {{ type: string, data?: any }} e */
 export const talks = (e) => e.type === 'msg.user' || (e.type === 'heard' && !e.data?.dismissed);
 
-/** What a trip's record mirrors of its trip.json, so no file is opened to tell which trips matter now: its dates, when they are dates. @param {unknown} trip @returns {{ start?: string, end?: string }} */
+/**
+ * What a trip's record mirrors of its trip.json, so no file is opened to tell which trips matter now: its dates, when they are days on the calendar (the
+ * schema's `date`: a write is refused otherwise, but a file that comes in with the archive's import has no such check). Everything that reads a trip's
+ * dates reads them here, so a date that is no date reads as none and nothing that draws or compares a date meets one. @param {unknown} trip @returns {{ start?: string, end?: string }}
+ */
 export function tripMirror(trip) {
   const t = /** @type {any} */ (trip);
   /** @type {{ start?: string, end?: string }} */
   const out = {};
-  for (const k of /** @type {const} */ (['start', 'end'])) if (typeof t?.[k] === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(t[k])) out[k] = t[k];
+  for (const k of /** @type {const} */ (['start', 'end'])) if (typeof t?.[k] === 'string' && isDate(t[k])) out[k] = t[k];
   return out;
 }
 

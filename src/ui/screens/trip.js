@@ -1,5 +1,5 @@
 import { h, crumb, t, plural, field, twoStep, linkIn, messageOf } from '../dom.js';
-import { setTripStatus, removeTrip, backupState } from '../../core/scopes.js';
+import { setTripStatus, removeTrip, backupState, tripMirror } from '../../core/scopes.js';
 import { ask } from '../ask.js';
 import { normPath } from '../../core/paths.js';
 import { ValidationError, NotFoundError } from '../../core/workspace.js';
@@ -28,6 +28,7 @@ export async function renderTrip(ctx, route) {
   // Opening a trip makes it the one Shiori talks about (spec §4.3: /trip/ is the active trip).
   const scope = openTrip(ctx);
   const trip = await ctx.ws.readJSON(id, '/trip.json').catch(() => null);
+  const { start, end } = tripMirror(trip); // a date that is no date (a file that came in) reads as none
   const files = (await ctx.ws.list(id, '/')).filter((/** @type {any} */ f) => !f.path.startsWith('/offline/')); // the pack has its own panel
   const archived = scope.status === 'archived';
   const stamps = await tripStamps(ctx, id);
@@ -37,14 +38,14 @@ export async function renderTrip(ctx, route) {
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, crumb(talkHref(id), t`Conversation`)),
     h('h1', { class: 'title', dir: 'auto', text: scope.title }),
-    h('p', { class: 'sub' }, ...factsWords([trip?.start ? dateRange(trip.start, trip.end) : null, archived ? t`Archived` : null, plural(files.length, '# file', '# files'), stamps.length ? { stamps: stampCount(stamps.length) } : null])),
+    h('p', { class: 'sub' }, ...factsWords([start ? dateRange(start, end) : null, archived ? t`Archived` : null, plural(files.length, '# file', '# files'), stamps.length ? { stamps: stampCount(stamps.length) } : null])),
     stampMarks(stamps, { max: 24, big: true }),
     editForm(ctx, id, String(trip?.title ?? scope.title), trip),
     h('div', { class: 'acts' },
       h('a', { class: 'btn pri', href: `#/trip/${encodeURIComponent(id)}/plan` }, t`Itinerary`),
       // A recap and a replay are of days: an undated trip has none yet, but one that has its recap still shows it.
-      ...(trip?.start || files.some((/** @type {any} */ f) => f.path === RECAP_FILE) ? [h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/recap` }, t`Recap`)] : []),
-      ...(trip?.start ? [h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/replay` }, t`Replay`)] : []),
+      ...(start || files.some((/** @type {any} */ f) => f.path === RECAP_FILE) ? [h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/recap` }, t`Recap`)] : []),
+      ...(start ? [h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/replay` }, t`Replay`)] : []),
       // Plugins' trip tabs (spec §16.4), each a page of its own.
       ...slotEntries(ctx, 'ui:trip-tab').map((e) => h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(id)}/ext/${encodeURIComponent(e.pluginId)}/${encodeURIComponent(e.item.id)}`, text: String(e.item.title) })),
       ...tripActions(ctx, id, scope, extra),

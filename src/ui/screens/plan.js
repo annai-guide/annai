@@ -5,6 +5,7 @@ import { planToIcs } from '../../core/ics.js';
 import { loadLinks, expandLink } from '../../core/links.js';
 import { readAppSettings } from '../../core/settings.js';
 import { tripZoneOf } from '../../core/trip-files.js';
+import { tripMirror } from '../../core/scopes.js';
 import { platform } from '../platform.js';
 import { saveFile } from '../save.js';
 import { todayOf, todayTop, drivingTrip } from '../today.js';
@@ -33,7 +34,7 @@ export async function renderPlan(ctx, route) {
   }
   // Where a row's details come back to: this Plan, by the address it was opened at.
   const here = route.parts[0] === 'trip' ? `#/trip/${encodeURIComponent(id)}/plan` : '#/plan';
-  const trip = (await ctx.ws.readJSON(id, '/trip.json').catch(() => null)) ?? {};
+  const trip = tripMirror(await ctx.ws.readJSON(id, '/trip.json').catch(() => null)); // its dates, as home reads them: a date that is no date reads as none
   const fallbackTz = await tripZoneOf(ctx.ws, id);
   const plan = await records(ctx, id, '/plan/', PLAN_FILE);
   const bookings = await records(ctx, id, '/bookings/', BOOKING_FILE);

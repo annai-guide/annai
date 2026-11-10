@@ -76,6 +76,40 @@ test('a date that is no date is not copied, and nothing readable leaves it undat
   assert.deepEqual(tripMirror({ start: '2026-11-20', end: '2026-11-22', title: 'x' }), { start: '2026-11-20', end: '2026-11-22' });
   assert.deepEqual(tripMirror(null), {});
   assert.deepEqual(tripMirror('text'), {});
+  // The shape of a date is not enough: a day that isn't on the calendar reads as no date, so home never has to draw it.
+  assert.deepEqual(tripMirror({ start: '9999-99-99', end: '2026-13-01' }), {});
+  assert.deepEqual(tripMirror({ start: '2026-02-31', end: '2027-02-29' }), {});
+  assert.deepEqual(tripMirror({ start: '2028-02-29', end: '2026-11-31' }), { start: '2028-02-29' });
+});
+
+test("dates that aren't on the calendar, written where no check stands (an import), read as none: new, backfilled, or already on the record", async () => {
+  const { ws, store, scope, released } = await kit({ schemas: false });
+  const id = await createTrip(ws, { title: 'Testville', start: '2026-11-20', end: '2026-11-22' });
+  await ws.patch(id, '/trip.json', { start: '9999-99-99', end: '2026-02-31' }, { author: 'user' });
+  await settled();
+  let r = /** @type {any} */ (await scope(id));
+  assert.equal('start' in r, false);
+  assert.equal('end' in r, false);
+  // A record a released copy wrote, filled from the file that came in.
+  await released(id);
+  await backfillTrips(ws);
+  r = await scope(id);
+  assert.deepEqual([r.start, r.end, r.talked], [undefined, undefined, null]);
+  // A record that already holds such a date (written before the rule) is healed at the next start, as any other stale date is.
+  await store.tx(['scopes'], 'readwrite', async (/** @type {any} */ t) => t.putScope({ ...(await t.getScope(id)), start: '9999-99-99' }));
+  await backfillTrips(ws);
+  assert.equal('start' in /** @type {any} */ (await scope(id)), false);
+});
+
+test("Shiori's patch or the user's Save with a date that isn't one is refused by trip.json's schema, and the record keeps its dates", async () => {
+  const { ws, scope } = await kit();
+  const id = await createTrip(ws, { title: 'Testville', start: '2026-11-20', end: '2026-11-22' });
+  for (const author of /** @type {const} */ (['shiori', 'user'])) {
+    await assert.rejects(ws.patch(id, '/trip.json', { start: '9999-99-99', end: '2026-02-31' }, { author }), /isn't valid/);
+  }
+  await settled();
+  const r = /** @type {any} */ (await scope(id));
+  assert.deepEqual([r.start, r.end], ['2026-11-20', '2026-11-22']);
 });
 
 test('a trip.json whose read fails leaves the record as it was: a read that failed says nothing of its dates', async () => {
