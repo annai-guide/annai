@@ -794,3 +794,21 @@ test('a first tap cut off once a waiting file she changed went back to wait, bef
   assert.equal(await ws.readText(SYS_WAITING, '/files/note.txt'), 'temple at 9');
   assert.deepEqual([out.removed, out.waiting], [['Testville'], true]);
 });
+
+test('a chain through a trip removed since that ends at a file the user changed: her booking there goes too, as when nothing was removed', async () => {
+  for (const gone of [false, true]) {
+    const { store, ws, a, move } = await clocked();
+    const b = await createTrip(ws, { title: 'Kyoto' });
+    const c = await createTrip(ws, { title: 'Big Sur' });
+    let there = '/files/flight.pdf';
+    for (const [from, to] of [[a, b], [b, c]]) there = await move(from, there, to);
+    await ws.write(c, '/bookings/flight.json', { ...flightBooking, source: there }, HERS);
+    await ws.write(c, there, utf8('%PDF flight, seat 12A'), { author: 'user', type: 'application/pdf' });
+    if (gone) await removeTrip(store, b);
+    const out = await undoEverywhere(ws, a, 'h-1', { remove: async (s) => removeTrip(store, s) });
+    assert.equal(await ws.readText(c, there), '%PDF flight, seat 12A', `gone ${gone}`);
+    assert.equal(await ws.read(c, '/bookings/flight.json'), undefined, `gone ${gone}: her booking goes`);
+    assert.deepEqual([out.kept, out.changed], [1, [{ id: c, title: 'Big Sur' }]], `gone ${gone}`);
+    assert.equal((await eventsIn(store, c, ['handover.undo'])).length, 1, `gone ${gone}: Big Sur is told`);
+  }
+});
