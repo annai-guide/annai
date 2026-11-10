@@ -399,7 +399,7 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### Home's relative times redraw home
 - **Kind:** deferred.
-- **What the user sees:** "in 21 hours", "backed up 5 minutes ago", "Last backup 2 hours ago" and the day count follow the clock because home is drawn again, in place, when one of their words changes: a few times a day, and once a minute in the hour after a backup or an export. The redraw keeps home's folds and place and waits for the Start a trip form, but it resets an armed "Tap again to delete" (see that entry), and not verified on a phone: it may lose VoiceOver's place, or replace the file input under an open picker.
+- **What the user sees:** "backed up 5 minutes ago", "Last backup 2 hours ago" and the day count follow the clock because home is drawn again, in place, when one of their words changes: a few times a day, and once a minute in the hour after a backup or an export. A trip ahead says "tomorrow", "in 3 days" or "in 2 weeks" (the user's choice, "Count in days", 2026-11-09), which change only at midnight, where home is drawn again anyway. The redraw keeps home's folds and place and waits for the Start a trip form, but it resets an armed "Tap again to delete" (see that entry), and not verified on a phone: it may lose VoiceOver's place, or replace the file input under an open picker.
 - **Why:** home is one render; changing the words in place is another part to keep right with it, and the redraw is what keeps every fact on a card in one place.
 - **Revisit when:** the next version: change the words in place (each time-bearing node carries its moment) instead of drawing home again.
 

@@ -74,7 +74,7 @@ export async function renderTrips(ctx) {
 }
 
 /**
- * Home is drawn for an instant: its Next, "Day 3 of 8", which trips are happening, and the "in 21 hours" and "2 hours ago" it says go stale as time
+ * Home is drawn for an instant: its Next, "Day 3 of 8", which trips are happening, and the "tomorrow" and "2 hours ago" it says go stale as time
  * passes. It draws itself again, in place, at the earliest of the moments they change (one timer: a Next item ends, a shown relative time changes its words,
  * or midnight, where a trip starts or ends and the day count moves; the 1 s is for a timer a hair early) and when annai comes back to the front, which a
  * phone's timers may have slept through. Only while it is the screen shown and its address, and never over the Start a trip form while a field of it
@@ -147,8 +147,9 @@ async function tripCard(ctx, s, r, { say, now, zone, due }) {
     if (next) due?.push(over(next));
     if (next) more.push(h('span', { class: 'sub next', dir: 'auto', text: next.day && next.day !== dayIn(now, zone) ? t`Next: ${day(next.day, true)} ${next.time} ${rowName(next)}` : t`Next: ${next.time} ${rowName(next)}` }));
   } else if (r?.phase === 'future') {
-    more.push(h('span', { class: 'sub soon', text: relTime(r.at, now) }));
-    due?.push(relChange(r.at, now));
+    // In days, as its dates are: "tomorrow" all day, never "in 13 hours" the evening before. From today's date to its first day, so the words change at midnight, when home draws again.
+    const utc = (/** @type {string} */ d) => Date.parse(`${d}T00:00:00Z`);
+    more.push(h('span', { class: 'sub soon', text: relTime(utc(s.start), utc(/** @type {string} */ (dayIn(now, zone)))) }));
     const last = await herLast(ctx, s.id);
     if (last) more.push(h('span', { class: 'sub her-last', ...say(last), text: last }));
   }
