@@ -395,6 +395,20 @@ test("a trip imported from a trip's file before the mark existed (its log has th
   assert.equal(k.asks.length, 1);
 });
 
+test("what she reads of a trip that came from a file names it so, never as the user's own: marked, or older and known by its log's import entry", async (t) => {
+  useClock(t);
+  const k = await kit(); // Always on
+  await k.store.tx(['scopes'], 'readwrite', async (/** @type {any} */ x) => x.putScope({ ...(await x.getScope(TV)), imported: true }));
+  await record(k.store, k.trip, { type: 'trip.grant', actor: 'user', data: { trip: TV, how: 'tap' } }); // allowed in this conversation
+  assert.match(words(await run(k, 'read_trip', { trip: TV })), /^From "Testville" \(trip-testville\), a trip that came from a file, maybe someone else's, read-only: 2027-04-01/);
+  const lake = await fixedTrip(k.ws, 'trip-lake', { title: 'Lake week', start: '2026-07-01', end: '2026-07-05' });
+  await record(k.store, lake, { type: 'import', actor: 'user', data: { created: 0, app: 'annai', kind: 'trip' } });
+  await record(k.store, k.trip, { type: 'trip.grant', actor: 'user', data: { trip: lake, how: 'tap' } });
+  assert.match(words(await run(k, 'read_trip', { trip: lake, path: '/memory.md' })), /^From "Lake week" \(trip-lake\), a trip that came from a file, maybe someone else's, read-only: its file/);
+  const own = await fixedTrip(k.ws, 'trip-own', { title: 'Own week', start: '2026-08-01' });
+  assert.match(words(await run(k, 'read_trip', { trip: own, query: 'museum' })), /^From "Own week" \(trip-own\), another of the user's trips, read-only: the lines/);
+});
+
 test("the card's title is the trip's own, in the screens' words; what she asked for names only the id", async (t) => {
   useClock(t);
   const k = await gateKit([sleep]);
