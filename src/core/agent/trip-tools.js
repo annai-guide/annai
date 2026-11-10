@@ -347,6 +347,7 @@ export function tripTools(app) {
         const path = typeof i.path === 'string' ? pathIn(i.path) : null;
         const no = await allowed(rec, call);
         if (no !== null) return no;
+        await otherTrip(rec.id, call); // removed while its card waited: said so, not read as an empty one
         const query = path === null && typeof i.query === 'string' ? i.query : null;
         const { out, read } = path !== null ? await fileIn(rec, path) : { out: query !== null ? await linesWith(rec, query) : await overview(rec), read: true };
         if (read) await noteRead(call, { trip: rec.id, title: rec.title, ...(path !== null ? { path } : {}), ...(query !== null ? { query } : {}) });
