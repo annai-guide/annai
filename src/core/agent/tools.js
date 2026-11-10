@@ -33,7 +33,8 @@ export const RESULT_MAX = 40_000;
  * minutes, so a tool's own words come first. What waits for the user, and task's helper, has none.
  */
 export const TOOL_MS = { ms: 150_000 };
-const UNTIMED = [...TALK, 'task'];
+// read_trip waits for the user's answer on annai's card (the timeline design, "Reading another trip").
+const UNTIMED = [...TALK, 'task', 'read_trip'];
 
 /** What is wrong with a tool, or null. @param {any} t @returns {string | null} */
 export function checkTool(t) {
