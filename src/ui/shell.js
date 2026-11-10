@@ -33,6 +33,7 @@ import { renderNotifications } from './screens/notifications.js';
 import { createDock } from './dock.js';
 import { newConversation } from './plus.js';
 import { tapKeepsKeyboard } from './tap-keeps-keyboard.js';
+import { keepRows } from './keep-rows.js';
 import { isStandalone } from './platform.js';
 import { dockHidesWhileTyping } from './dock-hides.js';
 import { noteScreen } from './resume.js';
@@ -402,18 +403,10 @@ export function startShell(root, core) {
       // Its screen's ctx says which render it is, so what it draws after a newer one began is cleaned up at once.
       const node = await screen(Object.create(ctx, { seq: { value: my }, moved: { value: o.moved === true }, entry: { value: entry }, tripScope: { value: scope } }), route);
       if (my !== seq) return superseded(my);
-      // Home drawn again in place (the clock, a hand-over, a Delete): the first row in view that is still shown stays where it was, whatever came
-      // or went above it. Not a shut fold's rows: the engines give them boxes too, unseen. Nor one under the top bar or the notices box stuck
-      // under it (base.css): a row that came or went under those would move every row the user sees.
-      const rows = (/** @type {Element} */ el) => [...el.querySelectorAll('.rows a[href]')].filter((a) => !a.closest('details:not([open])'));
-      const under = () => Math.max(header.getBoundingClientRect().bottom, notices.el.getBoundingClientRect().bottom);
-      const seen = pending === null && route.name === 'trips' && drawnHash === shown.hash
-        ? ((top) => rows(main).map((a) => ({ href: a.getAttribute('href'), box: a.getBoundingClientRect() })).filter((r) => r.box.bottom > top))(under()) : [];
-      main.replaceChildren(node);
-      const fresh = new Map(rows(node).map((a) => [a.getAttribute('href'), a]));
-      const kept = seen.find((r) => fresh.has(r.href));
-      const by = kept ? /** @type {Element} */ (fresh.get(kept.href)).getBoundingClientRect().top - kept.box.top : 0;
-      if (by) scrollBy(0, by); // only when it moved
+      // Home drawn again in place (the clock, a hand-over, a Delete): the first row in view that is still shown stays where it was (keepRows).
+      const draw = () => main.replaceChildren(node);
+      if (pending === null && route.name === 'trips' && drawnHash === shown.hash) keepRows(() => Math.max(header.getBoundingClientRect().bottom, notices.el.getBoundingClientRect().bottom), main, draw, node);
+      else draw();
       drawnHash = shown.hash;
       if (pending !== null) {
         const want = pending;

@@ -20,7 +20,19 @@ export function createNotices() {
    * there are measured again when home shows.
    */
   const scrolls = () => el.classList.toggle('scrolls', el.scrollHeight > el.clientHeight + 1);
-  new ResizeObserver(scrolls).observe(el);
+  new ResizeObserver(() => { scrolls(); below(); }).observe(el);
+  /**
+   * A card (or its stack) that came below what is read in the box: a sign at the box's bottom edge (.below) until its title is in view there, or it goes
+   * (the user, "Defer a hint"); looked at as the box scrolls or changes size (its cap is lifted on other screens). A screen reader hears it come
+   * (role=status). @type {HTMLElement | null}
+   */
+  let arrived = null;
+  const below = () => {
+    const title = arrived?.isConnected ? arrived.querySelector(':scope > strong') : null;
+    if (!title || title.getBoundingClientRect().bottom <= el.getBoundingClientRect().top + el.clientTop + el.clientHeight + 1) arrived = null;
+    el.classList.toggle('below', arrived !== null);
+  };
+  el.addEventListener('scroll', () => { if (arrived) below(); }, { passive: true });
   /**
    * A card comes, goes, opens or closes: scrolled down, what is seen stays put; what moved ignores taps a moment (the cards; at the top, the rows too).
    * On home the box sticks while it holds a card, at most half the room under the top bar (base.css), so a card that comes, or one opened inside it,
@@ -31,6 +43,7 @@ export function createNotices() {
     const was = el.getBoundingClientRect().height;
     change();
     scrolls();
+    below();
     const by = el.getBoundingClientRect().height - was;
     if (by && y > 0) scrollTo(0, y + by);
     // What moved ignores taps a moment, so a tap meant for it doesn't land on what slid under the finger. The cards, after any change (.over): one that
@@ -66,6 +79,10 @@ export function createNotices() {
     const words = /** @type {HTMLElement[]} */ ([...node.querySelectorAll(':scope > p')]);
     const acts = /** @type {HTMLElement} */ (node.querySelector(':scope > .acts'));
     const focused = document.activeElement === more;
+    // Measured from the start, the card is cut back to the box's quarter for a moment. The box keeps its height meanwhile, so the page under it doesn't
+    // rise and end sooner for that moment: the browsers would keep it (Chromium's scroll anchoring holds what it saw then, 72 px at 360 x 640 one trip
+    // ahead of the now line; WebKit leaves a page scrolled to its end scrolled back by the card's excess, 59 to 89 px at the phones' sizes).
+    el.style.minHeight = `${el.getBoundingClientRect().height}px`;
     node.style.removeProperty('--lines');
     node.classList.remove('brief', 'grow');
     const cut = () => words.some((p) => p.scrollHeight > p.clientHeight + 1);
@@ -92,15 +109,25 @@ export function createNotices() {
       }
     }
     if (over()) node.classList.add('grow');
+    el.style.removeProperty('min-height');
     // More moved to measure: a keyboard's focus on it stays.
     if (focused && !more.hidden) more.focus({ preventScroll: true });
   };
-  /** A folded stack shows its title and buttons: past the box's quarter of the screen if they need it. @param {HTMLElement} node */
+  /**
+   * A folded stack shows its title and buttons: past the box's quarter of the screen if they need it, the room inside the box's cap (its max-height less
+   * its paddings and border, 17 px, as a card's own cap in base.css). The box keeps its height while the stack is measured, as fit's does.
+   * @param {HTMLElement} node
+   */
   const fitStack = (node) => () => {
+    el.style.minHeight = `${el.getBoundingClientRect().height}px`;
     node.classList.remove('grow');
-    if (node.querySelector(':scope > .stack-list')?.hasAttribute('hidden') && node.offsetHeight > el.clientHeight - 16 + 1) node.classList.add('grow');
+    if (node.querySelector(':scope > .stack-list')?.hasAttribute('hidden') && node.offsetHeight > parseFloat(getComputedStyle(el).maxHeight) - 17 + 1) node.classList.add('grow');
+    el.style.removeProperty('min-height');
   };
-  addEventListener('resize', () => { for (const n of el.querySelectorAll('.notice')) fitters.get(/** @type {HTMLElement} */ (n))?.(); scrolls(); });
+  // Every card fitted again when the screen changes size, or once web fonts swapped in (their words take other room; WebKit says `loading`, not `loadingdone`).
+  const refit = () => { for (const n of el.querySelectorAll('.notice')) fitters.get(/** @type {HTMLElement} */ (n))?.(); scrolls(); };
+  addEventListener('resize', refit);
+  document.fonts?.addEventListener('loading', () => document.fonts.ready.then(refit));
   /** One kind of card: the same title and tone. Cards don't say which trip raised them, so that is not part of it. @param {string} title @param {string} tone */
   const kindOf = (title, tone) => `${tone}\n${title}`;
   /** The lone card of a kind, while there is only one. @type {Map<string, HTMLElement>} */
@@ -144,7 +171,10 @@ let lone = 0;
   };
   /** What joins a stack is read out from its title and words, copied so their lang stays (not the buttons). @param {Stack} st @param {HTMLElement} node */
   const announce = (st, node) => st.said.replaceChildren(...[...node.querySelectorAll('strong, p')].map((n) => n.cloneNode(true)));
-  /** A card joins its kind: alone, or in a stack with the others. @param {string} kind @param {string} title @param {HTMLElement} node */
+  /**
+   * A card joins its kind: alone, or in a stack with the others. @param {string} kind @param {string} title @param {HTMLElement} node
+   * @returns {HTMLElement} what shows it: the card, or its stack while that is folded
+   */
   function place(kind, title, node) {
     const stack = stacks.get(kind);
     const lone = singles.get(kind);
@@ -153,7 +183,9 @@ let lone = 0;
       stack.list.append(node);
       recount(stack);
       announce(stack, node);
-    } else if (lone) {
+      return stack.list.hidden ? stack.el : node;
+    }
+    if (lone) {
       const made = makeStack(kind, title);
       stacks.set(kind, made);
       singles.delete(kind);
@@ -164,10 +196,11 @@ let lone = 0;
       }
       recount(made);
       announce(made, node);
-    } else {
-      singles.set(kind, node);
-      el.append(node);
+      return made.el;
     }
+    singles.set(kind, node);
+    el.append(node);
+    return node;
   }
   /** A card goes; a stack of one becomes the card again, and an empty one goes. @param {string} kind @param {HTMLElement} node */
   function leave(kind, node) {
@@ -230,7 +263,7 @@ let lone = 0;
     const dismiss = () => { if (node.isConnected) keep(() => leave(kind, node)); };
     // Fitted inside keep(): what it changes of the card's height is kept off what the user sees (scrolled down, the screen stays put).
     keep(() => {
-      place(kind, title, node);
+      arrived = place(kind, title, node);
       fitters.get(node)?.();
     });
     return dismiss;

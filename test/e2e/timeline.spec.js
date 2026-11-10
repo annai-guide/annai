@@ -153,6 +153,29 @@ test('installed, a fresh home opens at the now line, as always', async ({ page }
   await expect(page.locator('.now-line')).toBeInViewport();
 });
 
+test("desktop Chrome's Install moves the tab into an app window: the data-safety banner goes, and a fresh home then opens at the now line", async ({ page }) => {
+  // The browser's own display mode, which a test can't change: a stand-in that says "browser tab" until the test moves it into an app window.
+  await page.addInitScript(() => {
+    const w = /** @type {any} */ (window);
+    const real = matchMedia.bind(window);
+    const mode = Object.assign(new EventTarget(), { matches: false, media: '(display-mode: standalone)' });
+    w.matchMedia = (/** @type {string} */ q) => (q.includes('display-mode: standalone') ? mode : real(q));
+    w.toAppWindow = () => { mode.matches = true; mode.dispatchEvent(new Event('change')); };
+  });
+  await page.addInitScript(() => Object.defineProperty(navigator, 'standalone', { value: undefined, configurable: true })); // not an iPhone's Home Screen app
+  await openApp(page, '#/settings');
+  /** @type {Record<string, number>} */
+  const chats = {};
+  for (let i = 0; i < 24; i++) chats[`Chat ${i}`] = 60 * 24 * i + 5;
+  await seed(page, { chats });
+  await expect(page.locator('section.risk')).toBeVisible();
+  await page.evaluate(() => /** @type {any} */ (window).toAppWindow());
+  await expect(page.locator('section.risk')).toHaveCount(0);
+  await page.goto('/#/trips');
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(300);
+  await expect(page.locator('.now-line')).toBeInViewport();
+});
+
 test('home opens with the now line 40% down; Back restores your place', async ({ page }) => {
   await openApp(page, '#/settings');
   /** @type {Record<string, number>} */
@@ -682,6 +705,76 @@ const fingerOf = async (page) => {
 };
 const SIZES = [...PHONES, [740, 360]];
 
+/**
+ * The innerHeight and visual viewport a phone shows become `by` px taller and then are back, each with its resize events: the page's own height doesn't
+ * change. @param {import('@playwright/test').Page} page @param {number} by
+ */
+const viewportBy = (page, by) => page.evaluate(async (by) => {
+  const was = innerHeight;
+  for (const h of [was + by, was]) {
+    Object.defineProperty(window, 'innerHeight', { value: h, configurable: true });
+    if (visualViewport) Object.defineProperty(visualViewport, 'height', { value: h, configurable: true });
+    visualViewport?.dispatchEvent(new Event('resize'));
+    dispatchEvent(new Event('resize'));
+    await new Promise((r) => requestAnimationFrame(r));
+  }
+}, by);
+/** What fits the box's cards again on a phone (notices.js's refit), each as the page sees it. @type {Record<string, (page: import('@playwright/test').Page, size: number[]) => Promise<unknown>>} */
+const REFITS = {
+  'a bare resize event, as when a Chrome tab hides its URL bar': (page) => page.evaluate(() => dispatchEvent(new Event('resize'))),
+  'the window 1 px taller, and back': async (page, [width, height]) => {
+    await page.setViewportSize({ width, height: height + 1 });
+    await page.setViewportSize({ width, height });
+  },
+  'the keyboard up and down': (page) => viewportBy(page, -300), // a phone's keyboard: about 290 to 340 px
+  "Safari's bars hiding and showing": (page) => viewportBy(page, 91), // an iPhone 15's Safari: 659 px with its bars, about 750 without
+  'a web font swapping in': (page) => page.evaluate(async () => {
+    const face = new FontFace('Probe Mono', 'url(/assets/fonts/ibm-plex-mono-400.woff2)');
+    document.fonts.add(face);
+    await face.load();
+    await document.fonts.ready;
+  }),
+};
+// A fit measures a card from the start, cut back to the box's quarter: were the box to follow it for that moment, the page under it would rise by the
+// card's excess and come back, and the browsers keep such a moment (measured on 80100343 with these tests): Chromium's scroll anchoring holds what it
+// saw then, 72 px at 360 x 640 with one trip ahead of the now line; WebKit keeps the page's end clamped short, 59 to 89 px at the three sizes.
+for (const [how, refit] of Object.entries(REFITS)) {
+  for (const where of ['at the now line', 'at its end']) {
+    for (const size of PHONES) {
+      test(`home ${where}, a short page, a card that needs more than the box's quarter stuck, then ${how}: the rows don't move (${size.join(' x ')})`, async ({ page }) => {
+        await page.setViewportSize({ width: size[0], height: size[1] });
+        await scrolledHome(page); // one trip ahead of the now line: the page ends soon under it
+        await addBackup(page);
+        await expect(page.locator('.notices .notice.grow')).toHaveCount(1);
+        await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
+        await settled(page);
+        if (where === 'at its end') await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+        const before = await placeOf(page);
+        await refit(page, size);
+        await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+        await rowsStayed(page, before);
+      });
+    }
+  }
+}
+
+for (const where of ['at the now line', 'at its end']) {
+  test(`home ${where}, a short page, a folded stack whose title and buttons need more than the box's quarter stuck, then a resize: the rows don't move (320 x 568)`, async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await scrolledHome(page);
+    await page.evaluate(() => { for (let i = 0; i < 2; i++) /** @type {any} */ (window).__n.card({ tone: 'warn', title: 'The photos of this long trip were kept as they are', body: `Photo ${i} is kept as it is.` }); });
+    await expect(page.locator('.notices > .notice-stack.grow')).toHaveCount(1); // its title takes two lines
+    await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
+    await settled(page);
+    if (where === 'at its end') await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+    const before = await placeOf(page);
+    await page.evaluate(() => dispatchEvent(new Event('resize')));
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    await rowsStayed(page, before);
+    await expect(page.locator('.notices > .notice-stack.grow')).toHaveCount(1); // fitted as before
+  });
+}
+
 test("a card that goes from a box over half: the one left stays stuck under the bar, and the rows stay", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
   await scrolledHome(page);
@@ -758,7 +851,7 @@ for (const size of SIZES) {
   test(`a swipe on a stuck box that holds less than its cap scrolls home; on one that holds more, it stays in the box (${size.join(' x ')})`, async ({ page, browserName }) => {
     await page.setViewportSize({ width: size[0], height: size[1] });
     await scrolledHome(page);
-    // A title and Dismiss: well inside its cap. (A card within a px of its own cap scrolls that px and keeps the swipe: docs/limitations.md.)
+    // A title and Dismiss: well inside its cap.
     await page.evaluate(() => /** @type {any} */ (window).__n.card({ tone: 'warn', title: 'A test card' }));
     await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
     await settled(page);
@@ -794,6 +887,120 @@ for (const size of SIZES) {
     await rowsStayed(page, before);
   });
 }
+
+for (const size of SIZES) {
+  test(`a card that arrives below what is read in the box shows a sign at its bottom edge, which goes once the card's title is in view there; the rows don't move (${size.join(' x ')})`, async ({ page }) => {
+    const { before } = await openedLongCard(page, size);
+    const box = page.locator('.notices');
+    await expect(box).not.toHaveClass(/\bbelow\b/);
+    await addBackup(page); // under the opened card, out of sight in the box
+    await expect(page.locator('.notices > .notice')).toHaveCount(2);
+    await expect(box).toHaveClass(/\bbelow\b/);
+    // The sign is at the box's bottom edge, inside it, and takes no room.
+    const sign = await box.evaluate((el) => {
+      const s = getComputedStyle(el, '::after');
+      return { content: s.content, position: s.position, inside: el.scrollHeight - el.clientHeight };
+    });
+    expect(sign.content).not.toBe('none');
+    expect(sign.position).toBe('sticky');
+    await rowsStayed(page, before);
+    const room = sign.inside;
+    await settled(page);
+    // Read on inside the box to the card that came: the sign goes, and what the box holds is as tall as with it.
+    await page.locator('.notices > .notice', { hasText: 'A newer backup' }).locator('strong').evaluate((t) => t.scrollIntoView({ block: 'nearest' }));
+    await expect(box).not.toHaveClass(/\bbelow\b/);
+    expect(await box.evaluate((el) => el.scrollHeight - el.clientHeight)).toBe(room);
+    await rowsStayed(page, before);
+  });
+}
+
+test("a card that arrives where it is seen shows no sign: alone in the box, or folded into a stack that shows", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await scrolledHome(page);
+  await page.evaluate(() => /** @type {any} */ (window).__n.card({ tone: 'warn', title: 'A photo was kept as it is', body: 'Photo 0 is kept as it is.' }));
+  await expect(page.locator('.notices > .notice')).toHaveCount(1);
+  await expect(page.locator('.notices')).not.toHaveClass(/\bbelow\b/);
+  await page.evaluate(() => /** @type {any} */ (window).__n.card({ tone: 'warn', title: 'A photo was kept as it is', body: 'Photo 1 is kept as it is.' }));
+  await expect(page.locator('.notice-stack')).toHaveCount(1); // it joins the first: the stack's title, in view, says two
+  await expect(page.locator('.notices')).not.toHaveClass(/\bbelow\b/);
+});
+
+test("a card that arrives below what is read, then goes by code before it is seen: the sign goes with it", async ({ page }) => {
+  const { before } = await openedLongCard(page, [360, 640]);
+  await page.evaluate(() => { const w = /** @type {any} */ (window); w.later = w.__n.card({ tone: 'warn', title: 'A test card', body: 'Check the key.' }); });
+  await expect(page.locator('.notices')).toHaveClass(/\bbelow\b/);
+  await page.evaluate(() => /** @type {any} */ (window).later());
+  await expect(page.locator('.notices')).not.toHaveClass(/\bbelow\b/);
+  await rowsStayed(page, before);
+});
+
+test("a swipe on a stuck card within a px of its own cap scrolls home (360 x 640, a one-line warn card)", async ({ page, browserName }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await scrolledHome(page);
+  await page.evaluate(() => /** @type {any} */ (window).__n.card({ tone: 'warn', title: 'A test card', body: 'Check the key.' }));
+  await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
+  await settled(page);
+  const card = page.locator('.notices > .notice');
+  if (browserName !== 'chromium') {
+    // Playwright's WebKit has neither touch scrolling nor a wheel: there, the rule. However its fit rounds, no card is scrolled by a finger: what it can't
+    // show whole grows, and the box scrolls instead.
+    expect(await card.evaluate((c) => getComputedStyle(c).overflowY)).not.toMatch(/auto|scroll/);
+    return;
+  }
+  const before = await placeOf(page);
+  const b = /** @type {{ x: number, y: number, width: number, height: number }} */ (await card.boundingBox());
+  const swipe = await fingerOf(page);
+  await swipe(Math.round(b.x + b.width / 2), Math.round(b.y + b.height / 2), -80);
+  expect((await placeOf(page)).y).toBeGreaterThan(before.y + 30);
+});
+
+test("a web font that swaps in after a card was fitted fits it again: its words that no longer show go behind More", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await scrolledHome(page);
+  await page.evaluate(() => /** @type {any} */ (window).__n.card({ title: 'An update is ready', body: 'It is used at the next start.' }));
+  await settled(page);
+  const card = page.locator('.notices > .notice');
+  await expect(card.getByRole('button', { name: 'More' })).toBeHidden(); // its words show whole
+  // A web font swaps in late and its words take more room (here, larger: two lines where there was one); the browser says a font has loaded.
+  await page.evaluate(async () => {
+    /** @type {HTMLElement} */ (document.querySelector('.notices .notice p')).style.fontSize = '30px';
+    const face = new FontFace('Probe Mono', 'url(/assets/fonts/ibm-plex-mono-400.woff2)');
+    document.fonts.add(face);
+    await face.load();
+  });
+  await expect(card.getByRole('button', { name: 'More' })).toBeVisible();
+});
+
+for (const size of PHONES) {
+  test(`on home, a field focused under the stuck box is scrolled clear of it and of the top bar (${size.join(' x ')})`, async ({ page }) => {
+    await page.setViewportSize({ width: size[0], height: size[1] });
+    await scrolledHome(page);
+    await addBackup(page, 'Place 0');
+    await addBackup(page, 'Place 1'); // the box at its cap: half the room under the bar
+    await expect(page.locator('.notices > .notice')).toHaveCount(2);
+    await settled(page);
+    const name = page.getByLabel('Trip name');
+    // Scrolled on until Start a trip's name is just under the top bar, under the box.
+    await name.evaluate((el) => scrollBy(0, el.getBoundingClientRect().top - /** @type {Element} */ (document.querySelector('.topbar')).getBoundingClientRect().bottom - 20));
+    const top = () => name.evaluate((el) => el.getBoundingClientRect().top);
+    expect(await top()).toBeLessThan((await boxOf(page)).bottom); // covered
+    await name.focus(); // as a keyboard's Tab, or a screen reader, moves to it
+    await expect.poll(top).toBeGreaterThanOrEqual((await boxOf(page)).bottom - 1);
+    await stuckInHalf(page);
+  });
+}
+
+test("on home, a button focused inside the stuck box doesn't move the page: what sticks needs no room above it", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await scrolledHome(page);
+  await addBackup(page, 'Place 0');
+  await addBackup(page, 'Place 1');
+  await settled(page);
+  const before = await placeOf(page);
+  await page.locator('.notices > .notice').first().getByRole('button', { name: 'Dismiss' }).focus();
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  expect((await placeOf(page)).y).toBe(before.y);
+});
 
 for (const how of ['two hold cards came on another screen', 'a card opened on home, then one came on another screen']) {
   test(`back on home, a box that holds more than its cap keeps a swipe past its end: ${how}`, async ({ page, browserName }) => {
@@ -1187,6 +1394,33 @@ test("the Start a trip form's error stays across the clock's redraw, until the u
   await expect(error).toBeHidden();
 });
 
+test("the Start a trip form's error is a new alert once, when first said: home drawn again with it kept draws it as words, not an alert a screen reader reads out again", async ({ page }) => {
+  await morning(page);
+  const card = row(page, 'Testville');
+  const error = page.locator('form.panel p.error');
+  // What a screen reader would hear: an alert (role) put on the page with words, or words put in one, counted as a change touches one.
+  await page.evaluate(() => {
+    const w = /** @type {any} */ (window);
+    w.said = 0;
+    const alertOf = (/** @type {Node} */ n) => { const el = n instanceof Element ? n : n.parentElement; return el?.closest('[role=alert]') ?? el?.querySelector('[role=alert]') ?? null; };
+    new MutationObserver((records) => { for (const r of records) if ([r.target, ...r.addedNodes].some((n) => alertOf(n)?.textContent)) w.said++; })
+      .observe(document.body, { subtree: true, childList: true, characterData: true });
+  });
+  const said = () => page.evaluate(() => /** @type {any} */ (window).said);
+  await page.getByRole('button', { name: 'Start trip' }).click(); // no name
+  await expect(page.getByRole('alert')).toHaveText('Give the trip a name.'); // first said: an alert
+  expect(await said()).toBe(1);
+  await page.clock.fastForward('01:31:00');
+  await expect(card.locator('.next')).toContainText('Lunch'); // drawn again
+  await expect(error).toHaveText('Give the trip a name.'); // kept, in view
+  await expect(page.getByRole('alert')).toHaveCount(0); // as words: before, drawn again as a new alert
+  expect(await said()).toBe(1);
+  // Said again after that (Start trip, still no name): an alert once more.
+  await page.getByRole('button', { name: 'Start trip' }).click();
+  await expect(page.getByRole('alert')).toHaveText('Give the trip a name.');
+  expect(await said()).toBe(2);
+});
+
 test("a card's \"backed up … ago\" follows the clock on its own moment, whatever the footer line says", async ({ page }) => {
   await morning(page); // no place, no export: the footer says "No backup yet"
   // A trip marked by a backup whose place has since gone (or a backup that finished out of order): nothing but the card says when.
@@ -1206,6 +1440,66 @@ test("a card's \"backed up … ago\" follows the clock on its own moment, whatev
   await expect(page.getByText('No backup yet')).toBeVisible();
   await page.clock.fastForward('03:00'); // 4 and a half minutes after it
   await expect(card).toContainText(/backed up [45] minutes ago/);
+});
+
+test("home's \"backed up … ago\" and its last export's change their words in place as the clock moves: home isn't drawn again for them", async ({ page }) => {
+  await morning(page); // no place: the footer says when the last export was
+  await page.evaluate(async () => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const { updateAppSettings } = await load('/src/core/settings.js');
+    const store = await createIdbStore();
+    await store.tx(['scopes', 'events'], 'readwrite', async (/** @type {any} */ t) => {
+      const rec = (await t.listScopes()).find((/** @type {any} */ s) => s.title === 'Testville');
+      await t.putScope({ ...rec, backup: { at: Date.now() - 90_000, seq: await t.lastSeq(rec.id) } });
+    });
+    await updateAppSettings(new Workspace(store), { lastExportAt: Date.now() - 90_000 });
+    store.close();
+  });
+  await page.goto('/#/settings');
+  await page.goto('/#/trips');
+  const card = row(page, 'Testville');
+  await expect(card).toContainText('backed up 2 minutes ago');
+  await expect(page.getByText('Last export 2 minutes ago.')).toBeVisible();
+  await page.locator('.screen.timeline').evaluate((el) => { el.dataset.drawn = 'once'; }); // this drawing of home
+  await page.clock.fastForward('03:00');
+  await expect(card).toContainText(/backed up [45] minutes ago/);
+  await expect(page.getByText(/^Last export [45] minutes ago\.$/)).toBeVisible();
+  await expect(page.locator('.screen.timeline[data-drawn=once]')).toHaveCount(1); // the same home: its words changed in place
+  await expect(card.locator('.next')).toContainText('Museum'); // and a fact that hasn't changed is still there
+});
+
+test("a simulation played at ten times real time: home is drawn again when a Next ends on its clock, not ten times late", async ({ page }) => {
+  const nine = new Date();
+  nine.setHours(9, 0, 0, 0);
+  await page.clock.install({ time: nine });
+  // The real shell with a real store, its live mode a stand-in on a simulation's clock at ten times real time.
+  await page.route('**/probe.html', (r) => r.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: '<!doctype html><html><head><meta charset="utf-8"><title>probe</title></head><body></body></html>' }));
+  await page.goto('/probe.html#/trips');
+  await page.evaluate(async () => {
+    const at = (/** @type {string} */ p) => p; // an address the browser loads, not a module the checker follows
+    const { startShell } = await import(at('/src/ui/shell.js'));
+    const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+    const { Workspace } = await import(at('/src/core/workspace.js'));
+    const { createTrip } = await import(at('/src/core/scopes.js'));
+    const { PlayClock } = await import(at('/src/core/live/clock.js'));
+    const { dayIn, deviceZone, isoInZone } = await import(at('/src/core/time.js'));
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    const zone = deviceZone();
+    const id = await createTrip(ws, { title: 'Testville', start: dayIn(Date.now() - 2 * 86_400_000, zone), end: dayIn(Date.now() + 5 * 86_400_000, zone) });
+    for (const [name, min] of /** @type {[string, number][]} */ ([['Museum', 60], ['Lunch', 180]])) await ws.write(id, `/plan/${name}.json`, { id: name, title: name, fixed: true, start: { at: isoInZone(Date.now() + min * 60_000, zone), tz: zone } }, { author: 'user' });
+    const live = { clock: new PlayClock(Date.now(), { speed: 10 }), timeZone: () => zone, onChange() {}, onReminders() {} };
+    const registry = { entries: () => [], onChange: () => () => {}, fail: () => {}, succeeded: () => {}, isDisabled: () => false, clashes: () => [] };
+    const root = document.createElement('div');
+    document.body.replaceChildren(root);
+    startShell(root, { store, ws, registry, live, plugins: { langOf: () => 'en' }, updates: { restart: async () => {}, waiting: false, plugins: async () => [] }, version: 'probe' });
+  });
+  const card = row(page, 'Testville');
+  await expect(card.locator('.next')).toContainText('Museum');
+  await page.clock.fastForward('09:30'); // 95 minutes on the simulation's clock: Museum (10:00, half an hour) is over
+  await expect(card.locator('.next')).toContainText('Lunch');
 });
 
 test("home's Start a trip error doesn't hold back the shell's own redraw (a plugin's screen arrived, Shiori started a trip): home shows the trip, and keeps the dates typed", async ({ page }) => {
@@ -1461,3 +1755,196 @@ test("Details of a trip that came in with dates that aren't on the calendar: the
   await page.goto('/#/trips');
   await expect(row(page, 'Testville weekend')).toHaveCount(1);
 });
+
+test("a conversation stored as \"New conversation\" says it in the screens' language on its card, as the heading of its Details, its Export panel's and in its Remove dialog", async ({ page }) => {
+  const { accented } = await import('../../src/core/l10n-pseudo.js');
+  await openApp(page, '?l10n=en-XA#/settings');
+  await seed(page, { trips: { 'New conversation': { from: 3, to: 4 } } }); // one a date in Details left unnamed: dated, so a card
+  await page.goto('/?l10n=en-XA#/trips');
+  const name = accented('New conversation');
+  await expect(row(page, name)).toHaveCount(1);
+  await expect(row(page, name).locator('.name')).toHaveText(name);
+  await row(page, name).click();
+  await page.locator('.talk-name').click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(name);
+  await page.getByRole('button', { name: accented('Export trip') }).click();
+  await expect(page.getByRole('heading', { level: 2, name })).toBeVisible(); // its Export panel's heading too
+  await page.getByRole('button', { name: accented('Remove trip') }).click();
+  await expect(page.getByRole('dialog', { name })).toBeVisible();
+});
+
+test("Details of a conversation stored as \"New conversation\": its name field is empty with the screens' words as its placeholder, Save with it empty keeps the stored name, and a name typed there is saved", async ({ page }) => {
+  const { accented } = await import('../../src/core/l10n-pseudo.js');
+  await openApp(page, '?l10n=en-XA#/settings');
+  const ids = await seed(page, { trips: { 'New conversation': { from: 3, to: 4 } } }); // dated in Details, never named
+  await page.goto('/?l10n=en-XA#/trips');
+  const name = accented('New conversation');
+  await row(page, name).click();
+  await page.locator('.talk-name').click();
+  const field = page.locator('#trip-edit-title');
+  await expect(field).toHaveValue(''); // before: the stored English words, in an accented screen
+  await expect(field).toHaveAttribute('placeholder', name);
+  // Dates changed, the name left empty: saved, not "Give the trip a name."; the stored name stays, so it still follows the screens' language.
+  await page.getByLabel(accented('Ends')).fill('2099-01-02');
+  await page.getByLabel(accented('Starts')).fill('2099-01-01');
+  await page.getByRole('button', { name: accented('Save') }).click();
+  await expect(page.getByText(accented('Saved.'))).toBeVisible();
+  await expect(page.locator('.trip-edit .error')).toBeHidden();
+  expect((await record(page, ids['New conversation']))?.title).toBe('New conversation');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(name);
+  await expect(field).toHaveValue('');
+  // A name typed: saved.
+  await field.fill('Kyoto in spring');
+  await page.getByRole('button', { name: accented('Save') }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Kyoto in spring' })).toBeVisible();
+  await expect.poll(async () => (await record(page, ids['New conversation']))?.title).toBe('Kyoto in spring');
+  // A trip with a name of its own still can't be saved without one.
+  await field.fill('  ');
+  await page.getByRole('button', { name: accented('Save') }).click();
+  await expect(page.locator('.trip-edit .error')).toHaveText(accented('Give the trip a name.'));
+});
+
+/** A trip's last backup, as a backup writes it: ago ms before now, and whether the trip changed since. @param {import('@playwright/test').Page} page @param {string} title @param {number} ago @param {boolean} [changed] */
+const backedUpAgo = (page, title, ago, changed = false) => page.evaluate(async ({ title, ago, changed }) => {
+  const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+  const store = await createIdbStore();
+  await store.tx(['scopes', 'events'], 'readwrite', async (/** @type {any} */ t) => {
+    const rec = (await t.listScopes()).find((/** @type {any} */ s) => s.title === title);
+    await t.putScope({ ...rec, backup: { at: Date.now() - ago, seq: (await t.lastSeq(rec.id)) - (changed ? 1 : 0) } });
+  });
+  store.close();
+}, { title, ago, changed });
+
+test("an export 46 days ago, or a trip backed up 400 days ago: home waits for their words' next change without a timer loop (setTimeout holds 24.8 days)", async ({ page }) => {
+  await page.addInitScript(() => {
+    const w = /** @type {any} */ (window);
+    w.overLong = 0;
+    const real = w.setTimeout.bind(w);
+    w.setTimeout = (/** @type {any} */ fn, /** @type {number} */ ms, /** @type {any[]} */ ...a) => { if (ms > 2 ** 31 - 1) w.overLong++; return real(fn, ms, ...a); };
+  });
+  await openApp(page, '#/settings');
+  await seed(page, { trips: { Oldtown: { from: -400, to: -398 } } });
+  await backedUpAgo(page, 'Oldtown', 400 * 86_400_000);
+  await page.evaluate(async () => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const { updateAppSettings } = await load('/src/core/settings.js');
+    const store = await createIdbStore();
+    await updateAppSettings(new Workspace(store), { lastExportAt: Date.now() - 46 * 86_400_000 });
+    store.close();
+  });
+  await page.goto('/#/settings');
+  await page.goto('/#/trips');
+  await expect(page.getByText('Last export 2 months ago.')).toBeVisible();
+  await expect(row(page, 'Oldtown')).toContainText('backed up last year');
+  await page.waitForTimeout(1000);
+  expect(await page.evaluate(() => /** @type {any} */ (window).overLong)).toBe(0); // before: about 120 a second, one after another
+});
+
+test("the phone's zone changes while annai is away (a flight): back at the front, home is drawn in the new zone", async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', "the zone of a page that runs is changed through Chromium's DevTools protocol");
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setTimezoneOverride', { timezoneId: 'Pacific/Honolulu' });
+  await openApp(page, '#/settings');
+  await seed(page, { chats: { Ramen: 30 } });
+  await page.goto('/#/trips');
+  const time = () => row(page, 'Ramen').locator('.sub').textContent();
+  const was = await time();
+  await cdp.send('Emulation.setTimezoneOverride', { timezoneId: 'Asia/Tokyo' }); // 19 hours ahead
+  await page.evaluate(() => {
+    for (const state of ['hidden', 'visible']) {
+      Object.defineProperty(document, 'visibilityState', { value: state, configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+    }
+  });
+  await expect.poll(time).not.toBe(was);
+});
+
+test("a card's \"backed up … ago\" above the rows in view takes another line as its words change: the rows the user sees stay where they were", async ({ page }) => {
+  const nine = new Date();
+  nine.setHours(9, 0, 0, 0);
+  await page.clock.install({ time: nine });
+  await openApp(page, '#/settings');
+  /** @type {Record<string, number>} */
+  const chats = {};
+  for (let i = 0; i < 24; i++) chats[`Chat ${i}`] = 60 * 24 * i + 5;
+  await seed(page, { chats, trips: { Testville: { from: -2, to: 5, items: { Museum: 300 } }, Laterton: { from: 3, to: 4 }, Farville: { from: 10, to: 12 }, Nexton: { from: 20, to: 22 }, Lastburg: { from: 30, to: 31 } } });
+  await backedUpAgo(page, 'Testville', 40_000, true); // "backed up just now, changed since"; "1 minute ago" in 20 s
+  await page.goto('/#/settings');
+  await page.goto('/#/trips');
+  await expect(row(page, 'Testville')).toContainText('backed up just now');
+  // A width where "1 minute ago" takes a line more on this card than "just now" (350 to 355 px, as measured).
+  let width = 0;
+  for (let w = 330; w <= 420 && !width; w++) {
+    await page.setViewportSize({ width: w, height: 740 });
+    if (await row(page, 'Testville').evaluate((card) => {
+      const sub = /** @type {HTMLElement} */ (card.querySelector('.trip-card-text > .sub'));
+      const kids = [...sub.childNodes]; // put back as they were: home keeps writing to its own node
+      const was = card.getBoundingClientRect().height;
+      sub.textContent = String(sub.textContent).replace('just now', '1 minute ago');
+      const grows = card.getBoundingClientRect().height > was;
+      sub.replaceChildren(...kids);
+      return grows;
+    })) width = w;
+  }
+  expect(width).toBeGreaterThan(0);
+  await page.setViewportSize({ width, height: 740 });
+  // Read on past Testville: it is above the top bar, the trips ahead in view.
+  await row(page, 'Testville').evaluate((el) => scrollBy(0, el.getBoundingClientRect().bottom - /** @type {Element} */ (document.querySelector('.topbar')).getBoundingClientRect().bottom + 20));
+  const topOf = () => row(page, 'Farville').evaluate((el) => Math.round(el.getBoundingClientRect().top));
+  const before = await topOf();
+  await page.clock.fastForward('00:25');
+  await expect(row(page, 'Testville')).toContainText('backed up 1 minute ago');
+  expect(Math.abs((await topOf()) - before)).toBeLessThanOrEqual(1); // before: 21 px down, under a finger about to tap
+});
+
+test("an automatic backup that ends while home shows: the card says so, not \"changed since\" from the one before", async ({ page }) => {
+  // The real shell with a real store, its backups a stand-in that says when one ends.
+  await page.route('**/probe.html', (r) => r.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: '<!doctype html><html><head><meta charset="utf-8"><title>probe</title></head><body></body></html>' }));
+  await page.goto('/probe.html#/trips');
+  await page.evaluate(async () => {
+    const at = (/** @type {string} */ p) => p; // an address the browser loads, not a module the checker follows
+    const w = /** @type {any} */ (window);
+    const { startShell } = await import(at('/src/ui/shell.js'));
+    const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+    const { Workspace } = await import(at('/src/core/workspace.js'));
+    const { createTrip } = await import(at('/src/core/scopes.js'));
+    const { dayIn, deviceZone } = await import(at('/src/core/time.js'));
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    const id = await createTrip(ws, { title: 'Testville', start: dayIn(Date.now() - 2 * 86_400_000, deviceZone()), end: dayIn(Date.now() + 5 * 86_400_000, deviceZone()) });
+    await store.tx(['scopes', 'events'], 'readwrite', async (/** @type {any} */ t) => {
+      const rec = await t.getScope(id);
+      await t.putScope({ ...rec, backup: { at: Date.now() - 50 * 60_000, seq: (await t.lastSeq(id)) - 1 } });
+    });
+    /** @type {Set<() => void>} */
+    const heard = new Set();
+    w.ran = async () => { // a backup of the trip ran and ended
+      await store.tx(['scopes', 'events'], 'readwrite', async (/** @type {any} */ t) => t.putScope({ ...(await t.getScope(id)), backup: { at: Date.now(), seq: await t.lastSeq(id) } }));
+      for (const fn of heard) fn();
+    };
+    const backups = { list: async () => [{ id: 'place', name: 'Test place', last: null }], progress: () => null, on: (/** @type {() => void} */ fn) => { heard.add(fn); return () => heard.delete(fn); } };
+    const registry = { entries: () => [], onChange: () => () => {}, fail: () => {}, succeeded: () => {}, isDisabled: () => false, clashes: () => [] };
+    const root = document.createElement('div');
+    document.body.replaceChildren(root);
+    startShell(root, { store, ws, registry, backups, plugins: { langOf: () => 'en' }, updates: { restart: async () => {}, waiting: false, plugins: async () => [] }, version: 'probe' });
+  });
+  const card = row(page, 'Testville');
+  await expect(card).toContainText('backed up 50 minutes ago, changed since');
+  await page.evaluate(() => /** @type {any} */ (window).ran());
+  await expect(card.locator('.sub').first()).toHaveText(/backed up just now$/); // before: "50 minutes ago, changed since" until midnight
+});
+
+for (const size of PHONES) {
+  test(`a card that came below an opened one, then the box's cap lifted on another screen: the sign goes, the card in view there (${size.join(' x ')})`, async ({ page }) => {
+    await openedLongCard(page, size);
+    await addBackup(page);
+    await expect(page.locator('.notices')).toHaveClass(/\bbelow\b/);
+    await page.evaluate(() => { location.hash = '#/settings'; });
+    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+    // Off home the box has no cap with a card open: it holds both whole, and nothing is below what it shows.
+    expect(await page.locator('.notices').evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1);
+    await expect(page.locator('.notices')).not.toHaveClass(/\bbelow\b/); // before: the sign stayed, pointing at Settings
+  });
+}

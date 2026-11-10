@@ -39,8 +39,22 @@ export function installButton() {
   return install;
 }
 
-/** The data-safety warning shown until annai runs installed (spec §2, §17 rule 1). */
+/**
+ * The data-safety warning shown until annai runs installed (spec §2, §17 rule 1), drawn again in its place when the display mode changes: desktop
+ * Chrome's Install moves the tab into an app window, and its "Open in browser" moves it back.
+ */
 export function installBanner() {
+  let shown = banner();
+  matchMedia(/* en */ '(display-mode: standalone)').addEventListener('change', () => {
+    const next = banner();
+    shown.replaceWith(next);
+    shown = next;
+  });
+  return shown;
+}
+
+/** The banner as the display mode is now: none once installed. */
+function banner() {
   if (isStandalone()) return h('div', { hidden: true });
   const p = platform();
   const how = h('ol', { class: 'steps', hidden: true }, ...[...STEPS[p], ...(p === 'ios' ? [TRIPS_HERE] : [])].map((s) => h('li', { text: s })));

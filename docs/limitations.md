@@ -352,7 +352,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** the Trace shows it (an `error` entry of kind `read` in the device's log), or the user meets it.
 - **Approved:** 2026-11-07, the user picked "Accept for now (Recommended)".
 
-
 ### A failed Trace line can wait forever after a fast simulation
 - **Kind:** deferred.
 - **What the user sees:** only in a "fast" simulation: a read fails past the retry, the Trace line's own write fails too, and the run ends. The line is never written, because its retry waits on the simulation's clock, which nothing advances after the run.
@@ -366,12 +365,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** browsers let a page leave its own first entry, or a user reports it.
 - **Approved:** 2026-11-07, the user picked "Accept for now (Recommended)".
 
-### A redraw of home drops an armed "Tap again to delete"
-- **Kind:** deferred.
-- **What the user sees:** on home, Waiting with Shiori's Delete tapped once is reset when home draws itself again (Shiori's `went`, a plugin's screens, Waiting's own Delete, and since stage 4 the clock's redraw: a few times a day, and once a minute in the hour after a backup or an export, as "Last backup … ago" changes its words). The row says "Delete" again; nothing is lost but the first tap. A focused field is not redrawn over: each of these waits for it.
-- **Why:** home is rebuilt as a whole in place; its open folds and its place are kept (the shell scrolls to the row in view, `fold` keeps what is open), and the redraws wait for a focused field, but an armed row is not kept. Older than the clock's redraw.
-- **Revisit when:** the next version: keep the armed row across home's redraws.
-
 ### A chat whose first sentence ends on a one- or two-letter word is named with the next sentence too
 - **Kind:** known limitation.
 - **What the user sees:** a chat is named from its first line's first sentence. A full stop after a word of one or two letters (Mt., St., Dr.) doesn't end it, so "Mt. Fuji on Tuesday. Then lunch" is named "Mt. Fuji on Tuesday." The cost: a first sentence that really ends on a short word ("We land in LA. Then…") runs on into the next one, and the name is cut at 40 characters as long names are. A word of three letters (Mrs.), and `?`, `!`, `。` and a new line, still end it. The user can rename the chat.
@@ -379,47 +372,11 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** a user finds a name that reads worse than before.
 - **Approved:** 2026-11-08, the user chose "English rule" (a full stop after a word of one or two letters doesn't end the sentence).
 
-### Home's relative times redraw home
+### With a keyboard up, a field on home can sit under the stuck box
 - **Kind:** deferred.
-- **What the user sees:** "backed up 5 minutes ago", "Last backup 2 hours ago" and the day count follow the clock because home is drawn again, in place, when one of their words changes: a few times a day, and once a minute in the hour after a backup or an export. A trip ahead says "tomorrow", "in 3 days" or "in 2 weeks" (the user's choice, "Count in days", 2026-11-09), which change only at midnight, where home is drawn again anyway. The redraw keeps home's folds and place and waits for the Start a trip form, but it resets an armed "Tap again to delete" (see that entry), and not verified on a phone: it may lose VoiceOver's place, or replace the file input under an open picker.
-- **Why:** home is one render; changing the words in place is another part to keep right with it, and the redraw is what keeps every fact on a card in one place.
-- **Revisit when:** the next version: change the words in place (each time-bearing node carries its moment) instead of drawing home again.
-
-### A played simulation's clock redraws home late
-- **Kind:** deferred.
-- **What the user sees:** only for a developer playing a simulation faster than real time (x N): home's timer counts the simulation's milliseconds and waits real ones, so a Next that ends, midnight, and "in N hours" are redrawn N times late. Live use is not affected.
-- **Why:** developer-only, and the clock the timer reads is live mode's.
-- **Revisit when:** the next change to home's timer: wait the simulation's delay divided by its speed.
-
-### Home's rows move when a phone rotates, or at the first resize after a tall card lands
-- **Kind:** deferred.
-- **What the user sees:** on home, a phone turned on its side moves the rows. In Chromium, the first resize after a card that needs more than a quarter of the screen (`.grow`) has landed moves the rows by its excess over the quarter (167 to 211 px measured at 393 x 659, when such a card was in the page; not measured again since every box sticks at its cap); in a Chrome tab the URL bar's first hide is such a resize.
-- **Why:** cards are refit when the screen changes size, outside `keep()` in notices.js, which is what keeps the rows still when a card comes or goes. Older than stage 4's sticky box. With a card open in the stuck box, or a box at its cap, its cap (half of 100svh) changes too: the rows moved 140 px when 360 x 640 turned to 640 x 360. The cap has already changed when `resize` fires, so the fix needs the box's last height kept.
-- **Revisit when:** the next version: run the resize's refit through `keep()`.
-
-### Cards aren't refit when web fonts swap in
-- **Kind:** deferred.
-- **What the user sees:** when a web font swaps in after a card was fitted, its text may take a little more or less room than the fit assumed (a few px); the box is refit at the next change or resize.
-- **Why:** a font swap re-runs neither `fit` nor the box's scroll check (`.scrolls`, which decides whether a swipe on the box stays in it).
-- **Revisit when:** the next version, with the resize refit above.
-
-### Focusing a field doesn't scroll it clear of a stuck card
-- **Kind:** deferred.
-- **What the user sees:** on home, a field near the top of the screen (Start a trip's name, say, with the keyboard up) can sit under a stuck card. The box can be up to half the room under the bar (256 px at 320 x 568, 292 at 360 x 640, 302 at 393 x 659), against 142 px for a quarter of the screen at 320 x 568; a newer-backup card (232 px at 320 x 568), two cards together, or a card opened in it makes it that tall. With a keyboard up (about 290 to 340 px), the bar and an open box can take all the room above it.
-- **Why:** nothing tells the browser's focus scrolling about the top bar or the box (no `scroll-padding-top`). `scroll-padding-top` alone can't place the field when the bar and the box take all the room above the keyboard.
-- **Revisit when:** the next version: `scroll-padding-top` of the top bar plus the box on home, or after the user's phone check of "Cap every box at half".
-
-### A kept error drawn again may be read out again by a screen reader
-- **Kind:** deferred.
-- **What the user sees:** not verified. Start a trip's "Give the trip a name." is drawn again with each redraw of home as a new `role=alert`, which a screen reader may read out again.
-- **Why:** home rebuilds its form on a redraw, and the error is kept as state, not as the same element.
-- **Revisit when:** a screen-reader user reports it, or with the in-place redraw of home's relative times.
-
-### The install banner stays after desktop Chrome moves the tab into an app window
-- **Kind:** deferred.
-- **What the user sees:** after Install moves a desktop Chrome tab into an app window, the data-safety banner still says "annai isn't installed yet" until a reload, and a fresh home still opens at its top.
-- **Why:** the banner is drawn once per page, at start.
-- **Revisit when:** the next version: draw it again when the display mode changes.
+- **What the user sees:** not verified on a phone. A field of Start a trip focused on home (by a keyboard's Tab, or a screen reader) is scrolled clear of the top bar and the box stuck under it, its label too. But with a keyboard up (about 290 to 340 px), when the bar and a box that holds an opened card or two cards (up to half the room under the bar: 256 px at 320 x 568, 292 at 360 x 640, 302 at 393 x 659) take all the room above the keyboard, the field has nowhere to show, and the browser's own scrolling for the keyboard may put it back under the box.
+- **Why:** the box is at most half the room under the bar (the user's "Cap every box at half"), not half the room above a keyboard; making it give way while a field has focus would change that design.
+- **Revisit when:** stage 8, where the Start a trip form, home's only fields, goes; or the user's phone check of "Cap every box at half" finds it first.
 
 ### In landscape, an opened stack is read by scrolling inside a short box
 - **Kind:** known limitation.
@@ -428,38 +385,20 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** the user's phone check finds it in the way, or a landscape layout for home is designed.
 - **Approved:** 2026-11-09, the user chose "Known limitation".
 
-### A swipe on a card a px over its own cap doesn't scroll home
-- **Kind:** deferred.
-- **What the user sees:** on home, a swipe that starts on a stuck card whose height lands within a pixel over its cap (a quarter of the screen less the box's padding) scrolls nothing: measured at 360 x 640 with a one-line warn card ("A test card", "Check the key."), 142 px against 141. A swipe on the rows, or on any other card, scrolls home.
-- **Why:** each card is its own scroll box, so it is whole in a quarter-high box; `fit` accepts a card up to 1 px over (rounding), and the browser gives the whole swipe to the card that can scroll that px. Older than stage 4's sticky box.
-- **Revisit when:** the next version: let `fit`'s measure and the card's scroll agree (no 1 px a card can scroll).
-
-### A card that arrives while one is open isn't seen arriving
-- **Kind:** deferred.
-- **What the user sees:** on home, with a card open in the stuck box (capped at half the screen), a new card is added below it inside the box. Nothing leaves the screen and the rows don't move, but nothing on screen shows it arrived (a screen reader announces it) until the user scrolls inside the box or taps Less.
-- **Why:** the box is already at its cap, so it doesn't grow; the user chose (2026-11-09, "Defer a hint") to ship it and add a sign in the next version.
-- **Revisit when:** the next version: a small sign at the box's bottom edge when a card arrives below what the user is reading.
-
-### A conversation stored as "New conversation" reads in English on a card, in Details and in the Remove dialog
-- **Kind:** deferred.
-- **What the user sees:** on Japanese and Chinese screens, a conversation whose stored title is "New conversation" (an archived draft, one a file or a date in Details left unnamed, or a plugin's) reads "New conversation" in English on its card (`tripCard`), as the heading of its Details and in its Remove dialog, where the dock, the conversation's name and a chat's line say it in the screen's language.
-- **Why:** `scopeTitle` (scopes.js) turns the draft's English placeholder into the screen's words, and only some places call it; found in the final review of stage 4. With the draft's Details (review F1) an archived draft is one such row.
-- **Revisit when:** the next version: those three read a scope's title through `scopeTitle`.
-
 ### Details says "trip" on a chat, and Welcome and import say "the timeline" where the screen says "Trips"
 - **Kind:** deferred.
 - **What the user sees:** Details of a chat says "Remove trip", "Archive trip" and "This trip so far", though a chat isn't a trip (the spec's anti-goal: no "trip" on small chats). Welcome and the import screen say "the timeline" where the screen and the top bar say "Trips".
 - **Why:** both are words on screens that change shape with the Start a trip form's going, so they change once, in every language.
 - **Revisit when:** stage 8.
 
-### A second annai tab's + may open a conversation the first tab has used
-- **Kind:** deferred.
-- **What the user sees:** with annai open in two tabs, a first line said in one tab spends the draft; the other tab still holds that conversation as its draft, so its next + opens it once, a conversation that already has the first tab's lines, instead of a new one. Traced by the final review of stage 4, not run.
-- **Why:** each tab's `Chats` keeps its own `ready` draft, and nothing tells it that another tab spent it.
-- **Revisit when:** the next version: `Chats` looks at the draft's flag again before + opens it, or a user reports it.
-
 ### A move cut off halfway leaves the file in both trips
 - **Kind:** deferred.
 - **What the user sees:** if annai is closed in the few milliseconds between the two writes of a file's move (Shiori's, or Undo's moving it back), the file is in both trips. A second Undo then moves it again: "flight.pdf" and "flight (2).pdf".
 - **Why:** a move is two transactions, one per trip.
 - **Revisit when:** the next version: a move is one transaction (workspace.js), for Shiori's moves and Undo's alike. That is an API change, with its lessons entry.
+
+### A change made from home itself shows "changed since" on its card only at the next redraw
+- **Kind:** deferred.
+- **What the user sees:** with home on screen, a change Shiori makes to a trip through the dock leaves its card saying "backed up 10 minutes ago" with no "changed since" until home is next drawn: when a backup ends (a few minutes later with a backup place), the next time annai comes to the front, midnight, or a Next that ends. Without a backup place, the next of the other three. Before the branch that moved "… ago" into place, the next minute's redraw showed it. Traced by the review of a379a5f7..56612b84, not run.
+- **Why:** home draws again for a backup's end, each time annai comes to the front, midnight and a Next that ends, and changes the "… ago" words in place; it doesn't follow what the workspace writes.
+- **Revisit when:** the next version: home follows `ws.onChange` for trips' writes, coalesced, and draws again (or changes the card's words in place).
