@@ -795,6 +795,9 @@ export class Halves {
     });
   }
 
+  /** annai's own question for one of Kokoro's tools (Agent.confirm). @param {Parameters<Agent['confirm']>} a */
+  confirm(...a) { return this.kokoro.confirm(...a); }
+
   /** @param {string} callId @param {string} option */
   answer(callId, option) {
     if (this.koe.pendingId === callId) return this.koe.answer(callId, option);
@@ -1165,6 +1168,7 @@ export class Halves {
    */
   async #koeLogged(e, r) {
     await this.kokoro.observe(e, r);
+    if (e.type === 'heard' || e.type === 'heard.text') this.kokoro.confirmHeard(e); // a spoken yes to annai's own question, Kokoro's
     const typed = e.type === 'msg.user' && e.data?.split;
     if (e.type.startsWith('out.')) this.#unsaid = []; // Koe reached the user: what it was told is passed on
     if (e.type === 'heard' && !e.data?.dismissed) this.#heardNow(false);

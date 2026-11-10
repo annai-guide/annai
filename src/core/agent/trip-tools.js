@@ -1,4 +1,4 @@
-import { createTrip, listTrips, SYS_WAITING, kindOf, tripMirror, talks } from '../scopes.js';
+import { createTrip, listTrips, SYS_WAITING, kindOf, tripMirror, talks, scopeTitle } from '../scopes.js';
 import { resolvePath, rootOf } from './tools.js';
 import { storedTexts, record } from './log.js';
 import { moveFile } from '../waiting.js';
@@ -10,6 +10,10 @@ import { validZone, deviceZone } from '../time.js';
 import { timelineRows } from '../timeline.js';
 import { normPath, isTextType } from '../paths.js';
 import { theirs, quote, cardText } from './blocks.js';
+import { readAppSettings, updateAppSettings } from '../settings.js';
+import { spokenYes } from './spoken-yes.js';
+import { STOPPED } from './transcript.js';
+import { t } from '../l10n.js';
 
 /**
  * Shiori's trip tools (the bookings-and-trips design, goals 2–4): she starts a trip for what the user handed her, opens one it fits,
@@ -278,6 +282,30 @@ export function tripTools(app) {
     /* en */
     return `${headOf(rec)}: the lines of its conversation with ${quote(query)}, newest first.\n${found.length ? theirs(found.map((l) => l.line).join('\n')) : `Nothing in its conversation has ${quote(query)}.`}`;
   };
+  /**
+   * Whether she may read another trip here, by annai alone (RULES 9: no model's words, tool result or file grant it): a grant in this conversation's
+   * log, the Always setting for a trip of the user's own (an imported one always asks), else annai's own card, its title the record's. A grant is
+   * written only for a tap on that card's Allow or Always, or a yes annai's word list hears; Always is also the setting. A spoken yes is Allow only.
+   * @param {import('../types.js').ScopeRecord} rec @param {ToolCall} call @returns {Promise<null | string | import('./tools.js').ToolOutput>} null: allowed; else her result
+   */
+  const allowed = async (rec, call) => {
+    if ((await store.tx(['events'], 'readonly', (x) => x.listEvents(call.scope, { types: ['trip.grant'] }))).some((e) => e.data?.trip === rec.id)) return null;
+    if (!rec.imported && (await readAppSettings(ws)).readMyTrips === true) return null;
+    const title = scopeTitle(rec);
+    const [allow, always, no] = [t`Allow`, t`Always for my trips`, t`Not now`];
+    const got = await app.confirm(call, { question: t`Read ${title}?`, options: rec.imported ? [allow, no] : [allow, always, no], yes: (heard) => (spokenYes(heard) ? allow : null) });
+    if (got.stopped) return { content: STOPPED, isError: true };
+    if (got.chosen === allow || got.chosen === always) {
+      await record(store, call.scope, { type: 'trip.grant', actor: 'user', now: ws.now(), data: { trip: rec.id, how: got.how ?? 'tap', ...(got.chosen === always ? { always: true } : {}) } });
+      if (got.chosen === always) await updateAppSettings(ws, { readMyTrips: true });
+      return null;
+    }
+    /* en */
+    if (got.chosen === no) return `The user tapped Not now: don't read ${quote(rec.title)}, and don't ask to again in this conversation unless they ask you to.`;
+    /* en */
+    const why = `Not read: only a tap on annai's card, or a yes it hears, allows reading ${quote(rec.title)}. If they meant yes, ask them to tap Allow.`;
+    return got.heard ? { content: `${why} ${got.said}`, heard: got.heard } : `${why}${got.said ? ` ${got.said}` : ''}`;
+  };
   /** The read, noted as annai's where she read it (the screen's quiet line, the Trace), also if another conversation opened meanwhile. @param {ToolCall} call @param {Record<string, string>} data */
   const noteRead = async (call, data) => {
     const ev = { type: 'trip.read', actor: 'system', data };
@@ -317,6 +345,8 @@ export function tripTools(app) {
         check(READ, i);
         const rec = await otherTrip(i.trip, call);
         const path = typeof i.path === 'string' ? pathIn(i.path) : null;
+        const no = await allowed(rec, call);
+        if (no !== null) return no;
         const query = path === null && typeof i.query === 'string' ? i.query : null;
         const { out, read } = path !== null ? await fileIn(rec, path) : { out: query !== null ? await linesWith(rec, query) : await overview(rec), read: true };
         if (read) await noteRead(call, { trip: rec.id, title: rec.title, ...(path !== null ? { path } : {}), ...(query !== null ? { query } : {}) });
