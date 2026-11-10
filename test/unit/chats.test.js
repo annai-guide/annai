@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
-import { kindOf, ensureBaseScopes, createTrip, listTrips, syncTripTitles, scopeTitle, ME } from '../../src/core/scopes.js';
+import { kindOf, ensureBaseScopes, createTrip, listTrips, setTripStatus, removeTrip, syncTripTitles, scopeTitle, ME } from '../../src/core/scopes.js';
 import { ensureDraft, chatName, Chats, DRAFT_TITLE, herDating, undoDating } from '../../src/core/chats.js';
 import { record, INLINE_MAX } from '../../src/core/agent/log.js';
 import { NOT_TRANSCRIBED } from '../../src/core/voice/resolve.js';
@@ -381,6 +381,50 @@ test("a heard line's words that come after a reload still name it", async () => 
   for (const fn of listeners) fn(e);
   await k.settle();
   assert.equal((await k.ws.readJSON(draft, '/trip.json')).title, 'Is the museum open today?');
+});
+
+test('a name or dates saved in Details, or a file of its own written by hand, is first use: listed under the name it has, and + opens another', async () => {
+  const { store, ws, chats, scope, spent, settle } = await kit();
+  await chats.start();
+  const draft = /** @type {string} */ (chats.ready);
+  await settle();
+  assert.equal(chats.ready, draft, 'its own first trip.json is no use of it');
+  // Details' Save: the user's update of trip.json.
+  await ws.update(draft, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, title: 'Kyoto in April', start: '2027-04-02', end: '2027-04-09' }), { author: 'user' });
+  await spent(draft);
+  assert.ok(!('draft' in /** @type {any} */ (await scope(draft))));
+  assert.equal((await ws.readJSON(draft, '/trip.json')).title, 'Kyoto in April', 'the name the user gave stays');
+  assert.ok((await listTrips(store)).active.some((s) => s.id === draft && s.start === '2027-04-02'));
+  const next = /** @type {string} */ (chats.ready);
+  assert.ok(next !== draft && (await scope(next))?.draft);
+  await settle();
+  assert.equal(chats.ready, next, "the next draft's own trip.json spends nothing");
+  // Details' "Add a file", by its path.
+  await ws.write(next, '/notes.md', '# Notes', { author: 'user' });
+  await spent(next);
+  assert.ok(!(await scope(next))?.draft);
+  assert.equal(scopeTitle(/** @type {any} */ (await scope(next))), 'New conversation');
+});
+
+test('archived or removed in Details, the draft is used: + never opens one archived or gone', async () => {
+  const { store, chats, scope, spent } = await kit();
+  await chats.start();
+  const first = /** @type {string} */ (chats.ready);
+  await setTripStatus(store, first, 'archived');
+  await chats.used(first);
+  await spent(first);
+  assert.ok(chats.ready && chats.ready !== first);
+  assert.deepEqual((await listTrips(store)).archived.map((s) => s.id), [first], 'archived, it is listed as archived');
+  const second = /** @type {string} */ (chats.ready);
+  assert.equal((await scope(second))?.status, 'active');
+  await removeTrip(store, second);
+  await chats.used(second);
+  await spent(second);
+  assert.ok(chats.ready && chats.ready !== second && (await scope(chats.ready))?.draft);
+  // A conversation that isn't the draft: nothing is spent.
+  const third = chats.ready;
+  await chats.used(first);
+  assert.equal(chats.ready, third);
 });
 
 test('a draft whose making was cut off before its trip.json (a reload) is made whole, and its first line names it', async () => {

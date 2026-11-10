@@ -116,7 +116,8 @@ export function chatName({ text = '', file, photo, voice, at, tz }) {
 }
 
 /**
- * Keeps the draft ready and spends it on first use: the first user line (typed, or heard and not dismissed) or a file kept in it.
+ * Keeps the draft ready and spends it on first use: the first user line (typed, or heard and not dismissed), a file kept in it, or anything else the
+ * user does to it in Details.
  * Spending clears the flag first, so the row shows at once, then names it as system, then makes the next draft.
  */
 export class Chats {
@@ -137,11 +138,29 @@ export class Chats {
   }
 
   async start() {
-    const take = (/** @type {any} */ e) => { this.#queue = this.#queue.then(() => this.#took(e)).catch((err) => console.warn(/* en */ "a chat couldn't be named", err)); };
-    this.agent.on('event', take);
-    // A file kept in it, with or without a line or a model to wake (the camera, the Share target, Details): never hidden in a draft.
-    this.ws.onChange((c) => { if (c.op === 'write' && c.path.startsWith('/files/')) take({ type: 'file', scope: c.scope, path: c.path, entry: c.entry, ts: this.ws.now() }); });
+    this.agent.on('event', (e) => { this.#take(e); });
+    // A file kept in it, with or without a line or a model to wake (the camera, the Share target, Details): never hidden in a draft. Nor is any other
+    // write in it that isn't annai's own or Shiori's (a name or dates saved in Details, a file added by its path, a plugin's tab). The draft's own
+    // first files are written before it is `ready`, so they are never taken for a use of it.
+    this.ws.onChange((c) => {
+      const by = c.entry?.author;
+      if (c.op !== 'write' || !(c.path.startsWith('/files/') || (c.scope === this.ready && by !== 'system' && by !== 'shiori'))) return;
+      this.#take({ type: 'file', scope: c.scope, path: c.path, entry: c.entry, ts: this.ws.now() });
+    });
     await this.#make();
+  }
+
+  /** One at a time, in order. @param {any} e */
+  #take(e) {
+    return (this.#queue = this.#queue.then(() => this.#took(e)).catch((err) => console.warn(/* en */ "a chat couldn't be named", err)));
+  }
+
+  /**
+   * The user archived or removed a conversation (Details): if it is the draft, it is used, under the name it has, and another is made. Without this
+   * + would go on opening one that is archived, or gone. @param {string} scope
+   */
+  used(scope) {
+    return this.#take({ type: 'used', scope });
   }
 
   /** The draft, once one is ready. A draft that can't be made rejects, and the next call tries again. @returns {Promise<string>} */
@@ -155,7 +174,7 @@ export class Chats {
     return this.#making;
   }
 
-  /** @param {any} e a logged entry, with its scope; or a file kept ({ type: 'file', scope, path, entry, ts }) */
+  /** @param {any} e a logged entry, with its scope; a file written ({ type: 'file', scope, path, entry, ts }); or a conversation archived or removed ({ type: 'used', scope }) */
   async #took(e) {
     const tz = this.tz();
     if (e.type === 'heard.text') {
@@ -180,6 +199,7 @@ export class Chats {
       const photo = Boolean(e.data?.images?.length);
       return this.#spend(e.scope, chatName({ text: await this.#text(e), photo, voice: e.type === 'heard', at: e.ts, tz }));
     }
+    if (e.type === 'used' || (e.type === 'file' && !e.path.startsWith('/files/'))) return this.#spend(e.scope, null); // used, under the name it has
     if (e.type === 'file') {
       const name = chatName(isPhotoType(e.entry?.type) ? { photo: true, at: e.ts, tz } : { file: e.path, at: e.ts, tz });
       this.#byFile.set(e.scope, { name, path: `/trip${e.path}` });
