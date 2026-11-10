@@ -1230,14 +1230,20 @@ test("home's Start a trip error doesn't hold back the shell's own redraw (a plug
   await expect(page.getByLabel('Ends')).toHaveValue('2026-11-27');
 });
 
-test("a trip ahead says how soon, and the words follow the clock between midnights", async ({ page }) => {
-  await morning(page, { Laterton: { from: 1, to: 2 } });
+test("a trip ahead says how soon in days, as its dates are: one that starts tomorrow says \"tomorrow\" all day, then it is happening", async ({ page }) => {
+  await morning(page, { Laterton: { from: 1, to: 2 }, Farville: { from: 3, to: 4 } });
   const soon = row(page, 'Laterton').locator('.soon');
-  await expect(soon).toHaveText('tomorrow'); // noon tomorrow, from 09:00: 27 hours
-  await page.clock.fastForward('05:00:00'); // 14:00: 22 hours, said in hours; the other timers (Museum, Lunch) ended earlier, so only this one says so
-  await expect(soon).toHaveText('in 22 hours');
-  await page.clock.fastForward('01:00:00');
-  await expect(soon).toHaveText('in 21 hours');
+  await expect(soon).toHaveText('tomorrow');
+  await expect(row(page, 'Farville').locator('.soon')).toHaveText('in 3 days');
+  await page.clock.fastForward('05:00:00'); // 14:00; home was drawn again as Museum and Lunch ended
+  await expect(row(page, 'Testville').locator('.next')).toHaveCount(0);
+  await expect(soon).toHaveText('tomorrow'); // never "in 22 hours": the trip has a date, not an hour
+  await page.clock.fastForward('09:30:00'); // 23:30
+  await expect(soon).toHaveText('tomorrow');
+  await expect(row(page, 'Farville').locator('.soon')).toHaveText('in 3 days');
+  await page.clock.fastForward('01:00:00'); // past midnight: its first day
+  await expect(row(page, 'Laterton')).toHaveClass(/\bhappening\b/);
+  await expect(row(page, 'Farville').locator('.soon')).toHaveText('in 2 days');
 });
 
 test("the dock's name of the open conversation has one source, trip.json: a state change never shows the record's older title", async ({ page }) => {
