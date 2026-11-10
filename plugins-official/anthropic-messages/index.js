@@ -5,7 +5,8 @@
  * came (a native: its content array), which annai sends back within the turn in place of the reply's parts: Claude 5.5 binds each
  * block to the system prompt, the tools and everything before it, its own reply's earlier blocks included, so only the reply exactly
  * as returned can go back (the keep-reasoning design §4). annai keeps the rest of the turn's requests as they were sent; a refusal
- * anyway is a bad request like another, and annai (callOnce) asks again without them, whatever the error's words (§8).
+ * anyway is a bad request like another, and annai (callOnce) asks again without them, whatever the error's words (§8). A server tool (web search
+ * or fetch) called beside one of annai's tools is left to the next request, which the API lets hold nothing but tool results there: settle.
  */
 const TUNABLES = Object.freeze({ path: '/v1/messages', version: '2023-06-01', browserAccess: true, beta: '', defaultMaxTokens: 8192, uploads: true });
 const STOP = /** @type {Record<string, string>} */ ({ end_turn: 'end', stop_sequence: 'end', tool_use: 'tool', max_tokens: 'length', refusal: 'refusal', pause_turn: 'pause' });
@@ -71,8 +72,9 @@ function headersFor(endpoint, key, t) {
 
 /** @param {any} c */
 function build({ endpoint, model, key, tunables: t, request }) {
+  const { messages, waiting } = settle(wire(request.messages, model.providerId, request.cacheAt), serverTools(model, request));
   /** @type {Record<string, any>} */
-  const body = { model: model.providerId, max_tokens: request.maxOutput ?? model.maxOutput ?? t.defaultMaxTokens, messages: wire(request.messages, model.providerId, request.cacheAt), stream: true };
+  const body = { model: model.providerId, max_tokens: request.maxOutput ?? model.maxOutput ?? t.defaultMaxTokens, messages, stream: true };
   if (request.system) body.system = [{ type: 'text', text: request.system, ...(request.cacheTtl ? { cache_control: cacheControl(request.cacheTtl) } : {}) }];
   if (request.tools?.length) body.tools = request.tools.map((/** @type {any} */ x) => ({ name: x.name, description: x.description, input_schema: x.input }));
   if (request.toolChoice) body.tool_choice = { type: 'tool', name: request.toolChoice };
@@ -86,8 +88,9 @@ function build({ endpoint, model, key, tunables: t, request }) {
   // The marks were for finding blocks: none is sent.
   for (const m of body.messages) m.content = m.content.map((/** @type {any} */ b) => { const { [AT]: _at, ...rest } = b; return rest; });
   // The now block comes after the marker, so the cached prefix of this request is a prefix of the next one (spec §6.3).
-  // A request that ends with Shiori's own message is a paused turn being continued, so it gets no tail.
-  if (request.tail) {
+  // A request that ends with Shiori's own message is a paused turn being continued, so it gets no tail; nor does one that runs a server
+  // tool left waiting (settle): its last message holds the tool results alone.
+  if (request.tail && !waiting) {
     if (last?.role === 'user') last.content.push({ type: 'text', text: request.tail });
     else if (!last) body.messages.push({ role: 'user', content: [{ type: 'text', text: request.tail }] });
   }
@@ -137,6 +140,68 @@ function wire(messages, providerId, cacheAt) {
   }
   for (const m of out) if (m.role === 'user') m.content.sort((a, b) => Number(b.type === 'tool_result') - Number(a.type === 'tool_result'));
   return out;
+}
+
+/** A server tool's result block (a web search's or fetch's), not a client tool's. @param {any} b */
+const isResult = (b) => typeof b.type === 'string' && b.type !== 'tool_result' && b.type.endsWith('_tool_result');
+/** A reply's server tool calls that its own blocks don't answer. @param {{ role: string, content: any[] }} m */
+const unanswered = (m) => m.role === 'assistant' ? m.content.filter((/** @type {any} */ b) => b.type === 'server_tool_use' && !m.content.some((/** @type {any} */ r) => isResult(r) && r.tool_use_id === b.id)) : [];
+
+/**
+ * The names of the server tools this request defines: the model's provider tools that the request asks for and doesn't switch off, as annai's
+ * call.js (enabledProviderTools) picks them, each by the name of the tool its patch adds to the body's tools once build is done. Wrong
+ * about a tool it can't see (an endpoint's own extra body), it only leaves out a call that would have run.
+ * @param {any} model @param {any} request
+ */
+function serverTools(model, request) {
+  const want = request.providerTools;
+  const picked = want ? (model.providerTools ?? []).filter((/** @type {any} */ t) => want.kinds.includes(t.kind) && !(want.off ?? []).includes(t.id)) : [];
+  return new Set(picked.flatMap((/** @type {any} */ t) => (t.patch?.['tools+'] ?? []).map((/** @type {any} */ x) => x.name)));
+}
+
+/**
+ * A reply that calls a server tool (a web search or fetch) and a client tool together ends for the client tool with the server tool not
+ * run: no result block comes with it. The API runs it when the next user message holds nothing but the client tools' results, and the reply
+ * after begins with its result (Anthropic, "Mixing server tools and client tools in one turn"). Any other block in that message is a 400,
+ * "`web_search` tool use with id ... was found without a corresponding `web_search_tool_result` block", at the end of the history and in the
+ * middle of it, though the reply after carries the result; and a call that no reply after answers fails the same way (the real API, Opus,
+ * Sonnet and Haiku 5.5, 2026-11-10). So, whatever is stored, in the messages sent:
+ * - a call whose user message holds the tool results alone is run by this request, which then has no tail; once the reply after it
+ *   answers it, that user message goes as it went, the tool results alone (a now block kept there since was never sent);
+ * - any other call is left out of its reply: one whose user message holds anything else (the user's line or Koe's, a photo, a heard
+ *   line: the model reads it all at once and searches again if it still wants to; that search is the only one, as the call left out
+ *   never ran), one no reply after it answers (another model's or Koe's words came next, as in a conversation stored by 0.5.0 whose
+ *   request was refused), or one this request would run with its tool missing (the API refuses that too: "but no `web_search` tool was
+ *   provided"; web search switched off since). A reply left with nothing but thinking goes.
+ * Nothing waits and nothing moves. A last message that is the reply is a paused turn, which continues as it is. What is sent before a
+ * message is the same in every later request, so the thinking and the cache bound to it stay valid.
+ * @param {{ role: string, content: any[] }[]} out the messages, tool results first in a user message
+ * @param {Set<string>} defined the names of the server tools this request defines (serverTools)
+ * @returns {{ messages: { role: string, content: any[] }[], waiting: boolean }} waiting: this request runs such a call (its last message holds the results alone)
+ */
+function settle(out, defined) {
+  out.forEach((m, i) => {
+    const next = out[i + 1];
+    const open = next ? unanswered(m) : [];
+    if (!open.length) return;
+    const after = out[i + 2];
+    const results = next.content.filter((/** @type {any} */ b) => b.type === 'tool_result');
+    // Answered by the reply after, a call was run as a pair; run by this request, its message holds the results alone and its tool is defined.
+    const runs = (/** @type {any} */ b) => results.length > 0 && (after ? after.content.some((/** @type {any} */ r) => isResult(r) && r.tool_use_id === b.id) : results.length === next.content.length && defined.has(b.name));
+    const gone = new Set(open.filter((b) => !runs(b)).map((b) => b.id));
+    if (gone.size < open.length) next.content = results;
+    if (!gone.size) return;
+    const rest = m.content.filter((/** @type {any} */ b) => !(b.type === 'server_tool_use' && gone.has(b.id)));
+    m.content = rest.some((/** @type {any} */ b) => b.type !== 'thinking' && b.type !== 'redacted_thinking') ? rest : [];
+  });
+  // A reply left empty goes, and the user messages around it are one.
+  const messages = out.filter((m) => m.content.length).reduce((/** @type {typeof out} */ all, m) => {
+    if (all.at(-1)?.role === m.role) all.at(-1)?.content.push(...m.content);
+    else all.push(m);
+    return all;
+  }, []);
+  const last = messages.at(-1);
+  return { messages, waiting: last?.role === 'user' && unanswered(messages.at(-2) ?? { role: '', content: [] }).length > 0 };
 }
 
 /**

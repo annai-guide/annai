@@ -169,6 +169,15 @@ test("OpenRouter's and Anthropic's chat abilities offer web search to every mode
   assert.deepEqual((await official('provider-another-address')).provider.abilities.messages.modelDefaults, { cacheTtls: ['5m', '1h'] });
 });
 
+test("Anthropic's Claude 5.5 models send the effort of each level's name: the real API takes low, medium, high, xhigh and max on Opus, Sonnet and Haiku (2026-11-10); off is the thinking each one takes", async () => {
+  const byId = Object.fromEntries(((await official('provider-anthropic')).provider.abilities.chat.models ?? []).map((m) => [m.providerId, m]));
+  const levels = (/** @type {any} */ m) => Object.fromEntries(Object.entries(m.reasoning).map(([level, patch]) => [level, /** @type {any} */ (patch).output_config?.effort ?? /** @type {any} */ (patch).thinking.type]));
+  const efforts = { low: 'low', medium: 'medium', high: 'high', max: 'max' };
+  assert.deepEqual(levels(byId['claude-opus-5-5']), efforts, 'Opus has no off: its thinking cannot be disabled');
+  assert.deepEqual(levels(byId['claude-sonnet-5-5']), { off: 'between_tools', ...efforts });
+  assert.deepEqual(levels(byId['claude-haiku-5-5']), { off: 'disabled', ...efforts }, 'Haiku took max too, which annai sent as high');
+});
+
 /** OpenRouter's lists by what the models put out, as its /models answers with output_modalities. */
 const LISTS = /** @type {Record<string, any[]>} */ ({
   transcription: [{ id: 'openai/whisper-large-v3-turbo', name: 'OpenAI: Whisper Large V3 Turbo', pricing: { prompt: '0.00000333', completion: '0' } }, { id: 'x-ai/grok-stt-1.0', name: 'SpaceXAI: Grok STT 1.0' }],
