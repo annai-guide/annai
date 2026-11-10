@@ -1678,6 +1678,37 @@ test("a conversation stored as \"New conversation\" says it in the screens' lang
   await expect(page.getByRole('dialog', { name })).toBeVisible();
 });
 
+test("Details of a conversation stored as \"New conversation\": its name field is empty with the screens' words as its placeholder, Save with it empty keeps the stored name, and a name typed there is saved", async ({ page }) => {
+  const { accented } = await import('../../src/core/l10n-pseudo.js');
+  await openApp(page, '?l10n=en-XA#/settings');
+  const ids = await seed(page, { trips: { 'New conversation': { from: 3, to: 4 } } }); // dated in Details, never named
+  await page.goto('/?l10n=en-XA#/trips');
+  const name = accented('New conversation');
+  await row(page, name).click();
+  await page.locator('.talk-name').click();
+  const field = page.locator('#trip-edit-title');
+  await expect(field).toHaveValue(''); // before: the stored English words, in an accented screen
+  await expect(field).toHaveAttribute('placeholder', name);
+  // Dates changed, the name left empty: saved, not "Give the trip a name."; the stored name stays, so it still follows the screens' language.
+  await page.getByLabel(accented('Ends')).fill('2099-01-02');
+  await page.getByLabel(accented('Starts')).fill('2099-01-01');
+  await page.getByRole('button', { name: accented('Save') }).click();
+  await expect(page.getByText(accented('Saved.'))).toBeVisible();
+  await expect(page.locator('.trip-edit .error')).toBeHidden();
+  expect((await record(page, ids['New conversation']))?.title).toBe('New conversation');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(name);
+  await expect(field).toHaveValue('');
+  // A name typed: saved.
+  await field.fill('Kyoto in spring');
+  await page.getByRole('button', { name: accented('Save') }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Kyoto in spring' })).toBeVisible();
+  await expect.poll(async () => (await record(page, ids['New conversation']))?.title).toBe('Kyoto in spring');
+  // A trip with a name of its own still can't be saved without one.
+  await field.fill('  ');
+  await page.getByRole('button', { name: accented('Save') }).click();
+  await expect(page.locator('.trip-edit .error')).toHaveText(accented('Give the trip a name.'));
+});
+
 /** A trip's last backup, as a backup writes it: ago ms before now, and whether the trip changed since. @param {import('@playwright/test').Page} page @param {string} title @param {number} ago @param {boolean} [changed] */
 const backedUpAgo = (page, title, ago, changed = false) => page.evaluate(async ({ title, ago, changed }) => {
   const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
