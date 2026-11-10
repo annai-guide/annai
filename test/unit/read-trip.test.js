@@ -548,7 +548,7 @@ test("with Koe talking, a yes Koe hears inside the 20 s after the card goes up a
     await until(() => k.asks.length === 1);
     await pause(at * k.agent.secondMs);
     await koeHeard(k, `h-${at}`, { text: 'Yes.' });
-    await pause(k.agent.secondMs); // its words have stood still
+    await pause(4 * k.agent.secondMs); // its words have stood still (SETTLE_S)
     assert.equal((await grants(k, k.trip)).length, allowed ? 1 : 0, `at ${at} s`);
     if (allowed) {
       await k.agent.idle();
@@ -807,4 +807,17 @@ test("a grant an archive brought counts for nothing: a trip's file whose log say
   // The grant given here holds, after the import's entry.
   assert.match(words(await tool.run({ trip: TV, path: '/notes/food.md' }, { ...base, id: 'c2' })), /Ramen at the corner/);
   assert.equal(k.asks.length, 1);
+});
+
+test('with Koe talking, a line\'s last words that come a second after its first ("Yes," then the rest, as a trailing transcript writes it) are still judged with it', async (t) => {
+  useClock(t);
+  const k = await gateKit(KOKORO, { koe: { type: KOE } });
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1);
+  await koeHeard(k, 'h-1', { text: 'Yes,' });
+  await pause(1.5 * k.agent.secondMs);
+  await k.agent.koe.log({ type: 'heard.text', actor: 'system', data: { of: 'h-1', text: 'Yes, but not that one, the Osaka trip.' } });
+  await k.agent.idle();
+  assert.equal((await grants(k, k.trip)).length, 0);
+  assert.match((await readResults(k))[0], /^Not read: .* What the user said follows\.$/);
 });
