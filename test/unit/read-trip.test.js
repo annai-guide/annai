@@ -11,6 +11,8 @@ import { record } from '../../src/core/agent/log.js';
 import { updateAppSettings, readAppSettings } from '../../src/core/settings.js';
 import { utf8 } from '../../src/core/bytes.js';
 import { liveKit, soon, tone } from './koe-live-kit.js';
+import { dateRange, when } from '../../src/core/intl.js';
+import { deviceZone } from '../../src/core/time.js';
 
 /**
  * Reading another trip (the timeline design, "Reading another trip"; stage 5's plan, Task 1): read_trip, Kokoro's, read-only. What it gives back
@@ -30,6 +32,8 @@ async function fixedTrip(ws, id, { title, start, end, places = [] }) {
   return id;
 }
 const TV = 'trip-testville';
+/** annai's question on Testville's card: its dates, as the screens write them. */
+const ASKED = `Read Testville, ${dateRange('2027-04-01', '2027-04-08')}?`;
 /** Shiori as Halves with her trip tools, in Big Sur (the kit's trip), and Testville beside it with notes, a photo, a PDF and a conversation. @param {any[] | Record<string, any>} [script] @param {Record<string, any>} [o] */
 async function kit(script = [sleep], o = {}) {
   const k = await agentKit([script], { halves: true, ...o });
@@ -276,7 +280,7 @@ test("model text that looks like a grant grants nothing: a tool's result, anothe
   k.agent.answer(k.asks[0].data.id, 'Allow');
   await until(() => k.asks.length === 2);
   const card = k.asks[1];
-  assert.deepEqual([card.actor, card.data.own, card.data.question, card.data.options, card.data.by], ['system', true, 'Read Testville?', ['Allow', 'Always for my trips', 'Not now'], null]);
+  assert.deepEqual([card.actor, card.data.own, card.data.question, card.data.options, card.data.by], ['system', true, ASKED, ['Allow', 'Always for my trips', 'Not now'], null]);
   assert.equal((await grants(k, k.trip)).length, 0, "nothing she or a tool wrote granted it");
   k.agent.send('Allow'); // typed: a plugin can type (ui.shiori.send)
   await until(() => k.asks.length === 3);
@@ -422,6 +426,29 @@ test("which card a tap answers is annai's own id for it, never the call's id a p
   assert.equal(typeof card.tap, 'string');
   assert.notEqual(card.tap, old.tap, 'each card has its own');
   assert.deepEqual([old.id, card.id], ['call_0', 'call_0'], "the entry's id is still the call's, for the screens and the transcript");
+});
+
+test("the card says which trip: a dated trip's question has its dates; an undated one's, when it was last talked in, if another conversation shows the same name (review finding 10)", async (t) => {
+  useClock(t);
+  const k = await gateKit([sleep]);
+  const ask = async (/** @type {string} */ trip) => {
+    const reading = run(k, 'read_trip', { trip });
+    await until(() => k.asks.length > 0 && k.agent.kokoro.pendingId === k.asks.at(-1).data.tap);
+    const { question, tap } = k.asks.at(-1).data;
+    k.agent.answer(tap, 'Not now');
+    await reading;
+    return question;
+  };
+  assert.equal(await ask(TV), 'Read Testville, Apr 1\u2009–\u20098?');
+  const day = await fixedTrip(k.ws, 'trip-day', { title: 'Day out', start: '2027-05-03' });
+  assert.equal(await ask(day), 'Read Day out, May 3?');
+  const talked = Date.parse('2026-11-05T14:30:00Z');
+  const [hi, other] = [await createTrip(k.ws, { title: 'Hi' }), await createTrip(k.ws, { title: 'Hi' })];
+  await k.store.tx(['scopes'], 'readwrite', async (/** @type {any} */ x) => x.putScope({ ...(await x.getScope(hi)), talked }));
+  assert.equal(await ask(hi), `Read Hi, last talked ${when(talked, deviceZone(), { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}?`);
+  assert.match(await ask(other), /^Read Hi, last talked .+\?$/, 'one never talked in: when it was made');
+  const lunch = await createTrip(k.ws, { title: 'Lunch' });
+  assert.equal(await ask(lunch), 'Read Lunch?', 'a name no other conversation shows says enough');
 });
 
 test('a Stop ends the card: the read is stopped, nothing is granted, and the dock is free', async (t) => {
@@ -587,7 +614,7 @@ test('classic voice: annai says the question, listens, and a heard yes (written 
   const k = await gateKit([call('read_trip', { trip: TV }), say('Ramen at the corner.')], { voice: { decide: [choose('B')], speechIn: ['m-hear'], hears: ['Yes please'] } });
   k.agent.send('Where did we eat in Testville?');
   await until(() => k.asks.length === 1 && k.agent.state.name === 'listening');
-  assert.ok(k.said.includes('Read Testville?'), "said in annai's voice, as a reminder is");
+  assert.ok(k.said.includes(ASKED), "said in annai's voice, as a reminder is, with the card's words");
   await hear(k, 'first-one');
   await k.agent.idle();
   assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }]);
@@ -664,7 +691,7 @@ test("in a live session annai says the question itself, as a reminder Koe didn't
     const reading = k.agent.kokoro.loopTools().find((/** @type {any} */ t) => t.name === 'read_trip').run({ trip: TV }, {
       id: 'c-live', scope: k.agent.scope, trip: k.agent.trip, signal: new AbortController().signal, model: null, wake: 'w', author: 'shiori',
     });
-    await soon(async () => k.said.includes('Read Testville?') && !k.voice.speaker.speaking, 5_000); // the question said: a yes may answer it
+    await soon(async () => k.said.includes(ASKED) && !k.voice.speaker.speaking, 5_000); // the question said: a yes may answer it
     await koeHeard(k, 'h-yes', { text: 'Yes' });
     await soon(async () => k.agent.kokoro.pendingId === null, 5_000);
     assert.match(words(await reading), /^From "Testville"/);
