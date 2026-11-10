@@ -58,6 +58,11 @@ export class LiveInput {
   /** Runs thrown away before they were sent, and the detector's blips and those runs when the last turn ended. */
   #thrown = 0;
   #mark = 0;
+  /** The gate as half-duplex sets it, on any route; and the longest quiet since her voice's last frame (herEnd), in ms. */
+  #herGate = 0;
+  #herQuiet = Infinity;
+  /** The run going on, or the last, is hers by half-duplex's rule on any route (annai's card arms nothing on it): half-duplex never sends one. */
+  overHer = false;
 
   /**
    * @param {{ mic: import('../voice/platform.js').Mic, send: { activity(edge: 'start' | 'end'): void, audio(bytes: Uint8Array): void, audioIn?: { rate: number } },
@@ -167,11 +172,16 @@ export class LiveInput {
     const first = playing && !this.#was && (this.#held || d.stillMs < 40);
     this.#was = playing;
     this.#clock += pcm.length;
+    if (playing) {
+      this.#herEnd = this.#clock;
+      this.#herGate = this.#clock + Math.round(((this.tailMs + GO_ON_MS) * sampleRate) / 1000);
+      this.#herQuiet = 0;
+      if (this.duplex() && (this.active || this.#held)) this.overHer = true;
+    }
     if (this.duplex()) this.#gate = 0;
     else if (playing) {
-      this.#gate = this.#clock + Math.round(((this.tailMs + GO_ON_MS) * sampleRate) / 1000);
+      this.#gate = this.#herGate;
       this.#theirs = false;
-      this.#herEnd = this.#clock;
       this.#letGo = 0;
       if (!first) return this.#deaf(d);
     }
@@ -181,6 +191,7 @@ export class LiveInput {
     else this.#hold(out);
     const kept = d.keptFrames;
     this.#events(d.push(pcm));
+    if (!playing) this.#herQuiet = Math.max(this.#herQuiet, Math.min(d.stillMs, ((this.#clock - this.#herEnd) * 1000) / sampleRate));
     if (d.keptFrames > kept) this.onKept?.();
     // Speech that began in her voice's tail starts a turn only once it is still going on past the gate.
     if (this.#held && d.speechMs >= this.minSpeechMs && (!this.#tailRun || (this.#clock >= this.#gate && d.quietMs < 100))) {
@@ -226,6 +237,7 @@ export class LiveInput {
       if (e.type === 'speech') {
         this.#held = !this.active;
         this.#tailRun = this.#clock < this.#gate;
+        this.overHer = this.duplex() && this.#clock < this.#herGate && !this.#theirs && this.#herQuiet < GAP_MS;
       } else if (this.active || (this.#held && e.type === 'segment' && !this.#tailRun)) {
         if (!this.active) this.#start();
         // The cut; or a noise thrown away once already sent: the turn ends either way.

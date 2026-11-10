@@ -157,6 +157,94 @@
       "seconds": 1.32,
       "bytes": 42284,
       "sha256": "bdb9085e086dd334"
+    },
+    "tomorrow": {
+      "words": "What's on tomorrow in Testville?",
+      "voice": "Kore",
+      "seconds": 1.58,
+      "bytes": 50604,
+      "sha256": "f7a7af3d393c5e66"
+    },
+    "yes-but": {
+      "words": "Yes, but not that one. The Osaka trip.",
+      "voice": "Kore",
+      "seconds": 3.42,
+      "bytes": 109484,
+      "sha256": "f6ca1931c320a572"
+    },
+    "no-wait": {
+      "words": "No, wait.",
+      "voice": "Kore",
+      "seconds": 1.06,
+      "bytes": 33964,
+      "sha256": "bb90173d8e0e5742"
+    },
+    "no-thanks": {
+      "words": "No thanks.",
+      "voice": "Aoede",
+      "seconds": 0.92,
+      "bytes": 29484,
+      "sha256": "d30f6799596d6a42"
+    },
+    "yes-q": {
+      "words": "Yes?",
+      "voice": "Kore",
+      "seconds": 1.04,
+      "bytes": 33324,
+      "sha256": "2a922b2de091225a"
+    },
+    "hai": {
+      "words": "はい。",
+      "voice": "Kore",
+      "lang": "ja",
+      "seconds": 0.46,
+      "bytes": 14764,
+      "sha256": "1bd0e60bbb7bd867"
+    },
+    "hai-q": {
+      "words": "はい？",
+      "voice": "Kore",
+      "lang": "ja",
+      "seconds": 0.62,
+      "bytes": 19884,
+      "sha256": "c6ba563199c160ee"
+    },
+    "passenger": {
+      "words": "Turn left at the next light.",
+      "voice": "Orus",
+      "seconds": 1.76,
+      "bytes": 56364,
+      "sha256": "07bf1ab104dfd757"
+    },
+    "ask-q": {
+      "words": "Read Testville, Nov 10 to 17?",
+      "voice": "Leda",
+      "seconds": 2.68,
+      "bytes": 85804,
+      "sha256": "1c3992faccaaf5bf"
+    },
+    "hao": {
+      "words": "好的。",
+      "voice": "Kore",
+      "lang": "zh",
+      "seconds": 0.54,
+      "bytes": 17324,
+      "sha256": "37c6f08c34aeac5f"
+    },
+    "mm-q": {
+      "words": "嗯？",
+      "voice": "Puck",
+      "lang": "zh",
+      "seconds": 0.44,
+      "bytes": 14124,
+      "sha256": "1a71cfc99daf9224"
+    },
+    "favour": {
+      "words": "Could you look at what's on tomorrow in Testville for me?",
+      "voice": "Kore",
+      "seconds": 3.12,
+      "bytes": 99884,
+      "sha256": "0e7740e5d8ad06e1"
     }
   }
 }

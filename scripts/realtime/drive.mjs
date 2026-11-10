@@ -54,8 +54,22 @@ export async function traceSince(page, since) {
   }, since);
 }
 
+/**
+ * annai's trace entries of some types since a time (ms), as {at, type, data}: no blobs read, so it can be polled.
+ * @param {import('@playwright/test').Page} page @param {string[]} types @param {number} since
+ * @returns {Promise<{ at: number, type: string, data: any }[]>}
+ */
+export async function eventsOf(page, types, since) {
+  return page.evaluate(async ([want, from]) => {
+    const db = await new Promise((res, rej) => { const r = indexedDB.open('annai'); r.onsuccess = () => res(/** @type {IDBDatabase} */ (r.result)); r.onerror = () => rej(r.error); });
+    const all = await new Promise((res) => { const q = db.transaction('events').objectStore('events').getAll(); q.onsuccess = () => res(/** @type {any[]} */ (q.result)); });
+    db.close();
+    return /** @type {any[]} */ (all).filter((e) => e.ts >= from && want.includes(e.type)).map((e) => ({ at: e.ts, type: e.type, data: e.data ?? {} }));
+  }, /** @type {[string[], number]} */ ([types, since]));
+}
+
 /** Adds the Google Gemini provider from the catalog and types the key in; its free-tier switch is on, as a free key's owner would set it. @param {import('@playwright/test').Page} page @param {string} key */
-async function addGemini(page, key) {
+export async function addGemini(page, key) {
   await page.getByRole('heading', { level: 1, name: 'Models' }).waitFor();
   await page.getByRole('button', { name: 'Getting the sign-in ready…' }).waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {});
   await page.getByRole('link', { name: 'Add a provider', exact: true }).click();
@@ -81,8 +95,10 @@ async function addGemini(page, key) {
  */
 export async function addToKoe(page, model) {
   await page.getByLabel(/^Add a model to Koe/).first().waitFor();
-  const name = (await page.getByLabel('Add a model to Koe · Realtime').count()) ? 'Koe · Realtime' : 'Koe';
-  const list = page.getByLabel(`Add a model to ${name}`);
+  // Named Koe in the first builds, Koe · Realtime, and Koe · Live from the build that renamed it (2026-11).
+  let name = 'Koe';
+  for (const n of ['Koe · Live', 'Koe · Realtime']) if (await page.getByLabel(new RegExp(`^Add a model to ${n}`)).count()) { name = n; break; }
+  const list = page.getByLabel(name === 'Koe' ? 'Add a model to Koe' : new RegExp(`^Add a model to ${name}`));
   await list.selectOption({ label: model });
   await page.getByRole('button', { name: `Add to ${name}` }).click();
   await list.locator('option', { hasText: new RegExp(`^${model.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) }).waitFor({ state: 'detached' });
@@ -93,14 +109,46 @@ export async function addToKoe(page, model) {
  * voice on, and (the tap on Shiori is the caller's). With Gemini for Kokoro too, "Use the recommended models" fills Main and Koe
  * (Gemini Live first in Koe, or in Koe · Realtime where Koe has two lists). With a stand-in Kokoro (an Anthropic Messages server at standIn),
  * Custom provider is Main and Gemini only Koe's: Live voice switched on and its model added to Koe (Koe · Realtime), as the e2e tests do.
- * @param {import('@playwright/test').Page} page @param {string} key @param {(s: string) => void} log @param {{ standIn?: string }} [o]
+ * card (stage 5, with a stand-in): also a stand-in voice for annai's own spoken question (a Custom provider's Voice, first in speech-out), and a trip
+ * of the user's, Testville, dated this week, made before the conversation Koe talks in (Big Sur, a chat); the Always setting stays off.
+ * classic (with a stand-in, and card): classic voice, no live session: Koe has no live model (Gemini's Live voice stays off), the user's own speech-to-text
+ * server is Speech in (Local speech server, at the stand-in's /asr, which passes transcription requests on), and Gemini 3.5 Flash Lite, which adding
+ * Gemini puts in Quick decision, is the gate.
+ * real (with a stand-in, for its voice, and card): Kokoro is the real model, Claude Opus 5.5 through the Anthropic provider (given its key), and the utility
+ * and quick-decision models Claude Haiku 5.5, which adding the provider put there; Koe is on Gemini Live as before, and Gemini's chat models are taken out of
+ * Main, Utility and Quick decision so that no free model answers for a real one that fails.
+ * @param {import('@playwright/test').Page} page @param {string} key @param {(s: string) => void} log @param {{ standIn?: string, card?: boolean, classic?: boolean, real?: { anthropic: string } | null }} [o]
+ * @returns {Promise<{ testville?: string, chat: string }>} the trips' ids
  */
-export async function setUp(page, key, log, { standIn } = {}) {
+export async function setUp(page, key, log, { standIn, card = false, classic = false, real = null } = {}) {
   page.setDefaultTimeout(25_000);
   await page.goto('/#/models');
   await page.locator('main.view > *').first().waitFor();
   await page.waitForFunction(() => navigator.serviceWorker?.controller != null, null, { timeout: 30_000 });
-  if (standIn) {
+  if (standIn && real) {
+    await addAnthropic(page, real.anthropic);
+    await page.goto('/#/models');
+    await page.getByRole('button', { name: 'Remove Claude Sonnet 5.5 from main' }).click();
+    await page.getByRole('button', { name: 'Remove Claude Sonnet 5.5 from main' }).waitFor({ state: 'detached' });
+    await addToRole(page, 'main', 'Claude Opus 5.5');
+    await addGemini(page, key);
+    const live = page.getByRole('region', { name: 'Live voice', exact: true }).getByLabel('Use Live voice');
+    await live.check();
+    await live.locator('xpath=ancestor::*[contains(concat(" ", @class, " "), " saving ")][1]').getByRole('status').filter({ hasText: 'Saved' }).waitFor({ timeout: 30_000 });
+    await page.goto('/#/models');
+    await addToKoe(page, 'Gemini 3.8 Live');
+    await addVoiceStandIn(page, standIn);
+    // Gemini's chat models were put behind the real ones in Main, Utility and Quick decision: out, so a real model that fails is not answered for by a free one.
+    await page.goto('/#/models');
+    for (const role of ['main', 'utility', 'decide']) {
+      const gone = page.getByRole('button', { name: new RegExp(`^Remove Gemini .* from ${role}$`) });
+      for (let i = 0; i < 6 && (await gone.count()); i++) {
+        await gone.first().click();
+        await page.waitForTimeout(400);
+      }
+    }
+    log('    providers: Kokoro is Claude Opus 5.5 (Anthropic), utility and quick decision Claude Haiku 5.5, Koe on Gemini Live, speech out on a stand-in voice');
+  } else if (standIn) {
     await page.getByRole('heading', { level: 1, name: 'Models' }).waitFor();
     await page.getByRole('button', { name: 'Getting the sign-in ready…' }).waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {});
     await page.getByRole('link', { name: 'Add a provider', exact: true }).click();
@@ -128,25 +176,154 @@ export async function setUp(page, key, log, { standIn } = {}) {
     await page.getByRole('button', { name: 'Add to main' }).click();
     await page.getByText('1. kokoro-model').waitFor();
     await addGemini(page, key);
-    const live = page.getByRole('region', { name: 'Live voice', exact: true }).getByLabel('Use Live voice');
-    await live.check();
-    await live.locator('xpath=ancestor::*[contains(concat(" ", @class, " "), " saving ")][1]').getByRole('status').filter({ hasText: 'Saved' }).waitFor({ timeout: 30_000 });
-    await page.goto('/#/models');
-    await addToKoe(page, 'Gemini 3.8 Live');
-    log('    providers: Kokoro on a stand-in, Koe on Gemini Live');
+    if (classic) {
+      // No Koe: Shiori is the one model. The gate is Gemini's small model (adding the provider put it in Quick decision), and her ears are the user's own server.
+      await page.goto('/#/models');
+      await addVoiceStandIn(page, standIn);
+      await addTranscription(page, standIn);
+      log('    providers: Kokoro on a stand-in, no Koe, the gate on Gemini 3.5 Flash Lite, speech in on the user\'s server (through 127.0.0.1), speech out on a stand-in voice');
+    } else {
+      const live = page.getByRole('region', { name: 'Live voice', exact: true }).getByLabel('Use Live voice');
+      await live.check();
+      await live.locator('xpath=ancestor::*[contains(concat(" ", @class, " "), " saving ")][1]').getByRole('status').filter({ hasText: 'Saved' }).waitFor({ timeout: 30_000 });
+      await page.goto('/#/models');
+      await addToKoe(page, 'Gemini 3.8 Live');
+      if (card) await addVoiceStandIn(page, standIn);
+      log(`    providers: Kokoro on a stand-in, Koe on Gemini Live${card ? ', speech out on a stand-in voice' : ''}`);
+    }
   } else {
     await addGemini(page, key);
     await page.getByRole('button', { name: 'Use the recommended models' }).click();
     await page.locator('.toast', { hasText: 'Roles updated.' }).waitFor({ timeout: 30_000 });
     log(`    providers: Gemini for both; ${(await page.locator('.toast', { hasText: 'Roles updated.' }).first().innerText()).trim().slice(0, 160)}`);
   }
+  /** @type {string | undefined} */
+  let testville;
+  if (card) {
+    // Another trip of the user's, dated this week (a trip, not a chat: it has dates); then the conversation Koe talks in.
+    const day = (/** @type {number} */ plus) => new Date(Date.now() + plus * 86_400_000).toISOString().slice(0, 10);
+    await page.goto('/#/trips');
+    await page.getByLabel('Trip name').fill('Testville');
+    await page.getByText('Add dates (optional)').click();
+    await page.getByLabel('Starts').fill(day(0));
+    await page.getByLabel('Ends').fill(day(7));
+    await page.getByRole('button', { name: 'Start trip' }).click();
+    await page.getByRole('heading', { name: 'Testville' }).waitFor();
+    testville = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+  }
   await page.goto('/#/trips');
   await page.getByLabel('Trip name').fill('Big Sur');
   await page.getByRole('button', { name: 'Start trip' }).click();
   await page.getByRole('heading', { name: 'Big Sur' }).waitFor();
-  await page.locator('.voice-chip').click();
-  await page.getByRole('group', { name: 'Voice' }).getByRole('button', { name: 'On' }).click();
-  await page.locator('.voice-chip').filter({ hasText: 'Voice on' }).waitFor();
+  const chat = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+  await voiceSwitch(page, 'On');
+  return { ...(testville ? { testville } : {}), chat };
+}
+
+/** Adds the Anthropic provider from the catalog and types its key in. @param {import('@playwright/test').Page} page @param {string} key */
+async function addAnthropic(page, key) {
+  await page.getByRole('heading', { level: 1, name: 'Models' }).waitFor();
+  await page.getByRole('button', { name: 'Getting the sign-in ready…' }).waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {});
+  await page.getByRole('link', { name: 'Add a provider', exact: true }).click();
+  await page.getByLabel('Search the catalog').fill('Anthropic');
+  await page.getByRole('button', { name: /^Add (another )?Anthropic$/ }).click();
+  const byHand = page.getByRole('button', { name: 'Add by hand' });
+  const remove = page.getByRole('button', { name: 'Remove provider' });
+  await byHand.or(remove).first().waitFor({ timeout: 30_000 });
+  if (await byHand.isVisible()) await byHand.click();
+  await remove.waitFor({ timeout: 30_000 });
+  await page.getByRole('heading', { level: 1, name: 'Anthropic' }).waitFor();
+  await page.getByLabel('API key').fill(key);
+  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByLabel('API key').and(page.locator('[placeholder^="saved"]')).waitFor();
+}
+
+/**
+ * Adds a model to a role's list on the Models screen. @param {import('@playwright/test').Page} page @param {string} role the list's name (main, decide, speech-in...) @param {string} model its name in the list
+ */
+export async function addToRole(page, role, model) {
+  const list = page.getByLabel(new RegExp(`^Add a model to ${role}`));
+  await list.selectOption({ label: model });
+  await page.getByRole('button', { name: `Add to ${role}` }).click();
+  await list.locator('option', { hasText: new RegExp(`^${model.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) }).waitFor({ state: 'detached' });
+}
+
+/**
+ * Speech in, as a user with a server of their own sets it up: Add a provider for speech-in, Local speech server, its address (the stand-in's /asr, which
+ * passes a transcription request on to the user's server: annai calls only https addresses, or http on this device), its Transcription switched on, the model
+ * qwen3-asr-1.7b by id, and the model first in Speech in. @param {import('@playwright/test').Page} page @param {string} standIn
+ */
+export async function addTranscription(page, standIn) {
+  await page.goto('/#/models');
+  await page.getByRole('link', { name: 'Add a provider for speech-in' }).click();
+  await page.getByRole('button', { name: /^Add (another )?Local speech server$/ }).click();
+  const byHand = page.getByRole('button', { name: 'Add by hand' });
+  const remove = page.getByRole('button', { name: 'Remove provider' });
+  await byHand.or(remove).first().waitFor({ timeout: 30_000 });
+  if (await byHand.isVisible()) await byHand.click();
+  await remove.waitFor({ timeout: 30_000 });
+  await page.getByLabel('Name', { exact: true }).fill('Halo speech');
+  await page.getByLabel('Address', { exact: true }).fill(`${standIn}/asr/v1`);
+  await page.getByLabel('API key', { exact: true }).fill('sk-test-asr');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('heading', { level: 1, name: 'Halo speech' }).waitFor();
+  await page.getByLabel('API key', { exact: true }).and(page.locator('[placeholder^="saved"]')).waitFor();
+  const panel = page.getByRole('region', { name: 'Transcription', exact: true });
+  const use = panel.getByLabel('Use Transcription');
+  if (!(await use.isChecked())) {
+    await use.check();
+    await use.locator('xpath=ancestor::*[contains(concat(" ", @class, " "), " saving ")][1]').getByRole('status').filter({ hasText: 'Saved' }).waitFor({ timeout: 30_000 });
+  }
+  await panel.getByLabel('Add a model by id').fill('qwen3-asr-1.7b');
+  await panel.getByRole('button', { name: 'Add model' }).click();
+  await page.getByRole('link', { name: /^qwen3-asr-1\.7b/ }).waitFor();
+  await page.getByRole('link', { name: 'Models', exact: true }).click();
+  await addToRole(page, 'speech-in', 'qwen3-asr-1.7b');
+}
+
+/**
+ * A stand-in voice for annai's own spoken question: a Custom provider at the stand-in's /voice, its Voice ability on, one model, first in speech-out (the
+ * browser's voice says nothing in a container, and what it says is not in the page's audio). From the Models screen, as a user would.
+ * @param {import('@playwright/test').Page} page @param {string} standIn
+ */
+export async function addVoiceStandIn(page, standIn) {
+  await page.goto('/#/models');
+  await page.getByRole('link', { name: 'Add a provider', exact: true }).click();
+  await page.getByRole('button', { name: /^Add (another )?(Custom provider|Another address)$/ }).click();
+  await page.getByLabel('Address', { exact: true }).fill(`${standIn}/voice`);
+  await page.getByLabel('API key (optional)').fill('sk-test-voice');
+  await page.getByRole('button', { name: 'Look for what it offers' }).click();
+  await page.getByRole('button', { name: 'Add with these' }).click({ timeout: 30_000 });
+  const name = page.getByLabel('Name', { exact: true });
+  await name.fill('Voice stand-in');
+  await name.blur();
+  await page.getByRole('heading', { level: 1, name: 'Voice stand-in' }).waitFor();
+  const panel = page.getByRole('region', { name: 'Voice', exact: true });
+  const use = panel.getByLabel('Use Voice');
+  if (!(await use.isChecked())) {
+    await use.check();
+    await use.locator('xpath=ancestor::*[contains(concat(" ", @class, " "), " saving ")][1]').getByRole('status').filter({ hasText: 'Saved' }).waitFor({ timeout: 30_000 });
+  }
+  await panel.getByLabel('Add a model by id').fill('voice');
+  await panel.getByRole('button', { name: 'Add model' }).click();
+  await page.getByRole('link', { name: /^voice/ }).waitFor();
+  await page.getByRole('link', { name: 'Models', exact: true }).click();
+  const list = page.getByLabel('Add a model to speech-out');
+  await list.selectOption({ label: 'voice' });
+  await page.getByRole('button', { name: 'Add to speech-out' }).click();
+  await list.locator('option', { hasText: /^voice$/ }).waitFor({ state: 'detached' });
+}
+
+/**
+ * The voice chip's switch: a tap on the chip turns voice on or off in the current build (2026-11); the builds before it opened a Voice group with On and Off buttons.
+ * @param {import('@playwright/test').Page} page @param {'On' | 'Off'} to @param {(en: string, context?: string) => string} [w] the screens' words
+ */
+export async function voiceSwitch(page, to, w = (en) => en) {
+  const chip = page.locator('.voice-chip');
+  await chip.click();
+  const group = page.getByRole('group', { name: w('Voice', 'voice mode') });
+  if (await group.waitFor({ timeout: 1500 }).then(() => true, () => false)) await group.getByRole('button', { name: w(to) }).click();
+  await chip.filter({ hasText: w(`Voice ${to.toLowerCase()}`) }).waitFor();
 }
 
 /**
@@ -225,7 +402,7 @@ export async function setScreens(page, tag) {
   return (/** @type {string} */ en, /** @type {string} */ context = '') => words[key(en, context)] ?? en;
 }
 
-/** What one scenario run is given. ui: the screens' language (localization L6). @typedef {{ origin: string, standIn?: string, key: string, clips: Record<string, string>, roomDb: number | null, settleMs: number, answerTimeoutMs: number, ui?: string, log: (s: string) => void, scrub: (s: string) => string }} Env */
+/** What one scenario run is given. ui: the screens' language (localization L6); kokoro: the stand-in Kokoro itself (stage 5: it is told which trip a marked question reads); real: the Anthropic key (read by the script, typed into the page, never written) and the most model requests a scenario may make (the 31st is refused). @typedef {{ origin: string, standIn?: string, kokoro?: { readTrip: (id: string | null) => void, log: any[] }, real?: { anthropic: string, cap: number }, key: string, clips: Record<string, string>, roomDb: number | null, settleMs: number, answerTimeoutMs: number, ui?: string, log: (s: string) => void, scrub: (s: string) => string }} Env */
 
 /**
  * One scenario in a fresh context.
@@ -259,7 +436,7 @@ export async function runScenario(browser, name, sc, env) {
     const rt = await page.evaluate(() => {
       const r = /** @type {any} */ (window).__rt;
       const lv = (/** @type {number[][]} */ xs) => xs.map((l) => [r.t0 + l[0], Math.round(l[1] * 10_000) / 10_000]);
-      return r ? { plays: r.plays, level: lv(r.level), mic: lv(r.mic), opens: r.opens } : { plays: [], level: [], mic: [], opens: 0 };
+      return r ? { plays: r.plays, level: lv(r.level), mic: lv(r.mic), opens: r.opens, media: r.media ?? [] } : { plays: [], level: [], mic: [], opens: 0, media: [] };
     });
     const shown = await page.evaluate(() => [...document.querySelectorAll('.notice strong')].map((e) => (e.textContent ?? '').trim())).catch(() => []);
     const cards = [...new Set(shown.filter((c) => !before.includes(c)))].map((c) => env.scrub(c).slice(0, 120));
@@ -268,15 +445,36 @@ export async function runScenario(browser, name, sc, env) {
     for (const t of trace) {
       if (t.type === 'live.session' && t.data.state === 'closed' && t.data.kind) frames.push({ at: t.at, dir: 'in', kind: 'close', code: t.data.code, reason: `${t.data.kind}: ${t.data.why ?? ''}` });
     }
-    return { scenario: name, route: sc.route, echoDb: sc.echoDb, startedAt: opened, endedAt: Date.now(), keyLine: null, plays: rt.plays, frames, level: rt.level, micLevel: rt.mic, trace, errors, notes, cards, convo, ...(languages ? { languages } : {}) };
+    // The conversation's own lines (a card's too, with its buttons and whether they are on), as the page shows them at the end.
+    const lines = sc.card ? await page.evaluate(() => [...document.querySelectorAll('.convo li')].map((e) => ({ who: (e.querySelector('.who')?.textContent ?? '').trim(), text: (e.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 300), buttons: [...e.querySelectorAll('button')].map((b) => ({ name: (b.textContent ?? '').trim(), disabled: /** @type {HTMLButtonElement} */ (b).disabled })) }))).catch(() => []) : [];
+    return { scenario: name, route: sc.route, echoDb: sc.echoDb, startedAt: opened, endedAt: Date.now(), keyLine: null, plays: rt.plays, frames, level: rt.level, micLevel: rt.mic, trace, errors, notes, cards, convo, ...(sc.mode ? { mode: sc.mode } : {}), ...(sc.real ? { model: { requests: modelRequests, capped } } : {}), ...(sc.card ? { media: rt.media, taps, lines, kokoro: (env.kokoro?.log ?? []).filter((x) => x.at >= began).map((x) => ({ ...x, text: env.scrub(x.text ?? '') })) } : {}), ...(languages ? { languages } : {}) };
   };
   let opened = began;
+  /** Requests to the real model so far, and whether the cap refused one. */
+  let modelRequests = 0;
+  let capped = false;
+  /** The taps the scenario made on annai's card (epoch ms of the click, the button). @type {{ at: number, label: string, ok: boolean }[]} */
+  const taps = [];
   /** What the scenario asked of the languages setting, and whether this build took it (phase 2). @type {import('./analyse.mjs').Rec['languages']} */
   let languages;
   /** The cards on the page as she starts listening: only those that come after are hers to report. @type {string[]} */
   let before = [];
   try {
-    await setUp(page, env.key, log, env.standIn ? { standIn: env.standIn } : {});
+    const classic = sc.mode === 'classic';
+    const trips = await setUp(page, env.key, log, env.standIn ? { standIn: env.standIn, card: sc.card === true, classic, ...(sc.real && env.real ? { real: { anthropic: env.real.anthropic } } : {}) } : {});
+    if (sc.card && !sc.real) env.kokoro?.readTrip(trips.testville ?? null);
+    // A real model is asked at most cap times (the 31st is refused, and the record says so): a runaway loop of tool calls stops here.
+    const real = sc.real ? env.real : undefined;
+    if (real) {
+      await context.route('https://api.anthropic.com/v1/messages*', (route) => {
+        if (route.request().method() !== 'POST') return route.continue();
+        if (++modelRequests > real.cap) {
+          capped = true;
+          return route.abort('blockedbyclient');
+        }
+        return route.continue();
+      });
+    }
     if (sc.languages) {
       languages = await setLanguages(page, sc.languages);
       log(`    languages: ${languages.applied ? `${languages.spoken.join(', ')}; answers in ${languages.answer}` : `not applied (${languages.why})`}`);
@@ -289,13 +487,16 @@ export async function runScenario(browser, name, sc, env) {
     }
     log('    annai is set up; tapping Shiori');
     await page.getByRole('button', { name: w('Shiori') }).click();
-    await page.locator('.voice-chip').filter({ hasText: w('Listening live') }).waitFor({ timeout: 40_000 });
-    await page.waitForFunction(() => typeof /** @type {any} */ (window).__rt?.say === 'function', null, { timeout: 15_000 });
+    // Classic voice has no live session: the tap opens a listening window, and the microphone with it.
+    if (!classic) await page.locator('.voice-chip').filter({ hasText: w('Listening live') }).waitFor({ timeout: 40_000 });
+    await page.waitForFunction(() => typeof /** @type {any} */ (window).__rt?.say === 'function', null, { timeout: classic ? 30_000 : 15_000 });
     talking = true;
+    // The card is annai's own, in the conversation: its buttons are tapped there (the e2e's read-trip does the same).
+    if (sc.card) await page.goto(`/#/trip/${trips.chat}/talk`);
     before = await page.evaluate(() => [...document.querySelectorAll('.notice strong')].map((e) => (e.textContent ?? '').trim()));
     await wait(1200); // the detector hears the room before the first word
-    opened = frames.find((f) => f.kind === 'setup')?.at ?? began;
-    log('    listening live; running the conversation');
+    opened = frames.find((f) => f.kind === 'setup')?.at ?? Date.now();
+    log(classic ? '    listening (classic voice); running the conversation' : '    listening live; running the conversation');
 
     /** The latest time annai played any sound (epoch ms), or 0. */
     const lastSound = async () => page.evaluate((limit) => {
@@ -306,8 +507,86 @@ export async function runScenario(browser, name, sc, env) {
     /** The end and the start of the last clip that was played (epoch ms). */
     let lastEnd = 0;
     let lastAt = 0;
+    /** annai's card for read_trip, once it is up (its trace entry's time), and the end of its question once it was said (epoch ms). */
+    const card = { at: 0, qStart: 0, qEnd: 0 };
+    /** The page's log of its own player (the question's start and end), after a time. @param {number} since @param {string} kind */
+    const mediaAfter = (since, kind) => page.evaluate(([from, k]) => (/** @type {any} */ (window).__rt?.media ?? []).find((/** @type {any} */ m) => m.kind === k && m.at >= from)?.at ?? 0, /** @type {[number, string]} */ ([since, kind]));
     for (const step of sc.steps) {
-      if ('say' in step) {
+      if ('ask' in step) {
+        // Waits for annai's own card (an out.ask of its own), whatever the chain of Koe, Kokoro and the tool takes.
+        const end = Date.now() + step.ask;
+        while (Date.now() < end && !card.at) {
+          card.at = (await eventsOf(page, ['out.ask'], began - 1000)).find((e) => e.data?.own === true)?.at ?? 0;
+          if (!card.at) await wait(150);
+        }
+        if (!card.at) notes.push(`annai's card never came within ${step.ask / 1000} s`);
+        else log(`    + ${((card.at - opened) / 1000).toFixed(1)} s  annai's card is up`);
+      } else if ('asked' in step || 'asking' in step) {
+        // The question said (its player ended), or only begun, and ms more. Without the card, nothing waits.
+        const kind = 'asked' in step ? 'ended' : 'playing';
+        const ms = 'asked' in step ? step.asked : step.asking;
+        if (card.at) {
+          const end = Date.now() + 20_000;
+          let at = 0;
+          while (Date.now() < end && !at) {
+            at = await mediaAfter(card.at - 50, kind);
+            if (!at) await wait(50);
+          }
+          if (!at) notes.push(`annai's question was not heard ${kind === 'ended' ? 'to end' : 'to begin'} within 20 s of the card`);
+          else if (kind === 'ended') card.qEnd = at;
+          else card.qStart = at;
+          log(`    + ${(((at || Date.now()) - opened) / 1000).toFixed(1)} s  the question ${kind === 'ended' ? 'is said' : 'begins'}`);
+        }
+        await wait(ms);
+      } else if ('shiori' in step) {
+        // A tap on Shiori: classic voice listens for a window at a time, and asleep she hears nothing until tapped.
+        await page.getByRole('button', { name: 'Shiori' }).click({ timeout: 8000 }).catch(() => notes.push('no Shiori button to tap'));
+        log(`    + ${((Date.now() - opened) / 1000).toFixed(1)} s  taps Shiori`);
+      } else if ('tap' in step) {
+        if (step.afterHeard !== undefined) {
+          // Once annai has the words of the line just said, where its card judges them (Koe talking: the session's transcript of it, which can come long
+          // before its `heard` entry; classic voice: the speech-to-text server's answer for the clip, as the stand-in saw it), and ms after.
+          const end = Date.now() + 15_000;
+          let heard = 0;
+          while (Date.now() < end && !heard) {
+            heard = classic
+              ? (env.kokoro?.log.find((k) => k.kind === 'asr' && k.at + (k.ms ?? 0) >= lastAt)?.at ?? 0) + (env.kokoro?.log.find((k) => k.kind === 'asr' && k.at + (k.ms ?? 0) >= lastAt)?.ms ?? 0)
+              : (frames.find((f) => f.dir === 'in' && f.kind === 'heard' && f.at >= lastAt)?.at ?? 0);
+            if (!heard) await wait(100);
+          }
+          if (!heard) notes.push('annai wrote nothing down within 15 s of the clip: tapped anyway');
+          await wait(Math.max(0, step.afterHeard - (Date.now() - (heard || Date.now()))));
+        }
+        const at = Date.now();
+        const button = page.locator('.convo li').filter({ hasText: /Read Testville/ }).last().getByRole('button', { name: step.tap, exact: true });
+        const ok = await button.click({ timeout: 5000 }).then(() => true, () => false);
+        taps.push({ at, label: step.tap, ok });
+        log(`    + ${((at - opened) / 1000).toFixed(1)} s  taps ${step.tap}${ok ? '' : ' (the button was not there to tap)'}`);
+      } else if ('settled' in step) {
+        // The card resolved (the read_trip call's result), then annai and her sound quiet for ms; at most 45 s from the last clip or the card.
+        const limit = Date.now() + 45_000;
+        let resolved = 0;
+        while (Date.now() < limit) {
+          resolved ||= (await eventsOf(page, ['tool.result'], card.at || began - 1000)).find((e) => e.data?.name === 'read_trip')?.at ?? 0;
+          const quietFrom = Math.max(await lastSound(), frames.at(-1)?.at ?? 0, resolved, lastEnd);
+          if (resolved && Date.now() - quietFrom >= step.settled) break;
+          await wait(150);
+        }
+        if (!resolved) notes.push('the card never resolved (no result of read_trip) within the wait');
+        log(`    + ${((Date.now() - opened) / 1000).toFixed(1)} s  ${resolved ? 'settled' : 'the card did not resolve'}`);
+      } else if ('say' in step) {
+        // Classic voice opens the microphone for a window at a time: the clip waits until it is open, and has had a second to hear the room.
+        const open = await page.waitForFunction(() => typeof /** @type {any} */ (window).__rt?.say === 'function', null, { timeout: classic ? 3000 : 20_000 }).then(() => true, () => false);
+        if (!open) {
+          // The listening window is shut (nobody is listening): the user would have to tap Shiori first. The clip is not played.
+          notes.push(`the microphone was closed when ${step.say} was to be said: nobody was listening`);
+          log(`    + ${((Date.now() - opened) / 1000).toFixed(1)} s  ${step.say} not said: the microphone is closed`);
+          continue;
+        }
+        if (classic) {
+          const age = await page.evaluate(() => Date.now() - /** @type {any} */ (window).__rt.micAt).catch(() => 1000);
+          if (age < 1000) await wait(1000 - age);
+        }
         const p = await page.evaluate(([n, g]) => /** @type {any} */ (window).__rt.say(n, { gainDb: g }), /** @type {[string, number]} */ ([step.say, step.gainDb ?? 0]));
         if (step.say !== 'silence') {
           lastEnd = p.end;
@@ -350,9 +629,7 @@ export async function runScenario(browser, name, sc, env) {
     }
     await wait(1500);
     // Voice off closes the session; its closing is traced.
-    await page.locator('.voice-chip').click();
-    await page.getByRole('group', { name: w('Voice', 'voice mode') }).getByRole('button', { name: w('Off') }).click();
-    await page.locator('.voice-chip').filter({ hasText: w('Voice off') }).waitFor();
+    await voiceSwitch(page, 'Off', w);
     await wait(2500);
     return await collect(opened);
   } catch (e) {
