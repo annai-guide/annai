@@ -253,8 +253,8 @@ async function moveBack(ws, scope, end, handover) {
 
 /**
  * Takes back exactly what Shiori wrote for a hand-over in a scope, and nothing of the user's: each file she wrote or deleted for it goes
- * back to how it was, as the user, with its short name, unless it changed since; a file moved out or in goes back where it came from,
- * unless changed where it went. Said once in the log (handover.undo), last, so an Undo cut off can finish; a second Undo does nothing
+ * back to how it was, as the user, with its short name, unless it changed since; a file it moved out or in goes back to where the hand-over
+ * found it, its whole chain of moves at once (moveBack), unless anyone else changed it on the way. Said once in the log (handover.undo), last, so an Undo cut off can finish; a second Undo does nothing
  * more than say whether a trip it emptied still waits to go.
  * @param {import('./workspace.js').Workspace} ws @param {string} scope @param {string} handover
  * @param {{ log?: (ev: { type: string, actor: string, data: any }) => Promise<unknown>, removed?: string[], mark?: boolean }} [o] log: the open
