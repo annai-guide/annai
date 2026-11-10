@@ -10,6 +10,7 @@ import { timelineRows } from '../../src/core/timeline.js';
 import { record } from '../../src/core/agent/log.js';
 import { updateAppSettings, readAppSettings } from '../../src/core/settings.js';
 import { utf8 } from '../../src/core/bytes.js';
+import { liveKit, soon, tone } from './koe-live-kit.js';
 
 /**
  * Reading another trip (the timeline design, "Reading another trip"; stage 5's plan, Task 1): read_trip, Kokoro's, read-only. What it gives back
@@ -480,6 +481,27 @@ test('classic voice: a heard line that is no yes ends the card unanswered, its w
 });
 
 // ---- imported: a trip from a trip's file always asks; a backup keeps what it held. ----
+
+test("in a live session annai says the question itself, as a reminder Koe didn't say is: a user who isn't looking still hears it, and a yes the session hears allows it", async () => {
+  const k = await liveKit([{ said: 'Hello there.', audio: tone(1) }]);
+  try {
+    k.agent.addLoopTools(tripTools(k.agent));
+    await fixedTrip(k.ws, TV, { title: 'Testville', start: '2027-04-01', end: '2027-04-08' });
+    await k.voice.unlock();
+    k.agent.send('Hi');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    assert.ok(k.agent.live.voiced);
+    const reading = k.agent.kokoro.loopTools().find((/** @type {any} */ t) => t.name === 'read_trip').run({ trip: TV }, {
+      id: 'c-live', scope: k.agent.scope, trip: k.agent.trip, signal: new AbortController().signal, model: null, wake: 'w', author: 'shiori',
+    });
+    await soon(async () => k.said.includes('Read Testville?'), 5_000);
+    await soon(async () => { await koeHeard(k, `h-${Date.now()}`, { text: 'Yes' }); return k.agent.kokoro.pendingId === null; }, 5_000);
+    assert.match(words(await reading), /^From "Testville"/);
+    assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }]);
+  } finally {
+    await k.done();
+  }
+});
 
 test("imported: a trip's file stamps the trip it makes, and an everything restore keeps the mark, and leaves the user's own trips unmarked", async () => {
   const { createMemoryStore } = await import('../fakes/store-memory.js');

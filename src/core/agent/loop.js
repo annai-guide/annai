@@ -881,7 +881,8 @@ export class Agent {
       const p = { id: call.id, kind: 'ask', ask, resolve: (v) => { clearTimeout(timer); resolve({ ...v, inside: ask.open }); } };
       this.#pending = p;
       this.#setState('waiting');
-      const aloud = Boolean(this.voice?.on) && !this.#half.hushed?.();
+      // As remind's aloud: said over a live session too (it holds back), or a user who isn't looking never learns a card waits.
+      const aloud = Boolean(this.voice?.on);
       (aloud ? /** @type {any} */ (this.voice).say(question).catch(() => {}) : Promise.resolve()).then(async () => {
         if (this.#pending !== p) return;
         ask.open = true;
