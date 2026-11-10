@@ -277,3 +277,14 @@ test("an undated conversation's text names the trip happening now and the 5 late
   // A dated conversation has none of it.
   assert.doesNotMatch(systemText(await takeSnapshot({ ws, registry, trip: happening, personalityName: 'shiori' })), /Happening now|read_trip first|latest other/);
 });
+
+test("an undated conversation's text cuts each other conversation's name to trip.json's 200 characters: a file's record can hold more (review finding 12)", async () => {
+  const { ws, store, registry } = await setup();
+  const long = await createTrip(ws, { title: 'x' });
+  const name = `${'🌸'.repeat(150)}${'y'.repeat(4000)}`; // an imported trip's record: the archive's schema takes any length
+  await store.tx(['scopes'], 'readwrite', async (/** @type {any} */ x) => x.putScope({ ...(await x.getScope(long)), title: name, talked: Date.now() + 10_000 }));
+  const chat = await createTrip(ws, { title: 'Where should we eat?' });
+  const text = systemText(await takeSnapshot({ ws, registry, trip: chat, personalityName: 'shiori' }));
+  assert.ok(text.includes(`${JSON.stringify([...name].slice(0, 200).join(''))} (${long})`), 'its first 200, by character');
+  assert.ok(!text.includes('y'.repeat(51)));
+});

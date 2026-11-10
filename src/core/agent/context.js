@@ -54,14 +54,18 @@ export async function takeSnapshot({ ws, registry, trip, personalityName, locale
   };
 }
 
+/** The longest name annai takes for a trip (start_trip, Start a trip, Details): a record from a file can hold any length. */
+const TITLE_MAX = 200;
+
 /** The other conversations an undated one may mean, from their records: those happening now, then the latest. @param {import('../workspace.js').Workspace} ws @param {string} trip */
 async function elsewhere(ws, trip) {
   const others = (await listTrips(ws.store)).active.filter((s) => s.id !== trip);
   const happening = others.filter((s) => phaseOf(s, Date.now(), deviceZone()) === 'happening'); // as home's now line has them
   // The spec's "the last few conversations": five, the plan's call, by when the user last talked in each (else when it was made), as home places a chat.
   const latest = others.filter((s) => !happening.includes(s)).sort((a, b) => (b.talked ?? b.created) - (a.talked ?? a.created)).slice(0, 5);
+  const named = (/** @type {import('../types.js').ScopeRecord} */ s) => `${quote([...s.title].slice(0, TITLE_MAX).join(''))} (${s.id})`;
   /* en */
-  return [happening.length ? `Happening now: ${happening.map((s) => `${quote(s.title)} (${s.id})`).join('; ')}.` : '', latest.length ? `Their latest other conversations: ${latest.map((s) => `${quote(s.title)} (${s.id})`).join('; ')}` : ''].filter(Boolean).join('\n');
+  return [happening.length ? `Happening now: ${happening.map(named).join('; ')}.` : '', latest.length ? `Their latest other conversations: ${latest.map(named).join('; ')}` : ''].filter(Boolean).join('\n');
 }
 
 /**
