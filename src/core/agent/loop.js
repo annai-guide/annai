@@ -152,7 +152,7 @@ export const isForUser = (w) => w.kind === 'note' && w.from === 'kokoro' && !NOT
 const LISTEN_S = 8;
 /** The plan's call: room for a "yes" after a pause. */
 export const YES_S = 20;
-/** When a streamed transcript has stopped growing, at least (review M3's rule): live.js ends a live turn on it, and annai's card judges a heard line on it. */
+/** How long a streamed transcript must stand still to count as stopped, at least (review M3's rule): live.js ends a live turn on it, annai's card judges a heard line on it. */
 export const STALL_MIN_MS = 3000;
 /** STALL_MIN_MS: a live line's last words can come seconds after its first. */
 const SETTLE_S = STALL_MIN_MS / 1000;
