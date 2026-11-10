@@ -166,7 +166,7 @@ async function filesSection(ctx, id) {
 function tripActions(ctx, id, scope, slot) {
   return [h('button', {
     class: 'btn', type: 'button',
-    onclick: () => slot.replaceChildren(...(slot.firstChild ? [] : [exportPanel(ctx, { kind: 'trip', scopes: [id], title: scope.title })])),
+    onclick: () => slot.replaceChildren(...(slot.firstChild ? [] : [exportPanel(ctx, { kind: 'trip', scopes: [id], title: scopeTitle(scope) })])),
   }, t`Export trip`)];
 }
 
