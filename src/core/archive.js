@@ -794,8 +794,9 @@ async function commitImport(store, { manifest, plan, overrides, secrets, now, re
       // The target decides the kind: a record that calls "me" a trip must not make it one.
       const kind = p.target === ME ? 'me' : p.mode === 'system' ? 'sys' : 'trip';
       // This device hasn't backed it up; the mirror is read from what came (backfillTrips). No annai sends a draft: a record that says so is a conversation.
+      // A trip from a trip's file is someone else's, as far as annai knows: reading it from another conversation always asks (read_trip). A backup keeps what it holds.
       const { backup: _b, start: _s, end: _e, talked: _t, draft: _d, ...rec } = p.rec;
-      await t.putScope({ ...rec, id: p.target, kind, status: 'active', updated: now });
+      await t.putScope({ ...rec, id: p.target, kind, status: 'active', updated: now, ...(kind === 'trip' && manifest.kind === 'trip' ? { imported: /** @type {const} */ (true) } : {}) });
       for (const f of p.files) {
         const hash = overrides.get(f.name)?.hash ?? f.hash;
         const size = /** @type {number} */ (sizes.get(hash));

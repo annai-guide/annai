@@ -60,6 +60,8 @@ export async function renderShiori(ctx, route) {
   const newName = h('input', { id: 'new-personality', autocomplete: 'off', spellcheck: 'false', placeholder: /* en */ 'my-shiori' });
   const nameError = h('p', { class: 'error', role: 'alert', hidden: true });
   const askFirst = savedCheck(t`Ask me before Shiori changes her personality`, Boolean(app.shiori?.askBeforeTuning), (on) => updateAppSettings(ctx.ws, { shiori: { askBeforeTuning: on } }));
+  // Always for my trips, as annai's card sets it (read_trip): a trip someone sent still asks.
+  const readMine = savedCheck(t`Let Shiori read my other trips without asking`, app.readMyTrips === true, (on) => updateAppSettings(ctx.ws, { readMyTrips: on }));
   const chosen = h('ul', { class: 'file-list' }, ...names.map((n) => h('li', {},
     h('label', { class: 'check' }, h('input', { type: 'radio', name: 'personality', value: n, checked: n === active }), h('span', { text: n })),
     h('a', { href: `#/shiori?edit=${encodeURIComponent(n)}`, text: t`Edit` }))));
@@ -148,6 +150,9 @@ export async function renderShiori(ctx, route) {
     section(t`Her two halves`,
       h('p', { class: 'sub', text: t`Koe talks with you and answers at once; Kokoro thinks things through and does the work. They pass each other short notes. On: the notes show in the conversation as quiet lines. Off: they stay in the Trace.` }),
       showHalves.el),
+    section(t`Your other trips`,
+      h('p', { class: 'sub', text: t`Before Shiori reads another of your trips or conversations, annai asks, once a conversation. On: she reads your own without asking. Trips someone sent you always ask.` }),
+      readMine.el),
     section(W.heading, h('p', { class: 'sub' }, h('a', { href: '#/languages', text: t`The languages you speak, and the one Shiori answers in, are in Settings → Languages.` }))),
     // Spend per day, the cache and housekeeping are on Settings → Models, with the requests they shape.
     section(t`How often she acts on her own`,

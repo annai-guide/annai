@@ -12,10 +12,12 @@
  *   Entries from before `at` existed, or imported from such a backup, have none.
  * @typedef {{ ts: number, type: string, actor: string, data?: any, refs?: string[] }} NewEvent
  * @typedef {{ id: string, kind: 'me'|'trip'|'sys', title: string, status: 'active'|'archived',
- *   created: number, updated: number, format: number, tripId?: string, backup?: { at: number, seq: number }, start?: string, end?: string, talked?: number | null, draft?: true }} ScopeRecord
+ *   created: number, updated: number, format: number, tripId?: string, backup?: { at: number, seq: number }, start?: string, end?: string, talked?: number | null, draft?: true, imported?: true }} ScopeRecord
  *   backup: the last saved Backup that held this trip: when, and the last history entry it holds (spec §4.9).
  *   start, end: the trip's dates mirrored from trip.json; talked: when the user last spoke in it, null when nobody has, no key: not filled yet (scopes.js).
  *   draft: the standing draft + opens, not a conversation until its first use (chats.js); exports and the lists leave it out.
+ *   imported: a trip that came from a trip's file (archive.js), someone else's as far as annai knows: Always (readMyTrips) doesn't cover it, so read_trip
+ *   asks, with no Always, unless the user allowed it in that conversation. One imported before the mark is known by its log's import entry (read_trip).
  * @typedef {{ after?: number, before?: number, limit?: number, reverse?: boolean, types?: string[], notTypes?: string[] }} EventQuery
  *
  * @typedef {object} Tx

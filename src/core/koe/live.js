@@ -1,6 +1,6 @@
 import { LiveInput } from '../realtime/input.js';
 import { escapeTags, wrapNote, theirs, koeLine } from '../agent/blocks.js';
-import { LABELS, NOTE_UNSAID, isWatched } from '../agent/loop.js';
+import { LABELS, NOTE_UNSAID, isWatched, STALL_MIN_MS } from '../agent/loop.js';
 import { newId, SYS_DEVICE, ensureDeviceScope } from '../scopes.js';
 import { forget } from '../forget.js';
 import { resolveEvent } from '../agent/transcript.js';
@@ -61,9 +61,8 @@ const REACH = ['show', 'ask', 'already_told'];
 const HINTS = '/voice-hints.json';
 /** Where her voice doesn't reach the microphone, so speaking may cut her off (spec §10.4): elsewhere, half-duplex. */
 const DUPLEX = ['headphones', 'car'];
-/** A turn ends once its streamed transcript (heardLive) stops growing this long past the pause, 3 s at least, if the microphone agrees. */
+/** A turn ends once its streamed transcript (heardLive) stops growing this long past the pause, STALL_MIN_MS at least, if the microphone agrees. */
 const STALL_MS = 1500;
-const STALL_MIN_MS = 3000;
 const HEARD_AFTER_MS = 1000;
 /**
  * After the user's turn ends (in half-duplex), her answer's voice waits at least this long from that end (mayPlay): a thinking pause

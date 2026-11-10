@@ -701,3 +701,22 @@ test("the no-trip conversation reaches waiting files' content by hash; a trip do
   assert.equal(await canRead(store, ME, flight), true);
   assert.equal(await canRead(store, a, flight), false);
 });
+
+test("read_trip leaves the walls as they were: what Shiori read of another trip is words in her result, read still reaches only the open trip, and no hash of the other trip's reaches this one", async () => {
+  const { tripTools } = await import('../../src/core/agent/trip-tools.js');
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  const k = await agentKit([[{ toolCalls: [{ name: 'sleep', input: {} }] }]], { halves: true });
+  k.agent.addLoopTools(tripTools(k.agent));
+  const testville = await createTrip(k.ws, { title: 'Testville', start: '2027-04-01' });
+  const note = (await k.ws.write(testville, '/notes/food.md', 'Ramen at the corner', { author: 'user' })).hash;
+  await updateAppSettings(k.ws, { readMyTrips: true });
+  const tools = k.agent.kokoro.loopTools();
+  const call = { id: 'c', scope: k.trip, trip: k.trip, signal: new AbortController().signal, model: null, wake: 'w', author: 'shiori' };
+  const got = await tools.find((/** @type {any} */ t) => t.name === 'read_trip').run({ trip: testville, path: '/notes/food.md' }, call);
+  assert.match(String(got), /Ramen at the corner/);
+  // The files tools' read is as it was: /trip/ is the open trip alone.
+  const read = k.registry.entries('tool').find((/** @type {any} */ e) => e.item.name === 'read').item;
+  await assert.rejects(read.run({ path: '/trip/notes/food.md' }, call), /No file at \/trip\/notes\/food\.md/);
+  assert.equal(await canRead(k.store, k.trip, note), false);
+  assert.equal(await canRead(k.store, testville, note), true);
+});

@@ -820,3 +820,21 @@ test("a place with no server yet is said in the screens' words on its row, from 
   assert.equal(type.where({}), 'サーバー');
   assert.equal(type.where({ server: 'https://git.example.com', owner: 'me', repo: 'b' }), 'git.example.com/me/b');
 });
+
+test("a restore from a git backup keeps a trip's imported mark (someone else's trip still asks before Shiori reads it from another conversation)", async () => {
+  const fj = await startForgejo({ repos: { [REPO]: {} } });
+  try {
+    const { type } = forgejo();
+    const d = await device();
+    await d.store.tx(['scopes'], 'readwrite', async (/** @type {any} */ t) => t.putScope({ ...(await t.getScope(d.trip)), imported: true }));
+    await createTrip(d.ws, { title: 'Lake week' });
+    const put = await type.put(ctx(fj), await archive(d), opts());
+    const fresh = createMemoryStore();
+    await ensureBaseScopes(new Workspace(fresh));
+    const { trips } = await importArchive(fresh, await peekArchive(await type.get(ctx(fj), put.id, { onProgress: () => {} })));
+    const recs = await fresh.tx(['scopes'], 'readonly', (/** @type {any} */ t) => Promise.all(trips.map((id) => t.getScope(id))));
+    assert.deepEqual(recs.map((/** @type {any} */ r) => [r.title, r.imported]).sort(), [['Big Sur', true], ['Lake week', undefined]]);
+  } finally {
+    await fj.stop();
+  }
+});
