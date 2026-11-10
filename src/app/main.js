@@ -104,7 +104,12 @@ async function boot() {
 
   // Every committed log append goes to plugins' hooks (spec §5.4), once the registry exists.
   let deliver = (/** @type {any[]} */ _evs) => {};
-  const store = watchAppends(await createIdbStore(), (evs) => deliver(evs));
+  /** Who else follows the committed appends: home's "changed since". @type {Set<(evs: any[]) => void>} */
+  const followers = new Set();
+  const store = watchAppends(await createIdbStore(), (evs) => {
+    deliver(evs);
+    for (const fn of followers) fn(evs);
+  });
   running = { store };
   // What plugins say when they fail can echo a key: the log keeps none (spec §9.9).
   const registry = new Registry({ log: secretFreeLog(store, SYS) });
@@ -233,7 +238,8 @@ async function boot() {
   const updates = new Updates({ host: plugins, env: { addressFetch: tracedFetch(store, SYS, { tool: /* en */ 'plugin updates' }), next: nextScreens } });
   updates.agent = agent;
   updates.voice = voice;
-  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, awake, pack, presets, backups, sim, push, updates, chats, version: VERSION });
+  const appended = (/** @type {(evs: any[]) => void} */ fn) => { followers.add(fn); return () => followers.delete(fn); };
+  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, awake, pack, presets, backups, sim, push, updates, chats, appended, version: VERSION });
   updates.notices = shell.notices;
   // A reload mid-drive starts the shell before live mode has restored the drive; that isn't a change to take over for.
   liveStarted.then(shell.seedActivity, () => {});
