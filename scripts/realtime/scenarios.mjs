@@ -11,10 +11,11 @@
 //   { settled: ms }                 waits until read_trip's result is in, and annai and her sound have been quiet for ms
 //   { shiori: true }                a tap on Shiori (classic voice: asleep, she hears nothing until tapped)
 // mode: 'classic' runs the same card in classic voice (no live session): speech in is the user's own server, the gate Gemini's small model, Kokoro alone.
+// speechIn: 'default' (classic and chat) adds no speech server: the speech-in list stays as annai sets it (send audio, then phone dictation).
 // route: the audio the microphone stands for (speaker: the phone's own, half-duplex; headphones: she can be cut by speaking);
 // echoDb: her voice mixed back into the microphone at that level (the phone's speaker), null for none.
 /** @typedef {{ say: string, gainDb?: number } | { answered: number } | { sounding: number } | { wait: number } | { ask: number } | { asked: number } | { asking: number } | { tap: string, afterHeard?: number } | { settled: number } | { shiori: true }} Step */
-/** @typedef {{ about: string, route: 'speaker' | 'headphones' | 'car', echoDb: number | null, echoDelayMs?: number, expectCut?: boolean, extra?: boolean, repeatNote?: boolean, card?: boolean, measure?: boolean, real?: boolean, mode?: 'live' | 'classic' | 'chat', expect?: { grant: 'voice' | 'tap' | false | 'any', words?: boolean, open?: boolean, next?: boolean, declined?: boolean }, languages?: { spoken: string[], answer: string }, steps: Step[] }} Scenario
+/** @typedef {{ about: string, route: 'speaker' | 'headphones' | 'car', echoDb: number | null, echoDelayMs?: number, expectCut?: boolean, extra?: boolean, repeatNote?: boolean, card?: boolean, measure?: boolean, real?: boolean, mode?: 'live' | 'classic' | 'chat', speechIn?: 'default', expect?: { grant: 'voice' | 'tap' | false | 'any', words?: boolean, open?: boolean, next?: boolean, declined?: boolean }, languages?: { spoken: string[], answer: string }, steps: Step[] }} Scenario
  *   repeatNote: the stand-in Kokoro sends its note again once Koe has said it; extra: not in a plain run, only by name (--only); languages (phase 2): the languages setting the run sets in Settings → Shiori before she listens (the browser's
  *   English is the list's first; the others are added), and the scenario is held to answering in the language each clip is spoken in */
 
@@ -202,6 +203,13 @@ function classicScenarios() {
   out['chat-sure-before'] = {
     ...live['card-yes'], about: 'Koe on a chat model: "Sure." said before annai\'s question arms nothing; "Sure." after it grants', mode: 'chat',
     steps: [{ say: 'tomorrow' }, { wait: 4000 }, { say: 'sure' }, { ask: 70_000 }, { asked: 1500 }, { say: 'sure' }, { settled: 2500 }],
+    expect: { grant: 'voice' },
+  };
+  // The re-review's F3: Koe on a chat model again, with the speech-in list as annai sets it (no speech server). Kokoro's stand-in model takes no audio,
+  // so only Koe · Chat's model (Gemini's takes audio) can write Koe's line down for the card: "Sure." after the question grants.
+  out['chat-sure-default'] = {
+    ...live['card-yes'], about: 'Koe on a chat model, the default speech-in list, Kokoro\'s model taking no audio: "Sure." after annai\'s question grants', mode: 'chat', speechIn: 'default',
+    steps: [{ say: 'tomorrow' }, { ask: 70_000 }, { asked: 1500 }, { say: 'sure' }, { settled: 2500 }],
     expect: { grant: 'voice' },
   };
   return out;
