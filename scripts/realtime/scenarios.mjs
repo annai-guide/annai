@@ -159,7 +159,8 @@ function cardScenarios() {
     'card-passenger': card('the card, a passenger\'s line ("Turn left at the next light."), then "Yes." 4.5 s after it began', [...go(), { say: 'passenger' }, { wait: 4500 }, { say: 'yes' }, { settled: 2500 }], { expect: yes }),
     'card-lyric': card('the card, song lyrics (lyric.wav), then "Yes." 9 s after they began', [...go(), { say: 'lyric' }, { wait: 9000 }, { say: 'yes' }, { settled: 2500 }], { expect: yes }),
     'card-late-18': card('"Yes." begun 18 s after the question was said (judged by when it began)', [...go(18_000), { say: 'yes' }, { settled: 2500 }], { expect: yes }),
-    'card-late-22': card('"Yes." begun 22 s after the question was said', [...go(22_000), { say: 'yes' }, { settled: 2500 }], { expect: no }),
+    // Outside the window it arms nothing: kept by Koe it ends the card unanswered, set aside it leaves the card waiting (a tap's). Either is right.
+    'card-late-22': card('"Yes." begun 22 s after the question was said', [...go(22_000), { say: 'yes' }, { settled: 2500 }], { expect: { grant: false, open: true } }),
     'card-tap-settling': card('a spoken "No, wait." is settling; a tap on Allow 1 s after annai has its words (the tap wins)', [...go(), { say: 'no-wait' }, { tap: 'Allow', afterHeard: 1000 }, { settled: 2500 }], { expect: { grant: 'tap' } }),
     'card-tap-not-now': card('a spoken "Yes.", and a tap on Not now 1.5 s after annai has its words (the tap wins)', [...go(), { say: 'yes' }, { tap: 'Not now', afterHeard: 1500 }, { settled: 2500 }], { expect: { grant: false } }),
     'card-over': card('"Yes." begun 2 s into annai\'s question, which it ends 0.7 s before', [{ say: 'tomorrow' }, { ask: 70_000 }, { asking: 2000 }, { say: 'yes' }, { settled: 2500 }], { expect: { grant: 'any', open: true } }),
