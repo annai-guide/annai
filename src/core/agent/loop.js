@@ -868,10 +868,12 @@ export class Agent {
    * said with voice on as a reminder is. A tap on an option answers it, and so does a heard line, dismissed or not, that yes() takes for one, heard
    * in the YES_S after the question ends. Anything else ends it unanswered, written as ask writes it: typing (a plugin can type), a late tap on another
    * card, another heard line here (with Koe talking, heard lines are Koe's, and only a yes answers). A Stop ends it.
-   * @param {{ id: string, wake: string }} call @param {{ question: string, options: string[], yes?: (heard: string) => string | null }} o
+   * @param {{ id: string, wake: string, signal?: AbortSignal }} call signal: the tool's; stopped before the card is up (a Stop as it was being drawn), it ends at once
+   * @param {{ question: string, options: string[], yes?: (heard: string) => string | null }} o
    * @returns {Promise<{ chosen?: string, how?: 'tap' | 'voice', stopped?: boolean, said?: string, heard?: string[] }>} said, heard: the user's words instead, as a result gives them
    */
   async confirm(call, { question, options, yes = () => null }) {
+    if (call.signal?.aborted) return { stopped: true };
     await this.#log({ type: 'out.ask', actor: 'system', data: { id: call.id, wake: call.wake, question, options, own: true, by: null } });
     const queued = this.#queue.findIndex((w) => w.kind === 'user' && w.scope === this.scope);
     /** @type {Got & { voiced?: string, inside?: boolean }} */
@@ -882,6 +884,8 @@ export class Agent {
       const ask = { yes, open: false, ids: new Set(), settle: new Map() };
       /** @type {Pending} */
       const p = { id: call.id, kind: 'ask', ask, resolve: (v) => { clearTimeout(timer); for (const x of ask.settle.values()) clearTimeout(x); resolve({ ...v, inside: ask.open }); } };
+      // A Stop while the card was written found no wait to end: no wait is left behind to take the user's next line.
+      if (call.signal?.aborted) return void p.resolve({ stopped: true });
       this.#pending = p;
       this.#setState('waiting');
       // As remind's aloud: said over a live session too (it holds back), or a user who isn't looking never learns a card waits.
