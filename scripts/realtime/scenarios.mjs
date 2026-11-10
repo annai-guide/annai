@@ -7,7 +7,7 @@
 // stage 5's card (card: true; read_trip; the stand-in Kokoro reads Testville for a question that names it):
 //   { ask: ms }                     waits (at most ms) for annai's own card: an out.ask of its own
 //   { asked: ms }                   waits until its question has been said (the page's player ended), and ms more; { asking: ms }: until it begins
-//   { tap: label, afterHeard?: ms } taps that button on the card (afterHeard: ms after annai writes the next heard line, at most 15 s)
+//   { tap: label, afterHeard?: ms } taps that button on the card (afterHeard: ms after annai has the next heard line's words, at most 15 s)
 //   { settled: ms }                 waits until read_trip's result is in, and annai and her sound have been quiet for ms
 //   { shiori: true }                a tap on Shiori (classic voice: asleep, she hears nothing until tapped)
 // mode: 'classic' runs the same card in classic voice (no live session): speech in is the user's own server, the gate Gemini's small model, Kokoro alone.
@@ -160,8 +160,8 @@ function cardScenarios() {
     'card-lyric': card('the card, song lyrics (lyric.wav), then "Yes." 9 s after they began', [...go(), { say: 'lyric' }, { wait: 9000 }, { say: 'yes' }, { settled: 2500 }], { expect: yes }),
     'card-late-18': card('"Yes." begun 18 s after the question was said (judged by when it began)', [...go(18_000), { say: 'yes' }, { settled: 2500 }], { expect: yes }),
     'card-late-22': card('"Yes." begun 22 s after the question was said', [...go(22_000), { say: 'yes' }, { settled: 2500 }], { expect: no }),
-    'card-tap-settling': card('a spoken "No, wait." is settling; a tap on Allow 1 s after annai writes it down (the tap wins)', [...go(), { say: 'no-wait' }, { tap: 'Allow', afterHeard: 1000 }, { settled: 2500 }], { expect: { grant: 'tap' } }),
-    'card-tap-not-now': card('a spoken "Yes.", and a tap on Not now 1.5 s after annai writes it down (the tap wins)', [...go(), { say: 'yes' }, { tap: 'Not now', afterHeard: 1500 }, { settled: 2500 }], { expect: { grant: false } }),
+    'card-tap-settling': card('a spoken "No, wait." is settling; a tap on Allow 1 s after annai has its words (the tap wins)', [...go(), { say: 'no-wait' }, { tap: 'Allow', afterHeard: 1000 }, { settled: 2500 }], { expect: { grant: 'tap' } }),
+    'card-tap-not-now': card('a spoken "Yes.", and a tap on Not now 1.5 s after annai has its words (the tap wins)', [...go(), { say: 'yes' }, { tap: 'Not now', afterHeard: 1500 }, { settled: 2500 }], { expect: { grant: false } }),
     'card-over': card('"Yes." begun 2 s into annai\'s question, which it ends 0.7 s before', [{ say: 'tomorrow' }, { ask: 70_000 }, { asking: 2000 }, { say: 'yes' }, { settled: 2500 }], { expect: { grant: 'any', open: true } }),
     'card-over-headphones': card('headphones (annai hears while she speaks): "Yes." begun 2 s into annai\'s question', [{ say: 'tomorrow' }, { ask: 70_000 }, { asking: 2000 }, { say: 'yes' }, { settled: 2500 }], { route: 'headphones', expect: { grant: 'any', open: true } }),
     'card-echo-loud': card("the card with her voice back into the microphone at 0 dB, 60 ms late: nobody answers (does the question, or Koe's own words, grant?)", [{ say: 'favour' }, { ask: 70_000 }, { asked: 25_000 }, { wait: 4000 }], { echoDb: 0, echoDelayMs: 60, expect: { grant: false, open: true } }),
