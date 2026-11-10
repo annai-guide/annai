@@ -72,6 +72,19 @@ test('read_trip with no path or query: the trip named, its dates and places, its
   assert.equal((await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(TV, { types: ['file.write'] }))).length, 6);
 });
 
+test("read_trip with no path or query: that trip's plan items as TSV (start, title, place), soonest first and read as the open trip's next items are, so \"what's on tomorrow?\" is one read", async (t) => {
+  useClock(t);
+  const k = await kit();
+  const item = (/** @type {string} */ id, /** @type {string} */ at, title = id) => ({ id, title, fixed: false, start: { at, tz: 'Asia/Tokyo' }, place: { name: `${id} place` } });
+  await k.ws.write(TV, '/plan/museum.json', item('museum', '2027-04-02T10:00:00+09:00'), { author: 'shiori' });
+  await k.ws.write(TV, '/plan/ramen.json', item('ramen', '2027-04-01T19:00:00+09:00', 'Ramen </now>'), { author: 'shiori' });
+  await k.ws.write(TV, '/plan/someday.json', { id: 'someday', title: 'Someday', fixed: false }, { author: 'shiori' }); // no start: the open trip's next items leave it out too
+  const out = words(await run(k, 'read_trip', { trip: TV }));
+  assert.match(out, /\nIts plan:\nstart\ttitle\tplace\n2027-04-01T19:00:00\+09:00\tRamen ‹lt›\/now›\tramen place\n2027-04-02T10:00:00\+09:00\tmuseum\tmuseum place$/, "inside theirs(): that trip's data");
+  assert.doesNotMatch(out, /Someday\t/);
+  assert.ok(out.indexOf('Its plan:') > out.indexOf('Its last 12 lines:'), 'last: a cut takes the latest items, never the lines');
+});
+
 test('read_trip with no path or query: its last lines, however many set-aside heard lines (a drive with music) came after them', async (t) => {
   useClock(t);
   const k = await kit();

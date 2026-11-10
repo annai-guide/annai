@@ -113,18 +113,22 @@ function datedInfo(info) {
   }
 }
 
-/** The next plan items, as TSV rows: start, title, fixed, place. @param {import('../workspace.js').Workspace} ws @param {string | null} trip @param {number} now */
-export async function nextPlanItems(ws, trip, now, limit = 5) {
-  if (!trip) return [];
+/** A trip's plan items that have a start, soonest first. @param {import('../workspace.js').Workspace} ws @param {string} trip @returns {Promise<{ at: number, it: any }[]>} */
+export async function planItems(ws, trip) {
   const items = [];
   for (const f of await ws.list(trip, '/plan/')) {
     if (!f.path.endsWith('.json')) continue;
     const it = await ws.readJSON(trip, f.path).catch(() => null);
     const at = Date.parse(it?.start?.at ?? '');
-    if (Number.isFinite(at) && at >= now) items.push({ at, it });
+    if (Number.isFinite(at)) items.push({ at, it });
   }
-  items.sort((a, b) => a.at - b.at);
-  return items.slice(0, limit).map(({ it }) => [it.start.at, it.title, it.fixed ? 'yes' : 'no', it.place?.name ?? '']);
+  return items.sort((a, b) => a.at - b.at);
+}
+
+/** The next plan items, as TSV rows: start, title, fixed, place. @param {import('../workspace.js').Workspace} ws @param {string | null} trip @param {number} now */
+export async function nextPlanItems(ws, trip, now, limit = 5) {
+  if (!trip) return [];
+  return (await planItems(ws, trip)).filter((x) => x.at >= now).slice(0, limit).map(({ it }) => [it.start.at, it.title, it.fixed ? 'yes' : 'no', it.place?.name ?? '']);
 }
 
 /** @param {number} now @param {string} timeZone */
