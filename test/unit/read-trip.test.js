@@ -1018,7 +1018,7 @@ test('classic voice: a yes heard at 18 s is judged after the window shut at 20 s
   assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }]);
 });
 
-test('classic voice: a take-back still being written down when the yes settles is too late, and reaches her as a line; a write-down that fails is a line with no words, which ends the card (the voice-yes design)', async (t) => {
+test('classic voice: a take-back still being written down when the yes would settle still has the last word: a yes waits for the words of a line heard after it, however long its write-down takes; a write-down that fails is a line with no words, which ends the card (the final review\'s last look)', async (t) => {
   useClock(t);
   const k = await classicKit(['Yes', 'No, wait']);
   /** @type {() => void} */
@@ -1032,9 +1032,12 @@ test('classic voice: a take-back still being written down when the yes settles i
   await until(() => k.transcribed.length === 1);
   await hear(k, 'first-one');
   await pause(5 * k.agent.secondMs); // past the yes's settle: the second line is still being written down
-  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }], 'words judged when written down: none had come');
+  assert.equal((await grants(k, k.trip)).length, 0, 'not granted over a line whose words have not come');
+  assert.notEqual(k.agent.kokoro.pendingId, null, 'the card waits for them');
   release();
   await k.agent.idle();
+  assert.equal((await grants(k, k.trip)).length, 0);
+  assert.match((await readResults(k))[0], NOT_NOW);
   assert.deepEqual((await k.events(['heard'])).map((/** @type {any} */ e) => e.data.text), ['Yes', 'No, wait']);
   const off = await classicKit(['Yes']);
   off.llm.transcribe = async () => { throw new Error('offline'); };
@@ -1558,15 +1561,23 @@ test("her own voice's line, kept by Koe, doesn't end the card either: her words 
 
 // ---- The final review of 0c126700: a yes waits while someone speaks, and a line is judged by when it began, in every voice setup. ----
 
-test('live: a yes waits while the user\'s next turn goes on: a take-back begun a second after it, whose words come 5 s after it, declines; a turn with no words costs only its time (the final review, finding 1)', async (t) => {
+/** A live session's turn begins, as LiveHost.speech hands it to the card: the line it begins, before any of its words. @param {any} k @param {string} id */
+const turnBegins = (k, id) => {
+  k.agent.kokoro.confirmSpeech(true);
+  k.agent.kokoro.confirmHeard({ id, at: Date.now(), her: false, live: true });
+};
+/** And ends: a line was said. @param {any} k */
+const turnEnds = (k) => k.agent.kokoro.confirmSpeech(false, true);
+
+test('live: a yes waits while the user\'s next turn goes on, and for that turn\'s words: a take-back begun a second after it, whose words come 5 s after it, declines; so does one whose words come 4 s after its turn ended (the final review, finding 1, and its last look)', async (t) => {
   useClock(t);
   const { k } = await liveCard();
   socket(k, 'h-yes', 'Yes.');
   await pause(1 * k.agent.secondMs);
-  k.agent.kokoro.confirmSpeech(true); // the session's next turn begins (LiveHost.speech)
+  turnBegins(k, 'h-back'); // the session's next turn (LiveHost.speech)
   await pause(3 * k.agent.secondMs);
   assert.equal((await grants(k, k.trip)).length, 0, 'past the settle, the user mid-sentence: not granted');
-  k.agent.kokoro.confirmSpeech(false);
+  turnEnds(k);
   await pause(0.9 * k.agent.secondMs);
   socket(k, 'h-back', 'No wait, not that one, I meant the one from last year.', { at: Date.now() - 4 * k.agent.secondMs });
   await pause(1 * k.agent.secondMs);
@@ -1574,37 +1585,70 @@ test('live: a yes waits while the user\'s next turn goes on: a take-back begun a
   await k.agent.idle();
   assert.equal((await grants(k, k.trip)).length, 0);
   assert.match((await readResults(k))[0], UNANSWERED_LIVE);
-  // A sound the session took for a turn and wrote no words for: the yes settles again once it ends.
-  const { k: n } = await liveCard();
-  socket(n, 'h-yes', 'Yes.');
-  await pause(2 * n.agent.secondMs);
-  n.agent.kokoro.confirmSpeech(true);
-  await pause(4 * n.agent.secondMs);
-  n.agent.kokoro.confirmSpeech(false);
-  await pause(2 * n.agent.secondMs);
-  assert.equal((await grants(n, n.trip)).length, 0, 'settling again');
-  await n.agent.idle();
-  assert.deepEqual((await grants(n, n.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }]);
+  // "No, wait.", a short turn whose words the provider sends 4 s after it ended (1 line in 20 came later than 1.07 s in real speech; the latest, 11 s).
+  const { k: w } = await liveCard();
+  socket(w, 'h-yes', 'Yes.');
+  await pause(1 * w.agent.secondMs);
+  turnBegins(w, 'h-back');
+  await pause(1 * w.agent.secondMs);
+  turnEnds(w);
+  await pause(3.5 * w.agent.secondMs);
+  assert.equal((await grants(w, w.trip)).length, 0, 'past the settle from the turn\'s end, its words still to come: not granted');
+  assert.notEqual(w.agent.kokoro.pendingId, null);
+  await pause(0.5 * w.agent.secondMs);
+  socket(w, 'h-back', 'No, wait.', { at: Date.now() - 5 * w.agent.secondMs });
+  await w.agent.idle();
+  assert.equal((await grants(w, w.trip)).length, 0);
+  assert.match((await readResults(w))[0], NOT_NOW);
   // A no doesn't wait: declining is safe.
   const { k: d } = await liveCard();
   socket(d, 'h-no', 'No.');
-  d.agent.kokoro.confirmSpeech(true);
+  turnBegins(d, 'h-more');
   await d.agent.idle();
   assert.match((await readResults(d))[0], NOT_NOW);
 });
 
-test('live, through a session: the card is told when the user\'s turn begins and ends', async () => {
+test('live: a turn after a yes that the session writes no words for (a noise, or a sentence cut by a dropped session): nobody knows what was said, so the yes is not granted over it, whatever turns follow; its own words written again don\'t bring it back; the card waits, and a yes said after grants (the final review\'s last look)', async (t) => {
+  useClock(t);
+  const { k } = await liveCard();
+  socket(k, 'h-yes', 'Yes');
+  await pause(1 * k.agent.secondMs);
+  turnBegins(k, 'h-cut'); // "No, wai", and the session drops: no end, no words
+  await pause(4 * k.agent.secondMs);
+  assert.equal((await grants(k, k.trip)).length, 0);
+  turnBegins(k, 'h-noise'); // the session is back: a sound it takes for a turn, and writes no words for
+  await pause(1 * k.agent.secondMs);
+  turnEnds(k);
+  await pause(3.5 * k.agent.secondMs);
+  assert.equal((await grants(k, k.trip)).length, 0, 'a later turn\'s end doesn\'t settle a yes that an unheard line followed');
+  await entry(k, 'h-yes', 'Yes.', { dismissed: true }); // its entry, in other words: armed again, and still behind the unheard lines
+  await pause(3.5 * k.agent.secondMs);
+  assert.equal((await grants(k, k.trip)).length, 0, 'its own words written again don\'t settle it either');
+  assert.notEqual(k.agent.kokoro.pendingId, null, 'the card waits: a tap or a spoken answer still ends it');
+  turnBegins(k, 'h-again');
+  socket(k, 'h-again', 'Yes.', { at: Date.now() });
+  turnEnds(k);
+  await k.agent.idle();
+  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }]);
+});
+
+test('live, through a session: the card is told when the user\'s turn begins, with the line it begins before any of its words, and when it ends', async () => {
   const k = await liveKit([{ heard: 'Okay' }]);
   try {
     /** @type {boolean[]} */
     const edges = [];
+    /** @type {any[]} */
+    const lines = [];
     k.agent.kokoro.confirmSpeech = (/** @type {boolean} */ on) => { edges.push(on); };
+    k.agent.kokoro.confirmHeard = (/** @type {any} */ x) => { lines.push(x); };
     await k.voice.unlock();
     k.agent.tap();
     await until(() => k.agent.live.listening);
     await liveSay(k, 'first-one');
-    await soon(async () => edges.length === 2, 10_000);
+    await soon(async () => edges.length === 2 && lines.some((x) => x.text === 'Okay'), 10_000);
     assert.deepEqual(edges, [true, false]);
+    assert.deepEqual([lines[0].live, lines[0].text, typeof lines[0].at, lines[0].her], [true, undefined, 'number', false], 'the turn\'s line, as it begins');
+    assert.equal(lines.find((x) => x.text === 'Okay').id, lines[0].id, 'its words come for the same line');
   } finally {
     await k.done();
   }
@@ -1805,6 +1849,76 @@ test('a kept line that arms nothing ends the card only SETTLE_S after the line s
   assert.match((await readResults(k2))[0] ?? '', /^Not read: /);
   k.agent.interrupt();
   k2.agent.interrupt();
+});
+
+test('classic voice, each line written down by a model in 4 s (Kokoro on a model that takes the sound, "Send audio to the model" first): "Yes" then "No, wait" 1.3 s later declines: the take-back, heard after the yes, is still being written down when the yes would settle, and the yes waits for its words (the final review\'s last look)', async (t) => {
+  useClock(t);
+  const k = await classicKit(['Yes', 'No, wait']);
+  const transcribe = k.llm.transcribe;
+  k.llm.transcribe = async (/** @type {any} */ c) => {
+    await pause(4 * k.agent.secondMs);
+    return transcribe(c);
+  };
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1 && k.agent.state.name === 'listening');
+  await hear(k, 'first-one');
+  await pause(1.3 * k.agent.secondMs);
+  await hear(k, 'first-one');
+  await pause(7.5 * k.agent.secondMs); // the yes's words came at 4 s and its settle has passed; the take-back's come at 8 s
+  assert.equal((await grants(k, k.trip)).length, 0, 'not granted over a line whose words have not come');
+  await k.agent.idle();
+  assert.equal((await grants(k, k.trip)).length, 0);
+  assert.match((await readResults(k))[0], NOT_NOW);
+});
+
+/** Koe on a chat model that takes the sound and waits on, Kokoro on one that takes it too: each line said to the card is written down by a model, in turn (null: the request fails). @param {(i: number, k: any) => Promise<string | null>} words */
+const soundKit = async (words) => {
+  const k = await gateKit(KOKORO_ASKED, { models: [{ input: ['text', 'image', 'audio'] }], koe: { type: KOE_WAITS, input: ['text', 'image', 'audio'] }, voice: { speechIn: ['send-audio', 'dictation'] } });
+  const call = k.llm.call.bind(k.llm);
+  let n = 0;
+  k.llm.call = /** @type {any} */ (async (/** @type {any} */ c) => {
+    if (c.record?.tag !== 'transcribe') return call(c);
+    const text = await words(n++, k);
+    if (text === null) throw new Error('offline');
+    return { reply: { text, parts: [] }, modelId: c.prefer };
+  });
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1, 20_000);
+  await until(() => !k.voice.speaker.speaking && k.agent.koe.state.name === 'listening', 20_000);
+  await pause(1 * k.agent.secondMs);
+  return k;
+};
+
+test('Koe on a chat model: "Yes." then "No, wait." 1.3 s later, the take-back written down in 4 s (two of three such requests took over 5 s in real speech): it declines, since a yes waits for the words of a line heard after it (the final review\'s last look)', async (t) => {
+  useClock(t);
+  const k = await soundKit(async (i, kit) => {
+    if (i === 1) await pause(4 * kit.agent.secondMs);
+    return ['Yes.', 'No, wait.'][i] ?? '';
+  });
+  await hear(k, 'thanks'); // "Yes."
+  await pause(1.3 * k.agent.secondMs);
+  await hear(k, 'gas-station'); // "No, wait."
+  await pause(3.8 * k.agent.secondMs); // past the yes's settle from when they stopped
+  assert.equal((await grants(k, k.trip)).length, 0, 'not granted over a line whose words have not come');
+  await pause(6 * k.agent.secondMs);
+  assert.equal((await grants(k, k.trip)).length, 0);
+  assert.match((await readResults(k))[0] ?? '', NOT_NOW);
+  k.agent.interrupt();
+});
+
+test('Koe on a chat model: "Yes." then a line whose write-down fails: nobody knows what it said, so the yes is not granted over it and the card waits on; a "Yes." after it grants (the final review\'s last look)', async (t) => {
+  useClock(t);
+  const k = await soundKit(async (i) => (i === 1 ? null : 'Yes.'));
+  await hear(k, 'thanks'); // "Yes."
+  await pause(1.3 * k.agent.secondMs);
+  await hear(k, 'gas-station'); // a line nothing could write down
+  await pause(8 * k.agent.secondMs);
+  assert.equal((await grants(k, k.trip)).length, 0, 'not granted over a line with no words');
+  assert.notEqual(k.agent.kokoro.pendingId, null, 'the card waits: a tap or a spoken answer still ends it');
+  await hear(k, 'thanks'); // "Yes."
+  await pause(5 * k.agent.secondMs);
+  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }]);
+  k.agent.interrupt();
 });
 
 test('classic voice: a "Yes" begun after the window, routed behind another line\'s gate call that ran past it, is outside: the window is the line\'s own time, not the time it is routed (the final review, finding 3)', async (t) => {

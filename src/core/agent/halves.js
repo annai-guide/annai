@@ -351,7 +351,11 @@ export class Halves {
       left: (notes) => this.#leftUnsaid(notes),
       noisy: (heard) => this.#wakeKokoro({ kind: 'cue', text: NONSTOP(heard), logged: true, input: true }),
       heard: (line) => this.kokoro.confirmHeard(line),
-      speech: (on) => this.kokoro.confirmSpeech(on, !on), // a turn's end is a line said
+      // A turn's end is a line said; its start, a line heard whose words come later.
+      speech: (on, line) => {
+        this.kokoro.confirmSpeech(on, !on);
+        if (line) this.kokoro.confirmHeard({ ...line, live: true });
+      },
     });
     this.voice?.onChange((_, first) => { if (!first) this.#route(() => this.#refresh()); });
     this.voice?.onSound((stuck) => {
