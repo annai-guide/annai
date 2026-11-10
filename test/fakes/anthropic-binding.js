@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { deferred, resultFor } from './anthropic-rules.js';
 
 /**
  * A stand-in for Anthropic's Messages API as a fetch, that checks thinking blocks the way Claude 5.5 does on an enforced account (the
@@ -9,7 +10,12 @@ import { createHash } from 'node:crypto';
  * - its own words ("cannot be modified").
  * A block sent back after any of those changed is refused with a 400; one another model signed is dropped without a word. reply(body) gives
  * the rest of each reply's content (tool_use, text with citations, server_tool_use and its result, more thinking), and may give
- * { content, stop } to choose the stop reason (pause_turn). Cache reads are counted as Anthropic counts them: an entry is written at each
+ * { content, stop } to choose the stop reason (pause_turn).
+ * A server tool called with a client tool in one reply (a web search or fetch beside a tool_use) is left for the next request, as the real
+ * API does (docs, "Mixing server tools and client tools in one turn"; the real API, Opus, Sonnet and Haiku 5.5, 2026-11-10): the user
+ * message right after that reply must hold nothing but tool_result blocks, wherever the reply is in the history and though a later reply
+ * carries the tool's result; a reply after it that doesn't carry the result is refused too. The request that answers it is run: the
+ * reply it gets begins with the result block, then its thinking. Cache reads are counted as Anthropic counts them: an entry is written at each
  * marked block, and a later mark finds the longest entry within 20 blocks before it.
  * @param {(body: any) => any[] | { content: any[], stop: string }} reply
  * The binding controls of the docs (thinking-binding-controls-2026-08-01): with the beta header in a request, each reply carries a top-level
@@ -104,6 +110,8 @@ export function anthropicStandIn(reply, { empty = false } = {}) {
       refuseNext = false;
       no = 'messages.1.content.0: Invalid `signature` in `thinking` block. The block is bound to a different conversation.';
     } else no = check(body);
+    const left = deferred(body);
+    no ??= left.no;
     if (no) {
       refused.push(no);
       return new Response(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: no } }), { status: 400, headers: { 'content-type': 'application/json' } });
@@ -116,7 +124,7 @@ export function anthropicStandIn(reply, { empty = false } = {}) {
     const words = empty ? '' : 'Thinking it over.';
     /** @type {any[]} */
     const content = [];
-    for (const b of [{ type: 'thinking' }, ...rest]) {
+    for (const b of [...left.run.map(resultFor), { type: 'thinking' }, ...rest]) {
       if (b.type !== 'thinking') {
         content.push(b);
         continue;

@@ -262,3 +262,11 @@ test("callRole: a second 400 goes the normal bad-request way: the next model is 
   assert.equal(asked, 1);
   assert.deepEqual(plain.attempts.map((a) => [a.model, a.outcome]), [['m-a', 'bad-request'], ['m-b', 'ok']]);
 });
+
+test("a 400 that came again without the natives is told once, in the provider's own words, and not as refused reasoning (the unanswered server tool of Anthropic, whose request annai now never sends)", async () => {
+  const { failedText } = await import('../../src/core/llm/fallback.js');
+  const words = 'messages.1: `web_search` tool use with id `srvtoolu_1` was found without a corresponding `web_search_tool_result` block';
+  const attempts = [{ name: 'Claude Haiku 5.5', outcome: 'reasoning', error: words }, { name: 'Claude Haiku 5.5', outcome: 'bad-request', error: words }];
+  assert.equal(failedText(attempts), `Claude Haiku 5.5: M${words.slice(1)}.`, 'one line, the provider\'s sentence');
+  assert.doesNotMatch(failedText(attempts, { plain: true }), /refused the reasoning/);
+});

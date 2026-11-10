@@ -251,6 +251,40 @@ test('8. a paused turn with server tools: the continuation ends with her own mes
   appendOnly(claude.bodies);
 });
 
+test('8b. a web search and a tool call in one reply, twice in a turn: each next request carries the tool result alone, with no tail, and the search runs; nothing refused, append-only, the cache read at every step', async (t) => {
+  useClock(t);
+  // The real API refuses any other block after that tool result ("found without a corresponding web_search_tool_result block"), and the stand-in does.
+  const search = (/** @type {number} */ k) => ({ type: 'server_tool_use', id: `srvtoolu_${k}`, name: 'web_search', input: { query: `nepenthe hours ${k}` } });
+  const claude = anthropicStandIn((body) => {
+    const { results } = last(body);
+    if (results.includes('read')) return [use('speak', { text: 'Open till 10.' }), use('sleep')];
+    if (results.includes('list')) return [search(2), use('read', { path: '/trip/notes/hotel.md' })];
+    return [search(1), use('list', { path: '/trip/' })];
+  });
+  // Sonnet with web search as provider-anthropic gives it: the request defines the tool the search is left to run with.
+  const searching = { ...SONNET, providerTools: [{ id: 'anthropic-web-search', name: 'Anthropic web search', kind: 'search', patch: { 'tools+': [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }] }, usageKey: 'web_search_requests' }] };
+  const k = await agentKit([{ ability: AT }], { models: [searching], fetch: claude.fetch });
+  await k.ws.write(k.trip, '/notes/hotel.md', 'Hotel in Monterey.', { author: 'user' });
+  k.agent.send('Is Nepenthe open, and where is our hotel?');
+  await k.agent.idle();
+  assert.deepEqual(claude.refused, []);
+  assert.equal(claude.bodies.length, 3);
+  appendOnly(claude.bodies);
+  assert.ok(claude.bodies.every((b) => b.tools.some((/** @type {any} */ x) => x.name === 'web_search')), 'every request defines the search tool, as the API needs to run it');
+  for (const body of claude.bodies.slice(1)) {
+    const end = body.messages.at(-1);
+    assert.deepEqual(end.content.map((/** @type {any} */ b) => b.type), ['tool_result'], 'the tool result alone: the now block is not sent this step');
+  }
+  assert.deepEqual(claude.bodies.map((b) => thoughts(b).length), [0, 1, 2]);
+  assert.ok(claude.usage.slice(1).every((u) => u.cache_read_input_tokens > 0), 'each request reads what the one before wrote');
+  assert.ok((await turns(k)).every((e) => e.data.attempts.length === 1 && e.data.attempts[0].outcome === 'ok'), 'nothing fell back');
+  assert.deepEqual(k.notices, []);
+  // The now blocks that waited are in the next turn's history in the order they were made, once.
+  k.agent.send('Thanks!');
+  await k.agent.idle();
+  assert.deepEqual(claude.refused, []);
+});
+
 test('9. a fallback mid-turn to another model and back: the other model gets no native or kept now block; Claude gets its own', async (t) => {
   useClock(t);
   const claude = anthropicStandIn(threeSteps);
