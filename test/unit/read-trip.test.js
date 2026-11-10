@@ -103,6 +103,16 @@ test('read_trip with no path or query: its last lines, however many set-aside he
   assert.doesNotMatch(out, /la la/);
 });
 
+test("read_trip reads a heard line by its last words written down, as the gate and a live session's start do: a live line's first words come first, the rest later", async (t) => {
+  useClock(t);
+  const k = await kit();
+  await record(k.store, TV, { type: 'heard', actor: 'user', data: { id: 'h-live', source: 'live', text: 'Book the' } });
+  await record(k.store, TV, { type: 'heard.text', actor: 'system', data: { of: 'h-live', text: 'Book the ramen place for eight.' } });
+  const out = words(await run(k, 'read_trip', { trip: TV }));
+  assert.equal(out.split('\n').at(-1), 'The user said: "Book the ramen place for eight."');
+  assert.match(words(await run(k, 'read_trip', { trip: TV, query: 'for eight' })), /The user said: "Book the ramen place for eight\."/);
+});
+
 test("read_trip with a path: that text file, as that trip's data: an instruction or a closing tag in it reaches her escaped, never as annai's (Review Focus 3)", async (t) => {
   useClock(t);
   const k = await kit();
@@ -129,10 +139,8 @@ test("read_trip with a path: that text file, as that trip's data: an instruction
 test('read_trip refuses in words what it does not open: a photo, a PDF, another binary file, a path that is no path, a file that is not there, a removed or draft trip, the open one (Review Focus 4)', async (t) => {
   useClock(t);
   const k = await kit();
-  const photo = "That file is a photo or a PDF, which read_trip doesn't open. Offer to move to that trip to look at it.";
-  assert.equal(words(await run(k, 'read_trip', { trip: TV, path: '/files/station.jpg' })), photo);
-  assert.equal(words(await run(k, 'read_trip', { trip: TV, path: '/files/ticket.pdf' })), photo);
-  assert.match(words(await run(k, 'read_trip', { trip: TV, path: '/files/pass.pkpass' })), /isn't a text file, so read_trip doesn't open it\. Offer to move to that trip/);
+  const refused = 'read_trip opens only text and JSON files, not photos, PDFs or other kinds. Offer to move to that trip to look at it.';
+  for (const path of ['/files/station.jpg', '/files/ticket.pdf', '/files/pass.pkpass']) assert.equal(words(await run(k, 'read_trip', { trip: TV, path })), refused, path);
   for (const path of ['/../me/profile.md', '/.annai/x', '/notes/a\\b.md']) await assert.rejects(run(k, 'read_trip', { trip: TV, path }), /isn't a path in that trip/, path);
   // Only that trip's own files: /me/ there is nothing of the user's own.
   await assert.rejects(run(k, 'read_trip', { trip: TV, path: '/me/profile.md' }), /No file at \/me\/profile\.md in "Testville"/);

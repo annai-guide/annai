@@ -21,7 +21,7 @@ import { lang, glossary } from '../l10n.js';
  *   tripInfo: string, guessed?: boolean, tripMemory: string, skills: { name: string, description: string }[], languages?: string, edited?: Partial<Record<import('./her-instructions.js').InstructionId, string>>,
  *   elsewhere?: string }} Snapshot
  *   languages: the languages section's words, from the languages setting; edited: the instructions the user changed (her-instructions.js);
- *   elsewhere: an undated conversation's lines naming the trips happening now and the latest other conversations, so she knows what read_trip may read;
+ *   elsewhere: for an undated one, what read_trip may mean (the happening trips, the latest others);
  *   guessed: the trip's name is annai's own first guess (a first line's words or a file's name, the system's write of trip.json, or the draft's placeholder), not one the user or she gave
  * @typedef {import('../llm/contract.js').Request} Request
  */
@@ -54,14 +54,14 @@ export async function takeSnapshot({ ws, registry, trip, personalityName, locale
   };
 }
 
-/** The longest name annai takes for a trip (start_trip, Start a trip, Details): a record from a file can hold any length. */
+/** The longest name annai takes (start_trip, Start a trip, Details); a file's record can hold more. */
 const TITLE_MAX = 200;
 
-/** The other conversations an undated one may mean, from their records: those happening now, then the latest. @param {import('../workspace.js').Workspace} ws @param {string} trip */
+/** @param {import('../workspace.js').Workspace} ws @param {string} trip */
 async function elsewhere(ws, trip) {
   const others = (await listTrips(ws.store)).active.filter((s) => s.id !== trip);
   const happening = others.filter((s) => phaseOf(s, Date.now(), deviceZone()) === 'happening'); // as home's now line has them
-  // The spec's "the last few conversations": five, the plan's call, by when the user last talked in each (else when it was made), as home places a chat.
+  // The spec's "last few": five (the plan's call), placed as home places a chat.
   const latest = others.filter((s) => !happening.includes(s)).sort((a, b) => (b.talked ?? b.created) - (a.talked ?? a.created)).slice(0, 5);
   const named = (/** @type {import('../types.js').ScopeRecord} */ s) => `${quote([...s.title].slice(0, TITLE_MAX).join(''))} (${s.id})`;
   /* en */
