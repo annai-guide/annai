@@ -1,5 +1,5 @@
 {
-  "build": "1651eda72b74",
+  "build": "eae22e1c35b6",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -52,7 +52,7 @@
     "/src/core/agent/spoken-yes.js": "e9987e8e5d10",
     "/src/core/agent/net.js": "7ffda19e729b",
     "/src/core/agent/tools.js": "1e05339786c2",
-    "/src/core/agent/trip-tools.js": "8d70f1ab6df5",
+    "/src/core/agent/trip-tools.js": "d3bb743270cf",
     "/src/core/agent/transcript.js": "e1a74796ee1e",
     "/src/core/agent/via.js": "557657aae006",
     "/src/core/agent/warmth.js": "7f1be5368415",
