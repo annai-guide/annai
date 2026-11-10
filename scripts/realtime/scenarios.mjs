@@ -17,7 +17,7 @@
 // route: the audio the microphone stands for (speaker: the phone's own, half-duplex; headphones: she can be cut by speaking);
 // echoDb: her voice mixed back into the microphone at that level (the phone's speaker), null for none.
 /** @typedef {{ say: string, gainDb?: number } | { answered: number } | { sounding: number } | { wait: number } | { ask: number } | { asked: number } | { asking: number } | { tap: string, afterHeard?: number } | { settled: number } | { shiori: true } | { type: string }} Step */
-/** @typedef {{ about: string, route: 'speaker' | 'headphones' | 'car', echoDb: number | null, echoDelayMs?: number, expectCut?: boolean, extra?: boolean, repeatNote?: boolean, card?: boolean, measure?: boolean, real?: boolean, mode?: 'live' | 'classic' | 'chat', speechIn?: 'default', expect?: { grant: 'voice' | 'tap' | false | 'any', words?: boolean, open?: boolean, next?: boolean, declined?: boolean }, languages?: { spoken: string[], answer: string }, steps: Step[] }} Scenario
+/** @typedef {{ about: string, route: 'speaker' | 'headphones' | 'car', echoDb: number | null, echoDelayMs?: number, expectCut?: boolean, extra?: boolean, repeatNote?: boolean, card?: boolean, measure?: boolean, real?: boolean, mode?: 'live' | 'classic' | 'chat', speechIn?: 'default', asrDelayMs?: number, expect?: { grant: 'voice' | 'tap' | false | 'any', words?: boolean, open?: boolean, next?: boolean, declined?: boolean }, languages?: { spoken: string[], answer: string }, steps: Step[] }} Scenario
  *   repeatNote: the stand-in Kokoro sends its note again once Koe has said it; extra: not in a plain run, only by name (--only); languages (phase 2): the languages setting the run sets in Settings → Shiori before she listens (the browser's
  *   English is the list's first; the others are added), and the scenario is held to answering in the language each clip is spoken in */
 
@@ -200,6 +200,9 @@ function classicScenarios() {
     const expect = name === 'late-22' ? { grant: false, open: true } : sc.expect;
     out[`classic-${name}`] = { ...sc, about: `classic voice: ${sc.about}`, mode: 'classic', steps, ...(expect ? { expect } : {}) };
   }
+  // The last review's Finding 1, with real speech: each line written down slowly, as a model asked to write it down is (5.7 and 7.0 s measured):
+  // the speech server's answer is held 6 s. "Yes." then "No, wait.": the yes waits for the take-back's words, however long, and is declined.
+  out['classic-yes-nowait-slow'] = { ...out['classic-yes-nowait'], about: 'classic voice, each line written down 6 s late: "Yes.", 1.3 s after its end "No, wait." (declined, however long the words take)', asrDelayMs: 6000 };
   // The final review's F2: Koe on a chat model (Koe · Live off), classic voice: a "Sure." said to Koe before annai asks, whose entry comes after the
   // question (behind Koe's gate), arms nothing; a second one after the question grants. Koe's microphone is open after the question (a tap would close it).
   out['chat-sure-before'] = {

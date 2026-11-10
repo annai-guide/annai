@@ -414,7 +414,7 @@ export async function setScreens(page, tag) {
   return (/** @type {string} */ en, /** @type {string} */ context = '') => words[key(en, context)] ?? en;
 }
 
-/** What one scenario run is given. ui: the screens' language (localization L6); kokoro: the stand-in Kokoro itself (stage 5: it is told which trip a marked question reads); real: the Anthropic key (read by the script, typed into the page, never written) and the most model requests a scenario may make (the 31st is refused). @typedef {{ origin: string, standIn?: string, kokoro?: { readTrip: (id: string | null) => void, log: any[] }, real?: { anthropic: string, cap: number }, key: string, clips: Record<string, string>, roomDb: number | null, settleMs: number, answerTimeoutMs: number, ui?: string, log: (s: string) => void, scrub: (s: string) => string }} Env */
+/** What one scenario run is given. ui: the screens' language (localization L6); kokoro: the stand-in Kokoro itself (stage 5: it is told which trip a marked question reads); real: the Anthropic key (read by the script, typed into the page, never written) and the most model requests a scenario may make (the 31st is refused). @typedef {{ origin: string, standIn?: string, kokoro?: { readTrip: (id: string | null) => void, slowAsr: (ms: number) => void, log: any[] }, real?: { anthropic: string, cap: number }, key: string, clips: Record<string, string>, roomDb: number | null, settleMs: number, answerTimeoutMs: number, ui?: string, log: (s: string) => void, scrub: (s: string) => string }} Env */
 
 /**
  * One scenario in a fresh context.
@@ -476,6 +476,7 @@ export async function runScenario(browser, name, sc, env) {
     const classic = sc.mode === 'classic' || sc.mode === 'chat';
     const trips = await setUp(page, env.key, log, env.standIn ? { standIn: env.standIn, card: sc.card === true, classic, koeChat: sc.mode === 'chat', asr: sc.speechIn !== 'default', ...(sc.real && env.real ? { real: { anthropic: env.real.anthropic } } : {}) } : {});
     if (sc.card && !sc.real) env.kokoro?.readTrip(trips.testville ?? null);
+    env.kokoro?.slowAsr(sc.asrDelayMs ?? 0);
     // A real model is asked at most cap times (the 31st is refused, and the record says so): a runaway loop of tool calls stops here.
     const real = sc.real ? env.real : undefined;
     if (real) {
