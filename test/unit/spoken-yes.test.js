@@ -10,6 +10,12 @@ test('a yes, as heard in each language: case, punctuation, spaces and full-width
   }
 });
 
+test('not a yes: one said as a question, which is how "pardon?" is said', () => {
+  for (const said of ['はい？', 'はい?', '嗯？', 'ええ？', 'Yes?', 'Okay?', 'Sure?!', '好？', 'yes ?']) {
+    assert.equal(spokenYes(said), false, said);
+  }
+});
+
 test('not a yes: more than the word, a word that holds it, the word said three times, nothing', () => {
   for (const said of ['yes but no', 'not yes', 'yesterday', 'おはい', 'yes yes yes', 'no', 'nope', 'yes, read the other one', 'I said yes', '', '...', 'allowance', '好不好']) {
     assert.equal(spokenYes(said), false, said);
