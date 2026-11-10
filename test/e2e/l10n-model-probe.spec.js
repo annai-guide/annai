@@ -33,7 +33,8 @@ test("under en-XA, every request a model gets is annai's English: tools, refusal
     '/b/v1/messages': [
       // A message: tools that answer, tools that refuse (a missing file, a path outside the trip, a watch it can't set).
       reply([{ name: 'read', input: { path: '/trip/missing.md' } }, { name: 'list', input: { path: '/nowhere/' } }, { name: 'watch_set', input: { when: { type: 'time', at: 'tomorrow' }, reminder: 'Tea' } }]),
-      reply([{ name: 'show', input: { title: 'Morning', text: 'Coffee at Nepenthe.' } }, { name: 'speak', input: { text: 'Here is the plan.' } }, { name: 'sleep', input: {} }]),
+      // A card as show takes it: a failed call would keep her turn going past its sleep (a step more than this script has).
+      reply([{ name: 'show', input: { card: { title: 'Morning', text: 'Coffee at Nepenthe.' } } }, { name: 'speak', input: { text: 'Here is the plan.' } }, { name: 'sleep', input: {} }]),
       // The next message: the model refuses it, so the turn fails and the user sees a card.
       { status: 400, type: 'application/json', body: '{"type":"error","error":{"type":"invalid_request_error","message":"Bad request"}}' },
       // The one after: the model reads what happened in between.
@@ -79,7 +80,9 @@ test("under en-XA, Shiori as two halves and a wake from a file brought in: every
       reply([sleep]),
     ],
     '/kokoro/v1/messages': [
+      // A read that fails holds back the note beside it (annai's words for why reach Kokoro too); it tells Koe again in its next step.
       reply([{ name: 'read', input: { path: '/trip/missing.md' } }, { name: 'tell_koe', input: { text: 'Nepenthe is open till 10 tonight.' } }, sleep]),
+      reply([{ name: 'tell_koe', input: { text: 'Nepenthe is open till 10 tonight.' } }, sleep]),
       reply([sleep]),
     ],
   });
@@ -99,6 +102,7 @@ test("under en-XA, Shiori as two halves and a wake from a file brought in: every
     const all = [...llm.bodies('/koe/v1/messages'), ...llm.bodies('/kokoro/v1/messages')].map((b) => JSON.stringify(b)).join('\n');
     expect(all).toContain('# Working behind Koe');
     expect(all).toContain('tea.ics');
+    expect(all).toContain('Not sent to Koe');
     expect([...leaksIn(llm.bodies('/koe/v1/messages'), 'Koe'), ...leaksIn(llm.bodies('/kokoro/v1/messages'), 'Kokoro')]).toEqual([]);
   } finally {
     await llm.stop();
