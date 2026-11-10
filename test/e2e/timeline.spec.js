@@ -1313,3 +1313,50 @@ test("Shiori set the dates goes when the user writes again, and stays gone after
     await llm.stop();
   }
 });
+
+test("the draft's Details: a name and dates saved there put it on home; Archive and Remove there leave + opening a new conversation, never one archived or gone", async ({ page }) => {
+  await openApp(page, '#/trips');
+  const details = async () => {
+    await plus(page).click();
+    await expect(page).toHaveURL(/#\/trip\/trip-[0-9a-z]+\/talk$/);
+    const id = draftOf(page.url());
+    await page.locator('.talk-name').click();
+    await expect(page.getByRole('button', { name: 'Remove trip' })).toBeVisible();
+    return id;
+  };
+  // Named and dated in Details, with no line said: a card on home, and no longer the draft.
+  const named = await details();
+  await page.getByLabel('Name', { exact: true }).fill('Testville in April');
+  await page.getByLabel('Starts').fill('2099-04-02');
+  await page.getByLabel('Ends').fill('2099-04-09');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect.poll(async () => (await record(page, named))?.draft).toBeUndefined();
+  await page.goto('/#/trips');
+  await expect(row(page, 'Testville in April')).toHaveCount(1);
+  await expect(row(page, 'Testville in April')).not.toHaveClass(/\bline\b/);
+  // Archived in Details: it is in Archived trips, and + opens another.
+  const archived = await details();
+  expect(archived).not.toBe(named);
+  await page.getByRole('button', { name: 'Archive trip' }).click();
+  await page.getByRole('button', { name: 'Tap again to archive' }).click();
+  await expect(page.getByText('Archived trips (1)')).toBeVisible();
+  // Removed in Details: + opens another, and its first line is a row on home.
+  const removed = await details();
+  expect(removed).not.toBe(archived);
+  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await page.getByRole('dialog', { name: 'New conversation' }).getByRole('button', { name: 'Remove' }).click();
+  await page.getByRole('dialog', { name: 'Not backed up' }).getByRole('button', { name: 'Remove anyway' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  expect(await record(page, removed)).toBeUndefined();
+  await plus(page).click();
+  await expect(page).toHaveURL(/#\/trip\/trip-[0-9a-z]+\/talk$/);
+  const fresh = draftOf(page.url());
+  expect([named, archived, removed]).not.toContain(fresh);
+  expect((await record(page, fresh))?.status).toBe('active');
+  await box(page).fill('Where is the ramen place?');
+  await box(page).press('Enter');
+  await expect.poll(async () => (await record(page, fresh))?.title).toBe('Where is the ramen place?');
+  await page.goto('/#/trips');
+  await expect(row(page, 'Where is the ramen place?')).toHaveCount(1);
+  await expect(page.getByText('Archived trips (1)')).toBeVisible(); // still only the one the user archived
+});

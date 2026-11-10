@@ -51,7 +51,7 @@ export async function renderTrip(ctx, route) {
       archived
         ? h('button', { class: 'btn', type: 'button', onclick: async () => { await setTripStatus(ctx.store, id, 'active'); await ctx.live?.tripsChanged().catch(() => {}); ctx.render(); } }, t`Unarchive`)
         // Archived, its reminders leave live mode and the push relay at once.
-        : twoStep(t`Archive trip`, t`Tap again to archive`, async () => { await setTripStatus(ctx.store, id, 'archived'); await ctx.live?.tripsChanged().catch(() => {}); ctx.go('#/trips'); }),
+        : twoStep(t`Archive trip`, t`Tap again to archive`, async () => { await setTripStatus(ctx.store, id, 'archived'); await ctx.chats?.used(id); await ctx.live?.tripsChanged().catch(() => {}); ctx.go('#/trips'); }),
       h('button', { class: 'btn danger', type: 'button', onclick: (/** @type {Event} */ e) => removeFlow(ctx, id, scope, /** @type {HTMLButtonElement} */ (e.currentTarget)) }, t`Remove trip`)),
     extra,
     h('p', { class: 'sub trip-cost', text: t`This trip so far: ${formatCost(total)}` }),
@@ -197,6 +197,7 @@ export async function removeTripNow(ctx, id) {
   // Its offline pack's download has ended, its last file written, before the trip goes.
   if (ctx.pack?.running?.scope === id) await ctx.pack.stop();
   const removed = await removeTrip(ctx.store, id);
+  await ctx.chats?.used(id); // the draft + opens, removed from its Details: another is made
   // What a provider keeps of its conversations is deleted too, when a connection allows (G2).
   await ctx.llm?.forgetScope(id).catch((/** @type {unknown} */ e) => console.warn(/* en */ "a removed trip's kept turns couldn't be queued for deletion", e));
   // Its reminders leave live mode, and so the push relay, at once (spec §4.9); what was heard in it leaves memory.
