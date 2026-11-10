@@ -678,23 +678,24 @@ test('overHer, full duplex: a turn begun while her voice plays, or within its ta
   r.input.stop();
 });
 
-test('overHer, full duplex: a tap that stopped her ends her tail too: what the user says at once is theirs, as half-duplex has it (tapped)', async () => {
+test('overHer, full duplex: a tap that stopped her keeps her tail: a run begun within it is hers, tap or no tap; one begun after it is the user\'s (tapped)', async () => {
   let playing = false;
   const r = herRig({ speaking: () => playing, duplex: () => true });
   await r.input.start();
   r.feed(quiet(1));
   playing = true;
-  r.feed(quiet(1)); // she has spoken for a second: her voice, if it comes back at all, is back already
+  r.feed(quiet(1)); // she has spoken for a second
   playing = false; // a tap on Shiori stops her (LiveKoe.interrupt)
   r.input.tapped();
   r.feed(cat(quiet(0.1), yes, quiet(1.5)));
-  assert.deepEqual(r.edges, [['start', false], ['end', false]], 'begun 100 ms after the tap: the user\'s');
+  assert.deepEqual(r.edges, [['start', true], ['end', true]], 'begun 100 ms after the tap, inside her tail: hers, as her last word coming back would be');
   r.edges.length = 0;
   playing = true;
-  r.feed(quiet(0.5));
+  r.feed(quiet(1));
   playing = false;
-  r.feed(cat(quiet(0.1), yes, quiet(1.5)));
-  assert.deepEqual(r.edges, [['start', true], ['end', true]], 'her next words, no tap: their tail is hers again');
+  r.input.tapped();
+  r.feed(cat(quiet(0.5), yes, quiet(1.5)));
+  assert.deepEqual(r.edges, [['start', false], ['end', false]], 'begun 500 ms after the tap, past her tail: the user\'s');
   r.input.stop();
 });
 
@@ -710,6 +711,38 @@ test('overHer, full duplex: a tap as her voice begins keeps her tail: what she p
   r.input.tapped();
   r.feed(cat(quiet(0.1), yes.slice(0, Math.round(RATE * 0.3)).map((x) => x * 0.5), quiet(1.5)));
   assert.deepEqual(r.edges, [['start', true], ['end', true]], 'her own word, back after the tap: hers');
+  r.input.stop();
+});
+
+test('overHer, full duplex: her last word, tapped as it ends after a quiet in her stream, comes back after the tap as a run of its own, and is hers (the final review\'s probe: -6 dB, 400 ms)', async () => {
+  let playing = false;
+  const r = herRig({ speaking: () => playing, duplex: () => true });
+  await r.input.start();
+  r.feed(quiet(1));
+  // Her stream: 0.45 s of quiet, then a 0.3 s word, tapped as it ends; the microphone has heard only the quiet's echo so far.
+  playing = true;
+  r.feed(quiet(0.75));
+  playing = false;
+  r.input.tapped();
+  r.feed(cat(quiet(0.1), yes.slice(0, Math.round(RATE * 0.3)).map((x) => x * 0.5), quiet(1.5)));
+  assert.deepEqual(r.edges, [['start', true], ['end', true]], 'her word, back 100 ms after the tap: hers');
+  r.input.stop();
+});
+
+test('overHer, full duplex: a sentence of hers, a 0.9 s pause, a word, tapped as the word ends: the sentence\'s echo and the word\'s are both hers (the final review\'s probe: -6 dB, 400 ms)', async () => {
+  let playing = false;
+  const r = herRig({ speaking: () => playing, duplex: () => true });
+  await r.input.start();
+  r.feed(quiet(1));
+  const sentence = lunch.map((x) => x * 0.5);
+  const word = yes.slice(0, Math.round(RATE * 0.3)).map((x) => x * 0.5);
+  // Her stream: the sentence, 0.9 s of quiet, the word; the microphone hears it all 0.4 s late, so at the tap the word's echo is still to come.
+  playing = true;
+  r.feed(cat(quiet(0.4), sentence, quiet(0.8)));
+  playing = false;
+  r.input.tapped();
+  r.feed(cat(quiet(0.1), word, quiet(1.5)));
+  assert.deepEqual(r.edges, [['start', true], ['end', true], ['start', true], ['end', true]], 'the sentence\'s echo, then the word\'s after the tap: both hers');
   r.input.stop();
 });
 
