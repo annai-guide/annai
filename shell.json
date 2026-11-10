@@ -1,5 +1,5 @@
 {
-  "build": "ee202b265284",
+  "build": "7c979f34d58d",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -38,7 +38,7 @@
     "/src/core/agent/blocks.js": "3d49a5536ac0",
     "/src/core/agent/budgets.js": "ec0a25e840fb",
     "/src/core/agent/compaction.js": "0525a91f19e9",
-    "/src/core/agent/context.js": "d054fd714f04",
+    "/src/core/agent/context.js": "3f8a09636ce5",
     "/src/core/agent/halves.js": "99aa23c1b31d",
     "/src/core/agent/instructions.js": "5989e634fbf3",
     "/src/core/agent/listen.js": "e6c194b03c77",
@@ -273,7 +273,7 @@
     "/src/ui/screens/talk.js": "549b04d8e31b",
     "/src/ui/screens/tools.js": "af43e4da0f2e",
     "/src/ui/screens/trace.js": "f5659cdd6e4c",
-    "/src/ui/screens/trip.js": "c28850b52c8d",
+    "/src/ui/screens/trip.js": "91699f6d5b01",
     "/src/ui/screens/trips.js": "6d1e71c70823",
     "/src/ui/screens/updates.js": "663857e51861",
     "/src/ui/screens/voice.js": "44c2b580e9d2",
