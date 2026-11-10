@@ -220,7 +220,7 @@ export class Transcript {
       const backTo = (Array.isArray(d.back) ? d.back : []).map((x) => JSON.stringify(String(x)));
       const waits = Boolean(d.waiting) || (trips.length > 0 && !('back' in d) && !('waiting' in d));
       /* en */
-      const where = [waits ? 'the files wait with you again' : '', backTo.length ? `${waits ? 'some are' : 'the files are'} back in ${backTo.join(' and ')}` : ''].filter(Boolean).join(', and ');
+      const where = [waits ? 'the files wait with you' : '', backTo.length ? `${waits ? 'some are' : 'the files are'} back in ${backTo.join(' and ')}` : ''].filter(Boolean).join(', and ');
       /* en */
       const gone = trips.length === 1 ? `the trip you started for them, ${trips[0]}, was removed` : trips.length > 1 ? `the trips you started for them, ${trips.slice(0, -1).join(', ')} and ${trips.at(-1)}, were removed` : '';
       /* en */

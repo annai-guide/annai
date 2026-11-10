@@ -372,7 +372,7 @@ test('Undo in the trip she started tells the conversation the hand-over came fro
   const [mark] = await eventsIn(store, ME, ['handover.undo']);
   assert.deepEqual([mark.data.handover, mark.data.removed], ['h-1', ['Anchorage']]);
   const words = (await Transcript.load(store, ME)).messages.flatMap((m) => m.parts.map((p) => /** @type {any} */ (p).text ?? '')).join('\n');
-  assert.match(words, /\[annai\] The user tapped Undo[^\n]*the trip you started for them, "Anchorage", was removed, and the files wait with you again/);
+  assert.match(words, /\[annai\] The user tapped Undo[^\n]*the trip you started for them, "Anchorage", was removed, and the files wait with you\. Don't do it again/);
 });
 
 // Round 4.
@@ -487,7 +487,7 @@ test('Undo of files filed from the waiting space into a trip that stays says the
   const [mark] = await eventsIn(store, ME, ['handover.undo']);
   assert.equal(mark.data.waiting, true);
   const words = (await Transcript.load(store, ME)).messages.flatMap((m) => m.parts.map((p) => /** @type {any} */ (p).text ?? '')).join('\n');
-  assert.match(words, /\[annai\] The user tapped Undo for what you did with the files they handed you: the files wait with you again\./);
+  assert.match(words, /\[annai\] The user tapped Undo for what you did with the files they handed you: the files wait with you\. Don't do it again/);
 });
 
 test('a moved file back in the trip it came from is said to be back there, a trip removed or not; and still after a first tap that failed', async () => {
