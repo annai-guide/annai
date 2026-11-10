@@ -1360,3 +1360,37 @@ test("the draft's Details: a name and dates saved there put it on home; Archive 
   await expect(row(page, 'Where is the ramen place?')).toHaveCount(1);
   await expect(page.getByText('Archived trips (1)')).toBeVisible(); // still only the one the user archived
 });
+
+test("a trip file whose dates aren't on the calendar (9999-99-99) comes in as a trip with none: home, its conversation, Details and Itinerary open", async ({ page }) => {
+  // A hand-made file: its workspace has no schema, as an archive's import has none for the files inside.
+  const { createMemoryStore } = await import('../fakes/store-memory.js');
+  const { Workspace } = await import('../../src/core/workspace.js');
+  const { ensureBaseScopes, createTrip } = await import('../../src/core/scopes.js');
+  const { exportArchive, PRESETS } = await import('../../src/core/archive.js');
+  const store = createMemoryStore();
+  const ws = new Workspace(store);
+  await ensureBaseScopes(ws);
+  const trip = await createTrip(ws, { title: 'Testville', start: '2026-11-20', end: '2026-11-22' });
+  await ws.patch(trip, '/trip.json', { start: '9999-99-99', end: '9999-99-99' }, { author: 'user' });
+  const { blob } = await exportArchive(store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0' });
+  await openApp(page, '#/trips');
+  await page.getByLabel('Open a trip someone sent you').setInputFiles({ name: 'testville.annai.zip', mimeType: 'application/zip', buffer: Buffer.from(await blob.arrayBuffer()) });
+  await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible();
+  await page.getByRole('button', { name: 'Import' }).click();
+  await expect(page.getByText('Imported.')).toBeVisible();
+  const couldnt = page.getByText("This screen couldn't open");
+  await page.goto('/#/trips');
+  await expect(row(page, 'Testville')).toHaveCount(1);
+  await expect(couldnt).toHaveCount(0);
+  await row(page, 'Testville').click();
+  await expect(page).toHaveURL(/#\/trip\/trip-[0-9a-z]+\/talk$/);
+  await page.locator('.talk-name').click();
+  await expect(page.getByRole('button', { name: 'Remove trip' })).toBeVisible();
+  const itinerary = page.locator('#view').getByRole('link', { name: 'Itinerary' });
+  await expect(itinerary).toBeVisible();
+  await expect(page.getByLabel('Starts')).toHaveValue('');
+  await itinerary.click();
+  await expect(page).toHaveURL(/#\/trip\/trip-[0-9a-z]+\/plan$/);
+  await expect(page.locator('#view').getByRole('heading', { level: 1, name: 'Itinerary' })).toBeVisible();
+  await expect(couldnt).toHaveCount(0);
+});

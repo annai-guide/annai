@@ -95,6 +95,19 @@ test('the share preset leaves out memory and history', async () => {
   assert.deepEqual(await b.ws.history(r.trips[0], '/notes/案内.md'), []);
 });
 
+test("a trip file whose dates aren't on the calendar imports as a trip with no dates", async () => {
+  const a = await device();
+  const trip = await sampleTrip(a.ws);
+  // A hand-made file: this workspace has no schema, as an archive's import has none for the files in it.
+  await new Workspace(a.store).patch(trip, '/trip.json', { start: '9999-99-99', end: '2027-02-31' }, { author: 'user' });
+  const { blob } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0' });
+  const b = await device();
+  const r = await importArchive(b.store, await peekArchive(await bytesOf(blob)));
+  const copy = (await listTrips(b.store)).active.find((s) => s.id === r.trips[0]);
+  assert.equal(copy?.title, '京都 in spring');
+  assert.deepEqual([copy?.start, copy?.end], [undefined, undefined], 'home reads the record: it has no date to draw');
+});
+
 test('photos can be left out', async () => {
   const a = await device();
   const trip = await sampleTrip(a.ws);

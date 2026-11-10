@@ -89,8 +89,8 @@ function same(a, b) {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-/** @param {string} s */
-function isDate(s) {
+/** A day on the calendar, as `format: 'date'` says: "2026-11-26", not "9999-99-99" or "2026-02-31". @param {string} s */
+export function isDate(s) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
   if (!m) return false;
   const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
