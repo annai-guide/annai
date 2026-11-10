@@ -216,7 +216,7 @@ export function tripTools(app) {
     return rec;
   };
   /** How each answer starts: which trip, read-only; dated by its record, as the timeline reads it. @param {import('../types.js').ScopeRecord} rec */
-  const headOf = (rec) => /* en */ `From ${quote(rec.title)} (${rec.id}), another of the user's ${rec.start ? 'trips' : 'conversations'}${rec.status === 'archived' ? ' (archived)' : ''}, read-only`;
+  const headOf = (rec) => /* en */ `From ${quote(rec.title)} (${rec.id}), ${rec.imported ? `a ${rec.start ? 'trip' : 'conversation'} that came from a file, maybe someone else's` : `another of the user's ${rec.start ? 'trips' : 'conversations'}`}${rec.status === 'archived' ? ' (archived)' : ''}, read-only`;
   /** A path in that trip as she may give it (/notes/x.md, notes/x.md, /trip/notes/x.md), never one outside it. @param {string} given */
   const pathIn = (given) => {
     try {
@@ -306,7 +306,7 @@ export function tripTools(app) {
   };
   /**
    * Whether she may read another trip here, by annai alone (RULES 9: no model's words, tool result or file grant it): a grant in this conversation's
-   * log, the Always setting for a trip of the user's own (an imported one always asks), else annai's own card, its title the record's. A grant is
+   * log, the Always setting for a trip of the user's own (not one from a file), else annai's own card, its title the record's. A grant is
    * written only for a tap on that card's Allow or Always, or a yes annai's word list hears; Always is also the setting. A spoken yes is Allow only.
    * @param {import('../types.js').ScopeRecord} rec @param {ToolCall} call @returns {Promise<null | string | import('./tools.js').ToolOutput>} null: allowed; else her result
    */
@@ -314,11 +314,9 @@ export function tripTools(app) {
     // Only a grant given on this phone: one an archive brought (before its import entry) names ids from where the file was made, or ones its maker chose.
     const log = await store.tx(['events'], 'readonly', (x) => x.listEvents(call.scope, { types: ['trip.grant', 'import'] }));
     if (log.slice(log.findLastIndex((e) => e.type === 'import') + 1).some((e) => e.data?.trip === rec.id)) return null;
-    // Someone else's: marked as it came in, or, brought in before the mark existed, by its import entry of a trip's file.
-    const shared = rec.imported || (await store.tx(['events'], 'readonly', (x) => x.listEvents(rec.id, { types: ['import'] }))).some((e) => e.data?.kind === 'trip');
-    if (!shared && (await readAppSettings(ws)).readMyTrips === true) return null;
+    if (!rec.imported && (await readAppSettings(ws)).readMyTrips === true) return null;
     const [allow, always, no] = [t`Allow`, t`Always for my trips`, t`Not now`];
-    const got = await app.confirm(call, { question: await asking(rec), options: shared ? [allow, no] : [allow, always, no], yes: (heard) => (spokenYes(heard) ? allow : null) });
+    const got = await app.confirm(call, { question: await asking(rec), options: rec.imported ? [allow, no] : [allow, always, no], yes: (heard) => (spokenYes(heard) ? allow : null) });
     if (got.stopped) return { content: STOPPED, isError: true };
     if (got.chosen === allow || got.chosen === always) {
       await record(store, call.scope, { type: 'trip.grant', actor: 'user', now: ws.now(), data: { trip: rec.id, how: got.how ?? 'tap', ...(got.chosen === always ? { always: true } : {}) } });
@@ -368,7 +366,9 @@ export function tripTools(app) {
       input: READ,
       run: async (/** @type {any} */ i, /** @type {ToolCall} */ call) => {
         check(READ, i);
-        const rec = await otherTrip(i.trip, call);
+        const found = await otherTrip(i.trip, call);
+        // Someone else's as far as annai knows: marked as it came in, or brought in before the mark existed (its log's import of a trip's file).
+        const rec = found.imported || !(await store.tx(['events'], 'readonly', (x) => x.listEvents(found.id, { types: ['import'] }))).some((e) => e.data?.kind === 'trip') ? found : { ...found, imported: /** @type {const} */ (true) };
         const path = typeof i.path === 'string' ? pathIn(i.path) : null;
         const no = await allowed(rec, call);
         if (no !== null) return no;
