@@ -269,8 +269,9 @@ function newTripForm(ctx) {
   const title = h('input', { id: 'trip-title', name: 'title', maxlength: '200', autocomplete: 'off', placeholder: t`Big Sur · Thanksgiving`, value: tripTyped.title });
   const start = h('input', { id: 'trip-start', name: 'start', type: 'date', value: tripTyped.start });
   const end = h('input', { id: 'trip-end', name: 'end', type: 'date', value: tripTyped.end });
-  // data-kept: home draws it again itself (tripError), so the shell's redraws need not wait for it to go.
-  const error = h('p', { class: 'error', role: 'alert', 'data-kept': '', hidden: !tripError, text: tripError });
+  // data-kept: home draws it again itself (tripError), so the shell's redraws need not wait for it to go. An alert when first said (onsubmit); drawn again with
+  // its words (no role) it is not one, or a screen reader would read it out at each redraw.
+  const error = h('p', { class: 'error', role: tripError ? false : 'alert', 'data-kept': '', hidden: !tripError, text: tripError });
   return h('form', {
     class: 'panel',
     onfocusin: (/** @type {FocusEvent} */ e) => requestAnimationFrame(() => clearOfBox(e.target)),
@@ -286,6 +287,7 @@ function newTripForm(ctx) {
       } catch (err) {
         explainStorageFull(ctx, err);
         tripError = explainTrip(err);
+        error.setAttribute('role', 'alert'); // before its words: they are said
         error.textContent = tripError;
         error.hidden = false;
       }
