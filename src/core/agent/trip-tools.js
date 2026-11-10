@@ -300,10 +300,12 @@ export function tripTools(app) {
     // Only a grant given on this phone: one an archive brought (before its import entry) names ids from where the file was made, or ones its maker chose.
     const log = await store.tx(['events'], 'readonly', (x) => x.listEvents(call.scope, { types: ['trip.grant', 'import'] }));
     if (log.slice(log.findLastIndex((e) => e.type === 'import') + 1).some((e) => e.data?.trip === rec.id)) return null;
-    if (!rec.imported && (await readAppSettings(ws)).readMyTrips === true) return null;
+    // Someone else's: marked as it came in, or, brought in before the mark existed, by its import entry of a trip's file.
+    const shared = rec.imported || (await store.tx(['events'], 'readonly', (x) => x.listEvents(rec.id, { types: ['import'] }))).some((e) => e.data?.kind === 'trip');
+    if (!shared && (await readAppSettings(ws)).readMyTrips === true) return null;
     const title = scopeTitle(rec);
     const [allow, always, no] = [t`Allow`, t`Always for my trips`, t`Not now`];
-    const got = await app.confirm(call, { question: t`Read ${title}?`, options: rec.imported ? [allow, no] : [allow, always, no], yes: (heard) => (spokenYes(heard) ? allow : null) });
+    const got = await app.confirm(call, { question: t`Read ${title}?`, options: shared ? [allow, no] : [allow, always, no], yes: (heard) => (spokenYes(heard) ? allow : null) });
     if (got.stopped) return { content: STOPPED, isError: true };
     if (got.chosen === allow || got.chosen === always) {
       await record(store, call.scope, { type: 'trip.grant', actor: 'user', now: ws.now(), data: { trip: rec.id, how: got.how ?? 'tap', ...(got.chosen === always ? { always: true } : {}) } });
