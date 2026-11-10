@@ -360,6 +360,24 @@ test("a trip someone shared (imported) asks in spite of Always, and its card has
   assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'tap' }]);
 });
 
+test("a trip imported from a trip's file before the mark existed (its log has the import's entry) asks in spite of Always too", async (t) => {
+  useClock(t);
+  const k = await gateKit([sleep]);
+  await updateAppSettings(k.ws, { readMyTrips: true });
+  // As annai has written each import since 2026-10: the entry, with the archive's kind; no mark on the record.
+  await record(k.store, TV, { type: 'import', actor: 'user', data: { created: 0, app: 'annai', kind: 'trip' } });
+  const reading = run(k, 'read_trip', { trip: TV });
+  await until(() => k.asks.length === 1);
+  assert.deepEqual(k.asks[0].data.options, ['Allow', 'Not now']);
+  k.agent.answer(k.asks[0].data.id, 'Not now');
+  await reading;
+  // An everything restore's entry is the user's own backup: Always covers it.
+  const lake = await fixedTrip(k.ws, 'trip-lake', { title: 'Lake week', start: '2026-07-01', end: '2026-07-05' });
+  await record(k.store, lake, { type: 'import', actor: 'user', data: { created: 0, app: 'annai', kind: 'everything' } });
+  assert.match(words(await run(k, 'read_trip', { trip: lake })), /^From "Lake week"/);
+  assert.equal(k.asks.length, 1);
+});
+
 test("the card's title is the trip's own, in the screens' words; what she asked for names only the id", async (t) => {
   useClock(t);
   const k = await gateKit([sleep]);
