@@ -72,7 +72,7 @@ export async function renderTrips(ctx) {
       : null,
     openFileButton(ctx),
     saved ? since(o, h('p', { class: 'sub' }), saved.at, saved.words) : h('p', { class: 'sub', text: t`No backup yet. Export everything from Settings, or set up automatic backups there.` }));
-  followClock(ctx, screen, o);
+  followClock(ctx, screen, o, places);
   return screen;
 }
 
@@ -90,12 +90,13 @@ function since(o, node, at, words) {
  * Home is drawn for an instant: its Next, "Day 3 of 8", which trips are happening and the "tomorrow" it says go stale as time passes. It draws itself again,
  * in place, at the earliest moment one of them changes (a Next item ends, or midnight; the 1 s is for a timer a hair early), on live mode's own timer, so a
  * simulation played faster is drawn at its own moments (and again when one starts or ends: live mode's clock is another then); and when annai comes back to
- * the front past that moment, which a phone's timers may have slept through. Only while it is the screen shown and its address, and never over the Start a
- * trip form while a field of it has focus: then it waits, and draws once the field is left. What is typed in the form, its folds and the place stay
- * (`tripTyped`, `fold`). How long ago a backup was changes its words in place (since).
- * @param {any} ctx @param {HTMLElement} screen @param {{ now: number, zone: string, due: number[], since: Since[] }} o
+ * the front, which a phone's timers may have slept through and where the phone's zone may be another (a flight); and when a backup has run, which its
+ * card and the footer tell. Only while it is the screen shown and its address, and never over the Start a trip form while a field of it has focus: then it
+ * waits, and draws once the field is left. What is typed in the form, its folds and the place stay (`tripTyped`, `fold`). How long ago a backup was changes
+ * its words in place (since), the rows in view kept where they were.
+ * @param {any} ctx @param {HTMLElement} screen @param {{ now: number, zone: string, due: number[], since: Since[] }} o @param {{ id: string }[]} places backups'
  */
-function followClock(ctx, screen, o) {
+function followClock(ctx, screen, o, places) {
   const at = location.hash;
   // What a redraw would lose: the focus of a field of the form (the keyboard would close). A name or dates typed in it are drawn again (tripTyped).
   const typing = () => screen.contains(document.activeElement) && isField(document.activeElement);
@@ -111,29 +112,36 @@ function followClock(ctx, screen, o) {
   const clock = ctx.live?.clock ?? realClock();
   const next = Math.min(nextDay(o.now, o.zone), ...o.due);
   const timer = clock.set(redraw, Math.max(next - o.now, 0) + 1000);
-  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  // The device's clock, whatever live mode's is; it waits a change weeks ahead ("2 months ago") in steps: setTimeout holds 24.8 days at most.
+  const real = realClock();
+  /** @type {any} */
   let tick;
   const words = () => {
-    clearTimeout(tick);
+    real.clear(tick);
     const now = Date.now();
-    for (const s of o.since) if (s.node.textContent !== s.words(now)) s.node.textContent = s.words(now);
+    const changed = o.since.filter((s) => s.node.textContent !== s.words(now));
+    // Words that take another line move what is under them: the rows in view stay where they were, as at a redraw (shell.js).
+    if (changed.length) keepRows(screen, () => { for (const s of changed) s.node.textContent = s.words(now); });
     const change = Math.min(...o.since.map((s) => relChange(s.at, now)));
-    if (change < Infinity) tick = setTimeout(words, change - now + 1000); // a second past, as the redraw's
+    if (change < Infinity) tick = real.set(words, change - now + 1000); // a second past, as the redraw's
   };
   words();
   const front = () => {
     if (document.visibilityState !== 'visible') return;
-    words();
-    if (nowOf(ctx.live) >= next) redraw();
+    words(); // at once, while a field's focus holds the redraw back
+    redraw();
   };
   document.addEventListener('visibilitychange', front);
   const swapped = ctx.sim?.onChange?.(() => { if ((ctx.live?.clock ?? clock) !== clock) redraw(); });
+  // A backup that ended: no place is running one (its progress emits too).
+  const backedUp = ctx.backups?.on?.(() => { if (!places.some((p) => ctx.backups.progress(p.id))) redraw(); });
   whenGone(screen, () => {
     clock.clear(timer);
     clearTimeout(wait);
-    clearTimeout(tick);
+    real.clear(tick);
     document.removeEventListener('visibilitychange', front);
     swapped?.();
+    backedUp?.();
   });
 }
 
@@ -296,9 +304,25 @@ function newTripForm(ctx) {
  */
 function clearOfBox(field) {
   if (!(field instanceof Element) || document.activeElement !== field) return;
-  const under = Math.max(...[...document.querySelectorAll('.topbar, .notices')].map((n) => n.getBoundingClientRect().bottom));
+  const under = covered();
   const top = (field.closest('label') ?? field).getBoundingClientRect().top;
   if (top < under) scrollBy(0, top - under);
+}
+
+/** Where the top bar and the notices box stuck under it end, on screen. */
+const covered = () => Math.max(...[...document.querySelectorAll('.topbar, .notices')].map((n) => n.getBoundingClientRect().bottom));
+
+/**
+ * A change in place on home: the first row in view (not under the bar or the box, nor in a shut fold) stays where it was, as the shell keeps it at a
+ * redraw. @param {HTMLElement} screen @param {() => void} change
+ */
+function keepRows(screen, change) {
+  const under = covered();
+  const seen = [...screen.querySelectorAll('.rows a[href]')].find((a) => !a.closest('details:not([open])') && a.getBoundingClientRect().bottom > under);
+  const was = seen?.getBoundingClientRect().top ?? 0;
+  change();
+  const by = seen ? seen.getBoundingClientRect().top - was : 0;
+  if (by) scrollBy(0, by);
 }
 
 /** What went wrong with a trip's name or dates, in words, for Start a trip and Details. @param {any} err */
