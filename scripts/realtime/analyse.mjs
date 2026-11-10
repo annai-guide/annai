@@ -16,7 +16,7 @@ import { languageOf, vietnameseMarks } from '../../src/core/languages.js';
  *   languages?: { spoken: string[], answer: string, applied: boolean, why?: string },
  *   media?: { at: number, kind: string, seconds: number, time: number }[], taps?: { at: number, label: string, ok: boolean }[],
  *   lines?: { who: string, text: string, buttons: { name: string, disabled: boolean }[] }[], kokoro?: { at: number, kind: string, text?: string, heard?: string[], ms?: number, status?: number | null, bytes?: number }[],
- *   mode?: 'live' | 'classic', model?: { requests: number, capped: boolean } }} Rec  level: [at, rms of what annai plays];
+ *   mode?: 'live' | 'classic' | 'chat', model?: { requests: number, capped: boolean } }} Rec  level: [at, rms of what annai plays];
  *   micLevel: the same for what the microphone carried; cards: the titles of the cards annai showed once she was listening;
  *   languages: the setting the scenario asked for (phase 2), and whether this build took it (applied); stage 5's card (card scenarios): media: the page's own player
  *   (the question's playing and ending), taps: the taps on the card, lines: the conversation's lines as the page ends with them, kokoro: what the stand-in Kokoro was asked and did

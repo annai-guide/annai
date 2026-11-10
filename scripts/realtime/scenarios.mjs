@@ -14,7 +14,7 @@
 // route: the audio the microphone stands for (speaker: the phone's own, half-duplex; headphones: she can be cut by speaking);
 // echoDb: her voice mixed back into the microphone at that level (the phone's speaker), null for none.
 /** @typedef {{ say: string, gainDb?: number } | { answered: number } | { sounding: number } | { wait: number } | { ask: number } | { asked: number } | { asking: number } | { tap: string, afterHeard?: number } | { settled: number } | { shiori: true }} Step */
-/** @typedef {{ about: string, route: 'speaker' | 'headphones' | 'car', echoDb: number | null, echoDelayMs?: number, expectCut?: boolean, extra?: boolean, repeatNote?: boolean, card?: boolean, measure?: boolean, real?: boolean, mode?: 'live' | 'classic', expect?: { grant: 'voice' | 'tap' | false | 'any', words?: boolean, open?: boolean, next?: boolean, declined?: boolean }, languages?: { spoken: string[], answer: string }, steps: Step[] }} Scenario
+/** @typedef {{ about: string, route: 'speaker' | 'headphones' | 'car', echoDb: number | null, echoDelayMs?: number, expectCut?: boolean, extra?: boolean, repeatNote?: boolean, card?: boolean, measure?: boolean, real?: boolean, mode?: 'live' | 'classic' | 'chat', expect?: { grant: 'voice' | 'tap' | false | 'any', words?: boolean, open?: boolean, next?: boolean, declined?: boolean }, languages?: { spoken: string[], answer: string }, steps: Step[] }} Scenario
  *   repeatNote: the stand-in Kokoro sends its note again once Koe has said it; extra: not in a plain run, only by name (--only); languages (phase 2): the languages setting the run sets in Settings → Shiori before she listens (the browser's
  *   English is the list's first; the others are added), and the scenario is held to answering in the language each clip is spoken in */
 
@@ -145,6 +145,8 @@ function cardScenarios() {
     'card-yes-but': alone('yes-but', '"Yes, but not that one. The Osaka trip."', no),
     'card-no-thanks': card('the card, "No thanks." (declines, as Not now), then a question that needs Kokoro (no card, no tap)', [...go(), { say: 'no-thanks' }, { settled: 2500 }, { say: 'bixby' }, { answered: 800 }], { expect: { ...declined, next: true } }),
     'card-yes-nowait': card('"Yes.", 1.3 s after its end "No, wait." (the newest listed word decides: declined)', [...go(), { say: 'yes' }, { wait: 840 + 1300 }, { say: 'no-wait' }, { settled: 2500 }], { expect: declined }),
+    // The final review's F1: a take-back still being said when the settle would end (3.4 s, begun 1.3 s after the yes): the yes waits while they speak, their words drop it.
+    'card-yes-longback': card('"Yes.", 1.3 s after its end "Yes, but not that one. The Osaka trip." (3.4 s: still being said when the settle would end)', [...go(), { say: 'yes' }, { wait: 840 + 1300 }, { say: 'yes-but' }, { settled: 2500 }], { expect: { grant: false, open: true } }),
     'card-no-yes': card('"No.", 1.3 s after its end "Yes." (the newest listed word decides: yes)', [...go(), { say: 'no' }, { wait: 600 + 1300 }, { say: 'yes' }, { settled: 2500 }], { expect: yes }),
     // The same with the languages setting a Japanese or Chinese speaker has (English, and the other): Gemini Live is given the language codes with the setup.
     'card-hai-ja': { ...alone('hai', '"はい。" with Japanese in Languages', yes), languages: { spoken: ['en', 'ja'], answer: 'follow' } },
@@ -184,7 +186,7 @@ function classicScenarios() {
   const live = cardScenarios();
   /** @type {Record<string, Scenario>} */
   const out = {};
-  for (const name of ['yes', 'sure', 'hai', 'hao', 'yes-but', 'no-thanks', 'yes-nowait', 'no-yes', 'yes-q', 'hai-q', 'mm-q', 'what', 'passenger', 'lyric', 'late-18', 'late-22', 'tap-settling', 'tap-not-now']) {
+  for (const name of ['yes', 'sure', 'hai', 'hao', 'yes-but', 'no-thanks', 'yes-nowait', 'yes-longback', 'no-yes', 'yes-q', 'hai-q', 'mm-q', 'what', 'passenger', 'lyric', 'late-18', 'late-22', 'tap-settling', 'tap-not-now']) {
     const sc = live[`card-${name}`];
     /** The next question after "No thanks.": Shiori asleep is tapped awake, and the answer is the note said aloud (the stand-in voice's request). @type {Step[]} */
     const steps = name === 'no-thanks'
@@ -195,6 +197,13 @@ function classicScenarios() {
     const expect = name === 'late-22' ? { grant: false, open: true } : sc.expect;
     out[`classic-${name}`] = { ...sc, about: `classic voice: ${sc.about}`, mode: 'classic', steps, ...(expect ? { expect } : {}) };
   }
+  // The final review's F2: Koe on a chat model (Koe · Live off), classic voice: a "Sure." said to Koe before annai asks, whose entry comes after the
+  // question (behind Koe's gate), arms nothing; a second one after the question grants. Koe's microphone is open after the question (a tap would close it).
+  out['chat-sure-before'] = {
+    ...live['card-yes'], about: 'Koe on a chat model: "Sure." said before annai\'s question arms nothing; "Sure." after it grants', mode: 'chat',
+    steps: [{ say: 'tomorrow' }, { wait: 4000 }, { say: 'sure' }, { ask: 70_000 }, { asked: 1500 }, { say: 'sure' }, { settled: 2500 }],
+    expect: { grant: 'voice' },
+  };
   return out;
 }
 

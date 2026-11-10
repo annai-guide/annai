@@ -117,10 +117,11 @@ export async function addToKoe(page, model) {
  * real (with a stand-in, for its voice, and card): Kokoro is the real model, Claude Opus 5.5 through the Anthropic provider (given its key), and the utility
  * and quick-decision models Claude Haiku 5.5, which adding the provider put there; Koe is on Gemini Live as before, and Gemini's chat models are taken out of
  * Main, Utility and Quick decision so that no free model answers for a real one that fails.
- * @param {import('@playwright/test').Page} page @param {string} key @param {(s: string) => void} log @param {{ standIn?: string, card?: boolean, classic?: boolean, real?: { anthropic: string } | null }} [o]
+ * koeChat (with classic): Koe on a chat model, Gemini 3.5 Flash Lite in Koe · Chat, so the two halves talk through classic voice.
+ * @param {import('@playwright/test').Page} page @param {string} key @param {(s: string) => void} log @param {{ standIn?: string, card?: boolean, classic?: boolean, koeChat?: boolean, real?: { anthropic: string } | null }} [o]
  * @returns {Promise<{ testville?: string, chat: string }>} the trips' ids
  */
-export async function setUp(page, key, log, { standIn, card = false, classic = false, real = null } = {}) {
+export async function setUp(page, key, log, { standIn, card = false, classic = false, koeChat = false, real = null } = {}) {
   page.setDefaultTimeout(25_000);
   await page.goto('/#/models');
   await page.locator('main.view > *').first().waitFor();
@@ -178,10 +179,12 @@ export async function setUp(page, key, log, { standIn, card = false, classic = f
     await addGemini(page, key);
     if (classic) {
       // No Koe: Shiori is the one model. The gate is Gemini's small model (adding the provider put it in Quick decision), and her ears are the user's own server.
+      // chat: Koe on that small model too (Koe · Chat), with Koe · Live empty: Koe hears through the same classic voice.
       await page.goto('/#/models');
+      if (koeChat) await addToRole(page, 'Koe · Chat', 'Gemini 3.5 Flash Lite');
       await addVoiceStandIn(page, standIn);
       await addTranscription(page, standIn);
-      log('    providers: Kokoro on a stand-in, no Koe, the gate on Gemini 3.5 Flash Lite, speech in on the user\'s server (through 127.0.0.1), speech out on a stand-in voice');
+      log(`    providers: Kokoro on a stand-in, ${koeChat ? 'Koe on Gemini 3.5 Flash Lite (Koe · Chat)' : 'no Koe'}, the gate on Gemini 3.5 Flash Lite, speech in on the user's server (through 127.0.0.1), speech out on a stand-in voice`);
     } else {
       const live = page.getByRole('region', { name: 'Live voice', exact: true }).getByLabel('Use Live voice');
       await live.check();
@@ -460,8 +463,9 @@ export async function runScenario(browser, name, sc, env) {
   /** The cards on the page as she starts listening: only those that come after are hers to report. @type {string[]} */
   let before = [];
   try {
-    const classic = sc.mode === 'classic';
-    const trips = await setUp(page, env.key, log, env.standIn ? { standIn: env.standIn, card: sc.card === true, classic, ...(sc.real && env.real ? { real: { anthropic: env.real.anthropic } } : {}) } : {});
+    // Koe on a chat model hears through classic voice's microphone too: a tap on Shiori opens it, and there is no live session.
+    const classic = sc.mode === 'classic' || sc.mode === 'chat';
+    const trips = await setUp(page, env.key, log, env.standIn ? { standIn: env.standIn, card: sc.card === true, classic, koeChat: sc.mode === 'chat', ...(sc.real && env.real ? { real: { anthropic: env.real.anthropic } } : {}) } : {});
     if (sc.card && !sc.real) env.kokoro?.readTrip(trips.testville ?? null);
     // A real model is asked at most cap times (the 31st is refused, and the record says so): a runaway loop of tool calls stops here.
     const real = sc.real ? env.real : undefined;
