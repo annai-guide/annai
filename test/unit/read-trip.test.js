@@ -1677,15 +1677,34 @@ test('Koe on a chat model, classic voice: an "Okay" said to Koe before the card,
 test('Koe on a chat model that takes the sound (Gemini): a line said to the card is written down for it when heard, since Koe\'s turn, which sends the sound, writes nothing down until it ends (the final fix; the real-speech check of finding 2)', async (t) => {
   useClock(t);
   const k = await gateKit(KOKORO_ASKED, { koe: { type: KOE_CHAT, input: ['text', 'image', 'audio'] }, voice: { speechIn: ['send-audio', 'm-hear'], hears: ['Okay'] } });
-  // "Send audio to the model" first: Koe's model writes it down (the scripted model's own reply would be empty).
-  const call = k.llm.call.bind(k.llm);
-  k.llm.call = /** @type {any} */ (async (/** @type {any} */ c) => (c.record?.tag === 'transcribe' && c.prefer === 'm-koe' ? { reply: { text: 'Okay', parts: [] }, modelId: 'm-koe' } : call(c)));
   k.agent.send('Where did we eat in Testville?');
   await until(() => k.asks.length === 1, 20_000);
   await until(() => !k.voice.speaker.speaking && k.agent.koe.state.name === 'listening', 20_000);
   await pause(1 * k.agent.secondMs);
   await hear(k, 'first-one'); // "Okay", into Koe's microphone while Koe waits: Koe's wait takes it as sound
   await pause(5 * k.agent.secondMs);
+  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }]);
+  k.agent.interrupt();
+});
+
+test('Koe on a chat model that takes the sound, Kokoro on one that takes none, a transcription model in speech in: a line heard while the card waits is written down once, by the speech-in list, never by a turn of Koe\'s model (a chat turn was slower in real speech, wrote the line down twice, and its timeout rested Koe\'s model: the final fix\'s third round)', async (t) => {
+  useClock(t);
+  const k = await gateKit(KOKORO_ASKED, { koe: { type: KOE_CHAT, input: ['text', 'image', 'audio'] }, voice: { speechIn: ['send-audio', 'm-hear'], hears: ['Okay'] } });
+  const call = k.llm.call.bind(k.llm);
+  /** Each write-down a model was asked for: its role and the model preferred. @type {string[]} */
+  const asked = [];
+  k.llm.call = /** @type {any} */ (async (/** @type {any} */ c) => {
+    if (c.record?.tag === 'transcribe') asked.push(`${c.role}: ${c.prefer}`);
+    return c.record?.tag === 'transcribe' && c.prefer === 'm-koe' ? { reply: { text: 'Okay', parts: [] }, modelId: 'm-koe' } : call(c);
+  });
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1, 20_000);
+  await until(() => !k.voice.speaker.speaking && k.agent.koe.state.name === 'listening', 20_000);
+  await pause(1 * k.agent.secondMs);
+  await hear(k, 'first-one'); // "Okay"
+  await pause(5 * k.agent.secondMs);
+  assert.deepEqual(asked.filter((a) => a.startsWith('koe-classic')), [], 'no turn of Koe\'s model wrote the line down');
+  assert.deepEqual(k.transcribed, ['m-hear'], 'written down once, by the transcription model');
   assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }]);
   k.agent.interrupt();
 });
@@ -1807,29 +1826,4 @@ test('classic voice: a "Yes" begun after the window, routed behind another line\
   assert.equal((await grants(k, k.trip)).length, 0);
   k.agent.interrupt();
   await k.agent.idle();
-});
-
-test('Koe on a chat model that takes the sound, Kokoro on one that takes none, speech in as it comes ("Send audio to the model", then dictation): the card has a line written down by Koe\'s model, so a yes is heard while Koe waits on (the re-review)', async (t) => {
-  useClock(t);
-  const waits = { toolCalls: [{ name: 'wait', input: { seconds: 60 } }] };
-  const koe = { rules: [{ ...KOE_CHAT.rules[0], then: waits }, { match: '', reply: waits, then: waits }] };
-  const k = await gateKit(KOKORO_ASKED, { koe: { type: koe, input: ['text', 'image', 'audio'] }, voice: { speechIn: ['send-audio', 'dictation'] } });
-  // Koe's model writes the sound down when asked; Kokoro's takes no audio, so asking it gets nothing (the request is never sent).
-  const call = k.llm.call.bind(k.llm);
-  /** @type {string[]} */
-  const asked = [];
-  k.llm.call = /** @type {any} */ (async (/** @type {any} */ c) => {
-    if (c.record?.tag !== 'transcribe') return call(c);
-    asked.push(`${c.role}: ${c.prefer}`);
-    return c.prefer === 'm-koe' ? { reply: { text: 'Okay', parts: [] }, modelId: 'm-koe' } : call(c);
-  });
-  k.agent.send('Where did we eat in Testville?');
-  await until(() => k.asks.length === 1, 20_000);
-  await until(() => !k.voice.speaker.speaking && k.agent.koe.state.name === 'listening', 20_000);
-  await pause(1 * k.agent.secondMs);
-  await hear(k, 'first-one'); // "Okay"
-  await pause(5 * k.agent.secondMs);
-  assert.deepEqual(asked, ['koe-classic: m-koe']);
-  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }]);
-  k.agent.interrupt();
 });
