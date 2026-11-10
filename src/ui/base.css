@@ -164,6 +164,8 @@ pre.code { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--pap
 body.home .notices:not(:empty) { position: sticky; top: var(--topbar-h, 0px); z-index: 4; background: var(--paper); --lifted: calc((100svh - var(--topbar-h, 0px)) / 2); }
 body.home .notices.scrolls { overscroll-behavior-y: contain; }
 .notices.over > .notice { pointer-events: none; }
+/* A card came below what is read in the box (notices.js): a mark, not words, at its bottom edge. Its margin gives back the gap and its height: nothing moves. */
+.notices.below::after { content: ''; position: sticky; bottom: 8px; align-self: flex-end; flex-shrink: 0; box-sizing: border-box; width: 10px; height: 10px; margin: -18px 12px 0; border: solid var(--ink); border-width: 0 3px 3px 0; transform: rotate(45deg); pointer-events: none; }
 /* A toast floats above the dock for a moment; a tap goes through it to what is under it. */
 .toasts { position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; display: flex; flex-direction: column; gap: 8px; padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0px)); pointer-events: none; align-items: center; }
 .notice, .toast { width: min(100%, 560px); padding: 14px 16px; border-radius: var(--radius); background: var(--sheet); border: 1px solid var(--line); box-shadow: 0 12px 30px -16px var(--shadow); display: flex; flex-direction: column; gap: 8px; }
