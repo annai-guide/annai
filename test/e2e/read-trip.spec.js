@@ -52,6 +52,7 @@ test('from a chat, Shiori reads Testville after a tap on annai\'s own card; the 
     await askIn(page, 'Ramen crawl', 'Where was the ramen place in Testville?');
     const card = page.locator('.convo li').filter({ hasText: ASKED });
     await expect(card).toBeVisible({ timeout: 15_000 });
+    await expect(card.locator('.who')).toHaveText('annai'); // who asks: annai, not Shiori
     await expect(card.getByRole('button')).toHaveText(['Allow', 'Always for my trips', 'Not now']);
     await card.getByRole('button', { name: 'Allow', exact: true }).click();
     await expect(page.locator('.convo .shiori p').last()).toHaveText(NOTE, { timeout: 15_000 });

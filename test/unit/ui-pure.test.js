@@ -784,6 +784,7 @@ test("Trace order: newest first by when an entry was written, so a simulated tri
 test('the announcer\'s line is in three parts, so only her words can carry a language: annai\'s label and the choices\' lead-in are not hers', () => {
   assert.deepEqual(announced('out.speak', '', '清水寺は朝6時に開きます。'), ['Shiori: ', '清水寺は朝6時に開きます。', '']);
   assert.deepEqual(announced('out.ask', '', 'Where?', ['Ramen', 'Sushi']), ['Shiori asks: ', 'Where?', ' Choices: Ramen, Sushi.']);
+  assert.deepEqual(announced('out.ask', '', 'Read Testville?', ['Allow', 'Not now'], { own: true }), ['annai asks: ', 'Read Testville?', ' Choices: Allow, Not now.'], "annai's own card says who asks");
   assert.deepEqual(announced('out.show', 'Trail', 'Pfeiffer Falls'), ['Shiori (Trail): ', 'Pfeiffer Falls', '']);
   assert.deepEqual(announced('out.show', '', '', [], {}), ['Shiori: ', 'a card', '']);
   assert.deepEqual(announced('msg.user', '', 'Hello'), ['', '', '']);
