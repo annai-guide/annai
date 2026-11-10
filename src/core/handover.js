@@ -164,8 +164,8 @@ export async function undoable(store, scope, handover) {
 }
 
 /**
- * @typedef {{ undone: string[], kept: string[], keptKeys: string[], returned?: string[], tripEmpty: boolean, files: string[], mark?: { type: string, actor: string, data: any } }} UndoOutcome
- *   returned: where the files it moved back went (the waiting space, trips);
+ * @typedef {{ undone: string[], kept: string[], keptKeys: string[], placed?: string[], tripEmpty: boolean, files: string[], mark?: { type: string, actor: string, data: any } }} UndoOutcome
+ *   placed: where the files it moved back went, or were found back already ("scope\npath": the waiting space, trips);
  *   undone: paths put back as they were before her first write for it; kept: paths changed since, left as they are; keptKeys: each kept
  *   file once, by the one place it is known by (a moved file: where it came from), to count across the scopes of one Undo; tripEmpty: she
  *   started the trip for it and nothing of the user's is in it, so the caller removes it; files: the files it brought from the waiting
@@ -187,30 +187,32 @@ async function nameBefore(ws, scope, path, seq) {
 /**
  * A moved file back where it came from, if it is as it was moved or changed only by her for this hand-over (her changes go first):
  * 'back'; 'changed' when anyone else changed it where it went (it stays there); 'home' when it is back where it came from already;
- * 'gone' when it isn't there any more, or where it came from is gone (removed).
+ * 'gone' when it isn't there any more, or where it came from is gone (removed). path: where the file is where it came from ('back', 'home').
  * @param {import('./workspace.js').Workspace} ws @param {{ scope: string, path: string, hash: string }} at where it went
  * @param {{ scope: string, path: string, source?: string }} back where it came from @param {string} handover
+ * @returns {Promise<{ was: 'back' | 'home' | 'changed' | 'gone', path?: string }>}
  */
 async function moveBack(ws, at, back, handover) {
   const [now, home, events] = await ws.store.tx(['files', 'scopes', 'events'], 'readonly', async (t) => [
     await t.getFile(at.scope, at.path), await t.getScope(back.scope), await t.listEvents(at.scope, { types: ['file.write', 'file.delete'] }),
   ]);
-  if (!home) return 'gone';
-  if (!now) {
-    // Moved back already (a first Undo tap that then failed): home, if it is there as it was moved.
+  if (!home) return { was: 'gone' };
+  const of = events.filter((e) => e.data?.path === at.path);
+  const arrived = of.findLastIndex((e) => e.type === 'file.write' && e.data?.moved?.from === back.scope && e.data?.handover === handover);
+  const since = arrived < 0 ? [] : of.slice(arrived + 1);
+  // Moved back already, by a first tap that then failed, or by this Undo at the move's other end: what is there now is not this move's
+  // (in a cycle, A to B and back to A, it is the file the undo of A to B put back). Home, if it is there as it was moved.
+  if (!now || since.some((e) => e.type === 'file.delete' && e.data?.undo === handover && e.data?.moved?.to === back.scope)) {
     const there = await ws.store.tx(['files'], 'readonly', (t) => t.getFile(back.scope, back.path));
-    return there?.hash === at.hash ? 'home' : 'gone';
+    return there?.hash === at.hash ? { was: 'home', path: back.path } : { was: 'gone' };
   }
   if (now.hash !== at.hash) {
-    const of = events.filter((e) => e.data?.path === at.path);
-    const arrived = of.findLastIndex((e) => e.type === 'file.write' && e.data?.moved?.from === back.scope && e.data?.handover === handover);
-    const since = arrived < 0 ? [] : of.slice(arrived + 1);
-    if (!since.length || !since.every((e) => e.actor === 'shiori' && e.data?.handover === handover)) return 'changed';
+    if (!since.length || !since.every((e) => e.actor === 'shiori' && e.data?.handover === handover)) return { was: 'changed' };
     await ws.restore(at.scope, at.path, at.hash, { author: 'user', undo: handover });
   }
   const folder = back.path.slice(0, back.path.lastIndexOf('/') + 1);
-  await moveFile(ws, { scope: at.scope, path: at.path }, back.scope, { author: 'user', undo: handover, folder, ...(back.source ? { source: back.source } : {}) });
-  return 'back';
+  const path = await moveFile(ws, { scope: at.scope, path: at.path }, back.scope, { author: 'user', undo: handover, folder, ...(back.source ? { source: back.source } : {}) });
+  return { was: 'back', path };
 }
 
 /**
@@ -236,7 +238,7 @@ export async function undoHandover(ws, scope, handover, o = {}) {
   };
   if (f.done) return f.started && !f.theirs && !f.keptBefore && !(await holdsOthers(ws.store, scope, handover)) ? { undone: [], kept: [], keptKeys: [], tripEmpty: true, files: await brought() } : { undone: [], kept: [], keptKeys: [], tripEmpty: false, files: [] };
   /** @type {Set<string>} */ const undone = new Set();
-  /** Where the files it moved back went: the waiting space, or trips. @type {Set<string>} */ const returned = new Set();
+  /** Where the files it moved back are, or were found back already: in the waiting space, or trips ("scope\npath"). @type {string[]} */ const placed = [];
   /** @type {Map<string, string>} kept paths here, each by the one place it is known by (a move's: where it came from) */
   const kept = new Map();
   for (const [path, { before, first }] of f.hers) {
@@ -261,18 +263,18 @@ export async function undoHandover(ws, scope, handover, o = {}) {
   }
   for (const m of f.out) {
     const r = await moveBack(ws, { scope: m.to, path: m.there, hash: m.hash }, { scope, path: m.path, ...(m.source ? { source: m.source } : {}) }, handover);
-    if (r === 'back') undone.add(m.path);
-    else if (r === 'changed') kept.set(m.path, `${scope}\n${m.path}`);
-    if (r === 'back' || r === 'home') returned.add(scope);
+    if (r.was === 'back') undone.add(m.path);
+    else if (r.was === 'changed') kept.set(m.path, `${scope}\n${m.path}`);
+    if (r.path) placed.push(`${scope}\n${r.path}`);
   }
   for (const m of f.into) {
     const r = await moveBack(ws, { scope, path: m.path, hash: m.hash }, { scope: m.from, path: m.back, ...(m.source ? { source: m.source } : {}) }, handover);
-    if (r === 'back') undone.add(m.path);
-    else if (r === 'changed') kept.set(m.path, `${m.from}\n${m.back}`);
-    if (r === 'back' || r === 'home') returned.add(m.from);
+    if (r.was === 'back') undone.add(m.path);
+    else if (r.was === 'changed') kept.set(m.path, `${m.from}\n${m.back}`);
+    if (r.path) placed.push(`${m.from}\n${r.path}`);
   }
   const files = await brought();
-  const out = { undone: [...undone], kept: [...kept.keys()], keptKeys: [...new Set(kept.values())], ...(returned.size ? { returned: [...returned] } : {}) };
+  const out = { undone: [...undone], kept: [...kept.keys()], keptKeys: [...new Set(kept.values())], ...(placed.length ? { placed } : {}) };
   const mark = { type: 'handover.undo', actor: 'user', data: { handover, undone: out.undone.length, kept: out.kept, ...(o.removed?.length ? { removed: o.removed } : {}) } };
   if (o.mark !== false) await writeMark(ws, scope, mark, o.log);
   return { ...out, tripEmpty: f.started && !f.theirs && !kept.size && !(await holdsOthers(ws.store, scope, handover)), files, ...(o.mark === false ? { mark } : {}) };
@@ -348,28 +350,35 @@ export async function undoEverywhere(ws, scope, handover, o) {
   const kept = new Set();
   /** @type {{ scope: string, mark: any }[]} */
   const marks = [];
-  /** Where the files went back to: the waiting space, or trips. @type {Set<string>} */
-  const returned = new Set();
+  /** Where the files went back to, in the waiting space or trips ("scope\npath"). @type {Set<string>} */
+  const placed = new Set();
   for (const s of [...new Set([...went.filter((x) => x !== scope), ...sibs.filter((x) => x !== scope), scope, ...came.filter((x) => x !== scope && !went.includes(x))])]) {
     const out = await undoHandover(ws, s, handover, { mark: false });
     for (const k of out.keptKeys) kept.add(k);
-    for (const r of out.returned ?? []) returned.add(r);
+    for (const p of out.placed ?? []) placed.add(p);
     if (!out.tripEmpty) {
       if (out.mark) marks.push({ scope: s, mark: out.mark });
       continue;
     }
-    for (const f of out.files) await moveFile(ws, { scope: s, path: f }, SYS_WAITING, { author: 'user', undo: handover });
-    if (out.files.length) returned.add(SYS_WAITING);
+    for (const f of out.files) placed.add(`${SYS_WAITING}\n${await moveFile(ws, { scope: s, path: f }, SYS_WAITING, { author: 'user', undo: handover })}`);
     removed.push((await o.remove(s)).title);
   }
-  const waiting = returned.has(SYS_WAITING);
-  /** The trips the files went back to, still there. @type {{ id: string, title: string }[]} */
-  const back = [];
-  for (const id of returned) {
-    if (id === SYS_WAITING) continue;
-    const rec = await ws.store.tx(['scopes'], 'readonly', (t) => t.getScope(id));
-    if (rec?.kind === 'trip') back.push({ id, title: rec.title });
-  }
+  // Where the files are now, of the places Undo put them: one it moved on again (in a cycle, A to B and back to A, through B) isn't one.
+  const [waiting, back] = await ws.store.tx(['files', 'scopes'], 'readonly', async (t) => {
+    /** @type {Set<string>} */
+    const there = new Set();
+    for (const p of placed) {
+      const cut = p.indexOf('\n');
+      if (await t.getFile(p.slice(0, cut), p.slice(cut + 1))) there.add(p.slice(0, cut));
+    }
+    /** The trips the files went back to, still there. @type {{ id: string, title: string }[]} */
+    const trips = [];
+    for (const id of there) {
+      const rec = id === SYS_WAITING ? null : await t.getScope(id);
+      if (rec?.kind === 'trip') trips.push({ id, title: rec.title });
+    }
+    return /** @type {const} */ ([there.has(SYS_WAITING), trips]);
+  });
   for (const m of marks) {
     // Where the files went is said whether or not a trip was removed.
     const said = { ...(removed.length ? { removed } : {}), ...(waiting ? { waiting: true } : {}), ...(back.length ? { back: back.map((b) => b.title) } : {}) };
