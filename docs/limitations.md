@@ -372,12 +372,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** naming them needs new strings in every language, and the takeback itself is right (spec goal 2: Undo takes back exactly what Shiori wrote from that hand-over).
 - **Revisit when:** the next version: in talk.js's Undo message, name each trip `undoEverywhere` changed but didn't remove.
 
-### A hand-over cycle (A, then B, then A) leaves the file in B after Undo
-- **Kind:** deferred.
-- **What the user sees:** a file Shiori moved from conversation A to B and later back to A: Undo in A says "Your files are back in B and A", and the file is in B, where the user never put it. Found in review of stage 4; it was already so at 2ec13f79.
-- **Why:** every move is undone from both of its ends (A's `into`, B's `out`); in a cycle the second undo of B to A finds the file in A, put there by the undo of A to B, and moves it again.
-- **Revisit when:** the next version: in `moveBack` (handover.js), a file whose last write at `at.path` is this Undo's own (`undo === handover`) is home already.
-
 ### A redraw of home drops an armed "Tap again to delete"
 - **Kind:** deferred.
 - **What the user sees:** on home, Waiting with Shiori's Delete tapped once is reset when home draws itself again (Shiori's `went`, a plugin's screens, Waiting's own Delete, and since stage 4 the clock's redraw: a few times a day, and once a minute in the hour after a backup or an export, as "Last backup … ago" changes its words). The row says "Delete" again; nothing is lost but the first tap. A focused field is not redrawn over: each of these waits for it.
