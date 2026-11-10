@@ -458,3 +458,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** Gemini Live sends a turn's transcript as text with no mark of which turn it belongs to, so annai appends it to the turn going on; there is no way to tell on annai's side.
 - **Revisit when:** the provider says which turn a transcript belongs to (Gemini's `finished` flag on transcripts isn't read yet: measure whether it settles this), or another live provider is added.
 - **Approved:** 2026-11-10, the user picked "Accept as known limitation (Recommended)".
+
+### A yes said while annai is still asking isn't heard
+- **Kind:** known limitation.
+- **What the user sees:** annai says "Read <trip>?" aloud; a "Yes" begun before she has finished the question doesn't answer the card, on headphones too. The card stays, and a yes said after the question, or a tap, answers it. (3 of 3 runs each on the speaker and the headphones route in the real-voice check, 2026-11-10.)
+- **Why:** the 20 seconds for a spoken answer start when her question ends, and nothing begun over annai's own voice can answer the card: her own sound must never be taken for the user's.
+- **Revisit when:** the user asks for it on headphones, where there is no echo: it needs a sure way to know that no sound of hers reaches the microphone.
+- **Approved:** 2026-11-10, the user picked "Accept as known limitation (Recommended)".
