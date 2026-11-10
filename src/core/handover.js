@@ -54,7 +54,7 @@ export function handOverText(files, o = {}) {
       : `The user is asking about ${quotedPath(f.path)}: read it before you answer.`)),
     ...(o.koe ? [fresh.length ? "Kokoro reads them and files them: don't ask the user where they go." : ''] : [
       waiting ? 'No trip is open, so they wait in /waiting/files/. Read each one: what read gives you of a waiting file is what it says, read for you by a side task, and the file itself stays where it is. Work out what each is (a flight, a stay, a car, a train, an event or a reservation, or just a photo) and which trip it fits (list_trips). Then, without asking where it goes, open_trip with the files for a trip that fits, else start_trip, named and dated from the bookings. One you can\'t place with confidence starts a trip too, and you say what you were unsure of.' : '',
-      inTrip ? `File each one here, unless it belongs to another trip: then move_file it there, and say so. ${FILE_BOOKING} A photo that isn't a booking stays among the trip's photos.` : '',
+      inTrip ? `File each one here, unless it belongs to another of their trips (list_trips shows them): then move_file it there, and say so. ${FILE_BOOKING} A photo that isn't a booking stays among the trip's photos.` : '',
       ...fresh.filter((f) => f.path.startsWith('/trip/') && Number(f.planned) > 0).slice(0, NAMED)
         .map((f) => `${quotedPath(f.path)}: annai put its ${f.planned === 1 ? '1 event' : `${f.planned} events`} on the plan already, so don't add ${f.planned === 1 ? 'it' : 'them'} again.`),
       fresh.some(pasted) ? "A pasted text (pasted-….txt) that isn't a booking: delete it, so it isn't kept. One that is stays with its booking." : '',
