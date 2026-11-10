@@ -1692,38 +1692,40 @@ wa8d8i#other	ok	# files	#个文件	src/ui/screens/import.js:181	plural; # = trip
 1z02pm0	ok	You already have "{0}"	你已经有“{0}”	src/ui/screens/import.js:183	{0} = trip.existingTitle
 s27n78	ok	Add as a new trip	作为新旅行添加	src/ui/screens/import.js:183	
 wr63q8	ok	Replace mine (yours moves to archived trips)	替换我的（现有的会移到已归档的旅行）	src/ui/screens/import.js:183	Note: "yours" is the trip already here: it is archived, not lost.
-1og8gcf	ok	Replace my profile and memory with the ones in this file	用此文件中的个人资料和记忆替换我的	src/ui/screens/import.js:186	Note: profile → 个人资料, as elsewhere.
-rfnd00	ok	Replace my settings	替换我的设置	src/ui/screens/import.js:187	
-1ai6503	ok	Replace my plugins	替换我的插件	src/ui/screens/import.js:188	
-z9765v	ok	Restore API keys (keys already on this device are kept)	恢复 API 密钥（此设备上已有的密钥会保留）	src/ui/screens/import.js:189	
-tlkozp	ok	Reading…	正在读取…	src/ui/screens/import.js:198	
-jbong3	ok	Reading {0} of {1}…	正在读取 {0}/{1}…	src/ui/screens/import.js:211	{0} = num(Math.min(done + 1, total)); {1} = num(total)
-i4v1g5	ok	Installing the plugins your providers use…	正在安装你的提供商使用的插件…	src/ui/screens/import.js:219	
-mu070y	draft	Go to the timeline	前往时间线	src/ui/screens/import.js:229	
-1fnonn8	ok	Open trip	打开旅行	src/ui/screens/import.js:230	
-m9iea3#other	ok	# older copies moved to archived trips.	已将 # 个较早的副本移到已归档的旅行。	src/ui/screens/import.js:231	plural; # = result.archived.length; English: "# older copy moved to archived trips." (one), "# older copies moved to archived trips." (other)
-j0c8lo	ok	Imported plugins arrive switched off. Turn on the ones you trust in Plugins.	导入的插件处于关闭状态。请在插件中开启你信任的那些。	src/ui/screens/import.js:234	
-3qem9k	ok	annai's next backup to that place builds on this one.	annai 下次备份到那个位置时，会以此为基础。	src/ui/screens/import.js:236	
-o7fto4	ok	Import	导入	src/ui/screens/import.js:244	
-18d2xm5	ok	A backup of everything exported {0} from annai {1}.	全部内容的备份，{0}从 annai {1} 导出。	src/ui/screens/import.js:247	{0} = ago; {1} = app
-6fr2dj	ok	A backup of everything exported {0} from annai {1}, encrypted.	全部内容的备份，{0}从 annai {1} 导出，已加密。	src/ui/screens/import.js:247	{0} = ago; {1} = app
-1uhzqqs	ok	A trip exported {0} from annai {1}, encrypted.	一个旅行，{0}从 annai {1} 导出，已加密。	src/ui/screens/import.js:248	{0} = ago; {1} = app
-1ut7u54	ok	A trip exported {0} from annai {1}.	一个旅行，{0}从 annai {1} 导出。	src/ui/screens/import.js:248	{0} = ago; {1} = app
-7ns57f	ok	There are no trips in this file.	此文件中没有旅行。	src/ui/screens/import.js:251	
-1y35b48	ok	Restarting…	正在重启…	src/ui/screens/import.js:267	
-5wjjb4	ok	Restart annai to use the imported settings and plugins.	重启 annai 以使用导入的设置和插件。	src/ui/screens/import.js:272	
-1p9jpyr	ok	Installed what your providers use: {0}.	已安装你的提供商使用的内容：{0}。	src/ui/screens/import.js:282	{0} = list(g.installed, 'plain')
-c0u62t#other	ok	Kept your own API keys for {0}; the ones in the file weren't used.	保留了你自己的 {0} API 密钥；文件中的未被使用。	src/ui/screens/import.js:291	plural; # = n; {0} = list(names, 'plain'); English: "Kept your own API key for {0}; the one in the file wasn't used." (one), "Kept your own API keys for {0}; the ones in the file weren't used." (other)
-jsttcj#other	ok	Kept your own API keys; the ones in the file weren't used.	保留了你自己的 API 密钥；文件中的未被使用。	src/ui/screens/import.js:292	plural; # = n; English: "Kept your own API key; the one in the file wasn't used." (one), "Kept your own API keys; the ones in the file weren't used." (other)
-151rypw#other	ok	# photos	#张照片	src/ui/screens/import.js:322	plural; # = n; English: "# photo" (one), "# photos" (other); Note: zh with no space, as it sits inside 添加{0} and 已添加{0}.
-8w8k36	ok	a file	一个文件	src/ui/screens/import.js:322	
-ci7mt7	ok	Add to {0}	添加到{0}	src/ui/screens/import.js:327	{0} = trip.title
-odevmc	ok	Adding {0} of {1}…	正在添加（{0}/{1}）…	src/ui/screens/import.js:336	{0} = num(Math.min(done + 1, total)); {1} = num(total)
-6u51xq#other	draft	Added {0}, and # itinerary items from the calendar	已添加{0}，以及日历中的 # 项行程	src/ui/screens/import.js:345	plural; # = planned.length; {0} = what; English: "Added {0}, and # itinerary item from the calendar" (one), "Added {0}, and # itinerary items from the calendar" (other); English was: Added {0}, and # itinerary items from the calendar; Note: {0} is a file's path, or how many files ("2 files").
-f30m7u#other	ok	and # more photos	还有 # 张照片	src/ui/screens/import.js:364	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
-1cj3r6h	ok	Add only what you just shared yourself.	只添加你自己刚刚分享的内容。	src/ui/screens/import.js:367	
-sc64d2	ok	Also here: {0}, an annai backup or trip. It isn't added with the rest; open it on its own.	这里还有：{0}，一个 annai 备份或旅行。它不会和其他内容一起添加；请单独打开。	src/ui/screens/import.js:371	{0} = a.file.name
-3wbwnq	ok	Open it	打开	src/ui/screens/import.js:372	
+lpx0cl#other	draft	# trips and conversations	# 个旅行和对话	src/ui/screens/import.js:192	plural; # = folded.length; English: "# trip or conversation" (one), "# trips and conversations" (other); Note: a git backup's preview, from its manifest alone, can't tell trips from chats: this is the one row they fold under.
+1pmufvp#other	draft	you already have # of them	其中 # 个你已经有了	src/ui/screens/import.js:193	plural; # = mine; English: "you already have # of them" (one), "you already have # of them" (other); Note: after the fold's count and size, how many of its rows are already on this phone (each has its choice inside the fold); "of them" is of the trips and conversations.
+1og8gcf	ok	Replace my profile and memory with the ones in this file	用此文件中的个人资料和记忆替换我的	src/ui/screens/import.js:196	Note: profile → 个人资料, as elsewhere.
+rfnd00	ok	Replace my settings	替换我的设置	src/ui/screens/import.js:197	
+1ai6503	ok	Replace my plugins	替换我的插件	src/ui/screens/import.js:198	
+z9765v	ok	Restore API keys (keys already on this device are kept)	恢复 API 密钥（此设备上已有的密钥会保留）	src/ui/screens/import.js:199	
+tlkozp	ok	Reading…	正在读取…	src/ui/screens/import.js:208	
+jbong3	ok	Reading {0} of {1}…	正在读取 {0}/{1}…	src/ui/screens/import.js:221	{0} = num(Math.min(done + 1, total)); {1} = num(total)
+i4v1g5	ok	Installing the plugins your providers use…	正在安装你的提供商使用的插件…	src/ui/screens/import.js:229	
+mu070y	draft	Go to the timeline	前往时间线	src/ui/screens/import.js:239	
+1fnonn8	ok	Open trip	打开旅行	src/ui/screens/import.js:240	
+m9iea3#other	ok	# older copies moved to archived trips.	已将 # 个较早的副本移到已归档的旅行。	src/ui/screens/import.js:241	plural; # = result.archived.length; English: "# older copy moved to archived trips." (one), "# older copies moved to archived trips." (other)
+j0c8lo	ok	Imported plugins arrive switched off. Turn on the ones you trust in Plugins.	导入的插件处于关闭状态。请在插件中开启你信任的那些。	src/ui/screens/import.js:244	
+3qem9k	ok	annai's next backup to that place builds on this one.	annai 下次备份到那个位置时，会以此为基础。	src/ui/screens/import.js:246	
+o7fto4	ok	Import	导入	src/ui/screens/import.js:254	
+18d2xm5	ok	A backup of everything exported {0} from annai {1}.	全部内容的备份，{0}从 annai {1} 导出。	src/ui/screens/import.js:257	{0} = ago; {1} = app
+6fr2dj	ok	A backup of everything exported {0} from annai {1}, encrypted.	全部内容的备份，{0}从 annai {1} 导出，已加密。	src/ui/screens/import.js:257	{0} = ago; {1} = app
+1uhzqqs	ok	A trip exported {0} from annai {1}, encrypted.	一个旅行，{0}从 annai {1} 导出，已加密。	src/ui/screens/import.js:258	{0} = ago; {1} = app
+1ut7u54	ok	A trip exported {0} from annai {1}.	一个旅行，{0}从 annai {1} 导出。	src/ui/screens/import.js:258	{0} = ago; {1} = app
+7ns57f	ok	There are no trips in this file.	此文件中没有旅行。	src/ui/screens/import.js:261	
+1y35b48	ok	Restarting…	正在重启…	src/ui/screens/import.js:277	
+5wjjb4	ok	Restart annai to use the imported settings and plugins.	重启 annai 以使用导入的设置和插件。	src/ui/screens/import.js:282	
+1p9jpyr	ok	Installed what your providers use: {0}.	已安装你的提供商使用的内容：{0}。	src/ui/screens/import.js:292	{0} = list(g.installed, 'plain')
+c0u62t#other	ok	Kept your own API keys for {0}; the ones in the file weren't used.	保留了你自己的 {0} API 密钥；文件中的未被使用。	src/ui/screens/import.js:301	plural; # = n; {0} = list(names, 'plain'); English: "Kept your own API key for {0}; the one in the file wasn't used." (one), "Kept your own API keys for {0}; the ones in the file weren't used." (other)
+jsttcj#other	ok	Kept your own API keys; the ones in the file weren't used.	保留了你自己的 API 密钥；文件中的未被使用。	src/ui/screens/import.js:302	plural; # = n; English: "Kept your own API key; the one in the file wasn't used." (one), "Kept your own API keys; the ones in the file weren't used." (other)
+151rypw#other	ok	# photos	#张照片	src/ui/screens/import.js:332	plural; # = n; English: "# photo" (one), "# photos" (other); Note: zh with no space, as it sits inside 添加{0} and 已添加{0}.
+8w8k36	ok	a file	一个文件	src/ui/screens/import.js:332	
+ci7mt7	ok	Add to {0}	添加到{0}	src/ui/screens/import.js:337	{0} = trip.title
+odevmc	ok	Adding {0} of {1}…	正在添加（{0}/{1}）…	src/ui/screens/import.js:346	{0} = num(Math.min(done + 1, total)); {1} = num(total)
+6u51xq#other	draft	Added {0}, and # itinerary items from the calendar	已添加{0}，以及日历中的 # 项行程	src/ui/screens/import.js:355	plural; # = planned.length; {0} = what; English: "Added {0}, and # itinerary item from the calendar" (one), "Added {0}, and # itinerary items from the calendar" (other); English was: Added {0}, and # itinerary items from the calendar; Note: {0} is a file's path, or how many files ("2 files").
+f30m7u#other	ok	and # more photos	还有 # 张照片	src/ui/screens/import.js:374	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
+1cj3r6h	ok	Add only what you just shared yourself.	只添加你自己刚刚分享的内容。	src/ui/screens/import.js:377	
+sc64d2	ok	Also here: {0}, an annai backup or trip. It isn't added with the rest; open it on its own.	这里还有：{0}，一个 annai 备份或旅行。它不会和其他内容一起添加；请单独打开。	src/ui/screens/import.js:381	{0} = a.file.name
+3wbwnq	ok	Open it	打开	src/ui/screens/import.js:382	
 qqpumv	draft	This isn't on the itinerary	这不在行程中	src/ui/screens/item.js:24	English was: This isn't on the plan; Note: a heading where a link names no plan item.
 15biluu	draft	Go to the itinerary	前往行程	src/ui/screens/item.js:25	Note: a link to the trip's Plan.
 1wp3w0c	ok	All day, {0}	全天（{0}）	src/ui/screens/item.js:41	{0} = start; Note: {0} is the day.
