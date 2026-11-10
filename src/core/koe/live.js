@@ -36,7 +36,7 @@ import { t } from '../l10n.js';
  *   dropped: (cut: boolean) => void, changed: () => void, budgets: () => Promise<any>, timeZone: () => string, asked: () => boolean, secondMs?: number,
  *   unsaid: (notes: Wake[]) => void, owed: (notes: Wake[]) => void, left?: (notes: Wake[]) => void, spoke?: () => void, ws?: import('../workspace.js').Workspace,
  *   held?: () => Promise<void> | null, voiceOut?: () => Promise<void> | null, saying?: (words: string) => void, noisy?: (heard: string) => void,
- *   heard?: (line: { id: string, text: string, at: number, her: boolean }) => void, speech?: (on: boolean) => void }} LiveHost
+ *   heard?: (line: { id: string, text: string, at: number, her: boolean }) => void, speech?: (on: boolean, line?: { id: string, at: number, her: boolean }) => void }} LiveHost
  *   Halves's: release: the speech pipeline lets go of the voice; asked: Kokoro works on Koe's question; unsaid: Kokoro's notes for the user Koe never
  *   passed on, asked once more; owed: those a session closed on before Koe passed them on, to hand on; left: those a switch to another
  *   conversation leaves, shown there; spoke: the user's spoken turn ended; ws: where this device keeps that the talk-over card was shown;
@@ -44,7 +44,7 @@ import { t } from '../l10n.js';
  *   (a reminder finishes first); saying: her words so far, while she speaks
  *   them (the dock's bubble), as the transcript grows; her line is written once, at the end; noisy: sound never stopped
  *   (a user turn that began after the quiet spell ran out was let go), with what was heard: Kokoro decides whether Koe sleeps; heard: a line's words as its transcript
- *   comes, long before its entry (Koe's turn's end), for annai's card; speech: the user's turn began, or ended, for annai's card
+ *   comes, long before its entry (Koe's turn's end), for annai's card; speech: the user's turn began (line: the line it begins), or ended, for annai's card
  */
 
 /** Tool answers that add no speech (decision 10). */
@@ -1099,7 +1099,7 @@ export class LiveKoe {
       this.#endedAt = Date.now();
       this.#noBack++;
     }
-    this.c.speech?.(edge === 'start');
+    this.c.speech?.(edge === 'start', edge === 'start' && this.#hear ? { id: this.#hear.id, at: this.#hear.at, her: Boolean(this.#hear.her) } : undefined);
     // Sound going in is no exchange (music is enough for the detector): only her answer to it re-arms the quiet spell.
     this.#send((s) => s.activity(edge, cut));
     this.#changed();

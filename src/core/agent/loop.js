@@ -976,7 +976,8 @@ export class Agent {
 
   /**
    * The other half's heard lines while annai's card waits (Halves): a line's words as they arrive, when it began (none: heard before the card),
-   * whether over her voice, and its verdict. @param {{ id: string, text?: string, at?: number, her?: boolean, kept?: boolean }} x
+   * whether over her voice, and its verdict. live: a live session's turn as it begins, its words still to come.
+   * @param {{ id: string, text?: string, at?: number, her?: boolean, kept?: boolean, live?: boolean }} x
    */
   confirmHeard(x) {
     const p = this.#pending;
@@ -989,7 +990,7 @@ export class Agent {
       ask.heard.set(x.id, line);
       // A chat Koe's segment comes as sound: its words exist once written down, which a Koe model that takes the sound does only as its turn
       // ends, or never while it waits on. Written down now for the card, as classic voice's own (#route).
-      if (x.text === undefined) void this.#askWriteDown(p, line);
+      if (x.text === undefined && !x.live) void this.#askWriteDown(p, line);
     }
     if (x.her) line.her = true;
     if (typeof x.text === 'string' && x.text !== line.text) this.#askWords(p, line, x.text);
@@ -1051,8 +1052,10 @@ export class Agent {
     const ask = /** @type {NonNullable<Pending['ask']>} */ (p.ask);
     clearTimeout(ask.settle);
     ask.settle = setTimeout(() => {
-      if (ask.speaking && ask.armed?.yes) return; // it settles again once they stop (confirmSpeech)
       const lines = [...ask.heard.values()];
+      // A yes waits while they speak, and for the words of a line heard after it, however slow: either may take it back. It settles again
+      // once they stop (confirmSpeech); those words drop it, or arm their own.
+      if (ask.armed?.yes && (ask.speaking || lines.slice(lines.indexOf(ask.armed.line) + 1).some((l) => l.text === undefined))) return;
       const chosen = ask.armed?.chosen ?? null;
       const last = ask.armed?.line ?? lines.findLast((l) => l.kept && !l.her && l.text !== undefined && askSaid(ask, l) === null);
       if (!last || this.#pending !== p) return;
