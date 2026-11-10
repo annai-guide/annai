@@ -134,7 +134,7 @@ export function todayTop(ctx, { title, rows, tz }) {
     const was = top.getBoundingClientRect();
     draw();
     const by = top.getBoundingClientRect().bottom - was.bottom;
-    if (was.top < 0 && by) scrollBy(0, by); // rows being read hold still: Chromium keeps them itself even with overflow-anchor none (base.css), WebKit doesn't, hence this; nothing to move, no scroll (a flick on an older iPhone)
+    if (was.top < 0 && by) scrollBy(0, by); // rows being read hold still: no engine anchors the page (base.css); nothing to move, no scroll (a flick on an older iPhone)
   });
   const card = component(ctx, 'now-card');
   if (card) {
