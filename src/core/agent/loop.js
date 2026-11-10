@@ -75,8 +75,10 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  *   cacheAt: number }} Frozen
  *   what a turn's requests keep from its first step to its end (the keep-reasoning design §3): the system text (rebuilt only from a new snapshot,
  *   after housekeeping), the tools and provider tools, the reasoning level, the half's rule for its messages, and where the previous turn began
- * @typedef {{ id: string, kind: 'ask' | 'wait', resolve: (v: Got) => void, listening?: boolean, hold?: () => void, arm?: () => void, tool?: boolean }} Pending
- *   waiting for the user; listening: an answer may be spoken; hold and arm stop and start the silence limit; tool: the wait tool's
+ * @typedef {{ id: string, kind: 'ask' | 'wait', resolve: (v: Got) => void, listening?: boolean, hold?: () => void, arm?: () => void, tool?: boolean,
+ *   ask?: { yes: (heard: string) => string | null, open: boolean, ids: Set<string> } }} Pending
+ *   waiting for the user; listening: an answer may be spoken; hold and arm stop and start the silence limit; tool: the wait tool's;
+ *   ask: annai's own question's (confirm): its word list, whether a heard line may answer it now, and the other half's lines heard meanwhile
  * @typedef {{ name: StateName, label: string, detail?: string }} State  label: the dock's words for it (LABELS); detail: what she is away doing (TIDYING, or a task's words)
  * @typedef {{ tone: 'warn' | 'info', title: string, body: string, actions?: { label: string, primary?: boolean, run: () => void | Promise<void> }[], key?: string, toast?: boolean }} Notice
  *   key: names a card a later turn takes down (the clear event, when that turn works): model, or silent:<its conversation>
@@ -149,6 +151,8 @@ export const isForUser = (w) => w.kind === 'note' && w.from === 'kokoro' && !NOT
 /** What Koe is asked when Kokoro's note for the user ended its turn unsaid, text or live: only what the note adds (§6.8), or already_told. */
 /** How long a tap's window and a question aloud listen: not silenceSeconds, which is for what she says listening for an answer (the second-drive design). */
 const LISTEN_S = 8;
+/** How long after annai's own question ends a heard line may answer it (confirm): the stage 5 plan's call, room for "yes" said after a pause. */
+export const YES_S = 20;
 /** The card when sound that worked stopped coming out (one name: a newer one replaces it, a tap takes it down). */
 export const soundStuck = () => ({ tone: /** @type {const} */ ('warn'), title: t`Tap the screen so Shiori can speak`, body: t`Her sound got stuck, and a tap brings it back. Her words are in the conversation.`, key: 'sound' });
 export const NOTE_UNSAID = /* en */ "Kokoro's note hasn't reached the user. Only what you say, show or ask reaches them; anything you write for yourself never does. Tell them what it adds, without changing what it claims; if you have already told them all of it, call already_told.";
@@ -855,6 +859,83 @@ export class Agent {
     } else {
       this.send(option, { chose: true });
     }
+  }
+
+  /**
+   * annai's own question for a tool (reading another trip, the timeline design): its card, annai's words and options, never a model's (RULES 9),
+   * said with voice on as a reminder is. A tap on an option answers it, and so does a heard line, dismissed or not, that yes() takes for one, heard
+   * in the YES_S after the question ends. Anything else ends it unanswered, written as ask writes it: typing (a plugin can type), a late tap on another
+   * card, another heard line here (with Koe talking, heard lines are Koe's, and only a yes answers). A Stop ends it.
+   * @param {{ id: string, wake: string }} call @param {{ question: string, options: string[], yes?: (heard: string) => string | null }} o
+   * @returns {Promise<{ chosen?: string, how?: 'tap' | 'voice', stopped?: boolean, said?: string, heard?: string[] }>} said, heard: the user's words instead, as a result gives them
+   */
+  async confirm(call, { question, options, yes = () => null }) {
+    await this.#log({ type: 'out.ask', actor: 'system', data: { id: call.id, wake: call.wake, question, options, own: true, by: null } });
+    const queued = this.#queue.findIndex((w) => w.kind === 'user' && w.scope === this.scope);
+    /** @type {Got & { voiced?: string, inside?: boolean }} */
+    const got = queued >= 0 ? typedGot(this.#queue.splice(queued, 1)[0]) : await new Promise((resolve) => {
+      /** @type {any} */
+      let timer;
+      const ask = { yes, open: false, ids: new Set() };
+      /** @type {Pending} */
+      const p = { id: call.id, kind: 'ask', ask, resolve: (v) => { clearTimeout(timer); resolve({ ...v, inside: ask.open }); } };
+      this.#pending = p;
+      this.#setState('waiting');
+      const aloud = Boolean(this.voice?.on) && !this.#half.hushed?.();
+      (aloud ? /** @type {any} */ (this.voice).say(question).catch(() => {}) : Promise.resolve()).then(async () => {
+        if (this.#pending !== p) return;
+        ask.open = true;
+        const until = Date.now() + YES_S * this.secondMs;
+        const shut = () => {
+          ask.open = p.listening = false;
+          if (this.#ear?.owner === 'turn') this.#closeEar();
+          if (this.#pending === p) this.#setState('waiting');
+        };
+        p.hold = () => clearTimeout(timer); // someone is speaking: the window waits for their words
+        p.arm = () => { clearTimeout(timer); timer = setTimeout(shut, Math.max(0, until - Date.now())); };
+        p.arm();
+        if (this.#half.voice() && this.voice?.on && !(await this.#openEar('turn')) && this.#pending === p && ask.open) {
+          p.listening = true;
+          this.#setState('listening');
+        }
+      });
+    });
+    if (got.stopped) return { stopped: true };
+    if (got.voiced) return { chosen: got.voiced, how: 'voice' }; // the other half's heard line, written already
+    if (got.chosen !== undefined) {
+      await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...this.#chose() }, texts: [['text', got.chosen]] });
+      return { chosen: got.chosen, how: 'tap' };
+    }
+    if (got.heard) {
+      // Words to check: dictation's, else written down now, by the speech-in list (no model judges them: the word list does).
+      const r = typeof got.heard.text === 'string' || !this.voice ? null : await this.voice.writeDown(got.heard.id, { scope: this.scope, wake: call.wake, hearer: await this.#hearer(this.#half.role) }).catch(() => null);
+      const words = r ? r.text : got.heard.text;
+      await this.#logHeard(r ? { ...got.heard, text: r.text } : got.heard, { wake: call.wake, answer: call.id });
+      if (r) this.voice?.memory.drop(got.heard.id, r.text);
+      const chosen = got.inside && typeof words === 'string' ? yes(words) : null;
+      /* en */
+      return chosen ? { chosen, how: 'voice' } : { said: 'The user said:', heard: [got.heard.id] };
+    }
+    if (got.text === undefined) return { said: '' };
+    const wrote = typedAs(got);
+    await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...wrote.data }, texts: [['text', got.text]] });
+    return { said: wrote.said };
+  }
+
+  /**
+   * The other half heard something (Koe's heard and heard.text entries, Halves): a line heard while annai's own question listens answers it once
+   * yes() takes its words for an option, now or when they are written down. Anything else leaves the card waiting. @param {any} e
+   */
+  confirmHeard(e) {
+    const p = this.#pending;
+    const ask = p?.ask;
+    if (!p || !ask) return;
+    const id = e.type === 'heard' ? e.data?.id : e.data?.of;
+    if (e.type === 'heard' && ask.open) ask.ids.add(id);
+    const chosen = ask.ids.has(id) && typeof e.data?.text === 'string' ? ask.yes(e.data.text) : null;
+    if (!chosen) return;
+    this.#pending = null;
+    p.resolve({ voiced: chosen });
   }
 
   /**
@@ -3047,7 +3128,8 @@ export class Agent {
     const tapped = this.#ear?.owner === 'tap';
     const p = this.#pending?.listening ? this.#pending : null;
     if (p) {
-      const verdict = tapped ? null : await this.#gate(h);
+      // annai's own question takes a heard line whoever it was for: its word list is the check (confirm).
+      const verdict = tapped || p.ask ? null : await this.#gate(h);
       if (this.#pending === p && verdict === 'chatter') {
         // Not for her: written at the turn's end, and she listens on, to the same deadline (the second-drive design): one such verdict must not close the microphone on the user.
         this.#chatter.push(h);
