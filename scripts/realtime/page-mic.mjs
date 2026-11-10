@@ -11,7 +11,7 @@
 // plays (its loudness, 50 times a second: window.__rt.level), and, in echo mode, mixes it into the microphone at a level and
 // a delay, as a phone's speaker does into its own microphone.
 //
-// Everything is kept in window.__rt: opens (microphones opened), plays (clips played: name, at, end, in epoch ms),
+// Everything is kept in window.__rt: opens (microphones opened; micAt: when the last one was),  plays (clips played: name, at, end, in epoch ms),
 // level ([ms since start, rms of what annai plays]), mic ([ms, rms of what the microphone carries]).
 /**
  * @param {{ route: 'speaker' | 'headphones' | 'car', roomDb: number | null, echo: { db: number, delayMs: number } | null,
@@ -20,7 +20,7 @@
 export function installMic(o) {
   const w = /** @type {any} */ (window);
   const t0 = Date.now();
-  const rt = (w.__rt = { opens: 0, plays: /** @type {any[]} */ ([]), level: /** @type {number[][]} */ ([]), mic: /** @type {number[][]} */ ([]), route: o.route, echo: o.echo, error: /** @type {string | null} */ (null), say: /** @type {any} */ (null), t0 });
+  const rt = (w.__rt = { opens: 0, plays: /** @type {any[]} */ ([]), level: /** @type {number[][]} */ ([]), mic: /** @type {number[][]} */ ([]), media: /** @type {any[]} */ ([]), micAt: 0, route: o.route, echo: o.echo, error: /** @type {string | null} */ (null), say: /** @type {any} */ (null), t0 });
   if (typeof MediaDevices === 'undefined') return;
   const label = { speaker: 'iPhone Microphone', headphones: 'AirPods Pro', car: 'Car Handsfree' }[o.route];
   const connect = AudioNode.prototype.connect;
@@ -49,6 +49,26 @@ export function installMic(o) {
     }
     return r;
   });
+  // annai plays a whole clip (its own voice: a card's question, a sample) through one <audio> element, which the tap cannot hear. The
+  // first play puts the element behind a context whose destination the tap covers (so the loudness probe and the echo hear it), and
+  // its playing and ending are logged in rt.media (epoch ms): the end is when annai's say(...) is done.
+  /** @type {WeakSet<HTMLMediaElement>} */
+  const routed = new WeakSet();
+  const mediaPlay = HTMLMediaElement.prototype.play;
+  HTMLMediaElement.prototype.play = function (...args) {
+    if (!routed.has(this)) {
+      routed.add(this);
+      try {
+        const c = new AudioContext();
+        c.createMediaElementSource(this).connect(c.destination);
+        c.resume().catch(() => {});
+      } catch (e) {
+        rt.error = `the audio element could not be tapped: ${String(e)}`;
+      }
+      for (const kind of ['playing', 'ended', 'pause', 'error']) this.addEventListener(kind, () => rt.media.push({ at: Date.now(), kind, seconds: Math.round((this.duration || 0) * 1000) / 1000, time: Math.round(this.currentTime * 1000) / 1000 }));
+    }
+    return mediaPlay.apply(this, args);
+  };
   const buf = new Float32Array(1024);
   const rms = (/** @type {AnalyserNode} */ a) => {
     a.getFloatTimeDomainData(buf);
@@ -73,6 +93,7 @@ export function installMic(o) {
   // On the prototype: WebKit drops a method set on navigator.mediaDevices this early.
   MediaDevices.prototype.getUserMedia = async () => {
     rt.opens++;
+    rt.micAt = Date.now();
     const ctx = new AudioContext();
     await ctx.resume().catch(() => {});
     // Everything the microphone carries meets in a bus, which feeds the stream and a probe of its loudness.

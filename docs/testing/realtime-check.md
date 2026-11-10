@@ -95,6 +95,36 @@ with no network, after the analysis changed.
 | relay-note (only by name) | phone speaker | a question, Kokoro's note, then the same note again once she has said it (the stand-in Kokoro repeats it): the first is said with nothing added, the second settled with already_told |
 | multilingual (only by name) | phone speaker | the languages setting English, Chinese and Japanese; a Japanese sentence, a Chinese one and an English one, each after her answer: each should be answered in kind |
 
+## Stage 5's card (read_trip): the spoken yes, with real speech
+
+Before Shiori reads another of the user's trips, annai shows its own card ("Read Testville, Nov 10 – 17?": Allow / Always for my trips / Not now) and says the
+question; a tap, or a spoken yes in annai's word list (`spoken-yes.js`), answers it. These scenarios (by name only; `node scripts/realtime-check.mjs run --list`)
+put real speech to it:
+
+- **The setup** is a user's: Kokoro is the stand-in (a local Anthropic Messages server) that answers a question naming Testville with a `read_trip` call for that
+  trip, and a result with one line (what it read, or that it was not allowed), so the voice path is measured alone; Testville is a trip dated this week, the
+  conversation Koe talks in is a chat (Big Sur), Always is off; annai's question is said by a stand-in voice (a Custom provider's Voice, first in Speech out) whose
+  clip plays through the page, so the harness hears it (the page's `<audio>` element is routed through the tapped context: `rt.media` logs its playing and ending)
+  and can mix it back as echo. The question's end is the end of that player.
+- **Koe talking** (`card-yes`, `card-sure`, `card-hai`, `card-hao`, `card-yes-but`, `card-no-thanks`, `card-yes-nowait`, `card-no-yes`, `card-yes-q`, `card-hai-q`,
+  `card-mm-q`, `card-what`, `card-passenger`, `card-lyric`, `card-late-18`, `card-late-22`, `card-tap-settling`, `card-tap-not-now`, `card-over`,
+  `card-over-headphones`, `card-echo-loud`, `card-echo-quiet`, `card-echo-yes`, `card-echo-car`, `card-echo-car-yes`, and the `-ja` and `-zh` ones, which set Languages
+  first). The user's line is `tomorrow.wav` ("What's on tomorrow in Testville?"); each scenario then answers the card. `expect` in scenarios.mjs says what the rule
+  gives; the report says what happened (`granted-voice`, `granted-tap`, `unanswered`, `not-now`, `none`: still waiting), the times from the end of the user's last
+  clip, what Gemini wrote for it, what Koe said meanwhile, and what Shiori was given.
+- **Classic voice** (`classic-*`, with `--asr <origin>`): no Koe; Speech in is a Local speech server whose address is the stand-in's `/asr` (annai calls only https
+  addresses, or http on this device, so a server on the network is reached through the stand-in, which passes on transcription requests and nothing else, one at
+  a time, and logs the words that came back); the gate is Gemini 3.5 Flash Lite (adding Gemini puts it in Quick decision).
+- **A real Kokoro** (`real-yes`, `real-yes-but`, `real-no-thanks`, with `--anthropic-key <file>`): Claude Opus 5.5 through the Anthropic provider (Haiku 5.5 as utility),
+  Koe on Gemini Live. The key is read inside the process and typed into annai's own field; a scenario is held to 30 requests to api.anthropic.com (the 31st is
+  refused), and the report gives annai's own count of tokens and an estimated cost.
+- **Lateness** (`lines-en`, `lines-ja`, `lines-zh`, and every other run): `node scripts/realtime-check.mjs lateness <run folders>` reads the records and reports, by
+  language, when annai wrote each line Koe heard (`heard`), each later revision (`heard.text`), the socket's own transcription chunks, and the end of the clip.
+  `cards <run folders>` makes one table of the card runs, a row a scenario.
+
+New clips (Gemini TTS, synthetic voices, made-up lines): `tomorrow`, `favour`, `yes-but`, `no-wait`, `no-thanks`, `yes-q`, `hai`, `hai-q`, `hao`, `mm-q`, `passenger`, `ask-q`.
+The preview TTS refuses a two-character text (it answers with text), so `hao` and `mm-q` are said with a second sentence and cut at the pause (`first: true`).
+
 ## What the report says, and when it passes
 
 For each scenario: each clip, with its turns (how long each sent, why it ended: `pause`, `cap`, `transcript`, `close`, `voice`,
