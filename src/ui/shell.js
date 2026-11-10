@@ -405,7 +405,7 @@ export function startShell(root, core) {
       if (my !== seq) return superseded(my);
       // Home drawn again in place (the clock, a hand-over, a Delete): the first row in view that is still shown stays where it was (keepRows).
       const draw = () => main.replaceChildren(node);
-      if (pending === null && route.name === 'trips' && drawnHash === shown.hash) keepRows(() => Math.max(header.getBoundingClientRect().bottom, notices.el.getBoundingClientRect().bottom), main, draw, node);
+      if (pending === null && route.name === 'trips' && drawnHash === shown.hash) keepRows(main, draw, node);
       else draw();
       drawnHash = shown.hash;
       if (pending !== null) {
