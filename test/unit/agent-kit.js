@@ -248,6 +248,16 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
   return { store, ws, trip, registry, host, agent, llm, requests, sent, events, notices, presets, codec, voice: /** @type {any} */ (voice), platform: /** @type {any} */ (platform), said, transcribed, sessions, sockets };
 }
 
+/**
+ * A model's script or rules, written again once what it names exists (a trip made after the kit, by its id): the scripted model reads them
+ * from its provider's record at each call. @param {any} k @param {any[] | Record<string, any>} script @param {string} [provider] pv-0, the first script's (Kokoro's)
+ */
+export async function rescript(k, script, provider = 'pv-0') {
+  const p = structuredClone((await readConfig(k.ws)).providers[provider]);
+  p.user.abilities.chat.tunables = Array.isArray(script) ? { script } : script;
+  await saveProvider(k.ws, p);
+}
+
 /** Waits until fn() is true (every 2 ms, at most ms). @param {() => boolean} fn @param {number} [ms] */
 export async function until(fn, ms = 2000) {
   const end = Date.now() + ms;

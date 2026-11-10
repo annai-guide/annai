@@ -1,7 +1,9 @@
 // K1 Task 6: Halves, the coordinator (the Koe and Kokoro design; plan decisions 15, 16, 18, 20, 21; Review Focus 2, 3, 5).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until } from './agent-kit.js';
+import { agentKit, until, rescript } from './agent-kit.js';
+import { tripTools } from '../../src/core/agent/trip-tools.js';
+import { createTrip } from '../../src/core/scopes.js';
 import { prefixFingerprint } from '../../src/core/agent/context.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { KOKORO_PART } from '../../src/core/koe/instructions.js';
@@ -1011,4 +1013,36 @@ test("with two halves, Kokoro's turn for a typed hand-over carries it: its write
   const toKoe = userTexts(k.sent['model-koe'][0]);
   assert.ok(toKoe.some((/** @type {string} */ x) => /The user handed you a file: .*Kokoro reads them and files them/.test(x)));
   assert.ok(!toKoe.some((/** @type {string} */ x) => /move_file/.test(x)));
+});
+
+// Timeline stage 6, Review Focus 3 with Koe on a chat model: what Koe is told, in which conversation, and nothing said twice.
+test('a move with Koe talking on a chat model: in the chat Koe says she is taking them there; in the trip Kokoro answers through Koe; each said once', async (t) => {
+  useClock(t);
+  const KOE_MOVING = { rules: [
+    { match: 'the user wrote', reply: calls(['speak', { text: 'One moment.' }]) },
+    { match: 'a note from Kokoro', reply: calls(['speak', { text: 'Taking you to Kyoto.' }]), times: 1 },
+    { match: 'a note from Kokoro', reply: calls(['speak', { text: 'Here in Kyoto: the ramen place is by the station.' }]) },
+  ] };
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { type: KOE_MOVING } });
+  k.agent.addLoopTools(tripTools(k.agent));
+  const kyoto = await createTrip(k.ws, { title: 'Kyoto', start: '2027-04-01', end: '2027-04-08' });
+  await rescript(k, { rules: [
+    { match: 'the user wrote', reply: calls(['open_trip', { trip: kyoto, recap: 'We were looking for the ramen place.' }], ['tell_koe', { text: 'Say you are taking them to Kyoto.' }]) },
+    { match: "haven't answered", reply: calls(['tell_koe', { text: 'Tell them the ramen place is by the station.' }]) },
+  ] });
+  await k.agent.idle();
+  k.agent.send("Let's carry on in Kyoto");
+  await k.agent.idle();
+  assert.equal(k.agent.trip, kyoto);
+  /** @param {string} scope @param {string[]} types */
+  const log = (scope, types) => k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(scope, { types }));
+  const said = async (/** @type {string} */ scope) => (await log(scope, ['out.speak', 'out.show', 'out.ask', 'reminder'])).map((/** @type {any} */ e) => [e.type, e.data.half ?? '', e.data.text ?? '']);
+  const told = async (/** @type {string} */ scope) => (await log(scope, ['note'])).filter((/** @type {any} */ e) => e.data.from === 'kokoro').map((/** @type {any} */ e) => e.data.text);
+  // In the chat: Koe answers at once, then says what Kokoro told it there; nothing of the trip's answer.
+  assert.deepEqual(await said(k.trip), [['out.speak', 'koe', 'One moment.'], ['out.speak', 'koe', 'Taking you to Kyoto.']]);
+  assert.deepEqual(await told(k.trip), ['Say you are taking them to Kyoto.']);
+  // In the trip: Kokoro took up the move (her recap and the user's line) and told Koe, who said it once; annai showed nothing in its place.
+  assert.deepEqual(await said(kyoto), [['out.speak', 'koe', 'Here in Kyoto: the ramen place is by the station.']]);
+  assert.deepEqual(await told(kyoto), ['Tell them the ramen place is by the station.']);
+  assert.deepEqual((await log(kyoto, ['msg.user'])).map((/** @type {any} */ e) => e.data.text), ["Let's carry on in Kyoto"]);
 });

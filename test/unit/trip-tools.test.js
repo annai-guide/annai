@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit } from './agent-kit.js';
+import { agentKit, rescript } from './agent-kit.js';
 import { useClock } from './clock.js';
 import { tripTools } from '../../src/core/agent/trip-tools.js';
 import { Agent } from '../../src/core/agent/loop.js';
@@ -10,7 +10,7 @@ import { readAppSettings } from '../../src/core/settings.js';
 import { readNames } from '../../src/core/names.js';
 import { waitingFiles } from '../../src/core/waiting.js';
 import { utf8 } from '../../src/core/bytes.js';
-import { storedTexts } from '../../src/core/agent/log.js';
+import { storedTexts, record } from '../../src/core/agent/log.js';
 import { importCalendar } from '../../src/core/imports.js';
 import { undoHandover, handOverText } from '../../src/core/handover.js';
 
@@ -363,9 +363,9 @@ test('in a dated trip start_trip works as today', async (t) => {
 
 // Timeline stage 6, Moving into a trip: open_trip works from a conversation with no dates, and is refused in a dated trip as before.
 
-/** Shiori in a chat (no dates), with her trip tools, and Kyoto, a dated trip of the user's. */
-async function chatKit() {
-  const k = await agentKit([[sleep]], { halves: true });
+/** Shiori in a chat (no dates), with her trip tools, and Kyoto, a dated trip of the user's. @param {Record<string, any>} [o] agentKit's */
+async function chatKit(o = {}) {
+  const k = await agentKit([[sleep]], { halves: true, ...o });
   k.agent.addLoopTools(tripTools(k.agent));
   const kyoto = await createTrip(k.ws, { title: 'Kyoto', start: '2027-04-01', end: '2027-04-08' });
   await k.agent.opening;
@@ -451,4 +451,165 @@ test("start_trip in a dated trip with a hand-over and no files named moves none,
   const kyoto = await tripNamed(k, 'Kyoto');
   assert.deepEqual(await k.ws.list(kyoto.id, '/files/'), []);
   assert.deepEqual((await k.ws.list(k.trip, '/files/')).map((/** @type {any} */ f) => f.path), ['/files/hotel.pdf']);
+});
+
+// Task 2, what goes across: her recap and the user's last line, and the chat's own line saying where she went.
+
+const RECAP = 'We found the ramen place by the station.';
+/** She answers a question here, then moves them to Kyoto when they ask to carry on there, and answers there. @param {any} k */
+const moving = (k) => rescript(k, { rules: [
+  { match: 'the user wrote', reply: say('The ramen place is by the station.'), times: 1 },
+  { match: 'the user wrote', reply: call('open_trip', { trip: k.kyoto, recap: RECAP }), then: say('Taking you to Kyoto.') },
+  { match: "haven't answered", reply: say('Here in Kyoto: shall I put the ramen place on the plan?') },
+] });
+/** Every text of a request's user messages. @param {any} req @returns {string[]} */
+const userTexts = (req) => req.messages.filter((/** @type {any} */ m) => m.role === 'user').flatMap((/** @type {any} */ m) => m.parts.filter((/** @type {any} */ p) => p.type === 'text').map((/** @type {any} */ p) => p.text));
+/** @param {any} k @param {string} id */
+const scopeRec = (k, id) => k.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.getScope(id));
+/** Her follow-up after open_trip's result waits for this, so a test acts while she finishes. */
+const gate = () => {
+  /** @type {() => void} */
+  let open = () => {};
+  const shut = new Promise((r) => { open = () => r(undefined); });
+  return { open, hold: async (/** @type {any} */ c) => { if (JSON.stringify(c.request.messages.at(-1) ?? {}).includes('opens when you are done')) await shut; } };
+};
+
+test("a move from a chat: the trip gets her recap and the user's last line, nothing else of the chat; the line is the user's talking there, the recap hers; the chat says where she went", async (t) => {
+  useClock(t);
+  const k = await chatKit();
+  await moving(k);
+  k.agent.send('Where was the ramen place in Kyoto?');
+  await k.agent.idle();
+  assert.equal((await scopeRec(k, k.kyoto)).talked, null, 'nobody talked in Kyoto yet');
+  k.agent.send("Let's carry on in Kyoto");
+  await k.agent.idle();
+  assert.equal(k.agent.trip, k.kyoto);
+  assert.equal((await readAppSettings(k.ws)).activeTrip, k.kyoto);
+  // Exactly the user's last line, copied as theirs (from the chat), and her recap; then her answer there.
+  const users = await eventsIn(k, k.kyoto, ['msg.user', 'heard']);
+  assert.deepEqual(users.map((/** @type {any} */ e) => [e.type, e.data.text, e.data.from]), [['msg.user', "Let's carry on in Kyoto", k.trip]]);
+  const reasons = (await eventsIn(k, k.kyoto, ['wake'])).flatMap((/** @type {any} */ e) => e.data.reasons);
+  // With no files, annai's own line (a cue), so the screen says nothing of files added; the recap shows as her line all the same.
+  assert.deepEqual(reasons.filter((/** @type {any} */ r) => r.recap).map((/** @type {any} */ r) => [r.kind, r.recap]), [['cue', RECAP]]);
+  assert.deepEqual((await eventsIn(k, k.kyoto, ['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Here in Kyoto: shall I put the ramen place on the plan?']);
+  // The copy is the user's talking there: Kyoto's row moves to now.
+  assert.equal(typeof (await scopeRec(k, k.kyoto)).talked, 'number');
+  // She reads the line as the user's, and the recap as hers, in annai's line: never as the user's words.
+  const there = userTexts(k.requests.at(-1));
+  assert.ok(there.includes("Let's carry on in Kyoto"));
+  const recap = there.filter((x) => x.includes(RECAP));
+  assert.equal(recap.length, 1);
+  assert.match(recap[0], /^\[annai\] You moved the user here from another conversation, "Big Sur", to carry on here[\s\S]*Your recap/);
+  assert.ok(!there.includes('Where was the ramen place in Kyoto?') && !there.some((x) => x.includes('by the station.') && !x.includes(RECAP)), 'nothing else of the chat');
+  // The chat stays, its lines all there, its own line saying where she went (no files: no "took 0 files").
+  const chat = await eventsIn(k, k.trip, ['msg.user', 'out.speak', 'conversation.moved', 'handover.moved']);
+  assert.deepEqual(chat.map((/** @type {any} */ e) => [e.type, e.data.text ?? e.data]), [
+    ['msg.user', 'Where was the ramen place in Kyoto?'], ['out.speak', 'The ramen place is by the station.'], ['msg.user', "Let's carry on in Kyoto"],
+    ['conversation.moved', { to: k.kyoto, title: 'Kyoto' }], ['out.speak', 'Taking you to Kyoto.'],
+  ]);
+});
+
+test('Review Focus 1: the user opens another conversation while she finishes the move: nothing opens, the moved line waits in the trip, and she answers it there when it is opened', async (t) => {
+  useClock(t);
+  const g = gate();
+  const k = await chatKit({ hold: g.hold });
+  await moving(k);
+  const other = await createTrip(k.ws, { title: 'Museum day' });
+  let went = 0;
+  k.agent.on('went', () => { went++; });
+  k.agent.send('Where was the ramen place in Kyoto?');
+  await k.agent.idle();
+  k.agent.send("Let's carry on in Kyoto");
+  const end = Date.now() + 5000;
+  while (!(await eventsIn(k, k.trip, ['conversation.moved'])).length && Date.now() < end) await new Promise((r) => setTimeout(r, 5));
+  await k.agent.open(other);
+  g.open();
+  await k.agent.idle();
+  assert.equal(k.agent.trip, other);
+  assert.equal(went, 0);
+  assert.notEqual((await readAppSettings(k.ws)).activeTrip, k.kyoto);
+  const owed = await Transcript.load(k.store, k.kyoto);
+  assert.equal(owed.unanswered, true, 'the moved line waits there');
+  assert.deepEqual((await eventsIn(k, k.kyoto, ['msg.user'])).map((/** @type {any} */ e) => e.data.text), ["Let's carry on in Kyoto"]);
+  assert.deepEqual(await eventsIn(k, k.kyoto, ['out.speak']), []);
+  await k.agent.open(k.kyoto);
+  await k.agent.idle();
+  assert.deepEqual((await eventsIn(k, k.kyoto, ['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Here in Kyoto: shall I put the ramen place on the plan?']);
+});
+
+for (const how of ['removed', 'archived']) {
+  test(`Review Focus 2: the trip ${how} while she finishes the move: the chat stays open with every line, and nothing points at that trip`, async (t) => {
+    useClock(t);
+    const g = gate();
+    const k = await chatKit({ hold: g.hold });
+    await moving(k);
+    let went = 0;
+    k.agent.on('went', () => { went++; });
+    k.agent.send('Where was the ramen place in Kyoto?');
+    await k.agent.idle();
+    k.agent.send("Let's carry on in Kyoto");
+    const end = Date.now() + 5000;
+    while (!(await eventsIn(k, k.trip, ['conversation.moved'])).length && Date.now() < end) await new Promise((r) => setTimeout(r, 5));
+    if (how === 'removed') await removeTrip(k.store, k.kyoto);
+    else await setTripStatus(k.store, k.kyoto, 'archived');
+    g.open();
+    await k.agent.idle();
+    assert.equal(k.agent.trip, k.trip, 'the chat is still the one open');
+    assert.equal(k.agent.target, k.trip);
+    assert.equal(went, 0);
+    assert.notEqual((await readAppSettings(k.ws)).activeTrip, k.kyoto);
+    const chat = await eventsIn(k, k.trip, ['msg.user', 'out.speak', 'conversation.moved']);
+    assert.deepEqual(chat.map((/** @type {any} */ e) => e.data.text ?? e.type), ['Where was the ramen place in Kyoto?', 'The ramen place is by the station.', "Let's carry on in Kyoto", 'conversation.moved', 'Taking you to Kyoto.']);
+  });
+}
+
+test("the user's last line is what they said last: a heard line counts, one set aside doesn't, and one with no words yet goes as no copy, the recap still going", async (t) => {
+  useClock(t);
+  const k = await chatKit();
+  const heard = (/** @type {string} */ id, /** @type {Record<string, any>} */ more) => record(k.store, k.trip, { type: 'heard', actor: 'user', data: { id, ...more } });
+  k.agent.send('Is it far?');
+  await k.agent.idle();
+  await heard('h1', { text: 'Take me to Kyoto' });
+  await heard('h2', { text: 'turn left here', dismissed: true });
+  /** The move, and back to the chat. @param {string} to */
+  const move = async (to) => {
+    await run(k, 'open_trip', { trip: to, recap: RECAP });
+    await k.agent.idle();
+    assert.equal(k.agent.trip, to);
+    await k.agent.open(k.trip);
+    await k.agent.idle();
+  };
+  await move(k.kyoto);
+  assert.deepEqual((await eventsIn(k, k.kyoto, ['msg.user'])).map((/** @type {any} */ e) => e.data.text), ['Take me to Kyoto']);
+  // Its words written down later count too (heard.text).
+  const tokyo = await createTrip(k.ws, { title: 'Tokyo', start: '2027-05-01' });
+  await heard('h3', {});
+  await record(k.store, k.trip, { type: 'heard.text', actor: 'system', data: { of: 'h3', text: 'And then Tokyo' } });
+  await move(tokyo);
+  assert.deepEqual((await eventsIn(k, tokyo, ['msg.user'])).map((/** @type {any} */ e) => e.data.text), ['And then Tokyo']);
+  // No words yet: no copy, and nothing in its place; her recap goes, and the trip owes her a turn.
+  const osaka = await createTrip(k.ws, { title: 'Osaka', start: '2027-06-01' });
+  await heard('h4', {});
+  await run(k, 'open_trip', { trip: osaka, recap: RECAP });
+  assert.deepEqual(await eventsIn(k, osaka, ['msg.user']), []);
+  assert.ok((await eventsIn(k, osaka, ['wake'])).some((/** @type {any} */ e) => e.data.reasons.some((/** @type {any} */ r) => r.recap === RECAP)));
+  assert.equal((await Transcript.load(k.store, osaka)).unanswered, true);
+});
+
+test("a hand-over and a line after it, then the move: the hand-over's message with its files, then the last line, in order", async (t) => {
+  useClock(t);
+  const k = await chatKit();
+  const hotel = await handIn(k, 'hotel.pdf');
+  k.agent.send('Our hotel', { handed: [hotel], handover: 'h-1' });
+  k.agent.send("and let's carry on in Kyoto");
+  await k.agent.idle();
+  await run(k, 'open_trip', { trip: k.kyoto, recap: RECAP }, 'h-1');
+  const copies = await eventsIn(k, k.kyoto, ['msg.user']);
+  assert.deepEqual(copies.map((/** @type {any} */ e) => [e.data.text, e.data.handed?.map((/** @type {any} */ f) => f.path) ?? null, e.data.handover ?? null]), [
+    ['Our hotel', ['/trip/files/hotel.pdf'], 'h-1'], ["and let's carry on in Kyoto", null, null],
+  ]);
+  // The files went too: both lines say so in the chat, where Undo finds the trip.
+  assert.deepEqual((await eventsIn(k, k.trip, ['handover.moved', 'conversation.moved'])).map((/** @type {any} */ e) => [e.type, e.data]), [
+    ['handover.moved', { handover: 'h-1', to: k.kyoto, started: false, count: 1 }], ['conversation.moved', { to: k.kyoto, title: 'Kyoto' }],
+  ]);
 });
