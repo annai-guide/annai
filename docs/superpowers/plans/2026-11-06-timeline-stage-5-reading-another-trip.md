@@ -74,7 +74,7 @@ A grant counts only when it was written after the conversation's last `import` e
 
 **Interfaces:**
 - `Agent.confirm(call, { question: string, options: string[], yes?: (heard: string) => string | null }) -> Promise<{ chosen?: string, how?: 'tap' | 'voice', stopped?: boolean }>`, on the loop: logs the `out.ask` with `own: true`, says the question aloud with voice on through `remind`'s `aloud` path (annai's voice, never hers), waits with `#waitFor(call.id, 'ask', 0)`, and takes a heard line for 20 s. Classic voice hears through `#listenFor`, as `#askAloud` does. In a Koe session `Halves.#koeLogged` hands each `heard` and `heard.text` to the new `kokoro.confirmHeard(text)`, which resolves the wait only if `yes(text)` says so inside the window.
-- `spokenYes(text: string) -> boolean`: NFKC, lower case, punctuation and spaces out, then an exact match in one set. No substring, no model.
+- `spokenYes(text: string) -> boolean`: NFKC, lower case, punctuation and spaces out, then an exact match in one set. No substring, no model. A line that ends in a question mark is no yes (fix pass 1: "はい？" and "Yes?" say "pardon?").
 
 ```js
 const YES = ['yes', 'yeah', 'yep', 'sure', 'ok', 'okay', 'allow', 'allowit', 'goahead', 'yesplease',
