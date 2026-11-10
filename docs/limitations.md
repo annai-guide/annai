@@ -408,6 +408,7 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** not verified on a phone. A field of Start a trip focused on home (by a keyboard's Tab, or a screen reader) is scrolled clear of the top bar and the box stuck under it, its label too. But with a keyboard up (about 290 to 340 px), when the bar and a box that holds an opened card or two cards (up to half the room under the bar: 256 px at 320 x 568, 292 at 360 x 640, 302 at 393 x 659) take all the room above the keyboard, the field has nowhere to show, and the browser's own scrolling for the keyboard may put it back under the box.
 - **Why:** the box is at most half the room under the bar (the user's "Cap every box at half"), not half the room above a keyboard; making it give way while a field has focus would change that design.
 - **Revisit when:** stage 8, where the Start a trip form, home's only fields, goes; or the user's phone check of "Cap every box at half" finds it first.
+
 ### In landscape, an opened stack is read by scrolling inside a short box
 - **Kind:** known limitation.
 - **What the user sees:** on a phone turned on its side (740 x 360), Show on a stuck stack opens it in a box of about 152 px, half the room under the top bar. A card of 168 to 193 px doesn't show whole: its title and Dismiss show, and its middle scrolls under the Dismiss; while a card's top is in the lower part of the box, its own Dismiss covers its title for a moment. In portrait every card shows whole.
