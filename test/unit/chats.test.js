@@ -278,18 +278,47 @@ test("her dating of a voice-first chat that also named it: Undo puts the dates b
   assert.equal(await herDating(store, draft), null);
 });
 
-test('the dates line follows the hand-over Undo line: it shows until the user writes or speaks again after her dating', async () => {
+test('the dates line stays at its place, as the hand-over Undo line does: the user writing or speaking again after her dating leaves it there', async () => {
   const { ws, store, agent, draft } = await voiceFirst({ start: '2027-03-20', end: '2027-03-22' });
-  assert.ok(await herDating(store, draft), 'right after her turn');
+  const [dating] = (await store.tx(['events'], 'readonly', (t) => t.listEvents(draft, { types: ['file.write'] }))).filter((/** @type {any} */ e) => e.actor === 'shiori');
+  assert.equal((await herDating(store, draft))?.seq, dating.seq, 'right after her turn, at the write that dated it');
   // Her own later lines, a dismissed line (chatter, no one spoke to her) and her files after it change nothing.
   await agent.log(draft, { type: 'heard', actor: 'user', data: { id: 'h9', text: 'just us talking', dismissed: true } });
   await ws.write(draft, '/files/tickets.pdf', '%PDF', { author: 'shiori', type: 'application/pdf' });
   assert.ok(await herDating(store, draft), 'still there');
   await agent.log(draft, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'And dinner?']] });
-  assert.equal(await herDating(store, draft), null, 'the user wrote again: it goes, though the dates are still hers');
+  assert.equal((await herDating(store, draft))?.seq, dating.seq, 'the user wrote again: it stays, at its place');
   const next = await voiceFirst({ start: '2027-05-01' });
   await next.agent.log(next.draft, { type: 'heard', actor: 'user', data: { id: 'h10', text: 'Thanks' } });
-  assert.equal(await herDating(next.store, next.draft), null, 'the user spoke again');
+  assert.ok(await herDating(next.store, next.draft), 'the user spoke again');
+});
+
+test("a late Undo takes back only what its line set: once she or the user changed the dates since, it has nothing left, and a tap drawn before such a change changes nothing", async () => {
+  const { ws, store, agent, draft } = await voiceFirst({ start: '2027-03-20', end: '2027-03-22' });
+  await agent.log(draft, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'We fly back on the 23rd']] });
+  const late = await herDating(store, draft);
+  assert.ok(late);
+  // She moves the end, as asked: the line has nothing of its own to take back.
+  await ws.patch(draft, '/trip.json', { end: '2027-03-23' }, { author: 'shiori' });
+  assert.equal(await herDating(store, draft), null, 'her later change');
+  // A tap on the line as it was drawn before that: no dates go.
+  await undoDating(ws, draft, /** @type {any} */ (late));
+  assert.deepEqual([(await ws.readJSON(draft, '/trip.json')).start, (await ws.readJSON(draft, '/trip.json')).end], ['2027-03-20', '2027-03-23']);
+  // The user's own change in Details, then the dates set back by hand to hers: the dates are the user's, not the line's.
+  const other = await voiceFirst({ start: '2027-03-20', end: '2027-03-22' });
+  const drawn = await herDating(other.store, other.draft);
+  await other.ws.patch(other.draft, '/trip.json', { start: '2027-03-19' }, { author: 'user' });
+  await undoDating(other.ws, other.draft, /** @type {any} */ (drawn));
+  assert.equal((await other.ws.readJSON(other.draft, '/trip.json')).start, '2027-03-19', 'never over the user\'s later change');
+  await other.ws.patch(other.draft, '/trip.json', { start: '2027-03-20' }, { author: 'user' });
+  assert.equal(await herDating(other.store, other.draft), null, "set back by the user: theirs");
+  // Undone, then dated again by her: the line is the newer dating's.
+  const again = await voiceFirst({ start: '2027-03-20', end: '2027-03-22' });
+  await undoDating(again.ws, again.draft, /** @type {any} */ (await herDating(again.store, again.draft)));
+  assert.equal((await again.ws.readJSON(again.draft, '/trip.json')).start, undefined);
+  await again.ws.patch(again.draft, '/trip.json', { start: '2027-04-02', end: '2027-04-04' }, { author: 'shiori' });
+  const writes = (await again.store.tx(['events'], 'readonly', (t) => t.listEvents(again.draft, { types: ['file.write'] }))).filter((/** @type {any} */ e) => e.actor === 'shiori');
+  assert.equal((await herDating(again.store, again.draft))?.seq, writes.at(-1).seq);
 });
 
 test('the dates line goes when the dates are no longer hers: changed by the user after, or never hers', async () => {

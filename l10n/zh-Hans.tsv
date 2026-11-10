@@ -577,9 +577,9 @@ tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	请输入加�
 107ikf9	ok	Works.	可以使用。	src/core/backup.js:467	Note: the result of Save and test when the place says nothing itself.
 1w4k6nl	ok	This backup was made by a newer annai: update annai first.	此备份由更新版本的 annai 创建：请先更新 annai。	src/core/backup.js:517	
 173rmiu	ok	This backup is damaged.	此备份已损坏。	src/core/backup.js:518	
-1lbu7g8	draft	Photo · {0}	照片 · {0}	src/core/chats.js:113	{0} = time
-1nqtd5y	draft	Voice · {0}	语音 · {0}	src/core/chats.js:114	{0} = time
-146ozuk	draft	New conversation	新对话	src/core/chats.js:115	
+1lbu7g8	draft	Photo · {0}	照片 · {0}	src/core/chats.js:112	{0} = time
+1nqtd5y	draft	Voice · {0}	语音 · {0}	src/core/chats.js:113	{0} = time
+146ozuk	draft	New conversation	新对话	src/core/chats.js:114	
 14zz5l	ok	annai's storage on this device is full. Remove a trip you no longer need (back it up first), or free up space on this device.	这台设备上 annai 的存储空间已满。请移除不再需要的旅行（先备份），或释放这台设备的空间。	src/core/errors.js:39	Note: 移除, as the trip's own button, Remove trip (移除旅行).
 1rgff8l	ok	annai has stopped in this tab because it was opened in another one. Reload this tab to use annai here.	annai 已在另一个标签页中打开，所以在这个标签页中停止了。要在这里使用 annai，请重新加载这个标签页。	src/core/errors.js:40	
 gnrtev	ok	Shiori can't reach her model.	Shiori 无法连接她的模型。	src/core/errors.js:41	
@@ -2371,43 +2371,43 @@ yexh35	draft	Heard, she didn't answer: {0}	听到的话（她没有回答）：{
 glbwh5	ok	This conversation so far: {0}	这次对话到目前为止：{0}	src/ui/screens/talk.js:296	{0} = formatCost(c.total)
 45z4a3	draft	This was for Shiori	这是对 Shiori 说的	src/ui/screens/talk.js:328	
 td8u17	ok	A photo you sent	你发送的照片	src/ui/screens/talk.js:345	
-9e5yo5	ok	(a photo)	（照片）	src/ui/screens/talk.js:391	
-fv3xhc	ok	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:462	Note: a note from Kokoro to Koe; its words follow.
-upsxi0	ok	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:462	Note: a note from Koe to Kokoro; its words follow.
-e34nbi	ok	Started fresh	已重新开始	src/ui/screens/talk.js:487	Note: the divider where a fresh start began.
-3r1u8z	ok	Earlier conversation summarized. The full log is in Trace.	已总结之前的对话。完整日志在记录中。	src/ui/screens/talk.js:488	
-1o41up	ok	A budget ended her turn	达到上限，她的这一轮结束了	src/ui/screens/talk.js:498	
-1p4yyw7	ok	Her turn ended	她的这一轮结束了	src/ui/screens/talk.js:498	
-1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	还没有内容。轻点下方的 Shiori 或“输入”来对话。	src/ui/screens/talk.js:513	Note: "Type" is the dock's button: its words must match it.
-4fzxin	ok	From {0}.	来自{0}。	src/ui/screens/talk.js:569	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
-1pm5i13	ok	Back to Trips	返回“旅行”	src/ui/screens/talk.js:598	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
-15g4wel	ok	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	没有打开的旅行。请从“旅行”中打开一个，或在这里对话：Shiori 仍可使用 /me/。	src/ui/screens/talk.js:606	Note: The Trips screen, quoted so it reads apart from a trip.
-16zeyyr	draft	Next: {0} {1}	接下来：{0} {1}	src/ui/screens/talk.js:648	{0} = r.time; {1} = name
-puj2r7	draft	Next: {0} {1} {2}	接下来：{0} {1} {2}	src/ui/screens/talk.js:648	{0} = day(r.day, true); {1} = r.time; {2} = name
-1frlw7l	draft	Undo the dates Shiori set	撤销 Shiori 设置的日期	src/ui/screens/talk.js:673	
-1l3merh	draft	Shiori set the dates	Shiori 设置了日期	src/ui/screens/talk.js:682	
-159f82q	ok	Undone	已撤销	src/ui/screens/talk.js:706	
-1v37fcy	ok	Undo what Shiori did with these files	撤销 Shiori 对这些文件所做的事	src/ui/screens/talk.js:743	Note: the Undo button's label; 撤销 as Undo.
-bomkf4	ok	Tidy up the conversation	整理对话	src/ui/screens/talk.js:784	
-7flpxf	ok	Summarizing…	正在总结…	src/ui/screens/talk.js:799	
-12707g	ok	She couldn't summarize it. A card says why.	她没能总结。卡片上写了原因。	src/ui/screens/talk.js:801	
-5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	已总结之前的对话。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:801	
-u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在工作。请稍后再试。	src/ui/screens/talk.js:801	
-va2k72	ok	There is not enough yet to summarize.	内容还不够总结。	src/ui/screens/talk.js:801	
-mienoe	ok	Summarize now	立即总结	src/ui/screens/talk.js:804	
-10sfmur	ok	Starting fresh…	正在重新开始…	src/ui/screens/talk.js:806	
-va77q0	ok	Start fresh?	重新开始？	src/ui/screens/talk.js:819	
-19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 会从这里重新开始，不再记着之前的内容。它们都留在对话里，供你阅读和搜索，她也仍能查到：什么都不会删除。实时语音会话也会重新开始。	src/ui/screens/talk.js:820	Note: "A live voice session" is the glossary's Live voice (实时语音) and live session (实时会话), not a voice she speaks with.
-czdqlz	ok	Start fresh	重新开始	src/ui/screens/talk.js:821	
-1h9wwbn	ok	She couldn't start fresh: {0}	她没能重新开始：{0}	src/ui/screens/talk.js:831	{0} = messageOf(e)
-1thzla3	ok	Already fresh: nothing has been said since.	已经是新的开始：之后还没说过话。	src/ui/screens/talk.js:834	
-3fntk0	ok	Started fresh.	已重新开始。	src/ui/screens/talk.js:834	
-mg70bg	ok	The conversation is still opening. Try again in a moment.	对话还在打开。请稍后再试。	src/ui/screens/talk.js:834	
-p5pj7b	ok	There is nothing to start fresh from yet.	还没有可以重新开始的内容。	src/ui/screens/talk.js:834	
-1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即总结：Shiori 现在就把之前的对话总结一下，让它保持简短。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:854	
-18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新开始：Shiori 不再记着之前的内容，从这里重新开始。每一行都留在分隔线上方。	src/ui/screens/talk.js:855	
-15ve7m7	draft	What each half sees	各个分身看到的内容	src/ui/screens/talk.js:856	
-16pl3gf	ok	Undone. Her old personality applies at her next wake.	已撤销。她原来的性格在下次唤醒时生效。	src/ui/screens/talk.js:878	
+9e5yo5	ok	(a photo)	（照片）	src/ui/screens/talk.js:392	
+fv3xhc	ok	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:463	Note: a note from Kokoro to Koe; its words follow.
+upsxi0	ok	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:463	Note: a note from Koe to Kokoro; its words follow.
+e34nbi	ok	Started fresh	已重新开始	src/ui/screens/talk.js:488	Note: the divider where a fresh start began.
+3r1u8z	ok	Earlier conversation summarized. The full log is in Trace.	已总结之前的对话。完整日志在记录中。	src/ui/screens/talk.js:489	
+1o41up	ok	A budget ended her turn	达到上限，她的这一轮结束了	src/ui/screens/talk.js:499	
+1p4yyw7	ok	Her turn ended	她的这一轮结束了	src/ui/screens/talk.js:499	
+1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	还没有内容。轻点下方的 Shiori 或“输入”来对话。	src/ui/screens/talk.js:514	Note: "Type" is the dock's button: its words must match it.
+4fzxin	ok	From {0}.	来自{0}。	src/ui/screens/talk.js:575	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
+1pm5i13	ok	Back to Trips	返回“旅行”	src/ui/screens/talk.js:603	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
+15g4wel	ok	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	没有打开的旅行。请从“旅行”中打开一个，或在这里对话：Shiori 仍可使用 /me/。	src/ui/screens/talk.js:611	Note: The Trips screen, quoted so it reads apart from a trip.
+16zeyyr	draft	Next: {0} {1}	接下来：{0} {1}	src/ui/screens/talk.js:652	{0} = r.time; {1} = name
+puj2r7	draft	Next: {0} {1} {2}	接下来：{0} {1} {2}	src/ui/screens/talk.js:652	{0} = day(r.day, true); {1} = r.time; {2} = name
+1frlw7l	draft	Undo the dates Shiori set	撤销 Shiori 设置的日期	src/ui/screens/talk.js:698	
+1l3merh	draft	Shiori set the dates	Shiori 设置了日期	src/ui/screens/talk.js:707	
+159f82q	ok	Undone	已撤销	src/ui/screens/talk.js:745	
+1v37fcy	ok	Undo what Shiori did with these files	撤销 Shiori 对这些文件所做的事	src/ui/screens/talk.js:782	Note: the Undo button's label; 撤销 as Undo.
+bomkf4	ok	Tidy up the conversation	整理对话	src/ui/screens/talk.js:823	
+7flpxf	ok	Summarizing…	正在总结…	src/ui/screens/talk.js:838	
+12707g	ok	She couldn't summarize it. A card says why.	她没能总结。卡片上写了原因。	src/ui/screens/talk.js:840	
+5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	已总结之前的对话。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:840	
+u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在工作。请稍后再试。	src/ui/screens/talk.js:840	
+va2k72	ok	There is not enough yet to summarize.	内容还不够总结。	src/ui/screens/talk.js:840	
+mienoe	ok	Summarize now	立即总结	src/ui/screens/talk.js:843	
+10sfmur	ok	Starting fresh…	正在重新开始…	src/ui/screens/talk.js:845	
+va77q0	ok	Start fresh?	重新开始？	src/ui/screens/talk.js:858	
+19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 会从这里重新开始，不再记着之前的内容。它们都留在对话里，供你阅读和搜索，她也仍能查到：什么都不会删除。实时语音会话也会重新开始。	src/ui/screens/talk.js:859	Note: "A live voice session" is the glossary's Live voice (实时语音) and live session (实时会话), not a voice she speaks with.
+czdqlz	ok	Start fresh	重新开始	src/ui/screens/talk.js:860	
+1h9wwbn	ok	She couldn't start fresh: {0}	她没能重新开始：{0}	src/ui/screens/talk.js:870	{0} = messageOf(e)
+1thzla3	ok	Already fresh: nothing has been said since.	已经是新的开始：之后还没说过话。	src/ui/screens/talk.js:873	
+3fntk0	ok	Started fresh.	已重新开始。	src/ui/screens/talk.js:873	
+mg70bg	ok	The conversation is still opening. Try again in a moment.	对话还在打开。请稍后再试。	src/ui/screens/talk.js:873	
+p5pj7b	ok	There is nothing to start fresh from yet.	还没有可以重新开始的内容。	src/ui/screens/talk.js:873	
+1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即总结：Shiori 现在就把之前的对话总结一下，让它保持简短。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:893	
+18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新开始：Shiori 不再记着之前的内容，从这里重新开始。每一行都留在分隔线上方。	src/ui/screens/talk.js:894	
+15ve7m7	draft	What each half sees	各个分身看到的内容	src/ui/screens/talk.js:895	
+16pl3gf	ok	Undone. Her old personality applies at her next wake.	已撤销。她原来的性格在下次唤醒时生效。	src/ui/screens/talk.js:917	
 11gkctr	ok	Places	地点	src/ui/screens/tools.js:11	context: tool group
 13mxqrp	ok	Talk	对话	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	ok	Go	出行	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).

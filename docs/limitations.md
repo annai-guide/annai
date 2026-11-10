@@ -397,12 +397,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** developer-only, and the clock the timer reads is live mode's.
 - **Revisit when:** the next change to home's timer: wait the simulation's delay divided by its speed.
 
-### The dates line's Undo goes at the user's next line
-- **Kind:** deferred.
-- **What the user sees:** when Shiori sets a chat's dates, the line "Shiori set the dates" with its Undo goes for good once the user writes or speaks again. A user who replies "Thanks" and then sees she set the wrong week has only Details to change the dates back. The hand-over's Undo line stays in the conversation at its place and can still be tapped.
-- **Why:** the user chose (2026-11-08, "Stay, next version") a line that stays in the conversation like the hand-over's, built in the next version; stage 4 ships the line as built.
-- **Revisit when:** the next version: make the dates line a conversation line at its place, like the hand-over's Undo.
-
 ### Home's rows move when a phone rotates, or at the first resize after a tall card lands
 - **Kind:** deferred.
 - **What the user sees:** on home, a phone turned on its side moves the rows. In Chromium, the first resize after a card that needs more than a quarter of the screen (`.grow`) has landed moves the rows by its excess over the quarter (167 to 211 px measured at 393 x 659, when such a card was in the page; not measured again since every box sticks at its cap); in a Chrome tab the URL bar's first hide is such a resize.

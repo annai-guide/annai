@@ -1,5 +1,5 @@
 {
-  "build": "35a9caaa0a89",
+  "build": "172d2ee0a986",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -147,7 +147,7 @@
     "/src/core/schema.js": "f21af27d5902",
     "/src/core/search.js": "62a0a393233e",
     "/src/core/scopes.js": "2ccdfe948461",
-    "/src/core/chats.js": "59357e666d2d",
+    "/src/core/chats.js": "f91cfac559ff",
     "/src/core/settings.js": "7291aae0a8cd",
     "/src/core/shown.js": "450af0a8c563",
     "/src/core/signals.js": "1ba83a24e15c",
@@ -270,7 +270,7 @@
     "/src/ui/screens/simulate.js": "cbdebdf221a5",
     "/src/ui/screens/shiori.js": "fd710decde02",
     "/src/ui/screens/sees.js": "6a674fc473ae",
-    "/src/ui/screens/talk.js": "6bbc4318ad93",
+    "/src/ui/screens/talk.js": "bb7f6a553cc9",
     "/src/ui/screens/tools.js": "af43e4da0f2e",
     "/src/ui/screens/trace.js": "f5659cdd6e4c",
     "/src/ui/screens/trip.js": "91699f6d5b01",
@@ -282,7 +282,7 @@
     "/src/ui/shell.js": "f2039e8e8aa9",
     "/src/ui/slots.js": "4fee1465e94c",
     "/src/ui/stamps.js": "f1bfb4fd255f",
-    "/src/ui/shiori.css": "267bc9f51104",
+    "/src/ui/shiori.css": "ddc29fa3d075",
     "/src/ui/speech-check.js": "396550d02345",
     "/src/ui/storage-full.js": "6b7d5a2fe9fe",
     "/src/ui/talk-panel.js": "cc1fb4a04f43",
