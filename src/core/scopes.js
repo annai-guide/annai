@@ -215,6 +215,8 @@ export async function removeLeftovers(store, now = Date.now()) {
 export const NOTES_ONLY = Object.freeze(['content.refused']);
 /** Changes to a trip's status, not to what it holds, and notes: a Backup made before them still has everything (spec §4.9). */
 const STATUS_ONLY = new Set(['scope.archive', 'scope.unarchive', ...NOTES_ONLY]);
+/** Whether a log entry of this type changes what a Backup holds, as backupState counts. @param {string} type */
+export const changesTrip = (type) => !STATUS_ONLY.has(type);
 
 /**
  * Notes a saved Backup on each trip it held (spec §4.9). A scope that isn't a trip, a trip

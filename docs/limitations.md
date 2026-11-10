@@ -403,12 +403,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** a move is two transactions, one per trip.
 - **Revisit when:** the next version: a move is one transaction (workspace.js), for Shiori's moves and Undo's alike. That is an API change, with its lessons entry.
 
-### A change made from home itself shows "changed since" on its card only at the next redraw
-- **Kind:** deferred.
-- **What the user sees:** with home on screen, a change Shiori makes to a trip through the dock leaves its card saying "backed up 10 minutes ago" with no "changed since" until home is next drawn: when a backup ends (a few minutes later with a backup place), the next time annai comes to the front, midnight, or a Next that ends. Without a backup place, the next of the other three. Before the branch that moved "… ago" into place, the next minute's redraw showed it. Traced by the review of a379a5f7..56612b84, not run.
-- **Why:** home draws again for a backup's end, each time annai comes to the front, midnight and a Next that ends, and changes the "… ago" words in place; it doesn't follow what the workspace writes.
-- **Revisit when:** the next version: home follows `ws.onChange` for trips' writes, coalesced, and draws again (or changes the card's words in place).
-
 ### Turning the phone with home scrolled to its end leaves the page a little off its end
 - **Kind:** deferred.
 - **What the user sees:** with home scrolled to its very end (Start a trip's form, Open a file, the last backup line), turning the phone to landscape and back, or a window that gets shorter and comes back, leaves the page not quite at its end: 12 px in Chromium (45 px with a short card stuck), and in WebKit's emulation up to 285 px with an opened card. Mid-page nothing moves (0 px in 76 measured cases). Measured in the test browsers at four phone sizes (2026-11-10); a real iPhone's rotation was not looked at, and Playwright's resize is not a real rotation.

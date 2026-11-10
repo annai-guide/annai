@@ -1982,6 +1982,31 @@ test("an automatic backup that ends while home shows: the card says so, not \"ch
   await expect(card.locator('.sub').first()).toHaveText(/backed up just now$/); // before: "50 minutes ago, changed since" until midnight
 });
 
+test("a change made from home itself (her answer, through the dock, while home shows): the trip's card says \"changed since\" at once, not at the next redraw", async ({ page }) => {
+  const speak = anthropicToolReply([{ name: 'speak', input: { text: 'The pier is a short walk.' } }, { name: 'sleep', input: {} }]);
+  const llm = await startModelServer({ '/b/v1/messages': { status: 200, type: 'text/event-stream', body: speak, delayMs: 5000 } });
+  try {
+    const day = (/** @type {number} */ n) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+    await modelSetUp(page, llm.origin, 'Testville', { dates: { start: day(10), end: day(12) } });
+    const id = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+    await page.goto(`/#/trip/${id}/talk`);
+    await page.getByRole('button', { name: 'Type', exact: true }).click();
+    await box(page).fill('Where is the pier?');
+    await page.getByRole('button', { name: 'Send', exact: true }).click();
+    await expect.poll(() => llm.bodies('/b/v1/messages').length).toBeGreaterThan(0); // her turn waits on the model
+    await backedUpAgo(page, 'Testville', 2 * 60_000); // a backup that holds everything so far
+    await page.getByRole('link', { name: 'Back to Trips' }).click();
+    const card = row(page, 'Testville');
+    await expect(card).toContainText('backed up 2 minutes ago');
+    await expect(card).not.toContainText('changed since');
+    await expect(page.locator('body')).toHaveClass(/\bdock-busy\b/); // her turn is still on
+    // Her answer lands in the trip while home shows: before, the card said nothing until a backup ended, annai came to the front, or midnight.
+    await expect(card).toContainText('backed up 2 minutes ago, changed since', { timeout: 20_000 });
+  } finally {
+    await llm.stop();
+  }
+});
+
 for (const size of PHONES) {
   test(`a card that came below an opened one, then the box's cap lifted on another screen: the sign goes, the card in view there (${size.join(' x ')})`, async ({ page }) => {
     await openedLongCard(page, size);
