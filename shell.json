@@ -1,5 +1,5 @@
 {
-  "build": "75e4867671e4",
+  "build": "1f0cd8e67885",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -217,7 +217,7 @@
     "/src/ui/grounding.html": "5dab86abb302",
     "/src/ui/grounding.js": "1e27c30fc392",
     "/src/ui/import-state.js": "1ae007e97f56",
-    "/src/ui/install.js": "2c4eb4214b7c",
+    "/src/ui/install.js": "a14be29d86ff",
     "/src/ui/languages.js": "cb9ec09656d6",
     "/src/ui/line-kind.js": "0b0db2a32616",
     "/src/ui/live-chip.js": "78c506c5de22",

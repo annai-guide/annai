@@ -138,6 +138,29 @@ test('installed, a fresh home opens at the now line, as always', async ({ page }
   await expect(page.locator('.now-line')).toBeInViewport();
 });
 
+test("desktop Chrome's Install moves the tab into an app window: the data-safety banner goes, and a fresh home then opens at the now line", async ({ page }) => {
+  // The browser's own display mode, which a test can't change: a stand-in that says "browser tab" until the test moves it into an app window.
+  await page.addInitScript(() => {
+    const w = /** @type {any} */ (window);
+    const real = matchMedia.bind(window);
+    const mode = Object.assign(new EventTarget(), { matches: false, media: '(display-mode: standalone)' });
+    w.matchMedia = (/** @type {string} */ q) => (q.includes('display-mode: standalone') ? mode : real(q));
+    w.toAppWindow = () => { mode.matches = true; mode.dispatchEvent(new Event('change')); };
+  });
+  await page.addInitScript(() => Object.defineProperty(navigator, 'standalone', { value: undefined, configurable: true })); // not an iPhone's Home Screen app
+  await openApp(page, '#/settings');
+  /** @type {Record<string, number>} */
+  const chats = {};
+  for (let i = 0; i < 24; i++) chats[`Chat ${i}`] = 60 * 24 * i + 5;
+  await seed(page, { chats });
+  await expect(page.locator('section.risk')).toBeVisible();
+  await page.evaluate(() => /** @type {any} */ (window).toAppWindow());
+  await expect(page.locator('section.risk')).toHaveCount(0);
+  await page.goto('/#/trips');
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(300);
+  await expect(page.locator('.now-line')).toBeInViewport();
+});
+
 test('home opens with the now line 40% down; Back restores your place', async ({ page }) => {
   await openApp(page, '#/settings');
   /** @type {Record<string, number>} */
