@@ -637,3 +637,21 @@ test('a chain A to B to C whose B the user removed since: Undo from A or from C 
     assert.deepEqual([out.kept, out.back], [0, [{ id: a, title: 'Anchorage' }]], end);
   }
 });
+
+test('a file from the waiting space that she changed in the trip she started, then moved on: Undo from either conversation sends it back to wait as it came', async () => {
+  // move_file writes no copy of the user's line where it went: that trip has no Undo line of its own.
+  for (const end of ['me', 'started']) {
+    const { store, ws } = await kit();
+    await ws.write(SYS_WAITING, '/files/note.txt', utf8('temple at 9'), { author: 'user', type: 'text/plain' });
+    const started = await startedFrom(ws, store, ME, 'h-1', 'Testville');
+    const there = await moveFile(ws, { scope: SYS_WAITING, path: '/files/note.txt' }, started, { handover: 'h-1' });
+    await ws.write(started, there, utf8('temple at 10'), { author: 'shiori', type: 'text/plain', handover: 'h-1' });
+    // In that trip's turn, for the same hand-over, she sent it on to a trip of the user's.
+    const kyoto = await createTrip(ws, { title: 'Kyoto' });
+    await moveFile(ws, { scope: started, path: there }, kyoto, { handover: 'h-1' });
+    await record(store, started, { type: 'handover.moved', actor: 'shiori', data: { handover: 'h-1', to: kyoto, started: false, count: 1 } });
+    const out = await undoEverywhere(ws, end === 'me' ? ME : started, 'h-1', { remove: async (s) => removeTrip(store, s) });
+    assert.equal(await ws.readText(SYS_WAITING, '/files/note.txt'), 'temple at 9', end);
+    assert.deepEqual([(await ws.list(kyoto, '/files/')).length, out.removed, out.waiting], [0, ['Testville'], true], end);
+  }
+});

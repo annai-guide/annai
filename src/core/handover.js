@@ -10,7 +10,7 @@
 
 import { NAMES_FILE, readNames } from './names.js';
 import { moveFile } from './waiting.js';
-import { blobJSON } from './reach.js';
+import { blobJSON, blobBytes } from './reach.js';
 import { SYS_WAITING, DRAFT_TITLE, talks } from './scopes.js';
 import { FILE_BOOKING } from './bookings.js';
 
@@ -220,6 +220,7 @@ async function moveBack(ws, scope, end, handover) {
     if (!a) return null;
     // As it was there (its delete kept a plan item's source), or as it came from the waiting space.
     const origin = d ? { s: d.s, path: String(d.e.data.path), hash: d.e.data.old, source: d.e.data.source } : { s: String(a.e.data.moved.from), path: String(a.e.data.moved.path), hash: a.e.data.new };
+    const first = a.s; // where it first came for it
     // On to where it is now: anyone's write on the way but hers for it or this Undo's changed it.
     let changed = false;
     for (let out; a; a = by(out) ? await other(a.s, out) : undefined) {
@@ -230,8 +231,9 @@ async function moveBack(ws, scope, end, handover) {
     }
     const now = a && (await t.getFile(a.s, a.e.data.path));
     if (!a || !now || !(await t.getScope(origin.s))) return null;
-    // Put back as it was where a log names that version: here (it came so), or once moved, where it came from (it left so).
-    const fresh = now.hash === origin.hash ? '' : (await t.blobNamedIn(origin.hash, a.s)) ? 'here' : (await t.blobNamedIn(origin.hash, origin.s)) ? 'home' : '';
+    // Put back as it was where a log names that version: here (it came so), or once moved, where it came from (it left so). The waiting space
+    // keeps none of a file that left it: then the version is read where it first came.
+    const fresh = now.hash === origin.hash ? '' : (await t.blobNamedIn(origin.hash, a.s)) ? 'here' : (await t.blobNamedIn(origin.hash, origin.s)) ? 'home' : first;
     return { origin, at: { s: a.s, path: String(a.e.data.path) }, changed, fresh };
   });
   if (!found) return {};
@@ -243,6 +245,10 @@ async function moveBack(ws, scope, end, handover) {
   if (at.s === origin.s) return { key, home: `${at.s}\n${at.path}` };
   const path = await moveFile(ws, { scope: at.s, path: at.path }, origin.s, { ...undo, folder: origin.path.slice(0, origin.path.lastIndexOf('/') + 1), ...(origin.source ? { source: origin.source } : {}) });
   if (fresh === 'home') await ws.restore(origin.s, path, origin.hash, undo);
+  else if (fresh && fresh !== 'here') {
+    const [bytes, entry] = [await blobBytes(ws.store, fresh, origin.hash, { quiet: true }), await ws.store.tx(['files'], 'readonly', (t) => t.getFile(origin.s, path))];
+    if (bytes && entry) await ws.write(origin.s, path, bytes, { ...undo, type: entry.type, ...(entry.source ? { source: entry.source } : {}), ...(entry.meta ? { meta: entry.meta } : {}) });
+  }
   return { key, home: `${origin.s}\n${path}`, from: `${at.s}\n${at.path}` };
 }
 
