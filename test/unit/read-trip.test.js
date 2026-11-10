@@ -72,6 +72,20 @@ test('read_trip with no path or query: the trip named, its dates and places, its
   assert.equal((await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(TV, { types: ['file.write'] }))).length, 6);
 });
 
+test('read_trip with no path or query: its last lines, however many set-aside heard lines (a drive with music) came after them', async (t) => {
+  useClock(t);
+  const k = await kit();
+  for (let n = 1; n <= 20; n++) {
+    await record(k.store, TV, { type: 'heard', actor: 'user', data: { id: `m${n}`, source: 'live', text: 'la la', dismissed: true, gate: 'chatter' } });
+    await record(k.store, TV, { type: 'heard.text', actor: 'system', data: { of: `m${n}`, text: 'la la la' } });
+  }
+  const out = words(await run(k, 'read_trip', { trip: TV }));
+  const lines = out.split('\n').filter((l) => /^(The user|Shiori): /.test(l));
+  assert.equal(lines.length, 12);
+  assert.equal(lines.at(-1), 'Shiori: "Answer 14: the museum opens at 22"');
+  assert.doesNotMatch(out, /la la/);
+});
+
 test("read_trip with a path: that text file, as that trip's data: an instruction or a closing tag in it reaches her escaped, never as annai's (Review Focus 3)", async (t) => {
   useClock(t);
   const k = await kit();

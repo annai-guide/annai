@@ -229,13 +229,21 @@ export function tripTools(app) {
    * set aside. @param {string} scope @param {number} [last] only the newest so many @returns {Promise<{ line: string, words: string }[]>}
    */
   const linesOf = async (scope, last) => {
-    // Three entries a line leave room for a heard line's later words and the lines set aside, as the gate reads.
-    const events = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask'], ...(last ? { reverse: true, limit: last * 3 } : {}) }));
-    if (last) events.reverse();
+    const types = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask'];
+    const isLine = (/** @type {any} */ e) => e.type !== 'heard.text' && (e.type !== 'heard' || talks(e));
+    /** @type {any[]} */
+    let events = last ? [] : await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types }));
+    // The newest: back a page at a time, three entries a line, until there are enough or the log ends (a drive's set-aside lines can fill a page).
+    for (let before = 0; last;) {
+      const page = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types, reverse: true, limit: last * 3, ...(before ? { before } : {}) }));
+      events = [...page.reverse(), ...events];
+      if (page.length < last * 3 || events.filter(isLine).length >= last) break;
+      before = events[0].seq;
+    }
     const later = new Map(events.filter((e) => e.type === 'heard.text').map((e) => [e.data?.of, e.data?.text]));
     const out = [];
     for (const e of events) {
-      if (e.type === 'heard.text' || (e.type === 'heard' && !talks(e))) continue;
+      if (!isLine(e)) continue;
       const d = { ...e.data, ...(await storedTexts(store, e)) };
       const words = String((e.type === 'heard' ? d.text ?? later.get(d.id) ?? '[audio]' : e.type === 'out.show' ? cardText(d.card) : e.type === 'out.ask' ? d.question : d.text) ?? '');
       /* en */
