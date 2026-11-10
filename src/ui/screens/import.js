@@ -20,7 +20,7 @@ import { FOLD_OVER } from '../../core/timeline.js';
 
 /** @typedef {{ key: Request | null, file: File }} InboxFile  key: its entry in the share inbox, if it came that way */
 
-/** More chats than this in a file are one row in its preview, and more trips than this one link to the timeline afterwards: the timeline's fold count, three rows read at a glance. */
+/** More chats than this in a file are one row in its preview, more rows than this a git backup's preview can't tell apart fold under one, and more trips than this one link to the timeline afterwards: the timeline's fold count, three rows read at a glance. */
 const MANY = FOLD_OVER;
 
 /** @param {any} ctx @param {{ params: Record<string, string> }} route */
@@ -175,14 +175,24 @@ function preview(ctx, body, opened, desc, from, fresh, bring = null) {
     grouped.some((/** @type {any} */ c) => c.existing)
       ? radios(t`You already have some of them`, [['new', t`Add as new ones`], ['replace', t`Replace mine (yours move to archived trips)`]], 'new', (v) => { for (const c of grouped) if (c.existing) trips[c.scope] = /** @type {any} */ (v); })
       : null)] : [];
-  const rows = desc.trips.filter((/** @type {any} */ trip) => !grouped.includes(trip)).map((/** @type {any} */ trip) => {
-    return h('li', { class: 'card' },
-      h('span', { class: 'name', text: trip.title }),
-      h('span', { class: 'sub', text: [plural(trip.files, '# file', '# files'), size(trip.bytes), trip.history ? t`with history` : null].filter(Boolean).join(' · ') }),
-      trip.existing
-        ? radios(t`You already have "${trip.existingTitle}"`, [['new', t`Add as a new trip`], ['replace', t`Replace mine (yours moves to archived trips)`]], 'new', (v) => { trips[trip.scope] = /** @type {any} */ (v); })
-        : null);
-  });
+  /** @param {any} trip */
+  const card = (trip) => h('li', { class: 'card' },
+    h('span', { class: 'name', text: trip.title }),
+    h('span', { class: 'sub', text: [plural(trip.files, '# file', '# files'), size(trip.bytes), trip.history ? t`with history` : null].filter(Boolean).join(' · ') }),
+    trip.existing
+      ? radios(t`You already have "${trip.existingTitle}"`, [['new', t`Add as a new trip`], ['replace', t`Replace mine (yours moves to archived trips)`]], 'new', (v) => { trips[trip.scope] = /** @type {any} */ (v); })
+      : null);
+  // A backup previewed from its manifest alone (a git place's) can't tell a trip from a chat: more than a few such rows fold under one, so
+  // Import isn't under hundreds of rows. Each is there, with its own choice, opened; the fold says how many have one.
+  const unknown = desc.trips.filter((/** @type {any} */ trip) => trip.dated === null);
+  const folded = unknown.length > MANY ? unknown : [];
+  const mine = folded.filter((/** @type {any} */ trip) => trip.existing).length;
+  const fold = folded.length ? [h('li', { class: 'card many' }, h('details', {},
+    h('summary', {},
+      h('span', { class: 'name', text: plural(folded.length, '# trip or conversation', '# trips and conversations') }),
+      h('span', { class: 'sub', text: [size(folded.reduce((n, /** @type {any} */ c) => n + c.bytes, 0)), mine ? plural(mine, 'you already have # of them', 'you already have # of them') : null].filter(Boolean).join(' · ') })),
+    h('ul', { class: 'cards' }, ...folded.map(card))))] : [];
+  const rows = desc.trips.filter((/** @type {any} */ trip) => !grouped.includes(trip) && !folded.includes(trip)).map(card);
   const me = desc.hasMe ? checkbox(t`Replace my profile and memory with the ones in this file`, Boolean(from) && fresh) : null;
   const settings = desc.hasSettings ? checkbox(t`Replace my settings`, Boolean(from) && fresh) : null;
   const plugins = desc.hasPlugins ? checkbox(t`Replace my plugins`, false) : null;
@@ -248,7 +258,7 @@ function preview(ctx, body, opened, desc, from, fresh, bring = null) {
     : desc.encrypted ? t`A trip exported ${ago} from annai ${app}, encrypted.` : t`A trip exported ${ago} from annai ${app}.`;
   return h('div', { class: 'panel' },
     h('p', { text: what }),
-    rows.length + group.length ? h('ul', { class: 'cards' }, ...rows, ...group) : h('p', { class: 'sub', text: t`There are no trips in this file.` }),
+    rows.length + group.length + fold.length ? h('ul', { class: 'cards' }, ...rows, ...group, ...fold) : h('p', { class: 'sub', text: t`There are no trips in this file.` }),
     h('div', { class: 'checks' }, me?.el ?? null, settings?.el ?? null, plugins?.el ?? null, keys?.el ?? null),
     h('div', { class: 'acts' }, go, h('a', { class: 'btn', href: leave(from), onclick: () => quit.abort() }, t`Cancel`)),
     status);

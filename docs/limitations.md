@@ -366,18 +366,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** browsers let a page leave its own first entry, or a user reports it.
 - **Approved:** 2026-11-07, the user picked "Accept for now (Recommended)".
 
-### Undo's message doesn't name a trip that stays but lost files
-- **Kind:** deferred.
-- **What the user sees:** one hand-over sent files to a trip Shiori started and to another trip that stays (one of the user's own). Undo in the started trip's conversation removes that trip and also takes the hand-over's files and bookings out of the other trip, but its message names only the trip it removed.
-- **Why:** naming them needs new strings in every language, and the takeback itself is right (spec goal 2: Undo takes back exactly what Shiori wrote from that hand-over).
-- **Revisit when:** the next version: in talk.js's Undo message, name each trip `undoEverywhere` changed but didn't remove.
-
-### A hand-over cycle (A, then B, then A) leaves the file in B after Undo
-- **Kind:** deferred.
-- **What the user sees:** a file Shiori moved from conversation A to B and later back to A: Undo in A says "Your files are back in B and A", and the file is in B, where the user never put it. Found in review of stage 4; it was already so at 2ec13f79.
-- **Why:** every move is undone from both of its ends (A's `into`, B's `out`); in a cycle the second undo of B to A finds the file in A, put there by the undo of A to B, and moves it again.
-- **Revisit when:** the next version: in `moveBack` (handover.js), a file whose last write at `at.path` is this Undo's own (`undo === handover`) is home already.
-
 ### A redraw of home drops an armed "Tap again to delete"
 - **Kind:** deferred.
 - **What the user sees:** on home, Waiting with Shiori's Delete tapped once is reset when home draws itself again (Shiori's `went`, a plugin's screens, Waiting's own Delete, and since stage 4 the clock's redraw: a few times a day, and once a minute in the hour after a backup or an export, as "Last backup … ago" changes its words). The row says "Delete" again; nothing is lost but the first tap. A focused field is not redrawn over: each of these waits for it.
@@ -391,12 +379,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** a user finds a name that reads worse than before.
 - **Approved:** 2026-11-08, the user chose "English rule" (a full stop after a word of one or two letters doesn't end the sentence).
 
-### A restore from a git backup lists every chat on its own row
-- **Kind:** deferred.
-- **What the user sees:** restoring a year of chats from a Forgejo or GitHub backup, the preview before Import reads only the backup's manifest, so every chat is its own row and Import sits under hundreds of rows. An opened backup file groups them.
-- **Why:** grouping the rows there needs a dated field in the manifest, against the 2026-11-06 lesson (an archive's own copy of a fact could only be stale).
-- **Revisit when:** stage 5. The user chose "Defer to stage 5" on 2026-11-08.
-
 ### Home's relative times redraw home
 - **Kind:** deferred.
 - **What the user sees:** "backed up 5 minutes ago", "Last backup 2 hours ago" and the day count follow the clock because home is drawn again, in place, when one of their words changes: a few times a day, and once a minute in the hour after a backup or an export. A trip ahead says "tomorrow", "in 3 days" or "in 2 weeks" (the user's choice, "Count in days", 2026-11-09), which change only at midnight, where home is drawn again anyway. The redraw keeps home's folds and place and waits for the Start a trip form, but it resets an armed "Tap again to delete" (see that entry), and not verified on a phone: it may lose VoiceOver's place, or replace the file input under an open picker.
@@ -408,12 +390,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** only for a developer playing a simulation faster than real time (x N): home's timer counts the simulation's milliseconds and waits real ones, so a Next that ends, midnight, and "in N hours" are redrawn N times late. Live use is not affected.
 - **Why:** developer-only, and the clock the timer reads is live mode's.
 - **Revisit when:** the next change to home's timer: wait the simulation's delay divided by its speed.
-
-### The dates line's Undo goes at the user's next line
-- **Kind:** deferred.
-- **What the user sees:** when Shiori sets a chat's dates, the line "Shiori set the dates" with its Undo goes for good once the user writes or speaks again. A user who replies "Thanks" and then sees she set the wrong week has only Details to change the dates back. The hand-over's Undo line stays in the conversation at its place and can still be tapped.
-- **Why:** the user chose (2026-11-08, "Stay, next version") a line that stays in the conversation like the hand-over's, built in the next version; stage 4 ships the line as built.
-- **Revisit when:** the next version: make the dates line a conversation line at its place, like the hand-over's Undo.
 
 ### Home's rows move when a phone rotates, or at the first resize after a tall card lands
 - **Kind:** deferred.
@@ -481,3 +457,9 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** with annai open in two tabs, a first line said in one tab spends the draft; the other tab still holds that conversation as its draft, so its next + opens it once, a conversation that already has the first tab's lines, instead of a new one. Traced by the final review of stage 4, not run.
 - **Why:** each tab's `Chats` keeps its own `ready` draft, and nothing tells it that another tab spent it.
 - **Revisit when:** the next version: `Chats` looks at the draft's flag again before + opens it, or a user reports it.
+
+### A move cut off halfway leaves the file in both trips
+- **Kind:** deferred.
+- **What the user sees:** if annai is closed in the few milliseconds between the two writes of a file's move (Shiori's, or Undo's moving it back), the file is in both trips. A second Undo then moves it again: "flight.pdf" and "flight (2).pdf".
+- **Why:** a move is two transactions, one per trip.
+- **Revisit when:** the next version: a move is one transaction (workspace.js), for Shiori's moves and Undo's alike. That is an API change, with its lessons entry.
