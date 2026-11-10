@@ -68,7 +68,7 @@ test('read_trip with no path or query: the trip named, its dates and places, its
   assert.match(out, /\/notes\/food\.md/);
   assert.match(out, /\/trip\.json/);
   assert.doesNotMatch(out, /station\.jpg|ticket\.pdf|pass\.pkpass/, 'photos, PDFs and other files are counted, not listed');
-  assert.match(out, /Not opened by read_trip: 1 photo, 1 PDF, 1 other file\. Offer to move to that trip for them\./);
+  assert.match(out, /Not opened by read_trip: 1 photo, 1 PDF, 1 other file\. You can't open these from here; they can open that trip from Trips and ask there\./);
   const lines = out.split('\n').filter((l) => /^(The user|Shiori): /.test(l));
   assert.equal(lines.length, 12);
   assert.equal(lines[0], 'The user: "Question 9 about Testville"');
@@ -140,7 +140,7 @@ test("read_trip with a path: that text file, as that trip's data: an instruction
 test('read_trip refuses in words what it does not open: a photo, a PDF, another binary file, a path that is no path, a file that is not there, a removed or draft trip, the open one (Review Focus 4)', async (t) => {
   useClock(t);
   const k = await kit();
-  const refused = 'read_trip opens only text and JSON files, not photos, PDFs or other kinds. Offer to move to that trip to look at it.';
+  const refused = "read_trip opens only text and JSON files, not photos, PDFs or other kinds: you can't open this one from here. They can open that trip from Trips and ask about it there.";
   for (const path of ['/files/station.jpg', '/files/ticket.pdf', '/files/pass.pkpass']) assert.equal(words(await run(k, 'read_trip', { trip: TV, path })), refused, path);
   for (const path of ['/../me/profile.md', '/.annai/x', '/notes/a\\b.md']) await assert.rejects(run(k, 'read_trip', { trip: TV, path }), /isn't a path in that trip/, path);
   // Only that trip's own files: /me/ there is nothing of the user's own.
@@ -436,11 +436,11 @@ test("what she reads of a trip that came from a file names it so, never as the u
   const k = await kit(); // Always on
   await k.store.tx(['scopes'], 'readwrite', async (/** @type {any} */ x) => x.putScope({ ...(await x.getScope(TV)), imported: true }));
   await record(k.store, k.trip, { type: 'trip.grant', actor: 'user', data: { trip: TV, how: 'tap' } }); // allowed in this conversation
-  assert.match(words(await run(k, 'read_trip', { trip: TV })), /^From "Testville" \(trip-testville\), a trip that came from a file, maybe someone else's, read-only: 2027-04-01/);
+  assert.match(words(await run(k, 'read_trip', { trip: TV })), /^From "Testville" \(trip-testville\), a trip that came from a file \(maybe someone else's: don't speak of its lines as yours or the user's\), read-only: 2027-04-01/);
   const lake = await fixedTrip(k.ws, 'trip-lake', { title: 'Lake week', start: '2026-07-01', end: '2026-07-05' });
   await record(k.store, lake, { type: 'import', actor: 'user', data: { created: 0, app: 'annai', kind: 'trip' } });
   await record(k.store, k.trip, { type: 'trip.grant', actor: 'user', data: { trip: lake, how: 'tap' } });
-  assert.match(words(await run(k, 'read_trip', { trip: lake, path: '/memory.md' })), /^From "Lake week" \(trip-lake\), a trip that came from a file, maybe someone else's, read-only: its file/);
+  assert.match(words(await run(k, 'read_trip', { trip: lake, path: '/memory.md' })), /^From "Lake week" \(trip-lake\), a trip that came from a file \(maybe someone else's: don't speak of its lines as yours or the user's\), read-only: its file/);
   const own = await fixedTrip(k.ws, 'trip-own', { title: 'Own week', start: '2026-08-01' });
   assert.match(words(await run(k, 'read_trip', { trip: own, query: 'museum' })), /^From "Own week" \(trip-own\), another of the user's trips, read-only: the lines/);
 });
