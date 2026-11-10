@@ -9,7 +9,8 @@ const YES = new Set(['yes', 'yeah', 'yep', 'sure', 'ok', 'okay', 'allow', 'allow
   '好', '好的', '可以', '行', '是', '是的']);
 /**
  * Plain refusals and take-backs, in the yes list's languages; none is also a filler ("well", "um", "えっと", "那个" aren't), and none is a yes.
- * Left out as two-way, so on neither list: "大丈夫" ("it's fine": yes or no thanks), "不是" (a filler in speech) and いいです.
+ * Left out as two-way, so on neither list: "大丈夫" ("it's fine": yes or no thanks), "不是" (a filler in speech) and いいです; nor are
+ * 嗯 and ええ, off the yes list (a filled pause, surprise), refusals.
  */
 const NO = new Set(['no', 'nope', 'nah', 'nono', 'nothanks', 'nothankyou', 'notnow', 'notyet', 'nowait', 'wait', 'waitwait', 'holdon', 'stop', 'cancel', 'dont', 'donot', 'nevermind',
   'いいえ', 'いえ', 'いや', 'ううん', 'だめ', 'ダメ', 'だめです', 'やめて', 'まって', '待って', 'ちょっとまって', 'ちょっと待って', 'ストップ', 'キャンセル', 'いらない', 'いりません', '結構です', 'けっこうです',
