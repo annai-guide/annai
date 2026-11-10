@@ -812,3 +812,26 @@ test('a chain through a trip removed since that ends at a file the user changed:
     assert.equal((await eventsIn(store, c, ['handover.undo'])).length, 1, `gone ${gone}: Big Sur is told`);
   }
 });
+
+test("a file another hand-over moved on and that one's Undo brought back: Undo of the first still takes it home", async () => {
+  const { store, ws, a, move } = await clocked();
+  const b = await createTrip(ws, { title: 'Kyoto' });
+  const there = await move(a, '/files/flight.pdf', b);
+  // In Kyoto, for a hand-over of its own, she sends it back to Anchorage; the user undoes that one, and it is in Kyoto again.
+  await record(store, b, { type: 'msg.user', actor: 'user', data: { handed: [], handover: 'h-2' }, texts: [['text', 'and this']] });
+  await moveFile(ws, { scope: b, path: there }, a, { handover: 'h-2' });
+  await record(store, b, { type: 'handover.moved', actor: 'shiori', data: { handover: 'h-2', to: a, started: false, count: 1 } });
+  await undoEverywhere(ws, b, 'h-2', { remove: async (s) => removeTrip(store, s) });
+  assert.deepEqual((await ws.list(b, '/files/')).map((f) => f.path), [there]);
+  const out = await undoEverywhere(ws, a, 'h-1', { remove: async (s) => removeTrip(store, s) });
+  assert.equal(await ws.readText(a, '/files/flight.pdf'), '%PDF flight');
+  assert.deepEqual([(await ws.list(b, '/files/')).length, out.back], [0, [{ id: a, title: 'Anchorage' }]]);
+  // Not undone, that hand-over's move is the user's to keep: Undo of the first leaves it where the second put it.
+  const c = await clocked();
+  const k = await createTrip(c.ws, { title: 'Kyoto' });
+  const p = await c.move(c.a, '/files/flight.pdf', k);
+  await moveFile(c.ws, { scope: k, path: p }, c.a, { handover: 'h-2' });
+  await moveFile(c.ws, { scope: c.a, path: '/files/flight.pdf' }, k, { handover: 'h-3' });
+  await undoEverywhere(c.ws, c.a, 'h-1', { remove: async (s) => removeTrip(c.store, s) });
+  assert.deepEqual([(await c.ws.list(c.a, '/files/')).length, (await c.ws.list(k, '/files/')).length], [0, 1]);
+});

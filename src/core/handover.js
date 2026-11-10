@@ -234,8 +234,14 @@ async function moveBack(ws, scope, end, handover, via) {
     const first = a.s; // where it first came for it
     // On to where it is now: anyone's write on the way but hers for it or this Undo's changed it.
     let changed = false;
+    // Another hand-over's move that its own Undo took back is no move: on from where that Undo put it.
+    const undone = async (/** @type {string} */ s, /** @type {any} */ out) => {
+      const x = typeof out.data.handover === 'string' && (await other(s, out));
+      const back = x && (await log(x.s, x.e.data.path)).find((y) => y.seq > x.e.seq && y.type === 'file.delete' && y.data.moved);
+      return back?.data.undo === out.data.handover && back.data.moved.to === s ? other(x.s, back) : undefined;
+    };
     seen.clear();
-    for (let out; a; a = by(out) ? await other(a.s, out) : undefined) {
+    for (let out; a; a = by(out) ? await other(a.s, out) : await undone(a.s, out)) {
       if (again(a)) return null;
       via.add(a.s);
       const after = (await log(a.s, a.e.data.path)).filter((x) => x.seq > a.e.seq);
