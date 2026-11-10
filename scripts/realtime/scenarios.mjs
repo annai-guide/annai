@@ -10,11 +10,13 @@
 //   { tap: label, afterHeard?: ms } taps that button on the card (afterHeard: ms after annai has the next heard line's words, at most 15 s)
 //   { settled: ms }                 waits until read_trip's result is in, and annai and her sound have been quiet for ms
 //   { shiori: true }                a tap on Shiori (classic voice: asleep, she hears nothing until tapped)
+//   { type: line }                  types the line in the box under the conversation and sends it
 // mode: 'classic' runs the same card in classic voice (no live session): speech in is the user's own server, the gate Gemini's small model, Kokoro alone.
-// speechIn: 'default' (classic and chat) adds no speech server: the speech-in list stays as annai sets it (send audio, then phone dictation).
+// speechIn: 'default' (classic and chat): no transcription model, the speech-in list annai starts with (send audio, then phone dictation): no speech server is
+// added, and the two that adding Gemini put last (Gemini 3.5 Transcribe, Gemini 3.5 Flash Lite (transcription)) are taken out.
 // route: the audio the microphone stands for (speaker: the phone's own, half-duplex; headphones: she can be cut by speaking);
 // echoDb: her voice mixed back into the microphone at that level (the phone's speaker), null for none.
-/** @typedef {{ say: string, gainDb?: number } | { answered: number } | { sounding: number } | { wait: number } | { ask: number } | { asked: number } | { asking: number } | { tap: string, afterHeard?: number } | { settled: number } | { shiori: true }} Step */
+/** @typedef {{ say: string, gainDb?: number } | { answered: number } | { sounding: number } | { wait: number } | { ask: number } | { asked: number } | { asking: number } | { tap: string, afterHeard?: number } | { settled: number } | { shiori: true } | { type: string }} Step */
 /** @typedef {{ about: string, route: 'speaker' | 'headphones' | 'car', echoDb: number | null, echoDelayMs?: number, expectCut?: boolean, extra?: boolean, repeatNote?: boolean, card?: boolean, measure?: boolean, real?: boolean, mode?: 'live' | 'classic' | 'chat', speechIn?: 'default', expect?: { grant: 'voice' | 'tap' | false | 'any', words?: boolean, open?: boolean, next?: boolean, declined?: boolean }, languages?: { spoken: string[], answer: string }, steps: Step[] }} Scenario
  *   repeatNote: the stand-in Kokoro sends its note again once Koe has said it; extra: not in a plain run, only by name (--only); languages (phase 2): the languages setting the run sets in Settings → Shiori before she listens (the browser's
  *   English is the list's first; the others are added), and the scenario is held to answering in the language each clip is spoken in */
@@ -205,11 +207,12 @@ function classicScenarios() {
     steps: [{ say: 'tomorrow' }, { wait: 4000 }, { say: 'sure' }, { ask: 70_000 }, { asked: 1500 }, { say: 'sure' }, { settled: 2500 }],
     expect: { grant: 'voice' },
   };
-  // The re-review's F3: Koe on a chat model again, with the speech-in list as annai sets it (no speech server). Kokoro's stand-in model takes no audio,
-  // so only Koe · Chat's model (Gemini's takes audio) can write Koe's line down for the card: "Sure." after the question grants.
+  // The re-review's F3: Koe on a chat model again, with the speech-in list annai starts with (no transcription model). Kokoro's stand-in model takes no audio,
+  // so only Koe · Chat's model (Gemini's takes audio) can write Koe's line down for the card: "Sure." after the question grants. With nothing to write
+  // a spoken line down for Kokoro, a spoken question never reaches her ("Nothing in the speech-in list can hear it"): the question is typed.
   out['chat-sure-default'] = {
-    ...live['card-yes'], about: 'Koe on a chat model, the default speech-in list, Kokoro\'s model taking no audio: "Sure." after annai\'s question grants', mode: 'chat', speechIn: 'default',
-    steps: [{ say: 'tomorrow' }, { ask: 70_000 }, { asked: 1500 }, { say: 'sure' }, { settled: 2500 }],
+    ...live['card-yes'], about: 'Koe on a chat model, the default speech-in list, Kokoro\'s model taking no audio, the question typed: "Sure." after annai\'s question grants', mode: 'chat', speechIn: 'default',
+    steps: [{ type: "What's on tomorrow in Testville?" }, { ask: 70_000 }, { asked: 1500 }, { say: 'sure' }, { settled: 2500 }],
     expect: { grant: 'voice' },
   };
   return out;
