@@ -76,7 +76,7 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  *   what a turn's requests keep from its first step to its end (the keep-reasoning design §3): the system text (rebuilt only from a new snapshot,
  *   after housekeeping), the tools and provider tools, the reasoning level, the half's rule for its messages, and where the previous turn began
  * @typedef {{ id: string, kind: 'ask' | 'wait', resolve: (v: Got) => void, listening?: boolean, hold?: () => void, arm?: () => void, tool?: boolean,
- *   ask?: { yes: (heard: string) => string | null, open: boolean, wake: string, heard: Map<string, { inside: boolean, kept: boolean }>, settle: Map<string, any> } }} Pending
+ *   ask?: { yes: (heard: string) => string | null, open: boolean, wake: string, heard: Map<string, { id: string, inside: boolean, kept: boolean, text?: string }>, settle: any } }} Pending
  *   waiting for the user; listening: an answer may be spoken; hold and arm stop and start the silence limit; tool: the wait tool's; ask: annai's own card's (confirm)
  * @typedef {{ name: StateName, label: string, detail?: string }} State  label: the dock's words for it (LABELS); detail: what she is away doing (TIDYING, or a task's words)
  * @typedef {{ tone: 'warn' | 'info', title: string, body: string, actions?: { label: string, primary?: boolean, run: () => void | Promise<void> }[], key?: string, toast?: boolean }} Notice
@@ -883,9 +883,9 @@ export class Agent {
       /** @type {any} */
       let timer;
       /** @type {NonNullable<Pending['ask']>} */
-      const ask = { yes, open: false, wake: call.wake, heard: new Map(), settle: new Map() };
+      const ask = { yes, open: false, wake: call.wake, heard: new Map(), settle: undefined };
       /** @type {Pending} */
-      const p = { id: tap, kind: 'ask', ask, resolve: (v) => { clearTimeout(timer); for (const x of ask.settle.values()) clearTimeout(x); resolve(v); } };
+      const p = { id: tap, kind: 'ask', ask, resolve: (v) => { clearTimeout(timer); clearTimeout(ask.settle); resolve(v); } };
       // A Stop as the card was written found no wait to end: none may eat the user's next line.
       if (call.signal?.aborted) return void p.resolve({ stopped: true });
       this.#pending = p;
@@ -927,23 +927,31 @@ export class Agent {
     return { said: wrote.said };
   }
 
-  /** The other half's heard lines while annai's card waits (Halves), judged once their words stop growing: "Yes," then "but not that one". @param {any} e */
+  /**
+   * The other half's heard lines while annai's card waits (Halves): one settle per card, started again by each new or revised kept line, then the
+   * newest kept line decides ("Yes." then "No, wait." is no), else a yes set aside. Other lines set aside don't put it off. @param {any} e
+   */
   confirmHeard(e) {
     const p = this.#pending;
     const ask = p?.ask;
     if (!p || !ask) return;
     const id = e.type === 'heard' ? e.data?.id : e.data?.of;
-    if (e.type === 'heard') ask.heard.set(id, { inside: ask.open, kept: !e.data?.dismissed });
+    if (e.type === 'heard') ask.heard.set(id, { id, inside: ask.open, kept: !e.data?.dismissed });
     const line = ask.heard.get(id);
-    if (!line || typeof e.data?.text !== 'string') return;
-    const text = e.data.text;
-    clearTimeout(ask.settle.get(id));
-    ask.settle.set(id, setTimeout(() => {
-      const chosen = line.inside ? ask.yes(text) : null;
-      if ((!chosen && !line.kept) || this.#pending !== p) return;
+    if (!line) return; // heard before the card
+    if (typeof e.data?.text === 'string') line.text = e.data.text;
+    /** @param {typeof line} l */
+    const yes = (l) => (l.inside && l.text !== undefined ? ask.yes(l.text) : null);
+    if (!line.kept && !yes(line)) return;
+    clearTimeout(ask.settle);
+    ask.settle = setTimeout(() => {
+      const lines = [...ask.heard.values()];
+      const last = lines.findLast((l) => l.kept) ?? lines.findLast(yes);
+      if (last?.text === undefined || this.#pending !== p) return; // its words to come start it again
+      const chosen = yes(last);
       this.#pending = null;
-      p.resolve(chosen ? { voiced: chosen } : { spoke: id });
-    }, SETTLE_S * this.secondMs));
+      p.resolve(chosen ? { voiced: chosen } : { spoke: last.id });
+    }, SETTLE_S * this.secondMs);
   }
 
   /**
