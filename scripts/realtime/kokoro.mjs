@@ -24,9 +24,10 @@ export function toolReply(calls) {
  * card question with a clip (askClip, a WAV): a stand-in speech-out whose sound plays through the page, so the harness hears it and can mix it back.
  * Its /asr/v1/audio/transcriptions passes a transcription request on to a real speech-to-text server (asr: its origin), one at a time, and
  * nothing else (annai calls only https addresses, or http on this device: a server on the network is reached through this address on 127.0.0.1);
- * each is logged with the words that came back and how long it took.
+ * each is logged with the words that came back and how long it took. slowAsr(ms) holds each answer that long once it is back, as a model asked
+ * to write a line down is slow (the fix rounds' real speech: 0.9, 5.7 and 7.0 s); the next request isn't held behind it.
  * @param {{ delayMs?: number, port?: number, askClip?: Buffer, asr?: string }} [o] delayMs: how long Kokoro "thinks" before its note
- * @returns {Promise<{ origin: string, wakes: () => number, repeatNote: (on: boolean) => void, readTrip: (id: string | null) => void, log: { at: number, kind: string, text?: string, heard?: string[] }[], stop: () => Promise<void> }>}
+ * @returns {Promise<{ origin: string, wakes: () => number, repeatNote: (on: boolean) => void, readTrip: (id: string | null) => void, slowAsr: (ms: number) => void, log: { at: number, kind: string, text?: string, heard?: string[] }[], stop: () => Promise<void> }>}
  */
 export async function startKokoro({ delayMs = 1500, port = 0, askClip, asr } = {}) {
   let wakes = 0;
@@ -38,6 +39,7 @@ export async function startKokoro({ delayMs = 1500, port = 0, askClip, asr } = {
   const answeredLines = new Set();
   /** The transcription requests, one at a time (the user's server takes one at a time). */
   let asrQueue = Promise.resolve();
+  let asrDelayMs = 0;
   /** Sends its note again once Koe has said it (the second drive's item 11). */
   let repeat = false;
   let noted = false;
@@ -64,8 +66,9 @@ export async function startKokoro({ delayMs = 1500, port = 0, askClip, asr } = {
             } catch {
               said = text.slice(0, 120);
             }
-            log.push({ at, kind: 'asr', text: said, ms: Date.now() - at, status: r.status, bytes: body.length });
-            res.writeHead(r.status, { ...cors, 'content-type': r.headers.get('content-type') ?? 'application/json' }).end(text);
+            log.push({ at, kind: 'asr', text: said, ms: Date.now() - at + asrDelayMs, status: r.status, bytes: body.length });
+            const type = r.headers.get('content-type') ?? 'application/json';
+            setTimeout(() => { if (!res.destroyed) res.writeHead(r.status, { ...cors, 'content-type': type }).end(text); }, asrDelayMs);
           } catch (e) {
             log.push({ at, kind: 'asr', text: `failed: ${String(e).slice(0, 100)}`, ms: Date.now() - at, bytes: body.length });
             res.writeHead(502, cors).end('the speech-to-text server did not answer');
@@ -148,6 +151,7 @@ export async function startKokoro({ delayMs = 1500, port = 0, askClip, asr } = {
     wakes: () => wakes,
     repeatNote: (on) => { repeat = on; noted = false; },
     readTrip: (id) => { tripId = id; },
+    slowAsr: (ms) => { asrDelayMs = ms; },
     log,
     stop: () => new Promise((resolve) => { server.closeAllConnections?.(); server.close(() => resolve(undefined)); }),
   };
