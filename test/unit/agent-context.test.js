@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
-import { ensureBaseScopes, createTrip, ME } from '../../src/core/scopes.js';
+import { ensureBaseScopes, createTrip, ME, DRAFT_TITLE } from '../../src/core/scopes.js';
 import { Registry } from '../../src/core/registry.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { CORE } from '../../src/core/agent/instructions.js';
@@ -183,6 +183,32 @@ test('under screens not in English the languages section ends with their names, 
   } finally {
     setWords('en', null);
   }
+});
+
+test("an undated conversation's name is called a first guess only while annai's own naming is trip.json's last write, and the text stays the same on every turn", async () => {
+  const { ws, registry } = await setup();
+  const guess = /Its name is a first guess: patch \/trip\/trip\.json when you know a better one\./;
+  const text = async (/** @type {string} */ chat) => systemText(await takeSnapshot({ ws, registry, trip: chat, personalityName: 'shiori' }));
+  // A first line named it, as Chats does: the system's write.
+  const named = await createTrip(ws, { title: DRAFT_TITLE }, { draft: true });
+  assert.match(await text(named), guess, "a draft no line has named yet: its name is the placeholder, and nobody's choice");
+  await ws.update(named, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, title: 'Where should we eat?' }), { author: 'system' });
+  const first = await text(named);
+  assert.match(first, guess);
+  assert.equal(await text(named), first, 'nothing in it moves from turn to turn');
+  // The user renamed it in Details (the user's write): her name now.
+  await ws.update(named, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, title: 'Ramen crawl' }), { author: 'user' });
+  assert.doesNotMatch(await text(named), /first guess/);
+  assert.match(await text(named), /# This conversation has no dates\n.*patch \/trip\/trip\.json/, 'the way to a trip is still told');
+  // Named in Start a trip: never a guess.
+  const typed = await createTrip(ws, { title: 'Kyoto someday' });
+  assert.doesNotMatch(await text(typed), /first guess/);
+  // The snapshot is kept while the cache is warm: a rename mid-conversation doesn't rewrite the prefix.
+  const before = await takeSnapshot({ ws, registry, trip: named, personalityName: 'shiori' });
+  await ws.update(named, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, title: 'Ramen and tea' }), { author: 'system' });
+  const kept = nextSnapshot(before, await takeSnapshot({ ws, registry, trip: named, personalityName: 'shiori' }), { cold: false });
+  assert.equal(systemText(kept), systemText(before));
+  assert.match(systemText(await takeSnapshot({ ws, registry, trip: named, personalityName: 'shiori' })), guess, 'and a cold one follows the file');
 });
 
 test("an undated conversation's system text says how it becomes a trip, a dated one's does not, and it is the same on every turn", async () => {

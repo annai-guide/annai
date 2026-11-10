@@ -1,6 +1,6 @@
 import { CORE, DEFAULT_PERSONALITY } from './instructions.js';
 import { editedInstructions } from './her-instructions.js';
-import { ME } from '../scopes.js';
+import { ME, DRAFT_TITLE } from '../scopes.js';
 import { tsv } from '../tsv.js';
 import { sha256Hex } from '../hash.js';
 import { utf8 } from '../bytes.js';
@@ -15,8 +15,9 @@ import { lang, glossary } from '../l10n.js';
  * 3. the transcript, which only grows at the end;
  * 4. the now block, last, after the cache marker.
  * @typedef {{ trip: string | null, personalityName: string, personality: string, profile: string, memory: string,
- *   tripInfo: string, tripMemory: string, skills: { name: string, description: string }[], languages?: string, edited?: Partial<Record<import('./her-instructions.js').InstructionId, string>> }} Snapshot
- *   languages: the languages section's words, from the languages setting; edited: the instructions the user changed (her-instructions.js)
+ *   tripInfo: string, guessed?: boolean, tripMemory: string, skills: { name: string, description: string }[], languages?: string, edited?: Partial<Record<import('./her-instructions.js').InstructionId, string>> }} Snapshot
+ *   languages: the languages section's words, from the languages setting; edited: the instructions the user changed (her-instructions.js);
+ *   guessed: the trip's name is annai's own first guess (a first line's words or a file's name, the system's write of trip.json, or the draft's placeholder), not one the user or she gave
  * @typedef {import('../llm/contract.js').Request} Request
  */
 
@@ -28,6 +29,8 @@ import { lang, glossary } from '../l10n.js';
 export async function takeSnapshot({ ws, registry, trip, personalityName, locale }) {
   const read = async (/** @type {string} */ scope, /** @type {string} */ path) => (await ws.readText(scope, path).catch(() => undefined)) ?? '';
   const tripJson = trip ? await ws.readJSON(trip, '/trip.json').catch(() => null) : null;
+  // Whose name it is: annai's naming (Chats) writes trip.json as the system; a rename in Details, Start a trip and her patches are the user's and hers.
+  const guessed = Boolean(tripJson) && (tripJson.title === DRAFT_TITLE || (await ws.read(/** @type {string} */ (trip), '/trip.json').catch(() => undefined))?.entry.author === 'system');
   const app = await readAppSettings(ws);
   /* en */ return {
     trip,
@@ -36,6 +39,7 @@ export async function takeSnapshot({ ws, registry, trip, personalityName, locale
     profile: await read(ME, '/profile.md'),
     memory: await read(ME, '/memory.md'),
     tripInfo: tripJson ? JSON.stringify(tripJson, null, 2) : '',
+    guessed,
     tripMemory: trip ? await read(trip, '/memory.md') : '',
     skills: skillIndex(registry),
     // Then the screens' names and a Distances choice.
@@ -76,7 +80,8 @@ export function systemText(s, part = '') {
   if (s.trip) {
     /* en */ parts.push(`# This trip (/trip/trip.json)\n${s.tripInfo}`, s.tripMemory.trim() ? `${s.tripMemory.trim()}` : '# Trip memory\n(empty)');
     // From the snapshot, so it stays the same from turn to turn and the cached prefix holds.
-    if (!datedInfo(s.tripInfo)) /* en */ parts.push('# This conversation has no dates\nIts name is a first guess: patch /trip/trip.json when you know a better one. If it becomes a trip, patch its title and dates there.');
+    // Her name for it is only for a name annai guessed: one the user gave stays.
+    if (!datedInfo(s.tripInfo)) /* en */ parts.push(`# This conversation has no dates\n${s.guessed ? 'Its name is a first guess: patch /trip/trip.json when you know a better one. If it becomes a trip, patch its title and dates there.' : 'If it becomes a trip, patch /trip/trip.json with its dates.'}`);
   } else /* en */ parts.push('# No trip is open\n/trip/ is empty. The user can open a trip from Trips.');
   return parts.join('\n\n');
 }
