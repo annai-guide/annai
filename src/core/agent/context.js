@@ -61,8 +61,10 @@ export function nextSnapshot(prev, fresh, { cold }) {
   const sameSkills = JSON.stringify(prev.skills) === JSON.stringify(fresh.skills);
   // So does a change of the languages setting, or of her instructions: the user chose it just now.
   const sameEdits = JSON.stringify(prev.edited ?? {}) === JSON.stringify(fresh.edited ?? {});
-  if (samePersonality && sameSkills && sameEdits && prev.languages === fresh.languages) return prev;
-  return { ...prev, personality: fresh.personality, personalityName: fresh.personalityName, skills: fresh.skills, languages: fresh.languages, edited: fresh.edited };
+  // So does a name that stopped being annai's guess (the user renamed it in Details); a trip.json that couldn't be read says nothing of it.
+  const renamed = Boolean(prev.guessed && !fresh.guessed && fresh.tripInfo);
+  if (samePersonality && sameSkills && sameEdits && !renamed && prev.languages === fresh.languages) return prev;
+  return { ...prev, personality: fresh.personality, personalityName: fresh.personalityName, skills: fresh.skills, languages: fresh.languages, edited: fresh.edited, ...(renamed ? { tripInfo: fresh.tripInfo, guessed: false } : {}) };
 }
 
 /** The skill index (spec §6.3): each skill's name and description, once per name (its owner's). @param {import('../registry.js').Registry} registry */

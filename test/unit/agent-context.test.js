@@ -211,6 +211,24 @@ test("an undated conversation's name is called a first guess only while annai's 
   assert.match(systemText(await takeSnapshot({ ws, registry, trip: named, personalityName: 'shiori' })), guess, 'and a cold one follows the file');
 });
 
+test("a name the user gives while the cache is warm stops being called a guess at the next turn, once, and the text then holds", async () => {
+  const { ws, registry } = await setup();
+  const take = (/** @type {string} */ chat) => takeSnapshot({ ws, registry, trip: chat, personalityName: 'shiori' });
+  const chat = await createTrip(ws, { title: DRAFT_TITLE }, { draft: true });
+  await ws.update(chat, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, title: 'Where should we eat?' }), { author: 'system' });
+  const first = await take(chat);
+  assert.match(systemText(first), /first guess/);
+  // Mid-conversation, the user renames it in Details: the conversation stays open, so nothing takes the snapshot cold.
+  await ws.update(chat, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, title: 'Ramen crawl' }), { author: 'user' });
+  const next = nextSnapshot(first, await take(chat), { cold: false });
+  assert.doesNotMatch(systemText(next), /first guess/);
+  assert.match(systemText(next), /"title": "Ramen crawl"/);
+  assert.equal(systemText(nextSnapshot(next, await take(chat), { cold: false })), systemText(next), 'and the turn after keeps it');
+  // A read that fails says nothing of whose name it is: the warm text stays.
+  const failed = { ...(await take(chat)), tripInfo: '', guessed: false };
+  assert.equal(nextSnapshot(first, failed, { cold: false }), first);
+});
+
 test("an undated conversation's system text says how it becomes a trip, a dated one's does not, and it is the same on every turn", async () => {
   const { ws, trip, registry } = await setup();
   const chat = await createTrip(ws, { title: 'Where should we eat?' });
