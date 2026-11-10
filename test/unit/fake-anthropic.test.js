@@ -86,3 +86,58 @@ test('the binding controls: block_binding needs the beta header, and the header 
   assert.match(await res.text(), /"input_transformations":\[\]/);
   assert.doesNotMatch(await (await ask(undefined, {})).text(), /input_transformations/);
 });
+
+test('a server tool called beside a client tool: only tool results may follow, wherever it is in the history; the request that answers it is run (the real API, 2026-11-10)', async () => {
+  const ss = { type: 'server_tool_use', id: 'srvtoolu_1', name: 'web_search', input: { query: 'ramen' } };
+  const geocode = { type: 'tool_use', id: 'toolu_1', name: 'geocode', input: {} };
+  const claude = anthropicStandIn((body) => (body.messages.length === 1 ? [ss, geocode] : [{ type: 'text', text: 'Here.' }]));
+  const search = [{ type: 'web_search_20250305', name: 'web_search' }];
+  const send = (/** @type {any[]} */ messages, tools = search) => claude.fetch('https://api.anthropic.com/v1/messages', { body: JSON.stringify({ model: 'claude-sonnet-5-5', tools, messages }) });
+  const ask = { role: 'user', content: [{ type: 'text', text: 'Ramen?' }] };
+  const first = { role: 'assistant', content: await contentOf(await send([ask])) };
+  assert.deepEqual(first.content.map((/** @type {any} */ b) => b.type), ['thinking', 'server_tool_use', 'tool_use']);
+  const result = { type: 'tool_result', tool_use_id: 'toolu_1', content: 'Kyoto Station' };
+  const words = { type: 'text', text: '<now>10:00</now>' };
+  const user = (/** @type {any[]} */ content) => ({ role: 'user', content });
+  // Only the tool result after it: 200, and the reply begins with the search's result, then its thinking.
+  // Without the search's tool in the request that would run it: refused, as the API refuses it.
+  // (The thinking is left out, as after a turn: it is bound to the tools too.)
+  assert.equal((await send([ask, { role: 'assistant', content: first.content.filter((/** @type {any} */ b) => b.type !== 'thinking') }, user([result])], [])).status, 400);
+  assert.match(claude.refused.at(-1), /^`web_search` tool use with id `srvtoolu_1` was found without a corresponding `web_search_tool_result` block, but no `web_search` tool was provided$/);
+  const answered = await send([ask, first, user([result])]);
+  assert.equal(answered.status, 200);
+  const second = { role: 'assistant', content: await contentOf(answered) };
+  assert.deepEqual(second.content.map((/** @type {any} */ b) => b.type), ['web_search_tool_result', 'thinking', 'text']);
+  assert.equal(second.content[0].tool_use_id, 'srvtoolu_1');
+  // A block after the result is refused, at the end of the history and in the middle of it (though the next reply carries the result).
+  assert.equal((await send([ask, first, user([result, words])])).status, 400);
+  assert.match(claude.refused.at(-1), /^messages\.1: `web_search` tool use with id `srvtoolu_1` was found without a corresponding `web_search_tool_result` block$/);
+  assert.equal((await send([ask, first, user([result]), second, user([words])])).status, 200, 'the same words after the next reply');
+  assert.equal((await send([ask, first, user([result, words]), second, user([words])])).status, 400, 'in the middle of the history');
+  // A reply after it that doesn't carry the result: refused, whatever its user message holds.
+  const other = { role: 'assistant', content: [{ type: 'text', text: 'Sorry.' }] };
+  assert.equal((await send([ask, first, user([result]), other, user([words])])).status, 400);
+  assert.equal((await send([ask, first, user([result, words]), other, user([words])])).status, 400);
+  // Without the tool use, the same history is taken; a last reply that holds one is a paused turn, continued as it is (and no result is made up).
+  const without = { role: 'assistant', content: first.content.filter((/** @type {any} */ b) => b.type !== 'server_tool_use') };
+  assert.equal((await send([ask, without, user([result, words]), other, user([words])])).status, 200);
+  const paused = await send([ask, { role: 'assistant', content: [ss] }]);
+  assert.equal(paused.status, 200);
+  assert.deepEqual((await contentOf(paused)).map((/** @type {any} */ b) => b.type), ['thinking', 'text']);
+});
+
+test('a web fetch called beside a client tool is left in the same way, and its result is a web_fetch_tool_result', async () => {
+  const fetchUse = { type: 'server_tool_use', id: 'srvtoolu_2', name: 'web_fetch', input: { url: 'https://example.com/a' } };
+  const claude = anthropicStandIn((body) => (body.messages.length === 1 ? [fetchUse, { type: 'tool_use', id: 'toolu_2', name: 'geocode', input: {} }] : [{ type: 'text', text: 'Here.' }]));
+  const send = (/** @type {any[]} */ messages) => claude.fetch('https://api.anthropic.com/v1/messages', { body: JSON.stringify({ model: 'claude-sonnet-5-5', tools: [{ type: 'web_fetch_20250910', name: 'web_fetch' }], messages }) });
+  const ask = { role: 'user', content: [{ type: 'text', text: 'Read it.' }] };
+  const first = { role: 'assistant', content: await contentOf(await send([ask])) };
+  const result = { type: 'tool_result', tool_use_id: 'toolu_2', content: 'x' };
+  assert.equal((await send([ask, first, { role: 'user', content: [result, { type: 'text', text: 'Hi' }] }])).status, 400);
+  assert.match(claude.refused.at(-1), /`web_fetch` tool use with id `srvtoolu_2` was found without a corresponding `web_fetch_tool_result` block/);
+  const answered = await send([ask, first, { role: 'user', content: [result] }]);
+  assert.equal(answered.status, 200);
+  const content = await contentOf(answered);
+  assert.equal(content[0].type, 'web_fetch_tool_result');
+  assert.equal(content[0].content.url, 'https://example.com/a');
+});

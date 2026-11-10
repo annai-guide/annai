@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import http from 'node:http';
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { ZipWriter } from '../../src/core/zip.js';
+import { deferred, resultFor } from '../fakes/anthropic-rules.js';
 
 /**
  * Changes a Trace screen filter and waits until the list has redrawn for it (the list is aria-busy while it reloads),
@@ -147,7 +148,8 @@ export async function buildAndSave(page) {
  * in turn (the last repeats); a reply may wait delayMs, and may wait for a promise (until) the test settles when its state is reached. bodies(path) gives what was posted: parsed JSON, or the bytes.
  * An empty request (no model: {}, or only an output limit), as Custom provider sends to look for what a server
  * offers, is refused with 400 on a route it has, as a real server refuses it, and is neither served a reply nor kept
- * among the bodies.
+ * among the bodies. A request to an Anthropic Messages route that the real API refuses (a server tool left beside a client tool, with anything but
+ * tool results after it) is kept among the bodies and answered 400, as the real API answers it.
  * A reply may be a function of the request's body, for a reply that names what annai chose (a stored file's path, a trip's id).
  * @param {Record<string, Reply | Reply[]>} routes
  * @typedef {{ status: number, type: string, body: string | Buffer, delayMs?: number, until?: Promise<unknown> } | ((body: any) => { status: number, type: string, body: string | Buffer, delayMs?: number, until?: Promise<unknown> })} Reply
@@ -187,6 +189,13 @@ export async function startModelServer(routes) {
           return;
         }
         received.set(path, [...(received.get(path) ?? []), body]);
+        // An Anthropic Messages request the real API refuses (a server tool left beside a client tool, with anything but tool results after
+        // it) is kept as it was sent and answered 400, as the real API answers it: a regression shows as a reply Shiori never got.
+        const no = route && path.endsWith('/v1/messages') ? deferred(body).no : null;
+        if (no) {
+          res.writeHead(400, { ...cors, 'content-type': 'application/json' }).end(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: no } }));
+          return;
+        }
       }
       const n = served.get(route) ?? 0;
       served.set(route, n + 1);
@@ -329,16 +338,28 @@ export async function pickAddress(page, url) {
 }
 
 /**
- * An Anthropic Messages SSE reply that calls tools, with optional text first.
+ * An Anthropic Messages SSE reply that calls tools, with optional text first. server: server tool calls (a web search, say) the reply makes
+ * beside them, which the API leaves unanswered for the next request; answered: the server tool calls of the request this one answers
+ * (deferred(body).run), whose results the reply begins with, as the real API's does.
  * @param {{ name: string, input: any }[]} calls @param {string} [text]
+ * @param {{ server?: { id: string, name: string, input: any }[], answered?: any[] }} [o]
  */
-export function anthropicToolReply(calls, text = '') {
+export function anthropicToolReply(calls, text = '', { server = [], answered = [] } = {}) {
   const ev = (/** @type {string} */ type, /** @type {any} */ data) => `event: ${type}\ndata: ${JSON.stringify({ type, ...data })}\n\n`;
   let out = ev('message_start', { message: { id: 'msg_e2e', type: 'message', role: 'assistant', usage: { input_tokens: 400, output_tokens: 1 } } });
   let i = 0;
+  for (const b of answered) {
+    out += ev('content_block_start', { index: i, content_block: resultFor(b) });
+    out += ev('content_block_stop', { index: i++ });
+  }
   if (text) {
     out += ev('content_block_start', { index: i, content_block: { type: 'text', text: '' } });
     out += ev('content_block_delta', { index: i, delta: { type: 'text_delta', text } });
+    out += ev('content_block_stop', { index: i++ });
+  }
+  for (const c of server) {
+    out += ev('content_block_start', { index: i, content_block: { type: 'server_tool_use', id: c.id, name: c.name, input: {} } });
+    out += ev('content_block_delta', { index: i, delta: { type: 'input_json_delta', partial_json: JSON.stringify(c.input) } });
     out += ev('content_block_stop', { index: i++ });
   }
   for (const [n, c] of calls.entries()) {

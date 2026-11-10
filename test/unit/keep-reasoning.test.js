@@ -251,6 +251,126 @@ test('8. a paused turn with server tools: the continuation ends with her own mes
   appendOnly(claude.bodies);
 });
 
+test('8b. a web search and a tool call in one reply, twice in a turn: each next request carries the tool result alone, with no tail, and the search runs; nothing refused, append-only, the cache read at every step', async (t) => {
+  useClock(t);
+  // The real API refuses any other block after that tool result ("found without a corresponding web_search_tool_result block"), and the stand-in does.
+  const search = (/** @type {number} */ k) => ({ type: 'server_tool_use', id: `srvtoolu_${k}`, name: 'web_search', input: { query: `nepenthe hours ${k}` } });
+  const claude = anthropicStandIn((body) => {
+    const { results } = last(body);
+    if (results.includes('read')) return [use('speak', { text: 'Open till 10.' }), use('sleep')];
+    if (results.includes('list')) return [search(2), use('read', { path: '/trip/notes/hotel.md' })];
+    return [search(1), use('list', { path: '/trip/' })];
+  });
+  // Sonnet with web search as provider-anthropic gives it: the request defines the tool the search is left to run with.
+  const searching = { ...SONNET, providerTools: [{ id: 'anthropic-web-search', name: 'Anthropic web search', kind: 'search', patch: { 'tools+': [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }] }, usageKey: 'web_search_requests' }] };
+  const k = await agentKit([{ ability: AT }], { models: [searching], fetch: claude.fetch });
+  await k.ws.write(k.trip, '/notes/hotel.md', 'Hotel in Monterey.', { author: 'user' });
+  k.agent.send('Is Nepenthe open, and where is our hotel?');
+  await k.agent.idle();
+  assert.deepEqual(claude.refused, []);
+  assert.equal(claude.bodies.length, 3);
+  appendOnly(claude.bodies);
+  assert.ok(claude.bodies.every((b) => b.tools.some((/** @type {any} */ x) => x.name === 'web_search')), 'every request defines the search tool, as the API needs to run it');
+  for (const body of claude.bodies.slice(1)) {
+    const end = body.messages.at(-1);
+    assert.deepEqual(end.content.map((/** @type {any} */ b) => b.type), ['tool_result'], 'the tool result alone: the now block is not sent this step');
+  }
+  assert.deepEqual(claude.bodies.map((b) => thoughts(b).length), [0, 1, 2]);
+  assert.ok(claude.usage.slice(1).every((u) => u.cache_read_input_tokens > 0), 'each request reads what the one before wrote');
+  assert.ok((await turns(k)).every((e) => e.data.attempts.length === 1 && e.data.attempts[0].outcome === 'ok'), 'nothing fell back');
+  assert.deepEqual(k.notices, []);
+  // The now blocks that waited are in the next turn's history in the order they were made, once.
+  k.agent.send('Thanks!');
+  await k.agent.idle();
+  assert.deepEqual(claude.refused, []);
+});
+
+test("8c. a line typed while a mixed step's tool runs: the next request leaves that search out and carries the line at once, and the reply answers it; the next steps are append-only", async (t) => {
+  useClock(t);
+  const line = 'Also, where is our hotel?';
+  const claude = anthropicStandIn((body) => {
+    const { text } = last(body);
+    if (body.messages.length === 1) return [{ type: 'server_tool_use', id: 'srvtoolu_1', name: 'web_search', input: { query: 'nepenthe hours' } }, use('list', { path: '/trip/' })];
+    if (/hotel\?/.test(text)) return [{ type: 'server_tool_use', id: 'srvtoolu_2', name: 'web_search', input: { query: 'nepenthe hours' } }, { type: 'web_search_tool_result', tool_use_id: 'srvtoolu_2', content: [] }, use('speak', { text: 'Nepenthe is open till 10, and your hotel is in Monterey.' })];
+    return [use('sleep')];
+  });
+  const searching = { ...SONNET, providerTools: [{ id: 'anthropic-web-search', name: 'Anthropic web search', kind: 'search', patch: { 'tools+': [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }] }, usageKey: 'web_search_requests' }] };
+  /** @type {any} */
+  let k = null;
+  const fetch = async (/** @type {string} */ url, /** @type {RequestInit} */ init) => {
+    const res = await claude.fetch(url, init);
+    if (claude.bodies.length === 1) k.agent.send(line); // while the first reply comes in: its list tool runs next
+    return res;
+  };
+  k = await agentKit([{ ability: AT }], { models: [searching], fetch });
+  k.agent.send('Is Nepenthe open tonight?');
+  await k.agent.idle();
+  assert.deepEqual(claude.refused, []);
+  assert.equal(claude.bodies.length, 3);
+  appendOnly(claude.bodies);
+  assert.match(JSON.stringify(claude.bodies[1].messages.at(-1)), /where is our hotel/, 'the line goes with the step it joined');
+  assert.deepEqual(claude.bodies.map((b) => thoughts(b).length), [0, 1, 2], 'the thinking goes back each step');
+  assert.equal(JSON.stringify(claude.bodies[1].messages).includes('srvtoolu_1'), false, 'the search left to run is left out');
+  assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Nepenthe is open till 10, and your hotel is in Monterey.']);
+  assert.deepEqual(k.notices, []);
+});
+
+test('8d. a mixed step the user stopped while its tool ran, then a new question: the next turn leaves the stopped search out and answers the question', async (t) => {
+  useClock(t);
+  const question = 'Never mind that. Where is our hotel?';
+  const claude = anthropicStandIn((body) => {
+    const { text } = last(body);
+    if (body.messages.length === 1) return [{ type: 'server_tool_use', id: 'srvtoolu_1', name: 'web_search', input: { query: 'nepenthe hours' } }, use('hang')];
+    if (/hotel\?/.test(text)) return [use('speak', { text: 'Your hotel is in Monterey.' }), use('sleep')];
+    return [use('speak', { text: 'Nepenthe is open till 10.' }), use('sleep')];
+  });
+  const searching = { ...SONNET, providerTools: [{ id: 'anthropic-web-search', name: 'Anthropic web search', kind: 'search', patch: { 'tools+': [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }] }, usageKey: 'web_search_requests' }] };
+  const k = await agentKit([{ ability: AT }], { models: [searching], fetch: claude.fetch });
+  /** @type {() => void} */
+  let started = () => {};
+  const hanging = new Promise((r) => { started = () => r(undefined); });
+  k.registry.add('test', 'tool', { name: 'hang', description: 'Never ends.', input: { type: 'object' }, run: () => { started(); return new Promise(() => {}); } });
+  k.agent.send('Is Nepenthe open tonight?');
+  await hanging;
+  k.agent.interrupt();
+  await k.agent.idle();
+  k.agent.send(question);
+  await k.agent.idle();
+  assert.deepEqual(claude.refused, []);
+  assert.equal(claude.bodies.length, 2);
+  assert.match(JSON.stringify(claude.bodies[1].messages.at(-1)), /Where is our hotel/);
+  assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Your hotel is in Monterey.']);
+});
+
+test("8e. a mixed step whose next request failed, then a new question (as in a conversation 0.5.0 left stuck): the next turn leaves that search out and answers the question", async (t) => {
+  useClock(t);
+  const question = 'Never mind that. Where is our hotel?';
+  const claude = anthropicStandIn((body) => {
+    const { text } = last(body);
+    if (body.messages.length === 1) return [{ type: 'server_tool_use', id: 'srvtoolu_1', name: 'web_search', input: { query: 'nepenthe hours' } }, use('list', { path: '/trip/' })];
+    if (/hotel\?/.test(text)) return [use('speak', { text: 'Your hotel is in Monterey.' }), use('sleep')];
+    return [use('speak', { text: 'Nepenthe is open till 10.' }), use('sleep')];
+  });
+  let down = false;
+  const fetch = async (/** @type {string} */ url, /** @type {RequestInit} */ init) => {
+    if (down) return new Response(JSON.stringify({ type: 'error', error: { type: 'overloaded_error', message: 'Overloaded' } }), { status: 529, headers: { 'content-type': 'application/json' } });
+    const res = await claude.fetch(url, init);
+    down = claude.bodies.length === 1; // the request after the first step fails
+    return res;
+  };
+  const searching = { ...SONNET, providerTools: [{ id: 'anthropic-web-search', name: 'Anthropic web search', kind: 'search', patch: { 'tools+': [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }] }, usageKey: 'web_search_requests' }] };
+  const k = await agentKit([{ ability: AT }], { models: [searching], fetch });
+  k.agent.send('Is Nepenthe open tonight?');
+  await k.agent.idle();
+  down = false;
+  k.agent.send(question);
+  await k.agent.idle();
+  assert.deepEqual(claude.refused, []);
+  assert.equal(claude.bodies.length, 2);
+  assert.match(JSON.stringify(claude.bodies[1].messages.at(-1)), /Where is our hotel/);
+  assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Your hotel is in Monterey.']);
+});
+
 test('9. a fallback mid-turn to another model and back: the other model gets no native or kept now block; Claude gets its own', async (t) => {
   useClock(t);
   const claude = anthropicStandIn(threeSteps);
