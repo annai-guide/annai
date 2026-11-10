@@ -407,7 +407,7 @@ test('two urgent notes sent before any answer: the second reply is said whole ov
     try {
       await until(() => k.agent.live.view.name === 'hearing', 3000);
       await Promise.all([k.agent.live.note('Say now: turn left in 200 m.', 'immediate'), k.agent.live.note('Say now: turn right.', 'immediate')]);
-      await soon(async () => (await k.events(['out.speak'])).some((e) => /Turn right/.test(JSON.stringify(e))), 8000);
+      await soon(async () => (await k.events(['out.speak'])).some((e) => /Turn right/.test(JSON.stringify(e))));
     } finally {
       done = true;
       await feeding;
@@ -435,7 +435,7 @@ test('an urgent note and an appended one from one Kokoro reply: the urgent is sa
     try {
       await until(() => k.agent.live.view.name === 'hearing', 3000);
       await Promise.all([k.agent.live.note('Say now: turn left in 200 m.', 'immediate'), k.agent.live.note('Also: the exit after is closed.', 'append')]);
-      await soon(async () => (await k.events(['out.speak'])).some((e) => /Turn left/.test(JSON.stringify(e))), 8000);
+      await soon(async () => (await k.events(['out.speak'])).some((e) => /Turn left/.test(JSON.stringify(e))));
       await soon(async () => texts(k).some((x) => /exit after/.test(x)), 5000); // the appended one goes in once the urgent one is said
     } finally {
       done = true;
@@ -536,7 +536,7 @@ for (const music of [false, true]) {
         const both = Promise.all([k.agent.live.note('Say now: turn left in 200 m.', 'immediate'), k.agent.live.note('Also: the exit after is closed.', 'append')]);
         if (music) feeding = (async () => { await until(() => k.platform.mic.isOpen(), 3000); await feedOn(k, () => done); })();
         await both;
-        await soon(async () => (await k.events(['out.speak'])).some((e) => /exit after/.test(JSON.stringify(e))), 8000);
+        await soon(async () => (await k.events(['out.speak'])).some((e) => /exit after/.test(JSON.stringify(e))));
       } finally {
         done = true;
         await feeding;
@@ -946,7 +946,7 @@ test('an urgent note answered in two turns, the second with no word yet as the f
     try {
       await until(() => k.agent.live.view.name === 'hearing', 3000);
       await k.agent.live.note('Say now: turn left, then keep right.', 'immediate');
-      await soon(async () => (await k.events(['out.speak'])).some((e) => /keep right/.test(JSON.stringify(e))), 8000);
+      await soon(async () => (await k.events(['out.speak'])).some((e) => /keep right/.test(JSON.stringify(e))));
     } finally {
       done = true;
       await feeding;
