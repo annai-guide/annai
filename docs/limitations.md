@@ -481,3 +481,9 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** with annai open in two tabs, a first line said in one tab spends the draft; the other tab still holds that conversation as its draft, so its next + opens it once, a conversation that already has the first tab's lines, instead of a new one. Traced by the final review of stage 4, not run.
 - **Why:** each tab's `Chats` keeps its own `ready` draft, and nothing tells it that another tab spent it.
 - **Revisit when:** the next version: `Chats` looks at the draft's flag again before + opens it, or a user reports it.
+
+### read_trip reads a long text file only up to its result's cut
+- **Kind:** deferred.
+- **What the user sees:** Shiori reads a text file in another trip (a saved booking email, a long note) with read_trip and gets its first 40,000 characters, the limit on any tool's result (`RESULT_MAX`), told how many more were cut. She can't read on from there: an answer from the rest of the file, the end of a long email say, needs a move to that trip, where `read` has `from`.
+- **Why:** read_trip's `path` gives a file whole, and the result's own cut is all that bounds it; `from` was left out of stage 5's tool (found in the build's review, finding 11).
+- **Revisit when:** the next version: read_trip takes `from`, as `read` does.
