@@ -95,7 +95,7 @@ export function startShell(root, core) {
   addEventListener('resize', showMore);
   document.fonts?.ready.then(showMore); // the tabs widen once annai's fonts arrive
   tapKeepsKeyboard();
-  dockHidesWhileTyping();
+  dockHidesWhileTyping(document, { ended: () => notices.hold() });
   drawTabs();
 
   // Swiping sideways between tabs is experimental, off until Settings → Experimental turns it on. Off, the screen
