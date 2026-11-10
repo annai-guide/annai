@@ -149,8 +149,9 @@ pre.code { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--pap
 /* System cards: in the page under the top bar, never over a screen's buttons; a quarter of the screen at most (spec §16.1). */
 .notices { display: flex; flex-direction: column; gap: 8px; padding: 0 max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); align-items: center; max-height: 25vh; max-height: 25svh; overflow-y: auto; }
 .notices:not(:empty) { padding-top: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
-/* Each card is whole in the box, its four edges in view: one taller than the box scrolls inside itself. */
-.notices > .notice:not(.notice-stack) { flex-shrink: 0; max-height: calc(25vh - 17px); max-height: calc(25svh - 17px); overflow-y: auto; }
+/* Each card is whole in the box, its four edges in view: fit (notices.js) shortens its words or grows it, so it never needs to scroll by itself. One fit
+   within the px it allows for rounding hides that px: a card a finger could scroll by a px would keep a swipe from home. */
+.notices > .notice:not(.notice-stack) { flex-shrink: 0; max-height: calc(25vh - 17px); max-height: calc(25svh - 17px); overflow-y: hidden; }
 .notice > * { flex-shrink: 0; }
 /* A card whose title and buttons need more than the box grows, and the box with it (notices.js). */
 .notices > .notice.open, .notices > .notice.grow { max-height: none; }
