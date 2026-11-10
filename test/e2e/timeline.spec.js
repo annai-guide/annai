@@ -112,6 +112,21 @@ test('happening: tinted, "Day 3 of 8", Next; future: "in 2 weeks", her last line
   expect(await page.locator('.ahead .trip-card .name').allTextContents()).toEqual(['Testville', 'Laterton']);
 });
 
+test('her long last line is cut inside its card: home never scrolls sideways', async ({ page }) => {
+  await openApp(page, '#/trips');
+  await seed(page, { trips: { Laterton: { from: 14, to: 16, said: 'See you at the station, by the east gate. '.repeat(8) } } });
+  const last = row(page, 'Laterton').locator('.her-last');
+  await expect(last).toBeVisible();
+  const box = await last.evaluate((el) => {
+    const card = /** @type {HTMLElement} */ (el.closest('.trip-card')).getBoundingClientRect();
+    const root = document.documentElement;
+    return { line: el.getBoundingClientRect().right, card: card.right, page: root.scrollWidth, room: root.clientWidth, cut: el.scrollWidth > el.clientWidth };
+  });
+  expect(box.line).toBeLessThanOrEqual(box.card);
+  expect(box.page).toBeLessThanOrEqual(box.room);
+  expect(box.cut).toBe(true); // one line, ended with an ellipsis
+});
+
 /** Home with a long past, opened fresh, in a browser tab (the data-safety banner shows) or installed (it doesn't). @param {import('@playwright/test').Page} page @param {boolean} installed */
 async function freshHome(page, installed) {
   await page.addInitScript((standalone) => Object.defineProperty(navigator, 'standalone', { value: standalone, configurable: true }), installed);

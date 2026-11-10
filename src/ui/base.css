@@ -304,9 +304,9 @@ button.chip.filter[aria-pressed='true'] { background: var(--ai); color: var(--ai
 .file-card-words { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
 .pdf-view { display: block; width: 100%; height: 75vh; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); }
 /* Stamps (spec §13, §16.2): station-stamp marks for visited places. */
-/* A card's marks sit under its words, side by side, so neither covers the other's word. */
+/* A card's marks sit under its words, side by side, so neither covers the other's word. Capped at the card's width, or her one-line preview widens them past it. */
 .trip-card { align-items: flex-start; }
-.trip-card-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.trip-card-text { display: flex; flex-direction: column; gap: 4px; max-width: 100%; }
 .stamps { display: flex; flex-wrap: wrap; gap: 6px; }
 /* A longer word gets smaller type, so it fits inside the ring (--n: its characters; a letter is about 0.62em). */
 .stamp {
