@@ -10,6 +10,7 @@ import { utf8 } from '../bytes.js';
 import { readAppSettings } from '../settings.js';
 import { languageSettings, languagesText, screensText, distancesText } from '../languages.js';
 import { lang, glossary } from '../l10n.js';
+import { blobJSON } from '../reach.js';
 
 /**
  * The context, in the order that keeps provider caches warm (spec §6.3):
@@ -22,7 +23,8 @@ import { lang, glossary } from '../l10n.js';
  *   elsewhere?: string }} Snapshot
  *   languages: the languages section's words, from the languages setting; edited: the instructions the user changed (her-instructions.js);
  *   elsewhere: for an undated one, what read_trip may mean (the happening trips, the latest others);
- *   guessed: the trip's name is annai's own first guess (a first line's words or a file's name, the system's write of trip.json, or the draft's placeholder), not one the user or she gave
+ *   guessed: the trip's name is annai's own first guess (a first line's words or a file's name, the system's write of trip.json, or the draft's
+ *   placeholder), or, while it has no dates, her own: not one the user gave
  * @typedef {import('../llm/contract.js').Request} Request
  */
 
@@ -34,8 +36,11 @@ import { lang, glossary } from '../l10n.js';
 export async function takeSnapshot({ ws, registry, trip, personalityName, locale }) {
   const read = async (/** @type {string} */ scope, /** @type {string} */ path) => (await ws.readText(scope, path).catch(() => undefined)) ?? '';
   const tripJson = trip ? await ws.readJSON(trip, '/trip.json').catch(() => null) : null;
-  // Whose name it is: annai's naming (Chats) writes trip.json as the system; a rename in Details, Start a trip and her patches are the user's and hers.
-  const guessed = Boolean(tripJson) && (tripJson.title === DRAFT_TITLE || (await ws.read(/** @type {string} */ (trip), '/trip.json').catch(() => undefined))?.entry.author === 'system');
+  // Whose name it is: annai's naming (Chats) writes trip.json as the system; a rename in Details and Start a trip are the user's. After a write
+  // of hers to an undated one, the name's is whoever wrote the version that first held it: her own name for a chat stays hers to change (F7).
+  const author = trip && tripJson ? (await ws.read(trip, '/trip.json').catch(() => undefined))?.entry.author : undefined;
+  const guessed = Boolean(tripJson) && (tripJson.title === DRAFT_TITLE || author === 'system'
+    || (author === 'shiori' && !tripJson.start && (await namedBy(ws, /** @type {string} */ (trip), tripJson.title)) !== 'user'));
   const app = await readAppSettings(ws);
   /* en */ return {
     trip,
@@ -52,6 +57,16 @@ export async function takeSnapshot({ ws, registry, trip, personalityName, locale
     edited: await editedInstructions(ws),
     elsewhere: trip && !tripJson?.start ? await elsewhere(ws, trip) : '', // as systemText tells an undated one
   };
+}
+
+/** Who wrote the version of trip.json that first held this title, going back while each version holds it. @param {import('../workspace.js').Workspace} ws @param {string} trip @param {unknown} title */
+async function namedBy(ws, trip, title) {
+  let by = '';
+  for (const v of (await ws.history(trip, '/trip.json')).reverse()) {
+    if (v.type !== 'file.write' || (await blobJSON(ws.store, trip, v.new, { quiet: true }))?.title !== title) break;
+    by = v.actor;
+  }
+  return by;
 }
 
 /** The longest name annai takes (start_trip, Start a trip, Details); a file's record can hold more. */
@@ -104,7 +119,7 @@ export function systemText(s, part = '') {
   if (s.trip) {
     /* en */ parts.push(`# This trip (/trip/trip.json)\n${s.tripInfo}`, s.tripMemory.trim() ? `${s.tripMemory.trim()}` : '# Trip memory\n(empty)');
     // From the snapshot, so it stays the same from turn to turn and the cached prefix holds.
-    // Her name for it is only for a name annai guessed: one the user gave (or she did) stays, said so (real models renamed the user's).
+    // Her name for it is only for a name annai or she guessed: one the user gave stays, said so (real models renamed the user's).
     if (!datedInfo(s.tripInfo)) /* en */ parts.push(`# This conversation has no dates\n${s.guessed ? 'Its name is a first guess: patch /trip/trip.json when you know a better one. If it becomes a trip, patch its title and dates there.' : 'Keep its name unless they ask to change it. If it becomes a trip, patch /trip/trip.json with its dates.'}\nIf this is about one of their trips, read it with read_trip first and answer here; take them there with open_trip only if they want to carry on there.${s.elsewhere ? `\n${s.elsewhere}` : ''}`);
     // A dated trip's text names no other trip (so nothing done elsewhere moves it), but says they exist: asked about another trip's
     // hotel in a trip's own conversation, every model searched this one and said there was none (stage 5's real-model pass).
