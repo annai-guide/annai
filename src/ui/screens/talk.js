@@ -871,7 +871,8 @@ function tidyMenu(ctx, trip) {
   let height = -1;
   /** A finger is on the menu: it keeps its height until the finger is up. Taller, a menu scrolled to its end would shift under it, and a tap would land on another entry. */
   let finger = false;
-  for (const type of ['touchstart', 'touchend', 'touchcancel']) menu.addEventListener(type, (e) => { finger = /** @type {TouchEvent} */ (e).touches.length > 0; }, { passive: true });
+  // `touches` is every finger on the screen: one resting on the page, or a pinch's other half, is no finger on the menu.
+  for (const type of ['touchstart', 'touchend', 'touchcancel']) menu.addEventListener(type, (e) => { finger = Array.from(/** @type {TouchEvent} */ (e).touches).some((t) => menu.contains(/** @type {Node} */ (t.target))); }, { passive: true });
   /** The room under the ⋯ for the menu: down to 16 px above the dock (which is over the page's bottom, as tall as it is now); less than none where the ⋯ is under it. */
   const room = () => {
     const dock = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dock-h')) || 0;

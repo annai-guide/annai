@@ -361,30 +361,36 @@ test.describe('the open menu is measured again when what is under or above it mo
   });
 
   // A menu that has more than its room holds scrolls inside, and scrolled to its end it would shift under a finger when it grew: the finger would be on another entry.
-  test('(d) a finger already down on the menu keeps it as it is: it takes the room the dock gave up once the finger is up', async ({ page }) => {
-    const menu = page.locator('.tidy-menu');
-    await bubble(page, 48);
-    await expect.poll(() => gapAboveDock(page)).toBeGreaterThanOrEqual(15);
-    await menu.evaluate((el) => { el.scrollTop = el.scrollHeight; }); // at its end, as a finger leaves it on What each half sees
-    const shown = () => menu.evaluate((el) => ({ height: Math.round(el.getBoundingClientRect().height), scrolled: Math.round(el.scrollTop) }));
-    const held = await shown();
-    expect(held.scrolled).toBeGreaterThan(0);
-    // A finger's touch events, as the engine sends them to the menu: `touches` is what is on the screen now. (WebKit's build here cannot construct a Touch.)
-    /** @param {'touchstart' | 'touchend'} type */
-    const finger = (type) => menu.evaluate((el, type) => {
-      const on = /** @type {HTMLElement} */ (el.querySelector('a.btn:last-of-type'));
-      const event = new Event(type, { bubbles: true, cancelable: true });
-      Object.defineProperty(event, 'touches', { value: type === 'touchstart' ? [{ identifier: 7, target: on }] : [] });
-      on.dispatchEvent(event);
-    }, type);
-    await finger('touchstart');
-    await bubble(page, null); // the dock is 48 px shorter: the menu has 48 px more room
-    await page.waitForTimeout(400);
-    expect(await shown()).toEqual(held); // not a pixel of it moved under the finger
-    await finger('touchend');
-    await expect.poll(async () => (await shown()).height).toBeGreaterThan(held.height + 40);
-    expect(await gapAboveDock(page)).toBeGreaterThanOrEqual(15);
-  });
+  // `touches` counts every finger on the screen, so a finger resting on the page outside the menu (a second one, or a pinch's other half) is no finger on the menu (the
+  // re-review of the follow-ups, finding 1): the hold ends when the menu's own finger is up, whichever else is down.
+  for (const [what, second] of /** @type {const} */ ([['', false], [', with a second finger resting on the page outside it', true]])) {
+    test(`(d) a finger already down on the menu keeps it as it is${what}: it takes the room the dock gave up once its finger is up`, async ({ page }) => {
+      const menu = page.locator('.tidy-menu');
+      await bubble(page, 48);
+      await expect.poll(() => gapAboveDock(page)).toBeGreaterThanOrEqual(15);
+      await menu.evaluate((el) => { el.scrollTop = el.scrollHeight; }); // at its end, as a finger leaves it on What each half sees
+      const shown = () => menu.evaluate((el) => ({ height: Math.round(el.getBoundingClientRect().height), scrolled: Math.round(el.scrollTop) }));
+      const held = await shown();
+      expect(held.scrolled).toBeGreaterThan(0);
+      // A finger's touch events, as the engine sends them to the menu: `touches` is what is on the screen now, the other finger's too (its own events go to the page,
+      // not to the menu). (WebKit's build here cannot construct a Touch.)
+      /** @param {'touchstart' | 'touchend'} type */
+      const finger = (type) => menu.evaluate((el, [type, second]) => {
+        const on = /** @type {HTMLElement} */ (el.querySelector('a.btn:last-of-type'));
+        const event = new Event(type, { bubbles: true, cancelable: true });
+        const resting = second ? [{ identifier: 9, target: document.body }] : [];
+        Object.defineProperty(event, 'touches', { value: type === 'touchstart' ? [...resting, { identifier: 7, target: on }] : resting });
+        on.dispatchEvent(event);
+      }, /** @type {const} */ ([type, second]));
+      await finger('touchstart');
+      await bubble(page, null); // the dock is 48 px shorter: the menu has 48 px more room
+      await page.waitForTimeout(400);
+      expect(await shown()).toEqual(held); // not a pixel of it moved under the finger
+      await finger('touchend');
+      await expect.poll(async () => (await shown()).height).toBeGreaterThan(held.height + 40);
+      expect(await gapAboveDock(page)).toBeGreaterThanOrEqual(15);
+    });
+  }
 
   // The shell sets --dock-h and --topbar-h from observers, which run after the frame's resize event: a menu measured by that event read last frame's heights.
   test('(c) the dock grows in the frame a resize comes in, which is before the shell has updated --dock-h', async ({ page }) => {
