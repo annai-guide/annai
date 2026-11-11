@@ -225,6 +225,8 @@ export class LiveKoe {
   /** That window, in seconds. */
   answerSeconds = LIVE_ANSWER_S;
   #brief = false;
+  /** A tap's session or microphone is opening, until it settles or closes (#ready): the dock says "One moment…". @type {object | null} */
+  #readying = null;
   /** The quiet spell ran out while only the user's turn (or its answer) was pending: her answer re-arms it, a dismissed turn closes. */
   #lapsed = false;
   /**
@@ -305,10 +307,17 @@ export class LiveKoe {
     return Boolean(this.#opening || this.#t || this.#sounding || this.#pending || this.#queue.length || this.#tools || (this.state === 'open' && !this.#s));
   }
 
-  /** The dock's state, as a half's (spec §16.3). @returns {import('../agent/loop.js').State} */
+  /**
+   * The dock's state, as a half's (spec §16.3). While a session opens, or its microphone is being asked for, she is getting ready: after the
+   * user's tap that is "opening", awake with no glow, and Listening comes only once the microphone hears, since the glow is the cue to speak;
+   * otherwise (a note, a trigger, a typed line) she is about to speak, so she is thinking (the drive-3 design, D5).
+   * @returns {import('../agent/loop.js').State}
+   */
   get view() {
-    const name = this.state === 'opening' ? 'thinking' : this.state === 'closed' ? 'sleeping' : this.#sounding ? 'speaking'
-      : this.#input?.active ? 'hearing' : this.#t || this.#pending || this.#queue.length || this.#urgent || (this.#input && !this.listening) ? 'thinking' : this.listening ? (this.#ignoring ? 'ignoring' : 'listening') : 'sleeping';
+    const ready = this.#readying ? 'opening' : 'thinking';
+    const name = this.state === 'opening' ? ready : this.state === 'closed' ? 'sleeping' : this.#sounding ? 'speaking'
+      : this.#input?.active ? 'hearing' : this.#t || this.#pending || this.#queue.length || this.#urgent ? 'thinking' : this.#input && !this.listening ? ready
+        : this.listening ? (this.#ignoring ? 'ignoring' : 'listening') : 'sleeping';
     return { name, label: LABELS[name] };
   }
 
@@ -599,7 +608,7 @@ export class LiveKoe {
     input.onOutside = (pcm) => v.outside?.(pcm, input.rate);
     clearTimeout(this.#toPlayback);
     p.session('play-and-record');
-    this.#changed(); // the microphone is being asked for: the dock shows her working (view), not listening
+    this.#changed(); // the microphone is being asked for: the dock shows her getting ready (view), not listening
     // She listens once it is open, not before: the glow is the user's cue to speak, and getUserMedia and the capture worklet can be slow.
     // A close (or a stop, or a newer microphone) that came meanwhile has let this one go: it listens to nothing, and a failure is its own.
     await input.start().then(() => {
@@ -655,6 +664,7 @@ export class LiveKoe {
     // Another conversation, or a fresh start: Kokoro's notes it owed are shown in the one left, never lost.
     if (forget && (why === 'switch' || why === 'fresh') && this.owing) this.c.left?.([...this.#owed.sent, ...this.#owed.waiting]);
     this.#closing = null;
+    this.#readying = null;
     clearTimeout(this.#hearFirst);
     this.#hearFirst = null;
     if (forget) {
@@ -747,7 +757,7 @@ export class LiveKoe {
     if (this.#sounding) {
       this.#lift();
       this.interrupt();
-      this.listen();
+      this.#ready(this.listen());
       return 'cut';
     }
     // "Ignoring · tap to talk": the words offer this. The microphone stays open, and the next sound is a turn, however soft.
@@ -757,7 +767,8 @@ export class LiveKoe {
       this.#poke();
       return 'listening';
     }
-    if (this.listening || this.#input) { // listening, or its microphone is starting
+    // Listening, its microphone starting, or a session a tap opens still connecting ("One moment…"): a tap stops it.
+    if (this.listening || this.#input || (this.#readying && this.state === 'opening')) {
       this.close('tap');
       return 'stopped';
     }
@@ -765,8 +776,19 @@ export class LiveKoe {
     this.#lift();
     if (this.#otherVoice()) this.c.release(); // the user asked: a reminder being said stops, and a session opens at once
     if (this.state === 'closed' && this.#owed.waiting.length) this.#hearFirst = setTimeout(() => this.#heardFirst(), 2 * Math.max(500, this.c.secondMs ?? 1000));
-    this.tapping = this.open('tap', { mic: true }).then((ok) => ok || !this.#failed ? 'ok' : 'failed', () => 'failed');
+    this.tapping = this.#ready(this.open('tap', { mic: true })).then((ok) => ok || !this.#failed ? 'ok' : 'failed', () => 'failed');
     return 'listening';
+  }
+
+  /**
+   * The user's tap is being answered by what opens (a session, its microphone): the dock says "One moment…" until it settles, opened or not.
+   * @template T @param {Promise<T>} opening @returns {Promise<T>}
+   */
+  #ready(opening) {
+    const mine = {};
+    this.#readying = mine;
+    this.#changed();
+    return opening.finally(() => { if (this.#readying === mine) this.#readying = null; });
   }
 
   /** The user's first turn after a tap ended, or never began: what was kept goes in. */

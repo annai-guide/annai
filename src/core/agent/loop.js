@@ -67,7 +67,8 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  *   call: the call of Kokoro's a gated note stands for (its show or ask); seq: a note's entry in the conversation;
  *   watched: Koe's note, or its "answered the user" cue, was made by a Koe turn the user is watching (isWatched); forUser: Kokoro's exact words
  *   for the user with its note (tell_koe's for_user), all annai ever shows of it (§7.1); retold: the note, never passed on, went to Koe's next turn again
- * @typedef {'sleeping' | 'thinking' | 'speaking' | 'listening' | 'ignoring' | 'hearing' | 'waiting' | 'away' | 'offline'} StateName
+ * @typedef {'sleeping' | 'opening' | 'thinking' | 'speaking' | 'listening' | 'ignoring' | 'hearing' | 'waiting' | 'away' | 'offline'} StateName
+ *   opening: a live session the user's tap opens, or its microphone, is getting ready: awake, no glow, until she can hear
  * @typedef {import('../voice/resolve.js').Heard} Heard
  * @typedef {import('./listen.js').Got} Got
  * @typedef {{ snapshot: import('./context.js').Snapshot, system: string, tools: LoopTool[], defs: import('../llm/contract.js').ToolDef[], via: ReturnType<typeof webVia>,
@@ -132,7 +133,7 @@ const NO_TOOLS = /** @type {any} */ ({ entries: () => [] });
 
 /** The dock's words for each state (spec §16.3), in the screens' language: boot.js sets the words before this module loads. */
 export const LABELS = Object.freeze({
-  sleeping: t`Tap to talk`, thinking: t`Thinking · tap to stop`, speaking: t`Tap to interrupt`, listening: t`Listening`, ignoring: t`Ignoring sound · tap to talk`, hearing: t`Hearing you`, waiting: t`Waiting for your OK`,
+  sleeping: t`Tap to talk`, opening: t`One moment…`, thinking: t`Thinking · tap to stop`, speaking: t`Tap to interrupt`, listening: t`Listening`, ignoring: t`Ignoring sound · tap to talk`, hearing: t`Hearing you`, waiting: t`Waiting for your OK`,
   away: t`Working on …`, offline: t`Offline · reminders still work`,
 });
 /** What she is away doing while she tidies up the conversation: the dock's words are made from it. */
