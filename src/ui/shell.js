@@ -36,6 +36,7 @@ import { tapKeepsKeyboard } from './tap-keeps-keyboard.js';
 import { keepRows } from './keep-rows.js';
 import { isStandalone } from './platform.js';
 import { dockHidesWhileTyping } from './dock-hides.js';
+import { keepAtEnd } from './at-end.js';
 import { noteScreen } from './resume.js';
 import { followDrive, followPlay, isField, drivingTrip } from './today.js';
 import { renderExt, renderPluginPage, renderTripTab } from './screens/ext.js';
@@ -146,30 +147,8 @@ export function startShell(root, core) {
   if (typeof ResizeObserver === 'function') {
     new ResizeObserver(([e]) => document.documentElement.style.setProperty('--topbar-h', `${Math.floor(/** @type {HTMLElement} */ (e.target).getBoundingClientRect().height)}px`)).observe(header);
   }
-  // A page read to its end stays there when its end moves: the window changes size (a phone turned) or the dock's height (53 px tall, 41 on its
-  // side). "At its end" is what the user's own scrolls left: not one at another size than the last resize's (WebKit clamps first), nor one to where
-  // toEnd last put the page (its event comes after the next fit; WebKit's clamp to a stale layout lands there too). Put back after each fit: the
-  // cards' (their resize handler runs first), the dock's, and the engine's layout two frames on.
-  let atEnd = false;
-  let ours = -1;
-  const sizeNow = () => `${innerWidth}x${innerHeight}`;
-  let sizeSeen = sizeNow();
-  const toEnd = () => {
-    if (!atEnd) return;
-    scrollTo(0, document.documentElement.scrollHeight);
-    ours = scrollY;
-  };
-  addEventListener('scroll', () => {
-    if (sizeNow() !== sizeSeen || scrollY === ours) return;
-    const d = document.documentElement;
-    atEnd = scrollY > 0 && scrollY + d.clientHeight >= d.scrollHeight - 1;
-    ours = -1;
-  }, { passive: true });
-  addEventListener('resize', () => {
-    sizeSeen = sizeNow();
-    toEnd();
-    requestAnimationFrame(() => requestAnimationFrame(toEnd));
-  });
+  // A page read to its end stays there when a phone turns or the dock changes height (at-end.js). After the cards' resize handler, which runs first.
+  const { toEnd } = keepAtEnd();
   // The page and the cards make room for the dock as tall as it is now: voice on, typing open, or a plugin's.
   const dockSize = typeof ResizeObserver === 'function' ? new ResizeObserver(([e]) => {
     document.documentElement.style.setProperty('--dock-h', `${Math.ceil(/** @type {HTMLElement} */ (e.target).getBoundingClientRect().height)}px`);
