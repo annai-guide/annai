@@ -1080,42 +1080,76 @@ test("a turn cut by opening another conversation while a tool of hers runs is ta
   }
 });
 
-test("an open's cut, by what the turn was: waiting on the user, or started by annai itself, is let go (no line, nothing on return, a reminder still shown); one the user started, at work, is picked up (the user's S6 and D9)", async (t) => {
+test("a cut, by what the turn was: one waiting on the user, or that annai started and the user didn't answer, is let go (no line, nothing on return, words that say so); one the user started or answered, at work, is picked up; a reminder it owed shows once, at the cut (the user's S6 and D9; the re-review 3's F4 to F7)", async (t) => {
   useClock(t);
-  const linger = { name: 'linger', input: {} };
-  /** @type {[string, { script: any[], voice?: boolean, start: (k: any) => unknown, ready: (k: any) => boolean, picked: boolean, reminder?: string }][]} */
+  const NOT_ANSWERED = 'Not answered: the user opened another conversation; what they say next may answer it.';
+  const LET_GO = "Let go: the user opened another conversation; don't take it up unless they ask.";
+  const CUT = 'Cut off: another conversation was opened while this ran. It may have finished: check before you do it again.';
+  const linger = (ms = 60_000) => ({ name: 'linger', input: { ms } });
+  const reminder = { kind: 'trigger', text: 'A reminder came.', fallbacks: [{ watch: 'r1', text: 'Leave for the ferry at 5.' }] };
+  const asked = async (/** @type {any} */ k) => (await k.events(['tool.call'])).find((/** @type {any} */ e) => e.data.name === 'ask');
+  /**
+   * script: her replies; drive: brings the turn to the cut; cut: 'open' (default), 'open twice' or 'stop'; picked: taken up (the paused line, the
+   * toast, a request on return); words: the running call's result; reminder: the text annai shows itself at the cut, once.
+   * @type {[string, { script: any[], voice?: any, drive: (k: any) => Promise<unknown>, cut?: string, picked: boolean, words?: string, running?: string, reminder?: string, silent?: boolean }][]}
+   */
   const rows = [
-    ['her ask, shown, waiting for a tap', { script: [{ toolCalls: [{ name: 'ask', input: { question: 'Lunch or dinner?', options: ['Lunch', 'Dinner'] } }] }], start: (k) => k.agent.send('Plan tonight'), ready: (k) => Boolean(k.agent.pendingId), picked: false }],
-    ['her question said aloud, the microphone open', { script: [{ toolCalls: [{ name: 'speak', input: { text: 'Which day?' } }] }], voice: true, start: (k) => k.agent.send('Book us a table'), ready: (k) => Boolean(k.agent.pendingId), picked: false }],
-    ['her wait for their answer', { script: [{ toolCalls: [{ name: 'speak', input: { text: 'Which day?' } }, { name: 'wait', input: { seconds: 60 } }] }], start: (k) => k.agent.send('Book us a table'), ready: (k) => k.agent.waiting, picked: false }],
-    ['the GPS-on wake, at work', { script: [{ toolCalls: [linger] }], start: (k) => k.agent.wake({ kind: 'live', text: 'The user turned GPS on.' }), ready: () => lingering, picked: false }],
-    ['a reminder firing, at work', { script: [{ toolCalls: [linger] }], start: (k) => k.agent.wake({ kind: 'trigger', text: 'A reminder came.', fallbacks: [{ watch: 'r1', text: 'Leave for the ferry at 5.' }] }), ready: () => lingering, picked: false, reminder: 'Leave for the ferry at 5.' }],
-    ["the user's question, at work", { script: [{ toolCalls: [linger] }], start: (k) => k.agent.send('When is check-in?'), ready: () => lingering, picked: true }],
+    ['her ask, shown, waiting for a tap', { script: [{ toolCalls: [{ name: 'ask', input: { question: 'Lunch or dinner?', options: ['Lunch', 'Dinner'] } }] }], drive: async (k) => { k.agent.send('Plan tonight'); await until(() => k.agent.pendingId); }, picked: false, running: 'ask', words: NOT_ANSWERED }],
+    ['her ask, then two opens at once', { script: [{ toolCalls: [{ name: 'ask', input: { question: 'Lunch or dinner?', options: ['Lunch', 'Dinner'] } }] }], drive: async (k) => { k.agent.send('Plan tonight'); await until(() => k.agent.pendingId); }, cut: 'open twice', picked: false, running: 'ask', words: NOT_ANSWERED }],
+    ['her question said aloud, the microphone open', { script: [{ toolCalls: [{ name: 'speak', input: { text: 'Which day?' } }] }], voice: {}, drive: async (k) => { k.agent.send('Book us a table'); await until(() => k.agent.pendingId); }, picked: false, running: 'speak', words: NOT_ANSWERED }],
+    ['her question cut while she is still saying it', { script: [{ toolCalls: [{ name: 'speak', input: { text: 'Which day would you like?' } }] }], voice: { playMs: 60_000 }, drive: async (k) => { k.agent.send('Book us a table'); await until(() => k.said.includes('Which day would you like?')); }, picked: false, running: 'speak', words: NOT_ANSWERED }],
+    ['her wait for their answer', { script: [{ toolCalls: [{ name: 'speak', input: { text: 'Which day?' } }, { name: 'wait', input: { seconds: 60 } }] }], drive: async (k) => { k.agent.send('Book us a table'); await until(() => k.agent.waiting); }, picked: false, running: 'wait', words: NOT_ANSWERED }],
+    ['"Let me check." said aloud and listening, a search still to do (N1)', { script: [{ toolCalls: [{ name: 'speak', input: { text: 'Let me check.' } }, linger()] }], voice: {}, drive: async (k) => { k.agent.send('When does the ferry leave?'); await until(() => k.agent.pendingId); }, picked: true, running: 'speak', words: CUT }],
+    ['the GPS-on wake, at work', { script: [{ toolCalls: [linger()] }], drive: async (k) => { k.agent.wake({ kind: 'live', text: 'The user turned GPS on.' }); await until(() => lingers === 1); }, picked: false, running: 'linger', words: LET_GO }],
+    ['a reminder firing, at work', { script: [{ toolCalls: [linger()] }], drive: async (k) => { k.agent.wake(reminder); await until(() => lingers === 1); }, picked: false, running: 'linger', words: LET_GO, reminder: 'Leave for the ferry at 5.' }],
+    ['a reminder firing, she offers, the user types yes, she works on it (N2)', { script: [{ toolCalls: [{ name: 'speak', input: { text: 'Want me to find a taxi?' } }] }, { toolCalls: [linger()] }], voice: {}, drive: async (k) => { k.agent.wake(reminder); await until(() => k.agent.pendingId); k.agent.send('Yes, find one.'); await until(() => lingers === 1); }, picked: true, running: 'linger', words: CUT }],
+    ['a reminder firing, she asks, the user taps Yes, she works on it (N2b)', { script: [{ toolCalls: [{ name: 'ask', input: { question: 'Want me to find a taxi?', options: ['Yes', 'No'] } }] }, { toolCalls: [linger()] }], drive: async (k) => { k.agent.wake(reminder); await until(() => k.agent.pendingId); k.agent.answer((await asked(k)).data.id, 'Yes'); await until(() => lingers === 1); }, picked: true, running: 'linger', words: CUT }],
+    ["the user's question, at work", { script: [{ toolCalls: [linger()] }], drive: async (k) => { k.agent.send('When is check-in?'); await until(() => lingers === 1); }, picked: true, running: 'linger', words: CUT }],
+    ["a reminder joining the user's turn at work (N3)", { script: [{ toolCalls: [linger(1000)] }, { toolCalls: [linger()] }], drive: async (k) => { k.agent.send('When is check-in?'); await until(() => lingers === 1); k.agent.wake(reminder); await until(() => lingers === 2); }, picked: true, running: 'linger', words: CUT, reminder: 'Leave for the ferry at 5.' }],
+    ["a reminder queued behind the user's turn at work (N3b)", { script: [{ toolCalls: [linger()] }], drive: async (k) => { k.agent.send('When is check-in?'); await until(() => lingers === 1); k.agent.wake(reminder); await new Promise((r) => setTimeout(r, 20)); }, picked: true, running: 'linger', words: CUT, reminder: 'Leave for the ferry at 5.' }],
+    ["the user's Stop while her turn still gathers their line, a reminder with it", { script: [], drive: async (k) => { k.agent.typing(true); k.agent.send('When is check-in?'); k.agent.wake(reminder); await new Promise((r) => setTimeout(r, 20)); }, cut: 'stop', picked: false, running: 'none', reminder: 'Leave for the ferry at 5.' }],
+    ["the user's Stop on a reminder's turn before she said it (N4)", { script: [{ toolCalls: [linger()] }], voice: {}, drive: async (k) => { k.agent.wake(reminder); await until(() => lingers === 1); }, cut: 'stop', picked: false, running: 'linger', words: 'Stopped by the user.', reminder: 'Leave for the ferry at 5.', silent: true }],
   ];
-  let lingering = false;
+  let lingers = 0;
+  /** @type {string[]} */
+  const failed = [];
+  const eq = (/** @type {any} */ got, /** @type {any} */ want, /** @type {string} */ what) => { if (JSON.stringify(got) !== JSON.stringify(want)) failed.push(`${what}: ${JSON.stringify(got)}, wanted ${JSON.stringify(want)}`); };
   for (const [row, r] of rows) {
-    lingering = false;
-    const k = await agentKit([[...r.script, say('Back to it.')]], r.voice ? { voice: {} } : {});
-    k.agent.addLoopTools([{ name: 'linger', pluginId: 'core', group: 'Time', description: 'Wait.', input: { type: 'object' }, run: async () => {
-      lingering = true;
-      await new Promise((res) => setTimeout(res, 60_000));
+    lingers = 0;
+    const k = await agentKit([[...r.script, say('Back to it.'), say('And again.')]], r.voice ? { voice: r.voice } : {});
+    k.agent.addLoopTools([{ name: 'linger', pluginId: 'core', group: 'Time', description: 'Wait.', input: { type: 'object' }, run: async (/** @type {any} */ input) => {
+      lingers++;
+      await new Promise((res) => setTimeout(res, input?.ms ?? 60_000));
       return 'Done.';
     } }]);
     const A = k.trip;
-    r.start(k);
-    await until(() => r.ready(k));
-    await k.agent.open(await createTrip(k.ws, { title: 'Kyoto' }));
+    await r.drive(k);
+    const B = await createTrip(k.ws, { title: 'Kyoto' });
+    if (r.cut === 'stop') k.agent.interrupt();
+    else if (r.cut === 'open twice') {
+      const C = await createTrip(k.ws, { title: 'Nara' });
+      k.agent.open(B);
+      await k.agent.open(C);
+    } else await k.agent.open(B);
     await k.agent.idle();
-    assert.equal((await eventsIn(k, A, ['paused'])).length, r.picked ? 1 : 0, `${row}: the paused line`);
-    assert.equal(k.notices.filter((/** @type {any} */ n) => n.toast).length, r.picked ? 1 : 0, `${row}: the toast`);
-    const reminders = (await eventsIn(k, A, ['reminder'])).map((/** @type {any} */ e) => e.data.text);
-    assert.deepEqual(reminders, r.reminder ? [r.reminder] : [], `${row}: a reminder it carried`);
-    if (r.reminder) assert.ok(k.notices.some((/** @type {any} */ n) => n.body === r.reminder), `${row}: the reminder's card`);
+    eq((await eventsIn(k, A, ['paused'])).length, r.picked ? 1 : 0, `${row}: the paused line`);
+    eq(k.notices.filter((/** @type {any} */ n) => n.toast).length, r.picked ? 1 : 0, `${row}: the toast`);
+    const results = (await eventsIn(k, A, ['tool.result'])).filter((/** @type {any} */ e) => e.data.name === r.running);
+    eq(results.at(-1)?.data.content, r.words, `${row}: the words the cut call gets`);
+    const shown = () => k.notices.filter((/** @type {any} */ n) => n.body === r.reminder).length;
+    const filed = async () => (await eventsIn(k, A, ['reminder'])).map((/** @type {any} */ e) => e.data.text);
+    eq(await filed(), r.reminder ? [r.reminder] : [], `${row}: a reminder it owed, filed`);
+    eq(shown(), r.reminder ? 1 : 0, `${row}: its card`);
+    if (r.reminder && r.voice) eq(k.said.includes(r.reminder), !r.silent, `${row}: said aloud, or silent after a Stop`);
     const before = k.requests.length;
+    if (r.cut === 'stop') await k.agent.open(B);
     await k.agent.open(A);
     await k.agent.idle();
-    assert.equal(k.requests.length - before, r.picked ? 1 : 0, `${row}: taken up on return`);
+    eq(k.requests.length - before, r.picked ? 1 : 0, `${row}: taken up on return`);
+    eq(await filed(), r.reminder ? [r.reminder] : [], `${row}: the reminder shown once`);
+    eq(shown(), r.reminder ? 1 : 0, `${row}: one card`);
   }
+  assert.deepEqual(failed, []);
 });
 
 test("cut by an open, the call running may have finished and says so; a call after it never started and says that; the user's Stop is said as a Stop (the re-review 3: F3)", async (t) => {
