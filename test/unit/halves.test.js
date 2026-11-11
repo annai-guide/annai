@@ -566,6 +566,67 @@ test("an old conversation opened again, Koe unset or not, takes up nothing: line
   }
 });
 
+test("Koe's notes Kokoro doesn't take up on purpose are written as settled: she had told Koe (after her turn, or in its last step), or the user's Stop held; opening the conversation again, or a reload, says no old answer again (the review of item 8: F5)", async (t) => {
+  useClock(t);
+  const { Transcript } = await import('../../src/core/agent/transcript.js');
+  for (const where of ['answered', 'last step', 'stopped']) {
+    let koeCalls = 0;
+    let lingered = false;
+    const k = await agentKit([{ rules: [
+      { match: 'the user wrote', times: 1, reply: calls(['tell_koe', { text: 'Check-in is at 3.' }], ...(where === 'last step' ? [/** @type {[string, any]} */ (['linger', {}])] : [])) },
+      { match: '.', reply: calls(['tell_koe', { text: 'Again: check-in is at 3.' }]) },
+    ] }], {
+      koe: { type: { rules: [
+        { match: 'the user wrote', reply: calls(['speak', { text: 'On it.' }], ...(where === 'stopped' ? [/** @type {[string, any]} */ (['tell_kokoro', { text: 'When is check-in?' }])] : [])) },
+        { match: 'a note from Kokoro', times: 1, reply: calls(['speak', { text: 'Check-in is at 3.' }], ['tell_kokoro', { text: 'Anything more about check-in?' }]) },
+        { match: '.', reply: sleep },
+      ] } },
+      // Koe answers her note once her turn is over (not in its last step); stopped: her call takes a while, so the Stop finds her turn running.
+      hold: async (c) => {
+        if (c.model.providerId === 'model-koe' && ++koeCalls === 2 && where === 'answered') await new Promise((r) => setTimeout(r, 50));
+        if (c.model.providerId === 'model-0' && where === 'stopped') await new Promise((r) => setTimeout(r, 100));
+      },
+    });
+    // Her turn's last step lingers until Koe has asked again: the question waits in her queue, and goes when her turn ends.
+    k.agent.addLoopTools([{ name: 'linger', pluginId: 'core', group: 'Time', description: 'Wait.', input: { type: 'object' }, run: async () => {
+      for (let i = 0; i < 200 && !(await k.events(['note'])).some((e) => e.data.from === 'koe'); i++) await new Promise((r) => setTimeout(r, 5));
+      lingered = (await k.events(['note'])).some((e) => e.data.from === 'koe');
+      return 'Done.';
+    } }]);
+    if (where === 'stopped') {
+      // The user taps the sign's Stop on her running turn as Koe's question is being written (it passed the Stop's refusal before the
+      // tap), and the question's entry comes after her turn's "stopped".
+      const write = k.agent.channel.log.koe;
+      k.agent.channel.log.koe = async (/** @type {any} */ ev) => {
+        await until(() => k.agent.kokoro.turning);
+        k.agent.stopKokoro();
+        await k.agent.kokoro.idle();
+        return write(ev);
+      };
+    }
+    k.agent.send('When is check-in?');
+    await new Promise((r) => setTimeout(r, 200));
+    await k.agent.idle();
+    if (where === 'last step') assert.ok(lingered, 'Koe asked while her last step ran');
+    const kokoroCalls = (k.sent['model-0'] ?? []).length;
+    assert.equal(kokoroCalls, 1, where);
+    assert.equal(k.agent.kokoro.transcript.unanswered, false, `${where}: nothing owed`);
+    assert.equal((await Transcript.load(k.store, k.trip, { half: 'kokoro' })).unanswered, false, `${where}: nothing owed after a reload`);
+    const said = (await shown(k)).length;
+    const other = await createTrip(k.ws, { title: 'Elsewhere' });
+    await k.agent.open(other);
+    await k.agent.idle();
+    await k.agent.open(k.trip);
+    await k.agent.idle();
+    assert.equal(k.agent.kokoro.owed, false, where);
+    assert.equal((k.sent['model-0'] ?? []).length, kokoroCalls, `${where}: no restart turn`);
+    assert.deepEqual((await shown(k)).slice(said), [], `${where}: nothing said again`);
+    // What the Trace keeps: one quiet line, which the conversation doesn't show.
+    const errors = (await k.events(['error'])).map((e) => [e.data.kind, e.data.quiet, Boolean(e.data.wake)]);
+    assert.deepEqual(errors.at(-1), [where === 'stopped' ? 'stopped' : 'answered', true, true], `${where}: ${JSON.stringify(errors)}`);
+  }
+});
+
 // Fix pass 2 (the review's reload-midturn probe): annai reloads while Koe waits on Kokoro and Kokoro is mid-call.
 test('after a reload mid-turn, Kokoro reads by its two-half rules from its first turn, and only Kokoro takes up the restart: Koe speaks once', async (t) => {
   useClock(t);

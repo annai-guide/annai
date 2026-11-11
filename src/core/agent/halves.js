@@ -1,7 +1,7 @@
 import { Agent, GATHER, isTheirs, isForUser, checkCard, checkAsk, CAPS, capped, soundStuck } from './loop.js';
 import { TALK_TAG, KOE_TAG } from './log.js';
 import { asksOrNotes, quote, cardText, escapeTags, newNonce, koeLine, asideLabel, saidWithout, wrapNote, theirs, conversationLines } from './blocks.js';
-import { linesOf } from './transcript.js';
+import { linesOf, STOPPED } from './transcript.js';
 import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 import { systemText, nowBlock, takeSnapshot } from './context.js';
 import { ME, SYS_SETTINGS, newId } from '../scopes.js';
@@ -41,6 +41,8 @@ const BLOCKS = Object.freeze({
 });
 /** What Koe is told when it asks Kokoro after the user's Stop. */
 export const STOP_HELD = /* en */ "Not sent: the user stopped Kokoro, and hasn't written or spoken since. Don't ask Kokoro again until they do; say you can't check that now.";
+/** The Trace's line for Koe's notes Kokoro doesn't take up, as she had told Koe already (#setAside). */
+const TOLD_ALREADY = /* en */ "Koe's note wasn't put to Kokoro: she had told Koe already, since the user's last words.";
 /** How long Koe rests after its whole list failed, at least. */
 export const KOE_REST_MS = 60_000;
 /** The longest a session that wants to open waits for a reminder being said. */
@@ -158,6 +160,8 @@ export class Halves {
   #koeTrip = undefined;
   /** Kokoro told Koe since the user last typed or spoke: Koe asking about it again wakes nobody. */
   #answered = false;
+  /** Koe's notes set aside on purpose (#setAside), not yet written as settled: in which conversation, and whether for the user's Stop. @type {{ scope: string, stopped: boolean } | null} */
+  #aside = null;
   /** Heard words Kokoro hasn't woken for: Koe answering them wakes it. */
   #cue = false;
   /** When the user's typed line came that a text Koe hasn't said its first words to yet (0: none): Kokoro's turn waits for them (KOE_FIRST_S). */
@@ -237,7 +241,7 @@ export class Halves {
           else this.koe.enqueue(w);
         },
         kokoro: (w) => {
-          if (w.from === 'koe' && (this.#answered || this.#stopped.on)) return;
+          if (w.from === 'koe' && (this.#answered || this.#stopped.on)) return this.#setAside(this.#stopped.on);
           this.#asked ||= w.from === 'koe';
           this.#wakeKokoro(w);
         },
@@ -1375,8 +1379,32 @@ export class Halves {
     if (told) {
       this.#answered = true;
       this.#asked = false;
-      this.kokoro.drop((w) => w.kind === 'note' && w.from === 'koe');
+      if (this.kokoro.drop((w) => w.kind === 'note' && w.from === 'koe').length) this.#setAside(false); // came in her turn's last step
     }
+  }
+
+  /**
+   * Koe's notes Kokoro doesn't take up on purpose: she has told Koe since the user's last words, or the user's Stop holds. Her transcript reads
+   * a Koe note as owed, so a quiet error with a wake is written after them, which it reads as answered (as a Stop's): opening the conversation
+   * again, or a reload, doesn't take them up and say an old answer again (item 8's review, F5). Once she is idle in that conversation, not
+   * before: the error settles everything before it, and a turn of hers still running, or a wake still queued, is owed in its own right.
+   * @param {boolean} stopped
+   */
+  #setAside(stopped) {
+    this.#aside = { scope: this.kokoro.scope, stopped };
+    this.#settleAside();
+  }
+
+  #settleAside() {
+    const a = this.#aside;
+    if (!a) return;
+    if (this.kokoro.busy) return void this.kokoro.idle().then(() => this.#settleAside(), () => {});
+    this.#aside = null;
+    // Another conversation opened meanwhile: the one left is its own (a turn cut there is taken up, and reads the note).
+    if (a.scope !== this.kokoro.scope || this.kokoro.switching || !this.kokoro.transcript.unanswered) return;
+    const p = this.kokoro.log({ type: 'error', actor: 'system', data: { kind: a.stopped ? 'stopped' : 'answered', wake: newId('w'), message: a.stopped ? STOPPED : TOLD_ALREADY, quiet: true } }).catch(() => {});
+    this.#sending.add(p);
+    p.finally(() => this.#sending.delete(p));
   }
 
   /**
