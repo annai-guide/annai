@@ -21,6 +21,8 @@ const record = (page, id) => page.evaluate(async (id) => {
   return rec;
 }, id);
 const draftOf = (/** @type {string} */ url) => decodeURIComponent(new URL(url).hash.split('/')[2]);
+/** Her dates line once its Undo was used: "Undone" where the Undo was, as the hand-over's line says. Still the user's call: the other answer is the line alone ('Shiori set the dates'). */
+const UNDONE = 'Shiori set the dates Undone';
 
 test('+ on home, voice off: the draft opens with the box ready; the first line names it, and the next + opens another', async ({ page }) => {
   await openApp(page, '#/trips');
@@ -312,7 +314,7 @@ test("Shiori's patch dates the open chat: its row becomes a card below now, and 
     await expect(page).toHaveURL(new RegExp(`#/trip/${id}/talk$`));
     await line.getByRole('button', { name: 'Undo' }).click();
     // It stays at its place as a record, its Undo gone, and says so, as the hand-over's Undo line does.
-    await expect(line).toHaveText('Shiori set the dates Undone');
+    await expect(line).toHaveText(UNDONE);
     await expect(line.getByRole('button')).toHaveCount(0);
     await expect(page.locator('.toasts').getByText('Undone.', { exact: true })).toBeVisible(); // said, as the hand-over's Undo is
     await page.getByRole('link', { name: 'Back to Trips' }).click();
@@ -321,7 +323,7 @@ test("Shiori's patch dates the open chat: its row becomes a card below now, and 
     await expect(row(page, 'Testville')).toHaveClass(/\bline\b/);
     await row(page, 'Testville').click();
     await expect(page.locator('.convo')).toContainText('I set it for the 10th to the 12th.');
-    await expect(line).toHaveText('Shiori set the dates Undone');
+    await expect(line).toHaveText(UNDONE);
     // The user's own dates, from Details: no such line, and hers stays as it was.
     await page.goto(`/#/trip/${id}`);
     await page.getByLabel('Starts').fill(start);
@@ -329,7 +331,7 @@ test("Shiori's patch dates the open chat: its row becomes a card below now, and 
     await page.goto(`/#/trip/${id}/talk`);
     await expect(page.locator('.convo')).toContainText('I set it for the 10th to the 12th.');
     await expect(line).toHaveCount(1);
-    await expect(line).toHaveText('Shiori set the dates Undone');
+    await expect(line).toHaveText(UNDONE);
   } finally {
     await llm.stop();
   }
@@ -1675,7 +1677,7 @@ test("Shiori set the dates stays at its place when the user writes again, and af
     await expect(page).toHaveURL(new RegExp(`#/trip/${id}/talk$`));
     await expect.poll(lines).toEqual(placed);
     await line.getByRole('button', { name: 'Undo' }).click();
-    const undone = placed.map((l) => (l === 'Shiori set the dates Undo' ? 'Shiori set the dates Undone' : l));
+    const undone = placed.map((l) => (l === 'Shiori set the dates Undo' ? UNDONE : l));
     await expect.poll(lines).toEqual(undone);
     await expect(page.locator('.toasts').getByText('Undone.', { exact: true })).toBeVisible(); // said, as the hand-over's Undo is
     await page.reload();
@@ -1755,10 +1757,10 @@ test("she dates the chat again: each of her datings keeps its line at its place,
     const line = page.locator('.dates-line');
     await expect(page.locator('.convo')).toContainText('I set it for the 10th to the 12th.');
     await line.getByRole('button', { name: 'Undo' }).click();
-    await expect(line).toHaveText('Shiori set the dates Undone');
+    await expect(line).toHaveText(UNDONE);
     await say('Then the 20th to the 22nd.');
     await expect(page.locator('.convo')).toContainText('Now the 20th to the 22nd.');
-    const twice = ['Plan our weekend in Testville', 'I set it for the 10th to the 12th.', 'Shiori set the dates Undone', 'Then the 20th to the 22nd.', 'Now the 20th to the 22nd.', 'Shiori set the dates Undo'];
+    const twice = ['Plan our weekend in Testville', 'I set it for the 10th to the 12th.', UNDONE, 'Then the 20th to the 22nd.', 'Now the 20th to the 22nd.', 'Shiori set the dates Undo'];
     await expect.poll(lines).toEqual(twice);
     await expect(line.getByRole('button', { name: 'Undo' })).toHaveCount(1);
     // Her change of the dates she set: that line loses its Undo, in place, and her change has none of its own.
