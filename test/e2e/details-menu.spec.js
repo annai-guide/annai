@@ -551,3 +551,45 @@ test('a menu that opened with no lift takes a click on its first entry at once',
   expect(lifted, 'set up: the open lifted nothing').toBe(0);
   await expect.poll(() => page.evaluate(() => location.hash)).toBe(`#/trip/${id}`);
 });
+
+// The open menu is measured every frame (talk.js, `watch`). It runs only while the menu is open and its screen is there: closed, it stops after the frame it had pending, and a
+// screen that goes with its menu open (the shell replaces the screen as a whole, so the menu is never hidden) is taken off by the screen's clean-up. Nothing else would show a loop
+// that never stopped (the re-review of the follow-ups): each of its frames is counted, by the name of the callback.
+test("the menu's every-frame measuring runs while it is open, and stops when it is closed, and when its screen goes with it open", async ({ page }) => {
+  await page.addInitScript(() => {
+    const frame = window.requestAnimationFrame.bind(window);
+    let frames = 0;
+    Object.defineProperty(window, 'watchFrames', { get: () => frames });
+    window.requestAnimationFrame = (callback) => {
+      if (callback.name === 'watch') frames++;
+      return frame(callback);
+    };
+  });
+  await page.setViewportSize({ width: 360, height: 640 });
+  await openApp(page);
+  const [id] = await makeConversations(page, [{ title: 'Pelican chat', lines: 1 }]);
+  await goToHash(page, `#/trip/${id}/talk`);
+  const toggle = page.locator('.talk-head .tidy-toggle');
+  await expect(toggle).toBeVisible();
+  const frames = () => page.evaluate(() => /** @type {any} */ (window).watchFrames);
+  /** The frames counted over a quiet 300 ms (about 18 at 60 Hz, where one is the most a stopped loop can still have pending). */
+  const quiet = async () => {
+    await page.waitForTimeout(100); // the frame a stop leaves pending runs
+    const before = await frames();
+    await page.waitForTimeout(300);
+    return (await frames()) - before;
+  };
+  expect(await quiet(), 'no menu, no frames').toBe(0);
+  await toggle.click();
+  await expect(page.locator('.tidy-menu')).toBeVisible();
+  expect(await quiet(), 'open: a frame about every 17 ms').toBeGreaterThan(5);
+  await toggle.click();
+  await expect(page.locator('.tidy-menu')).toBeHidden();
+  expect(await quiet(), 'closed').toBe(0);
+  await toggle.click();
+  await expect(page.locator('.tidy-menu')).toBeVisible();
+  expect(await quiet(), 'open again').toBeGreaterThan(5);
+  await goToHash(page, '#/trips'); // the screen goes with its menu open
+  await expect(page.locator('.talk-head')).toHaveCount(0);
+  expect(await quiet(), 'its screen is gone').toBe(0);
+});
