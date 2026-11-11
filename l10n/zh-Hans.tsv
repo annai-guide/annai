@@ -2394,34 +2394,34 @@ e34nbi	ok	Started fresh	已重新开始	src/ui/screens/talk.js:491	Note: the div
 4fzxin	ok	From {0}.	来自{0}。	src/ui/screens/talk.js:578	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
 1pm5i13	ok	Back to Trips	返回“旅行”	src/ui/screens/talk.js:609	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
 15g4wel	ok	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	没有打开的旅行。请从“旅行”中打开一个，或在这里对话：Shiori 仍可使用 /me/。	src/ui/screens/talk.js:617	Note: The Trips screen, quoted so it reads apart from a trip.
-16zeyyr	draft	Next: {0} {1}	接下来：{0} {1}	src/ui/screens/talk.js:658	{0} = r.time; {1} = name
-puj2r7	draft	Next: {0} {1} {2}	接下来：{0} {1} {2}	src/ui/screens/talk.js:658	{0} = day(r.day, true); {1} = r.time; {2} = name
-1frlw7l	draft	Undo the dates Shiori set	撤销 Shiori 设置的日期	src/ui/screens/talk.js:704	
-1l3merh	draft	Shiori set the dates	Shiori 设置了日期	src/ui/screens/talk.js:714	
-159f82q	ok	Undone	已撤销	src/ui/screens/talk.js:752	
-1v37fcy	ok	Undo what Shiori did with these files	撤销 Shiori 对这些文件所做的事	src/ui/screens/talk.js:789	Note: the Undo button's label; 撤销 as Undo.
-1nl0tpx	draft	Conversation menu	对话菜单	src/ui/screens/talk.js:832	
-7flpxf	ok	Summarizing…	正在总结…	src/ui/screens/talk.js:860	
-12707g	ok	She couldn't summarize it. A card says why.	她没能总结。卡片上写了原因。	src/ui/screens/talk.js:862	
-5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	已总结之前的对话。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:862	
-u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在工作。请稍后再试。	src/ui/screens/talk.js:862	
-va2k72	ok	There is not enough yet to summarize.	内容还不够总结。	src/ui/screens/talk.js:862	
-mienoe	ok	Summarize now	立即总结	src/ui/screens/talk.js:865	
-10sfmur	ok	Starting fresh…	正在重新开始…	src/ui/screens/talk.js:867	
-va77q0	ok	Start fresh?	重新开始？	src/ui/screens/talk.js:880	
-19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 会从这里重新开始，不再记着之前的内容。它们都留在对话里，供你阅读和搜索，她也仍能查到：什么都不会删除。实时语音会话也会重新开始。	src/ui/screens/talk.js:881	Note: "A live voice session" is the glossary's Live voice (实时语音) and live session (实时会话), not a voice she speaks with.
-czdqlz	ok	Start fresh	重新开始	src/ui/screens/talk.js:882	
-1h9wwbn	ok	She couldn't start fresh: {0}	她没能重新开始：{0}	src/ui/screens/talk.js:892	{0} = messageOf(e)
-1thzla3	ok	Already fresh: nothing has been said since.	已经是新的开始：之后还没说过话。	src/ui/screens/talk.js:895	
-3fntk0	ok	Started fresh.	已重新开始。	src/ui/screens/talk.js:895	
-mg70bg	ok	The conversation is still opening. Try again in a moment.	对话还在打开。请稍后再试。	src/ui/screens/talk.js:895	
-p5pj7b	ok	There is nothing to start fresh from yet.	还没有可以重新开始的内容。	src/ui/screens/talk.js:895	
-1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即总结：Shiori 现在就把之前的对话总结一下，让它保持简短。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:917	
-18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新开始：Shiori 不再记着之前的内容，从这里重新开始。每一行都留在分隔线上方。	src/ui/screens/talk.js:918	
-15ve7m7	draft	What each half sees	各个分身看到的内容	src/ui/screens/talk.js:919	
-1u5l4hx	draft	Details: the trip's name and dates, Export, Archive and Remove.	详情：旅行的名称和日期、导出、归档、移除。	src/ui/screens/talk.js:930	
-o7tevg	draft	Details: the chat's name and dates, Export, Archive and Remove.	详情：聊天的名称和日期、导出、归档、移除。	src/ui/screens/talk.js:930	
-16pl3gf	ok	Undone. Her old personality applies at her next wake.	已撤销。她原来的性格在下次唤醒时生效。	src/ui/screens/talk.js:946	
+16zeyyr	draft	Next: {0} {1}	接下来：{0} {1}	src/ui/screens/talk.js:659	{0} = r.time; {1} = name
+puj2r7	draft	Next: {0} {1} {2}	接下来：{0} {1} {2}	src/ui/screens/talk.js:659	{0} = day(r.day, true); {1} = r.time; {2} = name
+1frlw7l	draft	Undo the dates Shiori set	撤销 Shiori 设置的日期	src/ui/screens/talk.js:705	
+1l3merh	draft	Shiori set the dates	Shiori 设置了日期	src/ui/screens/talk.js:715	
+159f82q	ok	Undone	已撤销	src/ui/screens/talk.js:753	
+1v37fcy	ok	Undo what Shiori did with these files	撤销 Shiori 对这些文件所做的事	src/ui/screens/talk.js:790	Note: the Undo button's label; 撤销 as Undo.
+1nl0tpx	draft	Conversation menu	对话菜单	src/ui/screens/talk.js:834	
+7flpxf	ok	Summarizing…	正在总结…	src/ui/screens/talk.js:893	
+12707g	ok	She couldn't summarize it. A card says why.	她没能总结。卡片上写了原因。	src/ui/screens/talk.js:895	
+5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	已总结之前的对话。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:895	
+u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在工作。请稍后再试。	src/ui/screens/talk.js:895	
+va2k72	ok	There is not enough yet to summarize.	内容还不够总结。	src/ui/screens/talk.js:895	
+mienoe	ok	Summarize now	立即总结	src/ui/screens/talk.js:898	
+10sfmur	ok	Starting fresh…	正在重新开始…	src/ui/screens/talk.js:900	
+va77q0	ok	Start fresh?	重新开始？	src/ui/screens/talk.js:913	
+19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 会从这里重新开始，不再记着之前的内容。它们都留在对话里，供你阅读和搜索，她也仍能查到：什么都不会删除。实时语音会话也会重新开始。	src/ui/screens/talk.js:914	Note: "A live voice session" is the glossary's Live voice (实时语音) and live session (实时会话), not a voice she speaks with.
+czdqlz	ok	Start fresh	重新开始	src/ui/screens/talk.js:915	
+1h9wwbn	ok	She couldn't start fresh: {0}	她没能重新开始：{0}	src/ui/screens/talk.js:925	{0} = messageOf(e)
+1thzla3	ok	Already fresh: nothing has been said since.	已经是新的开始：之后还没说过话。	src/ui/screens/talk.js:928	
+3fntk0	ok	Started fresh.	已重新开始。	src/ui/screens/talk.js:928	
+mg70bg	ok	The conversation is still opening. Try again in a moment.	对话还在打开。请稍后再试。	src/ui/screens/talk.js:928	
+p5pj7b	ok	There is nothing to start fresh from yet.	还没有可以重新开始的内容。	src/ui/screens/talk.js:928	
+1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即总结：Shiori 现在就把之前的对话总结一下，让它保持简短。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:950	
+18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新开始：Shiori 不再记着之前的内容，从这里重新开始。每一行都留在分隔线上方。	src/ui/screens/talk.js:951	
+15ve7m7	draft	What each half sees	各个分身看到的内容	src/ui/screens/talk.js:952	
+1u5l4hx	draft	Details: the trip's name and dates, Export, Archive and Remove.	详情：旅行的名称和日期、导出、归档、移除。	src/ui/screens/talk.js:963	
+o7tevg	draft	Details: the chat's name and dates, Export, Archive and Remove.	详情：聊天的名称和日期、导出、归档、移除。	src/ui/screens/talk.js:963	
+16pl3gf	ok	Undone. Her old personality applies at her next wake.	已撤销。她原来的性格在下次唤醒时生效。	src/ui/screens/talk.js:979	
 11gkctr	ok	Places	地点	src/ui/screens/tools.js:11	context: tool group
 13mxqrp	ok	Talk	对话	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	ok	Go	出行	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).

@@ -858,10 +858,9 @@ function tidyMenu(ctx, trip) {
     if (px !== height) menu.style.maxHeight = `${height = px}px`;
   };
   /**
-   * While it is open it is measured every frame, which holds whatever moves the ⋯ or the dock: a scroll, a resize, a card that lands above a short conversation
-   * at the top of its page (neither comes), the dock growing or shrinking (voice, her words in a bubble, a plugin's dock), a phone turned back upright (the
-   * shell's observers update --dock-h and --topbar-h a frame after the resize event). One frame costs about 0.001 ms when the layout is clean and 0.04 ms at
-   * worst with it dirty (measured at 360x640 in Chromium and WebKit, on a loaded host); none run while it is closed.
+   * While it is open the room is measured every frame: that holds whatever moves the ⋯ or the dock with no scroll or resize (a card landing above a short
+   * conversation at the top of its page, the dock growing or shrinking, a phone turned back upright: the shell's observers update --dock-h and --topbar-h a
+   * frame after the resize event). A frame costs about 0.001 ms with a clean layout, 0.04 ms at worst (360x640, Chromium and WebKit, a loaded host).
    */
   let frame = 0;
   const watch = () => {
@@ -878,9 +877,8 @@ function tidyMenu(ctx, trip) {
     menu.scrollTop = 0;
     if (menu.hidden) return;
     finger = false; // a touch that ended while it was closed, or never did, holds nothing
-    // Details, its first entry, is in view and can be tapped as it opens. Where the ⋯ is too low for that (a card and the install banner above a short conversation,
-    // a phone on its side), the page lifts the ⋯ by what is missing, once, before the menu is drawn; with the page at its end, the room is always more than
-    // Details needs (the page ends 96 px and the dock and 52 px below its content). Nothing moves the page after.
+    // Details, its first entry, is in view and can be tapped as it opens: where the ⋯ is too low for that (a card and the install banner above a short
+    // conversation, a phone on its side), the page lifts the ⋯ by what is missing, once, before the menu is drawn. Nothing moves the page after.
     const first = /** @type {HTMLElement} */ (menu.querySelector('a.btn, button.btn'));
     const { paddingBottom, borderBottomWidth } = getComputedStyle(menu);
     const need = first.getBoundingClientRect().bottom - menu.getBoundingClientRect().top + parseFloat(paddingBottom) + parseFloat(borderBottomWidth);
