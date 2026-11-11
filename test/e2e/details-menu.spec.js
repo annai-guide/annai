@@ -431,3 +431,62 @@ test('(c) the bar grows while the head is stuck under it and the menu is open: t
   await page.waitForTimeout(300);
   expect(await gapAboveDock(page)).toBeGreaterThanOrEqual(15);
 });
+
+// With the ⋯ as low as it can be tapped (a card and the install banner above a short conversation, or a phone on its side), the room under it, less the dock,
+// is less than Details needs: the menu opened with no room at all, or with Details cut off. The page now lifts the ⋯ as far as Details needs as the menu
+// opens (a scroll of the page by the missing px, once, before it is drawn), so Details is in view and can be tapped. Measured with the banner shown (a browser
+// tab), the room is 1 px or none in Chromium and WebKit at 667x375, 844x390, 740x360 and 932x430, and at 320x568 and 360x640 with one or two cards.
+/** Takes the ⋯ to 4 px above the dock's top, where it can still be tapped: by scrolling the page, or, where it is higher than that at the page's top, by room above it (what a card or an open install banner leaves). @param {import('@playwright/test').Page} page */
+async function lowerToggle(page) {
+  await page.evaluate(() => scrollTo(0, 0));
+  const to = await page.evaluate(() => {
+    const toggle = /** @type {HTMLElement} */ (document.querySelector('.talk-head .tidy-toggle'));
+    const dock = /** @type {HTMLElement} */ (document.querySelector('.dock:not(.seat)'));
+    return dock.getBoundingClientRect().top - 4 - toggle.getBoundingClientRect().bottom;
+  });
+  if (to > 0) await page.evaluate((px) => {
+    const room = document.createElement('div');
+    room.style.height = `${px}px`;
+    document.querySelector('header.topbar')?.after(room);
+  }, to);
+  else await page.evaluate((px) => scrollBy(0, px), -to);
+  const gap = await page.evaluate(() => /** @type {HTMLElement} */ (document.querySelector('.dock:not(.seat)')).getBoundingClientRect().top - /** @type {HTMLElement} */ (document.querySelector('.talk-head .tidy-toggle')).getBoundingClientRect().bottom);
+  expect(gap).toBeGreaterThan(0); // set up: tappable, as low as that
+  expect(gap).toBeLessThan(8);
+}
+
+for (const [width, height] of /** @type {const} */ ([[320, 568], [667, 375], [844, 390]])) {
+  for (const lang of LANGS) {
+    test(`the ⋯ as low as it can be tapped: the menu opens with Details in view, above the dock, once the page has lifted it, at ${width}x${height} in ${lang.tag}`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      if (lang.tag === 'ja') await page.addInitScript(() => { try { localStorage.setItem('annai.ui', 'ja'); } catch { /* storage blocked */ } });
+      await openApp(page, lang.start);
+      const [id] = await makeConversations(page, [{ title: lang.names[0], lines: 1 }]);
+      await goToHash(page, `#/trip/${id}/talk`);
+      await expect(page.locator('.talk-head .tidy-toggle')).toBeVisible();
+      await page.waitForTimeout(500); // the screen is at rest (it scrolls itself to the end of a conversation as it opens)
+      await lowerToggle(page);
+      await page.locator('.talk-head .tidy-toggle').click();
+      await expect(page.locator('.tidy-menu')).toBeVisible();
+      expect(await detailsProblems(page)).toEqual([]);
+      const opened = await page.evaluate(() => scrollY);
+      await page.waitForTimeout(300);
+      expect(await page.evaluate(() => scrollY)).toBe(opened); // the lift is once, as it opens: nothing moves the page after
+      expect(await detailsProblems(page)).toEqual([]);
+    });
+  }
+}
+
+test('a menu that has the room it needs opens without moving the page', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await openApp(page);
+  const [id] = await makeConversations(page, [{ title: 'Pelican chat', lines: 1 }]);
+  await goToHash(page, `#/trip/${id}/talk`);
+  await expect(page.locator('.talk-head .tidy-toggle')).toBeVisible();
+  await page.waitForTimeout(500);
+  await page.evaluate(() => scrollTo(0, 0));
+  await page.locator('.talk-head .tidy-toggle').click();
+  await expect(page.locator('.tidy-menu')).toBeVisible();
+  expect(await detailsProblems(page)).toEqual([]);
+  expect(await page.evaluate(() => scrollY)).toBe(0);
+});
