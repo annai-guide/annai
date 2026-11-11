@@ -21,7 +21,7 @@ const record = (page, id) => page.evaluate(async (id) => {
   return rec;
 }, id);
 const draftOf = (/** @type {string} */ url) => decodeURIComponent(new URL(url).hash.split('/')[2]);
-/** Her dates line once its Undo was used: "Undone" where the Undo was, as the hand-over's line says. Still the user's call: the other answer is the line alone ('Shiori set the dates'). */
+/** Her dates line once its Undo was used: "Undone" where the Undo was, as the hand-over's line says (the user, 2026-11-10, picked "Show 'Undone' (Recommended)" over the line alone). It is worked out from the log, so taking the dates out by hand in Details reads "Undone" too. */
 const UNDONE = 'Shiori set the dates Undone';
 
 test('+ on home, voice off: the draft opens with the box ready; the first line names it, and the next + opens another', async ({ page }) => {
