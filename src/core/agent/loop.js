@@ -3139,6 +3139,8 @@ export class Agent {
       this.#facts.aloud = true;
       this.#saidAt = Date.now();
     }
+    // Cut with the turn (an open, the user's Stop): its result is written already, and it listens for nothing.
+    if (call.signal.aborted) return spokenText(spoken);
     if (spoken.failed) {
       await this.#notice(spoken.failed === 'blocked'
         ? (voice.stuck ? soundStuck() : { tone: 'info', title: t`Tap the screen so Shiori can speak`, body: t`This browser plays sound only after a tap. Her words are in the conversation.` })
@@ -3177,6 +3179,8 @@ export class Agent {
     this.#setState('speaking');
     u.end(question);
     const spoken = await u.done;
+    // Cut with the turn: its result is written already, and the user's next line is a turn of its own, not this question's answer.
+    if (call.signal.aborted) return { content: STOPPED, isError: true };
     /** @type {Got} */
     let got = spoken.failed ? {} : await this.#listenFor(call.id, 'ask', LISTEN_S);
     if (got.heard || got.text !== undefined || got.chosen !== undefined || got.stopped) {
