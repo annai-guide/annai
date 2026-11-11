@@ -279,7 +279,10 @@ let lone = 0;
     toasts.append(shown);
     setTimeout(() => shown.remove(), 3500);
   }
-  /** The box stuck again over the rows (home, as typing ends: base.css): its cards ignore taps a moment, as when one lands. */
-  const hold = () => { if (!el.matches(':empty') && getComputedStyle(el).position === 'sticky') still('over'); };
+  /**
+   * The box stuck again over the rows (home, as typing ends: base.css): scrolled down it lands over rows in view, so its cards ignore taps a moment,
+   * as when one lands; at the page's top it sticks where it was and there is nothing under it to protect. Only a box that holds a card sticks.
+   */
+  const hold = () => { if (scrollY > 0 && getComputedStyle(el).position === 'sticky') still('over'); };
   return { el, toasts, card, toast, hold };
 }
