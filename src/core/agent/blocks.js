@@ -21,9 +21,13 @@ export const theirs = (text) => escapeTags(text).replace(/^(\s*)\[/gm, '$1\\[');
 /** Words inside a label, quoted, so a label or a new line in them can't pass for annai's. @param {unknown} text */
 export const quote = (text) => JSON.stringify(String(text ?? ''));
 
-/** A note from Kokoro as Koe reads it, in the one marker Koe trusts. @param {string} text @param {string} nonce */
-export function wrapNote(text, nonce) {
-  /* en */ return `<from_kokoro id="${nonce}">${escapeTags(text)}</from_kokoro>`;
+/**
+ * A note from Kokoro as Koe reads it, in the one marker Koe trusts. Kokoro's words for the user (tell_koe's for_user, hers as its text is)
+ * go in it too when its text is shorter: such a text can't hold them ("Say the for_user text."), and Koe sees them nowhere else.
+ * @param {string} text @param {string} nonce @param {{ forUser?: string }} [o]
+ */
+export function wrapNote(text, nonce, { forUser = '' } = {}) {
+  /* en */ return `<from_kokoro id="${nonce}">${escapeTags(forUser.length > text.length ? `${text}\nfor_user: ${forUser}` : text)}</from_kokoro>`;
 }
 
 /** Koe's session nonce, fresh each time annai starts. */

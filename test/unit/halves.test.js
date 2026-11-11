@@ -72,6 +72,22 @@ test('a typed question: Koe answers at once and asks Kokoro; Kokoro\'s context h
   assert.equal(k.agent.koeState, 'text');
 });
 
+test("Kokoro's note that points at its words for the user (\"Say the for_user text.\") brings them to Koe, who says them; a note that holds its words is sent as before (real models: Sonnet as Kokoro, Koe said \"I can't see your notes\", item 2)", async (t) => {
+  useClock(t);
+  const answer = 'Your Testville notes: the clock museum opens at 10, bring small coins for the lockers, and the pier market runs until 2.';
+  const k = await agentKit([{ rules: [
+    { match: 'the user wrote', times: 1, reply: calls(['tell_koe', { text: 'Say the for_user text.', for_user: answer }]) },
+    { match: 'the user wrote', reply: calls(['tell_koe', { text: 'Tell the user: "The pier market runs until 2."', for_user: 'The pier market runs until 2.' }]) },
+  ] }], { koe: { type: { rules: [{ match: 'the user wrote', reply: calls(['speak', { text: 'Checking.' }]) }, { match: 'a note from Kokoro', reply: calls(['speak', { text: answer }]) }] } } });
+  const notes = () => k.sent['model-koe'].flatMap(userTexts).filter((/** @type {string} */ x) => x.startsWith('<from_kokoro'));
+  k.agent.send('What do my notes say?');
+  await k.agent.idle();
+  assert.deepEqual(notes(), [`<from_kokoro id="${k.agent.nonce}">Say the for_user text.\nfor_user: ${answer}</from_kokoro>`]);
+  k.agent.send('And the market?');
+  await k.agent.idle();
+  assert.equal(notes().at(-1), `<from_kokoro id="${k.agent.nonce}">Tell the user: "The pier market runs until 2."</from_kokoro>`);
+});
+
 test("the code gate: Kokoro's speak, show and ask while Koe works aren't run; each is a tell_koe append; the result says use tell_koe; no out.* from Kokoro", async (t) => {
   useClock(t);
   const k = await agentKit([{ rules: [{ match: 'the user wrote', reply: calls(
