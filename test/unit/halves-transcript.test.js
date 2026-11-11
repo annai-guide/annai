@@ -356,7 +356,9 @@ test("the owed table: every line, every cut, every reader, one answer", async ()
   const RESTART = 'interrupted by app restart';
   /** @typedef {{ log: (ev: any) => Promise<any>, turn: (tag: string, parts: any[]) => Promise<any> }} W */
   const call = (/** @type {string} */ id, /** @type {string} */ name) => ({ type: 'tool_call', id, name, input: {} });
-  const res = (/** @type {W} */ w, /** @type {string} */ half, /** @type {string} */ id, /** @type {boolean} */ ok, content = 'Done.') => w.log({ type: 'tool.result', actor: 'system', data: { id, name: 'x', ok, half, content } });
+  // A call cut short (an open, a Stop, annai restarting) is marked `cut`, as #runCall and repair write it; an old log's has no mark.
+  const res = (/** @type {W} */ w, /** @type {string} */ half, /** @type {string} */ id, /** @type {boolean} */ ok, content = 'Done.') => w.log({ type: 'tool.result', actor: 'system', data: { id, name: 'x', ok, half, content, ...([CUT, STOP, RESTART].includes(content) ? { cut: true } : {}) } });
+  const old = (/** @type {W} */ w, /** @type {string} */ half, /** @type {string} */ id) => w.log({ type: 'tool.result', actor: 'system', data: { id, name: 'x', ok: false, half, content: STOP } });
   const said = (/** @type {W} */ w, /** @type {string} */ half, /** @type {string} */ text, live = false) => w.log({ type: 'out.speak', actor: 'shiori', data: { id: `c${Math.random()}`, half, voice: true, ...(live ? { live } : {}) }, texts: [['text', text]] });
   const note = (/** @type {W} */ w, /** @type {string} */ from) => w.log({ type: 'note', actor: 'shiori', data: { id: `n${Math.random()}`, from, mode: 'append', why: 'tool', half: from }, texts: [['text', from === 'koe' ? 'When is check-in?' : 'Check-in is at 3.']] });
   const error = (/** @type {W} */ w, /** @type {string} */ half, /** @type {string} */ kind) => w.log({ type: 'error', actor: 'system', data: { kind, wake: `w${Math.random()}`, half, message: kind === 'stopped' ? STOP : 'x', quiet: kind !== 'model' } });
@@ -408,6 +410,16 @@ test("the owed table: every line, every cut, every reader, one answer", async ()
     ['heard; Koe asked, Halves set it aside as answered', async (w) => { await asked(w); await error(w, 'kokoro', 'answered'); }, [false, false, false]],
     ['heard; Koe asked, the user stopped her while she gathered', async (w) => { await asked(w); await error(w, 'kokoro', 'stopped'); }, [false, false, false]],
     ['heard; Koe asked, her turn ended in an error the user was shown (no model)', async (w) => { await asked(w); await error(w, 'kokoro', 'model'); }, [false, false, false]],
+    ['heard; Koe asked, the user stopped Kokoro, Koe asked again and was refused (the re-review 2: S1)', async (w) => {
+      await asked(w);
+      await error(w, 'kokoro', 'stopped');
+      await w.turn(KOE_TAG, [call('d', 'tell_kokoro'), call('e', 'speak'), call('f', 'sleep')]);
+      await res(w, 'koe', 'd', false, 'Not sent: the user stopped Kokoro.');
+      await said(w, 'koe', "Okay, I've stopped.");
+      await res(w, 'koe', 'e', true);
+      await res(w, 'koe', 'f', true);
+    }, [false, false, false]],
+    ['typed; an old log: an open cut her tool (the Stop\'s words, no cut mark, no record) (S2)', async (w) => { await typed(w); await kokoroWorks(w); for (const id of ['r', 't', 'z']) await old(w, 'kokoro', id); }, [false, false, false]],
     ['heard; an open cut Koe after "Let me check." and before it asked', async (w) => { await koeAsks(w); await res(w, 'koe', 'b', false, CUT); await res(w, 'koe', 'c', false, CUT); }, [false, true, true]],
     ['heard; a reload before Koe asked', async (w) => { await koeAsks(w); await res(w, 'koe', 'b', false, RESTART); await res(w, 'koe', 'c', false, RESTART); }, [false, true, true]],
     ['heard; the user stopped Koe before it asked', async (w) => { await koeAsks(w); await res(w, 'koe', 'b', false, STOP); await res(w, 'koe', 'c', false, STOP); await error(w, 'koe', 'stopped'); }, [false, false, false]],
@@ -431,6 +443,8 @@ test("the owed table: every line, every cut, every reader, one answer", async ()
   const asks = (/** @type {W} */ w) => w.log({ type: 'msg.user', actor: 'user', data: { wake: 'w1' }, texts: [['text', 'What is check-in time?']] });
   assert.equal(await alone(async (w) => { await asks(w); await w.turn(TALK_TAG, [call('r', 'read'), call('s', 'speak'), call('z', 'sleep')]); for (const id of ['r', 's', 'z']) await res(w, 'shiori', id, false, CUT); }), true);
   assert.equal(await alone(async (w) => { await asks(w); await w.turn(TALK_TAG, [call('s', 'speak'), call('z', 'sleep')]); await said(w, 'shiori', 'Check-in is at 3.'); await res(w, 'shiori', 's', true); await res(w, 'shiori', 'z', false, CUT); }), false);
+  // An old log (S2): the same cut, written with the Stop's words and no mark, as before the mark: read as settled, as it was then.
+  assert.equal(await alone(async (w) => { await asks(w); await w.turn(TALK_TAG, [call('r', 'read'), call('s', 'speak'), call('z', 'sleep')]); for (const id of ['r', 's', 'z']) await old(w, 'shiori', id); }), false);
 });
 
 test("annai's own wrapper carries Koe's session nonce; a note's words can't close it", () => {

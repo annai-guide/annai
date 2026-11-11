@@ -1233,9 +1233,9 @@ export class Halves {
     }
     if (e.type.startsWith('out.')) this.#up('koe'); // a live Koe that spoke works
     // A reply that asks Kokoro wakes it with the question, not the answer before it; with the answer, if the question fails
-    // (refused while the user's Stop holds, it didn't fail: the user stopped Kokoro).
+    // (refused while the user's Stop holds, or cut short by an open or a Stop, it didn't fail).
     const out = e.type.startsWith('out.') && this.#cue;
-    const failed = e.type === 'tool.result' && e.data?.name === 'tell_kokoro' && e.data.ok === false && this.#owed && !this.#stopHeld && !this.koe.switching; // an open cut it: no failure
+    const failed = e.type === 'tool.result' && e.data?.name === 'tell_kokoro' && e.data.ok === false && !e.data.cut && this.#owed && !this.#stopHeld;
     if (e.type === 'tool.result' && e.data?.name === 'tell_kokoro') this.#asking = false;
     const answered = (out && !(this.#owed = this.#asking)) || failed;
     // A hand-over typed to Koe is Kokoro's to file: its turn carries it, so what it does can be undone.
