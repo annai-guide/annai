@@ -1152,6 +1152,27 @@ test("a cut, by what the turn was: one waiting on the user, or that annai starte
   assert.deepEqual(failed, []);
 });
 
+test("a line cut while she says it listens for nothing after: the user's next typed line is a turn of its own, not the answer to a call already cut (found testing the real-model run's B)", async (t) => {
+  useClock(t);
+  for (const how of ['open', 'stop']) for (const tool of ['ask', 'speak']) {
+    const line = 'Time to go: shall I find a taxi?';
+    const k = await agentKit([[{ toolCalls: [tool === 'ask' ? { name: 'ask', input: { question: line, options: ['Yes', 'No'] } } : { name: 'speak', input: { text: line } }] }, say('The museum opens at 10.')]], { voice: { playMs: 60_000 } });
+    const A = k.trip;
+    k.agent.send('Plan the afternoon');
+    await until(() => k.said.includes(line));
+    if (how === 'open') {
+      await k.agent.open(await createTrip(k.ws, { title: 'Kyoto' }));
+      await k.agent.open(A);
+    } else k.agent.interrupt();
+    await k.agent.idle();
+    k.agent.send('Is the museum open?');
+    await k.agent.idle();
+    const typed = (await eventsIn(k, A, ['msg.user'])).map((/** @type {any} */ e) => [e.data.text, e.data.answer ?? null]);
+    assert.deepEqual(typed, [['Plan the afternoon', null], ['Is the museum open?', null]], `${how}, ${tool}: their line`);
+    assert.equal(k.requests.length, 2, `${how}, ${tool}: answered`);
+  }
+});
+
 test("cut by an open, the call running may have finished and says so; a call after it never started and says that; the user's Stop is said as a Stop (the re-review 3: F3)", async (t) => {
   useClock(t);
   for (const how of ['open', 'stop']) {
