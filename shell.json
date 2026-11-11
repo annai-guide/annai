@@ -1,5 +1,5 @@
 {
-  "build": "60f923077b8c",
+  "build": "61764a291d0f",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -49,7 +49,7 @@
     "/src/core/agent/her-instructions.js": "b90fb982b678",
     "/src/core/agent/refusals.js": "ceda0646f351",
     "/src/core/agent/self-tools.js": "cf30ac06680a",
-    "/src/core/agent/spoken-yes.js": "b2a466e06218",
+    "/src/core/agent/spoken-yes.js": "066a5f5d247b",
     "/src/core/agent/net.js": "760427139644",
     "/src/core/agent/tools.js": "1024de74379b",
     "/src/core/agent/trip-tools.js": "19f2df228564",
@@ -202,7 +202,7 @@
     "/src/plugins/web/index.js": "6d77440aa5bb",
     "/src/ui/base.css": "e180442ecd51",
     "/src/ui/cards.js": "cc78cef84d11",
-    "/src/ui/composer.js": "78267b4bad89",
+    "/src/ui/composer.js": "9c1e8e01373b",
     "/src/ui/credits.js": "23f63db27792",
     "/src/ui/dock.js": "461d652e67ed",
     "/src/ui/plus.js": "be7aec85b331",
