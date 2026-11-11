@@ -97,9 +97,12 @@ export function asideLabel(d, half) {
   /* en */ return '[heard, not meant for you]';
 }
 
+/** Koe's quick tools that change something: Kokoro reads annai's result for each that worked, or both halves set one reminder (real models). */
+const KOE_CHANGES = ['watch_set', 'watch_cancel', 'write', 'edit', 'patch'];
+
 /**
  * Kokoro's block for an event of the conversation it didn't write: what the user typed (to Koe), what
- * Koe said, showed and asked, Koe's notes, and annai's instruction blocks. Null: not a block of Kokoro's.
+ * Koe said, showed and asked, what Koe changed, Koe's notes, and annai's instruction blocks. Null: not a block of Kokoro's.
  * @param {any} e @param {Record<string, string>} texts its texts, stored ones included
  * @returns {string | null}
  */
@@ -116,6 +119,8 @@ export function blockFor(e, texts) {
   if (d.half === 'koe' && e.type === 'out.show') /* en */ return `[Koe showed] ${quote(cardText(d.card))}`;
   if (d.half === 'koe' && e.type === 'out.ask') /* en */ return `[Koe asked] ${askText(d)}`;
   if (e.type === 'note' && d.from === 'koe') /* en */ return `[Koe ${asksOrNotes(text)}] ${quote(text)}`;
+  // annai's own words for what was done (the result), never Koe's call, whose words (a reminder's text) are Koe's.
+  if (e.type === 'tool.result' && d.half === 'koe' && d.ok !== false && KOE_CHANGES.includes(d.name)) return `[Koe's ${d.name}] ${quote(texts.content)}`;
   if (e.type === 'halves') return `[annai] ${text}`;
   return null;
 }

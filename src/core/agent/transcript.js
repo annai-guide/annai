@@ -278,6 +278,11 @@ export class Transcript {
       if (!texts.text) return;
       const said = this.half === 'one' ? `"${texts.text}"` : quote(texts.text);
       /* en */ this.#line([{ type: 'text', text: `[annai] Shown${d.aloud ? ' and said aloud' : ''} by annai itself, since ${d.unsaid ? 'your turn ended without telling the user' : "you couldn't be reached"}: ${said}` }]);
+    } else if (e.type === 'tool.result' && this.half === 'kokoro' && d.half === 'koe') {
+      // What Koe changed: Kokoro knows, and owes nothing for it.
+      const line = blockFor(e, texts);
+      if (!line) return;
+      this.#line([{ type: 'text', text: line }]);
     } else if (e.type === 'tool.result' && this.#mine(d) && this.#calls.has(d.id) && !this.#answered.has(d.id)) {
       this.#answered.add(d.id);
       const heard = (Array.isArray(d.heard) ? d.heard : []).flatMap((/** @type {string} */ id) => {

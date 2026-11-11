@@ -1,5 +1,5 @@
 {
-  "build": "358f7250b327",
+  "build": "ebf6616c0091",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -35,7 +35,7 @@
     "/src/core/after/route.js": "537357825ed0",
     "/src/core/after/stamps.js": "1bdd22a5c694",
     "/src/core/archive-crypto.js": "9b6e09565a09",
-    "/src/core/agent/blocks.js": "5c35152f35a5",
+    "/src/core/agent/blocks.js": "21245874b1c3",
     "/src/core/agent/budgets.js": "ec0a25e840fb",
     "/src/core/agent/compaction.js": "0525a91f19e9",
     "/src/core/agent/context.js": "b6b85ecc3d49",
@@ -53,7 +53,7 @@
     "/src/core/agent/net.js": "7ffda19e729b",
     "/src/core/agent/tools.js": "1e05339786c2",
     "/src/core/agent/trip-tools.js": "15e52409150d",
-    "/src/core/agent/transcript.js": "4c3172eb2af9",
+    "/src/core/agent/transcript.js": "8af3a8dd8c8c",
     "/src/core/agent/via.js": "557657aae006",
     "/src/core/agent/warmth.js": "7f1be5368415",
     "/src/core/address.js": "d677ad7a10ba",

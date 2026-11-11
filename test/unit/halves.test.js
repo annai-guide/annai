@@ -140,6 +140,19 @@ test("a typed line: Kokoro's turn waits for Koe's first words, so its first requ
   assert.ok(d.kokoroAt >= 600 && d.kokoroAt < 1500, `Kokoro started ${d.kokoroAt} ms after the line`);
 });
 
+test("Koe sets a reminder itself: Kokoro's next request says so, so she sets no second one (real models: two reminders for one ask, item 7)", async (t) => {
+  useClock(t);
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { type: { rules: [
+    { match: 'the user wrote', reply: calls(['watch_set', { when: { type: 'time', at: '2027-03-19T18:00:00-07:00' }, fallback: 'Pack the chargers.' }], ['speak', { text: 'Set for Friday at six.' }]) },
+  ] } } });
+  k.agent.addLoopTools([{ name: 'watch_set', pluginId: 'core', group: 'Time', description: 'Set a watch.', input: { type: 'object' }, run: async () => 'Set w-1: at Fri 2027-03-19 18:00 (GMT-7).' }]);
+  k.agent.send('Remind me Friday at six to pack the chargers.');
+  await k.agent.idle();
+  const lines = userTexts(k.sent['model-0'][0]);
+  assert.ok(lines.includes('[Koe\'s watch_set] "Set w-1: at Fri 2027-03-19 18:00 (GMT-7)."'), JSON.stringify(lines));
+  assert.ok(lines.indexOf('[Koe\'s watch_set] "Set w-1: at Fri 2027-03-19 18:00 (GMT-7)."') < lines.indexOf('[Koe said] "Set for Friday at six."'), 'in the order they happened');
+});
+
 test("the code gate: Kokoro's speak, show and ask while Koe works aren't run; each is a tell_koe append; the result says use tell_koe; no out.* from Kokoro", async (t) => {
   useClock(t);
   const k = await agentKit([{ rules: [{ match: 'the user wrote', reply: calls(
