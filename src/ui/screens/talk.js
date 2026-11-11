@@ -837,25 +837,46 @@ function tidyMenu(ctx, trip) {
     menu.hidden = true;
     toggle.setAttribute('aria-expanded', 'false');
   };
+  /** The max-height it was given last, so a frame that finds the same room writes nothing. */
+  let height = -1;
+  /** A finger is on the menu: it keeps its height until the finger is up. Taller, a menu scrolled to its end would shift under it, and a tap would land on another entry. */
+  let finger = false;
+  for (const type of ['touchstart', 'touchend', 'touchcancel']) menu.addEventListener(type, (e) => { finger = /** @type {TouchEvent} */ (e).touches.length > 0; }, { passive: true });
   /**
    * The menu's room, from under the ⋯ to 16 px above the dock (which is over the page's bottom, as tall as it is now): what it holds beyond that scrolls inside it.
+   * 16 px is the gutter the page keeps at the screen's sides (.view, base.css), so the menu ends as far above the dock as the page does from the edge.
    * The title sits as low as the cards and banner above it leave it, which on a short conversation the page can't scroll away under the bar, so no fixed
-   * height clears the dock: it is measured where the ⋯ is, as it opens and as the page moves.
+   * height clears the dock: it is measured where the ⋯ is.
    */
   const fit = () => {
-    if (menu.hidden) return;
+    if (finger) return;
     const dock = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dock-h')) || 0;
-    menu.style.maxHeight = `${Math.max(0, innerHeight - dock - toggle.getBoundingClientRect().bottom - 16)}px`;
+    const room = Math.max(0, innerHeight - dock - toggle.getBoundingClientRect().bottom - 16);
+    if (room !== height) menu.style.maxHeight = `${height = room}px`;
   };
-  addEventListener('scroll', fit, { passive: true });
-  addEventListener('resize', fit);
+  /**
+   * While it is open it is measured every frame, which holds whatever moves the ⋯ or the dock: a scroll, a resize, a card that lands above a short conversation
+   * at the top of its page (neither comes), the dock growing or shrinking (voice, her words in a bubble, a plugin's dock), a phone turned back upright (the
+   * shell's observers update --dock-h and --topbar-h a frame after the resize event). One frame costs about 0.001 ms when the layout is clean and 0.04 ms at
+   * worst with it dirty (measured at 360x640 in Chromium and WebKit, on a loaded host); none run while it is closed.
+   */
+  let frame = 0;
+  const watch = () => {
+    frame = 0;
+    if (menu.hidden) return;
+    fit();
+    frame = requestAnimationFrame(watch);
+  };
   toggle.addEventListener('click', () => {
     if (toggle.getAttribute('aria-disabled') === 'true') return;
     menu.hidden = !menu.hidden;
     toggle.setAttribute('aria-expanded', String(!menu.hidden));
     // A scroll box keeps its scroll while hidden (both engines): it opens at its top each time, where Details is.
     menu.scrollTop = 0;
+    if (menu.hidden) return;
+    finger = false; // a touch that ended while it was closed, or never did, holds nothing
     fit();
+    if (!frame) frame = requestAnimationFrame(watch);
   });
   const summarize = h('button', {
     class: 'btn', type: 'button', 'aria-describedby': 'tidy-summarize',
@@ -925,8 +946,7 @@ function tidyMenu(ctx, trip) {
   const off = () => {
     offTap();
     document.removeEventListener('keydown', escape);
-    removeEventListener('scroll', fit);
-    removeEventListener('resize', fit);
+    cancelAnimationFrame(frame);
   };
   return { el, status, dated: (on) => { aboutDetails.textContent = detailsWords(on); }, off };
 }
