@@ -1057,13 +1057,13 @@ export class Halves {
     this.#stopped = { on: true, seq: Infinity };
     this.#stopHeld = true;
     this.#cue = this.#owed = false; // what was heard before it wakes Kokoro no more, answered or not
-    // Still gathering the user's messages (GATHER): its turn never starts, and a waiting Koe hears so. What it gathered is written into the
-    // conversation with a quiet "stopped" (interrupt), as one Shiori's Stop does, so opening the conversation again takes nothing up (item 8).
+    // Still gathering the user's messages (GATHER): its turn never starts, and a waiting Koe hears so. What it gathered (Koe's question
+    // too, a spoken line's only wake) is written into the conversation with a quiet "stopped" (interrupt), as one Shiori's Stop does, so
+    // opening the conversation again takes nothing up (item 8). Then what is left: Koe's notes, and wakes queued while a conversation opened.
     const started = this.kokoro.turning;
     const scope = this.kokoro.target ?? ME;
-    this.kokoro.drop((w) => w.kind === 'note' && w.from === 'koe');
     this.kokoro.interrupt();
-    this.kokoro.drop((w) => !started && w.scope === scope); // queued while a conversation opened, not gathering yet: it never starts either
+    this.kokoro.drop((w) => (w.kind === 'note' && w.from === 'koe') || (!started && w.scope === scope));
     this.kokoro.poke();
     this.kokoro.idle().then(() => this.#emitHalves(), () => {}); // the sign: that write ends after her last change of state
     // Koe hears of it, waiting or not: once its model has seen this, its questions reach Kokoro again.

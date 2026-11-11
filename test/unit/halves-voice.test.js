@@ -256,6 +256,36 @@ test("a heard line Koe let pass in silence is no one's to answer later: with Koe
   assert.equal((k.sent['model-0'] ?? []).length, 0, 'no restart turn');
 });
 
+test("the sign's Stop while Kokoro gathers for a spoken question Koe asked her: what she gathered is written stopped, so opening the conversation again takes nothing up (the review of item 8: F3)", async (t) => {
+  useClock(t);
+  const k = await agentKit([{ rules: [{ match: '.', reply: calls(['tell_koe', { text: 'Check-in is at 3.' }]) }] }], {
+    koe: { talk: { rules: [
+      { match: 'the user spoke', reply: calls(['speak', { text: 'Let me check.' }], ['tell_kokoro', { text: 'When is check-in?' }]) },
+      { match: '.', reply: calls(['speak', { text: 'Okay.' }]) }, // "Kokoro was stopped.", and anything later
+    ] } },
+    voice: { speechIn: ['m-hear'], hears: ['when is check-in'] },
+  });
+  k.agent.tap();
+  await until(() => k.agent.state.name === 'listening');
+  await hear(k, 'where-eat');
+  // Koe's question is her only wake (a heard line wakes her through Koe): she gathers, and the user taps the sign's Stop.
+  await until(() => k.agent.kokoro.busy && !k.agent.kokoro.turning && !(k.sent['model-0'] ?? []).length);
+  k.agent.stopKokoro();
+  await new Promise((r) => setTimeout(r, 30));
+  await k.agent.idle();
+  assert.equal((k.sent['model-0'] ?? []).length, 0, 'her turn never started');
+  assert.deepEqual((await k.events(['error'])).map((e) => [e.data.kind, e.data.half, Boolean(e.data.wake)]), [['stopped', 'kokoro', true]]);
+  const { createTrip: create } = await import('../../src/core/scopes.js');
+  await k.agent.open(await create(k.ws, { title: 'Elsewhere' }));
+  await k.agent.idle();
+  const said = plays(k).length;
+  await k.agent.open(k.trip);
+  await k.agent.idle();
+  assert.equal(k.agent.kokoro.owed, false);
+  assert.equal((k.sent['model-0'] ?? []).length, 0, 'no restart turn');
+  assert.deepEqual(plays(k).slice(said), [], 'nothing said on opening');
+});
+
 test('Koe asking in the same reply as it answers costs one Kokoro call, whichever comes first; a new question heard reaches Kokoro again', async (t) => {
   useClock(t);
   for (const order of ['speak first', 'ask first']) {
