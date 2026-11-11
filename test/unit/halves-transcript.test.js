@@ -268,6 +268,19 @@ test("a note whose text is shorter than Kokoro's words for the user carries them
   assert.equal(wrapNote('Open till 10.', NONCE), '<from_kokoro id="n0nce42">Open till 10.</from_kokoro>');
 });
 
+test("Kokoro's words for the user go in a note only when its text points at them: it names for_user, or is under half their length; a text that holds the answer, a little shorter than them, goes as it is (the review of item 2: F1, F2)", () => {
+  const wrap = (/** @type {string} */ text, /** @type {string} */ forUser) => wrapNote(text, NONCE, { forUser });
+  // Opus's usual note: the answer quoted, its for_user a slightly longer wording of it (C s9-r1: 197 and 217 characters).
+  const quoted = 'Tell the user: "Done! My personality now says warm and playful. It kicks in from my next reply."';
+  assert.equal(wrap(quoted, "Done! I've changed my personality to warm and playful, and it starts with my next reply, so say hi."), `<from_kokoro id="n0nce42">${quoted}</from_kokoro>`);
+  // A pointer to a short answer: it names for_user, though it is the longer.
+  assert.equal(wrap('Say the for_user text.', 'Check-in is at 3 PM.'), '<from_kokoro id="n0nce42">Say the for_user text.\nfor_user: Check-in is at 3 PM.</from_kokoro>');
+  assert.equal(wrap('Read the notes as given in FOR_USER.', 'Check-in is at 3 PM, and breakfast runs until 10.'), '<from_kokoro id="n0nce42">Read the notes as given in FOR_USER.\nfor_user: Check-in is at 3 PM, and breakfast runs until 10.</from_kokoro>');
+  // A pointer that doesn't name it (B u12-r1): under half the words' length.
+  const notes = 'Your Testville notes: Day 1, check in at Hotel Clockwork Inn and lunch at Ramen Corner; Day 2, the Museum of Odd Clocks at 10.';
+  assert.equal(wrap('Say the notes summary.', notes), `<from_kokoro id="n0nce42">Say the notes summary.\nfor_user: ${notes}</from_kokoro>`);
+});
+
 // Security reviews of K1 (2026-10-19): only annai's own wrapper, with Koe's session nonce, is a note; every other text
 // Koe reads has its angle brackets escaped, so no tag of any spelling survives; and what Kokoro reads inside annai's
 // labels is quoted, so it can't start a line or pass for a label.
