@@ -1712,7 +1712,6 @@ test("the draft's Details: a name and dates saved there put it on home; Archive 
   expect(removed).not.toBe(archived);
   await page.getByRole('button', { name: 'Remove trip' }).click();
   await page.getByRole('dialog', { name: 'New conversation' }).getByRole('button', { name: 'Remove' }).click();
-  await page.getByRole('dialog', { name: 'Not backed up' }).getByRole('button', { name: 'Remove anyway' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
   expect(await record(page, removed)).toBeUndefined();
   await plus(page).click();

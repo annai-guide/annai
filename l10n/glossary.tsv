@@ -62,7 +62,7 @@ Spend per day	thing	1日の利用額	每日花费	每日花費	src/ui/screens/mo
 stamp	thing	スタンプ	纪念章	紀念章	src/core/after/stamps.js:65	Station-stamp marks for visited places. ja スタンプ is exactly the 駅スタンプ a traveller collects. zh 纪念章 is what scenic spots' ink stamps are called (集纪念章, 盖章); 印章 is a seal, 邮票 a postage stamp. For you: zh 纪念章, or 打卡章.
 Start fresh	thing	新しく始める	重新开始	重新開始	src/ui/screens/talk.js:440	She puts the earlier lines out of mind; every line stays. The divider "Started fresh" → 新しく始めました / 已重新开始. ja リセット or zh 重置 would wrongly suggest something is deleted.
 Summarize now	thing	今すぐ要約	立即总结	立即總結	src/ui/screens/talk.js:405	ja 要約 (summary) with 今すぐ as iOS's 今すぐアップデート; zh 立即总结 (立即 as 立即更新). 概要 / 摘要 are nouns for a document's abstract.
-Tidy up	thing	整理	整理	整理	src/ui/screens/talk.js:385	The Conversation's menu (Summarize now, Start fresh). ja 整理 is short for a button; 片付け is tidying a room. zh 整理 likewise.
+Tidy up	thing	整理	整理	整理	src/ui/screens/talk.js:385	Was the Conversation's menu's name until 2026-11-10 (now "Conversation menu": Details, Summarize now, Start fresh); kept for Housekeeping's 整理. ja 整理 is short for a button; 片付け is tidying a room. zh 整理 likewise.
 tool switches	thing	ツールのオン/オフ	工具开关	工具開關	src/ui/screens/tools.js:88	On Tools and the Trace. ja オン/オフ is how iOS writes a switch; スイッチ alone is a hardware switch. zh 开关 is the settings word.
 transcription	thing	文字起こし	语音转文字	語音轉文字	src/ui/screens/add.js:28	An ability and its models (Voices and transcription). ja 文字起こし is the everyday word; zh 语音转文字 is plain where 转写 / 转录 are technical.
 trip	thing	旅	旅行	旅行	src/ui/screens/trips.js:67	Follows Trips: "Start a trip" → 旅を始める / 开始旅行, "Trip name" → 旅の名前 / 旅行名称, "Archived trips" → アーカイブした旅 / 已归档的旅行. If ja chooses 旅行 for Trips, this follows.

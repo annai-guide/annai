@@ -174,7 +174,7 @@ function tripActions(ctx, id, scope, slot) {
 }
 
 /**
- * Remove trip (spec §4.9): asks once, and again only when the trip changed after its last Backup.
+ * Remove trip (spec §4.9): asks once; the question says so when the trip changed after its last Backup (or never had one).
  * Then the trip is gone from this device and its space is free. The button stays off while it runs.
  * @param {any} ctx @param {string} id @param {any} scope @param {HTMLButtonElement} button
  */
@@ -221,12 +221,14 @@ async function askAndRemove(ctx, id, scope) {
     : navigator.onLine === false
       ? plural(n, "{0} keeps # turn of its conversations: annai asks for it to be deleted, once you're back online.", "{0} keeps # turns of its conversations: annai asks for them to be deleted, once you're back online.", who)
       : plural(n, '{0} keeps # turn of its conversations: annai asks for it to be deleted.', '{0} keeps # turns of its conversations: annai asks for them to be deleted.', who);
-  const sure = await ask({ title: scopeTitle(scope), body: sentences(t`This removes everything in this trip from this device: its files, photos, notes and history.`, kept, t`Remove it?`), yes: t`Remove` });
+  // Read before the question opens, so one question carries it. A read that fails counts as changed: a warning that isn't needed costs a line, and a missing one could hide a loss.
+  const unbacked = await backupState(ctx.store, id).then((b) => b.changed, () => true);
+  const sure = await ask({
+    title: scopeTitle(scope),
+    body: sentences(t`This removes everything in this trip from this device: its files, photos, notes and history.`, unbacked ? t`It hasn't been backed up since it last changed.` : '', kept, t`Remove it?`),
+    yes: t`Remove`,
+  });
   if (!sure) return;
-  if ((await backupState(ctx.store, id)).changed) {
-    const anyway = await ask({ title: t`Not backed up`, body: t`This trip hasn't been backed up since it last changed. Remove it anyway?`, yes: t`Remove anyway` });
-    if (!anyway) return;
-  }
   try {
     const { bytes: freed } = await removeTripNow(ctx, id);
     ctx.notices.toast(t`Removed ${scopeTitle(scope)}. ${size(freed)} freed.`);

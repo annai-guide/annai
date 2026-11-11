@@ -65,25 +65,27 @@ test("the Conversation's ⋯ opens what each half sees: its instructions and its
     await page.getByLabel('Message to Shiori').fill('Tell me about pelicans');
     await page.getByRole('button', { name: 'Send', exact: true }).click();
     await expect(page.locator('.convo .shiori p')).toHaveCount(1, { timeout: 20_000 });
-    await page.getByRole('button', { name: 'Tidy up the conversation', exact: true }).click();
+    await page.getByRole('button', { name: 'Conversation menu', exact: true }).click();
     // One full-width link of 44 px, 15 px text, and nothing else added to the menu.
     const link = page.getByRole('link', { name: 'What each half sees' });
-    const menu = page.getByRole('group', { name: 'Tidy up the conversation' });
+    const menu = page.getByRole('group', { name: 'Conversation menu' });
     const [box, size] = [/** @type {any} */ (await link.boundingBox()), await link.evaluate((el) => getComputedStyle(el).fontSize)];
     expect(box.height).toBeGreaterThanOrEqual(44);
     expect(size).toBe('15px');
     expect(box.width).toBeGreaterThan(/** @type {any} */ ((await menu.boundingBox())).width - 30);
     // Turned sideways with it open, and opened again there: the menu is the screen's height at most (CSS only), and the link is reachable.
-    const toggle = page.getByRole('button', { name: 'Tidy up the conversation', exact: true });
+    const toggle = page.getByRole('button', { name: 'Conversation menu', exact: true });
     const height = async () => /** @type {any} */ ((await menu.boundingBox())).height;
     for (const size of [{ width: 844, height: 390 }, { width: 320, height: 568 }, { width: 390, height: 844 }]) {
       await page.setViewportSize(size);
-      const most = size.height - 56 - 64; // the screen less the bar (56 px) and the room the title and its ⋯ take
+      await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight)); // as a finger brings the title up under the bar (a page with room to scroll)
+      const dock = /** @type {any} */ (await page.locator('.dock:not(.seat)').boundingBox()).height; // the dock is over the page's bottom: the menu stops above it
+      const most = size.height - 56 - 64 - dock; // the screen less the bar (56 px), the room the title and its ⋯ take, and the dock
       await expect.poll(height, { message: `open, ${size.width}x${size.height}` }).toBeLessThanOrEqual(most + 1);
       await toggle.click();
       await toggle.click();
       await expect.poll(height, { message: `opened again, ${size.width}x${size.height}` }).toBeLessThanOrEqual(most + 1);
-      expect(await height()).toBeGreaterThan(Math.min(200, most - 1)); // never the 120 px box
+      expect(await height()).toBeGreaterThan(Math.min(200, most - 1)); // never the 120 px box: all the room there is, up to its content
       await link.scrollIntoViewIfNeeded();
       await expect(link).toBeInViewport({ ratio: 1 });
     }

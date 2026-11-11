@@ -105,7 +105,7 @@ test('Plan → Check this → Open the original: back goes to the booking, then 
 // "the tidy up button now is bit intrusive on the conversation pannel... is there some better place to put it / hide it?" (the user,
 // 2026-11-02): a ⋯ at the right of the Conversation title, its menu below it, inside the screen at phone width.
 for (const width of [390, 320]) {
-  test(`Tidy up is a ⋯ by the Conversation title, not in the conversation, and its menu opens below it, inside the screen, at ${width} px`, async ({ page }) => {
+  test(`The conversation menu is a ⋯ by the Conversation title, not in the conversation, and its menu opens below it, inside the screen, at ${width} px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 700 });
     await openApp(page);
     const trip = await startTrip(page, 'Alaska');
@@ -118,7 +118,7 @@ for (const width of [390, 320]) {
     // The screen scrolls itself to the end as it opens; wait for that, or it can come after the scroll back to the top.
     await page.waitForFunction(() => scrollY > 0 || document.documentElement.scrollHeight <= innerHeight);
     await page.evaluate(() => scrollTo(0, 0));
-    const toggle = page.getByRole('button', { name: 'Tidy up the conversation', exact: true });
+    const toggle = page.getByRole('button', { name: 'Conversation menu', exact: true });
     await expect(toggle).toHaveText('⋯');
     const title = /** @type {any} */ (await page.locator('.talk-head .talk-name').boundingBox()); // the trip's name heads its conversation (timeline stage 3)
     const at = /** @type {any} */ (await toggle.boundingBox());
@@ -131,15 +131,18 @@ for (const width of [390, 320]) {
     expect(at.y + at.height).toBeLessThanOrEqual(first.y);
     await expect(page.locator('.convo ~ .tidy, .convo .tidy')).toHaveCount(0);
     await toggle.click();
-    const menu = page.getByRole('group', { name: 'Tidy up the conversation' });
+    const menu = page.getByRole('group', { name: 'Conversation menu' });
     const m = /** @type {any} */ (await menu.boundingBox());
     expect(m.y).toBeGreaterThanOrEqual(at.y + at.height - 1);
     expect(m.x).toBeGreaterThanOrEqual(0);
     expect(m.x + m.width).toBeLessThanOrEqual(width);
-    // No taller than the screen less the bar and the title (CSS only); where it hangs below the fold, the page scrolls to it.
-    expect(m.height).toBeLessThanOrEqual(700 - 56 - 64 + 1);
-    await menu.scrollIntoViewIfNeeded();
+    // No taller than the screen less the bar, the title and the dock (CSS only). The title is below the top here (the page's first lines are above it): the
+    // page scrolls it up under the bar, as a finger does, and then the whole menu is in view, above the dock.
+    const dock = /** @type {any} */ (await page.locator('.dock:not(.seat)').boundingBox());
+    expect(m.height).toBeLessThanOrEqual(700 - 56 - 64 - dock.height + 1);
+    await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
     await expect(menu).toBeInViewport({ ratio: 1 });
+    await expect.poll(async () => /** @type {any} */ (await menu.boundingBox()).y + /** @type {any} */ (await menu.boundingBox()).height).toBeLessThanOrEqual(dock.y + 1);
     await expect(menu.getByRole('button')).toHaveText(['Summarize now', 'Start fresh']);
   });
 }
@@ -159,7 +162,7 @@ for (const width of [390, 320]) {
     // It opens at the end: the last line is in view, and the title row is still at the top, right under the bar.
     await expect(page.locator('.convo .shiori').last()).toBeInViewport();
     expect(await page.evaluate(() => scrollY)).toBeGreaterThan(500);
-    const toggle = page.getByRole('button', { name: 'Tidy up the conversation', exact: true });
+    const toggle = page.getByRole('button', { name: 'Conversation menu', exact: true });
     await expect(toggle).toBeInViewport({ ratio: 1 });
     const bar = /** @type {any} */ (await page.locator('header.topbar').boundingBox());
     const row = /** @type {any} */ (await page.locator('.screen > .talk-head').boundingBox());
@@ -169,7 +172,7 @@ for (const width of [390, 320]) {
     const covered = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('.talk-head') !== null, [width / 2, row.y + 2]);
     expect(covered).toBe(true);
     await toggle.click();
-    const menu = page.getByRole('group', { name: 'Tidy up the conversation' });
+    const menu = page.getByRole('group', { name: 'Conversation menu' });
     await expect(menu).toBeInViewport({ ratio: 1 });
     await expect(menu.getByRole('button')).toHaveText(['Summarize now', 'Start fresh']);
     // Back at the top it is where it was, above the first line.

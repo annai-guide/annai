@@ -17,7 +17,7 @@ import { upcoming, over } from '../../core/now.js';
 import { tripRows } from '../trip-rows.js';
 import { nowOf, todayOf } from '../today.js';
 import { ask } from '../ask.js';
-import { ME, SYS_WAITING, scopeTitle, talks } from '../../core/scopes.js';
+import { ME, SYS_WAITING, scopeTitle, talks, tripMirror } from '../../core/scopes.js';
 import { readNames } from '../../core/names.js';
 import { FILES_ONLY, undoable, undoEverywhere } from '../../core/handover.js';
 import { removeTripNow } from './trip.js';
@@ -591,16 +591,19 @@ export async function renderTalk(ctx, route) {
   });
   built = true;
   showCost();
-  const tidy = tidyMenu(ctx);
   const trip = agent.trip;
+  const tidy = tidyMenu(ctx, trip ? { id: trip, dated: Boolean(rec?.start) } : null);
   const name = h('a', { class: 'talk-name', href: `#/trip/${encodeURIComponent(trip)}`, dir: 'auto', text: title });
-  // The name follows trip.json while it shows: the first line names a new conversation, and Shiori may rename it.
+  // The name follows trip.json while it shows: the first line names a new conversation, and Shiori may rename it or give it dates (a chat, then a trip).
   const offName = trip ? ctx.ws.onChange((/** @type {{ scope: string, path: string }} */ c) => {
-    if (c.scope === trip && c.path === '/trip.json') ctx.ws.readJSON(trip, '/trip.json').then((/** @type {any} */ j) => { name.textContent = scopeTitle({ id: trip, title: String(j?.title ?? title) }); }, () => {});
+    if (c.scope === trip && c.path === '/trip.json') ctx.ws.readJSON(trip, '/trip.json').then((/** @type {any} */ j) => {
+      name.textContent = scopeTitle({ id: trip, title: String(j?.title ?? title) });
+      tidy.dated(Boolean(tripMirror(j).start));
+    }, () => {});
   }) : null;
   const screen = h('div', { class: 'screen' },
-    // A trip's: ← home (never opening anything), its name to Details, and Tidy up's ⋯, staying under the app's bar on a long
-    // conversation. The heading stays for the top bar's tests until it goes (stage 8).
+    // A trip's: ← home (never opening anything), its name to Details, and the conversation's ⋯ (Details too, Tidy up), staying under the app's bar on a
+    // long conversation. The heading stays for the top bar's tests until it goes (stage 8).
     ...(trip ? [
       h('div', { class: 'talk-head' },
         h('a', { class: 'btn ghost talk-back', href: '#/trips', 'aria-label': t`Back to Trips`, text: '←' }),
@@ -609,7 +612,7 @@ export async function renderTalk(ctx, route) {
       h('h1', { class: 'visually-hidden', text: t`Conversation` }),
       await nextLine(ctx, trip),
     ] : [
-      // Tidy up is a ⋯ by the title, out of the conversation's way, and stays under the app's bar on a long conversation.
+      // The menu is a ⋯ by the title, out of the conversation's way, and stays under the app's bar on a long conversation.
       h('div', { class: 'title-row' }, h('h1', { class: 'title', text: t`Conversation` }), tidy.el, tidy.status),
       h('p', { class: 'sub', text: t`No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.` }),
     ]),
@@ -817,23 +820,38 @@ function undoLine(ctx, scope, list) {
 }
 
 /**
- * The Conversation screen's menu: Summarize now, which runs housekeeping as it would run by itself, and Start fresh, which has Shiori
- * start a new context from here. Neither deletes a line (spec §6.5, §16.2).
- * @param {any} ctx
- * @returns {{ el: HTMLElement, status: HTMLElement }} the ⋯ and its menu, and a line that says "Starting fresh…" while Start fresh runs
+ * The Conversation screen's menu, a ⋯: Details (a trip's or a chat's own page, where its name goes too: its name and dates, Export, Archive and
+ * Remove), Summarize now, which runs housekeeping as it would run by itself, and Start fresh, which has Shiori start a new context from here.
+ * Neither of those deletes a line (spec §6.5, §16.2). A conversation with no trip open has no Details.
+ * @param {any} ctx @param {{ id: string, dated: boolean } | null} trip the conversation's trip, and whether it has dates (a trip; else a chat)
+ * @returns {{ el: HTMLElement, status: HTMLElement, dated: (on: boolean) => void }} the ⋯ and its menu, a line that says "Starting fresh…" while Start
+ *   fresh runs, and what says whether the conversation has dates now, for the words under Details
  */
-function tidyMenu(ctx) {
+function tidyMenu(ctx, trip) {
   const agent = ctx.agent;
-  const toggle = h('button', { class: 'btn ghost tidy-toggle', type: 'button', 'aria-expanded': 'false', 'aria-controls': 'tidy-menu', 'aria-label': t`Tidy up the conversation` }, '⋯');
-  const menu = h('div', { id: 'tidy-menu', class: 'tidy-menu', role: 'group', 'aria-label': t`Tidy up the conversation`, hidden: true });
+  const toggle = h('button', { class: 'btn ghost tidy-toggle', type: 'button', 'aria-expanded': 'false', 'aria-controls': 'tidy-menu', 'aria-label': t`Conversation menu` }, '⋯');
+  const menu = h('div', { id: 'tidy-menu', class: 'tidy-menu', role: 'group', 'aria-label': t`Conversation menu`, hidden: true });
   const close = () => {
     menu.hidden = true;
     toggle.setAttribute('aria-expanded', 'false');
   };
+  /**
+   * The menu's room, from under the ⋯ to 16 px above the dock (which is over the page's bottom, as tall as it is now): what it holds beyond that scrolls inside it.
+   * The title sits as low as the cards and banner above it leave it, which on a short conversation the page can't scroll away under the bar, so no fixed
+   * height clears the dock: it is measured where the ⋯ is, as it opens and as the page moves.
+   */
+  const fit = () => {
+    if (menu.hidden) return;
+    const dock = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dock-h')) || 0;
+    menu.style.maxHeight = `${Math.max(0, innerHeight - dock - toggle.getBoundingClientRect().bottom - 16)}px`;
+  };
+  addEventListener('scroll', fit, { passive: true });
+  addEventListener('resize', fit);
   toggle.addEventListener('click', () => {
     if (toggle.getAttribute('aria-disabled') === 'true') return;
     menu.hidden = !menu.hidden;
     toggle.setAttribute('aria-expanded', String(!menu.hidden));
+    fit();
   });
   const summarize = h('button', {
     class: 'btn', type: 'button', 'aria-describedby': 'tidy-summarize',
@@ -851,7 +869,7 @@ function tidyMenu(ctx) {
   const working = (on) => {
     toggle.setAttribute('aria-busy', String(on));
     toggle.setAttribute('aria-disabled', String(on));
-    toggle.setAttribute('aria-label', on ? t`Starting fresh…` : t`Tidy up the conversation`);
+    toggle.setAttribute('aria-label', on ? t`Starting fresh…` : t`Conversation menu`);
     status.hidden = !on;
   };
   const fresh = h('button', {
@@ -893,16 +911,23 @@ function tidyMenu(ctx) {
   };
   document.addEventListener('keydown', escape);
   const el = h('div', { class: 'tidy' }, toggle, menu);
+  const aboutDetails = h('p', { id: 'tidy-details', class: 'sub', text: detailsWords(Boolean(trip?.dated)) });
   menu.append(
+    ...(trip ? [aboutDetails, h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(trip.id)}`, 'aria-describedby': 'tidy-details', text: t`Details` })] : []),
     h('p', { id: 'tidy-summarize', class: 'sub', text: t`Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.` }), summarize,
     h('p', { id: 'tidy-fresh', class: 'sub', text: t`Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.` }), fresh,
-    h('a', { class: 'btn sees-link', href: '#/sees?half=kokoro', text: t`What each half sees` }));
+    h('a', { class: 'btn', href: '#/sees?half=kokoro', text: t`What each half sees` }));
   whenGone(el, () => {
     offTap();
     document.removeEventListener('keydown', escape);
+    removeEventListener('scroll', fit);
+    removeEventListener('resize', fit);
   });
-  return { el, status };
+  return { el, status, dated: (on) => { aboutDetails.textContent = detailsWords(on); } };
 }
+
+/** What Details holds, in the words of what it is: a trip (it has dates) or a chat. @param {boolean} dated */
+const detailsWords = (dated) => dated ? t`Details: the trip's name and dates, Export, Archive and Remove.` : t`Details: the chat's name and dates, Export, Archive and Remove.`;
 
 /**
  * The Undo under a "I adjusted my personality" card. Once done it says so and offers no second Undo; a card for a change that is
