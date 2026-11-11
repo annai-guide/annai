@@ -777,7 +777,7 @@ test("after the user's Stop, Koe's question to Kokoro refused while it holds is 
   await k.agent.idle();
   const refused = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'tell_kokoro' && e.data.ok === false);
   assert.equal(refused.length, 1, "Koe asked again once it heard of the Stop, and was refused");
-  assert.equal(refused[0].data.cut, undefined, 'a refusal is no cut');
+  assert.equal(refused[0].data.cut, false, 'a refusal is no cut');
   const [kokoro, koe] = [k.sent['model-0'].length, k.sent['model-koe'].length];
   await k.agent.open(await createTrip(k.ws, { title: 'Kyoto' }));
   await k.agent.open(A);
