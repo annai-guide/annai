@@ -225,7 +225,7 @@ export class LiveKoe {
   /** That window, in seconds. */
   answerSeconds = LIVE_ANSWER_S;
   #brief = false;
-  /** A tap's session or microphone is opening, until it settles or closes (#ready): the dock says "One moment…". @type {object | null} */
+  /** A tap's open, until it settles or closes (#ready). @type {object | null} */
   #readying = null;
   /** The quiet spell ran out while only the user's turn (or its answer) was pending: her answer re-arms it, a dismissed turn closes. */
   #lapsed = false;
@@ -308,16 +308,15 @@ export class LiveKoe {
   }
 
   /**
-   * The dock's state, as a half's (spec §16.3). While a session opens, or its microphone is being asked for, she is getting ready: after the
-   * user's tap that is "opening", awake with no glow, and Listening comes only once the microphone hears, since the glow is the cue to speak;
-   * otherwise (a note, a trigger, a typed line) she is about to speak, so she is thinking (the drive-3 design, D5).
-   * @returns {import('../agent/loop.js').State}
+   * The dock's state, as a half's (spec §16.3). Until a tap's open settles she is "opening", never asleep, and Listening (the cue to speak) comes
+   * only once the microphone hears; a session opening to speak (a note, a typed line) shows her thinking (drive 3, D5). @returns {import('../agent/loop.js').State}
    */
   get view() {
     const ready = this.#readying ? 'opening' : 'thinking';
-    const name = this.state === 'opening' ? ready : this.state === 'closed' ? 'sleeping' : this.#sounding ? 'speaking'
+    const rest = this.#readying ? 'opening' : 'sleeping';
+    const name = this.state === 'opening' ? ready : this.state === 'closed' ? rest : this.#sounding ? 'speaking'
       : this.#input?.active ? 'hearing' : this.#t || this.#pending || this.#queue.length || this.#urgent ? 'thinking' : this.#input && !this.listening ? ready
-        : this.listening ? (this.#ignoring ? 'ignoring' : 'listening') : 'sleeping';
+        : this.listening ? (this.#ignoring ? 'ignoring' : 'listening') : rest;
     return { name, label: LABELS[name] };
   }
 
@@ -500,9 +499,8 @@ export class LiveKoe {
     this.#wake = newId('w');
     this.#noBack = 0;
     this.#endedEarly = false;
-    // The phone's sound, for the Trace's ready line: its rate and the output's own latency (not its context's state, which would take the line's).
-    const o = this.c.voice?.platform?.player.output?.();
-    const output = o ? { sampleRate: o.sampleRate, baseLatency: o.baseLatency, outputLatency: o.outputLatency } : undefined;
+    // The phone's sound, for the Trace's ready line: its rate and the output's own latency.
+    const output = this.c.voice?.platform?.player.output?.() ?? undefined;
     const s = await this.c.llm.live(id, { instructions, context: sent, tools, ...(languages ? { languages } : {}), ...(resume ? { resume } : {}) }, { scope: this.c.koe.scope, wake: this.#wake, output });
     s.on((e) => this.#on(s, e));
     s.closed.then((c) => this.#closed(s, c, why));
@@ -781,14 +779,17 @@ export class LiveKoe {
   }
 
   /**
-   * The user's tap is being answered by what opens (a session, its microphone): the dock says "One moment…" until it settles, opened or not.
-   * @template T @param {Promise<T>} opening @returns {Promise<T>}
+   * What a tap opens (a session, its microphone): "One moment…" until it settles. @template T @param {Promise<T>} opening @returns {Promise<T>}
    */
   #ready(opening) {
     const mine = {};
     this.#readying = mine;
     this.#changed();
-    return opening.finally(() => { if (this.#readying === mine) this.#readying = null; });
+    return opening.finally(() => {
+      if (this.#readying !== mine) return;
+      this.#readying = null;
+      this.#changed(); // what it came to (listening, or what a failure leaves) shows now
+    });
   }
 
   /** The user's first turn after a tap ended, or never began: what was kept goes in. */

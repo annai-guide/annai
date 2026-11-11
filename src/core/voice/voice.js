@@ -356,6 +356,12 @@ export class Voice {
     this.#unlocked = false;
   }
 
+  /** The microphone found the sound stuck: unlocked or not, the next tap makes it anew, and listeners hear it (the tap card). */
+  #micStuck() {
+    this.#unlocked = false;
+    if (!this.#stuck) this.#tellSound((this.#stuck = true));
+  }
+
   /** Whether sound that worked has stopped coming out, until a tap brings it back. */
   get stuck() {
     return this.#stuck;
@@ -624,17 +630,12 @@ export class Voice {
   }
 
   /**
-   * The sound's context as the Trace keeps it: its state and its clock (s), or null while there is none. A clock that stands still between
-   * two lines seconds apart, with state "running", dates a dead context to before the earlier line (the drive-3 design, D4).
-   * @returns {{ state: string, time: number } | null}
+   * The sound's context for the Trace: state and clock (s), null with none. A clock standing still at "running" dates a dead context.
+   * @returns {{ state: string, time: number | null } | null}
    */
   #ctx() {
-    try {
-      const o = this.platform?.player.output?.();
-      return o && typeof o.state === 'string' && typeof o.time === 'number' ? { state: o.state, time: o.time } : null;
-    } catch {
-      return null;
-    }
+    const o = this.platform?.player.output?.();
+    return o?.state ? { state: o.state, time: o.time ?? null } : null;
   }
 
   /** A line in this device's own Trace (never backed up). @param {string} type @param {Record<string, any>} data */
@@ -643,7 +644,7 @@ export class Voice {
     if (store) ensureDeviceScope(store).then(() => logEvent(store, SYS_DEVICE, { type, actor: 'system', data })).catch(() => {});
   }
 
-  /** The page is back in view: its sound's context goes in the Trace, where there is one, so a context that died while it was hidden can be dated. */
+  /** The page is back in view: its sound's context, if any, goes in the Trace, to date one that died while hidden. */
   shown() {
     const ctx = this.#ctx();
     if (ctx) this.#device('voice.shown', { ctx });
@@ -737,8 +738,11 @@ export class Voice {
     if (!platform) return;
     this.#watching = true;
     platform.onDeviceChange?.(() => { this.#devicesChanged().catch(() => {}); });
-    // Each microphone open, opened or not: how long its audio thread took to run, and whether its context was made anew for it.
-    platform.mic.onOpen?.((m) => this.#device('voice.mic', { firstFrameMs: m.firstFrameMs, renewed: m.renewed, ctx: this.#ctx() }));
+    // Each microphone open, opened or not, in the Trace; one that found the sound stuck marks it here, for every caller (live, classic, the test).
+    platform.mic.onOpen?.((m) => {
+      this.#device('voice.mic', { firstFrameMs: m.firstFrameMs, renewed: m.renewed, ctx: this.#ctx() });
+      if (m.stuck) this.#micStuck();
+    });
     this.route().catch(() => {}); // what is there now, for the Trace
     const again = () => { this.refresh().catch(() => {}); };
     // The activity sensor comes with live mode (spec §11.2), maybe after voice started: followed once it is there.
@@ -807,8 +811,7 @@ export class Voice {
       }
       return session;
     } catch (e) {
-      platform.session('playback'); // the microphone didn't open: full-quality Bluetooth audio again (spec §10.1)
-      if (/** @type {any} */ (e)?.stuck) this.soundStopped();
+      platform.session('playback'); // the microphone didn't open: full-quality Bluetooth audio again (spec §10.1); a stuck one was marked as it failed (#micStuck)
       throw e;
     }
   }

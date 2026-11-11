@@ -20,7 +20,8 @@ const RATE = 16_000;
 const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
 const wait = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
 const lines = async (/** @type {any} */ k) => (await k.events(['out.speak'])).map((/** @type {any} */ e) => ({ type: e.type, data: e.data }));
-const stuckMic = () => { throw Object.assign(new Error('Sound got stuck.'), { stuck: true }); };
+/** A microphone that can't start as its sound is stuck, as the plugin fails then: its listener told first. @param {any} k */
+const stuckMic = (k) => async () => { throw k.platform.mic.stuck(); };
 const soundCards = (/** @type {any} */ k) => k.notices.filter((/** @type {any} */ n) => n.key === 'sound');
 const room = (/** @type {number} */ seconds) => quiet(seconds, 0.006);
 
@@ -111,7 +112,7 @@ test('a live tap while sound stays stuck: the session stands, its model isn\'t b
     k.voice.soundStopped();
     const open = k.platform.mic.open;
     k.platform.player.unlock = async () => false;
-    k.platform.mic.open = stuckMic;
+    k.platform.mic.open = stuckMic(k);
     assert.equal(k.agent.tap(), 'listening');
     await wait(60);
     assert.deepEqual([k.agent.live.state, k.agent.live.modelId, k.agent.live.listening], ['open', 'm-live', false]);
@@ -152,7 +153,7 @@ test('Auto, Realtime: a tap whose microphone can\'t start on stuck sound lets th
   try {
     await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 0.2 } });
     await k.voice.unlock();
-    k.platform.mic.open = stuckMic;
+    k.platform.mic.open = stuckMic(k);
     assert.equal(k.agent.tap(), 'listening');
     assert.equal(k.voice.on, true);
     await until(() => k.agent.live.state === 'open', 3000);
@@ -171,7 +172,7 @@ test('stuck sound found as dictation falls back to the microphone: the sound car
   await k.voice.unlock();
   assert.equal(k.agent.tap(), 'listening');
   await until(() => k.agent.state.name === 'listening');
-  k.platform.mic.open = stuckMic;
+  k.platform.mic.open = stuckMic(k);
   k.platform.dictation.fail('network');
   await until(() => soundCards(k).length > 0, 1000);
   await until(() => !k.voice.on);

@@ -4,12 +4,12 @@
  * @typedef {{ data: Uint8Array, mediaType: string }} Clip
  * @typedef {{ close(): void, take?(): Promise<Uint8Array | null>, again?(): void }} OpenMic  take: the file since the last cut; again: it, thrown away
  * @typedef {{ open(o: { onFrames: (pcm: Float32Array, sampleRate: number) => void, onError: (e: Error) => void, record?: string }): Promise<OpenMic>,
- *   inUse?(): { label: string, deviceId: string } | null, onOpen?(fn: (m: MicOpened) => void): () => void }} Mic
+ *   inUse?(): { label: string, deviceId: string } | null, onOpen?(fn: (m: MicOpened) => void): void }} Mic
  *   the microphone: open only while listening (§10.2); open rejects with a `stuck` error when the sound it runs on won't run (its audio thread never
  *   ran, even on a context made anew); record: a MediaRecorder type to record alongside; inUse: the input its open
- *   stream takes, by its track's label and deviceId (§10.5); null while closed; onOpen: hears what each open came to, opened or not, for the Trace
- * @typedef {{ firstFrameMs: number | null, renewed: boolean }} MicOpened  firstFrameMs: how long the audio thread took to run once the microphone
- *   was connected, null when it never did; renewed: it didn't at first, so the sound's context was made anew in place
+ *   stream takes, by its track's label and deviceId (§10.5); null while closed; onOpen: the one listener told what each open came to, opened or not (the Voice's)
+ * @typedef {{ firstFrameMs: number | null, renewed: boolean, stuck: boolean }} MicOpened  firstFrameMs: how long the audio thread took to run once the microphone
+ *   was connected, null when it never did; renewed: it didn't at first, so the sound's context was made anew in place; stuck: the open failed with the `stuck` error
  * @typedef {{ unlock(o?: { fresh?: boolean }): Promise<boolean>, play(clip: Clip, o: { signal: AbortSignal, onLevel?: (x: number) => void }): Promise<{ ended: boolean, fraction: number }>, plays?(): string[],
  *   stream?(o: { rate: number, onLevel?: (x: number) => void }): PlayerStream, output?(): { sampleRate: number, baseLatency?: number, outputLatency?: number, state?: string, time?: number } | null }} Player
  *   the one audio player (§10.1); unlock(), inside a tap, gives whether sound may play now (fresh: sound got stuck, so its context is made anew); play() resolves with ended false when stopped, and rejects with a NotAllowedError while the page may not play sound;

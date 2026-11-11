@@ -474,7 +474,7 @@ test('H1: a microphone that can\'t start as its sound is stuck: the same way out
   const k = await liveKit([{ said: 'The fuel station is open until ten.', audio: tone(0.1) }]);
   try {
     await k.voice.unlock();
-    k.platform.mic.open = async () => { throw Object.assign(new Error('stuck'), { stuck: true }); };
+    k.platform.mic.open = async () => { throw k.platform.mic.stuck(); }; // as the plugin fails then: its listener told first
     await tell(k);
     await soon(async () => (await lines(k)).length === 1, 3000);
     assert.equal(k.voice.unlocked, false);

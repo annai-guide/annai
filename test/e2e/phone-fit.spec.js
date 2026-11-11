@@ -191,11 +191,14 @@ test('swiping a screen sideways moves along the top bar; not from its edge, nor 
 test('Settings → Shiori shows every way she can look, with the words the dock shows under her', async ({ page }) => {
   await openApp(page, '#/shiori');
   const looks = page.locator('.looks .look');
-  await expect(looks).toHaveCount(9);
+  await expect(looks).toHaveCount(10);
   expect(await looks.evaluateAll((els) => els.map((e) => `${/** @type {HTMLElement} */ (e).dataset.state}=${e.querySelector('.av')?.getAttribute('data-state')}`)))
-    .toEqual(['sleeping', 'listening', 'ignoring', 'hearing', 'thinking', 'speaking', 'waiting', 'away', 'offline'].map((s) => `${s}=${s}`));
+    .toEqual(['sleeping', 'opening', 'listening', 'ignoring', 'hearing', 'thinking', 'speaking', 'waiting', 'away', 'offline'].map((s) => `${s}=${s}`));
   await expect(page.getByRole('img', { name: 'Shiori, thinking' })).toBeVisible();
   await expect(looks.nth(0)).toContainText('Tap to talk');
+  // Between a tap and Listening (drive 3, D5): awake, with the dock's own words.
+  await expect(looks.nth(1)).toContainText('One moment…');
+  await expect(page.getByRole('img', { name: 'Shiori, getting ready to listen' })).toBeVisible();
 });
 
 test("a code block in Shiori's words wraps instead of widening the page", async ({ page }) => {

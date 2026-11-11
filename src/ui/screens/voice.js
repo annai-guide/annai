@@ -169,7 +169,7 @@ export async function renderVoice(ctx) {
       h('p', { class: 'sub', text: live.length
         ? t`While a live session listens, what you say goes straight to ${list(live, 'or')} as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange, when she's asked to sleep, on voice off, or when annai leaves the screen. With sound that never stops, such as music, Shiori decides when to sleep.`
         : t`While a live session listens, what you say goes straight to its provider as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange, when she's asked to sleep, on voice off, or when annai leaves the screen. With sound that never stops, such as music, Shiori decides when to sleep.` }),
-      // While the microphone is open an iPhone may treat her sound as a call, with a volume of its own (believed, not yet checked on a phone): said so it holds either way.
+      // An iPhone may give her voice a volume of its own while listening (not checked on a phone): worded to hold either way.
       voice.where === 'ios' ? h('p', { class: 'sub', text: t`While she listens, set her voice's volume with the iPhone's volume buttons: iPhone may keep it apart from the volume of music and videos.` }) : null,
       savedField(t`Close a live session after (seconds with no exchange)`, closeAfter, () => numberIn(closeAfter, 10, 300, t`Close after 10 to 300 seconds with no exchange.`, { whole: true, need: true }), (n) => save({ closeAfterSeconds: n })),
       bargeIn.el,

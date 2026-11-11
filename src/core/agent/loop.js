@@ -3422,8 +3422,7 @@ export class Agent {
   #earFailed(e) {
     const problem = this.voice?.problem(e) ?? { title: t`Listening stopped`, body: String(/** @type {any} */ (e)?.shown ?? e?.message ?? e), plain: /* en */ 'Listening stopped' };
     this.#closeEar();
-    const stuck = Boolean(/** @type {any} */ (e)?.stuck); // dictation failed, and the microphone it fell back to runs on sound that's stuck
-    if (stuck) this.voice?.soundStopped();
+    const stuck = Boolean(/** @type {any} */ (e)?.stuck); // dictation failed, and the microphone it fell back to runs on sound that's stuck (the Voice marked it)
     this.#notice(stuck ? soundStuck() : { tone: 'warn', title: problem.title, body: problem.body });
     const p = this.#pending?.listening ? this.#pending : null;
     if (p) {
@@ -3461,7 +3460,9 @@ export class Agent {
       return 'stopped';
     }
     const s = this.state.name;
-    if (s === 'listening' || s === 'hearing') {
+    // Listening, or getting ready to: a tap stops it (a window still opening is let go as it opens).
+    if (s === 'listening' || s === 'hearing' || s === 'opening') {
+      this.#tapping = null;
       this.#closeEar();
       if (this.#busy) this.interrupt();
       else this.#setState(this.online() ? 'sleeping' : 'offline');
@@ -3484,12 +3485,26 @@ export class Agent {
   /** A tap's microphone is opening: it may yet say why it can't. */
   tapOpening = false;
 
-  /** The user tapped to talk (spec §10.4): the microphone opens; a silence closes it again. */
+  /** The tap whose window is opening, until it opens or a tap stops it. @type {object | null} */
+  #tapping = null;
+
+  /** The user tapped to talk (spec §10.4): the microphone opens ("One moment…" until then, unless she is busy); a silence closes it again. */
   #tapListen() {
     this.tapOpening = true;
+    const mine = (this.#tapping = {});
+    if (!this.#busy) this.#setState('opening');
     this.#openEar('tap').then(async (deaf) => {
       this.tapOpening = false;
-      if (deaf || !this.#ear) return void this.#emit('state', this.state); // the card said why (or sound stuck as it opened, and closed it); whoever waits on this tap hears it came to nothing
+      if (this.#tapping !== mine) {
+        if (!deaf && this.#ear?.owner === 'tap') this.#closeEar(); // a tap stopped it while it opened
+        return void this.#emit('state', this.state);
+      }
+      this.#tapping = null;
+      if (deaf || !this.#ear) {
+        // The card said why; whoever waits on this tap hears it came to nothing.
+        if (this.state.name === 'opening') return void this.#setState(this.online() ? 'sleeping' : 'offline');
+        return void this.#emit('state', this.state);
+      }
       const p = this.#pending;
       if (p?.kind === 'ask') p.listening = true; // an ask's answer may be spoken
       if (this.#busy) return; // she is speaking or working: the window serves her turn

@@ -45,8 +45,8 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
      * plugin's two waits for a first frame); 0: it opens. What each open came to goes to mic.onOpen's listeners, as the plugin tells it.
      */
     micStuckMs: 0,
-    /** @type {((m: { firstFrameMs: number | null, renewed: boolean }) => void)[]} */
-    opened: [],
+    /** The one listener told what each open came to, as the plugin tells it. @type {((m: import('../../src/core/voice/platform.js').MicOpened) => void) | null} */
+    opened: /** @type {any} */ (null),
     /** The browser voices, as the browser lists them. @type {{ id: string, name: string, lang: string, local?: boolean, default?: boolean }[]} */
     voiceList: [{ id: 'v-en', name: 'Samantha', lang: 'en-US', local: true }],
     /** What the browser voice was asked to say, and in what language. @type {{ text: string, lang?: string, voice?: string }[]} */
@@ -177,10 +177,12 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
         const last = platform.deviceList.filter((d) => d.kind === 'audioinput').at(-1);
         return platform.input ?? (last ? { label: last.label, deviceId: last.deviceId ?? '' } : null);
       },
-      /** @param {(m: { firstFrameMs: number | null, renewed: boolean }) => void} fn */
-      onOpen(fn) {
-        platform.opened.push(fn);
-        return () => { platform.opened = platform.opened.filter((f) => f !== fn); };
+      /** @param {(m: import('../../src/core/voice/platform.js').MicOpened) => void} fn */
+      onOpen(fn) { platform.opened = fn; },
+      /** An open that failed as the plugin's does when the sound is stuck: the listener is told, then the error. */
+      stuck() {
+        platform.opened?.({ firstFrameMs: null, renewed: true, stuck: true });
+        return Object.assign(new Error("Sound got stuck, so annai can't hear you. Tap the screen to bring it back."), { stuck: true });
       },
       /** @param {{ onFrames: (pcm: Float32Array, rate: number) => void, onError: (e: Error) => void, record?: string }} o */
       async open({ onFrames, record }) {
@@ -188,10 +190,9 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
         if (platform.micStuckMs) {
           log.push('mic stuck');
           await new Promise((r) => { setTimeout(r, platform.micStuckMs); });
-          for (const fn of platform.opened) fn({ firstFrameMs: null, renewed: true });
-          throw Object.assign(new Error("Sound got stuck, so annai can't hear you. Tap the screen to bring it back."), { stuck: true });
+          throw platform.mic.stuck();
         }
-        for (const fn of platform.opened) fn({ firstFrameMs: 4, renewed: false });
+        platform.opened?.({ firstFrameMs: 4, renewed: false, stuck: false });
         opens++;
         log.push(record ? `mic open, recording ${record}` : 'mic open');
         frames = onFrames;

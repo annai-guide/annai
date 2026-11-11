@@ -4,12 +4,19 @@
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { browserPlatform } from '../../src/plugins/voice-browser/index.js';
+import { liveKit } from './koe-live-kit.js';
+import { until } from './agent-kit.js';
 
 /** The bound the plugin waits for a first frame, as its FIRST_FRAME_MS (STALL_MS). */
 const FIRST_FRAME_MS = 1000;
+/** The bound on a worklet module's load, as its MODULE_LOAD_MS. */
+const MODULE_LOAD_MS = 1500;
 
 /** Whether the nth context made runs its worklets; contexts past the list run as the last says. @type {boolean[]} */
 let runs = [];
+/** The capture worklet's module never loads while this is set (a hung addModule), and how many loads were asked for. */
+let hangCapture = false;
+let captureLoads = 0;
 /** @type {any[]} */
 let contexts = [];
 /** @type {any[]} */
@@ -28,7 +35,17 @@ class FakeContext {
     this.closed = false;
     /** @type {string[]} */
     this.modules = [];
-    this.audioWorklet = { addModule: async (/** @type {string} */ url) => { this.modules.push(url.split('/').at(-1)); } };
+    this.audioWorklet = {
+      addModule: (/** @type {string} */ url) => {
+        const name = url.split('/').at(-1) ?? '';
+        if (name === 'capture-worklet.js') {
+          captureLoads++;
+          if (hangCapture) return new Promise(() => {});
+        }
+        this.modules.push(name);
+        return Promise.resolve();
+      },
+    };
     contexts.push(this);
   }
   resume() { return Promise.resolve(); }
@@ -56,6 +73,8 @@ class FakeWorkletNode {
 
 beforeEach(() => {
   runs = [true];
+  hangCapture = false;
+  captureLoads = 0;
   contexts = [];
   nodes = [];
   tracks = [];
@@ -64,7 +83,7 @@ beforeEach(() => {
     value: {
       mediaDevices: {
         async getUserMedia() {
-          const track = { label: 'Mic', stopped: false, onended: null, stop() { track.stopped = true; }, getSettings: () => ({ deviceId: 'mic-1' }) };
+          const track = { label: 'Mic', stopped: false, getSettings: () => ({ deviceId: 'mic-1' }), onended: null, stop() { track.stopped = true; } };
           tracks.push(track);
           return { getAudioTracks: () => [track], getTracks: () => [track] };
         },
@@ -84,7 +103,7 @@ afterEach(() => {
 /** A platform whose opens are heard, as the Voice hears them for the Trace. */
 function platform() {
   const p = browserPlatform();
-  /** @type {{ firstFrameMs: number | null, renewed: boolean }[]} */
+  /** @type {{ firstFrameMs: number | null, renewed: boolean, stuck: boolean }[]} */
   const told = [];
   p.mic.onOpen?.((m) => told.push(m));
   /** @type {{ pcm: Float32Array, rate: number }[]} */
@@ -147,7 +166,7 @@ test('an audio thread that never runs, even on a context made anew: a stuck erro
   assert.ok(took < 2 * FIRST_FRAME_MS + 300, `gave up after ${took} ms`);
   assert.equal(contexts.length, 2, 'made anew once, not again');
   assert.equal(tracks[0].stopped, true, 'the microphone is let go');
-  assert.deepEqual(told, [{ firstFrameMs: null, renewed: true }]);
+  assert.deepEqual(told, [{ firstFrameMs: null, renewed: true, stuck: true }]);
   assert.deepEqual(frames, []);
 });
 
@@ -161,4 +180,42 @@ test('output() gives the context\'s state and clock for the Trace, and a tap\'s 
   await p.player.unlock({ fresh: true });
   assert.equal(contexts[0].closed, true);
   assert.equal(contexts.length, 2);
+});
+
+test('a capture module whose load hangs: given up within the bound, the sound counts as stuck, the microphone is let go, and the next open loads it again', async () => {
+  hangCapture = true;
+  const { told, open } = platform();
+  const started = Date.now();
+  await assert.rejects(open(), (/** @type {any} */ e) => e.stuck === true);
+  const took = Date.now() - started;
+  assert.ok(took >= MODULE_LOAD_MS - 50 && took < MODULE_LOAD_MS + 500, `gave up after ${took} ms`);
+  assert.equal(tracks[0].stopped, true, 'no live microphone behind a stuck card');
+  assert.deepEqual(told, [{ firstFrameMs: null, renewed: false, stuck: true }]);
+  hangCapture = false;
+  const mic = await open();
+  assert.equal(captureLoads, 2, 'the hung load was let go, so this open asked again');
+  assert.equal(tracks[1].stopped, false);
+  assert.equal(told.at(-1)?.stuck, false);
+  mic.close();
+  assert.equal(tracks[1].stopped, true);
+});
+
+test('a live tap whose capture module hangs, then a tap that stops it: no microphone is left on, and the next tap listens', async () => {
+  hangCapture = true;
+  const p = browserPlatform();
+  const k = await liveKit([]);
+  try {
+    k.platform.mic.open = (/** @type {any} */ o) => p.mic.open(o); // the plugin's own open, on the faked Web Audio
+    k.agent.tap();
+    await until(() => k.agent.live.state === 'open' && tracks.length === 1, 5000);
+    assert.equal(k.agent.live.view.name, 'opening');
+    assert.equal(k.agent.tap(), 'stopped');
+    await until(() => tracks[0].stopped, MODULE_LOAD_MS + 1000);
+    hangCapture = false;
+    k.agent.tap();
+    await until(() => k.agent.live.listening, 5000);
+    assert.deepEqual(tracks.map((t) => t.stopped), [true, false], 'only the open microphone is live');
+  } finally {
+    await k.done();
+  }
 });
