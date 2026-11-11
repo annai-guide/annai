@@ -182,7 +182,7 @@ export class Transcript {
     } else if (e.type === 'note') {
       if (d.from === (koe ? 'koe' : 'kokoro') || this.half === 'one') return;
       /** @type {Part} */
-      const part = { type: 'text', text: koe ? wrapNote(texts.text ?? '', this.nonce) : /** @type {string} */ (blockFor(e, texts)) };
+      const part = { type: 'text', text: koe ? wrapNote(texts.text ?? '', this.nonce, { forUser: texts.forUser }) : /** @type {string} */ (blockFor(e, texts)) };
       if (koe) this.#wrapped.add(part);
       this.#line([part]);
       this.unanswered = true;

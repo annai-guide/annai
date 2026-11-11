@@ -835,6 +835,18 @@ test("a live Koe stays silent on Kokoro's note, asked once more too: annai shows
   }
 });
 
+test("a live Koe gets Kokoro's words for the user in its note when the note's text only points at them (real models, item 2)", async () => {
+  const k = await liveKit([{ said: 'Let me check.', audio: tone(0.2) }, { said: "It's open until ten tonight.", audio: tone(0.2) }]);
+  try {
+    await noted(k, 'Say the for_user text.');
+    await soon(async () => (await k.events(['out.speak'])).length === 2);
+    await settled(k);
+    assert.equal(texts(k)[1], `<from_kokoro id="${k.agent.nonce}">Say the for_user text.\nfor_user: ${FOR_USER}</from_kokoro>`);
+  } finally {
+    await k.done();
+  }
+});
+
 test('a live Koe silent on "Kokoro couldn\'t check": asked once more, and nothing is shown (plan decision 21)', async () => {
   const k = await liveKit([{ said: 'Let me check.', audio: tone(0.2) }, {}]);
   try {

@@ -114,7 +114,7 @@ export function channelTool(from, channel, refuse = () => null) {
     name, pluginId: 'core', group: /* en */ 'Talk',
     description: koe
       ? /* en */ "Ask or tell Kokoro, your other half, who looks things up and works behind you. It returns at once; Kokoro's answer comes as a note. mode immediate cuts Kokoro off mid-task: use it only when something really should be cut off."
-      : /* en */ 'Tell Koe, who talks with the user, what to say or know: an answer, or a correction with the fact and its source. Koe says what it says, without changing what it claims. It returns at once. mode immediate cuts Koe off mid-sentence: use it only when something really should be cut off, such as a wrong claim. for_user: when you have an answer for the user, the exact words for them, which Koe never sees: annai shows them only if Koe never says the note.',
+      : /* en */ 'Tell Koe, who talks with the user, what to say or know: an answer, or a correction with the fact and its source. Koe says what it says, without changing what it claims. It returns at once. mode immediate cuts Koe off mid-sentence: use it only when something really should be cut off, such as a wrong claim. for_user: when you have an answer for the user, the exact words for them: annai shows them only if Koe never says the note.',
     input: { type: 'object', properties: { text: { type: 'string', minLength: 1 }, mode: { enum: ['append', 'immediate'] }, ...(koe ? {} : { for_user: { type: 'string' } }) }, required: ['text'] },
     run: async (/** @type {{ text: string, mode?: string, for_user?: string }} */ i, /** @type {any} */ call) => {
       const text = String(i.text ?? '').trim();
@@ -714,7 +714,7 @@ export class Halves {
       const line = e.type === 'msg.user' ? koeLine(d, String(d.text ?? ''))
         // The placeholder is annai's words, not the user's.
         : e.type === 'heard' ? `${d.dismissed ? asideLabel(d, 'koe') : '[heard]'} ${heard === NOT_TRANSCRIBED ? heard : theirs(heard)}`
-          : e.type === 'note' && d.from === 'kokoro' ? wrapNote(String(d.text ?? ''), this.nonce)
+          : e.type === 'note' && d.from === 'kokoro' ? wrapNote(String(d.text ?? ''), this.nonce, { forUser: String(d.forUser ?? '') })
             : e.type === 'tool.call' && d.half === 'koe' ? `[it calls] ${d.name} ${inputText(d)}`
               : e.type === 'tool.result' && d.half === 'koe' ? `[the result${d.ok === false ? ', an error' : ''}] ${theirs(String(d.content ?? ''))}`
                 // Koe's own words are Koe's: "[said to the user]" is what Shiori said without it.
