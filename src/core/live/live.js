@@ -689,9 +689,10 @@ export class Live {
     const a = this.activity === 'moving-fast' ? /* en */ 'moving fast' : this.activity;
     const v = this.#tracker.speed;
     if (v === null || (this.activity !== 'walking' && this.activity !== 'moving-fast')) return a;
-    // Under walking, moving fast is held through a stop (a light, a queue): "moving fast, about 0 km/h" read as something stuck.
-    if (this.activity === 'moving-fast' && v < WALK_BELOW) return /* en */ `${a}, stopped for now (a stop under ${LEAVE_FAST_MS / 1000} s is the same drive)`;
-    return /* en */ `${a}, about ${Math.round(v * 3.6)} km/h`;
+    const kmh = Math.round(v * 3.6);
+    // Under walking the hold is said, or "moving fast, about 0 km/h" reads as stuck.
+    if (this.activity === 'moving-fast' && v < WALK_BELOW) return /* en */ `${a}, slowed to about ${kmh} km/h (moving fast is held through a stop of under ${LEAVE_FAST_MS / 1000} s)`;
+    return /* en */ `${a}, about ${kmh} km/h`;
   }
 
   /** The conversation open now: the trip's, or "me". */
