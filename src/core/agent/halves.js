@@ -164,7 +164,7 @@ export class Halves {
   #answered = false;
   /** The user typed or spoke since Kokoro's last model call: her turn's end doesn't make Koe's questions about it answered. */
   #newWords = false;
-  /** Koe's notes set aside on purpose (#setAside), not yet written as settled: in which conversation, and whether for the user's Stop. @type {{ scope: string, stopped: boolean } | null} */
+  /** Koe's notes set aside (#setAside), not yet written as settled. @type {{ scope: string, stopped: boolean } | null} */
   #aside = null;
   /** Heard words Kokoro hasn't woken for: Koe answering them wakes it. */
   #cue = false;
@@ -1069,9 +1069,8 @@ export class Halves {
     this.#stopped = { on: true, seq: Infinity };
     this.#stopHeld = true;
     this.#cue = this.#owed = false; // what was heard before it wakes Kokoro no more, answered or not
-    // Still gathering the user's messages (GATHER): its turn never starts, and a waiting Koe hears so. What it gathered (Koe's question
-    // too, a spoken line's only wake) is written into the conversation with a quiet "stopped" (interrupt), as one Shiori's Stop does, so
-    // opening the conversation again takes nothing up (item 8). Then what is left: Koe's notes, and wakes queued while a conversation opened.
+    // Still gathering (GATHER): its turn never starts, and a waiting Koe hears so. What it gathered, Koe's question too, is written with a
+    // quiet "stopped" (interrupt), so reopening takes nothing up; then Koe's notes left, and wakes queued while a conversation opened, go.
     const started = this.kokoro.turning;
     const scope = this.kokoro.target ?? ME;
     this.kokoro.interrupt();
@@ -1394,11 +1393,9 @@ export class Halves {
   }
 
   /**
-   * Koe's notes Kokoro doesn't take up on purpose: she has told Koe since the user's last words, or the user's Stop holds. Her transcript reads
-   * a Koe note as owed, so a quiet error with a wake is written after them, which it reads as answered (as a Stop's): opening the conversation
-   * again, or a reload, doesn't take them up and say an old answer again (item 8's review, F5). Once she is idle in that conversation, not
-   * before: the error settles everything before it, and a turn of hers still running, or a wake still queued, is owed in its own right.
-   * @param {boolean} stopped
+   * Koe's notes Kokoro doesn't take up on purpose (she told Koe since the user's last words, or their Stop holds): a quiet error with a wake
+   * after them, which her transcript reads as answered, so reopening or a reload says no old answer again. Written once she is idle there,
+   * as it settles everything before it. @param {boolean} stopped
    */
   #setAside(stopped) {
     this.#aside = { scope: this.kokoro.scope, stopped };

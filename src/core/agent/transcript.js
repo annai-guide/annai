@@ -22,7 +22,7 @@ import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 /* en */ export const RESTARTED = 'interrupted by app restart';
 /** A tool's result when the user stopped her turn (spec §6.7). */
 /* en */ export const STOPPED = 'Stopped by the user.';
-/** A tool's result when opening another conversation cut her turn: no Stop, so the turn is taken up when they come back (the re-review's R3). */
+/** A tool's result when opening another conversation cut her turn: no Stop, so it is taken up when they come back. */
 /* en */ export const CUT = 'Cut off: another conversation was opened before this finished.';
 /** Entries the conversation never shows Shiori, left out as it is read: a drive logs thousands of points (spec §4.5). */
 export const NOT_SAID = new Set(['location', 'trigger.fired']);
@@ -65,13 +65,11 @@ export class Transcript {
 
   #owes = false;
   /**
-   * One Shiori reading a conversation where Koe talked (Koe since unset): the seq of a heard line Koe kept as the user's that nothing has
-   * settled yet (0: none). Her own turn settles it; so does Koe: a line it said after it (a live Koe writes no model turn), unless its reply
-   * still has a question to Kokoro to run; every call of its reply done (a "thanks" let pass); or the user stopping it. A question it sent
-   * is a note, owed in its own right.
+   * One Shiori, Koe since unset: the seq of a heard line Koe kept that nothing has settled (0: none). Her turn settles it, or Koe's answer: a
+   * line it said after it, unless its reply's question to Kokoro is still to run; all its reply's calls done; the user's Stop.
    */
   #heardOwed = 0;
-  /** One Shiori: the calls of Koe's reply to that heard line not done yet (no result, or one that failed), by id, to their names. @type {Map<string, string> | null} */
+  /** Those calls of Koe's reply not done yet, id to name. @type {Map<string, string> | null} */
   #koeCalls = null;
   /**
    * What is waiting when unanswered: 'user' (a message), 'wake' (something else, such as files added while it was closed), or 'turn' (her
@@ -174,7 +172,7 @@ export class Transcript {
         }
       }
     } else if (e.type === 'model.turn' && this.half === 'one' && d.tag === KOE_TAG) {
-      // Koe's reply to what it heard (one that read it): nothing of it is a line of hers.
+      // Koe's reply to what it heard (one that read it).
       if (!this.#heardOwed || !texts.parts || (typeof d.context?.to === 'number' && d.context.to < this.#heardOwed)) return;
       this.#koeCalls = new Map(JSON.parse(texts.parts).flatMap((/** @type {Part} */ p) => (p.type === 'tool_call' ? [[p.id, p.name]] : [])));
       if (!this.#koeCalls.size) this.#heardSettled();
@@ -217,8 +215,7 @@ export class Transcript {
       this.#flushHeld();
       this.unanswered = false;
     } else if (e.type === 'note') {
-      // One Shiori reads no notes, but owes Koe's question as Kokoro did, until her turn: cut by a close, she takes it up (item 8's review).
-      // It stands for what the user said, which she reads.
+      // One Shiori reads no notes, but owes Koe's question as Kokoro did, until her turn.
       if (this.half === 'one' && d.from === 'koe') {
         this.unanswered = true;
         this.waiting = 'user';
@@ -296,8 +293,7 @@ export class Transcript {
       }
       /* en */ const label = d.dismissed ? asideLabel(d, this.half) : d.meanwhile && own ? '[heard while you were thinking]' : '[heard]';
       this.#line([{ type: 'text', text: label }, speech]);
-      // Koe answers what it heard (or lets it pass): Kokoro owes nothing for it. One Shiori, reading it after Koe was unset, owes it until a
-      // turn settles it, Koe's too (item 8's review: a question cut by a close is taken up; a "thanks" Koe let pass is not).
+      // Koe answers what it heard (or lets it pass): Kokoro owes nothing for it; one Shiori, Koe since unset, until it is settled (#heardOwed).
       if (!d.dismissed && (this.half === 'koe' || this.#mine(d))) {
         this.unanswered = true;
         this.waiting = 'user';
@@ -344,9 +340,8 @@ export class Transcript {
       this.#add('user', [{ type: 'tool_result', id: d.id, content: texts.content ?? '', ...(d.ok === false ? { isError: true } : {}) }, ...r.images, ...heard]);
       this.#flushHeld();
       // Every result of a reply that didn't end her turn, and no reply after: her turn was cut off, and she owes the rest.
-      // A call that didn't run (cut by another conversation opening, stopped, failed) leaves her turn owed though its reply slept: a hand-off
-      // to the other half that didn't go, or anything before she reached the user. A user's Stop is settled by the "stopped" record it writes;
-      // nothing is read from a result's words.
+      // A call that didn't run (cut, stopped, failed) leaves her turn owed though its reply slept, if it was a hand-off or came before she
+      // reached the user. A Stop is settled by its own record; no result's words are read.
       const name = this.#calls.get(d.id);
       if (d.end) this.#ends = true;
       else if (d.ok === false && (name === 'tell_koe' || name === 'tell_kokoro' || (name !== 'sleep' && !this.#reached))) this.#ends = false;
