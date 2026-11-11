@@ -203,7 +203,7 @@ export class Halves {
   /** A refresh for writes under /llm/ is waiting to run: more writes meanwhile (a provider and its models) join it. */
   #llmChanged = false;
   #lastCard = { key: '', at: 0 };
-  /** The open conversation's next reminder, for Koe's view (set by the app). @type {(() => Promise<{ due: number, text: string } | null>) | null} */
+  /** The open conversation's next reminder, for Koe's view (set by the app): its time in words (dueWords), and what it says. @type {(() => Promise<{ when: string, text: string } | null>) | null} */
   next = null;
   /** The settings read as annai starts: no turn runs before. @type {Promise<unknown>} */
   #ready;

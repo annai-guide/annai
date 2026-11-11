@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validZone, deviceZone, isoInZone, instantOf, dayIn, timeIn, offsetMinutes } from '../../src/core/time.js';
+import { validZone, deviceZone, isoInZone, instantOf, dayIn, timeIn, offsetMinutes, dueWords } from '../../src/core/time.js';
 
 test('validZone knows IANA zones and nothing else', () => {
   assert.equal(validZone('America/Los_Angeles'), true);
@@ -42,4 +42,15 @@ test('dayIn and timeIn: the local day and time of a moment, in a zone', () => {
   assert.equal(dayIn(Date.UTC(2026, 10, 26, 7, 59), 'America/Los_Angeles'), '2026-11-25');
   assert.equal(dayIn('not a time', 'UTC'), null);
   assert.equal(timeIn('', 'UTC'), null);
+});
+
+test("dueWords: a time with its offset in words both halves read, its weekday and zone from the string itself, never the phone's (real models, item 6)", () => {
+  assert.equal(dueWords('2027-03-19T18:00:00-07:00'), 'Fri 2027-03-19 18:00 (GMT-7)');
+  assert.equal(dueWords('2026-11-27T10:00:00Z'), 'Fri 2026-11-27 10:00 (GMT)');
+  assert.equal(dueWords('2026-11-27T10:00:00+00:00'), 'Fri 2026-11-27 10:00 (GMT)');
+  assert.equal(dueWords('2026-12-31T23:30:00+05:30'), 'Thu 2026-12-31 23:30 (GMT+5:30)');
+  assert.equal(dueWords('2027-03-20T02:00+01:00'), 'Sat 2027-03-20 02:00 (GMT+1)');
+  // The same instant in another zone is other words: the zone is part of the answer.
+  assert.equal(dueWords(isoInZone(Date.parse('2027-03-19T18:00:00-07:00'), 'Europe/Berlin')), 'Sat 2027-03-20 02:00 (GMT+1)');
+  assert.equal(dueWords('not a time'), 'not a time');
 });
