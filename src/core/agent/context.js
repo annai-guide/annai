@@ -104,8 +104,8 @@ export function systemText(s, part = '') {
   if (s.trip) {
     /* en */ parts.push(`# This trip (/trip/trip.json)\n${s.tripInfo}`, s.tripMemory.trim() ? `${s.tripMemory.trim()}` : '# Trip memory\n(empty)');
     // From the snapshot, so it stays the same from turn to turn and the cached prefix holds.
-    // Her name for it is only for a name annai guessed: one the user gave stays.
-    if (!datedInfo(s.tripInfo)) /* en */ parts.push(`# This conversation has no dates\n${s.guessed ? 'Its name is a first guess: patch /trip/trip.json when you know a better one. If it becomes a trip, patch its title and dates there.' : 'If it becomes a trip, patch /trip/trip.json with its dates.'}\nIf this is about one of their trips, read it with read_trip first and answer here; take them there with open_trip only if they want to carry on there.${s.elsewhere ? `\n${s.elsewhere}` : ''}`);
+    // Her name for it is only for a name annai guessed: one the user gave (or she did) stays, said so (real models renamed the user's).
+    if (!datedInfo(s.tripInfo)) /* en */ parts.push(`# This conversation has no dates\n${s.guessed ? 'Its name is a first guess: patch /trip/trip.json when you know a better one. If it becomes a trip, patch its title and dates there.' : 'Keep its name unless they ask to change it. If it becomes a trip, patch /trip/trip.json with its dates.'}\nIf this is about one of their trips, read it with read_trip first and answer here; take them there with open_trip only if they want to carry on there.${s.elsewhere ? `\n${s.elsewhere}` : ''}`);
     // A dated trip's text names no other trip (so nothing done elsewhere moves it), but says they exist: asked about another trip's
     // hotel in a trip's own conversation, every model searched this one and said there was none (stage 5's real-model pass).
     else /* en */ parts.push("# Their other trips\nA trip or place they name that isn't this one may be another of theirs: look in list_trips before you say it isn't there.");

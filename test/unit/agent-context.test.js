@@ -211,6 +211,19 @@ test("an undated conversation's name is called a first guess only while annai's 
   assert.match(systemText(await takeSnapshot({ ws, registry, trip: named, personalityName: 'shiori' })), guess, 'and a cold one follows the file');
 });
 
+test("an undated conversation with a name that isn't annai's guess says to keep it unless they ask, the same on every turn; a guessed one doesn't (real models: Sonnet renamed \"Testville with Mia\" as it gave it dates, item 4)", async () => {
+  const { ws, registry } = await setup();
+  const keep = /# This conversation has no dates\nKeep its name unless they ask to change it\. If it becomes a trip, patch \/trip\/trip\.json with its dates\./;
+  const text = async (/** @type {string} */ chat) => systemText(await takeSnapshot({ ws, registry, trip: chat, personalityName: 'shiori' }));
+  const named = await createTrip(ws, { title: 'Testville with Mia' }); // Start a trip, or a rename in Details: the user's
+  const first = await text(named);
+  assert.match(first, keep);
+  assert.equal(await text(named), first, 'nothing in it moves from turn to turn');
+  const guessed = await createTrip(ws, { title: DRAFT_TITLE }, { draft: true });
+  await ws.update(guessed, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, title: 'Where should we eat?' }), { author: 'system' });
+  assert.doesNotMatch(await text(guessed), /Keep its name/);
+});
+
 test("a name the user gives while the cache is warm stops being called a guess at the next turn, once, and the text then holds", async () => {
   const { ws, registry } = await setup();
   const take = (/** @type {string} */ chat) => takeSnapshot({ ws, registry, trip: chat, personalityName: 'shiori' });
