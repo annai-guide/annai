@@ -2952,8 +2952,11 @@ export class Agent {
           // The other half may have the voice now; words already playing are said to the end.
           const voiced = call.voice && this.voice && (this.#half.voice() || this.#utterances.has(call.id));
           const unsaid = voiced ? this.#unsaid(call.id) : '';
+          // Being said from before its write: a cut during the write takes it back (#halt), and a line the cut came before never plays.
+          if (voiced && !unsaid) this.#saying = call.id;
           await this.#log({ type: 'out.speak', actor: 'shiori', data: { id: call.id, wake: call.wake, ...(voiced && !unsaid ? { voice: true } : {}) }, texts: [['text', text]] });
           if (unsaid) return unsaid;
+          if (voiced && call.signal.aborted) return { content: STOPPED, isError: true }; // its result is written already
           if (voiced) return this.#say(text, call);
           this.#setState('speaking');
           return call.sleeping ? 'shown' : SPEAK_RESULT;
@@ -2985,9 +2988,12 @@ export class Agent {
           // Checked here, since a model may send anything: the screen shows these as buttons.
           const ok = checkAsk(i);
           if ('error' in ok) return { content: ok.error, isError: true };
+          const aloud = !call.live && call.voice && this.voice && !this.#aloudOnly && this.#half.voice();
+          if (aloud) this.#saying = call.id; // as speak's line: being said from before its write
           await this.#log({ type: 'out.ask', actor: 'shiori', data: { id: call.id, wake: call.wake, question: ok.question, options: ok.options } });
           if (call.live) return 'Shown; their tap comes as their next turn.';
-          if (call.voice && this.voice && !this.#aloudOnly && this.#half.voice()) return this.#askAloud(i.question, call);
+          if (aloud && call.signal.aborted) return { content: STOPPED, isError: true };
+          if (aloud) return this.#askAloud(i.question, call);
           const got = await this.#waitFor(call.id, 'ask', 0);
           if (got.stopped) return { content: STOPPED, isError: true };
           /* en */
@@ -3180,8 +3186,7 @@ export class Agent {
       this.#setState('speaking');
     }
     u.end(text);
-    this.#saying = call.id;
-    const spoken = await u.done;
+    const spoken = await u.done; // being said since before its write (speak's run)
     if (this.#saying === call.id) this.#saying = null;
     if (spoken.heard) {
       this.#facts.aloud = true;
@@ -3226,8 +3231,7 @@ export class Agent {
     this.#closeEar('speaking');
     this.#setState('speaking');
     u.end(question);
-    this.#saying = call.id;
-    const spoken = await u.done;
+    const spoken = await u.done; // being said since before its write (ask's run)
     if (this.#saying === call.id) this.#saying = null;
     // Cut with the turn: its result is written already, and the user's next line is a turn of its own, not this question's answer.
     if (call.signal.aborted) return { content: STOPPED, isError: true };

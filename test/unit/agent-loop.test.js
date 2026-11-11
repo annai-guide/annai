@@ -1203,6 +1203,68 @@ test("a line cut while she says it listens for nothing after: the user's next ty
   }
 });
 
+/**
+ * Holds the store write of her line with these words, as a slow write would (another half's write ahead of it), until released.
+ * @param {any} k @param {string} text
+ */
+function holdLine(k, text) {
+  /** @type {() => void} */
+  let open = () => {};
+  const gate = new Promise((r) => { open = () => r(undefined); });
+  const held = { now: false, release: () => open() };
+  const tx = k.store.tx.bind(k.store);
+  k.store.tx = (/** @type {any} */ names, /** @type {any} */ mode, /** @type {any} */ fn) => tx(names, mode, (/** @type {any} */ x) => fn(new Proxy(x, {
+    get: (o, p) => (p !== 'appendEvent' ? o[p] : async (/** @type {string} */ scope, /** @type {any} */ ev) => {
+      if (ev.type === 'out.speak' && ev.data?.text === text) {
+        held.now = true;
+        await gate;
+      }
+      return o.appendEvent(scope, ev);
+    }),
+  })));
+  return held;
+}
+
+test("an open while her line is being written: the line counts as being said from before its write, so the cut takes it back, and nothing of it plays after the cut, in the conversation opened (the line's first speak streaming, or a later one of the reply)", async (t) => {
+  useClock(t);
+  const reminder = { kind: 'trigger', text: 'A reminder came.', fallbacks: [{ watch: 'r1', text: 'Leave for the ferry at 5.' }] };
+  const NOT_HEARD = "Not heard in full: the user opened another conversation while you said it. It is written in the conversation; don't repeat it unless they ask. If it asked them something, what they say next may answer it.";
+  for (const [shape, reply, card] of /** @type {[string, any, number][]} */ ([
+    // Her reply's first line plays as it streams in: the open stops it, and it didn't reach them, so the reminder shows at the cut.
+    ['the first line, playing as it streams', { toolCalls: [{ name: 'speak', input: { text: 'Time to go to the ferry.' } }, { name: 'sleep', input: {} }] }, 1],
+    // A later line begins only after its write: it never plays. The first, said to its end, settled the reminder.
+    ['a later line of the reply', { toolCalls: [{ name: 'speak', input: { text: 'Here is the plan.' } }, { name: 'speak', input: { text: 'Time to go to the ferry.' } }, { name: 'sleep', input: {} }] }, 0],
+  ])) {
+    let lingers = 0;
+    const k = await agentKit([[reply, { toolCalls: [{ name: 'linger', input: {} }] }, say('Back to it.')]], { voice: { playMs: 1000 } }); // a line plays a second: the first of two ends before the next is written
+    k.agent.addLoopTools([{ name: 'linger', pluginId: 'core', group: 'Time', description: 'Wait.', input: { type: 'object' }, run: async () => {
+      lingers++;
+      await new Promise((res) => setTimeout(res, 60_000));
+      return 'Done.';
+    } }]);
+    const A = k.trip;
+    const B = await createTrip(k.ws, { title: 'Kyoto' });
+    const held = holdLine(k, 'Time to go to the ferry.');
+    k.agent.wake(reminder);
+    await until(() => held.now);
+    const opening = k.agent.open(B); // the cut lands while the line is being written
+    held.release();
+    await opening;
+    await k.agent.idle();
+    const result = (await eventsIn(k, A, ['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'speak').at(-1);
+    assert.equal(result.data.content, NOT_HEARD, `${shape}: the cut took the line back`);
+    assert.equal(k.notices.filter((/** @type {any} */ n) => n.body === 'Leave for the ferry at 5.').length, card, `${shape}: the reminder's card at the cut`);
+    // A Stop on the opened conversation's own reminder turn: no line of the one left is being said here, so its reminder shows, silently.
+    k.agent.wake({ ...reminder, fallbacks: [{ watch: 'r2', text: 'Kyoto: the temple closes at 4.' }] });
+    await until(() => lingers === 1);
+    k.agent.interrupt();
+    await k.agent.idle();
+    assert.equal(k.notices.filter((/** @type {any} */ n) => n.body === 'Kyoto: the temple closes at 4.').length, 1, `${shape}: the opened conversation's reminder, at its Stop`);
+    const plays = k.platform.log.filter((/** @type {string} */ l) => l.startsWith('play ') && l.includes('Time to go to the ferry.')).length;
+    assert.equal(plays, shape.startsWith('the first') ? 1 : 0, `${shape}: nothing of it plays after the cut (the first began before it)`);
+  }
+});
+
 test("cut by an open, the call running may have finished and says so; a call after it never started and says that; the user's Stop is said as a Stop (the re-review 3: F3)", async (t) => {
   useClock(t);
   for (const how of ['open', 'stop']) {
