@@ -182,8 +182,9 @@ export function tripTools(app) {
   };
   /**
    * The newest line the user said in a conversation (talks: typed, or heard and not set aside), with its words once written down, or null;
-   * not an answer to annai's own card (a read's Allow), but a line in other words typed while one showed, which is theirs. The move's own card,
-   * the newest, was answered Open: every line of theirs after it is its answer (a yes Koe heard is written as Koe's line, with no mark of it).
+   * not an answer to annai's own card (a read's Allow, a typed yes or no), but a line in other words typed while one showed, which is theirs. The
+   * move's own card, the newest, was answered Open: every line of theirs after it is its answer (a yes Koe heard is written as Koe's line, with no
+   * mark of it). Nothing older than the last move out of the conversation: that went with it.
    * @param {string} scope @returns {Promise<{ seq: number, text: string } | null>}
    */
   const lastLine = async (scope) => {
@@ -191,16 +192,18 @@ export function tripTools(app) {
     let events = [];
     // Back a page at a time: a drive's set-aside lines can fill one.
     for (let before = 0; ;) {
-      const page = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['msg.user', 'heard', 'heard.text', 'out.ask'], reverse: true, limit: 50, ...(before ? { before } : {}) }));
+      const page = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['msg.user', 'heard', 'heard.text', 'out.ask', 'conversation.moved'], reverse: true, limit: 50, ...(before ? { before } : {}) }));
       events = [...page.reverse(), ...events];
       /** @type {Map<string, unknown[]>} annai's own cards, by id, with their options */
       const cards = new Map(events.filter((e) => e.type === 'out.ask' && e.data?.own).map((e) => [e.data.id, Array.isArray(e.data.options) ? e.data.options : []]));
-      // A typed answer is the card's only in its own words (one half's tap stores no chose: talk.js tells it the same way); a heard one, always.
-      const card = (/** @type {any} */ e, /** @type {any} */ d, /** @type {unknown} */ text) => cards.has(d.answer) && (e.type !== 'msg.user' || d.chose || cards.get(d.answer)?.includes(text));
+      // A typed answer is the card's only in its own words or a yes or no annai hears (one half's tap stores no chose: talk.js tells it the same way); a heard one, always.
+      const card = (/** @type {any} */ e, /** @type {any} */ d, /** @type {unknown} */ text) => cards.has(d.answer)
+        && (e.type !== 'msg.user' || d.chose || cards.get(d.answer)?.includes(text) || spokenYes(String(text)) || spokenNo(String(text)));
       const asked = events.findLast((e) => e.type === 'out.ask' && e.data?.own)?.seq ?? Infinity;
-      const last = (await conversationLines(store, events)).findLast(({ e, d, text }) => talks(e) && e.seq < asked && !card(e, d, text));
+      const moved = events.findLast((e) => e.type === 'conversation.moved')?.seq ?? 0;
+      const last = (await conversationLines(store, events)).findLast(({ e, d, text }) => talks(e) && e.seq < asked && e.seq > moved && !card(e, d, text));
       if (last) return { seq: last.e.seq, text: String(last.text ?? '') };
-      if (page.length < 50) return null;
+      if (moved || page.length < 50) return null; // nothing older than a move counts
       before = events[0].seq;
     }
   };
@@ -465,7 +468,7 @@ export function tripTools(app) {
     },
     {
       name: 'open_trip', pluginId: 'core', group: 'Trips',
-      description: "Take the user into another of their trips or conversations (list_trips), to carry on there. annai asks them itself with its own card (\"Carry on in Kyoto?\", said aloud when voice is on), so don't ask them first or say you are taking them: call it, and their answer comes back. If they choose Open, that trip's conversation opens at once with your recap and the user's last line here, and the files they just handed you unless you name others; you answer them there, and this conversation stays as it is. From a conversation with no dates, only when they want to carry on there, or to look at something there that read_trip can't open; with no trip open, for the trip the files they handed you fit. Not in a dated trip.",
+      description: "Take the user into another of their trips or conversations (list_trips), to carry on there. annai asks them itself with its own card (\"Carry on in Kyoto?\", said aloud when voice is on), so don't ask them first, say you are taking them or tell Koe to: call it, and their answer comes back. If they choose Open, that trip's conversation opens at once with your recap and the user's last line here, and the files they just handed you unless you name others; you answer them there, and this conversation stays as it is. From a conversation with no dates, only when they want to carry on there, or to look at something there that read_trip can't open; with no trip open, for the trip the files they handed you fit. Not in a dated trip.",
       input: OPEN,
       run: async (/** @type {any} */ i, /** @type {ToolCall} */ call) => {
         check(OPEN, i);
@@ -482,7 +485,9 @@ export function tripTools(app) {
         });
         if (got.stopped) return { content: STOPPED, isError: true };
         /* en */
-        if (got.chosen === no) return `The user ${got.how === 'voice' ? 'said no' : 'tapped Not now'}: they stay here, and nothing moved. Carry on here, and don't offer to take them into ${quote(rec.title)} again unless they ask.`;
+        if (got.chosen === no) {
+          return `The user ${got.how === 'voice' ? 'said no' : 'tapped Not now'}: they stay here, and nothing moved. Carry on here, and don't call open_trip for ${quote(rec.title)} again unless they ask.${files.length ? " Start no trip for the files unless they ask." : ''}`;
+        }
         if (got.chosen !== open) {
           /* en */
           const why = `Not opened: only a tap on annai's card, or a yes it hears, takes them into ${quote(rec.title)}, and nothing moved. If they meant yes, call open_trip again.`;
@@ -491,12 +496,13 @@ export function tripTools(app) {
         await activeTrip(rec.id); // removed or archived while its card waited: said so, and nothing moved
         const m = await moveAll(files, rec.id, call);
         const wakes = await cargo(m, call, { started: false, recap: i.recap });
-        // Where the files went (Undo finds the trip by it), and the conversation's own line saying where they went: its last of the move.
+        // Where the files went (Undo finds the trip by it); then the chat's line saying where they went, its last: after what the halves still held of it
+        // (the yes Koe heard, a cue) is written, so that line settles it, and no line after it is owed.
         if (m.size || call.handover) await moved(rec.id, false, m.size, call);
+        await app.carryOn(rec.id, wakes, call.signal);
         await logIn(call, { type: 'conversation.moved', actor: 'shiori', data: { to: rec.id, title: rec.title } });
-        app.carryOn(rec.id, wakes, call.signal);
         /* en */
-        return `They chose Open: ${JSON.stringify(rec.title)} is open now, and you answer them there; this conversation stays.${named(m)}`;
+        return `They chose Open: ${JSON.stringify(rec.title)} is open now, and you answer them there; this conversation stays.`;
       },
     },
     {

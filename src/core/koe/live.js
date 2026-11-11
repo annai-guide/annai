@@ -321,6 +321,11 @@ export class LiveKoe {
     return { name, label: LABELS[name] };
   }
 
+  /** Settles once all heard and said so far is written, whatever is going on. */
+  written() {
+    return this.#chain;
+  }
+
   /** Settles once nothing is going on, and all heard and said is written. */
   async idle() {
     while (this.busy) await new Promise((r) => { this.#idlers.push(() => r(undefined)); });

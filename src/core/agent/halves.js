@@ -154,7 +154,7 @@ export class Halves {
   #routes = 0;
   /** @type {Set<Promise<unknown>>} annai's own notes from Kokoro to Koe, being written: idle() waits for them */
   #sending = new Set();
-  /** @type {Set<Promise<unknown>>} trips Shiori started or opened, opening once both halves are done (openWhenDone): idle() waits for them */
+  /** @type {Set<Promise<unknown>>} trips Shiori started, opening once both halves are done (openWhenDone): idle() waits for them */
   #going = new Set();
   /** @type {string | null | undefined} the trip Koe has open; undefined: none yet */
   #koeTrip = undefined;
@@ -454,7 +454,7 @@ export class Halves {
   }
 
   /**
-   * saying: a live Koe's words so far, while she speaks them; went: Shiori opened a trip she started or chose for a hand-over ({ trip })
+   * saying: a live Koe's words so far, while she speaks them; went: a trip opened, one Shiori started for a hand-over or the user chose on annai's card ({ trip, chose? })
    * @param {'state' | 'event' | 'notice' | 'open' | 'halves' | 'clear' | 'saying' | 'went'} kind @param {(x: any) => void} fn
    */
   on(kind, fn) {
@@ -1101,7 +1101,7 @@ export class Halves {
   }
 
   /**
-   * Opens a trip Shiori started or chose for a hand-over once both halves are done, as the user would (it becomes the open trip):
+   * Opens a trip Shiori started for a hand-over once both halves are done, as the user would (it becomes the open trip):
    * only if the user hasn't opened another conversation meanwhile. Then 'went' tells the screens. @param {string} trip
    */
   openWhenDone(trip) {
@@ -1120,18 +1120,26 @@ export class Halves {
 
   /**
    * Takes the user into a trip they chose on annai's card (open_trip's Open), at once, as their tap on its row would: the turn that asked is
-   * let go, nothing owed where it was (open's `moved`), and 'went' tells the screens. Then the trip's lines (their line, her recap) go in, for
-   * one turn there. If they went elsewhere since (signal: the call's, which a Stop or another open ends), nothing opens: the lines wait there.
-   * @param {string} trip @param {import('./loop.js').Wake[]} wakes @param {AbortSignal} signal
+   * let go, nothing owed where it was (open's `moved`), and 'went' tells the screens (chose: the user's own choice). Then the trip's lines (their
+   * line, her recap) go in, for one turn there. If they went elsewhere since (signal: the call's, which a Stop or another open ends), nothing
+   * opens: the lines are written into the trip, in order, and wait there. @param {string} trip @param {import('./loop.js').Wake[]} wakes @param {AbortSignal} signal
    */
-  carryOn(trip, wakes, signal) {
-    if (!signal.aborted) {
+  async carryOn(trip, wakes, signal) {
+    const opening = !signal.aborted;
+    let left = Promise.resolve();
+    if (opening) {
       updateAppSettings(this.ws, { activeTrip: trip }).catch(() => {});
-      this.open(trip, { moved: true }).catch((e) => console.warn(/* en */ "the trip the user chose didn't open", e));
-      this.#emit('went', { trip });
+      left = this.open(trip, { moved: true }).catch((e) => console.warn(/* en */ "the trip the user chose didn't open", e));
+      this.#emit('went', { trip, chose: true });
     }
-    // Into its queue once it is the one opening (one turn when it opens), else written into it.
-    for (const w of wakes) void this.kokoro.wake({ ...w, scope: trip });
+    // Into its queue at once when it opens (one turn), else written into it, one after the other.
+    for (const w of wakes) {
+      const done = this.kokoro.wake({ ...w, scope: trip });
+      if (!opening) await done;
+    }
+    // What the halves write of the conversation they leave (a line or cue they held, a session's last words) is written by now: the caller's line about the move settles it.
+    await left;
+    await this.live.written();
   }
 
   /** @param {boolean} [yes] */

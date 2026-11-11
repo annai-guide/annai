@@ -720,14 +720,14 @@ test("with Koe talking, a line Koe kept that is no yes ends the card unanswered 
   k.agent.send('Where did we eat in Testville?');
   await until(() => k.asks.length === 1);
   await pause(25 * k.agent.secondMs); // past the window: no yes answers it now, and a "No" still ends it
-  await koeHeard(k, 'h-no', { text: "No, don't." });
+  await koeHeard(k, 'h-no', { text: 'No, the other one.' });
   await pause(30 * k.agent.secondMs);
   assert.equal(k.agent.kokoro.pendingId, null, 'not waiting on the card');
   await k.agent.idle();
   assert.equal((await grants(k, k.trip)).length, 0);
   assert.match((await readResults(k))[0], /^Not read: .* What the user said follows\.$/);
   const next = JSON.stringify(k.requests.find((/** @type {any} */ r) => JSON.stringify(r).includes('What the user said follows.')));
-  assert.ok(next.indexOf("No, don't.") > next.indexOf('What the user said follows.'), 'the words follow her result');
+  assert.ok(next.indexOf('No, the other one.') > next.indexOf('What the user said follows.'), 'the words follow her result');
   assert.equal(k.agent.kokoro.busy, false);
 });
 
@@ -1967,7 +1967,7 @@ const KOKORO_GOING = { rules: [
 const copied = async (k) => (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(TV, { types: ['msg.user'] }))).filter((/** @type {any} */ e) => e.data.from).map((/** @type {any} */ e) => e.data.text);
 /** open_trip's results in the kit's conversation (Big Sur, a chat). @param {any} k */
 const openResults = async (k) => (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'open_trip').map((/** @type {any} */ e) => e.data.content);
-const STAYED = /^The user said no: they stay here, and nothing moved\. Carry on here, and don't offer to take them into "Testville" again unless they ask\.$/;
+const STAYED = /^The user said no: they stay here, and nothing moved\. Carry on here, and don't call open_trip for "Testville" again unless they ask\.$/;
 
 test('open_trip, classic voice: annai says the card\'s question, listens, and a heard yes opens Testville at once with their line; a heard "No thanks" keeps them here, nothing moved', async (t) => {
   useClock(t);
@@ -2049,6 +2049,96 @@ for (const [heard, opens] of /** @type {[string, boolean][]} */ ([['Yes.', true]
     }
   });
 }
+
+/**
+ * What the chat left holds after a move, in order: nothing of theirs or of annai's wakes after its own line saying where they went, and nothing owed.
+ * @param {any} k @param {string} chat
+ */
+async function endsMoved(k, chat) {
+  const log = await k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(chat, { types: ['msg.user', 'heard', 'wake', 'conversation.moved', 'out.ask'] }));
+  const moved = log.findLast((/** @type {any} */ e) => e.type === 'conversation.moved');
+  assert.ok(moved, 'the chat says where they went');
+  assert.deepEqual(log.filter((/** @type {any} */ e) => e.seq > moved.seq).map((/** @type {any} */ e) => e.type), [], 'nothing of theirs or of a wake after it');
+  assert.equal((await Transcript.load(k.store, chat)).unanswered, false, 'the chat owes nothing');
+}
+
+test("open_trip with Koe on a chat model held in a turn: the yes it heard is written before the chat's moved line, and the chat, opened again, wakes nobody", async (t) => {
+  useClock(t);
+  /** @type {() => void} */
+  let release = () => {};
+  const held = new Promise((r) => { release = () => r(undefined); });
+  let first = true;
+  const k = await gateKit(KOKORO_GOING, { koe: { type: KOE }, hold: async (/** @type {any} */ c) => { if (c.model.providerId === 'model-koe' && first) { first = false; await held; } } });
+  try {
+    k.agent.send("Let's carry on in Testville");
+    await until(() => k.asks.length === 1);
+    await pause(k.agent.secondMs);
+    // Koe is mid-turn (its model call waits): a yes reaches its microphone and waits in its queue, as its words reach the card.
+    k.agent.kokoro.confirmHeard({ id: 'h-1', at: Date.now(), text: 'Yes.' });
+    k.agent.koe.enqueue({ kind: 'heard', text: '', heard: { id: 'h-1', text: 'Yes.', ms: 600, source: 'dictation' } });
+    await pause(4 * k.agent.secondMs); // its words have stood still (SETTLE_S)
+    await until(() => k.agent.trip === TV);
+    release();
+    await k.agent.idle();
+    await endsMoved(k, k.trip);
+    const before = k.requests.length;
+    await k.agent.open(k.trip);
+    await k.agent.idle();
+    assert.equal(k.requests.length, before, 'nobody wakes in the chat');
+  } finally {
+    release();
+  }
+});
+
+test("open_trip with Koe on a chat model finishing her answer while the card waits: her cue is written before the chat's moved line, and the chat, opened again, wakes nobody", async (t) => {
+  useClock(t);
+  /** @type {() => void} */
+  let release = () => {};
+  const held = new Promise((r) => { release = () => r(undefined); });
+  let first = true;
+  const k = await gateKit(KOKORO_GOING, { koe: { type: KOE }, hold: async (/** @type {any} */ c) => { if (c.model.providerId === 'model-koe' && first) { first = false; await held; } } });
+  k.agent.send("Let's carry on in Testville");
+  await until(() => k.asks.length === 1);
+  await pause(k.agent.secondMs);
+  k.agent.kokoro.confirmHeard({ id: 'h-1', at: Date.now(), text: 'Yes.' });
+  k.agent.koe.enqueue({ kind: 'heard', text: '', heard: { id: 'h-1', text: 'Yes.', ms: 600, source: 'dictation' } });
+  release(); // Koe goes on with its answer, then takes up the yes, while the card settles
+  await pause(4 * k.agent.secondMs);
+  await k.agent.idle();
+  assert.equal(k.agent.trip, TV);
+  await endsMoved(k, k.trip);
+  const before = k.requests.length;
+  await k.agent.open(k.trip);
+  await k.agent.idle();
+  assert.equal(k.requests.length, before, 'nobody wakes in the chat');
+});
+
+test("open_trip in a live session: the yes the session heard is written before the chat's moved line, and the chat, opened again, wakes nobody", async () => {
+  const k = await liveKit([{ heard: 'Yes.', noEnd: true }]);
+  try {
+    k.agent.addLoopTools(tripTools(k.agent));
+    await fixedTrip(k.ws, TV, { title: 'Testville', start: '2027-04-01', end: '2027-04-08' });
+    await k.voice.unlock();
+    k.agent.tap();
+    await until(() => k.agent.live.listening);
+    const chat = k.agent.scope;
+    const going = k.agent.kokoro.loopTools().find((/** @type {any} */ x) => x.name === 'open_trip').run({ trip: TV, recap: 'We were looking for the ramen place.' }, {
+      id: 'c-live', scope: chat, trip: k.agent.trip, signal: new AbortController().signal, model: null, wake: 'w', author: 'shiori',
+    });
+    await soon(async () => k.said.includes(GOING) && !k.voice.speaker.speaking, 5_000);
+    await liveSay(k, 'first-one');
+    assert.match(words(await going), /^They chose Open/);
+    await soon(async () => k.agent.trip === TV, 5_000);
+    await endsMoved(k, chat);
+    assert.deepEqual((await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(chat, { types: ['heard'] }))).map((/** @type {any} */ e) => e.data.text), ['Yes.'], 'their yes is in the chat');
+    const before = k.requests.length;
+    await k.agent.open(chat);
+    await k.agent.idle();
+    assert.equal(k.requests.length, before, 'nobody wakes in the chat');
+  } finally {
+    await k.done();
+  }
+});
 
 test("a photo or PDF in another trip: read_trip says to call open_trip, annai's card asks, and at Open she is in that trip, where the file is", async (t) => {
   useClock(t);
