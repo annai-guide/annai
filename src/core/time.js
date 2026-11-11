@@ -83,6 +83,22 @@ export function instantAt(at, tz) {
   return m ? instantOf({ year: +m[1], month: +m[2], day: +m[3], hour: +m[4], minute: +m[5], second: +(m[6] ?? 0) }, tz) : Date.parse(at);
 }
 
+/* en */ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/**
+ * A time in the words both halves read for it (a reminder's: watch_set's result, watch_list, Koe's view), so they can't say one time in two
+ * zones: its weekday, date and wall clock where it was written, and that zone as the now block names one: "Fri 2027-03-19 18:00 (GMT-7)".
+ * All of it is read from the string itself, never from the phone's zone. Text that isn't such a time comes back as it is.
+ * @param {string} at an ISO date-time with its offset
+ */
+export function dueWords(at) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(?:([zZ])|([+-])(\d{2}):(\d{2}))$/.exec(String(at));
+  const day = m ? WEEKDAYS[new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).getUTCDay()] : undefined;
+  if (!m || !day) return String(at);
+  const zone = m[6] || (m[8] === '00' && m[9] === '00') ? 'GMT' : `GMT${m[7]}${Number(m[8])}${m[9] === '00' ? '' : `:${m[9]}`}`;
+  return `${day} ${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]} (${zone})`;
+}
+
 /** @param {string | number} at @returns {number | null} */
 function ms(at) {
   const t = typeof at === 'number' ? at : Date.parse(at);

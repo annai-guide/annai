@@ -23,8 +23,8 @@ async function items(ws, trip, dir) {
 /* en */ const ENDS = /** @type {Record<string, string>} */ ({ lodging: 'Check out', car: 'Return', flight: 'Arrive', rail: 'Arrive' });
 
 /**
- * @param {{ ws: import('../workspace.js').Workspace, trip: string | null, now: number, timeZone: string, next: { due: number, text: string } | null }} c
- *   next: the next reminder of this conversation, if any
+ * @param {{ ws: import('../workspace.js').Workspace, trip: string | null, now: number, timeZone: string, next: { when: string, text: string } | null }} c
+ *   next: the next reminder of this conversation, if any: its time in the words Kokoro reads for it (dueWords), and what it says
  * @returns {Promise<string>} `<today>…</today>`, at most VIEW_MAX characters
  */
 export async function compactView({ ws, trip, now, timeZone, next }) {
@@ -61,7 +61,7 @@ export async function compactView({ ws, trip, now, timeZone, next }) {
       plan.length ? tsv(['start', 'end', 'title', 'fixed', 'place'], plan.slice(0, n)) + (n < plan.length ? /* en */ `\n…and ${plan.length - n} more (read /trip/plan/)` : '') : /* en */ 'nothing planned',
     ] : []),
     ...(dated || bookings.length ? [/* en */ 'bookings in the next 48 hours:', bookings.length ? tsv(['start', 'kind', 'title', 'status', 'confirmation'], bookings) : 'none'] : []),
-    /* en */ `next reminder: ${next ? `${local(next.due, timeZone)} ${e(next.text)}` : 'none'}`,
+    /* en */ `next reminder: ${next ? `${e(next.when)} ${e(next.text)}` : 'none'}`,
     '</today>',
   ].join('\n');
   let n = plan.length;

@@ -9,7 +9,7 @@ import { notJSON } from '../workspace.js';
 import { logEvent } from '../events.js';
 import { ME, SYS_DEVICE, ensureDeviceScope, listTrips, talks, tripMirror } from '../scopes.js';
 import { PLAN_FILE, BOOKING_FILE } from '../plan.js';
-import { validZone, deviceZone, isoInZone, timeIn, nextDay } from '../time.js';
+import { validZone, deviceZone, isoInZone, timeIn, nextDay, dueWords } from '../time.js';
 import { phaseOf } from '../timeline.js';
 import { validate } from '../schema.js';
 import { tsv } from '../tsv.js';
@@ -37,8 +37,9 @@ import { t } from '../l10n.js';
  * @typedef {{ kind: 'location' | 'visibility' | 'connectivity', start: (emit: (x: any) => void) => (() => void) | void }} Sensor
  *   location emits { lat, lng, accuracy, speed?, heading? }, or { error: 'denied' | 'unavailable', message };
  *   visibility emits true or false; connectivity true (online) or false
- * @typedef {{ key: string, scope: string, watch: string, due: number, text: string, shown?: string, start?: number, what?: string, says?: string, here?: boolean }} Mirrored
+ * @typedef {{ key: string, scope: string, watch: string, due: number, when: string, text: string, shown?: string, start?: number, what?: string, says?: string, here?: boolean }} Mirrored
  *   a reminder a closed annai can still give through the push relay (spec §11.6): key names it and, for the plan's, the item's time;
+ *   when: its due time as both halves read it (dueWords), in its own zone: a time watch's as written, a plan reminder's in its item's;
  *   text: what Koe's view reads (a plan's in annai's English; Shiori's as she wrote them), and shown a plan's in the screens' words, made
  *   from its data, for the push (the shown rule); start and what: a "coming up" item's, for the minutes left and the item in the screens'
  *   words, which the service worker words (sw.js); says: a plan reminder's (saysOf); here: annai says it itself when its time comes while it is open
@@ -576,7 +577,7 @@ export class Live {
         for (const w of list) {
           if (w.when?.type !== 'time' || !time || this.#broken(time, w)) continue;
           const due = Date.parse(w.when.at);
-          if (Number.isFinite(due) && !expired(w, due)) out.push({ key: this.#keyOf(scope, w), scope, watch: w.id, due, text: w.fallback, here: true });
+          if (Number.isFinite(due) && !expired(w, due)) out.push({ key: this.#keyOf(scope, w), scope, watch: w.id, due, when: dueWords(w.when.at), text: w.fallback, here: true });
         }
       }
       for (const [scope, list, here] of plans) {
@@ -591,7 +592,8 @@ export class Live {
             due = null;
           }
           const say = /** @type {import('./plan-watches.js').PlanSay} */ (w.say);
-          if (typeof due === 'number' && Number.isFinite(due)) out.push({ key: this.#keyOf(scope, w), scope, watch: w.id, due, text: w.fallback, shown: planWords(say), says: saysOf(w), here, ...(event === 'coming-up' ? { start: forAt(w) ?? undefined, what: planItemWords(say) } : {}) });
+          // In the item's zone, as the Plan says its time.
+          if (typeof due === 'number' && Number.isFinite(due)) out.push({ key: this.#keyOf(scope, w), scope, watch: w.id, due, when: dueWords(isoInZone(due, /** @type {any} */ (w.when).tz)), text: w.fallback, shown: planWords(say), says: saysOf(w), here, ...(event === 'coming-up' ? { start: forAt(w) ?? undefined, what: planItemWords(say) } : {}) });
         }
       }
       return out.sort((a, b) => a.due - b.due);

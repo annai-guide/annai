@@ -110,7 +110,7 @@ test('when a reminder moves at the relay (6b choice 2)', () => {
   assert.equal(moves(at('11:30'), at('11:40'), now), false, 'later, but the relay\'s time is far off: there is time');
   assert.equal(moves(at('09:08'), at('09:12'), now), true, 'later, and the relay\'s copy comes within 10 minutes: it would come first');
   assert.equal(moves(at('09:00') + NEAR_MS + 1, at('09:30'), now), false);
-  const m = (/** @type {string} */ key, /** @type {number} */ due) => ({ m: { key, scope: 't', watch: key, due, text: '' }, sendAt: due + GRACE_MS, title: 'T', body: '', hash: 'h' });
+  const m = (/** @type {string} */ key, /** @type {number} */ due) => ({ m: { key, scope: 't', watch: key, due, when: '', text: '' }, sendAt: due + GRACE_MS, title: 'T', body: '', hash: 'h' });
   const items = { a: { id: 'x.a', due: at('10:00'), sendAt: at('10:00') + GRACE_MS, hash: 'h', scope: 't' }, b: { id: 'x.b', due: at('11:00'), sendAt: 0, hash: 'h', scope: 't' }, c: { id: 'x.c', due: at('12:00'), sendAt: 0, hash: 'h', scope: 't', sending: true } };
   const wanted = new Map([['a', m('a', at('10:00'))], ['b', { ...m('b', at('11:00')), hash: 'changed' }], ['c', m('c', at('12:00'))], ['d', m('d', at('13:00'))]]);
   const p = plan(items, wanted, now);

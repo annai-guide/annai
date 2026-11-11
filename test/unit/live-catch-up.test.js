@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { dueWords } from '../../src/core/time.js';
 import { liveKit, fakeAgent, fakeSensors, at, iso, off, LA, MONTEREY, BIXBY, RIVER_INN, NEPENTHE } from './live-kit.js';
 import { Live } from '../../src/core/live/live.js';
 import { ManualClock } from '../../src/core/live/clock.js';
@@ -24,7 +25,7 @@ test('back on screen: a time watch that came due fires late and labelled, with m
   const w = k.agent.wakes[0];
   assert.equal(w.kind, 'catch-up');
   assert.ok(w.text.startsWith('Catch-up: annai was off screen for 48 min (since 09:42), and the user moved 18.0 km. '), w.text);
-  assert.ok(w.text.includes(`Your watch ${tea.id} (at ${iso('10:00')}) fired: the time came: ${iso('10:00')} (late by 30 min: annai was off screen). Its reminder: "Tea time."`), w.text);
+  assert.ok(w.text.includes(`Your watch ${tea.id} (at ${dueWords(iso('10:00'))}) fired: the time came: ${dueWords(iso('10:00'))} (late by 30 min: annai was off screen). Its reminder: "Tea time."`), w.text);
   assert.match(w.text, /fired: you have travelled 20\.\d km since this watch last started counting\. Its reminder: "Narrate\."$/);
   assert.deepEqual(w.fallbacks.map((/** @type {any} */ f) => f.text), ['Tea time.', 'Narrate.']);
   assert.deepEqual((await k.events(['trigger.fired'])).map((e) => [e.data.late ?? 0, e.data.catchUp]), [[30, true], [0, true]]);
@@ -108,7 +109,7 @@ test('after a restart: an overdue time watch fires late, an every watch once (no
   const w = agent.wakes[0];
   assert.equal(w.kind, 'catch-up');
   assert.match(w.text, /^Catch-up: annai was closed for 9 h 59 min \(since 08:31\), and the user moved 4\d\.\d km to near Nepenthe\. /);
-  assert.ok(w.text.includes(`Your watch ${once.id} (at ${iso('09:00')}) fired: the time came: ${iso('09:00')} (late by 570 min: annai was closed).`));
+  assert.ok(w.text.includes(`Your watch ${once.id} (at ${dueWords(iso('09:00'))}) fired: the time came: ${dueWords(iso('09:00'))} (late by 570 min: annai was closed).`));
   assert.ok(w.text.includes(`Your watch ${every.id} (every 30 min) fired: 30 min since you set it (late by 570 min: annai was closed).`));
   assert.ok(!w.text.includes('Nepenthe"'), 'no plan reminder for lunch, long past');
   await clock.advanceTo(at('19:00'), () => live.settled());
@@ -131,7 +132,7 @@ test('with no connection, annai says each reminder at once and holds the wakes; 
   await k.settle();
   assert.equal(k.agent.wakes.length, 1);
   assert.equal(k.agent.wakes[0].kind, 'trigger');
-  assert.match(k.agent.wakes[0].text, /^While there was no connection \(for 3 h, since 08:30\), these came, and annai showed their reminders by itself: Your watch w-\S+ \(at [^)]+\) fired: the time came: [^.]+\. Its reminder: "Tea time\." Plan: time to leave soon for "Lunch at Nepenthe" \(fixed, 12:00\)\.$/);
+  assert.match(k.agent.wakes[0].text, /^While there was no connection \(for 3 h, since 08:30\), these came, and annai showed their reminders by itself: Your watch w-\S+ \(at Fri 2026-11-27 10:00 \(GMT-8\)\) fired: the time came: Fri 2026-11-27 10:00 \(GMT-8\)\. Its reminder: "Tea time\." Plan: time to leave soon for "Lunch at Nepenthe" \(fixed, 12:00\)\.$/);
   assert.deepEqual(k.agent.wakes[0].fallbacks, []);
   assert.ok((await k.events(['trigger.fired'])).every((e) => e.data.offline === true));
   k.sensors.online(true);
