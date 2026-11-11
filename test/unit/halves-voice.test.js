@@ -288,6 +288,43 @@ test("a spoken question cut by opening another conversation (Kokoro working on i
   }
 });
 
+test("a second spoken question while Kokoro's last call or last step runs is answered: her turn's end doesn't drop Koe's question as already answered (the re-review: R2)", async (t) => {
+  useClock(t);
+  for (const during of ['last call', 'last step']) {
+    let lingering = false;
+    const k = await agentKit([{ rules: [
+      { match: 'check-in', times: 1, reply: { delayMs: during === 'last call' ? 5_000 : 0, ...calls(['tell_koe', { text: 'Check-in is at 3.' }], ...(during === 'last step' ? [/** @type {[string, any]} */ (['linger', {}])] : [])) } },
+      { match: 'parking', reply: calls(['tell_koe', { text: 'Parking is free.' }]) },
+    ] }], {
+      koe: { talk: { rules: [
+        { match: 'the user spoke', times: 1, reply: calls(['speak', { text: 'Let me check.' }], ['tell_kokoro', { text: 'When is check-in?' }]) },
+        { match: 'a note from Kokoro', reply: calls(['speak', { text: 'Okay.' }]) },
+        { match: '.', reply: calls(['speak', { text: 'Checking that too.' }], ['tell_kokoro', { text: 'Is there parking?' }]) },
+      ] } },
+      voice: { speechIn: ['m-hear'], hears: ['when is check-in', 'is there parking'] },
+    });
+    k.agent.kokoro.addLoopTools([{ name: 'linger', pluginId: 'core', group: 'Time', description: 'Wait.', input: { type: 'object' }, run: async () => {
+      lingering = true;
+      for (let i = 0; i < 400 && (await k.events(['note'])).filter((e) => e.data.from === 'koe').length < 2; i++) await new Promise((r) => setTimeout(r, 5));
+      return 'Done.';
+    } }]);
+    k.agent.tap();
+    await until(() => k.agent.state.name === 'listening');
+    await hear(k, 'where-eat');
+    await until(() => (during === 'last call' ? (k.sent['model-0'] ?? []).length === 1 : lingering), 5000);
+    // The user asks again while her turn is in its last call or step; Koe says so and asks her.
+    k.agent.tap();
+    await until(() => k.agent.state.name === 'listening', 5000).catch(() => {});
+    await hear(k, 'first-one');
+    for (let i = 0; i < 400 && (await k.events(['note'])).filter((e) => e.data.from === 'koe').length < 2; i++) await new Promise((r) => setTimeout(r, 5));
+    await new Promise((r) => setTimeout(r, 100));
+    await k.agent.idle();
+    const told = (await k.events(['note'])).filter((e) => e.data.from === 'kokoro' && e.data.why === 'tool').map((e) => e.data.text);
+    assert.deepEqual(told, ['Check-in is at 3.', 'Parking is free.'], `${during}: both questions answered`);
+    assert.ok(!(await k.events(['error'])).some((e) => e.data.kind === 'answered'), `${during}: no "already told" record`);
+  }
+});
+
 test("the sign's Stop while Kokoro gathers for a spoken question Koe asked her: what she gathered is written stopped, so opening the conversation again takes nothing up (the review of item 8: F3)", async (t) => {
   useClock(t);
   const k = await agentKit([{ rules: [{ match: '.', reply: calls(['tell_koe', { text: 'Check-in is at 3.' }]) }] }], {
