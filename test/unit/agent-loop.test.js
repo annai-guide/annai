@@ -686,6 +686,7 @@ test("an old conversation the released app left mid-turn (an open's cut, or a St
 
 test("killed while her line played, with more to do in its reply (a second line, a reminder she announced): opening again takes the turn up, so nothing is lost (the re-review 3: F2)", async (t) => {
   useClock(t);
+  /** @type {Record<string, any[]>} */
   const replies = {
     '[speak A, speak B, sleep]': [{ type: 'tool_call', id: 's1', name: 'speak', input: { text: 'Check-in is at 3.' } }, { type: 'tool_call', id: 's2', name: 'speak', input: { text: 'Parking is free.' } }, { type: 'tool_call', id: 'z1', name: 'sleep', input: {} }],
     '[speak, watch_set, sleep]': [{ type: 'tool_call', id: 's1', name: 'speak', input: { text: "I'll remind you at 5." } }, { type: 'tool_call', id: 'w1', name: 'watch_set', input: { at: '17:00', text: 'Leave for the ferry.' } }, { type: 'tool_call', id: 'z1', name: 'sleep', input: {} }],
