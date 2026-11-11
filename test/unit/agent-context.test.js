@@ -224,6 +224,25 @@ test("an undated conversation with a name that isn't annai's guess says to keep 
   assert.doesNotMatch(await text(guessed), /Keep its name/);
 });
 
+test("her own name for a guessed chat stays hers to change, and renaming it leaves the system text as it was; a name the user wrote is kept though she wrote trip.json since (the review of item 4: F7)", async () => {
+  const { ws, registry } = await setup();
+  const take = (/** @type {string} */ chat) => takeSnapshot({ ws, registry, trip: chat, personalityName: 'shiori' });
+  const chat = await createTrip(ws, { title: DRAFT_TITLE }, { draft: true });
+  await ws.update(chat, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, title: 'Hi' }), { author: 'system' });
+  const guessed = await take(chat);
+  // She renames annai's guess: her name, which she may change again when it becomes a trip.
+  await ws.update(chat, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, title: 'Packing for cold weather' }), { author: 'shiori' });
+  const hers = await take(chat);
+  assert.doesNotMatch(systemText(hers), /Keep its name/);
+  assert.match(systemText(hers), /Its name is a first guess/);
+  assert.equal(systemText(await take(chat)), systemText(hers), 'the same turn to turn');
+  assert.equal(nextSnapshot(guessed, hers, { cold: false }), guessed, 'her rename, warm: the text stays as it was');
+  // The user renames it in Details, then she writes trip.json without touching the name: still theirs.
+  await ws.update(chat, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, title: 'Sapporo with Ken' }), { author: 'user' });
+  await ws.update(chat, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, party: ['Ken'] }), { author: 'shiori' });
+  assert.match(systemText(await take(chat)), /Keep its name unless they ask to change it\./);
+});
+
 test("a name the user gives while the cache is warm stops being called a guess at the next turn, once, and the text then holds", async () => {
   const { ws, registry } = await setup();
   const take = (/** @type {string} */ chat) => takeSnapshot({ ws, registry, trip: chat, personalityName: 'shiori' });
