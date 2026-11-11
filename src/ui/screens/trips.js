@@ -36,6 +36,24 @@ export async function renderTrips(ctx) {
     tripError = tripTyped.title = tripTyped.start = tripTyped.end = '';
     armed.clear();
   }
+  // The trips followed from before the cards read their backups (tripCard), so an entry that lands while home is drawn is kept for followClock: a card
+  // that read "backed up" just before it says "changed since" all the same.
+  /** @type {{ touched: Set<string>, mark: () => void }} */
+  const follow = { touched: new Set(), mark: () => {} };
+  const stop = ctx.appended?.((/** @type {import('../../core/types.js').EventRecord[]} */ evs) => {
+    for (const e of evs) if (changesTrip(e.type)) follow.touched.add(e.scope);
+    follow.mark();
+  });
+  try {
+    return await drawTrips(ctx, follow, stop);
+  } catch (e) {
+    stop?.();
+    throw e;
+  }
+}
+
+/** @param {any} ctx @param {{ touched: Set<string>, mark: () => void }} follow @param {(() => void) | undefined} stop */
+async function drawTrips(ctx, follow, stop) {
   const { active, archived } = await listTrips(ctx.store);
   const settings = await readAppSettings(ctx.ws);
   const places = ctx.backups ? await ctx.backups.list() : [];
@@ -74,7 +92,7 @@ export async function renderTrips(ctx) {
       : null,
     openFileButton(ctx),
     saved ? since(o, h('p', { class: 'sub' }), saved.at, saved.words) : h('p', { class: 'sub', text: t`No backup yet. Export everything from Settings, or set up automatic backups there.` }));
-  followClock(ctx, screen, o, places);
+  followClock(ctx, screen, o, places, follow, stop);
   return screen;
 }
 
@@ -97,8 +115,9 @@ function since(o, node, at, words) {
  * waits, and draws once the field is left. What is typed in the form, its folds and the place stay (`tripTyped`, `fold`). How long ago a backup was changes
  * its words in place (since), the rows in view kept where they were, as does a trip changed while home shows (through the dock): "changed since".
  * @param {any} ctx @param {HTMLElement} screen @param {{ now: number, zone: string, due: number[], since: Since[], backups: Backups }} o @param {{ id: string }[]} places backups'
+ * @param {{ touched: Set<string>, mark: () => void }} follow the trips with entries since home began drawing (renderTrips) @param {(() => void) | undefined} stop
  */
-function followClock(ctx, screen, o, places) {
+function followClock(ctx, screen, o, places, follow, stop) {
   const at = location.hash;
   // What a redraw would lose: the focus of a field of the form (the keyboard would close). A name or dates typed in it are drawn again (tripTyped).
   const typing = () => screen.contains(document.activeElement) && isField(document.activeElement);
@@ -128,14 +147,17 @@ function followClock(ctx, screen, o, places) {
     if (change < Infinity) tick = real.set(words, change - now + 1000); // a second past, as the redraw's
   };
   words();
-  const followed = ctx.appended?.((/** @type {import('../../core/types.js').EventRecord[]} */ evs) => {
+  // A trip with an entry that changes what a Backup holds, since home began drawing or from now on: its card says "changed since", in place.
+  follow.mark = () => {
     let changed = false;
-    for (const e of evs) {
-      const b = o.backups.get(e.scope);
-      if (b && !b.changed && changesTrip(e.type)) changed = b.changed = true;
+    for (const id of follow.touched) {
+      const b = o.backups.get(id);
+      if (b && !b.changed) changed = b.changed = true;
     }
+    follow.touched.clear();
     if (changed) words();
-  });
+  };
+  follow.mark();
   const front = () => {
     if (document.visibilityState !== 'visible') return;
     words(); // at once, while a field's focus holds the redraw back
@@ -152,7 +174,7 @@ function followClock(ctx, screen, o, places) {
     document.removeEventListener('visibilitychange', front);
     swapped?.();
     backedUp?.();
-    followed?.();
+    stop?.();
   });
 }
 

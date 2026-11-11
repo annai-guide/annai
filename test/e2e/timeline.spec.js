@@ -2141,6 +2141,36 @@ test("a change made from home itself (her answer, through the dock, while home s
   }
 });
 
+test("a line that lands in a trip while home draws again, after its card read the backup: the card says \"changed since\" once home is drawn", async ({ page }) => {
+  await openApp(page, '#/settings');
+  const ids = await seed(page, { trips: { Testville: { from: 10, to: 12 } } });
+  await backedUpAgo(page, 'Testville', 2 * 60_000);
+  await page.goto('/#/trips');
+  const card = row(page, 'Testville');
+  await expect(card).toContainText('backed up 2 minutes ago');
+  await expect(card).not.toContainText('changed since');
+  // Home draws again (annai comes back to the front), and her line commits in the trip once the cards have read their backups: as home lists the
+  // files waiting with Shiori, the last read before it is drawn.
+  await page.evaluate(async (id) => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { Workspace } = await load('/src/core/workspace.js');
+    const { SYS_WAITING } = await load('/src/core/scopes.js');
+    const list = Workspace.prototype.list;
+    Workspace.prototype.list = async function (/** @type {string} */ scope, /** @type {string} */ prefix) {
+      if (scope === SYS_WAITING) {
+        Workspace.prototype.list = list;
+        await this.store.tx(['events', 'scopes'], 'readwrite', (/** @type {any} */ t) => t.appendEvent(id, { ts: Date.now(), type: 'out.speak', actor: 'shiori', data: { text: 'The pier is a short walk.' } }));
+        /** @type {any} */ (window).landed = true;
+      }
+      return list.call(this, scope, prefix);
+    };
+    document.dispatchEvent(new Event('visibilitychange'));
+  }, ids.Testville);
+  await expect.poll(() => page.evaluate(() => /** @type {any} */ (window).landed)).toBe(true);
+  // Before, the new card had read its backup before the line and home followed the trips only once drawn: it said nothing until the next redraw.
+  await expect(card).toContainText('backed up 2 minutes ago, changed since');
+});
+
 for (const size of PHONES) {
   test(`a card that came below an opened one, then the box's cap lifted on another screen: the sign goes, the card in view there (${size.join(' x ')})`, async ({ page }) => {
     await openedLongCard(page, size);
