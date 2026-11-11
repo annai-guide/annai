@@ -1137,8 +1137,7 @@ export class Halves {
       const done = this.kokoro.wake({ ...w, scope: trip });
       if (!opening) await done;
     }
-    // What the halves write of the conversation they leave (a line or cue they still held, a session's last words) is written when this returns, so the
-    // caller's own line about the move comes after it and settles it.
+    // What the halves write of the conversation they leave (a line or cue they held, a session's last words) is written by now: the caller's line about the move settles it.
     await left;
     await this.live.written();
   }
