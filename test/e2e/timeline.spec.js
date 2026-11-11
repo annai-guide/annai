@@ -1788,7 +1788,7 @@ test("Shiori set the dates stays at its place when the user writes again, and af
     await expect(line).toBeVisible();
     await expect.poll(lines).toEqual(placed);
     await page.reload();
-    await expect(page.locator('.convo')).toContainText('Dinner is at seven.');
+    await expect(page.locator('.convo')).toContainText('Dinner is at seven.', FIRST_DRAW); // a reload's first draw parses the whole app
     await expect(page).toHaveURL(new RegExp(`#/trip/${id}/talk$`));
     await expect.poll(lines).toEqual(placed);
     await line.getByRole('button', { name: 'Undo' }).click();

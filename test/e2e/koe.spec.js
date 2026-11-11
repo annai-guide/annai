@@ -151,10 +151,22 @@ test("the sign's Stop ends Kokoro's turn and leaves Koe", async ({ page }) => {
   const llm = await startModelServer(halves(20_000));
   try {
     await koeSetUp(page, llm.origin);
+    // The page's agent, from its next send on (catchAgent's way): to know when Koe's own turn is over.
+    await page.evaluate(async () => {
+      const { Halves } = await import(/** @type {string} */ ('/src/core/agent/halves.js'));
+      const send = Halves.prototype.send;
+      Halves.prototype.send = function (/** @type {any[]} */ ...a) {
+        /** @type {any} */ (window).agent = this;
+        return send.apply(this, a);
+      };
+    });
     await type(page, 'Is Nepenthe open?');
     await expect(page.locator('.convo .shiori p').first()).toHaveText("I'm checking.");
     const sign = page.getByRole('status').filter({ hasText: 'Kokoro is working' });
     await expect(sign).toBeVisible();
+    // Koe's own turn over first: the stand-in answers Koe by turn, not by what it is asked, so a Stop whose note joined that turn
+    // still running got the reply scripted for "Thanks" (seen on WebKit under load).
+    await page.waitForFunction(() => !(/** @type {any} */ (window).agent.koe.busy));
     await page.getByRole('button', { name: 'Stop Kokoro' }).click();
     await expect(sign).toBeHidden();
     await expect(page.locator('.convo .shiori p')).toHaveText(["I'm checking."]);

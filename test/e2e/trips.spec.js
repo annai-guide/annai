@@ -738,6 +738,8 @@ test('opening #/trip/<b>/talk with a turn running in a stops it; a redraw of a t
     // Shiori moves the conversation to Kyoto (a hand-over's openWhenDone): the screen goes there, and nothing opens Osaka again.
     await catchAgent(page);
     await goToHash(page, `#/trip/${a}`);
+    // Details drawn first: else Osaka's conversation from before still shows while Kyoto is the open one, and openWhenDone finds Kyoto open.
+    await expect(page.getByRole('heading', { level: 1, name: 'Kyoto' })).toBeVisible();
     await goToHash(page, `#/trip/${b}/talk`);
     await expect(convo(page)).toContainText('Osaka');
     await page.evaluate(async () => { /** @type {any} */ (window).opens = []; });
