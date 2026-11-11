@@ -468,7 +468,7 @@ export function tripTools(app) {
     },
     {
       name: 'open_trip', pluginId: 'core', group: 'Trips',
-      description: "Take the user into another of their trips or conversations (list_trips), to carry on there. annai asks them itself with its own card (\"Carry on in Kyoto?\", said aloud when voice is on), so don't ask them first, say you are taking them or tell Koe to: call it, and their answer comes back. If they choose Open, that trip's conversation opens at once with your recap and the user's last line here, and the files they just handed you unless you name others; you answer them there, and this conversation stays as it is. From a conversation with no dates, only when they want to carry on there, or to look at something there that read_trip can't open; with no trip open, for the trip the files they handed you fit. Not in a dated trip.",
+      description: "Take the user into another of their trips or conversations (list_trips), to carry on there. annai asks them itself with its own card (\"Carry on in Kyoto?\", said aloud when voice is on), so don't ask them first or say you are taking them: call it, and their answer comes back. If they choose Open, that trip's conversation opens at once with your recap and the user's last line here, and the files they just handed you unless you name others; you answer them there, and this conversation stays as it is. From a conversation with no dates, only when they want to carry on there, or to look at something there that read_trip can't open; with no trip open, for the trip the files they handed you fit. Not in a dated trip.",
       input: OPEN,
       run: async (/** @type {any} */ i, /** @type {ToolCall} */ call) => {
         check(OPEN, i);
