@@ -851,6 +851,8 @@ function tidyMenu(ctx, trip) {
     if (toggle.getAttribute('aria-disabled') === 'true') return;
     menu.hidden = !menu.hidden;
     toggle.setAttribute('aria-expanded', String(!menu.hidden));
+    // A scroll box keeps its scroll while hidden (both engines): it opens at its top each time, where Details is.
+    menu.scrollTop = 0;
     fit();
   });
   const summarize = h('button', {
