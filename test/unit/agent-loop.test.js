@@ -684,20 +684,22 @@ test("an old conversation the released app left mid-turn (an open's cut, or a St
   }
 });
 
-test("closed while her answer, said aloud, listened: opening again says nothing again, though annai answers its calls; cut before she spoke, it is taken up (the re-review 2: S3)", async (t) => {
+test("killed while her line played, with more to do in its reply (a second line, a reminder she announced): opening again takes the turn up, so nothing is lost (the re-review 3: F2)", async (t) => {
   useClock(t);
-  for (const spoke of [true, false]) {
-    const k = await agentKit([[say('Back: check-in is at 3.')]], { open: false });
+  const replies = {
+    '[speak A, speak B, sleep]': [{ type: 'tool_call', id: 's1', name: 'speak', input: { text: 'Check-in is at 3.' } }, { type: 'tool_call', id: 's2', name: 'speak', input: { text: 'Parking is free.' } }, { type: 'tool_call', id: 'z1', name: 'sleep', input: {} }],
+    '[speak, watch_set, sleep]': [{ type: 'tool_call', id: 's1', name: 'speak', input: { text: "I'll remind you at 5." } }, { type: 'tool_call', id: 'w1', name: 'watch_set', input: { at: '17:00', text: 'Leave for the ferry.' } }, { type: 'tool_call', id: 'z1', name: 'sleep', input: {} }],
+  };
+  for (const [reply, parts] of Object.entries(replies)) {
+    const k = await agentKit([[say('Back again.')]], { open: false });
     await record(k.store, k.trip, { type: 'wake', actor: 'system', data: { id: 'w-0', reasons: [{ kind: 'user', text: 'typed' }] } });
     await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: { text: 'When is check-in?', wake: 'w-0' } });
-    await modelTrace(k.store, k.trip).turn({ role: 'main', level: 'medium', answeredBy: 'A', attempts: [], usage: {}, cost: 0, tag: TALK_TAG, wake: 'w-0' }, '', '',
-      [{ type: 'tool_call', id: 's1', name: 'speak', input: { text: 'Check-in is at 3.' } }, { type: 'tool_call', id: 'z1', name: 'sleep', input: {} }]);
-    // speak writes its line, plays it, then listens for 20 s; annai was closed in that time: no result.
-    if (spoke) await record(k.store, k.trip, { type: 'out.speak', actor: 'shiori', data: { id: 's1', voice: true, wake: 'w-0' }, texts: [['text', 'Check-in is at 3.']] });
+    await modelTrace(k.store, k.trip).turn({ role: 'main', level: 'medium', answeredBy: 'A', attempts: [], usage: {}, cost: 0, tag: TALK_TAG, wake: 'w-0' }, '', '', parts);
+    // Her first line is written and playing; annai is killed before it ends: no result for any call.
+    await record(k.store, k.trip, { type: 'out.speak', actor: 'shiori', data: { id: 's1', voice: true, wake: 'w-0' }, texts: [['text', parts[0].input.text]] });
     await k.agent.open(k.trip);
     await k.agent.idle();
-    assert.deepEqual((await k.events(['tool.result'])).slice(0, 2).map((/** @type {any} */ e) => [e.data.content, e.data.cut]), [['interrupted by app restart', true], ['interrupted by app restart', true]]);
-    assert.equal(k.requests.length, spoke ? 0 : 1, spoke ? 'her answer is not said again' : 'cut before she spoke: taken up');
+    assert.equal(k.requests.length, 1, `${reply}: taken up`);
   }
 });
 

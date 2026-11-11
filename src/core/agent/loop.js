@@ -683,9 +683,9 @@ export class Agent {
     if (generation !== this.#generation) return;
     await this.#keepElsewhere(scope);
     if (generation !== this.#generation) return;
-    // Something owed when it opens: a restart wake, unless the other half takes it up (Half.restart). The transcript alone decides, the
-    // results repair just wrote included: closed while an answer said aloud listened, nothing is said again.
-    const owed = transcript.unanswered && (await (this.#half.restart?.() ?? true));
+    // Something owed when it opens: a restart wake, unless the other half takes it up (Half.restart). A turn annai was killed in is taken
+    // up whatever its transcript says: what ran then isn't known (a line cut in its playback, a call after it that never ran).
+    const owed = Boolean(repaired || transcript.unanswered) && (await (this.#half.restart?.() ?? true));
     if (generation !== this.#generation) return;
     this.trip = trip;
     this.scope = scope;
