@@ -819,6 +819,14 @@ export class Agent {
 
   /** @param {Wake} w */
   #push(w) {
+    // Reminders that come while her turn waits on the user's answer with no time limit (annai's card, her own question) are annai's to show
+    // now, as at a cut: the user may never answer. Her turn reads them as shown. Not said aloud while a microphone listens, or is about to
+    // (the card's question is being said), for that answer: one voice at a time.
+    const p = this.#pending;
+    if (w.fallbacks?.length && p?.kind === 'ask') {
+      this.remind(w.fallbacks, undefined, p.listening || (p.ask && !p.ask.from) ? { silent: true } : {}).catch(() => {});
+      w = { ...w, fallbacks: [] };
+    }
     this.#queue.push({ ...w, scope: this.#target ?? ME, at: Date.now() });
     if (w.kind === 'note') this.#noted();
     // Kokoro's next note while Koe's call still answers its last one, and nothing of it is out yet: the call is cut and goes again
