@@ -463,8 +463,8 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** the user meets it in split screen, or a way appears to tell a toolbar from a real resize.
 - **Approved:** 2026-11-10, the user picked "Accept (Recommended)".
 
-### A fold opened at a page's end, then a turn of the phone, puts the page at its new end
+### A turn of the phone can put the page at its end when the user's last move wasn't a scroll the rule could read
 - **Kind:** deferred.
-- **What the user sees:** with a page scrolled to its end, opening something that grows the page below (Archived trips on home) and then turning the phone, before any scroll, moves the page past what just opened, to its new end. A scroll in between prevents it, and Shiori speaking or the dock changing no longer moves the page at all.
-- **Why:** when the phone turns, the page is already at its new size, so whether the user was at its end can't be read then and is remembered from their last scroll; a fold opened since is not a scroll.
-- **Revisit when:** the next version: the remembered fact also follows the page's height.
+- **What the user sees:** the page moves to its end when the phone is turned, though the user wasn't reading its end. Three ways there: with a page scrolled to its end, something opens below with no scroll (Archived trips on home), then the phone turns, and the page goes past what just opened; in a browser tab, a short drag up from the end while the toolbar shows, then a turn with no other scroll; and possibly (not verified on a phone) a scroll with the iPhone's keyboard up, then a turn. A scroll in between prevents the first, and Shiori speaking or the dock changing no longer moves the page at all.
+- **Why:** when the phone turns, the page is already at its new size, so whether the user was at its end can't be read then and is remembered from their last scroll. A fold opened since is not a scroll, and a scroll that arrives at a new window height before that height's resize is skipped as the browser's own.
+- **Revisit when:** the next version: skip a scroll only while a turn's resize is still to come (the width differs), read every other one, and let the remembered fact follow the page's height. It needs the WebKit turn test before it ships.

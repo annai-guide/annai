@@ -42,7 +42,7 @@ export function keepAtEnd(win = window) {
   });
   return {
     keep(change) {
-      const was = seen();
+      const was = !zoomed() && seen(); // zoomed in, the window's own scroll says nothing of what the user is reading (Android keeps it at the end)
       change();
       if (was) put();
     },
