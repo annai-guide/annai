@@ -87,6 +87,13 @@ const PLAYER_TRIES = 3;
 const STALL_MS = 1000;
 /** How long the microphone waits for a suspended context to run: its resume() may take over a second and work, or never settle (WebKit 281566). */
 const RESUME_MS = 3000;
+/**
+ * The capture worklet that hasn't run process() this long after it was connected sits on an audio thread that isn't running, whatever
+ * the context's state says (an iPhone's has read "running" while giving nothing). It is STALL_MS, the bound this file already uses to call
+ * the same thread stalled: a live thread runs process() every few ms and posts a batch every 43 ms. Not measured on a phone: the
+ * Trace's voice.mic line (firstFrameMs) measures it, and the number is set again if healthy opens come near it.
+ */
+const FIRST_FRAME_MS = STALL_MS;
 
 /** A promise and the function that settles it. @template T @returns {[Promise<T>, (v: T) => void]} */
 function settled() {
@@ -327,6 +334,67 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
   let playerModule = null;
   let playerTries = 0;
   /**
+   * The context c is let go, with the worklet modules loaded on it, and the next use makes a new one: sound got stuck (unlock's fresh), or
+   * the microphone's audio thread never ran (mic.open). Only while c is still the one in use: one already renewed meanwhile stays.
+   * @param {AudioContext} c
+   */
+  const renew = (c) => {
+    if (ctx !== c) return;
+    c.close().catch(() => {});
+    ctx = null;
+    worklet = null;
+    playerModule = null;
+    playerTries = 0;
+  };
+  /** Each microphone open's outcome, for the Trace (mic.onOpen). @type {Set<(m: { firstFrameMs: number | null, renewed: boolean }) => void>} */
+  const opens = new Set();
+  const stuck = () => Object.assign(new Error(t`Sound got stuck, so annai can't hear you. Tap the screen to bring it back.`), { stuck: true });
+  /**
+   * The capture worklet on context c, fed by the stream: once c runs (a suspended one gets RESUME_MS, else the error is `stuck`), its module
+   * is in and it is connected, it waits for the worklet's first post, at most FIRST_FRAME_MS. A healthy open waits only for that post.
+   * firstFrameMs: how long the post took after connecting, null when it never came. letGo: its nodes, let go.
+   * @param {AudioContext} c @param {MediaStream} stream @param {(pcm: Float32Array, sampleRate: number) => void} onFrames
+   */
+  const capture = async (c, stream, onFrames) => {
+    const running = () => c.state === 'running';
+    if (!running()) {
+      c.resume().catch(() => {});
+      for (const by = Date.now() + RESUME_MS; !running() && Date.now() < by;) await new Promise((r) => { setTimeout(r, 50); });
+    }
+    if (!running()) throw stuck();
+    playerReady();
+    worklet ??= c.audioWorklet.addModule(new URL('./capture-worklet.js', import.meta.url).href);
+    try {
+      await worklet;
+    } catch (e) {
+      worklet = null;
+      throw e;
+    }
+    const source = c.createMediaStreamSource(stream);
+    const node = new AudioWorkletNode(c, 'annai-capture');
+    const silent = c.createGain();
+    silent.gain.value = 0;
+    const [first, ran] = /** @type {[Promise<boolean>, (v: boolean) => void]} */ (settled());
+    node.port.onmessage = (e) => {
+      ran(true);
+      if (e.data !== 'ran') onFrames(e.data, c.sampleRate);
+    };
+    source.connect(node);
+    node.connect(silent).connect(c.destination); // some browsers run a node only when it leads somewhere
+    const at = Date.now();
+    /** @type {any} */
+    let timer;
+    const came = await Promise.race([first, new Promise((r) => { timer = setTimeout(() => r(false), FIRST_FRAME_MS); })]);
+    clearTimeout(timer);
+    const letGo = () => {
+      node.port.onmessage = null;
+      source.disconnect();
+      node.disconnect();
+      silent.disconnect();
+    };
+    return { c, source, node, silent, letGo, firstFrameMs: came ? Date.now() - at : null };
+  };
+  /**
    * The player worklet's module on the context, loaded at a tap or as the microphone opens: whether it is in, within
    * PLAYER_LOAD_MS (a stream meanwhile plays on buffers). A load that failed or hung is tried again by the next stream, PLAYER_TRIES
    * times in all.
@@ -390,13 +458,7 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
         // Inside a tap: the player, the microphone's context and the browser voice may start. Each is
         // started now, in the tap; after a wait it would no longer count. Until the player played, every tap tries again.
         // Sound got stuck: resume() can't be trusted (state may read running after the unit failed, WebKit 217606), so a new context is made here.
-        if (fresh && ctx) {
-          ctx.close().catch(() => {});
-          ctx = null;
-          worklet = null;
-          playerModule = null;
-          playerTries = 0;
-        }
+        if (fresh && ctx) renew(ctx);
         /** @type {Promise<boolean>} */
         let played;
         try {
@@ -440,7 +502,8 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
           return bufferStream(c, { rate, onLevel, running });
         }), running);
       },
-      output: () => (ctx ? { sampleRate: ctx.sampleRate, baseLatency: ctx.baseLatency, outputLatency: ctx.outputLatency } : null),
+      // state and time (its clock, in s): a dead context whose state reads "running" has a clock that stands still (not verified on a phone).
+      output: () => (ctx ? { sampleRate: ctx.sampleRate, baseLatency: ctx.baseLatency, outputLatency: ctx.outputLatency, state: ctx.state, time: Math.round(ctx.currentTime * 1000) / 1000 } : null),
       plays: () => CODEC_ORDER.flat().filter((f) => f !== 'opus' && player().canPlayType(mediaTypeOf(f) + (PARAMS[f] ?? '')) !== ''),
       async play(clip, { signal, onLevel = () => {} }) {
         if (signal.aborted) return { ended: false, fraction: 0 };
@@ -566,31 +629,29 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
         const t = inputs.at(-1);
         return t ? { label: t.label ?? '', deviceId: t.getSettings?.().deviceId ?? '' } : null;
       },
+      onOpen(fn) {
+        opens.add(fn);
+        return () => { opens.delete(fn); };
+      },
       async open({ onFrames, onError, record }) {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+        /** What this open came to, told once it is known, opened or not. */
+        const told = { firstFrameMs: /** @type {number | null} */ (null), renewed: false };
         try {
-          const c = context();
-          const running = () => c.state === 'running';
-          if (!running()) {
-            c.resume().catch(() => {});
-            for (const by = Date.now() + RESUME_MS; !running() && Date.now() < by;) await new Promise((r) => { setTimeout(r, 50); });
+          let wired = await capture(context(), stream, onFrames);
+          if (wired.firstFrameMs === null) {
+            // Its audio thread never ran: the context is made anew once, in place, as a tap's would be, on the same stream.
+            wired.letGo();
+            renew(wired.c);
+            told.renewed = true;
+            wired = await capture(context(), stream, onFrames);
           }
-          if (!running()) throw Object.assign(new Error(t`Sound got stuck, so annai can't hear you. Tap the screen to bring it back.`), { stuck: true });
-          playerReady();
-          worklet ??= c.audioWorklet.addModule(new URL('./capture-worklet.js', import.meta.url).href);
-          try {
-            await worklet;
-          } catch (e) {
-            worklet = null;
-            throw e;
+          told.firstFrameMs = wired.firstFrameMs;
+          if (wired.firstFrameMs === null) {
+            wired.letGo();
+            throw stuck(); // the card says tap, and the tap makes the sound anew
           }
-          const source = c.createMediaStreamSource(stream);
-          const node = new AudioWorkletNode(c, 'annai-capture');
-          const silent = c.createGain();
-          silent.gain.value = 0;
-          node.port.onmessage = (e) => onFrames(e.data, c.sampleRate);
-          source.connect(node);
-          node.connect(silent).connect(c.destination); // some browsers run a node only when it leads somewhere
+          const { source, node, silent } = wired;
           for (const track of stream.getAudioTracks()) track.onended = () => onError(new Error(t`The microphone stopped.`));
           const input = stream.getAudioTracks()[0];
           if (input) inputs.push(input);
@@ -649,6 +710,14 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
         } catch (e) {
           for (const t of stream.getTracks()) t.stop();
           throw e;
+        } finally {
+          for (const fn of opens) {
+            try {
+              fn({ ...told });
+            } catch {
+              // a listener's failure is not the microphone's
+            }
+          }
         }
       },
     },

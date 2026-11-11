@@ -248,7 +248,13 @@ function fakeAudioGlobals(/** @type {{ state?: string, resumes?: boolean, resume
     async play() { this.paused = false; }
   };
   g.URL.createObjectURL ??= () => 'blob:fake';
-  g.AudioWorkletNode = class { port = {}; connect(/** @type {any} */ x) { return x; } disconnect() {} };
+  // A running audio thread calls the capture worklet's process() at once: its first post (drive-3 D4), a few ms after the node starts.
+  g.AudioWorkletNode = class {
+    /** @type {any} */ port = {};
+    constructor(/** @type {any} */ c) { setTimeout(() => { if (c.state === 'running') this.port.onmessage?.({ data: 'ran' }); }, 3); }
+    connect(/** @type {any} */ x) { return x; }
+    disconnect() {}
+  };
   const track = { stop() { stopped.tracks++; }, getSettings: () => ({}) };
   Object.defineProperty(globalThis.navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async () => ({ getAudioTracks: () => [track], getTracks: () => [track] }) } });
   return { contexts, stopped, audios, restore() {

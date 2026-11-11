@@ -971,3 +971,16 @@ test("the trace's lines: a claim says so, a live heard line nobody answered says
   assert.match(traceSummary(e('heard', { id: 'h', source: 'live', text: 'la la', dismissed: true })), /she didn't answer/);
   assert.match(traceSummary(e('heard', { id: 'h', source: 'mic', ms: 900, text: 'la la', dismissed: true })), /not for Shiori/);
 });
+
+// drive-3 design, D4 and D5: the Trace's lines about the sound's context, and the dock's words between a tap and Listening.
+test('the Trace shows the sound\'s context on voice.route, voice.mic and voice.shown, and a line from before it was kept reads as it did', async () => {
+  const e = (/** @type {string} */ type, /** @type {any} */ data) => ({ type, data, ts: 0, seq: 1, actor: 'system', scope: 'sys-device' });
+  const ctx = { state: 'running', time: 812.403 };
+  assert.equal(traceSummary(e('voice.mic', { firstFrameMs: 6, renewed: false, ctx })), 'microphone ran after 6 ms · sound running at 812.403 s');
+  assert.equal(traceSummary(e('voice.mic', { firstFrameMs: 9, renewed: true, ctx })), 'microphone ran after 9 ms · sound made anew · sound running at 812.403 s');
+  assert.equal(traceSummary(e('voice.mic', { firstFrameMs: null, renewed: true, ctx: null })), 'microphone never ran · sound made anew');
+  assert.equal(traceSummary(e('voice.shown', { ctx })), 'back in view · sound running at 812.403 s');
+  const route = { route: 'speaker', using: null, devices: ['iPhone Microphone'] };
+  assert.equal(traceSummary(e('voice.route', { ...route, ctx })), 'audio route speaker · from the devices present · iPhone Microphone · sound running at 812.403 s');
+  assert.equal(traceSummary(e('voice.route', route)), 'audio route speaker · from the devices present · iPhone Microphone', 'an older line, with no ctx');
+});

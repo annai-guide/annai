@@ -16,7 +16,7 @@ const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Halves: ['note', 'halves'],
   Tools: ['tool.call', 'tool.result', 'trip.read'],
   Web: ['net.request', 'pack.download'],
-  Models: ['model.turn', 'net.request', 'decide', 'speech.browser', 'recap', 'live.session', 'live.turn', 'live.reply', 'voice.route', 'reading'],
+  Models: ['model.turn', 'net.request', 'decide', 'speech.browser', 'recap', 'live.session', 'live.turn', 'live.reply', 'voice.route', 'voice.mic', 'voice.shown', 'reading'],
   Housekeeping: ['compaction'],
   // GPS is what live mode did; its location points (about one a second on a drive) are a kind of their own,
   // so they never crowd the firings out of the newest 300.
@@ -150,6 +150,9 @@ function summaryShown(e, perWake) {
   return linkIn(line, ...kept.map((x) => h('span', { lang: 'en', text: x })));
 }
 
+/** The sound's context as a Trace line keeps it (ctx), a developer's words; nothing for none, or a line from before it was kept. @param {any} c */
+const soundOf = (c) => (c && typeof c.state === 'string' ? /* en */ `sound ${c.state} at ${c.time} s` : null);
+
 /** Which half wrote an entry, when Shiori is two: their names, the same in every language. @param {any} d */
 const halfOf = (d) => (d.half === 'koe' ? /* en */ 'Koe · ' : d.half === 'kokoro' ? /* en */ 'Kokoro · ' : '');
 
@@ -223,8 +226,14 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'voice.route') {
     const unnamed = t`no name`;
     return line(t`audio route ${d.route}`, d.using === null ? t`from the devices present` : t`the microphone in use: ${d.using || unnamed}`,
-      (d.devices ?? []).map((/** @type {string} */ x) => x || unnamed).join(', ') || t`no devices`, d.gone?.length ? t`disconnected: ${d.gone.join(', ')}` : null);
+      (d.devices ?? []).map((/** @type {string} */ x) => x || unnamed).join(', ') || t`no devices`, d.gone?.length ? t`disconnected: ${d.gone.join(', ')}` : null, soundOf(d.ctx));
   }
+  // The microphone's audio thread as it opened, and the sound's context when the page came back: codes and numbers, a developer's words.
+  if (e.type === 'voice.mic') {
+    return line(typeof d.firstFrameMs === 'number' ? /* en */ `microphone ran after ${d.firstFrameMs} ms` : /* en */ 'microphone never ran',
+      d.renewed ? /* en */ 'sound made anew' : null, soundOf(d.ctx));
+  }
+  if (e.type === 'voice.shown') return line(/* en */ 'back in view', soundOf(d.ctx));
   if (e.type === 'app.start') return /* en */ `annai started · GPS ${d.gps}${d.activity && d.activity !== 'unknown' ? ` · ${d.activity} restored` : ''}`;
   if (e.type === 'state' && typeof d.activity === 'string') {
     // Live mode's activity: a change and what it rested on, or (from equal to activity) a beat or a km of way. No positions.

@@ -172,6 +172,36 @@ test('while the microphone is open, the route is the one input in use (its label
   ], 'each change once, in this device\'s own scope (never exported)');
 });
 
+// drive-3 design, D4: the sound's context on the device's Trace, so a dead one can be dated next time.
+test('the Trace keeps the sound\'s context (state, clock): on every voice.route line, on voice.mic for each microphone open, and on voice.shown when the page is back', async () => {
+  const k = await voiceKit([{ kind: 'audioinput', label: 'iPhone Microphone', deviceId: 'phone' }]);
+  const { SYS_DEVICE } = await import('../../src/core/scopes.js');
+  const lines = async (/** @type {string} */ type) => (await k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(SYS_DEVICE, { types: [type] }))).map((/** @type {any} */ e) => e.data);
+  k.platform.ctx = null;
+  await k.voice.refresh(); // as annai starts: it hears the microphone's opens from now on, and traces the route
+  await tick();
+  k.voice.shown();
+  await tick();
+  assert.deepEqual(await lines('voice.shown'), [], 'no context yet: nothing to date');
+  assert.deepEqual((await lines('voice.route')).map((d) => d.ctx), [null], 'a field on every new line, null for none');
+  k.platform.ctx = { state: 'running', time: 12.5 };
+  const mic = await k.platform.mic.open({ onFrames: () => {}, onError: () => {} });
+  await k.voice.route();
+  k.platform.ctx = { state: 'running', time: 12.5 }; // a clock standing still
+  mic.close();
+  await k.voice.route(); // back to the devices present: a new decision
+  await k.voice.route(); // the same decision: no line, whatever the clock says
+  k.voice.shown();
+  await tick();
+  assert.deepEqual((await lines('voice.route')).map((d) => [d.route, d.ctx]), [['speaker', null], ['speaker', { state: 'running', time: 12.5 }], ['speaker', { state: 'running', time: 12.5 }]]);
+  assert.deepEqual(await lines('voice.mic'), [{ firstFrameMs: 4, renewed: false, ctx: { state: 'running', time: 12.5 } }]);
+  assert.deepEqual(await lines('voice.shown'), [{ ctx: { state: 'running', time: 12.5 } }]);
+  k.platform.micStuckMs = 5;
+  await assert.rejects(k.platform.mic.open({ onFrames: () => {}, onError: () => {} }), (/** @type {any} */ e) => e.stuck);
+  await tick();
+  assert.deepEqual((await lines('voice.mic')).at(-1), { firstFrameMs: null, renewed: true, ctx: { state: 'running', time: 12.5 } });
+});
+
 test('an input in use that is no longer among the devices (AirPods taken out, its track still named for them) is unknown, not headphones (review S1)', async () => {
   const k = await voiceKit([{ kind: 'audioinput', label: 'iPhone Microphone', deviceId: 'phone' }, { kind: 'audioinput', label: 'AirPods Pro', deviceId: 'pods' }]);
   k.platform.snapshot = true;

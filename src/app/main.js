@@ -299,7 +299,12 @@ async function boot() {
     agent.hush('away');
   });
   // A live session closes when the page goes out of view: its microphone never runs unseen. What comes meanwhile waits for it.
-  document.addEventListener('visibilitychange', () => (document.visibilityState === 'hidden' ? agent.hush('away') : agent.shown()));
+  // Back in view, the sound's context goes in the Trace (voice.shown) first, before anything uses it.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') return void agent.hush('away');
+    voice.shown();
+    agent.shown();
+  });
   addEventListener('pageshow', (e) => { if (e.persisted) agent.leaving(false); });
   offerPersonalityUpdates({ ws, agent, presets, notices: shell.notices });
   // Live mode's own failures (a log it can't write) are reported like any unexpected error (spec §17 rule 4).
