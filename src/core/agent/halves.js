@@ -1126,9 +1126,10 @@ export class Halves {
    */
   async carryOn(trip, wakes, signal) {
     const opening = !signal.aborted;
+    let left = Promise.resolve();
     if (opening) {
       updateAppSettings(this.ws, { activeTrip: trip }).catch(() => {});
-      this.open(trip, { moved: true }).catch((e) => console.warn(/* en */ "the trip the user chose didn't open", e));
+      left = this.open(trip, { moved: true }).catch((e) => console.warn(/* en */ "the trip the user chose didn't open", e));
       this.#emit('went', { trip, chose: true });
     }
     // Into its queue at once when it opens (one turn), else written into it, one after the other.
@@ -1136,6 +1137,10 @@ export class Halves {
       const done = this.kokoro.wake({ ...w, scope: trip });
       if (!opening) await done;
     }
+    // What the halves write of the conversation they leave (a line or cue they still held, a session's last words) is written when this returns, so the
+    // caller's own line about the move comes after it and settles it.
+    await left;
+    await this.live.written();
   }
 
   /** @param {boolean} [yes] */

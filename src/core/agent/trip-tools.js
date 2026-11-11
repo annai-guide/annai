@@ -496,10 +496,11 @@ export function tripTools(app) {
         await activeTrip(rec.id); // removed or archived while its card waited: said so, and nothing moved
         const m = await moveAll(files, rec.id, call);
         const wakes = await cargo(m, call, { started: false, recap: i.recap });
-        // Where the files went (Undo finds the trip by it), and the conversation's own line saying where they went: its last of the move.
+        // Where the files went (Undo finds the trip by it); then the conversation's own line saying where they went, its last: after what the halves still
+        // held of it (the yes Koe heard, a cue) is written, so all of it is settled by that line, never a line after it that the chat owes.
         if (m.size || call.handover) await moved(rec.id, false, m.size, call);
-        await logIn(call, { type: 'conversation.moved', actor: 'shiori', data: { to: rec.id, title: rec.title } });
         await app.carryOn(rec.id, wakes, call.signal);
+        await logIn(call, { type: 'conversation.moved', actor: 'shiori', data: { to: rec.id, title: rec.title } });
         /* en */
         return `They chose Open: ${JSON.stringify(rec.title)} is open now, and you answer them there; this conversation stays.`;
       },
