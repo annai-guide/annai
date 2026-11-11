@@ -1018,7 +1018,7 @@ test("a web font that swaps in after a card was fitted fits it again: its words 
 });
 
 for (const size of PHONES) {
-  test(`on home, a field focused under the stuck box is scrolled clear of it and of the top bar (${size.join(' x ')})`, async ({ page }) => {
+  test(`on home, a field focused under the stuck box is clear of it and of the top bar: the box lets go while it is typed in (${size.join(' x ')})`, async ({ page }) => {
     await page.setViewportSize({ width: size[0], height: size[1] });
     await scrolledHome(page);
     await addBackup(page, 'Place 0');
@@ -1026,15 +1026,101 @@ for (const size of PHONES) {
     await expect(page.locator('.notices > .notice')).toHaveCount(2);
     await settled(page);
     const name = page.getByLabel('Trip name');
-    // Scrolled on until Start a trip's name is just under the top bar, under the box.
-    await name.evaluate((el) => scrollBy(0, el.getBoundingClientRect().top - /** @type {Element} */ (document.querySelector('.topbar')).getBoundingClientRect().bottom - 20));
+    // Scrolled on until Start a trip's name, its label first, is just under the top bar, under the box.
+    await name.evaluate((el) => scrollBy(0, /** @type {Element} */ (el.closest('label') ?? el).getBoundingClientRect().top - /** @type {Element} */ (document.querySelector('.topbar')).getBoundingClientRect().bottom - 20));
     const top = () => name.evaluate((el) => el.getBoundingClientRect().top);
     expect(await top()).toBeLessThan((await boxOf(page)).bottom); // covered
+    const y = await page.evaluate(() => scrollY);
     await name.focus(); // as a keyboard's Tab, or a screen reader, moves to it
     await expect.poll(top).toBeGreaterThanOrEqual((await boxOf(page)).bottom - 1);
+    // On a touch screen the box lets go while a field on home is typed in (the user, "Unstick while typing"), so the field needed no scroll; until
+    // then it was scrolled clear of the box, which a keyboard above it could leave no room for.
+    expect((await placeOf(page)).pos).toBe('static');
+    expect(await page.evaluate(() => scrollY)).toBe(y);
+    expect(await top()).toBeGreaterThanOrEqual(await page.evaluate(() => /** @type {Element} */ (document.querySelector('.topbar')).getBoundingClientRect().bottom));
+    await name.blur();
     await stuckInHalf(page);
   });
 }
+
+for (const size of [[320, 568], [393, 659]]) {
+  test(`typing in a field on home lets the stuck box go, so the keyboard's scrolling never leaves the field under it; it sticks again as typing ends, and nothing moves either time (${size.join(' x ')})`, async ({ page }) => {
+    await page.setViewportSize({ width: size[0], height: size[1] });
+    await scrolledHome(page);
+    await addBackup(page); // a tall card: 232 px at 320 wide
+    await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
+    await settled(page);
+    const name = page.getByLabel('Trip name');
+    // Start a trip's name in view under the box, where a finger taps it.
+    await name.evaluate((el) => scrollBy(0, el.getBoundingClientRect().top - /** @type {Element} */ (document.querySelector('.notices')).getBoundingClientRect().bottom - 40));
+    const at = () => page.evaluate(() => ({ y: Math.round(scrollY), top: Math.round(/** @type {Element} */ (document.getElementById('trip-title')).getBoundingClientRect().top) }));
+    const before = await at();
+    await name.focus(); // as a finger's tap leaves it (the keyboard is no part of Playwright's phones)
+    await fitted(page);
+    expect(await at()).toEqual(before); // the box let go, and the field stayed under the finger
+    // The keyboard comes up and the browser scrolls the field up to just under the top bar: nothing covers it.
+    await name.evaluate((el) => scrollBy(0, el.getBoundingClientRect().top - /** @type {Element} */ (document.querySelector('.topbar')).getBoundingClientRect().bottom - 4));
+    await fitted(page);
+    const field = await name.evaluate((el) => el.getBoundingClientRect().toJSON());
+    const box = await boxOf(page);
+    expect(field.top).toBeGreaterThanOrEqual(box.bottom); // before: the box stuck under the bar, over the field
+    // A button focused (Start trip, by a keyboard) is no typing: the box sticks, and the button is clear of it; a field again lets it go.
+    const start = page.getByRole('button', { name: 'Start trip' });
+    await start.focus();
+    await fitted(page);
+    expect((await placeOf(page)).pos).toBe('sticky');
+    expect(await start.evaluate((el) => el.getBoundingClientRect().top)).toBeGreaterThanOrEqual((await boxOf(page)).bottom - 1);
+    await name.focus();
+    await fitted(page);
+    expect((await placeOf(page)).pos).toBe('static');
+    // Typing ends (the keyboard's Done): the box sticks again, and nothing moves.
+    const typing = await at();
+    await name.evaluate((el) => el.blur());
+    await fitted(page);
+    expect((await placeOf(page)).pos).toBe('sticky');
+    expect(await at()).toEqual(typing);
+  });
+}
+
+test("as typing on home ends, the box sticks again over the rows, and its cards ignore taps a moment, as when a card lands", async ({ page }) => {
+  await openApp(page, '#/settings');
+  /** @type {Record<string, number>} */
+  const chats = {};
+  for (let i = 0; i < 24; i++) chats[`Chat ${i}`] = 60 * 24 * i + 5;
+  await seed(page, { chats, trips: { Laterton: { from: 3, to: 4 } } });
+  await page.goto('/#/trips');
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(300);
+  await page.evaluate(() => dispatchEvent(new ErrorEvent('error', { error: new Error('A test card') }))); // the app's own box
+  await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
+  await settled(page);
+  const name = page.getByLabel('Trip name');
+  await name.focus();
+  await expect.poll(async () => (await placeOf(page)).pos).toBe('static');
+  await name.evaluate((el) => el.blur());
+  await expect(page.locator('.notices.over')).toHaveCount(1);
+  expect((await placeOf(page)).pos).toBe('sticky');
+  await settled(page);
+});
+
+test("typing on home, a tap on a button of the let-go box, scrolled partly under the top bar, lands on it: the box sticks again at the tap's click, not under the finger", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await scrolledHome(page);
+  await addBackup(page);
+  await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
+  await settled(page);
+  // The field is in view: focused as a finger's tap leaves it. (A plain focus() makes WebKit reveal the field once more, up to half a second later,
+  // which would undo the scroll below; a finger scrolls long after that.)
+  await page.getByLabel('Trip name').evaluate((el) => /** @type {HTMLElement} */ (el).focus({ preventScroll: true }));
+  await expect.poll(async () => (await placeOf(page)).pos).toBe('static');
+  // Scrolled up while typing, until the box at the page's top is 60 px under the top bar: sticking now would move it 60 px down.
+  await page.evaluate(() => scrollBy(0, /** @type {Element} */ (document.querySelector('.notices')).getBoundingClientRect().top - /** @type {Element} */ (document.querySelector('.topbar')).getBoundingClientRect().bottom + 60));
+  const dismiss = page.locator('.notices > .notice').getByRole('button', { name: 'Dismiss' });
+  const r = /** @type {{ x: number, y: number, width: number, height: number }} */ (await dismiss.boundingBox());
+  expect(r.y).toBeGreaterThan((await boxOf(page)).bar); // in view
+  // A finger's tap (Chromium focuses a button at its press, which lets go of the field; the tap's click comes after).
+  await page.touchscreen.tap(r.x + r.width / 2, r.y + r.height / 2);
+  await expect(page.locator('.notices > .notice')).toHaveCount(0);
+});
 
 test("on home, a button focused inside the stuck box doesn't move the page: what sticks needs no room above it", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 640 });
@@ -1979,6 +2065,109 @@ test("an automatic backup that ends while home shows: the card says so, not \"ch
   await expect(card).toContainText('backed up 50 minutes ago, changed since');
   await page.evaluate(() => /** @type {any} */ (window).ran());
   await expect(card.locator('.sub').first()).toHaveText(/backed up just now$/); // before: "50 minutes ago, changed since" until midnight
+});
+
+/** How far the page is from its end, in px. @param {import('@playwright/test').Page} page */
+const endGap = (page) => page.evaluate(() => Math.round(document.documentElement.scrollHeight - document.documentElement.clientHeight - scrollY));
+/** Two frames and a moment: what a change fits is fitted. @param {import('@playwright/test').Page} page */
+const fitted = async (page) => {
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  await page.waitForTimeout(150);
+};
+/** The window turned on its side and back, as Playwright can (not a real phone's rotation): a resize, two frames, a resize, then fitted. @param {import('@playwright/test').Page} page @param {number[]} size */
+const turnAndBack = async (page, [w, h]) => {
+  await page.setViewportSize({ width: h, height: w });
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  await page.setViewportSize({ width: w, height: h });
+  await fitted(page);
+};
+
+for (const size of [[360, 640], [393, 659]]) {
+  test(`a page read to its end stays at its end when the window turns and back and when the dock grows; mid-page nothing moves (${size.join(' x ')})`, async ({ page }) => {
+    await page.setViewportSize({ width: size[0], height: size[1] });
+    await scrolledHome(page);
+    await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+    await fitted(page);
+    expect(await endGap(page)).toBe(0);
+    await turnAndBack(page, size);
+    expect(await endGap(page)).toBe(0); // before: 12 px off its end in Chromium (the dock, 41 px tall on its side, is 53 again a frame later), 34 in WebKit
+    // The dock grows (voice on, typing open): the page's end stays in view above it.
+    await page.evaluate(() => { const d = /** @type {HTMLElement} */ (document.querySelector('.dock')); d.style.minHeight = `${d.getBoundingClientRect().height + 40}px`; });
+    await fitted(page);
+    expect(await endGap(page)).toBe(0); // before: 40 px
+    // Mid-page nothing moves: the rows the user reads stay where they were.
+    await page.evaluate(() => scrollTo(0, Math.round(scrollY * 0.6)));
+    await fitted(page);
+    const before = await placeOf(page);
+    await turnAndBack(page, size);
+    await page.evaluate(() => { /** @type {HTMLElement} */ (document.querySelector('.dock')).style.minHeight = ''; });
+    await fitted(page);
+    expect((await placeOf(page)).now).toBe(before.now);
+    // Another screen with the dock: the same.
+    await page.evaluate(() => { location.hash = '#/settings'; });
+    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+    await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+    await fitted(page);
+    expect(await page.evaluate(() => scrollY)).toBeGreaterThan(0);
+    expect(await endGap(page)).toBe(0);
+    await turnAndBack(page, size);
+    expect(await endGap(page)).toBe(0);
+  });
+}
+
+test("a change made from home itself (her answer, through the dock, while home shows): the trip's card says \"changed since\" at once, not at the next redraw", async ({ page }) => {
+  const speak = anthropicToolReply([{ name: 'speak', input: { text: 'The pier is a short walk.' } }, { name: 'sleep', input: {} }]);
+  const llm = await startModelServer({ '/b/v1/messages': { status: 200, type: 'text/event-stream', body: speak, delayMs: 5000 } });
+  try {
+    const day = (/** @type {number} */ n) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+    await modelSetUp(page, llm.origin, 'Testville', { dates: { start: day(10), end: day(12) } });
+    const id = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+    await page.goto(`/#/trip/${id}/talk`);
+    await page.getByRole('button', { name: 'Type', exact: true }).click();
+    await box(page).fill('Where is the pier?');
+    await page.getByRole('button', { name: 'Send', exact: true }).click();
+    await expect.poll(() => llm.bodies('/b/v1/messages').length).toBeGreaterThan(0); // her turn waits on the model
+    await backedUpAgo(page, 'Testville', 2 * 60_000); // a backup that holds everything so far
+    await page.getByRole('link', { name: 'Back to Trips' }).click();
+    const card = row(page, 'Testville');
+    await expect(card).toContainText('backed up 2 minutes ago');
+    await expect(card).not.toContainText('changed since');
+    await expect(page.locator('body')).toHaveClass(/\bdock-busy\b/); // her turn is still on
+    // Her answer lands in the trip while home shows: before, the card said nothing until a backup ended, annai came to the front, or midnight.
+    await expect(card).toContainText('backed up 2 minutes ago, changed since', { timeout: 20_000 });
+  } finally {
+    await llm.stop();
+  }
+});
+
+test("a line that lands in a trip while home draws again, after its card read the backup: the card says \"changed since\" once home is drawn", async ({ page }) => {
+  await openApp(page, '#/settings');
+  const ids = await seed(page, { trips: { Testville: { from: 10, to: 12 } } });
+  await backedUpAgo(page, 'Testville', 2 * 60_000);
+  await page.goto('/#/trips');
+  const card = row(page, 'Testville');
+  await expect(card).toContainText('backed up 2 minutes ago');
+  await expect(card).not.toContainText('changed since');
+  // Home draws again (annai comes back to the front), and her line commits in the trip once the cards have read their backups: as home lists the
+  // files waiting with Shiori, the last read before it is drawn.
+  await page.evaluate(async (id) => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { Workspace } = await load('/src/core/workspace.js');
+    const { SYS_WAITING } = await load('/src/core/scopes.js');
+    const list = Workspace.prototype.list;
+    Workspace.prototype.list = async function (/** @type {string} */ scope, /** @type {string} */ prefix) {
+      if (scope === SYS_WAITING) {
+        Workspace.prototype.list = list;
+        await this.store.tx(['events', 'scopes'], 'readwrite', (/** @type {any} */ t) => t.appendEvent(id, { ts: Date.now(), type: 'out.speak', actor: 'shiori', data: { text: 'The pier is a short walk.' } }));
+        /** @type {any} */ (window).landed = true;
+      }
+      return list.call(this, scope, prefix);
+    };
+    document.dispatchEvent(new Event('visibilitychange'));
+  }, ids.Testville);
+  await expect.poll(() => page.evaluate(() => /** @type {any} */ (window).landed)).toBe(true);
+  // Before, the new card had read its backup before the line and home followed the trips only once drawn: it said nothing until the next redraw.
+  await expect(card).toContainText('backed up 2 minutes ago, changed since');
 });
 
 for (const size of PHONES) {

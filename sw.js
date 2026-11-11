@@ -1,7 +1,7 @@
 /* annai service worker: offline app shell, installed plugin files, Android share target (spec §3). */
 const VERSION = '0.1.0';
 // A hash of the SHELL files, written by scripts/stamp.mjs: any change to them makes a new cache.
-const BUILD = 'ea4124f161b3';
+const BUILD = 'a6190f794e50';
 const CACHE = `annai-shell-${VERSION}-${BUILD}`;
 const INBOX = 'annai-inbox';
 const PUSH_NEWS = 'annai-push';
@@ -301,6 +301,7 @@ const SHELL = [
   '/src/ui/talk-panel.js',
   '/src/ui/tap-keeps-keyboard.js',
   '/src/ui/dock-hides.js',
+  '/src/ui/at-end.js',
   '/src/ui/today.js',
   '/src/ui/trip-rows.js',
   '/src/ui/tokens.css',

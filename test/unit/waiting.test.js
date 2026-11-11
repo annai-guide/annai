@@ -122,3 +122,30 @@ test("a waiting file dropped for good takes its short name with it, history and 
   assert.equal(texts.some((x) => x.includes('Name of the dropped file')), false);
   assert.deepEqual(await readNames(ws, SYS_WAITING), { '/files/b.pdf': 'Name of B' });
 });
+
+/**
+ * The same store, as a page closed after its first `left` read-write transactions: every later one is lost (it rejects, writing nothing).
+ * @param {any} store @param {number} left
+ */
+function closedAfter(store, left) {
+  return { ...store, tx(/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) { return mode === 'readwrite' && left-- <= 0 ? Promise.reject(new Error('the page closed')) : store.tx(stores, mode, fn); } };
+}
+
+test('a move cut off at any point leaves the file in one place, with its short name: in the trip it went to, or where it was', async () => {
+  for (const from of ['waiting', 'a trip']) {
+    for (let left = 0; left < 8; left++) {
+      const { store, ws, trip, other, hand } = await kit();
+      const scope = from === 'waiting' ? SYS_WAITING : other;
+      if (from === 'waiting') await hand('flight.pdf', 'flight');
+      else await ws.write(other, '/files/flight.pdf', utf8('flight'), { author: 'user', type: 'application/pdf' });
+      await ws.write(scope, '/names.json', { '/files/flight.pdf': 'ANNAI AIR flight · Nov 20' }, { author: 'shiori' });
+      const cut = new Workspace(closedAfter(store, left), { schemaFor: ws.schemaFor });
+      await moveFile(cut, { scope, path: '/files/flight.pdf' }, trip, { handover: 'h-1' }).catch(() => {});
+      const here = Boolean(await ws.read(trip, '/files/flight.pdf'));
+      const there = Boolean(await ws.read(scope, '/files/flight.pdf'));
+      assert.equal(Number(here) + Number(there), 1, `from ${from}, the page closed after ${left} writes: in the trip ${here}, where it was ${there}`);
+      assert.deepEqual(await readNames(ws, here ? trip : scope), { '/files/flight.pdf': 'ANNAI AIR flight · Nov 20' }, `from ${from}, ${left}`);
+      assert.deepEqual(await readNames(ws, here ? scope : trip), {}, `from ${from}, ${left}`);
+    }
+  }
+});

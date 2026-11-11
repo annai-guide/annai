@@ -192,6 +192,30 @@ test('writeMany writes and deletes several files in one transaction', async () =
   assert.equal(await ws.read('trip-1', '/c.md'), undefined);
 });
 
+test('writeAcross changes two scopes in one transaction: a write, a patch and a delete land with their log entries, or none of them does', async () => {
+  const { ws, store } = await setup();
+  await store.tx(['scopes'], 'readwrite', (t) => t.putScope({ id: 'trip-2', kind: 'trip', title: 'U', status: 'active', created: 0, updated: 0, format: 1 }));
+  await ws.write('trip-1', '/a.md', 'a', { author: 'user' });
+  await ws.write('trip-2', '/n.json', { keep: 1 }, { author: 'user' });
+  /** @type {any[]} */
+  const seen = [];
+  ws.onChange((c) => { seen.push([c.op, c.scope, c.path]); });
+  const across = (/** @type {string} */ gone) => ws.writeAcross([
+    { scope: 'trip-2', path: '/a.md', content: 'a', opts: { author: 'user' } },
+    { scope: 'trip-2', path: '/n.json', patch: { a: 'A' }, opts: { author: 'shiori' } },
+    { scope: 'trip-1', path: gone, content: null, opts: { author: 'shiori' } },
+  ], { inTx: async (t) => (await t.listFiles('trip-2')).length });
+  await assert.rejects(across('/missing.md'), NotFoundError);
+  assert.equal(await ws.read('trip-2', '/a.md'), undefined);
+  assert.deepEqual(await ws.readJSON('trip-2', '/n.json'), { keep: 1 });
+  assert.deepEqual(seen, []);
+  assert.equal(await across('/a.md'), 2, "inTx's answer, from inside the transaction");
+  assert.equal(await ws.read('trip-1', '/a.md'), undefined);
+  assert.equal(await ws.readText('trip-2', '/a.md'), 'a');
+  assert.deepEqual(await ws.readJSON('trip-2', '/n.json'), { keep: 1, a: 'A' });
+  assert.deepEqual(seen, [['write', 'trip-2', '/a.md'], ['write', 'trip-2', '/n.json'], ['delete', 'trip-1', '/a.md']]);
+});
+
 test('writeMany is all or nothing when storage runs out partway', async () => {
   const inner = createMemoryStore();
   let blobs = 0;

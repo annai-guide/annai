@@ -168,6 +168,18 @@ export function advance(ms, step = 1000 / 60) {
     }
   }
 }
+/**
+ * Runs the animation frames waiting now with a time that is ms earlier, as a browser does: a frame's time is when the frame began, and
+ * work that ran since (a timer, a message: under load, a long task) can ask for that same frame. @param {number} ms
+ */
+export function staleFrame(ms) {
+  const batch = frames;
+  frames = [];
+  for (const r of batch) {
+    counts.frames++;
+    r.fn(now - ms);
+  }
+}
 /** Timers and animation frames still waiting. */
 export const pending = () => timers.length + frames.length;
 Math.random = () => 1; // blinks every 7.8 s, out of the way of short scenarios

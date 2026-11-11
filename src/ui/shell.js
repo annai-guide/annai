@@ -36,6 +36,7 @@ import { tapKeepsKeyboard } from './tap-keeps-keyboard.js';
 import { keepRows } from './keep-rows.js';
 import { isStandalone } from './platform.js';
 import { dockHidesWhileTyping } from './dock-hides.js';
+import { keepAtEnd } from './at-end.js';
 import { noteScreen } from './resume.js';
 import { followDrive, followPlay, isField, drivingTrip } from './today.js';
 import { renderExt, renderPluginPage, renderTripTab } from './screens/ext.js';
@@ -61,7 +62,8 @@ const SCREENS = { sees: renderSees, trips: renderTrips, trip: renderTrip, file: 
 /**
  * @param {HTMLElement} root
  * @param {{ store: any, ws: any, registry: any, plugins: any, llm?: any, agent?: any, voice?: any, live?: any, awake?: any, pack?: any, presets?: Record<string, string>, backups?: any, sim?: any, push?: any,
- *   updates: import('./updates.js').Updates, chats?: import('../core/chats.js').Chats, version: string }} core
+ *   updates: import('./updates.js').Updates, chats?: import('../core/chats.js').Chats, appended?: (fn: (evs: import('../core/types.js').EventRecord[]) => void) => () => void, version: string }} core
+ *   appended: follows the log entries each committed write appended, until what it returns is called
  */
 export function startShell(root, core) {
   const notices = createNotices();
@@ -94,7 +96,7 @@ export function startShell(root, core) {
   addEventListener('resize', showMore);
   document.fonts?.ready.then(showMore); // the tabs widen once annai's fonts arrive
   tapKeepsKeyboard();
-  dockHidesWhileTyping();
+  dockHidesWhileTyping(document, { ended: () => notices.hold() });
   drawTabs();
 
   // Swiping sideways between tabs is experimental, off until Settings → Experimental turns it on. Off, the screen
@@ -145,9 +147,12 @@ export function startShell(root, core) {
   if (typeof ResizeObserver === 'function') {
     new ResizeObserver(([e]) => document.documentElement.style.setProperty('--topbar-h', `${Math.floor(/** @type {HTMLElement} */ (e.target).getBoundingClientRect().height)}px`)).observe(header);
   }
+  // A page read to its end stays there when a phone turns or the dock changes height (at-end.js). After the cards' resize handler, which runs first.
+  const { toEnd } = keepAtEnd();
   // The page and the cards make room for the dock as tall as it is now: voice on, typing open, or a plugin's.
   const dockSize = typeof ResizeObserver === 'function' ? new ResizeObserver(([e]) => {
     document.documentElement.style.setProperty('--dock-h', `${Math.ceil(/** @type {HTMLElement} */ (e.target).getBoundingClientRect().height)}px`);
+    toEnd();
   }) : null;
   if (dock) dockSize?.observe(dock.el);
   const remakeDock = () => {

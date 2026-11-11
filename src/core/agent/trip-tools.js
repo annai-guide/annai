@@ -138,27 +138,26 @@ export function tripTools(app) {
     planned.clear();
     for (const f of files) {
       const entry = await store.tx(['files'], 'readonly', (t) => t.getFile(f.scope, f.path));
-      const there = await moveFile(ws, { scope: f.scope, path: f.path }, to, handover);
+      const calendar = /\.ics$/i.test(f.path) || /^text\/calendar/i.test(entry?.type ?? '');
+      // A calendar file's events annai put on the plan go with it, in the same move (each a plan item naming it as its source), but one anyone
+      // changed since.
+      /** @type {string[]} */
+      const along = [];
+      if (calendar && kindOf(f.scope) === 'trip') {
+        for (const item of (await ws.list(f.scope, '/plan/')).filter((x) => x.source === f.path)) {
+          if ((await ws.history(f.scope, item.path)).length === 1) along.push(item.path);
+        }
+      }
+      const there = await moveFile(ws, { scope: f.scope, path: f.path }, to, { ...handover, along });
       moved.set(f.shown, `/trip${there}`);
-      if (!(/\.ics$/i.test(f.path) || /^text\/calendar/i.test(entry?.type ?? ''))) continue;
+      if (along.length) planned.set(`/trip${there}`, along.length);
+      if (!calendar || f.scope !== SYS_WAITING) continue;
       // A calendar file from the waiting space has its events planned in the trip it goes to, as one handed in a trip has (keepFiles),
       // for the hand-over, so Undo takes them back; one it can't read is hers to read.
-      if (f.scope === SYS_WAITING) {
-        const tj = await ws.readJSON(to, '/trip.json').catch(() => null);
-        const defaultTz = [tj?.timezones?.[0], deviceZone()].find(validZone) ?? 'UTC';
-        const made = await importCalendar(ws, to, there, { defaultTz, author: 'shiori', ...handover }).catch(() => []);
-        if (made.length) planned.set(`/trip${there}`, made.length);
-        continue;
-      }
-      // A calendar file's events annai put on the plan go with it (each a plan item naming it as its source), but one anyone changed since.
-      if (kindOf(f.scope) !== 'trip') continue;
-      let n = 0;
-      for (const item of (await ws.list(f.scope, '/plan/')).filter((x) => x.source === f.path)) {
-        if ((await ws.history(f.scope, item.path)).length !== 1) continue;
-        await moveFile(ws, { scope: f.scope, path: item.path }, to, { ...handover, folder: '/plan/', source: there });
-        n++;
-      }
-      if (n) planned.set(`/trip${there}`, n);
+      const tj = await ws.readJSON(to, '/trip.json').catch(() => null);
+      const defaultTz = [tj?.timezones?.[0], deviceZone()].find(validZone) ?? 'UTC';
+      const made = await importCalendar(ws, to, there, { defaultTz, author: 'shiori', ...handover }).catch(() => []);
+      if (made.length) planned.set(`/trip${there}`, made.length);
     }
     return moved;
   };

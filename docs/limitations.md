@@ -372,12 +372,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** a user finds a name that reads worse than before.
 - **Approved:** 2026-11-08, the user chose "English rule" (a full stop after a word of one or two letters doesn't end the sentence).
 
-### With a keyboard up, a field on home can sit under the stuck box
-- **Kind:** deferred.
-- **What the user sees:** not verified on a phone. A field of Start a trip focused on home (by a keyboard's Tab, or a screen reader) is scrolled clear of the top bar and the box stuck under it, its label too. But with a keyboard up (about 290 to 340 px), when the bar and a box that holds an opened card or two cards (up to half the room under the bar: 256 px at 320 x 568, 292 at 360 x 640, 302 at 393 x 659) take all the room above the keyboard, the field has nowhere to show, and the browser's own scrolling for the keyboard may put it back under the box.
-- **Why:** the box is at most half the room under the bar (the user's "Cap every box at half"), not half the room above a keyboard; making it give way while a field has focus would change that design.
-- **Revisit when:** stage 8, where the Start a trip form, home's only fields, goes; or the user's phone check of "Cap every box at half" finds it first.
-
 ### In landscape, an opened stack is read by scrolling inside a short box
 - **Kind:** known limitation.
 - **What the user sees:** on a phone turned on its side (740 x 360), Show on a stuck stack opens it in a box of about 152 px, half the room under the top bar. A card of 168 to 193 px doesn't show whole: its title and Dismiss show, and its middle scrolls under the Dismiss; while a card's top is in the lower part of the box, its own Dismiss covers its title for a moment. In portrait every card shows whole.
@@ -397,30 +391,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** read_trip's `path` gives a file whole, and the result's own cut is all that bounds it; `from` was left out of stage 5's tool (found in the build's review, finding 11).
 - **Revisit when:** the next version: read_trip takes `from`, as `read` does.
 
-### A move cut off halfway leaves the file in both trips
-- **Kind:** deferred.
-- **What the user sees:** if annai is closed in the few milliseconds between the two writes of a file's move (Shiori's, or Undo's moving it back), the file is in both trips. A second Undo then moves it again: "flight.pdf" and "flight (2).pdf".
-- **Why:** a move is two transactions, one per trip.
-- **Revisit when:** the next version: a move is one transaction (workspace.js), for Shiori's moves and Undo's alike. That is an API change, with its lessons entry.
-
-### A change made from home itself shows "changed since" on its card only at the next redraw
-- **Kind:** deferred.
-- **What the user sees:** with home on screen, a change Shiori makes to a trip through the dock leaves its card saying "backed up 10 minutes ago" with no "changed since" until home is next drawn: when a backup ends (a few minutes later with a backup place), the next time annai comes to the front, midnight, or a Next that ends. Without a backup place, the next of the other three. Before the branch that moved "… ago" into place, the next minute's redraw showed it. Traced by the review of a379a5f7..56612b84, not run.
-- **Why:** home draws again for a backup's end, each time annai comes to the front, midnight and a Next that ends, and changes the "… ago" words in place; it doesn't follow what the workspace writes.
-- **Revisit when:** the next version: home follows `ws.onChange` for trips' writes, coalesced, and draws again (or changes the card's words in place).
-
-### Turning the phone with home scrolled to its end leaves the page a little off its end
-- **Kind:** deferred.
-- **What the user sees:** with home scrolled to its very end (Start a trip's form, Open a file, the last backup line), turning the phone to landscape and back, or a window that gets shorter and comes back, leaves the page not quite at its end: 12 px in Chromium (45 px with a short card stuck), and in WebKit's emulation up to 285 px with an opened card. Mid-page nothing moves (0 px in 76 measured cases). Measured in the test browsers at four phone sizes (2026-11-10); a real iPhone's rotation was not looked at, and Playwright's resize is not a real rotation.
-- **Why:** two causes. The 12 px is annai's own: the dock is 53 px tall in portrait and 41 px in landscape, the shell's observer sets the page's bottom padding from it a frame after the resize, and nothing scrolls the page to its new end (so it is every screen with the dock, not only home). The rest is the engine clamping the scroll against the small size's layout before the notices box is fitted again; "was at its end" can't be told at the resize event, so a fix needs it remembered across the resize's steps. A first route (scroll to the new end after the fits) fixed only Chromium's short card.
-- **Revisit when:** the next version: a page read to its end stays at its end across a size change and a dock that changes height (remembered before the change, restored after the fits), after a look at a real phone's rotation.
-
-### On a slow first visit, Models says to reload while the offline service is still installing
-- **Kind:** deferred.
-- **What the user sees:** on a first visit over a slow connection (or the first open of the iPhone Home Screen app), the sign-in box on Models, the Welcome's last step and a plugin's install say that annai's offline service isn't running and to reload, from 3 seconds in until the service has downloaded the whole shell and taken the page. A reload doesn't help then: the wait does. Since 2026-11-10 the wait itself goes on until the install ends, and the "annai needs a reload" card comes only when the install fails (before, it came after 15 seconds and stayed).
-- **Why:** the note's words were written for a page loaded past an active service, where a reload is the cure; rewording it for a first install changes shown text in every language.
-- **Revisit when:** the next version: the note says "Getting annai ready for offline use…" while a service is on its way, and keeps today's words for a page loaded past an active one.
-
 ### A spoken yes to annai's card is heard late when no model listed can write speech down
 - **Kind:** deferred.
 - **What the user sees:** in one setup (Koe on a chat model that takes sound, Kokoro on a model that takes no audio, and no transcription model in the speech-in list, with the question typed), a "Yes" said to annai's card gets its words only when Koe's own turn ends: of 7 real-speech runs, 5 were granted 16 to 49 seconds after the word, 1 ended unanswered, and 1 was still waiting after 45 seconds. A tap on the card works at once. With a transcription model listed (for example either of Gemini's), the yes is granted about 4 seconds after the word, as elsewhere.
@@ -438,12 +408,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** in classic voice (no live session), the microphone that listens for an answer to annai's card closes 20 seconds after the question. A "Yes" said in the last 3 of those seconds is still settling when it closes, so a "No, wait" said right after isn't recorded, and the trip is read. Live voice and a chat Koe keep hearing after the 20 seconds. Found by the final review (2026-11-10, run with the loop's clock); it needs a yes at the window's very end and a take-back within 3 seconds of it.
 - **Why:** the window's end closes the microphone at once, whether or not a yes is waiting; keeping it open until the yes settles would also hear a second "Yes" said after the window, which is outside it and would then drop the first: what that one should do has to be decided first.
 - **Revisit when:** the next version: the microphone stays open while a yes settles, and a line begun after the window can only take a yes back, never give one.
-
-### The avatar's eye highlight sometimes logs a console error
-- **Kind:** deferred.
-- **What the user sees:** nothing known. In 2 real-speech runs (2026-11-10) the browser's console logged an SVG error from the avatar's eye highlight (an ellipse given a negative radius); the screen and the run's outcome were right. Seen also in an earlier round; not reproduced on demand.
-- **Why:** not traced yet: the radius is computed from a value that can go below zero for a frame.
-- **Revisit when:** the next version: find the frame that computes it and clamp it at the source; the real-speech harness's no-errors check is the test.
 
 ### A rising "Yes?" is heard as a yes by annai's card
 - **Kind:** known limitation.
