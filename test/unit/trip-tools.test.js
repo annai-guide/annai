@@ -302,6 +302,26 @@ test("move_file takes a calendar file's plan items with it, but one the user cha
   assert.ok(await k.ws.read(k.trip, '/files/dinner.ics'));
 });
 
+test("a calendar file's move cut off at any point leaves it with its events: both where they were, or both in the trip it went to", async (t) => {
+  useClock(t);
+  for (let cutAt = 0; cutAt < 4; cutAt++) {
+    const k = await agentKit([[sleep]], { halves: true });
+    k.agent.addLoopTools(tripTools(k.agent));
+    const kyoto = await createTrip(k.ws, { title: 'Kyoto' });
+    await k.ws.write(k.trip, '/files/dinner.ics', utf8(ICS), { author: 'user', type: 'text/calendar' });
+    assert.equal((await importCalendar(k.ws, k.trip, '/files/dinner.ics', { defaultTz: 'UTC' })).length, 2);
+    // The page closes after `left` writes of the move; every later one is lost.
+    let left = cutAt;
+    const tx = k.store.tx;
+    k.store.tx = (/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => (mode === 'readwrite' && left-- <= 0 ? Promise.reject(new Error('the page closed')) : tx(stores, mode, fn));
+    await run(k, 'move_file', { path: '/trip/files/dinner.ics', trip: kyoto }, 'h-1').catch(() => {});
+    k.store.tx = tx;
+    const here = Boolean(await k.ws.read(k.trip, '/files/dinner.ics'));
+    const plans = [(await k.ws.list(k.trip, '/plan/')).length, (await k.ws.list(kyoto, '/plan/')).length];
+    assert.deepEqual([here, ...plans], here ? [true, 2, 0] : [false, 0, 2], `cut after ${cutAt}`);
+  }
+});
+
 test("a waiting calendar file filed into a trip she started is not said to be on its plan: nothing put it there", async () => {
   const text = handOverText([{ path: '/trip/files/dinner.ics', type: 'text/calendar', name: 'dinner.ics', new: true }]);
   assert.doesNotMatch(text, /on the plan already/);
