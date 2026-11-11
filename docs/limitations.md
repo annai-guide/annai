@@ -490,3 +490,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** with the menu open, its last entries can sit under the dock after a card lands above a short conversation, the dock grows (voice on, a caption, a plugin's dock), or the phone is turned back upright, until the next scroll. Details, the first entry, stays in reach.
 - **Why:** the menu's room is measured when it opens and when the page scrolls or the window changes size; none of these three fires either.
 - **Revisit when:** the next version: the room follows the dock's height and the menu's own place.
+
+### Remove's question names the backup for an empty chat too
+- **Kind:** known limitation.
+- **What the user sees:** Remove asks once. For a chat or trip that was never backed up, or changed since its last backup, the question also says "It hasn't been backed up since it last changed." An empty chat (a + never used, or one only named or dated in Details) gets that sentence too, though it holds nothing to lose.
+- **Why:** that sentence is the only warning left in a one-question Remove, and a wrong "nothing to lose" would hide it; the cost of keeping it is one true sentence nobody needed.
+- **Revisit when:** the user asks, or annai gets a sure test for an empty conversation for another reason.
+- **Approved:** 2026-11-10, the user picked "Keep the sentence (Recommended)".
