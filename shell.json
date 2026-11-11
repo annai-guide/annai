@@ -1,5 +1,5 @@
 {
-  "build": "5d1b9e7b6cbe",
+  "build": "613f8ef74b35",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -177,7 +177,7 @@
     "/src/core/voice/resolve.js": "bb65ede8f912",
     "/src/core/voice/sentences.js": "636099e2174e",
     "/src/core/voice/settings.js": "1b17d242614f",
-    "/src/core/voice/speaker.js": "7119964fef1a",
+    "/src/core/voice/speaker.js": "8fed744430c9",
     "/src/core/voice/stream-start.js": "1f1e01fe807d",
     "/src/core/voice/voice.js": "4342aecab5ac",
     "/src/core/voice/where.js": "858b458d948b",

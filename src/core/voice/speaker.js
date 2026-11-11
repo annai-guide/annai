@@ -185,7 +185,8 @@ export class Speaker {
     const u = new Utterance(this.deps, this.#last);
     this.#live.add(u);
     this.#last = u.done;
-    u.done.then(() => this.#live.delete(u));
+    const gone = () => this.#live.delete(u);
+    u.done.then(gone, gone); // however it ends, it is no longer being said
     return u;
   }
 
@@ -327,7 +328,9 @@ export class Utterance {
     for (;;) {
       if (this.#stopped) return { ended: false, at: 0 };
       const platform = this.#deps.platform();
-      const entry = platform ? (await this.#deps.entries()).find((e) => !tried.has(e.id)) : undefined;
+      // A list that can't be read gives no voice to speak with: the line ends failed, as with none, and never rejects (a line whose end
+      // rejected stayed "being said", and quiet() never settled).
+      const entry = platform ? (await this.#deps.entries().catch(() => [])).find((e) => !tried.has(e.id)) : undefined;
       if (!platform || !entry) return { ended: false, at: 0, failed: 'no-voice' };
       tried.add(entry.id);
       try {
