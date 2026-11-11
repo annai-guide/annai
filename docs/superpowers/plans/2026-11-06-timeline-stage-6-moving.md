@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-11-04-timeline-home-design.md`: section Moving into a trip, and "After moving, the chat".
 
+**Superseded in part (2026-11-11):** the move no longer opens the trip by itself once she is done (`openWhenDone`, Task 2's "`#open` owes a turn"): `open_trip` asks with annai's own card, and the user's Open is the move (the spec's section and its decision of that date). Tasks 1 and 3 and what goes across stand.
+
 **Gate:** the spec says "Moving, cut by what stage 5 shows". Before building, the main session says what stage 5 showed. Anything it cuts comes out of this plan; the decisions below stay.
 
 ## Global Constraints

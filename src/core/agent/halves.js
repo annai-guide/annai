@@ -751,7 +751,7 @@ export class Halves {
     this.koe.open(this.kokoro.target).catch((e) => console.warn(/* en */ 'Koe could not open the conversation', e));
   }
 
-  /** A Koe with a conversation open follows at once, so neither half writes into one being left. @param {string | null} trip @param {{ quiet?: boolean }} [o] */
+  /** A Koe with a conversation open follows at once, so neither half writes into one being left. @param {string | null} trip @param {{ quiet?: boolean, moved?: boolean }} [o] */
   open(trip, o) {
     this.#stopped = { on: false, seq: Infinity }; // a Stop belongs to the conversation it was in
     this.#stopHeld = false;
@@ -1101,17 +1101,14 @@ export class Halves {
   }
 
   /**
-   * Opens a trip Shiori started or moved the user to once both halves are done, as the user would (it becomes the open trip): only if the
-   * user hasn't opened another conversation meanwhile, and the trip is still there and not archived. Then 'went' tells the screens. @param {string} trip
+   * Opens a trip Shiori started or chose for a hand-over once both halves are done, as the user would (it becomes the open trip):
+   * only if the user hasn't opened another conversation meanwhile. Then 'went' tells the screens. @param {string} trip
    */
   openWhenDone(trip) {
     const from = this.target;
     const going = this.#quiet()
       .then(async () => {
         if (this.target !== from || this.target === trip) return;
-        // Removed or archived meanwhile: the conversation it was to leave stays open, and nothing names that trip.
-        const rec = await this.store.tx(['scopes'], 'readonly', (t) => t.getScope(trip));
-        if (rec?.kind !== 'trip' || rec.status !== 'active' || this.target !== from) return;
         await updateAppSettings(this.ws, { activeTrip: trip });
         await this.open(trip);
         this.#emit('went', { trip });
@@ -1119,6 +1116,22 @@ export class Halves {
       .catch((e) => console.warn(/* en */ "Shiori couldn't open the trip she started", e))
       .finally(() => this.#going.delete(going));
     this.#going.add(going);
+  }
+
+  /**
+   * Takes the user into a trip they chose on annai's card (open_trip's Open), at once, as their tap on its row would: the turn that asked is
+   * let go, nothing owed where it was (open's `moved`), and 'went' tells the screens. Then the trip's lines (their line, her recap) go in, for
+   * one turn there. If they went elsewhere since (signal: the call's, which a Stop or another open ends), nothing opens: the lines wait there.
+   * @param {string} trip @param {import('./loop.js').Wake[]} wakes @param {AbortSignal} signal
+   */
+  carryOn(trip, wakes, signal) {
+    if (!signal.aborted) {
+      updateAppSettings(this.ws, { activeTrip: trip }).catch(() => {});
+      this.open(trip, { moved: true }).catch((e) => console.warn(/* en */ "the trip the user chose didn't open", e));
+      this.#emit('went', { trip });
+    }
+    // Into its queue once it is the one opening (one turn when it opens), else written into it.
+    for (const w of wakes) void this.kokoro.wake({ ...w, scope: trip });
   }
 
   /** @param {boolean} [yes] */

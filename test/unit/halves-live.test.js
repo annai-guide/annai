@@ -1686,21 +1686,27 @@ test("a second tap while the first waits for Koe's way is the same wish", async 
   assert.equal(mics(k), 1);
 });
 
-// Timeline stage 6, Review Focus 3: a move with a live session open (the design's Voice risk: open closes it).
-test('a move with a live session open: it closes once, for the switch; the trip opens and she answers there in a new session; nothing is said twice', async () => {
-  const k = await liveKit([{ said: 'One moment.', audio: tone(0.2) }, { said: 'Taking you to Kyoto.', audio: tone(0.2) }, { said: 'Here in Kyoto: the ramen place is by the station.', audio: tone(0.2) }]);
+// Timeline stage 6 with a live session open (the design's Voice risk: open closes it), as annai's card (the user's pick of 2026-11-11).
+test("a move with a live session open: annai's card is said aloud, and at Open the session closes once, for the switch; the trip opens and she answers there in a new session; nothing is said twice", async () => {
+  const k = await liveKit([{ said: 'One moment.', audio: tone(0.2) }, { said: 'Here in Kyoto: the ramen place is by the station.', audio: tone(0.2) }]);
   try {
     k.agent.addLoopTools(tripTools(k.agent));
     await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } }); // 3 s here: no quiet spell closes a session while Kokoro works, however slow the host
     await k.voice.refresh();
     const kyoto = await createTrip(k.ws, { title: 'Kyoto', start: '2027-04-01', end: '2027-04-08' });
     await rescript(k, { rules: [
-      // As a model takes a moment: Koe has answered the typed line by then (an instant reply's note goes in before it, and cuts Koe off).
-      { match: 'the user wrote', reply: { delayMs: 100, toolCalls: [{ name: 'open_trip', input: { trip: kyoto, recap: 'We were looking for the ramen place.' } }, { name: 'tell_koe', input: { text: 'Say you are taking them to Kyoto.' } }, sleep] } },
-      { match: "haven't answered", reply: { toolCalls: [{ name: 'tell_koe', input: { text: 'Tell them the ramen place is by the station.' } }, sleep] } },
+      { match: 'You moved the user here', reply: { toolCalls: [{ name: 'tell_koe', input: { text: 'Tell them the ramen place is by the station.' } }, { name: 'sleep', input: {} }] } },
+      // As a model takes a moment: Koe has answered the typed line by then.
+      { match: 'the user wrote', reply: { delayMs: 100, toolCalls: [{ name: 'open_trip', input: { trip: kyoto, recap: 'We were looking for the ramen place.' } }] } },
     ] });
+    /** @type {any[]} */
+    const asks = [];
+    k.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'out.ask' && e.data.own) asks.push(e); });
     await k.agent.idle();
     k.agent.send("Let's carry on in Kyoto");
+    await soon(async () => asks.length === 1 && k.said.includes(asks[0].data.question), 5_000);
+    assert.equal(k.agent.trip, k.trip, 'nothing moved before the answer');
+    k.agent.answer(asks[0].data.tap, 'Open');
     /** @param {string} scope @param {string[]} types */
     const log = (scope, types) => k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(scope, { types }));
     await soon(async () => (await log(kyoto, ['out.speak'])).length > 0);
@@ -1708,15 +1714,19 @@ test('a move with a live session open: it closes once, for the switch; the trip 
     await new Promise((r) => setTimeout(r, 300)); // time for anything said twice to come
     await k.agent.idle();
     assert.equal(k.agent.trip, kyoto);
-    // The chat's session closed once, for the switch, after Koe had said where she was taking them.
+    // The chat's session closed once, for the switch.
     assert.deepEqual((await lives(k, 'closed')).map((/** @type {any} */ e) => e.data.why), ['switch']);
-    const said = async (/** @type {string} */ scope) => (await log(scope, ['out.speak', 'out.show', 'out.ask', 'reminder'])).map((/** @type {any} */ e) => [e.type, e.data.text ?? '']);
-    assert.deepEqual(await said(k.trip), [['out.speak', 'One moment.'], ['out.speak', 'Taking you to Kyoto.']]);
+    const said = async (/** @type {string} */ scope) => (await log(scope, ['out.speak', 'out.show', 'out.ask', 'reminder'])).map((/** @type {any} */ e) => [e.type, e.data.text ?? e.data.question ?? '']);
+    assert.deepEqual(await said(k.trip), [['out.speak', 'One moment.'], ['out.ask', asks[0].data.question]]);
     // In the trip a new session took Kokoro's note, and Koe said it once; annai showed nothing in its place.
     assert.deepEqual(await said(kyoto), [['out.speak', 'Here in Kyoto: the ramen place is by the station.']]);
     const notes = texts(k).filter((x) => x.startsWith('<from_kokoro'));
-    assert.deepEqual(notes.map((x) => x.replace(/<[^>]*>/g, '')), ['Say you are taking them to Kyoto.', 'Tell them the ramen place is by the station.']);
+    assert.deepEqual(notes.map((x) => x.replace(/<[^>]*>/g, '')), ['Tell them the ramen place is by the station.']);
     assert.equal(k.server.connections().length, 2, 'one session in each conversation');
+    // No call failed but the one the tap let go (a real sleep: the stage 6 re-review's R8).
+    const failed = async (/** @type {string} */ scope) => (await log(scope, ['tool.result'])).filter((/** @type {any} */ e) => !e.data.ok).map((/** @type {any} */ e) => [e.data.name, e.data.content]);
+    assert.deepEqual(await failed(k.trip), [['open_trip', "Let go: the user opened another conversation; don't take it up unless they ask."]]);
+    assert.deepEqual(await failed(kyoto), []);
   } finally {
     await k.done();
   }

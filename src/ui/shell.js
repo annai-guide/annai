@@ -487,12 +487,10 @@ export function startShell(root, core) {
     return [...main.querySelectorAll('input[type=password]')].some((i) => /** @type {HTMLInputElement} */ (i).value)
       || Boolean(main.querySelector('[role=alert]:not([hidden]):not(:empty):not([data-kept])'));
   };
+  /** Does fn once nothing typed would be lost. @param {() => unknown} fn */
+  const whenFree = (fn) => (typing() ? void setTimeout(() => whenFree(fn), 500) : fn());
   /** Draws the screen again once nothing typed would be lost, unless it was drawn meanwhile. */
-  const redraw = (screen = main.firstElementChild) => {
-    if (main.firstElementChild !== screen) return;
-    if (typing()) setTimeout(() => redraw(screen), 500);
-    else render();
-  };
+  const redraw = (screen = main.firstElementChild) => whenFree(() => { if (main.firstElementChild === screen) render(); });
   // What plugins add redraws when it changes: once per change, not per item.
   if (core.registry) {
     syncThemes(core.registry, document.head);
@@ -522,16 +520,13 @@ export function startShell(root, core) {
     setPendingImport(files);
     ctx.go('#/import');
   });
-  // Shiori opened a trip she started or moved the user to (Halves.openWhenDone). From home the address follows into its conversation, as
-  // the user asked her to go there (the timeline design, "Moving into a trip"), once nothing typed would be lost; the conversation left goes
-  // to the open one at its redraw (render); any other screen (Details, Settings) stays, drawn again, its top bar the trip.
+  // A trip opened that the user chose on annai's card (Halves.carryOn), or that Shiori started for a hand-over (Halves.openWhenDone). From
+  // home the address follows into its conversation (the timeline design, "Moving into a trip"), once nothing typed would be lost: a new
+  // entry, so Back returns home, which opens nothing. The conversation left goes to the open one at its redraw (render: a replace, as its
+  // address is stale); any other screen (Details, Settings) stays, drawn again, its top bar the trip.
   /** @type {any} */ (core.agent)?.on?.('went', (/** @type {{ trip: string }} */ { trip }) => {
-    const follow = () => {
-      if (parseHash(location.hash).name !== 'trips') return redraw();
-      if (typing()) return void setTimeout(follow, 500);
-      if (core.agent?.target === trip) replaceHash(talkHref(trip)); // the shell's own replace keeps the entry's number
-    };
-    follow();
+    if (parseHash(location.hash).name !== 'trips') return redraw();
+    whenFree(() => { if (parseHash(location.hash).name === 'trips' && core.agent?.target === trip) ctx.go(talkHref(trip)); });
   });
   render({ moved: true });
   // Driving, or a plugin's screen for the activity, takes over once per drive. The dock's box is outside main, so typing there counts here.

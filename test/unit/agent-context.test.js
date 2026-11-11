@@ -300,11 +300,11 @@ test("an undated conversation's system text says how it becomes a trip, a dated 
   assert.match(systemText(await takeSnapshot({ ws, registry, trip: null, personalityName: 'shiori' })), /# No trip is open/);
 });
 
-test("an undated conversation's text says to read another trip and answer here, and to move only to carry on there (stage 6); a dated one's says neither", async () => {
+test("an undated conversation's text says to read another trip and answer here, and to call open_trip only to carry on there, annai asking them itself (stage 6); a dated one's says neither", async () => {
   const { ws, trip, registry } = await setup();
   const chat = await createTrip(ws, { title: 'Ramen crawl' });
   const undated = systemText(await takeSnapshot({ ws, registry, trip: chat, personalityName: 'shiori' }));
-  assert.match(undated, /read it with read_trip first and answer here; take them there with open_trip only if they want to carry on there\./);
+  assert.match(undated, /read it with read_trip first and answer here; only if they want to carry on there, call open_trip: annai asks them itself, so don't ask them first\./);
   assert.doesNotMatch(systemText(await takeSnapshot({ ws, registry, trip, personalityName: 'shiori' })), /open_trip/);
 });
 

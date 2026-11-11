@@ -461,6 +461,8 @@ export class Agent {
   #cutWaiting = false;
   /** ...while she was still saying her line (#saying): the user didn't hear it in full. */
   #cutSaying = false;
+  /** ...by the user choosing to carry on in another trip on annai's card (open_trip's Open): they carry on there, so it is let go. */
+  #cutMoved = false;
   /**
    * Conversations this page left owing because another one was opened: 'cut', a turn an open cut and takes up; 'closed', a wake written in
    * while it was closed. Opening one again says that cause; one this page didn't leave owing was left by a page before it, so annai restarted
@@ -672,7 +674,8 @@ export class Agent {
    * Opens the conversation of a trip (or of "me" when none is open), stopping any turn at once. Opens run one after another and only the latest
    * counts; until it is done no turn starts, so what the user types goes to the conversation being opened. A crash's open tool calls get results (spec §6.7).
    * @param {string | null} trip
-   * @param {{ quiet?: boolean }} [o] quiet: the conversation is being removed, so it is not told that she will pick it up
+   * @param {{ quiet?: boolean, moved?: boolean }} [o] quiet: the conversation is being removed, so it is not told that she will pick it up;
+   *   moved: the user chose to carry on in this trip on annai's card (open_trip), so the turn it cuts is let go, nothing owed where it was
    */
   open(trip, o = {}) {
     // Waiting on the user: her reply's last call but sleep says something to them or listens, or holds annai's card. Read before the ear
@@ -687,6 +690,7 @@ export class Agent {
     if (this.#turning && trip !== this.trip && !o.quiet) {
       this.#cutByOpen = true;
       this.#cutWaiting ||= waiting;
+      this.#cutMoved ||= Boolean(o.moved);
     }
     if (this.#busy) this.#halt();
     this.#clearTimer();
@@ -1911,10 +1915,14 @@ export class Agent {
       kind: w.kind, text: w.text, ...(w.plugin ? { plugin: w.plugin } : {}), ...(w.files?.length ? { files: w.files } : {}), ...(w.titles?.length ? { titles: w.titles } : {}),
       ...(w.handover ? { handover: w.handover } : {}), ...(w.recap ? { recap: w.recap } : {}),
     });
-    if (!meanwhile) await log({ type: 'wake', actor: 'system', data: { id: wakeId, reasons: wakes.map(reasonOf) } });
+    const theirs = (/** @type {Wake} */ w) => w.kind === 'user' || w.kind === 'choice' || w.kind === 'heard';
+    // Her recap is her line, shown where it is written: below the user's line it came with (a move's arrival).
+    const below = wakes.some((w) => theirs(w) && !w.logged) ? wakes.filter((w) => w.recap) : [];
+    const first = wakes.filter((w) => !below.includes(w));
+    if (!meanwhile) await log({ type: 'wake', actor: 'system', data: { id: wakeId, reasons: first.map(reasonOf) } });
     else {
       // A cue already in the log (a review, "Koe answered the user") is still a line here: "woke for" gives it only once.
-      const others = wakes.filter((w) => w.kind !== 'user' && w.kind !== 'choice' && w.kind !== 'heard' && (!w.logged || w.kind === 'cue'));
+      const others = first.filter((w) => !theirs(w) && (!w.logged || w.kind === 'cue'));
       if (others.length) await log({ type: 'wake', actor: 'system', data: { id: wakeId, meanwhile: true, reasons: others.map(reasonOf) } });
     }
     for (const w of wakes) {
@@ -1930,6 +1938,7 @@ export class Agent {
       await log({ type: 'msg.user', actor: 'user', data: { wake: wakeId, ...(meanwhile ? { meanwhile: true } : {}), ...(images.length ? { images } : {}), ...(w.claim ? { claim: w.claim } : {}), ...(w.chose ? { chose: true } : {}), ...handed }, texts: [['text', w.text]], blobs });
       w.logged = true; // a batch that fails later writes this line once
     }
+    if (below.length) await log({ type: 'wake', actor: 'system', data: { id: wakeId, meanwhile: true, reasons: below.map(reasonOf) } });
   }
 
   /**
@@ -1968,7 +1977,7 @@ export class Agent {
     // The turn's own from here, before anything it awaits: a Stop or an open while it sets up is this turn's.
     this.#abort = abort;
     this.#userStop = false;
-    this.#cutByOpen = this.#cutWaiting = this.#cutSaying = this.#annais = this.#userIn = false;
+    this.#cutByOpen = this.#cutWaiting = this.#cutSaying = this.#cutMoved = this.#annais = this.#userIn = false;
     this.#running = null;
     await this.#half.ready?.(); // the half's rules are known (Halves reads the settings as annai starts)
     await this.#workOutVoice(wakes);
@@ -2004,11 +2013,11 @@ export class Agent {
 
   /**
    * An open's cut that lets the turn go as the released app did (the user's choices of 2026-11-11): one waiting on the user, whose next line
-   * answers her; one annai started by itself (GPS on, a reminder or watch, a catch-up, a plugin) that the user didn't answer. Only a turn the
-   * user started or answered, cut at work, is picked up.
+   * answers her; one annai started by itself (GPS on, a reminder or watch, a catch-up, a plugin) that the user didn't answer; and one whose
+   * card the user answered Open, carrying on in that trip (open_trip). Only a turn the user started or answered, cut at work, is picked up.
    */
   #lettingGo() {
-    return this.#cutByOpen && !this.#userStop && !this.#leaving && (this.#cutWaiting || (this.#annais && !this.#userIn));
+    return this.#cutByOpen && !this.#userStop && !this.#leaving && (this.#cutMoved || this.#cutWaiting || (this.#annais && !this.#userIn));
   }
 
   /**
@@ -2413,7 +2422,8 @@ export class Agent {
     // Let go at an open (#lettingGo): written as settled, so no paused line shows and nothing is taken up.
     else if (abort.signal.aborted && this.#lettingGo()) {
       /* en */
-      const message = this.#cutWaiting ? 'Let go: another conversation was opened while she waited on the user; their next line answers her.' : 'Let go: another conversation was opened during a turn annai started by itself.';
+      const message = this.#cutMoved ? 'Let go: the user chose to carry on in another trip; she answers them there.'
+        : this.#cutWaiting ? 'Let go: another conversation was opened while she waited on the user; their next line answers her.' : 'Let go: another conversation was opened during a turn annai started by itself.';
       await this.#log({ type: 'error', actor: 'system', data: { kind: 'left', wake: wakeId, message, quiet: true } });
     }
     this.#owing = null;

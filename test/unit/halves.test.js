@@ -1254,36 +1254,45 @@ test("with two halves, Kokoro's turn for a typed hand-over carries it: its write
   assert.ok(!toKoe.some((/** @type {string} */ x) => /move_file/.test(x)));
 });
 
-// Timeline stage 6, Review Focus 3 with Koe on a chat model: what Koe is told, in which conversation, and nothing said twice.
-test('a move with Koe talking on a chat model: in the chat Koe says she is taking them there; in the trip Kokoro answers through Koe; each said once', async (t) => {
+// Timeline stage 6 with Koe on a chat model (annai's card, the user's pick of 2026-11-11): what Koe is told, in which conversation, nothing said twice.
+test("a move with Koe talking on a chat model: annai's card asks, nothing of a move is said in the chat; at Open the trip opens and Kokoro answers there through Koe, once; the chat owes nothing", async (t) => {
   useClock(t);
   const KOE_MOVING = { rules: [
     { match: 'the user wrote', reply: calls(['speak', { text: 'One moment.' }]) },
-    { match: 'a note from Kokoro', reply: calls(['speak', { text: 'Taking you to Kyoto.' }]), times: 1 },
     { match: 'a note from Kokoro', reply: calls(['speak', { text: 'Here in Kyoto: the ramen place is by the station.' }]) },
   ] };
   const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { type: KOE_MOVING } });
   k.agent.addLoopTools(tripTools(k.agent));
   const kyoto = await createTrip(k.ws, { title: 'Kyoto', start: '2027-04-01', end: '2027-04-08' });
   await rescript(k, { rules: [
-    { match: 'the user wrote', reply: calls(['open_trip', { trip: kyoto, recap: 'We were looking for the ramen place.' }], ['tell_koe', { text: 'Say you are taking them to Kyoto.' }]) },
-    { match: "haven't answered", reply: calls(['tell_koe', { text: 'Tell them the ramen place is by the station.' }]) },
+    { match: 'You moved the user here', reply: calls(['tell_koe', { text: 'Tell them the ramen place is by the station.' }]) },
+    { match: 'the user wrote', reply: { toolCalls: [{ name: 'open_trip', input: { trip: kyoto, recap: 'We were looking for the ramen place.' } }] } },
   ] });
+  /** @type {any[]} */
+  const asks = [];
+  k.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'out.ask' && e.data.own) asks.push(e); });
   await k.agent.idle();
   k.agent.send("Let's carry on in Kyoto");
+  await until(() => asks.length === 1);
+  k.agent.answer(asks[0].data.tap, 'Open');
   await k.agent.idle();
   assert.equal(k.agent.trip, kyoto);
   /** @param {string} scope @param {string[]} types */
   const log = (scope, types) => k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(scope, { types }));
-  const said = async (/** @type {string} */ scope) => (await log(scope, ['out.speak', 'out.show', 'out.ask', 'reminder'])).map((/** @type {any} */ e) => [e.type, e.data.half ?? '', e.data.text ?? '']);
+  const said = async (/** @type {string} */ scope) => (await log(scope, ['out.speak', 'out.show', 'out.ask', 'reminder'])).map((/** @type {any} */ e) => [e.type, e.data.half ?? '', e.data.text ?? e.data.question ?? '']);
   const told = async (/** @type {string} */ scope) => (await log(scope, ['note'])).filter((/** @type {any} */ e) => e.data.from === 'kokoro').map((/** @type {any} */ e) => e.data.text);
-  // In the chat: Koe answers at once, then says what Kokoro told it there; nothing of the trip's answer.
-  assert.deepEqual(await said(k.trip), [['out.speak', 'koe', 'One moment.'], ['out.speak', 'koe', 'Taking you to Kyoto.']]);
-  assert.deepEqual(await told(k.trip), ['Say you are taking them to Kyoto.']);
-  // In the trip: Kokoro took up the move (her recap and the user's line) and told Koe, who said it once; annai showed nothing in its place.
+  // In the chat: Koe answers at once, then annai's card; Kokoro told Koe nothing there.
+  assert.deepEqual((await said(k.trip)).map(([type, half]) => [type, half]), [['out.speak', 'koe'], ['out.ask', 'kokoro']]);
+  assert.deepEqual(await told(k.trip), []);
+  // In the trip: Kokoro took up their line and her recap in one turn and told Koe, who said it once; annai showed nothing in its place.
   assert.deepEqual(await said(kyoto), [['out.speak', 'koe', 'Here in Kyoto: the ramen place is by the station.']]);
   assert.deepEqual(await told(kyoto), ['Tell them the ramen place is by the station.']);
   assert.deepEqual((await log(kyoto, ['msg.user'])).map((/** @type {any} */ e) => e.data.text), ["Let's carry on in Kyoto"]);
+  // The chat, opened again, wakes neither half.
+  const before = k.requests.length;
+  await k.agent.open(k.trip);
+  await k.agent.idle();
+  assert.equal(k.requests.length, before);
 });
 
 // The loop's rules since the real-model fixes, against open_trip: a refused move beside a note and a sleep says nothing to Koe and ends nothing.
@@ -1300,7 +1309,7 @@ test("open_trip refused in a dated trip beside tell_koe and sleep: the note isn'
   await k.agent.idle();
   assert.equal(k.agent.trip, k.trip, 'nothing opened');
   const done = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.half === 'kokoro').map((/** @type {any} */ e) => [e.data.name, e.data.ok, String(e.data.content).slice(0, 24)]);
-  assert.deepEqual(done.slice(0, 3), [['open_trip', false, 'Error: A trip is open, s'], ['tell_koe', false, 'Not sent to Koe: a call '], ['sleep', true, 'Not asleep: a call in th']]);
+  assert.deepEqual(done.slice(0, 3), [['open_trip', false, 'Error: A dated trip is o'], ['tell_koe', false, 'Not sent to Koe: a call '], ['sleep', true, 'Not asleep: a call in th']]);
   assert.ok(done.length > 3, 'her turn went on past the refusal');
   assert.deepEqual((await k.events(['note'])).filter((/** @type {any} */ e) => e.data.from === 'kokoro'), [], 'Koe was told nothing of a move');
   assert.deepEqual((await shown(k)).filter(([type]) => type === 'out.speak').map(([, , text]) => text), ['One moment.']);
