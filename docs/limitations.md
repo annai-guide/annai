@@ -455,3 +455,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** if the page closes right after a file's move, the file is in the new trip but Shiori there has not been told to read it, and the first conversation has no "moved" line (Undo from the new trip still brings the file back). For a calendar that was waiting to be filed, its events are not planned yet either.
 - **Why:** those steps are written by Shiori's own code after the move has been committed; only the move itself is one transaction.
 - **Revisit when:** the next version.
+
+### A page's end isn't kept when only the window's height changes
+- **Kind:** known limitation.
+- **What the user sees:** a page read to its end stays at its end when the phone is turned. When the window only gets shorter or taller (split screen, or a keyboard that resizes the window), the page stays where it was scrolled, which can be above its end; the user scrolls down again.
+- **Why:** a browser tab's toolbar also changes the height as the user scrolls, and putting the page back then pinned it at its end against the user's own scroll. Only a change of width is surely a turn.
+- **Revisit when:** the user meets it in split screen, or a way appears to tell a toolbar from a real resize.
+- **Approved:** 2026-11-10, the user picked "Accept (Recommended)".
