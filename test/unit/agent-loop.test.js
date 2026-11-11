@@ -668,6 +668,22 @@ test("a Stop tapped while her turn sets up its voice is a Stop: recorded, and no
   assert.equal((await k.events(['out.speak'])).length, 0, 'nothing said, then or on coming back');
 });
 
+test("an old conversation the released app left mid-turn (an open's cut, or a Stop from before its record: the Stop's words, no mark) is not taken up on its first open (the re-review 3: F1)", async (t) => {
+  useClock(t);
+  for (const name of ['read', 'ask']) {
+    const k = await agentKit([[say('Check-in is at 3.')]], { open: false });
+    await record(k.store, k.trip, { type: 'wake', actor: 'system', data: { id: 'w-0', reasons: [{ kind: 'user', text: 'typed' }] } });
+    await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: { text: 'When is check-in?', wake: 'w-0' } });
+    await modelTrace(k.store, k.trip).turn({ role: 'main', level: 'medium', answeredBy: 'A', attempts: [], usage: {}, cost: 0, tag: TALK_TAG, wake: 'w-0' }, '', '',
+      [{ type: 'tool_call', id: 'c1', name, input: name === 'read' ? { path: '/trip/trip.json' } : { question: 'Lunch or dinner?', options: ['Lunch', 'Dinner'] } }]);
+    await record(k.store, k.trip, { type: 'tool.result', actor: 'system', data: { id: 'c1', name, ok: false, ms: 3, wake: 'w-0', content: 'Stopped by the user.' } });
+    await k.agent.open(k.trip);
+    await k.agent.idle();
+    assert.equal(k.requests.length, 0, `${name}: nothing taken up`);
+    assert.equal((await k.events(['out.speak'])).length, 0, `${name}: nothing said`);
+  }
+});
+
 test("closed while her answer, said aloud, listened: opening again says nothing again, though annai answers its calls; cut before she spoke, it is taken up (the re-review 2: S3)", async (t) => {
   useClock(t);
   for (const spoke of [true, false]) {

@@ -343,9 +343,10 @@ export class Transcript {
       this.#flushHeld();
       // Every result of a reply that didn't end her turn, and no reply after: her turn was cut off, and she owes the rest.
       // A call cut short (`cut`: an open, a Stop, a restart; not a refusal) leaves her turn owed though its reply slept, if it was a hand-off
-      // or came before she reached the user. A Stop is settled by its own record; an old log's cuts, unmarked, stay settled.
+      // or came before she reached the user. A Stop is settled by its own record. A result with no `cut` at all is an older page's, read as it
+      // read it: the Stop's words (which it also wrote for an open's cut) ended her turn.
       const name = this.#calls.get(d.id);
-      if (d.end) this.#ends = true;
+      if (d.end || (!('cut' in d) && texts.content === STOPPED)) this.#ends = true;
       else if (d.cut && (name === 'tell_koe' || name === 'tell_kokoro' || (name !== 'sleep' && !this.#reached))) this.#ends = false;
       if (this.#last.includes(d.id) && !this.#waitsForResults() && !this.#ends) {
         this.unanswered = true;

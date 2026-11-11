@@ -2618,9 +2618,9 @@ export class Agent {
       // A model that can't see photos gets what a tool's photos show in words, from one that can (the tools stay the same).
       if ((output.images?.length && o.model && !o.model.input?.includes('image')) || (output.document && o.model && !o.model.input?.includes('pdf'))) output = await this.#described(output, o.wakeId, o.signal, o.model, undefined, scope, c.name === 'read', o.reads);
     }
-    // Cut short (the turn aborted, the call an error): the user's Stop, or another conversation opening, which is no Stop. Marked `cut`,
-    // which a refusal or a failure is not: what reads the log decides by the mark, never by `ok` or the words.
-    const cut = o.signal.aborted && output.isError;
+    // Cut short (the turn aborted, the call an error): the user's Stop, or another conversation opening, which is no Stop. Every result
+    // says whether (`cut`), which a refusal or a failure is not: the log is read by the mark; only a result without it, an older page's, by its words.
+    const cut = Boolean(o.signal.aborted && output.isError);
     if (cut) output = { content: this.#userStop ? STOPPED : CUT, isError: true };
     // A tell_koe that came back as an error told no one, whatever the error (refused: Koe can't speak; no text; the tool off): the user is
     // still owed an answer, so [tell_koe, sleep] does not end the turn on it (nudge() asks Kokoro once more; forcing is capped by FORCED_STEPS).
@@ -2655,7 +2655,7 @@ export class Agent {
     }
     await this.#log({
       type: 'tool.result', actor: 'system',
-      data: { id: c.id, name: c.name, ok: !output.isError, ms, wake: o.wakeId, ...(cut ? { cut: true } : {}), ...(images.length ? { images } : {}), ...(document ? { document } : {}), ...(output.heard?.length ? { heard: output.heard } : {}), ...(output.endTurn ? { end: true } : {}) },
+      data: { id: c.id, name: c.name, ok: !output.isError, ms, wake: o.wakeId, cut, ...(images.length ? { images } : {}), ...(document ? { document } : {}), ...(output.heard?.length ? { heard: output.heard } : {}), ...(output.endTurn ? { end: true } : {}) },
       texts: [['content', output.content]], blobs,
     });
     return output;
