@@ -503,6 +503,13 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** the user hears an answer repeated after coming back to a conversation or after a reload, or what a conversation still owes comes to be recorded line by line for another reason.
 - **Approved:** 2026-11-10, the user picked "Accept as known limitation".
 
+### A conversation from before the update can get one unasked turn after Koe was emptied
+- **Kind:** known limitation.
+- **What the user sees:** they used annai with a model set for Koe, and have since emptied Koe. A conversation stored before this update whose last record is a note from Koe that Kokoro had left alone on purpose gets one turn nobody asked for the first time it is opened after the update, and she may repeat her last answer. Once per such conversation; after that it is settled. With Koe still set nothing changes, and conversations written since the update are not affected.
+- **Why:** the app now writes a record when Kokoro leaves a note of Koe's alone on purpose, and Shiori as one reads a note without it as owed. Conversations stored before the update have no such record. Not owing them at all would also drop a question Koe passed on that Kokoro never reached.
+- **Revisit when:** a user reports old conversations answering by themselves after the update.
+- **Approved:** 2026-11-11, option picked: "Accept as a known limitation".
+
 ### A reload in the middle of annai's own turn is finished later
 - **Kind:** known limitation.
 - **What the user sees:** annai is closed or killed (the phone locks and the system ends the page, or a reload) while Shiori is in a turn annai started by itself (GPS turned on, a reminder or watch firing, a plugin's wake). The next time that conversation opens, she takes the turn up and finishes it, possibly hours later: a reaction to GPS that is stale by then, or a reminder she hadn't said yet, said late, by her, not shown as a card. Opening another conversation instead lets such a turn go at once, and shows its reminder as a card.
