@@ -351,7 +351,7 @@ test("one Shiori: an error ending a turn of Kokoro's (no model, a budget) settle
 // The owed table (real-fix2's re-review): for each kind of line and each way its turn can end or be cut, what each reader owes when the
 // conversation opens again. Readers: Kokoro (Koe still set), Koe's own, and one Shiori (Koe unset since). Logs as the halves write them.
 test("the owed table: every line, every cut, every reader, one answer", async () => {
-  const CUT = 'Cut off: another conversation was opened before this finished.';
+  const CUT = 'Cut off: another conversation was opened while this ran. It may have finished: check before you do it again.';
   const STOP = 'Stopped by the user.';
   const RESTART = 'interrupted by app restart';
   /** @typedef {{ log: (ev: any) => Promise<any>, turn: (tag: string, parts: any[]) => Promise<any> }} W */
