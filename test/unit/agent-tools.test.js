@@ -112,6 +112,34 @@ test('tracedFetch: every request is in the trace, with credentials in the addres
   assert.doesNotMatch(JSON.stringify(evs), /SECRET123|pw@/);
 });
 
+test("tracedFetch: a request called off with a reason says that reason in the trace, whatever the browser's words; a stop with none keeps them", async () => {
+  const store = createMemoryStore();
+  // As WebKit does: the same words for any abort, whatever the signal's reason.
+  const webkit = tracedFetch(store, 'trip-1', { tool: 'nearby' }, (_url, init) => new Promise((_, reject) => {
+    const no = () => reject(new DOMException('Fetch is aborted', 'AbortError'));
+    if (init?.signal?.aborted) no();
+    else init?.signal?.addEventListener('abort', no, { once: true });
+  }));
+  /** @param {AbortSignal} signal @param {() => void} [stop] */
+  const off = async (signal, stop) => {
+    const asked = webkit('https://a.test/', { signal });
+    stop?.();
+    await assert.rejects(asked, { name: 'AbortError' });
+  };
+  const raced = new AbortController();
+  await off(raced.signal, () => raced.abort(Object.assign(new Error('Stopped: the other Overpass server answered first.'), { name: 'AbortError' })));
+  const late = AbortSignal.timeout(5);
+  await off(late);
+  const user = new AbortController();
+  await off(user.signal, () => user.abort());
+  const evs = await store.tx(['events'], 'readonly', (t) => t.listEvents('trip-1', { types: ['net.request'] }));
+  assert.deepEqual(evs.map((e) => [e.data.status, e.data.error]), [
+    [0, 'Stopped: the other Overpass server answered first.'],
+    [0, late.reason.message],
+    [0, 'Fetch is aborted'],
+  ]);
+});
+
 test('tracedFetch: no secret annai keeps reaches the trace, whatever its parameter is called or wherever it sits', async () => {
   const store = createMemoryStore();
   await store.tx(['secrets'], 'readwrite', async (t) => {

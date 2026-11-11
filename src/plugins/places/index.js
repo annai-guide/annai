@@ -150,8 +150,8 @@ export function activate(annai) {
         const at = `around:${radius},${round(i.lat)},${round(i.lng)}`;
         // Overpass cuts its output in id order, not by distance, so ask for plenty and keep the nearest 40.
         const query = `[out:json][timeout:20];(${overpassFilters(kinds).map((f) => `nwr(${at})${f};`).join('')});out center tags 400;`;
-        // Both Overpass servers and Wikipedia are asked at once, so a call waits one ASK_MS at most: asked in turn, two servers that
-        // don't answer cost one limit each. The first usable Overpass answer is taken, and the other server's request stopped.
+        // All asked at once, so a call waits one ASK_MS at most; the first usable Overpass answer stops the other's request, with a
+        // reason the Trace shows (an Error: tracedFetch reads a DOMException AbortError as a stop with none).
         const won = new AbortController();
         const race = { ...call, signal: anySignal([call.signal, won.signal]) };
         const overpass = Promise.any(OVERPASS.map(async (server) => {
@@ -166,7 +166,7 @@ export function activate(annai) {
             if (r) rows.push([r[1], r[2], Math.round(meters(i.lat, i.lng, r[3], r[4])), r[3], r[4], 'osm', [r[5], typeof e.tags?.opening_hours === 'string' ? `hours ${e.tags.opening_hours}` : ''].filter(Boolean).join(' · ')]);
           }
           return rows;
-        })).finally(() => won.abort());
+        })).finally(() => won.abort(Object.assign(new Error(/* en */ 'Stopped: the other Overpass server answered first.'), { name: 'AbortError' })));
         const wikipedia = json(`https://en.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${round(i.lat)}%7C${round(i.lng)}&gsradius=${Math.min(radius, 10000)}&gslimit=30&format=json&origin=*`, call)
           .then((w) => (Array.isArray(w?.query?.geosearch) ? w.query.geosearch : []).filter((/** @type {any} */ g) => typeof g?.title === 'string')
             .map((/** @type {any} */ g) => [g.title, 'wikipedia article', Math.round(g.dist), round(g.lat), round(g.lon), 'wikipedia', `https://en.wikipedia.org/wiki/${encodeURIComponent(g.title.replace(/ /g, '_'))}`]));
