@@ -755,3 +755,23 @@ test("a second open_trip copies no line an earlier move carried, and one said af
   await k.agent.idle();
   assert.deepEqual((await eventsIn(k, nara, ['msg.user'])).map((/** @type {any} */ e) => e.data.text), ['And Nara, later']);
 });
+
+test("a Stop in the moment after Open: nothing opens, and what is written into the trip is in order, their line and then her recap", async (t) => {
+  useClock(t);
+  const k = await chatKit();
+  k.agent.send("Let's carry on in Kyoto");
+  await k.agent.idle();
+  const stop = new AbortController();
+  const opening = k.agent.kokoro.loopTools().find((/** @type {any} */ x) => x.name === 'open_trip').run({ trip: k.kyoto, recap: RECAP }, {
+    id: 'c', scope: k.agent.scope, trip: k.agent.trip, signal: stop.signal, model: null, wake: 'w', author: 'shiori',
+  });
+  await until(() => k.asks.length === 1);
+  k.agent.answer(k.asks[0].data.tap, 'Open');
+  stop.abort(); // before the files have moved
+  await opening;
+  await k.agent.idle();
+  assert.equal(k.agent.target, k.trip, 'nothing opened');
+  assert.deepEqual((await eventsIn(k, k.kyoto, ['msg.user', 'wake'])).map((/** @type {any} */ e) => e.data.text ?? e.data.reasons.map((/** @type {any} */ r) => r.recap ?? r.kind).join()), [
+    'user', "Let's carry on in Kyoto", RECAP,
+  ]);
+});

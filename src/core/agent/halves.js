@@ -1123,17 +1123,21 @@ export class Halves {
    * Takes the user into a trip they chose on annai's card (open_trip's Open), at once, as their tap on its row would: the turn that asked is
    * let go, nothing owed where it was (open's `moved`), and 'went' tells the screens ({ trip, chose }: the user's own choice, which from home
    * the screen follows). Then the trip's lines (their line, her recap) go in, for one turn there. If they went elsewhere since (signal: the call's,
-   * which a Stop or another open ends), nothing opens: the lines wait there. @param {string} trip
+   * which a Stop or another open ends), nothing opens: the lines are written into the trip, in order, and wait there. @param {string} trip
    * @param {import('./loop.js').Wake[]} wakes @param {AbortSignal} signal
    */
-  carryOn(trip, wakes, signal) {
-    if (!signal.aborted) {
+  async carryOn(trip, wakes, signal) {
+    const opening = !signal.aborted;
+    if (opening) {
       updateAppSettings(this.ws, { activeTrip: trip }).catch(() => {});
       this.open(trip, { moved: true }).catch((e) => console.warn(/* en */ "the trip the user chose didn't open", e));
       this.#emit('went', { trip, chose: true });
     }
-    // Into its queue once it is the one opening (one turn when it opens), else written into it.
-    for (const w of wakes) void this.kokoro.wake({ ...w, scope: trip });
+    // Into its queue once it is the one opening (at once: one turn when it opens), else written into it, one after the other.
+    for (const w of wakes) {
+      const done = this.kokoro.wake({ ...w, scope: trip });
+      if (!opening) await done;
+    }
   }
 
   /** @param {boolean} [yes] */
