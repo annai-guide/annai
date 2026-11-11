@@ -112,6 +112,31 @@ test('with no trip open, + hands Shiori a flight PDF and a hotel screenshot: she
   }
 });
 
+test('Trips, tapped while the handed-over files are still being kept, stays: the message goes when they are kept, and the screen is not taken back to the conversation', async ({ page }) => {
+  const llm = await startModelServer({ [MESSAGES]: sse(anthropicToolReply([{ name: 'speak', input: { text: 'Got them.' } }, { name: 'sleep', input: {} }])) });
+  try {
+    await setUp(page, llm.origin);
+    // Keeping each file takes 1.5 s, so the tap on Trips comes while they are being kept, whatever the machine's speed.
+    await page.evaluate(async () => {
+      const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+      const write = Workspace.prototype.write;
+      Workspace.prototype.write = async function (/** @type {any[]} */ ...a) {
+        if (String(a[1]).startsWith('/files/')) await new Promise((r) => setTimeout(r, 1500));
+        return write.apply(this, /** @type {any} */ (a));
+      };
+    });
+    await handOver(page, [await fixture('flight.pdf', 'application/pdf'), await fixture('hotel.png', 'image/png')]);
+    await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+    await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
+    await expect.poll(() => llm.bodies(MESSAGES).length, { timeout: 30_000 }).toBeGreaterThan(0); // kept, and the message went to her
+    await page.waitForTimeout(1000); // past anything that would take the screen back
+    expect(new URL(page.url()).hash).toBe('#/trips');
+    await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
+  } finally {
+    await llm.stop();
+  }
+});
+
 test('a trip she starts while the user is on Trips is one more row there: the screen is not taken into it', async ({ page }) => {
   const [first, ...rest] = anchorage();
   const llm = await startModelServer({ [MESSAGES]: [{ .../** @type {any} */ (first), delayMs: 3000 }, ...rest] }); // time to go to Trips while she works
