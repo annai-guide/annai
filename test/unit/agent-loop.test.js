@@ -643,6 +643,23 @@ test('a reload mid-turn: open tool calls get "interrupted by app restart", then 
   assert.equal((await k.events(['out.speak']))[0].data.text, 'Back again.');
 });
 
+test("closed while her answer, said aloud, listened: opening again says nothing again, though annai answers its calls; cut before she spoke, it is taken up (the re-review 2: S3)", async (t) => {
+  useClock(t);
+  for (const spoke of [true, false]) {
+    const k = await agentKit([[say('Back: check-in is at 3.')]], { open: false });
+    await record(k.store, k.trip, { type: 'wake', actor: 'system', data: { id: 'w-0', reasons: [{ kind: 'user', text: 'typed' }] } });
+    await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: { text: 'When is check-in?', wake: 'w-0' } });
+    await modelTrace(k.store, k.trip).turn({ role: 'main', level: 'medium', answeredBy: 'A', attempts: [], usage: {}, cost: 0, tag: TALK_TAG, wake: 'w-0' }, '', '',
+      [{ type: 'tool_call', id: 's1', name: 'speak', input: { text: 'Check-in is at 3.' } }, { type: 'tool_call', id: 'z1', name: 'sleep', input: {} }]);
+    // speak writes its line, plays it, then listens for 20 s; annai was closed in that time: no result.
+    if (spoke) await record(k.store, k.trip, { type: 'out.speak', actor: 'shiori', data: { id: 's1', voice: true, wake: 'w-0' }, texts: [['text', 'Check-in is at 3.']] });
+    await k.agent.open(k.trip);
+    await k.agent.idle();
+    assert.deepEqual((await k.events(['tool.result'])).slice(0, 2).map((/** @type {any} */ e) => [e.data.content, e.data.cut]), [['interrupted by app restart', true], ['interrupted by app restart', true]]);
+    assert.equal(k.requests.length, spoke ? 0 : 1, spoke ? 'her answer is not said again' : 'cut before she spoke: taken up');
+  }
+});
+
 test('killed after her tool calls came back, before her next reply: opening the conversation takes the turn up (emulator pass m2b #21)', async (t) => {
   useClock(t);
   const k = await agentKit([[say('Vegetarian: Nepenthe has options.')]], { open: false });
