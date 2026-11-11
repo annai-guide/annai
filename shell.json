@@ -1,5 +1,5 @@
 {
-  "build": "ec3019b899d3",
+  "build": "3d46002a0ff6",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -43,7 +43,7 @@
     "/src/core/agent/instructions.js": "5a8bc872522c",
     "/src/core/agent/listen.js": "01152d2c0b22",
     "/src/core/agent/log.js": "be1f6eedd6f8",
-    "/src/core/agent/loop.js": "c5175ff1cb55",
+    "/src/core/agent/loop.js": "8413a026c5a5",
     "/src/core/agent/reading.js": "dfcf146e5005",
     "/src/core/agent/personalities.js": "20c2b7d8981a",
     "/src/core/agent/her-instructions.js": "b90fb982b678",
@@ -52,8 +52,8 @@
     "/src/core/agent/spoken-yes.js": "066a5f5d247b",
     "/src/core/agent/net.js": "760427139644",
     "/src/core/agent/tools.js": "1024de74379b",
-    "/src/core/agent/trip-tools.js": "8090340b6929",
-    "/src/core/agent/transcript.js": "031bbf974654",
+    "/src/core/agent/trip-tools.js": "6cc615e627df",
+    "/src/core/agent/transcript.js": "9fe33de9dd79",
     "/src/core/agent/via.js": "557657aae006",
     "/src/core/agent/warmth.js": "7f1be5368415",
     "/src/core/address.js": "d677ad7a10ba",

@@ -1723,9 +1723,9 @@ test("a move with a live session open: annai's card is said aloud, and at Open t
     const notes = texts(k).filter((x) => x.startsWith('<from_kokoro'));
     assert.deepEqual(notes.map((x) => x.replace(/<[^>]*>/g, '')), ['Tell them the ramen place is by the station.']);
     assert.equal(k.server.connections().length, 2, 'one session in each conversation');
-    // No call failed but the one the tap let go (a real sleep: the stage 6 re-review's R8).
+    // No call failed (a real sleep: the stage 6 re-review's R8), the move included: the user's Open is what open_trip was for.
     const failed = async (/** @type {string} */ scope) => (await log(scope, ['tool.result'])).filter((/** @type {any} */ e) => !e.data.ok).map((/** @type {any} */ e) => [e.data.name, e.data.content]);
-    assert.deepEqual(await failed(k.trip), [['open_trip', "Let go: the user opened another conversation; don't take it up unless they ask."]]);
+    assert.deepEqual(await failed(k.trip), []);
     assert.deepEqual(await failed(kyoto), []);
   } finally {
     await k.done();

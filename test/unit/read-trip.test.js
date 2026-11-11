@@ -2036,7 +2036,7 @@ for (const [heard, opens] of /** @type {[string, boolean][]} */ ([['Yes.', true]
       await liveSay(k, 'first-one');
       const out = words(await going);
       if (opens) {
-        assert.match(out, /^They chose Open: "Testville" is open now/);
+        assert.match(out, /^They chose Open: that conversation is open now/);
         await soon(async () => k.agent.trip === TV, 5_000);
         const recap = (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(TV, { types: ['wake'] }))).flatMap((/** @type {any} */ e) => e.data.reasons).find((/** @type {any} */ r) => r.recap);
         assert.equal(recap?.recap, 'We were looking for the ramen place.');

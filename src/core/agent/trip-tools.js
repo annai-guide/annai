@@ -12,7 +12,7 @@ import { normPath, isTextType } from '../paths.js';
 import { theirs, quote, conversationLines } from './blocks.js';
 import { readAppSettings, updateAppSettings } from '../settings.js';
 import { spokenYes, spokenNo } from './spoken-yes.js';
-import { STOPPED } from './transcript.js';
+import { STOPPED, MOVED } from './transcript.js';
 import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 import { PHOTO_ONLY } from './loop.js';
 import { planItems } from './context.js';
@@ -501,8 +501,8 @@ export function tripTools(app) {
         if (m.size || call.handover) await moved(rec.id, false, m.size, call);
         await app.carryOn(rec.id, wakes, call.signal);
         await logIn(call, { type: 'conversation.moved', actor: 'shiori', data: { to: rec.id, title: rec.title } });
-        /* en */
-        return `They chose Open: ${JSON.stringify(rec.title)} is open now, and you answer them there; this conversation stays.`;
+        // In her turn, carryOn's open has ended this call by now, and the loop wrote this result (MOVED); the same words for a caller of its own.
+        return MOVED;
       },
     },
     {
