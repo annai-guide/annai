@@ -263,7 +263,7 @@ test("one Shiori reading a conversation where Koe talked owes a heard line until
     return (await Transcript.load(store, SCOPE, { half: 'one' })).unanswered;
   };
   const heard = (/** @type {(ev: any) => Promise<any>} */ log) => log({ type: 'heard', actor: 'user', data: { id: 's1', half: 'koe', text: 'when is check-in' } });
-  const result = (/** @type {string} */ id, /** @type {string} */ content) => ({ type: 'tool.result', actor: 'shiori', data: { id, name: 'x', ok: true, half: 'koe', content } });
+  const result = (/** @type {string} */ id, /** @type {string} */ content) => ({ type: 'tool.result', actor: 'shiori', data: { id, name: 'x', ok: content !== 'interrupted by app restart', half: 'koe', content } });
   const asks = [{ type: 'tool_call', id: 'a', name: 'speak', input: {} }, { type: 'tool_call', id: 'b', name: 'tell_kokoro', input: {} }];
   // Koe never answered it (a close came first): owed.
   assert.equal(await run(async (log) => { await heard(log); }), true);
@@ -298,6 +298,45 @@ test("one Shiori reading a conversation where Koe talked owes a heard line until
     await asked(log, turn);
     await log({ type: 'error', actor: 'system', data: { kind: 'answered', wake: 'w9', half: 'kokoro', message: 'x', quiet: true } });
   }), false);
+});
+
+test("one Shiori owes no line Koe answered aloud: a live Koe's (no model turn of Koe's), or a Classic answer whose listening was cut; one that said \"Let me check.\" and hadn't asked Kokoro yet stays owed (the re-review: R1)", async () => {
+  const run = async (/** @type {(log: (ev: any) => Promise<any>, turn: (parts: any[]) => Promise<any>) => Promise<void>} */ steps) => {
+    const store = createMemoryStore();
+    await steps((ev) => record(store, SCOPE, ev), (parts) => modelTrace(store, SCOPE).turn(turnInfo(KOE_TAG, 'w'), '', '', parts));
+    return (await Transcript.load(store, SCOPE, { half: 'one' })).unanswered;
+  };
+  const heard = (/** @type {(ev: any) => Promise<any>} */ log, source = 'mic') => log({ type: 'heard', actor: 'user', data: { id: 's1', half: 'koe', source, text: 'when is check-in' } });
+  const said = (/** @type {(ev: any) => Promise<any>} */ log, /** @type {string} */ text) => log({ type: 'out.speak', actor: 'shiori', data: { id: `c-${text.length}`, half: 'koe', voice: true }, texts: [['text', text]] });
+  const result = (/** @type {string} */ id, /** @type {boolean} */ ok, /** @type {string} */ content) => ({ type: 'tool.result', actor: 'shiori', data: { id, name: 'x', ok, half: 'koe', content } });
+  // A live Koe heard it and answered aloud, with a tool of its own first or not: it writes no model turn.
+  assert.equal(await run(async (log) => { await heard(log, 'live'); await said(log, 'Check-in is at 3.'); }), false);
+  assert.equal(await run(async (log) => {
+    await heard(log, 'live');
+    await log({ type: 'tool.call', actor: 'shiori', data: { id: 'l1', name: 'read', half: 'koe' } });
+    await log(result('l1', true, 'Check-in: 15:00.'));
+    await said(log, 'Check-in is at 3.');
+  }), false);
+  // A Classic Koe said the answer, and annai closed while its speak listened: no result, or annai's on a restart.
+  const answered = async (/** @type {(ev: any) => Promise<any>} */ log, /** @type {(parts: any[]) => Promise<any>} */ turn) => {
+    await heard(log);
+    await turn([{ type: 'tool_call', id: 'a', name: 'speak', input: {} }]);
+    await said(log, 'Check-in is at 3.');
+  };
+  assert.equal(await run(answered), false);
+  assert.equal(await run(async (log, turn) => { await answered(log, turn); await log(result('a', false, 'interrupted by app restart')); }), false);
+  // "Let me check.", and a close before its question to Kokoro ran: owed, with no result or annai's on a restart.
+  const checking = async (/** @type {(ev: any) => Promise<any>} */ log, /** @type {(parts: any[]) => Promise<any>} */ turn) => {
+    await heard(log);
+    await turn([{ type: 'tool_call', id: 'a', name: 'speak', input: {} }, { type: 'tool_call', id: 'b', name: 'tell_kokoro', input: {} }]);
+    await said(log, 'Let me check.');
+  };
+  assert.equal(await run(checking), true);
+  assert.equal(await run(async (log, turn) => {
+    await checking(log, turn);
+    await log(result('a', true, 'Said aloud.'));
+    await log(result('b', false, 'interrupted by app restart'));
+  }), true);
 });
 
 test("annai's own wrapper carries Koe's session nonce; a note's words can't close it", () => {

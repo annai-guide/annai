@@ -63,12 +63,13 @@ export class Transcript {
 
   #owes = false;
   /**
-   * One Shiori reading a conversation where Koe talked (Koe since unset): the seq of a heard line Koe kept as the user's that no turn has
-   * settled yet (0: none). Her own turn settles it, or Koe's reply to it once every call of it has run (it answered, let it pass, or asked
-   * Kokoro, whose note is then owed); a reply cut before its calls ran, or answered by annai on a restart, doesn't.
+   * One Shiori reading a conversation where Koe talked (Koe since unset): the seq of a heard line Koe kept as the user's that nothing has
+   * settled yet (0: none). Her own turn settles it; so does Koe: a line it said after it (a live Koe writes no model turn), unless its reply
+   * still has a question to Kokoro to run; every call of its reply done (a "thanks" let pass); or the user stopping it. A question it sent
+   * is a note, owed in its own right.
    */
   #heardOwed = 0;
-  /** One Shiori: the calls of Koe's reply to that heard line not run yet. @type {Set<string> | null} */
+  /** One Shiori: the calls of Koe's reply to that heard line not done yet (no result, or one that failed), by id, to their names. @type {Map<string, string> | null} */
   #koeCalls = null;
   /**
    * What is waiting when unanswered: 'user' (a message), 'wake' (something else, such as files added while it was closed), or 'turn' (her
@@ -171,15 +172,14 @@ export class Transcript {
     } else if (e.type === 'model.turn' && this.half === 'one' && d.tag === KOE_TAG) {
       // Koe's reply to what it heard (one that read it): nothing of it is a line of hers.
       if (!this.#heardOwed || !texts.parts || (typeof d.context?.to === 'number' && d.context.to < this.#heardOwed)) return;
-      const ids = JSON.parse(texts.parts).flatMap((/** @type {Part} */ p) => (p.type === 'tool_call' ? [p.id] : []));
-      this.#koeCalls = new Set(ids);
-      if (!ids.length) this.#heardOwed = 0;
+      this.#koeCalls = new Map(JSON.parse(texts.parts).flatMap((/** @type {Part} */ p) => (p.type === 'tool_call' ? [[p.id, p.name]] : [])));
+      if (!this.#koeCalls.size) this.#heardSettled();
       return;
     } else if (e.type === 'tool.result' && this.half === 'one' && d.half === 'koe') {
-      if (texts.content !== RESTARTED && this.#koeCalls?.delete(d.id) && !this.#koeCalls.size) {
-        this.#heardOwed = 0;
-        this.#koeCalls = null;
-      }
+      if (d.ok !== false && this.#koeCalls?.delete(d.id) && !this.#koeCalls.size) this.#heardSettled();
+      return;
+    } else if (this.half === 'one' && d.half === 'koe' && (e.type === 'out.speak' || e.type === 'out.show' || e.type === 'out.ask')) {
+      if (![...(this.#koeCalls?.values() ?? [])].includes('tell_kokoro')) this.#heardSettled();
       return;
     } else if (e.type === 'model.turn' && d.tag === (koe ? KOE_TAG : TALK_TAG) && texts.parts) {
       /** @type {Part[]} */
@@ -274,6 +274,7 @@ export class Transcript {
       // A turn that ended in an error (no model, a budget, housekeeping that failed) is over: the user
       // saw a card, and a later start doesn't wake her again for it (spec §6.7). It isn't in the context.
       if (this.#mine(d)) this.unanswered = false;
+      else if (this.half === 'one' && d.kind === 'stopped') this.#heardSettled(); // the user stopped Koe's reply
       return;
     } else if (e.type === 'heard') {
       // What the microphone heard (spec §10.3); its words come with it (dictation) or later (heard.text).
@@ -347,6 +348,11 @@ export class Transcript {
     if (koe) this.#window();
     if (!this.from) this.from = e.seq;
     this.to = e.seq;
+  }
+
+  #heardSettled() {
+    this.#heardOwed = 0;
+    this.#koeCalls = null;
   }
 
   /** The hand-over the conversation still owes an answer, or null (the restart wake carries it). */
