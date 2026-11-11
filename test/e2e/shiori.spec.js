@@ -481,7 +481,6 @@ test('removing the trip Shiori is working in: she stops first, and nothing of it
     await page.evaluate((trip) => { location.hash = `#/trip/${encodeURIComponent(trip)}`; }, id);
     await page.getByRole('button', { name: 'Remove trip' }).click();
     await page.getByRole('dialog', { name: 'Big Sur' }).getByRole('button', { name: 'Remove' }).click();
-    await page.getByRole('dialog', { name: 'Not backed up' }).getByRole('button', { name: 'Remove anyway' }).click();
     await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
     await page.waitForTimeout(500);
     const left = await page.evaluate((scope) => new Promise((resolve, reject) => {

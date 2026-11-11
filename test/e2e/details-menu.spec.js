@@ -205,9 +205,9 @@ test('removing a chat end to end at 360x640: home, tap the chat, ⋯, Details, s
   })).toBe(true);
   await remove.click();
   await page.getByRole('dialog', { name: 'Misc chat' }).getByRole('button', { name: 'Remove' }).click();
-  // A chat never backed up says so, once more (spec §4.9).
-  await page.getByRole('dialog', { name: 'Not backed up' }).getByRole('button', { name: 'Remove anyway' }).click();
+  // One question, and it was the only one: the chat is gone and home is back (spec §4.9).
   await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect.poll(() => new URL(page.url()).hash).toBe('#/trips');
   await expect(rows.getByRole('link', { name: /Keep this chat/ })).toBeVisible();
   await expect(rows.getByRole('link', { name: /Misc chat/ })).toHaveCount(0);

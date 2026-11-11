@@ -7,15 +7,15 @@ Run on a real iPhone (Safari, iOS 26+) and a real Android phone (Chrome), with a
 
 ## The questions
 - [ ] Start a trip and add 30 photos. On Trips, its card says "not backed up".
-- [ ] Open the trip and tap Remove trip. The first question names the trip. Cancel keeps it. On Android, Back also keeps it.
-- [ ] Remove trip → Remove: "Not backed up" appears. Cancel keeps the trip.
+- [ ] Open the trip and tap Remove trip. The question names the trip. Cancel keeps it. On Android, Back also keeps it.
+- [ ] Remove trip: the one question says "It hasn't been backed up since it last changed." before "Remove it?". Cancel keeps the trip.
 - [ ] Export trip → Backup → Build file → Save file (Save to Files on the iPhone). On Trips, the card says "backed up just now".
 - [ ] A Share export doesn't count: Export trip → Share → Save. The card still says when the last Backup was.
 - [ ] Add a note to the trip: the card says "changed since". Archive and unarchive a backed-up, unchanged trip: the card doesn't.
 
 ## Space comes back
 - [ ] In Settings, write down "Using X of about Y".
-- [ ] Back up the trip with the 30 photos, then remove it. Only the first question appears. Trips shows "Removed <trip>. N MB freed.", and the card is gone.
+- [ ] Back up the trip with the 30 photos, then remove it. The question has no sentence about a backup, and one tap on Remove removes the trip. Trips shows "Removed <trip>. N MB freed.", and the card is gone.
 - [ ] Settings shows usage lower by about N MB. If it hasn't dropped, close annai fully, reopen it, and look again. Write down what you saw on each phone: Safari's database may hand space back to the phone later than Chrome does, though annai reuses it either way.
 - [ ] Import the Backup: the trip comes back with all 30 photos.
 
