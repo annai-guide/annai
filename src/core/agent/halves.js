@@ -160,6 +160,8 @@ export class Halves {
   #koeTrip = undefined;
   /** Kokoro told Koe since the user last typed or spoke: Koe asking about it again wakes nobody. */
   #answered = false;
+  /** The user typed or spoke since Kokoro's last model call: her turn's end doesn't make Koe's questions about it answered. */
+  #newWords = false;
   /** Koe's notes set aside on purpose (#setAside), not yet written as settled: in which conversation, and whether for the user's Stop. @type {{ scope: string, stopped: boolean } | null} */
   #aside = null;
   /** Heard words Kokoro hasn't woken for: Koe answering them wakes it. */
@@ -279,6 +281,7 @@ export class Halves {
         failed: (why, e) => this.#down('kokoro', why, e) ?? this.#kokoroFailed(why, e),
         calling: () => {
           this.#nothingTold = false;
+          this.#newWords = false;
           this.#unseen = 0; // it reads every line so far
         },
         ended: (t) => this.#kokoroEnded(t),
@@ -1219,6 +1222,7 @@ export class Halves {
     if (typed || (e.type === 'heard' && !e.data?.dismissed && this.koeState !== 'live')) this.#retold();
     if (typed || (e.type === 'heard' && !e.data?.dismissed)) {
       this.#answered = false;
+      this.#newWords = true;
       this.#failTold = false;
       this.#bothTold = false;
       this.#ownCued = false;
@@ -1377,7 +1381,8 @@ export class Halves {
       const stopped = !t.ok || this.#stopped.on;
       this.#nothingToAdd(stopped ? /* en */ 'Kokoro was stopped.' : undefined, stopped ? 'stopped' : undefined, t.wakeId);
     }
-    if (told) {
+    // Words of the user's that her last call didn't read: Koe's question about them is still to answer (her next turn).
+    if (told && !this.#newWords) {
       this.#answered = true;
       this.#asked = false;
       if (this.kokoro.drop((w) => w.kind === 'note' && w.from === 'koe').length) this.#setAside(false); // came in her turn's last step
