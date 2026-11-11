@@ -720,14 +720,14 @@ test("with Koe talking, a line Koe kept that is no yes ends the card unanswered 
   k.agent.send('Where did we eat in Testville?');
   await until(() => k.asks.length === 1);
   await pause(25 * k.agent.secondMs); // past the window: no yes answers it now, and a "No" still ends it
-  await koeHeard(k, 'h-no', { text: "No, don't." });
+  await koeHeard(k, 'h-no', { text: 'No, the other one.' });
   await pause(30 * k.agent.secondMs);
   assert.equal(k.agent.kokoro.pendingId, null, 'not waiting on the card');
   await k.agent.idle();
   assert.equal((await grants(k, k.trip)).length, 0);
   assert.match((await readResults(k))[0], /^Not read: .* What the user said follows\.$/);
   const next = JSON.stringify(k.requests.find((/** @type {any} */ r) => JSON.stringify(r).includes('What the user said follows.')));
-  assert.ok(next.indexOf("No, don't.") > next.indexOf('What the user said follows.'), 'the words follow her result');
+  assert.ok(next.indexOf('No, the other one.') > next.indexOf('What the user said follows.'), 'the words follow her result');
   assert.equal(k.agent.kokoro.busy, false);
 });
 
