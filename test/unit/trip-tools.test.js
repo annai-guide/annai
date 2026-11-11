@@ -565,7 +565,7 @@ test("Open, tapped: Kyoto opens at the tap, with the user's line, her recap belo
   assert.ok(userTexts(k.requests.at(-1)).some((x) => /^\[annai\] The user carried this conversation on in "Kyoto": their line and your recap went there, where you answer them\. Nothing of it is left to do here\.$/.test(x)));
 });
 
-for (const how of /** @type {const} */ (['Not now', 'a typed line', 'a Stop', 'another conversation'])) {
+for (const how of /** @type {const} */ (['Not now', 'a typed line', 'a Stop', 'Start fresh', 'another conversation'])) {
   test(`the card ended by ${how}: nothing moved, nothing was written into Kyoto, and the chat has no line of a move`, async (t) => {
     useClock(t);
     const k = await chatKit();
@@ -582,6 +582,7 @@ for (const how of /** @type {const} */ (['Not now', 'a typed line', 'a Stop', 'a
     if (how === 'Not now') k.agent.answer(k.asks[0].data.tap, 'Not now');
     else if (how === 'a typed line') k.agent.send('No, wait, stay here');
     else if (how === 'a Stop') k.agent.stopKokoro();
+    else if (how === 'Start fresh') await k.agent.startFresh();
     else await k.agent.open(other);
     await k.agent.idle();
     assert.equal(k.agent.kokoro.pendingId, null, 'the card ended');
@@ -597,6 +598,7 @@ for (const how of /** @type {const} */ (['Not now', 'a typed line', 'a Stop', 'a
       'Not now': 'The user tapped Not now: they stay here, and nothing moved. Carry on here, and don\'t offer to take them into "Kyoto" again unless they ask.',
       'a typed line': 'Not opened: only a tap on annai\'s card, or a yes it hears, takes them into "Kyoto", and nothing moved. If they meant yes, call open_trip again. The user wrote: No, wait, stay here',
       'a Stop': 'Stopped by the user.',
+      'Start fresh': 'Stopped by the user.',
       'another conversation': 'Not answered: the user opened another conversation; what they say next may answer it.',
     }[how]);
   });
