@@ -1,5 +1,5 @@
 {
-  "build": "570e8cad8b34",
+  "build": "cfb9ceeaac1e",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -39,7 +39,7 @@
     "/src/core/agent/budgets.js": "ec0a25e840fb",
     "/src/core/agent/compaction.js": "0525a91f19e9",
     "/src/core/agent/context.js": "68c853fab7f5",
-    "/src/core/agent/halves.js": "4b57f4b40f20",
+    "/src/core/agent/halves.js": "b5d9ffed56dd",
     "/src/core/agent/instructions.js": "5a8bc872522c",
     "/src/core/agent/listen.js": "01152d2c0b22",
     "/src/core/agent/log.js": "be1f6eedd6f8",
@@ -53,7 +53,7 @@
     "/src/core/agent/net.js": "7ffda19e729b",
     "/src/core/agent/tools.js": "1e05339786c2",
     "/src/core/agent/trip-tools.js": "15e52409150d",
-    "/src/core/agent/transcript.js": "8af3a8dd8c8c",
+    "/src/core/agent/transcript.js": "69be14fe46f0",
     "/src/core/agent/via.js": "557657aae006",
     "/src/core/agent/warmth.js": "7f1be5368415",
     "/src/core/address.js": "d677ad7a10ba",

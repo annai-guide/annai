@@ -524,6 +524,44 @@ test("a note from Kokoro ends Koe's own question's wait, as it ends a wait: Koe 
   assert.deepEqual([chose?.data.chose, chose?.data.answer], [true, undefined], 'a late tap: an ordinary line');
 });
 
+test("an old conversation opened again, Koe unset or not, takes up nothing: lines Koe and Kokoro answered, and one the user stopped Kokoro on before her turn began, are no restart (real models: A item 5, item 8)", async (t) => {
+  useClock(t);
+  for (const stop of [false, true]) {
+    for (const unset of [false, true]) {
+      /** @type {() => void} */
+      let go = () => {};
+      const held = new Promise((r) => { go = () => r(undefined); });
+      let first = true;
+      const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], {
+        koe: { type: { rules: [{ match: '.', reply: calls(['speak', { text: 'On it.' }]) }] } },
+        hold: async (c) => { if (stop && c.model.providerId === 'model-koe' && first) { first = false; await held; } },
+      });
+      k.agent.send('What time is check-in?');
+      if (stop) {
+        await until(() => k.agent.kokoro.busy && !(k.sent['model-0'] ?? []).length);
+        k.agent.stopKokoro(); // the sign's Stop while her turn still gathers: it never starts
+        go();
+      }
+      await k.agent.idle();
+      const kokoroCalls = (k.sent['model-0'] ?? []).length;
+      assert.equal(kokoroCalls, stop ? 0 : 1);
+      const other = await createTrip(k.ws, { title: 'Elsewhere' });
+      await k.agent.open(other);
+      await k.agent.idle();
+      if (unset) {
+        const cfg = await readConfig(k.ws);
+        await saveRoles(k.ws, { ...cfg.roles, 'koe-classic': { models: [], level: 'off' } });
+        await k.agent.idle();
+      }
+      await k.agent.open(k.trip);
+      await k.agent.idle();
+      const label = `${stop ? 'stopped' : 'answered'}, Koe ${unset ? 'unset' : 'set'}`;
+      assert.equal(k.agent.kokoro.owed, false, label);
+      assert.equal((k.sent['model-0'] ?? []).length, kokoroCalls, `${label}: no restart turn`);
+    }
+  }
+});
+
 // Fix pass 2 (the review's reload-midturn probe): annai reloads while Koe waits on Kokoro and Kokoro is mid-call.
 test('after a reload mid-turn, Kokoro reads by its two-half rules from its first turn, and only Kokoro takes up the restart: Koe speaks once', async (t) => {
   useClock(t);
