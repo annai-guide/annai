@@ -48,6 +48,12 @@ const SAID_WAIT_MS = 60_000;
 const KOKORO_ONLY = ['personality', 'restart'];
 /** The user's own wakes, past the budgets. */
 const THEIRS = ['user', 'choice', 'file', 'live'];
+/**
+ * The longest Kokoro's turn for a typed line waits for Koe's first words to it, in seconds (real-fix2 item 1a): in 2026-11-10's real-model
+ * runs Koe's first line came 2.0 s after a typed line at the median, within 3.0 s for 95% and within 3.5 s for 159 of 162 (Sonnet or Haiku
+ * as Koe; the slowest 6.9 s), while Kokoro's turn started at 1.5 s (GATHER.quiet), before it, for 144 of 161.
+ */
+export const KOE_FIRST_S = 3.5;
 /** Kokoro reviews the conversation it hasn't read once this much of it has gone by (plan decision 8). */
 export const REVIEW_MS = 180_000;
 const REVIEW = /* en */ "a review: 3 minutes or more of conversation since you last looked. If something heard was meant for Shiori and Koe missed it, or Koe said something wrong, tell Koe; otherwise sleep.";
@@ -154,6 +160,8 @@ export class Halves {
   #answered = false;
   /** Heard words Kokoro hasn't woken for: Koe answering them wakes it. */
   #cue = false;
+  /** When the user's typed line came that a text Koe hasn't said its first words to yet (0: none): Kokoro's turn waits for them (KOE_FIRST_S). */
+  #koeOwes = 0;
   /** The ids of Kokoro's turns woken for non-stop sound alone: their notes with no words for the user belong to that stretch (#ofStretch). @type {Set<string>} */
   #nonstop = new Set();
   /** Koe's reply asks Kokoro, so its question wakes Kokoro, not its answer (owed: unless the question fails). */
@@ -304,6 +312,7 @@ export class Halves {
         },
         ended: (t) => {
           if (this.#koeLater) this.#route(() => this.#refresh());
+          this.#koeSaid(); // a turn that failed or was stopped says nothing more: Kokoro waits no longer
           if (!t.ok) return;
           this.#unsaid = [];
           this.#up('koe');
@@ -535,7 +544,9 @@ export class Halves {
     this.#later = told === 'koe-up' && this.koeState === 'down' && this.kokoro.voicing;
     if (this.#later) told = 'koe-down';
     const was = this.state.name;
+    const koeWas = this.koeState;
     this.koeState = !this.#split ? 'off' : told === 'koe-down' ? 'down' : path?.kind === 'live' ? 'live' : 'text';
+    if (this.koeState !== koeWas) this.kokoro.poke(); // a turn waiting for Koe's first words (#hold) looks again
     this.#liveId = path?.kind === 'live' && this.koeState === 'live' ? path.modelId : null;
     // The chosen Live rests after a failure and Koe · Chat answers, with the chip still Live: one short note as that begins, once per rest.
     if (way.path?.kind === 'live') this.#restSaid = false;
@@ -1026,7 +1037,16 @@ export class Halves {
     // Only what comes from the user's input gathers: their messages, and Koe's questions and answers about them.
     if (!wakes.some((w) => isTheirs(w) || (w.kind === 'note' && w.from === 'koe') || w.input)) return 0;
     if (typing || speaking) return Infinity;
-    return Math.max(0, this.#input.at + (this.#input.photo ? GATHER.photo : GATHER.quiet) * this.secondMs - Date.now());
+    // A typed line: Koe answers it first, and Kokoro's first request reads what it said, so her "on it" isn't said twice (real models).
+    const first = this.#koeOwes && this.koeState === 'text' ? this.#koeOwes + KOE_FIRST_S * this.secondMs - Date.now() : 0;
+    return Math.max(0, first, this.#input.at + (this.#input.photo ? GATHER.photo : GATHER.quiet) * this.secondMs - Date.now());
+  }
+
+  /** Koe has said its first words to the typed line (or its turn ended): Kokoro's turn waits no longer. */
+  #koeSaid() {
+    if (!this.#koeOwes) return;
+    this.#koeOwes = 0;
+    this.kokoro.poke();
   }
 
   /**
@@ -1174,7 +1194,10 @@ export class Halves {
     if (e.type === 'heard') this.kokoro.confirmHeard({ id: e.data.id, ...words, kept: !e.data.dismissed });
     else if (e.type === 'heard.text') this.kokoro.confirmHeard({ id: e.data.of, ...words });
     const typed = e.type === 'msg.user' && e.data?.split;
-    if (e.type.startsWith('out.')) this.#unsaid = []; // Koe reached the user: what it was told is passed on
+    if (e.type.startsWith('out.')) {
+      this.#unsaid = []; // Koe reached the user: what it was told is passed on
+      this.#koeSaid();
+    }
     if (e.type === 'heard' && !e.data?.dismissed) this.#heardNow(false);
     // Koe didn't answer something at the user's own level (the second-drive design, section 2): Kokoro hears now, not at the review. Lyrics, quieter, cost no call;
     // lyrics as loud as the user cost one, until an exchange.
@@ -1201,6 +1224,7 @@ export class Halves {
     if (e.type === 'tool.result' && e.data?.name === 'tell_kokoro') this.#asking = false;
     const answered = (out && !(this.#owed = this.#asking)) || failed;
     // A hand-over typed to Koe is Kokoro's to file: its turn carries it, so what it does can be undone.
+    if (typed && this.koeState === 'text') this.#koeOwes = Date.now();
     if (typed) this.#wakeKokoro({ kind: 'user', text: String(r.texts.text ?? e.data.text ?? ''), logged: true, ...(e.data.handover ? { handover: e.data.handover } : {}) });
     else if (answered) this.#wakeKokoro({ kind: 'cue', text: /* en */ 'Koe answered the user', logged: true, input: true, watched: this.#koeWatched() });
     else if (e.type === 'heard') this.#cue ||= !e.data?.dismissed;

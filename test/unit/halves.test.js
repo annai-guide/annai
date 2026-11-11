@@ -6,6 +6,7 @@ import { tripTools } from '../../src/core/agent/trip-tools.js';
 import { createTrip } from '../../src/core/scopes.js';
 import { prefixFingerprint } from '../../src/core/agent/context.js';
 import { updateAppSettings } from '../../src/core/settings.js';
+import { readConfig, saveRoles } from '../../src/core/llm/config.js';
 import { KOKORO_PART } from '../../src/core/koe/instructions.js';
 import { useClock } from './clock.js';
 import { setWords } from '../../src/core/l10n.js';
@@ -86,6 +87,57 @@ test("Kokoro's note that points at its words for the user (\"Say the for_user te
   k.agent.send('And the market?');
   await k.agent.idle();
   assert.equal(notes().at(-1), `<from_kokoro id="${k.agent.nonce}">Tell the user: "The pier market runs until 2."</from_kokoro>`);
+});
+
+test("a typed line: Kokoro's turn waits for Koe's first words, so its first request reads them and her \"on it\" isn't said twice; Koe failing, Koe unset or Koe never answering lets it go, the last by KOE_FIRST_S (real models, item 1a)", async (t) => {
+  useClock(t);
+  const SECOND = 200; // quiet 300 ms, the cap 700 ms after the line
+  /** @param {any} koeReply @param {(k: any) => Promise<unknown>} meanwhile what happens while Koe's first call is held @param {boolean} [release] */
+  const run = async (koeReply, meanwhile, release = true) => {
+    /** @type {() => void} */
+    let go = () => {};
+    const held = new Promise((r) => { go = () => r(undefined); });
+    /** @type {{ who: string, at: number }[]} */
+    const starts = [];
+    let first = true;
+    const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], {
+      koe: { type: [koeReply, sleep] }, agent: { secondMs: SECOND },
+      hold: async (c) => {
+        starts.push({ who: c.model.providerId, at: Date.now() });
+        if (c.model.providerId === 'model-koe' && first) {
+          first = false;
+          await held;
+        }
+      },
+    });
+    const sent = Date.now();
+    k.agent.send('Save a note: the pier market runs until 2.');
+    await meanwhile(k);
+    if (release) go();
+    await until(() => starts.some((x) => x.who === 'model-0'), 5000);
+    go();
+    await k.agent.idle();
+    return { k, kokoroAt: /** @type {number} */ (starts.find((x) => x.who === 'model-0')?.at) - sent };
+  };
+  const pause = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
+  const noKokoro = (/** @type {any} */ k) => assert.equal((k.sent['model-0'] ?? []).length, 0, "Kokoro hasn't started while Koe owes its first words");
+  // Koe answers after GATHER.quiet: Kokoro waits, and its first request has what Koe said.
+  const a = await run(calls(['speak', { text: 'On it.' }]), async (k) => { await pause(450); noKokoro(k); });
+  assert.ok(userTexts(a.k.sent['model-0'][0]).includes('[Koe said] "On it."'), JSON.stringify(userTexts(a.k.sent['model-0'][0])));
+  // Koe fails: Kokoro goes on at once, not at the cap.
+  const b = await run({ error: 'auth', message: 'bad key' }, async (k) => { await pause(450); noKokoro(k); });
+  assert.ok(b.kokoroAt < 650, `Kokoro started ${b.kokoroAt} ms after the line`);
+  // Koe is unset (Settings → Models): Kokoro goes on at once.
+  const c = await run(calls(['speak', { text: 'On it.' }]), async (k) => {
+    await pause(450);
+    noKokoro(k);
+    const cfg = await readConfig(k.ws);
+    await saveRoles(k.ws, { ...cfg.roles, 'koe-classic': { models: [], level: 'off' } });
+  }, false);
+  assert.ok(c.kokoroAt < 650, `Kokoro started ${c.kokoroAt} ms after the line`);
+  // Koe never answers: Kokoro starts by the cap.
+  const d = await run(calls(['speak', { text: 'On it.' }]), async () => {}, false);
+  assert.ok(d.kokoroAt >= 600 && d.kokoroAt < 1500, `Kokoro started ${d.kokoroAt} ms after the line`);
 });
 
 test("the code gate: Kokoro's speak, show and ask while Koe works aren't run; each is a tell_koe append; the result says use tell_koe; no out.* from Kokoro", async (t) => {
@@ -684,7 +736,8 @@ test("Fix pass 10, in another language: Koe still hears that Kokoro's model has 
 
 test("Fix pass 12: Kokoro's errors are set aside from the conversation only while Koe talks; while Koe is down, they are Shiori's", async (t) => {
   useClock(t);
-  const k = await agentKit([[{ error: 'auth', message: 'bad key' }]], { koe: { type: [{ delayMs: 30, error: 'auth', message: 'bad key' }] } });
+  // Koe fails after Kokoro's turn has started: past KOE_FIRST_S (35 ms here), which Kokoro waits at most for Koe's first words.
+  const k = await agentKit([[{ error: 'auth', message: 'bad key' }]], { koe: { type: [{ delayMs: 60, error: 'auth', message: 'bad key' }] } });
   k.agent.send('Hi');
   await k.agent.idle();
   // Koe is down now: what the user types is Kokoro's, and so is its error, shown.
