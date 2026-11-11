@@ -29,6 +29,11 @@ import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 /* en */ export const NOT_RUN = 'Not run: another conversation was opened first.';
 /** A cut call of a turn let go (loop.js #lettingGo): one that waited on the user, and one annai started by itself. */
 /* en */ export const NOT_ANSWERED = 'Not answered: the user opened another conversation; what they say next may answer it.';
+/**
+ * The same, when the open cut her line while she was still saying it: an answer and a question have the same shape (a speak she would listen
+ * after), so the words serve both, and she knows which hers was.
+ */
+/* en */ export const NOT_HEARD = "Not heard in full: the user opened another conversation while you said it. It is written in the conversation; don't repeat it unless they ask. If it asked them something, what they say next may answer it.";
 /* en */ export const LET_GO = "Let go: the user opened another conversation; don't take it up unless they ask.";
 /** Entries the conversation never shows Shiori, left out as it is read: a drive logs thousands of points (spec §4.5). */
 export const NOT_SAID = new Set(['location', 'trigger.fired']);
