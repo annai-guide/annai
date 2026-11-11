@@ -46,16 +46,13 @@ class DryRun {
  */
 export async function forget(store, scope, match) {
   try {
-    return await forgetIn(store, scope, match);
+    return await store.tx(['files', 'events', 'blobs', 'scopes'], 'readwrite', (t) => forgetWith(t, scope, match));
   } catch (e) {
     if (e instanceof DryRun) return e.result;
     if (e instanceof Kept) return { files: 0, events: 0, bytes: 0, kept: e.where };
     throw e;
   }
 }
-
-/** @param {Store} store @param {string} scope @param {Match} match @returns {Promise<Forgot>} */
-const forgetIn = (store, scope, match) => store.tx(['files', 'events', 'blobs', 'scopes'], 'readwrite', (t) => forgetWith(t, scope, match));
 
 /**
  * The same in a transaction of files, events, blobs and scopes the caller holds (a move from waiting); no mustFree or dryRun there.

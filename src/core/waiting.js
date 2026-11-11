@@ -57,8 +57,8 @@ export async function moveFile(ws, from, to, o = {}) {
  */
 export async function dropWaiting(ws, path) {
   const named = Object.hasOwn(await readNames(ws, SYS_WAITING), path);
-  const freed = await ws.writeAcross(named ? [{ scope: SYS_WAITING, path: NAMES_FILE, patch: { [path]: null }, opts: { author: 'system' } }] : [], { inTx: (t) => forgetWaiting(t, path) });
-  return freed ?? 0;
+  // inTx's value, the bytes forgetWaiting freed.
+  return /** @type {number} */ (await ws.writeAcross(named ? [{ scope: SYS_WAITING, path: NAMES_FILE, patch: { [path]: null }, opts: { author: 'system' } }] : [], { inTx: (t) => forgetWaiting(t, path) }));
 }
 
 /** A waiting file and its history go, then names.json's history. @param {import('./types.js').Tx} t @param {string} path @returns {Promise<number>} bytes freed */
