@@ -452,7 +452,7 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### What follows a file's move is not part of the move
 - **Kind:** deferred.
-- **What the user sees:** if the page closes right after a file's move, the file is in the new trip but Shiori there has not been told to read it, and the first conversation has no "moved" line (Undo from the new trip still brings the file back). For a calendar that was waiting to be filed, its events are not planned yet either.
+- **What the user sees:** if the page closes right after a file's move, the file is in the new trip but Shiori there has not been told to read it, and the first conversation has no "moved" line (Undo, in the first conversation, still brings the file back; it shows there once she has written a line after the hand-over, before the user's next message). For a calendar that was waiting to be filed, its events are not planned yet either.
 - **Why:** those steps are written by Shiori's own code after the move has been committed; only the move itself is one transaction.
 - **Revisit when:** the next version.
 
