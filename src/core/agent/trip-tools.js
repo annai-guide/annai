@@ -500,9 +500,9 @@ export function tripTools(app) {
         // Where the files went (Undo finds the trip by it), and the conversation's own line saying where they went: its last of the move.
         if (m.size || call.handover) await moved(rec.id, false, m.size, call);
         await logIn(call, { type: 'conversation.moved', actor: 'shiori', data: { to: rec.id, title: rec.title } });
-        app.carryOn(rec.id, wakes, call.signal);
+        await app.carryOn(rec.id, wakes, call.signal);
         /* en */
-        return `They chose Open: ${JSON.stringify(rec.title)} is open now, and you answer them there; this conversation stays.${named(m)}`;
+        return `They chose Open: ${JSON.stringify(rec.title)} is open now, and you answer them there; this conversation stays.`;
       },
     },
     {
