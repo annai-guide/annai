@@ -2081,10 +2081,51 @@ test("open_trip with Koe on a chat model held in a turn: the yes it heard is wri
     release();
     await k.agent.idle();
     await endsMoved(k, k.trip);
+    // Written as the card's answer, as classic voice's yes is: before its result, never as a newer line.
+    const heard = await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(k.trip, { types: ['heard'] }));
+    assert.deepEqual(heard.map((/** @type {any} */ e) => [e.data.id, e.data.answer]), [['h-1', k.asks[0].data.id]]);
     const before = k.requests.length;
     await k.agent.open(k.trip);
     await k.agent.idle();
     assert.equal(k.requests.length, before, 'nobody wakes in the chat');
+  } finally {
+    release();
+  }
+});
+
+test("read_trip with Koe on a chat model held in a turn: the yes it heard answers the card, leaves Koe's queue and is written as the card's answer, before its result; no line after it, no turn of Koe's for it, and Kokoro isn't woken again", async (t) => {
+  useClock(t);
+  /** @type {() => void} */
+  let release = () => {};
+  const held = new Promise((r) => { release = () => r(undefined); });
+  let first = true;
+  // Koe would answer a "Yes." it took a turn for, as a real one did ("Okay!").
+  const koe = { rules: [...KOE.rules.slice(0, 1), { match: '[heard]', reply: say('Okay!') }, ...KOE.rules.slice(1)] };
+  const k = await gateKit(KOKORO, { koe: { type: koe }, hold: async (/** @type {any} */ c) => { if (c.model.providerId === 'model-koe' && first) { first = false; await held; } } });
+  try {
+    k.agent.send('Where did we eat in Testville?');
+    await until(() => k.asks.length === 1);
+    await pause(k.agent.secondMs);
+    // Koe is mid-turn (its model call waits): a yes reaches its microphone and waits in its queue, as its words reach the card.
+    k.agent.kokoro.confirmHeard({ id: 'h-1', at: Date.now(), text: 'Yes.' });
+    k.agent.koe.enqueue({ kind: 'heard', text: '', heard: { id: 'h-1', text: 'Yes.', ms: 600, source: 'dictation' } });
+    await pause(4 * k.agent.secondMs); // its words have stood still (SETTLE_S)
+    assert.equal((await grants(k, k.trip)).length, 1, 'the yes allowed it');
+    release();
+    await k.agent.idle();
+    const log = await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(k.trip, { types: ['heard', 'tool.result', 'out.speak'] }));
+    const heard = log.filter((/** @type {any} */ e) => e.type === 'heard');
+    assert.deepEqual(heard.map((/** @type {any} */ e) => [e.data.id, e.data.text, e.data.answer]), [['h-1', 'Yes.', k.asks[0].data.id]], 'once, as the card\'s answer');
+    const read = log.find((/** @type {any} */ e) => e.type === 'tool.result' && e.data.name === 'read_trip');
+    assert.ok(heard[0].seq < read.seq, 'before the card\'s result');
+    assert.deepEqual(log.filter((/** @type {any} */ e) => e.type === 'out.speak').map((/** @type {any} */ e) => e.data.text), ['Let me look.'], 'Koe took no turn for it');
+    assert.deepEqual([k.sent['model-koe'].length, k.sent['model-0'].length], [1, 2], "Koe's answer to the typed line; Kokoro's read and its step after");
+    assert.equal((await Transcript.load(k.store, k.trip, { half: 'koe' })).unanswered, false, 'Koe owes nothing for it');
+    const before = k.requests.length;
+    await k.agent.open(await createTrip(k.ws, { title: 'Elsewhere' }));
+    await k.agent.open(k.trip);
+    await k.agent.idle();
+    assert.equal(k.requests.length, before, 'opened again, nobody wakes');
   } finally {
     release();
   }

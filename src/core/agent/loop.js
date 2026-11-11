@@ -120,6 +120,8 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  * @property {(wakeId: string) => void} [joined]  wakes joined its turn going on (the user's words, a choice, a photo, the other half, a trigger)
  * @property {(on: boolean, line?: { id: string, at: number, her?: boolean }) => void} [speech]  its microphone hears someone begin to speak, or stop (line: with the
  *   segment they made, when it began, and whether annai's voice was playing then), for annai's card when the other half holds it
+ * @property {(ids: string[]) => { heard: Heard, gate?: string }[]} [took]  the other half's heard lines that answered annai's card, by id, taken out of its
+ *   queue (those still there), for the card to write as its answer
  * @typedef {{ wakeId: string, ok: boolean, finalText: string, told: boolean, slept: boolean, spoke: boolean, kinds: string[], by: { name: string, first: string | null, tried: boolean } | null }} TurnEnd
  *   by: the model that answered the turn's last call
  *   finalText: a last reply's text with no tool calls; told: it told the other half (or a gated call did)
@@ -1019,6 +1021,9 @@ export class Agent {
       });
     });
     for (const h of got.own ?? []) await this.#logHeard(h, { wake: call.wake, answer: call.id });
+    // The other half's lines that answered it, still in its queue (Koe was busy in a turn): out of it, and written as the card's, as this half's
+    // own are, so none comes back after the card as a newer line that half takes a turn for.
+    for (const x of got.other?.length ? this.#half.took?.(got.other) ?? [] : []) await this.#logHeard(x.heard, { wake: call.wake, answer: call.id, ...(x.gate ? { gate: x.gate } : {}) });
     if (got.stopped) return { stopped: true };
     if (got.chosen !== undefined) {
       await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...this.#chose() }, texts: [['text', got.chosen]] });
@@ -1123,7 +1128,8 @@ export class Agent {
       const last = ask.armed?.line ?? lines.findLast((l) => l.kept && !l.her && l.text !== undefined && askSaid(ask, l) === null);
       if (!last || this.#pending !== p) return;
       this.#pending = null;
-      if (!last.h) return void p.resolve(chosen ? { voiced: chosen } : { spoke: last.id }); // the other half's line, in the log already
+      // The other half's line, in the log already, or in its queue (a busy Koe): an answer's listed lines are the card's (confirm takes them).
+      if (!last.h) return void p.resolve(chosen ? { voiced: chosen, other: lines.filter((l) => !l.h && askSaid(ask, l) !== null).map((l) => l.id) } : { spoke: last.id });
       if (this.#ear) this.#ear.owner = 'turn';
       this.#setState('thinking');
       // Unanswered, it carries all they said, in order; an answer, its own line.
