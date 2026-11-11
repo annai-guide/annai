@@ -278,10 +278,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### A turn stops when another conversation is tapped
 - **Kind:** known limitation.
-- **What the user sees:** tapping another conversation (a row on the timeline, or +) while Kokoro works stops her turn there until the user comes back to it.
-- **Why:** conversations don't run side by side, and `open` stops a turn.
+- **What the user sees:** tapping another conversation (a row on the timeline, or +) while Kokoro works stops her turn there. What comes of it depends on the turn. One the user started, or answered her in, that she was still working on: the conversation left says "Shiori was in the middle of something. She picks it up when you come back.", and she takes it up when they come back. One whose last step was talking to them (a line she was saying or had said, her question, a wait, annai's card): let go, with no line, and their next line there answers her. One annai started by itself (GPS turned on, a reminder or watch firing, a plugin's wake) that they didn't answer: let go too, and a reminder it hadn't yet given them shows at once as a Reminder card, said aloud if voice is on. Open on annai's card that takes them into another trip lets the turn that asked go: she answers them in that trip.
+- **Why:** conversations don't run side by side, and `open` stops a turn. Only what the user asked is taken up again: their next line answers a question of hers, and annai's own turn would be stale by the time they come back.
 - **Revisit when:** drives show it.
-- **Approved:** 2026-11-05, the user picked "Stop until you come back (Recommended)".
+- **Approved:** 2026-11-05, the user picked "Stop until you come back (Recommended)". A turn annai started is let go: 2026-11-10, the user picked "No, let it go (Recommended)". A turn waiting on them is let go, with nothing said on return: 2026-11-10, the user picked "Nothing; I just answer (Recommended)".
 
 ### Only the trip in play reminds
 - **Kind:** known limitation.
@@ -292,7 +292,7 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### A turn cut by a failed open doesn't resume on its own
 - **Kind:** known limitation.
-- **What the user sees:** a conversation fails to open while Shiori is mid-turn. The turn stops, and the note says "She picks it up when you come back" though they never left. She answers with their next line, which carries both, and the microphone closes; a tap reopens it.
+- **What the user sees:** a conversation fails to open while Shiori is mid-turn on something the user asked. The turn stops, and the note says "She picks it up when you come back" though they never left. She answers with their next line, which carries both, and the microphone closes; a tap reopens it. A turn that was waiting on them, or that annai started by itself, is let go with no note, as at any open ("A turn stops when another conversation is tapped").
 - **Why:** a restart there adds a wake when the store is probably failing anyway; the released copy cuts the turn the same way.
 - **Revisit when:** a failed open shows up in real use.
 - **Approved:** 2026-11-06, the user picked "Accept for now (Recommended)".
@@ -393,42 +393,56 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### A spoken yes to annai's card is heard late when no model listed can write speech down
 - **Kind:** deferred.
-- **What the user sees:** in one setup (Koe on a chat model that takes sound, Kokoro on a model that takes no audio, and no transcription model in the speech-in list, with the question typed), a "Yes" said to annai's card gets its words only when Koe's own turn ends: of 7 real-speech runs, 5 were granted 16 to 49 seconds after the word, 1 ended unanswered, and 1 was still waiting after 45 seconds. A tap on the card works at once. With a transcription model listed (for example either of Gemini's), the yes is granted about 4 seconds after the word, as elsewhere.
+- **What the user sees:** in one setup (Koe on a chat model that takes sound, Kokoro on a model that takes no audio, and no transcription model in the speech-in list, with the question typed), a "Yes" said to annai's card gets its words only when Koe's own turn ends: of 7 real-speech runs, 5 were granted 16 to 49 seconds after the word, 1 ended unanswered, and 1 was still waiting after 45 seconds. A tap on the card works at once. With a transcription model listed (for example either of Gemini's), the yes is granted about 4 seconds after the word, as elsewhere. The card that takes them into another trip ("Carry on in Kyoto?") hears its yes the same way, so that trip opens 16 to 49 seconds after the yes: from a conversation or Trips the screen changes long after the user's word, perhaps while they are looking at something else. Typing meanwhile ends the card instead.
 - **Why:** the card's line is written down once, through the speech-in list for Kokoro's own model; with nothing there that takes the sound, only Koe's model can, and it writes a line down when its turn ends. Asking Koe's model for every such line was tried (2026-11-10) and taken back out: it made the usual setup's yes slower (4.1 s to 9.5 s), wrote lines down twice, and a slow write-down rested Koe's only model.
 - **Revisit when:** the next version: the speech-in list first, and Koe · Chat's model only as the fallback when nothing listed can write the line down; the regression test "written down once, by the transcription model" stays as it is.
 
 ### Where annai hears while she speaks, her own echo can end annai's card unanswered
 - **Kind:** deferred.
-- **What the user sees:** on a route where annai listens while she speaks (a car's hands-free, headphones) and her voice comes back into the microphone late, her own words can be written down as a heard line; if Koe keeps that line, annai's card ends unanswered ("Not read") with nobody having spoken, and the user is asked again or taps. It never grants: across 9 real-speech runs on the test's car route, no echo alone granted a read, and 4 cards ended this way. Measured only on the test's own loop (her output fed back 6 dB quieter and 400 ms late); no real car, speakerphone or headphones were measured.
+- **What the user sees:** on a route where annai listens while she speaks (a car's hands-free, headphones) and her voice comes back into the microphone late, her own words can be written down as a heard line; if Koe keeps that line, annai's card ends unanswered ("Not read") with nobody having spoken, and the user is asked again or taps. It never grants: across 9 real-speech runs on the test's car route, no echo alone granted a read, and 4 cards ended this way. Measured only on the test's own loop (her output fed back 6 dB quieter and 400 ms late); no real car, speakerphone or headphones were measured. The card that takes them into another trip ("Carry on in Kyoto?") hears the same way: her echo never opens a trip, and can end that card unanswered ("Not opened"), with nothing moved.
 - **Why:** a line begun while she plays, or within 360 ms after (the half-duplex gate's own numbers: 300 ms echo tail plus 60 ms), counts as hers and neither arms nor ends the card; an echo 400 ms late outlasts that. The number was sized for a phone's own speaker.
 - **Revisit when:** the next version: measure the loop on a real car's hands-free and on headphones, then size the tail from it (or end the card only on a line that wasn't begun inside the measured loop).
 
 ### Classic voice: a take-back said just after the 20 seconds isn't heard
 - **Kind:** deferred.
-- **What the user sees:** in classic voice (no live session), the microphone that listens for an answer to annai's card closes 20 seconds after the question. A "Yes" said in the last 3 of those seconds is still settling when it closes, so a "No, wait" said right after isn't recorded, and the trip is read. Live voice and a chat Koe keep hearing after the 20 seconds. Found by the final review (2026-11-10, run with the loop's clock); it needs a yes at the window's very end and a take-back within 3 seconds of it.
+- **What the user sees:** in classic voice (no live session), the microphone that listens for an answer to annai's card closes 20 seconds after the question. A "Yes" said in the last 3 of those seconds is still settling when it closes, so a "No, wait" said right after isn't recorded, and the trip is read. On the card that takes them into another trip ("Carry on in Kyoto?") that trip opens instead, despite the "No, wait": the files, lines and moves listed under "Someone else's "yes" within the 20 seconds answers annai's card", which Back doesn't undo. Live voice and a chat Koe keep hearing after the 20 seconds. Found by the final review (2026-11-10, run with the loop's clock); it needs a yes at the window's very end and a take-back within 3 seconds of it.
 - **Why:** the window's end closes the microphone at once, whether or not a yes is waiting; keeping it open until the yes settles would also hear a second "Yes" said after the window, which is outside it and would then drop the first: what that one should do has to be decided first.
 - **Revisit when:** the next version: the microphone stays open while a yes settles, and a line begun after the window can only take a yes back, never give one.
+- **Approved:** for the card that moves them, until that fix: 2026-11-11, the user picked "Keep it, accept the misses".
 
 ### A rising "Yes?" is heard as a yes by annai's card
 - **Kind:** known limitation.
-- **What the user sees:** annai asks aloud "Read <trip>?"; the user answers with a questioning "Yes?" (as in "pardon?"), and the card takes it as a yes: Shiori reads that trip. Both Gemini Live and the speech-to-text server write a rising "Yes?" as "Yes." (0 of 8 written lines kept a question mark in the real-voice check, 2026-11-10; only "What?" kept it, and only in Gemini). Whatever the user says next within 3 seconds still takes the yes back, and a tap on Not now wins at any time. The read is of the user's own trip, and reading changes nothing.
+- **What the user sees:** annai asks aloud "Read <trip>?"; the user answers with a questioning "Yes?" (as in "pardon?"), and the card takes it as a yes: Shiori reads that trip. Both Gemini Live and the speech-to-text server write a rising "Yes?" as "Yes." (0 of 8 written lines kept a question mark in the real-voice check, 2026-11-10; only "What?" kept it, and only in Gemini). Whatever the user says next within 3 seconds still takes the yes back, and a tap on Not now wins at any time. The read is of the user's own trip, and reading changes nothing. On the card that takes them into another trip ("Carry on in Kyoto?") the same "Yes?" opens that trip 3 seconds after its words unless anything is said meanwhile: the files, lines and moves listed under "Someone else's "yes" within the 20 seconds answers annai's card", which Back doesn't undo.
 - **Why:** the card judges the words as the recogniser writes them, by annai's own word list; the tone is not in the text. A stricter rule (two words, or a tap for the first read) would cost every spoken yes.
 - **Revisit when:** a recogniser annai uses marks questions in what it writes, or the user asks for a stricter spoken yes.
-- **Approved:** 2026-11-10, the user picked "Accept as known limitation (Recommended)".
+- **Approved:** 2026-11-10, the user picked "Accept as known limitation (Recommended)". For the card that moves them: 2026-11-11, the user picked "Keep it, accept the misses".
 
 ### Live voice: words that arrive after the next sentence has begun are taken as part of it
 - **Kind:** known limitation.
-- **What the user sees:** in live voice only, and only when the provider is late twice: the user says "Yes." to annai's card and then takes it back; if the words of the "Yes." reach annai after the take-back's turn has begun, they are written onto that turn's line, and if the take-back's own words then come more than 3 seconds after it ended, the trip is read. Not seen in about 500 real-speech runs (2026-11-10); found by reading the code. In the same way a late "Yes." can be lost (joined to the next line's words, or counted as outside the 20 seconds).
+- **What the user sees:** in live voice only, and only when the provider is late twice: the user says "Yes." to annai's card and then takes it back; if the words of the "Yes." reach annai after the take-back's turn has begun, they are written onto that turn's line, and if the take-back's own words then come more than 3 seconds after it ended, the trip is read. On the card that takes them into another trip ("Carry on in Kyoto?") the taken-back yes opens that trip instead: the files, lines and moves listed under "Someone else's "yes" within the 20 seconds answers annai's card", which Back doesn't undo. Not seen in about 500 real-speech runs (2026-11-10); found by reading the code. In the same way a late "Yes." can be lost (joined to the next line's words, or counted as outside the 20 seconds).
 - **Why:** Gemini Live sends a turn's transcript as text with no mark of which turn it belongs to, so annai appends it to the turn going on; there is no way to tell on annai's side.
 - **Revisit when:** the provider says which turn a transcript belongs to (Gemini's `finished` flag on transcripts isn't read yet: measure whether it settles this), or another live provider is added.
-- **Approved:** 2026-11-10, the user picked "Accept as known limitation (Recommended)".
+- **Approved:** 2026-11-10, the user picked "Accept as known limitation (Recommended)". For the card that moves them: 2026-11-11, the user picked "Keep it, accept the misses".
 
 ### A yes said while annai is still asking isn't heard
 - **Kind:** known limitation.
-- **What the user sees:** annai says "Read <trip>?" aloud; a "Yes" begun before she has finished the question doesn't answer the card, on headphones too. The card stays, and a yes said after the question, or a tap, answers it. (3 of 3 runs each on the speaker and the headphones route in the real-voice check, 2026-11-10.)
+- **What the user sees:** annai says "Read <trip>?" aloud; a "Yes" begun before she has finished the question doesn't answer the card, on headphones too. The card stays, and a yes said after the question, or a tap, answers it. (3 of 3 runs each on the speaker and the headphones route in the real-voice check, 2026-11-10.) The same on the card that takes them into another trip ("Carry on in Kyoto?"): it stays, and nothing moves until a yes after the question or a tap.
 - **Why:** the 20 seconds for a spoken answer start when her question ends, and nothing begun over annai's own voice can answer the card: her own sound must never be taken for the user's.
 - **Revisit when:** the user asks for it on headphones, where there is no echo: it needs a sure way to know that no sound of hers reaches the microphone.
-- **Approved:** 2026-11-10, the user picked "Accept as known limitation (Recommended)".
+- **Approved:** 2026-11-10, the user picked "Accept as known limitation (Recommended)". For the card that moves them: 2026-11-11, the user picked "Keep it, accept the misses".
+
+### Someone else's "yes" within the 20 seconds answers annai's card
+- **Kind:** known limitation.
+- **What the user sees:** annai asks aloud "Read <trip>?" or "Carry on in <trip>?", and within the 20 seconds after the question a passenger, or a song, says "yes" (or another word on annai's list) loud enough to be heard as speech. The card takes it as the user's yes. Anything said within 3 seconds after the yes's words still takes it back, and a tap on Not now wins until the trip is read or opened. On "Read <trip>?" Shiori reads that trip, which changes nothing. On "Carry on in <trip>?" that trip opens, as on a real yes:
+  - files the user handed over in that turn move to it (Undo, from either conversation, brings them back);
+  - it gets the user's last line as theirs ("From <chat>"), her recap, and her answer, said aloud with voice on;
+  - its row on Trips moves to now; if it is happening, play moves to it, and another happening trip's reminders wait until the user talks there;
+  - the conversation they were in ends "Shiori moved this to <trip>.", and her turn there is let go, so they ask again.
+
+  Back from that conversation goes to the screen before it (usually Trips), not to it; it is one tap away by "From <chat>" on the trip's first line. Back from Trips returns to Trips; from Details or Settings the screen doesn't move, but the open conversation is now the trip. Back undoes none of the changes above, and nothing is deleted. The other wrong yeses on this card ("A rising "Yes?"…", the late live transcript, classic voice's take-back after the 20 seconds) change the same.
+- **Why:** the card judges the words the recogniser writes, by annai's own word list, and annai can't tell one voice from another ("Telling who is talking"). A tap only would end answering by voice; a stricter word list for moving would be more parts, for a rare miss that loses nothing.
+- **Revisit when:** annai can tell the user's voice from another's, or the user meets it.
+- **Approved:** for reading, 2026-11-05, the user picked "Yes, a strict word list (Recommended)", with "a passenger or song could grant, read-only" (the timeline design's decisions). For the card that moves them: 2026-11-11, the user picked "Keep it, accept the misses".
 
 ### Undo leaves a twice-moved file in its last trip when the clock went back and the middle trip is gone
 - **Kind:** known limitation.
@@ -452,9 +466,9 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### What follows a file's move is not part of the move
 - **Kind:** deferred.
-- **What the user sees:** if the page closes right after a file's move, the file is in the new trip but Shiori there has not been told to read it, and the first conversation has no "moved" line (Undo, in the first conversation, still brings the file back; it shows there once she has written a line after the hand-over, before the user's next message). For a calendar that was waiting to be filed, its events are not planned yet either.
-- **Why:** those steps are written by Shiori's own code after the move has been committed; only the move itself is one transaction.
-- **Revisit when:** the next version.
+- **What the user sees:** if the page closes right after a file's move, or a write fails right after it, the file is in the new trip but Shiori there has not been told to read it, and the first conversation has no "moved" line (Undo, in the first conversation, still brings the file back; it shows there once she has written a line after the hand-over, before the user's next message). For a calendar that was waiting to be filed, its events are not planned yet either. After Open on annai's card that takes them into another trip, the same can happen when the page closes, or a write fails, between the files moving and the "moved" line in the conversation they were in: that trip doesn't open, its files are there but the user's last line and Shiori's recap are not, and the conversation may have no "moved" line. Each file moves in a write of its own, so with several files a failure partway leaves some moved and some not.
+- **Why:** those steps are written by Shiori's own code after the move has been committed; only each file's move is one transaction, and where the files went, the "moved" line and the trip's copy of the line and recap are writes after it.
+- **Revisit when:** the next version: a move's writes are one transaction.
 
 ### A page's end isn't kept when only the window's height changes
 - **Kind:** known limitation.
@@ -474,3 +488,59 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** away from an offline pack, asking what is around often brings only Wikipedia's articles, with "OpenStreetMap didn't answer", after a wait of up to 25 s. In the recorded drives, none of three online calls got places: the main public Overpass server answered at 24.6 to 24.8 s, too late to be read under the 25 s limit, or not at all, and the second server never answered.
 - **Why:** both public servers are now asked at once, which shortens the wait but not their answer time. The query asks for every kind of place within the radius in one request, and the 25 s limit (Overpass's own 20 s for the query plus 5 s to connect) is about what the servers take when busy.
 - **Revisit when:** the next version: measure the request times from a phone (the Trace's `net.request` lines have them), then make the query lighter (fewer kinds per request, a smaller first radius), size its limits from those times, or add another source.
+
+### An answer Shiori already gave can be said once more
+- **Kind:** known limitation.
+- **What the user sees:** Shiori says again something she has already told them, in two rare ways. With her two halves, Koe (who talks) asks Kokoro (who thinks) again something she has already answered, and the user opens another conversation in the moment before Kokoro is idle (usually a few milliseconds as her turn ends): on coming back, Kokoro takes Koe's question up and may give the old answer again, which Koe says. And when annai is reloaded or killed while she is speaking, the turn is taken up the next time that conversation opens, as before this release, and she may say that line again.
+- **Why:** that Kokoro has already answered is written down only once she is idle, because that record settles everything before it; written sooner, it would also settle what she still owes (a line typed meanwhile, a turn the open cut). A record that names only the questions it settles would close the gap, as a new stored shape. After a kill annai can't tell what ran (a line cut in its playback, a call after it that never ran), and not taking the turn up would lose a second sentence, or a reminder she had just announced.
+- **Revisit when:** the user hears an answer repeated after coming back to a conversation or after a reload, or what a conversation still owes comes to be recorded line by line for another reason.
+- **Approved:** 2026-11-10, the user picked "Accept as known limitation".
+
+### A reload in the middle of annai's own turn is finished later
+- **Kind:** known limitation.
+- **What the user sees:** annai is closed or killed (the phone locks and the system ends the page, or a reload) while Shiori is in a turn annai started by itself (GPS turned on, a reminder or watch firing, a plugin's wake). The next time that conversation opens, she takes the turn up and finishes it, possibly hours later: a reaction to GPS that is stale by then, or a reminder she hadn't said yet, said late, by her, not shown as a card. Opening another conversation instead lets such a turn go at once, and shows its reminder as a card.
+- **Why:** after a kill annai can't know what ran (a line cut in its playback, a call after it that never ran), so a reload takes every unfinished turn up. Letting annai's own turns go on a reload too would need the rule for what is owed to know from the log who started each turn and whether the user answered in it, the reminder's text stored with its wake, and an exception in opening: about 15 to 20 lines in the hardest logic, and a kill during the model call would still look like a wake kept for later.
+- **Revisit when:** real use shows late answers after a reload that the user didn't want, or wakes come to keep their reminder text in the log for another reason.
+- **Approved:** 2026-11-11, the user picked "Finish it; known limitation".
+
+### A line of hers can play on in a conversation just opened
+- **Kind:** deferred.
+- **What the user sees:** with voice on, the user opens another conversation in the instant one of Shiori's spoken lines is being saved, before it plays. If it is a later line of her reply, it plays in full in the conversation just opened, and if that conversation's own reminder turn is stopped in those seconds, its Reminder card isn't shown. If it is her reply's first line (already playing as it streams), it stops but counts as heard: a reminder it carried isn't shown as a card, as it is when a line is cut midway, and she may say it again at the user's next line there.
+- **Why:** a line counts as being said only once it is saved and plays, so a cut during that one save isn't seen as a cut midway. The window is one save, longer with her two halves, where it can wait behind the other half's; a test hit it only by holding the save.
+- **Revisit when:** the next version: speak and ask mark the line as being said before saving it, and don't play it once the turn is cut (about four lines; the review's held-save probe is the test).
+
+### A failed read of the voice list while she speaks can freeze the next live session
+- **Kind:** deferred.
+- **What the user sees:** the phone's storage fails to read annai's list of voices while Shiori is saying a line. Until the next reload annai takes her as still speaking: the next live voice session to open (one opens behind a reminder, for example) waits for that line to end, which never comes, and the page can freeze; and a later reminder cut by an open or a Stop can show no card. Older than this release; found by reading the code and run in a test, not seen on a phone.
+- **Why:** the line reads the voice list outside the part that catches failures, so a failed read leaves the line neither finished nor failed. It needs a storage failure at that moment.
+- **Revisit when:** the next version: a line's end never fails (the list read where failures are caught, or a failure ends the line as "no voice").
+
+### Opening another conversation can drop the rest of her reply, or take up a turn already answered
+- **Kind:** deferred.
+- **What the user sees:** two rare cases when the user opens another conversation while Shiori works on something they asked. In one reply she says something, runs a tool, and has more to say after it, and the open comes during the tool: the rest is never said, on coming back either, and no "picks it up" line shows (none of 320 requests in the real-model runs had a reply with two spoken lines). Or she has already answered, and the open comes while a later step of the same turn writes her notes: the conversation left says "Shiori was in the middle of something. She picks it up when you come back.", and on coming back she takes the turn up, an extra turn that may say her answer again.
+- **Why:** whether a cut turn still owes the user is decided for her whole reply (did anything in it reach them), not for each call in it.
+- **Revisit when:** the next version: decide by each call: a cut speak, show or ask whose line isn't in the conversation leaves the turn owed, and so does a cut hand-off between her halves; nothing else does.
+
+### Her turns start a little later in a chat she named, as its files grow
+- **Kind:** deferred.
+- **What the user sees:** nothing noticeable so far. In a conversation with no dates whose name or details Shiori changed last, each of her turns, and Koe's, begins by reading the conversation's whole history of file changes to find who gave it its name. That took 0.3 ms at 108 file changes, 3.7 ms at 2,023 and 24.5 ms at 10,053, on the test store; a phone's storage wasn't measured.
+- **Why:** who named it is worked out again at every turn rather than kept, and at those sizes it is small next to a model's answer. Koe's turns don't use the answer.
+- **Revisit when:** a phone's Trace or a real-model run shows her turns starting slowly in such a conversation: keep the answer per conversation, and skip it for Koe.
+
+### A reminder set across a change of summer time can come an hour off what she said
+- **Kind:** deferred.
+- **What the user sees:** the user asks for a reminder on a date after the clocks change (in November, for March 19, say), and Shiori writes it with today's offset instead of that date's (-08:00 where March 19 is -07:00). Both her halves then say the time as written, "6 PM", and the reminder comes at 7 PM local time. Before this release Koe gave the time in the phone's zone, which showed the mistake, if confusingly. It needs the model to get the offset wrong; in the one real run of it, the model got it right.
+- **Why:** both halves now read one set of words for a reminder's time, made from the offset she wrote, and nothing checks that offset against the zone's on that date.
+- **Revisit when:** the next version: when the written offset doesn't match the conversation's zone at that moment, setting the reminder gives her the time in that zone too, so she sees her own mistake.
+
+### Shiori on her own can't see what the user answered Koe
+- **Kind:** deferred.
+- **What the user sees:** with her two halves, Koe asks something ("What can I do?") and the user answers aloud ("When is check-in?"); Koe passes it to Kokoro, and another conversation is opened while she works. Then the user empties Koe in Models, so Shiori is one again, and comes back: she takes the turn up, but their question isn't among what she reads, so she may not answer it. The same for a tap on Koe's card, or a line typed while Koe waits.
+- **Why:** answers to Koe's own questions are kept with Koe's calls, which Shiori on her own doesn't read.
+- **Revisit when:** the next version: Shiori on her own reads Koe's notes and the user's answers to Koe, as Kokoro does.
+
+### A yes Koe heard while busy wakes the conversation the user moved from
+- **Kind:** deferred.
+- **What the user sees:** with her two halves and Koe on a chat model, the user answers the card that takes them into another trip while Koe is busy in a turn of its own (for example "Yes." and then "Okay."). The trip opens, but that line is also written into the conversation they left, after its "Shiori moved this to <trip>." line, and when the user comes back to that conversation she wakes once and answers it. Shown by a test that held Koe in a turn; not yet shown end to end through the microphone.
+- **Why:** a line Koe heard while busy waits in Koe's own queue. When it answers the card, it stays there, and is written into the conversation it was heard in once the move has happened.
+- **Revisit when:** the next build on Kokoro and Koe's hand-offs: the lines that answered the card leave Koe's queue and are written as the card's answer.
