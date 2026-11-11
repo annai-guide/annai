@@ -465,3 +465,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the 20 seconds for a spoken answer start when her question ends, and nothing begun over annai's own voice can answer the card: her own sound must never be taken for the user's.
 - **Revisit when:** the user asks for it on headphones, where there is no echo: it needs a sure way to know that no sound of hers reaches the microphone.
 - **Approved:** 2026-11-10, the user picked "Accept as known limitation (Recommended)".
+
+### Undo leaves a twice-moved file in its last trip when the clock went back and the middle trip is gone
+- **Kind:** known limitation.
+- **What the user sees:** Shiori moved a file the user handed over from one trip to a second and later on to a third; the phone's clock was set back between those two moves; the user then removed the second trip by hand and tapped Undo on the hand-over. The file stays in the third trip and doesn't come back. Nothing is lost.
+- **Why:** with the middle trip removed, Undo can link the two moves only by their times, and the clock made those wrong. Linking them surely needs a new stored field on every move, naming the move that brought the file in.
+- **Revisit when:** moves get a stored link for another reason, or someone hits it.
+- **Approved:** 2026-11-10, the user picked "Accept as known limitation (Recommended)".
