@@ -1,5 +1,5 @@
 {
-  "build": "061396c26823",
+  "build": "aadf6b2deaeb",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -228,7 +228,7 @@
     "/src/ui/media-keys.js": "1c616b5f79e6",
     "/src/ui/mic-help.js": "845ccacb506a",
     "/src/ui/model-check.js": "843189985928",
-    "/src/ui/notices.js": "2f1d3b7ca861",
+    "/src/ui/notices.js": "aca752fa4d4b",
     "/src/ui/offline-pack.js": "7e72b3ca79c1",
     "/src/ui/open-file.js": "e1ff697775f9",
     "/src/ui/open-trip.js": "143474f503ad",
@@ -272,7 +272,7 @@
     "/src/ui/screens/simulate.js": "cbdebdf221a5",
     "/src/ui/screens/shiori.js": "0a256d7308c6",
     "/src/ui/screens/sees.js": "6a674fc473ae",
-    "/src/ui/screens/talk.js": "e47c14ad5633",
+    "/src/ui/screens/talk.js": "6ed2a381b30c",
     "/src/ui/screens/tools.js": "af43e4da0f2e",
     "/src/ui/screens/trace.js": "50ccaba04a62",
     "/src/ui/screens/trip.js": "f565536779e7",

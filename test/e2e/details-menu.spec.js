@@ -446,7 +446,7 @@ test('(c) the bar grows while the head is stuck under it and the menu is open: t
 async function lowerToggle(page) {
   await page.evaluate(() => scrollTo(0, 0));
   const to = await page.evaluate(() => {
-    const toggle = /** @type {HTMLElement} */ (document.querySelector('.talk-head .tidy-toggle'));
+    const toggle = /** @type {HTMLElement} */ (document.querySelector('.tidy-toggle'));
     const dock = /** @type {HTMLElement} */ (document.querySelector('.dock:not(.seat)'));
     return dock.getBoundingClientRect().top - 4 - toggle.getBoundingClientRect().bottom;
   });
@@ -456,7 +456,7 @@ async function lowerToggle(page) {
     document.querySelector('header.topbar')?.after(room);
   }, to);
   else await page.evaluate((px) => scrollBy(0, px), -to);
-  const gap = await page.evaluate(() => /** @type {HTMLElement} */ (document.querySelector('.dock:not(.seat)')).getBoundingClientRect().top - /** @type {HTMLElement} */ (document.querySelector('.talk-head .tidy-toggle')).getBoundingClientRect().bottom);
+  const gap = await page.evaluate(() => /** @type {HTMLElement} */ (document.querySelector('.dock:not(.seat)')).getBoundingClientRect().top - /** @type {HTMLElement} */ (document.querySelector('.tidy-toggle')).getBoundingClientRect().bottom);
   expect(gap).toBeGreaterThan(0); // set up: tappable, as low as that
   expect(gap).toBeLessThan(8);
 }
@@ -495,4 +495,59 @@ test('a menu that has the room it needs opens without moving the page', async ({
   await expect(page.locator('.tidy-menu')).toBeVisible();
   expect(await detailsProblems(page)).toEqual([]);
   expect(await page.evaluate(() => scrollY)).toBe(0);
+});
+
+// When opening the menu lifts the page (above), the ⋯ is no longer under the finger, and a quick second tap meant for it lands on the menu, on its first entry: Details in a
+// trip's conversation, and in the conversation with no trip Summarize now, which would run unasked (the re-review of the follow-ups, finding 2). What moved ignores taps for
+// 400 ms (notices.js): the menu ignores clicks for that long after a lift, and works as before after it, and at once when its open lifted nothing. The second tap is a click on the
+// first entry in the same task as the open (a second tap's click lands where the first entry is now).
+for (const [width, height] of /** @type {const} */ ([[320, 568], [667, 375], [844, 390]])) {
+  for (const inTrip of [true, false]) {
+    test(`the menu opened by a lift ignores a click on its first entry for 400 ms, then works: ${inTrip ? 'Details' : 'Summarize now, in the conversation with no trip'}, at ${width}x${height}`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await openApp(page);
+      let id = '';
+      if (inTrip) [id] = await makeConversations(page, [{ title: 'Pelican chat', lines: 1 }]);
+      await goToHash(page, inTrip ? `#/trip/${id}/talk` : '#/talk');
+      await expect(page.locator('.talk-head .tidy-toggle, .title-row .tidy-toggle').first()).toBeVisible();
+      await page.waitForTimeout(500); // the screen is at rest
+      await lowerToggle(page);
+      /** Opens the menu and clicks its first entry at once: what the page did, and whether the menu is still open. */
+      const early = await page.evaluate(() => {
+        const y = scrollY;
+        /** @type {HTMLElement} */ (document.querySelector('.tidy-toggle')).click();
+        const menu = /** @type {HTMLElement} */ (document.querySelector('.tidy-menu'));
+        const lifted = scrollY - y;
+        /** @type {HTMLElement} */ (menu.querySelector('a.btn, button.btn')).click();
+        return { lifted, open: !menu.hidden, hash: location.hash, toast: document.querySelector('.toast')?.textContent ?? null };
+      });
+      expect(early.lifted, 'the open scrolled the page').toBeGreaterThan(0);
+      expect(early.open, 'the menu is still open: the click was ignored').toBe(true);
+      expect(early.toast, 'nothing ran').toBeNull();
+      if (inTrip) expect(early.hash, 'Details did not open').toBe(`#/trip/${id}/talk`);
+      await page.waitForTimeout(500);
+      await page.evaluate(() => /** @type {HTMLElement} */ (document.querySelector('.tidy-menu a.btn, .tidy-menu button.btn')).click());
+      if (inTrip) await expect.poll(() => page.evaluate(() => location.hash)).toBe(`#/trip/${id}`);
+      else await expect(page.locator('.toast', { hasText: 'Summarizing' })).toBeVisible(); // it ran
+    });
+  }
+}
+
+test('a menu that opened with no lift takes a click on its first entry at once', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await openApp(page);
+  const [id] = await makeConversations(page, [{ title: 'Pelican chat', lines: 1 }]);
+  await goToHash(page, `#/trip/${id}/talk`);
+  await expect(page.locator('.talk-head .tidy-toggle')).toBeVisible();
+  await page.waitForTimeout(500);
+  await page.evaluate(() => scrollTo(0, 0));
+  const lifted = await page.evaluate(() => {
+    const y = scrollY;
+    /** @type {HTMLElement} */ (document.querySelector('.tidy-toggle')).click();
+    const lifted = scrollY - y;
+    /** @type {HTMLElement} */ (document.querySelector('.tidy-menu a.btn')).click();
+    return lifted;
+  });
+  expect(lifted, 'set up: the open lifted nothing').toBe(0);
+  await expect.poll(() => page.evaluate(() => location.hash)).toBe(`#/trip/${id}`);
 });

@@ -22,6 +22,7 @@ import { readNames } from '../../core/names.js';
 import { FILES_ONLY, undoable, undoEverywhere } from '../../core/handover.js';
 import { removeTripNow } from './trip.js';
 import { onTap } from '../dock-hides.js';
+import { MOVED_MS } from '../notices.js';
 import { openOrTell, openTrip, toTalk, talkOf } from '../open-trip.js';
 import { parseHash } from '../router.js';
 import { lineKind, lineClass, lineLabel, modelWords, kokorosWords } from '../line-kind.js';
@@ -869,6 +870,10 @@ function tidyMenu(ctx, trip) {
   };
   /** The max-height it was given last, so a frame that finds the same room writes nothing. */
   let height = -1;
+  /** Until when (performance.now()) the menu ignores clicks: a lift that opened it took the ⋯ from under the finger, and what moved ignores taps a moment (notices.js). */
+  let moved = 0;
+  // A click, not pointer-events: none, which would let the tap fall through to the conversation under the menu.
+  menu.addEventListener('click', (e) => { if (performance.now() < moved) { e.preventDefault(); e.stopPropagation(); } }, true);
   /** A finger is on the menu: it keeps its height until the finger is up. Taller, a menu scrolled to its end would shift under it, and a tap would land on another entry. */
   let finger = false;
   // `touches` is every finger on the screen: one resting on the page, or a pinch's other half, is no finger on the menu.
@@ -913,7 +918,10 @@ function tidyMenu(ctx, trip) {
     const first = /** @type {HTMLElement} */ (menu.querySelector('a.btn, button.btn'));
     const { paddingBottom, borderBottomWidth } = getComputedStyle(menu);
     const need = first.getBoundingClientRect().bottom - menu.getBoundingClientRect().top + parseFloat(paddingBottom) + parseFloat(borderBottomWidth);
-    if (need > room()) scrollBy(0, need - room());
+    if (need > room()) {
+      scrollBy(0, need - room());
+      moved = performance.now() + MOVED_MS;
+    }
     fit();
     if (!frame) frame = requestAnimationFrame(watch);
   });

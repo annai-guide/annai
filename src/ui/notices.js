@@ -3,6 +3,9 @@ import { num } from './format.js';
 
 /** @typedef {{ el: HTMLElement, list: HTMLElement, count: HTMLElement, members: Set<HTMLElement>, said: HTMLElement, show: HTMLElement, all: HTMLElement }} Stack */
 
+/** How long what moved under a finger ignores taps, ms (79cadd29, 2026-10-21: the user's taps landed on what slid into the place of what they aimed at). One home: the menu that lifts the page uses it too. */
+export const MOVED_MS = 400;
+
 /**
  * System cards and toasts. These are never in Shiori's voice (spec §16.1). Cards of one kind fold into one. Cards (el) sit in the page at its top,
  * under the top bar, and scroll away with it, so they never cover a screen's buttons; on home the box sticks under the bar while it holds a card
@@ -56,11 +59,11 @@ export function createNotices() {
     if (cards) still('over');
     if (rows) still('landed');
   };
-  /** What moved (.over: the cards; .landed: the rows) ignores taps for 400 ms (79cadd29, 2026-10-21), so a tap meant for what was there doesn't land on it. @param {string} what */
+  /** What moved (.over: the cards; .landed: the rows) ignores taps for MOVED_MS, so a tap meant for what was there doesn't land on it. @param {string} what */
   const still = (what) => {
     el.classList.add(what);
     clearTimeout(settle);
-    settle = setTimeout(() => el.classList.remove('landed', 'over'), 400);
+    settle = setTimeout(() => el.classList.remove('landed', 'over'), MOVED_MS);
   };
   /**
    * A card whose text is more than three lines shows three and a More, which opens it to its full height, and a Less, which closes
