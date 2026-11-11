@@ -41,7 +41,7 @@ export const NOT_SAID = new Set(['location', 'trigger.fired']);
  * The log entry types the conversation is made of (what apply() reads; compaction aside), so it is
  * read by type: a day of location points is never walked. A type apply() learns goes here too.
  */
-export const SAID = Object.freeze(['wake', 'msg.user', 'model.turn', 'photo.replace', 'error', 'heard', 'heard.text', 'reminder', 'tool.result', 'note', 'halves', 'out.speak', 'out.show', 'out.ask', 'handover.undo']);
+export const SAID = Object.freeze(['wake', 'msg.user', 'model.turn', 'photo.replace', 'error', 'heard', 'heard.text', 'reminder', 'tool.result', 'note', 'halves', 'out.speak', 'out.show', 'out.ask', 'handover.undo', 'conversation.moved']);
 /** Koe's window (plan decision 5): its last 12 exchanges, its start moving in jumps of 6. */
 export const KOE_WINDOW = 12;
 export const KOE_JUMP = 6;
@@ -285,6 +285,12 @@ export class Transcript {
       ].filter(Boolean).join('; ');
       /* en */
       this.#line([{ type: 'text', text: `[annai] The user tapped Undo for what you did with the files they handed you${said ? `: ${said}` : ''}. Don't do it again unless they ask.` }]);
+    } else if (e.type === 'conversation.moved') {
+      // The user chose to carry on there (open_trip's card): a later turn here knows it isn't still to do.
+      /* en */
+      this.#line([{ type: 'text', text: `[annai] The user carried this conversation on in ${JSON.stringify(String(d.title ?? ''))}: their line and your recap went there, where you answer them. Nothing of it is left to do here.` }]);
+      // So nothing before it is owed here either (a heard yes Koe hadn't answered): opened again, nobody wakes.
+      this.unanswered = false;
     } else if (e.type === 'error' && d.wake) {
       // A turn that ended in an error (no model, a budget, housekeeping that failed) is over: the user
       // saw a card, and a later start doesn't wake her again for it (spec §6.7). It isn't in the context.

@@ -9,6 +9,7 @@ import { KOE_TOOLS } from '../../src/core/koe/tools.js';
 import { createTrip, removeTrip, listTrips, tripMirror, ME, SYS_SETTINGS } from '../../src/core/scopes.js';
 import { timelineRows } from '../../src/core/timeline.js';
 import { record } from '../../src/core/agent/log.js';
+import { Transcript } from '../../src/core/agent/transcript.js';
 import { updateAppSettings, readAppSettings } from '../../src/core/settings.js';
 import { utf8 } from '../../src/core/bytes.js';
 import { liveKit, soon, tone, say as liveSay } from './koe-live-kit.js';
@@ -68,8 +69,8 @@ test('read_trip with no path or query: the trip named, its dates and places, its
   assert.match(out, /\/notes\/food\.md/);
   assert.match(out, /\/trip\.json/);
   assert.doesNotMatch(out, /station\.jpg|ticket\.pdf|pass\.pkpass/, 'photos, PDFs and other files are counted, not listed');
-  // From a chat she can take them there herself (open_trip), in words that can't be read as moving the file (S6); in a dated trip they open it from Trips (below).
-  assert.match(out, /Not opened by read_trip: 1 photo, 1 PDF, 1 other file\. You can't open these from here; to look at one, offer to take the user into that trip's conversation \(open_trip\), where you can\./);
+  // From a chat she calls open_trip and annai asks them, in words that can't be read as moving the file (S6); in a dated trip they open it from Trips (below).
+  assert.match(out, /Not opened by read_trip: 1 photo, 1 PDF, 1 other file\. You can't open these from here; to look at one, call open_trip: annai asks the user whether to carry on in that trip's conversation, where you can\./);
   assert.doesNotMatch(out, /\bmove/i);
   const lines = out.split('\n').filter((l) => /^(The user|Shiori): /.test(l));
   assert.equal(lines.length, 12);
@@ -142,7 +143,7 @@ test("read_trip with a path: that text file, as that trip's data: an instruction
 test('read_trip refuses in words what it does not open: a photo, a PDF, another binary file, a path that is no path, a file that is not there, a removed or draft trip, the open one (Review Focus 4)', async (t) => {
   useClock(t);
   const k = await kit();
-  const refused = "read_trip opens only text and JSON files, not photos, PDFs or other kinds: you can't open this one from here. To look at it, offer to take the user into that trip's conversation (open_trip, once they say yes), where you can; the file stays where it is.";
+  const refused = "read_trip opens only text and JSON files, not photos, PDFs or other kinds: you can't open this one from here. To look at it, call open_trip: annai asks the user whether to carry on in that trip's conversation, where you can; the file stays where it is.";
   for (const path of ['/files/station.jpg', '/files/ticket.pdf', '/files/pass.pkpass']) assert.equal(words(await run(k, 'read_trip', { trip: TV, path })), refused, path);
   // In a dated trip open_trip is refused: they open that trip from Trips.
   await k.ws.patch(k.trip, '/trip.json', { start: '2027-05-01' }, { author: 'user' });
@@ -1949,4 +1950,121 @@ test('classic voice: a "Yes" begun after the window, routed behind another line\
   assert.equal((await grants(k, k.trip)).length, 0);
   k.agent.interrupt();
   await k.agent.idle();
+});
+
+// ---- open_trip's card (the timeline design, "Moving into a trip"; the user's pick of 2026-11-11, "She asks, I tap or say yes"): the same
+// card and the same strict spoken yes and no as reading, on each voice path; and a photo or PDF read_trip can't open leads to it. ----
+
+/** annai's question on open_trip's card for Testville, with its dates as the screens write them. */
+const GOING = `Carry on in Testville, ${dateRange('2027-04-01', '2027-04-08')}?`;
+const OPEN_TV = call('open_trip', { trip: TV, recap: 'We were looking for the ramen place.' });
+/** Kokoro with Koe talking: open_trip for the user's line; in Testville, told they came, a note to Koe. */
+const KOKORO_GOING = { rules: [
+  { match: 'You moved the user here', reply: { toolCalls: [{ name: 'tell_koe', input: { text: 'Say we are in Testville now.' } }, { name: 'sleep', input: {} }] } },
+  { match: 'the user wrote', reply: OPEN_TV, then: sleep },
+] };
+/** The user's lines copied into Testville. @param {any} k */
+const copied = async (k) => (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(TV, { types: ['msg.user'] }))).filter((/** @type {any} */ e) => e.data.from).map((/** @type {any} */ e) => e.data.text);
+/** open_trip's results in the kit's conversation (Big Sur, a chat). @param {any} k */
+const openResults = async (k) => (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'open_trip').map((/** @type {any} */ e) => e.data.content);
+const STAYED = /^The user said no: they stay here, and nothing moved\. Carry on here, and don't offer to take them into "Testville" again unless they ask\.$/;
+
+test('open_trip, classic voice: annai says the card\'s question, listens, and a heard yes opens Testville at once with their line; a heard "No thanks" keeps them here, nothing moved', async (t) => {
+  useClock(t);
+  for (const [heard, opens] of /** @type {[string, boolean][]} */ ([['Yes please', true], ['No thanks', false]])) {
+    const k = await gateKit([OPEN_TV, say(opens ? 'Here in Testville.' : 'We stay here, then.')], { voice: { speechIn: ['m-hear'], hears: [heard] } });
+    k.agent.send("Let's carry on in Testville");
+    await until(() => k.asks.length === 1 && k.agent.state.name === 'listening');
+    assert.deepEqual([k.asks[0].data.question, k.asks[0].data.options], [GOING, ['Open', 'Not now']]);
+    assert.ok(k.said.includes(GOING), "said in annai's voice, as read_trip's card is");
+    await hear(k, 'first-one');
+    await k.agent.idle();
+    const yes = (await k.events(['heard']))[0];
+    assert.deepEqual([yes.data.text, yes.data.answer], [heard, k.asks[0].data.id], 'written with the card it answered');
+    if (opens) {
+      assert.equal(k.agent.trip, TV);
+      assert.deepEqual(await copied(k), ["Let's carry on in Testville"], 'their line, never the yes');
+      assert.equal((await Transcript.load(k.store, k.trip)).unanswered, false, 'the chat owes nothing');
+    } else {
+      assert.equal(k.agent.trip, k.trip);
+      assert.match((await openResults(k))[0], STAYED);
+      assert.deepEqual(await copied(k), []);
+    }
+  }
+});
+
+test('open_trip with Koe talking on a chat model: a yes Koe hears inside the window opens Testville, and the chat owes Koe nothing for it; a "No thanks." keeps them here', async (t) => {
+  useClock(t);
+  for (const [heard, opens] of /** @type {[string, boolean][]} */ ([['Yes.', true], ['No thanks.', false]])) {
+    const k = await gateKit(KOKORO_GOING, { koe: { type: KOE } });
+    k.agent.send("Let's carry on in Testville");
+    await until(() => k.asks.length === 1);
+    assert.equal(k.asks[0].data.question, GOING);
+    await pause(k.agent.secondMs);
+    await koeHeard(k, 'h-1', { text: heard });
+    await pause(4 * k.agent.secondMs); // its words have stood still (SETTLE_S)
+    await k.agent.idle();
+    if (opens) {
+      assert.equal(k.agent.trip, TV);
+      assert.deepEqual(await copied(k), ["Let's carry on in Testville"]);
+      // Koe heard the yes and never answered it there: the moved line settles it, so the chat, opened again, wakes neither half.
+      const before = k.requests.length;
+      await k.agent.open(k.trip);
+      await k.agent.idle();
+      assert.equal(k.requests.length, before);
+    } else {
+      assert.equal(k.agent.trip, k.trip);
+      assert.match((await openResults(k))[0], STAYED);
+      assert.deepEqual(await copied(k), []);
+    }
+  }
+});
+
+for (const [heard, opens] of /** @type {[string, boolean][]} */ ([['Yes.', true], ['No thanks.', false]])) {
+  test(`open_trip in a live session: annai says the question itself, and ${opens ? 'a yes the session hears opens Testville' : 'a "No thanks." the session hears keeps them here'}`, async () => {
+    const k = await liveKit([{ heard, noEnd: true }]);
+    try {
+      k.agent.addLoopTools(tripTools(k.agent));
+      await fixedTrip(k.ws, TV, { title: 'Testville', start: '2027-04-01', end: '2027-04-08' });
+      await k.voice.unlock();
+      k.agent.tap();
+      await until(() => k.agent.live.listening);
+      const going = k.agent.kokoro.loopTools().find((/** @type {any} */ x) => x.name === 'open_trip').run({ trip: TV, recap: 'We were looking for the ramen place.' }, {
+        id: 'c-live', scope: k.agent.scope, trip: k.agent.trip, signal: new AbortController().signal, model: null, wake: 'w', author: 'shiori',
+      });
+      await soon(async () => k.said.includes(GOING) && !k.voice.speaker.speaking, 5_000);
+      await liveSay(k, 'first-one');
+      const out = words(await going);
+      if (opens) {
+        assert.match(out, /^They chose Open: "Testville" is open now/);
+        await soon(async () => k.agent.trip === TV, 5_000);
+        const recap = (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(TV, { types: ['wake'] }))).flatMap((/** @type {any} */ e) => e.data.reasons).find((/** @type {any} */ r) => r.recap);
+        assert.equal(recap?.recap, 'We were looking for the ramen place.');
+      } else {
+        assert.match(out, STAYED);
+        assert.equal(k.agent.target, k.trip);
+      }
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+test("a photo or PDF in another trip: read_trip says to call open_trip, annai's card asks, and at Open she is in that trip, where the file is", async (t) => {
+  useClock(t);
+  const k = await kit([call('read_trip', { trip: TV, path: '/files/ticket.pdf' }), OPEN_TV, say('Here is the ticket.')]);
+  /** @type {any[]} */
+  const asks = [];
+  k.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'out.ask' && e.data.own) asks.push(e); });
+  k.agent.send('Show me the ticket PDF from Testville');
+  await until(() => asks.length === 1);
+  assert.equal(asks[0].data.question, GOING);
+  const [refusal] = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'read_trip');
+  assert.match(refusal.data.content, /To look at it, call open_trip: annai asks the user whether to carry on in that trip's conversation/);
+  k.agent.answer(asks[0].data.tap, 'Open');
+  await k.agent.idle();
+  assert.equal(k.agent.trip, TV);
+  assert.deepEqual(await copied(k), ['Show me the ticket PDF from Testville']);
+  assert.ok(await k.ws.read(TV, '/files/ticket.pdf'), 'the file stays where it is');
+  assert.equal((await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(TV, { types: ['out.speak'] }))).at(-1).data.text, 'Here is the ticket.', 'she answers there');
 });
