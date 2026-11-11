@@ -77,11 +77,10 @@ export class LiveInput {
    *   onTurn?: (t: { end: TurnEnd, ms: number, floorDb: number | null, peakDb: number | null, minDb: number | null, keptFrames: number, keptPeakDb: number | null }) => void }} o
    *   rate: what the session takes (send's audioIn); speaking: whether Koe's voice is playing; duplex: whether the user may cut her off by
    *   speaking now (else half-duplex); deaf: whether nothing heard is the user's now (an urgent line of hers, said whole); tailMs: how long after her voice half-duplex still hears nothing (her echo, the speaker's latency);
-   *   maxMs: a turn's longest, 15 s (d0210928, down from the detector's own 30 s): it ends a turn the detector fails to end (an iPhone
-   *   microphone that gated its sound kept one going 29 s, "Listening" all the while), since neither Gemini Live nor OpenAI Realtime
-   *   streams the user's words as they speak, so nothing else ends it (spec §10.8); and a turn begun after the quiet spell ran out that
-   *   reaches it is sound that never stops, which wakes Kokoro (koe/live.js #stretched). Longer, both come later; shorter, more long
-   *   sentences are cut, their rest a turn of its own;
+   *   maxMs: a turn's longest, 15 s: just above what a turn ended by a pause has reached (of 168 in recorded drives, p95 12.2 s, the
+   *   longest 14.5 s). It ends a turn the detector fails to end, as neither Gemini Live nor OpenAI Realtime streams the user's words to
+   *   end it sooner (spec §10.8); and a turn begun after the quiet spell ran out that reaches it is sound that never stops, which wakes
+   *   Kokoro (koe/live.js);
    *   onOver: speech begun over her was let go; minDb: the level check's minimum; onKept: a frame over the floor was just kept out by it
    *   to begin a turn (voice/level.js); floorDb: the floor learned earlier on this microphone; onTurn with end 'kept': the microphone closes, with sound the minimum kept out since the last turn
    */
