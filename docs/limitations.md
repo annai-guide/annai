@@ -431,6 +431,13 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** the user asks for it on headphones, where there is no echo: it needs a sure way to know that no sound of hers reaches the microphone.
 - **Approved:** 2026-11-10, the user picked "Accept as known limitation (Recommended)". For the card that moves them: 2026-11-11, the user picked "Keep it, accept the misses".
 
+### A tap on the card in the instant a spoken yes takes effect is sent as a line
+- **Kind:** known limitation.
+- **What the user sees:** the user says yes aloud to annai's card ("Carry on in <trip>?" or "Read <trip>?") and also taps its button (Open, or Allow) just as the yes takes effect, about 3 seconds after the word; or they tap a button just after a line they typed has already ended the card. The tap arrives after the card has ended, so it is sent as an ordinary line of theirs. After a yes to "Carry on in <trip>?", "Open" appears in that trip beside their copied line, and Shiori answers it there; after a typed line, or on the reading card, it is in the chat, and she may answer it or ask again. Nothing is lost and nothing else moves. A double tap on the button itself isn't affected: the first tap ends the buttons.
+- **Why:** the card's buttons end at a tap, or when the tool's result is written, and not when the card itself ends. The window is from the yes taking effect (or the typed line) until then: for the move, the file moves and the copy, tens to a few hundred milliseconds. Ending the buttons from the card itself is a change to the code both cards share.
+- **Revisit when:** a phone test or a user shows it happening, or the next change to the card's code.
+- **Approved:** 2026-11-11, the user picked "Accept it as a known limitation".
+
 ### Someone else's "yes" within the 20 seconds answers annai's card
 - **Kind:** known limitation.
 - **What the user sees:** annai asks aloud "Read <trip>?" or "Carry on in <trip>?", and within the 20 seconds after the question a passenger, or a song, says "yes" (or another word on annai's list) loud enough to be heard as speech. The card takes it as the user's yes. Anything said within 3 seconds after the yes's words still takes it back, and a tap on Not now wins until the trip is read or opened. On "Read <trip>?" Shiori reads that trip, which changes nothing. On "Carry on in <trip>?" that trip opens, as on a real yes:
