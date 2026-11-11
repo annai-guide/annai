@@ -278,7 +278,8 @@ export class Transcript {
     } else if (e.type === 'error' && d.wake) {
       // A turn that ended in an error (no model, a budget, housekeeping that failed) is over: the user
       // saw a card, and a later start doesn't wake her again for it (spec §6.7). It isn't in the context.
-      if (this.#mine(d)) this.#owes = false; // not a line Koe heard: the error read nothing
+      if (this.#mine(d) && d.kind === 'stopped') this.unanswered = false; // her Stop settles all before it, a line Koe heard too
+      else if (this.#mine(d)) this.#owes = false; // another error read nothing: it settles only what she owed
       else if (this.half === 'one' && d.kind === 'stopped') this.#heardSettled(); // the user stopped Koe's reply
       return;
     } else if (e.type === 'heard') {
