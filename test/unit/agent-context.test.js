@@ -234,13 +234,35 @@ test("her own name for a guessed chat stays hers to change, and renaming it leav
   await ws.update(chat, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, title: 'Packing for cold weather' }), { author: 'shiori' });
   const hers = await take(chat);
   assert.doesNotMatch(systemText(hers), /Keep its name/);
-  assert.match(systemText(hers), /Its name is a first guess/);
+  assert.match(systemText(hers), /You wrote its name/);
   assert.equal(systemText(await take(chat)), systemText(hers), 'the same turn to turn');
   assert.equal(nextSnapshot(guessed, hers, { cold: false }), guessed, 'her rename, warm: the text stays as it was');
   // The user renames it in Details, then she writes trip.json without touching the name: still theirs.
   await ws.update(chat, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, title: 'Sapporo with Ken' }), { author: 'user' });
   await ws.update(chat, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, party: ['Ken'] }), { author: 'shiori' });
   assert.match(systemText(await take(chat)), /Keep its name unless they ask to change it\./);
+});
+
+test("a name she wrote may be one the user asked for: its line says both cases; one whose author can't be told (an import with no history, a read that fails) is kept as the user's; a rename of hers by the user shows at the next turn (the re-review: R4)", async () => {
+  const { ws, registry } = await setup();
+  const both = /# This conversation has no dates\nYou wrote its name: keep it if they chose it, improve it if you did\. If it becomes a trip, patch \/trip\/trip\.json with its dates\./;
+  const keep = /# This conversation has no dates\nKeep its name unless they ask to change it\./;
+  const take = (/** @type {string} */ chat, /** @type {any} */ w = ws) => takeSnapshot({ ws: w, registry, trip: chat, personalityName: 'shiori' });
+  // "Call this chat Ken's birthday": she writes it, as she would a name of her own.
+  const chat = await createTrip(ws, { title: DRAFT_TITLE }, { draft: true });
+  await ws.update(chat, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, title: 'Hi' }), { author: 'system' });
+  await ws.update(chat, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, title: "Ken's birthday" }), { author: 'shiori' });
+  const hers = await take(chat);
+  assert.match(systemText(hers), both);
+  assert.doesNotMatch(systemText(hers), /first guess/);
+  // The user renames it in Details while the cache is warm: the next turn keeps it.
+  await ws.update(chat, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, title: 'Ken turns 40' }), { author: 'user' });
+  assert.match(systemText(nextSnapshot(hers, await take(chat), { cold: false })), keep);
+  // Imported with no history, or a history read that fails: who wrote it is unknown, so it is kept (and the snapshot is taken).
+  await ws.update(chat, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, party: ['Ken'] }), { author: 'shiori' });
+  const bare = (/** @type {() => Promise<any>} */ history) => new Proxy(ws, { get: (o, key) => (key === 'history' ? history : typeof (/** @type {any} */ (o))[key] === 'function' ? (/** @type {any} */ (o))[key].bind(o) : (/** @type {any} */ (o))[key]) });
+  assert.match(systemText(await take(chat, bare(async () => []))), keep);
+  assert.match(systemText(await take(chat, bare(async () => { throw new Error('the store failed'); }))), keep);
 });
 
 test("a name the user gives while the cache is warm stops being called a guess at the next turn, once, and the text then holds", async () => {
