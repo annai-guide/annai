@@ -486,7 +486,9 @@ export function tripTools(app) {
         });
         if (got.stopped) return { content: STOPPED, isError: true };
         /* en */
-        if (got.chosen === no) return `The user ${got.how === 'voice' ? 'said no' : 'tapped Not now'}: they stay here, and nothing moved. Carry on here, and don't offer to take them into ${quote(rec.title)} again unless they ask.`;
+        if (got.chosen === no) {
+          return `The user ${got.how === 'voice' ? 'said no' : 'tapped Not now'}: they stay here, and nothing moved. Carry on here, and don't call open_trip for ${quote(rec.title)} again unless they ask.${files.length ? " The files stay where they are: don't start a trip for them unless they ask." : ''}`;
+        }
         if (got.chosen !== open) {
           /* en */
           const why = `Not opened: only a tap on annai's card, or a yes it hears, takes them into ${quote(rec.title)}, and nothing moved. If they meant yes, call open_trip again.`;

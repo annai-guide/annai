@@ -600,7 +600,7 @@ for (const how of /** @type {const} */ (['Not now', 'a typed line', 'a Stop', 'S
     assert.deepEqual(await eventsIn(k, k.trip, ['conversation.moved', 'handover.moved']), []);
     const [result] = await openResults(k, k.trip);
     assert.equal(result, {
-      'Not now': 'The user tapped Not now: they stay here, and nothing moved. Carry on here, and don\'t offer to take them into "Kyoto" again unless they ask.',
+      'Not now': 'The user tapped Not now: they stay here, and nothing moved. Carry on here, and don\'t call open_trip for "Kyoto" again unless they ask. The files stay where they are: don\'t start a trip for them unless they ask.',
       'a typed line': 'Not opened: only a tap on annai\'s card, or a yes it hears, takes them into "Kyoto", and nothing moved. If they meant yes, call open_trip again. The user wrote: No, wait, stay here',
       'a Stop': 'Stopped by the user.',
       'Start fresh': 'Stopped by the user.',
