@@ -4,7 +4,9 @@ import { keepAtEnd } from '../../src/ui/at-end.js';
 
 /**
  * A window as keepAtEnd sees it, whose events the test sends in the order a phone may: a page `content` px tall in a window w x h. Like a
- * browser, scrollTo clamps to the page and queues a scroll event only when the page moved; `scrolled()` delivers the queued one.
+ * browser, scrollTo clamps to the page and queues a scroll event only when the page moved; `scrolled()` delivers the queued one. Pinched in
+ * (`pinch`), it is as iOS Safari shows it (not verified on a phone): innerWidth, innerHeight and scrollY are what is shown, visualViewport.scale
+ * says the zoom, the layout's height (documentElement's clientHeight) stays, and no resize comes.
  * @param {{ w?: number, h?: number, content?: number }} [o]
  */
 function phone({ w = 393, h = 659, content = 3000 } = {}) {
@@ -15,8 +17,9 @@ function phone({ w = 393, h = 659, content = 3000 } = {}) {
   let queued = false;
   const end = () => Math.max(0, win.content - win.innerHeight);
   const win = {
-    innerWidth: w, innerHeight: h, scrollY: 0, content,
-    document: { documentElement: { get clientHeight() { return win.innerHeight; }, get scrollHeight() { return win.content; } } },
+    innerWidth: w, innerHeight: h, scrollY: 0, content, scale: 1,
+    visualViewport: { get scale() { return win.scale; } },
+    document: { documentElement: { get clientHeight() { return Math.round(win.innerHeight * win.scale); }, get scrollHeight() { return win.content; } } },
     addEventListener: (/** @type {string} */ type, /** @type {() => void} */ fn) => on[type]?.push(fn),
     requestAnimationFrame: (/** @type {() => void} */ fn) => frames.push(fn),
     scrollTo: (/** @type {number} */ _x, /** @type {number} */ y) => {
@@ -30,6 +33,12 @@ function phone({ w = 393, h = 659, content = 3000 } = {}) {
     /** The scroll event a move queued, if any. */
     scrolled() { if (queued) { queued = false; for (const f of on.scroll) f(); } },
     resized() { for (const f of on.resize) f(); },
+    /** Pinched to zoom `s` (1: zoomed out again), its scroll clamped to what can be shown, its scroll event still to come. @param {number} s */
+    pinch(s) {
+      const [lw, lh] = [win.innerWidth * win.scale, win.innerHeight * win.scale];
+      Object.assign(win, { scale: s, innerWidth: lw / s, innerHeight: lh / s });
+      win.scrollTo(0, win.scrollY);
+    },
     /** The next frames: what they asked for runs, and the scroll events it queued come. @param {number} [n] */
     frame(n = 1) {
       for (let i = 0; i < n; i++) {
@@ -72,7 +81,7 @@ test("at the end, a gesture's scrolls come at the toolbar's new size before its 
 
 test('a phone turned at the end is at its end again, after its fits; mid-page nothing moves', () => {
   const win = phone();
-  const { toEnd } = keepAtEnd(/** @type {any} */ (win));
+  const { keep } = keepAtEnd(/** @type {any} */ (win));
   win.user(win.end());
   // Turned: the width changes; the page is shorter in landscape, and the cards fit again over the next frames.
   Object.assign(win, { innerWidth: 659, innerHeight: 393, content: 2400 });
@@ -87,8 +96,7 @@ test('a phone turned at the end is at its end again, after its fits; mid-page no
   win.frame(2);
   assert.equal(win.scrollY, win.end());
   // The dock grows 40 px: its observer puts the end back.
-  win.content += 40;
-  toEnd();
+  keep(() => { win.content += 40; });
   win.scrolled();
   assert.equal(win.scrollY, win.end());
   // Mid-page: nothing moves on a turn.
@@ -113,4 +121,117 @@ test("after a toolbar's resize the user's scrolls count again: one to mid-page, 
   win.scrolled();
   win.frame(2);
   assert.equal(win.scrollY, 1300);
+});
+
+// The dock's change is read as it happens (the final review of home2, F1): what the user's scrolls left is not what the page is by then.
+test('at the end, something opens below with no scroll (Archived trips), then the dock grows: the page stays where it is', () => {
+  const win = phone();
+  const { keep } = keepAtEnd(/** @type {any} */ (win));
+  win.user(win.end()); // read to its end: 2341
+  win.content += 400; // a fold opened at the end: the page is longer below, and no scroll comes
+  keep(() => { win.content += 60; }); // the whole dock shows as she speaks: its observer
+  win.scrolled();
+  win.frame(2);
+  assert.equal(win.scrollY, 2341); // before: 2801, past the cards just opened
+});
+
+test('at the end, pinched in and panned up to an earlier line, then the dock grows: the page stays where it is, and zoomed out again too', () => {
+  const win = phone();
+  const { keep } = keepAtEnd(/** @type {any} */ (win));
+  win.user(win.end());
+  win.pinch(1.5);
+  win.scrolled();
+  win.user(1000); // panned up, zoomed in
+  keep(() => { win.content += 60; }); // she speaks
+  win.scrolled();
+  win.frame(2);
+  assert.equal(win.scrollY, 1000); // before: 2621, her end
+  win.pinch(1);
+  win.scrolled();
+  keep(() => { win.content -= 60; }); // she stops
+  win.scrolled();
+  win.frame(2);
+  assert.equal(win.scrollY, 1000); // before: 2341
+});
+
+test('at the end, pinched in and panned up, zoomed out and then turned: the page stays where the user has it', () => {
+  const win = phone();
+  keepAtEnd(/** @type {any} */ (win));
+  win.user(win.end());
+  win.pinch(1.5);
+  win.scrolled();
+  win.user(1000);
+  win.pinch(1);
+  win.scrolled();
+  Object.assign(win, { innerWidth: 659, innerHeight: 393 });
+  win.resized();
+  win.scrolled();
+  win.frame(2);
+  assert.equal(win.scrollY, 1000); // before: 2607, the end
+});
+
+test('a pinch that comes with a resize is no turn: the page stays where the pinch left it', () => {
+  const win = phone();
+  keepAtEnd(/** @type {any} */ (win));
+  win.user(win.end()); // 2341
+  win.pinch(1.5);
+  win.resized(); // if Safari sends one: innerWidth follows the pinch
+  win.scrolled();
+  win.frame(2);
+  assert.equal(win.scrollY, 2341); // before: 2561, pulled down to what can be shown of the end
+});
+
+test("a turn whose dock changes height in its own frame: at the end it ends at its end; mid-page nothing moves", () => {
+  const win = phone();
+  const { keep } = keepAtEnd(/** @type {any} */ (win));
+  win.user(win.end());
+  Object.assign(win, { innerWidth: 659, innerHeight: 393, content: 2400 });
+  win.resized(); // the turn: the page is put at its end
+  keep(() => { win.content -= 12; }); // the dock, 41 px tall on its side: its observer, after the frame's layout
+  win.scrolled();
+  win.content += 40; // the cards fit again
+  win.frame(2);
+  assert.equal(win.scrollY, win.end());
+  win.user(1200);
+  Object.assign(win, { innerWidth: 393, innerHeight: 659, content: 3000 });
+  win.resized();
+  keep(() => { win.content += 12; }); // 53 px upright
+  win.scrolled();
+  win.frame(2);
+  assert.equal(win.scrollY, 1200);
+});
+
+test('pinched in at the end and panned up a little, still within the last screen: the dock grows, then the phone turns, and the page stays where the user has it', () => {
+  const win = phone();
+  const { keep } = keepAtEnd(/** @type {any} */ (win));
+  win.user(win.end());
+  win.pinch(1.5);
+  win.scrolled();
+  win.user(win.end() - 200); // 200 px above what can be shown of the end: the layout's last screen still reaches it
+  const y = win.scrollY;
+  keep(() => { win.content += 60; });
+  win.scrolled();
+  win.frame(2);
+  assert.equal(win.scrollY, y); // read by the layout's height: thrown to the end, 260 px
+  Object.assign(win, { innerWidth: 659 / 1.5, innerHeight: 393 / 1.5 });
+  win.resized();
+  win.scrolled();
+  win.frame(2);
+  assert.equal(win.scrollY, y);
+});
+
+test('pinched in at the end and zoomed back out there, then turned: the page is at its end again', () => {
+  const win = phone();
+  keepAtEnd(/** @type {any} */ (win));
+  win.user(win.end());
+  win.pinch(1.5);
+  win.user(win.end()); // to what can be shown of the end: a zoomed scroll, which says nothing for a turn
+  win.pinch(1); // zoomed out: the scroll comes back to the end
+  win.scrolled();
+  Object.assign(win, { innerWidth: 659, innerHeight: 393, content: 2400 });
+  win.resized();
+  win.scrolled();
+  win.content = 2440;
+  win.frame(2);
+  assert.equal(win.scrollY, win.end());
 });

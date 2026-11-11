@@ -148,12 +148,11 @@ export function startShell(root, core) {
     new ResizeObserver(([e]) => document.documentElement.style.setProperty('--topbar-h', `${Math.floor(/** @type {HTMLElement} */ (e.target).getBoundingClientRect().height)}px`)).observe(header);
   }
   // A page read to its end stays there when a phone turns or the dock changes height (at-end.js). After the cards' resize handler, which runs first.
-  const { toEnd } = keepAtEnd();
+  const { keep } = keepAtEnd();
   // The page and the cards make room for the dock as tall as it is now: voice on, typing open, or a plugin's.
-  const dockSize = typeof ResizeObserver === 'function' ? new ResizeObserver(([e]) => {
+  const dockSize = typeof ResizeObserver === 'function' ? new ResizeObserver(([e]) => keep(() => {
     document.documentElement.style.setProperty('--dock-h', `${Math.ceil(/** @type {HTMLElement} */ (e.target).getBoundingClientRect().height)}px`);
-    toEnd();
-  }) : null;
+  })) : null;
   if (dock) dockSize?.observe(dock.el);
   const remakeDock = () => {
     if (!dock || dockKey(ctx) === dockMadeFor) return false;
