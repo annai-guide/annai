@@ -1,5 +1,5 @@
 import { h, field, t, plural, twoStep, messageOf, whenGone } from '../dom.js';
-import { listTrips, createTrip, backupState, scopeTitle, SYS_WAITING } from '../../core/scopes.js';
+import { listTrips, createTrip, backupState, scopeTitle, changesTrip, SYS_WAITING } from '../../core/scopes.js';
 import { readNames, shortName } from '../../core/names.js';
 import { waitingFiles, dropWaiting } from '../../core/waiting.js';
 import { filesToRead } from '../../core/handover.js';
@@ -23,6 +23,7 @@ import { keepRows, covered } from '../keep-rows.js';
 
 /** @typedef {import('../../core/timeline.js').Row} Row */
 /** Words saying how long ago (since): the node, its moment on the device's clock, its words at a moment. @typedef {{ node: Node, at: number, words: (now: number) => string }} Since */
+/** The cards' backups, by trip (backupState). @typedef {Map<string, { at: number | null, changed: boolean }>} Backups */
 
 /**
  * Home: the timeline of trips and chats (the timeline design), old to new, the trips happening at the now line and only dated trips below it.
@@ -35,12 +36,30 @@ export async function renderTrips(ctx) {
     tripError = tripTyped.title = tripTyped.start = tripTyped.end = '';
     armed.clear();
   }
+  // The trips followed from before the cards read their backups (tripCard), so an entry that lands while home is drawn is kept for followClock: a card
+  // that read "backed up" just before it says "changed since" all the same.
+  /** @type {{ touched: Set<string>, mark: () => void }} */
+  const follow = { touched: new Set(), mark: () => {} };
+  const stop = ctx.appended?.((/** @type {import('../../core/types.js').EventRecord[]} */ evs) => {
+    for (const e of evs) if (changesTrip(e.type)) follow.touched.add(e.scope);
+    follow.mark();
+  });
+  try {
+    return await drawTrips(ctx, follow, stop);
+  } catch (e) {
+    stop?.();
+    throw e;
+  }
+}
+
+/** @param {any} ctx @param {{ touched: Set<string>, mark: () => void }} follow @param {(() => void) | undefined} stop */
+async function drawTrips(ctx, follow, stop) {
   const { active, archived } = await listTrips(ctx.store);
   const settings = await readAppSettings(ctx.ws);
   const places = ctx.backups ? await ctx.backups.list() : [];
   const latest = places.filter((/** @type {any} */ p) => p.last).sort((/** @type {any} */ a, /** @type {any} */ b) => b.last.at - a.last.at)[0];
   /** due: when a card's Next stops being next, pushed by the happening cards as they are drawn. */
-  const o = { say: wording(settings), now: nowOf(ctx.live), zone: ctx.live?.timeZone?.() ?? deviceZone(), due: /** @type {number[]} */ ([]), since: /** @type {Since[]} */ ([]) };
+  const o = { say: wording(settings), now: nowOf(ctx.live), zone: ctx.live?.timeZone?.() ?? deviceZone(), due: /** @type {number[]} */ ([]), since: /** @type {Since[]} */ ([]), backups: /** @type {Backups} */ (new Map()) };
   const { above, happening, below } = timelineRows(active, o.now, o.zone);
   const byId = new Map(active.map((s) => [s.id, s]));
   const row = (/** @type {Row} */ r) => (r.card ? tripCard(ctx, byId.get(r.id), r, o) : chatLine(byId.get(r.id), r, o));
@@ -73,7 +92,7 @@ export async function renderTrips(ctx) {
       : null,
     openFileButton(ctx),
     saved ? since(o, h('p', { class: 'sub' }), saved.at, saved.words) : h('p', { class: 'sub', text: t`No backup yet. Export everything from Settings, or set up automatic backups there.` }));
-  followClock(ctx, screen, o, places);
+  followClock(ctx, screen, o, places, follow, stop);
   return screen;
 }
 
@@ -94,10 +113,11 @@ function since(o, node, at, words) {
  * the front, which a phone's timers may have slept through and where the phone's zone may be another (a flight); and when a backup has run, which its
  * card and the footer tell. Only while it is the screen shown and its address, and never over the Start a trip form while a field of it has focus: then it
  * waits, and draws once the field is left. What is typed in the form, its folds and the place stay (`tripTyped`, `fold`). How long ago a backup was changes
- * its words in place (since), the rows in view kept where they were.
- * @param {any} ctx @param {HTMLElement} screen @param {{ now: number, zone: string, due: number[], since: Since[] }} o @param {{ id: string }[]} places backups'
+ * its words in place (since), the rows in view kept where they were, as does a trip changed while home shows (through the dock): "changed since".
+ * @param {any} ctx @param {HTMLElement} screen @param {{ now: number, zone: string, due: number[], since: Since[], backups: Backups }} o @param {{ id: string }[]} places backups'
+ * @param {{ touched: Set<string>, mark: () => void }} follow the trips with entries since home began drawing (renderTrips) @param {(() => void) | undefined} stop
  */
-function followClock(ctx, screen, o, places) {
+function followClock(ctx, screen, o, places, follow, stop) {
   const at = location.hash;
   // What a redraw would lose: the focus of a field of the form (the keyboard would close). A name or dates typed in it are drawn again (tripTyped).
   const typing = () => screen.contains(document.activeElement) && isField(document.activeElement);
@@ -127,6 +147,17 @@ function followClock(ctx, screen, o, places) {
     if (change < Infinity) tick = real.set(words, change - now + 1000); // a second past, as the redraw's
   };
   words();
+  // A trip with an entry that changes what a Backup holds, since home began drawing or from now on: its card says "changed since", in place.
+  follow.mark = () => {
+    let changed = false;
+    for (const id of follow.touched) {
+      const b = o.backups.get(id);
+      if (b && !b.changed) changed = b.changed = true;
+    }
+    follow.touched.clear();
+    if (changed) words();
+  };
+  follow.mark();
   const front = () => {
     if (document.visibilityState !== 'visible') return;
     words(); // at once, while a field's focus holds the redraw back
@@ -143,6 +174,7 @@ function followClock(ctx, screen, o, places) {
     document.removeEventListener('visibilitychange', front);
     swapped?.();
     backedUp?.();
+    stop?.();
   });
 }
 
@@ -174,11 +206,12 @@ function chatLine(s, r, { say, now, zone }) {
  * A trip's card (spec §16.2, the timeline design): its name and dates, its stamps (spec §13), files waiting to be read there, and when it was last
  * backed up (§4.9); happening, tinted, "Day 3 of 8" and its Next; ahead, how soon and her last line there. A tap opens its conversation; an archived
  * one's opens Details, where Unarchive is. @param {any} ctx @param {any} s its record @param {Row | null} r its row; null: archived
- * @param {{ say: ReturnType<typeof wording>, now: number, zone: string, due: number[], since: Since[] }} o say: the name is the user's words, in their language, not the screens'
+ * @param {{ say: ReturnType<typeof wording>, now: number, zone: string, due: number[], since: Since[], backups: Backups }} o say: the name is the user's words, in their language, not the screens'
  */
 async function tripCard(ctx, s, r, o) {
   const { say, now, zone, due } = o;
   const [backup, stamps, unread] = await Promise.all([backupState(ctx.store, s.id), tripStamps(ctx, s.id), r ? filesToRead(ctx.store, s.id).then((f) => f.length) : 0]);
+  o.backups.set(s.id, backup);
   // Its "backed up … ago" is on its own moment: the footer line's is another place's (or an export's), and a trip's backup can outlive its place.
   const backedUp = backup.at === null ? backupText(backup) : since(o, h('span', {}), backup.at, (now) => backupText(backup, now));
   /** @type {HTMLElement[]} */

@@ -224,6 +224,47 @@ test.describe('without the offline service', () => {
   });
 });
 
+// A first visit on a slow connection: annai's offline service is still downloading its shell, none active yet (claim.js). The browser's own worker
+// is stood in for, so it stays "installing" for as long as the test says: failInstall() makes it redundant, as a failed download does.
+test.describe('a first visit whose offline service is still installing', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      const worker = Object.assign(new EventTarget(), { state: 'installing', postMessage() {} });
+      const reg = Object.assign(new EventTarget(), { installing: /** @type {any} */ (worker), waiting: null, active: null, scope: '/', update: async () => {} });
+      const sw = Object.assign(new EventTarget(), { controller: null, ready: new Promise(() => {}), register: async () => reg, getRegistration: async () => reg, getRegistrations: async () => [reg], startMessages() {} });
+      Object.defineProperty(Navigator.prototype, 'serviceWorker', { get: () => sw, configurable: true });
+      /** @type {any} */ (window).failInstall = () => {
+        reg.installing = null;
+        worker.state = 'redundant';
+        worker.dispatchEvent(new Event('statechange'));
+      };
+    });
+  });
+
+  test("Models' sign-in says annai is getting ready for offline use, never to reload: a reload wouldn't make it sooner", async ({ page }) => {
+    await page.addInitScript(() => Object.defineProperty(navigator, 'standalone', { value: true, configurable: true }));
+    await openApp(page, '#/models');
+    const start = page.getByRole('region', { name: 'Sign in' });
+    await expect(start.getByRole('button', { name: 'Getting the sign-in ready…' })).toBeDisabled();
+    await expect(start.getByText("Getting annai ready for offline use… This goes on by itself once it's ready.")).toBeVisible(); // after 3 s
+    await expect(start.getByText(/Reload annai/)).toHaveCount(0); // before: "…isn't running yet. Reload annai and try again."
+    await expect(page.getByText('annai needs a reload')).toHaveCount(0);
+  });
+
+  test("a plugin's Install waits for annai's offline service, saying so, instead of asking for a reload; if its install fails, then it asks", async ({ page }) => {
+    await openApp(page, '#/add');
+    await page.getByRole('button', { name: 'Install PDF pages' }).click();
+    await expect(page.locator('.toast', { hasText: "Getting annai ready for offline use… This goes on by itself once it's ready." })).toBeVisible();
+    await page.waitForTimeout(500);
+    await expect(page.getByText("PDF pages wasn't installed")).toHaveCount(0); // before: at once, "…Reload annai and try again."
+    await expect(page.getByRole('button', { name: 'Install PDF pages' })).toBeDisabled(); // it waits
+    await page.evaluate(() => /** @type {any} */ (window).failInstall());
+    const card = page.locator('.notices .notice', { hasText: "PDF pages wasn't installed" });
+    await expect(card).toContainText("Plugins load through annai's offline service, which isn't running yet. Reload annai and try again.");
+    await expect(page.getByRole('button', { name: 'Install PDF pages' })).toBeEnabled();
+  });
+});
+
 test('an ability whose protocol stores files has a switch for photo uploads, kept when saved (spec §4.8)', async ({ page }) => {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);

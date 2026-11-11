@@ -2,7 +2,7 @@
 // changes; loops that stop when she is off the page or off screen; reduced motion; how often she draws.
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { advance, make, place, av, frontEyes, frontLight, markerBand, setReduced, pending, counts, motionListenerCount, art } from './avatar-sim.js';
+import { advance, make, place, av, frontEyes, frontLight, markerBand, setReduced, pending, counts, motionListenerCount, art, staleFrame } from './avatar-sim.js';
 
 /** @type {any[]} */
 let made = [];
@@ -267,4 +267,18 @@ test("her art shows only once it has arrived; if it never does, the seat shows a
   place(a, false);
   advance(100);
   assert.equal(pending(), 0, 'no polling left');
+});
+
+test("a blink whose first frame began before it was asked (a long task under load): her eyes' highlight never gets a negative size", () => {
+  const a = avatar();
+  a.setState('listening');
+  advance(1000); // her eyes open, settled
+  a.blink(); // a 75 ms close, asked at a moment its first frame's time is 100 ms before
+  staleFrame(100);
+  const light = /** @type {any} */ (frontEyes(a).find('light'));
+  // The move starts where it was: before, a time before its start read as 3.6 times the move, and the highlight's radius went to -37.1.
+  assert.equal(light.getAttribute('rx'), '14.5');
+  assert.equal(light.getAttribute('ry'), '14.5');
+  advance(1000);
+  assert.equal(frontLight(a), '14.5');
 });

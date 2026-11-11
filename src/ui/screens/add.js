@@ -2,7 +2,7 @@ import { h, crumb, t, otherLang, messageOf as message, showError } from '../dom.
 import { size } from '../format.js';
 import { explainStorageFull } from '../storage-full.js';
 import { setPendingPackage } from '../plugin-pending.js';
-import { NO_SERVICE } from './plugin-install.js';
+import { serviceFirst } from './plugin-install.js';
 import { sayFilled } from '../provider-setup.js';
 import { officialPlugins, officialWords, shownEntry } from '../../core/llm/official.js';
 import { addFromCatalog } from '../../core/requires.js';
@@ -206,7 +206,7 @@ function actions(ctx, r, update) {
     class: ['btn', !(install || r.added) && 'pri'], type: 'button', 'aria-label': install ? t`Install ${name}` : r.added ? t`Add another ${name}` : t`Add ${name}`,
     onclick: () => run(ctx, b, install ? t`${name} wasn't installed` : t`${name} wasn't added`, install
       ? async () => {
-        if (!navigator.serviceWorker?.controller) throw new Error(NO_SERVICE);
+        await serviceFirst(ctx);
         await addFromCatalog(ctx.plugins, id, { tap: true }); // with what it requires
         ctx.notices.toast(t`Installed ${name}.`);
         Object.assign(r, { action: 'open', href: `#/plugins/${encodeURIComponent(id)}` });

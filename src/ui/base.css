@@ -167,6 +167,11 @@ pre.code { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--pap
    or slides into the place of one that went, ignores taps a moment (.over, notices.js), as the rows do when it moves them. */
 body.home .notices:not(:empty) { position: sticky; top: var(--topbar-h, 0px); z-index: 4; background: var(--paper); --lifted: calc((100svh - var(--topbar-h, 0px)) / 2); }
 body.home .notices.scrolls { overscroll-behavior-y: contain; }
+/* While a field on home is typed in (typing-elsewhere, dock-hides.js: a touch screen), the box lets go and stays at the page's top, so the bar and the box
+   never cover the field above a keyboard (the user, "Unstick while typing"); it sticks again when typing ends, and its cards ignore taps a moment as it
+   lands (notices.js hold). It keeps its place in the page either way: nothing moves. A tap on its button lets go of the field at the press, but the class,
+   and so the box's place, stays until the tap's click (dock-hides.js), so the box never moves under the finger. */
+html.typing-elsewhere body.home .notices { position: static; }
 .notices.over > .notice { pointer-events: none; }
 /* A card came below what is read in the box (notices.js): a mark, not words, at its bottom edge. Its margin gives back the gap and its height: nothing moves. */
 .notices.below::after { content: ''; position: sticky; bottom: 8px; align-self: flex-end; flex-shrink: 0; box-sizing: border-box; width: 10px; height: 10px; margin: -18px 12px 0; border: solid var(--ink); border-width: 0 3px 3px 0; transform: rotate(45deg); pointer-events: none; }

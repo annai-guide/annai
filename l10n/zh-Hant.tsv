@@ -1399,33 +1399,33 @@ mj3oi4	ok	annai is free software, provided as is, without any warranty, as far a
 19ow2h0	ok	Shiori is an AI, and she can be wrong. Check bookings, prices, opening hours, routes and safety information yourself.	Shiori 是 AI，她可能會出錯。預訂、價格、營業時間、路線和安全資訊請自己核實。	src/ui/privacy.js:40	
 5aqdvy	ok	When you drive, use her hands-free, and follow the road and the local rules.	開車時請用免持方式使用她，並注意路況、遵守當地規定。	src/ui/privacy.js:41	
 hirfin	ok	What the model provider you connect charges is yours to pay. What you import, fetch or connect is your responsibility.	你連線的模型供應商收取的費用由你支付。你匯入、抓取或連線的內容由你負責。	src/ui/privacy.js:42	
-1qelf30	ok	{0} can't add a provider at {1}: it sends keys only to none.	{0}無法在 {1} 新增供應商：它不向任何地方傳送金鑰。	src/ui/provider-setup.js:77	{0} = who; {1} = at; Note: the English "sends keys only to none" read as "sends keys nowhere".
-rq1jha	ok	{0} can't add a provider at {1}: it sends keys only to {2}.	{0}無法在 {1} 新增供應商：它只向 {2} 傳送金鑰。	src/ui/provider-setup.js:77	{0} = who; {1} = at; {2} = list(where, 'plain')
-1st0ijv	ok	That provider no longer exists. Add it again in Settings → Models.	該供應商已不存在。請在設定 → 模型中重新新增。	src/ui/provider-setup.js:88	
-1lwfyvo	ok	That provider isn't one of {0}'s, so it can't keep a key for it.	該供應商不屬於{0}，所以不能為它儲存金鑰。	src/ui/provider-setup.js:90	{0} = mine
-13upi6b	ok	{0} isn't a model provider.	{0}不是模型供應商。	src/ui/provider-setup.js:118	{0} = officialName(entry.id, entry.name)
-17q3a6l	ok	That plugin isn't a model provider.	該外掛程式不是模型供應商。	src/ui/provider-setup.js:118	
-1p012cf	ok	Connect to the internet to sign in.	請連上網路以登入。	src/ui/provider-setup.js:148	
-14m6i84	ok	Finishing the sign-in with {0}…	正在完成 {0} 的登入…	src/ui/provider-setup.js:157	{0} = finishing
-yyxfov	ok	{0}'s sign-in couldn't be shown. Add it from Add a provider instead.	無法顯示 {0} 的登入。請改從「新增供應商」新增。	src/ui/provider-setup.js:162	{0} = f.name
-15aq08d	ok	The quickest start	最快的開始方式	src/ui/provider-setup.js:164	
-w9nig3	ok	Sign in	登入	src/ui/provider-setup.js:164	
-edml6o	ok	Getting the sign-in ready…	正在準備登入…	src/ui/provider-setup.js:168	
-1rk1a1z	ok	A sign-in came back, but annai no longer expected it: more than 15 minutes passed, or it was finished already. Start it again from Settings → Models.	登入結果傳回了，但 annai 已不再等待：已超過 15 分鐘，或已經完成。請從設定 → 模型重新開始。	src/ui/provider-setup.js:198	
-sv1qqk	ok	A sign-in came back too late	登入結果傳回得太晚	src/ui/provider-setup.js:198	
-gkf0xx	ok	{0} isn't running. Look at it in Settings → Plugins, then sign in again.	{0}沒有執行。請在設定 → 外掛程式中檢視，然後重新登入。	src/ui/provider-setup.js:212	{0} = name
-1fbojq2	ok	Signing in with {0} didn't finish	{0} 的登入未完成	src/ui/provider-setup.js:218	{0} = name
-1fm7mjz	ok	Speech out	朗讀	src/ui/provider-setup.js:226	
-v20s4a	ok	Quick decision	快速判斷	src/ui/provider-setup.js:226	
-w8niry	ok	Speech in	語音辨識	src/ui/provider-setup.js:226	
-eudybe#other	ok	{0} now use {1}'s free models.	{0}現在使用 {1} 的免費模型。	src/ui/provider-setup.js:242	plural; # = free.length; {0} = list(free.map((r) => ROLE_SHORT[r] ?? r)); {1} = name; English: "{0} now uses {1}'s free models." (one), "{0} now use {1}'s free models." (other)
-14xff7o#other	ok	{0} cost money: {1} has no free model to start with, and Shiori needs one to answer.	{0}需要付費：{1}沒有可先用的免費模型，而 Shiori 需要一個模型來回答。	src/ui/provider-setup.js:243	plural; # = paid.length; {0} = list(paid.map((r) => t`${ROLE_SHORT[r] ?? r} ${costs[r]}`)); {1} = name; English: "{0} costs money: {1} has no free model to start with, and Shiori needs one to answer." (one), "{0} cost money: {1} has no free model to start with, and Shiori needs one to answer." (other)
-1wdrhx6	ok	{0} {1}	{0}（{1}）	src/ui/provider-setup.js:244	{0} = ROLE_SHORT[r] ?? r; {1} = costs[r]; Note: A role and the model that costs money in it ("Main GPT-6.1 Sol"), not two sentences: the model in brackets.
-1c8it09	ok	If your key is on the free tier, switch that on, on this page: its models then cost nothing.	如果你的金鑰屬於免費額度，請在此頁面開啟「此金鑰為免費額度」：這樣它的模型就不收費。	src/ui/provider-setup.js:245	Note: "switch that on" names the provider page's switch, "This key is on the free tier".
-1dsri4f	ok	Its speech in models went behind the free entries.	其語音辨識模型排在免費項之後。	src/ui/provider-setup.js:246	
-jvtji4	ok	Its speech in and speech out models went behind the free entries.	其語音辨識和朗讀模型排在免費項之後。	src/ui/provider-setup.js:246	
-1r0x31s	ok	Its speech out models went behind the free entries.	其朗讀模型排在免費項之後。	src/ui/provider-setup.js:247	
-1llun41	ok	The provider	供應商	src/ui/provider-setup.js:254	Note: "The provider" stands where a provider's name is unknown.
+1qelf30	ok	{0} can't add a provider at {1}: it sends keys only to none.	{0}無法在 {1} 新增供應商：它不向任何地方傳送金鑰。	src/ui/provider-setup.js:78	{0} = who; {1} = at; Note: the English "sends keys only to none" read as "sends keys nowhere".
+rq1jha	ok	{0} can't add a provider at {1}: it sends keys only to {2}.	{0}無法在 {1} 新增供應商：它只向 {2} 傳送金鑰。	src/ui/provider-setup.js:78	{0} = who; {1} = at; {2} = list(where, 'plain')
+1st0ijv	ok	That provider no longer exists. Add it again in Settings → Models.	該供應商已不存在。請在設定 → 模型中重新新增。	src/ui/provider-setup.js:89	
+1lwfyvo	ok	That provider isn't one of {0}'s, so it can't keep a key for it.	該供應商不屬於{0}，所以不能為它儲存金鑰。	src/ui/provider-setup.js:91	{0} = mine
+13upi6b	ok	{0} isn't a model provider.	{0}不是模型供應商。	src/ui/provider-setup.js:119	{0} = officialName(entry.id, entry.name)
+17q3a6l	ok	That plugin isn't a model provider.	該外掛程式不是模型供應商。	src/ui/provider-setup.js:119	
+1p012cf	ok	Connect to the internet to sign in.	請連上網路以登入。	src/ui/provider-setup.js:149	
+14m6i84	ok	Finishing the sign-in with {0}…	正在完成 {0} 的登入…	src/ui/provider-setup.js:158	{0} = finishing
+yyxfov	ok	{0}'s sign-in couldn't be shown. Add it from Add a provider instead.	無法顯示 {0} 的登入。請改從「新增供應商」新增。	src/ui/provider-setup.js:163	{0} = f.name
+15aq08d	ok	The quickest start	最快的開始方式	src/ui/provider-setup.js:165	
+w9nig3	ok	Sign in	登入	src/ui/provider-setup.js:165	
+edml6o	ok	Getting the sign-in ready…	正在準備登入…	src/ui/provider-setup.js:169	
+1rk1a1z	ok	A sign-in came back, but annai no longer expected it: more than 15 minutes passed, or it was finished already. Start it again from Settings → Models.	登入結果傳回了，但 annai 已不再等待：已超過 15 分鐘，或已經完成。請從設定 → 模型重新開始。	src/ui/provider-setup.js:200	
+sv1qqk	ok	A sign-in came back too late	登入結果傳回得太晚	src/ui/provider-setup.js:200	
+gkf0xx	ok	{0} isn't running. Look at it in Settings → Plugins, then sign in again.	{0}沒有執行。請在設定 → 外掛程式中檢視，然後重新登入。	src/ui/provider-setup.js:214	{0} = name
+1fbojq2	ok	Signing in with {0} didn't finish	{0} 的登入未完成	src/ui/provider-setup.js:220	{0} = name
+1fm7mjz	ok	Speech out	朗讀	src/ui/provider-setup.js:228	
+v20s4a	ok	Quick decision	快速判斷	src/ui/provider-setup.js:228	
+w8niry	ok	Speech in	語音辨識	src/ui/provider-setup.js:228	
+eudybe#other	ok	{0} now use {1}'s free models.	{0}現在使用 {1} 的免費模型。	src/ui/provider-setup.js:244	plural; # = free.length; {0} = list(free.map((r) => ROLE_SHORT[r] ?? r)); {1} = name; English: "{0} now uses {1}'s free models." (one), "{0} now use {1}'s free models." (other)
+14xff7o#other	ok	{0} cost money: {1} has no free model to start with, and Shiori needs one to answer.	{0}需要付費：{1}沒有可先用的免費模型，而 Shiori 需要一個模型來回答。	src/ui/provider-setup.js:245	plural; # = paid.length; {0} = list(paid.map((r) => t`${ROLE_SHORT[r] ?? r} ${costs[r]}`)); {1} = name; English: "{0} costs money: {1} has no free model to start with, and Shiori needs one to answer." (one), "{0} cost money: {1} has no free model to start with, and Shiori needs one to answer." (other)
+1wdrhx6	ok	{0} {1}	{0}（{1}）	src/ui/provider-setup.js:246	{0} = ROLE_SHORT[r] ?? r; {1} = costs[r]; Note: A role and the model that costs money in it ("Main GPT-6.1 Sol"), not two sentences: the model in brackets.
+1c8it09	ok	If your key is on the free tier, switch that on, on this page: its models then cost nothing.	如果你的金鑰屬於免費額度，請在此頁面開啟「此金鑰為免費額度」：這樣它的模型就不收費。	src/ui/provider-setup.js:247	Note: "switch that on" names the provider page's switch, "This key is on the free tier".
+1dsri4f	ok	Its speech in models went behind the free entries.	其語音辨識模型排在免費項之後。	src/ui/provider-setup.js:248	
+jvtji4	ok	Its speech in and speech out models went behind the free entries.	其語音辨識和朗讀模型排在免費項之後。	src/ui/provider-setup.js:248	
+1r0x31s	ok	Its speech out models went behind the free entries.	其朗讀模型排在免費項之後。	src/ui/provider-setup.js:249	
+1llun41	ok	The provider	供應商	src/ui/provider-setup.js:256	Note: "The provider" stands where a provider's name is unknown.
 1c4feqt	ok	This browser can't run annai's offline service, which shows notifications.	此瀏覽器無法執行 annai 用來顯示通知的離線服務。	src/ui/push.js:19	
 1vug986	ok	The phone's push subscription has no keys. Turn notifications off and on again.	手機的推播訂閱沒有金鑰。請關閉通知後再重新開啟。	src/ui/push.js:30	
 17sbtk9	ok	The relay's key isn't one annai can use.	中繼的金鑰不是 annai 能用的。	src/ui/push.js:78	
@@ -1920,85 +1920,86 @@ kmmqyh	draft	Undone: {0} is off the itinerary.	已復原：{0}已從行程中移
 1qeof2p	ok	Changed by Shiori · Undo	Shiori 修改 · 復原	src/ui/screens/plan.js:193	
 pgaz5s	ok	≈ {0} apart	相距 ≈ {0}	src/ui/screens/plan.js:204	{0} = distance(km)
 1gjwkfv	ok	Directions	路線	src/ui/screens/plan.js:205	
-1a9dl1b	ok	This plugin gets full access to your trips and API keys.	此外掛程式可以完全存取你的旅行和 API 金鑰。	src/ui/screens/plugin-install.js:16	
-h65i2c	ok	It can read every key saved in annai and send it anywhere: now your keys for {0}.	它能讀取 annai 中儲存的每個金鑰，並傳送到任何地方：目前有你的 {0} 金鑰。	src/ui/screens/plugin-install.js:43	{0} = list(names)
-7jgsq6	ok	It can read every key saved in annai and send it anywhere.	它能讀取 annai 中儲存的每個金鑰，並傳送到任何地方。	src/ui/screens/plugin-install.js:44	
-g9t5es	ok	Plugins load through annai's offline service, which isn't running yet. Reload annai and try again.	外掛程式透過 annai 的離線服務載入，但它還沒有執行。請重新載入 annai 後再試。	src/ui/screens/plugin-install.js:47	
-w5due	ok	{0}; {1}	{0}；{1}	src/ui/screens/plugin-install.js:50	context: semicolons; {0} = a; {1} = b; Note: Items side by side, each of which may hold commas (in English a semicolon).
-u9eus5	ok	Code that runs in annai	在 annai 中執行的程式碼	src/ui/screens/plugin-install.js:59	
-17rzkwp	ok	Skill "{0}": {1}	技能「{0}」：{1}	src/ui/screens/plugin-install.js:60	{0} = s.name; {1} = s.description
-2kbcmd	ok	Personality "{0}"	性格「{0}」	src/ui/screens/plugin-install.js:61	{0} = p.name
-vq8vn6	ok	A model provider: {0}	模型供應商：{0}	src/ui/screens/plugin-install.js:62	{0} = abilityWords(pkg.provider)
-1f7spnt	ok	A search provider for web_search	web_search 的搜尋供應商	src/ui/screens/plugin-install.js:63	
-hezgd5	ok	Its provider now sends keys you give it to {0}	它的供應商現在會把你給它的金鑰傳送到 {0}	src/ui/screens/plugin-install.js:66	{0} = list(keys, 'plain')
-18fhlh2	ok	Its searches now go to {0}	它的搜尋現在會傳送到 {0}	src/ui/screens/plugin-install.js:67	{0} = list(searches, 'plain')
-yqw4or	ok	Nothing annai uses yet	暫時沒有 annai 會用到的內容	src/ui/screens/plugin-install.js:68	
-1jxklq1	ok	Keys you give this provider are sent to {0}.	你給此供應商的金鑰會傳送到 {0}。	src/ui/screens/plugin-install.js:82	{0} = list(origins)
-nfrhzr	ok	Keys you give this provider are sent only to the address you give it.	你給此供應商的金鑰只會傳送到你給它的網址。	src/ui/screens/plugin-install.js:82	
-ee5xfy	ok	Your search words are sent only to the address you give it.	你搜尋的詞只會傳送到你給它的網址。	src/ui/screens/plugin-install.js:86	
-162zx16	ok	Your search words and the key you give it are sent to {0}.	你搜尋的詞和你給它的金鑰會傳送到 {0}。	src/ui/screens/plugin-install.js:87	{0} = list(o)
-1e5wf2u	ok	Your search words are sent to {0}.	你搜尋的詞會傳送到 {0}。	src/ui/screens/plugin-install.js:87	{0} = list(o)
-1hlyxa4	ok	{0} (installed)	{0}（已安裝）	src/ui/screens/plugin-install.js:110	{0} = state[r.id]?.name ?? r.id
-j7a5ne	ok	{0} (from annai, installed with it)	{0}（來自 annai，一併安裝）	src/ui/screens/plugin-install.js:110	{0} = plan.find((e) => e.id === r.id)?.name
-140c8vb	ok	It needs: {0}.	它需要：{0}。	src/ui/screens/plugin-install.js:111	{0} = semicolons(each)
-1bay0n3	ok	annai's catalog couldn't be loaded to look for what it needs. Connect to the internet and try again.	無法載入 annai 的目錄來查詢它需要的內容。請連上網路後再試。	src/ui/screens/plugin-install.js:113	
-1914xwr	ok	chat	對話	src/ui/screens/plugin-install.js:118	Note: a provider's ability (chat models): 對話模型, as the glossary's Koe · Classic note.
-1srbarg	ok	realtime	即時	src/ui/screens/plugin-install.js:118	
-j73cn3	ok	transcription	語音轉文字	src/ui/screens/plugin-install.js:118	
-zen9ix	ok	voice	聲音	src/ui/screens/plugin-install.js:118	Note: A provider's ability to speak: the glossary's voice (聲 / 聲音), not the Voice screen.
-w2ndgc	ok	nothing yet	暫時沒有	src/ui/screens/plugin-install.js:122	
-1vmhfh0	ok	From a file: {0}	來自檔案：{0}	src/ui/screens/plugin-install.js:159	{0} = value
-62wi84	ok	From annai	來自 annai	src/ui/screens/plugin-install.js:160	
-17ahsv6	ok	Version {0} is installed now. Installing replaces it.	目前已安裝版本 {0}。安裝會替換它。	src/ui/screens/plugin-install.js:172	{0} = v
-11t6hui	ok	an address	某個網址	src/ui/screens/plugin-install.js:175	Note: Where an installed version came from, inside "Version {0} is installed now, from {1}, …".
-1wr9niq	ok	a file: {0}	檔案 {0}	src/ui/screens/plugin-install.js:175	{0} = value; Note: Where an installed version came from, inside "Version {0} is installed now, from {1}, …".
-rgr1rj	ok	Version {0} is installed now, from {1}, not where this one comes from.	目前已安裝版本 {0}，來自 {1}，與這個的來源不同。	src/ui/screens/plugin-install.js:176	{0} = v; {1} = place
-a41hrh	ok	Kept, its settings, keys and your choices for its names go to this one; fresh, they are removed.	保留的話，它的設定、金鑰和你為它的名稱所做的選擇會轉給這個；全新安裝的話，它們會被移除。	src/ui/screens/plugin-install.js:177	
-19apr1m	ok	the kind of backup place {0}	備份位置類型 {0}	src/ui/screens/plugin-install.js:192	{0} = n
-cdbbto	ok	the tool {0}	工具 {0}	src/ui/screens/plugin-install.js:192	{0} = n
-o0687u	ok	the protocol {0}	協定 {0}	src/ui/screens/plugin-install.js:192	{0} = n
-540qyj	ok	the search provider {0}	搜尋供應商 {0}	src/ui/screens/plugin-install.js:193	{0} = n
-snr298	ok	the card type {0}	卡片類型 {0}	src/ui/screens/plugin-install.js:193	{0} = n
-18lyuvn	ok	the dock	底部列	src/ui/screens/plugin-install.js:195	
-18ybxd9	ok	how Shiori looks	Shiori 的外觀	src/ui/screens/plugin-install.js:195	
-1na8xe5	draft	how the itinerary's rows look	行程各行的外觀	src/ui/screens/plugin-install.js:195	English was: how the plan's rows look
-lfbn6i	ok	the Now card	此刻卡片	src/ui/screens/plugin-install.js:195	
-1xqw6of	ok	the part {0}	元件 {0}	src/ui/screens/plugin-install.js:197	{0} = name
-1twwnld	ok	The browser keeps the old code until annai starts again.	在 annai 重新啟動之前，瀏覽器會一直使用舊程式碼。	src/ui/screens/plugin-install.js:213	
-5nx73t	ok	Restart annai to run the new version of {0}.	重新啟動 annai 以執行{0}的新版本。	src/ui/screens/plugin-install.js:213	{0} = name
-19ojpuq	ok	A model provider · has code	模型供應商 · 含程式碼	src/ui/screens/plugin-install.js:223	
-c2ihd5	ok	A skill	一個技能	src/ui/screens/plugin-install.js:223	
-i0bxaj	ok	A model provider · data only	模型供應商 · 僅資料	src/ui/screens/plugin-install.js:223	
-39jdhh	ok	A package without code	不含程式碼的套件	src/ui/screens/plugin-install.js:224	
-5cnrzb	ok	A plugin	一個外掛程式	src/ui/screens/plugin-install.js:224	
-kfpex	ok	version {0}	版本 {0}	src/ui/screens/plugin-install.js:225	{0} = p.shownVersion
-km7fp2	ok	by {0}	作者：{0}	src/ui/screens/plugin-install.js:225	{0} = p.author
-mska2u	ok	Go back to Add.	返回「新增」。	src/ui/screens/plugin-install.js:239	Note: The Add screen, quoted so it reads as the screen's name.
-8sh8rg	ok	Nothing to install	沒有要安裝的內容	src/ui/screens/plugin-install.js:240	
-1irgo0m	ok	There's nothing to install.	沒有要安裝的內容。	src/ui/screens/plugin-install.js:241	
-15gtrui	ok	Install anyway, keep its settings and keys	仍然安裝，保留它的設定和金鑰	src/ui/screens/plugin-install.js:263	
-6o0r6s	ok	Install fresh	全新安裝	src/ui/screens/plugin-install.js:263	
-r9by73	ok	Install, keep its settings and keys	安裝，保留它的設定和金鑰	src/ui/screens/plugin-install.js:263	
-vxrnjh	ok	Install fresh anyway	仍然全新安裝	src/ui/screens/plugin-install.js:263	
-3lj040	ok	Install anyway and use it	仍然安裝並使用	src/ui/screens/plugin-install.js:264	
-pq5i3n	ok	Install and use it	安裝並使用	src/ui/screens/plugin-install.js:264	
-4it78t	ok	Install anyway, keep what's used now	仍然安裝，保留目前使用的	src/ui/screens/plugin-install.js:265	
-c455yu	ok	Install, keep annai's	安裝，保留 annai 的	src/ui/screens/plugin-install.js:265	
-s0ybug	ok	Install, keep what's used now	安裝，保留目前使用的	src/ui/screens/plugin-install.js:265	
-wjgdl3	ok	Install anyway, keep annai's	仍然安裝，保留 annai 的	src/ui/screens/plugin-install.js:265	
-1eg7xgh	ok	Install anyway	仍然安裝	src/ui/screens/plugin-install.js:266	
-3i7of3	ok	Install {0}?	安裝{0}？	src/ui/screens/plugin-install.js:270	{0} = pkg.name
-1kg68qt	ok	What it brings	它帶來的內容	src/ui/screens/plugin-install.js:278	
-owkvwp	ok	What it replaces	它替換的內容	src/ui/screens/plugin-install.js:282	
-170p2zc	ok	It replaces {0} from {1}.	它會替換{1}的{0}。	src/ui/screens/plugin-install.js:284	{0} = thingWords(s.kind, s.name); {1} = ownerName(rows, s.owner)
-zqgoid	ok	Only install it if you trust where it came from.	只有在你信任它的來源時才安裝。	src/ui/screens/plugin-install.js:286	
-1kfm2oy	ok	It can't run anything: it is data that tells annai how to reach a model provider.	它不能執行任何東西：它只是告訴 annai 如何連線模型供應商的資料。	src/ui/screens/plugin-install.js:289	
-i2z0ve	ok	A skill is instructions for Shiori: she reads them when they fit what you ask, and follows what they say. annai never runs anything in it, so install skills you trust.	技能是給 Shiori 的指示：當它們適合你問的內容時，她會閱讀並照做。annai 從不執行其中的任何東西，所以請安裝你信任的技能。	src/ui/screens/plugin-install.js:290	
-1q0ylpv	ok	Get a key	取得金鑰	src/ui/screens/plugin-install.js:292	
-syby9s	ok	New in this version	此版本新增	src/ui/screens/plugin-install.js:295	
-6kb5j4	ok	Updated {0}. It stays off.	已更新{0}。它保持關閉。	src/ui/screens/plugin-install.js:339	{0} = pkg.name
-7gzgtw	ok	{0} was installed, but it didn't start	{0}已安裝，但沒有啟動	src/ui/screens/plugin-install.js:347	{0} = pkg.name
-qn6t6j	ok	You can turn it off or remove it in Settings → Plugins.	可以在設定 → 外掛程式中關閉或移除它。	src/ui/screens/plugin-install.js:347	
+1a9dl1b	ok	This plugin gets full access to your trips and API keys.	此外掛程式可以完全存取你的旅行和 API 金鑰。	src/ui/screens/plugin-install.js:17	
+h65i2c	ok	It can read every key saved in annai and send it anywhere: now your keys for {0}.	它能讀取 annai 中儲存的每個金鑰，並傳送到任何地方：目前有你的 {0} 金鑰。	src/ui/screens/plugin-install.js:44	{0} = list(names)
+7jgsq6	ok	It can read every key saved in annai and send it anywhere.	它能讀取 annai 中儲存的每個金鑰，並傳送到任何地方。	src/ui/screens/plugin-install.js:45	
+g9t5es	ok	Plugins load through annai's offline service, which isn't running yet. Reload annai and try again.	外掛程式透過 annai 的離線服務載入，但它還沒有執行。請重新載入 annai 後再試。	src/ui/screens/plugin-install.js:48	
+brwxz0	draft	Getting annai ready for offline use… This goes on by itself once it's ready.	正在為離線使用準備 annai… 準備好後會自動繼續。	src/ui/screens/plugin-install.js:50	
+w5due	ok	{0}; {1}	{0}；{1}	src/ui/screens/plugin-install.js:64	context: semicolons; {0} = a; {1} = b; Note: Items side by side, each of which may hold commas (in English a semicolon).
+u9eus5	ok	Code that runs in annai	在 annai 中執行的程式碼	src/ui/screens/plugin-install.js:73	
+17rzkwp	ok	Skill "{0}": {1}	技能「{0}」：{1}	src/ui/screens/plugin-install.js:74	{0} = s.name; {1} = s.description
+2kbcmd	ok	Personality "{0}"	性格「{0}」	src/ui/screens/plugin-install.js:75	{0} = p.name
+vq8vn6	ok	A model provider: {0}	模型供應商：{0}	src/ui/screens/plugin-install.js:76	{0} = abilityWords(pkg.provider)
+1f7spnt	ok	A search provider for web_search	web_search 的搜尋供應商	src/ui/screens/plugin-install.js:77	
+hezgd5	ok	Its provider now sends keys you give it to {0}	它的供應商現在會把你給它的金鑰傳送到 {0}	src/ui/screens/plugin-install.js:80	{0} = list(keys, 'plain')
+18fhlh2	ok	Its searches now go to {0}	它的搜尋現在會傳送到 {0}	src/ui/screens/plugin-install.js:81	{0} = list(searches, 'plain')
+yqw4or	ok	Nothing annai uses yet	暫時沒有 annai 會用到的內容	src/ui/screens/plugin-install.js:82	
+1jxklq1	ok	Keys you give this provider are sent to {0}.	你給此供應商的金鑰會傳送到 {0}。	src/ui/screens/plugin-install.js:96	{0} = list(origins)
+nfrhzr	ok	Keys you give this provider are sent only to the address you give it.	你給此供應商的金鑰只會傳送到你給它的網址。	src/ui/screens/plugin-install.js:96	
+ee5xfy	ok	Your search words are sent only to the address you give it.	你搜尋的詞只會傳送到你給它的網址。	src/ui/screens/plugin-install.js:100	
+162zx16	ok	Your search words and the key you give it are sent to {0}.	你搜尋的詞和你給它的金鑰會傳送到 {0}。	src/ui/screens/plugin-install.js:101	{0} = list(o)
+1e5wf2u	ok	Your search words are sent to {0}.	你搜尋的詞會傳送到 {0}。	src/ui/screens/plugin-install.js:101	{0} = list(o)
+1hlyxa4	ok	{0} (installed)	{0}（已安裝）	src/ui/screens/plugin-install.js:124	{0} = state[r.id]?.name ?? r.id
+j7a5ne	ok	{0} (from annai, installed with it)	{0}（來自 annai，一併安裝）	src/ui/screens/plugin-install.js:124	{0} = plan.find((e) => e.id === r.id)?.name
+140c8vb	ok	It needs: {0}.	它需要：{0}。	src/ui/screens/plugin-install.js:125	{0} = semicolons(each)
+1bay0n3	ok	annai's catalog couldn't be loaded to look for what it needs. Connect to the internet and try again.	無法載入 annai 的目錄來查詢它需要的內容。請連上網路後再試。	src/ui/screens/plugin-install.js:127	
+1914xwr	ok	chat	對話	src/ui/screens/plugin-install.js:132	Note: a provider's ability (chat models): 對話模型, as the glossary's Koe · Classic note.
+1srbarg	ok	realtime	即時	src/ui/screens/plugin-install.js:132	
+j73cn3	ok	transcription	語音轉文字	src/ui/screens/plugin-install.js:132	
+zen9ix	ok	voice	聲音	src/ui/screens/plugin-install.js:132	Note: A provider's ability to speak: the glossary's voice (聲 / 聲音), not the Voice screen.
+w2ndgc	ok	nothing yet	暫時沒有	src/ui/screens/plugin-install.js:136	
+1vmhfh0	ok	From a file: {0}	來自檔案：{0}	src/ui/screens/plugin-install.js:173	{0} = value
+62wi84	ok	From annai	來自 annai	src/ui/screens/plugin-install.js:174	
+17ahsv6	ok	Version {0} is installed now. Installing replaces it.	目前已安裝版本 {0}。安裝會替換它。	src/ui/screens/plugin-install.js:186	{0} = v
+11t6hui	ok	an address	某個網址	src/ui/screens/plugin-install.js:189	Note: Where an installed version came from, inside "Version {0} is installed now, from {1}, …".
+1wr9niq	ok	a file: {0}	檔案 {0}	src/ui/screens/plugin-install.js:189	{0} = value; Note: Where an installed version came from, inside "Version {0} is installed now, from {1}, …".
+rgr1rj	ok	Version {0} is installed now, from {1}, not where this one comes from.	目前已安裝版本 {0}，來自 {1}，與這個的來源不同。	src/ui/screens/plugin-install.js:190	{0} = v; {1} = place
+a41hrh	ok	Kept, its settings, keys and your choices for its names go to this one; fresh, they are removed.	保留的話，它的設定、金鑰和你為它的名稱所做的選擇會轉給這個；全新安裝的話，它們會被移除。	src/ui/screens/plugin-install.js:191	
+19apr1m	ok	the kind of backup place {0}	備份位置類型 {0}	src/ui/screens/plugin-install.js:206	{0} = n
+cdbbto	ok	the tool {0}	工具 {0}	src/ui/screens/plugin-install.js:206	{0} = n
+o0687u	ok	the protocol {0}	協定 {0}	src/ui/screens/plugin-install.js:206	{0} = n
+540qyj	ok	the search provider {0}	搜尋供應商 {0}	src/ui/screens/plugin-install.js:207	{0} = n
+snr298	ok	the card type {0}	卡片類型 {0}	src/ui/screens/plugin-install.js:207	{0} = n
+18lyuvn	ok	the dock	底部列	src/ui/screens/plugin-install.js:209	
+18ybxd9	ok	how Shiori looks	Shiori 的外觀	src/ui/screens/plugin-install.js:209	
+1na8xe5	draft	how the itinerary's rows look	行程各行的外觀	src/ui/screens/plugin-install.js:209	English was: how the plan's rows look
+lfbn6i	ok	the Now card	此刻卡片	src/ui/screens/plugin-install.js:209	
+1xqw6of	ok	the part {0}	元件 {0}	src/ui/screens/plugin-install.js:211	{0} = name
+1twwnld	ok	The browser keeps the old code until annai starts again.	在 annai 重新啟動之前，瀏覽器會一直使用舊程式碼。	src/ui/screens/plugin-install.js:227	
+5nx73t	ok	Restart annai to run the new version of {0}.	重新啟動 annai 以執行{0}的新版本。	src/ui/screens/plugin-install.js:227	{0} = name
+19ojpuq	ok	A model provider · has code	模型供應商 · 含程式碼	src/ui/screens/plugin-install.js:237	
+c2ihd5	ok	A skill	一個技能	src/ui/screens/plugin-install.js:237	
+i0bxaj	ok	A model provider · data only	模型供應商 · 僅資料	src/ui/screens/plugin-install.js:237	
+39jdhh	ok	A package without code	不含程式碼的套件	src/ui/screens/plugin-install.js:238	
+5cnrzb	ok	A plugin	一個外掛程式	src/ui/screens/plugin-install.js:238	
+kfpex	ok	version {0}	版本 {0}	src/ui/screens/plugin-install.js:239	{0} = p.shownVersion
+km7fp2	ok	by {0}	作者：{0}	src/ui/screens/plugin-install.js:239	{0} = p.author
+mska2u	ok	Go back to Add.	返回「新增」。	src/ui/screens/plugin-install.js:253	Note: The Add screen, quoted so it reads as the screen's name.
+8sh8rg	ok	Nothing to install	沒有要安裝的內容	src/ui/screens/plugin-install.js:254	
+1irgo0m	ok	There's nothing to install.	沒有要安裝的內容。	src/ui/screens/plugin-install.js:255	
+15gtrui	ok	Install anyway, keep its settings and keys	仍然安裝，保留它的設定和金鑰	src/ui/screens/plugin-install.js:277	
+6o0r6s	ok	Install fresh	全新安裝	src/ui/screens/plugin-install.js:277	
+r9by73	ok	Install, keep its settings and keys	安裝，保留它的設定和金鑰	src/ui/screens/plugin-install.js:277	
+vxrnjh	ok	Install fresh anyway	仍然全新安裝	src/ui/screens/plugin-install.js:277	
+3lj040	ok	Install anyway and use it	仍然安裝並使用	src/ui/screens/plugin-install.js:278	
+pq5i3n	ok	Install and use it	安裝並使用	src/ui/screens/plugin-install.js:278	
+4it78t	ok	Install anyway, keep what's used now	仍然安裝，保留目前使用的	src/ui/screens/plugin-install.js:279	
+c455yu	ok	Install, keep annai's	安裝，保留 annai 的	src/ui/screens/plugin-install.js:279	
+s0ybug	ok	Install, keep what's used now	安裝，保留目前使用的	src/ui/screens/plugin-install.js:279	
+wjgdl3	ok	Install anyway, keep annai's	仍然安裝，保留 annai 的	src/ui/screens/plugin-install.js:279	
+1eg7xgh	ok	Install anyway	仍然安裝	src/ui/screens/plugin-install.js:280	
+3i7of3	ok	Install {0}?	安裝{0}？	src/ui/screens/plugin-install.js:284	{0} = pkg.name
+1kg68qt	ok	What it brings	它帶來的內容	src/ui/screens/plugin-install.js:292	
+owkvwp	ok	What it replaces	它替換的內容	src/ui/screens/plugin-install.js:296	
+170p2zc	ok	It replaces {0} from {1}.	它會替換{1}的{0}。	src/ui/screens/plugin-install.js:298	{0} = thingWords(s.kind, s.name); {1} = ownerName(rows, s.owner)
+zqgoid	ok	Only install it if you trust where it came from.	只有在你信任它的來源時才安裝。	src/ui/screens/plugin-install.js:300	
+1kfm2oy	ok	It can't run anything: it is data that tells annai how to reach a model provider.	它不能執行任何東西：它只是告訴 annai 如何連線模型供應商的資料。	src/ui/screens/plugin-install.js:303	
+i2z0ve	ok	A skill is instructions for Shiori: she reads them when they fit what you ask, and follows what they say. annai never runs anything in it, so install skills you trust.	技能是給 Shiori 的指示：當它們適合你問的內容時，她會閱讀並照做。annai 從不執行其中的任何東西，所以請安裝你信任的技能。	src/ui/screens/plugin-install.js:304	
+1q0ylpv	ok	Get a key	取得金鑰	src/ui/screens/plugin-install.js:306	
+syby9s	ok	New in this version	此版本新增	src/ui/screens/plugin-install.js:309	
+6kb5j4	ok	Updated {0}. It stays off.	已更新{0}。它保持關閉。	src/ui/screens/plugin-install.js:351	{0} = pkg.name
+7gzgtw	ok	{0} was installed, but it didn't start	{0}已安裝，但沒有啟動	src/ui/screens/plugin-install.js:359	{0} = pkg.name
+qn6t6j	ok	You can turn it off or remove it in Settings → Plugins.	可以在設定 → 外掛程式中關閉或移除它。	src/ui/screens/plugin-install.js:359	
 16v75nb	ok	Cleared its settings ({0}) and its secrets ({1}).	已清除它的設定（{0}）和機密（{1}）。	src/ui/screens/plugin.js:31	{0} = keys; {1} = secrets
 1qjjp11	ok	Cleared its settings and its secrets ({0}).	已清除它的設定和機密（{0}）。	src/ui/screens/plugin.js:31	{0} = secrets
 166l823	ok	Cleared its settings ({0}).	已清除它的設定（{0}）。	src/ui/screens/plugin.js:32	{0} = keys

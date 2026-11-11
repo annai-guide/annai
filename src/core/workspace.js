@@ -164,32 +164,45 @@ export class Workspace {
   }
 
   /**
-   * Writes and deletes several files in one transaction: all of them or none.
+   * Writes and deletes several files of a scope in one transaction: all of them or none (writeAcross).
    * Content null deletes the file. Like write(), unchanged content is left alone.
    * @param {string} scope
    * @param {{ path: string, content: string | Uint8Array | ArrayBuffer | object | null, type?: string }[]} changes
    * @param {WriteOptions} opts
    */
   async writeMany(scope, changes, opts) {
-    /** @type {{ path: string, version: Version | null }[]} */
-    const prepared = [];
-    for (const c of changes) {
-      const path = normPath(c.path);
-      if (c.content === null) {
-        prepared.push({ path, version: null });
-        continue;
-      }
-      const type = c.type ?? typeForPath(path);
-      const bytes = contentBytes(c.content);
-      if (type === 'application/json') this.#validateJSON(scope, path, bytes);
-      prepared.push({ path, version: { hash: await sha256Hex(bytes), type, size: bytes.byteLength, bytes } });
-    }
-    const now = this.now();
+    await this.writeAcross(changes.map((c) => ({ scope, path: c.path, content: c.content, opts: c.type ? { ...opts, type: c.type } : opts })));
+  }
+
+  /**
+   * Changes files in any scopes in one transaction: all of them, with their log entries, or none (a move's two ends). A change writes content
+   * (null deletes) or merges patch into a JSON file (missing: {}), with its own options, no guard; one per path. Each path's lock is taken in
+   * sorted order, as writeMany's were. inTx: more in the same transaction, Tx calls only (a forget); what it returns is returned.
+   * @template T
+   * @param {{ scope: string, path: string, content?: string | Uint8Array | ArrayBuffer | object | null, patch?: object, opts: WriteOptions }[]} changes
+   * @param {{ inTx?: (t: Tx) => Promise<T> }} [o]
+   * @returns {Promise<T | undefined>}
+   */
+  async writeAcross(changes, { inTx } = {}) {
+    const list = changes.map((c) => ({ ...c, path: normPath(c.path) }));
     const commit = async () => {
-      const done = await this.store.tx(['blobs', 'files', 'events', 'scopes'], 'readwrite', async (t) => {
+      /** @type {{ c: typeof list[number], version: Version | null }[]} */
+      const prepared = [];
+      for (const c of list) {
+        if (c.content === null) {
+          prepared.push({ c, version: null });
+          continue;
+        }
+        const type = c.opts.type ?? typeForPath(c.path);
+        const bytes = contentBytes(c.patch ? mergePatch((await this.readJSON(c.scope, c.path)) ?? {}, c.patch) : c.content);
+        if (type === 'application/json') this.#validateJSON(c.scope, c.path, bytes);
+        prepared.push({ c, version: { hash: await sha256Hex(bytes), type, size: bytes.byteLength, bytes } });
+      }
+      const now = this.now();
+      const { out, value } = await this.store.tx(['blobs', 'files', 'events', 'scopes'], 'readwrite', async (t) => {
         /** @type {Change[]} */
         const out = [];
-        for (const { path, version } of prepared) {
+        for (const { c: { scope, path, opts }, version } of prepared) {
           if (!version) {
             await removeFile(t, scope, path, opts, now);
             out.push({ op: 'delete', scope, path });
@@ -198,15 +211,15 @@ export class Workspace {
           const entry = await putVersion(t, scope, path, version, opts, now);
           if (entry) out.push({ op: 'write', scope, path, entry });
         }
-        return out;
+        return { out, value: inTx ? await inTx(t) : undefined };
       });
-      for (const change of done) await this.#emit(change);
+      for (const change of out) await this.#emit(change);
+      return value;
     };
-    // In the lock of each path it changes, taken in sorted order (two calls never wait for each other), so it comes before or after a
-    // write, patch or update of that path, never between a read and a write of it.
-    const paths = [...new Set(prepared.map((c) => c.path))].sort();
-    const within = (/** @type {number} */ i) => (i === paths.length ? commit() : this.#locked(scope, paths[i], () => within(i + 1)));
-    await within(0);
+    const keys = [...new Set(list.map((c) => lockKey(c.scope, c.path)))].sort();
+    /** @param {number} i @returns {Promise<T | undefined>} */
+    const within = (i) => (i === keys.length ? commit() : this.#lockedKey(keys[i], () => within(i + 1)));
+    return within(0);
   }
 
   /**
@@ -317,7 +330,11 @@ export class Workspace {
    * @returns {Promise<T>}
    */
   #locked(scope, path, fn) {
-    const key = `${scope}\u0000${path}`;
+    return this.#lockedKey(lockKey(scope, path), fn);
+  }
+
+  /** @template T @param {string} key @param {() => Promise<T>} fn @returns {Promise<T>} */
+  #lockedKey(key, fn) {
     const run = (this.#locks.get(key) ?? Promise.resolve()).then(fn, fn);
     const tail = run.catch(() => {});
     this.#locks.set(key, tail);
@@ -325,6 +342,9 @@ export class Workspace {
     return run;
   }
 }
+
+/** A path's lock, by its scope and path. @param {string} scope @param {string} path */
+const lockKey = (scope, path) => `${scope}\u0000${path}`;
 
 /** @param {any} content @returns {Uint8Array} */
 /** A JSON file's value, as every reader reads it (a byte-order mark is read past). @param {string} path @param {Uint8Array} bytes */

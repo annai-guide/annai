@@ -42,9 +42,9 @@ export function onTap(fn, doc = document) {
  * On a touch screen the dock steps aside while a text field outside it has focus and the keyboard is up, and comes back when focus
  * leaves or the keyboard goes. The page gets `typing-elsewhere`; shiori.css makes the dock see-through and deaf to taps but keeps its
  * box and its place in the accessibility tree. The dock's own text box is no such field; a mouse has no keyboard, so nothing happens there.
- * @param {Document} [doc]
+ * @param {Document} [doc] @param {{ ended?: () => void }} [o] ended: typing-elsewhere went (home's box sticks again then, base.css)
  */
-export function dockHidesWhileTyping(doc = document) {
+export function dockHidesWhileTyping(doc = document, { ended = () => {} } = {}) {
   const win = /** @type {Window} */ (doc.defaultView);
   const vv = win.visualViewport;
   /** A text field outside the dock has focus. */
@@ -57,7 +57,10 @@ export function dockHidesWhileTyping(doc = document) {
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let timer;
   const covered = () => Boolean(vv) && /** @type {VisualViewport} */ (vv).height < doc.documentElement.clientHeight * 0.8;
-  const paint = () => doc.documentElement.classList.toggle('typing-elsewhere', field && !(seen && !covered()));
+  const paint = () => {
+    const was = doc.documentElement.classList.contains('typing-elsewhere');
+    if (!doc.documentElement.classList.toggle('typing-elsewhere', field && !(seen && !covered())) && was) ended();
+  };
   /** @param {EventTarget | null} el */
   const update = (el) => {
     const on = win.matchMedia('(pointer: coarse)').matches && takesTyping(el) && !(/** @type {Element} */ (el)).closest('.dock:not(.seat)');

@@ -37,8 +37,9 @@ export function shortName(names, path) {
 }
 
 /**
- * Keeps names with their files: a file deleted under /files/ (by the user, by Shiori, or moved away) loses its short name, so a new file
- * at that path never takes it, written as annai's (system). A trip's names.json keeps its history, which goes with the trip; the waiting space's goes with the file dropped (waiting.js). @param {Workspace} ws
+ * Keeps names with their files: a file deleted under /files/ (by the user or by Shiori) loses its short name, so a new file at that path never
+ * takes it, written as annai's (system); a move takes its name along in its own transaction (waiting.js). A trip's names.json keeps its history,
+ * which goes with the trip; the waiting space's goes with the file dropped (waiting.js). @param {Workspace} ws
  * @returns {() => void} stops it
  */
 export function syncNames(ws) {

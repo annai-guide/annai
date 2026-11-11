@@ -12,10 +12,24 @@ export const RELOADED = 'annai.reloadedForWorker';
 /** @typedef {Pick<Storage, 'getItem' | 'setItem'>} KeyValue */
 
 /**
- * Whether a worker controls the page, within timeoutMs; it is asked to take the page. A worker still on its way at timeoutMs is waited
- * for until it takes the page or its install fails: a first visit's (none active yet), which takes the page as it activates (sw.js) once
- * its whole shell has downloaded, however long a slow connection makes that, and one activating. Giving up on it would say a reload is
- * needed while none is.
+ * The worker on its way to take this page: a first visit's (installing, or installed with none active), which takes it as it activates
+ * (sw.js), or one activating; not an update beside an active worker. One answer for the wait and for what the screens say meanwhile.
+ * @param {ServiceWorkerRegistration | undefined} reg @returns {ServiceWorker | null}
+ */
+export function onItsWay(reg) {
+  const coming = reg?.installing ?? reg?.waiting ?? reg?.active;
+  return coming && (coming.state === 'activating' || (!reg?.active && coming.state !== 'redundant')) ? coming : null;
+}
+
+/** Whether one is on its way now: a wait helps, a reload doesn't. @param {ServiceWorkerContainer | undefined} sw @returns {Promise<boolean>} */
+export async function comingNow(sw) {
+  return Boolean(sw && onItsWay(await sw.getRegistration().catch(() => undefined)));
+}
+
+/**
+ * Whether a worker controls the page, within timeoutMs; it is asked to take the page. A worker still on its way at timeoutMs (onItsWay) is
+ * waited for until it takes the page or its install fails, however long a slow connection makes that. Giving up on it would say a reload
+ * is needed while none is.
  * @param {ServiceWorkerContainer | undefined} sw @returns {Promise<boolean>}
  */
 export function controllerReady(sw, timeoutMs = 15_000) {
@@ -30,8 +44,8 @@ export function controllerReady(sw, timeoutMs = 15_000) {
     const look = () => {
       if (sw.controller) return done();
       sw.getRegistration().then((reg) => {
-        const coming = reg?.installing ?? reg?.waiting ?? reg?.active;
-        if (coming && (coming.state === 'activating' || (!reg?.active && coming.state !== 'redundant'))) coming.addEventListener('statechange', look, { once: true });
+        const coming = onItsWay(reg);
+        if (coming) coming.addEventListener('statechange', look, { once: true });
         else done();
       }, done);
     };

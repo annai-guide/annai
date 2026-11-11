@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { pluginsMayLoad, mayReload, controllerReady, RELOADED, RELOAD_GAP } from '../../src/app/claim.js';
+import { pluginsMayLoad, mayReload, controllerReady, comingNow, RELOADED, RELOAD_GAP } from '../../src/app/claim.js';
 
 /** sessionStorage as a map; broken: it throws, or forgets what it is given. @param {'throws' | 'forgets'} [broken] */
 function session(broken) {
@@ -154,4 +154,19 @@ test("a first visit's worker still downloading when the time is up is waited for
   const reg = await past.getRegistration();
   past.getRegistration = () => Promise.resolve({ ...reg, installing: Object.assign(new EventTarget(), { state: 'installing' }) });
   assert.equal(await within(controllerReady(past, 20), 300), false);
+});
+
+test('what the screens say while plugins wait has the wait\'s own answer: a worker on its way (a reload won\'t help) or not (it may)', async () => {
+  const slow = firstVisit();
+  assert.equal(await comingNow(slow), true, 'installing, none active');
+  slow.fail();
+  assert.equal(await comingNow(slow), false, 'its install failed: a reload tries again');
+  const done = firstVisit();
+  await done.install();
+  assert.equal(await comingNow(done), false, 'it took the page');
+  for (const sw of [container({ takes: false }), container({ active: false }), container({ lookup: 'fails' }), undefined]) assert.equal(await comingNow(sw), false);
+  const past = container({ takes: false }); // an update installing beside an active worker: it takes no page loaded past the active one
+  const reg = await past.getRegistration();
+  past.getRegistration = () => Promise.resolve({ ...reg, installing: Object.assign(new EventTarget(), { state: 'installing' }) });
+  assert.equal(await comingNow(past), false);
 });
