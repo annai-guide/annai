@@ -76,3 +76,11 @@ test('a no of two or more clauses: every clause on the no list; a yes among them
     assert.equal(spokenYes(said), false, said);
   }
 });
+
+test('いいよ said once is a yes; said twice or more ("いいよ、いいよ", "いいよいいよ"), as it is to wave an offer off, it is neither a yes nor a no', () => {
+  for (const said of ['いいよ', 'いいよ。', 'いいよ！', 'うん、いいよ']) assert.equal(spokenYes(said), true, said);
+  for (const said of ['いいよ、いいよ', 'いいよいいよ', 'いいよ いいよ', 'いいよ！いいよ！', 'いいよ、いいよ、いいよ']) {
+    assert.equal(spokenYes(said), false, said);
+    assert.equal(spokenNo(said), false, said);
+  }
+});
