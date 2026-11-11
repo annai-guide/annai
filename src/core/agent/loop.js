@@ -11,7 +11,7 @@ import { sha256Hex } from '../hash.js';
 import { record, storedTexts, TALK_TAG } from './log.js';
 import { blobBytes, canRead } from '../reach.js';
 import { compactionNeed, cutAt, promptTokens, requestBytes, instruction, renderForSummary, coldSystem, summaryLanguage, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
-import { Transcript, resolveEvent, repair, NOT_SAID, SAID, STOPPED, CUT, NOT_RUN } from './transcript.js';
+import { Transcript, resolveEvent, repair, NOT_SAID, SAID, STOPPED, CUT, NOT_RUN, NOT_ANSWERED, LET_GO } from './transcript.js';
 import { toolList, definitions, runTool, Stuck, toolSwitches, resolvePath, ALWAYS_ON } from './tools.js';
 import { takeSnapshot, nextSnapshot, nowBlock, nextPlanItems, buildRequest, prefixFingerprint, systemText } from './context.js';
 import { Warmth, TTL_MS, ttlFor, wantedTtl, SOON_MS } from './warmth.js';
@@ -228,6 +228,8 @@ export const isTheirs = (w) => w.kind === 'user' || w.kind === 'choice' || (w.ki
 const owesAnswer = (w) => isTheirs(w) && !w.window;
 /** A wake annai started by itself, no line or act of the user's: GPS turned on, a reminder or watch firing, a catch-up, a plugin's. @param {Wake} w */
 const byAnnai = (w) => w.kind === 'live' || w.kind === 'trigger' || w.kind === 'catch-up' || w.kind === 'plugin';
+/** Her calls that talk to the user and then listen or wait for them. */
+const TALKS = ['speak', 'ask', 'wait'];
 
 /**
  * A wake that means the user is there to tap Stop (budgets.js UNWATCHED_STEPS): one they started, live mode turned on, and for Kokoro behind Koe, Koe's note or
@@ -454,8 +456,13 @@ export class Agent {
   #userStop = false;
   /** The turn running was cut by opening another conversation: the one left is told. */
   #cutByOpen = false;
-  /** ...while it waited on the user (her ask, her question's listening, a wait): their next line answers it. */
+  /** ...while it waited on the user: their next line answers it. Any open of the turn's unwind may say so (two quick taps). */
   #cutWaiting = false;
+  /** The call running: whether it is her reply's last but sleep, and talks to the user (speak, ask, wait: saying or listening). */
+  #running = /** @type {{ last: boolean, talks: boolean } | null} */ (null);
+  /** The turn was started by annai alone (#steps), and no line or act of the user's was written during it (#log). */
+  #annais = false;
+  #userIn = false;
   /** Counts what of hers reached the user (speak, show, ask, a reply shown as written; never annai's own card): what was owed before it is settled. */
   #reached = 0;
   /** The typing box holds text (the dock says so): a turn of theirs waits for them (GATHER). */
@@ -654,7 +661,9 @@ export class Agent {
    * @param {{ quiet?: boolean }} [o] quiet: the conversation is being removed, so it is not told that she will pick it up
    */
   open(trip, o = {}) {
-    const waiting = Boolean(this.#pending); // before the ear closes and the halt answers it
+    // Waiting on the user: her reply's last call but sleep says something to them or listens, or holds annai's card. Read before the ear
+    // closes and the halt answers it; "Let me check." listening before a search still has work to do.
+    const waiting = Boolean(this.#running?.last && (this.#running.talks || this.#pending));
     this.#closeEar();
     this.voice?.speaker.stop();
     this.#target = trip;
@@ -663,7 +672,7 @@ export class Agent {
     const generation = ++this.#generation;
     if (this.#turning && trip !== this.trip && !o.quiet) {
       this.#cutByOpen = true;
-      this.#cutWaiting = waiting;
+      this.#cutWaiting ||= waiting;
     }
     if (this.#busy) this.#halt();
     this.#clearTimer();
@@ -729,6 +738,10 @@ export class Agent {
     const elsewhere = this.#queue.filter((w) => w.scope !== scope);
     for (const s of new Set(elsewhere.map((w) => /** @type {string} */ (w.scope)))) {
       const those = elsewhere.filter((w) => w.scope === s);
+      // A reminder among them is shown now, as one firing for a conversation that isn't open is (live.js): the wake waits for its turn there.
+      const owed = those.flatMap((w) => w.fallbacks ?? []);
+      if (owed.length) await this.remind(owed, s);
+      for (const w of those) w.fallbacks = [];
       await this.#logWakes(those, newId('w'), false, this.#keptIn(s), s === ME ? null : s);
       this.#queue = this.#queue.filter((w) => !those.includes(w)); // a failed write keeps them
     }
@@ -1282,6 +1295,8 @@ export class Agent {
     this.#queue = this.#queue.filter((w) => w.scope !== this.scope);
     this.poke();
     this.#stopWakes(wakes);
+    const owed = wakes.flatMap((w) => w.fallbacks ?? []);
+    if (owed.length) this.remind(owed, this.scope, { silent: true }).catch(() => {}); // the Stop stops her, not the reminder they set
   }
 
   /** Wakes that never start a turn, written into the conversation all the same, with a quiet "stopped". @param {Wake[]} wakes */
@@ -1819,6 +1834,8 @@ export class Agent {
       // Each of Shiori's lines says which model wrote it: null when none did (annai's own, a live voice's), never left out.
       const by = LINES.has(ev.type) && !('by' in (ev.data ?? {})) ? { by: this.#by } : {};
       const stored = await record(this.store, this.scope, { now: this.#stamp(this.scope), ...ev, data: { ...ev.data, ...by, ...mark } });
+      // The user answered, typed or spoke during her turn: it is theirs too, so a cut takes it up (an answer comes in a tool's result, never as a wake).
+      if (this.#turning && (ev.type === 'msg.user' || (ev.type === 'heard' && !ev.data?.dismissed))) this.#userIn = true;
       const r = await resolveEvent(this.store, stored);
       this.#apply(stored, r);
       // annai's own card (confirm) is annai's, not her words: it neither answers the user nor settles what she owes them.
@@ -1917,7 +1934,8 @@ export class Agent {
     // The turn's own from here, before anything it awaits: a Stop or an open while it sets up is this turn's.
     this.#abort = abort;
     this.#userStop = false;
-    this.#cutByOpen = this.#cutWaiting = false;
+    this.#cutByOpen = this.#cutWaiting = this.#annais = this.#userIn = false;
+    this.#running = null;
     await this.#half.ready?.(); // the half's rules are known (Halves reads the settings as annai starts)
     await this.#workOutVoice(wakes);
     this.#heardBy = null;
@@ -1948,6 +1966,15 @@ export class Agent {
         console.warn(/* en */ 'the end of a turn failed', e);
       }
     }
+  }
+
+  /**
+   * An open's cut that lets the turn go as the released app did (the user's choices of 2026-11-11): one waiting on the user, whose next line
+   * answers her; one annai started by itself (GPS on, a reminder or watch, a catch-up, a plugin) that the user didn't answer. Only a turn the
+   * user started or answered, cut at work, is picked up.
+   */
+  #lettingGo() {
+    return this.#cutByOpen && !this.#userStop && !this.#leaving && (this.#cutWaiting || (this.#annais && !this.#userIn));
   }
 
   /**
@@ -1995,8 +2022,7 @@ export class Agent {
     let owed = wakes.flatMap((w) => w.fallbacks ?? []);
     /** The user's own message (or tap) is in this turn, and nothing has reached them since. */
     let theirs = wakes.some(owesAnswer);
-    /** No line or act of the user's started it, nor joined it. */
-    let annais = wakes.every(byAnnai);
+    this.#annais = wakes.every(byAnnai);
     let reached = this.#reached;
     /** What had reached the user when the turn began: a tool call is asked for only until something more has. */
     const begun = this.#reached;
@@ -2210,7 +2236,7 @@ export class Agent {
             await this.#logWakes(more, wakeId, true);
             reasons.push(...more.map((w) => this.#reason(w)));
             owed.push(...more.flatMap((w) => w.fallbacks ?? []));
-            annais &&= more.every(byAnnai);
+            this.#annais &&= more.every(byAnnai);
             join(more);
           }
           continue;
@@ -2274,7 +2300,9 @@ export class Agent {
         const awake = goesOn && c.name === 'sleep';
         // Held only while her turn goes on: a held note her sleep then ended reached no one.
         const unsent = broke && c.name === 'tell_koe' && (!sleeping || goesOn);
+        this.#running = { last: !ordered.slice(i + 1).some((/** @type {any} */ x) => x.name !== 'sleep'), talks: TALKS.includes(c.name) };
         const output = await this.#runCall(c, tools, { wakeId, signal: abort.signal, model, sleeping, providerOff: via.off, more, last: i === ordered.length - 1, reads, awake, unsent });
+        this.#running = null;
         if (breaks(c.name, Boolean(output.isError))) broke = true;
         if (output.endTurn) endTurn = this.#wentToSleep = true;
         if (stuck.see(c.name, c.input, output.content)) stop = true;
@@ -2316,7 +2344,7 @@ export class Agent {
         reasons.push(...more.map((w) => this.#reason(w)));
         owed.push(...more.flatMap((w) => w.fallbacks ?? []));
         this.#facts.kinds.push(...more.map((w) => w.kind));
-        annais &&= more.every(byAnnai);
+        this.#annais &&= more.every(byAnnai);
         join(more);
       }
     }
@@ -2340,16 +2368,16 @@ export class Agent {
       await this.#log({ type: 'error', actor: 'system', data: { kind: 'silent', wake: wakeId, message: /* en */ 'Her model finished without saying anything to you.' } });
     }
     settle();
-    if (owed.length && !abort.signal.aborted && !this.#leaving) await this.remind(owed, this.scope, { unsaid: answered && !failed });
+    // A reminder the turn still owes is annai's to show: when no model said it, and at a cut (an open; the user's Stop, silently, as the Stop
+    // stops her talking, not the reminder they set), so it reaches them now, once; a restart reads it as shown.
+    const cut = abort.signal.aborted && !this.#leaving && (this.#userStop || this.#cutByOpen);
+    if (owed.length && (cut || (!abort.signal.aborted && !this.#leaving))) await this.remind(owed, this.scope, { unsaid: cut || (answered && !failed), ...(abort.signal.aborted && this.#userStop ? { silent: true } : {}) });
     // The user stopped her: the turn is over, and opening the conversation again doesn't take it up (spec §6.7). Nothing to show.
     if (abort.signal.aborted && this.#userStop) await this.#log({ type: 'error', actor: 'system', data: { kind: 'stopped', wake: wakeId, message: STOPPED, quiet: true } });
-    // Another conversation opened while she waited on the user, or in a turn annai started by itself: let go as the released app let it go,
-    // written as settled, so no paused line shows and nothing is taken up; a reminder it carried that hadn't reached the user shows now
-    // (the user's choices of 2026-11-11: only a turn the user started is picked up, and their next line answers her question).
-    else if (abort.signal.aborted && this.#cutByOpen && !this.#leaving && (annais || this.#cutWaiting)) {
-      if (owed.length) await this.remind(owed, this.scope, { unsaid: true });
+    // Let go at an open (#lettingGo): written as settled, so no paused line shows and nothing is taken up.
+    else if (abort.signal.aborted && this.#lettingGo()) {
       /* en */
-      const message = annais ? 'Let go: another conversation was opened during a turn annai started by itself.' : 'Let go: another conversation was opened while she waited on the user; their next line answers her.';
+      const message = this.#cutWaiting ? 'Let go: another conversation was opened while she waited on the user; their next line answers her.' : 'Let go: another conversation was opened during a turn annai started by itself.';
       await this.#log({ type: 'error', actor: 'system', data: { kind: 'left', wake: wakeId, message, quiet: true } });
     }
     this.#owing = null;
@@ -2643,7 +2671,7 @@ export class Agent {
     // Cut short (the turn aborted, the call an error): the user's Stop, or another conversation opening, which is no Stop. Every result
     // says whether (`cut`), which a refusal or a failure is not: the log is read by the mark; only a result without it, an older page's, by its words.
     const cut = Boolean(o.signal.aborted && output.isError);
-    if (cut) output = { content: this.#userStop ? STOPPED : unrun ? NOT_RUN : CUT, isError: true };
+    if (cut) output = { content: this.#userStop ? STOPPED : this.#lettingGo() ? (this.#cutWaiting ? NOT_ANSWERED : LET_GO) : unrun ? NOT_RUN : CUT, isError: true };
     // A tell_koe that came back as an error told no one, whatever the error (refused: Koe can't speak; no text; the tool off): the user is
     // still owed an answer, so [tell_koe, sleep] does not end the turn on it (nudge() asks Kokoro once more; forcing is capped by FORCED_STEPS).
     if (c.name === 'tell_koe' && output.isError) this.#facts.told = toldBefore;
