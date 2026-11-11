@@ -154,6 +154,18 @@ test('at the end, pinched in and panned up to an earlier line, then the dock gro
   assert.equal(win.scrollY, 1000); // before: 2341
 });
 
+test("at the end, pinched in the way Android Chrome shows it (the window's scroll and size stay, only the zoom changes), then the dock grows: the page stays where it is", () => {
+  const win = phone();
+  const { keep } = keepAtEnd(/** @type {any} */ (win));
+  win.user(win.end()); // 2341
+  win.scale = 1.5; // Android: innerHeight and scrollY are the layout's, so the window still reads as at its end while the user looks at an earlier line
+  win.document = { documentElement: { clientHeight: win.innerHeight, get scrollHeight() { return win.content; } } };
+  keep(() => { win.content += 60; }); // she speaks
+  win.scrolled();
+  win.frame(2);
+  assert.equal(win.scrollY, 2341); // before: 2401, the view pulled down under the user's fingers
+});
+
 test('at the end, pinched in and panned up, zoomed out and then turned: the page stays where the user has it', () => {
   const win = phone();
   keepAtEnd(/** @type {any} */ (win));
