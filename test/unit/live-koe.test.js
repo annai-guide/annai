@@ -1334,7 +1334,7 @@ function slowMic(k) {
   return release;
 }
 
-test('P2: while the microphone starts she does not listen yet: the dock says she is working, and the chip stays as it was; once it is open she listens', async () => {
+test('P2: while the microphone starts she does not listen yet: the dock says she is getting ready, and the chip stays as it was; once it is open she listens', async () => {
   const k = await liveKit([]);
   try {
     const release = slowMic(k);
@@ -1345,11 +1345,11 @@ test('P2: while the microphone starts she does not listen yet: the dock says she
     const chip = [];
     k.agent.on('halves', (/** @type {any} */ x) => chip.push(x.live));
     k.agent.tap();
-    await until(() => k.agent.live.state === 'open' && k.agent.live.view.name === 'thinking', 5000);
+    await until(() => k.agent.live.state === 'open' && k.agent.live.view.name === 'opening', 5000);
     await new Promise((r) => setTimeout(r, 30)); // the microphone is still being asked for
     assert.equal(k.agent.live.listening, false, 'not listening: nothing is open to hear');
     assert.equal(k.platform.mic.isOpen(), false);
-    assert.equal(k.agent.live.view.name, 'thinking', 'the dock shows what it shows while opening, not asleep');
+    assert.equal(k.agent.live.view.name, 'opening', 'the dock says "One moment…" (drive-3 D5), not asleep, not listening');
     assert.ok(!views.includes('listening'), JSON.stringify(views));
     assert.ok(!chip.includes('listening'), `the chip says "Listening live" only with the microphone open: ${JSON.stringify(chip)}`);
     release();
@@ -1368,7 +1368,7 @@ test('P2: a microphone that fails to start never makes her listen: a card says w
   try {
     const release = slowMic(k);
     k.agent.tap();
-    await until(() => k.agent.live.state === 'open' && k.agent.live.view.name === 'thinking', 5000);
+    await until(() => k.agent.live.state === 'open' && k.agent.live.view.name === 'opening', 5000);
     release('NotAllowedError');
     await soon(async () => k.notices.some((/** @type {any} */ n) => /microphone/i.test(`${n.title} ${n.body}`)));
     assert.equal(k.agent.live.listening, false);
@@ -1384,7 +1384,7 @@ test('P2: a tap while the microphone starts stops the session, as a tap on a lis
   try {
     const release = slowMic(k);
     k.agent.tap();
-    await until(() => k.agent.live.state === 'open' && k.agent.live.view.name === 'thinking', 5000);
+    await until(() => k.agent.live.state === 'open' && k.agent.live.view.name === 'opening', 5000);
     assert.equal(k.agent.tap(), 'stopped');
     assert.equal(k.agent.live.state, 'closed');
     release();
@@ -1401,7 +1401,7 @@ test('F1: tap, tap, tap with a slow microphone: the third session opens a microp
   try {
     const release = slowMic(k);
     k.agent.tap(); // opens a session; its microphone is being asked for
-    await until(() => k.agent.live.state === 'open' && k.agent.live.view.name === 'thinking', 5000);
+    await until(() => k.agent.live.state === 'open' && k.agent.live.view.name === 'opening', 5000);
     assert.equal(k.agent.tap(), 'stopped'); // closes it, the microphone's start still out
     assert.equal(k.agent.live.state, 'closed');
     assert.equal(k.agent.tap(), 'listening'); // a new session, which listens

@@ -409,18 +409,18 @@ fki4un	ok	Notifications	通知	src/app/main.js:251
 1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai 现在按提供商设置：一个地址和一个密钥即可使用该提供商提供的一切。你的端点（{0}）及其密钥已移除。请在设置 → 模型中重新添加。	src/app/main.js:255	{0} = list(moved.names, 'plain')
 whpd9d	ok	Open Models	打开模型	src/app/main.js:256	
 10renyj	ok	Plugins	插件	src/app/main.js:267	
-1sp21de	ok	A new version of the {0} personality	性格“{0}”有新版本	src/app/main.js:358	{0} = o.name
-1yoe82	ok	Yours has your own edits, so it was kept as it is.	你的版本有你自己的修改，因此保持原样。	src/app/main.js:359	
-1n8cxuc	ok	Compare	比较	src/app/main.js:361	
-rzp4o3	ok	Keep mine	保留我的	src/app/main.js:362	
-1j662as	ok	Let Shiori merge	让 Shiori 合并	src/app/main.js:363	
-x0ig66	ok	Something went wrong	出了点问题	src/app/main.js:415	
-1oy79dy	ok	annai kept running. The details are in Trace.	annai 仍在运行。详情见记录。	src/app/main.js:416	
-c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai 仍在运行，但没能记下发生了什么，所以记录里也没有。如果反复出现，请关闭 annai 再重新打开。	src/app/main.js:416	
-11n1kcg	ok	Open Trace	打开记录	src/app/main.js:417	
-gt9ssw	ok	annai couldn't start	annai 无法启动	src/app/main.js:428	
-6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反复出现，可能是浏览器阻止了存储（例如在无痕窗口中）。	src/app/main.js:430	
-982hh6	ok	Try again	重试	src/app/main.js:431	
+1sp21de	ok	A new version of the {0} personality	性格“{0}”有新版本	src/app/main.js:363	{0} = o.name
+1yoe82	ok	Yours has your own edits, so it was kept as it is.	你的版本有你自己的修改，因此保持原样。	src/app/main.js:364	
+1n8cxuc	ok	Compare	比较	src/app/main.js:366	
+rzp4o3	ok	Keep mine	保留我的	src/app/main.js:367	
+1j662as	ok	Let Shiori merge	让 Shiori 合并	src/app/main.js:368	
+x0ig66	ok	Something went wrong	出了点问题	src/app/main.js:420	
+1oy79dy	ok	annai kept running. The details are in Trace.	annai 仍在运行。详情见记录。	src/app/main.js:421	
+c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai 仍在运行，但没能记下发生了什么，所以记录里也没有。如果反复出现，请关闭 annai 再重新打开。	src/app/main.js:421	
+11n1kcg	ok	Open Trace	打开记录	src/app/main.js:422	
+gt9ssw	ok	annai couldn't start	annai 无法启动	src/app/main.js:433	
+6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反复出现，可能是浏览器阻止了存储（例如在无痕窗口中）。	src/app/main.js:435	
+982hh6	ok	Try again	重试	src/app/main.js:436	
 1u3dm1p	ok	This address holds a name or password before an @. Leave it out.	这个地址在 @ 前面带有用户名或密码。请把它去掉。	src/core/address.js:68	
 1f8b0m5	ok	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	你停留的地方和时长（按名称；没有名称的地点用约 100 米精度的位置）。绝不发送 GPS 轨迹本身。	src/core/after/recap.js:54	
 imb4zw	draft	How far you drove or walked between, the stamps, and the itinerary.	其间开车或步行的距离、纪念章和行程。	src/core/after/recap.js:55	English was: How far you drove or walked between, the stamps, and the plan.
@@ -475,55 +475,56 @@ edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe 
 yvabm6	ok	Koe's live voice couldn't start	Koe 的实时语音无法启动	src/core/agent/halves.js:621	Note: "live voice" is the glossary's Live voice (实时语音), not a voice she speaks with (声音).
 bzrasi	ok	Shiori answers as one half for now	Shiori 暂时独自回答	src/core/agent/halves.js:791	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
 o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai 无法把你的消息转给 Koe：{0}	src/core/agent/halves.js:791	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-1dhsqvv	ok	Tap to talk	轻点说话	src/core/agent/loop.js:135	
-1ldobgc	ok	Tap to interrupt	轻点打断	src/core/agent/loop.js:135	
-4mbury	ok	Thinking · tap to stop	思考中 · 轻点停止	src/core/agent/loop.js:135	
-89yydm	ok	Listening	聆听中	src/core/agent/loop.js:135	Note: one of Shiori's states, as the dock shows her.
-bost42	draft	Ignoring sound · tap to talk	忽略声音 · 轻点说话	src/core/agent/loop.js:135	
-g8840o	ok	Waiting for your OK	等待你的确认	src/core/agent/loop.js:135	
-yydchc	ok	Hearing you	正在听你说	src/core/agent/loop.js:135	Note: one of Shiori's states: she hears you speaking.
-akjf4d	ok	Working on …	处理中…	src/core/agent/loop.js:136	
-izy3tv	ok	Offline · reminders still work	离线 · 提醒仍然有效	src/core/agent/loop.js:136	
-gni5zk	draft	Her sound got stuck, and a tap brings it back. Her words are in the conversation.	Shiori 的声音卡住了，轻点一下即可恢复。她说的话都在对话里。	src/core/agent/loop.js:170	
-guullf	ok	Tap the screen so Shiori can speak	轻点屏幕，让 Shiori 能说话	src/core/agent/loop.js:170	
-1080xlr	ok	Working on {0}	处理中：{0}	src/core/agent/loop.js:615	{0} = detail; Note: label: value, {0} is what she works on, in her words.
-1h2c64o	ok	Working on tidying up the conversation	正在整理对话	src/core/agent/loop.js:615	
-19793n8	ok	Shiori skipped a wake	Shiori 跳过了一次唤醒	src/core/agent/loop.js:1127	
-16ny0z2	ok	Shiori stopped	Shiori 已停止	src/core/agent/loop.js:1361	
-1sxm1ou	ok	Something went wrong: {0}	出了点问题：{0}	src/core/agent/loop.js:1361	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori 无法整理对话	src/core/agent/loop.js:1394	
-oeaxaa	ok	She will try again later.	她稍后会再试。	src/core/agent/loop.js:1394	
-x10s30	ok	Shiori couldn't summarize the conversation	Shiori 无法总结对话	src/core/agent/loop.js:1582	
-1ds0zov	ok	Reminder	提醒	src/core/agent/loop.js:1789	
-1szzjml	ok	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:1789	
-nxpady	ok	The message went without it.	消息已在没有这张照片的情况下发出。	src/core/agent/loop.js:1897	
-sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1897	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
-ssozn1	ok	A photo wasn't sent to Shiori	照片没有发给 Shiori	src/core/agent/loop.js:1897	
-311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori 刚才正忙到一半。你回来后她会接着做。	src/core/agent/loop.js:1954	
-1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她以相同结果调用了同一个工具三次，所以这一轮结束了。请换个说法再问一次。	src/core/agent/loop.js:2282	Note: "Ask again" is the verb (再问), not the glossary's Ask, Safari's 询问 choice.
-pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重复	src/core/agent/loop.js:2282	
-1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什么也没对你说就结束了。	src/core/agent/loop.js:2319	
-2bgbpn	ok	Shiori didn't answer	Shiori 没有回答	src/core/agent/loop.js:2323	
-1mjdfzn	ok	Shiori can't reach her model	Shiori 无法连接她的模型	src/core/agent/loop.js:2387	
-1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	这个模型只接受{0}格式的照片，而这个浏览器无法生成。添加{1}的插件可以解决（设置 → 插件）。	src/core/agent/loop.js:2414	{0} = names; {1} = names
-1uhz9dg	ok	Shiori couldn't send the photo	Shiori 无法发送照片	src/core/agent/loop.js:2473	
-vjxaph	ok	Your turn	轮到你了	src/core/agent/loop.js:2942	
-19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	这个浏览器只有在轻点后才会播放声音。她的话在对话里。	src/core/agent/loop.js:3087	
-1h2ina6	ok	Shiori couldn't speak aloud	Shiori 无法朗读出声	src/core/agent/loop.js:3088	
-1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	设置 → 模型 → 朗读中没有一个声音能用；原因见记录。她的话在对话里。	src/core/agent/loop.js:3088	
-1r1dhd7	ok	Shiori can't hear you yet	Shiori 还听不到你	src/core/agent/loop.js:3221	
-8wd0xv	ok	Listening stopped	收听已停止	src/core/agent/loop.js:3422	
-43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:3627	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	每边最多 # 像素	src/core/agent/loop.js:3628	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一次最多#张照片	src/core/agent/loop.js:3629	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	仅限{0}	src/core/agent/loop.js:3630	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片（它接受：{0}），annai 也无法做出它能接受的副本。请在设置 → 照片 → 发给 Shiori 的照片中改用更小的照片，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:3631	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片，annai 也无法做出它能接受的副本。请在设置 → 照片 → 发给 Shiori 的照片中改用更小的照片，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:3632	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，对话对她的模型来说太长了。请在设置 → 模型中检查模型，或稍后再试。	src/core/agent/loop.js:3639	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	插件 {0} 唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:3649	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:3650	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你添加的文件唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:3651	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	有东西唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:3652	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+15junxn	draft	One moment…	请稍候…	src/core/agent/loop.js:136	Note: the dock's words between the user's tap and Listening (Shiori getting ready to hear them).
+1dhsqvv	ok	Tap to talk	轻点说话	src/core/agent/loop.js:136	
+1ldobgc	ok	Tap to interrupt	轻点打断	src/core/agent/loop.js:136	
+4mbury	ok	Thinking · tap to stop	思考中 · 轻点停止	src/core/agent/loop.js:136	
+89yydm	ok	Listening	聆听中	src/core/agent/loop.js:136	Note: one of Shiori's states, as the dock shows her.
+bost42	draft	Ignoring sound · tap to talk	忽略声音 · 轻点说话	src/core/agent/loop.js:136	
+g8840o	ok	Waiting for your OK	等待你的确认	src/core/agent/loop.js:136	
+yydchc	ok	Hearing you	正在听你说	src/core/agent/loop.js:136	Note: one of Shiori's states: she hears you speaking.
+akjf4d	ok	Working on …	处理中…	src/core/agent/loop.js:137	
+izy3tv	ok	Offline · reminders still work	离线 · 提醒仍然有效	src/core/agent/loop.js:137	
+gni5zk	draft	Her sound got stuck, and a tap brings it back. Her words are in the conversation.	Shiori 的声音卡住了，轻点一下即可恢复。她说的话都在对话里。	src/core/agent/loop.js:171	
+guullf	ok	Tap the screen so Shiori can speak	轻点屏幕，让 Shiori 能说话	src/core/agent/loop.js:171	
+1080xlr	ok	Working on {0}	处理中：{0}	src/core/agent/loop.js:616	{0} = detail; Note: label: value, {0} is what she works on, in her words.
+1h2c64o	ok	Working on tidying up the conversation	正在整理对话	src/core/agent/loop.js:616	
+19793n8	ok	Shiori skipped a wake	Shiori 跳过了一次唤醒	src/core/agent/loop.js:1128	
+16ny0z2	ok	Shiori stopped	Shiori 已停止	src/core/agent/loop.js:1362	
+1sxm1ou	ok	Something went wrong: {0}	出了点问题：{0}	src/core/agent/loop.js:1362	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori 无法整理对话	src/core/agent/loop.js:1395	
+oeaxaa	ok	She will try again later.	她稍后会再试。	src/core/agent/loop.js:1395	
+x10s30	ok	Shiori couldn't summarize the conversation	Shiori 无法总结对话	src/core/agent/loop.js:1583	
+1ds0zov	ok	Reminder	提醒	src/core/agent/loop.js:1790	
+1szzjml	ok	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:1790	
+nxpady	ok	The message went without it.	消息已在没有这张照片的情况下发出。	src/core/agent/loop.js:1898	
+sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1898	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
+ssozn1	ok	A photo wasn't sent to Shiori	照片没有发给 Shiori	src/core/agent/loop.js:1898	
+311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori 刚才正忙到一半。你回来后她会接着做。	src/core/agent/loop.js:1955	
+1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她以相同结果调用了同一个工具三次，所以这一轮结束了。请换个说法再问一次。	src/core/agent/loop.js:2283	Note: "Ask again" is the verb (再问), not the glossary's Ask, Safari's 询问 choice.
+pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重复	src/core/agent/loop.js:2283	
+1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什么也没对你说就结束了。	src/core/agent/loop.js:2320	
+2bgbpn	ok	Shiori didn't answer	Shiori 没有回答	src/core/agent/loop.js:2324	
+1mjdfzn	ok	Shiori can't reach her model	Shiori 无法连接她的模型	src/core/agent/loop.js:2388	
+1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	这个模型只接受{0}格式的照片，而这个浏览器无法生成。添加{1}的插件可以解决（设置 → 插件）。	src/core/agent/loop.js:2415	{0} = names; {1} = names
+1uhz9dg	ok	Shiori couldn't send the photo	Shiori 无法发送照片	src/core/agent/loop.js:2474	
+vjxaph	ok	Your turn	轮到你了	src/core/agent/loop.js:2943	
+19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	这个浏览器只有在轻点后才会播放声音。她的话在对话里。	src/core/agent/loop.js:3088	
+1h2ina6	ok	Shiori couldn't speak aloud	Shiori 无法朗读出声	src/core/agent/loop.js:3089	
+1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	设置 → 模型 → 朗读中没有一个声音能用；原因见记录。她的话在对话里。	src/core/agent/loop.js:3089	
+1r1dhd7	ok	Shiori can't hear you yet	Shiori 还听不到你	src/core/agent/loop.js:3222	
+8wd0xv	ok	Listening stopped	收听已停止	src/core/agent/loop.js:3423	
+43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:3628	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	每边最多 # 像素	src/core/agent/loop.js:3629	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一次最多#张照片	src/core/agent/loop.js:3630	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	仅限{0}	src/core/agent/loop.js:3631	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片（它接受：{0}），annai 也无法做出它能接受的副本。请在设置 → 照片 → 发给 Shiori 的照片中改用更小的照片，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:3632	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片，annai 也无法做出它能接受的副本。请在设置 → 照片 → 发给 Shiori 的照片中改用更小的照片，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:3633	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，对话对她的模型来说太长了。请在设置 → 模型中检查模型，或稍后再试。	src/core/agent/loop.js:3640	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	插件 {0} 唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:3650	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:3651	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你添加的文件唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:3652	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	有东西唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:3653	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	这条消息含有密钥，所以不显示。	src/core/agent/net.js:94	
 157dl17	ok	Shiori wants to adjust her personality	Shiori 想调整她的性格	src/core/agent/personalities.js:130	
 13g1wjf	ok	No thanks	不用了	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
@@ -594,8 +595,8 @@ iwgrsx	ok	This calendar has more than {0} events. Export only the trip's dates f
 5l9pv6	ok	{0} is larger than a trip's calendar ever is (over {1}). Export only the trip's dates from your calendar, and add that file.	{0} 对一个旅行日历来说太大了（超过 {1}）。请只从日历中导出旅行日期内的事件，再添加那个文件。	src/core/imports.js:15	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:27	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Chinese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	ok	just now	刚刚	src/core/intl.js:130	
-1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	用手机扬声器时，Shiori 说话期间 annai 听不到你，所以你在她说话时说的话会被丢弃。轻点一下就能让她停下并开始收听。	src/core/koe/live.js:623	
-1ml2kgi	ok	Tap Shiori to talk over her	轻点 Shiori 即可打断她	src/core/koe/live.js:623	Note: The dock's Shiori button: tap it to talk over her.
+1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	用手机扬声器时，Shiori 说话期间 annai 听不到你，所以你在她说话时说的话会被丢弃。轻点一下就能让她停下并开始收听。	src/core/koe/live.js:632	
+1ml2kgi	ok	Tap Shiori to talk over her	轻点 Shiori 即可打断她	src/core/koe/live.js:632	Note: The dock's Shiori button: tap it to talk over her.
 3fqfy0	ok	Languages	语言	src/core/languages.js:332	
 1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你说的语言和 Shiori 回答所用的语言会告知每个负责听和说的模型，以免把简短的回复误认作其他语言。	src/core/languages.js:333	
 1giusr1	ok	Languages you speak	你说的语言	src/core/languages.js:334	
@@ -894,7 +895,7 @@ l80ifa	ok	Add a transcription model in Settings → Models, such as OpenAI or Gr
 m5s9f4	ok	This browser can't play a voice as it arrives.	这个浏览器无法边接收边播放声音。	src/core/voice/speaker.js:128	
 jo5o9d	ok	This browser can't play sound here.	这个浏览器无法在这里播放声音。	src/core/voice/voice.js:419	
 ocv5zw	ok	This browser can't use the microphone here.	这个浏览器无法在这里使用麦克风。	src/core/voice/voice.js:462	
-55949q	draft	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	声音卡住了，annai 听不到你说话。轻点屏幕即可恢复。	src/core/voice/voice.js:758	
+55949q	draft	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	声音卡住了，annai 听不到你说话。轻点屏幕即可恢复。	src/core/voice/voice.js:786	
 pib2vo	ok	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	由浏览器自带的语音服务来听：在 Android 上通常是 Google 的服务器，在 iPhone 上是 Apple 的（有时就在手机上）。这个请求不是 annai 发出的，所以记录里看不到。	src/core/voice/where.js:15	
 m93xm3	ok	On this phone only: the browser recognizes your speech on the device.	仅在这部手机上：浏览器在设备上识别你的语音。	src/core/voice/where.js:16	
 1m5zm0a	ok	Phone dictation	手机语音输入	src/core/voice/where.js:18	
@@ -955,10 +956,10 @@ gec6zp	ok	Built-in skills	内置技能	src/plugins/skills/index.js:15
 1t0u9tp	ok	Shiori's own skills: the driving companion, replanning, and planning a trip.	Shiori 自己的技能：驾驶陪伴、重新规划和规划旅行。	src/plugins/skills/index.js:18	
 fsfyxb	ok	The phone's speaker, microphone, voice and dictation.	手机的扬声器、麦克风、声音和语音输入。	src/plugins/voice-browser/index.js:65	
 wp5yx4	ok	Voice on this device	本设备上的语音	src/plugins/voice-browser/index.js:65	Note: Voice as the Voice screen is named (音声 / 语音).
-elkw42	ok	The voice's audio couldn't be played.	无法播放这个声音的音频。	src/plugins/voice-browser/index.js:466	Note: The voice is a Speech out voice (声音).
-9gdjo3	ok	The browser voice couldn't speak ({0}).	浏览器声音无法朗读（{0}）。	src/plugins/voice-browser/index.js:525	{0} = e.error; Note: {0} is the browser's error code, such as synthesis-failed.
-1mrk9hl	ok	The microphone stopped.	麦克风已停止。	src/plugins/voice-browser/index.js:594	
-1l4zitw	ok	Phone dictation stopped ({0}).	手机语音输入已停止（{0}）。	src/plugins/voice-browser/index.js:692	{0} = e.error; Note: Phone dictation as its row in Settings → Voice says (端末の音声入力 / 手机语音输入); {0} is the browser's error code, such as network.
+elkw42	ok	The voice's audio couldn't be played.	无法播放这个声音的音频。	src/plugins/voice-browser/index.js:529	Note: The voice is a Speech out voice (声音).
+9gdjo3	ok	The browser voice couldn't speak ({0}).	浏览器声音无法朗读（{0}）。	src/plugins/voice-browser/index.js:588	{0} = e.error; Note: {0} is the browser's error code, such as synthesis-failed.
+1mrk9hl	ok	The microphone stopped.	麦克风已停止。	src/plugins/voice-browser/index.js:655	
+1l4zitw	ok	Phone dictation stopped ({0}).	手机语音输入已停止（{0}）。	src/plugins/voice-browser/index.js:761	{0} = e.error; Note: Phone dictation as its row in Settings → Voice says (端末の音声入力 / 手机语音输入); {0} is the browser's error code, such as network.
 1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia 和 Nominatim	src/plugins/web/free.js:118	
 scnz2y	ok	Web tools	网页工具	src/plugins/web/index.js:12	Note: Web as its tool group is named in Settings → Tools (Web / 网页).
 eob60g	ok	fetch reads any web page, through Jina Reader or Exa when a site doesn't let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.	fetch 读取任何网页，遇到不允许网页应用读取的网站时通过 Jina Reader 或 Exa 读取；web_search 用搜索提供商搜索，顺序由设置 → 工具决定：先用免费的。	src/plugins/web/index.js:15	
@@ -2242,8 +2243,10 @@ tgdxsp	ok	Deletes every trip, file, setting and key on this device. Export a bac
 1x8t4tk	ok	Type {0} to confirm	输入 {0} 以确认	src/ui/screens/settings.js:220	{0} = ERASE; Note: {0} is the word to type, ERASE, the same in every language.
 199v6bp	ok	From plugins	来自插件	src/ui/screens/settings.js:230	
 1bu98qy	ok	Shiori, hearing you	Shiori，正在听你说	src/ui/screens/shiori.js:19	
+1cfiys6	draft	Shiori, getting ready to listen	Shiori，正在准备聆听	src/ui/screens/shiori.js:19	
 1m5wnho	ok	Shiori, listening	Shiori，正在聆听	src/ui/screens/shiori.js:19	
 1mlnwtl	ok	Shiori, asleep	Shiori，睡着了	src/ui/screens/shiori.js:19	
+1xtys1g	draft	Getting ready	准备中	src/ui/screens/shiori.js:19	
 bhzo0f	ok	Asleep	睡着了	src/ui/screens/shiori.js:19	Note: one of Shiori's states, as the dock shows her.
 h65q1f	draft	Ignoring sound	忽略声音	src/ui/screens/shiori.js:19	
 lz1pa1	draft	Shiori, ignoring background sound	Shiori，正在忽略背景声音	src/ui/screens/shiori.js:19	
@@ -2462,100 +2465,100 @@ pghiva	ok	Location	位置	src/ui/screens/trace.js:36
 1jije2k	ok	Nothing here yet.	这里还没有内容。	src/ui/screens/trace.js:88	
 zixzwp	ok	Everything annai recorded: file changes, model calls, imports, plugin problems and errors. Newest first.	annai 记录的一切：文件改动、模型调用、导入、插件问题和错误。最新的在前。	src/ui/screens/trace.js:99	
 vv1pu6	ok	Type contains	事件类型包含	src/ui/screens/trace.js:100	Note: The entry's type (a code like file.write), apart from the Kind filter just before it (種類 / 类型).
-g9esrd	ok	a newer backup from an Android phone is there	有一个来自 Android 手机的更新备份	src/ui/screens/trace.js:158	
-obwhc7	ok	a newer backup from an iPhone is there	有一个来自 iPhone 的更新备份	src/ui/screens/trace.js:158	
-oh532o	ok	a newer backup from an iPad is there	有一个来自 iPad 的更新备份	src/ui/screens/trace.js:158	
-1ds6m85	ok	a newer backup from a computer is there	有一个来自电脑的更新备份	src/ui/screens/trace.js:159	
-1r6qy12	ok	the user wrote	用户写了	src/ui/screens/trace.js:180	
-yyq6of	ok	the user tapped a choice	用户轻点了一个选项	src/ui/screens/trace.js:180	
-1eo2nlm	ok	Kokoro to Koe	Kokoro 给 Koe	src/ui/screens/trace.js:184	
-l7yvjm	ok	Koe to Kokoro	Koe 给 Kokoro	src/ui/screens/trace.js:184	
-omff16	ok	annai to Kokoro	annai 给 Kokoro	src/ui/screens/trace.js:185	
-hnbn63	draft	this was for Shiori	这是对 Shiori 说的	src/ui/screens/trace.js:186	
-1larmkq	ok	phone dictation	手机语音输入	src/ui/screens/trace.js:189	Note: Phone dictation as its row in Settings → Voice says (手机语音输入).
-piy3vo	ok	{0} from the microphone	麦克风录音 {0}	src/ui/screens/trace.js:189	{0} = duration(d.ms ?? 0); Note: {0} is how long the recording was.
-1sfeb1g	ok	an answer	一个回答	src/ui/screens/trace.js:190	
-1x13vat	ok	not for Shiori	不是给 Shiori 的	src/ui/screens/trace.js:190	
-k9shc3	ok	while she was thinking	在她思考时	src/ui/screens/trace.js:190	
-mj6pnh	draft	she didn't answer	她没有回答	src/ui/screens/trace.js:190	
-an9lly	ok	clip kept: {0}, {1}	已保留片段：{0}，{1}	src/ui/screens/trace.js:191	{0} = d.clipFormat; {1} = size(d.clipBytes ?? 0)
-voav2t	ok	clip kept	已保留片段	src/ui/screens/trace.js:191	
-1gqj9yn	ok	written down by {0}	由 {0} 转写	src/ui/screens/trace.js:193	{0} = d.by
-o1nqez	ok	from {0}	来自 {0}	src/ui/screens/trace.js:196	{0} = d.source
-v0l7oi#other	ok	# links	# 个链接	src/ui/screens/trace.js:196	plural; # = (d.links ?? []).length; English: "# link" (one), "# links" (other)
-9bb0pd	ok	error	错误	src/ui/screens/trace.js:198	
-scvxkf	ok	ok	成功	src/ui/screens/trace.js:198	
-1qafm6e	ok	kept turn not deleted yet	保留的轮次尚未删除	src/ui/screens/trace.js:202	Note: A kept turn is one of the conversation turns a provider keeps (轮), as the provider screen says.
-7lsal4	ok	no answer	无应答	src/ui/screens/trace.js:202	
-udpknx	ok	kept turn deleted	保留的轮次已删除	src/ui/screens/trace.js:202	Note: A kept turn is one of the conversation turns a provider keeps (轮).
-hnu5xn	ok	kept turn looked up	已查询保留的轮次	src/ui/screens/trace.js:203	Note: A kept turn is one of the conversation turns a provider keeps (轮).
-1t1zawl	ok	a refused photo sent again as a new copy ({0})	被拒的照片作为新副本重新发送（{0}）	src/ui/screens/trace.js:204	{0} = d.mediaType
-gjjwcl	ok	a PDF's words kept for models that can't read PDFs	为读不了 PDF 的模型保留的 PDF 文字内容	src/ui/screens/trace.js:206	Note: a Trace line: what was kept of a PDF, told in words, for models that can't read PDFs.
-kbptqr	ok	a photo's description kept for models that can't see photos	为看不了照片的模型保留的照片描述	src/ui/screens/trace.js:206	Note: a Trace line, as above, for a photo's description.
-y6qkfy	ok	a PDF's pages kept for models that can't read PDFs	为读不了 PDF 的模型保留的 PDF 页面图片	src/ui/screens/trace.js:206	Note: a Trace line, as above, for a PDF's pages as pictures.
-12y45gf	ok	from a backup, annai {0}	来自备份，annai {0}	src/ui/screens/trace.js:210	{0} = app
-13f9wx2	ok	from a trip's file, annai {0}	来自旅行的文件，annai {0}	src/ui/screens/trace.js:210	{0} = app
-fgylb4#other	ok	# pieces of content it didn't hold left out	略去了 # 项它没有的内容	src/ui/screens/trace.js:211	plural; # = n; English: "# piece of content it didn't hold left out" (one), "# pieces of content it didn't hold left out" (other)
-1smvlg5	ok	asked for content that isn't this trip's, and got none	请求了不属于这个旅行的内容，什么也没得到	src/ui/screens/trace.js:214	
-1vkhbgw	ok	asked for content that isn't here, and got none	请求了不在这里的内容，什么也没得到	src/ui/screens/trace.js:214	
-17ybebf	ok	a turn cut off by opening another conversation	因打开另一个对话而中断的回合	src/ui/screens/trace.js:215	
-z082y3	draft	read {0}	读取了“{0}”	src/ui/screens/trace.js:217	{0} = d.title
-1g60658	draft	said	口头	src/ui/screens/trace.js:218	
-1s3wptl	draft	reading {0} allowed	已允许读取 {0}	src/ui/screens/trace.js:218	{0} = d.trip
-1t5e727	draft	always for their trips	其旅行一律允许	src/ui/screens/trace.js:218	
-130nh2w	ok	events {0}–{1} summarized ({2})	已总结事件 {0}–{1}（{2}）	src/ui/screens/trace.js:219	{0} = d.from; {1} = d.to; {2} = d.mode
-vgv0s2	ok	started fresh after event {0}	在事件 {0} 之后重新开始	src/ui/screens/trace.js:219	{0} = d.to
-1nulaw8	ok	late by {0} min	晚了 {0} 分钟	src/ui/screens/trace.js:221	{0} = d.late
-1vzfabu	ok	no connection	无网络连接	src/ui/screens/trace.js:221	
-1l7ac5y	ok	shown	已显示	src/ui/screens/trace.js:222	
-1yfde5	ok	no name	无名称	src/ui/screens/trace.js:224	
-1nk1wxu	ok	audio route {0}	音频路由 {0}	src/ui/screens/trace.js:225	{0} = d.route
-1yo1hz0	ok	the microphone in use: {0}	正在使用的麦克风：{0}	src/ui/screens/trace.js:225	{0} = d.using || unnamed
-bt7zey	ok	from the devices present	来自现有的设备	src/ui/screens/trace.js:225	
-1rzyxvu	draft	disconnected: {0}	已断开：{0}	src/ui/screens/trace.js:226	{0} = d.gone.join(', ')
-3gdj21	ok	no devices	无设备	src/ui/screens/trace.js:226	
-1ijsnzq	ok	voice on	语音开启	src/ui/screens/trace.js:241	Note: The glossary's Voice on mode (语音开启).
-z2w914	ok	voice off	语音关闭	src/ui/screens/trace.js:241	Note: The glossary's Voice off mode (语音关闭).
-1g1k3by	ok	{0} waiting	{0} 条等待中	src/ui/screens/trace.js:244	{0} = d.waiting ?? 0
-xy6oxk	ok	{0} sent, {1} called off	已发送 {0} 条，已取消 {1} 条	src/ui/screens/trace.js:244	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
-1efflnv	ok	notification shown	通知已显示	src/ui/screens/trace.js:245	
-cjmncb	ok	notification opened	通知已打开	src/ui/screens/trace.js:246	
-3m7wpo#other	ok	# attempts	尝试 # 次	src/ui/screens/trace.js:256	plural; # = n; English: "# attempt" (one), "# attempts" (other)
-r42rpw	ok	{0} ms processing latency	处理延迟 {0} ms	src/ui/screens/trace.js:260	{0} = Math.round(d.baseLatency * 1000)
-1y5g6mq	ok	{0} ms output latency	输出延迟 {0} ms	src/ui/screens/trace.js:261	{0} = Math.round(d.outputLatency * 1000)
-a1oech	ok	live session {0}	实时会话 {0}	src/ui/screens/trace.js:262	{0} = d.state
-beya44	ok	sound at {0} kHz	声音 {0} kHz	src/ui/screens/trace.js:264	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
-1u50qqt	ok	her voice: {0} played	她的声音：已播放 {0}	src/ui/screens/trace.js:269	{0} = duration(d.ms ?? 0)
-1wcl60z	ok	cut	已中断	src/ui/screens/trace.js:269	
-njy1uz	ok	her voice: cut before it played	她的声音：播放前被中断	src/ui/screens/trace.js:269	
-9atabi	ok	started after {0} ms	{0} ms 后开始	src/ui/screens/trace.js:270	{0} = d.waitMs
-j43x3k	ok	stalled	卡住	src/ui/screens/trace.js:270	
-1qyanji#other	ok	# holes, {0} ms	# 处空白，{0} ms	src/ui/screens/trace.js:271	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
-gw0cwm#other	ok	# holes	# 处空白	src/ui/screens/trace.js:271	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
-1bx4bl6	ok	on {0}	在 {0} 上	src/ui/screens/trace.js:272	{0} = d.player
-1jhbzkn	draft	your voice {0} dB, least to start {1} dB, {2} frames kept out (loudest {3} dB)	你的声音 {0} dB，开始所需最低 {1} dB，{2} 帧被挡在外（最响 {3} dB）	src/ui/screens/trace.js:277	{0} = d.voiceDb ?? '?'; {1} = d.minDb ?? '–'; {2} = d.keptFrames; {3} = d.keptPeakDb ?? '?'
-1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	你的回合结束：{0} · 已发送 {1} · 底噪 {2} dB，最响 {3} dB	src/ui/screens/trace.js:278	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
-7ovnj9	draft	no turn	没有开始一轮	src/ui/screens/trace.js:278	
-khxbvb	ok	audio: {0}	音频：{0}	src/ui/screens/trace.js:282	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
-1wy37ql	ok	{0} sent	已发送 {0}	src/ui/screens/trace.js:284	{0} = size(d.bytes)
-l04i5	ok	{0} sent, after a kept turn	已发送 {0}，接在保留的轮次之后	src/ui/screens/trace.js:284	{0} = size(d.bytes); Note: A kept turn is one of the conversation turns a provider keeps (轮).
-1n96vkk	ok	earlier thinking not sent: something before it changed	未发送之前的思考：它之前的内容有变化	src/ui/screens/trace.js:286	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
-yfywm0#other	ok	thinking of # earlier steps sent back	已发回之前 # 步的思考	src/ui/screens/trace.js:286	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
-15hqi4k#other	ok	# guides	# 份指南	src/ui/screens/trace.js:290	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
-4k86ja	ok	{0} failed	{0} 个失败	src/ui/screens/trace.js:290	{0} = d.failed
-1waoe51	ok	at its limit	已达上限	src/ui/screens/trace.js:291	
-66h5i6	ok	by itself on Wi-Fi	在 Wi-Fi 下自动	src/ui/screens/trace.js:291	
-rfe2ef	ok	{0} files sent, {1}	已发送 {0} 个文件，{1}	src/ui/screens/trace.js:293	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
-2601w8	ok	a newer backup from another device is there	有一个来自另一台设备的更新备份	src/ui/screens/trace.js:294	
-uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	已下载 {0}，{1}，随后停止：已丢弃	src/ui/screens/trace.js:296	{0} = d.backup; {1} = size(d.bytes ?? 0)
-wgniil	ok	downloaded {0}, {1}	已下载 {0}，{1}	src/ui/screens/trace.js:296	{0} = d.backup; {1} = size(d.bytes ?? 0)
-1gauo2f	ok	{0} can't be opened: {1}	{0} 无法打开：{1}	src/ui/screens/trace.js:297	{0} = d.backup; {1} = cut(d.problem)
-1rrq0vn	ok	deleted an older backup, {0}	已删除一个较早的备份：{0}	src/ui/screens/trace.js:298	{0} = d.backup
-57gz9u#other	ok	# secrets	# 个机密	src/ui/screens/trace.js:300	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
-scekw#other	ok	# settings	# 项设置	src/ui/screens/trace.js:300	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
-mp7j1w#other	ok	({0}, # bytes)	（{0}，# 字节）	src/ui/screens/trace.js:323	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
-tqj8t3	ok	(no longer stored)	（已不再保存）	src/ui/screens/trace.js:323	
-1kfziuy	ok	Show what was stored	显示保存的内容	src/ui/screens/trace.js:340	
+g9esrd	ok	a newer backup from an Android phone is there	有一个来自 Android 手机的更新备份	src/ui/screens/trace.js:161	
+obwhc7	ok	a newer backup from an iPhone is there	有一个来自 iPhone 的更新备份	src/ui/screens/trace.js:161	
+oh532o	ok	a newer backup from an iPad is there	有一个来自 iPad 的更新备份	src/ui/screens/trace.js:161	
+1ds6m85	ok	a newer backup from a computer is there	有一个来自电脑的更新备份	src/ui/screens/trace.js:162	
+1r6qy12	ok	the user wrote	用户写了	src/ui/screens/trace.js:183	
+yyq6of	ok	the user tapped a choice	用户轻点了一个选项	src/ui/screens/trace.js:183	
+1eo2nlm	ok	Kokoro to Koe	Kokoro 给 Koe	src/ui/screens/trace.js:187	
+l7yvjm	ok	Koe to Kokoro	Koe 给 Kokoro	src/ui/screens/trace.js:187	
+omff16	ok	annai to Kokoro	annai 给 Kokoro	src/ui/screens/trace.js:188	
+hnbn63	draft	this was for Shiori	这是对 Shiori 说的	src/ui/screens/trace.js:189	
+1larmkq	ok	phone dictation	手机语音输入	src/ui/screens/trace.js:192	Note: Phone dictation as its row in Settings → Voice says (手机语音输入).
+piy3vo	ok	{0} from the microphone	麦克风录音 {0}	src/ui/screens/trace.js:192	{0} = duration(d.ms ?? 0); Note: {0} is how long the recording was.
+1sfeb1g	ok	an answer	一个回答	src/ui/screens/trace.js:193	
+1x13vat	ok	not for Shiori	不是给 Shiori 的	src/ui/screens/trace.js:193	
+k9shc3	ok	while she was thinking	在她思考时	src/ui/screens/trace.js:193	
+mj6pnh	draft	she didn't answer	她没有回答	src/ui/screens/trace.js:193	
+an9lly	ok	clip kept: {0}, {1}	已保留片段：{0}，{1}	src/ui/screens/trace.js:194	{0} = d.clipFormat; {1} = size(d.clipBytes ?? 0)
+voav2t	ok	clip kept	已保留片段	src/ui/screens/trace.js:194	
+1gqj9yn	ok	written down by {0}	由 {0} 转写	src/ui/screens/trace.js:196	{0} = d.by
+o1nqez	ok	from {0}	来自 {0}	src/ui/screens/trace.js:199	{0} = d.source
+v0l7oi#other	ok	# links	# 个链接	src/ui/screens/trace.js:199	plural; # = (d.links ?? []).length; English: "# link" (one), "# links" (other)
+9bb0pd	ok	error	错误	src/ui/screens/trace.js:201	
+scvxkf	ok	ok	成功	src/ui/screens/trace.js:201	
+1qafm6e	ok	kept turn not deleted yet	保留的轮次尚未删除	src/ui/screens/trace.js:205	Note: A kept turn is one of the conversation turns a provider keeps (轮), as the provider screen says.
+7lsal4	ok	no answer	无应答	src/ui/screens/trace.js:205	
+udpknx	ok	kept turn deleted	保留的轮次已删除	src/ui/screens/trace.js:205	Note: A kept turn is one of the conversation turns a provider keeps (轮).
+hnu5xn	ok	kept turn looked up	已查询保留的轮次	src/ui/screens/trace.js:206	Note: A kept turn is one of the conversation turns a provider keeps (轮).
+1t1zawl	ok	a refused photo sent again as a new copy ({0})	被拒的照片作为新副本重新发送（{0}）	src/ui/screens/trace.js:207	{0} = d.mediaType
+gjjwcl	ok	a PDF's words kept for models that can't read PDFs	为读不了 PDF 的模型保留的 PDF 文字内容	src/ui/screens/trace.js:209	Note: a Trace line: what was kept of a PDF, told in words, for models that can't read PDFs.
+kbptqr	ok	a photo's description kept for models that can't see photos	为看不了照片的模型保留的照片描述	src/ui/screens/trace.js:209	Note: a Trace line, as above, for a photo's description.
+y6qkfy	ok	a PDF's pages kept for models that can't read PDFs	为读不了 PDF 的模型保留的 PDF 页面图片	src/ui/screens/trace.js:209	Note: a Trace line, as above, for a PDF's pages as pictures.
+12y45gf	ok	from a backup, annai {0}	来自备份，annai {0}	src/ui/screens/trace.js:213	{0} = app
+13f9wx2	ok	from a trip's file, annai {0}	来自旅行的文件，annai {0}	src/ui/screens/trace.js:213	{0} = app
+fgylb4#other	ok	# pieces of content it didn't hold left out	略去了 # 项它没有的内容	src/ui/screens/trace.js:214	plural; # = n; English: "# piece of content it didn't hold left out" (one), "# pieces of content it didn't hold left out" (other)
+1smvlg5	ok	asked for content that isn't this trip's, and got none	请求了不属于这个旅行的内容，什么也没得到	src/ui/screens/trace.js:217	
+1vkhbgw	ok	asked for content that isn't here, and got none	请求了不在这里的内容，什么也没得到	src/ui/screens/trace.js:217	
+17ybebf	ok	a turn cut off by opening another conversation	因打开另一个对话而中断的回合	src/ui/screens/trace.js:218	
+z082y3	draft	read {0}	读取了“{0}”	src/ui/screens/trace.js:220	{0} = d.title
+1g60658	draft	said	口头	src/ui/screens/trace.js:221	
+1s3wptl	draft	reading {0} allowed	已允许读取 {0}	src/ui/screens/trace.js:221	{0} = d.trip
+1t5e727	draft	always for their trips	其旅行一律允许	src/ui/screens/trace.js:221	
+130nh2w	ok	events {0}–{1} summarized ({2})	已总结事件 {0}–{1}（{2}）	src/ui/screens/trace.js:222	{0} = d.from; {1} = d.to; {2} = d.mode
+vgv0s2	ok	started fresh after event {0}	在事件 {0} 之后重新开始	src/ui/screens/trace.js:222	{0} = d.to
+1nulaw8	ok	late by {0} min	晚了 {0} 分钟	src/ui/screens/trace.js:224	{0} = d.late
+1vzfabu	ok	no connection	无网络连接	src/ui/screens/trace.js:224	
+1l7ac5y	ok	shown	已显示	src/ui/screens/trace.js:225	
+1yfde5	ok	no name	无名称	src/ui/screens/trace.js:227	
+1nk1wxu	ok	audio route {0}	音频路由 {0}	src/ui/screens/trace.js:228	{0} = d.route
+1yo1hz0	ok	the microphone in use: {0}	正在使用的麦克风：{0}	src/ui/screens/trace.js:228	{0} = d.using || unnamed
+bt7zey	ok	from the devices present	来自现有的设备	src/ui/screens/trace.js:228	
+1rzyxvu	draft	disconnected: {0}	已断开：{0}	src/ui/screens/trace.js:229	{0} = d.gone.join(', ')
+3gdj21	ok	no devices	无设备	src/ui/screens/trace.js:229	
+1ijsnzq	ok	voice on	语音开启	src/ui/screens/trace.js:250	Note: The glossary's Voice on mode (语音开启).
+z2w914	ok	voice off	语音关闭	src/ui/screens/trace.js:250	Note: The glossary's Voice off mode (语音关闭).
+1g1k3by	ok	{0} waiting	{0} 条等待中	src/ui/screens/trace.js:253	{0} = d.waiting ?? 0
+xy6oxk	ok	{0} sent, {1} called off	已发送 {0} 条，已取消 {1} 条	src/ui/screens/trace.js:253	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
+1efflnv	ok	notification shown	通知已显示	src/ui/screens/trace.js:254	
+cjmncb	ok	notification opened	通知已打开	src/ui/screens/trace.js:255	
+3m7wpo#other	ok	# attempts	尝试 # 次	src/ui/screens/trace.js:265	plural; # = n; English: "# attempt" (one), "# attempts" (other)
+r42rpw	ok	{0} ms processing latency	处理延迟 {0} ms	src/ui/screens/trace.js:269	{0} = Math.round(d.baseLatency * 1000)
+1y5g6mq	ok	{0} ms output latency	输出延迟 {0} ms	src/ui/screens/trace.js:270	{0} = Math.round(d.outputLatency * 1000)
+a1oech	ok	live session {0}	实时会话 {0}	src/ui/screens/trace.js:271	{0} = d.state
+beya44	ok	sound at {0} kHz	声音 {0} kHz	src/ui/screens/trace.js:273	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
+1u50qqt	ok	her voice: {0} played	她的声音：已播放 {0}	src/ui/screens/trace.js:278	{0} = duration(d.ms ?? 0)
+1wcl60z	ok	cut	已中断	src/ui/screens/trace.js:278	
+njy1uz	ok	her voice: cut before it played	她的声音：播放前被中断	src/ui/screens/trace.js:278	
+9atabi	ok	started after {0} ms	{0} ms 后开始	src/ui/screens/trace.js:279	{0} = d.waitMs
+j43x3k	ok	stalled	卡住	src/ui/screens/trace.js:279	
+1qyanji#other	ok	# holes, {0} ms	# 处空白，{0} ms	src/ui/screens/trace.js:280	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
+gw0cwm#other	ok	# holes	# 处空白	src/ui/screens/trace.js:280	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
+1bx4bl6	ok	on {0}	在 {0} 上	src/ui/screens/trace.js:281	{0} = d.player
+1jhbzkn	draft	your voice {0} dB, least to start {1} dB, {2} frames kept out (loudest {3} dB)	你的声音 {0} dB，开始所需最低 {1} dB，{2} 帧被挡在外（最响 {3} dB）	src/ui/screens/trace.js:286	{0} = d.voiceDb ?? '?'; {1} = d.minDb ?? '–'; {2} = d.keptFrames; {3} = d.keptPeakDb ?? '?'
+1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	你的回合结束：{0} · 已发送 {1} · 底噪 {2} dB，最响 {3} dB	src/ui/screens/trace.js:287	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
+7ovnj9	draft	no turn	没有开始一轮	src/ui/screens/trace.js:287	
+khxbvb	ok	audio: {0}	音频：{0}	src/ui/screens/trace.js:291	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
+1wy37ql	ok	{0} sent	已发送 {0}	src/ui/screens/trace.js:293	{0} = size(d.bytes)
+l04i5	ok	{0} sent, after a kept turn	已发送 {0}，接在保留的轮次之后	src/ui/screens/trace.js:293	{0} = size(d.bytes); Note: A kept turn is one of the conversation turns a provider keeps (轮).
+1n96vkk	ok	earlier thinking not sent: something before it changed	未发送之前的思考：它之前的内容有变化	src/ui/screens/trace.js:295	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
+yfywm0#other	ok	thinking of # earlier steps sent back	已发回之前 # 步的思考	src/ui/screens/trace.js:295	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
+15hqi4k#other	ok	# guides	# 份指南	src/ui/screens/trace.js:299	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
+4k86ja	ok	{0} failed	{0} 个失败	src/ui/screens/trace.js:299	{0} = d.failed
+1waoe51	ok	at its limit	已达上限	src/ui/screens/trace.js:300	
+66h5i6	ok	by itself on Wi-Fi	在 Wi-Fi 下自动	src/ui/screens/trace.js:300	
+rfe2ef	ok	{0} files sent, {1}	已发送 {0} 个文件，{1}	src/ui/screens/trace.js:302	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
+2601w8	ok	a newer backup from another device is there	有一个来自另一台设备的更新备份	src/ui/screens/trace.js:303	
+uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	已下载 {0}，{1}，随后停止：已丢弃	src/ui/screens/trace.js:305	{0} = d.backup; {1} = size(d.bytes ?? 0)
+wgniil	ok	downloaded {0}, {1}	已下载 {0}，{1}	src/ui/screens/trace.js:305	{0} = d.backup; {1} = size(d.bytes ?? 0)
+1gauo2f	ok	{0} can't be opened: {1}	{0} 无法打开：{1}	src/ui/screens/trace.js:306	{0} = d.backup; {1} = cut(d.problem)
+1rrq0vn	ok	deleted an older backup, {0}	已删除一个较早的备份：{0}	src/ui/screens/trace.js:307	{0} = d.backup
+57gz9u#other	ok	# secrets	# 个机密	src/ui/screens/trace.js:309	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
+scekw#other	ok	# settings	# 项设置	src/ui/screens/trace.js:309	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
+mp7j1w#other	ok	({0}, # bytes)	（{0}，# 字节）	src/ui/screens/trace.js:332	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
+tqj8t3	ok	(no longer stored)	（已不再保存）	src/ui/screens/trace.js:332	
+1kfziuy	ok	Show what was stored	显示保存的内容	src/ui/screens/trace.js:349	
 1cnmmj7	ok	Archived	已归档	src/ui/screens/trip.js:41	
 jz8mjk	ok	Unarchive	取消归档	src/ui/screens/trip.js:53	
 qeuftp	ok	Tap again to archive	再点一次以归档	src/ui/screens/trip.js:55	
@@ -2669,16 +2672,16 @@ d3o3oq	ok	Off: what the microphone hears is sent to be written down, then let go
 1xjm3fg	draft	Live on: Shiori hears you and answers in one stream, with a live model. Live off: what you say is written down, then answered. The Live chip on the dock switches it.	实时开启：Shiori 用实时模型在一条流中听你说话并回答。实时关闭：先把你说的话写下来，再回答。用底栏的“实时”按钮切换。	src/ui/screens/voice.js:168	
 byedp9	draft	While a live session listens, what you say goes straight to {0} as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange, when she's asked to sleep, on voice off, or when annai leaves the screen. With sound that never stops, such as music, Shiori decides when to sleep.	实时会话在听时，你说的话会以音频形式直接发给 {0}，只在有人说话时发送，按钮上显示“正在实时收听”。经过下面设定的安静时间、关闭语音，或 annai 离开屏幕时，会话关闭。	src/ui/screens/voice.js:170	{0} = list(live, 'or'); English was: While a live session listens, what you say goes straight to {0} as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange (sound alone, such as music, doesn't keep it open), when she's asked to sleep, on voice off, or when annai leaves the screen.; Note: "on voice off" is the glossary's Voice off mode (关闭语音).
 8znos	draft	While a live session listens, what you say goes straight to its provider as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange, when she's asked to sleep, on voice off, or when annai leaves the screen. With sound that never stops, such as music, Shiori decides when to sleep.	实时会话在听时，你说的话会以音频形式直接发给它的提供商，只在有人说话时发送，按钮上显示“正在实时收听”。经过下面设定的安静时间、关闭语音，或 annai 离开屏幕时，会话关闭。	src/ui/screens/voice.js:171	English was: While a live session listens, what you say goes straight to its provider as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange (sound alone, such as music, doesn't keep it open), when she's asked to sleep, on voice off, or when annai leaves the screen.; Note: "on voice off" is the glossary's Voice off mode (关闭语音).
-18jgtvh	draft	Close after 10 to 300 seconds with no exchange.	请设为安静 10 到 300 秒后关闭。	src/ui/screens/voice.js:172	English was: Close after 10 to 300 seconds of quiet.
-csv386	draft	Close a live session after (seconds with no exchange)	安静多久后关闭实时会话（秒）	src/ui/screens/voice.js:172	English was: Close a live session after (seconds of quiet)
-w195po	ok	Only with headphones or car audio: on the phone's own speaker the microphone hears her, so there only a tap cuts her off. Off: only a tap, everywhere, for a car whose speakers echo her voice back.	仅限耳机或车载音响：用手机自身的扬声器时，麦克风会听到她的声音，所以只能轻点打断。关闭：在任何地方都只能轻点，适合扬声器会把她的声音回传的车。	src/ui/screens/voice.js:174	
-10ndarn	draft	GPS	GPS	src/ui/screens/voice.js:175	
-15itdyc	draft	The chip on the dock turns GPS on and off. Keeping the screen on uses more battery; without it, a locked phone stops following where you are.	底栏上的按钮可开启或关闭 GPS。保持屏幕常亮会更耗电；不保持的话，手机锁定后就无法继续跟踪你的位置。	src/ui/screens/voice.js:177	
-ph6h35	ok	Where your voice goes	你的声音去哪里	src/ui/screens/voice.js:178	
-rfzxba	ok	What you say goes to the first of these that can hear it; what she says, to the first voice that works. To change the order, go to {0}.	你说的话会发给下面第一个能听的；她说的话，发给第一个能用的声音。要调整顺序，请前往{0}。	src/ui/screens/voice.js:179	{0} = models
-283rev	ok	What you say	你说的话	src/ui/screens/voice.js:180	
-127uny	ok	To keep your voice on the phone, type with your keyboard's microphone key: iPhone and most Android keyboards can dictate on the phone itself.	要让你的声音留在手机上，请用键盘上的麦克风键输入：iPhone 和大多数 Android 键盘都能在手机上听写。	src/ui/screens/voice.js:182	Note: "microphone key" is a keyboard key (麦克风键), not an API key (密钥); "your voice" is your own speech.
-bewa4v	ok	What she says	她说的话	src/ui/screens/voice.js:183	
+18jgtvh	draft	Close after 10 to 300 seconds with no exchange.	请设为安静 10 到 300 秒后关闭。	src/ui/screens/voice.js:174	English was: Close after 10 to 300 seconds of quiet.
+csv386	draft	Close a live session after (seconds with no exchange)	安静多久后关闭实时会话（秒）	src/ui/screens/voice.js:174	English was: Close a live session after (seconds of quiet)
+w195po	ok	Only with headphones or car audio: on the phone's own speaker the microphone hears her, so there only a tap cuts her off. Off: only a tap, everywhere, for a car whose speakers echo her voice back.	仅限耳机或车载音响：用手机自身的扬声器时，麦克风会听到她的声音，所以只能轻点打断。关闭：在任何地方都只能轻点，适合扬声器会把她的声音回传的车。	src/ui/screens/voice.js:176	
+10ndarn	draft	GPS	GPS	src/ui/screens/voice.js:177	
+15itdyc	draft	The chip on the dock turns GPS on and off. Keeping the screen on uses more battery; without it, a locked phone stops following where you are.	底栏上的按钮可开启或关闭 GPS。保持屏幕常亮会更耗电；不保持的话，手机锁定后就无法继续跟踪你的位置。	src/ui/screens/voice.js:179	
+ph6h35	ok	Where your voice goes	你的声音去哪里	src/ui/screens/voice.js:180	
+rfzxba	ok	What you say goes to the first of these that can hear it; what she says, to the first voice that works. To change the order, go to {0}.	你说的话会发给下面第一个能听的；她说的话，发给第一个能用的声音。要调整顺序，请前往{0}。	src/ui/screens/voice.js:181	{0} = models
+283rev	ok	What you say	你说的话	src/ui/screens/voice.js:182	
+127uny	ok	To keep your voice on the phone, type with your keyboard's microphone key: iPhone and most Android keyboards can dictate on the phone itself.	要让你的声音留在手机上，请用键盘上的麦克风键输入：iPhone 和大多数 Android 键盘都能在手机上听写。	src/ui/screens/voice.js:184	Note: "microphone key" is a keyboard key (麦克风键), not an API key (密钥); "your voice" is your own speech.
+bewa4v	ok	What she says	她说的话	src/ui/screens/voice.js:185	
 12fg67m	ok	Searching the web	搜索网络	src/ui/screens/welcome.js:20	
 13sqoog	ok	Shiori, Koe and Kokoro	Shiori、Koe 和 Kokoro	src/ui/screens/welcome.js:20	
 1okgje1	ok	What annai can do	annai 能做什么	src/ui/screens/welcome.js:20	

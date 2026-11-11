@@ -5,7 +5,7 @@ import { h } from './dom.js';
  * their own, like a puppet's, and other drawings of some that take their place. States move the parts with transforms
  * (shiori.css); her eyes and streamer are drawn here, as shapes that change smoothly, never swapped pictures.
  * A named component: setState, setLevel, glance, blink. Built without innerHTML.
- * @typedef {'sleeping' | 'listening' | 'ignoring' | 'hearing' | 'thinking' | 'speaking' | 'waiting' | 'away' | 'offline'} AvatarState
+ * @typedef {'sleeping' | 'opening' | 'listening' | 'ignoring' | 'hearing' | 'thinking' | 'speaking' | 'waiting' | 'away' | 'offline'} AvatarState
  */
 
 const NS = 'http://www.w3.org/2000/svg';

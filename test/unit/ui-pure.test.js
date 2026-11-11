@@ -984,3 +984,9 @@ test('the Trace shows the sound\'s context on voice.route, voice.mic and voice.s
   assert.equal(traceSummary(e('voice.route', { ...route, ctx })), 'audio route speaker · from the devices present · iPhone Microphone · sound running at 812.403 s');
   assert.equal(traceSummary(e('voice.route', route)), 'audio route speaker · from the devices present · iPhone Microphone', 'an older line, with no ctx');
 });
+
+test('the dock has words for every state a half shows, "One moment…" between a tap and Listening among them', async () => {
+  const { LABELS } = await import('../../src/core/agent/loop.js');
+  assert.equal(LABELS.opening, 'One moment…');
+  for (const name of ['sleeping', 'opening', 'thinking', 'speaking', 'listening', 'ignoring', 'hearing', 'waiting', 'away', 'offline']) assert.ok(/** @type {any} */ (LABELS)[name], name);
+});
