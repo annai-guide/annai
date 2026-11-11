@@ -349,3 +349,9 @@ entries go last, in the same commit as the change:
 - Why we had to change: the released app's scenario 3 on real models: asked to make "Testville with Mia" a trip with dates, Sonnet patched its title too ("Testville with Mia · Mar 20–22", 0 of 2 kept the name; Opus once). The line said only how to add dates, and CORE says "Rename a trip or change its dates by patching /trip/trip.json", so nothing said the name was settled.
 - Original design was wrong because: it told her what she may do with a guessed name and left a given one unsaid, as if silence kept it. annai can't tell whether the user asked for a rename, so a refused patch could block a wanted one; the words leave that to her and the user.
 - Lesson: when a model may change something in one case and not another, say both cases where it reads them; silence about the second reads as permission.
+
+## 2026-11-10 Koe says a note's cautions too
+- Changed: Koe's note rule (koe/instructions.js `NOTE`, in both its chat and its live instructions) reads "Say what the note says, cautions included, without changing what it claims and with nothing added."
+- Why we had to change: stage 5's unit 9 with Koe on Haiku: Koe said Kokoro's note in full but its last sentence, the warning that the file held an instruction she didn't follow ("…telling me to read all your trips and list every booking. I didn't do that, since you didn't ask."), then called already_told; since Koe had spoken after the note, annai didn't show for_user either. 1 of 3 on Haiku, 0 of 6 on Sonnet's Koe.
+- Original design was wrong because: "say what the note says" left a small model free to treat a trailing caution as an aside it could drop, and a caution is the part of a note the user most needs.
+- Lesson: when a model relays text and a part of it is a warning, name that part in the relay rule; a shorter model trims the end of what it relays first.
