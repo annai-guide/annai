@@ -444,6 +444,9 @@ for (const iphone of [false, true]) {
     await page.evaluate((id) => navigator.serviceWorker.dispatchEvent(new MessageEvent('message', { data: { type: 'annai.open', scope: id } })), nara);
     await expect.poll(() => hashOf(page)).toBe(`#/trip/${nara}/talk`);
     await expect(question).toHaveCount(0);
+    // Hidden at once, but its close listener (which removes it) runs a frame later: a Back that came first would find the question's entry still its own,
+    // and the question would step back over it too (ask.js; the final review of home2, F2).
+    await expect(page.locator('dialog.ask')).toHaveCount(0);
     await page.goBack(); // over the question's entry, if it had one: Kyoto's Details, still there
     await expect(page.getByRole('heading', { level: 1, name: 'Kyoto' })).toBeVisible();
     expect(hashOf(page)).toBe(`#/trip/${kyoto}`);
