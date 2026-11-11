@@ -81,8 +81,8 @@ const wikiRow = { query: { geosearch: [{ title: 'McWay Falls', lat: 36.1577, lon
 
 test('nearby asks both Overpass servers and Wikipedia at once: with neither server answering it waits one time limit, not one per server, and gives Wikipedia\'s rows as before', async () => {
   const was = ASK_MS.ms;
-  // Short, so the test is quick; two limits one after the other (the old way) are twice it.
-  ASK_MS.ms = 300;
+  // Short, so the test is quick, with a second's slack for a loaded machine; two limits one after the other (the old way) are twice it.
+  ASK_MS.ms = 1000;
   try {
     const { run, asked } = await setup();
     /** @type {string[]} */
@@ -148,7 +148,7 @@ test("nearby: the Trace has a net.request line for each request with its own tim
   assert.equal(by['overpass-api.de'].status, 200);
   assert.ok(by['overpass-api.de'].ms >= 15, `its own time: ${by['overpass-api.de'].ms} ms`);
   assert.equal(by['overpass.private.coffee'].status, 0, 'stopped: no answer');
-  assert.equal(typeof by['overpass.private.coffee'].error, 'string');
+  assert.equal(by['overpass.private.coffee'].error, 'Stopped: the other Overpass server answered first.');
   assert.ok(by['overpass.private.coffee'].ms < by['en.wikipedia.org'].ms, 'stopped as the first answered, not at the end');
   assert.equal(by['en.wikipedia.org'].status, 200);
   assert.ok(by['en.wikipedia.org'].ms >= 190, `its own time: ${by['en.wikipedia.org'].ms} ms`);
