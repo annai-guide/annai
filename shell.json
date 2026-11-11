@@ -1,5 +1,5 @@
 {
-  "build": "33354a2992cf",
+  "build": "358f7250b327",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -39,7 +39,7 @@
     "/src/core/agent/budgets.js": "ec0a25e840fb",
     "/src/core/agent/compaction.js": "0525a91f19e9",
     "/src/core/agent/context.js": "b6b85ecc3d49",
-    "/src/core/agent/halves.js": "01a854064468",
+    "/src/core/agent/halves.js": "4b57f4b40f20",
     "/src/core/agent/instructions.js": "5a8bc872522c",
     "/src/core/agent/listen.js": "01152d2c0b22",
     "/src/core/agent/log.js": "be1f6eedd6f8",
