@@ -24,6 +24,8 @@ const TEXT_MAX = 40_000;
 /** A pasted text annai kept as a file (the type box): one that isn't a booking is Shiori's to drop. */
 const PASTED = /^\/files\/pasted-\d{4}-\d{2}-\d{2}-\d{4}(?: \(\d+\))?\.txt$/;
 /* en */
+const OTHER_TRIPS = "These are only this conversation's files: what isn't here may be in another of their trips (list_trips).";
+/* en */
 const PATH = { type: 'string', description: 'A path starting with /trip/ (the open trip) or /me/ (your profile, memory and notes); with no trip open, /waiting/ holds what the user handed you.' };
 
 /** @param {any} annai */
@@ -139,8 +141,12 @@ export function activate(annai) {
       description: "List files under a folder, as TSV: path, type, size in bytes, modified, author. The trip's offline pack (/trip/offline/) is left out unless asked for.",
       input: { type: 'object', properties: { path: { ...PATH, default: '/' } } },
       /** @param {{ path?: string }} i @param {any} call */
-      run: async (i, call) => tsv(['path', 'type', 'size', 'modified', 'author'],
-        (await filesUnder(i.path ?? '/', call)).map((f) => [f.shown, f.type, f.size, new Date(f.modified).toISOString(), f.author])),
+      run: async (i, call) => {
+        const rows = tsv(['path', 'type', 'size', 'modified', 'author'], (await filesUnder(i.path ?? '/', call)).map((f) => [f.shown, f.type, f.size, new Date(f.modified).toISOString(), f.author]));
+        // The conversation's root, read where she decides "it isn't there" (real models: Sonnet listed and read this trip's files, never
+        // list_trips, and said another trip's hotel wasn't there). Koe has no list_trips: its instructions say it.
+        return call.trip && call.half !== 'koe' && /^(\/|\/trip\/?)?$/.test(i.path ?? '/') ? `${rows}\n${OTHER_TRIPS}` : rows;
+      },
     },
     {
       name: 'read', group: 'Files',

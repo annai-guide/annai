@@ -68,7 +68,9 @@ test('read_trip with no path or query: the trip named, its dates and places, its
   assert.match(out, /\/notes\/food\.md/);
   assert.match(out, /\/trip\.json/);
   assert.doesNotMatch(out, /station\.jpg|ticket\.pdf|pass\.pkpass/, 'photos, PDFs and other files are counted, not listed');
-  assert.match(out, /Not opened by read_trip: 1 photo, 1 PDF, 1 other file\. You can't open these from here; they can open that trip from Trips and ask there\./);
+  // From a chat she can take them there herself (open_trip), in words that can't be read as moving the file (S6); in a dated trip they open it from Trips (below).
+  assert.match(out, /Not opened by read_trip: 1 photo, 1 PDF, 1 other file\. You can't open these from here; to look at one, offer to take the user into that trip's conversation \(open_trip\), where you can\./);
+  assert.doesNotMatch(out, /\bmove/i);
   const lines = out.split('\n').filter((l) => /^(The user|Shiori): /.test(l));
   assert.equal(lines.length, 12);
   assert.equal(lines[0], 'The user: "Question 9 about Testville"');
@@ -140,8 +142,14 @@ test("read_trip with a path: that text file, as that trip's data: an instruction
 test('read_trip refuses in words what it does not open: a photo, a PDF, another binary file, a path that is no path, a file that is not there, a removed or draft trip, the open one (Review Focus 4)', async (t) => {
   useClock(t);
   const k = await kit();
-  const refused = "read_trip opens only text and JSON files, not photos, PDFs or other kinds: you can't open this one from here. They can open that trip from Trips and ask about it there.";
+  const refused = "read_trip opens only text and JSON files, not photos, PDFs or other kinds: you can't open this one from here. To look at it, offer to take the user into that trip's conversation (open_trip, once they say yes), where you can; the file stays where it is.";
   for (const path of ['/files/station.jpg', '/files/ticket.pdf', '/files/pass.pkpass']) assert.equal(words(await run(k, 'read_trip', { trip: TV, path })), refused, path);
+  // In a dated trip open_trip is refused: they open that trip from Trips.
+  await k.ws.patch(k.trip, '/trip.json', { start: '2027-05-01' }, { author: 'user' });
+  const fromTrips = "read_trip opens only text and JSON files, not photos, PDFs or other kinds: you can't open this one from here. They can open that trip from Trips and ask about it there.";
+  assert.equal(words(await run(k, 'read_trip', { trip: TV, path: '/files/station.jpg' })), fromTrips);
+  assert.match(words(await run(k, 'read_trip', { trip: TV })), /Not opened by read_trip: 1 photo, 1 PDF, 1 other file\. You can't open these from here; they can open that trip from Trips and ask there\./);
+  await k.ws.patch(k.trip, '/trip.json', { start: null }, { author: 'user' });
   for (const path of ['/../me/profile.md', '/.annai/x', '/notes/a\\b.md']) await assert.rejects(run(k, 'read_trip', { trip: TV, path }), /isn't a path in that trip/, path);
   // Only that trip's own files: /me/ there is nothing of the user's own.
   await assert.rejects(run(k, 'read_trip', { trip: TV, path: '/me/profile.md' }), /No file at \/me\/profile\.md in "Testville"/);
@@ -546,7 +554,8 @@ test("opening another conversation ends the card's wait, as a Stop: no turn hang
   await k.agent.idle();
   assert.equal(k.agent.kokoro.pendingId, null);
   const results = (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(k.trip, { types: ['tool.result'] }))).filter((/** @type {any} */ e) => e.data.name === 'read_trip');
-  assert.deepEqual(results.map((/** @type {any} */ e) => e.data.content), ['Stopped by the user.']);
+  // Not a Stop; and the card waited on the user, so the turn is let go as released, their next line its answer (the user's S6; the re-review 3's F4).
+  assert.deepEqual(results.map((/** @type {any} */ e) => e.data.content), ['Not answered: the user opened another conversation; what they say next may answer it.']);
   assert.equal((await grants(k, k.trip)).length + (await grants(k, chat)).length, 0);
 });
 

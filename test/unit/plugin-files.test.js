@@ -308,3 +308,20 @@ test("in the waiting space she writes only her short names, and deletes only ann
   await tools.patch.run({ path: '/waiting/names.json', changes: { '/files/flight.pdf': 'ANNAI AIR · Nov 20' } }, none);
   assert.deepEqual(await readNames(ws, SYS_WAITING), { '/files/flight.pdf': 'ANNAI AIR · Nov 20' });
 });
+
+test("a list of the conversation's root ends by saying their other trips aren't in it (list_trips), for Shiori and Kokoro; not for Koe, which has no list_trips, nor a folder's list, nor with no trip open (real models: Sonnet as Kokoro said another trip's hotel wasn't there, item 3)", async () => {
+  const { ws, trip, tools } = await setup();
+  await ws.write(trip, '/notes/hotel.md', 'Harbor Inn', { author: 'user' });
+  const call = (/** @type {string} */ half, t = /** @type {string | null} */ (trip)) => ({ scope: t ?? ME, trip: t, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori', half });
+  const LINE = "These are only this conversation's files: what isn't here may be in another of their trips (list_trips).";
+  for (const half of ['one', 'kokoro']) {
+    for (const path of ['/trip/', '/trip', '/']) {
+      const out = await tools.list.run({ path }, call(half));
+      assert.match(out, /^\/trip\/notes\/hotel\.md\t/m);
+      assert.ok(out.endsWith(`\n${LINE}`), `${half} ${path}: ${out}`);
+    }
+    assert.ok(!(await tools.list.run({ path: '/trip/notes/' }, call(half))).includes(LINE), 'a folder of it says nothing of other trips');
+  }
+  assert.ok(!(await tools.list.run({ path: '/trip/' }, call('koe'))).includes(LINE), 'Koe has no list_trips');
+  assert.ok(!(await tools.list.run({ path: '/' }, call('kokoro', null))).includes(LINE), 'no trip open');
+});

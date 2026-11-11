@@ -16,7 +16,7 @@ const NEP = { id: 'nepenthe', title: 'Lunch at Nepenthe', fixed: true, start: { 
 
 /**
  * agentKit with live mode's engine on a manual clock at 08:30, the Time tools, and the now block's place.
- * @param {any[][]} scripts @param {Parameters<typeof agentKit>[1]} [o]
+ * @param {Parameters<typeof agentKit>[0]} scripts @param {Parameters<typeof agentKit>[1]} [o]
  */
 async function liveAgent(scripts, o = {}) {
   const clock = new ManualClock(at('08:30'));
@@ -44,7 +44,7 @@ test('a watch fires and Shiori answers: she is told why, and annai shows no remi
   const w = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea time.' });
   await k.to(at('10:00'));
   assert.equal(k.requests.length, 1);
-  assert.match(k.requests[0].tail, new RegExp(`woke for: Your watch ${w.id} \\(at [^)]+\\) fired: the time came`));
+  assert.match(k.requests[0].tail, new RegExp(`woke for: Your watch ${w.id} \\(at Fri 2026-11-27 10:00 \\(GMT-8\\)\\) fired: the time came`));
   assert.deepEqual((await k.events(['wake']))[0].data.reasons.map((/** @type {any} */ r) => [r.kind, r.titles]), [['trigger', ['Tea time.']]], 'what fired, for the line the screens make');
   assert.deepEqual(await k.events(['reminder']), []);
   assert.deepEqual(k.notices, []);
@@ -251,4 +251,22 @@ test('a reminder annai says while the conversation is still being opened (as ann
   await k.agent.idle();
   assert.ok(JSON.stringify(k.requests[0].messages).includes('Leave for the airport now.'));
   assert.deepEqual((await k.events(['reminder'])).length, 1);
+});
+
+test("one reminder, one time: Kokoro's watch_set result and Koe's view name it in the same words, its weekday and zone said, whatever the phone's zone (real models: Koe took it back from its own view, item 6)", async () => {
+  const set = { name: 'watch_set', input: { when: { type: 'time', at: '2026-11-27T18:00:00-08:00' }, fallback: 'Pack the chargers.' } };
+  const k = await liveAgent([{ rules: [{ match: 'the user wrote', times: 1, reply: { toolCalls: [set, sleep] } }, { match: '.', reply: { toolCalls: [sleep] } }] }], {
+    koe: { type: { rules: [{ match: '.', reply: { toolCalls: [{ name: 'speak', input: { text: 'Okay.' } }, sleep] } }] } },
+    agent: { timeZone: () => 'Europe/Berlin' }, // the phone is at home; the trip, and its reminder, are in California
+  });
+  // As the app wires it (main.js): Koe's view names the open conversation's next reminder.
+  k.agent.next = async () => (await k.live.reminders())?.find((/** @type {any} */ r) => r.scope === k.agent.scope && r.due >= k.clock.now()) ?? null;
+  k.agent.send('Remind me at six to pack the chargers.');
+  await k.settle();
+  const result = (await k.events(['tool.result'])).find((e) => e.data.name === 'watch_set');
+  assert.match(result?.data.content, /^Set w-\S+: at Fri 2026-11-27 18:00 \(GMT-8\)\./);
+  k.agent.send('When is it again?');
+  await k.settle();
+  assert.match(k.sent['model-koe'].at(-1).tail, /\nnext reminder: Fri 2026-11-27 18:00 \(GMT-8\) Pack the chargers\.\n/);
+  assert.match((await k.live.listWatches(k.trip)), /\tat Fri 2026-11-27 18:00 \(GMT-8\)\t/);
 });

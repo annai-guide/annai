@@ -22,6 +22,19 @@ import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 /* en */ export const RESTARTED = 'interrupted by app restart';
 /** A tool's result when the user stopped her turn (spec §6.7). */
 /* en */ export const STOPPED = 'Stopped by the user.';
+/** A tool's result when opening another conversation cut her turn: no Stop, so it is taken up when they come back. The tool may run on and
+ * finish (runTool stops waiting, not the tool), so taken up she checks before doing it again. */
+/* en */ export const CUT = 'Cut off: another conversation was opened while this ran. It may have finished: check before you do it again.';
+/** The same cut for a call after it in the reply, which never started. */
+/* en */ export const NOT_RUN = 'Not run: another conversation was opened first.';
+/** A cut call of a turn let go (loop.js #lettingGo): one that waited on the user, and one annai started by itself. */
+/* en */ export const NOT_ANSWERED = 'Not answered: the user opened another conversation; what they say next may answer it.';
+/**
+ * The same, when the open cut her line while she was still saying it: an answer and a question have the same shape (a speak she would listen
+ * after), so the words serve both, and she knows which hers was.
+ */
+/* en */ export const NOT_HEARD = "Not heard in full: the user opened another conversation while you said it. It is written in the conversation; don't repeat it unless they ask. If it asked them something, what they say next may answer it.";
+/* en */ export const LET_GO = "Let go: the user opened another conversation; don't take it up unless they ask.";
 /** Entries the conversation never shows Shiori, left out as it is read: a drive logs thousands of points (spec §4.5). */
 export const NOT_SAID = new Set(['location', 'trigger.fired']);
 /**
@@ -50,7 +63,25 @@ export class Transcript {
   /** The last entry load() read: anything written later wasn't in the log it read. */
   through = 0;
   /** Whether the last thing in it is the user's (or the app's) with no reply from Shiori yet, or results she hasn't seen: after a reload mid-turn. */
-  unanswered = false;
+  get unanswered() {
+    return this.#owes || this.#heardOwed > 0;
+  }
+
+  set unanswered(v) {
+    this.#owes = v;
+    if (v) return;
+    this.#heardOwed = 0;
+    this.#koeCalls = null;
+  }
+
+  #owes = false;
+  /**
+   * One Shiori, Koe since unset: the seq of a heard line Koe kept that nothing has settled (0: none). Her turn settles it, or Koe's answer: a
+   * line it said after it, unless its reply's question to Kokoro is still to run; all its reply's calls done; the user's Stop.
+   */
+  #heardOwed = 0;
+  /** Those calls of Koe's reply not done yet, id to name. @type {Map<string, string> | null} */
+  #koeCalls = null;
   /**
    * What is waiting when unanswered: 'user' (a message), 'wake' (something else, such as files added while it was closed), or 'turn' (her
    * tool calls' results, her turn cut off before her next reply). @type {'' | 'user' | 'wake' | 'turn'}
@@ -81,6 +112,8 @@ export class Transcript {
   #last = [];
   /** The last reply ended the turn: it called sleep, or a result says the turn is over (stopped, or back to sleep). */
   #ends = false;
+  /** Her own line (said, shown, asked) or note since her last reply: she reached the user, or handed on. */
+  #reached = false;
   /** @type {{ seq: number, parts: Part[] }[]} lines held until those results (plan decision 3) */
   #held = [];
   /** @type {{ seq: number, parts: Part[] }[]} lines since the last reply */
@@ -149,6 +182,18 @@ export class Transcript {
           this.waiting = 'user';
         }
       }
+    } else if (e.type === 'model.turn' && this.half === 'one' && d.tag === KOE_TAG) {
+      // Koe's reply to what it heard (one that read it).
+      if (!this.#heardOwed || !texts.parts || (typeof d.context?.to === 'number' && d.context.to < this.#heardOwed)) return;
+      this.#koeCalls = new Map(JSON.parse(texts.parts).flatMap((/** @type {Part} */ p) => (p.type === 'tool_call' ? [[p.id, p.name]] : [])));
+      if (!this.#koeCalls.size) this.#heardSettled();
+      return;
+    } else if (e.type === 'tool.result' && this.half === 'one' && d.half === 'koe') {
+      if (d.ok !== false && this.#koeCalls?.delete(d.id) && !this.#koeCalls.size) this.#heardSettled();
+      return;
+    } else if (this.half === 'one' && d.half === 'koe' && (e.type === 'out.speak' || e.type === 'out.show' || e.type === 'out.ask')) {
+      if (![...(this.#koeCalls?.values() ?? [])].includes('tell_kokoro')) this.#heardSettled();
+      return;
     } else if (e.type === 'model.turn' && d.tag === (koe ? KOE_TAG : TALK_TAG) && texts.parts) {
       /** @type {Part[]} */
       const parts = JSON.parse(texts.parts);
@@ -173,6 +218,7 @@ export class Transcript {
       } else if (parts.length) this.#add('assistant', parts);
       this.#last = parts.flatMap((p) => (p.type === 'tool_call' ? [p.id] : []));
       this.#ends = parts.some((p) => p.type === 'tool_call' && p.name === 'sleep');
+      this.#reached = false;
       // A reply that ends her turn (it sleeps, or calls no tool) has answered the hand-over it carried; a reply from before replies said
       // which (no handover key), whatever came before it. A reminder's turn settles no hand-over.
       if (this.#mine(d) && (this.#ends || !this.#last.length) && (!('handover' in d) || d.handover === this.#handover)) this.#handover = null;
@@ -180,9 +226,16 @@ export class Transcript {
       this.#flushHeld();
       this.unanswered = false;
     } else if (e.type === 'note') {
+      // One Shiori reads no notes, but owes Koe's question as Kokoro did, until her turn.
+      if (this.half === 'one' && d.from === 'koe') {
+        this.unanswered = true;
+        this.waiting = 'user';
+        return;
+      }
+      if (d.from === (koe ? 'koe' : 'kokoro')) this.#reached = true;
       if (d.from === (koe ? 'koe' : 'kokoro') || this.half === 'one') return;
       /** @type {Part} */
-      const part = { type: 'text', text: koe ? wrapNote(texts.text ?? '', this.nonce) : /** @type {string} */ (blockFor(e, texts)) };
+      const part = { type: 'text', text: koe ? wrapNote(texts.text ?? '', this.nonce, { forUser: texts.forUser }) : /** @type {string} */ (blockFor(e, texts)) };
       if (koe) this.#wrapped.add(part);
       this.#line([part]);
       this.unanswered = true;
@@ -191,6 +244,7 @@ export class Transcript {
       if (this.half !== 'kokoro') return;
       this.#line([{ type: 'text', text: /** @type {string} */ (blockFor(e, texts)) }]);
     } else if (e.type === 'out.speak' || e.type === 'out.show' || e.type === 'out.ask') {
+      if (this.#mine(d)) this.#reached = true;
       const line = this.half === 'kokoro' ? (d.half === 'koe' ? blockFor(e, texts) : null) : koe ? saidWithout(e, texts) : null;
       if (!line) return;
       this.#line([{ type: 'text', text: line }]);
@@ -234,7 +288,9 @@ export class Transcript {
     } else if (e.type === 'error' && d.wake) {
       // A turn that ended in an error (no model, a budget, housekeeping that failed) is over: the user
       // saw a card, and a later start doesn't wake her again for it (spec §6.7). It isn't in the context.
-      if (this.#mine(d)) this.unanswered = false;
+      if (this.#mine(d) && d.kind === 'stopped') this.unanswered = false; // her Stop settles all before it, a line Koe heard too
+      else if (this.#mine(d)) this.#owes = false; // another error read nothing: it settles only what she owed
+      else if (this.half === 'one' && d.kind === 'stopped') this.#heardSettled(); // the user stopped Koe's reply
       return;
     } else if (e.type === 'heard') {
       // What the microphone heard (spec §10.3); its words come with it (dictation) or later (heard.text).
@@ -249,9 +305,13 @@ export class Transcript {
       }
       /* en */ const label = d.dismissed ? asideLabel(d, this.half) : d.meanwhile && own ? '[heard while you were thinking]' : '[heard]';
       this.#line([{ type: 'text', text: label }, speech]);
-      // Koe answers what it heard: Kokoro owes nothing for it.
-      if (!d.dismissed && (own || this.half === 'koe')) {
+      // Koe answers what it heard (or lets it pass): Kokoro owes nothing for it; one Shiori, Koe since unset, until it is settled (#heardOwed).
+      if (!d.dismissed && (this.half === 'koe' || this.#mine(d))) {
         this.unanswered = true;
+        this.waiting = 'user';
+      } else if (!d.dismissed && this.half === 'one') {
+        this.#heardOwed = e.seq;
+        this.#koeCalls = null; // a reply from before it doesn't settle it
         this.waiting = 'user';
       }
     } else if (e.type === 'heard.text') {
@@ -278,6 +338,11 @@ export class Transcript {
       if (!texts.text) return;
       const said = this.half === 'one' ? `"${texts.text}"` : quote(texts.text);
       /* en */ this.#line([{ type: 'text', text: `[annai] Shown${d.aloud ? ' and said aloud' : ''} by annai itself, since ${d.unsaid ? 'your turn ended without telling the user' : "you couldn't be reached"}: ${said}` }]);
+    } else if (e.type === 'tool.result' && this.half === 'kokoro' && d.half === 'koe') {
+      // What Koe changed: Kokoro knows, and owes nothing for it.
+      const line = blockFor(e, texts);
+      if (!line) return;
+      this.#line([{ type: 'text', text: line }]);
     } else if (e.type === 'tool.result' && this.#mine(d) && this.#calls.has(d.id) && !this.#answered.has(d.id)) {
       this.#answered.add(d.id);
       const heard = (Array.isArray(d.heard) ? d.heard : []).flatMap((/** @type {string} */ id) => {
@@ -287,7 +352,12 @@ export class Transcript {
       this.#add('user', [{ type: 'tool_result', id: d.id, content: texts.content ?? '', ...(d.ok === false ? { isError: true } : {}) }, ...r.images, ...heard]);
       this.#flushHeld();
       // Every result of a reply that didn't end her turn, and no reply after: her turn was cut off, and she owes the rest.
-      if (d.end || texts.content === STOPPED) this.#ends = true;
+      // A call cut short (`cut`: an open, a Stop, a restart; not a refusal) leaves her turn owed though its reply slept, if it was a hand-off
+      // or came before she reached the user. A Stop is settled by its own record. A result with no `cut` at all is an older page's, read as it
+      // read it: the Stop's words (which it also wrote for an open's cut) ended her turn.
+      const name = this.#calls.get(d.id);
+      if (d.end || (!('cut' in d) && texts.content === STOPPED)) this.#ends = true;
+      else if (d.cut && (name === 'tell_koe' || name === 'tell_kokoro' || (name !== 'sleep' && !this.#reached))) this.#ends = false;
       if (this.#last.includes(d.id) && !this.#waitsForResults() && !this.#ends) {
         this.unanswered = true;
         this.waiting = 'turn';
@@ -298,6 +368,11 @@ export class Transcript {
     if (koe) this.#window();
     if (!this.from) this.from = e.seq;
     this.to = e.seq;
+  }
+
+  #heardSettled() {
+    this.#heardOwed = 0;
+    this.#koeCalls = null;
   }
 
   /** The hand-over the conversation still owes an answer, or null (the restart wake carries it). */
@@ -489,7 +564,7 @@ export function linesOf(messages) {
 export async function repair(store, scope, t, mark = {}) {
   const open = t.open();
   for (const c of open) {
-    const ev = await record(store, scope, { type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: false, ms: 0, ...mark, content: RESTARTED } });
+    const ev = await record(store, scope, { type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: false, cut: true, ms: 0, ...mark, content: RESTARTED } });
     t.apply(ev, { texts: {}, images: [] });
   }
   return open.length;

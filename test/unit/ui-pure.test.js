@@ -9,7 +9,7 @@ import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
 import { parseMarkdown, parseInline, MD_MAX } from '../../src/ui/markdown.js';
 import { mapsUrl, tripPath } from '../../src/ui/cards.js';
-import { follow, announced, wokeText, wokeTitles, reminderParts, movedWords, settled, undoneWords } from '../../src/ui/screens/talk.js';
+import { follow, announced, wokeText, wokeTitles, reminderParts, movedWords, wentWords, settled, undoneWords } from '../../src/ui/screens/talk.js';
 import { visibleRegion } from '../../src/ui/photo-viewer.js';
 import { traceSummary, newestFirst } from '../../src/ui/screens/trace.js';
 import { micProblem } from '../../src/ui/mic-help.js';
@@ -893,6 +893,14 @@ test('movedWords: started, took one, took several, and to a trip since removed',
   assert.equal(movedWords({ to: 't', started: false, count: 3 }, null), 'Shiori took these files to a trip that has since been removed.');
   // Not her lines: the announcer says nothing of them.
   assert.deepEqual(announced('handover.moved', '', 'Shiori took 1 file to Kyoto.'), ['', '', '']);
+});
+
+test("wentWords: the chat's line for a move (open_trip), by the trip's title, or to one since removed; the Trace lists it", () => {
+  assert.equal(wentWords('Kyoto · Apr 1–8'), 'Shiori moved this to Kyoto · Apr 1–8.');
+  assert.equal(wentWords(null), 'Shiori moved this to a trip that has since been removed.');
+  // Said to a screen reader as it comes, as annai's own lines are: the conversation is about to change.
+  assert.deepEqual(announced('conversation.moved', '', 'Shiori moved this to Kyoto.'), ['', 'Shiori moved this to Kyoto.', '']);
+  assert.equal(traceSummary(/** @type {any} */ ({ seq: 1, ts: 0, type: 'conversation.moved', actor: 'shiori', data: { to: 'trip-k', title: 'Kyoto' } })), 'moved to Kyoto · trip-k');
 });
 
 test('parseHash: #/waiting/file?path=/files/a.pdf is the waiting file screen', () => {

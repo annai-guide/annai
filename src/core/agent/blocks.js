@@ -21,9 +21,16 @@ export const theirs = (text) => escapeTags(text).replace(/^(\s*)\[/gm, '$1\\[');
 /** Words inside a label, quoted, so a label or a new line in them can't pass for annai's. @param {unknown} text */
 export const quote = (text) => JSON.stringify(String(text ?? ''));
 
-/** A note from Kokoro as Koe reads it, in the one marker Koe trusts. @param {string} text @param {string} nonce */
-export function wrapNote(text, nonce) {
-  /* en */ return `<from_kokoro id="${nonce}">${escapeTags(text)}</from_kokoro>`;
+/**
+ * A note from Kokoro as Koe reads it, in the one marker Koe trusts, with her words for the user (tell_koe's for_user) when its text only points
+ * at them, as Koe sees them nowhere else: it names for_user, or is under half their length. In 2026-11-10's runs a pointer was at most 27% of
+ * it and a note holding the answer at least 36%; the cut is half, not between the two, as a pointer missed leaves Koe nothing while one copy
+ * too many is one line, and five pointers are too few to trust 27% as their limit.
+ * @param {string} text @param {string} nonce @param {{ forUser?: string }} [o]
+ */
+export function wrapNote(text, nonce, { forUser = '' } = {}) {
+  const points = forUser && (/for_user/i.test(text) || text.length * 2 < forUser.length);
+  /* en */ return `<from_kokoro id="${nonce}">${escapeTags(points ? `${text}\nfor_user: ${forUser}` : text)}</from_kokoro>`;
 }
 
 /** Koe's session nonce, fresh each time annai starts. */
@@ -93,9 +100,12 @@ export function asideLabel(d, half) {
   /* en */ return '[heard, not meant for you]';
 }
 
+/** Koe's quick tools that change something: Kokoro reads annai's result for each that worked, or both halves set one reminder (real models). */
+const KOE_CHANGES = ['watch_set', 'watch_cancel', 'write', 'edit', 'patch'];
+
 /**
  * Kokoro's block for an event of the conversation it didn't write: what the user typed (to Koe), what
- * Koe said, showed and asked, Koe's notes, and annai's instruction blocks. Null: not a block of Kokoro's.
+ * Koe said, showed and asked, what Koe changed, Koe's notes, and annai's instruction blocks. Null: not a block of Kokoro's.
  * @param {any} e @param {Record<string, string>} texts its texts, stored ones included
  * @returns {string | null}
  */
@@ -112,6 +122,8 @@ export function blockFor(e, texts) {
   if (d.half === 'koe' && e.type === 'out.show') /* en */ return `[Koe showed] ${quote(cardText(d.card))}`;
   if (d.half === 'koe' && e.type === 'out.ask') /* en */ return `[Koe asked] ${askText(d)}`;
   if (e.type === 'note' && d.from === 'koe') /* en */ return `[Koe ${asksOrNotes(text)}] ${quote(text)}`;
+  // annai's own words for what was done (the result), never Koe's call, whose words (a reminder's text) are Koe's.
+  if (e.type === 'tool.result' && d.half === 'koe' && d.ok !== false && KOE_CHANGES.includes(d.name)) return `[Koe's ${d.name}] ${quote(texts.content)}`;
   if (e.type === 'halves') return `[annai] ${text}`;
   return null;
 }
