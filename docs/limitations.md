@@ -462,3 +462,9 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** a browser tab's toolbar also changes the height as the user scrolls, and putting the page back then pinned it at its end against the user's own scroll. Only a change of width is surely a turn.
 - **Revisit when:** the user meets it in split screen, or a way appears to tell a toolbar from a real resize.
 - **Approved:** 2026-11-10, the user picked "Accept (Recommended)".
+
+### A fold opened at a page's end, then a turn of the phone, puts the page at its new end
+- **Kind:** deferred.
+- **What the user sees:** with a page scrolled to its end, opening something that grows the page below (Archived trips on home) and then turning the phone, before any scroll, moves the page past what just opened, to its new end. A scroll in between prevents it, and Shiori speaking or the dock changing no longer moves the page at all.
+- **Why:** when the phone turns, the page is already at its new size, so whether the user was at its end can't be read then and is remembered from their last scroll; a fold opened since is not a scroll.
+- **Revisit when:** the next version: the remembered fact also follows the page's height.
