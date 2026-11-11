@@ -159,37 +159,65 @@ function storedImages(page) {
   })));
 }
 
-test('remove a trip: asks once, and again only when it changed after its last Backup', async ({ page }) => {
+test('remove a trip: one question, which says so when something in it is not in a Backup', async ({ page }) => {
   await openApp(page);
   await startTrip(page, 'Big Sur');
   await page.getByLabel('Add photos or files').setInputFiles({ name: 'gate.png', mimeType: 'image/png', buffer: PNG });
   await allFiles(page);
   await expect(page.getByRole('link', { name: /\/files\/gate\.(webp|jpg)/ })).toBeVisible();
   expect(await storedImages(page)).toBe(1);
+  const question = page.getByRole('dialog', { name: 'Big Sur' });
 
   // Escape is a no.
   await page.getByRole('button', { name: 'Remove trip' }).click();
-  await expect(page.getByRole('dialog', { name: 'Big Sur' })).toContainText('This removes everything in this trip from this device');
+  await expect(question).toContainText('This removes everything in this trip from this device');
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
 
-  // Never backed up: a second question, and Cancel keeps the trip.
+  // Never backed up: the one question says so, and Cancel keeps the trip (there is no second question).
   await page.getByRole('button', { name: 'Remove trip' }).click();
-  await page.getByRole('dialog', { name: 'Big Sur' }).getByRole('button', { name: 'Remove' }).click();
-  const warning = page.getByRole('dialog', { name: 'Not backed up' });
-  await expect(warning).toContainText("This trip hasn't been backed up since it last changed. Remove it anyway?");
-  await warning.getByRole('button', { name: 'Cancel' }).click();
+  await expect(question).toContainText("This removes everything in this trip from this device: its files, photos, notes and history. It hasn't been backed up since it last changed. Remove it?");
+  await question.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+  expect(await storedImages(page)).toBe(1);
 
-  // Backed up and unchanged: one question, then the trip and its photo are gone.
+  // Backed up and unchanged: the plain question, and its one Remove takes the trip and its photo away.
   await page.getByRole('button', { name: 'Export trip' }).click();
   await buildAndSave(page);
   await page.getByRole('button', { name: 'Remove trip' }).click();
-  await page.getByRole('dialog', { name: 'Big Sur' }).getByRole('button', { name: 'Remove' }).click();
+  await expect(question).toContainText('This removes everything in this trip from this device: its files, photos, notes and history. Remove it?');
+  await expect(question).not.toContainText('backed up');
+  await question.getByRole('button', { name: 'Remove' }).click();
   await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByText(/^Removed Big Sur\. .+ freed\.$/)).toBeVisible();
   await expect(page.getByRole('link', { name: /Big Sur/ })).toHaveCount(0);
   expect(await storedImages(page)).toBe(0);
+});
+
+test('remove a trip changed after its last Backup: the one question says so again, and one tap on Remove removes it', async ({ page }) => {
+  await openApp(page);
+  const id = await startTrip(page, 'Big Sur');
+  await page.getByLabel('Add photos or files').setInputFiles({ name: 'gate.png', mimeType: 'image/png', buffer: PNG });
+  await allFiles(page);
+  await expect(page.getByRole('link', { name: /\/files\/gate\.(webp|jpg)/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Export trip' }).click();
+  await buildAndSave(page);
+  const question = page.getByRole('dialog', { name: 'Big Sur' });
+  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await expect(question).toContainText('This removes everything in this trip from this device');
+  await expect(question).not.toContainText('backed up');
+  await question.getByRole('button', { name: 'Cancel' }).click();
+  // Something is added after the Backup: the trip changed, and it is what the question says.
+  await putFile(page, id, '/files/later.txt', Buffer.from('Booked the second night.'), 'text/plain');
+  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await expect(question).toContainText("It hasn't been backed up since it last changed. Remove it?");
+  await expect(question.getByRole('button')).toHaveText(['Cancel', 'Remove']);
+  await question.getByRole('button', { name: 'Remove' }).click();
+  await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('link', { name: /Big Sur/ })).toHaveCount(0);
 });
 
 test('an archived trip can be removed too', async ({ page }) => {
@@ -201,7 +229,6 @@ test('an archived trip can be removed too', async ({ page }) => {
   await page.getByRole('link', { name: /Old trip/ }).click();
   await page.getByRole('button', { name: 'Remove trip' }).click();
   await page.getByRole('dialog', { name: 'Old trip' }).getByRole('button', { name: 'Remove' }).click();
-  await page.getByRole('dialog', { name: 'Not backed up' }).getByRole('button', { name: 'Remove anyway' }).click();
   await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
   await expect(page.getByText(/Archived trips/)).toHaveCount(0);
 });
@@ -223,7 +250,6 @@ test('a log line written into a removed trip is gone after the next start', asyn
   const id = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
   await page.getByRole('button', { name: 'Remove trip' }).click();
   await page.getByRole('dialog', { name: 'Big Sur' }).getByRole('button', { name: 'Remove' }).click();
-  await page.getByRole('dialog', { name: 'Not backed up' }).getByRole('button', { name: 'Remove anyway' }).click();
   await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
   /** Puts one log line into the scope (a request that ignored Stop, finishing late), or counts its lines. */
   const events = (/** @type {'put' | 'count'} */ op) => page.evaluate(({ scope, op }) => new Promise((resolve, reject) => {
@@ -263,7 +289,6 @@ test('removing a trip that is already gone says so', async ({ page }) => {
   }), id);
   await page.getByRole('button', { name: 'Remove trip' }).click();
   await page.getByRole('dialog', { name: 'Big Sur' }).getByRole('button', { name: 'Remove' }).click();
-  await page.getByRole('dialog', { name: 'Not backed up' }).getByRole('button', { name: 'Remove anyway' }).click();
   await expect(page.getByText('That trip was already removed.')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
 });
@@ -348,10 +373,9 @@ test('Back closes a question as No, where the browser has no CloseWatcher (Chrom
   await page.goForward();
   await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
 
-  // Two questions in a row, then the answer moves to Trips and stays there.
+  // The question, then the answer moves to Trips and stays there.
   await page.getByRole('button', { name: 'Remove trip' }).click();
   await question.getByRole('button', { name: 'Remove' }).click();
-  await page.getByRole('dialog', { name: 'Not backed up' }).getByRole('button', { name: 'Remove anyway' }).click();
   await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
   await page.waitForTimeout(300);
   await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
@@ -496,7 +520,6 @@ test('a fresh start reopens the trip screen that was open, and shows Trips when 
   await page.goto(`/#/trip/${id}`);
   await page.getByRole('button', { name: 'Remove trip' }).click();
   await page.getByRole('dialog', { name: 'Big Sur' }).getByRole('button', { name: 'Remove' }).click();
-  await page.getByRole('dialog', { name: 'Not backed up' }).getByRole('button', { name: 'Remove anyway' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
   await page.evaluate((id) => localStorage.setItem('annai.resume', JSON.stringify({ hash: `#/trip/${id}/plan`, trip: id })), id);
   await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
@@ -897,7 +920,6 @@ async function backStays(page) {
 async function removeFromDetails(page, title) {
   await page.getByRole('button', { name: 'Remove trip' }).click();
   await page.getByRole('dialog', { name: title }).getByRole('button', { name: 'Remove' }).click();
-  await page.getByRole('dialog', { name: 'Not backed up' }).getByRole('button', { name: 'Remove anyway' }).click();
 }
 /** Settings, then Trips, a trip started and opened, its conversation, its name (Details again), then Remove trip: the app is on Trips. @returns {Promise<string>} the trip's id */
 async function removedAfterVisits(/** @type {import('@playwright/test').Page} */ page) {
@@ -1232,11 +1254,10 @@ test("a screen the user goes to while Remove trip runs is kept: the removal does
   await openApp(page);
   await startNamed(page, 'Kyoto');
   await page.getByRole('button', { name: 'Remove trip' }).click();
-  await page.getByRole('dialog', { name: 'Kyoto' }).getByRole('button', { name: 'Remove' }).click();
-  await expect(page.getByRole('dialog', { name: 'Not backed up' })).toBeVisible();
-  // "Remove anyway", and in the same moment a tap on Settings: the removal ends after it.
+  await expect(page.getByRole('dialog', { name: 'Kyoto' })).toBeVisible();
+  // "Remove", and in the same moment a tap on Settings: the removal ends after it.
   await page.evaluate(() => {
-    /** @type {HTMLButtonElement} */ ([...document.querySelectorAll('dialog button')].find((b) => b.textContent === 'Remove anyway')).click();
+    /** @type {HTMLButtonElement} */ ([...document.querySelectorAll('dialog button')].find((b) => b.textContent === 'Remove')).click();
     /** @type {HTMLAnchorElement} */ (document.querySelector('nav.topnav a[href="#/settings"]')).click();
   });
   await expect(page.getByText(/^Removed Kyoto\./)).toBeVisible();

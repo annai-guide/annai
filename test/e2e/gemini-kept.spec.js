@@ -68,7 +68,6 @@ test("Google keeps the conversation: the switch and its note; Shiori's next turn
     await page.getByRole('button', { name: 'Remove trip' }).click();
     await expect(page.getByRole('dialog', { name: 'Kyoto' })).toContainText("Google keeps 2 turns of its conversations: annai asks for them to be deleted, once you're back online.");
     await page.getByRole('dialog', { name: 'Kyoto' }).getByRole('button', { name: 'Remove' }).click();
-    await page.getByRole('dialog', { name: 'Not backed up' }).getByRole('button', { name: 'Remove anyway' }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
     await page.evaluate(() => { location.hash = '#/models'; });
     await page.locator('a.card', { hasText: 'Google Gemini' }).click();
