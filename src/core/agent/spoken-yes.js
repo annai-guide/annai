@@ -5,6 +5,7 @@
  * three run together are a chant, and aren't either.
  * Each word has one meaning (the final review, 2026-11-10): off the yes list are いいです (to an offer it as often means "no thanks"), 嗯 (also
  * the filled pause, "嗯……", whose dots are stripped) and ええ (also surprise, "ええ！", and the start of ええと); うん stays (hesitation is うーん).
+ * いいよ stays a yes said once; "いいよ、いいよ" waves an offer off as often, so it is neither.
  */
 const YES = new Set(['yes', 'yeah', 'yep', 'sure', 'ok', 'okay', 'allow', 'allowit', 'goahead', 'yesplease',
   'はい', 'うん', 'いいよ', 'お願い', 'お願いします', 'どうぞ',
@@ -20,6 +21,8 @@ const NO = new Set(['no', 'nope', 'nah', 'nono', 'nothanks', 'nothankyou', 'notn
 
 /** A clause as the lists match it: punctuation and spaces out. @param {string} said */
 const bare = (said) => said.replace(/[\p{P}\s]/gu, '');
+/** Nothing but いいよ, more than once. */
+const WAVED = /^(いいよ){2,}$/;
 /** What sets clauses apart: all but letters, digits, marks, spaces, apostrophes and hyphens. */
 const BETWEEN = /[^\p{L}\p{N}\p{M}\s'’-]+/u;
 
@@ -36,7 +39,7 @@ const listed = (list, said) => {
  */
 export const spokenYes = (text) => {
   const said = String(text ?? '').normalize('NFKC').toLowerCase();
-  return !said.includes('?') && listed(YES, said);
+  return !said.includes('?') && !WAVED.test(bare(said)) && listed(YES, said);
 };
 
 /** Whether a heard line is a no, matched as a yes is; a "No?" still declines, which is always safe. @param {string} text */
