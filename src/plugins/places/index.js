@@ -24,7 +24,7 @@ const NOMINATIM = 'https://nominatim.openstreetmap.org';
 /* en */
 const CREDIT_OPEN_METEO = 'Weather data by Open-Meteo.com (https://open-meteo.com/, CC BY 4.0)';
 export { NOMINATIM_GAP };
-/** Each request's time limit, so a server that never answers is left for the next: Overpass ends a query by 20 s ([timeout:20]), plus 5 to connect. */
+/** Each request's time limit, so a server that never answers is given up on: Overpass ends a query by 20 s ([timeout:20]), plus 5 to connect. */
 export const ASK_MS = { ms: 25_000 };
 
 /** A request within ASK_MS, saying past it who didn't answer. @param {any} call @param {string} url @param {RequestInit} init */
@@ -150,35 +150,29 @@ export function activate(annai) {
         const at = `around:${radius},${round(i.lat)},${round(i.lng)}`;
         // Overpass cuts its output in id order, not by distance, so ask for plenty and keep the nearest 40.
         const query = `[out:json][timeout:20];(${overpassFilters(kinds).map((f) => `nwr(${at})${f};`).join('')});out center tags 400;`;
-        /** @type {any[][] | null} */
-        let osm = null;
-        for (const server of OVERPASS) {
-          try {
-            const data = await json(server, call, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: `data=${encodeURIComponent(query)}` });
-            // "runtime error: Query timed out": Overpass stopped early, and its places are cut off: no answer, as the pack takes it.
-            if (typeof data?.remark === 'string' && /error/i.test(data.remark)) continue;
-            /** @type {any[][]} */
-            const rows = [];
-            for (const e of Array.isArray(data?.elements) ? data.elements : []) {
-              const r = osmRow(e);
-              // The note: its website (or Wikipedia page), and its opening hours where OpenStreetMap has them.
-              if (r) rows.push([r[1], r[2], Math.round(meters(i.lat, i.lng, r[3], r[4])), r[3], r[4], 'osm', [r[5], typeof e.tags?.opening_hours === 'string' ? `hours ${e.tags.opening_hours}` : ''].filter(Boolean).join(' · ')]);
-            }
-            osm = rows;
-            break;
-          } catch (e) {
-            if (call.signal.aborted) throw e;
+        // All asked at once, so a call waits one ASK_MS at most; the first usable Overpass answer stops the other's request, with a
+        // reason the Trace shows (an Error: tracedFetch reads a DOMException AbortError as a stop with none).
+        const won = new AbortController();
+        const race = { ...call, signal: anySignal([call.signal, won.signal]) };
+        const overpass = Promise.any(OVERPASS.map(async (server) => {
+          const data = await json(server, race, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: `data=${encodeURIComponent(query)}` });
+          // "runtime error: Query timed out": Overpass stopped early, and its places are cut off: no answer, as the pack takes it.
+          if (typeof data?.remark === 'string' && /error/i.test(data.remark)) throw new Error(data.remark);
+          /** @type {any[][]} */
+          const rows = [];
+          for (const e of Array.isArray(data?.elements) ? data.elements : []) {
+            const r = osmRow(e);
+            // The note: its website (or Wikipedia page), and its opening hours where OpenStreetMap has them.
+            if (r) rows.push([r[1], r[2], Math.round(meters(i.lat, i.lng, r[3], r[4])), r[3], r[4], 'osm', [r[5], typeof e.tags?.opening_hours === 'string' ? `hours ${e.tags.opening_hours}` : ''].filter(Boolean).join(' · ')]);
           }
-        }
-        /** @type {any[][] | null} */
-        let wiki = null;
-        try {
-          const w = await json(`https://en.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${round(i.lat)}%7C${round(i.lng)}&gsradius=${Math.min(radius, 10000)}&gslimit=30&format=json&origin=*`, call);
-          wiki = (Array.isArray(w?.query?.geosearch) ? w.query.geosearch : []).filter((/** @type {any} */ g) => typeof g?.title === 'string')
-            .map((/** @type {any} */ g) => [g.title, 'wikipedia article', Math.round(g.dist), round(g.lat), round(g.lon), 'wikipedia', `https://en.wikipedia.org/wiki/${encodeURIComponent(g.title.replace(/ /g, '_'))}`]);
-        } catch (e) {
-          if (call.signal.aborted) throw e;
-        }
+          return rows;
+        })).finally(() => won.abort(Object.assign(new Error(/* en */ 'Stopped: the other Overpass server answered first.'), { name: 'AbortError' })));
+        const wikipedia = json(`https://en.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${round(i.lat)}%7C${round(i.lng)}&gsradius=${Math.min(radius, 10000)}&gslimit=30&format=json&origin=*`, call)
+          .then((w) => (Array.isArray(w?.query?.geosearch) ? w.query.geosearch : []).filter((/** @type {any} */ g) => typeof g?.title === 'string')
+            .map((/** @type {any} */ g) => [g.title, 'wikipedia article', Math.round(g.dist), round(g.lat), round(g.lon), 'wikipedia', `https://en.wikipedia.org/wiki/${encodeURIComponent(g.title.replace(/ /g, '_'))}`]));
+        // A service that didn't answer is null; a stopped call is no answer at all.
+        const [osm, wiki] = await Promise.all([overpass.catch(() => null), wikipedia.catch(() => null)]);
+        if (call.signal.aborted) throw /* en */ new DOMException('Stopped', 'AbortError');
         // What didn't answer comes from the pack, where the pack reaches (spec §17 rule 2).
         const missing = [osm === null ? 'OpenStreetMap' : '', wiki === null ? 'Wikipedia' : ''].filter(Boolean);
         if (missing.length && pack?.touches(i)) {
