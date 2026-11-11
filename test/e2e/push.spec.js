@@ -104,7 +104,6 @@ test("a plan item moved moves its reminder at the relay; removing the trip calls
     await expect.poll(async () => (await kit.waiting()).map((x) => x.sendAt), { timeout: 15_000 }).toEqual([Date.parse(plus(start, 75 * 60_000)) + 30_000]);
     await page.getByRole('button', { name: 'Remove trip' }).click();
     await page.getByRole('dialog', { name: 'Big Sur' }).getByRole('button', { name: 'Remove' }).click();
-    await page.getByRole('dialog', { name: 'Not backed up' }).getByRole('button', { name: 'Remove anyway' }).click();
     await expect.poll(async () => (await kit.waiting()).length, { timeout: 15_000 }).toBe(0);
   } finally {
     await kit.stop();

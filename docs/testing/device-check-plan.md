@@ -61,12 +61,12 @@ Setup: the emulator image has Google Play services, so Chrome installs annai as 
 
 - [ ] **m1c #1**: Updating a phone that already has photo trips: the first start indexes once (time it), "Using X" stays the same, every photo opens. How: Claude serves a build from before milestone 1c from a git worktree, fills it with photo trips, switches to the current build; console timing; screen.
 - [ ] **m1c #2**: A trip with 30 photos: its card says "not backed up". How: adb push 30 photos; screen.
-- [ ] **m1c #3**: Remove trip: the first question names the trip; Cancel keeps it, and so does Back. How: screen; `adb shell input keyevent BACK`.
-- [ ] **m1c #4**: Remove trip → Remove: "Not backed up" appears; Cancel keeps the trip. How: screen.
+- [ ] **m1c #3**: Remove trip: the question names the trip; Cancel keeps it, and so does Back. How: screen; `adb shell input keyevent BACK`.
+- [ ] **m1c #4**: Remove trip: the one question says "It hasn't been backed up since it last changed."; Cancel keeps the trip. How: screen.
 - [ ] **m1c #5**: Export trip → Backup → Build file → Save file: the card says "backed up just now". How: screen. Then C.
 - [ ] **m1c #6**: A Share export doesn't count: the card still says when the last Backup was. How: screen.
 - [ ] **m1c #7**: Add a note: "changed since". Archive and unarchive a backed-up, unchanged trip: the card doesn't change. How: screen.
-- [ ] **m1c #8, #9, #10, #12**: Note "Using X of about Y"; back up the 30-photo trip and remove it: only the first question, "Removed <trip>. N MB freed.", card gone; Settings drops by about N MB (or after a full restart). This is milestone 1c's finish line. How: screen; console `navigator.storage.estimate()` before and after. Then C.
+- [ ] **m1c #8, #9, #10, #12**: Note "Using X of about Y"; back up the 30-photo trip and remove it: the plain question with no backup sentence, "Removed <trip>. N MB freed.", card gone; Settings drops by about N MB (or after a full restart). This is milestone 1c's finish line. How: screen; console `navigator.storage.estimate()` before and after. Then C.
 - [ ] **m1c #11**: Import the Backup: the trip is back with all 30 photos. How: screen; storage count.
 
 ### A5. Models

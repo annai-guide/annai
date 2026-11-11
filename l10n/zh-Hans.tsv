@@ -2401,27 +2401,27 @@ puj2r7	draft	Next: {0} {1} {2}	接下来：{0} {1} {2}	src/ui/screens/talk.js:65
 159f82q	ok	Undone	已撤销	src/ui/screens/talk.js:752	
 1v37fcy	ok	Undo what Shiori did with these files	撤销 Shiori 对这些文件所做的事	src/ui/screens/talk.js:789	Note: the Undo button's label; 撤销 as Undo.
 1nl0tpx	draft	Conversation menu	对话菜单	src/ui/screens/talk.js:832	
-7flpxf	ok	Summarizing…	正在总结…	src/ui/screens/talk.js:847	
-12707g	ok	She couldn't summarize it. A card says why.	她没能总结。卡片上写了原因。	src/ui/screens/talk.js:849	
-5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	已总结之前的对话。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:849	
-u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在工作。请稍后再试。	src/ui/screens/talk.js:849	
-va2k72	ok	There is not enough yet to summarize.	内容还不够总结。	src/ui/screens/talk.js:849	
-mienoe	ok	Summarize now	立即总结	src/ui/screens/talk.js:852	
-10sfmur	ok	Starting fresh…	正在重新开始…	src/ui/screens/talk.js:854	
-va77q0	ok	Start fresh?	重新开始？	src/ui/screens/talk.js:867	
-19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 会从这里重新开始，不再记着之前的内容。它们都留在对话里，供你阅读和搜索，她也仍能查到：什么都不会删除。实时语音会话也会重新开始。	src/ui/screens/talk.js:868	Note: "A live voice session" is the glossary's Live voice (实时语音) and live session (实时会话), not a voice she speaks with.
-czdqlz	ok	Start fresh	重新开始	src/ui/screens/talk.js:869	
-1h9wwbn	ok	She couldn't start fresh: {0}	她没能重新开始：{0}	src/ui/screens/talk.js:879	{0} = messageOf(e)
-1thzla3	ok	Already fresh: nothing has been said since.	已经是新的开始：之后还没说过话。	src/ui/screens/talk.js:882	
-3fntk0	ok	Started fresh.	已重新开始。	src/ui/screens/talk.js:882	
-mg70bg	ok	The conversation is still opening. Try again in a moment.	对话还在打开。请稍后再试。	src/ui/screens/talk.js:882	
-p5pj7b	ok	There is nothing to start fresh from yet.	还没有可以重新开始的内容。	src/ui/screens/talk.js:882	
-1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即总结：Shiori 现在就把之前的对话总结一下，让它保持简短。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:904	
-18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新开始：Shiori 不再记着之前的内容，从这里重新开始。每一行都留在分隔线上方。	src/ui/screens/talk.js:905	
-15ve7m7	draft	What each half sees	各个分身看到的内容	src/ui/screens/talk.js:906	
-1u5l4hx	draft	Details: the trip's name and dates, Export, Archive and Remove.	详情：旅行的名称和日期、导出、归档、移除。	src/ui/screens/talk.js:915	
-o7tevg	draft	Details: the chat's name and dates, Export, Archive and Remove.	详情：聊天的名称和日期、导出、归档、移除。	src/ui/screens/talk.js:915	
-16pl3gf	ok	Undone. Her old personality applies at her next wake.	已撤销。她原来的性格在下次唤醒时生效。	src/ui/screens/talk.js:931	
+7flpxf	ok	Summarizing…	正在总结…	src/ui/screens/talk.js:860	
+12707g	ok	She couldn't summarize it. A card says why.	她没能总结。卡片上写了原因。	src/ui/screens/talk.js:862	
+5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	已总结之前的对话。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:862	
+u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在工作。请稍后再试。	src/ui/screens/talk.js:862	
+va2k72	ok	There is not enough yet to summarize.	内容还不够总结。	src/ui/screens/talk.js:862	
+mienoe	ok	Summarize now	立即总结	src/ui/screens/talk.js:865	
+10sfmur	ok	Starting fresh…	正在重新开始…	src/ui/screens/talk.js:867	
+va77q0	ok	Start fresh?	重新开始？	src/ui/screens/talk.js:880	
+19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 会从这里重新开始，不再记着之前的内容。它们都留在对话里，供你阅读和搜索，她也仍能查到：什么都不会删除。实时语音会话也会重新开始。	src/ui/screens/talk.js:881	Note: "A live voice session" is the glossary's Live voice (实时语音) and live session (实时会话), not a voice she speaks with.
+czdqlz	ok	Start fresh	重新开始	src/ui/screens/talk.js:882	
+1h9wwbn	ok	She couldn't start fresh: {0}	她没能重新开始：{0}	src/ui/screens/talk.js:892	{0} = messageOf(e)
+1thzla3	ok	Already fresh: nothing has been said since.	已经是新的开始：之后还没说过话。	src/ui/screens/talk.js:895	
+3fntk0	ok	Started fresh.	已重新开始。	src/ui/screens/talk.js:895	
+mg70bg	ok	The conversation is still opening. Try again in a moment.	对话还在打开。请稍后再试。	src/ui/screens/talk.js:895	
+p5pj7b	ok	There is nothing to start fresh from yet.	还没有可以重新开始的内容。	src/ui/screens/talk.js:895	
+1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即总结：Shiori 现在就把之前的对话总结一下，让它保持简短。每一行都留在这里，她也仍能查到。	src/ui/screens/talk.js:917	
+18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新开始：Shiori 不再记着之前的内容，从这里重新开始。每一行都留在分隔线上方。	src/ui/screens/talk.js:918	
+15ve7m7	draft	What each half sees	各个分身看到的内容	src/ui/screens/talk.js:919	
+1u5l4hx	draft	Details: the trip's name and dates, Export, Archive and Remove.	详情：旅行的名称和日期、导出、归档、移除。	src/ui/screens/talk.js:930	
+o7tevg	draft	Details: the chat's name and dates, Export, Archive and Remove.	详情：聊天的名称和日期、导出、归档、移除。	src/ui/screens/talk.js:930	
+16pl3gf	ok	Undone. Her old personality applies at her next wake.	已撤销。她原来的性格在下次唤醒时生效。	src/ui/screens/talk.js:946	
 11gkctr	ok	Places	地点	src/ui/screens/tools.js:11	context: tool group
 13mxqrp	ok	Talk	对话	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	ok	Go	出行	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).
@@ -2572,23 +2572,21 @@ oib8wn	draft	Deleted ({0})	已删除（{0}）	src/ui/screens/trip.js:161	{0} = n
 86ci06	ok	Export trip	导出旅行	src/ui/screens/trip.js:173	
 vcw9r3#other	ok	{0} keeps # turns of its conversations: annai asks for them to be deleted, once you're back online.	{0}保存了其对话中的 # 轮：等你重新联网后，annai 会请求删除它们。	src/ui/screens/trip.js:222	plural; # = n; {0} = who; English: "{0} keeps # turn of its conversations: annai asks for it to be deleted, once you're back online." (one), "{0} keeps # turns of its conversations: annai asks for them to be deleted, once you're back online." (other); Note: {0} is the providers that keep turns, as a list.
 h1o9mt#other	ok	{0} keeps # turns of its conversations: annai asks for them to be deleted.	{0}保存了其对话中的 # 轮：annai 会请求删除它们。	src/ui/screens/trip.js:223	plural; # = n; {0} = who; English: "{0} keeps # turn of its conversations: annai asks for it to be deleted." (one), "{0} keeps # turns of its conversations: annai asks for them to be deleted." (other)
-1af3bj3	ok	Remove it?	要移除吗？	src/ui/screens/trip.js:224	
-1d44i0p	ok	This removes everything in this trip from this device: its files, photos, notes and history.	这会从此设备移除这个旅行中的一切：文件、照片、笔记和历史。	src/ui/screens/trip.js:224	
-1db5a9q	ok	Remove anyway	仍然移除	src/ui/screens/trip.js:227	
-1ndoeek	ok	This trip hasn't been backed up since it last changed. Remove it anyway?	这个旅行自上次更改后还没有备份。仍要移除吗？	src/ui/screens/trip.js:227	
-45yyxd	ok	Not backed up	未备份	src/ui/screens/trip.js:227	
-1cp5muy	ok	Removed {0}. {1} freed.	已移除{0}，释放了{1}。	src/ui/screens/trip.js:232	{0} = scopeTitle(scope); {1} = size(freed)
-1964rl0	ok	That trip was already removed.	这个旅行已被移除。	src/ui/screens/trip.js:236	
-1pzhsw4	ok	Nothing was removed. Try again.	没有移除任何内容。请重试。	src/ui/screens/trip.js:240	
-4fm217	ok	That trip wasn't removed	这个旅行未被移除	src/ui/screens/trip.js:240	
-q61zku#other	ok	Added # files	已添加 # 个文件	src/ui/screens/trip.js:296	plural; # = paths.length; English: "Added # file" (one), "Added # files" (other)
-knyqwh	ok	Add photos or files	添加照片或文件	src/ui/screens/trip.js:310	
-12n59th	ok	Take a photo	拍照	src/ui/screens/trip.js:311	
-1kuasfa	ok	That file doesn't match its format: {0}	该文件不符合其格式：{0}	src/ui/screens/trip.js:323	{0} = why; Note: {0} is the format check's own words, in English.
-1y79g95	ok	{0} already exists. Open it from the list to edit it.	{0}已存在。要编辑，请从列表中打开它。	src/ui/screens/trip.js:333	{0} = p
-ecy82r	ok	Add a file	添加文件	src/ui/screens/trip.js:341	
-1bmm5eq	ok	File path	文件路径	src/ui/screens/trip.js:342	
-16gte2l	ok	Create	创建	src/ui/screens/trip.js:344	
+1af3bj3	ok	Remove it?	要移除吗？	src/ui/screens/trip.js:228	
+1d44i0p	ok	This removes everything in this trip from this device: its files, photos, notes and history.	这会从此设备移除这个旅行中的一切：文件、照片、笔记和历史。	src/ui/screens/trip.js:228	
+ty94lb	draft	It hasn't been backed up since it last changed.	自上次更改后还没有备份。	src/ui/screens/trip.js:228	English was: This trip hasn't been backed up since it last changed. Remove it anyway?
+1cp5muy	ok	Removed {0}. {1} freed.	已移除{0}，释放了{1}。	src/ui/screens/trip.js:234	{0} = scopeTitle(scope); {1} = size(freed)
+1964rl0	ok	That trip was already removed.	这个旅行已被移除。	src/ui/screens/trip.js:238	
+1pzhsw4	ok	Nothing was removed. Try again.	没有移除任何内容。请重试。	src/ui/screens/trip.js:242	
+4fm217	ok	That trip wasn't removed	这个旅行未被移除	src/ui/screens/trip.js:242	
+q61zku#other	ok	Added # files	已添加 # 个文件	src/ui/screens/trip.js:298	plural; # = paths.length; English: "Added # file" (one), "Added # files" (other)
+knyqwh	ok	Add photos or files	添加照片或文件	src/ui/screens/trip.js:312	
+12n59th	ok	Take a photo	拍照	src/ui/screens/trip.js:313	
+1kuasfa	ok	That file doesn't match its format: {0}	该文件不符合其格式：{0}	src/ui/screens/trip.js:325	{0} = why; Note: {0} is the format check's own words, in English.
+1y79g95	ok	{0} already exists. Open it from the list to edit it.	{0}已存在。要编辑，请从列表中打开它。	src/ui/screens/trip.js:335	{0} = p
+ecy82r	ok	Add a file	添加文件	src/ui/screens/trip.js:343	
+1bmm5eq	ok	File path	文件路径	src/ui/screens/trip.js:344	
+16gte2l	ok	Create	创建	src/ui/screens/trip.js:346	
 aoc0k0#other	draft	{0}: # chats	{0}：# 个聊天	src/ui/screens/trips.js:51	plural; # = e.fold.rows.length; {0} = monthName(e.fold.month); English: "{0}: # chat" (one), "{0}: # chats" (other)
 33pqd9	ok	Last backup {0}, to {1}.	上次备份：{0}，备份到{1}。	src/ui/screens/trips.js:59	{0} = relTime(latest.last.at, now); {1} = latest.name; Note: {1} is the backup place's name.
 cvvz5z	draft	Tap + to talk to Shiori.	轻点 + 与 Shiori 交谈。	src/ui/screens/trips.js:67	
