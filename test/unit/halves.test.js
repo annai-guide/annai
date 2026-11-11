@@ -138,6 +138,9 @@ test("a typed line: Kokoro's turn waits for Koe's first words, so its first requ
   // Koe never answers: Kokoro starts by the cap.
   const d = await run(calls(['speak', { text: 'On it.' }]), async () => {}, false);
   assert.ok(d.kokoroAt >= 600 && d.kokoroAt < 1500, `Kokoro started ${d.kokoroAt} ms after the line`);
+  // Koe's reply has no words, only its question and a wait: it is all there is to see, so Kokoro goes on at the quiet, not the cap (the review: F6).
+  const e = await run({ toolCalls: [{ name: 'tell_kokoro', input: { text: 'Save a note: the pier market runs until 2.' } }, { name: 'wait', input: { seconds: 30 } }] }, async () => {});
+  assert.ok(e.kokoroAt < 600, `Kokoro started ${e.kokoroAt} ms after the line`);
 });
 
 test("Koe sets a reminder itself: Kokoro's next request says so, so she sets no second one (real models: two reminders for one ask, item 7)", async (t) => {
