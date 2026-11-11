@@ -11,7 +11,7 @@ import { sha256Hex } from '../hash.js';
 import { record, storedTexts, TALK_TAG } from './log.js';
 import { blobBytes, canRead } from '../reach.js';
 import { compactionNeed, cutAt, promptTokens, requestBytes, instruction, renderForSummary, coldSystem, summaryLanguage, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
-import { Transcript, resolveEvent, repair, NOT_SAID, SAID, STOPPED, CUT, NOT_RUN, NOT_ANSWERED, LET_GO } from './transcript.js';
+import { Transcript, resolveEvent, repair, NOT_SAID, SAID, STOPPED, CUT, NOT_RUN, NOT_ANSWERED, NOT_HEARD, LET_GO } from './transcript.js';
 import { toolList, definitions, runTool, Stuck, toolSwitches, resolvePath, ALWAYS_ON } from './tools.js';
 import { takeSnapshot, nextSnapshot, nowBlock, nextPlanItems, buildRequest, prefixFingerprint, systemText } from './context.js';
 import { Warmth, TTL_MS, ttlFor, wantedTtl, SOON_MS } from './warmth.js';
@@ -458,6 +458,8 @@ export class Agent {
   #cutByOpen = false;
   /** ...while it waited on the user: their next line answers it. Any open of the turn's unwind may say so (two quick taps). */
   #cutWaiting = false;
+  /** ...while she was still saying her line (#saying): the user didn't hear it in full. */
+  #cutSaying = false;
   /** The call running: whether it is her reply's last but sleep, and talks to the user (speak, ask, wait: saying or listening). */
   #running = /** @type {{ last: boolean, talks: boolean } | null} */ (null);
   /** The turn was started by annai alone (#steps), and no line or act of the user's was written during it (#log). */
@@ -1324,6 +1326,7 @@ export class Agent {
     if (this.#saying !== null) {
       this.#saying = null;
       this.#reached--;
+      this.#cutSaying = true;
     }
     this.#abort?.abort();
     if (this.#half.voice()) this.voice?.speaker.stop();
@@ -1944,7 +1947,7 @@ export class Agent {
     // The turn's own from here, before anything it awaits: a Stop or an open while it sets up is this turn's.
     this.#abort = abort;
     this.#userStop = false;
-    this.#cutByOpen = this.#cutWaiting = this.#annais = this.#userIn = false;
+    this.#cutByOpen = this.#cutWaiting = this.#cutSaying = this.#annais = this.#userIn = false;
     this.#running = null;
     await this.#half.ready?.(); // the half's rules are known (Halves reads the settings as annai starts)
     await this.#workOutVoice(wakes);
@@ -2681,7 +2684,7 @@ export class Agent {
     // Cut short (the turn aborted, the call an error): the user's Stop, or another conversation opening, which is no Stop. Every result
     // says whether (`cut`), which a refusal or a failure is not: the log is read by the mark; only a result without it, an older page's, by its words.
     const cut = Boolean(o.signal.aborted && output.isError);
-    if (cut) output = { content: this.#userStop ? STOPPED : this.#lettingGo() ? (this.#cutWaiting ? NOT_ANSWERED : LET_GO) : unrun ? NOT_RUN : CUT, isError: true };
+    if (cut) output = { content: this.#userStop ? STOPPED : this.#lettingGo() ? (this.#cutWaiting ? (this.#cutSaying ? NOT_HEARD : NOT_ANSWERED) : LET_GO) : unrun ? NOT_RUN : CUT, isError: true };
     // A tell_koe that came back as an error told no one, whatever the error (refused: Koe can't speak; no text; the tool off): the user is
     // still owed an answer, so [tell_koe, sleep] does not end the turn on it (nudge() asks Kokoro once more; forcing is capped by FORCED_STEPS).
     if (c.name === 'tell_koe' && output.isError) this.#facts.told = toldBefore;
