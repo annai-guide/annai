@@ -536,6 +536,9 @@ test("an old conversation opened again, Koe unset or not, takes up nothing: line
         koe: { type: { rules: [{ match: '.', reply: calls(['speak', { text: 'On it.' }]) }] } },
         hold: async (c) => { if (stop && c.model.providerId === 'model-koe' && first) { first = false; await held; } },
       });
+      /** @type {any} */
+      let sign = null;
+      k.agent.on('halves', (/** @type {any} */ h) => { sign = h; });
       k.agent.send('What time is check-in?');
       if (stop) {
         await until(() => k.agent.kokoro.busy && !(k.sent['model-0'] ?? []).length);
@@ -543,6 +546,7 @@ test("an old conversation opened again, Koe unset or not, takes up nothing: line
         go();
       }
       await k.agent.idle();
+      assert.equal(sign?.kokoroWorking, false, 'the sign goes, once what the Stop wrote is written');
       const kokoroCalls = (k.sent['model-0'] ?? []).length;
       assert.equal(kokoroCalls, stop ? 0 : 1);
       const other = await createTrip(k.ws, { title: 'Elsewhere' });

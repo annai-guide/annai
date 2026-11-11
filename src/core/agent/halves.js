@@ -1065,6 +1065,7 @@ export class Halves {
     this.kokoro.interrupt();
     this.kokoro.drop((w) => !started && w.scope === scope); // queued while a conversation opened, not gathering yet: it never starts either
     this.kokoro.poke();
+    this.kokoro.idle().then(() => this.#emitHalves(), () => {}); // the sign: that write ends after her last change of state
     // Koe hears of it, waiting or not: once its model has seen this, its questions reach Kokoro again.
     this.#nothingTold = false;
     this.#nothingToAdd(/* en */ 'Kokoro was stopped.', 'stopped');
