@@ -1967,7 +1967,7 @@ const KOKORO_GOING = { rules: [
 const copied = async (k) => (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(TV, { types: ['msg.user'] }))).filter((/** @type {any} */ e) => e.data.from).map((/** @type {any} */ e) => e.data.text);
 /** open_trip's results in the kit's conversation (Big Sur, a chat). @param {any} k */
 const openResults = async (k) => (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'open_trip').map((/** @type {any} */ e) => e.data.content);
-const STAYED = /^The user said no: they stay here, and nothing moved\. Carry on here, and don't offer to take them into "Testville" again unless they ask\.$/;
+const STAYED = /^The user said no: they stay here, and nothing moved\. Carry on here, and don't call open_trip for "Testville" again unless they ask\.$/;
 
 test('open_trip, classic voice: annai says the card\'s question, listens, and a heard yes opens Testville at once with their line; a heard "No thanks" keeps them here, nothing moved', async (t) => {
   useClock(t);
