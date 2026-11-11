@@ -176,6 +176,27 @@ test('no voice works, or the page may not play sound yet: done says so, and a bl
   assert.equal((await x.done).failed, 'no-voice');
 });
 
+test("a failed read of the voice list ends the line as failed with no voice: its end never fails, it stops counting as being said, and quiet() settles (a quiet() that never settled froze the next live session)", async (t) => {
+  useClock(t);
+  const p = fakePlatform();
+  const v = fakeVoices(['v1']);
+  let reads = 0;
+  const s = new Speaker({ ...v, entries: async () => { reads++; throw new Error('the store could not be read'); }, platform: () => /** @type {any} */ (p), locale: 'en' });
+  const u = s.begin();
+  u.end('Hello.');
+  const done = await u.done;
+  assert.equal(done.failed, 'no-voice');
+  assert.equal(done.heard, '');
+  assert.equal(reads, 1);
+  assert.equal(s.speaking, false, 'it left the lines being said');
+  const quiet = await Promise.race([s.quiet().then(() => 'quiet'), tick(200).then(() => 'still waiting')]);
+  assert.equal(quiet, 'quiet');
+  // The next line, once the list reads again, speaks.
+  const next = new Speaker({ ...v, platform: () => /** @type {any} */ (p), locale: 'en' }).begin();
+  next.end('Hello again.');
+  assert.equal((await next.done).failed, null);
+});
+
 test('the speech-out entries that can speak now, in their order (spec §9.6)', () => {
   /** @type {any} */
   const cfg = {
