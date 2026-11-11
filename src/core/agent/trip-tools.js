@@ -182,8 +182,9 @@ export function tripTools(app) {
   };
   /**
    * The newest line the user said in a conversation (talks: typed, or heard and not set aside), with its words once written down, or null;
-   * not an answer to annai's own card (a read's Allow), but a line in other words typed while one showed, which is theirs. The move's own card,
-   * the newest, was answered Open: every line of theirs after it is its answer (a yes Koe heard is written as Koe's line, with no mark of it).
+   * not an answer to annai's own card (a read's Allow, or a typed yes or no, which only ends it), but a line in other words typed while one
+   * showed, which is theirs. The move's own card, the newest, was answered Open: every line of theirs after it is its answer (a yes Koe heard is
+   * written as Koe's line, with no mark of it). Nothing older than the last move out of the conversation: that line went with it.
    * @param {string} scope @returns {Promise<{ seq: number, text: string } | null>}
    */
   const lastLine = async (scope) => {
@@ -191,16 +192,19 @@ export function tripTools(app) {
     let events = [];
     // Back a page at a time: a drive's set-aside lines can fill one.
     for (let before = 0; ;) {
-      const page = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['msg.user', 'heard', 'heard.text', 'out.ask'], reverse: true, limit: 50, ...(before ? { before } : {}) }));
+      const page = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['msg.user', 'heard', 'heard.text', 'out.ask', 'conversation.moved'], reverse: true, limit: 50, ...(before ? { before } : {}) }));
       events = [...page.reverse(), ...events];
       /** @type {Map<string, unknown[]>} annai's own cards, by id, with their options */
       const cards = new Map(events.filter((e) => e.type === 'out.ask' && e.data?.own).map((e) => [e.data.id, Array.isArray(e.data.options) ? e.data.options : []]));
-      // A typed answer is the card's only in its own words (one half's tap stores no chose: talk.js tells it the same way); a heard one, always.
-      const card = (/** @type {any} */ e, /** @type {any} */ d, /** @type {unknown} */ text) => cards.has(d.answer) && (e.type !== 'msg.user' || d.chose || cards.get(d.answer)?.includes(text));
+      // A typed answer is the card's only in its own words, or a word annai hears as a yes or a no (one half's tap stores no chose: talk.js tells
+      // it the same way); a heard one, always.
+      const card = (/** @type {any} */ e, /** @type {any} */ d, /** @type {unknown} */ text) => cards.has(d.answer)
+        && (e.type !== 'msg.user' || d.chose || cards.get(d.answer)?.includes(text) || spokenYes(String(text)) || spokenNo(String(text)));
       const asked = events.findLast((e) => e.type === 'out.ask' && e.data?.own)?.seq ?? Infinity;
-      const last = (await conversationLines(store, events)).findLast(({ e, d, text }) => talks(e) && e.seq < asked && !card(e, d, text));
+      const moved = events.findLast((e) => e.type === 'conversation.moved')?.seq ?? 0;
+      const last = (await conversationLines(store, events)).findLast(({ e, d, text }) => talks(e) && e.seq < asked && e.seq > moved && !card(e, d, text));
       if (last) return { seq: last.e.seq, text: String(last.text ?? '') };
-      if (page.length < 50) return null;
+      if (moved || page.length < 50) return null; // nothing older than the move counts: no page back finds one
       before = events[0].seq;
     }
   };
