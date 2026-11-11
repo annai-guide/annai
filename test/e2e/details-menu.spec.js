@@ -257,3 +257,49 @@ test('a menu that scrolls inside opens at its top each time: scrolled to its end
   expect(await menu.evaluate((el) => el.scrollTop)).toBe(0);
   expect(await detailsProblems(page)).toEqual([]);
 });
+
+// The menu's clean-up used to watch the ⋯'s own parent, whose child list never changes when the shell replaces the whole screen, so it never ran: each visit
+// to a conversation left the menu's scroll, resize, keydown and tap listeners on window and document, each holding the old screen (the review of details-menu,
+// finding 2). Now the screen's own clean-up takes them off. Every listener added to window or document is counted as it is added and taken off.
+test('visiting a conversation leaves no listener on window or document once it is replaced', async ({ page }) => {
+  await page.addInitScript(() => {
+    /** @type {{ on: EventTarget, type: string, fn: unknown, capture: boolean }[]} */
+    const live = [];
+    const capture = (/** @type {any} */ o) => typeof o === 'boolean' ? o : Boolean(o?.capture);
+    const add = EventTarget.prototype.addEventListener;
+    const remove = EventTarget.prototype.removeEventListener;
+    const same = (/** @type {any} */ e, /** @type {any} */ on, /** @type {any} */ type, /** @type {any} */ fn, /** @type {any} */ o) => e.on === on && e.type === type && e.fn === fn && e.capture === capture(o);
+    EventTarget.prototype.addEventListener = function (type, fn, o) {
+      if ((this === window || this === document) && fn && !live.some((e) => same(e, this, type, fn, o))) live.push({ on: this, type, fn, capture: capture(o) });
+      return add.call(this, type, fn, o);
+    };
+    EventTarget.prototype.removeEventListener = function (type, fn, o) {
+      const i = live.findIndex((e) => same(e, this, type, fn, o));
+      if (i >= 0) live.splice(i, 1);
+      return remove.call(this, type, fn, o);
+    };
+    /** What is on window and document now, by kind: how many of each. */
+    Object.defineProperty(window, 'liveListeners', { value: () => {
+      /** @type {Record<string, number>} */
+      const out = {};
+      for (const e of live) out[`${e.on === window ? 'window' : 'document'} ${e.type}${e.capture ? ' (capture)' : ''}`] = (out[`${e.on === window ? 'window' : 'document'} ${e.type}${e.capture ? ' (capture)' : ''}`] ?? 0) + 1;
+      return out;
+    } });
+  });
+  await openApp(page);
+  const [id] = await makeConversations(page, [{ title: 'Pelican chat', lines: 2 }]);
+  const visit = async () => {
+    await goToHash(page, `#/trip/${id}/talk`);
+    await expect(page.locator('.talk-head .tidy-toggle')).toBeVisible();
+    await page.locator('.talk-head .tidy-toggle').click(); // open, so what its fit would run on is live
+    await expect(page.locator('.tidy-menu')).toBeVisible();
+    await goToHash(page, '#/trips');
+    await expect(page.locator('.talk-head')).toHaveCount(0);
+  };
+  // Once to see what the app keeps for good (a listener of the shell's, added on a first visit); then what each further visit leaves.
+  await visit();
+  await page.waitForTimeout(300); // a screen's clean-up runs a frame after it is replaced
+  const kept = await page.evaluate(() => /** @type {any} */ (window).liveListeners());
+  for (let i = 0; i < 3; i++) await visit();
+  await expect.poll(() => page.evaluate(() => /** @type {any} */ (window).liveListeners())).toEqual(kept);
+});

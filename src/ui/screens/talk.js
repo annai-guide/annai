@@ -630,6 +630,7 @@ export async function renderTalk(ctx, route) {
     stop();
     dates?.off();
     offName?.();
+    tidy.off();
     for (const timer of hearing.values()) clearTimeout(timer);
     removeEventListener('message', fit);
     for (const type of USER) removeEventListener(type, own);
@@ -824,8 +825,9 @@ function undoLine(ctx, scope, list) {
  * Remove), Summarize now, which runs housekeeping as it would run by itself, and Start fresh, which has Shiori start a new context from here.
  * Neither of those deletes a line (spec §6.5, §16.2). A conversation with no trip open has no Details.
  * @param {any} ctx @param {{ id: string, dated: boolean } | null} trip the conversation's trip, and whether it has dates (a trip; else a chat)
- * @returns {{ el: HTMLElement, status: HTMLElement, dated: (on: boolean) => void }} the ⋯ and its menu, a line that says "Starting fresh…" while Start
- *   fresh runs, and what says whether the conversation has dates now, for the words under Details
+ * @returns {{ el: HTMLElement, status: HTMLElement, dated: (on: boolean) => void, off: () => void }} the ⋯ and its menu, a line that says "Starting fresh…" while Start
+ *   fresh runs, what says whether the conversation has dates now, for the words under Details, and what takes the menu's listeners off window and document
+ *   (the screen calls it when it is gone)
  */
 function tidyMenu(ctx, trip) {
   const agent = ctx.agent;
@@ -919,13 +921,14 @@ function tidyMenu(ctx, trip) {
     h('p', { id: 'tidy-summarize', class: 'sub', text: t`Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.` }), summarize,
     h('p', { id: 'tidy-fresh', class: 'sub', text: t`Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.` }), fresh,
     h('a', { class: 'btn', href: '#/sees?half=kokoro', text: t`What each half sees` }));
-  whenGone(el, () => {
+  // The menu is in the head, inside the screen the shell replaces as a whole, so nothing here sees it go: the screen calls off when it goes.
+  const off = () => {
     offTap();
     document.removeEventListener('keydown', escape);
     removeEventListener('scroll', fit);
     removeEventListener('resize', fit);
-  });
-  return { el, status, dated: (on) => { aboutDetails.textContent = detailsWords(on); } };
+  };
+  return { el, status, dated: (on) => { aboutDetails.textContent = detailsWords(on); }, off };
 }
 
 /** What Details holds, in the words of what it is: a trip (it has dates) or a chat. @param {boolean} dated */
