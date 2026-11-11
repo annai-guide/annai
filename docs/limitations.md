@@ -472,3 +472,21 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** with the middle trip removed, Undo can link the two moves only by their times, and the clock made those wrong. Linking them surely needs a new stored field on every move, naming the move that brought the file in.
 - **Revisit when:** moves get a stored link for another reason, or someone hits it.
 - **Approved:** 2026-11-10, the user picked "Accept as known limitation (Recommended)".
+
+### A reopened conversation menu keeps its inner scroll
+- **Kind:** deferred.
+- **What the user sees:** where the conversation's ⋯ menu is shorter than its entries (a 320 px wide phone, a phone on its side, or a short conversation under cards), scrolling inside it, closing it and opening it again leaves it scrolled, with Details above its top edge until they scroll back.
+- **Why:** found in the review of the menu fix, which was released as it stood because the user was waiting for Details on the phone.
+- **Revisit when:** the next version: the menu opens scrolled to its top.
+
+### The conversation menu's listeners outlive its screen
+- **Kind:** deferred.
+- **What the user sees:** nothing measured. Each visit to a conversation leaves the menu's window listeners behind, holding the old screen in memory until the page is reloaded.
+- **Why:** the menu's clean-up watches its own row, and a replaced screen never tells it. The keyboard listener there has had the same fault since the menu was made; the menu fix added the scroll and resize ones.
+- **Revisit when:** the next version: the menu hands its clean-up to the screen's own.
+
+### The conversation menu isn't measured again when the dock or a card moves it
+- **Kind:** deferred.
+- **What the user sees:** with the menu open, its last entries can sit under the dock after a card lands above a short conversation, the dock grows (voice on, a caption, a plugin's dock), or the phone is turned back upright, until the next scroll. Details, the first entry, stays in reach.
+- **Why:** the menu's room is measured when it opens and when the page scrolls or the window changes size; none of these three fires either.
+- **Revisit when:** the next version: the room follows the dock's height and the menu's own place.
