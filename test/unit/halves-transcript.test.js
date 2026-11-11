@@ -419,6 +419,13 @@ test("the owed table: every line, every cut, every reader, one answer", async ()
       await res(w, 'koe', 'e', true);
       await res(w, 'koe', 'f', true);
     }, [false, false, false]],
+    ['heard; an open cut Koe before it asked; Koe unset, one Shiori takes it up and the user stops her (the re-review 2, second opinion: 3)', async (w) => {
+      await koeAsks(w);
+      await res(w, 'koe', 'b', false, CUT);
+      await res(w, 'koe', 'c', false, CUT);
+      await w.log({ type: 'wake', actor: 'system', data: { id: 'w9', reasons: [{ kind: 'restart', text: 'The conversation closed before you answered.' }] } });
+      await w.log({ type: 'error', actor: 'system', data: { kind: 'stopped', wake: 'w9', message: STOP, quiet: true } });
+    }, [false, true, false]],
     ['typed; an old log: an open cut her tool (the Stop\'s words, no cut mark, no record) (S2)', async (w) => { await typed(w); await kokoroWorks(w); for (const id of ['r', 't', 'z']) await old(w, 'kokoro', id); }, [false, false, false]],
     ['heard; an open cut Koe after "Let me check." and before it asked', async (w) => { await koeAsks(w); await res(w, 'koe', 'b', false, CUT); await res(w, 'koe', 'c', false, CUT); }, [false, true, true]],
     ['heard; a reload before Koe asked', async (w) => { await koeAsks(w); await res(w, 'koe', 'b', false, RESTART); await res(w, 'koe', 'c', false, RESTART); }, [false, true, true]],
