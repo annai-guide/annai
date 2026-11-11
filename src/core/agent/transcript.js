@@ -340,11 +340,11 @@ export class Transcript {
       this.#add('user', [{ type: 'tool_result', id: d.id, content: texts.content ?? '', ...(d.ok === false ? { isError: true } : {}) }, ...r.images, ...heard]);
       this.#flushHeld();
       // Every result of a reply that didn't end her turn, and no reply after: her turn was cut off, and she owes the rest.
-      // A call that didn't run (cut, stopped, failed) leaves her turn owed though its reply slept, if it was a hand-off or came before she
-      // reached the user. A Stop is settled by its own record; no result's words are read.
+      // A call cut short (`cut`: an open, a Stop, a restart; not a refusal) leaves her turn owed though its reply slept, if it was a hand-off
+      // or came before she reached the user. A Stop is settled by its own record; an old log's cuts, unmarked, stay settled.
       const name = this.#calls.get(d.id);
       if (d.end) this.#ends = true;
-      else if (d.ok === false && (name === 'tell_koe' || name === 'tell_kokoro' || (name !== 'sleep' && !this.#reached))) this.#ends = false;
+      else if (d.cut && (name === 'tell_koe' || name === 'tell_kokoro' || (name !== 'sleep' && !this.#reached))) this.#ends = false;
       if (this.#last.includes(d.id) && !this.#waitsForResults() && !this.#ends) {
         this.unanswered = true;
         this.waiting = 'turn';
@@ -551,7 +551,7 @@ export function linesOf(messages) {
 export async function repair(store, scope, t, mark = {}) {
   const open = t.open();
   for (const c of open) {
-    const ev = await record(store, scope, { type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: false, ms: 0, ...mark, content: RESTARTED } });
+    const ev = await record(store, scope, { type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: false, cut: true, ms: 0, ...mark, content: RESTARTED } });
     t.apply(ev, { texts: {}, images: [] });
   }
   return open.length;

@@ -763,6 +763,29 @@ test("Stop sticks: a note Koe wrote before it heard of the Stop starts no Kokoro
   assert.ok(turns() > 1);
 });
 
+test("after the user's Stop, Koe's question to Kokoro refused while it holds is no cut: coming back takes nothing up, and the stopped question isn't answered (the re-review 2: S1)", async (t) => {
+  useClock(t);
+  const k = await agentKit([{ rules: [{ match: '.', reply: { delayMs: 2000, toolCalls: [{ name: 'tell_koe', input: { text: 'Check-in is at 3.' } }, { name: 'sleep', input: {} }] } }] }], { koe: { type: { rules: [
+    { match: 'Kokoro was stopped', reply: { toolCalls: [{ name: 'tell_kokoro', input: { text: 'When is check-in?' } }, { name: 'speak', input: { text: "Okay, I've stopped." } }, { name: 'sleep', input: {} }] } },
+    { match: 'the user wrote', reply: { toolCalls: [{ name: 'speak', input: { text: 'Let me check.' } }, { name: 'tell_kokoro', input: { text: 'When is check-in?' } }, { name: 'sleep', input: {} }] } },
+    { match: '.', reply: { toolCalls: [{ name: 'tell_kokoro', input: { text: 'When is check-in?' } }, { name: 'sleep', input: {} }] } },
+  ] } } });
+  const A = k.trip;
+  k.agent.send('What is check-in time?');
+  await until(() => (k.sent['model-0'] ?? []).length === 1); // Kokoro's call is in flight
+  k.agent.stopKokoro();
+  await k.agent.idle();
+  const refused = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'tell_kokoro' && e.data.ok === false);
+  assert.equal(refused.length, 1, "Koe asked again once it heard of the Stop, and was refused");
+  assert.equal(refused[0].data.cut, undefined, 'a refusal is no cut');
+  const [kokoro, koe] = [k.sent['model-0'].length, k.sent['model-koe'].length];
+  await k.agent.open(await createTrip(k.ws, { title: 'Kyoto' }));
+  await k.agent.open(A);
+  await k.agent.idle();
+  assert.deepEqual([k.sent['model-0'].length, k.sent['model-koe'].length], [kokoro, koe], 'nothing taken up on coming back');
+  assert.ok(!(await k.events(['out.speak'])).some((/** @type {any} */ e) => e.data.text === 'Check-in is at 3.'), 'the stopped question is not answered');
+});
+
 test("Stop while Koe isn't waiting: Koe is told all the same, and once its model has seen that, a later question of Koe's wakes Kokoro (review a1, the reviewer's probe C)", async (t) => {
   useClock(t);
   const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }], delayMs: 300 } }] }], { koe: { type: { rules: [{ match: '.', reply: calls(['speak', { text: 'Mm-hm.' }]) }] } } });
