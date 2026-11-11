@@ -112,6 +112,23 @@ test('with no trip open, + hands Shiori a flight PDF and a hotel screenshot: she
   }
 });
 
+test('a trip she starts while the user is on Trips is one more row there: the screen is not taken into it', async ({ page }) => {
+  const [first, ...rest] = anchorage();
+  const llm = await startModelServer({ [MESSAGES]: [{ .../** @type {any} */ (first), delayMs: 3000 }, ...rest] }); // time to go to Trips while she works
+  try {
+    await setUp(page, llm.origin);
+    await handOver(page, [await fixture('flight.pdf', 'application/pdf'), await fixture('hotel.png', 'image/png')]);
+    await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+    await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
+    await expect(page.locator('.trip-card', { hasText: TITLE })).toBeVisible({ timeout: 30_000 });
+    await page.waitForTimeout(1500); // past anything that would follow it
+    expect(new URL(page.url()).hash).toBe('#/trips');
+    await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
+  } finally {
+    await llm.stop();
+  }
+});
+
 test('the no-trip conversation keeps its lines, and one saying where the files went', async ({ page }) => {
   const llm = await startModelServer({ [MESSAGES]: anchorage() });
   try {
