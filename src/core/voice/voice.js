@@ -612,15 +612,41 @@ export class Voice {
       const route = lost ? 'unknown' : routeOf(used ? [{ kind: 'audioinput', label: /** @type {string} */ (using) }] : devices);
       const data = { route, using, devices: devices.map((d) => d.label), ...(gone.length ? { gone } : {}) };
       const key = JSON.stringify(data);
-      if (key !== this.#routed && this.store) {
+      if (key !== this.#routed) {
         this.#routed = key;
-        const store = this.store;
-        ensureDeviceScope(store).then(() => logEvent(store, SYS_DEVICE, { type: 'voice.route', actor: 'system', data })).catch(() => {});
+        // The sound's context goes on the line, outside the key: its clock moves on every time.
+        this.#device('voice.route', { ...data, ctx: this.#ctx() });
       }
       return route;
     } catch {
       return 'unknown';
     }
+  }
+
+  /**
+   * The sound's context as the Trace keeps it: its state and its clock (s), or null while there is none. A clock that stands still between
+   * two lines seconds apart, with state "running", dates a dead context to before the earlier line (the drive-3 design, D4).
+   * @returns {{ state: string, time: number } | null}
+   */
+  #ctx() {
+    try {
+      const o = this.platform?.player.output?.();
+      return o && typeof o.state === 'string' && typeof o.time === 'number' ? { state: o.state, time: o.time } : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** A line in this device's own Trace (never backed up). @param {string} type @param {Record<string, any>} data */
+  #device(type, data) {
+    const store = this.store;
+    if (store) ensureDeviceScope(store).then(() => logEvent(store, SYS_DEVICE, { type, actor: 'system', data })).catch(() => {});
+  }
+
+  /** The page is back in view: its sound's context goes in the Trace, where there is one, so a context that died while it was hidden can be dated. */
+  shown() {
+    const ctx = this.#ctx();
+    if (ctx) this.#device('voice.shown', { ctx });
   }
 
   /**
@@ -711,6 +737,8 @@ export class Voice {
     if (!platform) return;
     this.#watching = true;
     platform.onDeviceChange?.(() => { this.#devicesChanged().catch(() => {}); });
+    // Each microphone open, opened or not: how long its audio thread took to run, and whether its context was made anew for it.
+    platform.mic.onOpen?.((m) => this.#device('voice.mic', { firstFrameMs: m.firstFrameMs, renewed: m.renewed, ctx: this.#ctx() }));
     this.route().catch(() => {}); // what is there now, for the Trace
     const again = () => { this.refresh().catch(() => {}); };
     // The activity sensor comes with live mode (spec §11.2), maybe after voice started: followed once it is there.

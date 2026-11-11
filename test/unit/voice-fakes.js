@@ -38,6 +38,15 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
      * microphone as it plays (at 16 kHz); null: none, as with headphones. @type {number | null}
      */
     echoDb: /** @type {number | null} */ (null),
+    /** The sound's context as output() tells it (state, clock in s); null: none made yet. @type {{ state: string, time: number } | null} */
+    ctx: /** @type {{ state: string, time: number } | null} */ ({ state: 'running', time: 0 }),
+    /**
+     * A microphone whose audio thread never runs, even on a context made anew: open fails with a `stuck` error after this many ms (the
+     * plugin's two waits for a first frame); 0: it opens. What each open came to goes to mic.onOpen's listeners, as the plugin tells it.
+     */
+    micStuckMs: 0,
+    /** @type {((m: { firstFrameMs: number | null, renewed: boolean }) => void)[]} */
+    opened: [],
     /** The browser voices, as the browser lists them. @type {{ id: string, name: string, lang: string, local?: boolean, default?: boolean }[]} */
     voiceList: [{ id: 'v-en', name: 'Samantha', lang: 'en-US', local: true }],
     /** What the browser voice was asked to say, and in what language. @type {{ text: string, lang?: string, voice?: string }[]} */
@@ -89,7 +98,7 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
     streams: [],
     player: {
       async unlock(/** @type {{ fresh?: boolean } | undefined} */ o) { log.push(o?.fresh ? 'unlock fresh' : 'unlock'); return true; },
-      output: () => ({ sampleRate: 48_000, baseLatency: 0.01 }),
+      output: () => ({ sampleRate: 48_000, baseLatency: 0.01, ...(platform.ctx ?? {}) }),
       ...(plays ? { plays: () => plays } : {}),
       /** A live session's voice: it "plays" streamSpeed times faster than real time, from its first piece. @param {{ rate: number }} o */
       stream({ rate }) {
@@ -168,9 +177,21 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
         const last = platform.deviceList.filter((d) => d.kind === 'audioinput').at(-1);
         return platform.input ?? (last ? { label: last.label, deviceId: last.deviceId ?? '' } : null);
       },
+      /** @param {(m: { firstFrameMs: number | null, renewed: boolean }) => void} fn */
+      onOpen(fn) {
+        platform.opened.push(fn);
+        return () => { platform.opened = platform.opened.filter((f) => f !== fn); };
+      },
       /** @param {{ onFrames: (pcm: Float32Array, rate: number) => void, onError: (e: Error) => void, record?: string }} o */
       async open({ onFrames, record }) {
         if (micFails) throw Object.assign(new Error('Permission denied'), { name: micFails });
+        if (platform.micStuckMs) {
+          log.push('mic stuck');
+          await new Promise((r) => { setTimeout(r, platform.micStuckMs); });
+          for (const fn of platform.opened) fn({ firstFrameMs: null, renewed: true });
+          throw Object.assign(new Error("Sound got stuck, so annai can't hear you. Tap the screen to bring it back."), { stuck: true });
+        }
+        for (const fn of platform.opened) fn({ firstFrameMs: 4, renewed: false });
         opens++;
         log.push(record ? `mic open, recording ${record}` : 'mic open');
         frames = onFrames;

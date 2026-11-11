@@ -491,8 +491,9 @@ export class LiveKoe {
     this.#wake = newId('w');
     this.#noBack = 0;
     this.#endedEarly = false;
-    // The phone's sound, for the Trace's ready line: its rate and the output's own latency.
-    const output = this.c.voice?.platform?.player.output?.() ?? undefined;
+    // The phone's sound, for the Trace's ready line: its rate and the output's own latency (not its context's state, which would take the line's).
+    const o = this.c.voice?.platform?.player.output?.();
+    const output = o ? { sampleRate: o.sampleRate, baseLatency: o.baseLatency, outputLatency: o.outputLatency } : undefined;
     const s = await this.c.llm.live(id, { instructions, context: sent, tools, ...(languages ? { languages } : {}), ...(resume ? { resume } : {}) }, { scope: this.c.koe.scope, wake: this.#wake, output });
     s.on((e) => this.#on(s, e));
     s.closed.then((c) => this.#closed(s, c, why));

@@ -4,13 +4,16 @@
  * @typedef {{ data: Uint8Array, mediaType: string }} Clip
  * @typedef {{ close(): void, take?(): Promise<Uint8Array | null>, again?(): void }} OpenMic  take: the file since the last cut; again: it, thrown away
  * @typedef {{ open(o: { onFrames: (pcm: Float32Array, sampleRate: number) => void, onError: (e: Error) => void, record?: string }): Promise<OpenMic>,
- *   inUse?(): { label: string, deviceId: string } | null }} Mic
- *   the microphone: open only while listening (§10.2); open rejects with a `stuck` error when the sound it runs on won't run; record: a MediaRecorder type to record alongside; inUse: the input its open
- *   stream takes, by its track's label and deviceId (§10.5); null while closed
+ *   inUse?(): { label: string, deviceId: string } | null, onOpen?(fn: (m: MicOpened) => void): () => void }} Mic
+ *   the microphone: open only while listening (§10.2); open rejects with a `stuck` error when the sound it runs on won't run (its audio thread never
+ *   ran, even on a context made anew); record: a MediaRecorder type to record alongside; inUse: the input its open
+ *   stream takes, by its track's label and deviceId (§10.5); null while closed; onOpen: hears what each open came to, opened or not, for the Trace
+ * @typedef {{ firstFrameMs: number | null, renewed: boolean }} MicOpened  firstFrameMs: how long the audio thread took to run once the microphone
+ *   was connected, null when it never did; renewed: it didn't at first, so the sound's context was made anew in place
  * @typedef {{ unlock(o?: { fresh?: boolean }): Promise<boolean>, play(clip: Clip, o: { signal: AbortSignal, onLevel?: (x: number) => void }): Promise<{ ended: boolean, fraction: number }>, plays?(): string[],
- *   stream?(o: { rate: number, onLevel?: (x: number) => void }): PlayerStream, output?(): { sampleRate: number, baseLatency?: number, outputLatency?: number } | null }} Player
+ *   stream?(o: { rate: number, onLevel?: (x: number) => void }): PlayerStream, output?(): { sampleRate: number, baseLatency?: number, outputLatency?: number, state?: string, time?: number } | null }} Player
  *   the one audio player (§10.1); unlock(), inside a tap, gives whether sound may play now (fresh: sound got stuck, so its context is made anew); play() resolves with ended false when stopped, and rejects with a NotAllowedError while the page may not play sound;
- *   stream(): a live session's voice, 16-bit PCM pushed as it arrives; output: the sound's rate, and its processing and output latency (s) where the browser says, for the Trace, once there is sound
+ *   stream(): a live session's voice, 16-bit PCM pushed as it arrives; output: the sound's rate, and its processing and output latency (s) where the browser says, its context's state and clock (time, s), for the Trace, once there is sound
  * @typedef {{ push(pcm: Int16Array): void, end(): void, stop(): Played, done: Promise<Played>, queued(): number, running?: Promise<boolean>, started?: Promise<boolean> }} PlayerStream
  *   pieces play as one sound, however fast they come, after a short start (150 ms of it in); end: no more is coming,
  *   and done settles once it has all played; stop: silent within 15 ms, faded out (always one or the other); queued: pieces still to play;
