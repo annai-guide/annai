@@ -4,7 +4,7 @@ import { agentKit, rescript, until } from './agent-kit.js';
 import { useClock } from './clock.js';
 import { tripTools } from '../../src/core/agent/trip-tools.js';
 import { Agent } from '../../src/core/agent/loop.js';
-import { Transcript } from '../../src/core/agent/transcript.js';
+import { Transcript, SAID } from '../../src/core/agent/transcript.js';
 import { createTrip, listTrips, removeTrip, setTripStatus, ME, SYS_WAITING } from '../../src/core/scopes.js';
 import { readAppSettings } from '../../src/core/settings.js';
 import { readNames } from '../../src/core/names.js';
@@ -143,7 +143,7 @@ test("open_trip with no trip open: annai's card asks first; at Open the files go
   await until(() => asks.length === 1);
   assert.deepEqual((await waitingFiles(k.ws)).map((f) => f.path), ['/files/flight.pdf'], 'nothing moved before the answer');
   k.agent.answer(asks[0].data.tap, 'Open');
-  assert.match(await opening, /^They chose Open: "Anchorage" is open now/);
+  assert.match(await opening, /^They chose Open: that conversation is open now/);
   await k.agent.idle();
   assert.equal(k.agent.trip, anchorage);
   assert.deepEqual((await k.ws.list(anchorage, '/files/')).map((/** @type {any} */ f) => f.path), ['/files/flight.pdf']);
@@ -556,6 +556,11 @@ test("Open, tapped: Kyoto opens at the tap, with the user's line, her recap belo
     ['msg.user', 'Where was the ramen place in Kyoto?'], ['out.speak', 'The ramen place is by the station.'], ['msg.user', "Let's carry on in Kyoto"],
     ['out.ask', question], ['msg.user', 'Open'], ['conversation.moved', { to: k.kyoto, title: 'Kyoto' }],
   ]);
+  // The move is what the call was for: its result says they chose Open, a success and no cut (the Trace shows it so), and the chat's own line
+  // about the move is its conversation's last record.
+  const results = (await eventsIn(k, k.trip, ['tool.result'])).map((/** @type {any} */ e) => [e.data.name, e.data.content, e.data.ok, e.data.cut]);
+  assert.deepEqual(results.filter(([name]) => name === 'open_trip'), [['open_trip', 'They chose Open: that conversation is open now, and you answer them there; this one stays.', true, false]]);
+  assert.equal((await eventsIn(k, k.trip, [...SAID])).at(-1).type, 'conversation.moved');
   // Her turn there was let go at the tap, settled: nothing is taken up when the chat is opened again.
   assert.deepEqual((await eventsIn(k, k.trip, ['error'])).map((/** @type {any} */ e) => [e.data.kind, e.data.quiet]), [['left', true]]);
   assert.equal((await Transcript.load(k.store, k.trip)).unanswered, false);
