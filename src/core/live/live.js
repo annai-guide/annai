@@ -1,5 +1,5 @@
 import { meters, keep, fixOf, kmText, span, KEEP_M } from './geo.js';
-import { ActivityTracker, STILL_BELOW, FAST_FROM, SETTLE_MS, waySpeed } from './activity.js';
+import { ActivityTracker, STILL_BELOW, WALK_BELOW, FAST_FROM, SETTLE_MS, LEAVE_FAST_MS, waySpeed } from './activity.js';
 import { TRIGGERS, SAME_DRIVE_MS, sameDrive } from './triggers.js';
 import { PLAN, planWatches, planWords, planItemWords } from './plan-watches.js';
 import { readWatches, saveWatch, removeWatch, newWatchId, expired, watchPath, WATCH_FILE, WATCH_DIR } from './watches.js';
@@ -688,7 +688,10 @@ export class Live {
   #activityText() {
     const a = this.activity === 'moving-fast' ? /* en */ 'moving fast' : this.activity;
     const v = this.#tracker.speed;
-    return (this.activity === 'walking' || this.activity === 'moving-fast') && v !== null ? /* en */ `${a}, about ${Math.round(v * 3.6)} km/h` : a;
+    if (v === null || (this.activity !== 'walking' && this.activity !== 'moving-fast')) return a;
+    // Under walking, moving fast is held through a stop (a light, a queue): "moving fast, about 0 km/h" read as something stuck.
+    if (this.activity === 'moving-fast' && v < WALK_BELOW) return /* en */ `${a}, stopped for now (a stop under ${LEAVE_FAST_MS / 1000} s is the same drive)`;
+    return /* en */ `${a}, about ${Math.round(v * 3.6)} km/h`;
   }
 
   /** The conversation open now: the trip's, or "me". */

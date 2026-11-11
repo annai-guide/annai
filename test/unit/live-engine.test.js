@@ -553,6 +553,27 @@ test('a red light does not fire "moving fast starts" again; the end of the drive
   assert.equal(count(starts), 2, 'stopped for over five minutes: a new drive');
 });
 
+test('at a light moving fast is held, and the now block says the user is stopped within the drive, not "about 0 km/h" (drive 3)', async () => {
+  const k = await liveKit({ start: at('17:00') });
+  const p = await fastFrom(k, at('17:00'), 120);
+  await k.stay(p, at('17:02:05'), at('17:02:45')); // 40 s at a light
+  assert.equal(k.live.activity, 'moving-fast', 'held: under a minute');
+  const stopped = 'moving fast, stopped for now (a stop under 60 s is the same drive)';
+  assert.equal(k.live.nowInfo().activity, stopped);
+  // Slower than walking, still within the hold: the hold runs for any speed under walking, so it reads the same.
+  await k.fix(at('17:02:50'), p, { speed: 2 });
+  assert.equal(k.live.nowInfo().activity, stopped);
+});
+
+test('the now block while moving is as it was: moving fast or walking, about so many km/h', async () => {
+  const k = await liveKit({ start: at('17:00') });
+  const p = await fastFrom(k, at('17:00'), 120); // its last speed 12 m/s
+  assert.equal(k.live.nowInfo().activity, 'moving fast, about 43 km/h');
+  for (let s = 5; s <= 70; s += 5) await k.fix(at('17:02') + s * 1000, off(p, 0, -1.4 * s), { speed: 1.4 }); // parked, walking off
+  assert.equal(k.live.activity, 'walking');
+  assert.equal(k.live.nowInfo().activity, 'walking, about 5 km/h');
+});
+
 test('every change of activity is logged once, on this device, from a fix or from the recheck, with what it rested on and no position', async () => {
   const k = await liveKit({ start: at('17:00') });
   /** @type {string[]} */
