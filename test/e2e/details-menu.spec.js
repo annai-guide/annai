@@ -212,3 +212,48 @@ test('removing a chat end to end at 360x640: home, tap the chat, ⋯, Details, s
   await expect(rows.getByRole('link', { name: /Keep this chat/ })).toBeVisible();
   await expect(rows.getByRole('link', { name: /Misc chat/ })).toHaveCount(0);
 });
+
+/**
+ * What is wrong with the first control (Details) of the open menu, as it is, with the menu not scrolled by this check: it must be whole inside the menu's own box, above the dock,
+ * on screen, and what a tap at its centre lands on. @param {import('@playwright/test').Page} page @returns {Promise<string[]>}
+ */
+async function detailsProblems(page) {
+  const at = await page.locator('.tidy-menu').locator('a.btn, button.btn').first().evaluate((el) => {
+    const b = el.getBoundingClientRect();
+    const menu = /** @type {HTMLElement} */ (el.closest('.tidy-menu'));
+    const m = menu.getBoundingClientRect();
+    const dock = /** @type {HTMLElement} */ (document.querySelector('.dock:not(.seat)')).getBoundingClientRect();
+    const over = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2);
+    return {
+      first: el.getAttribute('href') === `#/trip/${new URL(location.href).hash.split('/')[2]}`,
+      hit: over === el || el.contains(over),
+      inside: b.top >= m.top - 1 && b.bottom <= m.bottom + 1,
+      aboveDock: m.bottom <= dock.top + 1 && b.bottom <= dock.top + 1,
+      onScreen: b.top >= 0 && b.left >= 0 && b.right <= innerWidth && b.bottom <= innerHeight,
+    };
+  });
+  return Object.entries(at).filter(([, ok]) => !ok).map(([what]) => `Details: not ${what}`);
+}
+
+// A reopened menu is at its top: Details, the first entry, is in view whatever the user scrolled to inside it before. (The review of details-menu, finding 1: both
+// engines keep a scroll box's scrollTop across hidden.) At 360x640 with a short conversation the menu has less room than its four entries, so it scrolls inside.
+test('a menu that scrolls inside opens at its top each time: scrolled to its end, closed and opened again, Details is in view', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await openApp(page);
+  const [id] = await makeConversations(page, [{ title: 'Pelican chat', lines: 1 }]);
+  await goToHash(page, `#/trip/${id}/talk`);
+  const toggle = page.locator('.talk-head .tidy-toggle');
+  const menu = page.locator('.tidy-menu');
+  await expect(toggle).toBeVisible();
+  await toggle.click();
+  await expect(menu).toBeVisible();
+  expect(await menu.evaluate((el) => el.scrollHeight > el.clientHeight + 1)).toBe(true); // it is shorter than its entries
+  await menu.evaluate((el) => { el.scrollTop = el.scrollHeight; }); // as a finger takes it to What each half sees
+  expect(await menu.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+  await toggle.click();
+  await expect(menu).toBeHidden();
+  await toggle.click();
+  await expect(menu).toBeVisible();
+  expect(await menu.evaluate((el) => el.scrollTop)).toBe(0);
+  expect(await detailsProblems(page)).toEqual([]);
+});
