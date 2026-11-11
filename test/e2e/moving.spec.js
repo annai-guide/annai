@@ -109,6 +109,30 @@ test("Open, tapped on annai's card: Kyoto opens at once, its first line the user
   }
 });
 
+// A second tap while the first is still being answered: the card's buttons end at the first tap, so the second is no line of the user's, in
+// the chat (after "Shiori moved this to Kyoto") or in Kyoto (below their copied line, which she would answer).
+for (const gap of /** @type {(number | null)[]} */ ([null, 0, 5, 30])) {
+  test(`a second tap on Open ${gap === null ? 'in the same moment' : `${gap} ms later`} is not a line of the user's: their answer is the one Open, and Kyoto has only the copied line`, async ({ page }) => {
+    const kyoto = { id: '' };
+    const server = await startModelServer({ '/b/v1/messages': shiori(kyoto) });
+    try {
+      const { chat, card } = await cardInChat(page, server.origin, kyoto);
+      await card.getByRole('button', { name: 'Open', exact: true }).evaluate(async (/** @type {HTMLElement} */ open, /** @type {number | null} */ gap) => {
+        open.click();
+        if (gap !== null) await new Promise((r) => setTimeout(r, gap));
+        if (open.isConnected) open.click(); // a tap needs the button to be on the screen
+      }, gap);
+      await expect.poll(() => hashOf(page)).toBe(`#/trip/${kyoto.id}/talk`);
+      await expect(page.locator('.convo .shiori p')).toHaveText([RECAP, ANSWER], { timeout: 15_000 });
+      await page.waitForTimeout(1000); // a stray line would be answered by now
+      expect(await linesIn(page, kyoto.id, 'msg.user')).toEqual([LINE]);
+      expect(await linesIn(page, chat, 'msg.user')).toEqual([LINE, 'Open']);
+    } finally {
+      await server.stop();
+    }
+  });
+}
+
 test("Not now on annai's card: they stay in the chat, nothing is written into Kyoto, and she carries on there", async ({ page }) => {
   const kyoto = { id: '' };
   const server = await startModelServer({ '/b/v1/messages': shiori(kyoto) });

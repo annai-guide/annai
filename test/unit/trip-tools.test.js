@@ -52,10 +52,14 @@ const cards = (k) => {
 test("start_trip with no trip open: a trip of Shiori's, with the waiting files in its Files, its conversation starting with the hand-over and her recap; it opens once she is done", async (t) => {
   useClock(t);
   const k = await kit([call('start_trip', START), say('I started Anchorage · Nov 20–27.'), say('Your flight is on Nov 20.')]);
+  /** @type {any[]} */
+  const went = [];
+  k.agent.on('went', (/** @type {any} */ x) => went.push(x));
   k.agent.send('', { handed: [waitingFlight], handover: 'h-1' });
   await k.agent.idle();
   const trip = await tripNamed(k, 'Anchorage · Nov 20–27');
   assert.ok(trip);
+  assert.deepEqual(went, [{ trip: trip.id }], "not the user's own choice: a screen on home stays where it is");
   const tj = await k.ws.readJSON(trip.id, '/trip.json');
   assert.deepEqual([tj.title, tj.start, tj.end], ['Anchorage · Nov 20–27', '2026-11-20', '2026-11-27']);
   assert.equal((await k.ws.read(trip.id, '/trip.json')).entry.author, 'shiori');
@@ -505,8 +509,9 @@ test("Open, tapped: Kyoto opens at the tap, with the user's line, her recap belo
   useClock(t);
   const k = await chatKit();
   await moving(k);
-  let went = 0;
-  k.agent.on('went', () => { went++; });
+  /** @type {any[]} */
+  const went = [];
+  k.agent.on('went', (/** @type {any} */ x) => went.push(x));
   k.agent.send('Where was the ramen place in Kyoto?');
   await k.agent.idle();
   assert.equal((await scopeRec(k, k.kyoto)).talked, null, 'nobody talked in Kyoto yet');
@@ -519,7 +524,7 @@ test("Open, tapped: Kyoto opens at the tap, with the user's line, her recap belo
   assert.deepEqual(await eventsIn(k, k.kyoto, ['msg.user', 'wake']), []);
   k.agent.answer(k.asks[0].data.tap, 'Open');
   await until(() => k.agent.target === k.kyoto);
-  assert.equal(went, 1);
+  assert.deepEqual(went, [{ trip: k.kyoto, chose: true }], "the user's own choice: from home the screen follows");
   await k.agent.idle();
   assert.equal(k.agent.trip, k.kyoto);
   assert.equal((await readAppSettings(k.ws)).activeTrip, k.kyoto);
@@ -595,7 +600,7 @@ for (const how of /** @type {const} */ (['Not now', 'a typed line', 'a Stop', 'S
     assert.deepEqual(await eventsIn(k, k.trip, ['conversation.moved', 'handover.moved']), []);
     const [result] = await openResults(k, k.trip);
     assert.equal(result, {
-      'Not now': 'The user tapped Not now: they stay here, and nothing moved. Carry on here, and don\'t offer to take them into "Kyoto" again unless they ask.',
+      'Not now': 'The user tapped Not now: they stay here, and nothing moved. Carry on here, and don\'t call open_trip for "Kyoto" again unless they ask. Start no trip for the files unless they ask.',
       'a typed line': 'Not opened: only a tap on annai\'s card, or a yes it hears, takes them into "Kyoto", and nothing moved. If they meant yes, call open_trip again. The user wrote: No, wait, stay here',
       'a Stop': 'Stopped by the user.',
       'Start fresh': 'Stopped by the user.',
@@ -706,4 +711,74 @@ test("a hand-over and a line after it, then the move: the hand-over's message wi
   assert.deepEqual((await eventsIn(k, k.trip, ['handover.moved', 'conversation.moved'])).map((/** @type {any} */ e) => [e.type, e.data]), [
     ['handover.moved', { handover: 'h-1', to: k.kyoto, started: false, count: 1 }], ['conversation.moved', { to: k.kyoto, title: 'Kyoto' }],
   ]);
+});
+
+for (const word of ['yes', 'Nope']) {
+  test(`"${word}" typed to the card, and not a tap, is the card's answer and not their last line: the line before it is what the next move copies`, async (t) => {
+    useClock(t);
+    const k = await chatKit();
+    k.agent.send("Let's carry on in Kyoto");
+    await k.agent.idle();
+    const n = k.asks.length;
+    const unanswered = run(k, 'open_trip', { trip: k.kyoto, recap: RECAP });
+    await until(() => k.asks.length === n + 1);
+    k.agent.send(word); // typed: annai's card takes a tap, or a word it hears, and a typed yes opens nothing
+    assert.match(String(await unanswered), new RegExp(`^Not opened: .* The user wrote: ${word}$`));
+    await k.agent.idle();
+    await openBy(k, { trip: k.kyoto, recap: RECAP });
+    await k.agent.idle();
+    assert.deepEqual((await eventsIn(k, k.kyoto, ['msg.user'])).map((/** @type {any} */ e) => e.data.text), ["Let's carry on in Kyoto"]);
+  });
+}
+
+test("a second open_trip copies no line an earlier move carried, and one said after that move goes", async (t) => {
+  useClock(t);
+  const k = await chatKit();
+  const tokyo = await createTrip(k.ws, { title: 'Tokyo', start: '2027-05-01' });
+  const nara = await createTrip(k.ws, { title: 'Nara', start: '2027-06-01' });
+  k.agent.send("Let's carry on in Kyoto");
+  await k.agent.idle();
+  await openBy(k, { trip: k.kyoto, recap: RECAP });
+  await k.agent.idle();
+  await k.agent.open(k.trip);
+  await k.agent.idle();
+  // Back in the chat with nothing new from them (a reminder's turn, or her own call): Tokyo gets her recap, and no copy of that line.
+  await openBy(k, { trip: tokyo, recap: RECAP });
+  await k.agent.idle();
+  assert.deepEqual(await eventsIn(k, tokyo, ['msg.user']), []);
+  assert.ok((await eventsIn(k, tokyo, ['wake'])).some((/** @type {any} */ e) => e.data.reasons.some((/** @type {any} */ r) => r.recap === RECAP)));
+  await k.agent.open(k.trip);
+  await k.agent.idle();
+  k.agent.send('And Nara, later');
+  await k.agent.idle();
+  await openBy(k, { trip: nara, recap: RECAP });
+  await k.agent.idle();
+  assert.deepEqual((await eventsIn(k, nara, ['msg.user'])).map((/** @type {any} */ e) => e.data.text), ['And Nara, later']);
+});
+
+test("a Stop in the moment after Open: nothing opens, and what is written into the trip is in order, their line and then her recap", async (t) => {
+  useClock(t);
+  const k = await chatKit();
+  k.agent.send("Let's carry on in Kyoto");
+  await k.agent.idle();
+  const stop = new AbortController();
+  const opening = k.agent.kokoro.loopTools().find((/** @type {any} */ x) => x.name === 'open_trip').run({ trip: k.kyoto, recap: RECAP }, {
+    id: 'c', scope: k.agent.scope, trip: k.agent.trip, signal: stop.signal, model: null, wake: 'w', author: 'shiori',
+  });
+  await until(() => k.asks.length === 1);
+  k.agent.answer(k.asks[0].data.tap, 'Open');
+  stop.abort(); // before the files have moved
+  await opening;
+  await k.agent.idle();
+  assert.equal(k.agent.target, k.trip, 'nothing opened');
+  assert.deepEqual((await eventsIn(k, k.kyoto, ['msg.user', 'wake'])).map((/** @type {any} */ e) => e.data.text ?? e.data.reasons.map((/** @type {any} */ r) => r.recap ?? r.kind).join()), [
+    'user', "Let's carry on in Kyoto", RECAP,
+  ]);
+});
+
+test("open_trip's description says annai asks, so she doesn't ask, announce the move or have Koe announce it", async (t) => {
+  useClock(t);
+  const k = await chatKit();
+  const tool = k.agent.kokoro.loopTools().find((/** @type {any} */ x) => x.name === 'open_trip');
+  assert.match(tool.description, /annai asks them itself with its own card[^.]* so don't ask them first, say you are taking them or tell Koe to: call it/);
 });

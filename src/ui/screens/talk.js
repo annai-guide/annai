@@ -450,7 +450,11 @@ export async function renderTalk(ctx, route) {
     }
     if (e.type === 'grounded') return groundedCard(d, texts, mine); // Google's words: by their script alone, not the language she answers in
     if (e.type === 'out.ask') {
-      const buttons = (Array.isArray(d.options) ? d.options : []).slice(0, 6).map((/** @type {string} */ o) => h('button', { ...hers(String(o)), class: 'btn', type: 'button', onclick: () => agent.answer(d.tap ?? d.id, o) }, String(o)));
+      // annai's own card ends at the first tap: a second, before its result arrives, would be sent as a line of theirs.
+      const buttons = (Array.isArray(d.options) ? d.options : []).slice(0, 6).map((/** @type {string} */ o) => h('button', { ...hers(String(o)), class: 'btn', type: 'button', onclick: () => {
+        if (d.own) for (const b of buttons) b.disabled = true;
+        agent.answer(d.tap ?? d.id, o);
+      } }, String(o)));
       const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: e.type, data: d }));
       // annai's own (Agent.confirm): the label says who asks.
       const node = h('li', { class: lineClass(line, 'shiori') }, h('span', { class: 'who', text: d.own ? /* en */ 'annai' : t`Shiori` }), h('p', { ...hers(String(d.question ?? '')), text: String(d.question ?? '') }), h('div', { class: 'acts' }, ...buttons), lineLabel(line));
