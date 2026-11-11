@@ -1107,6 +1107,35 @@ test("as typing on home ends, the box sticks again over the rows, and its cards 
   await settled(page);
 });
 
+test("as typing on home ends with the page at its top, the box sticks again in the place it was, and its cards take taps at once: there is nothing under it to protect", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await openApp(page, '#/settings');
+  /** @type {Record<string, number>} */
+  const chats = {};
+  for (let i = 0; i < 24; i++) chats[`Chat ${i}`] = 60 * 24 * i + 5;
+  await seed(page, { chats, trips: { Laterton: { from: 3, to: 4 } } });
+  await page.goto('/#/trips');
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(300);
+  await page.evaluate(() => dispatchEvent(new ErrorEvent('error', { error: new Error('A test card') }))); // the app's own box
+  await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
+  await settled(page);
+  const name = page.getByLabel('Trip name');
+  await name.evaluate((el) => /** @type {HTMLElement} */ (el).focus({ preventScroll: true }));
+  await expect.poll(async () => (await placeOf(page)).pos).toBe('static');
+  await page.evaluate(() => scrollTo(0, 0));
+  expect((await placeOf(page)).y).toBe(0);
+  // Typing ends, and what the box does then is read in the same task: its 400 ms of ignored taps would otherwise be over before it was looked at.
+  const ended = await name.evaluate((el) => {
+    const box = /** @type {HTMLElement} */ (document.querySelector('.notices'));
+    const was = box.getBoundingClientRect().top;
+    /** @type {HTMLElement} */ (el).blur();
+    return { moved: box.getBoundingClientRect().top - was, pos: getComputedStyle(box).position, over: box.classList.contains('over') };
+  });
+  expect(ended.pos).toBe('sticky');
+  expect(Math.abs(ended.moved), 'the box did not move').toBeLessThanOrEqual(1);
+  expect(ended.over, 'so its cards take taps').toBe(false);
+});
+
 test("typing on home, a tap on a button of the let-go box, scrolled partly under the top bar, lands on it: the box sticks again at the tap's click, not under the finger", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 640 });
   await scrolledHome(page);
