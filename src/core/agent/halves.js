@@ -1041,8 +1041,9 @@ export class Halves {
     // Only what comes from the user's input gathers: their messages, and Koe's questions and answers about them.
     if (!wakes.some((w) => isTheirs(w) || (w.kind === 'note' && w.from === 'koe') || w.input)) return 0;
     if (typing || speaking) return Infinity;
-    // A typed line: Koe answers it first, and Kokoro's first request reads what it said, so her "on it" isn't said twice (real models).
-    const first = this.#koeOwes && this.koeState === 'text' ? this.#koeOwes + KOE_FIRST_S * this.secondMs - Date.now() : 0;
+    // A typed line: Koe answers it first, and Kokoro's first request reads what it said, so her "on it" isn't said twice (real models). A Koe
+    // waiting on her has said all its reply holds (one with no words: its question, then wait); its wait's state pokes her (#stateOf).
+    const first = this.#koeOwes && this.koeState === 'text' && !this.koe.waiting ? this.#koeOwes + KOE_FIRST_S * this.secondMs - Date.now() : 0;
     return Math.max(0, first, this.#input.at + (this.#input.photo ? GATHER.photo : GATHER.quiet) * this.secondMs - Date.now());
   }
 
