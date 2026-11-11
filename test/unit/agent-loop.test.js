@@ -1079,6 +1079,30 @@ test("a turn cut by opening another conversation while a tool of hers runs is ta
   }
 });
 
+test("cut by an open, the call running may have finished and says so; a call after it never started and says that; the user's Stop is said as a Stop (the re-review 3: F3)", async (t) => {
+  useClock(t);
+  for (const how of ['open', 'stop']) {
+    let lingering = false;
+    const k = await agentKit([[{ toolCalls: [{ name: 'linger', input: {} }, { name: 'speak', input: { text: 'Check-in is at 3.' } }, { name: 'sleep', input: {} }] }, say('x')]]);
+    k.agent.addLoopTools([{ name: 'linger', pluginId: 'core', group: 'Time', description: 'Wait.', input: { type: 'object' }, run: async () => {
+      lingering = true;
+      await new Promise((r) => setTimeout(r, 60_000));
+      return 'Done.';
+    } }]);
+    const A = k.trip;
+    k.agent.send('What is check-in time?');
+    await until(() => lingering);
+    if (how === 'open') await k.agent.open(await createTrip(k.ws, { title: 'Kyoto' }));
+    else k.agent.interrupt();
+    await k.agent.idle();
+    const got = (await eventsIn(k, A, ['tool.result'])).map((/** @type {any} */ e) => [e.data.name, e.data.content, e.data.cut]);
+    const [ran, unrun] = how === 'open'
+      ? ['Cut off: another conversation was opened while this ran. It may have finished: check before you do it again.', 'Not run: another conversation was opened first.']
+      : ['Stopped by the user.', 'Stopped by the user.'];
+    assert.deepEqual(got, [['linger', ran, true], ['speak', unrun, true], ['sleep', unrun, true]], how);
+  }
+});
+
 test('no paused line when the turn was not left undone, or the cut is not one that gets taken up: finished after she spoke, her own Stop, the page leaving, a trip being removed (fix pass)', async (t) => {
   useClock(t);
   const slow = { delayMs: 300, toolCalls: [{ name: 'list', input: { path: '/trip/' } }] };

@@ -25,6 +25,8 @@ import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 /** A tool's result when opening another conversation cut her turn: no Stop, so it is taken up when they come back. The tool may run on and
  * finish (runTool stops waiting, not the tool), so taken up she checks before doing it again. */
 /* en */ export const CUT = 'Cut off: another conversation was opened while this ran. It may have finished: check before you do it again.';
+/** The same cut for a call after it in the reply, which never started. */
+/* en */ export const NOT_RUN = 'Not run: another conversation was opened first.';
 /** Entries the conversation never shows Shiori, left out as it is read: a drive logs thousands of points (spec §4.5). */
 export const NOT_SAID = new Set(['location', 'trigger.fired']);
 /**
