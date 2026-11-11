@@ -2746,9 +2746,9 @@ f2eaqi	ok	Find a search plugin	尋找搜尋外掛程式	src/ui/search-panel.js:9
 do1m5o	ok	{0}: annai can't show this setting.	{0}：annai 無法顯示此設定。	src/ui/settings-form.js:116	{0} = f.label
 1qrgqx0	ok	saved	已儲存	src/ui/settings-form.js:121	
 phutrz	ok	{0} wasn't saved: {1}	{0}未儲存：{1}	src/ui/settings-form.js:130	{0} = f.label; {1} = messageOf(e)
-1skw031	ok	This screen couldn't open	無法開啟此頁面	src/ui/shell.js:433	
-1z00dfe	ok	An update is ready	更新已就緒	src/ui/shell.js:544	
-gt0nrj	ok	It will be used the next time annai starts.	下次啟動 annai 時生效。	src/ui/shell.js:544	
+1skw031	ok	This screen couldn't open	無法開啟此頁面	src/ui/shell.js:432	
+1z00dfe	ok	An update is ready	更新已就緒	src/ui/shell.js:543	
+gt0nrj	ok	It will be used the next time annai starts.	下次啟動 annai 時生效。	src/ui/shell.js:543	
 sntfon	ok	Hello! This is how I sound when I talk to you.	你好！我和你說話時就是這樣的聲音。	src/ui/speech-check.js:10	Note: spoken by the voice being tested, so it is heard in the screens' language.
 n8hyke	ok	{0}. {1}	{0}。{1}	src/ui/speech-check.js:16	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
 1a27ynt	ok	Last tested {0}: it worked.	上次測試於{0}：可用。	src/ui/speech-check.js:26	{0} = relTime(verified.at)

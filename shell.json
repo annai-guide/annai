@@ -1,5 +1,5 @@
 {
-  "build": "aadf6b2deaeb",
+  "build": "2504862446df",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -281,7 +281,7 @@
     "/src/ui/screens/voice.js": "44c2b580e9d2",
     "/src/ui/screens/welcome.js": "befec09e6a02",
     "/src/ui/search-panel.js": "7582a4612640",
-    "/src/ui/shell.js": "4e4140c6ad64",
+    "/src/ui/shell.js": "3edfcd2289b6",
     "/src/ui/slots.js": "4fee1465e94c",
     "/src/ui/stamps.js": "9c0f976db8fa",
     "/src/ui/shiori.css": "a2afe03c7fe3",
@@ -290,7 +290,7 @@
     "/src/ui/talk-panel.js": "cc1fb4a04f43",
     "/src/ui/tap-keeps-keyboard.js": "6693e1e90f5c",
     "/src/ui/dock-hides.js": "4ad5b1fedb65",
-    "/src/ui/at-end.js": "73b488524a33",
+    "/src/ui/at-end.js": "0631a641aa02",
     "/src/ui/today.js": "e4a96fa06d81",
     "/src/ui/trip-rows.js": "2ed4ee25799b",
     "/src/ui/tokens.css": "6610187f555d",

@@ -2241,6 +2241,59 @@ for (const size of [[360, 640], [393, 659]]) {
   });
 }
 
+// The dock's change reads whether the page is at its end as it comes (at-end.js; the final review of home2, F1). It used what the user's last scroll left, so
+// with Archived trips opened at the end (its cards open below, and no scroll comes) the next change of the dock, which on home needs no tap (the whole dock
+// shows whenever she speaks, listens or works), threw the page past the cards just opened.
+for (const size of [[360, 640], [393, 659]]) {
+  test(`home at its end, Archived trips opened, then the whole dock shows: the page doesn't move; back at its end, the dock's changes keep it there (${size.join(' x ')})`, async ({ page }) => {
+    await page.setViewportSize({ width: size[0], height: size[1] });
+    await openApp(page, '#/settings');
+    /** @type {Record<string, number>} */
+    const chats = {};
+    for (let i = 0; i < 12; i++) chats[`Chat ${i}`] = 60 * 24 * i + 5;
+    for (let i = 0; i < 6; i++) chats[`Old chat ${i}`] = 60 * 24 * (60 + i);
+    const ids = await seed(page, { chats });
+    await page.evaluate(async (old) => {
+      const load = (/** @type {string} */ url) => import(url);
+      const { createIdbStore } = await load('/src/core/store-idb.js');
+      const { setTripStatus } = await load('/src/core/scopes.js');
+      const store = await createIdbStore();
+      for (const id of old) await setTripStatus(store, id, 'archived');
+      store.close();
+    }, Object.entries(ids).filter(([title]) => title.startsWith('Old')).map(([, id]) => id));
+    await page.reload();
+    await page.goto('/#/trips');
+    const fold = page.locator('details.archived');
+    await expect(fold.locator('summary')).toHaveText('Archived trips (6)');
+    await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+    await fitted(page);
+    expect(await endGap(page)).toBe(0);
+    const y = await page.evaluate(() => scrollY);
+    expect(y).toBeGreaterThan(0);
+    // Opened as a tap does: its cards below the screen's foot, the page where it was.
+    await fold.locator('summary').evaluate((el) => /** @type {HTMLElement} */ (el).click());
+    await expect(fold).toHaveAttribute('open', '');
+    await fitted(page);
+    expect(await page.evaluate(() => scrollY)).toBe(y);
+    expect(await endGap(page)).toBeGreaterThan(200);
+    /** The dock's height, px. */
+    const dockH = () => page.evaluate(() => Math.round(/** @type {HTMLElement} */ (document.querySelector('.dock:not(.seat)')).getBoundingClientRect().height));
+    const rest = await dockH();
+    await page.evaluate(() => document.body.classList.add('dock-busy')); // the whole dock, as while she speaks, listens or works
+    await fitted(page);
+    expect(await dockH()).toBeGreaterThan(rest + 20);
+    expect(await page.evaluate(() => scrollY)).toBe(y); // before: past the cards just opened, by their height and the dock's growth
+    // Read to its end again: the dock going back and showing again keeps the end in view above it.
+    await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+    await fitted(page);
+    for (const busy of [false, true]) {
+      await page.evaluate((busy) => document.body.classList.toggle('dock-busy', busy), busy);
+      await fitted(page);
+      expect(await endGap(page)).toBe(0);
+    }
+  });
+}
+
 test("a change made from home itself (her answer, through the dock, while home shows): the trip's card says \"changed since\" at once, not at the next redraw", async ({ page }) => {
   const speak = anthropicToolReply([{ name: 'speak', input: { text: 'The pier is a short walk.' } }, { name: 'sleep', input: {} }]);
   const llm = await startModelServer({ '/b/v1/messages': { status: 200, type: 'text/event-stream', body: speak, delayMs: 5000 } });
