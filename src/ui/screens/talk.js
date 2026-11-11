@@ -914,14 +914,14 @@ function tidyMenu(ctx, trip) {
     if (menu.hidden) return;
     finger = false; // a touch that ended while it was closed, or never did, holds nothing
     // Details, its first entry, is in view and can be tapped as it opens: where the ⋯ is too low for that (a card and the install banner above a short
-    // conversation, a phone on its side), the page lifts the ⋯ by what is missing, once, before the menu is drawn. Nothing moves the page after.
+    // conversation, a phone on its side), the page lifts the ⋯ by what is missing, once, before the menu is drawn. Nothing moves the page after. A page at
+    // its end can't lift it: nothing moved, and the menu takes taps at once.
     const first = /** @type {HTMLElement} */ (menu.querySelector('a.btn, button.btn'));
     const { paddingBottom, borderBottomWidth } = getComputedStyle(menu);
     const need = first.getBoundingClientRect().bottom - menu.getBoundingClientRect().top + parseFloat(paddingBottom) + parseFloat(borderBottomWidth);
-    if (need > room()) {
-      scrollBy(0, need - room());
-      moved = performance.now() + MOVED_MS;
-    }
+    const y = scrollY;
+    if (need > room()) scrollBy(0, need - room());
+    if (scrollY !== y) moved = performance.now() + MOVED_MS;
     fit();
     if (!frame) frame = requestAnimationFrame(watch);
   });

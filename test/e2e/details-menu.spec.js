@@ -533,6 +533,40 @@ for (const [width, height] of /** @type {const} */ ([[320, 568], [667, 375], [84
   }
 }
 
+// The open asks for a lift wherever its first entry needs more than the room under the ⋯, but a page at its end can't lift it: nothing moved, so the menu takes a click
+// at once (the second opinion on home2's own fixes; before, it ignored clicks for 400 ms whenever a lift was asked). At its end the room is at least 132 px, so this needs
+// a tall first entry: Summarize now under its words, in the conversation with no trip, on a phone on its side (in a long language on the larger one; measured: 163 px).
+for (const [width, height, lang] of /** @type {const} */ ([[568, 320, ''], [667, 375, '?l10n=en-XA']])) {
+  test(`a menu whose open asks for a lift at the page's end, where the page can't move, takes a click on its first entry at once, at ${width}x${height}${lang ? ' in en-XA' : ''}`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await openApp(page, `${lang}#/talk`);
+    await expect(page.locator('.title-row .tidy-toggle')).toBeVisible();
+    await page.waitForTimeout(500); // the screen is at rest
+    await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+    const early = await page.evaluate(() => {
+      const y = scrollY;
+      const atEnd = y > 0 && y + innerHeight >= document.documentElement.scrollHeight - 1;
+      const toggle = /** @type {HTMLElement} */ (document.querySelector('.tidy-toggle'));
+      const menu = /** @type {HTMLElement} */ (document.querySelector('.tidy-menu'));
+      toggle.click();
+      const lifted = scrollY - y;
+      // What the open measured (talk.js): the first entry's foot, below the room down to 16 px above the dock.
+      const first = /** @type {HTMLElement} */ (menu.querySelector('a.btn, button.btn'));
+      const { paddingBottom, borderBottomWidth } = getComputedStyle(menu);
+      const need = first.getBoundingClientRect().bottom - menu.getBoundingClientRect().top + parseFloat(paddingBottom) + parseFloat(borderBottomWidth);
+      const dock = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dock-h')) || 0;
+      const room = innerHeight - dock - toggle.getBoundingClientRect().bottom - 16;
+      first.click();
+      return { atEnd, asked: need > room, lifted, open: !menu.hidden };
+    });
+    expect(early.atEnd, 'set up: the page is at its end').toBe(true);
+    expect(early.asked, 'set up: the open asks for a lift').toBe(true);
+    expect(early.lifted, 'the page could not move').toBe(0);
+    expect(early.open, 'the click ran (Summarize now closes the menu first)').toBe(false);
+    await expect(page.locator('.toast').first()).toBeVisible(); // it ran: "Summarizing…"
+  });
+}
+
 test('a menu that opened with no lift takes a click on its first entry at once', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 640 });
   await openApp(page);
