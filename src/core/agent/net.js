@@ -206,7 +206,11 @@ export function tracedFetch(store, scope, who, get = (url, init) => fetch(url, i
       await logEvent(store, scope, { type: 'net.request', data: { ...base, status: res.status, ms: Date.now() - started, ...(bytes ? { bytes } : {}) } }).catch(() => {});
       return res;
     } catch (e) {
-      const said = blankAll(String(/** @type {any} */ (e)?.message ?? e), secrets);
+      // A request called off with a reason (a timeout's, a race's) says it: WebKit's own words are "Fetch is aborted" for all. A stop
+      // with none (the engine's plain AbortError) keeps the browser's words.
+      const why = init.signal?.aborted ? /** @type {any} */ (init.signal.reason) : undefined;
+      const own = typeof why?.message === 'string' && !(why instanceof DOMException && why.name === 'AbortError');
+      const said = blankAll(String(/** @type {any} */ (own ? why : e)?.message ?? e), secrets);
       const held = leaks(said, secrets);
       /* en */ const error = held ? 'The request failed. (Its error message held a secret, so it is not kept.)' : said;
       await logEvent(store, scope, { type: 'net.request', data: { ...base, status: 0, ms: Date.now() - started, error } }).catch(() => {});

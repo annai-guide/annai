@@ -51,7 +51,7 @@ test('runTool: tools that wait for the user, and the helper of task, have no tim
 
 test('the time limit is above the longest any tool of annai sets itself: an MCP call (2 minutes)', () => {
   assert.ok(TOOL_MS.ms > 120_000);
-  assert.ok(ASK_MS.ms * 3 < TOOL_MS.ms, "nearby's three requests, each at its limit, still end before the tool's");
+  assert.ok(ASK_MS.ms * 3 < TOOL_MS.ms, "three requests one after the other, each at its limit, still end before the tool's (nearby's three go at once)");
 });
 
 async function places() {
@@ -71,7 +71,7 @@ async function places() {
   return { tools, asked, hang };
 }
 
-test('places: each request has its own time limit; nearby goes on to the next Overpass mirror, then Wikipedia', async () => {
+test('places: each request has its own time limit; nearby asks both Overpass mirrors and Wikipedia, and gives what answered', async () => {
   const was = ASK_MS.ms;
   ASK_MS.ms = 30;
   try {

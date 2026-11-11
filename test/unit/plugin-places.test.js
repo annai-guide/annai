@@ -4,8 +4,9 @@ import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
 import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
-import { ensureBaseScopes, createTrip } from '../../src/core/scopes.js';
-import { NOMINATIM_GAP } from '../../src/plugins/places/index.js';
+import { ensureBaseScopes, createTrip, ME } from '../../src/core/scopes.js';
+import { tracedFetch } from '../../src/core/agent/net.js';
+import { NOMINATIM_GAP, ASK_MS } from '../../src/plugins/places/index.js';
 
 async function setup({ trip = false } = {}) {
   const registry = new Registry();
@@ -19,7 +20,7 @@ async function setup({ trip = false } = {}) {
   const asked = [];
   /** @param {string} name @param {any} input @param {(url: string, init: any) => any} answer @param {Record<string, any>} [more] more of the call */
   const run = (name, input, answer, more = {}) => tools[name].run(input, {
-    ...more, scope: tripId ?? 'me', trip: tripId, signal: new AbortController().signal, model: null, wake: 'w', author: 'shiori',
+    scope: tripId ?? 'me', trip: tripId, signal: new AbortController().signal, model: null, wake: 'w', author: 'shiori', ...more,
     fetch: async (/** @type {string} */ url, /** @type {any} */ init = {}) => {
       asked.push({ url, init, at: Date.now() });
       const a = await answer(url, init);
@@ -52,6 +53,116 @@ test('nearby: the second OpenStreetMap server when the first fails; Wikipedia al
   assert.ok(asked.some((a) => a.url.includes('overpass.private.coffee')));
   const out = await run('nearby', McWay, (url) => (url.includes('overpass') ? new Response('', { status: 504 }) : wiki));
   assert.match(out, /OpenStreetMap didn't answer; these are Wikipedia articles only\.$/);
+});
+
+/**
+ * A server that answers body after ms, or never (ms null), unless its request is stopped first; each step goes in log as "<step> <host>".
+ * @param {string[]} log @param {string} url @param {any} init @param {number | null} ms @param {any} [body]
+ */
+function server(log, url, init, ms, body) {
+  const host = new URL(url).hostname;
+  log.push(`ask ${host}`);
+  return new Promise((resolve, reject) => {
+    const stop = () => {
+      clearTimeout(timer);
+      log.push(`stopped ${host}`);
+      reject(init.signal.reason);
+    };
+    const timer = ms === null ? undefined : setTimeout(() => {
+      init.signal?.removeEventListener('abort', stop);
+      log.push(`answer ${host}`);
+      resolve(body);
+    }, ms);
+    init.signal?.addEventListener('abort', stop, { once: true });
+  });
+}
+const place = (/** @type {string} */ name) => ({ elements: [{ type: 'node', lat: 36.1585, lon: -121.6722, tags: { name, tourism: 'viewpoint' } }] });
+const wikiRow = { query: { geosearch: [{ title: 'McWay Falls', lat: 36.1577, lon: -121.6716, dist: 50 }] } };
+
+test('nearby asks both Overpass servers and Wikipedia at once: with neither server answering it waits one time limit, not one per server, and gives Wikipedia\'s rows as before', async () => {
+  const was = ASK_MS.ms;
+  // Short, so the test is quick, with a second's slack for a loaded machine; two limits one after the other (the old way) are twice it.
+  ASK_MS.ms = 1000;
+  try {
+    const { run, asked } = await setup();
+    /** @type {string[]} */
+    const log = [];
+    const started = Date.now();
+    const out = await run('nearby', McWay, (url, init) => (url.includes('overpass') ? server(log, url, init, null) : wikiRow));
+    const took = Date.now() - started;
+    assert.deepEqual(asked.map((a) => new URL(a.url).hostname), ['overpass-api.de', 'overpass.private.coffee', 'en.wikipedia.org']);
+    assert.ok(asked[2].at - asked[0].at < ASK_MS.ms, 'all three asked before the first one\'s limit ran out');
+    assert.ok(took < 2 * ASK_MS.ms, `one wait, not two: ${took} ms`);
+    assert.match(out, /McWay Falls/);
+    assert.match(out, /\nOpenStreetMap didn't answer; these are Wikipedia articles only\.$/);
+  } finally {
+    ASK_MS.ms = was;
+  }
+});
+
+test('nearby: when both Overpass servers would answer, the first to answer is taken and the other request is stopped', async () => {
+  const { run } = await setup();
+  /** @type {string[]} */
+  const log = [];
+  const out = await run('nearby', McWay, (url, init) => {
+    if (url.includes('overpass-api.de')) return server(log, url, init, 40, place('Slow Server Place'));
+    if (url.includes('overpass')) return server(log, url, init, 5, place('Fast Server Place'));
+    return { query: { geosearch: [] } };
+  });
+  assert.match(out, /Fast Server Place/);
+  assert.doesNotMatch(out, /Slow Server Place|didn't answer/);
+  assert.deepEqual(log, ['ask overpass-api.de', 'ask overpass.private.coffee', 'answer overpass.private.coffee', 'stopped overpass-api.de']);
+});
+
+test('nearby: a first Overpass answer that is no answer ("runtime error") is passed over for the other server\'s, asked at the same time', async () => {
+  const { run } = await setup();
+  /** @type {string[]} */
+  const log = [];
+  const timedOut = { elements: [], remark: 'runtime error: Query timed out in "query" at line 1 after 21 seconds.' };
+  const out = await run('nearby', McWay, (url, init) => {
+    if (url.includes('overpass-api.de')) return server(log, url, init, 5, timedOut);
+    if (url.includes('overpass')) return server(log, url, init, 40, place('Second Server Place'));
+    return { query: { geosearch: [] } };
+  });
+  assert.match(out, /Second Server Place\tviewpoint/);
+  assert.doesNotMatch(out, /didn't answer/);
+  assert.deepEqual(log, ['ask overpass-api.de', 'ask overpass.private.coffee', 'answer overpass-api.de', 'answer overpass.private.coffee']);
+});
+
+test("nearby: the Trace has a net.request line for each request with its own time, the stopped one's too", async () => {
+  const { run, ws } = await setup();
+  /** @type {string[]} */
+  const log = [];
+  const get = (/** @type {string} */ url, /** @type {any} */ init) => {
+    const answer = (/** @type {number | null} */ ms, /** @type {any} */ body) => server(log, url, init, ms, body).then((b) => new Response(JSON.stringify(b)));
+    if (url.includes('overpass-api.de')) return answer(20, place('First Place'));
+    if (url.includes('overpass')) return answer(null);
+    return answer(200, wikiRow);
+  };
+  const traced = tracedFetch(ws.store, ME, { tool: 'nearby', wake: 'w' }, get);
+  const out = await run('nearby', McWay, (url, init) => traced(url, init));
+  assert.match(out, /First Place/);
+  const lines = await ws.store.tx(['events'], 'readonly', (t) => t.listEvents(ME, { types: ['net.request'] }));
+  const by = Object.fromEntries(lines.map((/** @type {any} */ e) => [new URL(e.data.url).hostname, e.data]));
+  assert.equal(lines.length, 3);
+  assert.equal(by['overpass-api.de'].status, 200);
+  assert.ok(by['overpass-api.de'].ms >= 15, `its own time: ${by['overpass-api.de'].ms} ms`);
+  assert.equal(by['overpass.private.coffee'].status, 0, 'stopped: no answer');
+  assert.equal(by['overpass.private.coffee'].error, 'Stopped: the other Overpass server answered first.');
+  assert.ok(by['overpass.private.coffee'].ms < by['en.wikipedia.org'].ms, 'stopped as the first answered, not at the end');
+  assert.equal(by['en.wikipedia.org'].status, 200);
+  assert.ok(by['en.wikipedia.org'].ms >= 190, `its own time: ${by['en.wikipedia.org'].ms} ms`);
+});
+
+test("nearby: the user's stop stops all three requests at once, and the call ends as stopped, not as a service that didn't answer", async () => {
+  const { run } = await setup();
+  /** @type {string[]} */
+  const log = [];
+  const stop = new AbortController();
+  setTimeout(() => stop.abort(new DOMException('stopped', 'AbortError')), 20);
+  const tools = (/** @type {string} */ url, /** @type {any} */ init) => server(log, url, init, null);
+  await assert.rejects(run('nearby', McWay, tools, { signal: stop.signal }), { name: 'AbortError' });
+  assert.deepEqual(log.filter((x) => x.startsWith('stopped')).sort(), ['stopped en.wikipedia.org', 'stopped overpass-api.de', 'stopped overpass.private.coffee']);
 });
 
 test('geocode and reverse through Nominatim, one request a second at most', async () => {
