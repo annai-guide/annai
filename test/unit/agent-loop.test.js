@@ -1542,9 +1542,84 @@ test('a wake for a trip that is not open is written into its conversation, and a
   assert.equal(k.requests.length, 1);
   assert.match(userTexts(k.requests[0]), /flight\.pkpass/);
   // She isn't told annai restarted: it came while the conversation was closed.
-  assert.doesNotMatch(userTexts(k.requests[0]), /The conversation closed before you answered/);
-  assert.match(userTexts(k.requests[0]), /You haven't answered this yet: it came while this conversation was closed/);
+  assert.doesNotMatch(userTexts(k.requests[0]), /restarted/);
+  assert.match(userTexts(k.requests[0]), /You haven't answered this yet: it came while this conversation was closed\./);
   assert.deepEqual((await eventsIn(k, B, ['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Your flight pass: I put it in the plan.']);
+});
+
+test("the note that takes a turn up names only the cause annai knows: an open in this page, else a restart before it; and not to explain it (the real-model run's C1)", async (t) => {
+  useClock(t);
+  const QUIET = 'Don\'t explain the interruption to the user beyond, at most, "we got cut off".';
+  /** The restart notes written into a conversation. @param {any} k @param {string} scope */
+  const notes = async (k, scope) => (await eventsIn(k, scope, ['wake'])).flatMap((/** @type {any} */ e) => e.data.reasons).filter((/** @type {any} */ r) => r.kind === 'restart').map((/** @type {any} */ r) => r.text);
+  /** @type {string[]} */
+  const failed = [];
+  const eq = (/** @type {any} */ got, /** @type {any} */ want, /** @type {string} */ what) => { if (JSON.stringify(got) !== JSON.stringify(want)) failed.push(`${what}: ${JSON.stringify(got)}, wanted ${JSON.stringify(want)}`); };
+  // An open in this page cuts the user's turn at work: her tool's result had come back cut.
+  {
+    let lingering = false;
+    const k = await agentKit([[{ toolCalls: [{ name: 'linger', input: {} }] }, say('Back to it.')]]);
+    k.agent.addLoopTools([{ name: 'linger', pluginId: 'core', group: 'Time', description: 'Wait.', input: { type: 'object' }, run: async () => { lingering = true; await new Promise((r) => setTimeout(r, 60_000)); return 'Done.'; } }]);
+    const A = k.trip;
+    k.agent.send('When is check-in?');
+    await until(() => lingering);
+    await k.agent.open(await createTrip(k.ws, { title: 'Kyoto' }));
+    await k.agent.open(A);
+    await k.agent.idle();
+    eq(await notes(k, A), [`Another conversation was opened in the middle of your turn: your tool calls had come back, and you had not gone on yet. ${QUIET}`], 'an open, her calls back');
+  }
+  // An open in this page cuts the user's turn in its model call.
+  {
+    const k = await agentKit([[{ delayMs: 300, toolCalls: [{ name: 'list', input: { path: '/trip/' } }] }, say('Back to it.')]]);
+    const A = k.trip;
+    k.agent.send('When is check-in?');
+    await until(() => k.requests.length === 1);
+    await k.agent.open(await createTrip(k.ws, { title: 'Kyoto' }));
+    await k.agent.open(A);
+    await k.agent.idle();
+    eq(await notes(k, A), [`Another conversation was opened before you answered. ${QUIET}`], 'an open, before her answer');
+  }
+  // ...and a turn for a file the user added: it came while the conversation was open, so "while it was closed" would be false.
+  {
+    const k = await agentKit([[{ delayMs: 300, toolCalls: [{ name: 'list', input: { path: '/trip/' } }] }, say('Back to it.')]]);
+    const A = k.trip;
+    k.agent.wake({ kind: 'file', files: ['/files/flight.pkpass'], text: 'The user added a file to the trip: /trip/files/flight.pkpass.' });
+    await until(() => k.requests.length === 1);
+    await k.agent.open(await createTrip(k.ws, { title: 'Kyoto' }));
+    await k.agent.open(A);
+    await k.agent.idle();
+    eq(await notes(k, A), [`Another conversation was opened before you answered. ${QUIET}`], 'an open, before her answer to a file');
+  }
+  // A page before this one left each of these: annai restarted since.
+  /** @type {[string, (k: any) => Promise<unknown>, string][]} */
+  const before = [
+    ['a restart, before her answer', async (k) => {
+      await record(k.store, k.trip, { type: 'wake', actor: 'system', data: { id: 'w-0', reasons: [{ kind: 'user', text: 'typed' }] } });
+      await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: { text: 'When is check-in?', wake: 'w-0' } });
+    }, `annai restarted before you answered. ${QUIET}`],
+    ['a restart, her calls back', async (k) => {
+      await record(k.store, k.trip, { type: 'wake', actor: 'system', data: { id: 'w-0', reasons: [{ kind: 'user', text: 'typed' }] } });
+      await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: { text: 'When is check-in?', wake: 'w-0' } });
+      await modelTrace(k.store, k.trip).turn({ role: 'main', level: 'medium', answeredBy: 'A', attempts: [], usage: {}, cost: 0, tag: TALK_TAG, wake: 'w-0' }, '', '', [{ type: 'tool_call', id: 'l1', name: 'list', input: { path: '/trip/' } }]);
+      await record(k.store, k.trip, { type: 'tool.result', actor: 'system', data: { id: 'l1', name: 'list', ok: true, cut: false, ms: 1, wake: 'w-0', content: 'path\ttype' } });
+    }, `annai restarted in the middle of your turn: your tool calls had come back, and you had not gone on yet. ${QUIET}`],
+    ['a restart, a call running', async (k) => {
+      await record(k.store, k.trip, { type: 'wake', actor: 'system', data: { id: 'w-0', reasons: [{ kind: 'user', text: 'typed' }] } });
+      await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: { text: 'When is check-in?', wake: 'w-0' } });
+      await modelTrace(k.store, k.trip).turn({ role: 'main', level: 'medium', answeredBy: 'A', attempts: [], usage: {}, cost: 0, tag: TALK_TAG, wake: 'w-0' }, '', '', [{ type: 'tool_call', id: 'l1', name: 'list', input: { path: '/trip/' } }]);
+    }, `annai restarted while you were working, so your unfinished tool calls were stopped. ${QUIET}`],
+    ['a restart, a wake not answered', async (k) => {
+      await record(k.store, k.trip, { type: 'wake', actor: 'system', data: { id: 'w-0', reasons: [{ kind: 'trigger', text: 'Your watch fired. Its reminder: "Leave for the ferry at 5."' }] } });
+    }, `You haven't answered this yet: it came before annai restarted. ${QUIET}`],
+  ];
+  for (const [what, log, want] of before) {
+    const k = await agentKit([[say('Back to it.')]], { open: false });
+    await log(k);
+    await k.agent.open(k.trip);
+    await k.agent.idle();
+    eq(await notes(k, k.trip), [want], what);
+  }
+  assert.deepEqual(failed, []);
 });
 
 test('a wake kept for a trip that is not open is written by the time wake() settles', async (t) => {

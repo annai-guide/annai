@@ -460,6 +460,12 @@ export class Agent {
   #cutWaiting = false;
   /** ...while she was still saying her line (#saying): the user didn't hear it in full. */
   #cutSaying = false;
+  /**
+   * Conversations this page left owing because another one was opened: 'cut', a turn an open cut and takes up; 'closed', a wake written in
+   * while it was closed. Opening one again says that cause; one this page didn't leave owing was left by a page before it, so annai restarted
+   * since. @type {Map<string, 'cut' | 'closed'>}
+   */
+  #leftOwing = new Map();
   /** The call running: whether it is her reply's last but sleep, and talks to the user (speak, ask, wait: saying or listening). */
   #running = /** @type {{ last: boolean, talks: boolean } | null} */ (null);
   /** The turn was started by annai alone (#steps), and no line or act of the user's was written during it (#log). */
@@ -724,12 +730,19 @@ export class Agent {
     this.#lastPrompt = 0;
     this.#clearTimer();
     this.owed = owed;
+    const left = this.#leftOwing.get(scope);
+    this.#leftOwing.delete(scope);
     if (owed) {
+      // Only the cause annai knows, and nothing for her to tell the user: told "annai restarted, or another one was opened", she told them the app restarted.
       /* en */
-      const text = repaired ? 'annai restarted while you were working, so your unfinished tool calls were stopped.'
-        : transcript.waiting === 'wake' ? "You haven't answered this yet: it came while this conversation was closed, or before annai restarted."
-          : transcript.waiting === 'turn' ? 'The conversation closed in the middle of your turn (annai restarted, or another one was opened): your tool calls had come back, and you had not gone on yet.'
-            : 'The conversation closed before you answered (annai restarted, or another one was opened).';
+      const quiet = 'Don\'t explain the interruption to the user beyond, at most, "we got cut off".';
+      /* en */
+      const text = repaired ? `annai restarted while you were working, so your unfinished tool calls were stopped. ${quiet}`
+        : transcript.waiting === 'turn' ? `${left ? 'Another conversation was opened' : 'annai restarted'} in the middle of your turn: your tool calls had come back, and you had not gone on yet. ${quiet}`
+          : left === 'closed' && transcript.waiting === 'wake' ? "You haven't answered this yet: it came while this conversation was closed."
+            : left ? `Another conversation was opened before you answered. ${quiet}`
+              : transcript.waiting === 'wake' ? `You haven't answered this yet: it came before annai restarted. ${quiet}`
+                : `annai restarted before you answered. ${quiet}`;
       // A hand-over still owed is the restart turn's, so what she does with it can be undone (the page closed before she was done).
       this.#queue.push({ kind: 'restart', text, scope, ...(transcript.handover ? { handover: transcript.handover } : {}) }); // it runs once the open is done
     }
@@ -750,8 +763,14 @@ export class Agent {
       if (owed.length) await this.remind(owed, s);
       for (const w of those) w.fallbacks = [];
       await this.#logWakes(those, newId('w'), false, this.#keptIn(s), s === ME ? null : s);
+      this.#leftClosed(s);
       this.#queue = this.#queue.filter((w) => !those.includes(w)); // a failed write keeps them
     }
+  }
+
+  /** A wake was written into a conversation that isn't open: unless an open cut its turn (that is said), it came while it was closed. @param {string} scope */
+  #leftClosed(scope) {
+    if (!this.#leftOwing.has(scope)) this.#leftOwing.set(scope, 'closed');
   }
 
   /** A writer for a conversation that isn't open, whose lines are heard like the open one's. @param {string} scope */
@@ -767,6 +786,7 @@ export class Agent {
   #keepFor(scope, w) {
     this.#checking++;
     return this.#logWakes([{ ...w, scope }], newId('w'), false, this.#keptIn(scope), scope === ME ? null : scope)
+      .then(() => this.#leftClosed(scope))
       .catch(() => {})
       .finally(() => {
         this.#checking--;
@@ -1999,7 +2019,9 @@ export class Agent {
     if (!abort.signal.aborted || !this.#cutByOpen || this.#userStop || this.#leaving) return;
     this.#cutByOpen = false;
     // Only a turn the cut left undone, which this half takes up again (Koe's only when Kokoro had no turn to say it): one that had finished is not paused.
-    if (!this.transcript.unanswered || this.#half.paused?.() === false) return;
+    if (!this.transcript.unanswered) return;
+    this.#leftOwing.set(this.scope, 'cut');
+    if (this.#half.paused?.() === false) return;
     // The log keeps annai's English; the Conversation makes its line from the entry's type.
     await this.#log({ type: 'paused', actor: 'system', data: { text: /* en */ 'Shiori was in the middle of something. She picks it up when you come back.' } });
     await this.#notice({ tone: 'info', title: t`Shiori was in the middle of something. She picks it up when you come back.`, body: '', toast: true });
