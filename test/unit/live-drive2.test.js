@@ -39,8 +39,9 @@ test('item 13: the model gives an empty turn for a note, in a session opened for
 });
 
 test("item 13: a note Koe said, cut off by lyrics before the user heard a word, isn't passed on: asked to say it again, and it says it again", async () => {
-  // Two sounds of hers; the first is cut by sound at the microphone, in a car, where sound may cut her.
-  const k = await liveKit([{ said: 'Hello there.', audio: tone(0.1) }, { said: 'The fuel station is open until ten.', audio: tone(1.5) }, { heard: 'la la' }, { said: 'The fuel station is open until ten.', audio: tone(0.2) }]);
+  // Two sounds of hers; the first is cut by sound at the microphone, in a car, where sound may cut her. The provider's answer to the lyrics' turn
+  // comes late, as a real one's does, so annai's ask, sent as that turn ends, goes in before it.
+  const k = await liveKit([{ said: 'Hello there.', audio: tone(0.1) }, { said: 'The fuel station is open until ten.', audio: tone(1.5) }, { heard: 'la la', delayMs: 300 }, { said: 'The fuel station is open until ten.', audio: tone(0.2) }]);
   try {
     await k.voice.unlock();
     k.voice.route = async () => 'car';
@@ -64,7 +65,7 @@ test("item 13: a note Koe said, cut off by lyrics before the user heard a word, 
 
 test("item 13: Koe's already_told doesn't settle a note whose words were cut off before they were heard: annai shows them", async () => {
   // As the real model did when asked once more: it believes it has said it (2026-11-04, on a free key).
-  const k = await liveKit([{ said: 'Hello there.', audio: tone(0.1) }, { said: 'The fuel station is open until ten.', audio: tone(1.5) }, { heard: 'la la' }, { tool: { name: 'already_told', args: {} } }]);
+  const k = await liveKit([{ said: 'Hello there.', audio: tone(0.1) }, { said: 'The fuel station is open until ten.', audio: tone(1.5) }, { heard: 'la la', delayMs: 300 }, { tool: { name: 'already_told', args: {} } }]);
   try {
     await k.voice.unlock();
     k.voice.route = async () => 'car';
