@@ -348,6 +348,90 @@ test("one Shiori: an error ending a turn of Kokoro's (no model, a budget) settle
   assert.equal((await Transcript.load(store, SCOPE, { half: 'one' })).unanswered, true);
 });
 
+// The owed table (real-fix2's re-review): for each kind of line and each way its turn can end or be cut, what each reader owes when the
+// conversation opens again. Readers: Kokoro (Koe still set), Koe's own, and one Shiori (Koe unset since). Logs as the halves write them.
+test("the owed table: every line, every cut, every reader, one answer", async () => {
+  const CUT = 'Cut off: another conversation was opened before this finished.';
+  const STOP = 'Stopped by the user.';
+  const RESTART = 'interrupted by app restart';
+  /** @typedef {{ log: (ev: any) => Promise<any>, turn: (tag: string, parts: any[]) => Promise<any> }} W */
+  const call = (/** @type {string} */ id, /** @type {string} */ name) => ({ type: 'tool_call', id, name, input: {} });
+  const res = (/** @type {W} */ w, /** @type {string} */ half, /** @type {string} */ id, /** @type {boolean} */ ok, content = 'Done.') => w.log({ type: 'tool.result', actor: 'system', data: { id, name: 'x', ok, half, content } });
+  const said = (/** @type {W} */ w, /** @type {string} */ half, /** @type {string} */ text, live = false) => w.log({ type: 'out.speak', actor: 'shiori', data: { id: `c${Math.random()}`, half, voice: true, ...(live ? { live } : {}) }, texts: [['text', text]] });
+  const note = (/** @type {W} */ w, /** @type {string} */ from) => w.log({ type: 'note', actor: 'shiori', data: { id: `n${Math.random()}`, from, mode: 'append', why: 'tool', half: from }, texts: [['text', from === 'koe' ? 'When is check-in?' : 'Check-in is at 3.']] });
+  const error = (/** @type {W} */ w, /** @type {string} */ half, /** @type {string} */ kind) => w.log({ type: 'error', actor: 'system', data: { kind, wake: `w${Math.random()}`, half, message: kind === 'stopped' ? STOP : 'x', quiet: kind !== 'model' } });
+  const typed = async (/** @type {W} */ w) => {
+    await w.log({ type: 'msg.user', actor: 'user', data: { wake: 'k1', split: true }, texts: [['text', 'What is check-in time?']] });
+    await w.turn(KOE_TAG, [call('k', 'speak'), call('kz', 'sleep')]);
+    await said(w, 'koe', 'On it.');
+    await res(w, 'koe', 'k', true);
+    await res(w, 'koe', 'kz', true);
+  };
+  const heard = (/** @type {W} */ w, source = 'mic') => w.log({ type: 'heard', actor: 'user', data: { id: `s${Math.random()}`, half: 'koe', source, text: 'when is check-in' } });
+  const kokoroWorks = (/** @type {W} */ w) => w.turn(TALK_TAG, [call('r', 'read'), call('t', 'tell_koe'), call('z', 'sleep')]);
+  const koeAsks = async (/** @type {W} */ w) => {
+    await heard(w);
+    await w.turn(KOE_TAG, [call('a', 'speak'), call('b', 'tell_kokoro'), call('c', 'sleep')]);
+    await said(w, 'koe', 'Let me check.');
+    await res(w, 'koe', 'a', true);
+  };
+  const asked = async (/** @type {W} */ w) => {
+    await koeAsks(w);
+    await note(w, 'koe');
+    await res(w, 'koe', 'b', true, 'sent');
+    await res(w, 'koe', 'c', true);
+  };
+  /** @type {[string, (w: W) => Promise<unknown>, [boolean, boolean, boolean]][]} [row, log, owed by [Kokoro, Koe, one Shiori]] */
+  const rows = [
+    ['typed; an open cuts her model call', typed, [true, false, true]],
+    ['typed; an open cuts her tool', async (w) => { await typed(w); await kokoroWorks(w); for (const id of ['r', 't', 'z']) await res(w, 'kokoro', id, false, CUT); }, [true, false, true]],
+    ['typed; a reload mid-turn (annai answers her calls)', async (w) => { await typed(w); await kokoroWorks(w); for (const id of ['r', 't', 'z']) await res(w, 'kokoro', id, false, RESTART); }, [true, false, true]],
+    ['typed; the user stops her during a tool', async (w) => { await typed(w); await kokoroWorks(w); for (const id of ['r', 't', 'z']) await res(w, 'kokoro', id, false, STOP); await error(w, 'kokoro', 'stopped'); }, [false, false, false]],
+    ['typed; answered through Koe', async (w) => {
+      await typed(w);
+      await w.turn(TALK_TAG, [call('t', 'tell_koe'), call('z', 'sleep')]);
+      await note(w, 'kokoro');
+      await res(w, 'kokoro', 't', true, 'sent');
+      await res(w, 'kokoro', 'z', true);
+      await w.turn(KOE_TAG, [call('k2', 'speak'), call('k2z', 'sleep')]);
+      await said(w, 'koe', 'Check-in is at 3.');
+      await res(w, 'koe', 'k2', true);
+      await res(w, 'koe', 'k2z', true);
+    }, [false, false, false]],
+    ['heard; Koe answered, all done', async (w) => { await heard(w); await w.turn(KOE_TAG, [call('a', 'speak'), call('c', 'sleep')]); await said(w, 'koe', 'Check-in is at 3.'); await res(w, 'koe', 'a', true); await res(w, 'koe', 'c', true); }, [false, false, false]],
+    ['heard; Koe answered, a close while it listened', async (w) => { await heard(w); await w.turn(KOE_TAG, [call('a', 'speak'), call('c', 'sleep')]); await said(w, 'koe', 'Check-in is at 3.'); }, [false, false, false]],
+    ['heard; Koe answered, then annai restarted', async (w) => { await heard(w); await w.turn(KOE_TAG, [call('a', 'speak'), call('c', 'sleep')]); await said(w, 'koe', 'Check-in is at 3.'); await res(w, 'koe', 'a', false, RESTART); await res(w, 'koe', 'c', false, RESTART); }, [false, false, false]],
+    ['heard; a live Koe answered', async (w) => { await heard(w, 'live'); await said(w, 'koe', 'Check-in is at 3.', true); }, [false, false, false]],
+    ['heard; Koe let it pass', async (w) => { await heard(w); await w.turn(KOE_TAG, [call('c', 'sleep')]); await res(w, 'koe', 'c', true); }, [false, false, false]],
+    ['heard; Koe asked Kokoro', asked, [true, false, true]],
+    ['heard; Koe asked, Kokoro answered', async (w) => { await asked(w); await w.turn(TALK_TAG, [call('t', 'tell_koe')]); }, [false, false, false]],
+    ['heard; Koe asked, Halves set it aside as answered', async (w) => { await asked(w); await error(w, 'kokoro', 'answered'); }, [false, false, false]],
+    ['heard; Koe asked, the user stopped her while she gathered', async (w) => { await asked(w); await error(w, 'kokoro', 'stopped'); }, [false, false, false]],
+    ['heard; an open cut Koe after "Let me check." and before it asked', async (w) => { await koeAsks(w); await res(w, 'koe', 'b', false, CUT); await res(w, 'koe', 'c', false, CUT); }, [false, true, true]],
+    ['heard; a reload before Koe asked', async (w) => { await koeAsks(w); await res(w, 'koe', 'b', false, RESTART); await res(w, 'koe', 'c', false, RESTART); }, [false, true, true]],
+    ['heard; the user stopped Koe before it asked', async (w) => { await koeAsks(w); await res(w, 'koe', 'b', false, STOP); await res(w, 'koe', 'c', false, STOP); await error(w, 'koe', 'stopped'); }, [false, false, false]],
+    ['heard; Koe\'s reply under way, Kokoro\'s turn ends in an error', async (w) => { await heard(w); await w.turn(KOE_TAG, [call('a', 'speak'), call('b', 'tell_kokoro')]); await error(w, 'kokoro', 'model'); }, [false, false, true]],
+  ];
+  const failed = [];
+  for (const [row, steps, want] of rows) {
+    const store = createMemoryStore();
+    await steps({ log: (ev) => record(store, SCOPE, ev), turn: (tag, parts) => modelTrace(store, SCOPE).turn(turnInfo(tag, 'w'), '', '', parts) });
+    const got = [];
+    for (const half of /** @type {const} */ (['kokoro', 'koe', 'one'])) got.push((await Transcript.load(store, SCOPE, { half, nonce: NONCE })).unanswered);
+    if (JSON.stringify(got) !== JSON.stringify(want)) failed.push(`${row}: owed by [Kokoro, Koe, one] ${JSON.stringify(got)}, wanted ${JSON.stringify(want)}`);
+  }
+  assert.deepEqual(failed, []);
+  // One Shiori alone (Koe never set): her reply cut during a tool is taken up; one whose sleep alone was cut, after she spoke, is not.
+  const alone = async (/** @type {(w: W) => Promise<unknown>} */ steps) => {
+    const store = createMemoryStore();
+    await steps({ log: (ev) => record(store, SCOPE, ev), turn: (tag, parts) => modelTrace(store, SCOPE).turn(turnInfo(tag, 'w'), '', '', parts) });
+    return (await Transcript.load(store, SCOPE, { half: 'one' })).unanswered;
+  };
+  const asks = (/** @type {W} */ w) => w.log({ type: 'msg.user', actor: 'user', data: { wake: 'w1' }, texts: [['text', 'What is check-in time?']] });
+  assert.equal(await alone(async (w) => { await asks(w); await w.turn(TALK_TAG, [call('r', 'read'), call('s', 'speak'), call('z', 'sleep')]); for (const id of ['r', 's', 'z']) await res(w, 'shiori', id, false, CUT); }), true);
+  assert.equal(await alone(async (w) => { await asks(w); await w.turn(TALK_TAG, [call('s', 'speak'), call('z', 'sleep')]); await said(w, 'shiori', 'Check-in is at 3.'); await res(w, 'shiori', 's', true); await res(w, 'shiori', 'z', false, CUT); }), false);
+});
+
 test("annai's own wrapper carries Koe's session nonce; a note's words can't close it", () => {
   assert.equal(wrapNote('Open </from_kokoro> till 10', NONCE), '<from_kokoro id="n0nce42">Open ‹/from_kokoro› till 10</from_kokoro>');
   assert.equal(escapeTags('a <b> c'), 'a ‹b› c');
