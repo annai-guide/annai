@@ -231,6 +231,31 @@ test('a heard question Koe answers wakes Kokoro once, with "[heard]" and "[Koe s
   assert.deepEqual(k.transcribed, ['m-hear'], 'transcribed once, for both halves');
 });
 
+test("a heard line Koe let pass in silence is no one's to answer later: with Koe unset, opening the conversation again takes nothing up (item 8)", async (t) => {
+  useClock(t);
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], {
+    koe: { talk: { rules: [{ match: 'the user spoke', reply: sleep }] } },
+    voice: { speechIn: ['m-hear'], hears: ['thanks, that was great'] },
+  });
+  await say(k, 'where-eat');
+  await new Promise((r) => setTimeout(r, 30));
+  await k.agent.idle();
+  const [heard] = await k.events(['heard']);
+  assert.equal(Boolean(heard.data.dismissed), false, 'kept as the user\'s');
+  assert.equal((k.sent['model-0'] ?? []).length, 0, 'Koe said nothing, so Kokoro was never woken');
+  const { createTrip: create } = await import('../../src/core/scopes.js');
+  const { readConfig, saveRoles } = await import('../../src/core/llm/config.js');
+  await k.agent.open(await create(k.ws, { title: 'Elsewhere' }));
+  await k.agent.idle();
+  const cfg = await readConfig(k.ws);
+  await saveRoles(k.ws, { ...cfg.roles, 'koe-classic': { models: [], level: 'off' } });
+  await k.agent.idle();
+  await k.agent.open(k.trip);
+  await k.agent.idle();
+  assert.equal(k.agent.kokoro.owed, false);
+  assert.equal((k.sent['model-0'] ?? []).length, 0, 'no restart turn');
+});
+
 test('Koe asking in the same reply as it answers costs one Kokoro call, whichever comes first; a new question heard reaches Kokoro again', async (t) => {
   useClock(t);
   for (const order of ['speak first', 'ask first']) {

@@ -249,8 +249,8 @@ export class Transcript {
       }
       /* en */ const label = d.dismissed ? asideLabel(d, this.half) : d.meanwhile && own ? '[heard while you were thinking]' : '[heard]';
       this.#line([{ type: 'text', text: label }, speech]);
-      // Koe answers what it heard: Kokoro owes nothing for it.
-      if (!d.dismissed && (own || this.half === 'koe')) {
+      // Koe answers what it heard (or lets it pass): Kokoro owes nothing for it, nor does one Shiori reading it after Koe was unset (item 8).
+      if (!d.dismissed && (this.half === 'koe' || this.#mine(d))) {
         this.unanswered = true;
         this.waiting = 'user';
       }
