@@ -407,6 +407,7 @@ test("the owed table: every line, every cut, every reader, one answer", async ()
     ['heard; Koe asked, Kokoro answered', async (w) => { await asked(w); await w.turn(TALK_TAG, [call('t', 'tell_koe')]); }, [false, false, false]],
     ['heard; Koe asked, Halves set it aside as answered', async (w) => { await asked(w); await error(w, 'kokoro', 'answered'); }, [false, false, false]],
     ['heard; Koe asked, the user stopped her while she gathered', async (w) => { await asked(w); await error(w, 'kokoro', 'stopped'); }, [false, false, false]],
+    ['heard; Koe asked, her turn ended in an error the user was shown (no model)', async (w) => { await asked(w); await error(w, 'kokoro', 'model'); }, [false, false, false]],
     ['heard; an open cut Koe after "Let me check." and before it asked', async (w) => { await koeAsks(w); await res(w, 'koe', 'b', false, CUT); await res(w, 'koe', 'c', false, CUT); }, [false, true, true]],
     ['heard; a reload before Koe asked', async (w) => { await koeAsks(w); await res(w, 'koe', 'b', false, RESTART); await res(w, 'koe', 'c', false, RESTART); }, [false, true, true]],
     ['heard; the user stopped Koe before it asked', async (w) => { await koeAsks(w); await res(w, 'koe', 'b', false, STOP); await res(w, 'koe', 'c', false, STOP); await error(w, 'koe', 'stopped'); }, [false, false, false]],
