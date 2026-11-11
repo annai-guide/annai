@@ -192,7 +192,9 @@ export function openLive(c) {
           if (done || st.up) return;
           st.up = true;
           clearTimeout(timer);
-          log(setup.resume ? 'resumed' : 'ready', { ms: now() - started, ...c.output });
+          // The phone's sound by name: output() grows (its context's state), and must never take this line's own fields.
+          const o = c.output;
+          log(setup.resume ? 'resumed' : 'ready', { ms: now() - started, ...(o ? { sampleRate: o.sampleRate, baseLatency: o.baseLatency, outputLatency: o.outputLatency } : {}) });
           resolve(undefined);
         }, (e) => broke('ready', e));
         return undefined;

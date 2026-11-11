@@ -72,6 +72,29 @@ test('D5: a tap\'s live session says "One moment…" while it connects and while
   }
 });
 
+test('D5 (fix pass): after a tap the dock is told "One moment…", then Listening, nothing between; a refused microphone: "One moment…", then what the failure leaves', async () => {
+  const k = await liveKit([]);
+  try {
+    const views = dock(k);
+    k.agent.tap();
+    await until(() => k.agent.live.listening, 5000);
+    await new Promise((r) => setTimeout(r, 30));
+    assert.deepEqual(views.map((v) => v.name), ['opening', 'listening'], 'no "Tap to talk" between the session opening and its microphone starting');
+    k.agent.tap(); // stops it
+    await until(() => k.agent.live.state === 'closed', 3000);
+    views.length = 0;
+    const open = k.platform.mic.open;
+    k.platform.mic.open = async () => { throw Object.assign(new Error('Permission denied'), { name: 'NotAllowedError' }); };
+    k.agent.tap();
+    await soon(async () => k.notices.some((/** @type {any} */ n) => /microphone/i.test(`${n.title} ${n.body}`)), 5000);
+    await new Promise((r) => setTimeout(r, 30));
+    assert.deepEqual(views.map((v) => v.name), ['opening', 'sleeping'], 'the session stays, without its microphone');
+    k.platform.mic.open = open;
+  } finally {
+    await k.done();
+  }
+});
+
 test('D5: a session a note opens to speak shows her thinking while it opens, not "One moment…"', async () => {
   const k = await liveKit([]);
   try {
@@ -140,4 +163,39 @@ test('D4, classic: a microphone whose audio thread never runs: the card says tap
   assert.equal(k.voice.stuck, true);
   assert.ok(!names.includes('listening'), JSON.stringify(names));
   assert.notEqual(k.agent.state.name, 'listening');
+});
+
+test('D5 in classic voice too (the coordinator\'s call): after a tap the dock is told "One moment…", then Listening; a tap meanwhile stops it, and the window that opens afterwards is let go', async () => {
+  const k = await agentKit([[{ text: 'Hi.' }]], { voice: { playMs: 5, speechIn: ['m-hear'] } });
+  /** @type {string[]} */
+  const names = [];
+  k.agent.on('state', (/** @type {any} */ s) => names.push(s.name));
+  assert.equal(k.agent.tap(), 'listening');
+  assert.equal(k.agent.state.name, 'opening');
+  assert.equal(k.agent.state.label, 'One moment…');
+  await until(() => k.agent.state.name === 'listening', 5000);
+  assert.deepEqual(names, ['opening', 'listening']);
+  assert.equal(k.agent.tap(), 'stopped');
+  await until(() => !k.platform.mic.isOpen(), 3000);
+  names.length = 0;
+  assert.equal(k.agent.tap(), 'listening');
+  assert.equal(k.agent.tap(), 'stopped', 'a tap while it opens stops it');
+  await new Promise((r) => setTimeout(r, 100));
+  assert.equal(k.platform.mic.isOpen(), false, 'the window that finished opening afterwards is let go');
+  assert.notEqual(k.agent.state.name, 'listening');
+  assert.ok(!names.includes('listening'), JSON.stringify(names));
+  assert.equal(k.agent.state.name, 'sleeping');
+});
+
+test('D4 (fix pass): Test the microphone on stuck sound says tap, and the tap makes the sound anew, so the test works again', async () => {
+  const k = await agentKit([[{ text: 'Hi.' }]], { voice: { playMs: 5, speechIn: ['m-hear'] } });
+  k.platform.micStuckMs = 20;
+  await assert.rejects(k.voice.listenOnce({ seconds: 1 }), (/** @type {any} */ e) => e.stuck === true && /Tap the screen/.test(e.message));
+  assert.equal(k.voice.stuck, true, 'marked where every stuck open is, whoever opened it');
+  k.platform.micStuckMs = 0;
+  await k.voice.unlock(); // the tap the advice asks for
+  assert.ok(k.platform.log.includes('unlock fresh'), 'the tap made the sound anew');
+  assert.equal(k.voice.stuck, false);
+  assert.equal(await k.voice.listenOnce({ seconds: 0.05 }), null, 'it listens again (nothing said)');
+  assert.ok(k.platform.log.includes('mic open'));
 });

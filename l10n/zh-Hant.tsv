@@ -514,17 +514,17 @@ vjxaph	ok	Your turn	輪到你了	src/core/agent/loop.js:2943
 1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → 模型 → 朗讀中沒有一個聲音能用；原因見記錄。她的話在對話裡。	src/core/agent/loop.js:3089	
 1r1dhd7	ok	Shiori can't hear you yet	Shiori 還聽不到你	src/core/agent/loop.js:3222	
 8wd0xv	ok	Listening stopped	收聽已停止	src/core/agent/loop.js:3423	
-43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:3628	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	每邊最多 # 畫素	src/core/agent/loop.js:3629	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一次最多#張照片	src/core/agent/loop.js:3630	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	僅限{0}	src/core/agent/loop.js:3631	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一張照片（它接受：{0}），annai 也無法做出它能接受的副本。請在設定 → 照片 → 傳給 Shiori 的照片中改用更小的照片，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:3632	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一張照片，annai 也無法做出它能接受的副本。請在設定 → 照片 → 傳給 Shiori 的照片中改用更小的照片，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:3633	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，對話對她的模型來說太長了。請在設定 → 模型中檢查模型，或稍後再試。	src/core/agent/loop.js:3640	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	外掛程式 {0} 喚醒她的次數超過了你允許的每小時#次。	src/core/agent/loop.js:3650	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情喚醒她的次數超過了你允許的每小時#次：{0}。	src/core/agent/loop.js:3651	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你新增的檔案喚醒她的次數超過了你允許的每小時#次：{0}。	src/core/agent/loop.js:3652	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	有東西喚醒她的次數超過了你允許的每小時#次。	src/core/agent/loop.js:3653	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:3643	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	每邊最多 # 畫素	src/core/agent/loop.js:3644	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一次最多#張照片	src/core/agent/loop.js:3645	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	僅限{0}	src/core/agent/loop.js:3646	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一張照片（它接受：{0}），annai 也無法做出它能接受的副本。請在設定 → 照片 → 傳給 Shiori 的照片中改用更小的照片，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:3647	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一張照片，annai 也無法做出它能接受的副本。請在設定 → 照片 → 傳給 Shiori 的照片中改用更小的照片，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:3648	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，對話對她的模型來說太長了。請在設定 → 模型中檢查模型，或稍後再試。	src/core/agent/loop.js:3655	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	外掛程式 {0} 喚醒她的次數超過了你允許的每小時#次。	src/core/agent/loop.js:3665	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情喚醒她的次數超過了你允許的每小時#次：{0}。	src/core/agent/loop.js:3666	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你新增的檔案喚醒她的次數超過了你允許的每小時#次：{0}。	src/core/agent/loop.js:3667	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	有東西喚醒她的次數超過了你允許的每小時#次。	src/core/agent/loop.js:3668	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	這則訊息含有金鑰，所以不顯示。	src/core/agent/net.js:94	
 157dl17	ok	Shiori wants to adjust her personality	Shiori 想調整她的性格	src/core/agent/personalities.js:130	
 13g1wjf	ok	No thanks	不用了	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
@@ -595,8 +595,8 @@ iwgrsx	ok	This calendar has more than {0} events. Export only the trip's dates f
 5l9pv6	ok	{0} is larger than a trip's calendar ever is (over {1}). Export only the trip's dates from your calendar, and add that file.	{0} 對一個旅行行事曆來說太大了（超過 {1}）。請只從行事曆中匯出旅行日期內的事件，再新增那個檔案。	src/core/imports.js:15	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:27	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Chinese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	ok	just now	剛剛	src/core/intl.js:130	
-1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	用手機揚聲器時，Shiori 說話期間 annai 聽不到你，所以你在她說話時說的話會被丟棄。點一下就能讓她停下並開始收聽。	src/core/koe/live.js:632	
-1ml2kgi	ok	Tap Shiori to talk over her	點一下 Shiori 即可打斷她	src/core/koe/live.js:632	Note: The dock's Shiori button: tap it to talk over her.
+1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	用手機揚聲器時，Shiori 說話期間 annai 聽不到你，所以你在她說話時說的話會被丟棄。點一下就能讓她停下並開始收聽。	src/core/koe/live.js:631	
+1ml2kgi	ok	Tap Shiori to talk over her	點一下 Shiori 即可打斷她	src/core/koe/live.js:631	Note: The dock's Shiori button: tap it to talk over her.
 3fqfy0	ok	Languages	語言	src/core/languages.js:332	
 1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你說的語言和 Shiori 回答所用的語言會告知每個負責聽和說的模型，以免把簡短的回覆誤認作其他語言。	src/core/languages.js:333	
 1giusr1	ok	Languages you speak	你說的語言	src/core/languages.js:334	
@@ -835,12 +835,12 @@ ido0tg	ok	The phone's push service says this subscription no longer exists.	手�
 1eeb6fm	ok	There's no annai push relay at {0} (it answered 404). Check the relay address.	{0} 上沒有 annai 推播中繼（傳回了 404）。請檢查中繼網址。	src/core/push/relay-client.js:41	{0} = host
 12gfn9	ok	The relay at {0} sent a key annai can't use. Is this the address of an annai push relay?	{0} 的中繼傳來了 annai 無法使用的金鑰。這是 annai 推播中繼的網址嗎？	src/core/push/relay-client.js:42	{0} = host
 n5y19n	ok	The relay at {0} refused it ({1}).	{0} 的中繼拒絕了請求（{1}）。	src/core/push/relay-client.js:43	{0} = host; {1} = status
-3hb2ch	ok	The key works.	金鑰有效。	src/core/realtime/open.js:268	
-r6odk7	ok	annai can open a live session at this address from the browser.	annai 可以從瀏覽器在這個網址開啟即時連線。	src/core/realtime/open.js:268	Note: a live session is 即時連線; 會話 reads as a spoken conversation in Taiwan.
-1gyqcn2	ok	It answered aloud: {0}.	它出聲回答了：{0}。	src/core/realtime/open.js:299	{0} = words
-ip7w4y#other	ok	It didn't answer aloud within # seconds.	沒有在 # 秒內用聲音回答。	src/core/realtime/open.js:299	plural; # = ms / 1000; English: "It didn't answer aloud within # second." (one), "It didn't answer aloud within # seconds." (other)
-1x3q9c3	ok	The session closed before it answered.	回答前連線就關閉了。	src/core/realtime/open.js:300	Note: a live session is 即時連線; 會話 reads as a spoken conversation in Taiwan.
-9sqs1k	ok	It answered, but not aloud in words.	它回答了，但沒有用聲音說出話來。	src/core/realtime/open.js:300	
+3hb2ch	ok	The key works.	金鑰有效。	src/core/realtime/open.js:270	
+r6odk7	ok	annai can open a live session at this address from the browser.	annai 可以從瀏覽器在這個網址開啟即時連線。	src/core/realtime/open.js:270	Note: a live session is 即時連線; 會話 reads as a spoken conversation in Taiwan.
+1gyqcn2	ok	It answered aloud: {0}.	它出聲回答了：{0}。	src/core/realtime/open.js:301	{0} = words
+ip7w4y#other	ok	It didn't answer aloud within # seconds.	沒有在 # 秒內用聲音回答。	src/core/realtime/open.js:301	plural; # = ms / 1000; English: "It didn't answer aloud within # second." (one), "It didn't answer aloud within # seconds." (other)
+1x3q9c3	ok	The session closed before it answered.	回答前連線就關閉了。	src/core/realtime/open.js:302	Note: a live session is 即時連線; 會話 reads as a spoken conversation in Taiwan.
+9sqs1k	ok	It answered, but not aloud in words.	它回答了，但沒有用聲音說出話來。	src/core/realtime/open.js:302	
 ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.	annai 自己的外掛程式使用這個名稱，所以來自別處的套件不能使用它。請讓作者改名。	src/core/registry.js:16	Note: "Ask its author" is asking a person (請讓作者…), not the phones' permission choice Ask (詢問).
 1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	annai 自己的外掛程式使用這個名稱，但已安裝的那個來自別處，所以 annai 不會使用它。請在設定 → 外掛程式中移除它，然後再試一次。	src/core/registry.js:17	Note: Remove → 移除, as annai's Remove buttons say.
 oabrye	ok	Turn it on in Settings → Plugins, then try again.	請在設定 → 外掛程式中把它開啟，然後再試一次。	src/core/registry.js:18	
@@ -893,9 +893,9 @@ xi9ch6	ok	Shiori can't hear you: the speech-in list is empty. Add an entry in Se
 1oy92m8	ok	This browser has no phone dictation either.	這個瀏覽器也沒有手機語音輸入。	src/core/voice/resolve.js:163	
 l80ifa	ok	Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	請在設定 → 模型中新增一個語音轉文字模型（如 OpenAI 或 Groq），或一個接受音訊的主要模型。	src/core/voice/resolve.js:163	
 m5s9f4	ok	This browser can't play a voice as it arrives.	這個瀏覽器無法邊接收邊播放聲音。	src/core/voice/speaker.js:128	
-jo5o9d	ok	This browser can't play sound here.	這個瀏覽器無法在這裡播放聲音。	src/core/voice/voice.js:419	
-ocv5zw	ok	This browser can't use the microphone here.	這個瀏覽器無法在這裡使用麥克風。	src/core/voice/voice.js:462	
-55949q	draft	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	聲音卡住了，annai 聽不到你說話。點一下螢幕即可恢復。	src/core/voice/voice.js:786	
+jo5o9d	ok	This browser can't play sound here.	這個瀏覽器無法在這裡播放聲音。	src/core/voice/voice.js:425	
+ocv5zw	ok	This browser can't use the microphone here.	這個瀏覽器無法在這裡使用麥克風。	src/core/voice/voice.js:468	
+55949q	draft	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	聲音卡住了，annai 聽不到你說話。點一下螢幕即可恢復。	src/core/voice/voice.js:790	
 pib2vo	ok	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	由瀏覽器自帶的語音服務來聽：在 Android 上通常是 Google 的伺服器，在 iPhone 上是 Apple 的（有時就在手機上）。這個請求不是 annai 送出的，所以記錄裡看不到。	src/core/voice/where.js:15	
 m93xm3	ok	On this phone only: the browser recognizes your speech on the device.	僅在這部手機上：瀏覽器在裝置上辨識你的語音。	src/core/voice/where.js:16	
 1m5zm0a	ok	Phone dictation	手機語音輸入	src/core/voice/where.js:18	
@@ -956,10 +956,10 @@ gec6zp	ok	Built-in skills	內建技能	src/plugins/skills/index.js:15
 1t0u9tp	ok	Shiori's own skills: the driving companion, replanning, and planning a trip.	Shiori 自己的技能：駕駛陪伴、重新規劃和規劃旅行。	src/plugins/skills/index.js:18	
 fsfyxb	ok	The phone's speaker, microphone, voice and dictation.	手機的揚聲器、麥克風、聲音和語音輸入。	src/plugins/voice-browser/index.js:65	
 wp5yx4	ok	Voice on this device	本裝置上的語音	src/plugins/voice-browser/index.js:65	Note: Voice as the Voice screen is named (音聲 / 語音).
-elkw42	ok	The voice's audio couldn't be played.	無法播放這個聲音的音訊。	src/plugins/voice-browser/index.js:529	Note: The voice is a Speech out voice (聲音).
-9gdjo3	ok	The browser voice couldn't speak ({0}).	瀏覽器聲音無法朗讀（{0}）。	src/plugins/voice-browser/index.js:588	{0} = e.error; Note: {0} is the browser's error code, such as synthesis-failed.
-1mrk9hl	ok	The microphone stopped.	麥克風已停止。	src/plugins/voice-browser/index.js:655	
-1l4zitw	ok	Phone dictation stopped ({0}).	手機語音輸入已停止（{0}）。	src/plugins/voice-browser/index.js:761	{0} = e.error; Note: Phone dictation as its row in Settings → Voice says (端末の音聲入力 / 手機語音輸入); {0} is the browser's error code, such as network.
+elkw42	ok	The voice's audio couldn't be played.	無法播放這個聲音的音訊。	src/plugins/voice-browser/index.js:526	Note: The voice is a Speech out voice (聲音).
+9gdjo3	ok	The browser voice couldn't speak ({0}).	瀏覽器聲音無法朗讀（{0}）。	src/plugins/voice-browser/index.js:585	{0} = e.error; Note: {0} is the browser's error code, such as synthesis-failed.
+1mrk9hl	ok	The microphone stopped.	麥克風已停止。	src/plugins/voice-browser/index.js:650	
+1l4zitw	ok	Phone dictation stopped ({0}).	手機語音輸入已停止（{0}）。	src/plugins/voice-browser/index.js:755	{0} = e.error; Note: Phone dictation as its row in Settings → Voice says (端末の音聲入力 / 手機語音輸入); {0} is the browser's error code, such as network.
 1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia 和 Nominatim	src/plugins/web/free.js:118	
 scnz2y	ok	Web tools	網頁工具	src/plugins/web/index.js:12	Note: Web as its tool group is named in Settings → Tools (Web / 網頁).
 eob60g	ok	fetch reads any web page, through Jina Reader or Exa when a site doesn't let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.	fetch 讀取任何網頁，遇到不允許網頁應用程式讀取的網站時透過 Jina Reader 或 Exa 讀取；web_search 用搜尋供應商搜尋，順序由設定 → 工具決定：先用免費的。	src/plugins/web/index.js:15	

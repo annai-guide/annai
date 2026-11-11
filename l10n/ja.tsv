@@ -514,17 +514,17 @@ vjxaph	ok	Your turn	あなたの番	src/core/agent/loop.js:2943
 1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → モデル → 読み上げのどの声も使えませんでした。理由は記録にあります。Shiori の言葉は会話にあります。	src/core/agent/loop.js:3089	
 1r1dhd7	ok	Shiori can't hear you yet	Shiori にはまだあなたの声が聞こえません	src/core/agent/loop.js:3222	
 8wd0xv	ok	Listening stopped	聞き取りが止まりました	src/core/agent/loop.js:3423	
-43klog	ok	at most {0} MB	最大 {0} MB	src/core/agent/loop.js:3628	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	一辺 # ピクセルまで	src/core/agent/loop.js:3629	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一度に#枚まで	src/core/agent/loop.js:3630	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	{0}のみ	src/core/agent/loop.js:3631	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず（受け付けるのは{0}）、annai は受け付けられるコピーを作れませんでした。設定 → 写真 → Shiori に送る写真で写真を小さくするか、設定 → モデルで別のモデルを試してください。	src/core/agent/loop.js:3632	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず、annai は受け付けられるコピーを作れませんでした。設定 → 写真 → Shiori に送る写真で写真を小さくするか、設定 → モデルで別のモデルを試してください。	src/core/agent/loop.js:3633	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	整理するまで、会話は Shiori のモデルには長すぎます。設定 → モデルでモデルを確認するか、あとでもう一度試してください。	src/core/agent/loop.js:3640	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	プラグイン {0} が、許可した1時間あたり#回を超えて Shiori を起動しようとしました。	src/core/agent/loop.js:3650	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	リマインダーか見守っていたことが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3651	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	追加されたファイルが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3652	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	何かが、許可した1時間あたり#回を超えて Shiori を起動しようとしました。	src/core/agent/loop.js:3653	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+43klog	ok	at most {0} MB	最大 {0} MB	src/core/agent/loop.js:3643	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	一辺 # ピクセルまで	src/core/agent/loop.js:3644	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一度に#枚まで	src/core/agent/loop.js:3645	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	{0}のみ	src/core/agent/loop.js:3646	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず（受け付けるのは{0}）、annai は受け付けられるコピーを作れませんでした。設定 → 写真 → Shiori に送る写真で写真を小さくするか、設定 → モデルで別のモデルを試してください。	src/core/agent/loop.js:3647	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず、annai は受け付けられるコピーを作れませんでした。設定 → 写真 → Shiori に送る写真で写真を小さくするか、設定 → モデルで別のモデルを試してください。	src/core/agent/loop.js:3648	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	整理するまで、会話は Shiori のモデルには長すぎます。設定 → モデルでモデルを確認するか、あとでもう一度試してください。	src/core/agent/loop.js:3655	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	プラグイン {0} が、許可した1時間あたり#回を超えて Shiori を起動しようとしました。	src/core/agent/loop.js:3665	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	リマインダーか見守っていたことが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3666	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	追加されたファイルが、許可した1時間あたり#回を超えて Shiori を起動しようとしました：{0}。	src/core/agent/loop.js:3667	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	何かが、許可した1時間あたり#回を超えて Shiori を起動しようとしました。	src/core/agent/loop.js:3668	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	メッセージにキーが含まれていたため、表示しません。	src/core/agent/net.js:94	
 157dl17	ok	Shiori wants to adjust her personality	Shiori が性格を調整したがっています	src/core/agent/personalities.js:130	
 13g1wjf	ok	No thanks	やめておく	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
@@ -595,8 +595,8 @@ iwgrsx	ok	This calendar has more than {0} events. Export only the trip's dates f
 5l9pv6	ok	{0} is larger than a trip's calendar ever is (over {1}). Export only the trip's dates from your calendar, and add that file.	{0} は旅のカレンダーとしては大きすぎます（{1}超）。カレンダーから旅の日付の分だけをエクスポートして、そのファイルを追加してください。	src/core/imports.js:15	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:27	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Japanese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	ok	just now	たった今	src/core/intl.js:130	
-1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	スマートフォンのスピーカーでは、Shiori が話している間は annai にあなたの声が聞こえないため、重ねて話したことは使われません。タップすると Shiori が止まり、聞き取りを始めます。	src/core/koe/live.js:632	
-1ml2kgi	ok	Tap Shiori to talk over her	Shiori をタップして話をさえぎる	src/core/koe/live.js:632	Note: names what to tap (the dock's Shiori), as the English does.
+1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	スマートフォンのスピーカーでは、Shiori が話している間は annai にあなたの声が聞こえないため、重ねて話したことは使われません。タップすると Shiori が止まり、聞き取りを始めます。	src/core/koe/live.js:631	
+1ml2kgi	ok	Tap Shiori to talk over her	Shiori をタップして話をさえぎる	src/core/koe/live.js:631	Note: names what to tap (the dock's Shiori), as the English does.
 3fqfy0	ok	Languages	言語	src/core/languages.js:332	
 1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	話す言語と Shiori が答える言語は、聞き取りや読み上げをするすべてのモデルに伝えます。短い返事を別の言語と取り違えないためです。	src/core/languages.js:333	Note: "Hears or speaks" as the glossary's 聞き取り / 読み上げ (Speech in, Speech out).
 1giusr1	ok	Languages you speak	話す言語	src/core/languages.js:334	
@@ -835,12 +835,12 @@ ido0tg	ok	The phone's push service says this subscription no longer exists.	端�
 1eeb6fm	ok	There's no annai push relay at {0} (it answered 404). Check the relay address.	{0} に annai のプッシュ中継はありません（404 と応答しました）。中継のアドレスを確認してください。	src/core/push/relay-client.js:41	{0} = host
 12gfn9	ok	The relay at {0} sent a key annai can't use. Is this the address of an annai push relay?	{0} の中継から、annai が使えないキーが届きました。annai のプッシュ中継のアドレスで合っていますか？	src/core/push/relay-client.js:42	{0} = host
 n5y19n	ok	The relay at {0} refused it ({1}).	{0} の中継に断られました（{1}）。	src/core/push/relay-client.js:43	{0} = host; {1} = status
-3hb2ch	ok	The key works.	キーは有効です。	src/core/realtime/open.js:268	
-r6odk7	ok	annai can open a live session at this address from the browser.	annai はブラウザからこのアドレスでライブセッションを開けます。	src/core/realtime/open.js:268	
-1gyqcn2	ok	It answered aloud: {0}.	声で答えました：{0}。	src/core/realtime/open.js:299	{0} = words
-ip7w4y#other	ok	It didn't answer aloud within # seconds.	#秒以内に声で答えませんでした。	src/core/realtime/open.js:299	plural; # = ms / 1000; English: "It didn't answer aloud within # second." (one), "It didn't answer aloud within # seconds." (other)
-1x3q9c3	ok	The session closed before it answered.	答える前にセッションが閉じました。	src/core/realtime/open.js:300	
-9sqs1k	ok	It answered, but not aloud in words.	答えましたが、声に出した言葉ではありませんでした。	src/core/realtime/open.js:300	Note: It answered, but not in spoken words (text, or sound with no words).
+3hb2ch	ok	The key works.	キーは有効です。	src/core/realtime/open.js:270	
+r6odk7	ok	annai can open a live session at this address from the browser.	annai はブラウザからこのアドレスでライブセッションを開けます。	src/core/realtime/open.js:270	
+1gyqcn2	ok	It answered aloud: {0}.	声で答えました：{0}。	src/core/realtime/open.js:301	{0} = words
+ip7w4y#other	ok	It didn't answer aloud within # seconds.	#秒以内に声で答えませんでした。	src/core/realtime/open.js:301	plural; # = ms / 1000; English: "It didn't answer aloud within # second." (one), "It didn't answer aloud within # seconds." (other)
+1x3q9c3	ok	The session closed before it answered.	答える前にセッションが閉じました。	src/core/realtime/open.js:302	
+9sqs1k	ok	It answered, but not aloud in words.	答えましたが、声に出した言葉ではありませんでした。	src/core/realtime/open.js:302	Note: It answered, but not in spoken words (text, or sound with no words).
 ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.	annai 自身のプラグインがこの名前を使っているため、ほかから来たパッケージには使えません。作者に名前を変えるよう頼んでください。	src/core/registry.js:16	Note: "Ask its author" is asking a person (頼む), not the phones' permission choice Ask (確認).
 1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	annai 自身のプラグインがこの名前を使っていますが、インストールされているものはほかから来たため、annai は使いません。設定 → プラグインで削除してから、もう一度試してください。	src/core/registry.js:17	
 oabrye	ok	Turn it on in Settings → Plugins, then try again.	設定 → プラグインでオンにしてから、もう一度試してください。	src/core/registry.js:18	
@@ -893,9 +893,9 @@ xi9ch6	ok	Shiori can't hear you: the speech-in list is empty. Add an entry in Se
 1oy92m8	ok	This browser has no phone dictation either.	このブラウザには端末の音声入力もありません。	src/core/voice/resolve.js:163	
 l80ifa	ok	Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	設定 → モデルで、OpenAI や Groq などの文字起こしのモデルか、音声を受け付けるメインのモデルを追加してください。	src/core/voice/resolve.js:163	
 m5s9f4	ok	This browser can't play a voice as it arrives.	このブラウザでは、届くそばから声を再生できません。	src/core/voice/speaker.js:128	
-jo5o9d	ok	This browser can't play sound here.	このブラウザでは、ここで音を鳴らせません。	src/core/voice/voice.js:419	
-ocv5zw	ok	This browser can't use the microphone here.	このブラウザでは、ここでマイクを使えません。	src/core/voice/voice.js:462	
-55949q	draft	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	音声が止まってしまったため、annai にあなたの声が聞こえません。画面をタップすると戻ります。	src/core/voice/voice.js:786	
+jo5o9d	ok	This browser can't play sound here.	このブラウザでは、ここで音を鳴らせません。	src/core/voice/voice.js:425	
+ocv5zw	ok	This browser can't use the microphone here.	このブラウザでは、ここでマイクを使えません。	src/core/voice/voice.js:468	
+55949q	draft	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	音声が止まってしまったため、annai にあなたの声が聞こえません。画面をタップすると戻ります。	src/core/voice/voice.js:790	
 pib2vo	ok	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	ブラウザ自身の音声サービスが聞き取ります。Android では多くの場合 Google のサーバー、iPhone では Apple のサーバーです（端末上で処理されることもあります）。このリクエストは annai が送るものではないため、記録には表示されません。	src/core/voice/where.js:15	
 m93xm3	ok	On this phone only: the browser recognizes your speech on the device.	この端末上だけ：ブラウザが端末上で音声を認識します。	src/core/voice/where.js:16	
 1m5zm0a	ok	Phone dictation	端末の音声入力	src/core/voice/where.js:18	
@@ -956,10 +956,10 @@ gec6zp	ok	Built-in skills	内蔵スキル	src/plugins/skills/index.js:15
 1t0u9tp	ok	Shiori's own skills: the driving companion, replanning, and planning a trip.	Shiori 自身のスキル：運転のお供、予定の組み直し、旅の計画。	src/plugins/skills/index.js:18	
 fsfyxb	ok	The phone's speaker, microphone, voice and dictation.	端末のスピーカー、マイク、声、音声入力。	src/plugins/voice-browser/index.js:65	
 wp5yx4	ok	Voice on this device	この端末の音声	src/plugins/voice-browser/index.js:65	Note: Voice as the Voice screen is named (音声 / 语音).
-elkw42	ok	The voice's audio couldn't be played.	読み上げの音声を再生できませんでした。	src/plugins/voice-browser/index.js:529	Note: The voice is a Speech out voice: the glossary's 読み上げ / 朗读.
-9gdjo3	ok	The browser voice couldn't speak ({0}).	ブラウザの声で読み上げられませんでした（{0}）。	src/plugins/voice-browser/index.js:588	{0} = e.error; Note: {0} is the browser's error code, such as synthesis-failed.
-1mrk9hl	ok	The microphone stopped.	マイクが停止しました。	src/plugins/voice-browser/index.js:655	
-1l4zitw	ok	Phone dictation stopped ({0}).	端末の音声入力が停止しました（{0}）。	src/plugins/voice-browser/index.js:761	{0} = e.error; Note: Phone dictation as its row in Settings → Voice says (端末の音声入力 / 手机语音输入); {0} is the browser's error code, such as network.
+elkw42	ok	The voice's audio couldn't be played.	読み上げの音声を再生できませんでした。	src/plugins/voice-browser/index.js:526	Note: The voice is a Speech out voice: the glossary's 読み上げ / 朗读.
+9gdjo3	ok	The browser voice couldn't speak ({0}).	ブラウザの声で読み上げられませんでした（{0}）。	src/plugins/voice-browser/index.js:585	{0} = e.error; Note: {0} is the browser's error code, such as synthesis-failed.
+1mrk9hl	ok	The microphone stopped.	マイクが停止しました。	src/plugins/voice-browser/index.js:650	
+1l4zitw	ok	Phone dictation stopped ({0}).	端末の音声入力が停止しました（{0}）。	src/plugins/voice-browser/index.js:755	{0} = e.error; Note: Phone dictation as its row in Settings → Voice says (端末の音声入力 / 手机语音输入); {0} is the browser's error code, such as network.
 1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia、Nominatim	src/plugins/web/free.js:118	
 scnz2y	ok	Web tools	Web ツール	src/plugins/web/index.js:12	Note: Web as its tool group is named in Settings → Tools (Web / 网页).
 eob60g	ok	fetch reads any web page, through Jina Reader or Exa when a site doesn't let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.	fetch は Web ページを読みます。サイトが Web アプリからの読み込みを許可しないときは、Jina Reader か Exa を通します。web_search は検索プロバイダーで検索します。順番は設定 → ツールで決まり、最初は無料のものです。	src/plugins/web/index.js:15	

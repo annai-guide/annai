@@ -80,18 +80,16 @@ export function activate(annai) {
  * @typedef {import('../../core/voice/platform.js').Played} Played
  */
 
-/** How long the player worklet's module may take to load, and how many times it is tried on a context. */
-const PLAYER_LOAD_MS = 1500;
+/** How long a worklet's module (the player's, the microphone's: small files of annai's own) may take to load before it counts as hung, and how many times the player's is tried on a context. */
+const MODULE_LOAD_MS = 1500;
 const PLAYER_TRIES = 3;
 /** A player that tells nothing this long, or whose clock stands still, has stalled (a context suspended, the audio thread gone). */
 const STALL_MS = 1000;
 /** How long the microphone waits for a suspended context to run: its resume() may take over a second and work, or never settle (WebKit 281566). */
 const RESUME_MS = 3000;
 /**
- * The capture worklet that hasn't run process() this long after it was connected sits on an audio thread that isn't running, whatever
- * the context's state says (an iPhone's has read "running" while giving nothing). It is STALL_MS, the bound this file already uses to call
- * the same thread stalled: a live thread runs process() every few ms and posts a batch every 43 ms. Not measured on a phone: the
- * Trace's voice.mic line (firstFrameMs) measures it, and the number is set again if healthy opens come near it.
+ * A capture worklet that hasn't posted this long after it was connected has a dead audio thread, whatever the context's state says. It is STALL_MS,
+ * this file's bound for the same thread stalled (a live one posts every 43 ms). Not measured on a phone: voice.mic's firstFrameMs is.
  */
 const FIRST_FRAME_MS = STALL_MS;
 
@@ -333,11 +331,7 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
   /** @type {Promise<boolean> | null} */
   let playerModule = null;
   let playerTries = 0;
-  /**
-   * The context c is let go, with the worklet modules loaded on it, and the next use makes a new one: sound got stuck (unlock's fresh), or
-   * the microphone's audio thread never ran (mic.open). Only while c is still the one in use: one already renewed meanwhile stays.
-   * @param {AudioContext} c
-   */
+  /** Lets go of context c and its modules, so the next use makes a new one; only while c is the one in use. @param {AudioContext} c */
   const renew = (c) => {
     if (ctx !== c) return;
     c.close().catch(() => {});
@@ -346,14 +340,12 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
     playerModule = null;
     playerTries = 0;
   };
-  /** Each microphone open's outcome, for the Trace (mic.onOpen). @type {Set<(m: { firstFrameMs: number | null, renewed: boolean }) => void>} */
-  const opens = new Set();
+  /** Hears each microphone open's outcome (mic.onOpen). @type {((m: import('../../core/voice/platform.js').MicOpened) => void) | null} */
+  let opened = null;
   const stuck = () => Object.assign(new Error(t`Sound got stuck, so annai can't hear you. Tap the screen to bring it back.`), { stuck: true });
   /**
-   * The capture worklet on context c, fed by the stream: once c runs (a suspended one gets RESUME_MS, else the error is `stuck`), its module
-   * is in and it is connected, it waits for the worklet's first post, at most FIRST_FRAME_MS. A healthy open waits only for that post.
-   * firstFrameMs: how long the post took after connecting, null when it never came. letGo: its nodes, let go.
-   * @param {AudioContext} c @param {MediaStream} stream @param {(pcm: Float32Array, sampleRate: number) => void} onFrames
+   * The capture worklet on c, fed by the stream, once c runs (RESUME_MS) and its module is in (MODULE_LOAD_MS; else `stuck`); then its first post,
+   * at most FIRST_FRAME_MS after connecting (firstFrameMs; null: none). @param {AudioContext} c @param {MediaStream} stream @param {(pcm: Float32Array, sampleRate: number) => void} onFrames
    */
   const capture = async (c, stream, onFrames) => {
     const running = () => c.state === 'running';
@@ -363,12 +355,17 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
     }
     if (!running()) throw stuck();
     playerReady();
-    worklet ??= c.audioWorklet.addModule(new URL('./capture-worklet.js', import.meta.url).href);
+    // A load that failed or hung is let go: the next open loads it again.
+    const loading = (worklet ??= c.audioWorklet.addModule(new URL('./capture-worklet.js', import.meta.url).href));
+    /** @type {any} */
+    let late;
     try {
-      await worklet;
+      if (!(await Promise.race([loading.then(() => true), new Promise((r) => { late = setTimeout(() => r(false), MODULE_LOAD_MS); })]))) throw stuck();
     } catch (e) {
-      worklet = null;
+      if (worklet === loading) worklet = null;
       throw e;
+    } finally {
+      clearTimeout(late);
     }
     const source = c.createMediaStreamSource(stream);
     const node = new AudioWorkletNode(c, 'annai-capture');
@@ -396,7 +393,7 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
   };
   /**
    * The player worklet's module on the context, loaded at a tap or as the microphone opens: whether it is in, within
-   * PLAYER_LOAD_MS (a stream meanwhile plays on buffers). A load that failed or hung is tried again by the next stream, PLAYER_TRIES
+   * MODULE_LOAD_MS (a stream meanwhile plays on buffers). A load that failed or hung is tried again by the next stream, PLAYER_TRIES
    * times in all.
    */
   const playerReady = () => {
@@ -405,7 +402,7 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
       const loading = context().audioWorklet.addModule(new URL('./player-worklet.js', import.meta.url).href).then(() => true, () => false);
       /** @type {any} */
       let timer;
-      const late = new Promise((r) => { timer = setTimeout(() => r(false), PLAYER_LOAD_MS); });
+      const late = new Promise((r) => { timer = setTimeout(() => r(false), MODULE_LOAD_MS); });
       const mine = (playerModule = Promise.race([loading, late]));
       mine.then((ok) => {
         clearTimeout(timer);
@@ -502,7 +499,7 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
           return bufferStream(c, { rate, onLevel, running });
         }), running);
       },
-      // state and time (its clock, in s): a dead context whose state reads "running" has a clock that stands still (not verified on a phone).
+      // state and time (its clock, s): a dead context's clock stands still (not verified on a phone).
       output: () => (ctx ? { sampleRate: ctx.sampleRate, baseLatency: ctx.baseLatency, outputLatency: ctx.outputLatency, state: ctx.state, time: Math.round(ctx.currentTime * 1000) / 1000 } : null),
       plays: () => CODEC_ORDER.flat().filter((f) => f !== 'opus' && player().canPlayType(mediaTypeOf(f) + (PARAMS[f] ?? '')) !== ''),
       async play(clip, { signal, onLevel = () => {} }) {
@@ -630,17 +627,15 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
         return t ? { label: t.label ?? '', deviceId: t.getSettings?.().deviceId ?? '' } : null;
       },
       onOpen(fn) {
-        opens.add(fn);
-        return () => { opens.delete(fn); };
+        opened = fn;
       },
       async open({ onFrames, onError, record }) {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
-        /** What this open came to, told once it is known, opened or not. */
-        const told = { firstFrameMs: /** @type {number | null} */ (null), renewed: false };
+        const told = { firstFrameMs: /** @type {number | null} */ (null), renewed: false, stuck: false };
         try {
           let wired = await capture(context(), stream, onFrames);
           if (wired.firstFrameMs === null) {
-            // Its audio thread never ran: the context is made anew once, in place, as a tap's would be, on the same stream.
+            // Its audio thread never ran: the context is made anew once, in place, on the same stream.
             wired.letGo();
             renew(wired.c);
             told.renewed = true;
@@ -708,15 +703,14 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
             },
           };
         } catch (e) {
+          told.stuck = Boolean(/** @type {any} */ (e)?.stuck);
           for (const t of stream.getTracks()) t.stop();
           throw e;
         } finally {
-          for (const fn of opens) {
-            try {
-              fn({ ...told });
-            } catch {
-              // a listener's failure is not the microphone's
-            }
+          try {
+            opened?.({ ...told });
+          } catch {
+            // a listener's failure is not the microphone's
           }
         }
       },
