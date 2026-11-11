@@ -704,6 +704,20 @@ test("killed while her line played, with more to do in its reply (a second line,
   }
 });
 
+test("killed while she said a reminder's line, a turn annai started: opening again takes it up, with what annai knows of the cut, so she says it then (the real-model run's B, the kill case)", async (t) => {
+  useClock(t);
+  const k = await agentKit([[say('Time to go to the ferry.')]], { open: false });
+  await record(k.store, k.trip, { type: 'wake', actor: 'system', data: { id: 'w-0', reasons: [{ kind: 'trigger', text: 'Your watch fired. Its reminder: "Leave for the ferry at 5."' }] } });
+  await modelTrace(k.store, k.trip).turn({ role: 'main', level: 'medium', answeredBy: 'A', attempts: [], usage: {}, cost: 0, tag: TALK_TAG, wake: 'w-0' }, '', '',
+    [{ type: 'tool_call', id: 's1', name: 'speak', input: { text: 'Time to go to the ferry.' } }, { type: 'tool_call', id: 'z1', name: 'sleep', input: {} }]);
+  await record(k.store, k.trip, { type: 'out.speak', actor: 'shiori', data: { id: 's1', voice: true, wake: 'w-0' }, texts: [['text', 'Time to go to the ferry.']] });
+  await k.agent.open(k.trip);
+  await k.agent.idle();
+  assert.equal(k.requests.length, 1, 'taken up');
+  assert.match(userTexts(k.requests[0]), /interrupted by app restart/);
+  assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Time to go to the ferry.', 'Time to go to the ferry.']);
+});
+
 test('killed after her tool calls came back, before her next reply: opening the conversation takes the turn up (emulator pass m2b #21)', async (t) => {
   useClock(t);
   const k = await agentKit([[say('Vegetarian: Nepenthe has options.')]], { open: false });
@@ -1080,7 +1094,7 @@ test("a turn cut by opening another conversation while a tool of hers runs is ta
   }
 });
 
-test("a cut, by what the turn was: one waiting on the user, or that annai started and the user didn't answer, is let go (no line, nothing on return, words that say so); one the user started or answered, at work, is picked up; a reminder it owed shows once, at the cut (the user's S6 and D9; the re-review 3's F4 to F7)", async (t) => {
+test("a cut, by what the turn was: one waiting on the user, or that annai started and the user didn't answer, is let go (no line, nothing on return, words that say so); one the user started or answered, at work, is picked up; a reminder it owed shows once, at the cut, and a line cut while she said it owes what it carried (the user's S6 and D9; the re-review 3's F4 to F7; the real-model run's B)", async (t) => {
   useClock(t);
   const NOT_ANSWERED = 'Not answered: the user opened another conversation; what they say next may answer it.';
   const LET_GO = "Let go: the user opened another conversation; don't take it up unless they ask.";
@@ -1108,6 +1122,10 @@ test("a cut, by what the turn was: one waiting on the user, or that annai starte
     ["a reminder joining the user's turn at work (N3)", { script: [{ toolCalls: [linger(1000)] }, { toolCalls: [linger()] }], drive: async (k) => { k.agent.send('When is check-in?'); await until(() => lingers === 1); k.agent.wake(reminder); await until(() => lingers === 2); }, picked: true, running: 'linger', words: CUT, reminder: 'Leave for the ferry at 5.' }],
     ["a reminder queued behind the user's turn at work (N3b)", { script: [{ toolCalls: [linger()] }], drive: async (k) => { k.agent.send('When is check-in?'); await until(() => lingers === 1); k.agent.wake(reminder); await new Promise((r) => setTimeout(r, 20)); }, picked: true, running: 'linger', words: CUT, reminder: 'Leave for the ferry at 5.' }],
     ["the user's Stop while her turn still gathers their line, a reminder with it", { script: [], drive: async (k) => { k.agent.typing(true); k.agent.send('When is check-in?'); k.agent.wake(reminder); await new Promise((r) => setTimeout(r, 20)); }, cut: 'stop', picked: false, running: 'none', reminder: 'Leave for the ferry at 5.' }],
+    ['a reminder firing, she says it, an open cuts the line (B)', { script: [{ toolCalls: [{ name: 'speak', input: { text: 'Time to go to the ferry.' } }, { name: 'sleep', input: {} }] }], voice: { playMs: 60_000 }, drive: async (k) => { k.agent.wake(reminder); await until(() => k.said.includes('Time to go to the ferry.')); }, picked: false, running: 'speak', words: NOT_ANSWERED, reminder: 'Leave for the ferry at 5.' }],
+    ['a reminder firing, she asks about it aloud, an open cuts the question (B)', { script: [{ toolCalls: [{ name: 'ask', input: { question: 'Time to go: shall I find a taxi?', options: ['Yes', 'No'] } }] }], voice: { playMs: 60_000 }, drive: async (k) => { k.agent.wake(reminder); await until(() => k.said.includes('Time to go: shall I find a taxi?')); }, picked: false, running: 'ask', words: NOT_ANSWERED, reminder: 'Leave for the ferry at 5.' }],
+    ["a reminder firing, she says it, the user's Stop cuts the line (B)", { script: [{ toolCalls: [{ name: 'speak', input: { text: 'Time to go to the ferry.' } }, { name: 'sleep', input: {} }] }], voice: { playMs: 60_000 }, drive: async (k) => { k.agent.wake(reminder); await until(() => k.said.includes('Time to go to the ferry.')); }, cut: 'stop', picked: false, running: 'speak', words: 'Stopped by the user.', reminder: 'Leave for the ferry at 5.', silent: true }],
+    ['a reminder firing, she says it to the end, an open while she listens (B)', { script: [{ toolCalls: [{ name: 'speak', input: { text: 'Time to go to the ferry.' } }] }], voice: {}, drive: async (k) => { k.agent.wake(reminder); await until(() => k.agent.pendingId); }, picked: false, running: 'speak', words: NOT_ANSWERED }],
     ["the user's Stop on a reminder's turn before she said it (N4)", { script: [{ toolCalls: [linger()] }], voice: {}, drive: async (k) => { k.agent.wake(reminder); await until(() => lingers === 1); }, cut: 'stop', picked: false, running: 'linger', words: 'Stopped by the user.', reminder: 'Leave for the ferry at 5.', silent: true }],
   ];
   let lingers = 0;
@@ -1140,7 +1158,10 @@ test("a cut, by what the turn was: one waiting on the user, or that annai starte
     const filed = async () => (await eventsIn(k, A, ['reminder'])).map((/** @type {any} */ e) => e.data.text);
     eq(await filed(), r.reminder ? [r.reminder] : [], `${row}: a reminder it owed, filed`);
     eq(shown(), r.reminder ? 1 : 0, `${row}: its card`);
-    if (r.reminder && r.voice) eq(k.said.includes(r.reminder), !r.silent, `${row}: said aloud, or silent after a Stop`);
+    if (r.reminder && r.voice) {
+      await new Promise((res) => setTimeout(res, 300)); // after the line the cut stopped
+      eq(k.said.includes(r.reminder), !r.silent, `${row}: said aloud, or silent after a Stop`);
+    }
     const before = k.requests.length;
     if (r.cut === 'stop') await k.agent.open(B);
     await k.agent.open(A);
@@ -1148,6 +1169,12 @@ test("a cut, by what the turn was: one waiting on the user, or that annai starte
     eq(k.requests.length - before, r.picked ? 1 : 0, `${row}: taken up on return`);
     eq(await filed(), r.reminder ? [r.reminder] : [], `${row}: the reminder shown once`);
     eq(shown(), r.reminder ? 1 : 0, `${row}: one card`);
+    // Her next turn, on something else: it reads the card as shown, and owes it no more.
+    k.agent.send('Is the museum open?');
+    await k.agent.idle();
+    if (r.reminder) eq(/\[annai\] Shown( and said aloud)? by annai itself/.test(userTexts(k.requests.at(-1))), true, `${row}: her next turn knows it was shown`);
+    eq(await filed(), r.reminder ? [r.reminder] : [], `${row}: not shown again after her next turn`);
+    eq(shown(), r.reminder ? 1 : 0, `${row}: still one card`);
   }
   assert.deepEqual(failed, []);
 });

@@ -463,8 +463,13 @@ export class Agent {
   /** The turn was started by annai alone (#steps), and no line or act of the user's was written during it (#log). */
   #annais = false;
   #userIn = false;
-  /** Counts what of hers reached the user (speak, show, ask, a reply shown as written; never annai's own card): what was owed before it is settled. */
+  /**
+   * Counts what of hers reached the user (speak, show, ask, a reply shown as written; never annai's own card): what was owed before it is settled.
+   * A line counts as it is written; one the user's Stop or an open cuts while she is still saying it no longer does (#halt).
+   */
   #reached = 0;
+  /** The call whose line she is saying now (speak, or ask aloud), until it is said to the end or cut. @type {string | null} */
+  #saying = null;
   /** The typing box holds text (the dock says so): a turn of theirs waits for them (GATHER). */
   #typing = false;
   /** Ends #typing GATHER.typing after the last keystroke. @type {any} */
@@ -1315,6 +1320,11 @@ export class Agent {
 
   /** Stops the turn: the user's stop, or another conversation opening. */
   #halt() {
+    // Her line still being said didn't reach the user: what it would settle stays owed (a reminder it carried shows at the cut).
+    if (this.#saying !== null) {
+      this.#saying = null;
+      this.#reached--;
+    }
     this.#abort?.abort();
     if (this.#half.voice()) this.voice?.speaker.stop();
     const p = this.#pending;
@@ -3134,7 +3144,9 @@ export class Agent {
       this.#setState('speaking');
     }
     u.end(text);
+    this.#saying = call.id;
     const spoken = await u.done;
+    if (this.#saying === call.id) this.#saying = null;
     if (spoken.heard) {
       this.#facts.aloud = true;
       this.#saidAt = Date.now();
@@ -3178,7 +3190,9 @@ export class Agent {
     this.#closeEar('speaking');
     this.#setState('speaking');
     u.end(question);
+    this.#saying = call.id;
     const spoken = await u.done;
+    if (this.#saying === call.id) this.#saying = null;
     // Cut with the turn: its result is written already, and the user's next line is a turn of its own, not this question's answer.
     if (call.signal.aborted) return { content: STOPPED, isError: true };
     /** @type {Got} */
