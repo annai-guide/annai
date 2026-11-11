@@ -643,6 +643,31 @@ test('a reload mid-turn: open tool calls get "interrupted by app restart", then 
   assert.equal((await k.events(['out.speak']))[0].data.text, 'Back again.');
 });
 
+test("a Stop tapped while her turn sets up its voice is a Stop: recorded, and not taken up when the conversation opens again (the re-review 2, second opinion: 4)", async (t) => {
+  useClock(t);
+  const k = await agentKit([[say('Check-in is at 3.'), say('Never said.')]], { voice: {} });
+  /** @type {() => void} */
+  let release = () => {};
+  let setting = false;
+  const refresh = k.voice.refresh.bind(k.voice);
+  k.voice.refresh = async () => {
+    setting = true;
+    await new Promise((r) => { release = () => r(undefined); });
+    return refresh();
+  };
+  k.agent.send('When is check-in?');
+  await until(() => setting);
+  k.agent.interrupt();
+  release();
+  k.voice.refresh = refresh;
+  await k.agent.idle();
+  assert.equal((await k.events(['error'])).filter((/** @type {any} */ e) => e.data.kind === 'stopped').length, 1, 'the Stop is recorded');
+  await k.agent.open(await createTrip(k.ws, { title: 'Kyoto' }));
+  await k.agent.open(k.trip);
+  await k.agent.idle();
+  assert.equal((await k.events(['out.speak'])).length, 0, 'nothing said, then or on coming back');
+});
+
 test("closed while her answer, said aloud, listened: opening again says nothing again, though annai answers its calls; cut before she spoke, it is taken up (the re-review 2: S3)", async (t) => {
   useClock(t);
   for (const spoke of [true, false]) {

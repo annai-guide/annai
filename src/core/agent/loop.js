@@ -1904,15 +1904,16 @@ export class Agent {
 
   /** @param {Wake[]} wakes */
   async #turn(wakes) {
-    await this.#half.ready?.(); // the half's rules are known (Halves reads the settings as annai starts)
     const wakeId = newId('w');
     const abort = new AbortController();
+    // The turn's own from here, before anything it awaits: a Stop or an open while it sets up is this turn's.
     this.#abort = abort;
+    this.#userStop = false;
+    this.#cutByOpen = false;
+    await this.#half.ready?.(); // the half's rules are known (Halves reads the settings as annai starts)
     await this.#workOutVoice(wakes);
     this.#heardBy = null;
     this.#facts = { finalText: '', told: false, slept: false, closed: false, spoke: false, aloud: wakes.some((w) => w.window), wrote: false, watched: wakes.some(isWatched), kinds: wakes.map((w) => w.kind) };
-    this.#userStop = false;
-    this.#cutByOpen = false;
     // Shiori became two halves, or one again.
     if (this.transcript.half !== this.#rules()) await this.#serially(() => this.reread());
     let ok = false;
