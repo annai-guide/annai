@@ -7,7 +7,6 @@ import { chatCandidates, firstWordsMs, whyOf, whyWords } from '../llm/fallback.j
 import { KOE_CLASSIC, modelOf } from '../llm/config.js';
 import { fromBase64, toBase64 } from '../bytes.js';
 import { MAX_PAGES, PAGE_EDGE } from '../pdf-pages.js';
-import { STOPPED } from './transcript.js';
 
 /**
  * How long a photo's description may take, in seconds: the same as a role waits for a model's first words (§9.6),
@@ -205,7 +204,7 @@ export async function readFile(file, model, o) {
     o.signal.removeEventListener('abort', end);
   }
   /* en */
-  if (o.signal.aborted) return reading('stopped', `It wasn't described: ${STOPPED}`);
+  if (o.signal.aborted) return reading('stopped', "It wasn't described: the turn was stopped first.");
   /* en */
   if (stop.signal.aborted) return reading('late', `It couldn't be described in time (${limit} seconds).`);
   /* en */

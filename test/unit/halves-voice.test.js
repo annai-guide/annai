@@ -325,6 +325,45 @@ test("a second spoken question while Kokoro's last call or last step runs is ans
   }
 });
 
+test("Koe's reply cut between its calls by opening another conversation: no question to Kokoro counts as failed (no turn of hers in the conversation opened), the paused line is shown, and coming back takes it up (the re-review: R3, its A)", async (t) => {
+  useClock(t);
+  let lingering = false;
+  const k = await agentKit([{ rules: [{ match: '.', reply: calls(['tell_koe', { text: 'Check-in is at 3.' }]) }] }], {
+    koe: { talk: { rules: [
+      { match: 'the user spoke', reply: calls(['speak', { text: 'Let me check.' }], ['linger', {}], ['tell_kokoro', { text: 'When is check-in?' }]) },
+      { match: 'a note from Kokoro', reply: calls(['speak', { text: 'Check-in is at 3.' }]) },
+      { match: '.', reply: calls(['linger', {}], ['tell_kokoro', { text: 'When is check-in?' }]) },
+    ] } },
+    voice: { speechIn: ['m-hear'], hears: ['when is check-in'] },
+  });
+  // A step of Koe's reply that takes a while, as a long speak does, before it asks Kokoro (only the first time).
+  k.agent.koe.addLoopTools([{ name: 'linger', pluginId: 'core', group: 'Time', description: 'Wait.', input: { type: 'object' }, run: async () => {
+    if (lingering) return 'Done.';
+    lingering = true;
+    await new Promise((r) => setTimeout(r, 60_000));
+    return 'Done.';
+  } }]);
+  const A = k.trip;
+  k.agent.tap();
+  await until(() => k.agent.state.name === 'listening');
+  await hear(k, 'where-eat');
+  await until(() => lingering, 5000);
+  const { createTrip: create } = await import('../../src/core/scopes.js');
+  const B = await create(k.ws, { title: 'Elsewhere' });
+  await k.agent.open(B);
+  await new Promise((r) => setTimeout(r, 30));
+  await k.agent.idle();
+  const of = async (/** @type {string} */ scope, /** @type {string[]} */ types) => k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(scope, { types }));
+  assert.equal((k.sent['model-0'] ?? []).length, 0, 'no turn of Kokoro\'s, here or in the conversation opened');
+  assert.equal((await of(B, ['model.turn', 'note'])).length, 0, 'nothing written into the conversation opened');
+  assert.equal((await of(A, ['paused'])).length, 1, 'the screen says she picks it up');
+  await k.agent.open(A);
+  await new Promise((r) => setTimeout(r, 30));
+  await k.agent.idle();
+  assert.ok((await of(A, ['note'])).some((/** @type {any} */ e) => e.data.from === 'koe'), 'Koe asks Kokoro when the user comes back');
+  assert.ok((await of(A, ['out.speak'])).some((/** @type {any} */ e) => e.data.text === 'Check-in is at 3.'), JSON.stringify((await of(A, ['out.speak'])).map((/** @type {any} */ e) => e.data.text)));
+});
+
 test("the sign's Stop while Kokoro gathers for a spoken question Koe asked her: what she gathered is written stopped, so opening the conversation again takes nothing up (the review of item 8: F3)", async (t) => {
   useClock(t);
   const k = await agentKit([{ rules: [{ match: '.', reply: calls(['tell_koe', { text: 'Check-in is at 3.' }]) }] }], {
