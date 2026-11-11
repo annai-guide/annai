@@ -1,4 +1,5 @@
 import { meters, kmText } from './geo.js';
+import { dueWords } from '../time.js';
 
 /**
  * Trigger types (spec §11.3): what makes a watch fire. A type checks a watch's `when` against the
@@ -97,9 +98,10 @@ function startSide(w, m, mem) {
   type: 'time', gps: false, summary: 'time {at}: once, at an ISO date-time with an offset',
   validate: (w) => (typeof w?.at === 'string' && /(?:[zZ]|[+-]\d\d:\d\d)$/.test(w.at) && Number.isFinite(Date.parse(w.at))
     ? null : 'at must be an ISO date-time with an offset, like 2026-11-27T18:00:00-08:00'),
-  describe: (w) => `at ${w.at}`,
+  // In the words Koe's view gives it too (dueWords), so the halves say one time.
+  describe: (w) => `at ${dueWords(w.at)}`,
   next: (w) => Date.parse(w.at),
-  check: (w, m) => (m.now >= Date.parse(w.at) ? { text: `the time came: ${w.at}`, at: Date.parse(w.at) } : null),
+  check: (w, m) => (m.now >= Date.parse(w.at) ? { text: `the time came: ${dueWords(w.at)}`, at: Date.parse(w.at) } : null),
 };
 
 /** @type {TriggerType} */

@@ -1,9 +1,12 @@
 // K1 Task 6: Halves, the coordinator (the Koe and Kokoro design; plan decisions 15, 16, 18, 20, 21; Review Focus 2, 3, 5).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until } from './agent-kit.js';
+import { agentKit, until, rescript } from './agent-kit.js';
+import { tripTools } from '../../src/core/agent/trip-tools.js';
+import { createTrip } from '../../src/core/scopes.js';
 import { prefixFingerprint } from '../../src/core/agent/context.js';
 import { updateAppSettings } from '../../src/core/settings.js';
+import { readConfig, saveRoles } from '../../src/core/llm/config.js';
 import { KOKORO_PART } from '../../src/core/koe/instructions.js';
 import { useClock } from './clock.js';
 import { setWords } from '../../src/core/l10n.js';
@@ -68,6 +71,89 @@ test('a typed question: Koe answers at once and asks Kokoro; Kokoro\'s context h
   assert.ok(!koe[0].tools.some((/** @type {any} */ t) => t.name === 'web_search' || t.name === 'tell_koe'));
   assert.deepEqual((await k.events(['note'])).map((e) => [e.data.from, e.data.why]).sort(), [['koe', 'tool'], ['kokoro', 'tool']]);
   assert.equal(k.agent.koeState, 'text');
+});
+
+test("Kokoro's note that points at its words for the user (\"Say the for_user text.\") brings them to Koe, who says them; a note that holds its words is sent as before (real models: Sonnet as Kokoro, Koe said \"I can't see your notes\", item 2)", async (t) => {
+  useClock(t);
+  const answer = 'Your Testville notes: the clock museum opens at 10, bring small coins for the lockers, and the pier market runs until 2.';
+  const k = await agentKit([{ rules: [
+    { match: 'the user wrote', times: 1, reply: calls(['tell_koe', { text: 'Say the for_user text.', for_user: answer }]) },
+    { match: 'the user wrote', reply: calls(['tell_koe', { text: 'Tell the user: "The pier market runs until 2."', for_user: 'The pier market runs until 2.' }]) },
+  ] }], { koe: { type: { rules: [{ match: 'the user wrote', reply: calls(['speak', { text: 'Checking.' }]) }, { match: 'a note from Kokoro', reply: calls(['speak', { text: answer }]) }] } } });
+  const notes = () => k.sent['model-koe'].flatMap(userTexts).filter((/** @type {string} */ x) => x.startsWith('<from_kokoro'));
+  k.agent.send('What do my notes say?');
+  await k.agent.idle();
+  assert.deepEqual(notes(), [`<from_kokoro id="${k.agent.nonce}">Say the for_user text.\nfor_user: ${answer}</from_kokoro>`]);
+  k.agent.send('And the market?');
+  await k.agent.idle();
+  assert.equal(notes().at(-1), `<from_kokoro id="${k.agent.nonce}">Tell the user: "The pier market runs until 2."</from_kokoro>`);
+});
+
+test("a typed line: Kokoro's turn waits for Koe's first words, so its first request reads them and her \"on it\" isn't said twice; Koe failing, Koe unset or Koe never answering lets it go, the last by KOE_FIRST_S (real models, item 1a)", async (t) => {
+  useClock(t);
+  const SECOND = 200; // quiet 300 ms, the cap 700 ms after the line
+  /** @param {any} koeReply @param {(k: any) => Promise<unknown>} meanwhile what happens while Koe's first call is held @param {boolean} [release] */
+  const run = async (koeReply, meanwhile, release = true) => {
+    /** @type {() => void} */
+    let go = () => {};
+    const held = new Promise((r) => { go = () => r(undefined); });
+    /** @type {{ who: string, at: number }[]} */
+    const starts = [];
+    let first = true;
+    const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], {
+      koe: { type: [koeReply, sleep] }, agent: { secondMs: SECOND },
+      hold: async (c) => {
+        starts.push({ who: c.model.providerId, at: Date.now() });
+        if (c.model.providerId === 'model-koe' && first) {
+          first = false;
+          await held;
+        }
+      },
+    });
+    const sent = Date.now();
+    k.agent.send('Save a note: the pier market runs until 2.');
+    await meanwhile(k);
+    if (release) go();
+    await until(() => starts.some((x) => x.who === 'model-0'), 5000);
+    go();
+    await k.agent.idle();
+    return { k, kokoroAt: /** @type {number} */ (starts.find((x) => x.who === 'model-0')?.at) - sent };
+  };
+  const pause = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
+  const noKokoro = (/** @type {any} */ k) => assert.equal((k.sent['model-0'] ?? []).length, 0, "Kokoro hasn't started while Koe owes its first words");
+  // Koe answers after GATHER.quiet: Kokoro waits, and its first request has what Koe said.
+  const a = await run(calls(['speak', { text: 'On it.' }]), async (k) => { await pause(450); noKokoro(k); });
+  assert.ok(userTexts(a.k.sent['model-0'][0]).includes('[Koe said] "On it."'), JSON.stringify(userTexts(a.k.sent['model-0'][0])));
+  // Koe fails: Kokoro goes on at once, not at the cap.
+  const b = await run({ error: 'auth', message: 'bad key' }, async (k) => { await pause(450); noKokoro(k); });
+  assert.ok(b.kokoroAt < 650, `Kokoro started ${b.kokoroAt} ms after the line`);
+  // Koe is unset (Settings → Models): Kokoro goes on at once.
+  const c = await run(calls(['speak', { text: 'On it.' }]), async (k) => {
+    await pause(450);
+    noKokoro(k);
+    const cfg = await readConfig(k.ws);
+    await saveRoles(k.ws, { ...cfg.roles, 'koe-classic': { models: [], level: 'off' } });
+  }, false);
+  assert.ok(c.kokoroAt < 650, `Kokoro started ${c.kokoroAt} ms after the line`);
+  // Koe never answers: Kokoro starts by the cap.
+  const d = await run(calls(['speak', { text: 'On it.' }]), async () => {}, false);
+  assert.ok(d.kokoroAt >= 600 && d.kokoroAt < 1500, `Kokoro started ${d.kokoroAt} ms after the line`);
+  // Koe's reply has no words, only its question and a wait: it is all there is to see, so Kokoro goes on at the quiet, not the cap (the review: F6).
+  const e = await run({ toolCalls: [{ name: 'tell_kokoro', input: { text: 'Save a note: the pier market runs until 2.' } }, { name: 'wait', input: { seconds: 30 } }] }, async () => {});
+  assert.ok(e.kokoroAt < 600, `Kokoro started ${e.kokoroAt} ms after the line`);
+});
+
+test("Koe sets a reminder itself: Kokoro's next request says so, so she sets no second one (real models: two reminders for one ask, item 7)", async (t) => {
+  useClock(t);
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { type: { rules: [
+    { match: 'the user wrote', reply: calls(['watch_set', { when: { type: 'time', at: '2027-03-19T18:00:00-07:00' }, fallback: 'Pack the chargers.' }], ['speak', { text: 'Set for Friday at six.' }]) },
+  ] } } });
+  k.agent.addLoopTools([{ name: 'watch_set', pluginId: 'core', group: 'Time', description: 'Set a watch.', input: { type: 'object' }, run: async () => 'Set w-1: at Fri 2027-03-19 18:00 (GMT-7).' }]);
+  k.agent.send('Remind me Friday at six to pack the chargers.');
+  await k.agent.idle();
+  const lines = userTexts(k.sent['model-0'][0]);
+  assert.ok(lines.includes('[Koe\'s watch_set] "Set w-1: at Fri 2027-03-19 18:00 (GMT-7)."'), JSON.stringify(lines));
+  assert.ok(lines.indexOf('[Koe\'s watch_set] "Set w-1: at Fri 2027-03-19 18:00 (GMT-7)."') < lines.indexOf('[Koe said] "Set for Friday at six."'), 'in the order they happened');
 });
 
 test("the code gate: Kokoro's speak, show and ask while Koe works aren't run; each is a tell_koe append; the result says use tell_koe; no out.* from Kokoro", async (t) => {
@@ -441,6 +527,137 @@ test("a note from Kokoro ends Koe's own question's wait, as it ends a wait: Koe 
   assert.deepEqual([chose?.data.chose, chose?.data.answer], [true, undefined], 'a late tap: an ordinary line');
 });
 
+test("an old conversation opened again, Koe unset or not, takes up nothing: lines Koe and Kokoro answered, and one the user stopped Kokoro on before her turn began, are no restart (real models: A item 5, item 8)", async (t) => {
+  useClock(t);
+  for (const stop of [false, true]) {
+    for (const unset of [false, true]) {
+      /** @type {() => void} */
+      let go = () => {};
+      const held = new Promise((r) => { go = () => r(undefined); });
+      let first = true;
+      const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], {
+        koe: { type: { rules: [{ match: '.', reply: calls(['speak', { text: 'On it.' }]) }] } },
+        hold: async (c) => { if (stop && c.model.providerId === 'model-koe' && first) { first = false; await held; } },
+      });
+      /** @type {any} */
+      let sign = null;
+      k.agent.on('halves', (/** @type {any} */ h) => { sign = h; });
+      k.agent.send('What time is check-in?');
+      if (stop) {
+        await until(() => k.agent.kokoro.busy && !(k.sent['model-0'] ?? []).length);
+        k.agent.stopKokoro(); // the sign's Stop while her turn still gathers: it never starts
+        go();
+      }
+      await k.agent.idle();
+      assert.equal(sign?.kokoroWorking, false, 'the sign goes, once what the Stop wrote is written');
+      const kokoroCalls = (k.sent['model-0'] ?? []).length;
+      assert.equal(kokoroCalls, stop ? 0 : 1);
+      const other = await createTrip(k.ws, { title: 'Elsewhere' });
+      await k.agent.open(other);
+      await k.agent.idle();
+      if (unset) {
+        const cfg = await readConfig(k.ws);
+        await saveRoles(k.ws, { ...cfg.roles, 'koe-classic': { models: [], level: 'off' } });
+        await k.agent.idle();
+      }
+      await k.agent.open(k.trip);
+      await k.agent.idle();
+      const label = `${stop ? 'stopped' : 'answered'}, Koe ${unset ? 'unset' : 'set'}`;
+      assert.equal(k.agent.kokoro.owed, false, label);
+      assert.equal((k.sent['model-0'] ?? []).length, kokoroCalls, `${label}: no restart turn`);
+    }
+  }
+});
+
+test("Koe's notes Kokoro doesn't take up on purpose are written as settled: she had told Koe (after her turn, or in its last step), or the user's Stop held; opening the conversation again, or a reload, says no old answer again (the review of item 8: F5)", async (t) => {
+  useClock(t);
+  const { Transcript } = await import('../../src/core/agent/transcript.js');
+  for (const where of ['answered', 'last step', 'stopped']) {
+    let koeCalls = 0;
+    let lingered = false;
+    const k = await agentKit([{ rules: [
+      { match: 'the user wrote', times: 1, reply: calls(['tell_koe', { text: 'Check-in is at 3.' }], ...(where === 'last step' ? [/** @type {[string, any]} */ (['linger', {}])] : [])) },
+      { match: '.', reply: calls(['tell_koe', { text: 'Again: check-in is at 3.' }]) },
+    ] }], {
+      koe: { type: { rules: [
+        { match: 'the user wrote', reply: calls(['speak', { text: 'On it.' }], ...(where === 'stopped' ? [/** @type {[string, any]} */ (['tell_kokoro', { text: 'When is check-in?' }])] : [])) },
+        { match: 'a note from Kokoro', times: 1, reply: calls(['speak', { text: 'Check-in is at 3.' }], ['tell_kokoro', { text: 'Anything more about check-in?' }]) },
+        { match: '.', reply: sleep },
+      ] } },
+      // Koe answers her note once her turn is over (not in its last step); stopped: her call takes a while, so the Stop finds her turn running.
+      hold: async (c) => {
+        if (c.model.providerId === 'model-koe' && ++koeCalls === 2 && where === 'answered') await new Promise((r) => setTimeout(r, 50));
+        if (c.model.providerId === 'model-0' && where === 'stopped') await new Promise((r) => setTimeout(r, 100));
+      },
+    });
+    // Her turn's last step lingers until Koe has asked again: the question waits in her queue, and goes when her turn ends.
+    k.agent.addLoopTools([{ name: 'linger', pluginId: 'core', group: 'Time', description: 'Wait.', input: { type: 'object' }, run: async () => {
+      for (let i = 0; i < 200 && !(await k.events(['note'])).some((e) => e.data.from === 'koe'); i++) await new Promise((r) => setTimeout(r, 5));
+      lingered = (await k.events(['note'])).some((e) => e.data.from === 'koe');
+      return 'Done.';
+    } }]);
+    if (where === 'stopped') {
+      // The user taps the sign's Stop on her running turn as Koe's question is being written (it passed the Stop's refusal before the
+      // tap), and the question's entry comes after her turn's "stopped".
+      const write = k.agent.channel.log.koe;
+      k.agent.channel.log.koe = async (/** @type {any} */ ev) => {
+        await until(() => k.agent.kokoro.turning);
+        k.agent.stopKokoro();
+        await k.agent.kokoro.idle();
+        return write(ev);
+      };
+    }
+    k.agent.send('When is check-in?');
+    await new Promise((r) => setTimeout(r, 200));
+    await k.agent.idle();
+    if (where === 'last step') assert.ok(lingered, 'Koe asked while her last step ran');
+    const kokoroCalls = (k.sent['model-0'] ?? []).length;
+    assert.equal(kokoroCalls, 1, where);
+    assert.equal(k.agent.kokoro.transcript.unanswered, false, `${where}: nothing owed`);
+    assert.equal((await Transcript.load(k.store, k.trip, { half: 'kokoro' })).unanswered, false, `${where}: nothing owed after a reload`);
+    const said = (await shown(k)).length;
+    const other = await createTrip(k.ws, { title: 'Elsewhere' });
+    await k.agent.open(other);
+    await k.agent.idle();
+    await k.agent.open(k.trip);
+    await k.agent.idle();
+    assert.equal(k.agent.kokoro.owed, false, where);
+    assert.equal((k.sent['model-0'] ?? []).length, kokoroCalls, `${where}: no restart turn`);
+    assert.deepEqual((await shown(k)).slice(said), [], `${where}: nothing said again`);
+    // What the Trace keeps: one quiet line, which the conversation doesn't show.
+    const errors = (await k.events(['error'])).map((e) => [e.data.kind, e.data.quiet, Boolean(e.data.wake)]);
+    assert.deepEqual(errors.at(-1), [where === 'stopped' ? 'stopped' : 'answered', true, true], `${where}: ${JSON.stringify(errors)}`);
+  }
+});
+
+test("typed: Kokoro's turn cut by opening another conversation while a tool of hers runs is taken up when the user comes back, with the paused line (the re-review: R3, its B2)", async (t) => {
+  useClock(t);
+  let lingering = false;
+  const k = await agentKit([{ rules: [
+    { match: 'the user wrote', times: 1, reply: calls(['linger', {}], ['tell_koe', { text: 'Check-in is at 3.' }]) },
+    { match: '.', reply: calls(['tell_koe', { text: 'Check-in is at 3.' }]) },
+  ] }], { koe: { type: { rules: [
+    { match: 'the user wrote', reply: calls(['speak', { text: 'On it.' }]) },
+    { match: 'a note from Kokoro', reply: calls(['speak', { text: 'Check-in is at 3.' }]) },
+  ] } } });
+  k.agent.addLoopTools([{ name: 'linger', pluginId: 'core', group: 'Time', description: 'Wait.', input: { type: 'object' }, run: async () => {
+    lingering = true;
+    await new Promise((r) => setTimeout(r, 60_000));
+    return 'Done.';
+  } }]);
+  const A = k.trip;
+  k.agent.send('What is check-in time?');
+  await until(() => lingering, 5000);
+  const B = await createTrip(k.ws, { title: 'Elsewhere' });
+  await k.agent.open(B);
+  await k.agent.idle();
+  const inA = async (/** @type {string[]} */ types) => k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(A, { types }));
+  assert.equal((await inA(['paused'])).length, 1, 'the screen says she picks it up');
+  await k.agent.open(A);
+  await k.agent.idle();
+  assert.deepEqual((await inA(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['On it.', 'Check-in is at 3.']);
+});
+
 // Fix pass 2 (the review's reload-midturn probe): annai reloads while Koe waits on Kokoro and Kokoro is mid-call.
 test('after a reload mid-turn, Kokoro reads by its two-half rules from its first turn, and only Kokoro takes up the restart: Koe speaks once', async (t) => {
   useClock(t);
@@ -544,6 +761,29 @@ test("Stop sticks: a note Koe wrote before it heard of the Stop starts no Kokoro
   k.agent.send('Actually, yes: plan it.');
   await k.agent.idle();
   assert.ok(turns() > 1);
+});
+
+test("after the user's Stop, Koe's question to Kokoro refused while it holds is no cut: coming back takes nothing up, and the stopped question isn't answered (the re-review 2: S1)", async (t) => {
+  useClock(t);
+  const k = await agentKit([{ rules: [{ match: '.', reply: { delayMs: 2000, toolCalls: [{ name: 'tell_koe', input: { text: 'Check-in is at 3.' } }, { name: 'sleep', input: {} }] } }] }], { koe: { type: { rules: [
+    { match: 'Kokoro was stopped', reply: { toolCalls: [{ name: 'tell_kokoro', input: { text: 'When is check-in?' } }, { name: 'speak', input: { text: "Okay, I've stopped." } }, { name: 'sleep', input: {} }] } },
+    { match: 'the user wrote', reply: { toolCalls: [{ name: 'speak', input: { text: 'Let me check.' } }, { name: 'tell_kokoro', input: { text: 'When is check-in?' } }, { name: 'sleep', input: {} }] } },
+    { match: '.', reply: { toolCalls: [{ name: 'tell_kokoro', input: { text: 'When is check-in?' } }, { name: 'sleep', input: {} }] } },
+  ] } } });
+  const A = k.trip;
+  k.agent.send('What is check-in time?');
+  await until(() => (k.sent['model-0'] ?? []).length === 1); // Kokoro's call is in flight
+  k.agent.stopKokoro();
+  await k.agent.idle();
+  const refused = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'tell_kokoro' && e.data.ok === false);
+  assert.equal(refused.length, 1, "Koe asked again once it heard of the Stop, and was refused");
+  assert.equal(refused[0].data.cut, false, 'a refusal is no cut');
+  const [kokoro, koe] = [k.sent['model-0'].length, k.sent['model-koe'].length];
+  await k.agent.open(await createTrip(k.ws, { title: 'Kyoto' }));
+  await k.agent.open(A);
+  await k.agent.idle();
+  assert.deepEqual([k.sent['model-0'].length, k.sent['model-koe'].length], [kokoro, koe], 'nothing taken up on coming back');
+  assert.ok(!(await k.events(['out.speak'])).some((/** @type {any} */ e) => e.data.text === 'Check-in is at 3.'), 'the stopped question is not answered');
 });
 
 test("Stop while Koe isn't waiting: Koe is told all the same, and once its model has seen that, a later question of Koe's wakes Kokoro (review a1, the reviewer's probe C)", async (t) => {
@@ -666,7 +906,8 @@ test("Fix pass 10, in another language: Koe still hears that Kokoro's model has 
 
 test("Fix pass 12: Kokoro's errors are set aside from the conversation only while Koe talks; while Koe is down, they are Shiori's", async (t) => {
   useClock(t);
-  const k = await agentKit([[{ error: 'auth', message: 'bad key' }]], { koe: { type: [{ delayMs: 30, error: 'auth', message: 'bad key' }] } });
+  // Koe fails after Kokoro's turn has started: past KOE_FIRST_S (35 ms here), which Kokoro waits at most for Koe's first words.
+  const k = await agentKit([[{ error: 'auth', message: 'bad key' }]], { koe: { type: [{ delayMs: 60, error: 'auth', message: 'bad key' }] } });
   k.agent.send('Hi');
   await k.agent.idle();
   // Koe is down now: what the user types is Kokoro's, and so is its error, shown.
@@ -1011,4 +1252,57 @@ test("with two halves, Kokoro's turn for a typed hand-over carries it: its write
   const toKoe = userTexts(k.sent['model-koe'][0]);
   assert.ok(toKoe.some((/** @type {string} */ x) => /The user handed you a file: .*Kokoro reads them and files them/.test(x)));
   assert.ok(!toKoe.some((/** @type {string} */ x) => /move_file/.test(x)));
+});
+
+// Timeline stage 6, Review Focus 3 with Koe on a chat model: what Koe is told, in which conversation, and nothing said twice.
+test('a move with Koe talking on a chat model: in the chat Koe says she is taking them there; in the trip Kokoro answers through Koe; each said once', async (t) => {
+  useClock(t);
+  const KOE_MOVING = { rules: [
+    { match: 'the user wrote', reply: calls(['speak', { text: 'One moment.' }]) },
+    { match: 'a note from Kokoro', reply: calls(['speak', { text: 'Taking you to Kyoto.' }]), times: 1 },
+    { match: 'a note from Kokoro', reply: calls(['speak', { text: 'Here in Kyoto: the ramen place is by the station.' }]) },
+  ] };
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { type: KOE_MOVING } });
+  k.agent.addLoopTools(tripTools(k.agent));
+  const kyoto = await createTrip(k.ws, { title: 'Kyoto', start: '2027-04-01', end: '2027-04-08' });
+  await rescript(k, { rules: [
+    { match: 'the user wrote', reply: calls(['open_trip', { trip: kyoto, recap: 'We were looking for the ramen place.' }], ['tell_koe', { text: 'Say you are taking them to Kyoto.' }]) },
+    { match: "haven't answered", reply: calls(['tell_koe', { text: 'Tell them the ramen place is by the station.' }]) },
+  ] });
+  await k.agent.idle();
+  k.agent.send("Let's carry on in Kyoto");
+  await k.agent.idle();
+  assert.equal(k.agent.trip, kyoto);
+  /** @param {string} scope @param {string[]} types */
+  const log = (scope, types) => k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(scope, { types }));
+  const said = async (/** @type {string} */ scope) => (await log(scope, ['out.speak', 'out.show', 'out.ask', 'reminder'])).map((/** @type {any} */ e) => [e.type, e.data.half ?? '', e.data.text ?? '']);
+  const told = async (/** @type {string} */ scope) => (await log(scope, ['note'])).filter((/** @type {any} */ e) => e.data.from === 'kokoro').map((/** @type {any} */ e) => e.data.text);
+  // In the chat: Koe answers at once, then says what Kokoro told it there; nothing of the trip's answer.
+  assert.deepEqual(await said(k.trip), [['out.speak', 'koe', 'One moment.'], ['out.speak', 'koe', 'Taking you to Kyoto.']]);
+  assert.deepEqual(await told(k.trip), ['Say you are taking them to Kyoto.']);
+  // In the trip: Kokoro took up the move (her recap and the user's line) and told Koe, who said it once; annai showed nothing in its place.
+  assert.deepEqual(await said(kyoto), [['out.speak', 'koe', 'Here in Kyoto: the ramen place is by the station.']]);
+  assert.deepEqual(await told(kyoto), ['Tell them the ramen place is by the station.']);
+  assert.deepEqual((await log(kyoto, ['msg.user'])).map((/** @type {any} */ e) => e.data.text), ["Let's carry on in Kyoto"]);
+});
+
+// The loop's rules since the real-model fixes, against open_trip: a refused move beside a note and a sleep says nothing to Koe and ends nothing.
+test("open_trip refused in a dated trip beside tell_koe and sleep: the note isn't sent, her turn goes on to see why, and nothing moves", async (t) => {
+  useClock(t);
+  const KOE_TOLD = { rules: [{ match: 'the user wrote', reply: calls(['speak', { text: 'One moment.' }]) }, { match: 'a note from Kokoro', reply: calls(['speak', { text: 'Taking you to Kyoto.' }]) }] };
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { type: KOE_TOLD } });
+  k.agent.addLoopTools(tripTools(k.agent));
+  await k.ws.patch(k.trip, '/trip.json', { start: '2026-11-20', end: '2026-11-27' }, { author: 'user' }); // a trip, not a chat
+  const kyoto = await createTrip(k.ws, { title: 'Kyoto', start: '2027-04-01', end: '2027-04-08' });
+  await rescript(k, { rules: [{ match: 'the user wrote', reply: calls(['open_trip', { trip: kyoto }], ['tell_koe', { text: 'Say you are taking them to Kyoto.' }]) }] });
+  await k.agent.idle();
+  k.agent.send("Let's carry on in Kyoto");
+  await k.agent.idle();
+  assert.equal(k.agent.trip, k.trip, 'nothing opened');
+  const done = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.half === 'kokoro').map((/** @type {any} */ e) => [e.data.name, e.data.ok, String(e.data.content).slice(0, 24)]);
+  assert.deepEqual(done.slice(0, 3), [['open_trip', false, 'Error: A trip is open, s'], ['tell_koe', false, 'Not sent to Koe: a call '], ['sleep', true, 'Not asleep: a call in th']]);
+  assert.ok(done.length > 3, 'her turn went on past the refusal');
+  assert.deepEqual((await k.events(['note'])).filter((/** @type {any} */ e) => e.data.from === 'kokoro'), [], 'Koe was told nothing of a move');
+  assert.deepEqual((await shown(k)).filter(([type]) => type === 'out.speak').map(([, , text]) => text), ['One moment.']);
+  assert.deepEqual(await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(kyoto, { types: ['msg.user', 'wake'] })), []);
 });

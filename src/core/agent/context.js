@@ -10,6 +10,7 @@ import { utf8 } from '../bytes.js';
 import { readAppSettings } from '../settings.js';
 import { languageSettings, languagesText, screensText, distancesText } from '../languages.js';
 import { lang, glossary } from '../l10n.js';
+import { blobJSON } from '../reach.js';
 
 /**
  * The context, in the order that keeps provider caches warm (spec §6.3):
@@ -18,11 +19,12 @@ import { lang, glossary } from '../l10n.js';
  * 3. the transcript, which only grows at the end;
  * 4. the now block, last, after the cache marker.
  * @typedef {{ trip: string | null, personalityName: string, personality: string, profile: string, memory: string,
- *   tripInfo: string, guessed?: boolean, tripMemory: string, skills: { name: string, description: string }[], languages?: string, edited?: Partial<Record<import('./her-instructions.js').InstructionId, string>>,
+ *   tripInfo: string, guessed?: boolean, hers?: boolean, tripMemory: string, skills: { name: string, description: string }[], languages?: string, edited?: Partial<Record<import('./her-instructions.js').InstructionId, string>>,
  *   elsewhere?: string }} Snapshot
  *   languages: the languages section's words, from the languages setting; edited: the instructions the user changed (her-instructions.js);
  *   elsewhere: for an undated one, what read_trip may mean (the happening trips, the latest others);
- *   guessed: the trip's name is annai's own first guess (a first line's words or a file's name, the system's write of trip.json, or the draft's placeholder), not one the user or she gave
+ *   guessed: the trip's name is annai's own first guess (a first line's words or a file's name, the system's write of trip.json, or the draft's
+ *   placeholder); hers: an undated one's name is one she wrote, her own or one the user asked for; neither: the user's, or its author unknown
  * @typedef {import('../llm/contract.js').Request} Request
  */
 
@@ -34,8 +36,11 @@ import { lang, glossary } from '../l10n.js';
 export async function takeSnapshot({ ws, registry, trip, personalityName, locale }) {
   const read = async (/** @type {string} */ scope, /** @type {string} */ path) => (await ws.readText(scope, path).catch(() => undefined)) ?? '';
   const tripJson = trip ? await ws.readJSON(trip, '/trip.json').catch(() => null) : null;
-  // Whose name it is: annai's naming (Chats) writes trip.json as the system; a rename in Details, Start a trip and her patches are the user's and hers.
-  const guessed = Boolean(tripJson) && (tripJson.title === DRAFT_TITLE || (await ws.read(/** @type {string} */ (trip), '/trip.json').catch(() => undefined))?.entry.author === 'system');
+  // Whose name it is: annai's naming (Chats) writes trip.json as the system; a rename in Details and Start a trip are the user's. After a write
+  // of hers to an undated one, whoever wrote the version that first held the name (F7); unknown (no history, a read that failed) is kept.
+  const author = trip && tripJson ? (await ws.read(trip, '/trip.json').catch(() => undefined))?.entry.author : undefined;
+  const by = author === 'shiori' && !tripJson.start ? await namedBy(ws, /** @type {string} */ (trip), tripJson.title).catch(() => '') : author;
+  const guessed = Boolean(tripJson) && (tripJson.title === DRAFT_TITLE || by === 'system');
   const app = await readAppSettings(ws);
   /* en */ return {
     trip,
@@ -45,6 +50,7 @@ export async function takeSnapshot({ ws, registry, trip, personalityName, locale
     memory: await read(ME, '/memory.md'),
     tripInfo: tripJson ? JSON.stringify(tripJson, null, 2) : '',
     guessed,
+    hers: Boolean(tripJson) && !tripJson.start && by === 'shiori',
     tripMemory: trip ? await read(trip, '/memory.md') : '',
     skills: skillIndex(registry),
     // Then the screens' names and a Distances choice.
@@ -52,6 +58,16 @@ export async function takeSnapshot({ ws, registry, trip, personalityName, locale
     edited: await editedInstructions(ws),
     elsewhere: trip && !tripJson?.start ? await elsewhere(ws, trip) : '', // as systemText tells an undated one
   };
+}
+
+/** Who wrote the version of trip.json that first held this title, going back while each version holds it. @param {import('../workspace.js').Workspace} ws @param {string} trip @param {unknown} title */
+async function namedBy(ws, trip, title) {
+  let by = '';
+  for (const v of (await ws.history(trip, '/trip.json')).reverse()) {
+    if (v.type !== 'file.write' || (await blobJSON(ws.store, trip, v.new, { quiet: true }))?.title !== title) break;
+    by = v.actor;
+  }
+  return by;
 }
 
 /** The longest name annai takes (start_trip, Start a trip, Details); a file's record can hold more. */
@@ -83,10 +99,10 @@ export function nextSnapshot(prev, fresh, { cold }) {
   const sameSkills = JSON.stringify(prev.skills) === JSON.stringify(fresh.skills);
   // So does a change of the languages setting, or of her instructions: the user chose it just now.
   const sameEdits = JSON.stringify(prev.edited ?? {}) === JSON.stringify(fresh.edited ?? {});
-  // So does a name that stopped being annai's guess (the user renamed it in Details); a trip.json that couldn't be read says nothing of it.
-  const renamed = Boolean(prev.guessed && !fresh.guessed && fresh.tripInfo);
+  // So does a name that became the user's (renamed in Details); a trip.json that couldn't be read says nothing of it.
+  const renamed = Boolean((prev.guessed || prev.hers) && !fresh.guessed && !fresh.hers && fresh.tripInfo);
   if (samePersonality && sameSkills && sameEdits && !renamed && prev.languages === fresh.languages) return prev;
-  return { ...prev, personality: fresh.personality, personalityName: fresh.personalityName, skills: fresh.skills, languages: fresh.languages, edited: fresh.edited, ...(renamed ? { tripInfo: fresh.tripInfo, guessed: false } : {}) };
+  return { ...prev, personality: fresh.personality, personalityName: fresh.personalityName, skills: fresh.skills, languages: fresh.languages, edited: fresh.edited, ...(renamed ? { tripInfo: fresh.tripInfo, guessed: false, hers: false } : {}) };
 }
 
 /** The skill index (spec §6.3): each skill's name and description, once per name (its owner's). @param {import('../registry.js').Registry} registry */
@@ -104,8 +120,8 @@ export function systemText(s, part = '') {
   if (s.trip) {
     /* en */ parts.push(`# This trip (/trip/trip.json)\n${s.tripInfo}`, s.tripMemory.trim() ? `${s.tripMemory.trim()}` : '# Trip memory\n(empty)');
     // From the snapshot, so it stays the same from turn to turn and the cached prefix holds.
-    // Her name for it is only for a name annai guessed: one the user gave stays.
-    if (!datedInfo(s.tripInfo)) /* en */ parts.push(`# This conversation has no dates\n${s.guessed ? 'Its name is a first guess: patch /trip/trip.json when you know a better one. If it becomes a trip, patch its title and dates there.' : 'If it becomes a trip, patch /trip/trip.json with its dates.'}\nIf this is about one of their trips, read it with read_trip first and answer here; if they want to carry on there, they can open it from Trips.${s.elsewhere ? `\n${s.elsewhere}` : ''}`);
+    // Her name for it only for annai's guess; one she wrote may be one they chose; the user's stays, said so (real models renamed the user's).
+    if (!datedInfo(s.tripInfo)) /* en */ parts.push(`# This conversation has no dates\n${s.guessed ? 'Its name is a first guess: patch /trip/trip.json when you know a better one. If it becomes a trip, patch its title and dates there.' : `${s.hers ? 'You wrote its name: keep it if they chose it, improve it if you did.' : 'Keep its name unless they ask to change it.'} If it becomes a trip, patch /trip/trip.json with its dates.`}\nIf this is about one of their trips, read it with read_trip first and answer here; take them there with open_trip only if they want to carry on there.${s.elsewhere ? `\n${s.elsewhere}` : ''}`);
     // A dated trip's text names no other trip (so nothing done elsewhere moves it), but says they exist: asked about another trip's
     // hotel in a trip's own conversation, every model searched this one and said there was none (stage 5's real-model pass).
     else /* en */ parts.push("# Their other trips\nA trip or place they name that isn't this one may be another of theirs: look in list_trips before you say it isn't there.");

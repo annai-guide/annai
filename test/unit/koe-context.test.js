@@ -20,7 +20,7 @@ test("the compact view: today's plan, bookings within 48 hours, the place, the t
   const booking = (/** @type {string} */ id, /** @type {any} */ b) => k.ws.write(k.trip, `/bookings/${id}.json`, { id, status: 'confirmed', source: '/files/x.pdf', ...b }, { author: 'user' });
   await booking('inn', { kind: 'lodging', title: 'Deetjen\'s Big Sur Inn', start: at('2026-11-26T15:00:00'), confirmation: 'DJ42' });
   await booking('far', { kind: 'event', title: 'Castle tour', start: at('2026-11-29T10:00:00') });
-  const view = await compactView({ ws: k.ws, trip: k.trip, now, timeZone: LA, next: { due: Date.parse('2026-11-26T12:00:00-08:00'), text: 'Leave for lunch in 30 minutes' } });
+  const view = await compactView({ ws: k.ws, trip: k.trip, now, timeZone: LA, next: { when: 'Thu 2026-11-26 12:00 (GMT-8)', text: 'Leave for lunch in 30 minutes' } });
   assert.ok(view.startsWith('<today>\n') && view.endsWith('\n</today>'));
   assert.ok(view.length <= VIEW_MAX);
   assert.match(view, /trip: Big Sur/);
@@ -30,10 +30,10 @@ test("the compact view: today's plan, bookings within 48 hours, the place, the t
   assert.doesNotMatch(view, /Monterey Aquarium|Hearst Castle tour/);
   assert.match(view, /lodging\tDeetjen's Big Sur Inn\tconfirmed\tDJ42/);
   assert.doesNotMatch(view, /Castle tour/);
-  assert.match(view, /next reminder: 2026-11-26 12:00 Leave for lunch in 30 minutes/);
+  assert.match(view, /next reminder: Thu 2026-11-26 12:00 \(GMT-8\) Leave for lunch in 30 minutes/);
   // In Koe's tail, after the now block with the time and place, never in its prefix.
   k.agent.sense = () => ({ place: 'near Nepenthe', activity: 'still' });
-  k.agent.next = async () => ({ due: Date.parse('2026-11-26T12:00:00-08:00'), text: 'Leave for lunch in 30 minutes' });
+  k.agent.next = async () => ({ when: 'Thu 2026-11-26 12:00 (GMT-8)', text: 'Leave for lunch in 30 minutes' });
   k.agent.send('What is on today?');
   await k.agent.idle();
   const req = k.sent['model-koe'][0];

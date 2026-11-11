@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import { NO_FIX_BACK_MS } from '../../src/core/live/activity.js';
 import assert from 'node:assert/strict';
+import { dueWords } from '../../src/core/time.js';
 import { liveKit, at, iso, off, LA, MONTEREY, BIXBY, NEPENTHE, CAMBRIA, HEARST } from './live-kit.js';
 import { readAppSettings } from '../../src/core/settings.js';
 import { readWatches } from '../../src/core/live/watches.js';
@@ -78,10 +79,10 @@ test('a time watch fires by the clock with live mode off, then is gone; a locati
   assert.equal(k.agent.wakes.length, 1);
   const w = k.agent.wakes[0];
   assert.equal(w.kind, 'trigger');
-  assert.equal(w.text, `Your watch ${call.id} (at ${iso('10:00')}) fired: the time came: ${iso('10:00')}. Its reminder: "Call Mia about dinner."`);
+  assert.equal(w.text, `Your watch ${call.id} (at ${dueWords(iso('10:00'))}) fired: the time came: ${dueWords(iso('10:00'))}. Its reminder: "Call Mia about dinner."`);
   assert.deepEqual(w.fallbacks, [{ watch: call.id, text: 'Call Mia about dinner.' }]);
   const [fired] = await k.events(['trigger.fired']);
-  assert.deepEqual(fired.data, { watch: call.id, type: 'time', owner: 'shiori', text: `the time came: ${iso('10:00')}`, fallback: 'Call Mia about dinner.' });
+  assert.deepEqual(fired.data, { watch: call.id, type: 'time', owner: 'shiori', text: `the time came: ${dueWords(iso('10:00'))}`, fallback: 'Call Mia about dinner.' });
   assert.deepEqual((await readWatches(k.ws, k.trip)).watches.map((x) => x.id), [enter.id]);
   await k.to(at('11:00'));
   assert.equal(k.agent.wakes.length, 1);
@@ -654,8 +655,8 @@ test('an urgent watch (drive-test design §7): stored with its mark, said so whe
   assert.equal('urgent' in plain, false, 'absent is false');
   const stored = (await readWatches(k.ws, k.trip)).watches;
   assert.deepEqual([stored.find((w) => w.id === leave.id)?.urgent, stored.find((w) => w.id === plain.id)?.urgent], [true, undefined]);
-  assert.match(k.live.watchText(leave), /^Set w-\S+: at \S+, urgent\./);
-  assert.ok((await k.live.listWatches(k.trip)).includes(`${leave.id}\tshiori\tat ${iso('10:00')}, urgent\tno\t`));
+  assert.match(k.live.watchText(leave), /^Set w-\S+: at Fri 2026-11-27 \d\d:\d\d \(GMT-8\), urgent\./);
+  assert.ok((await k.live.listWatches(k.trip)).includes(`${leave.id}\tshiori\tat ${dueWords(iso('10:00'))}, urgent\tno\t`));
   await k.to(at('10:00'));
   assert.equal(k.agent.wakes.length, 1);
   assert.equal(k.agent.wakes[0].urgent, true);

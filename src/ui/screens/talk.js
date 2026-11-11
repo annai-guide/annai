@@ -1,4 +1,4 @@
-import { h, whenGone, t, plural, linkIn, messageOf } from '../dom.js';
+import { h, whenGone, t, tc, plural, linkIn, messageOf } from '../dom.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { shownSettings } from '../../core/shown.js';
 import { shownCard, cardWho, cardKind } from '../cards.js';
@@ -11,13 +11,13 @@ import { blobBytes } from '../../core/reach.js';
 import { herDatings, undoDating } from '../../core/chats.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { undoTuning } from '../../core/agent/personalities.js';
-import { formatCost, wording, mark, sentences, sentenceGap, list as listed, recordHref, waitingHref, rowName } from '../format.js';
+import { formatCost, wording, mark, sentences, sentenceGap, list as listed, recordHref, waitingHref, rowName, talkHref } from '../format.js';
 import { day } from '../../core/intl.js';
 import { upcoming, over } from '../../core/now.js';
 import { tripRows } from '../trip-rows.js';
 import { nowOf, todayOf } from '../today.js';
 import { ask } from '../ask.js';
-import { ME, SYS_WAITING, scopeTitle, talks, tripMirror } from '../../core/scopes.js';
+import { ME, SYS_WAITING, scopeTitle, talks, tripMirror, kindOf } from '../../core/scopes.js';
 import { readNames } from '../../core/names.js';
 import { FILES_ONLY, undoable, undoEverywhere } from '../../core/handover.js';
 import { removeTripNow } from './trip.js';
@@ -30,7 +30,7 @@ import { NOT_TRANSCRIBED } from '../../core/voice/resolve.js';
 
 /** How long a heard line waits for more of its words before it is announced, once (Gemini revises them as it hears). */
 const HEARD_MS = 600;
-const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded', 'tool.result', 'wake', 'compaction', 'error', 'paused', 'reminder', 'note', 'halves', 'handover.moved', 'handover.undo', 'trip.read'];
+const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded', 'tool.result', 'wake', 'compaction', 'error', 'paused', 'reminder', 'note', 'halves', 'handover.moved', 'handover.undo', 'trip.read', 'conversation.moved'];
 /** Wakes that are lines of their own: the user's, typed or heard, and what the halves tell each other. */
 const NOT_WOKE = ['user', 'choice', 'heard', 'note', 'cue', 'halves'];
 /** Where a message puts a line's words, a node of their own: its translation places them where its language does (around). */
@@ -129,6 +129,9 @@ export function movedWords(d, title) {
   if (d.started) return d.count ? t`Shiori started ${title} with these files.` : t`Shiori started ${title}.`;
   return plural(d.count, 'Shiori took # file to {0}.', 'Shiori took # files to {0}.', title);
 }
+
+/** Where Shiori took the user from this conversation (conversation.moved), by the trip's title now, or one since removed (null). @param {string | null} title */
+export const wentWords = (title) => (title === null ? t`Shiori moved this to a trip that has since been removed.` : t`Shiori moved this to ${title}.`);
 
 /**
  * What Undo of a hand-over did (undoEverywhere's outcome): the trips it removed and where the files are, each other trip that stays that it
@@ -399,7 +402,10 @@ export async function renderTalk(ctx, route) {
       }
       const tapped = d.chose || offered.get(d.answer)?.includes(said); // one half's tapped answer stores no chose
       const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: e.type, data: { ...texts, chose: tapped } }));
-      return h('li', { class: lineClass(line, 'you') }, words, ...(await sentPhotos(e)), await handedChips(d), lineLabel(line));
+      // A copy of a line said in another conversation (a move, a hand-over): where it came from, with a way there, in place of how it was said.
+      const src = typeof d.from === 'string' && d.from !== scope && kindOf(d.from) === 'trip' ? await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ tx) => tx.getScope(d.from)) : null;
+      const from = src?.kind === 'trip' ? h('a', { class: 'line-label', href: talkHref(src.id) }, h('span', { text: tc('a conversation')`From ${scopeTitle(src)}` })) : null;
+      return h('li', { class: lineClass(line, 'you') }, words, ...(await sentPhotos(e)), await handedChips(d), from ?? lineLabel(line));
     }
     if (e.type === 'out.speak') {
       const said = String(texts.text ?? '');
@@ -479,6 +485,12 @@ export async function renderTalk(ctx, route) {
       const rec = await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ tx) => tx.getScope(String(d.to)));
       const said = movedWords(d, rec?.kind === 'trip' ? rec.title : null);
       return h('li', { class: 'system-line' }, rec?.kind === 'trip' ? h('a', { href: `#/trip/${encodeURIComponent(rec.id)}`, text: said }) : said);
+    }
+    // Where Shiori took the user from here (open_trip), with a way to that trip's conversation while it is there.
+    if (e.type === 'conversation.moved') {
+      const rec = await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ tx) => tx.getScope(String(d.to)));
+      const said = wentWords(rec?.kind === 'trip' ? scopeTitle(rec) : null);
+      return h('li', { class: 'system-line' }, rec?.kind === 'trip' ? h('a', { href: talkHref(rec.id), text: said }) : said);
     }
     if (e.type === 'handover.undo') {
       if (d.handover === undo.handover) undo.done();
@@ -844,7 +856,7 @@ function undoLine(ctx, scope, list) {
       }
       if (e.type === 'msg.user' || (e.type === 'heard' && !d.dismissed)) placing = false;
       if (e.type === 'handover.moved' && typeof d.handover === 'string') went.set(d.handover, new Set([...(went.get(d.handover) ?? []), String(d.to)]));
-      if (!placing || !handover || used || !['out.speak', 'out.show', 'out.ask', 'handover.moved'].includes(e.type)) return;
+      if (!placing || !handover || used || !['out.speak', 'out.show', 'out.ask', 'handover.moved', 'conversation.moved'].includes(e.type)) return;
       list.append(line);
       check();
     },

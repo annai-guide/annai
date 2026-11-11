@@ -864,7 +864,7 @@ export class LiveKoe {
    *   sleep), nothing once that stretch is over (a real exchange since, or a close), here or when it would go in (#sleepy); never owed
    */
   note(text, mode, owed = null, { stretch = false } = {}) {
-    const note = wrapNote(text, this.c.nonce);
+    const note = wrapNote(text, this.c.nonce, { forUser: owed?.forUser });
     if (stretch) {
       if (this.#late && this.#late.of === this.#stretch) this.#late.text += `\n${note}`;
       else if (this.#stretch) this.#late = { text: note, of: this.#stretch, by: 0, more: false, timer: null };
@@ -1606,7 +1606,7 @@ export class LiveKoe {
     const kept = this.#hearFirst ? [] : o.waiting;
     const notes = this.#notes.splice(0);
     const cue = o.cue ? [o.cutOff ? CUE_CUT : CUE] : [];
-    const text = [...notes.map((n) => n.text), ...kept.map((w) => w.line ?? wrapNote(String(w.note ?? ''), this.c.nonce)), ...cue];
+    const text = [...notes.map((n) => n.text), ...kept.map((w) => w.line ?? wrapNote(String(w.note ?? ''), this.c.nonce, { forUser: w.forUser })), ...cue];
     if (!text.length) return;
     const told = [...notes.filter((n) => n.told).map((n) => n.text), ...kept.flatMap((w) => (w.line ? [w.line] : [])), ...cue];
     o.cue = false;

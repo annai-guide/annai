@@ -124,8 +124,8 @@ test("Koe's prompts, fix pass 2: a language the user speaks, speech recognition 
   for (const k of [KOE_CORE, KOE_LIVE]) {
     // A user who set no languages may speak any: the rule is the user's languages, whatever the section lists.
     assert.doesNotMatch(k, /Languages section (doesn't )?lists?/);
-    // A note is said as it claims: no "own voice" or "own words" licence to change it.
-    assert.match(k, /\n- Say what the note says, without changing what it claims and with nothing added\./);
+    // A note is said as it claims: no "own voice" or "own words" licence to change it; a caution in it is part of it (real models, item 5a).
+    assert.match(k, /\n- Say what the note says, cautions included, without changing what it claims and with nothing added\./);
     assert.doesNotMatch(k, /own voice|own words/);
     // Told once, not three times.
     assert.doesNotMatch(k, /You don't know any of it until you are told/);

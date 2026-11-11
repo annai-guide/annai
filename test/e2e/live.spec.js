@@ -115,7 +115,7 @@ test('the phone locked and unlocked: one catch-up wake, with the time away and w
     await expect.poll(() => llm.bodies('/b/v1/messages').length).toBe(2);
     const body = JSON.stringify(llm.bodies('/b/v1/messages')[1]);
     expect(body).toMatch(/Catch-up: annai was off screen for 15 min/);
-    expect(body).toMatch(/fired: the time came: [^(]+\(late by 5 min: annai was off screen\)/);
+    expect(body).toMatch(/fired: the time came: \w{3} \d{4}-\d\d-\d\d \d\d:\d\d \(GMT[^)]*\) \(late by 5 min: annai was off screen\)/);
   } finally {
     await llm.stop();
   }

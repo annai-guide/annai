@@ -42,7 +42,7 @@ test('each type checks what it is given, in plain words', () => {
 test('time fires at its moment and says when it came due; every counts from when it was set, then from its last firing', () => {
   const w = { at: '2026-11-27T10:00:00-08:00' };
   assert.equal(T.time.check(w, moment({ now: T0 - 1 }), {}), null);
-  assert.deepEqual(T.time.check(w, moment({ now: T0 + 5 * MIN }), {}), { text: 'the time came: 2026-11-27T10:00:00-08:00', at: T0 });
+  assert.deepEqual(T.time.check(w, moment({ now: T0 + 5 * MIN }), {}), { text: 'the time came: Fri 2026-11-27 10:00 (GMT-8)', at: T0 });
   assert.equal(T.time.next?.(w, moment(), {}), T0);
   const mem = { set: T0, lastAt: null };
   assert.equal(T.every.check({ minutes: 30 }, moment({ now: T0 + 29 * MIN }), mem), null);

@@ -10,7 +10,7 @@ import { setWords } from '../../src/core/l10n.js';
 setWords('ja', JSON.parse(await readFile(new URL('../../l10n/ja.json', import.meta.url), 'utf8')));
 after(() => setWords('en', null));
 // Imported once the words are set, as boot.js sets them before main.js loads: words made at a module's top level are Japanese too.
-const { wokeText, reminderParts, announced, movedWords } = await import('../../src/ui/screens/talk.js');
+const { wokeText, reminderParts, announced, movedWords, wentWords } = await import('../../src/ui/screens/talk.js');
 const { SYSTEM } = await import('../../src/ui/talk-panel.js');
 const { sample } = await import('../../src/ui/speech-check.js');
 const { speaksScreens } = await import('../../src/ui/format.js');
@@ -64,6 +64,11 @@ test('words sent as the user\'s are in the screens\' language only when the user
   assert.equal(speaksScreens({ languages: { spoken: ['en', 'ja'] } }), true);
   assert.equal(speaksScreens({ languages: { spoken: ['en'] } }), false);
   assert.equal(speaksScreens({}), /^ja\b/.test(navigator.language));
+});
+
+test('wentWords in Japanese: the conversation goes on in the trip, named as a value; the conversation stays', () => {
+  assert.equal(wentWords('京都'), 'Shiori がこの会話の続きを「京都」に移しました。');
+  assert.equal(wentWords(null), 'Shiori がこの会話の続きを旅に移しましたが、その旅はもう削除されています。');
 });
 
 test('movedWords in Japanese: whole sentences, the title as a value', () => {
