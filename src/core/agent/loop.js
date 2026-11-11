@@ -11,7 +11,7 @@ import { sha256Hex } from '../hash.js';
 import { record, storedTexts, TALK_TAG } from './log.js';
 import { blobBytes, canRead } from '../reach.js';
 import { compactionNeed, cutAt, promptTokens, requestBytes, instruction, renderForSummary, coldSystem, summaryLanguage, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
-import { Transcript, resolveEvent, repair, NOT_SAID, SAID, STOPPED, CUT } from './transcript.js';
+import { Transcript, resolveEvent, repair, NOT_SAID, SAID, STOPPED, CUT, NOT_RUN } from './transcript.js';
 import { toolList, definitions, runTool, Stuck, toolSwitches, resolvePath, ALWAYS_ON } from './tools.js';
 import { takeSnapshot, nextSnapshot, nowBlock, nextPlanItems, buildRequest, prefixFingerprint, systemText } from './context.js';
 import { Warmth, TTL_MS, ttlFor, wantedTtl, SOON_MS } from './warmth.js';
@@ -2583,7 +2583,8 @@ export class Agent {
     const gated = tool && !off && !o.signal.aborted && this.#half.gate ? await this.#half.gate({ id: c.id, name: c.name, input, wake: o.wakeId }) : null;
     const toldBefore = this.#facts.told;
     if (c.name === 'tell_koe' || c.name === 'tell_kokoro' || gated?.told) this.#facts.told = true;
-    if (o.signal.aborted) output = { content: STOPPED, isError: true };
+    const unrun = o.signal.aborted; // cut before it started: it never ran
+    if (unrun) output = { content: NOT_RUN, isError: true };
     /* en */
     else if (off) output = { content: `Error: the user switched ${c.name} off during this turn, so it didn't run.`, isError: true };
     else if (gated) output = { content: gated.content, ...(gated.isError ? { isError: true } : {}) };
@@ -2621,7 +2622,7 @@ export class Agent {
     // Cut short (the turn aborted, the call an error): the user's Stop, or another conversation opening, which is no Stop. Every result
     // says whether (`cut`), which a refusal or a failure is not: the log is read by the mark; only a result without it, an older page's, by its words.
     const cut = Boolean(o.signal.aborted && output.isError);
-    if (cut) output = { content: this.#userStop ? STOPPED : CUT, isError: true };
+    if (cut) output = { content: this.#userStop ? STOPPED : unrun ? NOT_RUN : CUT, isError: true };
     // A tell_koe that came back as an error told no one, whatever the error (refused: Koe can't speak; no text; the tool off): the user is
     // still owed an answer, so [tell_koe, sleep] does not end the turn on it (nudge() asks Kokoro once more; forcing is capped by FORCED_STEPS).
     if (c.name === 'tell_koe' && output.isError) this.#facts.told = toldBefore;
