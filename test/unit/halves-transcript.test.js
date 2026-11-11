@@ -256,6 +256,50 @@ test("Kokoro reads what Koe changed, by annai's result for it, quoted: a watch s
   assert.deepEqual((await Transcript.load(store, SCOPE, { half: 'kokoro' })).messages, kokoro.messages);
 });
 
+test("one Shiori reading a conversation where Koe talked owes a heard line until a turn settles it, Koe's reply once its calls have run, and Koe's question until her own turn (the review of item 8: F4)", async () => {
+  const run = async (/** @type {(log: (ev: any) => Promise<any>, turn: (tag: string, parts: any[]) => Promise<any>) => Promise<void>} */ steps) => {
+    const store = createMemoryStore();
+    await steps((ev) => record(store, SCOPE, ev), (tag, parts) => modelTrace(store, SCOPE).turn(turnInfo(tag, 'w'), '', '', parts));
+    return (await Transcript.load(store, SCOPE, { half: 'one' })).unanswered;
+  };
+  const heard = (/** @type {(ev: any) => Promise<any>} */ log) => log({ type: 'heard', actor: 'user', data: { id: 's1', half: 'koe', text: 'when is check-in' } });
+  const result = (/** @type {string} */ id, /** @type {string} */ content) => ({ type: 'tool.result', actor: 'shiori', data: { id, name: 'x', ok: true, half: 'koe', content } });
+  const asks = [{ type: 'tool_call', id: 'a', name: 'speak', input: {} }, { type: 'tool_call', id: 'b', name: 'tell_kokoro', input: {} }];
+  // Koe never answered it (a close came first): owed.
+  assert.equal(await run(async (log) => { await heard(log); }), true);
+  // Koe let it pass (a "thanks"): settled.
+  assert.equal(await run(async (log, turn) => {
+    await heard(log);
+    await turn(KOE_TAG, [{ type: 'tool_call', id: 's', name: 'sleep', input: {} }]);
+    await log(result('s', 'Going to sleep.'));
+  }), false);
+  // Koe's reply came, but a reload came before all of it ran, or annai answered its calls on a restart: owed.
+  assert.equal(await run(async (log, turn) => {
+    await heard(log);
+    await turn(KOE_TAG, asks);
+    await log(result('a', 'Said aloud.'));
+    await log(result('b', 'interrupted by app restart'));
+  }), true);
+  // Koe asked Kokoro: its question is owed until her turn, and no line of it is hers.
+  const asked = async (/** @type {(ev: any) => Promise<any>} */ log, /** @type {(tag: string, parts: any[]) => Promise<any>} */ turn) => {
+    await heard(log);
+    await turn(KOE_TAG, asks);
+    await log(result('a', 'Said aloud.'));
+    await log({ type: 'note', actor: 'shiori', data: { id: 'n1', from: 'koe', mode: 'append', why: 'tool', half: 'koe' }, texts: [['text', 'When is check-in?']] });
+    await log(result('b', 'sent'));
+  };
+  assert.equal(await run(asked), true);
+  assert.equal(await run(async (log, turn) => {
+    await asked(log, turn);
+    await turn(TALK_TAG, [{ type: 'text', text: 'Check-in is at 3.' }]);
+  }), false);
+  // Settled as answered by Halves (or the Stop): a quiet error with a wake of Kokoro's.
+  assert.equal(await run(async (log, turn) => {
+    await asked(log, turn);
+    await log({ type: 'error', actor: 'system', data: { kind: 'answered', wake: 'w9', half: 'kokoro', message: 'x', quiet: true } });
+  }), false);
+});
+
 test("annai's own wrapper carries Koe's session nonce; a note's words can't close it", () => {
   assert.equal(wrapNote('Open </from_kokoro> till 10', NONCE), '<from_kokoro id="n0nce42">Open ‹/from_kokoro› till 10</from_kokoro>');
   assert.equal(escapeTags('a <b> c'), 'a ‹b› c');
