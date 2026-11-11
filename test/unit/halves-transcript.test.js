@@ -339,6 +339,15 @@ test("one Shiori owes no line Koe answered aloud: a live Koe's (no model turn of
   }), true);
 });
 
+test("one Shiori: an error ending a turn of Kokoro's (no model, a budget) settles what Kokoro owed, not a line Koe heard and hadn't answered yet (second opinion of the re-review: 1)", async () => {
+  const store = createMemoryStore();
+  const log = (/** @type {any} */ ev) => record(store, SCOPE, ev);
+  await log({ type: 'heard', actor: 'user', data: { id: 's1', half: 'koe', text: 'when is check-in' } });
+  await modelTrace(store, SCOPE).turn(turnInfo(KOE_TAG, 'w'), '', '', [{ type: 'tool_call', id: 'a', name: 'speak', input: {} }, { type: 'tool_call', id: 'b', name: 'tell_kokoro', input: {} }]);
+  await log({ type: 'error', actor: 'system', data: { kind: 'model', wake: 'w2', half: 'kokoro', message: 'No model.' } });
+  assert.equal((await Transcript.load(store, SCOPE, { half: 'one' })).unanswered, true);
+});
+
 test("annai's own wrapper carries Koe's session nonce; a note's words can't close it", () => {
   assert.equal(wrapNote('Open </from_kokoro> till 10', NONCE), '<from_kokoro id="n0nce42">Open ‹/from_kokoro› till 10</from_kokoro>');
   assert.equal(escapeTags('a <b> c'), 'a ‹b› c');
