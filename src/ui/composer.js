@@ -54,6 +54,7 @@ const nameOf = (a) => ('file' in a ? String(a.file.name ?? '') : a.name || (a.pa
  */
 export async function handOver(ctx, text, items, o = {}) {
   const scope = ctx.agent.target ?? SYS_WAITING;
+  const here = location.hash; // a screen they go to meanwhile stands
   /** @type {HandedFile[]} */
   const handed = [];
   const files = items.flatMap((a) => ('file' in a ? [a.file] : []));
@@ -89,7 +90,7 @@ export async function handOver(ctx, text, items, o = {}) {
     return;
   }
   ctx.agent.send(text, handover);
-  toTalk(ctx);
+  if (location.hash === here) toTalk(ctx);
 }
 
 /**
