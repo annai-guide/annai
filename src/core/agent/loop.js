@@ -3493,7 +3493,8 @@ export class Agent {
     this.tapOpening = true;
     const mine = (this.#tapping = {});
     if (!this.#busy) this.#setState('opening');
-    this.#openEar('tap').then(async (deaf) => {
+    // An open that fails before its own catch (a store read) is answered as one that couldn't listen: no "One moment…" or tapOpening is left.
+    this.#openEar('tap').catch(() => /* en */ "annai couldn't start listening.").then(async (deaf) => {
       this.tapOpening = false;
       if (this.#tapping !== mine) {
         if (!deaf && this.#ear?.owner === 'tap') this.#closeEar(); // a tap stopped it while it opened

@@ -309,13 +309,14 @@ export class LiveKoe {
 
   /**
    * The dock's state, as a half's (spec §16.3). Until a tap's open settles she is "opening", never asleep, and Listening (the cue to speak) comes
-   * only once the microphone hears; a session opening to speak (a note, a typed line) shows her thinking (drive 3, D5). @returns {import('../agent/loop.js').State}
+   * only once the microphone hears; a session opening to speak (a note, a typed line) shows her thinking (drive 3, D5). A turn the user cut isn't
+   * thinking: its rest may still come from a provider that has no cut. @returns {import('../agent/loop.js').State}
    */
   get view() {
     const ready = this.#readying ? 'opening' : 'thinking';
     const rest = this.#readying ? 'opening' : 'sleeping';
     const name = this.state === 'opening' ? ready : this.state === 'closed' ? rest : this.#sounding ? 'speaking'
-      : this.#input?.active ? 'hearing' : this.#t || this.#pending || this.#queue.length || this.#urgent ? 'thinking' : this.#input && !this.listening ? ready
+      : this.#input?.active ? 'hearing' : (this.#t && !this.#t.cut) || this.#pending || this.#queue.length || this.#urgent ? 'thinking' : this.#input && !this.listening ? ready
         : this.listening ? (this.#ignoring ? 'ignoring' : 'listening') : rest;
     return { name, label: LABELS[name] };
   }

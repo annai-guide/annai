@@ -4,8 +4,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { until, agentKit } from './agent-kit.js';
-import { liveKit, soon } from './koe-live-kit.js';
+import { liveKit, soon, tone } from './koe-live-kit.js';
 import { LABELS } from '../../src/core/agent/loop.js';
+import { updateAppSettings } from '../../src/core/settings.js';
 
 const FOR_USER = 'The fuel station ahead is open until ten tonight.';
 const NOTE = 'Tell the user the fuel station ahead is open until ten tonight.';
@@ -198,4 +199,47 @@ test('D4 (fix pass): Test the microphone on stuck sound says tap, and the tap ma
   assert.equal(k.voice.stuck, false);
   assert.equal(await k.voice.listenOnce({ seconds: 0.05 }), null, 'it listens again (nothing said)');
   assert.ok(k.platform.log.includes('mic open'));
+});
+
+for (const type of ['gemini-live', 'openai-realtime']) {
+  test(`R1: a tap that cuts her while the microphone listens tells the dock Listening at once, never "Thinking · tap to stop" (${type === 'gemini-live' ? 'a provider annai sends no cut' : 'a provider annai sends a cut'})`, async () => {
+    const k = await liveKit([{ said: 'The bridge ahead was built in 1932 and it is one of the most photographed on the coast.', audio: tone(3) }], { pace: 1, live: { type } });
+    try {
+      await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } }); // the quiet spell, on the kit's 10 ms second, closes nothing here
+      k.platform.streamSpeed = 1;
+      k.agent.tap();
+      await until(() => k.agent.live.listening, 5000);
+      k.agent.send('Tell me about the bridge');
+      await until(() => k.agent.live.view.name === 'speaking', 5000);
+      await new Promise((r) => setTimeout(r, 300));
+      const views = dock(k);
+      assert.equal(k.agent.tap(), 'cut');
+      await new Promise((r) => setTimeout(r, 400)); // the rest of her turn may still be coming
+      assert.deepEqual(views.map((v) => v.name), ['listening']);
+      assert.equal(k.agent.live.listening, true);
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+test('R2: a classic tap whose open fails outside its own catch (a store read) goes back to "Tap to talk", and is no longer opening', async () => {
+  const k = await agentKit([[{ text: 'Hi.' }]], { voice: { playMs: 5, speechIn: ['m-hear'] } });
+  /** @type {string[]} */
+  const names = [];
+  k.agent.on('state', (/** @type {any} */ s) => names.push(s.name));
+  k.voice.howToListen = async () => { throw new Error('the store could not be read'); };
+  assert.equal(k.agent.tap(), 'listening');
+  await until(() => !k.agent.tapOpening, 3000);
+  assert.deepEqual(names, ['opening', 'sleeping']);
+  assert.equal(k.agent.state.label, LABELS.sleeping);
+});
+
+test('R2: with voice off, a tap whose open fails that way lets go of the voice it held on for that tap', async () => {
+  const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] }], { halves: true, voice: { mode: 'off', speechIn: ['m-hear'] } });
+  k.voice.howToListen = async () => { throw new Error('the store could not be read'); };
+  k.agent.tap();
+  await until(() => k.voice.on, 3000); // the tap holds voice on for its exchange
+  await until(() => !k.voice.on, 3000); // and lets go once the open has failed
+  assert.notEqual(k.agent.state.name, 'opening');
 });
