@@ -775,3 +775,10 @@ test("a Stop in the moment after Open: nothing opens, and what is written into t
     'user', "Let's carry on in Kyoto", RECAP,
   ]);
 });
+
+test("open_trip's description says annai asks, so she doesn't ask, announce the move or have Koe announce it", async (t) => {
+  useClock(t);
+  const k = await chatKit();
+  const tool = k.agent.kokoro.loopTools().find((/** @type {any} */ x) => x.name === 'open_trip');
+  assert.match(tool.description, /annai asks them itself with its own card[^.]* so don't ask them first, say you are taking them or tell Koe to: call it/);
+});
