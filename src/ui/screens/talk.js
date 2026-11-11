@@ -842,17 +842,20 @@ function tidyMenu(ctx, trip) {
   /** A finger is on the menu: it keeps its height until the finger is up. Taller, a menu scrolled to its end would shift under it, and a tap would land on another entry. */
   let finger = false;
   for (const type of ['touchstart', 'touchend', 'touchcancel']) menu.addEventListener(type, (e) => { finger = /** @type {TouchEvent} */ (e).touches.length > 0; }, { passive: true });
+  /** The room under the ⋯ for the menu: down to 16 px above the dock (which is over the page's bottom, as tall as it is now); less than none where the ⋯ is under it. */
+  const room = () => {
+    const dock = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dock-h')) || 0;
+    return innerHeight - dock - toggle.getBoundingClientRect().bottom - 16;
+  };
   /**
-   * The menu's room, from under the ⋯ to 16 px above the dock (which is over the page's bottom, as tall as it is now): what it holds beyond that scrolls inside it.
-   * 16 px is the gutter the page keeps at the screen's sides (.view, base.css), so the menu ends as far above the dock as the page does from the edge.
-   * The title sits as low as the cards and banner above it leave it, which on a short conversation the page can't scroll away under the bar, so no fixed
-   * height clears the dock: it is measured where the ⋯ is.
+   * The menu's height: that room, so what it holds beyond it scrolls inside it. 16 px is the gutter the page keeps at the screen's sides (.view, base.css), so
+   * the menu ends as far above the dock as the page does from the edge. The title sits as low as the cards and banner above it leave it, which on a short
+   * conversation the page can't scroll away under the bar, so no fixed height clears the dock: it is measured where the ⋯ is.
    */
   const fit = () => {
     if (finger) return;
-    const dock = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dock-h')) || 0;
-    const room = Math.max(0, innerHeight - dock - toggle.getBoundingClientRect().bottom - 16);
-    if (room !== height) menu.style.maxHeight = `${height = room}px`;
+    const px = Math.max(0, room());
+    if (px !== height) menu.style.maxHeight = `${height = px}px`;
   };
   /**
    * While it is open it is measured every frame, which holds whatever moves the ⋯ or the dock: a scroll, a resize, a card that lands above a short conversation
@@ -875,6 +878,13 @@ function tidyMenu(ctx, trip) {
     menu.scrollTop = 0;
     if (menu.hidden) return;
     finger = false; // a touch that ended while it was closed, or never did, holds nothing
+    // Details, its first entry, is in view and can be tapped as it opens. Where the ⋯ is too low for that (a card and the install banner above a short conversation,
+    // a phone on its side), the page lifts the ⋯ by what is missing, once, before the menu is drawn; with the page at its end, the room is always more than
+    // Details needs (the page ends 96 px and the dock and 52 px below its content). Nothing moves the page after.
+    const first = /** @type {HTMLElement} */ (menu.querySelector('a.btn, button.btn'));
+    const { paddingBottom, borderBottomWidth } = getComputedStyle(menu);
+    const need = first.getBoundingClientRect().bottom - menu.getBoundingClientRect().top + parseFloat(paddingBottom) + parseFloat(borderBottomWidth);
+    if (need > room()) scrollBy(0, need - room());
     fit();
     if (!frame) frame = requestAnimationFrame(watch);
   });
