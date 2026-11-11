@@ -523,12 +523,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** whether a cut turn still owes the user is decided for her whole reply (did anything in it reach them, and was its last call the one waiting on them), not for each call in it.
 - **Revisit when:** the next version: decide by each call: a cut call other than her sleep leaves the turn owed, and so does a cut hand-off between her halves; a turn holding annai's card counts as waiting on the user.
 
-### With no Koe model set, a reminder waits behind a card that isn't answered
-- **Kind:** deferred.
-- **What the user sees:** with Shiori as one (no model set for Koe), annai's card ("Carry on in Kyoto?", "Read Kyoto?") or a question of hers with buttons waits unanswered, and a reminder for that conversation comes due. No Reminder card shows and nothing is said until the user answers the card; then she says the reminder, late. With a Koe model set this doesn't happen: Koe says the reminder while the card waits. The released app already did this for the reading card and her own questions; the card that takes the user into a trip adds occasions for it.
-- **Why:** a turn waiting on the user's answer has no time limit, and a reminder that arrives meanwhile is queued behind it with its words.
-- **Revisit when:** the next version: when a reminder arrives while the turn waits on the user, annai shows it at once (and says it with voice on), as it does for a reminder a cut turn owed.
-
 ### Her turns start a little later in a chat she named, as its files grow
 - **Kind:** deferred.
 - **What the user sees:** nothing noticeable so far. In a conversation with no dates whose name or details Shiori changed last, each of her turns, and Koe's, begins by reading the conversation's whole history of file changes to find who gave it its name. That took 0.3 ms at 108 file changes, 3.7 ms at 2,023 and 24.5 ms at 10,053, on the test store; a phone's storage wasn't measured.
