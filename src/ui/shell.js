@@ -520,12 +520,13 @@ export function startShell(root, core) {
     setPendingImport(files);
     ctx.go('#/import');
   });
-  // A trip opened that the user chose on annai's card (Halves.carryOn), or that Shiori started for a hand-over (Halves.openWhenDone). From
-  // home the address follows into its conversation (the timeline design, "Moving into a trip"), once nothing typed would be lost: a new
-  // entry, so Back returns home, which opens nothing. The conversation left goes to the open one at its redraw (render: a replace, as its
-  // address is stale); any other screen (Details, Settings) stays, drawn again, its top bar the trip.
-  /** @type {any} */ (core.agent)?.on?.('went', (/** @type {{ trip: string }} */ { trip }) => {
-    if (parseHash(location.hash).name !== 'trips') return redraw();
+  // A trip opened: one Shiori started for a hand-over (Halves.openWhenDone), or one the user chose on annai's card (Halves.carryOn, chose). Only
+  // from home, and only for the one the user chose, the address follows into its conversation (the timeline design, "Moving into a trip"), once
+  // nothing typed would be lost: a new entry, so Back returns home, which opens nothing. Otherwise the screen is drawn again: home stays (a
+  // trip she started is one more row), the conversation left goes to the open one at its redraw (render: a replace, as its address is stale),
+  // and any other screen (Details, Settings) stays, its top bar the trip.
+  /** @type {any} */ (core.agent)?.on?.('went', (/** @type {{ trip: string, chose?: boolean }} */ { trip, chose }) => {
+    if (!chose || parseHash(location.hash).name !== 'trips') return redraw();
     whenFree(() => { if (parseHash(location.hash).name === 'trips' && core.agent?.target === trip) ctx.go(talkHref(trip)); });
   });
   render({ moved: true });

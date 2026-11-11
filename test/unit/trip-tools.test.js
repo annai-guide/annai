@@ -52,10 +52,14 @@ const cards = (k) => {
 test("start_trip with no trip open: a trip of Shiori's, with the waiting files in its Files, its conversation starting with the hand-over and her recap; it opens once she is done", async (t) => {
   useClock(t);
   const k = await kit([call('start_trip', START), say('I started Anchorage · Nov 20–27.'), say('Your flight is on Nov 20.')]);
+  /** @type {any[]} */
+  const went = [];
+  k.agent.on('went', (/** @type {any} */ x) => went.push(x));
   k.agent.send('', { handed: [waitingFlight], handover: 'h-1' });
   await k.agent.idle();
   const trip = await tripNamed(k, 'Anchorage · Nov 20–27');
   assert.ok(trip);
+  assert.deepEqual(went, [{ trip: trip.id }], "not the user's own choice: a screen on home stays where it is");
   const tj = await k.ws.readJSON(trip.id, '/trip.json');
   assert.deepEqual([tj.title, tj.start, tj.end], ['Anchorage · Nov 20–27', '2026-11-20', '2026-11-27']);
   assert.equal((await k.ws.read(trip.id, '/trip.json')).entry.author, 'shiori');
@@ -505,8 +509,9 @@ test("Open, tapped: Kyoto opens at the tap, with the user's line, her recap belo
   useClock(t);
   const k = await chatKit();
   await moving(k);
-  let went = 0;
-  k.agent.on('went', () => { went++; });
+  /** @type {any[]} */
+  const went = [];
+  k.agent.on('went', (/** @type {any} */ x) => went.push(x));
   k.agent.send('Where was the ramen place in Kyoto?');
   await k.agent.idle();
   assert.equal((await scopeRec(k, k.kyoto)).talked, null, 'nobody talked in Kyoto yet');
@@ -519,7 +524,7 @@ test("Open, tapped: Kyoto opens at the tap, with the user's line, her recap belo
   assert.deepEqual(await eventsIn(k, k.kyoto, ['msg.user', 'wake']), []);
   k.agent.answer(k.asks[0].data.tap, 'Open');
   await until(() => k.agent.target === k.kyoto);
-  assert.equal(went, 1);
+  assert.deepEqual(went, [{ trip: k.kyoto, chose: true }], "the user's own choice: from home the screen follows");
   await k.agent.idle();
   assert.equal(k.agent.trip, k.kyoto);
   assert.equal((await readAppSettings(k.ws)).activeTrip, k.kyoto);
