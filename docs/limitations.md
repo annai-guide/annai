@@ -461,3 +461,15 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** that sentence is the only warning left in a one-question Remove, and a wrong "nothing to lose" would hide it; the cost of keeping it is one true sentence nobody needed.
 - **Revisit when:** the user asks, or annai gets a sure test for an empty conversation for another reason.
 - **Approved:** 2026-11-10, the user picked "Keep the sentence (Recommended)".
+
+### Undo of a calendar's move goes file by file
+- **Kind:** deferred.
+- **What the user sees:** Shiori moved a calendar to another trip, with the plan items made from its events, and the user taps Undo. If the page closes partway through Undo, the calendar can be back in the first trip while its events are still on the other trip's plan (or one event in each trip), and the other trip can remind for them. Undo is still offered, and a second tap finishes it.
+- **Why:** the move itself is one transaction now, but Undo moves each file back along its own chain, one write at a time.
+- **Revisit when:** the next version: the calendar's plan items move back with it.
+
+### What follows a file's move is not part of the move
+- **Kind:** deferred.
+- **What the user sees:** if the page closes right after a file's move, the file is in the new trip but Shiori there has not been told to read it, and the first conversation has no "moved" line (Undo from the new trip still brings the file back). For a calendar that was waiting to be filed, its events are not planned yet either.
+- **Why:** those steps are written by Shiori's own code after the move has been committed; only the move itself is one transaction.
+- **Revisit when:** the next version.
