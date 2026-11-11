@@ -540,9 +540,3 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** with her two halves, Koe asks something ("What can I do?") and the user answers aloud ("When is check-in?"); Koe passes it to Kokoro, and another conversation is opened while she works. Then the user empties Koe in Models, so Shiori is one again, and comes back: she takes the turn up, but their question isn't among what she reads, so she may not answer it. The same for a tap on Koe's card, or a line typed while Koe waits.
 - **Why:** answers to Koe's own questions are kept with Koe's calls, which Shiori on her own doesn't read.
 - **Revisit when:** the next version: Shiori on her own reads Koe's notes and the user's answers to Koe, as Kokoro does.
-
-### A yes Koe heard while busy answers annai's reading card and is then answered again
-- **Kind:** deferred.
-- **What the user sees:** with her two halves and Koe on a chat model, the user says yes to the card that asks to read another trip ("Read Kyoto?") while Koe is busy in a turn of its own. The card takes the yes and she reads the trip, but the same "Yes." is also written after the card's result as a new line: Koe takes a turn for it, Kokoro is woken once more, and in that extra turn she may say something short (in the tests it said nothing). Nothing is lost and nothing is read that wasn't allowed; it costs two or three model requests. On the card that takes them into another trip this doesn't happen: the chat's "Shiori moved this to <trip>." line is written last and settles the line.
-- **Why:** a line Koe heard while busy waits in Koe's own queue. When it answers annai's card it stays there, and is written as a newer line once Koe is free.
-- **Revisit when:** the next build on Kokoro and Koe's hand-offs: the lines that answered a card leave Koe's queue (or the live session's) and are written as the card's answer.

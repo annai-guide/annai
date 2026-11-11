@@ -289,6 +289,8 @@ export class Halves {
         ended: (t) => this.#kokoroEnded(t),
         hushed: () => this.live.voiced,
         hold: (wakes) => this.#hold(wakes),
+        // What Koe heard while busy, waiting in its queue, that answered Kokoro's card: the card's now, never a line of Koe's.
+        took: (ids) => this.koe.drop((w) => w.kind === 'heard' && ids.includes(String(w.heard?.id))).flatMap((w) => (w.heard ? [{ heard: w.heard, ...(w.gate ? { gate: w.gate } : {}) }] : [])),
       },
     });
     this.koe = new Agent({
