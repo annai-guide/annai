@@ -22,8 +22,9 @@ import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 /* en */ export const RESTARTED = 'interrupted by app restart';
 /** A tool's result when the user stopped her turn (spec §6.7). */
 /* en */ export const STOPPED = 'Stopped by the user.';
-/** A tool's result when opening another conversation cut her turn: no Stop, so it is taken up when they come back. */
-/* en */ export const CUT = 'Cut off: another conversation was opened before this finished.';
+/** A tool's result when opening another conversation cut her turn: no Stop, so it is taken up when they come back. The tool may run on and
+ * finish (runTool stops waiting, not the tool), so taken up she checks before doing it again. */
+/* en */ export const CUT = 'Cut off: another conversation was opened while this ran. It may have finished: check before you do it again.';
 /** Entries the conversation never shows Shiori, left out as it is read: a drive logs thousands of points (spec §4.5). */
 export const NOT_SAID = new Set(['location', 'trigger.fired']);
 /**

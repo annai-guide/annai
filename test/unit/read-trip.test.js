@@ -555,7 +555,7 @@ test("opening another conversation ends the card's wait, as a Stop: no turn hang
   assert.equal(k.agent.kokoro.pendingId, null);
   const results = (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(k.trip, { types: ['tool.result'] }))).filter((/** @type {any} */ e) => e.data.name === 'read_trip');
   // A cut, not a Stop (the re-review's R3): said so, and her turn is taken up when the user comes back.
-  assert.deepEqual(results.map((/** @type {any} */ e) => e.data.content), ['Cut off: another conversation was opened before this finished.']);
+  assert.deepEqual(results.map((/** @type {any} */ e) => e.data.content), ['Cut off: another conversation was opened while this ran. It may have finished: check before you do it again.']);
   assert.equal((await grants(k, k.trip)).length + (await grants(k, chat)).length, 0);
 });
 
