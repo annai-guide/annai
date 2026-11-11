@@ -630,6 +630,7 @@ export async function renderTalk(ctx, route) {
     stop();
     dates?.off();
     offName?.();
+    tidy.off();
     for (const timer of hearing.values()) clearTimeout(timer);
     removeEventListener('message', fit);
     for (const type of USER) removeEventListener(type, own);
@@ -854,8 +855,9 @@ function undoLine(ctx, scope, list) {
  * Remove), Summarize now, which runs housekeeping as it would run by itself, and Start fresh, which has Shiori start a new context from here.
  * Neither of those deletes a line (spec §6.5, §16.2). A conversation with no trip open has no Details.
  * @param {any} ctx @param {{ id: string, dated: boolean } | null} trip the conversation's trip, and whether it has dates (a trip; else a chat)
- * @returns {{ el: HTMLElement, status: HTMLElement, dated: (on: boolean) => void }} the ⋯ and its menu, a line that says "Starting fresh…" while Start
- *   fresh runs, and what says whether the conversation has dates now, for the words under Details
+ * @returns {{ el: HTMLElement, status: HTMLElement, dated: (on: boolean) => void, off: () => void }} the ⋯ and its menu, a line that says "Starting fresh…" while Start
+ *   fresh runs, what says whether the conversation has dates now, for the words under Details, and what takes the menu's listeners off window and document
+ *   (the screen calls it when it is gone)
  */
 function tidyMenu(ctx, trip) {
   const agent = ctx.agent;
@@ -865,23 +867,54 @@ function tidyMenu(ctx, trip) {
     menu.hidden = true;
     toggle.setAttribute('aria-expanded', 'false');
   };
+  /** The max-height it was given last, so a frame that finds the same room writes nothing. */
+  let height = -1;
+  /** A finger is on the menu: it keeps its height until the finger is up. Taller, a menu scrolled to its end would shift under it, and a tap would land on another entry. */
+  let finger = false;
+  for (const type of ['touchstart', 'touchend', 'touchcancel']) menu.addEventListener(type, (e) => { finger = /** @type {TouchEvent} */ (e).touches.length > 0; }, { passive: true });
+  /** The room under the ⋯ for the menu: down to 16 px above the dock (which is over the page's bottom, as tall as it is now); less than none where the ⋯ is under it. */
+  const room = () => {
+    const dock = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dock-h')) || 0;
+    return innerHeight - dock - toggle.getBoundingClientRect().bottom - 16;
+  };
   /**
-   * The menu's room, from under the ⋯ to 16 px above the dock (which is over the page's bottom, as tall as it is now): what it holds beyond that scrolls inside it.
-   * The title sits as low as the cards and banner above it leave it, which on a short conversation the page can't scroll away under the bar, so no fixed
-   * height clears the dock: it is measured where the ⋯ is, as it opens and as the page moves.
+   * The menu's height: that room, so what it holds beyond it scrolls inside it. 16 px is the gutter the page keeps at the screen's sides (.view, base.css), so
+   * the menu ends as far above the dock as the page does from the edge. The title sits as low as the cards and banner above it leave it, which on a short
+   * conversation the page can't scroll away under the bar, so no fixed height clears the dock: it is measured where the ⋯ is.
    */
   const fit = () => {
-    if (menu.hidden) return;
-    const dock = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dock-h')) || 0;
-    menu.style.maxHeight = `${Math.max(0, innerHeight - dock - toggle.getBoundingClientRect().bottom - 16)}px`;
+    if (finger) return;
+    const px = Math.max(0, room());
+    if (px !== height) menu.style.maxHeight = `${height = px}px`;
   };
-  addEventListener('scroll', fit, { passive: true });
-  addEventListener('resize', fit);
+  /**
+   * While it is open the room is measured every frame: that holds whatever moves the ⋯ or the dock with no scroll or resize (a card landing above a short
+   * conversation at the top of its page, the dock growing or shrinking, a phone turned back upright: the shell's observers update --dock-h and --topbar-h a
+   * frame after the resize event). A frame costs about 0.001 ms with a clean layout, 0.04 ms at worst (360x640, Chromium and WebKit, a loaded host).
+   */
+  let frame = 0;
+  const watch = () => {
+    frame = 0;
+    if (menu.hidden) return;
+    fit();
+    frame = requestAnimationFrame(watch);
+  };
   toggle.addEventListener('click', () => {
     if (toggle.getAttribute('aria-disabled') === 'true') return;
     menu.hidden = !menu.hidden;
     toggle.setAttribute('aria-expanded', String(!menu.hidden));
+    // A scroll box keeps its scroll while hidden (both engines): it opens at its top each time, where Details is.
+    menu.scrollTop = 0;
+    if (menu.hidden) return;
+    finger = false; // a touch that ended while it was closed, or never did, holds nothing
+    // Details, its first entry, is in view and can be tapped as it opens: where the ⋯ is too low for that (a card and the install banner above a short
+    // conversation, a phone on its side), the page lifts the ⋯ by what is missing, once, before the menu is drawn. Nothing moves the page after.
+    const first = /** @type {HTMLElement} */ (menu.querySelector('a.btn, button.btn'));
+    const { paddingBottom, borderBottomWidth } = getComputedStyle(menu);
+    const need = first.getBoundingClientRect().bottom - menu.getBoundingClientRect().top + parseFloat(paddingBottom) + parseFloat(borderBottomWidth);
+    if (need > room()) scrollBy(0, need - room());
     fit();
+    if (!frame) frame = requestAnimationFrame(watch);
   });
   const summarize = h('button', {
     class: 'btn', type: 'button', 'aria-describedby': 'tidy-summarize',
@@ -947,13 +980,13 @@ function tidyMenu(ctx, trip) {
     h('p', { id: 'tidy-summarize', class: 'sub', text: t`Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.` }), summarize,
     h('p', { id: 'tidy-fresh', class: 'sub', text: t`Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.` }), fresh,
     h('a', { class: 'btn', href: '#/sees?half=kokoro', text: t`What each half sees` }));
-  whenGone(el, () => {
+  // The menu is in the head, inside the screen the shell replaces as a whole, so nothing here sees it go: the screen calls off when it goes.
+  const off = () => {
     offTap();
     document.removeEventListener('keydown', escape);
-    removeEventListener('scroll', fit);
-    removeEventListener('resize', fit);
-  });
-  return { el, status, dated: (on) => { aboutDetails.textContent = detailsWords(on); } };
+    cancelAnimationFrame(frame);
+  };
+  return { el, status, dated: (on) => { aboutDetails.textContent = detailsWords(on); }, off };
 }
 
 /** What Details holds, in the words of what it is: a trip (it has dates) or a chat. @param {boolean} dated */
