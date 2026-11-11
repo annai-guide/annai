@@ -450,7 +450,7 @@ export async function renderTalk(ctx, route) {
     }
     if (e.type === 'grounded') return groundedCard(d, texts, mine); // Google's words: by their script alone, not the language she answers in
     if (e.type === 'out.ask') {
-      // annai's own card ends at the first tap: it can't be answered twice, and a second tap before its result arrives would be sent as a line of theirs.
+      // annai's own card ends at the first tap: a second, before its result arrives, would be sent as a line of theirs.
       const buttons = (Array.isArray(d.options) ? d.options : []).slice(0, 6).map((/** @type {string} */ o) => h('button', { ...hers(String(o)), class: 'btn', type: 'button', onclick: () => {
         if (d.own) for (const b of buttons) b.disabled = true;
         agent.answer(d.tap ?? d.id, o);

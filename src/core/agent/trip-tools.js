@@ -182,9 +182,9 @@ export function tripTools(app) {
   };
   /**
    * The newest line the user said in a conversation (talks: typed, or heard and not set aside), with its words once written down, or null;
-   * not an answer to annai's own card (a read's Allow, or a typed yes or no, which only ends it), but a line in other words typed while one
-   * showed, which is theirs. The move's own card, the newest, was answered Open: every line of theirs after it is its answer (a yes Koe heard is
-   * written as Koe's line, with no mark of it). Nothing older than the last move out of the conversation: that line went with it.
+   * not an answer to annai's own card (a read's Allow, a typed yes or no), but a line in other words typed while one showed, which is theirs. The
+   * move's own card, the newest, was answered Open: every line of theirs after it is its answer (a yes Koe heard is written as Koe's line, with no
+   * mark of it). Nothing older than the last move out of the conversation: that went with it.
    * @param {string} scope @returns {Promise<{ seq: number, text: string } | null>}
    */
   const lastLine = async (scope) => {
@@ -196,15 +196,14 @@ export function tripTools(app) {
       events = [...page.reverse(), ...events];
       /** @type {Map<string, unknown[]>} annai's own cards, by id, with their options */
       const cards = new Map(events.filter((e) => e.type === 'out.ask' && e.data?.own).map((e) => [e.data.id, Array.isArray(e.data.options) ? e.data.options : []]));
-      // A typed answer is the card's only in its own words, or a word annai hears as a yes or a no (one half's tap stores no chose: talk.js tells
-      // it the same way); a heard one, always.
+      // A typed answer is the card's only in its own words or a yes or no annai hears (one half's tap stores no chose: talk.js tells it the same way); a heard one, always.
       const card = (/** @type {any} */ e, /** @type {any} */ d, /** @type {unknown} */ text) => cards.has(d.answer)
         && (e.type !== 'msg.user' || d.chose || cards.get(d.answer)?.includes(text) || spokenYes(String(text)) || spokenNo(String(text)));
       const asked = events.findLast((e) => e.type === 'out.ask' && e.data?.own)?.seq ?? Infinity;
       const moved = events.findLast((e) => e.type === 'conversation.moved')?.seq ?? 0;
       const last = (await conversationLines(store, events)).findLast(({ e, d, text }) => talks(e) && e.seq < asked && e.seq > moved && !card(e, d, text));
       if (last) return { seq: last.e.seq, text: String(last.text ?? '') };
-      if (moved || page.length < 50) return null; // nothing older than the move counts: no page back finds one
+      if (moved || page.length < 50) return null; // nothing older than a move counts
       before = events[0].seq;
     }
   };
@@ -487,7 +486,7 @@ export function tripTools(app) {
         if (got.stopped) return { content: STOPPED, isError: true };
         /* en */
         if (got.chosen === no) {
-          return `The user ${got.how === 'voice' ? 'said no' : 'tapped Not now'}: they stay here, and nothing moved. Carry on here, and don't call open_trip for ${quote(rec.title)} again unless they ask.${files.length ? " The files stay where they are: don't start a trip for them unless they ask." : ''}`;
+          return `The user ${got.how === 'voice' ? 'said no' : 'tapped Not now'}: they stay here, and nothing moved. Carry on here, and don't call open_trip for ${quote(rec.title)} again unless they ask.${files.length ? " Start no trip for the files unless they ask." : ''}`;
         }
         if (got.chosen !== open) {
           /* en */

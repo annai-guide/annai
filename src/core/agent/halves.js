@@ -454,8 +454,7 @@ export class Halves {
   }
 
   /**
-   * saying: a live Koe's words so far, while she speaks them; went: a trip opened that Shiori started for a hand-over, or that the user chose
-   * on annai's card (chose: true) ({ trip, chose? })
+   * saying: a live Koe's words so far, while she speaks them; went: a trip opened, one Shiori started for a hand-over or the user chose on annai's card ({ trip, chose? })
    * @param {'state' | 'event' | 'notice' | 'open' | 'halves' | 'clear' | 'saying' | 'went'} kind @param {(x: any) => void} fn
    */
   on(kind, fn) {
@@ -1121,10 +1120,9 @@ export class Halves {
 
   /**
    * Takes the user into a trip they chose on annai's card (open_trip's Open), at once, as their tap on its row would: the turn that asked is
-   * let go, nothing owed where it was (open's `moved`), and 'went' tells the screens ({ trip, chose }: the user's own choice, which from home
-   * the screen follows). Then the trip's lines (their line, her recap) go in, for one turn there. If they went elsewhere since (signal: the call's,
-   * which a Stop or another open ends), nothing opens: the lines are written into the trip, in order, and wait there. @param {string} trip
-   * @param {import('./loop.js').Wake[]} wakes @param {AbortSignal} signal
+   * let go, nothing owed where it was (open's `moved`), and 'went' tells the screens (chose: the user's own choice). Then the trip's lines (their
+   * line, her recap) go in, for one turn there. If they went elsewhere since (signal: the call's, which a Stop or another open ends), nothing
+   * opens: the lines are written into the trip, in order, and wait there. @param {string} trip @param {import('./loop.js').Wake[]} wakes @param {AbortSignal} signal
    */
   async carryOn(trip, wakes, signal) {
     const opening = !signal.aborted;
@@ -1133,7 +1131,7 @@ export class Halves {
       this.open(trip, { moved: true }).catch((e) => console.warn(/* en */ "the trip the user chose didn't open", e));
       this.#emit('went', { trip, chose: true });
     }
-    // Into its queue once it is the one opening (at once: one turn when it opens), else written into it, one after the other.
+    // Into its queue at once when it opens (one turn), else written into it, one after the other.
     for (const w of wakes) {
       const done = this.kokoro.wake({ ...w, scope: trip });
       if (!opening) await done;
