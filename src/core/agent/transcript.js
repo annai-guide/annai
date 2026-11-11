@@ -50,7 +50,26 @@ export class Transcript {
   /** The last entry load() read: anything written later wasn't in the log it read. */
   through = 0;
   /** Whether the last thing in it is the user's (or the app's) with no reply from Shiori yet, or results she hasn't seen: after a reload mid-turn. */
-  unanswered = false;
+  get unanswered() {
+    return this.#owes || this.#heardOwed > 0;
+  }
+
+  set unanswered(v) {
+    this.#owes = v;
+    if (v) return;
+    this.#heardOwed = 0;
+    this.#koeCalls = null;
+  }
+
+  #owes = false;
+  /**
+   * One Shiori reading a conversation where Koe talked (Koe since unset): the seq of a heard line Koe kept as the user's that no turn has
+   * settled yet (0: none). Her own turn settles it, or Koe's reply to it once every call of it has run (it answered, let it pass, or asked
+   * Kokoro, whose note is then owed); a reply cut before its calls ran, or answered by annai on a restart, doesn't.
+   */
+  #heardOwed = 0;
+  /** One Shiori: the calls of Koe's reply to that heard line not run yet. @type {Set<string> | null} */
+  #koeCalls = null;
   /**
    * What is waiting when unanswered: 'user' (a message), 'wake' (something else, such as files added while it was closed), or 'turn' (her
    * tool calls' results, her turn cut off before her next reply). @type {'' | 'user' | 'wake' | 'turn'}
@@ -149,6 +168,19 @@ export class Transcript {
           this.waiting = 'user';
         }
       }
+    } else if (e.type === 'model.turn' && this.half === 'one' && d.tag === KOE_TAG) {
+      // Koe's reply to what it heard (one that read it): nothing of it is a line of hers.
+      if (!this.#heardOwed || !texts.parts || (typeof d.context?.to === 'number' && d.context.to < this.#heardOwed)) return;
+      const ids = JSON.parse(texts.parts).flatMap((/** @type {Part} */ p) => (p.type === 'tool_call' ? [p.id] : []));
+      this.#koeCalls = new Set(ids);
+      if (!ids.length) this.#heardOwed = 0;
+      return;
+    } else if (e.type === 'tool.result' && this.half === 'one' && d.half === 'koe') {
+      if (texts.content !== RESTARTED && this.#koeCalls?.delete(d.id) && !this.#koeCalls.size) {
+        this.#heardOwed = 0;
+        this.#koeCalls = null;
+      }
+      return;
     } else if (e.type === 'model.turn' && d.tag === (koe ? KOE_TAG : TALK_TAG) && texts.parts) {
       /** @type {Part[]} */
       const parts = JSON.parse(texts.parts);
@@ -180,6 +212,13 @@ export class Transcript {
       this.#flushHeld();
       this.unanswered = false;
     } else if (e.type === 'note') {
+      // One Shiori reads no notes, but owes Koe's question as Kokoro did, until her turn: cut by a close, she takes it up (item 8's review).
+      // It stands for what the user said, which she reads.
+      if (this.half === 'one' && d.from === 'koe') {
+        this.unanswered = true;
+        this.waiting = 'user';
+        return;
+      }
       if (d.from === (koe ? 'koe' : 'kokoro') || this.half === 'one') return;
       /** @type {Part} */
       const part = { type: 'text', text: koe ? wrapNote(texts.text ?? '', this.nonce, { forUser: texts.forUser }) : /** @type {string} */ (blockFor(e, texts)) };
@@ -249,9 +288,14 @@ export class Transcript {
       }
       /* en */ const label = d.dismissed ? asideLabel(d, this.half) : d.meanwhile && own ? '[heard while you were thinking]' : '[heard]';
       this.#line([{ type: 'text', text: label }, speech]);
-      // Koe answers what it heard (or lets it pass): Kokoro owes nothing for it, nor does one Shiori reading it after Koe was unset (item 8).
+      // Koe answers what it heard (or lets it pass): Kokoro owes nothing for it. One Shiori, reading it after Koe was unset, owes it until a
+      // turn settles it, Koe's too (item 8's review: a question cut by a close is taken up; a "thanks" Koe let pass is not).
       if (!d.dismissed && (this.half === 'koe' || this.#mine(d))) {
         this.unanswered = true;
+        this.waiting = 'user';
+      } else if (!d.dismissed && this.half === 'one') {
+        this.#heardOwed = e.seq;
+        this.#koeCalls = null; // a reply from before it doesn't settle it
         this.waiting = 'user';
       }
     } else if (e.type === 'heard.text') {
