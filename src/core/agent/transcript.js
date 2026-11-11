@@ -22,6 +22,8 @@ import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 /* en */ export const RESTARTED = 'interrupted by app restart';
 /** A tool's result when the user stopped her turn (spec §6.7). */
 /* en */ export const STOPPED = 'Stopped by the user.';
+/** A tool's result when opening another conversation cut her turn: no Stop, so the turn is taken up when they come back (the re-review's R3). */
+/* en */ export const CUT = 'Cut off: another conversation was opened before this finished.';
 /** Entries the conversation never shows Shiori, left out as it is read: a drive logs thousands of points (spec §4.5). */
 export const NOT_SAID = new Set(['location', 'trigger.fired']);
 /**
@@ -101,6 +103,8 @@ export class Transcript {
   #last = [];
   /** The last reply ended the turn: it called sleep, or a result says the turn is over (stopped, or back to sleep). */
   #ends = false;
+  /** Her own line (said, shown, asked) or note since her last reply: she reached the user, or handed on. */
+  #reached = false;
   /** @type {{ seq: number, parts: Part[] }[]} lines held until those results (plan decision 3) */
   #held = [];
   /** @type {{ seq: number, parts: Part[] }[]} lines since the last reply */
@@ -205,6 +209,7 @@ export class Transcript {
       } else if (parts.length) this.#add('assistant', parts);
       this.#last = parts.flatMap((p) => (p.type === 'tool_call' ? [p.id] : []));
       this.#ends = parts.some((p) => p.type === 'tool_call' && p.name === 'sleep');
+      this.#reached = false;
       // A reply that ends her turn (it sleeps, or calls no tool) has answered the hand-over it carried; a reply from before replies said
       // which (no handover key), whatever came before it. A reminder's turn settles no hand-over.
       if (this.#mine(d) && (this.#ends || !this.#last.length) && (!('handover' in d) || d.handover === this.#handover)) this.#handover = null;
@@ -219,6 +224,7 @@ export class Transcript {
         this.waiting = 'user';
         return;
       }
+      if (d.from === (koe ? 'koe' : 'kokoro')) this.#reached = true;
       if (d.from === (koe ? 'koe' : 'kokoro') || this.half === 'one') return;
       /** @type {Part} */
       const part = { type: 'text', text: koe ? wrapNote(texts.text ?? '', this.nonce, { forUser: texts.forUser }) : /** @type {string} */ (blockFor(e, texts)) };
@@ -230,6 +236,7 @@ export class Transcript {
       if (this.half !== 'kokoro') return;
       this.#line([{ type: 'text', text: /** @type {string} */ (blockFor(e, texts)) }]);
     } else if (e.type === 'out.speak' || e.type === 'out.show' || e.type === 'out.ask') {
+      if (this.#mine(d)) this.#reached = true;
       const line = this.half === 'kokoro' ? (d.half === 'koe' ? blockFor(e, texts) : null) : koe ? saidWithout(e, texts) : null;
       if (!line) return;
       this.#line([{ type: 'text', text: line }]);
@@ -337,7 +344,12 @@ export class Transcript {
       this.#add('user', [{ type: 'tool_result', id: d.id, content: texts.content ?? '', ...(d.ok === false ? { isError: true } : {}) }, ...r.images, ...heard]);
       this.#flushHeld();
       // Every result of a reply that didn't end her turn, and no reply after: her turn was cut off, and she owes the rest.
-      if (d.end || texts.content === STOPPED) this.#ends = true;
+      // A call that didn't run (cut by another conversation opening, stopped, failed) leaves her turn owed though its reply slept: a hand-off
+      // to the other half that didn't go, or anything before she reached the user. A user's Stop is settled by the "stopped" record it writes;
+      // nothing is read from a result's words.
+      const name = this.#calls.get(d.id);
+      if (d.end) this.#ends = true;
+      else if (d.ok === false && (name === 'tell_koe' || name === 'tell_kokoro' || (name !== 'sleep' && !this.#reached))) this.#ends = false;
       if (this.#last.includes(d.id) && !this.#waitsForResults() && !this.#ends) {
         this.unanswered = true;
         this.waiting = 'turn';

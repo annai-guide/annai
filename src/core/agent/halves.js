@@ -158,6 +158,8 @@ export class Halves {
   #going = new Set();
   /** @type {string | null | undefined} the trip Koe has open; undefined: none yet */
   #koeTrip = undefined;
+  /** Opening another conversation cut a turn of Kokoro's: its paused line is hers, not Koe's. */
+  #kokoroCut = false;
   /** Kokoro told Koe since the user last typed or spoke: Koe asking about it again wakes nobody. */
   #answered = false;
   /** The user typed or spoke since Kokoro's last model call: her turn's end doesn't make Koe's questions about it answered. */
@@ -313,6 +315,7 @@ export class Halves {
         // A call that saw "Kokoro was stopped": what Koe asks from now on, it asks knowing.
         calling: (context) => { if (context && context.to >= this.#stopped.seq) this.#stopped.on = false; },
         hold: () => 0, // Koe answers at once (GATHER)
+        paused: () => !this.#kokoroCut,
         failed: (why, e) => {
           const both = this.#down('koe', why, e);
           return this.#koeFailed() && (both ?? true);
@@ -763,6 +766,7 @@ export class Halves {
       }
     }
     const other = trip !== this.kokoro.target;
+    if (other) this.#kokoroCut = this.kokoro.turning; // she says what was cut (#paused), else Koe does
     const opening = this.kokoro.open(trip, o);
     if (other) {
       // Until it is open, what the conversation left was doing (stopped by the open) answers no tap: + opens and taps at once.
@@ -1232,7 +1236,7 @@ export class Halves {
     // A reply that asks Kokoro wakes it with the question, not the answer before it; with the answer, if the question fails
     // (refused while the user's Stop holds, it didn't fail: the user stopped Kokoro).
     const out = e.type.startsWith('out.') && this.#cue;
-    const failed = e.type === 'tool.result' && e.data?.name === 'tell_kokoro' && e.data.ok === false && this.#owed && !this.#stopHeld;
+    const failed = e.type === 'tool.result' && e.data?.name === 'tell_kokoro' && e.data.ok === false && this.#owed && !this.#stopHeld && !this.koe.switching; // an open cut it: no failure
     if (e.type === 'tool.result' && e.data?.name === 'tell_kokoro') this.#asking = false;
     const answered = (out && !(this.#owed = this.#asking)) || failed;
     // A hand-over typed to Koe is Kokoro's to file: its turn carries it, so what it does can be undone.

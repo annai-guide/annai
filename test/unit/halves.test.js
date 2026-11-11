@@ -630,6 +630,34 @@ test("Koe's notes Kokoro doesn't take up on purpose are written as settled: she 
   }
 });
 
+test("typed: Kokoro's turn cut by opening another conversation while a tool of hers runs is taken up when the user comes back, with the paused line (the re-review: R3, its B2)", async (t) => {
+  useClock(t);
+  let lingering = false;
+  const k = await agentKit([{ rules: [
+    { match: 'the user wrote', times: 1, reply: calls(['linger', {}], ['tell_koe', { text: 'Check-in is at 3.' }]) },
+    { match: '.', reply: calls(['tell_koe', { text: 'Check-in is at 3.' }]) },
+  ] }], { koe: { type: { rules: [
+    { match: 'the user wrote', reply: calls(['speak', { text: 'On it.' }]) },
+    { match: 'a note from Kokoro', reply: calls(['speak', { text: 'Check-in is at 3.' }]) },
+  ] } } });
+  k.agent.addLoopTools([{ name: 'linger', pluginId: 'core', group: 'Time', description: 'Wait.', input: { type: 'object' }, run: async () => {
+    lingering = true;
+    await new Promise((r) => setTimeout(r, 60_000));
+    return 'Done.';
+  } }]);
+  const A = k.trip;
+  k.agent.send('What is check-in time?');
+  await until(() => lingering, 5000);
+  const B = await createTrip(k.ws, { title: 'Elsewhere' });
+  await k.agent.open(B);
+  await k.agent.idle();
+  const inA = async (/** @type {string[]} */ types) => k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(A, { types }));
+  assert.equal((await inA(['paused'])).length, 1, 'the screen says she picks it up');
+  await k.agent.open(A);
+  await k.agent.idle();
+  assert.deepEqual((await inA(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['On it.', 'Check-in is at 3.']);
+});
+
 // Fix pass 2 (the review's reload-midturn probe): annai reloads while Koe waits on Kokoro and Kokoro is mid-call.
 test('after a reload mid-turn, Kokoro reads by its two-half rules from its first turn, and only Kokoro takes up the restart: Koe speaks once', async (t) => {
   useClock(t);

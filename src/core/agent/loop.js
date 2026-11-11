@@ -11,7 +11,7 @@ import { sha256Hex } from '../hash.js';
 import { record, storedTexts, TALK_TAG } from './log.js';
 import { blobBytes, canRead } from '../reach.js';
 import { compactionNeed, cutAt, promptTokens, requestBytes, instruction, renderForSummary, coldSystem, summaryLanguage, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
-import { Transcript, resolveEvent, repair, NOT_SAID, SAID, STOPPED } from './transcript.js';
+import { Transcript, resolveEvent, repair, NOT_SAID, SAID, STOPPED, CUT } from './transcript.js';
 import { toolList, definitions, runTool, Stuck, toolSwitches, resolvePath, ALWAYS_ON } from './tools.js';
 import { takeSnapshot, nextSnapshot, nowBlock, nextPlanItems, buildRequest, prefixFingerprint, systemText } from './context.js';
 import { Warmth, TTL_MS, ttlFor, wantedTtl, SOON_MS } from './warmth.js';
@@ -115,6 +115,7 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  * @property {(notes: Wake[]) => Promise<void>} [unsaid]  Kokoro's notes for the user that its turn never passed on (Koe's): annai shows what it can of them
  * @property {(notes: Wake[]) => void} [left]  those a turn Start fresh stopped still owed: shown above its divider
  * @property {(wakes: Wake[]) => number} [hold]  how long a turn about to start waits for the user, in ms (Infinity: until their input changes); 0: go
+ * @property {() => boolean} [paused]  false: a turn of this half that an open cut is said by the other half (the paused line)
  * @property {(wakeId: string) => void} [joined]  wakes joined its turn going on (the user's words, a choice, a photo, the other half, a trigger)
  * @property {(on: boolean, line?: { id: string, at: number, her?: boolean }) => void} [speech]  its microphone hears someone begin to speak, or stop (line: with the
  *   segment they made, when it began, and whether annai's voice was playing then), for annai's card when the other half holds it
@@ -1947,8 +1948,8 @@ export class Agent {
   async #paused(abort) {
     if (!abort.signal.aborted || !this.#cutByOpen || this.#userStop || this.#leaving) return;
     this.#cutByOpen = false;
-    // Only a turn the cut left undone, which this half takes up again (Koe's is Kokoro's to say): one that had finished is not paused.
-    if (this.#half.name === 'koe' || !this.transcript.unanswered) return;
+    // Only a turn the cut left undone, which this half takes up again (Koe's only when Kokoro had no turn to say it): one that had finished is not paused.
+    if (!this.transcript.unanswered || this.#half.paused?.() === false) return;
     // The log keeps annai's English; the Conversation makes its line from the entry's type.
     await this.#log({ type: 'paused', actor: 'system', data: { text: /* en */ 'Shiori was in the middle of something. She picks it up when you come back.' } });
     await this.#notice({ tone: 'info', title: t`Shiori was in the middle of something. She picks it up when you come back.`, body: '', toast: true });
@@ -2615,6 +2616,8 @@ export class Agent {
       // A model that can't see photos gets what a tool's photos show in words, from one that can (the tools stay the same).
       if ((output.images?.length && o.model && !o.model.input?.includes('image')) || (output.document && o.model && !o.model.input?.includes('pdf'))) output = await this.#described(output, o.wakeId, o.signal, o.model, undefined, scope, c.name === 'read', o.reads);
     }
+    // Cut short (the turn aborted, the call an error): the user's Stop, or another conversation opening, which is no Stop.
+    if (o.signal.aborted && output.isError) output = { content: this.#userStop ? STOPPED : CUT, isError: true };
     // A tell_koe that came back as an error told no one, whatever the error (refused: Koe can't speak; no text; the tool off): the user is
     // still owed an answer, so [tell_koe, sleep] does not end the turn on it (nudge() asks Kokoro once more; forcing is capped by FORCED_STEPS).
     if (c.name === 'tell_koe' && output.isError) this.#facts.told = toldBefore;

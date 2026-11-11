@@ -993,6 +993,32 @@ test('a turn cut by opening another conversation leaves a line in the one left, 
   assert.equal((await eventsIn(k, A, ['paused'])).length, 1);
 });
 
+test("a turn cut by opening another conversation while a tool of hers runs is taken up too, with the paused line; her own Stop there is still a stop (the re-review: R3)", async (t) => {
+  useClock(t);
+  for (const how of ['open', 'stop']) {
+    let lingering = false;
+    const k = await agentKit([[{ toolCalls: [{ name: 'linger', input: {} }, { name: 'speak', input: { text: 'Check-in is at 3.' } }] }, say('Back: check-in is at 3.')]]);
+    k.agent.addLoopTools([{ name: 'linger', pluginId: 'core', group: 'Time', description: 'Wait.', input: { type: 'object' }, run: async () => {
+      lingering = true;
+      await new Promise((r) => setTimeout(r, 60_000));
+      return 'Done.';
+    } }]);
+    const A = k.trip;
+    k.agent.send('What is check-in time?');
+    await until(() => lingering);
+    if (how === 'open') await k.agent.open(await createTrip(k.ws, { title: 'Kyoto' }));
+    else k.agent.interrupt();
+    await k.agent.idle();
+    const results = (await eventsIn(k, A, ['tool.result'])).map((/** @type {any} */ e) => e.data.name);
+    assert.deepEqual(results, ['linger', 'speak'], how);
+    assert.equal((await eventsIn(k, A, ['paused'])).length, how === 'open' ? 1 : 0, `${how}: the paused line`);
+    if (how === 'stop') await k.agent.open(await createTrip(k.ws, { title: 'Kyoto' }));
+    await k.agent.open(A);
+    await k.agent.idle();
+    assert.deepEqual((await eventsIn(k, A, ['out.speak'])).map((/** @type {any} */ e) => e.data.text), how === 'open' ? ['Back: check-in is at 3.'] : [], `${how}: taken up or not`);
+  }
+});
+
 test('no paused line when the turn was not left undone, or the cut is not one that gets taken up: finished after she spoke, her own Stop, the page leaving, a trip being removed (fix pass)', async (t) => {
   useClock(t);
   const slow = { delayMs: 300, toolCalls: [{ name: 'list', input: { path: '/trip/' } }] };
