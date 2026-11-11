@@ -88,3 +88,43 @@ test('from a chat, Shiori reads Testville after a tap on annai\'s own card; the 
     await server.stop();
   }
 });
+
+// annai's own card ends at the first tap: a second tap on Allow before the read's result arrives is no line of the user's (it would be sent as
+// "Allow", and she would read again).
+for (const gap of /** @type {(number | null)[]} */ ([null, 5])) {
+  test(`a second tap on Allow ${gap === null ? 'in the same moment' : `${gap} ms later`} is not a line of the user's: the chat has their line and the one Allow`, async ({ page }) => {
+    const testville = { id: '' };
+    const server = await startModelServer({ '/b/v1/messages': shiori(testville) });
+    try {
+      await openApp(page, '#/models');
+      await waitForServiceWorker(page);
+      await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${server.origin}/b`, key: 'sk-test-b', model: 'b-model' });
+      await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
+      await page.getByRole('button', { name: 'Add to main' }).click();
+      await expect(page.getByLabel('Add a model to main').locator('option', { hasText: 'b-model' })).toHaveCount(0);
+      await page.goto('/#/trips');
+      testville.id = await startTrip(page, 'Testville', { start: '2027-04-01', end: '2027-04-08' });
+      await writeRecords(page, testville.id, { text: { '/notes/food.md': NOTE } });
+      const chat = await askIn(page, 'Ramen crawl', 'Where was the ramen place in Testville?');
+      const card = page.locator('.convo li').filter({ hasText: ASKED });
+      await expect(card).toBeVisible({ timeout: 15_000 });
+      await card.getByRole('button', { name: 'Allow', exact: true }).evaluate(async (/** @type {HTMLElement} */ allow, /** @type {number | null} */ gap) => {
+        allow.click();
+        if (gap !== null) await new Promise((r) => setTimeout(r, gap));
+        allow.click();
+      }, gap);
+      await expect(page.locator('.convo .shiori p').last()).toHaveText(NOTE, { timeout: 15_000 });
+      await page.waitForTimeout(1000); // a stray line would be answered by now
+      const lines = await page.evaluate(async (chat) => {
+        const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+        const store = await createIdbStore();
+        const out = await store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(chat, { types: ['msg.user'] }));
+        store.close();
+        return out.map((/** @type {any} */ e) => String(e.data?.text ?? ''));
+      }, chat);
+      expect(lines).toEqual(['Where was the ramen place in Testville?', 'Allow']);
+    } finally {
+      await server.stop();
+    }
+  });
+}
