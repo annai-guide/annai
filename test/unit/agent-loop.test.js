@@ -1080,6 +1080,44 @@ test("a turn cut by opening another conversation while a tool of hers runs is ta
   }
 });
 
+test("an open's cut, by what the turn was: waiting on the user, or started by annai itself, is let go (no line, nothing on return, a reminder still shown); one the user started, at work, is picked up (the user's S6 and D9)", async (t) => {
+  useClock(t);
+  const linger = { name: 'linger', input: {} };
+  /** @type {[string, { script: any[], voice?: boolean, start: (k: any) => unknown, ready: (k: any) => boolean, picked: boolean, reminder?: string }][]} */
+  const rows = [
+    ['her ask, shown, waiting for a tap', { script: [{ toolCalls: [{ name: 'ask', input: { question: 'Lunch or dinner?', options: ['Lunch', 'Dinner'] } }] }], start: (k) => k.agent.send('Plan tonight'), ready: (k) => Boolean(k.agent.pendingId), picked: false }],
+    ['her question said aloud, the microphone open', { script: [{ toolCalls: [{ name: 'speak', input: { text: 'Which day?' } }] }], voice: true, start: (k) => k.agent.send('Book us a table'), ready: (k) => Boolean(k.agent.pendingId), picked: false }],
+    ['her wait for their answer', { script: [{ toolCalls: [{ name: 'speak', input: { text: 'Which day?' } }, { name: 'wait', input: { seconds: 60 } }] }], start: (k) => k.agent.send('Book us a table'), ready: (k) => k.agent.waiting, picked: false }],
+    ['the GPS-on wake, at work', { script: [{ toolCalls: [linger] }], start: (k) => k.agent.wake({ kind: 'live', text: 'The user turned GPS on.' }), ready: () => lingering, picked: false }],
+    ['a reminder firing, at work', { script: [{ toolCalls: [linger] }], start: (k) => k.agent.wake({ kind: 'trigger', text: 'A reminder came.', fallbacks: [{ watch: 'r1', text: 'Leave for the ferry at 5.' }] }), ready: () => lingering, picked: false, reminder: 'Leave for the ferry at 5.' }],
+    ["the user's question, at work", { script: [{ toolCalls: [linger] }], start: (k) => k.agent.send('When is check-in?'), ready: () => lingering, picked: true }],
+  ];
+  let lingering = false;
+  for (const [row, r] of rows) {
+    lingering = false;
+    const k = await agentKit([[...r.script, say('Back to it.')]], r.voice ? { voice: {} } : {});
+    k.agent.addLoopTools([{ name: 'linger', pluginId: 'core', group: 'Time', description: 'Wait.', input: { type: 'object' }, run: async () => {
+      lingering = true;
+      await new Promise((res) => setTimeout(res, 60_000));
+      return 'Done.';
+    } }]);
+    const A = k.trip;
+    r.start(k);
+    await until(() => r.ready(k));
+    await k.agent.open(await createTrip(k.ws, { title: 'Kyoto' }));
+    await k.agent.idle();
+    assert.equal((await eventsIn(k, A, ['paused'])).length, r.picked ? 1 : 0, `${row}: the paused line`);
+    assert.equal(k.notices.filter((/** @type {any} */ n) => n.toast).length, r.picked ? 1 : 0, `${row}: the toast`);
+    const reminders = (await eventsIn(k, A, ['reminder'])).map((/** @type {any} */ e) => e.data.text);
+    assert.deepEqual(reminders, r.reminder ? [r.reminder] : [], `${row}: a reminder it carried`);
+    if (r.reminder) assert.ok(k.notices.some((/** @type {any} */ n) => n.body === r.reminder), `${row}: the reminder's card`);
+    const before = k.requests.length;
+    await k.agent.open(A);
+    await k.agent.idle();
+    assert.equal(k.requests.length - before, r.picked ? 1 : 0, `${row}: taken up on return`);
+  }
+});
+
 test("cut by an open, the call running may have finished and says so; a call after it never started and says that; the user's Stop is said as a Stop (the re-review 3: F3)", async (t) => {
   useClock(t);
   for (const how of ['open', 'stop']) {

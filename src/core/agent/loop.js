@@ -226,6 +226,8 @@ export const WRITE_TRIES = 3;
 export const isTheirs = (w) => w.kind === 'user' || w.kind === 'choice' || (w.kind === 'heard' && w.gate !== 'chatter') || Boolean(w.again);
 /** A wake the user is owed an answer to: a word heard in the window after she spoke may be no one's, and claims nothing. @param {Wake} w */
 const owesAnswer = (w) => isTheirs(w) && !w.window;
+/** A wake annai started by itself, no line or act of the user's: GPS turned on, a reminder or watch firing, a catch-up, a plugin's. @param {Wake} w */
+const byAnnai = (w) => w.kind === 'live' || w.kind === 'trigger' || w.kind === 'catch-up' || w.kind === 'plugin';
 
 /**
  * A wake that means the user is there to tap Stop (budgets.js UNWATCHED_STEPS): one they started, live mode turned on, and for Kokoro behind Koe, Koe's note or
@@ -452,6 +454,8 @@ export class Agent {
   #userStop = false;
   /** The turn running was cut by opening another conversation: the one left is told. */
   #cutByOpen = false;
+  /** ...while it waited on the user (her ask, her question's listening, a wait): their next line answers it. */
+  #cutWaiting = false;
   /** Counts what of hers reached the user (speak, show, ask, a reply shown as written; never annai's own card): what was owed before it is settled. */
   #reached = 0;
   /** The typing box holds text (the dock says so): a turn of theirs waits for them (GATHER). */
@@ -650,13 +654,17 @@ export class Agent {
    * @param {{ quiet?: boolean }} [o] quiet: the conversation is being removed, so it is not told that she will pick it up
    */
   open(trip, o = {}) {
+    const waiting = Boolean(this.#pending); // before the ear closes and the halt answers it
     this.#closeEar();
     this.voice?.speaker.stop();
     this.#target = trip;
     this.#opens++;
     this.poke(); // a turn still gathering the user's messages doesn't start
     const generation = ++this.#generation;
-    if (this.#turning && trip !== this.trip && !o.quiet) this.#cutByOpen = true;
+    if (this.#turning && trip !== this.trip && !o.quiet) {
+      this.#cutByOpen = true;
+      this.#cutWaiting = waiting;
+    }
     if (this.#busy) this.#halt();
     this.#clearTimer();
     this.opening = this.opening.catch(() => {}).then(() => this.#open(trip, generation)).catch(async (e) => {
@@ -1909,7 +1917,7 @@ export class Agent {
     // The turn's own from here, before anything it awaits: a Stop or an open while it sets up is this turn's.
     this.#abort = abort;
     this.#userStop = false;
-    this.#cutByOpen = false;
+    this.#cutByOpen = this.#cutWaiting = false;
     await this.#half.ready?.(); // the half's rules are known (Halves reads the settings as annai starts)
     await this.#workOutVoice(wakes);
     this.#heardBy = null;
@@ -1987,6 +1995,8 @@ export class Agent {
     let owed = wakes.flatMap((w) => w.fallbacks ?? []);
     /** The user's own message (or tap) is in this turn, and nothing has reached them since. */
     let theirs = wakes.some(owesAnswer);
+    /** No line or act of the user's started it, nor joined it. */
+    let annais = wakes.every(byAnnai);
     let reached = this.#reached;
     /** What had reached the user when the turn began: a tool call is asked for only until something more has. */
     const begun = this.#reached;
@@ -2200,6 +2210,7 @@ export class Agent {
             await this.#logWakes(more, wakeId, true);
             reasons.push(...more.map((w) => this.#reason(w)));
             owed.push(...more.flatMap((w) => w.fallbacks ?? []));
+            annais &&= more.every(byAnnai);
             join(more);
           }
           continue;
@@ -2305,6 +2316,7 @@ export class Agent {
         reasons.push(...more.map((w) => this.#reason(w)));
         owed.push(...more.flatMap((w) => w.fallbacks ?? []));
         this.#facts.kinds.push(...more.map((w) => w.kind));
+        annais &&= more.every(byAnnai);
         join(more);
       }
     }
@@ -2331,6 +2343,15 @@ export class Agent {
     if (owed.length && !abort.signal.aborted && !this.#leaving) await this.remind(owed, this.scope, { unsaid: answered && !failed });
     // The user stopped her: the turn is over, and opening the conversation again doesn't take it up (spec §6.7). Nothing to show.
     if (abort.signal.aborted && this.#userStop) await this.#log({ type: 'error', actor: 'system', data: { kind: 'stopped', wake: wakeId, message: STOPPED, quiet: true } });
+    // Another conversation opened while she waited on the user, or in a turn annai started by itself: let go as the released app let it go,
+    // written as settled, so no paused line shows and nothing is taken up; a reminder it carried that hadn't reached the user shows now
+    // (the user's choices of 2026-11-11: only a turn the user started is picked up, and their next line answers her question).
+    else if (abort.signal.aborted && this.#cutByOpen && !this.#leaving && (annais || this.#cutWaiting)) {
+      if (owed.length) await this.remind(owed, this.scope, { unsaid: true });
+      /* en */
+      const message = annais ? 'Let go: another conversation was opened during a turn annai started by itself.' : 'Let go: another conversation was opened while she waited on the user; their next line answers her.';
+      await this.#log({ type: 'error', actor: 'system', data: { kind: 'left', wake: wakeId, message, quiet: true } });
+    }
     this.#owing = null;
     return answered && !failed;
   }
