@@ -347,6 +347,49 @@ test('review S1: scrolled down, a card coming or going keeps the screen where it
   expect(Math.abs(await at() - was)).toBeLessThanOrEqual(1);
 });
 
+// The re-review of defer-home (R2): the rows (main) ignore taps for a moment when a card's coming or going moves them on screen, and they move when the
+// page was at its top, or scrolled by less than the box changes (the scroll back is clamped at 0). Scrolled further, the scroll absorbs the change and
+// nothing moves. A phone 360 x 640, one card, Dismiss clicked from up there: the rows measured in the same task as the click, before any 400 ms.
+/** In the page: whether a tap in the middle of the screen, between the top bar and the dock, lands on the rows (main, and the data-safety warning above it), or goes through them (they ignore taps a moment). */
+const landsOnRows = () => {
+  const bar = document.querySelector('.topbar')?.getBoundingClientRect().bottom ?? 0;
+  const dock = document.querySelector('nav.dock')?.getBoundingClientRect().top ?? innerHeight;
+  return document.elementFromPoint(innerWidth / 2, (bar + dock) / 2)?.closest('main.view, .risk') != null;
+};
+for (const [scrolled, moves] of /** @type {const} */ ([[0, true], [40, true], [400, false]])) {
+  test(`review R2: Settings scrolled ${scrolled} px, one card dismissed: ${moves ? 'the rows rose, and ignore taps a moment' : 'nothing moved, and the rows take taps'}`, async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 640 });
+    await openApp(page, '#/settings');
+    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+    await raiseCard(page);
+    await expect(page.locator('.notice', { hasText: 'Open a trip first' })).toBeVisible();
+    await expect(page.locator('.notices.landed, .notices.over')).toHaveCount(0); // the card's own moment is over
+    await page.evaluate((y) => scrollTo(0, y), scrolled);
+    expect(await page.evaluate(() => scrollY)).toBe(scrolled);
+    expect(await page.evaluate(landsOnRows), 'before: a tap lands on the rows').toBe(true);
+    /** @type {{ rose: number, held: boolean, lands: boolean }} */
+    const after = await page.evaluate(`(() => {
+      const landsOnRows = ${landsOnRows};
+      const rows = document.querySelector('main.view');
+      const was = rows.getBoundingClientRect().top;
+      [...document.querySelectorAll('.notice .btn.ghost')].find((b) => b.textContent === 'Dismiss').click();
+      return { rose: was - rows.getBoundingClientRect().top, held: document.querySelector('.notices').classList.contains('landed'), lands: landsOnRows() };
+    })()`);
+    if (moves) {
+      expect(after.rose, 'the rows rose on screen').toBeGreaterThan(40);
+      expect(after.held, 'and ignore taps').toBe(true);
+      expect(after.lands, 'a tap meant for what was there goes through them').toBe(false);
+    } else {
+      expect(Math.abs(after.rose), 'the screen stayed put').toBeLessThanOrEqual(1);
+      expect(after.held, 'and nothing is held').toBe(false);
+      expect(after.lands, 'a tap lands on the rows at once').toBe(true);
+    }
+    // After the moment, the rows take taps again.
+    await expect(page.locator('.notices')).not.toHaveClass(/landed/);
+    expect(await page.evaluate(landsOnRows), 'after the moment').toBe(true);
+  });
+}
+
 test("one card taller than the box a quarter of the screen high shows its title and Dismiss, its words behind More (SE size, landscape; the second emulator re-check; the second review of phone-fixes-1: a card shows its title and every button)", async ({ page }) => {
   await page.setViewportSize({ width: 667, height: 375 });
   await openApp(page, '#/settings');

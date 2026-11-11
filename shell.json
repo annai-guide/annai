@@ -1,5 +1,5 @@
 {
-  "build": "7cf9da1497ea",
+  "build": "59dd696f41cc",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -228,7 +228,7 @@
     "/src/ui/media-keys.js": "1c616b5f79e6",
     "/src/ui/mic-help.js": "845ccacb506a",
     "/src/ui/model-check.js": "843189985928",
-    "/src/ui/notices.js": "04ca5f1ab49e",
+    "/src/ui/notices.js": "95d7d1b5c47c",
     "/src/ui/offline-pack.js": "7e72b3ca79c1",
     "/src/ui/open-file.js": "e1ff697775f9",
     "/src/ui/open-trip.js": "143474f503ad",

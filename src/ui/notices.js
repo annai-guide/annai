@@ -48,10 +48,11 @@ export function createNotices() {
     if (by && y > 0) scrollTo(0, y + by);
     // What moved ignores taps a moment, so a tap meant for it doesn't land on what slid under the finger. The cards, after any change (.over): one that
     // comes lands where rows were (on home, over them), and one that goes slides the ones under it into its place, so a quick second tap on its Dismiss
-    // would land on the next card's button. At the page's top, the rows too, as the box pushed or pulled them (.landed); scrolled down, they didn't
-    // move and take taps.
+    // would land on the next card's button. The rows too (.landed) when they moved on screen, by what the scroll above didn't make up for: all of the
+    // change at the page's top, and the rest of it scrolled down by less than the box changed (the scroll back is clamped at 0). Where the scroll made
+    // up for it they stayed, and take taps.
     const cards = !el.matches(':empty');
-    const rows = by !== 0 && y === 0;
+    const rows = Math.abs(scrollY - (y + by)) >= 1;
     if (cards) still('over');
     if (rows) still('landed');
   };
