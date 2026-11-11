@@ -131,8 +131,8 @@ test('handOverText: waiting files ask for list_trips and open_trip or start_trip
 
 test("handOverText with no trip open: annai asks where the files go with its own card, and on Not now they wait: she starts no trip for them unless asked", () => {
   const waiting = handOverText([{ path: '/waiting/files/flight.pdf', type: 'application/pdf', name: 'flight.pdf', new: true }]);
-  assert.match(waiting, /open_trip with the files for a trip that fits: annai asks the user itself with its own card, so you don't ask where they go/);
-  assert.match(waiting, /if they choose Not now the files wait here and you start no trip for them unless they ask/);
+  assert.match(waiting, /open_trip with the files for a trip that fits: annai asks the user with its own card, so you don't ask where they go/);
+  assert.match(waiting, /on Not now the files wait here and you start no trip for them unless they ask/);
   assert.match(waiting, /Files that fit no trip: start_trip/);
   assert.doesNotMatch(waiting, /without asking where it goes/);
 });

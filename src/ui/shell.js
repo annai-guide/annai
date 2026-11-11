@@ -520,11 +520,10 @@ export function startShell(root, core) {
     setPendingImport(files);
     ctx.go('#/import');
   });
-  // A trip opened: one Shiori started for a hand-over (Halves.openWhenDone), or one the user chose on annai's card (Halves.carryOn, chose). Only
-  // from home, and only for the one the user chose, the address follows into its conversation (the timeline design, "Moving into a trip"), once
-  // nothing typed would be lost: a new entry, so Back returns home, which opens nothing. Otherwise the screen is drawn again: home stays (a
-  // trip she started is one more row), the conversation left goes to the open one at its redraw (render: a replace, as its address is stale),
-  // and any other screen (Details, Settings) stays, its top bar the trip.
+  // A trip opened, by Shiori for a hand-over (Halves.openWhenDone) or by the user's choice on annai's card (carryOn, chose). From home the
+  // address follows into the conversation only for the user's choice (the timeline design, "Moving into a trip"), once nothing typed would
+  // be lost: a new entry, so Back returns home, which opens nothing. Otherwise the screen is drawn again: home stays, a conversation left goes
+  // to the open one at its redraw (render: a replace, as its address is stale), Details and Settings stay, their top bar the trip.
   /** @type {any} */ (core.agent)?.on?.('went', (/** @type {{ trip: string, chose?: boolean }} */ { trip, chose }) => {
     if (!chose || parseHash(location.hash).name !== 'trips') return redraw();
     whenFree(() => { if (parseHash(location.hash).name === 'trips' && core.agent?.target === trip) ctx.go(talkHref(trip)); });
