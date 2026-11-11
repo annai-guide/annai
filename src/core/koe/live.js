@@ -1186,10 +1186,17 @@ export class LiveKoe {
     } else if (e.type === 'turn' && e.end === 'interrupted') {
       if (this.#owed.sent.length) this.#owed.cutOff = true;
       // Cut off: what was said stops where it was heard; words still coming for it are dropped.
-      if (this.#t) this.#stop(this.#t);
-      this.#trail = this.#t ?? newTurn();
+      const t = this.#t;
+      if (t) this.#stop(t);
+      this.#trail = t ?? newTurn();
       this.#trail.cut = true;
       this.#t = null;
+      // The provider was still making it, so no turnComplete follows (#complete never runs for it). One whose voice had begun a note is settled
+      // here: the ask (CUE_CUT) goes in as the user's turn ends, before the provider goes on from where its own record of her words stops.
+      if (t?.stream && t.spoken && t.wordAt >= this.#owed.at) {
+        this.#settle(t);
+        this.#idle();
+      }
     } else if (e.type === 'turn') this.#complete();
     else if (e.type === 'tool') this.#tool(s, (this.#t ??= newTurn()), e);
     else if (e.type === 'audio') {
