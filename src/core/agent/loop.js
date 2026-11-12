@@ -77,10 +77,11 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  *   cacheAt: number }} Frozen
  *   what a turn's requests keep from its first step to its end (the keep-reasoning design §3): the system text (rebuilt only from a new snapshot,
  *   after housekeeping), the tools and provider tools, the reasoning level, the half's rule for its messages, and where the previous turn began
- * @typedef {{ id: string, kind: 'ask' | 'wait', resolve: (v: Got) => void, listening?: boolean, hold?: () => void, arm?: () => void, tool?: boolean,
+ * @typedef {{ id: string, kind: 'ask' | 'wait', resolve: (v: Got) => void, listening?: boolean, hold?: () => void, arm?: () => void, tool?: boolean, byHand?: boolean,
  *   ask?: { yes: (heard: string) => string | null, no: (heard: string) => string | null, open: boolean, from: number, until: number, wake: string, scope: string,
  *     heard: Map<string, AskLine>, armed: { line: AskLine, chosen: string, yes: boolean } | null, settle: any, speaking: boolean } }} Pending
- *   waiting for the user; listening: an answer may be spoken; hold and arm stop and start the silence limit; tool: the wait tool's; ask: annai's own card's (confirm):
+ *   waiting for the user; listening: an answer may be spoken; hold and arm stop and start the silence limit; tool: the wait tool's; byHand: set once no
+ *   microphone listens for its answer, so only a tap or typing answers it (#remindWaiting); ask: annai's own card's (confirm):
  *   from, until: its window; armed: the newest listed word; speaking: someone is speaking now (confirmSpeech)
  * @typedef {{ id: string, inside: boolean, her?: boolean, kept?: boolean, text?: string, h?: Heard, gate?: string }} AskLine  heard while annai's card waits: inside: begun in its
  *   window; her: begun over her voice; kept: the verdict, once it comes; h: this half's own segment
@@ -345,15 +346,7 @@ export class Agent {
   /** @type {AbortController | null} */
   #abort = null;
   /** @type {Pending | null} */
-  #waiting = null;
-  /** What the turn waits on the user for: a question shows the reminders held behind it (#remindWaiting). */
-  get #pending() {
-    return this.#waiting;
-  }
-  set #pending(/** @type {Pending | null} */ p) {
-    this.#waiting = p;
-    this.#remindWaiting();
-  }
+  #pending = null;
   /** @type {(() => void)[]} */
   #idle = [];
   /** @type {number[]} times of the wakes in the last hour that weren't the user's (spec §6.6) */
@@ -833,16 +826,15 @@ export class Agent {
   }
 
   /**
-   * Her turn waits on an answer that may never come (annai's card, her own question), or a wake came while it does: annai shows the reminders now, as at a
-   * cut, those queued for this conversation and those her turn owes. Silently while a microphone listens for the answer or is about to (the question being said).
+   * Her turn waits on an answer that may never come, which only a tap or typing gives now (byHand), or a wake came while it does: annai shows the reminders
+   * now, said as its own are, as at a cut: those queued for this conversation and those her turn owes. A cue stays on its wake: it's hers.
    */
   #remindWaiting() {
-    const p = this.#pending;
-    if (p?.kind !== 'ask') return;
-    const queued = this.#queue.filter((w) => w.scope === this.scope && w.fallbacks?.length);
-    const list = [...(this.#owedNow?.() ?? []), ...queued.flatMap((w) => w.fallbacks ?? [])];
-    for (const w of queued) Object.assign(w, { fallbacks: [], shown: true });
-    if (list.length) this.remind(list, this.scope, { waiting: true, ...(p.listening || (p.ask && !p.ask.from) ? { silent: true } : {}) }).catch(() => {});
+    if (!this.#pending?.byHand) return;
+    const queued = this.#queue.filter((w) => w.scope === this.scope && w.fallbacks?.some((r) => !r.cue));
+    const list = [...(this.#owedNow?.() ?? []), ...queued.flatMap((w) => (w.fallbacks ?? []).filter((r) => !r.cue))];
+    for (const w of queued) Object.assign(w, { fallbacks: w.fallbacks?.filter((r) => r.cue), shown: true });
+    if (list.length) this.remind(list, this.scope, { waiting: true }).catch(() => {});
   }
 
   /** @param {Wake} w */
@@ -1022,10 +1014,16 @@ export class Agent {
         ask.open = true;
         ask.from = Date.now();
         ask.until = ask.from + YES_S * this.secondMs;
+        const byHand = () => {
+          p.byHand = true;
+          this.#remindWaiting();
+        };
         const shut = () => {
           ask.open = p.listening = false;
           if (this.#ear?.owner === 'turn') this.#closeEar();
-          if (this.#pending === p) this.#setState('waiting');
+          if (this.#pending !== p) return;
+          this.#setState('waiting');
+          byHand();
         };
         p.hold = () => clearTimeout(timer); // someone is speaking: the window waits for their words
         p.arm = () => {
@@ -1033,10 +1031,11 @@ export class Agent {
           timer = setTimeout(shut, Math.max(0, ask.until - Date.now()));
         };
         p.arm();
-        if (this.#half.voice() && this.voice?.on && !(await this.#openEar('turn')) && this.#pending === p && ask.open) {
-          p.listening = true;
-          this.#setState('listening');
-        }
+        const ear = this.#half.voice() && this.voice?.on && !(await this.#openEar('turn'));
+        if (this.#pending !== p || !ask.open) return;
+        if (!ear) return byHand();
+        p.listening = true;
+        this.#setState('listening');
       });
     });
     for (const h of got.own ?? []) await this.#logHeard(h, { wake: call.wake, answer: call.id });
@@ -3098,7 +3097,9 @@ export class Agent {
     return new Promise((resolve) => {
       /** @type {ReturnType<typeof setTimeout> | undefined} */
       let timer;
-      this.#pending = { id, kind, tool: kind === 'wait', resolve: (v) => { clearTimeout(timer); resolve(v); } };
+      // No microphone listens for her question here (byHand).
+      this.#pending = { id, kind, tool: kind === 'wait', byHand: kind === 'ask', resolve: (v) => { clearTimeout(timer); resolve(v); } };
+      this.#remindWaiting();
       if (ms > 0) timer = setTimeout(() => {
         if (this.#pending?.id === id) this.#pending = null;
         resolve({});
