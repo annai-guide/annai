@@ -853,13 +853,14 @@ export class Halves {
       if (!this.#works() || KOKORO_ONLY.includes(w.kind)) return void (await this.kokoro.wake(w));
       if (!w.aloud && !THEIRS.includes(w.kind) && !(await this.kokoro.admit(w, (x) => this.wake(x)))) return;
       this.#koeOpen();
-      // A cue is hers to say or let pass, owed only until a model has it: never a reminder Koe is saying, nor shown before then.
+      // A cue is hers to say or let pass, owed only until a model has it: not shown by annai before then. Kokoro is told of cues as of reminders, as released:
+      // nothing shows that it leaves a cue alone, and one it passes on is a note, which Koe must say.
       const reminders = (w.fallbacks ?? []).filter((r) => !r.cue);
       // From a page out of view, a session waits for it; its reminders show now, as annai's always do.
       const away = this.koeState === 'live' && !this.#visible() && reminders.length > 0;
       // Asked to hear her (the recap told aloud): the half with the voice tells it. Koe says the reminders: Kokoro, who starts at once, is told so
       // by annai, so she doesn't say them too (a recorded drive); if Koe never does, they are annai's to say or show (owed).
-      if (!w.aloud) this.#wakeKokoro({ ...w, ...(reminders.length && !away ? { text: `${w.text} ${KOE_SAYING(reminders)}` } : {}), fallbacks: [] });
+      if (!w.aloud) this.#wakeKokoro({ ...w, ...(w.fallbacks?.length && !away ? { text: `${w.text} ${KOE_SAYING(w.fallbacks)}` } : {}), fallbacks: [] });
       if (away) this.kokoro.remind(reminders);
       if (this.koeState === 'live') this.#alongside(this.#live(() => this.live.wake(away ? { ...w, fallbacks: w.fallbacks?.filter((r) => r.cue) } : w), w));
       else this.koe.enqueue(w);
