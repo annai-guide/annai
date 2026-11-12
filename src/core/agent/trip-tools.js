@@ -501,7 +501,7 @@ export function tripTools(app) {
         if (m.size || call.handover) await moved(rec.id, false, m.size, call);
         await app.carryOn(rec.id, wakes, call.signal);
         await logIn(call, { type: 'conversation.moved', actor: 'shiori', data: { to: rec.id, title: rec.title } });
-        // In her turn, carryOn's open has ended this call by now, and the loop wrote this result (MOVED); the same words for a caller of its own.
+        // In her turn the open has ended this call, and #runCall wrote MOVED: the same words.
         return MOVED;
       },
     },

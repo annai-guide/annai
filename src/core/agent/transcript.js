@@ -35,10 +35,7 @@ import { NOT_TRANSCRIBED } from '../voice/resolve.js';
  */
 /* en */ export const NOT_HEARD = "Not heard in full: the user opened another conversation while you said it. It is written in the conversation; don't repeat it unless they ask. If it asked them something, what they say next may answer it.";
 /* en */ export const LET_GO = "Let go: the user opened another conversation; don't take it up unless they ask.";
-/**
- * open_trip's result when the user chose Open on its card: the open that takes them there ends the call (loop.js #runCall writes it), and
- * that is what the call was for, so it is no cut and no error. The conversation's own line names the trip (conversation.moved).
- */
+/** open_trip's result at the user's Open, which ends the call (loop.js #runCall writes it): what it was for, no cut, no error. */
 /* en */ export const MOVED = 'They chose Open: that conversation is open now, and you answer them there; this one stays.';
 /** Entries the conversation never shows Shiori, left out as it is read: a drive logs thousands of points (spec §4.5). */
 export const NOT_SAID = new Set(['location', 'trigger.fired']);

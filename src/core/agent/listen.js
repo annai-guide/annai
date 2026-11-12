@@ -9,8 +9,7 @@
  *   thought is waiting (it follows the result); note: a note from the other half came (its name), which follows the result; voiced: the option
  *   a heard line answered annai's own question with (Agent.confirm); spoke: the other half's heard line (its id) that ended that question unanswered;
  *   also: the segments kept before heard while that question settled, in order; own: the listed words said to that question before what ended it
- *   (a "Yes" then taken back), written with its answer and never her next line; other: the ids of the other half's lines with listed words that
- *   answered that question (voiced), the card's as own's are
+ *   (a "Yes" then taken back), written with its answer and never her next line; other: the other half's lines (ids) whose listed words answered it
  */
 
 /** How speak's result begins: what she said, and whether the user stopped her (spec §7.1). @param {import('../voice/speaker.js').Spoken} spoken */
