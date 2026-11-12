@@ -66,7 +66,7 @@ export function fakeCodec(formats) {
  *   voice?: { mode?: 'on' | 'off' | 'auto', speechIn?: string[], hears?: string[], failing?: string[], decide?: any[], dictation?: boolean, keepClips?: boolean, playMs?: number, micFails?: string,
  *     encoder?: { makes: string[] }, plays?: string[] },
  *   halves?: boolean, koe?: { type?: any[] | Record<string, any>, talk?: any[] | Record<string, any>, input?: string[], model?: Record<string, any> },
- *   live?: { origin: string, first?: boolean, second?: boolean, key?: string, tunables?: Record<string, any>, type?: 'gemini-live' | 'openai-realtime' }, fetch?: import('../../src/core/llm/call.js').Fetch,
+ *   live?: { origin: string, first?: boolean, second?: boolean, key?: string, tunables?: Record<string, any>, type?: 'gemini-live' | 'openai-realtime', made?: false }, fetch?: import('../../src/core/llm/call.js').Fetch,
  *   hold?: (c: any) => Promise<unknown> }} [opts]
  *   hold: a scripted call waits for this before it answers, so a test sets an order without a delay
  *   uploading: whether the main model's provider takes photos by upload; a script (or koe's type) with an ability is a model on that
@@ -164,7 +164,8 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
   anthropicMessages({ providers: { register: (/** @type {any} */ x) => { types.set(x.type, { ...x, pluginId: 'anthropic-messages' }); return () => {}; } }, helpers: { sse, parsePartialJSON, ProviderError, errorFromResponse, retry } });
   chatCompletions({ providers: { register: (/** @type {any} */ x) => { types.set(x.type, { ...x, pluginId: 'chat-completions' }); return () => {}; } }, helpers: { sse, parsePartialJSON, ProviderError, errorFromResponse, retry } });
   for (const [id, activate] of /** @type {const} */ ([['gemini-live', geminiLive], ['openai-realtime', openaiRealtime]])) {
-    activate({ providers: { register: (/** @type {any} */ x) => { types.set(id, { ...x, pluginId: id }); return () => {}; } }, helpers: { ProviderError, base64: { encode: toBase64, decode: fromBase64 }, g711 }, events: { append: async () => {} } });
+    // made false: the protocol as a plugin from before it said when her turn is all made (an older one, or a third party's).
+    activate({ providers: { register: (/** @type {any} */ x) => { types.set(id, { ...x, pluginId: id, ...(live?.made === false ? { made: undefined } : {}) }); return () => {}; } }, helpers: { ProviderError, base64: { encode: toBase64, decode: fromBase64 }, g711 }, events: { append: async () => {} } });
   }
   /** Every live session opened, in order, and every socket. @type {any[]} */
   const sessions = [];
