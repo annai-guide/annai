@@ -464,12 +464,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** whether a turn speaks is read once, when the line is written down, and not again as her voice begins.
 - **Revisit when:** the next version: the turn's voice is read again just before her voice begins, and the line is shown instead.
 
-### The dock still says Listening for a while after voice goes off mid-listen
-- **Kind:** deferred.
-- **What the user sees:** voice goes off (by hand, auto mode as the car slows, headphones taken out) while Shiori is listening for an answer during a turn: after annai's card or her own words (up to 20 seconds), or after her own question (8 seconds). The microphone closes at once and the voice chip shows off, but the dock keeps saying "Listening" (or "Thinking · tap to stop" if someone was speaking) until that listening's own time is up. Someone who goes on talking because the dock says Listening isn't heard; typing or a tap still answers. The same when voice goes off in the instant the microphone is opening: nothing opens, and the dock says Listening until that time is up. Voice coming back on before then doesn't reopen the microphone either (it takes effect at her next turn): the dock says Listening with voice on, and a spoken answer still isn't heard.
-- **Why:** when voice goes off, the wait for the answer goes on for typing until its own deadline, and no dock label says "waiting for you to type" ("Waiting for your OK" fits only a card). Which words to show there is a small design question.
-- **Revisit when:** the next version: a dock label for a wait that only typing or a tap can answer, a microphone closed while it was opening counts as "couldn't listen", and voice coming back on before the deadline reopens the microphone.
-
 ### A "Yes." said right after two other lines can miss annai's card
 - **Kind:** known limitation.
 - **What the user sees:** in classic voice with Koe on a chat model, while annai's card waits the user says a line Koe keeps ("What about Osaka?"), then another line, then "Yes.", all within about 3 seconds, and the line in between is slow to judge (its quick-decision answer takes over about 4 seconds with the phone's dictation, about 2 with recorded sound; with Kokoro's model writing speech down, that alone is enough). The card ends unanswered on the first line before the yes's words reach it; Koe takes the yes as a line of its own and may answer it, and Kokoro asks again, or asks them to tap Allow. Nothing is read or opened that they didn't allow.

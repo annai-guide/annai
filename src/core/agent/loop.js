@@ -3127,8 +3127,7 @@ export class Agent {
     // A note already queued answers a wait, and her own question (#cameDue).
     const due = this.#cameDue(kind === 'wait');
     if (due) return Promise.resolve(due);
-    // Only an ask waits for the user's OK; a wait is their turn, said so as the dock is told.
-    this.#setState('waiting', undefined, kind === 'wait' ? t`Your turn` : undefined);
+    this.#waiting(kind);
     return new Promise((resolve) => {
       /** @type {ReturnType<typeof setTimeout> | undefined} */
       let timer;
@@ -3142,13 +3141,18 @@ export class Agent {
     });
   }
 
+  /** The dock while only a tap or typing answers: an ask waits for the user's OK; a wait is their turn. @param {'ask' | 'wait'} kind */
+  #waiting(kind) {
+    this.#setState('waiting', undefined, kind === 'wait' ? t`Your turn` : undefined);
+  }
+
   /**
    * The voice mode changed (spec §4.5, §10.5): voice going off closes the microphone, stops her voice, and turns the rest of
-   * this turn to bubbles; voice coming on takes effect at her next turn. @param {import('../voice/mode.js').VoiceMode} m
+   * this turn to bubbles; voice coming on takes effect at her next turn, but for an answer voice going off stopped listening for. @param {import('../voice/mode.js').VoiceMode} m
    */
   #voiceChanged(m) {
     if (this.#half.logVoice) record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'state', actor: 'system', data: { voice: m.on ? 'on' : 'off', setting: m.setting, why: m.why } }).catch(() => {});
-    if (m.on) return;
+    if (m.on) return void (m.why !== 'tapped' && this.#listenAgain().catch(() => {})); // a tap's own opening decides (#tapListen)
     this.#voiceNow = false;
     this.#closeEar();
     this.voice?.speaker.stop();
@@ -3157,7 +3161,20 @@ export class Agent {
     if (p) {
       p.listening = false; // a wait for an answer goes on, for typing
       p.arm?.(); // speech held its silence limit, and the microphone just closed: no end of that speech will start it again
+      this.#waiting(p.kind);
     }
+  }
+
+  /** Voice came back on before that answer's time is up: the microphone opens for it again. */
+  async #listenAgain() {
+    const p = this.#pending;
+    // arm: a listening's, its timer ending it; byHand: annai's card's, over or never listening.
+    const again = () => this.#pending === p && p?.arm && !p.listening && !p.byHand && (!p.ask || p.ask.open) && this.#half.voice() && this.voice?.on;
+    if (!again() || (await this.#openEar('turn'))) return;
+    if (again()) {
+      /** @type {Pending} */ (p).listening = true;
+      this.#setState('listening');
+    } else if (this.#ear?.owner === 'turn' && !this.#pending?.listening) this.#closeEar(); // answered while it opened
   }
 
   /**
@@ -3435,12 +3452,12 @@ export class Agent {
         onQuiet: () => this.#speechStopped(),
         onError: (e) => this.#earFailed(e),
       });
-      if (this.#ear === ear) {
-        ear.session = session;
-        this.#toldDeaf = false;
-      } else {
-        session.stop(); // closed while it opened
+      if (this.#ear !== ear) {
+        session.stop(); // closed while it opened (voice off, a Stop): nothing listens
+        return voice.on ? /* en */ 'Listening stopped.' : /* en */ 'voice mode is off.';
       }
+      ear.session = session;
+      this.#toldDeaf = false;
       return null;
     } catch (e) {
       if (this.#ear === ear) this.#ear = null;
@@ -3711,7 +3728,7 @@ export class Agent {
         return void this.#emit('state', this.state);
       }
       const p = this.#pending;
-      if (p?.kind === 'ask') p.listening = true; // an ask's answer may be spoken
+      if (p?.kind === 'ask' || p?.arm) p.listening = true; // an ask's answer may be spoken, and one voice going off stopped listening for
       if (this.#busy) return; // she is speaking or working: the window serves her turn
       this.#setState('listening');
       this.#armQuiet();
