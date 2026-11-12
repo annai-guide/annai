@@ -502,6 +502,7 @@ export async function runScenario(browser, name, sc, env) {
       w = await setScreens(page, env.ui);
       log(`    annai's screens: ${env.ui}`);
     }
+    if (sc.seed) await seedTrip(page, trips.chat, sc.seed, log);
     log('    annai is set up; tapping Shiori');
     await page.getByRole('button', { name: w('Shiori') }).click();
     // Classic voice has no live session: the tap opens a listening window, and the microphone with it.
@@ -706,4 +707,38 @@ export async function clipFiles(clips) {
     out[n] = madeHere(CLIPS[n]) ? Buffer.from(encodeWav(c.pcm, SEND_RATE)).toString('base64') : (await readFile(new URL(`${n}.wav`, DIR))).toString('base64');
   }
   return out;
+}
+
+/**
+ * A scenario's seed: synthetic files written into the trip the conversation is in, by a store handle of the page's own, before she listens. plan: three plan
+ * items from now on (so "What's next on my plan?" has an answer); reminderInS: a time watch due that many seconds from now, and the page reloaded so that annai
+ * reads it as a stored reminder.
+ * @param {import('@playwright/test').Page} page @param {string} trip @param {{ plan?: boolean, reminderInS?: number }} seed @param {(s: string) => void} log
+ */
+async function seedTrip(page, trip, seed, log) {
+  await page.evaluate(async ([scope, seed]) => {
+    // The page's own modules, as served (a path the page resolves, not this script's tree).
+    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+    const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+    const { deviceZone, isoInZone } = await import(/** @type {string} */ ('/src/core/time.js'));
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    const zone = deviceZone();
+    const now = Date.now();
+    if (seed.plan) {
+      const item = (/** @type {string} */ id, /** @type {string} */ title, /** @type {number} */ hours, /** @type {string} */ place) => ws.write(scope, `/plan/${id}.json`, { id, title, fixed: false, start: { at: isoInZone(now + hours * 3_600_000, zone), tz: zone }, place: { name: place } }, { author: 'user' });
+      await item('lunch', 'Lunch at Ramen Corner', 2, 'Ramen Corner');
+      await item('museum', 'Museum of Odd Clocks', 5, 'Museum of Odd Clocks');
+      await item('train', 'Train to Laterton', 26, 'Testville Central Station');
+    }
+    if (seed.reminderInS) {
+      await ws.write(scope, '/watches/w-hotel.json', { id: 'w-hotel', owner: 'shiori', when: { type: 'time', at: isoInZone(now + seed.reminderInS * 1000, zone) }, fallback: 'Check in at the hotel desk.', created: new Date(now).toISOString() }, { author: 'shiori' });
+    }
+    store.close();
+  }, /** @type {[string, any]} */ ([trip, seed]));
+  if (seed.reminderInS) {
+    await page.reload();
+    await page.locator('main.view > *').first().waitFor();
+  }
+  log(`    seeded: ${[seed.plan ? 'three plan items' : '', seed.reminderInS ? `a reminder due in ${seed.reminderInS} s` : ''].filter(Boolean).join(', ')}`);
 }

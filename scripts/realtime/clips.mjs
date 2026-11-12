@@ -79,6 +79,8 @@ export const CLIPS = {
   'app-louder': { kind: 'relay', text: 'Can I make your voice louder in this app?', voice: 'Puck' },
   'app-offline': { kind: 'relay', text: 'Does this app still work without a signal?', voice: 'Leda' },
   'app-new': { kind: 'relay', text: 'What changed in the latest version of this app?', voice: 'Aoede' },
+  // A request that begins with "stop" and is no order to Koe to stop (relay-stop-request): Koe's stop clause must not swallow it.
+  'stop-reminder': { kind: 'relay', text: 'Stop the hotel reminder.', voice: 'Orus' },
   // A sound that cuts her while she says a note (someone else's voice, a bump, in headphones): voice-like and as loud as the clips' speech, so annai's
   // detector makes a turn of it that cuts her, as the user's own voice would; 0.8 s, past the 250 ms of sound a turn needs (minSpeechMs).
   bump: { kind: 'noise', seconds: 0.8 },
