@@ -109,8 +109,8 @@ export function analyse(rec, clips, { endLagMs = END_LAG_MS, expectCut = false, 
       open = null;
     }
   }
-  // Why each ended, from annai's own trace: the nearest live.turn entry to its end.
-  const ended = rec.trace.filter((t) => t.type === 'live.turn');
+  // Why each ended, from annai's own trace: the nearest live.turn entry to its end. A 'dropped' or 'kept' line is no turn's end, so it is never the nearest.
+  const ended = rec.trace.filter((t) => t.type === 'live.turn' && t.data?.end !== 'dropped' && t.data?.end !== 'kept');
   for (const t of turns) {
     if (t.end === null) continue;
     const near = ended.filter((e) => Math.abs(e.at - /** @type {number} */ (t.end)) <= 1500).sort((a, b) => Math.abs(a.at - /** @type {number} */ (t.end)) - Math.abs(b.at - /** @type {number} */ (t.end)))[0];
