@@ -3378,6 +3378,25 @@ test("Koe on a chat model, recording: a word begun while annai says the card's q
   k.agent.interrupt();
 });
 
+test("one Shiori, voice on, annai's card in its 20 s with its microphone open: a reminder is said aloud over it and a yes begun over that voice is over her voice, as on the other half's path: it arms nothing, and the card still waits; a yes after her voice answers it", async (t) => {
+  useClock(t);
+  const k = await gateKit(CARD, { voice: { speechIn: ['m-hear'], hears: ['Yes.', 'Yes.'], playMs: 40 } });
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.agent.kokoro.pendingId !== null && k.agent.state.name === 'listening');
+  await pause(2 * k.agent.secondMs);
+  await k.agent.remind([{ watch: 'w-1', text: 'Leave for the airport now.' }]);
+  await until(() => k.voice.speaker.speaking, 20_000);
+  k.platform.mic.feed(cat(quiet(0.3), await clip('first-one'), quiet(1)), 16_000); // begun over her voice, said whole
+  await until(() => !k.voice.speaker.speaking, 20_000);
+  await pause(4 * k.agent.secondMs);
+  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [], 'no yes: it began over her voice');
+  assert.equal(k.agent.kokoro.pendingId !== null, true, 'the card still waits');
+  await hear(k, 'first-one'); // after her voice, inside the window
+  await pause(6 * k.agent.secondMs);
+  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }]);
+  k.agent.interrupt();
+});
+
 test("classic voice: voice turning off inside the card's microphone's own opening, past the check before it: the microphone it opened closes, the dock never says Listening, and the card waits for a tap", async (t) => {
   useClock(t);
   const k = await gateKit([call('read_trip', { trip: TV }), sleep], { voice: { speechIn: ['m-hear'], hears: ['Yes please'] } });

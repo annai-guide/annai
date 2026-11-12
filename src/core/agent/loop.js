@@ -3501,12 +3501,12 @@ export class Agent {
     // question), it is over her voice for the card, as a live session, deaf then, never hears it at all.
     this.#spoke(false, { id: h.id, at: began.at, ...(began.over ? { her: true } : {}) });
     this.poke();
-    this.#hearing = this.#hearing.then(() => this.#route(h, began.at)).catch((e) => { console.warn(/* en */ 'heard speech was not handled', e); });
+    this.#hearing = this.#hearing.then(() => this.#route(h, began)).catch((e) => { console.warn(/* en */ 'heard speech was not handled', e); });
   }
 
   /**
    * Where a segment goes (spec §10.4): the answer she listens for; a tap's first words, which wake her; or, while she works,
-   * her next call, which a new turn takes if this one ends first: nothing heard is lost. @param {Heard} h @param {number} began when its speech began
+   * her next call, which a new turn takes if this one ends first: nothing heard is lost. @param {Heard} h @param {{ at: number, over: boolean }} began when its speech began, and whether over her voice
    */
   async #route(h, began) {
     // The other half's card hears it first, as hers does below: one it takes reaches nothing here.
@@ -3518,8 +3518,8 @@ export class Agent {
     const p = this.#pending?.listening ? this.#pending : null;
     if (p) {
       const ask = p.ask;
-      /** @type {AskLine | null} no segment begins over her voice: the microphone is closed while she speaks. By when it began, as a live line: one routed late (behind another's gate call) is no earlier for it. */
-      const line = ask ? { id: h.id, inside: inWindow(ask, began) } : null;
+      /** @type {AskLine | null} by when it began, as a live line: one routed late (behind another's gate call) is no earlier for it; and over her voice (a reminder said into the open microphone) arms nothing, as on the other half's path. */
+      const line = ask ? { id: h.id, inside: inWindow(ask, began.at), ...(began.over ? { her: true } : {}) } : null;
       let said = null;
       if (ask && line) {
         ask.heard.set(h.id, line);
