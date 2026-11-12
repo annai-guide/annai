@@ -3168,7 +3168,7 @@ export class Agent {
 
   /**
    * The voice mode changed (spec §4.5, §10.5): voice going off closes the microphone, stops her voice, and turns the rest of
-   * this turn to bubbles; voice coming on takes effect at her next turn, but for an answer voice going off stopped listening for. @param {import('../voice/mode.js').VoiceMode} m
+   * this turn to bubbles; voice coming on takes effect at her next turn, but for an answer voice going off stopped listening for: its microphone opens again (#listenAgain), and her reply to the answer is said. @param {import('../voice/mode.js').VoiceMode} m
    */
   #voiceChanged(m) {
     if (this.#half.logVoice) record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'state', actor: 'system', data: { voice: m.on ? 'on' : 'off', setting: m.setting, why: m.why } }).catch(() => {});
@@ -3193,6 +3193,7 @@ export class Agent {
     if (!again() || (await this.#openEar('turn'))) return;
     if (again()) {
       /** @type {Pending} */ (p).listening = true;
+      this.#voiceNow = true; // the answer is spoken: her reply to it is said, and she may listen on
       this.#setState('listening');
     } else if (this.#ear?.owner === 'turn' && !this.#pending?.listening) this.#closeEar(); // answered while it opened
   }
@@ -3748,7 +3749,10 @@ export class Agent {
         return void this.#emit('state', this.state);
       }
       const p = this.#pending;
-      if (p?.kind === 'ask' || p?.arm) p.listening = true; // an ask's answer may be spoken, and one voice going off stopped listening for
+      if (p?.kind === 'ask' || p?.arm) {
+        p.listening = true; // an ask's answer may be spoken, and one voice going off stopped listening for
+        if (this.#half.voice()) this.#voiceNow = true; // the tap holds voice on for this exchange: her reply to the answer is said
+      }
       if (this.#busy) return; // she is speaking or working: the window serves her turn
       this.#setState('listening');
       this.#armQuiet();
