@@ -2920,6 +2920,24 @@ for (const [how, again] of /** @type {[string, (k: any) => Promise<unknown>][]} 
   });
 }
 
+test("with voice off, her wait tool waits for typing; a tap on Shiori holds voice on and opens the microphone, and what the user says answers the wait at once, her reply to it said aloud", async (t) => {
+  useClock(t);
+  const k = await gateKit([call('wait', { seconds: 600 }), call('speak', { text: 'Tuesday it is.' }), sleep], { voice: { speechIn: ['m-hear'], hears: ['Tuesday please'] } });
+  await voiceOff(k);
+  k.agent.send('Plan our day');
+  await until(() => k.agent.state.name === 'waiting');
+  assert.equal(k.agent.tap(), 'listening');
+  await until(() => micLog(k).includes('mic open'));
+  await pause(1 * k.agent.secondMs);
+  await hear(k, 'first-one');
+  await pause(30 * k.agent.secondMs); // far short of the wait's 600 s
+  const results = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => ['wait', 'speak'].includes(e.data.name)).map((/** @type {any} */ e) => `${e.data.name}: ${e.data.content}`);
+  assert.deepEqual(results.slice(0, 2), ['wait: The user said:', 'speak: Said aloud. Heard nothing (20 seconds).'], 'the wait was answered by what they said, and her reply was said');
+  assert.deepEqual(k.said, ['Tuesday it is.']);
+  k.agent.interrupt();
+  await k.agent.idle();
+});
+
 test("classic voice: voice turning off inside the card's microphone's own opening, past the check before it: the microphone it opened closes, the dock never says Listening, and the card waits for a tap", async (t) => {
   useClock(t);
   const k = await gateKit([call('read_trip', { trip: TV }), sleep], { voice: { speechIn: ['m-hear'], hears: ['Yes please'] } });
