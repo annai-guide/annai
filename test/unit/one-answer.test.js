@@ -221,7 +221,7 @@ async function shownAndSaid(k) {
   assert.equal(asks(k).length, 1, 'she was asked once more');
 }
 
-for (const [what, turns] of /** @type {[string, any[]][]} */ ([['and nothing when asked once more', [TOLD]], ['and again when asked once more', [TOLD, TOLD]]])) {
+for (const [what, turns] of /** @type {[string, any[]][]} */ ([['and nothing when asked once more', [TOLD, {}]], ['and again when asked once more', [TOLD, TOLD]]])) {
   test(`a drop as she says a note, and the resumed session says it was already told ${what}: she is asked once, then annai shows the note and says it`, async () => {
     const k = await noteSaid({ turns });
     try {
