@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { until, agentKit } from './agent-kit.js';
 import { liveKit, texts, soon, tone, say } from './koe-live-kit.js';
-import { hum, quiet, cat } from './voice-kit.js';
+import { hum, quiet, cat, clip } from './voice-kit.js';
 import { KOE_CORE, KOE_LIVE } from '../../src/core/koe/instructions.js';
 import { channelTool } from '../../src/core/agent/halves.js';
 
@@ -280,6 +280,98 @@ for (const kind of /** @type {const} */ (['speak', 'show', 'ask'])) {
     });
   }
 }
+
+// Two things owed at once, and shown one after the other: each goes into the conversation it belongs to, whichever the user has since opened. A switch
+// to another trip moves the open conversation at once, while the first card is still being written.
+const COAST = 'The coast road is closed at the bridge until noon.';
+/** Kokoro's note with words for the user (for_user), as its tool sends it. @param {any} k @param {string} words */
+const tellWords = (k, words) => k.agent.channel.send('kokoro', `Tell the user: ${words}`, 'append', 'tool', undefined, undefined, false, words);
+/** What a conversation holds of what annai showed for Shiori: the words, and whether they were hers. @param {any} k @param {string | null} trip */
+const entries = async (k, trip) => (await k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(trip, { types: ['reminder'] }))).map((/** @type {any} */ e) => [e.data.text, Boolean(e.data.answer)]);
+
+/** A live session where the user is part-way through a sentence, so what Kokoro sends for them waits, owed. @param {(k: any) => Promise<unknown>} items */
+async function owing(items) {
+  const k = await liveKit([{ heard: 'Tell me a story.', said: 'Sure.', audio: tone(0.2) }]);
+  const lunch = await clip('where-lunch');
+  k.agent.tap();
+  await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
+  k.platform.mic.feed(cat(quiet(0.5), lunch.subarray(0, lunch.length >> 1)), RATE); // still speaking: the notes wait
+  await until(() => k.agent.live.view.name === 'hearing');
+  await items(k);
+  await until(() => k.agent.live.owing);
+  return k;
+}
+
+const AT_A_SWITCH = /** @type {const} */ ([
+  ['two notes with words for the user', async (/** @type {any} */ k) => { await tellWords(k, FOR_USER); await tellWords(k, COAST); }, [[FOR_USER, true], [COAST, true]]],
+  ['a note, then a reminder', async (/** @type {any} */ k) => { await tellWords(k, FOR_USER); await k.agent.wake(SUNSET); }, [[FOR_USER, true], ['Sunset at 18:40', false]]],
+  ['a reminder, then a note', async (/** @type {any} */ k) => { await k.agent.wake(SUNSET); await until(() => k.agent.live.owing); await tellWords(k, FOR_USER); }, [['Sunset at 18:40', false], [FOR_USER, true]]],
+]);
+for (const [what, items, want] of AT_A_SWITCH) {
+  test(`${what} still owed when the user switches to another trip: both are written in the trip left, and the trip opened gets nothing`, async () => {
+    const k = await owing(items);
+    try {
+      const { createTrip } = await import('../../src/core/scopes.js');
+      const other = await createTrip(k.ws, { title: 'Carmel' });
+      await k.agent.open(other);
+      await k.agent.idle();
+      await soon(async () => (await entries(k, k.trip)).length + (await entries(k, other)).length >= want.length, 4000);
+      await wait(300); // anything late
+      assert.deepEqual(await entries(k, other), [], 'none in the trip opened');
+      assert.deepEqual([...(await entries(k, k.trip))].sort(), [...want].sort(), 'both, in the trip left');
+      assert.deepEqual(k.said, [], 'not said');
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+test('one note with words for the user still owed when the user switches to another trip: written in the trip left, and the trip opened gets nothing', async () => {
+  const k = await owing((x) => tellWords(x, FOR_USER));
+  try {
+    const { createTrip } = await import('../../src/core/scopes.js');
+    const other = await createTrip(k.ws, { title: 'Carmel' });
+    await k.agent.open(other);
+    await k.agent.idle();
+    await soon(async () => (await entries(k, k.trip)).length === 1, 4000);
+    await wait(300);
+    assert.deepEqual(await entries(k, k.trip), [[FOR_USER, true]]);
+    assert.deepEqual(await entries(k, other), []);
+  } finally {
+    await k.done();
+  }
+});
+
+test("two notes with words for the user that went in together, cut by a tap: both are shown at once in the conversation open, silently, once", async () => {
+  const both = async (/** @type {any} */ k) => { await Promise.all([tellWords(k, FOR_USER), tellWords(k, COAST)]); };
+  const k = await noteSaid({ first: both, turns: [{ said: COAST, audio: tone(3) }] });
+  try {
+    await soon(async () => textsIn(k).some((t) => t.includes(COAST)), 3000);
+    assert.equal(k.agent.live.tap(), 'cut');
+    await soon(async () => (await shown(k)).length === 2, 4000);
+    await wait(1500);
+    await k.agent.idle();
+    assert.deepEqual([...(await shown(k))].sort(), [[COAST, false], [FOR_USER, false]], 'both, once, never said');
+    assert.deepEqual(asks(k), []);
+  } finally {
+    await k.done();
+  }
+});
+
+test("two notes with words for the user that went in together, and the user begins before her sound: both are shown in the conversation open, silently, once", async () => {
+  const both = async (/** @type {any} */ k) => { await Promise.all([tellWords(k, FOR_USER), tellWords(k, COAST)]); };
+  const k = await noteSaid({ first: both, begun: true, note: LATE, turns: [{ said: COAST, audio: tone(3), saidAt: 2500 }] });
+  try {
+    await bump(k);
+    await soon(async () => (await shown(k)).length === 2, 4000);
+    await wait(1500);
+    await k.agent.idle();
+    assert.deepEqual([...(await shown(k))].sort(), [[COAST, false], [FOR_USER, false]], 'both, once, never said');
+    assert.deepEqual(asks(k), []);
+  } finally {
+    await k.done();
+  }
+});
 
 // A note with no words for the user (a correction or an instruction for Koe): its text is for Koe, so annai can't show it, and it isn't sent again at
 // the end of the cutting turn (that second input is what doubled a note). What Kokoro reads of it is Koe's own cut line, with its ✂: she decides.

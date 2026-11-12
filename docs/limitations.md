@@ -613,3 +613,9 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** an item that ends on a later day than it starts is drawn as two rows, its start and its end, and a row with no end of its own lasts half an hour (the drive-test follow-ups design of 2026-11-02: "an end row is a row like any other").
 - **Revisit when:** a user is misled by it; the change is for the start row to carry the item's end.
 - **Approved:** 2026-11-11, the user picked "Accept as a known limitation".
+
+### A note she just finished can also appear as a silent card when the user answers at once
+- **Kind:** deferred.
+- **What the user sees:** in live voice, when they start speaking within about a third of a second after her last sound of a note (answering her question as she finishes it; in the car or on headphones, and on the phone's speaker only when the provider is slow to end her turn), annai can also show that note as a silent card ("Shiori's answer"), though they heard it whole. Nothing is heard twice and nothing is lost: her line is written whole, and the card only repeats it. (Reproduced on the test stand-in, with the timings of real runs; not yet seen on real Gemini.)
+- **Why:** her turn counts as said only when the provider ends it, and in real runs that came 0.06 to 0.65 s after her sound stopped (median 0.31 s, 60 note turns). Until then the note still counts as not passed on, so a user's turn that begins in that window shows it. Treating "her sound has run out" as heard whole would lose the rest of a note that has a gap in her sound (7 of 204 real replies had such gaps, up to 1.5 s).
+- **Revisit when:** the next version: read the provider's own "finished making it" signal (Gemini's `generationComplete`, which annai ignores today), after measuring when it arrives on real Gemini. A note she had made and played in full then shows nothing.
