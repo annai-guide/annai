@@ -666,9 +666,10 @@ export class LiveKoe {
    * another conversation, or Erase: the handle and what waited go too. @param {string} why @param {{ forget?: boolean }} [o]
    */
   close(why, { forget = false } = {}) {
-    // A turn of hers whose sound has all played passed its notes on, as at a tap (interrupt): they aren't kept, shown or sent again.
+    // A turn of hers whose sound has all played passed its notes on, as at a tap (interrupt): they aren't kept, shown or sent again. One whose
+    // words came before any sound (bytes 0) has played nothing: its notes are kept, or shown at a switch.
     const t = this.#sounding;
-    if (t?.stream && !t.cut && !t.stream.queued()) this.#passed();
+    if (t?.stream && t.bytes && !t.cut && !t.stream.queued()) this.#passed();
     // Another conversation, or a fresh start: Kokoro's notes it owed are shown in the one left, never lost.
     if (forget && (why === 'switch' || why === 'fresh') && this.owing) this.c.left?.([...this.#owed.sent, ...this.#owed.waiting]);
     this.#closing = null;
@@ -1440,7 +1441,7 @@ export class LiveKoe {
    * @param {Turn} t @param {boolean} [shown] @returns {number | undefined} ms heard
    */
   #stop(t, shown = false) {
-    if (t.stream && !t.cut) t.whole = !t.stream.queued();
+    if (t.stream && !t.cut) t.whole = t.bytes > 0 && !t.stream.queued(); // no sound yet is not all played
     t.cut = true;
     if (t.stream) return t.stream.stop().playedMs; // its done writes it
     if (this.#waits(t)) {

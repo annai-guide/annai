@@ -1,5 +1,6 @@
 // Live Koe's lines at a switch: each is written into the conversation she spoke in, not the one opened meanwhile (the session's scope is bound as it
-// connects), and the event reaches the screens' listeners as any held wake's does. Lines and places are synthetic.
+// connects), and the event reaches the screens' listeners as any held wake's does. And a reply with no sound yet is not heard whole: its note is
+// kept to be said again, or written where it was made, never lost. Lines and places are synthetic.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { until, agentKit } from './agent-kit.js';
@@ -88,4 +89,51 @@ test('an entry written into another conversation is heard by the listeners, as a
   k.agent.on('event', (/** @type {any} */ e) => seen.push(e));
   await k.agent.log({ type: 'out.speak', actor: 'shiori', data: { id: 's1', live: true, by: null }, texts: [['text', 'Hello.']] }, { scope: other });
   assert.deepEqual(seen.map((e) => [e.scope, e.type]), [[other, 'out.speak']]);
+});
+
+// A first real word with no audio yet makes the stream with nothing pushed, so nothing is queued: that is no sound played.
+for (const how of ['switch', 'away']) {
+  test(`her words came before any sound, then ${how}: the note isn't passed on as heard whole`, async () => {
+    const k = await noteBegun([{ said: SAID, endAt: 1900 }, { said: SAID, audio: tone(0.3) }]);
+    try {
+      await wait(300);
+      /** @type {string | null} */
+      let other = null;
+      if (how === 'switch') {
+        other = await createTrip(k.ws, { title: 'Carmel' });
+        await k.agent.open(other);
+      } else {
+        // @ts-ignore the page out of view
+        globalThis.document = { visibilityState: 'hidden' };
+        k.agent.hush('away');
+        await wait(800);
+        // @ts-ignore
+        delete globalThis.document;
+        await k.agent.shown();
+        await soon(async () => (await inTrip(k, k.trip, ['out.speak'])).some((l) => l === `out.speak:${SAID}`), 8000);
+      }
+      await k.agent.idle();
+      await wait(500);
+      const left = [...(await inTrip(k, k.trip, ['out.speak', 'reminder'])), ...(other ? await inTrip(k, other, ['out.speak', 'reminder']) : [])];
+      assert.ok(left.some((l) => l.endsWith(SAID)), `the note is said again or shown where it was made: ${JSON.stringify(left)}`);
+    } finally {
+      // @ts-ignore
+      delete globalThis.document;
+      await k.done();
+    }
+  });
+}
+
+test('a tap on Shiori as her words begin, before any sound, keeps the note: it is shown, not dropped as heard whole', async () => {
+  const k = await noteBegun([{ said: SAID, endAt: 1900 }]);
+  try {
+    await wait(300);
+    k.agent.tap();
+    await k.agent.idle();
+    await wait(800);
+    const shown = [...(await inTrip(k, k.trip, ['out.speak', 'reminder']))];
+    assert.ok(shown.some((l) => l.endsWith(SAID)), `the note's words are shown: ${JSON.stringify(shown)}`);
+  } finally {
+    await k.done();
+  }
 });
