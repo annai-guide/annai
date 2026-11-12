@@ -372,3 +372,26 @@ test("Kokoro's speak with no words, gated, that Koe never passes on: nothing sho
   assert.deepEqual(await backstop(k), []);
   assert.equal((await k.events(['error'])).filter((e) => e.data.kind === 'unshown' && e.data.quiet).length, 1);
 });
+
+// With voice off, a tap on Shiori holds voice on and opens the microphone for Koe's question: Kokoro's note still reaches the user, as it does with no tap.
+for (const tap of [false, true]) {
+  test(`voice off, Koe asks the user a question with buttons and Kokoro's note comes while it waits${tap ? ' after a tap on Shiori, whose microphone is open for the answer' : ''}: the question closes and Koe says the note`, async () => {
+    /** @type {any} */
+    let k = null;
+    let go = false;
+    const hold = (/** @type {any} */ c) => (c.model.providerId === 'model-0' ? until(() => go, 60_000) : Promise.resolve());
+    k = await agentKit([kokoro()], { koe: { type: [calls(['speak', { text: 'Let me look.' }], ['tell_kokoro', { text: 'When is sunset?' }], ['ask', { question: 'Want ideas for the evening?', options: ['Yes', 'No'] }]), RELAY] }, voice: { mode: 'off', speechIn: ['m-hear'] }, hold });
+    k.agent.send('A sunset drink in Carmel');
+    await until(() => k.agent.koe.pendingId !== null, 8000);
+    if (tap) {
+      assert.equal(k.agent.tap(), 'listening');
+      await until(() => k.platform.log.includes('mic open'), 8000);
+    }
+    go = true;
+    await until(() => k.agent.koe.pendingId === null, 8000);
+    await k.agent.idle();
+    assert.deepEqual(await said(k), ['Let me look.', 'Sunset is at 6:23, though it is overcast.']);
+    assert.match((await k.events(['tool.result'])).find((e) => e.data.name === 'ask')?.data.content, /^Kokoro: see the note below\. Your question is closed/);
+    if (tap) assert.deepEqual(k.platform.log.filter((/** @type {string} */ l) => l.startsWith('mic ')), ['mic open', 'mic close'], 'the listening ended at its silence limit, and none is left open');
+  });
+}
