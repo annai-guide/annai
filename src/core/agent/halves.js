@@ -276,6 +276,8 @@ export class Halves {
         mark: (type) => (this.#split && MARKED.has(type) ? { half: 'kokoro', ...(type === 'error' && this.#works() ? { aside: true } : {}) } : {}),
         logged: async (e, r) => {
           if (e.type === 'note' && e.data?.why === 'stopped') this.#stopped.seq = e.seq;
+          // A line of the user's, whichever half wrote it (annai's card writes its answers through this one): a Stop no longer holds.
+          if (e.type === 'msg.user' || (e.type === 'heard' && !e.data?.dismissed)) this.#stopped.on = this.#stopHeld = false;
           // From the turn's first wake line only: one it joins later (meanwhile) carries only what joined.
           const reasons = e.type === 'wake' && !e.data?.meanwhile ? e.data?.reasons ?? [] : [];
           if (reasons.length && reasons.every((/** @type {any} */ x) => x.kind === 'cue' && String(x.text).startsWith(NONSTOP_AT))) this.#nonstop.add(e.data.id);
@@ -811,7 +813,6 @@ export class Halves {
    */
   send(text, o = {}) {
     this.#bothTold = false;
-    this.#stopped.on = this.#stopHeld = false;
     this.#heardNow(Boolean(o.photos?.length) && !String(text ?? '').trim());
     this.#route(async () => {
       await this.#refresh();
