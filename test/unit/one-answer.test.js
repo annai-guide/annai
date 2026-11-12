@@ -1,6 +1,6 @@
-// One answer: a note whose words sound cut off while the provider was still making them is said again from its start, never taken up from its
-// middle; Kokoro reads Koe's answer before she starts, for what both halves were given at once; and Koe passes on what the user said, as said.
-// Lines and places are synthetic.
+// One answer: a note (or a reminder) whose words sound cut off is handled as a tap's cut is: what the user didn't hear is shown at once, silently,
+// and nothing is asked again, so the provider's answer to what the microphone heard is the only one; Kokoro reads Koe's answer before she starts,
+// for what both halves were given at once; and Koe passes on what the user said, as said. Lines and places are synthetic.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { until, agentKit } from './agent-kit.js';
@@ -15,19 +15,28 @@ const NOTE = 'Tell the user the fuel station ahead is open until ten tonight.';
 const SAID = 'The fuel station ahead is open until ten tonight.';
 /** Kokoro's tell_koe with for_user, as its tool sends it. @param {any} k */
 const tell = (k) => k.agent.channel.send('kokoro', NOTE, 'append', 'tool', undefined, undefined, false, FOR_USER);
-/** What annai showed as Shiori's answer (the note's words, when Koe never passed it on). @param {any} k */
-const shown = async (k) => (await k.events(['reminder'])).map((/** @type {any} */ e) => e.data.text);
-/** The asks annai sent because sound cut her off. @param {any} k */
-const cutAsks = (k) => texts(k).filter((t) => /^\[annai\] /.test(t) && /cut you off/.test(t));
+/** What annai showed for Shiori (the note's words for the user, a reminder), and whether annai's own voice said it. @param {any} k */
+const shown = async (k) => (await k.events(['reminder'])).map((/** @type {any} */ e) => [e.data.text, Boolean(e.data.aloud)]);
+/** The text turns annai sent asking her once more about a note (the plain ask, or any other). @param {any} k */
+const asks = (k) => textsIn(k).filter((t) => /^\[annai\] /.test(t) && /Kokoro's note|cut you off|say it again/i.test(t));
+/** The text turns the stand-in got, either flavour's. @param {any} k @returns {string[]} */
+const textsIn = (k) => k.server.received().flatMap((/** @type {any} */ m) => (m.clientContent ? texts({ server: { received: () => [m] } })
+  : m.type === 'conversation.item.create' ? (m.item?.content ?? []).filter((/** @type {any} */ p) => p.text).map((/** @type {any} */ p) => p.text) : []));
 /** Her lines, as written: words, and whether cut. @param {any} k */
 const lines = async (k) => (await k.events(['out.speak'])).map((/** @type {any} */ e) => [e.data.text, Boolean(e.data.cut)]);
+/** How many times the note was heard whole. @param {any} k */
+const wholeNotes = async (k) => (await lines(k)).filter(([text, cut]) => text === SAID && !cut).length;
+/** A second, in the cut tests: a real one, so the session's quiet spell (30 s) outlasts the provider's second answer; the kit's 10 ms makes it 0.3 s. */
+const REAL_SECOND = 1000;
+const wait = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
- * A live session in a car (sound at the microphone may cut her), the user in it: a first exchange, then Kokoro's note, which she begins to say.
- * turns: what the stand-in answers after the note's own turn, in order; cue: its answer to annai's ask. @param {{ turns?: any[], cue?: any, pace?: number, note?: any }} [o]
+ * A live session in a car (sound at the microphone may cut her), the user in it: a first exchange, then Kokoro's note (or a reminder's wake), which
+ * she begins to say. turns: what the stand-in answers after it, in order; first: what is said into it (default: Kokoro's note).
+ * @param {{ turns?: any[], pace?: number, note?: any, second?: number, live?: any, first?: (k: any) => Promise<unknown> }} [o]
  */
-async function noteSaid({ turns = [], cue = { said: SAID, audio: tone(0.2) }, pace = 1, note = { said: SAID, audio: tone(3) } } = {}) {
-  const k = await liveKit([{ said: 'Hello there.', audio: tone(0.1) }, note, ...turns], { pace, server: { onText: { match: /cut you off/, turn: cue } } });
+async function noteSaid({ turns = [], pace = 1, note = { said: SAID, audio: tone(3) }, second = REAL_SECOND, live, first = tell } = {}) {
+  const k = await liveKit([{ said: 'Hello there.', audio: tone(0.1) }, note, ...turns], { pace, agent: { secondMs: second }, ...(live ? { live } : {}) });
   await k.voice.unlock();
   k.voice.route = async () => 'car';
   k.platform.streamSpeed = 1;
@@ -37,92 +46,148 @@ async function noteSaid({ turns = [], cue = { said: SAID, audio: tone(0.2) }, pa
   await soon(async () => (await k.events(['out.speak'])).length === 1, 4000);
   await k.agent.live.idle();
   k.platform.mic.feed(quiet(0.5), RATE);
-  await tell(k);
+  await first(k);
   await soon(async () => k.agent.live.view.name === 'speaking', 3000);
   return k;
 }
 
 /** A bump at the microphone, over her, once some of her words have been heard: a turn of its own. @param {any} k */
 async function bump(k) {
-  await new Promise((r) => setTimeout(r, 500));
+  await wait(500);
   k.platform.mic.feed(cat(hum(0.8), quiet(1)), RATE);
 }
 
-test('a note cut by a sound while the provider still made it is asked for again once the sound\'s turn ends, and said again from its start; nothing is taken up from its middle', async () => {
-  // The provider's answer to the sound's own turn comes late (as Gemini's do), and would go on from where its record stopped: the ask goes in first.
+test('a note cut by a sound as she says it is shown at once, silently, as a tap does; nothing is asked again, so the answer to the sound is the only one', async () => {
+  // The provider's answer to the sound's own turn goes on from where its record of her words stops, as in a recorded drive.
   const k = await noteSaid({ turns: [{ said: 'open until ten tonight.', audio: tone(0.5), delayMs: 400 }] });
   try {
     await bump(k);
-    await soon(async () => (await lines(k)).some(([text, cut]) => text === SAID && !cut), 8000);
+    await soon(async () => (await lines(k)).some(([text, cut]) => text === 'open until ten tonight.' && !cut), 8000);
+    await wait(1500); // anything more the session gave would be here by now
     await k.agent.idle();
-    assert.equal(cutAsks(k).length, 1, 'asked once, when the sound\'s turn ended');
-    // Its words: once from its start, which a "what?" said over her needs too, unless they said stop.
-    assert.match(cutAsks(k)[0], /Say it again from its start, once, without changing what it claims \(it answers a \\"what\?\\" too\), unless they told you to stop: then stop, and say nothing\./);
-    const said = await lines(k);
-    assert.deepEqual(said.at(-1), [SAID, false], 'said again whole');
-    assert.ok(said.some(([text, cut]) => cut && /✂$/.test(text)), 'the cut words are kept, marked');
-    assert.ok(!said.some(([text]) => /^open until ten/.test(text)), 'nothing from its middle');
-    assert.deepEqual(await shown(k), [], 'she said it: annai shows nothing');
+    assert.deepEqual(asks(k), [], 'nothing is asked again');
+    assert.deepEqual(await shown(k), [[FOR_USER, false]], 'what the user didn\'t hear is shown, and not said');
+    assert.ok(!k.said.some((/** @type {string} */ t) => t.includes('fuel station')), "annai's own voice says nothing of it");
+    assert.deepEqual(await lines(k), [['Hello there.', false], ['The fuel✂', true], ['open until ten tonight.', false]], 'the cut words kept, marked; her answer to the sound stands');
   } finally {
     await k.done();
   }
 });
 
-test("the ask's own text turn cutting a turn that hadn't sounded yet is no second cut: the note is said once more, and annai shows nothing", async () => {
-  // The provider's answer to the sound's turn: its sound came, its first word not yet (her voice waits for a word), when the ask cuts it.
-  const k = await noteSaid({ turns: [{ said: 'open until ten tonight.', audio: tone(0.5), saidAt: 1500 }] });
+test('a "what?" over her, which Gemini answers with her last words again: the note is heard whole once after the cut, and shown once', async () => {
+  const k = await noteSaid({ turns: [{ heard: 'What?', said: SAID, audio: tone(0.5), delayMs: 400 }] });
   try {
     await bump(k);
-    await soon(async () => (await lines(k)).some(([text, cut]) => text === SAID && !cut), 8000);
+    await soon(async () => (await wholeNotes(k)) === 1, 8000);
+    await wait(1500);
     await k.agent.idle();
-    assert.equal(cutAsks(k).length, 1);
-    assert.deepEqual(await shown(k), []);
-    assert.deepEqual((await lines(k)).at(-1), [SAID, false]);
+    assert.equal(await wholeNotes(k), 1, 'heard whole once: no ask beside the user\'s turn, so no second answer');
+    assert.deepEqual(asks(k), []);
+    assert.deepEqual(await shown(k), [[FOR_USER, false]]);
   } finally {
     await k.done();
   }
 });
 
-test('cut twice: asked once, then annai shows and says the words for the user; never a third ask', async () => {
-  const k = await noteSaid({ turns: [{ said: 'open until ten tonight.', audio: tone(0.5), delayMs: 400 }], cue: { said: SAID, audio: tone(3) } });
+test('"stop" over her, and nothing at all back (Gemini\'s way of letting a turn go): the note is shown, silently; no ask, no fresh session, live voice stays', async () => {
+  // 400 ms a second: the session's wait for an answer is 3.2 s, its quiet spell 12 s, so a retry (a fresh session at 3.2 s, then live voice
+  // dropped at 6.4 s, as an ask left unanswered got) would show within the 9 s waited here.
+  const k = await noteSaid({ turns: [{ silent: true }], second: 400 });
   try {
     await bump(k);
-    await soon(async () => cutAsks(k).length === 1, 6000);
-    await soon(async () => k.agent.live.view.name === 'speaking', 4000); // she says it again
-    await bump(k);
-    await soon(async () => (await shown(k)).length === 1, 8000);
+    await soon(async () => (await shown(k)).length === 1, 4000);
+    await wait(9000);
     await k.agent.idle();
-    assert.deepEqual(await shown(k), [FOR_USER]);
-    assert.equal((await k.events(['reminder']))[0].data.aloud, true, 'said by annai as well');
-    assert.equal(cutAsks(k).length, 1, 'one ask, then the backstop');
+    assert.deepEqual(await shown(k), [[FOR_USER, false]], 'shown at the cut, not said');
+    assert.deepEqual(asks(k), [], 'nothing asked: a "stop" needs no clause of annai\'s');
+    assert.equal(k.server.received().filter((/** @type {any} */ m) => m.setup).length, 1, 'no fresh session');
+    const errors = (await k.events(['error'])).map((/** @type {any} */ e) => e.data.kind);
+    assert.ok(!errors.includes('live-dropped'), JSON.stringify(errors));
+    assert.equal(k.agent.koeState, 'live', 'live voice stays');
+    assert.ok(!k.said.some((/** @type {string} */ t) => t.includes('fuel station')), "annai's own voice says nothing of it");
   } finally {
     await k.done();
   }
 });
 
-test('cut, then no word of hers after the ask (as a "stop" said over her asks): annai shows the words for the user, and says nothing', async () => {
-  const k = await noteSaid({ turns: [{ delayMs: 400 }], cue: {} });
-  try {
-    await bump(k);
-    await soon(async () => (await shown(k)).length === 1, 8000);
-    await k.agent.idle();
-    assert.equal(cutAsks(k).length, 1);
-    assert.deepEqual(await shown(k), [FOR_USER], 'shown, so nothing is lost');
-    assert.equal((await k.events(['reminder']))[0].data.aloud, undefined, 'not said');
-    assert.ok(!k.said.some((/** @type {string} */ t) => t.includes('fuel station')), 'no voice says it');
-  } finally {
-    await k.done();
-  }
-});
-
-test('the provider done, then her sound cut: asked once, as before, and said again whole', async () => {
+test('the provider done before the sound cut her voice: shown at once as well, and nothing asked (the release asked her once, and she said it again)', async () => {
   // The note's turn ends at the provider at once (pace 0); her voice plays it out in real time, and the sound cuts that.
-  const k = await noteSaid({ pace: 0, note: { said: SAID, audio: tone(1.5) }, turns: [{ said: 'open until ten tonight.', audio: tone(0.5), delayMs: 400 }] });
+  const k = await noteSaid({ pace: 0, note: { said: SAID, audio: tone(1.5) }, turns: [{ delayMs: 400 }] });
   try {
     await bump(k);
-    await soon(async () => (await lines(k)).some(([text, cut]) => text === SAID && !cut), 8000);
+    await soon(async () => (await shown(k)).length === 1, 4000);
+    await wait(1500);
     await k.agent.idle();
-    assert.equal(cutAsks(k).length, 1);
+    assert.deepEqual(asks(k), []);
+    assert.deepEqual(await shown(k), [[FOR_USER, false]]);
+    assert.equal(await wholeNotes(k), 0);
+  } finally {
+    await k.done();
+  }
+});
+
+test('cut twice: the note is shown once, at the first cut, and nothing of it is said again, so the second sound cuts only her answer to the first', async () => {
+  const k = await noteSaid({ turns: [{ said: 'Open until ten tonight, as I said.', audio: tone(3), delayMs: 400 }, { delayMs: 400 }] });
+  try {
+    await bump(k);
+    await soon(async () => (await shown(k)).length === 1, 4000);
+    await soon(async () => k.agent.live.view.name === 'speaking', 4000); // her answer to the first sound
+    await bump(k);
+    await soon(async () => (await lines(k)).filter(([, cut]) => cut).length === 2, 4000);
+    await wait(1500);
+    await k.agent.idle();
+    assert.deepEqual(await shown(k), [[FOR_USER, false]], 'shown once, and never said');
+    assert.deepEqual(asks(k), []);
+    assert.ok(!k.said.some((/** @type {string} */ t) => t.includes('fuel station')));
+  } finally {
+    await k.done();
+  }
+});
+
+test('a reminder Koe says, cut by a sound: shown at once as a reminder, silently; annai neither asks nor says it', async () => {
+  const sunset = { kind: /** @type {const} */ ('trigger'), text: 'Sunset in 30 minutes', fallbacks: [{ watch: 'sun', text: 'Sunset at 18:40' }] };
+  const k = await noteSaid({ note: { said: 'The sun sets at 18:40, in thirty minutes.', audio: tone(3) }, turns: [{ delayMs: 400 }], first: (x) => x.agent.wake(sunset) });
+  try {
+    await bump(k);
+    await soon(async () => (await shown(k)).length === 1, 4000);
+    await wait(1500);
+    await k.agent.idle();
+    assert.deepEqual(await shown(k), [['Sunset at 18:40', false]], 'shown, not said');
+    assert.ok(!k.said.some((/** @type {string} */ t) => /Sunset/.test(t)), "annai's own voice doesn't say it");
+    assert.deepEqual(asks(k), []);
+  } finally {
+    await k.done();
+  }
+});
+
+for (const [what, answer] of /** @type {const} */ ([['says the note again', { said: SAID, audio: tone(0.5) }], ['says nothing', {}]])) {
+  test(`on OpenAI Realtime too, her answer to the sound ${what}: the note is shown once, silently, and nothing is asked, so that answer is the only one`, async () => {
+    // OpenAI's response.done comes as generation ends (pace 0.05), before her voice has played it out: the path where the release asked her
+    // again, answered after her answer to the user's turn (so she said the note twice, or annai showed it and she said it too).
+    const k = await noteSaid({ live: { type: 'openai-realtime' }, pace: 0.05, turns: [answer, { said: SAID, audio: tone(0.5) }] });
+    try {
+      await bump(k);
+      await soon(async () => (await shown(k)).length === 1, 8000);
+      await wait(2000);
+      await k.agent.idle();
+      assert.equal(await wholeNotes(k), 'said' in answer ? 1 : 0, 'heard whole at most once');
+      assert.deepEqual(asks(k), []);
+      assert.deepEqual(await shown(k), [[FOR_USER, false]]);
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+test('a drop as she says a note is no sound: the resumed session gets the note again, and nothing is shown', async () => {
+  const k = await noteSaid({ turns: [{ said: SAID, audio: tone(0.3) }] });
+  try {
+    await wait(500);
+    k.server.close(1011, 'Internal error encountered.');
+    await soon(async () => (await wholeNotes(k)) === 1, 8000);
+    await k.agent.idle();
+    assert.equal(k.server.received().filter((/** @type {any} */ m) => m.setup).length, 2, 'resumed');
+    assert.equal(textsIn(k).filter((t) => t.includes('<from_kokoro')).length, 2, 'the note went in again');
     assert.deepEqual(await shown(k), []);
   } finally {
     await k.done();

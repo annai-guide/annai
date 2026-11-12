@@ -38,10 +38,9 @@ test('item 13: the model gives an empty turn for a note, in a session opened for
   }
 });
 
-test("item 13: a note Koe said, cut off by lyrics before the user heard a word, isn't passed on: asked to say it again, and it says it again", async () => {
-  // Two sounds of hers; the first is cut by sound at the microphone, in a car, where sound may cut her. The provider's answer to the lyrics' turn
-  // comes late, as a real one's does, so annai's ask, sent as that turn ends, goes in before it.
-  const k = await liveKit([{ said: 'Hello there.', audio: tone(0.1) }, { said: 'The fuel station is open until ten.', audio: tone(1.5) }, { heard: 'la la', delayMs: 300 }, { said: 'The fuel station is open until ten.', audio: tone(0.2) }]);
+test("item 13: a note Koe said, cut off by lyrics before the user heard a word, isn't passed on: what the user didn't hear is shown at once, silently, and she isn't asked to say it again", async () => {
+  // Two sounds of hers; the second is cut by sound at the microphone, in a car, where sound may cut her; the lyrics' turn gets no reply.
+  const k = await liveKit([{ said: 'Hello there.', audio: tone(0.1) }, { said: 'The fuel station is open until ten.', audio: tone(1.5) }, { heard: 'la la' }]);
   try {
     await k.voice.unlock();
     k.voice.route = async () => 'car';
@@ -55,17 +54,19 @@ test("item 13: a note Koe said, cut off by lyrics before the user heard a word, 
     await tell(k);
     await soon(async () => k.agent.live.view.name === 'speaking', 3000);
     k.platform.mic.feed(cat(hum(0.8), quiet(1)), RATE); // over her
-    await soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => /open until ten/.test(e.data.text) && !e.data.cut), 6000);
-    assert.deepEqual(await shown(k), [], 'she said it: annai shows nothing');
-    assert.ok(texts(k).some((t) => CUE.test(t) && /cut you off/.test(t)), 'told what happened');
+    await soon(async () => (await shown(k)).length === 1, 6000);
+    await k.agent.idle();
+    assert.deepEqual(await shown(k), [FOR_USER], 'shown, so nothing is lost');
+    assert.equal((await k.events(['reminder']))[0].data.aloud, undefined, 'and not said');
+    assert.ok(!texts(k).some((t) => CUE.test(t)), 'not asked again');
   } finally {
     await k.done();
   }
 });
 
-test("item 13: Koe's already_told doesn't settle a note whose words were cut off before they were heard: annai shows them", async () => {
-  // As the real model did when asked once more: it believes it has said it (2026-11-04, on a free key).
-  const k = await liveKit([{ said: 'Hello there.', audio: tone(0.1) }, { said: 'The fuel station is open until ten.', audio: tone(1.5) }, { heard: 'la la', delayMs: 300 }, { tool: { name: 'already_told', args: {} } }]);
+test("item 13: a note whose words were cut off before they were heard is shown at once, so Koe's already_told after the cut shows nothing twice", async () => {
+  // As the real model did when asked once more (2026-11-04, on a free key): it believes it has said it.
+  const k = await liveKit([{ said: 'Hello there.', audio: tone(0.1) }, { said: 'The fuel station is open until ten.', audio: tone(1.5) }, { heard: 'la la', tool: { name: 'already_told', args: {} } }]);
   try {
     await k.voice.unlock();
     k.voice.route = async () => 'car';

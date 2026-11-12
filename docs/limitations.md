@@ -565,17 +565,11 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** a line Koe heard while busy waits in Koe's own queue. When it answers annai's card it stays there, and is written as a newer line once Koe is free.
 - **Revisit when:** the next build on Kokoro and Koe's hand-offs: the lines that answered a card leave Koe's queue (or the live session's) and are written as the card's answer.
 
-### On OpenAI Realtime a note cut by a noise can be said twice, or shown and said
-- **Kind:** deferred.
-- **What the user sees:** with Koe on OpenAI Realtime, a noise or a word of theirs cuts her in the first seconds of a note from Kokoro (headphones, a car's hands-free). annai asks her to say it again once their turn ends. OpenAI answers their turn first: if that answer says the note, she says it twice; if it says nothing, annai shows the note, and she then says it as well. On Gemini Live the ask is answered first.
-- **Why:** the OpenAI adapter puts a text turn behind the response being made, so the ask waits for the answer to the user's turn instead of joining it. Sending it to cut that response instead could drop the answer to a real question they spoke over her.
-- **Revisit when:** the OpenAI adapter is next changed: the ask joins that turn's own response (its item goes in before the turn's response.create), with a test on the fake's OpenAI flavour.
-
 ### On the phone's speaker, a note waiting for her voice is lost when the user goes on talking
 - **Kind:** deferred.
-- **What the user sees:** on the phone's speaker (annai doesn't hear while she speaks), a note from Kokoro goes in as the user's turn ends, and they go on after a thinking pause before any of her voice for it played. Her answer to what they then said is heard whole, and the note counts as passed on: they never hear it.
-- **Why:** a turn cut before any of its sound played is written as heard whole, with no words, and annai asks for a cut note again only once the provider has begun streaming it.
-- **Revisit when:** the next change to the live session's cut handling: the user's own turn cutting a note's unheard turn counts as a cut, with a test on the fake first.
+- **What the user sees:** on the phone's speaker (annai doesn't hear while she speaks), a note from Kokoro goes in as the user's turn ends, the provider has finished making her answer to it, and they go on after a thinking pause before any of her voice for it played. Her answer to what they then said is heard whole, and the note counts as passed on: they never hear it, and it isn't shown. (Had the provider still been making it, the note is shown, silently, as a tap's cut would show it.)
+- **Why:** a turn none of whose sound played is written as heard whole when the provider had finished it, so it passes nothing on and shows nothing; only a turn that sound cut while it was heard, or still being made, counts as cut and has its note shown.
+- **Revisit when:** the next change to the live session's cut handling: a turn of a note none of whose sound was heard counts as cut, so the note is shown, with a test on the fake first.
 
 ### A short plan item that crosses midnight stays on the Next line for up to half an hour after it ended
 - **Kind:** known limitation.

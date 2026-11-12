@@ -9,7 +9,9 @@ import { createHash } from 'node:crypto';
  * unknown model with 1008, and `proactivity` on v1beta with 1007 "Unknown name"; a resumption handle at once
  * and after each turn; each turn's audio in a burst, its transcripts beside it, and turnComplete, with the
  * turn's usage, only when playing it in real time would end; `interrupted` when an activityStart or a
- * clientContent comes before that, and then the cut turn's turnComplete.
+ * clientContent comes before that, and then the cut turn's turnComplete. Every input that makes a turn gets a whole
+ * answer of its own, one after another, as real Gemini Live gave them (2026-11-11): a text turn that comes before the
+ * answer to the user's turn has begun is answered first, then that one; an activityStart drops the answers not begun.
  * The `openai` flavour (K6) answers as OpenAI Realtime's docs describe it (developers.openai.com, read 2026-10-19), as
  * no OpenAI key was at hand: /v1/realtime?model=…, the key as the subprotocol openai-insecure-api-key.<key> beside
  * `realtime`; its JSON in text frames; session.created at once, session.updated for each session.update (a bad
@@ -33,7 +35,7 @@ import { createHash } from 'node:crypto';
  *   heardAt: heard is sent this many ms after the user starts speaking, as Gemini's streams in (once, whatever connection); saidAt: its
  *   words come this many ms after its sound, before its end (a late first word); andThen: the next turn follows this one's end at once, as
  *   Gemini goes on by itself after a tool call; delayMs (Gemini's): the answer begins this many ms after the turn that asks for it, as a slow
- *   model or network gives it (a turn that comes meanwhile cuts it off before it begins); noEnd (Gemini's): no turnComplete ever comes, as after a
+ *   model or network gives it (an activityStart meanwhile drops it; a text turn meanwhile is answered first, then it); noEnd (Gemini's): no turnComplete ever comes, as after a
  *   tool response in a real run (2026-11-05); endAt (Gemini's): its turnComplete comes only this many ms after its burst
  * @typedef {{ flavour: 'gemini' | 'openai', turns: Turn[], key?: string, models?: string[], closeWith?: { code: number, reason: string },
  *   pace?: number, chunkBytes?: number, expired?: boolean, noLanguageCodes?: boolean, noProactivity?: boolean, noLanguages?: boolean | 'close', onText?: { match: RegExp, turn: Turn } }} Options
@@ -235,18 +237,37 @@ function geminiSession(c) {
   const { conn, turns, turnAt, counter, early, key, models, closeWith, pace, chunkBytes, url, version, expired, noLanguageCodes, noProactivity, onText } = c;
   const send = conn.send;
   let ready = false;
-  /** The turn being played: its timers, and what cuts it off. @type {{ timers: NodeJS.Timeout[], turn: Turn } | null} */
+  /** The turn being made or played: its timers, and whether its answer has begun (a delayMs turn's hasn't yet). @type {{ timers: NodeJS.Timeout[], turn: Turn, begun: boolean } | null} */
   let playing = null;
+  /**
+   * Answers owed and not begun, in order. Every input that makes a turn (an activityEnd, a text turn) gets a whole answer of its own, as Gemini
+   * gives them: an activityEnd and a text turn in the same ms got two whole answers, the text's first (real cut runs, 2026-11-11, 8 of 8).
+   * @type {Turn[]}
+   */
+  let waiting = [];
   const stopTurn = () => {
     for (const t of playing?.timers ?? []) clearTimeout(t);
     playing = null;
   };
-  /** @param {Turn} [turn] the one to play, out of order */
-  const play = (turn = turns[Math.min(counter.next++, turns.length - 1)]) => {
-    stopTurn();
-    if (!turn || turn.silent) return;
-    if (turn.delayMs) playing = { turn, timers: [setTimeout(() => { playing = null; answer(turn); }, turn.delayMs)] };
-    else answer(turn);
+  /** The next answer owed begins, once the one before has ended. */
+  const pump = () => {
+    while (!playing && waiting.length) {
+      const turn = /** @type {Turn} */ (waiting.shift());
+      if (turn.silent) continue;
+      if (turn.delayMs) playing = { turn, begun: false, timers: [setTimeout(() => { playing = null; answer(turn); }, turn.delayMs)] };
+      else answer(turn);
+      if (turn.noEnd || turn.endAt !== undefined) return; // nothing ends or cuts it: what is owed next waits for the next input, or its end
+    }
+  };
+  /** A turn-making input came: its answer is owed. A text turn before the answer to the user's turn has begun is answered first. @param {Turn} [turn] the one to play, out of order @param {boolean} [text] */
+  const play = (turn = turns[Math.min(counter.next++, turns.length - 1)], text = false) => {
+    if (!turn) return;
+    if (text && playing && !playing.begun) {
+      const held = playing.turn;
+      stopTurn();
+      waiting.unshift(turn, held);
+    } else waiting.push(turn);
+    pump();
   };
   /** @param {Turn} turn */
   const answer = (turn) => {
@@ -273,23 +294,32 @@ function geminiSession(c) {
       if (turn.saidAfter) send({ serverContent: { outputTranscription: { text: turn.saidAfter } } });
       if (turn.handle) send({ sessionResumptionUpdate: { newHandle: turn.handle, resumable: true } });
       if (turn.goAway !== undefined) send({ goAway: { timeLeft: `${turn.goAway}s` } });
-      if (turn.andThen) play();
+      if (turn.andThen) waiting.unshift(turns[Math.min(counter.next++, turns.length - 1)]);
+      pump();
     };
     if (turn.noEnd) return;
     if (turn.endAt !== undefined) setTimeout(done, turn.endAt); // nothing it does cuts this one
     else if (ms <= 0) done();
-    else playing = { turn, timers: [setTimeout(done, ms), ...late] };
+    else playing = { turn, begun: true, timers: [setTimeout(done, ms), ...late] };
   };
-  /** Something the user did while a turn plays cuts it off; the cut turn still ends, with its usage, as Gemini's do. @param {'text' | 'activity'} by */
+  /**
+   * Something the user did while a turn plays cuts it off; the cut turn still ends, with its usage, as Gemini's do. The user speaking again
+   * also drops the answers still owed; a text turn leaves one not begun to follow its own. @param {'text' | 'activity'} by
+   */
   const cut = (by) => {
+    if (by === 'activity') waiting = [];
     if (!playing || (playing.turn.interruptOn && playing.turn.interruptOn !== by)) return;
+    if (by === 'text' && !playing.begun) return;
     const { turn } = playing;
     stopTurn();
     send({ serverContent: { interrupted: true } });
     send({ serverContent: { turnComplete: true }, ...(turn.usage ? { usageMetadata: turn.usage } : {}) });
   };
   return {
-    stop: stopTurn,
+    stop: () => {
+      waiting = [];
+      stopTurn();
+    },
     handle(m) {
       if (!ready) {
         const s = m?.setup;
@@ -322,7 +352,7 @@ function geminiSession(c) {
       else if (input?.activityEnd) play();
       else if (m?.clientContent) {
         cut('text');
-        if (m.clientContent.turnComplete) play(onText?.match.test(JSON.stringify(m.clientContent.turns)) ? onText.turn : undefined);
+        if (m.clientContent.turnComplete) play(onText?.match.test(JSON.stringify(m.clientContent.turns)) ? onText.turn : undefined, true);
       }
       return undefined;
     },
