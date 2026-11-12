@@ -7,7 +7,7 @@ import { systemText, nowBlock, takeSnapshot } from './context.js';
 import { ME, SYS_SETTINGS, newId } from '../scopes.js';
 import { storedTexts, inputText } from './log.js';
 import { chatCandidates, koeWay, AllFailedError, COOLDOWN_MS, whyWords } from '../llm/fallback.js';
-import { LiveKoe } from '../koe/live.js';
+import { LiveKoe, SILENT_S } from '../koe/live.js';
 import { ProviderError, explainPlain } from '../llm/contract.js';
 import { t } from '../l10n.js';
 import { KOKORO_PART, koeSystem } from '../koe/instructions.js';
@@ -41,6 +41,11 @@ const BLOCKS = Object.freeze({
 });
 /** What Koe is told when it asks Kokoro after the user's Stop. */
 export const STOP_HELD = /* en */ "Not sent: the user stopped Kokoro, and hasn't written or spoken since. Don't ask Kokoro again until they do; say you can't check that now.";
+/**
+ * annai's own fact in Kokoro's wake for reminders Koe is given to say (it says them at once, and she starts at once): she doesn't pass them on.
+ * @param {import('./loop.js').Reminder[]} list
+ */
+const KOE_SAYING = (list) => /* en */ `Koe is saying these reminders to the user now: ${list.map((r) => `"${r.text}"`).join(', ')}. Don't pass them on.`;
 /** The Trace's line for Koe's notes Kokoro doesn't take up, as she had told Koe already (#setAside). */
 const TOLD_ALREADY = /* en */ "Koe's note wasn't put to Kokoro: she had told Koe already, since the user's last words.";
 /** How long Koe rests after its whole list failed, at least. */
@@ -121,7 +126,7 @@ export function channelTool(from, channel, refuse = () => null) {
   return {
     name, pluginId: 'core', group: /* en */ 'Talk',
     description: koe
-      ? /* en */ "Ask or tell Kokoro, your other half, who looks things up and works behind you. It returns at once; Kokoro's answer comes as a note. mode immediate cuts Kokoro off mid-task: use it only when something really should be cut off."
+      ? /* en */ "Ask or tell Kokoro, your other half, who looks things up and works behind you: pass on what the user said as they said it, not your reading of it. It returns at once; Kokoro's answer comes as a note. mode immediate cuts Kokoro off mid-task: use it only when something really should be cut off."
       : /* en */ 'Tell Koe, who talks with the user, what to say or know: an answer, or a correction with the fact and its source. Koe says what it says, without changing what it claims. It returns at once. mode immediate cuts Koe off mid-sentence: use it only when something really should be cut off, such as a wrong claim. for_user: when you have an answer for the user, the exact words for them: annai shows them only if Koe never says the note.',
     input: { type: 'object', properties: { text: { type: 'string', minLength: 1 }, mode: { enum: ['append', 'immediate'] }, ...(koe ? {} : { for_user: { type: 'string' } }) }, required: ['text'] },
     run: async (/** @type {{ text: string, mode?: string, for_user?: string }} */ i, /** @type {any} */ call) => {
@@ -168,7 +173,7 @@ export class Halves {
   #aside = null;
   /** Heard words Kokoro hasn't woken for: Koe answering them wakes it. */
   #cue = false;
-  /** When the user's typed line came that a text Koe hasn't said its first words to yet (0: none): Kokoro's turn waits for them (KOE_FIRST_S). */
+  /** When the user's typed line came that Koe hasn't answered yet (0: none): Kokoro's turn waits for Koe's answer (KOE_FIRST_S; live, SILENT_S). */
   #koeOwes = 0;
   /** The ids of Kokoro's turns woken for non-stop sound alone: their notes with no words for the user belong to that stretch (#ofStretch). @type {Set<string>} */
   #nonstop = new Set();
@@ -368,7 +373,7 @@ export class Halves {
       unsaid: (notes) => { this.#route(() => this.#backstop(notes)); },
       owed: (notes) => this.#handOn(notes),
       spoke: () => this.#retold(),
-      left: (notes) => this.#leftUnsaid(notes),
+      left: (notes, here) => this.#leftUnsaid(notes, here),
       noisy: (heard) => this.#wakeKokoro({ kind: 'cue', text: NONSTOP(heard), logged: true, input: true }),
       heard: (line) => this.kokoro.confirmHeard(line),
       // A turn's end is a line said; its start, a line heard whose words come later.
@@ -426,12 +431,19 @@ export class Halves {
   /** Start fresh, while it runs: held settles once it is done, and a live session opens only then. @type {{ held: Promise<void>, done: Promise<import('./loop.js').Fresh> } | null} */
   #fresh = null;
 
-  /** Kokoro's words for the user (for_user) a switch or Start fresh left unsaid: shown, never aloud. @param {Wake[]} notes */
-  #leftUnsaid(notes) {
+  /**
+   * What Kokoro meant for the user in notes Koe's session never passed on, shown, never aloud. here: cut off in the conversation still open (a tap, a
+   * sound): a gated speak's words, card and question are shown too, as #backstop shows them; a switch or Start fresh leaves words and reminders only.
+   * @param {Wake[]} notes @param {boolean} [here]
+   */
+  #leftUnsaid(notes, here = false) {
     for (const w of notes) this.#shown.add(w); // a live part that then finds no session doesn't show it again (#live)
-    const list = [...notes.filter((w) => w.forUser).map((w) => ({ watch: '', text: capped(forUserText(String(w.forUser)), CAPS.text), answer: true })), ...notes.flatMap((w) => (w.kind === 'note' ? [] : w.fallbacks ?? []))];
-    if (!list.length) return;
-    const shown = this.kokoro.remind(list, this.kokoro.target ?? ME, { unsaid: true, silent: true }).catch(() => {}).finally(() => { this.#left = this.#left.filter((x) => x !== shown); });
+    const shown = (async () => {
+      for (const w of notes) {
+        if (w.kind !== 'note') await this.kokoro.remind(w.fallbacks ?? [], this.kokoro.target ?? ME, { unsaid: true, silent: true });
+        else if (here || w.forUser) await this.#present(w, true);
+      }
+    })().catch(() => {}).finally(() => { this.#left = this.#left.filter((x) => x !== shown); });
     this.#left.push(shown);
   }
   get busy() { return this.#routes > 0 || this.#sending.size > 0 || this.kokoro.busy || this.koe.busy || this.live.busy; }
@@ -611,6 +623,7 @@ export class Halves {
 
   /** One of Kokoro's instruction blocks: a live session opened, closed or dropped (messages, never its system text or tools). @param {Block} state */
   #block(state) {
+    if (state !== 'live-open') this.#koeSaid(); // a session closed or dropped says nothing more: Kokoro waits no longer
     this.kokoro.log({ type: 'halves', actor: 'system', data: { state }, texts: [['text', BLOCKS[state]]] }).catch(() => {});
   }
 
@@ -636,6 +649,7 @@ export class Halves {
     // That model rests now, and the next in Koe's list can take it: a note or a reminder doesn't lose its moment. (A typed line is written by the try.)
     if (this.koeState === 'live' && this.#liveId !== failed && (await fn())) return;
     if (this.koeState !== 'down') {
+      this.#koeSaid(); // no session can answer a typed line now (today's spend reached): Kokoro waits no longer
       // No session could take Kokoro's note for the user, and Koe stays live (today's spend reached): annai shows it.
       if (isForUser(w) && !this.#shown.has(w)) await this.#backstop([w]);
       return void (w.fallbacks?.length && this.kokoro.remind(w.fallbacks));
@@ -833,10 +847,11 @@ export class Halves {
       if (!this.#works() || KOKORO_ONLY.includes(w.kind)) return void (await this.kokoro.wake(w));
       if (!w.aloud && !THEIRS.includes(w.kind) && !(await this.kokoro.admit(w, (x) => this.wake(x)))) return;
       this.#koeOpen();
-      // Asked to hear her (the recap told aloud): the half with the voice tells it.
-      if (!w.aloud) this.#wakeKokoro({ ...w, fallbacks: [] });
       // From a page out of view, a session waits for it; its reminders show now, as annai's always do.
       const away = this.koeState === 'live' && !this.#visible() && Boolean(w.fallbacks?.length);
+      // Asked to hear her (the recap told aloud): the half with the voice tells it. Koe says the reminders: Kokoro, who starts at once, is told so
+      // by annai, so she doesn't say them too (a recorded drive); if Koe never does, they are annai's to say or show (owed).
+      if (!w.aloud) this.#wakeKokoro({ ...w, ...(w.fallbacks?.length && !away ? { text: `${w.text} ${KOE_SAYING(w.fallbacks)}` } : {}), fallbacks: [] });
       if (away) this.kokoro.remind(w.fallbacks ?? []);
       if (this.koeState === 'live') this.#alongside(this.#live(() => this.live.wake(away ? { ...w, fallbacks: [] } : w), w));
       else this.koe.enqueue(w);
@@ -1049,13 +1064,17 @@ export class Halves {
     // Only what comes from the user's input gathers: their messages, and Koe's questions and answers about them.
     if (!wakes.some((w) => isTheirs(w) || (w.kind === 'note' && w.from === 'koe') || w.input)) return 0;
     if (typing || speaking) return Infinity;
-    // A typed line: Koe answers it first, and Kokoro's first request reads what it said, so her "on it" isn't said twice (real models). A Koe
-    // waiting on her has said all its reply holds (one with no words: its question, then wait); its wait's state pokes her (#stateOf).
-    const first = this.#koeOwes && this.koeState === 'text' && !this.koe.waiting ? this.#koeOwes + KOE_FIRST_S * this.secondMs - Date.now() : 0;
+    // A typed line, which both halves get: Koe answers it first, and Kokoro's first request reads what it said, so her "on it" isn't said twice
+    // (real models, and a recorded drive). A Koe waiting on her has said all its reply holds (one with no words: its question, then wait); its
+    // wait's state pokes her (#stateOf). Live, the bound is the session's own for no answer, SILENT_S: a live line is written as her voice ends,
+    // and in a recorded drive 15 of Koe's own answers were written 2.6 to 5.8 s after the user's turn ended (median 4.0 s), so KOE_FIRST_S would
+    // have missed 8 of them.
+    const bound = this.koeState === 'live' ? SILENT_S : KOE_FIRST_S;
+    const first = this.#koeOwes && !this.koe.waiting ? this.#koeOwes + bound * this.secondMs - Date.now() : 0;
     return Math.max(0, first, this.#input.at + (this.#input.photo ? GATHER.photo : GATHER.quiet) * this.secondMs - Date.now());
   }
 
-  /** Koe has said its first words to the typed line (or its turn ended): Kokoro's turn waits no longer. */
+  /** Koe has answered (its first words, its question to Kokoro), or can't any more (its turn ended, the session closed): Kokoro's turn waits no longer. */
   #koeSaid() {
     if (!this.#koeOwes) return;
     this.#koeOwes = 0;
@@ -1258,10 +1277,13 @@ export class Halves {
     // (refused while the user's Stop holds, or cut short by an open or a Stop, it didn't fail).
     const out = e.type.startsWith('out.') && this.#cue;
     const failed = e.type === 'tool.result' && e.data?.name === 'tell_kokoro' && e.data.ok === false && !e.data.cut && this.#owed && !this.#stopHeld;
-    if (e.type === 'tool.result' && e.data?.name === 'tell_kokoro') this.#asking = false;
+    if (e.type === 'tool.result' && e.data?.name === 'tell_kokoro') {
+      this.#asking = false;
+      this.#koeSaid(); // passed on: Kokoro has Koe's question, and reads it
+    }
     const answered = (out && !(this.#owed = this.#asking)) || failed;
     // A hand-over typed to Koe is Kokoro's to file: its turn carries it, so what it does can be undone.
-    if (typed && this.koeState === 'text') this.#koeOwes = Date.now();
+    if (typed) this.#koeOwes = Date.now();
     if (typed) this.#wakeKokoro({ kind: 'user', text: String(r.texts.text ?? e.data.text ?? ''), logged: true, ...(e.data.handover ? { handover: e.data.handover } : {}) });
     else if (answered) this.#wakeKokoro({ kind: 'cue', text: /* en */ 'Koe answered the user', logged: true, input: true, watched: this.#koeWatched() });
     else if (e.type === 'heard') this.#cue ||= !e.data?.dismissed;
@@ -1298,23 +1320,35 @@ export class Halves {
         await this.kokoro.remind(w.fallbacks ?? [], undefined, { aloud: true });
         continue;
       }
-      const i = w.call?.input ?? {};
-      const card = w.why === 'gated:show' ? checkCard(i.card, this.registry) : null;
-      const ask = w.why === 'gated:ask' ? checkAsk(i) : null;
-      // Kokoro's card or question, shown by annai: named by the model that wrote it.
-      if (card && !('error' in card)) await this.kokoro.log({ type: 'out.show', actor: 'shiori', data: { id: newId('c'), card: card.card, by: w.by ?? null } });
-      else if (ask && !('error' in ask)) await this.kokoro.log({ type: 'out.ask', actor: 'shiori', data: { id: newId('c'), question: ask.question, options: ask.options, by: w.by ?? null } });
-      else if (card || ask) {
-        // Too broken to show: its words instead, as long as a card's text at most; with none, only the Trace has it.
-        const said = card ? [i.card?.title, i.card?.text].filter((x) => typeof x === 'string' && x.trim()).join(': ')
-          : typeof i.question === 'string' && i.question.trim() ? `${i.question}${Array.isArray(i.options) && i.options.length ? ` (${i.options.map(String).join(', ')})` : ''}` : '';
-        if (said) await this.kokoro.remind([{ watch: '', text: capped(said, CAPS.text), answer: true }], undefined, { unsaid: true });
-        else await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ `Kokoro's ${card ? 'card' : 'question'} wasn't shown: annai couldn't show it, and it had no words to give instead.`, quiet: true } });
-      } else if (forUserText(w.forUser || (w.why === 'gated:speak' ? w.note : ''))) await this.kokoro.remind([{ watch: '', text: capped(forUserText(w.forUser || w.note), CAPS.text), answer: true }], undefined, { unsaid: true, aloud: true });
-      else if (w.why === 'gated:speak') await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ "Kokoro's speak wasn't shown: it had no words.", quiet: true } });
-      else if (w.why === 'tool' && !w.retold) this.#retell.push(w);
+      if (await this.#present(w, false)) continue;
+      if (w.why === 'tool' && !w.retold) this.#retell.push(w);
       else if (w.why === 'tool') await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ "Kokoro's note wasn't passed on: Koe didn't say it, twice, and it had no words for the user (for_user).", quiet: true } });
     }
+  }
+
+  /**
+   * What Kokoro meant the user to have of a note Koe never said, as annai shows it: a gated card or question as itself (checked as show and ask check
+   * Shiori's own; one they would refuse, as its words, or only a Trace line), a gated speak's words or a note's for_user as "Shiori's answer". A note's
+   * own text is for Koe, never shown: false. @param {Wake} w @param {boolean} silent never aloud @returns {Promise<boolean>}
+   */
+  async #present(w, silent) {
+    const i = w.call?.input ?? {};
+    const card = w.why === 'gated:show' ? checkCard(i.card, this.registry) : null;
+    const ask = w.why === 'gated:ask' ? checkAsk(i) : null;
+    const words = forUserText(w.forUser || (w.why === 'gated:speak' ? w.note : ''));
+    // Kokoro's card or question, shown by annai: named by the model that wrote it.
+    if (card && !('error' in card)) await this.kokoro.log({ type: 'out.show', actor: 'shiori', data: { id: newId('c'), card: card.card, by: w.by ?? null } });
+    else if (ask && !('error' in ask)) await this.kokoro.log({ type: 'out.ask', actor: 'shiori', data: { id: newId('c'), question: ask.question, options: ask.options, by: w.by ?? null } });
+    else if (card || ask) {
+      // Too broken to show: its words instead, as long as a card's text at most; with none, only the Trace has it.
+      const said = card ? [i.card?.title, i.card?.text].filter((x) => typeof x === 'string' && x.trim()).join(': ')
+        : typeof i.question === 'string' && i.question.trim() ? `${i.question}${Array.isArray(i.options) && i.options.length ? ` (${i.options.map(String).join(', ')})` : ''}` : '';
+      if (said) await this.kokoro.remind([{ watch: '', text: capped(said, CAPS.text), answer: true }], undefined, { unsaid: true, silent });
+      else await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ `Kokoro's ${card ? 'card' : 'question'} wasn't shown: annai couldn't show it, and it had no words to give instead.`, quiet: true } });
+    } else if (words) await this.kokoro.remind([{ watch: '', text: capped(words, CAPS.text), answer: true }], undefined, { unsaid: true, silent, aloud: !silent });
+    else if (w.why === 'gated:speak') await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ "Kokoro's speak wasn't shown: it had no words.", quiet: true } });
+    else return false;
+    return true;
   }
 
   /**

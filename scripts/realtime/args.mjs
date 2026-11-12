@@ -31,3 +31,14 @@ export async function keysFrom(opts, env) {
   }
   return Keys.fromEnvironment(env);
 }
+
+/**
+ * The Anthropic key for a real Kokoro: ANNAI_LIVE_ANTHROPIC_KEY (as test/live reads it), which wins, else the first line of --anthropic-key's file;
+ * none, undefined. Read here, held like the Gemini keys, never printed. @param {Record<string, string | true>} opts @param {Record<string, string | undefined>} env
+ */
+export async function anthropicFrom(opts, env) {
+  const { Keys } = await import('./keys.mjs');
+  const key = (env.ANNAI_LIVE_ANTHROPIC_KEY ?? '').trim();
+  if (key) return new Keys([{ line: null, key }]);
+  return typeof opts['anthropic-key'] === 'string' ? Keys.fromPath(opts['anthropic-key'], '1') : undefined;
+}

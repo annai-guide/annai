@@ -316,8 +316,8 @@ test('an urgent reminder, owed as a note is, shows in What each half sees: annai
   }
 });
 
-test("a note cut off by sound: the cue What each half sees shows is the one the session got, and it doesn't ask for the note in other words", async () => {
-  const k = await liveKit([{ said: 'Hello there.', audio: tone(0.1) }, { said: 'The fuel station is open until ten.', audio: tone(1.5) }, { heard: 'la la' }, { said: 'The fuel station is open until ten.', audio: tone(0.2) }]);
+test("a note cut off by sound: no cue goes in, What each half sees shows none, and the note's words for the user are shown", async () => {
+  const k = await liveKit([{ said: 'Hello there.', audio: tone(0.1) }, { said: 'The fuel station is open until ten.', audio: tone(1.5) }, { heard: 'la la' }]);
   try {
     await k.voice.unlock();
     k.voice.route = async () => 'car';
@@ -331,12 +331,11 @@ test("a note cut off by sound: the cue What each half sees shows is the one the 
     await k.agent.channel.send('kokoro', FUEL, 'append', 'tool', undefined, undefined, false, 'The fuel station ahead is open until ten tonight.');
     await soon(async () => k.agent.live.view.name === 'speaking', 3000);
     k.platform.mic.feed(cat(hum(0.8), quiet(1)), RATE);
-    await soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => /open until ten/.test(e.data.text) && !e.data.cut), 6000);
-    const sent = texts(k).filter((/** @type {string} */ x) => /cut you off/.test(x));
-    assert.equal(sent.length, 1);
-    assert.doesNotMatch(sent[0], /your own words/, 'a note is said as it claims');
-    assert.deepEqual((await linesSince(k)).filter((l) => /cut you off/.test(l)), sent);
-    assert.deepEqual((await linesSince(k)).filter((l) => /\[annai\] "Kokoro's note hasn't reached/.test(l)), [], 'not the other cue');
+    await soon(async () => (await k.events(['reminder'])).length === 1, 6000);
+    await k.agent.idle();
+    assert.deepEqual(texts(k).filter((/** @type {string} */ x) => /^\[annai\] /.test(x)), [], 'no cue');
+    assert.deepEqual((await linesSince(k)).filter((l) => /^\[annai\] /.test(l)), [], 'What each half sees shows none');
+    assert.deepEqual((await k.events(['reminder'])).map((/** @type {any} */ e) => e.data.text), ['The fuel station ahead is open until ten tonight.']);
   } finally {
     await k.done();
   }

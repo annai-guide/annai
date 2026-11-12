@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Keys, parseLines } from '../../scripts/realtime/keys.mjs';
+import { anthropicFrom } from '../../scripts/realtime/args.mjs';
 
 const FILE = ['AIza-one-0000000000000000', 'AIza-two-1111111111111111', '', 'AIza-four-33333333333333', 'AIza-five-44444444444444'].join('\n');
 
@@ -52,4 +53,22 @@ test('JSON.stringify and util.inspect of a Keys never show a key', async () => {
   const k = Keys.fromFile(FILE, '1-2');
   assert.ok(!JSON.stringify(k).includes('AIza'));
   assert.ok(!inspect(k).includes('AIza'));
+});
+
+test("a real Kokoro's key: ANNAI_LIVE_ANTHROPIC_KEY wins over --anthropic-key's file (its first line); neither, none; it never shows", async () => {
+  const { writeFile, mkdtemp, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const dir = await mkdtemp(`${tmpdir()}/rt-keys-`);
+  try {
+    await writeFile(`${dir}/k`, 'sk-ant-old-0000\nsk-ant-new-1111\n');
+    const env = await anthropicFrom({ 'anthropic-key': `${dir}/k` }, { ANNAI_LIVE_ANTHROPIC_KEY: ' sk-ant-new-1111 ' });
+    assert.equal(env?.key, 'sk-ant-new-1111');
+    assert.equal(env?.line, null);
+    assert.equal(JSON.stringify(env), '{}');
+    assert.equal(env?.scrub('x-api-key: sk-ant-new-1111'), 'x-api-key: «key»');
+    assert.equal((await anthropicFrom({ 'anthropic-key': `${dir}/k` }, {}))?.key, 'sk-ant-old-0000', 'the file, its first line');
+    assert.equal(await anthropicFrom({}, { ANNAI_LIVE_ANTHROPIC_KEY: '' }), undefined);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });

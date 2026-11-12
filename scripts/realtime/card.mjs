@@ -113,7 +113,7 @@ export function cardOutcome(rec, base) {
   // What Koe said from the first answer to the card's end (her words and the speech-to-speech model's own markup, tidied), and the stand-in voice's say.
   const end = result?.at ?? rec.endedAt;
   const said = firstAt === null ? [] : rec.frames.filter((f) => f.dir === 'in' && f.kind === 'said' && f.at >= firstAt && f.at <= end + 3000).map((f) => ({ at: f.at, text: f.text ?? '' }));
-  const spoke = firstAt === null ? [] : rec.trace.filter((t) => t.type === 'out.speak' && t.at >= firstAt && t.at <= end + 3000).map((t) => ({ at: t.at, text: String(t.text ?? '') }));
+  const spoke = firstAt === null ? [] : rec.trace.filter((t) => t.type === 'out.speak' && t.at >= firstAt && t.at <= end + 3000).map((t) => ({ at: t.at, text: String(t.data?.text ?? t.text ?? '') })); // a short text is kept in the entry's data
   const kokoroLines = heardIn((rec.kokoro ?? []).filter((k) => k.kind === 'request').at(-1)?.text ?? '');
   return {
     card, qStart, qEnd, answers, lines, kind, text, grant: grant ? { at: grant.at, how: grant.data?.how ?? null } : null, resultAt: result?.at ?? null,

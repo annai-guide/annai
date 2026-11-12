@@ -1,6 +1,6 @@
 // The user's side of a realtime check: short travel questions as speech, made once by Gemini's text-to-speech and kept
 // as small 16 kHz mono WAV files under test/fixtures/realtime/ (no key in them, no TTS call on later runs), plus the
-// "clips" that are only time: a thinking pause inside one sentence, and silence.
+// "clips" made here: silence, and a noise.
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { encodeWav, decodeWav, resample } from '../../src/core/voice/pcm.js';
@@ -14,9 +14,12 @@ const TTS_RATE = 24_000;
 /**
  * name → what is said. kind: question, yes (a quick answer), reply (a short English reply, for the languages check), sentence (one in
  * another language), pause (a sentence with a thinking pause: parts are speech and seconds of silence), long (a long question),
- * stray (words she should leave alone: silence is right), card (stage 5: a line for annai's read_trip card, or what its voice says), scold (told off for filler: silence is right, filler is the failure), silence (no sound: seconds). voice: one of Gemini's prebuilt voices. lang: the language it is spoken in (en unless said).
+ * stray (words she should leave alone: silence is right), card (stage 5: a line for annai's read_trip card, or what its voice says), scold (told off for filler: silence is right, filler is the failure),
+ * relay (a line Koe should pass on as it was said: a request it could ask about, or a question about annai it can't know), stop (the user telling her to stop:
+ * no reply), silence (no sound: seconds), noise
+ * (made here, no file: a sound that isn't the user's words, seconds of it). voice: one of Gemini's prebuilt voices. lang: the language it is spoken in (en unless said).
  * say: what the TTS is asked to say when a tone is asked for (text stays what it means); first: only the speech before the first pause in it is kept.
- * @typedef {{ kind: 'question' | 'scold' | 'yes' | 'reply' | 'sentence' | 'pause' | 'long' | 'silence' | 'stray' | 'card', text?: string, parts?: (string | number)[], voice?: string, seconds?: number, lang?: 'en' | 'ja' | 'zh' | 'ko', say?: string, first?: boolean }} ClipDef
+ * @typedef {{ kind: 'question' | 'scold' | 'yes' | 'reply' | 'sentence' | 'pause' | 'long' | 'silence' | 'noise' | 'stray' | 'card' | 'relay' | 'stop', text?: string, parts?: (string | number)[], voice?: string, seconds?: number, lang?: 'en' | 'ja' | 'zh' | 'ko', say?: string, first?: boolean }} ClipDef
  * @type {Record<string, ClipDef>}
  */
 export const CLIPS = {
@@ -65,7 +68,41 @@ export const CLIPS = {
   favour: { kind: 'card', text: "Could you look at what's on tomorrow in Testville for me?", voice: 'Kore' },
   'ask-q': { kind: 'card', text: 'Read Testville, Nov 10 to 17?', voice: 'Leda' },
   silence: { kind: 'silence', seconds: 8 },
+  // Lines Koe passes on, made-up and synthetic: requests it could ask the user about, or answer it can't do, where the answer is Kokoro's; and
+  // questions about annai that only Kokoro can answer. Made on first use: node scripts/realtime-check.mjs clips --only <names> (a free key).
+  'do-all': { kind: 'relay', text: "Let's do all three of them.", voice: 'Kore' },
+  'carry-on': { kind: 'relay', text: "Let's carry on in Kyoto.", voice: 'Puck' },
+  'second-one': { kind: 'relay', text: 'Take us to the second one instead.', voice: 'Aoede' },
+  'note-parking': { kind: 'relay', text: 'Add to my notes that we parked on level three.', voice: 'Leda' },
+  'plan-beach': { kind: 'relay', text: 'Change the plan so we go to the beach first.', voice: 'Orus' },
+  'app-dark': { kind: 'relay', text: 'Is there a dark mode in this app?', voice: 'Kore' },
+  'app-louder': { kind: 'relay', text: 'Can I make your voice louder in this app?', voice: 'Puck' },
+  'app-offline': { kind: 'relay', text: 'Does this app still work without a signal?', voice: 'Leda' },
+  'app-new': { kind: 'relay', text: 'What changed in the latest version of this app?', voice: 'Aoede' },
+  // A request that begins with "stop" and is no order to Koe to stop (relay-stop-request): Koe's stop clause must not swallow it.
+  'stop-reminder': { kind: 'relay', text: 'Stop the hotel reminder.', voice: 'Orus' },
+  // A sound that cuts her while she says a note (someone else's voice, a bump, in headphones): voice-like and as loud as the clips' speech, so annai's
+  // detector makes a turn of it that cuts her, as the user's own voice would; 0.8 s, past the 250 ms of sound a turn needs (minSpeechMs).
+  bump: { kind: 'noise', seconds: 0.8 },
+  // The user telling her to stop as she says a note. The preview TTS refuses some one-word texts: said with a second sentence and cut at the pause, as hao.
+  stop: { kind: 'stop', text: 'Stop.', say: 'Stop. Please stop talking.', first: true, voice: 'Kore' },
 };
+
+/** The kinds made here, with no file. */
+const MADE_HERE = ['silence', 'noise'];
+/** Whether a clip is made here (no file, no TTS call). @param {ClipDef} c */
+export const madeHere = (c) => MADE_HERE.includes(c.kind);
+
+/**
+ * A clip made here: silence as zeros; a noise as a 600 Hz voice-band tone whose loudness rises and falls four times a second (test/unit/voice-kit.js's hum),
+ * at 0.35: rms 0.16, as loud as the clips' speech (rms 0.07 to 0.30 where it sounds, median 0.18), so the level check that keeps quieter sound out lets it in.
+ * @param {ClipDef} c
+ */
+function makeHere(c) {
+  const n = Math.round((c.seconds ?? 8) * SEND_RATE);
+  if (c.kind === 'silence') return new Float32Array(n);
+  return Float32Array.from({ length: n }, (_, i) => Math.sin((2 * Math.PI * 600 * i) / SEND_RATE) * 0.35 * (0.575 + 0.425 * Math.sin((2 * Math.PI * 4 * i) / SEND_RATE)));
+}
 
 /** The words of a clip, for the report. @param {ClipDef} c */
 export const wordsOf = (c) => c.text ?? (c.parts ?? []).filter((p) => typeof p === 'string').join(' ');
@@ -201,7 +238,7 @@ export async function makeClips({ keys, only, force = false, model = TTS_MODEL, 
   const made = /** @type {string[]} */ ([]);
   let calls = 0;
   for (const [name, def] of Object.entries(CLIPS)) {
-    if (def.kind === 'silence' || (only && !only.includes(name))) continue;
+    if (madeHere(def) || (only && !only.includes(name))) continue;
     const had = await readFile(new URL(`${name}.wav`, DIR)).then((b) => new Uint8Array(b), () => null);
     if (had && !force) {
       if (!manifest.clips[name]) await list(name, had);
@@ -229,16 +266,19 @@ export async function makeClips({ keys, only, force = false, model = TTS_MODEL, 
 }
 
 /**
- * Every clip as samples at 16 kHz: speech from its file, silence as zeros.
+ * Every clip there is as samples at 16 kHz: speech from its file, silence and noise made here. A clip not made yet (its file missing) is left out: a run that
+ * needs it says which to make (missingClips).
  * @returns {Promise<Record<string, { kind: string, words: string, pcm: Float32Array, seconds: number, lang: string }>>}
  */
 export async function loadClips() {
   /** @type {Record<string, any>} */
   const out = {};
   for (const [name, def] of Object.entries(CLIPS)) {
-    const pcm = def.kind === 'silence' ? new Float32Array(Math.round((def.seconds ?? 8) * SEND_RATE))
-      : decodeWav(new Uint8Array(await readFile(new URL(`${name}.wav`, DIR)))).pcm;
-    out[name] = { kind: def.kind, words: wordsOf(def), pcm, seconds: pcm.length / SEND_RATE, lang: def.lang ?? 'en' };
+    const pcm = madeHere(def) ? makeHere(def) : await readFile(new URL(`${name}.wav`, DIR)).then((b) => decodeWav(new Uint8Array(b)).pcm, () => null);
+    if (pcm) out[name] = { kind: def.kind, words: wordsOf(def), pcm, seconds: pcm.length / SEND_RATE, lang: def.lang ?? 'en' };
   }
   return out;
 }
+
+/** The clips some scenarios play that have no file yet, in order, once each. @param {{ steps: any[] }[]} scenarios @param {Record<string, unknown>} loaded */
+export const missingClips = (scenarios, loaded) => [...new Set(scenarios.flatMap((sc) => sc.steps.flatMap((st) => ('say' in st && !loaded[st.say] ? [st.say] : []))))];
