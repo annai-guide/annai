@@ -1506,7 +1506,9 @@ export class LiveKoe {
     if (this.#pending === t) this.#pending = null;
     this.#queue = this.#queue.filter((x) => x !== t);
     let text = cleanSaid(t.said);
-    const share = !t.cut || playedMs === null ? 1 : Math.min(1, playedMs / Math.max(1, t.bytes / (this.#rate / 500))); // 2 bytes a sample
+    // A turn heard whole is written whole (it has a stream: one that waited and was never heard isn't): her sound is rarely a whole number of ms,
+    // so its share would cut the last word of a line heard in full.
+    const share = !t.cut || (t.whole && t.stream) || playedMs === null ? 1 : Math.min(1, playedMs / Math.max(1, t.bytes / (this.#rate / 500))); // 2 bytes a sample
     if (share < 1) {
       const end = Math.round(text.length * share);
       const space = text.lastIndexOf(' ', end);
