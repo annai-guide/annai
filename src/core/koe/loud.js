@@ -3,9 +3,10 @@
 
 /**
  * A 20 ms frame of her sound is loud at this rms or above, in dBFS (16-bit PCM, full scale 32768). From 222 real Gemini note replies
- * (2026-11-12, headphones, the PCM annai pushed to the player, a frame per chunk): every level from -50 to -34 gave the same result on the 93 answers
- * aimed at the end of a note and the 40 cuts: the 54 duplicate cards (50 answers begun in her quiet tail, 4 within 5 ms of play-out) are removed,
- * and none of the 28 real cuts, none of the 35 noise cuts is wrongly counted whole; -30 begins to count real cuts whole. The level matters only for
+ * (2026-11-12, headphones, the PCM annai pushed to the player, a frame per chunk), computed from the records: every level from -50 to -34 gave the same
+ * result on the 93 answers aimed at the end of a note and the 40 cuts: the 54 duplicate cards (50 answers begun in her quiet tail, 4 within 5 ms of
+ * play-out) are removed, and none of the 28 real cuts, none of the 35 noise cuts is wrongly counted whole; -30 begins to count real cuts whole. Run as
+ * built on real Gemini (36 aimed answers): 0 duplicate cards in the 24 begun past the last loud frame, all 12 with loud sound left cut. The level matters only for
  * a last soft syllable: -40 keeps 4 of the 5 quiet final consonant bursts measured ("ahead", "side", "lifted", a released final d at -35 to -39) as
  * her sound, where -34 would count them past her last loud sample, so -40 errs toward showing the card, not toward losing a word. The tail frames at
  * -41 to -46 dBFS are her own fades and bursts, not noise (the audio is the model's, not the room's), so no margin over the tail's peak is kept.
