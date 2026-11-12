@@ -245,6 +245,69 @@
       "seconds": 3.12,
       "bytes": 99884,
       "sha256": "0e7740e5d8ad06e1"
+    },
+    "do-all": {
+      "words": "Let's do all three of them.",
+      "voice": "Kore",
+      "seconds": 1.78,
+      "bytes": 57004,
+      "sha256": "d91d629500502c2d"
+    },
+    "carry-on": {
+      "words": "Let's carry on in Kyoto.",
+      "voice": "Puck",
+      "seconds": 1.92,
+      "bytes": 61484,
+      "sha256": "01cf6dea3404698e"
+    },
+    "second-one": {
+      "words": "Take us to the second one instead.",
+      "voice": "Aoede",
+      "seconds": 2.14,
+      "bytes": 68524,
+      "sha256": "9e56644909cce53d"
+    },
+    "note-parking": {
+      "words": "Add to my notes that we parked on level three.",
+      "voice": "Leda",
+      "seconds": 2.54,
+      "bytes": 81324,
+      "sha256": "e05a875b08c5494c"
+    },
+    "plan-beach": {
+      "words": "Change the plan so we go to the beach first.",
+      "voice": "Orus",
+      "seconds": 2.72,
+      "bytes": 87084,
+      "sha256": "a345eea4f6a0d497"
+    },
+    "why-quiet": {
+      "words": "Why didn't the reminder go off just now?",
+      "voice": "Kore",
+      "seconds": 2.58,
+      "bytes": 82604,
+      "sha256": "c7cbea6ed0874bc0"
+    },
+    "app-louder": {
+      "words": "Can I make your voice louder in this app?",
+      "voice": "Puck",
+      "seconds": 2.42,
+      "bytes": 77484,
+      "sha256": "8beb5c18039aabe3"
+    },
+    "app-offline": {
+      "words": "Does this app still work without a signal?",
+      "voice": "Leda",
+      "seconds": 2.46,
+      "bytes": 78764,
+      "sha256": "f4c4dc6b97cde1f4"
+    },
+    "app-new": {
+      "words": "What changed in the latest version of this app?",
+      "voice": "Aoede",
+      "seconds": 2.62,
+      "bytes": 83884,
+      "sha256": "2abdc45ab72f1ddf"
     }
   }
 }
