@@ -305,9 +305,11 @@ function geminiSession(c) {
   };
   /** The turn is all made: its tool call and generationComplete, then its turnComplete ms from now (since: ms from its first burst). @param {Turn} turn @param {number} ms @param {number} since */
   const finish = (turn, ms, since) => {
-    const late = turn.saidAt !== undefined ? [setTimeout(() => send({ serverContent: { outputTranscription: { text: turn.said } } }), turn.saidAt)] : [];
+    // Late words come before generationComplete, as all of a real turn's transcript does (0 of 234 after it, 2026-11-12).
+    const made = () => send({ serverContent: { generationComplete: true } });
+    const late = turn.saidAt !== undefined ? [setTimeout(() => { send({ serverContent: { outputTranscription: { text: turn.said } } }); made(); }, turn.saidAt)] : [];
     if (turn.tool) send({ toolCall: { functionCalls: [{ name: turn.tool.name, args: turn.tool.args, id: `call_${++counter.calls}` }] } });
-    send({ serverContent: { generationComplete: true } });
+    if (!late.length) made();
     const done = () => {
       playing = null;
       send({ serverContent: { turnComplete: true }, ...(turn.usage ? { usageMetadata: turn.usage } : {}) });
