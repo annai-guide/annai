@@ -192,28 +192,72 @@ test("a typed line whose answer is Koe's sleep: the session closes, and Kokoro w
   }
 });
 
-test("a reminder's wake in live voice, the page in view: Kokoro's first request reads the reminder as Koe said it", async () => {
-  const { starts, hold } = kokoroStarts();
-  const k = await liveKit([{ said: 'The sun sets in half an hour.', audio: tone(0.3), delayMs: 1000 }], { agent: { secondMs: SECOND }, hold });
+test("a typed line when no live session can open (today's spend reached, Koe stays live): Kokoro's turn waits no longer", async () => {
+  const usage = { promptTokenCount: 1_000_000, responseTokenCount: 0, promptTokensDetails: [{ modality: 'TEXT', tokenCount: 1_000_000 }] };
+  const k = await liveKit([{ said: 'Sure.', audio: tone(0.1), usage }], { agent: { secondMs: SECOND } });
   try {
-    await k.voice.unlock();
-    await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes', fallbacks: [{ watch: 'sun', text: 'Sunset at 18:40' }] });
-    await until(() => starts.length > 0, 8000);
+    const { updateAppSettings } = await import('../../src/core/settings.js');
+    await updateAppSettings(k.ws, { shiori: { budgets: { spendPerDay: 0.5 } } });
+    k.agent.send('Hi');
+    await soon(async () => (await k.events(['live.session'])).some((/** @type {any} */ e) => e.data.state === 'closed'));
     await k.agent.idle();
-    const first = userTexts(k.sent['model-0'][0]);
-    assert.ok(first.some((t) => /^\[Koe said( aloud)?\] "The sun sets in half an hour\."$/.test(t)), JSON.stringify(first));
+    assert.equal(k.agent.koeState, 'live', 'Koe stays live: the model is not at fault');
+    const sent = Date.now();
+    k.agent.send('How far is Testville?');
+    /** Kokoro's wake for the line (the same budget then stops her turn: its line comes as soon as she starts). */
+    const woke = async () => (await k.events(['wake'])).find((/** @type {any} */ e) => e.data.half === 'kokoro' && e.data.reasons.some((/** @type {any} */ r) => r.text === 'How far is Testville?'));
+    await soon(async () => Boolean(await woke()), 12_000);
+    const at = (await woke()).ts - sent;
+    assert.ok(at < 8 * SECOND - 1000, `Kokoro started ${at} ms after the line, not at the live bound`);
+    await k.agent.idle();
   } finally {
     await k.done();
   }
 });
 
-test("a wake with no reminders, and a reminder's wake while the page is out of view: Kokoro doesn't wait for Koe", async () => {
-  for (const [what, wake, away] of /** @type {const} */ ([
-    ['no reminders', { kind: 'trigger', text: 'Sunset in 30 minutes' }, false],
-    ['out of view', { kind: 'trigger', text: 'Sunset in 30 minutes', fallbacks: [{ watch: 'sun', text: 'Sunset at 18:40' }] }, true],
-  ])) {
+/** annai's fact in Kokoro's wake: Koe is saying the reminder, so she doesn't. */
+const SAYING = /Koe is saying these reminders to the user now: \\?"Sunset at 18:40\\?"\. Don't pass them on\./;
+const SUNSET = { kind: /** @type {const} */ ('trigger'), text: 'Sunset in 30 minutes', fallbacks: [{ watch: 'sun', text: 'Sunset at 18:40' }] };
+
+test("a reminder's wake that Koe says (live, the page in view; a chat Koe): Kokoro starts at once, told by annai that Koe is saying it", async () => {
+  {
     const { starts, hold } = kokoroStarts();
-    const k = await liveKit([{ said: 'The sun sets in half an hour.', audio: tone(0.3), delayMs: 2500 }], { agent: { secondMs: SECOND }, hold });
+    const k = await liveKit([{ said: 'The sun sets at 18:40.', audio: tone(0.3), delayMs: 1500 }], { agent: { secondMs: SECOND }, hold });
+    try {
+      await k.voice.unlock();
+      const at = Date.now();
+      await k.agent.wake(SUNSET);
+      await until(() => starts.length > 0, 8000);
+      assert.ok(starts[0] - at < 1000, `live: started ${starts[0] - at} ms after the wake, not after Koe's line`);
+      assert.ok(userTexts(k.sent['model-0'][0]).some((t) => SAYING.test(t)), JSON.stringify(userTexts(k.sent['model-0'][0])));
+      await k.agent.idle();
+    } finally {
+      await k.done();
+    }
+  }
+  const { starts, hold: mine } = kokoroStarts();
+  const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] }], {
+    koe: { type: { rules: [{ match: '.', reply: { toolCalls: [{ name: 'speak', input: { text: 'Sunset at 18:40.' } }, { name: 'sleep', input: {} }] } }] } },
+    agent: { secondMs: 200 },
+    // Koe's model takes 1 s: Kokoro starts before its words, with annai's word for them.
+    hold: async (c) => {
+      await mine(c);
+      if (c.model.providerId === 'model-koe') await new Promise((r) => setTimeout(r, 1000));
+    },
+  });
+  const at = Date.now();
+  await k.agent.wake(SUNSET);
+  await until(() => starts.length > 0, 5000);
+  assert.ok(starts[0] - at < 800, `chat Koe: started ${starts[0] - at} ms after the wake`);
+  assert.ok(userTexts(k.sent['model-0'][0]).some((t) => SAYING.test(t)));
+  await k.agent.idle();
+  assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Sunset at 18:40.'], 'said once, by Koe');
+});
+
+test("a reminder's wake with nothing for Koe to say, or while a live session waits for the page: no word of Koe saying it, and Kokoro starts at once", async () => {
+  for (const [what, wake, away] of /** @type {const} */ ([['no reminders', { kind: 'trigger', text: 'Sunset in 30 minutes' }, false], ['out of view', SUNSET, true]])) {
+    const { starts, hold } = kokoroStarts();
+    const k = await liveKit([{ said: 'The sun sets at 18:40.', audio: tone(0.3), delayMs: 2500 }], { agent: { secondMs: SECOND }, hold });
     try {
       await k.voice.unlock();
       if (away) hidden(true);
@@ -221,7 +265,7 @@ test("a wake with no reminders, and a reminder's wake while the page is out of v
       await k.agent.wake(/** @type {any} */ (wake));
       await until(() => starts.length > 0, 8000);
       assert.ok(starts[0] - at < 2000, `${what}: started ${starts[0] - at} ms after the wake`);
-      assert.ok(!userTexts(k.sent['model-0'][0]).some((t) => /^\[Koe said/.test(t)), `${what}: before Koe's line`);
+      assert.ok(!userTexts(k.sent['model-0'][0]).some((t) => /Koe is saying/.test(t)), `${what}: annai says nothing of Koe saying it`);
     } finally {
       hidden(false);
       await k.done();
@@ -229,51 +273,45 @@ test("a wake with no reminders, and a reminder's wake while the page is out of v
   }
 });
 
-test("a reminder's wake with Koe on a chat model: Kokoro's first request reads the reminder as Koe said it; with no reminders she starts at once", async () => {
-  for (const reminders of [true, false]) {
-    const { starts, hold: mine } = kokoroStarts();
-    let first = true;
-    const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] }], {
-      koe: { type: { rules: [{ match: '.', reply: { toolCalls: [{ name: 'speak', input: { text: 'Sunset at 18:40.' } }, { name: 'sleep', input: {} }] } }] } },
-      agent: { secondMs: 200 }, // Koe's first words are waited for 0.7 s at most
-      // Koe's model takes 300 ms to answer: a Kokoro that didn't wait would start before its words.
-      hold: async (c) => {
-        await mine(c);
-        if (c.model.providerId === 'model-koe' && first) {
-          first = false;
-          await new Promise((r) => setTimeout(r, 300));
-        }
-      },
-    });
-    await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes', ...(reminders ? { fallbacks: [{ watch: 'sun', text: 'Sunset at 18:40' }] } : {}) });
-    await until(() => starts.length > 0, 5000);
-    await k.agent.idle();
-    const said = userTexts(k.sent['model-0'][0]).some((t) => t === '[Koe said] "Sunset at 18:40."');
-    assert.equal(said, reminders, reminders ? 'she waited for Koe to say it' : "nothing both halves owe: she doesn't wait");
-  }
+test("a reminder's wake, another conversation opened 300 ms after it, then back: Kokoro takes nothing up on return (annai's own wake is let go)", async () => {
+  const { starts, hold: mine } = kokoroStarts();
+  const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] }], {
+    koe: { type: { rules: [{ match: '.', reply: { toolCalls: [{ name: 'speak', input: { text: 'Sunset at 18:40.' } }, { name: 'sleep', input: {} }] } }] } },
+    agent: { secondMs: 200 },
+    hold: async (c) => {
+      await mine(c);
+      if (c.model.providerId === 'model-koe') await new Promise((r) => setTimeout(r, 1000));
+    },
+  });
+  const { createTrip } = await import('../../src/core/scopes.js');
+  const other = await createTrip(k.ws, { title: 'Testville' });
+  await k.agent.wake(SUNSET);
+  await new Promise((r) => setTimeout(r, 300));
+  await k.agent.open(other);
+  await k.agent.idle();
+  const before = starts.length;
+  await k.agent.open(k.trip);
+  await k.agent.idle();
+  await new Promise((r) => setTimeout(r, 400));
+  await k.agent.idle();
+  assert.equal(starts.length - before, 0, 'no request on return');
+  assert.ok(!userTexts(k.sent['model-0'].at(-1)).some((t) => /You haven't answered this yet/.test(t)), 'nothing written as unanswered');
 });
 
-test("a reminder's wake with Koe on a chat model: Kokoro's first request reads the reminder as Koe said it; with no reminders she starts at once", async () => {
-  for (const reminders of [true, false]) {
-    const { starts, hold: mine } = kokoroStarts();
-    let first = true;
-    const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] }], {
-      koe: { type: { rules: [{ match: '.', reply: { toolCalls: [{ name: 'speak', input: { text: 'Sunset at 18:40.' } }, { name: 'sleep', input: {} }] } }] } },
-      agent: { secondMs: 200 }, // Koe's first words are waited for 0.7 s at most
-      // Koe's model takes 300 ms to answer: a Kokoro that didn't wait would start before its words.
-      hold: async (c) => {
-        await mine(c);
-        if (c.model.providerId === 'model-koe' && first) {
-          first = false;
-          await new Promise((r) => setTimeout(r, 300));
-        }
-      },
-    });
-    await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes', ...(reminders ? { fallbacks: [{ watch: 'sun', text: 'Sunset at 18:40' }] } : {}) });
-    await until(() => starts.length > 0, 5000);
+test("Koe unset, or down: the reminder's wake is Kokoro's alone, as before, with no word of Koe saying it", async () => {
+  for (const koe of [undefined, { type: [{ error: 'auth', message: 'bad key' }] }]) {
+    const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] }], koe ? { koe } : { halves: true });
+    if (koe) {
+      k.agent.send('Hello?');
+      await k.agent.idle();
+      assert.equal(k.agent.koeState, 'down');
+    }
+    await k.agent.wake(SUNSET);
     await k.agent.idle();
-    const said = userTexts(k.sent['model-0'][0]).some((t) => t === '[Koe said] "Sunset at 18:40."');
-    assert.equal(said, reminders, reminders ? 'she waited for Koe to say it' : "nothing both halves owe: she doesn't wait");
+    const asked = k.sent['model-0'].filter((/** @type {any} */ r) => userTexts(r).some((t) => /Sunset in 30 minutes/.test(t)));
+    assert.ok(asked.length, `${koe ? 'down' : 'unset'}: Kokoro was asked`);
+    assert.ok(!asked.some((/** @type {any} */ r) => userTexts(r).some((t) => /Koe is saying/.test(t))), `${koe ? 'down' : 'unset'}: no word of Koe`);
+    assert.equal((await k.events(['reminder'])).length, 1, `${koe ? 'down' : 'unset'}: Kokoro slept, so annai said it, once`);
   }
 });
 
