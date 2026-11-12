@@ -832,15 +832,15 @@ test("Koe unset, or down: the reminder's wake is Kokoro's alone, as before, with
 });
 
 // A cue (a place, the road, an arrival) is hers to say or let pass, not the user's reminder: live voice lets it go once the session has it, as
-// classic voice does once a model answers. It is never shown as a "Reminder" after that, never told to Kokoro as a reminder Koe is saying, and
-// a page out of view keeps it with the wake rather than showing it. One no model ever got still falls back as before.
+// classic voice does once a model answers. It is never shown as a "Reminder" after that, and a page out of view keeps it with the wake rather than
+// showing it. One no model ever got still falls back as before. Kokoro is told of it as of a reminder, as released ("Don't pass them on").
 const NEAR = 'Near the old town.';
 const NEAR_W = { kind: /** @type {const} */ ('trigger'), text: 'Your watch p1 (arriving) fired: near the old town', fallbacks: [{ watch: 'p1', text: NEAR, cue: true }] };
 const BOTH_W = { ...SUNSET, fallbacks: [...SUNSET.fallbacks, ...NEAR_W.fallbacks] };
 
-test("a cue is no reminder Koe is saying: Kokoro's wake lists none (live, and a chat Koe), and beside a reminder only the reminder", async () => {
+test("Kokoro's wake lists a cue as it lists a reminder, with \"Don't pass them on\", as released (live, and a chat Koe): nothing shows that Kokoro leaves one alone", async () => {
   for (const live of [true, false]) {
-    for (const [wake, saying] of /** @type {const} */ ([[NEAR_W, false], [BOTH_W, true]])) {
+    for (const [wake, listed] of /** @type {const} */ ([[NEAR_W, [NEAR]], [BOTH_W, ['Sunset at 18:40', NEAR]]])) {
       const { starts, hold } = kokoroStarts();
       const k = live ? await liveKit([{ said: 'The old town is ahead.', audio: tone(0.3) }], { agent: { secondMs: SECOND }, hold })
         : await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] }], { koe: { type: { rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] } }, agent: { secondMs: SECOND }, hold });
@@ -849,8 +849,8 @@ test("a cue is no reminder Koe is saying: Kokoro's wake lists none (live, and a 
         await k.agent.wake(/** @type {any} */ (wake));
         await until(() => starts.length > 0, 8000);
         const said = userTexts(k.sent['model-0'][0]).filter((t) => /Koe is saying/.test(t));
-        assert.equal(said.some((t) => t.includes(NEAR)), false, `${live ? 'live' : 'chat'}: the cue isn't listed`);
-        assert.equal(said.some((t) => SAYING.test(t)), saying, `${live ? 'live' : 'chat'}: the reminder is, when there is one`);
+        const want = `Koe is saying these reminders to the user now: ${listed.map((x) => `"${x}"`).join(', ')}. Don't pass them on.`;
+        assert.ok(said.some((t) => t.replaceAll('\\"', '"').includes(want)), `${live ? 'live' : 'chat'}: Kokoro reads ${want}, got ${JSON.stringify(said)}`);
         await k.agent.idle();
       } finally {
         await k.done?.();
