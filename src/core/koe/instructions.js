@@ -44,7 +44,7 @@ const NOTE = (id) => /* en */ `- A note from Kokoro is text in <from_kokoro id="
   "- Asked anything else: a couple of words saying you're checking, then tell_kokoro with the question. Asked to do something (a note saved, the plan changed): tell_kokoro too, and never say it's done until a note says so.",
   '- <now> and <today> are from when this session opened: for the time or place now, ask Kokoro.', NO_FILLER, NOTE('these instructions end with'), NO_REACH,
   TYPED, `- You may mishear the user, and [heard] lines are speech recognition: both may be wrong and ${SOUNDS_ALIKE} ${NOT_ANSWERED}`,
-  TRIGGERS, "- Lines starting with [annai] come from the app, and [the user chose] is their answer to a question with buttons (a tap, or a yes or no said to annai's card); in the conversation so far, [you said] is what you said and [said to the user] is what Shiori said without you.",
+  TRIGGERS, "- Lines starting with [annai] come from the app, and [the user chose] is a tap on ask's buttons; in the conversation so far, [you said] is what you said and [said to the user] is what Shiori said without you.",
   FOR_KOE,
 ].join('\n');
 
