@@ -181,8 +181,8 @@ export class LiveInput {
       return this.#deaf(d);
     }
     const playing = this.speaking();
-    // Her voice's first frames, if speech had begun just before (held, or loud frames in the last 40 ms, which her voice can't be yet:
-    // she is let go, at the cap or in a noisy room, as a word begins), are still heard: the user's.
+    // Her voice's first frame, if speech had begun just before (held, or loud frames in the last 40 ms, which her voice can't be yet:
+    // she is let go, at the cap or in a noisy room, as a word begins), is still heard: a run that has minSpeechMs with it is the user's.
     const first = playing && !this.#was && (this.#held || d.stillMs < 40);
     this.#was = playing;
     this.#clock += pcm.length;
@@ -214,10 +214,8 @@ export class LiveInput {
       }
       this.#theirs = false;
     }
-    if (first && !this.duplex()) {
-      if (!this.active && !(this.#held && d.speechMs)) return this.#deaf(d); // speech the detector isn't sure of yet (over a guessed floor) is not the user's
-      if (this.#held) this.#start(); // the user's turn, which cuts her
-    }
+    // A run not yet a turn is dropped as she begins, as all she plays over is: a bump (drive 3), a car over a guessed floor, a word's first instant.
+    if (first && !this.duplex() && !this.active) return this.#deaf(d);
     // What was let go ends at its first quiet: her echo is over, and what follows is fresh. Going on OVER_MS past her end, it is the user
     // talking over her, let go to its pause (a quiet in it then is a breath).
     if (this.#letGo === 1 && d.stillMs >= GAP_MS) {

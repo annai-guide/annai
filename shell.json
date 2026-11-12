@@ -1,5 +1,5 @@
 {
-  "build": "da0baac0bbf5",
+  "build": "e7ad1bff112d",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -141,7 +141,7 @@
     "/src/core/push/relay-client.js": "a2f4fe58a177",
     "/src/core/push/webpush.js": "7273918284c6",
     "/src/core/reach.js": "3371d787965d",
-    "/src/core/realtime/input.js": "bae66176c4c3",
+    "/src/core/realtime/input.js": "ff2843e17030",
     "/src/core/realtime/open.js": "16fba6f13bcb",
     "/src/core/registry.js": "7d8931c4a420",
     "/src/core/request-photos.js": "0a710cf1cc55",
