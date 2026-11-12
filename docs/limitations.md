@@ -447,9 +447,15 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### People talking on keep annai's card listening past its 20 seconds
 - **Kind:** deferred.
-- **What the user sees:** With one Shiori (no Koe model), annai's card listens 20 seconds for a spoken yes or no, and speech holds that time: one stretch of speech of up to 30 seconds, and with a quick-decision model that sets each line aside as chatter while the next has already begun (passengers, talk radio), for as long as the talk goes on (198 seconds in a test). Until a quiet gap the microphone stays open, a yes after the 20 seconds still doesn't count, and with one Shiori a reminder due behind the card waits for that gap. If voice turns off while someone is speaking into it (by hand, or auto mode as the car slows), the listening ends at its own time.
+- **What the user sees:** with one Shiori (no Koe model), annai's card listens 20 seconds for a spoken yes or no, and speech holds that time: one stretch of speech of up to 30 seconds, and with a quick-decision model that sets each line aside as chatter while the next has already begun (passengers, talk radio), for as long as the talk goes on (198 seconds in a test). Until a quiet gap the microphone stays open, a yes after the 20 seconds still doesn't count, and a reminder due behind the card waits for that gap. If voice turns off while someone is speaking into it (by hand, or auto mode as the car slows), the listening ends at its own time.
 - **Why:** a line being said when the time runs out must still be heard to its end, so speech stops the clock; nothing tells a line begun inside the 20 seconds from one begun after them.
 - **Revisit when:** the next version: speech begun after the 20 seconds no longer holds the listening open.
+
+### The dock still says Listening for a while after voice goes off mid-listen
+- **Kind:** deferred.
+- **What the user sees:** voice goes off (by hand, auto mode as the car slows, headphones taken out) while Shiori is listening for an answer during a turn: after annai's card or her own words (up to 20 seconds), or after her own question (8 seconds). The microphone closes at once and the voice chip shows off, but the dock keeps saying "Listening" (or "Thinking · tap to stop" if someone was speaking) until that listening's own time is up. Someone who goes on talking because the dock says Listening isn't heard; typing or a tap still answers.
+- **Why:** when voice goes off, the wait for the answer goes on for typing until its own deadline, and no dock label says "waiting for you to type" ("Waiting for your OK" fits only a card). Which words to show there is a small design question.
+- **Revisit when:** the next version: a dock label for a wait that only typing or a tap can answer.
 
 ### A "Yes." said right after two other lines can miss annai's card
 - **Kind:** known limitation.
