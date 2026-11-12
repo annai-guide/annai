@@ -593,3 +593,16 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** with her two halves, Koe asks something ("What can I do?") and the user answers aloud ("When is check-in?"); Koe passes it to Kokoro, and another conversation is opened while she works. Then the user empties Koe in Models, so Shiori is one again, and comes back: she takes the turn up, but their question isn't among what she reads, so she may not answer it. The same for a tap on Koe's card, or a line typed while Koe waits.
 - **Why:** answers to Koe's own questions are kept with Koe's calls, which Shiori on her own doesn't read.
 - **Revisit when:** the next version: Shiori on her own reads Koe's notes and the user's answers to Koe, as Kokoro does.
+
+### An urgent line that cuts in loses the rest of the note she was saying
+- **Kind:** deferred.
+- **What the user sees:** two notes from Kokoro in quick succession, the second sent immediate (or an urgent watch's trigger): it cuts her off in the first, and says its own line. What the user hadn't heard of the first is neither shown nor said: no card, no second try. (Probed in live voice with the provider still making the first note, and with it done: the cut note's rest appears nowhere.)
+- **Why:** an urgent line cuts her off itself, not by sound, so the cut doesn't show what was left (that happens as the user's turn begins). Showing it would also be wrong when the urgent line is Kokoro's correction of that very note. The urgent line's own answer, heard whole, counts both notes as passed on. This is older than the cut-by-sound change: the same in the release.
+- **Revisit when:** the next change to how an urgent note cuts in (`#now` and `#went` in `src/core/koe/live.js`): an urgent reminder cutting a note may want the note shown; Kokoro's own immediate note shouldn't.
+
+### A short plan item that crosses midnight stays on the Next line for up to half an hour after it ended
+- **Kind:** known limitation.
+- **What the user sees:** a plan item shorter than 30 minutes that starts on one day and ends on the next, in its own time zone (23:55 to 00:09, say), keeps showing on the conversation's "Next:" line after it is over: its start for up to 30 minutes after it began, then "Ends · <item>" until 30 minutes after its end. Then the line moves on or hides. Items within one day hide at their end. The same rows feed Now, Drive's strip and the timeline card's Next.
+- **Why:** an item that ends on a later day than it starts is drawn as two rows, its start and its end, and a row with no end of its own lasts half an hour (the drive-test follow-ups design of 2026-11-02: "an end row is a row like any other").
+- **Revisit when:** a user is misled by it; the change is for the start row to carry the item's end.
+- **Approved:** 2026-11-11, the user picked "Accept as a known limitation".

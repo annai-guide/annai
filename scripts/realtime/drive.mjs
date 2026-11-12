@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import { chromium, devices } from '@playwright/test';
 import { installMic } from './page-mic.mjs';
-import { SOUND } from './analyse.mjs';
+import { SOUND, SOUND_GAP_MS } from './analyse.mjs';
 import { framesOf } from './frames.mjs';
 import { LANGUAGES } from '../../src/core/languages.js';
 import { key } from '../../src/core/l10n.js';
@@ -459,7 +459,8 @@ export async function runScenario(browser, name, sc, env) {
     }
     // The conversation's own lines (a card's too, with its buttons and whether they are on), as the page shows them at the end.
     const lines = sc.card ? await page.evaluate(() => [...document.querySelectorAll('.convo li')].map((e) => ({ who: (e.querySelector('.who')?.textContent ?? '').trim(), text: (e.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 300), buttons: [...e.querySelectorAll('button')].map((b) => ({ name: (b.textContent ?? '').trim(), disabled: /** @type {HTMLButtonElement} */ (b).disabled })) }))).catch(() => []) : [];
-    return { scenario: name, route: sc.route, echoDb: sc.echoDb, startedAt: opened, endedAt: Date.now(), keyLine: null, plays: rt.plays, frames, level: rt.level, micLevel: rt.mic, trace, errors, notes, cards, convo, ...(sc.mode ? { mode: sc.mode } : {}), ...(sc.real ? { model: { requests: modelRequests, capped } } : {}), ...(sc.card ? { media: rt.media, taps, lines, kokoro: (env.kokoro?.log ?? []).filter((x) => x.at >= began).map((x) => ({ ...x, text: env.scrub(x.text ?? '') })) } : {}), ...(languages ? { languages } : {}) };
+    const kokoro = (env.kokoro?.log ?? []).filter((x) => x.at >= began).map((x) => ({ ...x, text: env.scrub(x.text ?? '') }));
+    return { scenario: name, route: sc.route, echoDb: sc.echoDb, startedAt: opened, endedAt: Date.now(), keyLine: null, plays: rt.plays, frames, level: rt.level, micLevel: rt.mic, trace, errors, notes, cards, convo, ...(sc.mode ? { mode: sc.mode } : {}), ...(sc.real ? { model: { requests: modelRequests, capped } } : {}), ...(sc.card ? { media: rt.media, taps, lines, kokoro } : sc.passOn ? { kokoro } : {}), ...(typed.length ? { typed } : {}), ...(languages ? { languages } : {}) };
   };
   let opened = began;
   /** Requests to the real model so far, and whether the cap refused one. */
@@ -467,6 +468,8 @@ export async function runScenario(browser, name, sc, env) {
   let capped = false;
   /** The taps the scenario made on annai's card (epoch ms of the click, the button). @type {{ at: number, label: string, ok: boolean }[]} */
   const taps = [];
+  /** The lines it typed (epoch ms of the Send, the words, the most lines of hers each may get). @type {{ at: number, text: string, lines?: number }[]} */
+  const typed = [];
   /** What the scenario asked of the languages setting, and whether this build took it (phase 2). @type {import('./analyse.mjs').Rec['languages']} */
   let languages;
   /** The cards on the page as she starts listening: only those that come after are hers to report. @type {string[]} */
@@ -499,14 +502,15 @@ export async function runScenario(browser, name, sc, env) {
       w = await setScreens(page, env.ui);
       log(`    annai's screens: ${env.ui}`);
     }
+    if (sc.seed) await seedTrip(page, trips.chat, sc.seed, log);
     log('    annai is set up; tapping Shiori');
     await page.getByRole('button', { name: w('Shiori') }).click();
     // Classic voice has no live session: the tap opens a listening window, and the microphone with it.
     if (!classic) await page.locator('.voice-chip').filter({ hasText: w('Listening live') }).waitFor({ timeout: 40_000 });
     await page.waitForFunction(() => typeof /** @type {any} */ (window).__rt?.say === 'function', null, { timeout: classic ? 30_000 : 15_000 });
     talking = true;
-    // The card is annai's own, in the conversation: its buttons are tapped there (the e2e's read-trip does the same).
-    if (sc.card) await page.goto(`/#/trip/${trips.chat}/talk`);
+    // The card is annai's own, in the conversation: its buttons are tapped there (the e2e's read-trip does the same); a typed line is typed there too.
+    if (sc.card || sc.steps.some((st) => 'type' in st)) await page.goto(`/#/trip/${trips.chat}/talk`);
     before = await page.evaluate(() => [...document.querySelectorAll('.notice strong')].map((e) => (e.textContent ?? '').trim()));
     await wait(1200); // the detector hears the room before the first word
     opened = frames.find((f) => f.kind === 'setup')?.at ?? Date.now();
@@ -518,9 +522,10 @@ export async function runScenario(browser, name, sc, env) {
       for (let i = rt.level.length - 1, n = 0; i >= 0 && n < 400; i--, n++) if (rt.level[i][1] >= limit) return rt.t0 + rt.level[i][0];
       return 0;
     }, SOUND);
-    /** The end and the start of the last clip that was played (epoch ms). */
+    /** The end and the start of the last clip that was played, or the time of the last line typed (epoch ms), and whether it was typed. */
     let lastEnd = 0;
     let lastAt = 0;
+    let lastTyped = false;
     /** annai's card for read_trip, once it is up (its trace entry's time), and the end of its question once it was said (epoch ms). */
     const card = { at: 0, qStart: 0, qEnd: 0 };
     /** The page's log of its own player (the question's start and end), after a time. @param {number} since @param {string} kind */
@@ -560,6 +565,9 @@ export async function runScenario(browser, name, sc, env) {
         await page.getByRole('button', { name: 'Type', exact: true }).click();
         await page.getByLabel('Message to Shiori').fill(step.type);
         await page.getByRole('button', { name: 'Send', exact: true }).click();
+        lastEnd = lastAt = Date.now();
+        lastTyped = true;
+        typed.push({ at: lastAt, text: step.type, ...(step.lines ? { lines: step.lines } : {}) });
         log(`    + ${((Date.now() - opened) / 1000).toFixed(1)} s  types "${step.type}"`);
       } else if ('shiori' in step) {
         // A tap on Shiori: classic voice listens for a window at a time, and asleep she hears nothing until tapped.
@@ -614,10 +622,33 @@ export async function runScenario(browser, name, sc, env) {
         if (step.say !== 'silence') {
           lastEnd = p.end;
           lastAt = p.at;
+          lastTyped = false;
         }
         log(`    + ${((p.at - opened) / 1000).toFixed(1)} s  says ${step.say}`);
       } else if ('wait' in step) await wait(step.wait);
-      else if ('sounding' in step) {
+      else if ('noteSounding' in step) {
+        // A note from Kokoro gone in since the last clip, and a run of her sound begun after it (she says it: what still played of her words before is the
+        // run it ends, so only one begun after a quiet SOUND_GAP_MS counts), then ms more; at most the answer's wait.
+        const end = Date.now() + env.answerTimeoutMs;
+        let at = 0;
+        while (Date.now() < end && !at) {
+          const note = frames.find((f) => f.dir === 'out' && f.kind === 'text' && f.at > lastEnd && (f.text ?? '').startsWith('<from_kokoro'));
+          at = note ? await page.evaluate(([from, limit, gap]) => {
+            const rt = /** @type {any} */ (window).__rt;
+            let last = -Infinity;
+            for (const [t, v] of rt.level) {
+              if (v < limit) continue;
+              if (rt.t0 + t > from && rt.t0 + t - last > gap) return rt.t0 + t;
+              last = rt.t0 + t;
+            }
+            return 0;
+          }, [note.at, SOUND, SOUND_GAP_MS]) : 0;
+          if (!at) await wait(20);
+        }
+        if (!at) notes.push(`no note was said within ${env.answerTimeoutMs / 1000} s of ${((lastEnd - opened) / 1000).toFixed(1)} s`);
+        await wait(Math.max(0, step.noteSounding - (Date.now() - (at || Date.now()))));
+        log(`    + ${((Date.now() - opened) / 1000).toFixed(1)} s  ${at ? `${step.noteSounding} ms into the note` : 'no note to cut'}`);
+      } else if ('sounding' in step) {
         const end = Date.now() + 30_000;
         while (Date.now() < end && (await lastSound()) <= lastAt) await wait(100);
         await wait(step.sounding);
@@ -639,7 +670,8 @@ export async function runScenario(browser, name, sc, env) {
             why = 'answered';
             break;
           }
-          const made = frames.some((f) => f.dir === 'out' && f.kind === 'activityStart' && f.at >= lastAt - 200);
+          // A turn of the clip, or a typed line's text turn.
+          const made = frames.some((f) => f.dir === 'out' && f.kind === (lastTyped ? 'text' : 'activityStart') && f.at >= lastAt - 200);
           if (!made && Date.now() - lastEnd >= 1500 && Date.now() - quietFrom >= Math.max(step.answered, 400)) {
             why = 'no turn was made of it';
             break;
@@ -665,14 +697,48 @@ export async function runScenario(browser, name, sc, env) {
   }
 }
 
-/** The clips as the page takes them: base64 WAV files (silence made here). @param {Record<string, { kind: string, pcm: Float32Array }>} clips */
+/** The clips as the page takes them: base64 WAV files (silence and noise made here). @param {Record<string, { kind: string, pcm: Float32Array }>} clips */
 export async function clipFiles(clips) {
-  const { DIR, SEND_RATE } = await import('./clips.mjs');
+  const { DIR, SEND_RATE, CLIPS, madeHere } = await import('./clips.mjs');
   const { encodeWav } = await import('../../src/core/voice/pcm.js');
   /** @type {Record<string, string>} */
   const out = {};
   for (const [n, c] of Object.entries(clips)) {
-    out[n] = c.kind === 'silence' ? Buffer.from(encodeWav(c.pcm, SEND_RATE)).toString('base64') : (await readFile(new URL(`${n}.wav`, DIR))).toString('base64');
+    out[n] = madeHere(CLIPS[n]) ? Buffer.from(encodeWav(c.pcm, SEND_RATE)).toString('base64') : (await readFile(new URL(`${n}.wav`, DIR))).toString('base64');
   }
   return out;
+}
+
+/**
+ * A scenario's seed: synthetic files written into the trip the conversation is in, by a store handle of the page's own, before she listens. plan: three plan
+ * items from now on (so "What's next on my plan?" has an answer); reminderInS: a time watch due that many seconds from now, and the page reloaded so that annai
+ * reads it as a stored reminder.
+ * @param {import('@playwright/test').Page} page @param {string} trip @param {{ plan?: boolean, reminderInS?: number }} seed @param {(s: string) => void} log
+ */
+async function seedTrip(page, trip, seed, log) {
+  await page.evaluate(async ([scope, seed]) => {
+    // The page's own modules, as served (a path the page resolves, not this script's tree).
+    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+    const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+    const { deviceZone, isoInZone } = await import(/** @type {string} */ ('/src/core/time.js'));
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    const zone = deviceZone();
+    const now = Date.now();
+    if (seed.plan) {
+      const item = (/** @type {string} */ id, /** @type {string} */ title, /** @type {number} */ hours, /** @type {string} */ place) => ws.write(scope, `/plan/${id}.json`, { id, title, fixed: false, start: { at: isoInZone(now + hours * 3_600_000, zone), tz: zone }, place: { name: place } }, { author: 'user' });
+      await item('lunch', 'Lunch at Ramen Corner', 2, 'Ramen Corner');
+      await item('museum', 'Museum of Odd Clocks', 5, 'Museum of Odd Clocks');
+      await item('train', 'Train to Laterton', 26, 'Testville Central Station');
+    }
+    if (seed.reminderInS) {
+      await ws.write(scope, '/watches/w-hotel.json', { id: 'w-hotel', owner: 'shiori', when: { type: 'time', at: isoInZone(now + seed.reminderInS * 1000, zone) }, fallback: 'Check in at the hotel desk.', created: new Date(now).toISOString() }, { author: 'shiori' });
+    }
+    store.close();
+  }, /** @type {[string, any]} */ ([trip, seed]));
+  if (seed.reminderInS) {
+    await page.reload();
+    await page.locator('main.view > *').first().waitFor();
+  }
+  log(`    seeded: ${[seed.plan ? 'three plan items' : '', seed.reminderInS ? `a reminder due in ${seed.reminderInS} s` : ''].filter(Boolean).join(', ')}`);
 }

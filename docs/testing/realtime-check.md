@@ -57,7 +57,8 @@ rm -f core.[0-9]*        # a browser crash dump, if one was left in the reposito
 
 `run` writes under `.superpowers/evidence/realtime-harness/<time>/` (or `--out <dir>`, a path inside the container): per scenario
 `<name>.timeline.txt` and `<name>.json`, and `report.txt` and `report.json`. Options: `--list` (the scenarios), `--only a,b`
-(some of them), `--kokoro stand-in|gemini`, `--room-db -60|off`, `--answer-timeout <s>` (default 40), `--max-sessions <n>` (default
+(some of them), `--times <n>` (each scenario n times, one session each, its later records `<name>.2.json` and on: for a bar over more
+lines than one run holds), `--kokoro stand-in|gemini`, `--room-db -60|off`, `--answer-timeout <s>` (default 40), `--max-sessions <n>` (default
 10: the harness stops before a scenario that would pass it), `--ui <tag>` (annai's screens in that language, `ja` or `zh-Hans`: chosen in Settings → Shiori once annai is set up in English, and the setup note then says the instructions name the screens in it), `--app <folder>` (serve another build of annai, for a control run:
 `git archive <commit> | tar -x -C <folder>` and mount it), `--port`. Exit status 0 when every scenario passes, 1 when one fails,
 2 when the harness itself broke. `report <folder>` makes the reports and timelines of a finished run again from its records,
@@ -87,13 +88,63 @@ with no network, after the analysis changed.
 | talk-over | phone speaker | the same on the speaker, where annai hears nothing while she speaks, by design, and lets go of what was begun over her (no turn); then a question |
 | echo-late (only by name) | phone speaker | two questions, her voice back at -6 dB, 400 ms late (a slow speaker, a car) |
 | short-replies (only by name) | phone speaker | the languages setting English; a question, then five short replies ("Yes.", "Sure.", "What?", "Alright.", "No."), each after her answer: every answer should come back in English, and what Gemini heard should be English (the user, 2026-10-23: short replies were heard as "¿Qué?" and answered in Spanish) |
-| relay-fact (only by name) | phone speaker | a question about annai and a general fact, neither of which Koe was told: read what she said; she should say she's checking and call tell_kokoro, stating neither (the second drive) |
+| relay-fact (only by name) | phone speaker | a question about annai and a general fact, neither of which Koe was told: read what she said; she should say "One moment." and call tell_kokoro, stating neither (the second drive) |
 | relay-filler (only by name) | phone speaker | a question, then being told off for apologising: a scold clip: silence is right, and the check "no filler" fails on an apology, "I understand" or "I will…" in anything she says |
 | relay-greet (only by name) | phone speaker | "Good morning, Shiori.", a question, then "What?" after her answer: the greeting gets a greeting, and "What?" gets her last words again (fix pass 1) |
 | relay-stray (only by name) | phone speaker | the languages setting English and Japanese: a stray word in Korean and song lyrics, each should get no sound back (the check "strays left alone"); then a question |
 | relay-unset-ja (only by name) | phone speaker | no languages set: a Japanese sentence, which the user may speak, is answered (in Japanese); the stay-silent rule must not catch it (fix pass 2) |
 | relay-note (only by name) | phone speaker | a question, Kokoro's note, then the same note again once she has said it (the stand-in Kokoro repeats it): the first is said with nothing added, the second settled with already_told |
 | multilingual (only by name) | phone speaker | the languages setting English, Chinese and Japanese; a Japanese sentence, a Chinese one and an English one, each after her answer: each should be answered in kind |
+
+## One answer: Koe passes on, acknowledgements get nothing, a cut note is shown and heard once at most, a typed line gets one answer
+
+These scenarios (by name only) hold Koe to its instructions where a drive got two answers, or the wrong half's: a line it should pass on was asked
+about, refused or answered from its own head; a note cut as she said it was taken up from its middle (and, asked for again, said twice); a typed line was answered
+by both halves; a reminder was said by both.
+Their lines are new clips (Gemini TTS, made-up words: `do-all`, `carry-on`, `second-one`, `note-parking`, `plan-beach`, `app-dark`, `app-louder`,
+`app-offline`, `app-new`, `stop`: "Stop.", and `stop-reminder`: "Stop the hotel reminder."), made on first use (a run that needs one not made yet stops at once and says the command), and a noise made here (`bump`: 0.8 s
+of a voice-band tone as loud as the clips' speech, so it makes a turn that cuts her).
+
+| name | route | what it does | it passes when |
+|---|---|---|---|
+| relay-pass | phone speaker | five requests Koe could ask the user about or say it can't do ("Let's do all three of them.", "Let's carry on in Kyoto.", "Take us to the second one instead.", "Add to my notes that we parked on level three.", "Change the plan so we go to the beach first."), each after her answer | **passed on**: for each line her `tell_kokoro`, and no question back (a "?" in what she said before Kokoro's note went in, or her own buttons, `ask`); **the bar: at least 9 of 10 lines**, over two runs (`--times 2`), in the report's head. *Passed on as said* (a warning): what the stand-in Kokoro was given keeps 80% of the line's words (against what Gemini heard or what the clip says) |
+| relay-annai | phone speaker | five questions about annai Koe can't know ("Is there an auto GPS mode in this app?", "Is there a dark mode in this app?", "Can I make your voice louder in this app?", "Does this app still work without a signal?", "What changed in the latest version of this app?") | the same checks and **the same bar: at least 9 of 10**, over two runs; read what she said before the note: an answer of her own there is the failure the bar can't see. No line is about a reminder: Koe has the reminder tools by design, so its own `watch_list` and a spoken answer is not a miss there (relay-stop-request) |
+| relay-ack | phone speaker | ten questions, each answered (Kokoro's note said), then "Sure." or "Alright.", and 8 s for a reply (Koe's own live answers came 2.6 to 5.8 s after the user's turn) | **acknowledgements left quiet**: no run of her sound from an acknowledgement's turn to the next question; **the bar: none in 20**, over two runs. An acknowledgement no turn was made of isn't counted |
+| cut-note | headphones | a question; then, 100 ms after her voice begins Kokoro's note, the noise (Gemini writes its turn down as "¿Qué?", a "what?" that Koe's rule answers with its last words again) | **she is cut by the user** and **cut note heard once at most**: from the sound on, annai asks nothing again, shows the note once (its card for the words she didn't say, counted from the clip's start: annai shows it when it hears the sound, 62 to 157 ms before the provider's `interrupted` frame), and no more than one line of hers holds the note whole (more than a third of the note's own words: lines judged whole by hand kept 40% to 77% of them in 22 real runs, partial ones 27% at most). A run where the noise didn't cut her proves nothing, and says so |
+| cut-note-stop | headphones | the same with "Stop." in place of the noise, then 25 s (were anything retried, a fresh session would come at about 8.5 s and live voice drop at about 16.5 s) | **she is cut by the user** and **stopped when told**: from the end of the "Stop." no line of hers longer than two words (a word like "Okay." is fine), no `tell_kokoro`, the note shown once (counted from the clip's start, as in cut-note), nothing asked again, and no fresh session, no `live-dropped`, no `live-silent` but a turn let go |
+| real-cut-note | headphones | cut-note with Kokoro on Claude Opus 5.5: her own note, whatever she writes, and the noise 100 ms into it; 20 s after her answer | the same as cut-note: the note heard whole at most once, shown once, nothing asked again |
+| relay-stop-request | phone speaker | "Stop the hotel reminder.": a request that begins with "stop", not an order to Koe to stop | **acted on it**: she passed it on (`tell_kokoro`), or did it with a tool of her own (Koe has the reminder tools by design) and said so. Silence fails (the stop clause swallowed it), and so do words with no act ("Okay.") and a tool with no word |
+| typed-live | phone speaker | live voice, typed on the conversation's page: "Hello?", then "Add to my notes that we parked on level three.", each with 90 s after her answer for a late note (a note from Gemini's chat model on a free key took 30 to 80 s) | **one answer to each typed line**: her lines and what annai showed for her, from the line to the next: one for the greeting (Koe's), at most two for the request ("One moment." and the result). With the stand-in Kokoro it checks only the voice path; run it with `--kokoro gemini --answer-timeout 90`, where Kokoro is a real model |
+| real-typed-live | phone speaker | the same with Kokoro on Claude Opus 5.5 (`ANNAI_LIVE_ANTHROPIC_KEY`, or `--anthropic-key <file>`'s first line; held to 30 requests, as the card's real runs) | the same |
+| real-typed-plan | phone speaker | Kokoro on Opus 5.5, a trip seeded with three plan items from now on, typed "What's next on my plan?" | **one answer to each typed line**: at most two lines of hers |
+| real-reminder-live | phone speaker | Kokoro on Opus 5.5, a stored reminder (a time watch, "Check in at the hotel desk.") due 28 s into the session, then 60 s | **reminder said once**: one line of hers or annai's own voice holds it, not two |
+
+The bars are over lines, so a run of five lines is short of one: `--times 2`, and the report's head gives each scenario's count against its bar
+("relay-pass: passed on, no question back, 9 of 10 lines in 2 runs (the bar: at least 9 of 10) MET"). A run's own verdict holds each run to every line.
+
+```sh
+# Once, the nine clips (9 TTS calls: a free key allows about 10 a day; a 429 moves to the next line):
+NODE_OPTIONS=--max-old-space-size=2048 timeout 900 node scripts/realtime-check.mjs clips --keys-file /path/to/keys --lines 1-11 \
+  --only do-all,carry-on,second-one,note-parking,plan-beach,app-dark,app-louder,app-offline,app-new
+# And the two cut-note-stop and relay-stop-request need (2 TTS calls):
+NODE_OPTIONS=--max-old-space-size=2048 timeout 900 node scripts/realtime-check.mjs clips --keys-file /path/to/keys --lines 1-11 --only stop,stop-reminder
+
+# The bars, with the stand-in Kokoro: six sessions, about 20 minutes.
+timeout 2700 docker run --rm --ipc=host --memory=6g \
+  -v "$PWD":/work -v /path/to/main/node_modules:/path/to/main/node_modules:ro -v /path/to/keys:/keys:ro -w /work \
+  mcr.microsoft.com/playwright:v1.63.0-noble \
+  timeout 2600 node --max-old-space-size=2048 scripts/realtime-check.mjs run --keys-file /keys --lines 1-11 --only relay-pass,relay-annai,relay-ack --times 2
+
+# The cut note (three sessions each), and a typed line with a real Kokoro: Gemini's chat model, or Opus with the Anthropic key's file mounted too,
+# or with the key in ANNAI_LIVE_ANTHROPIC_KEY (it wins over the file; set it from the file, never typed on the command line or printed):
+#   ANNAI_LIVE_ANTHROPIC_KEY="$(sed -n 1p /path/to/anthropic-key)" timeout 2700 docker run --rm -e ANNAI_LIVE_ANTHROPIC_KEY ... --only real-typed-live
+...  scripts/realtime-check.mjs run --keys-file /keys --lines 1-11 --only cut-note,cut-note-stop --times 3
+...  scripts/realtime-check.mjs run --keys-file /keys --lines 1-11 --only relay-stop-request --times 3
+...  scripts/realtime-check.mjs run --keys-file /keys --lines 1-11 --only typed-live --kokoro gemini --answer-timeout 90
+...  scripts/realtime-check.mjs run --keys-file /keys --lines 1-11 --only real-typed-live,real-typed-plan,real-reminder-live,real-cut-note --anthropic-key /anthropic-key
+```
+
+`report <folder>` reads a run again with no network, the bars included.
 
 ## Stage 5's card (read_trip): the spoken yes, with real speech
 
@@ -115,7 +166,7 @@ put real speech to it:
 - **Classic voice** (`classic-*`, with `--asr <origin>`): no Koe; Speech in is a Local speech server whose address is the stand-in's `/asr` (annai calls only https
   addresses, or http on this device, so a server on the network is reached through the stand-in, which passes on transcription requests and nothing else, one at
   a time, and logs the words that came back); the gate is Gemini 3.5 Flash Lite (adding Gemini puts it in Quick decision).
-- **A real Kokoro** (`real-yes`, `real-yes-but`, `real-no-thanks`, with `--anthropic-key <file>`): Claude Opus 5.5 through the Anthropic provider (Haiku 5.5 as utility),
+- **A real Kokoro** (`real-yes`, `real-yes-but`, `real-no-thanks`, with `--anthropic-key <file>` or `ANNAI_LIVE_ANTHROPIC_KEY`): Claude Opus 5.5 through the Anthropic provider (Haiku 5.5 as utility),
   Koe on Gemini Live. The key is read inside the process and typed into annai's own field; a scenario is held to 30 requests to api.anthropic.com (the 31st is
   refused), and the report gives annai's own count of tokens and an estimated cost.
 - **Lateness** (`lines-en`, `lines-ja`, `lines-zh`, and every other run): `node scripts/realtime-check.mjs lateness <run folders>` reads the records and reports, by
@@ -137,7 +188,8 @@ A scenario **passes** when:
 3. **turn ends in time**: each turn ended within 2 s of the user stopping;
 4. **no errors**: no `error` entry in the trace, no socket closed with a kind annai did not ask for, no console error once she is listening
    (a silent session the watchdog rescued, by the ask again or a fresh session, with her answer after it and before the next clip, is a
-   note, "rescued", not an error: the user was answered, late; a second silence in a row stays an error);
+   note, "rescued", not an error: the user was answered, late; a second silence in a row stays an error; and a turn the session let go,
+   nothing at all back, is a note, "let go": the model chose, which is right for an acknowledgement or a stray, and a question left so fails "answered");
 5. barge-in only: **she is cut by the user**.
 
 **Language kept** (a check of the two languages scenarios only): the scenario sets the languages setting through Settings → Languages (Settings → Shiori on a build before phone-fixes-1) (the browser's English is the list's first; the others are added; a language is picked in the list and committed with Add; a list of English alone is made the user's own by adding a language and removing it again, since the browser's language by itself is only a default and no model is given it as a hint; a build with no such section is left alone and the report says "NOT applied"), and every answer must be in the language its clip was spoken in. Her words are read by their script (kana: Japanese; Chinese characters: Chinese) or by the commonest small words of English, Spanish, French, German, Italian, Portuguese and Dutch, and by a Spanish ¿ ¡ ñ or a Vietnamese vowel; an answer too short to place passes, and one German or Italian answer of a few words may not be placed. The two scenarios are only by name (`--only short-replies,multilingual`), one session each. A note names each transcript Gemini wrote in another language ("Gemini heard "¿Qué?" for "Sure." (Spanish)"), the setup's language hints (`languageCodes ...`, and whether the instructions have a Languages section; never the instructions), and each `heard` line annai flagged as stray (`strayLanguage`: a transcript of fewer than 3 words in a language not listed).

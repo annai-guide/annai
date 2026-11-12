@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { decodeWav } from '../../src/core/voice/pcm.js';
 import { Keys } from '../../scripts/realtime/keys.mjs';
-import { CLIPS, SEND_RATE, trimSilence, fromTts, joinParts, askTts, loadClips, DIR } from '../../scripts/realtime/clips.mjs';
+import { CLIPS, SEND_RATE, trimSilence, fromTts, joinParts, askTts, loadClips, missingClips, madeHere, DIR } from '../../scripts/realtime/clips.mjs';
+import { SCENARIOS } from '../../scripts/realtime/scenarios.mjs';
 
 /** A tone of seconds at the rate, loudness amp. @param {number} s @param {number} [amp] @param {number} [rate] */
 const tone = (s, amp = 0.3, rate = SEND_RATE) => Float32Array.from({ length: Math.round(s * rate) }, (_, i) => amp * Math.sin((2 * Math.PI * 300 * i) / rate));
@@ -80,10 +81,15 @@ test('the clip set: 5 to 10 travel questions, a quick yes, a sentence with a thi
   for (const [n, c] of Object.entries(CLIPS)) if (c.kind !== 'silence' && !['ja', 'zh', 'ko-word', 'hai', 'hai-q', 'hao', 'mm-q'].includes(n)) assert.ok((c.lang ?? 'en') === 'en', `${n} is English`);
 });
 
-test('the cached clips are 16 kHz mono 16-bit WAV files, small, one for every clip that has speech, none with a key in it', async () => {
+test('the cached clips are 16 kHz mono 16-bit WAV files, small, each a clip with speech, one for every clip a plain run plays, none with a key in it', async () => {
   const files = (await readdir(DIR)).filter((f) => f.endsWith('.wav')).sort();
-  const spoken = Object.entries(CLIPS).filter(([, c]) => c.kind !== 'silence').map(([n]) => `${n}.wav`).sort();
-  assert.deepEqual(files, spoken);
+  const spoken = Object.entries(CLIPS).filter(([, c]) => !madeHere(c)).map(([n]) => `${n}.wav`);
+  for (const f of files) assert.ok(spoken.includes(f), `${f} is no clip with speech`);
+  // A plain run (no --only) needs no clip made first; a clip only a scenario by name plays may be made when it is first run, which names it (missingClips).
+  const plain = Object.values(SCENARIOS).filter((sc) => !sc.extra);
+  const there = Object.fromEntries(Object.entries(CLIPS).filter(([n, c]) => madeHere(c) || files.includes(`${n}.wav`)).map(([n]) => [n, true]));
+  assert.deepEqual(missingClips(plain, there), []);
+  assert.deepEqual(missingClips([{ steps: [{ say: 'lunch' }, { say: 'not-made' }, { wait: 1 }, { say: 'not-made' }] }], there), ['not-made'], 'each once, in order');
   let total = 0;
   for (const f of files) {
     const bytes = new Uint8Array(await readFile(new URL(f, DIR)));
@@ -94,10 +100,15 @@ test('the cached clips are 16 kHz mono 16-bit WAV files, small, one for every cl
     assert.ok(w.pcm.reduce((m, x) => Math.max(m, Math.abs(x)), 0) > 0.05, `${f} is not silent`);
     assert.ok(!/AIza/.test(Buffer.from(bytes).toString('latin1')), `${f} holds a key`);
   }
-  // 2.1 MB before stage 5's card; its eleven clips (a user's line, the answers that are and are not a yes, a passenger, annai's own question) are 0.5 MB more.
-  assert.ok(total < 2_800_000, `${total} bytes in all`);
+  // 2.1 MB before stage 5's card; its eleven clips (a user's line, the answers that are and are not a yes, a passenger, annai's own question) are 0.5 MB more;
+  // the nine lines Koe passes on (2 to 3 s each, at 32 KB a second, as the questions are) about 0.8 MB more.
+  assert.ok(total < 3_600_000, `${total} bytes in all`);
   const loaded = await loadClips();
-  assert.deepEqual(Object.keys(loaded).sort(), Object.keys(CLIPS).sort());
+  assert.deepEqual(Object.keys(loaded).sort(), Object.keys(CLIPS).filter((n) => madeHere(CLIPS[n]) || files.includes(`${n}.wav`)).sort());
+  // The noise is made here, as loud as the clips' speech, and lasts what it says.
+  assert.equal(loaded.bump.seconds, 0.8);
+  const rms = Math.sqrt(loaded.bump.pcm.reduce((n, x) => n + x * x, 0) / loaded.bump.pcm.length);
+  assert.ok(rms > 0.1 && rms < 0.25, `the noise's rms ${rms}`);
   assert.ok(loaded.lunch.pcm instanceof Float32Array && loaded.lunch.seconds > 0.5);
   assert.deepEqual([loaded.lunch.lang, loaded.ja.lang, loaded.zh.lang, loaded.silence.lang], ['en', 'ja', 'zh', 'en']);
 });

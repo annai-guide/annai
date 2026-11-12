@@ -10,16 +10,22 @@
 //   { tap: label, afterHeard?: ms } taps that button on the card (afterHeard: ms after annai has the next heard line's words, at most 15 s)
 //   { settled: ms }                 waits until read_trip's result is in, and annai and her sound have been quiet for ms
 //   { shiori: true }                a tap on Shiori (classic voice: asleep, she hears nothing until tapped)
-//   { type: line }                  types the line in the box under the conversation and sends it
+//   { type: line, lines?: n }       types the line in the box under the conversation and sends it (lines: the most lines of hers it may get, checked)
+// a note being said (noteCut):
+//   { noteSounding: ms }            waits until a note from Kokoro has gone in and her voice began after it, then ms more
 // mode: 'classic' runs the same card in classic voice (no live session): speech in is the user's own server, the gate Gemini's small model, Kokoro alone.
 // speechIn: 'default' (classic and chat): no transcription model, the speech-in list annai starts with (send audio, then phone dictation): no speech server is
 // added, and the two that adding Gemini put last (Gemini 3.5 Transcribe, Gemini 3.5 Flash Lite (transcription)) are taken out.
 // route: the audio the microphone stands for (speaker: the phone's own, half-duplex; headphones: she can be cut by speaking);
 // echoDb: her voice mixed back into the microphone at that level (the phone's speaker), null for none.
-/** @typedef {{ say: string, gainDb?: number } | { answered: number } | { sounding: number } | { wait: number } | { ask: number } | { asked: number } | { asking: number } | { tap: string, afterHeard?: number } | { settled: number } | { shiori: true } | { type: string }} Step */
-/** @typedef {{ about: string, route: 'speaker' | 'headphones' | 'car', echoDb: number | null, echoDelayMs?: number, expectCut?: boolean, extra?: boolean, repeatNote?: boolean, card?: boolean, measure?: boolean, real?: boolean, mode?: 'live' | 'classic' | 'chat', speechIn?: 'default', asrDelayMs?: number, expect?: { grant: 'voice' | 'tap' | false | 'any', words?: boolean, open?: boolean, next?: boolean, declined?: boolean }, languages?: { spoken: string[], answer: string }, steps: Step[] }} Scenario
+/** @typedef {{ say: string, gainDb?: number } | { answered: number } | { sounding: number } | { wait: number } | { ask: number } | { asked: number } | { asking: number } | { tap: string, afterHeard?: number } | { settled: number } | { shiori: true } | { type: string, lines?: number } | { noteSounding: number }} Step */
+/** @typedef {{ about: string, route: 'speaker' | 'headphones' | 'car', echoDb: number | null, echoDelayMs?: number, expectCut?: boolean, extra?: boolean, repeatNote?: boolean, card?: boolean, measure?: boolean, real?: boolean, mode?: 'live' | 'classic' | 'chat', speechIn?: 'default', asrDelayMs?: number, expect?: { grant: 'voice' | 'tap' | false | 'any', words?: boolean, open?: boolean, next?: boolean, declined?: boolean }, languages?: { spoken: string[], answer: string }, passOn?: boolean, acted?: boolean, acks?: string[], noteCut?: true | 'stop', seed?: { plan?: boolean, reminderInS?: number }, once?: string, steps: Step[] }} Scenario
  *   repeatNote: the stand-in Kokoro sends its note again once Koe has said it; extra: not in a plain run, only by name (--only); languages (phase 2): the languages setting the run sets in Settings → Shiori before she listens (the browser's
- *   English is the list's first; the others are added), and the scenario is held to answering in the language each clip is spoken in */
+ *   English is the list's first; the others are added), and the scenario is held to answering in the language each clip is spoken in; passOn: every line said is
+ *   one Koe passes on (the checks "passed on" and "passed on as said"); acted: the line is a request Koe may do itself with a tool of its own or pass on (the check "acted on it": silence, or words with no act, fail); acks: the clips that are only acknowledgements here (the check "acknowledgements left
+ *   quiet"); noteCut: a noise cuts a note as she says it (the check "cut note heard once at most"), or 'stop': a spoken "stop" does (the check "stopped when told");
+ *   seed: synthetic files written into the conversation's trip before she listens (plan: three plan items from now on; reminderInS: a time watch due that many
+ *   seconds on, the page reloaded so annai reads it as stored); once: words a reminder says, which one line of hers or annai's voice holds (the check "reminder said once") */
 
 /** @type {Record<string, Scenario>} */
 export const SCENARIOS = {
@@ -84,7 +90,7 @@ export const SCENARIOS = {
     steps: [{ say: 'ja' }, { answered: 600 }, { say: 'zh' }, { answered: 600 }, { say: 'lunch' }, { answered: 600 }],
   },
   'relay-fact': {
-    about: "Koe is a relay (the second drive): a question about annai and a general fact, neither of which it was told. It should say it's checking and ask Kokoro, stating neither",
+    about: 'Koe is a relay (the second drive): a question about annai and a general fact, neither of which it was told. It should say "One moment." and pass it on to Kokoro, stating neither',
     route: 'speaker', echoDb: null, extra: true,
     steps: [{ say: 'auto-gps' }, { answered: 1500 }, { say: 'built' }, { answered: 1500 }],
   },
@@ -118,11 +124,52 @@ export const SCENARIOS = {
     route: 'speaker', echoDb: -6, echoDelayMs: 400, extra: true,
     steps: [{ say: 'lunch' }, { answered: 1500 }, { say: 'bixby' }, { answered: 1500 }],
   },
+  ...relayScenarios(),
   ...cardScenarios(),
   ...classicScenarios(),
   ...realScenarios(),
   ...lineScenarios(),
 };
+
+/**
+ * One answer, and the right half's: Koe passes on what it can't answer, as said, and asks nothing of its own; an acknowledgement gets no reply; a note cut
+ * as she says it is shown and heard whole once at most; a typed line in live voice gets one answer; a reminder is said once. By name only; the pass bars are
+ * in docs/testing/realtime-check.md.
+ * @returns {Record<string, Scenario>}
+ */
+function relayScenarios() {
+  /** Each line, her answer heard out (with Kokoro's note), and 1.5 s more. @param {string[]} clips @returns {Step[]} */
+  const each = (clips) => clips.flatMap((c) => [{ say: c }, { answered: 1500 }]);
+  /** Ten questions, each answered (her note said), then an acknowledgement, "Sure." or "Alright." in turn; 8 s for a reply to it: Koe's own live answers in a
+   * recorded drive came 2.6 to 5.8 s after the user's turn ended. @type {Step[]} */
+  const acked = ['lunch', 'bixby', 'gas', 'beach', 'sunset', 'hike', 'restroom', 'built', 'tomorrow', 'favour'].flatMap((q, i) => [{ say: q }, { answered: 1500 }, { say: i % 2 ? 'alright' : 'sure' }, { wait: 8000 }]);
+  /** A typed greeting, then a typed request, each with the most lines of hers it needs (the greeting one, Koe's; the request two: Koe's "One moment." and the
+   * result), and 90 s after each for a note that comes late: a note from Gemini's chat model on a free key took 30 to 80 s. @type {Step[]} */
+  const typed = [
+    { type: 'Hello?', lines: 1 }, { answered: 1500 }, { wait: 90_000 },
+    { type: 'Add to my notes that we parked on level three.', lines: 2 }, { answered: 1500 }, { wait: 90_000 },
+  ];
+  const speaker = /** @type {const} */ ({ route: 'speaker', echoDb: null, extra: true });
+  return {
+    'relay-pass': { ...speaker, passOn: true, about: "five requests Koe could ask the user about or say it can't do, whose answer is Kokoro's: each passed on (tell_kokoro), no question back, as said", steps: each(['do-all', 'carry-on', 'second-one', 'note-parking', 'plan-beach']) },
+    'relay-annai': { ...speaker, passOn: true, about: "five questions about annai Koe can't know: each passed on (tell_kokoro), no question back, as said", steps: each(['auto-gps', 'app-dark', 'app-louder', 'app-offline', 'app-new']) },
+    'relay-ack': { ...speaker, acks: ['sure', 'alright'], about: 'ten questions, each answered, then "Sure." or "Alright.": no acknowledgement gets a reply with sound', steps: acked },
+    'cut-note': { route: 'headphones', echoDb: null, extra: true, expectCut: true, noteCut: true, about: "headphones: a question, then a noise 100 ms into Kokoro's note as she says it (Gemini writes it down as \"¿Qué?\"): annai shows the note and asks nothing again; she says it whole once at most", steps: [{ say: 'bixby' }, { noteSounding: 100 }, { say: 'bump' }, { answered: 1500 }] },
+    // 25 s after the "stop": were anything retried, a fresh session would come at about 8.5 s, and live voice drop at about 16.5 s (SILENT_S twice, and the open).
+    'cut-note-stop': { route: 'headphones', echoDb: null, extra: true, expectCut: true, noteCut: 'stop', about: "headphones: a question, then \"Stop.\" 100 ms into Kokoro's note as she says it: she stops, nothing of it is said after it, and annai shows it", steps: [{ say: 'bixby' }, { noteSounding: 100 }, { say: 'stop' }, { wait: 25_000 }] },
+    // The cut note with a real Kokoro's own note (a question only Kokoro can answer, so the note is whatever she writes), the noise 100 ms into it.
+    'real-cut-note': { route: 'headphones', echoDb: null, extra: true, real: true, expectCut: true, noteCut: true, about: "a real Kokoro (Opus 5.5), headphones: a question, then a noise 100 ms into Kokoro's own note as she says it: shown, never asked again, heard whole once at most", steps: [{ say: 'bixby' }, { noteSounding: 100 }, { say: 'bump' }, { answered: 1500 }, { wait: 20_000 }] },
+    // A request that begins with "stop" and is no order to Koe to stop: Koe's stop clause must not swallow it. Koe has the reminder tools by design (KOE_TOOLS), so
+    // it may do it itself: what fails is silence.
+    'relay-stop-request': { ...speaker, acted: true, about: 'a request that begins with "stop" ("Stop the hotel reminder."): not taken for an order to stop: she acts on it (passed on to Kokoro, or her own tool and a spoken answer), never silence', steps: [{ say: 'stop-reminder' }, { answered: 1500 }] },
+    'typed-live': { ...speaker, about: "live voice, typed: a greeting gets one line, Koe's, and a request two (\"One moment.\" and the result); with a real Kokoro (--kokoro gemini) it shows whether she adds a line to Koe's answer", steps: typed },
+    'real-typed-live': { ...speaker, real: true, about: "a real Kokoro (Opus 5.5), live voice, typed: a greeting gets one line, Koe's, and a request two (\"One moment.\" and the result)", steps: typed },
+    // A typed request about a seeded trip's plan: "One moment." (or nothing) and the result, or Koe's own answer from the plan: at most two lines.
+    'real-typed-plan': { ...speaker, real: true, seed: { plan: true }, about: "a real Kokoro (Opus 5.5), live voice, typed: \"What's next on my plan?\" on a trip with three plan items: at most two lines of hers", steps: [{ type: "What's next on my plan?", lines: 2 }, { answered: 1500 }, { wait: 25_000 }] },
+    // A stored reminder comes due while the session is open (28 s: inside the session's 30 s quiet spell, so it is said in this session), then 60 s in all.
+    'real-reminder-live': { ...speaker, real: true, seed: { reminderInS: 28 }, once: 'hotel desk', about: 'a real Kokoro (Opus 5.5), live voice: a stored reminder ("Check in at the hotel desk.") comes due during the session: said once', steps: [{ wait: 60_000 }] },
+  };
+}
 
 /**
  * Stage 5's card with real speech (Koe talking): the user asks about Testville, the stand-in Kokoro has Shiori call read_trip, annai's card goes up and its

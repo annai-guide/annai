@@ -11,7 +11,8 @@ export const tone = (seconds = 0.6) => new Uint8Array(Int16Array.from({ length: 
 /**
  * Shiori as two halves with a realtime model (m-live) first in Koe's list, at a stand-in Gemini Live server
  * that answers with turns; a voice (on unless voice says otherwise), and Kokoro's scripts.
- * @param {any[]} turns @param {{ pace?: number, kokoro?: any[], koe?: any, voice?: any, live?: any, agent?: any, open?: boolean, ready?: Promise<void>, server?: { expired?: boolean, onText?: { match: RegExp, turn: any } } }} [o] server: the stand-in's options
+ * @param {any[]} turns @param {{ pace?: number, kokoro?: any[], koe?: any, voice?: any, live?: any, agent?: any, open?: boolean, ready?: Promise<void>, server?: { expired?: boolean, onText?: { match: RegExp, turn: any } }, hold?: (c: any) => Promise<unknown> }} [o]
+ *   server: the stand-in's options; hold: agentKit's, before each scripted model call
  */
 export async function liveKit(turns, o = {}) {
   const server = await startRealtimeServer({ flavour: o.live?.type === 'openai-realtime' ? 'openai' : 'gemini', turns, pace: o.pace ?? 0.05, ...o.server });
@@ -19,7 +20,7 @@ export async function liveKit(turns, o = {}) {
   let k;
   try {
     k = await agentKit(o.kokoro ?? [{ rules: [{ match: '.', reply: sleep }] }], {
-      live: { origin: server.origin, ...o.live }, koe: o.koe, agent: o.agent, voice: { speechIn: ['m-hear'], ...o.voice }, open: o.open, ready: o.ready,
+      live: { origin: server.origin, ...o.live }, koe: o.koe, agent: o.agent, voice: { speechIn: ['m-hear'], ...o.voice }, open: o.open, ready: o.ready, hold: o.hold,
     });
     if (!o.ready) await k.agent.idle();
   } catch (e) {

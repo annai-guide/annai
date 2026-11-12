@@ -24,7 +24,7 @@ import { languageOf, vietnameseMarks } from '../../src/core/languages.js';
 
 /** The loudness (rms, 0..1) from which what annai plays is sound; and the quiet that ends a run of it. */
 export const SOUND = 0.01;
-const SOUND_GAP_MS = 400;
+export const SOUND_GAP_MS = 400;
 /** How soon after her sound a turn the user did not make is taken for its echo. */
 const ECHO_WINDOW_MS = 1000;
 /** The longest a turn may end after the user stopped: the check's limit. */
@@ -67,10 +67,11 @@ export function soundRuns(level) {
 /**
  * @typedef {{ i: number, start: number, end: number | null, ms: number | null, audioBytes: number, reason: string | null, clip: string | null,
  *   spurious: boolean, echo: boolean }} Turn
- * @typedef {{ name: string, at: number, end: number, expect: 'answer' | 'nothing' | 'stray' | 'scold', turns: number, endLagMs: number | null, answered: boolean | null,
+ * @typedef {{ name: string, at: number, end: number, expect: 'answer' | 'nothing' | 'stray' | 'scold' | 'ack' | 'noise' | 'stop', turns: number, endLagMs: number | null, answered: boolean | null,
  *   firstAudioMs: number | null, firstSoundMs: number | null, heard: string, recall: number, said: string, tools: string[], overHer: boolean, sentMs: number, coverage: number,
  *   lang?: string, heardLang?: string, saidLang?: string }} ClipResult
- *   tools: what she called before her first sound; overHer: it began while she sounded or as she began; lang: the language the clip is spoken in;
+ *   expect: what the clip wants back (ack: only an acknowledgement here, noise: not the user's words, and stop: told to stop, want no reply); tools: what she called before her
+ *   first sound; overHer: it began while she sounded or as she began; lang: the language the clip is spoken in;
  *   heardLang, saidLang: the language Gemini's transcript of it, and her words, are in ('' when they can't be told)
  * @typedef {{ at: number, cause: 'user' | 'echo' | 'noise' | 'other' }} Cut
  * @typedef {{ name: string, ok: boolean, detail: string, soft?: boolean }} Check  soft: a warning, which does not fail the scenario
@@ -81,9 +82,10 @@ const FILLER = /\b(sorry|apolog\w*|understand\w*|understood|noted|my bad|i['’]
 
 /**
  * @param {Rec} rec @param {Record<string, { kind: string, words: string, lang?: string }>} clips
- * @param {{ endLagMs?: number, expectCut?: boolean }} [o] expectCut: the scenario has the user speak over her, which should cut her
+ * @param {{ endLagMs?: number, expectCut?: boolean, acks?: string[] }} [o] expectCut: the scenario has the user speak over her, which should cut her;
+ *   acks: the clips that are only acknowledgements in this scenario
  */
-export function analyse(rec, clips, { endLagMs = END_LAG_MS, expectCut = false } = {}) {
+export function analyse(rec, clips, { endLagMs = END_LAG_MS, expectCut = false, acks = [] } = {}) {
   const frames = [...rec.frames].sort((a, b) => a.at - b.at);
   const runs = soundRuns(rec.level);
   /** @type {string[]} */
@@ -139,8 +141,10 @@ export function analyse(rec, clips, { endLagMs = END_LAG_MS, expectCut = false }
     const said = frames.filter((fr) => fr.dir === 'in' && fr.kind === 'said' && lastEnd !== null && fr.at > lastEnd && fr.at < until).map((fr) => fr.text ?? '').join('').replace(/\s+/g, ' ').trim();
     const tools = audio ? frames.filter((fr) => fr.dir === 'in' && fr.kind === 'toolCall' && lastEnd !== null && fr.at > lastEnd && fr.at < audio.at).map((fr) => fr.name ?? '?') : [];
     const overHer = runs.some((r) => r.to >= p.at && r.from <= p.at + 600);
+    /** @type {ClipResult['expect']} */
+    const expect = acks.includes(p.name) ? 'ack' : kind === 'noise' ? 'noise' : kind === 'stop' ? 'stop' : kind === 'stray' ? 'stray' : kind === 'scold' ? 'scold' : 'answer';
     return {
-      name: p.name, at: p.at, end: p.end, expect: kind === 'stray' ? /** @type {const} */ ('stray') : kind === 'scold' ? /** @type {const} */ ('scold') : /** @type {const} */ ('answer'), turns: mine.length, tools, overHer,
+      name: p.name, at: p.at, end: p.end, expect, turns: mine.length, tools, overHer,
       sentMs: mine.reduce((n, t) => n + (t.ms ?? 0), 0), coverage: mine.reduce((n, t) => n + (t.ms ?? 0), 0) / Math.max(1, p.end - p.at),
       endLagMs: lastEnd === null ? null : lastEnd - p.end,
       answered: Boolean(audio), firstAudioMs: audio ? audio.at - p.end : null, firstSoundMs: sound ? Math.max(sound.from, lastEnd ?? 0) - p.end : null,
@@ -188,6 +192,9 @@ export function analyse(rec, clips, { endLagMs = END_LAG_MS, expectCut = false }
   // the ask again), with her answer after it and before the next clip, was rescued: the user was answered, late (a note; how late is
   // in the clip's own). A second silence in a row is an error.
   const errorText = (/** @type {TraceEntry} */ t) => `${t.data?.kind ?? 'error'}: ${t.data?.message ?? ''}`.trim();
+  // A turn the session let go (nothing at all back) is the model's choice, not a failure: an acknowledgement or a stray left alone is right, and a question
+  // left so fails "answered". A note says so.
+  const letGo = (/** @type {TraceEntry} */ t) => t.data?.kind === 'live-silent' && /taken as let go/.test(String(t.data?.message ?? ''));
   const rescued = (/** @type {TraceEntry} */ t) => {
     if (t.data?.kind !== 'live-silent' || !/a fresh one gets it again|it is asked again/.test(String(t.data?.message ?? ''))) return false;
     const until = speech.find((p) => p.at > t.at)?.at ?? Infinity;
@@ -195,9 +202,10 @@ export function analyse(rec, clips, { endLagMs = END_LAG_MS, expectCut = false }
   };
   for (const c of rec.cards ?? []) notes.push(`card: ${c}`);
   for (const t of rec.trace.filter((x) => x.type === 'error' && rescued(x))) notes.push(`rescued at ${((t.at - rec.startedAt) / 1000).toFixed(1)} s: ${errorText(t)}`);
+  for (const t of rec.trace.filter((x) => x.type === 'error' && letGo(x))) notes.push(`let go at ${((t.at - rec.startedAt) / 1000).toFixed(1)} s: ${errorText(t)}`);
   /** @type {string[]} */
   const errors = [
-    ...rec.trace.filter((t) => t.type === 'error' && !rescued(t)).map(errorText),
+    ...rec.trace.filter((t) => t.type === 'error' && !rescued(t) && !letGo(t)).map(errorText),
     ...frames.filter((fr) => fr.kind === 'close' && ![1000, 1005].includes(fr.code ?? 0)).map((fr) => `socket closed ${fr.code}: ${fr.reason ?? ''}`.trim()),
     ...rec.errors,
   ];
@@ -324,7 +332,7 @@ export function timeline(rec, a) {
       : t.type === 'trip.grant' || t.type === 'trip.read' ? clip(JSON.stringify(d))
       : t.type === 'tool.call' ? `${d.name} ${clip(JSON.stringify(d.input ?? {}), 100)}`
       : t.type === 'tool.result' ? `${d.name} ${d.ok === false ? 'ERROR ' : ''}${clip(d.content, 140)}`
-      : t.type === 'live.turn' ? `${d.end} ${d.ms} ms floor ${d.floorDb} peak ${d.peakDb}` : t.type === 'live.session' ? `${d.state ?? ''}${d.why ? ` why=${d.why}` : ''}` : t.type === 'out.speak' ? `${d.cut ? 'CUT ' : ''}${d.voice ? 'voice ' : ''}${t.text ? `"${t.text.slice(0, 100)}"` : ''}` : t.type === 'heard' ? `"${String(d.text ?? t.text ?? '').slice(0, 100)}"${d.strayLanguage ? ` STRAY(${d.strayLanguage})` : ''}` : `${d.kind ?? ''} ${d.message ?? t.text ?? ''}`.trim();
+      : t.type === 'live.turn' ? `${d.end} ${d.ms} ms floor ${d.floorDb} peak ${d.peakDb}` : t.type === 'live.session' ? `${d.state ?? ''}${d.why ? ` why=${d.why}` : ''}` : t.type === 'out.speak' ? `${d.cut ? 'CUT ' : ''}${d.voice ? 'voice ' : ''}${d.text ?? t.text ? `"${String(d.text ?? t.text).slice(0, 100)}"` : ''}` : t.type === 'heard' ? `"${String(d.text ?? t.text ?? '').slice(0, 100)}"${d.strayLanguage ? ` STRAY(${d.strayLanguage})` : ''}` : `${d.kind ?? ''} ${d.message ?? d.text ?? t.text ?? ''}`.trim();
     add(t.at, 'trace', `${t.type} ${detail}`.trimEnd());
   }
   for (const m of rec.media ?? []) add(m.at, 'page', `her player ${m.kind} (${m.seconds} s clip, at ${m.time} s)`);
@@ -352,6 +360,7 @@ export function detail(rec, a, about = '') {
     const mark = (/** @type {string | undefined} */ seen) => (seen && seen !== LANGUAGE_NAME[c.lang ?? 'en'] ? seen : '');
     out.push(`             heard: "${c.heard}"${c.heard ? ` (${Math.round(c.recall * 100)}% of the words)` : ''}${mark(c.heardLang) ? ` [heard as ${mark(c.heardLang)}]` : ''}${c.said ? `; she said: "${c.said.slice(0, 140)}"` : ''}${mark(c.saidLang) ? ` [answered in ${mark(c.saidLang)}]` : ''}`);
   }
+  // The lines a scenario's own analysis adds (the card's, the one-answer checks').
   for (const l of /** @type {string[]} */ (/** @type {any} */ (a).cardText ?? [])) out.push(l);
   for (const k of a.cuts) out.push(`   she was cut at ${secs(k.at - rec.startedAt)} s by ${k.cause === 'user' ? 'the user speaking over her' : k.cause === 'echo' ? 'HER OWN ECHO' : k.cause === 'noise' ? 'noise' : 'something else'}`);
   for (const c of a.checks) out.push(`   ${c.ok ? 'ok  ' : c.soft ? 'WARN' : 'FAIL'} ${c.name}: ${c.detail}`);
