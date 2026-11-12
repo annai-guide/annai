@@ -350,6 +350,32 @@ test("the provider ends that turn with interrupted after the note went in: the f
   }
 });
 
+// A tap stops the turn that sounds, and what waits behind it with it: she doesn't go on with the next sentence after the user stopped her. "One
+// moment." and tell_kokoro, its turnComplete 300 ms in (while her 0.8 s still play, as in 52 of 102 real tool-call replies), and the provider goes
+// on by itself with a second turn that waits behind it.
+test('a tap while her sound plays and a second turn of hers waits behind it: the second is written, silently, and she says nothing more', async () => {
+  const k = await liveKit([{ ...CHECKING, noEnd: false, endAt: 300, andThen: true }, { said: 'Also, the station closes at ten tonight.', audio: tone(0.1) }], { pace: 1, agent: { secondMs: 1000 } });
+  try {
+    await k.voice.unlock();
+    k.voice.route = async () => 'car';
+    k.platform.streamSpeed = 1;
+    k.agent.tap();
+    await until(() => k.agent.live.listening, 3000);
+    await say(k, 'where-eat');
+    await soon(async () => k.agent.live.view.name === 'speaking', 5000);
+    await wait(500);
+    k.agent.tap();
+    await soon(async () => (await lines(k)).length === 2, 5000);
+    await wait(1500); // the second would have been heard by now (its turn ended while the first sounded, so it is written whole)
+    const written = await lines(k);
+    assert.ok(/^One\S*✂$/.test(String(written[0][0])), `the first is cut where she was heard: ${JSON.stringify(written)}`);
+    assert.deepEqual(written[1], ['Also, the station closes at ten tonight.', false], 'the second is written whole, as her answer');
+    assert.equal(k.platform.streams.length, 1, 'no sound for the second');
+  } finally {
+    await k.done();
+  }
+});
+
 // What waits behind her sound when the user begins to speak was never heard, and isn't written, even though the provider ended it: only a turn
 // that was heard whole is written whole, whatever its sound's length.
 test('the user speaks while her sound plays and a second turn of hers, ended, waits behind it: the second is let go, unwritten', async () => {
