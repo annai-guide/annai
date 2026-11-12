@@ -142,6 +142,24 @@ test('tapping Shiori stops a hanging tool and the turn; every call still has a r
   assert.equal(k.agent.state.name, 'sleeping');
 });
 
+test("an entry written into another conversation (log's scope, as annai writes a held card into the one left) is that one's alone: the turn in the open one doesn't count it as reaching the user, and is asked once more", async (t) => {
+  useClock(t);
+  /** @type {() => void} */
+  let release = () => {};
+  const go = new Promise((r) => { release = () => r(undefined); });
+  let calls = 0;
+  const k = await agentKit([[{ text: 'Big Sur is known for its coast.' }, { toolCalls: [{ name: 'sleep', input: {} }] }]], { hold: async () => { if (!calls++) await go; } });
+  const other = await createTrip(k.ws, { title: 'Carmel' });
+  k.agent.send('What is Big Sur known for?');
+  await until(() => calls === 1);
+  await k.agent.log({ type: 'out.show', actor: 'shiori', data: { id: 'c1', card: { title: 'Fuel' }, by: null } }, { scope: other });
+  release();
+  await k.agent.idle();
+  assert.equal(k.requests.length, 2, 'asked once more: the card reached nobody here');
+  assert.deepEqual((await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(other, { types: ['out.show'] }))).map((/** @type {any} */ e) => e.data.card), [{ title: 'Fuel' }]);
+  assert.deepEqual(await k.events(['out.show']), [], 'nothing in the conversation open');
+});
+
 test("the user's message, answered only in plain text: she is asked once more; still nothing for the user, a card with Try again (spec §7.1, emulator pass)", async (t) => {
   useClock(t);
   const k = await agentKit([[{ text: 'Big Sur is known for its coast.' }, { toolCalls: [{ name: 'sleep', input: {} }] }, say('Its wild coast, mostly.')]]);

@@ -1852,9 +1852,9 @@ export class Agent {
     return r.reply.text.trim() || null;
   }
 
-  /** Writes a conversation event in the open conversation (for Self tools). @param {Parameters<typeof record>[2]} ev */
-  log(ev) {
-    return this.#log(ev);
+  /** Writes a conversation event in the open conversation (Self tools), or in scope's (#logIn). @param {Parameters<typeof record>[2]} ev @param {{ scope?: string }} [o] */
+  log(ev, { scope } = {}) {
+    return scope === undefined ? this.#log(ev) : this.#logIn(scope, ev);
   }
 
   /** Shiori steps out of her seat to work on something, or comes back (spec §16.3). @param {string | null} detail */
@@ -1889,23 +1889,13 @@ export class Agent {
    *   aloud: said even with a live session's voice in use, which holds back and doesn't listen meanwhile (what a session failed to say)
    */
   async remind(list, scope = this.#target ?? ME, o = {}) {
-    const open = scope === (this.#target ?? ME);
     for (const r of list) {
       const text = String(r?.text ?? '').trim();
       if (!text) continue;
       // Said with voice on, whichever conversation it is for (choice 3), after whatever is being said (the speaker queues), never over a live session.
       const aloud = Boolean(this.voice?.on) && (o.aloud || !this.#half.hushed?.()) && !o.silent;
       const ev = { type: 'reminder', actor: 'system', data: { watch: String(r.watch ?? ''), text, ...(r.answer ? { answer: true } : {}), ...(r.plan ? { plan: r.plan } : {}), ...(aloud ? { aloud: true } : {}), ...(o.unsaid ? { unsaid: true } : {}), ...(o.waiting ? { waiting: true } : {}) } };
-      if (open && scope === this.scope) await this.#log(ev);
-      else {
-        const e = await record(this.store, scope, { now: this.#stamp(scope), ...ev });
-        // The conversation being opened (as annai starts) may have read its log already: its
-        // transcript takes the reminder once open, so Shiori knows and doesn't say it again.
-        if (open) {
-          if (scope === this.scope) this.#joinLate(e);
-          else this.#late.push({ scope, e });
-        }
-      }
+      await this.#logIn(scope, ev);
       // A plan's reminder in the screens' words, made from its data; anyone else's as they wrote it.
       const shown = r.plan ? planWords(r.plan) : text;
       await this.#notice({ tone: 'info', title: r.answer ? t`Shiori's answer` : t`Reminder`, body: shown });
@@ -1926,24 +1916,46 @@ export class Agent {
 
   /** Writes a conversation event, adds it to the transcript, and tells the screen and the other half. @param {Parameters<typeof record>[2]} ev */
   #log(ev) {
-    const write = async () => {
-      const mark = this.#mark(ev.type);
-      // Each of Shiori's lines says which model wrote it: null when none did (annai's own, a live voice's), never left out.
-      const by = LINES.has(ev.type) && !('by' in (ev.data ?? {})) ? { by: this.#by } : {};
-      const stored = await record(this.store, this.scope, { now: this.#stamp(this.scope), ...ev, data: { ...ev.data, ...by, ...mark } });
-      // The user answered, typed or spoke during her turn: it is theirs too, so a cut takes it up (an answer comes in a tool's result, never as a wake).
-      if (this.#turning && (ev.type === 'msg.user' || (ev.type === 'heard' && !ev.data?.dismissed))) this.#userIn = true;
-      const r = await resolveEvent(this.store, stored);
-      this.#apply(stored, r);
-      // annai's own card (confirm) is annai's, not her words: it neither answers the user nor settles what she owes them.
-      const hers = ev.type.startsWith('out.') && ev.actor !== 'system';
-      if (hers) this.#facts.spoke = true;
-      if (hers || ev.type === 'grounded') this.#reached++;
-      this.#emit('event', stored);
-      await this.#half.logged?.(stored, r);
-      return stored;
-    };
-    return this.#serially(write);
+    return this.#serially(() => this.#write(ev));
+  }
+
+  /** #log's write, in the lock. @param {Parameters<typeof record>[2]} ev */
+  async #write(ev) {
+    const stored = await record(this.store, this.scope, { now: this.#stamp(this.scope), ...this.#marked(ev) });
+    // The user answered, typed or spoke during her turn: it is theirs too, so a cut takes it up (an answer comes in a tool's result, never as a wake).
+    if (this.#turning && (ev.type === 'msg.user' || (ev.type === 'heard' && !ev.data?.dismissed))) this.#userIn = true;
+    const r = await resolveEvent(this.store, stored);
+    this.#apply(stored, r);
+    // annai's own card (confirm) is annai's, not her words: it neither answers the user nor settles what she owes them.
+    const hers = ev.type.startsWith('out.') && ev.actor !== 'system';
+    if (hers) this.#facts.spoke = true;
+    if (hers || ev.type === 'grounded') this.#reached++;
+    this.#emit('event', stored);
+    await this.#half.logged?.(stored, r);
+    return stored;
+  }
+
+  /** An event as this half stores it: its mark, and the model of each of Shiori's lines (null: none), never left out. @param {Parameters<typeof record>[2]} ev */
+  #marked(ev) {
+    const by = LINES.has(ev.type) && !('by' in (ev.data ?? {})) ? { by: this.#by } : {};
+    return { ...ev, data: { ...ev.data, ...by, ...this.#mark(ev.type) } };
+  }
+
+  /**
+   * An event for scope's conversation, decided in the lock: the open one's as #log writes it; another's straight into its log, counted by no turn
+   * here (a held card in the conversation left), and taken by its transcript if it is being opened. @param {string} scope @param {Parameters<typeof record>[2]} ev
+   */
+  #logIn(scope, ev) {
+    return this.#serially(async () => {
+      const open = scope === (this.#target ?? ME);
+      if (open && scope === this.scope) return this.#write(ev);
+      const e = await record(this.store, scope, { now: this.#stamp(scope), ...this.#marked(ev) });
+      if (open) {
+        if (scope === this.scope) this.#joinLate(e);
+        else this.#late.push({ scope, e });
+      }
+      return e;
+    });
   }
 
   /** @template T @param {() => Promise<T>} fn @returns {Promise<T>} */

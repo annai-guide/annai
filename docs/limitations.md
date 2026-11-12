@@ -620,12 +620,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** her turn counts as said only when the provider ends it, and in real runs that came 0.06 to 0.65 s after her sound stopped (median 0.31 s, 60 note turns). Until then the note still counts as not passed on, so a user's turn that begins in that window shows it. Treating "her sound has run out" as heard whole would lose the rest of a note that has a gap in her sound (7 of 204 real replies had such gaps, up to 1.5 s).
 - **Revisit when:** the next version: read the provider's own "finished making it" signal (Gemini's `generationComplete`, which annai ignores today), after measuring when it arrives on real Gemini. "Whole" then means all made and all played, so a tap in a gap inside her reply (7 of 204 real replies had one, up to 1.5 s; today such a tap counts her note as heard whole, and its rest is neither heard nor shown, as in the version before) counts as a cut, and the rest is shown. A note she had made and played in full then shows nothing.
 
-### A card or question Kokoro made is lost when the user opens another conversation before Koe passes it on
-- **Kind:** deferred.
-- **What the user sees:** in live voice with her two halves, Kokoro makes a card or asks a question while Koe is talking; annai holds it for Koe to pass on. The user opens another conversation, or starts fresh, in the few seconds before Koe does: the card never appears, in the conversation left either, and Shiori doesn't make it again. Words Kokoro meant for the user, and reminders, are kept in the conversation left; only a held card, question or spoken line is not. The version before this one did the same.
-- **Why:** what annai shows of a held card is written into whichever conversation is open, and at a switch that is already the other one.
-- **Revisit when:** the next version: a held card is written, silently, into the conversation left; a held question is let go.
-
 ### In live voice, a cue she didn't get to say can show as a "Reminder" card
 - **Kind:** deferred.
 - **What the user sees:** a watch whose trigger is a cue for Shiori (not a reminder for the user) fires in live voice, and the user taps, speaks or makes a sound before Koe has answered it: annai shows the cue's own short text as a silent "Reminder" card. With classic voice a cue is dropped once a model has it. The version before this one showed or said it in the same cases, except at a sound, where it asked her again.
