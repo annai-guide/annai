@@ -123,6 +123,8 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  * @property {(on: boolean, line?: { id: string, at: number, her?: boolean }) => void} [speech]  its microphone hears someone begin to speak, or stop (line: with the
  *   segment they made, when it began, and whether annai's voice was playing then), for annai's card when the other half holds it
  * @property {(h: Heard) => Promise<boolean>} [card]  annai's card, which the other half holds, hears its microphone's line first (Agent.cardTakes): true, it took it
+ * @property {() => boolean} [cardOpen]  annai's card, which the other half holds, listens for a spoken answer now (Agent.cardListens): a reminder isn't said meanwhile
+ * @property {() => void} [cardEnded]  its own card ended, answered or its window shut: what waited for it looks again (Agent.cardEnded)
  * @typedef {{ wakeId: string, ok: boolean, finalText: string, told: boolean, slept: boolean, spoke: boolean, kinds: string[], by: { name: string, first: string | null, tried: boolean } | null }} TurnEnd
  *   by: the model that answered the turn's last call
  *   finalText: a last reply's text with no tool calls; told: it told the other half (or a gated call did)
@@ -230,6 +232,8 @@ export const WRITE_TRIES = 3;
  * a choice they tapped, or their Try again. @param {Wake} w
  */
 export const isTheirs = (w) => w.kind === 'user' || w.kind === 'choice' || (w.kind === 'heard' && w.gate !== 'chatter') || Boolean(w.again);
+/** A wake that carries a reminder annai owes the user, a cue not counted (a cue is hers to say or let pass). @param {Wake} w */
+export const reminds = (w) => Boolean(w.fallbacks?.some((r) => !r.cue));
 /** A wake the user is owed an answer to: a word heard in the window after she spoke may be no one's, and claims nothing. @param {Wake} w */
 const owesAnswer = (w) => isTheirs(w) && !w.window;
 /** A wake annai started by itself, no line or act of the user's: GPS turned on, a reminder or watch firing, a catch-up, a plugin's. @param {Wake} w */
@@ -936,12 +940,27 @@ export class Agent {
     p.resolve(got);
   }
 
-  /** What queued ends a wait: the other half's note; Koe's wait tool, a reminder (not a cue) too, said now. @param {boolean} tool @returns {Got | null} */
+  /**
+   * What queued ends a wait: the other half's note; Koe's wait tool, a reminder (not a cue) too, said now, unless annai's card listens for the user's answer:
+   * a reminder is said when that ends (cardEnded), so an "Okay." to it can't answer the card. @param {boolean} tool @returns {Got | null}
+   */
   #cameDue(tool) {
     const mine = this.#queue.filter((w) => w.scope === this.scope);
     const note = mine.find((w) => w.kind === 'note');
     if (note) return { note: note.from ?? 'kokoro' };
-    return tool && this.#half.name === 'koe' && mine.some((w) => w.fallbacks?.some((r) => !r.cue)) ? { reminder: true } : null;
+    return tool && this.#half.name === 'koe' && mine.some(reminds) && !this.#half.cardOpen?.() ? { reminder: true } : null;
+  }
+
+  /** annai's card (confirm) listens for a spoken answer now: its question is being said, or its window is open, with voice on. A reminder waits for it to end (Half.cardOpen). */
+  get cardListens() {
+    const ask = this.#pending?.ask;
+    return Boolean(ask && (ask.open || !ask.from) && this.voice?.on);
+  }
+
+  /** annai's card, which the other half holds, ended (answered, or its window shut): a reminder that waited for it ends Koe's wait, or lets its turn start. */
+  cardEnded() {
+    this.#noted();
+    this.poke();
   }
 
   /**
@@ -1011,6 +1030,7 @@ export class Agent {
         for (const l of rest) if (l.kept && l.h) this.#queue.push({ kind: 'heard', text: '', heard: l.h, ...(l.gate ? { gate: l.gate } : {}), scope: ask.scope, at: Date.now() });
         const own = rest.flatMap((l) => (l.kept || !l.h ? [] : [l.h]));
         resolve(own.length ? { ...v, own } : v);
+        this.#half.cardEnded?.();
       } };
       // A Stop as the card was written found no wait to end: none may eat the user's next line.
       if (call.signal?.aborted) return void p.resolve({ stopped: true });
@@ -1030,6 +1050,7 @@ export class Agent {
         };
         const shut = () => {
           ask.open = p.listening = false;
+          this.#half.cardEnded?.();
           if (this.#ear?.owner === 'turn') this.#closeEar();
           if (this.#pending !== p) return;
           this.#setState('waiting');
