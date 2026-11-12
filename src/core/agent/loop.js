@@ -262,7 +262,7 @@ const words = (x) => typeof x === 'string' && x.trim() !== '';
 /** What a line's words arm: a yes begun inside the card's window, a no at any time (declining is safe); nothing begun over her voice. @param {NonNullable<Pending['ask']>} ask @param {AskLine} l */
 const askSaid = (ask, l) => (l.her || l.text === undefined ? null : (l.inside ? ask.yes(l.text) : null) ?? ask.no(l.text));
 /** Whether a line began inside the card's window, from the question's end to its 20 s, the one rule on every path (its own microphone, the other half's, a live session's). @param {NonNullable<Pending['ask']>} ask @param {number} at */
-const inWindow = (ask, at) => ask.from > 0 && at >= ask.from && at <= ask.until;
+const inWindow = (ask, at) => at >= ask.from && at <= ask.until;
 /** What a listen got from a user's message taken off the queue: its words, and a claim or a tap that came with them. @param {Wake} w @returns {Got} */
 const typedGot = (w) => ({ text: w.text, ...(w.claim ? { claim: w.claim } : {}), ...(w.chose ? { chose: true } : {}) });
 /** Typing a listen got, as the log and the model have it: plain, a claim ("This was for Shiori") or a tap that came as words. @param {Got} got @returns {{ data: Record<string, any>, said: string }} */
@@ -931,7 +931,7 @@ export class Agent {
     const note = this.#queue.find((w) => w.kind === 'note' && w.scope === this.scope);
     // A wait (listening or not: voice going off leaves it for typing), and her own question waiting for a tap or typing (not annai's card): a note is always said, so it never waits behind an answer
     // the user may never give (Koe's "want ideas?" held Kokoro's correction back in stage 5's real-model pass).
-    if (!note || !p || !(p.tool || p.kind === 'wait' || (p.kind === 'ask' && !p.ask && !p.listening)) || this.state.name === 'hearing') return;
+    if (!note || !p || !(p.kind === 'wait' || (p.kind === 'ask' && !p.ask && !p.listening)) || this.state.name === 'hearing') return;
     this.#pending = null;
     p.resolve({ note: note.from ?? 'kokoro' });
   }
