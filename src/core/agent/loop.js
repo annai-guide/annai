@@ -3094,7 +3094,7 @@ export class Agent {
           if (call.live) return 'Shown; their tap comes as their next turn.';
           if (aloud && call.signal.aborted) return { content: STOPPED, isError: true };
           if (aloud) return this.#askAloud(i.question, call);
-          const got = await this.#waitFor(call.id, 'ask', 0);
+          const got = await this.#waitFor(call, 'ask', 0);
           if (got.stopped) return { content: STOPPED, isError: true };
           /* en */
           if (got.note) return `${got.note === 'koe' ? 'Koe' : 'Kokoro'}: see the note below. Your question is closed, its buttons too: ask it again if it still matters.`;
@@ -3114,10 +3114,10 @@ export class Agent {
         run: async (/** @type {{ seconds: number }} */ i, /** @type {any} */ call) => {
           const seconds = Math.min(600, Math.max(1, Number(i.seconds) || 8));
           if (call.voice && this.voice && !this.#aloudOnly) {
-            const heard = await this.#listenFor(call.id, 'wait', seconds, true);
+            const heard = await this.#listenFor(call, 'wait', seconds, true);
             if (!heard.deaf) return this.#answer('', heard, call, `Nothing yet (${seconds} seconds).`);
           }
-          const got = await this.#waitFor(call.id, 'wait', seconds * this.secondMs);
+          const got = await this.#waitFor(call, 'wait', seconds * this.secondMs);
           if (got.stopped) return { content: STOPPED, isError: true };
           if (got.note || got.reminder) return this.#answer('', got, call, '');
           if (got.text === undefined) return `Nothing yet (${seconds} seconds).`;
@@ -3137,11 +3137,13 @@ export class Agent {
   }
 
   /**
-   * Waits for the user: a tap or typing, or a time limit (0: none). A message already queued answers at once.
-   * @param {string} id @param {'ask' | 'wait'} kind @param {number} ms
+   * Waits for the user: a tap or typing, or a time limit (0: none). A message already queued answers at once. A call whose turn was stopped waits for no one
+   * (a Stop, or another conversation opening, while its microphone was opening): no wait is left for the user's next line to answer.
+   * @param {{ id: string, signal?: AbortSignal }} call @param {'ask' | 'wait'} kind @param {number} ms
    * @returns {Promise<Got>}
    */
-  #waitFor(id, kind, ms) {
+  #waitFor({ id, signal }, kind, ms) {
+    if (signal?.aborted) return Promise.resolve({ stopped: true });
     const queued = this.#queue.findIndex((w) => w.kind === 'user' && w.scope === this.scope);
     if (queued >= 0) return Promise.resolve(typedGot(this.#queue.splice(queued, 1)[0]));
     // A note already queued answers a wait, and her own question (#cameDue).
@@ -3337,7 +3339,7 @@ export class Agent {
     /* en */
     if (this.#aloudOnly) return `${before} Voice mode is off, so you didn't listen; the user may type.`;
     const { silenceSeconds } = await voice.settings();
-    const got = await this.#listenFor(call.id, 'wait', silenceSeconds);
+    const got = await this.#listenFor(call, 'wait', silenceSeconds);
     const answer = await this.#answer(before, got, call, /* en */ `Heard nothing (${silenceSeconds} seconds).`);
     // Its window passed in silence: she would only call sleep, so the turn ends here, for no model call.
     return call.last && Object.keys(got).length === 0 && typeof answer === 'string' ? { content: answer, endTurn: true } : answer;
@@ -3359,12 +3361,12 @@ export class Agent {
     // Cut with the turn: its result is written already, and the user's next line is a turn of its own, not this question's answer.
     if (call.signal.aborted) return { content: STOPPED, isError: true };
     /** @type {Got} */
-    let got = spoken.failed ? {} : await this.#listenFor(call.id, 'ask', LISTEN_S);
+    let got = spoken.failed ? {} : await this.#listenFor(call, 'ask', LISTEN_S);
     if (got.heard || got.text !== undefined || got.chosen !== undefined || got.stopped) {
       if (got.chosen === undefined) return this.#answer('', got, call, '');
     } else {
       if (this.#ear?.owner === 'turn') this.#closeEar();
-      got = await this.#waitFor(call.id, 'ask', 0);
+      got = await this.#waitFor(call, 'ask', 0);
     }
     if (got.stopped) return { content: STOPPED, isError: true };
     if (got.chosen !== undefined) {
@@ -3407,17 +3409,24 @@ export class Agent {
   /**
    * Listens for the user's answer (spec §10.4): the first thing heard, typing, or a tap; or a silence of seconds. With speech heard earlier waiting, speak and wait don't
    * listen: it reaches her at once. Chatter or a noise neither ends the silence nor restarts it (music would hold the microphone open for ever, at a transcription and a gate each time).
-   * @param {string} id @param {'wait' | 'ask'} kind @param {number} seconds @param {boolean} [tool] the wait tool's @returns {Promise<Got>}
+   * @param {{ id: string, signal?: AbortSignal }} call a stopped turn's call listens for no one, and leaves nothing waiting (as #waitFor)
+   * @param {'wait' | 'ask'} kind @param {number} seconds @param {boolean} [tool] the wait tool's @returns {Promise<Got>}
    */
-  async #listenFor(id, kind, seconds, tool = false) {
+  async #listenFor({ id, signal }, kind, seconds, tool = false) {
+    if (signal?.aborted) return { stopped: true };
     const typed = this.#queue.findIndex((w) => w.kind === 'user' && w.scope === this.scope);
     if (typed >= 0) return typedGot(this.#queue.splice(typed, 1)[0]);
     if (kind === 'wait' && this.#queue.some((w) => w.kind === 'heard' && w.scope === this.scope)) return { earlier: true };
     const due = kind === 'wait' ? this.#cameDue(tool) : null;
     if (due) return due;
     if (!this.#half.voice()) return { deaf: /* en */ 'the other half has the microphone now.' };
+    const had = this.#ear;
     const deaf = await this.#openEar('turn');
     if (deaf) return { deaf };
+    if (signal?.aborted) {
+      if (!had && this.#ear?.owner === 'turn') this.#closeEar(); // the turn ended while it opened: nothing is left listening
+      return { stopped: true };
+    }
     this.#setState('listening');
     return new Promise((resolve) => {
       /** @type {any} */
