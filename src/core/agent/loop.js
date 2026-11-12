@@ -3275,7 +3275,7 @@ export class Agent {
     if (call.sleeping) return spoken.cut ? `${before} The microphone is open: what they say next wakes you.` : before;
     if (call.more) return before;
     /* en */
-    if (this.#aloudOnly) return `${before} Voice mode is off, so you didn't listen; the user may type.`;
+    if (this.#aloudOnly || !voice.on) return `${before} Voice mode is off, so you didn't listen; the user may type.`; // off mid-line too
     const { silenceSeconds } = await voice.settings();
     const got = await this.#listenFor(call.id, 'wait', silenceSeconds);
     const answer = await this.#answer(before, got, call, /* en */ `Heard nothing (${silenceSeconds} seconds).`);
@@ -3299,7 +3299,7 @@ export class Agent {
     // Cut with the turn: its result is written already, and the user's next line is a turn of its own, not this question's answer.
     if (call.signal.aborted) return { content: STOPPED, isError: true };
     /** @type {Got} */
-    let got = spoken.failed ? {} : await this.#listenFor(call.id, 'ask', LISTEN_S);
+    let got = spoken.failed || !voice.on ? {} : await this.#listenFor(call.id, 'ask', LISTEN_S); // off mid-question: the buttons
     if (got.heard || got.text !== undefined || got.chosen !== undefined || got.stopped) {
       if (got.chosen === undefined) return this.#answer('', got, call, '');
     } else {

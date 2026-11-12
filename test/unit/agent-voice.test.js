@@ -295,3 +295,82 @@ test('one half: a claim answers a wait as the words it is, and the line says so;
   k.agent.tap();
   await until(() => !k.voice.on);
 });
+
+// Voice turning off while she says a speak line or a question aloud (by hand, or auto mode as the car slows): her speech is cut, and nothing
+// listens for the turn after it. The microphone stays shut, the dock doesn't say Listening, and what is said next answers nothing; speak says
+// voice mode is off, and her question goes straight on to its buttons.
+for (const how of ['by hand', 'auto mode as the car slows']) {
+  /**
+   * A kit whose voice is on, and a way to turn it off: the chip's tap, or the drive ending under auto (voice off, on only while driving).
+   * @param {any[]} script
+   */
+  const kitWithVoiceOff = async (script) => {
+    const k = await agentKit([script], { voice: { mode: how === 'by hand' ? 'on' : 'off', playMs: 5000, speechIn: ['m-hear'], hears: ['the first one'] } });
+    /** @type {Set<() => void>} */
+    const changes = new Set();
+    let driving = how !== 'by hand';
+    if (driving) {
+      k.registry.add('live', 'activity', { now: () => (driving ? 'moving-fast' : 'still'), held: () => driving, onChange: (/** @type {() => void} */ fn) => { changes.add(fn); } });
+      await until(() => changes.size === 1);
+      for (const fn of changes) fn();
+      await until(() => k.voice.on);
+    }
+    const off = async () => {
+      if (how === 'by hand') await k.voice.choose('off');
+      else {
+        driving = false;
+        for (const fn of changes) fn();
+      }
+      await until(() => !k.voice.on);
+      await new Promise((r) => setTimeout(r, 20)); // far less than her question's 8 s or the 20 s of silence
+    };
+    /** What is said into the microphone now: nobody hears it, whatever the dock says. */
+    const speaks = async () => {
+      k.platform.mic.feed(cat(quiet(0.3), await clip('first-one'), quiet(1)), 16_000);
+      await new Promise((r) => setTimeout(r, 30));
+    };
+    return { k, off, speaks };
+  };
+
+  test(`voice turning off ${how} while she says a speak line: the microphone doesn't open, the dock doesn't say Listening, what is said next isn't her answer, and speak says voice mode is off (spec §10.5)`, async (t) => {
+    useClock(t);
+    const { k, off, speaks } = await kitWithVoiceOff([{ toolCalls: [{ name: 'speak', input: { text: 'Which day would you like?' } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]);
+    /** @type {string[]} */
+    const states = [];
+    k.agent.on('state', (/** @type {any} */ s) => states.push(s.name));
+    k.agent.send('Plan our day');
+    await until(() => k.said.includes('Which day would you like?') && k.agent.state.name === 'speaking');
+    await off();
+    await speaks();
+    await k.agent.idle();
+    assert.deepEqual(mics(k), [], 'the microphone never opened');
+    assert.ok(!states.includes('listening') && !states.includes('hearing'), `the dock never said Listening: ${states}`);
+    assert.deepEqual(k.transcribed, [], 'what was said into it was heard by no one');
+    assert.deepEqual(await k.events(['heard']), []);
+    assert.equal((await results(k, 'speak'))[0].data.content, `The user stopped you after: "Which day…". Voice mode is off, so you didn't listen; the user may type.`);
+    assert.equal(k.agent.state.name, 'sleeping');
+  });
+
+  test(`voice turning off ${how} while she says her question aloud: the microphone doesn't open, the dock says she waits, what is said next isn't the answer, and the buttons still answer a tap (spec §10.5)`, async (t) => {
+    useClock(t);
+    const { k, off, speaks } = await kitWithVoiceOff([{ toolCalls: [{ name: 'ask', input: { question: 'Lunch or dinner?', options: ['Lunch', 'Dinner'] } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]);
+    /** @type {string[]} */
+    const states = [];
+    k.agent.on('state', (/** @type {any} */ s) => states.push(s.name));
+    k.agent.send('Plan our day');
+    await until(() => k.said.includes('Lunch or dinner?') && k.agent.state.name === 'speaking');
+    await off();
+    await speaks();
+    assert.deepEqual(mics(k), [], 'the microphone never opened');
+    assert.ok(!states.includes('listening') && !states.includes('hearing'), `the dock never said Listening: ${states}`);
+    assert.equal(k.agent.state.name, 'waiting', 'it waits for the buttons');
+    assert.notEqual(k.agent.pendingId, null, 'the question still waits');
+    assert.deepEqual(k.transcribed, [], 'what was said into it was heard by no one');
+    await new Promise((r) => setTimeout(r, 200)); // past her question's 8 s: still waiting
+    assert.notEqual(k.agent.pendingId, null, 'it waits for a tap, with no time limit');
+    k.agent.answer(/** @type {string} */ (k.agent.pendingId), 'Lunch');
+    await k.agent.idle();
+    assert.equal((await results(k, 'ask'))[0].data.content, 'The user chose: Lunch');
+    assert.deepEqual(mics(k), []);
+  });
+}
