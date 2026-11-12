@@ -24,7 +24,7 @@ import { createHash } from 'node:crypto';
  * Unit tests reach it with Node's WebSocket, and end-to-end tests from the page, at ws://127.0.0.1:<port> (WebKit
  * can't stand in for a page's own requests).
  * @typedef {{ heard?: string, said?: string, audio?: Uint8Array, tool?: { name: string, args: any }, goAway?: number, handle?: string,
- *   usage?: Record<string, any>, interruptOn?: 'text' | 'activity', refuse?: string, heardAfter?: string, heardFirst?: boolean, saidAfter?: string, silent?: boolean, heardAt?: number, saidAt?: number, andThen?: boolean, delayMs?: number, noEnd?: boolean, endAt?: number }} Turn
+ *   usage?: Record<string, any>, interruptOn?: 'text' | 'activity', refuse?: string, heardAfter?: string, heardFirst?: boolean, saidAfter?: string, silent?: boolean, heardAt?: number, saidAt?: number, andThen?: boolean, delayMs?: number, noEnd?: boolean, endAt?: number, gap?: { at: number, ms: number } }} Turn
  *   one answer, played when a clientContent turn or an activityEnd comes (openai: a response.create); turns are given in order,
  *   and the last repeats. audio: 24 kHz 16-bit PCM (openai: in the session's output format); tool: a call it makes after its words;
  *   goAway, handle: Gemini's, seconds left, sent after the turn; usage: Gemini's usageMetadata, or OpenAI's response usage;
@@ -36,7 +36,10 @@ import { createHash } from 'node:crypto';
  *   words come this many ms after its sound, before its end (a late first word); andThen: the next turn follows this one's end at once, as
  *   Gemini goes on by itself after a tool call; delayMs (Gemini's): the answer begins this many ms after the turn that asks for it, as a slow
  *   model or network gives it (an activityStart meanwhile drops it; a text turn meanwhile is answered first, then it); noEnd (Gemini's): no turnComplete ever comes, as after a
- *   tool response in a real run (2026-11-05); endAt (Gemini's): its turnComplete comes only this many ms after its burst
+ *   tool response in a real run (2026-11-05); endAt (Gemini's): its turnComplete comes only this many ms after its burst;
+ *   gap (Gemini's): the provider still making it, an audible pause in her sound (real Gemini, 2026-11-12: 9 of 234 replies, 0.10 to 1.23 s):
+ *   the audio from the piece that holds byte at on, with its words, comes ms after the rest, then its tool call and generationComplete
+ *   (which never came inside such a pause, 0 of 107); an activityStart in the pause cuts it with no generationComplete, as in 2 of 5 real cuts
  * @typedef {{ flavour: 'gemini' | 'openai', turns: Turn[], key?: string, models?: string[], closeWith?: { code: number, reason: string },
  *   pace?: number, chunkBytes?: number, expired?: boolean, noLanguageCodes?: boolean, noProactivity?: boolean, noLanguages?: boolean | 'close', onText?: { match: RegExp, turn: Turn } }} Options
  *   onText (Gemini's): a text turn whose words match gets this answer, whatever turn is next: a test's answer to a note doesn't depend on when the note lands among heard turns;
@@ -275,18 +278,36 @@ function geminiSession(c) {
     const audio = turn.audio ?? new Uint8Array(0);
     const words = turn.said ? turn.said.match(/\S+\s*/g) ?? [] : [];
     const pieces = Math.max(1, Math.ceil(audio.length / chunkBytes));
-    // The audio and its words in a burst, interleaved, as Gemini sends them.
-    for (let i = 0; i < pieces; i++) {
-      const part = audio.subarray(i * chunkBytes, (i + 1) * chunkBytes);
-      if (part.length) send({ serverContent: { modelTurn: { parts: [{ inlineData: { mimeType: 'audio/pcm;rate=24000', data: Buffer.from(part).toString('base64') } }] } } });
-      const from = Math.floor((i * words.length) / pieces);
-      const to = Math.floor(((i + 1) * words.length) / pieces);
-      if (to > from && turn.saidAt === undefined) send({ serverContent: { outputTranscription: { text: words.slice(from, to).join('') } } });
+    // The audio and its words in a burst, interleaved, as Gemini sends them; with a gap, in two.
+    const burst = (/** @type {number} */ first, /** @type {number} */ end) => {
+      for (let i = first; i < end; i++) {
+        const part = audio.subarray(i * chunkBytes, (i + 1) * chunkBytes);
+        if (part.length) send({ serverContent: { modelTurn: { parts: [{ inlineData: { mimeType: 'audio/pcm;rate=24000', data: Buffer.from(part).toString('base64') } }] } } });
+        const from = Math.floor((i * words.length) / pieces);
+        const to = Math.floor(((i + 1) * words.length) / pieces);
+        if (to > from && turn.saidAt === undefined) send({ serverContent: { outputTranscription: { text: words.slice(from, to).join('') } } });
+      }
+    };
+    const split = turn.gap ? Math.min(pieces, Math.floor(turn.gap.at / chunkBytes) + 1) : pieces;
+    burst(0, split);
+    if (turn.gap) {
+      const { ms: gapMs } = turn.gap;
+      playing = { turn, begun: true, timers: [setTimeout(() => {
+        burst(split, pieces);
+        // Played in real time from the first piece, the rest after the pause it waited for.
+        const firstMs = ((Math.min(audio.length, split * chunkBytes) / 2 / 24_000) * 1000) * pace;
+        const restMs = ((Math.max(0, audio.length - split * chunkBytes) / 2 / 24_000) * 1000) * pace;
+        finish(turn, Math.round(Math.max(firstMs, gapMs) + restMs - gapMs), gapMs);
+      }, gapMs)] };
+      return;
     }
+    finish(turn, Math.round(((audio.length / 2 / 24_000) * 1000) * pace), 0);
+  };
+  /** The turn is all made: its tool call and generationComplete, then its turnComplete ms from now (since: ms from its first burst). @param {Turn} turn @param {number} ms @param {number} since */
+  const finish = (turn, ms, since) => {
     const late = turn.saidAt !== undefined ? [setTimeout(() => send({ serverContent: { outputTranscription: { text: turn.said } } }), turn.saidAt)] : [];
     if (turn.tool) send({ toolCall: { functionCalls: [{ name: turn.tool.name, args: turn.tool.args, id: `call_${++counter.calls}` }] } });
     send({ serverContent: { generationComplete: true } });
-    const ms = Math.round(((audio.length / 2 / 24_000) * 1000) * pace);
     const done = () => {
       playing = null;
       send({ serverContent: { turnComplete: true }, ...(turn.usage ? { usageMetadata: turn.usage } : {}) });
@@ -297,9 +318,11 @@ function geminiSession(c) {
       if (turn.andThen) waiting.unshift(turns[Math.min(counter.next++, turns.length - 1)]);
       pump();
     };
-    if (turn.noEnd) return;
-    if (turn.endAt !== undefined) setTimeout(done, turn.endAt); // nothing it does cuts this one
-    else if (ms <= 0) done();
+    if (turn.noEnd) return void (playing = null);
+    if (turn.endAt !== undefined) {
+      playing = null;
+      setTimeout(done, Math.max(0, turn.endAt - since)); // nothing it does cuts this one
+    } else if (ms <= 0) done();
     else playing = { turn, begun: true, timers: [setTimeout(done, ms), ...late] };
   };
   /**
