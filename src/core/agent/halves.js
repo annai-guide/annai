@@ -369,7 +369,7 @@ export class Halves {
       budgets: async () => (await this.kokoro.settings()).budgets,
       timeZone: () => this.kokoro.timeZone(), secondMs: c.secondMs,
       asked: () => this.#asked && this.kokoro.busy, ws: c.ws,
-      unsaid: (notes, o) => { this.#route(() => this.#backstop(notes, o)); },
+      unsaid: (notes) => { this.#route(() => this.#backstop(notes)); },
       owed: (notes) => this.#handOn(notes),
       spoke: () => this.#retold(),
       left: (notes) => this.#leftUnsaid(notes),
@@ -1302,10 +1302,9 @@ export class Halves {
    * a note's for_user or a gated speak as "Shiori's answer", a gated card or question as itself, checked as show and ask check Shiori's
    * own; one they would refuse, as its words, or with none only a Trace line. A note's own text is for Koe, never shown or said: with no
    * for_user, it goes to Koe once more with the user's next words, then only the Trace has it. "Kokoro couldn't check" and a final text
-   * were words for Koe: no card (plan decision 21). quiet: a live Koe asked again after a cut said nothing, as a "stop" asks: shown, not said.
-   * @param {Wake[]} notes @param {{ quiet?: boolean }} [o]
+   * were words for Koe: no card (plan decision 21). @param {Wake[]} notes
    */
-  async #backstop(notes, o = {}) {
+  async #backstop(notes) {
     this.#unsaid = [];
     for (const w of notes) {
       // A trigger's reminders, which she didn't say: annai says them.
@@ -1325,7 +1324,7 @@ export class Halves {
           : typeof i.question === 'string' && i.question.trim() ? `${i.question}${Array.isArray(i.options) && i.options.length ? ` (${i.options.map(String).join(', ')})` : ''}` : '';
         if (said) await this.kokoro.remind([{ watch: '', text: capped(said, CAPS.text), answer: true }], undefined, { unsaid: true });
         else await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ `Kokoro's ${card ? 'card' : 'question'} wasn't shown: annai couldn't show it, and it had no words to give instead.`, quiet: true } });
-      } else if (forUserText(w.forUser || (w.why === 'gated:speak' ? w.note : ''))) await this.kokoro.remind([{ watch: '', text: capped(forUserText(w.forUser || w.note), CAPS.text), answer: true }], undefined, { unsaid: true, ...(o.quiet ? { silent: true } : { aloud: true }) });
+      } else if (forUserText(w.forUser || (w.why === 'gated:speak' ? w.note : ''))) await this.kokoro.remind([{ watch: '', text: capped(forUserText(w.forUser || w.note), CAPS.text), answer: true }], undefined, { unsaid: true, aloud: true });
       else if (w.why === 'gated:speak') await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ "Kokoro's speak wasn't shown: it had no words.", quiet: true } });
       else if (w.why === 'tool' && !w.retold) this.#retell.push(w);
       else if (w.why === 'tool') await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ "Kokoro's note wasn't passed on: Koe didn't say it, twice, and it had no words for the user (for_user).", quiet: true } });
