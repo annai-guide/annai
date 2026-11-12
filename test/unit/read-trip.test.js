@@ -3397,6 +3397,53 @@ test("one Shiori, voice on, annai's card in its 20 s with its microphone open: a
   k.agent.interrupt();
 });
 
+test("annai's card: a yes begun inside its 20 s and queued behind a line still being judged, when a noise after the window's end shuts the card's listening before the yes is routed, still answers it (it is judged by when it began)", async (t) => {
+  useClock(t);
+  /** @type {() => void} */
+  let release = () => {};
+  const held = new Promise((r) => { release = () => r(undefined); });
+  let judged = 0;
+  const k = await gateKit(CARD, { ...DICTATION, voice: { ...DICTATION.voice, decide: gates(['A', 'A']) }, hold: async (/** @type {any} */ c) => { if (c.model.providerId === 'model-d' && ++judged === 1) await held; } });
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.agent.kokoro.pendingId !== null && k.agent.state.name === 'listening');
+  const t0 = Date.now();
+  await atS(k, t0, 15);
+  k.platform.dictation.say('What time is it?'); // the gate is slow with it
+  await until(() => judged === 1);
+  await atS(k, t0, 19);
+  k.platform.dictation.say('Yes.'); // inside the window, queued behind that line
+  await atS(k, t0, 21);
+  k.platform.dictation.noise(); // after it: the card's timer runs out, and the listening shuts
+  await until(() => k.platform.log.includes('dictation close'));
+  release();
+  const { grants: g, read } = await cardEnded(k);
+  assert.deepEqual(g.map((/** @type {any} */ e) => e.how), ['voice'], 'the yes begun inside the window counts');
+  assert.match(read, READ);
+});
+
+test("annai's card: a yes begun after its 20 s, queued behind a line still being judged when the window's end shuts the card's listening, is no yes (guard: the line's own begin decides, not when it is routed)", async (t) => {
+  useClock(t);
+  /** @type {() => void} */
+  let release = () => {};
+  const held = new Promise((r) => { release = () => r(undefined); });
+  let judged = 0;
+  const k = await gateKit(CARD, { ...DICTATION, voice: { ...DICTATION.voice, decide: gates(['A', 'A']) }, hold: async (/** @type {any} */ c) => { if (c.model.providerId === 'model-d' && ++judged === 1) await held; } });
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.agent.kokoro.pendingId !== null && k.agent.state.name === 'listening');
+  const t0 = Date.now();
+  await atS(k, t0, 15);
+  k.platform.dictation.say('What time is it?');
+  await until(() => judged === 1);
+  await atS(k, t0, 21);
+  k.platform.dictation.say('Yes.'); // after the window
+  await atS(k, t0, 22);
+  k.platform.dictation.noise();
+  await until(() => k.platform.log.includes('dictation close'));
+  release();
+  const { grants: g } = await cardEnded(k);
+  assert.deepEqual(g, [], 'no yes');
+});
+
 test("classic voice: voice turning off inside the card's microphone's own opening, past the check before it: the microphone it opened closes, the dock never says Listening, and the card waits for a tap", async (t) => {
   useClock(t);
   const k = await gateKit([call('read_trip', { trip: TV }), sleep], { voice: { speechIn: ['m-hear'], hears: ['Yes please'] } });
