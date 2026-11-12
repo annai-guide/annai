@@ -395,3 +395,25 @@ for (const tap of [false, true]) {
     if (tap) assert.deepEqual(k.platform.log.filter((/** @type {string} */ l) => l.startsWith('mic ')), ['mic open', 'mic close'], 'the listening ended at its silence limit, and none is left open');
   });
 }
+
+// Whatever ends a tap's listening lets the note rule look again: voice going off (the chip, or the earbuds taken out) closes the microphone under the tap's listening
+// after Kokoro's note came and was held behind it, and the note is then taken, not held until the user answers (which may never happen).
+test("voice off, Koe asks the user a question with buttons, a tap on Shiori opens the microphone, Kokoro's note comes while it listens and voice goes off before its silence limit: the question closes and Koe says the note", async () => {
+  let go = false;
+  const hold = (/** @type {any} */ c) => (c.model.providerId === 'model-0' ? until(() => go, 60_000) : Promise.resolve());
+  // 8 s of the kit's time is 2 s here: room to turn voice off after the note and before the limit, on the real clock.
+  const k = await agentKit([kokoro()], { koe: { type: [calls(['speak', { text: 'Let me look.' }], ['tell_kokoro', { text: 'When is sunset?' }], ['ask', { question: 'Want ideas for the evening?', options: ['Yes', 'No'] }]), RELAY] }, voice: { mode: 'off', speechIn: ['m-hear'] }, hold, agent: { secondMs: 250 } });
+  k.agent.send('A sunset drink in Carmel');
+  await until(() => k.agent.koe.pendingId !== null, 8000);
+  assert.equal(k.agent.tap(), 'listening');
+  await until(() => k.platform.log.includes('mic open'), 8000);
+  go = true;
+  // Kokoro's note is written, then queued to Koe: look at the log every millisecond, so voice goes off right after it.
+  for (let i = 0; i < 8000 && !(await k.events(['note'])).some((/** @type {any} */ e) => e.data.from === 'kokoro'); i++) await new Promise((r) => setTimeout(r, 1));
+  assert.notEqual(k.agent.koe.pendingId, null, 'the note is held behind the listening');
+  await k.voice.choose('off');
+  await until(() => k.agent.koe.pendingId === null, 1500);
+  await k.agent.idle();
+  assert.deepEqual(await said(k), ['Let me look.', 'Sunset is at 6:23, though it is overcast.']);
+  assert.match((await k.events(['tool.result'])).find((e) => e.data.name === 'ask')?.data.content, /^Kokoro: see the note below\. Your question is closed/);
+});
