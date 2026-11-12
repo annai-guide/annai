@@ -40,6 +40,7 @@ export function framesOf(dir, payload, at) {
   for (const p of sc?.modelTurn?.parts ?? []) if (p?.inlineData?.data) add('audio', { bytes: bytes(p.inlineData.data) });
   if (sc?.inputTranscription?.text) add('heard', { text: sc.inputTranscription.text });
   if (sc?.outputTranscription?.text) add('said', { text: sc.outputTranscription.text });
+  if (sc?.generationComplete) add('generationComplete'); // her turn all made: annai's `made` (2026-11-12)
   if (sc?.interrupted) add('interrupted');
   if (sc?.turnComplete) add('turnComplete');
   for (const c of m.toolCall?.functionCalls ?? []) add('toolCall', { name: String(c.name) });
