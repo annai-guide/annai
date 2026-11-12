@@ -332,7 +332,7 @@ export function timeline(rec, a) {
       : t.type === 'trip.grant' || t.type === 'trip.read' ? clip(JSON.stringify(d))
       : t.type === 'tool.call' ? `${d.name} ${clip(JSON.stringify(d.input ?? {}), 100)}`
       : t.type === 'tool.result' ? `${d.name} ${d.ok === false ? 'ERROR ' : ''}${clip(d.content, 140)}`
-      : t.type === 'live.turn' ? `${d.end} ${d.ms} ms floor ${d.floorDb} peak ${d.peakDb}` : t.type === 'live.session' ? `${d.state ?? ''}${d.why ? ` why=${d.why}` : ''}` : t.type === 'out.speak' ? `${d.cut ? 'CUT ' : ''}${d.voice ? 'voice ' : ''}${t.text ? `"${t.text.slice(0, 100)}"` : ''}` : t.type === 'heard' ? `"${String(d.text ?? t.text ?? '').slice(0, 100)}"${d.strayLanguage ? ` STRAY(${d.strayLanguage})` : ''}` : `${d.kind ?? ''} ${d.message ?? t.text ?? ''}`.trim();
+      : t.type === 'live.turn' ? `${d.end} ${d.ms} ms floor ${d.floorDb} peak ${d.peakDb}${d.speechMs === undefined ? '' : ` speech ${d.speechMs} ms`}` : t.type === 'live.session' ? `${d.state ?? ''}${d.why ? ` why=${d.why}` : ''}` : t.type === 'out.speak' ? `${d.cut ? 'CUT ' : ''}${d.voice ? 'voice ' : ''}${t.text ? `"${t.text.slice(0, 100)}"` : ''}` : t.type === 'heard' ? `"${String(d.text ?? t.text ?? '').slice(0, 100)}"${d.strayLanguage ? ` STRAY(${d.strayLanguage})` : ''}` : `${d.kind ?? ''} ${d.message ?? t.text ?? ''}`.trim();
     add(t.at, 'trace', `${t.type} ${detail}`.trimEnd());
   }
   for (const m of rec.media ?? []) add(m.at, 'page', `her player ${m.kind} (${m.seconds} s clip, at ${m.time} s)`);

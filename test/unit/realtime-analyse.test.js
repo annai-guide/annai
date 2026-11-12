@@ -180,6 +180,13 @@ test('timeline: every source in one list, in time order, from the session open, 
   assert.match(lines.join('\n'), /trace .*out\.speak.*Try Nepenthe/);
 });
 
+test("a live.turn line for a run dropped as her voice began (no turn) is in the timeline with its speech, and is never taken for why a turn ended", () => {
+  const r = clean();
+  r.trace.push({ at: 3300, type: 'live.turn', data: { end: 'dropped', ms: 0, floorDb: -78, peakDb: -51, speechMs: 180 } });
+  assert.match(timeline(r, run(r)), /trace .*live\.turn dropped 0 ms floor -78 peak -51 speech 180 ms/);
+  assert.equal(run(r).turns[0].reason, 'pause');
+});
+
 test('summary: a line a scenario, the checks, and the verdict', () => {
   const rec = clean();
   const s = summary([{ rec, a: run(rec) }], { sessions: 1, lines: [1] });

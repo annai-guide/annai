@@ -601,7 +601,7 @@ export class LiveKoe {
       // Each turn's end, why and in numbers only, for the Trace.
       onTurn: (t) => {
         this.#write({ type: 'live.turn', actor: 'system', data: { wake: this.#wake, ...t, voiceDb: this.#rounded(this.level.db) } });
-        if (t.end === 'kept') return;
+        if (t.end === 'kept' || t.end === 'dropped') return; // no turn went on: nothing of the user's to learn from, or to end
         if (this.#hear) {
           if (t.peakDb !== null) this.#hear.peak = t.peakDb; // a noise thrown away once sent has none
           // The floor before the turn: it creeps up with speech.

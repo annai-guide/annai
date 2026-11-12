@@ -48,6 +48,9 @@ test('drive 3 at the live session, the phone\'s speaker in a noisy car: a bump b
     const sound = (await k.events(['live.reply'])).slice(1).map((/** @type {any} */ e) => [e.data.ms, Boolean(e.data.cut)]);
     const seen = [starts(), lines, sound]; // turns begun, her lines since the note ([words, cut]), and her sound ([ms played, cut])
     assert.deepEqual(seen, [1, [[FOR_USER, false]], [[3000, false]]], JSON.stringify(seen));
+    // The Trace says what was dropped, and it is no turn: the question's turn ended, and the bump has a line of its own, nothing sent.
+    const ends = (await k.events(['live.turn'])).map((/** @type {any} */ e) => [e.data.end, e.data.ms > 0]);
+    assert.deepEqual(ends, [['pause', true], ['dropped', false]], JSON.stringify(ends));
   } finally {
     await k.done();
   }
