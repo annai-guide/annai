@@ -565,11 +565,11 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** a line Koe heard while busy waits in Koe's own queue. When it answers annai's card it stays there, and is written as a newer line once Koe is free.
 - **Revisit when:** the next build on Kokoro and Koe's hand-offs: the lines that answered a card leave Koe's queue (or the live session's) and are written as the card's answer.
 
-### On the phone's speaker, a note waiting for her voice is lost when the user goes on talking
+### An urgent line that cuts in loses the rest of the note she was saying
 - **Kind:** deferred.
-- **What the user sees:** on the phone's speaker (annai doesn't hear while she speaks), a note from Kokoro goes in as the user's turn ends, the provider has finished making her answer to it, and they go on after a thinking pause before any of her voice for it played. Her answer to what they then said is heard whole, and the note counts as passed on: they never hear it, and it isn't shown. (Had the provider still been making it, the note is shown, silently, as a tap's cut would show it.)
-- **Why:** a turn none of whose sound played is written as heard whole when the provider had finished it, so it passes nothing on and shows nothing; only a turn that sound cut while it was heard, or still being made, counts as cut and has its note shown.
-- **Revisit when:** the next change to the live session's cut handling: a turn of a note none of whose sound was heard counts as cut, so the note is shown, with a test on the fake first.
+- **What the user sees:** two notes from Kokoro in quick succession, the second sent immediate (or an urgent watch's trigger): it cuts her off in the first, and says its own line. What the user hadn't heard of the first is neither shown nor said: no card, no second try. (Probed in live voice with the provider still making the first note, and with it done: the cut note's rest appears nowhere.)
+- **Why:** an urgent line cuts her off itself, not by sound, so the cut doesn't show what was left (that happens as the user's turn begins). Showing it would also be wrong when the urgent line is Kokoro's correction of that very note. The urgent line's own answer, heard whole, counts both notes as passed on. This is older than the cut-by-sound change: the same in the release.
+- **Revisit when:** the next change to how an urgent note cuts in (`#now` and `#went` in `src/core/koe/live.js`): an urgent reminder cutting a note may want the note shown; Kokoro's own immediate note shouldn't.
 
 ### A short plan item that crosses midnight stays on the Next line for up to half an hour after it ended
 - **Kind:** known limitation.

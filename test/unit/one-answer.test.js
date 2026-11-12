@@ -31,14 +31,15 @@ const REAL_SECOND = 1000;
 const wait = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
- * A live session in a car (sound at the microphone may cut her), the user in it: a first exchange, then Kokoro's note (or a reminder's wake), which
- * she begins to say. turns: what the stand-in answers after it, in order; first: what is said into it (default: Kokoro's note).
- * @param {{ turns?: any[], pace?: number, note?: any, second?: number, live?: any, first?: (k: any) => Promise<unknown> }} [o]
+ * A live session in a car (sound at the microphone may cut her; speaker: on the phone's speaker, where it doesn't while she speaks), the user in
+ * it: a first exchange, then Kokoro's note (or a reminder's wake), which she begins to say. turns: what the stand-in answers after it, in order;
+ * first: what is said into it (default: Kokoro's note); begun: wait only until her sound for the note began, which may be before her first word.
+ * @param {{ turns?: any[], pace?: number, note?: any, second?: number, live?: any, first?: (k: any) => Promise<unknown>, speaker?: boolean, begun?: boolean }} [o]
  */
-async function noteSaid({ turns = [], pace = 1, note = { said: SAID, audio: tone(3) }, second = REAL_SECOND, live, first = tell } = {}) {
+async function noteSaid({ turns = [], pace = 1, note = { said: SAID, audio: tone(3) }, second = REAL_SECOND, live, first = tell, speaker = false, begun = false } = {}) {
   const k = await liveKit([{ said: 'Hello there.', audio: tone(0.1) }, note, ...turns], { pace, agent: { secondMs: second }, ...(live ? { live } : {}) });
   await k.voice.unlock();
-  k.voice.route = async () => 'car';
+  if (!speaker) k.voice.route = async () => 'car';
   k.platform.streamSpeed = 1;
   k.agent.tap(); // the user is in this session, so she stays cuttable
   await until(() => k.agent.live.listening, 3000);
@@ -47,7 +48,10 @@ async function noteSaid({ turns = [], pace = 1, note = { said: SAID, audio: tone
   await k.agent.live.idle();
   k.platform.mic.feed(quiet(0.5), RATE);
   await first(k);
-  await soon(async () => k.agent.live.view.name === 'speaking', 3000);
+  if (begun) {
+    await soon(async () => textsIn(k).some((t) => t.includes('<from_kokoro')), 3000);
+    await wait(300); // her sound for it has begun; its words come later
+  } else await soon(async () => k.agent.live.view.name === 'speaking', 3000);
   return k;
 }
 
@@ -189,6 +193,133 @@ test('a drop as she says a note is no sound: the resumed session gets the note a
     assert.equal(k.server.received().filter((/** @type {any} */ m) => m.setup).length, 2, 'resumed');
     assert.equal(textsIn(k).filter((t) => t.includes('<from_kokoro')).length, 2, 'the note went in again');
     assert.deepEqual(await shown(k), []);
+  } finally {
+    await k.done();
+  }
+});
+
+// The rule is one, at the start of the user's turn: what Kokoro's notes went in and weren't passed on is shown, silently, and settled, whatever
+// of it her sound had begun. So a note is never lost for a sound that cut her before her first word (her words follow her sound), whatever she
+// answers to the sound, and she is never asked to say it again.
+const LATE = { said: SAID, audio: tone(3), saidAt: 2500 };
+for (const [what, answer] of /** @type {const} */ ([
+  ['already_told: she believes she said it', { heard: 'la la', tool: { name: 'already_told', args: {} } }],
+  ['words of her own', { heard: 'What?', said: 'Of course, one moment.', audio: tone(0.5) }],
+  ['nothing at all, as after "stop"', { heard: 'Stop.' }],
+])) {
+  test(`a sound cuts her after a note went in and her sound began, before her first word, and her answer to it is ${what}: the note is shown at once, silently, and nothing is asked`, async () => {
+    const k = await noteSaid({ begun: true, note: LATE, turns: [answer] });
+    try {
+      await bump(k);
+      await soon(async () => (await shown(k)).length === 1, 4000);
+      await wait(1500); // the ask the release sent, and whatever she answered to it, would be here by now
+      await k.agent.idle();
+      assert.deepEqual(await shown(k), [[FOR_USER, false]], 'shown once, and not said');
+      assert.deepEqual(asks(k), [], 'she is not asked to say it');
+      assert.ok(!k.said.some((/** @type {string} */ t) => t.includes('fuel station')), "annai's own voice says nothing of it");
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+test("on the phone's speaker, a note whose turn the provider had finished, waiting for her voice, is shown when the user goes on talking", async () => {
+  // Half-duplex: her voice for the note waits HOLD_MS after the user's last turn ended, in case they go on. The note was waiting for that turn's
+  // end, so it goes in as the turn ends; the provider answers it first (pace 0: its whole turn at once), and the user goes on.
+  const meanwhile = async (/** @type {any} */ k) => {
+    k.platform.mic.feed(hum(0.8), RATE);
+    await tell(k);
+    k.platform.mic.feed(quiet(1), RATE);
+  };
+  const k = await noteSaid({ speaker: true, begun: true, pace: 0, first: meanwhile, turns: [{ heard: 'Also,', said: 'Go on.', audio: tone(0.3) }, { said: SAID, audio: tone(1.5) }, { said: 'Of course.', audio: tone(0.3), delayMs: 300 }] });
+  try {
+    assert.equal(k.agent.live.view.name, 'thinking', 'her voice for the note is waiting, none of it played');
+    await bump(k);
+    await soon(async () => (await shown(k)).length === 1, 4000);
+    await wait(1500);
+    await k.agent.idle();
+    assert.deepEqual(await shown(k), [[FOR_USER, false]], 'shown once, and not said');
+    assert.deepEqual(asks(k), []);
+    assert.ok(!k.said.some((/** @type {string} */ t) => t.includes('fuel station')));
+  } finally {
+    await k.done();
+  }
+});
+
+// What Kokoro meant for the user that isn't a note's for_user words: her own speak, a card or a question, which Koe is given as notes while it
+// talks (gated). Cut inside one, by a sound or by a tap, annai shows it as it does when Koe never passes it on: silently, once, never lost.
+const CARD = { title: 'Fuel', text: 'Open until ten tonight.' };
+const ASK = { question: 'Fill up here?', options: ['Yes', 'No'] };
+const GATED = /** @type {const} */ ({
+  speak: { why: 'gated:speak', text: FOR_USER, call: { name: 'speak', input: { text: FOR_USER } } },
+  show: { why: 'gated:show', text: 'Kokoro wants to show: Fuel: Open until ten tonight.', call: { name: 'show', input: { card: CARD } } },
+  ask: { why: 'gated:ask', text: 'Kokoro wants to ask: Fill up here? (Yes, No)', call: { name: 'ask', input: ASK } },
+});
+/** What annai showed of a gated note: the words (a reminder entry, with whether it was said), the card, or the question. @param {any} k @param {keyof typeof GATED} kind */
+const showing = async (k, kind) => (kind === 'speak' ? shown(k) : (await k.events([kind === 'show' ? 'out.show' : 'out.ask'])).map((/** @type {any} */ e) => (kind === 'show' ? e.data.card : [e.data.question, e.data.options])));
+const SHOWING = { speak: [[FOR_USER, false]], show: [CARD], ask: [[ASK.question, ASK.options]] };
+
+for (const kind of /** @type {const} */ (['speak', 'show', 'ask'])) {
+  for (const by of /** @type {const} */ (['a sound', 'a tap'])) {
+    test(`Kokoro's gated ${kind}, which Koe is saying, cut by ${by}: annai shows it at once, silently, once; nothing is said or asked`, async () => {
+      const { why, text, call } = GATED[kind];
+      const k = await noteSaid({ first: (x) => x.agent.channel.send('kokoro', text, 'append', why, undefined, call, false, ''), turns: [{ delayMs: 400 }] });
+      try {
+        if (by === 'a tap') assert.equal(k.agent.live.tap(), 'cut');
+        else await bump(k);
+        await soon(async () => (await showing(k, kind)).length === 1, 4000);
+        await wait(1500);
+        await k.agent.idle();
+        assert.deepEqual(await showing(k, kind), SHOWING[kind], 'shown once');
+        if (kind !== 'speak') assert.deepEqual(await shown(k), [], 'as itself, not as words');
+        assert.deepEqual(k.said, [], "annai's own voice says nothing");
+        assert.deepEqual(asks(k), []);
+      } finally {
+        await k.done();
+      }
+    });
+  }
+}
+
+// A note with no words for the user (a correction or an instruction for Koe): its text is for Koe, so annai can't show it, and it isn't sent again at
+// the end of the cutting turn (that second input is what doubled a note). What Kokoro reads of it is Koe's own cut line, with its ✂: she decides.
+const CORRECTION = 'Correction: the fuel station closes at nine, not ten. Say so.';
+const correct = (/** @type {any} */ k) => k.agent.channel.send('kokoro', CORRECTION, 'append', 'tool', undefined, undefined, false, '');
+const closes = { said: 'Correction: it closes at nine, not ten.', audio: tone(3) };
+/** Koe's lines as Kokoro's transcript holds them, from the user's first words on. @param {any} k */
+const kokoroLines = (k) => k.agent.kokoro.transcript.messages.flatMap((/** @type {any} */ m) => m.parts.map((/** @type {any} */ p) => (p.type === 'text' ? p.text : '')));
+const CUT_LINE = /^\[Koe said aloud\] "[^"]*✂"$/;
+
+test('a note with no words for the user, cut by a sound as she says it, and the user says something: it is neither shown nor sent again; Kokoro reads her cut line when she is woken', async () => {
+  const k = await noteSaid({ note: closes, first: correct, turns: [{ heard: 'What?', said: 'Go on.', audio: tone(0.4), delayMs: 300 }] });
+  try {
+    await bump(k);
+    await soon(async () => (k.sent['model-0']?.length ?? 0) >= 1, 8000);
+    await wait(1500);
+    await k.agent.idle();
+    assert.equal(textsIn(k).filter((t) => t.includes('<from_kokoro')).length, 1, 'the note went in once, and is not sent again');
+    assert.deepEqual(asks(k), []);
+    assert.deepEqual(await shown(k), [], 'its text is for Koe: nothing for the user to see');
+    assert.deepEqual(k.said, []);
+    const read = k.sent['model-0'][0].messages.flatMap((/** @type {any} */ m) => m.parts.map((/** @type {any} */ p) => (p.type === 'text' ? p.text : '')));
+    assert.ok(read.some((t) => CUT_LINE.test(t)), `Kokoro's request holds Koe's line, cut: ${JSON.stringify(read)}`);
+    assert.ok(read.indexOf(read.find((/** @type {string} */ t) => CUT_LINE.test(t))) < read.findIndex((/** @type {string} */ t) => t.includes('"Go on."')), 'before what Koe said next');
+  } finally {
+    await k.done();
+  }
+});
+
+test('the same, cut by a plain noise and nothing follows: nothing is sent again, and her transcript holds Koe\'s cut line for whenever she next takes a turn (no wake of annai\'s own)', async () => {
+  const k = await noteSaid({ note: closes, first: correct, turns: [{ delayMs: 300 }] });
+  try {
+    await bump(k);
+    await wait(4000);
+    await k.agent.idle();
+    assert.equal(textsIn(k).filter((t) => t.includes('<from_kokoro')).length, 1);
+    assert.deepEqual(asks(k), []);
+    assert.deepEqual(await shown(k), []);
+    assert.equal(k.sent['model-0'], undefined, 'nothing woke Kokoro: the noise was no one\'s words');
+    assert.ok(kokoroLines(k).some((t) => CUT_LINE.test(t)), JSON.stringify(kokoroLines(k)));
   } finally {
     await k.done();
   }

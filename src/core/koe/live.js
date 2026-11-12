@@ -34,12 +34,12 @@ import { t } from '../l10n.js';
  *   nonce: string, model: () => string | null, setup: () => Promise<{ instructions: string, context: string, languages?: import('../llm/contract.js').Languages, known?: import('../languages.js').LanguageSettings }>, visible: () => boolean,
  *   release: () => void, notice: (n: import('../agent/loop.js').Notice) => void, told: (state: 'live-open' | 'live-closed') => void,
  *   dropped: (cut: boolean) => void, changed: () => void, budgets: () => Promise<any>, timeZone: () => string, asked: () => boolean, secondMs?: number,
- *   unsaid: (notes: Wake[]) => void, owed: (notes: Wake[]) => void, left?: (notes: Wake[]) => void, spoke?: () => void, ws?: import('../workspace.js').Workspace,
+ *   unsaid: (notes: Wake[]) => void, owed: (notes: Wake[]) => void, left?: (notes: Wake[], here?: boolean) => void, spoke?: () => void, ws?: import('../workspace.js').Workspace,
  *   held?: () => Promise<void> | null, voiceOut?: () => Promise<void> | null, saying?: (words: string) => void, noisy?: (heard: string) => void,
  *   heard?: (line: { id: string, text: string, at: number, her: boolean }) => void, speech?: (on: boolean, line?: { id: string, at: number, her: boolean }) => void }} LiveHost
  *   Halves's: release: the speech pipeline lets go of the voice; asked: Kokoro works on Koe's question; unsaid: Kokoro's notes for the user Koe never
  *   passed on, asked once more; owed: those a session closed on before Koe passed them on, to hand on; left: those a switch to another
- *   conversation leaves, shown there, and those a tap or a sound cut her off in, shown silently; spoke: the user's spoken turn ended; ws: where this device keeps that the talk-over card was shown;
+ *   conversation leaves, shown there, and those a tap or a sound cut her off in (here), shown silently, as the conversation still open's; spoke: the user's spoken turn ended; ws: where this device keeps that the talk-over card was shown;
  *   held: Start fresh runs, until it settles: a session opens only after it, from the fresh start; voiceOut: annai's other voice is saying something, until it settles
  *   (a reminder finishes first); saying: her words so far, while she speaks
  *   them (the dock's bubble), as the transcript grows; her line is written once, at the end; noisy: sound never stopped
@@ -811,7 +811,7 @@ export class LiveKoe {
     const t = this.#sounding;
     if (!t) return;
     const playedMs = this.#stop(t);
-    if (!t.whole && this.#owed.sent.length) this.c.left?.([...this.#owed.sent]);
+    if (!t.whole && this.#owed.sent.length) this.c.left?.([...this.#owed.sent], true);
     this.#passed();
     this.#input?.tapped();
     this.#send((s) => s.cut?.(playedMs));
@@ -972,7 +972,7 @@ export class LiveKoe {
    */
   #settle(t) {
     const o = this.#owed;
-    // A turn with words still going out: heard whole, they pass them on; cut, they are shown (#said).
+    // A turn with words still going out: heard whole, they pass them on; cut, they are shown as the user's turn begins (#activity).
     if (!o.sent.length || t?.goesOn || (t?.spoken && !t.cut && !t.logged)) return;
     if (!o.cued) {
       o.cued = o.cue = true;
@@ -1108,6 +1108,12 @@ export class LiveKoe {
       this.#answer(undefined); // the user talks again: no answer is waited for while they do
       this.#turnAt = Date.now();
       this.#afterCap = this.#endedBy === 'cap' && Date.now() - this.#endedAt < AFTER_CAP_MS;
+      // The user's turn begins: notes gone in and not passed on were what she was about to say, or saying, so they are shown, silently, as at a tap
+      // (interrupt), and nothing is asked: anything sent now gets a whole answer beside theirs.
+      if (this.#owed.sent.length) {
+        this.c.left?.(this.#owed.sent.splice(0), true);
+        this.#passed();
+      }
       // The user cut in: her voice stops now, and the provider cuts its turn; one with no word yet too, so it never starts over them.
       if (this.#sounding || this.#t || this.#pending || this.#queue.length) cut = this.#cut();
       this.#flushHeard(false);
@@ -1476,15 +1482,8 @@ export class LiveKoe {
     if (text && cut) text += '✂';
     if (text) this.#poke(); // she has finished saying it: the quiet spell runs from here
     // Notes pass on when her words for them were heard: the provider's burst, or sound begun, proves nothing, as sound at the microphone may cut her at once.
-    // Cut by sound as by a tap (interrupt): what wasn't heard is shown, silently, and nothing is asked again, as anything sent now gets a whole answer
-    // beside the user's turn's (Gemini Live: the note said twice). Her answer to what the microphone heard stands.
-    if (this.#owed.sent.length && t.wordAt >= this.#owed.at) {
-      if (!cut && text) this.#passed();
-      else if (cut) {
-        this.c.left?.(this.#owed.sent.splice(0));
-        this.#passed();
-      }
-    }
+    // Those a sound or the user cut off are shown when their turn begins (#activity), so nothing here shows or asks for a cut one.
+    if (!cut && text && this.#owed.sent.length && t.wordAt >= this.#owed.at) this.#passed();
     const v = this.c.voice;
     const aloud = Boolean(text && !cut && v?.on && (t.stalled || v.stuck));
     const voiced = Boolean(t.stream || aloud);
