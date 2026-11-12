@@ -297,6 +297,59 @@ test('the user says nothing in the gap: her continuation, a turn of its own, say
   }
 });
 
+// The same turn, its own end (turnComplete) at 0.9 s, inside her quiet tail: her words end at 0.8 s and her player holds 1.5 s more near-silence
+// (much longer than a real tail, so a slow machine keeps the start inside it). The turn is ended and played past her last loud sample, so her
+// line is heard whole, but it goes on after the call: her words are not the answer to the note yet. The user's start, a tap or a close in the
+// tail passes no note on (one rule, #passes), or, when the user's new question drops the continuation, the note is lost (the re-review's probe F).
+const LOOKS_TAIL = { ...LOOKS, audio: join(tone(0.8), zeros(1.5)), endAt: 900 };
+const IN_TAIL = 1100;
+
+test("the user speaks in the quiet tail of a turn that goes on, after its turnComplete: her line is whole, and the note is shown, not lost", async () => {
+  const [k, at] = await noteSaid({ note: LOOKS_TAIL, turns: [CONTINUES, ANSWER] });
+  try {
+    const after = await answersAtOnce(k, at, IN_TAIL - 20);
+    assert.ok(after < 1000, `their turn began ${after} ms past ${IN_TAIL - 20}, inside her tail`);
+    await soon(async () => (await lines(k)).some(([text]) => text === ANSWER.said), 12_000);
+    assert.deepEqual(await shown(k), [[FOR_USER, false]], 'what Kokoro made for them is shown, silently');
+    assert.deepEqual((await lines(k)).slice(0, 2), [['Hello there.', false], ['Checking your notes.', false]], 'her line, heard whole, is written whole');
+  } finally {
+    await k.done();
+  }
+});
+
+test("a tap in the quiet tail of a turn that goes on, after its turnComplete: her line is whole, and the note is shown", async () => {
+  const [k, at] = await noteSaid({ note: LOOKS_TAIL, turns: [CONTINUES, ANSWER] });
+  try {
+    await wait(at + IN_TAIL - Date.now());
+    k.agent.tap();
+    await soon(async () => (await shown(k)).length > 0, 5000);
+    await wait(500);
+    assert.deepEqual(await shown(k), [[FOR_USER, false]]);
+    assert.deepEqual((await lines(k)).slice(0, 2), [['Hello there.', false], ['Checking your notes.', false]]);
+  } finally {
+    await k.done();
+  }
+});
+
+test("the page out of view in the quiet tail of a turn that goes on, after its turnComplete, and back: the note goes in again and she says it", async () => {
+  const [k, at] = await noteSaid({ note: LOOKS_TAIL, turns: [CONTINUES, { said: SAID, audio: tone(0.3) }] });
+  try {
+    await wait(at + IN_TAIL - Date.now());
+    hidden(true);
+    k.agent.hush('away');
+    await wait(1000);
+    hidden(false);
+    await k.agent.shown();
+    await soon(async () => (await wholeNotes(k)) === 1, 8000);
+    await k.agent.idle();
+    assert.equal(wentIn(k), 2, 'it went in again: her continuation, which would have said it, never came');
+    assert.deepEqual(await shown(k), []);
+  } finally {
+    hidden(false);
+    await k.done();
+  }
+});
+
 // A provider whose plugin never says when her turn is all made keeps the rules from before: all played is heard whole at a tap or a close, and
 // the user's turn beginning shows what went in.
 test('a provider that never says: the user answering at once still gets the silent copy of the note, as before', async () => {

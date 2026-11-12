@@ -671,10 +671,10 @@ export class LiveKoe {
    * another conversation, or Erase: the handle and what waited go too. @param {string} why @param {{ forget?: boolean }} [o]
    */
   close(why, { forget = false } = {}) {
-    // A turn of hers heard whole (#whole) passed its notes on, as at a tap (interrupt): they aren't kept, shown or sent again. One still being
-    // made, in a pause of her sound, or whose words came before any sound, is cut: its notes are kept, or shown at a switch.
+    // A turn of hers that passes its notes on (#passes) did so, as at a tap (interrupt): they aren't kept, shown or sent again. One still being
+    // made, in a pause of her sound, or whose words came before any sound, or that goes on after a call, is cut: its notes are kept, or shown at a switch.
     const t = this.#sounding;
-    if (t && !t.cut && this.#whole(t)) this.#passed();
+    if (t && !t.cut && this.#passes(t, this.#whole(t))) this.#passed();
     // Another conversation, or a fresh start: Kokoro's notes it owed are shown in the one left, never lost.
     if (forget && (why === 'switch' || why === 'fresh') && this.owing) this.c.left?.([...this.#owed.sent, ...this.#owed.waiting]);
     this.#closing = null;
@@ -829,7 +829,7 @@ export class LiveKoe {
     const write = () => { for (const w of behind) this.#said(w, null); };
     if (t.stream) void t.stream.done.then(write, write); // after hers, as the lines read in order
     else write();
-    if (!t.whole && this.#owed.sent.length) this.c.left?.([...this.#owed.sent], true);
+    if (!this.#passes(t, t.whole) && this.#owed.sent.length) this.c.left?.([...this.#owed.sent], true);
     this.#passed();
     this.#input?.tapped();
     this.#send((s) => s.cut?.(playedMs));
@@ -1134,9 +1134,9 @@ export class LiveKoe {
       this.#turnAt = Date.now();
       this.#afterCap = this.#endedBy === 'cap' && Date.now() - this.#endedAt < AFTER_CAP_MS;
       // The user's turn begins: notes gone in and not passed on were what she was about to say, or saying, so they are shown, silently, as at a tap
-      // (interrupt), and nothing is asked: anything sent now gets a whole answer beside theirs. Her turn heard whole passed them on (#whole).
+      // (interrupt), and nothing is asked: anything sent now gets a whole answer beside theirs. Her turn that passes them on (#passes) did.
       if (this.#owed.sent.length) {
-        if (!this.#whole(this.#sounding, true)) this.c.left?.(this.#owed.sent.splice(0), true);
+        if (!this.#passes(this.#sounding, this.#whole(this.#sounding, true))) this.c.left?.(this.#owed.sent.splice(0), true);
         this.#passed();
       }
       // The user cut in: her voice stops now, and the provider cuts its turn; one with no word yet too, so it never starts over them.
@@ -1483,6 +1483,17 @@ export class LiveKoe {
   }
 
   /**
+   * Whether her turn passes Kokoro's notes on: the one rule for the user's start, a tap, a close and the end of her line (#said). It was heard whole
+   * (whole: #whole's answer for it, which a line cut off in her quiet tail is too) and goes on after no call: a turn that called a tool she speaks after
+   * ends (done, made) before her words for the note come, which her continuation says, so a user starting, a tap or a close in her tail, after the
+   * provider's end, is a cut: the note is shown, or sent again, and not lost when the user's question drops the continuation.
+   * @param {Turn | null} t @param {boolean} whole
+   */
+  #passes(t, whole) {
+    return whole && !t?.goesOn;
+  }
+
+  /**
    * Koe cut off: its voice stops, its words kept up to where they were heard; one heard whole (#whole) is whole. One still
    * waiting was never heard: let go by the user going on, or, shown, written as her answer (a close or a drop: never an answer lost).
    * @param {Turn} t @param {boolean} [shown] @returns {number | undefined} ms heard
@@ -1545,7 +1556,7 @@ export class LiveKoe {
     // Those a sound or the user cut off are shown when their turn begins (#activity), so nothing here shows or asks for a cut one. A turn that
     // called a tool she speaks after is not her answer yet (real Gemini: "Checking your notes.", then a new turn 2.4 to 7.2 s later): its notes wait
     // for what she says after the answer, and are shown if the user speaks first.
-    if (!cut && text && !t.goesOn && this.#owed.sent.length && t.wordAt >= this.#owed.at) this.#passed();
+    if (text && this.#passes(t, !cut) && this.#owed.sent.length && t.wordAt >= this.#owed.at) this.#passed();
     const v = this.c.voice;
     const aloud = Boolean(text && !cut && v?.on && (t.stalled || v.stuck));
     const voiced = Boolean(t.stream || aloud);
