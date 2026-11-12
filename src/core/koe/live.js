@@ -663,6 +663,9 @@ export class LiveKoe {
    * another conversation, or Erase: the handle and what waited go too. @param {string} why @param {{ forget?: boolean }} [o]
    */
   close(why, { forget = false } = {}) {
+    // A turn of hers whose sound has all played passed its notes on, as at a tap (interrupt): they aren't kept, shown or sent again.
+    const t = this.#sounding;
+    if (t?.stream && !t.cut && !t.stream.queued()) this.#passed();
     // Another conversation, or a fresh start: Kokoro's notes it owed are shown in the one left, never lost.
     if (forget && (why === 'switch' || why === 'fresh') && this.owing) this.c.left?.([...this.#owed.sent, ...this.#owed.waiting]);
     this.#closing = null;

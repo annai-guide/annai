@@ -271,6 +271,50 @@ test('a drop after her sound for the note has played out, before the provider en
   }
 });
 
+// The page out of view (or another close) in the moment after her sound for a note has all played, before the provider ends her turn: the note was
+// heard whole, so it passes on as at a tap, and nothing sends it again or shows it.
+for (const [what, answer] of /** @type {const} */ ([['she would say it again', AGAIN], ['she would say she already told them', TOLD]])) {
+  test(`the page out of view after her sound for the note has played out, before the provider ends her turn, and back (${what}): heard whole once, not sent again, nothing shown or asked`, async () => {
+    const k = await noteSaid({ note: { said: SAID, audio: tone(1.5), endAt: 1900 }, turns: [answer] });
+    try {
+      await wait(1650);
+      hidden(true);
+      k.agent.hush('away');
+      await wait(1000);
+      hidden(false);
+      await k.agent.shown();
+      await wait(6000);
+      await k.agent.idle();
+      assert.equal(await wholeNotes(k), 1, 'said once');
+      assert.equal(wentIn(k), 1, 'not sent again: she had said it');
+      assert.deepEqual(asks(k), []);
+      assert.deepEqual(await shown(k), []);
+      assert.ok(!k.said.some((/** @type {string} */ t) => t.includes('fuel station')), "annai's own voice says nothing of it");
+    } finally {
+      hidden(false);
+      await k.done();
+    }
+  });
+}
+
+test("another trip opened after her sound for the note has played out, before the provider ends her turn: heard whole, so no \"Shiori's answer\" for it in the trip left", async () => {
+  const k = await noteSaid({ note: { said: SAID, audio: tone(1.5), endAt: 1900 } });
+  try {
+    await wait(1650);
+    const { createTrip } = await import('../../src/core/scopes.js');
+    const other = await createTrip(k.ws, { title: 'Carmel' });
+    await k.agent.open(other);
+    await k.agent.idle();
+    await wait(300);
+    const whole = async (/** @type {string} */ trip) => (await inTrip(k, trip, ['out.speak'])).filter((/** @type {any} */ e) => e.data.text === SAID && !e.data.cut).length;
+    assert.equal((await whole(k.trip)) + (await whole(other)), 1, 'her line, written once (in whichever conversation the write found open: not this change\'s)');
+    assert.deepEqual(await entries(k, k.trip), [], 'no card in the trip left');
+    assert.deepEqual(await entries(k, other), []);
+  } finally {
+    await k.done();
+  }
+});
+
 for (const [what, answer, said] of /** @type {const} */ ([['"already told"', TOLD, false], ['the note', AGAIN, true]])) {
   test(`a drop before her sound for the note began, the resumed session answers ${what}: ${said ? 'heard whole once, nothing shown' : 'asked once more, then annai shows the note and says it'}`, async () => {
     const k = await noteSaid({ begun: true, note: { said: SAID, audio: tone(3), delayMs: 1500 }, turns: [answer] });
