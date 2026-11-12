@@ -451,11 +451,17 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** a line being said when the time runs out must still be heard to its end, so speech stops the clock; nothing tells a line begun inside the 20 seconds from one begun after them.
 - **Revisit when:** the next version: speech begun after the 20 seconds no longer holds the listening open.
 
+### A line can still be said aloud when voice goes off in the instant before she starts it
+- **Kind:** deferred.
+- **What the user sees:** voice goes off (the voice chip, a setting, headphones taken out) in the few milliseconds between Shiori deciding to say a line or a question aloud and her voice starting. The line is still said aloud, on the phone's speaker if the headphones just went; after it she doesn't listen, and the line is on the screen as always. Once her voice has started, voice going off stops it mid-word, as before.
+- **Why:** whether a turn speaks is read once, when the line is written down, and not again as her voice begins.
+- **Revisit when:** the next version: the turn's voice is read again just before her voice begins, and the line is shown instead.
+
 ### The dock still says Listening for a while after voice goes off mid-listen
 - **Kind:** deferred.
-- **What the user sees:** voice goes off (by hand, auto mode as the car slows, headphones taken out) while Shiori is listening for an answer during a turn: after annai's card or her own words (up to 20 seconds), or after her own question (8 seconds). The microphone closes at once and the voice chip shows off, but the dock keeps saying "Listening" (or "Thinking · tap to stop" if someone was speaking) until that listening's own time is up. Someone who goes on talking because the dock says Listening isn't heard; typing or a tap still answers.
+- **What the user sees:** voice goes off (by hand, auto mode as the car slows, headphones taken out) while Shiori is listening for an answer during a turn: after annai's card or her own words (up to 20 seconds), or after her own question (8 seconds). The microphone closes at once and the voice chip shows off, but the dock keeps saying "Listening" (or "Thinking · tap to stop" if someone was speaking) until that listening's own time is up. Someone who goes on talking because the dock says Listening isn't heard; typing or a tap still answers. The same when voice goes off in the instant the microphone is opening: nothing opens, and the dock says Listening until that time is up.
 - **Why:** when voice goes off, the wait for the answer goes on for typing until its own deadline, and no dock label says "waiting for you to type" ("Waiting for your OK" fits only a card). Which words to show there is a small design question.
-- **Revisit when:** the next version: a dock label for a wait that only typing or a tap can answer.
+- **Revisit when:** the next version: a dock label for a wait that only typing or a tap can answer, and a microphone closed while it was opening counts as "couldn't listen".
 
 ### A "Yes." said right after two other lines can miss annai's card
 - **Kind:** known limitation.
