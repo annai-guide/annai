@@ -13,8 +13,13 @@ export const AS_SAID = 0.8;
 export const BARS = { passed: { of: 10, least: 9 }, acks: { of: 20, most: 0 } };
 /** annai's asks for a note once more, by their first words: the plain one (NOTE_UNSAID in src/core/agent/loop.js), and the one for a note sound cut, gone since 2026-11-11. */
 const ASK = /^\[annai\] "(Kokoro's note hasn't reached the user|Sound cut you off)/;
-/** A line of hers holds the note whole when it has this share of the words she was making when cut: AS_SAID's, as one word in five may differ between two of her transcripts of the same words. */
-const WHOLE = AS_SAID;
+/**
+ * A line of hers is the note heard whole when it holds more than this share of the note's own words (the note as Kokoro sent it, markup aside). She says
+ * a note in her own words, so a whole saying keeps well under all of them. In the 22 real cut runs of 2026-11-12 (Gemini Live; the stand-in's 14-word note
+ * and Opus's), the lines judged whole by hand kept 40% to 77% of the note's words (one, said in Spanish, none: no word count reads that), and those judged
+ * partial ("It's about twenty.", "ahead on Highway 1.") 27% at most; a third lies between.
+ */
+const WHOLE = 1 / 3;
 /** After a "stop", a line of hers this long at most: "Okay." (NO_FILLER's one word when a word is needed) or "Got it."; no note's claim fits in two words. */
 const SHORT_WORDS = 2;
 /** annai's line for a user turn the session gave nothing back to (live.js, #silent): the model's choice, never retried. */
@@ -84,6 +89,25 @@ export function analyseRelay(rec, a, sc, clips) {
     checks.push({ name: 'passed on as said', soft: true, ok: loose.length === 0, detail: loose.length ? loose.map((r) => `${r.c.name}: "${short(r.given, 80)}"`).join('; ') : `every line Kokoro was given kept ${AS_SAID * 100}% of its words or more` });
   }
 
+  if (sc.acted) {
+    // A request that begins with "stop" is no order to Koe to stop, and Koe has the reminder tools by design: she acts on it when she passes it on (tell_kokoro), or
+    // does it with a tool of her own and says so. Silence is the failure (the stop clause swallowed it); words with no act ("Okay.") are the stop's answer, so a failure too.
+    const rows = played.filter((c) => c.expect === 'answer').map((c) => {
+      if (!c.turns) return { c, counted: false, acted: false, line: `   ${c.name}: no turn was made of it (not counted)` };
+      const fs = inWindow(c.end + (c.endLagMs ?? 0), until(c));
+      const calls = fs.filter((f) => f.dir === 'in' && f.kind === 'toolCall').map((f) => f.name ?? '');
+      const words = said(fs);
+      const own = calls.filter((n) => !['tell_kokoro', 'already_told', 'sleep'].includes(n));
+      const passed = calls.includes('tell_kokoro');
+      const acted = passed || (own.length > 0 && words !== '');
+      const how = passed ? 'passed on to Kokoro' : own.length && words ? `her own ${own.join(', ')} and an answer` : own.length ? `her own ${own.join(', ')} and no word` : words ? 'only words, no act' : 'silence';
+      return { c, counted: true, acted, line: `   ${c.name}: ${acted ? 'acted on' : 'NOT acted on'} (${how}); she said "${short(words)}"` };
+    });
+    const counted = rows.filter((r) => r.counted);
+    text.push(...rows.map((r) => r.line));
+    checks.push({ name: 'acted on it', ok: counted.length > 0 && counted.every((r) => r.acted), detail: `${counted.filter((r) => r.acted).length} of ${counted.length} requests acted on${counted.length < rows.length ? ` (${rows.length - counted.length} made no turn, not counted)` : ''}` });
+  }
+
   if (sc.acks?.length) {
     // An acknowledgement, said after her answer: any run of her sound from its turn's end to the next clip is a reply. One no turn was made of isn't counted.
     const acks = played.filter((c) => c.expect === 'ack');
@@ -95,20 +119,20 @@ export function analyseRelay(rec, a, sc, clips) {
   }
 
   if (sc.noteCut) {
-    // What cut it: the first clip played after Kokoro's note went in (a noise, or a spoken "stop"). Then her cut, and from it on: the note heard whole (a line
-    // of hers holding WHOLE of the words she was making when cut) at most once, shown once (annai's card for the words she didn't say), and no ask of annai's
-    // for it. After a "stop": nothing of the note, a short word at most, nothing passed on, and no retry, fresh session or drop.
+    // What cut it: the first clip played after Kokoro's note went in (a noise, or a spoken "stop"). Then her cut, and from the sound on: the note heard whole (a
+    // line of hers holding WHOLE of the note's own words) at most once, shown once (annai's card for the words she didn't say, which it shows when it
+    // hears the sound: before the provider's own `interrupted` frame, so counted from the clip's start, never from that frame), and no ask of annai's for it.
+    // After a "stop": nothing of the note, a short word at most, nothing passed on, and no retry, fresh session or drop.
     const note = frames.find((f) => f.dir === 'out' && f.kind === 'text' && (f.text ?? '').startsWith('<from_kokoro'));
     const by = note ? played.find((c) => c.at > note.at) : undefined;
     const cut = by ? a.cuts.find((k) => k.at >= by.at) : undefined;
-    // The words of the turn the cut stopped, as the provider sent them (its burst comes faster than her voice plays it).
-    const made = note && cut ? said(frames.filter((f) => f.at > note.at && f.at <= cut.at)) : '';
+    const body = (note?.text ?? '').replace(/<\/?from_kokoro[^>]*>/g, '');
     const after = cut ? rec.trace.filter((t) => t.type === 'out.speak' && t.at > cut.at && !t.data?.cut) : [];
-    const whole = made ? after.filter((t) => wordRecall(made, spoken(t)) >= WHOLE) : [];
-    const shown = cut ? rec.trace.filter((t) => t.type === 'reminder' && t.data?.unsaid && t.data?.answer && t.at >= cut.at) : [];
-    const asks = cut ? frames.filter((f) => f.dir === 'out' && f.kind === 'text' && f.at >= cut.at && ASK.test(f.text ?? '')) : [];
+    const whole = after.filter((t) => wordRecall(body, spoken(t)) > WHOLE);
+    const shown = by && cut ? rec.trace.filter((t) => t.type === 'reminder' && t.data?.unsaid && t.data?.answer && t.at >= by.at) : [];
+    const asks = by && cut ? frames.filter((f) => f.dir === 'out' && f.kind === 'text' && f.at >= by.at && ASK.test(f.text ?? '')) : [];
     const lines = after.map((t) => `"${short(spoken(t), 80)}"`).join(' / ') || 'nothing';
-    const why = !by ? 'nothing was played into the note' : !cut ? `the ${by.name} did not cut her: nothing to show` : !made ? "the words she was making when cut weren't recorded" : '';
+    const why = !by ? 'nothing was played into the note' : !cut ? `the ${by.name} did not cut her: nothing to show` : '';
     const tail = `asked again ${asks.length === 1 ? 'once' : `${asks.length} times`}; shown ${shown.length === 1 ? 'once' : `${shown.length} times`}`;
     if (sc.noteCut === 'stop') {
       // Told to stop over the note: from the end of the stop, her lines (what was heard of her, annai's record) a short word at most ("Okay."), nothing passed
