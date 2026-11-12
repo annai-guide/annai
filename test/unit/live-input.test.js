@@ -257,14 +257,16 @@ const bump = burst(0.4, 0.017).map((x, i) => x * Math.exp(-i / (RATE * 0.06)));
  * Her voice from the phone's speaker begins leadMs into a sound at the microphone, in the phone's own batches (2048 at 48 kHz, 43 ms):
  * the room, the sound, and her voice (where-lunch at -6 dB) coming back 60 ms late. A user turn cuts her, as live.js does: her voice
  * stops at the end of that batch (one begun before her voice cuts her answer before a sound), and what she played comes back 60 ms
- * after. echo false: her voice doesn't reach the microphone (headphones). @param {Float32Array} sound @param {number} leadMs
+ * after. echo false: her voice doesn't reach the microphone (headphones). turns: what onTurn heard. @param {Float32Array} sound @param {number} leadMs
  * @param {{ duplex?: boolean, echo?: boolean }} [o]
  */
 async function asSheBegins(sound, leadMs, { duplex = false, echo: heard = !duplex } = {}) {
   let playing = false;
   let cut = false;
   let frames = 0;
-  const r = rig({ speaking: () => { const on = playing && !cut; if (on) frames++; return on; }, duplex: () => duplex });
+  /** @type {any[]} */
+  const turns = [];
+  const r = rig({ speaking: () => { const on = playing && !cut; if (on) frames++; return on; }, duplex: () => duplex, onTurn: (/** @type {any} */ t) => turns.push(t) });
   const send = r.input.send.activity;
   r.input.send.activity = (edge) => { if (edge === 'start') cut = true; send(edge); };
   await r.input.start();
@@ -283,7 +285,7 @@ async function asSheBegins(sound, leadMs, { duplex = false, echo: heard = !duple
     if (cut) stop = Math.min(stop, i + piece.length);
   }
   r.input.stop();
-  return { edges: r.sent.filter((x) => typeof x === 'string'), ms: Math.round(msOf(r.sent)), cut, herMs: Math.round((frames * 2048) / 48), playedMs: Math.round((her.length / 48_000) * 1000) };
+  return { edges: r.sent.filter((x) => typeof x === 'string'), ms: Math.round(msOf(r.sent)), cut, turns, herMs: Math.round((frames * 2048) / 48), playedMs: Math.round((her.length / 48_000) * 1000) };
 }
 
 // Drive 3, on the phone's speaker: a bump began about 150 ms before her first sound for a note; held by the detector, not yet speech, it
@@ -300,12 +302,21 @@ test('drive 3, the phone\'s speaker: a bump begun 150 ms before her voice, not y
   const o = await asSheBegins(bump, 150);
   assert.deepEqual([o.edges, o.ms, o.cut], [[], 0, false], `a turn after ${o.herMs} ms of her voice`);
   assert.ok(o.herMs >= o.playedMs, `${o.herMs} ms of her ${o.playedMs} ms played`);
+  // What a drive shows of it (the Trace's live.turn): no turn, and a line that it was dropped as her voice began, with how much of it was speech.
+  assert.equal(o.turns.length, 1, JSON.stringify(o.turns));
+  const [t] = o.turns;
+  assert.deepEqual(Object.keys(t).sort(), ['end', 'floorDb', 'keptFrames', 'keptPeakDb', 'minDb', 'ms', 'peakDb', 'speechMs']);
+  assert.deepEqual([t.end, t.ms, t.keptFrames], ['dropped', 0, 0], 'nothing was sent');
+  assert.ok(t.speechMs > 0 && t.speechMs < 250, `${t.speechMs} ms of speech`);
+  assert.ok(Math.abs(t.floorDb + 78) < 2 && Math.abs(t.peakDb - t.floorDb - 28) < 3, `floor ${t.floorDb} dB, loudest ${t.peakDb} dB`);
 });
 
 test('half-duplex: a word begun 150 or 200 ms before her voice, not yet 250 ms of speech by her first frame, is talked over too', async () => {
   for (const lead of [150, 200]) {
     const o = await asSheBegins(yes, lead);
     assert.deepEqual([o.edges, o.ms, o.cut], [[], 0, false], `${lead} ms before her: a turn after ${o.herMs} ms of her voice`);
+    assert.deepEqual(o.turns.map((t) => [t.end, t.ms]), [['dropped', 0]], `${lead} ms before her: its line in the Trace`);
+    assert.ok(o.turns[0].speechMs > 0 && o.turns[0].speechMs < 250, `${lead} ms before her: ${o.turns[0].speechMs} ms of speech`);
   }
 });
 
@@ -315,6 +326,9 @@ test('half-duplex: a word that has counted as speech (250 ms) by her voice\'s fi
     const o = await asSheBegins(yes, lead);
     assert.deepEqual([o.edges, o.cut, o.herMs], [['start', 'end'], true, herMs], `${lead} ms before her`);
     assert.ok(o.ms >= 450 + 700 - 20, `${lead} ms before her: ${o.ms} ms sent for a 450 ms word`);
+    // A turn is traced as before: one line, ended by its pause, the keys a turn's line has, and no line for a dropped run.
+    assert.deepEqual(o.turns.map((t) => t.end), ['pause'], `${lead} ms before her`);
+    assert.deepEqual(Object.keys(o.turns[0]).sort(), ['end', 'floorDb', 'keptFrames', 'keptPeakDb', 'minDb', 'ms', 'peakDb']);
   }
 });
 
@@ -323,7 +337,9 @@ test('half-duplex: a word that has counted as speech (250 ms) by her voice\'s fi
 test('half-duplex: her stream runs dry for 150 ms mid-answer and plays on: her echo, held in the gap, doesn\'t cut her as she resumes', async () => {
   let playing = false;
   let cut = false;
-  const r = rig({ speaking: () => playing && !cut });
+  /** @type {any[]} */
+  const turns = [];
+  const r = rig({ speaking: () => playing && !cut, onTurn: (/** @type {any} */ t) => turns.push(t) });
   const send = r.input.send.activity;
   r.input.send.activity = (edge) => { if (edge === 'start') cut = true; send(edge); };
   await r.input.start();
@@ -342,6 +358,7 @@ test('half-duplex: her stream runs dry for 150 ms mid-answer and plays on: her e
   }
   r.input.stop();
   assert.deepEqual([r.sent.filter((x) => typeof x === 'string'), cut], [[], false]);
+  assert.deepEqual(turns.map((t) => t.end), ['dropped'], 'her echo is dropped as she resumes, and says so in the Trace');
 });
 
 // Headphones or the car (full duplex): annai hears while she speaks, and the rule above is half-duplex's alone.
@@ -351,6 +368,7 @@ test('full duplex: a word begun 40 ms before her voice cuts her, as speech over 
   assert.ok(word.ms >= 450 + 700 - 20 && word.herMs > 43, `${word.ms} ms sent, after ${word.herMs} ms of her voice`);
   const bumped = await asSheBegins(bump, 150, { duplex: true });
   assert.deepEqual([bumped.edges, bumped.ms, bumped.cut], [[], 0, false]);
+  assert.deepEqual([...word.turns, ...bumped.turns].filter((t) => t.end === 'dropped'), [], 'no run is dropped as her voice begins where annai hears her');
 });
 
 // realtime-fix2 P2: speech begun over her voice on the speaker, going on after it, had its tail sent as a turn ("on the way."), and answered.
