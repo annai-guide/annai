@@ -223,32 +223,52 @@ test('a tap while her sound for a note all made still plays (the provider had ma
   }
 });
 
-// Her reply to the note speaks and calls a tool she speaks after (watch_list: annai answers it without `silent`), and the provider says the turn is
-// all made right after the call, as it does after a silent one (generationComplete 0 to 17 ms after it), before it knows what the answer is. More of
-// that turn comes once annai answers, so it is not all made: until it ends, a user starting or a tap is a cut, and the note shows.
-const LOOKS = { said: 'Let me check.', audio: tone(0.6), tool: { name: 'watch_list', args: {} }, noEnd: true };
+// Her reply to the note speaks and calls a tool she speaks after (watch_list: annai answers it without `silent`). Real Gemini's order (39 of 39
+// `list` calls, 2026-11-12): generationComplete 0 to 6 ms after the call, before it knows what the answer is; the first turn's turnComplete 16 ms to
+// 2.2 s after the call (median 1.2 s); and what she says once annai answers, a new turn of its own 2.4 to 7.2 s after it. More of her answer comes after
+// the call, so the turn is not all made at its generationComplete: a user who speaks in the gap, or a tap, is a cut, and the note shows. (Her
+// continuation answers the note; when the user's new question drops it, as the stand-in's delayed turn is dropped, the note must not be lost.)
+const LOOKS = { said: 'Checking your notes.', audio: tone(0.8), tool: { name: 'watch_list', args: {} }, endAt: 1200, andThen: true };
+const CONTINUES = { said: 'Nothing there, but the station is open until ten.', audio: tone(0.5), delayMs: 3000 };
 
-test('the user speaks in the wait for a tool she speaks after, her words for the note played: the note is shown, not lost', async () => {
-  const [k, at] = await noteSaid({ note: LOOKS });
+for (const [when, startAt] of /** @type {const} */ ([['before', 1000], ['after', 1700]])) {
+  test(`the user speaks in the gap ${when} the first turn's turnComplete, her words for the note played, her continuation still to come: the note is shown, not lost`, async () => {
+    const [k, at] = await noteSaid({ note: LOOKS, turns: [CONTINUES, ANSWER] });
+    try {
+      await answersAtOnce(k, at, startAt - 20);
+      assert.deepEqual((await k.events(['tool.call'])).map((/** @type {any} */ e) => e.data.name), ['watch_list']);
+      await soon(async () => (await lines(k)).some(([text]) => text === ANSWER.said), 12_000);
+      assert.deepEqual(await shown(k), [[FOR_USER, false]], 'what Kokoro made for them is shown, silently');
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+test('a tap in the gap before the first turn\'s turnComplete, her words for the note played: a cut, and the note is shown', async () => {
+  const [k, at] = await noteSaid({ note: LOOKS, turns: [CONTINUES, ANSWER] });
   try {
-    await wait(at + 600 + 600 - Date.now()); // "Let me check." has played; the tool was answered, and nothing more comes
-    assert.deepEqual((await k.events(['tool.call'])).map((/** @type {any} */ e) => e.data.name), ['watch_list']);
-    await answersAtOnce(k, Date.now(), 0);
-    await soon(async () => (await lines(k)).length === 2, 8000); // the provider answers them in the turn it still has open
-    assert.deepEqual(await shown(k), [[FOR_USER, false]], 'what Kokoro made for them is shown, silently');
+    await wait(at + 1000 - Date.now());
+    k.agent.tap();
+    await soon(async () => (await shown(k)).length > 0, 5000);
+    await wait(500);
+    assert.deepEqual(await shown(k), [[FOR_USER, false]]);
+    assert.equal(await wholeNotes(k), 0);
   } finally {
     await k.done();
   }
 });
 
-test('a tap in the wait for a tool she speaks after, her words for the note played: a cut, and the note is shown', async () => {
-  const [k, at] = await noteSaid({ note: LOOKS });
+test('the user says nothing in the gap: her continuation, a turn of its own, says the note, so it is passed on once her words for it have played: nothing shown, nothing asked again', async () => {
+  const [k] = await noteSaid({ note: LOOKS, turns: [CONTINUES, ANSWER] });
   try {
-    await wait(at + 600 + 600 - Date.now());
-    k.agent.tap();
-    await soon(async () => (await lines(k)).length === 2, 8000);
-    assert.deepEqual(await shown(k), [[FOR_USER, false]]);
-    assert.equal(await wholeNotes(k), 0);
+    await soon(async () => (await lines(k)).some(([text]) => text === CONTINUES.said), 12_000);
+    await wait(500);
+    await k.agent.idle();
+    assert.deepEqual((await lines(k)).map(([text]) => text).slice(-2), ['Checking your notes.', CONTINUES.said]);
+    assert.deepEqual(await shown(k), []);
+    assert.deepEqual(asks(k), []);
+    assert.equal(wentIn(k), 1);
   } finally {
     await k.done();
   }

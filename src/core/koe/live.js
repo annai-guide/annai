@@ -1530,8 +1530,10 @@ export class LiveKoe {
     if (text && cut) text += '✂';
     if (text) this.#poke(); // she has finished saying it: the quiet spell runs from here
     // Notes pass on when her words for them were heard: the provider's burst, or sound begun, proves nothing, as sound at the microphone may cut her at once.
-    // Those a sound or the user cut off are shown when their turn begins (#activity), so nothing here shows or asks for a cut one.
-    if (!cut && text && this.#owed.sent.length && t.wordAt >= this.#owed.at) this.#passed();
+    // Those a sound or the user cut off are shown when their turn begins (#activity), so nothing here shows or asks for a cut one. A turn that
+    // called a tool she speaks after is not her answer yet (real Gemini: "Checking your notes.", then a new turn 2.4 to 7.2 s later): its notes wait
+    // for what she says after the answer, and are shown if the user speaks first.
+    if (!cut && text && !t.goesOn && this.#owed.sent.length && t.wordAt >= this.#owed.at) this.#passed();
     const v = this.c.voice;
     const aloud = Boolean(text && !cut && v?.on && (t.stalled || v.stuck));
     const voiced = Boolean(t.stream || aloud);
