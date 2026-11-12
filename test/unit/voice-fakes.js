@@ -227,6 +227,8 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
       },
       /** Dictation hears someone say this. @param {string} text */
       say(text) { heard?.onSpeech?.(); heard?.onSegment(text); },
+      /** Dictation gives words with no speech start of its own, as a later utterance of one recognition run may (whether real browsers send one is not verified). @param {string} text */
+      late(text) { heard?.onSegment(text); },
       /** Dictation hears a sound that gives no words (road noise): speech starts, then it says so. */
       noise() { heard?.onSpeech?.(); heard?.onQuiet?.(); },
       /** Dictation fails, as the browser's recognition does. @param {string} code */
