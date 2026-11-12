@@ -3727,11 +3727,38 @@ export class Agent {
       if (p?.kind === 'ask' || p?.arm || p?.tool) {
         p.listening = true; // an ask's answer may be spoken, a wait's too, and one voice going off stopped listening for
         if (this.#half.voice()) this.#voiceNow = true; // the tap holds voice on for this exchange: her reply to the answer is said
+        if (p.kind === 'ask' && !p.ask) this.#limitTap(p);
       }
       if (this.#busy) return; // she is speaking or working: the window serves her turn
       this.#setState('listening');
       this.#armQuiet();
     });
+  }
+
+  /**
+   * A tap's listening for her question, which waits by hand with no time of its own, gets the silence limit any listening has (LISTEN_S, held while someone speaks, by
+   * hold and arm as #listenFor's): at its end the microphone closes and the question waits for a tap or typing again, so a note for the user is no longer held behind
+   * an answer that may never come (#noted). Her turn is busy, so #armQuiet would never close it. @param {Pending} p
+   */
+  #limitTap(p) {
+    if (!p.arm) {
+      /** @type {ReturnType<typeof setTimeout> | undefined} */
+      let timer;
+      const resolve = p.resolve;
+      p.resolve = (v) => { clearTimeout(timer); resolve(v); };
+      p.hold = () => clearTimeout(timer);
+      p.arm = () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          if (this.#pending !== p || !p.listening) return;
+          p.listening = false;
+          this.#closeEar();
+          this.#waiting(p.kind);
+          this.#noted();
+        }, LISTEN_S * this.secondMs);
+      };
+    }
+    p.arm();
   }
 
   /** A tap's window that hears nothing closes after the silence limit; the one after she spoke, that long after her last words. */

@@ -2962,6 +2962,48 @@ test("with voice off, her ask waits for a tap or typing; a tap on Shiori holds v
   await k.agent.idle();
 });
 
+const ASK_LUNCH = { question: 'Lunch or dinner?', options: ['Lunch', 'Dinner'] };
+
+test("with voice off, a tap on Shiori opens the microphone for her question, and nothing said ends that listening at the 8 s silence limit: the microphone closes, the question waits for a tap or typing, and a second tap listens again", async (t) => {
+  useClock(t);
+  const k = await gateKit([call('ask', ASK_LUNCH), sleep], { voice: { speechIn: ['m-hear'], hears: ['Dinner please'] } });
+  await voiceOff(k);
+  k.agent.send('Plan our day');
+  await until(() => k.agent.state.name === 'waiting');
+  assert.equal(k.agent.tap(), 'listening');
+  await until(() => micLog(k).includes('mic open'));
+  await pause(5 * k.agent.secondMs);
+  assert.deepEqual(micLog(k), ['mic open'], 'listening within the limit');
+  await pause(5 * k.agent.secondMs);
+  assert.deepEqual(micLog(k), ['mic open', 'mic close'], 'closed at the limit');
+  assert.deepEqual([k.agent.state.name, k.agent.state.label], ['waiting', 'Waiting for your OK'], 'nothing listens now');
+  assert.notEqual(k.agent.kokoro.pendingId, null, 'the question still waits');
+  assert.equal(k.agent.tap(), 'listening');
+  await until(() => micLog(k).length === 3);
+  await hear(k, 'first-one');
+  await k.agent.idle();
+  assert.equal((await k.events(['tool.result'])).find((/** @type {any} */ e) => e.data.name === 'ask')?.data.content, 'The user said:', 'the second tap heard the answer');
+  assert.equal(micLog(k).at(-1), 'mic close', `none left open: ${micLog(k)}`);
+});
+
+test("with voice off, someone speaking into a tap's microphone for her question holds its silence limit, and their words answer it", async (t) => {
+  useClock(t);
+  const k = await gateKit([call('ask', ASK_LUNCH), sleep], { voice: { speechIn: ['m-hear'], hears: ['Dinner please'] } });
+  await voiceOff(k);
+  k.agent.send('Plan our day');
+  await until(() => k.agent.state.name === 'waiting');
+  k.agent.tap();
+  await until(() => micLog(k).includes('mic open'));
+  await pause(2 * k.agent.secondMs);
+  await startsSpeaking(k);
+  await pause(20 * k.agent.secondMs); // far past the 8 s: they are still speaking
+  assert.deepEqual(micLog(k), ['mic open'], 'held open while they speak');
+  k.platform.mic.feed(quiet(2), 16_000);
+  await k.agent.idle();
+  assert.equal((await k.events(['tool.result'])).find((/** @type {any} */ e) => e.data.name === 'ask')?.data.content, 'The user said:');
+  assert.equal(micLog(k).at(-1), 'mic close', `none left open: ${micLog(k)}`);
+});
+
 test("classic voice: voice turning off inside the card's microphone's own opening, past the check before it: the microphone it opened closes, the dock never says Listening, and the card waits for a tap", async (t) => {
   useClock(t);
   const k = await gateKit([call('read_trip', { trip: TV }), sleep], { voice: { speechIn: ['m-hear'], hears: ['Yes please'] } });
