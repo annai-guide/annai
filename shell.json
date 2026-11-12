@@ -1,5 +1,5 @@
 {
-  "build": "fcf4cd6ad35f",
+  "build": "06fedd091f57",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -39,11 +39,11 @@
     "/src/core/agent/budgets.js": "ec0a25e840fb",
     "/src/core/agent/compaction.js": "0525a91f19e9",
     "/src/core/agent/context.js": "6a543dcca854",
-    "/src/core/agent/halves.js": "60c0becdbe82",
+    "/src/core/agent/halves.js": "460f45ad4940",
     "/src/core/agent/instructions.js": "5a8bc872522c",
-    "/src/core/agent/listen.js": "3aecb6531a44",
+    "/src/core/agent/listen.js": "3161f606192d",
     "/src/core/agent/log.js": "be1f6eedd6f8",
-    "/src/core/agent/loop.js": "32fc682ea6db",
+    "/src/core/agent/loop.js": "6b20f300c967",
     "/src/core/agent/reading.js": "dfcf146e5005",
     "/src/core/agent/personalities.js": "20c2b7d8981a",
     "/src/core/agent/her-instructions.js": "b90fb982b678",
