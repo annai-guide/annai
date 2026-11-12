@@ -34,11 +34,11 @@ import { t } from '../l10n.js';
  *   nonce: string, model: () => string | null, setup: () => Promise<{ instructions: string, context: string, languages?: import('../llm/contract.js').Languages, known?: import('../languages.js').LanguageSettings }>, visible: () => boolean,
  *   release: () => void, notice: (n: import('../agent/loop.js').Notice) => void, told: (state: 'live-open' | 'live-closed') => void,
  *   dropped: (cut: boolean) => void, changed: () => void, budgets: () => Promise<any>, timeZone: () => string, asked: () => boolean, secondMs?: number,
- *   unsaid: (notes: Wake[]) => void, owed: (notes: Wake[]) => void, left?: (notes: Wake[]) => void, spoke?: () => void, ws?: import('../workspace.js').Workspace,
+ *   unsaid: (notes: Wake[], o?: { quiet?: boolean }) => void, owed: (notes: Wake[]) => void, left?: (notes: Wake[]) => void, spoke?: () => void, ws?: import('../workspace.js').Workspace,
  *   held?: () => Promise<void> | null, voiceOut?: () => Promise<void> | null, saying?: (words: string) => void, noisy?: (heard: string) => void,
  *   heard?: (line: { id: string, text: string, at: number, her: boolean }) => void, speech?: (on: boolean, line?: { id: string, at: number, her: boolean }) => void }} LiveHost
  *   Halves's: release: the speech pipeline lets go of the voice; asked: Kokoro works on Koe's question; unsaid: Kokoro's notes for the user Koe never
- *   passed on, asked once more; owed: those a session closed on before Koe passed them on, to hand on; left: those a switch to another
+ *   passed on, asked once more (quiet: shown, not said); owed: those a session closed on before Koe passed them on, to hand on; left: those a switch to another
  *   conversation leaves, shown there; spoke: the user's spoken turn ended; ws: where this device keeps that the talk-over card was shown;
  *   held: Start fresh runs, until it settles: a session opens only after it, from the fresh start; voiceOut: annai's other voice is saying something, until it settles
  *   (a reminder finishes first); saying: her words so far, while she speaks
@@ -56,7 +56,11 @@ const ASLEEP = ['tap', 'sleep'];
 /** The ask once more, as a text Koe's (§6.8), in annai's words. */
 const CUE = `[annai] ${escapeTags(JSON.stringify(NOTE_UNSAID))}`;
 /** The ask once more when sound cut her off: she has generated the words, and believes she has said them (she would answer already_told). */
-/* en */ const CUE_CUT = `[annai] ${escapeTags(JSON.stringify("Sound cut you off, so the user didn't hear what Kokoro's note says. Say it again, without changing what it claims."))}`;
+/**
+ * Asked once more after sound cut her off: the note from its start, once, which serves a "what?" said over her too (it is answered after the ask, by the
+ * same note again: a realtime run); a "stop" over her ends it (the user's call).
+ */
+/* en */ const CUE_CUT = `[annai] ${escapeTags(JSON.stringify("Sound cut you off, so the user didn't hear what Kokoro's note says. Say it again from its start, once, without changing what it claims (it answers a \"what?\" too), unless they told you to stop: then stop, and say nothing."))}`;
 /** The ask again when the user's turn got no sound and no word (the watchdog, in a session that is alive). */
 /* en */ const UNANSWERED = `[annai] ${escapeTags(JSON.stringify('Nothing you did reached the user after what they said last: answer them aloud.'))}`;
 /** Tools that pass a note on to the user, as words do, or settle it as passed on. */
@@ -971,7 +975,8 @@ export class LiveKoe {
   /**
    * A turn ended with Kokoro's notes for the user gone in and not passed on (§6.8, as a text Koe's): Koe is asked once more, in
    * the text cue's words; when its next turn says nothing too, annai shows them. A turn that called a tool it speaks after waits.
-   * @param {Turn | null} t
+   * Asked again after sound cut her off, a turn with no words is her choice, which a "stop" over her asks for (the cut ask's words):
+   * shown, not said; cut again, they are said as well. @param {Turn | null} t
    */
   #settle(t) {
     const o = this.#owed;
@@ -981,7 +986,7 @@ export class LiveKoe {
       o.cued = o.cue = true;
       return;
     }
-    this.c.unsaid(o.sent.splice(0));
+    this.c.unsaid(o.sent.splice(0), { quiet: o.cutOff && !t?.spoken });
     o.cued = false;
   }
 

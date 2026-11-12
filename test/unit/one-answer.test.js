@@ -56,6 +56,8 @@ test('a note cut by a sound while the provider still made it is asked for again 
     await soon(async () => (await lines(k)).some(([text, cut]) => text === SAID && !cut), 8000);
     await k.agent.idle();
     assert.equal(cutAsks(k).length, 1, 'asked once, when the sound\'s turn ended');
+    // Its words: once from its start, which a "what?" said over her needs too, unless they said stop.
+    assert.match(cutAsks(k)[0], /Say it again from its start, once, without changing what it claims \(it answers a \\"what\?\\" too\), unless they told you to stop: then stop, and say nothing\./);
     const said = await lines(k);
     assert.deepEqual(said.at(-1), [SAID, false], 'said again whole');
     assert.ok(said.some(([text, cut]) => cut && /✂$/.test(text)), 'the cut words are kept, marked');
@@ -91,7 +93,23 @@ test('cut twice: asked once, then annai shows and says the words for the user; n
     await soon(async () => (await shown(k)).length === 1, 8000);
     await k.agent.idle();
     assert.deepEqual(await shown(k), [FOR_USER]);
+    assert.equal((await k.events(['reminder']))[0].data.aloud, true, 'said by annai as well');
     assert.equal(cutAsks(k).length, 1, 'one ask, then the backstop');
+  } finally {
+    await k.done();
+  }
+});
+
+test('cut, then no word of hers after the ask (as a "stop" said over her asks): annai shows the words for the user, and says nothing', async () => {
+  const k = await noteSaid({ turns: [{ delayMs: 400 }], cue: {} });
+  try {
+    await bump(k);
+    await soon(async () => (await shown(k)).length === 1, 8000);
+    await k.agent.idle();
+    assert.equal(cutAsks(k).length, 1);
+    assert.deepEqual(await shown(k), [FOR_USER], 'shown, so nothing is lost');
+    assert.equal((await k.events(['reminder']))[0].data.aloud, undefined, 'not said');
+    assert.ok(!k.said.some((/** @type {string} */ t) => t.includes('fuel station')), 'no voice says it');
   } finally {
     await k.done();
   }
@@ -333,8 +351,11 @@ test("Koe passes on what the user said as they said it, in its instructions and 
 test("the lines that get no reply say what to do, and name no state; a live Koe is told once that every word it makes is spoken aloud", () => {
   for (const k of [KOE_CORE, KOE_LIVE]) {
     assert.doesNotMatch(k, /Silence is|Say nothing at all|thinks aloud, say nothing/);
-    assert.match(k, /single stray words and a language the user doesn't speak get no reply: no words, no sound\./);
+    assert.match(k, /single stray words and a language the user doesn't speak get no reply: no words, no sound[.;]/);
+    // Told to stop is no line to pass on: it is what NO_FILLER says (stop, and say nothing).
+    assert.match(k, /\n- Anything else the user says to you \(a question, a request, something to do\), unless it tells you to stop \(then stop, and say nothing\):/);
   }
+  assert.doesNotMatch(KOE_CORE, /(no sound|stray word): call sleep/, 'one colon in the line');
   assert.match(KOE_LIVE, /only acknowledges \(okay, cool, thanks\) or thinks aloud, it gets no reply: no words, no sound\./);
   assert.equal(KOE_LIVE.split('\n').filter((l) => /Every word you produce is spoken aloud to the user, so never describe what you are doing or that you are staying quiet\./.test(l)).length, 1);
   assert.doesNotMatch(KOE_CORE, /spoken aloud to the user/, "a chat Koe's own text is never shown or said");
