@@ -463,6 +463,7 @@ export function safeId(id) {
  *   with options, one of them (value → its words); without, a switch for a tunable that is on unless false
  * @property {true} [realtime]  a realtime voice type (K4), with audio, open and attach: annai opens the socket, the type drives it;
  *   its tunable heardLive says its transcript of the user streams in while they speak, not after their turn (a live session's heardLive)
+ * @property {true} [made]  a realtime type that emits `made` for each of her turns once the provider has made all of it (a live session's made)
  * @property {{ in: AudioFormat[], out: AudioFormat[] }} [audio]  what it sends and takes, preferred first (tunables input, output pick, K6)
  * @property {(c: SpeechSpec) => { url: string, protocols?: string[] }} [open]  a session's address and subprotocols
  * @property {(socket: LiveSocket, c: { endpoint: import('./config.js').Endpoint, model: import('./config.js').Model, tunables: Record<string, any>,
@@ -484,7 +485,8 @@ export function safeId(id) {
  *   with nothing else said (K5)
  * @typedef {{ type: 'audio', data: Uint8Array } | { type: 'heard' | 'said', text: string, final?: boolean } | { type: 'tool', id: string, name: string, input: any }
  *   | { type: 'turn', end: 'complete' | 'interrupted' } | { type: 'usage', usage: Partial<Usage> } | { type: 'resume', handle: string }
- *   | { type: 'goaway', ms: number }} LiveEvent  audio: 16-bit PCM in audioOut; heard, said: transcripts in pieces; usage: a turn's
+ *   | { type: 'goaway', ms: number } | { type: 'made' }} LiveEvent  audio: 16-bit PCM in audioOut; heard, said: transcripts in pieces; made: the turn being
+ *   made is all made, its sound, words and tool calls all sent (Gemini's generationComplete), not yet played; usage: a turn's
  */
 
 /**

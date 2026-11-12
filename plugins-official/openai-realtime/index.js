@@ -21,6 +21,8 @@
  * - a session lasts at most an hour, with no handle to resume it: after renewMinutes, a goaway asks annai for a
  *   fresh one;
  * - usage comes with response.done, by modality, cached tokens apart;
+ * - response.done is "returned when a Response is done streaming", whatever its status: one not cancelled is all made (its `made`), as
+ *   Gemini's generationComplete says; it comes before its voice has played, and its turn's end waits for that;
  * - languages (phase 2; OpenAI's Realtime reference and transcription guide, read 2026-10-22): input transcription is "not native to the
  *   model" and takes `language` (one ISO-639-1 code, "will improve accuracy and latency") or, for gpt-transcribe and gpt-live-transcribe,
  *   `languages` (several; "Don't send both"); the model itself hears the audio, so what keeps it from taking a filler or one foreign
@@ -96,6 +98,7 @@ export function activate(annai) {
     type: 'openai-realtime',
     name: 'OpenAI Realtime',
     realtime: true,
+    made: true,
     // input, output: the audio each way (pcmu, pcma, pcm16); voice: OpenAI's (marin and cedar are its best); transcription:
     // the model that writes down what the user says ('' for none); languageHints: the languages the user speaks, given to it (off: it detects);
     // noiseReduction: far_field (a phone on the dash), near_field or '';
@@ -220,6 +223,7 @@ export function activate(annai) {
         if (cuts) cuts--;
         else if (r?.status === 'cancelled') emit({ type: 'turn', end: 'interrupted' });
         else {
+          emit({ type: 'made' });
           const x = setTimeout(() => {
             ending.delete(x);
             emit({ type: 'turn', end: 'complete' });
