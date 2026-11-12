@@ -1,6 +1,6 @@
 // What a realtime check makes of one answer, and the right half's (the one-answer scenarios): pure functions from one scenario's record and its general
 // analysis to checks. Koe passes on what it can't answer, as it was said, and asks nothing back; an acknowledgement gets no reply; a note cut as she says it is
-// said again from its start, once; a typed line gets no more lines of hers than it needs. Tested without a browser (test/unit/realtime-relay.test.js).
+// said again from its start, once, and one cut by a "stop" isn't; a typed line gets no more lines of hers than it needs. Tested without a browser (test/unit/realtime-relay.test.js).
 import { wordRecall } from './analyse.mjs';
 
 /**
@@ -89,17 +89,33 @@ export function analyseRelay(rec, a, sc, clips) {
   }
 
   if (sc.noteCut) {
-    // The noise: her cut after it began, annai's ask for the note again (once), and her words after the ask holding the note's start and its end.
-    const bump = played.find((c) => c.expect === 'noise');
-    const cut = bump ? a.cuts.find((k) => k.at >= bump.at) : undefined;
-    const asks = bump ? frames.filter((f) => f.dir === 'out' && f.kind === 'text' && f.at >= bump.at && (f.text ?? '').includes(CUT_ASK)) : [];
-    const again = asks.length ? said(frames.filter((f) => f.at > asks[0].at)) : '';
-    const shown = bump ? rec.trace.filter((t) => t.type === 'reminder' && t.data?.unsaid && t.at >= bump.at) : [];
-    const whole = NOTE_START.test(again) && NOTE_END.test(again);
-    const ok = Boolean(cut) && asks.length === 1 && whole && shown.length === 0;
-    const detail = !bump ? 'no noise was played' : !cut ? 'the noise did not cut her: nothing to say again' : !asks.length ? 'she was cut, and annai never asked for the note again'
-      : `asked again ${asks.length === 1 ? 'once' : `${asks.length} times`}; after it she said "${short(again, 120)}"${whole ? ' (from its start)' : ' (NOT the note from its start)'}${shown.length ? '; annai also showed it' : ''}`;
-    checks.push({ name: 'cut note said again', ok, detail });
+    // What cut it: the first clip played after Kokoro's note went in (a noise, or a spoken "stop"). Then her cut, annai's ask for the note again (once),
+    // and her lines after the ask that hold the note's start and its end: one, after a noise; none after a "stop", and no sound at all, nor a line passed on.
+    const note = frames.find((f) => f.dir === 'out' && f.kind === 'text' && (f.text ?? '').startsWith('<from_kokoro'));
+    const by = note ? played.find((c) => c.at > note.at) : undefined;
+    const cut = by ? a.cuts.find((k) => k.at >= by.at) : undefined;
+    const asks = by ? frames.filter((f) => f.dir === 'out' && f.kind === 'text' && f.at >= by.at && (f.text ?? '').includes(CUT_ASK)) : [];
+    const after = asks.length ? rec.trace.filter((t) => t.type === 'out.speak' && t.at > asks[0].at) : [];
+    const whole = after.filter((t) => NOTE_START.test(t.text ?? '') && NOTE_END.test(t.text ?? ''));
+    const shown = by ? rec.trace.filter((t) => t.type === 'reminder' && t.data?.unsaid && t.at >= by.at) : [];
+    const lines = after.map((t) => `"${short(t.text, 80)}"`).join(' / ') || 'nothing';
+    const why = !by ? 'nothing was played into the note' : !cut ? `the ${by.name} did not cut her: nothing to say again` : !asks.length ? 'she was cut, and annai never asked for the note again' : '';
+    if (sc.noteCut === 'stop') {
+      // Told to stop over the note: no sound from the stop's turn on, and nothing passed on (shown on the screen is fine: nothing is lost).
+      const from = by ? by.end + (by.endLagMs ?? 0) : Infinity;
+      const passed = frames.some((f) => f.at > from && f.dir === 'in' && f.kind === 'toolCall' && f.name === 'tell_kokoro');
+      const quiet = by?.firstSoundMs === null && !passed;
+      checks.push({
+        name: 'stopped when told', ok: !why && quiet,
+        detail: why || `${quiet ? 'no sound after the "stop"' : passed ? 'she passed it on to Kokoro' : `sound ${((by?.firstSoundMs ?? 0) / 1000).toFixed(1)} s after it`}; asked again ${asks.length === 1 ? 'once' : `${asks.length} times`}; she said ${lines}${shown.length ? '; annai showed the note' : ''}`,
+      });
+    } else {
+      const ok = !why && asks.length === 1 && whole.length === 1 && shown.length === 0;
+      checks.push({
+        name: 'cut note said again', ok,
+        detail: why || `asked again ${asks.length === 1 ? 'once' : `${asks.length} times`}; the note said again ${whole.length === 1 ? 'once' : `${whole.length} times`}, from its start; her lines after the ask: ${lines}${shown.length ? '; annai also showed it' : ''}`,
+      });
+    }
   }
 
   const typed = (rec.typed ?? []).filter((t) => t.lines);
