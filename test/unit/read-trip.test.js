@@ -2302,6 +2302,29 @@ test('the card hears first: Koe\'s own question open at the same time: a bare "Y
   k.agent.interrupt();
 });
 
+/** Koe on a chat model that speaks, hands the question on and ends its turn listening on (no sleep): its microphone is open, and no call of Koe's is. */
+const KOE_AFTER = { rules: [{ match: 'the user wrote', reply: { toolCalls: [{ name: 'speak', input: { text: 'Let me look.' } }, { name: 'tell_kokoro', input: { text: 'Where did we eat in Testville?' } }] }, then: { text: '' } }] };
+
+test('the card hears first, Koe idle after its turn: a "Yes." is the card\'s, and Koe owes nothing for it: reopened, the conversation wakes nobody, as the line is settled by the card\'s result', async (t) => {
+  useClock(t);
+  const k = await koeMic(KOKORO_ASKED, KOE_AFTER, { hears: ['Yes.'] });
+  k.agent.send('Where did we eat in Testville?');
+  await asked(k);
+  assert.equal(k.agent.koe.busy, false, "Koe's turn is over");
+  await hear(k, 'first-one');
+  await pause(5 * k.agent.secondMs);
+  await k.agent.idle();
+  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }]);
+  assert.deepEqual((await heardIn(k, k.trip)).map(({ text, answer, half }) => [text, answer, half]), [['Yes.', k.asks[0].data.id, 'kokoro']]);
+  assert.equal(k.sent['model-koe'].length, 2, "Koe's turn for the typed line, no more");
+  assert.equal((await Transcript.load(k.store, k.trip, { half: 'koe' })).unanswered, false, 'Koe owes nothing for it');
+  const before = k.requests.length;
+  await k.agent.open(await createTrip(k.ws, { title: 'Elsewhere' }));
+  await k.agent.open(k.trip);
+  await k.agent.idle();
+  assert.equal(k.requests.length, before, 'opened again, nobody wakes');
+});
+
 // open_trip's card, where it differs: the yes moves them, and the chat ends with its moved line, written last.
 
 /** Koe on a chat model handing "Let's carry on in Testville" to Kokoro, then waiting on. */

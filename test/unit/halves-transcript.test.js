@@ -390,6 +390,13 @@ test("the owed table: every line, every cut, every reader, one answer", async ()
   };
   const heard = (/** @type {W} */ w, source = 'mic') => w.log({ type: 'heard', actor: 'user', data: { id: `s${Math.random()}`, half: 'koe', source, text: 'when is check-in' } });
   const kokoroWorks = (/** @type {W} */ w) => w.turn(TALK_TAG, [call('r', 'read'), call('t', 'tell_koe'), call('z', 'sleep')]);
+  /** annai's card for her read_trip, and a yes Koe's microphone heard that the card took: written by Kokoro, as its answer, then its result. @param {W} w */
+  const cardYes = async (w) => {
+    await w.turn(TALK_TAG, [call('rt', 'read_trip')]);
+    await w.log({ type: 'out.ask', actor: 'system', data: { id: 'rt', tap: 'tap-1', question: 'Read Testville?', options: ['Allow', 'Not now'], own: true, by: null, half: 'kokoro' } });
+    await w.log({ type: 'heard', actor: 'user', data: { id: 's-yes', half: 'kokoro', source: 'mic', text: 'Yes.', answer: 'rt' } });
+    await res(w, 'kokoro', 'rt', true, 'From "Testville": the ramen place.');
+  };
   const koeAsks = async (/** @type {W} */ w) => {
     await heard(w);
     await w.turn(KOE_TAG, [call('a', 'speak'), call('b', 'tell_kokoro'), call('c', 'sleep')]);
@@ -457,6 +464,10 @@ test("the owed table: every line, every cut, every reader, one answer", async ()
     ['heard; a reload before Koe asked', async (w) => { await koeAsks(w); await res(w, 'koe', 'b', false, RESTART); await res(w, 'koe', 'c', false, RESTART); }, [false, true, true]],
     ['heard; the user stopped Koe before it asked', async (w) => { await koeAsks(w); await res(w, 'koe', 'b', false, STOP); await res(w, 'koe', 'c', false, STOP); await error(w, 'koe', 'stopped'); }, [false, false, false]],
     ['heard; Koe\'s reply under way, Kokoro\'s turn ends in an error', async (w) => { await heard(w); await w.turn(KOE_TAG, [call('a', 'speak'), call('b', 'tell_kokoro')]); await error(w, 'kokoro', 'model'); }, [false, false, true]],
+    // annai's card, Kokoro's, took a heard yes from Koe's microphone (the card hears first): the line is the card's answer, settled by its result.
+    ['typed; annai\'s card took a spoken yes; its result came, her turn under way', async (w) => { await typed(w); await cardYes(w); }, [true, false, true]],
+    ['typed; annai\'s card took a spoken yes; she read the trip and slept, telling Koe nothing', async (w) => { await typed(w); await cardYes(w); await w.turn(TALK_TAG, [call('z', 'sleep')]); await res(w, 'kokoro', 'z', true); }, [false, false, false]],
+    ['typed; annai\'s card took a spoken yes; the user stopped her', async (w) => { await typed(w); await cardYes(w); await error(w, 'kokoro', 'stopped'); }, [false, false, false]],
   ];
   const failed = [];
   for (const [row, steps, want] of rows) {
