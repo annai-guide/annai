@@ -261,6 +261,8 @@ const inside = (p, root) => typeof p === 'string' && root.test(p) && !p.split('/
 const words = (x) => typeof x === 'string' && x.trim() !== '';
 /** What a line's words arm: a yes begun inside the card's window, a no at any time (declining is safe); nothing begun over her voice. @param {NonNullable<Pending['ask']>} ask @param {AskLine} l */
 const askSaid = (ask, l) => (l.her || l.text === undefined ? null : (l.inside ? ask.yes(l.text) : null) ?? ask.no(l.text));
+/** Whether a line began inside the card's window, from the question's end to its 20 s, the one rule on every path (its own microphone, the other half's, a live session's). @param {NonNullable<Pending['ask']>} ask @param {number} at */
+const inWindow = (ask, at) => ask.from > 0 && at >= ask.from && at <= ask.until;
 /** What a listen got from a user's message taken off the queue: its words, and a claim or a tap that came with them. @param {Wake} w @returns {Got} */
 const typedGot = (w) => ({ text: w.text, ...(w.claim ? { claim: w.claim } : {}), ...(w.chose ? { chose: true } : {}) });
 /** Typing a listen got, as the log and the model have it: plain, a claim ("This was for Shiori") or a tap that came as words. @param {Got} got @returns {{ data: Record<string, any>, said: string }} */
@@ -503,9 +505,8 @@ export class Agent {
   #gathering = false;
   /** The microphone hears the user now: from speech starting until its segment comes, or it wasn't speech (GATHER). */
   #speaking = false;
-  /** When the speech going on, or the last, began, and whether annai's voice was playing then. */
-  #spokeAt = 0;
-  #spokeOver = false;
+  /** When the speech going on began, and whether annai's voice was playing then: from its start until it ends (a click, or its segment). @type {{ at: number, over: boolean } | null} */
+  #start = null;
   /** The role's list as the last turn found it: the warm model goes first only while the user hasn't changed it. @type {string | null} */
   #order = null;
   /**
@@ -1071,7 +1072,7 @@ export class Agent {
     let line = ask.heard.get(x.id);
     if (!line) {
       if (x.at === undefined) return; // heard before the card: its words came then
-      line = { id: x.id, inside: ask.from > 0 && x.at >= ask.from && x.at <= ask.until };
+      line = { id: x.id, inside: inWindow(ask, x.at) };
       ask.heard.set(x.id, line);
     }
     if (x.her) line.her = true;
@@ -3486,22 +3487,21 @@ export class Agent {
    */
   #spoke(on, line) {
     this.#speaking = on;
-    if (on) {
-      this.#spokeAt = Date.now();
-      this.#spokeOver = Boolean(this.voice?.speaker.speaking);
-    }
+    this.#start = on ? { at: Date.now(), over: Boolean(this.voice?.speaker.speaking) } : null;
     this.confirmSpeech(on, Boolean(line));
     this.#half.speech?.(on, line);
   }
 
   /** What the microphone heard (spec §10.4), handled in order. @param {Heard} h */
   #heard(h) {
-    const began = this.#spokeAt || h.at;
+    // A start is its own speech's. A result that came with none (phone dictation's later utterance of a run) begins when it arrives, over her voice
+    // if hers plays then: the side that can't grant by mistake.
+    const began = this.#start ?? { at: h.at, over: Boolean(this.voice?.speaker.speaking) };
     // Its segment came: they stopped. Begun while annai's voice played (a chat Koe's microphone stays open while the other half says the card's
     // question), it is over her voice for the card, as a live session, deaf then, never hears it at all.
-    this.#spoke(false, { id: h.id, at: began, ...(this.#spokeOver ? { her: true } : {}) });
+    this.#spoke(false, { id: h.id, at: began.at, ...(began.over ? { her: true } : {}) });
     this.poke();
-    this.#hearing = this.#hearing.then(() => this.#route(h, began)).catch((e) => { console.warn(/* en */ 'heard speech was not handled', e); });
+    this.#hearing = this.#hearing.then(() => this.#route(h, began.at)).catch((e) => { console.warn(/* en */ 'heard speech was not handled', e); });
   }
 
   /**
@@ -3519,7 +3519,7 @@ export class Agent {
     if (p) {
       const ask = p.ask;
       /** @type {AskLine | null} no segment begins over her voice: the microphone is closed while she speaks. By when it began, as a live line: one routed late (behind another's gate call) is no earlier for it. */
-      const line = ask ? { id: h.id, inside: began <= ask.until } : null;
+      const line = ask ? { id: h.id, inside: inWindow(ask, began) } : null;
       let said = null;
       if (ask && line) {
         ask.heard.set(h.id, line);

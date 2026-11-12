@@ -3126,6 +3126,168 @@ test("with voice on and no Koe model, someone speaking into the microphone a tap
   assert.equal(micLog(k).at(-1), 'mic close', `none left open: ${micLog(k)}`);
 });
 
+// A heard line's start is its own speech's: one the speech start never reported (phone dictation's later utterance of a run, whose result comes with
+// no start) begins when it arrives, never when some earlier speech began. annai's card's yes counts only from a line begun inside its 20 s.
+/** The card's script, a spoken yes read aloud, and phone dictation as the only way to hear. */
+const DICTATION = { voice: { dictation: true, speechIn: ['dictation'] } };
+const CARD = [call('read_trip', { trip: TV }), say('Ramen at the corner.'), sleep];
+/** Waits until `s` seconds after t0 (the clock's, as the kit counts them). @param {any} k @param {number} t0 @param {number} s */
+const atS = (k, t0, s) => pause(Math.max(0, t0 + s * k.agent.secondMs - Date.now()));
+/** What the card came to: the grants written, and what read_trip gave back, once the turn is done (a line said has 3 s to settle first). @param {any} k */
+const cardEnded = async (k) => {
+  await pause(6 * k.agent.secondMs);
+  if (k.agent.kokoro.pendingId !== null) k.agent.answer(/** @type {string} */ (k.agent.kokoro.pendingId), 'Not now');
+  await k.agent.idle();
+  return { grants: (await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), read: (await readResults(k))[0] };
+};
+const NOT_READ = /^Not read: /;
+const READ = /^From "Testville"/;
+
+test("with voice off, annai's card, a tap late in its 20 s, a noise inside them and then a yes after them that comes with no speech start of its own (phone dictation's later result): it begins when it arrives, after the window, so it is no yes", async (t) => {
+  useClock(t);
+  const k = await gateKit(CARD, DICTATION);
+  await voiceOff(k);
+  const t0 = Date.now();
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.agent.kokoro.pendingId !== null && k.agent.state.name === 'waiting');
+  await atS(k, t0, 15);
+  k.agent.tap();
+  await until(() => k.platform.dictationOpened.length === 1);
+  await atS(k, t0, 16);
+  k.platform.dictation.noise(); // a start inside the window, and no words
+  await atS(k, t0, 21);
+  k.platform.dictation.late('Yes.');
+  const { grants: g, read } = await cardEnded(k);
+  assert.deepEqual(g, [], 'no yes');
+  assert.match(read, NOT_READ, 'the line ended the card unanswered, as any line after the window does');
+});
+
+test("with voice off, annai's card, a tap late in its 20 s and a yes after them that has its own speech start: after the window, so no yes (guard: the line's own start was always its time)", async (t) => {
+  useClock(t);
+  const k = await gateKit(CARD, DICTATION);
+  await voiceOff(k);
+  const t0 = Date.now();
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.agent.kokoro.pendingId !== null && k.agent.state.name === 'waiting');
+  await atS(k, t0, 15);
+  k.agent.tap();
+  await until(() => k.platform.dictationOpened.length === 1);
+  await atS(k, t0, 16);
+  k.platform.dictation.noise();
+  await atS(k, t0, 21);
+  k.platform.dictation.say('Yes.');
+  const { grants: g, read } = await cardEnded(k);
+  assert.deepEqual(g, []);
+  assert.match(read, NOT_READ);
+});
+
+test("with voice on, annai's card heard a noise inside its own 20 s; a tap after them opens a new run, and its yes that comes with no speech start at all begins when it arrives, after the window: no yes", async (t) => {
+  useClock(t);
+  const k = await gateKit(CARD, DICTATION);
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.agent.kokoro.pendingId !== null && k.agent.state.name === 'listening');
+  const t0 = Date.now();
+  await atS(k, t0, 5);
+  k.platform.dictation.noise();
+  await atS(k, t0, 25);
+  k.agent.tap();
+  await until(() => k.platform.dictationOpened.length === 2);
+  await atS(k, t0, 27);
+  k.platform.dictation.late('Yes.');
+  const { grants: g, read } = await cardEnded(k);
+  assert.deepEqual(g, [], 'no yes');
+  assert.match(read, NOT_READ);
+});
+
+test("with voice on, a tap cuts annai's card's question and its microphone is the card's; a noise inside the 20 s, a second tap after them and a yes with no speech start of its own: it begins when it arrives, after the window, so no yes", async (t) => {
+  useClock(t);
+  const k = await gateKit(CARD, { voice: { ...DICTATION.voice, playMs: 100 } });
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.voice.speaker.speaking);
+  assert.equal(k.agent.tap(), 'cut');
+  await until(() => k.agent.state.name === 'listening');
+  const t0 = Date.now();
+  await atS(k, t0, 5);
+  k.platform.dictation.noise();
+  await atS(k, t0, 25);
+  k.agent.tap();
+  await atS(k, t0, 27);
+  k.platform.dictation.late('Yes.');
+  const { grants: g, read } = await cardEnded(k);
+  assert.deepEqual(g, [], 'no yes');
+  assert.match(read, NOT_READ);
+});
+
+test("Koe on a chat model, phone dictation: a result with no speech start of its own that arrives while annai says the card's question begins over her voice: it arms nothing and doesn't end the card; the same words after the question grant", async (t) => {
+  useClock(t);
+  const waits = { toolCalls: [{ name: 'wait', input: { seconds: 60 } }] };
+  const koe = { rules: [{ ...KOE_CHAT.rules[0], then: waits }, { match: '', reply: waits, then: waits }] };
+  const k = await gateKit(KOKORO_ASKED, { koe: { type: koe }, voice: { ...DICTATION.voice, playMs: 400 } });
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1, 20_000);
+  await until(() => k.voice.speaker.speaking, 20_000);
+  k.platform.dictation.late('Yes.'); // over the question, with no start of its own
+  await until(() => !k.voice.speaker.speaking, 20_000);
+  await pause(6 * k.agent.secondMs);
+  assert.equal((await readResults(k)).length, 0, 'the card still waits: a line over her voice does not end it');
+  k.platform.dictation.say('Yes.'); // after the question
+  await pause(5 * k.agent.secondMs);
+  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }]);
+  k.agent.interrupt();
+});
+
+test("with voice off, annai's card, a tap late in its 20 s, a click inside them and a recorded yes after them: its start is its own sound's, after the window, so no yes (guard: recording never had the stale start)", async (t) => {
+  useClock(t);
+  const k = await gateKit(CARD, { voice: { speechIn: ['m-hear'], hears: ['Yes.'] } });
+  await voiceOff(k);
+  const t0 = Date.now();
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.agent.kokoro.pendingId !== null && k.agent.state.name === 'waiting');
+  const yesClip = await clip('first-one');
+  await atS(k, t0, 15);
+  k.agent.tap();
+  await until(() => micLog(k).includes('mic open'));
+  await atS(k, t0, 16);
+  k.platform.mic.feed(cat(quiet(0.3), burst(0.12, 0.8), quiet(0.5)), 16_000);
+  await atS(k, t0, 21);
+  k.platform.mic.feed(cat(quiet(0.3), yesClip, quiet(1)), 16_000);
+  const { grants: g, read } = await cardEnded(k);
+  assert.deepEqual(g, []);
+  assert.match(read, NOT_READ);
+});
+
+test("with voice off, annai's card, a tap and a noise inside its 20 s, then a yes with no speech start of its own that arrives inside them, still answers it (guard: a result's arrival counts when it comes inside the window)", async (t) => {
+  useClock(t);
+  const k = await gateKit(CARD, DICTATION);
+  await voiceOff(k);
+  const t0 = Date.now();
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.agent.kokoro.pendingId !== null && k.agent.state.name === 'waiting');
+  await atS(k, t0, 2);
+  k.agent.tap();
+  await until(() => k.platform.dictationOpened.length === 1);
+  await atS(k, t0, 3);
+  k.platform.dictation.noise();
+  await atS(k, t0, 8);
+  k.platform.dictation.late('Yes.');
+  const { grants: g, read } = await cardEnded(k);
+  assert.deepEqual(g.map((/** @type {any} */ e) => e.how), ['voice']);
+  assert.match(read, READ);
+});
+
+test("with voice on, annai's card's own dictation microphone and a yes inside its 20 s that has its own speech start still answers it (guard)", async (t) => {
+  useClock(t);
+  const k = await gateKit(CARD, DICTATION);
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.agent.kokoro.pendingId !== null && k.agent.state.name === 'listening');
+  const t0 = Date.now();
+  await atS(k, t0, 5);
+  k.platform.dictation.say('Yes.');
+  const { grants: g, read } = await cardEnded(k);
+  assert.deepEqual(g.map((/** @type {any} */ e) => e.how), ['voice']);
+  assert.match(read, READ);
+});
+
 test("classic voice: voice turning off inside the card's microphone's own opening, past the check before it: the microphone it opened closes, the dock never says Listening, and the card waits for a tap", async (t) => {
   useClock(t);
   const k = await gateKit([call('read_trip', { trip: TV }), sleep], { voice: { speechIn: ['m-hear'], hears: ['Yes please'] } });
