@@ -5,7 +5,8 @@ behaviour. A line's full story is the entry of the same date and name in `lesson
 a merged line names each of its entries.
 
 When one changes, add the full entry to `lessons-full.md` and its line here, newest last, in the same
-commit. Keep this file under 20 KB: at the cap, merge lines before adding.
+commit. Keep this file under 24 KB (24,576 bytes; the user's pick of 2026-11-12, room for about ten more lines at about
+6K tokens for each builder to read; the shared rule's 20 KB stays for other repos): at the cap, merge lines before adding.
 
 - **2026-10-23 annai's translation TSV: a note part for the translator**: when a file is written by a tool and by people, give each writer a part the other never touches.
 - **2026-10-26 annai: modules pass data, and words are made at display; 2026-10-27 annai: a choice keeps its value and its words apart**: pass data between modules, and make whole sentences only where they are shown; a choice has its value and its words apart from the start, even while they are the same. Never match on words a person reads.
