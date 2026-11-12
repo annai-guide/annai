@@ -1,4 +1,4 @@
-import { Agent, GATHER, isTheirs, isForUser, reminds, checkCard, checkAsk, CAPS, capped, soundStuck } from './loop.js';
+import { Agent, GATHER, isTheirs, isForUser, checkCard, checkAsk, CAPS, capped, soundStuck } from './loop.js';
 import { TALK_TAG, KOE_TAG } from './log.js';
 import { asksOrNotes, quote, cardText, escapeTags, newNonce, koeLine, asideLabel, saidWithout, wrapNote, theirs, conversationLines } from './blocks.js';
 import { linesOf, STOPPED } from './transcript.js';
@@ -296,7 +296,6 @@ export class Halves {
         ended: (t) => this.#kokoroEnded(t),
         hushed: () => this.live.voiced,
         hold: (wakes) => this.#hold(wakes),
-        cardEnded: () => this.koe.cardEnded(),
       },
     });
     this.koe = new Agent({
@@ -323,9 +322,7 @@ export class Halves {
         replied: (names) => { this.#asking = names.includes('tell_kokoro'); },
         // A call that saw "Kokoro was stopped": what Koe asks from now on, it asks knowing.
         calling: (context) => { if (context && context.to >= this.#stopped.seq) this.#stopped.on = false; },
-        // Koe answers at once (GATHER), except with only reminders to say while annai's card listens for the user's answer: they wait for it to end.
-        hold: (wakes) => (wakes.some(reminds) && !wakes.some((w) => w.kind === 'note' || isTheirs(w)) && this.kokoro.cardListens ? Infinity : 0),
-        cardOpen: () => this.kokoro.cardListens,
+        hold: () => 0, // Koe answers at once (GATHER)
         paused: () => !this.#kokoroCut,
         failed: (why, e) => {
           const both = this.#down('koe', why, e);
