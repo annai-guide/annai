@@ -1,10 +1,10 @@
 // Heard whole from the provider's own "all made": her turn counts as heard whole once all of it is made (Gemini's generationComplete, the
-// protocol's `made`) and all of it played, its sound begun. So the user answering once her sound has played out, before the provider ends her
-// turn, gets no silent copy of the note they heard; and a tap or a close in a pause of her sound, while the provider still makes the rest, is a
-// cut, whose rest is shown. A provider that never says (its type has no `made`) keeps the rules from before. Real Gemini's sound ends in a quiet
-// tail that the player still holds, so a user answering at once, in the tail, still gets the copy: an open case (docs/limitations.md), pinned
-// below. Timings are real Gemini's (2026-11-12): generationComplete right after the last audio chunk, turnComplete 0.19 to 0.63 s after her last
-// audible sound, about when the player's queue would empty, pauses up to 1.23 s. Lines and places are synthetic.
+// protocol's `made`) and played past her last loud sample (the end of her last 20 ms frame at -40 dBFS rms or above), its sound begun. So the user
+// answering once her sound has played out, or in the quiet tail real Gemini's sound ends in, before the provider ends her turn, gets no silent
+// copy of the note they heard; and a tap or a close in a pause of her sound, while the provider still makes the rest, is a cut, whose rest is
+// shown. A provider that never says (its type has no `made`) keeps the rules from before. Timings are real Gemini's (2026-11-12):
+// generationComplete right after the last audio chunk, turnComplete 0.19 to 0.63 s after her last audible sound, about when the player's queue
+// would empty, a quiet tail of 0.22 to 0.56 s, pauses up to 1.23 s. Lines and places are synthetic.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { until } from './agent-kit.js';
@@ -74,7 +74,7 @@ async function answersAtOnce(k, at, soundMs) {
 
 test('the user answers once all of her sound has played, before the provider ends her turn 600 ms later: the note is heard whole, and no silent copy of it is shown', async () => {
   // A stand-in whose sound has no quiet tail and whose turnComplete comes 600 ms after it (as long as the slowest of real Gemini's after its audible
-  // end, 0.63 s): their turn begins once all of it has played and well inside that, so the window all made opens is the whole of it.
+  // end, 0.63 s): their turn begins once all of it has played and well inside that.
   const [k, at] = await noteSaid({ pace: 1.4 });
   try {
     const after = await answersAtOnce(k, at, 1500);
@@ -96,26 +96,48 @@ const zeros = (seconds) => new Uint8Array(Math.round(24_000 * seconds) * 2);
 /** @param {Uint8Array} a @param {Uint8Array} b */
 const join = (a, b) => { const x = new Uint8Array(a.length + b.length); x.set(a); x.set(b, a.length); return x; };
 
-// The shape of real Gemini's reply: her last loud sample comes about 0.3 s before the end of her sound (a quiet tail, which the player still holds),
-// and the provider's end at the sound's real-time end. A user answering as her last word ends begins in the tail, with her sound still queued: a
-// cut, as before, so the note is shown again and her line is written ✂. An open case: docs/limitations.md, "A note she just finished can also appear
-// as a silent card when the user answers at once". This test says what happens today; the next version's rule ("played past her last loud sample")
-// turns it round.
-test('the user answers in the quiet tail of her sound, as real Gemini\'s ends: a cut, so the note is shown again as a silent card, and her line is written cut (open case)', async () => {
-  const [k, at] = await noteSaid({ note: { said: SAID, audio: join(tone(1.5), zeros(0.3)) }, pace: 1 });
+/** 24 kHz 16-bit PCM at a steady level, seconds long, as loud as the dBFS says (rms). @param {number} seconds @param {number} dbfs */
+const steady = (seconds, dbfs) => new Uint8Array(new Int16Array(Math.round(24_000 * seconds)).fill(Math.round(10 ** (dbfs / 20) * 0x8000)).buffer);
+
+// The shape of real Gemini's reply: her last loud sample comes about 0.3 s before the end of her sound (a quiet tail, median 300 ms, which the
+// player still holds), and the provider's end at the sound's real-time end. A user answering as her last word ends begins in the tail, with her
+// sound still queued, but nothing she has left to say: it is heard whole, so no card, and her line is written whole (50 of 50 such real answers
+// got a card and a ✂ line before). The tail here is 0.6 s, longer than real ones (220 to 560 ms), so that a slow machine keeps the start in it.
+test('the user answers in the quiet tail of her sound, as real Gemini\'s ends: past her last loud sample, so the note is heard whole, no silent copy of it is shown', async () => {
+  const [k, at] = await noteSaid({ note: { said: SAID, audio: join(tone(1.5), zeros(0.6)) }, pace: 1 });
   try {
     const after = await answersAtOnce(k, at, 1500);
-    assert.ok(after < 200, `their turn began ${after} ms after her last loud sample, inside the 300 ms tail`);
+    assert.ok(after < 550, `their turn began ${after} ms after her last loud sample, inside the 600 ms tail`);
     await soon(async () => (await lines(k)).some(([text]) => text === ANSWER.said), 8000);
     await wait(500);
     await k.agent.idle();
-    assert.deepEqual(await shown(k), [[FOR_USER, false]], 'the note shows again, though they heard it');
-    assert.equal(await wholeNotes(k), 0);
-    assert.ok((await lines(k)).some(([text, cut]) => cut && /^The fuel station ahead is open until \w+✂$/.test(String(text))), JSON.stringify(await lines(k)));
+    assert.deepEqual(await shown(k), [], 'nothing shown: they heard it');
+    assert.equal(await wholeNotes(k), 1, 'her line written whole, once');
+    assert.deepEqual(asks(k), []);
+    assert.equal(wentIn(k), 1);
   } finally {
     await k.done();
   }
 });
+
+// The level is -40 dBFS rms for a frame of 20 ms. A last syllable under it that the user begins in counts as heard (they heard all but its fade);
+// one at or over it, still to play, is a cut.
+for (const [what, dbfs, heardWhole] of /** @type {const} */ ([['a soft last syllable (-46 dBFS)', -46, true], ['a last syllable over the level (-34 dBFS)', -34, false]])) {
+  test(`the user begins in ${what} of her note: ${heardWhole ? 'heard whole, no card' : 'a cut, so the note is shown'}`, async () => {
+    const [k, at] = await noteSaid({ note: { said: SAID, audio: join(tone(1.2), join(steady(0.6, dbfs), zeros(0.1))) }, pace: 1 });
+    try {
+      const after = await answersAtOnce(k, at, 1200);
+      assert.ok(after < 500, `their turn began ${after} ms after her loud words, inside the 600 ms syllable`);
+      await soon(async () => (await lines(k)).some(([text]) => text === ANSWER.said), 8000);
+      await wait(500);
+      await k.agent.idle();
+      assert.deepEqual(await shown(k), heardWhole ? [] : [[FOR_USER, false]]);
+      assert.equal(await wholeNotes(k), heardWhole ? 1 : 0);
+    } finally {
+      await k.done();
+    }
+  });
+}
 
 test('a tap in a pause of her sound, the provider still making the rest of the note: a cut, and the note is shown, silently', async () => {
   const [k, at] = await noteSaid({ note: PAUSED });

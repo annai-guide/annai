@@ -122,6 +122,7 @@ const SHELL = [
   '/src/core/koe/context.js',
   '/src/core/koe/instructions.js',
   '/src/core/koe/live.js',
+  '/src/core/koe/loud.js',
   '/src/core/koe/tools.js',
   '/src/core/l10n-list.js',
   '/src/core/l10n.js',

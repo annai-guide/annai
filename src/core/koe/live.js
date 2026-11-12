@@ -11,6 +11,7 @@ import { COOLDOWN_MS } from '../llm/fallback.js';
 import { strayLanguage } from '../languages.js';
 import { joinPcm } from '../voice/pcm.js';
 import { VoiceLevel } from '../voice/level.js';
+import { newLoud, pushLoud, loudMs } from './loud.js';
 import { t } from '../l10n.js';
 
 /**
@@ -18,10 +19,11 @@ import { t } from '../l10n.js';
  * @typedef {import('../realtime/open.js').LiveSession} LiveSession
  * @typedef {import('../agent/loop.js').Wake} Wake
  * @typedef {{ said: string, bytes: number, held: Uint8Array[], stream: import('../voice/platform.js').PlayerStream | null, spoken: boolean, wordAt: number, soundAt: number, alone?: boolean,
- *   tools: boolean, cut: boolean, whole: boolean, logged: boolean, goesOn: boolean, calls: number, done: boolean, made?: boolean, stalled?: boolean, audible?: boolean, endBy?: any }} Turn  one of Koe's; held: its sound until a real word;
+ *   tools: boolean, cut: boolean, whole: boolean, logged: boolean, goesOn: boolean, calls: number, done: boolean, loud: import('./loud.js').Loud, made?: boolean, playedMs?: number, stalled?: boolean, audible?: boolean, endBy?: any }} Turn  one of Koe's; held: its sound until a real word;
  *   stalled: its sound stopped coming out, so its stream was let go, and its words are said by the speech voice;
  *   goesOn: it called a tool it speaks after; calls: its tool calls not answered yet; done: the provider ended it; made: the provider said all of it is made
- *   (its `made`), so no more of it comes, unless it goesOn (a call answered without `silent` brings more); whole: cut, but all of it was heard (#whole) or written; audible: its sound has started playing, so its words may show; endBy: the timer that ends it if no turnComplete comes (#endLater);
+ *   (its `made`), so no more of it comes, unless it goesOn (a call answered without `silent` brings more); loud: where its last loud frame of sound ends (#whole);
+ *   playedMs: how much was heard, once its stream was stopped (#heardMs); whole: cut, but all of it was heard (#whole) or written; audible: its sound has started playing, so its words may show; endBy: the timer that ends it if no turnComplete comes (#endLater);
  *   soundAt: when its sound began; alone: a call alone, answered silently, which #tool let go of
  * @typedef {{ sent: number, spoke: boolean, timer: any, idle?: boolean }} Mark  an urgent note's (LiveKoe's #urgent); idle: what waited, going in with nothing before it, so its turn is the next to end
  * @typedef {{ text: string, told?: boolean }} Waiting  what waits to go in (LiveKoe's #notes); told: annai's own line, which the log holds none of
@@ -124,7 +126,7 @@ export const realWord = (text) => /[\p{L}\p{N}]/u.test(cleanSaid(text));
 /** @param {Uint8Array} b 16-bit PCM */
 const samples = (b) => new Int16Array(b.slice(0, b.length & ~1).buffer);
 /** @returns {Turn} */
-const newTurn = () => ({ said: '', bytes: 0, held: [], stream: null, spoken: false, wordAt: 0, soundAt: 0, tools: false, cut: false, whole: false, logged: false, goesOn: false, calls: 0, done: false });
+const newTurn = () => ({ said: '', bytes: 0, held: [], stream: null, spoken: false, wordAt: 0, soundAt: 0, tools: false, cut: false, whole: false, logged: false, goesOn: false, calls: 0, done: false, loud: newLoud() });
 /** @returns {Hearing} */
 const hearing = () => ({ id: newId('h'), text: '', at: Date.now(), ms: 0, pcm: [], logged: null });
 
@@ -1226,7 +1228,9 @@ export class LiveKoe {
       const t = (this.#t ??= newTurn());
       t.bytes += e.data.length;
       t.soundAt ||= Date.now();
-      if (t.stream) t.stream.push(samples(e.data));
+      const pcm = samples(e.data);
+      if (this.#makes) pushLoud(t.loud, pcm, this.#rate);
+      if (t.stream) t.stream.push(pcm);
       else if (!t.cut) t.held.push(e.data);
       if (t.endBy) this.#endLater(t);
     } else if (e.type === 'said' && !this.#t && this.#trail) {
@@ -1458,16 +1462,24 @@ export class LiveKoe {
   }
 
   /**
-   * Whether her turn, cut now, was heard whole (spec §10.8, What is logged): the one place that decides it. All of it played, its sound begun
-   * (no sound yet is not all played), and all of it made: the provider said so (made, and no call it speaks after: more of that turn comes once
-   * annai answers one) or ended the turn, so a pause in her sound while the provider still makes the rest is a cut, and a turn cut with its sound
-   * still playing stays one. With a provider that never says (its type has no `made`), all played is whole, as before it could say, except as the
-   * user's turn begins (begins), where its notes are shown.
+   * Whether her turn, cut now, was heard whole (spec §10.8, What is logged): the one place that decides it. Its sound begun (no sound yet is not
+   * heard), and all of it made: the provider said so (made, and no call it speaks after: more of that turn comes once annai answers one) or ended
+   * the turn, so that nothing more of it comes and a pause in her sound while the provider still makes the rest is a cut; and played past the end
+   * of her last loud frame (LOUD_DBFS), so the quiet tail her player still holds after her last word is no sound she has left to say, while a turn
+   * cut with her sound still to play stays one. It stops her sound to know how much was played (#heardMs): every caller cuts her next. With a
+   * provider that never says (its type has no `made`), all played is whole, as before it could say, except as the user's turn begins (begins),
+   * where its notes are shown.
    * @param {Turn | null} t @param {boolean} [begins]
    */
   #whole(t, begins = false) {
-    if (!t?.stream || !t.bytes || t.stream.queued()) return false;
-    return this.#makes ? Boolean((t.made && !t.goesOn) || t.done) : !begins;
+    if (!t?.stream || !t.bytes) return false;
+    if (!this.#makes) return !begins && !t.stream.queued();
+    return Boolean((t.made && !t.goesOn) || t.done) && this.#heardMs(t) >= loudMs(t.loud, this.#rate);
+  }
+
+  /** How much of her sound was heard: her stream stops (what the cut that follows does too), and what it says is kept. @param {Turn} t @returns {number} ms */
+  #heardMs(t) {
+    return (t.playedMs ??= t.stream ? t.stream.stop().playedMs : 0);
   }
 
   /**
@@ -1478,7 +1490,7 @@ export class LiveKoe {
   #stop(t, shown = false) {
     if (t.stream && !t.cut) t.whole = this.#whole(t);
     t.cut = true;
-    if (t.stream) return t.stream.stop().playedMs; // its done writes it
+    if (t.stream) return this.#heardMs(t); // its done writes it
     if (this.#waits(t)) {
       t.whole = t.done;
       this.#said(t, shown ? null : 0);
