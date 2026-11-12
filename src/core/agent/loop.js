@@ -77,10 +77,10 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  *   cacheAt: number }} Frozen
  *   what a turn's requests keep from its first step to its end (the keep-reasoning design §3): the system text (rebuilt only from a new snapshot,
  *   after housekeeping), the tools and provider tools, the reasoning level, the half's rule for its messages, and where the previous turn began
- * @typedef {{ id: string, kind: 'ask' | 'wait', resolve: (v: Got) => void, listening?: boolean, hold?: () => void, arm?: () => void, tool?: boolean, byHand?: boolean,
+ * @typedef {{ id: string, kind: 'ask' | 'wait', resolve: (v: Got) => void, listening?: boolean, hold?: () => void, arm?: () => void, by?: number, tool?: boolean, byHand?: boolean,
  *   ask?: { yes: (heard: string) => string | null, no: (heard: string) => string | null, open: boolean, from: number, until: number, wake: string, answer: string, scope: string,
  *     heard: Map<string, AskLine>, armed: { line: AskLine, chosen: string, yes: boolean } | null, settle: any, speaking: boolean } }} Pending
- *   waiting for the user; listening: an answer may be spoken; hold and arm stop and start the silence limit; tool: the wait tool's; byHand: set once this
+ *   waiting for the user; listening: an answer may be spoken; hold and arm stop and start the silence limit; by: when a tap's listening ends (#limitTap), set once per tap; tool: the wait tool's; byHand: set once this
  *   half's own listening for its answer is over (#remindWaiting); ask: annai's own card's (confirm):
  *   from, until: its window; answer: its call's id, its heard lines' mark; armed: the newest listed word; speaking: someone is speaking now (confirmSpeech)
  * @typedef {{ id: string, inside: boolean, her?: boolean, kept?: boolean, text?: string, h?: Heard, gate?: string, taken?: boolean }} AskLine  heard while annai's card waits: inside: begun in its
@@ -3071,9 +3071,7 @@ export class Agent {
             await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...this.#chose() }, texts: [['text', got.chosen]] });
             return `The user chose: ${got.chosen}`;
           }
-          const wrote = typedAs(got);
-          await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...wrote.data }, texts: [['text', got.text ?? '']] });
-          return wrote.said;
+          return this.#answer('', got, call, ''); // typed, or said (a tap held voice on and opened the microphone for it), as her question aloud is answered
         },
       },
       {
@@ -3153,6 +3151,7 @@ export class Agent {
       p.listening = false; // a wait for an answer goes on, for typing
       p.arm?.(); // speech held its silence limit, and the microphone just closed: no end of that speech will start it again
       this.#waiting(p.kind);
+      this.#noted(); // a note held behind that listening is taken now: nothing listens for it to end
     }
   }
 
@@ -3334,7 +3333,7 @@ export class Agent {
     if (got.heard || got.text !== undefined || got.chosen !== undefined || got.stopped) {
       if (got.chosen === undefined) return this.#answer('', got, call, '');
     } else {
-      if (this.#ear?.owner === 'turn') this.#closeEar();
+      if (this.#ear) this.#closeEar(); // whatever opened it: a tap that cut her off opened this one, and the question's 8 s were its limit too
       got = await this.#waitFor(call, 'ask', 0);
     }
     if (got.stopped) return { content: STOPPED, isError: true };
@@ -3729,11 +3728,41 @@ export class Agent {
       if (p?.kind === 'ask' || p?.arm || p?.tool) {
         p.listening = true; // an ask's answer may be spoken, a wait's too, and one voice going off stopped listening for
         if (this.#half.voice()) this.#voiceNow = true; // the tap holds voice on for this exchange: her reply to the answer is said
+        if (p.kind === 'ask' && !p.ask) this.#limitTap(p);
       }
       if (this.#busy) return; // she is speaking or working: the window serves her turn
       this.#setState('listening');
       this.#armQuiet();
     });
+  }
+
+  /**
+   * A tap's listening for her question, which waits by hand with no time of its own, gets the silence limit any listening has (LISTEN_S, held while someone speaks, by
+   * hold and arm as #listenFor's): at its end the microphone closes and the question waits for a tap or typing again, so a note for the user is no longer held behind
+   * an answer that may never come (#noted). Her turn is busy, so #armQuiet would never close it. @param {Pending} p
+   */
+  #limitTap(p) {
+    if (!p.arm) {
+      /** @type {ReturnType<typeof setTimeout> | undefined} */
+      let timer;
+      const resolve = p.resolve;
+      p.resolve = (v) => { clearTimeout(timer); resolve(v); };
+      p.hold = () => clearTimeout(timer);
+      p.by = 0; // marks the limit as this tap's own: set below
+      // arm waits for what is left of the tap's limit: a noise that came and went (arm again) neither ends it nor restarts it, as #listenFor's.
+      p.arm = () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          if (this.#pending !== p || !p.listening) return;
+          p.listening = false;
+          this.#closeEar();
+          this.#waiting(p.kind);
+          this.#noted();
+        }, Math.max(0, /** @type {number} */ (p.by) - Date.now()));
+      };
+    }
+    if (p.by !== undefined) p.by = Date.now() + LISTEN_S * this.secondMs; // each tap starts its own 8 s; her question aloud's listening (#listenFor) keeps its own deadline
+    p.arm();
   }
 
   /** A tap's window that hears nothing closes after the silence limit; the one after she spoke, that long after her last words. */
