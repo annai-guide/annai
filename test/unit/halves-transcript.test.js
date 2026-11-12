@@ -204,6 +204,25 @@ test('heard words written down while a reply was being made follow it with their
   ]);
 });
 
+test("a reminder annai showed while a question to the user waited says why and that the user has it, in every half, and a reminder shown for another reason reads as before", async () => {
+  const store = createMemoryStore();
+  const one = new Transcript();
+  const koe = new Transcript({ half: 'koe', nonce: NONCE });
+  /** @param {Parameters<typeof record>[2]} ev */
+  const log = async (ev) => {
+    const e = await record(store, SCOPE, ev);
+    const r = await resolveEvent(store, e);
+    for (const t of [one, koe]) t.apply(e, r);
+  };
+  await log({ type: 'reminder', actor: 'system', data: { watch: 'x', text: 'Sunset', waiting: true } });
+  await log({ type: 'reminder', actor: 'system', data: { watch: 'y', text: 'Leave', waiting: true, aloud: true } });
+  await log({ type: 'reminder', actor: 'system', data: { watch: 'z', text: 'Pack', unsaid: true } });
+  const waiting = (/** @type {string} */ said, aloud = false) => `[annai] Shown${aloud ? ' and said aloud' : ''} by annai itself, since it came due while a question to the user was waiting for their answer: ${said} The user has it; there is nothing more to tell them about it.`;
+  const packed = (/** @type {string} */ said) => `[annai] Shown by annai itself, since your turn ended without telling the user: ${said}`;
+  assert.deepEqual(texts(one).flat().filter((x) => x.startsWith('[annai]')), [waiting('"Sunset"'), waiting('"Leave"', true), packed('"Pack"')]);
+  assert.deepEqual(texts(koe).flat().filter((x) => x.startsWith('[annai]')), [waiting('"Sunset"'), waiting('"Leave"', true), packed('"Pack"')]);
+});
+
 test("a conversation from before the split reads exactly as it did; Kokoro's rules differ only in quoting annai's lines; Koe knows what was said", async () => {
   const store = createMemoryStore();
   const one = new Transcript();

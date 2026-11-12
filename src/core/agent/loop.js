@@ -52,7 +52,8 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string, fallbacks?: Reminder[], aloud?: boolean, window?: boolean,
  *   logged?: boolean, from?: 'koe' | 'kokoro', note?: string, mode?: 'append' | 'immediate', again?: boolean, at?: number, input?: boolean, why?: string,
  *   call?: { name: string, input: any }, seq?: number, watched?: boolean, forUser?: string, retold?: boolean, files?: string[], titles?: string[],
- *   by?: { name: string, first: string | null, tried: boolean } | null, handed?: import('../handover.js').HandedFile[], handover?: string, recap?: string, claim?: string, chose?: boolean, fromScope?: string, turn?: string, urgent?: boolean }} Wake
+ *   by?: { name: string, first: string | null, tried: boolean } | null, handed?: import('../handover.js').HandedFile[], handover?: string, recap?: string, claim?: string, chose?: boolean, fromScope?: string, turn?: string, urgent?: boolean, shown?: boolean }} Wake
+ *   shown: annai showed the user its reminders itself while her turn waited on their answer (#remindWaiting): her line for the wake says so;
  *   by: a note's, the model that wrote it; turn: a note's, the sender's turn it came from (its wake id)
  *   handed, handover: a hand-over's files and its id (the user's message with files, handover.js): the turn that takes it carries the id;
  *   recap: what Shiori said of a trip before, written into the trip she started or opened for a hand-over; fromScope: a hand-over's copy
@@ -230,6 +231,9 @@ export const isTheirs = (w) => w.kind === 'user' || w.kind === 'choice' || (w.ki
 const owesAnswer = (w) => isTheirs(w) && !w.window;
 /** A wake annai started by itself, no line or act of the user's: GPS turned on, a reminder or watch firing, a catch-up, a plugin's. @param {Wake} w */
 const byAnnai = (w) => w.kind === 'live' || w.kind === 'trigger' || w.kind === 'catch-up' || w.kind === 'plugin';
+/** What a wake tells her: its words, and that annai showed the user its reminder already, when it did (#remindWaiting). @param {Wake} w */
+const told = (w) => (w.shown ? `${w.text} ${SHOWN}` : w.text);
+const SHOWN = /* en */ '(annai has already shown the user its reminder.)';
 /** Her calls that talk to the user and then listen or wait for them. */
 const TALKS = ['speak', 'ask', 'wait'];
 
@@ -837,8 +841,8 @@ export class Agent {
     if (p?.kind !== 'ask') return;
     const queued = this.#queue.filter((w) => w.scope === this.scope && w.fallbacks?.length);
     const list = [...(this.#owedNow?.() ?? []), ...queued.flatMap((w) => w.fallbacks ?? [])];
-    for (const w of queued) w.fallbacks = [];
-    if (list.length) this.remind(list, this.scope, p.listening || (p.ask && !p.ask.from) ? { silent: true } : {}).catch(() => {});
+    for (const w of queued) Object.assign(w, { fallbacks: [], shown: true });
+    if (list.length) this.remind(list, this.scope, { waiting: true, ...(p.listening || (p.ask && !p.ask.from) ? { silent: true } : {}) }).catch(() => {});
   }
 
   /** @param {Wake} w */
@@ -1858,7 +1862,8 @@ export class Agent {
    * Reminders annai says or shows by itself (spec §11.3, §17): a card, the words aloud with voice on, and an entry
    * in the conversation they belong to. They are never in Shiori's voice (§16.1).
    * @param {Reminder[]} list @param {string} [scope] their conversation; the open one if not given
-   * @param {{ unsaid?: boolean, silent?: boolean, aloud?: boolean }} [o] unsaid: she answered, but her turn ended without telling the user; silent: shown, never said;
+   * @param {{ unsaid?: boolean, silent?: boolean, aloud?: boolean, waiting?: boolean }} [o] unsaid: she answered, but her turn ended without telling the user; waiting: it came due
+   *   while a question to the user waited for their answer; silent: shown, never said;
    *   aloud: said even with a live session's voice in use, which holds back and doesn't listen meanwhile (what a session failed to say)
    */
   async remind(list, scope = this.#target ?? ME, o = {}) {
@@ -1868,7 +1873,7 @@ export class Agent {
       if (!text) continue;
       // Said with voice on, whichever conversation it is for (choice 3), after whatever is being said (the speaker queues), never over a live session.
       const aloud = Boolean(this.voice?.on) && (o.aloud || !this.#half.hushed?.()) && !o.silent;
-      const ev = { type: 'reminder', actor: 'system', data: { watch: String(r.watch ?? ''), text, ...(r.answer ? { answer: true } : {}), ...(r.plan ? { plan: r.plan } : {}), ...(aloud ? { aloud: true } : {}), ...(o.unsaid ? { unsaid: true } : {}) } };
+      const ev = { type: 'reminder', actor: 'system', data: { watch: String(r.watch ?? ''), text, ...(r.answer ? { answer: true } : {}), ...(r.plan ? { plan: r.plan } : {}), ...(aloud ? { aloud: true } : {}), ...(o.unsaid ? { unsaid: true } : {}), ...(o.waiting ? { waiting: true } : {}) } };
       if (open && scope === this.scope) await this.#log(ev);
       else {
         const e = await record(this.store, scope, { now: this.#stamp(scope), ...ev });
@@ -1934,7 +1939,7 @@ export class Agent {
     if (w.kind === 'heard') return 'the user spoke';
     /* en */
     if (w.kind === 'plugin') return `the plugin ${w.plugin ?? ''}: ${w.text}`;
-    return w.text;
+    return told(w);
   }
 
   /**
@@ -1944,7 +1949,7 @@ export class Agent {
    */
   async #logWakes(wakes, wakeId, meanwhile, log = (ev) => this.#log(ev), trip = this.trip) {
     const reasonOf = (/** @type {Wake} */ w) => ({
-      kind: w.kind, text: w.text, ...(w.plugin ? { plugin: w.plugin } : {}), ...(w.files?.length ? { files: w.files } : {}), ...(w.titles?.length ? { titles: w.titles } : {}),
+      kind: w.kind, text: told(w), ...(w.plugin ? { plugin: w.plugin } : {}), ...(w.files?.length ? { files: w.files } : {}), ...(w.titles?.length ? { titles: w.titles } : {}),
       ...(w.handover ? { handover: w.handover } : {}), ...(w.recap ? { recap: w.recap } : {}),
     });
     const theirs = (/** @type {Wake} */ w) => w.kind === 'user' || w.kind === 'choice' || w.kind === 'heard';

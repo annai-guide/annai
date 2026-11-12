@@ -345,7 +345,10 @@ export class Transcript {
       // A reminder annai showed (and said) by itself, the model out of reach or her turn silent (spec §11.3): she knows, so she doesn't repeat it.
       if (!texts.text) return;
       const said = this.half === 'one' ? `"${texts.text}"` : quote(texts.text);
-      /* en */ this.#line([{ type: 'text', text: `[annai] Shown${d.aloud ? ' and said aloud' : ''} by annai itself, since ${d.unsaid ? 'your turn ended without telling the user' : "you couldn't be reached"}: ${said}` }]);
+      const why = d.waiting ? 'it came due while a question to the user was waiting for their answer' : d.unsaid ? 'your turn ended without telling the user' : "you couldn't be reached";
+      const user = d.waiting ? ' The user has it; there is nothing more to tell them about it.' : '';
+      /* en */
+      this.#line([{ type: 'text', text: `[annai] Shown${d.aloud ? ' and said aloud' : ''} by annai itself, since ${why}: ${said}${user}` }]);
     } else if (e.type === 'tool.result' && this.half === 'kokoro' && d.half === 'koe') {
       // What Koe changed: Kokoro knows, and owes nothing for it.
       const line = blockFor(e, texts);
