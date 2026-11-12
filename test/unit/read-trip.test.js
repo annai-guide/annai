@@ -2260,3 +2260,23 @@ test("with Koe set, a reminder due while Kokoro's card waits is Koe's to say, as
   await k.agent.idle();
   assert.deepEqual(await reminders(k), { filed: [], cards: 0 });
 });
+
+for (const [card, first] of /** @type {[string, any][]} */ ([['read_trip', { name: 'read_trip', input: { trip: TV } }], ['open_trip', { name: 'open_trip', input: { trip: TV, recap: 'We were looking for the ramen place.' } }]])) {
+  test(`${card}'s card that isn't her reply's last call: another conversation opened while it waits lets the turn go, as when it is last; no "picks it up", nothing taken up, no second card`, async (t) => {
+    useClock(t);
+    const k = await gateKit([{ toolCalls: [first, { name: 'speak', input: { text: 'One moment.' } }] }, say('Back here.')]);
+    k.agent.send('Where did we eat in Testville?');
+    await until(() => k.asks.length === 1);
+    await k.agent.open(await createTrip(k.ws, { title: 'Elsewhere' }));
+    await k.agent.idle();
+    const results = (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(k.trip, { types: ['tool.result'] }))).map((/** @type {any} */ e) => [e.data.name, e.data.content]);
+    assert.deepEqual(results[0], [card, 'Not answered: the user opened another conversation; what they say next may answer it.']);
+    assert.deepEqual(await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(k.trip, { types: ['paused'] })), [], 'no "picks it up"');
+    assert.equal(k.notices.filter((/** @type {any} */ n) => n.toast).length, 0, 'no toast');
+    const before = k.requests.length;
+    await k.agent.open(k.trip);
+    await k.agent.idle();
+    assert.equal(k.requests.length, before, 'nothing taken up on return');
+    assert.equal(k.asks.length, 1, 'the card is not asked again');
+  });
+}
