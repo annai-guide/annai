@@ -3288,6 +3288,96 @@ test("with voice on, annai's card's own dictation microphone and a yes inside it
   assert.match(read, READ);
 });
 
+// Phone dictation's start is the browser's, once per run, and a sound can own it: a speech start that never gets an end is no start of any later result.
+// A dictation result begins when it arrives (round 2 of the tap-ends review).
+test("with voice off, annai's card, a tap late in its 20 s and a sound inside them that starts like speech and gives nothing after it, then a yes after them with no speech start of its own: it begins when it arrives, after the window, so no yes", async (t) => {
+  useClock(t);
+  const k = await gateKit(CARD, DICTATION);
+  await voiceOff(k);
+  const t0 = Date.now();
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.agent.kokoro.pendingId !== null && k.agent.state.name === 'waiting');
+  await atS(k, t0, 15);
+  k.agent.tap();
+  await until(() => k.platform.dictationOpened.length === 1);
+  await atS(k, t0, 16);
+  k.platform.dictation.begin(); // a start with no end
+  await atS(k, t0, 21);
+  k.platform.dictation.late('Yes.');
+  const { grants: g, read } = await cardEnded(k);
+  assert.deepEqual(g, [], 'no yes');
+  assert.match(read, NOT_READ);
+});
+
+test("with voice on, annai's card's own dictation microphone, a sound inside its 20 s that starts like speech and gives nothing after it, then a yes seven seconds after them with no start of its own: it begins when it arrives, so no yes", async (t) => {
+  useClock(t);
+  const k = await gateKit(CARD, DICTATION);
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.agent.kokoro.pendingId !== null && k.agent.state.name === 'listening');
+  const t0 = Date.now();
+  await atS(k, t0, 10);
+  k.platform.dictation.begin();
+  await atS(k, t0, 27);
+  k.platform.dictation.late('Yes.');
+  const { grants: g, read } = await cardEnded(k);
+  assert.deepEqual(g, [], 'no yes');
+  assert.match(read, NOT_READ);
+});
+
+test("Koe on a chat model, phone dictation (its microphone stays open past the card's 20 s): a start that never got an end inside the window and a yes forty seconds after the question with no start of its own: it begins when it arrives, so no yes", async (t) => {
+  useClock(t);
+  const waits = { toolCalls: [{ name: 'wait', input: { seconds: 60 } }] };
+  const koe = { rules: [{ ...KOE_CHAT.rules[0], then: waits }, { match: '', reply: waits, then: waits }] };
+  const k = await gateKit(KOKORO_ASKED, { koe: { type: koe }, voice: { ...DICTATION.voice, playMs: 400 } });
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1, 20_000);
+  await until(() => k.voice.speaker.speaking, 20_000);
+  await until(() => !k.voice.speaker.speaking, 20_000);
+  const t0 = Date.now();
+  await atS(k, t0, 5);
+  k.platform.dictation.begin();
+  await atS(k, t0, 40);
+  k.platform.dictation.late('Yes.');
+  await pause(8 * k.agent.secondMs);
+  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [], 'no yes');
+  k.agent.interrupt();
+});
+
+test("with voice on, annai's card's own dictation microphone: a yes inside the 20 s that has its own start still answers it after an earlier start that never got an end (guard)", async (t) => {
+  useClock(t);
+  const k = await gateKit(CARD, DICTATION);
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.agent.kokoro.pendingId !== null && k.agent.state.name === 'listening');
+  const t0 = Date.now();
+  await atS(k, t0, 4);
+  k.platform.dictation.begin();
+  await atS(k, t0, 8);
+  k.platform.dictation.say('Yes.');
+  const { grants: g, read } = await cardEnded(k);
+  assert.deepEqual(g.map((/** @type {any} */ e) => e.how), ['voice']);
+  assert.match(read, READ);
+});
+
+test("Koe on a chat model, recording: a word begun while annai says the card's question and still being said when it ends is over her voice when the microphone closes under it (voice goes off): it arms nothing, and the card still waits", async (t) => {
+  useClock(t);
+  const waits = { toolCalls: [{ name: 'wait', input: { seconds: 60 } }] };
+  const koe = { rules: [{ ...KOE_CHAT.rules[0], then: waits }, { match: '', reply: waits, then: waits }] };
+  const k = await gateKit(KOKORO_ASKED, { models: [{ input: ['text', 'image', 'audio'] }], koe: { type: koe, input: ['text', 'image', 'audio'] }, voice: { speechIn: ['send-audio', 'dictation'], playMs: 400 } });
+  const llmCall = k.llm.call.bind(k.llm);
+  k.llm.call = /** @type {any} */ (async (/** @type {any} */ c) => (c.record?.tag !== 'transcribe' ? llmCall(c) : { reply: { text: 'Okay', parts: [] }, modelId: c.prefer }));
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1, 20_000);
+  await until(() => k.voice.speaker.speaking, 20_000);
+  k.platform.mic.feed(cat(quiet(0.3), await clip('first-one')), 16_000); // begun over the question, not ended
+  await until(() => !k.voice.speaker.speaking, 20_000);
+  await pause(0.5 * k.agent.secondMs);
+  await voiceOff(k); // the microphone closes under the word, her voice not playing
+  await pause(8 * k.agent.secondMs);
+  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [], 'no yes: it began over her voice');
+  assert.equal(k.agent.kokoro.pendingId !== null, true, 'the card still waits');
+  k.agent.interrupt();
+});
+
 test("classic voice: voice turning off inside the card's microphone's own opening, past the check before it: the microphone it opened closes, the dock never says Listening, and the card waits for a tap", async (t) => {
   useClock(t);
   const k = await gateKit([call('read_trip', { trip: TV }), sleep], { voice: { speechIn: ['m-hear'], hears: ['Yes please'] } });

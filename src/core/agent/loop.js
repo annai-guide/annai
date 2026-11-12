@@ -3470,14 +3470,14 @@ export class Agent {
   /** Closes the listening window; speech still going on becomes a segment first. @param {'playback' | 'speaking'} [next] */
   #closeEar(next = 'playback') {
     clearTimeout(this.#quiet);
+    const ear = this.#ear;
+    this.#ear = null;
+    ear?.session?.stop(); // speech still going on becomes a segment first, with its own start (#heard reads it)
     if (this.#speaking) {
       this.#spoke(false);
       this.poke();
     }
-    const ear = this.#ear;
     if (!ear) return;
-    this.#ear = null;
-    ear.session?.stop();
     if (next === 'playback') this.voice?.platform?.session('playback'); // full-quality Bluetooth audio again (spec §10.1)
   }
 
@@ -3494,9 +3494,9 @@ export class Agent {
 
   /** What the microphone heard (spec §10.4), handled in order. @param {Heard} h */
   #heard(h) {
-    // A start is its own speech's. A result that came with none (phone dictation's later utterance of a run) begins when it arrives, over her voice
-    // if hers plays then: the side that can't grant by mistake.
-    const began = this.#start ?? { at: h.at, over: Boolean(this.voice?.speaker.speaking) };
+    // A recorded segment's start is its own speech's. A dictation result's isn't: the browser reports a start once per run, and a sound can own it, so
+    // a result begins when it arrives, over her voice if hers plays then. At the window's end that is the side that can't grant by mistake.
+    const began = (h.source !== 'dictation' && this.#start) || { at: h.at, over: Boolean(this.voice?.speaker.speaking) };
     // Its segment came: they stopped. Begun while annai's voice played (a chat Koe's microphone stays open while the other half says the card's
     // question), it is over her voice for the card, as a live session, deaf then, never hears it at all.
     this.#spoke(false, { id: h.id, at: began.at, ...(began.over ? { her: true } : {}) });

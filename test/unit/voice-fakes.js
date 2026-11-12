@@ -231,6 +231,8 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
       late(text) { heard?.onSegment(text); },
       /** Dictation hears a sound that gives no words (road noise): speech starts, then it says so. */
       noise() { heard?.onSpeech?.(); heard?.onQuiet?.(); },
+      /** Dictation hears a sound that starts like speech and then gives nothing at all, no result and no end (the browser sends a start once per run and none after a noise). */
+      begin() { heard?.onSpeech?.(); },
       /** Dictation fails, as the browser's recognition does. @param {string} code */
       fail(code) { heard?.onError(Object.assign(new Error(`Phone dictation stopped (${code}).`), { code })); },
     },
