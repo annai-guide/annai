@@ -464,6 +464,13 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** it shows up in real use.
 - **Approved:** 2026-11-11, the user picked "Known limitation (Recommended)".
 
+### A "Yes." followed within 3 seconds by other words doesn't answer annai's card, and Koe may think it did
+- **Kind:** known limitation.
+- **What the user sees:** classic voice, Koe on a chat model. They say "Yes." to annai's card and, within 3 seconds, something that isn't a no ("What about Osaka?"), or someone near them speaks. The yes doesn't count. If their own line was kept, annai asks again about 6 seconds later, aloud, and a second yes or a tap answers it; if it was someone else's talk, the card stays up and nothing is said. Koe reads the first yes as the card's answer either way: its note to Kokoro can say they allowed it, and if the card then stays unanswered for a minute or two, Koe may say it is still looking instead of asking them to tap Allow. Nothing is read or opened that they didn't allow.
+- **Why:** anything said in the 3 seconds after a yes takes it back, because annai knows only a short list of "no" words ("Actually, never mind" and "Hang on" aren't on it); and Koe reads the line the card took when it is taken, 3 seconds before the card's outcome exists. Telling Koe afterwards that a yes didn't count is one more thing that depends on how a model reads it.
+- **Revisit when:** it shows in real use, or the next change to what Koe reads of annai's card.
+- **Approved:** 2026-11-11, the user picked "Leave it; known limitation (Recommended)".
+
 ### A yes said as Allow is tapped can also be answered by Koe
 - **Kind:** known limitation.
 - **What the user sees:** the user says "Yes." to annai's card and taps Allow (or Open) before the yes's words exist: while still saying it, or while it is being written down. The tap answers the card. The yes then reaches Koe as an ordinary line, and Koe may say a short line for it ("Okay.") before Kokoro's answer; on "Carry on in <trip>?" the move follows the tap at once and usually cuts that. The same before the card's redesign.
