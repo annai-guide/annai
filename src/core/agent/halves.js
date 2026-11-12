@@ -41,6 +41,11 @@ const BLOCKS = Object.freeze({
 });
 /** What Koe is told when it asks Kokoro after the user's Stop. */
 export const STOP_HELD = /* en */ "Not sent: the user stopped Kokoro, and hasn't written or spoken since. Don't ask Kokoro again until they do; say you can't check that now.";
+/**
+ * annai's own fact in Kokoro's wake for reminders Koe is given to say (it says them at once, and she starts at once): she doesn't pass them on.
+ * @param {import('./loop.js').Reminder[]} list
+ */
+const KOE_SAYING = (list) => /* en */ `Koe is saying these reminders to the user now: ${list.map((r) => `"${r.text}"`).join(', ')}. Don't pass them on.`;
 /** The Trace's line for Koe's notes Kokoro doesn't take up, as she had told Koe already (#setAside). */
 const TOLD_ALREADY = /* en */ "Koe's note wasn't put to Kokoro: she had told Koe already, since the user's last words.";
 /** How long Koe rests after its whole list failed, at least. */
@@ -168,10 +173,7 @@ export class Halves {
   #aside = null;
   /** Heard words Kokoro hasn't woken for: Koe answering them wakes it. */
   #cue = false;
-  /**
-   * When what both halves were given came (a typed line, a wake with reminders) that Koe hasn't answered yet (0: none): Kokoro's turn waits for
-   * Koe's answer (KOE_FIRST_S; live, SILENT_S).
-   */
+  /** When the user's typed line came that Koe hasn't answered yet (0: none): Kokoro's turn waits for Koe's answer (KOE_FIRST_S; live, SILENT_S). */
   #koeOwes = 0;
   /** The ids of Kokoro's turns woken for non-stop sound alone: their notes with no words for the user belong to that stretch (#ofStretch). @type {Set<string>} */
   #nonstop = new Set();
@@ -639,6 +641,7 @@ export class Halves {
     // That model rests now, and the next in Koe's list can take it: a note or a reminder doesn't lose its moment. (A typed line is written by the try.)
     if (this.koeState === 'live' && this.#liveId !== failed && (await fn())) return;
     if (this.koeState !== 'down') {
+      this.#koeSaid(); // no session can answer a typed line now (today's spend reached): Kokoro waits no longer
       // No session could take Kokoro's note for the user, and Koe stays live (today's spend reached): annai shows it.
       if (isForUser(w) && !this.#shown.has(w)) await this.#backstop([w]);
       return void (w.fallbacks?.length && this.kokoro.remind(w.fallbacks));
@@ -836,13 +839,11 @@ export class Halves {
       if (!this.#works() || KOKORO_ONLY.includes(w.kind)) return void (await this.kokoro.wake(w));
       if (!w.aloud && !THEIRS.includes(w.kind) && !(await this.kokoro.admit(w, (x) => this.wake(x)))) return;
       this.#koeOpen();
-      // Asked to hear her (the recap told aloud): the half with the voice tells it. Koe says the reminders first: Kokoro's turn waits for its words (#hold).
-      if (!w.aloud) {
-        if (w.fallbacks?.length && this.#visible()) this.#koeOwes = Date.now();
-        this.#wakeKokoro({ ...w, fallbacks: [] });
-      }
       // From a page out of view, a session waits for it; its reminders show now, as annai's always do.
       const away = this.koeState === 'live' && !this.#visible() && Boolean(w.fallbacks?.length);
+      // Asked to hear her (the recap told aloud): the half with the voice tells it. Koe says the reminders: Kokoro, who starts at once, is told so
+      // by annai, so she doesn't say them too (a recorded drive); if Koe never does, they are annai's to say or show (owed).
+      if (!w.aloud) this.#wakeKokoro({ ...w, ...(w.fallbacks?.length && !away ? { text: `${w.text} ${KOE_SAYING(w.fallbacks)}` } : {}), fallbacks: [] });
       if (away) this.kokoro.remind(w.fallbacks ?? []);
       if (this.koeState === 'live') this.#alongside(this.#live(() => this.live.wake(away ? { ...w, fallbacks: [] } : w), w));
       else this.koe.enqueue(w);
@@ -1052,16 +1053,16 @@ export class Halves {
     const speaking = this.kokoro.speakingNow || this.koe.speakingNow || this.live.view.name === 'hearing';
     const typing = this.kokoro.typingNow || this.kokoro.photoNow;
     if (!this.#works()) return wakes.some(isTheirs) && (typing || speaking) ? Infinity : 0;
-    // What both halves were given (a typed line, a wake with reminders): Koe answers it first, and Kokoro's first request reads what it said, so
-    // her "on it" or the reminder isn't said twice (real models, and a recorded drive). A Koe waiting on her has said all its reply holds (one with
-    // no words: its question, then wait); its wait's state pokes her (#stateOf). Live, the bound is the session's own for no answer, SILENT_S: a
-    // live line is written as her voice ends, and in a recorded drive 15 of Koe's own answers were written 2.6 to 5.8 s after the user's turn
-    // ended (median 4.0 s), so KOE_FIRST_S would have missed 8 of them.
+    // Only what comes from the user's input gathers: their messages, and Koe's questions and answers about them.
+    if (!wakes.some((w) => isTheirs(w) || (w.kind === 'note' && w.from === 'koe') || w.input)) return 0;
+    if (typing || speaking) return Infinity;
+    // A typed line, which both halves get: Koe answers it first, and Kokoro's first request reads what it said, so her "on it" isn't said twice
+    // (real models, and a recorded drive). A Koe waiting on her has said all its reply holds (one with no words: its question, then wait); its
+    // wait's state pokes her (#stateOf). Live, the bound is the session's own for no answer, SILENT_S: a live line is written as her voice ends,
+    // and in a recorded drive 15 of Koe's own answers were written 2.6 to 5.8 s after the user's turn ended (median 4.0 s), so KOE_FIRST_S would
+    // have missed 8 of them.
     const bound = this.koeState === 'live' ? SILENT_S : KOE_FIRST_S;
     const first = this.#koeOwes && !this.koe.waiting ? this.#koeOwes + bound * this.secondMs - Date.now() : 0;
-    // Only what comes from the user's input gathers: their messages, and Koe's questions and answers about them.
-    if (!wakes.some((w) => isTheirs(w) || (w.kind === 'note' && w.from === 'koe') || w.input)) return Math.max(0, first);
-    if (typing || speaking) return Infinity;
     return Math.max(0, first, this.#input.at + (this.#input.photo ? GATHER.photo : GATHER.quiet) * this.secondMs - Date.now());
   }
 
