@@ -167,6 +167,47 @@ test('a note that arrives while tool calls are open waits for their results, liv
   assert.deepEqual((await Transcript.load(store, SCOPE, { half: 'koe', nonce: NONCE })).open(), []);
 });
 
+test("a heard line annai's card took (Kokoro's, with the card's call id as its answer) reads to Koe as the card's own answer, as a tap on the card does, never as [heard], which marks a line Koe owes an answer; Kokoro and one Shiori read it as before, and a line that answered a call of Koe's, or no call, still reads [heard]", async () => {
+  const call = (/** @type {string} */ id, /** @type {string} */ name) => ({ type: 'tool_call', id, name, input: {} });
+  /** The card's question as Kokoro writes it, and its answer: a tap, or a line heard (Koe's microphone) that the card took; then the card's result, the typed line before them. @param {'tap' | 'spoken'} how */
+  const card = async (how) => {
+    const store = createMemoryStore();
+    const { kokoro, koe, log, turn } = both(store);
+    await log({ type: 'msg.user', actor: 'user', data: { wake: 'k1', split: true }, texts: [['text', 'What is check-in time?']] });
+    await turn(KOE_TAG, 'k1', [call('ka', 'tell_kokoro'), call('kb', 'wait'), call('kz', 'sleep')]);
+    await turn(TALK_TAG, 'w1', [call('rt', 'read_trip')]);
+    await log({ type: 'out.ask', actor: 'system', data: { id: 'rt', tap: 'tap-1', wake: 'w1', question: 'Read Testville?', options: ['Allow', 'Not now'], own: true, by: null, half: 'kokoro' } });
+    if (how === 'tap') await log({ type: 'msg.user', actor: 'user', data: { wake: 'w1', answer: 'rt', chose: true }, texts: [['text', 'Allow']] });
+    else await log({ type: 'heard', actor: 'user', data: { id: 's-yes', wake: 'w1', half: 'kokoro', source: 'mic', text: 'Yes.', answer: 'rt' } });
+    await log({ type: 'tool.result', actor: 'system', data: { id: 'rt', name: 'read_trip', ok: true, ms: 0, half: 'kokoro' }, texts: [['content', 'From "Testville": the ramen place.']] });
+    await log({ type: 'tool.result', actor: 'system', data: { id: 'ka', name: 'tell_kokoro', ok: true, ms: 0, half: 'koe' }, texts: [['content', 'sent']] });
+    await log({ type: 'tool.result', actor: 'system', data: { id: 'kb', name: 'wait', ok: true, ms: 0, half: 'koe' }, texts: [['content', 'Kokoro: see the note below.']] });
+    await log({ type: 'tool.result', actor: 'system', data: { id: 'kz', name: 'sleep', ok: true, ms: 0, half: 'koe' }, texts: [['content', 'asleep']] });
+    return { store, kokoro, koe };
+  };
+  const words = (/** @type {Transcript} */ t) => t.messages.at(-1)?.parts.map((p) => (p.type === 'text' ? p.text : p.type === 'tool_result' ? `result ${p.id}: ${p.content}` : p.type === 'speech' ? p.text : p.type));
+  const tap = await card('tap');
+  const spoken = await card('spoken');
+  const ask = '[asked the user] "Read Testville?" (options: ["Allow","Not now"])';
+  // A tap reads the question, then the choice; the spoken answer reads the same way, with the words said: the same label, one shape for both.
+  assert.deepEqual(words(tap.koe), ['result ka: sent', 'result kb: Kokoro: see the note below.', 'result kz: asleep', ask, '[the user chose] "Allow"']);
+  assert.deepEqual(words(spoken.koe), ['result ka: sent', 'result kb: Kokoro: see the note below.', 'result kz: asleep', ask, '[the user chose]', 'Yes.']);
+  // Koe owes nothing for either, live and from the log; its words, written down later, reach the line.
+  assert.equal(spoken.koe.unanswered, false);
+  assert.deepEqual((await Transcript.load(spoken.store, SCOPE, { half: 'koe', nonce: NONCE })).messages, spoken.koe.messages);
+  // Kokoro reads the answer in its call's result, as before: the card's own words, nothing after it; one Shiori too.
+  assert.deepEqual(words(spoken.kokoro), ['result rt: From "Testville": the ramen place.']);
+  assert.equal(JSON.stringify((await Transcript.load(spoken.store, SCOPE, { half: 'one' })).messages).includes('[heard]'), false);
+  // A line heard with no call's answer, and one that answered Koe's own wait, read [heard] as before.
+  const store = createMemoryStore();
+  const { koe, log, turn } = both(store);
+  await turn(KOE_TAG, 'k1', [call('kw', 'wait')]);
+  await log({ type: 'heard', actor: 'user', data: { id: 's-a', half: 'koe', source: 'mic', text: 'When is check-in?', answer: 'kw' } });
+  await log({ type: 'tool.result', actor: 'system', data: { id: 'kw', name: 'wait', ok: true, ms: 0, half: 'koe' }, texts: [['content', 'The user said:']] });
+  await log({ type: 'heard', actor: 'user', data: { id: 's-b', half: 'koe', source: 'mic', text: 'And parking?' } });
+  assert.deepEqual(words(koe), ['result kw: The user said:', '[heard]', 'And parking?']);
+});
+
 test('a line the other half wrote while a reply was being made follows that reply, live and from the log alike', async () => {
   const store = createMemoryStore();
   const { kokoro, log } = both(store);

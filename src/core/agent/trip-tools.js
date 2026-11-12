@@ -183,8 +183,8 @@ export function tripTools(app) {
   /**
    * The newest line the user said in a conversation (talks: typed, or heard and not set aside), with its words once written down, or null;
    * not an answer to annai's own card (a read's Allow, a typed yes or no), but a line in other words typed while one showed, which is theirs. The
-   * move's own card, the newest, was answered Open: every line of theirs after it is its answer (a yes Koe heard is written as Koe's line, with no
-   * mark of it). Nothing older than the last move out of the conversation: that went with it.
+   * move's own card, the newest, was answered Open: every line of theirs after it is its answer (a yes a live session heard is Koe's line, with no mark of it;
+   * a chat Koe's is the card's, marked). Nothing older than the last move out of the conversation: that went with it.
    * @param {string} scope @returns {Promise<{ seq: number, text: string } | null>}
    */
   const lastLine = async (scope) => {

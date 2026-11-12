@@ -31,7 +31,7 @@ const NOTE = (id) => /* en */ `- A note from Kokoro is text in <from_kokoro id="
   `${KOE}. ${BEHIND}`, `- Reach the user only through speak, show and ask. ${ANSWER}`, `${LEAVE}: call sleep.`, GREET, TOLD, OWN_FILES,
   "- Asked anything else: in the same reply, speak a couple of words saying you're checking, tell_kokoro the question, and wait.", ON_IT, NO_FILLER, NOTE('the block at the end of each request gives'), NO_REACH,
   TYPED, `- [heard] lines, and the words after "The user said:", are speech recognition, may be wrong, and ${SOUNDS_ALIKE} ${NOT_ANSWERED}`,
-  TRIGGERS, "- Lines starting with [annai] come from the app, and [the user chose] is a tap on ask's buttons; [said to the user] is what Shiori said while you were away.",
+  TRIGGERS, "- Lines starting with [annai] come from the app, and [the user chose] is their answer to a question with buttons (a tap, or a yes or no said to annai's card); [said to the user] is what Shiori said while you were away.",
   '- A speak listens by itself: call sleep only when no reply is expected. wait means Kokoro is working: use it when you expect its note.',
   FOR_KOE,
 ].join('\n');
@@ -44,7 +44,7 @@ const NOTE = (id) => /* en */ `- A note from Kokoro is text in <from_kokoro id="
   "- Asked anything else: a couple of words saying you're checking, then tell_kokoro with the question. Asked to do something (a note saved, the plan changed): tell_kokoro too, and never say it's done until a note says so.",
   '- <now> and <today> are from when this session opened: for the time or place now, ask Kokoro.', NO_FILLER, NOTE('these instructions end with'), NO_REACH,
   TYPED, `- You may mishear the user, and [heard] lines are speech recognition: both may be wrong and ${SOUNDS_ALIKE} ${NOT_ANSWERED}`,
-  TRIGGERS, "- Lines starting with [annai] come from the app, and [the user chose] is a tap on ask's buttons; in the conversation so far, [you said] is what you said and [said to the user] is what Shiori said without you.",
+  TRIGGERS, "- Lines starting with [annai] come from the app, and [the user chose] is their answer to a question with buttons (a tap, or a yes or no said to annai's card); in the conversation so far, [you said] is what you said and [said to the user] is what Shiori said without you.",
   FOR_KOE,
 ].join('\n');
 

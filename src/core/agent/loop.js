@@ -82,8 +82,8 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  *     heard: Map<string, AskLine>, armed: { line: AskLine, chosen: string, yes: boolean } | null, settle: any, speaking: boolean } }} Pending
  *   waiting for the user; listening: an answer may be spoken; hold and arm stop and start the silence limit; tool: the wait tool's; ask: annai's own card's (confirm):
  *   from, until: its window; answer: its call's id, its heard lines' mark; armed: the newest listed word; speaking: someone is speaking now (confirmSpeech)
- * @typedef {{ id: string, inside: boolean, her?: boolean, kept?: boolean, text?: string, h?: Heard, gate?: string }} AskLine  heard while annai's card waits: inside: begun in its
- *   window; her: begun over her voice; kept: the verdict, once it comes; h: this half's own segment
+ * @typedef {{ id: string, inside: boolean, her?: boolean, kept?: boolean, text?: string, h?: Heard, gate?: string, taken?: boolean }} AskLine  heard while annai's card waits: inside: begun in its
+ *   window; her: begun over her voice; kept: the verdict, once it comes; h: this half's own segment; taken: the card took it (cardTakes) and wrote it with its answer
  * @typedef {{ name: StateName, label: string, detail?: string }} State  label: the dock's words for it (LABELS); detail: what she is away doing (TIDYING, or a task's words)
  * @typedef {{ tone: 'warn' | 'info', title: string, body: string, actions?: { label: string, primary?: boolean, run: () => void | Promise<void> }[], key?: string, toast?: boolean }} Notice
  *   key: names a card a later turn takes down (the clear event, when that turn works): model, or silent:<its conversation>
@@ -1051,7 +1051,7 @@ export class Agent {
     /* en */
     if (got.heard) return { said: 'The user said:', heard: said.map((x) => x.heard.id) };
     /* en */
-    if (got.spoke) return { said: 'What the user said follows.' }; // the other half's line, in the log already: Kokoro hears all
+    if (got.spoke) return { said: 'What the user said follows.', ...(got.taken?.length ? { heard: got.taken } : {}) }; // the other half's line, in the log already: Kokoro hears all
     if (got.text === undefined) return { said: '' };
     const wrote = typedAs(got);
     await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...wrote.data }, texts: [['text', got.text]] });
@@ -1080,7 +1080,7 @@ export class Agent {
 
   /**
    * A chat Koe's segment, which annai's card hears first while it waits (Half.card), as one Shiori's hears hers (#route): one that arms it is the card's
-   * alone, written now as its answer, in the order heard; any other is Koe's, as it came. @param {Heard} h @returns {Promise<boolean>} whether it took it
+   * alone, written now as its answer, as Koe's routing reaches it; any other is Koe's, as it came. @param {Heard} h @returns {Promise<boolean>} whether it took it
    */
   async cardTakes(h) {
     const p = this.#pending;
@@ -1089,6 +1089,7 @@ export class Agent {
     const worded = await this.#askHears(p, line, h);
     if (this.#pending !== p || askSaid(p.ask, line) === null) return false;
     await this.#logHeard(worded, { wake: p.ask.wake, answer: p.ask.answer });
+    line.taken = true;
     if (worded !== h) this.voice?.memory.drop(h.id, worded.text);
     return true;
   }
@@ -1159,7 +1160,11 @@ export class Agent {
       if (!last || this.#pending !== p) return;
       this.#pending = null;
       // The other half's line, in the log already or to come: written by that half, or by the card as it took it (cardTakes).
-      if (!last.h) return void p.resolve(chosen ? { voiced: chosen } : { spoke: last.id });
+      if (!last.h) {
+        // The lines the card took come after her result, as one Shiori's also do.
+        const taken = lines.filter((l) => l.taken).map((l) => l.id);
+        return void p.resolve(chosen ? { voiced: chosen } : { spoke: last.id, ...(taken.length ? { taken } : {}) });
+      }
       if (this.#ear) this.#ear.owner = 'turn';
       this.#setState('thinking');
       // Unanswered, it carries all they said, in order; an answer, its own line.

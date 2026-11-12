@@ -2209,7 +2209,7 @@ test('the card hears first: "Yes, and book the ryokan." as one line arms nothing
   k.agent.interrupt();
 });
 
-test('the card hears first: "Yes." then other words as a second line: the yes is the card\'s, written as its answer when heard; the second line is Koe\'s, and ends the card unanswered; the log keeps both, in the order said', async (t) => {
+test('the card hears first: "Yes." then other words as a second line: the yes is the card\'s, written as its answer when heard; the second line is Koe\'s, and ends the card unanswered; the log keeps both, in the order said; Kokoro reads the yes after the card\'s result, then the second line; Koe reads the yes as the card\'s answer, as a tap reads', async (t) => {
   useClock(t);
   const k = await koeMic(KOKORO_ASKED, KOE_CHAT, { hears: ['Yes.', 'What about Osaka?'] });
   k.agent.send('Where did we eat in Testville?');
@@ -2224,11 +2224,47 @@ test('the card hears first: "Yes." then other words as a second line: the yes is
   const lines = await heardIn(k, k.trip);
   assert.deepEqual(lines.map(({ text, answer, half }) => [text, answer, half]), [['Yes.', k.asks[0].data.id, 'kokoro'], ['What about Osaka?', wait?.data.id, 'koe']]);
   assert.equal(gated(k), 1, 'only the second line was judged');
-  // What Koe reads next: its wait's answer, the second line; then, as lines written while its calls were open, the card's question and the yes.
+  // What Kokoro reads: the card's result with the yes the card took after it (the result advises asking them to tap Allow, which is about that word), then the second line.
+  await until(() => (k.sent['model-0'] ?? []).length >= 2, 20_000);
+  const kokoro = k.sent['model-0'].find((/** @type {any} */ r) => r.messages.at(-1).parts.some((/** @type {any} */ p) => p.type === 'tool_result'));
+  const kokoroRead = kokoro.messages.at(-1).parts.map((/** @type {any} */ p) => (p.type === 'tool_result' ? `result: ${p.content}` : p.text));
+  assert.deepEqual(kokoroRead, [
+    `result: Not read: only a tap on annai's card, or a yes it hears, allows reading "Testville". If they meant yes, ask them to tap Allow. What the user said follows.`, 'Yes.', '[heard]', 'What about Osaka?',
+  ]);
+  // What Koe reads next: its wait's answer, the second line; then, as lines written while its calls were open, the card's question and, as a tap's
+  // choice reads, the card's answer: never [heard], which marks a line Koe owes an answer.
   const read = k.sent['model-koe'][1].messages.at(-1).parts.map((/** @type {any} */ p) => (p.type === 'tool_result' ? `result: ${p.content}` : p.text));
   assert.deepEqual(read.slice(read.indexOf('result: The user said:')).map((/** @type {string} */ x) => x.replace(/^(\[asked the user\] "Read Testville).*$/, '$1')), [
-    'result: The user said:', 'What about Osaka?', '[asked the user] "Read Testville', '[heard]', 'Yes.',
+    'result: The user said:', 'What about Osaka?', '[asked the user] "Read Testville', '[the user chose]', 'Yes.',
   ]);
+  k.agent.interrupt();
+});
+
+test('the card hears first: "Yes." then other words 5 s later, the card already granted: Koe, which still waits for Kokoro, reads its wait\'s answer, the card\'s question and the card\'s answer, as a tap reads, and nothing of the yes as a [heard] line; Kokoro reads no yes after the read', async (t) => {
+  useClock(t);
+  /** @type {() => void} */
+  let go = () => {};
+  const released = new Promise((r) => { go = () => r(undefined); });
+  let requests = 0;
+  // Kokoro's second request (after the read) waits, so Koe's wait is still open when the second line comes.
+  const k = await koeMic(KOKORO_ASKED, KOE_CHAT, { hears: ['Yes.', 'What about Osaka?'], hold: async (c) => { if (c.model.providerId === 'model-0' && ++requests === 2) await released; } });
+  k.agent.send('Where did we eat in Testville?');
+  await asked(k);
+  await hear(k, 'thanks');
+  await pause(5 * k.agent.secondMs);
+  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }], 'granted at 3 s');
+  await hear(k, 'gas-station');
+  await pause(2 * k.agent.secondMs);
+  go();
+  await k.agent.idle();
+  const [wait] = await koeAnswered(k);
+  assert.deepEqual((await heardIn(k, k.trip)).map(({ text, answer, half }) => [text, answer, half]), [['Yes.', k.asks[0].data.id, 'kokoro'], ['What about Osaka?', wait?.data.id, 'koe']]);
+  assert.equal(gated(k), 1, 'only the second line was judged');
+  const koe = k.sent['model-koe'][1].messages.at(-1).parts.map((/** @type {any} */ p) => (p.type === 'tool_result' ? `result: ${p.content}` : p.text));
+  assert.deepEqual(koe, ['result: Said aloud.', 'result: sent', 'result: The user said:', 'What about Osaka?', `[asked the user] "${ASKED}" (options: ["Allow","Always for my trips","Not now"])`, '[the user chose]', 'Yes.']);
+  // Kokoro's reading is the card's grant and the trip, with no yes after it: the card answered by the yes, so it owes her nothing more.
+  const kokoro = JSON.stringify(k.sent['model-0'].at(-1));
+  assert.equal(kokoro.includes('Yes.'), false, 'she reads no yes');
   k.agent.interrupt();
 });
 
