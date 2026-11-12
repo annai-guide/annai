@@ -341,7 +341,15 @@ export class Agent {
   /** @type {AbortController | null} */
   #abort = null;
   /** @type {Pending | null} */
-  #pending = null;
+  #waiting = null;
+  /** What the turn waits on the user for: a question shows the reminders held behind it (#remindWaiting). */
+  get #pending() {
+    return this.#waiting;
+  }
+  set #pending(/** @type {Pending | null} */ p) {
+    this.#waiting = p;
+    this.#remindWaiting();
+  }
   /** @type {(() => void)[]} */
   #idle = [];
   /** @type {number[]} times of the wakes in the last hour that weren't the user's (spec §6.6) */
@@ -356,6 +364,8 @@ export class Agent {
   #before = [];
   /** Kokoro's notes for the user that the turn running owes (Koe's), taken: Start fresh shows them instead. @type {(() => Wake[]) | null} */
   #owing = null;
+  /** The reminders the turn running still owes, taken (#remindWaiting). @type {(() => Reminder[]) | null} */
+  #owedNow = null;
   /** Whether the turn running owes the user a note of Kokoro's it hasn't reached them with (Koe's). */
   #noteOwed = () => false;
   /** The model that answered this turn's last call, for Shiori's lines (null outside a turn's calls). @type {{ name: string, first: string | null, tried: boolean } | null} */
@@ -818,16 +828,23 @@ export class Agent {
     this.#timer = null;
   }
 
+  /**
+   * Her turn waits on an answer that may never come (annai's card, her own question), or a wake came while it does: annai shows the reminders now, as at a
+   * cut, those queued for this conversation and those her turn owes. Silently while a microphone listens for the answer or is about to (the question being said).
+   */
+  #remindWaiting() {
+    const p = this.#pending;
+    if (p?.kind !== 'ask') return;
+    const queued = this.#queue.filter((w) => w.scope === this.scope && w.fallbacks?.length);
+    const list = [...(this.#owedNow?.() ?? []), ...queued.flatMap((w) => w.fallbacks ?? [])];
+    for (const w of queued) w.fallbacks = [];
+    if (list.length) this.remind(list, this.scope, p.listening || (p.ask && !p.ask.from) ? { silent: true } : {}).catch(() => {});
+  }
+
   /** @param {Wake} w */
   #push(w) {
-    // Reminders due while her turn waits on an answer that may never come (annai's card, her own question): annai shows them now, as at a
-    // cut, silently while a microphone listens for that answer or is about to (the card's question being said).
-    const p = this.#pending;
-    if (w.fallbacks?.length && p?.kind === 'ask') {
-      this.remind(w.fallbacks, undefined, p.listening || (p.ask && !p.ask.from) ? { silent: true } : {}).catch(() => {});
-      w = { ...w, fallbacks: [] };
-    }
     this.#queue.push({ ...w, scope: this.#target ?? ME, at: Date.now() });
+    this.#remindWaiting();
     if (w.kind === 'note') this.#noted();
     // Kokoro's next note while Koe's call still answers its last one, and nothing of it is out yet: the call is cut and goes again
     // with both, so Koe says it once.
@@ -1436,7 +1453,7 @@ export class Agent {
     } finally {
       this.#busy = false;
       this.#abort = null;
-      this.#owing = null;
+      this.#owing = this.#owedNow = null;
       this.#noteOwed = () => false;
       // A tap's listening window outlives the turn until something is said, or a silence (spec §10.4).
       const tapped = this.#window();
@@ -2105,6 +2122,12 @@ export class Agent {
     };
     let wrote = false;
     this.#noteOwed = () => notes.length > 0 && this.#reached === reached;
+    this.#owedNow = () => {
+      settle();
+      const taken = owed;
+      owed = [];
+      return taken;
+    };
     const owes = () => notes.length > 0 || wrote;
     /** The user's own words wait for an answer: their message (unless the turn told the other half), or what they wrote in Koe's wait. */
     const unanswered = () => wrote || (theirs && !this.#facts.told);
@@ -2437,7 +2460,7 @@ export class Agent {
         : this.#cutWaiting ? 'Let go: another conversation was opened while she waited on the user; their next line answers her.' : 'Let go: another conversation was opened during a turn annai started by itself.';
       await this.#log({ type: 'error', actor: 'system', data: { kind: 'left', wake: wakeId, message, quiet: true } });
     }
-    this.#owing = null;
+    this.#owing = this.#owedNow = null;
     return answered && !failed;
   }
 
