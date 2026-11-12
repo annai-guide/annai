@@ -928,8 +928,8 @@ export class Agent {
   #noted() {
     const p = this.#pending;
     const note = this.#queue.find((w) => w.kind === 'note' && w.scope === this.scope);
-    // A wait, listening or not (voice going off closed its microphone and left it for typing), and her own question waiting for a tap or typing (not annai's card):
-    // a note is always said, so it never waits behind an answer the user may never give (Koe's "want ideas?" held Kokoro's correction back in stage 5's real-model pass).
+    // A wait (listening or not: voice going off leaves it for typing), and her own question waiting for a tap or typing (not annai's card): a note is always said, so it never waits behind an answer
+    // the user may never give (Koe's "want ideas?" held Kokoro's correction back in stage 5's real-model pass).
     if (!note || !p || !(p.tool || p.kind === 'wait' || (p.kind === 'ask' && !p.ask && !p.listening)) || this.state.name === 'hearing') return;
     this.#pending = null;
     p.resolve({ note: note.from ?? 'kokoro' });
@@ -1021,13 +1021,13 @@ export class Agent {
         };
         const shut = () => {
           ask.open = p.listening = false;
-          if (this.#ear) this.#closeEar(); // whoever opened it: a tap that cut the question, or one while the card waits by hand (#limitTap), opened this one
+          if (this.#ear) this.#closeEar(); // whoever opened it: a tap's may be the card's listening
           if (this.#pending !== p) return;
           this.#setState('waiting');
           byHand();
         };
         p.hold = () => clearTimeout(timer); // someone is speaking: the window waits for their words
-        // The card's 20 s, or a tap's 8 s (p.by) once they are over and the card waits by hand: the later one.
+        // the window's end, or a tap's 8 s (by) after it
         p.arm = () => {
           clearTimeout(timer);
           timer = setTimeout(shut, Math.max(0, Math.max(ask.until, /** @type {number} */ (p.by)) - Date.now()));
@@ -3730,7 +3730,7 @@ export class Agent {
       if (p?.kind === 'ask' || p?.arm || p?.tool) {
         p.listening = true; // an ask's answer may be spoken, a wait's too, and one voice going off stopped listening for
         if (this.#half.voice()) this.#voiceNow = true; // the tap holds voice on for this exchange: her reply to the answer is said
-        if (p.kind === 'ask' && (!p.ask || p.byHand)) this.#limitTap(p); // annai's card only once its own window is over: till then it ends the listening itself
+        if (p.kind === 'ask' && (!p.ask || p.byHand)) this.#limitTap(p); // the card's own window ends its listening
       }
       if (this.#busy) return; // she is speaking or working: the window serves her turn
       this.#setState('listening');
@@ -3741,8 +3741,7 @@ export class Agent {
   /**
    * A tap's listening for her question, which waits by hand with no time of its own, gets the silence limit any listening has (LISTEN_S, held while someone speaks, by
    * hold and arm as #listenFor's): at its end the microphone closes and the question waits for a tap or typing again, so a note for the user is no longer held behind
-   * an answer that may never come (#noted). Her turn is busy, so #armQuiet would never close it. annai's card is the same once its own window is over: its arm
-   * (confirm) waits for what is left of the tap's limit, and its shut closes the microphone. @param {Pending} p
+   * an answer that may never come (#noted). Her turn is busy, so #armQuiet would never close it. annai's card's too, once its window is over (its arm waits for by). @param {Pending} p
    */
   #limitTap(p) {
     if (!p.arm) {
