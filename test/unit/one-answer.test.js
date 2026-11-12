@@ -1,10 +1,13 @@
 // One answer: a note whose words sound cut off while the provider was still making them is said again from its start, never taken up from its
-// middle; and Kokoro reads Koe's answer before she starts, for what both halves were given at once. Lines and places are synthetic.
+// middle; Kokoro reads Koe's answer before she starts, for what both halves were given at once; and Koe passes on what the user said, as said.
+// Lines and places are synthetic.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { until, agentKit } from './agent-kit.js';
 import { liveKit, texts, soon, tone, say } from './koe-live-kit.js';
 import { hum, quiet, cat } from './voice-kit.js';
+import { KOE_CORE, KOE_LIVE } from '../../src/core/koe/instructions.js';
+import { channelTool } from '../../src/core/agent/halves.js';
 
 const RATE = 16_000;
 const FOR_USER = 'The fuel station ahead is open until ten tonight.';
@@ -272,4 +275,29 @@ test("a reminder's wake with Koe on a chat model: Kokoro's first request reads t
     const said = userTexts(k.sent['model-0'][0]).some((t) => t === '[Koe said] "Sunset at 18:40."');
     assert.equal(said, reminders, reminders ? 'she waited for Koe to say it' : "nothing both halves owe: she doesn't wait");
   }
+});
+
+// Koe's instructions, at the source: passing on is the default, said in the same words to a chat Koe, a live one and in tell_kokoro's own
+// description; no standing excuse; the lines that get no reply say what to do, and a live Koe is told once that every word it makes is heard.
+test("Koe passes on what the user said as they said it, in its instructions and in tell_kokoro's description; meanwhile it says \"One moment.\" and asks nothing of its own", () => {
+  const tool = channelTool('koe', /** @type {any} */ ({ send: async () => 'sent' }));
+  for (const k of [KOE_CORE, KOE_LIVE, tool.description]) assert.match(k, /what the user said,? as they said it|what they said, as they said it/);
+  for (const k of [KOE_CORE, KOE_LIVE]) {
+    const line = k.split('\n').find((l) => l.startsWith('- Anything else the user says to you'));
+    assert.ok(line, 'one line says it');
+    assert.match(line, /"One moment\.", (then )?tell_kokoro what they said, as they said it/);
+    assert.match(line, /Ask them nothing of your own, and never say it's done until a note says so\./);
+    assert.doesNotMatch(k, /can't check|can't be reached|saying you're checking/, 'no ready excuse, and no promise to check');
+    assert.doesNotMatch(k, /\bwhen the user asks for something done\b/i, 'one rule, not two');
+  }
+});
+
+test("the lines that get no reply say what to do, and name no state; a live Koe is told once that every word it makes is spoken aloud", () => {
+  for (const k of [KOE_CORE, KOE_LIVE]) {
+    assert.doesNotMatch(k, /Silence is|Say nothing at all|thinks aloud, say nothing/);
+    assert.match(k, /single stray words and a language the user doesn't speak get no reply: no words, no sound\./);
+  }
+  assert.match(KOE_LIVE, /only acknowledges \(okay, cool, thanks\) or thinks aloud, it gets no reply: no words, no sound\./);
+  assert.equal(KOE_LIVE.split('\n').filter((l) => /Every word you produce is spoken aloud to the user, so never describe what you are doing or that you are staying quiet\./.test(l)).length, 1);
+  assert.doesNotMatch(KOE_CORE, /spoken aloud to the user/, "a chat Koe's own text is never shown or said");
 });
