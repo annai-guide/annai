@@ -3132,7 +3132,10 @@ export class Agent {
     this.voice?.speaker.stop();
     if (!this.#busy) this.#setState(this.online() ? 'sleeping' : 'offline'); // a tap's window was listening: the dock says she sleeps again
     const p = this.#pending?.listening ? this.#pending : null;
-    if (p) p.listening = false; // a wait for an answer goes on, for typing
+    if (p) {
+      p.listening = false; // a wait for an answer goes on, for typing
+      p.arm?.(); // speech held its silence limit, and the microphone just closed: no end of that speech will start it again
+    }
   }
 
   /**
