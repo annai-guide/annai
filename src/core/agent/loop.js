@@ -120,8 +120,7 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  * @property {(wakeId: string) => void} [joined]  wakes joined its turn going on (the user's words, a choice, a photo, the other half, a trigger)
  * @property {(on: boolean, line?: { id: string, at: number, her?: boolean }) => void} [speech]  its microphone hears someone begin to speak, or stop (line: with the
  *   segment they made, when it began, and whether annai's voice was playing then), for annai's card when the other half holds it
- * @property {(ids: string[]) => { heard: Heard, gate?: string }[]} [took]  the other half's heard lines that answered annai's card, by id, taken out of its
- *   queue (those still there), for the card to write as its answer
+ * @property {(ids: string[]) => { heard: Heard, gate?: string }[]} [took]  takes these heard lines out of its queue, for annai's card to write
  * @typedef {{ wakeId: string, ok: boolean, finalText: string, told: boolean, slept: boolean, spoke: boolean, kinds: string[], by: { name: string, first: string | null, tried: boolean } | null }} TurnEnd
  *   by: the model that answered the turn's last call
  *   finalText: a last reply's text with no tool calls; told: it told the other half (or a gated call did)
@@ -680,9 +679,8 @@ export class Agent {
    *   moved: the user chose to carry on in this trip on annai's card (open_trip), so the turn it cuts is let go, nothing owed where it was
    */
   open(trip, o = {}) {
-    // Waiting on the user: her reply's last call but sleep says something to them or listens, or annai's card waits, whatever follows it in
-    // her reply (the card asks; she goes on only once they answer). Read before the ear closes and the halt answers it; "Let me check."
-    // listening before a search still has work to do.
+    // Waiting on the user: her reply's last call but sleep says something to them or listens, or annai's card waits (whatever follows it).
+    // Read before the ear closes and the halt answers it; "Let me check." listening before a search still has work to do.
     const waiting = Boolean(this.#pending?.ask || (this.#running?.last && (this.#running.talks || this.#pending)));
     this.#closeEar();
     this.voice?.speaker.stop();
@@ -822,9 +820,8 @@ export class Agent {
 
   /** @param {Wake} w */
   #push(w) {
-    // Reminders that come while her turn waits on the user's answer with no time limit (annai's card, her own question) are annai's to show
-    // now, as at a cut: the user may never answer. Her turn reads them as shown. Not said aloud while a microphone listens, or is about to
-    // (the card's question is being said), for that answer: one voice at a time.
+    // Reminders due while her turn waits on an answer that may never come (annai's card, her own question): annai shows them now, as at a
+    // cut, silently while a microphone listens for that answer or is about to (the card's question being said).
     const p = this.#pending;
     if (w.fallbacks?.length && p?.kind === 'ask') {
       this.remind(w.fallbacks, undefined, p.listening || (p.ask && !p.ask.from) ? { silent: true } : {}).catch(() => {});
@@ -1022,8 +1019,7 @@ export class Agent {
       });
     });
     for (const h of got.own ?? []) await this.#logHeard(h, { wake: call.wake, answer: call.id });
-    // The other half's lines that answered it, still in its queue (Koe was busy in a turn): out of it, and written as the card's, as this half's
-    // own are, so none comes back after the card as a newer line that half takes a turn for.
+    // The other half's lines that answered it, still in its queue (a busy Koe): the card's, never a newer line after it.
     for (const x of got.other?.length ? this.#half.took?.(got.other) ?? [] : []) await this.#logHeard(x.heard, { wake: call.wake, answer: call.id, ...(x.gate ? { gate: x.gate } : {}) });
     if (got.stopped) return { stopped: true };
     if (got.chosen !== undefined) {
@@ -1129,7 +1125,7 @@ export class Agent {
       const last = ask.armed?.line ?? lines.findLast((l) => l.kept && !l.her && l.text !== undefined && askSaid(ask, l) === null);
       if (!last || this.#pending !== p) return;
       this.#pending = null;
-      // The other half's line, in the log already, or in its queue (a busy Koe): an answer's listed lines are the card's (confirm takes them).
+      // The other half's line, in the log already or its queue (a busy Koe): confirm takes an answer's listed lines.
       if (!last.h) return void p.resolve(chosen ? { voiced: chosen, other: lines.filter((l) => !l.h && askSaid(ask, l) !== null).map((l) => l.id) } : { spoke: last.id });
       if (this.#ear) this.#ear.owner = 'turn';
       this.#setState('thinking');
@@ -2731,7 +2727,7 @@ export class Agent {
     }
     // Cut short (the turn aborted, the call an error): the user's Stop, or another conversation opening, which is no Stop. Every result
     // says whether (`cut`), which a refusal or a failure is not: the log is read by the mark; only a result without it, an older page's, by its words.
-    // The user's Open on open_trip's card takes them there, and that open ends the call: what it was for, said so, no cut and no error.
+    // The user's Open on open_trip's card ends that call by opening the trip, which is what it was for: no cut, no error.
     const chose = Boolean(o.signal.aborted && output.isError && this.#cutMoved && !this.#userStop && !unrun && c.name === 'open_trip');
     const cut = Boolean(o.signal.aborted && output.isError) && !chose;
     if (chose) output = { content: MOVED };
@@ -2970,7 +2966,7 @@ export class Agent {
           // The other half may have the voice now; words already playing are said to the end.
           const voiced = call.voice && this.voice && (this.#half.voice() || this.#utterances.has(call.id));
           const unsaid = voiced ? this.#unsaid(call.id) : '';
-          // Being said from before its write: a cut during the write takes it back (#halt), and a line the cut came before never plays.
+          // Being said from before its write: a cut during it takes the line back (#halt), and it never plays.
           if (voiced && !unsaid) this.#saying = call.id;
           await this.#log({ type: 'out.speak', actor: 'shiori', data: { id: call.id, wake: call.wake, ...(voiced && !unsaid ? { voice: true } : {}) }, texts: [['text', text]] });
           if (unsaid) return unsaid;
@@ -3007,7 +3003,7 @@ export class Agent {
           const ok = checkAsk(i);
           if ('error' in ok) return { content: ok.error, isError: true };
           const aloud = !call.live && call.voice && this.voice && !this.#aloudOnly && this.#half.voice();
-          if (aloud) this.#saying = call.id; // as speak's line: being said from before its write
+          if (aloud) this.#saying = call.id; // as speak's
           await this.#log({ type: 'out.ask', actor: 'shiori', data: { id: call.id, wake: call.wake, question: ok.question, options: ok.options } });
           if (call.live) return 'Shown; their tap comes as their next turn.';
           if (aloud && call.signal.aborted) return { content: STOPPED, isError: true };
@@ -3204,7 +3200,7 @@ export class Agent {
       this.#setState('speaking');
     }
     u.end(text);
-    const spoken = await u.done; // being said since before its write (speak's run)
+    const spoken = await u.done; // #saying: set before its write
     if (this.#saying === call.id) this.#saying = null;
     if (spoken.heard) {
       this.#facts.aloud = true;
@@ -3249,7 +3245,7 @@ export class Agent {
     this.#closeEar('speaking');
     this.#setState('speaking');
     u.end(question);
-    const spoken = await u.done; // being said since before its write (ask's run)
+    const spoken = await u.done; // #saying: set before its write
     if (this.#saying === call.id) this.#saying = null;
     // Cut with the turn: its result is written already, and the user's next line is a turn of its own, not this question's answer.
     if (call.signal.aborted) return { content: STOPPED, isError: true };
