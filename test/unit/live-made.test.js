@@ -166,6 +166,21 @@ for (const how of /** @type {const} */ (['a tap', 'the page out of view'])) {
   });
 }
 
+// A turn counted heard whole is written whole. Nearly every real reply's sound is not a whole number of ms (the player's heard ms is rounded, a
+// byte the provider's chunk ends on is dropped), so counting its share of its length would cut its last word, with no ✂.
+test('a tap after her sound for a note all made has played out, its sound 1500.42 ms long: her line is written whole, its last word kept', async () => {
+  const [k, at] = await noteSaid({ note: { said: SAID, audio: tone(36_010 / 24_000), endAt: 2100 }, turns: [{ said: SAID, audio: tone(0.3) }] });
+  try {
+    await wait(at + 1650 - Date.now());
+    k.agent.tap();
+    await soon(async () => (await lines(k)).length === 2, 5000);
+    assert.deepEqual(await lines(k), [['Hello there.', false], [SAID, false]]);
+    assert.deepEqual(await shown(k), []);
+  } finally {
+    await k.done();
+  }
+});
+
 test('a tap while her sound for a note all made still plays (the provider had made it, as in 3 of 5 real cuts): a cut, and the note is shown', async () => {
   const [k, at] = await noteSaid({ note: { said: SAID, audio: tone(3) } });
   try {
@@ -330,6 +345,29 @@ test("the provider ends that turn with interrupted after the note went in: the f
   try {
     await soon(async () => (await lines(k)).length === 2, 5000);
     assert.deepEqual(await lines(k), [['One moment.', false], [FUEL.said, false]]);
+  } finally {
+    await k.done();
+  }
+});
+
+// What waits behind her sound when the user begins to speak was never heard, and isn't written, even though the provider ended it: only a turn
+// that was heard whole is written whole, whatever its sound's length.
+test('the user speaks while her sound plays and a second turn of hers, ended, waits behind it: the second is let go, unwritten', async () => {
+  const k = await liveKit([{ ...CHECKING, noEnd: false, endAt: 300, andThen: true }, { said: 'Also, the station closes at ten tonight.', audio: tone(0.1) }, { said: 'Yes, until ten.', audio: tone(0.3), delayMs: 300 }], { pace: 1, agent: { secondMs: 1000 } });
+  try {
+    await k.voice.unlock();
+    k.voice.route = async () => 'car';
+    k.platform.streamSpeed = 1;
+    k.agent.tap();
+    await until(() => k.agent.live.listening, 3000);
+    await say(k, 'where-eat');
+    await soon(async () => k.agent.live.view.name === 'speaking', 5000);
+    await wait(500);
+    k.platform.mic.feed(cat(hum(0.8), quiet(1)), RATE);
+    await soon(async () => (await lines(k)).some(([text]) => text === 'Yes, until ten.'), 8000);
+    const written = (await lines(k)).map(([text]) => String(text));
+    assert.ok(!written.some((text) => text.startsWith('Also')), JSON.stringify(written));
+    assert.ok(/^One\S*✂$/.test(written[0]), JSON.stringify(written));
   } finally {
     await k.done();
   }
