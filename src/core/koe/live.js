@@ -99,7 +99,7 @@ const FADED_MARGIN_MS = 20;
  */
 const STALL_S = 3;
 /** A session that gives nothing back this many seconds after the user's turn or a text turn is silent. */
-const SILENT_S = 8;
+export const SILENT_S = 8;
 /** An urgent note's mark ends this long after it went in if no sound of hers has begun, and this long after it however long she talks. */
 const URGENT_S = SILENT_S;
 const URGENT_MAX_S = 20;

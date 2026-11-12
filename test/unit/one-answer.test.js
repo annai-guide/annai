@@ -2,7 +2,7 @@
 // middle; and Kokoro reads Koe's answer before she starts, for what both halves were given at once. Lines and places are synthetic.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { until } from './agent-kit.js';
+import { until, agentKit } from './agent-kit.js';
 import { liveKit, texts, soon, tone, say } from './koe-live-kit.js';
 import { hum, quiet, cat } from './voice-kit.js';
 
@@ -105,5 +105,171 @@ test('the provider done, then her sound cut: asked once, as before, and said aga
     assert.deepEqual(await shown(k), []);
   } finally {
     await k.done();
+  }
+});
+
+// Kokoro reads Koe's answer before she starts, for what both halves were given (a typed line, a wake with reminders): her first request then
+// holds it, and her "on it" or the reminder isn't said a second time.
+
+/** Every text of a request's user messages. @param {any} req */
+const userTexts = (req) => req.messages.filter((/** @type {any} */ m) => m.role === 'user').flatMap((/** @type {any} */ m) => m.parts.filter((/** @type {any} */ p) => p.type === 'text').map((/** @type {any} */ p) => p.text));
+/** A second, in these tests: the live wait for Koe's answer is 8 of them (3.2 s), the quiet the user's input needs 1.5 (0.6 s). */
+const SECOND = 400;
+/** When each of Kokoro's model calls began (model-0 is hers). @returns {{ starts: number[], hold: (c: any) => Promise<void> }} */
+function kokoroStarts() {
+  /** @type {number[]} */
+  const starts = [];
+  return { starts, hold: async (c) => { if (c.model.providerId === 'model-0') starts.push(Date.now()); } };
+}
+/** The page out of view, or back, as the browser says it. @param {boolean} on */
+function hidden(on) {
+  if (on) /** @type {any} */ (globalThis).document = { visibilityState: 'hidden' };
+  else delete (/** @type {any} */ (globalThis).document);
+}
+
+test("a typed line in live voice: Kokoro's turn waits for Koe's answer, so her first request holds Koe's line", async () => {
+  const { starts, hold } = kokoroStarts();
+  const k = await liveKit([{ said: 'Hello. What can I do?', audio: tone(0.3), delayMs: 1000 }], { agent: { secondMs: SECOND }, hold });
+  try {
+    const sent = Date.now();
+    k.agent.send('hello?');
+    await until(() => starts.length > 0, 8000);
+    await k.agent.idle();
+    const first = userTexts(k.sent['model-0'][0]);
+    assert.ok(first.some((t) => /^\[Koe said( aloud)?\] "Hello\. What can I do\?"$/.test(t)), JSON.stringify(first));
+    assert.ok(starts[0] - sent < 8 * SECOND, `started ${starts[0] - sent} ms after the line, at Koe's line, not at the bound`);
+  } finally {
+    await k.done();
+  }
+});
+
+test("a typed line Koe passes on (tell_kokoro, no words): Kokoro starts at the tell_kokoro, not at the bound", async () => {
+  const { starts, hold } = kokoroStarts();
+  const k = await liveKit([{ tool: { name: 'tell_kokoro', args: { text: 'hello?' } }, delayMs: 1200 }, {}], { agent: { secondMs: SECOND }, hold });
+  try {
+    const sent = Date.now();
+    k.agent.send('hello?');
+    await until(() => starts.length > 0, 8000);
+    const told = (await k.events(['tool.result'])).find((/** @type {any} */ e) => e.data.name === 'tell_kokoro');
+    assert.ok(told, 'Koe passed it on');
+    assert.ok(starts[0] >= told.ts - 50, 'not before it');
+    assert.ok(starts[0] - sent < 8 * SECOND - 500, `started ${starts[0] - sent} ms after the line`);
+    await k.agent.idle();
+  } finally {
+    await k.done();
+  }
+});
+
+test("a typed line Koe gives nothing back to: Kokoro starts at the live session's own no-answer bound (8 seconds)", async () => {
+  const { starts, hold } = kokoroStarts();
+  const k = await liveKit([{}], { agent: { secondMs: SECOND }, hold });
+  try {
+    const sent = Date.now();
+    k.agent.send('hello?');
+    await until(() => starts.length > 0, 12_000);
+    const at = starts[0] - sent;
+    assert.ok(at >= 8 * SECOND - 100 && at < 8 * SECOND + 2500, `started ${at} ms after the line`);
+    await k.agent.idle();
+  } finally {
+    await k.done();
+  }
+});
+
+test("a typed line whose answer is Koe's sleep: the session closes, and Kokoro waits no longer", async () => {
+  const { starts, hold } = kokoroStarts();
+  const k = await liveKit([{ tool: { name: 'sleep', args: {} }, delayMs: 600 }], { agent: { secondMs: SECOND }, hold });
+  try {
+    const sent = Date.now();
+    k.agent.send('never mind');
+    await until(() => starts.length > 0, 12_000);
+    assert.ok(starts[0] - sent < 8 * SECOND - 500, `started ${starts[0] - sent} ms after the line`);
+    await k.agent.idle();
+  } finally {
+    await k.done();
+  }
+});
+
+test("a reminder's wake in live voice, the page in view: Kokoro's first request reads the reminder as Koe said it", async () => {
+  const { starts, hold } = kokoroStarts();
+  const k = await liveKit([{ said: 'The sun sets in half an hour.', audio: tone(0.3), delayMs: 1000 }], { agent: { secondMs: SECOND }, hold });
+  try {
+    await k.voice.unlock();
+    await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes', fallbacks: [{ watch: 'sun', text: 'Sunset at 18:40' }] });
+    await until(() => starts.length > 0, 8000);
+    await k.agent.idle();
+    const first = userTexts(k.sent['model-0'][0]);
+    assert.ok(first.some((t) => /^\[Koe said( aloud)?\] "The sun sets in half an hour\."$/.test(t)), JSON.stringify(first));
+  } finally {
+    await k.done();
+  }
+});
+
+test("a wake with no reminders, and a reminder's wake while the page is out of view: Kokoro doesn't wait for Koe", async () => {
+  for (const [what, wake, away] of /** @type {const} */ ([
+    ['no reminders', { kind: 'trigger', text: 'Sunset in 30 minutes' }, false],
+    ['out of view', { kind: 'trigger', text: 'Sunset in 30 minutes', fallbacks: [{ watch: 'sun', text: 'Sunset at 18:40' }] }, true],
+  ])) {
+    const { starts, hold } = kokoroStarts();
+    const k = await liveKit([{ said: 'The sun sets in half an hour.', audio: tone(0.3), delayMs: 2500 }], { agent: { secondMs: SECOND }, hold });
+    try {
+      await k.voice.unlock();
+      if (away) hidden(true);
+      const at = Date.now();
+      await k.agent.wake(/** @type {any} */ (wake));
+      await until(() => starts.length > 0, 8000);
+      assert.ok(starts[0] - at < 2000, `${what}: started ${starts[0] - at} ms after the wake`);
+      assert.ok(!userTexts(k.sent['model-0'][0]).some((t) => /^\[Koe said/.test(t)), `${what}: before Koe's line`);
+    } finally {
+      hidden(false);
+      await k.done();
+    }
+  }
+});
+
+test("a reminder's wake with Koe on a chat model: Kokoro's first request reads the reminder as Koe said it; with no reminders she starts at once", async () => {
+  for (const reminders of [true, false]) {
+    const { starts, hold: mine } = kokoroStarts();
+    let first = true;
+    const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] }], {
+      koe: { type: { rules: [{ match: '.', reply: { toolCalls: [{ name: 'speak', input: { text: 'Sunset at 18:40.' } }, { name: 'sleep', input: {} }] } }] } },
+      agent: { secondMs: 200 }, // Koe's first words are waited for 0.7 s at most
+      // Koe's model takes 300 ms to answer: a Kokoro that didn't wait would start before its words.
+      hold: async (c) => {
+        await mine(c);
+        if (c.model.providerId === 'model-koe' && first) {
+          first = false;
+          await new Promise((r) => setTimeout(r, 300));
+        }
+      },
+    });
+    await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes', ...(reminders ? { fallbacks: [{ watch: 'sun', text: 'Sunset at 18:40' }] } : {}) });
+    await until(() => starts.length > 0, 5000);
+    await k.agent.idle();
+    const said = userTexts(k.sent['model-0'][0]).some((t) => t === '[Koe said] "Sunset at 18:40."');
+    assert.equal(said, reminders, reminders ? 'she waited for Koe to say it' : "nothing both halves owe: she doesn't wait");
+  }
+});
+
+test("a reminder's wake with Koe on a chat model: Kokoro's first request reads the reminder as Koe said it; with no reminders she starts at once", async () => {
+  for (const reminders of [true, false]) {
+    const { starts, hold: mine } = kokoroStarts();
+    let first = true;
+    const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] }], {
+      koe: { type: { rules: [{ match: '.', reply: { toolCalls: [{ name: 'speak', input: { text: 'Sunset at 18:40.' } }, { name: 'sleep', input: {} }] } }] } },
+      agent: { secondMs: 200 }, // Koe's first words are waited for 0.7 s at most
+      // Koe's model takes 300 ms to answer: a Kokoro that didn't wait would start before its words.
+      hold: async (c) => {
+        await mine(c);
+        if (c.model.providerId === 'model-koe' && first) {
+          first = false;
+          await new Promise((r) => setTimeout(r, 300));
+        }
+      },
+    });
+    await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes', ...(reminders ? { fallbacks: [{ watch: 'sun', text: 'Sunset at 18:40' }] } : {}) });
+    await until(() => starts.length > 0, 5000);
+    await k.agent.idle();
+    const said = userTexts(k.sent['model-0'][0]).some((t) => t === '[Koe said] "Sunset at 18:40."');
+    assert.equal(said, reminders, reminders ? 'she waited for Koe to say it' : "nothing both halves owe: she doesn't wait");
   }
 });
