@@ -482,6 +482,62 @@ test('voice on throughout: the same openings listen as they always did, and a ta
   }
 });
 
+// Voice turning off inside the open itself, past the check above (the browser still starting the microphone): the microphone it opened closes
+// again, and each listening falls back as above.
+/** @param {any[]} script */
+const kitVoiceOffInsideOpen = async (script) => {
+  const k = await agentKit([script], { voice: { speechIn: ['m-hear'], hears: ['the first one'] } });
+  const open = k.voice.open.bind(k.voice);
+  let opened = 0;
+  k.voice.open = async (/** @type {any} */ o) => {
+    if (!opened++) await k.voice.choose('off');
+    return open(o);
+  };
+  /** @type {string[]} */
+  const states = [];
+  k.agent.on('state', (/** @type {any} */ s) => states.push(s.name));
+  return { k, states };
+};
+
+test('voice turning off inside the microphone\'s own opening for speak: it closes again, no Listening, and speak says it could not listen (spec §10.5)', async (t) => {
+  useClock(t);
+  const { k, states } = await kitVoiceOffInsideOpen([{ toolCalls: [{ name: 'speak', input: { text: 'Which day would you like?' } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]);
+  k.agent.send('Plan our day');
+  await k.agent.idle();
+  assert.ok(!states.includes('listening') && !states.includes('hearing'), `the dock never said Listening: ${states}`);
+  assert.notEqual(mics(k).at(-1), 'mic open', `none left open: ${mics(k)}`);
+  assert.equal((await results(k, 'speak'))[0].data.content, "Said aloud. annai couldn't listen: voice mode is off. The user may type.");
+  assert.equal(k.agent.state.name, 'sleeping');
+});
+
+test('voice turning off inside the microphone\'s own opening for her question: no Listening, and the buttons wait with no time limit (spec §10.5)', async (t) => {
+  useClock(t);
+  const { k, states } = await kitVoiceOffInsideOpen([{ toolCalls: [{ name: 'ask', input: { question: 'Lunch or dinner?', options: ['Lunch', 'Dinner'] } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]);
+  k.agent.send('Plan our day');
+  await until(() => k.said.includes('Lunch or dinner?') && !k.voice.on);
+  await new Promise((r) => setTimeout(r, 200)); // far past her question's 8 s: still waiting
+  assert.ok(!states.includes('listening') && !states.includes('hearing'), `the dock never said Listening: ${states}`);
+  assert.notEqual(mics(k).at(-1), 'mic open', `none left open: ${mics(k)}`);
+  assert.notEqual(k.agent.pendingId, null, 'it waits for a tap, with no time limit');
+  k.agent.answer(/** @type {string} */ (k.agent.pendingId), 'Lunch');
+  await k.agent.idle();
+  assert.equal((await results(k, 'ask'))[0].data.content, 'The user chose: Lunch');
+});
+
+test('voice turning off inside the microphone\'s own opening for the wait tool: no Listening, and it waits for typing (spec §10.5)', async (t) => {
+  useClock(t);
+  const { k, states } = await kitVoiceOffInsideOpen([{ toolCalls: [{ name: 'wait', input: { seconds: 10 } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]);
+  k.agent.send('Give me a minute');
+  await until(() => !k.voice.on);
+  await new Promise((r) => setTimeout(r, 30));
+  assert.ok(!states.includes('listening') && !states.includes('hearing'), `the dock never said Listening: ${states}`);
+  assert.deepEqual([k.agent.state.name, k.agent.state.label], ['waiting', 'Your turn']);
+  assert.notEqual(mics(k).at(-1), 'mic open', `none left open: ${mics(k)}`);
+  k.agent.send('Ready');
+  await k.agent.idle();
+  assert.equal((await results(k, 'wait'))[0].data.content, 'The user wrote: Ready');
+});
+
 test('voice turning off as the microphone opens for the window after she speaks: no microphone, no Listening, and the dock says she sleeps (spec §10.5)', async (t) => {
   useClock(t);
   const { k, states } = await kitVoiceOffWhileOpening([{ toolCalls: [{ name: 'speak', input: { text: 'Let me check.' } }, { name: 'note_it', input: {} }] }, { text: 'Done.' }]);

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
+import { writeFile } from 'node:fs/promises';
 import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, fakeMicrophone, filterTrace, savedBy } from './helpers.js';
 import { encodeWav } from '../../src/core/voice/pcm.js';
 
@@ -124,6 +125,41 @@ test('cutting her off: a tap stops her mid-sentence and listens; she hears where
     expect(answer).toContain('The user stopped you after:');
     expect(answer).toContain('Tell me about the beach instead.');
     expect(await page.evaluate(() => /** @type {any} */ (window).__micOpens)).toBe(1);
+  } finally {
+    await server.stop();
+  }
+});
+
+test('voice off while she listens for an answer: the dock says "Your turn" at once; voice back on opens the microphone again, and her answer is heard (spec §10.5)', async ({ page }, testInfo) => {
+  const server = await startModelServer({
+    '/b/v1/messages': [
+      sse(anthropicToolReply([{ name: 'wait', input: { seconds: 60 } }])),
+      sse(anthropicToolReply([{ name: 'speak', input: { text: 'Great.' } }, { name: 'sleep', input: {} }])),
+    ],
+    '/ears/audio/transcriptions': json({ text: 'Yes, the first one.' }),
+    '/voice/audio/speech': wav,
+  });
+  try {
+    // Nobody speaks into the first microphone; the answer comes into the one opened again.
+    const quiet = testInfo.outputPath('quiet.wav');
+    await writeFile(quiet, Buffer.from(encodeWav(new Float32Array(16000), 16000)));
+    await fakeMicrophone(page, [quiet, clipPath('first-one')]);
+    await setUpVoice(page, server.origin);
+    await page.getByRole('button', { name: 'Type' }).click();
+    await page.getByLabel('Message to Shiori').fill('Plan our day');
+    await page.getByRole('button', { name: 'Send', exact: true }).click();
+    const label = page.locator('.talk-label');
+    await expect(label).toHaveText('Listening', { timeout: 20_000 });
+    await page.locator('.voice-chip').click();
+    await expect(page.locator('.voice-chip')).toHaveText('Voice off');
+    await expect(label).toHaveText('Your turn');
+    await page.locator('.voice-chip').click();
+    await expect(page.locator('.voice-chip')).toHaveText('Voice on');
+    await expect(label).toHaveText('Tap to talk', { timeout: 30_000 });
+    expect(await page.evaluate(() => /** @type {any} */ (window).__micOpens)).toBe(2);
+    const answer = JSON.stringify(server.bodies('/b/v1/messages')[1].messages.at(-1));
+    expect(answer).toContain('The user said:');
+    expect(answer).toContain('Yes, the first one.');
   } finally {
     await server.stop();
   }
