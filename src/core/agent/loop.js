@@ -3071,9 +3071,7 @@ export class Agent {
             await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...this.#chose() }, texts: [['text', got.chosen]] });
             return `The user chose: ${got.chosen}`;
           }
-          const wrote = typedAs(got);
-          await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...wrote.data }, texts: [['text', got.text ?? '']] });
-          return wrote.said;
+          return this.#answer('', got, call, ''); // typed, or said (a tap held voice on and opened the microphone for it), as her question aloud is answered
         },
       },
       {

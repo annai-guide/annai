@@ -2938,6 +2938,30 @@ test("with voice off, her wait tool waits for typing; a tap on Shiori holds voic
   await k.agent.idle();
 });
 
+test("with voice off, her ask waits for a tap or typing; a tap on Shiori holds voice on and opens the microphone, and what the user says answers it, as a spoken answer to her question aloud does: the model reads The user said:, the words are one heard line for the question, and no empty line of theirs is written", async (t) => {
+  useClock(t);
+  const k = await gateKit([call('ask', { question: 'Lunch or dinner?', options: ['Lunch', 'Dinner'] }), call('speak', { text: 'Dinner it is.' }), sleep], { voice: { speechIn: ['m-hear'], hears: ['Dinner please'] } });
+  await voiceOff(k);
+  k.agent.send('Plan our day');
+  await until(() => k.agent.state.name === 'waiting');
+  assert.equal(k.agent.tap(), 'listening');
+  await until(() => micLog(k).includes('mic open'));
+  await pause(1 * k.agent.secondMs);
+  await hear(k, 'first-one');
+  await pause(30 * k.agent.secondMs);
+  const results = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => ['ask', 'speak'].includes(e.data.name)).map((/** @type {any} */ e) => `${e.data.name}: ${e.data.content}`);
+  assert.deepEqual(results.slice(0, 2), ['ask: The user said:', 'speak: Said aloud. Heard nothing (20 seconds).'], 'the question was answered by what they said, and her reply was said');
+  const [question] = await k.events(['out.ask']);
+  const [heard] = await k.events(['heard']);
+  assert.equal(heard.data.answer, question.data.id, 'their words are the question\'s answer');
+  const last = k.requests[1].messages.at(-1);
+  assert.deepEqual(last.parts.slice(0, 2).map((/** @type {any} */ x) => [x.type, x.content ?? x.text]), [['tool_result', 'The user said:'], ['text', 'Dinner please']], 'and the model reads their words after the result');
+  assert.deepEqual((await k.events(['msg.user'])).map((/** @type {any} */ e) => e.data.answer), [undefined], 'the only line of theirs is "Plan our day"');
+  assert.deepEqual(k.said, ['Dinner it is.']);
+  k.agent.interrupt();
+  await k.agent.idle();
+});
+
 test("classic voice: voice turning off inside the card's microphone's own opening, past the check before it: the microphone it opened closes, the dock never says Listening, and the card waits for a tap", async (t) => {
   useClock(t);
   const k = await gateKit([call('read_trip', { trip: TV }), sleep], { voice: { speechIn: ['m-hear'], hears: ['Yes please'] } });
