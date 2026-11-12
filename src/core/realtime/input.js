@@ -7,7 +7,8 @@ import { Detector } from '../voice/detector.js';
  * 100 ms chunks of 16-bit PCM at the session's rate; at the cut, the rest and activityEnd. A noise thrown away sooner sends nothing.
  * Half-duplex and full duplex: spec §10.4. Full duplex only where duplex() says, and there a start needs bargeInDb more over the floor (decision 13).
  * A turn lasts maxMs at most, and cut() ends one the model has stopped transcribing; onTurn hears why each ended, in numbers.
- * @typedef {'pause' | 'cap' | 'transcript' | 'close' | 'voice' | 'noise' | 'kept'} TurnEnd  voice: Koe's began (half-duplex); noise: thrown away once sent; kept: no turn, the level check's count as the microphone closes
+ * @typedef {'pause' | 'cap' | 'transcript' | 'close' | 'voice' | 'noise' | 'kept' | 'dropped'} TurnEnd  voice: Koe's began (half-duplex); noise: thrown away once sent;
+ *   kept: no turn, the level check's count as the microphone closes; dropped: no turn, a run held as her voice began that wasn't speech yet (speechMs says how much), none of it sent
  */
 
 /** How far past her voice's tail speech that began in it must go on to be the user's. */
@@ -74,7 +75,7 @@ export class LiveInput {
    *   rate?: number, pauseMs?: number, startDb?: number, minSpeechMs?: number, preRollMs?: number, chunkMs?: number, bargeInDb?: number,
    *   speaking?: () => boolean, duplex?: () => boolean, deaf?: () => boolean, tailMs?: number, maxMs?: number, onLevel?: (x: number) => void, onError?: (e: Error) => void, onOver?: () => void,
    *   minDb?: (floorDb: number) => number | null, onKept?: () => void, floorDb?: number | null,
-   *   onTurn?: (t: { end: TurnEnd, ms: number, floorDb: number | null, peakDb: number | null, minDb: number | null, keptFrames: number, keptPeakDb: number | null }) => void }} o
+   *   onTurn?: (t: { end: TurnEnd, ms: number, floorDb: number | null, peakDb: number | null, minDb: number | null, keptFrames: number, keptPeakDb: number | null, speechMs?: number }) => void }} o
    *   rate: what the session takes (send's audioIn); speaking: whether Koe's voice is playing; duplex: whether the user may cut her off by
    *   speaking now (else half-duplex); deaf: whether nothing heard is the user's now (an urgent line of hers, said whole); tailMs: how long after her voice half-duplex still hears nothing (her echo, the speaker's latency);
    *   maxMs: a turn's longest, 15 s: just above what a turn ended by a pause has reached (of 168 pause-ended turns in recorded drives, p95
@@ -82,7 +83,7 @@ export class LiveInput {
    *   Realtime streams the user's words to end it sooner (spec §10.8); and a turn begun after the quiet spell ran out that reaches it is
    *   sound that never stops, which wakes Kokoro (koe/live.js);
    *   onOver: speech begun over her was let go; minDb: the level check's minimum; onKept: a frame over the floor was just kept out by it
-   *   to begin a turn (voice/level.js); floorDb: the floor learned earlier on this microphone; onTurn with end 'kept': the microphone closes, with sound the minimum kept out since the last turn
+   *   to begin a turn (voice/level.js); floorDb: the floor learned earlier on this microphone; onTurn with end 'kept': the microphone closes, with sound the minimum kept out since the last turn; with end 'dropped': a run held as her voice began was dropped (half-duplex)
    */
   constructor({ mic, send, rate = send.audioIn?.rate ?? 16_000, pauseMs = 700, startDb = 10, minSpeechMs = 250, preRollMs = 300, chunkMs = 100, bargeInDb = 6,
     speaking = () => false, duplex = () => false, deaf = () => false, tailMs = 300, maxMs = 15_000, onLevel, onError, onTurn, onOver, minDb, onKept, floorDb = null }) {
@@ -181,9 +182,9 @@ export class LiveInput {
       return this.#deaf(d);
     }
     const playing = this.speaking();
-    // Her voice's first frames, if speech had begun just before (held, or loud frames in the last 40 ms, which her voice can't be yet:
-    // she is let go, at the cap or in a noisy room, as a word begins), are still heard: the user's.
-    const first = playing && !this.#was && (this.#held || d.stillMs < 40);
+    // Her voice's first frame, with speech held (begun just before: she is let go, at the cap or in a noisy room, as a word begins), is still
+    // heard: a run that has minSpeechMs with it is the user's turn, which cuts her; any other is dropped below, as all she plays over is.
+    const first = playing && !this.#was && this.#held;
     this.#was = playing;
     this.#clock += pcm.length;
     if (playing) {
@@ -214,9 +215,11 @@ export class LiveInput {
       }
       this.#theirs = false;
     }
-    if (first && !this.duplex()) {
-      if (!this.active && !(this.#held && d.speechMs)) return this.#deaf(d); // speech the detector isn't sure of yet (over a guessed floor) is not the user's
-      if (this.#held) this.#start(); // the user's turn, which cuts her
+    // A run not yet a turn is dropped as she begins, as all she plays over is: a bump (drive 3), a car over a guessed floor, a word's first instant.
+    // One still held leaves a line (onTurn 'dropped', nothing of it sent), so that a drive can show a word lost this way.
+    if (first && !this.duplex() && !this.active) {
+      if (this.#held) this.#told('dropped', d.peakDb);
+      return this.#deaf(d);
     }
     // What was let go ends at its first quiet: her echo is over, and what follows is fresh. Going on OVER_MS past her end, it is the user
     // talking over her, let go to its pause (a quiet in it then is a breath).
@@ -311,13 +314,16 @@ export class LiveInput {
     this.#told(why, peak);
   }
 
-  /** Why a turn ended, in numbers, with what the level check did since the last. @param {TurnEnd | 'kept'} why @param {number | null} peak */
+  /**
+   * Why a turn ended, in numbers, with what the level check did since the last. A 'kept' or 'dropped' line is no turn: ms 0, nothing sent;
+   * 'dropped' adds speechMs, how much of the run was speech (minSpeechMs makes it a turn). @param {TurnEnd} why @param {number | null} peak
+   */
   #told(why, peak) {
     const d = this.#detector;
     const db = (/** @type {number | null} */ x) => (x === null ? null : Math.round(x * 10) / 10);
     const kept = (d?.keptFrames ?? 0) - this.#keptMark;
     this.#keptMark = d?.keptFrames ?? 0;
-    this.onTurn?.({ end: /** @type {TurnEnd} */ (why), ms: why === 'kept' ? 0 : Math.round((this.#sent / this.rate) * 1000), floorDb: db(d?.floorDb ?? null), peakDb: db(peak), minDb: db(this.#turnMin), keptFrames: kept, keptPeakDb: db(kept ? d?.keptPeakDb ?? null : null) });
+    this.onTurn?.({ end: why, ms: why === 'kept' || why === 'dropped' ? 0 : Math.round((this.#sent / this.rate) * 1000), floorDb: db(d?.floorDb ?? null), peakDb: db(peak), minDb: db(this.#turnMin), keptFrames: kept, keptPeakDb: db(kept ? d?.keptPeakDb ?? null : null), ...(why === 'dropped' ? { speechMs: d?.speechMs ?? 0 } : {}) });
     if (d) d.keptPeakDb = null;
     this.#turnMin = null;
   }

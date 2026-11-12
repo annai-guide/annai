@@ -2544,6 +2544,7 @@ j43x3k	ok	stalled	卡住	src/ui/screens/trace.js:281
 gw0cwm#other	ok	# holes	# 处空白	src/ui/screens/trace.js:282	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
 1bx4bl6	ok	on {0}	在 {0} 上	src/ui/screens/trace.js:283	{0} = d.player
 1jhbzkn	draft	your voice {0} dB, least to start {1} dB, {2} frames kept out (loudest {3} dB)	你的声音 {0} dB，开始所需最低 {1} dB，{2} 帧被挡在外（最响 {3} dB）	src/ui/screens/trace.js:288	{0} = d.voiceDb ?? '?'; {1} = d.minDb ?? '–'; {2} = d.keptFrames; {3} = d.keptPeakDb ?? '?'
+1mxp5c6	draft	a sound dropped as her voice began: {0} of speech · floor {1} dB, loudest {2} dB	她的声音开始时丢弃的声音：语音 {0} · 底噪 {1} dB，最响 {2} dB	src/ui/screens/trace.js:289	{0} = duration(d.speechMs ?? 0); {1} = d.floorDb ?? '?'; {2} = d.peakDb ?? '?'
 1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	你的回合结束：{0} · 已发送 {1} · 底噪 {2} dB，最响 {3} dB	src/ui/screens/trace.js:289	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
 7ovnj9	draft	no turn	没有开始一轮	src/ui/screens/trace.js:289	
 khxbvb	ok	audio: {0}	音频：{0}	src/ui/screens/trace.js:293	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
