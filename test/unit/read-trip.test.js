@@ -842,6 +842,29 @@ test('classic voice: annai says the question, listens, and a heard yes (written 
   assert.equal(k.requests.filter((/** @type {any} */ r) => String(r.system ?? '').startsWith('You make one quick decision')).length, 0, 'no gate: the word list is the check');
 });
 
+test("classic voice: voice turning off as the card's microphone opens leaves it unheard: no microphone, no Listening, and the card waits for a tap, which still allows it", async (t) => {
+  useClock(t);
+  const k = await gateKit([call('read_trip', { trip: TV }), sleep], { voice: { speechIn: ['m-hear'], hears: ['Yes please'] } });
+  const howToListen = k.voice.howToListen.bind(k.voice);
+  k.voice.howToListen = async (/** @type {string} */ role) => {
+    await k.voice.choose('off'); // the chip's tap lands in the microphone's own awaits
+    return howToListen(role);
+  };
+  /** @type {string[]} */
+  const states = [];
+  k.agent.on('state', (/** @type {any} */ s) => states.push(s.name));
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1 && k.said.includes(ASKED) && !k.voice.on);
+  await new Promise((r) => setTimeout(r, 100)); // past the card's own window
+  assert.deepEqual(k.platform.log.filter((/** @type {string} */ l) => l.startsWith('mic ')), [], 'the microphone never opened');
+  assert.ok(!states.includes('listening') && !states.includes('hearing'), `the dock never said Listening: ${states}`);
+  assert.equal(k.agent.kokoro.pendingId, k.asks[0].data.tap, 'the card waits for a tap');
+  k.agent.answer(k.asks[0].data.tap, 'Allow');
+  await k.agent.idle();
+  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'tap' }]);
+  assert.deepEqual(k.platform.log.filter((/** @type {string} */ l) => l.startsWith('mic ')), []);
+});
+
 test('classic voice: a heard line that is no yes ends the card unanswered, its words following her result, and grants nothing', async (t) => {
   useClock(t);
   const k = await gateKit([call('read_trip', { trip: TV }), say('Tomorrow is the museum.')], { voice: { speechIn: ['m-hear'], hears: ["What's on tomorrow?"] } });

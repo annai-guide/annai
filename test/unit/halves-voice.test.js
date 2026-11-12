@@ -1069,3 +1069,26 @@ test('+ again while the new conversation still listens (← home with the mic op
   const heard = await k.store.tx(['events'], 'readonly', (tx) => tx.listEvents(draft, { types: ['heard'] }));
   assert.equal(heard.length, 1, 'heard in it');
 });
+
+// A chat Koe reads the same Voice: voice turning off inside the awaits that open its microphone leaves it shut, as for Shiori as one.
+test("a chat Koe's speak, with voice turning off as its microphone opens: no microphone, no Listening, and its speak says it couldn't listen (spec §10.5)", async (t) => {
+  useClock(t);
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], {
+    koe: { type: { rules: [{ match: 'the user wrote', times: 1, reply: { toolCalls: [{ name: 'speak', input: { text: "I'm checking." } }] } }, { match: '.', reply: sleep }] } },
+    voice: { speechIn: ['m-hear'] },
+  });
+  const howToListen = k.voice.howToListen.bind(k.voice);
+  k.voice.howToListen = async (/** @type {string} */ role) => {
+    await k.voice.choose('off'); // the chip's tap lands in the microphone's own awaits
+    return howToListen(role);
+  };
+  const koe = states(k.agent.koe);
+  k.agent.send('Is Nepenthe open?');
+  await k.agent.idle();
+  assert.deepEqual(plays(k), ["I'm checking."], 'said aloud first');
+  assert.equal(micOpens(k), 0, 'the microphone never opened');
+  assert.ok(!koe.includes('listening') && !koe.includes('hearing'), JSON.stringify(koe));
+  const [speak] = await results(k, 'speak');
+  assert.equal(speak.data.half, 'koe');
+  assert.equal(speak.data.content, "Said aloud. annai couldn't listen: voice mode is off. The user may type.");
+});
