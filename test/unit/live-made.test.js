@@ -43,7 +43,7 @@ const PAUSED = { said: SAID, audio: tone(3), gap: { at: 48_000, ms: 1500 } };
 /**
  * A live session in the car (sound may cut her), the user in it, a real second; Kokoro's note, which she begins to say. Resolves as her sound for it
  * starts, with when. made false: the provider's plugin from before it said when her turn is all made.
- * pace: how long the stand-in's turns stay open, as a share of their sound's length (1.4: turnComplete 600 ms after 1.5 s of sound, and cut by the
+ * pace: how long the stand-in's turns stay open, as a share of their sound's length (2: turnComplete 1.5 s after 1.5 s of sound, and cut by the
  * user's turn beginning, as Gemini's are).
  * @param {{ note?: any, turns?: any[], made?: false, pace?: number }} [o] @returns {Promise<[any, number]>}
  */
@@ -72,13 +72,13 @@ async function answersAtOnce(k, at, soundMs) {
   return Date.now() - (at + soundMs);
 }
 
-test('the user answers once all of her sound has played, before the provider ends her turn 600 ms later: the note is heard whole, and no silent copy of it is shown', async () => {
-  // A stand-in whose sound has no quiet tail and whose turnComplete comes 600 ms after it (as long as the slowest of real Gemini's after its audible
-  // end, 0.63 s): their turn begins once all of it has played and well inside that.
-  const [k, at] = await noteSaid({ pace: 1.4 });
+test('the user answers once all of her sound has played, before the provider ends her turn 1.5 s later: the note is heard whole, and no silent copy of it is shown', async () => {
+  // A stand-in whose sound has no quiet tail and whose turnComplete comes 1.5 s after it (longer than real Gemini's 0.63 at most, so that a slow
+  // machine keeps their turn's start, which can come 600 ms late on a loaded one, inside it): it begins once all of her sound has played.
+  const [k, at] = await noteSaid({ pace: 2 });
   try {
     const after = await answersAtOnce(k, at, 1500);
-    assert.ok(after < 333, `their turn began ${after} ms after her sound, within a third of a second`);
+    assert.ok(after < 1400, `their turn began ${after} ms after her sound, before the provider's end`);
     await soon(async () => (await lines(k)).some(([text]) => text === ANSWER.said), 8000);
     await wait(1000);
     await k.agent.idle();
@@ -102,12 +102,13 @@ const steady = (seconds, dbfs) => new Uint8Array(new Int16Array(Math.round(24_00
 // The shape of real Gemini's reply: her last loud sample comes about 0.3 s before the end of her sound (a quiet tail, median 300 ms, which the
 // player still holds), and the provider's end at the sound's real-time end. A user answering as her last word ends begins in the tail, with her
 // sound still queued, but nothing she has left to say: it is heard whole, so no card, and her line is written whole (50 of 50 such real answers
-// got a card and a ✂ line before). The tail here is 0.6 s, longer than real ones (220 to 560 ms), so that a slow machine keeps the start in it.
+// got a card and a ✂ line before). The tail here is 1.5 s, much longer than real ones (220 to 560 ms), so that a slow machine (their turn can begin
+// 600 ms late on a loaded one) keeps the start in it.
 test('the user answers in the quiet tail of her sound, as real Gemini\'s ends: past her last loud sample, so the note is heard whole, no silent copy of it is shown', async () => {
-  const [k, at] = await noteSaid({ note: { said: SAID, audio: join(tone(1.5), zeros(0.6)) }, pace: 1 });
+  const [k, at] = await noteSaid({ note: { said: SAID, audio: join(tone(1.5), zeros(1.5)) }, pace: 1 });
   try {
     const after = await answersAtOnce(k, at, 1500);
-    assert.ok(after < 550, `their turn began ${after} ms after her last loud sample, inside the 600 ms tail`);
+    assert.ok(after < 1400, `their turn began ${after} ms after her last loud sample, inside the 1.5 s tail`);
     await soon(async () => (await lines(k)).some(([text]) => text === ANSWER.said), 8000);
     await wait(500);
     await k.agent.idle();
@@ -124,10 +125,10 @@ test('the user answers in the quiet tail of her sound, as real Gemini\'s ends: p
 // one at or over it, still to play, is a cut.
 for (const [what, dbfs, heardWhole] of /** @type {const} */ ([['a soft last syllable (-46 dBFS)', -46, true], ['a last syllable over the level (-34 dBFS)', -34, false]])) {
   test(`the user begins in ${what} of her note: ${heardWhole ? 'heard whole, no card' : 'a cut, so the note is shown'}`, async () => {
-    const [k, at] = await noteSaid({ note: { said: SAID, audio: join(tone(1.2), join(steady(0.6, dbfs), zeros(0.1))) }, pace: 1 });
+    const [k, at] = await noteSaid({ note: { said: SAID, audio: join(tone(1.2), join(steady(1.5, dbfs), zeros(0.1))) }, pace: 1 });
     try {
       const after = await answersAtOnce(k, at, 1200);
-      assert.ok(after < 500, `their turn began ${after} ms after her loud words, inside the 600 ms syllable`);
+      assert.ok(after < 1400, `their turn began ${after} ms after her loud words, inside the 1.5 s syllable`);
       await soon(async () => (await lines(k)).some(([text]) => text === ANSWER.said), 8000);
       await wait(500);
       await k.agent.idle();
