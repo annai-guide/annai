@@ -146,6 +146,8 @@ export class LiveKoe {
   /** The turns annai wrote to the session since that setup which the log holds none of (a reminder's), for What each half sees. @type {{ ts: number, text: string }[]} */
   #told = [];
   #wake = '';
+  /** The conversation this session was made for, bound as it connects: every line it writes goes there, whichever one Koe has open by the time the write runs (a switch moves her target before the stopped stream's last lines are written). */
+  #scope = '';
   /** What the user speaks, the browser's language where they chose none: a very short transcript in another language is flagged against it. @type {import('../languages.js').LanguageSettings | null} */
   #languages = null;
   /** The user is in this session (they typed, or spoke, or turned it on), so what Koe tells Kokoro is watched (isWatched); a session a trigger opened is not, until they do. */
@@ -501,11 +503,12 @@ export class LiveKoe {
     const sent = kept ? kept.context : context; // a resume sends what it began with: a provider that reads it again repeats nothing
     this.#setUp = { instructions, context: sent, tools: tools.map((x) => x.name), after: kept ? kept.after : last?.seq ?? 0 };
     this.#wake = newId('w');
+    this.#scope = this.c.koe.scope;
     this.#noBack = 0;
     this.#endedEarly = false;
     // The phone's sound, for the Trace's ready line: its rate and the output's own latency.
     const output = this.c.voice?.platform?.player.output?.() ?? undefined;
-    const s = await this.c.llm.live(id, { instructions, context: sent, tools, ...(languages ? { languages } : {}), ...(resume ? { resume } : {}) }, { scope: this.c.koe.scope, wake: this.#wake, output });
+    const s = await this.c.llm.live(id, { instructions, context: sent, tools, ...(languages ? { languages } : {}), ...(resume ? { resume } : {}) }, { scope: this.#scope, wake: this.#wake, output });
     s.on((e) => this.#on(s, e));
     s.closed.then((c) => this.#closed(s, c, why));
     await s.ready;
@@ -1532,7 +1535,8 @@ export class LiveKoe {
 
   /** Writes in order; an entry may be worked out first. @param {any} ev @returns {Promise<unknown>} */
   #write(ev) {
-    /* en */ this.#chain = this.#chain.then(async () => this.c.koe.log(typeof ev === 'function' ? await ev() : ev)).catch((e) => console.warn('a live line was not written', e));
+    const scope = this.#scope;
+    /* en */ this.#chain = this.#chain.then(async () => this.c.koe.log(typeof ev === 'function' ? await ev() : ev, { scope })).catch((e) => console.warn('a live line was not written', e));
     return this.#chain;
   }
 
