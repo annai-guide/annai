@@ -185,6 +185,14 @@ test("a live.turn line for a run dropped as her voice began (no turn) is in the 
   r.trace.push({ at: 3300, type: 'live.turn', data: { end: 'dropped', ms: 0, floorDb: -78, peakDb: -51, speechMs: 180 } });
   assert.match(timeline(r, run(r)), /trace .*live\.turn dropped 0 ms floor -78 peak -51 speech 180 ms/);
   assert.equal(run(r).turns[0].reason, 'pause');
+  // The frame is stamped in Node a little after the trace line (40 ms here), so a dropped or kept line just after the turn's own line is the nearest to the activityEnd: it must still not be the reason.
+  const near = clean();
+  near.frames = near.frames.map((x) => (x.kind === 'activityEnd' ? { ...x, at: 3240 } : x));
+  near.trace.push({ at: 3260, type: 'live.turn', data: { end: 'dropped', ms: 0, floorDb: -78, peakDb: -51, speechMs: 180 } }, { at: 3250, type: 'live.turn', data: { end: 'kept', ms: 0, floorDb: -78, peakDb: -51 } });
+  assert.equal(run(near).turns[0].reason, 'pause');
+  // No turn line at all within reach: the reason is unknown, not "dropped".
+  const alone = clean({ trace: [{ at: 3260, type: 'live.turn', data: { end: 'dropped', ms: 0, floorDb: -78, peakDb: -51, speechMs: 180 } }] });
+  assert.equal(run(alone).turns[0].reason, null);
 });
 
 test('summary: a line a scenario, the checks, and the verdict', () => {
