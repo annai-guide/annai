@@ -815,12 +815,18 @@ export class LiveKoe {
 
   /**
    * Her voice stops now, and the provider is told where (cut: OpenAI truncates its record there); the session stays. The user stopped her
-   * knowing, so what she was saying isn't said again; of a note for them, what they didn't hear is shown, silently, never lost.
+   * knowing, so what she was saying isn't said again, nor what waits behind it (written as her answer, after her line, shown, not spoken); of a
+   * note for them, what they didn't hear is shown, silently, never lost.
    */
   interrupt() {
     const t = this.#sounding;
     if (!t) return;
     const playedMs = this.#stop(t);
+    const behind = this.#unwait();
+    for (const w of behind) Object.assign(w, { cut: true, whole: w.done });
+    const write = () => { for (const w of behind) this.#said(w, null); };
+    if (t.stream) void t.stream.done.then(write, write); // after hers, as the lines read in order
+    else write();
     if (!t.whole && this.#owed.sent.length) this.c.left?.([...this.#owed.sent], true);
     this.#passed();
     this.#input?.tapped();
@@ -1442,6 +1448,15 @@ export class LiveKoe {
     return t === this.#pending || this.#queue.includes(t);
   }
 
+  /** Her turns that wait to be said (the pending one, those queued behind) are taken: none plays meanwhile. @returns {Turn[]} */
+  #unwait() {
+    const waiting = [this.#pending, ...this.#queue].filter((t) => t !== null);
+    this.#pending = null;
+    this.#queue = [];
+    clearTimeout(this.#holdTimer);
+    return waiting;
+  }
+
   /**
    * Whether her turn, cut now, was heard whole (spec §10.8, What is logged): the one place that decides it. All of it played, its sound begun
    * (no sound yet is not all played), and all of it made: the provider said so (made, and no call it speaks after: more of that turn comes once
@@ -1475,10 +1490,7 @@ export class LiveKoe {
 
   /** Koe's voice stops wherever it is; how much of its turn was heard, for a protocol that cuts its record there (OpenAI's truncate). @param {boolean} [shown] what waited is written */
   #cut(shown = false) {
-    const waiting = [this.#pending, ...this.#queue].filter((t) => t !== null);
-    this.#pending = null; // none of them plays meanwhile
-    this.#queue = [];
-    clearTimeout(this.#holdTimer);
+    const waiting = this.#unwait();
     let playedMs = waiting.length ? 0 : undefined;
     for (const t of [this.#t, this.#sounding]) if (t && !waiting.includes(t)) playedMs = this.#stop(t) ?? playedMs;
     for (const t of waiting) {
