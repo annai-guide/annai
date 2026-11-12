@@ -3119,7 +3119,7 @@ export class Agent {
           }
           const got = await this.#waitFor(call, 'wait', seconds * this.secondMs);
           if (got.stopped) return { content: STOPPED, isError: true };
-          if (got.note || got.reminder) return this.#answer('', got, call, '');
+          if (got.note || got.reminder || got.heard) return this.#answer('', got, call, ''); // heard: a tap held voice on and opened the microphone for it
           if (got.text === undefined) return `Nothing yet (${seconds} seconds).`;
           const wrote = typedAs(got);
           await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...wrote.data }, texts: [['text', got.text]] });
@@ -3758,8 +3758,8 @@ export class Agent {
         return void this.#emit('state', this.state);
       }
       const p = this.#pending;
-      if (p?.kind === 'ask' || p?.arm) {
-        p.listening = true; // an ask's answer may be spoken, and one voice going off stopped listening for
+      if (p?.kind === 'ask' || p?.arm || p?.tool) {
+        p.listening = true; // an ask's answer may be spoken, a wait's too, and one voice going off stopped listening for
         if (this.#half.voice()) this.#voiceNow = true; // the tap holds voice on for this exchange: her reply to the answer is said
       }
       if (this.#busy) return; // she is speaking or working: the window serves her turn
