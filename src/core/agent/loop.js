@@ -80,7 +80,8 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  * @typedef {{ id: string, kind: 'ask' | 'wait', resolve: (v: Got) => void, listening?: boolean, hold?: () => void, arm?: () => void, by?: number, tool?: boolean, byHand?: boolean,
  *   ask?: { yes: (heard: string) => string | null, no: (heard: string) => string | null, open: boolean, from: number, until: number, wake: string, answer: string, scope: string,
  *     heard: Map<string, AskLine>, armed: { line: AskLine, chosen: string, yes: boolean } | null, settle: any, speaking: boolean } }} Pending
- *   waiting for the user; listening: an answer may be spoken; hold and arm stop and start the silence limit; by: when a tap's listening ends (#limitTap), set once per tap; tool: the wait tool's; byHand: set once this
+ *   waiting for the user; listening: an answer may be spoken; hold and arm stop and start the silence limit; by: when a tap's listening ends (#limitTap), set once per tap (annai's card has 0 until one, and its arm waits for the
+ *   later of by and its window's end); tool: the wait tool's; byHand: set once this
  *   half's own listening for its answer is over (#remindWaiting); ask: annai's own card's (confirm):
  *   from, until: its window; answer: its call's id, its heard lines' mark; armed: the newest listed word; speaking: someone is speaking now (confirmSpeech)
  * @typedef {{ id: string, inside: boolean, her?: boolean, kept?: boolean, text?: string, h?: Heard, gate?: string, taken?: boolean }} AskLine  heard while annai's card waits: inside: begun in its
@@ -991,7 +992,7 @@ export class Agent {
       /** @type {NonNullable<Pending['ask']>} */
       const ask = { yes, no, open: false, from: 0, until: 0, wake: call.wake, answer: call.id, scope: this.scope, heard: new Map(), armed: null, settle: undefined, speaking: false };
       /** @type {Pending} */
-      const p = { id: tap, kind: 'ask', ask, resolve: (v) => {
+      const p = { id: tap, kind: 'ask', ask, by: 0, resolve: (v) => {
         clearTimeout(timer);
         clearTimeout(ask.settle);
         // Kept segments its answer doesn't carry go on as heard lines: nothing heard is lost. A listed word said to the card isn't one of them: it is
@@ -1020,15 +1021,16 @@ export class Agent {
         };
         const shut = () => {
           ask.open = p.listening = false;
-          if (this.#ear?.owner === 'turn') this.#closeEar();
+          if (this.#ear) this.#closeEar(); // whoever opened it: a tap that cut the question, or one while the card waits by hand (#limitTap), opened this one
           if (this.#pending !== p) return;
           this.#setState('waiting');
           byHand();
         };
         p.hold = () => clearTimeout(timer); // someone is speaking: the window waits for their words
+        // The card's 20 s, or a tap's 8 s (p.by) once they are over and the card waits by hand: the later one.
         p.arm = () => {
           clearTimeout(timer);
-          timer = setTimeout(shut, Math.max(0, ask.until - Date.now()));
+          timer = setTimeout(shut, Math.max(0, Math.max(ask.until, /** @type {number} */ (p.by)) - Date.now()));
         };
         p.arm();
         const ear = this.#half.voice() && this.voice?.on && !(await this.#openEar('turn'));
@@ -3728,7 +3730,7 @@ export class Agent {
       if (p?.kind === 'ask' || p?.arm || p?.tool) {
         p.listening = true; // an ask's answer may be spoken, a wait's too, and one voice going off stopped listening for
         if (this.#half.voice()) this.#voiceNow = true; // the tap holds voice on for this exchange: her reply to the answer is said
-        if (p.kind === 'ask' && !p.ask) this.#limitTap(p);
+        if (p.kind === 'ask' && (!p.ask || p.byHand)) this.#limitTap(p); // annai's card only once its own window is over: till then it ends the listening itself
       }
       if (this.#busy) return; // she is speaking or working: the window serves her turn
       this.#setState('listening');
@@ -3739,7 +3741,8 @@ export class Agent {
   /**
    * A tap's listening for her question, which waits by hand with no time of its own, gets the silence limit any listening has (LISTEN_S, held while someone speaks, by
    * hold and arm as #listenFor's): at its end the microphone closes and the question waits for a tap or typing again, so a note for the user is no longer held behind
-   * an answer that may never come (#noted). Her turn is busy, so #armQuiet would never close it. @param {Pending} p
+   * an answer that may never come (#noted). Her turn is busy, so #armQuiet would never close it. annai's card is the same once its own window is over: its arm
+   * (confirm) waits for what is left of the tap's limit, and its shut closes the microphone. @param {Pending} p
    */
   #limitTap(p) {
     if (!p.arm) {
