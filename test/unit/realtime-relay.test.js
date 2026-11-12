@@ -73,58 +73,92 @@ test('an acknowledgement after her answer: sound back from its turn to the next 
   assert.equal(analyseRelay(still, analyse(still, CLIPS, { acks: ['sure'] }), /** @type {any} */ ({ acks: ['sure'], steps: [] }), CLIPS).checks[0].ok, true);
 });
 
-test('a note cut by a noise: cut, asked for again once, and said again from its start once passes; from its middle, twice, asked twice, or shown too, fails', () => {
-  const q = line('bixby', 1000, [f(3500, 'in', 'toolCall', { name: 'tell_kokoro' }), f(5600, 'out', 'text', { text: NOTE }), f(6000, 'in', 'audio', { bytes: 9600 }), f(6050, 'in', 'said', { text: "It's about" })]);
+/** Her line in annai's trace, as the record keeps it: a short text in its data (a longer one is the entry's own text, from its blob). @param {number} at @param {string} text @param {Record<string, any>} [more] */
+const speak = (at, text, more = {}) => ({ at, type: 'out.speak', data: { live: true, text, ...more } });
+/** annai's card for words of hers the user didn't hear. @param {number} at */
+const card = (at) => ({ at, type: 'reminder', data: { text: 'What you asked about is about twenty minutes ahead on Highway 1.', unsaid: true, answer: true } });
+const WHOLE = "It's about twenty minutes ahead on Highway 1.";
+
+test('a note cut by a noise: shown once, nothing asked again, and heard whole once at most passes; heard twice, asked again, or not shown fails', () => {
+  // The provider's burst holds the whole note before her voice is cut (as Gemini's do): what she was making is the measure of "whole".
+  const q = line('bixby', 1000, [f(3500, 'in', 'toolCall', { name: 'tell_kokoro' }), f(5600, 'out', 'text', { text: NOTE }), f(6000, 'in', 'audio', { bytes: 9600 }), f(6050, 'in', 'said', { text: "It's about twenty minutes " }), f(6060, 'in', 'said', { text: 'ahead on Highway 1.' })]);
   const bump = { name: 'bump', at: 6100, end: 6900, gainDb: 0 };
-  const after = [f(6300, 'out', 'activityStart'), f(6350, 'in', 'interrupted'), f(7600, 'out', 'activityEnd'), f(7650, 'out', 'text', { text: "[annai] \"Sound cut you off, so the user didn't hear what Kokoro's note says. Say it again from its start, once.\"" })];
-  const speak = (/** @type {number} */ at, /** @type {string} */ text) => ({ at, type: 'out.speak', data: { live: true }, text });
-  const WHOLE = "It's about twenty minutes ahead on Highway 1.";
+  const after = [f(6300, 'out', 'activityStart'), f(6350, 'in', 'interrupted'), f(7600, 'out', 'activityEnd')];
   /** @param {any[]} more @param {any[]} trace */
-  const cutRec = (more, trace) => rec({ route: 'headphones', plays: [q.play, bump], frames: [...q.frames, ...after, ...more], level: levels([[6000, 6400], [8000, 10_000]]), trace: [speak(6400, "It's✂"), ...trace] });
+  const cutRec = (more, trace) => rec({ route: 'headphones', plays: [q.play, bump], frames: [...q.frames, ...after, ...more], level: levels([[6000, 6400], [8000, 10_000]]), trace: [speak(6400, "It's✂", { cut: true }), card(6420), ...trace] });
   const check = (/** @type {any} */ r) => analyseRelay(r, analyse(r, CLIPS, { expectCut: true }), /** @type {any} */ ({ noteCut: true, steps: [] }), CLIPS).checks[0];
   const once = cutRec([f(8000, 'in', 'audio', { bytes: 9600 })], [speak(10_000, WHOLE)]);
-  assert.deepEqual([check(once).name, check(once).ok], ['cut note said again', true]);
-  assert.match(check(once).detail, /^asked again once; the note said again once, from its start; her lines after the ask: "It's about twenty minutes ahead on Highway 1\."$/);
-  assert.equal(check(cutRec([], [speak(10_000, 'ahead on Highway 1.')])).ok, false, 'taken up from its middle');
+  assert.deepEqual([check(once).name, check(once).ok], ['cut note heard once at most', true]);
+  assert.match(check(once).detail, /^the note heard whole once after the cut; asked again 0 times; shown once; her lines after it: "It's about twenty minutes ahead on Highway 1\."$/);
+  assert.equal(check(cutRec([], [speak(10_000, 'ahead on Highway 1.')])).ok, true, 'her answer going on from the middle: shown, so nothing is lost');
+  assert.equal(check(cutRec([], [])).ok, true, 'nothing more of hers');
   const twice = cutRec([], [speak(10_000, WHOLE), speak(14_000, WHOLE)]);
-  assert.equal(check(twice).ok, false, 'said again twice (a "what?" and the ask each answered with it)');
-  assert.match(check(twice).detail, /the note said again 2 times/);
-  assert.equal(check(cutRec([f(9000, 'out', 'text', { text: '[annai] "Sound cut you off, again."' })], [speak(10_000, WHOLE)])).ok, false, 'asked twice');
-  assert.equal(check(cutRec([], [speak(10_000, WHOLE), { at: 9500, type: 'reminder', data: { unsaid: true, answer: true } }])).ok, false, 'annai showed it as well');
+  assert.equal(check(twice).ok, false, 'heard twice (an ask and a "what?" each answered with it)');
+  assert.match(check(twice).detail, /the note heard whole 2 times/);
+  const asked = cutRec([f(7600, 'out', 'text', { text: "[annai] \"Sound cut you off, so the user didn't hear what Kokoro's note says.\"" })], [speak(10_000, WHOLE)]);
+  assert.equal(check(asked).ok, false, 'asked again');
+  assert.match(check(asked).detail, /asked again once/);
+  assert.equal(check(cutRec([f(9000, 'out', 'text', { text: '[annai] "Kokoro\'s note hasn\'t reached the user."' })], [])).ok, false, 'the plain ask is an ask too');
+  const unshown = rec({ route: 'headphones', plays: [q.play, bump], frames: [...q.frames, ...after], trace: [speak(6400, "It's✂", { cut: true })] });
+  assert.match(check(unshown).detail, /shown 0 times/);
+  assert.equal(check(unshown).ok, false, 'not shown');
   const uncut = rec({ plays: [q.play, bump], frames: q.frames });
   assert.match(check(uncut).detail, /the bump did not cut her/);
+  // The entry's own text (a long line, kept in a blob) is read as well as its data's.
+  const long = cutRec([], [{ at: 10_000, type: 'out.speak', data: { live: true }, text: WHOLE }, speak(14_000, WHOLE)]);
+  assert.match(check(long).detail, /the note heard whole 2 times/);
 });
 
-test('a note cut by a spoken "stop": passes with no sound after it and nothing passed on (shown on the screen is fine); a note said again, or passed on, fails', () => {
-  const q = line('bixby', 1000, [f(3500, 'in', 'toolCall', { name: 'tell_kokoro' }), f(5600, 'out', 'text', { text: NOTE }), f(6000, 'in', 'audio', { bytes: 9600 })]);
+test('a note cut by a spoken "stop": a word like "Okay." after it at most, nothing passed on, shown once, no fresh session or drop passes; more words, a pass-on, a retry fail', () => {
+  const q = line('bixby', 1000, [f(3500, 'in', 'toolCall', { name: 'tell_kokoro' }), f(5600, 'out', 'text', { text: NOTE }), f(6000, 'in', 'audio', { bytes: 9600 }), f(6050, 'in', 'said', { text: WHOLE })]);
   const stop = { name: 'stop', at: 6100, end: 6600, gainDb: 0 };
-  const after = [f(6300, 'out', 'activityStart'), f(6350, 'in', 'interrupted'), f(7300, 'out', 'activityEnd'), f(7350, 'out', 'text', { text: '[annai] "Sound cut you off, so the user didn\'t hear what Kokoro\'s note says."' })];
+  const after = [f(6300, 'out', 'activityStart'), f(6350, 'in', 'interrupted'), f(7300, 'out', 'activityEnd')];
   const STOPS = { ...CLIPS, stop: { kind: 'stop', words: 'Stop.' } };
   /** @param {any[]} more @param {[number, number][]} sound @param {any[]} [trace] */
-  const stopRec = (more, sound, trace = []) => rec({ route: 'headphones', plays: [q.play, stop], frames: [...q.frames, ...after, ...more], level: levels([[6000, 6400], ...sound]), trace });
+  const stopRec = (more, sound, trace = []) => rec({ route: 'headphones', plays: [q.play, stop], frames: [...q.frames, ...after, ...more], level: levels([[6000, 6400], ...sound]), trace: [speak(6400, "It's✂", { cut: true }), card(6420), ...trace] });
   const check = (/** @type {any} */ r) => analyseRelay(r, analyse(r, STOPS, { expectCut: true }), /** @type {any} */ ({ noteCut: 'stop', steps: [] }), STOPS).checks[0];
-  const quiet = stopRec([], [], [{ at: 16_000, type: 'reminder', data: { unsaid: true, answer: true } }]);
+  const quiet = stopRec([], []);
   assert.deepEqual([check(quiet).name, check(quiet).ok], ['stopped when told', true]);
-  assert.match(check(quiet).detail, /^no sound after the "stop"; asked again once; she said nothing; annai showed the note$/);
+  assert.match(check(quiet).detail, /^after the "stop": nothing; asked again 0 times; shown once$/);
   assert.equal(analyse(quiet, STOPS, { expectCut: true }).clips.find((c) => c.name === 'stop')?.expect, 'stop', 'no question to answer');
-  const again = stopRec([f(8000, 'in', 'audio', { bytes: 9600 })], [[8000, 11_000]], [{ at: 11_000, type: 'out.speak', data: {}, text: "It's about twenty minutes ahead on Highway 1." }]);
+  const okay = stopRec([f(8000, 'in', 'audio', { bytes: 4800 })], [[8000, 8400]], [speak(8500, 'Okay.')]);
+  assert.equal(check(okay).ok, true, 'a word is fine');
+  assert.match(check(okay).detail, /^after the "stop": "Okay\."/);
+  const letGo = stopRec([], [], [{ at: 16_000, type: 'error', data: { kind: 'live-silent', message: 'The live session gave nothing back within 8 seconds of a turn: taken as let go.' } }]);
+  assert.equal(check(letGo).ok, true, 'a turn the session let go is its choice');
+  assert.match(check(letGo).detail, /the turn was let go/);
+  const again = stopRec([f(8000, 'in', 'audio', { bytes: 9600 })], [[8000, 11_000]], [speak(11_000, WHOLE)]);
   assert.equal(check(again).ok, false);
-  assert.match(check(again).detail, /^sound 1\.4 s after it/);
+  assert.match(check(again).detail, /^she said "It's about twenty minutes ahead on Highway 1\." after the "stop"/);
   assert.equal(check(stopRec([f(7800, 'in', 'toolCall', { name: 'tell_kokoro' })], [])).ok, false, 'passed on');
+  const fresh = stopRec([f(14_500, 'out', 'setup')], [], [{ at: 14_400, type: 'error', data: { kind: 'live-silent', message: 'The live session gave no answer within 8 seconds: a fresh one gets it again.' } }]);
+  assert.equal(check(fresh).ok, false, 'retried on a fresh session');
+  assert.match(check(fresh).detail, /1 fresh session; live-silent: The live session gave no answer/);
+  assert.equal(check(stopRec([], [], [{ at: 22_000, type: 'error', data: { kind: 'live-dropped', message: 'Live voice was dropped.' } }])).ok, false, 'live voice dropped');
 });
 
 test('a typed line gets no more lines of hers than it needs: one for a greeting, two for a request; none is a failure too', () => {
   const typed = [{ at: 1000, text: 'Hello?', lines: 1 }, { at: 20_000, text: 'Add to my notes that we parked on level three.', lines: 2 }];
-  const speak = (/** @type {number} */ at, /** @type {string} */ text) => ({ at, type: 'out.speak', data: { live: true }, text });
   const one = rec({ endedAt: 40_000, typed, trace: [speak(3000, 'Hi, what can I do?'), speak(22_000, 'One moment.'), speak(26_000, 'Saved: level three.')] });
   const check = (/** @type {any} */ r) => analyseRelay(r, analyse(r, CLIPS), /** @type {any} */ ({ steps: [] }), CLIPS).checks[0];
   assert.deepEqual([check(one).name, check(one).ok], ['one answer to each typed line', true]);
   const twice = rec({ endedAt: 40_000, typed, trace: [...one.trace, speak(9000, 'Hello there!')] });
   assert.equal(check(twice).ok, false);
   assert.match(check(twice).detail, /"Hello\?" 2 of at most 1/);
-  const shown = rec({ endedAt: 40_000, typed: [typed[0]], trace: [speak(3000, 'Hi.'), { at: 9000, type: 'reminder', data: { answer: true, unsaid: true }, text: 'Hello.' }] });
+  assert.match(analyseRelay(twice, analyse(twice, CLIPS), /** @type {any} */ ({ steps: [] }), CLIPS).text[0], /typed "Hello\?": 2 lines \(at most 1\): "Hi, what can I do\?" \/ "Hello there!"/, 'her words read from the record');
+  const shown = rec({ endedAt: 40_000, typed: [typed[0]], trace: [speak(3000, 'Hi.'), { at: 9000, type: 'reminder', data: { answer: true, unsaid: true, text: 'Hello.' } }] });
   assert.equal(check(shown).ok, false, 'what annai showed for her counts as a line');
   assert.equal(check(rec({ typed: [typed[0]] })).ok, false, 'no answer at all');
+});
+
+test('a reminder said once passes "reminder said once"; said by both halves (her and annai\'s voice), or by nobody, fails', () => {
+  const sc = /** @type {any} */ ({ once: 'hotel desk', steps: [] });
+  const check = (/** @type {any[]} */ trace) => analyseRelay(rec({ trace }), analyse(rec({ trace }), CLIPS), sc, CLIPS).checks[0];
+  assert.deepEqual([check([speak(30_000, "It's time to check in at the hotel desk.")]).name, check([speak(30_000, "It's time to check in at the hotel desk.")]).ok], ['reminder said once', true]);
+  const both = check([speak(30_000, 'Check in at the hotel desk.'), { at: 31_000, type: 'reminder', data: { text: 'Check in at the hotel desk.', aloud: true } }]);
+  assert.deepEqual([both.ok, both.detail], [false, 'said 2 times']);
+  assert.equal(check([{ at: 31_000, type: 'reminder', data: { text: 'Check in at the hotel desk.' } }]).ok, false, 'shown only is not said');
+  assert.equal(check([]).ok, false, 'never said');
 });
 
 test('the bars over a whole report, each scenario on its own: lines passed on, and acknowledgements with sound back, each said against its bar', () => {
@@ -148,7 +182,7 @@ test("analyseOne adds the one-answer checks to the general ones, and a turn the 
   assert.deepEqual(/** @type {any} */ (a).relay, { acks: [0, 1] });
 });
 
-test('the one-answer scenarios: lines to pass on, ten acknowledgements after answers, a noise into a note in headphones, typed lines with their most lines', () => {
+test('the one-answer scenarios: lines to pass on, ten acknowledgements after answers, a noise or a "stop" into a note in headphones, typed lines with their most lines, a reminder said once', () => {
   const said = (/** @type {any} */ sc) => sc.steps.filter((/** @type {any} */ s) => 'say' in s).map((/** @type {any} */ s) => s.say);
   for (const n of ['relay-pass', 'relay-annai']) {
     assert.equal(SCENARIOS[n].passOn, true);
@@ -157,10 +191,18 @@ test('the one-answer scenarios: lines to pass on, ten acknowledgements after ans
   const acks = SCENARIOS['relay-ack'];
   assert.equal(said(acks).filter((x) => acks.acks?.includes(x)).length, 10, "ten a run: --times 2 makes the bar's twenty");
   acks.steps.forEach((s, i) => { if ('say' in s && acks.acks?.includes(s.say)) assert.ok('answered' in acks.steps[i - 1], 'each said after an answer'); });
-  const cut = SCENARIOS['cut-note'];
-  assert.equal(cut.route, 'headphones');
-  assert.deepEqual(cut.steps.slice(1, 3), [{ noteSounding: 100 }, { say: 'bump' }]);
+  for (const n of ['cut-note', 'cut-note-stop', 'real-cut-note']) {
+    assert.equal(SCENARIOS[n].route, 'headphones');
+    assert.deepEqual(SCENARIOS[n].steps.slice(1, 3), [{ noteSounding: 100 }, { say: n === 'cut-note-stop' ? 'stop' : 'bump' }]);
+    assert.equal(SCENARIOS[n].noteCut, n === 'cut-note-stop' ? 'stop' : true, `${n} is held to the cut note's bar`);
+  }
+  assert.deepEqual(SCENARIOS['cut-note-stop'].steps.at(-1), { wait: 25_000 }, 'past the 16.5 s a retry and a drop would take');
+  assert.deepEqual(said(SCENARIOS['relay-stop-request']), ['stop-reminder']);
+  assert.equal(SCENARIOS['relay-stop-request'].passOn, true);
   for (const n of ['typed-live', 'real-typed-live']) assert.deepEqual(SCENARIOS[n].steps.flatMap((s) => ('type' in s ? [s.lines] : [])), [1, 2]);
-  assert.equal(SCENARIOS['real-typed-live'].real, true);
-  for (const n of ['relay-pass', 'relay-annai', 'relay-ack', 'cut-note', 'typed-live', 'real-typed-live']) assert.equal(SCENARIOS[n].extra, true, `${n} is by name only`);
+  assert.deepEqual(SCENARIOS['real-typed-plan'].steps.flatMap((s) => ('type' in s ? [s.lines] : [])), [2]);
+  assert.deepEqual(SCENARIOS['real-typed-plan'].seed, { plan: true });
+  assert.deepEqual([SCENARIOS['real-reminder-live'].seed, SCENARIOS['real-reminder-live'].once], [{ reminderInS: 28 }, 'hotel desk']);
+  for (const n of ['real-typed-live', 'real-typed-plan', 'real-reminder-live', 'real-cut-note']) assert.equal(SCENARIOS[n].real, true);
+  for (const n of ['relay-pass', 'relay-annai', 'relay-ack', 'cut-note', 'cut-note-stop', 'real-cut-note', 'relay-stop-request', 'typed-live', 'real-typed-live', 'real-typed-plan', 'real-reminder-live']) assert.equal(SCENARIOS[n].extra, true, `${n} is by name only`);
 });

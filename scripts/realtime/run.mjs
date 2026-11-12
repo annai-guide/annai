@@ -24,7 +24,7 @@ export function analyseOne(rec, clips, sc) {
     const checks = a.checks.filter((x) => x.name === 'no errors');
     return { ...a, checks, warnings: [], pass: checks.every((x) => x.ok) };
   }
-  if (sc && (sc.passOn || sc.acks?.length || sc.noteCut || sc.steps.some((st) => 'type' in st && st.lines))) {
+  if (sc && (sc.passOn || sc.acks?.length || sc.noteCut || sc.once || sc.steps.some((st) => 'type' in st && st.lines))) {
     const r = analyseRelay(rec, a, sc, clips);
     const checks = [...a.checks, ...r.checks];
     return { ...a, checks, warnings: checks.filter((x) => x.soft && !x.ok).map((x) => x.name), pass: checks.filter((x) => !x.soft).every((x) => x.ok), cardText: r.text, relay: r.tally };

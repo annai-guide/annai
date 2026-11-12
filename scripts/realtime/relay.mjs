@@ -1,6 +1,7 @@
 // What a realtime check makes of one answer, and the right half's (the one-answer scenarios): pure functions from one scenario's record and its general
 // analysis to checks. Koe passes on what it can't answer, as it was said, and asks nothing back; an acknowledgement gets no reply; a note cut as she says it is
-// said again from its start, once, and one cut by a "stop" isn't; a typed line gets no more lines of hers than it needs. Tested without a browser (test/unit/realtime-relay.test.js).
+// shown, never asked for again, and heard whole once at most, and after a "stop" not at all; a typed line gets no more lines of hers than it needs; a reminder
+// is said once. Tested without a browser (test/unit/realtime-relay.test.js).
 import { wordRecall } from './analyse.mjs';
 
 /**
@@ -10,14 +11,19 @@ import { wordRecall } from './analyse.mjs';
 export const AS_SAID = 0.8;
 /** The bars (docs/testing/realtime-check.md): passed on with no question back in at least 9 of 10 lines; no sound back in 20 acknowledgements. */
 export const BARS = { passed: { of: 10, least: 9 }, acks: { of: 20, most: 0 } };
-/** annai's ask for a note sound cut off (CUE_CUT in src/core/koe/live.js), by its first words. */
-const CUT_ASK = 'Sound cut you off';
-/** The stand-in Kokoro's note ("…about twenty minutes ahead on Highway 1"): a word from its start and one from its end, so a note taken up from its middle shows. */
-const NOTE_START = /\btwenty\b|\b20\b/i;
-const NOTE_END = /\bhighway\b/i;
+/** annai's asks for a note once more, by their first words: the plain one (NOTE_UNSAID in src/core/agent/loop.js), and the one for a note sound cut, gone since 2026-11-11. */
+const ASK = /^\[annai\] "(Kokoro's note hasn't reached the user|Sound cut you off)/;
+/** A line of hers holds the note whole when it has this share of the words she was making when cut: AS_SAID's, as one word in five may differ between two of her transcripts of the same words. */
+const WHOLE = AS_SAID;
+/** After a "stop", a line of hers this long at most: "Okay." (NO_FILLER's one word when a word is needed) or "Got it."; no note's claim fits in two words. */
+const SHORT_WORDS = 2;
+/** annai's line for a user turn the session gave nothing back to (live.js, #silent): the model's choice, never retried. */
+const LET_GO = /taken as let go/;
 
 /** Up to n characters of a text on one line. @param {unknown} x @param {number} [n] */
 const short = (x, n = 100) => String(x ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
+/** A trace entry's words: a short text is kept in its data, a longer one in a blob the record holds beside it. @param {{ text?: string, data?: any }} t */
+const spoken = (t) => String(t.data?.text ?? t.text ?? '');
 
 /**
  * The last line Koe gave Kokoro ("[Koe asks] …" or "[Koe notes] …") in a request the stand-in Kokoro logged, without its quotes, or ''.
@@ -89,31 +95,42 @@ export function analyseRelay(rec, a, sc, clips) {
   }
 
   if (sc.noteCut) {
-    // What cut it: the first clip played after Kokoro's note went in (a noise, or a spoken "stop"). Then her cut, annai's ask for the note again (once),
-    // and her lines after the ask that hold the note's start and its end: one, after a noise; none after a "stop", and no sound at all, nor a line passed on.
+    // What cut it: the first clip played after Kokoro's note went in (a noise, or a spoken "stop"). Then her cut, and from it on: the note heard whole (a line
+    // of hers holding WHOLE of the words she was making when cut) at most once, shown once (annai's card for the words she didn't say), and no ask of annai's
+    // for it. After a "stop": nothing of the note, a short word at most, nothing passed on, and no retry, fresh session or drop.
     const note = frames.find((f) => f.dir === 'out' && f.kind === 'text' && (f.text ?? '').startsWith('<from_kokoro'));
     const by = note ? played.find((c) => c.at > note.at) : undefined;
     const cut = by ? a.cuts.find((k) => k.at >= by.at) : undefined;
-    const asks = by ? frames.filter((f) => f.dir === 'out' && f.kind === 'text' && f.at >= by.at && (f.text ?? '').includes(CUT_ASK)) : [];
-    const after = asks.length ? rec.trace.filter((t) => t.type === 'out.speak' && t.at > asks[0].at) : [];
-    const whole = after.filter((t) => NOTE_START.test(t.text ?? '') && NOTE_END.test(t.text ?? ''));
-    const shown = by ? rec.trace.filter((t) => t.type === 'reminder' && t.data?.unsaid && t.at >= by.at) : [];
-    const lines = after.map((t) => `"${short(t.text, 80)}"`).join(' / ') || 'nothing';
-    const why = !by ? 'nothing was played into the note' : !cut ? `the ${by.name} did not cut her: nothing to say again` : !asks.length ? 'she was cut, and annai never asked for the note again' : '';
+    // The words of the turn the cut stopped, as the provider sent them (its burst comes faster than her voice plays it).
+    const made = note && cut ? said(frames.filter((f) => f.at > note.at && f.at <= cut.at)) : '';
+    const after = cut ? rec.trace.filter((t) => t.type === 'out.speak' && t.at > cut.at && !t.data?.cut) : [];
+    const whole = made ? after.filter((t) => wordRecall(made, spoken(t)) >= WHOLE) : [];
+    const shown = cut ? rec.trace.filter((t) => t.type === 'reminder' && t.data?.unsaid && t.data?.answer && t.at >= cut.at) : [];
+    const asks = cut ? frames.filter((f) => f.dir === 'out' && f.kind === 'text' && f.at >= cut.at && ASK.test(f.text ?? '')) : [];
+    const lines = after.map((t) => `"${short(spoken(t), 80)}"`).join(' / ') || 'nothing';
+    const why = !by ? 'nothing was played into the note' : !cut ? `the ${by.name} did not cut her: nothing to show` : !made ? "the words she was making when cut weren't recorded" : '';
+    const tail = `asked again ${asks.length === 1 ? 'once' : `${asks.length} times`}; shown ${shown.length === 1 ? 'once' : `${shown.length} times`}`;
     if (sc.noteCut === 'stop') {
-      // Told to stop over the note: no sound from the stop's turn on, and nothing passed on (shown on the screen is fine: nothing is lost).
+      // Told to stop over the note: from the end of the stop, her lines (what was heard of her, annai's record) a short word at most ("Okay."), nothing passed
+      // on, and no try of annai's again.
       const from = by ? by.end + (by.endLagMs ?? 0) : Infinity;
+      const words = rec.trace.filter((t) => t.type === 'out.speak' && t.at > from).map((t) => spoken(t).replace(/✂$/, '')).join(' ').split(/\s+/).filter(Boolean);
       const passed = frames.some((f) => f.at > from && f.dir === 'in' && f.kind === 'toolCall' && f.name === 'tell_kokoro');
-      const quiet = by?.firstSoundMs === null && !passed;
+      const fresh = frames.filter((f) => f.at > from && f.dir === 'out' && f.kind === 'setup').length;
+      const errs = rec.trace.filter((t) => t.at > from && t.type === 'error' && (t.data?.kind === 'live-dropped' || (t.data?.kind === 'live-silent' && !LET_GO.test(t.data?.message ?? ''))));
+      const letGo = rec.trace.some((t) => t.at > from && t.type === 'error' && t.data?.kind === 'live-silent' && LET_GO.test(t.data?.message ?? ''));
+      const quiet = words.length <= SHORT_WORDS;
+      const ok = !why && quiet && !passed && !fresh && !errs.length && shown.length === 1 && asks.length === 0;
       checks.push({
-        name: 'stopped when told', ok: !why && quiet,
-        detail: why || `${quiet ? 'no sound after the "stop"' : passed ? 'she passed it on to Kokoro' : `sound ${((by?.firstSoundMs ?? 0) / 1000).toFixed(1)} s after it`}; asked again ${asks.length === 1 ? 'once' : `${asks.length} times`}; she said ${lines}${shown.length ? '; annai showed the note' : ''}`,
+        name: 'stopped when told', ok,
+        detail: why || `${quiet ? `after the "stop": ${words.length ? `"${words.join(' ')}"` : 'nothing'}` : `she said "${short(words.join(' '))}" after the "stop"`}${passed ? '; she passed it on to Kokoro' : ''}${fresh ? `; ${fresh} fresh session${fresh === 1 ? '' : 's'}` : ''}${errs.map((t) => `; ${t.data.kind}: ${short(t.data.message, 80)}`).join('')}${letGo ? '; the turn was let go' : ''}; ${tail}`,
       });
     } else {
-      const ok = !why && asks.length === 1 && whole.length === 1 && shown.length === 0;
+      const ok = !why && whole.length <= 1 && shown.length === 1 && asks.length === 0;
       checks.push({
-        name: 'cut note said again', ok,
-        detail: why || `asked again ${asks.length === 1 ? 'once' : `${asks.length} times`}; the note said again ${whole.length === 1 ? 'once' : `${whole.length} times`}, from its start; her lines after the ask: ${lines}${shown.length ? '; annai also showed it' : ''}`,
+        name: 'cut note heard once at most',
+        ok,
+        detail: why || `the note heard whole ${whole.length === 1 ? 'once' : `${whole.length} times`} after the cut; ${tail}; her lines after it: ${lines}`,
       });
     }
   }
@@ -127,8 +144,15 @@ export function analyseRelay(rec, a, sc, clips) {
       const lines = rec.trace.filter((e) => (e.type === 'out.speak' || (e.type === 'reminder' && e.data?.answer)) && e.at > t.at && e.at < next);
       return { t, lines, ok: lines.length >= 1 && lines.length <= /** @type {number} */ (t.lines) };
     });
-    for (const r of rows) text.push(`   typed "${short(r.t.text, 60)}": ${r.lines.length} line${r.lines.length === 1 ? '' : 's'} (at most ${r.t.lines}): ${r.lines.map((e) => `"${short(e.text, 80)}"`).join(' / ') || 'none'}`);
+    for (const r of rows) text.push(`   typed "${short(r.t.text, 60)}": ${r.lines.length} line${r.lines.length === 1 ? '' : 's'} (at most ${r.t.lines}): ${r.lines.map((e) => `"${short(spoken(e), 80)}"`).join(' / ') || 'none'}`);
     checks.push({ name: 'one answer to each typed line', ok: rows.every((r) => r.ok), detail: rows.map((r) => `"${short(r.t.text, 40)}" ${r.lines.length} of at most ${r.t.lines}`).join('; ') });
+  }
+  if (sc.once) {
+    // A reminder: her lines, and what annai's own voice said, holding its words; one, not two (both halves) and not none.
+    const want = sc.once.toLowerCase();
+    const said = rec.trace.filter((t) => (t.type === 'out.speak' || (t.type === 'reminder' && t.data?.aloud)) && spoken(t).toLowerCase().includes(want));
+    text.push(`   "${sc.once}": ${said.map((t) => `${t.type === 'reminder' ? "annai's voice" : 'she'} "${short(spoken(t), 80)}"`).join(' / ') || 'never said'}`);
+    checks.push({ name: 'reminder said once', ok: said.length === 1, detail: `said ${said.length === 1 ? 'once' : `${said.length} times`}` });
   }
   return { checks, text, tally };
 }
