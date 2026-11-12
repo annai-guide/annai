@@ -637,3 +637,15 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** a watch whose trigger is a cue for Shiori (not a reminder for the user) fires in live voice, and the user taps, speaks or makes a sound before Koe has answered it: annai shows the cue's own short text as a silent "Reminder" card. With classic voice a cue is dropped once a model has it. The version before this one showed or said it in the same cases, except at a sound, where it asked her again.
 - **Why:** in live voice every trigger's stand-by text is kept until Koe passes it on, cues included, and what is left unsaid is shown without telling the two apart.
 - **Revisit when:** the next version: live voice lets a cue go once a model has it, as classic voice does.
+
+### After a Stop, a line said to live Koe can be refused when its words arrive after her call
+- **Kind:** deferred.
+- **What the user sees:** in live voice, they press Stop, then say something to Shiori. If the provider sends Koe's call to Kokoro before it sends the words of what they said, the call is refused as if they hadn't spoken: she says she can't check that now, and they have to ask again. When the words come first, it goes through. On the test stand-in, words 6 seconds late are refused; how often real Gemini's words come after its call isn't measured. The version before this one did the same.
+- **Why:** a Stop's hold ends when a line of the user's is written, and a live line is written when its words arrive.
+- **Revisit when:** the next version, after measuring the order on real Gemini: either the heard line is written before a tool call even with no words yet, or a turn that a tool call answers counts as the user's line.
+
+### A note she finished as the page went out of view can be said twice
+- **Kind:** deferred.
+- **What the user sees:** in live voice, the page goes out of view (the phone locked, another app) in the moment after she finishes a note, before the provider has ended her turn (about a third of a second). The note goes in again when the page is back: she says it a second time, or, if she answers that she already told them, annai asks her once and then says it itself. Heard twice either way; nothing is lost. The version before this one said it twice in the first case.
+- **Why:** closing the session keeps what she hadn't passed on for the next one before her voice is stopped, so a note all of whose sound had played still counts as not passed on.
+- **Revisit when:** the next version: a turn whose sound has all played passes its notes on before they are kept, as a tap already does.
