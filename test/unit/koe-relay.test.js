@@ -417,3 +417,21 @@ test("voice off, Koe asks the user a question with buttons, a tap on Shiori open
   assert.deepEqual(await said(k), ['Let me look.', 'Sunset is at 6:23, though it is overcast.']);
   assert.match((await k.events(['tool.result'])).find((e) => e.data.name === 'ask')?.data.content, /^Kokoro: see the note below\. Your question is closed/);
 });
+
+// Voice going off under Koe's own listening after it spoke (not a tap's, not a question's): the microphone is closed, so only typing answers it now, and a note that comes
+// before its silence limit is taken at once. It waited for that limit before, with the dock saying "Your turn" and nothing listening.
+test("voice on, Koe has spoken and listens for the user, voice goes off, and Kokoro's note comes before the 20 s are over: Koe's listening closes at once and it says the note", async () => {
+  let go = false;
+  const hold = (/** @type {any} */ c) => (c.model.providerId === 'model-0' ? until(() => go, 60_000) : Promise.resolve());
+  // 20 s of the kit's time is 5 s here: room to turn voice off and have the note come, on the real clock.
+  const k = await agentKit([kokoro()], { koe: { type: [calls(['tell_kokoro', { text: 'When is sunset?' }], ['speak', { text: 'Let me look.' }]), RELAY] }, voice: { mode: 'on', speechIn: ['m-hear'] }, hold, agent: { secondMs: 250 } });
+  k.agent.send('A sunset drink in Carmel');
+  await until(() => k.agent.koe.pendingId !== null && k.agent.state.name === 'listening', 8000);
+  await k.voice.choose('off');
+  await until(() => k.agent.state.label === 'Your turn', 1500);
+  go = true;
+  await until(() => k.agent.koe.pendingId === null, 1500);
+  await k.agent.idle();
+  assert.deepEqual(await said(k), ['Let me look.', 'Sunset is at 6:23, though it is overcast.']);
+  assert.match((await k.events(['tool.result'])).find((e) => e.data.name === 'speak')?.data.content, /^Said aloud\. Kokoro: see the note below\./);
+});

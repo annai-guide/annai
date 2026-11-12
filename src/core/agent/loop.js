@@ -928,9 +928,9 @@ export class Agent {
   #noted() {
     const p = this.#pending;
     const note = this.#queue.find((w) => w.kind === 'note' && w.scope === this.scope);
-    // A wait, and her own question waiting for a tap or typing (not annai's card): a note is always said, so it never waits behind an answer
-    // the user may never give (Koe's "want ideas?" held Kokoro's correction back in stage 5's real-model pass).
-    if (!note || !p || !(p.tool || (p.listening && p.kind === 'wait') || (p.kind === 'ask' && !p.ask && !p.listening)) || this.state.name === 'hearing') return;
+    // A wait, listening or not (voice going off closed its microphone and left it for typing), and her own question waiting for a tap or typing (not annai's card):
+    // a note is always said, so it never waits behind an answer the user may never give (Koe's "want ideas?" held Kokoro's correction back in stage 5's real-model pass).
+    if (!note || !p || !(p.tool || p.kind === 'wait' || (p.kind === 'ask' && !p.ask && !p.listening)) || this.state.name === 'hearing') return;
     this.#pending = null;
     p.resolve({ note: note.from ?? 'kokoro' });
   }
