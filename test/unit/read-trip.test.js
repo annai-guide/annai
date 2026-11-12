@@ -2261,6 +2261,86 @@ test("with Koe set, a reminder due while Kokoro's card waits is Koe's to say, as
   assert.deepEqual(await reminders(k), { filed: [], cards: 0 });
 });
 
+// A reminder already queued when the wait begins: due while her model call ran, so before the card or her question appeared.
+const DUE_2 = { kind: 'trigger', text: 'a watch fired', fallbacks: [{ watch: 'w2', text: 'Buy the tickets.' }] };
+/** annai's reminders written in a conversation and shown as cards, by their words, in order. @param {any} k */
+const shown = async (k) => ({ filed: (await k.events(['reminder'])).map((/** @type {any} */ e) => e.data.text), cards: k.notices.filter((/** @type {any} */ n) => n.title === 'Reminder').map((/** @type {any} */ n) => n.body) });
+const BOTH = ['Leave for the station.', 'Buy the tickets.'];
+
+for (const [what, script, waits] of /** @type {[string, any[], (k: any) => Promise<unknown>][]} */ ([
+  ["read_trip's card", [call('read_trip', { trip: TV }), sleep], async (k) => until(() => k.asks.length === 1)],
+  ["open_trip's card", [OPEN_TV, sleep], async (k) => until(() => k.asks.length === 1)],
+  ['her own question', [{ toolCalls: [{ name: 'ask', input: { question: 'Lunch or dinner?', options: ['Lunch', 'Dinner'] } }] }, sleep], async (k) => until(() => k.agent.pendingId !== null)],
+])) {
+  test(`with no Koe model, a reminder due while her model call ran, before ${what} appeared, is shown once it waits; one due during the wait too; each once`, async (t) => {
+    useClock(t);
+    /** @type {() => void} */
+    let release = () => {};
+    const held = new Promise((r) => { release = () => r(undefined); });
+    let calls = 0;
+    const k = await gateKit(script, { hold: async () => { if (!calls++) await held; } });
+    k.agent.send('Plan our day');
+    await until(() => calls === 1);
+    k.agent.wake(DUE); // due while her first model call runs: queued behind the turn
+    await pause(5 * k.agent.secondMs);
+    assert.deepEqual(await shown(k), { filed: [], cards: [] }, 'queued, not yet shown');
+    release();
+    await waits(k);
+    await pause(60 * k.agent.secondMs); // the user hasn't answered for a minute
+    assert.deepEqual(await shown(k), { filed: [BOTH[0]], cards: [BOTH[0]] }, 'shown once the card or question waits');
+    k.agent.wake(DUE_2);
+    await pause(5 * k.agent.secondMs);
+    assert.deepEqual(await shown(k), { filed: BOTH, cards: BOTH }, 'and the one due during the wait');
+    assert.notEqual(k.agent.kokoro.pendingId, null, 'the card or her question still waits');
+    k.agent.answer(/** @type {string} */ (k.agent.kokoro.pendingId), what === 'her own question' ? 'Lunch' : 'Not now');
+    await k.agent.idle();
+    assert.deepEqual(await shown(k), { filed: BOTH, cards: BOTH }, 'neither again once it was answered');
+    assert.match(JSON.stringify(k.requests.at(-1).messages), /\[annai\] Shown by annai itself, since you couldn't be reached: \\"Leave for the station\.\\"/);
+  });
+}
+
+for (const [what, script] of /** @type {[string, any[]][]} */ ([["read_trip's card", [call('read_trip', { trip: TV }), sleep]], ["open_trip's card", [OPEN_TV, sleep]]])) {
+  test(`with no Koe model, a turn a reminder began that calls ${what} before saying it: the reminder is shown while the card waits, once`, async (t) => {
+    useClock(t);
+    const k = await gateKit(script);
+    k.agent.wake(DUE);
+    await until(() => k.asks.length === 1);
+    await pause(60 * k.agent.secondMs);
+    assert.deepEqual(await shown(k), { filed: [BOTH[0]], cards: [BOTH[0]] }, 'shown while it waits');
+    k.agent.answer(/** @type {string} */ (k.agent.kokoro.pendingId), 'Not now');
+    await k.agent.idle();
+    assert.deepEqual(await shown(k), { filed: [BOTH[0]], cards: [BOTH[0]] }, 'not again once it was answered');
+  });
+}
+
+test('with no Koe model, a turn a reminder began that asks her own question first: her question reaches the user, so the reminder is not shown on top of it', async (t) => {
+  useClock(t);
+  const k = await gateKit([{ toolCalls: [{ name: 'ask', input: { question: 'Taxi or train?', options: ['Taxi', 'Train'] } }] }, sleep]);
+  k.agent.wake(DUE);
+  await until(() => k.agent.pendingId !== null);
+  await pause(60 * k.agent.secondMs);
+  assert.deepEqual(await shown(k), { filed: [], cards: [] }, 'her question is her reaching them, as speak is');
+  k.agent.answer(/** @type {string} */ (k.agent.kokoro.pendingId), 'Taxi');
+  await k.agent.idle();
+  assert.deepEqual(await shown(k), { filed: [], cards: [] });
+});
+
+test("with Koe set, a reminder due while Koe's own question with buttons waits is shown by annai at once, once: Koe's wake keeps its words, and the wait is the same", async (t) => {
+  useClock(t);
+  const koe = { rules: [{ match: 'the user wrote', reply: { toolCalls: [{ name: 'ask', input: { question: 'Lunch or dinner?', options: ['Lunch', 'Dinner'] } }] } }, { match: '.', reply: sleep }] };
+  const k = await gateKit([sleep], { koe: { type: koe } });
+  k.agent.send('Plan our day');
+  await until(() => k.agent.koe.pendingId !== null);
+  await pause(60 * k.agent.secondMs);
+  k.agent.wake(DUE);
+  await pause(5 * k.agent.secondMs);
+  assert.deepEqual(await shown(k), { filed: [BOTH[0]], cards: [BOTH[0]] }, 'shown while Koe waits for the answer');
+  assert.notEqual(k.agent.koe.pendingId, null, 'its question still waits');
+  k.agent.answer(/** @type {string} */ (k.agent.koe.pendingId), 'Lunch');
+  await k.agent.idle();
+  assert.deepEqual(await shown(k), { filed: [BOTH[0]], cards: [BOTH[0]] }, 'not again once it was answered');
+});
+
 for (const [card, first] of /** @type {[string, any][]} */ ([['read_trip', { name: 'read_trip', input: { trip: TV } }], ['open_trip', { name: 'open_trip', input: { trip: TV, recap: 'We were looking for the ramen place.' } }]])) {
   test(`${card}'s card that isn't her reply's last call: another conversation opened while it waits lets the turn go, as when it is last; no "picks it up", nothing taken up, no second card`, async (t) => {
     useClock(t);
