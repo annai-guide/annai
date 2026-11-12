@@ -2910,3 +2910,83 @@ for (const [card, first] of /** @type {[string, any][]} */ ([['read_trip', { nam
     assert.equal(k.asks.length, 1, 'the card is not asked again');
   });
 }
+
+// ---- A Stop's hold ends with any line of the user's, whichever half wrote it. ----
+
+/** Koe's tell_kokoro, run as Koe's turn would after a Stop: refused while the Stop holds. @param {any} k */
+const tellKokoro = async (k) => {
+  const tool = k.agent.koe.loopTools().find((/** @type {any} */ x) => x.name === 'tell_kokoro');
+  const r = await tool.run({ text: 'Anything new on that?' }, { wake: 'w-after-stop', watched: false });
+  return /^Not sent: the user stopped Kokoro/.test(String(typeof r === 'string' ? r : r?.content)) ? 'held' : 'sent';
+};
+/** A watch that fires after a Stop: Kokoro's turn for it asks annai's card, and Koe, a chat model in classic voice, says it and waits. */
+const HOLD_KOKORO = { rules: [{ match: 'a watch fired', reply: call('read_trip', { trip: TV }), then: sleep }, { match: '.', reply: sleep }] };
+const HOLD_KOE = { rules: [{ match: 'a watch fired', reply: { toolCalls: [{ name: 'speak', input: { text: 'Time to leave for the station.' } }, { name: 'wait', input: { seconds: 60 } }] }, then: sleep }, { match: '', reply: sleep }] };
+/**
+ * Classic voice with Koe on a chat model, stopped with nothing running; then, with `card`, a turn the user didn't start puts annai's card up.
+ * @param {{ card: boolean, hears?: string[], letters?: string[] }} o hears: what the microphone hears, in turn; letters: the quick gate's verdict on each ('A' for Shiori, 'B' set aside)
+ */
+async function stoppedKit({ card, hears = ['Yes.'], letters = ['A', 'A', 'A'] }) {
+  const k = await gateKit(card ? HOLD_KOKORO : [sleep], { koe: { type: card ? HOLD_KOE : [sleep, sleep, sleep] }, voice: { speechIn: ['m-hear'], hears, decide: gates(letters) } });
+  k.agent.stopKokoro();
+  await k.agent.idle();
+  assert.equal(await tellKokoro(k), 'held', 'the Stop holds');
+  if (card) {
+    k.agent.wake(DUE);
+    await until(() => k.asks.length === 1, 20_000);
+    await until(() => !k.voice.speaker.speaking && ['listening', 'thinking'].includes(k.agent.koe.state.name) && k.agent.kokoro.pendingId !== null, 20_000);
+    await pause(k.agent.secondMs);
+  }
+  return k;
+}
+/** @param {any} k */
+const finish = async (k) => {
+  k.agent.stopKokoro(); // ends a card still waiting
+  k.agent.interrupt();
+  await k.agent.idle().catch(() => {});
+};
+
+for (const how of ['said yes', 'tapped Allow', 'tapped Not now']) {
+  test(`after a Stop, ${how} on annai's card is the user back: Koe's tell_kokoro goes through`, async (t) => {
+    useClock(t);
+    const k = await stoppedKit({ card: true });
+    if (how === 'said yes') await hear(k, 'first-one');
+    else k.agent.answer(k.agent.kokoro.pendingId, how === 'tapped Allow' ? 'Allow' : 'Not now');
+    await pause(6 * k.agent.secondMs);
+    assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data.how), how === 'tapped Not now' ? [] : [how === 'said yes' ? 'voice' : 'tap'], 'the card took it');
+    assert.equal(await tellKokoro(k), 'sent');
+    await finish(k);
+  });
+}
+
+/** A heard line written by one half's log, as its own microphone or session writes it. @param {any} k @param {'koe' | 'kokoro'} half @param {boolean} dismissed */
+const heardBy = (k, half, dismissed) => k.agent[half].log({ type: 'heard', actor: 'user', data: { id: `h-${half}`, ms: 600, source: 'live', text: 'Is it open now?', ...(dismissed ? { dismissed: true, gate: 'chatter' } : {}) } });
+
+for (const [how, lifts] of /** @type {[string, boolean][]} */ ([
+  ['a typed line', true], ['a tapped choice of a question she asked', true], ['a line said to Koe', true], ["a line Koe's log writes", true], ["a line Kokoro's log writes (its own microphone)", true],
+  ["a line judged not meant for Shiori, Koe's log", false], ["a line judged not meant for Shiori, Kokoro's log", false], ['no answer at all', false],
+])) {
+  test(`after a Stop, ${how}: Koe's tell_kokoro is ${lifts ? 'let through' : 'still refused'}`, async (t) => {
+    useClock(t);
+    const k = await stoppedKit({ card: false, hears: ['Is it open now?'] });
+    if (how === 'a typed line') k.agent.send('Is it open now?');
+    else if (how.startsWith('a tapped choice')) k.agent.answer('c-a-question-of-hers', 'Yes');
+    else if (how === 'a line said to Koe') {
+      assert.equal(k.agent.tap(), 'listening');
+      await until(() => k.agent.state.name === 'listening');
+      await hear(k, 'first-one');
+    } else if (how !== 'no answer at all') await heardBy(k, how.includes('Kokoro') ? 'kokoro' : 'koe', how.includes('not meant'));
+    await pause(6 * k.agent.secondMs);
+    await k.agent.idle();
+    assert.equal(await tellKokoro(k), lifts ? 'sent' : 'held');
+    await finish(k);
+  });
+}
+
+test('after a Stop, a card left unanswered keeps the hold', async (t) => {
+  useClock(t);
+  const k = await stoppedKit({ card: true });
+  await pause(6 * k.agent.secondMs);
+  assert.equal(await tellKokoro(k), 'held');
+  await finish(k);
+});
