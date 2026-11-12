@@ -1,5 +1,5 @@
 {
-  "build": "677404392756",
+  "build": "1c00e48713d8",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -41,9 +41,9 @@
     "/src/core/agent/context.js": "6a543dcca854",
     "/src/core/agent/halves.js": "3a1aa0b85815",
     "/src/core/agent/instructions.js": "5a8bc872522c",
-    "/src/core/agent/listen.js": "f1352610d099",
+    "/src/core/agent/listen.js": "05578736f38b",
     "/src/core/agent/log.js": "be1f6eedd6f8",
-    "/src/core/agent/loop.js": "c1f34779a9dd",
+    "/src/core/agent/loop.js": "33099ab989b3",
     "/src/core/agent/reading.js": "dfcf146e5005",
     "/src/core/agent/personalities.js": "20c2b7d8981a",
     "/src/core/agent/her-instructions.js": "b90fb982b678",
