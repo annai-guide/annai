@@ -281,13 +281,6 @@
       "bytes": 87084,
       "sha256": "a345eea4f6a0d497"
     },
-    "why-quiet": {
-      "words": "Why didn't the reminder go off just now?",
-      "voice": "Kore",
-      "seconds": 2.58,
-      "bytes": 82604,
-      "sha256": "c7cbea6ed0874bc0"
-    },
     "app-louder": {
       "words": "Can I make your voice louder in this app?",
       "voice": "Puck",

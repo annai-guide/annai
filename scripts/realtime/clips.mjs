@@ -75,7 +75,7 @@ export const CLIPS = {
   'second-one': { kind: 'relay', text: 'Take us to the second one instead.', voice: 'Aoede' },
   'note-parking': { kind: 'relay', text: 'Add to my notes that we parked on level three.', voice: 'Leda' },
   'plan-beach': { kind: 'relay', text: 'Change the plan so we go to the beach first.', voice: 'Orus' },
-  'why-quiet': { kind: 'relay', text: "Why didn't the reminder go off just now?", voice: 'Kore' },
+  'app-dark': { kind: 'relay', text: 'Is there a dark mode in this app?', voice: 'Kore' },
   'app-louder': { kind: 'relay', text: 'Can I make your voice louder in this app?', voice: 'Puck' },
   'app-offline': { kind: 'relay', text: 'Does this app still work without a signal?', voice: 'Leda' },
   'app-new': { kind: 'relay', text: 'What changed in the latest version of this app?', voice: 'Aoede' },
