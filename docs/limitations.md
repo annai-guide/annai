@@ -438,6 +438,40 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** a phone test or a user shows it happening, or the next change to the card's code.
 - **Approved:** 2026-11-11, the user picked "Accept it as a known limitation".
 
+### A reminder can be said while a microphone the user opened by a tap listens for annai's card
+- **Kind:** known limitation.
+- **What the user sees:** with one Shiori (no Koe model, or Koe unable to speak) and voice on, annai's card ("Read <trip>?", "Carry on in <trip>?") or a question of hers with buttons waits unanswered, its own listening over. A reminder that comes due then is shown and said by annai itself. If the user has tapped Shiori to talk and that microphone is still open when the reminder comes due, annai says it over the open microphone: it can talk over what they were about to say, and if the phone hears her voice, the reminder's words are written down as a line of theirs and end the card unanswered ("Not read"; she asks again or they tap). Nothing is granted by it. The reminders annai already says by itself (quiet hours, the hourly limit, another conversation's, offline) can be said into an open microphone the same way.
+- **Why:** annai takes a reminder from behind a question once that question's own listening is over (a mark set once, when the 20 seconds after the card or the 8 after her question end), and a tap on Shiori afterwards opens a microphone that hears for the card again. Holding the reminder while any microphone is open would bring back reading the microphone's state at the moment a reminder happens to arrive, which showed reminders silently in two earlier builds.
+- **Revisit when:** a phone test shows annai's own voice written down as a heard line, or a user is talked over by a reminder.
+- **Approved:** 2026-11-11, the user picked "Keep it; accept the gap (Recommended)".
+
+### People talking on keep annai's card listening past its 20 seconds
+- **Kind:** deferred.
+- **What the user sees:** annai's card listens 20 seconds for a spoken yes or no, and speech holds that time: one stretch of speech of up to 30 seconds, and with a quick-decision model that sets each line aside as chatter while the next has already begun (passengers, talk radio), for as long as the talk goes on (198 seconds in a test). Until a quiet gap the microphone stays open, a yes after the 20 seconds still doesn't count, and with one Shiori a reminder due behind the card waits for that gap.
+- **Why:** a line being said when the time runs out must still be heard to its end, so speech stops the clock; nothing tells a line begun inside the 20 seconds from one begun after them.
+- **Revisit when:** the next version: speech begun after the 20 seconds no longer holds the listening open.
+
+### A "Yes." said right after two other lines can miss annai's card
+- **Kind:** known limitation.
+- **What the user sees:** in classic voice with Koe on a chat model, while annai's card waits the user says a line Koe keeps ("What about Osaka?"), then another line, then "Yes.", all within about 3 seconds, and the line in between is slow to judge (its quick-decision answer takes over about 4 seconds with the phone's dictation, about 2 with recorded sound; with Kokoro's model writing speech down, that alone is enough). The card ends unanswered on the first line before the yes's words reach it; Koe takes the yes as a line of its own and may answer it, and Kokoro asks them to tap Allow. Nothing is read or opened that they didn't allow.
+- **Why:** Koe routes heard lines one after another, and the card judges each as its turn comes; a kept line that isn't a yes or no ends the card 3 seconds after the last word said, without waiting for words still being written down. Judging every line the moment it is heard would bring back the second listener the card's redesign removed.
+- **Revisit when:** it shows up in real use.
+- **Approved:** 2026-11-11, the user picked "Known limitation (Recommended)".
+
+### A yes said as Allow is tapped can also be answered by Koe
+- **Kind:** known limitation.
+- **What the user sees:** the user says "Yes." to annai's card and taps Allow (or Open) before the yes's words exist: while still saying it, or while it is being written down. The tap answers the card. The yes then reaches Koe as an ordinary line, and Koe may say a short line for it ("Okay.") before Kokoro's answer; on "Carry on in <trip>?" the move follows the tap at once and usually cuts that. The same before the card's redesign.
+- **Why:** the tap ends the card, and a line whose words arrive after the card has ended is Koe's. Giving the card a line begun while it waited, after it ended, has to keep the moved line last.
+- **Revisit when:** a phone test or a user shows the extra line.
+- **Approved:** 2026-11-11, the user picked "Known limitation (Recommended)".
+
+### With Koe busy, a yes to annai's card can show before the line said before it
+- **Kind:** known limitation.
+- **What the user sees:** Koe is busy in a turn and holds an earlier line of the user's for its next one ("Hmm, let me think."); they then say "Yes." to annai's card. In the conversation the yes shows before the earlier line. The card and both halves act as they should.
+- **Why:** the card writes a line down as it takes it; Koe writes a line it holds only when its turn takes it. Holding the card's line until Koe has written the ones before it would be a new wait between the halves.
+- **Revisit when:** a user is confused by the order.
+- **Approved:** 2026-11-11, the user picked "Known limitation (Recommended)".
+
 ### Someone else's "yes" within the 20 seconds answers annai's card
 - **Kind:** known limitation.
 - **What the user sees:** annai asks aloud "Read <trip>?" or "Carry on in <trip>?", and within the 20 seconds after the question a passenger, or a song, says "yes" (or another word on annai's list) loud enough to be heard as speech. The card takes it as the user's yes. Anything said within 3 seconds after the yes's words still takes it back, and a tap on Not now wins until the trip is read or opened. On "Read <trip>?" Shiori reads that trip, which changes nothing. On "Carry on in <trip>?" that trip opens, as on a real yes:
