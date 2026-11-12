@@ -3185,6 +3185,7 @@ export class Agent {
       p.arm?.(); // speech held its silence limit, and the microphone just closed: no end of that speech will start it again
       this.#waiting(p.kind);
     }
+    if (this.#pending?.ask) this.#half.cardEnded?.(); // no one listens for annai's card now: a reminder that waited for its listening is said
   }
 
   /** Voice came back on before that answer's time is up: the microphone opens for it again. */

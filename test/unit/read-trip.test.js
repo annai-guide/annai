@@ -3119,6 +3119,21 @@ for (const seconds of [120, 0]) {
   });
 }
 
+test("with Koe on a chat model, voice turning off while a reminder waits behind annai's card's listening: nobody listens now, and Koe says it at once", async (t) => {
+  useClock(t);
+  const k = await windowKit(120);
+  await pause(2 * k.agent.secondMs);
+  k.agent.wake(DUE);
+  await pause(3 * k.agent.secondMs);
+  assert.equal(await saidLeave(k), 0, 'held while the card listens');
+  const t0 = Date.now();
+  await voiceOff(k);
+  await soon(async () => (await saidLeave(k)) === 1, 10 * k.agent.secondMs);
+  assert.ok(Date.now() - t0 <= 1 * k.agent.secondMs, `said ${(Date.now() - t0) / k.agent.secondMs} s after voice went off, inside the card's window`);
+  k.agent.answer(/** @type {string} */ (k.agent.kokoro.pendingId), 'Not now');
+  await k.agent.idle();
+});
+
 test("with voice off, annai's card listens for no one: a reminder due inside its 20 s is said by Koe at once", async (t) => {
   useClock(t);
   const k = await windowKit(120, false);
