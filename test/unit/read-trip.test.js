@@ -2900,6 +2900,26 @@ test("with voice on and no Koe model, a tap on Shiori after voice went off in th
   assert.equal((await k.events(['tool.result'])).find((/** @type {any} */ e) => e.data.name === 'wait')?.data.content, 'The user said:');
 });
 
+// Voice back on inside a listening, answered aloud: her reply to that answer is said aloud too, and the model is told voice is on (it was told off).
+for (const [how, again] of /** @type {[string, (k: any) => Promise<unknown>][]} */ ([
+  ['voice off and back on', async (k) => { await voiceOff(k); await pause(1 * k.agent.secondMs); await voiceOn(k); await pause(1 * k.agent.secondMs); }],
+  ['voice off, then a tap on Shiori that holds it on', async (k) => { await voiceOff(k); await pause(1 * k.agent.secondMs); assert.equal(k.agent.tap(), 'listening'); await until(() => micLog(k).length === 3); await pause(1 * k.agent.secondMs); }],
+])) {
+  test(`with voice on and no Koe model, ${how} inside speak's listening, the answer said aloud: her reply to it is said aloud, and listens on`, async (t) => {
+    useClock(t);
+    const k = await gateKit([call('speak', { text: 'Which day would you like?' }), call('speak', { text: 'Tuesday it is.' }), sleep], { voice: { speechIn: ['m-hear'], hears: ['Tuesday please'] } });
+    k.agent.send('Plan our day');
+    await until(() => k.said.includes('Which day would you like?') && k.agent.state.name === 'listening');
+    await pause(1 * k.agent.secondMs);
+    await again(k);
+    await hear(k, 'first-one');
+    await k.agent.idle();
+    assert.deepEqual(k.said, ['Which day would you like?', 'Tuesday it is.'], 'her reply to the spoken answer is said');
+    const speaks = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'speak').map((/** @type {any} */ e) => e.data.content);
+    assert.deepEqual(speaks, ['Said aloud. The user said:', 'Said aloud. Heard nothing (20 seconds).'], 'the model reads that voice is on, and that she listened');
+  });
+}
+
 test("classic voice: voice turning off inside the card's microphone's own opening, past the check before it: the microphone it opened closes, the dock never says Listening, and the card waits for a tap", async (t) => {
   useClock(t);
   const k = await gateKit([call('read_trip', { trip: TV }), sleep], { voice: { speechIn: ['m-hear'], hears: ['Yes please'] } });
