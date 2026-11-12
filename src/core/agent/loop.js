@@ -1036,8 +1036,12 @@ export class Agent {
       });
     });
     for (const h of got.own ?? []) await this.#logHeard(h, { wake: call.wake, answer: call.id });
-    // The other half's lines that answered it, still in its queue (a busy Koe): the card's, never a newer line after it.
-    for (const x of got.other?.length ? this.#half.took?.(got.other) ?? [] : []) await this.#logHeard(x.heard, { wake: call.wake, answer: call.id, ...(x.gate ? { gate: x.gate } : {}) });
+    // The other half's lines that answered it, still in its queue (a busy Koe): the card's, never a newer line after it, with the card's words.
+    for (const x of got.other?.length ? this.#half.took?.(got.other.map((o) => o.id)) ?? [] : []) {
+      const said = got.other?.find((o) => o.id === String(x.heard.id))?.text;
+      await this.#logHeard({ ...x.heard, text: x.heard.text ?? said }, { wake: call.wake, answer: call.id, ...(x.gate ? { gate: x.gate } : {}) });
+      if (said !== undefined) this.voice?.memory.drop(x.heard.id, said);
+    }
     if (got.stopped) return { stopped: true };
     if (got.chosen !== undefined) {
       await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...this.#chose() }, texts: [['text', got.chosen]] });
@@ -1143,7 +1147,7 @@ export class Agent {
       if (!last || this.#pending !== p) return;
       this.#pending = null;
       // The other half's line, in the log already or its queue (a busy Koe): confirm takes an answer's listed lines.
-      if (!last.h) return void p.resolve(chosen ? { voiced: chosen, other: lines.filter((l) => !l.h && askSaid(ask, l) !== null).map((l) => l.id) } : { spoke: last.id });
+      if (!last.h) return void p.resolve(chosen ? { voiced: chosen, other: lines.filter((l) => !l.h && askSaid(ask, l) !== null).map((l) => ({ id: l.id, text: String(l.text) })) } : { spoke: last.id });
       if (this.#ear) this.#ear.owner = 'turn';
       this.#setState('thinking');
       // Unanswered, it carries all they said, in order; an answer, its own line.

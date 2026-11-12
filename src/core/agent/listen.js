@@ -3,13 +3,13 @@
  * as heard speech, resolved for each model, so these say only what happened.
  * @typedef {{ heard?: import('../voice/resolve.js').Heard, text?: string, claim?: string, chose?: boolean, chosen?: string,
  *   stopped?: boolean, deaf?: string, gate?: string, earlier?: boolean, note?: string, voiced?: string, spoke?: string, also?: { heard: import('../voice/resolve.js').Heard, gate?: string }[],
- *   own?: import('../voice/resolve.js').Heard[], other?: string[] }} Got
+ *   own?: import('../voice/resolve.js').Heard[], other?: { id: string, text: string }[] }} Got
  *   what a listen got: speech for her (heard) or not (dismissed), typing, a tap on an option, a stop, why annai couldn't listen,
  *   or nothing (a silence); gate: what the quick-decision gate made of it; earlier: no listening, as speech heard while she
  *   thought is waiting (it follows the result); note: a note from the other half came (its name), which follows the result; voiced: the option
  *   a heard line answered annai's own question with (Agent.confirm); spoke: the other half's heard line (its id) that ended that question unanswered;
  *   also: the segments kept before heard while that question settled, in order; own: the listed words said to that question before what ended it
- *   (a "Yes" then taken back), written with its answer and never her next line; other: the other half's lines (ids) whose listed words answered it
+ *   (a "Yes" then taken back), written with its answer and never her next line; other: the other half's lines (ids, with their words) whose listed words answered it
  */
 
 /** How speak's result begins: what she said, and whether the user stopped her (spec §7.1). @param {import('../voice/speaker.js').Spoken} spoken */

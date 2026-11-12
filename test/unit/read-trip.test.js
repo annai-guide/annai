@@ -2131,6 +2131,38 @@ test("read_trip with Koe on a chat model held in a turn: the yes it heard answer
   }
 });
 
+for (const [card, script, said] of /** @type {[string, any, string][]} */ ([['read_trip', KOKORO, 'Where did we eat in Testville?'], ['open_trip', KOKORO_GOING, "Let's carry on in Testville"]])) {
+  test(`${card}'s card, Koe on a chat model held in a turn, a transcription model in speech in: the yes taken from Koe's queue is written with the words the card had, not as sound still to write down`, async (t) => {
+    useClock(t);
+    /** @type {() => void} */
+    let release = () => {};
+    const held = new Promise((r) => { release = () => r(undefined); });
+    let first = true;
+    const k = await gateKit(script, { koe: { type: KOE }, hold: async (/** @type {any} */ c) => { if (c.model.providerId === 'model-koe' && first) { first = false; await held; } }, voice: { speechIn: ['m-hear'], hears: ['Yes.'] } });
+    try {
+      k.agent.send(said);
+      await until(() => k.asks.length === 1);
+      await pause(k.agent.secondMs);
+      // A yes reaches Koe's microphone as sound while Koe works, and waits in its queue; the card has it written down by the transcription model.
+      const yes = { id: 'h-1', source: 'mic', audio: { data: new TextEncoder().encode('RIFF-h-1'), mediaType: 'audio/wav', seconds: 1 }, ms: 600, at: Date.now() };
+      k.voice.memory.keep(yes, k.trip);
+      k.agent.kokoro.confirmHeard({ id: 'h-1', at: Date.now() });
+      k.agent.koe.enqueue({ kind: 'heard', text: '', heard: yes });
+      await pause(5 * k.agent.secondMs);
+      release();
+      await k.agent.idle();
+      const heard = await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(k.trip, { types: ['heard', 'heard.text'] }));
+      assert.deepEqual(heard.map((/** @type {any} */ e) => [e.type, e.data.id ?? e.data.of, e.data.text, Boolean(e.data.answer)]), [['heard', 'h-1', 'Yes.', true]], 'once, with its words, as the card\'s answer');
+      for (const half of /** @type {const} */ (['koe', 'kokoro'])) assert.deepEqual((await Transcript.load(k.store, k.trip, { half })).unwritten(), [], `${half}: no sound left to write down`);
+      assert.equal(k.voice.memory.get('h-1'), null, 'the sound is let go');
+      assert.equal(k.voice.memory.words('h-1'), 'Yes.', 'a request built just before still has its words');
+      assert.deepEqual(k.transcribed, ['m-hear'], 'written down once');
+    } finally {
+      release();
+    }
+  });
+}
+
 test("open_trip with Koe on a chat model finishing her answer while the card waits: her cue is written before the chat's moved line, and the chat, opened again, wakes nobody", async (t) => {
   useClock(t);
   /** @type {() => void} */
