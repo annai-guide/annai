@@ -40,6 +40,8 @@ test('every prompt says how to read typed and heard words', () => {
   for (const k of [KOE_CORE, KOE_LIVE]) {
     assert.match(k, /\[typed\] lines are exactly what the user wrote: read them as written, allowing for typos\./);
     assert.match(k, /speech recognition.*may be wrong/);
+    // A line annai's card took reads like a tap on it: [the user chose], so the prompt says it covers a yes or no said to the card too.
+    assert.match(k, /\[the user chose\] is their answer to a question with buttons \(a tap, or a yes or no said to annai's card\);/);
   }
 });
 

@@ -311,7 +311,8 @@ export class Transcript {
         if (d.dismissed && this.half !== 'one') this.#aside.add(d.id);
         return;
       }
-      /* en */ const label = d.dismissed ? asideLabel(d, this.half) : d.meanwhile && own ? '[heard while you were thinking]' : '[heard]';
+      // A line Kokoro's card took reads as its answer, as a tap does, never [heard]: that marks a line Koe owes.
+      /* en */ const label = d.dismissed ? asideLabel(d, this.half) : koe && d.answer && d.half === 'kokoro' ? '[the user chose]' : d.meanwhile && own ? '[heard while you were thinking]' : '[heard]';
       this.#line([{ type: 'text', text: label }, speech]);
       // Koe answers what it heard (or lets it pass), unless the other half's call took it (annai's card): Kokoro owes nothing for it; one Shiori, Koe since unset, until it is settled (#heardOwed).
       if (!d.dismissed && !d.answer && (this.half === 'koe' || this.#mine(d))) {
