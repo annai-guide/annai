@@ -52,6 +52,24 @@ test("an end with no offset and no zone of its own is read on the start's zone, 
   assert.deepEqual(ids(upcoming(rows, at('10:31'))), []);
 });
 
+test("an item that ends on a later day than it starts is two rows, each lasting half an hour as a row with no end does; one within a day lasts to its end", () => {
+  // The Next line's e2e test failed in CI at 00:09 UTC: its 10-minute item crossed midnight, so its start row stayed 20 minutes after its end.
+  const tea = (/** @type {string} */ start, /** @type {string} */ end) => planRows([{ path: '/plan/tea.json', item: { id: 'tea', title: 'Tea', fixed: true, start: { at: start, tz: LA }, end: { at: end, tz: LA } } }], [], { fallbackTz: LA });
+  const next = (/** @type {import('../../src/core/plan.js').PlanRow[]} */ rows, /** @type {string} */ hhmm, /** @type {string} */ day) => upcoming(rows, at(hhmm, day)).map((r) => r.from);
+  // 23:55 to 00:05 the day after: the Plan draws its start (without its end), and its end as a row of its own.
+  const crossing = tea(iso('23:55', '2026-11-27'), iso('00:05', '2026-11-28'));
+  assert.deepEqual(crossing.map((r) => r.from), ['item', 'end']);
+  assert.deepEqual(next(crossing, '23:56', '2026-11-27'), ['item', 'end']);
+  assert.deepEqual(next(crossing, '00:10', '2026-11-28'), ['item', 'end'], 'five minutes after its end, the start row is still there (half an hour from the start), and first');
+  assert.deepEqual(next(crossing, '00:26', '2026-11-28'), ['end'], 'the start row is over; the end row lasts half an hour from the end');
+  assert.deepEqual(next(crossing, '00:36', '2026-11-28'), []);
+  // The same ten minutes within a day is one row, over at its end.
+  const within = tea(iso('23:30', '2026-11-27'), iso('23:40', '2026-11-27'));
+  assert.deepEqual(within.map((r) => r.from), ['item']);
+  assert.deepEqual(next(within, '23:40', '2026-11-27'), ['item']);
+  assert.deepEqual(next(within, '23:41', '2026-11-27'), []);
+});
+
 test("today is live mode's: a simulation's clock and zone while one runs, so the Itinerary's today follows it", () => {
   const sim = { clock: { now: () => Date.parse('2030-11-27T07:30:00Z') }, timeZone: () => LA };
   assert.equal(nowOf(sim), Date.parse('2030-11-27T07:30:00Z'));
