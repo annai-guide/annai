@@ -290,3 +290,32 @@ test("OpenAI Realtime as Koe: the same conversation: \"Listening live\", a spoke
     await kokoro.stop();
   }
 });
+
+test("a tap in a pause of her sound, the provider still making the rest of Kokoro's answer: a cut, so his words for the user show in the conversation, not said", async ({ page }) => {
+  const s = await startRealtimeServer({
+    flavour: 'gemini', key: KEY,
+    turns: [
+      { heard: 'Is Nepenthe open now?', said: "I'm checking.", audio: voice(0.6), tool: { name: 'tell_kokoro', args: { text: 'Is Nepenthe open now?' } }, usage },
+      // 1.2 s of her sound, then 4 s with nothing while the provider makes the rest (real pauses: up to 1.23 s; long here, for a sure tap).
+      { said: "It's open until ten tonight, and the terrace is open too.", audio: voice(3), gap: { at: 48_000, ms: 4000 }, usage },
+    ],
+  });
+  const kokoro = await startModelServer({ '/kokoro/v1/messages': [sse([{ name: 'tell_koe', input: { text: 'Nepenthe is open until 22:00 tonight.', for_user: 'Nepenthe is open until ten tonight.' } }, sleep]), sse([sleep]), sse([sleep])] });
+  try {
+    await fakeMicrophone(page, [clipPath('where-eat')]);
+    await liveSetUp(page, kokoro.origin, s.origin);
+    await page.getByRole('button', { name: 'Shiori' }).click();
+    await expect(page.locator('.voice-chip')).toHaveText('Listening live');
+    await expect.poll(() => s.received().filter((/** @type {any} */ m) => m.clientContent).length, { timeout: 30_000 }).toBe(1);
+    await page.waitForTimeout(2500); // her first 1.2 s have played; the rest comes at 4 s
+    await page.getByRole('button', { name: 'Shiori' }).click();
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Conversation' }).click();
+    const shown = page.locator('.convo .line-kokoros-words');
+    await expect(shown).toContainText('Nepenthe is open until ten tonight.', { timeout: 15_000 });
+    await expect(shown).toContainText("Kokoro's words · shown");
+    await expect(page.locator('.convo .shiori.said').nth(1)).toContainText('✂');
+  } finally {
+    await s.stop();
+    await kokoro.stop();
+  }
+});
