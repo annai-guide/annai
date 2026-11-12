@@ -942,9 +942,12 @@ export class LiveKoe {
     this.#changed();
   }
 
-  /** Kokoro's notes for the user went in: Koe's next turns are watched for them. @param {Wake[]} notes */
+  /** Kokoro's notes for the user went in: Koe's next turns are watched for them. A trigger's cues are let go: a model has them, as classic voice's. @param {Wake[]} notes */
   #went(notes) {
-    this.#owed.sent.push(...notes);
+    for (const w of notes) if (w.kind !== 'note') w.fallbacks = w.fallbacks?.filter((r) => !r.cue);
+    const owed = notes.filter((w) => w.kind === 'note' || w.fallbacks?.length);
+    if (!owed.length) return;
+    this.#owed.sent.push(...owed);
     this.#owed.cued = this.#owed.cue = false;
     this.#owed.at = Date.now();
   }

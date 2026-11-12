@@ -620,12 +620,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** her turn counts as said only when the provider ends it, and in real runs that came 0.06 to 0.65 s after her sound stopped (median 0.31 s, 60 note turns). Until then the note still counts as not passed on, so a user's turn that begins in that window shows it. Treating "her sound has run out" as heard whole would lose the rest of a note that has a gap in her sound (7 of 204 real replies had such gaps, up to 1.5 s).
 - **Revisit when:** the next version: read the provider's own "finished making it" signal (Gemini's `generationComplete`, which annai ignores today), after measuring when it arrives on real Gemini. "Whole" then means all made and all played, so a tap in a gap inside her reply (7 of 204 real replies had one, up to 1.5 s; today such a tap counts her note as heard whole, and its rest is neither heard nor shown, as in the version before) counts as a cut, and the rest is shown. A note she had made and played in full then shows nothing.
 
-### In live voice, a cue she didn't get to say can show as a "Reminder" card
-- **Kind:** deferred.
-- **What the user sees:** a watch whose trigger is a cue for Shiori (not a reminder for the user) fires in live voice, and the user taps, speaks or makes a sound before Koe has answered it: annai shows the cue's own short text as a silent "Reminder" card. With classic voice a cue is dropped once a model has it. The version before this one showed or said it in the same cases, except at a sound, where it asked her again.
-- **Why:** in live voice every trigger's stand-by text is kept until Koe passes it on, cues included, and what is left unsaid is shown without telling the two apart.
-- **Revisit when:** the next version: live voice lets a cue go once a model has it, as classic voice does.
-
 ### After a Stop, a line said to live Koe can be refused when its words arrive after her call
 - **Kind:** deferred.
 - **What the user sees:** in live voice, they press Stop, then say something to Shiori. If the provider sends Koe's call to Kokoro before it sends the words of what they said, the call is refused as if they hadn't spoken: she says she can't check that now, and they have to ask again. When the words come first, it goes through. On the test stand-in, words 6 seconds late are refused; how often real Gemini's words come after its call isn't measured. The version before this one did the same.

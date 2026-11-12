@@ -787,6 +787,134 @@ test("Koe unset, or down: the reminder's wake is Kokoro's alone, as before, with
   }
 });
 
+// A cue (a place, the road, an arrival) is hers to say or let pass, not the user's reminder: live voice lets it go once the session has it, as
+// classic voice does once a model answers. It is never shown as a "Reminder" after that, never told to Kokoro as a reminder Koe is saying, and
+// a page out of view keeps it with the wake rather than showing it. One no model ever got still falls back as before.
+const NEAR = 'Near the old town.';
+const NEAR_W = { kind: /** @type {const} */ ('trigger'), text: 'Your watch p1 (arriving) fired: near the old town', fallbacks: [{ watch: 'p1', text: NEAR, cue: true }] };
+const BOTH_W = { ...SUNSET, fallbacks: [...SUNSET.fallbacks, ...NEAR_W.fallbacks] };
+
+test("a cue is no reminder Koe is saying: Kokoro's wake lists none (live, and a chat Koe), and beside a reminder only the reminder", async () => {
+  for (const live of [true, false]) {
+    for (const [wake, saying] of /** @type {const} */ ([[NEAR_W, false], [BOTH_W, true]])) {
+      const { starts, hold } = kokoroStarts();
+      const k = live ? await liveKit([{ said: 'The old town is ahead.', audio: tone(0.3) }], { agent: { secondMs: SECOND }, hold })
+        : await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] }], { koe: { type: { rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] } }, agent: { secondMs: SECOND }, hold });
+      try {
+        if (live) await k.voice.unlock();
+        await k.agent.wake(/** @type {any} */ (wake));
+        await until(() => starts.length > 0, 8000);
+        const said = userTexts(k.sent['model-0'][0]).filter((t) => /Koe is saying/.test(t));
+        assert.equal(said.some((t) => t.includes(NEAR)), false, `${live ? 'live' : 'chat'}: the cue isn't listed`);
+        assert.equal(said.some((t) => SAYING.test(t)), saying, `${live ? 'live' : 'chat'}: the reminder is, when there is one`);
+        await k.agent.idle();
+      } finally {
+        await k.done?.();
+      }
+    }
+  }
+});
+
+for (const by of /** @type {const} */ (['a tap', 'a sound'])) {
+  test(`live: a cue the session has, cut by ${by} before she answers it, is let go: no "Reminder" card for it; a reminder beside it is shown, silently, as before`, async () => {
+    for (const wake of [NEAR_W, BOTH_W]) {
+      const k = await noteSaid({ first: (x) => x.agent.wake(wake), turns: [{ delayMs: 400 }] });
+      try {
+        if (by === 'a tap') assert.equal(k.agent.live.tap(), 'cut');
+        else await bump(k);
+        await wait(1500);
+        await k.agent.idle();
+        assert.deepEqual(await shown(k), wake === BOTH_W ? [['Sunset at 18:40', false]] : [], 'the cue never shows');
+        assert.ok(!k.notices.some((/** @type {any} */ n) => n.body === NEAR), 'no card for it');
+        assert.deepEqual(k.said, [], "annai's voice says nothing");
+      } finally {
+        await k.done();
+      }
+    }
+  });
+}
+
+test('live: a cue the session has and lets pass in silence asks nothing again and shows nothing; one no session ever got falls back as before', async () => {
+  const k = await liveKit([{ said: 'Hello there.', audio: tone(0.1) }, {}, {}], { agent: { secondMs: REAL_SECOND } });
+  try {
+    await k.voice.unlock();
+    k.agent.send('Hi');
+    await soon(async () => (await k.events(['out.speak'])).length === 1, 4000);
+    await k.agent.live.idle();
+    await k.agent.wake(NEAR_W);
+    await soon(async () => textsIn(k).some((t) => t.includes('near the old town')), 4000);
+    await wait(4000); // her silent answer, and any ask once more
+    await k.agent.idle();
+    assert.deepEqual(asks(k), [], 'not asked again');
+    assert.deepEqual(await shown(k), [], 'nothing shown');
+    assert.deepEqual(k.said, []);
+  } finally {
+    await k.done();
+  }
+  // No session can open (today's spend reached, Koe stays live): annai shows it, as it did.
+  const usage = { promptTokenCount: 1_000_000, responseTokenCount: 0, promptTokensDetails: [{ modality: 'TEXT', tokenCount: 1_000_000 }] };
+  const spent = await liveKit([{ said: 'Sure.', audio: tone(0.1), usage }], { agent: { secondMs: REAL_SECOND } });
+  try {
+    const { updateAppSettings } = await import('../../src/core/settings.js');
+    await updateAppSettings(spent.ws, { shiori: { budgets: { spendPerDay: 0.5 } } });
+    spent.agent.send('Hi');
+    await soon(async () => (await spent.events(['live.session'])).some((/** @type {any} */ e) => e.data.state === 'closed'));
+    await spent.agent.idle();
+    await spent.agent.wake(NEAR_W);
+    await soon(async () => (await shown(spent)).length === 1, 4000);
+    assert.deepEqual((await shown(spent)).map(([text]) => text), [NEAR]);
+  } finally {
+    await spent.done();
+  }
+});
+
+test('live: a cue the session has is let go at a switch to another trip; one still waiting to go in falls back there as before', async () => {
+  const k = await noteSaid({ first: (x) => x.agent.wake(NEAR_W), turns: [{ delayMs: 400 }] });
+  try {
+    const { createTrip } = await import('../../src/core/scopes.js');
+    const other = await createTrip(k.ws, { title: 'Carmel' });
+    await k.agent.open(other);
+    await k.agent.idle();
+    await wait(300);
+    assert.deepEqual(await entries(k, k.trip), [], 'nothing in the trip left');
+    assert.deepEqual(await entries(k, other), []);
+  } finally {
+    await k.done();
+  }
+  const w = await owing((x) => x.agent.wake(NEAR_W));
+  try {
+    const { createTrip } = await import('../../src/core/scopes.js');
+    await w.agent.open(await createTrip(w.ws, { title: 'Carmel' }));
+    await w.agent.idle();
+    await soon(async () => (await entries(w, w.trip)).length === 1, 4000);
+    assert.deepEqual(await entries(w, w.trip), [[NEAR, false]], 'never in: its fallback, in the trip left');
+  } finally {
+    await w.done();
+  }
+});
+
+test('live, the page out of view: a reminder is shown at once, as before; a cue waits with the wake for the page, and is let go once the session has it', async () => {
+  const k = await liveKit([{ said: 'The old town is ahead, and sunset is at 18:40.', audio: tone(0.3) }], { agent: { secondMs: REAL_SECOND } });
+  try {
+    await k.voice.unlock();
+    hidden(true);
+    await k.agent.wake(BOTH_W);
+    await soon(async () => (await shown(k)).length === 1, 4000);
+    await wait(300);
+    assert.deepEqual(await shown(k), [['Sunset at 18:40', true]], 'the reminder only, said as before');
+    assert.ok(!k.said.includes(NEAR), 'the cue is not said');
+    hidden(false);
+    k.agent.shown();
+    await soon(async () => textsIn(k).some((t) => t.includes('Sunset in 30 minutes')), 4000);
+    await soon(async () => (await k.events(['out.speak'])).length === 1, 4000);
+    await k.agent.idle();
+    assert.deepEqual((await shown(k)).map(([text]) => text), ['Sunset at 18:40'], 'the cue never shows');
+  } finally {
+    hidden(false);
+    await k.done();
+  }
+});
+
 // Koe's instructions, at the source: passing on is the default, said in the same words to a chat Koe, a live one and in tell_kokoro's own
 // description; no standing excuse; the lines that get no reply say what to do, and a live Koe is told once that every word it makes is heard.
 test("Koe passes on what the user said as they said it, in its instructions and in tell_kokoro's description; meanwhile it says \"One moment.\" and asks nothing of its own", () => {
