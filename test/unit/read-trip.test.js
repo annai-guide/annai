@@ -3021,6 +3021,78 @@ test("with Koe on a chat model, a reminder due while Koe's model call runs ends 
   }
 });
 
+// Voice on, annai's card listens for its answer for 20 s, on Koe's microphone: a reminder due inside that window isn't said until it ends (the card's
+// answer, or its window shutting), so that an "Okay." to the reminder can't answer "Read <trip>?". Said at most 20 s after it came due.
+/** Koe waiting for Kokoro (a wait of 120 s) or its turn ended (0), voice on, the card's question said and its window open; the user says "Okay." when asked to. @param {number} seconds @param {boolean} [voice] */
+async function windowKit(seconds, voice = true) {
+  // Its turn ended: it passed the line on, and a reminder it says as the last call of its reply, which has it listen after it (a speak before a sleep doesn't).
+  const ended = { rules: [
+    { match: 'a watch fired', reply: { toolCalls: [{ name: 'speak', input: { text: LEAVE_NOW } }] }, then: sleep },
+    { match: 'the user wrote', reply: { toolCalls: [{ name: 'speak', input: { text: 'One moment.' } }, { name: 'tell_kokoro', input: { text: 'Where did we eat in Testville?' } }, { name: 'sleep', input: {} }] } },
+    { match: '.', reply: sleep },
+  ] };
+  const k = await gateKit(KOKORO, { koe: { type: seconds ? waitingKoe(seconds) : ended }, ...(voice ? { voice: { speechIn: ['m-hear'], hears: ['Okay.'], decide: gates(['A', 'A', 'A']) } } : {}) });
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1, 20_000);
+  if (voice) await until(() => !k.voice.speaker.speaking && k.agent.kokoro.pendingId !== null, 20_000);
+  else await until(() => k.agent.kokoro.pendingId !== null, 20_000);
+  if (seconds) await until(() => k.agent.koe.waiting, 20_000);
+  return k;
+}
+/** Koe said the reminder, aloud once. @param {any} k */
+const saidLeave = async (k) => (await k.events(['out.speak'])).filter((/** @type {any} */ e) => e.data.text === LEAVE_NOW).length;
+
+for (const seconds of [120, 0]) {
+  test(`with Koe on a chat model (${seconds ? 'waiting for Kokoro' : 'its turn ended'}), a reminder due 2 s into annai's card's listening is said when that ends, not before; an "Okay." to it doesn't answer the card`, async (t) => {
+    useClock(t);
+    const k = await windowKit(seconds);
+    const from = Date.now();
+    await pause(2 * k.agent.secondMs);
+    k.agent.wake(DUE);
+    await pause(14 * k.agent.secondMs); // 16 s into the window
+    assert.equal(await saidLeave(k), 0, "not said while the card listens");
+    assert.deepEqual(await reminders(k), { filed: [], cards: 0 }, 'nor shown by annai');
+    if (seconds) assert.ok(k.agent.koe.waiting, 'Koe is still waiting');
+    await soon(async () => (await saidLeave(k)) === 1, 20 * k.agent.secondMs);
+    const after = (Date.now() - from) / k.agent.secondMs;
+    assert.ok(after >= 17 && after <= 23, `said as the window shut, ${after} s in`);
+    await until(() => !k.voice.speaker.speaking && k.agent.koe.state.name === 'listening', 20_000);
+    await hear(k, 'first-one'); // "Okay." to the reminder
+    await pause(6 * k.agent.secondMs);
+    assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [], 'the card was not answered by it');
+    assert.equal(await saidLeave(k), 1, 'said once');
+    k.agent.interrupt();
+    await k.agent.idle();
+  });
+
+  test(`with Koe on a chat model (${seconds ? 'waiting for Kokoro' : 'its turn ended'}), the card answered by a tap inside its window has Koe say the reminder at once`, async (t) => {
+    useClock(t);
+    const k = await windowKit(seconds);
+    await pause(2 * k.agent.secondMs);
+    k.agent.wake(DUE);
+    await pause(3 * k.agent.secondMs);
+    assert.equal(await saidLeave(k), 0, 'not said while the card listens');
+    const t0 = Date.now();
+    k.agent.answer(/** @type {string} */ (k.agent.kokoro.pendingId), 'Not now');
+    await soon(async () => (await saidLeave(k)) === 1, 10 * k.agent.secondMs);
+    assert.ok(Date.now() - t0 <= 1 * k.agent.secondMs, `said ${(Date.now() - t0) / k.agent.secondMs} s after the card was answered`);
+    await k.agent.idle();
+    assert.deepEqual(await reminders(k), { filed: [], cards: 0 }, 'annai shows nothing itself');
+  });
+}
+
+test("with voice off, annai's card listens for no one: a reminder due inside its 20 s is said by Koe at once", async (t) => {
+  useClock(t);
+  const k = await windowKit(120, false);
+  await pause(2 * k.agent.secondMs);
+  const t0 = Date.now();
+  k.agent.wake(DUE);
+  await soon(async () => (await saidLeave(k)) === 1, 10 * k.agent.secondMs);
+  assert.ok(Date.now() - t0 <= 1 * k.agent.secondMs, `said ${(Date.now() - t0) / k.agent.secondMs} s after it came due`);
+  k.agent.answer(/** @type {string} */ (k.agent.kokoro.pendingId), 'Not now');
+  await k.agent.idle();
+});
+
 // A reminder already queued when the wait begins: due while her model call ran, so before the card or her question appeared.
 const DUE_2 = { kind: 'trigger', text: 'a watch fired', fallbacks: [{ watch: 'w2', text: 'Buy the tickets.' }] };
 /** annai's reminders written in a conversation and shown as cards, by their words, in order. @param {any} k */
