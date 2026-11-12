@@ -486,7 +486,8 @@ export function safeId(id) {
  * @typedef {{ type: 'audio', data: Uint8Array } | { type: 'heard' | 'said', text: string, final?: boolean } | { type: 'tool', id: string, name: string, input: any }
  *   | { type: 'turn', end: 'complete' | 'interrupted' } | { type: 'usage', usage: Partial<Usage> } | { type: 'resume', handle: string }
  *   | { type: 'goaway', ms: number } | { type: 'made' }} LiveEvent  audio: 16-bit PCM in audioOut; heard, said: transcripts in pieces; made: the turn being
- *   made is all made, its sound, words and tool calls all sent (Gemini's generationComplete), not yet played; usage: a turn's
+ *   made is all made, its sound, words and tool calls all sent (Gemini's generationComplete), not yet played, but after a call annai answers without
+ *   `silent` more of that turn comes; usage: a turn's
  */
 
 /**

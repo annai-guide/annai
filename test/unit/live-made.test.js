@@ -180,6 +180,37 @@ test('a tap while her sound for a note all made still plays (the provider had ma
   }
 });
 
+// Her reply to the note speaks and calls a tool she speaks after (watch_list: annai answers it without `silent`), and the provider says the turn is
+// all made right after the call, as it does after a silent one (generationComplete 0 to 17 ms after it), before it knows what the answer is. More of
+// that turn comes once annai answers, so it is not all made: until it ends, a user starting or a tap is a cut, and the note shows.
+const LOOKS = { said: 'Let me check.', audio: tone(0.6), tool: { name: 'watch_list', args: {} }, noEnd: true };
+
+test('the user speaks in the wait for a tool she speaks after, her words for the note played: the note is shown, not lost', async () => {
+  const [k, at] = await noteSaid({ note: LOOKS });
+  try {
+    await wait(at + 600 + 600 - Date.now()); // "Let me check." has played; the tool was answered, and nothing more comes
+    assert.deepEqual((await k.events(['tool.call'])).map((/** @type {any} */ e) => e.data.name), ['watch_list']);
+    await answersAtOnce(k, Date.now(), 0);
+    await soon(async () => (await lines(k)).length === 2, 8000); // the provider answers them in the turn it still has open
+    assert.deepEqual(await shown(k), [[FOR_USER, false]], 'what Kokoro made for them is shown, silently');
+  } finally {
+    await k.done();
+  }
+});
+
+test('a tap in the wait for a tool she speaks after, her words for the note played: a cut, and the note is shown', async () => {
+  const [k, at] = await noteSaid({ note: LOOKS });
+  try {
+    await wait(at + 600 + 600 - Date.now());
+    k.agent.tap();
+    await soon(async () => (await lines(k)).length === 2, 8000);
+    assert.deepEqual(await shown(k), [[FOR_USER, false]]);
+    assert.equal(await wholeNotes(k), 0);
+  } finally {
+    await k.done();
+  }
+});
+
 // A provider whose plugin never says when her turn is all made keeps the rules from before: all played is heard whole at a tap or a close, and
 // the user's turn beginning shows what went in.
 test('a provider that never says: the user answering at once still gets the silent copy of the note, as before', async () => {

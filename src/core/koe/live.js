@@ -21,7 +21,7 @@ import { t } from '../l10n.js';
  *   tools: boolean, cut: boolean, whole: boolean, logged: boolean, goesOn: boolean, calls: number, done: boolean, made?: boolean, stalled?: boolean, audible?: boolean, endBy?: any }} Turn  one of Koe's; held: its sound until a real word;
  *   stalled: its sound stopped coming out, so its stream was let go, and its words are said by the speech voice;
  *   goesOn: it called a tool it speaks after; calls: its tool calls not answered yet; done: the provider ended it; made: the provider said all of it is made
- *   (its `made`), so no more of it comes; whole: cut, but all of it was heard (#whole) or written; audible: its sound has started playing, so its words may show; endBy: the timer that ends it if no turnComplete comes (#endLater);
+ *   (its `made`), so no more of it comes, unless it goesOn (a call answered without `silent` brings more); whole: cut, but all of it was heard (#whole) or written; audible: its sound has started playing, so its words may show; endBy: the timer that ends it if no turnComplete comes (#endLater);
  *   soundAt: when its sound began; alone: a call alone, answered silently, which #tool let go of
  * @typedef {{ sent: number, spoke: boolean, timer: any, idle?: boolean }} Mark  an urgent note's (LiveKoe's #urgent); idle: what waited, going in with nothing before it, so its turn is the next to end
  * @typedef {{ text: string, told?: boolean }} Waiting  what waits to go in (LiveKoe's #notes); told: annai's own line, which the log holds none of
@@ -1444,14 +1444,15 @@ export class LiveKoe {
 
   /**
    * Whether her turn, cut now, was heard whole (spec §10.8, What is logged): the one place that decides it. All of it played, its sound begun
-   * (no sound yet is not all played), and all of it made: the provider said so (made) or ended the turn, so a pause in her sound while the
-   * provider still makes the rest is a cut, and a turn cut with its sound still playing stays one. With a provider that never says (its type
-   * has no `made`), all played is whole, as before it could say, except as the user's turn begins (begins), where its notes are shown.
+   * (no sound yet is not all played), and all of it made: the provider said so (made, and no call it speaks after: more of that turn comes once
+   * annai answers one) or ended the turn, so a pause in her sound while the provider still makes the rest is a cut, and a turn cut with its sound
+   * still playing stays one. With a provider that never says (its type has no `made`), all played is whole, as before it could say, except as the
+   * user's turn begins (begins), where its notes are shown.
    * @param {Turn | null} t @param {boolean} [begins]
    */
   #whole(t, begins = false) {
     if (!t?.stream || !t.bytes || t.stream.queued()) return false;
-    return this.#makes ? Boolean(t.made || t.done) : !begins;
+    return this.#makes ? Boolean((t.made && !t.goesOn) || t.done) : !begins;
   }
 
   /**
