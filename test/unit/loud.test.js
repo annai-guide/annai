@@ -48,10 +48,12 @@ test('a short last frame in a chunk is judged on its own samples, and counts fro
   assert.equal(l.samples, 1080 + 168);
 });
 
-test('nothing loud yet: the end is 0', () => {
+test('nothing loud: the end is the whole length of her sound so far, so it is played past only once it has played through; nothing at all: 0', () => {
   const l = newLoud();
   pushLoud(l, level(500, -60), RATE);
-  assert.equal(loudMs(l, RATE), 0);
+  assert.equal(loudMs(l, RATE), 500);
+  pushLoud(l, level(300, -60), RATE);
+  assert.equal(loudMs(l, RATE), 800);
   assert.equal(loudMs(newLoud(), RATE), 0);
 });
 
