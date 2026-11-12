@@ -1950,10 +1950,9 @@ export class Agent {
       const open = scope === (this.#target ?? ME);
       if (open && scope === this.scope) return this.#write(ev);
       const e = await record(this.store, scope, { now: this.#stamp(scope), ...this.#marked(ev) });
-      if (open) {
-        if (scope === this.scope) this.#joinLate(e);
-        else this.#late.push({ scope, e });
-      }
+      if (!open) this.#emit('event', e); // heard as a held wake's writer's are (#keptIn): a draft is named by a spoken line, live mode follows its rows
+      else if (scope === this.scope) this.#joinLate(e);
+      else this.#late.push({ scope, e });
       return e;
     });
   }
