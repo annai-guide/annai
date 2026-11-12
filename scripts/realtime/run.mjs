@@ -3,7 +3,8 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { analyse, detail, summary, timeline } from './analyse.mjs';
 import { analyseCard } from './card.mjs';
-import { loadClips } from './clips.mjs';
+import { analyseRelay, relayTally } from './relay.mjs';
+import { loadClips, missingClips } from './clips.mjs';
 import { clipFiles, launch, runScenario, serve } from './drive.mjs';
 import { startKokoro } from './kokoro.mjs';
 import { SCENARIOS } from './scenarios.mjs';
@@ -13,14 +14,20 @@ const outOfQuota = (rec) => JSON.stringify([rec.errors, rec.notes, rec.trace.fil
 
 /**
  * One scenario's record analysed: the general analysis, and for a stage 5 card scenario its card checks in place of the answer checks (a spoken yes is not a
- * question to be answered). @param {import('./analyse.mjs').Rec} rec @param {Record<string, any>} clips @param {import('./scenarios.mjs').Scenario | undefined} sc
+ * question to be answered); a one-answer scenario's checks (relay.mjs) are added to the general ones.
+ * @param {import('./analyse.mjs').Rec} rec @param {Record<string, any>} clips @param {import('./scenarios.mjs').Scenario | undefined} sc
  */
 export function analyseOne(rec, clips, sc) {
-  const a = analyse(rec, clips, { expectCut: sc?.expectCut === true });
+  const a = analyse(rec, clips, { expectCut: sc?.expectCut === true, acks: sc?.acks ?? [] });
   if (sc?.measure) {
     // Lines said to be measured, not answered: only an error fails it.
     const checks = a.checks.filter((x) => x.name === 'no errors');
     return { ...a, checks, warnings: [], pass: checks.every((x) => x.ok) };
+  }
+  if (sc && (sc.passOn || sc.acks?.length || sc.noteCut || sc.steps.some((st) => 'type' in st && st.lines))) {
+    const r = analyseRelay(rec, a, sc, clips);
+    const checks = [...a.checks, ...r.checks];
+    return { ...a, checks, warnings: checks.filter((x) => x.soft && !x.ok).map((x) => x.name), pass: checks.filter((x) => !x.soft).every((x) => x.ok), cardText: r.text, relay: r.tally };
   }
   if (!sc?.card) return a;
   const c = analyseCard(rec, a, sc);
@@ -44,11 +51,11 @@ export async function reanalyse(dir, clips) {
     const sc = SCENARIOS[rec.scenario];
     const a = analyseOne(rec, clips, sc);
     await writeFile(new URL(f, dir), `${JSON.stringify({ rec, analysis: a }, null, 1)}\n`);
-    await writeFile(new URL(`${rec.scenario}.timeline.txt`, dir), `${timeline(rec, a)}\n`);
+    await writeFile(new URL(f.replace(/\.json$/, '.timeline.txt'), dir), `${timeline(rec, a)}\n`);
     done.push({ rec, a });
   }
   done.sort((x, y) => Object.keys(SCENARIOS).indexOf(x.rec.scenario) - Object.keys(SCENARIOS).indexOf(y.rec.scenario));
-  const report = `${summary(done, used)}\n\n${done.map(({ rec, a }) => detail(rec, a, SCENARIOS[rec.scenario]?.about)).join('\n\n')}\n`;
+  const report = `${[summary(done, used), ...relayTally(done)].join('\n')}\n\n${done.map(({ rec, a }) => detail(rec, a, SCENARIOS[rec.scenario]?.about)).join('\n\n')}\n`;
   await writeFile(new URL('report.txt', dir), report);
   await writeFile(new URL('report.json', dir), `${JSON.stringify({ ...used, results: done.map(({ rec, a }) => ({ scenario: rec.scenario, pass: a.pass, warnings: a.warnings, checks: a.checks, notes: a.notes })) }, null, 1)}\n`);
   return report;
@@ -56,17 +63,21 @@ export async function reanalyse(dir, clips) {
 
 /**
  * @param {{ keys: import('./keys.mjs').Keys, only?: string[], out: URL, port?: number, roomDb?: number | null, settleMs?: number, answerTimeoutMs?: number,
- *   maxSessions?: number, kokoro?: 'stand-in' | 'gemini', app?: string, ui?: string, asr?: string, anthropic?: import('./keys.mjs').Keys, log?: (s: string) => void }} o
+ *   maxSessions?: number, kokoro?: 'stand-in' | 'gemini', app?: string, ui?: string, asr?: string, anthropic?: import('./keys.mjs').Keys, times?: number, log?: (s: string) => void }} o
  *   ui: the screens' language to run under (localization L6), chosen in Settings → Shiori once annai is set up; asr: the origin of a speech-to-text server the
  *   stand-in passes transcription requests to (classic voice, stage 5); anthropic: the Anthropic key (a file's one line, read inside the process, used only by the
- *   scenarios that ask for a real Kokoro, typed into annai's own key field, and checked out of everything written)
+ *   scenarios that ask for a real Kokoro, typed into annai's own key field, and checked out of everything written); times: each scenario is run that many times,
+ *   one session each (a bar over more lines than one run says, such as 9 of 10), its records numbered from the second
  */
-export async function runChecks({ keys, only, out, port = 18061, roomDb = -60, settleMs = 3000, answerTimeoutMs = 40_000, maxSessions = 10, kokoro = 'stand-in', app, ui, asr, anthropic, log = console.log }) {
+export async function runChecks({ keys, only, out, port = 18061, roomDb = -60, settleMs = 3000, answerTimeoutMs = 40_000, maxSessions = 10, kokoro = 'stand-in', app, ui, asr, anthropic, times = 1, log = console.log }) {
   const names = (only ?? Object.keys(SCENARIOS).filter((n) => !SCENARIOS[n].extra)).filter((n) => {
     if (!SCENARIOS[n]) throw new Error(`There is no scenario "${n}". They are: ${Object.keys(SCENARIOS).join(', ')}.`);
     return true;
   });
   const clips = await loadClips();
+  // A clip some of these scenarios play that isn't made yet: said before anything starts, with the command that makes it.
+  const missing = missingClips(names.map((n) => SCENARIOS[n]), clips);
+  if (missing.length) throw new Error(`These clips aren't made yet: ${missing.join(', ')}. Make them (Gemini TTS, a free key): node scripts/realtime-check.mjs clips --only ${missing.join(',')}`);
   const files = await clipFiles(clips);
   await mkdir(out, { recursive: true });
   /** Everything written is checked first. @param {string} name @param {string} text */
@@ -84,14 +95,15 @@ export async function runChecks({ keys, only, out, port = 18061, roomDb = -60, s
   /** @type {{ rec: import('./analyse.mjs').Rec, a: ReturnType<typeof analyseOne> }[]} */
   const done = [];
   try {
-    for (const name of names) {
+    for (const [name, run] of names.flatMap((n) => Array.from({ length: times }, (_, i) => /** @type {[string, number]} */ ([n, i + 1])))) {
       const sc = SCENARIOS[name];
+      const file = run > 1 ? `${name}.${run}` : name;
       for (let attempt = 0; attempt < 2; attempt++) {
         if (sessions >= maxSessions) {
           log(`stopping before ${name}: ${sessions} realtime sessions used, the cap is ${maxSessions}`);
           break;
         }
-        log(`\n[${name}] ${sc.about}${keys.line ? ` (key line ${keys.line})` : ''}`);
+        log(`\n[${name}${run > 1 ? ` #${run}` : ''}] ${sc.about}${keys.line ? ` (key line ${keys.line})` : ''}`);
         const env = { origin: server.origin, ...(standIn ? { standIn: standIn.origin, kokoro: standIn } : {}), key: keys.key, clips: files, roomDb, settleMs, answerTimeoutMs, log, scrub: (/** @type {string} */ s) => (anthropic ? anthropic.scrub(keys.scrub(s)) : keys.scrub(s)), ...(ui ? { ui } : {}), ...(sc.real && anthropic ? { real: { anthropic: anthropic.key, cap: 30 } } : {}) };
         standIn?.repeatNote(sc.repeatNote === true);
         const rec = await runScenario(browser, name, sc, env);
@@ -103,8 +115,8 @@ export async function runChecks({ keys, only, out, port = 18061, roomDb = -60, s
           continue;
         }
         const a = analyseOne(rec, clips, sc);
-        await write(`${name}.json`, `${JSON.stringify({ rec, analysis: a }, null, 1)}\n`);
-        await write(`${name}.timeline.txt`, `${timeline(rec, a)}\n`);
+        await write(`${file}.json`, `${JSON.stringify({ rec, analysis: a }, null, 1)}\n`);
+        await write(`${file}.timeline.txt`, `${timeline(rec, a)}\n`);
         done.push({ rec, a });
         log(detail(rec, a, sc.about));
         break;
@@ -115,9 +127,10 @@ export async function runChecks({ keys, only, out, port = 18061, roomDb = -60, s
     server.stop();
     await standIn?.stop();
   }
-  const report = `${summary(done, { sessions, lines })}\n\n${done.map(({ rec, a }) => detail(rec, a, SCENARIOS[rec.scenario].about)).join('\n\n')}\n`;
+  const head = [summary(done, { sessions, lines }), ...relayTally(done)].join('\n');
+  const report = `${head}\n\n${done.map(({ rec, a }) => detail(rec, a, SCENARIOS[rec.scenario].about)).join('\n\n')}\n`;
   await write('report.txt', report);
   await write('report.json', `${JSON.stringify({ sessions, lines, results: done.map(({ rec, a }) => ({ scenario: rec.scenario, pass: a.pass, warnings: a.warnings, checks: a.checks, notes: a.notes })) }, null, 1)}\n`);
-  log(`\n${summary(done, { sessions, lines })}`);
+  log(`\n${head}`);
   return { pass: done.length > 0 && done.every(({ a }) => a.pass), sessions };
 }

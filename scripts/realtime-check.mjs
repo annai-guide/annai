@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Drives the real Gemini Live through annai's own code, with real speech: see docs/testing/realtime-check.md.
 //   node scripts/realtime-check.mjs clips [--only a,b] [--force] [--tts-model m]     make the speech clips (Gemini TTS; once)
-//   node scripts/realtime-check.mjs run   [--only s1,s2] [--out dir] [--kokoro gemini|stand-in] ...   run the conversations
+//   node scripts/realtime-check.mjs run   [--only s1,s2] [--times n] [--out dir] [--kokoro gemini|stand-in] ...   run the conversations
 //   node scripts/realtime-check.mjs report <folder>                                   the analysis of a run's records again (no network)
 //   node scripts/realtime-check.mjs writing <run folder>...                            how a speech model wrote each clip, with a question mark or not (no network)
 //   node scripts/realtime-check.mjs cards <run folder>...                              stage 5's card runs as a table, a row a scenario (no network)
@@ -76,6 +76,7 @@ if (command === 'clips') {
       ...(typeof opts['max-sessions'] === 'string' ? { maxSessions: Number(opts['max-sessions']) } : {}),
       ...(typeof opts.ui === 'string' ? { ui: opts.ui } : {}),
       ...(typeof opts.asr === 'string' ? { asr: opts.asr } : {}),
+      ...(typeof opts.times === 'string' ? { times: Math.max(1, Number(opts.times) || 1) } : {}),
       ...(anthropic ? { anthropic } : {}),
     });
     process.exit(r.pass ? 0 : 1);
