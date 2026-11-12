@@ -223,28 +223,52 @@ test('the header stays in view as the conversation scrolls', async ({ page }) =>
   expect(Math.abs(top - bar)).toBeLessThanOrEqual(2);
 });
 
-test("the Next line keeps its place when the trip's last row ends, so the conversation doesn't move", async ({ page }) => {
+/**
+ * A conversation of three lines, with a plan item Tea, opened and scrolled to the top, where the page stays: a wheel turn (as the user's) stops
+ * the conversation following its last line down. At the bottom a shrinking page only clamps the scroll, and nothing would show.
+ * @param {import('@playwright/test').Page} page @param {(now: number) => { start: string, end: string }} tea its times, from the page's clock
+ * @returns {Promise<() => Promise<number>>} where the conversation's first line is now, from the top of the page
+ */
+async function conversationWithTea(page, tea) {
   await openApp(page);
   const id = await startTrip(page, 'Big Sur');
   for (let i = 0; i < 3; i++) await writeEvent(page, id, { type: 'out.speak', data: { id: `s${i}`, text: `Line ${i}.` } });
-  const iso = (/** @type {number} */ ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
-  await writeRecords(page, id, { write: {
-    '/plan/tea.json': { id: 'tea', title: 'Tea', fixed: true, start: { at: iso(Date.now() - 10 * 60_000), tz: 'UTC' }, end: { at: iso(Date.now() + 8_000), tz: 'UTC' } }, // room to measure first, even on a cold start
-  } });
+  const { start, end } = tea(await page.evaluate(() => Date.now()));
+  await writeRecords(page, id, { write: { '/plan/tea.json': { id: 'tea', title: 'Tea', fixed: true, start: { at: start, tz: 'UTC' }, end: { at: end, tz: 'UTC' } } } });
   await goToHash(page, `#/trip/${id}/talk`);
-  await expect(page.locator('.next-line a')).toHaveText(/^Next: .*Tea$/);
-  // Scrolled to the top, where the page stays: a wheel turn (as the user's) stops the conversation following its last line down. At the
-  // bottom a shrinking page only clamps the scroll, and nothing would show.
+  await expect(page.locator('.next-line a')).toHaveText(/^Next: (\w+, \w+ \d+ )?\d\d:\d\d Tea$/); // a day only when UTC's date isn't the phone's
   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => { // after it first goes to the end
     dispatchEvent(new Event('wheel'));
     scrollTo(0, 0);
     done(undefined);
   }))));
   await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
-  const top = () => page.locator('.convo > li').first().evaluate((el) => Math.round(el.getBoundingClientRect().top));
+  return () => page.locator('.convo > li').first().evaluate((el) => Math.round(el.getBoundingClientRect().top));
+}
+
+const iso = (/** @type {number} */ ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
+
+// The test sets the page's clock, never the day's: an item ending after midnight (in its zone) is two rows, the first of which outlasts a short
+// item (the next test), so with the real clock this one failed in CI whenever it ran in the ten minutes after midnight UTC (2026-11-12, 00:09).
+test("the Next line keeps its place when the trip's last row ends, so the conversation doesn't move", async ({ page }) => {
+  await page.clock.install({ time: new Date('2030-11-27T12:00:00Z') });
+  // Ends in 8 s: room to measure first, even on a cold start.
+  const top = await conversationWithTea(page, (now) => ({ start: iso(now - 10 * 60_000), end: iso(now + 8_000) }));
   const was = await top();
   await expect(page.locator('.next-line a')).toBeVisible(); // measured before the row ended
   await expect(page.locator('.next-line a')).toBeHidden({ timeout: 15_000 }); // over: the line says nothing
+  expect(await page.evaluate(() => scrollY)).toBe(0);
+  expect(await top()).toBe(was);
+});
+
+test('an item that ends after midnight is on the Next line from its start, and the line keeps its place when it is over', async ({ page }) => {
+  await page.clock.install({ time: new Date('2030-11-28T00:05:00Z') });
+  // Tea from 23:55 to 00:09: two rows, its start (which lasts half an hour, as any row with no end) and its end, a row of its own.
+  const top = await conversationWithTea(page, () => ({ start: '2030-11-27T23:55:00Z', end: '2030-11-28T00:09:00Z' }));
+  await expect(page.locator('.next-line a')).toHaveText(/^Next: (\w+, \w+ \d+ )?23:55 Tea$/);
+  const was = await top();
+  await page.clock.fastForward('01:00:00'); // an hour on: both rows are over
+  await expect(page.locator('.next-line a')).toBeHidden();
   expect(await page.evaluate(() => scrollY)).toBe(0);
   expect(await top()).toBe(was);
 });
