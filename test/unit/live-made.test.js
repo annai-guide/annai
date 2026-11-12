@@ -224,3 +224,54 @@ test('a provider that never says: another trip opened in a pause of her sound sh
     await k.done();
   }
 });
+
+// "One moment." and tell_kokoro, then no turnComplete (19 of 121 real tell_kokoro turns): annai ended her turn 2 s past her sound, and until then
+// the dock said she was speaking and Kokoro's note waited. All made, it ends as her sound does.
+const CHECKING = { heard: 'where to', said: 'One moment.', audio: tone(0.8), tool: { name: 'tell_kokoro', args: { text: 'Where should we stop?' } }, noEnd: true };
+const FUEL = { said: 'The fuel station ahead is open until ten.', audio: tone(0.3) };
+
+/** The user asks; she says "One moment." and asks Kokoro, whose note is ready at once. Resolves with when her sound began. @param {{ made?: false }} [o] @returns {Promise<[any, number]>} */
+async function oneMoment({ made } = {}) {
+  const k = await liveKit([CHECKING, FUEL], { pace: 1, agent: { secondMs: 1000 }, ...(made === false ? { live: { made } } : {}) });
+  await k.voice.unlock();
+  k.voice.route = async () => 'car';
+  k.platform.streamSpeed = 1;
+  k.agent.tap();
+  await until(() => k.agent.live.listening, 3000);
+  await say(k, 'where-eat');
+  await soon(async () => k.agent.live.view.name === 'speaking', 5000);
+  const at = Date.now();
+  await soon(async () => (await k.events(['tool.result'])).some((/** @type {any} */ e) => e.data.half === 'koe'), 3000);
+  await tell(k);
+  return [k, at];
+}
+/** When the note went into the session, polled. @param {any} k */
+async function noteIn(k) {
+  await soon(async () => wentIn(k) === 1, 6000);
+  return Date.now();
+}
+
+test('a silent tool call\'s turn with no turnComplete, all made: it ends as her sound does, so the dock leaves "speaking" and Kokoro\'s note goes in then', async () => {
+  const [k, at] = await oneMoment();
+  try {
+    const inAt = await noteIn(k);
+    assert.notEqual(k.platform.streams[0].playedMs, null, 'her stream for "One moment." is over: the dock no longer says she speaks it');
+    assert.ok(inAt - (at + 800) < 600, `the note went in ${inAt - at - 800} ms after her sound`);
+    await soon(async () => (await lines(k)).some(([text]) => text === FUEL.said), 5000);
+    assert.deepEqual((await lines(k)).map(([text]) => text).slice(-2), ['One moment.', FUEL.said]);
+  } finally {
+    await k.done();
+  }
+});
+
+test('a provider that never says: that turn still ends 2 s past her sound, the note waiting, as before', async () => {
+  const [k, at] = await oneMoment({ made: false });
+  try {
+    await wait(at + 1300 - Date.now());
+    assert.equal(k.agent.live.view.name, 'speaking', 'her sound is over, but her stream is not ended: the dock still says she speaks');
+    const inAt = await noteIn(k);
+    assert.ok(inAt - (at + 800) >= 1500, `the note went in ${inAt - at - 800} ms after her sound`);
+  } finally {
+    await k.done();
+  }
+});

@@ -1210,7 +1210,10 @@ export class LiveKoe {
       this.#trail.cut = true;
       this.#t = null;
     } else if (e.type === 'turn') this.#complete();
-    else if (e.type === 'made' && this.#t && this.#makes) this.#t.made = true; // all made: never a turn of its own, as it comes after what it ends
+    else if (e.type === 'made' && this.#t && this.#makes) { // all made: never a turn of its own, as it comes after what it ends
+      this.#t.made = true;
+      if (this.#t.endBy) this.#endLater(this.#t);
+    }
     else if (e.type === 'tool') this.#tool(s, (this.#t ??= newTurn()), e);
     else if (e.type === 'audio') {
       this.#trail = null;
@@ -1613,7 +1616,11 @@ export class LiveKoe {
     }
   }
 
-  /** Her turn's tool call was answered silently, and its turnComplete may never come: it ends TURN_END_S past her sound, counted from when it began. @param {Turn} t */
+  /**
+   * Her turn's tool call was answered silently, and its turnComplete may never come (16% of real tell_kokoro turns, 2026-11-12): it ends TURN_END_S
+   * past her sound, counted from when it began, or at once once all of it is made (made), as nothing more of it can come; its sound plays out.
+   * @param {Turn} t
+   */
   #endLater(t) {
     clearTimeout(t.endBy);
     const ends = this.#ends;
@@ -1624,7 +1631,7 @@ export class LiveKoe {
       this.#endedEarly = true;
       this.#complete();
       this.#changed();
-    }, Math.max(0, t.bytes / (this.#rate / 500) - (Date.now() - began)) + TURN_END_S * this.#unit());
+    }, t.made ? 0 : Math.max(0, t.bytes / (this.#rate / 500) - (Date.now() - began)) + TURN_END_S * this.#unit());
   }
 
   /**

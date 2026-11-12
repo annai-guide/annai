@@ -336,8 +336,9 @@ test('6: a turnComplete in good time ends her turn as ever: nothing more happens
   }
 });
 
+// The bound is for a provider that never says when her turn is all made: one that says ends it then (live-made.test.js).
 test('6: the bound waits for her sound, and for more of her turn: a long sentence isn\'t ended under it', async () => {
-  const k = await liveKit([{ ...CHECKING, noEnd: true, audio: tone(4) }]);
+  const k = await liveKit([{ ...CHECKING, noEnd: true, audio: tone(4) }], { live: { made: false } });
   try {
     await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
     await k.voice.unlock();
