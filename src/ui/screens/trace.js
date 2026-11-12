@@ -286,6 +286,7 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'live.turn') {
     // What the level check did, to tune it (the second-drive design, section 3); lines from before it have none of this.
     const check = d.keptFrames === undefined ? null : t`your voice ${d.voiceDb ?? '?'} dB, least to start ${d.minDb ?? '–'} dB, ${d.keptFrames} frames kept out (loudest ${d.keptPeakDb ?? '?'} dB)`;
+    if (d.end === 'dropped') return line(t`a sound dropped as her voice began: ${duration(d.speechMs ?? 0)} of speech · floor ${d.floorDb ?? '?'} dB, loudest ${d.peakDb ?? '?'} dB`, check);
     return d.end === 'kept' ? line(t`no turn`, check) : line(t`your turn ended: ${d.end} · ${duration(d.ms ?? 0)} sent · floor ${d.floorDb ?? '?'} dB, loudest ${d.peakDb ?? '?'} dB`, check);
   }
   if (e.type === 'net.request') {
