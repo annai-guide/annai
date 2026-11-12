@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { agentKit, until, hear } from './agent-kit.js';
 import { clip, quiet, cat } from './voice-kit.js';
 import { useClock } from './clock.js';
+import { createTrip } from '../../src/core/scopes.js';
 
 /** speak, as a model whose arguments stream would send it. @param {string} text @param {any} [more] */
 const speakStep = (text, more = {}) => ({ stream: true, toolCalls: [{ name: 'speak', input: { text } }], ...more });
@@ -537,6 +538,54 @@ test('voice turning off inside the microphone\'s own opening for the wait tool: 
   await k.agent.idle();
   assert.equal((await results(k, 'wait'))[0].data.content, 'The user wrote: Ready');
 });
+
+// A Stop, or another conversation opening, while the microphone is still opening for a listening: the tool's run goes on behind the ended turn, and
+// when the microphone opens it must leave no wait behind (a wait with no turn took the user's next line as its answer, and nothing replied).
+for (const how of ['Stop', 'switch']) {
+  // quiet: nothing is left listening (a line she says ends her turn with the window she listens on after it, which is a different matter: a Stop's, here)
+  for (const [what, script, ready, quiet] of /** @type {[string, any[], (k: any) => boolean, boolean][]} */ ([
+    ['the wait tool', [{ toolCalls: [{ name: 'wait', input: { seconds: 600 } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }], () => true, true],
+    ['her question aloud', [{ toolCalls: [{ name: 'ask', input: { question: 'Lunch or dinner?', options: ['Lunch', 'Dinner'] } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }], (k) => k.said.includes('Lunch or dinner?'), true],
+    ['a line she says (the listening after it)', [{ toolCalls: [{ name: 'speak', input: { text: 'Which day would you like?' } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }], (k) => k.said.includes('Which day would you like?'), false],
+  ])) {
+    test(`a ${how} while the microphone opens for ${what}: no wait is left behind, and the user's next line is a turn of its own, answered`, async (t) => {
+      useClock(t);
+      const k = await agentKit([script], { voice: { speechIn: ['m-hear'], hears: ['the first one'] } });
+      const open = k.voice.open.bind(k.voice);
+      /** @type {() => void} */
+      let release = () => {};
+      const held = new Promise((r) => { release = () => r(undefined); });
+      let opening = false;
+      k.voice.open = async (/** @type {any} */ o) => {
+        opening = true;
+        await held;
+        return open(o);
+      };
+      k.agent.send('Plan our day');
+      await until(() => opening && ready(k));
+      /** @type {string | null} */
+      let other = null;
+      if (how === 'Stop') k.agent.interrupt();
+      else {
+        other = await createTrip(k.ws, { title: 'Carmel' });
+        await k.agent.open(other);
+      }
+      release();
+      await new Promise((r) => setTimeout(r, 100));
+      assert.equal(k.agent.pendingId, null, 'no wait is left');
+      if (quiet) {
+        assert.equal(k.agent.state.name, 'sleeping');
+        assert.notEqual(mics(k).at(-1), 'mic open', `none left open: ${mics(k)}`);
+      }
+      const requests = k.requests.length;
+      k.agent.send('Something else');
+      await k.agent.idle();
+      assert.ok(k.requests.length > requests, 'the line woke her: it was no one\'s answer');
+      const lines = (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(other ?? k.trip, { types: ['msg.user'] }))).map((/** @type {any} */ e) => [e.data.text ?? '', Boolean(e.data.answer)]);
+      assert.deepEqual(lines.at(-1), ['Something else', false], 'written as a line of theirs, not as the stopped call\'s answer');
+    });
+  }
+}
 
 test('voice turning off as the microphone opens for the window after she speaks: no microphone, no Listening, and the dock says she sleeps (spec §10.5)', async (t) => {
   useClock(t);
