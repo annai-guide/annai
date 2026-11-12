@@ -289,8 +289,6 @@ export class Halves {
         ended: (t) => this.#kokoroEnded(t),
         hushed: () => this.live.voiced,
         hold: (wakes) => this.#hold(wakes),
-        // Koe's queued heard lines that answered Kokoro's card: the card's, not Koe's.
-        took: (ids) => this.koe.drop((w) => w.kind === 'heard' && ids.includes(String(w.heard?.id))).flatMap((w) => (w.heard ? [{ heard: w.heard, gate: w.gate }] : [])),
       },
     });
     this.koe = new Agent({
@@ -298,11 +296,12 @@ export class Halves {
       half: {
         name: 'koe', tag: KOE_TAG, role: KOE_CLASSIC, registryTools: false, logVoice: false, housekeeping: false, listenLast: true, nonce: this.nonce, serial, ready,
         voice: () => this.koeState === 'text',
-        // annai's card, Kokoro's, with Koe on a chat model: who speaks into Koe's microphone, and when each line began (its entry comes later).
+        // annai's card, Kokoro's, with Koe on a chat model: who speaks into Koe's microphone, and when each line began; and each line, first.
         speech: (on, line) => {
           this.kokoro.confirmSpeech(on, Boolean(line));
           if (line) this.kokoro.confirmHeard(line);
         },
+        card: (h) => this.kokoro.cardTakes(h),
         system: (s) => koeSystem(s),
         tail: (now) => this.#koeTail(now),
         sendRule: () => this.#koeRule(),
@@ -375,7 +374,7 @@ export class Halves {
       // A turn's end is a line said; its start, a line heard whose words come later.
       speech: (on, line) => {
         this.kokoro.confirmSpeech(on, !on);
-        if (line) this.kokoro.confirmHeard({ ...line, live: true });
+        if (line) this.kokoro.confirmHeard(line);
       },
     });
     this.voice?.onChange((_, first) => { if (!first) this.#route(() => this.#refresh()); });

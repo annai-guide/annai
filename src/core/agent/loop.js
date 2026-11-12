@@ -78,10 +78,10 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  *   what a turn's requests keep from its first step to its end (the keep-reasoning design §3): the system text (rebuilt only from a new snapshot,
  *   after housekeeping), the tools and provider tools, the reasoning level, the half's rule for its messages, and where the previous turn began
  * @typedef {{ id: string, kind: 'ask' | 'wait', resolve: (v: Got) => void, listening?: boolean, hold?: () => void, arm?: () => void, tool?: boolean,
- *   ask?: { yes: (heard: string) => string | null, no: (heard: string) => string | null, open: boolean, from: number, until: number, wake: string, scope: string,
+ *   ask?: { yes: (heard: string) => string | null, no: (heard: string) => string | null, open: boolean, from: number, until: number, wake: string, answer: string, scope: string,
  *     heard: Map<string, AskLine>, armed: { line: AskLine, chosen: string, yes: boolean } | null, settle: any, speaking: boolean } }} Pending
  *   waiting for the user; listening: an answer may be spoken; hold and arm stop and start the silence limit; tool: the wait tool's; ask: annai's own card's (confirm):
- *   from, until: its window; armed: the newest listed word; speaking: someone is speaking now (confirmSpeech)
+ *   from, until: its window; answer: its call's id, its heard lines' mark; armed: the newest listed word; speaking: someone is speaking now (confirmSpeech)
  * @typedef {{ id: string, inside: boolean, her?: boolean, kept?: boolean, text?: string, h?: Heard, gate?: string }} AskLine  heard while annai's card waits: inside: begun in its
  *   window; her: begun over her voice; kept: the verdict, once it comes; h: this half's own segment
  * @typedef {{ name: StateName, label: string, detail?: string }} State  label: the dock's words for it (LABELS); detail: what she is away doing (TIDYING, or a task's words)
@@ -121,7 +121,7 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  * @property {(wakeId: string) => void} [joined]  wakes joined its turn going on (the user's words, a choice, a photo, the other half, a trigger)
  * @property {(on: boolean, line?: { id: string, at: number, her?: boolean }) => void} [speech]  its microphone hears someone begin to speak, or stop (line: with the
  *   segment they made, when it began, and whether annai's voice was playing then), for annai's card when the other half holds it
- * @property {(ids: string[]) => { heard: Heard, gate?: string }[]} [took]  takes these heard lines out of its queue, for annai's card to write
+ * @property {(h: Heard) => Promise<boolean>} [card]  annai's card, which the other half holds, hears its microphone's line first (Agent.cardTakes): true, it took it
  * @typedef {{ wakeId: string, ok: boolean, finalText: string, told: boolean, slept: boolean, spoke: boolean, kinds: string[], by: { name: string, first: string | null, tried: boolean } | null }} TurnEnd
  *   by: the model that answered the turn's last call
  *   finalText: a last reply's text with no tool calls; told: it told the other half (or a gated call did)
@@ -997,7 +997,7 @@ export class Agent {
       /** @type {any} */
       let timer;
       /** @type {NonNullable<Pending['ask']>} */
-      const ask = { yes, no, open: false, from: 0, until: 0, wake: call.wake, scope: this.scope, heard: new Map(), armed: null, settle: undefined, speaking: false };
+      const ask = { yes, no, open: false, from: 0, until: 0, wake: call.wake, answer: call.id, scope: this.scope, heard: new Map(), armed: null, settle: undefined, speaking: false };
       /** @type {Pending} */
       const p = { id: tap, kind: 'ask', ask, resolve: (v) => {
         clearTimeout(timer);
@@ -1040,12 +1040,6 @@ export class Agent {
       });
     });
     for (const h of got.own ?? []) await this.#logHeard(h, { wake: call.wake, answer: call.id });
-    // The other half's lines that answered it, still in its queue (a busy Koe): the card's, never a newer line after it, with the card's words.
-    for (const x of got.other?.length ? this.#half.took?.(got.other.map((o) => o.id)) ?? [] : []) {
-      const said = got.other?.find((o) => o.id === String(x.heard.id))?.text;
-      await this.#logHeard({ ...x.heard, text: x.heard.text ?? said }, { wake: call.wake, answer: call.id, ...(x.gate ? { gate: x.gate } : {}) });
-      if (said !== undefined) this.voice?.memory.drop(x.heard.id, said);
-    }
     if (got.stopped) return { stopped: true };
     if (got.chosen !== undefined) {
       await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...this.#chose() }, texts: [['text', got.chosen]] });
@@ -1066,8 +1060,8 @@ export class Agent {
 
   /**
    * The other half's heard lines while annai's card waits (Halves): a line's words as they arrive, when it began (none: heard before the card),
-   * whether over her voice, and its verdict. live: a live session's turn as it begins, its words still to come.
-   * @param {{ id: string, text?: string, at?: number, her?: boolean, kept?: boolean, live?: boolean }} x
+   * whether over her voice, and its verdict. A line with no words yet (a live session's turn as it begins, a chat Koe's segment) gets them later.
+   * @param {{ id: string, text?: string, at?: number, her?: boolean, kept?: boolean }} x
    */
   confirmHeard(x) {
     const p = this.#pending;
@@ -1078,20 +1072,34 @@ export class Agent {
       if (x.at === undefined) return; // heard before the card: its words came then
       line = { id: x.id, inside: ask.from > 0 && x.at >= ask.from && x.at <= ask.until };
       ask.heard.set(x.id, line);
-      // A chat Koe's segment comes as sound: its words exist once written down, which a Koe model that takes the sound does only as its turn
-      // ends, or never while it waits on. Written down now for the card, as classic voice's own (#route).
-      if (x.text === undefined && !x.live) void this.#askWriteDown(p, line);
     }
     if (x.her) line.her = true;
     if (typeof x.text === 'string' && x.text !== line.text) this.#askWords(p, line, x.text);
     if (x.kept !== undefined && line.kept !== x.kept) this.#askKept(p, line, x.kept);
   }
 
-  /** The other half's segment, written down for annai's card while it waits. @param {Pending} p @param {AskLine} line */
-  async #askWriteDown(p, line) {
+  /**
+   * A chat Koe's segment, which annai's card hears first while it waits (Half.card), as one Shiori's hears hers (#route): one that arms it is the card's
+   * alone, written now as its answer, in the order heard; any other is Koe's, as it came. @param {Heard} h @returns {Promise<boolean>} whether it took it
+   */
+  async cardTakes(h) {
+    const p = this.#pending;
+    const line = p?.ask?.heard.get(h.id);
+    if (!p?.ask || !line) return false;
+    const worded = await this.#askHears(p, line, h);
+    if (this.#pending !== p || askSaid(p.ask, line) === null) return false;
+    await this.#logHeard(worded, { wake: p.ask.wake, answer: p.ask.answer });
+    if (worded !== h) this.voice?.memory.drop(h.id, worded.text);
+    return true;
+  }
+
+  /** A heard line's words for annai's card, written down now if it came as sound, judged by its lists. @param {Pending} p @param {AskLine} line @param {Heard} h */
+  async #askHears(p, line, h) {
     const ask = /** @type {NonNullable<Pending['ask']>} */ (p.ask);
-    const r = this.voice ? await this.voice.writeDown(line.id, { scope: ask.scope, wake: ask.wake, hearer: await this.#hearer(this.#half.role) }).catch(() => null) : null;
-    if (r && this.#pending === p && line.text === undefined) this.#askWords(p, line, r.text);
+    const r = typeof h.text === 'string' || !this.voice ? null : await this.voice.writeDown(h.id, { scope: ask.scope, wake: ask.wake, hearer: await this.#hearer(this.#half.role) }).catch(() => null);
+    const worded = r ? { ...h, text: r.text } : h;
+    if (this.#pending === p && typeof worded.text === 'string') this.#askWords(p, line, worded.text);
+    return worded;
   }
 
   /**
@@ -1150,8 +1158,8 @@ export class Agent {
       const last = ask.armed?.line ?? lines.findLast((l) => l.kept && !l.her && l.text !== undefined && askSaid(ask, l) === null);
       if (!last || this.#pending !== p) return;
       this.#pending = null;
-      // The other half's line, in the log already or its queue (a busy Koe): confirm takes an answer's listed lines.
-      if (!last.h) return void p.resolve(chosen ? { voiced: chosen, other: lines.filter((l) => !l.h && askSaid(ask, l) !== null).map((l) => ({ id: l.id, text: String(l.text) })) } : { spoke: last.id });
+      // The other half's line, in the log already or to come: written by that half, or by the card as it took it (cardTakes).
+      if (!last.h) return void p.resolve(chosen ? { voiced: chosen } : { spoke: last.id });
       if (this.#ear) this.#ear.owner = 'turn';
       this.#setState('thinking');
       // Unanswered, it carries all they said, in order; an answer, its own line.
@@ -3452,6 +3460,11 @@ export class Agent {
    * her next call, which a new turn takes if this one ends first: nothing heard is lost. @param {Heard} h @param {number} began when its speech began
    */
   async #route(h, began) {
+    // The other half's card hears it first, as hers does below: one it takes reaches nothing here.
+    if (this.#half.card && (await this.#half.card(h))) {
+      if (!this.#speaking) this.#speechStopped(false);
+      return;
+    }
     const tapped = this.#ear?.owner === 'tap';
     const p = this.#pending?.listening ? this.#pending : null;
     if (p) {
@@ -3462,13 +3475,11 @@ export class Agent {
       if (ask && line) {
         ask.heard.set(h.id, line);
         // annai's card: its word lists, never the gate, judge the words, once written down; a tap meanwhile still answers it.
-        const r = typeof h.text === 'string' || !this.voice ? null : await this.voice.writeDown(h.id, { scope: this.scope, wake: ask.wake, hearer: await this.#hearer(this.#half.role) }).catch(() => null);
-        if (r) {
-          h = { ...h, text: r.text };
-          this.voice?.memory.drop(h.id, r.text);
-        }
+        const worded = await this.#askHears(p, line, h);
+        if (worded !== h) this.voice?.memory.drop(h.id, worded.text);
+        h = worded;
         if (this.#pending === p) {
-          this.#askWords(p, line, h.text ?? ''); // no words written down is no yes
+          if (h.text === undefined) this.#askWords(p, line, ''); // no words written down is no yes
           said = askSaid(ask, line);
           if (said !== null) line.h = h; // the card's now
         }
@@ -3568,9 +3579,9 @@ export class Agent {
     if (!this.voice?.speaker.speaking) this.#setState('hearing');
   }
 
-  /** What began like speech wasn't (a click): the silence limit starts again, or a note waiting is taken. */
-  #speechStopped() {
-    this.#spoke(false);
+  /** What began like speech wasn't (a click), or was a line annai's card took: the silence limit starts again, or a note waiting is taken. */
+  #speechStopped(click = true) {
+    if (click) this.#spoke(false);
     this.#pending?.arm?.();
     const tapped = this.#window() && !this.#busy;
     if (tapped) this.#armQuiet();
