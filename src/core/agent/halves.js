@@ -434,8 +434,8 @@ export class Halves {
   #fresh = null;
 
   /**
-   * What Kokoro meant for the user in notes Koe's session never passed on, shown, never aloud. here: cut off in the conversation still open (a tap, a
-   * sound): a gated speak's words, card and question are shown too, as #backstop shows them; a switch or Start fresh leaves words and reminders only.
+   * What Kokoro meant for the user in notes Koe's session never passed on, shown, never aloud, as #backstop shows it: in the conversation still open
+   * (here: a tap or a sound cut her), or into the one a switch or Start fresh leaves, where a question is let go.
    * @param {Wake[]} notes @param {boolean} [here]
    */
   #leftUnsaid(notes, here = false) {
@@ -444,7 +444,8 @@ export class Halves {
     const shown = (async () => {
       for (const w of notes) {
         if (w.kind !== 'note') await this.kokoro.remind(w.fallbacks ?? [], scope, { unsaid: true, silent: true });
-        else if (here || w.forUser) await this.#present(w, true, scope);
+        else if (here || w.why !== 'gated:ask') await this.#present(w, true, scope);
+        else await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ "Kokoro's question wasn't shown: the conversation was left, or started fresh, before Koe asked it.", quiet: true } }, { scope });
       }
     })().catch(() => {}).finally(() => { this.#left = this.#left.filter((x) => x !== shown); });
     this.#left.push(shown);
@@ -1339,17 +1340,18 @@ export class Halves {
     const card = w.why === 'gated:show' ? checkCard(i.card, this.registry) : null;
     const ask = w.why === 'gated:ask' ? checkAsk(i) : null;
     const words = forUserText(w.forUser || (w.why === 'gated:speak' ? w.note : ''));
+    const log = (/** @type {any} */ ev) => this.kokoro.log(ev, { scope });
     // Kokoro's card or question, shown by annai: named by the model that wrote it.
-    if (card && !('error' in card)) await this.kokoro.log({ type: 'out.show', actor: 'shiori', data: { id: newId('c'), card: card.card, by: w.by ?? null } });
-    else if (ask && !('error' in ask)) await this.kokoro.log({ type: 'out.ask', actor: 'shiori', data: { id: newId('c'), question: ask.question, options: ask.options, by: w.by ?? null } });
+    if (card && !('error' in card)) await log({ type: 'out.show', actor: 'shiori', data: { id: newId('c'), card: card.card, by: w.by ?? null } });
+    else if (ask && !('error' in ask)) await log({ type: 'out.ask', actor: 'shiori', data: { id: newId('c'), question: ask.question, options: ask.options, by: w.by ?? null } });
     else if (card || ask) {
       // Too broken to show: its words instead, as long as a card's text at most; with none, only the Trace has it.
       const said = card ? [i.card?.title, i.card?.text].filter((x) => typeof x === 'string' && x.trim()).join(': ')
         : typeof i.question === 'string' && i.question.trim() ? `${i.question}${Array.isArray(i.options) && i.options.length ? ` (${i.options.map(String).join(', ')})` : ''}` : '';
       if (said) await this.kokoro.remind([{ watch: '', text: capped(said, CAPS.text), answer: true }], scope, { unsaid: true, silent });
-      else await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ `Kokoro's ${card ? 'card' : 'question'} wasn't shown: annai couldn't show it, and it had no words to give instead.`, quiet: true } });
+      else await log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ `Kokoro's ${card ? 'card' : 'question'} wasn't shown: annai couldn't show it, and it had no words to give instead.`, quiet: true } });
     } else if (words) await this.kokoro.remind([{ watch: '', text: capped(words, CAPS.text), answer: true }], scope, { unsaid: true, silent, aloud: !silent });
-    else if (w.why === 'gated:speak') await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ "Kokoro's speak wasn't shown: it had no words.", quiet: true } });
+    else if (w.why === 'gated:speak') await log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ "Kokoro's speak wasn't shown: it had no words.", quiet: true } });
     else return false;
     return true;
   }

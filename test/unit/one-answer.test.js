@@ -476,6 +476,38 @@ test('one note with words for the user still owed when the user switches to anot
   }
 });
 
+// A card, a question or a spoken line Kokoro made while Koe talks, held for Koe, when the user switches to another trip or starts fresh before Koe passes
+// it on: the card and the line are written, silently, into the conversation left (above the divider), the card as the same record a card annai shows
+// at once leaves; the question is let go, with only a Trace line: nobody can answer it in a conversation they left.
+/** A conversation's entries of these types, oldest first. @param {any} k @param {string} trip @param {string[]} types */
+const inTrip = (k, trip, types) => k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(trip, { types }));
+for (const how of /** @type {const} */ (['a switch to another trip', 'Start fresh'])) {
+  for (const kind of /** @type {const} */ (['show', 'ask', 'speak'])) {
+    test(`Kokoro's gated ${kind} still held for Koe at ${how}: ${kind === 'ask' ? 'let go, with only a Trace line' : 'written, silently, into the conversation left'}; nothing anywhere else, nothing said`, async () => {
+      const { why, text, call } = GATED[kind];
+      const k = await owing((x) => x.agent.channel.send('kokoro', text, 'append', why, undefined, call, false, ''));
+      try {
+        const { createTrip } = await import('../../src/core/scopes.js');
+        const other = await createTrip(k.ws, { title: 'Carmel' });
+        if (how === 'Start fresh') assert.equal(await k.agent.startFresh(), 'done');
+        else await k.agent.open(other);
+        await k.agent.idle();
+        await wait(300); // anything late
+        const left = await inTrip(k, k.trip, ['out.show', 'out.ask', 'reminder', 'error', 'compaction']);
+        const lines = left.map((/** @type {any} */ e) => (e.type === 'out.show' ? ['card', e.data.card, e.actor, e.data.half, 'by' in e.data]
+          : e.type === 'out.ask' ? ['question', e.data.question] : e.type === 'reminder' ? ['words', e.data.text, Boolean(e.data.answer), Boolean(e.data.aloud)]
+            : e.type === 'error' ? ['trace', e.data.kind, e.data.quiet, /question/.test(e.data.message)] : ['fresh']));
+        const want = kind === 'show' ? [['card', CARD, 'shiori', 'kokoro', true]] : kind === 'speak' ? [['words', FOR_USER, true, false]] : [['trace', 'unshown', true, true]];
+        assert.deepEqual(lines, [...want, ...(how === 'Start fresh' ? [['fresh']] : [])], 'in the conversation left, above the divider at Start fresh');
+        assert.deepEqual(await inTrip(k, other, ['out.show', 'out.ask', 'reminder', 'error']), [], 'nothing in the trip opened');
+        assert.deepEqual(k.said, [], 'nothing said');
+      } finally {
+        await k.done();
+      }
+    });
+  }
+}
+
 test("two notes with words for the user that went in together, cut by a tap: both are shown at once in the conversation open, silently, once", async () => {
   const both = async (/** @type {any} */ k) => { await Promise.all([tellWords(k, FOR_USER), tellWords(k, COAST)]); };
   const k = await noteSaid({ first: both, turns: [{ said: COAST, audio: tone(3) }] });
