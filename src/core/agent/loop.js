@@ -3515,7 +3515,9 @@ export class Agent {
       return;
     }
     const tapped = this.#ear?.owner === 'tap';
-    const p = this.#pending?.listening ? this.#pending : null;
+    // The card's window may have ended (its listening shut) while this line waited its turn: begun inside it, it is still the card's, as the other half's lines are.
+    const pend = this.#pending;
+    const p = pend?.listening || (pend?.ask && !pend.ask.open && inWindow(pend.ask, began.at)) ? pend : null;
     if (p) {
       const ask = p.ask;
       /** @type {AskLine | null} by when it began, as a live line: one routed late (behind another's gate call) is no earlier for it; and over her voice (a reminder said into the open microphone) arms nothing, as on the other half's path. */
