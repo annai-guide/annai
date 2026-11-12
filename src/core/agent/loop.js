@@ -3333,7 +3333,7 @@ export class Agent {
     if (got.heard || got.text !== undefined || got.chosen !== undefined || got.stopped) {
       if (got.chosen === undefined) return this.#answer('', got, call, '');
     } else {
-      if (this.#ear?.owner === 'turn') this.#closeEar();
+      if (this.#ear) this.#closeEar(); // whatever opened it: a tap that cut her off opened this one, and the question's 8 s were its limit too
       got = await this.#waitFor(call, 'ask', 0);
     }
     if (got.stopped) return { content: STOPPED, isError: true };

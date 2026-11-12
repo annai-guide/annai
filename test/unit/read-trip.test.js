@@ -3004,6 +3004,27 @@ test("with voice off, someone speaking into a tap's microphone for her question 
   assert.equal(micLog(k).at(-1), 'mic close', `none left open: ${micLog(k)}`);
 });
 
+test("with voice on, a tap that cuts her off while she says her question aloud opens a microphone, and nothing said ends that listening at the 8 s silence limit, whatever opened the microphone: it closes, the question waits for a tap or typing, and what is said after is no new line", async (t) => {
+  useClock(t);
+  const k = await gateKit([call('ask', ASK_LUNCH), say('Dinner it is.'), sleep], { voice: { speechIn: ['m-hear'], hears: ['Dinner please'], playMs: 400 } });
+  k.agent.send('Plan our day');
+  await until(() => k.agent.state.name === 'speaking');
+  assert.equal(k.agent.tap(), 'cut');
+  await until(() => micLog(k).includes('mic open'));
+  await pause(12 * k.agent.secondMs);
+  assert.deepEqual(micLog(k), ['mic open', 'mic close'], 'the microphone closed at the limit, though the tap opened it');
+  assert.deepEqual([k.agent.state.name, k.agent.state.label], ['waiting', 'Waiting for your OK']);
+  assert.notEqual(k.agent.kokoro.pendingId, null, 'the question still waits');
+  await hear(k, 'first-one');
+  await pause(3 * k.agent.secondMs);
+  assert.deepEqual(await k.events(['heard']), [], 'nothing hears what is said now');
+  assert.equal(k.agent.kokoro.pendingId === null, false, 'and it is not taken as a new line that stops her turn');
+  k.agent.answer(/** @type {string} */ (k.agent.kokoro.pendingId), 'Dinner');
+  await k.agent.idle();
+  assert.equal((await k.events(['tool.result'])).find((/** @type {any} */ e) => e.data.name === 'ask')?.data.content, 'The user chose: Dinner');
+  assert.doesNotMatch(JSON.stringify(k.requests[1].messages.at(-1)), /heard while you were thinking/, 'the button is the only answer');
+});
+
 test("classic voice: voice turning off inside the card's microphone's own opening, past the check before it: the microphone it opened closes, the dock never says Listening, and the card waits for a tap", async (t) => {
   useClock(t);
   const k = await gateKit([call('read_trip', { trip: TV }), sleep], { voice: { speechIn: ['m-hear'], hears: ['Yes please'] } });
