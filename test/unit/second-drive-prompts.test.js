@@ -40,9 +40,12 @@ test('every prompt says how to read typed and heard words', () => {
   for (const k of [KOE_CORE, KOE_LIVE]) {
     assert.match(k, /\[typed\] lines are exactly what the user wrote: read them as written, allowing for typos\./);
     assert.match(k, /speech recognition.*may be wrong/);
-    // A line annai's card took reads like a tap on it: [the user chose], so the prompt says it covers a yes or no said to the card too.
-    assert.match(k, /\[the user chose\] is their answer to a question with buttons \(a tap, or a yes or no said to annai's card\);/);
   }
+  // A line annai's card took reads to the chat Koe like a tap on it, [the user chose], so its prompt says it covers a yes or no said to the card too;
+  // a live session never reads that label for a spoken yes (its lines say [heard]), so its prompt keeps its old words.
+  assert.match(KOE_CORE, /\[the user chose\] is their answer to a question with buttons \(a tap, or a yes or no said to annai's card\);/);
+  assert.match(KOE_LIVE, /\[the user chose\] is a tap on ask's buttons;/);
+  assert.doesNotMatch(KOE_LIVE, /yes or no said to annai's card/);
 });
 
 test('a dismissed live line says only that nobody answered it, each half in its own words; the gate\'s keep "not meant for you"; a stored line needs no change', () => {
