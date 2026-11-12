@@ -1,5 +1,5 @@
 {
-  "build": "913ae73c80d8",
+  "build": "f8c0168bb565",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -53,7 +53,7 @@
     "/src/core/agent/net.js": "760427139644",
     "/src/core/agent/tools.js": "1024de74379b",
     "/src/core/agent/trip-tools.js": "7a1885e7b207",
-    "/src/core/agent/transcript.js": "b425ea97cb0f",
+    "/src/core/agent/transcript.js": "a7d271cfeb56",
     "/src/core/agent/via.js": "557657aae006",
     "/src/core/agent/warmth.js": "7f1be5368415",
     "/src/core/address.js": "d677ad7a10ba",
