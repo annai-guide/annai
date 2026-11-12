@@ -2690,6 +2690,84 @@ for (const how of ['a Stop', 'another conversation opened']) {
   });
 }
 
+// Voice turning off (by hand, or auto mode as the car slows) closes the microphone. A listening someone is speaking into has its silence limit held
+// while they speak, and the microphone's close takes the end of that speech with it: the listening must still end at its own time, as it does when
+// nobody speaks.
+const voiceOff = async (/** @type {any} */ k) => {
+  await updateAppSettings(k.ws, { voice: { mode: 'off' } });
+  await k.voice.refresh();
+};
+/** Someone begins to speak into the microphone, and isn't done. @param {any} k */
+const startsSpeaking = async (k) => {
+  k.platform.mic.feed(cat(quiet(0.3), await clip('first-one')), 16_000);
+  await until(() => k.agent.state.name === 'hearing');
+};
+
+for (const speaking of [true, false]) {
+  for (const [what, script, first, over, listening, tap] of /** @type {[string, any[], string, number, (k: any) => boolean, string][]} */ ([
+    ["annai's card's 20 s of listening", [call('read_trip', { trip: TV }), sleep], 'Where did we eat in Testville?', 20, (k) => k.asks.length === 1 && k.agent.state.name === 'listening', 'Not now'],
+    ["her own question's 8 s of listening", [{ toolCalls: [{ name: 'ask', input: { question: 'Lunch or dinner?', options: ['Lunch', 'Dinner'] } }] }, sleep], 'Plan our day', 8, (k) => k.said.includes('Lunch or dinner?') && k.agent.state.name === 'listening', 'Lunch'],
+  ])) {
+    test(`with voice on and no Koe model, voice turning off ${speaking ? 'while someone is speaking into' : 'with nobody speaking in'} ${what}: the listening ends at its own time, and a reminder due behind the question is shown then, once, not said; the question still answers a tap`, async (t) => {
+      useClock(t);
+      const k = await gateKit(script, VOICE);
+      k.agent.send(first);
+      await until(() => listening(k));
+      await pause(2 * k.agent.secondMs);
+      k.agent.wake(DUE);
+      if (speaking) await startsSpeaking(k);
+      await voiceOff(k);
+      await pause((over - 5) * k.agent.secondMs);
+      assert.deepEqual(await reminders(k), { filed: [], cards: 0 }, 'not before the listening is over');
+      await pause(8 * k.agent.secondMs);
+      assert.deepEqual(await reminders(k), { filed: [['Leave for the station.', false]], cards: 1 }, 'shown once it is over, not said: voice is off');
+      assert.ok(!k.said.includes('Leave for the station.'), 'not said');
+      assert.equal(k.agent.state.name, 'waiting', 'nothing listens now');
+      assert.notEqual(k.agent.kokoro.pendingId, null, 'the question still waits');
+      k.agent.answer(/** @type {string} */ (k.agent.kokoro.pendingId), tap);
+      await k.agent.idle();
+      assert.match(String((await k.events(['tool.result'])).find((/** @type {any} */ e) => e.data.name !== 'sleep')?.data.content), new RegExp(`^The user (tapped|chose:?) ${tap}`), 'the tap answered it');
+      assert.deepEqual(await reminders(k), { filed: [['Leave for the station.', false]], cards: 1 }, 'not again once it was answered');
+    });
+  }
+}
+
+test("with voice on and no Koe model, voice turning off while someone speaks on past annai's card's 20 s: the speech held the listening, and the microphone's close ends it then, with a reminder due behind the card shown at that moment", async (t) => {
+  useClock(t);
+  const k = await gateKit([call('read_trip', { trip: TV }), sleep], VOICE);
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1 && k.agent.state.name === 'listening');
+  k.agent.wake(DUE);
+  await pause(18 * k.agent.secondMs);
+  await startsSpeaking(k);
+  await pause(7 * k.agent.secondMs); // 25 s: their speech holds the listening past its 20 s
+  assert.deepEqual(await reminders(k), { filed: [], cards: 0 }, 'held while they speak');
+  await voiceOff(k);
+  await pause(1 * k.agent.secondMs);
+  assert.deepEqual(await reminders(k), { filed: [['Leave for the station.', false]], cards: 1 }, 'shown as the microphone closes');
+  k.agent.answer(/** @type {string} */ (k.agent.kokoro.pendingId), 'Not now');
+  await k.agent.idle();
+  assert.match((await readResults(k))[0], /^The user tapped Not now/, 'the tap answered it');
+});
+
+for (const speaking of [true, false]) {
+  test(`with voice on, voice turning off ${speaking ? 'while someone is speaking into' : 'with nobody speaking in'} the wait tool's listening: it ends at its own time`, async (t) => {
+    useClock(t);
+    const k = await gateKit([call('wait', { seconds: 8 }), sleep], VOICE);
+    k.agent.send('Plan our day');
+    await until(() => k.agent.state.name === 'listening');
+    await pause(2 * k.agent.secondMs);
+    if (speaking) await startsSpeaking(k);
+    await voiceOff(k);
+    await pause(3 * k.agent.secondMs);
+    assert.notEqual(k.agent.kokoro.pendingId, null, 'before its 8 s, it waits');
+    await pause(8 * k.agent.secondMs);
+    assert.equal(k.agent.kokoro.pendingId, null, 'its 8 s are over');
+    await k.agent.idle();
+    assert.equal((await k.events(['tool.result'])).find((/** @type {any} */ e) => e.data.name === 'wait')?.data.content, 'Nothing yet (8 seconds).');
+  });
+}
+
 test("with Koe set, a reminder due while Kokoro's card waits is Koe's to say, as before: annai shows nothing itself", async (t) => {
   useClock(t);
   const koe = { rules: [{ match: 'a watch fired', reply: { toolCalls: [{ name: 'speak', input: { text: 'Time to leave for the station.' } }, { name: 'sleep', input: {} }] } }, { match: 'the user wrote', reply: say('Let me look.') }, { match: '.', reply: sleep }] };
