@@ -437,10 +437,11 @@ export class Halves {
    */
   #leftUnsaid(notes, here = false) {
     for (const w of notes) this.#shown.add(w); // a live part that then finds no session doesn't show it again (#live)
+    const scope = this.kokoro.target ?? ME; // a switch moves the open conversation while the first is being written: each goes where it belongs
     const shown = (async () => {
       for (const w of notes) {
-        if (w.kind !== 'note') await this.kokoro.remind(w.fallbacks ?? [], this.kokoro.target ?? ME, { unsaid: true, silent: true });
-        else if (here || w.forUser) await this.#present(w, true);
+        if (w.kind !== 'note') await this.kokoro.remind(w.fallbacks ?? [], scope, { unsaid: true, silent: true });
+        else if (here || w.forUser) await this.#present(w, true, scope);
       }
     })().catch(() => {}).finally(() => { this.#left = this.#left.filter((x) => x !== shown); });
     this.#left.push(shown);
@@ -1328,9 +1329,10 @@ export class Halves {
   /**
    * What Kokoro meant the user to have of a note Koe never said, as annai shows it: a gated card or question as itself (checked as show and ask check
    * Shiori's own; one they would refuse, as its words, or only a Trace line), a gated speak's words or a note's for_user as "Shiori's answer". A note's
-   * own text is for Koe, never shown: false. @param {Wake} w @param {boolean} silent never aloud @returns {Promise<boolean>}
+   * own text is for Koe, never shown: false. @param {Wake} w @param {boolean} silent never aloud
+   * @param {string} [scope] the conversation its words go into; the open one if not given @returns {Promise<boolean>}
    */
-  async #present(w, silent) {
+  async #present(w, silent, scope) {
     const i = w.call?.input ?? {};
     const card = w.why === 'gated:show' ? checkCard(i.card, this.registry) : null;
     const ask = w.why === 'gated:ask' ? checkAsk(i) : null;
@@ -1342,9 +1344,9 @@ export class Halves {
       // Too broken to show: its words instead, as long as a card's text at most; with none, only the Trace has it.
       const said = card ? [i.card?.title, i.card?.text].filter((x) => typeof x === 'string' && x.trim()).join(': ')
         : typeof i.question === 'string' && i.question.trim() ? `${i.question}${Array.isArray(i.options) && i.options.length ? ` (${i.options.map(String).join(', ')})` : ''}` : '';
-      if (said) await this.kokoro.remind([{ watch: '', text: capped(said, CAPS.text), answer: true }], undefined, { unsaid: true, silent });
+      if (said) await this.kokoro.remind([{ watch: '', text: capped(said, CAPS.text), answer: true }], scope, { unsaid: true, silent });
       else await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ `Kokoro's ${card ? 'card' : 'question'} wasn't shown: annai couldn't show it, and it had no words to give instead.`, quiet: true } });
-    } else if (words) await this.kokoro.remind([{ watch: '', text: capped(words, CAPS.text), answer: true }], undefined, { unsaid: true, silent, aloud: !silent });
+    } else if (words) await this.kokoro.remind([{ watch: '', text: capped(words, CAPS.text), answer: true }], scope, { unsaid: true, silent, aloud: !silent });
     else if (w.why === 'gated:speak') await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ "Kokoro's speak wasn't shown: it had no words.", quiet: true } });
     else return false;
     return true;
