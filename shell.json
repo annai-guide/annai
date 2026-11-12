@@ -1,5 +1,5 @@
 {
-  "build": "5a00057710f8",
+  "build": "f4d872a3d26c",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -76,7 +76,7 @@
     "/src/core/llm/call.js": "7dd560db24c8",
     "/src/core/llm/check.js": "9bf8b31fd2b2",
     "/src/core/llm/config.js": "a0fb27487320",
-    "/src/core/llm/contract.js": "fc24ec320d14",
+    "/src/core/llm/contract.js": "966287f78eae",
     "/src/core/llm/decide.js": "4aff39cf2ab3",
     "/src/core/llm/fallback.js": "fecdcc015986",
     "/src/core/llm/move-over.js": "9584243ec1f4",
@@ -110,7 +110,7 @@
     "/src/core/intl.js": "39b722d26957",
     "/src/core/koe/context.js": "dccb1a2c7bdb",
     "/src/core/koe/instructions.js": "6ac45a9181d1",
-    "/src/core/koe/live.js": "69425543c163",
+    "/src/core/koe/live.js": "046b1c92b058",
     "/src/core/koe/tools.js": "957f5c629f45",
     "/src/core/l10n-list.js": "98de5dc21171",
     "/src/core/l10n.js": "7396ee846e5b",
