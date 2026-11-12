@@ -486,3 +486,30 @@ test("cut(playedMs), K5's tap on Shiori while Koe speaks: the response is cancel
   assert.deepEqual(events.filter((e) => e.type === 'turn').map((e) => e.end), ['interrupted']);
   driver.close();
 });
+
+test("response.done is the turn's made: before the turn completes by the clock; a cancelled response has none", async () => {
+  assert.equal(TYPE.made, true);
+  const s = await startRealtimeServer({ flavour: 'openai', key: KEY, pace: 0.2, turns: [{ said: 'Bixby Bridge was finished in 1932.', audio: voice(400) }, { said: 'And the story goes on.', audio: voice(3000) }] });
+  try {
+    const { session, events } = open(s);
+    await session.ready;
+    assert.equal(session.made, true);
+    session.text('Tell me about Bixby Bridge.');
+    await until(() => events.some((e) => e.type === 'turn'));
+    const made = events.find((e) => e.type === 'made');
+    const end = events.find((e) => e.type === 'turn');
+    assert.equal(end.end, 'complete');
+    assert.ok(made && made.at <= end.at - 250, `made ${made && end.at - made.at} ms before the turn's end, which waits for her voice`);
+    // Cut while OpenAI still makes it: cancelled, no made.
+    const before = events.filter((e) => e.type === 'audio').length;
+    session.text('And then?');
+    await until(() => events.filter((e) => e.type === 'audio').length > before);
+    session.activity('start');
+    await until(() => events.filter((e) => e.type === 'turn').length === 2);
+    await sleep(100);
+    assert.deepEqual(events.filter((e) => e.type === 'made' || e.type === 'turn').map((e) => e.type === 'turn' ? e.end : 'made'), ['made', 'complete', 'interrupted']);
+    session.close();
+  } finally {
+    await s.stop();
+  }
+});
