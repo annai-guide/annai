@@ -3151,6 +3151,7 @@ export class Agent {
       p.listening = false; // a wait for an answer goes on, for typing
       p.arm?.(); // speech held its silence limit, and the microphone just closed: no end of that speech will start it again
       this.#waiting(p.kind);
+      this.#noted(); // a note held behind that listening is taken now: nothing listens for it to end
     }
   }
 
