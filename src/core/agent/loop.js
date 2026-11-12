@@ -680,9 +680,10 @@ export class Agent {
    *   moved: the user chose to carry on in this trip on annai's card (open_trip), so the turn it cuts is let go, nothing owed where it was
    */
   open(trip, o = {}) {
-    // Waiting on the user: her reply's last call but sleep says something to them or listens, or holds annai's card. Read before the ear
-    // closes and the halt answers it; "Let me check." listening before a search still has work to do.
-    const waiting = Boolean(this.#running?.last && (this.#running.talks || this.#pending));
+    // Waiting on the user: her reply's last call but sleep says something to them or listens, or annai's card waits, whatever follows it in
+    // her reply (the card asks; she goes on only once they answer). Read before the ear closes and the halt answers it; "Let me check."
+    // listening before a search still has work to do.
+    const waiting = Boolean(this.#pending?.ask || (this.#running?.last && (this.#running.talks || this.#pending)));
     this.#closeEar();
     this.voice?.speaker.stop();
     this.#target = trip;
