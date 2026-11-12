@@ -16,9 +16,9 @@ import { sentences } from '../intl.js';
  * @typedef {import('../llm/contract.js').LiveSetup} LiveSetup
  * @typedef {Omit<LiveDriver, 'close'> & { closed: Promise<{ code: number, reason: string, kind: ErrorKind | null }>, on(fn: (e: LiveEvent) => void): () => void,
  *   close(why?: string): void, bytes: { in: number, out: number }, handle?: string, tunables: Record<string, any>,
- *   audioIn: LiveSetup['audioIn'], audioOut: LiveSetup['audioOut'], heardLive: boolean }} LiveSession
+ *   audioIn: LiveSetup['audioIn'], audioOut: LiveSetup['audioOut'], heardLive: boolean, made: boolean }} LiveSession
  *   closed: kind null when annai closed it; handle: the latest resume handle, in memory only; tunables: what it opened with; audioIn, audioOut: 16-bit PCM at their rates;
- *   heardLive: its tunable heardLive, its transcript of the user streaming in while they speak
+ *   heardLive: its tunable heardLive, its transcript of the user streaming in while they speak; made: its type says when each of her turns is all made
  */
 
 /** How long a session may take to be ready. */
@@ -251,6 +251,7 @@ export function openLive(c) {
     audioIn: setup.audioIn,
     audioOut: setup.audioOut,
     heardLive: c.tunables.heardLive === true,
+    made: type.made === true,
     on(/** @type {(e: LiveEvent) => void} */ fn) {
       listeners.add(fn);
       return () => { listeners.delete(fn); };

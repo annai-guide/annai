@@ -11,6 +11,7 @@ import { COOLDOWN_MS } from '../llm/fallback.js';
 import { strayLanguage } from '../languages.js';
 import { joinPcm } from '../voice/pcm.js';
 import { VoiceLevel } from '../voice/level.js';
+import { newLoud, pushLoud, loudMs } from './loud.js';
 import { t } from '../l10n.js';
 
 /**
@@ -18,10 +19,11 @@ import { t } from '../l10n.js';
  * @typedef {import('../realtime/open.js').LiveSession} LiveSession
  * @typedef {import('../agent/loop.js').Wake} Wake
  * @typedef {{ said: string, bytes: number, held: Uint8Array[], stream: import('../voice/platform.js').PlayerStream | null, spoken: boolean, wordAt: number, soundAt: number, alone?: boolean,
- *   tools: boolean, cut: boolean, whole: boolean, logged: boolean, goesOn: boolean, calls: number, done: boolean, stalled?: boolean, audible?: boolean, endBy?: any }} Turn  one of Koe's; held: its sound until a real word;
+ *   tools: boolean, cut: boolean, whole: boolean, logged: boolean, goesOn: boolean, calls: number, done: boolean, loud: import('./loud.js').Loud, made?: boolean, playedMs?: number, stalled?: boolean, audible?: boolean, endBy?: any }} Turn  one of Koe's; held: its sound until a real word;
  *   stalled: its sound stopped coming out, so its stream was let go, and its words are said by the speech voice;
- *   goesOn: it called a tool it speaks after; calls: its tool calls not answered yet; done: the provider ended it; whole: cut, but all of it was
- *   heard or written; audible: its sound has started playing, so its words may show; endBy: the timer that ends it if no turnComplete comes (#endLater);
+ *   goesOn: it called a tool it speaks after; calls: its tool calls not answered yet; done: the provider ended it; made: the provider said all of it is made
+ *   (its `made`), so no more of it comes, unless it goesOn (a call answered without `silent` brings more); loud: where its last loud frame of sound ends (#whole);
+ *   playedMs: how much was heard, once its stream was stopped (#heardMs); whole: cut, but all of it was heard (#whole) or written; audible: its sound has started playing, so its words may show; endBy: the timer that ends it if no turnComplete comes (#endLater);
  *   soundAt: when its sound began; alone: a call alone, answered silently, which #tool let go of
  * @typedef {{ sent: number, spoke: boolean, timer: any, idle?: boolean }} Mark  an urgent note's (LiveKoe's #urgent); idle: what waited, going in with nothing before it, so its turn is the next to end
  * @typedef {{ text: string, told?: boolean }} Waiting  what waits to go in (LiveKoe's #notes); told: annai's own line, which the log holds none of
@@ -124,7 +126,7 @@ export const realWord = (text) => /[\p{L}\p{N}]/u.test(cleanSaid(text));
 /** @param {Uint8Array} b 16-bit PCM */
 const samples = (b) => new Int16Array(b.slice(0, b.length & ~1).buffer);
 /** @returns {Turn} */
-const newTurn = () => ({ said: '', bytes: 0, held: [], stream: null, spoken: false, wordAt: 0, soundAt: 0, tools: false, cut: false, whole: false, logged: false, goesOn: false, calls: 0, done: false });
+const newTurn = () => ({ said: '', bytes: 0, held: [], stream: null, spoken: false, wordAt: 0, soundAt: 0, tools: false, cut: false, whole: false, logged: false, goesOn: false, calls: 0, done: false, loud: newLoud() });
 /** @returns {Hearing} */
 const hearing = () => ({ id: newId('h'), text: '', at: Date.now(), ms: 0, pcm: [], logged: null });
 
@@ -252,12 +254,14 @@ export class LiveKoe {
   #liftBy = 0;
   /** A tap's first answered turn says what the user's voice is now (the level resets once); the tap's later ones add to it. */
   #fresh = false;
-  /** A turn was ended without its turnComplete (#endLater): one that comes after all, with no new turn of hers, is that one's. */
+  /** A turn was ended without its turnComplete (#endLater): the end that comes after all (its turnComplete, or the interrupted Gemini sends when a note meets it), with no new turn of hers, is that one's. */
   #endedEarly = false;
   /** Turns of hers ended so far (#complete). */
   #ends = 0;
   /** The user's turns ended since this connection last gave anything back: two is a dead session. */
   #noBack = 0;
+  /** The session's provider says when each of her turns is all made (its type's `made`): only then is all played not yet heard whole (#whole). */
+  #makes = false;
   /** Koe's sound's sample rate, and the microphone's as the session takes it. */
   #rate = 24_000;
   #inRate = 16_000;
@@ -514,6 +518,7 @@ export class LiveKoe {
     await s.ready;
     this.#s = s;
     this.#rate = s.audioOut.rate || 24_000; // never 0 or missing: her stall wait is worked out from it
+    this.#makes = s.made === true;
     for (const fn of this.#waiting.splice(0)) fn(s);
     this.#arm();
     return s;
@@ -666,10 +671,10 @@ export class LiveKoe {
    * another conversation, or Erase: the handle and what waited go too. @param {string} why @param {{ forget?: boolean }} [o]
    */
   close(why, { forget = false } = {}) {
-    // A turn of hers whose sound has all played passed its notes on, as at a tap (interrupt): they aren't kept, shown or sent again. One whose
-    // words came before any sound (bytes 0) has played nothing: its notes are kept, or shown at a switch.
+    // A turn of hers that passes its notes on (#passes) did so, as at a tap (interrupt): they aren't kept, shown or sent again. One still being
+    // made, in a pause of her sound, or whose words came before any sound, or that goes on after a call, is cut: its notes are kept, or shown at a switch.
     const t = this.#sounding;
-    if (t?.stream && t.bytes && !t.cut && !t.stream.queued()) this.#passed();
+    if (t && !t.cut && this.#passes(t, this.#whole(t))) this.#passed();
     // Another conversation, or a fresh start: Kokoro's notes it owed are shown in the one left, never lost.
     if (forget && (why === 'switch' || why === 'fresh') && this.owing) this.c.left?.([...this.#owed.sent, ...this.#owed.waiting]);
     this.#closing = null;
@@ -812,13 +817,19 @@ export class LiveKoe {
 
   /**
    * Her voice stops now, and the provider is told where (cut: OpenAI truncates its record there); the session stays. The user stopped her
-   * knowing, so what she was saying isn't said again; of a note for them, what they didn't hear is shown, silently, never lost.
+   * knowing, so what she was saying isn't said again, nor what waits behind it (written as her answer, after her line, shown, not spoken); of a
+   * note for them, what they didn't hear is shown, silently, never lost.
    */
   interrupt() {
     const t = this.#sounding;
     if (!t) return;
     const playedMs = this.#stop(t);
-    if (!t.whole && this.#owed.sent.length) this.c.left?.([...this.#owed.sent], true);
+    const behind = this.#unwait();
+    for (const w of behind) Object.assign(w, { cut: true, whole: w.done });
+    const write = () => { for (const w of behind) this.#said(w, null); };
+    if (t.stream) void t.stream.done.then(write, write); // after hers, as the lines read in order
+    else write();
+    if (!this.#passes(t, t.whole) && this.#owed.sent.length) this.c.left?.([...this.#owed.sent], true);
     this.#passed();
     this.#input?.tapped();
     this.#send((s) => s.cut?.(playedMs));
@@ -1123,9 +1134,9 @@ export class LiveKoe {
       this.#turnAt = Date.now();
       this.#afterCap = this.#endedBy === 'cap' && Date.now() - this.#endedAt < AFTER_CAP_MS;
       // The user's turn begins: notes gone in and not passed on were what she was about to say, or saying, so they are shown, silently, as at a tap
-      // (interrupt), and nothing is asked: anything sent now gets a whole answer beside theirs.
+      // (interrupt), and nothing is asked: anything sent now gets a whole answer beside theirs. Her turn that passes them on (#passes) did.
       if (this.#owed.sent.length) {
-        this.c.left?.(this.#owed.sent.splice(0), true);
+        if (!this.#passes(this.#sounding, this.#whole(this.#sounding, true))) this.c.left?.(this.#owed.sent.splice(0), true);
         this.#passed();
       }
       // The user cut in: her voice stops now, and the provider cuts its turn; one with no word yet too, so it never starts over them.
@@ -1182,7 +1193,7 @@ export class LiveKoe {
     if (e.type === 'heard' || e.type === 'said' || e.type === 'audio' || e.type === 'tool' || e.type === 'turn') this.#noBack = 0;
     if (e.type === 'turn' && this.#endedEarly) {
       this.#endedEarly = false;
-      if (!this.#t && e.end !== 'interrupted') return; // the turn it ends is over: never an answer to what came since
+      if (!this.#t) return; // the turn it ends is over, an interrupted too (Gemini ends the turn a note meets so): never an answer to what came since
     }
     // Her sound, words or tool calls are an exchange; what was heard, and turn edges, are not.
     if (e.type === 'audio' || e.type === 'tool' || (e.type === 'said' && realWord(e.text))) this.#poke();
@@ -1207,13 +1218,19 @@ export class LiveKoe {
       this.#trail.cut = true;
       this.#t = null;
     } else if (e.type === 'turn') this.#complete();
+    else if (e.type === 'made' && this.#t && this.#makes) { // all made: never a turn of its own, as it comes after what it ends
+      this.#t.made = true;
+      if (this.#t.endBy) this.#endLater(this.#t);
+    }
     else if (e.type === 'tool') this.#tool(s, (this.#t ??= newTurn()), e);
     else if (e.type === 'audio') {
       this.#trail = null;
       const t = (this.#t ??= newTurn());
       t.bytes += e.data.length;
       t.soundAt ||= Date.now();
-      if (t.stream) t.stream.push(samples(e.data));
+      const pcm = samples(e.data);
+      if (this.#makes) pushLoud(t.loud, pcm, this.#rate);
+      if (t.stream) t.stream.push(pcm);
       else if (!t.cut) t.held.push(e.data);
       if (t.endBy) this.#endLater(t);
     } else if (e.type === 'said' && !this.#t && this.#trail) {
@@ -1435,15 +1452,56 @@ export class LiveKoe {
     return t === this.#pending || this.#queue.includes(t);
   }
 
+  /** Her turns that wait to be said (the pending one, those queued behind) are taken: none plays meanwhile. @returns {Turn[]} */
+  #unwait() {
+    const waiting = [this.#pending, ...this.#queue].filter((t) => t !== null);
+    this.#pending = null;
+    this.#queue = [];
+    clearTimeout(this.#holdTimer);
+    return waiting;
+  }
+
   /**
-   * Koe cut off: its voice stops, its words kept up to where they were heard; one all of whose sound had played is whole. One still
+   * Whether her turn, cut now, was heard whole (spec §10.8, What is logged): the one place that decides it. Its sound begun (no sound yet is not
+   * heard), and all of it made: the provider said so (made, and no call it speaks after: more of that turn comes once annai answers one) or ended
+   * the turn, so that nothing more of it comes and a pause in her sound while the provider still makes the rest is a cut; and played past the end
+   * of her last loud frame (LOUD_DBFS), so the quiet tail her player still holds after her last word is no sound she has left to say, while a turn
+   * cut with her sound still to play stays one. It stops her sound to know how much was played (#heardMs): every caller cuts her next. With a
+   * provider that never says (its type has no `made`), all played is whole, as before it could say, except as the user's turn begins (begins),
+   * where its notes are shown.
+   * @param {Turn | null} t @param {boolean} [begins]
+   */
+  #whole(t, begins = false) {
+    if (!t?.stream || !t.bytes) return false;
+    if (!this.#makes) return !begins && !t.stream.queued();
+    return Boolean((t.made && !t.goesOn) || t.done) && this.#heardMs(t) >= loudMs(t.loud, this.#rate);
+  }
+
+  /** How much of her sound was heard: her stream stops (what the cut that follows does too), and what it says is kept. @param {Turn} t @returns {number} ms */
+  #heardMs(t) {
+    return (t.playedMs ??= t.stream ? t.stream.stop().playedMs : 0);
+  }
+
+  /**
+   * Whether her turn passes Kokoro's notes on: the one rule for the user's start, a tap, a close and the end of her line (#said). It was heard whole
+   * (whole: #whole's answer for it, which a line cut off in her quiet tail is too) and goes on after no call: a turn that called a tool she speaks after
+   * ends (done, made) before her words for the note come, which her continuation says, so a user starting, a tap or a close in her tail, after the
+   * provider's end, is a cut: the note is shown, or sent again, and not lost when the user's question drops the continuation.
+   * @param {Turn | null} t @param {boolean} whole
+   */
+  #passes(t, whole) {
+    return whole && !t?.goesOn;
+  }
+
+  /**
+   * Koe cut off: its voice stops, its words kept up to where they were heard; one heard whole (#whole) is whole. One still
    * waiting was never heard: let go by the user going on, or, shown, written as her answer (a close or a drop: never an answer lost).
    * @param {Turn} t @param {boolean} [shown] @returns {number | undefined} ms heard
    */
   #stop(t, shown = false) {
-    if (t.stream && !t.cut) t.whole = t.bytes > 0 && !t.stream.queued(); // no sound yet is not all played
+    if (t.stream && !t.cut) t.whole = this.#whole(t);
     t.cut = true;
-    if (t.stream) return t.stream.stop().playedMs; // its done writes it
+    if (t.stream) return this.#heardMs(t); // its done writes it
     if (this.#waits(t)) {
       t.whole = t.done;
       this.#said(t, shown ? null : 0);
@@ -1455,10 +1513,7 @@ export class LiveKoe {
 
   /** Koe's voice stops wherever it is; how much of its turn was heard, for a protocol that cuts its record there (OpenAI's truncate). @param {boolean} [shown] what waited is written */
   #cut(shown = false) {
-    const waiting = [this.#pending, ...this.#queue].filter((t) => t !== null);
-    this.#pending = null; // none of them plays meanwhile
-    this.#queue = [];
-    clearTimeout(this.#holdTimer);
+    const waiting = this.#unwait();
     let playedMs = waiting.length ? 0 : undefined;
     for (const t of [this.#t, this.#sounding]) if (t && !waiting.includes(t)) playedMs = this.#stop(t) ?? playedMs;
     for (const t of waiting) {
@@ -1486,7 +1541,9 @@ export class LiveKoe {
     if (this.#pending === t) this.#pending = null;
     this.#queue = this.#queue.filter((x) => x !== t);
     let text = cleanSaid(t.said);
-    const share = !t.cut || playedMs === null ? 1 : Math.min(1, playedMs / Math.max(1, t.bytes / (this.#rate / 500))); // 2 bytes a sample
+    // A turn heard whole is written whole (it has a stream: one that waited and was never heard isn't): her sound is rarely a whole number of ms,
+    // so its share would cut the last word of a line heard in full.
+    const share = !t.cut || (t.whole && t.stream) || playedMs === null ? 1 : Math.min(1, playedMs / Math.max(1, t.bytes / (this.#rate / 500))); // 2 bytes a sample
     if (share < 1) {
       const end = Math.round(text.length * share);
       const space = text.lastIndexOf(' ', end);
@@ -1496,8 +1553,10 @@ export class LiveKoe {
     if (text && cut) text += '✂';
     if (text) this.#poke(); // she has finished saying it: the quiet spell runs from here
     // Notes pass on when her words for them were heard: the provider's burst, or sound begun, proves nothing, as sound at the microphone may cut her at once.
-    // Those a sound or the user cut off are shown when their turn begins (#activity), so nothing here shows or asks for a cut one.
-    if (!cut && text && this.#owed.sent.length && t.wordAt >= this.#owed.at) this.#passed();
+    // Those a sound or the user cut off are shown when their turn begins (#activity), so nothing here shows or asks for a cut one. A turn that
+    // called a tool she speaks after is not her answer yet (real Gemini: "Checking your notes.", then a new turn 2.4 to 7.2 s later): its notes wait
+    // for what she says after the answer, and are shown if the user speaks first.
+    if (text && this.#passes(t, !cut) && this.#owed.sent.length && t.wordAt >= this.#owed.at) this.#passed();
     const v = this.c.voice;
     const aloud = Boolean(text && !cut && v?.on && (t.stalled || v.stuck));
     const voiced = Boolean(t.stream || aloud);
@@ -1597,7 +1656,11 @@ export class LiveKoe {
     }
   }
 
-  /** Her turn's tool call was answered silently, and its turnComplete may never come: it ends TURN_END_S past her sound, counted from when it began. @param {Turn} t */
+  /**
+   * Her turn's tool call was answered silently, and its turnComplete may never come (16% of real tell_kokoro turns, 2026-11-12): it ends TURN_END_S
+   * past her sound, counted from when it began, or at once once all of it is made (made), as nothing more of it can come; its sound plays out.
+   * @param {Turn} t
+   */
   #endLater(t) {
     clearTimeout(t.endBy);
     const ends = this.#ends;
@@ -1608,7 +1671,7 @@ export class LiveKoe {
       this.#endedEarly = true;
       this.#complete();
       this.#changed();
-    }, Math.max(0, t.bytes / (this.#rate / 500) - (Date.now() - began)) + TURN_END_S * this.#unit());
+    }, t.made ? 0 : Math.max(0, t.bytes / (this.#rate / 500) - (Date.now() - began)) + TURN_END_S * this.#unit());
   }
 
   /**

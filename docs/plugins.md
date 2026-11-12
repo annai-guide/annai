@@ -492,6 +492,7 @@ export function activate(annai) {
     type: 'my-live',
     name: 'My live voice',
     realtime: true,
+    made: true,                               // it emits { type: 'made' } for each of her turns (below)
     tunables: { voice: '' },
     audio: { in: [{ format: 'pcm16', rate: 16000 }], out: [{ format: 'pcm16', rate: 24000 }] },   // preferred first
     open: ({ endpoint, key, tunables }) => ({ url: `${endpoint.baseUrl.replace(/^http/, 'ws')}/live?key=${encodeURIComponent(key)}`, protocols: [] }),
@@ -503,7 +504,7 @@ export function activate(annai) {
         if (m.audio) emit({ type: 'audio', data: base64.decode(m.audio) });
         if (m.said) emit({ type: 'said', text: m.said });
         // { type: 'heard', text }, { type: 'tool', id, name, input }, { type: 'turn', end: 'complete' | 'interrupted' },
-        // { type: 'usage', usage: { input, output, audioIn, audioOut, image } }, { type: 'resume', handle }, { type: 'goaway', ms }
+        // { type: 'usage', usage: { input, output, audioIn, audioOut, image } }, { type: 'resume', handle }, { type: 'goaway', ms }, { type: 'made' }
       });
       socket.send(JSON.stringify({ setup: { model: model.providerId, instructions: setup.instructions + '\n\n' + setup.context, tools: setup.tools, resume: setup.resume } }));
       return {
@@ -532,6 +533,7 @@ export function activate(annai) {
 - **Answers:** annai answers every tool call at once. `silent` means "say nothing more for this answer" (Gemini's `scheduling: "SILENT"`, without which it adds a filler turn).
 - **Audio formats:** `audio` lists what your protocol takes and gives, preferred first; a tunable `input` or `output` that names one of them (`pcm16`, `pcmu`, `pcma`) chooses it instead, and the session says which (`audioIn`, `audioOut`). Either way annai speaks 16-bit PCM at the format's rate: a G.711 format is yours to code at the wire, as OpenAI Realtime's `audio/pcmu` is (annai's microphone then sends 8 kHz).
 - **Cutting in:** `activity('start')` while Koe speaks, `text(…, { interrupt: true })` and `cancel()` cut her off; the first two may say how much of her turn was heard (`playedMs`). Gemini does it on its own (`interrupted`); a protocol whose server doesn't must do it and emit `{ type: 'turn', end: 'interrupted' }` itself. Emit `complete` when the turn's voice would have finished playing, not when the server has sent it all: annai plays audio as it comes, and a cut before then ends the turn as `interrupted` alone.
+- **All made:** emit `{ type: 'made' }` once the turn being made is all made: its sound, words and tool calls all sent, nothing more to come for it (Gemini's `generationComplete`; OpenAI's `response.done`, unless cancelled), and say `made: true` in your type. After a call annai answers without `silent` (any tool but `tell_kokoro`, `show`, `ask`, `already_told` and `sleep`) more of that turn comes, so annai counts it all made only at its `turn`, and such a turn passes no note on even then (what she says after the answer does). `made` comes before her voice has played, and is not her turn's end (`turn` still says that). annai then counts her turn heard whole only once it is all made and played past her last loud sample (the end of her last 20 ms frame at -40 dBFS rms or above; the quiet tail real replies end in, a median 300 ms, still queued in her player, is not sound she has left to say): a tap, a close or the user's turn in a pause of her sound, the provider still making the rest, is a cut, and the note she was saying is shown; and the user answering after all of it has played (or only its quiet tail is left), before her `turn`, gets no copy of it; a turn whose tool call was answered silently, which may never get its `turn`, ends once all made, not 2 s past her sound. A type without `made: true` keeps the older rule: all played is heard whole at a tap or a close, and the notes she was saying as the user's turn begins are shown. An annai from before `made` ignores both, so a plugin that sends it needs no newer `api`.
 - **OpenAI Realtime, the second example** (`plugins-official/openai-realtime`), differs from Gemini Live where the APIs do:
   - the key goes as a subprotocol (`open()` gives `protocols: ['realtime', 'openai-insecure-api-key.<key>']`), not in the address;
   - turns are by hand (`turn_detection: null`): `activity('end')` commits the audio and sends `response.create`;

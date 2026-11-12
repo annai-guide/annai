@@ -16,13 +16,14 @@ test('what annai sends: the setup (without its instructions), the activity edges
   assert.deepEqual(framesOf('out', j({ toolResponse: { functionResponses: [{ id: '1', name: 'tell_kokoro', response: { result: 'sent' } }] } }), 9), [{ at: 9, dir: 'out', kind: 'toolResponse', name: 'tell_kokoro' }]);
 });
 
-test('what Gemini sends: audio by size (never the audio), both transcripts, interrupted, turnComplete, tool calls, usage', () => {
+test('what Gemini sends: audio by size (never the audio), both transcripts, generationComplete, interrupted, turnComplete, tool calls, usage', () => {
   const kinds = (/** @type {any} */ m) => framesOf('in', j(m), 1).map((f) => f.kind);
   assert.deepEqual(kinds({ setupComplete: {} }), ['setupComplete']);
   const audio = framesOf('in', j({ serverContent: { modelTurn: { parts: [{ inlineData: { mimeType: 'audio/pcm;rate=24000', data: Buffer.alloc(900).toString('base64') } }] } } }), 2);
   assert.deepEqual(audio, [{ at: 2, dir: 'in', kind: 'audio', bytes: 900 }]);
   assert.deepEqual(framesOf('in', j({ serverContent: { inputTranscription: { text: 'Hi' }, outputTranscription: { text: 'Hello' } } }), 3).map((f) => [f.kind, f.text]), [['heard', 'Hi'], ['said', 'Hello']]);
   assert.deepEqual(kinds({ serverContent: { interrupted: true } }), ['interrupted']);
+  assert.deepEqual(kinds({ serverContent: { generationComplete: true } }), ['generationComplete']);
   assert.deepEqual(kinds({ serverContent: { turnComplete: true }, usageMetadata: {} }), ['turnComplete', 'usage']);
   assert.deepEqual(framesOf('in', j({ toolCall: { functionCalls: [{ id: '1', name: 'tell_kokoro', args: {} }] } }), 4).map((f) => [f.kind, f.name]), [['toolCall', 'tell_kokoro']]);
   assert.deepEqual(kinds({ goAway: { timeLeft: '1s' } }), ['goAway']);

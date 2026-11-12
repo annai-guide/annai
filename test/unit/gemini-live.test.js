@@ -256,3 +256,46 @@ test("by default a session asks for Sulafat, Shiori's voice in Classic too, so K
     await s.stop();
   }
 });
+
+test("generationComplete is the turn's made: after its audio, words and tool call, before its turnComplete; the type and its sessions say they send it", async () => {
+  assert.equal(TYPE.made, true);
+  const audio = new Uint8Array(24_000);
+  const s = await startRealtimeServer({ flavour: 'gemini', key: KEY, pace: 0.2, turns: [{ said: 'One moment.', audio, tool: { name: 'tell_kokoro', args: { text: 'Open?' } } }, { said: 'It is open.', audio }] });
+  try {
+    const { session, events } = open(s);
+    await session.ready;
+    assert.equal(session.made, true);
+    session.text('Is Nepenthe open?');
+    await until(() => events.filter((e) => e.type === 'turn').length === 1);
+    session.text('<from_kokoro>Open until ten.</from_kokoro>');
+    await until(() => events.filter((e) => e.type === 'turn').length === 2);
+    const order = events.map((e) => e.type).filter((x) => x !== 'audio' && x !== 'said' && x !== 'heard' && x !== 'usage' && x !== 'resume');
+    assert.deepEqual(order, ['tool', 'made', 'turn', 'made', 'turn'], 'one made a turn, after what it holds, before its end');
+    session.close();
+    // A type that doesn't say it (a plugin from before): its sessions don't either.
+    const older = openLive({ type: { ...TYPE, made: undefined }, endpoint: endpoint(s.origin), model: model(), key: KEY, tunables: TYPE.tunables, setup: setup(), trace: null });
+    assert.equal(older.made, false);
+    await older.ready;
+    older.close();
+  } finally {
+    await s.stop();
+  }
+});
+
+test("a turn cut before it was all made ends with no made; one cut after, with the made it had", async () => {
+  const audio = new Uint8Array(24_000 * 4);
+  const s = await startRealtimeServer({ flavour: 'gemini', key: KEY, turns: [{ said: 'Bixby Bridge was finished in 1932.', audio, gap: { at: 24_000, ms: 1000 } }, { said: 'Yes?', audio: new Uint8Array(4800) }] });
+  try {
+    const { session, events } = open(s);
+    await session.ready;
+    session.text('Tell me about Bixby Bridge.');
+    await until(() => events.some((e) => e.type === 'audio'));
+    await new Promise((r) => setTimeout(r, 300)); // inside the gap: the rest is still being made
+    session.activity('start');
+    await until(() => events.some((e) => e.type === 'turn'));
+    assert.deepEqual(events.filter((e) => e.type === 'made' || e.type === 'turn').map((e) => e.type === 'turn' ? e.end : 'made'), ['interrupted']);
+    session.close();
+  } finally {
+    await s.stop();
+  }
+});

@@ -19,6 +19,9 @@
  * - thinking: annai sends no level, and gemini-3.8-live-extended-thinking, which closes with 1007 without one, is out of the list (2026-11-05): with a level it made no tool call in
  *   12 of 12 free-key runs; on a paid key it made the call in 2 of 2, but 2 to 14 s behind a filler line. Koe only relays, and gemini-3.8-live calls at once;
  * - usage comes once a turn, with turnComplete, by modality; thinking is counted apart from the response;
+ * - generationComplete, a message of its own, says a turn is all made (its `made`): measured 2026-11-12 on gemini-3.8-live, it came for every
+ *   turn (235 of 235), never before its last audio chunk (0 of 234), never inside a pause in her sound (0 of 107), never after turnComplete
+ *   (0 of 216), and within 17 ms after a toolCall; a turn the user cut could have it already (3 of 5), so it says made, not heard;
  * - a turn cut off ends with `interrupted`, then a turnComplete (and its usage) of its own; on resuming, Gemini first
  *   finishes the answer it was giving when the connection went.
  */
@@ -55,6 +58,7 @@ export function activate(annai) {
     type: 'gemini-live',
     name: 'Gemini Live',
     realtime: true,
+    made: true,
     // apiVersion: v1alpha has proactive audio; voice: a prebuilt voice's name (Sulafat, the voice of Classic too, so Koe sounds the same in both; '' for Gemini's own); compression: a sliding
     // window, as Gemini bills the whole context every turn.
     // languageHints: the languages the user speaks, given to input transcription as hints (off: automatic detection).
@@ -92,6 +96,7 @@ export function activate(annai) {
         if (sc?.inputTranscription?.text) emit({ type: 'heard', text: sc.inputTranscription.text, final: Boolean(sc.inputTranscription.finished) });
         if (sc?.outputTranscription?.text) emit({ type: 'said', text: sc.outputTranscription.text, final: Boolean(sc.outputTranscription.finished) });
         for (const f of m.toolCall?.functionCalls ?? []) emit({ type: 'tool', id: String(f.id ?? ''), name: String(f.name ?? ''), input: f.args ?? {} });
+        if (sc?.generationComplete) emit({ type: 'made' });
         if (m.usageMetadata) emit({ type: 'usage', usage: usageOf(m.usageMetadata) });
         if (sc?.interrupted) emit({ type: 'turn', end: 'interrupted' });
         if (sc?.turnComplete && !cut && !sc.interrupted) emit({ type: 'turn', end: 'complete' });
