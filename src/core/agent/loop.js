@@ -77,10 +77,10 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  *   cacheAt: number }} Frozen
  *   what a turn's requests keep from its first step to its end (the keep-reasoning design §3): the system text (rebuilt only from a new snapshot,
  *   after housekeeping), the tools and provider tools, the reasoning level, the half's rule for its messages, and where the previous turn began
- * @typedef {{ id: string, kind: 'ask' | 'wait', resolve: (v: Got) => void, listening?: boolean, hold?: () => void, arm?: () => void, tool?: boolean, byHand?: boolean,
+ * @typedef {{ id: string, kind: 'ask' | 'wait', resolve: (v: Got) => void, listening?: boolean, hold?: () => void, arm?: () => void, by?: number, tool?: boolean, byHand?: boolean,
  *   ask?: { yes: (heard: string) => string | null, no: (heard: string) => string | null, open: boolean, from: number, until: number, wake: string, answer: string, scope: string,
  *     heard: Map<string, AskLine>, armed: { line: AskLine, chosen: string, yes: boolean } | null, settle: any, speaking: boolean } }} Pending
- *   waiting for the user; listening: an answer may be spoken; hold and arm stop and start the silence limit; tool: the wait tool's; byHand: set once this
+ *   waiting for the user; listening: an answer may be spoken; hold and arm stop and start the silence limit; by: when a tap's listening ends (#limitTap), set once per tap; tool: the wait tool's; byHand: set once this
  *   half's own listening for its answer is over (#remindWaiting); ask: annai's own card's (confirm):
  *   from, until: its window; answer: its call's id, its heard lines' mark; armed: the newest listed word; speaking: someone is speaking now (confirmSpeech)
  * @typedef {{ id: string, inside: boolean, her?: boolean, kept?: boolean, text?: string, h?: Heard, gate?: string, taken?: boolean }} AskLine  heard while annai's card waits: inside: begun in its
@@ -3748,6 +3748,8 @@ export class Agent {
       const resolve = p.resolve;
       p.resolve = (v) => { clearTimeout(timer); resolve(v); };
       p.hold = () => clearTimeout(timer);
+      p.by = 0; // marks the limit as this tap's own: set below
+      // arm waits for what is left of the tap's limit: a noise that came and went (arm again) neither ends it nor restarts it, as #listenFor's.
       p.arm = () => {
         clearTimeout(timer);
         timer = setTimeout(() => {
@@ -3756,9 +3758,10 @@ export class Agent {
           this.#closeEar();
           this.#waiting(p.kind);
           this.#noted();
-        }, LISTEN_S * this.secondMs);
+        }, Math.max(0, /** @type {number} */ (p.by) - Date.now()));
       };
     }
+    if (p.by !== undefined) p.by = Date.now() + LISTEN_S * this.secondMs; // each tap starts its own 8 s; her question aloud's listening (#listenFor) keeps its own deadline
     p.arm();
   }
 

@@ -3025,6 +3025,27 @@ test("with voice on, a tap that cuts her off while she says her question aloud o
   assert.doesNotMatch(JSON.stringify(k.requests[1].messages.at(-1)), /heard while you were thinking/, 'the button is the only answer');
 });
 
+test("with voice off, a tap's listening for her question ends at the 8 s from the tap, and a noise neither ends it nor restarts it (phone dictation hears a noise and no words 5 s in)", async (t) => {
+  useClock(t);
+  const k = await gateKit([call('ask', ASK_LUNCH), sleep], { voice: { dictation: true, speechIn: ['dictation'] } });
+  await voiceOff(k);
+  k.agent.send('Plan our day');
+  await until(() => k.agent.state.name === 'waiting');
+  k.agent.tap();
+  const dictationLog = () => k.platform.log.filter((/** @type {string} */ l) => l.startsWith('dictation '));
+  await until(() => dictationLog().includes('dictation open'));
+  await pause(5 * k.agent.secondMs);
+  k.platform.dictation.noise(); // 5 s in: heard a noise, no words
+  await pause(2 * k.agent.secondMs);
+  assert.deepEqual(dictationLog(), ['dictation open'], '7 s in: still listening');
+  await pause(2 * k.agent.secondMs);
+  assert.deepEqual(dictationLog(), ['dictation open', 'dictation close'], 'closed 8 s after the tap, not 8 s after the noise');
+  assert.deepEqual([k.agent.state.name, k.agent.state.label], ['waiting', 'Waiting for your OK']);
+  assert.notEqual(k.agent.kokoro.pendingId, null, 'the question still waits');
+  k.agent.interrupt();
+  await k.agent.idle();
+});
+
 test("classic voice: voice turning off inside the card's microphone's own opening, past the check before it: the microphone it opened closes, the dock never says Listening, and the card waits for a tap", async (t) => {
   useClock(t);
   const k = await gateKit([call('read_trip', { trip: TV }), sleep], { voice: { speechIn: ['m-hear'], hears: ['Yes please'] } });
