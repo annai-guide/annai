@@ -121,6 +121,35 @@ test('the user answers in the quiet tail of her sound, as real Gemini\'s ends: p
   }
 });
 
+// A reply with no loud frame at all (not one of 222 real ones: her level ran -25 to -11 dBFS): there is no last loud sample, so it is heard whole
+// only once all of it has played, not as soon as it is all made.
+test('her note is all made and has no loud frame: a tap while it plays is a cut, and the note is shown', async () => {
+  const [k, at] = await noteSaid({ note: { said: SAID, audio: steady(3, -60) } });
+  try {
+    await wait(at + 1000 - Date.now());
+    k.agent.tap();
+    await wait(1000);
+    await k.agent.idle();
+    assert.deepEqual(await shown(k), [[FOR_USER, false]]);
+    assert.equal(await wholeNotes(k), 0);
+  } finally {
+    await k.done();
+  }
+});
+
+test('her note has no loud frame, and a tap after all of it has played: heard whole, nothing shown', async () => {
+  const [k, at] = await noteSaid({ note: { said: SAID, audio: steady(1.5, -60), endAt: 2100 }, turns: [{ said: SAID, audio: tone(0.3) }] });
+  try {
+    await wait(at + 1650 - Date.now());
+    k.agent.tap();
+    await soon(async () => (await lines(k)).length === 2, 5000);
+    assert.deepEqual(await lines(k), [['Hello there.', false], [SAID, false]]);
+    assert.deepEqual(await shown(k), []);
+  } finally {
+    await k.done();
+  }
+});
+
 // The level is -40 dBFS rms for a frame of 20 ms. A last syllable under it that the user begins in counts as heard (they heard all but its fade);
 // one at or over it, still to play, is a cut.
 for (const [what, dbfs, heardWhole] of /** @type {const} */ ([['a soft last syllable (-46 dBFS)', -46, true], ['a last syllable over the level (-34 dBFS)', -34, false]])) {

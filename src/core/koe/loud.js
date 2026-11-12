@@ -37,5 +37,9 @@ export function pushLoud(loud, pcm, rate) {
   loud.samples += pcm.length;
 }
 
-/** The end of the last loud frame, in whole ms (as the player's heard ms are rounded). @param {Loud} loud @param {number} rate */
-export const loudMs = (loud, rate) => Math.round((loud.end / rate) * 1000);
+/**
+ * The end of the last loud frame, in whole ms (as the player's heard ms are rounded). With no loud frame (none of the 222 real replies had none:
+ * her level ran -25 to -11 dBFS) there is no last loud sample to play past, so the end is the whole of her sound so far: it is heard whole only
+ * once played through, not as soon as it is all made. @param {Loud} loud @param {number} rate
+ */
+export const loudMs = (loud, rate) => Math.round(((loud.end || loud.samples) / rate) * 1000);
