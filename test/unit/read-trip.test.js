@@ -2238,6 +2238,18 @@ const DUE = { kind: 'trigger', text: 'a watch fired', fallbacks: [{ watch: 'w1',
 /** annai's reminders shown in a conversation, and their cards. @param {any} k */
 const reminders = async (k) => ({ filed: (await k.events(['reminder'])).map((/** @type {any} */ e) => [e.data.text, Boolean(e.data.aloud)]), cards: k.notices.filter((/** @type {any} */ n) => n.body === 'Leave for the station.').length });
 
+/** The first request of hers that holds the wake of a reminder annai showed while a question waited: its [annai] lines in order, and what its now block says woke her. @param {any} k */
+const readOf = (k) => {
+  const texts = (/** @type {any} */ r) => r.messages.flatMap((/** @type {any} */ m) => m.parts).filter((/** @type {any} */ p) => p.type === 'text').map((/** @type {any} */ p) => p.text);
+  const req = k.requests.find((/** @type {any} */ r) => texts(r).some((/** @type {string} */ x) => x.startsWith('[annai] a watch fired')));
+  assert.ok(req, 'a request carried the wake');
+  return { lines: texts(req).filter((/** @type {string} */ x) => x.startsWith('[annai]')), woke: req.tail.match(/^woke for: .*$/m)?.[0] };
+};
+/** annai's line for a reminder it showed while a question waited, and the line of the wake it came with. @param {string} text */
+const shownLine = (text) => `[annai] Shown by annai itself, since it came due while a question to the user was waiting for their answer: "${text}" The user has it; there is nothing more to tell them about it.`;
+const WAKE_LINE = '[annai] a watch fired (annai has already shown the user its reminder.)';
+const WOKE = 'woke for: a watch fired (annai has already shown the user its reminder.)';
+
 for (const [what, script, waits] of /** @type {[string, any[], (k: any) => Promise<unknown>][]} */ ([
   ["read_trip's card", [call('read_trip', { trip: TV }), sleep], async (k) => until(() => k.asks.length === 1)],
   ["open_trip's card", [OPEN_TV, sleep], async (k) => until(() => k.asks.length === 1)],
@@ -2256,7 +2268,7 @@ for (const [what, script, waits] of /** @type {[string, any[], (k: any) => Promi
     k.agent.answer(/** @type {string} */ (k.agent.kokoro.pendingId), what === 'her own question' ? 'Lunch' : 'Not now');
     await k.agent.idle();
     assert.deepEqual(await reminders(k), { filed: [['Leave for the station.', false]], cards: 1 }, 'not again once it was answered');
-    assert.match(JSON.stringify(k.requests.at(-1).messages), /\[annai\] Shown by annai itself, since you couldn't be reached: \\"Leave for the station\.\\"/);
+    assert.deepEqual(readOf(k), { lines: [shownLine('Leave for the station.'), WAKE_LINE], woke: WOKE }, 'what she reads: the reminder is the user\'s already, and its wake says annai showed it');
   });
 }
 
@@ -2327,7 +2339,7 @@ for (const [what, script, waits] of /** @type {[string, any[], (k: any) => Promi
     k.agent.answer(/** @type {string} */ (k.agent.kokoro.pendingId), what === 'her own question' ? 'Lunch' : 'Not now');
     await k.agent.idle();
     assert.deepEqual(await shown(k), { filed: BOTH, cards: BOTH }, 'neither again once it was answered');
-    assert.match(JSON.stringify(k.requests.at(-1).messages), /\[annai\] Shown by annai itself, since you couldn't be reached: \\"Leave for the station\.\\"/);
+    assert.deepEqual(readOf(k), { lines: [shownLine(BOTH[0]), shownLine(BOTH[1]), WAKE_LINE, WAKE_LINE], woke: `${WOKE}; ${WOKE.slice('woke for: '.length)}` }, 'what she reads: both are the user\'s already, and each wake says annai showed it');
   });
 }
 
@@ -2342,6 +2354,8 @@ for (const [what, script] of /** @type {[string, any[]][]} */ ([["read_trip's ca
     k.agent.answer(/** @type {string} */ (k.agent.kokoro.pendingId), 'Not now');
     await k.agent.idle();
     assert.deepEqual(await shown(k), { filed: [BOTH[0]], cards: [BOTH[0]] }, 'not again once it was answered');
+    const lines = k.requests.at(-1).messages.flatMap((/** @type {any} */ m) => m.parts).filter((/** @type {any} */ p) => p.type === 'text').map((/** @type {any} */ p) => p.text).filter((/** @type {string} */ x) => /a watch fired|Shown by annai/.test(x));
+    assert.deepEqual(lines, ['[annai] a watch fired', shownLine(BOTH[0])], 'what she reads: the wake that began her turn, then that annai showed its reminder, which the user has');
   });
 }
 
@@ -2371,6 +2385,8 @@ test("with Koe set, a reminder due while Koe's own question with buttons waits i
   k.agent.answer(/** @type {string} */ (k.agent.koe.pendingId), 'Lunch');
   await k.agent.idle();
   assert.deepEqual(await shown(k), { filed: [BOTH[0]], cards: [BOTH[0]] }, 'not again once it was answered');
+  const lines = k.sent['model-koe'].at(-1).messages.flatMap((/** @type {any} */ m) => m.parts).filter((/** @type {any} */ p) => p.type === 'text').map((/** @type {any} */ p) => p.text).filter((/** @type {string} */ x) => /a watch fired|Shown by annai/.test(x));
+  assert.deepEqual(lines, [shownLine(BOTH[0]), '[annai] "a watch fired (annai has already shown the user its reminder.)"'], "what Koe reads: Koe's lines are annai's, quoted");
 });
 
 for (const [card, first] of /** @type {[string, any][]} */ ([['read_trip', { name: 'read_trip', input: { trip: TV } }], ['open_trip', { name: 'open_trip', input: { trip: TV, recap: 'We were looking for the ramen place.' } }]])) {
