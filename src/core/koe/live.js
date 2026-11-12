@@ -957,13 +957,17 @@ export class LiveKoe {
 
   /**
    * The connection Koe's notes went into is gone (a drop, a GoAway, a close): what it may never have heard goes in again, and a
-   * word on the next connection counts only once they have.
+   * word on the next connection counts only once they have. Notes that went in again are marked (#resent).
    */
   #again() {
     const o = this.#owed;
+    for (const w of o.sent) this.#resent.add(w);
     o.waiting.unshift(...o.sent.splice(0));
     o.cued = o.cue = false;
   }
+
+  /** Notes that went into a session again: annai never heard them said whole, so her word that the user has them (already_told) doesn't settle them. @type {WeakSet<object>} */
+  #resent = new WeakSet();
 
   /**
    * A turn ended with Kokoro's notes for the user gone in and not passed on (§6.8, as a text Koe's): Koe is asked once more, in
@@ -1550,8 +1554,9 @@ export class LiveKoe {
       await this.#answered(false, false);
       // Always answered: the model waits for it.
       /* en */ const out = await this.c.koe.liveCall(e, this.#wake, this.#watched).catch((err) => ({ content: `Error: ${err?.message ?? err}`, isError: true }));
-      // A card or question annai showed passes Kokoro's notes on, and answers the user; one it refused does neither.
-      if (REACH.includes(e.name) && !out.isError) this.#passed();
+      // A card or question annai showed passes Kokoro's notes on, and answers the user; one it refused does neither. Her already_told
+      // doesn't pass on a note that went in again: she is asked once more (#settle), then annai shows it.
+      if (REACH.includes(e.name) && !out.isError && !(e.name === 'already_told' && this.#owed.sent.some((w) => this.#resent.has(w)))) this.#passed();
       if ((e.name === 'show' || e.name === 'ask') && !out.isError) {
         this.#answered(false); // a card or question answers what was heard
         if (this.#due?.strict) this.#answer(undefined);
@@ -1685,7 +1690,6 @@ export class LiveKoe {
     if (s !== this.#s || !kind) return;
     this.#hold();
     const cut = Boolean(this.#sounding || this.#t?.spoken || this.#pending);
-    this.#again(); // a note it cut goes in again, never shown as a sound's cut is (#said)
     this.#cut(true);
     this.#t = null;
     this.#unmark(); // the connection that was to answer it is gone

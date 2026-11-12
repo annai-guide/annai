@@ -189,10 +189,144 @@ test('a drop as she says a note is no sound: the resumed session gets the note a
     await wait(500);
     k.server.close(1011, 'Internal error encountered.');
     await soon(async () => (await wholeNotes(k)) === 1, 8000);
+    await wait(3000); // a second saying of it would be here by now
     await k.agent.idle();
+    assert.equal(await wholeNotes(k), 1, 'heard whole once');
     assert.equal(k.server.received().filter((/** @type {any} */ m) => m.setup).length, 2, 'resumed');
     assert.equal(textsIn(k).filter((t) => t.includes('<from_kokoro')).length, 2, 'the note went in again');
+    assert.deepEqual(asks(k), []);
     assert.deepEqual(await shown(k), []);
+  } finally {
+    await k.done();
+  }
+});
+
+// A note that goes into a session again (a drop, or the page out of view, as she says it) is one annai never heard said whole, so her "I already told
+// them" (already_told) doesn't settle it: she is asked once more, and if she still doesn't say it, annai shows it and says it itself. A note she never
+// began goes in again too, and her saying it settles it as for any note.
+const TOLD = { tool: { name: 'already_told', args: {} } };
+const AGAIN = { said: SAID, audio: tone(0.3) };
+/** Gemini's own close, as a dropped connection arrives. @param {any} k */
+const drop = (k) => k.server.close(1011, 'Internal error encountered.');
+/** How many times the note went into a session. @param {any} k */
+const wentIn = (k) => textsIn(k).filter((/** @type {string} */ t) => t.includes('<from_kokoro')).length;
+/** The sessions the stand-in set up. @param {any} k */
+const sessions = (k) => k.server.received().filter((/** @type {any} */ m) => m.setup).length;
+/** annai shows the note and says it with its own voice, after asking her once. @param {any} k */
+async function shownAndSaid(k) {
+  await soon(async () => (await shown(k)).length === 1, 45_000);
+  await k.agent.idle();
+  assert.deepEqual(await shown(k), [[FOR_USER, true]], 'shown, and said by annai');
+  assert.equal(k.said.filter((/** @type {string} */ t) => t.includes('fuel station')).length, 1, "annai's own voice says it once");
+  assert.equal(asks(k).length, 1, 'she was asked once more');
+}
+
+for (const [what, turns] of /** @type {[string, any[]][]} */ ([['and nothing when asked once more', [TOLD]], ['and again when asked once more', [TOLD, TOLD]]])) {
+  test(`a drop as she says a note, and the resumed session says it was already told ${what}: she is asked once, then annai shows the note and says it`, async () => {
+    const k = await noteSaid({ turns });
+    try {
+      await wait(500);
+      drop(k);
+      await shownAndSaid(k);
+      assert.equal(sessions(k), 2, 'resumed');
+      assert.equal(wentIn(k), 2, 'the note went in again');
+      assert.equal(await wholeNotes(k), 0, 'she never said it whole');
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+test('a drop as she says a note, "already told" from the resumed session, and she says it when asked once more: heard whole once, nothing shown, annai says nothing', async () => {
+  const k = await noteSaid({ turns: [TOLD, AGAIN] });
+  try {
+    await wait(500);
+    drop(k);
+    await soon(async () => (await wholeNotes(k)) === 1, 45_000);
+    await wait(6000); // anything more would be here by now
+    await k.agent.idle();
+    assert.equal(await wholeNotes(k), 1, 'heard whole once');
+    assert.equal(asks(k).length, 1, 'asked once');
+    assert.deepEqual(await shown(k), []);
+    assert.ok(!k.said.some((/** @type {string} */ t) => t.includes('fuel station')), "annai's own voice says nothing of it");
+  } finally {
+    await k.done();
+  }
+});
+
+test('a drop after her sound for the note has played out, before the provider ends the turn: the note is heard whole once, not again after the drop', async () => {
+  const k = await noteSaid({ note: { said: SAID, audio: tone(1.5), endAt: 1900 }, turns: [AGAIN] });
+  try {
+    await wait(1650);
+    drop(k);
+    await soon(async () => sessions(k) === 2, 8000);
+    await wait(6000);
+    await k.agent.idle();
+    assert.equal(await wholeNotes(k), 1, 'said once');
+    assert.equal(wentIn(k), 1, 'not sent again: she had said it');
+    assert.deepEqual(asks(k), []);
+    assert.deepEqual(await shown(k), []);
+  } finally {
+    await k.done();
+  }
+});
+
+for (const [what, answer, said] of /** @type {const} */ ([['"already told"', TOLD, false], ['the note', AGAIN, true]])) {
+  test(`a drop before her sound for the note began, the resumed session answers ${what}: ${said ? 'heard whole once, nothing shown' : 'asked once more, then annai shows the note and says it'}`, async () => {
+    const k = await noteSaid({ begun: true, note: { said: SAID, audio: tone(3), delayMs: 1500 }, turns: [answer] });
+    try {
+      await wait(300);
+      drop(k);
+      if (said) {
+        await soon(async () => (await wholeNotes(k)) === 1, 45_000);
+        await wait(6000);
+        await k.agent.idle();
+        assert.equal(await wholeNotes(k), 1);
+        assert.deepEqual(asks(k), []);
+        assert.deepEqual(await shown(k), []);
+      } else await shownAndSaid(k);
+      assert.equal(wentIn(k), 2, 'the note went in again');
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+for (const [what, answer, said] of /** @type {const} */ ([['"already told"', TOLD, false], ['the note', AGAIN, true]])) {
+  test(`the page out of view as she says a note, and back, the resumed session answers ${what}: ${said ? 'heard whole, nothing shown' : 'asked once more, then annai shows the note and says it'}`, async () => {
+    const k = await noteSaid({ turns: [answer] });
+    try {
+      await wait(500);
+      hidden(true);
+      k.agent.hush('away');
+      await wait(1000);
+      hidden(false);
+      await k.agent.shown();
+      if (said) {
+        await soon(async () => (await wholeNotes(k)) === 1, 45_000);
+        await wait(6000);
+        await k.agent.idle();
+        assert.equal(await wholeNotes(k), 1);
+        assert.deepEqual(asks(k), []);
+        assert.deepEqual(await shown(k), []);
+      } else await shownAndSaid(k);
+      assert.equal(wentIn(k), 2, 'the note went in again');
+    } finally {
+      hidden(false);
+      await k.done();
+    }
+  });
+}
+
+test('"already told" for a note that never went in again settles it: nothing asked, nothing shown, nothing said by annai', async () => {
+  const k = await noteSaid({ begun: true, note: TOLD });
+  try {
+    await wait(6000); // the ask, and what it shows, would be here by now
+    await k.agent.idle();
+    assert.deepEqual(asks(k), []);
+    assert.deepEqual(await shown(k), []);
+    assert.ok(!k.said.some((/** @type {string} */ t) => t.includes('fuel station')));
+    assert.equal(sessions(k), 1);
   } finally {
     await k.done();
   }
