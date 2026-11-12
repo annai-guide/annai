@@ -608,11 +608,12 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** a user is misled by it; the change is for the start row to carry the item's end.
 - **Approved:** 2026-11-11, the user picked "Accept as a known limitation".
 
-### After a Stop, a line said to live Koe can be refused when its words arrive after her call
-- **Kind:** deferred.
-- **What the user sees:** in live voice, they press Stop, then say something to Shiori. If the provider sends Koe's call to Kokoro before it sends the words of what they said, the call is refused as if they hadn't spoken: she says she can't check that now, and they have to ask again. When the words come first, it goes through. On the test stand-in, words 6 seconds late are refused; how often real Gemini's words come after its call isn't measured. The version before this one did the same.
-- **Why:** a Stop's hold ends when a line of the user's is written, and a live line is written when its words arrive.
-- **Revisit when:** the next version, after measuring the order on real Gemini: either the heard line is written before a tool call even with no words yet, or a turn that a tool call answers counts as the user's line.
+### With Koe on OpenAI Realtime, after a Stop, a line said to live Koe can be refused when its words arrive after her call
+- **Kind:** known limitation.
+- **What the user sees:** in live voice on OpenAI Realtime, they press Stop, then say something to Shiori. If the provider sends Koe's call to Kokoro before it sends the words of what they said, the call is refused as if they hadn't spoken: she says she can't check that now, and they have to ask again. When the words come first, it goes through. On the test stand-in, words 6 seconds late are refused. Real Gemini Live never sends them in that order: in 121 turns where Koe called `tell_kokoro`, the user's words came 0.5 to 14 s before the call every time (2026-11-12), so with Gemini this doesn't happen. OpenAI Realtime's order isn't measured (no key in use).
+- **Why:** a Stop's hold ends when a line of the user's is written, and a live line is written when its words arrive. Changing that for a provider whose order is unmeasured, while Gemini never needs it, adds a rule nothing has shown is needed.
+- **Revisit when:** a real OpenAI Realtime run or a drive shows the call before the words; then either the heard line is written before a tool call even with no words yet, or a turn that a tool call answers counts as the user's line.
+- **Approved:** 2026-11-12, the user picked "Limitation, OpenAI only (Recommended)".
 
 ### A reminder can be written into both conversations when a switch lands while the live session connects
 - **Kind:** deferred.
@@ -709,3 +710,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** in live voice, the session closes for good (a refused key, a model not found, or a fourth drop with no reply between) while she is saying a reply that carries a note, after it is all made and played past her last loud sound. annai hands the note on (a card, or Koe · Chat saying it) and the reply's audio says it too: heard and shown twice. Rare. (From reading the code, the second opinion of 2026-11-12's final review; the version before this one did the same in that order.)
 - **Why:** the drop cuts the reply and closes the session before the reply's own end has run, so the note is handed on first; the reply's end then finds it gone and passes nothing.
 - **Revisit when:** the next version: a close for good passes the notes of a turn that counts as heard whole before it hands the rest on, as a tap and a page going out of view already do.
+
+### A note Shiori had already covered can be said once more by annai after a reconnect
+- **Kind:** known limitation.
+- **What the user sees:** in live voice, Shiori has already told them something, and Kokoro's note saying the same arrives; she rightly answers it with nothing. If the session is made again in that turn (Gemini's planned reconnect, the page going out of view, a tap that closes the session), the note goes in again, she says she already told them, annai asks her once, then shows the note and says it in its own voice: heard twice. Rare.
+- **Why:** telling "she covered it before" from "she skipped it" needs her word, and her word is what lost notes before (`#again()` marks every note re-queued between turns, so `already_told` doesn't settle it). The same rule catches a note she had said nothing about, which the version before left unsaid.
+- **Revisit when:** a real run or a drive shows a repeat after a reconnect.
+- **Approved:** 2026-11-12, the user picked "Known limitation (Recommended)".
