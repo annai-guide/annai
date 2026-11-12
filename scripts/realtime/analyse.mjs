@@ -67,10 +67,10 @@ export function soundRuns(level) {
 /**
  * @typedef {{ i: number, start: number, end: number | null, ms: number | null, audioBytes: number, reason: string | null, clip: string | null,
  *   spurious: boolean, echo: boolean }} Turn
- * @typedef {{ name: string, at: number, end: number, expect: 'answer' | 'nothing' | 'stray' | 'scold' | 'ack' | 'noise', turns: number, endLagMs: number | null, answered: boolean | null,
+ * @typedef {{ name: string, at: number, end: number, expect: 'answer' | 'nothing' | 'stray' | 'scold' | 'ack' | 'noise' | 'stop', turns: number, endLagMs: number | null, answered: boolean | null,
  *   firstAudioMs: number | null, firstSoundMs: number | null, heard: string, recall: number, said: string, tools: string[], overHer: boolean, sentMs: number, coverage: number,
  *   lang?: string, heardLang?: string, saidLang?: string }} ClipResult
- *   expect: what the clip wants back (ack: only an acknowledgement here, and noise: not the user's words, want no reply); tools: what she called before her
+ *   expect: what the clip wants back (ack: only an acknowledgement here, noise: not the user's words, and stop: told to stop, want no reply); tools: what she called before her
  *   first sound; overHer: it began while she sounded or as she began; lang: the language the clip is spoken in;
  *   heardLang, saidLang: the language Gemini's transcript of it, and her words, are in ('' when they can't be told)
  * @typedef {{ at: number, cause: 'user' | 'echo' | 'noise' | 'other' }} Cut
@@ -142,7 +142,7 @@ export function analyse(rec, clips, { endLagMs = END_LAG_MS, expectCut = false, 
     const tools = audio ? frames.filter((fr) => fr.dir === 'in' && fr.kind === 'toolCall' && lastEnd !== null && fr.at > lastEnd && fr.at < audio.at).map((fr) => fr.name ?? '?') : [];
     const overHer = runs.some((r) => r.to >= p.at && r.from <= p.at + 600);
     /** @type {ClipResult['expect']} */
-    const expect = acks.includes(p.name) ? 'ack' : kind === 'noise' ? 'noise' : kind === 'stray' ? 'stray' : kind === 'scold' ? 'scold' : 'answer';
+    const expect = acks.includes(p.name) ? 'ack' : kind === 'noise' ? 'noise' : kind === 'stop' ? 'stop' : kind === 'stray' ? 'stray' : kind === 'scold' ? 'scold' : 'answer';
     return {
       name: p.name, at: p.at, end: p.end, expect, turns: mine.length, tools, overHer,
       sentMs: mine.reduce((n, t) => n + (t.ms ?? 0), 0), coverage: mine.reduce((n, t) => n + (t.ms ?? 0), 0) / Math.max(1, p.end - p.at),

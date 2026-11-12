@@ -15,10 +15,11 @@ const TTS_RATE = 24_000;
  * name → what is said. kind: question, yes (a quick answer), reply (a short English reply, for the languages check), sentence (one in
  * another language), pause (a sentence with a thinking pause: parts are speech and seconds of silence), long (a long question),
  * stray (words she should leave alone: silence is right), card (stage 5: a line for annai's read_trip card, or what its voice says), scold (told off for filler: silence is right, filler is the failure),
- * relay (a line Koe should pass on as it was said: a request it could ask about, or a question about annai it can't know), silence (no sound: seconds), noise
+ * relay (a line Koe should pass on as it was said: a request it could ask about, or a question about annai it can't know), stop (the user telling her to stop:
+ * no reply), silence (no sound: seconds), noise
  * (made here, no file: a sound that isn't the user's words, seconds of it). voice: one of Gemini's prebuilt voices. lang: the language it is spoken in (en unless said).
  * say: what the TTS is asked to say when a tone is asked for (text stays what it means); first: only the speech before the first pause in it is kept.
- * @typedef {{ kind: 'question' | 'scold' | 'yes' | 'reply' | 'sentence' | 'pause' | 'long' | 'silence' | 'noise' | 'stray' | 'card' | 'relay', text?: string, parts?: (string | number)[], voice?: string, seconds?: number, lang?: 'en' | 'ja' | 'zh' | 'ko', say?: string, first?: boolean }} ClipDef
+ * @typedef {{ kind: 'question' | 'scold' | 'yes' | 'reply' | 'sentence' | 'pause' | 'long' | 'silence' | 'noise' | 'stray' | 'card' | 'relay' | 'stop', text?: string, parts?: (string | number)[], voice?: string, seconds?: number, lang?: 'en' | 'ja' | 'zh' | 'ko', say?: string, first?: boolean }} ClipDef
  * @type {Record<string, ClipDef>}
  */
 export const CLIPS = {
@@ -81,6 +82,8 @@ export const CLIPS = {
   // A sound that cuts her while she says a note (someone else's voice, a bump, in headphones): voice-like and as loud as the clips' speech, so annai's
   // detector makes a turn of it that cuts her, as the user's own voice would; 0.8 s, past the 250 ms of sound a turn needs (minSpeechMs).
   bump: { kind: 'noise', seconds: 0.8 },
+  // The user telling her to stop as she says a note. The preview TTS refuses some one-word texts: said with a second sentence and cut at the pause, as hao.
+  stop: { kind: 'stop', text: 'Stop.', say: 'Stop. Please stop talking.', first: true, voice: 'Kore' },
 };
 
 /** The kinds made here, with no file. */

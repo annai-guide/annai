@@ -6,7 +6,8 @@
 //   node scripts/realtime-check.mjs writing <run folder>...                            how a speech model wrote each clip, with a question mark or not (no network)
 //   node scripts/realtime-check.mjs cards <run folder>...                              stage 5's card runs as a table, a row a scenario (no network)
 //   node scripts/realtime-check.mjs lateness <folder>... [--settle s] [--rows f.json]  how late the words of a live line arrive, from finished runs (no network)
-// A key: GEMINI_KEY, or --keys-file <path> --lines <1-11>. It is read inside the process, never printed or written.
+// A key: GEMINI_KEY, or --keys-file <path> --lines <1-11>; a real Kokoro's: ANNAI_LIVE_ANTHROPIC_KEY, or --anthropic-key <file> (its first line).
+// Each is read inside the process, never printed or written.
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 import { parseArgs, keysFrom } from './realtime/args.mjs';
@@ -60,9 +61,10 @@ if (command === 'clips') {
     process.exit(0);
   }
   const keys = await keysFrom(opts, process.env);
-  // The one Anthropic key (stage 5's real Kokoro): a file's first line, read here and typed into annai's key field by the scenarios that ask for it.
-  const { Keys } = await import('./realtime/keys.mjs');
-  const anthropic = typeof opts['anthropic-key'] === 'string' ? Keys.fromPath(opts['anthropic-key'], '1') : undefined;
+  // The one Anthropic key (stage 5's real Kokoro): ANNAI_LIVE_ANTHROPIC_KEY, else a file's first line, read here and typed into annai's key field by the
+  // scenarios that ask for it.
+  const { anthropicFrom } = await import('./realtime/args.mjs');
+  const anthropic = await anthropicFrom(opts, process.env);
   const out = new URL(`../.superpowers/evidence/realtime-harness/${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}/`, import.meta.url);
   try {
     const r = await runChecks({

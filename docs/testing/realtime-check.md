@@ -101,7 +101,7 @@ with no network, after the analysis changed.
 These scenarios (by name only) hold Koe to its instructions where a drive got two answers, or the wrong half's: a line it should pass on was asked
 about, refused or answered from its own head; a note cut as she said it was taken up from its middle; a typed line was answered by both halves.
 Their lines are new clips (Gemini TTS, made-up words: `do-all`, `carry-on`, `second-one`, `note-parking`, `plan-beach`, `why-quiet`, `app-louder`,
-`app-offline`, `app-new`), made on first use (a run that needs one not made yet stops at once and says the command), and a noise made here (`bump`: 0.8 s
+`app-offline`, `app-new`, and `stop`: "Stop."), made on first use (a run that needs one not made yet stops at once and says the command), and a noise made here (`bump`: 0.8 s
 of a voice-band tone as loud as the clips' speech, so it makes a turn that cuts her).
 
 | name | route | what it does | it passes when |
@@ -109,9 +109,10 @@ of a voice-band tone as loud as the clips' speech, so it makes a turn that cuts 
 | relay-pass | phone speaker | five requests Koe could ask the user about or say it can't do ("Let's do all three of them.", "Let's carry on in Kyoto.", "Take us to the second one instead.", "Add to my notes that we parked on level three.", "Change the plan so we go to the beach first."), each after her answer | **passed on**: for each line her `tell_kokoro`, and no question back (a "?" in what she said before Kokoro's note went in, or her own buttons, `ask`); **the bar: at least 9 of 10 lines**, over two runs (`--times 2`), in the report's head. *Passed on as said* (a warning): what the stand-in Kokoro was given keeps 80% of the line's words (against what Gemini heard or what the clip says) |
 | relay-annai | phone speaker | five questions about annai Koe can't know ("Is there an auto GPS mode in this app?", "Why didn't the reminder go off just now?", "Can I make your voice louder in this app?", "Does this app still work without a signal?", "What changed in the latest version of this app?") | the same checks and **the same bar: at least 9 of 10**, over two runs; read what she said before the note: an answer of her own there is the failure the bar can't see |
 | relay-ack | phone speaker | ten questions, each answered (Kokoro's note said), then "Sure." or "Alright.", and 8 s for a reply (Koe's own live answers came 2.6 to 5.8 s after the user's turn) | **acknowledgements left quiet**: no run of her sound from an acknowledgement's turn to the next question; **the bar: none in 20**, over two runs. An acknowledgement no turn was made of isn't counted |
-| cut-note | headphones | a question; then, 100 ms after her voice begins Kokoro's note, the noise | **she is cut by the user** and **cut note said again**: annai asks for the note again once ("Sound cut you off…"), she says it again from its start (the stand-in's note's first and last words, "twenty" and "Highway"), and annai doesn't show it as well. A run where the noise didn't cut her proves nothing, and says so |
+| cut-note | headphones | a question; then, 100 ms after her voice begins Kokoro's note, the noise (Gemini writes its turn down as "¿Qué?", a "what?" that Koe's rule answers with its last words again: the ask's words say it answers that too) | **she is cut by the user** and **cut note said again**: annai asks for the note again once ("Sound cut you off…"), one line of hers after the ask holds the note from its start (the stand-in's note's first and last words, "twenty" and "Highway"), not two, and annai doesn't show it as well. A run where the noise didn't cut her proves nothing, and says so |
+| cut-note-stop | headphones | the same with "Stop." in place of the noise, then 12 s (an answer that never comes is let go at 8 s, and annai's own word for the note follows) | **she is cut by the user** and **stopped when told**: annai asks for the note again once, as it can't know what was said, and from the end of the "Stop." there is no sound of hers, and no `tell_kokoro`. annai may show the note: nothing is lost |
 | typed-live | phone speaker | live voice, typed on the conversation's page: "Hello?", then "Add to my notes that we parked on level three.", each with 90 s after her answer for a late note (a note from Gemini's chat model on a free key took 30 to 80 s) | **one answer to each typed line**: her lines and what annai showed for her, from the line to the next: one for the greeting (Koe's), at most two for the request ("One moment." and the result). With the stand-in Kokoro it checks only the voice path; run it with `--kokoro gemini --answer-timeout 90`, where Kokoro is a real model |
-| real-typed-live | phone speaker | the same with Kokoro on Claude Opus 5.5 (`--anthropic-key <file>`, held to 30 requests, as the card's real runs) | the same |
+| real-typed-live | phone speaker | the same with Kokoro on Claude Opus 5.5 (`ANNAI_LIVE_ANTHROPIC_KEY`, or `--anthropic-key <file>`'s first line; held to 30 requests, as the card's real runs) | the same |
 
 The bars are over lines, so a run of five lines is short of one: `--times 2`, and the report's head gives each scenario's count against its bar
 ("relay-pass: passed on, no question back, 9 of 10 lines in 2 runs (the bar: at least 9 of 10) MET"). A run's own verdict holds each run to every line.
@@ -120,6 +121,8 @@ The bars are over lines, so a run of five lines is short of one: `--times 2`, an
 # Once, the nine clips (9 TTS calls: a free key allows about 10 a day; a 429 moves to the next line):
 NODE_OPTIONS=--max-old-space-size=2048 timeout 900 node scripts/realtime-check.mjs clips --keys-file /path/to/keys --lines 1-11 \
   --only do-all,carry-on,second-one,note-parking,plan-beach,why-quiet,app-louder,app-offline,app-new
+# And the one cut-note-stop needs (1 TTS call):
+NODE_OPTIONS=--max-old-space-size=2048 timeout 900 node scripts/realtime-check.mjs clips --keys-file /path/to/keys --lines 1-11 --only stop
 
 # The bars, with the stand-in Kokoro: six sessions, about 20 minutes.
 timeout 2700 docker run --rm --ipc=host --memory=6g \
@@ -127,8 +130,10 @@ timeout 2700 docker run --rm --ipc=host --memory=6g \
   mcr.microsoft.com/playwright:v1.63.0-noble \
   timeout 2600 node --max-old-space-size=2048 scripts/realtime-check.mjs run --keys-file /keys --lines 1-11 --only relay-pass,relay-annai,relay-ack --times 2
 
-# The cut note (three sessions), and a typed line with a real Kokoro: Gemini's chat model, or Opus with the Anthropic key's file mounted too.
-...  scripts/realtime-check.mjs run --keys-file /keys --lines 1-11 --only cut-note --times 3
+# The cut note (three sessions each), and a typed line with a real Kokoro: Gemini's chat model, or Opus with the Anthropic key's file mounted too,
+# or with the key in ANNAI_LIVE_ANTHROPIC_KEY (it wins over the file; set it from the file, never typed on the command line or printed):
+#   ANNAI_LIVE_ANTHROPIC_KEY="$(sed -n 1p /path/to/anthropic-key)" timeout 2700 docker run --rm -e ANNAI_LIVE_ANTHROPIC_KEY ... --only real-typed-live
+...  scripts/realtime-check.mjs run --keys-file /keys --lines 1-11 --only cut-note,cut-note-stop --times 3
 ...  scripts/realtime-check.mjs run --keys-file /keys --lines 1-11 --only typed-live --kokoro gemini --answer-timeout 90
 ...  scripts/realtime-check.mjs run --keys-file /keys --lines 1-11 --only real-typed-live --anthropic-key /anthropic-key
 ```
@@ -155,7 +160,7 @@ put real speech to it:
 - **Classic voice** (`classic-*`, with `--asr <origin>`): no Koe; Speech in is a Local speech server whose address is the stand-in's `/asr` (annai calls only https
   addresses, or http on this device, so a server on the network is reached through the stand-in, which passes on transcription requests and nothing else, one at
   a time, and logs the words that came back); the gate is Gemini 3.5 Flash Lite (adding Gemini puts it in Quick decision).
-- **A real Kokoro** (`real-yes`, `real-yes-but`, `real-no-thanks`, with `--anthropic-key <file>`): Claude Opus 5.5 through the Anthropic provider (Haiku 5.5 as utility),
+- **A real Kokoro** (`real-yes`, `real-yes-but`, `real-no-thanks`, with `--anthropic-key <file>` or `ANNAI_LIVE_ANTHROPIC_KEY`): Claude Opus 5.5 through the Anthropic provider (Haiku 5.5 as utility),
   Koe on Gemini Live. The key is read inside the process and typed into annai's own field; a scenario is held to 30 requests to api.anthropic.com (the 31st is
   refused), and the report gives annai's own count of tokens and an estimated cost.
 - **Lateness** (`lines-en`, `lines-ja`, `lines-zh`, and every other run): `node scripts/realtime-check.mjs lateness <run folders>` reads the records and reports, by

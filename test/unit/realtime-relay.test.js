@@ -73,21 +73,44 @@ test('an acknowledgement after her answer: sound back from its turn to the next 
   assert.equal(analyseRelay(still, analyse(still, CLIPS, { acks: ['sure'] }), /** @type {any} */ ({ acks: ['sure'], steps: [] }), CLIPS).checks[0].ok, true);
 });
 
-test('a note cut by a noise: cut, asked for again once, and said again from its start passes; from its middle, asked twice, or shown too, fails', () => {
+test('a note cut by a noise: cut, asked for again once, and said again from its start once passes; from its middle, twice, asked twice, or shown too, fails', () => {
   const q = line('bixby', 1000, [f(3500, 'in', 'toolCall', { name: 'tell_kokoro' }), f(5600, 'out', 'text', { text: NOTE }), f(6000, 'in', 'audio', { bytes: 9600 }), f(6050, 'in', 'said', { text: "It's about" })]);
   const bump = { name: 'bump', at: 6100, end: 6900, gainDb: 0 };
-  const after = [f(6300, 'out', 'activityStart'), f(6350, 'in', 'interrupted'), f(7600, 'out', 'activityEnd'), f(7650, 'out', 'text', { text: "[annai] \"Sound cut you off, so the user didn't hear what Kokoro's note says. Say it again, without changing what it claims.\"" })];
-  /** @param {any[]} more @param {any[]} [trace] */
-  const cutRec = (more, trace = []) => rec({ route: 'headphones', plays: [q.play, bump], frames: [...q.frames, ...after, ...more], level: levels([[6000, 6400], [8000, 10_000]]), trace });
+  const after = [f(6300, 'out', 'activityStart'), f(6350, 'in', 'interrupted'), f(7600, 'out', 'activityEnd'), f(7650, 'out', 'text', { text: "[annai] \"Sound cut you off, so the user didn't hear what Kokoro's note says. Say it again from its start, once.\"" })];
+  const speak = (/** @type {number} */ at, /** @type {string} */ text) => ({ at, type: 'out.speak', data: { live: true }, text });
+  const WHOLE = "It's about twenty minutes ahead on Highway 1.";
+  /** @param {any[]} more @param {any[]} trace */
+  const cutRec = (more, trace) => rec({ route: 'headphones', plays: [q.play, bump], frames: [...q.frames, ...after, ...more], level: levels([[6000, 6400], [8000, 10_000]]), trace: [speak(6400, "It's✂"), ...trace] });
   const check = (/** @type {any} */ r) => analyseRelay(r, analyse(r, CLIPS, { expectCut: true }), /** @type {any} */ ({ noteCut: true, steps: [] }), CLIPS).checks[0];
-  const whole = [f(8000, 'in', 'audio', { bytes: 9600 }), f(8100, 'in', 'said', { text: "It's about twenty minutes ahead on Highway 1." })];
-  assert.deepEqual([check(cutRec(whole)).name, check(cutRec(whole)).ok], ['cut note said again', true]);
-  assert.match(check(cutRec(whole)).detail, /asked again once; after it she said "It's about twenty minutes ahead on Highway 1\." \(from its start\)/);
-  assert.equal(check(cutRec([f(8100, 'in', 'said', { text: 'ahead on Highway 1.' })])).ok, false, 'taken up from its middle');
-  assert.equal(check(cutRec([...whole, f(9000, 'out', 'text', { text: '[annai] "Sound cut you off, again."' })])).ok, false, 'asked twice');
-  assert.equal(check(cutRec(whole, [{ at: 9500, type: 'reminder', data: { unsaid: true, answer: true } }])).ok, false, 'annai showed it as well');
+  const once = cutRec([f(8000, 'in', 'audio', { bytes: 9600 })], [speak(10_000, WHOLE)]);
+  assert.deepEqual([check(once).name, check(once).ok], ['cut note said again', true]);
+  assert.match(check(once).detail, /^asked again once; the note said again once, from its start; her lines after the ask: "It's about twenty minutes ahead on Highway 1\."$/);
+  assert.equal(check(cutRec([], [speak(10_000, 'ahead on Highway 1.')])).ok, false, 'taken up from its middle');
+  const twice = cutRec([], [speak(10_000, WHOLE), speak(14_000, WHOLE)]);
+  assert.equal(check(twice).ok, false, 'said again twice (a "what?" and the ask each answered with it)');
+  assert.match(check(twice).detail, /the note said again 2 times/);
+  assert.equal(check(cutRec([f(9000, 'out', 'text', { text: '[annai] "Sound cut you off, again."' })], [speak(10_000, WHOLE)])).ok, false, 'asked twice');
+  assert.equal(check(cutRec([], [speak(10_000, WHOLE), { at: 9500, type: 'reminder', data: { unsaid: true, answer: true } }])).ok, false, 'annai showed it as well');
   const uncut = rec({ plays: [q.play, bump], frames: q.frames });
-  assert.match(check(uncut).detail, /did not cut her/);
+  assert.match(check(uncut).detail, /the bump did not cut her/);
+});
+
+test('a note cut by a spoken "stop": passes with no sound after it and nothing passed on (shown on the screen is fine); a note said again, or passed on, fails', () => {
+  const q = line('bixby', 1000, [f(3500, 'in', 'toolCall', { name: 'tell_kokoro' }), f(5600, 'out', 'text', { text: NOTE }), f(6000, 'in', 'audio', { bytes: 9600 })]);
+  const stop = { name: 'stop', at: 6100, end: 6600, gainDb: 0 };
+  const after = [f(6300, 'out', 'activityStart'), f(6350, 'in', 'interrupted'), f(7300, 'out', 'activityEnd'), f(7350, 'out', 'text', { text: '[annai] "Sound cut you off, so the user didn\'t hear what Kokoro\'s note says."' })];
+  const STOPS = { ...CLIPS, stop: { kind: 'stop', words: 'Stop.' } };
+  /** @param {any[]} more @param {[number, number][]} sound @param {any[]} [trace] */
+  const stopRec = (more, sound, trace = []) => rec({ route: 'headphones', plays: [q.play, stop], frames: [...q.frames, ...after, ...more], level: levels([[6000, 6400], ...sound]), trace });
+  const check = (/** @type {any} */ r) => analyseRelay(r, analyse(r, STOPS, { expectCut: true }), /** @type {any} */ ({ noteCut: 'stop', steps: [] }), STOPS).checks[0];
+  const quiet = stopRec([], [], [{ at: 16_000, type: 'reminder', data: { unsaid: true, answer: true } }]);
+  assert.deepEqual([check(quiet).name, check(quiet).ok], ['stopped when told', true]);
+  assert.match(check(quiet).detail, /^no sound after the "stop"; asked again once; she said nothing; annai showed the note$/);
+  assert.equal(analyse(quiet, STOPS, { expectCut: true }).clips.find((c) => c.name === 'stop')?.expect, 'stop', 'no question to answer');
+  const again = stopRec([f(8000, 'in', 'audio', { bytes: 9600 })], [[8000, 11_000]], [{ at: 11_000, type: 'out.speak', data: {}, text: "It's about twenty minutes ahead on Highway 1." }]);
+  assert.equal(check(again).ok, false);
+  assert.match(check(again).detail, /^sound 1\.4 s after it/);
+  assert.equal(check(stopRec([f(7800, 'in', 'toolCall', { name: 'tell_kokoro' })], [])).ok, false, 'passed on');
 });
 
 test('a typed line gets no more lines of hers than it needs: one for a greeting, two for a request; none is a failure too', () => {
