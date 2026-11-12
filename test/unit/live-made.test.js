@@ -230,9 +230,9 @@ test('a provider that never says: another trip opened in a pause of her sound sh
 const CHECKING = { heard: 'where to', said: 'One moment.', audio: tone(0.8), tool: { name: 'tell_kokoro', args: { text: 'Where should we stop?' } }, noEnd: true };
 const FUEL = { said: 'The fuel station ahead is open until ten.', audio: tone(0.3) };
 
-/** The user asks; she says "One moment." and asks Kokoro, whose note is ready at once. Resolves with when her sound began. @param {{ made?: false }} [o] @returns {Promise<[any, number]>} */
-async function oneMoment({ made } = {}) {
-  const k = await liveKit([CHECKING, FUEL], { pace: 1, agent: { secondMs: 1000 }, ...(made === false ? { live: { made } } : {}) });
+/** The user asks; she says "One moment." and asks Kokoro, whose note is ready at once. Resolves with when her sound began. @param {{ made?: false, turns?: any[] }} [o] @returns {Promise<[any, number]>} */
+async function oneMoment({ made, turns = [CHECKING, FUEL] } = {}) {
+  const k = await liveKit(turns, { pace: 1, agent: { secondMs: 1000 }, ...(made === false ? { live: { made } } : {}) });
   await k.voice.unlock();
   k.voice.route = async () => 'car';
   k.platform.streamSpeed = 1;
@@ -271,6 +271,34 @@ test('a provider that never says: that turn still ends 2 s past her sound, the n
     assert.equal(k.agent.live.view.name, 'speaking', 'her sound is over, but her stream is not ended: the dock still says she speaks');
     const inAt = await noteIn(k);
     assert.ok(inAt - (at + 800) >= 1500, `the note went in ${inAt - at - 800} ms after her sound`);
+  } finally {
+    await k.done();
+  }
+});
+
+// The same turn when its turnComplete does come, 100 ms after her sound: the note goes in at made, before it, and Gemini ends the turn it meets
+// with interrupted and its turnComplete 20 ms later (19 of 19 real turns, 2026-11-12). That is the end of the turn annai had ended, not an answer
+// to the note: the note's 8 s wait runs on, and a session that is silent on it is asked again (as it is when no turnComplete came at all).
+const CHECKING_ENDS = { ...CHECKING, noEnd: false, endAt: 900 };
+
+test('the provider ends that turn with interrupted after the note went in, and is silent on the note: the wait for its answer runs on, the note is asked again and said', async () => {
+  const [k] = await oneMoment({ turns: [CHECKING_ENDS, { silent: true }, FUEL] });
+  try {
+    await noteIn(k);
+    await soon(async () => (await k.events(['error'])).some((/** @type {any} */ e) => e.data.kind === 'live-silent'), 12_000);
+    await soon(async () => (await lines(k)).some(([text]) => text === FUEL.said), 8000);
+    assert.equal(wentIn(k), 2, 'a fresh session got the note again');
+    assert.deepEqual((await lines(k)).map(([text]) => text).slice(-2), ['One moment.', FUEL.said]);
+  } finally {
+    await k.done();
+  }
+});
+
+test("the provider ends that turn with interrupted after the note went in: the first words of its answer, before its first sound, are kept in her line", async () => {
+  const [k] = await oneMoment({ turns: [CHECKING_ENDS, { ...FUEL, saidFirst: true }] });
+  try {
+    await soon(async () => (await lines(k)).length === 2, 5000);
+    assert.deepEqual(await lines(k), [['One moment.', false], [FUEL.said, false]]);
   } finally {
     await k.done();
   }

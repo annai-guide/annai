@@ -252,7 +252,7 @@ export class LiveKoe {
   #liftBy = 0;
   /** A tap's first answered turn says what the user's voice is now (the level resets once); the tap's later ones add to it. */
   #fresh = false;
-  /** A turn was ended without its turnComplete (#endLater): one that comes after all, with no new turn of hers, is that one's. */
+  /** A turn was ended without its turnComplete (#endLater): the end that comes after all (its turnComplete, or the interrupted Gemini sends when a note meets it), with no new turn of hers, is that one's. */
   #endedEarly = false;
   /** Turns of hers ended so far (#complete). */
   #ends = 0;
@@ -1185,7 +1185,7 @@ export class LiveKoe {
     if (e.type === 'heard' || e.type === 'said' || e.type === 'audio' || e.type === 'tool' || e.type === 'turn') this.#noBack = 0;
     if (e.type === 'turn' && this.#endedEarly) {
       this.#endedEarly = false;
-      if (!this.#t && e.end !== 'interrupted') return; // the turn it ends is over: never an answer to what came since
+      if (!this.#t) return; // the turn it ends is over, an interrupted too (Gemini ends the turn a note meets so): never an answer to what came since
     }
     // Her sound, words or tool calls are an exchange; what was heard, and turn edges, are not.
     if (e.type === 'audio' || e.type === 'tool' || (e.type === 'said' && realWord(e.text))) this.#poke();
