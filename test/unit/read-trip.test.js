@@ -2807,6 +2807,71 @@ test("with Koe set, a reminder due while Kokoro's card waits is Koe's to say, as
   assert.deepEqual(await reminders(k), { filed: [], cards: 0 });
 });
 
+// Koe on a chat model passes the user's line on and waits for Kokoro, whose turn annai's card holds: a reminder due then ends Koe's wait, as a note
+// would, so Koe says it at once rather than when its wait runs out (30 to 60 s in real runs, up to 600 s).
+const LEAVE_NOW = 'Time to leave for the station.';
+/** Koe as the real runs had it: "One moment.", the line passed on, and a wait (none: its turn ends); a reminder is said, and the wait goes on. @param {number} seconds */
+const waitingKoe = (seconds) => {
+  const wait = { name: 'wait', input: { seconds } };
+  return { rules: [
+    { match: 'a watch fired', reply: { toolCalls: [{ name: 'speak', input: { text: LEAVE_NOW } }, seconds ? wait : { name: 'sleep', input: {} }] }, then: sleep },
+    { match: 'the user wrote', reply: { toolCalls: [{ name: 'speak', input: { text: 'One moment.' } }, { name: 'tell_kokoro', input: { text: 'Where did we eat in Testville?' } }, seconds ? wait : { name: 'sleep', input: {} }] }, then: seconds ? { toolCalls: [wait] } : sleep },
+    { match: '.', reply: sleep },
+  ] };
+};
+/** Koe's wait results, in order. @param {any} k */
+const koeWaits = async (k) => (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.half === 'koe' && e.data.name === 'wait').map((/** @type {any} */ e) => e.data.content);
+
+for (const [what, voice, seconds] of /** @type {[string, boolean, number][]} */ ([['voice off, its wait 120 s', false, 120], ['voice on, its wait 120 s', true, 120], ['voice on, its wait 600 s', true, 600], ['voice on, its turn ended', true, 0]])) {
+  test(`with Koe on a chat model waiting for Kokoro (${what}) while annai's card waits unanswered, a reminder reaches the user within a second, said by Koe once: annai neither shows nor says it, and Kokoro reads that Koe says it`, async (t) => {
+    useClock(t);
+    const k = await gateKit(KOKORO, { koe: { type: waitingKoe(seconds) }, ...(voice ? VOICE : {}) });
+    k.agent.send('Where did we eat in Testville?');
+    await until(() => k.asks.length === 1);
+    await pause(30 * k.agent.secondMs);
+    if (seconds) assert.ok(k.agent.koe.waiting, 'Koe waits for Kokoro');
+    const t0 = Date.now();
+    k.agent.wake(DUE);
+    await soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => e.data.text === LEAVE_NOW), 700 * k.agent.secondMs);
+    assert.ok(Date.now() - t0 <= 1 * k.agent.secondMs, `said ${(Date.now() - t0) / k.agent.secondMs} s after it came due`);
+    if (seconds) assert.deepEqual(await koeWaits(k), ['A reminder came due: say it (below). Kokoro\'s note is still to come.'], "what Koe's model reads as its wait ends");
+    assert.deepEqual(await reminders(k), { filed: [], cards: 0 }, 'annai shows nothing itself');
+    assert.notEqual(k.agent.kokoro.pendingId, null, 'the card still waits');
+    k.agent.answer(/** @type {string} */ (k.agent.kokoro.pendingId), 'Not now');
+    await k.agent.idle();
+    assert.equal((await k.events(['out.speak'])).filter((/** @type {any} */ e) => e.data.text === LEAVE_NOW).length, 1, 'Koe said it once');
+    assert.deepEqual(await reminders(k), { filed: [], cards: 0 }, 'nor afterwards');
+    if (voice) assert.equal(k.said.filter((/** @type {string} */ x) => x === LEAVE_NOW || x === 'Leave for the station.').length, 1, `said aloud once: ${JSON.stringify(k.said)}`);
+    assert.ok(k.sent['model-0'].some((/** @type {any} */ r) => r.tail.includes('woke for: a watch fired Koe is saying these reminders to the user now: "Leave for the station.". Don\'t pass them on.')), 'Kokoro reads that Koe says it');
+  });
+}
+
+test("with Koe on a chat model, a reminder due while Koe's model call runs ends the wait that call asks for at once; a cue alone doesn't end Koe's wait", async (t) => {
+  useClock(t);
+  for (const w of [DUE, CUE]) {
+    /** @type {() => void} */
+    let release = () => {};
+    const go = new Promise((r) => { release = () => r(undefined); });
+    let koeCalls = 0;
+    const k = await gateKit(KOKORO, { koe: { type: waitingKoe(120) }, hold: async (/** @type {any} */ c) => { if (c.model.providerId === 'model-koe' && !koeCalls++) await go; } });
+    k.agent.send('Where did we eat in Testville?');
+    await until(() => koeCalls === 1 && k.asks.length === 1);
+    k.agent.wake(w); // queued while Koe's first call runs
+    await pause(5 * k.agent.secondMs);
+    release();
+    await pause(10 * k.agent.secondMs);
+    if (w === DUE) {
+      assert.deepEqual(await koeWaits(k), ['A reminder came due: say it (below). Kokoro\'s note is still to come.'], 'the wait ends at once');
+      assert.equal((await k.events(['out.speak'])).filter((/** @type {any} */ e) => e.data.text === LEAVE_NOW).length, 1);
+    } else {
+      assert.ok(k.agent.koe.waiting, 'a cue is hers to take up when the wait ends');
+      assert.deepEqual(await koeWaits(k), []);
+    }
+    k.agent.answer(/** @type {string} */ (k.agent.kokoro.pendingId), 'Not now');
+    await k.agent.idle();
+  }
+});
+
 // A reminder already queued when the wait begins: due while her model call ran, so before the card or her question appeared.
 const DUE_2 = { kind: 'trigger', text: 'a watch fired', fallbacks: [{ watch: 'w2', text: 'Buy the tickets.' }] };
 /** annai's reminders written in a conversation and shown as cards, by their words, in order. @param {any} k */
