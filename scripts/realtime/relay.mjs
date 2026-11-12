@@ -15,7 +15,7 @@ export const BARS = { passed: { of: 10, least: 9 }, acks: { of: 20, most: 0 } };
 const ASK = /^\[annai\] "(Kokoro's note hasn't reached the user|Sound cut you off)/;
 /**
  * A line of hers is the note heard whole when it holds more than this share of the note's own words (the note as Kokoro sent it, markup aside). She says
- * a note in her own words, so a whole saying keeps well under all of them. In the 22 real cut runs of 2026-11-12 (Gemini Live; the stand-in's 14-word note
+ * a note in her own words, so a whole saying keeps well under all of them. In the 22 real cut runs of 2026-11-11 (Gemini Live; the stand-in's 14-word note
  * and Opus's), the lines judged whole by hand kept 40% to 77% of the note's words (one, said in Spanish, none: no word count reads that), and those judged
  * partial ("It's about twenty.", "ahead on Highway 1.") 27% at most; a third lies between.
  */
