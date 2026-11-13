@@ -2482,6 +2482,126 @@ test("with Koe on a chat model waiting for Kokoro in a listening, a reminder due
   assert.deepEqual(await reminders(k), { filed: [], cards: 0 }, 'annai shows nothing itself');
 });
 
+// Chatter that runs on (a radio, passengers): the next words have usually begun before the gate's verdict on the last ones lands, so a verdict that waited
+// for quiet would leave the reminder held until a pause or the wait's end. The first verdict that sets speech aside says it (review of fix round 1, R1).
+/** The quick gate's judgings, each waiting until released: the next words may begin before a verdict lands. */
+const gateHeld = () => {
+  /** @type {(() => void)[]} */
+  const waiting = [];
+  let all = false;
+  return {
+    hold: async (/** @type {any} */ c) => { if (c.model.providerId === 'model-d' && !all) await new Promise((r) => waiting.push(() => r(undefined))); },
+    get held() { return waiting.length; },
+    release: (/** @type {number} */ n) => waiting[n](),
+    releaseAll: () => { all = true; for (const r of waiting) r(); },
+  };
+};
+for (const [what, o] of /** @type {[string, Record<string, any>][]} */ ([
+  ['one Shiori', {}],
+  ['Kokoro while Koe is down', { koe: { talk: [{ error: 'auth', message: 'bad key' }] } }],
+])) {
+  test(`${what}, voice on with a quick gate: a reminder due in back-to-back chatter (the next words begin before each verdict lands) is said at the first verdict, once (backlog 23, fix round 2)`, async (t) => {
+    useClock(t);
+    const g = gateHeld();
+    const k = await gateKit(waitingOne, { ...o, hold: g.hold, voice: { speechIn: ['m-hear'], hears: ['The traffic report says', 'and now the weather', 'and then the news'], decide: gates(['B', 'B', 'B']) } });
+    k.agent.send('Plan our day');
+    await until(() => k.agent.kokoro.waiting);
+    if (o.koe) assert.equal(k.agent.koeState, 'down');
+    await pause(30 * k.agent.secondMs);
+    await startsSpeaking(k); // words 1
+    k.agent.wake(DUE); // due while they speak: held
+    k.platform.mic.feed(quiet(1), 16_000); // words 1 end: the gate's verdict waits
+    await until(() => g.held === 1);
+    k.platform.mic.feed(cat(quiet(0.3), await clip('first-one')), 16_000); // words 2 begin before verdict 1
+    await until(() => k.agent.kokoro.speakingNow);
+    assert.deepEqual(await ownWaits(k), [], 'their words come first: the wait goes on');
+    const t0 = Date.now();
+    g.release(0); // verdict 1 lands while words 2 go on: chatter
+    await soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => e.data.text === LEAVE_NOW), 700 * k.agent.secondMs);
+    assert.ok(Date.now() - t0 <= 1 * k.agent.secondMs, `said ${(Date.now() - t0) / k.agent.secondMs} s after the first verdict`);
+    assert.deepEqual(await ownWaits(k), [ONE_DUE], 'what her model reads as its wait ends');
+    g.releaseAll(); // the rest of what they said: set aside too
+    await k.agent.idle();
+    assert.deepEqual(await reminders(k), { filed: [], cards: 0 }, 'annai shows nothing itself');
+    assert.equal((await k.events(['out.speak'])).filter((/** @type {any} */ e) => e.data.text === LEAVE_NOW).length, 1, 'said once');
+    assert.equal(k.said.filter((/** @type {string} */ x) => x === LEAVE_NOW).length, 1, `said aloud once: ${JSON.stringify(k.said)}`);
+  });
+}
+
+// Whatever comes while a wait's microphone opens (store reads, getUserMedia, a car's Bluetooth switch) ends that wait at once, not at its deadline: the wait
+// looks at its queue again once the microphone is open (review of fix round 1, R2).
+/** The microphone's first opening waits until release(): something comes meanwhile. @param {any} k */
+const slowMic = (k) => {
+  const open = k.voice.open.bind(k.voice);
+  let opens = 0;
+  /** @type {() => void} */
+  let release = () => {};
+  const go = new Promise((r) => { release = () => r(undefined); });
+  k.voice.open = async (/** @type {any} */ o) => { if (!opens++) await go; return open(o); };
+  return { release, get opening() { return opens > 0; } };
+};
+/** One Shiori's reply to a line: only a long wait; what fires is said. */
+const waitOnly = { rules: [
+  { match: 'a watch fired', reply: say(LEAVE_NOW) },
+  { match: 'the user wrote', reply: call('wait', { seconds: 600 }) },
+  { match: '.', reply: sleep },
+] };
+
+test('one Shiori, voice on, her reply only a wait: a reminder that comes while its microphone opens ends the wait within a second of the opening, and she says it once (backlog 23, fix round 2)', async (t) => {
+  useClock(t);
+  const k = await gateKit(waitOnly, VOICE);
+  const mic = slowMic(k);
+  k.agent.send('Plan our day');
+  await until(() => mic.opening);
+  k.agent.wake(DUE); // while the microphone opens: nothing waits for it yet
+  await pause(3 * k.agent.secondMs);
+  const t0 = Date.now();
+  mic.release();
+  await soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => e.data.text === LEAVE_NOW), 700 * k.agent.secondMs);
+  assert.ok(Date.now() - t0 <= 1 * k.agent.secondMs, `said ${(Date.now() - t0) / k.agent.secondMs} s after the microphone opened`);
+  assert.deepEqual(await ownWaits(k), [ONE_DUE], 'what her model reads as its wait ends');
+  await k.agent.idle();
+  assert.equal((await k.events(['out.speak'])).filter((/** @type {any} */ e) => e.data.text === LEAVE_NOW).length, 1, 'said once');
+  assert.equal(k.said.filter((/** @type {string} */ x) => x === LEAVE_NOW).length, 1, `said aloud once: ${JSON.stringify(k.said)}`);
+  assert.deepEqual(await reminders(k), { filed: [], cards: 0 }, 'annai shows nothing itself');
+});
+
+test('one Shiori, voice on, her reply only a wait: words typed while its microphone opens reach her within a second of the opening, once (backlog 23, fix round 2)', async (t) => {
+  useClock(t);
+  const k = await gateKit(waitOnly, VOICE);
+  const mic = slowMic(k);
+  k.agent.send('Plan our day');
+  await until(() => mic.opening);
+  k.agent.send('Ready now'); // while the microphone opens: nothing waits for it yet
+  await pause(3 * k.agent.secondMs);
+  const t0 = Date.now();
+  mic.release();
+  await soon(async () => (await ownWaits(k)).length === 1, 700 * k.agent.secondMs);
+  assert.ok(Date.now() - t0 <= 1 * k.agent.secondMs, `answered ${(Date.now() - t0) / k.agent.secondMs} s after the microphone opened`);
+  assert.deepEqual(await ownWaits(k), ['The user wrote: Ready now'], 'the wait ends with their words');
+  await k.agent.idle();
+  assert.equal((await k.events(['msg.user'])).filter((/** @type {any} */ e) => e.data.answer).length, 1, 'written once, as the answer to the wait');
+});
+
+test("with Koe on a chat model, voice on, its wait the only thing that opens the microphone: a reminder that comes while it opens ends Koe's wait within a second of the opening, and Koe says it once (backlog 23, fix round 2)", async (t) => {
+  useClock(t);
+  const k = await gateKit(KOKORO, { koe: { type: waitingKoe(120) }, ...VOICE });
+  const mic = slowMic(k);
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => mic.opening && k.asks.length === 1);
+  k.agent.wake(DUE); // while the microphone opens: nothing waits for it yet
+  await pause(3 * k.agent.secondMs);
+  const t0 = Date.now();
+  mic.release();
+  await soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => e.data.text === LEAVE_NOW), 700 * k.agent.secondMs);
+  assert.ok(Date.now() - t0 <= 1 * k.agent.secondMs, `said ${(Date.now() - t0) / k.agent.secondMs} s after the microphone opened`);
+  assert.deepEqual(await koeWaits(k), [REMINDER_DUE], "what Koe's model reads as its wait ends");
+  k.agent.answer(/** @type {string} */ (k.agent.kokoro.pendingId), 'Not now');
+  await k.agent.idle();
+  assert.equal((await k.events(['out.speak'])).filter((/** @type {any} */ e) => e.data.text === LEAVE_NOW).length, 1, 'Koe said it once');
+  assert.deepEqual(await reminders(k), { filed: [], cards: 0 }, 'annai shows nothing itself');
+});
+
 test('one Shiori: a place alert ends her wait too, with words that say she may let it pass', async (t) => {
   useClock(t);
   const k = await gateKit(waitingOne);

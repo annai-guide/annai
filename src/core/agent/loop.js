@@ -3452,11 +3452,15 @@ export class Agent {
    */
   async #listenFor({ id, signal }, kind, seconds, tool = false) {
     if (signal?.aborted) return { stopped: true };
-    const typed = this.#queue.findIndex((w) => w.kind === 'user' && w.scope === this.scope);
-    if (typed >= 0) return typedGot(this.#queue.splice(typed, 1)[0]);
-    if (kind === 'wait' && this.#queue.some((w) => w.kind === 'heard' && w.scope === this.scope)) return { earlier: true };
-    const due = kind === 'wait' ? this.#cameDue(tool) : null;
-    if (due) return due;
+    // Looked at again once the microphone is open: what came while it opened found no wait.
+    const queued = () => {
+      const typed = this.#queue.findIndex((w) => w.kind === 'user' && w.scope === this.scope);
+      if (typed >= 0) return typedGot(this.#queue.splice(typed, 1)[0]);
+      if (kind === 'wait' && this.#queue.some((w) => w.kind === 'heard' && w.scope === this.scope)) return { earlier: true };
+      return kind === 'wait' ? this.#cameDue(tool) : null;
+    };
+    let got = queued();
+    if (got) return got;
     if (!this.#half.voice()) return { deaf: /* en */ 'the other half has the microphone now.' };
     const had = this.#ear;
     const deaf = await this.#openEar('turn');
@@ -3465,6 +3469,7 @@ export class Agent {
       if (!had && this.#ear?.owner === 'turn') this.#closeEar(); // the turn ended while it opened: nothing is left listening
       return { stopped: true };
     }
+    if ((got = queued())) return got;
     this.#setState('listening');
     return new Promise((resolve) => {
       /** @type {any} */
@@ -3611,7 +3616,7 @@ export class Agent {
         if (line && this.#speaking) return; // more began meanwhile: the card's hold stands
         if (this.state.name === 'hearing') this.#setState('listening');
         p.arm?.();
-        if (!this.#speaking) this.#noted(); // what came due while they spoke (#noted held it) is taken now, not when the wait runs out
+        this.#noted(); // what came due while they spoke (#noted held it) is taken now, not when the wait runs out
         return;
       }
       if (this.#pending === p && line) {
