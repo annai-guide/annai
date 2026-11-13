@@ -2578,9 +2578,10 @@ test('one Shiori, voice on, her reply only a wait: words typed while its microph
   mic.release();
   await soon(async () => (await ownWaits(k)).length === 1, 700 * k.agent.secondMs);
   assert.ok(Date.now() - t0 <= 1 * k.agent.secondMs, `answered ${(Date.now() - t0) / k.agent.secondMs} s after the microphone opened`);
-  assert.deepEqual(await ownWaits(k), ['The user wrote: Ready now'], 'the wait ends with their words');
+  // Since wait-takes: the wait says their line follows, and the turn takes it whole (its photos too), as a line written while she worked.
+  assert.deepEqual(await ownWaits(k), ['Not waiting for an answer: the user wrote while you were thinking; it follows.'], 'the wait ends: their words follow');
   await k.agent.idle();
-  assert.equal((await k.events(['msg.user'])).filter((/** @type {any} */ e) => e.data.answer).length, 1, 'written once, as the answer to the wait');
+  assert.equal((await k.events(['msg.user'])).filter((/** @type {any} */ e) => e.data.text === 'Ready now').length, 1, 'written once, after the wait');
 });
 
 test("with Koe on a chat model, voice on, its wait the only thing that opens the microphone: a reminder that comes while it opens ends Koe's wait within a second of the opening, and Koe says it once (backlog 23, fix round 2)", async (t) => {
@@ -3677,3 +3678,175 @@ test('with voice on, one Shiori, quiet hours: "Yes." 18 s after annai\'s card\'s
   await k.agent.idle();
   assert.deepEqual(await pgrants(k), [{ trip: TV, how: 'tap' }]);
 });
+
+// ---- A wait, her question or annai's card never takes the user's queued message apart (the wait-takes design check, Option A) ----
+// A message sent while she works (words with photos or handed files) used to be taken apart by her next wait, question or annai's card: only its words
+// were kept as the answer, and the photos and files were lost. Now each ends with "it follows", and the turn takes the whole message, as it takes any wake.
+
+const WROTE_FOLLOWS = 'Not waiting for an answer: the user wrote while you were thinking; it follows.';
+const ASKED_FOLLOWS = 'Your question is closed, its buttons too: the user wrote while you were thinking; it follows. Ask it again if it still matters.';
+const FLIGHT = { path: '/trip/files/flight.pdf', type: 'application/pdf', name: 'flight.pdf', new: true };
+/** A photo in the kit's trip, as the camera or the photo picker writes one. @param {any} k */
+const aPhoto = (k) => k.ws.write(k.trip, '/files/p.webp', utf8('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
+/** The user's bubbles, in order: their words, and what came with them. @param {any} k */
+const bubbles = async (k) => (await k.events(['msg.user'])).map((/** @type {any} */ e) => `${e.data.text}${e.data.images?.length ? ` +${e.data.images.length} photo` : ''}${e.data.handed?.length ? ` +${e.data.handed.length} file` : ''}${e.data.handover ? ` (${e.data.handover})` : ''}`);
+/** How many pictures each request of a model carried. @param {any[]} requests */
+const imagesIn = (requests) => requests.map((r) => JSON.stringify(r.messages).split('"type":"image"').length - 1);
+/** Her first model call, held until go(), so the user's message comes while it runs. */
+const firstHeld = () => {
+  /** @type {() => void} */
+  let go = () => {};
+  const held = new Promise((r) => { go = () => r(undefined); });
+  let n = 0;
+  return { go, get running() { return n > 0; }, hold: (/** @type {any} */ c) => (c.model.providerId === 'model-0' && !n++ ? held : undefined) };
+};
+/** The results of her calls of one tool, in order. @param {any} k @param {string} name */
+const resultsOf = async (k, name) => (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === name).map((/** @type {any} */ e) => e.data.content);
+
+for (const [name, input, said] of /** @type {[string, any, string][]} */ ([
+  ['wait', { seconds: 600 }, WROTE_FOLLOWS],
+  ['ask', { question: 'Book it?', options: ['Yes', 'No'] }, ASKED_FOLLOWS],
+])) {
+  for (const [what, o, bubble, check] of /** @type {[string, any, string, (k: any) => boolean][]} */ ([
+    ['words with a photo', { photos: [{ path: '/trip/files/p.webp' }] }, 'Look at this +1 photo', (k) => imagesIn(k.sent['model-0']).at(-1) === 1],
+    ['words with handed files', { handed: [FLIGHT], handover: 'h-1' }, 'Look at this +1 file (h-1)', (k) => /The user handed you a file/.test(JSON.stringify(k.sent['model-0'].at(-1).messages))],
+  ])) {
+    test(`one Shiori, voice off: ${what} sent while her call runs, her next step ${name}: it ends with "it follows", and the message reaches her whole, one bubble (wait-takes)`, async (t) => {
+      useClock(t);
+      const h = firstHeld();
+      const k = await gateKit([call(name, input), sleep, sleep], { hold: h.hold });
+      await aPhoto(k);
+      k.agent.send('Plan our day');
+      await until(() => h.running);
+      k.agent.send('Look at this', o);
+      h.go();
+      await k.agent.idle();
+      assert.deepEqual(await resultsOf(k, name), [said]);
+      assert.deepEqual(await bubbles(k), ['Plan our day', bubble], 'one bubble, with what came with the words');
+      assert.ok(check(k), 'her next request carries it');
+    });
+  }
+}
+
+test('one Shiori, voice on: words with a photo sent while her call runs, her next step her question aloud: it closes with "it follows", and the photo reaches her (wait-takes)', async (t) => {
+  useClock(t);
+  const h = firstHeld();
+  const k = await gateKit([call('ask', { question: 'Book it?', options: ['Yes', 'No'] }), sleep, sleep], { ...VOICE, hold: h.hold });
+  await aPhoto(k);
+  k.agent.send('Plan our day');
+  await until(() => h.running);
+  k.agent.send('Look at this', { photos: [{ path: '/trip/files/p.webp' }] });
+  h.go();
+  await k.agent.idle();
+  assert.deepEqual(await resultsOf(k, 'ask'), [ASKED_FOLLOWS]);
+  assert.deepEqual(await bubbles(k), ['Plan our day', 'Look at this +1 photo']);
+  assert.equal(imagesIn(k.sent['model-0']).at(-1), 1);
+});
+
+test("one Shiori, voice off: words with a photo sent while her call runs, her next step annai's card: it closes, what the user wrote follows whole (wait-takes)", async (t) => {
+  useClock(t);
+  const h = firstHeld();
+  const k = await gateKit([call('read_trip', { trip: TV }), sleep, sleep], { hold: h.hold });
+  await aPhoto(k);
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => h.running);
+  k.agent.send('Look at this', { photos: [{ path: '/trip/files/p.webp' }] });
+  h.go();
+  await k.agent.idle();
+  const [read] = await readResults(k);
+  assert.match(String(read), UNANSWERED_CARD);
+  assert.match(String(read), /What the user wrote follows\.$/);
+  assert.deepEqual(await pgrants(k), [], 'nothing granted');
+  assert.deepEqual(await bubbles(k), ['Where did we eat in Testville?', 'Look at this +1 photo']);
+  assert.equal(imagesIn(k.sent['model-0']).at(-1), 1);
+});
+
+test('one Shiori, voice on, her reply only a wait: words with a photo sent while its microphone opens reach her whole within a second of the opening (wait-takes)', async (t) => {
+  useClock(t);
+  const k = await gateKit(waitOnly, VOICE);
+  await aPhoto(k);
+  const mic = slowMic(k);
+  k.agent.send('Plan our day');
+  await until(() => mic.opening);
+  k.agent.send('Look at this', { photos: [{ path: '/trip/files/p.webp' }] });
+  await pause(3 * k.agent.secondMs);
+  const t0 = Date.now();
+  mic.release();
+  await soon(async () => (await ownWaits(k)).length === 1, 700 * k.agent.secondMs);
+  assert.ok(Date.now() - t0 <= 1 * k.agent.secondMs, `ended ${(Date.now() - t0) / k.agent.secondMs} s after the microphone opened`);
+  await k.agent.idle();
+  assert.deepEqual((await ownWaits(k)).slice(0, 1), [WROTE_FOLLOWS]);
+  assert.deepEqual((await bubbles(k)).slice(0, 2), ['Plan our day', 'Look at this +1 photo']);
+  assert.ok(imagesIn(k.sent['model-0']).slice(1).some((n) => n === 1), 'a request after the wait carries the photo');
+});
+
+for (const [what, photo] of /** @type {[string, boolean][]} */ ([['words', false], ['words with a photo', true]])) {
+  test(`one Shiori, voice on: ${what} sent while her call runs, her reply speak + wait 600: answered within a second, not when the wait runs out, one bubble (wait-takes)`, async (t) => {
+    useClock(t);
+    const h = firstHeld();
+    const script = [{ toolCalls: [{ name: 'speak', input: { text: 'Take your time.' } }, { name: 'wait', input: { seconds: 600 } }] }, say('A lighthouse.')];
+    const k = await gateKit(script, { ...VOICE, hold: h.hold });
+    await aPhoto(k);
+    k.agent.send('Plan our day');
+    await until(() => h.running);
+    k.agent.send('Look at this', photo ? { photos: [{ path: '/trip/files/p.webp' }] } : {});
+    const t0 = Date.now();
+    h.go();
+    await soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => e.data.text === 'A lighthouse.'), 700 * k.agent.secondMs);
+    const took = (Date.now() - t0) / k.agent.secondMs;
+    assert.ok(took <= 2, `answered ${took} s after her reply`);
+    await k.agent.idle();
+    const [spoke] = await resultsOf(k, 'speak');
+    assert.ok(String(spoke).endsWith(` ${WROTE_FOLLOWS}`), `speak's listening ends with "it follows": ${spoke}`);
+    assert.deepEqual(await ownWaits(k), [WROTE_FOLLOWS], 'and so does her wait');
+    assert.deepEqual(await bubbles(k), ['Plan our day', photo ? 'Look at this +1 photo' : 'Look at this'], 'one bubble');
+    if (photo) assert.equal(imagesIn(k.sent['model-0'])[1], 1, 'her second request carries the photo');
+  });
+}
+
+// Finding 2 of small-voice re-review 2: a line typed into Koe's wait is owed whatever the voice mode, so Koe is asked once more when it ends without answering.
+const KOE_WAITS = [
+  { toolCalls: [{ name: 'speak', input: { text: 'One moment.' } }, { name: 'tell_kokoro', input: { text: 'Where did we eat in Testville?' } }, { name: 'wait', input: { seconds: 600 } }] },
+  sleep,
+];
+for (const [what, o] of /** @type {[string, Record<string, any>][]} */ ([['voice off', {}], ['voice on', VOICE]])) {
+  test(`with Koe on a chat model, ${what}: a line typed into its wait is one it owes, and it is asked once more when its turn ends without answering (wait-takes, Finding 2)`, async (t) => {
+    useClock(t);
+    /** @type {() => void} */
+    let go = () => {};
+    const held = new Promise((r) => { go = () => r(undefined); });
+    const k = await gateKit([sleep], { koe: { type: KOE_WAITS }, ...o, hold: (/** @type {any} */ c) => (c.model.providerId === 'model-0' ? held : undefined) });
+    k.agent.send('Where did we eat in Testville?');
+    await until(() => k.agent.koe.waiting);
+    await pause(5 * k.agent.secondMs);
+    k.agent.send('And is it open now?');
+    await pause(30 * k.agent.secondMs);
+    const koe = k.sent['model-koe'] ?? [];
+    go();
+    await k.agent.idle();
+    assert.equal(koe.filter((/** @type {any} */ r) => /hasn't been answered/.test(JSON.stringify(r))).length, 1, 'asked once more');
+  });
+}
+
+for (const [what, o] of /** @type {[string, Record<string, any>][]} */ ([['voice off', {}], ['voice on', VOICE]])) {
+  test(`with Koe on a chat model, ${what}: words with a photo sent while Koe's call runs, before its wait: Kokoro gets the photo (wait-takes)`, async (t) => {
+    useClock(t);
+    /** @type {() => void} */
+    let go = () => {};
+    const held = new Promise((r) => { go = () => r(undefined); });
+    let n = 0;
+    const koe = { rules: [
+      { match: 'the user wrote', times: 1, reply: { toolCalls: [{ name: 'speak', input: { text: 'One moment.' } }, { name: 'tell_kokoro', input: { text: 'Where did we eat in Testville?' } }, { name: 'wait', input: { seconds: 120 } }] }, then: sleep },
+      { match: '.', reply: sleep },
+    ] };
+    const k = await gateKit([sleep, sleep, sleep], { koe: { type: koe }, ...o, hold: (/** @type {any} */ c) => (c.model.providerId === 'model-koe' && !n++ ? held : undefined) });
+    await aPhoto(k);
+    k.agent.send('Where did we eat in Testville?');
+    await until(() => n > 0);
+    k.agent.send('Look at this', { photos: [{ path: '/trip/files/p.webp' }] });
+    go();
+    await k.agent.idle();
+    assert.deepEqual(await bubbles(k), ['Where did we eat in Testville?', 'Look at this +1 photo'], 'one bubble, with the photo');
+    assert.ok(imagesIn(k.sent['model-0'] ?? []).some((x) => x === 1), `Kokoro gets the photo: ${JSON.stringify(imagesIn(k.sent['model-0'] ?? []))}`);
+  });
+}
