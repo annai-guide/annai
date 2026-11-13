@@ -3215,7 +3215,7 @@ test("with voice on, annai's card heard a noise inside its own 20 s; a tap after
 });
 
 // (The cut question opens no 20 s now, review Q4: this guard stays for the tap's microphone: a yes with no speech start of its own begins when it arrives.)
-test("with voice on, a tap cuts annai's card's question and its microphone is the tap's; a noise at 5 s, a second tap at 25 s and a yes with no speech start of its own at 27 s: it begins when it arrives, so no yes", async (t) => {
+test("with voice on, a tap cuts annai's card's question and its microphone is the tap's; a noise at 5 s, a second tap at 25 s and a yes with no speech start of its own at 27 s: it begins when it arrives, and no window is open after a cut, so no yes", async (t) => {
   useClock(t);
   const k = await gateKit(CARD, { voice: { ...DICTATION.voice, playMs: 100 } });
   k.agent.send('Where did we eat in Testville?');
