@@ -656,3 +656,21 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the rule that such a line is no answer covers Kokoro's notes; extending it to the user's typed lines touches the other wait path (the 8-second wait for an answer to a text turn).
 - **Revisit when:** it is seen in a real run.
 - **Approved:** 2026-11-12, the user picked "Known limitation (Recommended)".
+
+### A line whose quick verdict comes after her listening wait began waits out that wait
+- **Kind:** deferred.
+- **What the user sees:** voice on with the quick gate set. The user speaks while Shiori thinks, with the microphone left open; her next step is a wait that starts listening before the gate's verdict on their words comes back. The words then wait out the whole wait (up to 10 minutes, the dock saying "Listening") before she answers them. Rare: the wait must start within the gate's own time, about a second. (Measured on the test stand-in, 2026-11-13: ended 599 s after a "for her" verdict.)
+- **Why:** `#route` queues a line whose verdict lands with no listening wait yet, and nothing hands a queued line to a wait that is already listening.
+- **Revisit when:** the next version: after the gate's verdict, a line for her is handed to a wait that now listens (or ends it with "it follows"), limited to a wait that still listens, so words cut short by voice going off keep waiting as they do (the wait-takes design check's prototype; 3 tests pin that).
+
+### A photo alone, sent while she waits for an answer, shows twice
+- **Kind:** deferred.
+- **What the user sees:** a message with only a photo (or only files), sent while Shiori's wait, her question or annai's card waits, shows as two "(a photo)" bubbles: the placeholder answers what waited, and the photo arrives again as its own message. Nothing is lost.
+- **Why:** `send()` resolves what waits with the message's text (here the placeholder) and also queues its photos and files as their own wake.
+- **Revisit when:** the next version: `send()` ends what waits with "it follows" and queues the whole message once, as the wait-takes change does for a message sent just before (about 2 lines; agent-loop.test.js pins the two bubbles today).
+
+### With Anthropic, every photo first tries an upload the browser blocks
+- **Kind:** deferred.
+- **What the user sees:** with an Anthropic model, each photo sent to Shiori first tries the provider's file upload, which the browser blocks; the photo then goes in the request itself and she sees it. The cost is one failed request (and its wait) per photo. Seen in every photo run of the wait-takes real check (2026-11-13).
+- **Why:** Anthropic's `/v1/files` answers the browser's CORS check with 400 and no `Access-Control-Allow-Origin` (checked 2026-11-13; `/v1/messages` answers 200 with `*`), so an upload from a browser page can't work today.
+- **Revisit when:** the next version: the Anthropic plugin (`plugins-official/anthropic-messages`) stops trying the upload and sends photos in the request; check the preflight again first, in case Anthropic opens it.
