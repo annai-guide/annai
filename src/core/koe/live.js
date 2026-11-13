@@ -863,7 +863,9 @@ export class LiveKoe {
     // The request copies Kokoro gets, as its transcript reads them.
     const { images } = await resolveEvent(this.c.store, e);
     for (const im of takes ? images : []) if (im.type === 'image' && im.data) this.#send((s) => s.image({ mediaType: im.mediaType, data: im.data }));
-    this.#text(koeLine(e.data, String(text ?? '').trim(), { unseen: !takes }));
+    // A line the user sends (typed, a tapped choice, a hand-over) cuts in on the note in flight as their spoken start does (#cutIn).
+    const cut = this.#owed.sent.length ? this.#cutIn() : {};
+    this.#text(koeLine(e.data, String(text ?? '').trim(), { unseen: !takes }), 'playedMs' in cut ? cut : undefined);
     return true;
   }
 
@@ -904,6 +906,8 @@ export class LiveKoe {
         else this.#notes = this.#notes.filter((x) => x !== n);
       });
     }
+    // Kokoro's immediate note replaces the one in flight (the user's pick, 2026-11-12): it is neither finished nor shown, as tell_koe tells Kokoro.
+    this.#passed();
     return this.#now(note, 'note', owed);
   }
 
@@ -926,7 +930,9 @@ export class LiveKoe {
     }
     if (!ok) return false;
     this.#input?.cut('voice'); // the user's turn going on ends here
-    const cut = this.#cut();
+    // annai's own urgent reminder cuts in on the note in flight as the user does, before it goes in itself (#went): a silent card where she
+    // hadn't said it whole. (Kokoro's own immediate note replaced it already: note.)
+    const cut = told ? this.#cutIn() : this.#cut();
     if (owed) this.#went([owed]);
     this.#text(text, cut, false, told ? [text] : []);
     // A newer urgent note came meanwhile: its own mark runs once it goes in, after this one.
@@ -962,6 +968,20 @@ export class LiveKoe {
     clearTimeout(mark.timer);
     this.#urgent = null;
     this.#changed();
+  }
+
+  /**
+   * Something cuts in on her (the user's turn begins, by voice or a line they send; annai's urgent reminder): the note in flight was what she was
+   * about to say, or saying, so it is passed on if her turn was heard whole (#passes), else shown at once, silently, as at a tap (interrupt); her
+   * voice stops, and the provider cuts its turn, one with no word yet too, so it never starts over what comes. @param {boolean} [begins] the
+   * user's spoken start (#whole) @returns {{ playedMs?: number }}
+   */
+  #cutIn(begins = false) {
+    if (this.#owed.sent.length) {
+      if (!this.#passes(this.#sounding, this.#whole(this.#sounding, begins))) this.c.left?.(this.#owed.sent.splice(0), true);
+      this.#passed();
+    }
+    return this.#sounding || this.#t || this.#pending || this.#queue.length ? this.#cut() : {};
   }
 
   /** Kokoro's notes for the user went in: Koe's next turns are watched for them. A trigger's cues are let go: a model has them, as classic voice's. @param {Wake[]} notes */
@@ -1150,14 +1170,8 @@ export class LiveKoe {
       this.#answer(undefined); // the user talks again: no answer is waited for while they do
       this.#turnAt = Date.now();
       this.#afterCap = this.#endedBy === 'cap' && Date.now() - this.#endedAt < AFTER_CAP_MS;
-      // The user's turn begins: notes gone in and not passed on were what she was about to say, or saying, so they are shown, silently, as at a tap
-      // (interrupt), and nothing is asked: anything sent now gets a whole answer beside theirs. Her turn that passes them on (#passes) did.
-      if (this.#owed.sent.length) {
-        if (!this.#passes(this.#sounding, this.#whole(this.#sounding, true))) this.c.left?.(this.#owed.sent.splice(0), true);
-        this.#passed();
-      }
-      // The user cut in: her voice stops now, and the provider cuts its turn; one with no word yet too, so it never starts over them.
-      if (this.#sounding || this.#t || this.#pending || this.#queue.length) cut = this.#cut();
+      // The user's turn begins: it cuts in (#cutIn), and nothing is asked: anything sent now gets a whole answer beside theirs.
+      cut = this.#cutIn(true);
       this.#flushHeard(false);
       const before = this.#hear;
       this.#hear = hearing();
