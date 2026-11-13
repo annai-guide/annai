@@ -505,6 +505,18 @@ export class Live {
   watchText(w) {
     const type = this.types().get(w.when.type);
     const parts = [/* en */ `Set ${w.id}: ${this.#describe(type, w)}${w.urgent ? /* en */ ', urgent' : ''}${w.repeat ? /* en */ ', every time' : ''}${w.expires ? `, until ${w.expires}` : ''}.`];
+    if (w.when.type === 'time') {
+      // Today's offset written for a date after the phone's zone changes its clocks: that zone's own time then, so she sees her mistake. Keyed on today's
+      // offset, as a time in a trip's other zone rightly has another.
+      const at = String(w.when.at);
+      const zone = this.timeZone();
+      const written = /z$/i.test(at) ? '+00:00' : at.slice(-6);
+      const there = isoInZone(Date.parse(at), zone);
+      const off = there.slice(-6);
+      if (off !== written && isoInZone(this.clock.now(), zone).endsWith(written)) {
+        parts.push(/* en */ `${zone}, the phone's zone, changes its clocks before then: on that date it is ${off}, not the ${written} you wrote, so this comes at ${dueWords(there)} there. If that isn't what you meant, cancel it and set it again with ${off}.`);
+      }
+    }
     if (type?.gps && !this.on) parts.push(/* en */ 'GPS is off, so it waits until the user turns it on.');
     const here = this.nowInfo();
     parts.push(/* en */ `Now: ${here.activity}; ${here.place}.`);
