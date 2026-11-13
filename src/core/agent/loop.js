@@ -117,7 +117,7 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  * @property {() => Promise<boolean>} [restart] whether it takes up what a conversation owes as it opens
  * @property {(t: TurnEnd) => void} [ended] @property {() => boolean} [hushed]  another voice plays (a live session): annai's reminders are shown, not said
  * @property {(notes: Wake[]) => Promise<void>} [unsaid]  Kokoro's notes for the user that its turn never passed on (Koe's): annai shows what it can of them
- * @property {(notes: Wake[]) => void} [left]  those a turn Start fresh stopped still owed: shown above its divider
+ * @property {(notes: Wake[], here?: boolean) => void} [left]  those a turn Start fresh stopped still owed: shown above its divider; here: those Koe says it already told, shown in the conversation open
  * @property {(wakes: Wake[]) => number} [hold]  how long a turn about to start waits for the user, in ms (Infinity: until their input changes); 0: go
  * @property {() => boolean} [paused]  false: a turn of this half that an open cut is said by the other half (the paused line)
  * @property {(wakeId: string) => void} [joined]  wakes joined its turn going on (the user's words, a choice, a photo, the other half, a trigger)
@@ -2426,8 +2426,13 @@ export class Agent {
       if (asleep) this.#facts.slept = true;
       if (asleep && calls.some((/** @type {any} */ c) => ['speak', 'show', 'ask'].includes(c.name))) this.#facts.closed = true; // sleep alone, or with a note told already, leaves the window open
       if (this.#reached !== before) this.#reachedTo = { scope: this.scope, to: context.to };
-      // Koe has told the user what Kokoro's notes say already: they are settled, and annai doesn't show them.
-      if (ordered.some((/** @type {any} */ c) => c.name === 'already_told')) notes = [];
+      // Koe says it has told the user what Kokoro's notes say already: annai doesn't say them again, but shows them on a silent card, as for a live Koe
+      // (the user's pick, "Show it silently"): her word alone settles nothing. Those she reached the user after are settled (settle).
+      if (ordered.some((/** @type {any} */ c) => c.name === 'already_told')) {
+        settle();
+        if (notes.length) this.#half.left?.(notes, true);
+        notes = [];
+      }
       // The user wrote inside Koe's wait: its answer is owed, whatever Koe asked of Kokoro meanwhile.
       if (this.#facts.wrote) {
         this.#facts.wrote = false;
