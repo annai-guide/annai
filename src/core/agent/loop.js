@@ -1087,7 +1087,8 @@ export class Agent {
         };
         // The one place its listening opens (the user's pick, 2026-11-12, "Plain case only"): the question said aloud to its end, voice still on, and nothing
         // said or shown since it began. Unsaid (voice off, now or while it was said, or its sound failed: nobody heard it to its end) or passed, the card
-        // waits for its buttons, and nothing opens its listening later. A question a tap cut (spoken.cut) was not said to its end either.
+        // waits for its buttons, and nothing opens its listening later. A question any stop cut (spoken.cut: a tap, Stop, voice going off, the device
+        // lost, a live session or an urgent note taking over, another conversation) was not said to its end either.
         if (!aloud || !spoken || spoken.failed || spoken.cut || !this.voice?.on || ask.passed) return byHand();
         ask.open = true;
         ask.from = Date.now();
