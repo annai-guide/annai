@@ -238,7 +238,7 @@ export class LiveKoe {
   /** @type {any} */
   #quiet = null;
   #quietMs = 30_000;
-  /** A session a trigger or a note opened listens only this long after it speaks, as Shiori's speak does, until the user taps or types, or she answers what she heard. */
+  /** A session a trigger or a note opened listens only this long after it speaks, until the user taps or types, or she answers what she heard. */
   #answerMs = LIVE_ANSWER_S * 1000;
   /** That window, in seconds. */
   answerSeconds = LIVE_ANSWER_S;
