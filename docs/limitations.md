@@ -597,7 +597,7 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### Kokoro's immediate note replaces the note she was saying
 - **Kind:** known limitation.
-- **What the user sees:** in live voice, Kokoro has told Shiori one thing, and before she has finished saying it (or begun to) Kokoro sends something urgent (an immediate note), which cuts her off. They hear the urgent line at once; the rest of the first, or all of it if she had not begun, is neither finished nor shown. When Kokoro forgets to put into the urgent line something of the first that still mattered, that part is lost. (Only Kokoro's own note is replaced: a reminder of annai's that she was saying is shown on a silent card, as for annai's own urgent reminder.)
+- **What the user sees:** in live voice, Kokoro has told Shiori one thing, and before she has finished saying it (or begun to) Kokoro sends something urgent (an immediate note), which cuts her off. They hear the urgent line at once; the rest of the first, or all of it if she had not begun, is neither finished nor shown, and neither is any other note of Kokoro's still waiting to be said (a real run, 2026-11-12: a waiting plan note said after Kokoro's own correction gave the user the old time again). When Kokoro forgets to put into the urgent line something of the first that still mattered, that part is lost. (Only Kokoro's own note is replaced: a reminder of annai's that she was saying is shown on a silent card, as for annai's own urgent reminder.)
 - **Why:** an immediate note is most often a correction of the very note she was saying (`tell_koe`'s description keeps it for "a wrong claim"), so a card for the first would most often show the claim being corrected. `tell_koe`'s description tells Kokoro that its immediate note cuts off any earlier note of its own that Koe has not finished saying, begun or not, so it puts in it whatever still matters. Kokoro never saw annai's reminder, so it could not carry that.
 - **Revisit when:** a real run shows Kokoro sending immediate with a note in flight and leaving out something that mattered (the next real run checks the sentence, as it is model-facing).
 - **Approved:** 2026-11-12, the user picked "Urgent replaces it (Recommended)".
@@ -714,12 +714,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the plugin passes the browser's `speechstart` on as a line's start. By the source it comes once per recognition run on both engines (on Chromium any sound can be the one), and neither engine sends `speechend` after a noise, so annai can't give a dictation line a start of its own from those events. `#heard` therefore times a dictation line by its arrival: the safe side at the window's end (a later arrival can only move a line out), not at its start (it can move one in, the Koe case above). Fixing it needs the change below in the plugin.
 - **Revisit when:** the next version, in `src/plugins/voice-browser`: a line starts at the first result event for its own result index (interim results are on), and the plugin stops using `speechstart`; `#heard` then trusts a dictation line's start again. A phone check of Web Speech's events comes first, with the Trace on: whether a cough gives a start and nothing after, whether each sentence gets interim results, and how long after a word its final words arrive. Ending a start at `speechend` won't work: neither engine sends it after a noise.
 
-### A reply held back on the phone's speaker is written whole at a tap, never heard, and its note is said again
-- **Kind:** deferred.
-- **What the user sees:** in live voice on the phone's own speaker (half-duplex), the user's turn ends and her answer arrives inside the 1.2 seconds annai holds her voice back before speaking; the user taps "Thinking · tap to stop" in that moment. Her answer is written into the conversation whole, with no ✂, though none of it was played, and the note it carried is kept for the next session, so she says it again after the user's next turn: a line on screen she never said, then the note heard once more. When the user starts speaking instead of tapping, the held answer is let go, so the two paths disagree. (From reading the code, the second opinion of 2026-11-12's final review; the version before this one did the same.)
-- **Why:** a tap closes the session, and its close writes a turn that waited as her answer, whole if the provider had ended it (`whole: t.done`), which spec §10.8 sets for a drop; the user's start erases a held turn instead.
-- **Revisit when:** the next version: a tap treats a held turn as the user's start does, or both write it the same way, shown and marked as not said.
-
 ### A connection that drops for good while she says a note shows the note and lets her say it too
 - **Kind:** deferred.
 - **What the user sees:** in live voice, the session closes for good (a refused key, a model not found, or a fourth drop with no reply between) while she is saying a reply that carries a note, after it is all made and played past her last loud sound. annai hands the note on (a card, or Koe · Chat saying it) and the reply's audio says it too: heard and shown twice. Rare. (From reading the code, the second opinion of 2026-11-12's final review; the version before this one did the same in that order.)
@@ -728,14 +722,35 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### A note she says she already told is shown on a card too
 - **Kind:** known limitation.
-- **What the user sees:** in live voice, Kokoro's note says something Shiori has already told them, and she rightly answers it with nothing but her `already_told` (or the session was made again in that turn, and the note went in again): annai shows the note on a silent card, so they see what they heard. It is never said again by annai. Not seen as a repeat for real; the case that made it: with three notes at once, she told the first, then called `already_told` for the second, which she had not said, and it was lost (1 of 63 notes, 2026-11-12).
+- **What the user sees:** in live voice, or with Koe on a chat model, Kokoro's note says something Shiori has already told them, and she rightly answers it with nothing but her `already_told` (or the session was made again in that turn, and the note went in again): annai shows the note on a silent card, so they see what they heard. It is never said again by annai. Not seen as a repeat for real; the case that made it: with three notes at once, she told the first, then called `already_told` for the second, which she had not said, and it was lost (1 of 63 notes, 2026-11-12).
 - **Why:** her word that the user has it doesn't say which note she means, and annai can't tell: a card too many costs the user a glance, a note lost costs them what Kokoro found. (A note she had said nothing about and called already_told for is what the version before lost.)
 - **Revisit when:** the cards for told notes bother the user, or a provider marks which note a reply answers.
 - **Approved:** 2026-11-12, the user picked "Show it silently (Recommended)".
 
 ### A note she answers with an instruction word is asked for once more, after the user heard the word
 - **Kind:** known limitation.
-- **What the user sees:** in live voice, Gemini sometimes says one of annai's own words to it aloud as its whole answer to a note ("silent" was seen: 1 in 63 notes, 2026-11-12). The user hears the word; annai takes the line as no answer, asks her once more, and she says the note (up to 8 seconds later). If she answers the ask the same way, annai shows the note and says it in its own voice.
+- **What the user sees:** in live voice, Gemini sometimes says one of annai's own words to it aloud as its whole answer to a note ("silent" was seen: 1 in 63 notes, 2026-11-12). The user hears the word; annai takes the line as no answer, asks her once more, and she says the note (up to 8 seconds later). If she answers the ask the same way, annai shows the note and says it in its own voice. The same holds for a whole line that is only a bracketed stage direction such as "(No speech)" (1 of 563 real lines; the main session's call, not yet confirmed by the user).
 - **Why:** a word spoken can't be taken back, and what counts is what she said: annai catches only a whole line that is exactly one of its own words to her (the tools she calls without speaking, and `silent`), a strict match, so a sentence that holds one is an answer. The list is built from what annai's instructions and tool answers tell her.
 - **Revisit when:** a real run shows another stray word as her whole line, which then joins the list.
 - **Approved:** 2026-11-12, the user picked "Count it as no answer (Recommended)".
+
+### After a tap, the next note waits 4 to 8 seconds, not about 2
+- **Kind:** known limitation.
+- **What the user sees:** in live voice, the user taps to stop her, and Kokoro's next note comes 0.5 seconds later. It is said 4 to 8 seconds after the tap, not at the 2 seconds the hold is meant to give (23 of 23 such runs, real Gemini, 2026-11-12). If the user speaks first, it comes 1.5 to 3.4 seconds after they finish, after her answer to them. Nothing is lost: all 23 were said once.
+- **Why:** the provider keeps making the reply the tap stopped, with no one hearing it, for about 7 seconds (median 7.2 s), and annai holds the note until that reply ends, so that one input is in flight at a time. Ending it at the tap means closing the live session and opening a new one at every tap.
+- **Revisit when:** the wait bothers the user on a drive.
+- **Approved:** 2026-11-13, the user picked "Known limitation (Recommended)".
+
+### With Koe on a chat model, a note can be lost when Koe says one note and calls already_told for another
+- **Kind:** known limitation.
+- **What the user sees:** Kokoro has sent two notes for the user in one turn of Koe's, and Koe says the first, then calls `already_told` for the second, which it did not say. The second is lost: no card, not said. Traced in the code, never seen in a run.
+- **Why:** the chat Koe takes all its notes in one call, and `settle()` (`loop.js`) settles every note of the turn as soon as Koe has reached the user at all, so the `already_told` finds nothing left to show. Changing that changes how the chat Koe takes its notes.
+- **Revisit when:** it is seen in a real run or on a drive.
+- **Approved:** 2026-11-13, the user picked "Known limitation (Recommended)".
+
+### Live Koe's whole reply to a typed line that is only one of annai's instruction words makes the user type it again
+- **Kind:** known limitation.
+- **What the user sees:** in live voice, the user types a line and Koe's whole reply is one of annai's own words to it ("silent", say) or a bracketed stage direction ("(No speech)"). annai takes that as her answer, does not send the line again, and the user has no answer to it: they type it again. Not seen: 0 of 563 real lines.
+- **Why:** the rule that such a line is no answer covers Kokoro's notes; extending it to the user's typed lines touches the other wait path (the 8-second wait for an answer to a text turn).
+- **Revisit when:** it is seen in a real run.
+- **Approved:** 2026-11-13, the user picked "Known limitation (Recommended)".
