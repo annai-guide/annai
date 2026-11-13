@@ -203,11 +203,13 @@ const UNSENT = /* en */ 'Not sent to Koe: a call before it in this reply failed 
 export const UNANSWERED = /* en */ "The user hasn't been answered. Only speak, show and ask reach them; anything else you write is your private notes, which they never see.";
 /** The words a Try again wakes her with. */
 const AGAIN = /* en */ 'the user tapped Try again: answer their last message';
-/** Koe's wait ended by what came due (#cameDue): a reminder, which it says; an alert, which it may let pass. Kokoro's note still comes. */
+/** A wait ended by what came due (#cameDue): a reminder, which she says; an alert, which she may let pass. Then what is still to come (STILL). */
 const DUE = Object.freeze({
-  reminder: /* en */ "A reminder came due: say it (below). Kokoro's note is still to come.",
-  cue: /* en */ "An alert came (below): say it if it helps them now, or let it pass. Kokoro's note is still to come.",
+  reminder: /* en */ 'A reminder came due: say it (below).',
+  cue: /* en */ 'An alert came (below): say it if it helps them now, or let it pass.',
 });
+/** What that wait still waits for: Koe's, Kokoro's note; one Shiori's, or Kokoro's with Koe down, the user. */
+const STILL = Object.freeze({ koe: /* en */ "Kokoro's note is still to come.", user: /* en */ "The user hasn't answered yet." });
 /** Pages as words: "page 2", "pages 1 and 3", "pages 1, 2 and 4". @param {number[]} n */
 const pagesWords = (n) => (n.length === 1 ? `page ${n[0]}` : `pages ${n.slice(0, -1).join(', ')} and ${n.at(-1)}`);
 /**
@@ -957,14 +959,15 @@ export class Agent {
   }
 
   /**
-   * What queued ends a wait: the other half's note; Koe's wait tool, what came due too (a reminder, a place alert), said on time: with Koe set up, what fires
-   * while annai's card listens is said then, and ends that listening (the user's pick, 2026-11-12). @param {boolean} tool @returns {Got | null}
+   * What queued ends a wait: the other half's note; the wait tool of the half that speaks now (Koe on a chat model, one Shiori, Kokoro while Koe is down),
+   * what came due too (a reminder, a place alert), said on time: with Koe set up, what fires while annai's card listens is said then, and ends that
+   * listening (the user's pick, 2026-11-12). @param {boolean} tool @returns {Got | null}
    */
   #cameDue(tool) {
     const mine = this.#queue.filter((w) => w.scope === this.scope);
     const note = mine.find((w) => w.kind === 'note');
     if (note) return { note: note.from ?? 'kokoro' };
-    const due = tool && this.#half.name === 'koe' ? mine.flatMap((w) => w.fallbacks ?? []) : [];
+    const due = tool && this.#half.voice() ? mine.flatMap((w) => w.fallbacks ?? []) : [];
     return due.length ? { due: due.some((r) => !r.cue) ? 'reminder' : 'cue' } : null;
   }
 
@@ -3435,7 +3438,7 @@ export class Agent {
     if (got.deaf) return `${lead}annai couldn't listen: ${got.deaf} The user may type.`;
     /* en */
     if (got.note) return `${lead}${got.note === 'koe' ? 'Koe' : 'Kokoro'}: see the note below.`;
-    if (got.due) return `${lead}${DUE[got.due]}`;
+    if (got.due) return `${lead}${DUE[got.due]} ${this.#half.name === 'koe' ? STILL.koe : STILL.user}`;
     /* en */
     if (got.earlier) return `${lead}Not listening for an answer: the user spoke while you were thinking; it follows.`;
     return `${lead}${silence}`;
