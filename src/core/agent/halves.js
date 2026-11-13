@@ -295,6 +295,7 @@ export class Halves {
         },
         ended: (t) => this.#kokoroEnded(t),
         hushed: () => this.live.voiced,
+        sounding: () => this.live.sounding,
         hold: (wakes) => this.#hold(wakes),
       },
     });
@@ -309,6 +310,7 @@ export class Halves {
           if (line) this.kokoro.confirmHeard(line);
         },
         card: (h) => this.kokoro.cardTakes(h),
+        cardUntil: () => this.kokoro.cardUntil(),
         system: (s) => koeSystem(s),
         tail: (now) => this.#koeTail(now),
         sendRule: () => this.#koeRule(),
@@ -872,7 +874,10 @@ export class Halves {
    */
   tap() {
     if (this.#tapWorking) return 'listening';
+    const at = Date.now();
     const did = this.#way || !this.voice?.platform ? this.#tapNow() : 'typing';
+    // A tap that listens starts the 20 s of annai's card whose question wasn't said (Kokoro's, whichever half's microphone hears it); one that stopped a listening doesn't.
+    if (did !== 'stopped') this.kokoro.tapCard(at);
     if (did !== 'typing' || !this.voice?.platform) return did;
     this.#tapHeld = true;
     this.#tapStarting++;
