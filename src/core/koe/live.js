@@ -22,8 +22,8 @@ import { t } from '../l10n.js';
  *   tools: boolean, cut: boolean, whole: boolean, logged: boolean, goesOn: boolean, calls: number, done: boolean, loud: import('./loud.js').Loud, made?: boolean, playedMs?: number, stalled?: boolean, audible?: boolean, endBy?: any }} Turn  one of Koe's; held: its sound until a real word;
  *   stalled: its sound stopped coming out, so its stream was let go, and its words are said by the speech voice;
  *   goesOn: it called a tool it speaks after; calls: its tool calls not answered yet; done: the provider ended it; made: the provider said all of it is made
- *   (its `made`), so no more of it comes, unless it goesOn (a call answered without `silent` brings more); loud: where its last loud frame of sound ends (#whole);
- *   playedMs: how much was heard, once its stream was stopped (#heardMs); whole: cut, but all of it was heard (#whole) or written; audible: its sound has started playing, so its words may show; endBy: the timer that ends it if no turnComplete comes (#endLater);
+ *   (its `made`), so no more of it comes (what a call answered without `silent` brings is the next turn, #endNow); loud: where its last loud frame of sound ends (#whole);
+ *   playedMs: how much was heard, once its stream was stopped (#heardMs); whole: cut, but all of it was heard (#whole); audible: its sound has started playing, so its words may show; endBy: the timer that ends it if no turnComplete comes (#endLater);
  *   soundAt: when its sound began; alone: a call alone, answered silently, which #tool let go of
  * @typedef {{ sent: number, spoke: boolean, timer: any, idle?: boolean }} Mark  an urgent note's (LiveKoe's #urgent); idle: what waited, going in with nothing before it, so its turn is the next to end
  * @typedef {{ text: string, told?: boolean }} Waiting  what waits to go in (LiveKoe's #notes); told: annai's own line, which the log holds none of
@@ -829,7 +829,7 @@ export class LiveKoe {
     if (!t && !this.#due?.more) return; // in the wait for what she says after a call, nothing plays: the notes in flight are shown
     const playedMs = t ? this.#stop(t) : undefined;
     const behind = this.#unwait();
-    for (const w of behind) Object.assign(w, { cut: true, whole: w.done });
+    for (const w of behind) w.cut = true;
     const write = () => { for (const w of behind) this.#said(w, null); };
     if (t?.stream) void t.stream.done.then(write, write); // after hers, as the lines read in order
     else write();
@@ -1413,6 +1413,7 @@ export class LiveKoe {
     const t = (this.#trail = this.#t);
     this.#t = null;
     this.#tries = 0;
+    if (t) t.done = true; // before its line is written below: the provider ended it
     const flight = this.#owed.sent[0]; // writing her line below may let the next note in (#said, #idle): it isn't settled here
     if (t?.stream) this.#ending(t);
     else if (t?.spoken && !this.#waits(t)) this.#said(t, null);
@@ -1423,7 +1424,6 @@ export class LiveKoe {
     else if (this.#urgent?.idle && !this.#urgent.spoke) this.#unmark();
     const h = this.#hear;
     this.#answered(dismissed, Boolean(t?.spoken));
-    if (t) t.done = true;
     if (!t?.calls && this.#owed.sent[0] === flight) this.#settle(t); // else once its calls are answered: a refused show passes nothing on
     this.#heardOut();
     this.#idle();
@@ -1485,7 +1485,7 @@ export class LiveKoe {
 
   /**
    * Whether her turn, cut now, was heard whole (spec §10.8, What is logged): the one place that decides it. Its sound begun (no sound yet is not
-   * heard), and all of it made: the provider said so (made, and no call it speaks after: more of that turn comes once annai answers one) or ended
+   * heard), and all of it made: the provider said so (made: what she says after a call she speaks after is a turn of its own, #endNow) or ended
    * the turn, so that nothing more of it comes and a pause in her sound while the provider still makes the rest is a cut; and played past the end
    * of her last loud frame (LOUD_DBFS), so the quiet tail her player still holds after her last word is no sound she has left to say, while a turn
    * cut with her sound still to play stays one. It stops her sound to know how much was played (#heardMs): every caller cuts her next. With a
@@ -1496,7 +1496,7 @@ export class LiveKoe {
   #whole(t, begins = false) {
     if (!t?.stream || !t.bytes) return false;
     if (!this.#makes) return !begins && !t.stream.queued();
-    return Boolean((t.made && !t.goesOn) || t.done) && this.#heardMs(t) >= loudMs(t.loud, this.#rate);
+    return Boolean(t.made || t.done) && this.#heardMs(t) >= loudMs(t.loud, this.#rate);
   }
 
   /** How much of her sound was heard: her stream stops (what the cut that follows does too), and what it says is kept. @param {Turn} t @returns {number} ms */
@@ -1525,7 +1525,6 @@ export class LiveKoe {
     t.cut = true;
     if (t.stream) return this.#heardMs(t); // its done writes it
     if (this.#waits(t)) {
-      t.whole = t.done;
       this.#said(t, shown ? null : 0);
       return 0;
     }
@@ -1539,7 +1538,7 @@ export class LiveKoe {
     let playedMs = waiting.length ? 0 : undefined;
     for (const t of [this.#t, this.#sounding]) if (t && !waiting.includes(t)) playedMs = this.#stop(t) ?? playedMs;
     for (const t of waiting) {
-      Object.assign(t, { cut: true, whole: t.done });
+      t.cut = true;
       this.#said(t, shown ? null : 0);
     }
     return playedMs === undefined ? {} : { playedMs };
@@ -1565,13 +1564,13 @@ export class LiveKoe {
     let text = cleanSaid(t.said);
     // A turn heard whole is written whole (it has a stream: one that waited and was never heard isn't): her sound is rarely a whole number of ms,
     // so its share would cut the last word of a line heard in full.
-    const share = !t.cut || (t.whole && t.stream) || playedMs === null ? 1 : Math.min(1, playedMs / Math.max(1, t.bytes / (this.#rate / 500))); // 2 bytes a sample
+    const share = !t.cut || t.whole || playedMs === null ? 1 : Math.min(1, playedMs / Math.max(1, t.bytes / (this.#rate / 500))); // 2 bytes a sample
     if (share < 1) {
       const end = Math.round(text.length * share);
       const space = text.lastIndexOf(' ', end);
       text = text.slice(0, space > 0 ? space : end).trim();
     }
-    const cut = t.cut && !t.whole;
+    const cut = t.cut && !(t.stream ? t.whole : t.done); // one never heard: its words are whole once the provider ended it
     if (text && cut) text += '✂';
     if (text) this.#poke(); // she has finished saying it: the quiet spell runs from here
     // Notes pass on when her words for them were heard: the provider's burst, or sound begun, proves nothing, as sound at the microphone may cut her at once.
