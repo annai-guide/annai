@@ -982,6 +982,56 @@ test("Start fresh in the first moments of Koe's turn for Kokoro's note, before i
   assert.deepEqual(await reminders(k), [['reminder', "Shiori's answer", HIGHWAY], ['compaction', 'fresh', '']]);
 });
 
+// Opening another conversation while Koe · Classic still owes Kokoro's words for the user, or a card of hers it hasn't passed on (in its running call,
+// or queued): they are shown in the conversation left, as Start fresh shows them, never lost (backlog 22). Coming back, Koe may take its cut turn up
+// and say them again: a double over a loss (the backlog triage, 2026-11-13), so at most shown once and said once more.
+const FUEL = 'The fuel station ahead is open until ten tonight.';
+const FUEL_CARD = { title: 'Fuel', text: 'Open until ten tonight.' };
+/** Kokoro's note as the channel takes it: her words for the user, or a card of hers Koe is to show. */
+const HELD = {
+  words: ['tool', 'Tell the user the fuel station ahead is open until ten tonight.', undefined, FUEL],
+  card: ['gated:show', 'Kokoro wants to show: Fuel: Open until ten tonight.', { name: 'show', input: { card: FUEL_CARD } }, ''],
+};
+// when: the note in Koe's running call (Kokoro done with Koe's question, or still at it), or queued; again: what coming back says once more. With
+// Kokoro done, Koe's cut turn is taken up on coming back and it says the words again (the double the triage accepted); otherwise nothing more.
+for (const [kind, when, again] of /** @type {['words' | 'card', string, number][]} */ ([
+  ['words', 'in its call, Kokoro done', 1], ['words', 'in its call, Kokoro still at work', 0], ['card', 'in its call, Kokoro done', 0], ['words', 'queued', 0],
+])) {
+  test(`opening another conversation while Koe owes Kokoro's ${kind} (${when}): shown in the conversation left, nothing in the one opened; coming back, said ${again ? 'once more' : 'no more'} (backlog 22)`, async (t) => {
+    useClock(t);
+    /** @type {() => void} */
+    let release = () => {};
+    const go = new Promise((r) => { release = () => r(undefined); });
+    let koeCalls = 0;
+    const KOE = { rules: [
+      { match: 'the user wrote', reply: { toolCalls: [{ name: 'speak', input: { text: 'Let me look.' } }, { name: 'tell_kokoro', input: { text: 'Where is fuel?' } }, { name: 'wait', input: { seconds: 60 } }] } },
+      { match: '.', reply: kind === 'card' ? calls(['show', { card: FUEL_CARD }]) : calls(['speak', { text: FUEL }]) },
+    ] };
+    // Koe's call that holds the note is held while the other conversation opens (in its call); or Koe's turn hasn't read it yet (queued).
+    const k = await agentKit([[sleep, sleep, sleep]], { koe: { type: KOE }, hold: async (/** @type {any} */ c) => { if (c.model.providerId === 'model-koe' && ++koeCalls === 2) await go; } });
+    k.agent.send('Where is fuel?');
+    await until(() => k.agent.koe.waiting);
+    const [why, text, call, forUser] = HELD[kind];
+    if (when === 'queued') k.agent.koe.interrupt(); // its wait stopped: the note comes to a Koe with no turn, and waits in its queue
+    await k.agent.channel.send('kokoro', text, 'append', why, undefined, call, false, forUser);
+    if (when !== 'queued') await until(() => koeCalls === 2 && (when.endsWith('still at work') || !k.agent.kokoro.busy));
+    const left = k.trip;
+    const other = await createTrip(k.ws, { title: 'Carmel' });
+    await k.agent.open(other);
+    release();
+    await k.agent.idle();
+    const seen = async (/** @type {string} */ trip) => (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(trip, { types: ['out.show', 'out.speak', 'reminder'] }))).map((/** @type {any} */ e) => `${e.type}:${e.data.text ?? e.data.card?.title ?? ''}`);
+    const shownLeft = kind === 'card' ? 'out.show:Fuel' : `reminder:${FUEL}`;
+    assert.deepEqual(await seen(left), ['out.speak:Let me look.', shownLeft], 'shown in the conversation left, once');
+    assert.deepEqual(await seen(other), [], 'nothing in the one opened');
+    await k.agent.open(left);
+    await k.agent.idle();
+    await new Promise((r) => setTimeout(r, 60_000)); // whatever coming back sets going
+    await k.agent.idle();
+    assert.deepEqual(await seen(left), ['out.speak:Let me look.', shownLeft, ...(again ? [`out.speak:${FUEL}`] : [])], 'not shown again; said once more only where Koe takes its cut turn up');
+  });
+}
+
 test("Start fresh while annai shows Kokoro's note Koe never passed on: shown once, not twice (fix pass 3, item 2)", async (t) => {
   useClock(t);
   const KOE = { rules: [{ match: 'the user wrote', reply: calls(['speak', { text: 'Hi.' }]) }, { match: '.', reply: sleep }] };
