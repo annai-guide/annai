@@ -624,6 +624,13 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** a real run shows Kokoro sending immediate with a note in flight and leaving out something that mattered (the next real run checks the sentence, as it is model-facing).
 - **Approved:** 2026-11-12, the user picked "Urgent replaces it (Recommended)"; widened to Kokoro's notes still waiting on 2026-11-12, the user picked "Accept it (Recommended)".
 
+### An urgent correction sent before she starts the note it corrects can go unsaid
+- **Kind:** known limitation.
+- **What the user sees:** in live voice, Kokoro sends a note, and before Shiori has begun saying it, sends an urgent (immediate) correction. Sometimes she says only the first note's words, annai takes that line as her answer to the correction, and the correction is neither said nor shown: the user hears the first note, not what corrected it. Seen only when forced (3 of 6 sessions with a stand-in Kokoro sending the correction right behind the note, real Gemini, 2026-11-13; the same on the build before, 3 of 7); never with a real Kokoro (0 of 18 urgent corrections, each said).
+- **Why:** the first note is already in the provider's hands when the correction comes, and annai can't tell which note a line of hers says (one input at a time). Fixing it means changing how live Koe hands the provider a correction while the first note is with it: not small, for a case not seen in use.
+- **Revisit when:** it is seen with a real Kokoro, or on a drive.
+- **Approved:** 2026-11-13, the user picked "Known limitation (Recommended)".
+
 ### Speaking in the quiet after "Checking your notes." shows the note, and she usually says it too
 - **Kind:** known limitation.
 - **What the user sees:** in live voice, Shiori says "Checking your notes." and looks something up before telling them Kokoro's note. If they speak in that pause, the note appears on a card as they start, and she usually still says it after answering them (12 of 13 times on real Gemini): they see it and hear it. It is never lost. The same holds when they type or tap a choice in that pause.
