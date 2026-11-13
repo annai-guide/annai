@@ -2661,10 +2661,13 @@ test("with voice on and no Koe model, a turn a reminder began that draws annai's
   assert.deepEqual(lines, ['[annai] a watch fired', saidLine('Leave for the station.')]);
 });
 
-// A cue (a place, the road, an arrival, a stop off the plan) is hers, which she may let pass: annai never shows one from behind a question.
+// A cue (a place, the road, an arrival, a stop off the plan) is hers, which she may let pass; but annai's card may wait for ever, so once its listening is
+// over annai shows a cue behind it too, and says it with voice on (the user's pick, 2026-11-12, "Hold it until the yes": it waits for the listening's end,
+// not the card's). Behind her own question a cue stays hers.
 const CUE = { kind: 'trigger', text: 'a place watch fired', fallbacks: [{ watch: 'p1', text: 'Near the old town.', cue: true }] };
+const CUE_LINE = '[annai] a place watch fired (annai has already shown the user its reminder.)';
 for (const voice of [false, true]) {
-  test(`with no Koe model${voice ? ', voice on' : ''}, a cue due beside a reminder while annai's card waits: only the reminder is shown, and the cue's wake reaches her as a plain wake; a cue alone shows nothing`, async (t) => {
+  test(`with no Koe model${voice ? ', voice on' : ''}, a cue due beside a reminder while annai's card waits past its listening: annai shows both${voice ? ' and says them' : ''}, and her turn reads both as shown; a cue alone is shown too`, async (t) => {
     useClock(t);
     for (const wakes of [[DUE, CUE], [CUE]]) {
       const k = await gateKit([call('read_trip', { trip: TV }), sleep], voice ? VOICE : {});
@@ -2673,19 +2676,35 @@ for (const voice of [false, true]) {
       await pause(25 * k.agent.secondMs); // past the card's listening
       for (const w of wakes) k.agent.wake(w);
       await pause(5 * k.agent.secondMs);
-      const want = wakes.includes(DUE) ? ['Leave for the station.'] : [];
-      assert.deepEqual(await shown(k), { filed: want, cards: want }, `${wakes.length} wakes: the reminder only`);
+      const want = wakes.map((w) => w.fallbacks[0].text);
+      assert.deepEqual(await shown(k), { filed: want, cards: want }, `${wakes.length} wakes: each shown`);
+      if (voice) assert.deepEqual(k.said.filter((/** @type {string} */ x) => want.includes(x)), want, 'and said');
       k.agent.answer(/** @type {string} */ (k.agent.kokoro.pendingId), 'Not now');
       await k.agent.idle();
       assert.deepEqual(await shown(k), { filed: want, cards: want }, `${wakes.length} wakes: nothing more once it was answered`);
       const texts = (/** @type {any} */ r) => r.messages.flatMap((/** @type {any} */ m) => m.parts).filter((/** @type {any} */ p) => p.type === 'text').map((/** @type {any} */ p) => p.text);
-      const req = k.requests.find((/** @type {any} */ r) => texts(r).includes('[annai] a place watch fired'));
-      assert.ok(req, 'a request carried the cue as a plain wake');
+      const req = k.requests.find((/** @type {any} */ r) => texts(r).includes(CUE_LINE));
+      assert.ok(req, 'a request carried the cue\'s wake as shown');
       const line = voice ? saidLine : shownLine;
-      assert.deepEqual(texts(req).filter((/** @type {string} */ x) => /watch fired|Shown/.test(x)), [...(want.length ? [line(want[0]), WAKE_LINE] : []), '[annai] a place watch fired']);
+      assert.deepEqual(texts(req).filter((/** @type {string} */ x) => /watch fired|Shown/.test(x)).filter((/** @type {string} */ x) => x.includes('old town') || x === CUE_LINE), [line('Near the old town.'), CUE_LINE]);
     }
   });
 }
+
+test('with no Koe model, a cue due while her own question waits for a tap stays hers: annai shows nothing, and its wake reaches her as a plain wake', async (t) => {
+  useClock(t);
+  const k = await gateKit([{ toolCalls: [{ name: 'ask', input: { question: 'Lunch or dinner?', options: ['Lunch', 'Dinner'] } }] }, sleep, sleep]);
+  k.agent.send('Plan our day');
+  await until(() => k.agent.pendingId !== null);
+  k.agent.wake(CUE);
+  await pause(5 * k.agent.secondMs);
+  assert.deepEqual(await shown(k), { filed: [], cards: [] });
+  k.agent.answer(/** @type {string} */ (k.agent.kokoro.pendingId), 'Lunch');
+  await k.agent.idle();
+  assert.deepEqual(await shown(k), { filed: [], cards: [] });
+  const texts = (/** @type {any} */ r) => r.messages.flatMap((/** @type {any} */ m) => m.parts).filter((/** @type {any} */ p) => p.type === 'text').map((/** @type {any} */ p) => p.text);
+  assert.ok(k.requests.some((/** @type {any} */ r) => texts(r).includes('[annai] a place watch fired')), 'her turn has the cue to say or let pass');
+});
 
 for (const how of ['a Stop', 'another conversation opened']) {
   test(`with voice on and no Koe model, ${how} while annai's card listens, with a reminder held behind it: the reminder is shown once, as before, and never again`, async (t) => {
@@ -3143,7 +3162,9 @@ const cardEnded = async (k) => {
 const NOT_READ = /^Not read: /;
 const READ = /^From "Testville"/;
 
-test("with voice off, annai's card, a tap late in its 20 s, a noise inside them and then a yes after them that comes with no speech start of its own (phone dictation's later result): it begins when it arrives, after the window, so it is no yes", async (t) => {
+// With voice off the card's question isn't said, and a tap on Shiori is the moment the user chose to answer: its 20 s start at the tap, as at the question's
+// end aloud (the user's pick, 2026-11-12, "A tap starts the 20 s"), and the microphone listens for them.
+test("with voice off, annai's card shown at 0, a tap at 15 s and \"Yes.\" at 21 s: the tap started its 20 s, so the yes answers it", async (t) => {
   useClock(t);
   const k = await gateKit(CARD, DICTATION);
   await voiceOff(k);
@@ -3153,16 +3174,14 @@ test("with voice off, annai's card, a tap late in its 20 s, a noise inside them 
   await atS(k, t0, 15);
   k.agent.tap();
   await until(() => k.platform.dictationOpened.length === 1);
-  await atS(k, t0, 16);
-  k.platform.dictation.noise(); // a start inside the window, and no words
   await atS(k, t0, 21);
-  k.platform.dictation.late('Yes.');
+  k.platform.dictation.say('Yes.');
   const { grants: g, read } = await cardEnded(k);
-  assert.deepEqual(g, [], 'no yes');
-  assert.match(read, NOT_READ, 'the line ended the card unanswered, as any line after the window does');
+  assert.deepEqual(g.map((/** @type {any} */ e) => e.how), ['voice']);
+  assert.match(read, READ);
 });
 
-test("with voice off, annai's card, a tap late in its 20 s and a yes after them that has its own speech start: after the window, so no yes (guard: the line's own start was always its time)", async (t) => {
+test("with voice off, annai's card, a tap at 15 s, a noise and then a yes at 21 s with no speech start of its own (phone dictation's later result): it begins when it arrives, inside the 20 s the tap started, so it answers it", async (t) => {
   useClock(t);
   const k = await gateKit(CARD, DICTATION);
   await voiceOff(k);
@@ -3175,10 +3194,55 @@ test("with voice off, annai's card, a tap late in its 20 s and a yes after them 
   await atS(k, t0, 16);
   k.platform.dictation.noise();
   await atS(k, t0, 21);
+  k.platform.dictation.late('Yes.');
+  const { grants: g, read } = await cardEnded(k);
+  assert.deepEqual(g.map((/** @type {any} */ e) => e.how), ['voice']);
+  assert.match(read, READ);
+});
+
+test("with voice off, annai's card, a tap at 15 s and \"Yes.\" 21 s after the tap: the tap's 20 s are over and its microphone closed, so it isn't heard: no grant, and the card still waits (guard)", async (t) => {
+  useClock(t);
+  const k = await gateKit(CARD, DICTATION);
+  await voiceOff(k);
+  const t0 = Date.now();
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.agent.kokoro.pendingId !== null && k.agent.state.name === 'waiting');
+  await atS(k, t0, 15);
+  k.agent.tap();
+  await until(() => k.platform.dictationOpened.length === 1);
+  await atS(k, t0, 34);
+  assert.ok(!k.platform.log.includes('dictation close'), 'listening to the tap\'s 20 s');
+  await atS(k, t0, 36);
+  assert.ok(k.platform.log.includes('dictation close'), 'closed at them');
+  k.platform.dictation.say('Yes.');
+  await pause(6 * k.agent.secondMs);
+  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [], 'no yes');
+  assert.deepEqual(await readResults(k), [], 'no "Not read" either: nothing was heard');
+  assert.notEqual(k.agent.kokoro.pendingId, null, 'the card waits for a tap');
+  k.agent.interrupt();
+  await k.agent.idle();
+});
+
+test("with voice off, annai's card: a tap at 2 s whose 20 s pass in silence, then a second tap at 30 s starts them again, and a yes at 35 s answers it", async (t) => {
+  useClock(t);
+  const k = await gateKit(CARD, DICTATION);
+  await voiceOff(k);
+  const t0 = Date.now();
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.agent.kokoro.pendingId !== null && k.agent.state.name === 'waiting');
+  await atS(k, t0, 2);
+  k.agent.tap();
+  await until(() => k.platform.dictationOpened.length === 1);
+  await atS(k, t0, 25);
+  assert.ok(k.platform.log.includes('dictation close'), 'the first tap\'s 20 s are over');
+  await atS(k, t0, 30);
+  k.agent.tap();
+  await until(() => k.platform.dictationOpened.length === 2);
+  await atS(k, t0, 35);
   k.platform.dictation.say('Yes.');
   const { grants: g, read } = await cardEnded(k);
-  assert.deepEqual(g, []);
-  assert.match(read, NOT_READ);
+  assert.deepEqual(g.map((/** @type {any} */ e) => e.how), ['voice']);
+  assert.match(read, READ);
 });
 
 test("with voice on, annai's card heard a noise inside its own 20 s; a tap after them opens a new run, and its yes that comes with no speech start at all begins when it arrives, after the window: no yes", async (t) => {
@@ -3236,7 +3300,7 @@ test("Koe on a chat model, phone dictation: a result with no speech start of its
   k.agent.interrupt();
 });
 
-test("with voice off, annai's card, a tap late in its 20 s, a click inside them and a recorded yes after them: its start is its own sound's, after the window, so no yes (guard: recording never had the stale start)", async (t) => {
+test("with voice off, annai's card, a tap at 15 s, a click, and a recorded yes at 21 s: the tap started its 20 s, so the yes answers it", async (t) => {
   useClock(t);
   const k = await gateKit(CARD, { voice: { speechIn: ['m-hear'], hears: ['Yes.'] } });
   await voiceOff(k);
@@ -3252,8 +3316,8 @@ test("with voice off, annai's card, a tap late in its 20 s, a click inside them 
   await atS(k, t0, 21);
   k.platform.mic.feed(cat(quiet(0.3), yesClip, quiet(1)), 16_000);
   const { grants: g, read } = await cardEnded(k);
-  assert.deepEqual(g, []);
-  assert.match(read, NOT_READ);
+  assert.deepEqual(g.map((/** @type {any} */ e) => e.how), ['voice']);
+  assert.match(read, READ);
 });
 
 test("with voice off, annai's card, a tap and a noise inside its 20 s, then a yes with no speech start of its own that arrives inside them, still answers it (guard: a result's arrival counts when it comes inside the window)", async (t) => {
@@ -3290,7 +3354,7 @@ test("with voice on, annai's card's own dictation microphone and a yes inside it
 
 // Phone dictation's start is the browser's, once per run, and a sound can own it: a speech start that never gets an end is no start of any later result.
 // A dictation result begins when it arrives (round 2 of the tap-ends review).
-test("with voice off, annai's card, a tap late in its 20 s and a sound inside them that starts like speech and gives nothing after it, then a yes after them with no speech start of its own: it begins when it arrives, after the window, so no yes", async (t) => {
+test("with voice off, annai's card, a tap at 15 s, a sound just inside the 20 s it starts that starts like speech and gives nothing after it (holding the microphone open), then a yes after them with no speech start of its own: it begins when it arrives, after the window, so no yes", async (t) => {
   useClock(t);
   const k = await gateKit(CARD, DICTATION);
   await voiceOff(k);
@@ -3300,9 +3364,9 @@ test("with voice off, annai's card, a tap late in its 20 s and a sound inside th
   await atS(k, t0, 15);
   k.agent.tap();
   await until(() => k.platform.dictationOpened.length === 1);
-  await atS(k, t0, 16);
-  k.platform.dictation.begin(); // a start with no end
-  await atS(k, t0, 21);
+  await atS(k, t0, 34);
+  k.platform.dictation.begin(); // a start with no end: the listening is held past the tap's 20 s
+  await atS(k, t0, 41);
   k.platform.dictation.late('Yes.');
   const { grants: g, read } = await cardEnded(k);
   assert.deepEqual(g, [], 'no yes');
@@ -3378,23 +3442,45 @@ test("Koe on a chat model, recording: a word begun while annai says the card's q
   k.agent.interrupt();
 });
 
-test("one Shiori, voice on, annai's card in its 20 s with its microphone open: a reminder is said aloud over it and a yes begun over that voice is over her voice, as on the other half's path: it arms nothing, and the card still waits; a yes after her voice answers it", async (t) => {
+// One Shiori, voice on: what annai would say itself while its card listens on her microphone (a reminder for another conversation, offline, in quiet
+// hours, over the hourly limit) waits until that listening ends, so a yes is heard and answers the card (the user's pick, 2026-11-12, "Hold it until the yes").
+test("one Shiori, voice on, annai's card in its 20 s with its microphone open: a reminder annai says itself waits while it listens, a yes then answers the card, and the reminder is said after it", async (t) => {
   useClock(t);
-  const k = await gateKit(CARD, { voice: { speechIn: ['m-hear'], hears: ['Yes.', 'Yes.'], playMs: 40 } });
+  const k = await gateKit(CARD, { voice: { speechIn: ['m-hear'], hears: ['Yes.'] } });
   k.agent.send('Where did we eat in Testville?');
   await until(() => k.agent.kokoro.pendingId !== null && k.agent.state.name === 'listening');
   await pause(2 * k.agent.secondMs);
   await k.agent.remind([{ watch: 'w-1', text: 'Leave for the airport now.' }]);
-  await until(() => k.voice.speaker.speaking, 20_000);
-  k.platform.mic.feed(cat(quiet(0.3), await clip('first-one'), quiet(1)), 16_000); // begun over her voice, said whole
-  await until(() => !k.voice.speaker.speaking, 20_000);
-  await pause(4 * k.agent.secondMs);
-  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [], 'no yes: it began over her voice');
-  assert.equal(k.agent.kokoro.pendingId !== null, true, 'the card still waits');
-  await hear(k, 'first-one'); // after her voice, inside the window
-  await pause(6 * k.agent.secondMs);
-  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }]);
-  k.agent.interrupt();
+  await pause(3 * k.agent.secondMs);
+  assert.ok(!k.said.includes('Leave for the airport now.'), `nothing said while the card listens: ${JSON.stringify(k.said)}`);
+  assert.equal(k.notices.filter((/** @type {any} */ n) => n.body === 'Leave for the airport now.').length, 0, 'nor shown');
+  assert.deepEqual(micLog(k), ['mic open'], 'the card still listens');
+  await hear(k, 'first-one');
+  await soon(async () => k.said.includes('Leave for the airport now.'), 20 * k.agent.secondMs);
+  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }], 'the yes answered it');
+  assert.ok(k.said.indexOf('Leave for the airport now.') > k.said.indexOf(ASKED), 'said once it was answered');
+  await k.agent.idle();
+  assert.equal(k.said.filter((/** @type {string} */ x) => x === 'Leave for the airport now.').length, 1, 'once');
+});
+
+test("one Shiori, voice on, in quiet hours: a reminder annai says itself 2 s into annai's card's listening isn't said into it; once the card's 20 s are over unanswered it is shown and said, and the card waits for a tap (probe CL3)", async (t) => {
+  useClock(t);
+  const k = await gateKit([call('read_trip', { trip: TV }), sleep], { voice: { speechIn: ['m-hear'], hears: ['Okay.'] } });
+  await updateAppSettings(k.ws, { shiori: { budgets: { quietHours: { from: '00:00', to: '23:59' } } } });
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1 && k.agent.state.name === 'listening', 20_000);
+  await pause(2 * k.agent.secondMs);
+  k.agent.wake(DUE); // quiet hours: annai says its reminder itself (admit)
+  await pause(10 * k.agent.secondMs);
+  assert.ok(!k.said.includes('Leave for the station.'), `not said into the card's listening: ${JSON.stringify(k.said)}`);
+  assert.deepEqual(micLog(k), ['mic open'], 'the card still listens');
+  await pause(12 * k.agent.secondMs);
+  assert.ok(saidAfter(k, ASKED), `said once its listening was over: ${JSON.stringify(k.said)}`);
+  assert.deepEqual((await reminders(k)).cards, 1, 'shown once');
+  assert.notEqual(k.agent.kokoro.pendingId, null, 'the card waits for a tap');
+  assert.deepEqual((await grants(k, k.trip)).length, 0);
+  k.agent.answer(/** @type {string} */ (k.agent.kokoro.pendingId), 'Not now');
+  await k.agent.idle();
 });
 
 test("annai's card: a yes begun inside its 20 s and queued behind a line still being judged, when a noise after the window's end shuts the card's listening before the yes is routed, still answers it (it is judged by when it began)", async (t) => {
@@ -3760,4 +3846,398 @@ test('after a Stop, a card left unanswered keeps the hold', async (t) => {
   await pause(6 * k.agent.secondMs);
   assert.equal(await tellKokoro(k), 'held');
   await finish(k);
+});
+
+// ---- What is said while annai's card listens (the user's pick, 2026-11-12, "Anything else ends it"): a spoken yes counts only while its question is
+// the last thing said. Her voice beginning anything else (a reminder, an alert, a line of Koe's, a live turn) ends the listening; the card stays up for
+// a tap, and a yes said anyway ends it unanswered, with words that have Kokoro ask again. ----
+
+/** read_trip's results, cut where a reader can tell them apart. @param {any} k */
+const readSaid = async (k) => (await readResults(k)).map((/** @type {string} */ x) => String(x).slice(0, 170));
+const UNANSWERED_CARD = /^Not read: only a tap on annai's card, or a yes it hears, allows reading "Testville"\. If they meant yes, ask them to tap Allow\./;
+/** Koe on a chat model, voice on, annai's card's question said and its window open on Koe's microphone, which writes down hears in turn. @param {any} koe @param {string[]} hears @param {number} [playMs] */
+async function winKit(koe, hears, playMs = 40) {
+  const k = await gateKit(KOKORO, { koe: { type: koe }, voice: { speechIn: ['m-hear'], hears, decide: gates(['A', 'A', 'A']), playMs } });
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1, 20_000);
+  await until(() => k.said.includes(ASKED) && !k.voice.speaker.speaking && k.agent.kokoro.pendingId !== null, 20_000);
+  return k;
+}
+/** Koe's turn ended after it passed the line on; what fires (match) wakes it, and it says line, then listens. @param {string} match @param {string} line */
+const endedKoe = (match, line) => ({ rules: [
+  { match, reply: { toolCalls: [{ name: 'speak', input: { text: line } }] }, then: sleep },
+  { match: 'the user wrote', reply: { toolCalls: [{ name: 'speak', input: { text: 'One moment.' } }, { name: 'tell_kokoro', input: { text: 'Where did we eat in Testville?' } }, { name: 'sleep', input: {} }] } },
+  { match: '.', reply: sleep },
+] });
+/** Waits until Koe has begun to say line, and then until its microphone listens again; how long after `from` it began, in seconds. @param {any} k @param {string} line @param {number} from */
+const saidThenListens = async (k, line, from) => {
+  await until(() => k.said.includes(line), 20_000);
+  const at = (Date.now() - from) / k.agent.secondMs;
+  await until(() => !k.voice.speaker.speaking && k.agent.koe.state.name === 'listening', 20_000);
+  return at;
+};
+
+for (const said of ['Okay.', 'Yes.']) {
+  test(`classic voice, Koe waiting for Kokoro: a reminder 2 s into annai's card's window ends Koe's wait and is said at once, which ends the card's listening: "${said}" after it grants nothing, and the card ends unanswered (probe CL1)`, async (t) => {
+    useClock(t);
+    const k = await winKit(waitingKoe(120), [said]);
+    await until(() => k.agent.koe.waiting, 20_000);
+    const from = Date.now();
+    await pause(2 * k.agent.secondMs);
+    k.agent.wake(DUE);
+    const at = await saidThenListens(k, LEAVE_NOW, from);
+    assert.ok(at <= 3, `said on time: ${at} s into the window`);
+    await hear(k, 'first-one');
+    await pause(8 * k.agent.secondMs);
+    assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [], 'nothing granted');
+    assert.match((await readSaid(k))[0] ?? '', UNANSWERED_CARD, 'the card ended unanswered, with words that have Kokoro ask again');
+    k.agent.interrupt();
+    await k.agent.idle();
+  });
+}
+
+test('classic voice, Koe waiting 12 s only: a reminder 2 s into the window is said at once (not when the wait runs out), and "Okay." to it grants nothing (probe C)', async (t) => {
+  useClock(t);
+  const k = await winKit(waitingKoe(12), ['Okay.']);
+  const from = Date.now();
+  await pause(2 * k.agent.secondMs);
+  k.agent.wake(DUE);
+  const at = await saidThenListens(k, LEAVE_NOW, from);
+  assert.ok(at <= 3, `said ${at} s into the window, not when the wait ran out`);
+  await hear(k, 'first-one');
+  await pause(8 * k.agent.secondMs);
+  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), []);
+  k.agent.interrupt();
+  await k.agent.idle();
+});
+
+test('classic voice, Koe\'s turn ended: a place alert 2 s into the window that Koe chooses to say ends the card\'s listening; "Okay." after it grants nothing (probe CL4)', async (t) => {
+  useClock(t);
+  const k = await winKit(endedKoe('a place watch fired', 'The old town is just ahead.'), ['Okay.']);
+  await pause(2 * k.agent.secondMs);
+  k.agent.wake(CUE);
+  await saidThenListens(k, 'The old town is just ahead.', Date.now());
+  await hear(k, 'first-one');
+  await pause(8 * k.agent.secondMs);
+  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), []);
+  assert.match((await readSaid(k))[0] ?? '', UNANSWERED_CARD);
+  k.agent.interrupt();
+  await k.agent.idle();
+});
+
+test("classic voice, Koe's turn ended: a reminder 2 s into the window, Koe says it (not a silent card), the user taps Shiori over it and says \"Okay.\": nothing granted (probe A)", async (t) => {
+  useClock(t);
+  const k = await gateKit(KOKORO, { koe: { type: endedKoe('a watch fired', LEAVE_NOW) }, voice: { speechIn: ['m-hear'], hears: ['Okay.'], decide: gates(['A', 'A', 'A']), playMs: 400 } });
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1, 20_000);
+  await until(() => k.said.includes(ASKED) && !k.voice.speaker.speaking, 20_000);
+  await pause(2 * k.agent.secondMs);
+  k.agent.wake(DUE);
+  await until(() => k.said.includes(LEAVE_NOW) && k.voice.speaker.speaking, 20_000);
+  assert.equal(k.agent.tap(), 'cut');
+  await until(() => micLog(k).at(-1) === 'mic open', 20_000);
+  await hear(k, 'first-one');
+  await pause(8 * k.agent.secondMs);
+  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [], 'nothing granted');
+  assert.deepEqual(await reminders(k), { filed: [], cards: 0 }, 'Koe said it; annai filed no silent card');
+  k.agent.interrupt();
+  await k.agent.idle();
+});
+
+// The take-back rule meets the new end: a yes begun while the question was the last thing said still settles, but an "Okay." begun after her voice,
+// inside the yes's 3 s, is another line, which drops it (the user's pick 2026-11-12, "Leave it; known limitation"): the card ends unanswered and Kokoro asks again.
+for (const after of [false, true]) {
+  test(`classic voice: "Yes." inside annai's card's window, then a reminder Koe says within its 3 s${after ? ', and "Okay." begun after her voice' : ', and nothing more'}: ${after ? 'the "Okay." drops the yes, and the card ends unanswered' : 'the yes still answers it'}`, async (t) => {
+    useClock(t);
+    const k = await winKit(waitingKoe(120), after ? ['Yes.', 'Okay.'] : ['Yes.'], 5);
+    await until(() => k.agent.koe.waiting && micLog(k).at(-1) === 'mic open', 20_000);
+    await pause(2 * k.agent.secondMs);
+    const yes = await clip('first-one');
+    k.platform.mic.feed(cat(quiet(0.3), yes, quiet(0.8)), 16_000); // the yes, inside the window
+    await until(() => k.agent.koe.state.name !== 'hearing' && !k.agent.koe.speakingNow, 20_000);
+    await pause(0.5 * k.agent.secondMs);
+    k.agent.wake(DUE); // inside the yes's 3 s: Koe says it at once (its wait ends)
+    await until(() => k.said.includes(LEAVE_NOW), 20_000);
+    if (after) {
+      await until(() => !k.voice.speaker.speaking && micLog(k).at(-1) === 'mic open', 20_000);
+      k.platform.mic.feed(cat(quiet(0.3), yes, quiet(0.8)), 16_000); // "Okay." to the reminder, begun after her voice
+    }
+    await pause(10 * k.agent.secondMs);
+    assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data.how), after ? [] : ['voice']);
+    if (after) assert.match((await readSaid(k))[0] ?? '', UNANSWERED_CARD);
+    k.agent.interrupt();
+    await k.agent.idle();
+  });
+}
+
+for (const said of ['Okay.', 'Yes.']) {
+  test(`live voice: a reminder Koe's session says while annai's card listens ends the listening: "${said}" after it grants nothing, and the card ends unanswered (probes L, CL5)`, async () => {
+    const k = await liveKit([{ said: LEAVE_NOW, audio: tone(0.5) }, { heard: said, said: 'Sure.', audio: tone(0.2) }]);
+    try {
+      k.agent.addLoopTools(tripTools(k.agent));
+      await fixedTrip(k.ws, TV, { title: 'Testville', start: '2027-04-01', end: '2027-04-08' });
+      await k.voice.unlock();
+      k.agent.tap();
+      await until(() => k.agent.live.listening);
+      const reading = k.agent.kokoro.loopTools().find((/** @type {any} */ t) => t.name === 'read_trip').run({ trip: TV }, {
+        id: 'c-live', scope: k.agent.scope, trip: k.agent.trip, signal: new AbortController().signal, model: null, wake: 'w', author: 'shiori',
+      });
+      await soon(async () => k.said.includes(ASKED) && !k.voice.speaker.speaking, 5_000);
+      await k.agent.wake(DUE);
+      await soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => e.data.text === LEAVE_NOW), 8_000);
+      await until(() => k.agent.live.listening, 5000);
+      await liveSay(k, 'first-one');
+      assert.match(words(await reading), UNANSWERED_CARD, 'the card ended unanswered');
+      assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [], 'nothing granted');
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+/** A live stream still plays, seen from the phone's side. @param {any} k */
+const liveSounds = (k) => k.platform.streams.some((/** @type {any} */ s) => s.playedMs === null);
+test("live voice: a turn of Koe's session still sounding when annai finishes its card's question means the question isn't the last thing said: a yes then grants nothing (Calls 5)", async () => {
+  const k = await liveKit([{ said: 'The bridge ahead was built in 1932 and is one of the most photographed on the coast.', audio: tone(3) }], { pace: 1 });
+  try {
+    k.platform.streamSpeed = 1; // in real time
+    k.agent.addLoopTools(tripTools(k.agent));
+    await fixedTrip(k.ws, TV, { title: 'Testville', start: '2027-04-01', end: '2027-04-08' });
+    await k.voice.unlock();
+    k.agent.send('Tell me about the bridge');
+    // Kokoro has taken the typed line (else the card takes it as its answer), and Koe's live answer sounds.
+    await soon(async () => liveSounds(k) && (k.sent['model-0'] ?? []).length > 0 && !k.agent.kokoro.busy, 10_000);
+    const reading = k.agent.kokoro.loopTools().find((/** @type {any} */ t) => t.name === 'read_trip').run({ trip: TV }, {
+      id: 'c-live', scope: k.agent.scope, trip: k.agent.trip, signal: new AbortController().signal, model: null, wake: 'w', author: 'shiori',
+    });
+    await soon(async () => k.said.includes(ASKED) && !k.voice.speaker.speaking, 5_000);
+    assert.ok(liveSounds(k), 'her live turn still sounds as the question ends');
+    await koeHeard(k, 'h-yes', { text: 'Yes' });
+    assert.match(words(await reading), UNANSWERED_CARD);
+    assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), []);
+  } finally {
+    await k.done();
+  }
+});
+
+// ---- With voice off, a tap on Shiori starts annai's card's 20 s (the user's pick, 2026-11-12), whichever half's microphone hears it. ----
+
+test("with voice off and Koe on a chat model waiting for Kokoro, annai's card shown at 0: a tap at 15 s opens Koe's microphone and starts the card's 20 s, so \"Yes.\" at 21 s answers it", async (t) => {
+  useClock(t);
+  const k = await gateKit(KOKORO_ASKED, { koe: { type: KOE_CHAT }, voice: { speechIn: ['m-hear'], hears: ['Yes.'], decide: gates(['A', 'A', 'A']) } });
+  await voiceOff(k);
+  const t0 = Date.now();
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1 && k.agent.koe.waiting, 20_000);
+  await atS(k, t0, 15);
+  k.agent.tap();
+  await until(() => micLog(k).at(-1) === 'mic open', 20_000);
+  await atS(k, t0, 21);
+  await hear(k, 'first-one');
+  await pause(6 * k.agent.secondMs);
+  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }]);
+  k.agent.interrupt();
+  await k.agent.idle();
+});
+
+for (const [what, koe] of /** @type {[string, any][]} */ ([['waiting for Kokoro', KOE_CHAT], ['its turn ended', waitingKoe(0)]])) {
+  test(`with voice off and Koe on a chat model (${what}), annai's card: Koe's microphone a tap opens listens for the 20 s the tap started, not only 8, so "Yes." 12 s after the tap answers it; the dock says Listening until then`, async (t) => {
+    useClock(t);
+    const k = await gateKit(KOKORO_ASKED, { koe: { type: koe }, voice: { speechIn: ['m-hear'], hears: ['Yes.'], decide: gates(['A', 'A', 'A']) } });
+    await voiceOff(k);
+    const t0 = Date.now();
+    k.agent.send('Where did we eat in Testville?');
+    await until(() => k.asks.length === 1 && !k.agent.koe.busy === (what === 'its turn ended'), 20_000);
+    await atS(k, t0, 15);
+    k.agent.tap();
+    await until(() => micLog(k).at(-1) === 'mic open', 20_000);
+    await atS(k, t0, 26);
+    assert.deepEqual([micLog(k).at(-1), k.agent.state.name], ['mic open', 'listening'], "past Koe's own 8 s, inside the card's 20 s");
+    await atS(k, t0, 27);
+    await hear(k, 'first-one');
+    await pause(6 * k.agent.secondMs);
+    assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [{ trip: TV, how: 'voice' }]);
+    k.agent.interrupt();
+    await k.agent.idle();
+  });
+}
+
+test("with voice off and Koe on a chat model waiting for Kokoro, annai's card: a tap at 15 s, and nothing said: Koe's microphone closes when the tap's 20 s end, and the dock says \"Your turn\" again", async (t) => {
+  useClock(t);
+  const k = await gateKit(KOKORO_ASKED, { koe: { type: KOE_CHAT }, voice: { speechIn: ['m-hear'] } });
+  await voiceOff(k);
+  const t0 = Date.now();
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1 && k.agent.koe.waiting, 20_000);
+  await atS(k, t0, 15);
+  k.agent.tap();
+  await until(() => micLog(k).at(-1) === 'mic open', 20_000);
+  await atS(k, t0, 34);
+  assert.deepEqual([micLog(k).at(-1), k.agent.state.name], ['mic open', 'listening']);
+  await atS(k, t0, 36);
+  assert.deepEqual([micLog(k).at(-1), k.agent.state.name, k.agent.state.label], ['mic close', 'waiting', 'Your turn']);
+  assert.notEqual(k.agent.kokoro.pendingId, null, 'the card waits for a tap');
+  k.agent.stopKokoro(); // ends the card still waiting
+  k.agent.interrupt();
+  await k.agent.idle();
+});
+
+test("with voice off, one Shiori: a second tap starts annai's card's 20 s again, and its listening ends the moment her voice begins anything else in it, there too: a reminder annai says into it closes the microphone, and \"Okay.\" after it is heard by nothing", async (t) => {
+  useClock(t);
+  const k = await gateKit(CARD, { voice: { speechIn: ['m-hear'], hears: ['Okay.'] } });
+  await voiceOff(k);
+  const t0 = Date.now();
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.agent.kokoro.pendingId !== null && k.agent.state.name === 'waiting');
+  await atS(k, t0, 2);
+  k.agent.tap();
+  await until(() => micLog(k).at(-1) === 'mic open');
+  await atS(k, t0, 25);
+  assert.equal(micLog(k).at(-1), 'mic close', "the first tap's 20 s are over");
+  await atS(k, t0, 30);
+  k.agent.tap();
+  await until(() => micLog(k).length === 3);
+  await atS(k, t0, 32);
+  k.agent.wake(DUE); // shown and said at once: nothing of its own listens for the card (voice off)
+  await until(() => k.said.includes('Leave for the station.'));
+  assert.equal(micLog(k).at(-1), 'mic close', 'her voice began: the listening is over');
+  await atS(k, t0, 34);
+  await hear(k, 'first-one');
+  await pause(6 * k.agent.secondMs);
+  assert.deepEqual((await grants(k, k.trip)).map((/** @type {any} */ e) => e.data), [], 'nothing granted');
+  assert.notEqual(k.agent.kokoro.pendingId, null, 'the card waits for a tap');
+  k.agent.interrupt();
+  await k.agent.idle();
+});
+
+// ---- The dock shows a tap's listening while her turn waits on the user (the user's pick, 2026-11-12, "Show listening"), and goes back when it ends;
+// a second tap closes that microphone only: the wait, her question or annai's card stays, and no Stop runs. ----
+
+/** The dock's words, as the half that talks shows them. @param {any} k */
+const dock = (k) => [k.agent.state.name, k.agent.state.label];
+for (const [what, script, waiting] of /** @type {[string, any[], string][]} */ ([
+  ['her wait tool, waiting for typing', [call('wait', { seconds: 60 }), sleep], 'Your turn'],
+  ['her question, waiting for a tap', [call('ask', ASK_LUNCH), sleep], 'Waiting for your OK'],
+])) {
+  test(`with voice off, ${what}: the dock says "${waiting}", "Listening" while a tap's microphone is open, and "${waiting}" again when its 8 s end; the wait goes on`, async (t) => {
+    useClock(t);
+    const k = await gateKit(script, VOICE);
+    await voiceOff(k);
+    k.agent.send('Plan our day');
+    await until(() => k.agent.state.name === 'waiting');
+    assert.deepEqual(dock(k), ['waiting', waiting]);
+    assert.equal(k.agent.tap(), 'listening');
+    await until(() => micLog(k).includes('mic open'));
+    await pause(1 * k.agent.secondMs);
+    assert.deepEqual(dock(k), ['listening', 'Listening'], 'the tap listens');
+    await pause(8 * k.agent.secondMs);
+    assert.deepEqual(micLog(k), ['mic open', 'mic close'], 'closed 8 s after the tap');
+    assert.deepEqual(dock(k), ['waiting', waiting], 'and back');
+    assert.notEqual(k.agent.kokoro.pendingId, null, 'it still waits');
+    k.agent.interrupt();
+    await k.agent.idle();
+  });
+
+  for (const speaking of [false, true]) {
+    test(`with voice off, ${what}: a second tap ${speaking ? 'while someone speaks into' : 'while'} the first tap's microphone ${speaking ? 'closes it, and what they said answers it' : 'is open closes it only: the dock says "' + waiting + '" again, it still waits, and no Stop runs'}`, async (t) => {
+      useClock(t);
+      const k = await gateKit(script, { voice: { speechIn: ['m-hear'], hears: ['Dinner please'] } });
+      await voiceOff(k);
+      k.agent.send('Plan our day');
+      await until(() => k.agent.state.name === 'waiting');
+      k.agent.tap();
+      await until(() => k.agent.state.name === 'listening');
+      if (speaking) await startsSpeaking(k);
+      assert.equal(k.agent.tap(), 'stopped');
+      assert.equal(micLog(k).at(-1), 'mic close', 'the microphone closed');
+      await pause(3 * k.agent.secondMs);
+      if (speaking) {
+        await k.agent.idle();
+        const result = (await k.events(['tool.result'])).find((/** @type {any} */ e) => e.data.name === script[0].toolCalls[0].name)?.data.content;
+        assert.equal(result, 'The user said:', 'what was said as it closed answered it');
+        return;
+      }
+      assert.deepEqual(dock(k), ['waiting', waiting]);
+      assert.notEqual(k.agent.kokoro.pendingId, null, 'it still waits');
+      assert.equal((await k.events(['tool.result'])).length, 0, 'no Stop: nothing ended');
+      assert.equal(k.agent.tap(), 'listening', 'a third tap listens again');
+      await until(() => micLog(k).length === 3);
+      k.agent.interrupt();
+      await k.agent.idle();
+    });
+  }
+}
+
+test("with voice off, one Shiori: annai's card's tapped listening shows on the dock for the 20 s the tap started, then \"Waiting for your OK\"; a second tap closes that microphone and the card stays, and a third starts a new 20 s whose yes answers it", async (t) => {
+  useClock(t);
+  const k = await gateKit(CARD, { voice: { speechIn: ['m-hear'], hears: ['Yes.'] } });
+  await voiceOff(k);
+  const t0 = Date.now();
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.agent.kokoro.pendingId !== null && k.agent.state.name === 'waiting');
+  assert.deepEqual(dock(k), ['waiting', 'Waiting for your OK']);
+  await atS(k, t0, 5);
+  k.agent.tap();
+  await until(() => micLog(k).at(-1) === 'mic open');
+  await atS(k, t0, 20);
+  assert.deepEqual(dock(k), ['listening', 'Listening'], 'listening, past the 8 s of a tap on her question: the 20 s are the card\'s');
+  await atS(k, t0, 26);
+  assert.deepEqual([micLog(k).at(-1), ...dock(k)], ['mic close', 'waiting', 'Waiting for your OK'], 'its 20 s are over');
+  await atS(k, t0, 30);
+  k.agent.tap();
+  await until(() => k.agent.state.name === 'listening');
+  assert.equal(k.agent.tap(), 'stopped', 'a second tap');
+  assert.deepEqual([micLog(k).at(-1), ...dock(k)], ['mic close', 'waiting', 'Waiting for your OK'], 'closes the microphone only');
+  assert.notEqual(k.agent.kokoro.pendingId, null, 'the card stays');
+  await atS(k, t0, 60);
+  k.agent.tap(); // a third: a new 20 s
+  await until(() => k.agent.state.name === 'listening');
+  await atS(k, t0, 75);
+  await hear(k, 'first-one');
+  const { grants: g, read } = await cardEnded(k);
+  assert.deepEqual(g.map((/** @type {any} */ e) => e.how), ['voice']);
+  assert.match(read, READ);
+});
+
+test("with voice on and no Koe model, a tap after annai's card's 20 s: the dock says Listening while that tap's microphone is open, and \"Waiting for your OK\" again when its 8 s end", async (t) => {
+  useClock(t);
+  const k = await gateKit([call('read_trip', { trip: TV }), sleep], VOICE);
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1 && k.agent.state.name === 'listening');
+  await pause(25 * k.agent.secondMs);
+  assert.deepEqual(dock(k), ['waiting', 'Waiting for your OK']);
+  assert.equal(k.agent.tap(), 'listening');
+  await until(() => micLog(k).length === 3);
+  await pause(1 * k.agent.secondMs);
+  assert.deepEqual(dock(k), ['listening', 'Listening']);
+  await pause(8 * k.agent.secondMs);
+  assert.deepEqual(dock(k), ['waiting', 'Waiting for your OK']);
+  k.agent.interrupt();
+  await k.agent.idle();
+});
+
+test("with voice off and Koe on a chat model waiting for Kokoro, whose model call is still running (no card): a tap on Shiori shows Koe's listening on the dock, and \"Your turn\" again when its 8 s end", async (t) => {
+  useClock(t);
+  /** @type {() => void} */
+  let release = () => {};
+  const go = new Promise((r) => { release = () => r(undefined); });
+  const k = await gateKit(KOKORO_ASKED, { koe: { type: KOE_CHAT }, voice: { speechIn: ['m-hear'] }, hold: async (/** @type {any} */ c) => { if (c.model.providerId === 'model-0') await go; } });
+  await voiceOff(k);
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.agent.koe.waiting, 20_000);
+  await until(() => k.agent.state.name === 'waiting');
+  assert.deepEqual(dock(k), ['waiting', 'Your turn']);
+  k.agent.tap();
+  await until(() => micLog(k).at(-1) === 'mic open', 20_000);
+  await pause(1 * k.agent.secondMs);
+  assert.deepEqual(dock(k), ['listening', 'Listening']);
+  await pause(8 * k.agent.secondMs);
+  assert.deepEqual([micLog(k).at(-1), ...dock(k)], ['mic close', 'waiting', 'Your turn']);
+  assert.ok(k.agent.koe.waiting, 'Koe still waits');
+  assert.equal(k.asks.length, 0, 'no card');
+  release();
+  await until(() => k.asks.length === 1, 20_000);
+  k.agent.stopKokoro(); // ends the card
+  k.agent.interrupt();
+  await k.agent.idle();
 });

@@ -22,10 +22,10 @@ import { STAND_IN_NAMES } from './where.js';
  * @typedef {{ entries: () => Promise<VoiceEntry[]>, synthesize: (entry: VoiceEntry, text: string, signal: AbortSignal) => Promise<Clip | SpeechStream>,
  *   platform: () => VoicePlatform | null, bench: (id: string, error: unknown) => void,
  *   browserOptions?: (text: string) => Promise<{ voice?: string, rate?: number, lang?: string, system?: import('./platform.js').SystemVoice | null }>, onLevel?: (x: number) => void, locale?: string,
- *   onVoice?: (entry: VoiceEntry, system: import('./platform.js').SystemVoice | null) => void, now?: () => number, onBlocked?: () => void, stallMs?: number }} SpeakerDeps
+ *   onVoice?: (entry: VoiceEntry, system: import('./platform.js').SystemVoice | null) => void, now?: () => number, onBlocked?: () => void, stallMs?: number, onBegin?: () => void }} SpeakerDeps
  *   browserOptions' system: the browser voice it speaks with; onVoice: a voice starts speaking an utterance (spec §11.7: the trace notes a browser voice not on this phone);
  *   synthesize: a clip, or a stream; now: the clock a stream's arrivals are timed by (ms); onBlocked: the page may not play sound now, so a tap
- *   should unlock it again; stallMs: how long past its end a stream may go unplayed (playStream)
+ *   should unlock it again; stallMs: how long past its end a stream may go unplayed (playStream); onBegin: something new is to be said (begin)
  * @typedef {{ ended: boolean, at: number, failed?: 'no-voice' | 'blocked' }} Said
  */
 
@@ -182,6 +182,7 @@ export class Speaker {
 
   /** Something to say. It plays after what is already being said. */
   begin() {
+    this.deps.onBegin?.();
     const u = new Utterance(this.deps, this.#last);
     this.#live.add(u);
     this.#last = u.done;
