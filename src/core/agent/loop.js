@@ -276,8 +276,12 @@ const askSaid = (ask, l) => (l.her || l.text === undefined ? null : (l.inside ? 
 const inWindow = (ask, at) => at >= ask.from && at <= ask.until;
 /** Only a tap's microphone hears this answer now: annai's card or her question past their own listening (byHand), or the wait tool waiting for typing. @param {Pending} p */
 const byTap = (p) => Boolean(p.byHand || (p.tool && p.by !== undefined));
-/** What a listen got from a user's message taken off the queue: its words, and a claim or a tap that came with them. @param {Wake} w @returns {Got} */
-const typedGot = (w) => ({ text: w.text, ...(w.claim ? { claim: w.claim } : {}), ...(w.chose ? { chose: true } : {}) });
+/** A wait or a question that didn't wait: a line of the user's from while she worked is queued, and follows whole, its photos and files with it (#earlier). */
+const EARLIER = Object.freeze({
+  spoke: /* en */ 'Not listening for an answer: the user spoke while you were thinking; it follows.',
+  wrote: /* en */ 'Not waiting for an answer: the user wrote while you were thinking; it follows.',
+  asked: /* en */ 'Your question is closed, its buttons too: the user wrote while you were thinking; it follows. Ask it again if it still matters.',
+});
 /** Typing a listen got, as the log and the model have it: plain, a claim ("This was for Shiori") or a tap that came as words. @param {Got} got @returns {{ data: Record<string, any>, said: string }} */
 const typedAs = (got) => ({
   data: { ...(got.claim ? { claim: got.claim } : {}), ...(got.chose ? { chose: true } : {}) },
@@ -959,6 +963,16 @@ export class Agent {
   }
 
   /**
+   * A line of the user's already queued (written while she worked; for a wait, heard then too) is never taken apart: the wait or question ends,
+   * and the turn takes the line whole, as it takes any wake. @param {'ask' | 'wait'} kind @returns {Got | null}
+   */
+  #earlier(kind) {
+    const mine = this.#queue.filter((w) => w.scope === this.scope);
+    if (mine.some((w) => w.kind === 'user')) return { earlier: 'wrote' };
+    return kind === 'wait' && mine.some((w) => w.kind === 'heard') ? { earlier: 'spoke' } : null;
+  }
+
+  /**
    * What queued ends a wait: the other half's note; the wait tool of the half that speaks now (Koe on a chat model, one Shiori, Kokoro while Koe is down),
    * what came due too (a reminder, a place alert), said on time: with Koe set up, what fires while annai's card listens is said then, and ends that
    * listening (the user's pick, 2026-11-12). @param {boolean} tool @returns {Got | null}
@@ -1019,11 +1033,12 @@ export class Agent {
     // A tap answers annai's own id, never the call's: a provider with no ids says call_0 every turn.
     const tap = newId('tap');
     await this.#log({ type: 'out.ask', actor: 'system', data: { id: call.id, tap, wake: call.wake, question, options, own: true, by: null } });
-    // Typed or said before it (classic voice: heard while she thought) ends it too.
+    // Typed or said before it (classic voice: heard while she thought) ends it too: a heard line as its answer; a typed message stays queued, and follows whole.
     const queued = this.#queue.findIndex((w) => (w.kind === 'user' || w.kind === 'heard') && w.scope === this.scope);
-    const w = queued >= 0 ? this.#queue.splice(queued, 1)[0] : null;
+    const w = queued >= 0 ? this.#queue[queued] : null;
+    if (w?.heard) this.#queue.splice(queued, 1);
     /** @type {Got} */
-    const got = w ? (w.heard ? { heard: w.heard, ...(w.gate ? { gate: w.gate } : {}) } : typedGot(w)) : await new Promise((resolve) => {
+    const got = w ? (w.heard ? { heard: w.heard, ...(w.gate ? { gate: w.gate } : {}) } : { earlier: 'wrote' }) : await new Promise((resolve) => {
       /** @type {any} */
       let timer;
       /** @type {any} */
@@ -1109,6 +1124,8 @@ export class Agent {
     if (got.heard) return { said: 'The user said:', heard: said.map((x) => x.heard.id) };
     /* en */
     if (got.spoke) return { said: 'What the user said follows.', ...(got.taken?.length ? { heard: got.taken } : {}) }; // the other half's line, in the log already: Kokoro hears all
+    /* en */
+    if (got.earlier) return { said: 'What the user wrote follows.' };
     if (got.text === undefined) return { said: '' };
     const wrote = typedAs(got);
     await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...wrote.data }, texts: [['text', got.text]] });
@@ -3137,6 +3154,7 @@ export class Agent {
           if (got.stopped) return { content: STOPPED, isError: true };
           /* en */
           if (got.note) return `${got.note === 'koe' ? 'Koe' : 'Kokoro'}: see the note below. Your question is closed, its buttons too: ask it again if it still matters.`;
+          if (got.earlier) return EARLIER.asked;
           if (got.chosen !== undefined) {
             await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...this.#chose() }, texts: [['text', got.chosen]] });
             return `The user chose: ${got.chosen}`;
@@ -3154,14 +3172,8 @@ export class Agent {
             const heard = await this.#listenFor(call, 'wait', seconds, true);
             if (!heard.deaf) return this.#answer('', heard, call, `Nothing yet (${seconds} seconds).`);
           }
-          const got = await this.#waitFor(call, 'wait', seconds * this.secondMs);
-          if (got.stopped) return { content: STOPPED, isError: true };
-          if (got.note || got.due || got.heard) return this.#answer('', got, call, ''); // heard: a tap held voice on and opened the microphone for it
-          if (got.text === undefined) return `Nothing yet (${seconds} seconds).`;
-          const wrote = typedAs(got);
-          await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...wrote.data }, texts: [['text', got.text]] });
-          if (this.#half.listenLast) this.#facts.wrote = true; // Koe's: a message of theirs it owes an answer
-          return wrote.said;
+          // Typing, a note, what came due, a line of theirs queued (it follows), or heard: a tap held voice on and opened the microphone for it.
+          return this.#answer('', await this.#waitFor(call, 'wait', seconds * this.secondMs), call, `Nothing yet (${seconds} seconds).`);
         },
       },
       {
@@ -3181,10 +3193,8 @@ export class Agent {
    */
   #waitFor({ id, signal }, kind, ms) {
     if (signal?.aborted) return Promise.resolve({ stopped: true });
-    const queued = this.#queue.findIndex((w) => w.kind === 'user' && w.scope === this.scope);
-    if (queued >= 0) return Promise.resolve(typedGot(this.#queue.splice(queued, 1)[0]));
-    // A note already queued answers a wait, and her own question; what came due, Koe's wait (#cameDue).
-    const due = this.#cameDue(kind === 'wait');
+    // A line of theirs already queued ends it, and follows; so does a note, and her own question; what came due, Koe's wait (#cameDue).
+    const due = this.#earlier(kind) ?? this.#cameDue(kind === 'wait');
     if (due) return Promise.resolve(due);
     this.#waiting(kind);
     return new Promise((resolve) => {
@@ -3400,6 +3410,7 @@ export class Agent {
     if (call.signal.aborted) return { content: STOPPED, isError: true };
     /** @type {Got} */
     let got = spoken.failed ? {} : await this.#listenFor(call, 'ask', LISTEN_S);
+    if (got.earlier) return EARLIER.asked;
     if (got.heard || got.text !== undefined || got.chosen !== undefined || got.stopped) {
       if (got.chosen === undefined) return this.#answer('', got, call, '');
     } else {
@@ -3407,6 +3418,7 @@ export class Agent {
       got = await this.#waitFor(call, 'ask', 0);
     }
     if (got.stopped) return { content: STOPPED, isError: true };
+    if (got.earlier) return EARLIER.asked;
     if (got.chosen !== undefined) {
       await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...this.#chose() }, texts: [['text', got.chosen]] });
       return /* en */ `The user chose: ${got.chosen}`;
@@ -3432,6 +3444,7 @@ export class Agent {
     if (got.text !== undefined) {
       const wrote = typedAs(got);
       await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...wrote.data }, texts: [['text', got.text]] });
+      if (this.#half.listenLast) this.#facts.wrote = true; // Koe's: a message of theirs it owes an answer
       return `${lead}${wrote.said}`;
     }
     /* en */
@@ -3439,8 +3452,8 @@ export class Agent {
     /* en */
     if (got.note) return `${lead}${got.note === 'koe' ? 'Koe' : 'Kokoro'}: see the note below.`;
     if (got.due) return `${lead}${DUE[got.due]} ${this.#half.name === 'koe' ? STILL.koe : STILL.user}`;
-    /* en */
-    if (got.earlier) return `${lead}Not listening for an answer: the user spoke while you were thinking; it follows.`;
+    if (got.earlier === 'wrote' && this.#half.listenLast) this.#facts.wrote = true; // Koe's, as a line typed into its wait
+    if (got.earlier) return `${lead}${EARLIER[got.earlier]}`;
     return `${lead}${silence}`;
   }
 
@@ -3453,12 +3466,7 @@ export class Agent {
   async #listenFor({ id, signal }, kind, seconds, tool = false) {
     if (signal?.aborted) return { stopped: true };
     // Looked at again once the microphone is open: what came while it opened found no wait.
-    const queued = () => {
-      const typed = this.#queue.findIndex((w) => w.kind === 'user' && w.scope === this.scope);
-      if (typed >= 0) return typedGot(this.#queue.splice(typed, 1)[0]);
-      if (kind === 'wait' && this.#queue.some((w) => w.kind === 'heard' && w.scope === this.scope)) return { earlier: true };
-      return kind === 'wait' ? this.#cameDue(tool) : null;
-    };
+    const queued = () => this.#earlier(kind) ?? (kind === 'wait' ? this.#cameDue(tool) : null);
     let got = queued();
     if (got) return got;
     if (!this.#half.voice()) return { deaf: /* en */ 'the other half has the microphone now.' };
