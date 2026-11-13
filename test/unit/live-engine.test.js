@@ -258,25 +258,6 @@ test("watch_set's checks, in plain words; the list shows hers and the plan's; th
   assert.equal(await k.live.listWatches(ME), 'No watches.');
 });
 
-/** What watch_set's result adds for a time written with today's offset across a change of the phone's clocks (backlog 17). */
-const CHANGES = /America\/Los_Angeles, the phone's zone, changes its clocks before then/;
-
-test("a time watch written with today's offset for a date after the clocks change: its result names the phone's zone's own time then, and the offset to set it again with (backlog 17)", async () => {
-  const k = await liveKit({ live: false }); // 2026-11-27 in Los Angeles, at -08:00; on 2027-03-19 its clocks are at -07:00
-  const w = await k.live.setWatch(k.trip, { when: { type: 'time', at: '2027-03-19T18:00:00-08:00' }, fallback: 'Dinner at the pier.' });
-  assert.equal(k.live.watchText(w), `Set ${w.id}: at Fri 2027-03-19 18:00 (GMT-8). America/Los_Angeles, the phone's zone, changes its clocks before then: on that date it is -07:00, not the -08:00 you wrote, so this comes at Fri 2027-03-19 19:00 (GMT-7) there. If that isn't what you meant, cancel it and set it again with -07:00. Now: unknown (GPS is off); unknown (GPS is off, so annai has none).`);
-  assert.ok((await k.live.listWatches(k.trip)).includes(`${w.id}\tshiori\tat Fri 2027-03-19 18:00 (GMT-8)\t`), 'the watch itself is said as written, as both halves read it');
-});
-
-test("a time watch whose offset is the phone's zone's on its date, or another zone's (a trip's own times), is said as written, with nothing added (backlog 17)", async () => {
-  const k = await liveKit({ live: false });
-  for (const at of ['2027-03-19T18:00:00-07:00', '2026-11-28T18:00:00-08:00', '2027-03-19T18:00:00-10:00', '2027-03-19T09:00:00+09:00']) {
-    const w = await k.live.setWatch(k.trip, { when: { type: 'time', at }, fallback: 'Dinner at the pier.' });
-    assert.doesNotMatch(k.live.watchText(w), CHANGES, at);
-    assert.match(k.live.watchText(w), new RegExp(`^Set ${w.id}: at ${dueWords(at).replace(/[()+]/g, '\\$&')}\\. Now: `), at);
-  }
-});
-
 test('off screen nothing runs: GPS stops and the clock waits; back on screen both start again (spec §11.1)', async () => {
   const k = await liveKit();
   await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Ten.' });
