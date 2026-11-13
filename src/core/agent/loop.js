@@ -2493,9 +2493,9 @@ export class Agent {
       const reads = new Map();
       for (const [i, c] of ordered.entries()) {
         const rest = ordered.slice(i + 1);
-        // speak doesn't listen when what follows does (spec §7.1, §10.7): her question with buttons, or a wait, listens by itself ('listens': unless a tap cut her line).
-        const listens = rest.some((/** @type {any} */ x) => x.name === 'ask' || x.name === 'wait') ? 'listens' : false;
-        const more = (Boolean(this.#half.listenLast) && rest.some((/** @type {any} */ x) => x.name === 'tell_kokoro' || x.name === 'wait')) || listens;
+        // speak doesn't listen when the call right after it does (spec §7.1, §10.7): her question with buttons ('ask': unless a tap cut her line, as the question closes the tap's microphone), or a wait.
+        const next = rest[0]?.name;
+        const more = next === 'ask' ? 'ask' : next === 'wait' || (Boolean(this.#half.listenLast) && rest.some((/** @type {any} */ x) => x.name === 'tell_kokoro' || x.name === 'wait'));
         const goesOn = broke && woke < AWAKE_MAX;
         const awake = goesOn && c.name === 'sleep';
         // Held only while her turn goes on: a held note her sleep then ended reached no one.
@@ -2821,7 +2821,7 @@ export class Agent {
   /**
    * Runs one tool call and records it: tool.call, then tool.result with any photo or document it
    * returned kept as blobs the event names (spec §4.9).
-   * @param {any} c @param {LoopTool[]} tools @param {{ wakeId: string, signal: AbortSignal, model: any, sleeping: boolean, providerOff?: string[], more?: boolean | 'listens', last?: boolean, live?: boolean, watched?: boolean, reads?: Map<string, Promise<import('./reading.js').Reading>>, awake?: boolean, unsent?: boolean }} o
+   * @param {any} c @param {LoopTool[]} tools @param {{ wakeId: string, signal: AbortSignal, model: any, sleeping: boolean, providerOff?: string[], more?: boolean | 'ask', last?: boolean, live?: boolean, watched?: boolean, reads?: Map<string, Promise<import('./reading.js').Reading>>, awake?: boolean, unsent?: boolean }} o
    *   awake: a sleep after a call of its reply failed, which doesn't run; unsent: a tell_koe after one, which isn't sent
    */
   async #runCall(c, tools, o) {
@@ -3349,7 +3349,7 @@ export class Agent {
 
   /**
    * speak with voice on (spec §7.1, §10.1): plays what streamed in, then listens, unless sleep came
-   * in the same reply, or a call that listens follows (call.more). @param {string} text @param {any} call
+   * in the same reply, or the call right after it listens (call.more). @param {string} text @param {any} call
    * @returns {Promise<import('./tools.js').ToolOutput | string>}
    */
   async #say(text, call) {
@@ -3389,8 +3389,8 @@ export class Agent {
     const before = spokenText(spoken);
     /* en */
     if (call.sleeping) return spoken.cut && voice.on ? `${before} The microphone is open: what they say next wakes you.` : before;
-    // A tap that cut her line keeps its window before what listens next: their words answer speak, as with nothing after it.
-    if (call.more && (call.more !== 'listens' || !spoken.cut)) return before;
+    // A tap that cut her line keeps its window before her question, which would close it and be said over the user: their words answer speak, as with nothing after it.
+    if (call.more && (call.more !== 'ask' || !spoken.cut)) return before;
     /* en */
     if (this.#aloudOnly) return `${before} Voice mode is off, so you didn't listen; the user may type.`;
     const { silenceSeconds } = await voice.settings();
