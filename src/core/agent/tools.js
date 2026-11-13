@@ -30,11 +30,11 @@ export const TOOL_NAME = /^[a-zA-Z0-9_-]{1,64}$/;
 export const RESULT_MAX = 40_000;
 /**
  * The room a long text's piece leaves in its result (read's, read_trip's) for what comes with it, so the result's own cut never takes the line
- * that says how to read on: that line, "… N more characters; read_trip again with from: N", is under 70 characters with numbers of 10 digits;
- * read's note when a path's case differed, "(read <path>: the path's case differed)", is 34 characters and the path (a file's path is under about
- * 300: 296 fits). 400 = 70 + 34 + 296; a longer path is a misbehaving one, and 400 of 40,000 is 1% of a piece.
+ * that says how to read on. read's needs the most: its note when a path's case differed, "(read <path>: the path's case differed)" and a line
+ * break, 34 characters and the path, at most 520 (512 inside a scope, normPath, after /waiting); then "… N more characters; read again with
+ * from: N", 63 with numbers of 10 digits (no string holds 2^31 characters). read_trip's line is 68, its heading counted apart.
  */
-export const READ_ON = 400;
+export const READ_ON = 34 + 520 + 63;
 /**
  * How long one tool call may take before the model is told it didn't finish and the turn goes on (a mirror that
  * never answered held a turn 7 minutes). Above the longest a tool of annai's own allows itself, an MCP call's 2
