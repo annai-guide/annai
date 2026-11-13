@@ -34,7 +34,7 @@ const NOTE = (id) => /* en */ `- A note from Kokoro is text in <from_kokoro id="
   `${KOE}. ${BEHIND}`, `- Reach the user only through speak, show and ask. ${ANSWER}`, LEAVE('; call sleep'), GREET, TOLD, OWN_FILES,
   `${PASS_ON} in the same reply, speak "One moment.", tell_kokoro ${AS_SAID}, and wait. ${NOTHING_OWN}`, NO_FILLER, NOTE('the block at the end of each request gives'),
   TYPED, `- [heard] lines, and the words after "The user said:", are speech recognition, may be wrong, and ${SOUNDS_ALIKE} ${NOT_ANSWERED}`,
-  TRIGGERS, "- Lines starting with [annai] come from the app, and [the user chose] is their answer to a question with buttons (a tap, or a yes or no said to annai's card); [said to the user] is what Shiori said while you were away.",
+  TRIGGERS, "- Lines starting with [annai] come from the app, and [the user chose] is their answer to a question with buttons (a tap, or a no said to annai's card); [said to the user] is what Shiori said while you were away.",
   '- A speak listens by itself: call sleep only when no reply is expected. wait means Kokoro is working: use it when you expect its note.',
   FOR_KOE,
 ].join('\n');
