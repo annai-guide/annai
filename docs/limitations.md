@@ -373,12 +373,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** both are words on screens that change shape with the Start a trip form's going, so they change once, in every language.
 - **Revisit when:** stage 8.
 
-### read_trip reads a long text file only up to its result's cut
-- **Kind:** deferred.
-- **What the user sees:** Shiori reads a text file in another trip (a saved booking email, a long note) with read_trip and gets its first 40,000 characters, the limit on any tool's result (`RESULT_MAX`), told how many more were cut. She can't read on from there: an answer from the rest of the file, the end of a long email say, needs a move to that trip, where `read` has `from`.
-- **Why:** read_trip's `path` gives a file whole, and the result's own cut is all that bounds it; `from` was left out of stage 5's tool (found in the build's review, finding 11).
-- **Revisit when:** the next version: read_trip takes `from`, as `read` does.
-
 ### annai's card's question is answered by tap only
 - **Kind:** known limitation.
 - **What the user sees:** annai's card ("Read <trip>?", "Carry on in <trip>?") is answered by its buttons (Allow or Always for my trips, Open, Not now), in the car too. With voice on annai still says the question aloud; then the card waits for a tap, and nothing listens for a spoken yes. With one Shiori (no Koe model) the microphone stays closed after the question, so a "yes" said then isn't heard, and the card waits. Where a microphone does hear (Koe set up, whose microphone hears on; or a tap on Shiori, which opens her ordinary microphone for 8 seconds), a spoken "no" still declines, and any other line Shiori keeps, a "yes" included, ends the card unanswered ("Not read", "Not opened"): Shiori is told that the card is closed and that only a tap answers it; she says so and, when they meant yes, asks again with a new card (its buttons work; the closed card's go grey); Koe may answer the line ("Okay."). Nothing is read or opened by voice. Before 2026-11-13 a yes in the 20 seconds after the question said aloud answered the card (8 of 8 in live voice, 10 of 10 in classic voice, in real runs).
