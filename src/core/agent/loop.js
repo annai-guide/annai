@@ -869,7 +869,8 @@ export class Agent {
   #push(w) {
     this.#queue.push({ ...w, scope: this.#target ?? ME, at: Date.now() });
     this.#remindWaiting();
-    if (w.kind === 'note' || w.fallbacks?.length) this.#noted();
+    // A line of theirs, its verdict back after her wait began listening: that wait ends now, and the line follows (a wait voice going off stopped leaves it to its own end).
+    if (w.kind === 'note' || (w.kind === 'heard' && this.#pending?.listening) || w.fallbacks?.length) this.#noted();
     // Kokoro's next note while Koe's call still answers its last one, and nothing of it is out yet: the call is cut and goes again
     // with both, so Koe says it once.
     if (isForUser(w) && this.#calling && !this.#streaming && !this.voice?.speaker.speaking && this.#noteOwed()) this.#callCut?.abort();
@@ -954,10 +955,11 @@ export class Agent {
    */
   #noted() {
     const p = this.#pending;
-    const got = p && this.#cameDue(Boolean(p.tool));
     // A wait (listening or not: voice going off leaves it for typing), and her own question waiting for a tap or typing (not annai's card): a note is always said, so it never waits behind an answer
-    // the user may never give (Koe's "want ideas?" held Kokoro's correction back in stage 5's real-model pass).
-    if (!got || !p || !(p.kind === 'wait' || (p.kind === 'ask' && !p.ask && !p.listening)) || this.state.name === 'hearing') return;
+    // the user may never give (Koe's "want ideas?" held Kokoro's correction back in stage 5's real-model pass). A line of theirs queued ends it as the looks do (#earlier).
+    if (!p || !(p.kind === 'wait' || (p.kind === 'ask' && !p.ask && !p.listening)) || this.state.name === 'hearing') return;
+    const got = this.#earlier(p.kind) ?? this.#cameDue(Boolean(p.tool));
+    if (!got) return;
     this.#pending = null;
     p.resolve(got);
   }

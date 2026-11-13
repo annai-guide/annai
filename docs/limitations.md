@@ -645,12 +645,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** it is seen in a real run.
 - **Approved:** 2026-11-12, the user picked "Known limitation (Recommended)".
 
-### A line whose quick verdict comes after her listening wait began waits out that wait
-- **Kind:** deferred.
-- **What the user sees:** voice on with the quick gate set. The user speaks while Shiori thinks, with the microphone left open; her next step is a wait that starts listening before the gate's verdict on their words comes back. The words then wait out the whole wait (up to 10 minutes, the dock saying "Listening") before she answers them. Rare: the wait must start within the gate's own time, about a second. (Measured on the test stand-in, 2026-11-13: ended 599 s after a "for her" verdict.)
-- **Why:** `#route` queues a line whose verdict lands with no listening wait yet, and nothing hands a queued line to a wait that is already listening.
-- **Revisit when:** the next version: after the gate's verdict, a line for her is handed to a wait that now listens (or ends it with "it follows"), limited to a wait that still listens, so words cut short by voice going off keep waiting as they do (the wait-takes design check's prototype; 3 tests pin that).
-
 ### A photo alone, sent while she waits for an answer, shows twice
 - **Kind:** deferred.
 - **What the user sees:** a message with only a photo (or only files), sent while Shiori's wait, her question or annai's card waits, shows as two "(a photo)" bubbles: the placeholder answers what waited, and the photo arrives again as its own message. Nothing is lost.

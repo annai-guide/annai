@@ -4025,3 +4025,39 @@ for (const [what, o] of /** @type {[string, Record<string, any>][]} */ ([['voice
     assert.equal(koe.filter((/** @type {any} */ r) => /hasn't been answered/.test(JSON.stringify(r))).length, 1, 'asked once more');
   });
 }
+
+// ---- A line whose quick verdict comes after her listening wait began (the deferred "waits out that wait", the wait-takes design check's Finding 3) ----
+// The gate judges the user's words while she thinks; her next step, a wait that listens, starts before its verdict. The line, queued for her after the
+// verdict, ends that wait with "it follows", as it would had it been queued before the wait's own look; not 600 s later.
+
+test('one Shiori, voice on, the quick gate set: a "for her" verdict that lands after her next wait began listening ends that wait at once, and the line reaches her (queue-tails)', async (t) => {
+  useClock(t);
+  /** @type {(() => void)[]} */
+  const gate = [];
+  /** @type {() => void} */
+  let goMain = () => {};
+  const mainHeld = new Promise((r) => { goMain = () => r(undefined); });
+  let main = 0;
+  const hold = async (/** @type {any} */ c) => {
+    if (c.model.providerId === 'model-d') await new Promise((r) => gate.push(() => r(undefined)));
+    else if (c.model.providerId === 'model-0' && ++main === 2) await mainHeld;
+  };
+  const script = [{ toolCalls: [{ name: 'wait', input: { seconds: 2 } }] }, { toolCalls: [{ name: 'wait', input: { seconds: 600 } }] }, say('A lighthouse.')];
+  const k = await gateKit(script, { hold, voice: { speechIn: ['m-hear'], hears: ['Where next?'], decide: gates(['A']) } });
+  k.agent.send('Plan our day');
+  await until(() => main === 2, 5000); // her first wait ran out; her second call is held, the microphone still open
+  k.platform.mic.feed(cat(quiet(0.3), await clip('first-one'), quiet(1)), 16_000); // the user speaks, and stops: one segment, at the gate
+  await until(() => gate.length === 1, 5000);
+  goMain(); // her reply: wait 600, which listens
+  await until(() => k.agent.kokoro.waiting && k.agent.state.name === 'listening', 5000);
+  const t0 = Date.now();
+  gate[0](); // the verdict: for her
+  await soon(async () => (await ownWaits(k)).length === 2, 700 * k.agent.secondMs);
+  const took = (Date.now() - t0) / k.agent.secondMs;
+  assert.ok(took <= 1, `the wait ended ${took} s after the verdict`);
+  await k.agent.idle();
+  assert.deepEqual((await ownWaits(k))[1], 'Not listening for an answer: the user spoke while you were thinking; it follows.');
+  const heard = (await k.events(['heard'])).map((/** @type {any} */ e) => ({ gate: e.data.gate, dismissed: Boolean(e.data.dismissed) }));
+  assert.deepEqual(heard, [{ gate: 'shiori', dismissed: false }], 'the line is hers, written once');
+  assert.ok((await k.events(['out.speak'])).some((/** @type {any} */ e) => e.data.text === 'A lighthouse.'), 'she answers it');
+});
