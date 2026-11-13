@@ -862,8 +862,11 @@ test("Details and the conversation say what it has cost by its dates, a chat's c
   await main.getByRole('button', { name: 'Remove', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Kyoto' })).toContainText('This removes everything in it from this device');
   await page.keyboard.press('Escape');
-  // Its conversation says the same of what it has cost as its Details does.
+  // Its conversation says the same of what it has cost as its Details does, once it shows: Details says these words too, and stays on show
+  // until the conversation is drawn. Read before that, they are Details', and the move back finds Details' old form, drawn over by the new one.
+  const talk = main.getByRole('heading', { name: 'Conversation', exact: true });
   await goToHash(page, `#/trip/${id}/talk`);
+  await expect(talk).toBeVisible();
   await expect(main).toContainText('This conversation so far: $0.42');
   await expect(main).not.toContainText('This trip so far');
   // Dated there, it is a trip, and both say so.
@@ -876,6 +879,7 @@ test("Details and the conversation say what it has cost by its dates, a chat's c
   await expect(main).not.toContainText('This conversation so far');
   await buttons();
   await goToHash(page, `#/trip/${id}/talk`);
+  await expect(talk).toBeVisible();
   await expect(main).toContainText('This trip so far: $0.42');
   await expect(main).not.toContainText('This conversation so far');
   await goToHash(page, '#/welcome');
