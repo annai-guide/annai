@@ -768,8 +768,8 @@ export class Live {
   #missed(e) {
     if (!this.#isNew(e)) return;
     const at = this.clock.now();
-    // What failed may be the writing too: the line waits until it can be written.
-    const write = () => logEvent(this.store, SYS_DEVICE, { type: 'error', actor: 'system', data: { kind: 'read', message: String(/** @type {any} */ (e)?.message ?? e) } }, at).catch(() => this.clock.set(write, RECHECK_MS));
+    // What failed may be the writing too: the line waits until it can be written, on the real clock (a simulation's stops when it ends).
+    const write = () => logEvent(this.store, SYS_DEVICE, { type: 'error', actor: 'system', data: { kind: 'read', message: String(/** @type {any} */ (e)?.message ?? e) } }, at).catch(() => (this.#sim?.clock ?? this.clock).set(write, RECHECK_MS));
     write();
   }
 

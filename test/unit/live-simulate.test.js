@@ -4,7 +4,10 @@ import { trackFrom, trackFromLog, Simulation, SIMULATION } from '../../src/core/
 import { Registry } from '../../src/core/registry.js';
 import { ManualClock, PlayClock } from '../../src/core/live/clock.js';
 import { meters } from '../../src/core/live/geo.js';
-import { liveKit, at, MONTEREY, BIXBY } from './live-kit.js';
+import { liveKit, at, LA, MONTEREY, BIXBY } from './live-kit.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
+import { RECHECK_MS } from '../../src/core/live/live.js';
+import { SYS_DEVICE } from '../../src/core/scopes.js';
 
 const SHORT = {
   start: '2026-11-27T09:00:00-08:00', everySec: 5, stillSec: 10, endMin: 1,
@@ -112,4 +115,20 @@ test('a recorded track that ends at a stop stays there until the record ends (li
   const track = trackFromLog(points, { end: at('19:02') });
   assert.equal(track.at(-1)?.at, at('19:02') - 10_000);
   assert.ok(track.filter((e) => e.at > at('18:32')).every((e) => e.kind === 'fix' && e.fix.speed === 0 && e.fix.lat === 35.5641));
+});
+
+test("a failed read's Trace line whose own write failed in a simulation is written once the simulation is over, on the real clock (backlog 4)", async () => {
+  const mem = createMemoryStore();
+  let failing = false;
+  const store = { ...mem, tx: (/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => (failing ? Promise.reject(new Error('disk busy')) : mem.tx(stores, mode, fn)) };
+  const k = await liveKit({ store: /** @type {any} */ (store) });
+  failing = true; // the read the simulation starts with fails, and so does the line that tells it
+  const giveBack = await k.live.simulate({ clock: new ManualClock(at('11:00', '2026-12-10')), timeZone: () => LA, trip: k.trip });
+  await k.settle();
+  failing = false;
+  await giveBack(); // a fast simulation is over: nothing moves its clock again
+  await k.settle();
+  await k.to(at('08:30') + RECHECK_MS + 1000);
+  const lines = (await k.events(['error'], SYS_DEVICE)).filter((e) => e.data.kind === 'read');
+  assert.deepEqual(lines.map((e) => e.data.message), ['disk busy']);
 });
