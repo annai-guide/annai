@@ -8,7 +8,7 @@ import { kindOf, ensureBaseScopes, createTrip, ME, SYS_WAITING } from '../../src
 import { readNames } from '../../src/core/names.js';
 import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
-import { runTool, RESULT_MAX } from '../../src/core/agent/tools.js';
+import { runTool, RESULT_MAX, READ_ON } from '../../src/core/agent/tools.js';
 import { utf8 } from '../../src/core/bytes.js';
 
 async function setup() {
@@ -101,12 +101,30 @@ test("read's line that says how to read on reaches her: each piece leaves it roo
   assert.equal(read, text, 'the pieces are the file');
 });
 
+test("read's line that says how to read on also survives the note a path's other case puts in front: even for a long path (review of backlog 6)", async () => {
+  const { trip, run, tools } = await setup();
+  const call = /** @type {any} */ ({ scope: trip, trip, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori' });
+  const text = Array.from({ length: 4000 }, (_, n) => `Line ${n}: the ferry leaves at ${n % 24}:00.`).join('\n');
+  assert.ok(text.length > 2 * RESULT_MAX);
+  // 290 characters is a long path (about the longest a file has), so the room READ_ON leaves has to hold its note and the line.
+  for (const path of ['/trip/notes/ferries.md', `/trip/notes/${'d'.repeat(267)}/ferries.md`]) {
+    await run('write', { path, content: text });
+    const asked = path.replace(/ferries\.md$/, 'Ferries.md');
+    const out = (await runTool(tools.read, { path: asked }, call)).output.content;
+    assert.ok(out.startsWith(`(read ${path}: the path's case differed)\n`), 'the note is in front');
+    assert.ok(out.length <= RESULT_MAX, `the result (${out.length}) fits its limit`);
+    assert.doesNotMatch(out, /were cut\.$/, 'the result is not cut');
+    assert.match(out, /\n… \d+ more characters; read again with from: \d+$/, 'it ends with where to read on, whole');
+  }
+});
+
 test('read: long text in pieces; a photo as an image when the model takes images; a PDF as a document only when it takes PDFs', async () => {
   const { ws, trip, run } = await setup();
   await run('write', { path: '/trip/notes/long.md', content: 'x'.repeat(50_000) });
   const first = await run('read', { path: '/trip/notes/long.md' });
-  assert.match(first, /read again with from: 39900$/);
-  assert.equal((await run('read', { path: '/trip/notes/long.md', from: 39_900 })).length, 10_100);
+  const piece = RESULT_MAX - READ_ON; // a piece leaves READ_ON of the result's limit for its read-on line
+  assert.match(first, new RegExp(`read again with from: ${piece}$`));
+  assert.equal((await run('read', { path: '/trip/notes/long.md', from: piece })).length, 50_000 - piece);
   const photo = await ws.write(trip, '/files/a.webp', utf8('webp-bytes'), { author: 'user', type: 'image/webp', meta: { width: 2048, height: 1536, taken: '2026-11-26T16:12:00-08:00' } });
   const seen = await run('read', { path: '/trip/files/a.webp' });
   assert.deepEqual(seen.images, [{ mediaType: 'image/webp', hash: photo.hash, path: '/trip/files/a.webp' }]);
