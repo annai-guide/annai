@@ -29,10 +29,10 @@ export const TOOL_NAME = /^[a-zA-Z0-9_-]{1,64}$/;
 /** The most of a tool's result the model sees at once; the rest is cut, with a note. */
 export const RESULT_MAX = 40_000;
 /**
- * The room a long text's piece leaves in its result (read's, read_trip's) for what comes with it, so the result's own cut never takes the line
- * that says how to read on. read's needs the most: its note when a path's case differed, "(read <path>: the path's case differed)" and a line
- * break, 34 characters and the path, at most 520 (512 inside a scope, normPath, after /waiting); then "… N more characters; read again with
- * from: N", 63 with numbers of 10 digits (no string holds 2^31 characters). read_trip's line is 68, its heading counted apart.
+ * The room a long text's piece leaves in its result (read's, read_trip's), so the result's own cut never takes the line that says how to read
+ * on. read's needs the most: its note when a path's case differed, "(read <path>: the path's case differed)" and a line break, 34 characters
+ * and the path, at most 520 (512 inside a scope, normPath, after /waiting); then "… N more characters; read again with from: N", 63 with
+ * numbers of 10 digits (no string holds 2^31 characters). read_trip's line is 68, its heading counted apart.
  */
 export const READ_ON = 34 + 520 + 63;
 /**

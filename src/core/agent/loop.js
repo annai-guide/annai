@@ -2493,7 +2493,7 @@ export class Agent {
       const reads = new Map();
       for (const [i, c] of ordered.entries()) {
         const rest = ordered.slice(i + 1);
-        // speak doesn't listen when the call right after it does (spec §7.1, §10.7): her question with buttons ('ask': unless a tap cut her line, as the question closes the tap's microphone), or a wait.
+        // speak doesn't listen when a call after it does (spec §7.1, §10.7): right after it, her question with buttons ('ask': unless a tap cut her line, as it closes the tap's microphone) or a wait; for Koe (listenLast), any later wait or tell_kokoro.
         const next = rest[0]?.name;
         const more = next === 'ask' ? 'ask' : next === 'wait' || (Boolean(this.#half.listenLast) && rest.some((/** @type {any} */ x) => x.name === 'tell_kokoro' || x.name === 'wait'));
         const goesOn = broke && woke < AWAKE_MAX;
@@ -3349,7 +3349,7 @@ export class Agent {
 
   /**
    * speak with voice on (spec §7.1, §10.1): plays what streamed in, then listens, unless sleep came
-   * in the same reply, or the call right after it listens (call.more). @param {string} text @param {any} call
+   * in the same reply, or a call after it listens (call.more). @param {string} text @param {any} call
    * @returns {Promise<import('./tools.js').ToolOutput | string>}
    */
   async #say(text, call) {
