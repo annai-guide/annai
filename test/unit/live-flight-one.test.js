@@ -155,6 +155,74 @@ test('a note that comes as the user\'s turn ends goes in only once her answer to
   }
 });
 
+// The user's picks of 2026-11-12, from the real run (notes-one-r1, three notes at once: 2 of 63 lost):
+// "Show it silently": any note she claims she already told is shown on a silent card, never lost.
+test('she answers the second of three notes with already_told: it is shown on a silent card, not lost, and the third goes in after and is said', async () => {
+  const { k, w } = await quietSession([{ said: SAID, audio: tone(1), delayMs: 500 }, { tool: { name: 'already_told', args: {} } }, { said: FERRY, audio: tone(1) }, { said: 'Okay.', audio: tone(0.3) }]);
+  try {
+    await Promise.all([tell(k), tell2(k), tell3(k)]);
+    await soon(async () => (await words(k)).includes(FERRY), 20_000);
+    await k.agent.idle();
+    w.stop();
+    assert.deepEqual(await shown(k), [[PASS, false]], 'the second, on a silent card');
+    assert.deepEqual(await words(k), ['Hello there.', SAID, FERRY]);
+    assert.deepEqual(cues(k), [], 'nothing asked once more');
+  } finally {
+    w.stop();
+    await k.done();
+  }
+});
+
+// "Count it as no answer": a whole line of hers that is only one of annai's own instruction words (a tool she calls without speaking, or silent: a
+// tool answer's scheduling) is no answer; she is asked once more, then annai shows and says the note.
+for (const [what, word] of [['"silent"', 'silent'], ['"Silent." with its case and full stop', 'Silent.'], ['"already told", the tool\'s name as speech would write it', 'already told']]) {
+  test(`her whole line for the second of two notes is ${what}: no answer, so she is asked once more and says the note`, async () => {
+    const { k, w } = await quietSession([{ said: SAID, audio: tone(1), delayMs: 500 }, { said: word, audio: tone(0.4) }, { said: PASS, audio: tone(1) }, { said: 'Okay.', audio: tone(0.3) }]);
+    try {
+      await Promise.all([tell(k), tell2(k)]);
+      await soon(async () => (await words(k)).includes(PASS), 20_000);
+      await k.agent.idle();
+      w.stop();
+      assert.equal(cues(k).length, 1, 'asked once more');
+      assert.deepEqual(await words(k), ['Hello there.', SAID, word, PASS]);
+      assert.deepEqual(await shown(k), []);
+    } finally {
+      w.stop();
+      await k.done();
+    }
+  });
+}
+
+test('her whole line for the second note is "silent" again after the ask once more: annai shows the note and says it', async () => {
+  const { k, w } = await quietSession([{ said: SAID, audio: tone(1), delayMs: 500 }, { said: 'silent', audio: tone(0.4) }, { said: 'silent', audio: tone(0.4) }, { said: 'Okay.', audio: tone(0.3) }]);
+  try {
+    await Promise.all([tell(k), tell2(k)]);
+    await soon(async () => (await shown(k)).length > 0, 20_000);
+    await k.agent.idle();
+    w.stop();
+    assert.equal(cues(k).length, 1, 'asked once, not twice');
+    assert.deepEqual(await shown(k), [[PASS, true]], 'shown, and said in annai\'s own voice');
+  } finally {
+    w.stop();
+    await k.done();
+  }
+});
+
+test('a short line that only looks like an instruction word is an answer: "Show them the way." passes the note', async () => {
+  const { k, w } = await quietSession([{ said: SAID, audio: tone(1), delayMs: 500 }, { said: 'Show them the way.', audio: tone(0.4) }, { said: 'Okay.', audio: tone(0.3) }]);
+  try {
+    await Promise.all([tell(k), tell2(k)]);
+    await soon(async () => (await words(k)).includes('Show them the way.'), 20_000);
+    await k.agent.idle();
+    w.stop();
+    assert.deepEqual(cues(k), [], 'not asked once more');
+    assert.deepEqual(await shown(k), []);
+  } finally {
+    w.stop();
+    await k.done();
+  }
+});
+
 // Review F8: the fresh session a silent note's rescue opens takes a second to connect; a line the user types meanwhile is the input now, and the old
 // note text is not sent after it (it went in after the typed line and replaced its wait).
 test('a note gets nothing back, and the user types a line while the fresh session connects: the line goes in, and the old note is not sent after it', async () => {
