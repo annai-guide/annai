@@ -1087,8 +1087,8 @@ export class Agent {
         };
         // The one place its listening opens (the user's pick, 2026-11-12, "Plain case only"): the question said aloud to its end, voice still on, and nothing
         // said or shown since it began. Unsaid (voice off, now or while it was said, or its sound failed: nobody heard it to its end) or passed, the card
-        // waits for its buttons, and nothing opens its listening later. A tap that cuts the question with voice on opens it at the cut.
-        if (!aloud || !spoken || spoken.failed || !this.voice?.on || ask.passed) return byHand();
+        // waits for its buttons, and nothing opens its listening later. A question a tap cut (spoken.cut) was not said to its end either.
+        if (!aloud || !spoken || spoken.failed || spoken.cut || !this.voice?.on || ask.passed) return byHand();
         ask.open = true;
         ask.from = Date.now();
         ask.until = ask.from + YES_S * this.secondMs;
@@ -1128,7 +1128,7 @@ export class Agent {
   /**
    * The other half's heard lines while annai's card waits (Halves): a line's words as they arrive, when it began (none: heard before the card),
    * whether over her voice, and its verdict. A line with no words yet (a live session's turn as it begins, a chat Koe's segment) gets them later.
-   * again: a later copy of its words (Koe's own write-down as its turn ends), which can take a yes back and never give one: the line is judged on
+   * again: a later copy of its words (Koe's own write-down as its turn ends), which can take back a yes not yet settled and never give one: the line is judged on
    * the words the card got as it was heard, and one nothing could write down then is never a yes.
    * @param {{ id: string, text?: string, at?: number, her?: boolean, kept?: boolean, again?: boolean }} x
    */
