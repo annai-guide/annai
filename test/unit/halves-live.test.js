@@ -1135,7 +1135,8 @@ test("review S4: switching to another trip with Kokoro's note still owed shows i
   }
 });
 
-test("the review's minors: a note retold goes in as the user's next spoken turn ends, as an append, not after Koe's first word", async () => {
+// One input at a time (spec §7.1, 2026-11-12): a note that waits as the user's turn ends goes in once her answer to that turn has ended, alone.
+test("the review's minors: a note retold goes in once Koe's answer to the user's next spoken turn has ended, as an append", async () => {
   const k = await liveKit([{ said: 'Let me check.', audio: tone(0.2) }, {}, {}, { heard: 'And the story?', said: 'Highway one took eighteen years.', audio: tone(2) }], { pace: 1 });
   try {
     await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
@@ -1147,10 +1148,12 @@ test("the review's minors: a note retold goes in as the user's next spoken turn 
     k.agent.tap();
     await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
     k.platform.mic.feed(cat(quiet(0.5), lunch, quiet(1)), 16_000);
+    const answered = soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => /eighteen/.test(e.data.text)));
     await soon(async () => texts(k).filter((t) => t.includes('Big Sur story')).length === 2);
     const last = k.server.received().slice(k.server.received().map((/** @type {any} */ m) => Boolean(m.realtimeInput?.activityEnd)).lastIndexOf(true));
     assert.ok(last.some((/** @type {any} */ m) => m.clientContent?.turns[0].parts[0].text.includes('Big Sur story')), 'after the activityEnd');
-    assert.ok(!(await k.events(['out.speak'])).some((/** @type {any} */ e) => /eighteen/.test(e.data.text)), 'before Koe answered the spoken turn');
+    assert.ok((await k.events(['out.speak'])).some((/** @type {any} */ e) => /eighteen/.test(e.data.text)), 'once Koe answered the spoken turn');
+    await answered;
   } finally {
     await k.done();
   }
@@ -1173,7 +1176,7 @@ test("the review's minors: a note held to be retold is let go once Koe reaches t
   }
 });
 
-test("Kokoro's note that comes while the user is still speaking goes in as soon as they finish (activityEnd), not after Koe's answer", async () => {
+test("Kokoro's note that comes while the user is still speaking goes in once Koe's answer to them has ended, not as they finish (one input at a time)", async () => {
   const k = await liveKit([{ heard: 'Where should we eat?', said: 'There is a taco stand ahead, and a diner after the bridge.', audio: tone(2) }, { said: 'And Nepenthe is open.', audio: tone(0.2) }], { pace: 1 });
   try {
     k.agent.tap();
@@ -1188,8 +1191,10 @@ test("Kokoro's note that comes while the user is still speaking goes in as soon 
     k.platform.mic.feed(cat(lunch.subarray(lunch.length >> 1), quiet(1)), 16_000);
     await soon(async () => got(k, 'realtimeInput').some((/** @type {any} */ m) => m.realtimeInput.activityEnd));
     await new Promise((r) => setTimeout(r, 300));
-    const order = k.server.received().filter((/** @type {any} */ m) => m.realtimeInput?.activityEnd || m.clientContent).map((/** @type {any} */ m) => (m.clientContent ? 'note' : 'end'));
-    assert.deepEqual(order, ['end', 'note'], 'the note followed activityEnd within 300 ms');
+    assert.ok(!texts(k).length, 'not as they finish: her answer to them first');
+    await soon(async () => texts(k).length > 0, 10_000);
+    const answer = (await k.events(['out.speak'])).find((/** @type {any} */ e) => /taco stand/.test(e.data.text));
+    assert.ok(answer, 'her answer to them was written before the note went in');
   } finally {
     await k.done();
   }

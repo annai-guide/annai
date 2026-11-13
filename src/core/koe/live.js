@@ -982,6 +982,7 @@ export class LiveKoe {
    */
   #again() {
     const o = this.#owed;
+    if (o.sent.length) this.#answer(undefined); // the wait for their answer went with that connection: they go in again, at once
     for (const w of o.sent) this.#resent.add(w);
     o.waiting.unshift(...o.sent.splice(0));
     o.cued = o.cue = false;
@@ -1113,12 +1114,11 @@ export class LiveKoe {
     if (!again) return this.#gone(true);
     this.#rescued = true;
     if (due.alive) return this.#text(UNANSWERED, undefined, true, [UNANSWERED]);
-    // The words go once: a note among them stays sent, and isn't taken for waiting by the move.
-    const sent = this.#owed.sent.splice(0);
+    // The words go once more, into a fresh session, and nothing else before them: a note among them stays the one in flight (#reconnect).
     const ok = await this.#reconnect('silent', { fresh: true });
-    this.#owed.sent.push(...sent);
     if (!ok) return this.#gone(false);
     if (due.text) this.#text(due.text, undefined, false, due.told);
+    else this.#idle();
   }
 
   /** @param {'start' | 'end'} edge */
@@ -1165,7 +1165,7 @@ export class LiveKoe {
       this.#answer(null);
       this.c.spoke?.(); // what waited for the user's next words goes to Koe with them
       if (this.#hearFirst) this.#heardFirst();
-      else this.#idle(); // what waited for the user to finish goes in now, not after Koe's answer
+      else this.#idle(); // the ask once more may go in; what else waits goes in after her answer to them (#idle)
     }
   }
 
@@ -1392,6 +1392,7 @@ export class LiveKoe {
     const t = (this.#trail = this.#t);
     this.#t = null;
     this.#tries = 0;
+    const flight = this.#owed.sent[0]; // writing her line below may let the next note in (#said, #idle): it isn't settled here
     if (t?.stream) this.#ending(t);
     else if (t?.spoken && !this.#waits(t)) this.#said(t, null);
     // Heard, and answered by nothing at all: not meant for Koe (the model's own choice, proactive audio).
@@ -1402,7 +1403,7 @@ export class LiveKoe {
     const h = this.#hear;
     this.#answered(dismissed, Boolean(t?.spoken));
     if (t) t.done = true;
-    if (!t?.calls) this.#settle(t); // else once its calls are answered: a refused show passes nothing on
+    if (!t?.calls && this.#owed.sent[0] === flight) this.#settle(t); // else once its calls are answered: a refused show passes nothing on
     this.#heardOut();
     this.#idle();
     if (!dismissed || !this.#lapsed) return;
@@ -1675,22 +1676,25 @@ export class LiveKoe {
   }
 
   /**
-   * Between turns: what waits goes in, together, Kokoro's notes and the ask once more among it; a session told to go (GoAway)
-   * reconnects with its handle first, as what goes into it now would be answered there and lost.
+   * Between turns: what waits goes in, the ask once more among it; a session told to go (GoAway) reconnects with its handle first, as what goes
+   * into it now would be answered there and lost. One input at a time (spec §7.1): while a note for the user that went in is not passed on, or an
+   * answer is due (to a text annai or the user put in, or to the user's spoken turn until she answers it, a tool call included), only the ask once
+   * more goes in; and one note for the user at a time. So the first whole line of hers begun after it went in is its answer (#said).
    */
   #idle() {
     this.#sleepy();
     if (this.busy || this.#urgent || !this.#s || this.#closing) return; // an urgent answer first: what waits goes in after it
     if (this.#rotate) return void this.#reconnect('goaway').then((ok) => { if (!ok) this.#gone(false); });
     const o = this.#owed;
-    const kept = this.#hearFirst ? [] : o.waiting;
-    const notes = this.#notes.splice(0);
+    const free = !o.sent.length && !(this.#due && !this.#due.tools);
+    const kept = free && !this.#hearFirst ? o.waiting.slice(0, 1) : [];
+    const notes = free ? this.#notes.splice(0) : [];
     const cue = o.cue ? [CUE] : [];
     const text = [...notes.map((n) => n.text), ...kept.map((w) => w.line ?? wrapNote(String(w.note ?? ''), this.c.nonce, { forUser: w.forUser })), ...cue];
     if (!text.length) return;
     const told = [...notes.filter((n) => n.told).map((n) => n.text), ...kept.flatMap((w) => (w.line ? [w.line] : [])), ...cue];
     o.cue = false;
-    if (kept.length) this.#went(o.waiting.splice(0));
+    if (kept.length) this.#went(o.waiting.splice(0, 1));
     this.#text(text.join('\n'), undefined, false, told);
     // Nobody is in a session a note or a trigger opened: sound at the microphone until she has said it is music, which would cut her.
     if (this.#brief) {
@@ -1733,7 +1737,7 @@ export class LiveKoe {
 
   /** A new connection with the handle (fresh: without), the conversation going on. @param {string} why @param {{ fresh?: boolean, spell?: boolean }} [o] spell: false: the quiet spell isn't begun again @returns {Promise<boolean>} */
   async #reconnect(why, { fresh = false, spell = true } = {}) {
-    this.#again();
+    if (!fresh) this.#again(); // a fresh one gets the text in flight again from #silent, alone: its notes stay in flight
     this.#hold();
     if (fresh) this.#handle = undefined;
     const old = (this.#old = this.#s);
@@ -1751,7 +1755,7 @@ export class LiveKoe {
     if (spell) this.#poke();
     this.#changed();
     this.#arm();
-    this.#idle();
+    if (!fresh) this.#idle();
     return Boolean(s);
   }
 
