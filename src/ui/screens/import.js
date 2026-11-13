@@ -20,7 +20,7 @@ import { FOLD_OVER } from '../../core/timeline.js';
 
 /** @typedef {{ key: Request | null, file: File }} InboxFile  key: its entry in the share inbox, if it came that way */
 
-/** More chats than this in a file are one row in its preview, more rows than this a git backup's preview can't tell apart fold under one, and more trips than this one link to the timeline afterwards: the timeline's fold count, three rows read at a glance. */
+/** More chats than this in a file are one row in its preview, more rows than this a git backup's preview can't tell apart fold under one, and more trips than this one link to Trips afterwards: the timeline's fold count, three rows read at a glance. */
 const MANY = FOLD_OVER;
 
 /** @param {any} ctx @param {{ params: Record<string, string> }} route */
@@ -236,7 +236,7 @@ function preview(ctx, body, opened, desc, from, fresh, bring = null) {
         toldIfLeft(ctx, quit.signal, titles, from ? (await ctx.backups?.get(from.target).catch(() => null))?.name : null);
         body.replaceChildren(h('div', { class: 'panel' },
           h('p', { role: 'status', text: t`Imported.` }),
-          h('div', { class: 'acts' }, ...(result.trips.length > MANY ? [h('a', { class: 'btn pri', href: '#/trips' }, t`Go to the timeline`)]
+          h('div', { class: 'acts' }, ...(result.trips.length > MANY ? [h('a', { class: 'btn pri', href: '#/trips' }, t`Go to Trips`)]
             : result.trips.map((id, i) => h('a', { class: 'btn pri', href: `#/trip/${encodeURIComponent(id)}` }, titles[i] ? t`Open ${titles[i]}` : t`Open trip`)))),
           result.archived.length ? h('p', { class: 'sub', text: plural(result.archived.length, '# older copy moved to archived trips.', '# older copies moved to archived trips.') }) : null,
           plugged,

@@ -35,6 +35,7 @@ export async function renderTrip(ctx, route) {
   const extra = h('div', {}); // the export panel opens here
   const { total } = await costs(ctx.store, id);
   // Details, the trip's page: back to its conversation; its name and dates; what opens from it; Share, Archive and Remove; its cost and files.
+  // Undated, it is a chat, and its words say conversation (the timeline design: no "trip" on small chats).
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, crumb(talkHref(id), t`Conversation`)),
     h('h1', { class: 'title', dir: 'auto', text: scopeTitle(scope) }),
@@ -52,10 +53,10 @@ export async function renderTrip(ctx, route) {
       archived
         ? h('button', { class: 'btn', type: 'button', onclick: async () => { await setTripStatus(ctx.store, id, 'active'); await ctx.live?.tripsChanged().catch(() => {}); ctx.render(); } }, t`Unarchive`)
         // Archived, its reminders leave live mode and the push relay at once.
-        : twoStep(t`Archive trip`, t`Tap again to archive`, async () => { await setTripStatus(ctx.store, id, 'archived'); await ctx.chats?.used(id); await ctx.live?.tripsChanged().catch(() => {}); ctx.go('#/trips'); }),
-      h('button', { class: 'btn danger', type: 'button', onclick: (/** @type {Event} */ e) => removeFlow(ctx, id, scope, /** @type {HTMLButtonElement} */ (e.currentTarget)) }, t`Remove trip`)),
+        : twoStep(start ? t`Archive trip` : t`Archive conversation`, t`Tap again to archive`, async () => { await setTripStatus(ctx.store, id, 'archived'); await ctx.chats?.used(id); await ctx.live?.tripsChanged().catch(() => {}); ctx.go('#/trips'); }),
+      h('button', { class: 'btn danger', type: 'button', onclick: (/** @type {Event} */ e) => removeFlow(ctx, id, scope, /** @type {HTMLButtonElement} */ (e.currentTarget)) }, start ? t`Remove trip` : t`Remove conversation`)),
     extra,
-    h('p', { class: 'sub trip-cost', text: t`This trip so far: ${formatCost(total)}` }),
+    h('p', { class: 'sub trip-cost', text: start ? t`This trip so far: ${formatCost(total)}` : t`This conversation so far: ${formatCost(total)}` }),
     await filesSection(ctx, id),
     await packPanel(ctx, id),
     // Every file by folder, and the box that adds one by path: the full list, folded below the everyday one.

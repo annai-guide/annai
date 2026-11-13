@@ -470,75 +470,75 @@ bo3wjk	ok	Shiori stopped: today's budget is spent	Shiori 已停止：今天的�
 67wvld	ok	Shiori stopped: step limit	Shiori 已停止：步數上限	src/core/agent/budgets.js:123	
 177194c	ok	She took {0} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.	Shiori 在沒人要求時自己做事，已經走了{0}步，所以停在了這裡。想讓她繼續，就告訴她。	src/core/agent/budgets.js:124	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告訴她), not the glossary's Ask, Safari's 詢問 choice.
 1o4yqf3	ok	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	她已走完一次喚醒可走的{0}步（設定 → Shiori → 她主動行動的頻率）。想讓她繼續，就告訴她。	src/core/agent/budgets.js:125	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告訴她), not the glossary's Ask, Safari's 詢問 choice; the setting's path as the screens name it.
-1vskjkw	draft	Live is resting; Koe · Chat is answering	即時正在休息，由 Koe · 聊天 回答	src/core/agent/halves.js:565	
-edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	目前由 Shiori 直接回答你。原因見記錄（模型）；Koe 幾分鐘後會再試。	src/core/agent/halves.js:642	
-yvabm6	ok	Koe's live voice couldn't start	Koe 的即時語音無法啟動	src/core/agent/halves.js:642	Note: "live voice" is the glossary's Live voice (即時語音), not a voice she speaks with (聲音).
-bzrasi	ok	Shiori answers as one half for now	Shiori 暫時獨自回答	src/core/agent/halves.js:813	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
-o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai 無法把你的訊息轉給 Koe：{0}	src/core/agent/halves.js:813	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-15junxn	draft	One moment…	請稍候…	src/core/agent/loop.js:137	Note: the dock's words between the user's tap and Listening (Shiori getting ready to hear them).
-1dhsqvv	ok	Tap to talk	點一下說話	src/core/agent/loop.js:137	
-1ldobgc	ok	Tap to interrupt	點一下打斷	src/core/agent/loop.js:137	
-4mbury	ok	Thinking · tap to stop	思考中 · 點一下停止	src/core/agent/loop.js:137	
-89yydm	ok	Listening	聆聽中	src/core/agent/loop.js:137	Note: one of Shiori's states, as the dock shows her.
-bost42	draft	Ignoring sound · tap to talk	忽略聲音 · 輕點說話	src/core/agent/loop.js:137	
-g8840o	ok	Waiting for your OK	等待你的確認	src/core/agent/loop.js:137	
-yydchc	ok	Hearing you	正在聽你說	src/core/agent/loop.js:137	Note: one of Shiori's states: she hears you speaking.
-akjf4d	ok	Working on …	處理中…	src/core/agent/loop.js:138	
-izy3tv	ok	Offline · reminders still work	離線 · 提醒仍然有效	src/core/agent/loop.js:138	
-gni5zk	draft	Her sound got stuck, and a tap brings it back. Her words are in the conversation.	Shiori 的聲音卡住了，點一下即可恢復。她說的話都在對話裡。	src/core/agent/loop.js:172	
-guullf	ok	Tap the screen so Shiori can speak	點一下螢幕，讓 Shiori 能說話	src/core/agent/loop.js:172	
-1080xlr	ok	Working on {0}	處理中：{0}	src/core/agent/loop.js:643	{0} = detail; Note: label: value, {0} is what she works on, in her words.
-1h2c64o	ok	Working on tidying up the conversation	正在整理對話	src/core/agent/loop.js:643	
-19793n8	ok	Shiori skipped a wake	Shiori 跳過了一次喚醒	src/core/agent/loop.js:1182	
-16ny0z2	ok	Shiori stopped	Shiori 已停止	src/core/agent/loop.js:1424	
-1sxm1ou	ok	Something went wrong: {0}	出了點問題：{0}	src/core/agent/loop.js:1424	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori 無法整理對話	src/core/agent/loop.js:1457	
-oeaxaa	ok	She will try again later.	她稍後會再試。	src/core/agent/loop.js:1457	
-x10s30	ok	Shiori couldn't summarize the conversation	Shiori 無法總結對話	src/core/agent/loop.js:1645	
-1ds0zov	ok	Reminder	提醒	src/core/agent/loop.js:1852	
-1szzjml	ok	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:1852	
-nxpady	ok	The message went without it.	訊息已在沒有這張照片的情況下送出。	src/core/agent/loop.js:1967	
-sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:1967	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
-ssozn1	ok	A photo wasn't sent to Shiori	照片沒有傳給 Shiori	src/core/agent/loop.js:1967	
-311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori 剛才正忙到一半。你回來後她會接著做。	src/core/agent/loop.js:2037	
-1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她以相同結果呼叫了同一個工具三次，所以這一輪結束了。請換個說法再問一次。	src/core/agent/loop.js:2369	Note: "Ask again" is the verb (再問), not the glossary's Ask, Safari's 詢問 choice.
-pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重複	src/core/agent/loop.js:2369	
-1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什麼也沒對你說就結束了。	src/core/agent/loop.js:2407	
-2bgbpn	ok	Shiori didn't answer	Shiori 沒有回答	src/core/agent/loop.js:2411	
-1mjdfzn	ok	Shiori can't reach her model	Shiori 無法連線她的模型	src/core/agent/loop.js:2485	
-1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	這個模型只接受{0}格式的照片，而這個瀏覽器無法產生。新增{1}的外掛程式可以解決（設定 → 外掛程式）。	src/core/agent/loop.js:2512	{0} = names; {1} = names
-1uhz9dg	ok	Shiori couldn't send the photo	Shiori 無法傳送照片	src/core/agent/loop.js:2571	
-vjxaph	ok	Your turn	輪到你了	src/core/agent/loop.js:3045	
-19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	這個瀏覽器只有在點一下後才會播放聲音。她的話在對話裡。	src/core/agent/loop.js:3194	
-1h2ina6	ok	Shiori couldn't speak aloud	Shiori 無法朗讀出聲	src/core/agent/loop.js:3195	
-1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → 模型 → 朗讀中沒有一個聲音能用；原因見記錄。她的話在對話裡。	src/core/agent/loop.js:3195	
-1r1dhd7	ok	Shiori can't hear you yet	Shiori 還聽不到你	src/core/agent/loop.js:3332	
-8wd0xv	ok	Listening stopped	收聽已停止	src/core/agent/loop.js:3533	
-43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:3754	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	每邊最多 # 畫素	src/core/agent/loop.js:3755	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一次最多#張照片	src/core/agent/loop.js:3756	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	僅限{0}	src/core/agent/loop.js:3757	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一張照片（它接受：{0}），annai 也無法做出它能接受的副本。請在設定 → 照片 → 傳給 Shiori 的照片中改用更小的照片，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:3758	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一張照片，annai 也無法做出它能接受的副本。請在設定 → 照片 → 傳給 Shiori 的照片中改用更小的照片，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:3759	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，對話對她的模型來說太長了。請在設定 → 模型中檢查模型，或稍後再試。	src/core/agent/loop.js:3766	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	外掛程式 {0} 喚醒她的次數超過了你允許的每小時#次。	src/core/agent/loop.js:3776	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情喚醒她的次數超過了你允許的每小時#次：{0}。	src/core/agent/loop.js:3777	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你新增的檔案喚醒她的次數超過了你允許的每小時#次：{0}。	src/core/agent/loop.js:3778	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	有東西喚醒她的次數超過了你允許的每小時#次。	src/core/agent/loop.js:3779	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+1vskjkw	draft	Live is resting; Koe · Chat is answering	即時正在休息，由 Koe · 聊天 回答	src/core/agent/halves.js:584	
+edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	目前由 Shiori 直接回答你。原因見記錄（模型）；Koe 幾分鐘後會再試。	src/core/agent/halves.js:663	
+yvabm6	ok	Koe's live voice couldn't start	Koe 的即時語音無法啟動	src/core/agent/halves.js:663	Note: "live voice" is the glossary's Live voice (即時語音), not a voice she speaks with (聲音).
+bzrasi	ok	Shiori answers as one half for now	Shiori 暫時獨自回答	src/core/agent/halves.js:834	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
+o0lfar	ok	annai couldn't pass your message to Koe: {0}	annai 無法把你的訊息轉給 Koe：{0}	src/core/agent/halves.js:834	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+15junxn	draft	One moment…	請稍候…	src/core/agent/loop.js:145	Note: the dock's words between the user's tap and Listening (Shiori getting ready to hear them).
+1dhsqvv	ok	Tap to talk	點一下說話	src/core/agent/loop.js:145	
+1ldobgc	ok	Tap to interrupt	點一下打斷	src/core/agent/loop.js:145	
+4mbury	ok	Thinking · tap to stop	思考中 · 點一下停止	src/core/agent/loop.js:145	
+89yydm	ok	Listening	聆聽中	src/core/agent/loop.js:145	Note: one of Shiori's states, as the dock shows her.
+bost42	draft	Ignoring sound · tap to talk	忽略聲音 · 輕點說話	src/core/agent/loop.js:145	
+g8840o	ok	Waiting for your OK	等待你的確認	src/core/agent/loop.js:145	
+yydchc	ok	Hearing you	正在聽你說	src/core/agent/loop.js:145	Note: one of Shiori's states: she hears you speaking.
+akjf4d	ok	Working on …	處理中…	src/core/agent/loop.js:146	
+izy3tv	ok	Offline · reminders still work	離線 · 提醒仍然有效	src/core/agent/loop.js:146	
+gni5zk	draft	Her sound got stuck, and a tap brings it back. Her words are in the conversation.	Shiori 的聲音卡住了，點一下即可恢復。她說的話都在對話裡。	src/core/agent/loop.js:180	
+guullf	ok	Tap the screen so Shiori can speak	點一下螢幕，讓 Shiori 能說話	src/core/agent/loop.js:180	
+1080xlr	ok	Working on {0}	處理中：{0}	src/core/agent/loop.js:674	{0} = detail; Note: label: value, {0} is what she works on, in her words.
+1h2c64o	ok	Working on tidying up the conversation	正在整理對話	src/core/agent/loop.js:674	
+19793n8	ok	Shiori skipped a wake	Shiori 跳過了一次喚醒	src/core/agent/loop.js:1311	
+16ny0z2	ok	Shiori stopped	Shiori 已停止	src/core/agent/loop.js:1554	
+1sxm1ou	ok	Something went wrong: {0}	出了點問題：{0}	src/core/agent/loop.js:1554	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori 無法整理對話	src/core/agent/loop.js:1587	
+oeaxaa	ok	She will try again later.	她稍後會再試。	src/core/agent/loop.js:1587	
+x10s30	ok	Shiori couldn't summarize the conversation	Shiori 無法總結對話	src/core/agent/loop.js:1775	
+1ds0zov	ok	Reminder	提醒	src/core/agent/loop.js:1974	
+1szzjml	ok	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:1974	
+nxpady	ok	The message went without it.	訊息已在沒有這張照片的情況下送出。	src/core/agent/loop.js:2113	
+sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:2113	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
+ssozn1	ok	A photo wasn't sent to Shiori	照片沒有傳給 Shiori	src/core/agent/loop.js:2113	
+311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori 剛才正忙到一半。你回來後她會接著做。	src/core/agent/loop.js:2183	
+1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她以相同結果呼叫了同一個工具三次，所以這一輪結束了。請換個說法再問一次。	src/core/agent/loop.js:2526	Note: "Ask again" is the verb (再問), not the glossary's Ask, Safari's 詢問 choice.
+pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重複	src/core/agent/loop.js:2526	
+1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什麼也沒對你說就結束了。	src/core/agent/loop.js:2564	
+2bgbpn	ok	Shiori didn't answer	Shiori 沒有回答	src/core/agent/loop.js:2568	
+1mjdfzn	ok	Shiori can't reach her model	Shiori 無法連線她的模型	src/core/agent/loop.js:2642	
+1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	這個模型只接受{0}格式的照片，而這個瀏覽器無法產生。新增{1}的外掛程式可以解決（設定 → 外掛程式）。	src/core/agent/loop.js:2669	{0} = names; {1} = names
+1uhz9dg	ok	Shiori couldn't send the photo	Shiori 無法傳送照片	src/core/agent/loop.js:2728	
+vjxaph	ok	Your turn	輪到你了	src/core/agent/loop.js:3218	
+19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	這個瀏覽器只有在點一下後才會播放聲音。她的話在對話裡。	src/core/agent/loop.js:3375	
+1h2ina6	ok	Shiori couldn't speak aloud	Shiori 無法朗讀出聲	src/core/agent/loop.js:3376	
+1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → 模型 → 朗讀中沒有一個聲音能用；原因見記錄。她的話在對話裡。	src/core/agent/loop.js:3376	
+1r1dhd7	ok	Shiori can't hear you yet	Shiori 還聽不到你	src/core/agent/loop.js:3522	
+8wd0xv	ok	Listening stopped	收聽已停止	src/core/agent/loop.js:3727	
+43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:4016	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	每邊最多 # 畫素	src/core/agent/loop.js:4017	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一次最多#張照片	src/core/agent/loop.js:4018	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	僅限{0}	src/core/agent/loop.js:4019	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一張照片（它接受：{0}），annai 也無法做出它能接受的副本。請在設定 → 照片 → 傳給 Shiori 的照片中改用更小的照片，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:4020	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一張照片，annai 也無法做出它能接受的副本。請在設定 → 照片 → 傳給 Shiori 的照片中改用更小的照片，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:4021	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，對話對她的模型來說太長了。請在設定 → 模型中檢查模型，或稍後再試。	src/core/agent/loop.js:4028	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	外掛程式 {0} 喚醒她的次數超過了你允許的每小時#次。	src/core/agent/loop.js:4038	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情喚醒她的次數超過了你允許的每小時#次：{0}。	src/core/agent/loop.js:4039	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你新增的檔案喚醒她的次數超過了你允許的每小時#次：{0}。	src/core/agent/loop.js:4040	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	有東西喚醒她的次數超過了你允許的每小時#次。	src/core/agent/loop.js:4041	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	這則訊息含有金鑰，所以不顯示。	src/core/agent/net.js:94	
 157dl17	ok	Shiori wants to adjust her personality	Shiori 想調整她的性格	src/core/agent/personalities.js:130	
 13g1wjf	ok	No thanks	不用了	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
 1izvp43	ok	Agree	同意	src/core/agent/personalities.js:131	
-1llchoj	draft	Read {0}, {1}?	允許 Shiori 讀取「{0}」（{1}）嗎？	src/core/agent/trip-tools.js:357	{0} = title; {1} = dates; Note: annai's card before Shiori reads another of the user's trips, naming which: {0} is its name, {1} its dates as the screens show them ("Apr 1 – 8"). The options: Allow, Always for my trips, Not now. Also said aloud.
-i37hzw	draft	Read {0}?	允許 Shiori 讀取「{0}」嗎？	src/core/agent/trip-tools.js:357	{0} = title; Note: annai asks before Shiori reads another of the user's trips; {0} is that trip's name. The options: Allow, Always for my trips, Not now.
-mowdsi	draft	Read {0}, last talked {1}?	允許 Shiori 讀取「{0}」（上次聊天：{1}）嗎？	src/core/agent/trip-tools.js:357	{0} = title; {1} = talked; Note: annai's card before Shiori reads another conversation whose name another one shares: {0} is its name, {1} when the user last talked in it ("Nov 5, 02:30 PM"). Also said aloud.
-1diq3hj	draft	Carry on in {0}?	到「{0}」繼續嗎？	src/core/agent/trip-tools.js:362	{0} = title; Note: annai's card when Shiori offers to take the user into another of their conversations to carry on there; {0} is its name. The options: Open, Not now. Also said aloud.
-8xml26	draft	Carry on in {0}, {1}?	到「{0}」（{1}）繼續嗎？	src/core/agent/trip-tools.js:362	{0} = title; {1} = dates; Note: annai's card when Shiori offers to take the user into another of their trips to carry on there, naming which: {0} is its name, {1} its dates as the screens show them ("Apr 1 – 8"). The options: Open, Not now. Open opens that trip's conversation. Also said aloud.
-9sjz9j	draft	Carry on in {0}, last talked {1}?	到「{0}」（上次聊天：{1}）繼續嗎？	src/core/agent/trip-tools.js:362	{0} = title; {1} = talked; Note: annai's card when Shiori offers to take the user into another conversation whose name another one shares: {0} is its name, {1} when the user last talked in it ("Nov 5, 02:30 PM"). The options: Open, Not now. Also said aloud.
-8vx737	draft	Always for my trips	我的旅行一律允許	src/core/agent/trip-tools.js:373	Note: an option on that card: Shiori may read any of the user's own trips from now on, without asking (Settings can turn it off).
-c9wfke	ok	Not now	現在不要	src/core/agent/trip-tools.js:373	Note: 現在不要, as Taiwan's iPhone says Not Now.
-nfb55e	draft	Allow	允許	src/core/agent/trip-tools.js:373	
-n6hn1l	ok	Open	開啟	src/core/agent/trip-tools.js:479	
+1llchoj	draft	Read {0}, {1}?	允許 Shiori 讀取「{0}」（{1}）嗎？	src/core/agent/trip-tools.js:371	{0} = title; {1} = dates; Note: annai's card before Shiori reads another of the user's trips, naming which: {0} is its name, {1} its dates as the screens show them ("Apr 1 – 8"). The options: Allow, Always for my trips, Not now. Also said aloud.
+i37hzw	draft	Read {0}?	允許 Shiori 讀取「{0}」嗎？	src/core/agent/trip-tools.js:371	{0} = title; Note: annai asks before Shiori reads another of the user's trips; {0} is that trip's name. The options: Allow, Always for my trips, Not now.
+mowdsi	draft	Read {0}, last talked {1}?	允許 Shiori 讀取「{0}」（上次聊天：{1}）嗎？	src/core/agent/trip-tools.js:371	{0} = title; {1} = talked; Note: annai's card before Shiori reads another conversation whose name another one shares: {0} is its name, {1} when the user last talked in it ("Nov 5, 02:30 PM"). Also said aloud.
+1diq3hj	draft	Carry on in {0}?	到「{0}」繼續嗎？	src/core/agent/trip-tools.js:376	{0} = title; Note: annai's card when Shiori offers to take the user into another of their conversations to carry on there; {0} is its name. The options: Open, Not now. Also said aloud.
+8xml26	draft	Carry on in {0}, {1}?	到「{0}」（{1}）繼續嗎？	src/core/agent/trip-tools.js:376	{0} = title; {1} = dates; Note: annai's card when Shiori offers to take the user into another of their trips to carry on there, naming which: {0} is its name, {1} its dates as the screens show them ("Apr 1 – 8"). The options: Open, Not now. Open opens that trip's conversation. Also said aloud.
+9sjz9j	draft	Carry on in {0}, last talked {1}?	到「{0}」（上次聊天：{1}）繼續嗎？	src/core/agent/trip-tools.js:376	{0} = title; {1} = talked; Note: annai's card when Shiori offers to take the user into another conversation whose name another one shares: {0} is its name, {1} when the user last talked in it ("Nov 5, 02:30 PM"). The options: Open, Not now. Also said aloud.
+8vx737	draft	Always for my trips	我的旅行一律允許	src/core/agent/trip-tools.js:387	Note: an option on that card: Shiori may read any of the user's own trips from now on, without asking (Settings can turn it off).
+c9wfke	ok	Not now	現在不要	src/core/agent/trip-tools.js:387	Note: 現在不要, as Taiwan's iPhone says Not Now.
+nfb55e	draft	Allow	允許	src/core/agent/trip-tools.js:387	
+n6hn1l	ok	Open	開啟	src/core/agent/trip-tools.js:494	
 myk8x4	ok	annai couldn't reach {0} ({1}). Is the device offline?	annai 無法連到 {0}（{1}）。這台裝置是否離線了？	src/core/answer.js:18	{0} = where; {1} = s.info; Note: {1} is the browser's own words, often English.
 uc7dg2	ok	annai couldn't reach {0}. Is the device offline?	annai 無法連到 {0}。這台裝置是否離線了？	src/core/answer.js:18	{0} = where
 15czcef	ok	{0} answered {1}.	{0} 傳回了 {1}。	src/core/answer.js:19	{0} = where; {1} = s.status; Note: {1} is an HTTP status code.
@@ -599,8 +599,8 @@ iwgrsx	ok	This calendar has more than {0} events. Export only the trip's dates f
 5l9pv6	ok	{0} is larger than a trip's calendar ever is (over {1}). Export only the trip's dates from your calendar, and add that file.	{0} 對一個旅行行事曆來說太大了（超過 {1}）。請只從行事曆中匯出旅行日期內的事件，再新增那個檔案。	src/core/imports.js:15	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:27	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Chinese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	ok	just now	剛剛	src/core/intl.js:130	
-1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	用手機揚聲器時，Shiori 說話期間 annai 聽不到你，所以你在她說話時說的話會被丟棄。點一下就能讓她停下並開始收聽。	src/core/koe/live.js:632	
-1ml2kgi	ok	Tap Shiori to talk over her	點一下 Shiori 即可打斷她	src/core/koe/live.js:632	Note: The dock's Shiori button: tap it to talk over her.
+1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	用手機揚聲器時，Shiori 說話期間 annai 聽不到你，所以你在她說話時說的話會被丟棄。點一下就能讓她停下並開始收聽。	src/core/koe/live.js:664	
+1ml2kgi	ok	Tap Shiori to talk over her	點一下 Shiori 即可打斷她	src/core/koe/live.js:664	Note: The dock's Shiori button: tap it to talk over her.
 3fqfy0	ok	Languages	語言	src/core/languages.js:332	
 1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你說的語言和 Shiori 回答所用的語言會告知每個負責聽和說的模型，以免把簡短的回覆誤認作其他語言。	src/core/languages.js:333	
 1giusr1	ok	Languages you speak	你說的語言	src/core/languages.js:334	
@@ -839,12 +839,12 @@ ido0tg	ok	The phone's push service says this subscription no longer exists.	手�
 1eeb6fm	ok	There's no annai push relay at {0} (it answered 404). Check the relay address.	{0} 上沒有 annai 推播中繼（傳回了 404）。請檢查中繼網址。	src/core/push/relay-client.js:41	{0} = host
 12gfn9	ok	The relay at {0} sent a key annai can't use. Is this the address of an annai push relay?	{0} 的中繼傳來了 annai 無法使用的金鑰。這是 annai 推播中繼的網址嗎？	src/core/push/relay-client.js:42	{0} = host
 n5y19n	ok	The relay at {0} refused it ({1}).	{0} 的中繼拒絕了請求（{1}）。	src/core/push/relay-client.js:43	{0} = host; {1} = status
-3hb2ch	ok	The key works.	金鑰有效。	src/core/realtime/open.js:270	
-r6odk7	ok	annai can open a live session at this address from the browser.	annai 可以從瀏覽器在這個網址開啟即時連線。	src/core/realtime/open.js:270	Note: a live session is 即時連線; 會話 reads as a spoken conversation in Taiwan.
-1gyqcn2	ok	It answered aloud: {0}.	它出聲回答了：{0}。	src/core/realtime/open.js:301	{0} = words
-ip7w4y#other	ok	It didn't answer aloud within # seconds.	沒有在 # 秒內用聲音回答。	src/core/realtime/open.js:301	plural; # = ms / 1000; English: "It didn't answer aloud within # second." (one), "It didn't answer aloud within # seconds." (other)
-1x3q9c3	ok	The session closed before it answered.	回答前連線就關閉了。	src/core/realtime/open.js:302	Note: a live session is 即時連線; 會話 reads as a spoken conversation in Taiwan.
-9sqs1k	ok	It answered, but not aloud in words.	它回答了，但沒有用聲音說出話來。	src/core/realtime/open.js:302	
+3hb2ch	ok	The key works.	金鑰有效。	src/core/realtime/open.js:271	
+r6odk7	ok	annai can open a live session at this address from the browser.	annai 可以從瀏覽器在這個網址開啟即時連線。	src/core/realtime/open.js:271	Note: a live session is 即時連線; 會話 reads as a spoken conversation in Taiwan.
+1gyqcn2	ok	It answered aloud: {0}.	它出聲回答了：{0}。	src/core/realtime/open.js:302	{0} = words
+ip7w4y#other	ok	It didn't answer aloud within # seconds.	沒有在 # 秒內用聲音回答。	src/core/realtime/open.js:302	plural; # = ms / 1000; English: "It didn't answer aloud within # second." (one), "It didn't answer aloud within # seconds." (other)
+1x3q9c3	ok	The session closed before it answered.	回答前連線就關閉了。	src/core/realtime/open.js:303	Note: a live session is 即時連線; 會話 reads as a spoken conversation in Taiwan.
+9sqs1k	ok	It answered, but not aloud in words.	它回答了，但沒有用聲音說出話來。	src/core/realtime/open.js:303	
 ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.	annai 自己的外掛程式使用這個名稱，所以來自別處的套件不能使用它。請讓作者改名。	src/core/registry.js:16	Note: "Ask its author" is asking a person (請讓作者…), not the phones' permission choice Ask (詢問).
 1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	annai 自己的外掛程式使用這個名稱，但已安裝的那個來自別處，所以 annai 不會使用它。請在設定 → 外掛程式中移除它，然後再試一次。	src/core/registry.js:17	Note: Remove → 移除, as annai's Remove buttons say.
 oabrye	ok	Turn it on in Settings → Plugins, then try again.	請在設定 → 外掛程式中把它開啟，然後再試一次。	src/core/registry.js:18	
@@ -897,9 +897,9 @@ xi9ch6	ok	Shiori can't hear you: the speech-in list is empty. Add an entry in Se
 1oy92m8	ok	This browser has no phone dictation either.	這個瀏覽器也沒有手機語音輸入。	src/core/voice/resolve.js:163	
 l80ifa	ok	Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	請在設定 → 模型中新增一個語音轉文字模型（如 OpenAI 或 Groq），或一個接受音訊的主要模型。	src/core/voice/resolve.js:163	
 m5s9f4	ok	This browser can't play a voice as it arrives.	這個瀏覽器無法邊接收邊播放聲音。	src/core/voice/speaker.js:128	
-jo5o9d	ok	This browser can't play sound here.	這個瀏覽器無法在這裡播放聲音。	src/core/voice/voice.js:425	
-ocv5zw	ok	This browser can't use the microphone here.	這個瀏覽器無法在這裡使用麥克風。	src/core/voice/voice.js:468	
-55949q	draft	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	聲音卡住了，annai 聽不到你說話。點一下螢幕即可恢復。	src/core/voice/voice.js:790	
+jo5o9d	ok	This browser can't play sound here.	這個瀏覽器無法在這裡播放聲音。	src/core/voice/voice.js:442	
+ocv5zw	ok	This browser can't use the microphone here.	這個瀏覽器無法在這裡使用麥克風。	src/core/voice/voice.js:485	
+55949q	draft	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	聲音卡住了，annai 聽不到你說話。點一下螢幕即可恢復。	src/core/voice/voice.js:807	
 pib2vo	ok	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	由瀏覽器自帶的語音服務來聽：在 Android 上通常是 Google 的伺服器，在 iPhone 上是 Apple 的（有時就在手機上）。這個請求不是 annai 送出的，所以記錄裡看不到。	src/core/voice/where.js:15	
 m93xm3	ok	On this phone only: the browser recognizes your speech on the device.	僅在這部手機上：瀏覽器在裝置上辨識你的語音。	src/core/voice/where.js:16	
 1m5zm0a	ok	Phone dictation	手機語音輸入	src/core/voice/where.js:18	
@@ -995,15 +995,15 @@ rs50uy	ok	Opening the backup…	正在開啟備份…	src/ui/auto-backup.js:125
 io1qx	ok	Open the booking	開啟預訂	src/ui/cards.js:82	
 1ghy26u	ok	A photo Shiori showed	Shiori 展示的照片	src/ui/cards.js:85	
 1hvdy8q	ok	This card's kind ({0}) comes from a plugin that isn't on.	此卡片的類型（{0}）來自一個未開啟的外掛程式。	src/ui/cards.js:97	{0} = card.type
-rcp6ga	ok	A photo was kept as it is	照片已按原樣儲存	src/ui/composer.js:66	
-36fatd	ok	A calendar file couldn't be read	無法讀取行事曆檔案	src/ui/composer.js:67	
-17olkn2#other	ok	# files weren't kept	有 # 個檔案沒能儲存	src/ui/composer.js:71	plural; # = left; English: "# file wasn't kept" (one), "# files weren't kept" (other); Note: Taiwan wording: 個檔案, 儲存 as Storage (儲存空間).
-1mv1z9a	ok	Put back as text	改回文字	src/ui/composer.js:128	Note: a pasted text's chip in the type box: turns the file back into words in the box.
-1e5dete	ok	Remove {0}	移除{0}	src/ui/composer.js:129	context: a file in the message; {0} = name; Note: a chip's button: takes the file out of the message only; {0} is a file name.
-1il2ncj	ok	Give Shiori photos or files	把照片或檔案交給 Shiori	src/ui/composer.js:140	Note: Taiwan wording: 檔案 for files, 交給 for hand over to.
-1uuz7zc	ok	Keeping {0} of {1}…	正在儲存第 {0} 個，共 {1} 個…	src/ui/composer.js:179	{0} = num(Math.min(/** @type {number} */ (done) + 1, total)); {1} = num(total); Note: Taiwan wording: 儲存 as Storage (儲存空間).
-1npepge	ok	Read it again	請再讀一遍	src/ui/composer.js:230	Note: Taiwan wording; what the user says to Shiori, one tap under a booking or file in the type box.
-158qnm7	ok	Ask Shiori about this	問問 Shiori	src/ui/composer.js:231	Note: Taiwan wording; the file is beside the button, so 問問 Shiori is enough.
+rcp6ga	ok	A photo was kept as it is	照片已按原樣儲存	src/ui/composer.js:67	
+36fatd	ok	A calendar file couldn't be read	無法讀取行事曆檔案	src/ui/composer.js:68	
+17olkn2#other	ok	# files weren't kept	有 # 個檔案沒能儲存	src/ui/composer.js:72	plural; # = left; English: "# file wasn't kept" (one), "# files weren't kept" (other); Note: Taiwan wording: 個檔案, 儲存 as Storage (儲存空間).
+1mv1z9a	ok	Put back as text	改回文字	src/ui/composer.js:129	Note: a pasted text's chip in the type box: turns the file back into words in the box.
+1e5dete	ok	Remove {0}	移除{0}	src/ui/composer.js:130	context: a file in the message; {0} = name; Note: a chip's button: takes the file out of the message only; {0} is a file name.
+1il2ncj	ok	Give Shiori photos or files	把照片或檔案交給 Shiori	src/ui/composer.js:141	Note: Taiwan wording: 檔案 for files, 交給 for hand over to.
+1uuz7zc	ok	Keeping {0} of {1}…	正在儲存第 {0} 個，共 {1} 個…	src/ui/composer.js:180	{0} = num(Math.min(/** @type {number} */ (done) + 1, total)); {1} = num(total); Note: Taiwan wording: 儲存 as Storage (儲存空間).
+1npepge	ok	Read it again	請再讀一遍	src/ui/composer.js:231	Note: Taiwan wording; what the user says to Shiori, one tap under a booking or file in the type box.
+158qnm7	ok	Ask Shiori about this	問問 Shiori	src/ui/composer.js:232	Note: Taiwan wording; the file is beside the button, so 問問 Shiori is enough.
 zvizeb	draft	Places nearby and along the itinerary, for Shiori's nearby tool and the offline pack, found through Overpass (overpass-api.de, or private.coffee's server when that one is busy).	附近和行程沿途的地點，用於 Shiori 的 nearby 工具和離線資料包，透過 Overpass（overpass-api.de，繁忙時用 private.coffee 的伺服器）查詢。	src/ui/credits.js:19	English was: Places nearby and along the plan, for Shiori's nearby tool and the offline pack, found through Overpass (overpass-api.de, or private.coffee's server when that one is busy).; Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
 g4c01g	ok	Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.	依名稱查詢地點，或說出某個位置的地名，用於 Shiori 的 geocode 和 reverse 工具；作為免費搜尋的最後手段，也會查詢地點的官網。annai 依其使用政策，每秒最多詢問一次。	src/ui/credits.js:26	
 1jfh2kq	ok	Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address. Free search's always-on last resort asks it the words searched.	附近地點的文章，以及離線資料包中的摘要。Shiori 讀到的每篇文章都附有網址。免費搜尋始終開啟的最後手段會用搜尋的詞向它查詢。	src/ui/credits.js:33	
@@ -1710,7 +1710,6 @@ z9765v	ok	Restore API keys (keys already on this device are kept)	還原 API 金
 tlkozp	ok	Reading…	正在讀取…	src/ui/screens/import.js:208	
 jbong3	ok	Reading {0} of {1}…	正在讀取 {0}/{1}…	src/ui/screens/import.js:221	{0} = num(Math.min(done + 1, total)); {1} = num(total)
 i4v1g5	ok	Installing the plugins your providers use…	正在安裝你的供應商使用的外掛程式…	src/ui/screens/import.js:229	
-mu070y	draft	Go to the timeline	前往時間軸	src/ui/screens/import.js:239	
 1fnonn8	ok	Open trip	開啟旅行	src/ui/screens/import.js:240	
 m9iea3#other	ok	# older copies moved to archived trips.	已將 # 個較早的副本移到已封存的旅行。	src/ui/screens/import.js:241	plural; # = result.archived.length; English: "# older copy moved to archived trips." (one), "# older copies moved to archived trips." (other)
 j0c8lo	ok	Imported plugins arrive switched off. Turn on the ones you trust in Plugins.	匯入的外掛程式處於關閉狀態。請在外掛程式中開啟你信任的那些。	src/ui/screens/import.js:244	
@@ -2393,45 +2392,45 @@ glbwh5	ok	This conversation so far: {0}	這次對話到目前為止：{0}	src/ui
 td8u17	ok	A photo you sent	你傳送的照片	src/ui/screens/talk.js:349	
 9e5yo5	ok	(a photo)	（照片）	src/ui/screens/talk.js:396	
 1sjvjoo	draft	From {0}	來自「{0}」	src/ui/screens/talk.js:407	context: a conversation; {0} = scopeTitle(src); Note: under a line the user said in another conversation, copied here when Shiori took them here; a link to that conversation.
-fv3xhc	ok	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:471	Note: a note from Kokoro to Koe; its words follow.
-upsxi0	ok	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:471	Note: a note from Koe to Kokoro; its words follow.
-16ol023	draft	Shiori read {0}	Shiori 讀取了「{0}」	src/ui/screens/talk.js:500	{0} = scopeTitle({ id: String(d.trip), title: String(d.title ?? '') })
-e34nbi	ok	Started fresh	已重新開始	src/ui/screens/talk.js:504	Note: the divider where a fresh start began.
-3r1u8z	ok	Earlier conversation summarized. The full log is in Trace.	已總結之前的對話。完整日誌在記錄中。	src/ui/screens/talk.js:505	
-1o41up	ok	A budget ended her turn	達到上限，她的這一輪結束了	src/ui/screens/talk.js:515	
-1p4yyw7	ok	Her turn ended	她的這一輪結束了	src/ui/screens/talk.js:515	
-1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	還沒有內容。點一下下方的 Shiori 或「輸入」來對話。	src/ui/screens/talk.js:530	Note: "Type" is the dock's button: its words must match it.
-4fzxin	ok	From {0}.	來自{0}。	src/ui/screens/talk.js:591	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
-1pm5i13	ok	Back to Trips	返回「旅行」	src/ui/screens/talk.js:622	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
-15g4wel	ok	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	沒有開啟的旅行。請從「旅行」中開啟一個，或在這裡對話：Shiori 仍可使用 /me/。	src/ui/screens/talk.js:630	Note: The Trips screen, quoted so it reads apart from a trip.
-16zeyyr	draft	Next: {0} {1}	接下來：{0} {1}	src/ui/screens/talk.js:672	{0} = r.time; {1} = name
-puj2r7	draft	Next: {0} {1} {2}	接下來：{0} {1} {2}	src/ui/screens/talk.js:672	{0} = day(r.day, true); {1} = r.time; {2} = name
-1frlw7l	draft	Undo the dates Shiori set	復原 Shiori 設定的日期	src/ui/screens/talk.js:730	
-1l3merh	draft	Shiori set the dates	Shiori 設定了日期	src/ui/screens/talk.js:749	
-159f82q	ok	Undone	已復原	src/ui/screens/talk.js:751	
-1v37fcy	ok	Undo what Shiori did with these files	復原 Shiori 對這些檔案所做的事	src/ui/screens/talk.js:833	Note: Taiwan wording: 復原 as Undo, 檔案.
-1nl0tpx	draft	Conversation menu	對話選單	src/ui/screens/talk.js:877	
-7flpxf	ok	Summarizing…	正在總結…	src/ui/screens/talk.js:944	
-12707g	ok	She couldn't summarize it. A card says why.	她沒能總結。卡片上寫了原因。	src/ui/screens/talk.js:946	
-5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	已總結之前的對話。每一行都留在這裡，她也仍能查到。	src/ui/screens/talk.js:946	
-u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在工作。請稍後再試。	src/ui/screens/talk.js:946	
-va2k72	ok	There is not enough yet to summarize.	內容還不夠總結。	src/ui/screens/talk.js:946	
-mienoe	ok	Summarize now	立即總結	src/ui/screens/talk.js:949	
-10sfmur	ok	Starting fresh…	正在重新開始…	src/ui/screens/talk.js:951	
-va77q0	ok	Start fresh?	重新開始？	src/ui/screens/talk.js:964	
-19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 會從這裡重新開始，不再記著之前的內容。它們都留在對話裡，供你閱讀和搜尋，她也仍能查到：什麼都不會刪除。即時語音連線也會重新開始。	src/ui/screens/talk.js:965	Note: "A live voice session" is the glossary's Live voice (即時語音) and a live session (即時連線), not a voice she speaks with.
-czdqlz	ok	Start fresh	重新開始	src/ui/screens/talk.js:966	
-1h9wwbn	ok	She couldn't start fresh: {0}	她沒能重新開始：{0}	src/ui/screens/talk.js:976	{0} = messageOf(e)
-1thzla3	ok	Already fresh: nothing has been said since.	已經是新的開始：之後還沒說過話。	src/ui/screens/talk.js:979	
-3fntk0	ok	Started fresh.	已重新開始。	src/ui/screens/talk.js:979	
-mg70bg	ok	The conversation is still opening. Try again in a moment.	對話還在開啟。請稍後再試。	src/ui/screens/talk.js:979	
-p5pj7b	ok	There is nothing to start fresh from yet.	還沒有可以重新開始的內容。	src/ui/screens/talk.js:979	
-1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即總結：Shiori 現在就把之前的對話總結一下，讓它保持簡短。每一行都留在這裡，她也仍能查到。	src/ui/screens/talk.js:1001	
-18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新開始：Shiori 不再記著之前的內容，從這裡重新開始。每一行都留在分隔線上方。	src/ui/screens/talk.js:1002	
-15ve7m7	draft	What each half sees	各個分身看到的內容	src/ui/screens/talk.js:1003	
-1u5l4hx	draft	Details: the trip's name and dates, Export, Archive and Remove.	詳細資料：旅行的名稱和日期、匯出、封存、移除。	src/ui/screens/talk.js:1014	
-o7tevg	draft	Details: the chat's name and dates, Export, Archive and Remove.	詳細資料：聊天的名稱和日期、匯出、封存、移除。	src/ui/screens/talk.js:1014	
-16pl3gf	ok	Undone. Her old personality applies at her next wake.	已復原。她原來的性格在下次喚醒時生效。	src/ui/screens/talk.js:1030	
+fv3xhc	ok	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:475	Note: a note from Kokoro to Koe; its words follow.
+upsxi0	ok	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:475	Note: a note from Koe to Kokoro; its words follow.
+16ol023	draft	Shiori read {0}	Shiori 讀取了「{0}」	src/ui/screens/talk.js:504	{0} = scopeTitle({ id: String(d.trip), title: String(d.title ?? '') })
+e34nbi	ok	Started fresh	已重新開始	src/ui/screens/talk.js:508	Note: the divider where a fresh start began.
+3r1u8z	ok	Earlier conversation summarized. The full log is in Trace.	已總結之前的對話。完整日誌在記錄中。	src/ui/screens/talk.js:509	
+1o41up	ok	A budget ended her turn	達到上限，她的這一輪結束了	src/ui/screens/talk.js:519	
+1p4yyw7	ok	Her turn ended	她的這一輪結束了	src/ui/screens/talk.js:519	
+1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	還沒有內容。點一下下方的 Shiori 或「輸入」來對話。	src/ui/screens/talk.js:534	Note: "Type" is the dock's button: its words must match it.
+4fzxin	ok	From {0}.	來自{0}。	src/ui/screens/talk.js:595	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
+1pm5i13	ok	Back to Trips	返回「旅行」	src/ui/screens/talk.js:626	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
+15g4wel	ok	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	沒有開啟的旅行。請從「旅行」中開啟一個，或在這裡對話：Shiori 仍可使用 /me/。	src/ui/screens/talk.js:634	Note: The Trips screen, quoted so it reads apart from a trip.
+16zeyyr	draft	Next: {0} {1}	接下來：{0} {1}	src/ui/screens/talk.js:676	{0} = r.time; {1} = name
+puj2r7	draft	Next: {0} {1} {2}	接下來：{0} {1} {2}	src/ui/screens/talk.js:676	{0} = day(r.day, true); {1} = r.time; {2} = name
+1frlw7l	draft	Undo the dates Shiori set	復原 Shiori 設定的日期	src/ui/screens/talk.js:734	
+1l3merh	draft	Shiori set the dates	Shiori 設定了日期	src/ui/screens/talk.js:753	
+159f82q	ok	Undone	已復原	src/ui/screens/talk.js:755	
+1v37fcy	ok	Undo what Shiori did with these files	復原 Shiori 對這些檔案所做的事	src/ui/screens/talk.js:837	Note: Taiwan wording: 復原 as Undo, 檔案.
+1nl0tpx	draft	Conversation menu	對話選單	src/ui/screens/talk.js:881	
+7flpxf	ok	Summarizing…	正在總結…	src/ui/screens/talk.js:948	
+12707g	ok	She couldn't summarize it. A card says why.	她沒能總結。卡片上寫了原因。	src/ui/screens/talk.js:950	
+5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	已總結之前的對話。每一行都留在這裡，她也仍能查到。	src/ui/screens/talk.js:950	
+u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在工作。請稍後再試。	src/ui/screens/talk.js:950	
+va2k72	ok	There is not enough yet to summarize.	內容還不夠總結。	src/ui/screens/talk.js:950	
+mienoe	ok	Summarize now	立即總結	src/ui/screens/talk.js:953	
+10sfmur	ok	Starting fresh…	正在重新開始…	src/ui/screens/talk.js:955	
+va77q0	ok	Start fresh?	重新開始？	src/ui/screens/talk.js:968	
+19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 會從這裡重新開始，不再記著之前的內容。它們都留在對話裡，供你閱讀和搜尋，她也仍能查到：什麼都不會刪除。即時語音連線也會重新開始。	src/ui/screens/talk.js:969	Note: "A live voice session" is the glossary's Live voice (即時語音) and a live session (即時連線), not a voice she speaks with.
+czdqlz	ok	Start fresh	重新開始	src/ui/screens/talk.js:970	
+1h9wwbn	ok	She couldn't start fresh: {0}	她沒能重新開始：{0}	src/ui/screens/talk.js:980	{0} = messageOf(e)
+1thzla3	ok	Already fresh: nothing has been said since.	已經是新的開始：之後還沒說過話。	src/ui/screens/talk.js:983	
+3fntk0	ok	Started fresh.	已重新開始。	src/ui/screens/talk.js:983	
+mg70bg	ok	The conversation is still opening. Try again in a moment.	對話還在開啟。請稍後再試。	src/ui/screens/talk.js:983	
+p5pj7b	ok	There is nothing to start fresh from yet.	還沒有可以重新開始的內容。	src/ui/screens/talk.js:983	
+1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即總結：Shiori 現在就把之前的對話總結一下，讓它保持簡短。每一行都留在這裡，她也仍能查到。	src/ui/screens/talk.js:1005	
+18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新開始：Shiori 不再記著之前的內容，從這裡重新開始。每一行都留在分隔線上方。	src/ui/screens/talk.js:1006	
+15ve7m7	draft	What each half sees	各個分身看到的內容	src/ui/screens/talk.js:1007	
+1u5l4hx	draft	Details: the trip's name and dates, Export, Archive and Remove.	詳細資料：旅行的名稱和日期、匯出、封存、移除。	src/ui/screens/talk.js:1018	
+o7tevg	draft	Details: the chat's name and dates, Export, Archive and Remove.	詳細資料：聊天的名稱和日期、匯出、封存、移除。	src/ui/screens/talk.js:1018	
+16pl3gf	ok	Undone. Her old personality applies at her next wake.	已復原。她原來的性格在下次喚醒時生效。	src/ui/screens/talk.js:1034	
 11gkctr	ok	Places	地點	src/ui/screens/tools.js:11	context: tool group
 13mxqrp	ok	Talk	對話	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	ok	Go	出遊	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).
@@ -2545,60 +2544,62 @@ gw0cwm#other	ok	# holes	# 處空白	src/ui/screens/trace.js:282	plural; # = 0; E
 1bx4bl6	ok	on {0}	在 {0} 上	src/ui/screens/trace.js:283	{0} = d.player
 1jhbzkn	draft	your voice {0} dB, least to start {1} dB, {2} frames kept out (loudest {3} dB)	你的聲音 {0} dB，開始所需最低 {1} dB，{2} 影格被擋在外（最響 {3} dB）	src/ui/screens/trace.js:288	{0} = d.voiceDb ?? '?'; {1} = d.minDb ?? '–'; {2} = d.keptFrames; {3} = d.keptPeakDb ?? '?'
 1mxp5c6	draft	a sound dropped as her voice began: {0} of speech · floor {1} dB, loudest {2} dB	她的聲音開始時捨棄的聲音：語音 {0} · 底噪 {1} dB，最響 {2} dB	src/ui/screens/trace.js:289	{0} = duration(d.speechMs ?? 0); {1} = d.floorDb ?? '?'; {2} = d.peakDb ?? '?'
-1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	你的回合結束：{0} · 已傳送 {1} · 底噪 {2} dB，最響 {3} dB	src/ui/screens/trace.js:289	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
-7ovnj9	draft	no turn	沒有開始一輪	src/ui/screens/trace.js:289	
-khxbvb	ok	audio: {0}	音訊：{0}	src/ui/screens/trace.js:293	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
-1wy37ql	ok	{0} sent	已傳送 {0}	src/ui/screens/trace.js:295	{0} = size(d.bytes)
-l04i5	ok	{0} sent, after a kept turn	已傳送 {0}，接在保留的輪次之後	src/ui/screens/trace.js:295	{0} = size(d.bytes); Note: A kept turn is one of the conversation turns a provider keeps (輪).
-1n96vkk	ok	earlier thinking not sent: something before it changed	未傳送之前的思考：它之前的內容有變動	src/ui/screens/trace.js:297	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
-yfywm0#other	ok	thinking of # earlier steps sent back	已傳回之前 # 步的思考	src/ui/screens/trace.js:297	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
-15hqi4k#other	ok	# guides	# 份指南	src/ui/screens/trace.js:301	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
-4k86ja	ok	{0} failed	{0} 個失敗	src/ui/screens/trace.js:301	{0} = d.failed
-1waoe51	ok	at its limit	已達上限	src/ui/screens/trace.js:302	
-66h5i6	ok	by itself on Wi-Fi	在 Wi-Fi 下自動	src/ui/screens/trace.js:302	
-rfe2ef	ok	{0} files sent, {1}	已傳送 {0} 個檔案，{1}	src/ui/screens/trace.js:304	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
-2601w8	ok	a newer backup from another device is there	有一個來自另一台裝置的更新備份	src/ui/screens/trace.js:305	
-uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	已下載 {0}，{1}，隨後停止：已丟棄	src/ui/screens/trace.js:307	{0} = d.backup; {1} = size(d.bytes ?? 0)
-wgniil	ok	downloaded {0}, {1}	已下載 {0}，{1}	src/ui/screens/trace.js:307	{0} = d.backup; {1} = size(d.bytes ?? 0)
-1gauo2f	ok	{0} can't be opened: {1}	{0} 無法開啟：{1}	src/ui/screens/trace.js:308	{0} = d.backup; {1} = cut(d.problem)
-1rrq0vn	ok	deleted an older backup, {0}	已刪除一個較早的備份：{0}	src/ui/screens/trace.js:309	{0} = d.backup
-57gz9u#other	ok	# secrets	# 個機密	src/ui/screens/trace.js:311	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
-scekw#other	ok	# settings	# 項設定	src/ui/screens/trace.js:311	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
-mp7j1w#other	ok	({0}, # bytes)	（{0}，# 位元組）	src/ui/screens/trace.js:334	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
-tqj8t3	ok	(no longer stored)	（已不再儲存）	src/ui/screens/trace.js:334	
-1kfziuy	ok	Show what was stored	顯示儲存的內容	src/ui/screens/trace.js:351	
-1cnmmj7	ok	Archived	已封存	src/ui/screens/trip.js:41	
-jz8mjk	ok	Unarchive	取消封存	src/ui/screens/trip.js:53	
-qeuftp	ok	Tap again to archive	再點一次以封存	src/ui/screens/trip.js:55	
-xqmps	ok	Archive trip	封存旅行	src/ui/screens/trip.js:55	
-1hqo9yw	ok	Remove trip	移除旅行	src/ui/screens/trip.js:56	
-vr6m26	ok	Give the trip a name.	請為旅行命名。	src/ui/screens/trip.js:94	
-1cageta	draft	Saved.	已儲存。	src/ui/screens/trip.js:107	
-cymegm	draft	The trip can't end before it starts.	旅行的結束日期不能早於開始日期。	src/ui/screens/trip.js:111	
-1yii6kb	ok	Ends	結束日期	src/ui/screens/trip.js:118	
-fc4c10	ok	Starts	開始日期	src/ui/screens/trip.js:118	
-8jz3l7	ok	All files	所有檔案	src/ui/screens/trip.js:127	Note: Taiwan wording: 檔案; a fold below Files on the trip screen.
-1s4j38w	ok	Files	檔案	src/ui/screens/trip.js:153	
-deqm9f	ok	No files yet.	還沒有檔案。	src/ui/screens/trip.js:159	
-oib8wn	draft	Deleted ({0})	已刪除（{0}）	src/ui/screens/trip.js:161	{0} = num(gone.length); Note: the fold at the foot of a trip's Files listing files deleted but kept (the conversation still has them); {0} is how many. The toasts after Delete call it "Deleted" (削除済み / 已删除 / 已刪除).
-86ci06	ok	Export trip	匯出旅行	src/ui/screens/trip.js:173	
-vcw9r3#other	ok	{0} keeps # turns of its conversations: annai asks for them to be deleted, once you're back online.	{0}儲存了其對話中的 # 輪：等你重新連網後，annai 會請求刪除它們。	src/ui/screens/trip.js:222	plural; # = n; {0} = who; English: "{0} keeps # turn of its conversations: annai asks for it to be deleted, once you're back online." (one), "{0} keeps # turns of its conversations: annai asks for them to be deleted, once you're back online." (other); Note: {0} is the providers that keep turns, as a list.
-h1o9mt#other	ok	{0} keeps # turns of its conversations: annai asks for them to be deleted.	{0}儲存了其對話中的 # 輪：annai 會請求刪除它們。	src/ui/screens/trip.js:223	plural; # = n; {0} = who; English: "{0} keeps # turn of its conversations: annai asks for it to be deleted." (one), "{0} keeps # turns of its conversations: annai asks for them to be deleted." (other)
-1af3bj3	ok	Remove it?	要移除嗎？	src/ui/screens/trip.js:228	
-1d44i0p	ok	This removes everything in this trip from this device: its files, photos, notes and history.	這會從此裝置移除這個旅行中的一切：檔案、照片、筆記和歷史。	src/ui/screens/trip.js:228	
-ty94lb	draft	It hasn't been backed up since it last changed.	自上次更改後還沒有備份。	src/ui/screens/trip.js:228	English was: This trip hasn't been backed up since it last changed. Remove it anyway?
-1cp5muy	ok	Removed {0}. {1} freed.	已移除{0}，釋放了{1}。	src/ui/screens/trip.js:234	{0} = scopeTitle(scope); {1} = size(freed)
-1964rl0	ok	That trip was already removed.	這個旅行已被移除。	src/ui/screens/trip.js:238	
-1pzhsw4	ok	Nothing was removed. Try again.	沒有移除任何內容。請重試。	src/ui/screens/trip.js:242	
-4fm217	ok	That trip wasn't removed	這個旅行未被移除	src/ui/screens/trip.js:242	
-q61zku#other	ok	Added # files	已新增 # 個檔案	src/ui/screens/trip.js:298	plural; # = paths.length; English: "Added # file" (one), "Added # files" (other)
-knyqwh	ok	Add photos or files	新增照片或檔案	src/ui/screens/trip.js:312	
-12n59th	ok	Take a photo	拍照	src/ui/screens/trip.js:313	
-1kuasfa	ok	That file doesn't match its format: {0}	該檔案不符合其格式：{0}	src/ui/screens/trip.js:325	{0} = why; Note: {0} is the format check's own words, in English.
-1y79g95	ok	{0} already exists. Open it from the list to edit it.	{0}已存在。要編輯，請從清單中開啟它。	src/ui/screens/trip.js:335	{0} = p
-ecy82r	ok	Add a file	新增檔案	src/ui/screens/trip.js:343	
-1bmm5eq	ok	File path	檔案路徑	src/ui/screens/trip.js:344	
-16gte2l	ok	Create	建立	src/ui/screens/trip.js:346	
+1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	你的回合結束：{0} · 已傳送 {1} · 底噪 {2} dB，最響 {3} dB	src/ui/screens/trace.js:290	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
+7ovnj9	draft	no turn	沒有開始一輪	src/ui/screens/trace.js:290	
+khxbvb	ok	audio: {0}	音訊：{0}	src/ui/screens/trace.js:294	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
+1wy37ql	ok	{0} sent	已傳送 {0}	src/ui/screens/trace.js:296	{0} = size(d.bytes)
+l04i5	ok	{0} sent, after a kept turn	已傳送 {0}，接在保留的輪次之後	src/ui/screens/trace.js:296	{0} = size(d.bytes); Note: A kept turn is one of the conversation turns a provider keeps (輪).
+1n96vkk	ok	earlier thinking not sent: something before it changed	未傳送之前的思考：它之前的內容有變動	src/ui/screens/trace.js:298	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
+yfywm0#other	ok	thinking of # earlier steps sent back	已傳回之前 # 步的思考	src/ui/screens/trace.js:298	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
+15hqi4k#other	ok	# guides	# 份指南	src/ui/screens/trace.js:302	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
+4k86ja	ok	{0} failed	{0} 個失敗	src/ui/screens/trace.js:302	{0} = d.failed
+1waoe51	ok	at its limit	已達上限	src/ui/screens/trace.js:303	
+66h5i6	ok	by itself on Wi-Fi	在 Wi-Fi 下自動	src/ui/screens/trace.js:303	
+rfe2ef	ok	{0} files sent, {1}	已傳送 {0} 個檔案，{1}	src/ui/screens/trace.js:305	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
+2601w8	ok	a newer backup from another device is there	有一個來自另一台裝置的更新備份	src/ui/screens/trace.js:306	
+uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	已下載 {0}，{1}，隨後停止：已丟棄	src/ui/screens/trace.js:308	{0} = d.backup; {1} = size(d.bytes ?? 0)
+wgniil	ok	downloaded {0}, {1}	已下載 {0}，{1}	src/ui/screens/trace.js:308	{0} = d.backup; {1} = size(d.bytes ?? 0)
+1gauo2f	ok	{0} can't be opened: {1}	{0} 無法開啟：{1}	src/ui/screens/trace.js:309	{0} = d.backup; {1} = cut(d.problem)
+1rrq0vn	ok	deleted an older backup, {0}	已刪除一個較早的備份：{0}	src/ui/screens/trace.js:310	{0} = d.backup
+57gz9u#other	ok	# secrets	# 個機密	src/ui/screens/trace.js:312	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
+scekw#other	ok	# settings	# 項設定	src/ui/screens/trace.js:312	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
+mp7j1w#other	ok	({0}, # bytes)	（{0}，# 位元組）	src/ui/screens/trace.js:335	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
+tqj8t3	ok	(no longer stored)	（已不再儲存）	src/ui/screens/trace.js:335	
+1kfziuy	ok	Show what was stored	顯示儲存的內容	src/ui/screens/trace.js:352	
+1cnmmj7	ok	Archived	已封存	src/ui/screens/trip.js:42	
+jz8mjk	ok	Unarchive	取消封存	src/ui/screens/trip.js:54	
+198yak0	draft	Archive conversation	封存對話	src/ui/screens/trip.js:56	Note: 對話 as Conversation; 封存 as Archive trip (封存旅行).
+qeuftp	ok	Tap again to archive	再點一次以封存	src/ui/screens/trip.js:56	
+xqmps	ok	Archive trip	封存旅行	src/ui/screens/trip.js:56	
+16y5h48	draft	Remove conversation	移除對話	src/ui/screens/trip.js:57	Note: 對話 as Conversation; 移除 as Remove trip (移除旅行).
+1hqo9yw	ok	Remove trip	移除旅行	src/ui/screens/trip.js:57	
+vr6m26	ok	Give the trip a name.	請為旅行命名。	src/ui/screens/trip.js:95	
+1cageta	draft	Saved.	已儲存。	src/ui/screens/trip.js:108	
+cymegm	draft	The trip can't end before it starts.	旅行的結束日期不能早於開始日期。	src/ui/screens/trip.js:112	
+1yii6kb	ok	Ends	結束日期	src/ui/screens/trip.js:119	
+fc4c10	ok	Starts	開始日期	src/ui/screens/trip.js:119	
+8jz3l7	ok	All files	所有檔案	src/ui/screens/trip.js:128	Note: Taiwan wording: 檔案; a fold below Files on the trip screen.
+1s4j38w	ok	Files	檔案	src/ui/screens/trip.js:154	
+deqm9f	ok	No files yet.	還沒有檔案。	src/ui/screens/trip.js:160	
+oib8wn	draft	Deleted ({0})	已刪除（{0}）	src/ui/screens/trip.js:162	{0} = num(gone.length); Note: the fold at the foot of a trip's Files listing files deleted but kept (the conversation still has them); {0} is how many. The toasts after Delete call it "Deleted" (削除済み / 已删除 / 已刪除).
+86ci06	ok	Export trip	匯出旅行	src/ui/screens/trip.js:174	
+vcw9r3#other	ok	{0} keeps # turns of its conversations: annai asks for them to be deleted, once you're back online.	{0}儲存了其對話中的 # 輪：等你重新連網後，annai 會請求刪除它們。	src/ui/screens/trip.js:223	plural; # = n; {0} = who; English: "{0} keeps # turn of its conversations: annai asks for it to be deleted, once you're back online." (one), "{0} keeps # turns of its conversations: annai asks for them to be deleted, once you're back online." (other); Note: {0} is the providers that keep turns, as a list.
+h1o9mt#other	ok	{0} keeps # turns of its conversations: annai asks for them to be deleted.	{0}儲存了其對話中的 # 輪：annai 會請求刪除它們。	src/ui/screens/trip.js:224	plural; # = n; {0} = who; English: "{0} keeps # turn of its conversations: annai asks for it to be deleted." (one), "{0} keeps # turns of its conversations: annai asks for them to be deleted." (other)
+1af3bj3	ok	Remove it?	要移除嗎？	src/ui/screens/trip.js:229	
+1d44i0p	ok	This removes everything in this trip from this device: its files, photos, notes and history.	這會從此裝置移除這個旅行中的一切：檔案、照片、筆記和歷史。	src/ui/screens/trip.js:229	
+ty94lb	draft	It hasn't been backed up since it last changed.	自上次更改後還沒有備份。	src/ui/screens/trip.js:229	English was: This trip hasn't been backed up since it last changed. Remove it anyway?
+1cp5muy	ok	Removed {0}. {1} freed.	已移除{0}，釋放了{1}。	src/ui/screens/trip.js:235	{0} = scopeTitle(scope); {1} = size(freed)
+1964rl0	ok	That trip was already removed.	這個旅行已被移除。	src/ui/screens/trip.js:239	
+1pzhsw4	ok	Nothing was removed. Try again.	沒有移除任何內容。請重試。	src/ui/screens/trip.js:243	
+4fm217	ok	That trip wasn't removed	這個旅行未被移除	src/ui/screens/trip.js:243	
+q61zku#other	ok	Added # files	已新增 # 個檔案	src/ui/screens/trip.js:299	plural; # = paths.length; English: "Added # file" (one), "Added # files" (other)
+knyqwh	ok	Add photos or files	新增照片或檔案	src/ui/screens/trip.js:313	
+12n59th	ok	Take a photo	拍照	src/ui/screens/trip.js:314	
+1kuasfa	ok	That file doesn't match its format: {0}	該檔案不符合其格式：{0}	src/ui/screens/trip.js:326	{0} = why; Note: {0} is the format check's own words, in English.
+1y79g95	ok	{0} already exists. Open it from the list to edit it.	{0}已存在。要編輯，請從清單中開啟它。	src/ui/screens/trip.js:336	{0} = p
+ecy82r	ok	Add a file	新增檔案	src/ui/screens/trip.js:344	
+1bmm5eq	ok	File path	檔案路徑	src/ui/screens/trip.js:345	
+16gte2l	ok	Create	建立	src/ui/screens/trip.js:347	
 aoc0k0#other	draft	{0}: # chats	{0}：# 個聊天	src/ui/screens/trips.js:70	plural; # = e.fold.rows.length; {0} = monthName(e.fold.month); English: "{0}: # chat" (one), "{0}: # chats" (other)
 33pqd9	ok	Last backup {0}, to {1}.	上次備份：{0}，備份到{1}。	src/ui/screens/trips.js:78	{0} = relTime(latest.last.at, now); {1} = latest.name; Note: {1} is the backup place's name.
 cvvz5z	draft	Tap + to talk to Shiori.	點一下 + 與 Shiori 交談。	src/ui/screens/trips.js:86	
@@ -2698,7 +2699,7 @@ bewa4v	ok	What she says	她說的話	src/ui/screens/voice.js:185
 9dx265	ok	Welcome to annai	歡迎使用 annai	src/ui/screens/welcome.js:20	
 1r8f7ib	ok	annai is a free, open-source travel guide that lives on your phone.	annai 是一款住在你手機裡的免費開源旅行嚮導。	src/ui/screens/welcome.js:45	
 119pjng	ok	Its guide is Shiori. She plans the trip with you, keeps your bookings and notes, reminds you at the right time and place, talks with you on the road, and makes a recap afterwards.	它的嚮導是 Shiori。她和你一起規劃旅行，保管你的預訂和筆記，在合適的時間和地點提醒你，在路上和你聊天，旅行結束後為你做回顧。	src/ui/screens/welcome.js:46	
-gs9dqm	draft	Tap + on the timeline to talk to her, or tap her in any conversation.	在時間軸上點一下 + 與她交談，或在任何對話中點一下她。	src/ui/screens/welcome.js:47	
+csr8z8	draft	Tap + on Trips to talk to her, or tap her in any conversation.	在「旅行」中點一下 + 與她交談，或在任何對話中點一下她。	src/ui/screens/welcome.js:47	English was: Tap + on the timeline to talk to her, or tap her in any conversation.; Note: The Trips screen, quoted so it reads apart from a trip, as in 前往「旅行」 (Go to Trips).
 1kzszxn	ok	annai (案内) is Japanese for "guidance; showing someone around".	annai（案内）是日語，意思是「引導；帶人四處參觀」。	src/ui/screens/welcome.js:48	Note: 案内 as Japanese writes it (not 案內), as Koe's 声 beside it; the same gloss as Settings → About's line.
 u671cl	ok	Shiori is your guide. She has two halves that work together.	Shiori 是你的嚮導。她有兩個協同工作的分身。	src/ui/screens/welcome.js:56	
 5swud	ok	Koe ({0}, voice)	Koe（{0}，聲音）	src/ui/screens/welcome.js:58	{0} = KOE; Note: {0} is 聲, Koe's name in Japanese; ja needs no gloss.

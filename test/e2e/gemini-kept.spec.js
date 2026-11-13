@@ -65,7 +65,7 @@ test("Google keeps the conversation: the switch and its note; Shiori's next turn
     // Offline, the trip is removed: its deletions wait.
     await page.context().setOffline(true);
     await page.evaluate((id) => { location.hash = `#/trip/${encodeURIComponent(id)}`; }, trip);
-    await page.getByRole('button', { name: 'Remove trip' }).click();
+    await page.getByRole('button', { name: 'Remove conversation' }).click();
     await expect(page.getByRole('dialog', { name: 'Kyoto' })).toContainText("Google keeps 2 turns of its conversations: annai asks for them to be deleted, once you're back online.");
     await page.getByRole('dialog', { name: 'Kyoto' }).getByRole('button', { name: 'Remove' }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();

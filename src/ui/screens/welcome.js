@@ -44,7 +44,7 @@ function body(n, ctx, part) {
     return [
       h('p', { class: 'lead', text: t`annai is a free, open-source travel guide that lives on your phone.` }),
       h('p', { text: t`Its guide is Shiori. She plans the trip with you, keeps your bookings and notes, reminds you at the right time and place, talks with you on the road, and makes a recap afterwards.` }),
-      h('p', { class: 'sub', text: t`Tap + on the timeline to talk to her, or tap her in any conversation.` }),
+      h('p', { class: 'sub', text: t`Tap + on Trips to talk to her, or tap her in any conversation.` }),
       h('p', { class: 'sub', text: t`annai (案内) is Japanese for "guidance; showing someone around".` }),
       // The screens' language, to choose before reading on: annai restarts here, on the welcome, in it.
       part,

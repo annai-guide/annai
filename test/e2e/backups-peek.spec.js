@@ -129,7 +129,7 @@ test("many conversations in a git backup: its preview, from the manifest alone, 
     await expect(page.getByText('Big Sur', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Import', exact: true }).click();
     await expect(page.getByText('Imported.')).toBeVisible();
-    await page.getByRole('link', { name: 'Go to the timeline' }).click();
+    await page.getByRole('link', { name: 'Go to Trips' }).click();
     await expect(page.locator('.rows .trip-card')).toHaveCount(7);
   } finally {
     await fj.stop();

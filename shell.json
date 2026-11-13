@@ -1,5 +1,5 @@
 {
-  "build": "066a33ade809",
+  "build": "f60e1b2a2836",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -255,7 +255,7 @@
     "/src/ui/screens/experimental.js": "9f8609693e3b",
     "/src/ui/screens/ext.js": "83c0244cf0d6",
     "/src/ui/screens/file.js": "bdbf73cc6a7e",
-    "/src/ui/screens/import.js": "834a328cf03a",
+    "/src/ui/screens/import.js": "fcae639ada61",
     "/src/ui/screens/item.js": "dc9f5e4a9fc6",
     "/src/ui/screens/mcp.js": "8594db2419e8",
     "/src/ui/screens/model.js": "6976470d905a",
@@ -276,11 +276,11 @@
     "/src/ui/screens/talk.js": "76053fa151a7",
     "/src/ui/screens/tools.js": "af43e4da0f2e",
     "/src/ui/screens/trace.js": "3de48f872cce",
-    "/src/ui/screens/trip.js": "f565536779e7",
+    "/src/ui/screens/trip.js": "31d45bb19bef",
     "/src/ui/screens/trips.js": "ed12a77e9aee",
     "/src/ui/screens/updates.js": "663857e51861",
     "/src/ui/screens/voice.js": "69425fba40d4",
-    "/src/ui/screens/welcome.js": "befec09e6a02",
+    "/src/ui/screens/welcome.js": "f1b00d351dd3",
     "/src/ui/search-panel.js": "7582a4612640",
     "/src/ui/shell.js": "640f3a675c47",
     "/src/ui/slots.js": "4fee1465e94c",
@@ -300,8 +300,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "fad50f89d45c",
-    "/l10n/zh-Hans.json": "fbef08e9c41b",
-    "/l10n/zh-Hant.json": "88a204574524"
+    "/l10n/ja.json": "7158c4052670",
+    "/l10n/zh-Hans.json": "f70a245fc26b",
+    "/l10n/zh-Hant.json": "52ea47f4a8b7"
   }
 }
