@@ -61,6 +61,12 @@ const CUE = `[annai] ${escapeTags(JSON.stringify(NOTE_UNSAID))}`;
 /* en */ const UNANSWERED = `[annai] ${escapeTags(JSON.stringify('Nothing you did reached the user after what they said last: answer them aloud.'))}`;
 /** Tools that pass a note on to the user, as words do, or settle it as passed on. */
 const REACH = ['show', 'ask', 'already_told'];
+/**
+ * annai's own words to her, which a model said aloud as its whole line instead of doing them: the tools she calls without speaking (SILENT) and `silent`
+ * (a tool answer's scheduling). Real Gemini (2026-11-12, 1 of 63 notes): her whole line for a note was "silent", which passed the note on, and it was lost.
+ * A whole line that is only one is no answer (bare); a strict match, so a sentence that holds one is an answer.
+ */
+const BARE = [...SILENT, 'silent'].map((w) => w.replace(/_/g, ' '));
 /** This device's record of the cards about voice it has shown once. */
 const HINTS = '/voice-hints.json';
 /** Where her voice doesn't reach the microphone, so speaking may cut her off (spec §10.4): elsewhere, half-duplex. */
@@ -123,6 +129,8 @@ const TURN_END_S = 2;
 export const cleanSaid = (text) => escapeTags(String(text ?? '').replace(/<!--[\s\S]*?(?:-->|$)|<[^>]*(?:>|$)|\{[^}]*(?:\}|$)/g, ' ').replace(/\s+/g, ' ').trim());
 /** Whether a transcript holds a word: a letter or a digit. @param {string} text */
 export const realWord = (text) => /[\p{L}\p{N}]/u.test(cleanSaid(text));
+/** Whether her whole line is only one of annai's own words to her (BARE), in any case, with no more than punctuation around it. @param {string} text */
+const bare = (text) => BARE.includes(cleanSaid(text).replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '').replace(/_/g, ' ').toLowerCase());
 /** @param {Uint8Array} b 16-bit PCM */
 const samples = (b) => new Int16Array(b.slice(0, b.length & ~1).buffer);
 /** @returns {Turn} */
@@ -1020,18 +1028,14 @@ export class LiveKoe {
 
   /**
    * The connection Koe's notes went into is gone (a drop, a GoAway, a close): what it may never have heard goes in again, and a
-   * word on the next connection counts only once they have. Notes that went in again are marked (#resent).
+   * word on the next connection counts only once they have.
    */
   #again() {
     const o = this.#owed;
     if (o.sent.length) this.#answer(undefined); // the wait for their answer went with that connection: they go in again, at once
-    for (const w of o.sent) this.#resent.add(w);
     o.waiting.unshift(...o.sent.splice(0));
     o.cued = o.cue = false;
   }
-
-  /** Notes that went into a session again: annai never heard them said whole, so her word that the user has them (already_told) doesn't settle them. @type {WeakSet<object>} */
-  #resent = new WeakSet();
 
   /**
    * A turn ended with Kokoro's notes for the user gone in and not passed on (§6.8, as a text Koe's): Koe is asked once more, in
@@ -1041,7 +1045,7 @@ export class LiveKoe {
   #settle(t) {
     const o = this.#owed;
     // A turn with words still going out: heard whole, they pass them on; cut, they are shown as the user's turn begins (#activity).
-    if (!o.sent.length || t?.goesOn || (t?.spoken && !t.cut && !t.logged)) return;
+    if (!o.sent.length || t?.goesOn || (t?.spoken && !t.cut && !t.logged && !bare(t.said))) return;
     if (!o.cued) {
       o.cued = o.cue = true;
       return;
@@ -1624,7 +1628,8 @@ export class LiveKoe {
     // Those a sound or the user cut off are shown when their turn begins (#activity), so nothing here shows or asks for a cut one. A turn that
     // called a tool she speaks after is not her answer yet (real Gemini: "Checking your notes.", then a new turn 2.4 to 7.2 s later): its notes wait
     // for what she says after the answer, and are shown if the user speaks first.
-    if (text && this.#passes(t, !cut) && this.#owed.sent.length && t.wordAt >= this.#owed.at) this.#passed();
+    // A line that is only one of annai's own words to her (bare) is no answer: #settle asks once more.
+    if (text && this.#passes(t, !cut) && !bare(text) && this.#owed.sent.length && t.wordAt >= this.#owed.at) this.#passed();
     const v = this.c.voice;
     const aloud = Boolean(text && !cut && !t.cut && v?.on && (t.stalled || v.stuck)); // a turn the user stopped is never read aloud
     const voiced = Boolean(t.stream || aloud);
@@ -1692,9 +1697,13 @@ export class LiveKoe {
       await this.#answered(false, false);
       // Always answered: the model waits for it.
       /* en */ const out = await this.c.koe.liveCall(e, this.#wake, this.#watched).catch((err) => ({ content: `Error: ${err?.message ?? err}`, isError: true }));
-      // A card or question annai showed passes Kokoro's notes on, and answers the user; one it refused does neither. Her already_told
-      // doesn't pass on a note that went in again: she is asked once more (#settle), then annai shows it.
-      if (REACH.includes(e.name) && !out.isError && !(e.name === 'already_told' && this.#owed.sent.some((w) => this.#resent.has(w)))) this.#passed();
+      // A card or question annai showed passes Kokoro's notes on, and answers the user; one it refused does neither. Her already_told is her word that
+      // the user has the note, which she may have said of another (real Gemini, 2026-11-12: she said note 1, and called it for note 2, lost): the
+      // note is shown on a silent card, at worst something the user heard (the user's pick).
+      if (REACH.includes(e.name) && !out.isError) {
+        if (e.name === 'already_told' && this.#owed.sent.length) this.c.left?.(this.#owed.sent.splice(0), true);
+        this.#passed();
+      }
       if ((e.name === 'show' || e.name === 'ask') && !out.isError) {
         this.#answered(false); // a card or question answers what was heard
         if (this.#due?.strict) this.#answer(undefined);
