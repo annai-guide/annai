@@ -1418,6 +1418,7 @@ export class Agent {
   /** Tapping Shiori while she works: stops the stream, the running tool, and the turn (spec §6.7), and her voice if it is this half's. */
   interrupt() {
     this.#userStop = true;
+    if (this.#ear?.owner === 'after') this.#closeEar(); // the listening after her line, opened as her turn ends: a Stop leaves nothing listening on
     this.#tidy?.abort(); // a warm summary under way: its call deletes the turn it borrowed
     if (this.#gathering) this.#stopGathered();
     this.#halt();
@@ -3887,8 +3888,8 @@ export class Agent {
   async #afterTurn(ok, wakeId) {
     for (const u of this.#utterances.values()) u.stop();
     this.#utterances.clear();
-    // She spoke and didn't sleep: she listens on (the second-drive design), through the gate; sleep closes the microphone at once.
-    const listens = ok && this.#facts.aloud && !this.#facts.closed && !this.#wentToSleep && !this.#aloudOnly && !this.#cut && this.#half.voice() && Boolean(this.voice?.on);
+    // She spoke and didn't sleep: she listens on (the second-drive design), through the gate; sleep, or the user's Stop, closes the microphone at once.
+    const listens = ok && !this.#userStop && this.#facts.aloud && !this.#facts.closed && !this.#wentToSleep && !this.#aloudOnly && !this.#cut && this.#half.voice() && Boolean(this.voice?.on);
     if (this.#ear?.owner === 'turn' || (this.#ear?.owner === 'after' && this.#facts.closed)) {
       if (listens && this.#ear) {
         this.#ear.owner = 'after';
@@ -3898,6 +3899,7 @@ export class Agent {
       this.#afterOpening = true;
       this.#openEar('after').then((deaf) => {
         this.#afterOpening = false;
+        if (!deaf && this.#userStop && this.#ear?.owner === 'after') this.#closeEar(); // the user's Stop came as it opened
         if (deaf || this.#busy || this.#ear?.owner !== 'after') return void this.#emit('state', this.state); // whoever waits on this window hears it came to nothing
         this.#setState('listening');
         this.#armQuiet();
