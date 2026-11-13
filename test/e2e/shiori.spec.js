@@ -479,7 +479,7 @@ test('removing the trip Shiori is working in: she stops first, and nothing of it
     await page.getByRole('button', { name: 'Send' }).click();
     await expect(page.locator('.talk-label')).toHaveText('Thinking · tap to stop');
     await page.evaluate((trip) => { location.hash = `#/trip/${encodeURIComponent(trip)}`; }, id);
-    await page.getByRole('button', { name: 'Remove conversation' }).click();
+    await page.getByRole('button', { name: 'Remove', exact: true }).click();
     await page.getByRole('dialog', { name: 'Big Sur' }).getByRole('button', { name: 'Remove' }).click();
     await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
     await page.waitForTimeout(500);

@@ -58,7 +58,7 @@ test('a read that failed with the write of its Trace line failing too still leav
       return real.call(this, stores, mode, ...rest);
     };
   });
-  await page.getByRole('button', { name: 'Archive conversation' }).click();
+  await page.getByRole('button', { name: 'Archive', exact: true }).click();
   await page.getByRole('button', { name: 'Tap again to archive' }).click();
   await page.waitForFunction(() => /** @type {any} */ (window).rvReads >= 2 && /** @type {any} */ (window).rvWrites >= 2);
   await page.evaluate(() => { /** @type {any} */ (window).rvFail = false; });

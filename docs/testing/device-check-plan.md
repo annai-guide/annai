@@ -61,9 +61,9 @@ Setup: the emulator image has Google Play services, so Chrome installs annai as 
 
 - [ ] **m1c #1**: Updating a phone that already has photo trips: the first start indexes once (time it), "Using X" stays the same, every photo opens. How: Claude serves a build from before milestone 1c from a git worktree, fills it with photo trips, switches to the current build; console timing; screen.
 - [ ] **m1c #2**: A trip with 30 photos: its card says "not backed up". How: adb push 30 photos; screen.
-- [ ] **m1c #3**: Remove trip: the question names the trip; Cancel keeps it, and so does Back. How: screen; `adb shell input keyevent BACK`.
-- [ ] **m1c #4**: Remove trip: the one question says "It hasn't been backed up since it last changed."; Cancel keeps the trip. How: screen.
-- [ ] **m1c #5**: Export trip → Backup → Build file → Save file: the card says "backed up just now". How: screen. Then C.
+- [ ] **m1c #3**: Remove: the question names the trip; Cancel keeps it, and so does Back. How: screen; `adb shell input keyevent BACK`.
+- [ ] **m1c #4**: Remove: the one question says "It hasn't been backed up since it last changed."; Cancel keeps the trip. How: screen.
+- [ ] **m1c #5**: Export → Backup → Build file → Save file: the card says "backed up just now". How: screen. Then C.
 - [ ] **m1c #6**: A Share export doesn't count: the card still says when the last Backup was. How: screen.
 - [ ] **m1c #7**: Add a note: "changed since". Archive and unarchive a backed-up, unchanged trip: the card doesn't change. How: screen.
 - [ ] **m1c #8, #9, #10, #12**: Note "Using X of about Y"; back up the 30-photo trip and remove it: the plain question with no backup sentence, "Removed <trip>. N MB freed.", card gone; Settings drops by about N MB (or after a full restart). This is milestone 1c's finish line. How: screen; console `navigator.storage.estimate()` before and after. Then C.
@@ -335,7 +335,7 @@ One sitting, in this order. Keep the Mac open with Safari → Develop → your i
 
 ### C5. Removing trips
 
-- [ ] m1c #5 (counted in A): Export trip → Backup → Build file → Save file → Save to Files: on Trips, the card says "backed up just now".
+- [ ] m1c #5 (counted in A): Export → Backup → Build file → Save file → Save to Files: on Trips, the card says "backed up just now".
 - [ ] m1c #10, #12, m2c #11 (counted in A): Note "Using X" in Settings; back up and remove a trip with about 30 photos; note the usage at once and again after closing annai fully. Write down what you saw (Safari may hand space back later). Another trip's photos still open.
 
 ### C6. Export, erase, import

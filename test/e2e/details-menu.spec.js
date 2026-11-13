@@ -127,9 +127,9 @@ for (const [width, height] of /** @type {const} */ ([[360, 640], [390, 844], [43
 test('the ⋯ is the conversation\'s menu: Details first, with a line saying what is there, then Summarize now, Start fresh and What each half sees; the name is still a link to the same Details', async ({ page }) => {
   await openApp(page);
   const [chat, trip] = await makeConversations(page, [{ title: 'Pelican chat' }, { title: 'Big Sur', start: '2099-03-03', end: '2099-03-05' }]);
-  for (const [id, title, line, remove] of /** @type {const} */ ([
-    [chat, 'Pelican chat', "Details: the chat's name and dates, Export, Archive and Remove.", 'Remove conversation'],
-    [trip, 'Big Sur', "Details: the trip's name and dates, Export, Archive and Remove.", 'Remove trip'],
+  for (const [id, title, line] of /** @type {const} */ ([
+    [chat, 'Pelican chat', "Details: the chat's name and dates, Export, Archive and Remove."],
+    [trip, 'Big Sur', "Details: the trip's name and dates, Export, Archive and Remove."],
   ])) {
     await goToHash(page, `#/trip/${id}/talk`);
     const toggle = page.getByRole('button', { name: 'Conversation menu', exact: true });
@@ -146,7 +146,7 @@ test('the ⋯ is the conversation\'s menu: Details first, with a line saying wha
     await details.click();
     await expect.poll(() => new URL(page.url()).hash).toBe(`#/trip/${encodeURIComponent(id)}`);
     await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
-    await expect(page.getByRole('button', { name: remove })).toBeAttached();
+    for (const name of ['Export', 'Archive', 'Remove']) await expect(page.getByRole('button', { name, exact: true })).toBeAttached(); // the same words on both
   }
 });
 
@@ -174,8 +174,10 @@ test('the line under Details follows the dates the conversation gets while it sh
   await page.getByRole('button', { name: 'Conversation menu', exact: true }).click();
   const details = page.getByRole('group', { name: 'Conversation menu' }).getByRole('link', { name: 'Details', exact: true });
   await expect(details).toHaveAccessibleDescription("Details: the chat's name and dates, Export, Archive and Remove.");
+  await expect(page.getByText(/^This (conversation|trip) so far: /)).toHaveText(/^This conversation so far: /); // its cost line, the same by the dates
   await page.evaluate((id) => /** @type {any} */ (window).appWs.patch(id, '/trip.json', { start: '2099-03-03', end: '2099-03-05' }, { author: 'shiori' }), id);
   await expect(details).toHaveAccessibleDescription("Details: the trip's name and dates, Export, Archive and Remove.");
+  await expect(page.getByText(/^This (conversation|trip) so far: /)).toHaveText(/^This trip so far: /);
 });
 
 // "(including deleting a misc one)": a chat is taken off the phone from its own conversation, by its Details.
@@ -194,7 +196,7 @@ test('removing a chat end to end at 360x640: home, tap the chat, ⋯, Details, s
   await page.getByRole('group', { name: 'Conversation menu' }).getByRole('link', { name: 'Details', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Misc chat' })).toBeVisible();
   // Remove is below the name and dates and the other buttons: one scroll, as a person makes it, and then nothing covers it.
-  const remove = page.getByRole('button', { name: 'Remove conversation' });
+  const remove = page.getByRole('button', { name: 'Remove', exact: true });
   await remove.scrollIntoViewIfNeeded();
   await expect(remove).toBeInViewport({ ratio: 1 });
   expect(await remove.evaluate((el) => {

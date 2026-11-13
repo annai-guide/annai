@@ -7,10 +7,10 @@ Run on a real iPhone (Safari, iOS 26+) and a real Android phone (Chrome), with a
 
 ## The questions
 - [ ] Start a trip and add 30 photos. On Trips, its card says "not backed up".
-- [ ] Open the trip and tap Remove trip. The question names the trip. Cancel keeps it. On Android, Back also keeps it.
-- [ ] Remove trip: the one question says "It hasn't been backed up since it last changed." before "Remove it?". Cancel keeps the trip.
-- [ ] Export trip → Backup → Build file → Save file (Save to Files on the iPhone). On Trips, the card says "backed up just now".
-- [ ] A Share export doesn't count: Export trip → Share → Save. The card still says when the last Backup was.
+- [ ] Open the trip and tap Remove. The question names the trip. Cancel keeps it. On Android, Back also keeps it.
+- [ ] Remove: the one question says "It hasn't been backed up since it last changed." before "Remove it?". Cancel keeps the trip.
+- [ ] Export → Backup → Build file → Save file (Save to Files on the iPhone). On Trips, the card says "backed up just now".
+- [ ] A Share export doesn't count: Export → Share → Save. The card still says when the last Backup was.
 - [ ] Add a note to the trip: the card says "changed since". Archive and unarchive a backed-up, unchanged trip: the card doesn't.
 
 ## Space comes back
