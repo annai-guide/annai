@@ -600,7 +600,7 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** in live voice, Kokoro has told Shiori one thing, and before she has finished saying it (or begun to) Kokoro sends something urgent (an immediate note), which cuts her off. They hear the urgent line at once; the rest of the first, or all of it if she had not begun, is neither finished nor shown, and neither is any other note of Kokoro's still waiting to be said (a real run, 2026-11-12: a waiting plan note said after Kokoro's own correction gave the user the old time again). When Kokoro forgets to put into the urgent line something of the first that still mattered, that part is lost. (Only Kokoro's own note is replaced: a reminder of annai's that she was saying is shown on a silent card, as for annai's own urgent reminder.)
 - **Why:** an immediate note is most often a correction of the very note she was saying (`tell_koe`'s description keeps it for "a wrong claim"), so a card for the first would most often show the claim being corrected. `tell_koe`'s description tells Kokoro that its immediate note cuts off any earlier note of its own that Koe has not finished saying, begun or not, so it puts in it whatever still matters. Kokoro never saw annai's reminder, so it could not carry that.
 - **Revisit when:** a real run shows Kokoro sending immediate with a note in flight and leaving out something that mattered (the next real run checks the sentence, as it is model-facing).
-- **Approved:** 2026-11-12, the user picked "Urgent replaces it (Recommended)".
+- **Approved:** 2026-11-12, the user picked "Urgent replaces it (Recommended)"; widened to Kokoro's notes still waiting on 2026-11-12, the user picked "Accept it (Recommended)".
 
 ### Speaking in the quiet after "Checking your notes." shows the note, and she usually says it too
 - **Kind:** known limitation.
@@ -729,28 +729,28 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### A note she answers with an instruction word is asked for once more, after the user heard the word
 - **Kind:** known limitation.
-- **What the user sees:** in live voice, Gemini sometimes says one of annai's own words to it aloud as its whole answer to a note ("silent" was seen: 1 in 63 notes, 2026-11-12). The user hears the word; annai takes the line as no answer, asks her once more, and she says the note (up to 8 seconds later). If she answers the ask the same way, annai shows the note and says it in its own voice. The same holds for a whole line that is only a bracketed stage direction such as "(No speech)" (1 of 563 real lines; the main session's call, not yet confirmed by the user).
+- **What the user sees:** in live voice, Gemini sometimes says one of annai's own words to it aloud as its whole answer to a note ("silent" was seen: 1 in 63 notes, 2026-11-12). The user hears the word; annai takes the line as no answer, asks her once more, and she says the note (up to 8 seconds later). If she answers the ask the same way, annai shows the note and says it in its own voice. The same holds for a whole line that is only a bracketed stage direction such as "(No speech)" (1 of 563 real lines).
 - **Why:** a word spoken can't be taken back, and what counts is what she said: annai catches only a whole line that is exactly one of its own words to her (the tools she calls without speaking, and `silent`), a strict match, so a sentence that holds one is an answer. The list is built from what annai's instructions and tool answers tell her.
 - **Revisit when:** a real run shows another stray word as her whole line, which then joins the list.
-- **Approved:** 2026-11-12, the user picked "Count it as no answer (Recommended)".
+- **Approved:** 2026-11-12, the user picked "Count it as no answer (Recommended)"; bracketed stage directions added on 2026-11-12, the user picked "Keep it (Recommended)".
 
 ### After a tap, the next note waits 4 to 8 seconds, not about 2
 - **Kind:** known limitation.
 - **What the user sees:** in live voice, the user taps to stop her, and Kokoro's next note comes 0.5 seconds later. It is said 4 to 8 seconds after the tap, not at the 2 seconds the hold is meant to give (23 of 23 such runs, real Gemini, 2026-11-12). If the user speaks first, it comes 1.5 to 3.4 seconds after they finish, after her answer to them. Nothing is lost: all 23 were said once.
 - **Why:** the provider keeps making the reply the tap stopped, with no one hearing it, for about 7 seconds (median 7.2 s), and annai holds the note until that reply ends, so that one input is in flight at a time. Ending it at the tap means closing the live session and opening a new one at every tap.
 - **Revisit when:** the wait bothers the user on a drive.
-- **Approved:** 2026-11-13, the user picked "Known limitation (Recommended)".
+- **Approved:** 2026-11-12, the user picked "Known limitation (Recommended)".
 
 ### With Koe on a chat model, a note can be lost when Koe says one note and calls already_told for another
 - **Kind:** known limitation.
 - **What the user sees:** Kokoro has sent two notes for the user in one turn of Koe's, and Koe says the first, then calls `already_told` for the second, which it did not say. The second is lost: no card, not said. Traced in the code, never seen in a run.
 - **Why:** the chat Koe takes all its notes in one call, and `settle()` (`loop.js`) settles every note of the turn as soon as Koe has reached the user at all, so the `already_told` finds nothing left to show. Changing that changes how the chat Koe takes its notes.
 - **Revisit when:** it is seen in a real run or on a drive.
-- **Approved:** 2026-11-13, the user picked "Known limitation (Recommended)".
+- **Approved:** 2026-11-12, the user picked "Known limitation (Recommended)".
 
 ### Live Koe's whole reply to a typed line that is only one of annai's instruction words makes the user type it again
 - **Kind:** known limitation.
 - **What the user sees:** in live voice, the user types a line and Koe's whole reply is one of annai's own words to it ("silent", say) or a bracketed stage direction ("(No speech)"). annai takes that as her answer, does not send the line again, and the user has no answer to it: they type it again. Not seen: 0 of 563 real lines.
 - **Why:** the rule that such a line is no answer covers Kokoro's notes; extending it to the user's typed lines touches the other wait path (the 8-second wait for an answer to a text turn).
 - **Revisit when:** it is seen in a real run.
-- **Approved:** 2026-11-13, the user picked "Known limitation (Recommended)".
+- **Approved:** 2026-11-12, the user picked "Known limitation (Recommended)".
