@@ -199,6 +199,11 @@ const UNSENT = /* en */ 'Not sent to Koe: a call before it in this reply failed 
 export const UNANSWERED = /* en */ "The user hasn't been answered. Only speak, show and ask reach them; anything else you write is your private notes, which they never see.";
 /** The words a Try again wakes her with. */
 const AGAIN = /* en */ 'the user tapped Try again: answer their last message';
+/** Koe's wait ended by what came due (#cameDue): a reminder, which it says; an alert, which it may let pass. Kokoro's note still comes. */
+const DUE = Object.freeze({
+  reminder: /* en */ "A reminder came due: say it (below). Kokoro's note is still to come.",
+  cue: /* en */ "An alert came (below): say it if it helps them now, or let it pass. Kokoro's note is still to come.",
+});
 /** Pages as words: "page 2", "pages 1 and 3", "pages 1, 2 and 4". @param {number[]} n */
 const pagesWords = (n) => (n.length === 1 ? `page ${n[0]}` : `pages ${n.slice(0, -1).join(', ')} and ${n.at(-1)}`);
 /**
@@ -843,7 +848,7 @@ export class Agent {
   #push(w) {
     this.#queue.push({ ...w, scope: this.#target ?? ME, at: Date.now() });
     this.#remindWaiting();
-    if (w.kind === 'note') this.#noted();
+    if (w.kind === 'note' || w.fallbacks?.length) this.#noted();
     // Kokoro's next note while Koe's call still answers its last one, and nothing of it is out yet: the call is cut and goes again
     // with both, so Koe says it once.
     if (isForUser(w) && this.#calling && !this.#streaming && !this.voice?.speaker.speaking && this.#noteOwed()) this.#callCut?.abort();
@@ -928,12 +933,24 @@ export class Agent {
    */
   #noted() {
     const p = this.#pending;
-    const note = this.#queue.find((w) => w.kind === 'note' && w.scope === this.scope);
+    const got = p && this.#cameDue(Boolean(p.tool));
     // A wait (listening or not: voice going off leaves it for typing), and her own question waiting for a tap or typing (not annai's card): a note is always said, so it never waits behind an answer
     // the user may never give (Koe's "want ideas?" held Kokoro's correction back in stage 5's real-model pass).
-    if (!note || !p || !(p.kind === 'wait' || (p.kind === 'ask' && !p.ask && !p.listening)) || this.state.name === 'hearing') return;
+    if (!got || !p || !(p.kind === 'wait' || (p.kind === 'ask' && !p.ask && !p.listening)) || this.state.name === 'hearing') return;
     this.#pending = null;
-    p.resolve({ note: note.from ?? 'kokoro' });
+    p.resolve(got);
+  }
+
+  /**
+   * What queued ends a wait: the other half's note; Koe's wait tool, what came due too (a reminder, a place alert), so Koe says it on time
+   * (the user's pick, 2026-11-12). @param {boolean} tool @returns {Got | null}
+   */
+  #cameDue(tool) {
+    const mine = this.#queue.filter((w) => w.scope === this.scope);
+    const note = mine.find((w) => w.kind === 'note');
+    if (note) return { note: note.from ?? 'kokoro' };
+    const due = tool && this.#half.name === 'koe' ? mine.flatMap((w) => w.fallbacks ?? []) : [];
+    return due.length ? { due: due.some((r) => !r.cue) ? 'reminder' : 'cue' } : null;
   }
 
   /**
@@ -3089,7 +3106,7 @@ export class Agent {
           }
           const got = await this.#waitFor(call, 'wait', seconds * this.secondMs);
           if (got.stopped) return { content: STOPPED, isError: true };
-          if (got.note || got.heard) return this.#answer('', got, call, ''); // heard: a tap held voice on and opened the microphone for it
+          if (got.note || got.due || got.heard) return this.#answer('', got, call, ''); // heard: a tap held voice on and opened the microphone for it
           if (got.text === undefined) return `Nothing yet (${seconds} seconds).`;
           const wrote = typedAs(got);
           await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...wrote.data }, texts: [['text', got.text]] });
@@ -3116,9 +3133,9 @@ export class Agent {
     if (signal?.aborted) return Promise.resolve({ stopped: true });
     const queued = this.#queue.findIndex((w) => w.kind === 'user' && w.scope === this.scope);
     if (queued >= 0) return Promise.resolve(typedGot(this.#queue.splice(queued, 1)[0]));
-    // A note already queued answers a wait, and her own question.
-    const note = this.#queue.find((w) => w.kind === 'note' && w.scope === this.scope);
-    if (note) return Promise.resolve({ note: note.from ?? 'kokoro' });
+    // A note already queued answers a wait, and her own question; what came due, Koe's wait (#cameDue).
+    const due = this.#cameDue(kind === 'wait');
+    if (due) return Promise.resolve(due);
     this.#waiting(kind);
     return new Promise((resolve) => {
       /** @type {ReturnType<typeof setTimeout> | undefined} */
@@ -3371,6 +3388,7 @@ export class Agent {
     if (got.deaf) return `${lead}annai couldn't listen: ${got.deaf} The user may type.`;
     /* en */
     if (got.note) return `${lead}${got.note === 'koe' ? 'Koe' : 'Kokoro'}: see the note below.`;
+    if (got.due) return `${lead}${DUE[got.due]}`;
     /* en */
     if (got.earlier) return `${lead}Not listening for an answer: the user spoke while you were thinking; it follows.`;
     return `${lead}${silence}`;
@@ -3387,8 +3405,8 @@ export class Agent {
     const typed = this.#queue.findIndex((w) => w.kind === 'user' && w.scope === this.scope);
     if (typed >= 0) return typedGot(this.#queue.splice(typed, 1)[0]);
     if (kind === 'wait' && this.#queue.some((w) => w.kind === 'heard' && w.scope === this.scope)) return { earlier: true };
-    const note = kind === 'wait' ? this.#queue.find((w) => w.kind === 'note' && w.scope === this.scope) : undefined;
-    if (note) return { note: note.from ?? 'kokoro' };
+    const due = kind === 'wait' ? this.#cameDue(tool) : null;
+    if (due) return due;
     if (!this.#half.voice()) return { deaf: /* en */ 'the other half has the microphone now.' };
     const had = this.#ear;
     const deaf = await this.#openEar('turn');
