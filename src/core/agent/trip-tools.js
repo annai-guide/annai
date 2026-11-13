@@ -374,8 +374,9 @@ export function tripTools(app) {
     if (log.slice(log.findLastIndex((e) => e.type === 'import') + 1).some((e) => e.data?.trip === rec.id)) return null;
     if (!rec.imported && (await readAppSettings(ws)).readMyTrips === true) return null;
     const [allow, always, no] = [t`Allow`, t`Always for my trips`, t`Not now`];
+    // Answered by tap only (the user's stop rule, 2026-11-13): no yes list, so no spoken line grants; a spoken no still declines.
     const got = await app.confirm(call, {
-      question: await asking(rec), options: rec.imported ? [allow, no] : [allow, always, no], yes: (heard) => (spokenYes(heard) ? allow : null), no: (heard) => (spokenNo(heard) ? no : null),
+      question: await asking(rec), options: rec.imported ? [allow, no] : [allow, always, no], no: (heard) => (spokenNo(heard) ? no : null),
     });
     if (got.stopped) return { content: STOPPED, isError: true };
     if (got.chosen === allow || got.chosen === always) {
@@ -386,7 +387,7 @@ export function tripTools(app) {
     /* en */
     if (got.chosen === no) return `The user ${got.how === 'voice' ? 'said no' : 'tapped Not now'}: don't read ${quote(rec.title)}, and don't ask to again in this conversation unless they ask you to.`;
     /* en */
-    const why = `Not read: only a tap on annai's card, or a yes it hears, allows reading ${quote(rec.title)}. If they meant yes, ask them to tap Allow.`;
+    const why = `Not read: only a tap on annai's card allows reading ${quote(rec.title)}. If they meant yes, ask them to tap Allow.`;
     return got.heard ? { content: `${why} ${got.said}`, heard: got.heard } : `${why}${got.said ? ` ${got.said}` : ''}`;
   };
   /** In the log of the call's conversation, also if another conversation opened meanwhile. @param {ToolCall} call @param {{ type: string, actor: string, data: Record<string, unknown> }} ev */
@@ -478,10 +479,10 @@ export function tripTools(app) {
         if (call.trip && i.trip === call.trip) throw new Error('That is this conversation: you are in it already.');
         const rec = await activeTrip(i.trip);
         const files = await filesOf(i, call); // every file found before the card: a call it can't do is refused before the user is asked
-        // Only the user moves the user (RULES 9): annai's own card, answered by their tap or a yes its word list hears; nothing is written before.
+        // Only the user moves the user (RULES 9): annai's own card, answered by their tap; nothing is written before.
         const [open, no] = [t`Open`, t`Not now`];
         const got = await app.confirm(call, {
-          question: await going(rec), options: [open, no], yes: (heard) => (spokenYes(heard) ? open : null), no: (heard) => (spokenNo(heard) ? no : null),
+          question: await going(rec), options: [open, no], no: (heard) => (spokenNo(heard) ? no : null),
         });
         if (got.stopped) return { content: STOPPED, isError: true };
         /* en */
@@ -490,7 +491,7 @@ export function tripTools(app) {
         }
         if (got.chosen !== open) {
           /* en */
-          const why = `Not opened: only a tap on annai's card, or a yes it hears, takes them into ${quote(rec.title)}, and nothing moved. If they meant yes, call open_trip again.`;
+          const why = `Not opened: only a tap on annai's card takes them into ${quote(rec.title)}, and nothing moved. If they meant yes, call open_trip again.`;
           return got.heard ? { content: `${why} ${got.said}`, heard: got.heard } : `${why}${got.said ? ` ${got.said}` : ''}`;
         }
         await activeTrip(rec.id); // removed or archived while its card waited: said so, and nothing moved

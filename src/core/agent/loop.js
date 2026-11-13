@@ -1005,7 +1005,8 @@ export class Agent {
 
   /**
    * annai's own card for a tool, never a model's words (RULES 9). A tap answers it at any time; a heard line, by annai's word lists when its words arrive
-   * (askSaid, #settleAsk), never by a model's verdict. A kept line that arms nothing ends it unanswered, as typing does; one set aside leaves it listening.
+   * (askSaid, #settleAsk), never by a model's verdict: since 2026-11-13 only as a no (no window opens, and the tools pass no yes list). A kept line that arms
+   * nothing ends it unanswered, as typing does; one set aside leaves it waiting.
    * @param {{ id: string, wake: string, signal?: AbortSignal }} call
    * @param {{ question: string, options: string[], yes?: (heard: string) => string | null, no?: (heard: string) => string | null }} o yes, no: the option a heard line says
    * @returns {Promise<{ chosen?: string, how?: 'tap' | 'voice', stopped?: boolean, said?: string, heard?: string[] }>} said, heard: the user's words instead
@@ -1075,7 +1076,7 @@ export class Agent {
         if (!ask.open) ask.passed = true;
         over();
       }) ?? off;
-      saying.then(async (spoken) => {
+      saying.then(() => {
         if (this.#pending !== p) return;
         p.hold = () => clearTimeout(timer); // someone is speaking: the window waits for their words, but not what waits behind it (release)
         // the window's end, or a tap's 8 s (by) after it; and the same moment, with speech or not, lets go what waits behind it (the user's pick, 2026-11-12, "20 s, no more")
@@ -1085,26 +1086,11 @@ export class Agent {
           timer = setTimeout(shut, Math.max(0, Math.max(ask.until, /** @type {number} */ (p.by)) - Date.now()));
           release = setTimeout(() => this.#remindWaiting(true), Math.max(0, ask.until - Date.now()));
         };
-        // The one place its listening opens (the user's pick, 2026-11-12, "Plain case only"): the question said aloud to its end, voice still on, and nothing
-        // said or shown since it began. Unsaid (voice off, now or while it was said, or its sound failed: nobody heard it to its end) or passed, the card
-        // waits for its buttons, and nothing opens its listening later. A question any stop cut (spoken.cut: a tap, Stop, voice going off, the device
-        // lost, a live session or an urgent note taking over, another conversation) was not said to its end either.
-        if (!aloud || !spoken || spoken.failed || spoken.cut || !this.voice?.on || ask.passed) return byHand();
-        ask.open = true;
-        ask.from = Date.now();
-        ask.until = ask.from + YES_S * this.secondMs;
-        p.arm();
-        // Something already waits behind the question or sounds (a line of annai's queued meanwhile, a live turn): the question isn't the last thing said.
-        if (this.voice?.speaker.speaking || this.#half.sounding?.()) return over();
-        const ear = this.#half.voice() && this.voice?.on && !(await this.#openEar('turn'));
-        if (this.#pending !== p || !ask.open) {
-          // Its listening ended while the microphone opened (shut found none to close), or a Stop ended the card: nothing is left listening.
-          if (ear && (this.#pending === p || call.signal?.aborted)) this.#closeEar();
-          return;
-        }
-        if (!ear) return byHand();
-        p.listening = true;
-        this.#setState('listening');
+        // Answered by tap only (the user's stop rule, 2026-11-13: "No more fix rounds on the spoken yes"): said aloud or not, the card waits for its
+        // buttons, and its listening for a spoken answer never opens (its window stays empty, so no line is inside it; the tools pass no yes list either).
+        // A tap on Shiori opens her ordinary microphone, where a no still declines and a line she keeps ends the card unanswered. The rest of the card's
+        // listening (over, the window, the settle) stays, unused for a yes, until the user decides on its removal.
+        byHand();
       });
     });
     for (const h of got.own ?? []) await this.#logHeard(h, { wake: call.wake, answer: call.id });
