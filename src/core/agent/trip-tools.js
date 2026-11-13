@@ -387,7 +387,7 @@ export function tripTools(app) {
     /* en */
     if (got.chosen === no) return `The user ${got.how === 'voice' ? 'said no' : 'tapped Not now'}: don't read ${quote(rec.title)}, and don't ask to again in this conversation unless they ask you to.`;
     /* en */
-    const why = `Not read: only a tap on annai's card allows reading ${quote(rec.title)}. If they meant yes, ask them to tap Allow.`;
+    const why = `Not read: only a tap on annai's card allows reading ${quote(rec.title)}, and this card is closed. If they meant yes, tell them only a tap answers it, and call read_trip again.`;
     return got.heard ? { content: `${why} ${got.said}`, heard: got.heard } : `${why}${got.said ? ` ${got.said}` : ''}`;
   };
   /** In the log of the call's conversation, also if another conversation opened meanwhile. @param {ToolCall} call @param {{ type: string, actor: string, data: Record<string, unknown> }} ev */
@@ -491,7 +491,7 @@ export function tripTools(app) {
         }
         if (got.chosen !== open) {
           /* en */
-          const why = `Not opened: only a tap on annai's card takes them into ${quote(rec.title)}, and nothing moved. If they meant yes, call open_trip again.`;
+          const why = `Not opened: only a tap on annai's card takes them into ${quote(rec.title)}; this card is closed, and nothing moved. If they meant yes, tell them only a tap answers it, and call open_trip again.`;
           return got.heard ? { content: `${why} ${got.said}`, heard: got.heard } : `${why}${got.said ? ` ${got.said}` : ''}`;
         }
         await activeTrip(rec.id); // removed or archived while its card waited: said so, and nothing moved
