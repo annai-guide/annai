@@ -280,7 +280,7 @@ const byTap = (p) => Boolean(p.byHand || (p.tool && p.by !== undefined));
 const EARLIER = Object.freeze({
   spoke: /* en */ 'Not listening for an answer: the user spoke while you were thinking; it follows.',
   wrote: /* en */ 'Not waiting for an answer: the user wrote while you were thinking; it follows.',
-  asked: /* en */ 'Your question is closed, its buttons too: the user wrote while you were thinking; it follows. Ask it again if it still matters.',
+  asked: /* en */ 'Your question is closed, its buttons too: what the user wrote follows, sent before it could take their answer. If it answers your question, take it as the answer; otherwise ask again if it still matters.',
 });
 /** Typing a listen got, as the log and the model have it: plain, a claim ("This was for Shiori") or a tap that came as words. @param {Got} got @returns {{ data: Record<string, any>, said: string }} */
 const typedAs = (got) => ({
@@ -964,11 +964,15 @@ export class Agent {
 
   /**
    * A line of the user's already queued (written while she worked; for a wait, heard then too) is never taken apart: the wait or question ends,
-   * and the turn takes the line whole, as it takes any wake. @param {'ask' | 'wait'} kind @returns {Got | null}
+   * and the turn takes the line whole, as it takes any wake. A queued tap is her question's answer (it came before the question's wait existed, and has no
+   * photos or files), never annai's card's (confirm has its own look).
+   * @param {'ask' | 'wait'} kind @returns {Got | null}
    */
   #earlier(kind) {
     const mine = this.#queue.filter((w) => w.scope === this.scope);
-    if (mine.some((w) => w.kind === 'user')) return { earlier: 'wrote' };
+    const tap = kind === 'ask' ? this.#queue.findIndex((w) => w.scope === this.scope && w.kind === 'user' && w.chose) : -1;
+    if (tap >= 0) return { chosen: this.#queue.splice(tap, 1)[0].text };
+    if (mine.some((w) => w.kind === 'user')) return { earlier: kind === 'ask' ? 'asked' : 'wrote' };
     return kind === 'wait' && mine.some((w) => w.kind === 'heard') ? { earlier: 'spoke' } : null;
   }
 
@@ -3154,7 +3158,6 @@ export class Agent {
           if (got.stopped) return { content: STOPPED, isError: true };
           /* en */
           if (got.note) return `${got.note === 'koe' ? 'Koe' : 'Kokoro'}: see the note below. Your question is closed, its buttons too: ask it again if it still matters.`;
-          if (got.earlier) return EARLIER.asked;
           if (got.chosen !== undefined) {
             await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...this.#chose() }, texts: [['text', got.chosen]] });
             return `The user chose: ${got.chosen}`;
@@ -3410,15 +3413,13 @@ export class Agent {
     if (call.signal.aborted) return { content: STOPPED, isError: true };
     /** @type {Got} */
     let got = spoken.failed ? {} : await this.#listenFor(call, 'ask', LISTEN_S);
-    if (got.earlier) return EARLIER.asked;
-    if (got.heard || got.text !== undefined || got.chosen !== undefined || got.stopped) {
+    if (got.heard || got.text !== undefined || got.chosen !== undefined || got.stopped || got.earlier) {
       if (got.chosen === undefined) return this.#answer('', got, call, '');
     } else {
       if (this.#ear) this.#closeEar(); // whatever opened it: a tap that cut her off opened this one, and the question's 8 s were its limit too
       got = await this.#waitFor(call, 'ask', 0);
     }
     if (got.stopped) return { content: STOPPED, isError: true };
-    if (got.earlier) return EARLIER.asked;
     if (got.chosen !== undefined) {
       await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...this.#chose() }, texts: [['text', got.chosen]] });
       return /* en */ `The user chose: ${got.chosen}`;
@@ -3452,7 +3453,7 @@ export class Agent {
     /* en */
     if (got.note) return `${lead}${got.note === 'koe' ? 'Koe' : 'Kokoro'}: see the note below.`;
     if (got.due) return `${lead}${DUE[got.due]} ${this.#half.name === 'koe' ? STILL.koe : STILL.user}`;
-    if (got.earlier === 'wrote' && this.#half.listenLast) this.#facts.wrote = true; // Koe's, as a line typed into its wait
+    if (got.earlier && got.earlier !== 'spoke' && this.#half.listenLast) this.#facts.wrote = true; // Koe's: a line it owes
     if (got.earlier) return `${lead}${EARLIER[got.earlier]}`;
     return `${lead}${silence}`;
   }
