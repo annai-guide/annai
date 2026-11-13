@@ -220,6 +220,8 @@ export class LiveKoe {
    * @type {{ waiting: (Wake & { line?: string })[], sent: Wake[], cued: boolean, cue: boolean, at: number }}
    */
   #owed = { waiting: [], sent: [], cued: false, cue: false, at: 0 };
+  /** A tap stopped her: a turn of hers that begins before the next input (the user speaks, any text goes in, a close) is written as her answer, never spoken. */
+  #stopped = false;
   /** @type {any} */
   #quiet = null;
   #quietMs = 30_000;
@@ -321,7 +323,7 @@ export class LiveKoe {
     const ready = this.#readying ? 'opening' : 'thinking';
     const rest = this.#readying ? 'opening' : 'sleeping';
     const name = this.state === 'opening' ? ready : this.state === 'closed' ? rest : this.#sounding ? 'speaking'
-      : this.#input?.active ? 'hearing' : (this.#t && !this.#t.cut) || this.#pending || this.#queue.length || this.#urgent || this.#due?.more ? 'thinking' : this.#input && !this.listening ? ready
+      : this.#input?.active ? 'hearing' : (this.#t && !this.#t.cut) || this.#pending || this.#queue.length || this.#urgent || (this.#due?.more && !this.#stopped) ? 'thinking' : this.#input && !this.listening ? ready
         : this.listening ? (this.#ignoring ? 'ignoring' : 'listening') : rest;
     return { name, label: LABELS[name] };
   }
@@ -680,6 +682,7 @@ export class LiveKoe {
     if (forget && (why === 'switch' || why === 'fresh') && this.owing) this.c.left?.([...this.#owed.sent, ...this.#owed.waiting]);
     this.#closing = null;
     this.#readying = null;
+    this.#stopped = false;
     clearTimeout(this.#hearFirst);
     this.#hearFirst = null;
     if (forget) {
@@ -764,14 +767,14 @@ export class LiveKoe {
   }
 
   /**
-   * A tap on Shiori (§10.4): while she speaks, or while what she says after a call is due (#due.more: she isn't done), stops her and listens;
-   * while she listens, closes; else, with voice on, opens and listens.
+   * A tap on Shiori (§10.4): while she speaks, or while what she says after a call is due (#due.more: she isn't done) and no tap stopped her yet,
+   * stops her and listens; while she listens, closes; else, with voice on, opens and listens.
    */
   tap() {
     this.tapping = null;
     this.#exchanged();
     this.#unmark();
-    if (this.#sounding || this.#due?.more) {
+    if (this.#sounding || (this.#due?.more && !this.#stopped)) {
       this.#lift();
       this.interrupt();
       this.#ready(this.listen());
@@ -821,8 +824,8 @@ export class LiveKoe {
 
   /**
    * Her voice stops now, and the provider is told where (cut: OpenAI truncates its record there); the session stays. The user stopped her
-   * knowing, so what she was saying isn't said again, nor what waits behind it (written as her answer, after her line, shown, not spoken); of a
-   * note for them, what they didn't hear is shown, silently, never lost.
+   * knowing, so what she was saying isn't said again, nor what waits behind it, nor what she makes before the next input (#stopped): written as
+   * her answer, after her line, shown, not spoken; of a note for them, what they didn't hear is shown, silently, never lost.
    */
   interrupt() {
     const t = this.#sounding;
@@ -835,6 +838,7 @@ export class LiveKoe {
     else write();
     if (!this.#passes(t, Boolean(t?.whole)) && this.#owed.sent.length) this.c.left?.([...this.#owed.sent], true);
     this.#passed();
+    this.#stopped = true;
     this.#input?.tapped();
     if (t) this.#send((s) => s.cut?.(playedMs));
   }
@@ -1071,6 +1075,7 @@ export class LiveKoe {
    * @param {string} text @param {{ playedMs?: number }} [cut] @param {boolean} [strict] @param {string[]} [told]
    */
   #text(text, cut, strict = false, told = []) {
+    this.#stopped = false; // the next input: she says what she makes for it
     this.#trail = null;
     if (this.#hear) delete this.#hear.peak; // a note going in as a lyric ends: her reply to it answers the note, not the lyric
     this.#poke();
@@ -1166,6 +1171,7 @@ export class LiveKoe {
     let cut = {};
     clearTimeout(this.#stall);
     if (edge === 'start') {
+      this.#stopped = false;
       this.#notIgnoring();
       this.#answer(undefined); // the user talks again: no answer is waited for while they do
       this.#turnAt = Date.now();
@@ -1254,10 +1260,10 @@ export class LiveKoe {
       this.#t.made = true;
       if (this.#t.endBy && !this.#t.calls) this.#endNow(this.#t); // its calls answered: nothing more of it can come
     }
-    else if (e.type === 'tool') this.#tool(s, (this.#t ??= newTurn()), e);
+    else if (e.type === 'tool') this.#tool(s, (this.#t ??= this.#begin()), e);
     else if (e.type === 'audio') {
       this.#trail = null;
-      const t = (this.#t ??= newTurn());
+      const t = (this.#t ??= this.#begin());
       t.bytes += e.data.length;
       t.soundAt ||= Date.now();
       const pcm = samples(e.data);
@@ -1270,13 +1276,20 @@ export class LiveKoe {
       if (!t.cut && !t.logged) t.said += e.text;
       this.#saying(t); // after the provider's turn ended, while her voice plays
     } else if (e.type === 'said') {
-      const t = (this.#t ??= newTurn());
+      const t = (this.#t ??= this.#begin());
       t.said += e.text;
       if (!t.spoken && realWord(t.said)) this.#speak(t);
       else this.#saying(t);
       if (t.endBy) this.#endLater(t);
     }
     this.#changed();
+  }
+
+  /** A turn of hers begins; after a tap that stopped her (#stopped), one never spoken: written as her answer. @returns {Turn} */
+  #begin() {
+    const t = newTurn();
+    if (this.#stopped) t.cut = true;
+    return t;
   }
 
   /** Her words so far, for the bubble: only once her voice is heard, and never after it was cut. @param {Turn} t */
