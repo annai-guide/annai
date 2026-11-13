@@ -3684,7 +3684,7 @@ test('with voice on, one Shiori, quiet hours: "Yes." 18 s after annai\'s card\'s
 // were kept as the answer, and the photos and files were lost. Now each ends with "it follows", and the turn takes the whole message, as it takes any wake.
 
 const WROTE_FOLLOWS = 'Not waiting for an answer: the user wrote while you were thinking; it follows.';
-const ASKED_FOLLOWS = 'Your question is closed, its buttons too: the user wrote while you were thinking; it follows. Ask it again if it still matters.';
+const ASKED_FOLLOWS = 'Your question is closed, its buttons too: what the user wrote follows, sent before it could take their answer. If it answers your question, take it as the answer; otherwise ask again if it still matters.';
 const FLIGHT = { path: '/trip/files/flight.pdf', type: 'application/pdf', name: 'flight.pdf', new: true };
 /** A photo in the kit's trip, as the camera or the photo picker writes one. @param {any} k */
 const aPhoto = (k) => k.ws.write(k.trip, '/files/p.webp', utf8('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
@@ -3848,5 +3848,104 @@ for (const [what, o] of /** @type {[string, Record<string, any>][]} */ ([['voice
     await k.agent.idle();
     assert.deepEqual(await bubbles(k), ['Where did we eat in Testville?', 'Look at this +1 photo'], 'one bubble, with the photo');
     assert.ok(imagesIn(k.sent['model-0'] ?? []).some((x) => x === 1), `Kokoro gets the photo: ${JSON.stringify(imagesIn(k.sent['model-0'] ?? []))}`);
+  });
+}
+
+// ---- Fix round 1 of wait-takes (the review's Findings 1 and 2) ----
+// A tap on her own question's button made while she still says it (or while its microphone opens) comes before the question's wait exists: it is queued,
+// and her question takes it as its answer (a tap carries no photos or files). A typed line is not one: it closes the question and follows, whole.
+
+const LUNCH = { question: 'Lunch or dinner?', options: ['Lunch', 'Dinner'] };
+/** The user's lines that answered a call, in order, as the log has them. @param {any} k */
+const answers = async (k) => (await k.events(['msg.user'])).filter((/** @type {any} */ e) => e.data.answer).map((/** @type {any} */ e) => e.data.text);
+
+test('one Shiori, voice on: a tap on her question\'s button while she still says it is its answer, written once (wait-takes, Finding 1, probe C6)', async (t) => {
+  useClock(t);
+  const k = await gateKit([call('ask', LUNCH), sleep, sleep], { voice: { speechIn: ['m-hear'], playMs: 300 } });
+  k.agent.send('Plan our day');
+  await until(() => k.asks.length === 1 && k.voice.speaker.speaking);
+  k.agent.answer(k.asks[0].data.id, 'Lunch'); // her question's own button, with her voice still on the question
+  await k.agent.idle();
+  assert.deepEqual(await resultsOf(k, 'ask'), ['The user chose: Lunch']);
+  assert.deepEqual(await bubbles(k), ['Plan our day', 'Lunch'], 'one bubble');
+  assert.deepEqual(await answers(k), ['Lunch'], 'written once, as the answer');
+});
+
+test("one Shiori, voice on: a tap on her question's button while its microphone opens is its answer, written once (wait-takes, Finding 1, probe C6b)", async (t) => {
+  useClock(t);
+  const k = await gateKit([call('ask', LUNCH), sleep, sleep], VOICE);
+  const mic = slowMic(k);
+  k.agent.send('Plan our day');
+  await until(() => mic.opening);
+  k.agent.answer(k.asks[0].data.id, 'Dinner');
+  await pause(3 * k.agent.secondMs); // the tap reaches her queue (Halves routes it), and the microphone is still opening
+  mic.release();
+  await k.agent.idle();
+  assert.deepEqual(await resultsOf(k, 'ask'), ['The user chose: Dinner']);
+  assert.deepEqual(await bubbles(k), ['Plan our day', 'Dinner']);
+  assert.deepEqual(await answers(k), ['Dinner']);
+});
+
+test("one Shiori, voice on: a line typed while she still says her question closes it, and follows whole, once (wait-takes, Finding 1, probe C6-TYPED)", async (t) => {
+  useClock(t);
+  const k = await gateKit([call('ask', LUNCH), sleep, sleep], { voice: { speechIn: ['m-hear'], playMs: 300 } });
+  k.agent.send('Plan our day');
+  await until(() => k.asks.length === 1 && k.voice.speaker.speaking);
+  k.agent.send('Dinner');
+  await k.agent.idle();
+  assert.deepEqual(await resultsOf(k, 'ask'), [ASKED_FOLLOWS]);
+  assert.deepEqual(await bubbles(k), ['Plan our day', 'Dinner'], 'one bubble');
+  assert.deepEqual(await answers(k), [], 'not written as the answer: it follows');
+});
+
+test("one Shiori, voice off: a tap queued while her call ran (a card's button, answered after it closed) answers her next question (wait-takes)", async (t) => {
+  useClock(t);
+  const h = firstHeld();
+  const k = await gateKit([call('ask', LUNCH), sleep, sleep], { hold: h.hold });
+  k.agent.send('Plan our day');
+  await until(() => h.running);
+  k.agent.send('Dinner', { chose: true }); // a tap, sent while her call ran
+  h.go();
+  await k.agent.idle();
+  assert.deepEqual(await resultsOf(k, 'ask'), ['The user chose: Dinner']);
+  assert.deepEqual(await bubbles(k), ['Plan our day', 'Dinner']);
+});
+
+test("a tap that waits in the queue never grants annai's card: a queued \"Allow\" tap ends the card unanswered, and follows as a line (wait-takes, probe CARD-TAP)", async (t) => {
+  useClock(t);
+  const h = firstHeld();
+  const k = await gateKit([call('read_trip', { trip: TV }), sleep, sleep], { hold: h.hold });
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => h.running);
+  k.agent.send('Allow', { chose: true }); // as answer() sends a tap that finds nothing pending
+  h.go();
+  await k.agent.idle();
+  const [read] = await readResults(k);
+  assert.match(String(read), UNANSWERED_CARD);
+  assert.match(String(read), /What the user wrote follows\.$/);
+  assert.deepEqual(await pgrants(k), [], 'nothing granted');
+  assert.deepEqual(await bubbles(k), ['Where did we eat in Testville?', 'Allow']);
+});
+
+// Finding 2: when her question closes for a line written before it, Koe still owes that line, so it is asked once more when its turn ends without answering.
+const KOE_ASKS = [
+  { toolCalls: [{ name: 'tell_kokoro', input: { text: 'Where did we eat in Testville?' } }, { name: 'ask', input: LUNCH }] },
+  sleep,
+];
+for (const [what, o] of /** @type {[string, Record<string, any>][]} */ ([['voice off', {}], ['voice on', VOICE]])) {
+  test(`with Koe on a chat model, ${what}: its question closed by a line written while its call ran is a line it owes: asked once more when its turn ends without answering (wait-takes, Finding 2, probe L2)`, async (t) => {
+    useClock(t);
+    /** @type {() => void} */
+    let go = () => {};
+    const held = new Promise((r) => { go = () => r(undefined); });
+    let n = 0;
+    const k = await gateKit([sleep, sleep, sleep], { koe: { type: KOE_ASKS }, ...o, hold: (/** @type {any} */ c) => (c.model.providerId === 'model-koe' && !n++ ? held : undefined) });
+    k.agent.send('Where did we eat in Testville?');
+    await until(() => n > 0);
+    k.agent.send('And is it open now?');
+    go();
+    await k.agent.idle();
+    const koe = k.sent['model-koe'] ?? [];
+    assert.equal(koe.filter((/** @type {any} */ r) => /hasn't been answered/.test(JSON.stringify(r))).length, 1, 'asked once more');
   });
 }
