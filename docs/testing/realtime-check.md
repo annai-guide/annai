@@ -148,6 +148,8 @@ timeout 2700 docker run --rm --ipc=host --memory=6g \
 
 ## Stage 5's card (read_trip): the spoken yes, with real speech
 
+Since 2026-11-13 the card is answered by tap only (the user's stop rule; docs/limitations.md, "annai's card's question is answered by tap only"): a spoken yes grants nothing, so the scenarios below that expected a grant now end without one. They stay as the record of how the spoken yes was measured.
+
 Before Shiori reads another of the user's trips, annai shows its own card ("Read Testville, Nov 10 – 17?": Allow / Always for my trips / Not now) and says the
 question; a tap, or a spoken yes in annai's word list (`spoken-yes.js`), answers it. These scenarios (by name only; `node scripts/realtime-check.mjs run --list`)
 put real speech to it:

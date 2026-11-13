@@ -606,7 +606,7 @@ for (const how of /** @type {const} */ (['Not now', 'a typed line', 'a Stop', 'S
     const [result] = await openResults(k, k.trip);
     assert.equal(result, {
       'Not now': 'The user tapped Not now: they stay here, and nothing moved. Carry on here, and don\'t call open_trip for "Kyoto" again unless they ask. Start no trip for the files unless they ask.',
-      'a typed line': 'Not opened: only a tap on annai\'s card, or a yes it hears, takes them into "Kyoto", and nothing moved. If they meant yes, call open_trip again. The user wrote: No, wait, stay here',
+      'a typed line': 'Not opened: only a tap on annai\'s card takes them into "Kyoto", and nothing moved. If they meant yes, call open_trip again. The user wrote: No, wait, stay here',
       'a Stop': 'Stopped by the user.',
       'Start fresh': 'Stopped by the user.',
       'another conversation': 'Not answered: the user opened another conversation; what they say next may answer it.',

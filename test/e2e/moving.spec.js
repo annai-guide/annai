@@ -1,7 +1,7 @@
 // Moving into a trip (the timeline design, "Moving into a trip"; stage 6, as annai's card since the user's pick of 2026-11-11, "She asks, I
 // tap or say yes"): in a chat the user asks to carry on in Kyoto, Shiori calls open_trip, and annai's own card asks "Carry on in Kyoto, …?".
 // Open opens Kyoto at once, with the user's last line and her recap, and she answers there; the chat stays, its last line saying where they
-// went. Not now keeps them there, nothing moved. Where the user is looking when an answer arrives (a spoken yes; here the page's agent answers
+// went. Not now keeps them there, nothing moved. Where the user is looking when an answer arrives (a spoken yes until 2026-11-13; here the page's agent answers
 // the card) decides what the screen does: from home the address follows, as a new entry, so Back returns home; Details and Settings stay
 // where they are. The stand-in model plays her part. Synthetic data only: Kyoto and the ramen place are made up.
 import { test, expect } from '@playwright/test';
