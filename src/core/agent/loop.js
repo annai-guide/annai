@@ -2492,7 +2492,10 @@ export class Agent {
       /** This step's readings: two reads of one file in one reply read it once. @type {Map<string, Promise<import('./reading.js').Reading>>} */
       const reads = new Map();
       for (const [i, c] of ordered.entries()) {
-        const more = Boolean(this.#half.listenLast) && ordered.slice(i + 1).some((/** @type {any} */ x) => x.name === 'tell_kokoro' || x.name === 'wait');
+        const rest = ordered.slice(i + 1);
+        // speak doesn't listen when what follows does (spec §7.1, §10.7): her question with buttons, or a wait, listens by itself ('listens': unless a tap cut her line).
+        const listens = rest.some((/** @type {any} */ x) => x.name === 'ask' || x.name === 'wait') ? 'listens' : false;
+        const more = (Boolean(this.#half.listenLast) && rest.some((/** @type {any} */ x) => x.name === 'tell_kokoro' || x.name === 'wait')) || listens;
         const goesOn = broke && woke < AWAKE_MAX;
         const awake = goesOn && c.name === 'sleep';
         // Held only while her turn goes on: a held note her sleep then ended reached no one.
@@ -2818,7 +2821,7 @@ export class Agent {
   /**
    * Runs one tool call and records it: tool.call, then tool.result with any photo or document it
    * returned kept as blobs the event names (spec §4.9).
-   * @param {any} c @param {LoopTool[]} tools @param {{ wakeId: string, signal: AbortSignal, model: any, sleeping: boolean, providerOff?: string[], more?: boolean, last?: boolean, live?: boolean, watched?: boolean, reads?: Map<string, Promise<import('./reading.js').Reading>>, awake?: boolean, unsent?: boolean }} o
+   * @param {any} c @param {LoopTool[]} tools @param {{ wakeId: string, signal: AbortSignal, model: any, sleeping: boolean, providerOff?: string[], more?: boolean | 'listens', last?: boolean, live?: boolean, watched?: boolean, reads?: Map<string, Promise<import('./reading.js').Reading>>, awake?: boolean, unsent?: boolean }} o
    *   awake: a sleep after a call of its reply failed, which doesn't run; unsent: a tell_koe after one, which isn't sent
    */
   async #runCall(c, tools, o) {
@@ -2848,7 +2851,7 @@ export class Agent {
       const scope = this.scope;
       const call = {
         id: c.id, scope, trip: this.trip, signal: o.signal, model: o.model, wake: o.wakeId, llm: this.llm, author: /** @type {const} */ ('shiori'), half: this.#half.name,
-        sleeping: o.sleeping, watched: o.watched ?? this.#facts.watched, ...(this.#handover && !o.live ? { handover: this.#handover, handovers: [...this.#handovers] } : {}), ...(o.last ? { last: true } : {}), ...(o.more ? { more: true } : {}), ...(o.live ? { live: true } : {}), voice: this.#voiceNow, providerOff: o.providerOff ?? [], fetch: tracedFetch(this.store, this.scope, { tool: c.name, wake: o.wakeId }, this.get),
+        sleeping: o.sleeping, watched: o.watched ?? this.#facts.watched, ...(this.#handover && !o.live ? { handover: this.#handover, handovers: [...this.#handovers] } : {}), ...(o.last ? { last: true } : {}), ...(o.more ? { more: o.more } : {}), ...(o.live ? { live: true } : {}), voice: this.#voiceNow, providerOff: o.providerOff ?? [], fetch: tracedFetch(this.store, this.scope, { tool: c.name, wake: o.wakeId }, this.get),
         photos: { copy: (/** @type {any} */ source, /** @type {any} */ crop) => this.#copy(source, crop, scope) },
       };
       ({ output, ms } = await runTool(tool, input, call));
@@ -3346,7 +3349,7 @@ export class Agent {
 
   /**
    * speak with voice on (spec §7.1, §10.1): plays what streamed in, then listens, unless sleep came
-   * in the same reply. @param {string} text @param {any} call
+   * in the same reply, or a call that listens follows (call.more). @param {string} text @param {any} call
    * @returns {Promise<import('./tools.js').ToolOutput | string>}
    */
   async #say(text, call) {
@@ -3386,7 +3389,8 @@ export class Agent {
     const before = spokenText(spoken);
     /* en */
     if (call.sleeping) return spoken.cut && voice.on ? `${before} The microphone is open: what they say next wakes you.` : before;
-    if (call.more) return before;
+    // A tap that cut her line keeps its window before what listens next: their words answer speak, as with nothing after it.
+    if (call.more && (call.more !== 'listens' || !spoken.cut)) return before;
     /* en */
     if (this.#aloudOnly) return `${before} Voice mode is off, so you didn't listen; the user may type.`;
     const { silenceSeconds } = await voice.settings();
