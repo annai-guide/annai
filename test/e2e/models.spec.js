@@ -271,12 +271,13 @@ test('an ability whose protocol stores files has a switch for photo uploads, kep
   await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: 'https://llm.invalid/b', key: 'sk-test-b', model: 'b-model', look: false });
   await page.getByRole('link', { name: /Stand-in/ }).click();
   const uploads = page.getByLabel('Upload photos to this provider (each expires after 48 hours)');
-  await expect(uploads).toBeChecked();
-  await uploads.uncheck();
+  // Off by default for Anthropic Messages: Anthropic's own files API refuses a browser (2026-11-13). A server that takes uploads turns it on.
+  await expect(uploads).not.toBeChecked();
+  await uploads.check();
   await expect(savedBy(uploads)).toHaveText('Saved'); // as it changes: the Save button is the connection's
-  await expect(page.locator('#ability-messages-tunables')).toHaveValue(/"uploads": false/); // shown once it is saved
+  await expect(page.locator('#ability-messages-tunables')).toHaveValue(/"uploads": true/); // shown once it is saved
   await page.reload();
-  await expect(page.getByLabel('Upload photos to this provider (each expires after 48 hours)')).not.toBeChecked();
+  await expect(page.getByLabel('Upload photos to this provider (each expires after 48 hours)')).toBeChecked();
 });
 
 test('a model keeps its photo limits on its page, to see and change (spec §9.2)', async ({ page }) => {

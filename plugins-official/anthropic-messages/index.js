@@ -8,7 +8,9 @@
  * anyway is a bad request like another, and annai (callOnce) asks again without them, whatever the error's words (§8). A server tool (web search
  * or fetch) called beside one of annai's tools is left to the next request, which the API lets hold nothing but tool results there: settle.
  */
-const TUNABLES = Object.freeze({ path: '/v1/messages', version: '2023-06-01', browserAccess: true, beta: '', defaultMaxTokens: 8192, uploads: true });
+// uploads is off: Anthropic's files API refuses a browser (its CORS preflight answers 400 with no Access-Control-Allow-Origin, checked
+// 2026-11-13, where /v1/messages answers 200), so photos go in the request; a server that speaks this and takes uploads turns it on (spec §4.8).
+const TUNABLES = Object.freeze({ path: '/v1/messages', version: '2023-06-01', browserAccess: true, beta: '', defaultMaxTokens: 8192, uploads: false });
 const STOP = /** @type {Record<string, string>} */ ({ end_turn: 'end', stop_sequence: 'end', tool_use: 'tool', max_tokens: 'length', refusal: 'refusal', pause_turn: 'pause' });
 /** The stops whose reply is whole and can go back as it came. */
 const WHOLE = new Set(['end_turn', 'stop_sequence', 'tool_use', 'pause_turn']);
@@ -34,7 +36,7 @@ export function activate(annai) {
     /** @param {Response} res */
     read: (res) => read(res, sse, ProviderError),
     classify,
-    /** A photo to the files API, expiring as asked (spec §4.8). @param {any} c */
+    /** A photo to the files API, expiring as asked, where the ability's uploads are switched on (spec §4.8). @param {any} c */
     uploadRequest: ({ endpoint, key, tunables, bytes, mediaType, name, expiresInSeconds }) => {
       const headers = headersFor(endpoint, key, { ...TUNABLES, ...tunables });
       delete headers['content-type']; // FormData sets its own, with the boundary
