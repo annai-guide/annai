@@ -108,6 +108,8 @@ export class Voice {
   #stuck = false;
   /** @type {Set<(stuck: boolean) => void>} */
   #sound = new Set();
+  /** @type {Set<() => void>} */
+  #begun = new Set();
 
   /**
    * @param {{ llm: any, ws: import('../workspace.js').Workspace, registry: import('../registry.js').Registry, store?: import('../types.js').Store,
@@ -137,6 +139,7 @@ export class Voice {
         const system = this.browserVoice(s.browserVoice, lang);
         return { voice: system?.id, rate: s.rate, lang, system };
       },
+      onBegin: () => this.begins(),
       onLevel: (x) => this.#level(x, 'her'),
       onVoice: (entry, system) => {
         if (entry.kind !== 'browser' || system?.local) return;
@@ -376,6 +379,20 @@ export class Voice {
   /** @param {boolean} stuck */
   #tellSound(stuck) {
     for (const fn of this.#sound) fn(stuck);
+  }
+
+  /**
+   * Hears her voice begin something new: a line said through the speaker (annai's, a chat model's), or a live session's turn. annai's card stops
+   * listening for a spoken yes then (Agent.confirm). @param {() => void} fn @returns {() => void}
+   */
+  onBegin(fn) {
+    this.#begun.add(fn);
+    return () => this.#begun.delete(fn);
+  }
+
+  /** Her voice begins something new (onBegin). */
+  begins() {
+    for (const fn of [...this.#begun]) fn();
   }
 
   /** A live session's sound, for the glow (K5). @param {number} x @param {'her' | 'you'} who */
