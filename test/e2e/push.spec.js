@@ -102,7 +102,7 @@ test("a plan item moved moves its reminder at the relay; removing the trip calls
     await writeRecords(page, trip, { patch: { '/plan/tea.json': { start: { at: plus(start, 90 * 60_000), tz: 'UTC' } } } });
     await page.reload();
     await expect.poll(async () => (await kit.waiting()).map((x) => x.sendAt), { timeout: 15_000 }).toEqual([Date.parse(plus(start, 75 * 60_000)) + 30_000]);
-    await page.getByRole('button', { name: 'Remove trip' }).click();
+    await page.getByRole('button', { name: 'Remove conversation' }).click();
     await page.getByRole('dialog', { name: 'Big Sur' }).getByRole('button', { name: 'Remove' }).click();
     await expect.poll(async () => (await kit.waiting()).length, { timeout: 15_000 }).toBe(0);
   } finally {

@@ -432,14 +432,14 @@ for (const iphone of [false, true]) {
       await goToHash(page, '#/settings');
       await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
       await page.goBack();
-      await page.getByRole('button', { name: 'Remove trip' }).click();
+      await page.getByRole('button', { name: 'Remove conversation' }).click();
       await expect(question).toBeVisible();
       await page.goForward();
       await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
       await expect(question).toHaveCount(0);
       await page.goBack();
     }
-    await page.getByRole('button', { name: 'Remove trip' }).click();
+    await page.getByRole('button', { name: 'Remove conversation' }).click();
     await expect(question).toBeVisible();
     await page.evaluate((id) => navigator.serviceWorker.dispatchEvent(new MessageEvent('message', { data: { type: 'annai.open', scope: id } })), nara);
     await expect.poll(() => hashOf(page)).toBe(`#/trip/${nara}/talk`);
@@ -846,12 +846,27 @@ test('an undated trip with a recap shows Recap, and never Replay; one with neith
   await expect(link('Recap')).toHaveAttribute('href', `#/trip/${id}/recap`);
 });
 
-test('Details shows what the trip has cost', async ({ page }) => {
+test("Details says what it is, with what it has cost: a chat's say conversation, a dated trip's say trip; the welcome names Trips, where its + is (backlog 5)", async ({ page }) => {
   await openApp(page);
-  const id = await startNamed(page, 'Kyoto');
+  const id = await startNamed(page, 'Kyoto'); // no dates: a chat
   await writeEvent(page, id, { type: 'model.turn', data: { cost: 0.42 } });
   await page.reload();
-  await expect(page.getByRole('main')).toContainText('This trip so far: $0.42');
+  const main = page.getByRole('main');
+  await expect(main).toContainText('This conversation so far: $0.42');
+  await expect(main.getByRole('button', { name: 'Archive conversation' })).toBeVisible();
+  await expect(main.getByRole('button', { name: 'Remove conversation' })).toBeVisible();
+  await expect(main).not.toContainText(/This trip so far|Archive trip|Remove trip/);
+  // Dated there, it is a trip, and its Details says so.
+  const form = page.locator('form.trip-edit');
+  await form.getByLabel('Starts').fill('2027-04-01');
+  await form.getByLabel('Ends').fill('2027-04-05');
+  await form.getByRole('button', { name: 'Save' }).click();
+  await expect(main.getByRole('button', { name: 'Remove trip' })).toBeVisible();
+  await expect(main.getByRole('button', { name: 'Archive trip' })).toBeVisible();
+  await expect(main).toContainText('This trip so far: $0.42');
+  await expect(main).not.toContainText(/This conversation so far|Archive conversation|Remove conversation/);
+  await goToHash(page, '#/welcome');
+  await expect(main.getByText('Tap + on Trips to talk to her, or tap her in any conversation.')).toBeVisible();
 });
 
 test('the crumb goes back to the conversation', async ({ page }) => {
@@ -921,9 +936,9 @@ async function backStays(page) {
   await page.goBack();
   return page.url().startsWith('http://127.0.0.1:8790/');
 }
-/** On a trip's Details: Remove trip, asked and asked again. @param {import('@playwright/test').Page} page @param {string} title */
+/** On a chat's Details: Remove conversation, asked and asked again. @param {import('@playwright/test').Page} page @param {string} title */
 async function removeFromDetails(page, title) {
-  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await page.getByRole('button', { name: 'Remove conversation' }).click();
   await page.getByRole('dialog', { name: title }).getByRole('button', { name: 'Remove' }).click();
 }
 /** Settings, then Trips, a trip started and opened, its conversation, its name (Details again), then Remove trip: the app is on Trips. @returns {Promise<string>} the trip's id */
@@ -1245,7 +1260,7 @@ test("Back after Remove trip shows the screen before where it was left, not wher
   await goToHash(page, '#/trips');
   await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
   await startNamed(page, 'Kyoto');
-  await page.getByRole('button', { name: 'Remove trip' }).scrollIntoViewIfNeeded();
+  await page.getByRole('button', { name: 'Remove conversation' }).scrollIntoViewIfNeeded();
   await page.evaluate(() => scrollBy(0, 400));
   expect(await page.evaluate(() => scrollY)).toBeGreaterThan(200); // Details is further down than Settings was
   await removeFromDetails(page, 'Kyoto');
@@ -1258,7 +1273,7 @@ test("Back after Remove trip shows the screen before where it was left, not wher
 test("a screen the user goes to while Remove trip runs is kept: the removal doesn't take them back", async ({ page }) => {
   await openApp(page);
   await startNamed(page, 'Kyoto');
-  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await page.getByRole('button', { name: 'Remove conversation' }).click();
   await expect(page.getByRole('dialog', { name: 'Kyoto' })).toBeVisible();
   // "Remove", and in the same moment a tap on Settings: the removal ends after it.
   await page.evaluate(() => {
@@ -1474,7 +1489,7 @@ test("a question that pushes its own history entry carries a number between its 
   await startNamed(page, 'Kyoto');
   const screen = /** @type {number} */ (await idxOf(page));
   const key = await page.evaluate(() => history.state.annaiScroll);
-  await page.getByRole('button', { name: 'Remove trip' }).click();
+  await page.getByRole('button', { name: 'Remove conversation' }).click();
   const dialog = page.getByRole('dialog', { name: 'Kyoto' });
   await expect(dialog).toBeVisible();
   const state = await page.evaluate(() => history.state);
