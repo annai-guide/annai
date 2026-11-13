@@ -123,11 +123,11 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Approved:** 2026-11-03, the user: "Known limitation (Recommended)".
 
 ### Telling who is talking
-- **Kind:** deferred.
-- **What the user sees:** annai can tell a voice near the phone from music further away by how loud it is, but not one person from another. A passenger talking near the phone is treated as the user's speech, until Shiori's own judgement says otherwise.
-- **Why:** telling voices apart would likely need a voice model downloaded to the phone, estimated at several MB and not researched, in an app that ships under 3 MB. The level check comes first, and may be enough.
+- **Kind:** known limitation.
+- **What the user sees:** annai can't tell one person from another. A passenger talking near the phone is treated as the user's speech, until Shiori's own judgement says otherwise. In live voice, annai tells a voice near the phone from music further away by how loud it is (the level check); classic voice has no level check.
+- **Why:** telling voices apart would likely need a voice model downloaded to the phone, estimated at several MB and not researched: as much again as the whole app, or more (its JavaScript and CSS are about 3.2 MiB). The level check came first, and may be enough. No work on it is planned for the next version, so it is a limitation, not a deferral.
 - **Revisit when:** a drive shows the level check and the gate aren't enough, or the user asks.
-- **Approved:** 2026-11-04, the user picked "Music check now, who later (Recommended)".
+- **Approved:** 2026-11-13, the user picked "Approve all (Recommended)" for the backlog triage of the Deferred entries. Before that, as a deferral: 2026-11-04, the user picked "Music check now, who later (Recommended)".
 
 ### A long slow traffic jam turns voice off
 - **Kind:** known limitation.
@@ -241,12 +241,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** in those 30 s annai can't tell a pull-in from a light, and reading it as a stop would likely fire a false "stops" at a light right after reopening.
 - **Revisit when:** it shows in a drive trace.
 - **Approved:** 2026-11-06, the user picked "Accept for now (Recommended)".
-
-### The sleep note's "let go" path has no test
-- **Kind:** deferred.
-- **What the user sees:** nothing today. If that line broke, a dismissed verdict would lose Kokoro's sleep note, and where a held microphone run keeps the session open, music would keep a live session open and billing.
-- **Why:** the path needs a verdict that lands with nothing going and nothing due while the detector's held run stops the quiet close. On every route tried the session closes in the same tick, so the right code and a mutant behave the same, and a click 0.1 to 0.5 s after the last turn didn't hold it open. The line's comment says what it must do.
-- **Revisit when:** the sleep note's code next changes, or the test kit can hold `input.hearing` itself.
 
 ### Voice off can carry into the next drive
 - **Kind:** known limitation.
@@ -392,10 +386,11 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** the next version: read_trip takes `from`, as `read` does.
 
 ### Where annai hears while she speaks, her own echo can end annai's card unanswered
-- **Kind:** deferred.
+- **Kind:** known limitation.
 - **What the user sees:** on a route where annai listens while she speaks (a car's hands-free, headphones) and her voice comes back into the microphone late, her own words can be written down as a heard line; if Koe keeps that line, annai's card ends unanswered ("Not read") with nobody having spoken, and the user is asked again or taps. It never grants: across 9 real-speech runs on the test's car route, no echo alone granted a read, and 4 cards ended this way. Measured only on the test's own loop (her output fed back 6 dB quieter and 400 ms late); no real car, speakerphone or headphones were measured. The card that takes them into another trip ("Carry on in Kyoto?") hears the same way: her echo never opens a trip, and can end that card unanswered ("Not opened"), with nothing moved.
-- **Why:** a line begun while she plays, or within 360 ms after (the half-duplex gate's own numbers: 300 ms echo tail plus 60 ms), counts as hers and neither arms nor ends the card; an echo 400 ms late outlasts that. The number was sized for a phone's own speaker.
-- **Revisit when:** the next version: measure the loop on a real car's hands-free and on headphones, then size the tail from it (or end the card only on a line that wasn't begun inside the measured loop).
+- **Why:** a line begun while she plays, or within 360 ms after (the half-duplex gate's own numbers: 300 ms echo tail plus 60 ms), counts as hers and neither arms nor ends the card; an echo 400 ms late outlasts that. The number was sized for a phone's own speaker. A longer tail would be a guess until a real car's hands-free and headphones are measured, and the miss fails safe: it ends the card unanswered, never grants, and the user is asked again or taps.
+- **Revisit when:** a measurement of the loop on a real car's hands-free and on headphones; then size the tail from it (or end the card only on a line that wasn't begun inside the measured loop).
+- **Approved:** 2026-11-13, the user picked "Approve all (Recommended)" for the backlog triage of the Deferred entries.
 
 ### Classic voice: a take-back said just after the 20 seconds isn't heard
 - **Kind:** deferred.
@@ -453,10 +448,11 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** the next version: speech begun after the 20 seconds no longer holds the listening open.
 
 ### A line can still be said aloud when voice goes off in the instant before she starts it
-- **Kind:** deferred.
+- **Kind:** known limitation.
 - **What the user sees:** voice goes off (the voice chip, a setting, headphones taken out) in the few milliseconds between Shiori deciding to say a line or a question aloud and her voice starting. The line is still said aloud, on the phone's speaker if the headphones just went; after it she doesn't listen, and the line is on the screen as always. Once her voice has started, voice going off stops it mid-word, as before.
-- **Why:** whether a turn speaks is read once, when the line is written down, and not again as her voice begins.
-- **Revisit when:** the next version: the turn's voice is read again just before her voice begins, and the line is shown instead.
+- **Why:** whether a turn speaks is read once, when the line is written down, and not again as her voice begins. The window is a few milliseconds, and the line is on screen as always.
+- **Revisit when:** it happens to the user; the fix then: the turn's voice is read again just before her voice begins, and the line is shown instead.
+- **Approved:** 2026-11-13, the user picked "Approve all (Recommended)" for the backlog triage of the Deferred entries.
 
 ### A "Yes." said right after two other lines can miss annai's card
 - **Kind:** known limitation.
@@ -542,16 +538,18 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Approved:** 2026-11-10, the user picked "Keep the sentence (Recommended)".
 
 ### Undo of a calendar's move goes file by file
-- **Kind:** deferred.
+- **Kind:** known limitation.
 - **What the user sees:** Shiori moved a calendar to another trip, with the plan items made from its events, and the user taps Undo. If the page closes partway through Undo, the calendar can be back in the first trip while its events are still on the other trip's plan (or one event in each trip), and the other trip can remind for them. Undo is still offered, and a second tap finishes it.
-- **Why:** the move itself is one transaction now, but Undo moves each file back along its own chain, one write at a time.
-- **Revisit when:** the next version: the calendar's plan items move back with it.
+- **Why:** the move itself is one transaction now, but Undo moves each file back along its own chain, one write at a time. Making Undo one transaction means reworking how it walks each file's moves (`src/core/handover.js`), for a page that closes partway through Undo, which a second tap finishes.
+- **Revisit when:** it happens to the user; the fix then: the calendar's plan items move back with it.
+- **Approved:** 2026-11-13, the user picked "Approve all (Recommended)" for the backlog triage of the Deferred entries.
 
 ### What follows a file's move is not part of the move
-- **Kind:** deferred.
+- **Kind:** known limitation.
 - **What the user sees:** if the page closes right after a file's move, or a write fails right after it, the file is in the new trip but Shiori there has not been told to read it, and the first conversation has no "moved" line (Undo, in the first conversation, still brings the file back; it shows there once she has written a line after the hand-over, before the user's next message). For a calendar that was waiting to be filed, its events are not planned yet either. After Open on annai's card that takes them into another trip, the same can happen when the page closes, or a write fails, between the files moving and the "moved" line in the conversation they were in: that trip doesn't open, its files are there but the user's last line and Shiori's recap are not, and the conversation may have no "moved" line. Each file moves in a write of its own, so with several files a failure partway leaves some moved and some not.
-- **Why:** those steps are written by Shiori's own code after the move has been committed; only each file's move is one transaction, and where the files went, the "moved" line and the trip's copy of the line and recap are writes after it.
-- **Revisit when:** the next version: a move's writes are one transaction.
+- **Why:** those steps are written by Shiori's own code after the move has been committed; only each file's move is one transaction, and where the files went, the "moved" line and the trip's copy of the line and recap are writes after it. Putting all of a move's writes in one transaction is a large change, for a close or a failed write in the moment right after a move.
+- **Revisit when:** it happens to the user; the fix then: a move's writes are one transaction.
+- **Approved:** 2026-11-13, the user picked "Approve all (Recommended)" for the backlog triage of the Deferred entries.
 
 ### A page's end isn't kept when only the window's height changes
 - **Kind:** known limitation.
@@ -561,10 +559,11 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Approved:** 2026-11-10, the user picked "Accept (Recommended)".
 
 ### A turn of the phone can put the page at its end when the user's last move wasn't a scroll the rule could read
-- **Kind:** deferred.
-- **What the user sees:** the page moves to its end when the phone is turned, though the user wasn't reading its end. Three ways there: with a page scrolled to its end, something opens below with no scroll (Archived trips on home), then the phone turns, and the page goes past what just opened; in a browser tab, a short drag up from the end while the toolbar shows, then a turn with no other scroll; and possibly (not verified on a phone) a scroll with the iPhone's keyboard up, then a turn. A scroll in between prevents the first, and Shiori speaking or the dock changing no longer moves the page at all.
-- **Why:** when the phone turns, the page is already at its new size, so whether the user was at its end can't be read then and is remembered from their last scroll. A fold opened since is not a scroll, and a scroll that arrives at a new window height before that height's resize is skipped as the browser's own.
-- **Revisit when:** the next version: skip a scroll only while a turn's resize is still to come (the width differs), read every other one, and let the remembered fact follow the page's height. It needs the WebKit turn test before it ships.
+- **Kind:** known limitation.
+- **What the user sees:** the page moves to its end when the phone is turned, though the user wasn't reading its end. Three ways there: with a page scrolled to its end, something opens below with no scroll (Archived trips on home), then the phone turns, and the page goes past what just opened; in a browser tab, a short drag up from the end while the toolbar shows, then a turn with no other scroll; and possibly (not verified on a phone) a scroll with the iPhone's keyboard up, then a turn. A scroll in between prevents the first, and Shiori speaking or the dock changing no longer moves the page at all. The user scrolls back to where they were.
+- **Why:** when the phone turns, the page is already at its new size, so whether the user was at its end can't be read then and is remembered from their last scroll. A fold opened since is not a scroll, and a scroll that arrives at a new window height before that height's resize is skipped as the browser's own. The fix changes a subtle rule about which scrolls count, and needs the WebKit turn test before it ships, for three rare sequences.
+- **Revisit when:** the user meets it on the phone; the fix then: skip a scroll only while a turn's resize is still to come (the width differs), read every other one, and let the remembered fact follow the page's height, with the WebKit turn test before it ships.
+- **Approved:** 2026-11-13, the user picked "Approve all (Recommended)" for the backlog triage of the Deferred entries, and "Known limitation (Recommended)" for this entry, which replaces, for this case, the user's rule of 2026-11-06 that a screen jump no user would want is fixed rather than accepted as a limitation.
 
 ### Online, `nearby` rarely gets OpenStreetMap's places
 - **Kind:** deferred.
@@ -594,16 +593,11 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Approved:** 2026-11-11, the user picked "Finish it; known limitation".
 
 ### Opening another conversation can drop the rest of her reply, or take up a turn already answered
-- **Kind:** deferred.
+- **Kind:** known limitation.
 - **What the user sees:** two rare cases when the user opens another conversation while Shiori works on something they asked. In one reply she says something, runs a tool, and has more to say after it, and the open comes during the tool: the rest is never said, on coming back either, and no "picks it up" line shows (none of 320 requests in the real-model runs had a reply with two spoken lines). Or she has already answered, and the open comes while a later step of the same turn writes her notes: the conversation left says "Shiori was in the middle of something. She picks it up when you come back.", and on coming back she takes the turn up, an extra turn that may say her answer again. Both need a reply that ends in her sleep. One more shape of the same rule: she asks a question, the user answers it, and the same reply goes on to work and then sleeps: an open during that work drops the rest, and nothing is taken up.
-- **Why:** whether a cut turn still owes the user is decided for her whole reply (did anything in it reach them, and was its last call the one waiting on them), not for each call in it.
-- **Revisit when:** the next version: decide by each call: a cut call other than her sleep leaves the turn owed, and so does a cut hand-off between her halves. Taken by the call's name alone, that also takes up her notes written after an answer in the same reply (which isn't owed today), and still takes up the notes of a later step; telling those from the work after the user's answer needs the rule to know whether the user's words came after her last line to them, to be chosen first.
-
-### Her turns start a little later in a chat she named, as its files grow
-- **Kind:** deferred.
-- **What the user sees:** nothing noticeable so far. In a conversation with no dates whose name or details Shiori changed last, each of her turns, and Koe's, begins by reading the conversation's whole history of file changes to find who gave it its name. That took 0.3 ms at 108 file changes, 3.7 ms at 2,023 and 24.5 ms at 10,053, on the test store; a phone's storage wasn't measured.
-- **Why:** who named it is worked out again at every turn rather than kept, and at those sizes it is small next to a model's answer. Koe's turns don't use the answer.
-- **Revisit when:** a phone's Trace or a real-model run shows her turns starting slowly in such a conversation: keep the answer per conversation, and skip it for Koe.
+- **Why:** whether a cut turn still owes the user is decided for her whole reply (did anything in it reach them, and was its last call the one waiting on them), not for each call in it. Deciding by each call changes the rule for what a cut turn owes, and needs a decision first (below), for two rare cases (none of 320 real-model requests had a reply with two spoken lines).
+- **Revisit when:** the user hears a reply cut or repeated this way; the fix then: decide by each call: a cut call other than her sleep leaves the turn owed, and so does a cut hand-off between her halves. Taken by the call's name alone, that also takes up her notes written after an answer in the same reply (which isn't owed today), and still takes up the notes of a later step; telling those from the work after the user's answer needs the rule to know whether the user's words came after her last line to them, to be chosen first.
+- **Approved:** 2026-11-13, the user picked "Approve all (Recommended)" for the backlog triage of the Deferred entries.
 
 ### A reminder set across a change of summer time can come an hour off what she said
 - **Kind:** deferred.
@@ -612,10 +606,11 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** the next version: when the written offset doesn't match the conversation's zone at that moment, setting the reminder gives her the time in that zone too, so she sees her own mistake.
 
 ### Shiori on her own can't see what the user answered Koe
-- **Kind:** deferred.
-- **What the user sees:** with her two halves, Koe asks something ("What can I do?") and the user answers aloud ("When is check-in?"); Koe passes it to Kokoro, and another conversation is opened while she works. Then the user empties Koe in Models, so Shiori is one again, and comes back: she takes the turn up, but their question isn't among what she reads, so she may not answer it. The same for a tap on Koe's card, or a line typed while Koe waits.
-- **Why:** answers to Koe's own questions are kept with Koe's calls, which Shiori on her own doesn't read.
-- **Revisit when:** the next version: Shiori on her own reads Koe's notes and the user's answers to Koe, as Kokoro does.
+- **Kind:** known limitation.
+- **What the user sees:** with her two halves, Koe asks something ("What can I do?") and the user answers aloud ("When is check-in?"); Koe passes it to Kokoro, and another conversation is opened while she works. Then the user empties Koe in Models, so Shiori is one again, and comes back: she takes the turn up, but their question isn't among what she reads, so she may not answer it, and they ask again. The same for a tap on Koe's card, or a line typed while Koe waits.
+- **Why:** answers to Koe's own questions are kept with Koe's calls, which Shiori on her own doesn't read. It takes three rare steps in a row (an open while she works on their answer, emptying Koe in Models, coming back), and the fix changes what Shiori on her own reads.
+- **Revisit when:** it happens to the user; the fix then: Shiori on her own reads Koe's notes and the user's answers to Koe, as Kokoro does.
+- **Approved:** 2026-11-13, the user picked "Approve all (Recommended)" for the backlog triage of the Deferred entries.
 
 ### Kokoro's immediate note replaces the note she was saying
 - **Kind:** known limitation.
@@ -646,16 +641,18 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Approved:** 2026-11-12, the user picked "Known limitation (Recommended)".
 
 ### With Koe on OpenAI Realtime, the plugin's clock-based end can split her continuation into two lines
-- **Kind:** deferred.
+- **Kind:** known limitation.
 - **What the user sees:** with Koe on OpenAI Realtime (no OpenAI key is in use, so nobody has run it for real), she says a few words and calls a tool she speaks after; annai answers at once, and her continuation's sound begins before the first response's words would have finished playing. The plugin ends the first response's turn by its playback clock (`complete`), which then lands inside the continuation and ends that turn early: her line is written in two parts. All of it is played, and the note is passed on.
-- **Why:** OpenAI Realtime's server sends no turn end that follows playback, so the plugin times one; since annai ends the calling turn itself once it is all made and its call answered, that late end can only hit the next turn.
-- **Revisit when:** the next version: a fix at source of about three lines in the plugin (a response's first sound ends the turn before it). Before an OpenAI key is in use, at the latest.
+- **Why:** OpenAI Realtime's server sends no turn end that follows playback, so the plugin times one; since annai ends the calling turn itself once it is all made and its call answered, that late end can only hit the next turn. No OpenAI key is in use, so neither the case nor a fix can be run for real, and nothing is lost: the line shows in two parts.
+- **Revisit when:** before an OpenAI key is in use, at the latest; the fix then: a fix at source of about three lines in the plugin (a response's first sound ends the turn before it).
+- **Approved:** 2026-11-13, the user picked "Approve all (Recommended)" for the backlog triage of the Deferred entries.
 
 ### One note said across two of her turns, the second cut, is neither said whole nor shown
-- **Kind:** deferred.
+- **Kind:** known limitation.
 - **What the user sees:** in live voice, Kokoro's note goes in and she answers it in two turns: a whole first line ("Sure."), then the note in a second. If the user speaks or taps in the second, or a drop cuts it, the note is neither heard whole nor shown: the first line already passed it on. Not seen for real: 0 of the 7 real continuations with nothing else going in were split in two.
 - **Why:** annai can't tell which of her lines says a note; it takes the first whole line begun after the note went in. Keeping the note owed until her whole answer to it has ended needs a mark of which turn passed it, read by every cut path (the user's start, a tap, a line they send, an urgent reminder, a close, a drop): a new state of the kind this design removed, for a shape not measured.
-- **Revisit when:** the next version, with the real run of this build: if it shows split answers, a note passed on by a whole line stays owed until her answer has ended (#idle finds nothing of hers going on), and a cut of a later turn of that answer shows it, a double rather than a loss (the main session's call, 2026-11-12).
+- **Revisit when:** a real run shows split answers; the fix then: a note passed on by a whole line stays owed until her answer has ended (#idle finds nothing of hers going on), and a cut of a later turn of that answer shows it, a double rather than a loss (the main session's call, 2026-11-12).
+- **Approved:** 2026-11-13, the user picked "Approve all (Recommended)" for the backlog triage of the Deferred entries.
 
 ### A short plan item that crosses midnight stays on the Next line for up to half an hour after it ended
 - **Kind:** known limitation.
@@ -672,10 +669,11 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Approved:** 2026-11-12, the user picked "Limitation, OpenAI only (Recommended)".
 
 ### A reminder can be written into both conversations when a switch lands while the live session connects
-- **Kind:** deferred.
+- **Kind:** known limitation.
 - **What the user sees:** in live voice, a reminder comes due while Koe's live session is still connecting (the moment after voice goes on, or the page comes back), and the user opens another conversation in that moment. The conversation left gets a silent copy of it; the conversation opened gets it shown and said aloud, once, as if it belonged to that trip, with one card on screen. Nothing is lost, but the reminder is filed in two places and is heard under the wrong trip. (Reproduced on the test stand-in with the connection held 100 ms; the same in the version before this one. With the page going out of view instead of a switch it shows once, from reading the code: the close doesn't hand a copy on, and the failed open's fallback shows it where it is.)
-- **Why:** at the switch the session's copy of the wake goes to the conversation left, and the failed open's fallback then shows the original in the conversation opened; nothing tells the fallback that a close already handed its copy on.
-- **Revisit when:** the next version: the fallback skips what a close already handed on (the session's copy of the wake keeps a reference to the original, the code that writes the unsaid notes marks that original as shown, and the fallback checks the mark before it reminds, as it does before it shows a note).
+- **Why:** at the switch the session's copy of the wake goes to the conversation left, and the failed open's fallback then shows the original in the conversation opened; nothing tells the fallback that a close already handed its copy on. It needs a reminder due and a switch both in the moment the live session connects, nothing is lost, and the fix adds a mark on the reminder for the fallback to read.
+- **Revisit when:** it happens to the user; the fix then: the fallback skips what a close already handed on (the session's copy of the wake keeps a reference to the original, the code that writes the unsaid notes marks that original as shown, and the fallback checks the mark before it reminds, as it does before it shows a note).
+- **Approved:** 2026-11-13, the user picked "Approve all (Recommended)" for the backlog triage of the Deferred entries.
 
 ### With two halves, Kokoro's words held in Koe's running turn may be lost, or said on coming back, when another conversation opens
 - **Kind:** deferred.
@@ -696,34 +694,39 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** the next version: the listening after her line is not opened when the user stopped the turn (`listens` in `#afterTurn`, `src/core/agent/loop.js`, false when `#userStop`). It changes what a Stop does, so it needs the user's OK first.
 
 ### Live Koe's tool calls in flight when another conversation opens are written into the conversation opened
-- **Kind:** deferred.
+- **Kind:** known limitation.
 - **What the user sees:** in live voice, one of Koe's tool calls is still running (or its first write is waiting behind the other conversation's opening) when the user opens another conversation. The call is written in the conversation left, but its result lands in the conversation opened, as a result with no call, and the conversation left keeps a call with no result. When the call is Koe's `tell_kokoro`, the note itself lands in the conversation opened and wakes Kokoro there, which answers a question about the trip left, in the trip opened. Koe's spoken and heard lines are not affected: they are written where she spoke. (Reproduced on the test stand-in with a tool held while the switch ran; the version before this one did the same.)
-- **Why:** a call's writes (`tool.call`, `tool.result`, and the note through the channel) go into whichever conversation is open when they are written, and the switch changes it meanwhile; the note's delivery wakes Kokoro in the open conversation. Binding the writes to the session's conversation, as her lines are, is a small change (pass it from the session's call through `liveCall` into `#runCall`), but it leaves what the note for a conversation no longer open should do (not wake Kokoro there; be kept for when the user comes back, or dropped), and a call that starts after the switch, which runs against the conversation opened. Those are decisions, not a pass-through.
-- **Revisit when:** the next version: the session's conversation is bound to its calls' writes, after deciding what a note to Kokoro for a conversation that is no longer open does (the batch with the other live-session switch entries).
+- **Why:** a call's writes (`tool.call`, `tool.result`, and the note through the channel) go into whichever conversation is open when they are written, and the switch changes it meanwhile; the note's delivery wakes Kokoro in the open conversation. Binding the writes to the session's conversation, as her lines are, is a small change (pass it from the session's call through `liveCall` into `#runCall`), but it leaves what the note for a conversation no longer open should do (not wake Kokoro there; be kept for when the user comes back, or dropped), and a call that starts after the switch, which runs against the conversation opened. Those are decisions, not a pass-through, for a switch while one of Koe's calls runs.
+- **Revisit when:** it happens to the user; the fix then: the session's conversation is bound to its calls' writes, after deciding what a note to Kokoro for a conversation that is no longer open does, and what a call that starts after the switch does.
+- **Approved:** 2026-11-13, the user picked "Approve all (Recommended)" for the backlog triage of the Deferred entries.
 
 ### A live session taking the microphone while someone speaks into a tap's listening for her question leaves it marked listening
-- **Kind:** deferred.
+- **Kind:** known limitation.
 - **What the user sees:** voice is off, her question shows its buttons, the user taps Shiori and begins to speak into phone dictation, and then a live session takes the microphone (Koe's live voice opening) before they finish. The dock keeps saying "Hearing you" (still so 30 seconds later on the test stand-in) and Kokoro's notes for the user are held behind the question until the user taps a button or types. With nothing said yet, or with recording instead of phone dictation, the listening ends as it should, at its 8 seconds or with the line. (Reproduced on the test stand-in by handing the microphone over directly; that a live session opens in those 8 seconds, with someone speaking, is not confirmed. The version before this one did the same.)
-- **Why:** speech holds the listening's silence limit, and dictation closed under it ends with no end of that speech and no words, so nothing starts the limit again. `#voiceChanged` handles the same case (it starts the limit again, closes the listening and lets the note rule look again), and `Agent.release()`, which a live session's opening calls on both halves, doesn't.
-- **Revisit when:** the next version: one helper for "the microphone closed under a listening" (listening off, the limit started again, the dock's waiting words, `#noted`), used by `#voiceChanged` and `release()`. It needs tests of its own, because `release()` runs at every live listening start (`src/core/koe/live.js`).
+- **Why:** speech holds the listening's silence limit, and dictation closed under it ends with no end of that speech and no words, so nothing starts the limit again. `#voiceChanged` handles the same case (it starts the limit again, closes the listening and lets the note rule look again), and `Agent.release()`, which a live session's opening calls on both halves, doesn't. That this order can happen is not confirmed, and the fix touches every live listening start.
+- **Revisit when:** it is seen, or the next change to how a closed microphone ends a listening; the fix then: one helper for "the microphone closed under a listening" (listening off, the limit started again, the dock's waiting words, `#noted`), used by `#voiceChanged` and `release()`, and by `#earFailed` for the entry below. It needs tests of its own, because `release()` runs at every live listening start (`src/core/koe/live.js`).
+- **Approved:** 2026-11-13, the user picked "Approve all (Recommended)" for the backlog triage of the Deferred entries.
 
 ### A microphone failure during a tapped question ends the question, though it still stands
-- **Kind:** deferred.
-- **What the user sees:** voice is off, her question shows its buttons, the user taps Shiori, and the microphone stops (another app takes it: a phone call, dictation failing). A "Listening stopped" card says why, but the question's buttons end and the model is told "annai couldn't listen: … The user may type.", and the question is over, though the user has not answered it. (From reading the code and the review's probes. The version before this one closed the question too, and wrote an empty line of the user's and told the model "The user wrote: undefined".) Her question said aloud does the same in the by-hand phase after its 8 seconds.
-- **Why:** `#earFailed` resolves a pending that is marked listening with the failure, whatever it was waiting for, and a question that waits by hand is also marked listening for as long as a tap's microphone is open.
-- **Revisit when:** the next version: `#earFailed` leaves a question that waits by hand (`byHand`) waiting, as `#voiceChanged` does (the listening ends, the dock says it waits, `#noted` looks again), and gives the failure as the result only to a listening that has no other way to be answered.
+- **Kind:** known limitation.
+- **What the user sees:** voice is off, her question shows its buttons, the user taps Shiori, and the microphone stops (another app takes it: a phone call, dictation failing). A "Listening stopped" card says why, but the question's buttons end and the model is told "annai couldn't listen: … The user may type.", and the question is over, though the user has not answered it; they can type their answer. (From reading the code and the review's probes. The version before this one closed the question too, and wrote an empty line of the user's and told the model "The user wrote: undefined".) Her question said aloud does the same in the by-hand phase after its 8 seconds.
+- **Why:** `#earFailed` resolves a pending that is marked listening with the failure, whatever it was waiting for, and a question that waits by hand is also marked listening for as long as a tap's microphone is open. It is rare (another app taking the microphone while the user answers her question by a tap), the card says why, and the fix is best made with the helper of the entry above.
+- **Revisit when:** it happens to the user; the fix then: `#earFailed` leaves a question that waits by hand (`byHand`) waiting, as `#voiceChanged` does (the listening ends, the dock says it waits, `#noted` looks again), and gives the failure as the result only to a listening that has no other way to be answered.
+- **Approved:** 2026-11-13, the user picked "Approve all (Recommended)" for the backlog triage of the Deferred entries.
 
 ### The tap's own window, with no turn running, starts its 8 seconds again on every noise
-- **Kind:** deferred.
+- **Kind:** known limitation.
 - **What the user sees:** the user taps Shiori while she is idle (with voice off, the tap holds voice on and opens the same window); in a noisy room a short sound (a click, a cough, a door) at least every 8 seconds keeps the microphone open and the dock saying "Listening", where a quiet room closes it after 8 seconds. Nothing is held behind it, because no turn is running: the cost is a microphone open for longer. (From reading the code, `#speechStopped` then `#armQuiet`; the version before this one did the same.)
-- **Why:** `#armQuiet` counts the 8 seconds from the last noise. A tap's listening for her question now counts them from the tap (`#limitTap`), as her question aloud (`#listenFor`) does, and noise neither ends it nor restarts it.
-- **Revisit when:** the next version: `#armQuiet` keeps a deadline from the tap, so every tap's listening follows one rule.
+- **Why:** `#armQuiet` counts the 8 seconds from the last noise. A tap's listening for her question now counts them from the tap (`#limitTap`), as her question aloud (`#listenFor`) does, and noise neither ends it nor restarts it. The tap's own window fails open, not wrong: nothing waits behind it, and the dock says "Listening" while the microphone is open. The fix adds a deadline to `#armQuiet`, which every tap to talk goes through.
+- **Revisit when:** a drive shows the dock stuck on "Listening" after a tap; the fix then: `#armQuiet` keeps a deadline from the tap, so every tap's listening follows one rule.
+- **Approved:** 2026-11-13, the user picked "Approve all (Recommended)" for the backlog triage of the Deferred entries.
 
 ### A second tap while a tap's microphone is opening, with her question waiting, closes the microphone and nothing listens
-- **Kind:** deferred.
+- **Kind:** known limitation.
 - **What the user sees:** voice is on and her question waits for a tap or typing (its 8 seconds of listening are over). The user taps Shiori twice within the moment the microphone takes to open. The microphone opens and closes at once, nothing listens, and the dock says "Waiting for your OK" throughout; a third tap listens. (Reproduced on the test stand-in: two taps in a row, the microphone's log shows it open and closed with nothing said. With nothing waiting, the dock says "One moment…" while the microphone opens, and there the second tap is meant to stop it. The lines involved are unchanged by this version.) (Reproduced again on this version's stand-in, 2026-11-12.) With voice off it doesn't happen: a second tap while the first is still starting is let go, and the first's microphone listens.
-- **Why:** `#tapListen` closes the microphone it opened when a later tap has taken its place. While her turn is busy the dock doesn't say "One moment…", so a second tap in that moment reads as a wish to listen, and acts as a stop.
-- **Revisit when:** the next version: a tap that finds a tap's microphone already opening, with her turn busy, keeps that microphone and starts its limit, instead of closing it (`#tapListen`, `src/core/agent/loop.js`).
+- **Why:** `#tapListen` closes the microphone it opened when a later tap has taken its place. While her turn is busy the dock doesn't say "One moment…", so a second tap in that moment reads as a wish to listen, and acts as a stop. Nothing is wrong or lost: the dock says "Waiting for your OK", not that it listens, and a third tap listens.
+- **Revisit when:** it happens to the user; the fix then: a tap that finds a tap's microphone already opening, with her turn busy, keeps that microphone and starts its limit, instead of closing it (`#tapListen`, `src/core/agent/loop.js`).
+- **Approved:** 2026-11-13, the user picked "Approve all (Recommended)" for the backlog triage of the Deferred entries.
 
 ### Phone dictation's start is the browser's, not the line's
 - **Kind:** deferred.
@@ -732,10 +735,11 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** the next version, in `src/plugins/voice-browser`: a line starts at the first result event for its own result index (interim results are on), and the plugin stops using `speechstart`; `#heard` then trusts a dictation line's start again. A phone check of Web Speech's events comes first, with the Trace on: whether a cough gives a start and nothing after, whether each sentence gets interim results, and how long after a word its final words arrive. Ending a start at `speechend` won't work: neither engine sends it after a noise.
 
 ### A connection that drops for good while she says a note shows the note and lets her say it too
-- **Kind:** deferred.
+- **Kind:** known limitation.
 - **What the user sees:** in live voice, the session closes for good (a refused key, a model not found, or a fourth drop with no reply between) while she is saying a reply that carries a note, after it is all made and played past her last loud sound. annai hands the note on (a card, or Koe · Chat saying it) and the reply's audio says it too: heard and shown twice. Rare. (From reading the code, the second opinion of 2026-11-12's final review; the version before this one did the same in that order.)
-- **Why:** the drop cuts the reply and closes the session before the reply's own end has run, so the note is handed on first; the reply's end then finds it gone and passes nothing.
-- **Revisit when:** the next version: a close for good passes the notes of a turn that counts as heard whole before it hands the rest on, as a tap and a page going out of view already do.
+- **Why:** the drop cuts the reply and closes the session before the reply's own end has run, so the note is handed on first; the reply's end then finds it gone and passes nothing. A double is the safe side: deciding that a cut reply was heard whole risks losing the note instead.
+- **Revisit when:** the doubles bother the user; the fix then: a close for good passes the notes of a turn that counts as heard whole before it hands the rest on, as a tap and a page going out of view already do.
+- **Approved:** 2026-11-13, the user picked "Approve all (Recommended)" for the backlog triage of the Deferred entries.
 
 ### A note she says she already told is shown on a card too
 - **Kind:** known limitation.
