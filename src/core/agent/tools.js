@@ -28,6 +28,11 @@ export const TOOL_NAME = /^[a-zA-Z0-9_-]{1,64}$/;
 /** The most of a tool's result the model sees at once; the rest is cut, with a note. */
 export const RESULT_MAX = 40_000;
 /**
+ * The room a long text's piece leaves in its result (read's, read_trip's) for the line that says how to read on, so the result's own cut never
+ * takes it: "… N more characters; read_trip again with from: N" is under 70 characters with numbers of 10 digits.
+ */
+export const READ_ON = 100;
+/**
  * How long one tool call may take before the model is told it didn't finish and the turn goes on (a mirror that
  * never answered held a turn 7 minutes). Above the longest a tool of annai's own allows itself, an MCP call's 2
  * minutes, so a tool's own words come first. What waits for the user, and task's helper, has none.

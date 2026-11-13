@@ -8,6 +8,7 @@ import { kindOf, ensureBaseScopes, createTrip, ME, SYS_WAITING } from '../../src
 import { readNames } from '../../src/core/names.js';
 import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
+import { runTool, RESULT_MAX } from '../../src/core/agent/tools.js';
 import { utf8 } from '../../src/core/bytes.js';
 
 async function setup() {
@@ -82,12 +83,30 @@ test('list and search answer in TSV with the paths Shiori uses', async () => {
   assert.equal(found, 'path\tline\ttext\n/trip/notes/a.md\t1\tBixby Bridge at sunset');
 });
 
+test("read's line that says how to read on reaches her: each piece leaves it room in the result's limit, so the result's own cut never takes it (found in backlog 6's build)", async () => {
+  const { trip, run, tools } = await setup();
+  const text = Array.from({ length: 3000 }, (_, n) => `Line ${n}: the ferry leaves at ${n % 24}:00.`).join('\n');
+  await run('write', { path: '/trip/notes/ferries.md', content: text });
+  const call = /** @type {any} */ ({ scope: trip, trip, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori' });
+  let read = '';
+  for (let from = 0, n = 0; n < 10; n++) {
+    const out = (await runTool(tools.read, { path: '/trip/notes/ferries.md', ...(from ? { from } : {}) }, call)).output.content;
+    assert.ok(out.length <= RESULT_MAX, `piece ${n} fits the result's limit`);
+    const on = /\n… (\d+) more characters; read again with from: (\d+)$/.exec(out);
+    read += on ? out.slice(0, on.index) : out;
+    if (!on) break;
+    assert.deepEqual([Number(on[1]), Number(on[2])], [text.length - read.length, read.length]);
+    from = Number(on[2]);
+  }
+  assert.equal(read, text, 'the pieces are the file');
+});
+
 test('read: long text in pieces; a photo as an image when the model takes images; a PDF as a document only when it takes PDFs', async () => {
   const { ws, trip, run } = await setup();
   await run('write', { path: '/trip/notes/long.md', content: 'x'.repeat(50_000) });
   const first = await run('read', { path: '/trip/notes/long.md' });
-  assert.match(first, /read again with from: 40000/);
-  assert.equal((await run('read', { path: '/trip/notes/long.md', from: 40_000 })).length, 10_000);
+  assert.match(first, /read again with from: 39900$/);
+  assert.equal((await run('read', { path: '/trip/notes/long.md', from: 39_900 })).length, 10_100);
   const photo = await ws.write(trip, '/files/a.webp', utf8('webp-bytes'), { author: 'user', type: 'image/webp', meta: { width: 2048, height: 1536, taken: '2026-11-26T16:12:00-08:00' } });
   const seen = await run('read', { path: '/trip/files/a.webp' });
   assert.deepEqual(seen.images, [{ mediaType: 'image/webp', hash: photo.hash, path: '/trip/files/a.webp' }]);
