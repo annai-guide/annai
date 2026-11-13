@@ -208,7 +208,7 @@ const holdSaves = (page) => page.evaluate(async () => {
  * Taps Save with the queue held: "Saving…" is on screen, beside the button on its line (not at the top of the page, under the bar),
  * until the queue is let go; with field, until the field shows the key saved, and the toast no sooner.
  * @param {import('@playwright/test').Page} page @param {import('@playwright/test').Locator} save @param {{ label: string, saved: RegExp, redraws?: boolean }} [field]
- *   redraws: the screen is asked to draw again every few ms from the release on, as a plugin or a setting changing does
+ *   redraws: the screen is asked to draw again just as the save's own draw begins, as a plugin or a setting changing can, so that draw is superseded
  */
 async function savingBesideIt(page, save, field) {
   await holdSaves(page);
@@ -236,13 +236,19 @@ async function savingBesideIt(page, save, field) {
       new MutationObserver(look).observe(document.body, { childList: true, subtree: true, characterData: true });
     }, field.label);
   }
-  await page.evaluate(() => /** @type {any} */ (window).release());
   if (field?.redraws) {
-    await page.evaluate(() => {
-      const again = setInterval(() => dispatchEvent(new HashChangeEvent('hashchange')), 4);
-      setTimeout(() => clearInterval(again), 1500);
+    // Queued behind the save, this runs as the save's queued part ends, just after savingNote has called its ctx.render(): the draw asked
+    // for here supersedes the save's own. One draw, not a stream every 4 ms for 1.5 s: a superseded draw still runs to its end, so the
+    // field showed the key only after all 100 to 160 of them, 6 to 15 s on a loaded host, past the 10 s wait (the third CI flake); with
+    // one, "Saving…" goes 0.2 to 1.1 s after the release on a host loaded six times over. A stream for a set time could also end before
+    // a slow save began its draw, superseding nothing.
+    await page.evaluate(async () => {
+      const load = (/** @type {string} */ url) => import(url);
+      const { queueSave } = await load('/src/ui/dom.js');
+      queueSave(async () => { dispatchEvent(new HashChangeEvent('hashchange')); });
     });
   }
+  await page.evaluate(() => /** @type {any} */ (window).release());
   await expect(note).toHaveCount(0);
   if (field) {
     await expect.poll(() => page.evaluate(() => /** @type {any} */ (window).seen.toast ?? null)).not.toBeNull();
@@ -277,7 +283,7 @@ test('a key field says "Saving…" beside its Save button, on screen, until the 
   await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
 });
 
-test("a provider's key saved while the screen is drawn again and again: the toast still comes only when the field shows the key saved (CI flake: it showed \"not set\")", async ({ page }) => {
+test("a provider's key saved while the screen is drawn again over the save's own draw: the toast still comes only when the field shows the key saved (CI flake: it showed \"not set\")", async ({ page }) => {
   await openApp(page, '#/models');
   await tapAdd(page, 'OpenRouter');
   await expect(page.getByRole('heading', { level: 1, name: 'OpenRouter' })).toBeVisible({ timeout: 30_000 });
