@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { liveKit, tone, soon, say } from './koe-live-kit.js';
 import { until } from './agent-kit.js';
-import { SAID, PASS, FOR_USER, LOOKS, CONT, tell, tell2, shown, words, cues, asks, silences, wait, start, lineAt } from './live-flight-kit.js';
+import { SAID, PASS, FOR_USER, NOTE, LOOKS, CONT, tell, tell2, shown, words, cues, asks, silences, wait, start, quietSession, lineAt } from './live-flight-kit.js';
 
 /** The user asks, in the car, a real second; she answers with these turns, and once Kokoro's tell_kokoro has run, Kokoro's note comes. @param {any[]} turns */
 async function quietSessionAsks(turns) {
@@ -177,6 +177,24 @@ test('a typed line cuts her turn, the provider sends interrupted for it and says
     k.agent.send('What about lunch?');
     await soon(async () => (await silences(k)).length > 0, 12_000);
     assert.deepEqual((await silences(k)).slice(0, 1), ['The live session gave no answer within 8 seconds: a fresh one gets it again.']);
+  } finally {
+    w.stop();
+    await k.done();
+  }
+});
+
+// Review F3: an urgent note's mark ends with her answer, though her answer is a lookup and nothing follows it: the microphone hears again and the
+// ask once more goes in at about 9 s (0.8 s of her words and the 8 s), not at the mark's 20 s ceiling.
+test('Kokoro\'s immediate note answered by a lookup and no continuation: she is asked once more at about 9 s, not after the 20 s ceiling', async () => {
+  const { k, t0, w } = await quietSession([NO_MORE, { said: SAID, audio: tone(1) }, { said: 'Okay.', audio: tone(0.3) }]);
+  try {
+    const sent = Date.now() - t0;
+    await k.agent.channel.send('kokoro', NOTE, 'immediate', 'tool', undefined, undefined, false, FOR_USER);
+    await soon(async () => cues(k).length > 0, 25_000);
+    const asked = w.at(/^\[annai\] .*Kokoro/) - sent;
+    assert.ok(asked > 7500 && asked < 12_000, `asked once more ${asked} ms after the note`);
+    await soon(async () => (await words(k)).includes(SAID), 10_000);
+    await k.agent.idle();
   } finally {
     w.stop();
     await k.done();

@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { tone, soon } from './koe-live-kit.js';
-import { SAID, FOR_USER, LOOKS, CONT, shown, lines, words, cues, wait, start } from './live-flight-kit.js';
+import { SAID, FOR_USER, LOOKS, CONT, shown, lines, words, cues, wait, start, quietSession } from './live-flight-kit.js';
 
 const LUNCH = { said: 'Lunch is at noon.', audio: tone(0.5) };
 const OKAY = { said: 'Okay.', audio: tone(0.3) };
@@ -87,6 +87,28 @@ test('Kokoro\'s immediate note cuts in while she says a note, and a tap stops he
     await wait(1000);
     await k.agent.idle();
     assert.deepEqual(await shown(k), [[NOW, false]], 'the first note, replaced, is neither shown nor asked for');
+    assert.deepEqual(cues(k), []);
+  } finally {
+    w.stop();
+    await k.done();
+  }
+});
+
+// annai's own reminder in flight is not Kokoro's note: Kokoro's immediate note replaces Kokoro's own, but cuts in on a reminder as annai's urgent
+// reminder does, a silent card unless she said it whole. (Review of 2026-11-12, F1: the reminder was neither said nor shown.)
+test('Kokoro\'s immediate note cuts in while she says annai\'s reminder: the reminder is shown on a silent card, and the note is said', async () => {
+  const REMIND = 'In ten minutes, leave for the ferry at pier three.';
+  const NOW = 'The road ahead is closed; take the coast road.';
+  const { k, w } = await quietSession([{ said: REMIND, audio: tone(3) }, { said: NOW, audio: tone(0.8) }, OKAY]);
+  try {
+    await k.agent.wake({ kind: 'trigger', text: 'Leave soon', fallbacks: [{ watch: 'ferry', text: REMIND }] });
+    await soon(async () => k.agent.live.view.name === 'speaking', 8000);
+    await wait(400);
+    await k.agent.channel.send('kokoro', `Tell the user: ${NOW}`, 'immediate', 'tool', undefined, undefined, false, NOW);
+    await soon(async () => (await words(k)).includes(NOW), 8000);
+    await wait(500);
+    await k.agent.idle();
+    assert.deepEqual(await shown(k), [[REMIND, false]], 'the reminder, on a silent card, and not the note she said');
     assert.deepEqual(cues(k), []);
   } finally {
     w.stop();
