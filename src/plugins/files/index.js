@@ -1,5 +1,5 @@
 import { VERSION } from '../../app/version.js';
-import { resolvePath, rootOf } from '../../core/agent/tools.js';
+import { resolvePath, rootOf, RESULT_MAX, READ_ON } from '../../core/agent/tools.js';
 import { isTextType } from '../../core/paths.js';
 import { kindOf, SYS_WAITING } from '../../core/scopes.js';
 import { dropWaiting } from '../../core/waiting.js';
@@ -20,7 +20,8 @@ export const manifest = {
 
 // Below, Shiori's words: English (localization design, section 7).
 
-const TEXT_MAX = 40_000;
+/** A long text's piece: the result's limit, less the room its line that says how to read on needs, so the result's own cut never takes that line. */
+const TEXT_MAX = RESULT_MAX - READ_ON;
 /** A pasted text annai kept as a file (the type box): one that isn't a booking is Shiori's to drop. */
 const PASTED = /^\/files\/pasted-\d{4}-\d{2}-\d{2}-\d{4}(?: \(\d+\))?\.txt$/;
 /* en */
