@@ -80,12 +80,13 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  * @typedef {{ id: string, kind: 'ask' | 'wait', resolve: (v: Got) => void, listening?: boolean, hold?: () => void, arm?: () => void, by?: number, tool?: boolean, byHand?: boolean,
  *   ask?: { yes: (heard: string) => string | null, no: (heard: string) => string | null, open: boolean, from: number, until: number, wake: string, answer: string, scope: string,
  *     heard: Map<string, AskLine>, armed: { line: AskLine, chosen: string, yes: boolean } | null, settle: any, speaking: boolean,
- *     behind: { list: Reminder[], scope: string, o: Parameters<Agent['remind']>[2] }[], start?: (at: number) => void } }} Pending
+ *     behind: { list: Reminder[], scope: string, o: Parameters<Agent['remind']>[2] }[], start?: (at: number) => void, over?: () => void } }} Pending
  *   waiting for the user; listening: an answer may be spoken; hold and arm stop and start the silence limit; by: when a tap's listening ends (#limitTap), set once per tap (0 until one, on annai's
  *   card, whose arm waits for the later of by and its window's end, and on a wait or question only a tap's microphone hears, #waitFor); tool: the wait tool's; byHand: set once this
  *   half's own listening for its answer is over (#remindWaiting); ask: annai's own card's (confirm):
  *   from, until: its window; answer: its call's id, its heard lines' mark; armed: the newest listed word; speaking: someone is speaking now (confirmSpeech);
- *   behind: what annai would have said meanwhile, held while it listens on this half's microphone (remind); start: with its question unsaid, a tap's start of its window (tapCard)
+ *   behind: what annai would have said meanwhile, held while it listens on this half's microphone (remind); start: with its question unsaid (voice off, or its sound failed), a tap's start of its
+ *   window (tapCard), gone once anything else is put to the user; over: that, the card is no longer the last thing put to the user (cardPassed)
  * @typedef {{ id: string, inside: boolean, her?: boolean, kept?: boolean, text?: string, h?: Heard, gate?: string, taken?: boolean }} AskLine  heard while annai's card waits: inside: begun in its
  *   window; her: begun over her voice; kept: the verdict, once it comes; h: this half's own segment; taken: the card took it (cardTakes) and wrote it with its answer
  * @typedef {{ name: StateName, label: string, detail?: string }} State  label: the dock's words for it (LABELS); detail: what she is away doing (TIDYING, or a task's words)
@@ -128,6 +129,7 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  *   segment they made, when it began, and whether annai's voice was playing then), for annai's card when the other half holds it
  * @property {(h: Heard) => Promise<boolean>} [card]  annai's card, which the other half holds, hears its microphone's line first (Agent.cardTakes): true, it took it
  * @property {() => number} [cardUntil]  when that card's 20 s end, its question unsaid (Agent.cardUntil; 0: none): a tap's microphone here listens to then
+ * @property {() => void} [passed]  this half put something to the user (a line, a question, a reminder): annai's card, which the other half holds, is no longer the last thing (Agent.cardPassed)
  * @typedef {{ wakeId: string, ok: boolean, finalText: string, told: boolean, slept: boolean, spoke: boolean, kinds: string[], by: { name: string, first: string | null, tried: boolean } | null }} TurnEnd
  *   by: the model that answered the turn's last call
  *   finalText: a last reply's text with no tool calls; told: it told the other half (or a gated call did)
@@ -840,11 +842,13 @@ export class Agent {
 
   /**
    * Her turn waits on an answer that may never come, which only a tap or typing gives now (byHand), or a wake came while it does: annai shows the reminders
-   * now, said as its own are, as at a cut: those queued for this conversation and those her turn owes.
+   * now, said as its own are, as at a cut: those queued for this conversation and those her turn owes. over: annai's card's 20 s have ended while speech still
+   * holds its microphone (confirm's release): what waits goes now too, as at its end (the user's pick, 2026-11-12, "20 s, no more").
+   * @param {boolean} [over]
    */
-  #remindWaiting() {
+  #remindWaiting(over = false) {
     const p = this.#pending;
-    if (!p?.byHand) return;
+    if (!p || !(p.byHand || over)) return;
     // A cue stays on its wake (it's hers), but annai's card may wait for ever: behind it, a place alert is said too (the user's pick, 2026-11-12).
     const owed = (/** @type {Reminder} */ r) => !r.cue || Boolean(p.ask);
     const queued = this.#queue.filter((w) => w.scope === this.scope && w.fallbacks?.some(owed));
@@ -853,9 +857,21 @@ export class Agent {
     if (list.length) this.remind(list, this.scope, { waiting: true }).catch(() => {});
   }
 
-  /** What annai held while its card listened (remind), said now that nothing listens for it; on a Stop, shown only. @param {NonNullable<Pending['ask']>} ask @param {boolean} [silent] */
-  #sayBehind(ask, silent = false) {
-    for (const b of ask.behind.splice(0)) this.remind(b.list, b.scope, silent ? { ...b.o, silent: true } : b.o).catch(() => {});
+  /**
+   * annai's card listens now on this half's microphone: its question is being said, or its window is open with a microphone listening for it or a tap's
+   * opening (a voice-off tap's window too), and its 20 s haven't ended. Not past them, whatever speech holds the microphone (confirm lets go of what is
+   * held at the 20 s: "20 s, no more", the user's pick, 2026-11-12); not when no microphone opened for it.
+   */
+  #cardListens() {
+    const p = this.#pending;
+    const ask = p?.ask;
+    if (!p || !ask) return false;
+    return ask.open ? (!p.byHand || Boolean(p.listening) || this.tapOpening) && Date.now() < ask.until : !p.byHand;
+  }
+
+  /** What annai held while its card listened (remind), said now that nothing listens for it; on a Stop, shown only. @param {NonNullable<Pending['ask']>['behind']} behind @param {boolean} [silent] */
+  #sayBehind(behind, silent = false) {
+    for (const b of behind.splice(0)) this.remind(b.list, b.scope, silent ? { ...b.o, silent: true } : b.o).catch(() => {});
   }
 
   /** @param {Wake} w */
@@ -1017,19 +1033,24 @@ export class Agent {
     // Typed or said before it (classic voice: heard while she thought) ends it too.
     const queued = this.#queue.findIndex((w) => (w.kind === 'user' || w.kind === 'heard') && w.scope === this.scope);
     const w = queued >= 0 ? this.#queue.splice(queued, 1)[0] : null;
+    /** What annai holds while the card listens (remind). Said once the card's answer is written, so the user's words come first; at a Stop or a switch, at once. @type {NonNullable<Pending['ask']>['behind']} */
+    const behind = [];
     /** @type {Got} */
     const got = w ? (w.heard ? { heard: w.heard, ...(w.gate ? { gate: w.gate } : {}) } : typedGot(w)) : await new Promise((resolve) => {
       /** @type {any} */
       let timer;
+      /** @type {any} */
+      let release;
       /** @type {NonNullable<Pending['ask']>} */
-      const ask = { yes, no, open: false, from: 0, until: 0, wake: call.wake, answer: call.id, scope: this.scope, heard: new Map(), armed: null, settle: undefined, speaking: false, behind: [] };
+      const ask = { yes, no, open: false, from: 0, until: 0, wake: call.wake, answer: call.id, scope: this.scope, heard: new Map(), armed: null, settle: undefined, speaking: false, behind };
       let off = () => {};
       /** @type {Pending} */
       const p = { id: tap, kind: 'ask', ask, by: 0, resolve: (v) => {
         off();
         clearTimeout(timer);
+        clearTimeout(release);
         clearTimeout(ask.settle);
-        this.#sayBehind(ask, Boolean(v.stopped) && this.#userStop); // the Stop stops her, not the reminder they set
+        if (v.stopped) this.#sayBehind(behind, this.#userStop); // the Stop stops her, not the reminder they set
         // Kept segments its answer doesn't carry go on as heard lines: nothing heard is lost. A listed word said to the card isn't one of them: it is
         // written with the card's answer, before it (own), so a "Yes" that a "No, wait", a tap or a Stop took back never reaches her after it as a newer line.
         const told = [v.heard, ...(v.also ?? []).map((x) => x.heard)];
@@ -1044,7 +1065,7 @@ export class Agent {
       this.#setState('waiting');
       const byHand = () => {
         p.byHand = true;
-        this.#sayBehind(ask);
+        this.#sayBehind(behind);
         this.#remindWaiting();
       };
       const shut = () => {
@@ -1054,16 +1075,20 @@ export class Agent {
         this.#setState('waiting');
         byHand();
       };
-      // A spoken yes counts only while its question is the last thing said: her voice beginning anything else (annai's line, a chat model's, a live
-      // session's turn) ends the listening there (the user's pick, 2026-11-12). Heard for the card's whole life, so a window a tap starts again is covered.
+      // A spoken yes counts only while its question is the last thing put to the user: anything else, said (her voice beginning it: annai's line, a chat
+      // model's, a live session's turn) or shown (a reminder, a line or a question of Koe's: cardPassed), ends the listening there, and no tap starts it
+      // again (the user's picks, 2026-11-12, "Anything else ends it", "Only while the card is last"). Heard for the card's whole life, so a window a tap starts is covered.
       const over = () => {
-        if (this.#pending !== p || !ask.open) return;
+        if (this.#pending !== p) return;
+        ask.start = undefined;
+        if (!ask.open) return;
         ask.until = Math.min(ask.until, Date.now());
         clearTimeout(timer);
         shut();
       };
+      ask.over = over;
       off = this.voice?.onBegin(over) ?? off;
-      /** Its 20 s, from its question's end (said aloud, or shown with voice off), and with it unsaid, from a tap on Shiori (tapCard). @param {number} at */
+      /** Its 20 s, from its question's end (said aloud), and with it unsaid, from a tap on Shiori (tapCard). @param {number} at */
       const start = (at) => {
         ask.open = true;
         ask.from = at;
@@ -1073,21 +1098,27 @@ export class Agent {
       // Over a live session too, as remind's aloud: a user who isn't looking must hear that a card waits. Half-duplex, as #askAloud (spec §10.4).
       const aloud = Boolean(this.voice?.on);
       if (aloud) this.#closeEar('speaking');
-      (aloud ? /** @type {any} */ (this.voice).say(question).catch(() => {}) : Promise.resolve()).then(async () => {
+      (aloud ? /** @type {any} */ (this.voice).say(question).catch(() => {}) : Promise.resolve()).then(async (spoken) => {
         if (this.#pending !== p) return;
-        p.hold = () => clearTimeout(timer); // someone is speaking: the window waits for their words
-        // the window's end, or a tap's 8 s (by) after it
+        p.hold = () => clearTimeout(timer); // someone is speaking: the window waits for their words, but not what annai held (release)
+        // the window's end, or a tap's 8 s (by) after it; and the same moment, with speech or not, lets go what annai held (the user's pick, 2026-11-12, "20 s, no more")
         p.arm = () => {
           clearTimeout(timer);
+          clearTimeout(release);
           timer = setTimeout(shut, Math.max(0, Math.max(ask.until, /** @type {number} */ (p.by)) - Date.now()));
+          release = setTimeout(() => {
+            ask.until = Math.min(ask.until, Date.now()); // the window's end has come, whatever a timer's rounding says: what is said now isn't held again (remind)
+            this.#sayBehind(behind);
+            this.#remindWaiting(true);
+          }, Math.max(0, ask.until - Date.now()));
         };
-        start(Date.now());
-        // Unsaid, nothing hears it until a tap, whose moment is the user's choice to answer, as her question's end is aloud: each tap starts the 20 s
-        // again (the user's pick, 2026-11-12).
-        if (!aloud) {
+        // Unsaid (voice off), or its sound failed (blocked, no voice: nobody heard it), nothing hears it until a tap, whose moment is the user's choice to answer,
+        // as her question's end is aloud: each tap starts the 20 s again, while the card is the last thing put to the user (the user's picks, 2026-11-12).
+        if (!aloud || !spoken || spoken.failed) {
           ask.start = start;
           return byHand();
         }
+        start(Date.now());
         // Something already waits behind the question or sounds (a line of annai's queued meanwhile, a live turn): the question isn't the last thing said.
         if (this.voice?.speaker.speaking || this.#half.sounding?.()) return over();
         const ear = this.#half.voice() && this.voice?.on && !(await this.#openEar('turn'));
@@ -1097,23 +1128,28 @@ export class Agent {
         this.#setState('listening');
       });
     });
-    for (const h of got.own ?? []) await this.#logHeard(h, { wake: call.wake, answer: call.id });
-    if (got.stopped) return { stopped: true };
-    if (got.chosen !== undefined) {
-      await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...this.#chose() }, texts: [['text', got.chosen]] });
-      return { chosen: got.chosen, how: 'tap' };
+    // What annai held meanwhile is said once the card's answer is written below, so the user's words come first (a Stop or a switch let it go at once).
+    try {
+      for (const h of got.own ?? []) await this.#logHeard(h, { wake: call.wake, answer: call.id });
+      if (got.stopped) return { stopped: true };
+      if (got.chosen !== undefined) {
+        await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...this.#chose() }, texts: [['text', got.chosen]] });
+        return { chosen: got.chosen, how: 'tap' };
+      }
+      const said = got.heard ? [...(got.also ?? []), { heard: got.heard, gate: got.gate }] : [];
+      for (const x of said) await this.#logHeard(x.heard, { wake: call.wake, answer: call.id, ...(x.gate ? { gate: x.gate } : {}) });
+      if (got.voiced) return { chosen: got.voiced, how: 'voice' };
+      /* en */
+      if (got.heard) return { said: 'The user said:', heard: said.map((x) => x.heard.id) };
+      /* en */
+      if (got.spoke) return { said: 'What the user said follows.', ...(got.taken?.length ? { heard: got.taken } : {}) }; // the other half's line, in the log already: Kokoro hears all
+      if (got.text === undefined) return { said: '' };
+      const wrote = typedAs(got);
+      await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...wrote.data }, texts: [['text', got.text]] });
+      return { said: wrote.said };
+    } finally {
+      this.#sayBehind(behind);
     }
-    const said = got.heard ? [...(got.also ?? []), { heard: got.heard, gate: got.gate }] : [];
-    for (const x of said) await this.#logHeard(x.heard, { wake: call.wake, answer: call.id, ...(x.gate ? { gate: x.gate } : {}) });
-    if (got.voiced) return { chosen: got.voiced, how: 'voice' };
-    /* en */
-    if (got.heard) return { said: 'The user said:', heard: said.map((x) => x.heard.id) };
-    /* en */
-    if (got.spoke) return { said: 'What the user said follows.', ...(got.taken?.length ? { heard: got.taken } : {}) }; // the other half's line, in the log already: Kokoro hears all
-    if (got.text === undefined) return { said: '' };
-    const wrote = typedAs(got);
-    await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...wrote.data }, texts: [['text', got.text]] });
-    return { said: wrote.said };
   }
 
   /**
@@ -1940,13 +1976,14 @@ export class Agent {
   async remind(list, scope = this.#target ?? ME, o = {}) {
     // Said with voice on, whichever conversation it is for (choice 3), after whatever is being said (the speaker queues), never over a live session.
     const aloud = Boolean(this.voice?.on) && (o.aloud || !this.#half.hushed?.()) && !o.silent;
-    const p = this.#pending;
-    // One Shiori: while annai's card listens on her own microphone (its question, then its 20 s), what annai would say waits for that to end, so a yes is
-    // heard and answers it (the user's pick, 2026-11-12, "Hold it until the yes"). With Koe it is said now, and ends the card's listening (confirm).
-    if (aloud && p?.ask && !p.byHand && this.#half.voice()) return void p.ask.behind.push({ list, scope, o });
+    const ask = this.#pending?.ask;
+    // One Shiori: while annai's card listens on her own microphone (see #cardListens), what annai would say waits for that to end, so a yes is heard and
+    // answers it (the user's pick, 2026-11-12, "Hold it until the yes"). With Koe it is said now, and ends the card's listening (confirm).
+    if (ask && aloud && this.#half.voice() && this.#cardListens()) return void ask.behind.push({ list, scope, o });
     for (const r of list) {
       const text = String(r?.text ?? '').trim();
       if (!text) continue;
+      this.#passed(); // a reminder shown or said after annai's card: the card is no longer the last thing put to the user
       const ev = { type: 'reminder', actor: 'system', data: { watch: String(r.watch ?? ''), text, ...(r.answer ? { answer: true } : {}), ...(r.plan ? { plan: r.plan } : {}), ...(aloud ? { aloud: true } : {}), ...(o.unsaid ? { unsaid: true } : {}), ...(o.waiting ? { waiting: true } : {}) } };
       await this.#logIn(scope, ev);
       // A plan's reminder in the screens' words, made from its data; anyone else's as they wrote it.
@@ -1981,7 +2018,10 @@ export class Agent {
     this.#apply(stored, r);
     // annai's own card (confirm) is annai's, not her words: it neither answers the user nor settles what she owes them.
     const hers = ev.type.startsWith('out.') && ev.actor !== 'system';
-    if (hers) this.#facts.spoke = true;
+    if (hers) {
+      this.#facts.spoke = true;
+      this.#passed(); // a line or a question of hers, Koe's included, after annai's card
+    }
     if (hers || ev.type === 'grounded') this.#reached++;
     this.#emit('event', stored);
     await this.#half.logged?.(stored, r);
@@ -3749,7 +3789,8 @@ export class Agent {
       const own = this.#busy && p?.listening && byTap(p) ? p : null;
       this.#closeEar();
       // A tap's listening for what her turn waits on: the microphone closes, and the wait, her question or annai's card stays (no Stop). Words
-      // being said go first: recorded, their segment is routed to it as the microphone closes.
+      // being said with the recorder go first: its segment is flushed and routed to it as the microphone closes. Phone dictation's are lost: its close
+      // aborts what is being said, so a yes said at the instant of a second tap is not heard (the user taps again).
       if (own && s === 'hearing') this.#hearing.then(() => this.#tapEnded(own));
       else if (own) this.#tapEnded(own);
       else if (this.#busy) this.interrupt();
@@ -3773,10 +3814,24 @@ export class Agent {
     this.#pending?.ask?.start?.(at);
   }
 
-  /** While annai's card with its question unsaid listens, when its 20 s end (from a tap, tapCard, or from its appearance); 0 otherwise. The other half's tapped microphone listens to then (Half.cardUntil). */
+  /** While annai's card with its question unsaid listens, when its 20 s end (from a tap, tapCard); 0 otherwise. The other half's tapped microphone listens to then (Half.cardUntil). */
   cardUntil() {
     const ask = this.#pending?.ask;
     return ask?.start && ask.open ? ask.until : 0;
+  }
+
+  /**
+   * Something was put to the user after annai's card (a reminder, a line or a question of Koe's or of hers; said aloud, her voice beginning it tells the card too):
+   * the card is no longer the last thing, so its listening for a spoken yes ends, and no tap starts it again, until annai asks again (the user's picks, 2026-11-12).
+   * The one signal for both halves: Half.passed carries Koe's to Kokoro's card.
+   */
+  cardPassed() {
+    this.#pending?.ask?.over?.();
+  }
+
+  #passed() {
+    this.cardPassed();
+    this.#half.passed?.();
   }
 
   /** A window outlives the turn until something is said, or a silence: a tap's, or the one after she spoke. */
@@ -3834,7 +3889,6 @@ export class Agent {
       const resolve = p.resolve;
       p.resolve = (v) => { clearTimeout(timer); resolve(v); };
       p.hold = () => clearTimeout(timer);
-      p.by = 0; // marks the limit as this tap's own: set below
       // arm waits for what is left of the tap's limit: a noise that came and went (arm again) neither ends it nor restarts it, as #listenFor's.
       p.arm = () => {
         clearTimeout(timer);

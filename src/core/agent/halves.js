@@ -311,6 +311,7 @@ export class Halves {
         },
         card: (h) => this.kokoro.cardTakes(h),
         cardUntil: () => this.kokoro.cardUntil(),
+        passed: () => this.kokoro.cardPassed(),
         system: (s) => koeSystem(s),
         tail: (now) => this.#koeTail(now),
         sendRule: () => this.#koeRule(),
@@ -876,8 +877,9 @@ export class Halves {
     if (this.#tapWorking) return 'listening';
     const at = Date.now();
     const did = this.#way || !this.voice?.platform ? this.#tapNow() : 'typing';
-    // A tap that listens starts the 20 s of annai's card whose question wasn't said (Kokoro's, whichever half's microphone hears it); one that stopped a listening doesn't.
-    if (did !== 'stopped') this.kokoro.tapCard(at);
+    // A tap that listens starts the 20 s of annai's card whose question wasn't said (Kokoro's, whichever half's microphone hears it); one that stopped a listening
+    // doesn't, nor one that cut what was being said: that was after the card, and the card is no longer the last thing put to the user.
+    if (did !== 'stopped' && did !== 'cut') this.kokoro.tapCard(at);
     if (did !== 'typing' || !this.voice?.platform) return did;
     this.#tapHeld = true;
     this.#tapStarting++;
