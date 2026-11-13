@@ -245,6 +245,20 @@ test('her whole line for the note is "silent" and the user starts speaking in it
   }
 });
 
+test('her whole line for the note is "silent" and the session closes in its quiet tail: the note is shown, not lost', async () => {
+  const { k, w } = await start({ turns: [SILENT_TAIL, OKAY] });
+  try {
+    await wait(750);
+    await k.agent.live.close('sleep');
+    await k.agent.idle();
+    w.stop();
+    assert.ok((await shown(k)).some(([text]) => text === FOR_USER), 'the note is shown');
+  } finally {
+    w.stop();
+    await k.done();
+  }
+});
+
 test('a sentence that only holds brackets is an answer: "The pass (closing at nine) is open." passes the note', async () => {
   const line = 'The pass (closing at nine) is open.';
   const { k, w } = await quietSession([{ said: SAID, audio: tone(1), delayMs: 500 }, { said: line, audio: tone(0.4) }, { said: 'Okay.', audio: tone(0.3) }]);
