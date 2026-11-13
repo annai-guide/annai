@@ -401,24 +401,23 @@ for (const [what, answer] of /** @type {const} */ ([
   });
 }
 
-test("on the phone's speaker, a note whose turn the provider had finished, waiting for her voice, is shown when the user goes on talking", async () => {
-  // Half-duplex: her voice for the note waits HOLD_MS after the user's last turn ended, in case they go on. The note was waiting for that turn's
-  // end, so it goes in as the turn ends; the provider answers it first (pace 0: its whole turn at once), and the user goes on.
+test("on the phone's speaker, a note that comes as the user's turn ends waits for her answer to them, held for their pause, and is then said, not shown", async () => {
+  // Half-duplex: her voice waits HOLD_MS after the user's last turn ended, in case they go on. One input at a time (spec §7.1, 2026-11-12): the
+  // note waited for that turn's end, and now waits for her answer to it too, so it never goes in beside the user's turn (it went in as the turn
+  // ended before, and the user going on while her voice for it waited showed it on a card).
   const meanwhile = async (/** @type {any} */ k) => {
     k.platform.mic.feed(hum(0.8), RATE);
     await tell(k);
     k.platform.mic.feed(quiet(1), RATE);
   };
-  const k = await noteSaid({ speaker: true, begun: true, pace: 0, first: meanwhile, turns: [{ heard: 'Also,', said: 'Go on.', audio: tone(0.3) }, { said: SAID, audio: tone(1.5) }, { said: 'Of course.', audio: tone(0.3), delayMs: 300 }] });
+  const k = await noteSaid({ speaker: true, pace: 0, first: meanwhile, note: { heard: 'Also,', said: 'Go on.', audio: tone(0.3) }, turns: [{ said: SAID, audio: tone(1.5) }, { said: 'Of course.', audio: tone(0.3), delayMs: 300 }] });
   try {
-    assert.equal(k.agent.live.view.name, 'thinking', 'her voice for the note is waiting, none of it played');
-    await bump(k);
-    await soon(async () => (await shown(k)).length === 1, 4000);
-    await wait(1500);
+    assert.ok(!textsIn(k).some((t) => t.includes('<from_kokoro')), 'not in while her answer to them plays');
+    await soon(async () => (await lines(k)).some(([text, cut]) => text === SAID && !cut), 8000);
     await k.agent.idle();
-    assert.deepEqual(await shown(k), [[FOR_USER, false]], 'shown once, and not said');
+    assert.deepEqual((await lines(k)).map(([text]) => text), ['Hello there.', 'Go on.', SAID]);
+    assert.deepEqual(await shown(k), [], 'said, so not shown');
     assert.deepEqual(asks(k), []);
-    assert.ok(!k.said.some((/** @type {string} */ t) => t.includes('fuel station')));
   } finally {
     await k.done();
   }
@@ -552,31 +551,31 @@ for (const how of /** @type {const} */ (['a switch to another trip', 'Start fres
   }
 }
 
-test("two notes with words for the user that went in together, cut by a tap: both are shown at once in the conversation open, silently, once", async () => {
+// Two notes at once go in one at a time (spec §7.1, 2026-11-12): a cut shows the one in flight; the other goes in after it, and is said.
+test("two notes with words for the user at once, and a tap in her answer to the first: the first is shown at once, silently, once; the second goes in after the tap and is said", async () => {
   const both = async (/** @type {any} */ k) => { await Promise.all([tellWords(k, FOR_USER), tellWords(k, COAST)]); };
-  const k = await noteSaid({ first: both, turns: [{ said: COAST, audio: tone(3) }] });
+  const k = await noteSaid({ first: both, turns: [{ said: COAST, audio: tone(1) }] });
   try {
-    await soon(async () => textsIn(k).some((t) => t.includes(COAST)), 3000);
+    assert.ok(!textsIn(k).some((t) => t.includes(COAST)), 'the second waits');
     assert.equal(k.agent.live.tap(), 'cut');
-    await soon(async () => (await shown(k)).length === 2, 4000);
-    await wait(1500);
+    await soon(async () => (await lines(k)).some(([text, cut]) => text === COAST && !cut), 8000);
     await k.agent.idle();
-    assert.deepEqual([...(await shown(k))].sort(), [[COAST, false], [FOR_USER, false]], 'both, once, never said');
+    assert.deepEqual(await shown(k), [[FOR_USER, false]], 'the first, once, never said');
+    assert.ok(textsIn(k).some((t) => t.includes(COAST)), 'the second went in');
     assert.deepEqual(asks(k), []);
   } finally {
     await k.done();
   }
 });
 
-test("two notes with words for the user that went in together, and the user begins before her sound: both are shown in the conversation open, silently, once", async () => {
+test("two notes with words for the user at once, and the user begins before her sound for the first: the first is shown, silently, once; the second goes in after her answer to them", async () => {
   const both = async (/** @type {any} */ k) => { await Promise.all([tellWords(k, FOR_USER), tellWords(k, COAST)]); };
-  const k = await noteSaid({ first: both, begun: true, note: LATE, turns: [{ said: COAST, audio: tone(3), saidAt: 2500 }] });
+  const k = await noteSaid({ first: both, begun: true, note: LATE, turns: [{ said: 'Go on.', audio: tone(0.3) }, { said: COAST, audio: tone(1) }] });
   try {
     await bump(k);
-    await soon(async () => (await shown(k)).length === 2, 4000);
-    await wait(1500);
+    await soon(async () => (await lines(k)).some(([text, cut]) => text === COAST && !cut), 10_000);
     await k.agent.idle();
-    assert.deepEqual([...(await shown(k))].sort(), [[COAST, false], [FOR_USER, false]], 'both, once, never said');
+    assert.deepEqual(await shown(k), [[FOR_USER, false]], 'the first, once, never said');
     assert.deepEqual(asks(k), []);
   } finally {
     await k.done();
