@@ -3873,8 +3873,8 @@ for (const [what, photo] of /** @type {[string, boolean][]} */ ([['words', false
     assert.ok(took <= 2, `answered ${took} s after her reply`);
     await k.agent.idle();
     const [spoke] = await resultsOf(k, 'speak');
-    assert.ok(String(spoke).endsWith(` ${WROTE_FOLLOWS}`), `speak's listening ends with "it follows": ${spoke}`);
-    assert.deepEqual(await ownWaits(k), [WROTE_FOLLOWS], 'and so does her wait');
+    assert.equal(spoke, 'Said aloud.', "speak doesn't listen: the wait after it does (spec §7.1)");
+    assert.deepEqual(await ownWaits(k), [WROTE_FOLLOWS], 'her wait ends with "it follows"');
     assert.deepEqual(await bubbles(k), ['Plan our day', photo ? 'Look at this +1 photo' : 'Look at this'], 'one bubble');
     if (photo) assert.equal(imagesIn(k.sent['model-0'])[1], 1, 'her second request carries the photo');
   });
