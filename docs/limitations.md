@@ -597,8 +597,8 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### Kokoro's immediate note replaces the note she was saying
 - **Kind:** known limitation.
-- **What the user sees:** in live voice, Kokoro has told Shiori one thing, and before she has finished saying it Kokoro sends something urgent (an immediate note), which cuts her off. They hear the urgent line at once; the rest of the first is neither finished nor shown. When Kokoro forgets to put into the urgent line something of the first that still mattered, that part is lost. (annai's own urgent reminder is not this: it shows the note it cut on a silent card.)
-- **Why:** an immediate note is most often a correction of the very note she was saying (`tell_koe`'s description keeps it for "a wrong claim"), so a card for the first would most often show the claim being corrected. `tell_koe`'s description tells Kokoro that its immediate note replaces the rest of the one Koe is still saying, so it puts in it whatever still matters.
+- **What the user sees:** in live voice, Kokoro has told Shiori one thing, and before she has finished saying it (or begun to) Kokoro sends something urgent (an immediate note), which cuts her off. They hear the urgent line at once; the rest of the first, or all of it if she had not begun, is neither finished nor shown. When Kokoro forgets to put into the urgent line something of the first that still mattered, that part is lost. (Only Kokoro's own note is replaced: a reminder of annai's that she was saying is shown on a silent card, as for annai's own urgent reminder.)
+- **Why:** an immediate note is most often a correction of the very note she was saying (`tell_koe`'s description keeps it for "a wrong claim"), so a card for the first would most often show the claim being corrected. `tell_koe`'s description tells Kokoro that its immediate note cuts off any earlier note of its own that Koe has not finished saying, begun or not, so it puts in it whatever still matters. Kokoro never saw annai's reminder, so it could not carry that.
 - **Revisit when:** a real run shows Kokoro sending immediate with a note in flight and leaving out something that mattered (the next real run checks the sentence, as it is model-facing).
 - **Approved:** 2026-11-12, the user picked "Urgent replaces it (Recommended)".
 
@@ -607,7 +607,7 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** in live voice, Shiori says "Checking your notes." and looks something up before telling them Kokoro's note. If they speak in that pause, the note appears on a card as they start, and she usually still says it after answering them (12 of 13 times on real Gemini): they see it and hear it. It is never lost. The same holds when they type or tap a choice in that pause.
 - **Why:** annai can't tell her continuation, which says the note, from her answer to what the user said, and a question of theirs can make Gemini drop the continuation; without the card the note would then be neither said nor shown (about 1 time in 13). The dock says "Thinking" in that pause, which should make speaking there rarer.
 - **Revisit when:** a provider marks which input a reply answers, or a real run shows the double often enough to matter.
-- **Approved:** 2026-11-12, the user picked "Card, and she says it too (Recommended)".
+- **Approved:** 2026-11-12, the user picked "Card, and she says it too (Recommended)" for speaking in that pause, and "Same limitation" for typing or tapping a choice there.
 
 ### A continuation that comes after the ask once more can say the note twice
 - **Kind:** known limitation.
@@ -726,9 +726,16 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the drop cuts the reply and closes the session before the reply's own end has run, so the note is handed on first; the reply's end then finds it gone and passes nothing.
 - **Revisit when:** the next version: a close for good passes the notes of a turn that counts as heard whole before it hands the rest on, as a tap and a page going out of view already do.
 
-### A note Shiori had already covered can be said once more by annai after a reconnect
+### A note she says she already told is shown on a card too
 - **Kind:** known limitation.
-- **What the user sees:** in live voice, Shiori has already told them something, and Kokoro's note saying the same arrives; she rightly answers it with nothing. If the session is made again in that turn (Gemini's planned reconnect, the page going out of view, a tap that closes the session), the note goes in again, she says she already told them, annai asks her once, then shows the note and says it in its own voice: heard twice. Rare.
-- **Why:** telling "she covered it before" from "she skipped it" needs her word, and her word is what lost notes before (`#again()` marks every note re-queued between turns, so `already_told` doesn't settle it). The same rule catches a note she had said nothing about, which the version before left unsaid.
-- **Revisit when:** a real run or a drive shows a repeat after a reconnect.
-- **Approved:** 2026-11-12, the user picked "Known limitation (Recommended)".
+- **What the user sees:** in live voice, Kokoro's note says something Shiori has already told them, and she rightly answers it with nothing but her `already_told` (or the session was made again in that turn, and the note went in again): annai shows the note on a silent card, so they see what they heard. It is never said again by annai. Not seen as a repeat for real; the case that made it: with three notes at once, she told the first, then called `already_told` for the second, which she had not said, and it was lost (1 of 63 notes, 2026-11-12).
+- **Why:** her word that the user has it doesn't say which note she means, and annai can't tell: a card too many costs the user a glance, a note lost costs them what Kokoro found. (A note she had said nothing about and called already_told for is what the version before lost.)
+- **Revisit when:** the cards for told notes bother the user, or a provider marks which note a reply answers.
+- **Approved:** 2026-11-12, the user picked "Show it silently (Recommended)".
+
+### A note she answers with an instruction word is asked for once more, after the user heard the word
+- **Kind:** known limitation.
+- **What the user sees:** in live voice, Gemini sometimes says one of annai's own words to it aloud as its whole answer to a note ("silent" was seen: 1 in 63 notes, 2026-11-12). The user hears the word; annai takes the line as no answer, asks her once more, and she says the note (up to 8 seconds later). If she answers the ask the same way, annai shows the note and says it in its own voice.
+- **Why:** a word spoken can't be taken back, and what counts is what she said: annai catches only a whole line that is exactly one of its own words to her (the tools she calls without speaking, and `silent`), a strict match, so a sentence that holds one is an answer. The list is built from what annai's instructions and tool answers tell her.
+- **Revisit when:** a real run shows another stray word as her whole line, which then joins the list.
+- **Approved:** 2026-11-12, the user picked "Count it as no answer (Recommended)".
