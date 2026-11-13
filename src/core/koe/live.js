@@ -317,6 +317,11 @@ export class LiveKoe {
     return this.#owed.waiting.length > 0 || this.#owed.sent.length > 0;
   }
 
+  /** A turn of hers sounds now (annai's card, its question just said, is no longer the last thing said: Agent.confirm). */
+  get sounding() {
+    return Boolean(this.#sounding?.stream);
+  }
+
   /** Opening or reconnecting, Koe's turn or voice, a tool, or the user speaking. */
   get busy() {
     return this.#hers() || Boolean(this.#input?.active);
@@ -1417,6 +1422,7 @@ export class LiveKoe {
     this.unmute(); // a tap may have unlocked sound since the session opened
     const v = this.c.voice;
     if (this.voiced && v?.platform?.player.stream && !t.cut) {
+      v.begins(); // her voice begins a turn
       t.stream = v.platform.player.stream({ rate: this.#rate, onLevel: (x) => v.level(x, 'her') });
       for (const a of t.held) t.stream.push(samples(a));
       this.#sounding = t;

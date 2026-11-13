@@ -295,6 +295,7 @@ export class Halves {
         },
         ended: (t) => this.#kokoroEnded(t),
         hushed: () => this.live.voiced,
+        sounding: () => this.live.sounding,
         hold: (wakes) => this.#hold(wakes),
       },
     });
@@ -309,6 +310,7 @@ export class Halves {
           if (line) this.kokoro.confirmHeard(line);
         },
         card: (h) => this.kokoro.cardTakes(h),
+        passed: (shown) => this.kokoro.cardPassed(shown),
         system: (s) => koeSystem(s),
         tail: (now) => this.#koeTail(now),
         sendRule: () => this.#koeRule(),
@@ -1251,9 +1253,10 @@ export class Halves {
     await this.kokoro.observe(e, r);
     // annai's card, Kokoro's: Koe's verdict, and a text Koe's words (a live line's came with its transcript: LiveHost.heard). When the line began came
     // before, from where it was heard (the session's turn, Koe's microphone): an entry says nothing of it, written seconds after or before the card.
+    // Words written down later (heard.text) are a copy the card can't take a yes from (Agent.confirmHeard).
     const words = typeof e.data?.text === 'string' ? { text: e.data.text } : {};
     if (e.type === 'heard') this.kokoro.confirmHeard({ id: e.data.id, ...words, kept: !e.data.dismissed });
-    else if (e.type === 'heard.text') this.kokoro.confirmHeard({ id: e.data.of, ...words });
+    else if (e.type === 'heard.text') this.kokoro.confirmHeard({ id: e.data.of, ...words, again: true });
     const typed = e.type === 'msg.user' && e.data?.split;
     if (e.type.startsWith('out.')) {
       this.#unsaid = []; // Koe reached the user: what it was told is passed on
