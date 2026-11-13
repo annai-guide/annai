@@ -652,15 +652,15 @@ test('voice turning off as the microphone opens for the window after she speaks:
 // speak, then ask, in one reply: the ask listens by itself, so speak doesn't (spec §7.1, §10.7). A tap that cut her line keeps its own window.
 const speakAsk = [{ name: 'speak', input: { text: 'Nepenthe is on the cliffs.' } }, { name: 'ask', input: { question: 'Stop there for lunch?', options: ['Yes', 'No'] } }];
 for (const who of ['one Shiori', 'Koe on a chat model']) {
-  /** A kit whose reply is speak then ask, then sleep once the ask is answered; and how the user starts the turn. @param {any} [voice] */
-  const kit = async (voice = {}) => {
-    const reply = { toolCalls: speakAsk };
+  /** A kit whose reply is speak then ask (or the calls given), then sleep once they are answered; and how the user starts the turn. @param {any} [voice] @param {any[]} [calls] @param {any} [agent] */
+  const kit = async (voice = {}, calls = speakAsk, agent = {}) => {
+    const reply = { toolCalls: calls };
     const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
     if (who === 'one Shiori') {
-      const k = await agentKit([[reply, sleep]], { voice });
+      const k = await agentKit([[reply, sleep]], { voice, agent });
       return { k, start: () => k.agent.send('Lunch?') };
     }
-    const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { talk: { rules: [{ match: 'the user spoke', times: 1, reply }, { match: '.', reply: sleep }] } }, voice: { ...voice, hears: ['where should we eat', ...(voice.hears ?? [])] } });
+    const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { talk: { rules: [{ match: 'the user spoke', times: 1, reply }, { match: '.', reply: sleep }] } }, voice: { ...voice, hears: ['where should we eat', ...(voice.hears ?? [])] }, agent });
     return { k, start: async () => { k.agent.tap(); await until(() => k.agent.state.name === 'listening'); await hear(k, 'where-lunch'); } };
   };
   const tapWindow = who === 'one Shiori' ? [] : ['mic open', 'mic close'];
@@ -700,6 +700,59 @@ for (const who of ['one Shiori', 'Koe on a chat model']) {
     const [asked] = await k.events(['out.ask']);
     k.agent.answer(asked.data.id, 'No');
     await k.agent.idle();
+  });
+
+  // The cut guard is the ask's alone: her question closes the tap's microphone and is said over the user; a wait says nothing and listens on that microphone.
+  test(`${who}, voice on, a tap cuts her line before a wait: the wait listens on the tap's window, so the answer reaches her then, not when the wait runs out (spec §7.1)`, async (t) => {
+    useClock(t);
+    const { k, start } = await kit({ playMs: 60, speechIn: ['m-hear'], hears: ['tell me about the beach'] }, [speakAsk[0], { name: 'wait', input: { seconds: 30 } }], { secondMs: 1000 });
+    /** @type {number[]} */
+    const waited = [];
+    k.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'tool.result' && e.data.name === 'wait') waited.push(Date.now()); });
+    await start();
+    await until(() => plays(k).includes('Nepenthe is on the cliffs.') && k.agent.state.name === 'speaking', 30_000);
+    assert.equal(k.agent.tap(), 'cut');
+    await until(() => k.agent.state.name === 'listening');
+    const at = Date.now();
+    await hear(k, 'gas-station');
+    await until(() => waited.length > 0, 60_000);
+    assert.ok(waited[0] - at < 10_000, `the wait answered ${waited[0] - at} ms after their words (it is 30 s)`);
+    await k.agent.idle();
+    assert.match((await results(k, 'speak'))[0].data.content, /^The user stopped you after: [^]*"\.$/, "speak didn't listen: the wait did");
+    assert.equal((await results(k, 'wait'))[0].data.content, 'The user said:');
+  });
+
+  test(`${who}, voice on, a tap cuts her line before a question and a wait: the question's guard decides, the tap's window listens first (spec §7.1)`, async (t) => {
+    useClock(t);
+    const { k, start } = await kit({ playMs: 60, speechIn: ['m-hear'], hears: ['tell me about the beach'] }, [...speakAsk, { name: 'wait', input: { seconds: 30 } }]);
+    await start();
+    await until(() => plays(k).includes('Nepenthe is on the cliffs.') && k.agent.state.name === 'speaking', 30_000);
+    assert.equal(k.agent.tap(), 'cut');
+    await until(() => k.agent.state.name === 'listening');
+    assert.equal((await k.events(['out.ask'])).length, 0, 'the question waits while the tap listens');
+    await hear(k, 'gas-station');
+    await until(() => plays(k).includes('Stop there for lunch?'), 30_000);
+    assert.match((await results(k, 'speak'))[0].data.content, /^The user stopped you after: .*The user said:$/);
+    const [asked] = await k.events(['out.ask']);
+    k.agent.answer(asked.data.id, 'No');
+    await k.agent.idle();
+  });
+}
+
+// Only the call right after speak counts: with another tool between, speak listens as it always did (show and other tools after a speak are not in this change).
+for (const what of ['ask', 'wait']) {
+  test(`one Shiori, voice on, speak then a card then a ${what}: speak still listens first, as before (spec §7.1)`, async (t) => {
+    useClock(t);
+    const card = { name: 'show', input: { title: 'Nepenthe', text: 'On the cliffs.' } };
+    const after = what === 'ask' ? speakAsk[1] : { name: 'wait', input: { seconds: 30 } };
+    const k = await agentKit([[{ toolCalls: [speakAsk[0], card, after] }, { toolCalls: [{ name: 'sleep', input: {} }] }]], { voice: {}, agent: { secondMs: 1000 } });
+    k.agent.send('Lunch?');
+    if (what === 'ask') {
+      await until(() => plays(k).includes('Stop there for lunch?'), 60_000);
+      k.agent.answer((await k.events(['out.ask']))[0].data.id, 'Yes');
+    }
+    await k.agent.idle();
+    assert.equal((await results(k, 'speak'))[0].data.content, 'Said aloud. Heard nothing (20 seconds).', "speak listened to the end of its window");
   });
 }
 
