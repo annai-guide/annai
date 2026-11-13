@@ -164,11 +164,11 @@ A photo is encoded at two points, each with its own settings: **ingest**, once, 
   - The conversation shows the copy Shiori was sent, so she sees what the user sees. She is also told both sizes ("4032×3024, sent as 2000×1500"), so she knows when a closer look would help.
   - **A refused image is fixed and retried automatically** (§9.9). Rules recognize the usual error messages, and the utility model reads unfamiliar ones. The new copy replaces the refused one in the conversation, for that model's retries only (the next model starts from the conversation), and the refused one is deleted unless a file, another conversation, or here a kept reading, a tool result or a file's history (a version that can be restored) still names it. The lesson ("at most 5 MB") is saved on the model, so the same refusal doesn't happen twice.
   - **Provider uploads.** Where an endpoint can store files (Anthropic, OpenAI, Gemini and OpenRouter have files APIs), each request copy is uploaded once. Later requests refer to it by its id: a few bytes per turn instead of the photo.
-    - It is on by default, since the photo goes to that provider anyway; a switch on the endpoint turns it off.
+    - It is on by default, since the photo goes to that provider anyway; a switch on the endpoint turns it off. Not for the Anthropic Messages type: Anthropic's files API refuses a browser (its CORS check answers 400 with no `Access-Control-Allow-Origin`, checked 2026-11-13, where its Messages API answers 200), so that switch starts off and the photo goes in the request; a server that speaks the type and takes uploads can turn it on.
     - **Every upload expires after 48 hours.** Anthropic and OpenAI let annai set that, and Gemini always does it. So nothing annai uploads outlives its use for long, even when annai's own data is lost. An expired id is simply uploaded again.
     - **Where a provider can't expire uploads** (OpenRouter today), annai deletes its own, which it names `annai-…`. It deletes one when compaction drops the photo. At each start, it also deletes any of its uploads there that is more than 48 hours old, found by name and age, so this works even after annai's data is lost.
     - OpenRouter's documentation suggests uploading may need a management key, so uploads there are used only once the provider's Test shows they work (§9.8).
-    - The Anthropic Messages and OpenAI Responses types upload.
+    - The OpenAI Responses and Gemini API types upload, and the Anthropic Messages type where its switch is on.
     - Storing uploads costs nothing at Anthropic and Gemini; OpenAI lists no price for it (checked 2026-10-15, and again 2026-10-18).
 - **A closer look.**
   - `read(path, region)` crops the source and sends the crop through the request settings (§7.2).
@@ -595,7 +595,7 @@ Search and speech providers work the same way, as on-demand plugins with their o
 | | the type's tunables, e.g. `max_tokens` vs `max_completion_tokens`, `system` vs `developer`, usage in stream, image/PDF format | belongs to exactly one ability |
 | | `extraBody` for all its models | capabilities: tools, images (formats, longest edge, size, count per request; from the description, then corrected by refusals, §4.8), PDFs, audio input |
 | | provider tools offered ability-wide, through `modelDefaults` | context window, maximum output |
-| | photo uploads through the provider's files API: on by default where the type supports it (§4.8) | prices: input, output, cache read, cache write per TTL, per-call tool fees; for a realtime model, audio in and out, and images and video in, and cached audio and images |
+| | photo uploads through the provider's files API: on by default where the type supports it, but for Anthropic Messages (§4.8) | prices: input, output, cache read, cache write per TTL, per-call tool fees; for a realtime model, audio in and out, and images and video in, and cached audio and images |
 | | "fetch model list", Test | cache TTL options; reasoning map, provider tools it supports |
 | | | its own tunables and `extraBody`, which override the ability's |
 
@@ -713,7 +713,7 @@ The interface is `decide({prompt, options[]}) → {optionId: probability}`.
   - **Add with these** makes the provider, named by the address's host, with what was found switched on (Anthropic Messages at the address without `/v1`), installing only the protocol plugins those need, and opens its page, where each ability keeps its switch. A speech path found is switched on only where the model list names such a model (Whisper, a TTS model, Kokoro and the like), and otherwise added switched off, as its line says. Its key is kept by annai alone (§9.9). Nothing priced is sent until the user taps Test. Add by hand adds it with every ability off, to switch on there. Leaving the screen without adding takes Custom provider's plugin away again, if Add installed it for this.
 - **The Test button** sends one tiny request with a small tool and a small image.
   - It verifies browser access, the key, tool calling and image input, and marks what works as verified.
-  - Where the ability's protocol has a files API, it also uploads that small image, so annai knows whether photo uploads work with this key (§4.8).
+  - Where the ability's protocol has a files API and its uploads are on, it also uploads that small image, so annai knows whether photo uploads work with this key (§4.8).
   - Its requests ask at level off. Where Main (or else Koe · Classic, or else Utility) asks this model at a level whose patch is another than off's, one more tiny request asks at that level, and a refusal is said in plain words with what to change ("At Main's level (medium), this model refused: …"). A model that can't think, given a named level, would otherwise pass Test and fail every turn.
   - It explains failures in plain words: "this address blocks web apps" is a different message from "key rejected".
 

@@ -656,9 +656,3 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** a message with only a photo (or only files), sent while Shiori's wait, her question or annai's card waits, shows as two "(a photo)" bubbles: the placeholder answers what waited, and the photo arrives again as its own message. Nothing is lost.
 - **Why:** `send()` resolves what waits with the message's text (here the placeholder) and also queues its photos and files as their own wake.
 - **Revisit when:** the next version: `send()` ends what waits with "it follows" and queues the whole message once, as the wait-takes change does for a message sent just before (about 2 lines; agent-loop.test.js pins the two bubbles today).
-
-### With Anthropic, every photo first tries an upload the browser blocks
-- **Kind:** deferred.
-- **What the user sees:** with an Anthropic model, each photo sent to Shiori first tries the provider's file upload, which the browser blocks; the photo then goes in the request itself and she sees it. The cost is one failed request (and its wait) per photo. Seen in every photo run of the wait-takes real check (2026-11-13).
-- **Why:** Anthropic's `/v1/files` answers the browser's CORS check with 400 and no `Access-Control-Allow-Origin` (checked 2026-11-13; `/v1/messages` answers 200 with `*`), so an upload from a browser page can't work today.
-- **Revisit when:** the next version: the Anthropic plugin (`plugins-official/anthropic-messages`) stops trying the upload and sends photos in the request; check the preflight again first, in case Anthropic opens it.
