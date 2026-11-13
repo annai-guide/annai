@@ -779,6 +779,7 @@ export class Halves {
     this.#ownCued = false;
     if (trip !== this.kokoro.target) {
       this.live.close('switch', { forget: true });
+      this.#leftUnsaid(this.koe.takeOwed()); // Koe · Classic's, shown in the conversation left before Kokoro's moves, as Start fresh does
       this.#retell = [];
       // Realtime coming back is worked out again in the conversation opened.
       if (this.#back !== undefined) {
