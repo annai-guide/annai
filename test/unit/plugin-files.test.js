@@ -107,11 +107,32 @@ test("read's line that says how to read on also survives the note a path's other
   const call = /** @type {any} */ ({ scope: trip, trip, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori' });
   const text = Array.from({ length: 4000 }, (_, n) => `Line ${n}: the ferry leaves at ${n % 24}:00.`).join('\n');
   assert.ok(text.length > 2 * RESULT_MAX);
-  // 290 characters is a long path (about the longest a file has), so the room READ_ON leaves has to hold its note and the line.
+  // 290 characters is a long path, so the room READ_ON leaves has to hold its note and the line (the next test takes the longest).
   for (const path of ['/trip/notes/ferries.md', `/trip/notes/${'d'.repeat(267)}/ferries.md`]) {
     await run('write', { path, content: text });
     const asked = path.replace(/ferries\.md$/, 'Ferries.md');
     const out = (await runTool(tools.read, { path: asked }, call)).output.content;
+    assert.ok(out.startsWith(`(read ${path}: the path's case differed)\n`), 'the note is in front');
+    assert.ok(out.length <= RESULT_MAX, `the result (${out.length}) fits its limit`);
+    assert.doesNotMatch(out, /were cut\.$/, 'the result is not cut');
+    assert.match(out, /\n… \d+ more characters; read again with from: \d+$/, 'it ends with where to read on, whole');
+  }
+});
+
+test("read's line that says how to read on survives a case-differed read at the longest paths a file can have: 500 characters in the trip, and /waiting's 512 (READ_ON)", async () => {
+  const { ws, trip, run, tools } = await setup();
+  const text = Array.from({ length: 4000 }, (_, n) => `Line ${n}: the ferry leaves at ${n % 24}:00.`).join('\n');
+  // A path inside a scope holds up to 512 characters (normPath); Shiori sees it after its root, /waiting the longest.
+  const long = `/trip/notes/${'d'.repeat(477)}/ferries.md`;
+  assert.equal(long.length, 500);
+  await run('write', { path: long, content: text });
+  const inner = `/files/${'w'.repeat(494)}/ferries.md`;
+  assert.equal(inner.length, 512);
+  await ws.write(SYS_WAITING, inner, text, { author: 'user' });
+  const none = { scope: ME, trip: null, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori' };
+  const open = { scope: trip, trip, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori' };
+  for (const [path, call] of /** @type {const} */ ([[long, open], [`/waiting${inner}`, none]])) {
+    const out = (await runTool(tools.read, { path: path.replace(/ferries\.md$/, 'Ferries.md') }, /** @type {any} */ (call))).output.content;
     assert.ok(out.startsWith(`(read ${path}: the path's case differed)\n`), 'the note is in front');
     assert.ok(out.length <= RESULT_MAX, `the result (${out.length}) fits its limit`);
     assert.doesNotMatch(out, /were cut\.$/, 'the result is not cut');
