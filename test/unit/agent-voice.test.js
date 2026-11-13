@@ -542,11 +542,11 @@ test('voice turning off inside the microphone\'s own opening for the wait tool: 
 // A Stop, or another conversation opening, while the microphone is still opening for a listening: the tool's run goes on behind the ended turn, and
 // when the microphone opens it must leave no wait behind (a wait with no turn took the user's next line as its answer, and nothing replied).
 for (const how of ['Stop', 'switch']) {
-  // quiet: nothing is left listening (a line she says ends her turn with the window she listens on after it, which is a different matter: a Stop's, here)
+  // quiet: nothing is left listening (a Stop closes the window she listens on after her line too; a switch's is a different matter)
   for (const [what, script, ready, quiet] of /** @type {[string, any[], (k: any) => boolean, boolean][]} */ ([
     ['the wait tool', [{ toolCalls: [{ name: 'wait', input: { seconds: 600 } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }], () => true, true],
     ['her question aloud', [{ toolCalls: [{ name: 'ask', input: { question: 'Lunch or dinner?', options: ['Lunch', 'Dinner'] } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }], (k) => k.said.includes('Lunch or dinner?'), true],
-    ['a line she says (the listening after it)', [{ toolCalls: [{ name: 'speak', input: { text: 'Which day would you like?' } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }], (k) => k.said.includes('Which day would you like?'), false],
+    ['a line she says (the listening after it)', [{ toolCalls: [{ name: 'speak', input: { text: 'Which day would you like?' } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }], (k) => k.said.includes('Which day would you like?'), how === 'Stop'],
   ])) {
     test(`a ${how} while the microphone opens for ${what}: no wait is left behind, and the user's next line is a turn of its own, answered`, async (t) => {
       useClock(t);
@@ -585,6 +585,56 @@ for (const how of ['Stop', 'switch']) {
       assert.deepEqual(lines.at(-1), ['Something else', false], 'written as a line of theirs, not as the stopped call\'s answer');
     });
   }
+}
+
+// The dock's Stop (a tap while she thinks) as her turn ends, while the listening after her line is open or still opening (the backlog triage's pick,
+// 2026-11-13, "Approve all"): the Stop takes, so nothing listens on and the dock doesn't say Listening. open: her line's own listening heard the answer,
+// and the turn writes it down; opening: the answer was typed, so the microphone opens anew as the turn ends.
+for (const when of ['open', 'opening']) {
+  test(`a Stop as her turn ends with the listening after her line ${when}: the microphone closes, the dock doesn't say Listening, and she sleeps (backlog 24)`, async (t) => {
+    useClock(t);
+    let go = () => {};
+    const gate = new Promise((r) => { go = () => r(undefined); });
+    let calls = 0;
+    const k = await agentKit([[{ toolCalls: [{ name: 'speak', input: { text: 'Which day?' } }] }, { text: 'Tuesday it is.' }]], {
+      voice: { speechIn: ['m-hear'], hears: ['the first one'] },
+      hold: async () => { if (!calls++ && when === 'opening') await gate; },
+    });
+    /** @type {string[]} */
+    const states = [];
+    k.agent.on('state', (/** @type {any} */ s) => states.push(s.name));
+    /** @type {string | null} */
+    let stop = null;
+    let from = 0;
+    /** The dock's Stop, once the listening after her line is under way and her turn still runs. */
+    const press = () => {
+      if (stop !== null || !k.agent.listensOn || !k.agent.busy) return;
+      from = states.length;
+      stop = k.agent.tap();
+    };
+    if (when === 'open') {
+      const writeDown = k.voice.writeDown.bind(k.voice);
+      k.voice.writeDown = async (/** @type {any[]} */ ...a) => { press(); return writeDown(...a); };
+    } else {
+      const howToListen = k.voice.howToListen.bind(k.voice);
+      k.voice.howToListen = async (/** @type {string} */ role) => { press(); return howToListen(role); };
+    }
+    k.agent.send('Plan our day');
+    if (when === 'open') {
+      await until(() => k.platform.mic.isOpen());
+      await hear(k, 'where-eat');
+    } else {
+      await until(() => calls === 1);
+      k.agent.send('Tuesday'); // typed before her line listens: it answers at once, and nothing is open as the turn ends
+      go();
+    }
+    await k.agent.idle();
+    await new Promise((r) => setTimeout(r, 100));
+    assert.equal(stop, 'stopped', 'the tap was a Stop');
+    assert.equal(k.platform.mic.isOpen(), false, `none left open: ${mics(k)}`);
+    assert.ok(!states.slice(from).includes('listening'), `the dock didn't say Listening after the Stop: ${states}`);
+    assert.equal(k.agent.state.name, 'sleeping');
+  });
 }
 
 test('voice turning off as the microphone opens for the window after she speaks: no microphone, no Listening, and the dock says she sleeps (spec §10.5)', async (t) => {
