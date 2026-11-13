@@ -295,9 +295,11 @@ export async function renderTalk(ctx, route) {
     }, HEARD_MS));
   };
   const cost = h('p', { class: 'sub' });
+  // As Details says it: a trip (it has dates) or a conversation, which a chat and the screen with no trip open are.
+  let dated = Boolean(rec?.start);
   const showCost = async () => {
     const c = await costs(ctx.store, scope);
-    cost.textContent = agent.trip ? t`This trip so far: ${formatCost(c.total)}` : t`This conversation so far: ${formatCost(c.total)}`;
+    cost.textContent = dated ? t`This trip so far: ${formatCost(c.total)}` : t`This conversation so far: ${formatCost(c.total)}`;
   };
   /** @type {Map<string, HTMLElement>} asks still open, by call id */
   const asks = new Map();
@@ -609,13 +611,15 @@ export async function renderTalk(ctx, route) {
   built = true;
   showCost();
   const trip = agent.trip;
-  const tidy = tidyMenu(ctx, trip ? { id: trip, dated: Boolean(rec?.start) } : null);
+  const tidy = tidyMenu(ctx, trip ? { id: trip, dated } : null);
   const name = h('a', { class: 'talk-name', href: `#/trip/${encodeURIComponent(trip)}`, dir: 'auto', text: title });
   // The name follows trip.json while it shows: the first line names a new conversation, and Shiori may rename it or give it dates (a chat, then a trip).
   const offName = trip ? ctx.ws.onChange((/** @type {{ scope: string, path: string }} */ c) => {
     if (c.scope === trip && c.path === '/trip.json') ctx.ws.readJSON(trip, '/trip.json').then((/** @type {any} */ j) => {
       name.textContent = scopeTitle({ id: trip, title: String(j?.title ?? title) });
-      tidy.dated(Boolean(tripMirror(j).start));
+      dated = Boolean(tripMirror(j).start);
+      tidy.dated(dated);
+      showCost();
     }, () => {});
   }) : null;
   const screen = h('div', { class: 'screen' },

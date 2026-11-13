@@ -167,7 +167,7 @@ test('a Share can leave out where photos were taken', async ({ page }) => {
   await page.getByLabel('Add photos or files').setInputFiles(await photo('portrait.jpg'));
   await allFiles(page);
   await expect(page.getByRole('link', { name: /\/files\/2026-11-26-1904/ })).toBeVisible();
-  await page.getByRole('button', { name: 'Export trip' }).click();
+  await page.getByRole('button', { name: 'Export', exact: true }).click();
   const places = page.getByLabel('Include where photos were taken and where you went');
   await expect(places).toBeHidden(); // a Backup keeps everything
   await page.getByLabel('Share: itinerary, bookings, files and notes').check();
@@ -184,7 +184,7 @@ test('a Share can leave out where photos were taken', async ({ page }) => {
 test('a Share without places greys out History, with the reason; places on enables it again', async ({ page }) => {
   await openApp(page);
   await startTrip(page, 'Big Sur');
-  await page.getByRole('button', { name: 'Export trip' }).click();
+  await page.getByRole('button', { name: 'Export', exact: true }).click();
   const history = page.getByLabel('History (every version and the log)');
   const places = page.getByLabel('Include where photos were taken and where you went');
   const why = page.getByText('History holds where you were, so it needs places.');

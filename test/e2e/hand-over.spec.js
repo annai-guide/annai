@@ -251,7 +251,7 @@ test("Undo that sends a file back to this trip, with a tap on the trip it remove
     await expect.poll(hash).toBe(`${details}/talk`);
     await page.goBack(); // over Kyoto's Details and the conversation's entry before it
     await expect.poll(hash).toBe(details);
-    await expect(page.getByRole('button', { name: 'Remove trip' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Remove', exact: true })).toBeVisible();
     await page.goForward();
     await expect.poll(hash).toBe(`${details}/talk`);
     await expect(page.locator('.talk-head .talk-name')).toHaveText('Big Sur'); // drawn: a Forward inside its drawing is not one a person makes
@@ -292,7 +292,7 @@ test("after a reload on the conversation Undo left, a Forward over the removed t
     await page.reload(); // as an iPhone reloads an app it set aside
     await expect(page.locator('.talk-head .talk-name')).toHaveText('Big Sur', { timeout: 30_000 });
     await page.goBack(); // over Kyoto's Details and the conversation's entry before it
-    await expect(page.getByRole('button', { name: 'Remove trip' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Remove', exact: true })).toBeVisible();
     await page.goForward();
     await expect(page.locator('.talk-head .talk-name')).toHaveText('Big Sur');
     await page.goForward(); // over Kyoto's Details and this conversation again, to Settings

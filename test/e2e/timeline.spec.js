@@ -1900,7 +1900,7 @@ test("the draft's Details: a name and dates saved there put it on home; Archive 
     await expect(page).toHaveURL(/#\/trip\/trip-[0-9a-z]+\/talk$/);
     const id = draftOf(page.url());
     await page.locator('.talk-name').click();
-    await expect(page.getByRole('button', { name: 'Remove conversation' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Remove', exact: true })).toBeVisible();
     return id;
   };
   // Named and dated in Details, with no line said: a card on home, and no longer the draft.
@@ -1916,13 +1916,13 @@ test("the draft's Details: a name and dates saved there put it on home; Archive 
   // Archived in Details: it is in Archived trips, and + opens another.
   const archived = await details();
   expect(archived).not.toBe(named);
-  await page.getByRole('button', { name: 'Archive conversation' }).click();
+  await page.getByRole('button', { name: 'Archive', exact: true }).click();
   await page.getByRole('button', { name: 'Tap again to archive' }).click();
   await expect(page.getByText('Archived trips (1)')).toBeVisible();
   // Removed in Details: + opens another, and its first line is a row on home.
   const removed = await details();
   expect(removed).not.toBe(archived);
-  await page.getByRole('button', { name: 'Remove conversation' }).click();
+  await page.getByRole('button', { name: 'Remove', exact: true }).click();
   await page.getByRole('dialog', { name: 'New conversation' }).getByRole('button', { name: 'Remove' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
   expect(await record(page, removed)).toBeUndefined();
@@ -1963,7 +1963,7 @@ test("a trip file whose dates aren't on the calendar (9999-99-99) comes in as a 
   await row(page, 'Testville').click();
   await expect(page).toHaveURL(/#\/trip\/trip-[0-9a-z]+\/talk$/);
   await page.locator('.talk-name').click();
-  await expect(page.getByRole('button', { name: 'Remove conversation' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Remove', exact: true })).toBeVisible();
   const itinerary = page.locator('#view').getByRole('link', { name: 'Itinerary' });
   await expect(itinerary).toBeVisible();
   await expect(page.getByLabel('Starts')).toHaveValue('');
@@ -2024,9 +2024,9 @@ test("a conversation stored as \"New conversation\" says it in the screens' lang
   await row(page, name).click();
   await page.locator('.talk-name').click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(name);
-  await page.getByRole('button', { name: accented('Export trip') }).click();
+  await page.getByRole('button', { name: accented('Export'), exact: true }).click();
   await expect(page.getByRole('heading', { level: 2, name })).toBeVisible(); // its Export panel's heading too
-  await page.getByRole('button', { name: accented('Remove trip') }).click();
+  await page.getByRole('button', { name: accented('Remove'), exact: true }).click();
   await expect(page.getByRole('dialog', { name })).toBeVisible();
 });
 

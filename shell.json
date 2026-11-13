@@ -1,5 +1,5 @@
 {
-  "build": "24eefbf42495",
+  "build": "ff5ceac9a309",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -273,10 +273,10 @@
     "/src/ui/screens/simulate.js": "cbdebdf221a5",
     "/src/ui/screens/shiori.js": "6296aaccc836",
     "/src/ui/screens/sees.js": "6a674fc473ae",
-    "/src/ui/screens/talk.js": "76053fa151a7",
+    "/src/ui/screens/talk.js": "4db82bb1338d",
     "/src/ui/screens/tools.js": "af43e4da0f2e",
     "/src/ui/screens/trace.js": "3de48f872cce",
-    "/src/ui/screens/trip.js": "31d45bb19bef",
+    "/src/ui/screens/trip.js": "6804e0d6b581",
     "/src/ui/screens/trips.js": "ed12a77e9aee",
     "/src/ui/screens/updates.js": "663857e51861",
     "/src/ui/screens/voice.js": "69425fba40d4",
@@ -300,8 +300,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "7158c4052670",
-    "/l10n/zh-Hans.json": "f70a245fc26b",
-    "/l10n/zh-Hant.json": "52ea47f4a8b7"
+    "/l10n/ja.json": "05e7f365399e",
+    "/l10n/zh-Hans.json": "81fb7650dc16",
+    "/l10n/zh-Hant.json": "5abb7e815f5f"
   }
 }

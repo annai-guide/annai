@@ -65,7 +65,7 @@ test('an encrypted trip opens only with its passphrase, and can replace the copy
   await startTrip(page, 'Big Sur');
   await writeNote(page, '/notes/bixby.md', 'Bixby Bridge, 1932');
   await page.getByRole('link', { name: 'Back to trip', exact: true }).click();
-  await page.getByRole('button', { name: 'Export trip' }).click();
+  await page.getByRole('button', { name: 'Export', exact: true }).click();
   await page.getByLabel('Share: itinerary, bookings, files and notes').check();
   await page.getByLabel('Passphrase (optional)').fill('pine needle');
   await page.getByLabel('Repeat passphrase').fill('pine needle');
@@ -89,7 +89,7 @@ test('an encrypted trip opens only with its passphrase, and can replace the copy
 test('an opened file can be left without importing: Cancel, or the link back to Trips (the emulator pass)', async ({ page }) => {
   await openApp(page);
   await startTrip(page, 'Big Sur');
-  await page.getByRole('button', { name: 'Export trip' }).click();
+  await page.getByRole('button', { name: 'Export', exact: true }).click();
   const file = await buildAndSave(page);
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
@@ -107,7 +107,7 @@ test('an opened file can be left without importing: Cancel, or the link back to 
 test('opening a file draws the screen at once, saying what it reads, and the preview needs only the manifest', async ({ page }) => {
   await openApp(page);
   await startTrip(page, 'Big Sur');
-  await page.getByRole('button', { name: 'Export trip' }).click();
+  await page.getByRole('button', { name: 'Export', exact: true }).click();
   const file = await buildAndSave(page);
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();

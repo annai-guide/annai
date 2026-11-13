@@ -35,7 +35,8 @@ export async function renderTrip(ctx, route) {
   const extra = h('div', {}); // the export panel opens here
   const { total } = await costs(ctx.store, id);
   // Details, the trip's page: back to its conversation; its name and dates; what opens from it; Share, Archive and Remove; its cost and files.
-  // Undated, it is a chat, and its words say conversation (the timeline design: no "trip" on small chats).
+  // Its buttons and questions use words that fit a trip and a chat alike (Export, Archive, Remove: no "trip" on small chats); only what it
+  // costs says which, by its dates as the timeline does.
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, crumb(talkHref(id), t`Conversation`)),
     h('h1', { class: 'title', dir: 'auto', text: scopeTitle(scope) }),
@@ -53,8 +54,8 @@ export async function renderTrip(ctx, route) {
       archived
         ? h('button', { class: 'btn', type: 'button', onclick: async () => { await setTripStatus(ctx.store, id, 'active'); await ctx.live?.tripsChanged().catch(() => {}); ctx.render(); } }, t`Unarchive`)
         // Archived, its reminders leave live mode and the push relay at once.
-        : twoStep(start ? t`Archive trip` : t`Archive conversation`, t`Tap again to archive`, async () => { await setTripStatus(ctx.store, id, 'archived'); await ctx.chats?.used(id); await ctx.live?.tripsChanged().catch(() => {}); ctx.go('#/trips'); }),
-      h('button', { class: 'btn danger', type: 'button', onclick: (/** @type {Event} */ e) => removeFlow(ctx, id, scope, /** @type {HTMLButtonElement} */ (e.currentTarget)) }, start ? t`Remove trip` : t`Remove conversation`)),
+        : twoStep(t`Archive`, t`Tap again to archive`, async () => { await setTripStatus(ctx.store, id, 'archived'); await ctx.chats?.used(id); await ctx.live?.tripsChanged().catch(() => {}); ctx.go('#/trips'); }),
+      h('button', { class: 'btn danger', type: 'button', onclick: (/** @type {Event} */ e) => removeFlow(ctx, id, scope, /** @type {HTMLButtonElement} */ (e.currentTarget)) }, t`Remove`)),
     extra,
     h('p', { class: 'sub trip-cost', text: start ? t`This trip so far: ${formatCost(total)}` : t`This conversation so far: ${formatCost(total)}` }),
     await filesSection(ctx, id),
@@ -171,7 +172,7 @@ function tripActions(ctx, id, scope, slot) {
   return [h('button', {
     class: 'btn', type: 'button',
     onclick: () => slot.replaceChildren(...(slot.firstChild ? [] : [exportPanel(ctx, { kind: 'trip', scopes: [id], title: scopeTitle(scope) })])),
-  }, t`Export trip`)];
+  }, t`Export`)];
 }
 
 /**
@@ -226,7 +227,7 @@ async function askAndRemove(ctx, id, scope) {
   const unbacked = await backupState(ctx.store, id).then((b) => b.changed, () => true);
   const sure = await ask({
     title: scopeTitle(scope),
-    body: sentences(t`This removes everything in this trip from this device: its files, photos, notes and history.`, unbacked ? t`It hasn't been backed up since it last changed.` : '', kept, t`Remove it?`),
+    body: sentences(t`This removes everything in it from this device: its files, photos, notes and history.`, unbacked ? t`It hasn't been backed up since it last changed.` : '', kept, t`Remove it?`),
     yes: t`Remove`,
   });
   if (!sure) return;
@@ -236,11 +237,11 @@ async function askAndRemove(ctx, id, scope) {
     ctx.removed(id);
   } catch (e) {
     if (e instanceof NotFoundError) {
-      ctx.notices.toast(t`That trip was already removed.`);
+      ctx.notices.toast(t`That was already removed.`);
       ctx.removed(id);
     } else if (!explainStorageFull(ctx, e)) {
       const why = messageOf(e).replace(/[.!?]?$/, '.');
-      ctx.notices.card({ tone: 'warn', title: t`That trip wasn't removed`, body: sentences(why, t`Nothing was removed. Try again.`) });
+      ctx.notices.card({ tone: 'warn', title: t`It wasn't removed`, body: sentences(why, t`Nothing was removed. Try again.`) });
     }
   }
 }
