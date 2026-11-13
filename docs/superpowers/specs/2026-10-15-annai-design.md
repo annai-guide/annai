@@ -933,7 +933,7 @@ When the phone locks, the app freezes, and catch-up (§11.4) covers the gap.
 
 | Type | Fires when |
 |---|---|
-| `time` | at a moment |
+| `time` | at a moment, an ISO time with its offset. One written with today's offset of the phone's zone for a date after that zone changes its clocks gets, in watch_set's result, that zone's own time then and the offset to set it again with, so she sees her mistake (the backlog triage, 2026-11-13); the watch itself is said as written |
 | `every` | at an interval |
 | `enter`, `leave` | crossing a circle around a place, with a margin so GPS jitter at the edge doesn't refire it |
 | `dwell` | inside a place longer than X |
