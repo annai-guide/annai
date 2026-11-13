@@ -336,7 +336,7 @@ export class Halves {
           this.#up('koe');
         },
         unsaid: (notes) => this.#backstop(notes),
-        left: (notes) => this.#leftUnsaid(notes),
+        left: (notes, here) => this.#leftUnsaid(notes, here),
       },
     });
     this.kokoro.addLoopTools([channelTool('kokoro', this.channel, () => (this.#works() ? null : /* en */ "Koe can't speak right now: talk to the user yourself, with speak, show and ask."))]);

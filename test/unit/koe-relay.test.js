@@ -227,7 +227,7 @@ test("Koe already said what Kokoro's note says, and settles it with already_told
   assert.deepEqual(k.notices, []);
 });
 
-test("the cue asks Koe for what the note adds, without changing what it claims, and names already_told; Koe settles it after the cue", async () => {
+test("the cue asks Koe for what the note adds, without changing what it claims, and names already_told; Koe answers it after the cue with already_told, and the note is shown on a silent card", async () => {
   const k = await agentKit([kokoro()], { koe: { type: [CHECK, sleep, calls(['already_told', {}], ['sleep', {}])] } });
   k.agent.send('A sunset drink in Carmel');
   await k.agent.idle();
@@ -236,7 +236,25 @@ test("the cue asks Koe for what the note adds, without changing what it claims, 
   assert.match(cue, /what it adds, without changing what it claims/);
   assert.match(cue, /already_told/);
   assert.doesNotMatch(cue, /Say what the note says/);
+  assert.deepEqual(await backstop(k), [["Shiori's answer", FOR_USER]], 'the note, once, for a Koe that only says she told it');
+});
+
+// The user's pick (2026-11-12, "Show it silently"), for Koe · Chat as for a live Koe: a note she claims she already told is shown on a silent card,
+// never settled on her word alone. A note she reached the user after is settled: the same step's speak does it.
+test("Koe · Chat: already_told for a note it never said shows the note on a silent card, not aloud", async () => {
+  const k = await agentKit([kokoro()], { koe: { type: [CHECK, sleep, calls(['already_told', {}], ['sleep', {}])] } });
+  k.agent.send('A sunset drink in Carmel');
+  await k.agent.idle();
+  const cards = await k.events(['reminder']);
+  assert.deepEqual(cards.map((e) => [e.data.text, Boolean(e.data.aloud)]), [[FOR_USER, false]]);
+});
+
+test("Koe · Chat: already_told in the reply that says the note too: nothing is shown, the user heard it", async () => {
+  const k = await agentKit([kokoro()], { koe: { type: [CHECK, sleep, calls(['speak', { text: 'Sunset is at 6:23, though it is overcast.' }], ['already_told', {}], ['sleep', {}])] } });
+  k.agent.send('A sunset drink in Carmel');
+  await k.agent.idle();
   assert.deepEqual(await backstop(k), []);
+  assert.deepEqual(await said(k), ['Let me check.', 'Sunset is at 6:23, though it is overcast.']);
 });
 
 test("already_told settles Kokoro's note, not a message the user wrote in Koe's wait: that is still owed", async () => {

@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { tone, soon } from './koe-live-kit.js';
-import { SAID, FOR_USER, LOOKS, CONT, shown, lines, words, cues, wait, start, quietSession } from './live-flight-kit.js';
+import { SAID, PASS, FOR_USER, LOOKS, CONT, tell, tell2, notesIn, shown, lines, words, cues, wait, start, quietSession } from './live-flight-kit.js';
 
 const LUNCH = { said: 'Lunch is at noon.', audio: tone(0.5) };
 const OKAY = { said: 'Okay.', audio: tone(0.3) };
@@ -87,6 +87,31 @@ test('Kokoro\'s immediate note cuts in while she says a note, and a tap stops he
     await wait(1000);
     await k.agent.idle();
     assert.deepEqual(await shown(k), [[NOW, false]], 'the first note, replaced, is neither shown nor asked for');
+    assert.deepEqual(cues(k), []);
+  } finally {
+    w.stop();
+    await k.done();
+  }
+});
+
+// Real run 2 (2026-11-12, one of ten): Kokoro's plan note was still waiting when its immediate correction went in, and was said after it, so the user
+// heard the old time again. "Urgent replaces it" covers every note of Kokoro's that Koe has not said: in flight, and still waiting.
+test('Kokoro\'s immediate note replaces Kokoro\'s notes still waiting too: one for the user and a plain one, behind the note in flight, are never sent', async () => {
+  const NOW = 'The road ahead is closed; take the coast road.';
+  const { k, w } = await quietSession([{ said: SAID, audio: tone(3) }, { said: NOW, audio: tone(0.8) }, OKAY]);
+  try {
+    await tell(k); // in flight
+    await wait(300);
+    await tell2(k); // waits behind it, owed to the user
+    await k.agent.channel.send('kokoro', 'Mention that it is windy on the pass.', 'append', 'tool'); // waits too, for Koe alone
+    await wait(300);
+    await k.agent.channel.send('kokoro', `Tell the user: ${NOW}`, 'immediate', 'tool', undefined, undefined, false, NOW);
+    await soon(async () => (await words(k)).includes(NOW), 10_000);
+    await wait(2500); // what waits would go in now
+    await k.agent.idle();
+    w.stop();
+    assert.ok(!notesIn(k).some((t) => /pass closes|windy/.test(t)), `the waiting notes never went in: ${JSON.stringify(notesIn(k))}`);
+    assert.ok(!(await words(k)).includes(PASS), 'the waiting note was never said');
     assert.deepEqual(cues(k), []);
   } finally {
     w.stop();
