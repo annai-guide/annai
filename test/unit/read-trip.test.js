@@ -2429,6 +2429,59 @@ for (const [what, o] of /** @type {[string, Record<string, any>][]} */ ([
   });
 }
 
+// With a quick-decision model, a reminder due while someone speaks in her wait's listening waits for their words (#noted holds while the dock says
+// "Hearing you"); when the gate sets those words aside (the radio, a passenger), the wait must look again, so she says it then, not 600 s late (review of backlog 23).
+for (const [what, o] of /** @type {[string, Record<string, any>][]} */ ([
+  ['one Shiori', {}],
+  ['Kokoro while Koe is down', { koe: { talk: [{ error: 'auth', message: 'bad key' }] } }],
+])) {
+  test(`${what}, voice on with a quick gate: a reminder due while someone speaks in her wait's listening, words the gate sets aside, is said within a second of their end, once (backlog 23)`, async (t) => {
+    useClock(t);
+    const k = await gateKit(waitingOne, { ...o, voice: { speechIn: ['m-hear'], hears: ['The traffic report says'], decide: gates(['B']) } });
+    k.agent.send('Plan our day');
+    await until(() => k.agent.kokoro.waiting);
+    if (o.koe) assert.equal(k.agent.koeState, 'down');
+    await pause(30 * k.agent.secondMs);
+    await startsSpeaking(k);
+    k.agent.wake(DUE); // due while they speak: their words come first
+    await pause(1 * k.agent.secondMs);
+    assert.deepEqual(await ownWaits(k), [], 'their words come first: the wait goes on');
+    const t0 = Date.now();
+    k.platform.mic.feed(quiet(1), 16_000); // they stop: one segment, set aside
+    await soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => e.data.text === LEAVE_NOW), 700 * k.agent.secondMs);
+    assert.ok(Date.now() - t0 <= 1 * k.agent.secondMs, `said ${(Date.now() - t0) / k.agent.secondMs} s after their words ended`);
+    assert.deepEqual(await ownWaits(k), [ONE_DUE], 'what her model reads as its wait ends');
+    await k.agent.idle();
+    assert.equal((await k.events(['heard'])).filter((/** @type {any} */ e) => e.data.gate === 'chatter').length, 1, 'their words were set aside');
+    assert.deepEqual(await reminders(k), { filed: [], cards: 0 }, 'annai shows nothing itself');
+    assert.equal((await k.events(['out.speak'])).filter((/** @type {any} */ e) => e.data.text === LEAVE_NOW).length, 1, 'said once');
+    assert.equal(k.said.filter((/** @type {string} */ x) => x === LEAVE_NOW).length, 1, `said aloud once: ${JSON.stringify(k.said)}`);
+  });
+}
+
+test("with Koe on a chat model waiting for Kokoro in a listening, a reminder due while someone speaks, words the gate sets aside, is said by Koe within a second of their end, once (backlog 23)", async (t) => {
+  useClock(t);
+  const k = await koeMic(KOKORO, waitingKoe(120), { hears: ['The traffic report says'], letters: ['B'] });
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1);
+  await pause(30 * k.agent.secondMs);
+  assert.ok(k.agent.koe.waiting, 'Koe waits for Kokoro');
+  await startsSpeaking(k);
+  k.agent.wake(DUE); // due while they speak: their words come first
+  await pause(1 * k.agent.secondMs);
+  assert.deepEqual(await koeWaits(k), [], 'their words come first: the wait goes on');
+  const t0 = Date.now();
+  k.platform.mic.feed(quiet(1), 16_000); // they stop: one segment, set aside
+  await soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => e.data.text === LEAVE_NOW), 700 * k.agent.secondMs);
+  assert.ok(Date.now() - t0 <= 1 * k.agent.secondMs, `said ${(Date.now() - t0) / k.agent.secondMs} s after their words ended`);
+  assert.deepEqual(await koeWaits(k), [REMINDER_DUE], "what Koe's model reads as its wait ends");
+  assert.equal(gated(k), 1, 'their words were judged, and set aside');
+  k.agent.answer(/** @type {string} */ (k.agent.kokoro.pendingId), 'Not now');
+  await k.agent.idle();
+  assert.equal((await k.events(['out.speak'])).filter((/** @type {any} */ e) => e.data.text === LEAVE_NOW).length, 1, 'Koe said it once');
+  assert.deepEqual(await reminders(k), { filed: [], cards: 0 }, 'annai shows nothing itself');
+});
+
 test('one Shiori: a place alert ends her wait too, with words that say she may let it pass', async (t) => {
   useClock(t);
   const k = await gateKit(waitingOne);

@@ -3611,6 +3611,7 @@ export class Agent {
         if (line && this.#speaking) return; // more began meanwhile: the card's hold stands
         if (this.state.name === 'hearing') this.#setState('listening');
         p.arm?.();
+        if (!this.#speaking) this.#noted(); // what came due while they spoke (#noted held it) is taken now, not when the wait runs out
         return;
       }
       if (this.#pending === p && line) {
