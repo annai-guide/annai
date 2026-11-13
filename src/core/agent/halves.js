@@ -127,7 +127,7 @@ export function channelTool(from, channel, refuse = () => null) {
     name, pluginId: 'core', group: /* en */ 'Talk',
     description: koe
       ? /* en */ "Ask or tell Kokoro, your other half, who looks things up and works behind you: pass on what the user said as they said it, not your reading of it. It returns at once; Kokoro's answer comes as a note. mode immediate cuts Kokoro off mid-task: use it only when something really should be cut off."
-      : /* en */ 'Tell Koe, who talks with the user, what to say or know: an answer, or a correction with the fact and its source. Koe says what it says, without changing what it claims. It returns at once. mode immediate cuts Koe off mid-sentence: use it only when something really should be cut off, such as a wrong claim. for_user: when you have an answer for the user, the exact words for them: annai shows them only if Koe never says the note.',
+      : /* en */ 'Tell Koe, who talks with the user, what to say or know: an answer, or a correction with the fact and its source. Koe says what it says, without changing what it claims. It returns at once. mode immediate cuts Koe off mid-sentence: use it only when something really should be cut off, such as a wrong claim. It cuts off any earlier note of yours that Koe has not finished saying, begun or not, and that note may then never reach the user: put in this one whatever of it still matters. for_user: when you have an answer for the user, the exact words for them: annai shows them only if Koe never says the note.',
     input: { type: 'object', properties: { text: { type: 'string', minLength: 1 }, mode: { enum: ['append', 'immediate'] }, ...(koe ? {} : { for_user: { type: 'string' } }) }, required: ['text'] },
     run: async (/** @type {{ text: string, mode?: string, for_user?: string }} */ i, /** @type {any} */ call) => {
       const text = String(i.text ?? '').trim();
@@ -336,7 +336,7 @@ export class Halves {
           this.#up('koe');
         },
         unsaid: (notes) => this.#backstop(notes),
-        left: (notes) => this.#leftUnsaid(notes),
+        left: (notes, here) => this.#leftUnsaid(notes, here),
       },
     });
     this.kokoro.addLoopTools([channelTool('kokoro', this.channel, () => (this.#works() ? null : /* en */ "Koe can't speak right now: talk to the user yourself, with speak, show and ask."))]);
