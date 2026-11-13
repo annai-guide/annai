@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { until } from './agent-kit.js';
 import { liveKit, texts, soon, tone, say, sleep, lives } from './koe-live-kit.js';
 import { hum, quiet, cat } from './voice-kit.js';
+import { SAID, tell, notesIn, watch, lineAt } from './live-flight-kit.js';
 
 const wait = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
 const RATE = 16_000;
@@ -1207,6 +1208,54 @@ test("Kokoro's sleep note during music that ran to the cap, then a question afte
     assert.ok(!texts(k).some((x) => /go to sleep/.test(x)), `the sleep note never went in: ${JSON.stringify(texts(k))}`);
     assert.ok(!(await lives(k, 'closed')).some((e) => e.data.why === 'sleep'), 'no sleep closed it');
   } finally {
+    await k.done();
+  }
+});
+
+// Review of fix round 1, F7: Kokoro's sleep note for the music comes while a note for the user is in flight and her answer to it has not begun (nothing
+// of hers is going on yet, so only the note in flight holds it). It waits behind that note, one input at a time, and goes in once her line for the note is
+// written. Kokoro's model call waits for the test (hold), so the note is in flight first.
+test("Kokoro's sleep note, arriving while a note for the user is in flight and her answer has not begun: it goes in only after her line for the note is written", async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  /** @type {() => void} */
+  let release = () => {};
+  const gate = new Promise((r) => { release = () => r(undefined); });
+  const k = await liveKit([
+    { heard: 'la la', delayMs: 1000 },
+    { heard: 'la la', delayMs: 1000 },
+    { heard: 'la la', delayMs: 300 },
+    { said: SAID, audio: tone(0.5), delayMs: 800 },
+    { tool: { name: 'sleep', args: {} } },
+  ], { agent: { secondMs: 200 }, hold: () => gate, kokoro: [{ rules: [{ match: 'non-stop sound', reply: { toolCalls: [{ name: 'tell_koe', input: { text: 'Only music: go to sleep.' } }, { name: 'sleep', input: {} }] } }, { match: '.', reply: sleep }] }] });
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 10 } }); // 2 s here
+    await k.voice.unlock();
+    k.agent.tap();
+    await until(() => k.agent.live.listening, 3000);
+    await realtime(k, quiet(0.3));
+    await realtime(k, hum(3)); // the spell runs out in it
+    await realtime(k, quiet(0.9));
+    await realtime(k, hum(1.5)); // begun after the spell ran out, and let go
+    await realtime(k, quiet(0.9));
+    await realtime(k, hum(1.5)); // let go as the next begins: Kokoro is woken, its call waits
+    await soon(async () => k.agent.live.stretching, 3000).catch(() => assert.fail('the music made no stretch'));
+    await realtime(k, quiet(1));
+    await tell(k);
+    await soon(async () => notesIn(k).length === 1, 3000).catch(() => assert.fail(`the note never went in: ${JSON.stringify(texts(k))}`));
+    assert.equal(k.agent.live.stretching, true, 'the stretch is still on');
+    const t0 = Date.now();
+    const w = watch(k, t0);
+    try {
+      release(); // Kokoro's sleep note comes now, her answer to the note not begun
+      await soon(async () => texts(k).some((x) => /go to sleep/.test(x)), 10_000).catch(() => assert.fail(`the sleep note never went in: ${JSON.stringify(texts(k))}`));
+      const note = w.at(/go to sleep/);
+      const said = await lineAt(k, t0, SAID);
+      assert.ok(Number.isFinite(said) && note >= said - 100, `the sleep note went in at ${note} ms, her line for the note was written at ${said} ms`);
+    } finally {
+      w.stop();
+    }
+  } finally {
+    release();
     await k.done();
   }
 });

@@ -5,8 +5,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { tone, soon } from './koe-live-kit.js';
-import { hum, quiet } from './voice-kit.js';
-import { RATE, SAID, PASS, FERRY, FOR_USER, LOOKS, CONT, tell, tell2, tell3, shown, words, lines, notesIn, cues, wait, start, quietSession, lineAt } from './live-flight-kit.js';
+import { hum, quiet, cat } from './voice-kit.js';
+import { RATE, SAID, PASS, FERRY, FOR_USER, LOOKS, CONT, tell, tell2, tell3, shown, words, lines, notesIn, textsIn, cues, wait, start, quietSession, lineAt, join, zeros } from './live-flight-kit.js';
 
 test('a second note comes 1.3 s into "Checking your notes.", before her continuation: it goes in only once her line for the first is written, and both are said, in order', async () => {
   const { k, t0, w } = await start({ turns: [LOOKS, CONT, { said: PASS, audio: tone(0.8) }, { said: 'Okay.', audio: tone(0.3) }] });
@@ -175,7 +175,8 @@ test('she answers the second of three notes with already_told: it is shown on a 
 
 // "Count it as no answer": a whole line of hers that is only one of annai's own instruction words (a tool she calls without speaking, or silent: a
 // tool answer's scheduling) is no answer; she is asked once more, then annai shows and says the note.
-for (const [what, word] of [['"silent"', 'silent'], ['"Silent." with its case and full stop', 'Silent.'], ['"already told", the tool\'s name as speech would write it', 'already told']]) {
+for (const [what, word] of [['"silent"', 'silent'], ['"Silent." with its case and full stop', 'Silent.'], ['"already told", the tool\'s name as speech would write it', 'already told'],
+  ['"(No speech)", Gemini\'s own mark for sound with no words (real run 2: 1 of 563 lines)', '(No speech)'], ['"[silence]", a bracketed stage direction', '[silence]']]) {
   test(`her whole line for the second of two notes is ${what}: no answer, so she is asked once more and says the note`, async () => {
     const { k, w } = await quietSession([{ said: SAID, audio: tone(1), delayMs: 500 }, { said: word, audio: tone(0.4) }, { said: PASS, audio: tone(1) }, { said: 'Okay.', audio: tone(0.3) }]);
     try {
@@ -202,6 +203,58 @@ test('her whole line for the second note is "silent" again after the ask once mo
     w.stop();
     assert.equal(cues(k).length, 1, 'asked once, not twice');
     assert.deepEqual(await shown(k), [[PASS, true]], 'shown, and said in annai\'s own voice');
+  } finally {
+    w.stop();
+    await k.done();
+  }
+});
+
+// Review of fix round 1, R1: the rule that a line which is only an instruction word passes no note is in #passes, the one rule for the user's start, a
+// tap and a close too. Her whole line for the one note is "silent", its sound played past her last loud sample, so it counts as heard whole; the user
+// taps, speaks or closes in the quiet tail her player still holds, and the note is shown (or kept), never lost.
+const SILENT_TAIL = { said: 'silent', audio: join(tone(0.4), zeros(1.5)), endAt: 500 };
+const OKAY = { said: 'Okay.', audio: tone(0.3) };
+
+test('her whole line for the note is "silent" and the user taps in its quiet tail: the note is shown on a silent card, not lost', async () => {
+  const { k, w } = await start({ turns: [SILENT_TAIL, OKAY] });
+  try {
+    await wait(750);
+    k.agent.tap();
+    await k.agent.idle();
+    w.stop();
+    assert.deepEqual(await shown(k), [[FOR_USER, false]], 'the note, on a silent card');
+    assert.equal(k.agent.live.owing, false, 'nothing owed any more');
+  } finally {
+    w.stop();
+    await k.done();
+  }
+});
+
+test('her whole line for the note is "silent" and the user starts speaking in its quiet tail: the note is shown on a silent card, not lost', async () => {
+  const { k, w } = await start({ turns: [SILENT_TAIL, { said: 'Yes, until ten.', audio: tone(0.3), delayMs: 300 }, OKAY] });
+  try {
+    await wait(700);
+    k.platform.mic.feed(cat(hum(0.8), quiet(1)), RATE);
+    await soon(async () => (await shown(k)).length > 0, 8000);
+    await k.agent.idle();
+    w.stop();
+    assert.deepEqual(await shown(k), [[FOR_USER, false]], 'the note, on a silent card');
+  } finally {
+    w.stop();
+    await k.done();
+  }
+});
+
+test('a sentence that only holds brackets is an answer: "The pass (closing at nine) is open." passes the note', async () => {
+  const line = 'The pass (closing at nine) is open.';
+  const { k, w } = await quietSession([{ said: SAID, audio: tone(1), delayMs: 500 }, { said: line, audio: tone(0.4) }, { said: 'Okay.', audio: tone(0.3) }]);
+  try {
+    await Promise.all([tell(k), tell2(k)]);
+    await soon(async () => (await words(k)).includes(line), 20_000);
+    await k.agent.idle();
+    w.stop();
+    assert.deepEqual(cues(k), [], 'not asked once more');
+    assert.deepEqual(await shown(k), []);
   } finally {
     w.stop();
     await k.done();
@@ -241,6 +294,30 @@ test('a note gets nothing back, and the user types a line while the fresh sessio
     w.stop();
     assert.equal(notesIn(k).length, 1, 'the note went in once, and not again after the typed line');
     assert.deepEqual(await shown(k), [[FOR_USER, false]], 'the typed line showed the note on a silent card');
+  } finally {
+    w.stop();
+    await k.done();
+  }
+});
+
+// Haiku, slice b: the same window for a line that is no note. A typed line gets nothing back, the rescue's fresh session is connecting, and the user
+// types another: the second is the input now, and the first is not sent over its wait, but it is not lost either: it goes in again once the second is answered.
+test('a typed line gets nothing back, and the user types another while the fresh session connects: the first is not lost, it goes in again after the second is answered', async () => {
+  const LUNCH = { said: 'Lunch is at noon.', audio: tone(0.5) };
+  const { k, w } = await quietSession([{ silent: true }, LUNCH, { said: 'Okay.', audio: tone(0.3) }, { said: 'Okay again.', audio: tone(0.3) }]);
+  try {
+    k.agent.send('What time is the ferry?');
+    await wait(7000);
+    const setup = k.agent.live.c.setup;
+    k.agent.live.c.setup = async () => { await wait(1200); return setup(); }; // the fresh connection, at 8 s, takes 1.2 s
+    await wait(1500);
+    k.agent.send('What about lunch?');
+    await soon(async () => textsIn(k).filter((t) => t.includes('What time is the ferry?')).length >= 2, 15_000);
+    await k.agent.idle();
+    w.stop();
+    const ins = textsIn(k).filter((t) => /ferry\?|lunch\?/.test(t));
+    assert.equal(ins.filter((t) => t.includes('What time is the ferry?')).length, 2, 'the first line: once, and again');
+    assert.ok(ins.findIndex((t) => t.includes('What about lunch?')) < ins.findLastIndex((t) => t.includes('What time is the ferry?')), 'the first again only after the second');
   } finally {
     w.stop();
     await k.done();

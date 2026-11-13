@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { tone, soon, liveKit, say } from './koe-live-kit.js';
 import { until } from './agent-kit.js';
 import { hum, quiet, cat } from './voice-kit.js';
-import { RATE, PASS, FOR_USER, LOOKS, CONT, tell2, shown, lines, words, cues, asks, wait, start, lineAt, join, zeros } from './live-flight-kit.js';
+import { RATE, PASS, FOR_USER, LOOKS, CONT, tell2, shown, lines, words, cues, asks, wait, start, quietSession, lineAt, join, zeros } from './live-flight-kit.js';
 
 const OKAY = { said: 'Okay.', audio: tone(0.3) };
 
@@ -220,6 +220,25 @@ test('a note waiting when the user taps to stop her goes in once 2 s pass with n
     const pass = (await lines(k)).find((l) => l.text === PASS);
     assert.ok(pass?.voice && !pass.cut, 'said aloud, whole');
     assert.deepEqual(await shown(k), [[FOR_USER, false]], 'the cut note alone is shown');
+  } finally {
+    w.stop();
+    await k.done();
+  }
+});
+
+// Haiku, slice a: the dock says "Thinking · tap to stop" from the moment an urgent note is sent, before she has begun. A tap there closes the session
+// (nothing of hers is begun to stop), and the note, which a close would hand back to wait for the next session, is shown on a silent card: a tap
+// means stop, and the card stands (the user's pick, 2026-11-12).
+test('a tap after Kokoro\'s immediate note went in and before she has begun: the note is shown on a silent card, not kept for the next session', async () => {
+  const { k, w } = await quietSession([{ said: 'The station is open until ten.', audio: tone(0.8), delayMs: 4000 }, OKAY]);
+  try {
+    await k.agent.channel.send('kokoro', 'Tell the user the fuel station ahead is open until ten tonight.', 'immediate', 'tool', undefined, undefined, false, FOR_USER);
+    await wait(500);
+    assert.equal(k.agent.live.view.name, 'thinking');
+    assert.equal(k.agent.tap(), 'stopped');
+    await k.agent.idle();
+    assert.deepEqual(await shown(k), [[FOR_USER, false]], 'the note, on a silent card');
+    assert.equal(k.agent.live.owing, false, 'nothing is kept for the next session');
   } finally {
     w.stop();
     await k.done();
