@@ -167,3 +167,18 @@ test('the provider ends a turn annai had ended with interrupted and its turnComp
     await k.done();
   }
 });
+
+// An interrupted is the end of the turn before, never a reply to what went in: a typed line that meets her turn gets Gemini's interrupted for
+// that turn, and nothing for the line itself. The line's 8 s run on: a fresh session gets it again.
+test('a typed line cuts her turn, the provider sends interrupted for it and says nothing to the line: at 8 s a fresh session gets the line again', async () => {
+  const { k, w } = await start({ turns: [{ said: SAID, audio: tone(3) }, { said: 'Lunch is at noon.', audio: tone(0.5) }], server: { onText: { match: /What about lunch/, turn: { silent: true } } } });
+  try {
+    await wait(800);
+    k.agent.send('What about lunch?');
+    await soon(async () => (await silences(k)).length > 0, 12_000);
+    assert.deepEqual((await silences(k)).slice(0, 1), ['The live session gave no answer within 8 seconds: a fresh one gets it again.']);
+  } finally {
+    w.stop();
+    await k.done();
+  }
+});

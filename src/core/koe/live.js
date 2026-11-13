@@ -1212,6 +1212,7 @@ export class LiveKoe {
       this.#endedEarly = false;
       if (!this.#t) return; // the turn it ends is over, an interrupted too (Gemini ends the turn a note meets so): never an answer to what came since
     }
+    if (e.type === 'turn' && e.end === 'interrupted' && !this.#t) return; // nothing of hers is open: it cuts nothing and answers nothing
     // Her sound, words or tool calls are an exchange; what was heard, and turn edges, are not.
     if (e.type === 'audio' || e.type === 'tool' || (e.type === 'said' && realWord(e.text))) this.#poke();
     if (this.#answers(e)) {
@@ -1278,7 +1279,9 @@ export class LiveKoe {
     const due = this.#due;
     if (e.type === 'audio' || (e.type === 'said' && realWord(e.text))) return true;
     if (e.type !== 'tool' && e.type !== 'turn') return false;
-    if (e.type === 'turn' && this.#t?.goesOn) return false; // the end of a turn that goes on (a provider that never says all made): what she says after is to come
+    // The cut of the turn before (an interrupted is never a reply to what went in), or the end of a turn that goes on (a provider that never says
+    // all made): never her answer, nor a sign the session is alive.
+    if (e.type === 'turn' && (e.end === 'interrupted' || this.#t?.goesOn)) return false;
     if (due) due.alive = true; // the model answers something: a session to ask again, not to replace
     if (!due?.strict) return true;
     if (e.type === 'tool') due.tools = true;
