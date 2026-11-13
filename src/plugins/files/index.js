@@ -1,5 +1,6 @@
 import { VERSION } from '../../app/version.js';
 import { resolvePath, rootOf, RESULT_MAX, READ_ON } from '../../core/agent/tools.js';
+import { cut as cutAt } from '../../core/web-search.js';
 import { isTextType } from '../../core/paths.js';
 import { kindOf, SYS_WAITING } from '../../core/scopes.js';
 import { dropWaiting } from '../../core/waiting.js';
@@ -200,7 +201,7 @@ export function activate(annai) {
         if (!isTextType(entry.type)) return `${i.path} is a ${entry.type} file, which can't be read as text.`;
         const all = new TextDecoder().decode(bytes);
         const from = Math.max(0, i.from ?? 0);
-        const piece = all.slice(from, from + TEXT_MAX);
+        const piece = cutAt(all.slice(from), TEXT_MAX); // never ends inside an emoji: its pair goes whole into the next piece
         const rest = all.length - from - piece.length;
         return rest > 0 ? `${piece}\n… ${rest} more characters; read again with from: ${from + piece.length}` : piece;
       }),

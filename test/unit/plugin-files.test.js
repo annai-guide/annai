@@ -10,6 +10,7 @@ import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
 import { runTool, RESULT_MAX, READ_ON } from '../../src/core/agent/tools.js';
 import { utf8 } from '../../src/core/bytes.js';
+import { wellFormed } from '../../src/core/web-search.js';
 
 async function setup() {
   const registry = new Registry();
@@ -115,6 +116,27 @@ test("read's line that says how to read on also survives the note a path's other
     assert.ok(out.length <= RESULT_MAX, `the result (${out.length}) fits its limit`);
     assert.doesNotMatch(out, /were cut\.$/, 'the result is not cut');
     assert.match(out, /\n… \d+ more characters; read again with from: \d+$/, 'it ends with where to read on, whole');
+  }
+});
+
+test("a cut never splits an emoji: read's piece ends before the pair and the next begins with it, and the pieces are the file (review of backlog 6)", async () => {
+  const { trip, run, tools } = await setup();
+  const call = /** @type {any} */ ({ scope: trip, trip, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori' });
+  // Emoji are two UTF-16 units: with one letter before them or none, the piece's end falls inside a pair in one of the two.
+  for (const lead of ['', 'a']) {
+    const text = `${lead}${'😀'.repeat(30_000)}`;
+    await run('write', { path: '/trip/notes/faces.md', content: text });
+    let read = '';
+    for (let from = 0, n = 0; n < 10; n++) {
+      const out = (await runTool(tools.read, { path: '/trip/notes/faces.md', ...(from ? { from } : {}) }, call)).output.content;
+      assert.ok(wellFormed(out) === out, `piece ${n} (lead ${JSON.stringify(lead)}) has no half of an emoji`);
+      const on = /\n… (\d+) more characters; read again with from: (\d+)$/.exec(out);
+      read += on ? out.slice(0, on.index) : out;
+      if (!on) break;
+      assert.deepEqual([Number(on[1]), Number(on[2])], [text.length - read.length, read.length]);
+      from = Number(on[2]);
+    }
+    assert.equal(read, text, 'the pieces are the file');
   }
 });
 

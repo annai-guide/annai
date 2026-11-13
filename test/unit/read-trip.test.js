@@ -5,6 +5,7 @@ import { clip, quiet, cat, burst } from './voice-kit.js';
 import { useClock } from './clock.js';
 import { tripTools } from '../../src/core/agent/trip-tools.js';
 import { runTool, RESULT_MAX } from '../../src/core/agent/tools.js';
+import { wellFormed } from '../../src/core/web-search.js';
 import { KOE_TOOLS } from '../../src/core/koe/tools.js';
 import { createTrip, removeTrip, listTrips, tripMirror, ME, SYS_SETTINGS } from '../../src/core/scopes.js';
 import { timelineRows } from '../../src/core/timeline.js';
@@ -199,6 +200,20 @@ test("read_trip's read-on line is never the one cut: a long name, and lines that
   assert.ok(pieces.length > 1);
   for (const p of pieces.slice(0, -1)) assert.match(p.out, READ_ON);
   assert.equal(pieces.map((p) => p.text).join(''), text, 'from the read-on line, nothing skipped or doubled');
+});
+
+test("read_trip's piece never ends inside an emoji: the pair goes whole into the next piece, and the pieces are the file (review of backlog 6)", async (t) => {
+  useClock(t);
+  const k = await kit();
+  // Emoji are two UTF-16 units: with one letter before them or none, the piece's end falls inside a pair in one of the two.
+  for (const lead of ['', 'a']) {
+    const text = `${lead}${'😀'.repeat(30_000)}`;
+    await k.ws.write(TV, '/notes/faces.md', text, { author: 'user' });
+    const pieces = await readWhole(k, TV, '/notes/faces.md', text);
+    assert.ok(pieces.length > 1);
+    for (const p of pieces) assert.ok(wellFormed(p.out) === p.out, `a piece (lead ${JSON.stringify(lead)}) has no half of an emoji`);
+    assert.equal(pieces.map((p) => p.text).join(''), text, 'the pieces are the file');
+  }
 });
 
 test('read_trip refuses in words what it does not open: a photo, a PDF, another binary file, a path that is no path, a file that is not there, a removed or draft trip, the open one (Review Focus 4)', async (t) => {
