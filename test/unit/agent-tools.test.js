@@ -5,6 +5,7 @@ import { Registry } from '../../src/core/registry.js';
 import { tsv } from '../../src/core/tsv.js';
 import { checkTool, toolList, definitions, runTool, Stuck, resolvePath, RESULT_MAX } from '../../src/core/agent/tools.js';
 import { tracedFetch } from '../../src/core/agent/net.js';
+import { wellFormed } from '../../src/core/web-search.js';
 import { readAppSettings } from '../../src/core/settings.js';
 import { hostKit, codePlugin, builtinUrl } from './package-kit.js';
 
@@ -65,6 +66,16 @@ test('runTool: text, objects as JSON, photos kept, errors as results, and huge r
   const big = (await runTool(tool('a', () => 'x'.repeat(RESULT_MAX + 10)), {}, call())).output.content;
   assert.equal(big.length < RESULT_MAX + 200, true);
   assert.match(big, /10 more characters were cut/);
+});
+
+test("runTool: the cut of a huge result never splits an emoji, and counts what it took (review of backlog 6)", async () => {
+  const text = `${'x'.repeat(RESULT_MAX - 1)}😀${'y'.repeat(10)}`;
+  const out = (await runTool(tool('a', () => text), {}, call())).output.content;
+  assert.ok(wellFormed(out) === out, 'no half of the emoji is left at the cut');
+  const on = /\n… (\d+) more characters were cut\.$/.exec(out);
+  assert.ok(on);
+  assert.equal(out.slice(0, on.index), 'x'.repeat(RESULT_MAX - 1), 'the pair is left out whole');
+  assert.equal(on.index + Number(on[1]), text.length, 'the count is what was left out');
 });
 
 test('runTool: a tool that hangs stops when the user stops Shiori, with a result', async () => {

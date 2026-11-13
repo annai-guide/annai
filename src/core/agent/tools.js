@@ -2,6 +2,7 @@ import { normPath } from '../paths.js';
 import { ME, SYS_WAITING } from '../scopes.js';
 import { readAppSettings, updateAppSettings } from '../settings.js';
 import { anySignal } from '../signals.js';
+import { cut as cutAt } from '../web-search.js';
 
 /**
  * Tools (spec §5.4, §7.2). The loop's own tools come first, then each name's owner among running
@@ -86,10 +87,11 @@ function normalize(out) {
   return { content: JSON.stringify(out) };
 }
 
-/** @param {string} s */
+/** A result over the limit, cut before a pair of UTF-16 units (an emoji) it would split, and saying how many characters it left out. @param {string} s */
 function cut(s) {
   if (s.length <= RESULT_MAX) return s;
-  /* en */ return `${s.slice(0, RESULT_MAX)}\n… ${s.length - RESULT_MAX} more characters were cut.`;
+  const kept = cutAt(s, RESULT_MAX);
+  /* en */ return `${kept}\n… ${s.length - kept.length} more characters were cut.`;
 }
 
 /**
