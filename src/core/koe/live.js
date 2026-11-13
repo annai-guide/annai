@@ -767,14 +767,14 @@ export class LiveKoe {
   }
 
   /**
-   * A tap on Shiori (§10.4): while she speaks, or while what she says after a call is due (#due.more: she isn't done) and no tap stopped her yet,
-   * stops her and listens; while she listens, closes; else, with voice on, opens and listens.
+   * A tap on Shiori (§10.4): while she speaks, or a turn of hers is being made (the dock says Thinking), or what she says after a call is due
+   * (#due.more: she isn't done) and no tap stopped her yet, stops her and listens; while she listens, closes; else, with voice on, opens and listens.
    */
   tap() {
     this.tapping = null;
     this.#exchanged();
     this.#unmark();
-    if (this.#sounding || (this.#due?.more && !this.#stopped)) {
+    if (this.#sounding || (this.#t && !this.#t.cut) || (this.#due?.more && !this.#stopped)) {
       this.#lift();
       this.interrupt();
       this.#ready(this.listen());
@@ -795,7 +795,7 @@ export class LiveKoe {
     if (!this.c.voice?.on) return 'typing';
     this.#lift();
     if (this.#otherVoice()) this.c.release(); // the user asked: a reminder being said stops, and a session opens at once
-    if (this.state === 'closed' && this.#owed.waiting.length) this.#hearFirst = setTimeout(() => this.#heardFirst(), 2 * Math.max(500, this.c.secondMs ?? 1000));
+    if (this.state === 'closed' && this.#owed.waiting.length) this.#holdForUser();
     this.tapping = this.#ready(this.open('tap', { mic: true })).then((ok) => ok || !this.#failed ? 'ok' : 'failed', () => 'failed');
     return 'listening';
   }
@@ -814,6 +814,15 @@ export class LiveKoe {
     });
   }
 
+  /**
+   * The user gets the floor first after a tap: what waits (Kokoro's notes, a reminder, annai's lines) goes in once their first turn has ended, or 2 s pass
+   * with no speech (#heardFirst), room for a first word without holding a note long (the user's pick, 2026-11-12, "Wait for you, briefly").
+   */
+  #holdForUser() {
+    clearTimeout(this.#hearFirst);
+    this.#hearFirst = setTimeout(() => this.#heardFirst(), 2 * Math.max(500, this.c.secondMs ?? 1000));
+  }
+
   /** The user's first turn after a tap ended, or never began: what was kept goes in. */
   #heardFirst() {
     if (!this.#hearFirst) return;
@@ -825,20 +834,25 @@ export class LiveKoe {
   /**
    * Her voice stops now, and the provider is told where (cut: OpenAI truncates its record there); the session stays. The user stopped her
    * knowing, so what she was saying isn't said again, nor what waits behind it, nor what she makes before the next input (#stopped): written as
-   * her answer, after her line, shown, not spoken; of a note for them, what they didn't hear is shown, silently, never lost.
+   * her answer, after her line, shown, not spoken; of a note for them, what they didn't hear is shown, silently, never lost. A turn of hers still being
+   * made (#t: it has sound, or only a call, and no word heard yet) is stopped too, and a queued one still being made is written whole when it ends (#complete),
+   * never cut off here. The user gets the floor first: what waits goes in once their first turn ends, or after 2 s (#holdForUser).
    */
   interrupt() {
     const t = this.#sounding;
-    if (!t && !this.#due?.more) return; // in the wait for what she says after a call, nothing plays: the notes in flight are shown
+    const making = this.#t && !this.#t.cut ? this.#t : null;
+    if (!t && !making && !this.#due?.more) return; // in the wait for what she says after a call, nothing plays: the notes in flight are shown
     const playedMs = t ? this.#stop(t) : undefined;
+    if (making) making.cut = true; // after #stop, which reads whether she was heard whole
     const behind = this.#unwait();
     for (const w of behind) w.cut = true;
-    const write = () => { for (const w of behind) this.#said(w, null); };
+    const write = () => { for (const w of behind) if (w.done) this.#said(w, null); };
     if (t?.stream) void t.stream.done.then(write, write); // after hers, as the lines read in order
     else write();
     if (!this.#passes(t, Boolean(t?.whole)) && this.#owed.sent.length) this.c.left?.([...this.#owed.sent], true);
     this.#passed();
     this.#stopped = true;
+    this.#holdForUser();
     this.#input?.tapped();
     if (t) this.#send((s) => s.cut?.(playedMs));
   }
@@ -910,8 +924,6 @@ export class LiveKoe {
         else this.#notes = this.#notes.filter((x) => x !== n);
       });
     }
-    // Kokoro's immediate note replaces the one in flight (the user's pick, 2026-11-12): it is neither finished nor shown, as tell_koe tells Kokoro.
-    this.#passed();
     return this.#now(note, 'note', owed);
   }
 
@@ -934,9 +946,9 @@ export class LiveKoe {
     }
     if (!ok) return false;
     this.#input?.cut('voice'); // the user's turn going on ends here
-    // annai's own urgent reminder cuts in on the note in flight as the user does, before it goes in itself (#went): a silent card where she
-    // hadn't said it whole. (Kokoro's own immediate note replaced it already: note.)
-    const cut = told ? this.#cutIn() : this.#cut();
+    // It cuts in on what is in flight as the user does, before it goes in itself (#went): a silent card where she hadn't said it whole. Kokoro's own
+    // immediate note replaces Kokoro's note in flight instead (the user's pick, 2026-11-12), only now that it goes in: a close meanwhile hands that one on.
+    const cut = this.#cutIn(false, !told);
     if (owed) this.#went([owed]);
     this.#text(text, cut, false, told ? [text] : []);
     // A newer urgent note came meanwhile: its own mark runs once it goes in, after this one.
@@ -978,11 +990,13 @@ export class LiveKoe {
    * Something cuts in on her (the user's turn begins, by voice or a line they send; annai's urgent reminder): the note in flight was what she was
    * about to say, or saying, so it is passed on if her turn was heard whole (#passes), else shown at once, silently, as at a tap (interrupt); her
    * voice stops, and the provider cuts its turn, one with no word yet too, so it never starts over what comes. @param {boolean} [begins] the
-   * user's spoken start (#whole) @returns {{ playedMs?: number }}
+   * user's spoken start (#whole) @param {boolean} [replaces] Kokoro's immediate note: Kokoro's own note in flight is neither finished nor shown (the
+   * user's pick; tell_koe tells Kokoro so), and only that: annai's reminder in flight is shown as for any cut @returns {{ playedMs?: number }}
    */
-  #cutIn(begins = false) {
+  #cutIn(begins = false, replaces = false) {
     if (this.#owed.sent.length) {
-      if (!this.#passes(this.#sounding, this.#whole(this.#sounding, begins))) this.c.left?.(this.#owed.sent.splice(0), true);
+      const shown = replaces ? this.#owed.sent.filter((w) => w.kind !== 'note') : this.#owed.sent;
+      if (shown.length && !this.#passes(this.#sounding, this.#whole(this.#sounding, begins))) this.c.left?.(shown, true);
       this.#passed();
     }
     return this.#sounding || this.#t || this.#pending || this.#queue.length ? this.#cut() : {};
@@ -1129,6 +1143,7 @@ export class LiveKoe {
     if (due.more && due.text === '') {
       /* en */ this.#write({ type: 'error', actor: 'system', data: { kind: 'live-silent', message: `The live session said nothing within ${SILENT_S} seconds of a tool's answer.`, quiet: true } });
       this.#settle(null);
+      this.#heardOut(); // the urgent mark's answer has come, though it was a lookup: the microphone hears again, and the ask goes in
       return this.#idle();
     }
     // Asked once more, and nothing back: annai shows them and says them (Halves), with no fresh session; what waited goes in.
@@ -1149,6 +1164,11 @@ export class LiveKoe {
       this.#rescued = true;
       return this.#reconnect('silent', { spell: false }).then((ok) => { if (!ok) this.#gone(false); });
     }
+    // A tap stopped her: nothing is asked aloud (the ask again says "answer them aloud") and no fresh session gets the words; what waits goes in (#idle).
+    if (this.#stopped) {
+      /* en */ this.#write({ type: 'error', actor: 'system', data: { kind: 'live-silent', message: `The live session gave no answer within ${SILENT_S} seconds, and the user had stopped her: nothing is asked.`, quiet: true } });
+      return this.#idle();
+    }
     const again = !this.#rescued;
     /* en */ const how = !again ? '' : due.alive ? ': it is asked again' : ': a fresh one gets it again';
     /* en */ this.#write({ type: 'error', actor: 'system', data: { kind: 'live-silent', message: `The live session gave no answer within ${SILENT_S} seconds${how}.`, quiet: true } });
@@ -1156,11 +1176,11 @@ export class LiveKoe {
     if (!again) return this.#gone(true);
     this.#rescued = true;
     if (due.alive) return this.#text(UNANSWERED, undefined, true, [UNANSWERED]);
-    // The words go once more, into a fresh session, and nothing else before them: a note among them stays the one in flight (#reconnect).
+    // The words go once more, into a fresh session, and nothing else before them: a note among them stays the one in flight (#reconnect). A line the
+    // user sent or an urgent note that went in meanwhile (#due) is the input now: the old words are not sent after it, over its wait.
     const ok = await this.#reconnect('silent', { fresh: true });
     if (!ok) return this.#gone(false);
-    if (due.text) this.#text(due.text, undefined, false, due.told);
-    else this.#idle();
+    if (!this.#due) this.#text(/** @type {string} */ (due.text), undefined, false, due.told); // never null or '' here: both were answered above
   }
 
   /** @param {'start' | 'end'} edge */
@@ -1250,10 +1270,10 @@ export class LiveKoe {
       this.#rotate = true;
       this.#idle();
     } else if (e.type === 'turn' && e.end === 'interrupted') {
-      // Cut off: what was said stops where it was heard; words still coming for it are dropped.
-      if (this.#t) this.#stop(this.#t);
-      this.#trail = this.#t ?? newTurn();
-      this.#trail.cut = true;
+      // Cut off: what was said stops where it was heard; words still coming for it are dropped. (A turn is open: none returned above.)
+      const t = /** @type {Turn} */ (this.#t);
+      this.#stop(t); // marks it cut
+      this.#trail = t;
       this.#t = null;
     } else if (e.type === 'turn') this.#complete();
     else if (e.type === 'made' && this.#t && this.#makes) { // all made: never a turn of its own, as it comes after what it ends
@@ -1606,7 +1626,7 @@ export class LiveKoe {
     // for what she says after the answer, and are shown if the user speaks first.
     if (text && this.#passes(t, !cut) && this.#owed.sent.length && t.wordAt >= this.#owed.at) this.#passed();
     const v = this.c.voice;
-    const aloud = Boolean(text && !cut && v?.on && (t.stalled || v.stuck));
+    const aloud = Boolean(text && !cut && !t.cut && v?.on && (t.stalled || v.stuck)); // a turn the user stopped is never read aloud
     const voiced = Boolean(t.stream || aloud);
     const [modelId, wake] = [this.modelId, this.#wake]; // as they are now: a close clears the model before the write below runs
     if (text) this.#write(async () => {
@@ -1719,7 +1739,6 @@ export class LiveKoe {
     this.#endedEarly = true;
     this.#complete();
     this.#trail = null; // all made: words that come now are her next turn's
-    this.#changed();
   }
 
   /**
@@ -1753,8 +1772,9 @@ export class LiveKoe {
     if (this.#rotate) return void this.#reconnect('goaway').then((ok) => { if (!ok) this.#gone(false); });
     const o = this.#owed;
     const free = !o.sent.length && !(this.#due && !this.#due.tools);
-    const kept = free && !this.#hearFirst ? o.waiting.slice(0, 1) : [];
-    const notes = free ? this.#notes.splice(0) : [];
+    const first = free && !this.#hearFirst; // after a tap the user has the floor first: nothing waiting goes in until #heardFirst
+    const kept = first ? o.waiting.slice(0, 1) : [];
+    const notes = first ? this.#notes.splice(0) : [];
     const cue = o.cue ? [CUE] : [];
     const text = [...notes.map((n) => n.text), ...kept.map((w) => w.line ?? wrapNote(String(w.note ?? ''), this.c.nonce, { forUser: w.forUser })), ...cue];
     if (!text.length) return;
@@ -1784,7 +1804,7 @@ export class LiveKoe {
     clearTimeout(n.timer);
     if (n.of !== this.#stretch || this.state !== 'open') return void (this.#late = null);
     // Each calls #idle as it ends; a session told to go (GoAway) takes it once the next is ready, never the one being left.
-    if (this.#hers() || this.#urgent || this.#closing || this.#rotate) return;
+    if (this.#hers() || this.#urgent || this.#closing || this.#rotate || this.#due?.more || this.#owed.sent.length) return; // one input at a time (#idle)
     const going = Boolean(this.#input?.active);
     const due = this.#due?.text === null;
     if (going && !n.by) return; // its end sets the bound (#activity)

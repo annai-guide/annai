@@ -970,7 +970,7 @@ test('an urgent note answered with words and a tool she speaks after: the microp
   const k = await liveKit([
     { heard: 'la la' },
     { said: 'Turn left now.', audio: tone(0.3), tool: { name: 'list', args: { path: '/trip/' } }, andThen: true },
-    { said: 'Then keep right for the bridge.', audio: tone(0.6), delayMs: 1500 },
+    { said: 'Then keep right for the bridge.', audio: tone(0.6), delayMs: 500 }, // inside the 8-second wait (a second is 125 ms here): a later one finds the microphone listening again
   ], { pace: 1 });
   try {
     await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });

@@ -154,3 +154,27 @@ test('a note that comes as the user\'s turn ends goes in only once her answer to
     await k.done();
   }
 });
+
+// Review F8: the fresh session a silent note's rescue opens takes a second to connect; a line the user types meanwhile is the input now, and the old
+// note text is not sent after it (it went in after the typed line and replaced its wait).
+test('a note gets nothing back, and the user types a line while the fresh session connects: the line goes in, and the old note is not sent after it', async () => {
+  const LUNCH = { said: 'Lunch is at noon.', audio: tone(0.5) };
+  const { k, w } = await quietSession([{ silent: true }, LUNCH, { said: 'Okay.', audio: tone(0.3) }]);
+  try {
+    await tell(k);
+    await wait(7000);
+    const setup = k.agent.live.c.setup;
+    k.agent.live.c.setup = async () => { await wait(1200); return setup(); }; // the fresh connection, at 8 s, takes 1.2 s
+    await wait(1500);
+    k.agent.send('What about lunch?');
+    await soon(async () => (await words(k)).includes(LUNCH.said), 15_000);
+    await wait(1500);
+    await k.agent.idle();
+    w.stop();
+    assert.equal(notesIn(k).length, 1, 'the note went in once, and not again after the typed line');
+    assert.deepEqual(await shown(k), [[FOR_USER, false]], 'the typed line showed the note on a silent card');
+  } finally {
+    w.stop();
+    await k.done();
+  }
+});
