@@ -2391,6 +2391,55 @@ test("with Koe on a chat model, a reminder or a place alert due while Koe's mode
   }
 });
 
+// One Shiori (no Koe model), or Kokoro while Koe is down, waiting for the user with her wait tool: a reminder due then ends her wait too, so she says
+// it on time rather than when the wait runs out (up to 600 s), with words that fit her: no note of Kokoro's is to come (backlog 23).
+const ONE_DUE = "A reminder came due: say it (below). The user hasn't answered yet.";
+const ONE_CUE_DUE = "An alert came (below): say it if it helps them now, or let it pass. The user hasn't answered yet.";
+/** Shiori, one, or Kokoro answering herself: "Take your time.", and a wait for the user; what fired is said, and she sleeps. */
+const waitingOne = { rules: [
+  { match: 'a place watch fired', reply: say('The old town is just ahead.') },
+  { match: 'a watch fired', reply: say(LEAVE_NOW) },
+  { match: 'the user wrote', reply: { toolCalls: [{ name: 'speak', input: { text: 'Take your time.' } }, { name: 'wait', input: { seconds: 600 } }] } },
+  { match: '.', reply: sleep },
+] };
+/** Her wait results (one Shiori's, Kokoro's), in order. @param {any} k */
+const ownWaits = async (k) => (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.half !== 'koe' && e.data.name === 'wait').map((/** @type {any} */ e) => e.data.content);
+
+for (const [what, o] of /** @type {[string, Record<string, any>][]} */ ([
+  ['one Shiori, voice off (her wait waits for typing)', {}],
+  ['one Shiori, voice on (her wait listens)', VOICE],
+  ['Kokoro while Koe is down, voice on', { ...VOICE, koe: { talk: [{ error: 'auth', message: 'bad key' }] } }],
+])) {
+  test(`${what}: a reminder due while her wait tool waits for the user ends the wait, and she says it within a second, once; annai shows nothing itself (backlog 23)`, async (t) => {
+    useClock(t);
+    const k = await gateKit(waitingOne, o);
+    k.agent.send('Plan our day');
+    await until(() => k.agent.kokoro.waiting);
+    if (o.koe) assert.equal(k.agent.koeState, 'down');
+    await pause(30 * k.agent.secondMs);
+    const t0 = Date.now();
+    k.agent.wake(DUE);
+    await soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => e.data.text === LEAVE_NOW), 700 * k.agent.secondMs);
+    assert.ok(Date.now() - t0 <= 1 * k.agent.secondMs, `said ${(Date.now() - t0) / k.agent.secondMs} s after it came due`);
+    assert.deepEqual(await ownWaits(k), [ONE_DUE], 'what her model reads as its wait ends');
+    await k.agent.idle();
+    assert.deepEqual(await reminders(k), { filed: [], cards: 0 }, 'annai shows nothing itself');
+    assert.equal((await k.events(['out.speak'])).filter((/** @type {any} */ e) => e.data.text === LEAVE_NOW).length, 1, 'said once');
+    if (o.voice) assert.equal(k.said.filter((/** @type {string} */ x) => x === LEAVE_NOW).length, 1, `said aloud once: ${JSON.stringify(k.said)}`);
+  });
+}
+
+test('one Shiori: a place alert ends her wait too, with words that say she may let it pass', async (t) => {
+  useClock(t);
+  const k = await gateKit(waitingOne);
+  k.agent.send('Plan our day');
+  await until(() => k.agent.kokoro.waiting);
+  k.agent.wake(CUE);
+  await soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => e.data.text === 'The old town is just ahead.'), 10 * k.agent.secondMs);
+  assert.deepEqual(await ownWaits(k), [ONE_CUE_DUE]);
+  await k.agent.idle();
+});
+
 // A reminder already queued when the wait begins: due while her model call ran, so before the card or her question appeared.
 const DUE_2 = { kind: 'trigger', text: 'a watch fired', fallbacks: [{ watch: 'w2', text: 'Buy the tickets.' }] };
 /** annai's reminders written in a conversation and shown as cards, by their words, in order. @param {any} k */
