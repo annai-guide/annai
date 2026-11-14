@@ -506,7 +506,7 @@ pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重复操作	src/core
 1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什么也没对你说就结束了。	src/core/agent/loop.js:2581	
 2bgbpn	ok	Shiori didn't answer	Shiori 没有回答	src/core/agent/loop.js:2585	
 1mjdfzn	ok	Shiori can't reach her model	Shiori 无法连接到模型	src/core/agent/loop.js:2659	
-1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	这个模型只接受 {0} 格式的照片，但这个浏览器无法生成。添加支持 {1} 的插件即可解决（设置 → 插件）。	src/core/agent/loop.js:2686	{0} = names; {1} = names
+12qfj9m	ok	This model takes photos only as {0}, which this browser can't make. Try another model in Settings → Models.	这个模型只接受 {0} 格式的照片，但这个浏览器无法生成。可以在设置 → 模型中换一个模型。	src/core/agent/loop.js:2686	{0} = names
 1uhz9dg	ok	Shiori couldn't send the photo	Shiori 无法发送照片	src/core/agent/loop.js:2745	
 vjxaph	ok	Your turn	轮到你了	src/core/agent/loop.js:3238	
 19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	这个浏览器要轻点一下才能播放声音。她说的话在对话里。	src/core/agent/loop.js:3395	

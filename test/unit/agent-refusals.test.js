@@ -82,12 +82,12 @@ test('the same refusal again, after a repair, is not looped on', async () => {
   assert.equal(k.notices[0].title, "Shiori couldn't send the photo");
 });
 
-test('a format no encoder here can make: a card names it', async () => {
+test('a format no encoder here can make: a card names it and points at another model, not a plugin', async () => {
   const k = await agentKit([[{ error: 'image', status: 400, message: 'Only image/avif is supported.' }]], { codecFormats: ['image/webp', 'image/jpeg'] });
   await photo(k);
   k.agent.send('Look', { photos: [{ path: '/trip/files/p.webp' }] });
   await k.agent.idle();
-  assert.match(k.notices[0].body, /AVIF/);
+  assert.equal(k.notices[0].body, "This model takes photos only as AVIF, which this browser can't make. Try another model in Settings → Models.");
 });
 
 test("photos over a model's count go as stubs, the oldest first", async () => {

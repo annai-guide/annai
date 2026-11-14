@@ -2683,7 +2683,7 @@ export class Agent {
     const canMake = this.codec.canMake?.bind(this.codec);
     if (images.formats?.length && canMake && !(await Promise.all(images.formats.map((x) => canMake(x)))).some(Boolean)) {
       const names = list(images.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or');
-      return this.#cantSend(t`This model takes photos only as ${names}, which this browser can't make. A plugin that adds ${names} would fix it (Settings → Plugins).`, wakeId);
+      return this.#cantSend(t`This model takes photos only as ${names}, which this browser can't make. Try another model in Settings → Models.`, wakeId);
     }
     // A model removed meanwhile needs no limits: nothing is saved, and nothing is made again for it.
     await updateModel(this.ws, rec.id, (now) => ({ ...now, user: { ...(now.user ?? {}), images } })).catch((/** @type {unknown} */ e) => {

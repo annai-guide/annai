@@ -506,7 +506,7 @@ pydksy	ok	Shiori stopped repeating herself	Shioriは同じことの繰り返し�
 1nvuxc8	ok	Her model finished without saying anything to you.	Shioriのモデルが、何も返事をしないまま終了しました。	src/core/agent/loop.js:2581	Note: "Her" is Shiori's in ja.
 2bgbpn	ok	Shiori didn't answer	Shioriから返事がありませんでした	src/core/agent/loop.js:2585	
 1mjdfzn	ok	Shiori can't reach her model	Shioriがモデルに接続できません	src/core/agent/loop.js:2659	
-1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	このモデルが受け付ける写真の形式は{0}だけですが、このブラウザでは作成できません。{1}に対応するプラグインを追加すると解決します（「設定 → プラグイン」）。	src/core/agent/loop.js:2686	{0} = names; {1} = names
+12qfj9m	ok	This model takes photos only as {0}, which this browser can't make. Try another model in Settings → Models.	このモデルが受け付ける写真の形式は{0}だけですが、このブラウザでは作成できません。「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:2686	{0} = names
 1uhz9dg	ok	Shiori couldn't send the photo	Shioriは写真を送れませんでした	src/core/agent/loop.js:2745	
 vjxaph	ok	Your turn	返事待ち	src/core/agent/loop.js:3238	
 19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	このブラウザでは、タップしないと音が出ません。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:3395	
