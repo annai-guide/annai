@@ -133,7 +133,7 @@ test("a full phone doesn't stop start when the old profile is rewritten; the pro
 /** @param {import('../../src/core/workspace.js').Workspace} ws @param {string[]} spoken */
 const speaks = (ws, spoken) => updateAppSettings(ws, { languages: { spoken, answer: 'follow' } });
 
-test("an edited profile loses the old Language line at start when the languages picked hold no English: that line alone, every other byte as it was", async () => {
+test("an edited profile loses the old Language line at start when the languages picked (which Shiori is told of first) hold no English: that line alone, every other byte as it was", async () => {
   for (const [before, after] of [
     ['# Profile\n\n- What to call me: Alex\n- Language: English\n- Units: metric\n- Preferences: window seat\n', '# Profile\n\n- What to call me: Alex\n- Units: metric\n- Preferences: window seat\n'],
     ['# Profile\r\n\r\n- What to call me: Alex\r\n- Language: English\r\n- Units:\r\n', '# Profile\r\n\r\n- What to call me: Alex\r\n- Units:\r\n'],
@@ -163,7 +163,7 @@ test("the Language line stays when the languages she is told of hold English (pi
     ['- Language: English', (ws) => speaks(ws, ['ja', 'en']), 'ja-JP'],
     ['- Language: English', (ws) => speaks(ws, ['en']), 'ja-JP'],
     ['- Language: English', (ws) => speaks(ws, ['en']), undefined],
-    // English and Japanese listed, Shiori answers in Japanese: the pick says "only when the person's languages don't include English".
+    // English and Japanese listed, Shiori answers in Japanese: the line stays, since English is among the languages she is told of (the user's pick 2026-11-14, "Keep as built").
     ['- Language: English', (ws) => updateAppSettings(ws, { languages: { spoken: ['ja', 'en'], answer: 'ja' } }), 'ja-JP'],
     ['- Language: English', null, undefined],
     ['- Language: English', null, 'en-GB'],
