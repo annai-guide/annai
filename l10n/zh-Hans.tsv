@@ -469,7 +469,7 @@ d4j0a5	ok	Photo {0}	照片 {0}	src/core/after/replay.js:134	{0} = e.path.split('
 bo3wjk	ok	Shiori stopped: today's budget is spent	Shiori 已停止：今天的花费已达上限	src/core/agent/budgets.js:118	
 67wvld	ok	Shiori stopped: step limit	Shiori 已停止：步数已达上限	src/core/agent/budgets.js:123	
 177194c	ok	She took {0} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.	她自己在做一件没人让她做的事，已经做了 {0} 步，所以先停在这里。想让她继续，告诉她就行。	src/core/agent/budgets.js:124	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告诉她), not the glossary's Ask, Safari's 询问 choice.
-1o4yqf3	ok	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	这次唤醒最多可以做 {0} 步，她已经做完了（设置 → Shiori → 她主动行动的频率）。想让她继续，告诉她就行。	src/core/agent/budgets.js:125	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告诉她), not the glossary's Ask, Safari's 询问 choice; the setting's path as the screens name it.
+1o4yqf3	ok	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	这次唤醒最多可以做 {0} 步（设置 → Shiori → 她主动行动的频率），她已经做完了。想让她继续，告诉她就行。	src/core/agent/budgets.js:125	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告诉她), not the glossary's Ask, Safari's 询问 choice; the setting's path as the screens name it.
 1vskjkw	ok	Live is resting; Koe · Chat is answering	实时语音暂停中，改由 Koe · 聊天 回答	src/core/agent/halves.js:584	
 edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	暂时由 Shiori 直接回答。原因见“记录”（模型）；Koe 几分钟后会再试一次。	src/core/agent/halves.js:663	
 yvabm6	ok	Koe's live voice couldn't start	Koe 的实时语音无法启动	src/core/agent/halves.js:663	Note: "live voice" is the glossary's Live voice (实时语音), not a voice she speaks with (声音).
@@ -539,8 +539,8 @@ mowdsi	ok	Read {0}, last talked {1}?	允许 Shiori 读取“{0}”（上次对�
 c9wfke	ok	Not now	暂不	src/core/agent/trip-tools.js:389	
 nfb55e	ok	Allow	允许	src/core/agent/trip-tools.js:389	
 n6hn1l	ok	Open	打开	src/core/agent/trip-tools.js:496	
-myk8x4	ok	annai couldn't reach {0} ({1}). Is the device offline?	无法连接 {0}（{1}）。这台设备是否离线了？	src/core/answer.js:18	{0} = where; {1} = s.info; Note: {1} is the browser's own words, often English.
-uc7dg2	ok	annai couldn't reach {0}. Is the device offline?	无法连接 {0}。这台设备是否离线了？	src/core/answer.js:18	{0} = where
+myk8x4	ok	annai couldn't reach {0} ({1}). Is the device offline?	无法连接 {0}（{1}）。设备是不是离线了？	src/core/answer.js:18	{0} = where; {1} = s.info; Note: {1} is the browser's own words, often English.
+uc7dg2	ok	annai couldn't reach {0}. Is the device offline?	无法连接 {0}。设备是不是离线了？	src/core/answer.js:18	{0} = where
 15czcef	ok	{0} answered {1}.	{0} 返回了 {1}。	src/core/answer.js:19	{0} = where; {1} = s.status; Note: {1} is an HTTP status code.
 1nhf5ew	ok	{0} sent an answer annai can't read.	{0} 返回了 annai 无法读取的内容。	src/core/answer.js:20	{0} = where
 17yvnnz	ok	{0} sent more than annai reads ({1}).	{0} 返回的内容超过了读取上限（{1}）。	src/core/answer.js:21	{0} = where; {1} = size(s.mb * 1_048_576)
@@ -709,8 +709,8 @@ il3b75	ok	That provider no longer exists, or its plugin isn't running.	这个提
 10qbfg	ok	annai couldn't reach {0}. Check the address and your connection.	无法连接 {0}。请检查地址和网络连接。	src/core/llm/contract.js:174	{0} = host
 16osh89	ok	{0} can't list its models here. Add them by id.	{0} 无法在这里列出它的模型。请按 ID 添加。	src/core/llm/contract.js:175	{0} = ability
 1cdx16o	ok	{0} takes no audio format this phone makes ({1}).	{0} 不支持这部手机能录制的任何音频格式（{1}）。	src/core/llm/contract.js:176	{0} = name; {1} = list(formats ?? [], 'plain')
-1veszp7	ok	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} 的 {1} 生成的请求发往了 {2}，而不是它的地址 {3}。请检查它的可调参数。	src/core/llm/contract.js:177	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
-o2nib5	ok	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} 的 {1} 生成的请求发往了无效地址，而不是它的地址 {2}。请检查它的可调参数。	src/core/llm/contract.js:178	{0} = name; {1} = ability; {2} = s.want
+1veszp7	ok	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} 的 {1} 生成的请求指向了 {2}，而不是它的地址 {3}。请检查它的可调参数。	src/core/llm/contract.js:177	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
+o2nib5	ok	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} 的 {1} 生成的请求指向了无效地址，而不是它的地址 {2}。请检查它的可调参数。	src/core/llm/contract.js:178	{0} = name; {1} = ability; {2} = s.want
 1fwqnho	ok	Nothing in the speech-in list can hear it for {0}.	语音识别列表中没有一项能为 {0} 识别这段语音。	src/core/llm/contract.js:179	{0} = name
 g63xkc	ok	Prices are an object, like {"input": 1, "output": 4}.	价格应为对象，例如 {"input": 1, "output": 4}。	src/core/llm/cost.js:96	
 m0hi3r	ok	In a tier, {0} is not a price: it is a number, not below 0.	在 "tiers" 中，{0} 的值不是有效价格，必须是不小于 0 的数字。	src/core/llm/cost.js:97	{0} = f.key; Note: a tier is a price step for long prompts; "tiers" is the JSON key the user types.
@@ -2702,7 +2702,7 @@ vd6kvu	ok	thinks things through and does the work: planning, searching, reading 
 syq6fy	ok	Plan the trip day by day with Shiori, and add your confirmations: PDFs, Wallet passes, screenshots. You book; annai never books for you.	和 Shiori 一起逐日安排行程，并添加预订确认：PDF、钱包卡券、截图。预订由你自己来，annai 从不替你预订。	src/ui/screens/welcome.js:65	
 1oxs9av	ok	GPS.	GPS。	src/ui/screens/welcome.js:66	
 pcgaa8	ok	With GPS on, annai follows where you are and reminds you at the right time and place: when to leave, when you've arrived, when you're running late.	开启 GPS 后，annai 会实时定位，在合适的时间和地点提醒你：该出发了、已经到了、快要迟到了。	src/ui/screens/welcome.js:66	
-1q5h6fn	ok	Talk with Shiori hands-free, in the car or on a trail.	在车里或步道上，都能免提和 Shiori 对话。	src/ui/screens/welcome.js:67	
+1q5h6fn	ok	Talk with Shiori hands-free, in the car or on a trail.	在车上或徒步时，都能免提和 Shiori 对话。	src/ui/screens/welcome.js:67	
 sb3fh1	ok	Voice.	语音。	src/ui/screens/welcome.js:67	
 1f1esb6	ok	Offline places.	离线地点。	src/ui/screens/welcome.js:68	
 zzwxlp	ok	OpenStreetMap places, Wikipedia summaries and Wikivoyage guides along your itinerary, for when there's no signal.	行程沿途的 OpenStreetMap 地点、Wikipedia 摘要和 Wikivoyage 指南，没有信号时也能查看。	src/ui/screens/welcome.js:68	

@@ -469,7 +469,7 @@ d4j0a5	ok	Photo {0}	照片 {0}	src/core/after/replay.js:134	{0} = e.path.split('
 bo3wjk	ok	Shiori stopped: today's budget is spent	Shiori 已停止：今天的花費已達上限	src/core/agent/budgets.js:118	
 67wvld	ok	Shiori stopped: step limit	Shiori 已停止：步數已達上限	src/core/agent/budgets.js:123	
 177194c	ok	She took {0} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.	她自己在做一件沒人要她做的事，已經做了 {0} 步，所以先停在這裡。想讓她繼續，告訴她就好。	src/core/agent/budgets.js:124	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告訴她), not the glossary's Ask, Safari's 詢問 choice.
-1o4yqf3	ok	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	這次喚醒最多可以做 {0} 步，她已經做完了（設定 → Shiori → 她主動行動的頻率）。想讓她繼續，告訴她就好。	src/core/agent/budgets.js:125	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告訴她), not the glossary's Ask, Safari's 詢問 choice; the setting's path as the screens name it.
+1o4yqf3	ok	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	這次喚醒最多可以做 {0} 步（設定 → Shiori → 她主動行動的頻率），她已經做完了。想讓她繼續，告訴她就好。	src/core/agent/budgets.js:125	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告訴她), not the glossary's Ask, Safari's 詢問 choice; the setting's path as the screens name it.
 1vskjkw	ok	Live is resting; Koe · Chat is answering	即時語音暫停中，改由 Koe · 聊天 回答	src/core/agent/halves.js:584	
 edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	暫時由 Shiori 直接回答。原因請見「記錄」（模型）；Koe 幾分鐘後會再試一次。	src/core/agent/halves.js:663	
 yvabm6	ok	Koe's live voice couldn't start	Koe 的即時語音無法啟動	src/core/agent/halves.js:663	Note: "live voice" is the glossary's Live voice (即時語音), not a voice she speaks with (聲音).
@@ -539,8 +539,8 @@ mowdsi	ok	Read {0}, last talked {1}?	允許 Shiori 讀取「{0}」（上次對�
 c9wfke	ok	Not now	現在不要	src/core/agent/trip-tools.js:389	Note: 現在不要, as Taiwan's iPhone says Not Now.
 nfb55e	ok	Allow	允許	src/core/agent/trip-tools.js:389	
 n6hn1l	ok	Open	開啟	src/core/agent/trip-tools.js:496	
-myk8x4	ok	annai couldn't reach {0} ({1}). Is the device offline?	無法連線到 {0}（{1}）。這台裝置是否離線了？	src/core/answer.js:18	{0} = where; {1} = s.info; Note: {1} is the browser's own words, often English.
-uc7dg2	ok	annai couldn't reach {0}. Is the device offline?	無法連線到 {0}。這台裝置是否離線了？	src/core/answer.js:18	{0} = where
+myk8x4	ok	annai couldn't reach {0} ({1}). Is the device offline?	無法連線到 {0}（{1}）。裝置是不是離線了？	src/core/answer.js:18	{0} = where; {1} = s.info; Note: {1} is the browser's own words, often English.
+uc7dg2	ok	annai couldn't reach {0}. Is the device offline?	無法連線到 {0}。裝置是不是離線了？	src/core/answer.js:18	{0} = where
 15czcef	ok	{0} answered {1}.	{0} 傳回了 {1}。	src/core/answer.js:19	{0} = where; {1} = s.status; Note: {1} is an HTTP status code.
 1nhf5ew	ok	{0} sent an answer annai can't read.	{0} 傳回了 annai 無法讀取的內容。	src/core/answer.js:20	{0} = where
 17yvnnz	ok	{0} sent more than annai reads ({1}).	{0} 傳回的內容超過了讀取上限（{1}）。	src/core/answer.js:21	{0} = where; {1} = size(s.mb * 1_048_576)
@@ -709,8 +709,8 @@ il3b75	ok	That provider no longer exists, or its plugin isn't running.	這個供
 10qbfg	ok	annai couldn't reach {0}. Check the address and your connection.	無法連線到 {0}。請檢查網址和網路連線。	src/core/llm/contract.js:174	{0} = host
 16osh89	ok	{0} can't list its models here. Add them by id.	{0} 無法在這裡列出它的模型。請依 ID 新增。	src/core/llm/contract.js:175	{0} = ability
 1cdx16o	ok	{0} takes no audio format this phone makes ({1}).	{0} 不支援這支手機能錄製的任何音訊格式（{1}）。	src/core/llm/contract.js:176	{0} = name; {1} = list(formats ?? [], 'plain')
-1veszp7	ok	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} 的 {1} 產生的請求送往了 {2}，而不是它的網址 {3}。請檢查它的可調參數。	src/core/llm/contract.js:177	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
-o2nib5	ok	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} 的 {1} 產生的請求送往了無效網址，而不是它的網址 {2}。請檢查它的可調參數。	src/core/llm/contract.js:178	{0} = name; {1} = ability; {2} = s.want
+1veszp7	ok	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} 的 {1} 產生的請求指向了 {2}，而不是它的網址 {3}。請檢查它的可調參數。	src/core/llm/contract.js:177	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
+o2nib5	ok	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} 的 {1} 產生的請求指向了無效網址，而不是它的網址 {2}。請檢查它的可調參數。	src/core/llm/contract.js:178	{0} = name; {1} = ability; {2} = s.want
 1fwqnho	ok	Nothing in the speech-in list can hear it for {0}.	語音辨識清單中沒有一項能為 {0} 辨識這段語音。	src/core/llm/contract.js:179	{0} = name
 g63xkc	ok	Prices are an object, like {"input": 1, "output": 4}.	價格應為物件，例如 {"input": 1, "output": 4}。	src/core/llm/cost.js:96	
 m0hi3r	ok	In a tier, {0} is not a price: it is a number, not below 0.	在 "tiers" 中，{0} 的值不是有效價格，必須是不小於 0 的數字。	src/core/llm/cost.js:97	{0} = f.key; Note: a tier is a price step for long prompts; "tiers" is the JSON key the user types.
@@ -2702,7 +2702,7 @@ vd6kvu	ok	thinks things through and does the work: planning, searching, reading 
 syq6fy	ok	Plan the trip day by day with Shiori, and add your confirmations: PDFs, Wallet passes, screenshots. You book; annai never books for you.	和 Shiori 一起逐日安排行程，並新增預訂確認：PDF、錢包票卡、截圖。預訂由你自己來，annai 從不替你預訂。	src/ui/screens/welcome.js:65	
 1oxs9av	ok	GPS.	GPS。	src/ui/screens/welcome.js:66	
 pcgaa8	ok	With GPS on, annai follows where you are and reminds you at the right time and place: when to leave, when you've arrived, when you're running late.	開啟 GPS 後，annai 會即時定位，在合適的時間和地點提醒你：該出發了、已經到了、快要遲到了。	src/ui/screens/welcome.js:66	
-1q5h6fn	ok	Talk with Shiori hands-free, in the car or on a trail.	在車裡或步道上，都能免持和 Shiori 對話。	src/ui/screens/welcome.js:67	
+1q5h6fn	ok	Talk with Shiori hands-free, in the car or on a trail.	在車上或健行時，都能免持和 Shiori 對話。	src/ui/screens/welcome.js:67	
 sb3fh1	ok	Voice.	語音。	src/ui/screens/welcome.js:67	
 1f1esb6	ok	Offline places.	離線地點。	src/ui/screens/welcome.js:68	
 zzwxlp	ok	OpenStreetMap places, Wikipedia summaries and Wikivoyage guides along your itinerary, for when there's no signal.	行程沿途的 OpenStreetMap 地點、Wikipedia 摘要和 Wikivoyage 指南，沒有訊號時也能查看。	src/ui/screens/welcome.js:68	
@@ -2718,8 +2718,8 @@ lls8s7	ok	annai is built so your keys and data stay yours. Here is exactly how, 
 13hsfba	ok	Shiori can search the web as soon as you start, through free services. No key, nothing to set up.	Shiori 一開始就能透過免費服務上網搜尋，不需要金鑰，也不用設定。	src/ui/screens/welcome.js:78	
 1yy7iex	ok	These are on. Untick any you would rather not use.	這些已開啟。不想用的可以取消勾選。	src/ui/screens/welcome.js:79	
 10sp6fm	ok	A model set up here, in Safari, stays in Safari.	在這裡（Safari）設定的模型只會留在 Safari 中。	src/ui/screens/welcome.js:100	
-1dr4k8j	ok	Connect a model, so Shiori can think.	連線一個模型，Shiori 就能思考了。	src/ui/screens/welcome.js:100	
-uy1icp	ok	Connect a model there, so Shiori can think.	在那裡連線一個模型，Shiori 就能思考了。	src/ui/screens/welcome.js:100	
+1dr4k8j	ok	Connect a model, so Shiori can think.	連接一個模型，Shiori 就能思考了。	src/ui/screens/welcome.js:100	
+uy1icp	ok	Connect a model there, so Shiori can think.	在那裡連接一個模型，Shiori 就能思考了。	src/ui/screens/welcome.js:100	
 f7oh8p	ok	You can also install annai as an app from your browser's menu.	你也可以從瀏覽器選單把 annai 安裝為應用程式。	src/ui/screens/welcome.js:111	
 u8au6d	ok	First, install annai	首先，安裝 annai	src/ui/screens/welcome.js:115	
 fcgzkm	ok	Safari can erase what annai keeps after 7 days without a visit, and the Home Screen app keeps data of its own. Add annai to your Home Screen, and set up your model there.	如果 7 天沒有開啟，Safari 可能會清除 annai 儲存的內容；主畫面上的 App 則有自己獨立的資料。請把 annai 加入主畫面，並在那裡設定模型。	src/ui/screens/welcome.js:118	
