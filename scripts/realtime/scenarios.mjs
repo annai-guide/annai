@@ -90,7 +90,7 @@ export const SCENARIOS = {
     steps: [{ say: 'ja' }, { answered: 600 }, { say: 'zh' }, { answered: 600 }, { say: 'lunch' }, { answered: 600 }],
   },
   'relay-fact': {
-    about: 'Koe is a relay (the second drive): a question about annai and a general fact, neither of which it was told. It should say "One moment." and pass it on to Kokoro, stating neither',
+    about: 'Koe is a relay (the second drive): a question about annai and a general fact, neither of which it was told. It should tell them to hold on (a word or two in the answer language, in the voice its personality gives it) and pass it on to Kokoro, stating neither',
     route: 'speaker', echoDb: null, extra: true,
     steps: [{ say: 'auto-gps' }, { answered: 1500 }, { say: 'built' }, { answered: 1500 }],
   },
@@ -143,7 +143,7 @@ function relayScenarios() {
   /** Ten questions, each answered (her note said), then an acknowledgement, "Sure." or "Alright." in turn; 8 s for a reply to it: Koe's own live answers in a
    * recorded drive came 2.6 to 5.8 s after the user's turn ended. @type {Step[]} */
   const acked = ['lunch', 'bixby', 'gas', 'beach', 'sunset', 'hike', 'restroom', 'built', 'tomorrow', 'favour'].flatMap((q, i) => [{ say: q }, { answered: 1500 }, { say: i % 2 ? 'alright' : 'sure' }, { wait: 8000 }]);
-  /** A typed greeting, then a typed request, each with the most lines of hers it needs (the greeting one, Koe's; the request two: Koe's "One moment." and the
+  /** A typed greeting, then a typed request, each with the most lines of hers it needs (the greeting one, Koe's; the request two: Koe's wait and the
    * result), and 90 s after each for a note that comes late: a note from Gemini's chat model on a free key took 30 to 80 s. @type {Step[]} */
   const typed = [
     { type: 'Hello?', lines: 1 }, { answered: 1500 }, { wait: 90_000 },
@@ -162,9 +162,9 @@ function relayScenarios() {
     // A request that begins with "stop" and is no order to Koe to stop: Koe's stop clause must not swallow it. Koe has the reminder tools by design (KOE_TOOLS), so
     // it may do it itself: what fails is silence.
     'relay-stop-request': { ...speaker, acted: true, about: 'a request that begins with "stop" ("Stop the hotel reminder."): not taken for an order to stop: she acts on it (passed on to Kokoro, or her own tool and a spoken answer), never silence', steps: [{ say: 'stop-reminder' }, { answered: 1500 }] },
-    'typed-live': { ...speaker, about: "live voice, typed: a greeting gets one line, Koe's, and a request two (\"One moment.\" and the result); with a real Kokoro (--kokoro gemini) it shows whether she adds a line to Koe's answer", steps: typed },
-    'real-typed-live': { ...speaker, real: true, about: "a real Kokoro (Opus 5.5), live voice, typed: a greeting gets one line, Koe's, and a request two (\"One moment.\" and the result)", steps: typed },
-    // A typed request about a seeded trip's plan: "One moment." (or nothing) and the result, or Koe's own answer from the plan: at most two lines.
+    'typed-live': { ...speaker, about: "live voice, typed: a greeting gets one line, Koe's, and a request two (Koe's wait and the result); with a real Kokoro (--kokoro gemini) it shows whether she adds a line to Koe's answer", steps: typed },
+    'real-typed-live': { ...speaker, real: true, about: "a real Kokoro (Opus 5.5), live voice, typed: a greeting gets one line, Koe's, and a request two (Koe's wait and the result)", steps: typed },
+    // A typed request about a seeded trip's plan: Koe's wait (or nothing) and the result, or Koe's own answer from the plan: at most two lines.
     'real-typed-plan': { ...speaker, real: true, seed: { plan: true }, about: "a real Kokoro (Opus 5.5), live voice, typed: \"What's next on my plan?\" on a trip with three plan items: at most two lines of hers", steps: [{ type: "What's next on my plan?", lines: 2 }, { answered: 1500 }, { wait: 25_000 }] },
     // A stored reminder comes due while the session is open (28 s: inside the session's 30 s quiet spell, so it is said in this session), then 60 s in all.
     'real-reminder-live': { ...speaker, real: true, seed: { reminderInS: 28 }, once: 'hotel desk', about: 'a real Kokoro (Opus 5.5), live voice: a stored reminder ("Check in at the hotel desk.") comes due during the session: said once', steps: [{ wait: 60_000 }] },
