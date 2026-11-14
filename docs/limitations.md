@@ -493,10 +493,11 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Approved:** 2026-11-13, the user picked "Approve all (Recommended)" for the backlog triage of the Deferred entries.
 
 ### A reminder set across a change of summer time can come an hour off what she said
-- **Kind:** deferred.
+- **Kind:** known limitation.
 - **What the user sees:** the user asks for a reminder on a date after the clocks change (in November, for March 19, say), and Shiori writes it with today's offset instead of that date's (-08:00 where March 19 is -07:00). Both her halves then say the time as written, "6 PM", and the reminder comes at 7 PM local time. Before this release Koe gave the time in the phone's zone, which showed the mistake, if confusingly. It needs the model to get the offset wrong, and in the real checks it didn't: in the first one the model got it right, and on 2026-11-13 Opus 5.5 and Sonnet 5.5 wrote the summer offset unprompted 11 of 11 times, and corrected a scripted winter offset themselves 8 of 8.
 - **Why:** both halves now read one set of words for a reminder's time, made from the offset she wrote, and nothing checks that offset against the zone's on that date. A warning keyed on the phone's zone's offset (built and taken out the same day) gave wrong advice for right times in a trip's zone that shares the phone's offset today (Lisbon in July, from Berlin), and the real check showed no gain from it.
-- **Revisit when:** the next version: when the written offset doesn't match the conversation's zone at that moment, setting the reminder gives her the time in that zone too, so she sees her own mistake; a fix needs a real run on a shared-offset shape first (Lisbon from Berlin, Chicago from New York). Sooner, if a model annai runs (Haiku as Shiori or Koe, a local model) is seen writing the winter offset unprompted, or a user gets a reminder an hour off. The user decides whether it becomes a known limitation instead.
+- **Revisit when:** a model annai runs (Haiku as Shiori or Koe, a local model) is seen writing the winter offset unprompted, or a user gets a reminder an hour off. The fix then: when the written offset doesn't match the conversation's zone at that moment, setting the reminder gives her the time in that zone too, so she sees her own mistake; it needs a real run on a shared-offset shape first (Lisbon from Berlin, Chicago from New York).
+- **Approved:** 2026-11-13, the user picked "Known limitation (Recommended)" for this entry, after it was taken out of Build C.
 
 ### Shiori on her own can't see what the user answered Koe
 - **Kind:** known limitation.
