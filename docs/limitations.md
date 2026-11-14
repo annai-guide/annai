@@ -687,3 +687,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** in a chat that isn't a dated trip, a few screens still say "trip": All files heads its root "Trip", "Archived trips (N)" lists archived chats too, the name prompt says "Give the trip a name.", an imported chat export is headed "A trip exported…", the back link says "Back to trip", and Itinerary's empty line speaks of a trip.
 - **Why:** Build C changed Details' words and the timeline's; these six were found in its review, after the build.
 - **Revisit when:** the next version: one sweep gives all six neutral words (or the dated/undated rule talk.js uses), in en, ja and zh, the user's pick 2026-11-13 "One later sweep (Recommended)".
+
+### With live voice, a reminder can't be set while Kokoro can't answer
+- **Kind:** known limitation.
+- **What the user sees:** with Koe on live voice (Gemini Live, OpenAI Realtime), the user asks for a reminder while every model in Kokoro's list is failing or resting but the live voice still answers. Koe says "One moment.", passes it on, then says it couldn't check and offers to try again; no reminder is set. They can ask again once Kokoro answers, or type it with voice off.
+- **Why:** a live Koe is told the time only when its session opens, so it no longer sets reminders itself: Kokoro sets them from its own clock, to the second (the user's pick 2026-11-13, "Live Koe hands off"). Giving Koe a way round would bring back the part that set reminders from an old clock; every other ask of Kokoro fails the same way in that state.
+- **Revisit when:** a user meets it, or traces show Kokoro down while live voice works.
+- **Approved:** 2026-11-13, the user picked "Known limitation (Recommended)".
