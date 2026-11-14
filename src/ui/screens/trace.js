@@ -210,11 +210,11 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'import') {
     const n = Number(d.uncarried) || 0;
     const app = d.app ?? '?';
-    return line(d.kind === 'trip' ? t`from a trip's file, annai ${app}` : t`from a backup, annai ${app}`,
+    return line(d.kind === 'trip' ? t`from an export, annai ${app}` : t`from a backup, annai ${app}`,
       n ? plural(n, "# piece of content it didn't hold left out", "# pieces of content it didn't hold left out") : null);
   }
   // Another trip's content, asked for here by its hash (reach.js): not given.
-  if (e.type === 'content.refused') return line(d.via, e.scope?.startsWith('trip-') ? t`asked for content that isn't this trip's, and got none` : t`asked for content that isn't here, and got none`);
+  if (e.type === 'content.refused') return line(d.via, t`asked for content that isn't here, and got none`);
   if (e.type === 'paused') return t`a turn cut off by opening another conversation`;
   // Another trip read from here (read_trip), and the user's yes to it.
   if (e.type === 'trip.read') return line(t`read ${d.title}`, d.trip, d.path, d.query ? quoted(d.query) : null);

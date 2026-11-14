@@ -885,19 +885,19 @@ test("undoneWords: what Undo of a hand-over did, and each trip that stays that i
   assert.equal(undoneWords(none), 'Undone.');
 });
 
-test('movedWords: started, took one, took several, and to a trip since removed', () => {
+test('movedWords: started, took one, took several, and to a conversation since removed', () => {
   assert.equal(movedWords({ to: 't', started: true, count: 2 }, 'Anchorage · Nov 20–27'), 'Shiori started Anchorage · Nov 20–27 with these files.');
   assert.equal(movedWords({ to: 't', started: true, count: 0 }, 'Anchorage'), 'Shiori started Anchorage.');
   assert.equal(movedWords({ to: 't', started: false, count: 1 }, 'Kyoto'), 'Shiori took 1 file to Kyoto.');
   assert.equal(movedWords({ to: 't', started: false, count: 3 }, 'Kyoto'), 'Shiori took 3 files to Kyoto.');
-  assert.equal(movedWords({ to: 't', started: false, count: 3 }, null), 'Shiori took these files to a trip that has since been removed.');
+  assert.equal(movedWords({ to: 't', started: false, count: 3 }, null), 'Shiori took these files to a conversation that has since been removed.');
   // Not her lines: the announcer says nothing of them.
   assert.deepEqual(announced('handover.moved', '', 'Shiori took 1 file to Kyoto.'), ['', '', '']);
 });
 
 test("wentWords: the chat's line for a move (open_trip), by the trip's title, or to one since removed; the Trace lists it", () => {
   assert.equal(wentWords('Kyoto · Apr 1–8'), 'Shiori moved this to Kyoto · Apr 1–8.');
-  assert.equal(wentWords(null), 'Shiori moved this to a trip that has since been removed.');
+  assert.equal(wentWords(null), 'Shiori moved this to a conversation that has since been removed.');
   // Said to a screen reader as it comes, as annai's own lines are: the conversation is about to change.
   assert.deepEqual(announced('conversation.moved', '', 'Shiori moved this to Kyoto.'), ['', 'Shiori moved this to Kyoto.', '']);
   assert.equal(traceSummary(/** @type {any} */ ({ seq: 1, ts: 0, type: 'conversation.moved', actor: 'shiori', data: { to: 'trip-k', title: 'Kyoto' } })), 'moved to Kyoto · trip-k');
