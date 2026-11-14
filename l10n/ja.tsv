@@ -12,7 +12,7 @@ gemini-api:1naj6ho	ok	Stream her voice, so she starts sooner (off: each sentence
 gemini-live:@name	ok	Gemini Live	Gemini Live	plugins-official/gemini-live/annai-plugin.json:3	
 gemini-live:@description	ok	Talks to Gemini's Live API: a voice conversation in one stream, both ways, for Koe.	GeminiのLive APIに接続します。Koe用の、1本のストリームで双方向にやり取りする音声会話です。	plugins-official/gemini-live/annai-plugin.json:7	
 openai-realtime:@name	ok	OpenAI Realtime	OpenAI Realtime	plugins-official/openai-realtime/annai-plugin.json:3	
-openai-realtime:@description	ok	Talks to OpenAI's Realtime API: a voice conversation in one stream, both ways, for Koe.	OpenAIのRealtime APIに接続します。Koe用の、1本のストリームで双方向にやり取りする音声会話です。	plugins-official/openai-realtime/annai-plugin.json:7	
+openai-realtime:@description	ok	Talks to OpenAI's Realtime API: a voice conversation in one stream, both ways, for Koe. It hasn't been tried with OpenAI's service yet.	OpenAIのRealtime APIに接続します。Koe用の、1本のストリームで双方向にやり取りする音声会話です。OpenAIのサービスでは、まだ動作を確認していません。	plugins-official/openai-realtime/annai-plugin.json:7	
 openai-responses:@name	ok	OpenAI Responses	OpenAI Responses	plugins-official/openai-responses/annai-plugin.json:3	
 openai-responses:@description	ok	Talks to OpenAI's Responses API and to servers that speak it, OpenAI keeping the conversation between turns, so each sends only what is new, and the stored responses deleted when annai is told to.	OpenAIのResponses APIと、それに対応したサーバーに接続します。会話はOpenAI側で保持されるため、やり取りごとに新しい部分だけを送ります。保存された応答は、annaiで削除を指示すると削除されます。	plugins-official/openai-responses/annai-plugin.json:7	
 pdf-pages:@name	ok	PDF pages	PDFページ	plugins-official/pdf-pages/annai-plugin.json:3	Note: the plugin's name, as the screens and the Models note (1xx9c0t) say it.

@@ -12,7 +12,7 @@ gemini-api:1naj6ho	ok	Stream her voice, so she starts sooner (off: each sentence
 gemini-live:@name	ok	Gemini Live	Gemini Live	plugins-official/gemini-live/annai-plugin.json:3	
 gemini-live:@description	ok	Talks to Gemini's Live API: a voice conversation in one stream, both ways, for Koe.	连接 Gemini 的 Live API，为 Koe 提供语音对话，听和说同时进行。	plugins-official/gemini-live/annai-plugin.json:7	
 openai-realtime:@name	ok	OpenAI Realtime	OpenAI Realtime	plugins-official/openai-realtime/annai-plugin.json:3	
-openai-realtime:@description	ok	Talks to OpenAI's Realtime API: a voice conversation in one stream, both ways, for Koe.	连接 OpenAI 的 Realtime API，为 Koe 提供语音对话，听和说都在同一条流中。	plugins-official/openai-realtime/annai-plugin.json:7	
+openai-realtime:@description	ok	Talks to OpenAI's Realtime API: a voice conversation in one stream, both ways, for Koe. It hasn't been tried with OpenAI's service yet.	连接 OpenAI 的 Realtime API，为 Koe 提供语音对话，听和说都在同一条流中。尚未在 OpenAI 的服务上测试过。	plugins-official/openai-realtime/annai-plugin.json:7	
 openai-responses:@name	ok	OpenAI Responses	OpenAI Responses	plugins-official/openai-responses/annai-plugin.json:3	
 openai-responses:@description	ok	Talks to OpenAI's Responses API and to servers that speak it, OpenAI keeping the conversation between turns, so each sends only what is new, and the stored responses deleted when annai is told to.	连接 OpenAI 的 Responses API 及支持它的服务器。对话由 OpenAI 在各轮之间保存，所以每轮只需发送新内容；收到删除指示时，annai 会删除已保存的回复。	plugins-official/openai-responses/annai-plugin.json:7	
 pdf-pages:@name	ok	PDF pages	PDF 页面	plugins-official/pdf-pages/annai-plugin.json:3	Note: the plugin's name, as the screens and the Models note (1xx9c0t) say it.

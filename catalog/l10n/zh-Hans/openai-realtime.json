@@ -1,6 +1,6 @@
 {
   "manifest": {
-    "description": "连接 OpenAI 的 Realtime API，为 Koe 提供语音对话，听和说都在同一条流中。",
+    "description": "连接 OpenAI 的 Realtime API，为 Koe 提供语音对话，听和说都在同一条流中。尚未在 OpenAI 的服务上测试过。",
     "name": "OpenAI Realtime"
   },
   "messages": {}

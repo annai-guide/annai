@@ -19,7 +19,7 @@
     },
     "openai-realtime": {
       "name": "OpenAI Realtime",
-      "description": "串接 OpenAI 的 Realtime API，為 Koe 提供語音對話，聽和說都在同一個串流中。"
+      "description": "串接 OpenAI 的 Realtime API，為 Koe 提供語音對話，聽和說都在同一個串流中。尚未在 OpenAI 的服務上測試過。"
     },
     "openai-responses": {
       "name": "OpenAI Responses",
@@ -167,7 +167,7 @@
     "chat-completions": "5364c102815a69894b7e00da0f4c0bd9dd8ddfd19d1bf69bd9d197cc5c2cab8b",
     "gemini-api": "73a5b207fbbb25412a93e3f739038378be473172683a8959613e689810e525c5",
     "gemini-live": "6f2fe70dca6729d6dc1c913bb8187c2cef65a82b9fc0d18c6936a5ffff81ae72",
-    "openai-realtime": "de4fff71e460708aa2abbed10f0c4c045d568e118e2b85eb9eeb8ccd3ab52fd9",
+    "openai-realtime": "8082ce1e3589b1d7de7def92d468d1917193b92f2f8b9d4ff7e3408d696ac47d",
     "openai-responses": "c96a6be8885a47fc250ab3cb545a4bb08e4cbe42af1234217164670905c924cc",
     "pdf-pages": "c979bcfe3ed0b61c37ea94916a09c78b954c96c26b7082285655e141ee81527b",
     "provider-another-address": "5347e030176a78d7245011dbf57bfe1763ef1d31ca116650b5c2d2f0cc98dc34",
