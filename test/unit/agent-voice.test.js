@@ -759,7 +759,7 @@ for (const who of ['one Shiori', 'Koe on a chat model']) {
 for (const what of ['ask', 'wait']) {
   test(`one Shiori, voice on, speak then a card then a ${what}: speak still listens first, as before (spec §7.1)`, async (t) => {
     useClock(t);
-    const card = { name: 'show', input: { title: 'Nepenthe', text: 'On the cliffs.' } };
+    const card = { name: 'show', input: { card: { title: 'Nepenthe', text: 'On the cliffs.' } } };
     const after = what === 'ask' ? speakAsk[1] : { name: 'wait', input: { seconds: 30 } };
     const k = await agentKit([[{ toolCalls: [speakAsk[0], card, after] }, { toolCalls: [{ name: 'sleep', input: {} }] }]], { voice: {}, agent: { secondMs: 1000 } });
     k.agent.send('Lunch?');
@@ -769,14 +769,16 @@ for (const what of ['ask', 'wait']) {
     }
     await k.agent.idle();
     assert.equal((await results(k, 'speak'))[0].data.content, 'Said aloud. Heard nothing (20 seconds).', "speak listened to the end of its window");
+    assert.equal((await k.events(['out.show'])).length, 1, 'the card was shown, not refused');
   });
 }
 
 test('controls for speak then ask: with sleep in the reply, and with voice off, the question is up at once as before; speak alone still listens', async (t) => {
   useClock(t);
   const sleep = { name: 'sleep', input: {} };
-  // Her question comes back answered, so the sleep beside it doesn't end her turn: a second step reads the answer and sleeps.
-  const asleep = await agentKit([[{ toolCalls: [...speakAsk, sleep] }, { toolCalls: [sleep] }]], { voice: {} });
+  // Her question comes back answered, so the sleep beside it doesn't end her turn: a second step reads the answer, tells them, and sleeps (a bare sleep
+  // after their answer would be asked once more: their answer is owed a reply).
+  const asleep = await agentKit([[{ toolCalls: [...speakAsk, sleep] }, { toolCalls: [{ name: 'speak', input: { text: 'Lunch it is.' } }, sleep] }]], { voice: {} });
   asleep.agent.send('Lunch?');
   await until(() => asleep.agent.state.name === 'listening');
   assert.equal((await asleep.events(['out.ask'])).length, 1);
@@ -786,7 +788,7 @@ test('controls for speak then ask: with sleep in the reply, and with voice off, 
   // The change this test pins: the answered question keeps her turn going (a second model request reads it), so the sleep beside it says "Not asleep".
   assert.equal(asleep.requests.length, 2);
   assert.match((await results(asleep, 'sleep'))[0].data.content, /^Not asleep: your question came back/);
-  const off = await agentKit([[{ toolCalls: speakAsk }, { toolCalls: [sleep] }]], { voice: { mode: 'off' } });
+  const off = await agentKit([[{ toolCalls: speakAsk }, say('Lunch it is.')]], { voice: { mode: 'off' } });
   off.agent.send('Lunch?');
   await until(() => off.agent.pendingId !== null);
   assert.equal((await results(off, 'speak'))[0].data.content, "Shown on screen. Voice is off, so you didn't listen; the user may type.");
@@ -795,10 +797,11 @@ test('controls for speak then ask: with sleep in the reply, and with voice off, 
   assert.equal((await results(off, 'ask'))[0].data.content, 'The user chose: Yes');
   assert.deepEqual(mics(off), []);
   // speak followed by show (not an ask) listens as before.
-  const shown = await agentKit([[{ toolCalls: [speakAsk[0], { name: 'show', input: { title: 'Nepenthe', text: 'On the cliffs.' } }] }, { toolCalls: [sleep] }]], { voice: {} });
+  const shown = await agentKit([[{ toolCalls: [speakAsk[0], { name: 'show', input: { card: { title: 'Nepenthe', text: 'On the cliffs.' } } }] }, { toolCalls: [sleep] }]], { voice: {} });
   shown.agent.send('Lunch?');
   await shown.agent.idle();
   assert.equal((await results(shown, 'speak'))[0].data.content, 'Said aloud. Heard nothing (20 seconds).');
+  assert.equal((await shown.events(['out.show'])).length, 1, 'the card was shown, not refused');
 });
 
 test('one Shiori, voice on, speak then wait in one reply: speak doesn\'t listen; an answer in the wait reaches her at once, not after the wait (spec §7.1)', async (t) => {
