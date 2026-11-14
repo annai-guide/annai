@@ -502,6 +502,27 @@ test("a tap on Koe's question answers Koe, and Kokoro reads what was chosen; a t
   assert.equal(k.agent.tap(), 'typing', 'no voice here: typing opens');
 });
 
+test("Koe's question and sleep in one reply: a tap answers Koe, who reads it and answers (the two-halves path takes the one-half rule); Kokoro's gated question beside its sleep puts nothing to the user, so its sleep ends its turn", async (t) => {
+  useClock(t);
+  const k = await agentKit([{ rules: [
+    { match: 'the user wrote', reply: calls(['ask', { question: 'Is Nepenthe on the list?', options: ['Yes', 'No'] }]) },
+    { match: '.', reply: sleep },
+  ] }], { koe: { type: [calls(['ask', { question: 'Lunch or dinner?', options: ['Lunch', 'Dinner'] }]), calls(['speak', { text: 'Dinner it is.' }]), sleep] } });
+  k.agent.send('Book Nepenthe');
+  await until(() => k.agent.koe.pendingId !== null);
+  k.agent.answer(/** @type {string} */ (k.agent.koe.pendingId), 'Dinner');
+  await k.agent.idle();
+  assert.deepEqual((await shown(k)).filter(([type]) => type === 'out.speak'), [['out.speak', 'koe', 'Dinner it is.']]);
+  assert.equal((await results(k, 'ask')).filter((e) => e.data.half === 'koe')[0].data.content, 'The user chose: Dinner');
+  // Koe's very next request carries the answer (the result of its question), not a later wake's words.
+  const next = JSON.stringify(k.sent['model-koe'][1].messages.at(-1).parts);
+  assert.match(next, /The user chose: Dinner/);
+  assert.match(next, /Not asleep: your question came back/);
+  const sleeps = (await results(k, 'sleep')).map((e) => [e.data.half, e.data.content]);
+  assert.ok(sleeps.some(([half, content]) => half === 'koe' && /^Not asleep: your question came back/.test(content)), JSON.stringify(sleeps));
+  assert.deepEqual(sleeps.filter(([half]) => half === 'kokoro').map(([, content]) => content).filter((c) => c !== 'asleep'), [], 'Kokoro slept: its gated question was put to no one');
+});
+
 test("a note from Kokoro ends Koe's own question's wait, as it ends a wait: Koe says it now, and is told its question is closed (the screen takes its buttons, as for any ask that ended); a tap from elsewhere is the user's next line (real models, stage 5: u8-r3's correction was never said)", async (t) => {
   useClock(t);
   /** @type {any} */

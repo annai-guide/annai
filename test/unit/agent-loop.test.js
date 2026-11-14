@@ -71,6 +71,103 @@ test('ask waits for a tap; a later step continues with the answer', async (t) =>
   assert.equal(k.requests.length, 2);
 });
 
+/** Her reply holds an ask and a sleep together (3 of Sonnet's 9 replies with an ask, in real runs); the user answers over the card, by typing or a tap. */
+for (const [how, answer] of /** @type {const} */ ([['typed', (/** @type {any} */ k) => k.agent.send('Neither, the café')], ['tapped', (/** @type {any} */ k, /** @type {string} */ id) => k.agent.answer(id, 'Move it')]])) {
+  test(`her ask and sleep in one reply: the user's ${how} answer reaches her, and she answers it`, async (t) => {
+    useClock(t);
+    const k = await agentKit([[{ toolCalls: [{ name: 'ask', input: { question: 'Keep the 6:30 dinner?', options: ['Keep it', 'Move it'] } }, { name: 'sleep', input: {} }] }, say('Moved to 7.')]]);
+    k.agent.send('We are running late');
+    for (let i = 0; i < 200 && k.agent.state.name !== 'waiting'; i++) await new Promise((r) => setTimeout(r, 10));
+    assert.equal(k.agent.state.name, 'waiting');
+    const asked = (await k.events(['tool.call'])).find((/** @type {any} */ e) => e.data.name === 'ask');
+    answer(k, asked.data.id);
+    await k.agent.idle();
+    assert.equal(k.requests.length, 2, 'a second request carries the answer');
+    assert.match(JSON.stringify(k.requests[1].messages), how === 'typed' ? /Neither, the café/ : /Move it/);
+    assert.equal((await k.events(['out.speak'])).at(-1).data.text, 'Moved to 7.');
+    assert.equal(k.agent.state.name, 'sleeping');
+  });
+}
+
+test('each question of one turn that comes with a sleep is answered, however many (no count ends the turn on one)', async (t) => {
+  useClock(t);
+  const both = (/** @type {string} */ question) => ({ toolCalls: [{ name: 'ask', input: { question, options: ['Yes', 'No'] } }, { name: 'sleep', input: {} }] });
+  const k = await agentKit([[both('Dinner?'), both('Late?'), both('Taxi?'), say('All set.')]]);
+  k.agent.send('Plan tonight');
+  for (const [i, how] of ['typed', 'tapped', 'typed'].entries()) {
+    await until(() => k.agent.pendingId !== null && k.requests.length === i + 1);
+    if (how === 'typed') k.agent.send(`Answer ${i}`);
+    else k.agent.answer(/** @type {string} */ (k.agent.pendingId), 'Yes');
+  }
+  await k.agent.idle();
+  assert.equal(k.requests.length, 4);
+  assert.equal((await k.events(['out.speak'])).at(-1).data.text, 'All set.');
+  // What her sleep says, as a model reads it: the turn goes on, and why.
+  const sleeps = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'sleep').map((/** @type {any} */ e) => e.data.content);
+  assert.deepEqual(sleeps.slice(0, 3), Array(3).fill('Not asleep: your question came back answered or closed (its result is above), so your turn goes on.'));
+  assert.equal(sleeps.at(-1), 'asleep');
+});
+
+test("her ask and sleep in one reply, when a line of theirs came while she thought: that line is her question's closing, and is answered in the same turn (it follows whole)", async (t) => {
+  useClock(t);
+  const k = await agentKit([[{ delayMs: 40, toolCalls: [{ name: 'ask', input: { question: 'Keep it?', options: ['Yes', 'No'] } }, { name: 'sleep', input: {} }] }, say('Both noted.')]]);
+  k.agent.send('First thing');
+  await new Promise((r) => setTimeout(r, 10));
+  k.agent.send('Second thing');
+  await k.agent.idle();
+  assert.equal(k.requests.length, 2);
+  assert.equal((await k.events(['wake'])).length, 1, 'one turn took both lines');
+  assert.match(JSON.stringify(k.requests[1].messages.at(-1)), /Second thing/);
+  assert.equal((await k.events(['out.speak'])).at(-1).data.text, 'Both noted.');
+});
+
+test("a malformed ask beside her sleep isn't a question that came back: the turn goes on for the error, as before, and the sleep says so", async (t) => {
+  useClock(t);
+  const k = await agentKit([[{ toolCalls: [{ name: 'ask', input: { question: 'Which?', options: [] } }, { name: 'sleep', input: {} }] }, say('Sorry, which one?')]]);
+  k.agent.send('Pick');
+  await k.agent.idle();
+  assert.equal(k.requests.length, 2);
+  const sleep = (await k.events(['tool.result'])).find((/** @type {any} */ e) => e.data.name === 'sleep');
+  assert.equal(sleep.data.content, 'Not asleep: a call in this reply failed (its error is above), so your turn goes on.');
+  assert.equal(sleep.data.awake, true, 'the stored result says the sleep gave way, for a failed call as for an answered question');
+});
+
+/** The answer is in, her next model call is running, and the page is left or reloaded: with her ask alone the stored log reads the turn as owed (taken up on return); with a sleep beside the ask it must read the same (the reply's words said "sleep", its result said "Not asleep"). */
+for (const withSleep of [true, false]) {
+  test(`her ${withSleep ? 'ask and sleep' : 'ask'} answered, then another conversation opened during her next model call: the answer is taken up on return, and a reload reads it as owed`, async (t) => {
+    useClock(t);
+    const ask = { name: 'ask', input: { question: 'Keep the 6:30 dinner?', options: ['Keep it', 'Move it'] } };
+    const k = await agentKit([[{ toolCalls: withSleep ? [ask, { name: 'sleep', input: {} }] : [ask] }, { delayMs: 300, ...say('Moved to 7.') }, say('Moved to 7 (taken up).')]]);
+    const other = await createTrip(k.ws, { title: 'Kyoto' });
+    k.agent.send('We are running late');
+    await until(() => k.agent.pendingId !== null);
+    k.agent.answer(/** @type {string} */ (k.agent.pendingId), 'Move it');
+    await until(() => k.requests.length === 2);
+    // The page is read while her second reply is still being made: the log holds the answer and no reply to it.
+    const reload = await Transcript.load(k.store, k.trip);
+    assert.equal(reload.unanswered, true, 'a reload now finds the answer unanswered');
+    await k.agent.open(other);
+    await k.agent.idle();
+    assert.equal((await Transcript.load(k.store, k.trip)).unanswered, true, 'the turn was cut after the answer: still owed');
+    await k.agent.open(k.trip);
+    await k.agent.idle();
+    assert.equal(k.requests.length, 3, 'taken up on return');
+    assert.equal((await k.events(['out.speak'])).at(-1).data.text, 'Moved to 7 (taken up).');
+    assert.equal((await Transcript.load(k.store, k.trip)).unanswered, false);
+  });
+}
+
+test("a sleep that didn't run says so in its stored result (awake), and one that ran doesn't", async (t) => {
+  useClock(t);
+  const k = await agentKit([[{ toolCalls: [{ name: 'ask', input: { question: 'Keep it?', options: ['Yes', 'No'] } }, { name: 'sleep', input: {} }] }, say('Kept.')]]);
+  k.agent.send('Dinner');
+  await until(() => k.agent.pendingId !== null);
+  k.agent.answer(/** @type {string} */ (k.agent.pendingId), 'Yes');
+  await k.agent.idle();
+  const sleeps = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'sleep');
+  assert.deepEqual(sleeps.map((/** @type {any} */ e) => [e.data.awake === true, e.data.content]), [[true, 'Not asleep: your question came back answered or closed (its result is above), so your turn goes on.'], [false, 'asleep']]);
+});
+
 test('the dock is told "Waiting for your OK" only while an ask waits; a wait is the user\'s turn (phone-fixes-1 item 5: IMG_3017)', async (t) => {
   useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'wait', input: { seconds: 60 } }] }, { toolCalls: [{ name: 'ask', input: { question: 'Keep it?', options: ['Yes', 'No'] } }] }, say('OK.')]]);

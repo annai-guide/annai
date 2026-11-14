@@ -670,7 +670,7 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### Koe on a chat model can show "Shiori didn't answer" for a line it answers a moment later
 - **Kind:** known limitation.
-- **What the user sees:** with Koe on a chat model, in a rare turn shape (Koe's one reminder to answer already used, then a reply with a question or a wait plus sleep, while the user types a line), a warning card ("Her model finished without saying anything to you", with Try again) shows, then Koe answers the line in the next turn. Nothing is lost; before this release the line was never answered.
+- **What the user sees:** with Koe on a chat model, in a rare turn shape (Koe's one reminder to answer already used, then a reply with a wait plus sleep, while the user types a line), a warning card ("Her model finished without saying anything to you", with Try again) shows, then Koe answers the line in the next turn. Nothing is lost; before this release the line was never answered. A reply with a question plus sleep no longer has this shape (narrowed 2026-11-14, with the ask-sleep fix, which keeps the turn going when her question comes back: one turn takes the line, and no card shows).
 - **Why:** the sleep in the same reply ends the turn before the queued line is taken, so the line gets a turn of its own, and the turn just ended counts as silent. Skipping the card while a line of the user's is still queued is a one-condition change, for a shape seen only in a probe.
 - **Revisit when:** the user sees the card followed by an answer; the fix then: no such card while a line of theirs is still queued.
 - **Approved:** 2026-11-13, the user picked "Known limitation (Recommended)".
