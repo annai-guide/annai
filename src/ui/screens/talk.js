@@ -458,8 +458,8 @@ export async function renderTalk(ctx, route) {
         agent.answer(d.tap ?? d.id, o);
       } }, String(o)));
       const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: e.type, data: d }));
-      // annai's own (Agent.confirm): the label says who asks.
-      const node = h('li', { class: lineClass(line, 'shiori') }, h('span', { class: 'who', text: d.own ? /* en */ 'annai' : t`Shiori` }), h('p', { ...hers(String(d.question ?? '')), text: String(d.question ?? '') }), h('div', { class: 'acts' }, ...buttons), lineLabel(line));
+      // annai's own (Agent.confirm): the label says who asks; under its buttons, while they wait, that a tap answers it (the user's pick, 2026-11-13).
+      const node = h('li', { class: lineClass(line, 'shiori') }, h('span', { class: 'who', text: d.own ? /* en */ 'annai' : t`Shiori` }), h('p', { ...hers(String(d.question ?? '')), text: String(d.question ?? '') }), h('div', { class: 'acts' }, ...buttons), d.own ? h('span', { class: 'sub tap-hint', text: t`Tap to answer` }) : null, lineLabel(line));
       asks.set(d.id, node);
       offered.set(d.id, (Array.isArray(d.options) ? d.options : []).map(String));
       return node;

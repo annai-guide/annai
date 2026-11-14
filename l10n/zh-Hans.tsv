@@ -489,42 +489,42 @@ gni5zk	draft	Her sound got stuck, and a tap brings it back. Her words are in the
 guullf	ok	Tap the screen so Shiori can speak	轻点屏幕，让 Shiori 能说话	src/core/agent/loop.js:180	
 1080xlr	ok	Working on {0}	处理中：{0}	src/core/agent/loop.js:674	{0} = detail; Note: label: value, {0} is what she works on, in her words.
 1h2c64o	ok	Working on tidying up the conversation	正在整理对话	src/core/agent/loop.js:674	
-19793n8	ok	Shiori skipped a wake	Shiori 跳过了一次唤醒	src/core/agent/loop.js:1311	
-16ny0z2	ok	Shiori stopped	Shiori 已停止	src/core/agent/loop.js:1554	
-1sxm1ou	ok	Something went wrong: {0}	出了点问题：{0}	src/core/agent/loop.js:1554	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori 无法整理对话	src/core/agent/loop.js:1587	
-oeaxaa	ok	She will try again later.	她稍后会再试。	src/core/agent/loop.js:1587	
-x10s30	ok	Shiori couldn't summarize the conversation	Shiori 无法总结对话	src/core/agent/loop.js:1775	
-1ds0zov	ok	Reminder	提醒	src/core/agent/loop.js:1974	
-1szzjml	ok	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:1974	
-nxpady	ok	The message went without it.	消息已在没有这张照片的情况下发出。	src/core/agent/loop.js:2113	
-sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:2113	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
-ssozn1	ok	A photo wasn't sent to Shiori	照片没有发给 Shiori	src/core/agent/loop.js:2113	
-311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori 刚才正忙到一半。你回来后她会接着做。	src/core/agent/loop.js:2183	
-1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她以相同结果调用了同一个工具三次，所以这一轮结束了。请换个说法再问一次。	src/core/agent/loop.js:2526	Note: "Ask again" is the verb (再问), not the glossary's Ask, Safari's 询问 choice.
-pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重复	src/core/agent/loop.js:2526	
-1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什么也没对你说就结束了。	src/core/agent/loop.js:2564	
-2bgbpn	ok	Shiori didn't answer	Shiori 没有回答	src/core/agent/loop.js:2568	
-1mjdfzn	ok	Shiori can't reach her model	Shiori 无法连接她的模型	src/core/agent/loop.js:2642	
-1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	这个模型只接受{0}格式的照片，而这个浏览器无法生成。添加{1}的插件可以解决（设置 → 插件）。	src/core/agent/loop.js:2669	{0} = names; {1} = names
-1uhz9dg	ok	Shiori couldn't send the photo	Shiori 无法发送照片	src/core/agent/loop.js:2728	
-vjxaph	ok	Your turn	轮到你了	src/core/agent/loop.js:3218	
-19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	这个浏览器只有在轻点后才会播放声音。她的话在对话里。	src/core/agent/loop.js:3375	
-1h2ina6	ok	Shiori couldn't speak aloud	Shiori 无法朗读出声	src/core/agent/loop.js:3376	
-1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	设置 → 模型 → 朗读中没有一个声音能用；原因见记录。她的话在对话里。	src/core/agent/loop.js:3376	
-1r1dhd7	ok	Shiori can't hear you yet	Shiori 还听不到你	src/core/agent/loop.js:3522	
-8wd0xv	ok	Listening stopped	收听已停止	src/core/agent/loop.js:3727	
-43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:4016	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	每边最多 # 像素	src/core/agent/loop.js:4017	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一次最多#张照片	src/core/agent/loop.js:4018	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	仅限{0}	src/core/agent/loop.js:4019	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片（它接受：{0}），annai 也无法做出它能接受的副本。请在设置 → 照片 → 发给 Shiori 的照片中改用更小的照片，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:4020	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片，annai 也无法做出它能接受的副本。请在设置 → 照片 → 发给 Shiori 的照片中改用更小的照片，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:4021	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，对话对她的模型来说太长了。请在设置 → 模型中检查模型，或稍后再试。	src/core/agent/loop.js:4028	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	插件 {0} 唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:4038	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:4039	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你添加的文件唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:4040	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	有东西唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:4041	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+19793n8	ok	Shiori skipped a wake	Shiori 跳过了一次唤醒	src/core/agent/loop.js:1314	
+16ny0z2	ok	Shiori stopped	Shiori 已停止	src/core/agent/loop.js:1557	
+1sxm1ou	ok	Something went wrong: {0}	出了点问题：{0}	src/core/agent/loop.js:1557	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori 无法整理对话	src/core/agent/loop.js:1590	
+oeaxaa	ok	She will try again later.	她稍后会再试。	src/core/agent/loop.js:1590	
+x10s30	ok	Shiori couldn't summarize the conversation	Shiori 无法总结对话	src/core/agent/loop.js:1778	
+1ds0zov	ok	Reminder	提醒	src/core/agent/loop.js:1977	
+1szzjml	ok	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:1977	
+nxpady	ok	The message went without it.	消息已在没有这张照片的情况下发出。	src/core/agent/loop.js:2116	
+sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:2116	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
+ssozn1	ok	A photo wasn't sent to Shiori	照片没有发给 Shiori	src/core/agent/loop.js:2116	
+311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori 刚才正忙到一半。你回来后她会接着做。	src/core/agent/loop.js:2186	
+1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她以相同结果调用了同一个工具三次，所以这一轮结束了。请换个说法再问一次。	src/core/agent/loop.js:2532	Note: "Ask again" is the verb (再问), not the glossary's Ask, Safari's 询问 choice.
+pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重复	src/core/agent/loop.js:2532	
+1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什么也没对你说就结束了。	src/core/agent/loop.js:2570	
+2bgbpn	ok	Shiori didn't answer	Shiori 没有回答	src/core/agent/loop.js:2574	
+1mjdfzn	ok	Shiori can't reach her model	Shiori 无法连接她的模型	src/core/agent/loop.js:2648	
+1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	这个模型只接受{0}格式的照片，而这个浏览器无法生成。添加{1}的插件可以解决（设置 → 插件）。	src/core/agent/loop.js:2675	{0} = names; {1} = names
+1uhz9dg	ok	Shiori couldn't send the photo	Shiori 无法发送照片	src/core/agent/loop.js:2734	
+vjxaph	ok	Your turn	轮到你了	src/core/agent/loop.js:3224	
+19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	这个浏览器只有在轻点后才会播放声音。她的话在对话里。	src/core/agent/loop.js:3381	
+1h2ina6	ok	Shiori couldn't speak aloud	Shiori 无法朗读出声	src/core/agent/loop.js:3382	
+1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	设置 → 模型 → 朗读中没有一个声音能用；原因见记录。她的话在对话里。	src/core/agent/loop.js:3382	
+1r1dhd7	ok	Shiori can't hear you yet	Shiori 还听不到你	src/core/agent/loop.js:3529	
+8wd0xv	ok	Listening stopped	收听已停止	src/core/agent/loop.js:3734	
+43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:4023	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	每边最多 # 像素	src/core/agent/loop.js:4024	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一次最多#张照片	src/core/agent/loop.js:4025	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	仅限{0}	src/core/agent/loop.js:4026	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片（它接受：{0}），annai 也无法做出它能接受的副本。请在设置 → 照片 → 发给 Shiori 的照片中改用更小的照片，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:4027	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型拒收了一张照片，annai 也无法做出它能接受的副本。请在设置 → 照片 → 发给 Shiori 的照片中改用更小的照片，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:4028	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	在整理之前，对话对她的模型来说太长了。请在设置 → 模型中检查模型，或稍后再试。	src/core/agent/loop.js:4035	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	插件 {0} 唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:4045	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她留意的事情唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:4046	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你添加的文件唤醒她的次数超过了你允许的每小时#次：{0}。	src/core/agent/loop.js:4047	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	有东西唤醒她的次数超过了你允许的每小时#次。	src/core/agent/loop.js:4048	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	这条消息含有密钥，所以不显示。	src/core/agent/net.js:94	
 157dl17	ok	Shiori wants to adjust her personality	Shiori 想调整她的性格	src/core/agent/personalities.js:130	
 13g1wjf	ok	No thanks	不用了	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
@@ -2392,6 +2392,7 @@ glbwh5	ok	This conversation so far: {0}	这次对话到目前为止：{0}	src/ui
 td8u17	ok	A photo you sent	你发送的照片	src/ui/screens/talk.js:351	
 9e5yo5	ok	(a photo)	（照片）	src/ui/screens/talk.js:398	
 1sjvjoo	draft	From {0}	来自“{0}”	src/ui/screens/talk.js:409	context: a conversation; {0} = scopeTitle(src); Note: under a line the user said in another conversation, copied here when Shiori took them here; a link to that conversation.
+n8s7gz	draft	Tap to answer	轻点作答	src/ui/screens/talk.js:462	Note: a small line under the buttons of annai's own card (Allow, Always for my trips, Not now; Open, Not now) while it waits: only a tap on a button answers it, not a spoken or typed yes. Built as "Tap to talk" is.
 fv3xhc	ok	Kokoro to Koe:	Kokoro → Koe：	src/ui/screens/talk.js:477	Note: a note from Kokoro to Koe; its words follow.
 upsxi0	ok	Koe to Kokoro:	Koe → Kokoro：	src/ui/screens/talk.js:477	Note: a note from Koe to Kokoro; its words follow.
 16ol023	draft	Shiori read {0}	Shiori 读取了“{0}”	src/ui/screens/talk.js:506	{0} = scopeTitle({ id: String(d.trip), title: String(d.title ?? '') })

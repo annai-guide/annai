@@ -54,10 +54,13 @@ test('from a chat, Shiori reads Testville after a tap on annai\'s own card; the 
     await expect(card).toBeVisible({ timeout: 15_000 });
     await expect(card.locator('.who')).toHaveText('annai'); // who asks: annai, not Shiori
     await expect(card.getByRole('button')).toHaveText(['Allow', 'Always for my trips', 'Not now']);
+    // Under its buttons, while it waits, the card says a tap answers it (the user's pick, 2026-11-13, "Fixed line on the card"); answered, it doesn't.
+    await expect(card.getByText('Tap to answer', { exact: true })).toBeVisible();
     await card.getByRole('button', { name: 'Allow', exact: true }).click();
     await expect(page.locator('.convo .shiori p').last()).toHaveText(NOTE, { timeout: 15_000 });
     await expect(page.locator('.convo .system-line', { hasText: 'Shiori read Testville' })).toHaveCount(1);
     await expect(card.getByRole('button', { name: 'Allow', exact: true })).toBeDisabled();
+    await expect(card.getByText('Tap to answer', { exact: true })).toBeHidden();
 
     // The Trace lists the read.
     await page.goto('/#/trace');
