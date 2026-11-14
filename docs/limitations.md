@@ -726,12 +726,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** nothing tells Kokoro which language its notes to Koe are in.
 - **Revisit when:** the next version: say it in the note tool's description or the halves' text, then a live run in Japanese.
 
-### Shiori is told two Koe names no screen shows
-- **Kind:** deferred.
-- **What the user sees:** nothing visible; when Shiori names a screen she can't name the Koe lists by their current names, and is told 'Koe · Classic' and 'Koe · Realtime', which no screen shows.
-- **Why:** TOLD in scripts/strings.mjs still lists the old names and "Tidy up".
-- **Revisit when:** the next change that touches the screens line (one cold prompt cache when it ships).
-
 ### Her reply to the "you haven't answered" cue can still be private text
 - **Kind:** deferred.
 - **What the user sees:** after answering her question card, if her reply showed nothing and the cue followed, in about 1 of 9 forced runs she answered again in plain text the user never sees, and "Shiori didn't answer" showed.
