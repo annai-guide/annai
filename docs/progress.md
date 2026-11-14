@@ -50,7 +50,7 @@ records when a turn ends, so the reader stops guessing from her words.
 
 | Part | State | Where it stands | The user's words or pick |
 |---|---|---|---|
-| **Route A, step 1:** take out the two faulted parts (the wake give-back, the cut-ask exemption); the rare Undo shape (F2) recorded as deferred. | under review | Branch ask-owed: e17900f5 (the removal), cd354d02 (main merged in), a1eb1be9 (the re-review's doc clause); check 5119 of 5119, e2e 234 passed. Re-review (2026-11-14): merge as is. Next: the second opinion (running), merge, full gate, release. | "A: remove 2 parts, then record (Recommended)" (2026-11-14) |
+| **Route A, step 1:** take out the two faulted parts (the wake give-back, the cut-ask exemption); the rare Undo shape (F2) recorded as deferred. | under review | Branch ask-owed: e17900f5 (the removal), cd354d02 (main merged in), a1eb1be9 (the re-review's doc clause); check 5119 of 5119, e2e 234 passed. Re-review (2026-11-14): merge as is. Second opinion: two more rare shapes the removal leaves (a cut turn past the two-wake cap not taken up; the typed-line sibling of F2), both covered by step 2, so deferred to it; three doc lines claim more than the code past the cap. Next: a docs round that reproduces both and writes them (running), merge, full gate, release. | "A: remove 2 parts, then record (Recommended)" (2026-11-14) |
 | **Route A, step 2: the loop records a turn's end** (one event type, one key); the reader reads it instead of words; `#settled` and the guessing rules go; F2 closes. | planning | Plan written (2026-11-14; its trial applies to the ask-owed branch, unit suite 5114 of 5122 with the 8 rewrites it names). Next: its spec check (running), then the build after route A step 1 merges, review, and a real-browser check of a reload and an open in the middle of a turn. Writes the approved limitation below when it lands. | "A: remove 2 parts, then record (Recommended)"; old logs: "Treat as finished (Recommended)" (2026-11-14): once per update, a turn the old version left paused and not yet reopened isn't picked up |
 
 ### Shiori answers in the traveller's language
@@ -67,16 +67,15 @@ against the code before its row was written. The ones with a question are listed
 | Part | State | Where it stands | The user's words or pick |
 |---|---|---|---|
 | **Photo encoder plugins** for formats the browser can't make (WebP on Safari, AVIF, JPEG XL), and a side task that suggests one when a model refuses a format. | deferred to the build after the interface redesign; the card is being fixed now (branch encoder-card) | Pushed out of the photo plans (m1b, m2c); spec §4.8, §9.9, §15 promise it. Today a refused format gets a card saying "A plugin that adds … would fix it (Settings → Plugins)" (src/core/agent/loop.js:2686), and no plugin kind exists to write one. The fix: the card says what is true, a Deferred entry, the spec says "later". | the user's asks, 2026-10-15 and 10-16; "Later build; fix the card now (Recommended)" (2026-11-14) |
-| **Nickname**: what Shiori calls the user, and "From <name>" on a shared trip. | not started; waiting for the user (when) | No plan, no entry; the timeline spec says only "Stage 9 goes" (:177). | "Later, as its own change (Recommended)" (2026-11-05) |
-| **The device check lists on real phones**: the real-Android, iPhone-in-hand and outing items of `docs/testing/device-checklist-*.md` (the emulator pass is done). | waiting for the user | No box in any list is ticked; the user's own drives aren't tied to them. | "Emulator first, then my phone" (2026-10-17) |
+| **Nickname**: what Shiori calls the user, and "From <name>" on a shared trip. | not started; after the redesign ("After the redesign (Recommended)", 2026-11-14) | No plan, no entry; the timeline spec says only "Stage 9 goes" (:177). | "Later, as its own change (Recommended)" (2026-11-05) |
+| **The device check lists on real phones**: the real-Android, iPhone-in-hand and outing items of `docs/testing/device-checklist-*.md` (the emulator pass is done). | sorting | No box in any list is ticked. Being sorted (2026-11-14) into one short pre-trip list the user can tick on the phone: what still applies, most important first. | "Emulator first, then my phone" (2026-10-17); "Yes, a short pre-trip list (Recommended)" (2026-11-14) |
 | **Share a trip to a public GitHub repo.** | not started | Spec §12.2 ("Later: Share to GitHub"); nothing built. | "Later, after the trip" (2026-10-17) |
-| **Remote trace's page "does not open"** on the user's phone. | waiting for the user | Never reproduced; four questions were queued and never asked; no change since. | the user's report, 2026-11-08 |
 | **The parked-phone "walking" drift test.** | not run | The second-drive spec says "not decided" (:217-218); the instrumentation (a state entry per activity change, a 5-minute heartbeat) is built; no result read. | the user's offer to test, 2026-11-05 |
 | **Places tools and the offline pack read English Wikipedia and Wikivoyage only** (src/core/pack/download.js:42-43, src/plugins/web/free.js:144). | waiting for the user | The m5c plan says "English today"; ja and zh screens are live. | the brief: broad global access |
 | **Streamed voice for providers other than Gemini** (play a clip while it is still being made). | not started | Built for Gemini only (`readSpeechStream` in plugins-official/gemini-api/speech.js); the Gemini spec says "Later: Other providers' streamed voices". | the user's ask, 2026-10-19 |
 | **OpenAI Realtime run against the real service.** | not run; waiting for the user | plugins-official/openai-realtime ships; test/live/openai-realtime.test.js needs a key and was never run; whether OpenAI takes a key from a browser this way is unknown. | — |
 | **The 39-row Calls-to-confirm page** (2026-11-12) has no recorded answer; its row G8 ("K2 can fire a day late once") has no limitation entry. | waiting for the user | The page's answers aren't in the repo. | — |
-| **"3b": the spoken-yes listening code**, unused since the card is answered by tap only (`askSaid` in src/core/agent/loop.js). | waiting for the user | docs/limitations.md says it stays "until the user decides whether to remove it". | "Keep tap only (Recommended)" (2026-11-13) |
+| **"3b": remove the spoken-yes listening code**, unused since the card is answered by tap only (`askSaid` in src/core/agent/loop.js). | not started; after the turn-end record and stage 7 (all three change loop.js) | A build with a review; nothing the user sees changes; its limitations entry ("until the user decides") closes. | "Keep tap only (Recommended)" (2026-11-13); "Remove it (Recommended)" (2026-11-14) |
 | **On-device dictation.** | not started | Off because Web Speech's on-device check crashed Chrome 153 (src/plugins/voice-browser/index.js:720-722). | "on-device dictation can wait" (2026-10-17) |
 | **Right-to-left languages.** | not started | Groundwork only; spec §14.3: "comes with the first such language". | agreed "last, when a reader is there" (2026-10-23) |
 | **Hosting on Cloudflare Pages.** | not started | The stamp is ready for a Pages build (`node scripts/stamp.mjs`). | the user, 2026-10-17: once most things are ironed out |
@@ -104,14 +103,13 @@ against the code before its row was written. The ones with a question are listed
 ## Waiting for the user
 
 - The phone look of stage 4 and stage 7, after stage 7 ships (picked 2026-11-14): see its row.
-- From the scope audit: nickname (when?); the real-phone check lists; does Remote
-  trace's page open now; English-only Wikipedia for Places and the pack; OpenAI Realtime unverified; the 39-row page;
-  "3b" (remove or keep); the later and "not now" rows (Deferred, known limitation, or dropped); Gemini Live's key in the
+- From the scope audit: English-only Wikipedia for Places and the pack; OpenAI Realtime unverified; the 39-row page; the later and "not now" rows (Deferred, known limitation, or dropped); Gemini Live's key in the
   address (known limitation?); the "Live / Chat" names, which no pick chose (the user picked "Realtime / Classic",
   2026-10-22); the proposal to fix 「固定」 at its source, never put to the user.
 
 ## Closed
 
+- 2026-11-14: Remote trace's page "does not open" (reported 2026-11-08): the user says it opens now, "It opens now".
 - 2026-11-14: the iPhone volume limitation approved 2026-11-11 ("Yes, with a help line (Recommended)") written into docs/limitations.md (be19f773).
 - 2026-11-14: Japanese and Chinese rewritten to read native (both Chinese scripts; Traditional written for Taiwan); Shiori's answers in the traveller's language; an answered card is always read (ask-sleep); ~40 English lines made true. Released 5e2c6565.
 - 2026-11-14: Koe's 「少々お待ちください」: accepted, "Accept it (Recommended)".
