@@ -1401,6 +1401,6 @@ Each milestone gets its own implementation plan. The plugin interface exists fro
 | 8 | **Extensions:** skills, MCP client, code-plugin install UX, UI slots (§5, §16.4) | A third-party skill, an MCP server and a code plugin can each be installed and used. |
 | 9 | **Backup targets:** GitHub, S3-compatible, WebDAV (§12.4) | Automatic backup and restore to GitHub works. |
 
-Remaining official plugins (Gemini, more speech and search providers, and photo encoders such as WebP for Safari or AVIF) are added during milestones 2 and 3 as needed. OpenAI Responses joined on 2026-10-18. The photo encoders come later, in the build after the interface redesign (docs/limitations.md, "Photo encoder plugins").
+Remaining official plugins (Gemini, more speech and search providers) are added during milestones 2 and 3 as needed. OpenAI Responses joined on 2026-10-18. The photo encoders come later, in the build after the interface redesign (docs/limitations.md, "Photo encoder plugins").
 
 **Providers as plugins** (docs/superpowers/specs/2026-10-18-provider-plugins-design.md, six milestones): providers and abilities with one key, `requires` and data-only provider plugins (M1); servers you run (M2); one catalog with search (M3); OpenRouter as a code provider (M4); "Custom provider" looks for itself (M5); conflicts made explicit (M6).
