@@ -55,6 +55,9 @@ export const DRAFT_TITLE = /* en */ 'New conversation';
 /** A new install's profile: no Language line, as the Languages setting says which (spec §10.9). */
 /* en */
 const PROFILE = '# Profile\n\n- What to call me:\n- Units:\n- Preferences:\n';
+/** What every install before wrote as its profile. A profile that is still exactly this follows the update, as an unedited personality does (agent/personalities.js). */
+/* en */
+const OLD_PROFILE = '# Profile\n\n- What to call me:\n- Language: English\n- Units:\n- Preferences:\n';
 
 /**
  * A scope's title as the screens show it: "me" and the system scopes by their id, in the screens' language (the stored title is
@@ -92,6 +95,9 @@ export async function ensureBaseScopes(ws) {
   if (made.includes(ME)) {
     await ws.write(ME, '/profile.md', PROFILE, { author: 'user' });
     await ws.write(ME, '/memory.md', /* en */ '# Memory\n', { author: 'user' });
+  } else if ((await ws.readText(ME, '/profile.md')) === OLD_PROFILE) {
+    // Nobody changed it: its "Language: English" would be a second answer, beside the Languages setting's. Any other profile is the user's.
+    await ws.write(ME, '/profile.md', PROFILE, { author: 'system' });
   }
 }
 

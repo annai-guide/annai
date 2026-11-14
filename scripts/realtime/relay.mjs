@@ -20,7 +20,7 @@ const ASK = /^\[annai\] "(Kokoro's note hasn't reached the user|Sound cut you of
  * partial ("It's about twenty.", "ahead on Highway 1.") 27% at most; a third lies between.
  */
 const WHOLE = 1 / 3;
-/** After a "stop", a line of hers this long at most: "Okay." (NO_FILLER's one word when a word is needed) or "Got it."; no note's claim fits in two words. */
+/** After a "stop", a line of hers this long at most: an okay (NO_FILLER's one word when a word is needed, said in the answer's language; "Okay." in an English run) or "Got it."; no note's claim fits in two words. */
 const SHORT_WORDS = 2;
 /** annai's line for a user turn the session gave nothing back to (live.js, #silent): the model's choice, never retried. */
 const LET_GO = /taken as let go/;
@@ -91,7 +91,7 @@ export function analyseRelay(rec, a, sc, clips) {
 
   if (sc.acted) {
     // A request that begins with "stop" is no order to Koe to stop, and Koe has the reminder tools by design: she acts on it when she passes it on (tell_kokoro), or
-    // does it with a tool of her own and says so. Silence is the failure (the stop clause swallowed it); words with no act ("Okay.") are the stop's answer, so a failure too.
+    // does it with a tool of her own and says so. Silence is the failure (the stop clause swallowed it); words with no act (an okay) are the stop's answer, so a failure too.
     const rows = played.filter((c) => c.expect === 'answer').map((c) => {
       if (!c.turns) return { c, counted: false, acted: false, line: `   ${c.name}: no turn was made of it (not counted)` };
       const fs = inWindow(c.end + (c.endLagMs ?? 0), until(c));
@@ -135,7 +135,7 @@ export function analyseRelay(rec, a, sc, clips) {
     const why = !by ? 'nothing was played into the note' : !cut ? `the ${by.name} did not cut her: nothing to show` : '';
     const tail = `asked again ${asks.length === 1 ? 'once' : `${asks.length} times`}; shown ${shown.length === 1 ? 'once' : `${shown.length} times`}`;
     if (sc.noteCut === 'stop') {
-      // Told to stop over the note: from the end of the stop, her lines (what was heard of her, annai's record) a short word at most ("Okay."), nothing passed
+      // Told to stop over the note: from the end of the stop, her lines (what was heard of her, annai's record) a short word at most (an okay), nothing passed
       // on, and no try of annai's again.
       const from = by ? by.end + (by.endLagMs ?? 0) : Infinity;
       const words = rec.trace.filter((t) => t.type === 'out.speak' && t.at > from).map((t) => spoken(t).replace(/✂$/, '')).join(' ').split(/\s+/).filter(Boolean);

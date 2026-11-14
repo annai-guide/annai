@@ -44,10 +44,37 @@ test("a new install's profile has no Language line: the Languages setting says w
   const { ws } = setup();
   await ensureBaseScopes(ws);
   assert.equal(await ws.readText(ME, '/profile.md'), '# Profile\n\n- What to call me:\n- Units:\n- Preferences:\n');
-  // A profile that is there (an older install's, or one the user wrote) is theirs: nothing rewrites it.
-  await ws.write(ME, '/profile.md', '# Profile\n\n- Language: English\n', { author: 'user' });
+  // A profile that is the new one stays: starting again writes nothing.
   await ensureBaseScopes(ws);
-  assert.equal(await ws.readText(ME, '/profile.md'), '# Profile\n\n- Language: English\n');
+  assert.equal((await ws.history(ME, '/profile.md')).length, 1);
+});
+
+// What every install before this had written as its profile, byte for byte. Like a personality nobody edited, it follows the update;
+// anything else in the file is the user's, or Shiori's for them, and is never touched.
+const OLD_PROFILE = '# Profile\n\n- What to call me:\n- Language: English\n- Units:\n- Preferences:\n';
+const NEW_PROFILE = '# Profile\n\n- What to call me:\n- Units:\n- Preferences:\n';
+
+test("an install's untouched old profile (exactly the old default) gets the new one at start; a profile changed by one character is left as it is", async () => {
+  const { ws } = setup();
+  await ensureBaseScopes(ws);
+  await ws.write(ME, '/profile.md', OLD_PROFILE, { author: 'user' });
+  await ensureBaseScopes(ws);
+  assert.equal(await ws.readText(ME, '/profile.md'), NEW_PROFILE);
+  assert.equal((await ws.history(ME, '/profile.md')).at(-1).actor, 'system', 'annai wrote it, as it does an unedited personality');
+  const wrote = (await ws.history(ME, '/profile.md')).length;
+  await ensureBaseScopes(ws);
+  assert.equal((await ws.history(ME, '/profile.md')).length, wrote, 'once: the new default is not touched again');
+  for (const edited of [
+    OLD_PROFILE.replace('English', 'Englisx'),
+    OLD_PROFILE.replace('call me:', 'call me: Alex'),
+    `${OLD_PROFILE}\n`,
+    OLD_PROFILE.replace('Language: English', 'Language: Japanese'),
+    '# Profile\n\n- Language: English\n',
+  ]) {
+    await ws.write(ME, '/profile.md', edited, { author: 'user' });
+    await ensureBaseScopes(ws);
+    assert.equal(await ws.readText(ME, '/profile.md'), edited, JSON.stringify(edited));
+  }
 });
 
 test('createTrip makes a scope, trip.json, trip memory and a scope.create event', async () => {

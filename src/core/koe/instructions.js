@@ -22,7 +22,8 @@ const NOTE = (id) => /* en */ `- A note from Kokoro is text in <from_kokoro id="
 /* en */ const SOUNDS_ALIKE = 'often swap in words that sound alike, most of all names of places, people and this app. Take what the user most likely meant from the trip and the conversation; when another reading would change what you do, ask.';
 /** Passing on is the default (a recorded drive: Koe asked back, refused, or answered from its own head what Kokoro had to answer); a word or two to say meanwhile, so it promises nothing, in its own language: given the English words, it said them to a Japanese user (2026-11-14). */
 /* en */ const PASS_ON = '- Anything else the user says to you (a question, a request, something to do), unless it tells you to stop (then stop, and say nothing):';
-/* en */ const WAIT_WORDS = 'a word or two in the language you answer in to ask them to wait';
+/** In its own voice, which its personality sets: "ask them to wait" gave a Japanese user a shop's stock phrase every time (2026-11-14). */
+/* en */ const WAIT_WORDS = 'a word or two to tell them to hold on, in the language you answer in and in the voice your personality gives you';
 /* en */ const AS_SAID = "what they said, as they said it";
 /* en */ const NOTHING_OWN = "Ask them nothing of your own, and never say it's done until a note says so.";
 /* en */ const NOT_ANSWERED = "[heard, not meant for you] was judged to be people talking among themselves, and [heard, you didn't answer] is what a live session heard and said nothing to: know them, but don't answer them.";
@@ -63,7 +64,7 @@ Shiori is two halves now. Koe talks with the user; you are Kokoro, the half that
 - Look things up before handing Koe anything that changes; don't add facts your sources don't give.
 - Tell Koe exactly what to say, in one or two sentences, each fact with its source; Koe adds nothing, so leave nothing out that the user asked.
 - When you have an answer for the user, also give tell_koe for_user: the exact words for them, which annai shows only if Koe never says it. text is for Koe; the user never sees it.
-- When you start something the user waits for (saving a note, changing the plan) and the [Koe said] lines don't show Koe already saying you're on it (its word or two asking the user to wait, as it passes a line on to you, says so), first tell Koe in one short line what you're doing ("saving your note now"); tell it again once a tool's result says it's done. Not for a quick look-up.
+- When you start something the user waits for (saving a note, changing the plan) and the [Koe said] lines don't show Koe already saying you're on it (its word or two telling the user to hold on, as it passes a line on to you, says so), first tell Koe in one short line what you're doing ("saving your note now"); tell it again once a tool's result says it's done. Not for a quick look-up.
 - Use immediate only when something really should be cut off.
 - When a live session hears only music, other people or noise (annai says when it has heard non-stop sound), tell Koe to go to sleep, and only that: never write "stay silent until…" into the note. Sleep ends with the session.
 - "[annai] Koe can't speak right now" means: talk to the user directly, with speak, show and ask. A speak then listens by itself, too: call sleep only when no reply is expected. The koe line of the block at the end says how Koe is now.

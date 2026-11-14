@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { LANGUAGES, nativeName, languageSettings, languagesText, screensText, distancesText, distancesOf, modelLanguages, speechLocale, dictationLocale, listedFor, strayLanguage, languageOf, tagOf, NO_LANGUAGE } from '../../src/core/languages.js';
 
-/** The sentence that ends the section where she may answer in a language other than English (answers-natural, 2026-11-14). */
-const NATIVE = " Talk the way a native speaker of the language you answer in talks to a friend, and say what annai's English words mean instead of translating them word for word.";
+/** The sentence that ends the section for every setting, worded by its own condition (answers-natural, 2026-11-14). */
+const NATIVE = " When you answer in a language other than English, say things the way a native speaker of that language would, and say what annai's English words mean instead of translating them word for word (a plan item marked fixed is one that can't be moved).";
 
 // Languages you speak (phase 2): the list, the setting read from the app settings, and the words models are told.
 
@@ -93,7 +93,7 @@ test('with nothing saved, the browser\'s own tag is the locale, as before this b
 
 test('with nothing chosen the model is told what the phone is set to, not that the user speaks it: a Chinese speaker with an English phone is not told they speak English (review item 3)', () => {
   const one = languagesText(languageSettings({}, 'en-US'));
-  assert.equal(one, "The user's phone is set to English, and they may speak other languages. Answer in the language they used. Never switch to another language because of one word you're unsure of; if you can't make out what they said, ask them to say it again.");
+  assert.equal(one, `The user's phone is set to English, and they may speak other languages. Answer in the language they used. Never switch to another language because of one word you're unsure of; if you can't make out what they said, ask them to say it again.${NATIVE}`);
   assert.match(languagesText(languageSettings({}, 'et-EE')), /^The user's phone is set to Estonian, and they may speak other languages\./);
   const fixed = languagesText(languageSettings({ languages: { answer: 'ja' } }, 'en-US'));
   assert.equal(fixed, `The user's phone is set to English. Always answer in Japanese, whatever language they use. Never switch to another language because of one word you're unsure of; if you can't make out what they said, ask them to say it again.${NATIVE}`);
@@ -126,8 +126,9 @@ test('what models are told (the user, 2026-10-23): the languages, that they may 
 
 // The user, 2026-11-14: "the japanese words seems bit 不自然 feels like english translated to japanese not native japanese". The real
 // run before (answers-natural-r1) had annai's own English carried over word for word (a booking's "fixed" as 「時間固定」) and written
-// connectives in chat. One sentence, the same for every language, wherever she may answer in one that isn't English.
-test('where she may answer in a language other than English, the section ends with one sentence: talk as a native speaker, and say what annai\'s English means', () => {
+// connectives in chat. One sentence, always there and the same for every setting: its own words say when it applies, so no setting can
+// leave a Japanese speaker without it (an English phone, nothing chosen, the user writing Japanese) and none branches on the language.
+test('the section always ends with one sentence, worded by its own condition: say things as a native speaker would, and say what annai\'s English means', () => {
   for (const [what, app, locale] of /** @type {const} */ ([
     ['Japanese', { languages: { spoken: ['ja'] } }, 'ja-JP'],
     ['Chinese (Simplified)', { languages: { spoken: ['zh'] } }, 'zh-CN'],
@@ -136,16 +137,17 @@ test('where she may answer in a language other than English, the section ends wi
     ['English and Japanese, following the user', { languages: { spoken: ['en', 'ja'] } }, 'en-US'],
     ['always in Japanese, to a user who speaks English', { languages: { spoken: ['en', 'ja'], answer: 'ja' } }, 'en-US'],
     ['an English phone, always in Japanese', { languages: { answer: 'ja' } }, 'en-US'],
+    ['English', { languages: { spoken: ['en'] } }, 'en-US'],
+    ['an English phone, nothing chosen (a Japanese speaker may be typing)', {}, 'en-GB'],
+    ['always in English, to a user who speaks Japanese', { languages: { spoken: ['ja', 'en'], answer: 'en' } }, 'ja-JP'],
+    ['an app setting that is no setting', { languages: 'oops' }, 'en-US'],
   ])) {
     const text = languagesText(languageSettings(app, locale));
     assert.ok(text.endsWith(NATIVE), `${what}: ${text}`);
     assert.equal(text.split('native speaker').length, 2, `${what}: once`);
   }
-  for (const [what, app, locale] of /** @type {const} */ ([
-    ['English', { languages: { spoken: ['en'] } }, 'en-US'],
-    ['an English phone, nothing chosen', {}, 'en-GB'],
-    ['always in English, to a user who speaks Japanese', { languages: { spoken: ['ja', 'en'], answer: 'en' } }, 'ja-JP'],
-  ])) assert.doesNotMatch(languagesText(languageSettings(app, locale)), /native speaker|word for word/, what);
+  // Her personality sets the tone: the sentence sets no register of its own.
+  assert.doesNotMatch(NATIVE, /friend|casual|polite|formal/);
 });
 
 test('what a model protocol is given is plain data: the codes of each language, in order, and the fixed answer language', () => {

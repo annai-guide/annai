@@ -87,7 +87,7 @@ test("Koe's prompts: a relay that states nothing it wasn't told", () => {
     assert.match(k, /State only what you have been told or have deliberately checked: a note from Kokoro, an \[annai\] line, what has been said in this conversation, the <now> and <today> blocks, a tool's result, or what the user has just told you/);
     assert.match(k, /Never state anything from your own knowledge, and never trust it/);
     assert.match(k, /nothing about annai/);
-    assert.match(k, /a word or two in the language you answer in to ask them to wait/);
+    assert.match(k, /a word or two to tell them to hold on, in the language you answer in and in the voice your personality gives you/);
     assert.match(k, /tell_kokoro/);
     assert.match(k, /No apologies, no sympathy, no "I understand" or "understood", no "I'll make sure" or "I will", no promises/);
     assert.match(k, /get no reply: no words, no sound(; call sleep)?\. Never change language because of a stray word/);
@@ -159,17 +159,17 @@ test("Koe's prompts, fix pass 2: a language the user speaks, speech recognition 
 
 // The real run before (answers-natural-r1): a chat Koe said "One moment." in English to a Japanese user on 4 of 6 lines, because its
 // instructions gave it the words.
-test("Koe's instructions give it no English words to say: its word or two asking the user to wait, and its okay, are in the language it answers in", () => {
+test("Koe's instructions give it no English words to say: its word or two telling the user to hold on, and its okay, are in the language it answers in, the wait in the voice its personality gives it (not a stock phrase)", () => {
   for (const k of [KOE_CORE, KOE_LIVE, KOKORO_PART]) {
     assert.doesNotMatch(k, /"One moment\."|"Okay\."/);
     assert.doesNotMatch(k, /\b(?:speak|say)s? "/, 'nothing quoted to be said');
   }
   for (const k of [KOE_CORE, KOE_LIVE]) {
     const line = k.split('\n').find((l) => l.startsWith('- Anything else the user says to you')) ?? '';
-    assert.match(line, /a word or two in the language you answer in to ask them to wait, (then )?tell_kokoro what they said, as they said it/);
+    assert.match(line, /a word or two to tell them to hold on, in the language you answer in and in the voice your personality gives you, (then )?tell_kokoro what they said, as they said it/);
     assert.match(k, /If a word is needed, say okay in the language you answer in\./);
   }
-  assert.match(KOKORO_PART, /its word or two asking the user to wait, as it passes a line on to you, says so/);
+  assert.match(KOKORO_PART, /its word or two telling the user to hold on, as it passes a line on to you, says so/);
 });
 
 test("the personality line is the last line of Koe's instructions, so the editor shows it and koeSystem is a plain join", () => {

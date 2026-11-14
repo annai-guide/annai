@@ -86,19 +86,22 @@ export const named = (list, and = 'and') => list.map((l) => l.name).reduce((s, n
 /** What a model that writes speech down is told, after its own instruction: who may speak, and that nothing is translated. @param {LanguageSettings} s */
 export const speakerLine = (s) => /* en */ (!s.explicit ? '' : `The speaker uses ${named(s.spoken, 'or')}: write ${s.spoken.length > 1 ? 'each' : 'it'} in the language spoken and never translate.`);
 
+/** The last sentence of the Languages section, for every setting: its own words say when it applies. It sets no register (her personality does) and quotes no word to say; its example explains what annai's word means. */
+/* en */
+const NATIVE = "When you answer in a language other than English, say things the way a native speaker of that language would, and say what annai's English words mean instead of translating them word for word (a plan item marked fixed is one that can't be moved).";
+
 /**
  * What every model that hears or speaks is told, in the same words: Shiori's and Kokoro's system text, Koe's, and a live session's. The
  * languages are named because "reply in the user's language" makes a model take an accent, a filler or one foreign word for a change of
- * language (OpenAI's own prompting guide warns against it); one unsure word changes nothing. Where she may answer in a language other than
- * English, it ends with one sentence for how she sounds in it: her Japanese read as translated English (the user, 2026-11-14).
+ * language (OpenAI's own prompting guide warns against it); one unsure word changes nothing. It always ends with one sentence for how she
+ * sounds in a language other than English (her Japanese read as translated English, the user, 2026-11-14). Its own words say when it applies:
+ * no setting tells whether she will answer in another language (an English phone, nothing chosen, Japanese typed), so none branches on one.
  * @param {LanguageSettings} s
  */
 export function languagesText(s) {
   const list = named(s.spoken);
   /* en */
-  const native = (s.answer ? [s.answer] : s.spoken).some((l) => l.id !== 'en') ? " Talk the way a native speaker of the language you answer in talks to a friend, and say what annai's English words mean instead of translating them word for word." : '';
-  /* en */
-  const rest = `Never switch to another language because of one word you're unsure of; if you can't make out what they said, ask them to say it again.${native}`;
+  const rest = `Never switch to another language because of one word you're unsure of; if you can't make out what they said, ask them to say it again. ${NATIVE}`;
   // Until the user picks, all annai knows is what the phone is set to: not that they speak it, and not that they speak nothing else.
   /* en */
   if (!s.explicit) return `The user's phone is set to ${list}${s.answer ? `. Always answer in ${s.answer.name}, whatever language they use` : ', and they may speak other languages. Answer in the language they used'}. ${rest}`;
