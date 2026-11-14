@@ -481,8 +481,10 @@ export class Live {
     const now = this.clock.now();
     const here = type.type === 'moved' ? this.#moment().fix : null; // a moved watch counts from here
     if (i.expires !== undefined && validate({ type: 'string', format: 'date-time' }, i.expires).length) throw new Error(/* en */ 'expires must be an ISO date-time with an offset, like 2026-11-27T18:00:00-08:00.');
-    if (i.expires !== undefined && Date.parse(i.expires) <= now) throw new Error(/* en */ `expires ${i.expires} has already passed.`);
-    if (type.type === 'time' && Date.parse(when.at) <= now) throw new Error(/* en */ `${when.at} has already passed. Give a time ahead.`);
+    // A turn's clock can be behind this one (a fallback model, a file read), so a refusal says the time now, as the now block does (the device's zone, to the second).
+    const passed = (/** @type {string} */ what) => /* en */ `${what} has already passed: it is now ${isoInZone(now, this.timeZone())}.`;
+    if (i.expires !== undefined && Date.parse(i.expires) <= now) throw new Error(passed(/* en */ `expires ${i.expires}`));
+    if (type.type === 'time' && Date.parse(when.at) <= now) throw new Error(/* en */ `${passed(when.at)} Give a time ahead.`);
     /** @type {Watch} */
     const w = {
       id: newWatchId(), owner, when: { ...when }, repeat: type.type === 'every' || (type.type !== 'time' && i.repeat === true), ...(i.urgent === true ? { urgent: true } : {}),
