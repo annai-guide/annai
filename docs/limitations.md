@@ -695,3 +695,51 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** Kokoro's wake after Koe answers lets it add what Koe may have missed; telling which of Koe's answers came whole from its own tool is more state, for a double that loses nothing (a double over a loss).
 - **Revisit when:** the user finds the repeat annoying.
 - **Approved:** 2026-11-13, the user picked "Known limitation (Recommended)".
+
+### The real-voice check measures Koe's words in English
+- **Kind:** deferred.
+- **What the user sees:** nothing. Three checks in `scripts/realtime/` read Koe's words as English: "stopped when told" counts words by spaces, so a long Japanese reply passes; the passed-on question test sees only an ASCII "?", so 「？」 passes; the filler check knows English words only.
+- **Why:** found on 2026-11-14 while checking Koe's new pass-on words in Japanese; each check predates that change and none is in the app.
+- **Revisit when:** the next version: count CJK by character as the recall check already does, accept 「？」, and give the filler check its Japanese and Chinese words (with a recorded Japanese clip to test them).
+
+### Shiori's written recap gets no native-speaker sentence
+- **Kind:** deferred.
+- **What the user sees:** a recap written in Japanese or Chinese may still read translated: its request names the language but carries no sentence on how it should sound, unlike her answers since 2026-11-14.
+- **Why:** no real run has written a recap in Japanese, so whether it reads translated is not known.
+- **Revisit when:** the next version: run one real Japanese recap; if it reads translated, add the Languages section's native-speaker sentence to the recap's request.
+
+### Summaries pick their language three different ways when no words decide it
+- **Kind:** deferred.
+- **What the user sees:** nothing on screen today: compaction falls back to English (only a model reads it), the recap to the screens' language, Shiori's own answers to the phone's. Compaction also counts annai's "(files)" placeholder as words the user wrote.
+- **Why:** each rule was written for its own place; one answer to one question belongs in one place (RULES #10).
+- **Revisit when:** the next version: one shared function for "the language the user wrote in", used by all three, with annai's placeholders left out everywhere.
+
+### A live Koe's line before a tool has no language rule
+- **Kind:** deferred.
+- **What the user sees:** possibly, with live voice in Japanese, a word in English before Koe looks something up. Not seen: no live run has exercised that line in Japanese.
+- **Why:** Koe's pass-on and okay words name the answer's language since 2026-11-14; the pre-tool line (koe/instructions.js) was left as it was.
+- **Revisit when:** the next version: describe it the same way, then one live run in Japanese.
+
+### Kokoro can write its notes to Koe in English in a Japanese conversation
+- **Kind:** deferred.
+- **What the user sees:** with Koe and Kokoro, Koe's Japanese can come out stiff when Kokoro's note to it was English ("Tell the user in Japanese: …"), seen once in a live run on 2026-11-14.
+- **Why:** nothing tells Kokoro which language its notes to Koe are in.
+- **Revisit when:** the next version: say it in the note tool's description or the halves' text, then a live run in Japanese.
+
+### Two English strings each serve two places, so no translation fits both
+- **Kind:** deferred.
+- **What the user sees:** in Japanese, the Driving screen's route strip shows 自分 for "You" next to 現在地（確認中）; in Chinese, "Added {0}" can't be spaced right for both a language name and a file count.
+- **Why:** "You" is one key for the route strip (drive.js:71) and Replay's speaker tag (replay.js:99); "Added {0}" (18uuegb) is filled by two callers.
+- **Revisit when:** the next English change: give each place its own string (or a context), with drafts in every language.
+
+### Shiori is told two Koe names no screen shows
+- **Kind:** deferred.
+- **What the user sees:** nothing visible; when Shiori names a screen she can't name the Koe lists by their current names, and is told 'Koe · Classic' and 'Koe · Realtime', which no screen shows.
+- **Why:** TOLD in scripts/strings.mjs still lists the old names and "Tidy up".
+- **Revisit when:** the next change that touches the screens line (one cold prompt cache when it ships).
+
+### Her reply to the "you haven't answered" cue can still be private text
+- **Kind:** deferred.
+- **What the user sees:** after answering her question card, if her reply showed nothing and the cue followed, in about 1 of 9 forced runs she answered again in plain text the user never sees, and "Shiori didn't answer" showed.
+- **Why:** the cue says only speak, show and ask reach the user; a model can still write plain text.
+- **Revisit when:** the next version: firmer cue words, measured on the ask-owed run's forced set.
