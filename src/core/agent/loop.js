@@ -483,8 +483,11 @@ export class Agent {
   #handover = null;
   /** Every hand-over the turn running took, oldest first (ToolCall.handovers). @type {string[]} */
   #handovers = [];
-  /** What the running turn did (Half.ended). */
-  #facts = { finalText: '', told: false, slept: false, closed: false, spoke: false, aloud: false, wrote: false, watched: false, kinds: /** @type {string[]} */ ([]) };
+  /**
+   * What the running turn did (Half.ended). answeredAt: how often she had reached the user when they last answered her question; that line is owed a reply
+   * while she hasn't reached them since (#answerAsk).
+   */
+  #facts = { finalText: '', told: false, slept: false, closed: false, spoke: false, aloud: false, wrote: false, answeredAt: /** @type {number | null} */ (null), watched: false, kinds: /** @type {string[]} */ ([]) };
   /** The user stopped the running turn (a tap, or the sign's Stop), not annai opening another conversation. */
   #userStop = false;
   /** The turn running was cut by opening another conversation: the one left is told. */
@@ -2140,7 +2143,7 @@ export class Agent {
     await this.#half.ready?.(); // the half's rules are known (Halves reads the settings as annai starts)
     await this.#workOutVoice(wakes);
     this.#heardBy = null;
-    this.#facts = { finalText: '', told: false, slept: false, closed: false, spoke: false, aloud: wakes.some((w) => w.window), wrote: false, watched: wakes.some(isWatched), kinds: wakes.map((w) => w.kind) };
+    this.#facts = { finalText: '', told: false, slept: false, closed: false, spoke: false, aloud: wakes.some((w) => w.window), wrote: false, answeredAt: null, watched: wakes.some(isWatched), kinds: wakes.map((w) => w.kind) };
     // Shiori became two halves, or one again.
     if (this.transcript.half !== this.#rules()) await this.#serially(() => this.reread());
     let ok = false;
@@ -2259,8 +2262,11 @@ export class Agent {
       return taken;
     };
     const owes = () => notes.length > 0 || wrote;
-    /** The user's own words wait for an answer: their message (unless the turn told the other half), or what they wrote in Koe's wait. */
-    const unanswered = () => wrote || (theirs && !this.#facts.told);
+    /**
+     * The user's own words wait for an answer: their message, or their answer to her question that nothing she has made reached them since
+     * (unless the turn told the other half), or what they wrote in Koe's wait.
+     */
+    const unanswered = () => wrote || ((theirs || this.#facts.answeredAt === this.#reached) && !this.#facts.told);
     /**
      * Wakes joining the turn (first: those that began it): what they owe; not a note a reply that reached the user had read already (a
      * wake can trail its note). @param {Wake[]} more @param {boolean} [first]
@@ -2848,8 +2854,6 @@ export class Agent {
     /** @type {import('./tools.js').ToolOutput} */
     let output;
     let ms = 0;
-    /** A sleep that gave way (o.awake): its stored result says so, as the reply's words (a sleep) no longer say the turn ended. */
-    let unslept = false;
     // Kokoro's output tools while Koe talks (plan decision 15).
     const gated = tool && !off && !o.signal.aborted && this.#half.gate ? await this.#half.gate({ id: c.id, name: c.name, input, wake: o.wakeId }) : null;
     const toldBefore = this.#facts.told;
@@ -2861,7 +2865,7 @@ export class Agent {
     else if (gated) output = { content: gated.content, ...(gated.isError ? { isError: true } : {}) };
     else if (!tool) output = { content: /* en */ `Error: there is no tool called ${c.name}, or it is switched off.`, isError: true };
     else if (typeof c.input !== 'object' || c.input === null) output = { content: /* en */ `Error: the input for ${c.name} wasn't valid JSON.`, isError: true };
-    else if (o.awake) { output = { content: o.awake }; unslept = true; }
+    else if (o.awake) output = { content: o.awake };
     else if (o.unsent) output = { content: UNSENT, isError: true };
     else {
       const scope = this.scope;
@@ -2930,7 +2934,7 @@ export class Agent {
     }
     await this.#log({
       type: 'tool.result', actor: 'system',
-      data: { id: c.id, name: c.name, ok: !output.isError, ms, wake: o.wakeId, cut, ...(images.length ? { images } : {}), ...(document ? { document } : {}), ...(output.heard?.length ? { heard: output.heard } : {}), ...(output.endTurn ? { end: true } : {}), ...(unslept ? { awake: true } : {}) },
+      data: { id: c.id, name: c.name, ok: !output.isError, ms, wake: o.wakeId, cut, ...(images.length ? { images } : {}), ...(document ? { document } : {}), ...(output.heard?.length ? { heard: output.heard } : {}), ...(output.endTurn ? { end: true } : {}), ...(o.awake ? { awake: true } : {}) },
       texts: [['content', output.content]], blobs,
     });
     return output;
@@ -3178,11 +3182,7 @@ export class Agent {
           if (got.stopped) return { content: STOPPED, isError: true };
           /* en */
           if (got.note) return `${got.note === 'koe' ? 'Koe' : 'Kokoro'}: see the note below. Your question is closed, its buttons too: ask it again if it still matters.`;
-          if (got.chosen !== undefined) {
-            await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...this.#chose() }, texts: [['text', got.chosen]] });
-            return `The user chose: ${got.chosen}`;
-          }
-          return this.#answer('', got, call, ''); // typed, or said (a tap held voice on and opened the microphone for it), as her question aloud is answered
+          return this.#answerAsk(got, call); // tapped, typed, or said (a tap held voice on and opened the microphone for it), as her question aloud is answered
         },
       },
       {
@@ -3434,18 +3434,23 @@ export class Agent {
     if (call.signal.aborted) return { content: STOPPED, isError: true };
     /** @type {Got} */
     let got = spoken.failed ? {} : await this.#listenFor(call, 'ask', LISTEN_S);
-    if (got.heard || got.text !== undefined || got.chosen !== undefined || got.stopped || got.earlier) {
-      if (got.chosen === undefined) return this.#answer('', got, call, '');
-    } else {
+    if (!(got.heard || got.text !== undefined || got.chosen !== undefined || got.stopped || got.earlier)) {
       if (this.#ear) this.#closeEar(); // whatever opened it: a tap that cut her off opened this one, and the question's 8 s were its limit too
       got = await this.#waitFor(call, 'ask', 0);
     }
-    if (got.stopped) return { content: STOPPED, isError: true };
-    if (got.chosen !== undefined) {
-      await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...this.#chose() }, texts: [['text', got.chosen]] });
-      return /* en */ `The user chose: ${got.chosen}`;
-    }
-    return this.#answer('', got, call, '');
+    return this.#answerAsk(got, call);
+  }
+
+  /**
+   * What her question got, as its result. Their answer (a tap, typing, speech) is a line of theirs she owes a reply to, as one that joins her turn is: owed
+   * until she reaches them again (spec §7.1). Her question put something up, so what says so is this count, not that nothing has reached them since her
+   * turn began. A word said into a wait or after her line may be no one's (owesAnswer), so those are not.
+   * @param {Got} got @param {any} call
+   */
+  async #answerAsk(got, call) {
+    const result = await this.#answer('', got, call, '');
+    if (got.chosen !== undefined || got.heard || got.text !== undefined) this.#facts.answeredAt = this.#reached;
+    return result;
   }
 
   /**
@@ -3458,6 +3463,11 @@ export class Agent {
     // What a tool gives back is a model's words: English.
     const lead = before ? `${before} ` : '';
     if (got.stopped) return { content: STOPPED, isError: true };
+    if (got.chosen !== undefined) {
+      await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...this.#chose() }, texts: [['text', got.chosen]] });
+      /* en */
+      return `${lead}The user chose: ${got.chosen}`;
+    }
     if (got.heard) {
       await this.#logHeard(got.heard, { wake: call.wake, answer: call.id, gate: got.gate });
       /* en */

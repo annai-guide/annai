@@ -118,3 +118,35 @@ test("a msg.user with handed reads as the user's words, then annai's line; Trans
   assert.equal(live.handover, null);
   assert.deepEqual((await Transcript.load(store, SCOPE)).messages, live.messages);
 });
+
+/** A hand-over, then her reply [ask, sleep]; what its results say next is the test's. @param {{ gaveWay: boolean, between?: (add: (ev: any) => Promise<void>, store: any) => Promise<void> }} o */
+async function askAndSleep({ gaveWay, between }) {
+  const store = createMemoryStore();
+  const live = new Transcript();
+  const add = async (/** @type {any} */ ev) => live.apply(ev, await resolveEvent(store, ev));
+  const handed = [{ path: '/trip/files/flight.pdf', type: 'application/pdf', name: 'flight.pdf', new: true }];
+  await add(await record(store, SCOPE, { type: 'wake', actor: 'system', data: { id: 'w-1', reasons: [{ kind: 'user', text: 'typed' }] } }));
+  await add(await record(store, SCOPE, { type: 'msg.user', actor: 'user', data: { wake: 'w-1', handed, handover: 'h-1' }, texts: [['text', 'Our trip']] }));
+  await modelTrace(store, SCOPE).turn(/** @type {any} */ ({ ...info, handover: 'h-1' }), '', '', [{ type: 'tool_call', id: 'q', name: 'ask', input: { question: 'File it?', options: ['Yes'] } }, { type: 'tool_call', id: 's', name: 'sleep', input: {} }]);
+  await add((await store.tx(['events'], 'readonly', (t) => t.listEvents(SCOPE, { types: ['model.turn'] }))).at(-1));
+  await between?.(add, store);
+  await add(await record(store, SCOPE, { type: 'tool.result', actor: 'system', data: { id: 'q', name: 'ask', ok: true, ms: 1, wake: 'w-1' }, texts: [['content', 'The user chose: Yes']] }));
+  await add(await record(store, SCOPE, { type: 'tool.result', actor: 'system', data: { id: 's', name: 'sleep', ok: true, ms: 0, wake: 'w-1', cut: false, ...(gaveWay ? { awake: true } : {}) }, texts: [['content', gaveWay ? 'Not asleep: your question came back answered or closed (its result is above), so your turn goes on.' : 'asleep']] }));
+  const loaded = await Transcript.load(store, SCOPE);
+  assert.deepEqual([loaded.handover, loaded.owedHandover, loaded.unanswered], [live.handover, live.owedHandover, live.unanswered], 'a reload reads what the live one did');
+  return live;
+}
+
+test("a reply's sleep settles the hand-over only when its results say her turn ended: one that gave way (her question came back) leaves it owed, for a restart and for Try again", async () => {
+  const gave = await askAndSleep({ gaveWay: true });
+  assert.deepEqual([gave.handover, gave.owedHandover, gave.unanswered], ['h-1', 'h-1', true]);
+  const slept = await askAndSleep({ gaveWay: false });
+  assert.deepEqual([slept.handover, slept.owedHandover, slept.unanswered], [null, null, false], 'a sleep that ran answered it');
+});
+
+test("a hand-over undone while her question waited stays undone when the sleep gives way; a newer one is not replaced by the older", async () => {
+  const undone = await askAndSleep({ gaveWay: true, between: async (add, store) => { await add(await record(store, SCOPE, { type: 'handover.undo', actor: 'user', data: { handover: 'h-1', undone: 1, kept: [] } })); } });
+  assert.equal(undone.owedHandover, null);
+  const newer = await askAndSleep({ gaveWay: true, between: async (add, store) => { await add(await record(store, SCOPE, { type: 'msg.user', actor: 'user', data: { wake: 'w-1', handover: 'h-2' }, texts: [['text', 'More']] })); } });
+  assert.equal(newer.owedHandover, 'h-2');
+});

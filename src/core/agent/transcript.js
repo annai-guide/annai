@@ -102,6 +102,8 @@ export class Transcript {
   #carry = null;
   /** The newest hand-over since her last turn ended (handover.js). @type {string | null} */
   #handover = null;
+  /** The hand-over the last reply settled by its words (a sleep among its calls), until its results say whether that reply ended her turn. @type {string | null} */
+  #settled = null;
   /** @type {Map<string, string>} Shiori's tool calls by id, to their tool names */
   #calls = new Map();
   /** @type {Set<string>} */
@@ -222,8 +224,13 @@ export class Transcript {
       this.#ends = parts.some((p) => p.type === 'tool_call' && p.name === 'sleep');
       this.#reached = false;
       // A reply that ends her turn (it sleeps, or calls no tool) has answered the hand-over it carried; a reply from before replies said
-      // which (no handover key), whatever came before it. A reminder's turn settles no hand-over.
-      if (this.#mine(d) && (this.#ends || !this.#last.length) && (!('handover' in d) || d.handover === this.#handover)) this.#handover = null;
+      // which (no handover key), whatever came before it. A reminder's turn settles no hand-over. A sleep among the calls is only the reply's
+      // words: its results say whether it ended her turn (a sleep that gave way, a cut), and then the hand-over is owed again (#settled).
+      this.#settled = null;
+      if (this.#mine(d) && (this.#ends || !this.#last.length) && (!('handover' in d) || d.handover === this.#handover)) {
+        this.#settled = this.#handover;
+        this.#handover = null;
+      }
       this.#held.push(...late);
       this.#flushHeld();
       this.unanswered = false;
@@ -269,6 +276,7 @@ export class Transcript {
     } else if (e.type === 'handover.undo') {
       // The user undid a hand-over (handover.js): she knows what was taken back, and owes it nothing more.
       if (d.handover === this.#handover) this.#handover = null;
+      if (d.handover === this.#settled) this.#settled = null; // undone while her question waited: no result brings it back
       const n = Number(d.undone) || 0;
       const kept = Array.isArray(d.kept) ? d.kept.length : 0;
       const trips = (Array.isArray(d.removed) ? d.removed : typeof d.removed === 'string' ? [d.removed] : []).map((x) => JSON.stringify(String(x)));
@@ -371,6 +379,10 @@ export class Transcript {
       if (d.end || (!('cut' in d) && texts.content === STOPPED)) this.#ends = true;
       else if (d.awake) this.#ends = false; // a sleep that gave way (a call failed, or her question came back): the reply's own sleep didn't end her turn
       else if (d.cut && (name === 'tell_koe' || name === 'tell_kokoro' || (name !== 'sleep' && !this.#reached))) this.#ends = false;
+      if (!this.#ends && this.#settled) {
+        this.#handover ??= this.#settled; // not a newer one's
+        this.#settled = null;
+      }
       if (this.#last.includes(d.id) && !this.#waitsForResults() && !this.#ends) {
         this.unanswered = true;
         this.waiting = 'turn';
