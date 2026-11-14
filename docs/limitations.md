@@ -17,6 +17,13 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** a phone check shows the buttons do something else, or a browser lets a page keep media volume while it listens.
 - **Approved:** 2026-11-11, the user's pick "Yes, with a help line (Recommended)" (from their drive). Written 2026-11-14, found missing by the scope audit.
 
+### Gemini Live's key travels in the WebSocket address
+- **Kind:** known limitation.
+- **What the user sees:** nothing on screen. With a Gemini key and Live voice, annai opens Google's Live socket with the key in its address (`?key=…`, plugins-official/gemini-live/index.js:4), not in a header. It goes to Google over TLS, but an address is more often logged along the way than a header.
+- **Why:** a browser's WebSocket can't send its own headers, so the address is the only way it can carry the key. Google's short-lived tokens would keep the key out, but they must be minted by a server, and annai has none for this.
+- **Revisit when:** Google lets a browser mint its own short-lived Live token, or annai gains a relay that could mint one.
+- **Approved:** 2026-11-14, the user's pick "Known limitation (Recommended)". Found by the scope audit.
+
 ### A microphone that dips below -90 dB without exact zeros
 - **Kind:** known limitation.
 - **What the user sees:** with a microphone that dips its signal below -90 dBFS without giving exact zeros, for about 60 ms every half second, in a room of about -50 dBFS or louder, annai sends back-to-back 15-second noise turns while the microphone is open, and a sentence said inside them is swallowed.
