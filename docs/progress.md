@@ -18,6 +18,27 @@ the date. History and reasoning live in the project's notes, not here.
   miss that. Clever design sometimes also means accept known limitations early in design phase to avoid scope creeps
   and bring in more vectors".
 
+## Standing decisions
+
+How the project is worked (not what gets built): the user's rulings, one line each with their words and the date (as the
+transcripts date them). A line changes only on the user's word.
+
+- **Releases ship when green**, without asking each time: "yes release as you go" (2026-10-19); "ok, keep going and release
+  when green" (2026-10-23). When the deploy is blocked for the agent, the user runs the one release command it gives.
+- **Simple and robust first:** "I personally often prefer simplicity and robustness. I often try to achieve the maximum
+  functionality and reliability with minimal working parts" (2026-10-15); "what I prefer is simple and robust solutions.
+  Again that is #1 in our agent rules" (2026-11-12).
+- **No deadline pressure from the user's own trip:** "again everything we have planned so far goes in there is enough time
+  why do you have to mention the … trip?" (2026-10-19). Scope is never cut or reordered for the trip.
+- **Test keys:** free ones first, paid calls few and short: "you can use any of them but prefer free ones for testing"
+  (2026-10-22); "would like to reduce test cost lol" (2026-10-21). A key is never printed, written to a file or committed.
+- **The user's phone trace may be read to debug, and never leaked:** "you have my explicit permission to read my trace.
+  just do not leak it out" (2026-11-10).
+- **No real user details in this public repo** (booking codes, places, names): a local check refuses a push that holds one,
+  "Add the guard (Recommended)" (2026-11-01).
+- **Worktrees live inside the project and are cleaned after merge:** "maybe let's try to clean after them or keep them
+  inside the annai project folder?" (2026-11-11).
+
 ## Open
 
 States: not started, planning, building, under review, merged, paused (on what).
