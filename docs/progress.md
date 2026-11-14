@@ -48,7 +48,7 @@ records when a turn ends, so the reader stops guessing from her words.
 
 | Part | State | Where it stands | The user's words or pick |
 |---|---|---|---|
-| **Route A, step 1:** take out the two faulted parts (the wake give-back, the cut-ask exemption); the rare Undo shape (F2) recorded as deferred. | building | Branch ask-owed: e17900f5 (the removal), cd354d02 (main merged in). Next: the fixer's report, a re-review with second opinions, merge, full gate, release. | "A: remove 2 parts, then record (Recommended)" (2026-11-14) |
+| **Route A, step 1:** take out the two faulted parts (the wake give-back, the cut-ask exemption); the rare Undo shape (F2) recorded as deferred. | under review | Branch ask-owed: e17900f5 (the removal), cd354d02 (main merged in); check 5119 of 5119, e2e 234 passed. Next: the re-review with a second opinion (running), merge, full gate, release. | "A: remove 2 parts, then record (Recommended)" (2026-11-14) |
 | **Route A, step 2: the loop records a turn's end** (one event type, one key); the reader reads it instead of words; `#settled` and the guessing rules go; F2 closes. | planning | Plan being written (2026-11-14), then a spec check, build, review, and a real check of a reload and an open in the middle of a turn. Writes the approved limitation below when it lands. | "A: remove 2 parts, then record (Recommended)"; old logs: "Treat as finished (Recommended)" (2026-11-14): once per update, a turn the old version left paused and not yet reopened isn't picked up |
 
 ### Shiori answers in the traveller's language
