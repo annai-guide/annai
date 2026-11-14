@@ -49,7 +49,8 @@ test('parseIcs: broken lines are skipped, and a huge calendar is refused in plai
   const broken = ['BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'UID:x', 'SUMMARY no colon here', 'DTSTART:not-a-date', 'SUMMARY:Kept', 'END:VEVENT', 'END:VCALENDAR'].join('\n');
   assert.deepEqual(parseIcs(broken, { defaultTz: NY }).map((e) => [e.summary, e.start]), [['Kept', null]]);
   const many = ['BEGIN:VCALENDAR', ...Array.from({ length: MAX_EVENTS + 1 }, (_, i) => `BEGIN:VEVENT\r\nUID:${i}\r\nDTSTART:20261125T160000Z\r\nEND:VEVENT`), 'END:VCALENDAR'].join('\r\n');
-  assert.throws(() => parseIcs(many, { defaultTz: NY }), /more than 500 events/);
+  // A plain chat is given calendars too: the advice names no trip and no trip's dates.
+  assert.throws(() => parseIcs(many, { defaultTz: NY }), (/** @type {Error} */ e) => e.message === 'This calendar has more than 500 events. Export only the dates you need from your calendar, and add that file.');
 });
 
 test('planItems: one valid plan item per event, named after its UID, the same each time', () => {
@@ -123,7 +124,7 @@ test('importCalendar writes plan items from a file in the trip, and the same fil
   await importCalendar(ws, trip, '/files/trip.ics', { defaultTz: NY });
   assert.equal((await ws.list(trip, '/plan/')).length, 6);
   await ws.write(trip, '/files/huge.ics', new Uint8Array(MAX_ICS_BYTES + 1), { author: 'user', type: 'text/calendar' });
-  await assert.rejects(importCalendar(ws, trip, '/files/huge.ics', { defaultTz: NY }), /larger than a trip's calendar/);
+  await assert.rejects(importCalendar(ws, trip, '/files/huge.ics', { defaultTz: NY }), (/** @type {Error} */ e) => e.message === '/files/huge.ics is too large (over 2.0 MB). Export only the dates you need from your calendar, and add that file.');
 });
 
 test('newFilesText: what Shiori is told when files are added', () => {

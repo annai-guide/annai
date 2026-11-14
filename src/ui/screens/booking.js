@@ -28,8 +28,8 @@ export async function renderBooking(ctx, route) {
   if (!d) {
     return h('div', { class: 'screen' }, crumbs,
       path.startsWith('/files/') || path.startsWith('/trip/files/')
-        ? [h('h1', { class: 'title', text: t`This file isn't in the trip` }), h('p', { class: 'sub', text: t`It may have been deleted or renamed.` })]
-        : [h('h1', { class: 'title', text: t`This booking isn't in the trip` }), h('p', { class: 'sub', text: t`It may have been deleted or renamed. The itinerary lists the bookings there are.` })]);
+        ? [h('h1', { class: 'title', text: t`This file can't be found` }), h('p', { class: 'sub', text: t`It may have been deleted or renamed.` })]
+        : [h('h1', { class: 'title', text: t`This booking can't be found` }), h('p', { class: 'sub', text: t`It may have been deleted or renamed. The itinerary lists the bookings there are.` })]);
   }
   const here = bookingHref(id, path, route.params.from);
   const { file, blocks, made } = d;
@@ -182,7 +182,7 @@ export async function original(ctx, id, source, here) {
   } catch {
     entry = null; // not a path
   }
-  if (!entry) return h('p', { class: 'sub warn', text: t`The original, ${name}, isn't in the trip.` });
+  if (!entry) return h('p', { class: 'sub warn', text: t`The original, ${name}, can't be found.` });
   const there = isGivenFile(entry.path);
   return h('section', { class: 'original', 'aria-label': t`The original` },
     await filePreview(ctx, id, entry.path, { name }),

@@ -454,7 +454,7 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### A turn of the phone can put the page at its end when the user's last move wasn't a scroll the rule could read
 - **Kind:** known limitation.
-- **What the user sees:** the page moves to its end when the phone is turned, though the user wasn't reading its end. Three ways there: with a page scrolled to its end, something opens below with no scroll (Archived trips on home), then the phone turns, and the page goes past what just opened; in a browser tab, a short drag up from the end while the toolbar shows, then a turn with no other scroll; and possibly (not verified on a phone) a scroll with the iPhone's keyboard up, then a turn. A scroll in between prevents the first, and Shiori speaking or the dock changing no longer moves the page at all. The user scrolls back to where they were.
+- **What the user sees:** the page moves to its end when the phone is turned, though the user wasn't reading its end. Three ways there: with a page scrolled to its end, something opens below with no scroll (Archived on home), then the phone turns, and the page goes past what just opened; in a browser tab, a short drag up from the end while the toolbar shows, then a turn with no other scroll; and possibly (not verified on a phone) a scroll with the iPhone's keyboard up, then a turn. A scroll in between prevents the first, and Shiori speaking or the dock changing no longer moves the page at all. The user scrolls back to where they were.
 - **Why:** when the phone turns, the page is already at its new size, so whether the user was at its end can't be read then and is remembered from their last scroll. A fold opened since is not a scroll, and a scroll that arrives at a new window height before that height's resize is skipped as the browser's own. The fix changes a subtle rule about which scrolls count, and needs the WebKit turn test before it ships, for three rare sequences.
 - **Revisit when:** the user meets it on the phone; the fix then: skip a scroll only while a turn's resize is still to come (the width differs), read every other one, and let the remembered fact follow the page's height, with the WebKit turn test before it ships.
 - **Approved:** 2026-11-13, the user picked "Approve all (Recommended)" for the backlog triage of the Deferred entries, and "Known limitation (Recommended)" for this entry, which replaces, for this case, the user's rule of 2026-11-06 that a screen jump no user would want is fixed rather than accepted as a limitation.
@@ -681,12 +681,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the rule that holds her question back after a cut looks only at the call right after her line; finding "a question before any wait" anywhere in the reply is a wider change for two rare shapes.
 - **Revisit when:** the user hears it; the fix then: look for a question before any wait in the reply, not only the next call.
 - **Approved:** 2026-11-13, the user picked "Known limitation (Recommended)".
-
-### Other places still call a plain chat a trip
-- **Kind:** deferred.
-- **What the user sees:** in a chat that isn't a dated trip, a few screens still say "trip": All files heads its root "Trip", "Archived trips (N)" lists archived chats too, the name prompt says "Give the trip a name.", an imported chat export is headed "A trip exported…", the back link says "Back to trip", and Itinerary's empty line speaks of a trip.
-- **Why:** Build C changed Details' words and the timeline's; these six were found in its review, after the build.
-- **Revisit when:** the next version: one sweep gives all six neutral words (or the dated/undated rule talk.js uses), in en, ja and zh, the user's pick 2026-11-13 "One later sweep (Recommended)".
 
 ### With live voice, a reminder can't be set while Kokoro can't answer
 - **Kind:** known limitation.

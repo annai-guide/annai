@@ -88,7 +88,7 @@ async function drawTrips(ctx, follow, stop) {
     waiting.length ? waitingList(ctx, waiting, await readNames(ctx.ws, SYS_WAITING)) : null,
     newTripForm(ctx),
     archived.length
-      ? fold('archived', h('summary', { text: t`Archived trips (${archived.length})` }), h('ul', { class: 'cards' }, ...archivedCards))
+      ? fold('archived', h('summary', { text: t`Archived (${archived.length})` }), h('ul', { class: 'cards' }, ...archivedCards))
       : null,
     openFileButton(ctx),
     saved ? since(o, h('p', { class: 'sub' }), saved.at, saved.words) : h('p', { class: 'sub', text: t`No backup yet. Export everything from Settings, or set up automatic backups there.` }));
@@ -348,7 +348,7 @@ function clearOfBox(field) {
 /** What went wrong with a trip's name or dates, in words, for Start a trip and Details. @param {any} err */
 export function explainTrip(err) {
   if (!(err instanceof ValidationError)) return messageOf(err);
-  if (err.errors.some((m) => m.startsWith('$.title'))) return t`Give the trip a name.`;
+  if (err.errors.some((m) => m.startsWith('$.title'))) return t`Give it a name.`;
   if (err.errors.some((m) => /date/.test(m))) return t`Use real dates for the start and end.`;
   return err.errors.join(' ');
 }

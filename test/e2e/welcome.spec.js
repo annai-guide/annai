@@ -153,9 +153,9 @@ test.describe('a link that opens a screen is never interrupted', () => {
   test('a shared trip link opens its preview, and the welcome waits for the next plain start', async ({ page }) => {
     await page.route('https://files.example.test/shared.annai.zip', (route) => route.fulfill({ status: 404, headers: { 'Access-Control-Allow-Origin': '*' }, body: 'gone' }));
     await page.goto('/#import=' + encodeURIComponent('https://files.example.test/shared.annai.zip'));
-    await expect(h1(page)).toHaveText('Open a trip');
+    await expect(h1(page)).toHaveText('Open an annai file');
     await page.waitForTimeout(300);
-    await expect(h1(page)).toHaveText('Open a trip');
+    await expect(h1(page)).toHaveText('Open an annai file');
     expect((await appSettings(page)).welcomedAt).toBeUndefined();
     await plainStart(page);
     await expect(h1(page)).toHaveText(STEPS[0]);

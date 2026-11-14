@@ -33,7 +33,7 @@ test('everything survives export, erase and import', async ({ page }) => {
   await page.getByLabel('Content').fill('千本鳥居 at dawn, before the crowds');
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('button', { name: 'Restore this version' })).toHaveCount(2);
-  await page.getByRole('link', { name: 'Back to trip', exact: true }).click();
+  await page.getByRole('link', { name: 'Details', exact: true }).click();
   await page.getByLabel('Add photos or files').setInputFiles({ name: 'gate.png', mimeType: 'image/png', buffer: PNG });
   await expect(page.getByRole('link', { name: /\/files\/gate\.(webp|jpg)/ })).toBeVisible();
 
@@ -46,8 +46,8 @@ test('everything survives export, erase and import', async ({ page }) => {
   await pastWelcome(page);
   await expect(page.getByText('Tap + to talk to Shiori.')).toBeVisible();
 
-  await page.getByLabel('Open a trip someone sent you').setInputFiles(file);
-  await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible();
+  await page.getByLabel('Open an annai file').setInputFiles(file);
+  await expect(page.getByRole('heading', { name: 'Open an annai file' })).toBeVisible();
   await page.getByLabel('Replace my profile and memory with the ones in this file').check();
   await page.getByRole('button', { name: 'Import' }).click();
   await page.getByRole('link', { name: 'Open 京都 in spring' }).click();
@@ -55,7 +55,7 @@ test('everything survives export, erase and import', async ({ page }) => {
   await page.getByRole('link', { name: /伏見稲荷\.md/ }).click();
   await expect(page.getByLabel('Content')).toHaveValue('千本鳥居 at dawn, before the crowds');
   await expect(page.getByRole('button', { name: 'Restore this version' })).toHaveCount(2);
-  await page.getByRole('link', { name: 'Back to trip', exact: true }).click();
+  await page.getByRole('link', { name: 'Details', exact: true }).click();
   await page.getByRole('link', { name: /\/files\/gate\.(webp|jpg)/ }).click();
   await expect(page.getByRole('img', { name: /\/files\/gate\.(webp|jpg)/ })).toBeVisible();
 });
@@ -64,7 +64,7 @@ test('an encrypted trip opens only with its passphrase, and can replace the copy
   await openApp(page);
   await startTrip(page, 'Big Sur');
   await writeNote(page, '/notes/bixby.md', 'Bixby Bridge, 1932');
-  await page.getByRole('link', { name: 'Back to trip', exact: true }).click();
+  await page.getByRole('link', { name: 'Details', exact: true }).click();
   await page.getByRole('button', { name: 'Export', exact: true }).click();
   await page.getByLabel('Share: itinerary, bookings, files and notes').check();
   await page.getByLabel('Passphrase (optional)').fill('pine needle');
@@ -73,17 +73,17 @@ test('an encrypted trip opens only with its passphrase, and can replace the copy
   expect((await readFile(file)).subarray(0, 10).toString()).toBe('ANNAI-ENC2');
 
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
-  await page.getByLabel('Open a trip someone sent you').setInputFiles(file);
+  await page.getByLabel('Open an annai file').setInputFiles(file);
   await page.getByLabel('Passphrase').fill('wrong');
   await page.getByRole('button', { name: 'Unlock' }).click();
   await expect(page.getByRole('alert')).toContainText('Wrong passphrase');
   await page.getByLabel('Passphrase').fill('pine needle');
   await page.getByRole('button', { name: 'Unlock' }).click();
-  await page.getByLabel('Replace mine (yours moves to archived trips)').check();
+  await page.getByLabel('Replace mine (yours moves to Archived)').check();
   await page.getByRole('button', { name: 'Import' }).click();
-  await expect(page.getByText('1 older copy moved to archived trips.')).toBeVisible();
+  await expect(page.getByText('1 older copy moved to Archived.')).toBeVisible();
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
-  await expect(page.getByText('Archived trips (1)')).toBeVisible();
+  await expect(page.getByText('Archived (1)')).toBeVisible();
 });
 
 test('an opened file can be left without importing: Cancel, or the link back to Trips (the emulator pass)', async ({ page }) => {
@@ -94,8 +94,8 @@ test('an opened file can be left without importing: Cancel, or the link back to 
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
   for (const leave of ['Cancel', 'Trips']) {
-    await page.getByLabel('Open a trip someone sent you').setInputFiles(file);
-    await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible();
+    await page.getByLabel('Open an annai file').setInputFiles(file);
+    await expect(page.getByRole('heading', { name: 'Open an annai file' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Import' })).toBeVisible();
     await page.getByRole('main').getByRole('link', { name: leave, exact: true }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
@@ -116,8 +116,8 @@ test('opening a file draws the screen at once, saying what it reads, and the pre
     const read = Blob.prototype.arrayBuffer;
     Blob.prototype.arrayBuffer = async function () { await new Promise((r) => setTimeout(r, 1500)); return read.call(this); };
   });
-  await page.getByLabel('Open a trip someone sent you').setInputFiles(file);
-  await expect(page.getByRole('heading', { level: 1, name: 'Open a trip' })).toBeVisible();
+  await page.getByLabel('Open an annai file').setInputFiles(file);
+  await expect(page.getByRole('heading', { level: 1, name: 'Open an annai file' })).toBeVisible();
   await expect(page.getByText(/^Reading .+…$/)).toBeVisible({ timeout: 1000 });
   await expect(page.getByRole('button', { name: 'Import' })).toBeVisible({ timeout: 30_000 });
 });
