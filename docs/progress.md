@@ -55,7 +55,7 @@ records when a turn ends, so the reader stops guessing from her words.
 
 | Part | State | Where it stands | The user's words or pick |
 |---|---|---|---|
-| **An edited profile's "- Language: English" line is removed at start** when the traveller's languages don't include English (only that exact line). Also: the lessons entry marks the wait word settled; the glossary's Now note records the pick. | building | Branch profile-lang from 5e2c6565. Next: review with second opinions, merge, release (with route A step 1 if both are ready). | "Drop it when it contradicts (Recommended)" (2026-11-14) |
+| **An edited profile's "- Language: English" line is removed at start** when the traveller's languages don't include English (only that exact line). Also: the lessons entry marks the wait word settled; the glossary's Now note records the pick. | under review | Branch profile-lang a3328743 (from 5e2c6565); check 5085 of 5085, e2e 650 passed. Open in review: whether a traveller who never picked languages, on a Japanese phone, should lose the line too. Next: the review with a second opinion (running), merge, release (with route A step 1 if both are ready). | "Drop it when it contradicts (Recommended)" (2026-11-14) |
 
 ### Standing
 
