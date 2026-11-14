@@ -47,7 +47,7 @@ const OUTCOMES = {
   unreachable: t`couldn't connect`, 'bad-request': t`refused the request`, 'not-found': t`unknown model or address`, server: t`provider error`,
   network: t`connection dropped`, timeout: t`too slow to start`, cancelled: t`stopped`, plugin: t`plugin failed`, removed: t`removed`,
   'type-missing': t`its plugin is missing`, off: t`its ability is switched off`, redirect: t`redirected elsewhere`, benched: t`resting after an error`, 'no-images': t`doesn't take photos`, 'no-tools': t`can't use tools`,
-  'too-long': t`conversation too long for it`, 'no-provider-tool': t`has no web tool of that kind`, 'not-chat': t`isn't a chat model`, 'no-speech': t`couldn't hear the speech`, 'no-audio': t`doesn't take audio`,
+  'too-long': t`conversation too long for it`, 'no-provider-tool': t`has no web tool of that kind`, 'not-chat': t`isn't a chat model`, 'no-speech': t`speech couldn't reach it`, 'no-audio': t`doesn't take audio`,
 };
 
 /** What happened to one model in a role call, in a few words (spec §9.6). @param {string} outcome */

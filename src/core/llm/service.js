@@ -245,9 +245,9 @@ export function createLlm({
         if (official) throw new PluginError(plugin, NOT_OWN, { shown: notOwnShown() });
         if (running()) return /** @type {import('./providers.js').ProviderSource} */ (running());
         /* en */
-        if (state.enabled === false) throw new PluginError(plugin, `is turned off. ${TURN_ON}`, { shown: sentences(t`is turned off.`, turnOnShown()) });
+        if (state.enabled === false) throw new PluginError(plugin, `is turned off. ${TURN_ON}`, { shown: sentences(t`It is turned off.`, turnOnShown()) });
         /* en */
-        throw new PluginError(plugin, "isn't running. Look at it in Settings → Plugins.", { shown: t`isn't running. Look at it in Settings → Plugins.` });
+        throw new PluginError(plugin, "isn't running. Look at it in Settings → Plugins.", { shown: t`It isn't running. Look at it in Settings → Plugins.` });
       }
       if (state && running()) {
         // Hash-checked against the catalog when it can be reached; offline, it was checked when it was installed.
@@ -263,7 +263,7 @@ export function createLlm({
       const shown = await pluginName(plugins, now, plugin, name);
       /* en */
       if (!src && plugins.registry.isDisabled(plugin)) throw Object.assign(new Error(`${name} was switched off after errors. ${TURN_ON}`), { shown: sentences(t`${shown} was switched off after errors.`, turnOnShown()) });
-      if (!src) throw new PluginError(plugin, /* en */ "didn't provide a model provider.", { shown: t`didn't provide a model provider.` });
+      if (!src) throw new PluginError(plugin, /* en */ "didn't provide a model provider.", { shown: t`It didn't provide a model provider.` });
       return src;
     },
     /**
@@ -334,7 +334,7 @@ export function createLlm({
         if (entry) return makesProvider(entry);
         if (had[id]) return Boolean((await plugins.manifestOf(id).catch(() => null))?.provider);
         if (!Array.isArray(catalog)) throw catalog;
-        throw Object.assign(new Error(/* en */ "its plugin isn't annai's own. Install it again from where it came from."), { shown: t`its plugin isn't annai's own. Install it again from where it came from.` });
+        throw Object.assign(new Error(/* en */ "its plugin isn't annai's own. Install it again from where it came from."), { shown: t`Its plugin isn't annai's own. Install it again from where it came from.` });
       };
       /** @type {Map<string, string[]>} each reason, and the providers it holds back */
       const failed = new Map();

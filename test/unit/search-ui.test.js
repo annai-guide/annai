@@ -4,12 +4,14 @@ import { SEARCH_NOTE, WELCOME_SEARCH, stateOf } from '../../src/ui/search-panel.
 import { cooldowns, READY_MS } from '../../src/core/web-search.js';
 import { FREE_PROVIDERS, KNOWLEDGE } from '../../src/plugins/web/free.js';
 
-test('S5: the notes name where searches go, the last resort that is always on, the training, and what is not sent', () => {
+test('S5: the notes name where searches go, the last resort that stays on, what stops it, the training, and what is not sent', () => {
   for (const t of [SEARCH_NOTE, WELCOME_SEARCH]) {
     assert.match(t, /Exa/);
     assert.match(t, /Wikimedia/);
     assert.match(t, /OpenStreetMap/);
-    assert.match(t, /Search via: Off/);
+    assert.match(t, /Search via: Off stops (it|that), and so does your model's own search, when the model has one/);
+    assert.match(t, /when nothing else answers/);
+    assert.match(t, /Parallel (also )?gets a random id for each conversation/);
     assert.match(t, /train their models/);
     assert.match(t, /names and addresses/);
     assert.match(t, /not your files or your location/);
@@ -17,7 +19,7 @@ test('S5: the notes name where searches go, the last resort that is always on, t
     assert.doesNotMatch(t, /nothing of your trips|Jina/);
   }
   assert.match(WELCOME_SEARCH, /Exa also gets the addresses of pages it reads for her/);
-  assert.match(SEARCH_NOTE, /Exa also reads a page that no other reader can, which sends it that page's address/);
+  assert.match(SEARCH_NOTE, /When no other reader can read a page, Exa reads it, and so gets that page's address/);
   assert.equal(KNOWLEDGE.name, 'Wikivoyage, Wikipedia and Nominatim');
 });
 

@@ -90,7 +90,7 @@ test('a package from another place over an installed one says what it would get;
     await expect(names.getByText('The tool weather: this one is used (your choice).')).toBeVisible();
     // The same package, from a file.
     await pickFile(page, { name: 'clash-tool.zip', mimeType: 'application/zip', buffer: await zipOf(kit) });
-    await expect(page.getByText(/not where this one comes from\. Kept, its settings, keys and your choices for its names go to this one; fresh, they are removed\./)).toBeVisible();
+    await expect(page.getByText(/not where this one comes from\. If you keep them, its settings, keys and your choices under Names go to this one; installing fresh removes them\./)).toBeVisible();
     await expect(page.getByRole('button', { name: 'Install anyway, keep its settings and keys' })).toBeVisible(); // code from elsewhere: "anyway" (review S4)
     await expect(page.getByRole('button', { name: 'Install fresh', exact: true })).toHaveCount(0);
     await page.getByRole('button', { name: 'Install fresh anyway' }).click();

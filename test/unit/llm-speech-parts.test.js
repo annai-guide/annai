@@ -64,12 +64,12 @@ test('a model nothing in the speech-in list can reach is skipped as "no-speech";
   const r = await callRole({
     role: 'main', request: heardRequest, config: cfg, types: new Map([['scripted', scriptedType]]), keyFor: async () => null, bench: new Bench(),
     speech: async (model, request) => {
-      if (!model.input.includes('audio')) throw new Error(`nothing in the speech-in list can hear it for ${model.name}`);
+      if (!model.input.includes('audio')) throw new Error(`nothing in the speech-in list worked for ${model.name}`);
       return resolve(model, request);
     },
   });
   assert.equal(r.reply.text, 'ok');
-  assert.deepEqual(r.attempts.map((a) => [a.outcome, a.error ?? '']), [['no-speech', 'nothing in the speech-in list can hear it for model-0'], ['ok', '']]);
+  assert.deepEqual(r.attempts.map((a) => [a.outcome, a.error ?? '']), [['no-speech', 'nothing in the speech-in list worked for model-0'], ['ok', '']]);
 });
 
 test('audio goes only to a model that takes audio, and speech never reaches a provider unresolved', () => {

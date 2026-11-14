@@ -650,7 +650,7 @@ async function lineFor(ws, trip, path) {
 
 test("Delete for good's line names the copy's booking and plan item too (the probe: b.pdf deleted with stay.json)", async () => {
   const { ws, trip } = await copiesWithGroups({});
-  assert.equal(await lineFor(ws, trip, '/files/a.pdf'), 'Also deletes b.pdf, a copy of this file, and the 1 booking and 1 itinerary item Shiori read from them.');
+  assert.equal(await lineFor(ws, trip, '/files/a.pdf'), 'Also deletes b.pdf, a copy of this file, and the 1 booking and 1 itinerary item Shiori read from this file or its copy.');
   const before = await snapshot(ws.store);
   const ctx = ctxOf(ws);
   const gone = await deleteForGood(ctx, trip, '/files/a.pdf', 'a.pdf');
@@ -660,7 +660,7 @@ test("Delete for good's line names the copy's booking and plan item too (the pro
 
 test("Delete for good's line: the file's own group alone, copies alone, both, none, and plurals", async () => {
   const own = await copiesWithGroups({ own: true, bookings: false });
-  assert.equal(await lineFor(own.ws, own.trip, '/files/b.pdf'), 'Also deletes a.pdf, a copy of this file, and the 1 booking Shiori read from them.');
+  assert.equal(await lineFor(own.ws, own.trip, '/files/b.pdf'), 'Also deletes a.pdf, a copy of this file, and the 1 booking Shiori read from this file or its copy.');
   const bare = await copiesWithGroups({ bookings: false });
   assert.equal(await lineFor(bare.ws, bare.trip, '/files/a.pdf'), 'Also deletes b.pdf, a copy of this file.');
   const alone = await trove({ '/files/a.pdf': SAME }, []);

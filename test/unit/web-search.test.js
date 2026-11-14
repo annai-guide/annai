@@ -14,6 +14,14 @@ test('the order: the user\'s list first, then keyed, free web and knowledge; swi
   assert.deepEqual(FREE_SERVICES.map((s) => s.id), ['exa', 'parallel', 'firecrawl']);
 });
 
+test('the floor is last whatever was saved: a saved list that has it first, in the middle or alone still ends with it', () => {
+  const list = [{ id: 'jina' }, { id: 'exa', free: true }, { id: 'parallel', free: true }, { id: 'wiki', kind: 'knowledge' }, { id: 'tavily' }];
+  assert.deepEqual(orderSearch(list, { search: ['wiki', 'parallel', 'jina', 'exa'] }).map((p) => p.id), ['tavily', 'parallel', 'jina', 'exa', 'wiki']);
+  assert.deepEqual(orderSearch(list, { search: ['parallel', 'wiki', 'tavily', 'jina', 'exa'] }).map((p) => p.id), ['parallel', 'tavily', 'jina', 'exa', 'wiki']);
+  assert.deepEqual(orderSearch(list, { search: ['wiki'] }).map((p) => p.id), ['jina', 'tavily', 'exa', 'parallel', 'wiki']);
+  assert.deepEqual(orderSearch([{ id: 'a', kind: 'knowledge' }, { id: 'b', kind: 'knowledge' }, { id: 'c' }], { search: ['b', 'a', 'c'] }).map((p) => p.id), ['c', 'b', 'a'], 'several floors keep their saved order, after the rest');
+});
+
 test('rows: tags and entities stripped, whitespace folded, tracking parameters dropped, duplicates (by host and path) once, at most 8 rows', () => {
   const rows = [
     { title: 'Nepenthe <b>Big Sur</b> &amp; more', url: 'https://www.nepenthe.com/hours/?utm_source=x&srsltid=abc&msockid=1&keep=1', snippet: 'Open\tdaily\n11:30 <span class="searchmatch">am</span>' },

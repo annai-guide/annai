@@ -204,9 +204,9 @@ function ready(g, empty = false) {
   const named = (/** @type {string} */ v) => /^[\w.-]+$/.test(v) || (empty && !v);
   if (!webAddress(g.server)) throw refuse(g, 'setup', both`Check the server's address: it must be a web address that starts with https://.`);
   if (!g.owner || !g.repo) {
-    if (!empty) throw refuse(g, 'setup', both`Tap Save and test: annai finds the owner and the repository from the token. Or type them, for example you and annai-backup.`);
+    if (!empty) throw refuse(g, 'setup', both`Tap Save and test: annai finds the owner and the repository from the token. Or type them, for example your user name and annai-backup.`);
   }
-  if (!named(g.owner) || !named(g.repo)) throw refuse(g, 'setup', both`Type the owner and the repository's name, for example you and annai-backup.`);
+  if (!named(g.owner) || !named(g.repo)) throw refuse(g, 'setup', both`Type the owner and the repository's name, for example your user name and annai-backup.`);
   if (g.branch && !/^(?!\/|.*(?:\/\/|\.\.|\/$|\.lock$))[\w./-]+$/.test(g.branch)) throw refuse(g, 'setup', both`Check the branch's name, or leave it empty for the repository's own.`);
   if (!g.token) throw refuse(g, 'setup', both`Paste an access token for the repository, then save.`);
   if (!/^[\x21-\x7e]+$/.test(g.token)) throw refuse(g, 'setup', both`The access token has letters no token has. Paste it again, then save.`);

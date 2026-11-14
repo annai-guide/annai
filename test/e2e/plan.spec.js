@@ -332,7 +332,8 @@ test("on a phone, a reload opens today's, whatever was picked", async ({ page })
 test('nothing picked, the clock past midnight, Undo: the new today, not the day it was', async ({ page }) => {
   await page.clock.setFixedTime(NOON);
   await longTrip(page);
-  await page.clock.setFixedTime(new Date('2030-11-28T00:30:00Z'));
+  // Half past midnight on the 28th where the test runs (local time: the tab names the day in the browser's own zone, which is this host's).
+  await page.clock.setFixedTime(new Date(2030, 10, 28, 0, 30));
   await page.getByRole('button', { name: 'Changed by Shiori · Undo' }).click();
   await expect(page.getByRole('tab', { selected: true })).toHaveText('Thu, Nov 28');
 });
@@ -526,7 +527,7 @@ test("Booking details from before: what it says, beside its original, marked who
   await page.getByRole('tab', { name: 'Wed, Nov 25' }).click();
   await page.getByRole('tabpanel').getByRole('link', { name: 'Check this' }).click();
   await expect(page.getByRole('heading', { name: 'UA 123' })).toBeVisible();
-  await expect(page.getByRole('note')).toHaveText("Check this: Shiori read it before annai marked single details. Tell her if it's right, or what's wrong.");
+  await expect(page.getByRole('note')).toHaveText("Check this: Shiori read it before annai marked details one by one. Tell her if it's right, or what's wrong.");
   await expect(page.locator('dl.facts')).toContainText('ABC123');
   // The booking's zone is named the way people say it, never by its id.
   await expect(page.locator('dl.facts')).toContainText('(PT)');
@@ -598,7 +599,7 @@ test("a plain item's details: what, when, where, notes and its calendar file; ne
   await records(page, trip, ANCHORAGE);
   const ics = ['BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'UID:aurora@test.invalid', 'SUMMARY:Aurora walk', 'LOCATION:Testville Park', 'DTSTART;TZID=America/Anchorage:20261122T220000', 'DURATION:PT2H', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
   await page.getByLabel('Add photos or files').setInputFiles([{ name: 'walks.ics', mimeType: 'text/calendar', buffer: Buffer.from(ics) }]);
-  await expect(page.getByText(/^Added .*walks\.ics, and 1 itinerary item from the calendar/)).toBeVisible();
+  await expect(page.getByText('Added a file, and 1 itinerary item from the calendar')).toBeVisible();
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
   await page.getByRole('tab', { name: 'Sun, Nov 22' }).click();
   await page.getByRole('tabpanel').getByRole('link', { name: /Aurora walk/ }).click();
