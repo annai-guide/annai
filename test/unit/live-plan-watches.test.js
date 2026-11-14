@@ -50,7 +50,7 @@ test('leave: 15 min before the estimated departure, from where the user is, else
   assert.equal(PLAN.next?.(leave, here(RIVER_INN, at('10:30')), {}), at('11:33'));
   assert.equal(PLAN.check(leave, here(RIVER_INN, at('11:32')), {}), null);
   const f = PLAN.check(leave, here(RIVER_INN, at('11:33')), {});
-  assert.equal(f?.text, 'Plan: time to leave soon for "Lunch at Nepenthe" (fixed, 12:00): 7.0 km away in a straight line, about 12 min by car');
+  assert.equal(f?.text, 'Plan: time to leave soon for "Lunch at Nepenthe" (can\'t be moved, 12:00): 7.0 km away in a straight line, about 12 min by car');
   assert.equal(f?.at, at('11:33'));
   assert.equal(f?.fallback, 'Leave in about 15 min: Lunch at Nepenthe at 12:00. About 12 min by car.');
   // Without a position: from Bixby, the plan's stop before (21.2 km, 36 min).
@@ -60,7 +60,7 @@ test('leave: 15 min before the estimated departure, from where the user is, else
   const call = find('plan:call:coming-up').when;
   assert.equal(PLAN.next?.(call, moment(), {}), at('17:45'));
   assert.equal(PLAN.check(call, moment({ now: at('17:44') }), {}), null);
-  assert.deepEqual(PLAN.check(call, moment({ now: at('17:45') }), {}), { text: 'Plan: "Call Grandma" (fixed) starts at 18:00, in 15 min', at: at('17:45') });
+  assert.deepEqual(PLAN.check(call, moment({ now: at('17:45') }), {}), { text: 'Plan: "Call Grandma" (can\'t be moved) starts at 18:00, in 15 min', at: at('17:45') });
 });
 
 test('arrived: stopped 2 min there, or 5 min inside; driving past is not arriving; inferred on coming back on screen', () => {
@@ -69,7 +69,7 @@ test('arrived: stopped 2 min there, or 5 min inside; driving past is not arrivin
   assert.equal(PLAN.check(arrived, here(NEPENTHE, at('11:48'), { stop: { ...NEPENTHE, since: at('11:48') } }), mem), null);
   assert.equal(PLAN.check(arrived, here(NEPENTHE, at('11:49'), { stop: { ...NEPENTHE, since: at('11:48') } }), mem), null);
   assert.deepEqual(PLAN.check(arrived, here(NEPENTHE, at('11:50'), { stop: { ...NEPENTHE, since: at('11:48') } }), mem), {
-    text: 'Plan: you arrived at Nepenthe for "Lunch at Nepenthe" (fixed, 12:00)', place: { name: 'Nepenthe', ...NEPENTHE },
+    text: 'Plan: you arrived at Nepenthe for "Lunch at Nepenthe" (can\'t be moved, 12:00)', place: { name: 'Nepenthe', ...NEPENTHE },
   });
   // Walking about inside for 5 minutes (the stop keeps moving).
   const walk = {};
@@ -84,14 +84,14 @@ test('arrived: stopped 2 min there, or 5 min inside; driving past is not arrivin
   assert.equal(PLAN.check(arrived, here(off(NEPENTHE, 1000, 0), at('11:01')), past), null);
   assert.equal(PLAN.check(arrived, here(NEPENTHE, at('08:00'), { stop: { ...NEPENTHE, since: at('07:50') } }), {}), null); // before its window
   const back = PLAN.check(arrived, here(NEPENTHE, at('12:10'), { gap: { since: at('11:40'), from: null } }), {});
-  assert.equal(back?.text, 'Plan: you arrived at Nepenthe for "Lunch at Nepenthe" (fixed, 12:00), inferred on coming back on screen');
+  assert.equal(back?.text, 'Plan: you arrived at Nepenthe for "Lunch at Nepenthe" (can\'t be moved, 12:00), inferred on coming back on screen');
 });
 
 test('running late: when the estimated arrival is more than 5 min past the start; not once arrived, nor inside; not hours early', () => {
   const late = find('plan:nepenthe:late').when;
   assert.equal(PLAN.check(late, here(RIVER_INN, at('11:50')), {}), null); // 12 min: 12:02
   const f = PLAN.check(late, here(BIXBY, at('11:40')), {});
-  assert.equal(f?.text, 'Plan: running late for "Lunch at Nepenthe" (fixed, 12:00): 21.2 km away, about 36 min by car, so about 16 min late');
+  assert.equal(f?.text, 'Plan: running late for "Lunch at Nepenthe" (can\'t be moved, 12:00): 21.2 km away, about 36 min by car, so about 16 min late');
   assert.equal(f?.fallback, 'Running late: Lunch at Nepenthe at 12:00. About 36 min away.');
   assert.equal(PLAN.check(late, here(BIXBY, at('11:40'), { fired: (id) => id === 'plan:nepenthe:arrived' }), {}), null);
   assert.equal(PLAN.check(late, here(off(NEPENTHE, 50, 0), at('12:20')), {}), null);
@@ -106,7 +106,7 @@ test('off plan: far from a flexible item 10 min into its time; or stopped 20 min
   assert.equal(PLAN.check(offPlan, here(RIVER_INN, at('09:54')), {}), null);
   assert.equal(PLAN.check(offPlan, here(off(BIXBY, 0, -2000), at('09:56')), {}), null);
   assert.equal(PLAN.check(offPlan, here(RIVER_INN, at('09:56')), {})?.text,
-    'Off plan: "Bixby Bridge photo stop" (flexible) is planned for 09:45–10:05 at Bixby Creek Bridge, and the user is 14.1 km away. The replanning skill says what to do');
+    'Off plan: "Bixby Bridge photo stop" (can be moved) is planned for 09:45–10:05 at Bixby Creek Bridge, and the user is 14.1 km away. The replanning skill says what to do');
   assert.equal(PLAN.check(offPlan, here(RIVER_INN, at('09:56'), { fired: (id) => id === 'plan:bixby:arrived' }), {}), null);
   const linger = find('plan:linger').when;
   const mem = /** @type {Record<string, any>} */ ({});

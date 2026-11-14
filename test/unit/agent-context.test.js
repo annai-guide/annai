@@ -94,7 +94,7 @@ test('the now block: local time to the second and zone, voice, connection, why s
   assert.match(block, /\nwoke for: the user wrote\n/);
   // A later step of the turn with nothing new: no "woke for" (the fix pass, S2).
   assert.doesNotMatch(nowBlock({ now, timeZone: 'America/Los_Angeles', voice: 'off', online: true, reasons: [], plan }), /woke for/);
-  assert.match(block, /\nnext in the plan:\nstart\ttitle\tfixed\tplace\n2026-11-26T16:53:00-08:00\tsunset\tno\tsunset place\n2026-11-26T18:30:00-08:00\tdinner\tyes\tdinner place\n<\/now>$/);
+  assert.match(block, /\nnext in the plan:\nstart\ttitle\ttiming\tplace\n2026-11-26T16:53:00-08:00\tsunset\tcan be moved\tsunset place\n2026-11-26T18:30:00-08:00\tdinner\tcan't be moved\tdinner place\n<\/now>$/);
 });
 
 test('warmth: warm within the lifetime of the same prefix; cold after it, or for another prefix', async () => {

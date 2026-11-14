@@ -11,6 +11,7 @@ import { photoSettings } from '../photos.js';
 import { readAppSettings } from '../settings.js';
 import { toBase64, fromBase64 } from '../bytes.js';
 import { ME } from '../scopes.js';
+import { fixedWords } from '../plan.js';
 import { AllFailedError, failedText } from '../llm/fallback.js';
 import { ProviderError, explain } from '../llm/contract.js';
 import { t, lang } from '../l10n.js';
@@ -115,7 +116,7 @@ export function recapText(j, { profile = '', memory = '', notes = [], language =
     return [];
   }));
   const stamps = /* en */ tsv(['day', 'time', 'place', 'kind'], j.stamps.map((s) => [day(s.at), time(s.at), s.name, s.plan ? 'on the plan' : 'off the plan']));
-  const plan = /* en */ tsv(['day', 'time', 'item', 'place', 'kind', 'visited'], j.plan.map((p) => [p.at === null ? '' : day(p.at), p.at === null ? '' : time(p.at), p.title, p.place?.name ?? '', p.fixed ? 'fixed' : 'flexible', p.visited ? 'yes' : 'no']));
+  const plan = /* en */ tsv(['day', 'time', 'item', 'place', 'timing', 'visited'], j.plan.map((p) => [p.at === null ? '' : day(p.at), p.at === null ? '' : time(p.at), p.title, p.place?.name ?? '', fixedWords(p.fixed), p.visited ? 'yes' : 'no']));
   /** Where a moment was: the stay it fell in. @param {number} t */
   const where = (t) => /** @type {any} */ (stays.find((s) => t >= s.at && t <= /** @type {any} */ (s).to))?.name ?? '';
   const photoList = /* en */ tsv(['time', 'path', 'where', 'size'], photos.map((p) => {

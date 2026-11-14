@@ -422,17 +422,17 @@ gt9ssw	ok	annai couldn't start	annaiを起動できませんでした	src/app/ma
 6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	繰り返し起きる場合は、ブラウザがデータの保存をブロックしている可能性があります（プライベートウインドウなど）。	src/app/main.js:435	
 982hh6	ok	Try again	再試行	src/app/main.js:436	
 1u3dm1p	ok	This address holds a name or password before an @. Leave it out.	このアドレスには、@の前にユーザー名かパスワードが含まれています。その部分を削除してください。	src/core/address.js:68	
-1f8b0m5	ok	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	滞在した場所と滞在時間（場所は名前で。名前がなければ約100 m単位に丸めた位置で）。GPSの軌跡そのものは送りません。	src/core/after/recap.js:57	Note: a stay is any stop in the record, so 滞在した, not 泊まった (overnight).
-imb4zw	ok	How far you drove or walked between, the stamps, and the itinerary.	滞在した場所の間を車や徒歩で移動した距離、スタンプ、旅程。	src/core/after/recap.js:58	
-5lqjwd	ok	Shiori's cards and your words, typed or spoken, each shortened.	Shioriのカードと、入力したり話したりした言葉（それぞれ短くしたもの）。	src/core/after/recap.js:59	
-10xm6na	ok	This conversation's notes and memory, and your profile.	この会話のメモと記憶、プロフィール。	src/core/after/recap.js:60	
-1nvz32n	ok	Up to {0} photos, if the model takes photos. A photo kept as taken (Settings → Photos → Keep originals) can still hold where it was taken.	モデルが写真を受け付ける場合、写真を最大{0}枚。オリジナルのまま保存した写真（「設定 → 写真 → オリジナルを残す」）には、撮影場所の情報が残っていることがあります。	src/core/after/recap.js:61	{0} = RECAP_PHOTOS; Note: the setting's own label, オリジナルを残す.
-rntcrc	ok	No model is set for the utility or main role. Add one in Settings → Models.	補助とメインのどちらの役割にもモデルが設定されていません。「設定 → モデル」で追加してください。	src/core/after/recap.js:168	
-1hy1f74	ok	No model could write it.	どのモデルも振り返りを書けませんでした。	src/core/after/recap.js:169	Note: "it" is the recap (振り返り / 回顾).
-h5o9ec	ok	Check Settings → Models, then try again.	「設定 → モデル」を確認してから、もう一度お試しください。	src/core/after/recap.js:169	
-1ocmp3v	ok	Try again in a while.	しばらくしてからもう一度お試しください。	src/core/after/recap.js:171	
-11vzyc7	ok	No model is set up to write the recap. Add one in Settings → Models.	振り返りを書くモデルが設定されていません。「設定 → モデル」で追加してください。	src/core/after/recap.js:185	
-tbxeeg	ok	The model sent back an empty recap. Try again, or put another model first in the utility role (Settings → Models).	モデルから空の振り返りが返ってきました。もう一度試すか、「設定 → モデル」で補助の役割の先頭に別のモデルを置いてください。	src/core/after/recap.js:235	
+1f8b0m5	ok	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	滞在した場所と滞在時間（場所は名前で。名前がなければ約100 m単位に丸めた位置で）。GPSの軌跡そのものは送りません。	src/core/after/recap.js:58	Note: a stay is any stop in the record, so 滞在した, not 泊まった (overnight).
+imb4zw	ok	How far you drove or walked between, the stamps, and the itinerary.	滞在した場所の間を車や徒歩で移動した距離、スタンプ、旅程。	src/core/after/recap.js:59	
+5lqjwd	ok	Shiori's cards and your words, typed or spoken, each shortened.	Shioriのカードと、入力したり話したりした言葉（それぞれ短くしたもの）。	src/core/after/recap.js:60	
+10xm6na	ok	This conversation's notes and memory, and your profile.	この会話のメモと記憶、プロフィール。	src/core/after/recap.js:61	
+1nvz32n	ok	Up to {0} photos, if the model takes photos. A photo kept as taken (Settings → Photos → Keep originals) can still hold where it was taken.	モデルが写真を受け付ける場合、写真を最大{0}枚。オリジナルのまま保存した写真（「設定 → 写真 → オリジナルを残す」）には、撮影場所の情報が残っていることがあります。	src/core/after/recap.js:62	{0} = RECAP_PHOTOS; Note: the setting's own label, オリジナルを残す.
+rntcrc	ok	No model is set for the utility or main role. Add one in Settings → Models.	補助とメインのどちらの役割にもモデルが設定されていません。「設定 → モデル」で追加してください。	src/core/after/recap.js:169	
+1hy1f74	ok	No model could write it.	どのモデルも振り返りを書けませんでした。	src/core/after/recap.js:170	Note: "it" is the recap (振り返り / 回顾).
+h5o9ec	ok	Check Settings → Models, then try again.	「設定 → モデル」を確認してから、もう一度お試しください。	src/core/after/recap.js:170	
+1ocmp3v	ok	Try again in a while.	しばらくしてからもう一度お試しください。	src/core/after/recap.js:172	
+11vzyc7	ok	No model is set up to write the recap. Add one in Settings → Models.	振り返りを書くモデルが設定されていません。「設定 → モデル」で追加してください。	src/core/after/recap.js:186	
+tbxeeg	ok	The model sent back an empty recap. Try again, or put another model first in the utility role (Settings → Models).	モデルから空の振り返りが返ってきました。もう一度試すか、「設定 → モデル」で補助の役割の先頭に別のモデルを置いてください。	src/core/after/recap.js:236	
 1sob3wf	ok	1 hour a second	1秒で1時間	src/core/after/replay.js:22	Note: a playback speed: one hour of the trip a second.
 6jq1bh	ok	1 minute a second	1秒で1分	src/core/after/replay.js:22	
 7013qq	ok	10 minutes a second	1秒で10分	src/core/after/replay.js:22	
@@ -794,14 +794,14 @@ apv0y3	ok	annai couldn't read {0} from {1}, a file its {2} names. Check that it 
 14wn58m	ok	a provider that sends keys to {0}	キーを{0}に送信するプロバイダー	src/core/packages.js:655	{0} = o; Note: one of a list of what an update adds.
 tqmba2	ok	an address your searches are sent to: {0}	検索内容の送信先（{0}）	src/core/packages.js:655	{0} = o; Note: one of a list of what an update adds.
 18tp402	ok	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	このブラウザでは{0}を変換できないため、元の形式のまま保存しました。Safariでしか表示されない場合があります。	src/core/photos.js:135	{0} = name
-1009iza	ok	Restaurant	レストラン	src/core/plan.js:36	
-1lrcegv	ok	Event	イベント	src/core/plan.js:36	
-56ee40	ok	Booking	予約	src/core/plan.js:36	
-8cdq15	ok	Train	列車	src/core/plan.js:36	
-d57q3n	ok	Flight	フライト	src/core/plan.js:36	
-jj8u9s	ok	Stay	宿泊	src/core/plan.js:36	Note: A kind of booking: a hotel or other lodging.
-sksosh	ok	Car	レンタカー	src/core/plan.js:36	Note: A kind of booking: a car, nearly always a rental.
-1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	タイムゾーン「{0}」を認識できないため、{1}で表示しています。	src/core/plan.js:70	{0} = String(own ?? ''); {1} = fallbackTz
+1009iza	ok	Restaurant	レストラン	src/core/plan.js:42	
+1lrcegv	ok	Event	イベント	src/core/plan.js:42	
+56ee40	ok	Booking	予約	src/core/plan.js:42	
+8cdq15	ok	Train	列車	src/core/plan.js:42	
+d57q3n	ok	Flight	フライト	src/core/plan.js:42	
+jj8u9s	ok	Stay	宿泊	src/core/plan.js:42	Note: A kind of booking: a hotel or other lodging.
+sksosh	ok	Car	レンタカー	src/core/plan.js:42	Note: A kind of booking: a car, nearly always a rental.
+1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	タイムゾーン「{0}」を認識できないため、{1}で表示しています。	src/core/plan.js:76	{0} = String(own ?? ''); {1} = fallbackTz
 o6vv9a	ok	"{0}" is a name annai uses for one of its own parts, so a skill can't have it.	「{0}」はannaiの機能で使う名前なので、スキルには使えません。	src/core/plugins.js:179	{0} = id; Note: {0} is the skill's name.
 1fdobr5	ok	It has the same id as a plugin built into annai.	annaiに組み込まれたプラグインと同じIDです。	src/core/plugins.js:180	
 wq5ezj	ok	Its name, "{0}", is annai's own name, or the name of one of its parts. Ask its author to rename it.	名前「{0}」は、annai自体かその機能の名前と同じです。作者に名前の変更を依頼してください。	src/core/plugins.js:184	{0} = pkg.name; Note: Ask here is the plain verb (to ask the author), not Safari's permission choice.

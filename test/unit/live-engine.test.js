@@ -147,7 +147,7 @@ test("the plan's leave reminder comes by the clock with live mode off, from the 
   assert.equal(k.agent.wakes.length, 0);
   await k.to(at('11:09'));
   assert.equal(k.agent.wakes.length, 1);
-  assert.equal(k.agent.wakes[0].text, 'Plan: time to leave soon for "Lunch at Nepenthe" (fixed, 12:00): 21.2 km away in a straight line, about 36 min by car.');
+  assert.equal(k.agent.wakes[0].text, 'Plan: time to leave soon for "Lunch at Nepenthe" (can\'t be moved, 12:00): 21.2 km away in a straight line, about 36 min by car.');
   // Shiori reads the English; the user's words are made from its data, the same in English.
   const leave = 'Leave in about 15 min: Lunch at Nepenthe at 12:00. About 36 min by car.';
   assert.deepEqual(k.agent.wakes[0].fallbacks.map((/** @type {any} */ f) => [f.watch, f.text, planWords(f.plan)]), [['plan:nepenthe:leave', leave, leave]]);
@@ -175,7 +175,7 @@ test('arrived at a plan place after a 2 min stop; driving past does not count; t
   assert.equal(k.agent.wakes.length, 0);
   await k.drive(off(BIXBY, 0, -3000), BIXBY, at('09:06:05'), at('09:09'));
   await k.stay(BIXBY, at('09:09:10'), at('09:12'));
-  assert.deepEqual(k.agent.wakes.map((w) => w.text), ['Plan: you arrived at Bixby Creek Bridge for "Bixby Bridge photo stop" (flexible, 09:45).']);
+  assert.deepEqual(k.agent.wakes.map((w) => w.text), ['Plan: you arrived at Bixby Creek Bridge for "Bixby Bridge photo stop" (can be moved, 09:45).']);
   // An arrival is a cue for her, not a reminder: its fallback is only for when no model answers (emulator pass, spec §11.3).
   assert.deepEqual(k.agent.wakes[0].fallbacks.map((/** @type {any} */ f) => f.cue), [true]);
   const [fired] = await k.events(['trigger.fired']);
@@ -187,7 +187,7 @@ test('running late for a fixed item, from where the user is (spec §11.3)', asyn
   await k.stay(BIXBY, at('11:00'), at('11:30'), 30);
   assert.equal(k.agent.wakes.length, 2);
   assert.match(k.agent.wakes[0].text, /^Plan: time to leave soon for "Lunch at Nepenthe"/);
-  assert.equal(k.agent.wakes[1].text, 'Plan: running late for "Lunch at Nepenthe" (fixed, 12:00): 21.2 km away, about 36 min by car, so about 5 min late.');
+  assert.equal(k.agent.wakes[1].text, 'Plan: running late for "Lunch at Nepenthe" (can\'t be moved, 12:00): 21.2 km away, about 36 min by car, so about 5 min late.');
   const late = 'Running late: Lunch at Nepenthe at 12:00. About 36 min away.';
   assert.deepEqual(k.agent.wakes[1].fallbacks.map((/** @type {any} */ f) => [f.watch, f.text, planWords(f.plan)]), [['plan:nepenthe:late', late, late]]);
 });
@@ -285,7 +285,7 @@ test('opening another trip makes live mode look at its plan at once, even with n
   k.agent.opened(second);
   await k.settle();
   await k.to(at('08:45'));
-  assert.deepEqual(k.agent.wakes.map((w) => w.text), ['Plan: "Tea at the inn" (fixed) starts at 09:00, in 15 min.']);
+  assert.deepEqual(k.agent.wakes.map((w) => w.text), ['Plan: "Tea at the inn" (can\'t be moved) starts at 09:00, in 15 min.']);
 });
 
 test('a plan item weeks ahead with live mode off: the one timer waits at most a day, and checks once a day', async () => {
@@ -391,7 +391,7 @@ test("an item moved later gets the plan's reminders again, for its new time; and
   assert.equal(k.agent.wakes.length, 1);
   await k.to(at('12:09'));
   assert.equal(k.agent.wakes.length, 2);
-  assert.match(k.agent.wakes[1].text, /time to leave soon for "Lunch at Nepenthe" \(fixed, 13:00\)/);
+  assert.match(k.agent.wakes[1].text, /time to leave soon for "Lunch at Nepenthe" \(can't be moved, 13:00\)/);
   const fired = (await k.events(['trigger.fired'])).map((e) => e.data.for);
   assert.deepEqual(fired, [Date.parse(iso('12:00')), Date.parse(iso('13:00'))]);
   k.live.dispose();

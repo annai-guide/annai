@@ -1,6 +1,6 @@
 import { meters, travelMinutes, modeFor, kmText, TRAVEL } from './geo.js';
 import { timeIn, validZone, instantAt } from '../time.js';
-import { bookingRef } from '../plan.js';
+import { bookingRef, fixedWords } from '../plan.js';
 import { t } from '../l10n.js';
 import { sentences, num, when as clockAt } from '../intl.js';
 
@@ -166,7 +166,7 @@ export const planItemWords = (say) => (say.what ? whatWords(say.what) : '');
 /** @param {any} w @param {number} [t] */
 const hhmm = (w, t = w.at) => timeIn(t, w.tz);
 /** @param {any} w */
-const kind = (w) => (w.fixed ? 'fixed' : 'flexible');
+const kind = (w) => fixedWords(w.fixed);
 /** Where the user is now (not on a catch-up's first look). @param {Moment} m */
 const now = (m) => (m.fix && !m.past ? m.fix : null);
 /** @param {number} km @param {string} activity */
@@ -245,7 +245,7 @@ const CHECK = {
     if (!fix || m.fired(`plan:${w.item}:arrived`) || m.now < w.at + OFF_PLAN_AFTER_MIN * MIN || m.now > end) return null;
     const km = meters(fix, w.place) / 1000;
     if (km <= OFF_PLAN_KM) return null;
-    return { text: `Off plan: "${w.title}" (flexible) is planned for ${hhmm(w)}–${hhmm(w, end)} at ${w.place.name}, and the user is ${kmText(km * 1000)} away. The replanning skill says what to do` };
+    return { text: `Off plan: "${w.title}" (${kind(w)}) is planned for ${hhmm(w)}–${hhmm(w, end)} at ${w.place.name}, and the user is ${kmText(km * 1000)} away. The replanning skill says what to do` };
   },
   linger(w, m, mem) {
     const fix = now(m);
