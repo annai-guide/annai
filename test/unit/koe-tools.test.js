@@ -26,6 +26,17 @@ test("Koe's tools are exactly: speak, show, ask, wait, sleep, watch_set, watch_l
   for (const n of ['delete', 'search', 'web_search', 'task', 'tune_personality', 'tell_koe']) assert.ok(kokoro.includes(n) || n === 'web_search', n);
 });
 
+test("a live Koe has no watch_set: told the time once as its session opens, which a resume keeps, it passes a reminder to Kokoro; a chat Koe, told the time on every request, keeps it", async () => {
+  const k = await agentKit([[sleep]], { koe: { type: [sleep] } });
+  k.agent.addLoopTools(WATCH);
+  k.agent.send('Hi');
+  await k.agent.idle();
+  assert.ok(k.sent['model-koe'][0].tools.some((/** @type {any} */ t) => t.name === 'watch_set'), 'a chat Koe sets reminders');
+  const live = (await k.agent.koe.liveTools()).map((t) => t.name);
+  assert.ok(!live.includes('watch_set'), live.join());
+  for (const n of ['watch_list', 'watch_cancel', 'tell_kokoro']) assert.ok(live.includes(n), n);
+});
+
 test('a tool switched off is off for both halves; a helper (task) is never offered the tell tools', async () => {
   const k = await agentKit([[sleep]], { koe: { type: [sleep] }, utility: [{ text: 'Found it.' }] });
   const { updateAppSettings } = await import('../../src/core/settings.js');

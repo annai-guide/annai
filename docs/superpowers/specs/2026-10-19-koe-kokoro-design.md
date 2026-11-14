@@ -132,7 +132,7 @@ In code and the spec they're Koe and Kokoro.
 - **Koe:**
   - talking: `speak` (not on a realtime model, which speaks natively), `show`, `ask`, `wait`;
   - its own `sleep`;
-  - `watch.*` (timers);
+  - `watch.*` (timers). A live Koe has `watch_list` and `watch_cancel` only: it is told the time once, as its session opens, and a resume keeps that time (up to 2 hours on Gemini Live), so a reminder asked live goes to Kokoro, who sets it from its own now (the user's pick, 2026-11-13: "Live Koe hands off");
   - the self tools that are light (`recall`; `tune_personality` stays with Kokoro);
   - reads: `list` and `read` on the trip's files, plan and bookings; places and map reads from the offline pack (no network);
   - light changes, meaning a note, a reminder, a small plan tweak. The builder draws the exact line and says why; anything that removes, imports, books, spends money or changes many things belongs to Kokoro;
