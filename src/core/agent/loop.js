@@ -1351,10 +1351,13 @@ export class Agent {
     });
   }
 
-  /** A live session's tools (K5): this half's now, less speak and wait (plan decision 29; the drive-test design gave it back sleep). */
+  /**
+   * A live session's tools (K5): this half's now, less speak and wait (plan decision 29; the drive-test design gave it back sleep), and
+   * watch_set: its now block is the one its session opened with, which a resume keeps, so a reminder goes to Kokoro (the user's pick, 2026-11-13).
+   */
   async liveTools() {
     // A live session's sleep closes it, the microphone with it, as a tap does (the drive-test follow-ups).
-    return (await this.#toolsNow()).tools.filter((t) => !['speak', 'wait'].includes(t.name)).map((t) => (t.name === 'sleep' ? { ...t, description: LIVE_SLEEP } : t));
+    return (await this.#toolsNow()).tools.filter((t) => !['speak', 'wait', 'watch_set'].includes(t.name)).map((t) => (t.name === 'sleep' ? { ...t, description: LIVE_SLEEP } : t));
   }
 
   /** The user is watching this half's turn (its wakes include one of theirs, isWatched): its notes to the other half say so. */
