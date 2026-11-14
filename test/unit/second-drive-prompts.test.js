@@ -170,6 +170,9 @@ test("Koe's instructions give it no English words to say: its word or two tellin
     assert.match(k, /If a word is needed, say okay in the language you answer in\./);
   }
   assert.match(KOKORO_PART, /its word or two telling the user to hold on, as it passes a line on to you, says so/);
+  // Kokoro's example of the line it gives Koe is described, not quoted: Koe says a note's words as they are (the Haiku review, 2026-11-14).
+  assert.doesNotMatch(KOKORO_PART, /saving your note now/);
+  assert.match(KOKORO_PART, /first tell Koe in one short line, in the language you answer in, what you're doing \(that you're saving their note, say\)/);
 });
 
 test("the personality line is the last line of Koe's instructions, so the editor shows it and koeSystem is a plain join", () => {
