@@ -9,8 +9,9 @@ test('S5: the notes name where searches go, the last resort that stays on, what 
     assert.match(t, /Exa/);
     assert.match(t, /Wikimedia/);
     assert.match(t, /OpenStreetMap/);
-    assert.match(t, /Search via: Off stops (it|that), and so does your model's own search/);
-    assert.match(t, /Parallel (also gets )?a random id for each conversation/);
+    assert.match(t, /Search via: Off stops (it|that), and so does your model's own search, when the model has one/);
+    assert.match(t, /when nothing else answers/);
+    assert.match(t, /Parallel (also )?gets a random id for each conversation/);
     assert.match(t, /train their models/);
     assert.match(t, /names and addresses/);
     assert.match(t, /not your files or your location/);

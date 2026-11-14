@@ -640,7 +640,7 @@ Describe it in the manifest, so the install screen can say where searches and th
 - **Browser access is yours to check.** A web app can call a service only if it allows annai's address (CORS), including the request's headers: Tavily (`authorization`, `content-type`) and Serper (`x-api-key`) do; Brave, Kagi's REST API, You.com's and Exa's REST API don't, and a plugin for them fails with "Failed to fetch". A SearXNG instance sends no CORS header unless its operator adds one, and has JSON off unless `json` is under `search: formats:` in `settings.yml`; its plugin says so.
 - The official ones are Tavily, Serper and SearXNG (`plugins-official/search-*`); read them as examples.
 
-annai's own free search is not a plugin you can replace one by one: Exa, Parallel and Firecrawl (each through its MCP address, one request per search with no session), and a floor of Wikivoyage, Wikipedia and Nominatim, are built into the web tools. Only the words searched go to them, with a random id for the conversation to Parallel, and the address of a page to Exa when it reads one.
+annai's own free search is not a plugin you can replace one by one: Exa, Parallel and Firecrawl (each through its MCP address, one request per search with no MCP session), and a floor of Wikivoyage, Wikipedia and Nominatim, are built into the web tools. Only the words searched go to them, with a random id for the conversation to Parallel, and the address of a page to Exa when it reads one.
 
 ## PDF pages
 

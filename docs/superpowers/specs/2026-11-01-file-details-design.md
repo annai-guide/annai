@@ -72,7 +72,7 @@ What they saw:
    - each booking whose `source` is the file;
    - the plan items that stand for those bookings, or were made from the file. All of them are on the screen (goal 2).
    - It asks once: Delete, then "Tap again to delete", as today.
-   - A toast then says what went, for example "Deleted Hotel stay, 1 booking and 2 itinerary items". The screen goes back.
+   - A toast then says what went, for example "Deleted Hotel stay, 1 booking, and 2 itinerary items". The screen goes back.
    - **The raw file screen's Delete means the same for a file under `/files/`** (spec check a). That covers Open's screen and All files. A file the user gave has one meaning of Delete everywhere.
 5. **A booking with no file** (Shiori wrote it from what the user said) still opens the same screen: its block alone, without the preview, Open or Download. Its Delete removes the booking and the plan items that stand for it.
 6. **A tap on one booking of a file with several** (from the Plan, Now or a card) opens the file's screen at that booking's block. The screen scrolls the block into view and focuses its heading.
@@ -143,7 +143,7 @@ What it does:
 - **Delete** still deletes the file, its bookings and their plan items in one `ws.writeMany`, so the workspace's listeners hear of each (Shiori's short name goes, live mode drops the reminders, the offline pack and the push mirror follow). Each `file.delete` carries `data.with`: the file it went with.
 - **Then it frees the group** (`forget`, with the file's path as `mustFree`): its history and every content nothing else names. **Freeable** means no version that the file's own history names is named by anything else: no current file in any scope, and no log entry outside the group's own history. Only the file's versions decide; the bookings' JSON and derived content (copies, crops, page pictures) never block it, and derived content the conversation names stays.
   - Freed: "Deleted Hotel stay, 1 booking, and 2 itinerary items. 2.4 MB freed."
-  - Kept, as the conversation names it: "… The conversation still has it, so it's under Deleted, where you can restore it." Kept as another trip or file has the same bytes: "… Another trip or file has the same content, so …". Kept means nothing is forgotten at all, history included.
+  - Kept, as the conversation names it: "… The conversation still has it, so it's under Deleted, where you can restore it." Kept as another conversation or file has the same bytes: "… Another conversation or file has the same content, so …". Kept means nothing is forgotten at all, history included.
   - A booking with no file is deleted with its history kept, as before, and isn't listed (the list is for files the user gave).
   - If the page goes between the two steps, the file is simply kept, listed and restorable.
 - **Deleted (n)** folds at the foot of the trip's Files, only when there are any: the newest delete of each `/files/` path with no file there now, moves left out. Each row is the real file name and "Deleted by you 3 hours ago" (or by Shiori, whose own deletes keep history and so show here), and opens the deleted file's screen.

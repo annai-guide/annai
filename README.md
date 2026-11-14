@@ -55,7 +55,7 @@ memories afterwards.
 
 ## Backups
 
-- Back up everything automatically to a private GitHub repository, a private repository on a Forgejo or Gitea server (your own, or Codeberg), an S3-compatible bucket (AWS, Cloudflare R2, Backblaze B2 …) or a WebDAV folder: after changes or once a day, on Wi-Fi, while annai is open (where the browser can't tell whether it is on Wi-Fi, as Safari on iPhone can't, larger backups wait for your OK). On GitHub, Forgejo and Gitea each backup is one commit of your files, and only what changed is uploaded; a bucket or a folder keeps each backup as one file, encrypted if you like.
+- Back up everything automatically to a private GitHub repository, a private repository on a Forgejo or Gitea server (your own, or Codeberg), an S3-compatible bucket (AWS, Cloudflare R2, Backblaze B2 …) or a WebDAV folder: after changes or once a day, while annai is open (each place's page says which connections it uses and what waits for your OK). On GitHub, Forgejo and Gitea each backup is one commit of your files, and only what changed is uploaded; a bucket or a folder keeps each backup as one file, encrypted if you like.
 - Restore any backup onto a new or wiped phone from Settings → Automatic backups.
 - A newer backup from your other phone is never overwritten: annai pauses, and offers to import it as a copy.
 - The sign-ins for those places (the GitHub or Forgejo token, the bucket's keys, the WebDAV password) stay on the device and are never in a backup. API keys go into a backup only when you choose, and only into an encrypted one.
@@ -63,7 +63,7 @@ memories afterwards.
 ## Notifications
 
 - Turn on Settings → Notifications, and Shiori's reminders for a time, and the itinerary's "coming up" and "leave soon", reach you as notifications while annai is closed. Tapping one opens annai, and Shiori catches up.
-- They go through a small relay, `push.annai.guide` (its code is in [`relay/`](relay/README.md), to run your own). annai encrypts each reminder on the phone and pads it to one size: the relay learns only the phone's push address, when each reminder is due and how many are waiting. Reminders about places never leave the phone.
+- They go through a small relay, `push.annai.guide` (its code is in [`relay/`](relay/README.md), to run your own). annai encrypts each reminder on the phone and pads it to one size: the relay learns only the phone's push address, when each reminder is due and how many are waiting. Reminders about places (arriving, leaving, nearby) never leave the phone. A plan's "leave soon" reminder goes to the relay, with its time.
 - With annai open on screen, annai says a reminder itself and the relay's copy is called off, so it never comes twice.
 - If the phone's storage fails to read and annai closes right after, an edit to a stop in any trip can miss its call-off, so the old words arrive until annai next opens, and a reminder you just set may not reach the relay, so it doesn't arrive while annai is closed. While reads are still failing, a stop deleted or changed just before can be said once, at its old time and in its old words. If annai's settings can't be read as it starts, Live starts with GPS off until a reload.
 

@@ -332,7 +332,8 @@ test("on a phone, a reload opens today's, whatever was picked", async ({ page })
 test('nothing picked, the clock past midnight, Undo: the new today, not the day it was', async ({ page }) => {
   await page.clock.setFixedTime(NOON);
   await longTrip(page);
-  await page.clock.setFixedTime(new Date('2030-11-28T00:30:00Z'));
+  // Half past midnight on the 28th where the test runs (local time: the tab names the day in the browser's own zone, which is this host's).
+  await page.clock.setFixedTime(new Date(2030, 10, 28, 0, 30));
   await page.getByRole('button', { name: 'Changed by Shiori · Undo' }).click();
   await expect(page.getByRole('tab', { selected: true })).toHaveText('Thu, Nov 28');
 });

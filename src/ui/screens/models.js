@@ -194,7 +194,7 @@ function roleBlock(role, roles, choices, nameOf, list, edit, { speech = false, k
 
 /** The numbers and the handles' names, from the list's order as it stands: after a drag, kept or put back. @param {Element} ol */
 function renumber(ol) {
-  const n = ol.children.length;
+  const n = ol.querySelectorAll('.grip').length;
   [...ol.children].forEach((x, k) => {
     const li = /** @type {HTMLElement} */ (x);
     const place = li.firstElementChild?.firstChild;
@@ -213,10 +213,11 @@ let menus = 0;
  * iOS); the handle also takes the arrow keys, and a tap on it shows Move up and Move down, so nothing needs a drag.
  * @param {string} role @param {string} id @param {number} i @param {number} n @param {string} name @param {boolean} page @param {string | undefined} note
  * @param {(id: string, by: number) => Promise<void>} move @param {(role: string, change: (models: string[]) => string[]) => Promise<void>} list @param {Node} remove
- * @param {{ own?: Node | null }} [o] own: shown after the name (a language's own name, in its lang)
+ * @param {{ own?: Node | null, fixed?: boolean }} [o] own: shown after the name (a language's own name, in its lang); fixed: stays last (the search floor), with no handle
  */
-export function reorderable(role, id, i, n, name, page, note, move, list, remove, { own } = {}) {
+export function reorderable(role, id, i, n, name, page, note, move, list, remove, { own, fixed } = {}) {
   const label = h('span', {}, `${num(i + 1)}. `, page ? h('a', { href: `#/models/model?id=${encodeURIComponent(id)}`, text: name }) : name, own ? [' ', own] : null, note ? t` (${note})` : '');
+  if (fixed) return h('li', { class: 'role-item', 'data-id': id, 'data-name': name }, label, remove);
   const menuId = `reorder-menu-${++menus}`;
   const grip = h('button', {
     class: 'btn ghost grip', type: 'button', 'aria-label': reorderLabel(name, i, n), 'aria-expanded': 'false', 'aria-controls': menuId, 'data-grip': `${role}\n${id}`,
@@ -276,7 +277,7 @@ export function reorderable(role, id, i, n, name, page, note, move, list, remove
       const wantTop = e.clientY - (drag.y - drag.top);
       const mid = wantTop + li.getBoundingClientRect().height / 2;
       if (before && mid < at(before)) before.before(li);
-      else if (after && mid > at(after)) after.after(li);
+      else if (after?.querySelector('.grip') && mid > at(after)) after.after(li); // a fixed entry has no handle, and isn't passed
       else break;
     }
     if (!grip.hasPointerCapture(drag.id)) grip.setPointerCapture(drag.id); // moving the entry in the page let go of it

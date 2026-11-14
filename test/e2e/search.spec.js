@@ -42,20 +42,20 @@ test('Settings → Tools → Search lists the providers in the order web_search 
   await page.getByRole('checkbox', { name: 'Use Parallel' }).uncheck();
   await expect.poll(async () => (await appSettings(page)).web?.searchOff).toEqual(['parallel']);
   // Moved by the handle's arrow keys; the list is drawn again from what is saved.
-  await page.getByRole('button', { name: 'Reorder Firecrawl, 4 of 5' }).focus();
+  await page.getByRole('button', { name: 'Reorder Firecrawl, 4 of 4' }).focus();
   await page.keyboard.press('ArrowUp');
   await expect.poll(async () => (await appSettings(page)).web?.search).toEqual(['jina', 'exa', 'firecrawl', 'parallel', 'wiki']);
   await expect.poll(() => order(page)).toEqual(['Jina Search', 'Exa', 'Firecrawl', 'Parallel', 'Wikivoyage, Wikipedia and Nominatim']);
   await expect(page.getByRole('checkbox', { name: 'Use Parallel' })).not.toBeChecked();
   // Moved by the handle's menu (a tap on it): Move up puts Parallel above Firecrawl again.
-  await page.getByRole('button', { name: 'Reorder Parallel, 4 of 5' }).click();
+  await page.getByRole('button', { name: 'Reorder Parallel, 4 of 4' }).click();
   await page.getByRole('group', { name: 'Move Parallel' }).getByRole('button', { name: 'Move up' }).click();
   await expect.poll(async () => (await appSettings(page)).web?.search).toEqual(['jina', 'exa', 'parallel', 'firecrawl', 'wiki']);
   await expect.poll(() => order(page)).toEqual(['Jina Search', 'Exa', 'Parallel', 'Firecrawl', 'Wikivoyage, Wikipedia and Nominatim']);
   await expect(page.getByRole('checkbox', { name: 'Use Parallel' })).not.toBeChecked();
   // Dragged by the handle with a mouse (Chromium; WebKit's phone has no mouse): Firecrawl above Exa.
   if (browserName === 'chromium') {
-    const grip = page.getByRole('button', { name: 'Reorder Firecrawl, 4 of 5' });
+    const grip = page.getByRole('button', { name: 'Reorder Firecrawl, 4 of 4' });
     const to = /** @type {{ x: number, y: number, height: number }} */ (await page.locator('#search-order li', { hasText: 'Exa' }).boundingBox());
     const from = /** @type {{ x: number, y: number, width: number, height: number }} */ (await grip.boundingBox());
     await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
@@ -71,6 +71,33 @@ test('Settings → Tools → Search lists the providers in the order web_search 
   await expect.poll(() => order(page)).toEqual(kept);
   await expect(page.getByRole('checkbox', { name: 'Use Parallel' })).not.toBeChecked();
   await expect(page.getByRole('checkbox', { name: 'Use Exa' })).toBeChecked();
+});
+
+test('the floor has no handle and is last, though a saved list put it first; the last handle cannot move down onto it', async ({ page }) => {
+  await openApp(page, '#/tools');
+  await expect(page.locator('#search-order li').first()).toBeVisible();
+  await page.evaluate(async () => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const { updateAppSettings } = await load('/src/core/settings.js');
+    const store = await createIdbStore();
+    try {
+      await updateAppSettings(new Workspace(store), { web: { search: ['wiki', 'jina', 'exa', 'parallel', 'firecrawl'] } });
+    } finally {
+      store.close();
+    }
+  });
+  await page.reload();
+  await expect.poll(() => order(page)).toEqual(['Jina Search', 'Exa', 'Parallel', 'Firecrawl', 'Wikivoyage, Wikipedia and Nominatim']);
+  const floor = page.locator('#search-order li', { hasText: 'Wikivoyage' });
+  await expect(floor).toContainText('5. ');
+  await expect(floor.getByRole('button')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Reorder Wikivoyage/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Reorder / })).toHaveCount(4);
+  await page.getByRole('button', { name: 'Reorder Firecrawl, 4 of 4' }).click();
+  await expect(page.getByRole('group', { name: 'Move Firecrawl' }).getByRole('button', { name: 'Move down' })).toBeDisabled();
+  await expect(page.getByRole('group', { name: 'Move Firecrawl' }).getByRole('button', { name: 'Move up' })).toBeEnabled();
 });
 
 test('free search through Shiori: Exa at its limit hands on to Parallel and rests; Parallel unticked, Firecrawl answers and Parallel is never asked', async ({ page, browserName }) => {

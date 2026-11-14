@@ -4,7 +4,7 @@
     "name": "Google Gemini",
     "provider.abilities.chat.noWindowNote": "バージョン2.0からは、OpenAI互換のエンドポイントではなくGemini独自のAPIを使います。ここでコンテキストウィンドウが未設定のモデルは、それ以前かIDで追加したものです。応答しない場合は、削除してから「モデルの一覧を取得」で追加し直してください。",
     "provider.abilities.live.name": "ライブ音声",
-    "provider.abilities.live.note": "Koe用の、1本のストリームで声をやり取りする会話です（Gemini Live）。セッション中は、話した内容が音声のままGoogleに送られます。AI Studioの無料枠なら無料です。ここでのKoeの声は、初期設定ではSulafatです（Gemini Liveプロトコル0.2以降。「設定 → アップデート」で入手できます）。",
+    "provider.abilities.live.note": "Koe用の、1本のストリームで声をやり取りする会話です（Gemini Live）。セッション中は、話した内容が音声のままGoogleに送られます。AI Studioの無料枠なら無料です。Koeの声は、初期設定ではSulafatです（Gemini Liveプロトコル0.2以降。「設定 → アップデート」で入手できます）。",
     "provider.abilities.transcription.note": "音声を受け付けないモデルのために、話した内容を文字にします。Gemini 3.5 TranscribeはGoogleの文字起こし専用モデルです。Flash Liteも指示すれば書き起こせて、より安く済みます。料金は、Googleの音声料金（1秒あたり約25トークン）から見積もった値です。",
     "provider.abilities.voice.note": "Shioriの声です。1文ずつ、1文につき1回のリクエストで話します。ストリーミングするので、文ができてから約0.5秒で話し始めます。通信が不安定なときは、途切れずに話せるようになるまで待ちます。ストリーミングをオフにすると、ほかの声と同じように、1文が丸ごと届いてから話します。無料枠では、Googleはこれらの声それぞれに1日10回・1分3回のリクエストしか許可していません。1日分の返答にはとても足りないため、最初の数文のあとはリストの次の声が話します。料金は、Googleの音声料金（1秒あたり25トークン）から1文字あたりで見積もった値です。ここの調整項目で別の声を指定しない限り、声はSulafatです（Googleの30種類の声のうち、温かみのある声です。Achirdは親しみやすく、Vindemiatrixは穏やか、Koreはきっぱりした声です）。「スタイル」は、Google独自の speech_metadata の style として送られます。",
     "provider.note": "Gemini独自のAPIを使います。キーが無料枠か有料かはAI Studioで確認できます。無料キーでは、1分あたりと1日あたりのリクエスト数に上限があります。ほかのモデルは「モデルの一覧を取得」で追加できます。"
