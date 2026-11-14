@@ -135,14 +135,14 @@ test("an error a model may read keeps annai's English in message; the screens sh
   // Kept as data in a turn's error: the Conversation's words in Japanese, a model's in English.
   const why = whyOf(new StorageFullError());
   assert.deepEqual(why, { message: new StorageFullError().message, name: 'StorageFullError' });
-  assert.match(whyWords(why), /^この端末のannaiの保存領域がいっぱいです/);
+  assert.match(whyWords(why), /^この端末のannaiのストレージがいっぱいです/);
   assert.equal(whyWords(why, true), new StorageFullError().message);
 });
 
 test("a watch that can't be checked is named by its reminder in the Conversation, never by its id or its trigger's code", () => {
   const line = errorWords({ kind: 'trigger', type: 'place', watch: 'w-abc', reminder: 'Tea at the inn.', why: 'its place is not a place', message: 'x' });
   assert.match(String(line), /Tea at the inn/);
-  assert.doesNotMatch(String(line), /w-abc|place の/);
+  assert.doesNotMatch(String(line), /w-abc|place\s*の/);
 });
 
 test("a plan watch that can't be checked is named by its plan item's title, never by its English fallback; an older entry shows as stored", () => {

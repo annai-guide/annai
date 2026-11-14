@@ -52,11 +52,11 @@ This page is a review aid. The source is [`glossary.tsv`](glossary.tsv): one row
 | card | カード | 卡片 | 卡片 |
 | catalog | カタログ | 目录 | 目錄 |
 | Check this | 要確認 | 请核对 | 請核對 |
-| chip | ボタン (the dock's); 絞り込み (the Add screen's filters) | 按钮 (the dock's); 筛选条件 (the Add screen's filters) | 按鈕 |
+| chip | ボタン | 按钮 | 按鈕 |
 | dock | ドック | 底栏 | 底部列 |
 | export | エクスポート | 导出 | 匯出 |
 | golden hour | ゴールデンアワー | 黄金时刻 | 黃金時刻 |
-| halves | KoeとKokoro（一人なら「一人で」） | Koe 和 Kokoro | Koe 和 Kokoro |
+| halves | KoeとKokoro | Koe 和 Kokoro | Koe 和 Kokoro |
 | Housekeeping | 会話の整理 | 对话整理 | 對話整理 |
 | key | キー | 密钥 | 金鑰 |
 | Main | メイン | 主要 | 主要 |
@@ -163,13 +163,13 @@ The choices that want your eye: each line gives the glossary's choice first, the
 
 - **Erase** (消去 / 清除): 清除 or iPhone's 抹掉.
 - **Experimental** (試験運用版 / 实验性功能): ja 試験運用版, or 試験的な機能.
-- **Now** (いま / 此刻): いま / 此刻, or 現在 / 现在.
+- **Now** (いま / 现在): いま / 现在, or 現在 / 此刻.
 - **Trace** (記録 / 记录): 記録 / 记录, or トレース / 追踪.
 - **Trips** (旅 / 旅行): ja 旅, or 旅行.
 - **catalog** (カタログ / 目录): zh 目录 or 插件库.
 - **dock** (ドック / 底栏): zh 底栏 or 程序坞.
 - **export** (エクスポート / 导出): エクスポート or 書き出し.
-- **halves** (半身 / 分身): 半身 / 分身, or the names (Koe と Kokoro / Koe 和 Kokoro).
+- **halves** (KoeとKokoro / Koe 和 Kokoro): the names, or 半身 / 分身.
 - **Housekeeping** (会話の整理 / 对话整理): 会話の整理 / 对话整理, built on Tidy up's 整理, or メンテナンス / 维护.
 - **personality** (性格 / 性格): zh 性格 or 人设.
 - **Speech in** (聞き取り / 语音识别): 聞き取り / 语音识别, or 音声入力 / 语音输入 (the phones' words for dictation).

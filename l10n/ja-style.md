@@ -13,7 +13,7 @@ in `ja.tsv` follows this page and the glossary (`glossary.tsv`).
    shape freely: put the reason or condition first and the point last, join two short English sentences into one, or
    split a long one. Never weaken what a line says about lost data, money spent, privacy or what is sent where.
 2. **No pronouns.** No あなた, あなたの, 私. Drop the subject when it is obvious. "Your trips" is 旅, not あなたの旅.
-   "What you said" is 話した内容.
+   "What you said" is 話した内容. A label that says who is the one exception: "You" is 自分 (see Words fixed).
 3. **annai and Shiori as subjects only when they matter.** "annai couldn't reach {0}" is 「{0}に接続できませんでした」.
    Name Shiori when the line is about what she does, as opposed to what the app does: 「Shioriが考えています」.
 4. **Register by role.** Read the code at `where` when the role isn't clear.
@@ -29,12 +29,13 @@ in `ja.tsv` follows this page and the glossary (`glossary.tsv`).
    通信 for data or network, 停まる for a car that has stopped, 立ち寄り先 for a stop. Use katakana only where Japanese
    apps do (アップデート, ダウンロード, リクエスト, モデル, プロバイダー).
 6. **Counters.** The right counter for the thing: 件 (messages, results, items), 個 (models, things), 回 (times),
-   枚 (photos, cards), か所 (places), 分/秒 (time). 「#件のモデル」 or 「モデル#個」, never a bare number.
+   枚 (photos, cards), か所 (places), 分/秒 (time). 「モデル#個」, never a bare number.
 7. **Punctuation and spacing (Apple's Japanese style).** Full-width 、。：（）「」. No space between Japanese and
    Latin text or a placeholder: 「Safariの設定」, 「{0}に接続」, 「annaiは」. Keep a space between two Latin words
-   ("Messages API"). Three exceptions keep the space: inline code, flags, URLs and key names
+   ("Messages API"). Four exceptions keep the space: inline code, flags, URLs and key names
    (「`--tool-call-parser <name>` が必要です」, so a URL never runs into the Japanese); a brand's own spaced name
-   (Google 検索); and a chip's label and its value (「日の出 {0}」). UI names in 「」 when the line points at them:
+   (Google 検索); a chip's label and its value (「日の出 {0}」); and a mode's name with the glossary's spaced middle
+   dot (「Koe · チャット」, so the check can find it). UI names in 「」 when the line points at them:
    「保存」をタップ; a path of screens in one pair: 「設定 → モデル → 1日の利用額」.
 8. **Length.** About as wide as the English on a phone, or narrower. Buttons and chips as short as they can be.
 9. **Keep exactly:** every placeholder ({0}, {1}) and the plural `#`, any markup, code, flags, URLs and key names
@@ -44,7 +45,8 @@ in `ja.tsv` follows this page and the glossary (`glossary.tsv`).
 
 ## Words fixed across the app (2026-11-14 pass)
 
-- This phone: この端末, the same in every row. "This phone, iPad or computer" lists say スマートフォン, iPad, パソコン.
+- This phone: この端末, the same in every row. Where a line names an iPad or a computer, it says このiPad, このパソコン.
+- The Trace, named inside a sentence: 「記録」 (「詳細は「記録」にあります」), so it points at the screen and not at a record.
 - Check for updates (the act): 更新を確認. The Updates screen and its button: アップデート (glossary).
 - Try again, in a message: もう一度お試しください. annai trying by itself: あとで自動的に再試行します.
 - "You" as a label (who wrote, who spoke): 自分 for files and history; ユーザー in the Trace.

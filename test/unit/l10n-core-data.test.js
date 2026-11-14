@@ -59,11 +59,11 @@ test("a backup that fails offline: its card and status in Japanese, made from wh
   online = false;
   place.failNext(new TypeError('Failed to fetch'));
   const e = await d.backups.backUp(id).then(() => null, (x) => x);
-  assert.equal(e?.shown, 'このスマートフォンはオフラインのため、このバックアップ先に接続できませんでした。');
+  assert.equal(e?.shown, 'この端末はオフラインのため、このバックアップ先に接続できませんでした。');
   assert.equal(e?.message, 'This phone is offline.');
   const hold = /** @type {any} */ ((await d.backups.get(id))?.hold);
   assert.equal(hold.message, 'This phone is offline.');
-  assert.equal(holdWords(hold), 'このスマートフォンはオフラインのため、このバックアップ先に接続できませんでした。オンラインに戻ったら、自動的に再試行します。');
+  assert.equal(holdWords(hold), 'この端末はオフラインのため、このバックアップ先に接続できませんでした。オンラインに戻ったら、自動的に再試行します。');
   const logged = await d.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS, { types: ['backup.error'] }));
   assert.equal(logged.at(-1)?.data.message, 'This phone is offline.');
   assert.doesNotMatch(JSON.stringify(logged), JA);

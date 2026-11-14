@@ -1,5 +1,5 @@
 {
-  "build": "2fe7fa1b5683",
+  "build": "5c43bee74fab",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -300,7 +300,7 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "cce37ccd29ad",
+    "/l10n/ja.json": "bc9cc2af80ee",
     "/l10n/zh-Hans.json": "d3c18fb43bcf",
     "/l10n/zh-Hant.json": "77db5a317bad"
   }

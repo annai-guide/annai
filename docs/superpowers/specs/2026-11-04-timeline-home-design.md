@@ -123,7 +123,7 @@ Additive, so `api` stays; `docs/plugins.md` and LESSONS.md change.
 
 ## Words
 
-Display only: files and tools keep `plan`. `l10n/glossary.tsv` changes Plan to Itinerary. Details, now (いま, 此刻) and Next (次の予定, 接下来, 接下來) are already translated.
+Display only: files and tools keep `plan`. `l10n/glossary.tsv` changes Plan to Itinerary. Details, now (いま, 现在, 現在) and Next (次の予定, 接下来, 接下來) are already translated.
 
 | en | ja | zh-Hans | zh-Hant |
 |---|---|---|---|

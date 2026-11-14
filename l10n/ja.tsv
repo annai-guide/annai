@@ -415,8 +415,8 @@ whpd9d	ok	Open Models	モデルを開く	src/app/main.js:256
 rzp4o3	ok	Keep mine	今のままにする	src/app/main.js:367	
 1j662as	ok	Let Shiori merge	Shioriに統合してもらう	src/app/main.js:368	
 x0ig66	ok	Something went wrong	問題が起きました	src/app/main.js:420	
-1oy79dy	ok	annai kept running. The details are in Trace.	annaiは動作を続けています。詳細は記録にあります。	src/app/main.js:421	
-c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annaiは動作を続けていますが、何が起きたかを書き残せなかったため、記録にも残っていません。繰り返し起きる場合は、annaiを閉じて開き直してください。	src/app/main.js:421	
+1oy79dy	ok	annai kept running. The details are in Trace.	annaiは動作を続けています。詳細は「記録」にあります。	src/app/main.js:421	
+c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annaiは動作を続けていますが、何が起きたかを書き残せなかったため、「記録」にも残っていません。繰り返し起きる場合は、annaiを閉じて開き直してください。	src/app/main.js:421	
 11n1kcg	ok	Open Trace	記録を開く	src/app/main.js:422	
 gt9ssw	ok	annai couldn't start	annaiを起動できませんでした	src/app/main.js:433	
 6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	繰り返し起きる場合は、ブラウザがデータの保存をブロックしている可能性があります（プライベートウインドウなど）。	src/app/main.js:435	
@@ -471,7 +471,7 @@ bo3wjk	ok	Shiori stopped: today's budget is spent	Shioriが止まりました：
 177194c	ok	She took {0} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.	Shioriは頼まれていない作業を自分から{0}ステップ進めたため、そこで止まりました。続けてほしいときは、Shioriに頼んでください。	src/core/agent/budgets.js:124	{0} = num(over.steps); Note: "She" is Shiori in ja, as elsewhere.; Note: "Ask her" is a request (頼んで), not the glossary's Ask (Safari's permission choice, 確認).
 1o4yqf3	ok	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	1回の起動で進められる上限の{0}ステップに達しました（「設定 → Shiori → Shioriが自分から動く頻度」）。続けてほしいときは、Shioriに頼んでください。	src/core/agent/budgets.js:125	{0} = num(over.steps); Note: ja names no subject (the card's title says Shiori stopped); the setting's path as the screens name it.; Note: "Ask her" is a request (頼んで), not the glossary's Ask (Safari's permission choice, 確認).
 1vskjkw	ok	Live is resting; Koe · Chat is answering	ライブは休止中のため、Koe · チャットが答えています	src/core/agent/halves.js:584	
-edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	しばらくはShioriが直接答えます。理由は記録（モデル）で確認できます。Koeは数分後に自動的に再試行します。	src/core/agent/halves.js:663	
+edkx3h	ok	Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.	しばらくはShioriが直接答えます。理由は「記録」（モデル）で確認できます。Koeは数分後に自動的に再試行します。	src/core/agent/halves.js:663	
 yvabm6	ok	Koe's live voice couldn't start	Koeのライブ音声を開始できませんでした	src/core/agent/halves.js:663	
 bzrasi	ok	Shiori answers as one half for now	しばらくはShioriが一人で答えます	src/core/agent/halves.js:834	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
 o0lfar	ok	annai couldn't pass your message to Koe: {0}	メッセージをKoeに渡せませんでした：{0}	src/core/agent/halves.js:834	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
@@ -496,7 +496,7 @@ n7ewdg	ok	Shiori couldn't tidy up the conversation	Shioriは会話を整理で�
 oeaxaa	ok	She will try again later.	あとで自動的に再試行します。	src/core/agent/loop.js:1593	
 x10s30	ok	Shiori couldn't summarize the conversation	Shioriは会話を要約できませんでした	src/core/agent/loop.js:1781	
 1ds0zov	ok	Reminder	リマインダー	src/core/agent/loop.js:1980	
-1szzjml	ok	Shiori's answer	Shioriの返事	src/core/agent/loop.js:1980	
+1szzjml	ok	Shiori's answer	Shioriの答え	src/core/agent/loop.js:1980	
 nxpady	ok	The message went without it.	メッセージは写真なしで送られました。	src/core/agent/loop.js:2119	
 sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:2119	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
 ssozn1	ok	A photo wasn't sent to Shiori	写真をShioriに送れませんでした	src/core/agent/loop.js:2119	
@@ -511,7 +511,7 @@ pydksy	ok	Shiori stopped repeating herself	Shioriは同じことの繰り返し�
 vjxaph	ok	Your turn	返事待ち	src/core/agent/loop.js:3227	
 19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	このブラウザでは、タップしないと音が出ません。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:3384	
 1h2ina6	ok	Shiori couldn't speak aloud	Shioriは声に出して話せませんでした	src/core/agent/loop.js:3385	
-1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	「設定 → モデル → 読み上げ」の声がどれも使えませんでした。理由は記録にあります。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:3385	
+1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	「設定 → モデル → 読み上げ」の声がどれも使えませんでした。理由は「記録」にあります。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:3385	
 1r1dhd7	ok	Shiori can't hear you yet	Shioriはまだ声を聞き取れません	src/core/agent/loop.js:3532	
 8wd0xv	ok	Listening stopped	聞き取りが止まりました	src/core/agent/loop.js:3737	
 43klog	ok	at most {0} MB	最大{0} MB	src/core/agent/loop.js:4026	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
@@ -574,7 +574,7 @@ pak6iu	ok	The plugin for {0} isn't running. Open this backup place in Settings �
 al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	{0}の暗号化バックアップ用のパスフレーズを入力して、保存してください。	src/core/backup.js:45	{0} = name
 1cm4kmv	ok	This backup would upload {0}.	このバックアップでは{0}をアップロードします。	src/core/backup.js:46	{0} = size(s.bytes ?? 0)
 3t4mx2	ok	There is a newer backup at {0}.	{0}に新しいバックアップがあります。	src/core/backup.js:47	{0} = name
-1r146xn	ok	This phone is offline, so annai couldn't reach this place.	このスマートフォンはオフラインのため、このバックアップ先に接続できませんでした。	src/core/backup.js:49	
+1r146xn	ok	This phone is offline, so annai couldn't reach this place.	この端末はオフラインのため、このバックアップ先に接続できませんでした。	src/core/backup.js:49	
 1skrtkx	ok	This iPad is offline, so annai couldn't reach this place.	このiPadはオフラインのため、このバックアップ先に接続できませんでした。	src/core/backup.js:50	
 1ymfft0	ok	This computer is offline, so annai couldn't reach this place.	このパソコンはオフラインのため、このバックアップ先に接続できませんでした。	src/core/backup.js:51	Note: a computer is パソコン wherever annai names the device.
 bbv043	ok	This device is offline, so annai couldn't reach this place.	この端末はオフラインのため、このバックアップ先に接続できませんでした。	src/core/backup.js:52	
@@ -591,7 +591,7 @@ tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	暗号化バ�
 1lbu7g8	ok	Photo · {0}	写真 · {0}	src/core/chats.js:132	{0} = time
 1nqtd5y	ok	Voice · {0}	音声 · {0}	src/core/chats.js:133	{0} = time
 146ozuk	ok	New conversation	新しい会話	src/core/chats.js:134	
-14zz5l	ok	annai's storage on this device is full. Remove a trip you no longer need (back it up first), or free up space on this device.	この端末のannaiの保存領域がいっぱいです。先にバックアップしてから不要な旅を削除するか、この端末の空き容量を増やしてください。	src/core/errors.js:39	
+14zz5l	ok	annai's storage on this device is full. Remove a trip you no longer need (back it up first), or free up space on this device.	この端末のannaiのストレージがいっぱいです。先にバックアップしてから不要な旅を削除するか、この端末の空き容量を増やしてください。	src/core/errors.js:39	
 1rgff8l	ok	annai has stopped in this tab because it was opened in another one. Reload this tab to use annai here.	別のタブでannaiが開かれたため、このタブでは停止しました。このタブで使うには、再読み込みしてください。	src/core/errors.js:40	
 gnrtev	ok	Shiori can't reach her model.	Shioriがモデルに接続できません。	src/core/errors.js:41	
 98c05r	ok	This calendar has more than {0} events. Export only the dates you need from your calendar, and add that file.	このカレンダーには{0}件を超える予定があります。必要な期間の予定だけをカレンダーからエクスポートして、そのファイルを追加してください。	src/core/ics.js:115	{0} = num(MAX_EVENTS)
@@ -1176,8 +1176,8 @@ sg0mn0	ok	Uploading {0} of {1}…	アップロード中（{0}/{1}）…	src/ui/f
 1hmrpdo	ok	A computer backed up to {0} {1}.	{1}、別のパソコンが{0}にバックアップしました。	src/ui/format.js:245	{0} = where; {1} = ago
 dc7u48	ok	An Android phone backed up to {0} {1}.	{1}、別のAndroidスマートフォンが{0}にバックアップしました。	src/ui/format.js:245	{0} = where; {1} = ago
 19kyaez	ok	Another device backed up to {0} {1}.	{1}、別の端末が{0}にバックアップしました。	src/ui/format.js:246	{0} = where; {1} = ago
-mbc651	ok	That was after this phone's last backup.	このスマートフォンの前回のバックアップより後のものです。	src/ui/format.js:250	
-vqd7xg	ok	Import it as a copy to bring its trips here, or back up this phone over it.	コピーとして読み込んでその旅をここに追加するか、このスマートフォンの内容でそのバックアップを上書きしてください。	src/ui/format.js:250	Note: "Back up this phone over it": this phone's data replaces the newer backup there, as the card's button says it.
+mbc651	ok	That was after this phone's last backup.	この端末の前回のバックアップより後のものです。	src/ui/format.js:250	
+vqd7xg	ok	Import it as a copy to bring its trips here, or back up this phone over it.	コピーとして読み込んでその旅をここに追加するか、この端末の内容でそのバックアップを上書きしてください。	src/ui/format.js:250	Note: "Back up this phone over it": this phone's data replaces the newer backup there, as the card's button says it.
 1ce0smb	ok	That was after this iPad's last backup.	このiPadの前回のバックアップより後のものです。	src/ui/format.js:251	
 nmyapy	ok	Import it as a copy to bring its trips here, or back up this iPad over it.	コピーとして読み込んでその旅をここに追加するか、このiPadの内容でそのバックアップを上書きしてください。	src/ui/format.js:251	
 hqymxl	ok	Import it as a copy to bring its trips here, or back up this computer over it.	コピーとして読み込んでその旅をここに追加するか、このパソコンの内容でそのバックアップを上書きしてください。	src/ui/format.js:252	
@@ -1386,9 +1386,9 @@ vq7cdg#other	ok	# pages	#ページ	src/ui/preview.js:133	plural; # = pages; Engl
 1cjjnaq	ok	Kept on this device.	この端末に保存。	src/ui/privacy.js:21	
 tct7be	ok	Your trips, files, settings and keys are stored in this browser, on this device. annai has no accounts, and no server of annai's keeps your trips or your keys.	旅、ファイル、設定、キーは、この端末のこのブラウザに保存されます。annaiにはアカウントがなく、旅やキーを保存するannaiのサーバーもありません。	src/ui/privacy.js:21	
 14xwlem	ok	Sent only where it's needed.	必要な所にだけ送信。	src/ui/privacy.js:22	
-5ycw8s	ok	What you ask Shiori goes to the model provider you connect, with what she needs from your trip, and what you say goes where Settings → Voice shows. Places she looks up go to the sources credited in Settings → About. The Trace shows every request annai sends for Shiori: her model calls, her tools and the offline pack.	Shioriへの質問は、回答に必要な旅の情報と一緒に、接続したモデルのプロバイダーに送られます。話した内容は、「設定 → 音声」に表示されている送信先に送られます。Shioriが場所を調べるときは、調べる場所が「設定 → 情報」に記載されている提供元に送られます。annaiがShioriのために送るリクエスト（モデルの呼び出し、ツール、オフラインパック）は、すべて記録で確認できます。	src/ui/privacy.js:22	Note: "she" and "her" are written as Shiori, as elsewhere: 彼女 reads distant in Japanese; the Trace is 記録 per the glossary.
+5ycw8s	ok	What you ask Shiori goes to the model provider you connect, with what she needs from your trip, and what you say goes where Settings → Voice shows. Places she looks up go to the sources credited in Settings → About. The Trace shows every request annai sends for Shiori: her model calls, her tools and the offline pack.	Shioriへの質問は、回答に必要な旅の情報と一緒に、接続したモデルのプロバイダーに送られます。話した内容は、「設定 → 音声」に表示されている送信先に送られます。Shioriが場所を調べるときは、調べる場所が「設定 → 情報」に記載されている提供元に送られます。annaiがShioriのために送るリクエスト（モデルの呼び出し、ツール、オフラインパック）は、すべて「記録」で確認できます。	src/ui/privacy.js:22	Note: "she" and "her" are written as Shiori, as elsewhere: 彼女 reads distant in Japanese; the Trace is 記録 per the glossary.
 1g2tvlf	ok	Your keys stay yours.	キーは自分のもの。	src/ui/privacy.js:23	
-1jo7026	ok	Each model key is kept in this device's storage and sent only to the provider it is for. Keys are never put in what Shiori's model reads, are blanked out of the Trace, and are left out of exports, unless you choose to put them in an encrypted backup.	モデルのキーはこの端末のストレージに保存され、対応するプロバイダーにだけ送られます。キーはShioriのモデルに渡す内容には含まれず、記録では伏せられ、エクスポートにも含まれません。ただし、暗号化したバックアップには、選んだ場合に限り含めることができます。	src/ui/privacy.js:23	
+1jo7026	ok	Each model key is kept in this device's storage and sent only to the provider it is for. Keys are never put in what Shiori's model reads, are blanked out of the Trace, and are left out of exports, unless you choose to put them in an encrypted backup.	モデルのキーはこの端末のストレージに保存され、対応するプロバイダーにだけ送られます。キーはShioriのモデルに渡す内容には含まれず、「記録」では伏せられ、エクスポートにも含まれません。ただし、暗号化したバックアップには、選んだ場合に限り含めることができます。	src/ui/privacy.js:23	
 12t6czb	ok	No tracking.	トラッキングなし。	src/ui/privacy.js:24	
 5d5p39	ok	annai has no analytics and no ads. It loads no scripts from other sites: its content security policy lets only scripts from annai's own address run, except code plugins you install, which annai stores and serves itself.	annaiには分析も広告もありません。ほかのサイトからスクリプトを読み込まず、コンテンツセキュリティポリシーで、annai自身のアドレスにあるスクリプトだけを実行します。例外はインストールしたコード付きプラグインで、annaiが自分で保存して配信します。	src/ui/privacy.js:24	
 1e9jheb	ok	Reminders stay sealed.	リマインダーは暗号化したまま。	src/ui/privacy.js:25	
@@ -1396,8 +1396,8 @@ tct7be	ok	Your trips, files, settings and keys are stored in this browser, on th
 13wlc44	ok	Open code.	オープンソース。	src/ui/privacy.js:26	
 1qhqdx	ok	annai's code is open under the AGPL-3.0 for anyone to read, at {0}.	annaiのコードはAGPL-3.0で公開されていて、誰でも{0}で読めます。	src/ui/privacy.js:26	{0} = REPO.replace('https://', '')
 1q2zxy5	ok	Where this stops	注意点	src/ui/privacy.js:27	Note: "Where this stops" as one noun heading.
-1bk8ve3	ok	A code plugin you install runs with full trust: it can read your trips and keys, and its requests can bypass the Trace. Install only plugins you trust.	インストールしたコード付きプラグインは、制限なしで動作します。旅やキーを読み取ることができ、そのリクエストが記録に残らないこともあります。信頼できるプラグインだけをインストールしてください。	src/ui/privacy.js:29	
-19jox8f	ok	With your model's own search or fetch (Settings → Tools), the searches and pages run on the provider's servers, and the Trace shows only the model's turn.	モデル自身の検索やページ取得（「設定 → ツール」）を使うと、検索やページの読み込みはプロバイダーのサーバーで行われ、記録にはモデルとのやり取りしか残りません。	src/ui/privacy.js:30	
+1bk8ve3	ok	A code plugin you install runs with full trust: it can read your trips and keys, and its requests can bypass the Trace. Install only plugins you trust.	インストールしたコード付きプラグインは、制限なしで動作します。旅やキーを読み取ることができ、そのリクエストが「記録」に残らないこともあります。信頼できるプラグインだけをインストールしてください。	src/ui/privacy.js:29	
+19jox8f	ok	With your model's own search or fetch (Settings → Tools), the searches and pages run on the provider's servers, and the Trace shows only the model's turn.	モデル自身の検索やページ取得（「設定 → ツール」）を使うと、検索やページの読み込みはプロバイダーのサーバーで行われ、「記録」にはモデルとのやり取りしか残りません。	src/ui/privacy.js:30	
 426n3h	ok	Your keys are as safe as this device: anyone who can use this browser on it can reach them. Keep it locked.	キーの安全性は、この端末の安全性しだいです。この端末でこのブラウザを使える人なら、誰でもキーにアクセスできます。端末はロックしておいてください。	src/ui/privacy.js:31	
 ldqm5c	ok	On iPhone, Safari and the Home Screen app keep separate data: keys and trips you add in one aren't in the other.	iPhoneでは、Safariとホーム画面のアプリでデータが別々です。片方で追加したキーや旅は、もう片方にはありません。	src/ui/privacy.js:32	
 mj3oi4	ok	annai is free software, provided as is, without any warranty, as far as the law allows, under the {0} (AGPL-3.0).	annaiはフリーソフトウェアです。{0}（AGPL-3.0）のもとで、法律で認められる範囲において一切の保証なく、現状のまま提供されます。	src/ui/privacy.js:39	{0} = LICENCE; Note: {0} is the licence's own English name, kept as it is.
@@ -1842,7 +1842,7 @@ hbz43i	ok	Roles	役割	src/ui/screens/models.js:132
 1erapbm	ok	Remove {0} from {1}	{1}から{0}を削除	src/ui/screens/models.js:161	{0} = nameOf(id); {1} = called
 1w3dq5v	ok	No models yet. Add one.	モデルはまだありません。追加してください。	src/ui/screens/models.js:167	
 14zzm1c	ok	Empty: Koe has no live voice, so Koe · Chat answers. Add one, such as Gemini Live, from a provider with live voice.	ライブ音声のモデルがないため、Koe · チャットが答えます。ライブ音声に対応したプロバイダーから、Gemini Liveなどを追加してください。	src/ui/screens/models.js:168	
-12bm0vn	ok	Empty: with Live off, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.	モデルがないため、ライブがオフのときは、Shioriはメインのモデルだけを使って一人で動きます。ここに速いモデルを追加すると、メインより先に素早く話す声になります。	src/ui/screens/models.js:169	Note: halves is 半身/分身 per the glossary. The main model in brackets: it is her one half, not half of the main model.
+12bm0vn	ok	Empty: with Live off, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.	モデルがないため、ライブがオフのときは、Shioriはメインのモデルだけを使って一人で動きます。ここに速いモデルを追加すると、メインより先に素早く話す声になります。	src/ui/screens/models.js:169	Note: "one half" is 一人で, per the glossary's halves note. The main model in brackets: it is her one half, not half of the main model.
 wer5y9	ok	Nothing here, so annai can't hear you. Add an entry.	何も登録されていないため、声を聞き取れません。項目を追加してください。	src/ui/screens/models.js:170	
 1n694n2	ok	Nothing here, so Shiori can't speak aloud. Add a voice.	何も登録されていないため、Shioriは声に出して話せません。声を追加してください。	src/ui/screens/models.js:171	
 el9rbx	ok	Uses the main list.	メインのリストを使います。	src/ui/screens/models.js:172	
@@ -2063,7 +2063,7 @@ u40nrw	ok	To add it back, you'll need its file again ({0}).	もう一度追加�
 evz7q4	ok	Provider	プロバイダー	src/ui/screens/provider.js:178	
 2r1h4p	ok	Connection	接続	src/ui/screens/provider.js:180	
 1swq770	ok	API key	APIキー	src/ui/screens/provider.js:183	
-1o4hxda	ok	On, its calls show as free in the Trace, and count nothing toward Spend per day.	オンにすると、このプロバイダーの呼び出しは記録で無料と表示され、1日の利用額にも含まれません。	src/ui/screens/provider.js:192	
+1o4hxda	ok	On, its calls show as free in the Trace, and count nothing toward Spend per day.	オンにすると、このプロバイダーの呼び出しは「記録」で無料と表示され、1日の利用額にも含まれません。	src/ui/screens/provider.js:192	
 12td532	ok	Remove key	キーを削除	src/ui/screens/provider.js:195	
 1qapi39	ok	Tap again to remove the key	もう一度タップでキーを削除	src/ui/screens/provider.js:195	
 5bt3jk	ok	Key removed	キーを削除しました	src/ui/screens/provider.js:198	
@@ -2278,7 +2278,7 @@ eh67ee	ok	Saved. It applies at her next wake.	保存しました。次の起動�
 codbeh	ok	New from this one	これをもとに新規作成	src/ui/screens/shiori.js:145	
 10pf3h4	ok	Name for a new one	新しい性格の名前	src/ui/screens/shiori.js:146	
 185xhpb	ok	Her two halves	KoeとKokoro	src/ui/screens/shiori.js:150	
-1vyft97	ok	Koe talks with you and answers at once; Kokoro thinks things through and does the work. They pass each other short notes. On: the notes show in the conversation as quiet lines. Off: they stay in the Trace.	Koeは話し相手になり、すぐに答えます。Kokoroはじっくり考えて作業をします。2人は短いメモを渡し合っています。オンにすると、メモが会話の中に控えめな行で表示されます。オフにすると、記録にだけ残ります。	src/ui/screens/shiori.js:151	
+1vyft97	ok	Koe talks with you and answers at once; Kokoro thinks things through and does the work. They pass each other short notes. On: the notes show in the conversation as quiet lines. Off: they stay in the Trace.	Koeは話し相手になり、すぐに答えます。Kokoroはじっくり考えて作業をします。2人は短いメモを渡し合っています。オンにすると、メモが会話の中に控えめな行で表示されます。オフにすると、「記録」にだけ残ります。	src/ui/screens/shiori.js:151	
 1f0pz7g	ok	Your other trips	ほかの旅	src/ui/screens/shiori.js:153	
 t5n8hu	ok	Before Shiori reads another of your trips or conversations, annai asks, once a conversation. On: she reads your own without asking. Trips someone sent you always ask.	Shioriがほかの旅や会話を読む前に、会話ごとに一度確認します。オンにすると、自分の旅や会話は確認なしで読みます。ほかの人から届いた旅は、オンでも確認します。	src/ui/screens/shiori.js:154	
 u36mv	ok	The languages you speak, and the one Shiori answers in, are in Settings → Languages.	話す言語とShioriが答える言語は、「設定 → 言語」で選べます。	src/ui/screens/shiori.js:156	Note: a link on Settings → Shiori to the Languages screen; 言語 as the glossary's screen name.
@@ -2357,8 +2357,8 @@ drekzl#other	ok	Shiori woke to look at the # files you added.	追加されたフ
 18v7cvz#other	ok	Shiori woke for # reminders, or things she watches for: {0}.	リマインダーまたは見守り中の項目#件（{0}）のため、Shioriが起動しました。	src/ui/screens/talk.js:117	plural; # = titles.length; {0} = listed(titles); English: "Shiori woke for a reminder, or something she watches for: {0}." (one), "Shiori woke for # reminders, or things she watches for: {0}." (other); Note: {0} is what fired: a plan item's title, or a reminder in Shiori's own words, as a list.
 18rv8j7	ok	Shiori woke.	Shioriが起動しました。	src/ui/screens/talk.js:118	
 gofzl2	ok	Shiori woke for the plugin {0}.	プラグイン「{0}」のため、Shioriが起動しました。	src/ui/screens/talk.js:118	{0} = nameOf(String(r.plugin ?? ''))
-friaxa	ok	Shiori took these files to a conversation that has since been removed.	Shioriはこれらのファイルを別の会話に移しましたが、その会話は削除されています。	src/ui/screens/talk.js:128	Note: a line in the conversation the files left; 削除 as Remove trip (旅を削除).
-8obrdi	ok	Shiori started {0} with these files.	Shioriがこれらのファイルをもとに「{0}」を始めました。	src/ui/screens/talk.js:129	{0} = title; Note: {0} is the trip's name, quoted; 始める as Start a trip (旅を始める).
+friaxa	ok	Shiori took these files to a conversation that has since been removed.	Shioriはファイルを別の会話に移しましたが、その会話は削除されています。	src/ui/screens/talk.js:128	Note: a line in the conversation the files left; 削除 as Remove trip (旅を削除).
+8obrdi	ok	Shiori started {0} with these files.	Shioriがファイルをもとに「{0}」を始めました。	src/ui/screens/talk.js:129	{0} = title; Note: {0} is the trip's name, quoted; 始める as Start a trip (旅を始める).
 yrkvc6	ok	Shiori started {0}.	Shioriが「{0}」を始めました。	src/ui/screens/talk.js:129	{0} = title; Note: a trip she started with no files (the user asked for one); {0} is its name, quoted.
 1tio19k#other	ok	Shiori took # files to {0}.	Shioriがファイル#件を「{0}」に移しました。	src/ui/screens/talk.js:130	plural; # = d.count; {0} = title; English: "Shiori took # file to {0}." (one), "Shiori took # files to {0}." (other); Note: {0} is the trip's name; 件 counts files, as elsewhere (ファイル1件).
 197gx5s	ok	Shiori moved this to a conversation that has since been removed.	Shioriがこの会話の続きを別の会話に移しましたが、その会話はもう削除されています。	src/ui/screens/talk.js:134	Note: the same line once that trip is removed; 削除/移除 as Remove trip.
@@ -2630,7 +2630,7 @@ fceyoz	ok	Voice	音声	src/ui/screens/voice.js:45	context: voice mode; Note: voi
 o7g54g	ok	Cut her off by speaking	話しかけて割り込む	src/ui/screens/voice.js:60	
 1maeag1	ok	Speaking…	話しています…	src/ui/screens/voice.js:68	
 1rasxdf	ok	This browser didn't let annai play sound yet. Tap anywhere on the page, then try again.	このブラウザでは、まだ音を再生できません。ページのどこかをタップしてから、もう一度お試しください。	src/ui/screens/voice.js:72	
-39tqta	ok	No voice could speak. The Trace shows what each voice answered; check them in Settings → Models.	どの声も再生できませんでした。各声の応答は記録で確認できます。「設定 → モデル」で声を確認してください。	src/ui/screens/voice.js:73	
+39tqta	ok	No voice could speak. The Trace shows what each voice answered; check them in Settings → Models.	どの声も再生できませんでした。各声の応答は「記録」で確認できます。「設定 → モデル」で声を確認してください。	src/ui/screens/voice.js:73	
 m6lqjc	ok	{0} couldn't speak: {1}	{0}は話せませんでした：{1}	src/ui/screens/voice.js:75	{0} = f.name; {1} = speechProblem(f.error)
 1v88hol	ok	{0}, then {1}	{0}、次に{1}	src/ui/screens/voice.js:76	context: one voice, then the next; {0} = a; {1} = b; Note: voices in the order they spoke: "A, then B, then C".
 1w6xnpw	ok	Spoken by {0}.	話した声：{0}。	src/ui/screens/voice.js:76	{0} = r.voices.reduce((/** @type {string} */ a, /** @type {string} */ b) => tc('one voice, then the next')`${a}, then ${b}`)
@@ -2773,7 +2773,7 @@ dvkkfg	ok	Nothing was half-saved. To make room, remove a trip you no longer need
 q69pp5	ok	{0} didn't answer: {1}. No other model was asked.	{0}は応答しませんでした：{1}。ほかのモデルには問い合わせていません。	src/ui/talk-panel.js:23	{0} = name; {1} = why
 1cam7ic	ok	Message	メッセージ	src/ui/talk-panel.js:74	
 vy4apn	ok	Try this model	このモデルを試す	src/ui/talk-panel.js:75	
-1k3coi2	ok	A short conversation with this model alone: if it fails, no other model answers. Each reply shows its tokens and cost. Nothing is kept but the Trace.	このモデルだけとの短い会話です。失敗しても、ほかのモデルは答えません。返事ごとにトークン数と費用を表示します。記録以外には何も残りません。	src/ui/talk-panel.js:77	
+1k3coi2	ok	A short conversation with this model alone: if it fails, no other model answers. Each reply shows its tokens and cost. Nothing is kept but the Trace.	このモデルだけとの短い会話です。失敗しても、ほかのモデルは答えません。返事ごとにトークン数と費用を表示します。「記録」以外には何も残りません。	src/ui/talk-panel.js:77	
 1tzspvr	ok	GPS is off, so annai isn't following where you are.	GPSがオフのため、現在地を追跡していません。	src/ui/today.js:19	
 1sflilm	ok	Location isn't allowed for annai. Open Driving to say where you are.	annaiに位置情報へのアクセスが許可されていません。「運転中」を開いて、現在地を伝えてください。	src/ui/today.js:22	
 1770v5g	ok	Finding where you are…	現在地を確認中…	src/ui/today.js:23	

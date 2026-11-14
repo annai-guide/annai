@@ -168,6 +168,8 @@ test("a third party named as a built-in is shown as such in the screens' words: 
     assert.equal(rows.find((r) => r.id === 'webby')?.name, 'Web tools (webby)');
     const { ownerName } = await import('../../src/ui/screens/plugin-install.js');
     assert.equal(ownerName(rows, 'webby'), 'Web tools (webby)');
+    // Spaces are set aside under every language, so English screens refuse "Webtools" as the look-alike of "Web tools" too.
+    await assert.rejects(host.install(codePlugin('webtools', 'return () => {};', { name: 'Webtools' })), /annai's own name/);
   } finally {
     setWords('ja', JSON.parse(await readFile(new URL('../../l10n/ja.json', import.meta.url), 'utf8')));
   }

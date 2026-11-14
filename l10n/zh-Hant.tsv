@@ -690,7 +690,7 @@ r34ccn	ok	This model's protocol plugin isn't running. Open its provider in Setti
 1bhiyow	ok	{0} answered with a redirect, which annai doesn't follow with your key. Check its address.	{0} 傳回了重新導向，annai 不會帶著你的金鑰跳轉。請檢查它的網址。	src/core/llm/contract.js:131	{0} = provider
 sek2pk	ok	The provider answered with a redirect, which annai doesn't follow with your key. Check its address.	供應商傳回了重新導向，annai 不會帶著你的金鑰跳轉。請檢查它的網址。	src/core/llm/contract.js:132	
 17ifucf	ok	Transcription	語音轉文字	src/core/llm/contract.js:150	
-9kdcjv	ok	Chat	對話	src/core/llm/contract.js:150	Note: a provider's ability (chat models): 對話模型, as the glossary's Koe · Classic note names them.
+9kdcjv	ok	Chat	對話	src/core/llm/contract.js:150	Note: a provider's ability (chat models): 對話模型, as the glossary's Koe · Chat note names them.
 b1qn4p	ok	Voice	聲音	src/core/llm/contract.js:150	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.
 su5wo1	ok	Live voice	即時語音	src/core/llm/contract.js:150	
 izfolc	ok	No output started in time.	沒有在限定時間內開始輸出。	src/core/llm/contract.js:160	
@@ -731,7 +731,7 @@ uxj42v	ok	It doesn't take audio.	不支援音訊。	src/core/llm/fallback.js:127
 19lcshx	ok	It can't use tools.	無法使用工具。	src/core/llm/fallback.js:128	
 1coimht	ok	The conversation is too long for it.	對話太長，超出了它的上限。	src/core/llm/fallback.js:129	
 6o9g3j	ok	It doesn't have the provider tool this needs.	缺少所需的供應商工具。	src/core/llm/fallback.js:130	
-8xm1wt	ok	It isn't a chat model.	不是對話模型。	src/core/llm/fallback.js:131	Note: chat model → 對話模型, as the glossary's Koe · Classic note names Koe's list of chat models.
+8xm1wt	ok	It isn't a chat model.	不是對話模型。	src/core/llm/fallback.js:131	Note: chat model → 對話模型, as the glossary's Koe · Chat note names Koe's list of chat models.
 1i0eq06	ok	It is switched off.	已關閉。	src/core/llm/fallback.js:132	
 10vxomx	ok	It was removed.	已移除。	src/core/llm/fallback.js:133	Note: 移除, as Remove model.
 s8uown	ok	The speech couldn't be sent to it.	無法把語音傳給它。	src/core/llm/fallback.js:134	
@@ -1109,7 +1109,7 @@ l7u7vc	ok	its plugin is missing	缺少對應的外掛程式	src/ui/format.js:49
 1y8iwje	ok	has no web tool of that kind	沒有該類網頁工具	src/ui/format.js:50	
 6gto9k	ok	couldn't hear the speech	未能聽到語音	src/ui/format.js:50	
 710q7y	ok	conversation too long for it	對話過長	src/ui/format.js:50	
-7jim5c	ok	isn't a chat model	不是對話模型	src/ui/format.js:50	Note: chat model → 對話模型, as the glossary's Koe · Classic note.
+7jim5c	ok	isn't a chat model	不是對話模型	src/ui/format.js:50	Note: chat model → 對話模型, as the glossary's Koe · Chat note.
 w70v2a	ok	doesn't take audio	不支援音訊	src/ui/format.js:50	
 183e6qo	ok	Ends · {0}	結束 · {0}	src/ui/format.js:89	{0} = name; Note: Taiwan wording; the end of something over several days, as its own row on the Plan.
 1hdfht8	ok	Return · {0}	還車 · {0}	src/ui/format.js:89	{0} = name; Note: Taiwan wording; a rental car's return, its last row on the Plan.
@@ -1797,7 +1797,7 @@ nf3vcm	ok	Style	風格	src/ui/screens/model.js:196
 18b8wh7	ok	Prices, USD per million tokens (JSON: input, cacheRead, audioIn, cacheReadAudio, image, cacheReadImage, output, audioOut)	價格（美元 / 百萬 token，JSON：input、cacheRead、audioIn、cacheReadAudio、image、cacheReadImage、output、audioOut）	src/ui/screens/model.js:198	Note: The prices are in US dollars for each million tokens; the JSON keys stay as typed.
 1wo5fes	ok	Prices, USD (JSON: perMillionChars)	價格（美元，JSON：perMillionChars）	src/ui/screens/model.js:198	Note: The JSON keys stay as typed.
 heq2kw	ok	Prices, USD (JSON: perMinute, minSeconds)	價格（美元，JSON：perMinute、minSeconds）	src/ui/screens/model.js:198	
-1iltlrh	ok	Koe · Chat: a chat model, with Speech in and Speech out	Koe · 聊天：對話模型，搭配語音辨識和朗讀	src/ui/screens/models.js:16	Note: chat model → 對話模型, as the glossary's Koe · Classic note.
+1iltlrh	ok	Koe · Chat: a chat model, with Speech in and Speech out	Koe · 聊天：對話模型，搭配語音辨識和朗讀	src/ui/screens/models.js:16	Note: chat model → 對話模型, as the glossary's Koe · Chat note.
 b7irvo	ok	Koe · Live: hears you and speaks in one stream	Koe · 即時：邊聽邊說	src/ui/screens/models.js:16	
 k0393o	ok	Main: talks with you	主要：和你對話	src/ui/screens/models.js:16	
 187fzjq	ok	Quick decision: yes-or-no checks	快速判斷：只回答是或否	src/ui/screens/models.js:17	
@@ -1842,7 +1842,7 @@ hbz43i	ok	Roles	角色	src/ui/screens/models.js:132
 1erapbm	ok	Remove {0} from {1}	從「{1}」中移除 {0}	src/ui/screens/models.js:161	{0} = nameOf(id); {1} = called
 1w3dq5v	ok	No models yet. Add one.	還沒有模型。請新增一個。	src/ui/screens/models.js:167	
 14zzm1c	ok	Empty: Koe has no live voice, so Koe · Chat answers. Add one, such as Gemini Live, from a provider with live voice.	清單是空的。Koe 沒有即時語音，所以由 Koe · 聊天回答。請從支援即時語音的供應商新增一個，例如 Gemini Live。	src/ui/screens/models.js:168	Note: "realtime voice" and "live voice" are the glossary's Live voice (即時語音), not a voice she speaks with (聲音).
-12bm0vn	ok	Empty: with Live off, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.	清單是空的。即時關閉時，Shiori 獨自用主要模型運作。在這裡新增一個快速模型，讓她能用它先快速開口。	src/ui/screens/models.js:169	Note: halves is 半身/分身 per the glossary.
+12bm0vn	ok	Empty: with Live off, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.	清單是空的。即時關閉時，Shiori 獨自用主要模型運作。在這裡新增一個快速模型，讓她能用它先快速開口。	src/ui/screens/models.js:169	Note: "one half" is 獨自, per the glossary's halves note.
 wer5y9	ok	Nothing here, so annai can't hear you. Add an entry.	這裡還沒有任何項目，annai 聽不到你說話。請新增一項。	src/ui/screens/models.js:170	
 1n694n2	ok	Nothing here, so Shiori can't speak aloud. Add a voice.	這裡還沒有任何項目，Shiori 無法出聲說話。請新增一個聲音。	src/ui/screens/models.js:171	
 el9rbx	ok	Uses the main list.	使用主要清單。	src/ui/screens/models.js:172	
@@ -1942,7 +1942,7 @@ ee5xfy	ok	Your search words are sent only to the address you give it.	搜尋字�
 j7a5ne	ok	{0} (from annai, installed with it)	{0}（來自 annai，會一併安裝）	src/ui/screens/plugin-install.js:124	{0} = plan.find((e) => e.id === r.id)?.name
 140c8vb	ok	It needs: {0}.	它需要：{0}。	src/ui/screens/plugin-install.js:125	{0} = semicolons(each)
 1bay0n3	ok	annai's catalog couldn't be loaded to look for what it needs. Connect to the internet and try again.	無法載入 annai 的目錄來查詢所需內容。請連上網路後再試一次。	src/ui/screens/plugin-install.js:127	
-1914xwr	ok	chat	對話	src/ui/screens/plugin-install.js:132	Note: a provider's ability (chat models): 對話模型, as the glossary's Koe · Classic note.
+1914xwr	ok	chat	對話	src/ui/screens/plugin-install.js:132	Note: a provider's ability (chat models): 對話模型, as the glossary's Koe · Chat note.
 1srbarg	ok	realtime	即時	src/ui/screens/plugin-install.js:132	
 j73cn3	ok	transcription	語音轉文字	src/ui/screens/plugin-install.js:132	
 zen9ix	ok	voice	聲音	src/ui/screens/plugin-install.js:132	Note: A provider's ability to speak: the glossary's voice (聲 / 聲音), not the Voice screen.
@@ -2262,8 +2262,8 @@ veugk0	ok	Reset to original	還原原版	src/ui/screens/shiori.js:50	Note: puts 
 1vcli95	ok	Ask me before Shiori changes her personality	Shiori 修改性格前先問我	src/ui/screens/shiori.js:62	
 indiij	ok	Let Shiori read my other trips without asking	Shiori 讀取我的其他旅行時不用先問我	src/ui/screens/shiori.js:64	
 1atbaso	ok	Show what the halves tell each other	顯示 Koe 和 Kokoro 之間的交流	src/ui/screens/shiori.js:68	
-1csnvhb	ok	Quiet until	休息時段結束	src/ui/screens/shiori.js:76	Note: quiet hours' end, named after the glossary's quiet hours (安靜時段).
-1p3ttz9	ok	Quiet from	休息時段開始	src/ui/screens/shiori.js:76	Note: quiet hours' start, named after the glossary's quiet hours (安靜時段).
+1csnvhb	ok	Quiet until	休息時段結束	src/ui/screens/shiori.js:76	Note: quiet hours' end, named after the glossary's quiet hours (休息時段).
+1p3ttz9	ok	Quiet from	休息時段開始	src/ui/screens/shiori.js:76	Note: quiet hours' start, named after the glossary's quiet hours (休息時段).
 1ite7lp	ok	Set the other time too.	請把另一個時間也設好。	src/ui/screens/shiori.js:81	
 11mcr74	ok	Quiet hours need both times. Clear both for none.	休息時段需要開始和結束兩個時間。兩個都清空即為不設定。	src/ui/screens/shiori.js:102	
 1qa55ez	ok	How she looks	她的樣子	src/ui/screens/shiori.js:109	

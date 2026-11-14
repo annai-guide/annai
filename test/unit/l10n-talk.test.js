@@ -72,7 +72,7 @@ test('wentWords in Japanese: the conversation goes on in the trip, named as a va
 });
 
 test('movedWords in Japanese: whole sentences, the title as a value', () => {
-  assert.equal(movedWords({ to: 't', started: true, count: 2 }, 'アンカレッジ'), 'Shioriがこれらのファイルをもとに「アンカレッジ」を始めました。');
+  assert.equal(movedWords({ to: 't', started: true, count: 2 }, 'アンカレッジ'), 'Shioriがファイルをもとに「アンカレッジ」を始めました。');
   assert.equal(movedWords({ to: 't', started: false, count: 1 }, '京都'), 'Shioriがファイル1件を「京都」に移しました。');
-  assert.equal(movedWords({ to: 't', started: false, count: 1 }, null), 'Shioriはこれらのファイルを別の会話に移しましたが、その会話は削除されています。');
+  assert.equal(movedWords({ to: 't', started: false, count: 1 }, null), 'Shioriはファイルを別の会話に移しましたが、その会話は削除されています。');
 });
