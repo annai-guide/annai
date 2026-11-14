@@ -1,6 +1,6 @@
 {
   "manifest": {
-    "description": "Mistral のモデル。",
+    "description": "Mistralのモデル。",
     "name": "Mistral",
     "provider.abilities.chat.note": "モデルは「モデルの一覧を取得」で追加します。"
   },

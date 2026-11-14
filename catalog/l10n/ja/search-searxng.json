@@ -1,15 +1,15 @@
 {
   "manifest": {
-    "description": "自分で動かしている SearXNG のインスタンスで検索します。キー不要で、制限は自分で決めたものだけです。インスタンスは JSON と Web アプリを許可している必要があります。",
-    "name": "SearXNG 検索",
-    "settings.properties.url.description": "https://search.example.com のようなアドレスです。インスタンスの settings.yml で search: formats: に json を加え、Web サーバーが annai のアドレスに対して Access-Control-Allow-Origin を送るようにしてください。暗号化しない http が使えるのは localhost だけです。",
-    "settings.properties.url.title": "SearXNG のアドレス",
+    "description": "自分で運用しているSearXNGのインスタンスで検索します。キーは不要で、制限は自分で決めたものだけです。インスタンス側で、JSON形式の出力とWebアプリからのアクセスを許可しておく必要があります。",
+    "name": "SearXNG検索",
+    "settings.properties.url.description": "「https://search.example.com」のような形式です。インスタンスの settings.yml で search: の formats: に json を追加し、Webサーバーがannaiのアドレスに Access-Control-Allow-Origin を返すよう設定してください。暗号化しないhttpが使えるのはlocalhostだけです。",
+    "settings.properties.url.title": "SearXNGのアドレス",
     "keywords": [
       "SearXNG",
       "セルフホスト"
     ]
   },
   "messages": {
-    "xli1co": "設定 → プラグイン → SearXNG 検索 でインスタンスのアドレスを入力"
+    "xli1co": "インスタンスのアドレスが必要：「設定 → プラグイン → SearXNG検索」"
   }
 }

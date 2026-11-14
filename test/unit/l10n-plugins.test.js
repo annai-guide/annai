@@ -153,7 +153,9 @@ test("an MCP server: the screen's refusals in its words, Shiori's in English", a
 test("a third party named as a built-in is shown as such in the screens' words: refused there, and after a change of language shown with its id", async () => {
   const k = await kit();
   const { codePlugin } = await import('./package-kit.js');
-  // Under Japanese screens the web plugin is Web ツール, so a package called "Web tools" installs.
+  // Under Japanese screens the web plugin is Webツール, so a package called "Web tools" installs. Spaces are set aside
+  // when names are compared (Japanese writes none between Japanese and Latin text), so "Web ツール" is refused too.
+  await assert.rejects(k.host.install(codePlugin('webby', 'return () => {};', { name: 'Webツール' })), /annai's own name/);
   await assert.rejects(k.host.install(codePlugin('webby', 'return () => {};', { name: 'Web ツール' })), /annai's own name/);
   await k.host.install(codePlugin('webby', 'return () => {};', { name: 'Web tools' }));
   // English screens: annai restarts, the built-in is Web tools again, and the package's row says whose it is.
@@ -166,6 +168,8 @@ test("a third party named as a built-in is shown as such in the screens' words: 
     assert.equal(rows.find((r) => r.id === 'webby')?.name, 'Web tools (webby)');
     const { ownerName } = await import('../../src/ui/screens/plugin-install.js');
     assert.equal(ownerName(rows, 'webby'), 'Web tools (webby)');
+    // Spaces are set aside under every language, so English screens refuse "Webtools" as the look-alike of "Web tools" too.
+    await assert.rejects(host.install(codePlugin('webtools', 'return () => {};', { name: 'Webtools' })), /annai's own name/);
   } finally {
     setWords('ja', JSON.parse(await readFile(new URL('../../l10n/ja.json', import.meta.url), 'utf8')));
   }

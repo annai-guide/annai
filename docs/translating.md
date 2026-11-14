@@ -53,6 +53,9 @@ someone who has read it in place: the `where` column says where it is used.
 
 - **Plain words,** as annai's English is. What a button does, said the way a phone says it; the glossary has the
   phones' own words ("ホーム画面に追加", "添加到主屏幕").
+- **Japanese and Chinese: read the guide first.** Every draft in `ja`, `zh-Hans` and `zh-Hant` follows
+  `l10n/ja-style.md` or `l10n/zh-style.md` and the glossary (`l10n/glossary.tsv`): a line is written as a native app
+  would say it, not translated from the English (few pronouns, the words each language's phones use).
 - **Meaning first.** Anything about losing data (erase, remove, restore, replace, backups), money (costs, spend
   limits, "free"), trust (plugin installs, "full access", keys, passphrases) or what leaves the phone must say
   exactly what the English says.

@@ -65,7 +65,7 @@ const FORMATS = Object.freeze({ num, size, list, sentences });
   hook: 'annai.hooks.on', provider: "the manifest's provider", 'provider-setup': 'annai.providers.setup' };
 
 /** A name as it is compared with annai's and the built-ins': case, spaces, width and invisible characters aside. @param {string} t */
-const plain = (t) => String(t).normalize('NFKC').replace(/\p{Cf}/gu, '').replace(/\s+/g, ' ').trim().toLowerCase();
+const plain = (t) => String(t).normalize('NFKC').replace(/\p{Cf}/gu, '').replace(/\s+/g, '').toLowerCase();
 /**
  * A package's name as its rows show it: with its id when it is written as annai's or a built-in's as they are named now (own,
  * plain), as one named in another language of the screens is. lookalike tells ownerName the id is there already.

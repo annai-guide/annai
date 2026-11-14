@@ -1,5 +1,5 @@
 {
-  "build": "875c137d9239",
+  "build": "5c43bee74fab",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -137,7 +137,7 @@
     "/src/core/nominatim.js": "66704b17c6aa",
     "/src/core/paths.js": "b519fae60471",
     "/src/core/plan.js": "9af5a8633203",
-    "/src/core/plugins.js": "07e014558d09",
+    "/src/core/plugins.js": "ef8a00cbadb2",
     "/src/core/push/mirror.js": "9f1dea36cd3a",
     "/src/core/push/relay-client.js": "a2f4fe58a177",
     "/src/core/push/webpush.js": "7273918284c6",
@@ -300,8 +300,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "fa8dd205e62c",
-    "/l10n/zh-Hans.json": "b5501068a612",
-    "/l10n/zh-Hant.json": "81a65560a040"
+    "/l10n/ja.json": "bc9cc2af80ee",
+    "/l10n/zh-Hans.json": "d3c18fb43bcf",
+    "/l10n/zh-Hant.json": "77db5a317bad"
   }
 }

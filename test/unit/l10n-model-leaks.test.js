@@ -99,7 +99,7 @@ test("a wake skipped for the hour's limit: its card says what woke her from the 
   k.agent.wake({ kind: 'plugin', plugin: 'tides', text: 'Low tide now.' });
   await k.agent.idle();
   await until(() => k.notices.length >= 2);
-  const bodies = k.notices.filter((/** @type {any} */ n) => n.title === 'Shiori は起動を見送りました').map((/** @type {any} */ n) => n.body);
+  const bodies = k.notices.filter((/** @type {any} */ n) => n.title === 'Shioriは起動を見送りました').map((/** @type {any} */ n) => n.body);
   assert.equal(bodies.length, 2, JSON.stringify(k.notices));
   assert.match(bodies[0], /お茶の時間/);
   assert.match(bodies[1], /tides/);

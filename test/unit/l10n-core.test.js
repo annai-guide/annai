@@ -36,12 +36,12 @@ function lastLine(e) {
 
 test("an error's kind is the screens' words; a model reads annai's English, and a provider's own words stay as given", () => {
   const e = new ProviderError('auth', 'Invalid API key');
-  assert.equal(explain(e), 'キーが拒否されました。設定 → モデルで確認してください。');
+  assert.equal(explain(e), 'キーが拒否されました。「設定 → モデル」で確認してください。');
   assert.equal(explainPlain(e), 'The key was rejected. Check it in Settings → Models.');
   const redirect = new ProviderError('redirect', 'P answered with a redirect.', { provider: 'P' });
-  assert.match(explain(redirect), /^P はリダイレクトで答えました。/);
+  assert.match(explain(redirect), /^Pからリダイレクトが返されました。/);
   const attempts = [{ name: 'Gemini', outcome: 'benched' }, { name: 'Groq', outcome: 'rate', error: 'Rate limit reached' }];
-  assert.equal(failedText(attempts), 'Gemini：エラーの後、数分間休んでいます。\nGroq：Rate limit reached.');
+  assert.equal(failedText(attempts), 'Gemini：エラーが起きたため、数分間休止しています。\nGroq：Rate limit reached.');
   assert.equal(failedText(attempts, { plain: true }), 'Gemini: It is resting for a few minutes after an error.\nGroq: Rate limit reached.');
   assert.equal(failedText([], { offline: true }), 'この端末はオフラインです。');
 });
@@ -49,22 +49,22 @@ test("an error's kind is the screens' words; a model reads annai's English, and 
 test("why a call failed is data: the log keeps it, a card and the Conversation make the screens' words, a model reads English", () => {
   const why = whyOf(new AllFailedError([{ model: 'm', name: 'Gemini', outcome: 'context', ms: 1 }]), { online: false });
   assert.deepEqual(why, { attempts: [{ name: 'Gemini', outcome: 'context' }], offline: true });
-  assert.equal(whyWords(why), 'この端末はオフラインです。\nGemini：会話がこのモデルには長すぎます。');
+  assert.equal(whyWords(why), 'この端末はオフラインです。\nGemini：会話が長すぎて、このモデルでは扱えません。');
   assert.equal(whyWords(why, true), 'This device is offline.\nGemini: The conversation is too long for this model.');
-  assert.equal(whyWords(whyOf(new AllFailedError([]), { role: 'utility' })), '補助の役割にモデルが設定されていません。設定 → モデルで追加してください。');
+  assert.equal(whyWords(whyOf(new AllFailedError([]), { role: 'utility' })), '補助の役割にモデルが設定されていません。「設定 → モデル」で追加してください。');
   // Both halves down: each half's lines, by its name.
   const both = { halves: { koe: { kind: 'network' }, kokoro: { kind: 'timeout' } } };
-  assert.equal(whyWords(both), 'Koe：接続が切れました。\nKokoro：モデルが答え始めるまでに時間がかかりすぎました。');
+  assert.equal(whyWords(both), 'Koe：接続が切れました。\nKokoro：モデルが応答を始めるまでに時間がかかりすぎました。');
   assert.equal(whyWords(both, true), 'Koe: The connection dropped.\nKokoro: The model took too long to start answering.');
   // The Conversation's line comes from the entry's data; one stored before has none, and is shown as it was stored.
   assert.equal(errorWords({ kind: 'model', why, message: 'This device is offline.' }), whyWords(why));
   assert.equal(errorWords({ kind: 'model', message: 'Gemini: The connection dropped.' }), null);
-  assert.equal(errorWords({ kind: 'silent', message: 'Her model finished without saying anything to you.' }), 'Shiori のモデルは、あなたに何も言わずに終わりました。');
+  assert.equal(errorWords({ kind: 'silent', message: 'Her model finished without saying anything to you.' }), 'Shioriのモデルが、何も返事をしないまま終了しました。');
 });
 
 test("a budget's stop is data: its card in the screens' words, the log's English for the Trace", () => {
   const over = budgetStop({ budgets: { stepsPerWake: 25 }, steps: 25, spent: 0 });
-  assert.equal(over?.title, 'Shiori が止まりました：ステップ数の上限');
+  assert.equal(over?.title, 'Shioriが止まりました：ステップ数が上限に達しました');
   assert.deepEqual({ which: over?.which, steps: /** @type {any} */ (over)?.steps }, { which: 'steps', steps: 25 });
   const data = { which: /** @type {const} */ ('steps'), steps: 25 };
   assert.match(budgetWords(data, true).body, /^She took the 25 steps a wake may take/);
@@ -88,7 +88,7 @@ test("a plan's reminder: Shiori reads annai's English, the user's words are made
   assert.equal(planWords(/** @type {any} */ (w.say)), 'あと15分：Tea at the inn（12:00）。');
   // Worked out as it fires (late, from where the user is): data too.
   const late = { event: 'late', what: { title: 'Lunch', at, tz: 'America/Los_Angeles' }, minutes: 36 };
-  assert.equal(planWords(late), '遅れています：Lunch（12:00）。あと約36分の距離です。');
+  assert.equal(planWords(late), '遅れています：Lunch（12:00）。到着まであと約36分です。');
   assert.equal(PLAN.validate({}), 'the plan sets its own watches');
   // The Conversation's line: from the data; an older entry's English as stored, marked as English.
   const mine = () => ({});
@@ -97,7 +97,7 @@ test("a plan's reminder: Shiori reads annai's English, the user's words are made
   assert.deepEqual(shown, ['リマインダー：', '|あと15分：Tea at the inn（12:00）。', '']);
   assert.deepEqual(reminderParts({ watch: 'plan:tea:coming-up', text: w.fallback }, mine, make), ['リマインダー：', 'en|In 15 min: Tea at the inn at 12:00.', '']);
   // Her answer annai shows for her is called so from its data, as an older entry's title called it.
-  assert.equal(reminderParts({ watch: '', text: 'Tea.', answer: true }, mine, make)[0], 'Shiori の答え：');
+  assert.equal(reminderParts({ watch: '', text: 'Tea.', answer: true }, mine, make)[0], 'Shioriの答え：');
   // What Shiori is told of it stays annai's English.
   assert.equal(lastLine({ type: 'reminder', data: { watch: 'plan:tea:coming-up', text: w.fallback, plan: w.say } }),
     `[annai] Shown by annai itself, since you couldn't be reached: "${w.fallback}"`);
@@ -105,13 +105,13 @@ test("a plan's reminder: Shiori reads annai's English, the user's words are made
 
 test("the microphone's and listening's problems: the card in the screens' words, what a model reads in English", () => {
   const denied = micProblem(Object.assign(new Error('x'), { name: 'NotAllowedError' }), 'ios');
-  assert.equal(denied.title, 'annai はマイクを使えません');
-  assert.match(denied.body, /^許可されていません。iPhone では：/);
+  assert.equal(denied.title, 'マイクを使用できません');
+  assert.match(denied.body, /^アクセスが許可されていません。iPhoneの場合：/);
   assert.equal(denied.plain, "annai can't use the microphone");
   // A plugin's message and annai's advice, each a sentence of its own.
-  assert.equal(micProblem(new Error('マイクが止まりました。'), 'ios').body, 'マイクが止まりました。もう一度試してください。何度も起きる場合は annai を再起動してください。');
+  assert.equal(micProblem(new Error('マイクが止まりました。'), 'ios').body, 'マイクが止まりました。もう一度お試しください。繰り返し起きる場合は、annaiを再起動してください。');
   const deaf = /** @type {any} */ (listenKind({ list: [], model: null, asr: () => false, dictation: true }));
-  assert.match(deaf.words, /^Shiori にはあなたの声が聞こえません/);
+  assert.match(deaf.words, /^聞き取りのリストが空のため、Shioriは声を聞き取れません/);
   assert.match(deaf.why, /^Shiori can't hear you: the speech-in list is empty/);
 });
 
@@ -135,14 +135,14 @@ test("an error a model may read keeps annai's English in message; the screens sh
   // Kept as data in a turn's error: the Conversation's words in Japanese, a model's in English.
   const why = whyOf(new StorageFullError());
   assert.deepEqual(why, { message: new StorageFullError().message, name: 'StorageFullError' });
-  assert.match(whyWords(why), /^この端末の annai の保存領域がいっぱいです/);
+  assert.match(whyWords(why), /^この端末のannaiのストレージがいっぱいです/);
   assert.equal(whyWords(why, true), new StorageFullError().message);
 });
 
 test("a watch that can't be checked is named by its reminder in the Conversation, never by its id or its trigger's code", () => {
   const line = errorWords({ kind: 'trigger', type: 'place', watch: 'w-abc', reminder: 'Tea at the inn.', why: 'its place is not a place', message: 'x' });
   assert.match(String(line), /Tea at the inn/);
-  assert.doesNotMatch(String(line), /w-abc|place の/);
+  assert.doesNotMatch(String(line), /w-abc|place\s*の/);
 });
 
 test("a plan watch that can't be checked is named by its plan item's title, never by its English fallback; an older entry shows as stored", () => {

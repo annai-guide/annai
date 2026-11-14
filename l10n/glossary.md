@@ -4,7 +4,7 @@ annai's names for its screens and things in Japanese (ja), Chinese, Simplified (
 
 This page is a review aid. The source is [`glossary.tsv`](glossary.tsv): one row per term, with where the English shows on screen and a note on why each word was chosen. Rows are in this order of kind (screen, thing, mode, platform, never), then by English. Its English is matched as written, so `Voice` (the screen) and `voice` (one she speaks with) are two rows. Some terms are also ordinary words (Now, Add, Ask, Allow, Share, Main, key, card): the strings check should take them as names only where a message uses them as one.
 
-121 rows: 31 screen, 39 thing, 7 mode, 28 platform, 16 never.
+122 rows: 31 screen, 40 thing, 7 mode, 28 platform, 16 never.
 
 ## Screens and sections
 
@@ -27,7 +27,7 @@ This page is a review aid. The source is [`glossary.tsv`](glossary.tsv): one row
 | MCP servers | MCPサーバー | MCP 服务器 | MCP 伺服器 |
 | Models | モデル | 模型 | 模型 |
 | Notifications | 通知 | 通知 | 通知 |
-| Now | いま | 此刻 | 此刻 |
+| Now | いま | 现在 | 現在 |
 | Photos | 写真 | 照片 | 照片 |
 | Plugins | プラグイン | 插件 | 外掛程式 |
 | Recap | 振り返り | 回顾 | 回顧 |
@@ -48,26 +48,27 @@ This page is a review aid. The source is [`glossary.tsv`](glossary.tsv): one row
 |---|---|---|---|
 | Archive | アーカイブ | 归档 | 封存 |
 | backup place | バックアップ先 | 备份位置 | 備份位置 |
+| bucket | バケット | 存储桶 | 儲存貯體 |
 | card | カード | 卡片 | 卡片 |
 | catalog | カタログ | 目录 | 目錄 |
 | Check this | 要確認 | 请核对 | 請核對 |
-| chip | ボタン (the dock's); 絞り込み (the Add screen's filters) | 按钮 (the dock's); 筛选条件 (the Add screen's filters) | 按鈕 |
+| chip | ボタン | 按钮 | 按鈕 |
 | dock | ドック | 底栏 | 底部列 |
 | export | エクスポート | 导出 | 匯出 |
 | golden hour | ゴールデンアワー | 黄金时刻 | 黃金時刻 |
-| halves | 半身 | 分身 | 分身 |
+| halves | KoeとKokoro | Koe 和 Kokoro | Koe 和 Kokoro |
 | Housekeeping | 会話の整理 | 对话整理 | 對話整理 |
 | key | キー | 密钥 | 金鑰 |
 | Main | メイン | 主要 | 主要 |
 | New conversation | 新しい会話 | 新对话 | 新對話 |
 | Offline pack | オフラインパック | 离线包 | 離線資料包 |
-| Open an annai file | annai のファイルを開く | 打开 annai 文件 | 開啟 annai 檔案 |
+| Open an annai file | annaiのファイルを開く | 打开 annai 文件 | 開啟 annai 檔案 |
 | passphrase | パスフレーズ | 密码短语 | 密碼片語 |
 | personality | 性格 | 性格 | 性格 |
 | provider | プロバイダー | 提供商 | 供應商 |
 | push relay | プッシュ中継 | 推送中继 | 推播中繼 |
 | Quick decision | クイック判定 | 快速判断 | 快速判斷 |
-| quiet hours | 静かな時間帯 | 安静时段 | 安靜時段 |
+| quiet hours | おやすみ時間 | 休息时段 | 休息時段 |
 | reminder | リマインダー | 提醒 | 提醒 |
 | role | 役割 | 角色 | 角色 |
 | said aloud | 読み上げ | 已朗读 | 已朗讀 |
@@ -92,7 +93,7 @@ This page is a review aid. The source is [`glossary.tsv`](glossary.tsv): one row
 |---|---|---|---|
 | Koe · Chat | Koe · チャット | Koe · 聊天 | Koe · 聊天 |
 | Koe · Live | Koe · ライブ | Koe · 实时 | Koe · 即時 |
-| Listening live | ライブで聞いています | 正在实时收听 | 正在即時收聽 |
+| Listening live | ライブで聞き取り中 | 正在实时收听 | 正在即時收聽 |
 | Live voice | ライブ音声 | 实时语音 | 即時語音 |
 | Voice auto | 音声自動 | 语音自动 | 語音自動 |
 | Voice off | 音声オフ | 语音关闭 | 語音關閉 |
@@ -162,13 +163,13 @@ The choices that want your eye: each line gives the glossary's choice first, the
 
 - **Erase** (消去 / 清除): 清除 or iPhone's 抹掉.
 - **Experimental** (試験運用版 / 实验性功能): ja 試験運用版, or 試験的な機能.
-- **Now** (いま / 此刻): いま / 此刻, or 現在 / 现在.
+- **Now** (いま / 现在): いま / 现在, or 現在 / 此刻.
 - **Trace** (記録 / 记录): 記録 / 记录, or トレース / 追踪.
 - **Trips** (旅 / 旅行): ja 旅, or 旅行.
 - **catalog** (カタログ / 目录): zh 目录 or 插件库.
 - **dock** (ドック / 底栏): zh 底栏 or 程序坞.
 - **export** (エクスポート / 导出): エクスポート or 書き出し.
-- **halves** (半身 / 分身): 半身 / 分身, or the names (Koe と Kokoro / Koe 和 Kokoro).
+- **halves** (KoeとKokoro / Koe 和 Kokoro): the names, or 半身 / 分身.
 - **Housekeeping** (会話の整理 / 对话整理): 会話の整理 / 对话整理, built on Tidy up's 整理, or メンテナンス / 维护.
 - **personality** (性格 / 性格): zh 性格 or 人设.
 - **Speech in** (聞き取り / 语音识别): 聞き取り / 语音识别, or 音声入力 / 语音输入 (the phones' words for dictation).

@@ -34,7 +34,7 @@ test("official.js's refusals keep annai's English in message, and the screens' w
   const unknown = await ensureProvided(/** @type {any} */ ({ registry: { list: () => [], owner: () => undefined }, builtins: new Map(), installed: async () => ({}) }),
     'storage-type', 'nowhere', { fetch: async () => new Response(JSON.stringify({ plugins: [] })) }).catch((x) => x);
   assert.match(unknown.message, /isn't a kind of backup place annai knows/);
-  assert.equal(messageOf(unknown), 'annai が知らない種類のバックアップ先です。それを提供するプラグインをインストールしてください。');
+  assert.equal(messageOf(unknown), 'annaiが対応していない種類のバックアップ先です。対応するプラグインをインストールしてください。');
 });
 
 test("an official plugin's refusal met while backing up: the hold and backup.error keep English, the screen shows Japanese", async () => {
@@ -61,7 +61,7 @@ test("a server's answer a storage plugin can't read: the hold keeps what it was,
   const hold = /** @type {any} */ ((await d.backups.get(id))?.hold);
   assert.equal(hold.message, "the bucket answered something annai can't read. annai tries again later.");
   assert.deepEqual(hold.said, { code: 'unreadable', where: 'the bucket' });
-  assert.equal(holdWords(hold), 'the bucket から annai が読めない応答が届きました。annai はあとでもう一度試します。');
+  assert.equal(holdWords(hold), 'the bucketから読み取れない応答が返されました。あとで自動的に再試行します。');
 });
 
 test("a provider error annai writes keeps what it was: a card makes Japanese from it, a model and the log read English", () => {
@@ -77,18 +77,18 @@ test("a provider error annai writes keeps what it was: a card makes Japanese fro
 
 test("a typed address, prices and a server's answer: the screens' words, and English for a description's errors and the log", async () => {
   assert.equal(addressProblem('example.com'), "example.com isn't a web address: give it with https:// in front.");
-  assert.equal(addressShown('example.com'), 'example.com は Web アドレスではありません：先頭に https:// を付けてください。');
+  assert.equal(addressShown('example.com'), 'example.comはWebアドレスではありません。先頭に https:// を付けてください。');
   assert.equal(addressShown('https://example.com'), null);
   assert.equal(pricesProblem({ input: -1 }), 'input is not a price: it is a number, not below 0.');
-  assert.equal(pricesShown({ input: -1 }), 'input は料金ではありません：0 以上の数値にしてください。');
+  assert.equal(pricesShown({ input: -1 }), 'inputが料金として正しくありません。0以上の数値にしてください。');
   const e = await answerJSON(new Response('nope', { status: 503 }), 'en.wikipedia.org').catch((x) => x);
   assert.equal(e.message, 'en.wikipedia.org answered 503.');
-  assert.equal(messageOf(e), 'en.wikipedia.org が 503 を返しました。');
+  assert.equal(messageOf(e), 'en.wikipedia.orgが503を返しました。');
 });
 
 test("an offline pack's failure: which part and why, in Japanese from the data it keeps", () => {
-  assert.equal(partWords({ source: 'osm', place: { how: 'between', names: ['Bixby', 'Nepenthe'] } }), 'Bixby と Nepenthe のあいだの OpenStreetMap');
-  assert.equal(failWords({ code: 'osm', inner: { code: 'status', where: 'overpass.example', status: 504 }, message: 'x' }), 'OpenStreetMap が応答しませんでした（overpass.example が 504 を返しました）。');
+  assert.equal(partWords({ source: 'osm', place: { how: 'between', names: ['Bixby', 'Nepenthe'] } }), 'BixbyとNepentheの間のOpenStreetMap');
+  assert.equal(failWords({ code: 'osm', inner: { code: 'status', where: 'overpass.example', status: 504 }, message: 'x' }), 'OpenStreetMapから応答がありませんでした（overpass.exampleが504を返しました）。');
 });
 
 // Review 1: one said vocabulary for servers (answer.js), kept by holds and a pack's failures, and an export's failure (archive.js).
@@ -106,7 +106,7 @@ test("a storage plugin's server that can't be reached while the phone is online:
   const hold = /** @type {any} */ ((await d.backups.get(id))?.hold);
   assert.equal(hold.message, "annai couldn't reach dav.example.com (Failed to fetch). Is the device offline?");
   assert.deepEqual(hold.said, { code: 'unreachable', where: 'dav.example.com', info: 'Failed to fetch' });
-  assert.equal(holdWords(hold), 'annai は dav.example.com につながりませんでした（Failed to fetch）。この端末はオフラインですか？annai はあとでもう一度試します。');
+  assert.equal(holdWords(hold), 'dav.example.comに接続できませんでした（Failed to fetch）。オフラインになっていませんか？あとで自動的に再試行します。');
 });
 
 test("an offline pack whose servers can't be reached: its failure keeps what it was, and the panel says it in Japanese", async () => {
@@ -115,7 +115,7 @@ test("an offline pack whose servers can't be reached: its failure keeps what it 
   const [f] = m.failed;
   assert.equal(f.said?.code, 'osm');
   assert.deepEqual(/** @type {any} */ (f.said).inner, { code: 'unreachable', where: 'overpass.private.coffee', info: 'Failed to fetch' });
-  assert.match(failWords(/** @type {any} */ (f.said)), /^OpenStreetMap が応答しませんでした（annai は overpass\.private\.coffee につながりませんでした（Failed to fetch）。この端末はオフラインですか？）。$/);
+  assert.match(failWords(/** @type {any} */ (f.said)), /^OpenStreetMapから応答がありませんでした（overpass\.private\.coffeeに接続できませんでした（Failed to fetch）。オフラインになっていませんか？）。$/);
 });
 
 test("an export that fails while backing up: the hold keeps what it was in data, English in message, and its card says it in Japanese", async () => {
@@ -130,7 +130,7 @@ test("an export that fails while backing up: the hold keeps what it was in data,
   const hold = /** @type {any} */ ((await d.backups.get(id))?.hold);
   assert.equal(hold.message, 'The content of /notes/a.md is missing from storage.');
   assert.deepEqual(hold.said, { code: 'content-missing', path: '/notes/a.md' });
-  assert.match(holdWords(hold), /^\/notes\/a\.md の内容がストレージにないため/);
+  assert.match(holdWords(hold), /^\/notes\/a\.mdの内容がストレージにないため/);
 });
 
 test("a hold whose said this annai doesn't know is shown as an old hold, never as 'this device is offline'", async () => {
@@ -166,7 +166,7 @@ test("review 3 and 4: a failed attempt's words come from what it was, in the Try
   assert.equal(explain(late), '時間内に出力が始まりませんでした。');
   // A said set with no shown (resolve.js's, voice.js's): its own words, not a generic line.
   const formats = Object.assign(new ProviderError('bad-request', 'Haiku takes no audio format this phone makes (wav).'), { said: /** @type {any} */ ({ code: 'formats', name: 'Haiku', formats: ['wav'] }), shown: undefined });
-  assert.equal(explain(formats), 'Haiku はこのスマートフォンで作れる音声形式を受け付けません（wav）。');
+  assert.equal(explain(formats), 'Haikuは、この端末で録音できる音声形式（wav）に対応していません。');
   const why = whyOf(late);
   assert.deepEqual(why.said, { code: 'late' }, 'the error event keeps what it was');
   assert.equal(whyWords(why), '時間内に出力が始まりませんでした。');

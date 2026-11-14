@@ -1,9 +1,9 @@
 {
   "manifest": {
-    "description": "自分で動かしている llama.cpp のサーバー（llama-server）、または Unsloth Studio や KoboldCpp などそれを土台にしたサーバーのモデル。クイック判定では思考をオフにします。",
+    "description": "自分で運用しているllama.cppのサーバー（llama-server）や、Unsloth Studio、KoboldCppなどllama.cppをベースにしたサーバーのモデル。クイック判定では思考をオフにします。",
     "name": "llama.cpp",
-    "provider.abilities.chat.note": "モデルは「モデルの一覧を取得」で追加します。サーバーが読み込んでいるモデルについては、会話ごとのコンテキストの長さと、画像を読めるかどうかを読み取ります（llama-server の /props）。それ以外のモデルは、そのページでコンテキストウィンドウを設定し（llama-server の -c、または Unsloth Studio で設定したコンテキスト長）、画像を読めるなら「写真を受け付ける」にチェックを入れてください。--tools や --agent 付きで起動した llama-server は、同じコンピューター上のページしか受け入れません：--cors-origins https://annai.guide で annai のアドレスを追加してください。",
-    "provider.note": "llama-server は --port で変えない限りポート 9931 で待ち受けます。--api-key でキーを設定するか、キーを空のままにしてください。Unsloth Studio は独自のアドレス（変えない限りポート 8888）で動き、キー（sk-unsloth-…）は Unsloth Studio の Settings → API で取得します。",
+    "provider.abilities.chat.note": "モデルは「モデルの一覧を取得」で追加します。サーバーが読み込んでいるモデルについては、会話ごとのコンテキスト長と、画像を読めるかどうかを読み取ります（llama-serverの /props）。それ以外のモデルは、そのモデルのページでコンテキストウィンドウを設定し（llama-serverの -c、またはUnsloth Studioで設定したコンテキスト長）、画像を読めるなら「写真を受け付ける」にチェックを入れてください。--tools や --agent を付けて起動したllama-serverは、同じコンピューター上のページからのアクセスしか受け付けません。「--cors-origins https://annai.guide」を付けて、annaiのアドレスを追加してください。",
+    "provider.note": "llama-serverは、--port で指定しない限りポート9931で待ち受けます。キーは --api-key で設定するか、空のままにしてください。Unsloth Studioは独自のアドレス（変更しない限りポート8888）で動き、キー（sk-unsloth-…）はUnsloth Studioの「Settings → API」で取得します。",
     "keywords": [
       "Unsloth",
       "LM Studio",
