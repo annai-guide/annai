@@ -77,6 +77,56 @@ test("an install's untouched old profile (exactly the old default) gets the new 
   }
 });
 
+// The rewrite is a tidy-up: annai must open when it can't be done (the profile's text missing from storage, or a full phone), leave the
+// profile as it is, and try again at the next start.
+/** An old profile on a store that can be made to lose a blob or to refuse a file. @param {{ unreadable?: boolean, full?: boolean }} o */
+async function oldProfileOn(o) {
+  const inner = createMemoryStore();
+  /** @type {import('../../src/core/types.js').Store} */
+  const store = {
+    close() {},
+    tx(stores, mode, fn) {
+      return inner.tx(stores, mode, (t) => fn({
+        ...t,
+        getBlob: async (h) => (o.unreadable ? undefined : t.getBlob(h)),
+        putFile: async (f) => {
+          if (o.full) throw new DOMException('no space', 'QuotaExceededError');
+          return t.putFile(f);
+        },
+      }));
+    },
+  };
+  let clock = 1000;
+  const ws = new Workspace(store, { now: () => ++clock, schemaFor: makeSchemaFor({ list: (k) => (k === 'schema' ? CORE_SCHEMAS : []) }, kindOf) });
+  await ensureBaseScopes(ws);
+  await ws.write(ME, '/profile.md', OLD_PROFILE, { author: 'user' });
+  return ws;
+}
+
+test("a profile whose text is missing from storage doesn't stop start; the next start rewrites it", async () => {
+  const o = { unreadable: false };
+  const ws = await oldProfileOn(o);
+  o.unreadable = true;
+  await ensureBaseScopes(ws);
+  o.unreadable = false;
+  assert.equal(await ws.readText(ME, '/profile.md'), OLD_PROFILE, 'left as it was');
+  await ensureBaseScopes(ws);
+  assert.equal(await ws.readText(ME, '/profile.md'), NEW_PROFILE);
+});
+
+test("a full phone doesn't stop start when the old profile is rewritten; the profile stays and the next start rewrites it", async () => {
+  const o = { full: false };
+  const ws = await oldProfileOn(o);
+  const wrote = (await ws.history(ME, '/profile.md')).length;
+  o.full = true;
+  await ensureBaseScopes(ws);
+  o.full = false;
+  assert.equal(await ws.readText(ME, '/profile.md'), OLD_PROFILE, 'left as it was');
+  assert.equal((await ws.history(ME, '/profile.md')).length, wrote);
+  await ensureBaseScopes(ws);
+  assert.equal(await ws.readText(ME, '/profile.md'), NEW_PROFILE);
+});
+
 test('createTrip makes a scope, trip.json, trip memory and a scope.create event', async () => {
   const { store, ws } = setup();
   const id = await createTrip(ws, { title: '京都 in spring', start: '2027-04-03', end: '2027-04-10' });

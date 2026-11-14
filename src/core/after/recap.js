@@ -17,7 +17,7 @@ import { t, lang } from '../l10n.js';
 import { sentences } from '../intl.js';
 import { summaryLanguage } from '../agent/compaction.js';
 import { languageSettings } from '../languages.js';
-import { NOT_TRANSCRIBED } from '../voice/resolve.js';
+import { NO_WORDS } from '../agent/loop.js';
 
 /**
  * The recap (spec §13): the utility model writes /trip/recap.md from the trip as it went (the
@@ -192,12 +192,12 @@ export async function writeRecap({ store, ws, llm, trip, codec = null, namer, si
     if (/\.(md|txt)$/i.test(f.path)) notes.push({ path: `/trip${f.path}`, text: (await ws.readText(trip, f.path).catch(() => '')) ?? '' });
   }
   const app = await readAppSettings(ws);
-  // The language a summary is written in (the Languages setting, then the user's own words), as compaction's is: without annai's
-  // placeholder for a heard line it couldn't write down (loop.js compact leaves it out too: it reads as English).
-  const said = j.entries.flatMap((e) => (e.kind === 'said' && e.text !== NOT_TRANSCRIBED ? [e.text] : []));
+  // The language a summary is written in (the Languages setting, then the user's own words), as compaction's is: without annai's own
+  // lines for no words (a photo or files sent alone, a heard line it couldn't write down), which read as English.
+  const said = j.entries.flatMap((e) => (e.kind === 'said' && !NO_WORDS.includes(e.text.trim()) ? [e.text] : []));
   // Their own words may name no language, and the Languages setting none: then the screens' language, the one thing annai knows of them.
   const settings = languageSettings(app, lang());
-  const language = !settings.explicit && !settings.answer && !said.some((x) => x.trim())
+  const language = !settings.explicit && !settings.answer && !said.length
     ? /* en */ `${settings.spoken[0].name}, the language of annai's screens (the user hasn't written anything yet)`
     : summaryLanguage(said, settings);
   const text = recapText(j, { profile, memory, notes, language });

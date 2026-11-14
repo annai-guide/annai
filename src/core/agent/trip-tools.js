@@ -14,8 +14,7 @@ import { theirs, quote, conversationLines } from './blocks.js';
 import { readAppSettings, updateAppSettings } from '../settings.js';
 import { spokenYes, spokenNo } from './spoken-yes.js';
 import { STOPPED, MOVED } from './transcript.js';
-import { NOT_TRANSCRIBED } from '../voice/resolve.js';
-import { PHOTO_ONLY } from './loop.js';
+import { NO_WORDS } from './loop.js';
 import { planItems } from './context.js';
 import { t } from '../l10n.js';
 import { dateRange, when } from '../intl.js';
@@ -235,7 +234,7 @@ export function tripTools(app) {
     }
     // Copied as the user's, so it is their talking there too; a line with no words (yet: a heard one is written down after her turn) has none to copy.
     const last = started ? null : await lastLine(call.scope);
-    if (last && !msgs.some((m) => m.seq === last.seq) && ![NOT_TRANSCRIBED, FILES_ONLY, PHOTO_ONLY, ''].includes(last.text.trim())) {
+    if (last && !msgs.some((m) => m.seq === last.seq) && !NO_WORDS.includes(last.text.trim())) {
       wakes.push({ kind: 'user', text: last.text, handed: [], fromScope: call.scope });
       copies++;
     }

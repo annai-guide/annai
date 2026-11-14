@@ -12,6 +12,8 @@ import { saveModel } from '../../src/core/llm/config.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { ME } from '../../src/core/scopes.js';
 import { NOT_TRANSCRIBED } from '../../src/core/voice/resolve.js';
+import { PHOTO_ONLY } from '../../src/core/agent/loop.js';
+import { FILES_ONLY } from '../../src/core/handover.js';
 import { setWords } from '../../src/core/l10n.js';
 
 const RECAP = '# Big Sur, Thanksgiving\n\n## Friday, November 27\n\nBixby Bridge in the morning sun.';
@@ -139,6 +141,23 @@ test("with nothing chosen and none of the user's words, the recap is written in 
     await updateAppSettings(k.ws, { languages: { spoken: ['ko'] } });
     await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip });
     assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Korean, the first language the user speaks \(Korean\)\.$/m);
+  } finally {
+    setWords('en', null);
+  }
+});
+
+// annai's own lines for a message with no words ("(a photo)", "(files)") are not the user's words either: a trip of only photos and files
+// has none, so the screens' language decides, not a recap in whatever "(a photo)" reads as.
+test("a trip whose only lines are photos and files has none of the user's words: the recap is written in the screens' language", async () => {
+  const k = await agentKit([[{ text: '' }]], { utility: [{ text: RECAP }, { text: RECAP }] });
+  try {
+    setWords('ja', null);
+    await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: PHOTO_ONLY } }, at('10:30'));
+    await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip });
+    assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language of annai's screens \(the user hasn't written anything yet\)\.$/m);
+    await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: FILES_ONLY } }, at('10:31'));
+    await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip });
+    assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language of annai's screens \(the user hasn't written anything yet\)\.$/m);
   } finally {
     setWords('en', null);
   }

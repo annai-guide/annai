@@ -95,9 +95,13 @@ export async function ensureBaseScopes(ws) {
   if (made.includes(ME)) {
     await ws.write(ME, '/profile.md', PROFILE, { author: 'user' });
     await ws.write(ME, '/memory.md', /* en */ '# Memory\n', { author: 'user' });
-  } else if ((await ws.readText(ME, '/profile.md')) === OLD_PROFILE) {
-    // Nobody changed it: its "Language: English" would be a second answer, beside the Languages setting's. Any other profile is the user's.
-    await ws.write(ME, '/profile.md', PROFILE, { author: 'system' });
+  } else {
+    try {
+      // Nobody changed it: its "Language: English" would be a second answer, beside the Languages setting's. Any other profile is the user's.
+      if ((await ws.readText(ME, '/profile.md')) === OLD_PROFILE) await ws.write(ME, '/profile.md', PROFILE, { author: 'system' });
+    } catch {
+      // A tidy-up must not stop annai opening (a full phone, a missing text): the profile stays as it is, and the next start tries again.
+    }
   }
 }
 
