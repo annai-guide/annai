@@ -939,9 +939,64 @@ test("a plain chat isn't called a trip: its export, opened, says when and from w
   await page.getByRole('button', { name: 'Export', exact: true }).click();
   const file = await buildAndSave(page);
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
-  await page.getByLabel('Open a trip someone sent you').setInputFiles(file);
-  await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible();
+  await page.getByLabel('Open an annai file').setInputFiles(file);
+  await expect(page.getByRole('heading', { name: 'Open an annai file' })).toBeVisible();
   await expect(page.getByText(/^Exported .+ from annai \S+\.$/)).toBeVisible();
+});
+
+// The user's second list (2026-11-13, "Include them now (Recommended)"): the same rule for the import screen, the broken-file line, and
+// the lines a plain chat shows about its files, offline pack and recap.
+test("a plain chat isn't called a trip: a broken itinerary file says to open the files in Details", async ({ page }) => {
+  await openApp(page);
+  const id = await startNamed(page, 'Kyoto');
+  await writeRecords(page, id, { text: { '/plan/broken.json': 'not json' } });
+  await page.getByRole('main').getByRole('link', { name: 'Itinerary', exact: true }).click();
+  await expect(page.getByText("1 itinerary file couldn't be read. Open the files in Details to fix it.")).toBeVisible();
+});
+
+test("a plain chat isn't called a trip: its export, opened over the copy you have, replaces it into Archived", async ({ page }) => {
+  await openApp(page);
+  await startNamed(page, 'Kyoto');
+  await page.getByRole('button', { name: 'Export', exact: true }).click();
+  const file = await buildAndSave(page);
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
+  await page.getByLabel('Open an annai file').setInputFiles(file);
+  const panel = page.locator('main .panel');
+  await expect(page.getByRole('heading', { level: 1, name: 'Open an annai file' })).toBeVisible();
+  await expect(panel.getByLabel('Add as a new one')).toBeVisible();
+  await page.getByLabel('Replace mine (yours moves to Archived)').check();
+  await expect(panel).not.toContainText(/trip/i);
+  await page.getByRole('button', { name: 'Import' }).click();
+  await expect(page.getByText('1 older copy moved to Archived.')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open Kyoto' })).toBeVisible();
+  await expect(panel).not.toContainText(/trip/i);
+});
+
+test("a plain chat isn't called a trip: a file with nothing to open says so for trips and chats alike", async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('link', { name: 'Settings' }).click();
+  await page.getByRole('button', { name: 'Export everything' }).click();
+  const file = await buildAndSave(page);
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  await page.getByLabel('Open an annai file').setInputFiles(file);
+  await expect(page.getByText('There are no trips or conversations in this file.')).toBeVisible();
+});
+
+test("a plain chat isn't called a trip: Settings says an export someone sent you, not a trip", async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('link', { name: 'Settings' }).click();
+  await expect(page.getByText('An export someone sent you, or a backup to bring back:')).toBeVisible();
+  await expect(page.getByLabel('Open an annai file')).toBeAttached();
+});
+
+test("a plain chat isn't called a trip: a file it hasn't got, and a recap not written yet", async ({ page }) => {
+  await openApp(page);
+  const id = await startNamed(page, 'Kyoto');
+  await goToHash(page, `#/trip/${encodeURIComponent(id)}/booking?path=${encodeURIComponent('/files/nope.pdf')}`);
+  await expect(page.getByRole('heading', { name: "This file can't be found" })).toBeVisible();
+  await goToHash(page, `#/trip/${encodeURIComponent(id)}/recap`);
+  await expect(page.getByText("No recap yet. annai's utility model writes it from everything in this conversation:", { exact: false })).toBeVisible();
 });
 
 test('the crumb goes back to the conversation', async ({ page }) => {

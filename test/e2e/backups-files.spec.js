@@ -72,7 +72,7 @@ test('S3: encrypted automatic backups, and a wiped phone restores one with its p
     await page.getByRole('button', { name: 'Save and test' }).click();
     await expect(page.getByRole('heading', { name: 'A backup is already here' })).toBeVisible();
     await page.getByRole('button', { name: 'Import it as a copy' }).click();
-    await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole('heading', { name: 'Open an annai file' })).toBeVisible({ timeout: 30_000 });
     await page.getByLabel('Passphrase').fill('pine needle');
     await page.getByRole('button', { name: 'Unlock' }).click();
     await page.getByRole('button', { name: 'Import' }).click();
@@ -99,7 +99,7 @@ test('WebDAV: automatic backups go to a folder annai makes, and any of them open
     expect([...dav.files().keys()].some((p) => /^\/dav\/annai\/annai-backup-.+\.annai\.zip$/.test(p))).toBe(true);
     await page.getByRole('button', { name: 'Show the backups here' }).click();
     await page.getByRole('button', { name: 'Open', exact: true }).first().click();
-    await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole('heading', { name: 'Open an annai file' })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText('You already have "Kyoto"')).toBeVisible();
     // A way back to the place it came from, as well as Cancel.
     await expect(page.locator('.crumbs a')).toHaveAttribute('href', /^#\/backups\/place\?id=/);

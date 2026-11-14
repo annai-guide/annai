@@ -250,7 +250,7 @@ test('a swipe never brings back a screen you pass through, such as opening a fil
   await openApp(page, '#/trips');
   await turnOnSwipes(page);
   await page.evaluate(() => { location.hash = '#/import'; });
-  await expect(page.getByRole('heading', { name: 'Open a trip', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Open an annai file', level: 1 })).toBeVisible();
   const current = page.locator('.topnav a[aria-current="page"]');
   await expect(current).toHaveText('Trips');
   await swipe(page, 280, 100, 300);

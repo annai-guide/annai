@@ -91,13 +91,13 @@ test('backups go to a Forgejo server, only what changed is sent, and a wiped pho
     // The list of backups and the preview of one show without the files coming: those come with Import.
     await page.getByRole('button', { name: 'Show the backups here' }).click();
     await page.getByRole('button', { name: 'Open', exact: true }).first().click();
-    await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole('heading', { name: 'Open an annai file' })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText('Big Sur', { exact: true })).toBeVisible();
     expect(sentFiles()).toBe(0);
     await page.getByRole('link', { name: 'Cancel' }).click();
     await expect(page.getByRole('heading', { name: 'A backup is already here' })).toBeVisible();
     await page.getByRole('button', { name: 'Import it as a copy' }).click();
-    await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole('heading', { name: 'Open an annai file' })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText('Big Sur', { exact: true })).toBeVisible();
     expect(sentFiles()).toBe(0);
     await page.getByRole('button', { name: 'Import' }).click();

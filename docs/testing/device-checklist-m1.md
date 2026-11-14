@@ -18,7 +18,7 @@ Run on a real iPhone (Safari, iOS 26+) and a real Android phone (Chrome), agains
 ## Export and import
 - [ ] Export everything with a passphrase. "Save file" opens the share sheet; save to Files (iPhone) or Downloads (Android).
 - [ ] Settings → Erase → type ERASE → Erase now. Trips is empty.
-- [ ] Open the saved file from Trips → "Open a trip someone sent you", enter the passphrase, tick "Replace my profile and memory", Import. Everything is back, including history.
+- [ ] Open the saved file from Trips → "Open an annai file", enter the passphrase, tick "Replace my profile and memory", Import. Everything is back, including history.
 - [ ] Android: share a `.annai.zip` from Files to annai; the import screen opens with it.
 - [ ] AirDrop or message a trip export to the other phone and import it there.
 - [ ] **Big backup on the oldest iPhone you will travel with.** Upload a few hundred photos to a trip (or one trip per day of the real trip), then export everything with a passphrase, erase, and import it again. Both directions finish without the page reloading or going blank. annai reads and writes backups a piece at a time, but how much Safari keeps in memory for a large file can only be measured on the phone.

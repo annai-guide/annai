@@ -275,7 +275,7 @@ export async function renderTalk(ctx, route) {
   const hers = wording(app, true);
   const scope = agent.scope;
   const rec = agent.trip ? await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ tx) => tx.getScope(agent.trip)) : null;
-  const title = agent.trip ? (rec ? scopeTitle(rec) : t`Trip`) : '';
+  const title = agent.trip ? (rec ? scopeTitle(rec) : t`Conversation`) : '';
   // Not a live region: `announce` says each line of hers once, spoken or not, whatever "Show what she says" is, and words heard once
   // they are in; never what you typed, nor the halves' notes.
   const list = h('ol', { class: 'convo' });

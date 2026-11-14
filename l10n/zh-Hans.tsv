@@ -1063,8 +1063,8 @@ vfu5ws#other	draft	Also deletes {0}, copies of this file, and the {1} Shiori rea
 acz18e#other	draft	Also deletes {0}, copies of this file.	同时删除{0}（此文件的副本）。	src/ui/file-delete.js:29	plural; # = free.copies.length; {0} = copies; English: "Also deletes {0}, a copy of this file." (one), "Also deletes {0}, copies of this file." (other); Note: line under Delete for good naming the other deleted copies that go with it; {0} is a list of file names
 x8r2sg	draft	Deleted {0}	已删除{0}	src/ui/file-delete.js:65	{0} = what; Note: toast after Delete on a file's or booking's details screen, and on a file's raw screen; {0} is a list: the name, then what else went ("ANNAI AIR itinerary, 2 bookings, and 1 plan item").
 jzvym0	draft	Deleted {0}. The conversation still has it, so it's under Deleted, where you can restore it.	已删除{0}。对话中仍提到它，因此移到了“已删除”里，可以从那里恢复。	src/ui/file-delete.js:66	{0} = what; Note: toast after Delete in Files when the conversation still names the file, so its space can't be freed; {0} is what went ("Hotel stay, 1 booking, and 2 plan items"); "Deleted" is the fold at the foot of the trip's Files.
-qq4n52	draft	Deleted {0}. The same content is still used elsewhere in this trip, so it's under Deleted, where you can restore it.	已删除{0}。这次旅行的其他地方仍在使用相同的内容，因此移到了“已删除”里，可以从那里恢复。	src/ui/file-delete.js:67	{0} = what
-1vc06gm	draft	Deleted {0}. Another trip or file has the same content, so it's under Deleted, where you can restore it.	已删除{0}。另一次旅行或另一个文件有相同的内容，因此移到了“已删除”里，可以从那里恢复。	src/ui/file-delete.js:68	{0} = what; Note: toast after Delete in Files when another trip or file holds the same bytes, so its space can't be freed; {0} is what went; "Deleted" is the fold at the foot of the trip's Files.
+1bpy8t2	draft	Deleted {0}. The same content is still used elsewhere in this conversation, so it's under Deleted, where you can restore it.	已删除{0}。这个对话的其他地方仍在使用相同的内容，因此移到了“已删除”里，可以从那里恢复。	src/ui/file-delete.js:67	{0} = what; English was: Deleted {0}. The same content is still used elsewhere in this trip, so it's under Deleted, where you can restore it.
+152nvrq	draft	Deleted {0}. Another conversation or file has the same content, so it's under Deleted, where you can restore it.	已删除{0}。另一个对话或另一个文件有相同的内容，因此移到了“已删除”里，可以从那里恢复。	src/ui/file-delete.js:68	{0} = what; English was: Deleted {0}. Another trip or file has the same content, so it's under Deleted, where you can restore it.; Note: toast after Delete in Files when another trip or file holds the same bytes, so its space can't be freed; {0} is what went; "Deleted" is the fold at the foot of the trip's Files.
 3ul42n	ok	Deleted {0}. {1} freed.	已删除{0}，释放了{1}。	src/ui/file-delete.js:69	{0} = what; {1} = size(r.bytes); Note: as Removed {0}. {1} freed. (已移除{0}，释放了{1}。), with 删除 for a file; {0} is a file name.
 agc3d8	draft	{0} is already back.	{0}已经恢复了。	src/ui/file-delete.js:165	{0} = name
 13wurli	draft	What goes with {0} has changed, so nothing was deleted.	与{0}一起删除的内容已发生变化，因此未删除任何内容。	src/ui/file-delete.js:169	{0} = name; Note: toast when the copies, bookings or plan items that Delete for good would free are not the ones its screen named (changed in another tab); nothing is deleted and the screen is drawn again; {0} is the file name
@@ -1195,7 +1195,7 @@ osg3je	ok	The last try failed: {0}	上次尝试失败：{0}	src/ui/format.js:276
 1j5k2vf	ok	Automatic backups there are paused, so neither device overwrites the other.	那里的自动备份已暂停，以免两台设备互相覆盖。	src/ui/format.js:291	
 hmr3pn	ok	The other backup stays in its history.	另一个备份会保留在其历史中。	src/ui/format.js:291	
 8091b1	ok	no limit	无限制	src/ui/format.js:316	
-1y3qo2k#other	ok	# trips	# 个旅行	src/ui/import-state.js:47	plural; # = titles.length; English: "# trip" (one), "# trips" (other)
+lpx0cl#other	draft	# trips and conversations	# 个旅行和对话	src/ui/import-state.js:47	plural; # = titles.length; English: "# trip or conversation" (one), "# trips and conversations" (other); Note: a git backup's preview, from its manifest alone, can't tell trips from chats: this is the one row they fold under; also the toast "Imported # trips and conversations" when the user left the import screen (import-state.js).
 12lprg	ok	Imported {0} from {1}.	已从{1}导入{0}。	src/ui/import-state.js:48	{0} = what; {1} = place
 1hzaym7	ok	Imported {0}.	已导入{0}。	src/ui/import-state.js:48	{0} = what
 kotjbl	ok	Imported.	已导入。	src/ui/import-state.js:48	
@@ -1207,7 +1207,7 @@ ejxnor	ok	Choose "Add to Home Screen".	选择“添加到主屏幕”。	src/ui/
 tf6np0	ok	Open annai from your Home screen.	从主屏幕打开 annai。	src/ui/install.js:18	
 uqmge3	ok	Open the browser menu (⋮).	打开浏览器菜单（⋮）。	src/ui/install.js:18	
 1q8vwe5	ok	Use your browser menu to install annai as an app.	通过浏览器菜单将 annai 安装为应用。	src/ui/install.js:19	
-1gxw0ly	ok	Trips you already have here: in Settings, export everything, then open the file in the Home Screen app with "Open a trip someone sent you".	这里已有的旅行：先在设置中导出全部内容，再在主屏幕上的 App 中用“打开别人发来的旅行”打开该文件。	src/ui/install.js:22	
+14x0w2l	draft	What you already have here: in Settings, export everything, then open the file in the Home Screen app with "Open an annai file".	这里已有的内容：先在设置中导出全部内容，再在主屏幕上的 App 中用“打开 annai 文件”打开该文件。	src/ui/install.js:22	English was: Trips you already have here: in Settings, export everything, then open the file in the Home Screen app with "Open a trip someone sent you".
 10jxrv9	ok	Install annai	安装 annai	src/ui/install.js:35	
 1ob0g1z	ok	annai isn't installed yet.	annai 尚未安装。	src/ui/install.js:63	
 1gizuqd	ok	Safari can erase your trips after 7 days without a visit, and the Home Screen app keeps trips of its own: what you start here won't be there. Add annai to your Home Screen, and start your trips in it.	Safari 浏览器可能会在 7 天未访问后清除你的旅行，而且主屏幕上的 App 会另外保存旅行：在这里开始的旅行不会出现在那里。请将 annai 添加到主屏幕，并在那里开始旅行。	src/ui/install.js:65	
@@ -1335,17 +1335,17 @@ w5716a	ok	Update (about {0})	更新（约{0}）	src/ui/offline-pack.js:64	{0} = 
 13cigs6	ok	Download the rest (about {0})	下载其余部分（约{0}）	src/ui/offline-pack.js:65	{0} = about
 o81vpw	ok	Try again (about {0})	重试（约{0}）	src/ui/offline-pack.js:65	{0} = about
 16r6naq	ok	It is more than a month old.	已超过一个月。	src/ui/offline-pack.js:67	
-1v2fms	ok	On Wi-Fi, annai keeps it up to date by itself while this trip is open.	连接 Wi-Fi 时，只要这个旅行处于打开状态，annai 会自动保持它为最新。	src/ui/offline-pack.js:70	
 1vwbp7l	ok	This browser doesn't tell annai when it is on Wi-Fi, so update it here.	此浏览器不会告诉 annai 何时连着 Wi-Fi，请在这里更新。	src/ui/offline-pack.js:70	
+p6stxk	draft	On Wi-Fi, annai keeps it up to date by itself while this conversation is open.	连接 Wi-Fi 时，只要这个对话处于打开状态，annai 会自动保持它为最新。	src/ui/offline-pack.js:70	English was: On Wi-Fi, annai keeps it up to date by itself while this trip is open.
 5pklax	ok	Offline pack	离线包	src/ui/offline-pack.js:80	
 1bk5sw	ok	What came is kept. Try again in a moment.	已下载的部分会保留。请稍后再试。	src/ui/offline-pack.js:87	
 v6p0ku	ok	The offline pack didn't download	离线包未能下载	src/ui/offline-pack.js:87	
 qtuxek	ok	Places © {0}; summaries from Wikipedia and guides from Wikivoyage, {1}.	地点 © {0}；摘要来自 Wikipedia，指南来自 Wikivoyage，{1}。	src/ui/offline-pack.js:119	{0} = osm.textContent; {1} = cc.textContent; Note: {0} and {1} are the licence's own words ("OpenStreetMap contributors", "CC BY-SA"), links, and stay English.
-qdh58i	ok	No offline pack for this trip yet.	这个旅行还没有离线包。	src/ui/offline-pack.js:127	
+uwd3a2	draft	No offline pack yet.	还没有离线包。	src/ui/offline-pack.js:127	
 1k132lx	draft	The offline pack is from before the itinerary changed.	离线包是行程变化之前的。	src/ui/offline-pack.js:128	English was: The offline pack is from before the plan changed.
 ksuwxs	ok	Offline pack: downloaded.	离线包：已下载。	src/ui/offline-pack.js:129	
 r91312	ok	Offline pack: downloaded {0}.	离线包：{0}下载。	src/ui/offline-pack.js:129	{0} = when; Note: {0} is a relative time ("2 hours ago").
-dbm7fe	ok	Open a trip someone sent you	打开别人发来的旅行	src/ui/open-file.js:6	
+8f98y9	ok	Open an annai file	打开 annai 文件	src/ui/open-file.js:6	
 13548dd	ok	That conversation didn't open	没能打开那段对话	src/ui/open-trip.js:7	Note: 对话 as the glossary's Conversation.
 ow6fak	ok	This browser could not draw the photo.	这个浏览器无法绘制这张照片。	src/ui/photo-codec.js:73	
 11dn6um	ok	This browser could not write {0}.	这个浏览器无法写出 {0}。	src/ui/photo-codec.js:81	{0} = type
@@ -1579,9 +1579,9 @@ w51f7d	ok	This browser doesn't tell annai whether it is on Wi-Fi: automatic back
 1hx8faa	ok	Tap again to remove it	再点一次以移除	src/ui/screens/backups.js:313	
 78xlh8	ok	Remove this place	移除此位置	src/ui/screens/backups.js:313	
 7862xj	ok	It may have been deleted or renamed.	它可能已被删除或重命名。	src/ui/screens/booking.js:31	Note: after This isn't on the plan.
-vocksz	draft	This file isn't in the trip	这个旅行中没有此文件	src/ui/screens/booking.js:31	Note: the heading of the details screen for a file that is not in the trip (a link to a deleted file); the sentence "It may have been deleted or renamed." follows.
+mpbd6l	draft	This file can't be found	找不到此文件	src/ui/screens/booking.js:31	Note: the heading of the details screen for a file that is not there (a link to a deleted file); the sentence "It may have been deleted or renamed." follows.
 14y1329	draft	It may have been deleted or renamed. The itinerary lists the bookings there are.	它可能已被删除或重命名。行程中列出了现有的预订。	src/ui/screens/booking.js:32	English was: It may have been deleted or renamed. The plan lists the bookings there are.
-nq6gpo	ok	This booking isn't in the trip	这个旅行中没有此预订	src/ui/screens/booking.js:32	
+1wk3iyk	draft	This booking can't be found	找不到此预订	src/ui/screens/booking.js:32	English was: This booking isn't in the trip
 9bzl8d	draft	Itinerary item	行程项目	src/ui/screens/booking.js:55	Note: an itinerary item's heading when it has no title.
 1nkwm8m	ok	Check this: Shiori read it before annai marked single details. Tell her if it's right, or what's wrong.	请核对：这是 annai 按项目标记之前 Shiori 读取的预订。请告诉她是否正确，或哪里不对。	src/ui/screens/booking.js:73	Note: a banner on a booking from before: the whole booking is to check, and telling her it's right clears it; 请核对 as the Check this chip.
 193ucme	draft	On the itinerary	行程中的项目	src/ui/screens/booking.js:77	Note: the heading of the itinerary items that stand for a booking, on the details screen of a file or booking (Itinerary: 旅程/行程).
@@ -1596,7 +1596,7 @@ oay2cq	ok	Delete	删除	src/ui/screens/booking.js:111	Note: a waiting file's two
 iy42pb	ok	check	待核对	src/ui/screens/booking.js:150	context: a detail to check; Note: a light mark beside one detail Shiori is unsure of.
 1s0er5c	ok	Shiori isn't sure of this	Shiori 对这一项不确定	src/ui/screens/booking.js:151	Note: read by screen readers for the check mark beside a detail.
 1a6z1m2	draft	Itinerary	行程	src/ui/screens/booking.js:163	
-d0tqtj	ok	The original, {0}, isn't in the trip.	原件 {0} 不在这个旅行中。	src/ui/screens/booking.js:185	{0} = name
+1eszfxl	draft	The original, {0}, can't be found.	找不到原件 {0}。	src/ui/screens/booking.js:185	{0} = name; English was: The original, {0}, isn't in the trip.
 98drsx	ok	Open the original	打开原件	src/ui/screens/booking.js:190	
 19jra30	ok	What is around us right now that is worth knowing about?	我们附近现在有什么值得了解的吗？	src/ui/screens/drive.js:15	Note: What the user says to Shiori with a tap, as their own words.
 sqqsfd	ok	What's around here?	附近有什么？	src/ui/screens/drive.js:15	
@@ -1679,28 +1679,26 @@ twulcv	ok	Version restored	已恢复版本	src/ui/screens/file.js:280
 w8mx56	ok	Deleted by {0} {1}	{0} {1}删除	src/ui/screens/file.js:294	{0} = who; {1} = ago
 1cdkli8	ok	Saved by you {0}	你{0}保存	src/ui/screens/file.js:295	{0} = ago
 1xtgqpw	ok	Saved by {0} {1}	{0} {1}保存	src/ui/screens/file.js:295	{0} = who; {1} = ago
-f0ig49	ok	Open a trip	打开旅行	src/ui/screens/import.js:41	
 1azyvjt	ok	Choose a file instead	改为选择文件	src/ui/screens/import.js:44	
 18kfutv	ok	Choose an annai file (.annai.zip or .annai) to open it.	选择一个 annai 文件（.annai.zip 或 .annai）即可打开。	src/ui/screens/import.js:57	
 s6np2n	ok	Choose a file	选择文件	src/ui/screens/import.js:57	
 9pczbj	ok	Choose another file	选择其他文件	src/ui/screens/import.js:61	
 vpnx22	ok	annai couldn't download that file. The site may not allow other web apps to download it.	annai 无法下载该文件。该网站可能不允许其他网页应用下载它。	src/ui/screens/import.js:81	
 9ekzd	ok	The download failed ({0} {1}).	下载失败（{0} {1}）。	src/ui/screens/import.js:84	{0} = res.status; {1} = res.statusText
-v8ip62	ok	trip	旅行	src/ui/screens/import.js:85	Note: A file's name when its address has none.
+1bf856r	draft	file	文件	src/ui/screens/import.js:85	Note: A file's name when its address has none.
 1i00iqj	ok	Reading {0}…	正在读取{0}…	src/ui/screens/import.js:93	{0} = source.name
 1fn8tif	ok	This backup changed on the server while annai was getting it. Open it again from the backups.	在 annai 获取期间，此备份在服务器上发生了变化。请从备份重新打开它。	src/ui/screens/import.js:140	
 t5o4f	ok	{0} is encrypted.	{0}已加密。	src/ui/screens/import.js:152	{0} = source.name
 17ezgqd	ok	Unlock	解锁	src/ui/screens/import.js:155	
 bqwneo#other	draft	# conversations	# 个对话	src/ui/screens/import.js:173	plural; # = grouped.length; English: "# conversation" (one), "# conversations" (other)
 19fmt2v	draft	Add as new ones	作为新的添加	src/ui/screens/import.js:176	
-3ht74t	draft	Replace mine (yours move to archived trips)	替换我的（现有的会移到已归档的旅行）	src/ui/screens/import.js:176	
 voh4dn	draft	You already have some of them	其中一些你已经有了	src/ui/screens/import.js:176	
+w63stp	draft	Replace mine (yours move to Archived)	替换我的（现有的会移到已归档）	src/ui/screens/import.js:176	English was: Replace mine (yours move to archived trips)
 mp7avp	ok	with history	含历史	src/ui/screens/import.js:181	
 wa8d8i#other	ok	# files	#个文件	src/ui/screens/import.js:181	plural; # = trip.files; English: "# file" (one), "# files" (other); Note: zh with no space, as it sits inside 添加{0} and 已添加{0}, as #张照片 does.
 1z02pm0	ok	You already have "{0}"	你已经有“{0}”	src/ui/screens/import.js:183	{0} = trip.existingTitle
-s27n78	ok	Add as a new trip	作为新旅行添加	src/ui/screens/import.js:183	
-wr63q8	ok	Replace mine (yours moves to archived trips)	替换我的（现有的会移到已归档的旅行）	src/ui/screens/import.js:183	Note: "yours" is the trip already here: it is archived, not lost.
-lpx0cl#other	draft	# trips and conversations	# 个旅行和对话	src/ui/screens/import.js:192	plural; # = folded.length; English: "# trip or conversation" (one), "# trips and conversations" (other); Note: a git backup's preview, from its manifest alone, can't tell trips from chats: this is the one row they fold under.
+9jpcd5	draft	Add as a new one	作为新的添加	src/ui/screens/import.js:183	English was: Add as a new trip
+d7gpc4	draft	Replace mine (yours moves to Archived)	替换我的（现有的会移到已归档）	src/ui/screens/import.js:183	English was: Replace mine (yours moves to archived trips); Note: "yours" is the trip already here: it is archived, not lost.
 1pmufvp#other	draft	you already have # of them	其中 # 个你已经有了	src/ui/screens/import.js:193	plural; # = mine; English: "you already have # of them" (one), "you already have # of them" (other); Note: after the fold's count and size, how many of its rows are already on this phone (each has its choice inside the fold); "of them" is of the trips and conversations.
 1og8gcf	ok	Replace my profile and memory with the ones in this file	用此文件中的个人资料和记忆替换我的	src/ui/screens/import.js:196	Note: profile → 个人资料, as elsewhere.
 rfnd00	ok	Replace my settings	替换我的设置	src/ui/screens/import.js:197	
@@ -1709,8 +1707,8 @@ z9765v	ok	Restore API keys (keys already on this device are kept)	恢复 API 密
 tlkozp	ok	Reading…	正在读取…	src/ui/screens/import.js:208	
 jbong3	ok	Reading {0} of {1}…	正在读取 {0}/{1}…	src/ui/screens/import.js:221	{0} = num(Math.min(done + 1, total)); {1} = num(total)
 i4v1g5	ok	Installing the plugins your providers use…	正在安装你的提供商使用的插件…	src/ui/screens/import.js:229	
-1fnonn8	ok	Open trip	打开旅行	src/ui/screens/import.js:240	
-m9iea3#other	ok	# older copies moved to archived trips.	已将 # 个较早的副本移到已归档的旅行。	src/ui/screens/import.js:241	plural; # = result.archived.length; English: "# older copy moved to archived trips." (one), "# older copies moved to archived trips." (other)
+3wbwnq	ok	Open it	打开	src/ui/screens/import.js:240	
+1xgy3zf#other	draft	# older copies moved to Archived.	已将 # 个较早的副本移到已归档。	src/ui/screens/import.js:241	plural; # = result.archived.length; English: "# older copy moved to Archived." (one), "# older copies moved to Archived." (other); English was: # older copies moved to archived trips.
 j0c8lo	ok	Imported plugins arrive switched off. Turn on the ones you trust in Plugins.	导入的插件处于关闭状态。请在插件中开启你信任的那些。	src/ui/screens/import.js:244	
 3qem9k	ok	annai's next backup to that place builds on this one.	annai 下次备份到那个位置时，会以此为基础。	src/ui/screens/import.js:246	
 o7fto4	ok	Import	导入	src/ui/screens/import.js:254	
@@ -1718,7 +1716,7 @@ o7fto4	ok	Import	导入	src/ui/screens/import.js:254
 6fr2dj	ok	A backup of everything exported {0} from annai {1}, encrypted.	全部内容的备份，{0}从 annai {1} 导出，已加密。	src/ui/screens/import.js:257	{0} = ago; {1} = app
 12hmses	draft	Exported {0} from annai {1}, encrypted.	{0}从 annai {1} 导出，已加密。	src/ui/screens/import.js:258	{0} = ago; {1} = app; English was: A trip exported {0} from annai {1}, encrypted.
 3kii3s	draft	Exported {0} from annai {1}.	{0}从 annai {1} 导出。	src/ui/screens/import.js:258	{0} = ago; {1} = app; English was: A trip exported {0} from annai {1}.
-7ns57f	ok	There are no trips in this file.	此文件中没有旅行。	src/ui/screens/import.js:261	
+7itrym	draft	There are no trips or conversations in this file.	此文件中没有旅行或对话。	src/ui/screens/import.js:261	English was: There are no trips in this file.
 1y35b48	ok	Restarting…	正在重启…	src/ui/screens/import.js:277	
 5wjjb4	ok	Restart annai to use the imported settings and plugins.	重启 annai 以使用导入的设置和插件。	src/ui/screens/import.js:282	
 1p9jpyr	ok	Installed what your providers use: {0}.	已安装你的提供商使用的内容：{0}。	src/ui/screens/import.js:292	{0} = list(g.installed, 'plain')
@@ -1731,8 +1729,7 @@ odevmc	ok	Adding {0} of {1}…	正在添加（{0}/{1}）…	src/ui/screens/impor
 6u51xq#other	draft	Added {0}, and # itinerary items from the calendar	已添加{0}，以及日历中的 # 项行程	src/ui/screens/import.js:355	plural; # = planned.length; {0} = what; English: "Added {0}, and # itinerary item from the calendar" (one), "Added {0}, and # itinerary items from the calendar" (other); English was: Added {0}, and # itinerary items from the calendar; Note: {0} is a file's path, or how many files ("2 files").
 f30m7u#other	ok	and # more photos	还有 # 张照片	src/ui/screens/import.js:374	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
 1cj3r6h	ok	Add only what you just shared yourself.	只添加你自己刚刚分享的内容。	src/ui/screens/import.js:377	
-sc64d2	ok	Also here: {0}, an annai backup or trip. It isn't added with the rest; open it on its own.	这里还有：{0}，一个 annai 备份或旅行。它不会和其他内容一起添加；请单独打开。	src/ui/screens/import.js:381	{0} = a.file.name
-3wbwnq	ok	Open it	打开	src/ui/screens/import.js:382	
+1eim38p	draft	Also here: {0}, an annai backup or export. It isn't added with the rest; open it on its own.	这里还有：{0}，一个 annai 备份或导出文件。它不会和其他内容一起添加；请单独打开。	src/ui/screens/import.js:381	{0} = a.file.name; English was: Also here: {0}, an annai backup or trip. It isn't added with the rest; open it on its own.
 qqpumv	draft	This isn't on the itinerary	这不在行程中	src/ui/screens/item.js:24	English was: This isn't on the plan; Note: a heading where a link names no plan item.
 15biluu	draft	Go to the itinerary	前往行程	src/ui/screens/item.js:25	Note: a link to the trip's Plan.
 1wp3w0c	ok	All day, {0}	全天（{0}）	src/ui/screens/item.js:41	{0} = start; Note: {0} is the day.
@@ -1910,8 +1907,8 @@ foy2yl	ok	Add to calendar	添加到日历	src/ui/screens/plan.js:87
 1rs1ez2	ok	Not on a day	不限日期	src/ui/screens/plan.js:96	Note: a heading above the day tabs, for bookings with no day of their own (an open ticket, a pass for the whole trip).
 pxfr8q	ok	Days	日期	src/ui/screens/plan.js:99	
 wk7g53	draft	No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) in Details.	还没有行程。请 Shiori 和你一起规划，或在“详情”中添加日历文件（.ics）。	src/ui/screens/plan.js:102	English was: No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.; Note: "Ask" here is asking Shiori, not the permission setting's Ask.
-1uxsg1z	ok	{0} couldn't be read. Open the trip's files to fix them.	{0}无法读取。请打开旅行的文件进行修复。	src/ui/screens/plan.js:103	{0} = unread
-sdcje2	ok	{0} couldn't be read. Open the trip's files to fix it.	{0}无法读取。请打开旅行的文件进行修复。	src/ui/screens/plan.js:103	{0} = unread
+15yqwep	draft	{0} couldn't be read. Open the files in Details to fix them.	{0}无法读取。请在“详情”中打开文件进行修复。	src/ui/screens/plan.js:103	{0} = unread; English was: {0} couldn't be read. Open the trip's files to fix it.
+1hvcdro	draft	{0} couldn't be read. Open the files in Details to fix it.	{0}无法读取。请在“详情”中打开文件进行修复。	src/ui/screens/plan.js:103	{0} = unread; English was: {0} couldn't be read. Open the trip's files to fix them.
 1gmgpvl	ok	Check this	请核对	src/ui/screens/plan.js:159	
 wioqt8#other	ok	Check # details	请核对#项	src/ui/screens/plan.js:161	plural; # = r.checkFields.length; English: "Check # detail" (one), "Check # details" (other); Note: a chip on a Plan row: how many of a booking's details Shiori is unsure of; 请核对 as the Check this chip.
 1ropcog	ok	Booking missing	缺少预订	src/ui/screens/plan.js:162	
@@ -2129,14 +2126,14 @@ vam64u	ok	Use the recommended models	使用推荐模型	src/ui/screens/provider.
 1szeqxt	ok	Roles updated.	已更新角色。	src/ui/screens/provider.js:560	
 1egvjs1	ok	{0} couldn't be switched on: {1}	{0}未能开启：{1}	src/ui/screens/provider.js:561	{0} = f.name; {1} = messageOf(f.error)
 wlh055	ok	Use the {0} models	使用{0}模型	src/ui/screens/provider.js:567	{0} = which
-1tu8lgg	ok	Writing it: {0} is reading the trip. This can take a minute.	正在撰写：{0}正在阅读这个旅行。可能需要一分钟。	src/ui/screens/recap.js:29	{0} = m.name
+1qocxbg	draft	Writing it: {0} is reading the conversation. This can take a minute.	正在撰写：{0}正在阅读这个对话。可能需要一分钟。	src/ui/screens/recap.js:29	{0} = m.name; English was: Writing it: {0} is reading the trip. This can take a minute.
 1lrfe9k	ok	Write the recap	撰写回顾	src/ui/screens/recap.js:31	
 h6huep	ok	Write it again	重新撰写	src/ui/screens/recap.js:31	
 ez9tf4	ok	The recap is written.	回顾已写好。	src/ui/screens/recap.js:44	
 mm3zdg	ok	The recap wasn't written	未能写出回顾	src/ui/screens/recap.js:46	
 70ec7n	ok	Shiori is getting ready to tell it.	Shiori 正在准备讲述。	src/ui/screens/recap.js:62	
 3hcj41	ok	Hear Shiori tell it	听 Shiori 讲述	src/ui/screens/recap.js:64	
-1mnn3h5	ok	No recap yet. annai's utility model writes it from the trip: where you stayed and went, the stamps, what you and Shiori said, your notes and some photos.	还没有回顾。annai 的辅助模型会根据旅行来写：你住过和去过的地方、纪念章、你和 Shiori 说过的话、你的笔记和一些照片。	src/ui/screens/recap.js:71	
+9ioii4	draft	No recap yet. annai's utility model writes it from everything in this conversation: where you stayed and went, the stamps, what you and Shiori said, your notes and some photos.	还没有回顾。annai 的辅助模型会根据这个对话中的所有内容来写：你住过和去过的地方、纪念章、你和 Shiori 说过的话、你的笔记和一些照片。	src/ui/screens/recap.js:71	English was: No recap yet. annai's utility model writes it from the trip: where you stayed and went, the stamps, what you and Shiori said, your notes and some photos.
 1v25lb0	ok	Written {0}.	{0}写成。	src/ui/screens/recap.js:72	{0} = relTime(got.entry.modified)
 nsh8oa	ok	Written {0}, then edited by you.	{0}写成，之后由你编辑过。	src/ui/screens/recap.js:72	{0} = relTime(got.entry.modified)
 1i1lcq9	ok	Edit	编辑	src/ui/screens/recap.js:74	
@@ -2194,8 +2191,7 @@ qhwigq	ok	How Shiori speaks and hears you, with a test for each.	Shiori 如何�
 1fpvmy8	ok	No export yet. Export regularly: annai keeps everything on this device.	还没有导出过。请定期导出：annai 把一切都保存在此设备上。	src/ui/screens/settings.js:62	
 rpzgfn	ok	Last export {0}.	上次导出：{0}。	src/ui/screens/settings.js:62	{0} = relTime(app.lastExportAt)
 1tpqgk3	ok	Automatic backups	自动备份	src/ui/screens/settings.js:67	
-706cmq	ok	A trip someone sent you, or a backup to bring back:	别人发来的旅行，或要恢复的备份：	src/ui/screens/settings.js:69	
-8f98y9	ok	Open an annai file	打开 annai 文件	src/ui/screens/settings.js:70	
+17ls74b	draft	An export someone sent you, or a backup to bring back:	别人发来的导出文件，或要恢复的备份：	src/ui/screens/settings.js:69	English was: A trip someone sent you, or a backup to bring back:
 m7t7a8	ok	How she looks, her personality, and how often she acts on her own.	她的外观、性格，以及她主动行动的频率。	src/ui/screens/settings.js:71	
 1frid9s	ok	annai's screens, distances, the languages you speak, and the one Shiori answers in.	annai 界面语言、距离单位、你说的语言，以及 Shiori 回答所用语言。	src/ui/screens/settings.js:72	Note: the Languages section's line in Settings; each term is its row's label on the Languages screen.
 11bjuh3	ok	Switches for every tool Shiori has, web search and fetch, and the Jina key.	Shiori 每个工具的开关、网页搜索和抓取，以及 Jina 密钥。	src/ui/screens/settings.js:74	Note: fetch → 抓取, as the other rows name it.
