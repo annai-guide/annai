@@ -215,6 +215,8 @@ a.attach-chip, .attach-chip.gone { padding-inline: 12px; text-decoration: none; 
   .type-sheet input { min-height: 44px; }
 }
 .convo .shiori.said .btn { align-self: flex-start; }
+/* annai's card's "Tap to answer" goes once it is answered */
+.acts:has(:disabled) + .tap-hint { display: none; }
 .title-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 8px; }
 .title-row > .title { flex: 1 1 0; min-width: 0; }
 .title-row > .tidy-status, .talk-head > .tidy-status { flex-basis: 100%; order: 3; margin-top: -4px; }
