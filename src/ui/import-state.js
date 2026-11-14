@@ -44,6 +44,6 @@ export function leaveSignal(target = globalThis) {
  */
 export function toldIfLeft(ctx, left, titles, place) {
   if (!left.aborted) return;
-  const what = titles.length > 2 ? plural(titles.length, '# trip', '# trips') : list(titles);
+  const what = titles.length > 2 ? plural(titles.length, '# trip or conversation', '# trips and conversations') : list(titles);
   ctx.notices?.toast(what ? (place ? t`Imported ${what} from ${place}.` : t`Imported ${what}.`) : place ? t`Imported from ${place}.` : t`Imported.`);
 }

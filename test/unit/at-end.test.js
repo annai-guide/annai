@@ -124,7 +124,7 @@ test("after a toolbar's resize the user's scrolls count again: one to mid-page, 
 });
 
 // The dock's change is read as it happens (the final review of home2, F1): what the user's scrolls left is not what the page is by then.
-test('at the end, something opens below with no scroll (Archived trips), then the dock grows: the page stays where it is', () => {
+test('at the end, something opens below with no scroll (Archived), then the dock grows: the page stays where it is', () => {
   const win = phone();
   const { keep } = keepAtEnd(/** @type {any} */ (win));
   win.user(win.end()); // read to its end: 2341

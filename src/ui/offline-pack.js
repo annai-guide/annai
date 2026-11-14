@@ -67,7 +67,7 @@ export function packWords(s, connection) {
     lines.push(t`It is more than a month old.`);
     button = t`Update (about ${about})`;
   }
-  lines.push(connection === 'unknown' ? t`This browser doesn't tell annai when it is on Wi-Fi, so update it here.` : t`On Wi-Fi, annai keeps it up to date by itself while this trip is open.`);
+  lines.push(connection === 'unknown' ? t`This browser doesn't tell annai when it is on Wi-Fi, so update it here.` : t`On Wi-Fi, annai keeps it up to date by itself while this conversation is open.`);
   return { lines, button };
 }
 
@@ -124,7 +124,7 @@ export async function packLine(ctx, id) {
   const s = ctx.pack ? await ctx.pack.status(id).catch(() => null) : null;
   if (!s?.stops) return null;
   const when = s.manifest ? downloadedWhen(s.manifest.at) : '';
-  const text = !s.manifest ? t`No offline pack for this trip yet.`
+  const text = !s.manifest ? t`No offline pack yet.`
     : s.why === 'plan' ? t`The offline pack is from before the itinerary changed.`
       : when ? t`Offline pack: downloaded ${when}.` : t`Offline pack: downloaded.`;
   return h('p', { class: 'sub pack-line' }, text, sentenceGap(), h('a', { href: `#/trip/${encodeURIComponent(id)}` }, t`Offline pack`));

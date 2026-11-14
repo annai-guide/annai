@@ -28,7 +28,7 @@ export async function renderImport(ctx, route) {
   const pending = route.params.inbox ? null : takePendingImport();
   /** @type {InboxFile[]} */
   const came = route.params.inbox ? await inboxFiles() : (pending?.files ?? []).map((file) => ({ key: null, file }));
-  // A file picked with "Open a trip someone sent you" is an archive whatever its name; anything else is one by its name.
+  // A file picked with "Open an annai file" is an archive whatever its name; anything else is one by its name.
   const archive = (/** @type {InboxFile} */ i) => Boolean(pending?.archive) || isArchiveName(i.file.name);
   const forTrip = came.filter((i) => !archive(i));
   if (forTrip.length) return fileInbox(ctx, forTrip, (await listTrips(ctx.store)).active, came.filter(archive));
@@ -38,7 +38,7 @@ export async function renderImport(ctx, route) {
   const place = from ? await ctx.backups?.get(from.target).catch(() => null) : null;
   const screen = h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, crumb(leave(from), from ? place?.name ?? t`Backups` : t`Trips`)),
-    h('h1', { class: 'title', text: t`Open a trip` }), body);
+    h('h1', { class: 'title', text: t`Open an annai file` }), body);
   // A backup a git place told by its manifest alone shows at once; its files come when the user imports.
   if (pending?.peeked && from) {
     openPeeked(ctx, body, pending.peeked, from).catch((e) => body.replaceChildren(h('p', { class: 'error', role: 'alert', text: messageOf(e) }), openFileButton(ctx, t`Choose a file instead`)));
@@ -82,7 +82,7 @@ async function pickSource(params, archives) {
     }
     // The server's own words for its status, as it sent them.
     if (!res.ok) throw new Error(t`The download failed (${res.status} ${res.statusText}).`);
-    const name = decodeURIComponent(new URL(params.url).pathname.split('/').pop() || t`trip`);
+    const name = decodeURIComponent(new URL(params.url).pathname.split('/').pop() || t`file`);
     return { name, blob: await res.blob() };
   }
   return null;
@@ -173,14 +173,14 @@ function preview(ctx, body, opened, desc, from, fresh, bring = null) {
     h('span', { class: 'name', text: plural(grouped.length, '# conversation', '# conversations') }),
     h('span', { class: 'sub', text: size(grouped.reduce((n, /** @type {any} */ c) => n + c.bytes, 0)) }),
     grouped.some((/** @type {any} */ c) => c.existing)
-      ? radios(t`You already have some of them`, [['new', t`Add as new ones`], ['replace', t`Replace mine (yours move to archived trips)`]], 'new', (v) => { for (const c of grouped) if (c.existing) trips[c.scope] = /** @type {any} */ (v); })
+      ? radios(t`You already have some of them`, [['new', t`Add as new ones`], ['replace', t`Replace mine (yours move to Archived)`]], 'new', (v) => { for (const c of grouped) if (c.existing) trips[c.scope] = /** @type {any} */ (v); })
       : null)] : [];
   /** @param {any} trip */
   const card = (trip) => h('li', { class: 'card' },
     h('span', { class: 'name', text: trip.title }),
     h('span', { class: 'sub', text: [plural(trip.files, '# file', '# files'), size(trip.bytes), trip.history ? t`with history` : null].filter(Boolean).join(' · ') }),
     trip.existing
-      ? radios(t`You already have "${trip.existingTitle}"`, [['new', t`Add as a new trip`], ['replace', t`Replace mine (yours moves to archived trips)`]], 'new', (v) => { trips[trip.scope] = /** @type {any} */ (v); })
+      ? radios(t`You already have "${trip.existingTitle}"`, [['new', t`Add as a new one`], ['replace', t`Replace mine (yours moves to Archived)`]], 'new', (v) => { trips[trip.scope] = /** @type {any} */ (v); })
       : null);
   // A backup previewed from its manifest alone (a git place's) can't tell a trip from a chat: more than a few such rows fold under one, so
   // Import isn't under hundreds of rows. Each is there, with its own choice, opened; the fold says how many have one.
@@ -237,8 +237,8 @@ function preview(ctx, body, opened, desc, from, fresh, bring = null) {
         body.replaceChildren(h('div', { class: 'panel' },
           h('p', { role: 'status', text: t`Imported.` }),
           h('div', { class: 'acts' }, ...(result.trips.length > MANY ? [h('a', { class: 'btn pri', href: '#/trips' }, t`Go to Trips`)]
-            : result.trips.map((id, i) => h('a', { class: 'btn pri', href: `#/trip/${encodeURIComponent(id)}` }, titles[i] ? t`Open ${titles[i]}` : t`Open trip`)))),
-          result.archived.length ? h('p', { class: 'sub', text: plural(result.archived.length, '# older copy moved to archived trips.', '# older copies moved to archived trips.') }) : null,
+            : result.trips.map((id, i) => h('a', { class: 'btn pri', href: `#/trip/${encodeURIComponent(id)}` }, titles[i] ? t`Open ${titles[i]}` : t`Open it`)))),
+          result.archived.length ? h('p', { class: 'sub', text: plural(result.archived.length, '# older copy moved to Archived.', '# older copies moved to Archived.') }) : null,
           plugged,
           result.settings || result.plugins ? restartPanel(ctx) : null,
           result.plugins ? h('p', { class: 'sub', text: t`Imported plugins arrive switched off. Turn on the ones you trust in Plugins.` }) : null,
@@ -255,10 +255,10 @@ function preview(ctx, body, opened, desc, from, fresh, bring = null) {
   const [ago, app] = [relTime(desc.created), desc.app];
   const what = desc.kind === 'everything'
     ? (desc.encrypted ? t`A backup of everything exported ${ago} from annai ${app}, encrypted.` : t`A backup of everything exported ${ago} from annai ${app}.`)
-    : desc.encrypted ? t`A trip exported ${ago} from annai ${app}, encrypted.` : t`A trip exported ${ago} from annai ${app}.`;
+    : desc.encrypted ? t`Exported ${ago} from annai ${app}, encrypted.` : t`Exported ${ago} from annai ${app}.`;
   return h('div', { class: 'panel' },
     h('p', { text: what }),
-    rows.length + group.length + fold.length ? h('ul', { class: 'cards' }, ...rows, ...group, ...fold) : h('p', { class: 'sub', text: t`There are no trips in this file.` }),
+    rows.length + group.length + fold.length ? h('ul', { class: 'cards' }, ...rows, ...group, ...fold) : h('p', { class: 'sub', text: t`There are no trips or conversations in this file.` }),
     h('div', { class: 'checks' }, me?.el ?? null, settings?.el ?? null, plugins?.el ?? null, keys?.el ?? null),
     h('div', { class: 'acts' }, go, h('a', { class: 'btn', href: leave(from), onclick: () => quit.abort() }, t`Cancel`)),
     status);
@@ -378,7 +378,7 @@ function fileInbox(ctx, items, trips, archives) {
     h('div', { class: 'acts' }, ...buttons),
     status,
     ...archives.map((a) => h('div', { class: 'panel' },
-      h('p', { text: t`Also here: ${a.file.name}, an annai backup or trip. It isn't added with the rest; open it on its own.` }),
+      h('p', { text: t`Also here: ${a.file.name}, an annai backup or export. It isn't added with the rest; open it on its own.` }),
       h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: () => openAnnaiFile(a) }, t`Open it`)))));
 }
 

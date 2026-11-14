@@ -78,7 +78,7 @@ test('the Plan: day tabs, ● fixed and ○ flexible, legs with directions, Chec
   await expect(day.locator('.plan-row')).toHaveText(/^00:30 PT●Fixed: Arrive · UA 456 to San Francisco/);
   await tabs.last().click();
   await expect(day).toContainText('Ice skating');
-  await expect(page.getByText("1 itinerary file and 1 booking file couldn't be read. Open the trip's files to fix them.")).toBeVisible();
+  await expect(page.getByText("1 itinerary file and 1 booking file couldn't be read. Open the files in Details to fix them.")).toBeVisible();
   // The trip's bookings are on their days: there is no separate Bookings list (goal 9).
   await expect(page.getByRole('region', { name: 'Bookings' })).toHaveCount(0);
   // The calendar file: every timed item, in UTC.
@@ -514,7 +514,7 @@ test('the Plan with nothing in it, and with no trip open', async ({ page }) => {
   await page.goto('/#/trips');
   await startTrip(page, 'Empty');
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
-  await expect(page.getByText('No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.')).toBeVisible();
+  await expect(page.getByText('No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) in Details.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add to calendar' })).toBeDisabled();
 });
 
@@ -531,7 +531,7 @@ test("Booking details from before: what it says, beside its original, marked who
   // The booking's zone is named the way people say it, never by its id.
   await expect(page.locator('dl.facts')).toContainText('(PT)');
   await expect(page.locator('dl.facts')).not.toContainText('America/Los_Angeles');
-  await expect(page.getByText("The original, flight.pkpass, isn't in the trip.")).toBeVisible();
+  await expect(page.getByText("The original, flight.pkpass, can't be found.")).toBeVisible();
   await expect(page.getByRole('button', { name: 'Looks right' })).toHaveCount(0);
 });
 
@@ -628,7 +628,7 @@ test('a booking whose file is gone says so, with no preview, and can still be as
   await records(page, trip, ANCHORAGE);
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/booking?path=${encodeURIComponent('/bookings/stay.json')}`);
   await expect(page.getByRole('heading', { name: 'Hotel Aurora Test' })).toBeVisible();
-  await expect(page.getByText("The original, hotel.png, isn't in the trip.")).toBeVisible();
+  await expect(page.getByText("The original, hotel.png, can't be found.")).toBeVisible();
   await expect(page.locator('.file-preview, .file-card')).toHaveCount(0);
   await expect(page.locator('dl.facts dt')).toHaveText(['Place', 'Check-in', 'Check-out', 'Nights']);
   await page.getByRole('button', { name: 'Ask Shiori about this' }).click();
@@ -641,7 +641,7 @@ test("a booking link to something that isn't a booking opens nothing", async ({ 
   await openApp(page);
   const trip = await startTrip(page, 'Thanksgiving');
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/booking?path=${encodeURIComponent('/trip.json')}`);
-  await expect(page.getByRole('heading', { name: "This booking isn't in the trip" })).toBeVisible();
+  await expect(page.getByRole('heading', { name: "This booking can't be found" })).toBeVisible();
 });
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });

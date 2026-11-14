@@ -203,7 +203,7 @@ test('home with nothing yet: the now line, "Tap + to talk to Shiori", Open a fil
   await expect(page.locator('.now-line')).toBeVisible();
   await expect(page.getByText('Tap + to talk to Shiori.')).toBeVisible();
   await expect(page.locator('.rows .trip-card')).toHaveCount(0);
-  await expect(page.locator('main label.btn', { hasText: 'Open a trip someone sent you' })).toBeVisible();
+  await expect(page.locator('main label.btn', { hasText: 'Open an annai file' })).toBeVisible();
   await expect(plus(page)).toBeVisible();
 });
 
@@ -1540,10 +1540,10 @@ test("the Start a trip form's error stays across the clock's redraw, until the u
   const card = row(page, 'Testville');
   const error = page.locator('form.panel p.error');
   await page.getByRole('button', { name: 'Start trip' }).click(); // no name
-  await expect(error).toHaveText('Give the trip a name.');
+  await expect(error).toHaveText('Give it a name.');
   await page.clock.fastForward('01:31:00');
   await expect(card.locator('.next')).toContainText('Lunch'); // drawn again
-  await expect(error).toHaveText('Give the trip a name.'); // not wiped by it
+  await expect(error).toHaveText('Give it a name.'); // not wiped by it
   await page.getByLabel('Trip name').fill('Kyoto');
   await expect(error).toBeHidden(); // the user types: it goes, and a redraw doesn't bring it back
   await page.getByLabel('Trip name').fill('');
@@ -1552,7 +1552,7 @@ test("the Start a trip form's error stays across the clock's redraw, until the u
   await expect(error).toBeHidden();
   // Leaving home takes it too: Start trip with no name, on to Settings and back.
   await page.getByRole('button', { name: 'Start trip' }).click();
-  await expect(error).toHaveText('Give the trip a name.');
+  await expect(error).toHaveText('Give it a name.');
   await page.goto('/#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
   await page.goBack();
@@ -1574,16 +1574,16 @@ test("the Start a trip form's error is a new alert once, when first said: home d
   });
   const said = () => page.evaluate(() => /** @type {any} */ (window).said);
   await page.getByRole('button', { name: 'Start trip' }).click(); // no name
-  await expect(page.getByRole('alert')).toHaveText('Give the trip a name.'); // first said: an alert
+  await expect(page.getByRole('alert')).toHaveText('Give it a name.'); // first said: an alert
   expect(await said()).toBe(1);
   await page.clock.fastForward('01:31:00');
   await expect(card.locator('.next')).toContainText('Lunch'); // drawn again
-  await expect(error).toHaveText('Give the trip a name.'); // kept, in view
+  await expect(error).toHaveText('Give it a name.'); // kept, in view
   await expect(page.getByRole('alert')).toHaveCount(0); // as words: before, drawn again as a new alert
   expect(await said()).toBe(1);
   // Said again after that (Start trip, still no name): an alert once more.
   await page.getByRole('button', { name: 'Start trip' }).click();
-  await expect(page.getByRole('alert')).toHaveText('Give the trip a name.');
+  await expect(page.getByRole('alert')).toHaveText('Give it a name.');
   expect(await said()).toBe(2);
 });
 
@@ -1690,7 +1690,7 @@ test("home's Start a trip error doesn't hold back the shell's own redraw (a plug
   await page.getByLabel('Starts').fill('2026-11-20');
   await page.getByLabel('Ends').fill('2026-11-27');
   await page.getByRole('button', { name: 'Start trip' }).click(); // no name
-  await expect(page.locator('form.panel p.error')).toHaveText('Give the trip a name.');
+  await expect(page.locator('form.panel p.error')).toHaveText('Give it a name.');
   await page.evaluate(async () => {
     const w = /** @type {any} */ (window);
     const at = (/** @type {string} */ p) => p;
@@ -1700,7 +1700,7 @@ test("home's Start a trip error doesn't hold back the shell's own redraw (a plug
     w.changed();
   });
   await expect(page.getByText('Testville').first()).toBeVisible({ timeout: 5000 }); // home drawn again, with no keystroke or leaving
-  await expect(page.locator('form.panel p.error')).toHaveText('Give the trip a name.'); // the error stays
+  await expect(page.locator('form.panel p.error')).toHaveText('Give it a name.'); // the error stays
   // The redraw didn't wait for the form, so it keeps what was typed in it: the user adds a name and starts the trip they meant.
   await expect(page.getByLabel('Starts')).toHaveValue('2026-11-20');
   await expect(page.getByLabel('Ends')).toHaveValue('2026-11-27');
@@ -1913,12 +1913,12 @@ test("the draft's Details: a name and dates saved there put it on home; Archive 
   await page.goto('/#/trips');
   await expect(row(page, 'Testville in April')).toHaveCount(1);
   await expect(row(page, 'Testville in April')).not.toHaveClass(/\bline\b/);
-  // Archived in Details: it is in Archived trips, and + opens another.
+  // Archived in Details: it is in Archived, and + opens another.
   const archived = await details();
   expect(archived).not.toBe(named);
   await page.getByRole('button', { name: 'Archive', exact: true }).click();
   await page.getByRole('button', { name: 'Tap again to archive' }).click();
-  await expect(page.getByText('Archived trips (1)')).toBeVisible();
+  await expect(page.getByText('Archived (1)')).toBeVisible();
   // Removed in Details: + opens another, and its first line is a row on home.
   const removed = await details();
   expect(removed).not.toBe(archived);
@@ -1936,7 +1936,7 @@ test("the draft's Details: a name and dates saved there put it on home; Archive 
   await expect.poll(async () => (await record(page, fresh))?.title).toBe('Where is the ramen place?');
   await page.goto('/#/trips');
   await expect(row(page, 'Where is the ramen place?')).toHaveCount(1);
-  await expect(page.getByText('Archived trips (1)')).toBeVisible(); // still only the one the user archived
+  await expect(page.getByText('Archived (1)')).toBeVisible(); // still only the one the user archived
 });
 
 test("a trip file whose dates aren't on the calendar (9999-99-99) comes in as a trip with none: home, its conversation, Details and Itinerary open", async ({ page }) => {
@@ -1952,8 +1952,8 @@ test("a trip file whose dates aren't on the calendar (9999-99-99) comes in as a 
   await ws.patch(trip, '/trip.json', { start: '9999-99-99', end: '9999-99-99' }, { author: 'user' });
   const { blob } = await exportArchive(store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0' });
   await openApp(page, '#/trips');
-  await page.getByLabel('Open a trip someone sent you').setInputFiles({ name: 'testville.annai.zip', mimeType: 'application/zip', buffer: Buffer.from(await blob.arrayBuffer()) });
-  await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible();
+  await page.getByLabel('Open an annai file').setInputFiles({ name: 'testville.annai.zip', mimeType: 'application/zip', buffer: Buffer.from(await blob.arrayBuffer()) });
+  await expect(page.getByRole('heading', { name: 'Open an annai file' })).toBeVisible();
   await page.getByRole('button', { name: 'Import' }).click();
   await expect(page.getByText('Imported.')).toBeVisible();
   const couldnt = page.getByText("This screen couldn't open");
@@ -1986,7 +1986,7 @@ test("Details of a trip that came in with dates that aren't on the calendar: the
   await ws.patch(trip, '/trip.json', { start: '9999-99-99', end: '2026-02-31' }, { author: 'user' });
   const { blob } = await exportArchive(store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0' });
   await openApp(page, '#/trips');
-  await page.getByLabel('Open a trip someone sent you').setInputFiles({ name: 'testville.annai.zip', mimeType: 'application/zip', buffer: Buffer.from(await blob.arrayBuffer()) });
+  await page.getByLabel('Open an annai file').setInputFiles({ name: 'testville.annai.zip', mimeType: 'application/zip', buffer: Buffer.from(await blob.arrayBuffer()) });
   await page.getByRole('button', { name: 'Import' }).click();
   await expect(page.getByText('Imported.')).toBeVisible();
   await page.goto('/#/trips');
@@ -2041,7 +2041,7 @@ test("Details of a conversation stored as \"New conversation\": its name field i
   const field = page.locator('#trip-edit-title');
   await expect(field).toHaveValue(''); // before: the stored English words, in an accented screen
   await expect(field).toHaveAttribute('placeholder', name);
-  // Dates changed, the name left empty: saved, not "Give the trip a name."; the stored name stays, so it still follows the screens' language.
+  // Dates changed, the name left empty: saved, not "Give it a name."; the stored name stays, so it still follows the screens' language.
   await page.getByLabel(accented('Ends')).fill('2099-01-02');
   await page.getByLabel(accented('Starts')).fill('2099-01-01');
   await page.getByRole('button', { name: accented('Save') }).click();
@@ -2058,7 +2058,7 @@ test("Details of a conversation stored as \"New conversation\": its name field i
   // A trip with a name of its own still can't be saved without one.
   await field.fill('  ');
   await page.getByRole('button', { name: accented('Save') }).click();
-  await expect(page.locator('.trip-edit .error')).toHaveText(accented('Give the trip a name.'));
+  await expect(page.locator('.trip-edit .error')).toHaveText(accented('Give it a name.'));
 });
 
 /** A trip's last backup, as a backup writes it: ago ms before now, and whether the trip changed since. @param {import('@playwright/test').Page} page @param {string} title @param {number} ago @param {boolean} [changed] */
@@ -2242,10 +2242,10 @@ for (const size of [[360, 640], [393, 659]]) {
 }
 
 // The dock's change reads whether the page is at its end as it comes (at-end.js; the final review of home2, F1). It used what the user's last scroll left, so
-// with Archived trips opened at the end (its cards open below, and no scroll comes) the next change of the dock, which on home needs no tap (the whole dock
+// with Archived opened at the end (its cards open below, and no scroll comes) the next change of the dock, which on home needs no tap (the whole dock
 // shows whenever she speaks, listens or works), threw the page past the cards just opened.
 for (const size of [[360, 640], [393, 659]]) {
-  test(`home at its end, Archived trips opened, then the whole dock shows: the page doesn't move; back at its end, the dock's changes keep it there (${size.join(' x ')})`, async ({ page }) => {
+  test(`home at its end, Archived opened, then the whole dock shows: the page doesn't move; back at its end, the dock's changes keep it there (${size.join(' x ')})`, async ({ page }) => {
     await page.setViewportSize({ width: size[0], height: size[1] });
     await openApp(page, '#/settings');
     /** @type {Record<string, number>} */
@@ -2264,7 +2264,7 @@ for (const size of [[360, 640], [393, 659]]) {
     await page.reload();
     await page.goto('/#/trips');
     const fold = page.locator('details.archived');
-    await expect(fold.locator('summary')).toHaveText('Archived trips (6)');
+    await expect(fold.locator('summary')).toHaveText('Archived (6)');
     await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
     await fitted(page);
     expect(await endGap(page)).toBe(0);

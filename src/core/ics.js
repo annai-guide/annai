@@ -112,7 +112,7 @@ export function parseIcs(text, { defaultTz }) {
         const { status, duration, ...done } = ev;
         if (!done.end && done.start && duration !== null) done.end = { at: isoInZone(Date.parse(done.start.at) + duration, done.start.tz), tz: done.start.tz };
         if (status !== 'CANCELLED') out.push(done);
-        if (out.length > MAX_EVENTS) throw new Error(t`This calendar has more than ${num(MAX_EVENTS)} events. Export only the trip's dates from your calendar, and add that file.`);
+        if (out.length > MAX_EVENTS) throw new Error(t`This calendar has more than ${num(MAX_EVENTS)} events. Export only the dates you need from your calendar, and add that file.`);
         ev = null;
       }
       continue;

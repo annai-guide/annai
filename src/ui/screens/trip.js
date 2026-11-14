@@ -93,7 +93,7 @@ function editForm(ctx, id, title, trip) {
       e.preventDefault();
       error.hidden = true;
       const clean = name.value.trim() || (unnamed ? title : '');
-      if (!clean) return say(t`Give the trip a name.`);
+      if (!clean) return say(t`Give it a name.`);
       // Only what was changed here: Shiori may have written the name or the dates since this was drawn.
       const changed = Object.fromEntries(Object.entries({ title: clean, start: start.value, end: end.value }).filter(([k, v]) => v !== drawn[k]).map(([k, v]) => [k, v || null]));
       // Held while it saves and is drawn again: what is typed then would be drawn over.
@@ -259,7 +259,7 @@ function fileList(id, files) {
   }
   return h('section', { class: 'files', 'aria-label': t`All files` },
     ...[...groups].map(([folder, list]) => h('div', {},
-      h('h2', { class: 'section', dir: folder ? 'auto' : null, text: folder ? `${folder}/` : t`Trip` }),
+      h('h2', { class: 'section', dir: folder ? 'auto' : null, text: `${folder}/` }),
       h('ul', { class: 'file-list' }, ...list.map((f) => h('li', {}, h('a', { class: 'file-row', href: fileHref(id, f.path) },
         h('span', { class: 'path', dir: 'ltr' }, ...pathParts(f.path)),
         h('span', { class: 'sub', text: [size(f.size), authorName(f.author), relTime(f.modified)].join(' · ') }))))))));

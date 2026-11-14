@@ -19,7 +19,7 @@ export const STEPS = {
   desktop: [t`Use your browser menu to install annai as an app.`],
 };
 /** The banner's last step on an iPhone, for trips already kept in Safari (a fresh device, the welcome's, has none). */
-const TRIPS_HERE = t`Trips you already have here: in Settings, export everything, then open the file in the Home Screen app with "Open a trip someone sent you".`;
+const TRIPS_HERE = t`What you already have here: in Settings, export everything, then open the file in the Home Screen app with "Open an annai file".`;
 
 /** The Install button, shown where the browser offers to install annai (Chrome on Android). */
 export function installButton() {

@@ -145,7 +145,7 @@ test("a link to a file that isn't there says so", async ({ page }) => {
   await openApp(page);
   const trip = await fileTrip(page);
   await openAt(page, trip, '/files/nope.pdf');
-  await expect(page.getByRole('heading', { name: "This file isn't in the trip" })).toBeVisible();
+  await expect(page.getByRole('heading', { name: "This file can't be found" })).toBeVisible();
 });
 
 /** The crumb of the open screen. @param {import('@playwright/test').Page} page */
@@ -250,7 +250,7 @@ test('Delete removes the file, its bookings and their plan items, says what went
   }, trip)).not.toContain('itinerary');
   // A Back onto the deleted file's screen says it isn't there.
   await openAt(page, trip, '/files/itinerary.pdf');
-  await expect(page.getByRole('heading', { name: "This file isn't in the trip" })).toBeVisible();
+  await expect(page.getByRole('heading', { name: "This file can't be found" })).toBeVisible();
   // Its raw screen offers no version to bring back: there is none.
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/file?path=${encodeURIComponent('/files/itinerary.pdf')}`);
   await expect(page.getByText('This file was deleted for good.')).toBeVisible();

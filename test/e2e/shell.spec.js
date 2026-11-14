@@ -33,7 +33,7 @@ test("on iPhone the install warning says the Home Screen app keeps trips of its 
   const banner = page.getByRole('region', { name: 'Install annai' });
   await expect(banner).toContainText("the Home Screen app keeps trips of its own: what you start here won't be there");
   await banner.getByRole('button', { name: 'Show me how' }).click();
-  await expect(banner.getByRole('listitem').last()).toContainText('Open a trip someone sent you');
+  await expect(banner.getByRole('listitem').last()).toContainText('Open an annai file');
 });
 
 test('only one tab runs annai at a time', async ({ page, context }) => {
@@ -80,7 +80,7 @@ test('dropping a file on annai opens it', async ({ page }) => {
   });
   await page.dispatchEvent('main.view', 'dragover', { dataTransfer: files });
   await page.dispatchEvent('main.view', 'drop', { dataTransfer: files });
-  await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Open an annai file' })).toBeVisible();
   await expect(page.getByRole('alert')).toContainText("isn't an annai file");
 });
 

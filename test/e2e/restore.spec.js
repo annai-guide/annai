@@ -16,8 +16,8 @@ test('a restore brings the providers back with the plugins they use, in one step
     await page.getByRole('button', { name: 'Erase now' }).click();
     await pastWelcome(page);
 
-    await page.getByLabel('Open a trip someone sent you').setInputFiles(file);
-    await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible();
+    await page.getByLabel('Open an annai file').setInputFiles(file);
+    await expect(page.getByRole('heading', { name: 'Open an annai file' })).toBeVisible();
     await page.getByLabel('Replace my settings').check();
     await page.getByRole('button', { name: 'Import' }).click();
     await expect(page.getByText(/^Installed what your providers use: .*Custom provider/)).toBeVisible({ timeout: 30_000 });
@@ -33,7 +33,7 @@ test('a restore brings the providers back with the plugins they use, in one step
     // It starts on Trips, not on the import screen with nothing left to open (the third emulator pass).
     await expect(page.getByRole('heading', { name: 'Trips', level: 1 })).toBeVisible();
     expect(new URL(page.url()).hash).toBe('#/trips');
-    await expect(page.getByRole('heading', { name: 'Open a trip' })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Open an annai file' })).toHaveCount(0);
 
     await page.goto('/#/plugins');
     await expect(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();

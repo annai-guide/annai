@@ -115,7 +115,7 @@ test('a backup shared with a pass is named, and opens on its own', async ({ page
   await expect(page.getByText('flight.pkpass')).toBeVisible();
   await expect(page.getByText(/Also here: trip\.annai\.zip/)).toBeVisible();
   await page.getByRole('button', { name: 'Open it' }).click();
-  await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Open an annai file' })).toBeVisible();
   await expect(page.getByRole('alert')).toContainText("isn't an annai file");
   // Opened, it leaves the share inbox; the pass still waits there.
   await page.goto('/#/import?inbox=1');

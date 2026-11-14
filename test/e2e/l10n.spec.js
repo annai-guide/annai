@@ -676,7 +676,7 @@ test('a restore writes the device\'s copy of the screens\' language before its r
     await page.getByRole('button', { name: 'Erase now' }).click();
     await pastWelcome(page);
     expect(await page.evaluate(() => localStorage.getItem('annai.ui'))).toBeNull();
-    await page.getByLabel('Open a trip someone sent you').setInputFiles(file);
+    await page.getByLabel('Open an annai file').setInputFiles(file);
     await page.getByLabel('Replace my settings').check();
     await page.getByRole('button', { name: 'Import' }).click();
     await expect(page.getByText('Restart annai to use the imported settings and plugins.')).toBeVisible({ timeout: 30_000 });

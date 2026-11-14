@@ -125,13 +125,13 @@ export function wokeText(reasons, nameOf = (id) => id) {
  * since removed (title null). @param {{ to: string, started: boolean, count: number }} d @param {string | null} title
  */
 export function movedWords(d, title) {
-  if (title === null) return t`Shiori took these files to a trip that has since been removed.`;
+  if (title === null) return t`Shiori took these files to a conversation that has since been removed.`;
   if (d.started) return d.count ? t`Shiori started ${title} with these files.` : t`Shiori started ${title}.`;
   return plural(d.count, 'Shiori took # file to {0}.', 'Shiori took # files to {0}.', title);
 }
 
 /** Where Shiori took the user from this conversation (conversation.moved), by the trip's title now, or one since removed (null). @param {string | null} title */
-export const wentWords = (title) => (title === null ? t`Shiori moved this to a trip that has since been removed.` : t`Shiori moved this to ${title}.`);
+export const wentWords = (title) => (title === null ? t`Shiori moved this to a conversation that has since been removed.` : t`Shiori moved this to ${title}.`);
 
 /**
  * What Undo of a hand-over did (undoEverywhere's outcome): the trips it removed and where the files are, each other trip that stays that it
@@ -275,7 +275,7 @@ export async function renderTalk(ctx, route) {
   const hers = wording(app, true);
   const scope = agent.scope;
   const rec = agent.trip ? await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ tx) => tx.getScope(agent.trip)) : null;
-  const title = agent.trip ? (rec ? scopeTitle(rec) : t`Trip`) : '';
+  const title = agent.trip ? (rec ? scopeTitle(rec) : t`Conversation`) : '';
   // Not a live region: `announce` says each line of hers once, spoken or not, whatever "Show what she says" is, and words heard once
   // they are in; never what you typed, nor the halves' notes.
   const list = h('ol', { class: 'convo' });

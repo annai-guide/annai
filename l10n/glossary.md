@@ -61,7 +61,7 @@ This page is a review aid. The source is [`glossary.tsv`](glossary.tsv): one row
 | Main | メイン | 主要 | 主要 |
 | New conversation | 新しい会話 | 新对话 | 新對話 |
 | Offline pack | オフラインパック | 离线包 | 離線資料包 |
-| Open a trip someone sent you | 送られてきた旅を開く | 打开别人发来的旅行 | 開啟別人傳來的旅行 |
+| Open an annai file | annai のファイルを開く | 打开 annai 文件 | 開啟 annai 檔案 |
 | passphrase | パスフレーズ | 密码短语 | 密碼片語 |
 | personality | 性格 | 性格 | 性格 |
 | provider | プロバイダー | 提供商 | 供應商 |

@@ -75,7 +75,7 @@ test('Import says how far the files are, and a manifest swapped between the prev
   try {
     await wipedPhone(page, fj);
     await page.getByRole('button', { name: 'Import it as a copy' }).click();
-    await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole('heading', { name: 'Open an annai file' })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText('Big Sur', { exact: true })).toBeVisible();
     // The files come with Import, and the screen says how many.
     await page.evaluate(() => {
@@ -97,7 +97,7 @@ test('Import says how far the files are, and a manifest swapped between the prev
     await page.getByRole('link', { name: /Forgejo/ }).first().click();
     await page.getByRole('button', { name: 'Show the backups here' }).click();
     await page.getByRole('button', { name: 'Open', exact: true }).first().click();
-    await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole('heading', { name: 'Open an annai file' })).toBeVisible({ timeout: 30_000 });
     // The manifest of the backup that was opened, with the trip renamed: made from the one the stand-in gives for the request, which is
     // the backup's at the ref asked for. Not from the repository's latest, which a backup this phone made meanwhile (of the trip it
     // imported above) has moved on, with files the opened one has not.
@@ -119,7 +119,7 @@ test("many conversations in a git backup: its preview, from the manifest alone, 
   try {
     await wipedPhone(page, fj, { chats: 6 });
     await page.getByRole('button', { name: 'Import it as a copy' }).click();
-    await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole('heading', { name: 'Open an annai file' })).toBeVisible({ timeout: 30_000 });
     const fold = page.locator('.cards > li.many');
     await expect(fold.locator('summary .name')).toHaveText('7 trips and conversations');
     await expect(page.locator('.panel > .cards > li')).toHaveCount(1); // the one row between the backup's words and its checks
@@ -142,7 +142,7 @@ for (const way of ['Cancel', 'the crumb']) {
     try {
       await wipedPhone(page, fj);
       await page.getByRole('button', { name: 'Import it as a copy' }).click();
-      await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByRole('heading', { name: 'Open an annai file' })).toBeVisible({ timeout: 30_000 });
       const release = fj.holdFiles();
       await page.getByRole('button', { name: 'Import', exact: true }).click();
       await expect(page.getByRole('status').filter({ hasText: /^Getting / })).toBeVisible();
