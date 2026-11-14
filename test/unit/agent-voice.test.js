@@ -283,6 +283,22 @@ test('ask is spoken too, and a spoken answer answers it; wait listens (spec §7.
   assert.deepEqual((await results(k, 'wait')).map((/** @type {any} */ e) => e.data.content), ['The user said:', 'Nothing yet (10 seconds).']);
 });
 
+test('her spoken question beside a sleep: the spoken answer reaches her, and she answers it (the real runs: an ask and a sleep in one reply)', async (t) => {
+  useClock(t);
+  const k = await agentKit([[
+    { toolCalls: [{ name: 'ask', input: { question: 'Keep the 6:30 dinner?', options: ['Keep it', 'Move it'] } }, { name: 'sleep', input: {} }] },
+    say('Kept.'),
+  ]], { voice: { speechIn: ['m-hear'], hears: ['keep it'] } });
+  k.agent.send('We are late');
+  await until(() => k.agent.state.name === 'listening');
+  await hear(k, 'first-one');
+  await k.agent.idle();
+  assert.equal(k.requests.length, 2, 'a second request carries what they said');
+  assert.equal((await results(k, 'ask'))[0].data.content, 'The user said:');
+  assert.equal((await k.events(['out.speak'])).at(-1).data.text, 'Kept.');
+  assert.equal(k.agent.state.name, 'sleeping');
+});
+
 test('one half: a claim answers a wait as the words it is, and the line says so; and the voice mode holds on a tap with voice off, as one half too', async (t) => {
   useClock(t);
   const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] }], { voice: { mode: 'off', speechIn: ['m-hear'] }, halves: true });
@@ -759,7 +775,8 @@ for (const what of ['ask', 'wait']) {
 test('controls for speak then ask: with sleep in the reply, and with voice off, the question is up at once as before; speak alone still listens', async (t) => {
   useClock(t);
   const sleep = { name: 'sleep', input: {} };
-  const asleep = await agentKit([[{ toolCalls: [...speakAsk, sleep] }]], { voice: {} });
+  // Her question comes back answered, so the sleep beside it doesn't end her turn: a second step reads the answer and sleeps.
+  const asleep = await agentKit([[{ toolCalls: [...speakAsk, sleep] }, { toolCalls: [sleep] }]], { voice: {} });
   asleep.agent.send('Lunch?');
   await until(() => asleep.agent.state.name === 'listening');
   assert.equal((await asleep.events(['out.ask'])).length, 1);

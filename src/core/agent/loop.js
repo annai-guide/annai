@@ -191,6 +191,8 @@ export const KEPT_SENT_MAX = 360 * 1024;
 const AWAKE = /* en */ 'Not asleep: a call in this reply failed (its error is above), so your turn goes on.';
 /** How often a turn goes on past a sleep beside a failed call: a booking took Haiku two failed writes at most in the reruns (8 hand-overs). */
 const AWAKE_MAX = 2;
+/** A sleep in a reply whose question came back: the turn goes on, so what the user answered (or why it closed) is hers to answer (3 of Sonnet's 9 replies with an ask had a sleep in them; the answer was never read). */
+const ANSWERED = /* en */ 'Not asleep: your question came back answered or closed (its result is above), so your turn goes on.';
 /**
  * Whether a call's result keeps her turn going past its reply's sleep: it failed, and it isn't a sleep or a note to the other half, whose
  * failures have their own rules (an unsent tell_koe tells no one and is nudged; a tell_kokoro the user's Stop holds back stays held).
@@ -499,6 +501,8 @@ export class Agent {
   #leftOwing = new Map();
   /** The call running: whether it is her reply's last but sleep, and talks to the user (speak, ask, wait: saying or listening). */
   #running = /** @type {{ last: boolean, talks: boolean } | null} */ (null);
+  /** Her question was put to the user in the reply running and waited on (ask): what it gives back is the user's answer, which a sleep in that reply doesn't end the turn on. */
+  #asked = false;
   /** The turn was started by annai alone (#steps), and no line or act of the user's was written during it (#log). */
   #annais = false;
   #userIn = false;
@@ -2497,13 +2501,15 @@ export class Agent {
       let broke = false;
       /** This step's readings: two reads of one file in one reply read it once. @type {Map<string, Promise<import('./reading.js').Reading>>} */
       const reads = new Map();
+      this.#asked = false;
       for (const [i, c] of ordered.entries()) {
         const rest = ordered.slice(i + 1);
         // speak doesn't listen when a call after it does (spec §7.1, §10.7): right after it, her question with buttons ('ask': unless a tap cut her line, as it closes the tap's microphone) or a wait; for Koe (listenLast), any later wait or tell_kokoro.
         const next = rest[0]?.name;
         const more = next === 'ask' ? 'ask' : next === 'wait' || (Boolean(this.#half.listenLast) && rest.some((/** @type {any} */ x) => x.name === 'tell_kokoro' || x.name === 'wait'));
         const goesOn = broke && woke < AWAKE_MAX;
-        const awake = goesOn && c.name === 'sleep';
+        // A sleep that doesn't run says why: a call failed, or her question came back (the user's answer is in its result, which she reads first).
+        const awake = c.name === 'sleep' ? (goesOn ? AWAKE : this.#asked ? ANSWERED : '') : '';
         // Held only while her turn goes on: a held note her sleep then ended reached no one.
         const unsent = broke && c.name === 'tell_koe' && (!sleeping || goesOn);
         this.#running = { last: !ordered.slice(i + 1).some((/** @type {any} */ x) => x.name !== 'sleep'), talks: TALKS.includes(c.name) };
@@ -2513,7 +2519,7 @@ export class Agent {
         if (output.endTurn) endTurn = this.#wentToSleep = true;
         if (stuck.see(c.name, c.input, output.content)) stop = true;
       }
-      const asleep = sleeping && !(broke && woke < AWAKE_MAX);
+      const asleep = sleeping && !this.#asked && !(broke && woke < AWAKE_MAX);
       if (sleeping && broke) woke++;
       if (asleep) this.#facts.slept = true;
       if (asleep && calls.some((/** @type {any} */ c) => ['speak', 'show', 'ask'].includes(c.name))) this.#facts.closed = true; // sleep alone, or with a note told already, leaves the window open
@@ -2827,8 +2833,8 @@ export class Agent {
   /**
    * Runs one tool call and records it: tool.call, then tool.result with any photo or document it
    * returned kept as blobs the event names (spec §4.9).
-   * @param {any} c @param {LoopTool[]} tools @param {{ wakeId: string, signal: AbortSignal, model: any, sleeping: boolean, providerOff?: string[], more?: boolean | 'ask', last?: boolean, live?: boolean, watched?: boolean, reads?: Map<string, Promise<import('./reading.js').Reading>>, awake?: boolean, unsent?: boolean }} o
-   *   awake: a sleep after a call of its reply failed, which doesn't run; unsent: a tell_koe after one, which isn't sent
+   * @param {any} c @param {LoopTool[]} tools @param {{ wakeId: string, signal: AbortSignal, model: any, sleeping: boolean, providerOff?: string[], more?: boolean | 'ask', last?: boolean, live?: boolean, watched?: boolean, reads?: Map<string, Promise<import('./reading.js').Reading>>, awake?: string, unsent?: boolean }} o
+   *   awake: a sleep that doesn't run, with the words that say why (a call of its reply failed, or her question came back); unsent: a tell_koe after a failed call, which isn't sent
    */
   async #runCall(c, tools, o) {
     const input = typeof c.input === 'object' && c.input !== null ? c.input : {};
@@ -2851,7 +2857,7 @@ export class Agent {
     else if (gated) output = { content: gated.content, ...(gated.isError ? { isError: true } : {}) };
     else if (!tool) output = { content: /* en */ `Error: there is no tool called ${c.name}, or it is switched off.`, isError: true };
     else if (typeof c.input !== 'object' || c.input === null) output = { content: /* en */ `Error: the input for ${c.name} wasn't valid JSON.`, isError: true };
-    else if (o.awake) output = { content: AWAKE };
+    else if (o.awake) output = { content: o.awake };
     else if (o.unsent) output = { content: UNSENT, isError: true };
     else {
       const scope = this.scope;
@@ -3162,6 +3168,7 @@ export class Agent {
           await this.#log({ type: 'out.ask', actor: 'shiori', data: { id: call.id, wake: call.wake, question: ok.question, options: ok.options } });
           if (call.live) return 'Shown; their tap comes as their next turn.';
           if (aloud && call.signal.aborted) return { content: STOPPED, isError: true };
+          this.#asked = true; // what comes back is hers to read: a sleep in this reply doesn't end the turn before she has
           if (aloud) return this.#askAloud(i.question, call);
           const got = await this.#waitFor(call, 'ask', 0);
           if (got.stopped) return { content: STOPPED, isError: true };
