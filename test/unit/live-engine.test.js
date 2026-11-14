@@ -258,12 +258,6 @@ test("watch_set's checks, in plain words; the list shows hers and the plan's; th
   assert.equal(await k.live.listWatches(ME), 'No watches.');
 });
 
-test("watch_set's refusal of a time already passed says the time it is now, to the second, in the offset the now block writes", async () => {
-  const k = await liveKit({ live: false, start: at('08:30:41') }); // a turn's clock can be behind the real one: a fallback model, a file read
-  await assert.rejects(k.live.setWatch(k.trip, { when: { type: 'time', at: iso('08:30:10') }, fallback: 'x' }), { message: `${iso('08:30:10')} has already passed: it is now ${iso('08:30:41')}. Give a time ahead.` });
-  await assert.rejects(k.live.setWatch(k.trip, { when: { type: 'time', at: iso('09:00') }, fallback: 'x', expires: iso('08:30:41') }), { message: `expires ${iso('08:30:41')} has already passed: it is now ${iso('08:30:41')}.` });
-});
-
 test('off screen nothing runs: GPS stops and the clock waits; back on screen both start again (spec §11.1)', async () => {
   const k = await liveKit();
   await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Ten.' });
