@@ -62,7 +62,7 @@ tabs go only after the user has said, on a phone, that the timeline is right. St
 
 | Part | State | Where it stands | The user's words or pick |
 |---|---|---|---|
-| **`nearby` waits for Overpass, says "busy" at once; VK's server behind a switch, off.** Closes the deferred entry "Online, `nearby` rarely gets OpenStreetMap's places". | built; paused on the Overpass probe | Branch nearby-wait 1a74715f. The probe of the public Overpass servers (24 hourly runs) ends about 16:53 PST 2026-11-14. Next: set `OVERPASS_MS` (src/plugins/places/index.js:39) and `OVERPASS` (src/core/pack/osm.js:15) from all 24 runs; its new ja and zh lines to the style guides; review with second opinions; merge; release. | "Allow light probes (Recommended)"; "VK behind a switch, off" |
+| **`nearby` waits for Overpass, says "busy" at once; VK's server behind a switch, off.** Closes the deferred entry "Online, `nearby` rarely gets OpenStreetMap's places". | built; finishing (fix round 1) | Branch nearby-wait 1a74715f. The probe of the public Overpass servers finished its 24 hourly runs (2026-11-14). Next: the two values (`OVERPASS_MS`, src/plugins/places/index.js:39; `OVERPASS`, src/core/pack/osm.js:15) set from all 24 runs, today's main merged in, its ja and zh lines to the style guides (running); review with second opinions; merge; release. | "Allow light probes (Recommended)"; "VK behind a switch, off" |
 
 ### An answered question card always gets a reply
 
@@ -71,7 +71,7 @@ records when a turn ends, so the reader stops guessing from her words.
 
 | Part | State | Where it stands | The user's words or pick |
 |---|---|---|---|
-| **Route A, step 1:** take out the two faulted parts (the wake give-back, the cut-ask exemption); the rare shapes left (F2 and its typed-line sibling; a cut turn past the two-wake cap) recorded as deferred to step 2. | merged | Main d84b9e39 (2026-11-14): e17900f5, the docs rounds a1eb1be9 and 0d6ed7a5. Re-review: merge as is; the second opinion's two shapes reproduced and deferred. Next: the release gate (running), then release. | "A: remove 2 parts, then record (Recommended)" (2026-11-14) |
+| **Route A, step 1:** take out the two faulted parts (the wake give-back, the cut-ask exemption); the rare shapes left (F2 and its typed-line sibling; a cut turn past the two-wake cap) recorded as deferred to step 2. | merged; release gate green | Main d84b9e39 (2026-11-14): e17900f5, the docs rounds a1eb1be9 and 0d6ed7a5. Gate on main 04cfade0: check exit 0; full e2e 1862 passed, 21 skipped, 1 flaky (the known details-menu WebKit test), 0 failed; privacy check 0 of 23 commits. Next: the release (the user's command), smoke, CI. | "A: remove 2 parts, then record (Recommended)" (2026-11-14) |
 | **Route A, step 2: the loop records a turn's end** (one event type, one key); the reader reads it instead of words; `#settled` and the guessing rules go; the Deferred entries of step 1 close, each shape a passing test. | building | Plan revised after its spec check (2026-11-14) with the user's answers; branch turn-end from main d84b9e39, beside stage 7. Next: the build's report, review with second opinions, merge, release; the user's phone check after. Writes the approved old-log limitation and closes step 1's Deferred entries when it lands. | "A: remove 2 parts, then record (Recommended)"; old logs: "Treat as finished (Recommended)", then "Approve the wider entry (Recommended)" (the entry names each effect, once per update); Koe: "Accept, widen the entry (Recommended)" (2026-11-14) |
 
 ### Shiori answers in the traveller's language
