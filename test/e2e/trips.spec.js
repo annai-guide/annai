@@ -499,32 +499,44 @@ test("review m2: a question's history entry left from before a reload is never t
   await expect(page.getByRole('heading', { level: 1, name: 'Big Sur' })).toBeVisible();
 });
 
-// The user, 2026-10-21: "the trip you had open". A fresh start at "/" reopens the trip's screen that was open.
-test('a fresh start reopens the trip screen that was open, and shows Trips when that trip is gone', async ({ page }) => {
-  await openApp(page);
-  await startTrip(page, 'Big Sur');
-  const id = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
-  await page.evaluate(async () => { // the welcome has been seen on this device
+/**
+ * The welcome has been seen on this device, and the open conversation (activeTrip) was last talked in `ago` ms before now, as its log's write stamps
+ * its record. @param {import('@playwright/test').Page} page @param {string} id @param {number} ago
+ */
+async function talkedAgo(page, id, ago) {
+  await page.evaluate(async ({ id, ago }) => {
     const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
     const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
     const { updateAppSettings } = await import(/** @type {string} */ ('/src/core/settings.js'));
     const store = await createIdbStore();
-    await updateAppSettings(new Workspace(store), { welcomedAt: Date.now() });
+    await updateAppSettings(new Workspace(store), { welcomedAt: Date.now(), activeTrip: id });
+    await store.tx(['scopes'], 'readwrite', async (/** @type {any} */ t) => t.putScope({ ...(await t.getScope(id)), talked: Date.now() - ago }));
     store.close();
-  });
+  }, { id, ago });
+}
+
+// The user, "Last chat if recent, else timeline (Recommended)" (timeline stage 7): a plain start opens the conversation last talked in under 12 hours ago,
+// or one happening; else home. Never Details, a file or Settings.
+test('a plain start opens the conversation talked in under 12 hours ago, else Trips; a link is respected', async ({ page }) => {
+  await openApp(page);
+  const id = await startNamed(page, 'Big Sur');
   await page.getByRole('link', { name: 'Itinerary', exact: true }).first().click();
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('annai.resume'))).toContain('/plan"'); // drawn at the trip's own address, and noted
+  await talkedAgo(page, id, 60 * 60_000);
   await page.goto('/'); // a new launch from the Home Screen icon
-  await expect.poll(() => page.url()).toMatch(/\/plan$/);
+  await expect.poll(() => page.url()).toMatch(new RegExp(`#/trip/${id}/talk$`));
+  await expect(page.locator('.talk-name')).toHaveText('Big Sur');
   // A link that points at a screen is respected.
   await page.goto('/#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
-  // The trip's own page, then gone: removed, with the screen still noted as it was.
+  // Talked in 12 hours and more ago: home.
+  await talkedAgo(page, id, 12 * 60 * 60_000 + 60_000);
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  expect(page.url()).not.toContain('/trip/');
+  // Gone: removed, while it was the one open and talked in a minute ago.
   await page.goto(`/#/trip/${id}`);
   await page.getByRole('button', { name: 'Remove', exact: true }).click();
   await page.getByRole('dialog', { name: 'Big Sur' }).getByRole('button', { name: 'Remove' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
-  await page.evaluate((id) => localStorage.setItem('annai.resume', JSON.stringify({ hash: `#/trip/${id}/plan`, trip: id })), id);
   await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
@@ -1113,15 +1125,7 @@ test("Remove trip from a fresh start puts Trips at the first entry, with nothing
 test("Remove trip after a start that resumed into the trip's conversation puts Trips at the first entry", async ({ page }) => {
   await openApp(page);
   const id = await startNamed(page, 'Kyoto');
-  await page.evaluate(async (id) => { // the welcome has been seen, and the conversation is the screen that was open
-    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
-    const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
-    const { updateAppSettings } = await import(/** @type {string} */ ('/src/core/settings.js'));
-    const store = await createIdbStore();
-    await updateAppSettings(new Workspace(store), { welcomedAt: Date.now() });
-    store.close();
-    localStorage.setItem('annai.resume', JSON.stringify({ hash: `#/trip/${id}/talk`, trip: id }));
-  }, id);
+  await talkedAgo(page, id, 60_000); // the welcome has been seen, and the conversation was talked in a minute ago
   await page.goto('/'); // a new launch: it resumes into the conversation, the first entry
   await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}/talk`);
   await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
@@ -1226,15 +1230,7 @@ test("two Forwards from Trips inside a trip's draw, over a removed trip's entry 
 test("Forward after Remove trip from a resumed start does nothing, twice", async ({ page }) => {
   await openApp(page);
   const id = await startNamed(page, 'Kyoto');
-  await page.evaluate(async (id) => {
-    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
-    const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
-    const { updateAppSettings } = await import(/** @type {string} */ ('/src/core/settings.js'));
-    const store = await createIdbStore();
-    await updateAppSettings(new Workspace(store), { welcomedAt: Date.now() });
-    store.close();
-    localStorage.setItem('annai.resume', JSON.stringify({ hash: `#/trip/${id}/talk`, trip: id }));
-  }, id);
+  await talkedAgo(page, id, 60_000);
   await page.goto('/');
   await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}/talk`);
   await page.getByRole('link', { name: 'Trips', exact: true }).first().click();

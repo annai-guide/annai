@@ -38,7 +38,6 @@ import { keepRows } from './keep-rows.js';
 import { isStandalone } from './platform.js';
 import { dockHidesWhileTyping } from './dock-hides.js';
 import { keepAtEnd } from './at-end.js';
-import { noteScreen } from './resume.js';
 import { followDrive, followPlay, isField, drivingTrip } from './today.js';
 import { renderExt, renderPluginPage, renderTripTab } from './screens/ext.js';
 import { renderMcp } from './screens/mcp.js';
@@ -396,7 +395,6 @@ export function startShell(root, core) {
     // Where Driving's ← goes: the screen it was entered from.
     if (route.name === 'drive' && shown.name && shown.name !== 'drive') /** @type {any} */ (ctx).drivingFrom = shown.hash || '#/trips';
     shown = { tab: on?.getAttribute('href') ?? null, hash: location.hash, name: route.name, entry };
-    noteScreen(location.hash);
     // The welcome is a page of its own: the install warning waits for its last step, which says the same.
     document.body.classList.toggle('welcoming', route.name === 'welcome');
     document.body.classList.toggle('home', route.name === 'trips');

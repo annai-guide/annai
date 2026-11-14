@@ -1,5 +1,5 @@
 {
-  "build": "ebb452279fa3",
+  "build": "bf791b9866c7",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -27,7 +27,7 @@
     "/skills/replanning/SKILL.md": "730751c952dd",
     "/src/app/boot.js": "58bba933ce37",
     "/src/app/claim.js": "fc9e510c391d",
-    "/src/app/main.js": "6fbadea8c959",
+    "/src/app/main.js": "c9ea90954344",
     "/src/app/version.js": "07a31129e186",
     "/src/core/after/journey.js": "4e1443181825",
     "/src/core/after/recap.js": "08ae74e5c9c7",
@@ -243,7 +243,7 @@
     "/src/ui/provider-setup.js": "79949794e317",
     "/src/ui/plugin-updates.js": "bbb5cc3cf0f7",
     "/src/ui/push.js": "5cd1775505bf",
-    "/src/ui/resume.js": "1ffd3088ab7f",
+    "/src/ui/resume.js": "3daeff3debff",
     "/src/ui/router.js": "07db660993d6",
     "/src/ui/save.js": "513ac16dd31a",
     "/src/ui/settings-form.js": "ac6299f98cf8",
@@ -282,7 +282,7 @@
     "/src/ui/screens/voice.js": "34b7d4022acb",
     "/src/ui/screens/welcome.js": "f1b00d351dd3",
     "/src/ui/search-panel.js": "20a5f0a56f48",
-    "/src/ui/shell.js": "640f3a675c47",
+    "/src/ui/shell.js": "06a4823108bc",
     "/src/ui/slots.js": "4fee1465e94c",
     "/src/ui/stamps.js": "9c0f976db8fa",
     "/src/ui/shiori.css": "264a5d705b6e",

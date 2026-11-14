@@ -230,7 +230,7 @@ async function boot() {
   // (a shared trip, a share, the sign-in coming back) is never interrupted. Decided before the first draw.
   if (await shouldWelcome(ws, location).catch(() => false)) history.replaceState(history.state, '', '#/welcome');
   else {
-    // Otherwise a plain start opens the trip's screen that was open, unless that trip is gone.
+    // Otherwise a plain start opens the conversation that was open, if it was talked in under 12 hours ago or is happening; else home.
     const back = await screenToResume({ ws, store }, location).catch(() => null);
     if (back) history.replaceState(history.state, '', back);
   }
