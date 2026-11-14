@@ -15,6 +15,8 @@ import { AllFailedError, failedText } from '../llm/fallback.js';
 import { ProviderError, explain } from '../llm/contract.js';
 import { t } from '../l10n.js';
 import { sentences } from '../intl.js';
+import { summaryLanguage } from '../agent/compaction.js';
+import { languageSettings } from '../languages.js';
 
 /**
  * The recap (spec §13): the utility model writes /trip/recap.md from the trip as it went (the
@@ -44,7 +46,7 @@ export const RECAP_SYSTEM = /* en */ 'You write the recap of a trip for the trav
   + 'then "## Highlights" with three to five short bullet points. Be warm, concrete and brief, about 150 words a day. '
   + 'Use only what the record says, and leave out what you don\'t know rather than guess. '
   + 'Never write coordinates: name a stop that has no name by what the record says around it, or call it a stop. Shiori may read the recap aloud, so write sentences that are easy to say. '
-  + 'Write in the traveler\'s language (their profile says which). Reply with the recap only.';
+  + 'Write in the language the record names at its start. Reply with the recap only.';
 
 /**
  * What goes to the model, as the Recap screen says it (spec §11.7: it must be true). Photos go as Shiori's
@@ -81,9 +83,10 @@ export function recapPhotos(j, max = RECAP_PHOTOS) {
  * The recap's input in words: the trip, its days, the way (stays and moves), stamps, the
  * plan, what was said and shown, photos, notes and memory. At most RECAP_CHARS: the words are thinned
  * evenly until it fits, then it is cut.
- * @param {Journey} j @param {{ profile?: string, memory?: string, notes?: { path: string, text: string }[] }} [more]
+ * language: what it is written in, as summaryLanguage names it.
+ * @param {Journey} j @param {{ profile?: string, memory?: string, notes?: { path: string, text: string }[], language?: string }} [more]
  */
-export function recapText(j, { profile = '', memory = '', notes = [] } = {}) {
+export function recapText(j, { profile = '', memory = '', notes = [], language = '' } = {}) {
   const day = (/** @type {number} */ t) => String(dayIn(t, j.tz));
   const time = (/** @type {number} */ t) => String(timeIn(t, j.tz));
   const info = j.info ?? {};
@@ -92,6 +95,7 @@ export function recapText(j, { profile = '', memory = '', notes = [] } = {}) {
   const head = /* en */ [
     `# ${j.title}`,
     [info.start ? `Dates: ${info.start}${info.end ? ` to ${info.end}` : ''}.` : '', `Times are local, in ${j.tz}.`].filter(Boolean).join(' '),
+    language ? `Write the recap in ${language}.` : '',
     party.length ? `Travel party: ${party.map((/** @type {any} */ p) => [p.name, typeof p.age === 'number' ? `age ${p.age}` : '', p.driver ? 'driver' : '', p.interests?.length ? `likes ${p.interests.join(', ')}` : ''].filter(Boolean).join(', ')).join('; ')}.` : '',
     profile.trim() ? `\n## The traveler's profile\n${cut(profile.trim(), 2000)}` : '',
   ].filter(Boolean).join('\n');
@@ -186,7 +190,10 @@ export async function writeRecap({ store, ws, llm, trip, codec = null, namer, si
   for (const f of await ws.list(trip, '/notes/')) {
     if (/\.(md|txt)$/i.test(f.path)) notes.push({ path: `/trip${f.path}`, text: (await ws.readText(trip, f.path).catch(() => '')) ?? '' });
   }
-  const text = recapText(j, { profile, memory, notes });
+  const app = await readAppSettings(ws);
+  // The language a summary is written in (the Languages setting, then the user's own words), as compaction's is.
+  const language = summaryLanguage(j.entries.flatMap((e) => (e.kind === 'said' ? [e.text] : [])), languageSettings(app));
+  const text = recapText(j, { profile, memory, notes, language });
   /** @type {import('../llm/contract.js').Part[]} */
   const parts = [{ type: 'text', text }];
   /** @type {{ hash?: string, bytes?: Uint8Array, type: string }[]} */
@@ -195,7 +202,6 @@ export async function writeRecap({ store, ws, llm, trip, codec = null, namer, si
     /** @type {import('../agent/refusals.js').Learned} */
     let images = {};
     for (const m of models) images = stricter(images, /** @type {any} */ (m).images ?? {});
-    const app = await readAppSettings(ws);
     const limits = requestLimits(photoSettings(app).request, images);
     const room = (app.shiori?.compaction?.maxRequestMiB ?? 8) * 2 ** 20 * PHOTO_SHARE;
     // The trip's own photos, read for the trip (reach.js).

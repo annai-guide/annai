@@ -40,6 +40,16 @@ test('ensureBaseScopes creates me and the system scopes once', async () => {
   assert.equal(await ws.readText(ME, '/memory.md'), '# Memory\n');
 });
 
+test("a new install's profile has no Language line: the Languages setting says which language she answers in (one question, one answer)", async () => {
+  const { ws } = setup();
+  await ensureBaseScopes(ws);
+  assert.equal(await ws.readText(ME, '/profile.md'), '# Profile\n\n- What to call me:\n- Units:\n- Preferences:\n');
+  // A profile that is there (an older install's, or one the user wrote) is theirs: nothing rewrites it.
+  await ws.write(ME, '/profile.md', '# Profile\n\n- Language: English\n', { author: 'user' });
+  await ensureBaseScopes(ws);
+  assert.equal(await ws.readText(ME, '/profile.md'), '# Profile\n\n- Language: English\n');
+});
+
 test('createTrip makes a scope, trip.json, trip memory and a scope.create event', async () => {
   const { store, ws } = setup();
   const id = await createTrip(ws, { title: '京都 in spring', start: '2027-04-03', end: '2027-04-10' });

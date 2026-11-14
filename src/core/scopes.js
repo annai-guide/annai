@@ -52,8 +52,9 @@ export function newId(prefix) {
 /** A draft's stored name until its first line names it (chats.js); the screens show it in theirs. */
 export const DRAFT_TITLE = /* en */ 'New conversation';
 
+/** A new install's profile: no Language line, as the Languages setting says which (spec §10.9). */
 /* en */
-const PROFILE = '# Profile\n\n- What to call me:\n- Language: English\n- Units:\n- Preferences:\n';
+const PROFILE = '# Profile\n\n- What to call me:\n- Units:\n- Preferences:\n';
 
 /**
  * A scope's title as the screens show it: "me" and the system scopes by their id, in the screens' language (the stored title is

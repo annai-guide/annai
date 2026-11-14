@@ -9,6 +9,8 @@ import { agentKit, fakeCodec } from './agent-kit.js';
 import { at, iso, LA, BIXBY, HEARST } from './live-kit.js';
 import { MORNING } from './after-kit.js';
 import { saveModel } from '../../src/core/llm/config.js';
+import { updateAppSettings } from '../../src/core/settings.js';
+import { ME } from '../../src/core/scopes.js';
 
 const RECAP = '# Big Sur, Thanksgiving\n\n## Friday, November 27\n\nBixby Bridge in the morning sun.';
 
@@ -90,6 +92,22 @@ test('the utility model writes /trip/recap.md, with request copies of the photos
   assert.equal(entry.refs.length, 6); // the copies, named (§4.9)
   const [turn] = (await k.events(['model.turn'])).filter((e) => e.data.tag === 'recap');
   assert.ok(turn, 'the call is in the trace');
+});
+
+// It was told "their profile says which", and a new install's profile said "Language: English", whatever the user speaks; the profile
+// has no Language line now. The language comes from the Languages setting, by the rule a summary's takes (compaction's summaryLanguage).
+test('the recap is written in the language the Languages setting and the user\'s own words give, not a profile line', async () => {
+  const k = await aTrip([{ text: RECAP }, { text: RECAP }]);
+  await k.ws.write(ME, '/profile.md', '# Profile\n\n- Language: English\n', { author: 'user' });
+  await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'] } });
+  await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: '明日は何時に出発する？' } }, at('10:30'));
+  await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip });
+  assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language the user wrote in last\.$/m);
+  await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'], answer: 'en' } });
+  await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip });
+  assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in English, the language Shiori answers in\.$/m);
+  assert.doesNotMatch(RECAP_SYSTEM, /profile/);
+  assert.match(RECAP_SYSTEM, /Write in the language the record names at its start\./);
 });
 
 test('no photos go to a model that takes none; a model that answers nothing, or none at all, is a plain error and nothing is written', async () => {
