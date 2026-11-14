@@ -44,7 +44,7 @@ test('backups go to a Forgejo server, only what changed is sent, and a wiped pho
     await page.getByLabel('Content').fill('Bixby Bridge, 1932');
     await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByText('Saved', { exact: true })).toBeVisible();
-    await page.getByRole('link', { name: 'Back to trip', exact: true }).click();
+    await page.getByRole('link', { name: 'Details', exact: true }).click();
     await page.getByLabel('Add photos or files').setInputFiles({ name: 'gate.png', mimeType: 'image/png', buffer: PNG });
     await expect(page.getByRole('link', { name: /\/files\/gate\.(webp|jpg)/ })).toBeVisible();
     await addForgejo(page, fj);
@@ -107,7 +107,7 @@ test('backups go to a Forgejo server, only what changed is sent, and a wiped pho
     await allFiles(page);
     await page.getByRole('link', { name: /bixby\.md/ }).click();
     await expect(page.getByLabel('Content')).toHaveValue('Bixby Bridge, 1932, at dawn');
-    await page.getByRole('link', { name: 'Back to trip', exact: true }).click();
+    await page.getByRole('link', { name: 'Details', exact: true }).click();
     await page.getByRole('link', { name: /\/files\/gate\.(webp|jpg)/ }).click();
     await expect(page.getByRole('img', { name: /\/files\/gate\.(webp|jpg)/ })).toBeVisible();
 

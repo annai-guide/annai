@@ -30,7 +30,7 @@ Trips	screen	旅	旅行	旅行	src/ui/shell.js:59	The design's own example (§7)
 Updates	screen	アップデート	更新	更新	src/ui/screens/updates.js:50	As Apple's guide says 「iOSをアップデートする」 / 更新 iOS. ja 更新 is also understood, but アップデート is what phones say for a new version.
 Voice	screen	音声	语音	語音	src/ui/screens/voice.js:133	Settings → Voice: how she speaks and hears you. ja 音声 (as in 音声入力, 音声設定) keeps 声 for a voice she speaks with (see voice) and for the welcome's Koe (声). zh 语音 is the settings word (语音设置); 声音 is "sound" or a voice (see voice).
 Welcome	screen	ようこそ	欢迎	歡迎	src/ui/screens/welcome.js:19	The welcome; "Welcome to annai" → annai へようこそ / 欢迎使用 annai, and "Show the welcome again" → ようこそ画面をもう一度表示 / 再次显示欢迎页. It is where 声 and 心 are explained (see Koe, Kokoro).
-Archive	thing	アーカイブ	归档	封存	src/ui/screens/trip.js:50	Archive trip, Archived trips, Unarchive (アーカイブを解除 / 取消归档). Standard in both (Gmail's words). zh-Hant 封存, Gmail's word in Taiwan (Unarchive → 取消封存).
+Archive	thing	アーカイブ	归档	封存	src/ui/screens/trip.js:50	Archive, Archived (N), Unarchive (アーカイブを解除 / 取消归档). Standard in both (Gmail's words). zh-Hant 封存, Gmail's word in Taiwan (Unarchive → 取消封存).
 backup place	thing	バックアップ先	备份位置	備份位置	src/ui/screens/backups.js:57	Where automatic backups go (GitHub, S3…). ja バックアップ先 (先 as in 保存先); zh 备份位置 (备份目标 is technical).
 card	thing	カード	卡片	卡片	src/ui/screens/shiori.js:141	annai's cards at the top of a screen, and Shiori's cards. Standard in both.
 catalog	thing	カタログ	目录	目錄	src/ui/screens/experimental.js:29	annai's catalog of plugins (the Add screen). ja カタログ. zh 目录 is literal but also means a table of contents; 插件库 or 扩展库 say "a library of add-ons". For you: zh 目录 or 插件库.
@@ -65,7 +65,7 @@ Summarize now	thing	今すぐ要約	立即总结	立即總結	src/ui/screens/tal
 Tidy up	thing	整理	整理	整理	src/ui/screens/talk.js:385	Was the Conversation's menu's name until 2026-11-10 (now "Conversation menu": Details, Summarize now, Start fresh); kept for Housekeeping's 整理. ja 整理 is short for a button; 片付け is tidying a room. zh 整理 likewise.
 tool switches	thing	ツールのオン/オフ	工具开关	工具開關	src/ui/screens/tools.js:88	On Tools and the Trace. ja オン/オフ is how iOS writes a switch; スイッチ alone is a hardware switch. zh 开关 is the settings word.
 transcription	thing	文字起こし	语音转文字	語音轉文字	src/ui/screens/add.js:28	An ability and its models (Voices and transcription). ja 文字起こし is the everyday word; zh 语音转文字 is plain where 转写 / 转录 are technical.
-trip	thing	旅	旅行	旅行	src/ui/screens/trips.js:67	Follows Trips: "Start a trip" → 旅を始める / 开始旅行, "Trip name" → 旅の名前 / 旅行名称, "Archived trips" → アーカイブした旅 / 已归档的旅行. If ja chooses 旅行 for Trips, this follows.
+trip	thing	旅	旅行	旅行	src/ui/screens/trips.js:67	Follows Trips: "Start a trip" → 旅を始める / 开始旅行, "Trip name" → 旅の名前 / 旅行名称. If ja chooses 旅行 for Trips, this follows.
 Utility	thing	補助	辅助	輔助	src/ui/screens/models.js:15	Summaries and small jobs. ja 補助 and zh 辅助 (helper) say what it is better than ユーティリティ / 实用.
 voice	thing	声	声音	聲音	src/ui/screens/add.js:28	A voice she speaks with (Add a voice, Browser voice, Shiori's voice). The phones' own word for a speech voice: iOS's 読み上げコンテンツ → 声 / 朗读内容 → 声音 (from memory, not confirmed). The screen is 音声 / 语音 (see Voice). ja 声 is also what the welcome says Koe means; that suits her.
 wake	thing	起動	唤醒	喚醒	src/ui/screens/shiori.js:142	One time she acts (Wakes per hour, Steps per wake, "Shiori woke: …"). ja 起動 is what a program does; 目覚め is a person waking, warmer but odd in a count (1時間あたりの目覚め). zh 唤醒 fits both.

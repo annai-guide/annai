@@ -49,7 +49,7 @@ test('automatic backups go to GitHub, only what changed is sent, and a wiped pho
     await openApp(page);
     const bigSur = await startTrip(page, 'Big Sur', { start: '2026-12-01', end: '2026-12-05' }); // dated: a card, which says when it was backed up
     await writeNote(page, '/notes/bixby.md', 'Bixby Bridge, 1932');
-    await page.getByRole('link', { name: 'Back to trip', exact: true }).click();
+    await page.getByRole('link', { name: 'Details', exact: true }).click();
     await page.getByLabel('Add photos or files').setInputFiles({ name: 'gate.png', mimeType: 'image/png', buffer: PNG });
     await expect(page.getByRole('link', { name: /\/files\/gate\.(webp|jpg)/ })).toBeVisible();
     await addGitHub(page, gh);
@@ -106,7 +106,7 @@ test('automatic backups go to GitHub, only what changed is sent, and a wiped pho
     await page.getByRole('link', { name: /bixby\.md/ }).click();
     await expect(page.getByLabel('Content')).toHaveValue('Bixby Bridge, 1932, at dawn');
     await expect(page.getByRole('button', { name: 'Restore this version' })).toHaveCount(2);
-    await page.getByRole('link', { name: 'Back to trip', exact: true }).click();
+    await page.getByRole('link', { name: 'Details', exact: true }).click();
     await page.getByRole('link', { name: /\/files\/gate\.(webp|jpg)/ }).click();
     await expect(page.getByRole('img', { name: /\/files\/gate\.(webp|jpg)/ })).toBeVisible();
 

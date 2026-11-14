@@ -1646,9 +1646,8 @@ ata72m	ok	Trace	记录	src/ui/screens/ext.js:36
 1y7aybz	ok	This page couldn't be drawn; the plugin's error is in {0}.	无法绘制此页面；插件的错误在{0}中。	src/ui/screens/ext.js:37	{0} = trace
 12mubvb	ok	Now	此刻	src/ui/screens/ext.js:44	
 17o4v1i	ok	Conversation	对话	src/ui/screens/file.js:25	
-1jpjwmm	ok	Back to trip	返回旅行	src/ui/screens/file.js:25	
 1r8pi2g	ok	Recap	回顾	src/ui/screens/file.js:25	
-43f6md	ok	Details	详情	src/ui/screens/file.js:25	Note: the crumb back to a plan item's details screen; also the crumb back to a file's or booking's details screen, from the raw file screen.
+43f6md	ok	Details	详情	src/ui/screens/file.js:25	Note: the crumb back to a plan item's details screen; also the crumb back to a file's or booking's details screen, from the raw file screen; and the crumb back to a conversation's Details (the screen talk's Details button opens), from its raw file screen.
 drvc96	draft	Deleting this file also deletes {0}.	删除此文件也会删除{0}。	src/ui/screens/file.js:67	{0} = list(also); Note: on the raw file screen of a file the user gave, above Delete file; {0} is a list ("2 bookings and 1 plan item").
 1jlj988	ok	Delete file	删除文件	src/ui/screens/file.js:68	
 mnzt43	draft	This file was deleted for good.	此文件已永久删除。	src/ui/screens/file.js:91	Note: a deleted file's raw screen when Delete freed it, so no version is left to bring back.
@@ -1717,8 +1716,8 @@ j0c8lo	ok	Imported plugins arrive switched off. Turn on the ones you trust in Pl
 o7fto4	ok	Import	导入	src/ui/screens/import.js:254	
 18d2xm5	ok	A backup of everything exported {0} from annai {1}.	全部内容的备份，{0}从 annai {1} 导出。	src/ui/screens/import.js:257	{0} = ago; {1} = app
 6fr2dj	ok	A backup of everything exported {0} from annai {1}, encrypted.	全部内容的备份，{0}从 annai {1} 导出，已加密。	src/ui/screens/import.js:257	{0} = ago; {1} = app
-1uhzqqs	ok	A trip exported {0} from annai {1}, encrypted.	一个旅行，{0}从 annai {1} 导出，已加密。	src/ui/screens/import.js:258	{0} = ago; {1} = app
-1ut7u54	ok	A trip exported {0} from annai {1}.	一个旅行，{0}从 annai {1} 导出。	src/ui/screens/import.js:258	{0} = ago; {1} = app
+12hmses	draft	Exported {0} from annai {1}, encrypted.	{0}从 annai {1} 导出，已加密。	src/ui/screens/import.js:258	{0} = ago; {1} = app; English was: A trip exported {0} from annai {1}, encrypted.
+3kii3s	draft	Exported {0} from annai {1}.	{0}从 annai {1} 导出。	src/ui/screens/import.js:258	{0} = ago; {1} = app; English was: A trip exported {0} from annai {1}.
 7ns57f	ok	There are no trips in this file.	此文件中没有旅行。	src/ui/screens/import.js:261	
 1y35b48	ok	Restarting…	正在重启…	src/ui/screens/import.js:277	
 5wjjb4	ok	Restart annai to use the imported settings and plugins.	重启 annai 以使用导入的设置和插件。	src/ui/screens/import.js:282	
@@ -1910,7 +1909,7 @@ foy2yl	ok	Add to calendar	添加到日历	src/ui/screens/plan.js:87
 3rvc64#other	draft	# itinerary files	# 个行程文件	src/ui/screens/plan.js:90	plural; # = plan.broken; English: "# itinerary file" (one), "# itinerary files" (other)
 1rs1ez2	ok	Not on a day	不限日期	src/ui/screens/plan.js:96	Note: a heading above the day tabs, for bookings with no day of their own (an open ticket, a pass for the whole trip).
 pxfr8q	ok	Days	日期	src/ui/screens/plan.js:99	
-86s9x3	draft	No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.	还没有行程。请 Shiori 和你一起规划，或把日历文件（.ics）添加到旅行中。	src/ui/screens/plan.js:102	English was: No plan yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.; Note: "Ask" here is asking Shiori, not the permission setting's Ask.
+wk7g53	draft	No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) in Details.	还没有行程。请 Shiori 和你一起规划，或在“详情”中添加日历文件（.ics）。	src/ui/screens/plan.js:102	English was: No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.; Note: "Ask" here is asking Shiori, not the permission setting's Ask.
 1uxsg1z	ok	{0} couldn't be read. Open the trip's files to fix them.	{0}无法读取。请打开旅行的文件进行修复。	src/ui/screens/plan.js:103	{0} = unread
 sdcje2	ok	{0} couldn't be read. Open the trip's files to fix it.	{0}无法读取。请打开旅行的文件进行修复。	src/ui/screens/plan.js:103	{0} = unread
 1gmgpvl	ok	Check this	请核对	src/ui/screens/plan.js:159	
@@ -2341,7 +2340,7 @@ frbimx	ok	A new simulation	新的模拟	src/ui/screens/simulate.js:156
 1i1dlpq	ok	A recorded or made-up GPS track, and its clock, run through GPS and Shiori as on a real trip, in a new trip of its own: then replay it and recap it.	把一条记录的或编出的 GPS 轨迹及其时钟，像真实旅行一样交给 GPS 和 Shiori 运行，在一个专门的新旅行中进行：之后可以回放和回顾。	src/ui/screens/simulate.js:157	
 g9ytfz	ok	Shiori wakes with your own models, as she would with GPS on: the sample wakes her about 24 times. A scripted model (Settings → Models) makes it free.	Shiori 会像开着 GPS 时一样用你自己的模型唤醒：示例大约会唤醒她 24 次。用脚本模型（设置 → 模型）则免费。	src/ui/screens/simulate.js:159	
 1ucm1rb	ok	No model is set up, so Shiori can't answer: annai shows the reminders itself.	还没有设置模型，所以 Shiori 无法回答：annai 会自己显示提醒。	src/ui/screens/simulate.js:160	
-1ussy6i	ok	Trip	旅行	src/ui/screens/simulate.js:161	Note: The heading over a trip's files that are in no folder.
+1ussy6i	ok	Trip	旅行	src/ui/screens/simulate.js:161	Note: The field that picks a trip on the Simulate screen.
 amwn2j	ok	The track	轨迹	src/ui/screens/simulate.js:161	
 ckmlfc	ok	Itinerary file	行程文件	src/ui/screens/simulate.js:161	
 nicd80	ok	That file isn't an itinerary annai can read: it needs to be JSON like the Big Sur sample (a start, a route of places, and times).	该文件不是 annai 能读取的行程：它需要是像大苏尔示例那样的 JSON（起点、地点路线和时间）。	src/ui/screens/simulate.js:175	
@@ -2571,7 +2570,7 @@ tqj8t3	ok	(no longer stored)	（已不再保存）	src/ui/screens/trace.js:335
 jz8mjk	ok	Unarchive	取消归档	src/ui/screens/trip.js:55	
 qeuftp	ok	Tap again to archive	再点一次以归档	src/ui/screens/trip.js:57	
 w0suw5	draft	Archive	归档	src/ui/screens/trip.js:57	Note: 归档 as Archive trip (归档旅行) and Unarchive (取消归档).
-vr6m26	ok	Give the trip a name.	请为旅行命名。	src/ui/screens/trip.js:96	
+1orcmjh	draft	Give it a name.	请输入名称。	src/ui/screens/trip.js:96	English was: Give the trip a name.
 1cageta	draft	Saved.	已保存。	src/ui/screens/trip.js:109	
 cymegm	draft	The trip can't end before it starts.	旅行的结束日期不能早于开始日期。	src/ui/screens/trip.js:113	
 1yii6kb	ok	Ends	结束日期	src/ui/screens/trip.js:120	
@@ -2600,7 +2599,7 @@ ecy82r	ok	Add a file	添加文件	src/ui/screens/trip.js:345
 aoc0k0#other	draft	{0}: # chats	{0}：# 个聊天	src/ui/screens/trips.js:70	plural; # = e.fold.rows.length; {0} = monthName(e.fold.month); English: "{0}: # chat" (one), "{0}: # chats" (other)
 33pqd9	ok	Last backup {0}, to {1}.	上次备份：{0}，备份到{1}。	src/ui/screens/trips.js:78	{0} = relTime(latest.last.at, now); {1} = latest.name; Note: {1} is the backup place's name.
 cvvz5z	draft	Tap + to talk to Shiori.	轻点 + 与 Shiori 交谈。	src/ui/screens/trips.js:86	
-sjnfyu	ok	Archived trips ({0})	已归档的旅行（{0}）	src/ui/screens/trips.js:91	{0} = archived.length
+wfhszm	draft	Archived ({0})	已归档（{0}）	src/ui/screens/trips.js:91	{0} = archived.length; English was: Archived trips ({0})
 in89ko	ok	No backup yet. Export everything from Settings, or set up automatic backups there.	还没有备份。请在设置中导出全部内容，或设置自动备份。	src/ui/screens/trips.js:94	
 1rrn1xn	draft	Day {0} of {1}	第 {0} 天，共 {1} 天	src/ui/screens/trips.js:221	{0} = d.day; {1} = d.of
 1q78pfk#other	ok	# files waiting to be read	# 个文件等待读取	src/ui/screens/trips.js:236	plural; # = unread; English: "# file waiting to be read" (one), "# files waiting to be read" (other); Note: on a trip's card: files Shiori moved there that she hasn't read there yet.

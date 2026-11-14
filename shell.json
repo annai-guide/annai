@@ -1,5 +1,5 @@
 {
-  "build": "eeb4779f5f81",
+  "build": "477ffacd8012",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -254,15 +254,15 @@
     "/src/ui/screens/drive.js": "630bc496b4e7",
     "/src/ui/screens/experimental.js": "9f8609693e3b",
     "/src/ui/screens/ext.js": "83c0244cf0d6",
-    "/src/ui/screens/file.js": "bdbf73cc6a7e",
-    "/src/ui/screens/import.js": "fcae639ada61",
+    "/src/ui/screens/file.js": "d2347097582e",
+    "/src/ui/screens/import.js": "c4b5e657f56a",
     "/src/ui/screens/item.js": "dc9f5e4a9fc6",
     "/src/ui/screens/mcp.js": "8594db2419e8",
     "/src/ui/screens/model.js": "6976470d905a",
     "/src/ui/screens/models.js": "017270988135",
     "/src/ui/screens/notifications.js": "f60250a3e468",
     "/src/ui/screens/now.js": "7200d78436c1",
-    "/src/ui/screens/plan.js": "51f43c1d20e9",
+    "/src/ui/screens/plan.js": "5ee0928b75e6",
     "/src/ui/screens/plugin-install.js": "e950e30118ce",
     "/src/ui/screens/plugin.js": "db6dce86872f",
     "/src/ui/screens/plugins.js": "5b9559133cf6",
@@ -276,8 +276,8 @@
     "/src/ui/screens/talk.js": "59afa9c77708",
     "/src/ui/screens/tools.js": "af43e4da0f2e",
     "/src/ui/screens/trace.js": "3de48f872cce",
-    "/src/ui/screens/trip.js": "6804e0d6b581",
-    "/src/ui/screens/trips.js": "ed12a77e9aee",
+    "/src/ui/screens/trip.js": "65ee86491495",
+    "/src/ui/screens/trips.js": "3d39a5e7567d",
     "/src/ui/screens/updates.js": "663857e51861",
     "/src/ui/screens/voice.js": "69425fba40d4",
     "/src/ui/screens/welcome.js": "f1b00d351dd3",
@@ -300,8 +300,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "5db22c0f2a60",
-    "/l10n/zh-Hans.json": "792e9310a0f9",
-    "/l10n/zh-Hant.json": "b04becf939fb"
+    "/l10n/ja.json": "d3167f81bd3f",
+    "/l10n/zh-Hans.json": "c1130f0dda81",
+    "/l10n/zh-Hant.json": "ce371ce0656d"
   }
 }

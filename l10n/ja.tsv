@@ -1646,9 +1646,8 @@ ata72m	ok	Trace	記録	src/ui/screens/ext.js:36
 1y7aybz	ok	This page couldn't be drawn; the plugin's error is in {0}.	このページを表示できませんでした。プラグインのエラーは{0}にあります。	src/ui/screens/ext.js:37	{0} = trace
 12mubvb	ok	Now	いま	src/ui/screens/ext.js:44	
 17o4v1i	ok	Conversation	会話	src/ui/screens/file.js:25	
-1jpjwmm	ok	Back to trip	旅に戻る	src/ui/screens/file.js:25	
 1r8pi2g	ok	Recap	振り返り	src/ui/screens/file.js:25	
-43f6md	ok	Details	詳細	src/ui/screens/file.js:25	Note: the crumb back to a plan item's details screen, from the file it came from; also the crumb back to a file's or booking's details screen, from the raw file screen.
+43f6md	ok	Details	詳細	src/ui/screens/file.js:25	Note: the crumb back to a plan item's details screen, from the file it came from; also the crumb back to a file's or booking's details screen, from the raw file screen; and the crumb back to a conversation's Details (the screen talk's Details button opens), from its raw file screen.
 drvc96	draft	Deleting this file also deletes {0}.	このファイルを削除すると、{0}も削除されます。	src/ui/screens/file.js:67	{0} = list(also); Note: on the raw file screen of a file the user gave, above Delete file; {0} is a list ("2 bookings and 1 plan item").
 1jlj988	ok	Delete file	ファイルを削除	src/ui/screens/file.js:68	
 mnzt43	draft	This file was deleted for good.	このファイルは完全に削除されました。	src/ui/screens/file.js:91	Note: a deleted file's raw screen when Delete freed it, so no version is left to bring back.
@@ -1717,8 +1716,8 @@ j0c8lo	ok	Imported plugins arrive switched off. Turn on the ones you trust in Pl
 o7fto4	ok	Import	読み込む	src/ui/screens/import.js:254	
 18d2xm5	ok	A backup of everything exported {0} from annai {1}.	すべてのバックアップ。annai {1}からエクスポート（{0}）。	src/ui/screens/import.js:257	{0} = ago; {1} = app; Note: {0} is a relative time (たった今, 3日前), which can't always take に, so it goes in brackets.
 6fr2dj	ok	A backup of everything exported {0} from annai {1}, encrypted.	すべてのバックアップ。annai {1}からエクスポート（{0}）、暗号化済み。	src/ui/screens/import.js:257	{0} = ago; {1} = app; Note: {0} is a relative time, in brackets.
-1uhzqqs	ok	A trip exported {0} from annai {1}, encrypted.	旅。annai {1}からエクスポート（{0}）、暗号化済み。	src/ui/screens/import.js:258	{0} = ago; {1} = app; Note: {0} is a relative time, in brackets.
-1ut7u54	ok	A trip exported {0} from annai {1}.	旅。annai {1}からエクスポート（{0}）。	src/ui/screens/import.js:258	{0} = ago; {1} = app; Note: {0} is a relative time, in brackets.
+12hmses	draft	Exported {0} from annai {1}, encrypted.	annai {1}からエクスポート（{0}）、暗号化済み。	src/ui/screens/import.js:258	{0} = ago; {1} = app; English was: A trip exported {0} from annai {1}, encrypted.; Note: {0} is a relative time, in brackets.
+3kii3s	draft	Exported {0} from annai {1}.	annai {1}からエクスポート（{0}）。	src/ui/screens/import.js:258	{0} = ago; {1} = app; English was: A trip exported {0} from annai {1}.; Note: {0} is a relative time, in brackets.
 7ns57f	ok	There are no trips in this file.	このファイルに旅はありません。	src/ui/screens/import.js:261	
 1y35b48	ok	Restarting…	再起動しています…	src/ui/screens/import.js:277	
 5wjjb4	ok	Restart annai to use the imported settings and plugins.	読み込んだ設定とプラグインを使うには、annai を再起動してください。	src/ui/screens/import.js:282	
@@ -1910,7 +1909,7 @@ foy2yl	ok	Add to calendar	カレンダーに追加	src/ui/screens/plan.js:87
 3rvc64#other	draft	# itinerary files	旅程ファイル#件	src/ui/screens/plan.js:90	plural; # = plan.broken; English: "# itinerary file" (one), "# itinerary files" (other)
 1rs1ez2	ok	Not on a day	日付指定なし	src/ui/screens/plan.js:96	Note: a heading above the day tabs, for bookings with no day of their own (an open ticket, a pass for the whole trip); 日付指定なし as tickets say.
 pxfr8q	ok	Days	日付	src/ui/screens/plan.js:99	
-86s9x3	draft	No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.	まだ旅程はありません。Shiori に一緒に計画してもらうか、カレンダーファイル（.ics）を旅に追加してください。	src/ui/screens/plan.js:102	English was: No plan yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.; Note: "Ask" here is asking Shiori, not the permission setting's Ask.
+wk7g53	draft	No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) in Details.	まだ旅程はありません。Shiori に一緒に計画してもらうか、「詳細」でカレンダーファイル（.ics）を追加してください。	src/ui/screens/plan.js:102	English was: No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.; Note: "Ask" here is asking Shiori, not the permission setting's Ask.
 1uxsg1z	ok	{0} couldn't be read. Open the trip's files to fix them.	{0}を読み込めませんでした。旅のファイルを開いて直してください。	src/ui/screens/plan.js:103	{0} = unread
 sdcje2	ok	{0} couldn't be read. Open the trip's files to fix it.	{0}を読み込めませんでした。旅のファイルを開いて直してください。	src/ui/screens/plan.js:103	{0} = unread
 1gmgpvl	ok	Check this	要確認	src/ui/screens/plan.js:159	
@@ -2341,7 +2340,7 @@ frbimx	ok	A new simulation	新しいシミュレーション	src/ui/screens/simu
 1i1dlpq	ok	A recorded or made-up GPS track, and its clock, run through GPS and Shiori as on a real trip, in a new trip of its own: then replay it and recap it.	記録した、または作った GPS の経路とその時刻を、本当の旅と同じように GPS と Shiori に通します。専用の新しい旅で行い、そのあとリプレイして振り返れます。	src/ui/screens/simulate.js:157	
 g9ytfz	ok	Shiori wakes with your own models, as she would with GPS on: the sample wakes her about 24 times. A scripted model (Settings → Models) makes it free.	Shiori は GPS がオンのときと同じように、あなたのモデルで起動します。サンプルでは約24回起動します。台本どおりに答えるモデル（設定 → モデル）なら無料です。	src/ui/screens/simulate.js:159	Note: a scripted model answers from a script.
 1ucm1rb	ok	No model is set up, so Shiori can't answer: annai shows the reminders itself.	モデルが設定されていないため Shiori は答えられません。リマインダーは annai が自分で表示します。	src/ui/screens/simulate.js:160	
-1ussy6i	ok	Trip	旅	src/ui/screens/simulate.js:161	Note: The heading over a trip's files that are in no folder.
+1ussy6i	ok	Trip	旅	src/ui/screens/simulate.js:161	Note: The field that picks a trip on the Simulate screen.
 amwn2j	ok	The track	経路	src/ui/screens/simulate.js:161	
 ckmlfc	ok	Itinerary file	旅程ファイル	src/ui/screens/simulate.js:161	
 nicd80	ok	That file isn't an itinerary annai can read: it needs to be JSON like the Big Sur sample (a start, a route of places, and times).	そのファイルは annai が読める旅程ではありません。ビッグサーのサンプルのような JSON（出発、場所の経路、時刻）である必要があります。	src/ui/screens/simulate.js:175	
@@ -2571,7 +2570,7 @@ tqj8t3	ok	(no longer stored)	（もう保存されていません）	src/ui/scre
 jz8mjk	ok	Unarchive	アーカイブを解除	src/ui/screens/trip.js:55	
 qeuftp	ok	Tap again to archive	もう一度タップするとアーカイブします	src/ui/screens/trip.js:57	
 w0suw5	draft	Archive	アーカイブ	src/ui/screens/trip.js:57	Note: アーカイブ as Archive trip (旅をアーカイブ) and Unarchive (アーカイブを解除).
-vr6m26	ok	Give the trip a name.	旅の名前を入力してください。	src/ui/screens/trip.js:96	
+1orcmjh	draft	Give it a name.	名前を入力してください。	src/ui/screens/trip.js:96	English was: Give the trip a name.
 1cageta	draft	Saved.	保存しました。	src/ui/screens/trip.js:109	
 cymegm	draft	The trip can't end before it starts.	終了日を開始日より前にはできません。	src/ui/screens/trip.js:113	
 1yii6kb	ok	Ends	終了日	src/ui/screens/trip.js:120	Note: A date field, so 日 / 日期 say what goes in it.
@@ -2600,7 +2599,7 @@ ecy82r	ok	Add a file	ファイルを追加	src/ui/screens/trip.js:345
 aoc0k0#other	draft	{0}: # chats	{0}：チャット # 件	src/ui/screens/trips.js:70	plural; # = e.fold.rows.length; {0} = monthName(e.fold.month); English: "{0}: # chat" (one), "{0}: # chats" (other)
 33pqd9	ok	Last backup {0}, to {1}.	前回のバックアップ：{0}（{1}）	src/ui/screens/trips.js:78	{0} = relTime(latest.last.at, now); {1} = latest.name; Note: Label and value, no 。, as "Last export" beside it.
 cvvz5z	draft	Tap + to talk to Shiori.	＋ をタップして Shiori と話しましょう。	src/ui/screens/trips.js:86	
-sjnfyu	ok	Archived trips ({0})	アーカイブした旅（{0}）	src/ui/screens/trips.js:91	{0} = archived.length
+wfhszm	draft	Archived ({0})	アーカイブ済み（{0}）	src/ui/screens/trips.js:91	{0} = archived.length; English was: Archived trips ({0})
 in89ko	ok	No backup yet. Export everything from Settings, or set up automatic backups there.	まだバックアップはありません。設定ですべてをエクスポートするか、自動バックアップを設定してください。	src/ui/screens/trips.js:94	
 1rrn1xn	draft	Day {0} of {1}	{1} 日間の {0} 日目	src/ui/screens/trips.js:221	{0} = d.day; {1} = d.of
 1q78pfk#other	ok	# files waiting to be read	読まれていないファイル#件	src/ui/screens/trips.js:236	plural; # = unread; English: "# file waiting to be read" (one), "# files waiting to be read" (other); Note: on a trip's card: files Shiori moved there that its conversation hasn't read yet; 件 counts files.
