@@ -660,3 +660,24 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the gate's rule is "when unsure, it is for her" (`src/core/voice/gate.js`), so a line meant for her is never dropped; the cost is the occasional answer to talk not meant for her.
 - **Revisit when:** the user drives with passengers often and she answers them; the change then: the gate's verdicts are quoted to the next gate call as heard, not as the user's words.
 - **Approved:** 2026-11-13, the user picked "Known limitation (Recommended)".
+
+### A tap on an older card's "Yes" answers her newest yes/no question
+- **Kind:** known limitation.
+- **What the user sees:** Shiori showed a card with choices earlier, and has just asked a new yes/no question; the user taps "Yes" on the older card. The choice reaches her as bare words, so she takes it as the yes to her new question. It never grants annai's own permission card, which only a tap on itself answers.
+- **Why:** a tapped choice reaches her as the words of the choice, without naming the card it came from; the shape needs an old card still on screen and a new question with the same words.
+- **Revisit when:** the user sees it; the change then: a card's choice names its card in what she reads.
+- **Approved:** 2026-11-13, the user picked "Known limitation (Recommended)".
+
+### Koe on a chat model can show "Shiori didn't answer" for a line it answers a moment later
+- **Kind:** known limitation.
+- **What the user sees:** with Koe on a chat model, in a rare turn shape (Koe's one reminder to answer already used, then a reply with a question or a wait plus sleep, while the user types a line), a warning card ("Her model finished without saying anything to you", with Try again) shows, then Koe answers the line in the next turn. Nothing is lost; before this release the line was never answered.
+- **Why:** the sleep in the same reply ends the turn before the queued line is taken, so the line gets a turn of its own, and the turn just ended counts as silent. Skipping the card while a line of the user's is still queued is a one-condition change, for a shape seen only in a probe.
+- **Revisit when:** the user sees the card followed by an answer; the fix then: no such card while a line of theirs is still queued.
+- **Approved:** 2026-11-13, the user picked "Known limitation (Recommended)".
+
+### Koe on a chat model can say her question over the user after they cut her line
+- **Kind:** known limitation.
+- **What the user sees:** with Koe on a chat model, the user taps to cut her line and starts talking; her reply goes on with a note to Kokoro and then a question (or any reply with a question and sleep), and the question is said over them. Their words aren't lost: they are taken after it.
+- **Why:** the rule that holds her question back after a cut looks only at the call right after her line; finding "a question before any wait" anywhere in the reply is a wider change for two rare shapes.
+- **Revisit when:** the user hears it; the fix then: look for a question before any wait in the reply, not only the next call.
+- **Approved:** 2026-11-13, the user picked "Known limitation (Recommended)".
