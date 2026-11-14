@@ -425,7 +425,7 @@ gt9ssw	ok	annai couldn't start	annai 無法啟動	src/app/main.js:433
 1f8b0m5	ok	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	你停留的地方和時長（依名稱；沒有名稱的地點用約 100 公尺精度的位置）。絕不傳送 GPS 軌跡本身。	src/core/after/recap.js:54	
 imb4zw	draft	How far you drove or walked between, the stamps, and the itinerary.	其間開車或步行的距離、紀念章和行程。	src/core/after/recap.js:55	English was: How far you drove or walked between, the stamps, and the plan.
 5lqjwd	ok	Shiori's cards and your words, typed or spoken, each shortened.	Shiori 的卡片和你輸入或說出的話（各自縮短）。	src/core/after/recap.js:56	
-nqzovd	ok	The trip's notes and memory, and your profile.	旅行的筆記和記憶，以及你的個人資料。	src/core/after/recap.js:57	
+10xm6na	draft	This conversation's notes and memory, and your profile.	這個對話的筆記和記憶，以及你的個人資料。	src/core/after/recap.js:57	English was: The trip's notes and memory, and your profile.
 1nvz32n	ok	Up to {0} photos, if the model takes photos. A photo kept as taken (Settings → Photos → Keep originals) can still hold where it was taken.	如果模型接受照片，最多 {0} 張照片。按原樣儲存的照片（設定 → 照片 → 保留原圖）可能仍包含拍攝地點。	src/core/after/recap.js:58	{0} = RECAP_PHOTOS
 rntcrc	ok	No model is set for the utility or main role. Add one in Settings → Models.	輔助和主要角色都沒有設定模型。請在設定 → 模型中新增。	src/core/after/recap.js:163	
 1hy1f74	ok	No model could write it.	沒有模型能寫出回顧。	src/core/after/recap.js:164	Note: "it" is the recap (振り返り / 回顧).
@@ -594,9 +594,9 @@ tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	請輸入加�
 14zz5l	ok	annai's storage on this device is full. Remove a trip you no longer need (back it up first), or free up space on this device.	這台裝置上 annai 的儲存空間已滿。請移除不再需要的旅行（先備份），或釋放這台裝置的空間。	src/core/errors.js:39	Note: 移除, as the trip's own button, Remove trip (移除旅行).
 1rgff8l	ok	annai has stopped in this tab because it was opened in another one. Reload this tab to use annai here.	annai 已在另一個分頁中開啟，所以在這個分頁中停止了。要在這裡使用 annai，請重新載入這個分頁。	src/core/errors.js:40	
 gnrtev	ok	Shiori can't reach her model.	Shiori 無法連線她的模型。	src/core/errors.js:41	
-iwgrsx	ok	This calendar has more than {0} events. Export only the trip's dates from your calendar, and add that file.	此行事曆中有超過 {0} 個事件。請只從行事曆中匯出旅行日期內的事件，再新增那個檔案。	src/core/ics.js:115	{0} = num(MAX_EVENTS)
+98c05r	draft	This calendar has more than {0} events. Export only the dates you need from your calendar, and add that file.	此行事曆中有超過 {0} 個事件。請只從行事曆中匯出你需要的日期內的事件，再新增那個檔案。	src/core/ics.js:115	{0} = num(MAX_EVENTS); English was: This calendar has more than {0} events. Export only the trip's dates from your calendar, and add that file.
 10s60wn	ok	No file at {0}.	{0} 處沒有檔案。	src/core/imports.js:14	{0} = path
-5l9pv6	ok	{0} is larger than a trip's calendar ever is (over {1}). Export only the trip's dates from your calendar, and add that file.	{0} 對一個旅行行事曆來說太大了（超過 {1}）。請只從行事曆中匯出旅行日期內的事件，再新增那個檔案。	src/core/imports.js:15	{0} = path; {1} = size(MAX_ICS_BYTES)
+13ujlu9	draft	{0} is too large (over {1}). Export only the dates you need from your calendar, and add that file.	{0} 太大了（超過 {1}）。請只從行事曆中匯出你需要的日期內的事件，再新增那個檔案。	src/core/imports.js:15	{0} = path; {1} = size(MAX_ICS_BYTES); English was: {0} is larger than a trip's calendar ever is (over {1}). Export only the trip's dates from your calendar, and add that file.
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:27	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Chinese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	ok	just now	剛剛	src/core/intl.js:130	
 1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	用手機揚聲器時，Shiori 說話期間 annai 聽不到你，所以你在她說話時說的話會被丟棄。點一下就能讓她停下並開始收聽。	src/core/koe/live.js:664	
@@ -2357,12 +2357,12 @@ drekzl#other	ok	Shiori woke to look at the # files you added.	Shiori 已喚醒�
 18v7cvz#other	ok	Shiori woke for # reminders, or things she watches for: {0}.	Shiori 已喚醒：有 # 個提醒或她留意的事情：{0}。	src/ui/screens/talk.js:117	plural; # = titles.length; {0} = listed(titles); English: "Shiori woke for a reminder, or something she watches for: {0}." (one), "Shiori woke for # reminders, or things she watches for: {0}." (other); Note: {0} is what fired: a plan item's title, or a reminder in Shiori's own words, as a list.
 18rv8j7	ok	Shiori woke.	Shiori 已喚醒。	src/ui/screens/talk.js:118	
 gofzl2	ok	Shiori woke for the plugin {0}.	外掛程式 {0} 喚醒了 Shiori。	src/ui/screens/talk.js:118	{0} = nameOf(String(r.plugin ?? ''))
-5czx8a	ok	Shiori took these files to a trip that has since been removed.	Shiori 把這些檔案移到了一趟旅行裡，但那趟旅行已被移除。	src/ui/screens/talk.js:128	Note: Taiwan wording: 檔案, 一趟旅行; 移除 as Remove trip (移除旅行).
+friaxa	draft	Shiori took these files to a conversation that has since been removed.	Shiori 把這些檔案移到了一個對話裡，但那個對話已被移除。	src/ui/screens/talk.js:128	English was: Shiori took these files to a trip that has since been removed.; Note: Taiwan wording: 檔案, 一趟旅行; 移除 as Remove trip (移除旅行).
 8obrdi	ok	Shiori started {0} with these files.	Shiori 用這些檔案開始了「{0}」。	src/ui/screens/talk.js:129	{0} = title; Note: Taiwan wording: 檔案, 「」 quotes; 開始 as Start a trip (開始旅行).
 yrkvc6	ok	Shiori started {0}.	Shiori 開始了「{0}」。	src/ui/screens/talk.js:129	{0} = title; Note: a trip she started with no files (the user asked for one); {0} is its name, quoted.
 1tio19k#other	ok	Shiori took # files to {0}.	Shiori 把 # 個檔案移到了「{0}」。	src/ui/screens/talk.js:130	plural; # = d.count; {0} = title; English: "Shiori took # file to {0}." (one), "Shiori took # files to {0}." (other); Note: Taiwan wording: 個檔案; {0} is the trip's name.
+197gx5s	draft	Shiori moved this to a conversation that has since been removed.	Shiori 把這段對話移到了另一個對話裡繼續，但那個對話已被移除。	src/ui/screens/talk.js:134	English was: Shiori moved this to a trip that has since been removed.; Note: the same line once that trip is removed; 削除/移除 as Remove trip.
 6labnj	draft	Shiori moved this to {0}.	Shiori 把這段對話移到了「{0}」繼續。	src/ui/screens/talk.js:134	{0} = title; Note: the last line of a conversation Shiori took the user from (open_trip); the conversation stays, and they carry on in {0}, a trip or another conversation.
-inddcg	draft	Shiori moved this to a trip that has since been removed.	Shiori 把這段對話移到了一趟旅行裡繼續，但那趟旅行已被移除。	src/ui/screens/talk.js:134	Note: the same line once that trip is removed; 削除/移除 as Remove trip.
 141utsf#other	ok	Undone. {0} are removed, and your files are waiting with Shiori.	已復原。{0}已被移除，你的檔案由 Shiori 暫存。	src/ui/screens/talk.js:144	plural; # = removed.length; {0} = listed(removed); English: "Undone. {0} is removed, and your files are waiting with Shiori." (one), "Undone. {0} are removed, and your files are waiting with Shiori." (other); Note: Taiwan wording: 已復原, 暫存, 檔案; {0} is the trips' names as a list.
 1d428yv#other	ok	Undone. {0} are removed, and your files are back in {1}.	已復原。{0}已被移除，你的檔案回到了{1}。	src/ui/screens/talk.js:145	plural; # = removed.length; {0} = listed(removed); {1} = home; English: "Undone. {0} is removed, and your files are back in {1}." (one), "Undone. {0} are removed, and your files are back in {1}." (other); Note: Taiwan wording: 已復原, 檔案; {0} and {1} are trip names as lists.
 svlg0f#other	ok	Undone. {0} are removed.	已復原。{0}已被移除。	src/ui/screens/talk.js:146	plural; # = removed.length; {0} = listed(removed); English: "Undone. {0} is removed." (one), "Undone. {0} are removed." (other); Note: Undo removed the trips she started, with no files to put anywhere; {0} is their names as a list.
@@ -2498,9 +2498,8 @@ gjjwcl	ok	a PDF's words kept for models that can't read PDFs	為無法讀取 PDF
 kbptqr	ok	a photo's description kept for models that can't see photos	為無法看照片的模型保留的照片描述	src/ui/screens/trace.js:209	Note: a Trace line, as above, for a photo's description.
 y6qkfy	ok	a PDF's pages kept for models that can't read PDFs	為無法讀取 PDF 的模型保留的 PDF 頁面圖片	src/ui/screens/trace.js:209	Note: a Trace line, as above, for a PDF's pages as pictures.
 12y45gf	ok	from a backup, annai {0}	來自備份，annai {0}	src/ui/screens/trace.js:213	{0} = app
-13f9wx2	ok	from a trip's file, annai {0}	來自旅行的檔案，annai {0}	src/ui/screens/trace.js:213	{0} = app
+hq4bg1	draft	from an export, annai {0}	來自匯出檔案，annai {0}	src/ui/screens/trace.js:213	{0} = app; English was: from a trip's file, annai {0}
 fgylb4#other	ok	# pieces of content it didn't hold left out	略去了 # 項它沒有的內容	src/ui/screens/trace.js:214	plural; # = n; English: "# piece of content it didn't hold left out" (one), "# pieces of content it didn't hold left out" (other)
-1smvlg5	ok	asked for content that isn't this trip's, and got none	請求了不屬於這個旅行的內容，什麼也沒得到	src/ui/screens/trace.js:217	
 1vkhbgw	ok	asked for content that isn't here, and got none	請求了不在這裡的內容，什麼也沒得到	src/ui/screens/trace.js:217	
 17ybebf	ok	a turn cut off by opening another conversation	因開啟另一個對話而中斷的回合	src/ui/screens/trace.js:218	
 z082y3	draft	read {0}	讀取了「{0}」	src/ui/screens/trace.js:220	{0} = d.title

@@ -68,11 +68,11 @@ test('words sent as the user\'s are in the screens\' language only when the user
 
 test('wentWords in Japanese: the conversation goes on in the trip, named as a value; the conversation stays', () => {
   assert.equal(wentWords('京都'), 'Shiori がこの会話の続きを「京都」に移しました。');
-  assert.equal(wentWords(null), 'Shiori がこの会話の続きを旅に移しましたが、その旅はもう削除されています。');
+  assert.equal(wentWords(null), 'Shiori がこの会話の続きを別の会話に移しましたが、その会話はもう削除されています。');
 });
 
 test('movedWords in Japanese: whole sentences, the title as a value', () => {
   assert.equal(movedWords({ to: 't', started: true, count: 2 }, 'アンカレッジ'), 'Shiori がこのファイルで「アンカレッジ」を始めました。');
   assert.equal(movedWords({ to: 't', started: false, count: 1 }, '京都'), 'Shiori がファイル1件を「京都」に移しました。');
-  assert.equal(movedWords({ to: 't', started: false, count: 1 }, null), 'Shiori はこのファイルを旅に移しましたが、その旅はもう削除されています。');
+  assert.equal(movedWords({ to: 't', started: false, count: 1 }, null), 'Shiori はこのファイルを会話に移しましたが、その会話はもう削除されています。');
 });

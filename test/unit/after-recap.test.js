@@ -129,6 +129,9 @@ test('what the Recap screen says goes to the model is true of photos too: one ke
   const { RECAP_SENDS } = /** @type {any} */ (await import('../../src/core/after/recap.js'));
   assert.ok(Array.isArray(RECAP_SENDS) && RECAP_SENDS.length >= 5);
   assert.match(RECAP_SENDS.join('\n'), /rounded to about 100 m\. Never the GPS track itself\./);
+  // The Recap screen says "this conversation" beside it, so its list names no trip either.
+  assert.ok(RECAP_SENDS.includes("This conversation's notes and memory, and your profile."));
+  assert.doesNotMatch(RECAP_SENDS.join('\n'), /\btrip/i);
   assert.match(RECAP_SENDS.join('\n'), /Up to 6 photos, if the model takes photos\. A photo kept as taken \(Settings → Photos → Keep originals\) can still hold where it was taken\./);
 });
 

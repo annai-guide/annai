@@ -12,7 +12,7 @@ import { FILE_BOOKING } from './bookings.js';
 export async function importCalendar(ws, scope, path, { defaultTz, author = 'user', handover }) {
   const got = await ws.read(scope, path);
   if (!got) throw new Error(t`No file at ${path}.`);
-  if (got.bytes.byteLength > MAX_ICS_BYTES) throw new Error(t`${path} is larger than a trip's calendar ever is (over ${size(MAX_ICS_BYTES)}). Export only the trip's dates from your calendar, and add that file.`);
+  if (got.bytes.byteLength > MAX_ICS_BYTES) throw new Error(t`${path} is too large (over ${size(MAX_ICS_BYTES)}). Export only the dates you need from your calendar, and add that file.`);
   const items = planItems(parseIcs(new TextDecoder().decode(got.bytes), { defaultTz }));
   for (const { path: p, item } of items) await ws.write(scope, p, item, { author, source: path, ...(handover ? { handover } : {}) });
   return items.map((x) => x.path);

@@ -1,5 +1,5 @@
 {
-  "build": "7ce9848e02a7",
+  "build": "402684074bac",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -30,7 +30,7 @@
     "/src/app/main.js": "6fbadea8c959",
     "/src/app/version.js": "07a31129e186",
     "/src/core/after/journey.js": "4e1443181825",
-    "/src/core/after/recap.js": "460b3bfa5144",
+    "/src/core/after/recap.js": "2a3b36bc99c1",
     "/src/core/after/replay.js": "9225b95b268e",
     "/src/core/after/route.js": "537357825ed0",
     "/src/core/after/stamps.js": "1bdd22a5c694",
@@ -104,8 +104,8 @@
     "/src/core/live/triggers.js": "1e07368d82e6",
     "/src/core/live/watch-tools.js": "76c26bfea12f",
     "/src/core/live/watches.js": "119520cc6521",
-    "/src/core/ics.js": "374e82a9d9d2",
-    "/src/core/imports.js": "1b8ffe6b1868",
+    "/src/core/ics.js": "b6921ec6ef58",
+    "/src/core/imports.js": "902ff6cb10cb",
     "/src/core/inflate.js": "0cc2e9f8de38",
     "/src/core/intl.js": "39b722d26957",
     "/src/core/koe/context.js": "dccb1a2c7bdb",
@@ -269,13 +269,13 @@
     "/src/ui/screens/provider.js": "ed9889fe1617",
     "/src/ui/screens/recap.js": "ff932c9c7165",
     "/src/ui/screens/replay.js": "b6c46d9c0ec7",
-    "/src/ui/screens/settings.js": "fb452f27147e",
+    "/src/ui/screens/settings.js": "9ad71cd7805d",
     "/src/ui/screens/simulate.js": "cbdebdf221a5",
     "/src/ui/screens/shiori.js": "6296aaccc836",
     "/src/ui/screens/sees.js": "6a674fc473ae",
-    "/src/ui/screens/talk.js": "590f5914bcd0",
+    "/src/ui/screens/talk.js": "788b725eb063",
     "/src/ui/screens/tools.js": "af43e4da0f2e",
-    "/src/ui/screens/trace.js": "3de48f872cce",
+    "/src/ui/screens/trace.js": "dbc9383f5feb",
     "/src/ui/screens/trip.js": "65ee86491495",
     "/src/ui/screens/trips.js": "3d39a5e7567d",
     "/src/ui/screens/updates.js": "663857e51861",
@@ -300,8 +300,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "ac5b172621c1",
-    "/l10n/zh-Hans.json": "f99909c9bf47",
-    "/l10n/zh-Hant.json": "be51cb82a9bc"
+    "/l10n/ja.json": "fa8dd205e62c",
+    "/l10n/zh-Hans.json": "b5501068a612",
+    "/l10n/zh-Hant.json": "81a65560a040"
   }
 }

@@ -426,7 +426,7 @@ test("a Share with its history, imported again on the same device: its older pho
   assert.deepEqual((await v.ws.history(t, '/files/temple.jpg')).map((h) => h.new === null), [true, false]);
   const [imported] = await v.store.tx(['events'], 'readonly', (tx) => tx.listEvents(t, { types: ['import'] }));
   assert.equal(imported.data.uncarried, 1);
-  assert.equal(traceSummary(imported), "from a trip's file, annai 0.1.0 · 1 piece of content it didn't hold left out");
+  assert.equal(traceSummary(imported), "from an export, annai 0.1.0 · 1 piece of content it didn't hold left out");
 });
 
 test("restoring everything with 'me' kept: the trips' names of the user's own photos stay, carried by the file's 'me' (review, 3; probes P4, P4b)", async () => {
@@ -650,8 +650,14 @@ test('a Backup with Photos unticked carries no photo in its history either (veri
 });
 
 test("the import's Trace line counts what it left out as content, not versions (verification, 7)", () => {
-  assert.equal(traceSummary({ type: 'import', data: { kind: 'trip', app: '0.1.0', uncarried: 2 } }), "from a trip's file, annai 0.1.0 · 2 pieces of content it didn't hold left out");
+  assert.equal(traceSummary({ type: 'import', data: { kind: 'trip', app: '0.1.0', uncarried: 2 } }), "from an export, annai 0.1.0 · 2 pieces of content it didn't hold left out");
   assert.equal(traceSummary({ type: 'import', data: { kind: 'everything', app: '0.1.0', uncarried: 1 } }), "from a backup, annai 0.1.0 · 1 piece of content it didn't hold left out");
+});
+
+test("the Trace says a refused hash isn't here, in a dated trip's log and a chat's alike (no word for what the scope is)", () => {
+  for (const scope of ['trip-a', 'trip-b', 'me']) {
+    assert.equal(traceSummary({ type: 'content.refused', scope, data: { via: '/files/x.jpg' } }), "/files/x.jpg · asked for content that isn't here, and got none");
+  }
 });
 
 /** An exported archive, its manifest changed by edit(). @param {{ blob: Blob }} exported @param {(m: any) => void} edit */
