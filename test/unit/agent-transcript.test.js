@@ -150,3 +150,30 @@ test("a hand-over undone while her question waited stays undone when the sleep g
   const newer = await askAndSleep({ gaveWay: true, between: async (add, store) => { await add(await record(store, SCOPE, { type: 'msg.user', actor: 'user', data: { wake: 'w-1', handover: 'h-2' }, texts: [['text', 'More']] })); } });
   assert.equal(newer.owedHandover, 'h-2');
 });
+
+test("annai restarted while her question waited: repair() marks the sleep beside it as one that gave way, and the hand-over her reply settled is owed again; a cut question alone leaves it owed too, as an older page's restart wrote it (the final reviews' F1s)", async () => {
+  const handed = [{ path: '/trip/files/flight.pdf', type: 'application/pdf', name: 'flight.pdf', new: true }];
+  /** Her reply [ask, sleep] with a hand-over, her question shown and waiting: what the log holds when annai was killed. */
+  const killed = async () => {
+    const store = createMemoryStore();
+    await record(store, SCOPE, { type: 'wake', actor: 'system', data: { id: 'w-1', reasons: [{ kind: 'user', text: 'typed' }] } });
+    await record(store, SCOPE, { type: 'msg.user', actor: 'user', data: { wake: 'w-1', handed, handover: 'h-1' }, texts: [['text', 'Our trip']] });
+    await modelTrace(store, SCOPE).turn(/** @type {any} */ ({ ...info, handover: 'h-1' }), '', '', [{ type: 'tool_call', id: 'q', name: 'ask', input: { question: 'File it?', options: ['Yes'] } }, { type: 'tool_call', id: 's', name: 'sleep', input: {} }]);
+    await record(store, SCOPE, { type: 'out.ask', actor: 'shiori', data: { id: 'q', wake: 'w-1', question: 'File it?', options: ['Yes'] } });
+    return store;
+  };
+  const owed = (/** @type {Transcript} */ t) => [t.handover, t.owedHandover, t.unanswered];
+  // This page's restart: the sleep never ran, and says her turn goes on.
+  const store = await killed();
+  const t = await Transcript.load(store, SCOPE);
+  assert.deepEqual(owed(t), [null, null, false], 'before the repair the sleeping reply reads as one that ended her turn');
+  assert.equal(await repair(store, SCOPE, t), 2);
+  const stored = await store.tx(['events'], 'readonly', (x) => x.listEvents(SCOPE, { types: ['tool.result'] }));
+  assert.deepEqual(stored.map((e) => [e.data.name, e.data.awake ?? null]), [['ask', null], ['sleep', true]]);
+  assert.deepEqual(owed(t), ['h-1', 'h-1', true]);
+  assert.deepEqual(owed(await Transcript.load(store, SCOPE)), ['h-1', 'h-1', true], 'a reload reads what the live one did');
+  // An older page's restart wrote no `awake` for the sleep: the cut question says her turn goes on.
+  const older = await killed();
+  for (const [id, name] of [['q', 'ask'], ['s', 'sleep']]) await record(older, SCOPE, { type: 'tool.result', actor: 'system', data: { id, name, ok: false, cut: true, ms: 0 }, texts: [['content', 'interrupted by app restart']] });
+  assert.deepEqual(owed(await Transcript.load(older, SCOPE)), ['h-1', 'h-1', true]);
+});

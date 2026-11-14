@@ -162,6 +162,11 @@ export class Transcript {
       else if (!koe) /* en */ this.#add('user', [{ type: 'text', text: `[Earlier conversation, summarized (events ${d.from}–${d.to}); recall brings back the exact words]\n${texts.summary ?? ''}` }]);
     } else if (e.type === 'wake') {
       if (!this.#mine(d)) return;
+      // A wake that joins her turn (the cue after a silent reply is one) means the reply that settled the hand-over by its words didn't end it.
+      if (d.meanwhile && this.#settled) {
+        this.#handover ??= this.#settled; // not a newer one's
+        this.#settled = null;
+      }
       for (const w of d.reasons ?? []) if (typeof w?.handover === 'string') this.#handover = w.handover;
       const others = (d.reasons ?? []).filter((/** @type {any} */ w) => !OWN_LINES.includes(w.kind) && w.text);
       if (others.length) {
@@ -378,7 +383,7 @@ export class Transcript {
       const name = this.#calls.get(d.id);
       if (d.end || (!('cut' in d) && texts.content === STOPPED)) this.#ends = true;
       else if (d.awake) this.#ends = false; // a sleep that gave way (a call failed, or her question came back): the reply's own sleep didn't end her turn
-      else if (d.cut && (name === 'tell_koe' || name === 'tell_kokoro' || (name !== 'sleep' && !this.#reached))) this.#ends = false;
+      else if (d.cut && (name === 'ask' || name === 'tell_koe' || name === 'tell_kokoro' || (name !== 'sleep' && !this.#reached))) this.#ends = false;
       if (!this.#ends && this.#settled) {
         this.#handover ??= this.#settled; // not a newer one's
         this.#settled = null;
@@ -582,14 +587,15 @@ export function linesOf(messages) {
 
 /**
  * After a crash or reload mid-turn, every tool call without a result gets one (spec §6.7), so the
- * transcript stays valid for every provider. @param {Store} store @param {string} scope @param {Transcript} t
+ * transcript stays valid for every provider. A sleep among them never ran, and the restart takes her turn up: it gave way (`awake`, as the loop
+ * writes it), so the hand-over her reply settled by its words is owed again. @param {Store} store @param {string} scope @param {Transcript} t
  * @param {Record<string, string>} [mark] its results' half mark
  * @returns {Promise<number>} how many were answered
  */
 export async function repair(store, scope, t, mark = {}) {
   const open = t.open();
   for (const c of open) {
-    const ev = await record(store, scope, { type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: false, cut: true, ms: 0, ...mark, content: RESTARTED } });
+    const ev = await record(store, scope, { type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: false, cut: true, ms: 0, ...(c.name === 'sleep' ? { awake: true } : {}), ...mark, content: RESTARTED } });
     t.apply(ev, { texts: {}, images: [] });
   }
   return open.length;

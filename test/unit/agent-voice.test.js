@@ -759,7 +759,7 @@ for (const who of ['one Shiori', 'Koe on a chat model']) {
 for (const what of ['ask', 'wait']) {
   test(`one Shiori, voice on, speak then a card then a ${what}: speak still listens first, as before (spec §7.1)`, async (t) => {
     useClock(t);
-    const card = { name: 'show', input: { title: 'Nepenthe', text: 'On the cliffs.' } };
+    const card = { name: 'show', input: { card: { title: 'Nepenthe', text: 'On the cliffs.' } } };
     const after = what === 'ask' ? speakAsk[1] : { name: 'wait', input: { seconds: 30 } };
     const k = await agentKit([[{ toolCalls: [speakAsk[0], card, after] }, { toolCalls: [{ name: 'sleep', input: {} }] }]], { voice: {}, agent: { secondMs: 1000 } });
     k.agent.send('Lunch?');
@@ -769,6 +769,7 @@ for (const what of ['ask', 'wait']) {
     }
     await k.agent.idle();
     assert.equal((await results(k, 'speak'))[0].data.content, 'Said aloud. Heard nothing (20 seconds).', "speak listened to the end of its window");
+    assert.equal((await k.events(['out.show'])).length, 1, 'the card was shown, not refused');
   });
 }
 
@@ -796,10 +797,11 @@ test('controls for speak then ask: with sleep in the reply, and with voice off, 
   assert.equal((await results(off, 'ask'))[0].data.content, 'The user chose: Yes');
   assert.deepEqual(mics(off), []);
   // speak followed by show (not an ask) listens as before.
-  const shown = await agentKit([[{ toolCalls: [speakAsk[0], { name: 'show', input: { title: 'Nepenthe', text: 'On the cliffs.' } }] }, { toolCalls: [sleep] }]], { voice: {} });
+  const shown = await agentKit([[{ toolCalls: [speakAsk[0], { name: 'show', input: { card: { title: 'Nepenthe', text: 'On the cliffs.' } } }] }, { toolCalls: [sleep] }]], { voice: {} });
   shown.agent.send('Lunch?');
   await shown.agent.idle();
   assert.equal((await results(shown, 'speak'))[0].data.content, 'Said aloud. Heard nothing (20 seconds).');
+  assert.equal((await shown.events(['out.show'])).length, 1, 'the card was shown, not refused');
 });
 
 test('one Shiori, voice on, speak then wait in one reply: speak doesn\'t listen; an answer in the wait reaches her at once, not after the wait (spec §7.1)', async (t) => {

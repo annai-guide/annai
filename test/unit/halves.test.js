@@ -539,6 +539,21 @@ test("a tap on Koe's question, and Koe's reply to it shows the user nothing (a b
   assert.deepEqual(k.notices, []);
 });
 
+test("a tap on Koe's question, and Koe passes the answer on to Kokoro (tell_kokoro) and sleeps: the answer is told, so it is not owed, and Koe is not asked again (the final review's slice 2: F1)", async (t) => {
+  useClock(t);
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { type: { rules: [
+    { match: "hasn't been answered", reply: calls(['speak', { text: 'Dinner it is.' }]) },
+    { match: 'the user wrote', reply: { toolCalls: [{ name: 'ask', input: { question: 'Lunch or dinner?', options: ['Lunch', 'Dinner'] } }] }, then: calls(['tell_kokoro', { text: 'Dinner it is; book it.' }]) },
+  ] } } });
+  k.agent.send('Book Nepenthe');
+  await until(() => k.agent.koe.pendingId !== null);
+  k.agent.answer(/** @type {string} */ (k.agent.koe.pendingId), 'Dinner');
+  await k.agent.idle();
+  assert.equal(k.sent['model-koe'].some((/** @type {any} */ r) => /hasn't been answered/.test(r.tail)), false, 'told: no cue');
+  assert.deepEqual((await shown(k)).filter(([type]) => type === 'out.speak'), []);
+  assert.deepEqual(k.notices, []);
+});
+
 test("a note from Kokoro ends Koe's own question's wait, as it ends a wait: Koe says it now, and is told its question is closed (the screen takes its buttons, as for any ask that ended); a tap from elsewhere is the user's next line (real models, stage 5: u8-r3's correction was never said)", async (t) => {
   useClock(t);
   /** @type {any} */
