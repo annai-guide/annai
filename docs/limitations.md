@@ -10,6 +10,13 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** a phone test (device-checklist-phase2 L6, the car and loud-room step) shows it, or the detector is redesigned.
 - **Approved:** 2026-10-23, the user: "Accept".
 
+### On an iPhone, her voice's volume while she listens may be apart from the media volume
+- **Kind:** known limitation.
+- **What the user sees:** on an iPhone, while Shiori's microphone is open, the volume buttons may set her voice's volume apart from the volume of music and videos (iPhone most likely treats her voice as a call). Settings → Voice → Live voice says so on iPhone (`src/ui/screens/voice.js`, since 6fcc9d96).
+- **Why:** the browser decides which volume a page's audio gets while the microphone is open; annai can't change it.
+- **Revisit when:** a phone check shows the buttons do something else, or a browser lets a page keep media volume while it listens.
+- **Approved:** 2026-11-11, the user's pick "Yes, with a help line (Recommended)" (from their drive). Written 2026-11-14, found missing by the scope audit.
+
 ### A microphone that dips below -90 dB without exact zeros
 - **Kind:** known limitation.
 - **What the user sees:** with a microphone that dips its signal below -90 dBFS without giving exact zeros, for about 60 ms every half second, in a room of about -50 dBFS or louder, annai sends back-to-back 15-second noise turns while the microphone is open, and a sentence said inside them is swallowed.
