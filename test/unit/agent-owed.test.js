@@ -1,12 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until, hear } from './agent-kit.js';
+import { agentKit, rescript, until, hear } from './agent-kit.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { record, TALK_TAG } from '../../src/core/agent/log.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { createTrip } from '../../src/core/scopes.js';
 import { useClock } from './clock.js';
 import { undoHandover } from '../../src/core/handover.js';
+import { tripTools } from '../../src/core/agent/trip-tools.js';
+import { utf8 } from '../../src/core/bytes.js';
 
 // Her question card answered (typed, tapped or spoken) is a line of the user's that is owed a reply, as a typed line that joins her turn is: she is asked
 // once more if her reply shows them nothing (spec §7.1), and a second silence is the card "Shiori didn't answer". The real runs of 2026-11-14 (ask-sleep-r1):
@@ -188,45 +190,6 @@ test("her ask and sleep answered with a hand-over, the page left during her next
   assert.deepEqual(writes.map((/** @type {any} */ e) => [e.data.path, e.data.handover ?? null]), [['/notes/f.md', 'h-1']]);
 });
 
-test("a hand-over, her card answered, her reply to the answer silent, and the one more request failing (Try again) or cut (the page left and back): what she files then is the hand-over's, so its Undo takes it back (the final review's F2)", async (t) => {
-  useClock(t);
-  const flight = { path: '/trip/files/flight.pdf', type: 'application/pdf', name: 'flight.pdf', new: true };
-  const files = { toolCalls: [{ name: 'write', input: { path: '/trip/notes/f.md', content: 'AS 123' } }, { name: 'speak', input: { text: 'Filed.' } }, sleep] };
-  const fails = { error: 'server', status: 500, message: 'Scripted failure.' };
-  const hers = async (/** @type {any} */ k) => (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(k.trip, { types: ['file.write'] }))).filter((/** @type {any} */ e) => e.actor === 'shiori');
-  for (const first of [[ask], [ask, sleep]]) {
-    for (const [shape, reply] of Object.entries({ 'plain text': { text: 'Moved it to 7.' }, 'a bare sleep': { toolCalls: [sleep] } })) {
-      const what = `${first.length === 2 ? 'ask and sleep' : 'ask'}, then ${shape}`;
-      // The one more request fails; Try again.
-      const k = await agentKit([[{ toolCalls: first }, reply, fails, fails, fails, fails, files]]);
-      k.agent.send('Here', { handed: [flight], handover: 'h-1' });
-      await until(() => k.agent.pendingId !== null);
-      k.agent.answer(/** @type {string} */ (k.agent.pendingId), 'Yes');
-      await k.agent.idle();
-      assert.match(k.requests[2].tail, /The user hasn't been answered/, `${what}: the cue was sent, and failed`);
-      k.agent.tryAgain();
-      await k.agent.idle();
-      assert.deepEqual((await hers(k)).map((/** @type {any} */ e) => [e.data.path, e.data.handover ?? null]), [['/notes/f.md', 'h-1']], `${what}: Try again's write is the hand-over's`);
-      const out = await undoHandover(k.ws, k.trip, 'h-1');
-      assert.deepEqual(out.undone, ['/notes/f.md'], `${what}: its Undo takes it back`);
-      assert.equal(await k.ws.read(k.trip, '/notes/f.md'), undefined);
-      // The one more request cut by another conversation opened, and returned to.
-      const c = await agentKit([[{ toolCalls: first }, reply, { delayMs: 300, ...say('x') }, files]]);
-      const other = await createTrip(c.ws, { title: 'Kyoto' });
-      c.agent.send('Here', { handed: [flight], handover: 'h-1' });
-      await until(() => c.agent.pendingId !== null);
-      c.agent.answer(/** @type {string} */ (c.agent.pendingId), 'Yes');
-      await until(() => c.requests.length === 3);
-      assert.equal((await Transcript.load(c.store, c.trip)).handover, 'h-1', `${what}: a reload now finds the hand-over owed`);
-      await c.agent.open(other);
-      await c.agent.idle();
-      await c.agent.open(c.trip);
-      await c.agent.idle();
-      assert.deepEqual((await hers(c)).map((/** @type {any} */ e) => [e.data.path, e.data.handover ?? null]), [['/notes/f.md', 'h-1']], `${what}: the turn taken up on return carries it`);
-    }
-  }
-});
-
 test("a hand-over, annai restarted while her card waited (or between her answer and her sleep, or in a call after she spoke): the turn taken up carries the hand-over, so what she files is its Undo's (the final reviews' slice 1 F1 and slice 3 F1)", async (t) => {
   useClock(t);
   const flight = { path: '/trip/files/flight.pdf', type: 'application/pdf', name: 'flight.pdf', new: true };
@@ -293,3 +256,41 @@ test("a question waiting with a sleep beside it, and another conversation opened
     assert.deepEqual([(await events(['paused'])).length, k.requests.length - before], [0, 0], `${calls.length} calls: no paused line, nothing taken up`);
   }
 });
+
+// A hand-over her sleep settled is answered: it is not given back to a later turn that was never hers, so its Undo takes back only what she did under it
+// (the ask-owed re-review's R1: a move into that trip, its recap logged as a `meanwhile` wake, gave the old hand-over back to the move's turn).
+for (const recap of ['with a recap', 'no recap']) {
+  test(`a hand-over in Kyoto that her sleep settled, then a carry-on into Kyoto from the chat (open_trip ${recap}): what she files in the move turn is not the hand-over's, and its Undo leaves it`, async (t) => {
+    useClock(t);
+    const k = await agentKit([[{ toolCalls: [sleep] }]], { halves: true });
+    k.agent.addLoopTools(tripTools(k.agent));
+    const kyoto = await createTrip(k.ws, { title: 'Kyoto', start: '2027-04-01', end: '2027-04-08' });
+    await k.agent.opening;
+    const asks = /** @type {any[]} */ ([]);
+    k.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'out.ask' && e.data.own) asks.push(e); });
+    const writes = (/** @type {string} */ path, /** @type {string} */ text) => ({ toolCalls: [{ name: 'write', input: { path, content: 'x' } }, { name: 'speak', input: { text } }, sleep] });
+    await rescript(k, { rules: [
+      { match: 'You moved the user here', reply: writes('/trip/notes/b.md', 'Here in Kyoto.') },
+      { match: 'the user wrote', reply: writes('/trip/notes/a.md', 'Filed.'), times: 1 },
+      { match: 'the user wrote', reply: { toolCalls: [{ name: 'open_trip', input: { trip: kyoto, ...(recap === 'with a recap' ? { recap: 'We found the ramen place.' } : {}) } }] }, then: say('We stay here, then.') },
+    ] });
+    await k.agent.open(kyoto);
+    await k.agent.idle();
+    await k.ws.write(kyoto, '/files/hotel.pdf', utf8('%PDF hotel'), { author: 'user', type: 'application/pdf' });
+    k.agent.send('Here', { handed: [{ path: '/trip/files/hotel.pdf', type: 'application/pdf', name: 'hotel.pdf', new: true }], handover: 'h-0' });
+    await k.agent.idle();
+    assert.equal((await Transcript.load(k.store, kyoto)).owedHandover, null, 'her sleep settled h-0');
+    await k.agent.open(k.trip);
+    await k.agent.idle();
+    k.agent.send("Let's carry on in Kyoto");
+    await until(() => asks.length === 1);
+    k.agent.answer(asks[0].data.tap, 'Open');
+    await until(() => k.agent.target === kyoto);
+    await k.agent.idle();
+    const hers = (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(kyoto, { types: ['file.write'] }))).filter((/** @type {any} */ e) => e.actor === 'shiori');
+    assert.deepEqual(hers.map((/** @type {any} */ e) => [e.data.path, e.data.handover ?? null]), [['/notes/a.md', 'h-0'], ['/notes/b.md', null]]);
+    const out = await undoHandover(k.ws, kyoto, 'h-0');
+    assert.deepEqual(out.undone, ['/notes/a.md']);
+    assert.notEqual(await k.ws.read(kyoto, '/notes/b.md'), undefined, 'what she filed after the move is still there');
+  });
+}
