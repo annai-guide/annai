@@ -694,3 +694,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** a live Koe is told the time only when its session opens, so it no longer sets reminders itself: Kokoro sets them from its own clock, to the second (the user's pick 2026-11-13, "Live Koe hands off"). Giving Koe a way round would bring back the part that set reminders from an old clock; every other ask of Kokoro fails the same way in that state.
 - **Revisit when:** a user meets it, or traces show Kokoro down while live voice works.
 - **Approved:** 2026-11-13, the user picked "Known limitation (Recommended)".
+
+### With live voice, Koe can say the reminder list twice
+- **Kind:** known limitation.
+- **What the user sees:** with Koe on live voice, the user asks "What reminders do I have?"; Koe answers from its own list, then Kokoro wakes because Koe answered the user, checks the list again and sends a note, and Koe says the same list a second time (2 of 2 runs on real Gemini Live, 2026-11-13). Nothing is wrong or lost.
+- **Why:** Kokoro's wake after Koe answers lets it add what Koe may have missed; telling which of Koe's answers came whole from its own tool is more state, for a double that loses nothing (a double over a loss).
+- **Revisit when:** the user finds the repeat annoying.
+- **Approved:** 2026-11-13, the user picked "Known limitation (Recommended)".
