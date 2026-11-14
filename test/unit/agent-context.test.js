@@ -77,17 +77,18 @@ test('the snapshot: memory waits for a cold cache, a personality change comes at
   assert.equal(nextSnapshot(first, await takeSnapshot({ ws, registry, trip: other, personalityName: 'shiori' }), { cold: false }).trip, other);
 });
 
-test('the now block: local time and zone, voice, connection, why she woke, and the next plan items as TSV', async () => {
+test('the now block: local time to the second and zone, voice, connection, why she woke, and the next plan items as TSV', async () => {
   const { ws, trip } = await setup();
   const item = (/** @type {string} */ id, /** @type {string} */ at, /** @type {boolean} */ fixed) => ({ id, title: id, fixed, start: { at, tz: 'America/Los_Angeles' }, place: { name: `${id} place` } });
   await ws.write(trip, '/plan/past.json', item('past', '2026-11-26T10:00:00-08:00', false), { author: 'user' });
   await ws.write(trip, '/plan/dinner.json', item('dinner', '2026-11-26T18:30:00-08:00', true), { author: 'user' });
   await ws.write(trip, '/plan/sunset.json', item('sunset', '2026-11-26T16:53:00-08:00', false), { author: 'user' });
-  const now = Date.parse('2026-11-26T16:12:00-08:00');
+  // A time to the second: a reminder "in 1 minute" set from a time to the minute came up to 60 s early, or was refused as passed.
+  const now = Date.parse('2026-11-26T16:12:37-08:00');
   const plan = await nextPlanItems(ws, trip, now);
   assert.deepEqual(plan.map((r) => r[1]), ['sunset', 'dinner']);
   const block = nowBlock({ now, timeZone: 'America/Los_Angeles', voice: 'off', online: true, reasons: ['the user wrote'], plan });
-  assert.match(block, /^<now>\ntime: Thursday 2026-11-26 16:12, America\/Los_Angeles \(GMT-8\)\n/);
+  assert.match(block, /^<now>\ntime: Thursday 2026-11-26 16:12:37, America\/Los_Angeles \(GMT-8\)\n/);
   assert.match(block, /\nvoice: off \(speak shows a bubble; wait waits for typing\)\n/);
   assert.match(block, /\nconnection: online\n/);
   assert.match(block, /\nwoke for: the user wrote\n/);

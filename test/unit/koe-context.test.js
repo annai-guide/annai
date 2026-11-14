@@ -37,7 +37,7 @@ test("the compact view: today's plan, bookings within 48 hours, the place, the t
   k.agent.send('What is on today?');
   await k.agent.idle();
   const req = k.sent['model-koe'][0];
-  assert.match(req.tail, /^<now>\ntime: Thursday 2026-11-26 10:00, America\/Los_Angeles[\s\S]*place: near Nepenthe[\s\S]*<\/now>\n<today>[\s\S]*Lunch at Nepenthe[\s\S]*<\/today>\nKokoro's notes carry id="/);
+  assert.match(req.tail, /^<now>\ntime: Thursday 2026-11-26 10:00:00, America\/Los_Angeles[\s\S]*place: near Nepenthe[\s\S]*<\/now>\n<today>[\s\S]*Lunch at Nepenthe[\s\S]*<\/today>\nKokoro's notes carry id="/);
   assert.ok(!req.system.includes('Lunch at Nepenthe'));
 });
 
