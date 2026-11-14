@@ -681,3 +681,9 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the rule that holds her question back after a cut looks only at the call right after her line; finding "a question before any wait" anywhere in the reply is a wider change for two rare shapes.
 - **Revisit when:** the user hears it; the fix then: look for a question before any wait in the reply, not only the next call.
 - **Approved:** 2026-11-13, the user picked "Known limitation (Recommended)".
+
+### Other places still call a plain chat a trip
+- **Kind:** deferred.
+- **What the user sees:** in a chat that isn't a dated trip, a few screens still say "trip": All files heads its root "Trip", "Archived trips (N)" lists archived chats too, the name prompt says "Give the trip a name.", an imported chat export is headed "A trip exported…", the back link says "Back to trip", and Itinerary's empty line speaks of a trip.
+- **Why:** Build C changed Details' words and the timeline's; these six were found in its review, after the build.
+- **Revisit when:** the next version: one sweep gives all six neutral words (or the dated/undated rule talk.js uses), in en, ja and zh, the user's pick 2026-11-13 "One later sweep (Recommended)".
