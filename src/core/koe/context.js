@@ -1,6 +1,7 @@
 import { tsv } from '../tsv.js';
 import { escapeTags } from '../agent/blocks.js';
 import { planRows, fixedWords } from '../plan.js';
+import { statusWords } from '../bookings.js';
 
 /** Koe's compact view of the trip, in its tail; its words escaped. */
 export const VIEW_MAX = 2000;
@@ -46,7 +47,7 @@ export async function compactView({ ws, trip, now, timeZone, next }) {
   const bookings = bookingFiles.map((f) => f.value)
     .filter((b) => at(b.start) >= now - 6 * 3_600_000 && at(b.start) <= now + 2 * DAY)
     .sort((a, b) => at(a.start) - at(b.start))
-    .map((b) => [local(at(b.start), timeZone), e(b.kind), e(b.title), e(b.status), e(b.confirmation)]);
+    .map((b) => [local(at(b.start), timeZone), e(b.kind), e(b.title), statusWords(b.status), e(b.confirmation)]);
   const tj = await ws.readJSON(trip, '/trip.json').catch(() => null);
   /* en */ const title = e(tj?.title ?? 'this trip');
   // A conversation with no dates has no plan of its own: an empty one there says nothing of the user's trips, which Kokoro reads (Koe
