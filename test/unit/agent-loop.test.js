@@ -1590,7 +1590,7 @@ test('a photo the user sends goes in their message as a request copy, and comes 
   assert.deepEqual((await Transcript.load(k.store, k.trip)).messages, k.agent.transcript.messages);
 });
 
-test('a photo sent with no words says "(a photo)"; one sent while Shiori waits for an answer reaches her right after it', async (t) => {
+test('a photo sent with no words says "(a photo)"; one sent while Shiori waits for an answer answers nothing: her question closes, and the photo reaches her right after it, one bubble', async (t) => {
   useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'ask', input: { question: 'Which?', options: ['A', 'B'] } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]]);
   await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
@@ -1601,8 +1601,9 @@ test('a photo sent with no words says "(a photo)"; one sent while Shiori waits f
   k.agent.send('', { photos: [{ path: '/trip/files/p.webp' }] });
   await k.agent.idle();
   const msgs = await k.events(['msg.user']);
-  assert.deepEqual(msgs.map((e) => e.data.text), ['Hi', '(a photo)', '(a photo)']);
-  assert.equal(msgs[2].data.images.length, 1);
+  assert.deepEqual(msgs.map((e) => e.data.text), ['Hi', '(a photo)']);
+  assert.equal(msgs[1].data.images.length, 1);
+  assert.equal(msgs[1].data.answer, undefined, 'not written as her question\'s answer');
   const last = k.requests[1].messages.at(-1).parts;
   assert.deepEqual(last.map((/** @type {any} */ p) => p.type), ['tool_result', 'text', 'image']);
 });

@@ -644,9 +644,3 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the rule that such a line is no answer covers Kokoro's notes; extending it to the user's typed lines touches the other wait path (the 8-second wait for an answer to a text turn).
 - **Revisit when:** it is seen in a real run.
 - **Approved:** 2026-11-12, the user picked "Known limitation (Recommended)".
-
-### A photo alone, sent while she waits for an answer, shows twice
-- **Kind:** deferred.
-- **What the user sees:** a message with only a photo (or only files), sent while Shiori's wait, her question or annai's card waits, shows as two "(a photo)" bubbles: the placeholder answers what waited, and the photo arrives again as its own message. Nothing is lost.
-- **Why:** `send()` resolves what waits with the message's text (here the placeholder) and also queues its photos and files as their own wake.
-- **Revisit when:** the next version: `send()` ends what waits with "it follows" and queues the whole message once, as the wait-takes change does for a message sent just before (about 2 lines; agent-loop.test.js pins the two bubbles today).
