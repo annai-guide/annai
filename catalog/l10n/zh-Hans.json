@@ -3,38 +3,38 @@
   "plugins": {
     "anthropic-messages": {
       "name": "Anthropic Messages",
-      "description": "连接 Anthropic 的 Messages API，以及支持它的端点。"
+      "description": "连接 Anthropic 的 Messages API，以及兼容该 API 的端点。"
     },
     "chat-completions": {
       "name": "Chat Completions",
-      "description": "连接 OpenAI 风格的 Chat Completions 端点：OpenAI、OpenRouter、Gemini、Groq、DeepSeek、Mistral 和本地服务器。"
+      "description": "连接兼容 OpenAI 的 Chat Completions 端点：OpenAI、OpenRouter、Gemini、Groq、DeepSeek、Mistral 和本地服务器。"
     },
     "gemini-api": {
       "name": "Gemini API",
-      "description": "通过 Gemini 自己的 API（Interactions）进行对话、语音转文字和声音：支持所有音频格式，原样保留 Gemini 3 的思考签名，用量包含缓存和思考 token，声音可流式播放，对话由 Google 在轮次之间保存，因此每次只发送新内容；付费密钥还可使用 Google 搜索，答案按 Google 给出的样子显示。"
+      "description": "通过 Gemini 原生 API（Interactions）提供对话、语音转文字和声音：支持所有音频格式，原样保留 Gemini 3 的思考签名，用量统计包含缓存和思考 token，声音可流式播放；对话由 Google 在轮次之间保留，所以每次只发送新内容；付费密钥还可使用 Google 搜索，答案按 Google 给出的原样显示。"
     },
     "gemini-live": {
       "name": "Gemini Live",
-      "description": "连接 Gemini 的 Live API：为 Koe 提供在一条流中双向进行的语音对话。"
+      "description": "连接 Gemini 的 Live API，为 Koe 提供语音对话，听和说同时进行。"
     },
     "openai-realtime": {
       "name": "OpenAI Realtime",
-      "description": "连接 OpenAI 的 Realtime API：为 Koe 提供在一条流中双向进行的语音对话。"
+      "description": "连接 OpenAI 的 Realtime API，为 Koe 提供语音对话，听和说都在同一条流中。"
     },
     "openai-responses": {
       "name": "OpenAI Responses",
-      "description": "连接 OpenAI 的 Responses API 以及支持它的服务器。对话由 OpenAI 在轮次之间保存，因此每次只发送新内容；annai 收到指示时会删除已保存的回复。"
+      "description": "连接 OpenAI 的 Responses API 及支持它的服务器。对话由 OpenAI 在各轮之间保存，所以每轮只需发送新内容；收到删除指示时，annai 会删除已保存的回复。"
     },
     "pdf-pages": {
       "name": "PDF 页面",
-      "description": "把 PDF 的页面作为图片，给能看照片但读不了 PDF 的模型看；并在任何浏览器中画出 PDF 的第一页作为预览。它带有 Mozilla 的 PDF.js，约 4.5 MB。",
+      "description": "把 PDF 的页面转成图片，交给能看照片但读不了 PDF 的模型；还会绘制 PDF 的第一页作为预览，在任何浏览器中都能显示。内含 Mozilla 的 PDF.js，约 4.5 MB。",
       "keywords": [
         "PDF.js"
       ]
     },
     "provider-another-address": {
       "name": "自定义提供商",
-      "description": "任何其他服务器：OpenAI 兼容的服务器、路由或代理，或你自己运行的服务器。填写它的地址，annai 会免费查看它提供什么。",
+      "description": "其他任何服务器：兼容 OpenAI 的服务器、路由或代理，或你自己部署的服务器。填入地址后，annai 会检测它提供哪些功能，不产生费用。",
       "keywords": [
         "OpenAI 兼容",
         "路由",
@@ -53,15 +53,15 @@
     },
     "provider-gemini": {
       "name": "Google Gemini",
-      "description": "通过 Google 自己的 API 使用 Gemini 模型，付费密钥可使用 Google 搜索，另有 Google 的语音转文字和声音，以及用于语音对话的 Gemini Live。"
+      "description": "通过 Google 原生 API 使用 Gemini 模型。付费密钥可使用 Google 搜索，还提供 Google 的语音转文字和声音，以及可语音对话的 Gemini Live。"
     },
     "provider-groq": {
       "name": "Groq",
-      "description": "快速的开放模型，以及快速的 Whisper 语音转文字。"
+      "description": "开源模型和 Whisper 语音转文字，速度都很快。"
     },
     "provider-llamacpp": {
       "name": "llama.cpp",
-      "description": "你自己运行的 llama.cpp 服务器（llama-server）上的模型，或基于它的服务器（如 Unsloth Studio、KoboldCpp）上的模型。快速判断时会关闭思考。",
+      "description": "自己部署的 llama.cpp 服务器（llama-server）或基于它的服务器（如 Unsloth Studio、KoboldCpp）上的模型。快速判断时会关闭思考。",
       "keywords": [
         "Unsloth",
         "LM Studio",
@@ -74,7 +74,7 @@
     },
     "provider-local-speech": {
       "name": "本地语音服务器",
-      "description": "由你自己运行的服务器（如 Speaches、whisper.cpp 或 Kokoro）提供语音转文字和声音。",
+      "description": "用自己部署的服务器（如 Speaches、whisper.cpp 或 Kokoro）提供语音转文字和声音。",
       "keywords": [
         "Speaches",
         "whisper.cpp",
@@ -91,36 +91,36 @@
     },
     "provider-openai": {
       "name": "OpenAI",
-      "description": "通过 OpenAI 的 Responses API 使用 GPT 模型，另有 OpenAI 的语音转文字和声音，以及供 Koe 使用的 实时语音，全部用一个密钥。"
+      "description": "通过 OpenAI 的 Responses API 使用 GPT 模型，并提供 OpenAI 的语音转文字、声音，以及供 Koe 使用的实时语音，只需一个密钥。"
     },
     "provider-openrouter": {
       "name": "OpenRouter",
-      "description": "一个密钥即可使用许多模型（其中有免费的），还有语音转文字和声音。请“使用 OpenRouter 登录”，或填写密钥。",
-      "featured": "“使用 OpenRouter 登录”是最快的方式，并且会先让你用免费模型。"
+      "description": "一个密钥就能用许多模型，其中包括免费模型，还有语音转文字和声音。可以“使用 OpenRouter 登录”，或直接填入密钥。",
+      "featured": "最快的方式是“使用 OpenRouter 登录”，而且一开始会先用免费模型。"
     },
     "provider-scripted": {
       "name": "脚本模型（测试用）",
-      "description": "按脚本回复的模型，供测试和插件作者使用。它从不使用网络。"
+      "description": "按脚本回复的模型，供测试和插件开发者使用，完全不联网。"
     },
     "provider-sglang": {
       "name": "SGLang",
-      "description": "你自己运行的 SGLang 服务器上的模型，思考通过聊天模板开关。"
+      "description": "自己部署的 SGLang 服务器上的模型，通过聊天模板开启或关闭思考模式。"
     },
     "provider-vllm": {
       "name": "vLLM",
-      "description": "你自己运行的 vLLM 服务器上的模型，思考通过聊天模板开关，另有用于语音转文字的 Whisper 模型。"
+      "description": "自己部署的 vLLM 服务器上的模型，通过聊天模板开启或关闭思考模式；也支持用于语音转文字的 Whisper 模型。"
     },
     "remote-trace": {
       "name": "远程记录（开发者）",
-      "description": "开发者用：在你查看时，把 annai 的记录按“记录”页面显示的样子发送到你自己运行的服务器。在你填写服务器和令牌并打开“发送”之前，它什么也不发送。annai 保存的密钥会被遮盖。"
+      "description": "供开发者使用：把 annai 的记录按“记录”页面的样子实时发送到你自己部署的服务器。填好服务器和令牌并打开“发送”之前，什么都不会发送。annai 保存的密钥会被遮盖。"
     },
     "scripted-model": {
       "name": "脚本模型",
-      "description": "按脚本回复的模型，供测试和插件作者使用。它从不使用网络。"
+      "description": "按脚本回复的模型，供测试和插件开发者使用，完全不联网。"
     },
     "search-searxng": {
       "name": "SearXNG 搜索",
-      "description": "通过你自己运行的 SearXNG 实例搜索。无需密钥，没有限制（除了你自己设的）。实例必须允许 JSON 和网页应用。",
+      "description": "通过自己部署的 SearXNG 实例搜索。无需密钥，限制完全由你自己设定。该实例必须允许 JSON 格式和网页应用访问。",
       "keywords": [
         "SearXNG",
         "自托管"
@@ -128,7 +128,7 @@
     },
     "search-serper": {
       "name": "Serper 搜索",
-      "description": "通过 Serper 获取 Google 的搜索结果，附带它的答案框。注册即送 2,500 次免费搜索，无需银行卡。",
+      "description": "通过 Serper 获取 Google 搜索结果，含答案框。注册即送 2,500 次免费搜索，无需绑卡。",
       "keywords": [
         "Serper",
         "Google"
@@ -136,7 +136,7 @@
     },
     "search-tavily": {
       "name": "Tavily 搜索",
-      "description": "为 AI 智能体打造的网页搜索，附带每个页面的摘要。每月 1,000 个免费额度，无需银行卡。",
+      "description": "专为 AI 智能体打造的网页搜索，附带每个页面的摘要。每月免费 1,000 积分，无需绑卡。",
       "keywords": [
         "Tavily"
       ]
@@ -147,53 +147,53 @@
     },
     "storage-forgejo": {
       "name": "Forgejo / Gitea",
-      "description": "把所有内容备份到 Forgejo 或 Gitea 服务器（比如你自己的或 Codeberg）上的私有仓库：每次备份是一次提交，只上传有变化的文件。"
+      "description": "把所有内容备份到 Forgejo 或 Gitea 服务器上的私有仓库（可以是自建的，也可以是 Codeberg）。每次备份是一次提交，只上传有改动的文件。"
     },
     "storage-github": {
       "name": "GitHub",
-      "description": "把所有内容备份到 GitHub 的私有仓库：每次备份是一次提交，只上传有变化的文件。"
+      "description": "把所有内容备份到 GitHub 私有仓库。每次备份是一次提交，只上传有改动的文件。"
     },
     "storage-s3": {
       "name": "S3 兼容存储",
-      "description": "把所有内容备份到 AWS S3、Cloudflare R2、Backblaze B2 或任何 S3 兼容存储的存储桶中，每次备份一个归档文件。"
+      "description": "将所有内容备份到 AWS S3、Cloudflare R2、Backblaze B2 或其他 S3 兼容存储的存储桶中，每次备份生成一个归档文件。"
     },
     "storage-webdav": {
       "name": "WebDAV",
-      "description": "把所有内容备份到允许浏览器访问的 WebDAV 服务器上的文件夹，每次备份一个归档文件。"
+      "description": "把所有内容备份到 WebDAV 服务器上的文件夹（服务器须允许浏览器访问），每次备份存为一个归档文件。"
     }
   },
   "translations": {
-    "anthropic-messages": "d0d84bb7c297830837be8c6ce2a59d96eddf7a4805ce66fef93359cf5969d37e",
-    "chat-completions": "c6a14e04bf5429e1d74d7fc47cb0ac4c2bd742c4f1de11860cb71509e2e57905",
-    "gemini-api": "c1ba6a35452f52fd6691800349c2b23e54c6edb215169fd601db14eca0a18656",
-    "gemini-live": "88b849b7e5d9e9315e869ab128fbcda96b4af38607db016fcdd1a7774d6425d3",
-    "openai-realtime": "917fae4baafc44716aba1d0a7d209ad46eef2b2d7ba982ce9f035d6b616eaf6f",
-    "openai-responses": "8f17383d3a6e52efbef502a98b62e42c4ada3057783ad13b3c1b7f678f25bc39",
-    "pdf-pages": "c3a375c677ebebe20c1b7a2654bdeb9d07a8b5ddbf39275bf9b6547d68864ed5",
-    "provider-another-address": "41efd6d62eb08676ec4ddbc45020bddeaa0aafe561de265aecd009773d9560a0",
+    "anthropic-messages": "48897b976926a33e81d490ee203134b9ce6d4e43328ad5fa8be2ede70b563dc8",
+    "chat-completions": "04c337290a65af3eb279cba50441d6a81e1c9d834ca8bbf94fcd5d5500a7b031",
+    "gemini-api": "d9acb20250a751b3a7a0c2a991226eee04d6380a0067f806fa408ce60d2369b8",
+    "gemini-live": "8579c628b2c226c8fde5d5e04002314155c0b26efb225e9e26a75e23f9fe1bdc",
+    "openai-realtime": "ddaac99d74c8e56064ceba0358970e239c058ce7327a31a7d300e4f7c4c0ec61",
+    "openai-responses": "b2662cc4235940868e54be7cb8b3202aeba9c1b823b8d63ec30ee914597390c8",
+    "pdf-pages": "a7851364e5a743cdf92ff15def0704f6d048d1e4a7b5c8b35329449603471ec0",
+    "provider-another-address": "4c75c732189b4a01f38ca9dabe8c978b4556b0d643d4e9706e72024641a08f0a",
     "provider-anthropic": "97c82307fc7cb7fc51a42bf58fb7b8f746e304379aa720f5774b195878cd9229",
     "provider-deepseek": "4c2832c8b0fc818f22493bdc61a0457ac94b30454f1968d176906a09a700970a",
-    "provider-gemini": "002febb9ec5463695956e7505c2cc8ae71e55e07ee38d8f15c2b82bbd1688f5f",
-    "provider-groq": "2df41f6c26b6b9045204a55871a814a2cb806b05336db9e20ee587bd4eff3b31",
-    "provider-llamacpp": "33368b043403032c695239cbd9088b898a6cdf9789ae7a656985f138c610aa5f",
-    "provider-lmstudio": "2bb3e10f94c59f4ec281f53771316a159c7203eaf721af770c875789f29f59f6",
-    "provider-local-speech": "5fe7c8fe545e27614da2d66d7e2f17d3f32edb588faed0e3b1cca24af254c8d9",
+    "provider-gemini": "535c9e15a7f1000572b1373f7061a35c088de2c00d1cd97e027dddc0222ad893",
+    "provider-groq": "f5d0c5162fd4280f9aceda419170ee42651e79a2c62b2fb0c45813772beb3a56",
+    "provider-llamacpp": "1972f87344c21c3a39d5dea0ba3f891a20bc3bbfa8dbce3d2293d530955e8650",
+    "provider-lmstudio": "b1d496617c2bbf3e862f9704e5c95eb95c7fa1432e4078b62ee233095e221bcb",
+    "provider-local-speech": "2e6b7b777ecf0c9d5e531067349e1f9e8e65337ec2822e7932a210e328880e6e",
     "provider-mistral": "6e3d8d19e51b48a482a5e54c734b26a9f9a78b93db61907baf9588b53795d568",
-    "provider-ollama": "0366bf394b094038f5bce16c4d43de6446a07c760e2c8726c96c8be51a606825",
-    "provider-openai": "17b3c9d57cbef0ed6d3734530a3a7660c93683fa94fd3590789b5bf44f477d99",
-    "provider-openrouter": "e06aa19dc66c49b7575a00d891964f75a10a27b0cc4014e32e8bfe6d41d655f7",
-    "provider-scripted": "9dfb3901051de397e56465adb78a6d14712730275536b85bccefc18b4026f41e",
-    "provider-sglang": "3f4e38e1ee62f34620ca4740ea7282c2fa66d339a00cbef277963f8c9a3f5665",
-    "provider-vllm": "e9b4f87dedf86f6e04c5f0ac0d567850d91c0c2f238c4ede3588e9336e6e3916",
-    "remote-trace": "e0d355c3ba5ea43518d4bc4b2116142ecaffe77e8ceb48f5e4b46baf328a3f81",
-    "scripted-model": "f0475b034744ccc5cd6ba794ac1e05a5a9d2174adbb9c979eab75b7cfc598a1b",
-    "search-searxng": "f008a6694e688e3bace11c3a3ae2bde1e1f7fada43232031634875a763ca50c2",
-    "search-serper": "87afef013d87b096a6dae88a4474a6baf4b83ac9a41c8ea5a83f91a242dbc07a",
-    "search-tavily": "f834b98560b80b4d9c7ba75d13599790aff0575c010015d1e73faca909fe8a08",
+    "provider-ollama": "c89ada356a6240eb49ef7fe281e6efea1a5c1055f6bd10da359844d83804cf72",
+    "provider-openai": "2416151c6f7e3a086939b478e35785ba636a07f50ccb0854a9bfcbac823a97c9",
+    "provider-openrouter": "2b0008536f1910e6fd51e29996e4f054c6cac8dba72adc2c26e34f83e6935b4f",
+    "provider-scripted": "b6de33919e775a16744ae87981f3e568ab4240b7651b2a729daf891ca6f0597d",
+    "provider-sglang": "be1c21a81c28a8ecf996dbfbc07e3eaa12b32a2e9fbed0a66f138a0ad90f298c",
+    "provider-vllm": "dac573ba22543f755c673389c92177c99ec7ab1b11a734b9043a1554e3cbd6a7",
+    "remote-trace": "711075067818e5d28765603f44717830d3831663489096c6cd5831baabfb2035",
+    "scripted-model": "c595988f1767295dc9ddeb719afab4fa33130292978d6944f19e557fab4c18a1",
+    "search-searxng": "e21f956fdd759a33d1ee30fbbc48734a40c68c1cd0038e2359f52c1f8937a8a7",
+    "search-serper": "95e1b8482aab8be5108355f4e47ddcb4344882ffa0b66b5650727fcde05fbd36",
+    "search-tavily": "bcf086990dd05744dc42c851e696de21ae2c2f1a1e629eb90c6ce519d1bbe881",
     "speech-openai": "2672c7f3bb4dbbd2e498d1cecd385f978703f868fcadf1da704390dfb159d86c",
-    "storage-forgejo": "74e81a5c4fb04bf50536a35a19f5e000519621836e5da193d23aabc96c43f2d9",
-    "storage-github": "61c1f1f7a4db024c966ef9661fbcba41b916f50c22e6d75af593bd9bda3b0383",
-    "storage-s3": "343398cf7b5307f500c4f569497f43e0cb14150aaeeb92194c1d70fa49e19347",
-    "storage-webdav": "e393c7d53d2150d92b3871e1591e447dd23226691dde4b7b486895901e679926"
+    "storage-forgejo": "b4afff9f1957267b24ce408e6964520bcff8b462bb98109afdce3a86a690c9bc",
+    "storage-github": "2cb674ba6819e4f46efc63d4083afe07b824485e1b3b87c19b381e491381d186",
+    "storage-s3": "9791fdd7d0570e0a816f6b07a71db4b4d07c8cc07600a88da0a2944d62fc1652",
+    "storage-webdav": "2ae0db72c0f1174b96a3893b05aaab31a43d3ddb26b7cb9f7712feefc719dc76"
   }
 }

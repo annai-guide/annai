@@ -32,6 +32,7 @@ Voice	screen	音声	语音	語音	src/ui/screens/voice.js:133	Settings → Voice
 Welcome	screen	ようこそ	欢迎	歡迎	src/ui/screens/welcome.js:19	The welcome; "Welcome to annai" → annai へようこそ / 欢迎使用 annai, and "Show the welcome again" → ようこそ画面をもう一度表示 / 再次显示欢迎页. It is where 声 and 心 are explained (see Koe, Kokoro).
 Archive	thing	アーカイブ	归档	封存	src/ui/screens/trip.js:50	Archive, Archived (N), Unarchive (アーカイブを解除 / 取消归档). Standard in both (Gmail's words). zh-Hant 封存, Gmail's word in Taiwan (Unarchive → 取消封存).
 backup place	thing	バックアップ先	备份位置	備份位置	src/ui/screens/backups.js:57	Where automatic backups go (GitHub, S3…). ja バックアップ先 (先 as in 保存先); zh 备份位置 (备份目标 is technical).
+bucket	thing	バケット	存储桶	儲存貯體	plugins-official/storage-s3/annai-plugin.json:7	An S3 bucket (the S3 backup place). ja バケット, as AWS's Japanese console; zh 存储桶, as AWS China and Alibaba Cloud; zh-Hant 儲存貯體, as AWS's Taiwan console and docs (2026-11-14: 儲存桶 was the zh-Hans word converted).
 card	thing	カード	卡片	卡片	src/ui/screens/shiori.js:141	annai's cards at the top of a screen, and Shiori's cards. Standard in both.
 catalog	thing	カタログ	目录	目錄	src/ui/screens/experimental.js:29	annai's catalog of plugins (the Add screen). ja カタログ. zh 目录 is literal but also means a table of contents; 插件库 or 扩展库 say "a library of add-ons". For you: zh 目录 or 插件库.
 Check this	thing	要確認	请核对	請核對	src/ui/screens/plan.js:76	The chip on a booking annai read but you haven't confirmed; Confirmed → 確認済み / 已确认. ja 要確認 is the usual stamp-like word; zh 请核对 (核对 is checking against the original).

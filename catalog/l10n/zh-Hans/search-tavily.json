@@ -1,9 +1,9 @@
 {
   "manifest": {
-    "description": "为 AI 智能体打造的网页搜索，附带每个页面的摘要。每月 1,000 个免费额度，无需银行卡。",
+    "description": "专为 AI 智能体打造的网页搜索，附带每个页面的摘要。每月免费 1,000 积分，无需绑卡。",
     "name": "Tavily 搜索",
-    "search.key.note": "免费密钥每月有 1,000 个额度，无需银行卡。基本搜索消耗 1 个额度，深入搜索消耗 2 个。",
-    "settings.properties.depth.description": "“基本”每次搜索消耗 1 个额度；“深入”读得更深，消耗 2 个。",
+    "search.key.note": "免费密钥每月有 1,000 积分，无需绑卡。基本搜索消耗 1 积分，深入搜索消耗 2 积分。",
+    "settings.properties.depth.description": "“基本”每次搜索消耗 1 积分；“深入”搜得更深，消耗 2 积分。",
     "settings.properties.depth.oneOf.0.title": "基本",
     "settings.properties.depth.oneOf.1.title": "深入",
     "settings.properties.depth.title": "深度",

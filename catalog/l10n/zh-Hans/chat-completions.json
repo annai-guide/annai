@@ -1,6 +1,6 @@
 {
   "manifest": {
-    "description": "连接 OpenAI 风格的 Chat Completions 端点：OpenAI、OpenRouter、Gemini、Groq、DeepSeek、Mistral 和本地服务器。",
+    "description": "连接兼容 OpenAI 的 Chat Completions 端点：OpenAI、OpenRouter、Gemini、Groq、DeepSeek、Mistral 和本地服务器。",
     "name": "Chat Completions"
   },
   "messages": {}

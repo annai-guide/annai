@@ -1,9 +1,9 @@
 {
   "manifest": {
-    "description": "你自己執行的 SGLang 伺服器上的模型，思考透過聊天範本開關。",
+    "description": "自己架設的 SGLang 伺服器上的模型，透過聊天範本開啟或關閉思考模式。",
     "name": "SGLang",
-    "provider.abilities.chat.note": "用「取得模型清單」新增模型：每個模型都會帶上伺服器保有的上下文長度。工具呼叫需要 --tool-call-parser <name>，會思考的模型需要 --reasoning-parser <name>；沒有它們，Shiori 無法使用工具，她的思考也會混進她的話裡。",
-    "provider.note": "除非用 --port 另行指定，SGLang 在 30000 連接埠監聽；用 --api-key 給它設金鑰，或者把金鑰留空。"
+    "provider.abilities.chat.note": "用「取得模型清單」新增模型，每個模型都會帶上伺服器設定的上下文長度。工具呼叫需要 --tool-call-parser <name>，會思考的模型需要 --reasoning-parser <name>；少了這些參數，Shiori 就無法使用工具，她的思考內容也會混進回答裡。",
+    "provider.note": "SGLang 預設監聽 30000 連接埠，可用 --port 另行指定；可以用 --api-key 設定金鑰，也可以把金鑰留空。"
   },
   "messages": {}
 }
