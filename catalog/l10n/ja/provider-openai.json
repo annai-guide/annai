@@ -1,15 +1,15 @@
 {
   "manifest": {
-    "description": "OpenAI の Responses API を通じた GPT のモデル。OpenAI の文字起こしと声、Koe のためのライブ音声も、1つのキーで使えます。",
+    "description": "OpenAIのResponses APIでGPTモデルを使います。OpenAIの文字起こしと声、Koeのライブ音声も、1つのキーで利用できます。",
     "name": "OpenAI",
     "provider.abilities.chat-completions.name": "チャット（Chat Completions）",
-    "provider.abilities.chat-completions.note": "「チャット（Responses）」のほうを使ってください：GPT-6 Astra と GPT-6.1 Sol はそちらでしかツールを呼びません。モデルは「モデルの一覧を取得」で追加します。",
+    "provider.abilities.chat-completions.note": "「チャット（Responses）」の使用をおすすめします。GPT-6 AstraとGPT-6.1 Solは、そちらでしかツールを呼び出せません。モデルは「モデルの一覧を取得」で追加します。",
     "provider.abilities.chat.name": "チャット（Responses）",
-    "provider.abilities.chat.note": "OpenAI ではこちらを使ってください：GPT-6 Astra と GPT-6.1 Sol は Responses を通してしかツールを呼びません。推論の要約には OpenAI で認証済みの組織が必要な場合があります。ない場合は、調整項目に \"reasoningSummary\": false を加えてください。「モデルの一覧を取得」で追加した推論モデルは、ここのモデルと同じように推論レベルを設定する必要があります。設定しないと途中経過を見せずに考え、制限時間を超えることがあります。",
+    "provider.abilities.chat.note": "OpenAIではこちらを使ってください。GPT-6 AstraとGPT-6.1 Solは、Responses経由でしかツールを呼び出せません。推論の要約には、OpenAIで組織の認証が必要な場合があります。認証していない場合は、調整項目に \"reasoningSummary\": false を追加してください。「モデルの一覧を取得」で追加した推論モデルは、ここにあるモデルと同じように推論レベルを設定してください。設定しないと途中経過を表示せずに考え、制限時間を超えることがあります。",
     "provider.abilities.realtime.name": "ライブ音声",
-    "provider.abilities.realtime.note": "Koe のための、1本のストリームで双方向に声で話す会話（OpenAI Realtime）。セッションが開いている間、話した言葉は電話品質の音声（G.711。最高品質の6分の1のデータ量。調整項目に \"input\": \"pcm16\" を入れると最高品質で送ります）として OpenAI に送られ、gpt-transcribe が書き起こします。この書き起こしは OpenAI が別に請求し（1分あたり約 $0.0045）、「1日の利用額」には数えられません。annai はキーをブラウザから直接 OpenAI に渡しますが、OpenAI はサーバーが作る短期間だけ有効なキーを勧めています。同じキーでチャットは使えるのに「テスト」でキーが拒否された、またはアドレスに届かないと出る場合、OpenAI はブラウザからのキーを拒否しています。その場合リアルタイム音声にはサーバーが必要ですが、annai にはサーバーがありません。",
+    "provider.abilities.realtime.note": "Koe用の、1本のストリームで声をやり取りする会話です（OpenAI Realtime）。セッション中は、話した内容が電話品質の音声（G.711。データ量は最高品質の6分の1。調整項目に \"input\": \"pcm16\" を入れると最高品質で送信）としてOpenAIに送られ、gpt-transcribeが文字に起こします。この文字起こしはOpenAIが別に請求するもので（1分あたり約$0.0045）、「1日の利用額」には含まれません。annaiはブラウザから直接OpenAIにキーを渡しますが、OpenAIはサーバーで発行する短期間だけ有効なキーを推奨しています。同じキーでチャットは使えるのに、「テスト」でキーが拒否された、またはアドレスに接続できないと表示される場合は、OpenAIがブラウザからのキーを拒否しています。その場合、OpenAIのライブ音声にはサーバーが必要ですが、annaiにはサーバーがありません。",
     "provider.abilities.transcription.note": "音声を受け付けないモデルのために、話した言葉を文字にします。",
-    "provider.abilities.voice.note": "Shiori の声。GPT-4o mini TTS は音声の量で課金され、ここでの料金は OpenAI の見積もりの1分あたり $0.015 です。GPT-4o mini TTS はスタイル（OpenAI の instructions）を受け付けますが、TTS-1 と TTS-1 HD は受け付けず、何も言わずに無視します。OpenAI はこの3つすべてを2027年1月6日に提供終了します。"
+    "provider.abilities.voice.note": "Shioriの声。GPT-4o mini TTSは音声の長さに応じて課金されます。ここに表示している料金は、OpenAIが見積もった1分あたり$0.015です。GPT-4o mini TTSはスタイル（OpenAIのinstructions）に対応していますが、TTS-1とTTS-1 HDは対応しておらず、指定してもエラーを出さずに無視します。OpenAIは、この3つすべての提供を2027年1月6日に終了します。"
   },
   "messages": {}
 }

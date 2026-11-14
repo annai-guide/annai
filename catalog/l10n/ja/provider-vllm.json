@@ -1,10 +1,10 @@
 {
   "manifest": {
-    "description": "自分で動かしている vLLM サーバーのモデル。思考のオン/オフはチャットテンプレートで切り替えます。文字起こし用の Whisper モデルも使えます。",
+    "description": "自分で運用しているvLLMサーバーのモデル。思考のオン/オフはチャットテンプレートで切り替えます。文字起こし用のWhisperモデルも使えます。",
     "name": "vLLM",
-    "provider.abilities.chat.note": "モデルは「モデルの一覧を取得」で追加します。それぞれ、サーバーが保持するコンテキストの長さ付きで追加されます。ツールの呼び出しには --enable-auto-tool-choice --tool-call-parser <name>、考えるモデルには --reasoning-parser <name> が必要です。これらがないと Shiori はツールを使えず、彼女の思考が言葉に混ざって表示されます。",
-    "provider.abilities.transcription.note": "Whisper モデルを専用の vLLM サーバーで動かす場合：そのサーバーのアドレスをこの機能の独自のアドレスとして入力し、モデルを ID で追加してください。",
-    "provider.note": "vLLM は --port で変えない限りポート 8000 で待ち受けます。--api-key でキーを設定するか、キーを空のままにしてください。"
+    "provider.abilities.chat.note": "モデルは「モデルの一覧を取得」で追加します。サーバーが保持するコンテキストの長さも一緒に読み込まれます。ツールを呼び出すには --enable-auto-tool-choice --tool-call-parser <name> が、思考するモデルには --reasoning-parser <name> が必要です。これらがないと、Shioriはツールを使えず、思考が発言に混ざって表示されます。",
+    "provider.abilities.transcription.note": "Whisperモデルを専用のvLLMサーバーで動かす場合は、そのサーバーのアドレスをこの機能専用のアドレスとして入力し、モデルをIDで追加してください。",
+    "provider.note": "vLLMは、--port で指定しない限りポート8000で待ち受けます。--api-key でキーを設定するか、キーを空欄のままにしてください。"
   },
   "messages": {}
 }

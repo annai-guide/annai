@@ -1,18 +1,18 @@
 {
   "manifest": {
-    "description": "AI エージェント向けの Web 検索。各ページの抜粋付き。毎月 1,000 クレジットまで無料、カード不要。",
-    "name": "Tavily 検索",
-    "search.key.note": "無料のキーで毎月 1,000 クレジット、カード不要。基本の検索は1クレジット、詳細な検索は2クレジットです。",
+    "description": "AIエージェント向けのWeb検索。各ページの抜粋付き。毎月1,000クレジットまで無料で、カード登録は不要です。",
+    "name": "Tavily検索",
+    "search.key.note": "無料のキーで毎月1,000クレジットまで使え、カード登録は不要です。「基本」の検索は1クレジット、「詳細」は2クレジットです。",
     "settings.properties.depth.description": "「基本」は1回の検索で1クレジット、「詳細」はより深く読んで2クレジットです。",
     "settings.properties.depth.oneOf.0.title": "基本",
     "settings.properties.depth.oneOf.1.title": "詳細",
     "settings.properties.depth.title": "深さ",
-    "settings.properties.key.title": "Tavily の API キー",
+    "settings.properties.key.title": "TavilyのAPIキー",
     "keywords": [
       "Tavily"
     ]
   },
   "messages": {
-    "1lf6xjz": "設定 → プラグイン → Tavily 検索 でキーを入力"
+    "1lf6xjz": "キーが必要：「設定 → プラグイン → Tavily検索」"
   }
 }

@@ -27,7 +27,7 @@ This page is a review aid. The source is [`glossary.tsv`](glossary.tsv): one row
 | MCP servers | MCPサーバー | MCP 服务器 | MCP 伺服器 |
 | Models | モデル | 模型 | 模型 |
 | Notifications | 通知 | 通知 | 通知 |
-| Now | いま | 此刻 | 此刻 |
+| Now | いま | 现在 | 現在 |
 | Photos | 写真 | 照片 | 照片 |
 | Plugins | プラグイン | 插件 | 外掛程式 |
 | Recap | 振り返り | 回顾 | 回顧 |
@@ -55,19 +55,19 @@ This page is a review aid. The source is [`glossary.tsv`](glossary.tsv): one row
 | dock | ドック | 底栏 | 底部列 |
 | export | エクスポート | 导出 | 匯出 |
 | golden hour | ゴールデンアワー | 黄金时刻 | 黃金時刻 |
-| halves | 半身 | 分身 | 分身 |
+| halves | KoeとKokoro（一人なら「一人で」） | Koe 和 Kokoro | Koe 和 Kokoro |
 | Housekeeping | 会話の整理 | 对话整理 | 對話整理 |
 | key | キー | 密钥 | 金鑰 |
 | Main | メイン | 主要 | 主要 |
 | New conversation | 新しい会話 | 新对话 | 新對話 |
 | Offline pack | オフラインパック | 离线包 | 離線資料包 |
-| Open an annai file | annai のファイルを開く | 打开 annai 文件 | 開啟 annai 檔案 |
+| Open an annai file | annaiのファイルを開く | 打开 annai 文件 | 開啟 annai 檔案 |
 | passphrase | パスフレーズ | 密码短语 | 密碼片語 |
 | personality | 性格 | 性格 | 性格 |
 | provider | プロバイダー | 提供商 | 供應商 |
 | push relay | プッシュ中継 | 推送中继 | 推播中繼 |
 | Quick decision | クイック判定 | 快速判断 | 快速判斷 |
-| quiet hours | 静かな時間帯 | 安静时段 | 安靜時段 |
+| quiet hours | おやすみ時間 | 休息时段 | 休息時段 |
 | reminder | リマインダー | 提醒 | 提醒 |
 | role | 役割 | 角色 | 角色 |
 | said aloud | 読み上げ | 已朗读 | 已朗讀 |
@@ -92,7 +92,7 @@ This page is a review aid. The source is [`glossary.tsv`](glossary.tsv): one row
 |---|---|---|---|
 | Koe · Chat | Koe · チャット | Koe · 聊天 | Koe · 聊天 |
 | Koe · Live | Koe · ライブ | Koe · 实时 | Koe · 即時 |
-| Listening live | ライブで聞いています | 正在实时收听 | 正在即時收聽 |
+| Listening live | ライブで聞き取り中 | 正在实时收听 | 正在即時收聽 |
 | Live voice | ライブ音声 | 实时语音 | 即時語音 |
 | Voice auto | 音声自動 | 语音自动 | 語音自動 |
 | Voice off | 音声オフ | 语音关闭 | 語音關閉 |

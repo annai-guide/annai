@@ -3,40 +3,40 @@
   "plugins": {
     "anthropic-messages": {
       "name": "Anthropic Messages",
-      "description": "Anthropic の Messages API と、それに対応したエンドポイントにつなぎます。"
+      "description": "AnthropicのMessages APIと、それに対応したエンドポイントに接続します。"
     },
     "chat-completions": {
       "name": "Chat Completions",
-      "description": "OpenAI 形式の Chat Completions エンドポイントにつなぎます：OpenAI、OpenRouter、Gemini、Groq、DeepSeek、Mistral、ローカルのサーバー。"
+      "description": "OpenAI互換のChat Completionsエンドポイントに接続します。OpenAI、OpenRouter、Gemini、Groq、DeepSeek、Mistral、ローカルサーバーで使えます。"
     },
     "gemini-api": {
       "name": "Gemini API",
-      "description": "Gemini 独自の API（Interactions）で、チャット、文字起こし、声を扱います：あらゆる音声形式、Gemini 3 の思考シグネチャをそのまま引き継ぎ、キャッシュと思考のトークンを含む使用量を数え、声はストリーミングし、ターン間の会話は Google が保持するので毎回新しい部分だけを送り、有料キーなら Google 検索も使えます（その答えは Google が返したとおりに表示します）。"
+      "description": "Gemini独自のAPI（Interactions）で、チャット、文字起こし、声を扱います。すべての音声形式に対応し、Gemini 3の思考シグネチャをそのまま引き継ぎ、キャッシュと思考のトークンを含めて使用量を記録します。声はストリーミングで再生し、会話はGoogle側で保持されるため、やり取りごとに新しい部分だけを送ります。有料キーならGoogle 検索も使え、その答えはGoogleが返したとおりに表示します。"
     },
     "gemini-live": {
       "name": "Gemini Live",
-      "description": "Gemini の Live API につなぎます：Koe のための、1本のストリームで双方向に話す音声会話。"
+      "description": "GeminiのLive APIに接続します。Koe用の、1本のストリームで双方向にやり取りする音声会話です。"
     },
     "openai-realtime": {
       "name": "OpenAI Realtime",
-      "description": "OpenAI の Realtime API につなぎます：Koe のための、1本のストリームで双方向に話す音声会話。"
+      "description": "OpenAIのRealtime APIに接続します。Koe用の、1本のストリームで双方向にやり取りする音声会話です。"
     },
     "openai-responses": {
       "name": "OpenAI Responses",
-      "description": "OpenAI の Responses API と、それに対応したサーバーにつなぎます。ターン間の会話は OpenAI が保持するので毎回新しい部分だけを送り、保存された応答は annai が指示されたときに削除されます。"
+      "description": "OpenAIのResponses APIと、それに対応したサーバーに接続します。会話はOpenAI側で保持されるため、やり取りごとに新しい部分だけを送ります。保存された応答は、annaiで削除を指示すると削除されます。"
     },
     "pdf-pages": {
-      "name": "PDF ページ",
-      "description": "写真は見られても PDF を読めないモデルに、PDF のページを画像として見せます。どのブラウザでも、PDF の1ページ目をプレビューとして描きます。Mozilla の PDF.js（約 4.5 MB）を含みます。",
+      "name": "PDFページ",
+      "description": "写真は見られてもPDFは読めないモデルに、PDFのページを画像にして渡します。また、PDFの1ページ目をプレビューとして描画し、どのブラウザでも表示できるようにします。MozillaのPDF.js（約4.5 MB）を含みます。",
       "keywords": [
         "PDF.js"
       ]
     },
     "provider-another-address": {
       "name": "カスタムプロバイダー",
-      "description": "そのほかのあらゆるサーバー：OpenAI 互換のサーバー、ルーターやプロキシ、自分で動かしているサーバー。アドレスを入力すると、annai が提供内容を無料で調べます。",
+      "description": "OpenAI互換のサーバー、ルーターやプロキシ、自分で動かしているサーバーなど、ほかのサーバーに使えます。アドレスを入力すると、annaiが対応機能を無料で調べます。",
       "keywords": [
-        "OpenAI 互換",
+        "OpenAI互換",
         "ルーター",
         "カスタム",
         "プロキシ",
@@ -45,23 +45,23 @@
     },
     "provider-anthropic": {
       "name": "Anthropic",
-      "description": "Anthropic の Messages API を通じた Claude のモデル。Web 検索と、最長1時間もつキャッシュ付き。"
+      "description": "AnthropicのMessages API経由で使うClaudeのモデル。Web検索と、最長1時間保持されるキャッシュに対応しています。"
     },
     "provider-deepseek": {
       "name": "DeepSeek",
-      "description": "DeepSeek のモデル。考えている途中の推論を表示します。"
+      "description": "DeepSeekのモデル。推論の過程をリアルタイムで表示します。"
     },
     "provider-gemini": {
       "name": "Google Gemini",
-      "description": "Google 独自の API を通じた Gemini のモデル。有料キーでの Google 検索、Google の文字起こしと声、音声会話のための Gemini Live 付き。"
+      "description": "Google独自のAPIで使うGeminiのモデル。有料キーならGoogle 検索も使えます。Googleの文字起こしと声、音声で会話できるGemini Liveにも対応しています。"
     },
     "provider-groq": {
       "name": "Groq",
-      "description": "高速なオープンモデルと、高速な Whisper の文字起こし。"
+      "description": "高速なオープンモデルと、Whisperによる高速な文字起こし。"
     },
     "provider-llamacpp": {
       "name": "llama.cpp",
-      "description": "自分で動かしている llama.cpp のサーバー（llama-server）、または Unsloth Studio や KoboldCpp などそれを土台にしたサーバーのモデル。クイック判定では思考をオフにします。",
+      "description": "自分で運用しているllama.cppのサーバー（llama-server）や、Unsloth Studio、KoboldCppなどllama.cppをベースにしたサーバーのモデル。クイック判定では思考をオフにします。",
       "keywords": [
         "Unsloth",
         "LM Studio",
@@ -70,11 +70,11 @@
     },
     "provider-lmstudio": {
       "name": "LM Studio",
-      "description": "LM Studio のサーバーのモデル。"
+      "description": "LM Studioのサーバーのモデル。"
     },
     "provider-local-speech": {
       "name": "ローカルの音声サーバー",
-      "description": "Speaches、whisper.cpp、Kokoro など、自分で動かしているサーバーによる文字起こしと声。",
+      "description": "Speaches、whisper.cpp、Kokoroなど、自分で動かしているサーバーの文字起こしと声を使えます。",
       "keywords": [
         "Speaches",
         "whisper.cpp",
@@ -83,117 +83,117 @@
     },
     "provider-mistral": {
       "name": "Mistral",
-      "description": "Mistral のモデル。"
+      "description": "Mistralのモデル。"
     },
     "provider-ollama": {
       "name": "Ollama",
-      "description": "Ollama のモデル。クイック判定では思考をオフにします。"
+      "description": "Ollamaのモデル。クイック判定では思考をオフにします。"
     },
     "provider-openai": {
       "name": "OpenAI",
-      "description": "OpenAI の Responses API を通じた GPT のモデル。OpenAI の文字起こしと声、Koe のためのライブ音声も、1つのキーで使えます。"
+      "description": "OpenAIのResponses APIでGPTモデルを使います。OpenAIの文字起こしと声、Koeのライブ音声も、1つのキーで利用できます。"
     },
     "provider-openrouter": {
       "name": "OpenRouter",
-      "description": "1つのキーで多くのモデル（無料のものも含む）、さらに文字起こしと声も使えます。「OpenRouter でサインイン」するか、キーを入力してください。",
-      "featured": "「OpenRouter でサインイン」がいちばん手早い方法で、無料のモデルから始められます。"
+      "description": "1つのキーで、無料のものを含む多くのモデルと、文字起こしや声も使えます。「OpenRouterでサインイン」するか、キーを入力してください。",
+      "featured": "「OpenRouterでサインイン」がいちばん手早い方法で、無料のモデルからすぐに始められます。"
     },
     "provider-scripted": {
-      "name": "台本どおりのモデル（テスト用）",
-      "description": "台本どおりに返答するモデル。テストとプラグインの作者向けです。ネットワークは一切使いません。"
+      "name": "スクリプト応答モデル（テスト用）",
+      "description": "あらかじめ用意したスクリプトどおりに返答するモデルです。テストやプラグイン開発向けで、通信は一切行いません。"
     },
     "provider-sglang": {
       "name": "SGLang",
-      "description": "自分で動かしている SGLang サーバーのモデル。思考のオン/オフはチャットテンプレートで切り替えます。"
+      "description": "自分で動かしているSGLangサーバーのモデルを使います。思考のオン/オフはチャットテンプレートで切り替えます。"
     },
     "provider-vllm": {
       "name": "vLLM",
-      "description": "自分で動かしている vLLM サーバーのモデル。思考のオン/オフはチャットテンプレートで切り替えます。文字起こし用の Whisper モデルも使えます。"
+      "description": "自分で運用しているvLLMサーバーのモデル。思考のオン/オフはチャットテンプレートで切り替えます。文字起こし用のWhisperモデルも使えます。"
     },
     "remote-trace": {
       "name": "リモート記録（開発者向け）",
-      "description": "開発者向け：annai の記録を、「記録」画面に表示されるとおりに、自分で動かしているサーバーへリアルタイムで送ります。サーバーとトークンを入力して「送信」をオンにするまでは何も送りません。annai が保存しているキーは伏せます。"
+      "description": "開発者向け：annaiの記録を、「記録」画面の表示どおりに、自分で運用しているサーバーへリアルタイムで送信します。サーバーとトークンを入力して「送信」をオンにするまでは、何も送信しません。annaiが保存しているキーは伏せ字にします。"
     },
     "scripted-model": {
-      "name": "台本どおりのモデル",
-      "description": "台本どおりに返答するモデル。テストとプラグインの作者向けです。ネットワークは一切使いません。"
+      "name": "スクリプト応答モデル",
+      "description": "あらかじめ用意したスクリプトどおりに返答するモデルです。テストやプラグイン開発向けで、通信は一切行いません。"
     },
     "search-searxng": {
-      "name": "SearXNG 検索",
-      "description": "自分で動かしている SearXNG のインスタンスで検索します。キー不要で、制限は自分で決めたものだけです。インスタンスは JSON と Web アプリを許可している必要があります。",
+      "name": "SearXNG検索",
+      "description": "自分で運用しているSearXNGのインスタンスで検索します。キーは不要で、制限は自分で決めたものだけです。インスタンス側で、JSON形式の出力とWebアプリからのアクセスを許可しておく必要があります。",
       "keywords": [
         "SearXNG",
         "セルフホスト"
       ]
     },
     "search-serper": {
-      "name": "Serper 検索",
-      "description": "Serper を通じた Google の検索結果。Google のアンサーボックス付き。登録時に 2,500 回の無料検索、カード不要。",
+      "name": "Serper検索",
+      "description": "Serperを使ってGoogleの検索結果を取得します。アンサーボックスにも対応しています。登録すると2,500回まで無料で検索でき、カードは不要です。",
       "keywords": [
         "Serper",
         "Google"
       ]
     },
     "search-tavily": {
-      "name": "Tavily 検索",
-      "description": "AI エージェント向けの Web 検索。各ページの抜粋付き。毎月 1,000 クレジットまで無料、カード不要。",
+      "name": "Tavily検索",
+      "description": "AIエージェント向けのWeb検索。各ページの抜粋付き。毎月1,000クレジットまで無料で、カード登録は不要です。",
       "keywords": [
         "Tavily"
       ]
     },
     "speech-openai": {
-      "name": "OpenAI 互換の音声",
-      "description": "OpenAI の音声 API を通じた文字起こしと声：OpenAI、OpenRouter、Groq、そして Speaches、whisper.cpp、Kokoro などのローカルのサーバー。"
+      "name": "OpenAI互換の音声",
+      "description": "OpenAIの音声APIを使った文字起こしと声。OpenAI、OpenRouter、Groqのほか、Speaches、whisper.cpp、Kokoroなどのローカルサーバーに対応します。"
     },
     "storage-forgejo": {
       "name": "Forgejo / Gitea",
-      "description": "自分のサーバーや Codeberg など、Forgejo か Gitea のサーバーにある非公開リポジトリにすべてをバックアップします。バックアップ1回が1コミットになり、変わったファイルだけがアップロードされます。"
+      "description": "自分のサーバーやCodebergなど、ForgejoまたはGiteaのサーバー上の非公開リポジトリに、すべてをバックアップします。バックアップ1回が1コミットになり、変更されたファイルだけがアップロードされます。"
     },
     "storage-github": {
       "name": "GitHub",
-      "description": "GitHub の非公開リポジトリにすべてをバックアップします。バックアップ1回が1コミットになり、変わったファイルだけがアップロードされます。"
+      "description": "GitHubの非公開リポジトリにすべてをバックアップします。バックアップごとに1コミットを作成し、変更されたファイルだけをアップロードします。"
     },
     "storage-s3": {
-      "name": "S3 互換ストレージ",
-      "description": "AWS S3、Cloudflare R2、Backblaze B2 など、S3 互換のストレージのバケットにすべてをバックアップします。バックアップ1回につきアーカイブファイル1つです。"
+      "name": "S3互換ストレージ",
+      "description": "AWS S3、Cloudflare R2、Backblaze B2などのS3互換ストレージのバケットに、すべてをバックアップします。バックアップ1回につき、アーカイブファイルを1つ作成します。"
     },
     "storage-webdav": {
       "name": "WebDAV",
-      "description": "ブラウザからのアクセスを許可している WebDAV サーバーのフォルダーに、すべてをバックアップします。バックアップ1回につきアーカイブファイル1つです。"
+      "description": "ブラウザからのアクセスを許可しているWebDAVサーバーのフォルダーに、すべてをバックアップします。バックアップ1回につき、アーカイブファイルを1つ作成します。"
     }
   },
   "translations": {
-    "anthropic-messages": "007507edb8c21171f399d0b2b91a23dcf8071c824d6ec246bab458fff8a51719",
-    "chat-completions": "549e6b39331df19eca883923129a4295e19c3a46e7d556f59afbbb83b73f4efd",
-    "gemini-api": "8508e7329f47d346032a4da61d19e3ae991ebdb3348ddb0700a3671259faf51d",
-    "gemini-live": "56d32c5fd87b9049d26c185b538ac4e5fbf12bfa0ca06c513e2bd65743aa1bda",
-    "openai-realtime": "d482ca37bb9d3925bde67db6be4343098534c53f45a63cccf470342e9dc76911",
-    "openai-responses": "654be92948335827db2ca695d9c0e477c26d277311bfea9cc6ce59f6b6b1b239",
-    "pdf-pages": "57a2211e73b0ff4dd0b43159eb8e086dd700994c4386bec18d8e487b89827dc5",
-    "provider-another-address": "5feb893ef50dbac95ba50b98b3fb32332fb270657e80ddac18f0fbf338d137a0",
-    "provider-anthropic": "e3f899aecc2dcec177eae833bcfdef7940ea8003e6152a68f570a8f32d08d21c",
-    "provider-deepseek": "36889bd552056525cb95871d172c3996e28b4c5472f3b911412500482359cc28",
-    "provider-gemini": "7d3fe959c4bd3c6242711a1229a76244198ba18d8ffc7d0e17cc8112191b2e11",
-    "provider-groq": "971743244bdf7d3855a8504df4f841a039c245a7964b28fb1771f1afaa8d62fc",
-    "provider-llamacpp": "361425bae75413a650931ae2dac1a74847a06bf3a27628364e79e1644865a032",
-    "provider-lmstudio": "0faf6343ec230f0dbef50b38bfac65e496efdd94ec26fcdb253537147a2ba33b",
-    "provider-local-speech": "293aaffc2e2d71c7ddeaae51dc0ddb67b489bd1a301fa6edef939401701a9f36",
-    "provider-mistral": "4b2bf56e04f45f06cd182921e2dde640738eed8d1d4635e66d265e91d0ab6f7d",
-    "provider-ollama": "927d4d79c08cd5d7859167ce9572212e2b01691c8c0b9fbd8f09c1d2d762217f",
-    "provider-openai": "0b233eab1c30c62550657a4f2193a671f27fdd8ebe130406bbcba8fea6b33ce4",
-    "provider-openrouter": "a887328c293cc6bca05fc14285baeb92b8f5aabdb7142be49c1a27f4b4644ec9",
-    "provider-scripted": "75a78e1a3a3b216317a2041eba975e7e7d34a02c5cd74799a3a5412aa59f6f8e",
-    "provider-sglang": "77fe951da8be293bdb526152ac02e5d0cc363944a5aa5a2e2a063d836dc290c7",
-    "provider-vllm": "07a3e5f89387449fd37625d44c17f2aa48b6d9a060124685946522243f1d38ec",
-    "remote-trace": "ff4d6a72b9172e5ad672a46cafadbc44664a28c38129cfc33f380cabce6be48b",
-    "scripted-model": "e311b1c502a9134d1f71c86cff7dd64e71eed6003f17c237d639124c550faf69",
-    "search-searxng": "a424e060bb2957549903fb089607a41bd10ac7d01d1b64591e0b91b149b1e506",
-    "search-serper": "cd4bc5c35302ea3543cd325c4ee966e86274c818145e2eee404378d6bed4afb6",
-    "search-tavily": "bba3a1c58ab2170f723be9d5766b2755074fbc528abc5cc3879764d93047a9c4",
-    "speech-openai": "a9b094294d25ea2bda1dea0be13887ffdbefc6d0735aee3f4af72ae4eb83002b",
-    "storage-forgejo": "11077a3422201e01e380c7af4d76b186e5a9f728c42dec982510f28e307e68b1",
-    "storage-github": "8b141179e242ecdb4f0f938b1b37c7547c530a983e686e9c7deb344c15f1b749",
-    "storage-s3": "ad65ce98fe960a963d3291af1a3c7e6f150c6c32a54d284913380a4fae178b1e",
-    "storage-webdav": "94066886b3a8f945d34f159d859e6d90995a955a2c4d47b9c7e28963422b840f"
+    "anthropic-messages": "69e5551862046203e20a51bfbe22a9ca069b538c0320a0cde6aa942481c0b009",
+    "chat-completions": "eb45e870dc59731f82bbae86c6304cb1cf0913c7332cddd3be8959f13ced4c47",
+    "gemini-api": "97da6d12dc0225b4b13966ed8ea2af5c1d9f431e140949b6c62a3a10ce3b7520",
+    "gemini-live": "bfac6dc37a17c33e59964b5c2bc705216a3bcbb6137225f162a22795bc14b0c4",
+    "openai-realtime": "82c228de26b656b02650541fd1c8d2ca5d2149ed153a0972bee8847147f4f4a1",
+    "openai-responses": "6d2c319686397798e0bc32c2cc35e77e54c3fe06f7070c1ef168998fde5111f0",
+    "pdf-pages": "896b9a93da0d83aa1162994d444a64b4258fc51845d3351bfcce1fb5d1b1084e",
+    "provider-another-address": "cd34b2ea111ca0feed51f2bdc5a69f19573b9b7bf3c8b790fb2d5510cab90bf5",
+    "provider-anthropic": "5fd911ed8201d02943ac443e4c91bd9f3a647f178985d66decfd1678efea4eb5",
+    "provider-deepseek": "d0520ccd8e0dea290a3b2d2b58cfeb13f4865430c6a8f79dd0e4da52218d6cfe",
+    "provider-gemini": "721f684755286f20cdb31758e04a5c92ca355c8134d07231f88b6ecfee17bba3",
+    "provider-groq": "810ac311ae194becec2d2aac0a1eb9b687b2c4abee723fc1809cb7bc26845eb1",
+    "provider-llamacpp": "b73de4f8ad8d75ee5c477820e2055173832c38ab02b313a1e01788fabfb1dbfd",
+    "provider-lmstudio": "44e1e7c759609a0cf8851b6449bfb45cca201307cd59ffce4ebd6b310593a6be",
+    "provider-local-speech": "043783eff9adf651bfb36604011337bb5e165b8f44816db912dc8d8bc1e8c8f6",
+    "provider-mistral": "bfa52beb84680079834903d41e2f52366e01aa32c9fa8bca41410b2749e44c68",
+    "provider-ollama": "6a2c93e83f7046788279eba966e188480ebe8fa40a55193d5a1cbf6180145f13",
+    "provider-openai": "0eee0da3da23a834d6881c094e501aed1b74843461f40b6a702f316a901dc0b1",
+    "provider-openrouter": "69ef84f3747226e29b12e86459cbb5d44793ccaa619f3c8d53240c546bae0d3c",
+    "provider-scripted": "b101198213b827ba2a0053d7de732021c1a799750ed9c8d1f9153c329f819220",
+    "provider-sglang": "e571515567a16eb25f8cb4cf5dffce4aea48a96c05648a61ea1cc4ef76b48ec5",
+    "provider-vllm": "17a0a783d230c7324d4224a027f5304708d1c47d4cf0270f6f41948b70ea1766",
+    "remote-trace": "7b62c3089f0b0df2b5c1dad69bea1475952701652670fafc874601a6d13dcafa",
+    "scripted-model": "464f00d883336f73bdcbdbc55964551e8124eb728148f145d1416323881569bf",
+    "search-searxng": "32f4b2e3fc4b4245f1ad19a6577a4208fdd9262cc40975393cec88a7cf47f4b3",
+    "search-serper": "9fd6ed6c3b77077ce6a604cae5670999d1cf732a6635873fdaaac6f762254eb6",
+    "search-tavily": "63aa6b921d6cb379b4f572d868d15037c9b2c9ea64b16d2a2654402aa9a38d31",
+    "speech-openai": "558d8cdcf415ee8eeac99b3c20416dac305f441bed76df58c3e21e24978dca6f",
+    "storage-forgejo": "6cb3266b4b2f0de36c79ead7ee1f8c913be868d0cd0b78f4e26d946f2f7b912b",
+    "storage-github": "818bbed0af164e5656440f2548a912a46a4936215be6c7fa48d1ad109feaac46",
+    "storage-s3": "19da152066fdcfed4c75c66753b304441b342554f3ac3c1854db7afe22fdd8a2",
+    "storage-webdav": "a8d5b5dcb2808955ee1b46d766d1db973ea926732d3c17d624903cdcb64864f1"
   }
 }

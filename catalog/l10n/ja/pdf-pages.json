@@ -1,7 +1,7 @@
 {
   "manifest": {
-    "description": "写真は見られても PDF を読めないモデルに、PDF のページを画像として見せます。どのブラウザでも、PDF の1ページ目をプレビューとして描きます。Mozilla の PDF.js（約 4.5 MB）を含みます。",
-    "name": "PDF ページ",
+    "description": "写真は見られてもPDFは読めないモデルに、PDFのページを画像にして渡します。また、PDFの1ページ目をプレビューとして描画し、どのブラウザでも表示できるようにします。MozillaのPDF.js（約4.5 MB）を含みます。",
+    "name": "PDFページ",
     "keywords": [
       "PDF.js"
     ]
