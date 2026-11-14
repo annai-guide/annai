@@ -255,7 +255,7 @@ function preview(ctx, body, opened, desc, from, fresh, bring = null) {
   const [ago, app] = [relTime(desc.created), desc.app];
   const what = desc.kind === 'everything'
     ? (desc.encrypted ? t`A backup of everything exported ${ago} from annai ${app}, encrypted.` : t`A backup of everything exported ${ago} from annai ${app}.`)
-    : desc.encrypted ? t`A trip exported ${ago} from annai ${app}, encrypted.` : t`A trip exported ${ago} from annai ${app}.`;
+    : desc.encrypted ? t`Exported ${ago} from annai ${app}, encrypted.` : t`Exported ${ago} from annai ${app}.`;
   return h('div', { class: 'panel' },
     h('p', { text: what }),
     rows.length + group.length + fold.length ? h('ul', { class: 'cards' }, ...rows, ...group, ...fold) : h('p', { class: 'sub', text: t`There are no trips in this file.` }),

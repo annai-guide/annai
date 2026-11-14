@@ -22,7 +22,7 @@ import { fileCard, pdfPages, imgDrawsPdf } from '../preview.js';
 let objectUrl = null;
 
 /** The screens a file's crumb goes back to, when it was opened from one (?from=), by their words; else the trip. */
-const BACK = /** @type {Record<string, string>} */ ({ plan: t`Itinerary`, booking: t`Details`, item: t`Details`, now: t`Now`, trip: t`Back to trip`, talk: t`Conversation`, recap: t`Recap` });
+const BACK = /** @type {Record<string, string>} */ ({ plan: t`Itinerary`, booking: t`Details`, item: t`Details`, now: t`Now`, trip: t`Details`, talk: t`Conversation`, recap: t`Recap` });
 /** The words of a screen a crumb goes back to (cameFrom's name). @param {string} name */
 export const backLabel = (name) => BACK[name] ?? t`Itinerary`;
 /**
@@ -54,7 +54,7 @@ export async function renderFile(ctx, route) {
   const r = await ctx.ws.read(id, path);
   const history = await ctx.ws.history(id, path);
   if (!r) return deletedScreen(ctx, id, path, history, names, { back, from, trip: scope.title });
-  const crumbs = h('p', { class: 'crumbs' }, crumb(back, from ? BACK[from.name] : t`Back to trip`));
+  const crumbs = h('p', { class: 'crumbs' }, crumb(back, BACK[from?.name ?? 'trip']));
   const head = [crumbs, ...named(names, path, h('h1', { class: 'title mono', dir: 'ltr' }, ...pathParts(path)))];
   const { entry, bytes: content } = r;
   // A file the user gave: its Delete removes what Shiori read from it too, and says so (the file-details design, My call 6).

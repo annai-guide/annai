@@ -64,7 +64,7 @@ test('archive a trip, then bring it back', async ({ page }) => {
   await page.getByRole('button', { name: 'Archive', exact: true }).click();
   await page.getByRole('button', { name: 'Tap again to archive' }).click();
   await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
-  await page.getByText('Archived trips (1)').click();
+  await page.getByText('Archived (1)').click();
   await page.getByRole('link', { name: /Old trip/ }).click();
   await page.getByRole('button', { name: 'Unarchive' }).click();
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
@@ -75,7 +75,7 @@ test('a bad trip name gets a plain explanation', async ({ page }) => {
   await openApp(page);
   await page.getByLabel('Trip name').fill('   ');
   await page.getByRole('button', { name: 'Start trip' }).click();
-  await expect(page.getByRole('alert')).toContainText('Give the trip a name');
+  await expect(page.getByRole('alert')).toContainText('Give it a name.');
 });
 
 test('a full device says what to do, and nothing is half-saved', async ({ page }) => {
@@ -225,12 +225,12 @@ test('an archived trip can be removed too', async ({ page }) => {
   await startTrip(page, 'Old trip');
   await page.getByRole('button', { name: 'Archive', exact: true }).click();
   await page.getByRole('button', { name: 'Tap again to archive' }).click();
-  await page.getByText('Archived trips (1)').click();
+  await page.getByText('Archived (1)').click();
   await page.getByRole('link', { name: /Old trip/ }).click();
   await page.getByRole('button', { name: 'Remove', exact: true }).click();
   await page.getByRole('dialog', { name: 'Old trip' }).getByRole('button', { name: 'Remove' }).click();
   await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
-  await expect(page.getByText(/Archived trips/)).toHaveCount(0);
+  await expect(page.getByText(/^Archived \(/)).toHaveCount(0);
 });
 
 test('Remove trip runs once at a time', async ({ page }) => {
@@ -655,7 +655,7 @@ test('All files is folded below Files, and still has notes, memory, the raw reco
   await page.getByLabel('File path').fill('/notes/day1.md');
   await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.getByRole('heading', { name: '/notes/day1.md' })).toBeVisible();
-  await page.getByRole('main').getByRole('link', { name: 'Back to trip' }).click();
+  await page.getByRole('main').getByRole('link', { name: 'Details', exact: true }).click();
   // The fold stays open while annai runs.
   await expect(page.getByRole('link', { name: /^\/notes\/day1\.md/ })).toBeVisible();
 });
@@ -807,7 +807,7 @@ test('Details changes the name and the dates; a cleared date goes, a backward ra
   await form.getByLabel('Ends').fill('');
   await form.getByLabel('Name', { exact: true }).fill('  ');
   await form.getByRole('button', { name: 'Save' }).click();
-  await expect(form.getByRole('alert')).toHaveText('Give the trip a name.');
+  await expect(form.getByRole('alert')).toHaveText('Give it a name.');
   expect((await tripJson(page, id)).title).toBe('Kyoto in spring');
   // Both dates cleared: an undated trip again.
   await form.getByLabel('Name', { exact: true }).fill('Kyoto in spring');
@@ -884,6 +884,64 @@ test("Details and the conversation say what it has cost by its dates, a chat's c
   await expect(main).not.toContainText('This conversation so far');
   await goToHash(page, '#/welcome');
   await expect(main.getByText('Tap + on Trips to talk to her, or tap her in any conversation.')).toBeVisible();
+});
+
+// A plain chat (no dates) is not called a trip: each of the six places has words that fit a chat and a trip alike (the user's pick
+// 2026-11-13, "One later sweep (Recommended)").
+test("a plain chat isn't called a trip: All files heads its loose files /, as a folder's are headed notes/", async ({ page }) => {
+  await openApp(page);
+  await startNamed(page, 'Kyoto');
+  await allFiles(page);
+  const files = page.locator('section.files');
+  await expect(files.getByRole('heading', { name: '/', exact: true })).toBeVisible();
+  await expect(files.getByRole('heading', { name: 'Trip', exact: true })).toHaveCount(0);
+});
+
+test("a plain chat isn't called a trip: a file's crumb goes back to Details", async ({ page }) => {
+  await openApp(page);
+  await startNamed(page, 'Kyoto');
+  await allFiles(page);
+  await page.getByRole('link', { name: /^\/trip\.json/ }).click();
+  const crumb = page.getByRole('main').locator('.crumbs').getByRole('link', { name: 'Details', exact: true });
+  await crumb.click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Kyoto' })).toBeVisible();
+});
+
+test("a plain chat isn't called a trip: a blank name in Details asks to give it a name", async ({ page }) => {
+  await openApp(page);
+  await startNamed(page, 'Kyoto');
+  const form = page.locator('form.trip-edit');
+  await form.getByLabel('Name', { exact: true }).fill('  ');
+  await form.getByRole('button', { name: 'Save' }).click();
+  await expect(form.getByRole('alert')).toHaveText('Give it a name.');
+});
+
+test("a plain chat isn't called a trip: its empty Itinerary says where a calendar file goes", async ({ page }) => {
+  await openApp(page);
+  await startNamed(page, 'Kyoto');
+  await page.getByRole('main').getByRole('link', { name: 'Itinerary', exact: true }).click();
+  await expect(page.getByText('No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) in Details.')).toBeVisible();
+});
+
+test("a plain chat isn't called a trip: archived, Trips lists it under Archived", async ({ page }) => {
+  await openApp(page);
+  await startNamed(page, 'Kyoto');
+  await page.getByRole('button', { name: 'Archive', exact: true }).click();
+  await page.getByRole('button', { name: 'Tap again to archive' }).click();
+  await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
+  await page.getByText('Archived (1)', { exact: true }).click();
+  await expect(page.getByRole('link', { name: /Kyoto/ })).toBeVisible();
+});
+
+test("a plain chat isn't called a trip: its export, opened, says when and from what it was exported", async ({ page }) => {
+  await openApp(page);
+  await startNamed(page, 'Kyoto');
+  await page.getByRole('button', { name: 'Export', exact: true }).click();
+  const file = await buildAndSave(page);
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
+  await page.getByLabel('Open a trip someone sent you').setInputFiles(file);
+  await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible();
+  await expect(page.getByText(/^Exported .+ from annai \S+\.$/)).toBeVisible();
 });
 
 test('the crumb goes back to the conversation', async ({ page }) => {

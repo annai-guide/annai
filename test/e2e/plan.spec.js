@@ -514,7 +514,7 @@ test('the Plan with nothing in it, and with no trip open', async ({ page }) => {
   await page.goto('/#/trips');
   await startTrip(page, 'Empty');
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
-  await expect(page.getByText('No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.')).toBeVisible();
+  await expect(page.getByText('No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) in Details.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add to calendar' })).toBeDisabled();
 });
 

@@ -99,7 +99,7 @@ export async function renderPlan(ctx, route) {
     tabs.length && rows.length ? h('div', { class: 'tabs', role: 'tablist', 'aria-label': t`Days` }, ...buttons) : null,
     top,
     tabs.length && rows.length ? panel : null,
-    rows.length ? null : h('p', { class: 'empty', text: t`No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.` }),
+    rows.length ? null : h('p', { class: 'empty', text: t`No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) in Details.` }),
     broken ? h('p', { class: 'sub warn', text: broken === 1 ? t`${unread} couldn't be read. Open the trip's files to fix it.` : t`${unread} couldn't be read. Open the trip's files to fix them.` }) : null,
     h('div', { class: 'acts' }, save));
 }
