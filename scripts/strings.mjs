@@ -328,7 +328,9 @@ function noteParts(note) {
 
 /**
  * A language's rows after the code changed: a row for every message, new ones `new`, rows of vanished messages gone, or, when the
- * English changed by a little in the same file, carried over as a `draft` that says what the English was.
+ * English changed by a little in the same file, carried over as a `draft` that says what the English was. A code message's key is made
+ * from its English, so changed English is a new key (the pairing below); a manifest field's key is its path and stays, so its row's
+ * English is compared with the manifest's, and the same rule is applied to it: a small edit carries the text as a draft, a rewrite is `new`.
  * @param {Row[]} old @param {Map<string, Message>} messages @param {string} tag @returns {Omit<Row, 'line'>[]}
  */
 export function updateRows(old, messages, tag) {
@@ -339,8 +341,11 @@ export function updateRows(old, messages, tag) {
     for (const w of wanted(m, tag)) {
       const r = had.get(w.key);
       const { was, mine } = noteParts(r?.note ?? '');
-      const note = [w.note, r?.state === 'draft' ? was : '', mine].filter(Boolean).join('; ');
-      rows.push({ key: w.key, state: r?.state ?? 'new', en: w.en, text: r?.text ?? '', where: `${m.file}:${m.line}`, note });
+      let state = r?.state ?? 'new';
+      let text = r?.text ?? '';
+      let past = state === 'draft' ? was : '';
+      if (r && state !== 'new' && r.en !== w.en) [state, text, past] = close(r.en, w.en) ? ['draft', r.text, `${WAS}${r.en}`] : ['new', '', ''];
+      rows.push({ key: w.key, state, en: w.en, text, where: `${m.file}:${m.line}`, note: [w.note, past, mine].filter(Boolean).join('; ') });
     }
   }
   const now = new Set(rows.map((r) => r.key));
@@ -623,6 +628,7 @@ export async function check(root, files = EXTRACTED, { glossaryAll = false } = {
         const at = { file: m.file, line: m.line };
         if (!r) bag.push({ ...at, message: `${tag} has no row for "${w.en}": run npm run strings` });
         else if (r.state === 'new' || !r.text) bag.push({ file, line: r.line, message: `${tag} has no text yet for "${w.en}" (${m.file}:${m.line})` });
+        else if (r.en !== w.en) bag.push({ file, line: r.line, message: `${tag}'s row for "${w.en}" was written for other English ("${r.en}"): run npm run strings` });
         else if (holes(r.text) !== have) bag.push({ file, line: r.line, message: `${tag}'s text for "${w.en}" has the placeholders ${holes(r.text) || 'none'}, the English has ${have || 'none'}` });
       }
     }
