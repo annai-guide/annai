@@ -368,6 +368,8 @@ test('the announcer reads a card with choices, a card with nothing to read and a
     await page.getByLabel('Message to Shiori').fill('Plan dinner');
     await page.getByRole('button', { name: 'Send' }).click();
     await expect(page.locator('.convo .shiori').filter({ hasText: 'Window seat?' })).toBeVisible();
+    // Her own question takes spoken and typed answers: only annai's card says "Tap to answer" (read-trip.spec.js).
+    await expect(page.locator('.convo .shiori').filter({ hasText: 'Window seat?' }).getByText('Tap to answer')).toHaveCount(0);
     expect(await page.evaluate(() => /** @type {any} */ (window).announced)).toEqual([
       'Shiori: Dinner Nepenthe at 7. Choices: Book it, Not now.',
       'Shiori: a photo',
