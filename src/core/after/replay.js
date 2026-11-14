@@ -70,7 +70,7 @@ export function routeWords({ entries, km, stamps }) {
   // The stamps are a count of their own, "# stamps", inside the sentence that counts the stops.
   const n = stays.length;
   const marks = stampCount(stamps.length);
-  if (!km) return plural(n, 'No road was recorded, with # stop and {0}.', 'No road was recorded, with # stops and {0}.', marks);
+  if (!km) return plural(n, 'No route was recorded. # stop and {0}.', 'No route was recorded. # stops and {0}.', marks);
   const road = distance(km);
   if (!first) return plural(n, '{0} on the road, with # stop and {1}.', '{0} on the road, with # stops and {1}.', road, marks);
   if (!last || last === first) return plural(n, '{0} on the road, from {1}, with # stop and {2}.', '{0} on the road, from {1}, with # stops and {2}.', road, first, marks);

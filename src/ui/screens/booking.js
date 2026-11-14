@@ -70,7 +70,7 @@ export async function renderBooking(ctx, route) {
       top,
       many && !title ? null : h('p', { class: 'sub', text: kindDay(b) }), // an untitled block's heading says it already
       // A booking from before single details were marked: the whole of it, until she is told it's right.
-      marks.whole ? h('p', { class: 'check-banner', role: 'note', text: t`Check this: Shiori read it before annai marked single details. Tell her if it's right, or what's wrong.` }) : null,
+      marks.whole ? h('p', { class: 'check-banner', role: 'note', text: t`Check this: Shiori read it before annai marked details one by one. Tell her if it's right, or what's wrong.` }) : null,
       facts.length ? h('dl', { class: 'facts' }, ...facts.flatMap((f) => [
         h('dt', { lang: f.lang, text: f.label }),
         h('dd', {}, h('span', { dir: 'auto' }, ...zoned(f.value, f.zone)), f.unsure ? [' ', checkMark()] : null)])) : null,

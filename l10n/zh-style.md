@@ -37,9 +37,10 @@ as zh-Hans run through a converter. Every draft in `zh-Hans.tsv` and `zh-Hant.ts
 7. **Punctuation and spacing (Apple's Chinese style).** Full-width ，。：；？！（）. Quotes: zh-Hans “ ”, zh-Hant 「 」.
    A half-width space between Chinese and Latin letters, numbers or a placeholder: “打开 Safari”, “{0} MB”,
    “已删除 {0}”. No space next to full-width punctuation. A placeholder gets the space only when its value is Latin
-   letters or a bare number (a name, a host, a size such as 5 MB, a count: “# 个”); none when the value is Chinese
-   words, even ones that start with a digit: a relative time (“{0}已备份”, since it reads 2小时前 or 刚刚), a language or
-   role name, or a sentence. A path of screens, with spaces only around the arrows: 在设置 → 模型中.
+   letters or a bare number (a name, a host, a size such as 5 MB, a count: “# 个”), or a count phrase that starts with a
+   number and keeps its own space after it (“3 个文件”, “2 张照片”, “3 枚纪念章”: “已添加 {0}”, “获得 {0}”); none when
+   the value is Chinese words, even ones that start with a digit but have no space of their own: a relative time
+   (“{0}已备份”, since it reads 2小时前 or 刚刚), a language or role name, or a sentence. A path of screens, with spaces only around the arrows: 在设置 → 模型中.
 8. **Length.** About as wide as the English on a phone, or narrower. Buttons and chips as short as they can be.
 9. **Keep exactly:** every placeholder ({0}, {1}) and the plural `#`, any markup, code, flags, URLs and key names, the
    glossary's terms, and the "never" names (annai, Shiori, Koe, Kokoro, brands).

@@ -176,18 +176,18 @@ export class PluginHost {
     const id = pkg.id;
     if (this.builtins.has(id)) {
       /* en */
-      if (pkg.kind === 'skill') throw new PluginError(id, "is a name annai uses for one of its own parts, so a skill can't have it.", { shown: t`is a name annai uses for one of its own parts, so a skill can't have it.` });
-      throw new PluginError(id, /* en */ 'has the same id as a plugin built into annai', { shown: t`has the same id as a plugin built into annai` });
+      if (pkg.kind === 'skill') throw new PluginError(id, "is a name annai uses for one of its own parts, so a skill can't have it.", { shown: t`"${id}" is a name annai uses for one of its own parts, so a skill can't have it.` });
+      throw new PluginError(id, /* en */ 'has the same id as a plugin built into annai', { shown: t`It has the same id as a plugin built into annai.` });
     }
     // A name written as annai's, or a built-in's (look-alikes show their ids).
     if ([/* en */ 'annai', ...[...this.builtins.values()].map((m) => m.name)].some((n) => plain(n) === plain(pkg.name))) {
-      throw new PluginError(id, /* en */ `its name, "${pkg.name}", is annai's own name, or one of its parts'. Ask its author to rename it.`, { shown: t`its name, "${pkg.name}", is annai's own name, or one of its parts'. Ask its author to rename it.` });
+      throw new PluginError(id, /* en */ `its name, "${pkg.name}", is annai's own name, or the name of one of its parts. Ask its author to rename it.`, { shown: t`Its name, "${pkg.name}", is annai's own name, or the name of one of its parts. Ask its author to rename it.` });
     }
     const had = (await this.installed())[id];
     if (had && kindOfState(had) !== pkg.kind) {
       /* en */
       const en = `is installed already as a ${kindOfState(had)}. Remove it first.`;
-      throw new PluginError(id, en, { shown: kindOfState(had) === 'skill' ? t`is installed already as a skill. Remove it first.` : t`is installed already as a plugin. Remove it first.` });
+      throw new PluginError(id, en, { shown: kindOfState(had) === 'skill' ? t`A skill with this id is installed already. Remove it first.` : t`A plugin with this id is installed already. Remove it first.` });
     }
     return { ...pkg, previous: had ? { version: String(had.version ?? ''), kind: kindOfState(had), added: addedParts(await this.installedParts(id), pkg), from: sourceOf(had) } : null };
   }
@@ -436,7 +436,7 @@ export class PluginHost {
   async #startNow(id) {
     if (this.active.has(id)) return;
     if (this.#removing.has(id)) throw new PluginError(id, /* en */ 'is being removed', { shown: t`is being removed` });
-    if (this.#stale.has(id)) throw new PluginError(id, /* en */ 'was updated. Restart annai to run the new version.', { shown: t`was updated. Restart annai to run the new version.` });
+    if (this.#stale.has(id)) throw new PluginError(id, /* en */ 'was updated. Restart annai to run the new version.', { shown: t`It was updated. Restart annai to run the new version.` });
     const manifest = await this.#stored(id);
     const state = await this.installed();
     this.#words.set(id, await this.words(id, manifest));

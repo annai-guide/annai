@@ -342,7 +342,7 @@ test("M6 fix: a package named annai, or a built-in's name, is refused however it
   const { host } = await hostKit();
   await host.addBuiltin(builtinUrl('places', 'return () => {};'));
   for (const name of ['an\u200bnai', 'ａｎｎａｉ', 'Annai ', ' built-in  PLACES', 'Built-in\u00ad places']) {
-    await assert.rejects(host.install(codePlugin('imp', 'return () => {};', { name })), /is annai's own name, or one of its parts'/, name);
+    await assert.rejects(host.install(codePlugin('imp', 'return () => {};', { name })), /is annai's own name, or the name of one of its parts\./, name);
   }
   // A look-alike from another alphabet isn't chased: it installs, and its pages show its id beside it.
   await host.install(codePlugin('imp', 'return () => {};', { name: 'аnnai' }));

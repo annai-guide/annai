@@ -6,7 +6,7 @@ Run on a real iPhone (Safari, iOS 26+) and a real Android phone (Chrome), agains
 - [ ] In a browser tab, the "annai isn't installed yet" card shows. "Show me how" lists the right steps for the phone.
 - [ ] Android: the "Install annai" button appears and installs the app.
 - [ ] iPhone: Share → Add to Home Screen; open from the Home Screen; the warning is gone.
-- [ ] Settings → Storage says "Protected from automatic clearing: yes" in the installed app (tap "Protect my data" if not).
+- [ ] Settings → Storage says "The browser won't clear annai's data by itself." in the installed app (tap "Protect my data" if not).
 
 ## Offline
 - [ ] With the installed app opened once, turn on airplane mode, force-quit and reopen: Trips loads and trips are there.

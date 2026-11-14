@@ -71,7 +71,7 @@ export async function speechCall(c) {
   const failed = async (e) => {
     // A voice that started, then stalled: what it was, as it is made (the said its words come from), never a message patched after.
     const stalled = firstMs !== null && (/** @type {any} */ (e)?.name === 'TimeoutError' || signal.reason?.name === 'TimeoutError') && !(e instanceof ProviderError);
-    const err = stalled ? new ProviderError('timeout', /* en */ 'The voice stopped arriving for longer than its wait.', { cause: e, said: { code: 'stalled' } }) : asProviderError(e, signal, type, c.registry);
+    const err = stalled ? new ProviderError('timeout', /* en */ 'The voice stopped arriving for longer than annai waits.', { cause: e, said: { code: 'stalled' } }) : asProviderError(e, signal, type, c.registry);
     await trace(err.kind, err.message);
     return err;
   };

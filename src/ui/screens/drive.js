@@ -1,4 +1,4 @@
-import { h, crumb, t, asUser, messageOf } from '../dom.js';
+import { h, crumb, t, tc, asUser, messageOf } from '../dom.js';
 import { explainStorageFull } from '../storage-full.js';
 import { routeStrip } from '../../core/now.js';
 import { loadLinks, mapsLinks } from '../../core/links.js';
@@ -14,7 +14,7 @@ import { nowOf, driveBack, drivingTrip, askIn } from '../today.js';
 const quickAsks = (speaks, next) => [
   [t`What's around here?`, asUser(speaks)`What is around us right now that is worth knowing about?`],
   [t`Food`, asUser(speaks)`Where can we eat along the way?`],
-  [t`Fuel`, asUser(speaks)`Where is the next fuel station or charger?`],
+  [t`Fuel or charging`, asUser(speaks)`Where is the next fuel station or charger?`],
   [t`Restroom`, asUser(speaks)`Where is the nearest restroom?`],
   [t`How long?`, next ? asUser(speaks)`How long until we reach ${next.name}?` : asUser(speaks)`How long until our next stop?`],
 ];
@@ -68,7 +68,7 @@ export async function renderDrive(ctx) {
     const here = live ? knownFix(live) : null; // not a position from before the GPS was lost
     const stops = routeStrip(rows, here, nowOf(live), live?.activity ?? 'unknown');
     strip.replaceChildren(
-      h('li', { class: 'you' }, here ? t`You` : live?.on ? t`You (finding where)` : t`You (GPS off)`),
+      h('li', { class: 'you' }, here ? tc('route strip')`You` : live?.on ? t`You (finding where)` : t`You (GPS off)`),
       ...stops.map((s) => h('li', {},
         h('span', { class: 'name', text: s.name }),
         h('span', { class: 'sub', text: [s.row.time ? t`at ${s.row.time}` : '', roadText(s)].filter(Boolean).join(' · ') }))),

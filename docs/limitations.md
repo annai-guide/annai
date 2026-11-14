@@ -707,3 +707,63 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** a rare shape of a hand-over (they gave her a file, so a hand-over's Undo line stands). She asks a question card and the user answers it; her reply to the answer shows nothing (plain text only, or a bare `sleep`), so annai asks her once more, and that one more request fails (the user taps Try again) or is cut (the user opens another conversation and comes back). What she files then is not marked as the hand-over's, so the hand-over's Undo does not take it back: the file stays, and the user can delete it by hand. Undo never takes back too much in this shape; it leaves a file. The same cause, found while checking, in a plainer shape: a hand-over, her reply silent twice (the card "Shiori didn't answer" shows), Try again, and she files: also outside the Undo.
 - **Why:** the stored log is read to work out whether her last reply ended her turn from the reply's words, and a silent reply reads as one that did, so the hand-over reads as answered and is not carried into the turn that follows. A rule that gave it back at the one more request (the ask-owed fix tried one) carried it into a later turn that was never hers (Undo of an older hand-over took back what she did after a move into that trip), so it was taken out. The next change, the loop writing a record when her turn ends so the reader stops guessing, covers both shapes (the turn-end design check, section 4, option A).
 - **Revisit when:** the next version, as its own change: the loop's record of a turn's end, built from its own plan, spec check and review, with a test for each of these shapes and for the move case above.
+
+### The real-voice check measures Koe's words in English
+- **Kind:** deferred.
+- **What the user sees:** nothing. Three checks in `scripts/realtime/` read Koe's words as English: "stopped when told" counts words by spaces, so a long Japanese reply passes; the passed-on question test sees only an ASCII "?", so 「？」 passes; the filler check knows English words only.
+- **Why:** found on 2026-11-14 while checking Koe's new pass-on words in Japanese; each check predates that change and none is in the app.
+- **Revisit when:** the next version: count CJK by character as the recall check already does, accept 「？」, and give the filler check its Japanese and Chinese words (with a recorded Japanese clip to test them).
+
+### Shiori's written recap gets no native-speaker sentence
+- **Kind:** deferred.
+- **What the user sees:** a recap written in Japanese or Chinese may still read translated: its request names the language but carries no sentence on how it should sound, unlike her answers since 2026-11-14.
+- **Why:** no real run has written a recap in Japanese, so whether it reads translated is not known.
+- **Revisit when:** the next version: run one real Japanese recap; if it reads translated, add the Languages section's native-speaker sentence to the recap's request.
+
+### Summaries pick their language three different ways when no words decide it
+- **Kind:** deferred.
+- **What the user sees:** nothing on screen today: compaction falls back to English (only a model reads it), the recap to the screens' language, Shiori's own answers to the phone's. Compaction also counts annai's "(files)" placeholder as words the user wrote.
+- **Why:** each rule was written for its own place; one answer to one question belongs in one place (RULES #10).
+- **Revisit when:** the next version: one shared function for "the language the user wrote in", used by all three, with annai's placeholders left out everywhere.
+
+### A live Koe's line before a tool has no language rule
+- **Kind:** deferred.
+- **What the user sees:** possibly, with live voice in Japanese, a word in English before Koe looks something up. Not seen: no live run has exercised that line in Japanese.
+- **Why:** Koe's pass-on and okay words name the answer's language since 2026-11-14; the pre-tool line (koe/instructions.js) was left as it was.
+- **Revisit when:** the next version: describe it the same way, then one live run in Japanese.
+
+### Kokoro can write its notes to Koe in English in a Japanese conversation
+- **Kind:** deferred.
+- **What the user sees:** with Koe and Kokoro, Koe's Japanese can come out stiff when Kokoro's note to it was English ("Tell the user in Japanese: …"), seen once in a live run on 2026-11-14.
+- **Why:** nothing tells Kokoro which language its notes to Koe are in.
+- **Revisit when:** the next version: say it in the note tool's description or the halves' text, then a live run in Japanese.
+
+### Her reply to the "you haven't answered" cue can still be private text
+- **Kind:** deferred.
+- **What the user sees:** after answering her question card, if her reply showed nothing and the cue followed, in about 1 of 9 forced runs she answered again in plain text the user never sees, and "Shiori didn't answer" showed.
+- **Why:** the cue says only speak, show and ask reach the user; a model can still write plain text.
+- **Revisit when:** the next version: firmer cue words, measured on the ask-owed run's forced set.
+
+### Testing docs and specs still name the Koe lists "Realtime" and "Classic", and a menu "Tidy up"
+- **Kind:** deferred.
+- **What the user sees:** nothing on a screen. A tester following the testing docs looks for names the screens no longer show: "Koe · Realtime" (realtime-check.md:32), "Koe · Classic" (reasoning-check.md:15), and the bare "Realtime" and "Classic" of the device checklists (device-checklist-koe.md, device-checklist-phase2.md, device-check-plan.md), where the screens say "Koe · Live" and "Koe · Chat". Some specs name a "Tidy up" menu: the Conversation screen's ⋯ menu ("Conversation menu") has "Summarize now" and "Start fresh" in it, and no "Tidy up".
+- **Why:** found on 2026-11-14 while correcting the words Shiori is told. The checklists and dated specs record what was true when they were written; renaming every mention is a doc-only change of its own, and a rename that misses a step is worse than a name the tester can guess.
+- **Revisit when:** the next version: rename in the testing docs (the checklists a tester follows) and leave the dated specs as they were, with a note at the top of each spec that names the new words.
+
+### Some plugin errors still start in lower case with no subject
+- **Kind:** deferred.
+- **What the user sees:** a card or an install screen's line such as "is being removed", "is switched off after repeated errors", "couldn't be downloaded. Check the connection and try again." or "didn't provide a kind of backup place X", with nothing before it but the plugin's name. Where a line has a translation (its `shown`), only an English screen reads the fragment; a Japanese or Chinese screen shows its own draft, which reads as a sentence. The lines with no translation (a plugin author's manifest errors, marked lang="en") read as fragments on every screen.
+- **Why:** found on 2026-11-14 with the others. The lines below are what a search found still in lower case that day; that is not a claim that every other line is right. With a translation: src/core/plugins.js:438, :607, :609; registry.js:221; package-updates.js:54, :58, :62; llm/official.js:156, :158, :160, :296, :298; llm/service.js:346. With none: src/core/packages.js:82, :84, :87, :90, :93, :95, :98, :99, :363, :398, :402, :404, :406, :411, :414, :420, :422, :428, :430 (19 lines). Other lines in plugins.js (from :693), requires.js (:52) and pdf-pages.js (:36) also begin in lower case and were not checked screen by screen. The lines the pass did fix begin with "It …" or a name (requires.js's "It needs …", plugins.js:179-190 and :439, packages.js:336-348 and :366, service.js:248-266 and :337, official.js:273 and :275).
+- **Revisit when:** the next English change: the same fix, "It …" or the name, with the log's English unchanged. A changed line gets new drafts in Japanese, zh-Hans and zh-Hant in the same commit, because its key changes with its English.
+
+### The search order can still go wrong in two rare ways
+- **Kind:** deferred.
+- **What the user sees:** on Settings → Tools, the free last resort (Wikimedia, Nominatim) is always last since 2026-11-14. Two paths still write an order the screen doesn't show: a search plugin installed later is placed by where an older saved order had put the last resort (above Jina, say); and ArrowDown on the last movable row saves the last resort above it, so a plugin installed later lands above that row. The last resort itself still runs last.
+- **Why:** found by the review after the English fix's second round; fixing it on that branch would have been a third round.
+- **Revisit when:** the next version: in src/core/web-search.js the insertion point skips floor rows (`out.findIndex((q) => !isFloor(q) && rank(q) > rank(p))`), and search-panel.js's move() swaps only within the movable rows; a unit case and an ArrowDown e2e check.
+
+### A few words from the 2026-11-14 translation pass still need a second look
+- **Kind:** deferred.
+- **What the user sees:** in Chinese, the install screen's "came from a file" reads 来自 1 个文件, a count where none is meant (the row "a file", 8w8k36, also fills a toast); the same English "the browser's own dictation and voice" has two drafts in each language (読み上げ / 朗读 in one row, 声 / 声音 in two others), next to the Roles list's "Phone dictation"; "a plan's 'leave soon'" is the one place a screen says "plan" where the rest says "the itinerary's"; one zh-Hans search line has two 它 for different things; the backups intro's "after changes or once a day" doesn't hold for a place whose automatic backup is Off, and it no longer says which connections backups use (each place's page does).
+- **Why:** each was found by the review after the English fix's second round; none is a wrong result or a false privacy line.
+- **Revisit when:** the next English and language change: whole sentences for "a file" and the calendar toast (or a context at plugin-install.js:189), one name for dictation everywhere, "the itinerary's 'leave soon'", the backups intro naming Wi-Fi and the per-place rule.

@@ -6,9 +6,8 @@ import { openFileButton } from '../open-file.js';
 import { relTime, size, num, list, sentences, placeHref, gettingFiles, talkHref } from '../format.js';
 import { updateAppSettings } from '../../core/settings.js';
 import { listTrips } from '../../core/scopes.js';
-import { isPhotoType } from '../../core/photos.js';
 import { typeForPath } from '../../core/paths.js';
-import { bringIn } from '../bring-in.js';
+import { bringIn, addedWords, isPhoto } from '../bring-in.js';
 import { explainStorageFull } from '../storage-full.js';
 import { restartAnnai } from './plugins.js';
 import { keyNames } from './plugin-install.js';
@@ -325,11 +324,11 @@ async function inboxFiles() {
  * @param {any} ctx @param {InboxFile[]} items @param {any[]} trips @param {InboxFile[]} archives
  */
 function fileInbox(ctx, items, trips, archives) {
-  const n = items.length;
-  const photos = items.filter((i) => isPhotoType(i.file.type) || isPhotoType(typeForPath(i.file.name)));
+  const named = items.map((i) => ({ name: i.file.name, type: i.file.type }));
+  const photos = items.filter((_, k) => isPhoto(named[k]));
   const others = items.filter((i) => !photos.includes(i));
-  // What came, as the title and the toast name it: a noun with its count, which they hold as a value.
-  const what = others.length ? (n === 1 ? t`a file` : plural(n, '# file', '# files')) : plural(n, '# photo', '# photos');
+  // What came, as the title and the toasts name it: said once, in bring-in.js, as the trip's own toast says it.
+  const { what, added } = addedWords(named);
   const status = h('p', { class: 'sub', role: 'status' });
   // The dated trips, and a new conversation: with chats there could be hundreds of undated ones, and a share opens one of its own.
   /** @type {HTMLButtonElement[]} */
@@ -352,7 +351,7 @@ function fileInbox(ctx, items, trips, archives) {
       ctx.go(chat ? talkHref(id) : `#/trip/${encodeURIComponent(id)}`);
       for (const note of notes) ctx.notices.card({ tone: 'warn', title: t`A photo was kept as it is`, body: note });
       for (const problem of problems) ctx.notices.card({ tone: 'warn', title: t`A calendar file couldn't be read`, body: problem });
-      ctx.notices.toast(planned.length ? plural(planned.length, 'Added {0}, and # itinerary item from the calendar', 'Added {0}, and # itinerary items from the calendar', what) : t`Added ${what}`);
+      ctx.notices.toast(planned.length ? plural(planned.length, 'Added {0}, and # itinerary item from the calendar', 'Added {0}, and # itinerary items from the calendar', what) : added);
     } catch (e) {
       explainStorageFull(ctx, e);
       status.textContent = messageOf(e);

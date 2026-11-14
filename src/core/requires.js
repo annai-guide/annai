@@ -49,7 +49,7 @@ export async function refuseBreaking(host, id, version, name, except) {
     // On the screens, annai's own by their own translations (pluginName), as Plugins names them.
     const [them, it] = [await pluginName(host, state[o], o, other), state[id] ? await pluginName(host, state[id], id, name) : officialName(id, name)];
     /* en */
-    throw new PluginError(id, `version ${version} would stop ${other} working: it needs ${name} ${r.version}. Update ${other} first, or keep this version.`, { shown: t`version ${version} would stop ${them} working: it needs ${it} ${r.version}. Update ${them} first, or keep this version.` });
+    throw new PluginError(id, `version ${version} would stop ${other} working: it needs ${name} ${r.version}. Update ${other} first, or keep this version.`, { shown: t`Version ${version} would stop ${them} working: it needs ${it} ${r.version}. Update ${them} first, or keep this version.` });
   }
 }
 
@@ -76,23 +76,23 @@ export async function checkRequires(host, requires, catalog, { who = /* en */ 'T
     // annai's own in the screens' words; the English is the log's.
     const shown = e ? officialName(e.id, e.name) : named;
     /* en */
-    if (s?.enabled === false) throw no(`${named}, which you turned off. ${TURN_ON}`, sentences(t`needs ${shown}, which you turned off.`, turnOnShown()));
+    if (s?.enabled === false) throw no(`${named}, which you turned off. ${TURN_ON}`, sentences(t`It needs ${shown}, which you turned off.`, turnOnShown()));
     if (!e) {
       /* en */
-      if (!s && r.homepage) throw no(`${r.id}, which isn't installed. Install it from ${r.homepage} first, then try again.`, t`needs ${r.id}, which isn't installed. Install it from ${r.homepage} first, then try again.`);
+      if (!s && r.homepage) throw no(`${r.id}, which isn't installed. Install it from ${r.homepage} first, then try again.`, t`It needs ${r.id}, which isn't installed. Install it from ${r.homepage} first, then try again.`);
       /* en */
-      if (!s) throw no(`${r.id}, which isn't installed. Install it first, then try again.`, t`needs ${r.id}, which isn't installed. Install it first, then try again.`);
+      if (!s) throw no(`${r.id}, which isn't installed. Install it first, then try again.`, t`It needs ${r.id}, which isn't installed. Install it first, then try again.`);
       /* en */
-      if (!satisfies(String(s.version), r.version)) throw no(`${r.id} ${r.version}, and version ${s.version} is installed. Update it, then try again.`, t`needs ${r.id} ${r.version}, and version ${s.version} is installed. Update it, then try again.`);
+      if (!satisfies(String(s.version), r.version)) throw no(`${r.id} ${r.version}, and version ${s.version} is installed. Update it, then try again.`, t`It needs ${r.id} ${r.version}, and version ${s.version} is installed. Update it, then try again.`);
       continue;
     }
     /* en */
-    if (s && s.source !== 'official') throw no(`annai's ${e.name} (${r.id}), but the ${r.id} installed came from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins, then try again.`, t`needs annai's ${shown} (${r.id}), but the ${r.id} installed came from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins, then try again.`);
+    if (s && s.source !== 'official') throw no(`annai's ${e.name} (${r.id}), but the ${r.id} installed came from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins, then try again.`, t`It needs annai's ${shown} (${r.id}), but the ${r.id} installed came from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins, then try again.`);
     if (s && satisfies(String(s.version), r.version)) continue;
     /* en */
-    if (!satisfies(e.version, r.version) && s) throw no(`${e.name} ${r.version}, and annai's catalog has version ${e.version} (${s.version} is installed). Try again once annai has a version that fits.`, t`needs ${shown} ${r.version}, and annai's catalog has version ${e.version} (${s.version} is installed). Try again once annai has a version that fits.`);
+    if (!satisfies(e.version, r.version) && s) throw no(`${e.name} ${r.version}, and annai's catalog has version ${e.version} (${s.version} is installed). Try again once annai has a version that fits.`, t`It needs ${shown} ${r.version}, and annai's catalog has version ${e.version} (${s.version} is installed). Try again once annai has a version that fits.`);
     /* en */
-    if (!satisfies(e.version, r.version)) throw no(`${e.name} ${r.version}, and annai's catalog has version ${e.version}. Try again once annai has a version that fits.`, t`needs ${shown} ${r.version}, and annai's catalog has version ${e.version}. Try again once annai has a version that fits.`);
+    if (!satisfies(e.version, r.version)) throw no(`${e.name} ${r.version}, and annai's catalog has version ${e.version}. Try again once annai has a version that fits.`, t`It needs ${shown} ${r.version}, and annai's catalog has version ${e.version}. Try again once annai has a version that fits.`);
     await refuseBreaking(host, r.id, e.version, e.name, except);
     if (!plan.includes(e)) plan.push(e);
   }
@@ -200,10 +200,10 @@ export async function installWith(host, files, opts, env = {}) {
 export async function addFromCatalog(host, id, env = {}) {
   const catalog = env.catalog ?? await officialPlugins(env);
   const entry = catalog.find((p) => p.id === id);
-  if (!entry) throw new PluginError(id, /* en */ "isn't in annai's catalog.", { shown: t`isn't in annai's catalog.` });
+  if (!entry) throw new PluginError(id, /* en */ "isn't in annai's catalog.", { shown: t`It isn't in annai's catalog.` });
   const s = (await host.installed())[id];
   /* en */
-  if (s && s.source !== 'official') throw new PluginError(id, "is installed from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.", { shown: t`is installed from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.` });
+  if (s && s.source !== 'official') throw new PluginError(id, "is installed from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.", { shown: t`The one installed came from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.` });
   /* en */
   if (s?.enabled === false) throw new PluginError(id, `${entry.name}, which you turned off, isn't switched on by adding it. ${TURN_ON}`, { shown: sentences(t`${officialName(entry.id, entry.name)}, which you turned off, isn't switched on by adding it.`, turnOnShown()) });
   const requires = entry.requires ?? [];

@@ -108,7 +108,7 @@ async function licenceText(title, note, path, online) {
     h('h1', { class: 'title', text: title }),
     h('p', { class: 'sub', text: note }),
     text === null
-      ? h('p', {}, ...linkIn(t`The text couldn't be loaded here. It is also at ${online.replace(/^https:\/\//, '')}.`, out({ href: online, text: online.replace(/^https:\/\//, '') })))
+      ? h('p', {}, ...linkIn(t`The text couldn't be loaded here. It is online at ${online.replace(/^https:\/\//, '')}.`, out({ href: online, text: online.replace(/^https:\/\//, '') })))
       // The licence's own text, in its English.
       : h('pre', { class: 'licence-text', lang: 'en', text }));
 }

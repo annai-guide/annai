@@ -3,8 +3,8 @@
  * looked up in Ollama's own API, at the address's root. The context: the one a loaded model was given
  * (/api/ps, as "ollama ps" shows it), else its Modelfile's num_ctx (/api/show); never the context it was
  * trained on, which Ollama doesn't give it unless told (OLLAMA_CONTEXT_LENGTH). Photos and tools from its
- * capabilities. A model that lists thinking gets the named levels; one that can't think keeps the plugin's
- * map, where only off is named, as Ollama refuses a named level for it.
+ * capabilities. A model that lists thinking gets every level (LEVELS); one that can't think keeps the manifest's
+ * map, where only off sends a setting (low, medium and high are empty), as Ollama refuses a level for it.
  */
 
 /** The address without its /v1, where Ollama's own API is. @param {string} base */

@@ -156,7 +156,7 @@ test('minors 20: a package nested two folders deep is said to be nested too deep
   ];
   for (const [f, why] of cases) await assert.rejects(inspectPackage(files(f)), (e) => e instanceof PluginError && why.test(e.message), JSON.stringify(Object.keys(f)));
   // One folder down, beside other files at the top: said so.
-  await assert.rejects(inspectPackage(files({ 'README.md': 'x', 'tides/annai-plugin.json': manifest })), /its annai-plugin\.json is in tides\/, beside other files: .* Zip that folder alone\./);
+  await assert.rejects(inspectPackage(files({ 'README.md': 'x', 'tides/annai-plugin.json': manifest })), /its annai-plugin\.json is in tides\/, with other files beside that folder: .* Zip that folder alone\./);
   // Nothing anywhere, and several skills, are said as before.
   await assert.rejects(inspectPackage(files({ 'a/notes.md': 'x' })), /there is no annai-plugin\.json or SKILL\.md in this package/);
   await assert.rejects(inspectPackage(files({ 'x/a/SKILL.md': SKILL, 'x/b/SKILL.md': SKILL })), /several skills/);

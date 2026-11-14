@@ -221,7 +221,7 @@ test("Ollama: a model that can't think answers at every level, as only off is na
     }
     assert.deepEqual(lastChats(s).map((r) => r.body.reasoning_effort), [undefined, undefined, undefined, undefined, 'none']);
     assert.equal((await k.llm.config()).models[modelId].ability, 'chat');
-    assert.match((await official('provider-ollama')).provider.abilities.chat.note ?? '', /A model that thinks gets low, medium and high; for one that can't, annai only switches thinking off/);
+    assert.match((await official('provider-ollama')).provider.abilities.chat.note ?? '', /A model that thinks gets low, medium and high; for one that can't think, annai only switches thinking off, for quick decisions, as Ollama refuses a named level for it/);
   } finally {
     await s.stop();
   }

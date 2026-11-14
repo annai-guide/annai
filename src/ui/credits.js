@@ -30,7 +30,7 @@ export const SOURCES = [
   {
     name: 'Wikipedia',
     hosts: ['en.wikipedia.org'],
-    use: t`Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address. Free search's always-on last resort asks it the words searched.`,
+    use: t`Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address. Free search's last resort, on whatever you tick, sends it the words searched.`,
     credit: /* en */ "Text by Wikipedia's contributors, under CC BY-SA 4.0.",
     links: /* en */ [{ href: 'https://en.wikipedia.org/', text: 'Wikipedia' }, CC_BY_SA],
   },
@@ -58,7 +58,7 @@ export const SOURCES = [
   {
     name: 'Parallel',
     hosts: ['search.parallel.ai'],
-    use: t`Free web search for web_search, while ticked in Settings → Tools. Only the words searched are sent.`,
+    use: t`Free web search for web_search, while ticked in Settings → Tools. Only the words searched, and a random id for each conversation, are sent.`,
     credit: /* en */ 'Search by Parallel, at parallel.ai.',
     links: /* en */ [{ href: 'https://parallel.ai/', text: 'parallel.ai' }],
   },

@@ -159,7 +159,7 @@ export function saidWords(s, kind, provider) {
   switch (s.code) {
     case 'late': return t`No output started in time.`;
     case 'paused': return plural(Number(s.seconds) || 0, 'Its output stopped for # second.', 'Its output stopped for # seconds.');
-    case 'stalled': return t`The voice stopped arriving for longer than its wait.`;
+    case 'stalled': return t`The voice stopped arriving for longer than annai waits.`;
     case 'held': return t`annai needs a reload: it opened without its offline service, so its plugins can't start.`;
     case 'zdr': return t`The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.`;
     case 'model-gone': return t`That model no longer exists.`;
@@ -176,7 +176,7 @@ export function saidWords(s, kind, provider) {
     case 'formats': return t`${name} takes no audio format this phone makes (${list(formats ?? [], 'plain')}).`;
     case 'origin': return s.to ? t`${name}'s ${ability} built a request to ${s.to}, not its address ${s.want}. Check its tunables.`
       : t`${name}'s ${ability} built a request to an address that isn't one, not its address ${s.want}. Check its tunables.`;
-    case 'not-heard': return t`Nothing in the speech-in list can hear it for ${name}.`;
+    case 'not-heard': return t`Nothing in the speech-in list worked for ${name}.`;
     default: return shown(kind, provider) ?? '';
   }
 }

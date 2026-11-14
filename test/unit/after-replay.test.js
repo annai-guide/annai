@@ -30,7 +30,7 @@ test('the whole trip, or a day of it: the drawn route, its entries and stamps, a
   assert.equal(friday.entries.some((/** @type {any} */ e) => e.text === 'Good morning!'), false);
   const saturday = /** @type {any} */ (replayOf(j, '2026-11-28'));
   assert.deepEqual([saturday.segments, saturday.entries.length, saturday.km], [[], 1, 0]);
-  assert.equal(saturday.words, 'No road was recorded, with 0 stops and 0 stamps.');
+  assert.equal(saturday.words, 'No route was recorded. 0 stops and 0 stamps.');
   assert.equal(replayOf(j, '2026-12-01'), null);
   assert.deepEqual(dayBounds('2026-11-27', LA), { from: Date.parse('2026-11-27T08:00:00Z'), to: Date.parse('2026-11-28T08:00:00Z') });
   assert.deepEqual(PLAY_SPEEDS.map(([v]) => v), [60, 600, 3600]);
@@ -64,7 +64,7 @@ test('each timeline entry in a few words', async () => {
   assert.match(lines[4].text, /^Drove \d+(\.\d)? mi · 6 hr, \d+ min \(partly unseen: the phone was locked\)$/);
   assert.equal(entryLine({ kind: 'photo', at: at('10:00'), path: '/files/2026-11-27-1000.webp', hash: 'h', type: 'image/webp', size: 1, width: null, height: null, place: null }, LA).text, 'Photo 2026-11-27-1000.webp');
   assert.equal(entryLine({ kind: 'stay', at: at('10:00'), to: at('10:30'), lat: 1, lng: 1, name: null, stamp: null }, LA).text, 'A stop · 30 min');
-  assert.equal(routeWords({ entries: [], km: 0, stamps: [] }), 'No road was recorded, with 0 stops and 0 stamps.');
+  assert.equal(routeWords({ entries: [], km: 0, stamps: [] }), 'No route was recorded. 0 stops and 0 stamps.');
   // An arrival the road shows no stay for (7a Task 5): when it came, not a stay of no time.
   const stamp = { name: 'Cambria Pines Lodge', lat: 1, lng: 1, at: at('18:32'), plan: true };
   assert.deepEqual(entryLine({ kind: 'stay', at: at('18:32'), to: at('18:32'), lat: 1, lng: 1, name: 'Cambria Pines Lodge', stamp }, LA), { when: '18:32', text: 'Cambria Pines Lodge · arrived · stamp' });

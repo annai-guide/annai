@@ -466,11 +466,12 @@ const glossaryOf = async (root) => (existsSync(`${root}/l10n/glossary.tsv`) ? re
 /**
  * The glossary's names Shiori is told when the screens aren't English: those she would say to a traveller finding their way in annai,
  * not the developer's screens (Trace, Diagnostics, Simulate a trip…). The design allows the line about 100 to 300 tokens (decision 7):
- * with these 31 it is 275 cl100k tokens in Japanese, 235 in Chinese (L6 review 4). A name added costs every user one cold cache.
+ * with these 31 it is 241 cl100k tokens in Japanese, 199 in Simplified and 231 in Traditional Chinese (measured 2026-11-14, with the Koe lists'
+ * current names and Summarize now for the menu that was Tidy up). A name added costs every user one cold cache.
  */
 const TOLD = new Set(['Add', 'Backup', 'Booking', 'Conversation', 'Files', 'Languages', 'Models', 'Notifications', 'Now', 'Photos', 'Itinerary', 'Plugins',
   'Recap', 'Replay', 'Settings', 'Tools', 'Trips', 'Updates', 'Voice', 'Archive', 'Check this', 'Main', 'Offline pack', 'Speech in', 'Speech out',
-  'Spend per day', 'Start fresh', 'Tidy up', 'Koe · Classic', 'Koe · Realtime', 'Voice on']);
+  'Spend per day', 'Start fresh', 'Summarize now', 'Koe · Chat', 'Koe · Live', 'Voice on']);
 /** The names Shiori is told in a language (localization decision 7): "Settings (設定), Models (モデル), …", in the glossary's order. @param {Term[]} glossary @param {string} tag */
 export const glossaryNames = (glossary, tag) => glossary.filter((g) => g.terms[tag] && TOLD.has(g.en)).map((g) => `${g.en} (${g.terms[tag]})`).join(', ');
 const escapeRe = (/** @type {string} */ s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

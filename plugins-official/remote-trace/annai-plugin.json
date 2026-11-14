@@ -1,7 +1,7 @@
 {
   "id": "remote-trace",
   "name": "Remote trace (for developers)",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "api": 2,
   "category": "developer",
   "entry": "index.js",
@@ -37,7 +37,7 @@
         "type": "boolean",
         "default": false,
         "title": "Detailed trace",
-        "description": "Also sends recordings of what the microphone heard to the server above: each of your turns, and short samples of sound the level check kept out. Recordings include passengers and whatever is playing. Phone dictation is the browser's own, so it has no audio. A text copy of the screen goes too, at each screen change and when you tap Flag, without what's typed in fields or the keys annai keeps, and never from the Trace screen. A Flag button takes the Trace chip's place in the dock, to mark when something looks wrong. It needs a server address and Send on, and turns itself off after 24 hours."
+        "description": "Also sends recordings of what the microphone heard to the server above: each of your turns, and short samples of sound the level check kept out. Recordings include passengers and whatever is playing. Phone dictation is the browser's own, so annai has no recording of it. A text copy of the screen goes too, at each screen change and when you tap Flag, without what's typed in fields or the keys annai keeps, and never from the Trace screen. A Flag button takes the Trace chip's place in the dock, to mark when something looks wrong. It needs a server address and Send on, and turns itself off after 24 hours."
       },
       "device": {
         "type": "string",

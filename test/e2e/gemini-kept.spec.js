@@ -66,7 +66,7 @@ test("Google keeps the conversation: the switch and its note; Shiori's next turn
     await page.context().setOffline(true);
     await page.evaluate((id) => { location.hash = `#/trip/${encodeURIComponent(id)}`; }, trip);
     await page.getByRole('button', { name: 'Remove', exact: true }).click();
-    await expect(page.getByRole('dialog', { name: 'Kyoto' })).toContainText("Google keeps 2 turns of its conversations: annai asks for them to be deleted, once you're back online.");
+    await expect(page.getByRole('dialog', { name: 'Kyoto' })).toContainText("2 turns of this conversation are kept by Google: annai asks for them to be deleted, once you're back online.");
     await page.getByRole('dialog', { name: 'Kyoto' }).getByRole('button', { name: 'Remove' }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
     await page.evaluate(() => { location.hash = '#/models'; });

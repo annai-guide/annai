@@ -1,7 +1,7 @@
 {
   "id": "provider-openai",
   "name": "OpenAI",
-  "version": "1.6.2",
+  "version": "1.6.3",
   "api": 1,
   "description": "GPT models through OpenAI's Responses API, with OpenAI's transcription and voices, and its live voice for Koe, on one key.",
   "category": "providers",
@@ -301,7 +301,7 @@
       "voice": {
         "kind": "voice",
         "type": "openai-speech",
-        "note": "Shiori's voice. GPT-4o mini TTS is priced by audio; its price here is OpenAI's estimate of $0.015 a minute. It takes a Style (OpenAI's instructions); TTS-1 and TTS-1 HD don't, and say nothing of one. OpenAI is retiring all three on January 6, 2027.",
+        "note": "Shiori's voice. GPT-4o mini TTS is priced by audio; its price here is OpenAI's estimate of $0.015 a minute. It takes a Style (OpenAI's instructions); TTS-1 and TTS-1 HD ignore one, without an error. OpenAI is retiring all three on January 6, 2027.",
         "models": [
           {
             "providerId": "gpt-4o-mini-tts",

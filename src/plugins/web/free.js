@@ -7,7 +7,8 @@ import { t } from '../../core/l10n.js';
 /**
  * annai's free search: Exa, Parallel and Firecrawl, which answer a web app's search with no key, each through its MCP address,
  * and a floor of Wikivoyage, Wikipedia and Nominatim that is always there. They are annai's own search providers, not MCP
- * servers the user added: Shiori sees only web_search. Only the words searched go to them.
+ * servers the user added: Shiori sees only web_search. Only the words searched go to them, with a random id for the conversation to
+ * Parallel (its free tier counts by it) and the address of a page to Exa when it reads one.
  */
 
 /** The longest a free service has to answer before the next one is tried. */

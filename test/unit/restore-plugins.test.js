@@ -51,7 +51,7 @@ test("a restored provider whose plugin isn't annai's own is named, with what to 
   await addProvider({ ws: b.ws, store: b.store }, structuredClone(ROUTER_SRC), { key: 'sk-r', roles: null });
   const got = await llm.restorePlugins();
   assert.equal(got.failed.length, 1);
-  assert.match(got.failed[0], /^Router: its plugin isn't annai's own\./);
+  assert.match(got.failed[0], /^Router: Its plugin isn't annai's own\./);
   assert.doesNotMatch(got.failed[0], /provider-router/, 'no internal id on screen');
   assert.ok(Object.keys(await b.host.installed()).includes('provider-openrouter'));
 });

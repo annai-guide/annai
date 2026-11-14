@@ -1,4 +1,6 @@
-import { messageOf } from './dom.js';
+import { messageOf, t, plural } from './dom.js';
+import { isPhotoType } from '../core/photos.js';
+import { typeForPath } from '../core/paths.js';
 import { addFiles } from './add-files.js';
 import { importCalendar, newFilesText } from '../core/imports.js';
 import { validZone, deviceZone } from '../core/time.js';
@@ -32,6 +34,22 @@ export async function keepFiles(ctx, scope, files, progress) {
     }
   }
   return { paths, notes, problems, planned, plannedBy };
+}
+
+/** Whether a file is a photo, by its type or, when that says nothing, by the ending of its name. @param {{ name?: string, type?: string }} i */
+export const isPhoto = (i) => isPhotoType(i.type ?? '') || isPhotoType(typeForPath(i.name ?? ''));
+
+/**
+ * What a hand-over added, in words, said once for every screen that says it (the share screen's title, its toast, the trip's toast):
+ * `what` is a noun with its count, which the calendar's toast holds as a value; `added` is the plain toast, whole. Photos only, or files.
+ * @param {{ name?: string, type?: string }[]} items what was added
+ * @returns {{ what: string, added: string }}
+ */
+export function addedWords(items) {
+  const n = items.length;
+  return n > 0 && items.every(isPhoto)
+    ? { what: plural(n, '# photo', '# photos'), added: plural(n, 'Added # photo', 'Added # photos') }
+    : { what: n === 1 ? t`a file` : plural(n, '# file', '# files'), added: n === 1 ? t`Added a file` : plural(n, 'Added # file', 'Added # files') };
 }
 
 /**
