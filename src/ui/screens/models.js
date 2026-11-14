@@ -29,7 +29,7 @@ const KOE_NOTES = {
   'koe-classic': t`Koe uses it when Live is off, while voice is off, and when Koe · Live can't answer: Speech in hears you, and Speech out speaks.`,
 };
 /** Short notes on the stand-ins; Settings → Voice says where each sends your voice (spec §11.7). */
-const STAND_IN_NOTES = { 'send-audio': t`when the model takes audio`, dictation: t`the phone's own; your voice usually goes to Google or Apple`, 'browser-voice': t`the browser's own; some voices go online` };
+const STAND_IN_NOTES = { 'send-audio': t`when the model takes audio`, dictation: t`the browser's own; your voice usually goes to Google or Apple`, 'browser-voice': t`the browser's own; some voices go online` };
 
 /**
  * Settings → Models (spec §9.2, §9.6, §9.8): the providers annai calls, each with its abilities and

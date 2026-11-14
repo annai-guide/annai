@@ -489,7 +489,7 @@ test("two deleted copies, one deleted with a booking: the line names the booking
   await shioriDeletes(page, trip, '/files/new.pdf');
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/file?path=${encodeURIComponent('/files/new.pdf')}`);
   await page.reload();
-  await expect(page.getByText('Also deletes new-copy.pdf, a copy of this file, and the 1 booking Shiori read from this file and its copy.')).toBeVisible();
+  await expect(page.getByText('Also deletes new-copy.pdf, a copy of this file, and the 1 booking Shiori read from this file or its copy.')).toBeVisible();
   await page.getByRole('button', { name: 'Delete for good', exact: true }).click();
   await page.getByRole('button', { name: 'Tap again to delete for good' }).click();
   await expect(page.getByText(/^Deleted new\.pdf and 1 other copy for good\. [\d.,]+ (bytes|kB|MB) freed\.$/)).toBeVisible();

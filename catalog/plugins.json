@@ -293,7 +293,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 11292,
+      "size": 11241,
       "requires": [
         {
           "id": "gemini-api",
@@ -302,7 +302,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "ac2f4910982e7166dba3314fa2ad99479848eeb038c2750443e13bd704d179ea"
+        "annai-plugin.json": "f87edd56ac14fae135184a5bef1eb64bdda28f890921673bd6abc50c1708729e"
       }
     },
     {
@@ -459,7 +459,7 @@
       "free": false,
       "local": true,
       "code": true,
-      "size": 4196,
+      "size": 4236,
       "requires": [
         {
           "id": "chat-completions",
@@ -469,7 +469,7 @@
       "provides": {},
       "files": {
         "annai-plugin.json": "fc1d4d251f43020087bbd5763fb0d594ed66a9a5477c90c60256fe0eafe6c21f",
-        "index.js": "dcaf79ffd44e1f60ceb6fd4558e683221ceebbd99e43ec7304abd530e3c9d5bb"
+        "index.js": "b093dcd78035a530fbe11e77ffb5ae082bcbae0a5961e49d1028dc358ce9d50e"
       }
     },
     {
@@ -507,7 +507,7 @@
     {
       "id": "provider-openrouter",
       "name": "OpenRouter",
-      "version": "2.4.0",
+      "version": "2.4.1",
       "description": "One key for many models, free ones among them, with transcription and voices too. Sign in with OpenRouter, or give a key.",
       "category": "providers",
       "keywords": [],
@@ -519,7 +519,7 @@
       "free": true,
       "local": false,
       "code": true,
-      "size": 31782,
+      "size": 31774,
       "requires": [
         {
           "id": "chat-completions",
@@ -533,8 +533,8 @@
       "featured": "Sign in with OpenRouter is the quickest way, and it starts you on free models.",
       "provides": {},
       "files": {
-        "annai-plugin.json": "4a71c4e275b2965a83d39f181ad4a7f3a308a357be82e31ead2df45600d20277",
-        "index.js": "62992f299c90ccf5820c79f393eabfb57e515365969966e1feade661a81037cb"
+        "annai-plugin.json": "5c786d7d60dca519d528041b8368156b72d0f6a67a8ed3a977bf71befcc49964",
+        "index.js": "7439f8ee656b239dfa580661d9c724b1bc38466a179c55cbfc21829b360bb417"
       }
     },
     {

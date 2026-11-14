@@ -269,7 +269,7 @@
         "name": "Live voice",
         "on": false,
         "baseUrl": "https://generativelanguage.googleapis.com",
-        "note": "A conversation in one stream, voice both ways, for Koe (Gemini Live). While a session is open, what you say goes to Google as audio. Free on AI Studio's free tier. Koe speaks with Sulafat here too (from the Gemini Live protocol 0.2: Settings → Updates brings it), the voice of Koe · Chat, so she sounds the same in both.",
+        "note": "A conversation in one stream, voice both ways, for Koe (Gemini Live). While a session is open, what you say goes to Google as audio. Free on AI Studio's free tier. Koe speaks with Sulafat here by default (from the Gemini Live protocol 0.2: Settings → Updates brings it).",
         "models": [
           {
             "providerId": "gemini-3.8-live",

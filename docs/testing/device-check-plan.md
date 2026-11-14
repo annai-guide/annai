@@ -30,7 +30,7 @@ Setup: the emulator image has Google Play services, so Chrome installs annai as 
 
 - [ ] **m1 #1**: In a Chrome tab, the "annai isn't installed yet" card shows; "Show me how" gives the Android steps. How: screen. Then C.
 - [ ] **m1 #2**: "Install annai" appears and installs the app. How: screen; `adb shell pm list packages` shows the installed app. Then B.
-- [ ] **m1 #4**: In the installed app, Settings → Storage says "The browser won't clear annai's data by itself.". How: screen; console `navigator.storage.persisted()`. Then C.
+- [ ] **m1 #4**: In the installed app, Settings → Storage says "The browser won't clear annai's data by itself." How: screen; console `navigator.storage.persisted()`. Then C.
 - [ ] **m1 #5**: Open the installed app once, then airplane mode, force-quit, reopen: Trips loads with its trips. How: `adb shell cmd connectivity airplane-mode enable`, `am force-stop` on the app; screen. Then C.
 
 ### A2. Trips, export and import

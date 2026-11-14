@@ -598,7 +598,7 @@ test("a plain item's details: what, when, where, notes and its calendar file; ne
   await records(page, trip, ANCHORAGE);
   const ics = ['BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'UID:aurora@test.invalid', 'SUMMARY:Aurora walk', 'LOCATION:Testville Park', 'DTSTART;TZID=America/Anchorage:20261122T220000', 'DURATION:PT2H', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
   await page.getByLabel('Add photos or files').setInputFiles([{ name: 'walks.ics', mimeType: 'text/calendar', buffer: Buffer.from(ics) }]);
-  await expect(page.getByText(/^Added .*walks\.ics, and 1 itinerary item from the calendar/)).toBeVisible();
+  await expect(page.getByText('Added a file, and 1 itinerary item from the calendar')).toBeVisible();
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
   await page.getByRole('tab', { name: 'Sun, Nov 22' }).click();
   await page.getByRole('tabpanel').getByRole('link', { name: /Aurora walk/ }).click();

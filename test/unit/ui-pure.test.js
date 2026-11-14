@@ -22,6 +22,7 @@ import { liveText, knownFix } from '../../src/ui/live-chip.js';
 import { roadText } from '../../src/ui/screens/drive.js';
 import { cameFrom } from '../../src/ui/screens/file.js';
 import { afterDelete, countParts } from '../../src/ui/file-delete.js';
+import { addedWords } from '../../src/ui/bring-in.js';
 
 /** @param {Parameters<typeof announced>} a */
 const announcement = (...a) => announced(...a).join('');
@@ -997,4 +998,16 @@ test('the dock has words for every state a half shows, "One moment…" between a
   const { LABELS } = await import('../../src/core/agent/loop.js');
   assert.equal(LABELS.opening, 'One moment…');
   for (const name of ['sleeping', 'opening', 'thinking', 'speaking', 'listening', 'ignoring', 'hearing', 'waiting', 'away', 'offline']) assert.ok(/** @type {any} */ (LABELS)[name], name);
+});
+
+test('addedWords says what a hand-over added once: a file or files, or photos only, whole, never a path', () => {
+  const photo = { name: '/files/IMG_1.heic', type: 'image/heic' };
+  const note = { name: '/files/notes.txt' };
+  assert.deepEqual(addedWords([note]), { what: 'a file', added: 'Added a file' });
+  assert.deepEqual(addedWords([note, note, note]), { what: '3 files', added: 'Added 3 files' });
+  assert.deepEqual(addedWords([photo]), { what: '1 photo', added: 'Added 1 photo' });
+  assert.deepEqual(addedWords([photo, { name: '/files/b.jpg' }]), { what: '2 photos', added: 'Added 2 photos' });
+  assert.deepEqual(addedWords([photo, note]), { what: '2 files', added: 'Added 2 files' }, 'one file that is not a photo makes them all files');
+  assert.deepEqual(addedWords([{ name: '/files/invite', type: 'text/calendar' }]), { what: 'a file', added: 'Added a file' }, 'a name with no ending, a type that is not a photo');
+  assert.equal(addedWords([]).added, 'Added 0 files', 'nothing kept is not "0 photos"');
 });

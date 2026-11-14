@@ -731,3 +731,21 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** after answering her question card, if her reply showed nothing and the cue followed, in about 1 of 9 forced runs she answered again in plain text the user never sees, and "Shiori didn't answer" showed.
 - **Why:** the cue says only speak, show and ask reach the user; a model can still write plain text.
 - **Revisit when:** the next version: firmer cue words, measured on the ask-owed run's forced set.
+
+### Testing docs and specs still name the Koe lists "Realtime" and "Classic", and a menu "Tidy up"
+- **Kind:** deferred.
+- **What the user sees:** nothing on a screen. A tester following docs/testing (device-checklist-koe, device-checklist-phase2, realtime-check, reasoning-check) looks for "Koe · Realtime" and "Koe · Classic", which the screens call "Koe · Live" and "Koe · Chat"; some specs name a "Tidy up" menu, which no screen shows now ("Summarize now" and "Start fresh" are buttons of their own).
+- **Why:** found on 2026-11-14 while correcting the words Shiori is told. The checklists and dated specs record what was true when they were written; renaming every mention is a doc-only change of its own, and a rename that misses a step is worse than a name the tester can guess.
+- **Revisit when:** the next version: rename in the testing docs (the checklists a tester follows) and leave the dated specs as they were, with a note at the top of each spec that names the new words.
+
+### "Add {0}" and the calendar toast still take a noun with its count as a value
+- **Kind:** deferred.
+- **What the user sees:** in Chinese, sharing one file shows the title "添加 一个文件" and, when a calendar file made itinerary items, the toast "已添加 一个文件，…", each with a stray space after 添加 / 已添加, because the file or count is a value set into a sentence. Japanese and English read right.
+- **Why:** the plain toast says its count whole since 2026-11-14 ("Added a file", "Added # files", "Added # photos"); "Add {0}" (the import screen's title and the provider screen's button) and the calendar toast ("Added {0}, and # itinerary items from the calendar") still serve two places or hold a value, as the Languages screen's "Added {0}" does for a language's name.
+- **Revisit when:** the next English change: say "Add a file", "Add # files", "Add # photos" whole, and make the calendar toast two sentences, which removes the value from both.
+
+### Some plugin errors still start in lower case with no subject
+- **Kind:** deferred.
+- **What the user sees:** a card or an install screen's line such as "is being removed", "is switched off after repeated errors", "couldn't be downloaded. Check the connection and try again." or "didn't provide a kind of backup place X", in English, with nothing before it but the plugin's name. The ones in requires.js, plugins.js's install checks, packages.js, service.js and official.js's "isn't a kind of … annai knows" now begin with "It …" or a name.
+- **Why:** found on 2026-11-14 with the others; the list was cut at the lines the Japanese and Chinese review named (src/core/plugins.js:438, :607, :609; registry.js:221; package-updates.js:54, :58, :62; llm/official.js:156, :158, :160, :296, :298; llm/service.js:346).
+- **Revisit when:** the next English change: the same fix, "It …" or the name, with the log's English unchanged.

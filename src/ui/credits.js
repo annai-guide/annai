@@ -58,7 +58,7 @@ export const SOURCES = [
   {
     name: 'Parallel',
     hosts: ['search.parallel.ai'],
-    use: t`Free web search for web_search, while ticked in Settings → Tools. Only the words searched are sent.`,
+    use: t`Free web search for web_search, while ticked in Settings → Tools. Only the words searched, and a random id for each conversation, are sent.`,
     credit: /* en */ 'Search by Parallel, at parallel.ai.',
     links: /* en */ [{ href: 'https://parallel.ai/', text: 'parallel.ai' }],
   },

@@ -98,7 +98,7 @@ provider-gemini:@provider.abilities.chat.noWindowNote	ok	Since version 2.0 this 
 provider-gemini:@provider.abilities.transcription.note	ok	Turns what you say into text, for a model that doesn't take audio. Gemini 3.5 Transcribe is Google's own; Flash Lite writes it down when asked, for less. Their prices are estimates from Google's rates for audio, about 25 tokens a second.	音声を受け付けないモデルのために、話した内容を文字にします。Gemini 3.5 TranscribeはGoogleの文字起こし専用モデルです。Flash Liteも指示すれば書き起こせて、より安く済みます。料金は、Googleの音声料金（1秒あたり約25トークン）から見積もった値です。	plugins-official/provider-gemini/annai-plugin.json:223	
 provider-gemini:@provider.abilities.voice.note	ok	Shiori's voice, a sentence at a time, each sentence one request. It streams: she starts about half a second after a sentence is written, and on a weak connection she waits until it won't stutter. Switch streaming off to have each sentence arrive whole, as other voices do. On the free tier Google allows each of these voices only 10 requests a day and 3 a minute: far fewer than a day of replies, so after the first few sentences the next voice in the list speaks. Prices are estimates per character from Google's rate for audio, 25 tokens a second. Her voice is Sulafat unless the Tunables here name another (it is the warm one of Google's 30; Achird is friendly, Vindemiatrix gentle, Kore firm), and the Style goes as Google's own speech_metadata style.	Shioriの声です。1文ずつ、1文につき1回のリクエストで話します。ストリーミングするので、文ができてから約0.5秒で話し始めます。通信が不安定なときは、途切れずに話せるようになるまで待ちます。ストリーミングをオフにすると、ほかの声と同じように、1文が丸ごと届いてから話します。無料枠では、Googleはこれらの声それぞれに1日10回・1分3回のリクエストしか許可していません。1日分の返答にはとても足りないため、最初の数文のあとはリストの次の声が話します。料金は、Googleの音声料金（1秒あたり25トークン）から1文字あたりで見積もった値です。ここの調整項目で別の声を指定しない限り、声はSulafatです（Googleの30種類の声のうち、温かみのある声です。Achirdは親しみやすく、Vindemiatrixは穏やか、Koreはきっぱりした声です）。「スタイル」は、Google独自の speech_metadata の style として送られます。	plugins-official/provider-gemini/annai-plugin.json:244	
 provider-gemini:@provider.abilities.live.name	ok	Live voice	ライブ音声	plugins-official/provider-gemini/annai-plugin.json:269	
-provider-gemini:@provider.abilities.live.note	ok	A conversation in one stream, voice both ways, for Koe (Gemini Live). While a session is open, what you say goes to Google as audio. Free on AI Studio's free tier. Koe speaks with Sulafat here too (from the Gemini Live protocol 0.2: Settings → Updates brings it), the voice of Koe · Chat, so she sounds the same in both.	Koe用の、1本のストリームで声をやり取りする会話です（Gemini Live）。セッション中は、話した内容が音声のままGoogleに送られます。AI Studioの無料枠なら無料です。ここでもKoeはSulafatの声で話します（Gemini Liveプロトコル0.2以降。「設定 → アップデート」で入手できます）。Koe · チャットと同じ声なので、どちらでも同じように聞こえます。	plugins-official/provider-gemini/annai-plugin.json:272	
+provider-gemini:@provider.abilities.live.note	ok	A conversation in one stream, voice both ways, for Koe (Gemini Live). While a session is open, what you say goes to Google as audio. Free on AI Studio's free tier. Koe speaks with Sulafat here by default (from the Gemini Live protocol 0.2: Settings → Updates brings it).	Koe用の、1本のストリームで声をやり取りする会話です（Gemini Live）。セッション中は、話した内容が音声のままGoogleに送られます。AI Studioの無料枠なら無料です。ここでのKoeの声は、初期設定ではSulafatです（Gemini Liveプロトコル0.2以降。「設定 → アップデート」で入手できます）。	plugins-official/provider-gemini/annai-plugin.json:272	
 provider-groq:@name	ok	Groq	Groq	plugins-official/provider-groq/annai-plugin.json:3	
 provider-groq:@description	ok	Fast open models, and fast Whisper transcription.	高速なオープンモデルと、Whisperによる高速な文字起こし。	plugins-official/provider-groq/annai-plugin.json:6	
 provider-groq:@provider.abilities.chat.note	ok	Add models with Fetch model list.	モデルは「モデルの一覧を取得」で追加します。	plugins-official/provider-groq/annai-plugin.json:26	
@@ -127,7 +127,7 @@ provider-mistral:@provider.abilities.chat.note	ok	Add models with Fetch model li
 provider-ollama:@name	ok	Ollama	Ollama	plugins-official/provider-ollama/annai-plugin.json:3	
 provider-ollama:@description	ok	Models on Ollama, with their thinking switched off for quick decisions.	Ollamaのモデル。クイック判定では思考をオフにします。	plugins-official/provider-ollama/annai-plugin.json:7	
 provider-ollama:@provider.note	ok	Ollama lets in only pages on its own computer: start it with OLLAMA_ORIGINS=https://annai.guide so annai's page may call it. It listens on port 11434.	Ollamaは同じコンピューター上のページからの接続しか受け付けません。annaiのページから呼び出せるように、OLLAMA_ORIGINS=https://annai.guide を付けて起動してください。ポート11434で待ち受けます。	plugins-official/provider-ollama/annai-plugin.json:19	
-provider-ollama:@provider.abilities.chat.note	ok	Add models with Fetch model list. It reads what Ollama says of each: whether it reads images, calls tools and thinks, and its context while it is loaded (as ollama ps shows), else the num_ctx its Modelfile sets. A model that thinks gets low, medium and high; for one that can't think, annai only switches thinking off, for quick decisions, as Ollama refuses a named level for it. Ollama holds only 4K tokens of a conversation unless told (with under 24 GiB of video memory), far less than Shiori needs: start it with OLLAMA_CONTEXT_LENGTH=64000, and set the context window of a model not loaded when you fetched the list on its page. Ollama can't be made to call a given tool, so a quick decision may go to the main model instead.	モデルは「モデルの一覧を取得」で追加します。Ollamaが各モデルについて返す情報から、画像を読めるか、ツールを呼べるか、思考するかと、コンテキスト長を読み取ります。コンテキスト長は、読み込み中のモデルなら ollama ps の表示どおり、読み込まれていなければModelfileで設定された num_ctx です。思考するモデルにはlow・medium・highが付きます。思考できないモデルについてはOllamaが名前付きのレベルを拒否するため、annaiはクイック判定のときに思考をオフにするだけです。Ollamaは指定しない限り（ビデオメモリが24 GiB未満の場合）会話を4Kトークンしか保持せず、Shioriに必要な量よりはるかに少ないため、OLLAMA_CONTEXT_LENGTH=64000 を付けて起動してください。一覧を取得したときに読み込まれていなかったモデルは、そのモデルのページでコンテキストウィンドウを設定してください。Ollamaには特定のツールを呼ばせることができないため、クイック判定がメインのモデルに回ることがあります。	plugins-official/provider-ollama/annai-plugin.json:34	
+provider-ollama:@provider.abilities.chat.note	ok	Add models with Fetch model list. It reads what Ollama says of each: whether it reads images, calls tools and thinks, and its context while it is loaded (as ollama ps shows), else the num_ctx its Modelfile sets. A model that thinks gets low, medium and high; for one that can't think, annai only switches thinking off, for quick decisions, as Ollama refuses a named level for it. Ollama holds only 4K tokens of a conversation unless told (with under 24 GiB of video memory), far less than Shiori needs: start it with OLLAMA_CONTEXT_LENGTH=64000, and set the context window of a model not loaded when you fetched the list on its page. Ollama can't be made to call a given tool, so a quick decision may go to the main model instead.	モデルは「モデルの一覧を取得」で追加します。Ollamaが各モデルについて返す情報から、画像を読めるか、ツールを呼べるか、思考するかと、コンテキスト長を読み取ります。コンテキスト長は、読み込み中のモデルなら ollama ps の表示どおり、読み込まれていなければModelfileで設定された num_ctx です。思考するモデルは、low・medium・highから選べます。思考できないモデルには、Ollamaがレベルの指定を受け付けないため、annaiはクイック判定のときだけ思考をオフにします。Ollamaは指定しない限り（ビデオメモリが24 GiB未満の場合）会話を4Kトークンしか保持せず、Shioriに必要な量よりはるかに少ないため、OLLAMA_CONTEXT_LENGTH=64000 を付けて起動してください。一覧を取得したときに読み込まれていなかったモデルは、そのモデルのページでコンテキストウィンドウを設定してください。Ollamaには特定のツールを呼ばせることができないため、クイック判定がメインのモデルに回ることがあります。	plugins-official/provider-ollama/annai-plugin.json:34	
 provider-openai:@name	ok	OpenAI	OpenAI	plugins-official/provider-openai/annai-plugin.json:3	
 provider-openai:@description	ok	GPT models through OpenAI's Responses API, with OpenAI's transcription and voices, and its live voice for Koe, on one key.	OpenAIのResponses APIでGPTモデルを使います。OpenAIの文字起こしと声、Koeのライブ音声も、1つのキーで利用できます。	plugins-official/provider-openai/annai-plugin.json:6	Note: リアルタイム音声 as the plugin names the ability (Realtime voice).
 provider-openai:@provider.abilities.chat.name	ok	Chat (Responses)	チャット（Responses）	plugins-official/provider-openai/annai-plugin.json:26	
@@ -157,7 +157,7 @@ provider-openrouter:buz2qi	ok	OpenRouter didn't send a key.	OpenRouterからキ�
 provider-openrouter:keqy0k	ok	Nothing was sent to OpenRouter yet: try again.	OpenRouterにはまだ何も送信していません。もう一度お試しください。	plugins-official/provider-openrouter/index.js:160	
 provider-openrouter:ty7dbd	ok	Signed in with OpenRouter	OpenRouterでサインインしました	plugins-official/provider-openrouter/index.js:163	
 provider-openrouter:7pnsck	ok	annai keeps the new key for OpenRouter's chat, transcription and voices.	新しいキーを保存しました。OpenRouterのチャット、文字起こし、声に使います。	plugins-official/provider-openrouter/index.js:164	Note: keeps: the key is saved (保存し), not only used.
-provider-openrouter:1vsq4do	ok	Shiori thinks with free models to start, so trying annai costs nothing. annai also added OpenRouter's transcription and voices, behind the phone's own dictation and the browser voice. Its free voice comes first: each sentence it says uses one of the free requests a day the chat models use too. The others cost a little, from credits you buy at OpenRouter. To use them first, move them up under Roles.	最初は無料のモデルでShioriが考えるので、annaiは無料で試せます。OpenRouterの文字起こしと声も、端末の音声入力とブラウザの声の後ろに追加しました。その中では無料の声が先に使われ、1文話すごとに、チャットのモデルと共通の1日の無料リクエストを1回分使います。ほかの声は少し費用がかかり、OpenRouterで購入するクレジットから支払います。それらを先に使うには、「役割」で上に移動してください。	plugins-official/provider-openrouter/index.js:165	Note: 端末の音声入力 and ブラウザの声 as the Roles list names them (Phone dictation, Browser voice).
+provider-openrouter:12ypgkl	ok	Shiori thinks with free models to start, so trying annai costs nothing. annai also added OpenRouter's transcription and voices, behind the browser's own dictation and voice. Its free voice comes first: each sentence it says uses one of the free requests a day the chat models use too. The others cost a little, from credits you buy at OpenRouter. To use them first, move them up under Roles.	最初は無料のモデルでShioriが考えるので、annaiは無料で試せます。OpenRouterの文字起こしと声も、ブラウザ標準の音声入力と声の後ろに追加しました。その中では無料の声が先に使われ、1文話すごとに、チャットのモデルと共通の1日の無料リクエストを1回分使います。ほかの声は少し費用がかかり、OpenRouterで購入するクレジットから支払います。それらを先に使うには、「役割」で上に移動してください。	plugins-official/provider-openrouter/index.js:165	Note: 端末の音声入力 and ブラウザの声 as the Roles list names them (Phone dictation, Browser voice).
 provider-openrouter:1g87qpl	ok	OpenRouter sent no code back.	OpenRouterからコードが返ってきませんでした。	plugins-official/provider-openrouter/index.js:173	
 provider-openrouter:4uzwwb	ok	Sign in again	もう一度サインイン	plugins-official/provider-openrouter/index.js:187	
 provider-openrouter:7utsi6	ok	Sign in with OpenRouter	OpenRouterでサインイン	plugins-official/provider-openrouter/index.js:187	
@@ -169,7 +169,7 @@ provider-openrouter:r0x7h	ok	annai has made a new sign-in: tap it again.	新し�
 provider-openrouter:t5esrh	ok	annai has made a new sign-in: tap Sign in with OpenRouter again.	新しいサインインを用意しました。もう一度「OpenRouterでサインイン」をタップしてください。	plugins-official/provider-openrouter/index.js:230	
 provider-openrouter:1gutt9j	ok	Sign in again for a new key, in place of the one saved.	もう一度サインインすると、保存済みのキーが新しいキーに置き換わります。	plugins-official/provider-openrouter/index.js:252	
 provider-openrouter:2yktg6	ok	Sign in with OpenRouter for a key, or give one below.	「OpenRouterでサインイン」してキーを取得するか、下にキーを入力してください。	plugins-official/provider-openrouter/index.js:252	
-provider-openrouter:a7pqtl	ok	Sign in with OpenRouter to get one key for many models. annai starts you on free models (50 requests a day), so trying it costs nothing. It also adds OpenRouter's transcription and voices, a free one among them; the phone's own dictation and voice stay first.	「OpenRouterでサインイン」すると、1つのキーで多くのモデルを使えます。最初は無料のモデル（1日50リクエスト）を使うので、無料で試せます。OpenRouterの文字起こしと声（無料の声を含む）も追加されますが、端末の音声入力とブラウザの声が引き続き優先されます。	plugins-official/provider-openrouter/index.js:253	Note: 端末の音声入力 as the Roles list's Phone dictation.
+provider-openrouter:ltxijx	ok	Sign in with OpenRouter to get one key for many models. annai starts you on free models (50 requests a day), so trying it costs nothing. It also adds OpenRouter's transcription and voices, a free one among them; the browser's own dictation and voice stay first.	「OpenRouterでサインイン」すると、1つのキーで多くのモデルを使えます。最初は無料のモデル（1日50リクエスト）を使うので、無料で試せます。OpenRouterの文字起こしと声（無料の声を含む）も追加されますが、ブラウザ標準の音声入力と声が引き続き優先されます。	plugins-official/provider-openrouter/index.js:253	Note: 端末の音声入力 as the Roles list's Phone dictation.
 provider-scripted:@name	ok	Scripted model (for testing)	スクリプト応答モデル（テスト用）	plugins-official/provider-scripted/annai-plugin.json:3	
 provider-scripted:@description	ok	A model that replies from a script, for tests and plugin authors. It never uses the network.	あらかじめ用意したスクリプトどおりに返答するモデルです。テストやプラグイン開発向けで、通信は一切行いません。	plugins-official/provider-scripted/annai-plugin.json:6	
 provider-sglang:@name	ok	SGLang	SGLang	plugins-official/provider-sglang/annai-plugin.json:3	
@@ -437,7 +437,7 @@ tbxeeg	ok	The model sent back an empty recap. Try again, or put another model fi
 6jq1bh	ok	1 minute a second	1秒で1分	src/core/after/replay.js:22	
 7013qq	ok	10 minutes a second	1秒で10分	src/core/after/replay.js:22	
 1xgi8k0	ok	less than a minute	1分未満	src/core/after/replay.js:25	
-kv5an6#other	ok	No route was recorded. # stops and {0}.	道のりの記録はありません。立ち寄り先#か所、{0}。	src/core/after/replay.js:73	plural; # = n; {0} = marks; English: "No route was recorded. # stop and {0}." (one), "No route was recorded. # stops and {0}." (other); Note: {0} is the stamps counted, "スタンプ#個" / "# 个纪念章".
+kv5an6#other	ok	No route was recorded. # stops and {0}.	ルートの記録がありません。立ち寄り先#か所、{0}。	src/core/after/replay.js:73	plural; # = n; {0} = marks; English: "No route was recorded. # stop and {0}." (one), "No route was recorded. # stops and {0}." (other); Note: {0} is the stamps counted, "スタンプ#個" / "# 个纪念章".
 1pigqmy#other	ok	{0} on the road, with # stops and {1}.	{0}の道のり。立ち寄り先#か所、{1}。	src/core/after/replay.js:75	plural; # = n; {0} = road; {1} = marks; English: "{0} on the road, with # stop and {1}." (one), "{0} on the road, with # stops and {1}." (other); Note: {1} is the stamps counted.
 aad9xo#other	ok	{0} on the road, from {1}, with # stops and {2}.	{1}から{0}の道のり。立ち寄り先#か所、{2}。	src/core/after/replay.js:76	plural; # = n; {0} = road; {1} = first; {2} = marks; English: "{0} on the road, from {1}, with # stop and {2}." (one), "{0} on the road, from {1}, with # stops and {2}." (other); Note: {2} is the stamps counted.
 p6d198#other	ok	{0} on the road, from {1} to {2}, with # stops and {3}.	{1}から{2}まで{0}の道のり。立ち寄り先#か所、{3}。	src/core/after/replay.js:77	plural; # = n; {0} = road; {1} = first; {2} = last; {3} = marks; English: "{0} on the road, from {1} to {2}, with # stop and {3}." (one), "{0} on the road, from {1} to {2}, with # stops and {3}." (other); Note: {3} is the stamps counted.
@@ -695,7 +695,7 @@ b1qn4p	ok	Voice	声	src/core/llm/contract.js:150	Note: an ability, a voice to sp
 su5wo1	ok	Live voice	ライブ音声	src/core/llm/contract.js:150	
 izfolc	ok	No output started in time.	時間内に出力が始まりませんでした。	src/core/llm/contract.js:160	
 1l28lx6#other	ok	Its output stopped for # seconds.	出力が#秒間止まりました。	src/core/llm/contract.js:161	plural; # = Number(s.seconds) || 0; English: "Its output stopped for # second." (one), "Its output stopped for # seconds." (other); Note: the model's output had started, then stopped arriving for this long; a card line under the model's name.
-1ox7mn5	ok	The voice stopped arriving for longer than annai waits.	音声が届かない時間が待機時間を超えました。	src/core/llm/contract.js:162	
+1ox7mn5	ok	The voice stopped arriving for longer than annai waits.	音声が届かないまま、annaiが待つ時間を超えました。	src/core/llm/contract.js:162	
 1rls2oy	ok	annai needs a reload: it opened without its offline service, so its plugins can't start.	annaiを再読み込みしてください。オフライン用のサービスが動いていない状態で開いたため、プラグインを起動できません。	src/core/llm/contract.js:163	
 b4ie5	ok	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	数分前に保存した会話がサーバーに残っていませんでした。このアカウントではデータが保存されない設定（Zero Data Retention）になっているようです。annaiを次に起動するまでサーバーには何も保存せず、会話全体を送ります。	src/core/llm/contract.js:164	
 1e0qpon	ok	That model no longer exists.	そのモデルはもうありません。	src/core/llm/contract.js:165	
@@ -745,8 +745,8 @@ g4h5be	ok	annai's list of plugins couldn't be loaded. Check the connection and t
 mprjic	ok	couldn't be downloaded. Check the connection and try again.	ダウンロードできませんでした。ネットワーク接続を確認して、もう一度お試しください。	src/core/llm/official.js:156	Note: said of a plugin, whose name is the card's title.
 zkivre	ok	couldn't be downloaded ({0}: HTTP {1}). Try again later.	ダウンロードできませんでした（{0}：HTTP {1}）。しばらくしてからもう一度お試しください。	src/core/llm/official.js:158	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
 1th61o	ok	wasn't installed: {0} doesn't match annai's catalog	インストールされませんでした：{0}がannaiのカタログと一致しません	src/core/llm/official.js:160	{0} = name; Note: said of a plugin, whose name is the card's title.
-1en96uv	ok	isn't a kind of backup place annai knows. Install a plugin that provides it.	annaiが対応していない種類のバックアップ先です。対応するプラグインをインストールしてください。	src/core/llm/official.js:273	Note: said of a kind of backup place, whose id comes before it in the log.
-1vh2cz2	ok	isn't an endpoint type annai knows. Install a plugin that provides it.	annaiが対応していないエンドポイントの種類です。対応するプラグインをインストールしてください。	src/core/llm/official.js:275	Note: said of an endpoint type, whose id comes before it in the log.
+1mtcl9u	ok	It isn't a kind of backup place annai knows. Install a plugin that provides it.	annaiが対応していない種類のバックアップ先です。対応するプラグインをインストールしてください。	src/core/llm/official.js:273	Note: said of a kind of backup place, whose id comes before it in the log.
+ul2t1z	ok	It isn't an endpoint type annai knows. Install a plugin that provides it.	annaiが対応していないエンドポイントの種類です。対応するプラグインをインストールしてください。	src/core/llm/official.js:275	Note: said of an endpoint type, whose id comes before it in the log.
 brqvs6	ok	{0}, which you turned off, isn't switched on by this.	オフにした{0}は、この操作ではオンになりません。	src/core/llm/official.js:287	{0} = name
 tkgxjx	ok	didn't provide a kind of backup place {0}	バックアップ先の種類「{0}」が含まれていませんでした	src/core/llm/official.js:296	{0} = type; Note: said of a plugin, whose name is the card's title.
 8lvx94	ok	didn't provide an endpoint type {0}	エンドポイントの種類「{0}」が含まれていませんでした	src/core/llm/official.js:298	{0} = type; Note: said of a plugin, whose name is the card's title.
@@ -754,11 +754,11 @@ tkgxjx	ok	didn't provide a kind of backup place {0}	バックアップ先の種�
 557vva	ok	{0} isn't a web address: give it with https:// in front.	{0}はWebアドレスではありません。先頭に https:// を付けてください。	src/core/llm/provider-desc.js:164	{0} = url
 y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	アドレスは https:// で始めてください（http:// はlocalhostか127.0.0.1の場合のみ）。httpsのページからの暗号化されていないhttp通信はブラウザがブロックし、annaiもネットワーク内ではhttpsのアドレスにしか接続しないため、別のコンピューターのサーバーにはhttpsのアドレスが必要です。Tailscale Serveで用意できます：{0}。サーバーは annai.guide からのCORSも許可している必要があります。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)
 1qpfdfv	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1).	アドレスは https:// で始めてください（http:// はlocalhostか127.0.0.1の場合のみ）。	src/core/llm/provider-desc.js:166	
-ja1k8e	ok	is turned off.	オフになっています。	src/core/llm/service.js:248	Note: said of a plugin named before it on the screen.
-1e19ie2	ok	isn't running. Look at it in Settings → Plugins.	動作していません。「設定 → プラグイン」で確認してください。	src/core/llm/service.js:250	Note: said of a plugin named before it on the screen.
+1xwbser	ok	It is turned off.	オフになっています。	src/core/llm/service.js:248	Note: said of a plugin named before it on the screen.
+1pqsrb3	ok	It isn't running. Look at it in Settings → Plugins.	動作していません。「設定 → プラグイン」で確認してください。	src/core/llm/service.js:250	Note: said of a plugin named before it on the screen.
 sejc5h	ok	{0} was switched off after errors.	{0}はエラーが続いたためオフになりました。	src/core/llm/service.js:265	{0} = shown
-sv2i3h	ok	didn't provide a model provider.	モデルのプロバイダーが含まれていませんでした。	src/core/llm/service.js:266	Note: said of a plugin.
-b2gd9w	ok	its plugin isn't annai's own. Install it again from where it came from.	そのプラグインはannai公式のものではありません。入手元からもう一度インストールしてください。	src/core/llm/service.js:337	
+1uno44s	ok	It didn't provide a model provider.	モデルのプロバイダーが含まれていませんでした。	src/core/llm/service.js:266	Note: said of a plugin.
+2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	そのプラグインはannai公式のものではありません。入手元からもう一度インストールしてください。	src/core/llm/service.js:337	
 1fpv184	ok	the plugin it names doesn't provide models, so it wasn't installed.	指定されているプラグインはモデルを提供していないため、インストールされませんでした。	src/core/llm/service.js:346	
 3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:68	{0} = p.title
 1rb0o7n	ok	OpenStreetMap around {0}	{0}周辺のOpenStreetMap	src/core/pack/download.js:70	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
@@ -774,11 +774,11 @@ aaicx8	ok	{0} couldn't be checked: {1}	{0}を確認できませんでした：{1
 mlem3w	ok	wasn't installed from an address, so annai has nowhere to look for an update	アドレスからインストールしたものではないため、更新を確認できません	src/core/package-updates.js:54	
 1nrhfbi	ok	the address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	そのアドレスのパッケージが別のもの（{0}）に変わっているため、アップデートしませんでした。そちらを使う場合は、これを削除してからインストールしてください。	src/core/package-updates.js:58	{0} = pkg.id
 emc8n2	ok	this update adds parts you haven't agreed to: {0}. Check for updates again and look at what it adds.	このアップデートでは、まだ同意していないものが追加されます：{0}。もう一度更新を確認して、追加される内容を確かめてください。	src/core/package-updates.js:62	{0} = addedWords(added); Note: the English starts in lower case after the plugin's name, which the screen leaves out; a sentence here.
-1e2afz	ok	this zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.	このzipには複数のスキルが入っています。1つずつインストールするか、それらを記載したannai-plugin.jsonを追加してください。	src/core/packages.js:337	
-is7g6t	ok	its {0} is in {1}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0}が{1}にあり、階層が深すぎます。annaiが読み込むのは、zipの最上位か、zipに1つだけ入ったフォルダーの中です。そのフォルダーだけをzipにしてください。	src/core/packages.js:345	{0} = file; {1} = folder
-fzexrw	ok	its {0} is in {1}, with other files beside that folder: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0}は{1}にありますが、zipの最上位にほかのファイルもあります。annaiが読み込むのは、zipの最上位か、zipに1つだけ入ったフォルダーの中です。そのフォルダーだけをzipにしてください。	src/core/packages.js:346	{0} = file; {1} = folder
-1svq3gn	ok	there is no {0} or {1} in this package	このパッケージには{0}も{1}もありません	src/core/packages.js:348	{0} = MANIFEST_FILE; {1} = SKILL_FILE
-ai2siz	ok	is too large: it unpacks to more than {0}	大きすぎます：展開すると{0}を超えます	src/core/packages.js:366	{0} = size(maxBytes); Note: said of a plugin, whose name is the card's title.
+1wfc5of	ok	This zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.	このzipには複数のスキルが入っています。1つずつインストールするか、それらを記載したannai-plugin.jsonを追加してください。	src/core/packages.js:337	
+12el2y8	ok	The {0} is in {1}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0}が{1}にあり、階層が深すぎます。annaiが読み込むのは、zipの最上位か、zipに1つだけ入ったフォルダーの中です。そのフォルダーだけをzipにしてください。	src/core/packages.js:345	{0} = file; {1} = folder
+yeyuzl	ok	The {0} is in {1}, with other files beside that folder: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0}は{1}にありますが、zipの最上位にほかのファイルもあります。annaiが読み込むのは、zipの最上位か、zipに1つだけ入ったフォルダーの中です。そのフォルダーだけをzipにしてください。	src/core/packages.js:346	{0} = file; {1} = folder
+woxuej	ok	There is no {0} or {1} in this package.	このパッケージには{0}も{1}もありません。	src/core/packages.js:348	{0} = MANIFEST_FILE; {1} = SKILL_FILE
+1r65tkq	ok	It is too large: it unpacks to more than {0}.	サイズが大きすぎます。展開すると{0}を超えます。	src/core/packages.js:366	{0} = size(maxBytes); Note: said of a plugin, whose name is the card's title.
 jg8gk7	ok	That isn't a web address. Paste the address of a zip file, an annai-plugin.json or a SKILL.md.	Webアドレスではありません。zipファイル、annai-plugin.json、SKILL.mdのいずれかのアドレスを貼り付けてください。	src/core/packages.js:446	
 13j5338	ok	For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.	GitHubのフォルダーの場合は、その中のSKILL.mdかannai-plugin.jsonのアドレスを使ってください。	src/core/packages.js:480	
 1xovhb	ok	annai couldn't reach {0}. Check the address, and that the site lets web apps read it.	{0}に接続できませんでした。アドレスが正しいか、そのサイトがWebアプリからの読み込みを許可しているかを確認してください。	src/core/packages.js:489	{0} = u.host
@@ -802,15 +802,15 @@ d57q3n	ok	Flight	フライト	src/core/plan.js:36
 jj8u9s	ok	Stay	宿泊	src/core/plan.js:36	Note: A kind of booking: a hotel or other lodging.
 sksosh	ok	Car	レンタカー	src/core/plan.js:36	Note: A kind of booking: a car, nearly always a rental.
 1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	タイムゾーン「{0}」を認識できないため、{1}で表示しています。	src/core/plan.js:70	{0} = String(own ?? ''); {1} = fallbackTz
-1agwmye	ok	{0} is a name annai uses for one of its own parts, so a skill can't have it.	「{0}」はannaiの機能で使われている名前のため、スキルには使えません。	src/core/plugins.js:179	{0} = id; Note: {0} is the skill's name.
-85vpp4	ok	has the same id as a plugin built into annai	annaiに組み込まれたプラグインと同じIDです	src/core/plugins.js:180	
-d18gob	ok	its name, "{0}", is annai's own name, or one of its parts'. Ask its author to rename it.	名前「{0}」は、annai自体かその機能の名前と同じです。作者に名前の変更を依頼してください。	src/core/plugins.js:184	{0} = pkg.name; Note: "Ask its author" is asking a person (頼む), not the phones' permission choice Ask (確認).
-1vbpaus	ok	is installed already as a plugin. Remove it first.	すでにプラグインとしてインストールされています。先に削除してください。	src/core/plugins.js:190	
-qo4woi	ok	is installed already as a skill. Remove it first.	すでにスキルとしてインストールされています。先に削除してください。	src/core/plugins.js:190	
+o6vv9a	ok	"{0}" is a name annai uses for one of its own parts, so a skill can't have it.	「{0}」はannaiの機能で使われている名前のため、スキルには使えません。	src/core/plugins.js:179	{0} = id; Note: {0} is the skill's name.
+1fdobr5	ok	It has the same id as a plugin built into annai.	annaiに組み込まれたプラグインと同じIDです。	src/core/plugins.js:180	
+wq5ezj	ok	Its name, "{0}", is annai's own name, or the name of one of its parts. Ask its author to rename it.	名前「{0}」は、annai自体かその機能の名前と同じです。作者に名前の変更を依頼してください。	src/core/plugins.js:184	{0} = pkg.name; Note: Ask here is the plain verb (to ask the author), not Safari's permission choice.
+15gukav	ok	A plugin with this id is installed already. Remove it first.	同じIDのプラグインがすでにインストールされています。先に削除してください。	src/core/plugins.js:190	
+masbkh	ok	A skill with this id is installed already. Remove it first.	同じIDのスキルがすでにインストールされています。先に削除してください。	src/core/plugins.js:190	
 1idb6oe	ok	{0} is handed the keys you give it, so the one used is annai's own, else the one installed first.	{0}には入力したキーが渡されるため、annai公式のものを使い、なければ最初にインストールしたものを使います。	src/core/plugins.js:241	{0} = name
 7ot8m8	ok	{0} is annai's own, so no plugin replaces it.	{0}はannaiに組み込まれたものなので、プラグインで置き換えることはできません。	src/core/plugins.js:243	{0} = name
 n5bfxm	ok	is being removed	削除中です	src/core/plugins.js:438	
-5wicvq	ok	was updated. Restart annai to run the new version.	アップデートされました。新しいバージョンを使うには、annaiを再起動してください。	src/core/plugins.js:439	
+u30lhr	ok	It was updated. Restart annai to run the new version.	アップデートされました。新しいバージョンを使うには、annaiを再起動してください。	src/core/plugins.js:439	
 1jrheem	ok	keeps MCP servers, not settings: remove a server on its own screen.	設定ではなくMCPサーバーを保存しています。サーバーはそれぞれの画面で削除してください。	src/core/plugins.js:609	
 rhqr7k#other	ok	it didn't finish starting within # seconds	#秒以内に起動が終わりませんでした	src/core/plugins.js:806	plural; # = s; English: "it didn't finish starting within # second" (one), "it didn't finish starting within # seconds" (other)
 u8bf72	ok	Notifications are on. Reminders come like this while annai is closed.	通知がオンになりました。annaiを閉じているときは、リマインダーがこのように届きます。	src/core/push/mirror.js:75	
@@ -964,7 +964,7 @@ elkw42	ok	The voice's audio couldn't be played.	読み上げの音声を再生�
 9gdjo3	ok	The browser voice couldn't speak ({0}).	ブラウザの声で読み上げられませんでした（{0}）。	src/plugins/voice-browser/index.js:585	{0} = e.error; Note: {0} is the browser's error code, such as synthesis-failed.
 1mrk9hl	ok	The microphone stopped.	マイクが停止しました。	src/plugins/voice-browser/index.js:650	
 1l4zitw	ok	Phone dictation stopped ({0}).	端末の音声入力が停止しました（{0}）。	src/plugins/voice-browser/index.js:755	{0} = e.error; Note: Phone dictation as its row in Settings → Voice says (端末の音声入力 / 手机语音输入); {0} is the browser's error code, such as network.
-1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia、Nominatim	src/plugins/web/free.js:118	
+1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia、Nominatim	src/plugins/web/free.js:119	
 scnz2y	ok	Web tools	Webツール	src/plugins/web/index.js:12	Note: Web as its tool group is named in Settings → Tools (Web / 网页).
 eob60g	ok	fetch reads any web page, through Jina Reader or Exa when a site doesn't let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.	fetchはWebページを読み込みます。サイトがWebアプリからの読み込みを許可していないときは、Jina ReaderかExaを経由します。web_searchは検索プロバイダーで検索します。順番は「設定 → ツール」で決まり、初期状態では無料のものが先です。	src/plugins/web/index.js:15	
 b4g7z9	ok	needs a key (Settings → Tools)	キーが必要：「設定 → ツール」	src/plugins/web/index.js:188	
@@ -989,6 +989,12 @@ zsz4na	ok	Backed up.	バックアップしました。	src/ui/auto-backup.js:106
 183eg6b	ok	The backup didn't finish	バックアップが完了しませんでした	src/ui/auto-backup.js:108	
 rs50uy	ok	Opening the backup…	バックアップを開いています…	src/ui/auto-backup.js:125	
 12sejli	ok	Waiting for the backup that's running to finish…	実行中のバックアップが終わるのを待っています…	src/ui/auto-backup.js:144	
+151rypw#other	ok	# photos	#枚の写真	src/ui/bring-in.js:51	plural; # = n; English: "# photo" (one), "# photos" (other)
+1lybcwo#other	ok	Added # photos	写真#枚を追加しました	src/ui/bring-in.js:51	plural; # = n; English: "Added # photo" (one), "Added # photos" (other); Note: a toast after photos were shared to annai and added.
+1az0mug	ok	Added a file	ファイルを追加しました	src/ui/bring-in.js:52	Note: a toast after one file was shared to annai and added.
+8w8k36	ok	a file	ファイル	src/ui/bring-in.js:52	
+q61zku#other	ok	Added # files	ファイル#件を追加しました	src/ui/bring-in.js:52	plural; # = n; English: "Added # file" (one), "Added # files" (other)
+wa8d8i#other	ok	# files	ファイル#件	src/ui/bring-in.js:52	plural; # = n; English: "# file" (one), "# files" (other)
 1jpt0cn	ok	Shiori	Shiori	src/ui/cards.js:45	
 1qg198k	ok	Shiori · {0}	Shiori · {0}	src/ui/cards.js:45	{0} = String(typed.item.name); Note: The label over a card from a plugin; {0} is the plugin's own name for its kind of card, as written.
 1dn0kon	ok	Open in Maps	マップで開く	src/ui/cards.js:77	
@@ -1006,11 +1012,12 @@ rcp6ga	ok	A photo was kept as it is	写真をそのまま保存しました	src/
 158qnm7	ok	Ask Shiori about this	Shioriに聞く	src/ui/composer.js:232	Note: the button that puts the file in the type box as a chip, to write what is wrong or missing; 聞く (ask) is plain.
 zvizeb	ok	Places nearby and along the itinerary, for Shiori's nearby tool and the offline pack, found through Overpass (overpass-api.de, or private.coffee's server when that one is busy).	周辺や旅程沿いの場所。Shioriのnearbyツールとオフラインパックで使います。Overpass（overpass-api.de、混雑時はprivate.coffeeのサーバー）を通じて探します。	src/ui/credits.js:19	Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
 g4c01g	ok	Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.	名前から場所を探したり、地点から地名を調べたりします。Shioriのgeocodeとreverseツールで使い、無料検索の最後の手段として場所の公式サイトを探すのにも使います。利用ポリシーに従い、問い合わせは1秒に1回までにしています。	src/ui/credits.js:26	
-nwgzkg	ok	Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address. Free search's last resort, always on, sends it the words searched.	周辺の場所に関する記事と、オフラインパックに入れるその要約。Shioriが読む記事にはそれぞれアドレスが付きます。常に有効な無料検索の最後の手段では、検索キーワードもWikipediaに送られます。	src/ui/credits.js:33	
+nwgzkg	ok	Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address. Free search's last resort, always on, sends it the words searched.	周辺の場所に関する記事と、オフラインパックに入れるその要約。Shioriが読む記事にはそれぞれアドレスが付きます。無料検索の最後の手段（常に有効）では、検索キーワードがWikipediaに送られます。	src/ui/credits.js:33	
 1ufrhy7	ok	Travel guides, for Shiori's guide tool and the offline pack, and where free search falls back to.	旅行ガイド。Shioriのguideツールとオフラインパックで使うほか、無料検索の予備にもなります。	src/ui/credits.js:40	Note: free search falls back to it; 代わり read as replacing free search.
 1g8sy5k	ok	Weather forecasts, for Shiori's weather tool. Sunrise and sunset in the forecast are Open-Meteo's too; the Now screen's golden hour, and the sun's times when Open-Meteo doesn't answer, are worked out on the phone.	天気予報。Shioriのweatherツールで使います。予報の日の出・日の入り時刻もOpen-Meteoのものです。「いま」画面のゴールデンアワーと、Open-Meteoが応答しないときの日の出・日の入り時刻は、端末で計算します。	src/ui/credits.js:47	
 a8awk7	ok	Free web search for web_search, and a reader of pages other readers can't read for fetch, while ticked in Settings → Tools. Only the words searched, or the page's address, are sent.	web_searchの無料Web検索と、ほかの方法では読めないページをfetchで読むための手段。「設定 → ツール」でチェックを入れている間だけ使います。送信するのは検索キーワードか、ページのアドレスだけです。	src/ui/credits.js:54	
-382qu6	ok	Free web search for web_search, while ticked in Settings → Tools. Only the words searched are sent.	web_searchの無料Web検索。「設定 → ツール」でチェックを入れている間だけ使います。送信するのは検索キーワードだけです。	src/ui/credits.js:61	
+1obxox	ok	Free web search for web_search, while ticked in Settings → Tools. Only the words searched, and a random id for each conversation, are sent.	web_searchの無料Web検索。「設定 → ツール」でチェックを入れている間だけ使います。送信するのは、検索キーワードと、会話ごとのランダムなIDだけです。	src/ui/credits.js:61	
+382qu6	ok	Free web search for web_search, while ticked in Settings → Tools. Only the words searched are sent.	web_searchの無料Web検索。「設定 → ツール」でチェックを入れている間だけ使います。送信するのは検索キーワードだけです。	src/ui/credits.js:68	
 138nh47	ok	Web search for web_search, with your key, once the Tavily Search plugin is installed.	web_searchのWeb検索。Tavily検索プラグインをインストールすると、自分のキーで使えます。	src/ui/credits.js:75	Note: Tavily 検索 as the plugin's own name reads in Japanese since L7 (annai translates its official plugins' descriptive names, decision 10).
 1a5kitj	ok	Web search for web_search, with your key, once the Serper Search plugin is installed.	web_searchのWeb検索。Serper検索プラグインをインストールすると、自分のキーで使えます。	src/ui/credits.js:82	Note: Serper 検索 as the plugin's own name reads in Japanese since L7 (annai translates its official plugins' descriptive names, decision 10).
 1yvqge7	ok	Read pages that don't let web apps read them, and search the web, for Shiori's fetch and web_search tools, as Settings → Tools chooses.	Webアプリからは読めないページを読み、Webを検索します。Shioriのfetchとweb_searchツールで、「設定 → ツール」の選択に従って使います。	src/ui/credits.js:89	
@@ -1058,11 +1065,11 @@ xyveyo	ok	Passphrase (optional)	パスフレーズ（任意）	src/ui/export-pan
 kpa27s	ok	With a passphrase, the file is encrypted. Without it, anyone with the file can read it.	パスフレーズを設定すると、ファイルは暗号化されます。設定しない場合、ファイルを持っている人は誰でも中身を読めます。	src/ui/export-panel.js:103	
 141racs#other	ok	# bookings	予約#件	src/ui/file-delete.js:15	plural; # = bookings; English: "# booking" (one), "# bookings" (other); Note: shows in a Files row's second line, and in the Delete lines, as the count of bookings (Booking: 予約/预订/預訂).
 cyn4ci#other	ok	# itinerary items	旅程の項目#件	src/ui/file-delete.js:15	plural; # = items; English: "# itinerary item" (one), "# itinerary items" (other); Note: counts the itinerary items a Delete removes along with a file or booking ("Deleted X, 2 bookings, and 1 itinerary item"; Itinerary: 旅程/行程).
-1os9dwu	ok	Also deletes the {0} Shiori read from it.	Shioriがこのファイルから読み取った{0}も削除されます。	src/ui/file-delete.js:26	{0} = group; Note: line under Delete for good on a deleted file with no copies, naming the bookings and plan items it also deletes; {0} is a list like "1 booking and 1 plan item"
-h4x0gk#other	ok	Also deletes {0}, copies of this file, and the {1} Shiori read from this file and its copies.	このファイルのコピー（{0}）と、Shioriがこのファイルとコピーから読み取った{1}も削除されます。	src/ui/file-delete.js:28	plural; # = free.copies.length; {0} = copies; {1} = group; English: "Also deletes {0}, a copy of this file, and the {1} Shiori read from this file and its copy." (one), "Also deletes {0}, copies of this file, and the {1} Shiori read from this file and its copies." (other); Note: line under Delete for good naming the deleted copies and the bookings and plan items that go with the file and the copies; {0} is a list of file names, {1} a list like "1 booking and 1 plan item"
+1os9dwu	ok	Also deletes the {0} Shiori read from it.	Shioriがこのファイルから読み取った{0}も削除されます。	src/ui/file-delete.js:26	{0} = group; Note: line under Delete for good on a deleted file with no copies, naming the bookings and plan items it also deletes; {0} is a list like "1 booking and 1 itinerary item"
+b4l0nw#other	ok	Also deletes {0}, copies of this file, and the {1} Shiori read from this file or its copies.	このファイルのコピー（{0}）と、Shioriがこのファイルまたはコピーから読み取った{1}も削除されます。	src/ui/file-delete.js:28	plural; # = free.copies.length; {0} = copies; {1} = group; English: "Also deletes {0}, a copy of this file, and the {1} Shiori read from this file or its copy." (one), "Also deletes {0}, copies of this file, and the {1} Shiori read from this file or its copies." (other); Note: line under Delete for good naming the deleted copies and the bookings and itinerary items that go with the file and the copies; {0} is a list of file names, {1} a list like "1 booking and 1 itinerary item"
 acz18e#other	ok	Also deletes {0}, copies of this file.	このファイルのコピー（{0}）も削除されます。	src/ui/file-delete.js:29	plural; # = free.copies.length; {0} = copies; English: "Also deletes {0}, a copy of this file." (one), "Also deletes {0}, copies of this file." (other); Note: line under Delete for good naming the other deleted copies that go with it; {0} is a list of file names
-x8r2sg	ok	Deleted {0}	{0}を削除しました	src/ui/file-delete.js:65	{0} = what; Note: toast after Delete on a file's or booking's details screen, and on a file's raw screen; {0} is a list: the name, then what else went ("ANNAI AIR itinerary, 2 bookings, and 1 plan item").
-jzvym0	ok	Deleted {0}. The conversation still has it, so it's under Deleted, where you can restore it.	{0}を削除しました。会話にまだ出てくるため「削除済み」に残してあり、そこから復元できます。	src/ui/file-delete.js:66	{0} = what; Note: toast after Delete in Files when the conversation still names the file, so its space can't be freed; {0} is what went ("Hotel stay, 1 booking, and 2 plan items"); "Deleted" is the fold at the foot of the trip's Files.
+x8r2sg	ok	Deleted {0}	{0}を削除しました	src/ui/file-delete.js:65	{0} = what; Note: toast after Delete on a file's or booking's details screen, and on a file's raw screen; {0} is a list: the name, then what else went ("ANNAI AIR itinerary, 2 bookings, and 1 itinerary item").
+jzvym0	ok	Deleted {0}. The conversation still has it, so it's under Deleted, where you can restore it.	{0}を削除しました。会話にまだ出てくるため「削除済み」に残してあり、そこから復元できます。	src/ui/file-delete.js:66	{0} = what; Note: toast after Delete in Files when the conversation still names the file, so its space can't be freed; {0} is what went ("Hotel stay, 1 booking, and 2 itinerary items"); "Deleted" is the fold at the foot of the trip's Files.
 1bpy8t2	ok	Deleted {0}. The same content is still used elsewhere in this conversation, so it's under Deleted, where you can restore it.	{0}を削除しました。同じ内容がこの会話のほかの場所でも使われているため「削除済み」に残してあり、そこから復元できます。	src/ui/file-delete.js:67	{0} = what
 152nvrq	ok	Deleted {0}. Another conversation or file has the same content, so it's under Deleted, where you can restore it.	{0}を削除しました。ほかの会話かファイルに同じ内容があるため「削除済み」に残してあり、そこから復元できます。	src/ui/file-delete.js:68	{0} = what; Note: toast after Delete in Files when another trip or file holds the same bytes, so its space can't be freed; {0} is what went; "Deleted" is the fold at the foot of the trip's Files.
 3ul42n	ok	Deleted {0}. {1} freed.	{0}を削除しました。空き容量が{1}増えました。	src/ui/file-delete.js:69	{0} = what; {1} = size(r.bytes); Note: as Removed {0}. {1} freed. ({0}を削除しました。{1}を空けました。); {0} is a file name.
@@ -1074,8 +1081,8 @@ agc3d8	ok	{0} is already back.	{0}はすでに復元されています。	src/ui
 1xksi4v	ok	Deleted {0} for good. {1} freed.	{0}を完全に削除しました。空き容量が{1}増えました。	src/ui/file-delete.js:180	{0} = name; {1} = size(r.bytes); Note: toast after 完全に削除; {1} is the space freed ("12 kB")
 1q136y3	ok	That version isn't stored on this device.	そのバージョンはこの端末に保存されていません。	src/ui/file-delete.js:205	
 8xofiv	ok	A file named {0} is there now, so this one can't come back.	{0}という名前のファイルがすでにあるため、このファイルは復元できません。	src/ui/file-delete.js:215	{0} = name
-6e9z7l	ok	Restored {0}	{0}を復元しました	src/ui/file-delete.js:222	{0} = what; Note: toast after Restore on a deleted file's screen; {0} is a list: the file's name, then what came back with it ("booking.pdf, 1 booking, and 1 plan item").
-7stptx	ok	Restored {0}. {1} didn't come back, as something new is there now.	{0}を復元しました。{1}は、同じ場所に新しいものがあるため復元できませんでした。	src/ui/file-delete.js:222	{0} = what; {1} = list(left); Note: toast after Restore when part of what the Delete took is in the way of something made since; {0} is what came back, {1} what didn't ("1 plan item").
+6e9z7l	ok	Restored {0}	{0}を復元しました	src/ui/file-delete.js:222	{0} = what; Note: toast after Restore on a deleted file's screen; {0} is a list: the file's name, then what came back with it ("booking.pdf, 1 booking, and 1 itinerary item").
+7stptx	ok	Restored {0}. {1} didn't come back, as something new is there now.	{0}を復元しました。{1}は、同じ場所に新しいものがあるため復元できませんでした。	src/ui/file-delete.js:222	{0} = what; {1} = list(left); Note: toast after Restore when part of what the Delete took is in the way of something made since; {0} is what came back, {1} what didn't ("1 itinerary item").
 la9701	ok	not backed up	未バックアップ	src/ui/format.js:30	
 1h47npq	ok	backed up {0}	バックアップ：{0}	src/ui/format.js:31	{0} = relTime(at, now); Note: Label and value: relTime's たった今 or 昨日 can't take に, so "{0}にバックアップ" would break.
 1sjuc50	ok	backed up {0}, changed since	バックアップ：{0}、その後変更あり	src/ui/format.js:31	{0} = relTime(at, now); Note: As "backed up {0}".
@@ -1391,7 +1398,7 @@ tct7be	ok	Your trips, files, settings and keys are stored in this browser, on th
 1jo7026	ok	Each model key is kept in this device's storage and sent only to the provider it is for. Keys are never put in what Shiori's model reads, are blanked out of the Trace, and are left out of exports, unless you choose to put them in an encrypted backup.	モデルのキーはこの端末のストレージに保存され、対応するプロバイダーにだけ送られます。キーはShioriのモデルに渡す内容には含まれず、「記録」では伏せられ、エクスポートにも含まれません。ただし、暗号化したバックアップには、選んだ場合に限り含めることができます。	src/ui/privacy.js:23	
 12t6czb	ok	No tracking.	トラッキングなし。	src/ui/privacy.js:24	
 5d5p39	ok	annai has no analytics and no ads. It loads no scripts from other sites: its content security policy lets only scripts from annai's own address run, except code plugins you install, which annai stores and serves itself.	annaiには分析も広告もありません。ほかのサイトからスクリプトを読み込まず、コンテンツセキュリティポリシーで、annai自身のアドレスにあるスクリプトだけを実行します。例外はインストールしたコード付きプラグインで、annaiが自分で保存して配信します。	src/ui/privacy.js:24	
-17yset1	ok	With notifications on, the push relay holds each time reminder encrypted on this device, and keeps only the phone's push address, when each is due, how many are waiting, and little else: a cancel code for each, and a note that a notification has reached this phone. Reminders about places never leave the phone.	通知をオンにすると、プッシュ中継は時刻のリマインダーを、この端末で暗号化したまま預かります。中継が保持するのは、端末のプッシュアドレス、それぞれの予定時刻、待っている件数と、そのほかわずかな情報（それぞれの取り消しコードと、この端末が通知を受け取ったことがあるという記録）だけです。場所のリマインダーは端末から外に出ません。	src/ui/privacy.js:25	
+1bu95a9	ok	With notifications on, the push relay holds each time reminder encrypted on this device, and keeps only the phone's push address, when each is due, how many are waiting, and little else: a cancel code for each, and a note that this phone's push service accepted a notification. Reminders about places never leave the phone.	通知をオンにすると、プッシュ中継は時刻のリマインダーを、この端末で暗号化したまま預かります。中継が保持するのは、端末のプッシュアドレス、それぞれの予定時刻、待っている件数と、そのほかわずかな情報（それぞれの取り消しコードと、この端末のプッシュサービスが通知を受け付けたという記録）だけです。場所のリマインダーは端末から外に出ません。	src/ui/privacy.js:25	
 1e9jheb	ok	Reminders stay sealed.	リマインダーは暗号化したまま。	src/ui/privacy.js:25	
 13wlc44	ok	Open code.	オープンソース。	src/ui/privacy.js:26	
 1qhqdx	ok	annai's code is open under the AGPL-3.0 for anyone to read, at {0}.	annaiのコードはAGPL-3.0で公開されていて、誰でも{0}で読めます。	src/ui/privacy.js:26	{0} = REPO.replace('https://', '')
@@ -1522,7 +1529,7 @@ e7ctat	ok	From an iPhone	iPhoneから	src/ui/screens/backups.js:14
 71oguk	ok	From another device	別の端末から	src/ui/screens/backups.js:16	
 3k42nl	ok	Getting it ready…	準備中…	src/ui/screens/backups.js:38	
 c65xlw	ok	Backups	バックアップ	src/ui/screens/backups.js:49	
-8qzz90	ok	annai backs up everything on this device to the places you add here: after changes or once a day, on Wi-Fi, while annai is open. Your API keys stay on this device, unless you include them in an encrypted backup.	この端末のすべてのデータを、ここに追加したバックアップ先にバックアップします。変更のあとか1日1回、Wi-Fi接続中にannaiを開いている間に行います。APIキーは、暗号化したバックアップに含めない限りこの端末に残ります。	src/ui/screens/backups.js:50	Note: a backup place's "Include API keys (only in encrypted backups)" is the exception.
+1cjbw4j	ok	annai backs up everything on this device to the places you add here: after changes or once a day, on Wi-Fi, while annai is open. Where the browser can't tell whether it is on Wi-Fi (Safari on iPhone), small backups go ahead and larger ones wait for your OK. Your API keys stay on this device, unless you include them in an encrypted backup.	この端末のすべてのデータを、ここに追加したバックアップ先にバックアップします。変更があったあと、または1日1回、Wi-Fi接続中にannaiを開いている間に行います。ブラウザがWi-Fiかどうか判断できない場合（iPhoneのSafariなど）は、小さなバックアップはそのまま行い、大きなものは許可するまで待機します。APIキーは、暗号化したバックアップに含めない限りこの端末に残ります。	src/ui/screens/backups.js:50	Note: a backup place's "Include API keys (only in encrypted backups)" is the exception.
 n9d7fo	ok	No backup places yet.	バックアップ先はまだありません。	src/ui/screens/backups.js:56	
 gqqie4	ok	Add a place	バックアップ先を追加	src/ui/screens/backups.js:58	
 t3jn1u	ok	Add a place to back up to	追加するバックアップ先	src/ui/screens/backups.js:58	
@@ -1648,7 +1655,7 @@ ata72m	ok	Trace	記録	src/ui/screens/ext.js:36
 17o4v1i	ok	Conversation	会話	src/ui/screens/file.js:25	
 1r8pi2g	ok	Recap	振り返り	src/ui/screens/file.js:25	
 43f6md	ok	Details	詳細	src/ui/screens/file.js:25	Note: the crumb back to a plan item's details screen, from the file it came from; also the crumb back to a file's or booking's details screen, from the raw file screen; and the crumb back to a conversation's Details (the screen talk's Details button opens), from its raw file screen.
-drvc96	ok	Deleting this file also deletes {0}.	このファイルを削除すると、{0}も削除されます。	src/ui/screens/file.js:67	{0} = list(also); Note: on the raw file screen of a file the user gave, above Delete file; {0} is a list ("2 bookings and 1 plan item").
+drvc96	ok	Deleting this file also deletes {0}.	このファイルを削除すると、{0}も削除されます。	src/ui/screens/file.js:67	{0} = list(also); Note: on the raw file screen of a file the user gave, above Delete file; {0} is a list ("2 bookings and 1 itinerary item").
 1jlj988	ok	Delete file	ファイルを削除	src/ui/screens/file.js:68	
 mnzt43	ok	This file was deleted for good.	このファイルは完全に削除されました。	src/ui/screens/file.js:91	Note: a deleted file's raw screen when Delete freed it, so no version is left to bring back.
 krcze5	ok	This file was deleted. You can bring back a version below.	このファイルは削除されました。下の履歴から以前のバージョンに戻せます。	src/ui/screens/file.js:99	
@@ -1679,60 +1686,54 @@ twulcv	ok	Version restored	バージョンを戻しました	src/ui/screens/file
 w8mx56	ok	Deleted by {0} {1}	{0}が削除（{1}）	src/ui/screens/file.js:294	{0} = who; {1} = ago; Note: {0} is Shiori or annai.
 1cdkli8	ok	Saved by you {0}	自分が保存（{0}）	src/ui/screens/file.js:295	{0} = ago
 1xtgqpw	ok	Saved by {0} {1}	{0}が保存（{1}）	src/ui/screens/file.js:295	{0} = who; {1} = ago; Note: {0} is Shiori or annai.
-1azyvjt	ok	Choose a file instead	代わりにファイルを選ぶ	src/ui/screens/import.js:44	
-18kfutv	ok	Choose an annai file (.annai.zip or .annai) to open it.	開くには、annaiのファイル（.annai.zip または .annai）を選んでください。	src/ui/screens/import.js:57	
-s6np2n	ok	Choose a file	ファイルを選ぶ	src/ui/screens/import.js:57	
-9pczbj	ok	Choose another file	別のファイルを選ぶ	src/ui/screens/import.js:61	
-vpnx22	ok	annai couldn't download that file. The site may not allow other web apps to download it.	そのファイルをダウンロードできませんでした。そのサイトが、ほかのWebアプリからのダウンロードを許可していない可能性があります。	src/ui/screens/import.js:81	
-9ekzd	ok	The download failed ({0} {1}).	ダウンロードに失敗しました（{0} {1}）。	src/ui/screens/import.js:84	{0} = res.status; {1} = res.statusText
-1bf856r	ok	file	ファイル	src/ui/screens/import.js:85	Note: A file's name when its address has none.
-1i00iqj	ok	Reading {0}…	{0}を読み込み中…	src/ui/screens/import.js:93	{0} = source.name
-1fn8tif	ok	This backup changed on the server while annai was getting it. Open it again from the backups.	取得中に、このバックアップがサーバー上で変更されました。「バックアップ」からもう一度開いてください。	src/ui/screens/import.js:140	
-t5o4f	ok	{0} is encrypted.	{0}は暗号化されています。	src/ui/screens/import.js:152	{0} = source.name
-17ezgqd	ok	Unlock	ロックを解除	src/ui/screens/import.js:155	
-bqwneo#other	ok	# conversations	会話#件	src/ui/screens/import.js:173	plural; # = grouped.length; English: "# conversation" (one), "# conversations" (other)
-19fmt2v	ok	Add as new ones	新しく追加	src/ui/screens/import.js:176	
-voh4dn	ok	You already have some of them	このうちいくつかはすでにあります	src/ui/screens/import.js:176	
-w63stp	ok	Replace mine (yours move to Archived)	読み込むもので置き換える（この端末のものは「アーカイブ済み」に移ります）	src/ui/screens/import.js:176	
-mp7avp	ok	with history	履歴あり	src/ui/screens/import.js:181	
-wa8d8i#other	ok	# files	ファイル#件	src/ui/screens/import.js:181	plural; # = trip.files; English: "# file" (one), "# files" (other)
-1z02pm0	ok	You already have "{0}"	「{0}」はすでにあります	src/ui/screens/import.js:183	{0} = trip.existingTitle
-9jpcd5	ok	Add as a new one	新しいものとして追加	src/ui/screens/import.js:183	
-d7gpc4	ok	Replace mine (yours moves to Archived)	読み込むもので置き換える（この端末のものは「アーカイブ済み」に移ります）	src/ui/screens/import.js:183	
-1pmufvp#other	ok	you already have # of them	うち#件はすでにあります	src/ui/screens/import.js:193	plural; # = mine; English: "you already have # of them" (one), "you already have # of them" (other); Note: after the fold's count and size, how many of its rows are already on this phone (each has its choice inside the fold); "of them" is of the trips and conversations.
-1og8gcf	ok	Replace my profile and memory with the ones in this file	プロフィールと記憶を、このファイルのものに置き換える	src/ui/screens/import.js:196	Note: Shiori's memory is 記憶, as on the export list.
-rfnd00	ok	Replace my settings	設定を置き換える	src/ui/screens/import.js:197	
-1ai6503	ok	Replace my plugins	プラグインを置き換える	src/ui/screens/import.js:198	
-z9765v	ok	Restore API keys (keys already on this device are kept)	APIキーを復元（この端末にあるキーはそのまま）	src/ui/screens/import.js:199	
-tlkozp	ok	Reading…	読み込み中…	src/ui/screens/import.js:208	
-jbong3	ok	Reading {0} of {1}…	読み込み中（{0}/{1}）…	src/ui/screens/import.js:221	{0} = num(Math.min(done + 1, total)); {1} = num(total)
-i4v1g5	ok	Installing the plugins your providers use…	プロバイダーが使うプラグインをインストール中…	src/ui/screens/import.js:229	
-3wbwnq	ok	Open it	開く	src/ui/screens/import.js:240	
-1xgy3zf#other	ok	# older copies moved to Archived.	古いコピー#件を「アーカイブ済み」に移動しました。	src/ui/screens/import.js:241	plural; # = result.archived.length; English: "# older copy moved to Archived." (one), "# older copies moved to Archived." (other)
-j0c8lo	ok	Imported plugins arrive switched off. Turn on the ones you trust in Plugins.	読み込んだプラグインはオフの状態で追加されます。信頼できるものだけを「プラグイン」でオンにしてください。	src/ui/screens/import.js:244	
-3qem9k	ok	annai's next backup to that place builds on this one.	次回その場所にバックアップするときは、これをもとにします。	src/ui/screens/import.js:246	
-o7fto4	ok	Import	読み込む	src/ui/screens/import.js:254	
-18d2xm5	ok	A backup of everything exported {0} from annai {1}.	すべてを含むバックアップです。annai {1}からエクスポート（{0}）。	src/ui/screens/import.js:257	{0} = ago; {1} = app; Note: {0} is a relative time (たった今, 3日前), which can't always take に, so it goes in brackets.
-6fr2dj	ok	A backup of everything exported {0} from annai {1}, encrypted.	すべてを含むバックアップです。annai {1}からエクスポート（{0}）、暗号化済み。	src/ui/screens/import.js:257	{0} = ago; {1} = app; Note: {0} is a relative time, in brackets.
-12hmses	ok	Exported {0} from annai {1}, encrypted.	annai {1}からエクスポート（{0}）、暗号化済み。	src/ui/screens/import.js:258	{0} = ago; {1} = app; Note: {0} is a relative time, in brackets.
-3kii3s	ok	Exported {0} from annai {1}.	annai {1}からエクスポート（{0}）。	src/ui/screens/import.js:258	{0} = ago; {1} = app; Note: {0} is a relative time, in brackets.
-7itrym	ok	There are no trips or conversations in this file.	このファイルには旅も会話もありません。	src/ui/screens/import.js:261	
-1y35b48	ok	Restarting…	再起動中…	src/ui/screens/import.js:277	
-5wjjb4	ok	Restart annai to use the imported settings and plugins.	読み込んだ設定とプラグインを使うには、annaiを再起動してください。	src/ui/screens/import.js:282	
-1p9jpyr	ok	Installed what your providers use: {0}.	プロバイダーが使うものをインストールしました：{0}。	src/ui/screens/import.js:292	{0} = list(g.installed, 'plain')
-c0u62t#other	ok	Kept your own API keys for {0}; the ones in the file weren't used.	{0}のAPIキーは、この端末のものを残しました。ファイル内のキーは使っていません。	src/ui/screens/import.js:301	plural; # = n; {0} = list(names, 'plain'); English: "Kept your own API key for {0}; the one in the file wasn't used." (one), "Kept your own API keys for {0}; the ones in the file weren't used." (other)
-jsttcj#other	ok	Kept your own API keys; the ones in the file weren't used.	APIキーは、この端末のものを残しました。ファイル内のキーは使っていません。	src/ui/screens/import.js:302	plural; # = n; English: "Kept your own API key; the one in the file wasn't used." (one), "Kept your own API keys; the ones in the file weren't used." (other)
-151rypw#other	ok	# photos	#枚の写真	src/ui/screens/import.js:332	plural; # = n; English: "# photo" (one), "# photos" (other)
-8w8k36	ok	a file	ファイル	src/ui/screens/import.js:332	
-1az0mug	ok	Added a file	ファイルを追加しました	src/ui/screens/import.js:333	Note: a toast after one file was shared to annai and added.
-1lybcwo#other	ok	Added # photos	写真#枚を追加しました	src/ui/screens/import.js:333	plural; # = n; English: "Added # photo" (one), "Added # photos" (other); Note: a toast after photos were shared to annai and added.
-q61zku#other	ok	Added # files	ファイル#件を追加しました	src/ui/screens/import.js:333	plural; # = n; English: "Added # file" (one), "Added # files" (other)
-ci7mt7	ok	Add to {0}	{0}に追加	src/ui/screens/import.js:338	{0} = trip.title
-odevmc	ok	Adding {0} of {1}…	追加中（{0}/{1}）…	src/ui/screens/import.js:347	{0} = num(Math.min(done + 1, total)); {1} = num(total)
-6u51xq#other	ok	Added {0}, and # itinerary items from the calendar	{0}と、カレンダーから旅程の項目#件を追加しました	src/ui/screens/import.js:356	plural; # = planned.length; {0} = what; English: "Added {0}, and # itinerary item from the calendar" (one), "Added {0}, and # itinerary items from the calendar" (other); Note: {0} is a file's path, or how many files ("2 files").
-f30m7u#other	ok	and # more photos	ほか#枚の写真	src/ui/screens/import.js:375	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
-1cj3r6h	ok	Add only what you just shared yourself.	自分で共有したばかりのものだけを追加してください。	src/ui/screens/import.js:378	
-1eim38p	ok	Also here: {0}, an annai backup or export. It isn't added with the rest; open it on its own.	{0}（annaiのバックアップまたはエクスポート）も含まれています。ほかのファイルと一緒には追加されないため、個別に開いてください。	src/ui/screens/import.js:382	{0} = a.file.name
+1azyvjt	ok	Choose a file instead	代わりにファイルを選ぶ	src/ui/screens/import.js:43	
+18kfutv	ok	Choose an annai file (.annai.zip or .annai) to open it.	開くには、annaiのファイル（.annai.zip または .annai）を選んでください。	src/ui/screens/import.js:56	
+s6np2n	ok	Choose a file	ファイルを選ぶ	src/ui/screens/import.js:56	
+9pczbj	ok	Choose another file	別のファイルを選ぶ	src/ui/screens/import.js:60	
+vpnx22	ok	annai couldn't download that file. The site may not allow other web apps to download it.	そのファイルをダウンロードできませんでした。そのサイトが、ほかのWebアプリからのダウンロードを許可していない可能性があります。	src/ui/screens/import.js:80	
+9ekzd	ok	The download failed ({0} {1}).	ダウンロードに失敗しました（{0} {1}）。	src/ui/screens/import.js:83	{0} = res.status; {1} = res.statusText
+1bf856r	ok	file	ファイル	src/ui/screens/import.js:84	Note: A file's name when its address has none.
+1i00iqj	ok	Reading {0}…	{0}を読み込み中…	src/ui/screens/import.js:92	{0} = source.name
+1fn8tif	ok	This backup changed on the server while annai was getting it. Open it again from the backups.	取得中に、このバックアップがサーバー上で変更されました。「バックアップ」からもう一度開いてください。	src/ui/screens/import.js:139	
+t5o4f	ok	{0} is encrypted.	{0}は暗号化されています。	src/ui/screens/import.js:151	{0} = source.name
+17ezgqd	ok	Unlock	ロックを解除	src/ui/screens/import.js:154	
+bqwneo#other	ok	# conversations	会話#件	src/ui/screens/import.js:172	plural; # = grouped.length; English: "# conversation" (one), "# conversations" (other)
+19fmt2v	ok	Add as new ones	新しく追加	src/ui/screens/import.js:175	
+voh4dn	ok	You already have some of them	このうちいくつかはすでにあります	src/ui/screens/import.js:175	
+w63stp	ok	Replace mine (yours move to Archived)	読み込むもので置き換える（この端末のものは「アーカイブ済み」に移ります）	src/ui/screens/import.js:175	
+mp7avp	ok	with history	履歴あり	src/ui/screens/import.js:180	
+1z02pm0	ok	You already have "{0}"	「{0}」はすでにあります	src/ui/screens/import.js:182	{0} = trip.existingTitle
+9jpcd5	ok	Add as a new one	新しいものとして追加	src/ui/screens/import.js:182	
+d7gpc4	ok	Replace mine (yours moves to Archived)	読み込むもので置き換える（この端末のものは「アーカイブ済み」に移ります）	src/ui/screens/import.js:182	
+1pmufvp#other	ok	you already have # of them	うち#件はすでにあります	src/ui/screens/import.js:192	plural; # = mine; English: "you already have # of them" (one), "you already have # of them" (other); Note: after the fold's count and size, how many of its rows are already on this phone (each has its choice inside the fold); "of them" is of the trips and conversations.
+1og8gcf	ok	Replace my profile and memory with the ones in this file	プロフィールと記憶を、このファイルのものに置き換える	src/ui/screens/import.js:195	Note: Shiori's memory is 記憶, as on the export list.
+rfnd00	ok	Replace my settings	設定を置き換える	src/ui/screens/import.js:196	
+1ai6503	ok	Replace my plugins	プラグインを置き換える	src/ui/screens/import.js:197	
+z9765v	ok	Restore API keys (keys already on this device are kept)	APIキーを復元（この端末にあるキーはそのまま）	src/ui/screens/import.js:198	
+tlkozp	ok	Reading…	読み込み中…	src/ui/screens/import.js:207	
+jbong3	ok	Reading {0} of {1}…	読み込み中（{0}/{1}）…	src/ui/screens/import.js:220	{0} = num(Math.min(done + 1, total)); {1} = num(total)
+i4v1g5	ok	Installing the plugins your providers use…	プロバイダーが使うプラグインをインストール中…	src/ui/screens/import.js:228	
+3wbwnq	ok	Open it	開く	src/ui/screens/import.js:239	
+1xgy3zf#other	ok	# older copies moved to Archived.	古いコピー#件を「アーカイブ済み」に移動しました。	src/ui/screens/import.js:240	plural; # = result.archived.length; English: "# older copy moved to Archived." (one), "# older copies moved to Archived." (other)
+j0c8lo	ok	Imported plugins arrive switched off. Turn on the ones you trust in Plugins.	読み込んだプラグインはオフの状態で追加されます。信頼できるものだけを「プラグイン」でオンにしてください。	src/ui/screens/import.js:243	
+3qem9k	ok	annai's next backup to that place builds on this one.	次回その場所にバックアップするときは、これをもとにします。	src/ui/screens/import.js:245	
+o7fto4	ok	Import	読み込む	src/ui/screens/import.js:253	
+18d2xm5	ok	A backup of everything exported {0} from annai {1}.	すべてを含むバックアップです。annai {1}からエクスポート（{0}）。	src/ui/screens/import.js:256	{0} = ago; {1} = app; Note: {0} is a relative time (たった今, 3日前), which can't always take に, so it goes in brackets.
+6fr2dj	ok	A backup of everything exported {0} from annai {1}, encrypted.	すべてを含むバックアップです。annai {1}からエクスポート（{0}）、暗号化済み。	src/ui/screens/import.js:256	{0} = ago; {1} = app; Note: {0} is a relative time, in brackets.
+12hmses	ok	Exported {0} from annai {1}, encrypted.	annai {1}からエクスポート（{0}）、暗号化済み。	src/ui/screens/import.js:257	{0} = ago; {1} = app; Note: {0} is a relative time, in brackets.
+3kii3s	ok	Exported {0} from annai {1}.	annai {1}からエクスポート（{0}）。	src/ui/screens/import.js:257	{0} = ago; {1} = app; Note: {0} is a relative time, in brackets.
+7itrym	ok	There are no trips or conversations in this file.	このファイルには旅も会話もありません。	src/ui/screens/import.js:260	
+1y35b48	ok	Restarting…	再起動中…	src/ui/screens/import.js:276	
+5wjjb4	ok	Restart annai to use the imported settings and plugins.	読み込んだ設定とプラグインを使うには、annaiを再起動してください。	src/ui/screens/import.js:281	
+1p9jpyr	ok	Installed what your providers use: {0}.	プロバイダーが使うものをインストールしました：{0}。	src/ui/screens/import.js:291	{0} = list(g.installed, 'plain')
+c0u62t#other	ok	Kept your own API keys for {0}; the ones in the file weren't used.	{0}のAPIキーは、この端末のものを残しました。ファイル内のキーは使っていません。	src/ui/screens/import.js:300	plural; # = n; {0} = list(names, 'plain'); English: "Kept your own API key for {0}; the one in the file wasn't used." (one), "Kept your own API keys for {0}; the ones in the file weren't used." (other)
+jsttcj#other	ok	Kept your own API keys; the ones in the file weren't used.	APIキーは、この端末のものを残しました。ファイル内のキーは使っていません。	src/ui/screens/import.js:301	plural; # = n; English: "Kept your own API key; the one in the file wasn't used." (one), "Kept your own API keys; the ones in the file weren't used." (other)
+ci7mt7	ok	Add to {0}	{0}に追加	src/ui/screens/import.js:336	{0} = trip.title
+odevmc	ok	Adding {0} of {1}…	追加中（{0}/{1}）…	src/ui/screens/import.js:345	{0} = num(Math.min(done + 1, total)); {1} = num(total)
+6u51xq#other	ok	Added {0}, and # itinerary items from the calendar	{0}と、カレンダーから旅程の項目#件を追加しました	src/ui/screens/import.js:354	plural; # = planned.length; {0} = what; English: "Added {0}, and # itinerary item from the calendar" (one), "Added {0}, and # itinerary items from the calendar" (other); Note: {0} is a file's path, or how many files ("2 files").
+f30m7u#other	ok	and # more photos	ほか#枚の写真	src/ui/screens/import.js:373	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
+1cj3r6h	ok	Add only what you just shared yourself.	自分で共有したばかりのものだけを追加してください。	src/ui/screens/import.js:376	
+1eim38p	ok	Also here: {0}, an annai backup or export. It isn't added with the rest; open it on its own.	{0}（annaiのバックアップまたはエクスポート）も含まれています。ほかのファイルと一緒には追加されないため、個別に開いてください。	src/ui/screens/import.js:380	{0} = a.file.name
 qqpumv	ok	This isn't on the itinerary	この項目は旅程にありません	src/ui/screens/item.js:24	Note: a heading where a link names no plan item.
 15biluu	ok	Go to the itinerary	旅程を開く	src/ui/screens/item.js:25	Note: a link to the trip's Itinerary (旅程).
 1wp3w0c	ok	All day, {0}	終日（{0}）	src/ui/screens/item.js:41	{0} = start; Note: {0} is the day.
@@ -1815,9 +1816,9 @@ dadv07	ok	Speech out: Shiori's voice	読み上げ：Shioriの声	src/ui/screens/
 a363wx	ok	speech-in	聞き取り	src/ui/screens/models.js:22	Note: the role's id, shown so in English buttons; translated as the role's name.
 qx3inn	ok	Koe uses it while voice is on and the Live chip is on. When none here can answer, Koe · Chat does.	音声とライブボタンがオンのとき、Koeはこのリストを使います。どれも応答できないときは、Koe · チャットが答えます。	src/ui/screens/models.js:28	
 1wr3zin	ok	Koe uses it when Live is off, while voice is off, and when Koe · Live can't answer: Speech in hears you, and Speech out speaks.	ライブがオフのとき、音声がオフのとき、Koe · ライブが答えられないときは、Koeはこのリストを使います。聞き取りが声を聞き、読み上げが話します。	src/ui/screens/models.js:29	
+1aj4x3y	ok	the browser's own; your voice usually goes to Google or Apple	ブラウザの機能。音声は通常、GoogleかAppleに送られます	src/ui/screens/models.js:32	
 1w4m41d	ok	the browser's own; some voices go online	ブラウザの機能。オンラインで動く声もあります	src/ui/screens/models.js:32	Note: オンラインで動く: some voices run online (not "come online").
 ce8br5	ok	when the model takes audio	モデルが音声を受け付けるとき	src/ui/screens/models.js:32	
-tljw8a	ok	the phone's own; your voice usually goes to Google or Apple	端末の機能。音声は通常GoogleかAppleに送られます	src/ui/screens/models.js:32	
 jrbfa0	ok	Where Shiori thinks: the providers annai calls, their models, which models each role tries, in order, and what her requests may cost.	Shioriが考えるためのしくみ：annaiが呼び出すプロバイダーとそのモデル、各役割が順に試すモデル、リクエストにかけられる費用。	src/ui/screens/models.js:49	
 exnl8y	ok	Spend per day	1日の利用額	src/ui/screens/models.js:72	
 1o8rfr8	ok	What Shiori's model calls may cost in a day, in all your trips. Once it is spent, her turn ends with a card, and she goes on the next day. Empty: no limit.	Shioriのモデル呼び出しに1日に使える金額です（すべての旅の合計）。使い切ると、Shioriはカードを表示して応答を終え、翌日から再開します。空欄なら上限はありません。	src/ui/screens/models.js:73	Note: "her" is written as Shiori: 彼女 reads distant in Japanese.
@@ -1886,7 +1887,7 @@ rdqlke	ok	Relay address	中継のアドレス	src/ui/screens/notifications.js:15
 mkq4y8	ok	What the relay learns	中継に伝わる情報	src/ui/screens/notifications.js:153	
 u3pgdz	ok	annai encrypts every reminder on this phone, and makes each the same size: the relay can't read it, or tell a long one from a short one.	すべてのリマインダーはこの端末で暗号化され、同じサイズにそろえられます。中継は内容を読めず、長さの違いも分かりません。	src/ui/screens/notifications.js:154	
 1jsdzhi	ok	It learns this phone's push address (at Apple, Google or Mozilla, whose service delivers it), when each reminder is due, and how many are waiting. Like any server, it sees the internet address the phone connects from.	中継に伝わるのは、この端末のプッシュ通知用のアドレス（配信を担うApple、Google、Mozillaのもの）、各リマインダーの予定時刻、送信待ちの件数です。また、ほかのサーバーと同様に、端末の接続元のIPアドレスも見えます。	src/ui/screens/notifications.js:155	
-6m2wi3	ok	Reminders about places (arriving, leaving, nearby) never leave the phone. A "leave soon" reminder's time is worked out from where you were when annai last looked, so it tells roughly how far away you were to someone who also knew your itinerary, which the relay doesn't.	場所のリマインダー（到着、出発、近く）は端末の外に出ません。「そろそろ出発」のリマインダーの時刻は、annaiが最後に確認したときの現在地から計算します。そのため旅程も知っている人には、そのときおよそどれくらい離れていたかが分かります。中継は旅程を知りません。	src/ui/screens/notifications.js:156	
+fr3nw0	ok	Reminders about places (arriving, leaving, nearby) never leave the phone. A "leave soon" reminder does go to the relay, with its time: that is worked out from where you were when annai last looked, so it tells roughly how far away you were to someone who also knew your itinerary. The relay doesn't know your itinerary.	場所のリマインダー（到着、出発、近く）は端末の外に出ません。「そろそろ出発」のリマインダーは、時刻とともに中継へ送られます。この時刻はannaiが最後に確認したときの現在地から計算するため、旅程も知っている人には、そのときおよそどれくらい離れていたかが分かります。中継は旅程を知りません。	src/ui/screens/notifications.js:156	
 1cg5akv	ok	Each reminder is deleted at the relay once it is sent, or when you cancel it, turn notifications off, or remove its trip.	リマインダーは、送信された時点で中継から削除されます。取り消したとき、通知をオフにしたとき、その旅を削除したときも削除されます。	src/ui/screens/notifications.js:157	
 1iz3xsa	ok	With annai open on screen, annai says a reminder itself, and the relay's copy is called off: you never get it twice.	annaiを画面に開いているときは、annaiがその場でリマインダーを伝え、中継からの通知は取り消されます。二重に届くことはありません。	src/ui/screens/notifications.js:158	
 qkddms	ok	Every request to the relay is in Trace, under System · This device.	中継へのリクエストはすべて、「記録」の「システム · この端末」で確認できます。	src/ui/screens/notifications.js:159	Note: "This device" is the system scope's title, made by core (scopes.js); kept here as its drafts will say it.
@@ -1996,7 +1997,7 @@ owkvwp	ok	What it replaces	置き換えるもの	src/ui/screens/plugin-install.j
 170p2zc	ok	It replaces {0} from {1}.	{1}の{0}を置き換えます。	src/ui/screens/plugin-install.js:298	{0} = thingWords(s.kind, s.name); {1} = ownerName(rows, s.owner)
 zqgoid	ok	Only install it if you trust where it came from.	入手元を信頼できる場合だけインストールしてください。	src/ui/screens/plugin-install.js:300	
 1kfm2oy	ok	It can't run anything: it is data that tells annai how to reach a model provider.	プログラムは実行できません。annaiがモデルのプロバイダーに接続する方法を記したデータです。	src/ui/screens/plugin-install.js:303	
-ifttiw	ok	A skill is instructions for Shiori: she reads them when they fit what you ask, and follows what they say, so install skills you trust. annai never runs anything in it.	スキルはShioriへの指示書です。依頼内容に合うときにShioriが読み、書かれているとおりに動くため、信頼できるスキルだけを入れてください。annaiがスキルの中身を実行することはありません。	src/ui/screens/plugin-install.js:304	
+ifttiw	ok	A skill is instructions for Shiori: she reads them when they fit what you ask, and follows what they say, so install skills you trust. annai never runs anything in it.	スキルはShioriへの指示書です。依頼内容に合うときにShioriが読み、書かれているとおりに動くため、信頼できるスキルだけをインストールしてください。annaiがスキルの中身を実行することはありません。	src/ui/screens/plugin-install.js:304	
 1q0ylpv	ok	Get a key	キーを取得	src/ui/screens/plugin-install.js:306	
 syby9s	ok	New in this version	このバージョンで追加されるもの	src/ui/screens/plugin-install.js:309	
 6kb5j4	ok	Updated {0}. It stays off.	{0}をアップデートしました。オフのままです。	src/ui/screens/plugin-install.js:351	{0} = pkg.name
@@ -2123,7 +2124,7 @@ l7fn8k	ok	Already added, on another provider	追加済み（別のプロバイ�
 11pl9jr	ok	Use the free models	無料のモデルを使う	src/ui/screens/provider.js:550	
 vam64u	ok	Use the recommended models	おすすめのモデルを使う	src/ui/screens/provider.js:550	
 1b2yx8m	ok	Suggested models	おすすめのモデル	src/ui/screens/provider.js:551	
-1r7d69l	ok	{0} suggests a model for each role. Its speech models then go ahead of the phone's own dictation and the browser voice, which are free, so any that cost money are tried before them.	{0}は役割ごとにおすすめのモデルを用意しています。これを使うと、音声のモデルが端末の音声入力やブラウザの声（どちらも無料）より前に並ぶため、有料のモデルが先に試されます。	src/ui/screens/provider.js:552	{0} = src.name
+1jnsjoc	ok	{0} suggests a model for each role. Its speech models then go ahead of the browser's own dictation and voice, which are free, so any that cost money are tried before them.	{0}は役割ごとにおすすめのモデルを用意しています。これを使うと、音声のモデルがブラウザ標準の音声入力と声（どちらも無料）より前に並ぶため、有料のモデルが先に試されます。	src/ui/screens/provider.js:552	{0} = src.name
 1x5hwmk	ok	{0} suggests a model for each role.	{0}は役割ごとにおすすめのモデルを用意しています。	src/ui/screens/provider.js:553	{0} = src.name
 1iffu2j	ok	{0} switched on.	{0}をオンにしました。	src/ui/screens/provider.js:560	{0} = n
 1szeqxt	ok	Roles updated.	役割を更新しました。	src/ui/screens/provider.js:560	
@@ -2586,14 +2587,13 @@ ty94lb	ok	It hasn't been backed up since it last changed.	最後の変更以降�
 436oi1	ok	That was already removed.	すでに削除されています。	src/ui/screens/trip.js:240	
 1mbp8t6	ok	It wasn't removed	削除されませんでした	src/ui/screens/trip.js:244	
 1pzhsw4	ok	Nothing was removed. Try again.	何も削除されていません。もう一度お試しください。	src/ui/screens/trip.js:244	
-12jhmpb	ok	Added {0}	{0}を追加しました	src/ui/screens/trip.js:300	context: a file; {0} = what; Note: a toast after one file was added; {0} is its name ("itinerary.pdf").
-knyqwh	ok	Add photos or files	写真やファイルを追加	src/ui/screens/trip.js:314	
-12n59th	ok	Take a photo	写真を撮る	src/ui/screens/trip.js:315	
-1kuasfa	ok	That file doesn't match its format: {0}	そのファイルは形式に合っていません：{0}	src/ui/screens/trip.js:327	{0} = why; Note: {0} is the format check's own words, in English.
-1y79g95	ok	{0} already exists. Open it from the list to edit it.	{0}はすでにあります。編集するには一覧から開いてください。	src/ui/screens/trip.js:337	{0} = p
-ecy82r	ok	Add a file	ファイルを追加	src/ui/screens/trip.js:345	
-1bmm5eq	ok	File path	ファイルのパス	src/ui/screens/trip.js:346	
-16gte2l	ok	Create	作成	src/ui/screens/trip.js:348	
+knyqwh	ok	Add photos or files	写真やファイルを追加	src/ui/screens/trip.js:313	
+12n59th	ok	Take a photo	写真を撮る	src/ui/screens/trip.js:314	
+1kuasfa	ok	That file doesn't match its format: {0}	そのファイルは形式に合っていません：{0}	src/ui/screens/trip.js:326	{0} = why; Note: {0} is the format check's own words, in English.
+1y79g95	ok	{0} already exists. Open it from the list to edit it.	{0}はすでにあります。編集するには一覧から開いてください。	src/ui/screens/trip.js:336	{0} = p
+ecy82r	ok	Add a file	ファイルを追加	src/ui/screens/trip.js:344	
+1bmm5eq	ok	File path	ファイルのパス	src/ui/screens/trip.js:345	
+16gte2l	ok	Create	作成	src/ui/screens/trip.js:347	
 aoc0k0#other	ok	{0}: # chats	{0}：会話#件	src/ui/screens/trips.js:70	plural; # = e.fold.rows.length; {0} = monthName(e.fold.month); English: "{0}: # chat" (one), "{0}: # chats" (other)
 33pqd9	ok	Last backup {0}, to {1}.	前回のバックアップ：{0}（{1}）	src/ui/screens/trips.js:78	{0} = relTime(latest.last.at, now); {1} = latest.name; Note: Label and value, no 。, as "Last export" beside it.
 cvvz5z	ok	Tap + to talk to Shiori.	＋をタップしてShioriと話しましょう。	src/ui/screens/trips.js:86	
@@ -2653,7 +2653,7 @@ u495xc	ok	Writing it down…	文字起こし中…	src/ui/screens/voice.js:119
 1du6nik	ok	Settings → Models	設定 → モデル	src/ui/screens/voice.js:138	
 1tl20ub	ok	How Shiori speaks and hears you. Which voices and which transcription models she uses, and in what order, is in Settings → Models.	Shioriの話し方と聞き取り方の設定です。使う声と文字起こしモデル、その順番は、「設定 → モデル」で決められます。	src/ui/screens/voice.js:142	
 1nt5zac	ok	On or off	オン/オフ	src/ui/screens/voice.js:143	
-e4a9zm	ok	On: Shiori speaks aloud and listens for your answer. Off: she writes. A tap on Shiori always starts a spoken exchange; the keyboard button is how to type. With GPS on, voice is on while driving. It goes off by itself when a drive ends or headphones disconnect. The chip on the dock changes it too.	オン：Shioriが声に出して話し、返事を聞き取ります。オフ：文字で答えます。Shioriをタップすると、どちらの設定でもその会話が終わるまで声で話せます。文字で入力するときはキーボードのボタンを使います。GPSがオンなら、運転中は音声がオンになります。運転が終わったときやヘッドホンが外れたときは、自動でオフになります。ドックの音声ボタンでも切り替えられます。	src/ui/screens/voice.js:144	
+u0woti	ok	On: Shiori speaks aloud and listens for your answer. Off: she writes. A tap on Shiori always turns voice on until that exchange ends; the keyboard button is how to type. With GPS on, voice is on while driving. It goes off by itself when a drive ends or headphones disconnect. The chip on the dock changes it too.	オン：Shioriが声に出して話し、返事を聞き取ります。オフ：文字で答えます。Shioriをタップすると、どちらの設定でもそのやり取りが終わるまで音声がオンになります。文字で入力するときはキーボードのボタンを使います。GPSがオンなら、運転中は音声がオンになります。運転が終わったときやヘッドホンの接続が切れたときは、自動でオフになります。ドックの音声ボタンでも切り替えられます。	src/ui/screens/voice.js:144	
 1hwskdv	ok	Listen for 2 to 60 seconds.	2〜60秒にしてください。	src/ui/screens/voice.js:147	
 qyfmia	ok	Listen for an answer (seconds)	返事を待つ時間（秒）	src/ui/screens/voice.js:147	
 1f9vvmr	ok	Wait for her first words (seconds)	Shioriの最初の言葉を待つ時間（秒）	src/ui/screens/voice.js:148	
@@ -2735,8 +2735,8 @@ s3y93q	ok	Then	次に	src/ui/screens/welcome.js:124
 186hb75	ok	Look around first	まず見てみる	src/ui/screens/welcome.js:145	
 zzldle	ok	Set up a model	モデルを設定	src/ui/screens/welcome.js:146	
 dndycx	ok	{0} of {1}	{0}/{1}	src/ui/screens/welcome.js:152	{0} = num(n); {1} = num(LAST); Note: a step of the welcome, such as 2 of 7.
-p1i3s	ok	Free search sends your searches to Exa, Parallel or Firecrawl: just the words searched, not your files or your location. When no other reader can read a page, Exa reads it, and so gets that page's address. They are free tiers that can change or stop, and Exa and Parallel may use what is searched to train their models, so keep names and addresses out of your searches. Behind them, a last resort that is always on asks Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) the same words; only Search via: Off stops it.	無料検索では、検索キーワードがExa、Parallel、Firecrawlのいずれかに送られます。送られるのは検索キーワードだけで、ファイルや現在地は送られません。また、ほかの方法では読めないページをExaが読み込むことがあり、その場合はページのアドレスがExaに送られます。いずれも無料枠のサービスで、内容が変わったり終了したりすることがあります。ExaとParallelは検索内容をモデルの学習に使うことがあるため、検索に名前や住所を含めないでください。これらが応答しないときは、常に有効な最後の手段として、同じキーワードでWikimedia（WikivoyageとWikipedia）とOpenStreetMap（Nominatim）に問い合わせます。これを止めるには、「検索方法」を「オフ」にするしかありません。	src/ui/search-panel.js:12	Note: "Search via: Off" as the choice is named on this screen.
-16trcjc	ok	Only the words she searches for go to the ones you leave ticked, and Exa also gets the addresses of pages it reads for her: not your files or your location. They're free tiers that can change or stop, and Exa and Parallel may use searches to train their models, so keep names and addresses out of them. Behind them, Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) are always asked as a last resort; only Settings → Tools → Search via: Off stops that. You can change all this there.	チェックが入っているサービスに送られるのは、Shioriの検索キーワードだけです（Exaには、Shioriのために読むページのアドレスも送られます）。ファイルや現在地は送られません。いずれも無料枠のサービスで、内容が変わったり終了したりすることがあります。ExaとParallelは検索内容をモデルの学習に使うことがあるため、検索に名前や住所を含めないでください。これらが応答しないときは、最後の手段として必ずWikimedia（WikivoyageとWikipedia）とOpenStreetMap（Nominatim）に問い合わせます。これを止めるには、「設定 → ツール」で「検索方法」を「オフ」にするしかありません。これらの設定はすべてそこで変更できます。	src/ui/search-panel.js:15	Note: "she" is written as Shiori: 彼女 reads distant in Japanese.
+gnr712	ok	Free search sends your searches to Exa, Parallel or Firecrawl: just the words searched, not your files or your location. When no other reader can read a page, Exa reads it, and so gets that page's address. Parallel also gets a random id for each conversation, to count its free searches. They are free tiers that can change or stop, and Exa and Parallel may use what is searched to train their models, so keep names and addresses out of your searches. Behind them, a last resort that stays on whatever you tick asks Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) the same words; Search via: Off stops it, and so does your model's own search.	無料検索では、検索キーワードがExa、Parallel、Firecrawlのいずれかに送られます。ファイルや現在地は送られません。ほかの方法では読めないページはExaが読み込むため、そのページのアドレスがExaに送られます。Parallelには、会話ごとのランダムなIDも送られます（無料枠の利用回数を数えるためです）。いずれも無料枠のサービスで、内容が変わったり終了したりすることがあります。ExaとParallelは検索内容をモデルの学習に使うことがあるため、検索に名前や住所を含めないでください。これらで結果が得られなかったときは、チェックの有無にかかわらず働く最後の手段として、同じキーワードでWikimedia（WikivoyageとWikipedia）とOpenStreetMap（Nominatim）に問い合わせます。これを止めるには、「検索方法」を「オフ」にするか、モデル自身の検索を使います。	src/ui/search-panel.js:12	Note: "Search via: Off" as the choice is named on this screen.
+1i61jaz	ok	The ones you leave ticked get the words she searches for, not your files or your location. Exa also gets the addresses of pages it reads for her, and Parallel a random id for each conversation. They're free tiers that can change or stop, and Exa and Parallel may use searches to train their models, so keep names and addresses out of them. Behind them, Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) are asked as a last resort, whatever you tick; Settings → Tools → Search via: Off stops that, and so does your model's own search. You can change all this there.	チェックが入っているサービスには、Shioriの検索キーワードが送られます。ファイルや現在地は送られません。Exaには、Shioriのために読むページのアドレスも、Parallelには、会話ごとのランダムなIDも送られます。いずれも無料枠のサービスで、内容が変わったり終了したりすることがあります。ExaとParallelは検索内容をモデルの学習に使うことがあるため、検索に名前や住所を含めないでください。これらで結果が得られなかったときは、チェックの有無にかかわらず、最後の手段としてWikimedia（WikivoyageとWikipedia）とOpenStreetMap（Nominatim）に問い合わせます。これを止めるには、「設定 → ツール」で「検索方法」を「オフ」にするか、モデル自身の検索を使います。これらの設定はすべてそこで変更できます。	src/ui/search-panel.js:15	Note: "she" is written as Shiori: 彼女 reads distant in Japanese.
 1fn0bdg	ok	Use	使う	src/ui/search-panel.js:31	
 1uowdjd	ok	resting after a failure, tries again {0}	失敗したため休止中、{0}に再試行	src/ui/search-panel.js:48	{0} = relTime(now + Math.ceil(left / 60_000) * 60_000, now); Note: {0} is relTime ahead: "1 分後".
 a6dklq	ok	Wikimedia and OpenStreetMap; always on, the last resort	WikimediaとOpenStreetMap。最後の手段として常にオン	src/ui/search-panel.js:50	

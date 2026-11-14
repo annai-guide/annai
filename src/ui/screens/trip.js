@@ -1,4 +1,4 @@
-import { h, crumb, t, tc, plural, field, twoStep, linkIn, messageOf } from '../dom.js';
+import { h, crumb, t, plural, field, twoStep, linkIn, messageOf } from '../dom.js';
 import { setTripStatus, removeTrip, backupState, tripMirror, scopeTitle, DRAFT_TITLE } from '../../core/scopes.js';
 import { ask } from '../ask.js';
 import { normPath } from '../../core/paths.js';
@@ -8,7 +8,7 @@ import { relTime, size, num, list, sentences, dateRange, fileHref, bookingHref, 
 import { fileRows, readTripFiles, deletedFiles, deletesOf } from '../../core/trip-files.js';
 import { versionText } from './file.js';
 import { exportPanel } from '../export-panel.js';
-import { bringIn } from '../bring-in.js';
+import { bringIn, addedWords } from '../bring-in.js';
 import { updateAppSettings } from '../../core/settings.js';
 import { packPanel } from '../offline-pack.js';
 import { tripStamps, stampMarks, factsWords } from '../stamps.js';
@@ -295,9 +295,8 @@ function adders(ctx, id) {
       await ctx.render();
       for (const note of notes) ctx.notices.card({ tone: 'warn', title: t`A photo was kept as it is`, body: note });
       for (const problem of problems) ctx.notices.card({ tone: 'warn', title: t`A calendar file couldn't be read`, body: problem });
-      const what = paths.length === 1 ? paths[0] : plural(paths.length, '# file', '# files');
-      ctx.notices.toast(planned.length ? plural(planned.length, 'Added {0}, and # itinerary item from the calendar', 'Added {0}, and # itinerary items from the calendar', what)
-        : paths.length === 1 ? tc('a file')`Added ${what}` : plural(paths.length, 'Added # file', 'Added # files'));
+      const { what, added } = addedWords(paths.map((name) => ({ name })));
+      ctx.notices.toast(planned.length ? plural(planned.length, 'Added {0}, and # itinerary item from the calendar', 'Added {0}, and # itinerary items from the calendar', what) : added);
     } catch (e) {
       status.textContent = '';
       explainStorageFull(ctx, e);

@@ -270,9 +270,9 @@ async function ensureNow(host, kind, type, opts) {
   if (!entry && theirs) return;
   if (!entry) {
     /* en */
-    if (kind === 'storage-type') throw new PluginError(type, "isn't a kind of backup place annai knows. Install a plugin that provides it.", { shown: t`isn't a kind of backup place annai knows. Install a plugin that provides it.` });
+    if (kind === 'storage-type') throw new PluginError(type, "isn't a kind of backup place annai knows. Install a plugin that provides it.", { shown: t`It isn't a kind of backup place annai knows. Install a plugin that provides it.` });
     /* en */
-    throw new PluginError(type, "isn't an endpoint type annai knows. Install a plugin that provides it.", { shown: t`isn't an endpoint type annai knows. Install a plugin that provides it.` });
+    throw new PluginError(type, "isn't an endpoint type annai knows. Install a plugin that provides it.", { shown: t`It isn't an endpoint type annai knows. Install a plugin that provides it.` });
   }
   const state = (await host.installed())[entry.id];
   // A package from elsewhere with annai's own id is neither used nor overwritten.

@@ -334,7 +334,7 @@ export async function inspectPackage(raw, { maxBytes = PLUGIN_MAX_BYTES } = {}) 
       const skills = deep(SKILL_FILE);
       if (!plugin && skills.length > 1) {
         throw new PluginError('skill', /* en */ 'this zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.',
-          { shown: t`this zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.` });
+          { shown: t`This zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.` });
       }
       const file = plugin ? MANIFEST_FILE : SKILL_FILE;
       const at = plugin ?? skills[0];
@@ -342,10 +342,10 @@ export async function inspectPackage(raw, { maxBytes = PLUGIN_MAX_BYTES } = {}) 
       if (at) {
         const deeper = at.split('/').length > 2;
         throw new PluginError(plugin ? 'plugin' : 'skill', /* en */ `its ${file} is in ${folder}, ${deeper ? 'nested too deep' : 'with other files beside that folder'}: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.`, { shown: deeper
-          ? t`its ${file} is in ${folder}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.`
-          : t`its ${file} is in ${folder}, with other files beside that folder: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.` });
+          ? t`The ${file} is in ${folder}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.`
+          : t`The ${file} is in ${folder}, with other files beside that folder: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.` });
       }
-      throw new PluginError('plugin', /* en */ `there is no ${MANIFEST_FILE} or ${SKILL_FILE} in this package`, { shown: t`there is no ${MANIFEST_FILE} or ${SKILL_FILE} in this package` });
+      throw new PluginError('plugin', /* en */ `there is no ${MANIFEST_FILE} or ${SKILL_FILE} in this package`, { shown: t`There is no ${MANIFEST_FILE} or ${SKILL_FILE} in this package.` });
     }
   }
   /** @type {Map<string, Uint8Array>} */
@@ -363,7 +363,7 @@ export async function inspectPackage(raw, { maxBytes = PLUGIN_MAX_BYTES } = {}) 
       if (!ok) throw new PluginError(id, /* en */ `the file name "${name}" isn't allowed`);
       total += b.byteLength;
     }
-    if (total > maxBytes) throw new PluginError(id, /* en */ `is too large: it unpacks to more than ${size(maxBytes)}`, { shown: t`is too large: it unpacks to more than ${size(maxBytes)}` });
+    if (total > maxBytes) throw new PluginError(id, /* en */ `is too large: it unpacks to more than ${size(maxBytes)}`, { shown: t`It is too large: it unpacks to more than ${size(maxBytes)}.` });
   };
   return kind === 'skill' ? skillPackage(files, checkNames) : pluginPackage(files, checkNames);
 }
