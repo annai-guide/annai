@@ -413,8 +413,9 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Kind:** known limitation.
 - **What the user sees:** Koe is busy in a turn and holds an earlier line of the user's for its next one ("Hmm, let me think."); they then say "No." to annai's card. In the conversation the no shows before the earlier line. The card and both halves act as they should. (Until 2026-11-13 a spoken yes did the same; the card is answered by tap only since.)
 - **Why:** the card writes a line down as it takes it; Koe writes a line it holds only when its turn takes it. Holding the card's line until Koe has written the ones before it would be a new wait between the halves.
+- **Also, on one Shiori's tap microphone:** the user says "Yes." then "No, wait." to annai's card. The card declines and nothing is granted, but the "Yes." is written after the decline and reaches Shiori as a newer line, so she may ask again. It never grants: the card is answered by tap only, and a spoken no declines.
 - **Revisit when:** a user is confused by the order.
-- **Approved:** 2026-11-11, the user picked "Known limitation (Recommended)".
+- **Approved:** 2026-11-11, the user picked "Known limitation (Recommended)"; widened to the "Yes." then "No, wait." case on 2026-11-13, the user picked "Known limitation (Recommended)".
 
 ### Undo leaves a twice-moved file in its last trip when the clock went back and the middle trip is gone
 - **Kind:** known limitation.
@@ -571,10 +572,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### Live Koe's tool calls in flight when another conversation opens are written into the conversation opened
 - **Kind:** known limitation.
-- **What the user sees:** in live voice, one of Koe's tool calls is still running (or its first write is waiting behind the other conversation's opening) when the user opens another conversation. The call is written in the conversation left, but its result lands in the conversation opened, as a result with no call, and the conversation left keeps a call with no result. When the call is Koe's `tell_kokoro`, the note itself lands in the conversation opened and wakes Kokoro there, which answers a question about the trip left, in the trip opened. Koe's spoken and heard lines are not affected: they are written where she spoke. (Reproduced on the test stand-in with a tool held while the switch ran; the version before this one did the same.)
+- **What the user sees:** in live voice, one of Koe's tool calls is still running (or its first write is waiting behind the other conversation's opening) when the user opens another conversation. The call is written in the conversation left, but its result lands in the conversation opened, as a result with no call, and the conversation left keeps a call with no result. When the call is Koe's `tell_kokoro`, the note itself lands in the conversation opened and wakes Kokoro there, which answers a question about the trip left, in the trip opened. Koe's spoken and heard lines are not affected: they are written where she spoke. (Reproduced on the test stand-in with a tool held while the switch ran; the version before this one did the same.) The other way round too: a note of Kokoro's to Koe whose log write is still in flight when the user opens another conversation (milliseconds after their tap) is logged in the conversation left and said in the one opened, so Kokoro's answer about the trip left is said in the trip opened (found by reading, in Build B's review; `Channel.send` awaits Kokoro's log write, then Koe's queue takes the conversation that is open by then).
 - **Why:** a call's writes (`tool.call`, `tool.result`, and the note through the channel) go into whichever conversation is open when they are written, and the switch changes it meanwhile; the note's delivery wakes Kokoro in the open conversation. Binding the writes to the session's conversation, as her lines are, is a small change (pass it from the session's call through `liveCall` into `#runCall`), but it leaves what the note for a conversation no longer open should do (not wake Kokoro there; be kept for when the user comes back, or dropped), and a call that starts after the switch, which runs against the conversation opened. Those are decisions, not a pass-through, for a switch while one of Koe's calls runs.
 - **Revisit when:** it happens to the user; the fix then: the session's conversation is bound to its calls' writes, after deciding what a note to Kokoro for a conversation that is no longer open does, and what a call that starts after the switch does.
-- **Approved:** 2026-11-13, the user picked "Approve all (Recommended)" for the backlog triage of the Deferred entries.
+- **Approved:** 2026-11-13, the user picked "Approve all (Recommended)" for the backlog triage of the Deferred entries. Kokoro's note in flight added on 2026-11-13, the user picked "Add to known limitation (Recommended)".
 
 ### A live session taking the microphone while someone speaks into a tap's listening for her question leaves it marked listening
 - **Kind:** known limitation.
@@ -645,3 +646,17 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the rule that such a line is no answer covers Kokoro's notes; extending it to the user's typed lines touches the other wait path (the 8-second wait for an answer to a text turn).
 - **Revisit when:** it is seen in a real run.
 - **Approved:** 2026-11-12, the user picked "Known limitation (Recommended)".
+
+### Kokoro's words owed at a switch may be shown, then said again on coming back
+- **Kind:** known limitation.
+- **What the user sees:** with her two halves, Koe still owes Kokoro's words when the user opens another conversation. The words are shown in the conversation left (before this release they were sometimes lost). Coming back, Koe may take its cut turn up and say them again: shown, then said once more (8 of 32 runs under a real clock in Build B's check).
+- **Why:** the switch hands Koe's owed notes to the conversation left, as Start fresh does, but Koe's own log doesn't mark them said, so its turn taken up again may still say them. Marking them read in Koe's log at the switch is more state for a double that loses nothing; a double beats a loss.
+- **Revisit when:** the user notices a note said twice after coming back.
+- **Approved:** 2026-11-13, the user picked "Known limitation (Recommended)".
+
+### The quick gate takes passengers' talk for Shiori's when it is unsure
+- **Kind:** known limitation.
+- **What the user sees:** with passengers talking to each other without naming Shiori, annai's quick gate (which decides whether a heard line is meant for her) judged their talk meant for her 10 of 32 times (passengers who name each other 4 of 66, talk radio 2 of 81, the user's own lines 13 of 13 for her), and she once answered a passenger's remark. A wrong verdict is also quoted to the next gate call as the user's line, which leans the next verdict the same way.
+- **Why:** the gate's rule is "when unsure, it is for her" (`src/core/voice/gate.js`), so a line meant for her is never dropped; the cost is the occasional answer to talk not meant for her.
+- **Revisit when:** the user drives with passengers often and she answers them; the change then: the gate's verdicts are quoted to the next gate call as heard, not as the user's words.
+- **Approved:** 2026-11-13, the user picked "Known limitation (Recommended)".
