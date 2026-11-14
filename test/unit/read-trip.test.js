@@ -4061,3 +4061,34 @@ test('one Shiori, voice on, the quick gate set: a "for her" verdict that lands a
   assert.deepEqual(heard, [{ gate: 'shiori', dismissed: false }], 'the line is hers, written once');
   assert.ok((await k.events(['out.speak'])).some((/** @type {any} */ e) => e.data.text === 'A lighthouse.'), 'she answers it');
 });
+
+// ---- A photo or files alone, sent while she waits for an answer (the deferred "shows twice") ----
+// A photo alone answers nothing: what waits (her wait, her question, annai's card) ends with "it follows", and the message follows whole, one bubble. annai's card is
+// never granted by it.
+
+for (const [what, script, first, said] of /** @type {[string, any[], string, (r: string) => boolean][]} */ ([
+  ['her wait', [call('wait', { seconds: 600 }), sleep, sleep], 'Plan our day', (r) => r === WROTE_FOLLOWS],
+  ['her question', [call('ask', LUNCH), sleep, sleep], 'Plan our day', (r) => r === ASKED_FOLLOWS],
+  ["annai's card", [call('read_trip', { trip: TV }), sleep, sleep], 'Where did we eat in Testville?', (r) => UNANSWERED_CARD.test(r) && /What the user wrote follows\.$/.test(r)],
+])) {
+  for (const [alone, o, bubble, check] of /** @type {[string, any, string, (k: any) => boolean][]} */ ([
+    ['a photo', { photos: [{ path: '/trip/files/p.webp' }] }, '(a photo) +1 photo', (k) => imagesIn(k.sent['model-0']).at(-1) === 1],
+    ['files', { handed: [FLIGHT], handover: 'h-1' }, '(files) +1 file (h-1)', (k) => /The user handed you a file/.test(JSON.stringify(k.sent['model-0'].at(-1).messages))],
+  ])) {
+    test(`one Shiori, voice off: ${alone} alone, sent while ${what} waits for an answer: it ends with "it follows", and the message reaches her whole, one bubble; nothing granted (queue-tails)`, async (t) => {
+      useClock(t);
+      const k = await gateKit(script, {});
+      await aPhoto(k);
+      k.agent.send(first);
+      await until(() => typeof k.agent.kokoro.pendingId === 'string');
+      k.agent.send('', o);
+      await k.agent.idle();
+      const name = script[0].toolCalls[0].name;
+      const [result] = await resultsOf(k, name);
+      assert.ok(said(String(result)), `its result: ${result}`);
+      assert.deepEqual(await bubbles(k), [first, bubble], 'one bubble');
+      assert.ok(check(k), 'her next request carries it');
+      assert.deepEqual(await pgrants(k), [], 'nothing granted');
+    });
+  }
+}

@@ -869,7 +869,7 @@ export class Agent {
   #push(w) {
     this.#queue.push({ ...w, scope: this.#target ?? ME, at: Date.now() });
     this.#remindWaiting();
-    // A line of theirs, its verdict back after her wait began listening: that wait ends now, and the line follows (a wait voice going off stopped leaves it to its own end).
+    // A heard line its verdict queued after a wait began listening ends it now; under one voice going off stopped, it waits for its end.
     if (w.kind === 'note' || (w.kind === 'heard' && this.#pending?.listening) || w.fallbacks?.length) this.#noted();
     // Kokoro's next note while Koe's call still answers its last one, and nothing of it is out yet: the call is cut and goes again
     // with both, so Koe says it once.
@@ -992,8 +992,8 @@ export class Agent {
   }
 
   /**
-   * The user wrote, or sent photos (spec §4.8, §16.2), or handed her files (handover.js). It answers a pending ask or wait; otherwise
-   * it wakes Shiori, or reaches her next call. Photos and files sent with an answer reach her right after it.
+   * The user wrote, or sent photos (spec §4.8, §16.2), or handed her files (handover.js). Words answer a pending ask or wait (alone, photos
+   * and files end it as #earlier does, and follow whole); otherwise it wakes Shiori, or reaches her next call. Photos and files sent with an answer follow it.
    * @param {string} text @param {{ photos?: SentPhoto[], chose?: boolean, claim?: string, handed?: import('../handover.js').HandedFile[], handover?: string }} [o]
    *   claim: "This was for Shiori": the id of the heard line these are the words of; chose: a tap (a card's button, a quick ask) that comes as words
    */
@@ -1002,12 +1002,13 @@ export class Agent {
     const handed = (o.handed ?? []).filter((x) => x && typeof x.path === 'string');
     const given = { ...(handed.length ? { handed } : {}), ...(handed.length && o.handover ? { handover: o.handover } : {}) };
     const how = { ...(o.claim ? { claim: o.claim } : {}), ...(o.chose && !o.claim ? { chose: true } : {}) };
-    const said = String(text ?? '').trim() || (photos.length ? PHOTO_ONLY : handed.length ? FILES_ONLY : '');
+    const typed = String(text ?? '').trim();
+    const said = typed || (photos.length ? PHOTO_ONLY : handed.length ? FILES_ONLY : '');
     if (!said) return;
     const p = this.#pending;
     if (p) {
       this.#pending = null;
-      p.resolve({ text: said, ...how });
+      p.resolve(typed ? { text: said, ...how } : { earlier: p.kind === 'ask' && !p.ask ? 'asked' : 'wrote' });
       if (photos.length || handed.length) this.#push({ kind: 'user', text: photos.length ? PHOTO_ONLY : FILES_ONLY, ...(photos.length ? { photos } : {}), ...given });
       return;
     }
