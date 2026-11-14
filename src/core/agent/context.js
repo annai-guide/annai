@@ -156,12 +156,15 @@ export async function nextPlanItems(ws, trip, now, limit = 5) {
   return (await planItems(ws, trip)).filter((x) => x.at >= now).slice(0, limit).map(({ it }) => [it.start.at, it.title, it.fixed ? 'yes' : 'no', it.place?.name ?? '']);
 }
 
-/** @param {number} now @param {string} timeZone */
+/**
+ * To the second: a reminder "in 1 minute" set from a time to the minute came up to 60 s early, or was refused as passed.
+ * @param {number} now @param {string} timeZone
+ */
 function localTime(now, timeZone) {
   const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
-    timeZone, weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZoneName: 'shortOffset',
+    timeZone, weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23', timeZoneName: 'shortOffset',
   }).formatToParts(now).map((p) => [p.type, p.value]));
-  return `${parts.weekday} ${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}, ${timeZone} (${parts.timeZoneName})`;
+  return `${parts.weekday} ${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}, ${timeZone} (${parts.timeZoneName})`;
 }
 
 /* en */ const VOICE = /** @type {Record<string, string>} */ ({ off: 'off (speak shows a bubble; wait waits for typing)', on: 'on (speak plays aloud, then listens; wait listens; ask is spoken too)' });
