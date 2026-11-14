@@ -1,5 +1,5 @@
 {
-  "build": "f13b2519814c",
+  "build": "8b9b3ce8a969",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -27,7 +27,7 @@
     "/skills/replanning/SKILL.md": "730751c952dd",
     "/src/app/boot.js": "58bba933ce37",
     "/src/app/claim.js": "fc9e510c391d",
-    "/src/app/main.js": "6fbadea8c959",
+    "/src/app/main.js": "fcd17ccbec09",
     "/src/app/version.js": "07a31129e186",
     "/src/core/after/journey.js": "4e1443181825",
     "/src/core/after/recap.js": "08ae74e5c9c7",
@@ -148,7 +148,7 @@
     "/src/core/request-photos.js": "0a710cf1cc55",
     "/src/core/schema.js": "f21af27d5902",
     "/src/core/search.js": "62a0a393233e",
-    "/src/core/scopes.js": "3959039822d9",
+    "/src/core/scopes.js": "6292f45114c0",
     "/src/core/chats.js": "382f2a8c34a3",
     "/src/core/settings.js": "7291aae0a8cd",
     "/src/core/shown.js": "450af0a8c563",

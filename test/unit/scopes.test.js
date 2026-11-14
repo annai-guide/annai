@@ -127,8 +127,9 @@ test("a full phone doesn't stop start when the old profile is rewritten; the pro
   assert.equal(await ws.readText(ME, '/profile.md'), NEW_PROFILE);
 });
 
-// An edited profile keeps the old default's "- Language: English" line, which told her English beside the languages the user picked. The
-// user's pick (2026-11-14): "Drop it when it contradicts": at start, only that line goes, and only when the languages they picked hold no English.
+// An edited profile keeps the old default's "- Language: English" line, which told her English beside the languages she is told of. The
+// user's pick (2026-11-14): "Drop it when it contradicts": at start, only that line goes, and only when those languages (their pick, else the
+// phone's) hold no English.
 /** @param {import('../../src/core/workspace.js').Workspace} ws @param {string[]} spoken */
 const speaks = (ws, spoken) => updateAppSettings(ws, { languages: { spoken, answer: 'follow' } });
 
@@ -155,20 +156,26 @@ test("an edited profile loses the old Language line at start when the languages 
   }
 });
 
-test("the Language line stays with English among the languages picked, with none picked (the phone's language is no pick), and when it says anything else", async () => {
+test("the Language line stays when the languages she is told of hold English (picked, or an English phone's), and when it says anything else", async () => {
   const edited = '# Profile\n\n- What to call me: Alex\n- Language: English\n- Units:\n';
-  for (const [line, picked] of /** @type {[string, ((ws: any) => Promise<unknown>) | null][]} */ ([
-    ['- Language: English', (ws) => speaks(ws, ['ja', 'en'])],
-    ['- Language: English', (ws) => speaks(ws, ['en'])],
-    ['- Language: English', null],
-    ['- Language: English', (ws) => updateAppSettings(ws, { languages: { answer: 'ja' } })],
-    ['- Language: English, Japanese', (ws) => speaks(ws, ['ja'])],
-    ['- Language: Japanese', (ws) => speaks(ws, ['ja'])],
-    ['- Language: english', (ws) => speaks(ws, ['ja'])],
-    ['  - Language: English', (ws) => speaks(ws, ['ja'])],
-    ['- Language: English.', (ws) => speaks(ws, ['ja'])],
-    ['- Language: English\t', (ws) => speaks(ws, ['ja'])],
-    ['- Language:  English', (ws) => speaks(ws, ['ja'])],
+  // [the line, what the user picked (null: nothing), the phone's language (undefined: none given, which reads as en-US)]
+  for (const [line, picked, locale] of /** @type {[string, ((ws: any) => Promise<unknown>) | null, string | undefined][]} */ ([
+    ['- Language: English', (ws) => speaks(ws, ['ja', 'en']), 'ja-JP'],
+    ['- Language: English', (ws) => speaks(ws, ['en']), 'ja-JP'],
+    ['- Language: English', (ws) => speaks(ws, ['en']), undefined],
+    // English and Japanese listed, Shiori answers in Japanese: the pick says "only when the person's languages don't include English".
+    ['- Language: English', (ws) => updateAppSettings(ws, { languages: { spoken: ['ja', 'en'], answer: 'ja' } }), 'ja-JP'],
+    ['- Language: English', null, undefined],
+    ['- Language: English', null, 'en-GB'],
+    ['- Language: English', null, 'en'],
+    ['- Language: English', (ws) => updateAppSettings(ws, { languages: { answer: 'en' } }), 'en-GB'],
+    ['- Language: English, Japanese', (ws) => speaks(ws, ['ja']), 'ja-JP'],
+    ['- Language: Japanese', (ws) => speaks(ws, ['ja']), 'ja-JP'],
+    ['- Language: english', (ws) => speaks(ws, ['ja']), 'ja-JP'],
+    ['  - Language: English', (ws) => speaks(ws, ['ja']), 'ja-JP'],
+    ['- Language: English.', null, 'ja-JP'],
+    ['- Language: English\t', (ws) => speaks(ws, ['ja']), 'ja-JP'],
+    ['- Language:  English', null, 'zh-TW'],
   ])) {
     const { ws } = setup();
     await ensureBaseScopes(ws);
@@ -176,9 +183,32 @@ test("the Language line stays with English among the languages picked, with none
     const text = edited.replace('- Language: English', line);
     await ws.write(ME, '/profile.md', text, { author: 'user' });
     const wrote = (await ws.history(ME, '/profile.md')).length;
+    await ensureBaseScopes(ws, { locale });
+    const why = `${JSON.stringify(line)} ${picked ? 'picked' : 'nothing picked'} on ${locale ?? 'no phone given'}`;
+    assert.equal(await ws.readText(ME, '/profile.md'), text, why);
+    assert.equal((await ws.history(ME, '/profile.md')).length, wrote, `${why}: nothing written`);
+  }
+});
+
+// What she is told of the user's languages is their pick, else the phone's (languageSettings; the Languages section). With nothing picked a
+// Japanese or Chinese phone is a list with no English, so the line contradicts it, and the user's own Languages screen shows the same list.
+test("with nothing picked the phone's language is the list: a Japanese or Chinese phone loses the Language line, an answer language chosen or not", async () => {
+  const edited = '# Profile\n\n- What to call me: Alex\n- Language: English\n- Units:\n';
+  for (const [locale, languages] of /** @type {[string, Record<string, any> | null][]} */ ([
+    ['ja-JP', null],
+    ['zh-TW', null],
+    ['zh-Hans-CN', null],
+    ['ja-JP', { answer: 'ja' }],
+    ['ja-JP', { answer: 'follow' }],
+  ])) {
+    const { ws } = setup();
     await ensureBaseScopes(ws);
-    assert.equal(await ws.readText(ME, '/profile.md'), text, JSON.stringify(line));
-    assert.equal((await ws.history(ME, '/profile.md')).length, wrote, `${JSON.stringify(line)}: nothing written`);
+    if (languages) await updateAppSettings(ws, { languages });
+    await ws.write(ME, '/profile.md', edited, { author: 'user' });
+    await ensureBaseScopes(ws, { locale });
+    const why = `${locale} ${JSON.stringify(languages)}`;
+    assert.equal(await ws.readText(ME, '/profile.md'), '# Profile\n\n- What to call me: Alex\n- Units:\n', why);
+    assert.equal((await ws.history(ME, '/profile.md')).at(-1).actor, 'system', why);
   }
 });
 

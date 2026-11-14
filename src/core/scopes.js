@@ -79,8 +79,11 @@ export function scopeTitle(rec) {
   }
 }
 
-/** Creates "me" and the system scopes if they are missing. @param {Workspace} ws */
-export async function ensureBaseScopes(ws) {
+/**
+ * Creates "me" and the system scopes if they are missing. @param {Workspace} ws @param {{ locale?: string }} [o]
+ *   locale: the browser's language, which the languages are until the user picks (languageSettings); none given reads as en-US
+ */
+export async function ensureBaseScopes(ws, { locale } = {}) {
   const now = ws.now();
   /** @type {[string, ScopeRecord['kind'], string][]} */
   /* en */
@@ -105,13 +108,13 @@ export async function ensureBaseScopes(ws) {
       // Nobody changed it: its "Language: English" would be a second answer, beside the Languages setting's. Any other profile is the user's,
       if (profile === OLD_PROFILE) await ws.write(ME, '/profile.md', PROFILE, { author: 'system' });
       else if (profile) {
-        // but for that line where the languages they picked hold no English (the user, 2026-11-14: "Drop it when it contradicts"); every other
-        // byte stays. Until they pick, the phone's language is no pick of theirs (§10.9), so nothing contradicts it.
+        // but for that line where the languages she is told of (their pick, else the phone's: languageSettings, as the Languages section names them)
+        // hold no English (the user's pick, 2026-11-14: "Drop it when it contradicts"); every other byte stays.
         const lines = profile.split(/(?<=\n)/);
         const kept = lines.filter((l) => !OLD_LANGUAGE.test(l));
         if (kept.length < lines.length) {
-          const { explicit, spoken } = languageSettings(await readAppSettings(ws));
-          if (explicit && !spoken.some((l) => l.id === 'en')) await ws.write(ME, '/profile.md', kept.join(''), { author: 'system' });
+          const { spoken } = languageSettings(await readAppSettings(ws), locale);
+          if (!spoken.some((l) => l.id === 'en')) await ws.write(ME, '/profile.md', kept.join(''), { author: 'system' });
         }
       }
     } catch {
