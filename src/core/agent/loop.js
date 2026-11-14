@@ -2846,6 +2846,8 @@ export class Agent {
     /** @type {import('./tools.js').ToolOutput} */
     let output;
     let ms = 0;
+    /** A sleep that gave way (o.awake): its stored result says so, as the reply's words (a sleep) no longer say the turn ended. */
+    let unslept = false;
     // Kokoro's output tools while Koe talks (plan decision 15).
     const gated = tool && !off && !o.signal.aborted && this.#half.gate ? await this.#half.gate({ id: c.id, name: c.name, input, wake: o.wakeId }) : null;
     const toldBefore = this.#facts.told;
@@ -2857,7 +2859,7 @@ export class Agent {
     else if (gated) output = { content: gated.content, ...(gated.isError ? { isError: true } : {}) };
     else if (!tool) output = { content: /* en */ `Error: there is no tool called ${c.name}, or it is switched off.`, isError: true };
     else if (typeof c.input !== 'object' || c.input === null) output = { content: /* en */ `Error: the input for ${c.name} wasn't valid JSON.`, isError: true };
-    else if (o.awake) output = { content: o.awake };
+    else if (o.awake) { output = { content: o.awake }; unslept = true; }
     else if (o.unsent) output = { content: UNSENT, isError: true };
     else {
       const scope = this.scope;
@@ -2926,7 +2928,7 @@ export class Agent {
     }
     await this.#log({
       type: 'tool.result', actor: 'system',
-      data: { id: c.id, name: c.name, ok: !output.isError, ms, wake: o.wakeId, cut, ...(images.length ? { images } : {}), ...(document ? { document } : {}), ...(output.heard?.length ? { heard: output.heard } : {}), ...(output.endTurn ? { end: true } : {}) },
+      data: { id: c.id, name: c.name, ok: !output.isError, ms, wake: o.wakeId, cut, ...(images.length ? { images } : {}), ...(document ? { document } : {}), ...(output.heard?.length ? { heard: output.heard } : {}), ...(output.endTurn ? { end: true } : {}), ...(unslept ? { awake: true } : {}) },
       texts: [['content', output.content]], blobs,
     });
     return output;

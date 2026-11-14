@@ -369,6 +369,7 @@ export class Transcript {
       // read it: the Stop's words (which it also wrote for an open's cut) ended her turn.
       const name = this.#calls.get(d.id);
       if (d.end || (!('cut' in d) && texts.content === STOPPED)) this.#ends = true;
+      else if (d.awake) this.#ends = false; // a sleep that gave way (a call failed, or her question came back): the reply's own sleep didn't end her turn
       else if (d.cut && (name === 'tell_koe' || name === 'tell_kokoro' || (name !== 'sleep' && !this.#reached))) this.#ends = false;
       if (this.#last.includes(d.id) && !this.#waitsForResults() && !this.#ends) {
         this.unanswered = true;

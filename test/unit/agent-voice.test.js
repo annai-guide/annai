@@ -783,6 +783,9 @@ test('controls for speak then ask: with sleep in the reply, and with voice off, 
   asleep.agent.answer((await asleep.events(['out.ask']))[0].data.id, 'Yes');
   await asleep.agent.idle();
   assert.equal((await results(asleep, 'speak'))[0].data.content, 'Said aloud.');
+  // The change this test pins: the answered question keeps her turn going (a second model request reads it), so the sleep beside it says "Not asleep".
+  assert.equal(asleep.requests.length, 2);
+  assert.match((await results(asleep, 'sleep'))[0].data.content, /^Not asleep: your question came back/);
   const off = await agentKit([[{ toolCalls: speakAsk }, { toolCalls: [sleep] }]], { voice: { mode: 'off' } });
   off.agent.send('Lunch?');
   await until(() => off.agent.pendingId !== null);

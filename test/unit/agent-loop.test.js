@@ -129,6 +129,43 @@ test("a malformed ask beside her sleep isn't a question that came back: the turn
   assert.equal(k.requests.length, 2);
   const sleep = (await k.events(['tool.result'])).find((/** @type {any} */ e) => e.data.name === 'sleep');
   assert.equal(sleep.data.content, 'Not asleep: a call in this reply failed (its error is above), so your turn goes on.');
+  assert.equal(sleep.data.awake, true, 'the stored result says the sleep gave way, for a failed call as for an answered question');
+});
+
+/** The answer is in, her next model call is running, and the page is left or reloaded: with her ask alone the stored log reads the turn as owed (taken up on return); with a sleep beside the ask it must read the same (the reply's words said "sleep", its result said "Not asleep"). */
+for (const withSleep of [true, false]) {
+  test(`her ${withSleep ? 'ask and sleep' : 'ask'} answered, then another conversation opened during her next model call: the answer is taken up on return, and a reload reads it as owed`, async (t) => {
+    useClock(t);
+    const ask = { name: 'ask', input: { question: 'Keep the 6:30 dinner?', options: ['Keep it', 'Move it'] } };
+    const k = await agentKit([[{ toolCalls: withSleep ? [ask, { name: 'sleep', input: {} }] : [ask] }, { delayMs: 300, ...say('Moved to 7.') }, say('Moved to 7 (taken up).')]]);
+    const other = await createTrip(k.ws, { title: 'Kyoto' });
+    k.agent.send('We are running late');
+    await until(() => k.agent.pendingId !== null);
+    k.agent.answer(/** @type {string} */ (k.agent.pendingId), 'Move it');
+    await until(() => k.requests.length === 2);
+    // The page is read while her second reply is still being made: the log holds the answer and no reply to it.
+    const reload = await Transcript.load(k.store, k.trip);
+    assert.equal(reload.unanswered, true, 'a reload now finds the answer unanswered');
+    await k.agent.open(other);
+    await k.agent.idle();
+    assert.equal((await Transcript.load(k.store, k.trip)).unanswered, true, 'the turn was cut after the answer: still owed');
+    await k.agent.open(k.trip);
+    await k.agent.idle();
+    assert.equal(k.requests.length, 3, 'taken up on return');
+    assert.equal((await k.events(['out.speak'])).at(-1).data.text, 'Moved to 7 (taken up).');
+    assert.equal((await Transcript.load(k.store, k.trip)).unanswered, false);
+  });
+}
+
+test("a sleep that didn't run says so in its stored result (awake), and one that ran doesn't", async (t) => {
+  useClock(t);
+  const k = await agentKit([[{ toolCalls: [{ name: 'ask', input: { question: 'Keep it?', options: ['Yes', 'No'] } }, { name: 'sleep', input: {} }] }, say('Kept.')]]);
+  k.agent.send('Dinner');
+  await until(() => k.agent.pendingId !== null);
+  k.agent.answer(/** @type {string} */ (k.agent.pendingId), 'Yes');
+  await k.agent.idle();
+  const sleeps = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'sleep');
+  assert.deepEqual(sleeps.map((/** @type {any} */ e) => [e.data.awake === true, e.data.content]), [[true, 'Not asleep: your question came back answered or closed (its result is above), so your turn goes on.'], [false, 'asleep']]);
 });
 
 test('the dock is told "Waiting for your OK" only while an ask waits; a wait is the user\'s turn (phone-fixes-1 item 5: IMG_3017)', async (t) => {
