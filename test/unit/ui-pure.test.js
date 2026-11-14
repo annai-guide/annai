@@ -454,7 +454,7 @@ test('an import that finishes after the user left says so in a toast, with what 
   toldIfLeft(ctx, here.signal, ['Big Sur', 'Kyoto'], null);
   toldIfLeft(ctx, here.signal, ['A', 'B', 'C'], 'Forgejo / Gitea');
   toldIfLeft(ctx, here.signal, [], 'Forgejo / Gitea');
-  assert.deepEqual(toasts, ['Imported Big Sur from Forgejo / Gitea.', 'Imported Big Sur and Kyoto.', 'Imported 3 trips from Forgejo / Gitea.', 'Imported from Forgejo / Gitea.']);
+  assert.deepEqual(toasts, ['Imported Big Sur from Forgejo / Gitea.', 'Imported Big Sur and Kyoto.', 'Imported 3 trips and conversations from Forgejo / Gitea.', 'Imported from Forgejo / Gitea.']);
 });
 
 test('a restore passes the screen\'s signal to the peek and to the download', async () => {
@@ -559,7 +559,7 @@ test('the Offline pack panel: the estimate before anything is downloaded, then w
   assert.equal(done.button, null);
   assert.equal(done.lines[0], 'Downloaded just now · 1.2 MB · 1,200 places, 40 Wikipedia summaries, 1 Wikivoyage guide.');
   assert.equal(done.lines[1], 'Guides: Big Sur.');
-  assert.equal(done.lines.at(-1), 'On Wi-Fi, annai keeps it up to date by itself while this trip is open.');
+  assert.equal(done.lines.at(-1), 'On Wi-Fi, annai keeps it up to date by itself while this conversation is open.');
   const changed = packWords(/** @type {any} */ ({ ...base, manifest, why: 'plan', estimate: 30 * 1024 }), 'unknown');
   assert.equal(changed.button, 'Update (about 30 kB)');
   assert.ok(changed.lines.includes('The itinerary changed since.'));

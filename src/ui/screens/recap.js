@@ -26,7 +26,7 @@ export async function renderRecap(ctx, route) {
   const stamps = await tripStamps(ctx, id);
   const model = ctx.llm ? recapModels(await ctx.llm.config().catch(() => null))[0] ?? null : null;
   const trip = `#/trip/${encodeURIComponent(id)}`;
-  const busy = (/** @type {{ name: string }} */ m) => t`Writing it: ${m.name} is reading the trip. This can take a minute.`;
+  const busy = (/** @type {{ name: string }} */ m) => t`Writing it: ${m.name} is reading the conversation. This can take a minute.`;
   const status = h('p', { class: 'sub', role: 'status', text: model && writing.has(id) ? busy(model) : '' });
   const write = h('button', { class: recap ? 'btn' : 'btn pri', type: 'button', disabled: !model || writing.has(id) }, recap ? t`Write it again` : t`Write the recap`);
   const here = () => location.hash.startsWith(`${trip}/recap`);
@@ -68,7 +68,7 @@ export async function renderRecap(ctx, route) {
     stampMarks(stamps, { max: 24, big: true }),
     recap
       ? h('article', { class: 'recap-text' }, renderMarkdown(recap, wording(await readAppSettings(ctx.ws))(recap)))
-      : h('p', { class: 'empty', text: t`No recap yet. annai's utility model writes it from the trip: where you stayed and went, the stamps, what you and Shiori said, your notes and some photos.` }),
+      : h('p', { class: 'empty', text: t`No recap yet. annai's utility model writes it from everything in this conversation: where you stayed and went, the stamps, what you and Shiori said, your notes and some photos.` }),
     got ? h('p', { class: 'sub', text: got.entry.author === 'user' ? t`Written ${relTime(got.entry.modified)}, then edited by you.` : t`Written ${relTime(got.entry.modified)}.` }) : null,
     h('div', { class: 'acts' }, tell, write,
       recap ? h('a', { class: 'btn', href: fileHref(id, RECAP_FILE, `${trip}/recap`) }, t`Edit`) : null,

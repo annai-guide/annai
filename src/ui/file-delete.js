@@ -64,8 +64,8 @@ export async function deleteGroup(ctx, id, d) {
   const r = file.length ? await forget(ctx.store, id, { history: ownLife(await deletesOf(ctx.store, id), paths), mustFree: (p) => p === file[0], onlyDeleted: (p) => p !== file[0] }).catch(() => null) : null;
   ctx.notices.toast(!r ? t`Deleted ${what}`
     : r.kept === 'here' ? t`Deleted ${what}. The conversation still has it, so it's under Deleted, where you can restore it.`
-      : r.kept === 'history' ? t`Deleted ${what}. The same content is still used elsewhere in this trip, so it's under Deleted, where you can restore it.`
-        : r.kept === 'elsewhere' ? t`Deleted ${what}. Another trip or file has the same content, so it's under Deleted, where you can restore it.`
+      : r.kept === 'history' ? t`Deleted ${what}. The same content is still used elsewhere in this conversation, so it's under Deleted, where you can restore it.`
+        : r.kept === 'elsewhere' ? t`Deleted ${what}. Another conversation or file has the same content, so it's under Deleted, where you can restore it.`
           : t`Deleted ${what}. ${size(r.bytes)} freed.`);
   return paths;
 }

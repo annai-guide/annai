@@ -39,7 +39,7 @@ Setup: the emulator image has Google Play services, so Chrome installs annai as 
 - [ ] **m1 #7**: Upload a photo from the gallery; it shows on the file screen. How: adb push, the photo picker; screen. iPhone: m1b #2 in C.
 - [ ] **m1 #8**: Export everything with a passphrase; "Save file" opens the share sheet; save to Downloads. How: screen; `adb shell ls /sdcard/Download`. iPhone: m1 #13 in C.
 - [ ] **m1 #9**: Settings → Erase → type ERASE → Erase now: Trips is empty. How: screen; storage is empty.
-- [ ] **m1 #10**: Open the file from "Open a trip someone sent you", passphrase, tick "Replace my profile and memory", Import: everything is back, history too. How: screen; storage compared with a dump taken before the erase.
+- [ ] **m1 #10**: Open the file from "Open an annai file", passphrase, tick "Replace my profile and memory", Import: everything is back, history too. How: screen; storage compared with a dump taken before the erase.
 - [ ] **m1 #11**: Share a `.annai.zip` from the Files app to annai: the import screen opens with it. How: Files app over adb; screen.
 - [ ] **m1 #14**: Drop a `.annai.zip` onto annai in a desktop browser: the import screen opens. How: Playwright in desktop Chromium and WebKit (not the emulator), a drop event carrying the file. Then C (a real drag on the Mac).
 - [ ] **m1 #15**: A second tab: "annai is open in another tab" → "Use it here"; the first tab says it stopped. How: two Chrome tabs; screen of each. Then C.
@@ -340,7 +340,7 @@ One sitting, in this order. Keep the Mac open with Safari → Develop → your i
 
 ### C6. Export, erase, import
 
-- [ ] **m1 #13**, with m1 #8, #9, #10 (counted in A): On the oldest iPhone you'll travel with: a trip with a few hundred photos; Export everything with a passphrase → Save to Files; Settings → Erase → ERASE → Erase now; Trips → "Open a trip someone sent you" → the file → passphrase → tick "Replace my profile and memory" → Import. Both ways finish without the page reloading or going blank, and everything is back, history too.
+- [ ] **m1 #13**, with m1 #8, #9, #10 (counted in A): On the oldest iPhone you'll travel with: a trip with a few hundred photos; Export everything with a passphrase → Save to Files; Settings → Erase → ERASE → Erase now; Trips → "Open an annai file" → the file → passphrase → tick "Replace my profile and memory" → Import. Both ways finish without the page reloading or going blank, and everything is back, history too.
 - [ ] **m1 #12**: Message or email a trip export to the Android phone; Claude imports it there over adb, and it's all there.
 - [ ] m1 #5 (counted in A): Airplane mode, swipe annai away, reopen: Trips loads, with its trips.
 - [ ] m1 #14 (counted in A): On the Mac, drag a `.annai.zip` onto annai in Safari: the import screen opens with it.

@@ -63,7 +63,7 @@ test('Delete in Files: the same bytes elsewhere keep it, and the toast says so',
   await ws.write(ME, '/files/hotel.pdf', '%PDF-1.4 Hotel Aurora Test', { author: 'user', type: 'application/pdf' });
   const ctx = ctxOf(ws);
   await deleteGroup(ctx, trip, await details());
-  assert.match(ctx.toasts[0], /^Deleted Hotel stay, 1 booking,? and 1 itinerary item\. Another trip or file has the same content, so it's under Deleted, where you can restore it\.$/);
+  assert.match(ctx.toasts[0], /^Deleted Hotel stay, 1 booking,? and 1 itinerary item\. Another conversation or file has the same content, so it's under Deleted, where you can restore it\.$/);
 });
 
 test('Delete: a booking with no file keeps its history and frees nothing; the toast is as before', async () => {
@@ -189,7 +189,7 @@ test("Delete frees the earlier life of a booking or plan path that went with the
   const first = /** @type {any} */ (await ws.read(trip, '/bookings/stay.json')).entry;
   const ctx = ctxOf(ws);
   await deleteGroup(ctx, trip, await details());
-  assert.match(ctx.toasts[0], /Another trip or file has the same content/);
+  assert.match(ctx.toasts[0], /Another conversation or file has the same content/);
   await removeTrip(ws.store, other);
   // The same file name comes again with other bytes, and the same booking and plan paths.
   await ws.write(trip, '/files/hotel.pdf', '%PDF-1.4 Hotel Borealis Test', { author: 'user', type: 'application/pdf' });
@@ -239,8 +239,8 @@ test("Delete in Files: when the other deleted copy's history names the content, 
   for (const p of ['/files/a.pdf', '/files/b.pdf']) await ws.write(trip, p, '%PDF-1.4 Same bytes', { author: 'user', type: 'application/pdf' });
   const ctx = ctxOf(ws);
   for (const p of ['/files/a.pdf', '/files/b.pdf']) await deleteGroup(ctx, trip, /** @type {any} */ (fileDetails(await readTripFiles(ws, ws.store, trip), p)));
-  assert.match(ctx.toasts[0], /^Deleted a\.pdf\. Another trip or file has the same content, /);
-  assert.equal(ctx.toasts[1], "Deleted b.pdf. The same content is still used elsewhere in this trip, so it's under Deleted, where you can restore it.");
+  assert.match(ctx.toasts[0], /^Deleted a\.pdf\. Another conversation or file has the same content, /);
+  assert.equal(ctx.toasts[1], "Deleted b.pdf. The same content is still used elsewhere in this conversation, so it's under Deleted, where you can restore it.");
 });
 
 test('Deleted names a kept file by the short name it had, though the name goes with the file', async () => {

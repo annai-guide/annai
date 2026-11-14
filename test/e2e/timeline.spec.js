@@ -203,7 +203,7 @@ test('home with nothing yet: the now line, "Tap + to talk to Shiori", Open a fil
   await expect(page.locator('.now-line')).toBeVisible();
   await expect(page.getByText('Tap + to talk to Shiori.')).toBeVisible();
   await expect(page.locator('.rows .trip-card')).toHaveCount(0);
-  await expect(page.locator('main label.btn', { hasText: 'Open a trip someone sent you' })).toBeVisible();
+  await expect(page.locator('main label.btn', { hasText: 'Open an annai file' })).toBeVisible();
   await expect(plus(page)).toBeVisible();
 });
 
@@ -1952,8 +1952,8 @@ test("a trip file whose dates aren't on the calendar (9999-99-99) comes in as a 
   await ws.patch(trip, '/trip.json', { start: '9999-99-99', end: '9999-99-99' }, { author: 'user' });
   const { blob } = await exportArchive(store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0' });
   await openApp(page, '#/trips');
-  await page.getByLabel('Open a trip someone sent you').setInputFiles({ name: 'testville.annai.zip', mimeType: 'application/zip', buffer: Buffer.from(await blob.arrayBuffer()) });
-  await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible();
+  await page.getByLabel('Open an annai file').setInputFiles({ name: 'testville.annai.zip', mimeType: 'application/zip', buffer: Buffer.from(await blob.arrayBuffer()) });
+  await expect(page.getByRole('heading', { name: 'Open an annai file' })).toBeVisible();
   await page.getByRole('button', { name: 'Import' }).click();
   await expect(page.getByText('Imported.')).toBeVisible();
   const couldnt = page.getByText("This screen couldn't open");
@@ -1986,7 +1986,7 @@ test("Details of a trip that came in with dates that aren't on the calendar: the
   await ws.patch(trip, '/trip.json', { start: '9999-99-99', end: '2026-02-31' }, { author: 'user' });
   const { blob } = await exportArchive(store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0' });
   await openApp(page, '#/trips');
-  await page.getByLabel('Open a trip someone sent you').setInputFiles({ name: 'testville.annai.zip', mimeType: 'application/zip', buffer: Buffer.from(await blob.arrayBuffer()) });
+  await page.getByLabel('Open an annai file').setInputFiles({ name: 'testville.annai.zip', mimeType: 'application/zip', buffer: Buffer.from(await blob.arrayBuffer()) });
   await page.getByRole('button', { name: 'Import' }).click();
   await expect(page.getByText('Imported.')).toBeVisible();
   await page.goto('/#/trips');

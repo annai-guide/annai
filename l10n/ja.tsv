@@ -1063,8 +1063,8 @@ vfu5ws#other	draft	Also deletes {0}, copies of this file, and the {1} Shiori rea
 acz18e#other	draft	Also deletes {0}, copies of this file.	{0}も一緒に削除されます（このファイルのコピーです）。	src/ui/file-delete.js:29	plural; # = free.copies.length; {0} = copies; English: "Also deletes {0}, a copy of this file." (one), "Also deletes {0}, copies of this file." (other); Note: line under Delete for good naming the other deleted copies that go with it; {0} is a list of file names
 x8r2sg	draft	Deleted {0}	{0}を削除しました	src/ui/file-delete.js:65	{0} = what; Note: toast after Delete on a file's or booking's details screen, and on a file's raw screen; {0} is a list: the name, then what else went ("ANNAI AIR itinerary, 2 bookings, and 1 plan item").
 jzvym0	draft	Deleted {0}. The conversation still has it, so it's under Deleted, where you can restore it.	{0}を削除しました。会話にまだ出てくるため「削除済み」に残してあり、そこから復元できます。	src/ui/file-delete.js:66	{0} = what; Note: toast after Delete in Files when the conversation still names the file, so its space can't be freed; {0} is what went ("Hotel stay, 1 booking, and 2 plan items"); "Deleted" is the fold at the foot of the trip's Files.
-qq4n52	draft	Deleted {0}. The same content is still used elsewhere in this trip, so it's under Deleted, where you can restore it.	{0}を削除しました。同じ内容がこの旅のほかの場所でも使われているため「削除済み」に残してあり、そこから復元できます。	src/ui/file-delete.js:67	{0} = what
-1vc06gm	draft	Deleted {0}. Another trip or file has the same content, so it's under Deleted, where you can restore it.	{0}を削除しました。ほかの旅かファイルに同じ内容があるため「削除済み」に残してあり、そこから復元できます。	src/ui/file-delete.js:68	{0} = what; Note: toast after Delete in Files when another trip or file holds the same bytes, so its space can't be freed; {0} is what went; "Deleted" is the fold at the foot of the trip's Files.
+1bpy8t2	draft	Deleted {0}. The same content is still used elsewhere in this conversation, so it's under Deleted, where you can restore it.	{0}を削除しました。同じ内容がこの会話のほかの場所でも使われているため「削除済み」に残してあり、そこから復元できます。	src/ui/file-delete.js:67	{0} = what; English was: Deleted {0}. The same content is still used elsewhere in this trip, so it's under Deleted, where you can restore it.
+152nvrq	draft	Deleted {0}. Another conversation or file has the same content, so it's under Deleted, where you can restore it.	{0}を削除しました。ほかの会話かファイルに同じ内容があるため「削除済み」に残してあり、そこから復元できます。	src/ui/file-delete.js:68	{0} = what; English was: Deleted {0}. Another trip or file has the same content, so it's under Deleted, where you can restore it.; Note: toast after Delete in Files when another trip or file holds the same bytes, so its space can't be freed; {0} is what went; "Deleted" is the fold at the foot of the trip's Files.
 3ul42n	ok	Deleted {0}. {1} freed.	{0}を削除しました。{1}を空けました。	src/ui/file-delete.js:69	{0} = what; {1} = size(r.bytes); Note: as Removed {0}. {1} freed. ({0}を削除しました。{1}を空けました。); {0} is a file name.
 agc3d8	draft	{0} is already back.	{0}はすでに復元されています。	src/ui/file-delete.js:165	{0} = name
 13wurli	draft	What goes with {0} has changed, so nothing was deleted.	{0}と一緒に削除されるものが変わったため、何も削除しませんでした。	src/ui/file-delete.js:169	{0} = name; Note: toast when the copies, bookings or plan items that Delete for good would free are not the ones its screen named (changed in another tab); nothing is deleted and the screen is drawn again; {0} is the file name
@@ -1195,7 +1195,7 @@ osg3je	ok	The last try failed: {0}	前回の試行は失敗しました：{0}	sr
 1j5k2vf	ok	Automatic backups there are paused, so neither device overwrites the other.	どちらの端末も相手を上書きしないよう、そこへの自動バックアップは一時停止しています。	src/ui/format.js:291	
 hmr3pn	ok	The other backup stays in its history.	もう一方のバックアップは履歴に残ります。	src/ui/format.js:291	
 8091b1	ok	no limit	上限なし	src/ui/format.js:316	
-1y3qo2k#other	ok	# trips	#件の旅	src/ui/import-state.js:47	plural; # = titles.length; English: "# trip" (one), "# trips" (other)
+lpx0cl#other	draft	# trips and conversations	旅と会話 # 件	src/ui/import-state.js:47	plural; # = titles.length; English: "# trip or conversation" (one), "# trips and conversations" (other); Note: a git backup's preview, from its manifest alone, can't tell trips from chats: this is the one row they fold under; also the toast "Imported # trips and conversations" when the user left the import screen (import-state.js).
 12lprg	ok	Imported {0} from {1}.	{1}から{0}を読み込みました。	src/ui/import-state.js:48	{0} = what; {1} = place
 1hzaym7	ok	Imported {0}.	{0}を読み込みました。	src/ui/import-state.js:48	{0} = what
 kotjbl	ok	Imported.	読み込みました。	src/ui/import-state.js:48	
@@ -1207,7 +1207,7 @@ ejxnor	ok	Choose "Add to Home Screen".	「ホーム画面に追加」を選び�
 tf6np0	ok	Open annai from your Home screen.	ホーム画面から annai を開きます。	src/ui/install.js:18	
 uqmge3	ok	Open the browser menu (⋮).	ブラウザのメニュー（⋮）を開きます。	src/ui/install.js:18	
 1q8vwe5	ok	Use your browser menu to install annai as an app.	ブラウザのメニューから、annai をアプリとしてインストールします。	src/ui/install.js:19	
-1gxw0ly	ok	Trips you already have here: in Settings, export everything, then open the file in the Home Screen app with "Open a trip someone sent you".	ここにある旅は、設定ですべてをエクスポートしてから、ホーム画面のアプリで「送られてきた旅を開く」からそのファイルを開いてください。	src/ui/install.js:22	
+14x0w2l	draft	What you already have here: in Settings, export everything, then open the file in the Home Screen app with "Open an annai file".	ここにあるものは、設定ですべてをエクスポートしてから、ホーム画面のアプリで「annai のファイルを開く」からそのファイルを開いてください。	src/ui/install.js:22	English was: Trips you already have here: in Settings, export everything, then open the file in the Home Screen app with "Open a trip someone sent you".
 10jxrv9	ok	Install annai	annai をインストール	src/ui/install.js:35	
 1ob0g1z	ok	annai isn't installed yet.	annai はまだインストールされていません。	src/ui/install.js:63	
 1gizuqd	ok	Safari can erase your trips after 7 days without a visit, and the Home Screen app keeps trips of its own: what you start here won't be there. Add annai to your Home Screen, and start your trips in it.	Safari は、7日間開かないと旅を消去することがあります。また、ホーム画面のアプリは旅を別に保存するので、ここで始めた旅はそちらにはありません。annai をホーム画面に追加して、そこで旅を始めてください。	src/ui/install.js:65	
@@ -1335,17 +1335,17 @@ w5716a	ok	Update (about {0})	更新（約{0}）	src/ui/offline-pack.js:64	{0} = 
 13cigs6	ok	Download the rest (about {0})	残りをダウンロード（約{0}）	src/ui/offline-pack.js:65	{0} = about
 o81vpw	ok	Try again (about {0})	再試行（約{0}）	src/ui/offline-pack.js:65	{0} = about
 16r6naq	ok	It is more than a month old.	1か月以上前のものです。	src/ui/offline-pack.js:67	
-1v2fms	ok	On Wi-Fi, annai keeps it up to date by itself while this trip is open.	Wi-Fi では、この旅を開いている間、annai が自動で最新に保ちます。	src/ui/offline-pack.js:70	
 1vwbp7l	ok	This browser doesn't tell annai when it is on Wi-Fi, so update it here.	このブラウザは Wi-Fi に接続中かどうかを annai に知らせないため、ここで更新してください。	src/ui/offline-pack.js:70	
+p6stxk	draft	On Wi-Fi, annai keeps it up to date by itself while this conversation is open.	Wi-Fi では、この会話を開いている間、annai が自動で最新に保ちます。	src/ui/offline-pack.js:70	English was: On Wi-Fi, annai keeps it up to date by itself while this trip is open.
 5pklax	ok	Offline pack	オフラインパック	src/ui/offline-pack.js:80	
 1bk5sw	ok	What came is kept. Try again in a moment.	ダウンロードできた分は残してあります。少ししてから、もう一度お試しください。	src/ui/offline-pack.js:87	
 v6p0ku	ok	The offline pack didn't download	オフラインパックをダウンロードできませんでした	src/ui/offline-pack.js:87	
 qtuxek	ok	Places © {0}; summaries from Wikipedia and guides from Wikivoyage, {1}.	場所 © {0}。要約は Wikipedia、ガイドは Wikivoyage より、{1}。	src/ui/offline-pack.js:119	{0} = osm.textContent; {1} = cc.textContent; Note: {0} and {1} are the licence's own words ("OpenStreetMap contributors", "CC BY-SA"), links, and stay English.
-qdh58i	ok	No offline pack for this trip yet.	この旅のオフラインパックはまだありません。	src/ui/offline-pack.js:127	
+uwd3a2	draft	No offline pack yet.	オフラインパックはまだありません。	src/ui/offline-pack.js:127	
 1k132lx	draft	The offline pack is from before the itinerary changed.	オフラインパックは旅程が変わる前のものです。	src/ui/offline-pack.js:128	English was: The offline pack is from before the plan changed.
 ksuwxs	ok	Offline pack: downloaded.	オフラインパック：ダウンロード済み。	src/ui/offline-pack.js:129	
 r91312	ok	Offline pack: downloaded {0}.	オフラインパック：ダウンロード済み（{0}）。	src/ui/offline-pack.js:129	{0} = when; Note: {0} is a relative time ("2 hours ago").
-dbm7fe	ok	Open a trip someone sent you	送られてきた旅を開く	src/ui/open-file.js:6	
+8f98y9	ok	Open an annai file	annai のファイルを開く	src/ui/open-file.js:6	
 13548dd	ok	That conversation didn't open	その会話を開けませんでした	src/ui/open-trip.js:7	Note: a card after Ask Shiori about this, when the trip's or the no-trip conversation fails to open; 会話 as the glossary's Conversation.
 ow6fak	ok	This browser could not draw the photo.	このブラウザでは写真を描画できませんでした。	src/ui/photo-codec.js:73	
 11dn6um	ok	This browser could not write {0}.	このブラウザでは {0} を書き出せませんでした。	src/ui/photo-codec.js:81	{0} = type
@@ -1579,9 +1579,9 @@ w51f7d	ok	This browser doesn't tell annai whether it is on Wi-Fi: automatic back
 1hx8faa	ok	Tap again to remove it	もう一度タップすると削除します	src/ui/screens/backups.js:313	
 78xlh8	ok	Remove this place	このバックアップ先を削除	src/ui/screens/backups.js:313	
 7862xj	ok	It may have been deleted or renamed.	削除されたか、名前が変わった可能性があります。	src/ui/screens/booking.js:31	Note: after This isn't on the plan.
-vocksz	draft	This file isn't in the trip	このファイルは旅にありません	src/ui/screens/booking.js:31	Note: the heading of the details screen for a file that is not in the trip (a link to a deleted file); the sentence "It may have been deleted or renamed." follows.
+mpbd6l	draft	This file can't be found	このファイルは見つかりません	src/ui/screens/booking.js:31	Note: the heading of the details screen for a file that is not there (a link to a deleted file); the sentence "It may have been deleted or renamed." follows.
 14y1329	draft	It may have been deleted or renamed. The itinerary lists the bookings there are.	削除されたか、名前が変わったのかもしれません。旅の予約は旅程に一覧があります。	src/ui/screens/booking.js:32	English was: It may have been deleted or renamed. The plan lists the bookings there are.
-nq6gpo	ok	This booking isn't in the trip	この予約は旅にありません	src/ui/screens/booking.js:32	
+1wk3iyk	draft	This booking can't be found	この予約は見つかりません	src/ui/screens/booking.js:32	English was: This booking isn't in the trip
 9bzl8d	draft	Itinerary item	旅程の項目	src/ui/screens/booking.js:55	Note: an itinerary item's heading when it has no title.
 1nkwm8m	ok	Check this: Shiori read it before annai marked single details. Tell her if it's right, or what's wrong.	要確認：annai が項目ごとに確認を付ける前に Shiori が読んだ予約です。合っていればその旨を、違っていれば何が違うかを Shiori に伝えてください。	src/ui/screens/booking.js:73	Note: a banner on a booking from before: the whole booking is to check, and telling her it's right clears it; 要確認 as the Check this chip.
 193ucme	draft	On the itinerary	旅程に入っている項目	src/ui/screens/booking.js:77	Note: the heading of the itinerary items that stand for a booking, on the details screen of a file or booking (Itinerary: 旅程/行程).
@@ -1596,7 +1596,7 @@ oay2cq	ok	Delete	削除	src/ui/screens/booking.js:111	Note: a waiting file's two
 iy42pb	ok	check	要確認	src/ui/screens/booking.js:150	context: a detail to check; Note: a light mark beside one detail of a booking Shiori is unsure of; as the Check this chip.
 1s0er5c	ok	Shiori isn't sure of this	Shiori はこの内容に自信がありません	src/ui/screens/booking.js:151	Note: read by screen readers for the check mark beside a detail.
 1a6z1m2	draft	Itinerary	旅程	src/ui/screens/booking.js:163	
-d0tqtj	ok	The original, {0}, isn't in the trip.	元の資料（{0}）は旅にありません。	src/ui/screens/booking.js:185	{0} = name
+1eszfxl	draft	The original, {0}, can't be found.	元の資料（{0}）は見つかりません。	src/ui/screens/booking.js:185	{0} = name; English was: The original, {0}, isn't in the trip.
 98drsx	ok	Open the original	元の資料を開く	src/ui/screens/booking.js:190	
 19jra30	ok	What is around us right now that is worth knowing about?	いま周りに、知っておくとよいものはありますか？	src/ui/screens/drive.js:15	Note: What the user says to Shiori with a tap, as their own words.
 sqqsfd	ok	What's around here?	この辺りに何がある？	src/ui/screens/drive.js:15	
@@ -1679,28 +1679,26 @@ twulcv	ok	Version restored	バージョンを戻しました	src/ui/screens/file
 w8mx56	ok	Deleted by {0} {1}	{0} が削除（{1}）	src/ui/screens/file.js:294	{0} = who; {1} = ago; Note: {0} is Shiori or annai.
 1cdkli8	ok	Saved by you {0}	あなたが保存（{0}）	src/ui/screens/file.js:295	{0} = ago
 1xtgqpw	ok	Saved by {0} {1}	{0} が保存（{1}）	src/ui/screens/file.js:295	{0} = who; {1} = ago; Note: {0} is Shiori or annai.
-f0ig49	ok	Open a trip	旅を開く	src/ui/screens/import.js:41	
 1azyvjt	ok	Choose a file instead	代わりにファイルを選ぶ	src/ui/screens/import.js:44	
 18kfutv	ok	Choose an annai file (.annai.zip or .annai) to open it.	開くには annai のファイル（.annai.zip または .annai）を選んでください。	src/ui/screens/import.js:57	
 s6np2n	ok	Choose a file	ファイルを選ぶ	src/ui/screens/import.js:57	
 9pczbj	ok	Choose another file	別のファイルを選ぶ	src/ui/screens/import.js:61	
 vpnx22	ok	annai couldn't download that file. The site may not allow other web apps to download it.	annai はそのファイルをダウンロードできませんでした。そのサイトは、ほかの Web アプリからのダウンロードを許可していないかもしれません。	src/ui/screens/import.js:81	
 9ekzd	ok	The download failed ({0} {1}).	ダウンロードに失敗しました（{0} {1}）。	src/ui/screens/import.js:84	{0} = res.status; {1} = res.statusText
-v8ip62	ok	trip	旅	src/ui/screens/import.js:85	Note: A file's name when its address has none.
+1bf856r	draft	file	ファイル	src/ui/screens/import.js:85	Note: A file's name when its address has none.
 1i00iqj	ok	Reading {0}…	{0}を読んでいます…	src/ui/screens/import.js:93	{0} = source.name
 1fn8tif	ok	This backup changed on the server while annai was getting it. Open it again from the backups.	annai が取得している間に、このバックアップがサーバー上で変わりました。バックアップからもう一度開いてください。	src/ui/screens/import.js:140	
 t5o4f	ok	{0} is encrypted.	{0}は暗号化されています。	src/ui/screens/import.js:152	{0} = source.name
 17ezgqd	ok	Unlock	ロックを解除	src/ui/screens/import.js:155	
 bqwneo#other	draft	# conversations	会話 # 件	src/ui/screens/import.js:173	plural; # = grouped.length; English: "# conversation" (one), "# conversations" (other)
 19fmt2v	draft	Add as new ones	新しく追加	src/ui/screens/import.js:176	
-3ht74t	draft	Replace mine (yours move to archived trips)	自分のものを置き換える（自分のものはアーカイブした旅に移ります）	src/ui/screens/import.js:176	
 voh4dn	draft	You already have some of them	このうちいくつかはすでにあります	src/ui/screens/import.js:176	
+w63stp	draft	Replace mine (yours move to Archived)	自分のものを置き換える（自分のものはアーカイブ済みに移ります）	src/ui/screens/import.js:176	English was: Replace mine (yours move to archived trips)
 mp7avp	ok	with history	履歴あり	src/ui/screens/import.js:181	
 wa8d8i#other	ok	# files	ファイル#件	src/ui/screens/import.js:181	plural; # = trip.files; English: "# file" (one), "# files" (other)
 1z02pm0	ok	You already have "{0}"	「{0}」はすでにあります	src/ui/screens/import.js:183	{0} = trip.existingTitle
-s27n78	ok	Add as a new trip	新しい旅として追加	src/ui/screens/import.js:183	
-wr63q8	ok	Replace mine (yours moves to archived trips)	自分のものを置き換える（自分のものはアーカイブした旅に移ります）	src/ui/screens/import.js:183	
-lpx0cl#other	draft	# trips and conversations	旅と会話 # 件	src/ui/screens/import.js:192	plural; # = folded.length; English: "# trip or conversation" (one), "# trips and conversations" (other); Note: a git backup's preview, from its manifest alone, can't tell trips from chats: this is the one row they fold under.
+9jpcd5	draft	Add as a new one	新しいものとして追加	src/ui/screens/import.js:183	English was: Add as a new trip
+d7gpc4	draft	Replace mine (yours moves to Archived)	自分のものを置き換える（自分のものはアーカイブ済みに移ります）	src/ui/screens/import.js:183	English was: Replace mine (yours moves to archived trips)
 1pmufvp#other	draft	you already have # of them	うち # 件はすでにあります	src/ui/screens/import.js:193	plural; # = mine; English: "you already have # of them" (one), "you already have # of them" (other); Note: after the fold's count and size, how many of its rows are already on this phone (each has its choice inside the fold); "of them" is of the trips and conversations.
 1og8gcf	ok	Replace my profile and memory with the ones in this file	プロフィールと記憶を、このファイルのものに置き換える	src/ui/screens/import.js:196	Note: Shiori's memory is 記憶, as on the export list.
 rfnd00	ok	Replace my settings	設定を置き換える	src/ui/screens/import.js:197	
@@ -1709,8 +1707,8 @@ z9765v	ok	Restore API keys (keys already on this device are kept)	API キーを�
 tlkozp	ok	Reading…	読んでいます…	src/ui/screens/import.js:208	
 jbong3	ok	Reading {0} of {1}…	読んでいます：{0} / {1}…	src/ui/screens/import.js:221	{0} = num(Math.min(done + 1, total)); {1} = num(total)
 i4v1g5	ok	Installing the plugins your providers use…	プロバイダーが使うプラグインをインストールしています…	src/ui/screens/import.js:229	
-1fnonn8	ok	Open trip	旅を開く	src/ui/screens/import.js:240	
-m9iea3#other	ok	# older copies moved to archived trips.	#件の古いコピーをアーカイブした旅に移しました。	src/ui/screens/import.js:241	plural; # = result.archived.length; English: "# older copy moved to archived trips." (one), "# older copies moved to archived trips." (other)
+3wbwnq	ok	Open it	開く	src/ui/screens/import.js:240	
+1xgy3zf#other	draft	# older copies moved to Archived.	#件の古いコピーをアーカイブ済みに移しました。	src/ui/screens/import.js:241	plural; # = result.archived.length; English: "# older copy moved to Archived." (one), "# older copies moved to Archived." (other); English was: # older copies moved to archived trips.
 j0c8lo	ok	Imported plugins arrive switched off. Turn on the ones you trust in Plugins.	読み込んだプラグインはオフの状態で入ります。信頼できるものをプラグインでオンにしてください。	src/ui/screens/import.js:244	
 3qem9k	ok	annai's next backup to that place builds on this one.	annai がその場所に次にバックアップするときは、これを元にします。	src/ui/screens/import.js:246	
 o7fto4	ok	Import	読み込む	src/ui/screens/import.js:254	
@@ -1718,7 +1716,7 @@ o7fto4	ok	Import	読み込む	src/ui/screens/import.js:254
 6fr2dj	ok	A backup of everything exported {0} from annai {1}, encrypted.	すべてのバックアップ。annai {1}からエクスポート（{0}）、暗号化済み。	src/ui/screens/import.js:257	{0} = ago; {1} = app; Note: {0} is a relative time, in brackets.
 12hmses	draft	Exported {0} from annai {1}, encrypted.	annai {1}からエクスポート（{0}）、暗号化済み。	src/ui/screens/import.js:258	{0} = ago; {1} = app; English was: A trip exported {0} from annai {1}, encrypted.; Note: {0} is a relative time, in brackets.
 3kii3s	draft	Exported {0} from annai {1}.	annai {1}からエクスポート（{0}）。	src/ui/screens/import.js:258	{0} = ago; {1} = app; English was: A trip exported {0} from annai {1}.; Note: {0} is a relative time, in brackets.
-7ns57f	ok	There are no trips in this file.	このファイルに旅はありません。	src/ui/screens/import.js:261	
+7itrym	draft	There are no trips or conversations in this file.	このファイルに旅や会話はありません。	src/ui/screens/import.js:261	English was: There are no trips in this file.
 1y35b48	ok	Restarting…	再起動しています…	src/ui/screens/import.js:277	
 5wjjb4	ok	Restart annai to use the imported settings and plugins.	読み込んだ設定とプラグインを使うには、annai を再起動してください。	src/ui/screens/import.js:282	
 1p9jpyr	ok	Installed what your providers use: {0}.	プロバイダーが使うものをインストールしました：{0}。	src/ui/screens/import.js:292	{0} = list(g.installed, 'plain')
@@ -1731,8 +1729,7 @@ odevmc	ok	Adding {0} of {1}…	追加しています（{0}/{1}）…	src/ui/scre
 6u51xq#other	draft	Added {0}, and # itinerary items from the calendar	{0}と、カレンダーから旅程の項目#件を追加しました	src/ui/screens/import.js:355	plural; # = planned.length; {0} = what; English: "Added {0}, and # itinerary item from the calendar" (one), "Added {0}, and # itinerary items from the calendar" (other); English was: Added {0}, and # itinerary items from the calendar; Note: {0} is a file's path, or how many files ("2 files").
 f30m7u#other	ok	and # more photos	ほか#枚の写真	src/ui/screens/import.js:374	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
 1cj3r6h	ok	Add only what you just shared yourself.	自分で共有したものだけを追加してください。	src/ui/screens/import.js:377	
-sc64d2	ok	Also here: {0}, an annai backup or trip. It isn't added with the rest; open it on its own.	ここにもあります：{0}（annai のバックアップか旅）。ほかのものと一緒には追加されないので、単独で開いてください。	src/ui/screens/import.js:381	{0} = a.file.name
-3wbwnq	ok	Open it	開く	src/ui/screens/import.js:382	
+1eim38p	draft	Also here: {0}, an annai backup or export. It isn't added with the rest; open it on its own.	ここにもあります：{0}（annai のバックアップかエクスポート）。ほかのものと一緒には追加されないので、単独で開いてください。	src/ui/screens/import.js:381	{0} = a.file.name; English was: Also here: {0}, an annai backup or trip. It isn't added with the rest; open it on its own.
 qqpumv	draft	This isn't on the itinerary	旅程にありません	src/ui/screens/item.js:24	English was: This isn't on the plan; Note: a heading where a link names no plan item.
 15biluu	draft	Go to the itinerary	旅程へ	src/ui/screens/item.js:25	Note: a link to the trip's Itinerary (旅程).
 1wp3w0c	ok	All day, {0}	終日（{0}）	src/ui/screens/item.js:41	{0} = start; Note: {0} is the day.
@@ -1910,8 +1907,8 @@ foy2yl	ok	Add to calendar	カレンダーに追加	src/ui/screens/plan.js:87
 1rs1ez2	ok	Not on a day	日付指定なし	src/ui/screens/plan.js:96	Note: a heading above the day tabs, for bookings with no day of their own (an open ticket, a pass for the whole trip); 日付指定なし as tickets say.
 pxfr8q	ok	Days	日付	src/ui/screens/plan.js:99	
 wk7g53	draft	No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) in Details.	まだ旅程はありません。Shiori に一緒に計画してもらうか、「詳細」でカレンダーファイル（.ics）を追加してください。	src/ui/screens/plan.js:102	English was: No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) to the trip.; Note: "Ask" here is asking Shiori, not the permission setting's Ask.
-1uxsg1z	ok	{0} couldn't be read. Open the trip's files to fix them.	{0}を読み込めませんでした。旅のファイルを開いて直してください。	src/ui/screens/plan.js:103	{0} = unread
-sdcje2	ok	{0} couldn't be read. Open the trip's files to fix it.	{0}を読み込めませんでした。旅のファイルを開いて直してください。	src/ui/screens/plan.js:103	{0} = unread
+15yqwep	draft	{0} couldn't be read. Open the files in Details to fix them.	{0}を読み込めませんでした。「詳細」でファイルを開いて直してください。	src/ui/screens/plan.js:103	{0} = unread; English was: {0} couldn't be read. Open the trip's files to fix it.
+1hvcdro	draft	{0} couldn't be read. Open the files in Details to fix it.	{0}を読み込めませんでした。「詳細」でファイルを開いて直してください。	src/ui/screens/plan.js:103	{0} = unread; English was: {0} couldn't be read. Open the trip's files to fix them.
 1gmgpvl	ok	Check this	要確認	src/ui/screens/plan.js:159	
 wioqt8#other	ok	Check # details	要確認（#件）	src/ui/screens/plan.js:161	plural; # = r.checkFields.length; English: "Check # detail" (one), "Check # details" (other); Note: a chip on a Plan row: how many of a booking's details Shiori is unsure of; 要確認 as the Check this chip.
 1ropcog	ok	Booking missing	予約が見つかりません	src/ui/screens/plan.js:162	
@@ -2129,14 +2126,14 @@ vam64u	ok	Use the recommended models	おすすめのモデルを使う	src/ui/sc
 1szeqxt	ok	Roles updated.	役割を更新しました。	src/ui/screens/provider.js:560	
 1egvjs1	ok	{0} couldn't be switched on: {1}	{0}をオンにできませんでした：{1}	src/ui/screens/provider.js:561	{0} = f.name; {1} = messageOf(f.error)
 wlh055	ok	Use the {0} models	{0}のモデルを使う	src/ui/screens/provider.js:567	{0} = which
-1tu8lgg	ok	Writing it: {0} is reading the trip. This can take a minute.	作成中：{0}が旅を読んでいます。1分ほどかかることがあります。	src/ui/screens/recap.js:29	{0} = m.name
+1qocxbg	draft	Writing it: {0} is reading the conversation. This can take a minute.	作成中：{0}が会話を読んでいます。1分ほどかかることがあります。	src/ui/screens/recap.js:29	{0} = m.name; English was: Writing it: {0} is reading the trip. This can take a minute.
 1lrfe9k	ok	Write the recap	振り返りを書く	src/ui/screens/recap.js:31	
 h6huep	ok	Write it again	もう一度書く	src/ui/screens/recap.js:31	
 ez9tf4	ok	The recap is written.	振り返りを書きました。	src/ui/screens/recap.js:44	
 mm3zdg	ok	The recap wasn't written	振り返りを書けませんでした	src/ui/screens/recap.js:46	
 70ec7n	ok	Shiori is getting ready to tell it.	Shiori が話す準備をしています。	src/ui/screens/recap.js:62	
 3hcj41	ok	Hear Shiori tell it	Shiori に話してもらう	src/ui/screens/recap.js:64	
-1mnn3h5	ok	No recap yet. annai's utility model writes it from the trip: where you stayed and went, the stamps, what you and Shiori said, your notes and some photos.	まだ振り返りはありません。annai の補助モデルが旅をもとに書きます：滞在した所と行った所、スタンプ、あなたと Shiori の会話、メモ、そして写真の一部です。	src/ui/screens/recap.js:71	Note: a stay is any stop, so 滞在した, not 泊まった.
+9ioii4	draft	No recap yet. annai's utility model writes it from everything in this conversation: where you stayed and went, the stamps, what you and Shiori said, your notes and some photos.	まだ振り返りはありません。annai の補助モデルがこの会話のすべてをもとに書きます：滞在した所と行った所、スタンプ、あなたと Shiori の会話、メモ、そして写真の一部です。	src/ui/screens/recap.js:71	English was: No recap yet. annai's utility model writes it from the trip: where you stayed and went, the stamps, what you and Shiori said, your notes and some photos.; Note: a stay is any stop, so 滞在した, not 泊まった.
 1v25lb0	ok	Written {0}.	作成：{0}。	src/ui/screens/recap.js:72	{0} = relTime(got.entry.modified)
 nsh8oa	ok	Written {0}, then edited by you.	作成：{0}。その後あなたが編集。	src/ui/screens/recap.js:72	{0} = relTime(got.entry.modified)
 1i1lcq9	ok	Edit	編集	src/ui/screens/recap.js:74	
@@ -2194,8 +2191,7 @@ qhwigq	ok	How Shiori speaks and hears you, with a test for each.	Shiori の話�
 1fpvmy8	ok	No export yet. Export regularly: annai keeps everything on this device.	まだエクスポートしていません。定期的にエクスポートしてください。annai はすべてをこの端末に保存しています。	src/ui/screens/settings.js:62	
 rpzgfn	ok	Last export {0}.	前回のエクスポート：{0}。	src/ui/screens/settings.js:62	{0} = relTime(app.lastExportAt)
 1tpqgk3	ok	Automatic backups	自動バックアップ	src/ui/screens/settings.js:67	
-706cmq	ok	A trip someone sent you, or a backup to bring back:	送られてきた旅や、戻したいバックアップ：	src/ui/screens/settings.js:69	
-8f98y9	ok	Open an annai file	annai のファイルを開く	src/ui/screens/settings.js:70	
+17ls74b	draft	An export someone sent you, or a backup to bring back:	送られてきたエクスポートや、戻したいバックアップ：	src/ui/screens/settings.js:69	English was: A trip someone sent you, or a backup to bring back:
 m7t7a8	ok	How she looks, her personality, and how often she acts on her own.	見た目、性格、自分から動く頻度。	src/ui/screens/settings.js:71	
 1frid9s	ok	annai's screens, distances, the languages you speak, and the one Shiori answers in.	annai の表示言語、距離の単位、話す言語、Shiori が答える言語。	src/ui/screens/settings.js:72	Note: the Languages section's line in Settings; each term is its row's label on the Languages screen.
 11bjuh3	ok	Switches for every tool Shiori has, web search and fetch, and the Jina key.	Shiori の各ツールのオン/オフ、Web 検索と読み込み、Jina のキー。	src/ui/screens/settings.js:74	

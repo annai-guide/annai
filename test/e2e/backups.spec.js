@@ -92,7 +92,7 @@ test('automatic backups go to GitHub, only what changed is sent, and a wiped pho
     await expect(page.getByText(/^An? (iPhone|Android phone|computer) backed up to me\/annai-backup/)).toBeVisible();
     const mark = gh.log.length;
     await page.getByRole('button', { name: 'Import it as a copy' }).click();
-    await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole('heading', { name: 'Open an annai file' })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByLabel('Replace my profile and memory with the ones in this file')).toBeChecked();
     await expect(page.getByLabel('Replace my settings')).toBeChecked();
     await page.getByRole('button', { name: 'Import' }).click();
@@ -136,7 +136,7 @@ test('a newer backup from another phone pauses this one, and comes in as a copy 
     await addGitHub(second, gh);
     await expect(second.getByRole('heading', { name: 'A backup is already here' })).toBeVisible();
     await second.getByRole('button', { name: 'Import it as a copy' }).click();
-    await expect(second.getByRole('heading', { name: 'Open a trip' })).toBeVisible({ timeout: 30_000 });
+    await expect(second.getByRole('heading', { name: 'Open an annai file' })).toBeVisible({ timeout: 30_000 });
     await second.getByRole('button', { name: 'Import' }).click();
     await second.getByRole('link', { name: 'Open Kyoto' }).click();
     await writeNote(second, '/notes/fushimi.md', 'Fushimi Inari at dawn');
@@ -154,8 +154,8 @@ test('a newer backup from another phone pauses this one, and comes in as a copy 
     await expect(page.getByText(/^An? (iPhone|Android phone) backed up to me\/annai-backup .*\. That was after this phone's last backup\./)).toBeVisible();
     expect(gh.commits(REPO).length).toBe(commits);
     await page.getByRole('button', { name: 'Import it as a copy' }).click();
-    await expect(page.getByRole('heading', { name: 'Open a trip' })).toBeVisible({ timeout: 30_000 });
-    await page.getByLabel('Replace mine (yours moves to archived trips)').check();
+    await expect(page.getByRole('heading', { name: 'Open an annai file' })).toBeVisible({ timeout: 30_000 });
+    await page.getByLabel('Replace mine (yours moves to Archived)').check();
     await page.getByRole('button', { name: 'Import' }).click();
     await page.getByRole('link', { name: 'Open Kyoto' }).click();
     await allFiles(page);
