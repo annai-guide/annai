@@ -938,13 +938,13 @@ test('live, the page out of view: a reminder is shown at once, as before; a cue 
 
 // Koe's instructions, at the source: passing on is the default, said in the same words to a chat Koe, a live one and in tell_kokoro's own
 // description; no standing excuse; the lines that get no reply say what to do, and a live Koe is told once that every word it makes is heard.
-test("Koe passes on what the user said as they said it, in its instructions and in tell_kokoro's description; meanwhile it says \"One moment.\" and asks nothing of its own", () => {
+test("Koe passes on what the user said as they said it, in its instructions and in tell_kokoro's description; meanwhile it tells them to hold on in a word or two of the language it answers in, in its own voice, and asks nothing of its own", () => {
   const tool = channelTool('koe', /** @type {any} */ ({ send: async () => 'sent' }));
   for (const k of [KOE_CORE, KOE_LIVE, tool.description]) assert.match(k, /what the user said,? as they said it|what they said, as they said it/);
   for (const k of [KOE_CORE, KOE_LIVE]) {
     const line = k.split('\n').find((l) => l.startsWith('- Anything else the user says to you'));
     assert.ok(line, 'one line says it');
-    assert.match(line, /"One moment\.", (then )?tell_kokoro what they said, as they said it/);
+    assert.match(line, /a word or two to tell them to hold on, in the language you answer in and in the voice your personality gives you, (then )?tell_kokoro what they said, as they said it/);
     assert.match(line, /Ask them nothing of your own, and never say it's done until a note says so\./);
     assert.doesNotMatch(k, /can't check|can't be reached|saying you're checking/, 'no ready excuse, and no promise to check');
     assert.doesNotMatch(k, /\bwhen the user asks for something done\b/i, 'one rule, not two');

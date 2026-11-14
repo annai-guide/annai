@@ -40,6 +40,93 @@ test('ensureBaseScopes creates me and the system scopes once', async () => {
   assert.equal(await ws.readText(ME, '/memory.md'), '# Memory\n');
 });
 
+test("a new install's profile has no Language line: the Languages setting says which language she answers in (one question, one answer)", async () => {
+  const { ws } = setup();
+  await ensureBaseScopes(ws);
+  assert.equal(await ws.readText(ME, '/profile.md'), '# Profile\n\n- What to call me:\n- Units:\n- Preferences:\n');
+  // A profile that is the new one stays: starting again writes nothing.
+  await ensureBaseScopes(ws);
+  assert.equal((await ws.history(ME, '/profile.md')).length, 1);
+});
+
+// What every install before this had written as its profile, byte for byte. Like a personality nobody edited, it follows the update;
+// anything else in the file is the user's, or Shiori's for them, and is never touched.
+const OLD_PROFILE = '# Profile\n\n- What to call me:\n- Language: English\n- Units:\n- Preferences:\n';
+const NEW_PROFILE = '# Profile\n\n- What to call me:\n- Units:\n- Preferences:\n';
+
+test("an install's untouched old profile (exactly the old default) gets the new one at start; a profile changed by one character is left as it is", async () => {
+  const { ws } = setup();
+  await ensureBaseScopes(ws);
+  await ws.write(ME, '/profile.md', OLD_PROFILE, { author: 'user' });
+  await ensureBaseScopes(ws);
+  assert.equal(await ws.readText(ME, '/profile.md'), NEW_PROFILE);
+  assert.equal((await ws.history(ME, '/profile.md')).at(-1).actor, 'system', 'annai wrote it, as it does an unedited personality');
+  const wrote = (await ws.history(ME, '/profile.md')).length;
+  await ensureBaseScopes(ws);
+  assert.equal((await ws.history(ME, '/profile.md')).length, wrote, 'once: the new default is not touched again');
+  for (const edited of [
+    OLD_PROFILE.replace('English', 'Englisx'),
+    OLD_PROFILE.replace('call me:', 'call me: Alex'),
+    `${OLD_PROFILE}\n`,
+    OLD_PROFILE.replace('Language: English', 'Language: Japanese'),
+    '# Profile\n\n- Language: English\n',
+  ]) {
+    await ws.write(ME, '/profile.md', edited, { author: 'user' });
+    await ensureBaseScopes(ws);
+    assert.equal(await ws.readText(ME, '/profile.md'), edited, JSON.stringify(edited));
+  }
+});
+
+// The rewrite is a tidy-up: annai must open when it can't be done (the profile's text missing from storage, or a full phone), leave the
+// profile as it is, and try again at the next start.
+/** An old profile on a store that can be made to lose a blob or to refuse a file. @param {{ unreadable?: boolean, full?: boolean }} o */
+async function oldProfileOn(o) {
+  const inner = createMemoryStore();
+  /** @type {import('../../src/core/types.js').Store} */
+  const store = {
+    close() {},
+    tx(stores, mode, fn) {
+      return inner.tx(stores, mode, (t) => fn({
+        ...t,
+        getBlob: async (h) => (o.unreadable ? undefined : t.getBlob(h)),
+        putFile: async (f) => {
+          if (o.full) throw new DOMException('no space', 'QuotaExceededError');
+          return t.putFile(f);
+        },
+      }));
+    },
+  };
+  let clock = 1000;
+  const ws = new Workspace(store, { now: () => ++clock, schemaFor: makeSchemaFor({ list: (k) => (k === 'schema' ? CORE_SCHEMAS : []) }, kindOf) });
+  await ensureBaseScopes(ws);
+  await ws.write(ME, '/profile.md', OLD_PROFILE, { author: 'user' });
+  return ws;
+}
+
+test("a profile whose text is missing from storage doesn't stop start; the next start rewrites it", async () => {
+  const o = { unreadable: false };
+  const ws = await oldProfileOn(o);
+  o.unreadable = true;
+  await ensureBaseScopes(ws);
+  o.unreadable = false;
+  assert.equal(await ws.readText(ME, '/profile.md'), OLD_PROFILE, 'left as it was');
+  await ensureBaseScopes(ws);
+  assert.equal(await ws.readText(ME, '/profile.md'), NEW_PROFILE);
+});
+
+test("a full phone doesn't stop start when the old profile is rewritten; the profile stays and the next start rewrites it", async () => {
+  const o = { full: false };
+  const ws = await oldProfileOn(o);
+  const wrote = (await ws.history(ME, '/profile.md')).length;
+  o.full = true;
+  await ensureBaseScopes(ws);
+  o.full = false;
+  assert.equal(await ws.readText(ME, '/profile.md'), OLD_PROFILE, 'left as it was');
+  assert.equal((await ws.history(ME, '/profile.md')).length, wrote);
+  await ensureBaseScopes(ws);
+  assert.equal(await ws.readText(ME, '/profile.md'), NEW_PROFILE);
+});
+
 test('createTrip makes a scope, trip.json, trip memory and a scope.create event', async () => {
   const { store, ws } = setup();
   const id = await createTrip(ws, { title: '京都 in spring', start: '2027-04-03', end: '2027-04-10' });

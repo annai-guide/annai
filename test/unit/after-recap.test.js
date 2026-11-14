@@ -9,6 +9,12 @@ import { agentKit, fakeCodec } from './agent-kit.js';
 import { at, iso, LA, BIXBY, HEARST } from './live-kit.js';
 import { MORNING } from './after-kit.js';
 import { saveModel } from '../../src/core/llm/config.js';
+import { updateAppSettings } from '../../src/core/settings.js';
+import { ME } from '../../src/core/scopes.js';
+import { NOT_TRANSCRIBED } from '../../src/core/voice/resolve.js';
+import { PHOTO_ONLY } from '../../src/core/agent/loop.js';
+import { FILES_ONLY } from '../../src/core/handover.js';
+import { setWords } from '../../src/core/l10n.js';
 
 const RECAP = '# Big Sur, Thanksgiving\n\n## Friday, November 27\n\nBixby Bridge in the morning sun.';
 
@@ -90,6 +96,71 @@ test('the utility model writes /trip/recap.md, with request copies of the photos
   assert.equal(entry.refs.length, 6); // the copies, named (§4.9)
   const [turn] = (await k.events(['model.turn'])).filter((e) => e.data.tag === 'recap');
   assert.ok(turn, 'the call is in the trace');
+});
+
+// It was told "their profile says which", and a new install's profile said "Language: English", whatever the user speaks; the profile
+// has no Language line now. The language comes from the Languages setting, by the rule a summary's takes (compaction's summaryLanguage).
+test('the recap is written in the language the Languages setting and the user\'s own words give, not a profile line', async () => {
+  const k = await aTrip([{ text: RECAP }, { text: RECAP }]);
+  await k.ws.write(ME, '/profile.md', '# Profile\n\n- Language: English\n', { author: 'user' });
+  await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'] } });
+  await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: '明日は何時に出発する？' } }, at('10:30'));
+  await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip });
+  assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language the user wrote in last\.$/m);
+  await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'], answer: 'en' } });
+  await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip });
+  assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in English, the language Shiori answers in\.$/m);
+  assert.doesNotMatch(RECAP_SYSTEM, /profile/);
+  assert.match(RECAP_SYSTEM, /Write in the language the record names at its start\./);
+});
+
+// The language a summary is written in reads the user's words. annai's own placeholder for a heard line it couldn't write down is not
+// theirs, and reads as English: compaction leaves it out of what it reads (loop.js), and the recap does the same.
+test("a heard line annai couldn't write down is not the user's words: the recap's language is read from what they wrote or said", async () => {
+  const k = await aTrip([{ text: RECAP }]);
+  await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'] } });
+  await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: '明日は何時に出発する？' } }, at('10:30'));
+  await logEvent(k.store, k.trip, { type: 'heard', data: { id: 'h-1' } }, at('11:00'));
+  await logEvent(k.store, k.trip, { type: 'heard.text', actor: 'system', data: { of: 'h-1', text: NOT_TRANSCRIBED, by: null } }, at('11:00'));
+  await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip });
+  assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language the user wrote in last\.$/m);
+});
+
+// With nothing chosen and none of the user's words in the trip, the one thing annai knows of them is the screens' language (they chose it,
+// or their phone gave it): not English, which a Japanese speaker on Japanese screens would get a recap in.
+test("with nothing chosen and none of the user's words, the recap is written in the screens' language", async () => {
+  const k = await agentKit([[{ text: '' }]], { utility: [{ text: RECAP }, { text: RECAP }, { text: RECAP }] });
+  try {
+    setWords('ja', null);
+    await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip });
+    assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language of annai's screens \(the user hasn't written anything yet\)\.$/m);
+    // Their words decide when there are some; a setting decides before either.
+    await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: 'Where should we eat tonight?' } }, at('10:30'));
+    await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip });
+    assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in English, the language the user wrote in last\.$/m);
+    await updateAppSettings(k.ws, { languages: { spoken: ['ko'] } });
+    await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip });
+    assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Korean, the first language the user speaks \(Korean\)\.$/m);
+  } finally {
+    setWords('en', null);
+  }
+});
+
+// annai's own lines for a message with no words ("(a photo)", "(files)") are not the user's words either: a trip of only photos and files
+// has none, so the screens' language decides, not a recap in whatever "(a photo)" reads as.
+test("a trip whose only lines are photos and files has none of the user's words: the recap is written in the screens' language", async () => {
+  const k = await agentKit([[{ text: '' }]], { utility: [{ text: RECAP }, { text: RECAP }] });
+  try {
+    setWords('ja', null);
+    await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: PHOTO_ONLY } }, at('10:30'));
+    await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip });
+    assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language of annai's screens \(the user hasn't written anything yet\)\.$/m);
+    await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: FILES_ONLY } }, at('10:31'));
+    await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip });
+    assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language of annai's screens \(the user hasn't written anything yet\)\.$/m);
+  } finally {
+    setWords('en', null);
+  }
 });
 
 test('no photos go to a model that takes none; a model that answers nothing, or none at all, is a plain error and nothing is written', async () => {

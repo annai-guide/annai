@@ -151,6 +151,8 @@ const TIDYING = 'tidying';
 const LINES = new Set(['out.speak', 'out.show', 'out.ask', 'note']);
 /** What a user sends with nothing but photos, as the log keeps it: the words a model reads (the Conversation shows its own). */
 export const PHOTO_ONLY = /* en */ '(a photo)';
+/** Lines that hold none of the user's words: annai's own for a photo or files sent alone, a heard line it couldn't write down, an empty one. */
+export const NO_WORDS = [NOT_TRANSCRIBED, FILES_ONLY, PHOTO_ONLY, ''];
 export const SPEAK_RESULT = /* en */ "Shown on screen. Voice is off, so you didn't listen; the user may type.";
 /** What Start fresh did: done; nothing, no line yet; already, none since the last fresh start; opening, the conversation still opens. @typedef {'done' | 'nothing' | 'already' | 'opening'} Fresh */
 

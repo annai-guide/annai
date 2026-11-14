@@ -87,7 +87,7 @@ test("Koe's prompts: a relay that states nothing it wasn't told", () => {
     assert.match(k, /State only what you have been told or have deliberately checked: a note from Kokoro, an \[annai\] line, what has been said in this conversation, the <now> and <today> blocks, a tool's result, or what the user has just told you/);
     assert.match(k, /Never state anything from your own knowledge, and never trust it/);
     assert.match(k, /nothing about annai/);
-    assert.match(k, /"One moment\."/);
+    assert.match(k, /a word or two to tell them to hold on, in the language you answer in and in the voice your personality gives you/);
     assert.match(k, /tell_kokoro/);
     assert.match(k, /No apologies, no sympathy, no "I understand" or "understood", no "I'll make sure" or "I will", no promises/);
     assert.match(k, /get no reply: no words, no sound(; call sleep)?\. Never change language because of a stray word/);
@@ -109,7 +109,7 @@ test("Koe's prompts, fix pass 1: no filler asked for, the told list is whole, no
   for (const k of [KOE_CORE, KOE_LIVE]) {
     // The prompt no longer invites the filler the real runs recorded ("Understood. I will stop.", "I'll adjust.").
     assert.doesNotMatch(k, /acknowledgement|never leave the user in silence|even a short/);
-    assert.match(k, /If a word is needed: "Okay\."/);
+    assert.match(k, /If a word is needed, say okay in the language you answer in\./);
     // What it may state: [annai] lines and the conversation too, so a reminder and "what did you say?" are not waited on Kokoro for.
     assert.match(k, /\[annai\] line, what has been said in this conversation/);
     assert.match(k, /\n- A greeting in a language the user speaks gets a greeting; "what\?" gets your last words again\.\n/);
@@ -143,7 +143,7 @@ test("Koe's prompts, fix pass 2: a language the user speaks, speech recognition 
   assert.match(KOE_CORE, /\[heard\] lines, and the words after "The user said:", are speech recognition, may be wrong/);
   // Live: one line for the word before a call, with the two calls that stay silent left out of it; the clock names who to ask.
   assert.match(KOE_LIVE, /\n- Before a tool call other than already_told and sleep, say a word or two aloud, then make the call/);
-  assert.equal(KOE_LIVE.split('\n').filter((l) => /a (couple of|word or two)|"One moment\."/.test(l)).length, 2, 'two lines, not three');
+  assert.equal(KOE_LIVE.split('\n').filter((l) => /a (couple of|word or two)/.test(l)).length, 2, 'two lines, not three');
   const lines = KOE_LIVE.split('\n');
   assert.ok(lines.findIndex((l) => l.startsWith('- <now> and <today>')) > lines.findIndex((l) => l.startsWith('- Anything else')), 'the clock line does not sit between the told list and the question rule');
   assert.match(KOKORO_PART, /Koe says it\./);
@@ -155,6 +155,24 @@ test("Koe's prompts, fix pass 2: a language the user speaks, speech recognition 
   const tool = channelTool('kokoro', /** @type {any} */ ({ send: async () => 'sent' }));
   assert.match(tool.description, /without changing what it claims/);
   assert.doesNotMatch(tool.description, /own words/);
+});
+
+// The real run before (answers-natural-r1): a chat Koe said "One moment." in English to a Japanese user on 4 of 6 lines, because its
+// instructions gave it the words.
+test("Koe's instructions give it no English words to say: its word or two telling the user to hold on, and its okay, are in the language it answers in, the wait in the voice its personality gives it (not a stock phrase)", () => {
+  for (const k of [KOE_CORE, KOE_LIVE, KOKORO_PART]) {
+    assert.doesNotMatch(k, /"One moment\."|"Okay\."/);
+    assert.doesNotMatch(k, /\b(?:speak|say)s? "/, 'nothing quoted to be said');
+  }
+  for (const k of [KOE_CORE, KOE_LIVE]) {
+    const line = k.split('\n').find((l) => l.startsWith('- Anything else the user says to you')) ?? '';
+    assert.match(line, /a word or two to tell them to hold on, in the language you answer in and in the voice your personality gives you, (then )?tell_kokoro what they said, as they said it/);
+    assert.match(k, /If a word is needed, say okay in the language you answer in\./);
+  }
+  assert.match(KOKORO_PART, /its word or two telling the user to hold on, as it passes a line on to you, says so/);
+  // Kokoro's example of the line it gives Koe is described, not quoted: Koe says a note's words as they are (the Haiku review, 2026-11-14).
+  assert.doesNotMatch(KOKORO_PART, /saving your note now/);
+  assert.match(KOKORO_PART, /first tell Koe in one short line, in the language you answer in, what you're doing \(that you're saving their note, say\)/);
 });
 
 test("the personality line is the last line of Koe's instructions, so the editor shows it and koeSystem is a plain join", () => {
