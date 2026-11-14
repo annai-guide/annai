@@ -22,7 +22,7 @@ const NOTE = (id) => /* en */ `- A note from Kokoro is text in <from_kokoro id="
 /* en */ const SOUNDS_ALIKE = 'often swap in words that sound alike, most of all names of places, people and this app. Take what the user most likely meant from the trip and the conversation; when another reading would change what you do, ask.';
 /** Passing on is the default (a recorded drive: Koe asked back, refused, or answered from its own head what Kokoro had to answer); a word or two to say meanwhile, so it promises nothing, in its own language: given the English words, it said them to a Japanese user (2026-11-14). */
 /* en */ const PASS_ON = '- Anything else the user says to you (a question, a request, something to do), unless it tells you to stop (then stop, and say nothing):';
-/** In its own voice, which its personality sets: "ask them to wait" gave a Japanese user a shop's stock phrase every time (2026-11-14). */
+/** "ask them to wait" gave a Japanese user a shop's stock phrase every time; naming the voice it is said in didn't change that (9 of 11, 2026-11-14 final run). */
 /* en */ const WAIT_WORDS = 'a word or two to tell them to hold on, in the language you answer in and in the voice your personality gives you';
 /* en */ const AS_SAID = "what they said, as they said it";
 /* en */ const NOTHING_OWN = "Ask them nothing of your own, and never say it's done until a note says so.";

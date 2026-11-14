@@ -86,7 +86,7 @@ export const named = (list, and = 'and') => list.map((l) => l.name).reduce((s, n
 /** What a model that writes speech down is told, after its own instruction: who may speak, and that nothing is translated. @param {LanguageSettings} s */
 export const speakerLine = (s) => /* en */ (!s.explicit ? '' : `The speaker uses ${named(s.spoken, 'or')}: write ${s.spoken.length > 1 ? 'each' : 'it'} in the language spoken and never translate.`);
 
-/** The last sentence of the Languages section, for every setting: its own words say when it applies. It sets no register (her personality does) and quotes no word to say; its example explains what annai's word means. */
+/** The last sentence of the Languages section, for every setting: its own words say when it applies. It names no register ("to a friend" here made Opus drop です・ます, 2026-11-14) and quotes no word to say; its example explains what annai's word means (it moved Opus, not Sonnet or Haiku). */
 /* en */
 const NATIVE = "When you answer in a language other than English, say things the way a native speaker of that language would, and say what annai's English words mean instead of translating them word for word (a plan item marked fixed is one that can't be moved).";
 
