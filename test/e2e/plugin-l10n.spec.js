@@ -60,12 +60,12 @@ test.describe('on Japanese screens', () => {
   test("annai's own plugins on Add are in Japanese, their descriptive names too; a brand's name stays as written", async ({ page }) => {
     await openApp(page, '#/add');
     const custom = page.locator('li.card', { hasText: 'カスタムプロバイダー' });
-    await expect(custom.locator('p.sub').first()).toContainText('そのほかのあらゆるサーバー');
+    await expect(custom.locator('p.sub').first()).toContainText('ほかのサーバーに使えます');
     expect(await custom.locator('p.sub').first().getAttribute('lang')).toBeNull();
-    await expect(page.locator('li.card', { hasText: 'Mistral' }).locator('p.sub').first()).toHaveText('Mistral のモデル。');
+    await expect(page.locator('li.card', { hasText: 'Mistral' }).locator('p.sub').first()).toHaveText('Mistralのモデル。');
     // Its Japanese keywords find it too.
     await page.locator('.finder input[type="search"]').fill('セルフホスト');
-    await expect(page.locator('li.card', { hasText: 'SearXNG 検索' })).toBeVisible();
+    await expect(page.locator('li.card', { hasText: 'SearXNG検索' })).toBeVisible();
     // Custom provider's own Add page names it in Japanese too (the ja draft review found its English name there).
     await waitForServiceWorker(page);
     await page.locator('.finder input[type="search"]').fill('');
@@ -88,6 +88,6 @@ test.describe('on Japanese screens', () => {
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
     await expect(page.getByText('すると、1つのキーで多くのモデルを使えます。', { exact: false })).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByRole('button', { name: 'OpenRouter でサインイン' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'OpenRouterでサインイン' })).toBeVisible();
   });
 });

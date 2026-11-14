@@ -646,7 +646,7 @@ test('the type box with three chips, Trips with files waiting, and a trip withou
   // Three chips in the type box: a long name, cut, and two short. In a conversation: the dock at rest on home has no type button (timeline stage 4).
   await page.goto('/#/talk');
   await page.locator('.dock .ib[aria-expanded]').click();
-  await page.getByLabel('Shiori に写真やファイルを渡す').setInputFiles([
+  await page.getByLabel('Shioriに写真やファイルを渡す').setInputFiles([
     { name: long, mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4') },
     { name: 'hotel.txt', mimeType: 'text/plain', buffer: Buffer.from('hotel') },
     { name: 'car.txt', mimeType: 'text/plain', buffer: Buffer.from('car') },

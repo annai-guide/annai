@@ -289,7 +289,7 @@ test('under Japanese screens a "coming up" push is Japanese end to end: live mod
     await sw.fire('push', { data: { json: () => ({ ...push, start: Date.now() + 20_000 }) } });
     await sw.fire('push', { data: { json: () => ({ ...push, start: Date.now() - 9 * 60_000 }) } });
     await sw.fire('push', { data: { json: () => push } });
-    assert.deepEqual(sw.shown.map((n) => n.body), ['あと11分：Tea at the inn（16:00）。', '今：Tea at the inn（16:00）。', '9分前に始まりました：Tea at the inn（16:00）。', 'あと15分：Tea at the inn（16:00）。']);
+    assert.deepEqual(sw.shown.map((n) => n.body), ['あと11分：Tea at the inn（16:00）。', 'いまから：Tea at the inn（16:00）。', '9分前に開始：Tea at the inn（16:00）。', 'あと15分：Tea at the inn（16:00）。']);
     // The worker holds no English to match: only the words the page wrote, and the item's data.
     assert.doesNotMatch(await readFile(new URL('sw.js', root), 'utf8'), /In \\d\+ min|\^In /);
   } finally {

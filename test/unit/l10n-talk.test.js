@@ -25,17 +25,17 @@ function lastLine(e) {
 
 test('a wake is shown from its kind in the screens\' words, each kind once; the model reads its reason as given, in English', () => {
   const reasons = [{ kind: 'file', text: 'The user added files: /files/hotel.pdf.' }];
-  assert.equal(wokeText(reasons), '追加されたファイルを見るため、Shiori が起動しました。');
+  assert.equal(wokeText(reasons), '追加されたファイルを確認するため、Shioriが起動しました。');
   assert.equal(lastLine({ type: 'wake', data: { id: 'w-1', reasons } }), '[annai] The user added files: /files/hotel.pdf.');
   // A plugin's by its name; two kinds are two sentences, side by side with no space in Japanese; a kind annai doesn't know, plainly.
   const plugin = { kind: 'plugin', plugin: 'trail', text: 'the trail closes at dusk' };
   assert.equal(wokeText([plugin, plugin, { kind: 'live', text: 'The user turned GPS on.' }], () => 'Trail'),
-    'プラグイン Trail により Shiori が起動しました。GPS がオンになったので、Shiori が起動しました。');
-  assert.equal(wokeText([{ kind: 'someday', text: 'Something new.' }]), 'Shiori が起動しました。');
+    'プラグイン「Trail」のため、Shioriが起動しました。GPSがオンになったため、Shioriが起動しました。');
+  assert.equal(wokeText([{ kind: 'someday', text: 'Something new.' }]), 'Shioriが起動しました。');
   // What fired and which files come from the wake's data; the model still reads its English reason.
   const fired = { kind: 'trigger', text: 'Your watch w1 (at 15:00) fired: the time came. Its reminder: "お茶の時間"', titles: ['お茶の時間'] };
-  assert.equal(wokeText([fired]), 'リマインダーか見守っていたこと1件（お茶の時間）のため、Shiori が起動しました。');
-  assert.equal(wokeText([{ kind: 'file', text: 'x', files: ['/files/hotel.pdf'] }]), '追加されたファイル1件（hotel.pdf）を見るため、Shiori が起動しました。');
+  assert.equal(wokeText([fired]), 'リマインダーまたは見守り中の項目1件（お茶の時間）のため、Shioriが起動しました。');
+  assert.equal(wokeText([{ kind: 'file', text: 'x', files: ['/files/hotel.pdf'] }]), '追加されたファイル1件（hotel.pdf）を確認するため、Shioriが起動しました。');
   assert.equal(lastLine({ type: 'wake', data: { id: 'w-2', reasons: [fired] } }), `[annai] ${fired.text}`);
 });
 
@@ -43,20 +43,20 @@ test('a reminder line is made from its data, said aloud or not, a reminder or he
   const line = (/** @type {any} */ d) => reminderParts({ text: 'Tea.', ...d }, () => ({}), (_, a) => a.text);
   assert.deepEqual(line({}), ['リマインダー：', 'Tea.', '']);
   assert.deepEqual(line({ aloud: true }), ['リマインダー（読み上げ）：', 'Tea.', '']);
-  assert.deepEqual(line({ title: "Shiori's answer" }), ['Shiori の答え：', 'Tea.', '']);
+  assert.deepEqual(line({ title: "Shiori's answer" }), ['Shioriの答え：', 'Tea.', '']);
   assert.equal(lastLine({ type: 'reminder', data: { watch: 'w', text: 'Leave at 5.', aloud: true } }),
     '[annai] Shown and said aloud by annai itself, since you couldn\'t be reached: "Leave at 5."');
 });
 
 test("the announcer's labels are the screens' words, and her words are left as she said them", () => {
-  assert.deepEqual(announced('out.ask', '', 'Where should we eat?', ['Ramen', 'Sushi']), ['Shiori の質問：', 'Where should we eat?', '選択肢：Ramen、Sushi。']);
+  assert.deepEqual(announced('out.ask', '', 'Where should we eat?', ['Ramen', 'Sushi']), ['Shioriの質問：', 'Where should we eat?', '選択肢：Ramen、Sushi。']);
   assert.deepEqual(announced('out.show', 'Trail', 'Pfeiffer Falls'), ['Shiori（Trail）：', 'Pfeiffer Falls', '']);
   assert.deepEqual(announced('out.show', '', '', [], { image: 'x' }), ['Shiori：', '写真', '']);
 });
 
 test("Try this model's instructions stay English for the model; the voice sample is in the screens' language when the user speaks it, else English", () => {
   assert.match(SYSTEM, /^You are a helpful travel assistant inside the annai app\./);
-  assert.equal(sample(true), 'こんにちは。あなたと話すときは、こんな声です。');
+  assert.equal(sample(true), 'こんにちは。こんな声でお話しします。');
   assert.equal(sample(false), 'Hello! This is how I sound when I talk to you.');
 });
 
@@ -67,12 +67,12 @@ test('words sent as the user\'s are in the screens\' language only when the user
 });
 
 test('wentWords in Japanese: the conversation goes on in the trip, named as a value; the conversation stays', () => {
-  assert.equal(wentWords('京都'), 'Shiori がこの会話の続きを「京都」に移しました。');
-  assert.equal(wentWords(null), 'Shiori がこの会話の続きを別の会話に移しましたが、その会話はもう削除されています。');
+  assert.equal(wentWords('京都'), 'Shioriがこの会話の続きを「京都」に移しました。');
+  assert.equal(wentWords(null), 'Shioriがこの会話の続きを別の会話に移しましたが、その会話はもう削除されています。');
 });
 
 test('movedWords in Japanese: whole sentences, the title as a value', () => {
-  assert.equal(movedWords({ to: 't', started: true, count: 2 }, 'アンカレッジ'), 'Shiori がこのファイルで「アンカレッジ」を始めました。');
-  assert.equal(movedWords({ to: 't', started: false, count: 1 }, '京都'), 'Shiori がファイル1件を「京都」に移しました。');
-  assert.equal(movedWords({ to: 't', started: false, count: 1 }, null), 'Shiori はこのファイルを会話に移しましたが、その会話はもう削除されています。');
+  assert.equal(movedWords({ to: 't', started: true, count: 2 }, 'アンカレッジ'), 'Shioriがこれらのファイルをもとに「アンカレッジ」を始めました。');
+  assert.equal(movedWords({ to: 't', started: false, count: 1 }, '京都'), 'Shioriがファイル1件を「京都」に移しました。');
+  assert.equal(movedWords({ to: 't', started: false, count: 1 }, null), 'Shioriはこれらのファイルを別の会話に移しましたが、その会話は削除されています。');
 });
