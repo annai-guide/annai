@@ -726,12 +726,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** nothing tells Kokoro which language its notes to Koe are in.
 - **Revisit when:** the next version: say it in the note tool's description or the halves' text, then a live run in Japanese.
 
-### Two English strings each serve two places, so no translation fits both
-- **Kind:** deferred.
-- **What the user sees:** in Japanese, the Driving screen's route strip shows 自分 for "You" next to 現在地（確認中）; in Chinese, "Added {0}" can't be spaced right for both a language name and a file count.
-- **Why:** "You" is one key for the route strip (drive.js:71) and Replay's speaker tag (replay.js:99); "Added {0}" (18uuegb) is filled by two callers.
-- **Revisit when:** the next English change: give each place its own string (or a context), with drafts in every language.
-
 ### Shiori is told two Koe names no screen shows
 - **Kind:** deferred.
 - **What the user sees:** nothing visible; when Shiori names a screen she can't name the Koe lists by their current names, and is told 'Koe · Classic' and 'Koe · Realtime', which no screen shows.

@@ -17,7 +17,7 @@ test('S5: the notes name where searches go, the last resort that is always on, t
     assert.doesNotMatch(t, /nothing of your trips|Jina/);
   }
   assert.match(WELCOME_SEARCH, /Exa also gets the addresses of pages it reads for her/);
-  assert.match(SEARCH_NOTE, /Exa also reads a page that no other reader can, which sends it that page's address/);
+  assert.match(SEARCH_NOTE, /When no other reader can read a page, Exa reads it, and so gets that page's address/);
   assert.equal(KNOWLEDGE.name, 'Wikivoyage, Wikipedia and Nominatim');
 });
 

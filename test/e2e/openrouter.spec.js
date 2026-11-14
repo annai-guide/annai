@@ -19,7 +19,7 @@ const heard = { status: 200, type: 'application/json', body: JSON.stringify({ te
 const roleItems = (page, heading) => page.locator('.role', { has: page.getByRole('heading', { name: heading }) }).locator('.role-item > span');
 const IN = 'Speech in: how Shiori hears you';
 const OUT = "Speech out: Shiori's voice";
-const PHONE_IN = ['1. Send audio to the model (when the model takes audio)', "2. Phone dictation (the phone's own; usually goes to Google or Apple)", '3. OpenAI: Whisper Large V3 Turbo'];
+const PHONE_IN = ['1. Send audio to the model (when the model takes audio)', "2. Phone dictation (the phone's own; your voice usually goes to Google or Apple)", '3. OpenAI: Whisper Large V3 Turbo'];
 const PHONE_OUT = ["1. Browser voice (the browser's own; some voices go online)", '2. Fish Audio: S2.1 Pro Free (free)', '3. SpaceXAI: Grok Voice TTS 1.0 (Ara)'];
 const KEY = 'sk-or-test-key-123';
 /** The ids of the secrets annai keeps, read through its own modules in the page. @param {import('@playwright/test').Page} page @returns {Promise<string[]>} */

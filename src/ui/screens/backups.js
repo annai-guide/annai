@@ -47,7 +47,7 @@ export async function renderBackups(ctx, route) {
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, crumb('#/settings', t`Settings`)),
     h('h1', { class: 'title', text: t`Backups` }),
-    h('p', { class: 'sub', text: t`annai backs up everything on this device to the places you add here: after changes or once a day, on Wi-Fi, while annai is open. Your API keys stay on this device.` }),
+    h('p', { class: 'sub', text: t`annai backs up everything on this device to the places you add here: after changes or once a day, on Wi-Fi, while annai is open. Your API keys stay on this device, unless you include them in an encrypted backup.` }),
     places.length
       ? h('ul', { class: 'cards' }, ...places.map((/** @type {any} */ p) => h('li', {}, h('a', { class: 'card', href: placeHref(p.id) },
         h('span', { class: 'name', text: `${p.name} · ${whereOf(ctx, p)}` }),

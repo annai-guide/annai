@@ -215,7 +215,7 @@ async function resolvePart(p, model, c) {
     }
   }
   // What it was goes with it, as data (contract.js's Said): the call's attempt keeps it, and a card makes the screens' words.
-  throw Object.assign(new Error(/* en */ `nothing in the speech-in list can hear it for ${model.name}`), { said: { code: 'not-heard', name: model.name } });
+  throw Object.assign(new Error(/* en */ `nothing in the speech-in list worked for ${model.name}`), { said: { code: 'not-heard', name: model.name } });
 }
 
 /**

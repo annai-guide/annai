@@ -218,7 +218,7 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'paused') return t`a turn cut off by opening another conversation`;
   // Another trip read from here (read_trip), and the user's yes to it.
   if (e.type === 'trip.read') return line(t`read ${d.title}`, d.trip, d.path, d.query ? quoted(d.query) : null);
-  if (e.type === 'trip.grant') return line(t`reading ${d.trip} allowed`, d.how === 'voice' ? t`said` : t`tapped`, d.always ? t`always for their trips` : null);
+  if (e.type === 'trip.grant') return line(t`reading ${d.trip} allowed`, d.how === 'voice' ? t`said` : t`tapped`, d.always ? t`Always for my trips` : null);
   // Shiori took the user from here to another trip (open_trip).
   if (e.type === 'conversation.moved') return line(t`moved to ${d.title}`, d.to);
   if (e.type === 'compaction') return d.mode === 'fresh' ? t`started fresh after event ${d.to}` : t`events ${d.from}–${d.to} summarized (${d.mode})`;
@@ -227,7 +227,7 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'reminder') return line(d.aloud ? t`said aloud` : t`shown`, cut(d.text));
   if (e.type === 'voice.route') {
     const unnamed = t`no name`;
-    return line(t`audio route ${d.route}`, d.using === null ? t`from the devices present` : t`the microphone in use: ${d.using || unnamed}`,
+    return line(t`audio route ${d.route}`, d.using === null ? t`judged by the devices present` : t`the microphone in use: ${d.using || unnamed}`,
       (d.devices ?? []).map((/** @type {string} */ x) => x || unnamed).join(', ') || t`no devices`, d.gone?.length ? t`disconnected: ${d.gone.join(', ')}` : null, soundOf(d.ctx));
   }
   // The microphone's audio thread as it opened, and the sound's context when the page came back: codes and numbers, a developer's words.

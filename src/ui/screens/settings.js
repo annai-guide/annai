@@ -74,7 +74,7 @@ export async function renderSettings(ctx) {
     tools: () => section(t`Tools`, ...goTo(t`Switches for every tool Shiori has, web search and fetch, and the Jina key.`, '#/tools', t`Tools`)),
     plugins: async () => [section(t`Plugins`, ...goTo(t`Skills and code plugins: install, update, switch off or remove.`, '#/plugins', t`Manage plugins`)), await pluginPages(ctx)],
     storage: () => section(t`Storage`,
-      h('p', { text: st.persisted ? t`Protected from automatic clearing: yes.` : t`Protected from automatic clearing: no.` }),
+      h('p', { text: st.persisted ? t`The browser won't clear annai's data by itself.` : t`The browser may clear annai's data by itself.` }),
       st.quota ? h('p', { class: 'sub', text: t`Using ${size(st.usage)} of about ${size(st.quota)}.` }) : null,
       st.persisted ? null : h('div', { class: 'acts' }, h('button', {
         class: 'btn', type: 'button',
@@ -135,7 +135,7 @@ async function photoControls(ctx, app) {
   // A size shown rounded and left as it was keeps its exact value (1 MiB shows as 1.05).
   const sentBytes = () => (sentSize.value.trim() === asMB(s.request.maxBytes) ? s.request.maxBytes : bytesOf(sentSize, t`The largest photo sent is at least ${num(0.1)} MB. Leave it empty for no limit.`));
   return [
-    h('p', { class: 'sub', text: sentences(t`Each photo you add is stored once.`, webp ? t`This browser writes WebP.` : t`This browser can't write WebP, so photos are saved as JPEG.`, t`The originals stay in your phone's photo library.`) }),
+    h('p', { class: 'sub', text: sentences(t`annai keeps one copy of each photo you add.`, webp ? t`This browser writes WebP.` : t`This browser can't write WebP, so photos are saved as JPEG.`, t`The originals stay in your phone's photo library.`) }),
     keep.el,
     h('div', { class: 'row' },
       savedField(t`Save photos as`, format, () => formats(format), (f) => save({ ingest: { formats: f } })),

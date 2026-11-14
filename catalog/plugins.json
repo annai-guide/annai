@@ -280,7 +280,7 @@
     {
       "id": "provider-gemini",
       "name": "Google Gemini",
-      "version": "2.8.0",
+      "version": "2.8.1",
       "description": "Gemini models through Google's own API, with Google Search on a paid key, its transcription and voices, and Gemini Live for a voice conversation.",
       "category": "providers",
       "keywords": [],
@@ -293,7 +293,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 11288,
+      "size": 11292,
       "requires": [
         {
           "id": "gemini-api",
@@ -302,7 +302,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "6e70e9f7aba42183dda5759c585434890bf20edb4ccdfdb135357d2a959d5c9e"
+        "annai-plugin.json": "ac2f4910982e7166dba3314fa2ad99479848eeb038c2750443e13bd704d179ea"
       }
     },
     {
@@ -394,7 +394,7 @@
     {
       "id": "provider-local-speech",
       "name": "Local speech server",
-      "version": "1.3.1",
+      "version": "1.3.2",
       "description": "Transcription and a voice from a server you run, such as Speaches, whisper.cpp or Kokoro.",
       "category": "speech",
       "keywords": [
@@ -409,7 +409,7 @@
       "free": false,
       "local": true,
       "code": false,
-      "size": 1676,
+      "size": 1683,
       "requires": [
         {
           "id": "speech-openai",
@@ -418,7 +418,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "7339a59077f3c11a4df650b563d914d98eef3543abfe3ed1345fbe12e96dc478"
+        "annai-plugin.json": "a737e3d819f2a0fce5fdf2ca8f8d6c118dd4a4f247844c56ffbfba422925caa6"
       }
     },
     {
@@ -449,7 +449,7 @@
     {
       "id": "provider-ollama",
       "name": "Ollama",
-      "version": "1.2.1",
+      "version": "1.2.2",
       "description": "Models on Ollama, with their thinking switched off for quick decisions.",
       "category": "providers",
       "keywords": [],
@@ -459,7 +459,7 @@
       "free": false,
       "local": true,
       "code": true,
-      "size": 4179,
+      "size": 4196,
       "requires": [
         {
           "id": "chat-completions",
@@ -468,14 +468,14 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "ec70c2eda7c98451d3582279c06176aa795f209926c95aeece42b6ad45ec9d8d",
+        "annai-plugin.json": "fc1d4d251f43020087bbd5763fb0d594ed66a9a5477c90c60256fe0eafe6c21f",
         "index.js": "dcaf79ffd44e1f60ceb6fd4558e683221ceebbd99e43ec7304abd530e3c9d5bb"
       }
     },
     {
       "id": "provider-openai",
       "name": "OpenAI",
-      "version": "1.6.2",
+      "version": "1.6.3",
       "description": "GPT models through OpenAI's Responses API, with OpenAI's transcription and voices, and its live voice for Koe, on one key.",
       "category": "providers",
       "keywords": [],
@@ -488,7 +488,7 @@
       "free": false,
       "local": false,
       "code": false,
-      "size": 13287,
+      "size": 13286,
       "requires": [
         {
           "id": "openai-responses",
@@ -501,7 +501,7 @@
       ],
       "provides": {},
       "files": {
-        "annai-plugin.json": "bae2d4041b065d348f34add64ab3c30987dc873b8583e21b8ddc7a3119e1daf2"
+        "annai-plugin.json": "0dd6d28df219d8f5a147bd33621477c3ce2a3b1c6cc68f9e0e230209491905fd"
       }
     },
     {
@@ -616,7 +616,7 @@
     {
       "id": "remote-trace",
       "name": "Remote trace (for developers)",
-      "version": "0.4.1",
+      "version": "0.4.2",
       "description": "For developers: sends annai's trace, as the Trace screen shows it, to a server you run, while you watch. It sends nothing until you give it a server and a token and turn Send on. The keys annai keeps are blanked.",
       "category": "developer",
       "keywords": [],
@@ -624,11 +624,11 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 38602,
+      "size": 38615,
       "requires": [],
       "provides": {},
       "files": {
-        "annai-plugin.json": "28d17140f22cf279b9759c57156bca1d5b82a1604dd90b5d0702b2c5755f6d9f",
+        "annai-plugin.json": "4e995bbb0de030066051ff55cdeeec040284be9ae59af6f687f3727d76510f03",
         "index.js": "c80889111783839c97a49bf31fc2fda63b3bbf9a60ec1b7c527b4f419e2c3a45"
       }
     },
@@ -759,7 +759,7 @@
     {
       "id": "storage-forgejo",
       "name": "Forgejo / Gitea",
-      "version": "0.4.3",
+      "version": "0.4.4",
       "description": "Backs up everything to a private repository on a Forgejo or Gitea server, such as your own or Codeberg: each backup is a commit, and only changed files are uploaded.",
       "category": "backup",
       "keywords": [],
@@ -767,7 +767,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 48048,
+      "size": 48070,
       "requires": [],
       "provides": {
         "storage-type": [
@@ -775,9 +775,9 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "30e705edb8fbe16a260595f132b08e7e8f3f626f241d5d48fce3095e43478ed3",
+        "annai-plugin.json": "b07d728e0e9f8e6866cce170f5c0b8f3a456d04c9a3eac41369f9bf3c612b06b",
         "git.js": "11f23addf56c169f4bb2ec4218509c8efebfc27c6a2fdae0dd1cf9fed83eb322",
-        "index.js": "51d44672235ea76777c3981e900707714ba629dff2ff5a640a48af23a440d541"
+        "index.js": "178af669b66439e2a85ef49cac477a022370c7c2a153fad725b35233157f5009"
       }
     },
     {

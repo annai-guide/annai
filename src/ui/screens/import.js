@@ -328,8 +328,9 @@ function fileInbox(ctx, items, trips, archives) {
   const n = items.length;
   const photos = items.filter((i) => isPhotoType(i.file.type) || isPhotoType(typeForPath(i.file.name)));
   const others = items.filter((i) => !photos.includes(i));
-  // What came, as the title and the toast name it: a noun with its count, which they hold as a value.
+  // What came, as the title and the calendar's toast name it: a noun with its count, held as a value; the plain toast says it whole.
   const what = others.length ? (n === 1 ? t`a file` : plural(n, '# file', '# files')) : plural(n, '# photo', '# photos');
+  const added = others.length ? (n === 1 ? t`Added a file` : plural(n, 'Added # file', 'Added # files')) : plural(n, 'Added # photo', 'Added # photos');
   const status = h('p', { class: 'sub', role: 'status' });
   // The dated trips, and a new conversation: with chats there could be hundreds of undated ones, and a share opens one of its own.
   /** @type {HTMLButtonElement[]} */
@@ -352,7 +353,7 @@ function fileInbox(ctx, items, trips, archives) {
       ctx.go(chat ? talkHref(id) : `#/trip/${encodeURIComponent(id)}`);
       for (const note of notes) ctx.notices.card({ tone: 'warn', title: t`A photo was kept as it is`, body: note });
       for (const problem of problems) ctx.notices.card({ tone: 'warn', title: t`A calendar file couldn't be read`, body: problem });
-      ctx.notices.toast(planned.length ? plural(planned.length, 'Added {0}, and # itinerary item from the calendar', 'Added {0}, and # itinerary items from the calendar', what) : t`Added ${what}`);
+      ctx.notices.toast(planned.length ? plural(planned.length, 'Added {0}, and # itinerary item from the calendar', 'Added {0}, and # itinerary items from the calendar', what) : added);
     } catch (e) {
       explainStorageFull(ctx, e);
       status.textContent = messageOf(e);

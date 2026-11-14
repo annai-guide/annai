@@ -141,7 +141,7 @@ export async function renderVoice(ctx) {
     h('h1', { class: 'title', text: tc('screen')`Voice` }),
     h('p', { class: 'sub', text: t`How Shiori speaks and hears you. Which voices and which transcription models she uses, and in what order, is in Settings → Models.` }),
     section(t`On or off`,
-      h('p', { class: 'sub', text: t`On: Shiori speaks aloud and listens for your answer. Off: she writes. A tap on Shiori always talks, until that talk ends; the keyboard button is how to type. With GPS on, voice is on while driving. It goes off by itself when a drive ends or headphones disconnect. The chip on the dock changes it too.` }),
+      h('p', { class: 'sub', text: t`On: Shiori speaks aloud and listens for your answer. Off: she writes. A tap on Shiori always starts a spoken exchange; the keyboard button is how to type. With GPS on, voice is on while driving. It goes off by itself when a drive ends or headphones disconnect. The chip on the dock changes it too.` }),
       mode, modeStatus,
       h('div', { class: 'row' },
         savedField(t`Listen for an answer (seconds)`, silence, () => numberIn(silence, 2, 60, t`Listen for 2 to 60 seconds.`, { whole: true, need: true }), (n) => save({ silenceSeconds: n })),

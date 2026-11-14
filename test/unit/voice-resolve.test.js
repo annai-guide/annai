@@ -62,7 +62,7 @@ test('a transcription model that fails is benched and the next one hears it; wit
   assert.deepEqual(failed, ['asr-a']);
   memory.keep(segment('s-2'));
   const none = deps(memory, { failing: ['asr-a', 'asr-b'] });
-  await assert.rejects(resolveSpeech(asked([{ type: 'speech', id: 's-2' }]), model('M2', ['text']), none.c), /nothing in the speech-in list can hear it for M2/);
+  await assert.rejects(resolveSpeech(asked([{ type: 'speech', id: 's-2' }]), model('M2', ['text']), none.c), /nothing in the speech-in list worked for M2/);
 });
 
 test("dictation's words go to every model; words written down win; a kept clip still works; nothing left is said so", async () => {
@@ -208,7 +208,7 @@ test('a failed transcription retries with the identical bytes', async () => {
   assert.deepEqual(k.encodes(), ['encode webm']);
   assert.equal(k.llm.bench.until('groq'), 0, 'it worked: not benched');
   const down = await phone({}, { flaky: { groq: 5 } });
-  await assert.rejects(down.to(await down.hear(), 'txt'), /nothing in the speech-in list can hear it/);
+  await assert.rejects(down.to(await down.hear(), 'txt'), /nothing in the speech-in list worked for/);
   assert.equal(down.llm.uploads.length, 3, 'two more tries, then the next entry');
   assert.ok(down.llm.bench.until('groq') > Date.now());
 });
@@ -231,7 +231,7 @@ test('a transcription model that refuses a file (any bad request, as whisper.cpp
 
 test("a refusal that isn't the format (WAV refused too, such as OpenAI's \"Audio file is too short\") doesn't pin WAV: the model fails as before", async () => {
   const k = await phone({}, { refuses: { groq: '*' } });
-  await assert.rejects(k.to(await k.hear(), 'txt'), /nothing in the speech-in list can hear it/);
+  await assert.rejects(k.to(await k.hear(), 'txt'), /nothing in the speech-in list worked for/);
   assert.deepEqual(k.llm.uploads.map((u) => u.mediaType), ['audio/webm', 'audio/wav']);
   assert.ok(!k.voice.wavOnly.has('groq'));
 });

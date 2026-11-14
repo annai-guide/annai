@@ -234,7 +234,7 @@ export class SimRun {
     const track = trackFrom(it);
     const tz = validZone(it?.timezone) ? /** @type {string} */ (it.timezone) : deviceZone();
     // A new trip's title, which is the user's from then on: in the screens' words.
-    const stem = String(it?.name ?? '').trim().slice(0, 150) || t`A simulated trip`;
+    const stem = String(it?.name ?? '').trim().slice(0, 150) || t`Untitled trip`;
     const title = simTitle(stem, 1);
     const { ws, store } = this.c;
     /** @type {Prepared} */

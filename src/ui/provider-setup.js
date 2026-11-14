@@ -75,7 +75,7 @@ export function setupUi(ctx, pluginId, { added } = {}) {
         if (wrong) throw new Error(wrong);
         const at = new URL(String(u)).origin;
         const who = m?.name ?? pluginId;
-        if (m?.catchAll !== true && !where.includes(at)) throw new Error(where.length ? t`${who} can't add a provider at ${at}: it sends keys only to ${list(where, 'plain')}.` : t`${who} can't add a provider at ${at}: it sends keys only to none.`);
+        if (m?.catchAll !== true && !where.includes(at)) throw new Error(where.length ? t`${who} can't add a provider at ${at}: it sends keys only to ${list(where, 'plain')}.` : t`${who} can't add a provider at ${at}: it sends keys to no address.`);
       }
       // What failed, in words a panel can show as they are: no plugin's id in them.
       const id = await ctx.llm.addProvider(pluginId, { key: typeof key === 'function' ? () => take(key) : key, roles, name, baseUrl, abilities })

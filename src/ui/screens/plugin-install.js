@@ -129,7 +129,7 @@ export async function needsOf(ctx, pkg) {
 }
 
 /** A provider's abilities' kinds, in words. @type {Record<string, string>} */
-const ABILITY_WORDS = { chat: t`chat`, transcription: t`transcription`, voice: t`voice`, realtime: t`realtime` };
+const ABILITY_WORDS = { chat: t`chat`, transcription: t`transcription`, voice: t`voice`, realtime: t`live voice` };
 /** A provider's abilities in words: "chat, transcription and voice". @param {any} desc */
 export function abilityWords(desc) {
   const kinds = [...new Set(Object.values(desc?.abilities ?? {}).map((/** @type {any} */ a) => String(a?.kind)))];
@@ -188,7 +188,7 @@ export function overLine(previous, from) {
   // Where it came from, as a value: its address, an address, a file (by name), or annai.
   const place = kind === 'host' ? value : kind === 'address' ? t`an address` : kind === 'named file' ? t`a file: ${value}` : kind === 'file' ? t`a file` : /* en */ 'annai';
   return sentences(t`Version ${v} is installed now, from ${place}, not where this one comes from.`,
-    t`Kept, its settings, keys and your choices for its names go to this one; fresh, they are removed.`);
+    t`If you keep them, its settings, keys and your choices under Names go to this one; installing fresh removes them.`);
 }
 
 /** An http(s) address or null. @param {unknown} url */
@@ -301,7 +301,7 @@ export async function renderPluginInstall(ctx) {
       : pkg.provider
         // A provider's own note, in place of the skill note: what it can't do, and where keys go.
         ? h('div', { class: 'skill-note', role: 'note' }, h('p', { text: t`It can't run anything: it is data that tells annai how to reach a model provider.` }), h('p', { text: keysNote(pkg) }))
-        : h('p', { class: 'skill-note', text: t`A skill is instructions for Shiori: she reads them when they fit what you ask, and follows what they say. annai never runs anything in it, so install skills you trust.` }),
+        : h('p', { class: 'skill-note', text: t`A skill is instructions for Shiori: she reads them when they fit what you ask, and follows what they say, so install skills you trust. annai never runs anything in it.` }),
     // A search plugin's free-tier line is its own words (L7's); the link is annai's.
     keyInfo ? h('p', { class: 'sub' }, h('span', { text: keyInfo.text, lang: shownIn }), ' ', keyInfo.url ? h('a', { href: keyInfo.url, target: '_blank', rel: 'noopener noreferrer', text: t`Get a key` }) : null) : null,
     pkg.previous ? h('p', { class: elsewhere ? 'risk-note' : 'sub', text: overLine(pkg.previous, from) }) : null,

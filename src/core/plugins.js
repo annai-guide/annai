@@ -176,7 +176,7 @@ export class PluginHost {
     const id = pkg.id;
     if (this.builtins.has(id)) {
       /* en */
-      if (pkg.kind === 'skill') throw new PluginError(id, "is a name annai uses for one of its own parts, so a skill can't have it.", { shown: t`is a name annai uses for one of its own parts, so a skill can't have it.` });
+      if (pkg.kind === 'skill') throw new PluginError(id, "is a name annai uses for one of its own parts, so a skill can't have it.", { shown: t`${id} is a name annai uses for one of its own parts, so a skill can't have it.` });
       throw new PluginError(id, /* en */ 'has the same id as a plugin built into annai', { shown: t`has the same id as a plugin built into annai` });
     }
     // A name written as annai's, or a built-in's (look-alikes show their ids).

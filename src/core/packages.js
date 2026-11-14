@@ -341,9 +341,9 @@ export async function inspectPackage(raw, { maxBytes = PLUGIN_MAX_BYTES } = {}) 
       const folder = at?.slice(0, -file.length);
       if (at) {
         const deeper = at.split('/').length > 2;
-        throw new PluginError(plugin ? 'plugin' : 'skill', /* en */ `its ${file} is in ${folder}, ${deeper ? 'nested too deep' : 'beside other files'}: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.`, { shown: deeper
+        throw new PluginError(plugin ? 'plugin' : 'skill', /* en */ `its ${file} is in ${folder}, ${deeper ? 'nested too deep' : 'with other files beside that folder'}: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.`, { shown: deeper
           ? t`its ${file} is in ${folder}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.`
-          : t`its ${file} is in ${folder}, beside other files: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.` });
+          : t`its ${file} is in ${folder}, with other files beside that folder: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.` });
       }
       throw new PluginError('plugin', /* en */ `there is no ${MANIFEST_FILE} or ${SKILL_FILE} in this package`, { shown: t`there is no ${MANIFEST_FILE} or ${SKILL_FILE} in this package` });
     }

@@ -16,7 +16,7 @@ test("a voice in the speech-out list: added, put first, and its Test plays a sam
     await waitForServiceWorker(page);
     await addProvider(page, 'Custom provider', { ability: 'Voice', name: 'Stand-in voice', url: `${speech.origin}/v1`, key: 'sk-voice-test', model: 'tts-test' });
     await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(["1. Browser voice (the browser's own; some voices go online)"]);
-    await expect(roleItems(page, 'Speech in: how Shiori hears you')).toHaveText(['1. Send audio to the model (when the model takes audio)', "2. Phone dictation (the phone's own; usually goes to Google or Apple)"]);
+    await expect(roleItems(page, 'Speech in: how Shiori hears you')).toHaveText(['1. Send audio to the model (when the model takes audio)', "2. Phone dictation (the phone's own; your voice usually goes to Google or Apple)"]);
     await expect(page.getByLabel('Add a model to main').locator('option', { hasText: 'tts-test' })).toHaveCount(0);
     await page.getByLabel('Add a model to speech-out').selectOption({ label: 'tts-test' });
     await page.getByRole('button', { name: 'Add to speech-out' }).click();

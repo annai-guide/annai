@@ -649,7 +649,7 @@ test("M6: a package over an installed one of its id says so: an update from wher
   assert.equal(overLine({ version: '1.0.0', from: at('https://trails.example/s/«key»/annai-plugin.json') }, at('https://trails.example/s/zap1a2b3c4d5e6f7g8h9/annai-plugin.json')), 'Version 1.0.0 is installed now. Installing replaces it.');
   for (const from of [at('https://other.example/kit/annai-plugin.json'), { source: 'file', file: 'kit.zip' }]) {
     assert.equal(overLine({ version: '1.0.0', from: at('https://trails.example/kit/annai-plugin.json') }, from),
-      "Version 1.0.0 is installed now, from trails.example/kit/annai-plugin.json, not where this one comes from. Kept, its settings, keys and your choices for its names go to this one; fresh, they are removed.");
+      "Version 1.0.0 is installed now, from trails.example/kit/annai-plugin.json, not where this one comes from. If you keep them, its settings, keys and your choices under Names go to this one; installing fresh removes them.");
   }
 });
 
@@ -989,8 +989,8 @@ test('the Trace shows the sound\'s context on voice.route, voice.mic and voice.s
   assert.equal(traceSummary(e('voice.mic', { firstFrameMs: null, renewed: true, ctx: null })), 'microphone never ran · sound made anew');
   assert.equal(traceSummary(e('voice.shown', { ctx })), 'back in view · sound running at 812.403 s');
   const route = { route: 'speaker', using: null, devices: ['iPhone Microphone'] };
-  assert.equal(traceSummary(e('voice.route', { ...route, ctx })), 'audio route speaker · from the devices present · iPhone Microphone · sound running at 812.403 s');
-  assert.equal(traceSummary(e('voice.route', route)), 'audio route speaker · from the devices present · iPhone Microphone', 'an older line, with no ctx');
+  assert.equal(traceSummary(e('voice.route', { ...route, ctx })), 'audio route speaker · judged by the devices present · iPhone Microphone · sound running at 812.403 s');
+  assert.equal(traceSummary(e('voice.route', route)), 'audio route speaker · judged by the devices present · iPhone Microphone', 'an older line, with no ctx');
 });
 
 test('the dock has words for every state a half shows, "One moment…" between a tap and Listening among them', async () => {

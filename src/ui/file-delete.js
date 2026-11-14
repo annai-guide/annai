@@ -25,7 +25,7 @@ export function forGoodLine(free, shown) {
   const copies = free.copies.length ? list(free.copies.map(shown)) : '';
   if (!copies) return group ? t`Also deletes the ${group} Shiori read from it.` : null;
   return group
-    ? plural(free.copies.length, 'Also deletes {0}, a copy of this file, and the {1} Shiori read from them.', 'Also deletes {0}, copies of this file, and the {1} Shiori read from them.', copies, group)
+    ? plural(free.copies.length, 'Also deletes {0}, a copy of this file, and the {1} Shiori read from this file and its copy.', 'Also deletes {0}, copies of this file, and the {1} Shiori read from this file and its copies.', copies, group)
     : plural(free.copies.length, 'Also deletes {0}, a copy of this file.', 'Also deletes {0}, copies of this file.', copies);
 }
 

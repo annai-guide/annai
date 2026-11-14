@@ -1,7 +1,7 @@
 {
   "id": "provider-local-speech",
   "name": "Local speech server",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "api": 1,
   "description": "Transcription and a voice from a server you run, such as Speaches, whisper.cpp or Kokoro.",
   "category": "speech",
@@ -24,7 +24,7 @@
       "transcription": {
         "kind": "transcription",
         "type": "openai-transcription",
-        "note": "Speaches or whisper.cpp, at the provider's address. Add models by id, or with Fetch model list. whisper.cpp's server takes only WAV, MP3 and FLAC unless started with --convert: then set its audioIn to [\"mp3\", \"flac\", \"wav\"].",
+        "note": "Speaches or whisper.cpp, at the provider's address. Add models by id, or with Fetch model list. whisper.cpp's server takes only WAV, MP3 and FLAC unless started with --convert; without it, set its audioIn to [\"mp3\", \"flac\", \"wav\"].",
         "tunables": {
           "audioIn": [
             "webm",

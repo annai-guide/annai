@@ -1,4 +1,4 @@
-import { h, crumb, t, plural, field, twoStep, linkIn, messageOf } from '../dom.js';
+import { h, crumb, t, tc, plural, field, twoStep, linkIn, messageOf } from '../dom.js';
 import { setTripStatus, removeTrip, backupState, tripMirror, scopeTitle, DRAFT_TITLE } from '../../core/scopes.js';
 import { ask } from '../ask.js';
 import { normPath } from '../../core/paths.js';
@@ -221,8 +221,8 @@ async function askAndRemove(ctx, id, scope) {
   const who = n ? list(k.who) : '';
   const kept = !n ? ''
     : navigator.onLine === false
-      ? plural(n, "{0} keeps # turn of its conversations: annai asks for it to be deleted, once you're back online.", "{0} keeps # turns of its conversations: annai asks for them to be deleted, once you're back online.", who)
-      : plural(n, '{0} keeps # turn of its conversations: annai asks for it to be deleted.', '{0} keeps # turns of its conversations: annai asks for them to be deleted.', who);
+      ? plural(n, "# turn of this conversation is kept by {0}: annai asks for it to be deleted, once you're back online.", "# turns of this conversation are kept by {0}: annai asks for them to be deleted, once you're back online.", who)
+      : plural(n, '# turn of this conversation is kept by {0}: annai asks for it to be deleted.', '# turns of this conversation are kept by {0}: annai asks for them to be deleted.', who);
   // Read before the question opens, so one question carries it. A read that fails counts as changed: a warning that isn't needed costs a line, and a missing one could hide a loss.
   const unbacked = await backupState(ctx.store, id).then((b) => b.changed, () => true);
   const sure = await ask({
@@ -297,7 +297,7 @@ function adders(ctx, id) {
       for (const problem of problems) ctx.notices.card({ tone: 'warn', title: t`A calendar file couldn't be read`, body: problem });
       const what = paths.length === 1 ? paths[0] : plural(paths.length, '# file', '# files');
       ctx.notices.toast(planned.length ? plural(planned.length, 'Added {0}, and # itinerary item from the calendar', 'Added {0}, and # itinerary items from the calendar', what)
-        : paths.length === 1 ? t`Added ${what}` : plural(paths.length, 'Added # file', 'Added # files'));
+        : paths.length === 1 ? tc('a file')`Added ${what}` : plural(paths.length, 'Added # file', 'Added # files'));
     } catch (e) {
       status.textContent = '';
       explainStorageFull(ctx, e);

@@ -38,7 +38,7 @@ test('a saved auto reads as off, in Settings too, which offers only On and Off',
   await page.goto('/#/voice');
   await expect(page.getByRole('radio', { name: 'Off', exact: true })).toBeChecked();
   await expect(page.getByRole('radio', { name: 'Auto', exact: true })).toHaveCount(0);
-  await expect(page.getByText('A tap on Shiori always talks', { exact: false })).toBeVisible();
+  await expect(page.getByText('A tap on Shiori always starts a spoken exchange', { exact: false })).toBeVisible();
 });
 
 test('an audio device disappearing with no microphone open leaves voice on and says nothing (spec §10.5)', async ({ page }) => {

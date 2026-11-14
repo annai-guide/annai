@@ -660,7 +660,7 @@ export class Halves {
       if (isForUser(w) && !this.#shown.has(w)) await this.#backstop([w]);
       return void (w.fallbacks?.length && this.kokoro.remind(w.fallbacks));
     }
-    this.#notice({ tone: 'warn', title: t`Koe's live voice couldn't start`, body: t`Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.` });
+    this.#notice({ tone: 'warn', title: t`Koe's live voice couldn't start`, body: t`Shiori answers you directly for now. The Trace says why, under Models; Koe tries again in a few minutes.` });
     this.#talkDirectly(w.fallbacks);
   }
 
@@ -942,7 +942,7 @@ export class Halves {
       this.#tapNow();
       if (again) return this.#tapFollow; // the next model may fail too
     }
-    if (this.koeState === 'live' || this.koeState === 'down') this.#notice({ tone: 'warn', title: t`Koe's live voice couldn't start`, body: t`Shiori answers you directly for now. The Trace (Models) says why; Koe tries again in a few minutes.` });
+    if (this.koeState === 'live' || this.koeState === 'down') this.#notice({ tone: 'warn', title: t`Koe's live voice couldn't start`, body: t`Shiori answers you directly for now. The Trace says why, under Models; Koe tries again in a few minutes.` });
   }
 
   /** Nothing is listening, speaking or working on this half, so a tap on it would start something and stop nothing. @param {Agent} a */
