@@ -1425,6 +1425,6 @@ test("open_trip refused in a dated trip beside tell_koe and sleep: the note isn'
 test("tell_koe says what a note may say of a booking: no field's name and nothing of its status, only what unsure lists, by what it is; tell_kokoro says nothing of it (booking-say)", () => {
   const channel = /** @type {any} */ ({});
   const [koe, kokoro] = [channelTool('koe', channel).description, channelTool('kokoro', channel).description];
-  assert.ok(kokoro.includes(" Koe says what it says, without changing what it claims. Of a booking, a note (and its for_user) names no field and says nothing of its status: the user checks what unsure lists, each by what it is, or all of a booking without unsure that is not confirmed. It returns at once."));
+  assert.ok(kokoro.includes(" Koe says what it says, without changing what it claims. Of a booking, a note (and its for_user) names no field and says nothing of its status: the user checks what unsure lists, each by what it is, or all of a booking with no unsure at all that is not confirmed. It returns at once."));
   assert.doesNotMatch(koe, /booking|unsure|status/);
 });
