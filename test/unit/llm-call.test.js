@@ -409,3 +409,102 @@ test('uploads: each photo is uploaded once and sent by id; a failed upload sends
   assert.equal(posted.filter((u) => u.endsWith('/v1/files')).length, 2);
   assert.equal(bodies.at(-1).images[0], 'bytes');
 });
+
+test("a chat photo's upload limit (UPLOAD_MS) only catches a hang: a request photo at the default 1 MiB cap goes up on 2G EDGE's uplink (the second opinion's lead 1 on openrouter-f1)", async () => {
+  const { UPLOAD_MS } = await import('../../src/core/llm/uploads.js');
+  const { DEFAULT_PHOTO_SETTINGS } = await import('../../src/core/photos.js');
+  // 8,388,608 bits in UPLOAD_MS is the slowest uplink it lets through: 70 kbit/s is 59% of the 118.4 kbit/s published for EDGE (EGPRS multislot
+  // class 10, two uplink slots at MCS-9; the 1-slot 59.2 kbit/s would need 142 s). A limit that cuts the link a photo needs is no hang guard: the
+  // inline photo is a third larger and would stall there too.
+  const slowest = (DEFAULT_PHOTO_SETTINGS.request.maxBytes * 8) / (UPLOAD_MS / 1000);
+  assert.ok(slowest <= 70_000, `a 1 MiB photo needs ${Math.round(slowest)} bit/s up to finish in ${UPLOAD_MS / 1000} s`);
+});
+
+test("a photo's upload has a time limit of its own (UPLOAD_MS): a stall ends it, the photo goes in the request and uploads stop there; a Stop still stops (review of openrouter-f1, L1)", async () => {
+  const { Workspace } = await import('../../src/core/workspace.js');
+  const { ensureBaseScopes } = await import('../../src/core/scopes.js');
+  const { Uploads, UPLOAD_MS } = await import('../../src/core/llm/uploads.js');
+  const ws = new Workspace(createMemoryStore());
+  await ensureBaseScopes(ws);
+  // AbortSignal.timeout can't be driven by fake timers: ask for its limit, make it short, and keep the signal it returns.
+  const real = AbortSignal.timeout;
+  /** @type {number[]} */
+  const asked = [];
+  /** @type {AbortSignal[]} */
+  const made = [];
+  AbortSignal.timeout = (ms) => { asked.push(ms); const s = real.call(AbortSignal, 20); made.push(s); return s; };
+  try {
+    /** @type {any[]} */
+    const got = [];
+    /** @type {any[]} */
+    const bodies = [];
+    const t = httpType([{ type: 'text', text: 'ok' }, { type: 'stop', reason: 'end' }], {
+      uploadRequest: (/** @type {any} */ c) => { const f = new FormData(); f.set('file', new Blob([c.bytes], { type: c.mediaType }), c.name); return { url: `${c.endpoint.baseUrl}/v1/files`, headers: {}, body: f }; },
+      readUpload: (/** @type {any} */ j) => ({ id: j.id }),
+      build: (/** @type {any} */ c) => ({ url: `${c.endpoint.baseUrl}/v1/chat`, headers: {}, body: { images: c.request.messages[0].parts.map((/** @type {any} */ p) => p.fileId ?? 'bytes') } }),
+    });
+    // An upload that is accepted and never answered ends only when its signal does (a signal that isn't the limit's fails at once, not after a hang).
+    const stalled = async (/** @type {string} */ url, /** @type {any} */ init) => {
+      if (!url.endsWith('/v1/files')) {
+        bodies.push(JSON.parse(init.body));
+        return new Response('');
+      }
+      got.push(init.signal);
+      if (!made.includes(init.signal)) throw new Error('the upload has no time limit: a stall would wait for ever');
+      return new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(init.signal.reason)));
+    };
+    const withPhoto = { messages: [{ role: 'user', parts: [{ type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1' }, { type: 'image', mediaType: 'image/webp', data: 'AAAB', hash: 'h2' }] }] };
+    const m = model({ input: ['text', 'image'] });
+    const uploads = new Uploads(ws);
+    await callOnce({ type: t, endpoint: endpoint(), model: m, key: 'k', request: /** @type {any} */ (withPhoto), fetch: /** @type {any} */ (stalled), uploads });
+    assert.deepEqual(asked, [UPLOAD_MS], 'one upload was tried, with its own limit: the second photo is not tried once uploads are off');
+    assert.equal(got.length, 1);
+    assert.equal(got[0], made[0], 'the fetch got the limit it was made with');
+    assert.deepEqual(bodies.map((b) => b.images), [['bytes', 'bytes']], 'both photos went in the request');
+    assert.equal(uploads.isOff('pv-1/chat'), true);
+    // A turn passes its own signal (loop.js), which never fires here: the limit still ends the stall, through the join. A throw inside the stub
+    // is a failed upload too, so whether the limit reached the upload is recorded there and asserted outside it.
+    made.length = 0;
+    bodies.length = 0;
+    const joined = new Uploads(ws);
+    /** @type {boolean[]} */
+    const cut = [];
+    const turn = new AbortController();
+    const slow = async (/** @type {string} */ url, /** @type {any} */ init) => {
+      if (!url.endsWith('/v1/files')) {
+        bodies.push(JSON.parse(init.body));
+        return new Response('');
+      }
+      return new Promise((_, reject) => {
+        init.signal.addEventListener('abort', () => { cut.push(true); reject(init.signal.reason); });
+        setTimeout(() => reject(new Error('the limit did not reach the upload')), 1000);
+      });
+    };
+    await callOnce({ type: t, endpoint: endpoint(), model: m, key: 'k', request: /** @type {any} */ (withPhoto), fetch: /** @type {any} */ (slow), uploads: joined, signal: turn.signal });
+    assert.deepEqual(cut, [true], 'the limit ends the upload of a call that passes its own signal, as every turn does');
+    assert.deepEqual(bodies.map((b) => b.images), [['bytes', 'bytes']]);
+    assert.equal(joined.isOff('pv-1/chat'), true);
+    asked.length = 0;
+    // A Stop during the upload is a Stop: not a failed upload, which would turn uploads off and send the photo.
+    asked.length = 0;
+    made.length = 0;
+    bodies.length = 0;
+    const stop = new AbortController();
+    const kept = new Uploads(ws);
+    /** @type {boolean[]} */
+    const reached = [];
+    // The Stop is tapped inside the fetch, and whether the fetch's own signal knows it is recorded right then: the limit (20 ms here) would end
+    // the request soon anyway, so only the join with the caller's signal ends it at once. The assert is outside the stub, where a throw is a cancel.
+    const stoppable = async (/** @type {string} */ _url, /** @type {any} */ init) => new Promise((_, reject) => {
+      init.signal.addEventListener('abort', () => reject(init.signal.reason));
+      stop.abort();
+      reached.push(init.signal.aborted);
+    });
+    await assert.rejects(callOnce({ type: t, endpoint: endpoint(), model: m, key: 'k', request: /** @type {any} */ (withPhoto), fetch: /** @type {any} */ (stoppable), uploads: kept, signal: stop.signal }), (/** @type {any} */ e) => e.kind === 'cancelled');
+    assert.deepEqual(reached, [true], 'a Stop ends the upload at once, not at its time limit');
+    assert.equal(kept.isOff('pv-1/chat'), false, 'a Stop says nothing about uploads');
+    assert.deepEqual(bodies, []);
+  } finally {
+    AbortSignal.timeout = real;
+  }
+});

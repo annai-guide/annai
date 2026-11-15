@@ -1,8 +1,8 @@
 import { callOnce } from './call.js';
-import { ProviderError, explain, sameOrigin, noRedirect } from './contract.js';
+import { ProviderError, typeError, explain, sameOrigin, noRedirect } from './contract.js';
 import { LEVELS, nearestLevel } from './reasoning.js';
 import { fromBase64 } from '../bytes.js';
-import { TEST_UPLOAD, deleteUpload, sweepUploads } from './uploads.js';
+import { TEST_UPLOAD, REQUEST_MS, deleteUpload, sweepUploads } from './uploads.js';
 import { t } from '../l10n.js';
 import { sentences } from '../intl.js';
 
@@ -28,7 +28,7 @@ const room = (model) => Math.min(4096, model.maxOutput ?? 4096);
  * @typedef {{ type: import('./contract.js').EndpointType, endpoint: import('./config.js').Endpoint, model: import('./config.js').Model,
  *   key: string | null, fetch?: import('./call.js').Fetch, probe?: (url: string) => Promise<boolean>, firstOutputMs?: number,
  *   role?: { id: string, level: string }, uploads?: import('./uploads.js').Uploads }} TestCase  role: a role asking this model at a level of its own (main, koe-classic or utility);
- *   uploads: the endpoints' uploads, turned off where annai can't delete the test photo or read the list, and on again where Test passes
+ *   uploads: the endpoints' uploads, turned off where Test's own upload fails, or annai can't delete the test photo or read the list, and on again where Test passes
  *   detail: what the step found, in the screens' language
  */
 
@@ -116,11 +116,13 @@ export async function testModel(c) {
 }
 
 /**
- * Uploads the test photo, expiring in an hour, the shortest a provider allows (spec §9.8). Where the provider keeps files until they
- * are deleted, annai then deletes it by the id the upload gave, as it will delete each photo: a key that can't (a refusal, or a 404 for
- * the file it just made) sends photos in each request until annai restarts, or a new key or address, or a Test that passes; a delete that
- * gets no answer, a 408, a 429 or a server error says nothing about the key, so photos stay on and the sweep deletes the test photo with
- * the others. A delete that passes reads the list once, as a sweep does (Uploads.listed). @param {TestCase} c @returns {Promise<TestStep>}
+ * Uploads the test photo, expiring in an hour, the shortest a provider allows (spec §9.8). An upload that fails turns uploads off there,
+ * as a call's does: photos go in each request until annai restarts, or a new key or address, or a Test that passes. Where the provider
+ * keeps files until they are deleted, annai then deletes the photo by the id the upload gave, as it will delete each photo: a key that
+ * can't (a refusal, a 404 for the file it just made, or any other 4xx but a 408 or a 429) turns them off the same way; a delete that
+ * gets no answer, a 408, a 429 or a server error says nothing about the key, and the upload worked, so photos stay on and the sweep
+ * deletes the test photo with the others. A delete that passes reads the list once, as a sweep does (Uploads.listed).
+ * @param {TestCase} c @returns {Promise<TestStep>}
  */
 async function testUpload({ type, endpoint, model, key, fetch: get = (url, init) => fetch(url, init), uploads }) {
   /** @type {{ id: string }} */
@@ -132,13 +134,24 @@ async function testUpload({ type, endpoint, model, key, fetch: get = (url, init)
       endpoint, key, tunables: { ...endpoint.tunables, ...model.tunables }, bytes: fromBase64(TEST_IMAGE), mediaType: 'image/png', name: TEST_UPLOAD, expiresInSeconds: 3600,
     });
     sameOrigin(endpoint, r.url);
-    res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, redirect: 'manual' });
+    // The sweeps' time limit for each list or delete request (REQUEST_MS): a stall ends in no answer, as a failed connection does (a 2xx's body included; a failed
+    // answer's body that stalls or breaks off is read as empty, and its status decides).
+    res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, redirect: 'manual', signal: AbortSignal.timeout(REQUEST_MS) });
     noRedirect(res, endpoint);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    up = /** @type {NonNullable<typeof type.readUpload>} */ (type.readUpload)(await res.json());
+    // A failed answer is read as the first step reads it (typeError: the protocol's and the provider's reading first; a body that breaks off is read as empty), but a 408,
+    // which is no answer. A 402, a 429 or a server error says nothing about the key. Unlike after the delete below, where the upload worked, uploads go off for each.
+    if (!res.ok) throw res.status === 408 ? new ProviderError('unreachable', 'HTTP 408') : typeError(type, res.status, await res.text().catch(() => ''), res.headers);
+    // A body that breaks off or stalls is no answer, as the sweep's list reads it; only a body that arrived and isn't an upload is the key's.
+    const body = await res.text().catch(() => {
+      throw new ProviderError('unreachable', 'no answer');
+    });
+    up = /** @type {NonNullable<typeof type.readUpload>} */ (type.readUpload)(JSON.parse(body));
   } catch (e) {
-    // A redirect, or no answer at all, is not the key's: it says so in the words every step uses.
-    const said = e instanceof ProviderError && e.kind === 'redirect' ? e : !res && !(e instanceof ProviderError) ? new ProviderError('unreachable', 'no answer') : null;
+    // The key's words are for an answer that refused the key or wasn't an upload. A redirect, no answer (no reply, a stall, a 2xx body that broke off, a 408), a 402, a 429
+    // and a server error are not the key's: each but no answer is read as the first step reads it; no answer says annai couldn't reach the address.
+    const said = e instanceof ProviderError ? (['redirect', 'unreachable', 'rate', 'credit', 'overloaded', 'server'].includes(e.kind) ? e : null) : !res ? new ProviderError('unreachable', 'no answer') : null;
+    // As a call's failed upload does, so the words are true: photos go in each request until annai restarts, or a new key or address, or a Test that passes.
+    uploads?.off(endpoint.id);
     return { step: 'upload', ok: false, detail: sentences(said ? explain(said) : t`Uploading photos didn't work with this key.`, t`annai will send photos in each request instead.`) };
   }
   if (!type.deleteUploadRequest) {

@@ -749,9 +749,9 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### Summaries pick their language two different ways when no words decide it
 - **Kind:** deferred.
-- **What the user sees:** nothing on screen today: compaction and Shiori's own answers fall back to the phone's language (one rule since timeline stage 7), the recap to the screens' language. Compaction also counts annai's "(files)" placeholder as words the user wrote.
+- **What the user sees:** nothing on screen today: with nothing chosen in Settings → Languages, compaction and Shiori's own answers fall back to the phone's language (one rule since timeline stage 7), and the recap to the screens' language; with languages chosen, all three take the first listed. Compaction also counts annai's "(files)" placeholder as words the user wrote.
 - **Why:** each rule was written for its own place; one answer to one question belongs in one place (RULES #10).
-- **Revisit when:** the next version: one shared function for "the language the user wrote in", used by both, with annai's placeholders left out everywhere.
+- **Revisit when:** the next version: one shared function for "the language the user wrote in", used by compaction and the recap, with annai's placeholders left out everywhere.
 
 ### A live Koe's line before a tool has no language rule
 - **Kind:** deferred.
@@ -808,6 +808,18 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** before stage 7 those watches fired only while the no-trip conversation was open. `me` is never open now, so looking at them takes a new rule in live mode, for a set of watches that can't grow (none can be set there any more).
 - **Revisit when:** one turns up in the Trace, or the user misses one (the user: "Revisit if one turns up in the Trace or you miss one").
 - **Approved:** 2026-11-14, the user's pick "Known limitation (Recommended)", on the final review of timeline stage 7.
+
+### A 408 is read as a bad request
+- **Kind:** deferred.
+- **What the user sees:** if a provider answers 408 (request timeout), annai's reading of failed answers has no row for it (`kindOf`, src/core/llm/contract.js:309-319), so Test's first step and a call say the provider didn't accept the request ("Check the tunables"); Test's own photo-upload step keeps its 408 row and says annai couldn't reach the address. No real 408 answer is in hand.
+- **Why:** reading a 408 as no answer everywhere would also bench the model (fallback.js gives a bad request no wait, other kinds a cool-down), so it is a choice, not a one-line fix. Found by the second opinion on openrouter-f1's last round (2026-11-15).
+- **Revisit when:** the next version, or the first real 408 in a Trace.
+
+### Two of Test's upload readings have no test of their own
+- **Kind:** deferred.
+- **What the user sees:** nothing. OpenRouter's free-model limit read through its own layered reading (a 402 or 429 "free-models-per-day" says too many requests) and Anthropic's out-of-credit 400 (says out of credit) on Test's photo-upload step are right by probe and by reading, but no test row pins them on that step.
+- **Why:** the agreed stop rule for openrouter-f1's last review (2026-11-15): a test gap is written down once and the branch merges.
+- **Revisit when:** the next version: two rows in test/unit/llm-check.test.js, the type built as `adjusted()` builds it for OpenRouter, and Anthropic's `classify`.
 
 ### annai's photos can outlive 48 hours at OpenRouter
 - **Kind:** known limitation.
