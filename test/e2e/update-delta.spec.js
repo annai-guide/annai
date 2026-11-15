@@ -26,6 +26,20 @@ const PAGES = ['/', '/index.html', '/src/ui/grounding.html'];
 /** Each text file's brotli form, made once for its bytes (quality 11, as a release's), by path. @type {Map<string, { own: Buffer, br: Buffer }>} */
 const packed = new Map();
 
+// Made before a test's first page load, not during it: the shell's 292 text files (3.3 MiB) took 3.0 s to pack in one process
+// at a load average of 60 to 90 (2026-11-14), and a full run's workers each pack them at once, so packing inside the first load's
+// 10 s wait ran past it ("Opening annai…" still showing). 120 s: 16 workers packing at once on 16 cores already busy is about 50 s
+// at that rate; twice that, rounded up.
+test.beforeAll(async () => {
+  test.setTimeout(120_000);
+  for (const path of [...SHELL, ...PAGES, '/shell.json']) {
+    const file = path.endsWith('/') ? `${path}index.html` : path;
+    if (!TEXT.test(file) || packed.has(file)) continue;
+    const own = await readFile(new URL(`.${file}`, root)).catch(() => null);
+    if (own) packed.set(file, { own, br: brotli(own) });
+  }
+});
+
 /**
  * The repository served as a release is (scripts/serve.mjs, with its .br forms), but for the files in `changed`; each request's
  * path and the bytes sent for it are logged.
