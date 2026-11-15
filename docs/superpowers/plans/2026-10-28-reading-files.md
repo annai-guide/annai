@@ -909,7 +909,7 @@ Expected: prints nothing (pdf-pages is new; no released plugin's files changed).
 
 - [ ] **Step 5: The manual, local-only check (not in CI, not in the repo)**
 
-Ask the coordinator for a real booking PDF from the user (the coordinator asks; a file is kept under the scratch folder only, never committed, never sent to Step or any outside service). On a local model on halo that sees photos and reads no PDFs, with PDF pages installed: Shiori reads the PDF's pages and writes the booking with the right flight times. On the user's iPhone (the user, at their pace): Safari's own preview of a PDF, and PDF pages drawing one. Record what was seen in `.superpowers/evidence/reading-files/manual.md`, with no content of the user's file.
+Ask the coordinator for a real booking PDF from the user (the coordinator asks; a file is kept under the scratch folder only, never committed, never sent to Step or any outside service). On a local model that sees photos and reads no PDFs, with PDF pages installed: Shiori reads the PDF's pages and writes the booking with the right flight times. On the user's iPhone (the user, at their pace): Safari's own preview of a PDF, and PDF pages drawing one. Record what was seen in `.superpowers/evidence/reading-files/manual.md`, with no content of the user's file.
 
 - [ ] **Step 6: Commit**
 

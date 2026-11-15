@@ -274,11 +274,11 @@ export async function addTranscription(page, standIn) {
   await byHand.or(remove).first().waitFor({ timeout: 30_000 });
   if (await byHand.isVisible()) await byHand.click();
   await remove.waitFor({ timeout: 30_000 });
-  await page.getByLabel('Name', { exact: true }).fill('Halo speech');
+  await page.getByLabel('Name', { exact: true }).fill('Local speech');
   await page.getByLabel('Address', { exact: true }).fill(`${standIn}/asr/v1`);
   await page.getByLabel('API key', { exact: true }).fill('sk-test-asr');
   await page.getByRole('button', { name: 'Save' }).click();
-  await page.getByRole('heading', { level: 1, name: 'Halo speech' }).waitFor();
+  await page.getByRole('heading', { level: 1, name: 'Local speech' }).waitFor();
   await page.getByLabel('API key', { exact: true }).and(page.locator('[placeholder^="saved"]')).waitFor();
   const panel = page.getByRole('region', { name: 'Transcription', exact: true });
   const use = panel.getByLabel('Use Transcription');

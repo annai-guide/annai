@@ -526,7 +526,7 @@ test("a PDF has longer to be told than a photo to be described: a telling that t
   assert.match(read.data.content, /What it says \(told by model-u, as you can't read PDFs\): Hotel booking: check-in 3 PM\.$/);
 });
 
-test('a PDF read earlier does not close the conversation to a model that reads none: it goes as a note (the second emulator pass: halo, "type file is not supported")', async (t) => {
+test('a PDF read earlier does not close the conversation to a model that reads none: it goes as a note (the second emulator pass: a local server, "type file is not supported")', async (t) => {
   useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'read', input: { path: '/trip/files/booking.pdf' } }] }, say('Read it.')], [say('Anything else?')]], { models: [{ input: ['text', 'image', 'pdf'] }, { input: ['text', 'image'] }] });
   await k.ws.write(k.trip, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
