@@ -34,9 +34,10 @@ export const BOOKING_FILE = /^\/bookings\/[^/]+\.json$/;
 
 /**
  * A plan item's `fixed`, as a model is shown it beside the item: what it means, not the field's name, which she translated and said
- * (「(固定)」 beside an item, Sonnet and Koe, 2026-11-14). The stored field keeps its name. @param {unknown} fixed
+ * (「(固定)」, Sonnet and Koe, 2026-11-14). A flexible item gets no words: given "can be moved", she said so unasked (the user's pick,
+ * 2026-11-14: only say what can't move). The stored field keeps its name. @param {unknown} fixed
  */
-export const fixedWords = (fixed) => /* en */ (fixed ? "can't be moved" : 'can be moved');
+export const fixedWords = (fixed) => /* en */ (fixed ? "can't be moved" : '');
 
 /** A booking's title on the Plan when Shiori gave none: its kind's word. */
 const KIND_WORDS = /** @type {Record<string, string>} */ ({ flight: t`Flight`, lodging: t`Stay`, car: t`Car`, rail: t`Train`, event: t`Event`, restaurant: t`Restaurant`, other: t`Booking` });

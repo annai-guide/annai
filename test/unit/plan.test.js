@@ -30,10 +30,10 @@ const bookings = [
 ];
 const rows = () => planRows(items, bookings, { fallbackTz: NY });
 
-test("fixedWords: what a plan item's fixed means, as a model is shown it; an item with no fixed field can be moved", () => {
+test("fixedWords: what a plan item's fixed means, as a model is shown it; a flexible item, or one with no fixed field, gets no words", () => {
   assert.equal(fixedWords(true), "can't be moved");
-  assert.equal(fixedWords(false), 'can be moved');
-  assert.equal(fixedWords(/** @type {any} */ ({}).fixed), 'can be moved');
+  assert.equal(fixedWords(false), '');
+  assert.equal(fixedWords(/** @type {any} */ ({}).fixed), '');
 });
 
 test('bookingRef: with or without /trip, only a booking record', () => {

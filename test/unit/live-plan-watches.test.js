@@ -106,7 +106,7 @@ test('off plan: far from a flexible item 10 min into its time; or stopped 20 min
   assert.equal(PLAN.check(offPlan, here(RIVER_INN, at('09:54')), {}), null);
   assert.equal(PLAN.check(offPlan, here(off(BIXBY, 0, -2000), at('09:56')), {}), null);
   assert.equal(PLAN.check(offPlan, here(RIVER_INN, at('09:56')), {})?.text,
-    'Off plan: "Bixby Bridge photo stop" (can be moved) is planned for 09:45–10:05 at Bixby Creek Bridge, and the user is 14.1 km away. The replanning skill says what to do');
+    'Off plan: "Bixby Bridge photo stop" is planned for 09:45–10:05 at Bixby Creek Bridge, and the user is 14.1 km away. The replanning skill says what to do');
   assert.equal(PLAN.check(offPlan, here(RIVER_INN, at('09:56'), { fired: (id) => id === 'plan:bixby:arrived' }), {}), null);
   const linger = find('plan:linger').when;
   const mem = /** @type {Record<string, any>} */ ({});

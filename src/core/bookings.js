@@ -11,12 +11,6 @@ import { validZone, instantAt, isoInZone, offsetMinutes } from './time.js';
 /** What Shiori is told to do with a booking she reads (a hand-over, and files added on the trip screen). */
 /* en */ export const FILE_BOOKING = "If one is a booking (a confirmation, ticket, Wallet pass or reservation), read it, write a booking in /trip/bookings/ with source set to its path and unsure listing just the fields you are not sure of (an empty list when you are sure of them all), add the fixed plan items it implies with booking set to the booking's path, and ask only about the fields in unsure.";
 
-/**
- * A booking's `status`, as a model is shown it: what it means, not the word, which she translated (「未確認」, Koe, 2026-11-14). As in
- * checkOf, anything but confirmed is unchecked. The stored value keeps its word. @param {unknown} status
- */
-export const statusWords = (status) => /* en */ (status === 'confirmed' ? 'checked by the user' : 'not checked by the user yet');
-
 /** A booking's own fields, besides those in its `fields` object, that `unsure` may name. */
 const TOP = ['title', 'start', 'end', 'place', 'confirmation', 'cost'];
 
@@ -35,6 +29,15 @@ export function checkOf(b) {
   const fields = [];
   for (const k of b.unsure) if (typeof k === 'string' && !fields.includes(k) && has(k)) fields.push(k);
   return { whole: false, fields };
+}
+
+/**
+ * What a model is shown of a booking's check, beside it: what the screens mark (checkOf), never the `status` word, which Koe translated
+ * (「未確認」 on bookings with nothing to check, 2026-11-14). Nothing when nothing is marked, as for a confirmed one. @param {any} b
+ */
+export function checkWords(b) {
+  const c = checkOf(b);
+  return /* en */ (c.whole || c.fields.length ? 'not sure it was read right' : '');
 }
 
 /** A trip's booking record. @param {string} scope @param {string} path */

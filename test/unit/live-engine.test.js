@@ -175,7 +175,7 @@ test('arrived at a plan place after a 2 min stop; driving past does not count; t
   assert.equal(k.agent.wakes.length, 0);
   await k.drive(off(BIXBY, 0, -3000), BIXBY, at('09:06:05'), at('09:09'));
   await k.stay(BIXBY, at('09:09:10'), at('09:12'));
-  assert.deepEqual(k.agent.wakes.map((w) => w.text), ['Plan: you arrived at Bixby Creek Bridge for "Bixby Bridge photo stop" (can be moved, 09:45).']);
+  assert.deepEqual(k.agent.wakes.map((w) => w.text), ['Plan: you arrived at Bixby Creek Bridge for "Bixby Bridge photo stop" (09:45).']);
   // An arrival is a cue for her, not a reminder: its fallback is only for when no model answers (emulator pass, spec §11.3).
   assert.deepEqual(k.agent.wakes[0].fallbacks.map((/** @type {any} */ f) => f.cue), [true]);
   const [fired] = await k.events(['trigger.fired']);

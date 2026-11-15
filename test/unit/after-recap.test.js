@@ -47,7 +47,7 @@ test('the recap is written from the journey in words and lists, never the raw tr
   assert.match(text, /stayed\tHearst Castle/);
   assert.match(text, /2026-11-27 09:35\tShiori \(card\)\tBixby Creek Bridge: Built in 1932\./);
   assert.match(text, /2026-11-27 09:36\ttraveler\tSam wants to see the sea lions\./);
-  assert.match(text, /## The plan\nday\ttime\titem\tplace\ttiming\tvisited\n/);
+  assert.match(text, /## The plan\nday\ttime\titem\tplace\tconstraint\tvisited\n/);
   assert.match(text, /Hearst Castle tour\tHearst Castle\tcan't be moved\tno/);
   assert.match(text, /\/trip\/files\/2026-11-27-1000\.jpg/);
   assert.match(text, /The fog lifted at ten\./);

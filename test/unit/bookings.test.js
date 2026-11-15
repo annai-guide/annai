@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isBookingPath, shioriBooking, checkOf, statusWords } from '../../src/core/bookings.js';
+import { isBookingPath, shioriBooking, checkOf, checkWords } from '../../src/core/bookings.js';
 
 const b = { id: 'hotel', kind: 'lodging', status: 'unverified', source: '/files/hotel.pdf', unsure: [] };
 
@@ -31,10 +31,12 @@ test('shioriBooking: new ones unverified, never confirmed by her; her change to 
   assert.equal(shioriBooking(b, 'text'), 'text');
 });
 
-test("statusWords: what a booking's status means, as a model is shown it; anything but confirmed is unchecked, as checkOf reads it", () => {
-  assert.equal(statusWords('confirmed'), 'checked by the user');
-  assert.equal(statusWords('unverified'), 'not checked by the user yet');
-  assert.equal(statusWords(undefined), 'not checked by the user yet');
+test("checkWords: a booking's check as a model is shown it, from what the screens mark (checkOf); nothing when nothing is marked", () => {
+  assert.equal(checkWords({ status: 'confirmed' }), '');
+  assert.equal(checkWords({ status: 'unverified', unsure: [] }), '', 'one of hers she is sure of');
+  assert.equal(checkWords({ status: 'unverified', unsure: ['seat'], fields: { seat: '12A' } }), 'not sure it was read right');
+  assert.equal(checkWords({ status: 'unverified' }), 'not sure it was read right', 'from before fields were marked: checked whole');
+  assert.equal(checkWords(undefined), '');
 });
 
 test('checkOf: an old unverified booking is marked whole; an old confirmed one not at all; a new one by its unsure fields', () => {
