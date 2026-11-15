@@ -35,21 +35,28 @@ export function checkOf(b) {
  * A booking's parts as a model is told them: by what each is, never the field's name, which a model says, translated (「未確認」, 2026-11-14).
  * Its times by its kind, as people say them (the user's words, 2026-11-14: "how people will actually say"): the screens' own words for a flight
  * and a stay (Departs, Arrives; Check-in, Check-out), and for a car and a train the Plan's (Pick up, Return; Arrive), though the booking
- * screen says Starts and Ends there. A key of its own or of `fields` as the words it is made of, unless those mislead.
+ * screen says Starts and Ends there. Only annai's own words, from its own tables: a key of `fields` is the booking's text, which can hold a
+ * line break, brackets or 40,000 characters, so a key annai has no words for is one phrase and never itself (booking-say's fix 3).
  */
 /* en */ const TIME_PARTS = /** @type {Record<string, [string, string]>} */ ({
   flight: ['the departure time', 'the arrival time'], rail: ['the departure time', 'the arrival time'],
   lodging: ['the check-in time', 'the check-out time'], car: ['the pick-up time', 'the return time'],
 });
 /* en */ const PARTS = /** @type {Record<string, string>} */ ({
-  title: 'the name', confirmation: 'the confirmation number', flight: 'the flight number', from: 'where it leaves from', to: 'where it arrives',
-  class: 'the cabin', nights: 'the number of nights', pickup: 'the pick-up place', dropoff: 'the drop-off place', party: 'the party size',
+  title: 'the name', confirmation: 'the confirmation number', place: 'the place', cost: 'the cost', // its own fields (TOP)
+  flight: 'the flight number', from: 'where it leaves from', to: 'where it arrives', class: 'the cabin', nights: 'the number of nights',
+  pickup: 'the pick-up place', dropoff: 'the drop-off place', party: 'the party size',
+  // The names annai files into `fields` itself (EXTRAS).
+  notes: 'the notes', room: 'the room', phone: 'the phone number', guests: 'the guests', passengers: 'the passengers', airline: 'the airline',
+  company: 'the company', seat: 'the seat', flights: 'the flights',
 });
+/** What any other key is: its text is the booking's, and never goes into annai's words. */
+/* en */ const OTHER = 'some other detail';
 
 /** One part of a booking in words. @param {string} key @param {unknown} kind */
 function partWords(key, kind) {
   /* en */ if (key === 'start' || key === 'end') return (TIME_PARTS[String(kind)] ?? ['the start time', 'the end time'])[key === 'start' ? 0 : 1];
-  return Object.hasOwn(PARTS, key) ? PARTS[key] : `the ${key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').trim().toLowerCase()}`;
+  return Object.hasOwn(PARTS, key) ? PARTS[key] : OTHER;
 }
 
 /**
@@ -61,7 +68,7 @@ export function checkWords(b) {
   const c = checkOf(b);
   /* en */ if (c.whole) return 'not sure it was read right';
   if (!c.fields.length) return '';
-  const parts = c.fields.map((k) => partWords(k, b.kind));
+  const parts = [...new Set(c.fields.map((k) => partWords(k, b.kind)))]; // the other-detail phrase once, however many keys
   /* en */ return `not sure ${parts.length > 1 ? `${parts.slice(0, -1).join(', ')} or ${parts.at(-1)}` : parts[0]} was read right`;
 }
 
@@ -73,7 +80,9 @@ export function isBookingPath(scope, path) {
 /**
  * What a model reads after a booking's file, apart from its JSON: the check the screens mark, in words (checkWords), so she never works it out
  * from the fields (a missing `unsure` and an empty one read alike to a model). Nothing when nothing is marked or it is no booking's record. Used
- * by every read of a booking's file: the files plugin's `read` and `read_trip`. @param {string} scope @param {string} path @param {string} text its text
+ * by the two tools that show a booking's file whole, the files plugin's `read` and `read_trip`; not by a write, a patch or a search (their
+ * results show no file, so a booking she wrote with `unsure` comes back with no note: FILE_BOOKING and her instructions say what she asks then,
+ * and their no-note line is of a booking she read). @param {string} scope @param {string} path @param {string} text its text
  */
 export function checkNote(scope, path, text) {
   if (!isBookingPath(scope, path)) return '';

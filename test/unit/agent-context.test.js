@@ -421,10 +421,10 @@ test("her instructions' plan item and booking are records of their formats, whic
   assert.ok(CORE.includes(`kind: ${BOOKING_SCHEMA.properties.kind.enum.slice(0, -1).join(', ')} or ${BOOKING_SCHEMA.properties.kind.enum.at(-1)};`), "the kinds are the format's");
 });
 
-test("her instructions say what of a booking the user is asked to check: only what annai marks, the note read puts after it, by what it is; never a field's name or the status; none of a booking's own fields or shapes (booking-say's fix 2: the check comes in the read result, whose test is in plugin-files)", async () => {
+test("her instructions say what of a booking the user is asked to check: only what annai marks, the note read puts after it, by what it is, of a booking she read; never a field's name or the status; none of a booking's own fields or shapes (booking-say's fix 2 and 3: the check comes in the read result, whose test is in plugin-files)", async () => {
   const { checkWords } = await import('../../src/core/bookings.js');
   const line = CORE.split('\n').find((l) => l.startsWith('- What you ask the user to check of a booking'));
-  assert.equal(line, "- What you ask the user to check of a booking is only what annai marks: the note read puts after it says what, each said by what it is (in the example, the check-out time), never by a field's name. With no note, nothing is marked. Never tell them a booking's status, in any words.");
+  assert.equal(line, "- What you ask the user to check of a booking is only what annai marks: the note read puts after it says what, each said by what it is (in the example, the check-out time), never by a field's name. A booking you read with no note has nothing marked. Never tell them a booking's status, in any words.");
   // It follows the format's lines, and its example is the part the views name for the example booking (bookings.js checkWords).
   const lines = CORE.split('\n');
   assert.ok(lines[lines.indexOf(line) - 1].startsWith('- Write each booking with unsure naming just the fields you are not sure of'));
@@ -432,6 +432,10 @@ test("her instructions say what of a booking the user is asked to check: only wh
   assert.equal(checkWords(booking), 'not sure the check-out time was read right');
   // The shapes (no unsure key, an empty unsure) are the program's to tell, in the note: the words name neither (fix 1's two wordings each failed one).
   assert.doesNotMatch(line, /no unsure|without unsure|not confirmed|unsure: \[\]/);
+  // No note is said of a booking she read, never of every booking: a write, a patch or a search result has none, and in a hand-over she writes
+  // a booking with unsure and no read (booking-say's fix 3; line 23 tells her to ask about those).
+  assert.match(line, /A booking you read with no note has nothing marked\./);
+  assert.doesNotMatch(line, /(?<!booking you read )with no note, nothing is marked/i);
 });
 
 test("Koe's instructions, chat and live, say a booking's status is annai's own and never the hotel's word: never told, and whether a booking is confirmed is Kokoro's to answer (booking-say's runs: \"its status is unverified\" for \"Is my hotel booking confirmed?\")", async () => {

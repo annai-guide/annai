@@ -1,5 +1,5 @@
 {
-  "build": "435c1e7bbdfc",
+  "build": "463aecaf8ad3",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -40,7 +40,7 @@
     "/src/core/agent/compaction.js": "2a22ce610853",
     "/src/core/agent/context.js": "421971abd69a",
     "/src/core/agent/halves.js": "f9ee63b698cc",
-    "/src/core/agent/instructions.js": "99a02b4f8a49",
+    "/src/core/agent/instructions.js": "8790067e9f5d",
     "/src/core/agent/listen.js": "ace64ee6f6c6",
     "/src/core/agent/log.js": "be1f6eedd6f8",
     "/src/core/agent/loop.js": "801e0f3a55f4",
@@ -62,7 +62,7 @@
     "/src/core/backup.js": "644832139162",
     "/src/core/backup-auto.js": "64ed2407b9ec",
     "/src/core/backup-targets.js": "91309d766eea",
-    "/src/core/bookings.js": "6b3a3eedd6be",
+    "/src/core/bookings.js": "fa618a16c9a1",
     "/src/core/bytes.js": "b935dfe86a7a",
     "/src/core/catalog-facts.js": "3b27021930f3",
     "/src/core/crc32.js": "0bfef7a8eb00",
