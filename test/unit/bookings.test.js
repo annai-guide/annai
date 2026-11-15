@@ -34,9 +34,45 @@ test('shioriBooking: new ones unverified, never confirmed by her; her change to 
 test("checkWords: a booking's check as a model is shown it, from what the screens mark (checkOf); nothing when nothing is marked", () => {
   assert.equal(checkWords({ status: 'confirmed' }), '');
   assert.equal(checkWords({ status: 'unverified', unsure: [] }), '', 'one of hers she is sure of');
-  assert.equal(checkWords({ status: 'unverified', unsure: ['seat'], fields: { seat: '12A' } }), 'not sure it was read right');
   assert.equal(checkWords({ status: 'unverified' }), 'not sure it was read right', 'from before fields were marked: checked whole');
   assert.equal(checkWords(undefined), '');
+  // With no status (the 固定 re-review's L5): no unsure key is a booking from before, checked whole; an empty unsure marks nothing.
+  assert.equal(checkWords({ kind: 'lodging', title: 'Test Inn' }), 'not sure it was read right');
+  assert.equal(checkWords({ kind: 'lodging', title: 'Test Inn', unsure: [] }), '');
+});
+
+test("checkWords names each part Shiori is unsure of by what it is, as the screens mark it beside its value: never the field's name, which a model says, translated (the 固定 re-review's L2)", () => {
+  const t = { at: '2026-11-27T11:00:00-08:00', tz: 'America/Los_Angeles' };
+  const words = (/** @type {any} */ x) => checkWords({ status: 'unverified', ...x });
+  const said = [
+    [words({ kind: 'lodging', unsure: ['end'], end: t }), 'not sure the check-out time was read right'],
+    [words({ kind: 'lodging', unsure: ['start'], start: t }), 'not sure the check-in time was read right'],
+    [words({ kind: 'flight', unsure: ['start', 'seat'], start: t, fields: { seat: '12A' } }), 'not sure the departure time or the seat was read right'],
+    [words({ kind: 'rail', unsure: ['end'], end: t }), 'not sure the arrival time was read right'],
+    [words({ kind: 'car', unsure: ['start', 'end'], start: t, end: t }), 'not sure the pick-up time or the return time was read right'],
+    [words({ kind: 'event', unsure: ['end'], end: t }), 'not sure the end time was read right'],
+    [words({ kind: 'lodging', unsure: ['title', 'confirmation', 'room'], title: 'Test Inn', confirmation: 'TQ1', fields: { room: '204' } }), 'not sure the name, the confirmation number or the room was read right'],
+    // A key the screens show as written: the words it is made of.
+    [words({ kind: 'lodging', unsure: ['mealPlan', 'late_checkout'], fields: { mealPlan: 'breakfast', late_checkout: 'yes' } }), 'not sure the meal plan or the late checkout was read right'],
+    // Only what the screens mark: a name that is no field of it marks nothing, and says nothing.
+    [words({ kind: 'lodging', unsure: ['end', 'cost'], end: t }), 'not sure the check-out time was read right'],
+  ];
+  for (const [got, want] of said) {
+    assert.equal(got, want);
+    assert.doesNotMatch(got, /\b(unsure|unverified|status|fields|title)\b|\b(start|end)\b(?! time)/);
+  }
+});
+
+test("checkWords: each key whose own words would mislead has its words, never the key's (the table's every entry; the review of booking-check, F2)", () => {
+  const said = {
+    title: 'the name', confirmation: 'the confirmation number', flight: 'the flight number', from: 'where it leaves from', to: 'where it arrives',
+    class: 'the cabin', nights: 'the number of nights', pickup: 'the pick-up place', dropoff: 'the drop-off place', party: 'the party size',
+  };
+  for (const [key, words] of Object.entries(said)) {
+    // title and confirmation are a booking's own fields; the others are keys of `fields`, as Shiori writes them.
+    const got = checkWords({ status: 'unverified', kind: 'flight', unsure: [key], title: 'Test Air', confirmation: 'TQ1', fields: { [key]: 'x' } });
+    assert.equal(got, `not sure ${words} was read right`, key);
+  }
 });
 
 test('checkOf: an old unverified booking is marked whole; an old confirmed one not at all; a new one by its unsure fields', () => {
