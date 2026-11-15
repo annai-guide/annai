@@ -132,6 +132,25 @@ test("ui.keep stores the key under the provider's one secret, only for providers
   assert.deepEqual(ids.sort(), [`llm:${mine}`, `llm:${theirs}`].sort(), 'nothing in the plugin\'s own secrets or files');
 });
 
+test('ui.keep takes the new key first, then stores it inside reconnect: what the provider holds is deleted with the old key, still the one stored', async () => {
+  const k = await kit();
+  const mine = await k.llm.addProvider('provider-acme', { key: 'sk-acme-old' });
+  /** @type {string[]} */
+  const order = [];
+  const stored = async () => String(await getKey(k.store, mine));
+  const ctx = {
+    ...k.ctx,
+    llm: { ...k.llm, reconnect: async (/** @type {string} */ id, /** @type {() => Promise<unknown>} */ save) => {
+      order.push(`reconnect with ${await stored()}`);
+      const r = await k.llm.reconnect(id, save);
+      order.push(`reconnected with ${await stored()}`);
+      return r;
+    } },
+  };
+  await setupUi(ctx, 'provider-acme').keep(mine, async () => { order.push(`asked, stored ${await stored()}`); return 'sk-acme-new'; });
+  assert.deepEqual(order, ['asked, stored sk-acme-old', 'reconnect with sk-acme-old', 'reconnected with sk-acme-new']);
+});
+
 test("ui.add makes a provider from this plugin's description, its key kept by annai, installing only the protocols of the abilities turned on; a key given as a function is asked for once that is done", async () => {
   const k = await kit();
   const ui = setupUi(k.ctx, 'provider-acme');

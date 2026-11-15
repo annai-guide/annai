@@ -283,8 +283,11 @@ async function boot() {
     closeNotifications(await live.newsArrived()).catch(() => {});
   });
   addEventListener('online', () => { push?.sync().catch(() => {}); });
-  // Deletions of what providers keep of the conversations, waiting for a connection.
-  addEventListener('online', () => { llm.drainKept().catch(() => {}); });
+  // Deletions of what providers keep of the conversations, waiting for a connection, and of photo uploads past their 48 hours (spec §4.8).
+  addEventListener('online', () => {
+    llm.drainKept().catch(() => {});
+    llm.sweepUploads().catch(() => {});
+  });
   plugins.connect({ llm, agent, notices: shell.notices });
   // A card the agent names (key) is taken down when a later turn works, and replaced by a newer one of its name.
   /** @type {Map<string, () => void>} */
@@ -340,7 +343,11 @@ async function boot() {
   });
   // An iPhone Home Screen app that comes back from the background only resumes: the browser checks nothing then.
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') updates.auto().catch(() => {}); });
-  setInterval(() => updates.auto().catch(() => {}), DAILY);
+  // And once a day, the photo uploads past their 48 hours (spec §4.8): an annai left open and online starts and comes online no more.
+  setInterval(() => {
+    updates.auto().catch(() => {});
+    llm.sweepUploads().catch(() => {});
+  }, DAILY);
   // A sign-in comes back to annai's address, for the plugin that started it.
   finishReturn({ llm, store, registry, plugins, notices: shell.notices, render: shell.render, held: () => (whyNoPlugins() ? NEEDS_RELOAD : undefined), go: (/** @type {string} */ hash) => { location.hash = hash; } })
     .then((was) => { if (was) shell.render(); });

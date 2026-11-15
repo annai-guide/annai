@@ -16,7 +16,7 @@ import { adjusted, setupOf } from './setup.js';
 import { callRole, Bench, candidates, COOLDOWN_MS } from './fallback.js';
 import { modelTrace } from './trace.js';
 import { forgetPhotoHashes } from './call.js';
-import { Uploads } from './uploads.js';
+import { Uploads, sweepUploads } from './uploads.js';
 import { Kept, keyPrint, keeperOf } from './kept.js';
 import { speechCall } from './speech.js';
 import { withoutSecretsIn } from '../agent/net.js';
@@ -48,11 +48,13 @@ export function createLlm({
   const bench = new Bench();
   /** Tunables a live model had to open with instead (decision 11: v1beta without proactive audio), until annai restarts. @type {Map<string, Record<string, any>>} */
   const liveTunables = new Map();
-  /** Photos uploaded to providers, by provider and ability (spec §4.8). */
-  const uploads = new Uploads(ws);
-  /** Providers going, or their key or address changing (G2). @type {Set<string>} */
-  const removing = new Set();
+  /** Providers going, or their key or address changing, by how many releases are under way at once: the last to end ends it, a removal's stays (G2). @type {Map<string, number>} */
+  const removing = new Map();
   let erasing = false;
+  /** Whether an endpoint's provider is going or changing key or address, or everything is being erased: it keeps and uploads nothing meanwhile. @param {string} endpointId */
+  const going = (endpointId) => erasing || removing.has(endpointId.split('/')[0]);
+  /** Photos uploaded to providers, by provider and ability (spec §4.8). A call made while its provider is going sends its photos in the request. */
+  const uploads = new Uploads(ws, going);
   /** Conversations' calls under way, for Erase. @type {Set<Promise<unknown>>} */
   const inflight = new Set();
   /** p, for up to ms. @param {Promise<unknown>} p @param {number} ms */
@@ -72,7 +74,7 @@ export function createLlm({
   const kept = new Kept({
     ws,
     alive: async ({ endpoint, scope, key }) => {
-      if (erasing || removing.has(endpoint.split('/')[0])) return false;
+      if (going(endpoint)) return false;
       const to = await reachEndpoint(endpoint);
       return Boolean(to && to.endpoint.tunables.keep !== false && to.print === key && (await store.tx(['scopes'], 'readonly', (t) => t.getScope(scope))));
     },
@@ -91,6 +93,43 @@ export function createLlm({
     if ((await kept.count()).waiting) await within(drainKept(AbortSignal.timeout(ms)), ms);
   };
   /* en */ ready.then(() => drainKept()).catch((e) => console.warn("kept turns' deletions couldn't be sent", e));
+  /**
+   * The abilities whose photo uploads annai deletes itself (spec §4.8), as calls see them now: their type deletes, uploads are on
+   * there by default (the type's or the description's) or now, and there is a key. all: switched off now, so every upload of
+   * annai's there goes, at each sweep, until none is left. provider: only its own.
+   * @param {string} [provider]
+   */
+  const sweepable = async (provider) => {
+    await ready;
+    /** @type {(NonNullable<Awaited<ReturnType<typeof reach>>> & { all: boolean })[]} */
+    const out = [];
+    for (const pRec of Object.values((await readConfig(ws)).providers)) {
+      if (provider && pRec.id !== provider) continue;
+      for (const abilityId of Object.keys(providerOf(pRec).abilities)) {
+        const to = await reach(pRec, abilityId).catch(() => null);
+        if (!to?.secret || !to.type.deleteUploadRequest || !to.type.listUploadsRequest || !to.type.readUploads) continue;
+        const on = to.endpoint.tunables?.uploads !== false;
+        const byDefault = providerBase(pRec, () => to.type.tunables ?? {}).abilities[abilityId]?.tunables?.uploads !== false;
+        if (on || byDefault) out.push({ ...to, all: !on });
+      }
+    }
+    return out;
+  };
+  /**
+   * annai's uploads deleted at each ability that keeps them (sweepUploads): those over 48 hours old, or all of them where the switch
+   * is off or all is asked. One that refuses the key gets no uploads until annai restarts, or its provider's key or address changes, or a
+   * Test passes; one whose list annai can't read, until annai restarts or a Test reads it (Uploads.listed). A provider going, or changing
+   * its key or address, makes no upload meanwhile (going).
+   * @param {Awaited<ReturnType<typeof sweepable>>} list @param {{ all?: boolean }} [o]
+   */
+  const sweep = (list, { all = false } = {}) => Promise.all(list.map(async (to) => {
+    const r = await sweepUploads({ type: to.type, endpoint: to.endpoint, key: to.key, fetch: get, trace: modelTrace(store, SYS), all: all || to.all }).catch(() => null);
+    uploads.listed(to.endpoint.id, r);
+    return r;
+  }));
+  /** At start and on coming online: the uploads over 48 hours old, and all of those where the switch is off. */
+  const sweepNow = async () => sweep(await sweepable());
+  /* en */ ready.then(() => sweepNow()).catch((e) => console.warn("photo uploads couldn't be deleted", e));
   /** After a trip went or a switch went off: its turns, deleted. @param {{ scope?: string, endpoint?: string }} which */
   const forgetSoon = async (which) => {
     const queued = await kept.queue(which);
@@ -98,23 +137,38 @@ export function createLlm({
     return { queued };
   };
   /**
-   * The provider marked as going, its turns are deleted with their key for up to 10 s; then work runs (a key, an address
-   * or the provider going), and once it has, what is left is let go. gone: for good.
+   * The provider marked as going (a call uploads no photo to it, and none answered meanwhile is kept; Test's own photo is uploaded, and
+   * deleted by its id), its turns and photo uploads are deleted with their key for up to 10 s; then work runs (a key, an address or the
+   * provider going), and once it has, what is left is let go. gone: for good.
    * @template T @param {string} id @param {() => Promise<T>} work @param {boolean} [gone] @returns {Promise<T>}
    */
   const releasing = async (id, work, gone = false) => {
-    removing.add(id);
+    removing.set(id, (removing.get(id) ?? 0) + 1);
     let done = false;
     try {
       await kept.queue({ provider: id });
-      await drainFor(10_000);
+      // Its photo uploads too, all of them, with the old key and address, beside the turns: the 10 s bound what this waits for,
+      // and deletions not done by then go on.
+      const swept = await sweepable(id).catch(() => []);
+      await within(Promise.all([drainFor(10_000), sweep(swept, { all: true })]), 10_000);
       const out = await work();
       done = true;
       await kept.drop(id).catch(() => {});
+      if (!gone) {
+        // Their ids go: deleted, or kept under a key or at an address no longer used. And what failed with the old key or address,
+        // uploads turned off, says nothing about the new: they are tried again.
+        for (const to of swept) await uploads.forget(to.endpoint.id).catch(() => {});
+        uploads.retry(id);
+      }
       return out;
     } finally {
-      // A removal that failed leaves the provider as it was, its turns kept again.
-      if (!gone || !done) removing.delete(id);
+      // A removal that is done stays; any other release ends its own part, and the provider is going until the last of them has (a removal
+      // that failed leaves the provider as it was, its turns kept again).
+      if (!gone || !done) {
+        const left = (removing.get(id) ?? 1) - 1;
+        if (left) removing.set(id, left);
+        else removing.delete(id);
+      }
     }
   };
   const types = () => endpointTypes(plugins.registry);
@@ -494,6 +548,16 @@ export function createLlm({
     },
     /** An ability's kept turns, its switch saved off. @param {string} endpoint */
     forgetEndpoint: (endpoint) => forgetSoon({ endpoint }),
+    /**
+     * An ability's photo uploads, its switch saved off: all of annai's there deleted, in the background; one not deleted now goes at the
+     * next start's sweep, which deletes them all while the switch is off. @param {string} endpoint
+     */
+    forgetUploads: async (endpoint) => {
+      const list = (await sweepable(endpoint.split('/')[0])).filter((to) => to.endpoint.id === endpoint);
+      sweep(list).then(() => uploads.forget(endpoint)).catch(() => {});
+    },
+    /** annai's photo uploads over 48 hours old deleted, and all of those where the switch is off (spec §4.8): on coming online. */
+    sweepUploads: () => sweepNow(),
     /** A key or address changing, or the key going: what the provider keeps goes first, with the old key. @template T @param {string} id @param {() => Promise<T>} save */
     reconnect: (id, save) => releasing(id, save),
     /**
@@ -507,7 +571,8 @@ export function createLlm({
       // Whatever a call under way did not settle in time, and what a page killed before left pending, is deleted before the wipe too.
       await kept.release();
       await kept.queue();
-      await drainFor(timeoutMs);
+      // And every photo annai uploaded where it deletes them, beside the turns, within the same time.
+      await within(Promise.all([drainFor(timeoutMs), sweepable().then((list) => sweep(list, { all: true }))]), timeoutMs);
       const n = await kept.count();
       return { left: n.turns + n.waiting };
     },
@@ -643,7 +708,7 @@ export function createLlm({
       const { roles } = await readConfig(ws);
       const r = /** @type {const} */ (['main', 'koe-classic', 'utility']).find((x) => roles[x]?.models.includes(modelId) && roles[x].level !== 'off');
       const role = r ? { id: r, level: roles[r].level } : undefined;
-      /* en */ const result = !type.realtime ? await testModel({ type, endpoint, model, key, fetch: get, probe, role })
+      /* en */ const result = !type.realtime ? await testModel({ type, endpoint, model, key, fetch: get, probe, role, uploads })
         : await service.live(modelId, { instructions: 'This is a connection test. Answer in a word or two.', context: '', tools: [] })
           .then((s) => testLive(s, { onAudio: onAudio ? (d) => onAudio(d, s.audioOut) : undefined }), (e) => ({ ok: false, steps: [{ step: /** @type {const} */ ('access'), ok: false, detail: explain(e) }] }));
       const found = Object.fromEntries(result.steps.map((s) => [s.step, s.ok]));

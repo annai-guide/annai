@@ -2,6 +2,7 @@ import { callOnce } from './call.js';
 import { ProviderError, explain, sameOrigin, noRedirect } from './contract.js';
 import { LEVELS, nearestLevel } from './reasoning.js';
 import { fromBase64 } from '../bytes.js';
+import { TEST_UPLOAD, deleteUpload, sweepUploads } from './uploads.js';
 import { t } from '../l10n.js';
 import { sentences } from '../intl.js';
 
@@ -26,7 +27,8 @@ const room = (model) => Math.min(4096, model.maxOutput ?? 4096);
  *   upload is advice: when it fails, photos still go in each request, so the model still passes; live: a realtime model answered aloud
  * @typedef {{ type: import('./contract.js').EndpointType, endpoint: import('./config.js').Endpoint, model: import('./config.js').Model,
  *   key: string | null, fetch?: import('./call.js').Fetch, probe?: (url: string) => Promise<boolean>, firstOutputMs?: number,
- *   role?: { id: string, level: string } }} TestCase  role: a role asking this model at a level of its own (main, koe-classic or utility)
+ *   role?: { id: string, level: string }, uploads?: import('./uploads.js').Uploads }} TestCase  role: a role asking this model at a level of its own (main, koe-classic or utility);
+ *   uploads: the endpoints' uploads, turned off where annai can't delete the test photo or read the list, and on again where Test passes
  *   detail: what the step found, in the screens' language
  */
 
@@ -113,21 +115,50 @@ export async function testModel(c) {
   return { ok: steps.every((s) => s.ok || s.step === 'upload'), steps };
 }
 
-/** Uploads the test photo, expiring in an hour, the shortest a provider allows (spec §9.8). @param {TestCase} c @returns {Promise<TestStep>} */
-async function testUpload({ type, endpoint, model, key, fetch: get = (url, init) => fetch(url, init) }) {
+/**
+ * Uploads the test photo, expiring in an hour, the shortest a provider allows (spec §9.8). Where the provider keeps files until they
+ * are deleted, annai then deletes it by the id the upload gave, as it will delete each photo: a key that can't (a refusal, or a 404 for
+ * the file it just made) sends photos in each request until annai restarts, or a new key or address, or a Test that passes; a delete that
+ * gets no answer, a 408, a 429 or a server error says nothing about the key, so photos stay on and the sweep deletes the test photo with
+ * the others. A delete that passes reads the list once, as a sweep does (Uploads.listed). @param {TestCase} c @returns {Promise<TestStep>}
+ */
+async function testUpload({ type, endpoint, model, key, fetch: get = (url, init) => fetch(url, init), uploads }) {
+  /** @type {{ id: string }} */
+  let up;
+  /** @type {Response | undefined} */
+  let res;
   try {
     const r = /** @type {NonNullable<typeof type.uploadRequest>} */ (type.uploadRequest)({
-      endpoint, key, tunables: { ...endpoint.tunables, ...model.tunables }, bytes: fromBase64(TEST_IMAGE), mediaType: 'image/png', name: 'annai-test.png', expiresInSeconds: 3600,
+      endpoint, key, tunables: { ...endpoint.tunables, ...model.tunables }, bytes: fromBase64(TEST_IMAGE), mediaType: 'image/png', name: TEST_UPLOAD, expiresInSeconds: 3600,
     });
     sameOrigin(endpoint, r.url);
-    const res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, redirect: 'manual' });
+    res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, redirect: 'manual' });
     noRedirect(res, endpoint);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    /** @type {NonNullable<typeof type.readUpload>} */ (type.readUpload)(await res.json());
-    return { step: 'upload', ok: true, detail: t`Photo uploads work: each photo is uploaded once, and expires after 48 hours.` };
+    up = /** @type {NonNullable<typeof type.readUpload>} */ (type.readUpload)(await res.json());
   } catch (e) {
-    return { step: 'upload', ok: false, detail: sentences(e instanceof ProviderError && e.kind === 'redirect' ? explain(e) : t`Uploading photos didn't work with this key.`, t`annai will send photos in each request instead.`) };
+    // A redirect, or no answer at all, is not the key's: it says so in the words every step uses.
+    const said = e instanceof ProviderError && e.kind === 'redirect' ? e : !res && !(e instanceof ProviderError) ? new ProviderError('unreachable', 'no answer') : null;
+    return { step: 'upload', ok: false, detail: sentences(said ? explain(said) : t`Uploading photos didn't work with this key.`, t`annai will send photos in each request instead.`) };
   }
+  if (!type.deleteUploadRequest) {
+    uploads?.retry(endpoint.id);
+    return { step: 'upload', ok: true, detail: t`Photo uploads work: each photo is uploaded once, and expires after 48 hours.` };
+  }
+  const status = await deleteUpload({ type, endpoint, key, fetch: get, id: up.id });
+  if (status >= 200 && status < 300) {
+    // The list too: the sweep deletes what is over 48 hours old by it, so a list annai can't read means files it couldn't find.
+    if (uploads?.listed(endpoint.id, await sweepUploads({ type, endpoint, key, fetch: get }).catch(() => null), { test: true })) {
+      return { step: 'upload', ok: false, detail: sentences(t`Photos upload, but annai can't read the list of its photos there, which it needs to delete them.`, t`annai will send photos in each request instead.`) };
+    }
+    uploads?.retry(endpoint.id);
+    return { step: 'upload', ok: true, detail: t`Photo uploads work: each photo is uploaded once, and annai deletes it after 48 hours (it just deleted the test photo).` };
+  }
+  if (status === 0 || status === 408 || status === 429 || status >= 500) {
+    return { step: 'upload', ok: false, detail: sentences(t`Photos upload, but annai couldn't check just now that it can delete the test photo.`, t`Tap Test again later. annai deletes the test photo with the others, after 48 hours.`) };
+  }
+  uploads?.off(endpoint.id);
+  return { step: 'upload', ok: false, detail: sentences(t`Photos upload, but annai couldn't delete the test photo with this key.`, t`annai will send photos in each request instead.`) };
 }
 
 /** A role by the name the screens give it, a label of its own. @param {{ id: string }} role */

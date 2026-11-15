@@ -1,7 +1,7 @@
 {
   "id": "provider-openrouter",
   "name": "OpenRouter",
-  "version": "2.4.1",
+  "version": "2.5.0",
   "api": 2,
   "entry": "index.js",
   "description": "One key for many models, free ones among them, with transcription and voices too. Sign in with OpenRouter, or give a key.",
@@ -30,7 +30,9 @@
       "chat": {
         "kind": "chat",
         "type": "chat-completions",
+        "note": "Photos are stored in your OpenRouter workspace's files until annai deletes them, and OpenRouter's Zero Data Retention doesn't cover stored files. Turn uploads off to send each photo in the request instead.",
         "tunables": {
+          "uploads": true,
           "reasoningField": "reasoning",
           "cacheMarkers": [
             "anthropic/"

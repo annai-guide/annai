@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { openApp, waitForServiceWorker, startModelServer, fakeMicrophone, pickProvider } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, startOpenRouterFiles, fakeMicrophone, pickProvider } from './helpers.js';
 import { encodeWav } from '../../src/core/voice/pcm.js';
 
 // Sign in with OpenRouter sets up one provider, OpenRouter, with one key for its chat, transcription and
@@ -231,9 +231,14 @@ test('iPhone Home Screen app: after a refused code and then annai\'s 15 minutes,
 });
 
 test("OpenRouter's page has its plugin's sign-in in the key's place, the key field after it; Sign in again keeps the new key on that provider; its plugin page says it has code", async ({ page, browserName }) => {
+  // The provider is at a stand-in of OpenRouter's files list, on a server of its own: a page that holds a key asks that list at each start and
+  // at every key change (spec §4.8), and none of it may reach the real openrouter.ai.
+  const files = await startOpenRouterFiles();
+  page.on('close', () => { void files.stop(); });
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
   await pickProvider(page, 'OpenRouter');
+  await page.getByLabel('Address', { exact: true }).fill(`${files.origin}/api/v1`);
   const conn = page.getByRole('region', { name: 'Provider' });
   await expect(conn.getByText('Sign in with OpenRouter for a key, or give one below.')).toBeVisible();
   await expect(conn.getByRole('button', { name: 'Sign in with OpenRouter' })).toBeVisible();

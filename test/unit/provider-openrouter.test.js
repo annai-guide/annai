@@ -308,9 +308,14 @@ test("Sign in again on a provider's page keeps the new key on that provider; one
   const id = made(await readConfig(d.ws), 'chat').id;
   d.cards.length = 0;
   let asked = 0;
-  await signIn(d, { provider: id, keys: async () => { asked++; return new Response(JSON.stringify({ key: 'sk-or-v1-again-0123456789' })); } });
+  let seenAtExchange = -1;
+  await signIn(d, { provider: id, keys: async () => { asked++; seenAtExchange = d.seen.length; return new Response(JSON.stringify({ key: 'sk-or-v1-again-0123456789' })); } });
   assert.equal(asked, 1);
   assert.equal(await getKey(d.store, id), 'sk-or-v1-again-0123456789');
+  // The code is exchanged first; then what OpenRouter holds of annai's (its photo uploads) is looked for with the old key (spec §4.9).
+  const listed = d.seen.findIndex((x) => new URL(x.url).pathname === '/api/v1/files');
+  assert.ok(listed >= seenAtExchange && seenAtExchange >= 0, 'the list after the exchange');
+  assert.equal(d.seen[listed].headers.authorization, `Bearer ${KEY}`);
   assert.equal(Object.keys((await readConfig(d.ws)).providers).length, 1, 'no second provider');
   assert.deepEqual(d.cards.map((c) => [c.tone, c.title]), [['ok', 'Signed in with OpenRouter']]);
   await d.llm.removeProvider(id);
