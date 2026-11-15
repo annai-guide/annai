@@ -405,7 +405,7 @@ async function abilityBody(view, abilityId) {
       const wrong = v ? addressShown(v) : null;
       if (wrong) throw new Error(wrong);
       return v;
-    }, (v) => (keep || deletes ? ctx.llm.reconnect(id, () => saveAbility({ baseUrl: v })) : saveAbility({ baseUrl: v })))), // a new address: what it keeps there goes first
+    }, (v) => (keep || (deletes && uploads) ? ctx.llm.reconnect(id, () => saveAbility({ baseUrl: v })) : saveAbility({ baseUrl: v })))), // a new address: what it keeps or holds there goes first
     h('p', { class: 'sub', text: t`Empty: the provider's address. Each setting here is saved as you change it.` }),
     addressWarn,
     uploads?.el ?? null,
