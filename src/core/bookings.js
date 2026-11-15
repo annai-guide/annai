@@ -70,6 +70,23 @@ export function isBookingPath(scope, path) {
   return kindOf(scope) === 'trip' && BOOKING_FILE.test(path);
 }
 
+/**
+ * What a model reads after a booking's file, apart from its JSON: the check the screens mark, in words (checkWords), so she never works it out
+ * from the fields (a missing `unsure` and an empty one read alike to a model). Nothing when nothing is marked or it is no booking's record. Used
+ * by every read of a booking's file: the files plugin's `read` and `read_trip`. @param {string} scope @param {string} path @param {string} text its text
+ */
+export function checkNote(scope, path, text) {
+  if (!isBookingPath(scope, path)) return '';
+  let booking;
+  try {
+    booking = JSON.parse(text);
+  } catch {
+    return '';
+  }
+  const words = checkWords(booking);
+  /* en */ return words ? `(annai marks this booking for the user to check: ${words}.)` : '';
+}
+
 
 /**
  * Other names models write a booking's fields under (a small model wrote checkin, pickup, flights, name, total). Times go to start and

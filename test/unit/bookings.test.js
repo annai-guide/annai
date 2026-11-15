@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isBookingPath, shioriBooking, checkOf, checkWords } from '../../src/core/bookings.js';
+import { isBookingPath, shioriBooking, checkOf, checkWords, checkNote } from '../../src/core/bookings.js';
 
 const b = { id: 'hotel', kind: 'lodging', status: 'unverified', source: '/files/hotel.pdf', unsure: [] };
 
@@ -39,6 +39,21 @@ test("checkWords: a booking's check as a model is shown it, from what the screen
   // With no status (the 固定 re-review's L5): no unsure key is a booking from before, checked whole; an empty unsure marks nothing.
   assert.equal(checkWords({ kind: 'lodging', title: 'Test Inn' }), 'not sure it was read right');
   assert.equal(checkWords({ kind: 'lodging', title: 'Test Inn', unsure: [] }), '');
+});
+
+test("checkNote: what a model reads beside a booking's file, apart from its JSON: the screens' own check in words; nothing when nothing is marked, or for a file that isn't a booking (booking-say's fix 2)", () => {
+  const TRIP = 'trip-test';
+  const old = { id: 'inn', kind: 'lodging', status: 'unverified', source: '/files/inn.pdf', title: 'Test Inn' };
+  const note = (/** @type {any} */ b, path = '/bookings/inn.json', scope = TRIP) => checkNote(scope, path, typeof b === 'string' ? b : JSON.stringify(b, null, 2));
+  assert.equal(note(old), '(annai marks this booking for the user to check: not sure it was read right.)', 'from before fields were marked, not confirmed: the whole, as the screens mark it');
+  assert.equal(note({ ...old, unsure: ['end'], end: { at: '2026-11-16T11:00:00-08:00', tz: 'America/Los_Angeles' } }), '(annai marks this booking for the user to check: not sure the check-out time was read right.)');
+  assert.equal(note({ ...old, status: 'confirmed' }), '', 'an old one the user confirmed: nothing');
+  assert.equal(note({ ...old, unsure: [] }), '', 'one she is sure of: nothing');
+  assert.equal(note({ ...old, unsure: ['wings'] }), '', 'a name that is no field marks nothing, as on the screens');
+  assert.equal(note('not json'), '');
+  assert.equal(note(old, '/notes/inn.json'), '', 'only a trip\'s booking record');
+  assert.equal(note(old, '/bookings/inn.json', 'me'), '');
+  assert.doesNotMatch(note({ ...old, unsure: ['class'], fields: { class: 'economy' } }), /unsure|status|class/, 'by what it is, never a field\'s name or the status');
 });
 
 test("checkWords names each part Shiori is unsure of by what it is, as the screens mark it beside its value: never the field's name, which a model says, translated (the 固定 re-review's L2)", () => {

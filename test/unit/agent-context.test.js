@@ -421,21 +421,17 @@ test("her instructions' plan item and booking are records of their formats, whic
   assert.ok(CORE.includes(`kind: ${BOOKING_SCHEMA.properties.kind.enum.slice(0, -1).join(', ')} or ${BOOKING_SCHEMA.properties.kind.enum.at(-1)};`), "the kinds are the format's");
 });
 
-test("her instructions say what of a booking the user is asked to check: only what unsure lists, by what it is; a booking with no unsure at all, not confirmed, whole, as the screens mark it; never a field's name or the status (booking-say, and its fix 1: an old booking read as \"nothing to check\")", async () => {
-  const { checkWords, checkOf } = await import('../../src/core/bookings.js');
+test("her instructions say what of a booking the user is asked to check: only what annai marks, the note read puts after it, by what it is; never a field's name or the status; none of a booking's own fields or shapes (booking-say's fix 2: the check comes in the read result, whose test is in plugin-files)", async () => {
+  const { checkWords } = await import('../../src/core/bookings.js');
   const line = CORE.split('\n').find((l) => l.startsWith('- What you ask the user to check of a booking'));
-  assert.equal(line, "- What you ask the user to check of a booking is only what unsure lists, each said by what it is (in the example, the check-out time), never by a field's name; a booking with no unsure at all, and not confirmed, is one they check whole, as the screens mark it. Never tell them a booking's status, in any words.");
+  assert.equal(line, "- What you ask the user to check of a booking is only what annai marks: the note read puts after it says what, each said by what it is (in the example, the check-out time), never by a field's name. With no note, nothing is marked. Never tell them a booking's status, in any words.");
   // It follows the format's lines, and its example is the part the views name for the example booking (bookings.js checkWords).
   const lines = CORE.split('\n');
   assert.ok(lines[lines.indexOf(line) - 1].startsWith('- Write each booking with unsure naming just the fields you are not sure of'));
   const booking = JSON.parse(/** @type {string} */ (/and a booking like (\{.*?\}) \(kind/.exec(CORE)?.[1]));
   assert.equal(checkWords(booking), 'not sure the check-out time was read right');
-  // The two shapes it names are the ones the screens and Koe's view mark whole: a booking saved before 2026-10-29 (no unsure key) unless confirmed.
-  const { unsure: _u, ...old } = booking;
-  assert.deepEqual(checkOf(old), { whole: true, fields: [] });
-  assert.equal(checkWords(old), 'not sure it was read right');
-  assert.deepEqual(checkOf({ ...old, status: 'confirmed' }), { whole: false, fields: [] });
-  assert.equal(checkWords({ ...old, unsure: [] }), '', 'with an empty unsure she is sure of all of it: nothing to check');
+  // The shapes (no unsure key, an empty unsure) are the program's to tell, in the note: the words name neither (fix 1's two wordings each failed one).
+  assert.doesNotMatch(line, /no unsure|without unsure|not confirmed|unsure: \[\]/);
 });
 
 test("Koe's instructions, chat and live, say a booking's status is annai's own and never the hotel's word: never told, and whether a booking is confirmed is Kokoro's to answer (booking-say's runs: \"its status is unverified\" for \"Is my hotel booking confirmed?\")", async () => {
