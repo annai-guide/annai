@@ -12,6 +12,7 @@ import { sse } from '../../src/core/llm/sse.js';
 import { parsePartialJSON } from '../../src/core/llm/partial-json.js';
 import { retry } from '../../src/core/llm/retry.js';
 import { testModel, testLevels, TEST_IMAGE } from '../../src/core/llm/check.js';
+import { REQUEST_MS } from '../../src/core/llm/uploads.js';
 import { readConfig, modelOf, saveProvider, saveModel, saveRoles, setKey } from '../../src/core/llm/config.js';
 import { addProvider } from '../../src/core/llm/providers.js';
 import { official } from './provider-kit.js';
@@ -154,6 +155,44 @@ test('the Test button checks photo uploads where the endpoint stores files (spec
   assert.deepEqual([none.step, none.ok], ['upload', false]);
   assert.equal(none.detail, "annai couldn't reach this address. It may be down, or it may not allow web apps. annai will send photos in each request instead.");
   assert.equal(down.ok, true, 'photos still work, sent in each request');
+  const noAnswer = "annai couldn't reach this address. It may be down, or it may not allow web apps. annai will send photos in each request instead.";
+  // A body that breaks off after a 200, or stalls past the time limit, is no answer either (the sweep's list reads it so too); only a body that arrived and isn't an upload is the key's.
+  const after = (/** @type {string} */ sent, /** @type {unknown} */ why) => /** @type {any} */ (async () => new Response(new ReadableStream({ start(c) { if (sent) c.enqueue(new TextEncoder().encode(sent)); c.error(why); } }), { status: 200 }));
+  for (const fetch of [after('{"id"', new TypeError('network error')), after('', new DOMException('The operation timed out.', 'TimeoutError'))]) {
+    const cut = /** @type {any} */ ((await testModel({ ...withUploads(scriptedCase(script)), fetch })).steps.at(-1));
+    assert.deepEqual([cut.step, cut.ok, cut.detail], ['upload', false, noAnswer]);
+  }
+  const odd = /** @type {any} */ ((await testModel({ ...withUploads(scriptedCase(script)), fetch: async () => new Response('not json', { status: 200 }) })).steps.at(-1));
+  assert.equal(odd.detail, "Uploading photos didn't work with this key. annai will send photos in each request instead.", 'a 200 that arrived whole and is no upload is the key\'s words, as before');
+});
+
+test('the Test button\'s photo upload has the same time limit as every other upload request, and a stall ends in the no-answer words (the sweeps: uploads.js REQUEST_MS)', async () => {
+  const withUploads = (/** @type {any} */ c) => ({
+    ...c, endpoint: { ...c.endpoint, baseUrl: 'https://files.test/v1' },
+    type: { ...c.type, uploadRequest: () => ({ url: 'https://files.test/v1/files', headers: {}, body: new FormData() }), readUpload: (/** @type {any} */ j) => ({ id: j.id }) },
+  });
+  const script = [{ text: 'OK' }, { toolCalls: [{ name: 'report_color', input: { color: 'red' } }] }];
+  // AbortSignal.timeout can't be driven by fake timers: ask for its limit, and make the limit short.
+  const real = AbortSignal.timeout;
+  /** @type {number[]} */
+  const asked = [];
+  AbortSignal.timeout = (ms) => { asked.push(ms); return real.call(AbortSignal, 20); };
+  try {
+    // A connection that is accepted and never answered: the request ends only when its signal does (without one, this says so at once, not after a hang).
+    const stalled = async (/** @type {string} */ _url, /** @type {RequestInit} */ init) => {
+      const { signal } = init;
+      if (!signal) throw new Error('no time limit: a stall would wait for ever');
+      return new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason)));
+    };
+    const r = await testModel({ ...withUploads(scriptedCase(script)), fetch: /** @type {any} */ (stalled) });
+    const last = /** @type {any} */ (r.steps.at(-1));
+    assert.deepEqual(asked, [REQUEST_MS], 'one request, with the limit the sweeps use');
+    assert.deepEqual([last.step, last.ok], ['upload', false]);
+    assert.equal(last.detail, "annai couldn't reach this address. It may be down, or it may not allow web apps. annai will send photos in each request instead.");
+    assert.equal(r.ok, true, 'photos still work, sent in each request');
+  } finally {
+    AbortSignal.timeout = real;
+  }
 });
 
 test("what the Test button says never shows a key, whatever the provider's message holds (spec §9.9)", async () => {

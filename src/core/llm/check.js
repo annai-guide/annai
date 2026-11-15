@@ -2,7 +2,7 @@ import { callOnce } from './call.js';
 import { ProviderError, explain, sameOrigin, noRedirect } from './contract.js';
 import { LEVELS, nearestLevel } from './reasoning.js';
 import { fromBase64 } from '../bytes.js';
-import { TEST_UPLOAD, deleteUpload, sweepUploads } from './uploads.js';
+import { TEST_UPLOAD, REQUEST_MS, deleteUpload, sweepUploads } from './uploads.js';
 import { t } from '../l10n.js';
 import { sentences } from '../intl.js';
 
@@ -132,13 +132,18 @@ async function testUpload({ type, endpoint, model, key, fetch: get = (url, init)
       endpoint, key, tunables: { ...endpoint.tunables, ...model.tunables }, bytes: fromBase64(TEST_IMAGE), mediaType: 'image/png', name: TEST_UPLOAD, expiresInSeconds: 3600,
     });
     sameOrigin(endpoint, r.url);
-    res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, redirect: 'manual' });
+    // The time limit of every other upload request (a stall ends in no answer, as a failed connection does), body included.
+    res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, redirect: 'manual', signal: AbortSignal.timeout(REQUEST_MS) });
     noRedirect(res, endpoint);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    up = /** @type {NonNullable<typeof type.readUpload>} */ (type.readUpload)(await res.json());
+    // A body that breaks off or stalls is no answer, as the sweep's list reads it; only a body that arrived and isn't an upload is the key's.
+    const body = await res.text().catch(() => {
+      throw new ProviderError('unreachable', 'no answer');
+    });
+    up = /** @type {NonNullable<typeof type.readUpload>} */ (type.readUpload)(JSON.parse(body));
   } catch (e) {
-    // A redirect, or no answer at all, is not the key's: it says so in the words every step uses.
-    const said = e instanceof ProviderError && e.kind === 'redirect' ? e : !res && !(e instanceof ProviderError) ? new ProviderError('unreachable', 'no answer') : null;
+    // A redirect, or no answer at all (no reply, or a body that broke off), is not the key's: it says so in the words every step uses.
+    const said = e instanceof ProviderError ? (e.kind === 'redirect' || e.kind === 'unreachable' ? e : null) : !res ? new ProviderError('unreachable', 'no answer') : null;
     return { step: 'upload', ok: false, detail: sentences(said ? explain(said) : t`Uploading photos didn't work with this key.`, t`annai will send photos in each request instead.`) };
   }
   if (!type.deleteUploadRequest) {
