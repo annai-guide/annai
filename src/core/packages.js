@@ -112,11 +112,13 @@ function canonical(tag) {
 export const L10N_MAX_BYTES = 256 * 1024;
 /**
  * The fields a translation may give (localization design, section 8), by path (* any key or index), with their limits; keywords are
- * added to the English. A name is shown only for annai's own: a third party's is shown as written everywhere. @type {[string, number][]}
+ * added to the English. A plugin's own name is shown only for annai's own: a third party's is shown as written everywhere. A provider
+ * tool's name is the screens' (Settings → Tools): models are told its English, from the manifest itself. @type {[string, number][]}
  */
 export const TRANSLATED = [['name', 80], ['description', 500], ['featured', 200], ['keywords', 40], ['provider.note', 1000], ['provider.abilities.*.name', 80],
-  ['provider.abilities.*.note', 1000], ['provider.abilities.*.noWindowNote', 1000], ['provider.abilities.*.models.*.providerTools.*.label', 120],
-  ['provider.abilities.*.models.*.providerTools.*.note', 1000], ['provider.abilities.*.modelDefaults.providerTools.*.label', 120],
+  ['provider.abilities.*.note', 1000], ['provider.abilities.*.noWindowNote', 1000], ['provider.abilities.*.models.*.providerTools.*.name', 80],
+  ['provider.abilities.*.models.*.providerTools.*.label', 120], ['provider.abilities.*.models.*.providerTools.*.note', 1000],
+  ['provider.abilities.*.modelDefaults.providerTools.*.name', 80], ['provider.abilities.*.modelDefaults.providerTools.*.label', 120],
   ['provider.abilities.*.modelDefaults.providerTools.*.note', 1000], ['search.key.note', 300], ['settings.properties.*.title', 200],
   ['settings.properties.*.description', 1000], ['settings.properties.*.oneOf.*.title', 200]];
 /** The value at a path. @param {any} o @param {string[]} keys */

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, pickProvider, savedBy, leaveSaved, fakeMicrophone, filterTrace, startTrip } from './helpers.js';
+import { openApp, waitForServiceWorker, pickProvider, savedBy, leaveSaved, fakeMicrophone, filterTrace, startTrip, writeEvent } from './helpers.js';
 import { startGeminiServer } from '../fakes/gemini-server.js';
 
 // Gemini through its own API (G1), against the stand-in Gemini server on a port of its own: the catalog's Google Gemini
@@ -250,7 +250,8 @@ test('Google Search (G4): Shiori\'s request offers it; a grounded reply shows "F
     const asked = s.bodies().find((b) => offered(b).includes('google_search'));
     expect(asked, "Shiori's turn offers Google's search").toBeTruthy();
     expect(offered(asked)).not.toContain('web_search');
-    expect(asked.system_instruction, 'she is told the reply that searched is shown as written').toContain('A reply in which you search with Google Search is shown to the user as you write it, under "From Google Search", with its sources. Write that reply for the user, with no private notes in it.');
+    expect(asked.system_instruction, 'she is told the reply that searched is shown as written').toContain('A reply in which you search with Google Search is shown to the user as you write it, with its sources. Write that reply for the user, with no private notes in it.');
+    expect(asked.system_instruction, "not the card's title, which the screens name in the user's language").not.toContain('From Google Search');
     // A height from anything but its frame changes nothing; a frame that loads a second time goes, and the card stays.
     const frame = page.locator('.convo .grounded iframe');
     const tall = (await frame.boundingBox())?.height;
@@ -338,6 +339,57 @@ test("on Japanese screens the provider page shows Google Search's switch and its
     await s.close();
   }
 });
+
+// Provider words, step 2: on Japanese and Chinese screens Settings → Tools names a model's own tool in that language, and a grounded
+// reply's card and its line read aloud name Google Search as Google writes it there; so does a card from before, whose entry names it in
+// English, as every entry does.
+for (const tag of /** @type {const} */ (['ja', 'zh-Hans', 'zh-Hant'])) {
+  test(`on ${tag} screens, Settings → Tools, a grounded reply's card and its line read aloud name Google Search as Google writes it there, an older card too`, async ({ page }) => {
+    const ui = JSON.parse(await readFile(new URL(`../../l10n/${tag}.json`, import.meta.url), 'utf8'));
+    const name = { ja: 'Google 検索', 'zh-Hans': 'Google 搜索', 'zh-Hant': 'Google 搜尋' }[tag];
+    const [title, aloud] = [ui['1gblst7'], ui['4fzxin']].map((/** @type {string} */ w) => w.replace('{0}', name));
+    let searched = 0;
+    const s = await startGeminiServer({ key: KEY, replies: [(b) => (offered(b).includes('google_search') && !searched++
+      ? { text: GROUNDED, search: SEARCH, calls: [{ name: 'speak', input: { text: 'It closes at ten tonight.' } }, { name: 'sleep', input: {} }] }
+      : { calls: [{ name: 'sleep', input: {} }] })] });
+    try {
+      await geminiTrip(page, s.url);
+      await page.goto('/#/trips');
+      const trip = await startTrip(page, 'Big Sur');
+      await writeEvent(page, trip, { type: 'grounded', data: { source: 'Google Search', links: [] } });
+      await page.evaluate(() => { location.hash = '#/languages'; });
+      const restarted = page.waitForEvent('load');
+      await page.locator('#language-ui').selectOption(tag);
+      await restarted;
+      await expect(page.locator('html')).toHaveAttribute('lang', new RegExp(`^${tag.slice(0, 2)}`));
+      // Settings → Tools: the switch under "Your models' own tools" by the tool's name in the screens' words.
+      await page.evaluate(() => { location.hash = '#/tools'; });
+      const own = page.locator('.tool-switches > div').filter({ has: page.getByRole('heading', { name: ui['1ai12ua'], exact: true }) });
+      await expect(own.locator('label > span:not(.sub)')).toHaveText([name]);
+      await expect(page.getByText('Google Search')).toHaveCount(0);
+      // The older card, then a new one, its line read aloud as it comes.
+      await page.evaluate(() => { location.hash = '#/talk'; });
+      const cards = page.locator('.convo .grounded .card-title');
+      await expect(cards).toHaveText([title]);
+      await page.evaluate(() => {
+        const w = /** @type {any} */ (window);
+        const announcer = /** @type {HTMLElement} */ (document.querySelector('main [aria-live="polite"]'));
+        w.announced = [];
+        new MutationObserver(() => w.announced.push(announcer.textContent)).observe(announcer, { childList: true, subtree: true });
+      });
+      await page.getByRole('button', { name: ui['1m2zofh'], exact: true }).click();
+      await page.getByLabel(ui.gb19et).fill('Is Nepenthe open tonight?');
+      await page.getByRole('button', { name: ui['1vatbdb'], exact: true }).click();
+      await expect(cards).toHaveText([title, title], { timeout: 30_000 });
+      await expect(page.locator('.convo .grounded p')).toHaveText(GROUNDED);
+      const said = () => page.evaluate(() => /** @type {string[]} */ (/** @type {any} */ (window).announced).find((x) => x.includes('Nepenthe closes')) ?? '');
+      await expect.poll(said).toContain(GROUNDED);
+      expect((await said()).startsWith(`${aloud}${GROUNDED}`), await said()).toBe(true);
+    } finally {
+      await s.close();
+    }
+  });
+}
 
 test('Google Search with Koe on and the halves\' notes hidden: Kokoro\'s grounded answer still shows as "From Google Search", and Koe says it in her own words', async ({ page }) => {
   let koe = 0;

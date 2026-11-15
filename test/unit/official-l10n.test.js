@@ -214,27 +214,54 @@ test("words made for another version of annai's own plugin still give every fiel
 
 // Provider words, part 2: a phone still on an older annai reads the words a newer catalog wrote, which may give a field this annai
 // doesn't list as translated (the strings-stale re-review's R1: the whole Gemini file was refused, so its words showed in English).
-// The real Japanese Gemini words, with the provider tool's name added, a field a later annai may translate and this one treats as data.
+// The real Japanese Gemini words, with the provider tool's id given, a field annai never translates and treats as data (its switches
+// and its words are matched by it), as a newer catalog's field this annai doesn't list would be.
 const GEMINI = JSON.parse(await readFile(new URL('../../plugins-official/provider-gemini/annai-plugin.json', import.meta.url), 'utf8'));
 const GEMINI_JA = JSON.parse(await readFile(new URL('../../catalog/l10n/ja/provider-gemini.json', import.meta.url), 'utf8'));
-const NEWER = 'provider.abilities.chat.models.0.providerTools.0.name';
+const NEWER = 'provider.abilities.chat.models.0.providerTools.0.id';
 /** The value at a translation's path. @param {any} o @param {string} path */
 const valueAt = (o, path) => path.split('.').reduce((x, k) => x?.[k], o);
 
 test("annai's own plugin's words from a newer catalog: a field this annai doesn't list is skipped, every field it lists is translated", () => {
   setWords('ja', {});
-  const bytes = utf8(JSON.stringify({ ...GEMINI_JA, manifest: { ...GEMINI_JA.manifest, [NEWER]: 'Google 検索' } }));
+  const bytes = utf8(JSON.stringify({ ...GEMINI_JA, manifest: { ...GEMINI_JA.manifest, [NEWER]: 'google-kensaku' } }));
   const w = wordsOf(GEMINI, () => bytes, { tag: 'ja', official: true });
   assert.equal(w.lang, 'ja');
   assert.ok(Object.keys(GEMINI_JA.manifest).length > 5);
   for (const [path, value] of Object.entries(GEMINI_JA.manifest)) assert.equal(valueAt(w.manifest, path), value, path);
-  assert.equal(valueAt(w.manifest, NEWER), 'Google Search', 'a field this annai treats as data keeps its value');
-  assert.equal(valueAt(GEMINI, NEWER), 'Google Search', 'the manifest itself stays English');
+  assert.equal(valueAt(w.manifest, NEWER), 'gemini-google-search', 'a field this annai treats as data keeps its value');
+  assert.equal(valueAt(GEMINI, NEWER), 'gemini-google-search', 'the manifest itself is unchanged');
   // A third party's package holds its manifest and words together, so it has no such skew: its file is left out whole, with its line.
   const theirs = { ...GEMINI, id: 'acme-gemini', l10n: ['ja'] };
   const read = (/** @type {string} */ path) => (path === 'l10n/ja.json' ? bytes : undefined);
   assert.deepEqual(leftOut(theirs, read), [{ tag: 'ja', why: `its l10n/ja.json translates ${NEWER}, which isn't a field a translation may give` }]);
   assert.equal(wordsOf(theirs, read).lang, 'en');
+});
+
+// Provider words, step 2: a model's own tool is named on Settings → Tools in the screens' language, as its vendor writes it there; the
+// manifest, which Shiori's prompt reads, keeps the English name.
+const VENDORS = ['provider-gemini', 'provider-anthropic', 'provider-openai', 'provider-openrouter'];
+const GOOGLE = { ja: 'Google 検索', 'zh-Hans': 'Google 搜索', 'zh-Hant': 'Google 搜尋' };
+
+test("every official model tool's name is translated in each language annai ships, Google Search as Google writes it; the manifest stays English", async () => {
+  for (const id of VENDORS) {
+    const m = JSON.parse(await readFile(new URL(`../../plugins-official/${id}/annai-plugin.json`, import.meta.url), 'utf8'));
+    const paths = Object.entries(m.provider.abilities).flatMap(([a, ab]) => [
+      ...(ab.models ?? []).flatMap((/** @type {any} */ x, /** @type {number} */ i) => (x.providerTools ?? []).map((/** @type {any} */ _, /** @type {number} */ j) => `provider.abilities.${a}.models.${i}.providerTools.${j}.name`)),
+      ...(ab.modelDefaults?.providerTools ?? []).map((/** @type {any} */ _, /** @type {number} */ j) => `provider.abilities.${a}.modelDefaults.providerTools.${j}.name`)]);
+    assert.ok(paths.length, id);
+    for (const tag of /** @type {const} */ (['ja', 'zh-Hans', 'zh-Hant'])) {
+      setWords(tag, {});
+      const bytes = utf8(await readFile(new URL(`../../catalog/l10n/${tag}/${id}.json`, import.meta.url), 'utf8'));
+      const w = wordsOf(m, () => bytes, { tag, official: true });
+      for (const path of paths) {
+        const name = valueAt(w.manifest, path);
+        assert.match(name, /[\u3040-\u30ff\u4e00-\u9fff]/u, `${id} ${tag} ${path}: ${name}`);
+        if (id === 'provider-gemini') assert.equal(name, GOOGLE[tag]);
+        assert.match(valueAt(m, path), /^[A-Za-z ]+$/, 'the manifest itself stays English');
+      }
+    }
+  }
 });
 
 test("annai's own plugin's words: a listed field with a wrong value is skipped alone, the other fields translated; a third party's file is left out", () => {

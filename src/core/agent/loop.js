@@ -1620,10 +1620,11 @@ export class Agent {
     const hidden = [...via.hide, ...((await this.#half.hidden?.()) ?? [])];
     const tools = toolList({ registry: this.#half.registryTools ? this.registry : NO_TOOLS, switches, loop: this.#loopTools }).filter((t) => !hidden.includes(t.name));
     const providerTools = via.kinds.length ? { providerTools: { kinds: via.kinds, off: via.off } } : {};
-    // A search whose replies are shown as written (Google Search, G4): one Shiori writes them for the user, while it is on.
+    // A search whose replies are shown as written (Google Search, G4): one Shiori writes them for the user, while it is on. She isn't
+    // told the card's title: the screens name it in the user's language, and a quoted name is said as it is.
     const t = this.#rules() === 'one' ? model?.providerTools.find((x) => x.shows && via.kinds.includes(x.kind) && !via.off.includes(x.id)) : undefined;
     /* en */
-    const shows = t ? `\n\n# ${t.name}\nA reply in which you search with ${t.name} is shown to the user as you write it, under "${t.shows}", with its sources. Write that reply for the user, with no private notes in it. You may still speak or show a shorter version of it, as usual.` : '';
+    const shows = t ? `\n\n# ${t.name}\nA reply in which you search with ${t.name} is shown to the user as you write it, with its sources. Write that reply for the user, with no private notes in it. You may still speak or show a shorter version of it, as usual.` : '';
     return { tools, via, providerTools, shows };
   }
 

@@ -4,6 +4,7 @@ import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { modelOf, providerOf } from '../../core/llm/config.js';
 import { searchPanel } from '../search-panel.js';
 import { list } from '../format.js';
+import { toolWords } from './provider.js';
 
 /** The built-in tools' groups in order, as their plugins name them. */
 const GROUPS = /* en */ ['Talk', 'Files', 'Trips', 'Web', 'Places', 'Go', 'Time', 'Self'];
@@ -24,15 +25,19 @@ export async function toolSwitchList(ctx) {
     if (!groups.has(g)) groups.set(g, []);
     groups.get(g)?.push(tool);
   }
+  // Its plugins started, so their words are read (as the provider's page reads them).
+  await ctx.llm.ready;
   const cfg = await ctx.llm.config();
   /** @type {Map<string, { id: string, name: string, models: string[] }>} */
   const provider = new Map();
   for (const rec of Object.values(cfg.models)) {
     const m = modelOf(/** @type {any} */ (rec));
     const free = cfg.providers[m.provider] ? providerOf(cfg.providers[m.provider]).free : false;
+    // Each tool's name in the screens' language where its plugin has it (as its provider's page has its switch's words), else the model's.
+    const said = toolWords(ctx.plugins.shownOf(cfg.providers[m.provider]?.plugin)?.provider?.abilities?.[m.ability]);
     for (const pt of m.providerTools ?? []) {
       if (pt.paidOnly && free) continue; // not on a key on the free tier (G4)
-      const p = provider.get(pt.id) ?? { id: pt.id, name: pt.name, models: [] };
+      const p = provider.get(pt.id) ?? { id: pt.id, name: String(said.get(pt.id)?.name ?? pt.name), models: [] };
       p.models.push(m.name);
       provider.set(pt.id, p);
     }

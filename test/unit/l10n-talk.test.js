@@ -1,7 +1,7 @@
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { setWords } from '../../src/core/l10n.js';
+import { setWords, t } from '../../src/core/l10n.js';
 
 // The Conversation, voice and Shiori's screens in Japanese (localization L5c), with the drafts that ship, beside what a model reads
 // of the same events: that stays English. annai's words in the Conversation are made at display from an event's data; the words
@@ -10,7 +10,7 @@ import { setWords } from '../../src/core/l10n.js';
 setWords('ja', JSON.parse(await readFile(new URL('../../l10n/ja.json', import.meta.url), 'utf8')));
 after(() => setWords('en', null));
 // Imported once the words are set, as boot.js sets them before main.js loads: words made at a module's top level are Japanese too.
-const { wokeText, reminderParts, announced, movedWords, wentWords } = await import('../../src/ui/screens/talk.js');
+const { wokeText, reminderParts, announced, movedWords, wentWords, sourceOf } = await import('../../src/ui/screens/talk.js');
 const { SYSTEM } = await import('../../src/ui/talk-panel.js');
 const { sample } = await import('../../src/ui/speech-check.js');
 const { speaksScreens } = await import('../../src/ui/format.js');
@@ -75,4 +75,22 @@ test('movedWords in Japanese: whole sentences, the title as a value', () => {
   assert.equal(movedWords({ to: 't', started: true, count: 2 }, 'アンカレッジ'), 'Shioriがファイルをもとに「アンカレッジ」を始めました。');
   assert.equal(movedWords({ to: 't', started: false, count: 1 }, '京都'), 'Shioriがファイル1件を「京都」に移しました。');
   assert.equal(movedWords({ to: 't', started: false, count: 1 }, null), 'Shioriはファイルを別の会話に移しましたが、その会話は削除されています。');
+});
+
+// Provider words, step 2: the grounded card names its search in the screens' language, as Google writes it, from what every entry
+// holds (Gemini's plugin writes "Google Search"; the oldest none), so a conversation from before this version reads the same.
+test("a grounded reply's card and its line read aloud name Google Search as Google writes it in each language, an older entry's too; another search as it gave it", async () => {
+  try {
+    for (const [tag, name, title, aloud] of [['ja', 'Google 検索', 'Google 検索から', 'Google 検索より。'], ['zh-Hans', 'Google 搜索', '来自 Google 搜索', '来自 Google 搜索。'],
+      ['zh-Hant', 'Google 搜尋', '來自 Google 搜尋', '來自 Google 搜尋。']]) {
+      setWords(tag, JSON.parse(await readFile(new URL(`../../l10n/${tag}.json`, import.meta.url), 'utf8')));
+      for (const d of [{ source: 'Google Search' }, { source: '' }, {}]) assert.equal(sourceOf(d), name, `${tag} ${JSON.stringify(d)}`);
+      // As the card's title and the line read aloud put it (talk.js, groundedCard and the announcer).
+      assert.equal(t`From ${sourceOf({ source: 'Google Search' })}`, title);
+      assert.equal(t`From ${sourceOf({ source: 'Google Search' })}.`, aloud);
+      assert.equal(sourceOf({ source: 'Brave Search' }), 'Brave Search');
+    }
+  } finally {
+    setWords('ja', JSON.parse(await readFile(new URL('../../l10n/ja.json', import.meta.url), 'utf8')));
+  }
 });
