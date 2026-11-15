@@ -188,3 +188,127 @@ test('Test uploads its photo, finds it in the list and deletes it; a key that ca
   await no.send();
   assert.equal(no.sentAs(), 'image_url');
 });
+
+test('a dead key met at start turns uploads off, and a new key (Sign in again, or typed) turns them on again, with no restart', async () => {
+  let dead = true;
+  const k = await kit({ status: (m, p) => (dead && m === 'GET' && p === '/files' ? 401 : null) });
+  await k.llm.sweepUploads(); // a start, or coming online, with the old key
+  await k.send();
+  assert.equal(k.sentAs(), 'image_url');
+  dead = false;
+  await k.llm.reconnect(k.id, () => setKey(k.store, k.id, 'sk-or-v1-new-key-9876543210'));
+  await k.send();
+  assert.equal(k.sentAs(), 'file');
+  assert.equal(await k.llm.uploading(await k.modelId()), true);
+});
+
+test('a new address of the ability turns uploads on again too: what failed at the old one says nothing about the new', async () => {
+  let dead = true;
+  const k = await kit({ status: (m, p) => (dead && m === 'GET' && p === '/files' ? 401 : null) });
+  await k.llm.sweepUploads();
+  assert.equal(await k.llm.uploading(await k.modelId()), false);
+  dead = false;
+  await k.llm.reconnect(k.id, async () => {
+    const rec = (await readConfig(k.ws)).providers[k.id];
+    await saveProvider(k.ws, { ...rec, user: { ...rec.user, abilities: { ...rec.user?.abilities, chat: { ...rec.user?.abilities?.chat, baseUrl: 'https://openrouter.ai/api/v1/' } } } });
+  });
+  assert.equal(await k.llm.uploading(await k.modelId()), true);
+});
+
+test('a key change that fails leaves what it found as it was', async () => {
+  const k = await kit({ status: (m, p) => (m === 'GET' && p === '/files' ? 401 : null) });
+  await k.llm.sweepUploads();
+  await assert.rejects(k.llm.reconnect(k.id, async () => { throw new Error('the store is full'); }), /store is full/);
+  assert.equal(await k.llm.uploading(await k.modelId()), false, 'still off: nothing changed');
+});
+
+test('a photo sent while the key is changing goes in the request, and the old key’s uploads are deleted with nothing new left behind', async () => {
+  const k = await kit();
+  await k.send();
+  assert.equal(k.ours().length, 1);
+  /** @type {string | undefined} */
+  let during;
+  await k.llm.reconnect(k.id, async () => {
+    // The 10 s wait is over and the old key's files are deleted: a turn now is sent whole, to upload nothing there.
+    assert.deepEqual(k.ours(), []);
+    await k.send();
+    during = k.sentAs();
+    await setKey(k.store, k.id, 'sk-or-v1-new-key-9876543210');
+  });
+  assert.equal(during, 'image_url');
+  assert.deepEqual(k.ours(), [], 'nothing was uploaded to the old workspace');
+  await k.send();
+  assert.equal(k.sentAs(), 'file', 'once the new key is saved, uploads go again');
+  assert.equal(k.or.requests.filter((r) => r.method === 'POST' && r.url.endsWith('/files')).length, 2);
+});
+
+test('a photo sent while the provider is removed, or at Erase, goes in the request', async () => {
+  for (const how of ['removed', 'erased']) {
+    /** @type {() => void} */
+    let release = () => {};
+    const gate = new Promise((r) => { release = () => r(undefined); });
+    // The list is held back, so the removal or Erase is under way, not done, when the photo is sent.
+    const k = await kit({ delay: (m) => (m === 'GET' ? gate : undefined) });
+    const going = how === 'removed' ? k.llm.removeProvider(k.id) : k.llm.forgetAll({ timeoutMs: 2000 });
+    await until(() => k.or.requests.some((r) => r.method === 'GET'));
+    await k.send();
+    assert.equal(k.sentAs(), 'image_url', how);
+    assert.equal(k.or.requests.some((r) => r.method === 'POST' && r.url.endsWith('/files')), false, how);
+    release();
+    await going;
+    assert.deepEqual(k.ours(), [], how);
+  }
+});
+
+test('Test’s delete is by the id its upload gave: a 404 for that file, or a refusal, turns uploads off; no answer, a 429 or a server error turns nothing off and leaves the photo for the sweep', async () => {
+  const stepOf = async (/** @type {Awaited<ReturnType<typeof kit>>} */ k) => (await k.llm.test(await k.modelId())).steps.find((s) => s.step === 'upload');
+  // 404: annai can't delete there.
+  const gone = await kit({ status: (m) => (m === 'DELETE' ? 404 : null) });
+  const s404 = await stepOf(gone);
+  assert.equal(s404?.ok, false);
+  assert.match(s404?.detail ?? '', /couldn't delete the test photo with this key.*send photos in each request/);
+  await gone.send();
+  assert.equal(gone.sentAs(), 'image_url');
+  // A refusal, as before.
+  const no = await kit({ status: (m) => (m === 'DELETE' ? 401 : null) });
+  assert.equal((await stepOf(no))?.ok, false);
+  await no.send();
+  assert.equal(no.sentAs(), 'image_url');
+  // Transient: nothing turned off, the photo stays, and the sweep deletes it with the others after 48 hours.
+  for (const code of [503, 429, 500, 0]) {
+    const k = await kit({ status: (m) => (m === 'DELETE' ? code : null) });
+    const s = await stepOf(k);
+    assert.equal(s?.ok, false, `${code}`);
+    assert.match(s?.detail ?? '', /couldn't check just now that it can delete the test photo/);
+    assert.doesNotMatch(s?.detail ?? '', /in each request/);
+    assert.deepEqual(k.ours(), ['annai-test.png']);
+    await k.send();
+    assert.equal(k.sentAs(), 'file', `${code}: uploads stay on`);
+    assert.equal(k.or.requests.filter((r) => r.method === 'GET').length, 0, 'no list: it deletes by id');
+  }
+});
+
+test('Test is not fooled by a file in the list: it deletes what it uploaded, and only that', async () => {
+  const k = await kit({ files: [{ filename: 'annai-test.png', created_at: iso(Date.now()) }] });
+  const before = k.or.held.map((f) => f.id);
+  const s = (await k.llm.test(await k.modelId())).steps.find((x) => x.step === 'upload');
+  assert.equal(s?.ok, true);
+  assert.deepEqual(k.or.held.map((f) => f.id), before, 'another device’s test photo is not touched; its own is deleted');
+});
+
+test('a Test that passes turns uploads on again where a refused list at start had turned them off, and Test then says what is true', async () => {
+  let dead = true;
+  const k = await kit({ status: (m, p) => (dead && m === 'GET' && p === '/files' ? 401 : null) });
+  await k.llm.sweepUploads();
+  await k.send();
+  assert.equal(k.sentAs(), 'image_url');
+  dead = false;
+  const step = (await k.llm.test(await k.modelId())).steps.find((s) => s.step === 'upload');
+  assert.equal(step?.ok, true);
+  await k.send();
+  assert.equal(k.sentAs(), 'file', 'Test said uploads work, and they do');
+  // One that fails turns them off, as before.
+  const no = await kit({ status: (m) => (m === 'DELETE' ? 403 : null) });
+  await no.llm.test(await no.modelId());
+  assert.equal(await no.llm.uploading(await no.modelId()), false);
+});

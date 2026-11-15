@@ -41,6 +41,14 @@ export function priceLine(prices, at = Date.now()) {
 /** The free-tier switch's words: who doesn't charge, as the description names it, else the plugin's name. @param {true | string} freeTier @param {string} pluginName */
 export const freeTierLabel = (freeTier, pluginName) => t`This key is on the free tier (${typeof freeTier === 'string' ? freeTier : pluginName} doesn't charge)`;
 
+/**
+ * Whether an ability's own address lets go of what the provider holds for it first, with the old address and key: the turns a protocol
+ * keeps, and the photo uploads where it deletes them and the ability has the switch for them. Not an ability that can delete uploads but has
+ * no switch (OpenAI's Chat Completions): letting go there would delete the kept turns of the provider's other abilities (6a986115).
+ * @param {{ keeps?: unknown, deleteUploadRequest?: unknown }} type @param {boolean} uploadsSwitch whether the ability shows the uploads switch
+ */
+export const releasesAtAddress = (type, uploadsSwitch) => Boolean(type.keeps) || (Boolean(type.deleteUploadRequest) && uploadsSwitch);
+
 /** What a provider keeps (G2), named before a removal, or a key change (key). @param {{ turns: number, waiting: number, days: number, who: string[] }} k @param {boolean} online @param {boolean} [key] */
 export function keptWords({ turns, waiting, days, who }, online, key = false) {
   const n = turns + waiting;
@@ -405,7 +413,7 @@ async function abilityBody(view, abilityId) {
       const wrong = v ? addressShown(v) : null;
       if (wrong) throw new Error(wrong);
       return v;
-    }, (v) => (keep || (deletes && uploads) ? ctx.llm.reconnect(id, () => saveAbility({ baseUrl: v })) : saveAbility({ baseUrl: v })))), // a new address: what it keeps or holds there goes first
+    }, (v) => (releasesAtAddress(type, Boolean(uploads)) ? ctx.llm.reconnect(id, () => saveAbility({ baseUrl: v })) : saveAbility({ baseUrl: v })))), // a new address: what it keeps or holds there goes first
     h('p', { class: 'sub', text: t`Empty: the provider's address. Each setting here is saved as you change it.` }),
     addressWarn,
     uploads?.el ?? null,

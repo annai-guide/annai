@@ -48,11 +48,13 @@ export function createLlm({
   const bench = new Bench();
   /** Tunables a live model had to open with instead (decision 11: v1beta without proactive audio), until annai restarts. @type {Map<string, Record<string, any>>} */
   const liveTunables = new Map();
-  /** Photos uploaded to providers, by provider and ability (spec §4.8). */
-  const uploads = new Uploads(ws);
   /** Providers going, or their key or address changing (G2). @type {Set<string>} */
   const removing = new Set();
   let erasing = false;
+  /** Whether an endpoint's provider is going or changing key or address, or everything is being erased: it keeps and uploads nothing meanwhile. @param {string} endpointId */
+  const going = (endpointId) => erasing || removing.has(endpointId.split('/')[0]);
+  /** Photos uploaded to providers, by provider and ability (spec §4.8). A call made while its provider is going sends its photos in the request. */
+  const uploads = new Uploads(ws, going);
   /** Conversations' calls under way, for Erase. @type {Set<Promise<unknown>>} */
   const inflight = new Set();
   /** p, for up to ms. @param {Promise<unknown>} p @param {number} ms */
@@ -72,7 +74,7 @@ export function createLlm({
   const kept = new Kept({
     ws,
     alive: async ({ endpoint, scope, key }) => {
-      if (erasing || removing.has(endpoint.split('/')[0])) return false;
+      if (going(endpoint)) return false;
       const to = await reachEndpoint(endpoint);
       return Boolean(to && to.endpoint.tunables.keep !== false && to.print === key && (await store.tx(['scopes'], 'readonly', (t) => t.getScope(scope))));
     },
@@ -115,16 +117,14 @@ export function createLlm({
   };
   /**
    * annai's uploads deleted at each ability that keeps them (sweepUploads): those over 48 hours old, or all of them where the switch
-   * is off or all is asked. One that can't be listed, or refuses the key, gets no uploads until annai restarts, so annai never makes
-   * files it can't delete; not so as its key or address goes (release), where a refused old key says nothing about the new one.
-   * hold: no ability swept uploads again until annai restarts (it is going for good: a call under way sends its photos in the request
-   * rather than leave a new upload behind).
-   * @param {Awaited<ReturnType<typeof sweepable>>} list @param {{ all?: boolean, release?: boolean, hold?: boolean }} [o]
+   * is off or all is asked. One that can't be listed, or refuses the key, gets no uploads until annai restarts, or its provider's key or
+   * address changes, or a Test passes (Uploads.retry): so annai never makes files it can't delete, and what an old key was refused
+   * says nothing about the new one. A provider going, or changing its key or address, makes no upload meanwhile (going).
+   * @param {Awaited<ReturnType<typeof sweepable>>} list @param {{ all?: boolean }} [o]
    */
-  const sweep = (list, { all = false, release = false, hold = false } = {}) => Promise.all(list.map(async (to) => {
-    if (hold) uploads.off(to.endpoint.id);
+  const sweep = (list, { all = false } = {}) => Promise.all(list.map(async (to) => {
     const r = await sweepUploads({ type: to.type, endpoint: to.endpoint, key: to.key, fetch: get, trace: modelTrace(store, SYS), all: all || to.all }).catch(() => null);
-    if (!release && (r?.outcome === 'refused' || r?.outcome === 'unreadable')) uploads.off(to.endpoint.id);
+    if (r?.outcome === 'refused' || r?.outcome === 'unreadable') uploads.off(to.endpoint.id);
     return r;
   }));
   /** At start and on coming online: the uploads over 48 hours old, and all of those where the switch is off. */
@@ -137,8 +137,8 @@ export function createLlm({
     return { queued };
   };
   /**
-   * The provider marked as going, its turns are deleted with their key for up to 10 s; then work runs (a key, an address
-   * or the provider going), and once it has, what is left is let go. gone: for good.
+   * The provider marked as going (no photo is uploaded to it meanwhile), its turns and photo uploads are deleted with their key for up to
+   * 10 s; then work runs (a key, an address or the provider going), and once it has, what is left is let go. gone: for good.
    * @template T @param {string} id @param {() => Promise<T>} work @param {boolean} [gone] @returns {Promise<T>}
    */
   const releasing = async (id, work, gone = false) => {
@@ -149,12 +149,16 @@ export function createLlm({
       // Its photo uploads too, all of them, with the old key and address, beside the turns: the 10 s bound what this waits for,
       // and deletions not done by then go on.
       const swept = await sweepable(id).catch(() => []);
-      await within(Promise.all([drainFor(10_000), sweep(swept, { all: true, release: true, hold: gone })]), 10_000);
+      await within(Promise.all([drainFor(10_000), sweep(swept, { all: true })]), 10_000);
       const out = await work();
       done = true;
       await kept.drop(id).catch(() => {});
-      // Their ids go: deleted, or kept under a key or at an address no longer used.
-      if (!gone) for (const to of swept) await uploads.forget(to.endpoint.id).catch(() => {});
+      if (!gone) {
+        // Their ids go: deleted, or kept under a key or at an address no longer used. And what failed with the old key or address,
+        // uploads turned off, says nothing about the new: they are tried again.
+        for (const to of swept) await uploads.forget(to.endpoint.id).catch(() => {});
+        uploads.retry(id);
+      }
       return out;
     } finally {
       // A removal that failed leaves the provider as it was, its turns kept again.
@@ -562,7 +566,7 @@ export function createLlm({
       await kept.release();
       await kept.queue();
       // And every photo annai uploaded where it deletes them, beside the turns, within the same time.
-      await within(Promise.all([drainFor(timeoutMs), sweepable().then((list) => sweep(list, { all: true, release: true, hold: true }))]), timeoutMs);
+      await within(Promise.all([drainFor(timeoutMs), sweepable().then((list) => sweep(list, { all: true }))]), timeoutMs);
       const n = await kept.count();
       return { left: n.turns + n.waiting };
     },

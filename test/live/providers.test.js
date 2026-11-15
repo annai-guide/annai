@@ -95,10 +95,10 @@ for (const c of cases) {
   };
   const cleanUp = () => sweepUploads({ type: orType, endpoint: ep, key: key ?? null, fetch: (u, i) => fetch(u, i), all: true });
 
-  test('OpenRouter files: Test uploads its photo, finds it in the list and deletes it with this key', { skip }, async () => {
+  test('OpenRouter files: Test uploads its photo and deletes it by the id the upload gave, with this key', { skip }, async () => {
     /** @type {string[]} */
     const off = [];
-    const r = await testModel({ type: orType, endpoint: ep, model: model({ providerId: 'openai/gpt-4.1-nano' }), key: key ?? null, uploads: /** @type {any} */ ({ off: (/** @type {string} */ x) => off.push(x) }) });
+    const r = await testModel({ type: orType, endpoint: ep, model: model({ providerId: 'openai/gpt-4.1-nano' }), key: key ?? null, uploads: /** @type {any} */ ({ off: (/** @type {string} */ x) => off.push(x), retry: () => {} }) });
     const step = r.steps.find((s) => s.step === 'upload');
     assert.equal(step?.ok, true, JSON.stringify(r.steps));
     assert.match(step?.detail ?? '', /deleted the test photo/);
@@ -145,6 +145,33 @@ for (const c of cases) {
       t.diagnostic(`first: written ${first.usage.cacheWrite}, read ${first.usage.cacheRead}; second: written ${second.usage.cacheWrite}, read ${second.usage.cacheRead}; costs $${first.usage.cost ?? '?'} and $${second.usage.cost ?? '?'}`);
       assert.match(second.text, /KUMQUAT\s*5R83/i);
       assert.ok(second.usage.cacheRead > 0, 'the second call read the cache');
+    } finally {
+      await cleanUp();
+    }
+  });
+
+  // The list's paging was never seen for real (the real checks of 2026-11-14 listed one file): two of annai's files, listed with the smallest
+  // page OpenRouter's schema allows (limit 1 to 1000), read across the pages by annai's own sweep.
+  test('OpenRouter files: two of annai’s files listed one to a page are read across the pages and deleted', { skip }, async () => {
+    const small = { ...orType, listUploadsRequest: (/** @type {any} */ c) => { const r = orType.listUploadsRequest(c); return { ...r, url: r.url.replace('limit=1000', 'limit=1') }; } };
+    const bytes = new Uint8Array(await readFile(new URL('../fixtures/llm/files/made-up-text.png', import.meta.url)));
+    let lists = 0;
+    const counting = /** @type {any} */ ((/** @type {string} */ u, /** @type {any} */ i) => { if (!i?.method || i.method === 'GET') lists++; return fetch(u, i); });
+    try {
+      for (const name of ['annai-aaaaaaaaaaaaaaaa.png', 'annai-bbbbbbbbbbbbbbbb.png']) {
+        const up = orType.uploadRequest({ endpoint: ep, key, bytes, mediaType: 'image/png', name, expiresInSeconds: 3600 });
+        const res = await fetch(up.url, { method: 'POST', headers: up.headers, body: up.body });
+        assert.equal(res.status, 200, `uploading ${name}`);
+      }
+      const first = small.listUploadsRequest({ endpoint: ep, key, cursor: null });
+      const page = orType.readUploads(await (await fetch(first.url, { headers: first.headers })).json());
+      assert.equal(page.files.length, 1, 'one file to a page: OpenRouter takes limit=1');
+      assert.ok(page.cursor, 'and says there is another page');
+      const swept = await sweepUploads({ type: small, endpoint: ep, key: key ?? null, fetch: counting, all: true });
+      assert.equal(swept.outcome, 'done');
+      assert.ok(swept.deleted >= 2, 'both, whatever else of annai’s the workspace held');
+      assert.ok(lists >= 2, 'a page for each of the two');
+      assert.deepEqual(await ours(), []);
     } finally {
       await cleanUp();
     }

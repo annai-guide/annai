@@ -28,9 +28,10 @@ export class Uploads {
   #map = null;
   /** @type {Set<string>} endpoints whose uploads failed, or can't be deleted, since annai started */
   #off = new Set();
-  /** @param {Workspace} ws */
-  constructor(ws) {
+  /** @param {Workspace} ws @param {(endpointId: string) => boolean} [going] whether an endpoint's provider is going, or its key or address changing: nothing is uploaded there meanwhile */
+  constructor(ws, going = () => false) {
     this.ws = ws;
+    this.going = going;
   }
   async #load() {
     this.#map ??= (await this.ws.readJSON(SYS_SETTINGS, PATH).catch(() => null)) ?? {};
@@ -67,15 +68,20 @@ export class Uploads {
   off(endpointId) {
     this.#off.add(endpointId);
   }
+  /** A new key or address, or a Test that passed: what failed with the old ones says nothing about these. @param {string} id a provider's id (all its endpoints) or an endpoint's */
+  retry(id) {
+    for (const e of [...this.#off]) if (e === id || e.startsWith(`${id}/`)) this.#off.delete(e);
+  }
   /** @param {string} endpointId */
   isOff(endpointId) {
-    return this.#off.has(endpointId);
+    return this.#off.has(endpointId) || this.going(endpointId);
   }
 }
 
 /**
- * Deletions sent at once: a browser opens at most 6 connections to one host over HTTP/1.1, so more would only wait there; the one files
- * API annai deletes from states no rate limit for it (checked 2026-11-14).
+ * Deletions sent at once: a browser opens at most 6 connections to one host over HTTP/1.1, so more would only wait there. The one files
+ * API annai deletes from publishes no rate limit for its files (its schema lists a 429, no number: checked 2026-11-14), and a 429 on a
+ * deletion waits for the next sweep.
  */
 const AT_ONCE = 6;
 /** Each list or delete request's time limit, a kept turn's deletion's (kept.js). */
@@ -95,11 +101,10 @@ const REQUEST_MS = 15_000;
  * deletes live uploads early, which costs one upload again (the provider's 400 for a dead id, §9.9). Each request is traced as
  * a kept turn's deletion is, without ids, and never follows a redirect.
  * @param {{ type: EndpointType, endpoint: Endpoint, key: string | null, fetch: (url: string, init: RequestInit) => Promise<Response>,
- *   trace?: ReturnType<typeof import('./trace.js').modelTrace>, now?: () => number, all?: boolean, only?: (name: string) => boolean }} c
- *   only: which of annai's files, by name (Test's photo)
+ *   trace?: ReturnType<typeof import('./trace.js').modelTrace>, now?: () => number, all?: boolean }} c
  * @returns {Promise<Swept>}
  */
-export async function sweepUploads({ type, endpoint, key, fetch, trace, now = Date.now, all = false, only = () => true }) {
+export async function sweepUploads({ type, endpoint, key, fetch, trace, now = Date.now, all = false }) {
   if (!type.listUploadsRequest || !type.readUploads || !type.deleteUploadRequest) return { outcome: 'none', deleted: 0, left: 0 };
   if (key) trace?.secret(key);
   /** @type {{ id: string, name: string, createdAt: number }[]} */
@@ -115,14 +120,22 @@ export async function sweepUploads({ type, endpoint, key, fetch, trace, now = Da
     if (status === 404) return { outcome: 'none', deleted: 0, left: 0 };
     if (status === 401 || status === 403) return { outcome: 'refused', deleted: 0, left: 0 };
     if (!res || status < 200 || status >= 300) return { outcome: 'unreachable', deleted: 0, left: 0 };
+    // A body that breaks off or stalls past the time limit is no answer, as no reply at all is; only a body that arrived and can't be read is unreadable.
+    /** @type {string} */
+    let body;
+    try {
+      body = await res.text();
+    } catch {
+      return { outcome: 'unreachable', deleted: 0, left: 0 };
+    }
     /** @type {ReturnType<NonNullable<EndpointType['readUploads']>>} */
     let page;
     try {
-      page = type.readUploads(await res.json());
+      page = type.readUploads(JSON.parse(body));
     } catch {
       return { outcome: 'unreadable', deleted: 0, left: 0 };
     }
-    for (const f of page.files) if (OURS.test(f.name) && only(f.name)) ours.push(f);
+    for (const f of page.files) if (OURS.test(f.name)) ours.push(f);
     cursor = page.cursor;
   } while (cursor && !cursors.has(cursor));
   const due = ours.filter((f) => all || f.createdAt + UPLOAD_TTL_S * 1000 <= now());
@@ -131,9 +144,8 @@ export async function sweepUploads({ type, endpoint, key, fetch, trace, now = Da
   const queue = due.slice();
   const one = async () => {
     for (let f = queue.shift(); f && !refused; f = queue.shift()) {
-      const r = type.deleteUploadRequest?.({ endpoint, key, id: f.id });
-      if (!r) return;
-      const { status } = await send(r, r.method, { endpoint, fetch, trace, now, kind: 'upload-delete', shown: r.url.replace(encodeURIComponent(f.id), '…') });
+      const status = await deleteUpload({ type, endpoint, key, fetch, trace, now, id: f.id });
+      // A 404: someone else deleted it first.
       if ((status >= 200 && status < 300) || status === 404) deleted++;
       else if (status === 401 || status === 403) refused = true;
     }
@@ -141,6 +153,18 @@ export async function sweepUploads({ type, endpoint, key, fetch, trace, now = Da
   await Promise.all(Array.from({ length: Math.min(AT_ONCE, due.length) }, one));
   const left = due.length - deleted;
   return { outcome: refused ? 'refused' : left ? 'unreachable' : 'done', deleted, left };
+}
+
+/**
+ * One upload's deletion by its id, at the endpoint's own address, as the sweep makes it and Test, for the photo it just uploaded.
+ * @param {{ type: EndpointType, endpoint: Endpoint, key: string | null, fetch: (url: string, init: RequestInit) => Promise<Response>,
+ *   trace?: ReturnType<typeof import('./trace.js').modelTrace>, now?: () => number, id: string }} c
+ * @returns {Promise<number>} the status; 0: no answer (or a redirect, which is never followed), or the type can't delete
+ */
+export async function deleteUpload({ type, endpoint, key, fetch, trace, now = Date.now, id }) {
+  const r = type.deleteUploadRequest?.({ endpoint, key, id });
+  if (!r) return 0;
+  return (await send(r, r.method, { endpoint, fetch, trace, now, kind: 'upload-delete', shown: r.url.replace(encodeURIComponent(id), '…') })).status;
 }
 
 /**

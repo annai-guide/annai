@@ -23,9 +23,9 @@ const TUNABLES = Object.freeze({
   // Model-id prefixes whose requests carry Anthropic's cache_control marks on content blocks, every content then an array of blocks:
   // Claude through a server that passes them on (OpenRouter's description sets ["anthropic/"]). Off for any other.
   cacheMarkers: [],
-  // Photos go to {base}/files once, then by id as a file part (spec §4.8). Off: of the servers this type reaches, only OpenRouter's files
-  // take a photo for a chat message (tested 2026-11-14), and keep it until it is deleted, so annai deletes its own there from the list.
-  // OpenRouter's description turns it on.
+  // Photos go to {base}/files once, then by id as a file part (spec §4.8). Off: OpenRouter's files take a photo for a chat message (tested
+  // 2026-11-14) and keep it until it is deleted, so annai deletes its own there from the list; the other servers this type reaches were not
+  // tried, so they stay off. OpenRouter's description turns it on.
   uploads: false,
 });
 /** The reasoning_details a native is kept for: Claude's, as OpenRouter gives them. */
@@ -67,7 +67,7 @@ export function activate(annai) {
     },
     /** One file's deletion (200, or 404 for one already gone). @param {{ endpoint: any, key: string | null, id: string }} c */
     deleteUploadRequest: ({ endpoint, key, id }) => ({ url: join(endpoint.baseUrl, `/files/${encodeURIComponent(id)}`), headers: auth(endpoint, key), method: /** @type {const} */ ('DELETE') }),
-    /** A page of the files the key's workspace holds, the most a page takes (1000), after cursor. @param {{ endpoint: any, key: string | null, cursor: string | null }} c */
+    /** A page of the files the key's workspace holds, 1000 at most (OpenRouter's schema says 1 to 1000, and a real list answered limit=1000), after cursor. @param {{ endpoint: any, key: string | null, cursor: string | null }} c */
     listUploadsRequest: ({ endpoint, key, cursor }) => ({ url: join(endpoint.baseUrl, `/files?limit=1000${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`), headers: auth(endpoint, key) }),
     readUploads,
   });

@@ -1,5 +1,5 @@
 {
-  "build": "cdccfcbf9f87",
+  "build": "de6363e76416",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -27,7 +27,7 @@
     "/skills/replanning/SKILL.md": "730751c952dd",
     "/src/app/boot.js": "58bba933ce37",
     "/src/app/claim.js": "fc9e510c391d",
-    "/src/app/main.js": "9a56b9b7b5d7",
+    "/src/app/main.js": "60b54e980bbc",
     "/src/app/version.js": "07a31129e186",
     "/src/core/after/journey.js": "4e1443181825",
     "/src/core/after/recap.js": "08ae74e5c9c7",
@@ -74,7 +74,7 @@
     "/src/core/hooks.js": "61bf90a384c1",
     "/src/core/html-text.js": "ad9b5709befa",
     "/src/core/llm/call.js": "9c2558d7711e",
-    "/src/core/llm/check.js": "38b3877e262e",
+    "/src/core/llm/check.js": "7c4da9b35e24",
     "/src/core/llm/config.js": "a0fb27487320",
     "/src/core/llm/contract.js": "6da3a160312f",
     "/src/core/llm/decide.js": "4aff39cf2ab3",
@@ -88,11 +88,11 @@
     "/src/core/llm/partial-json.js": "05dab759f366",
     "/src/core/llm/reasoning.js": "944a3f6e351d",
     "/src/core/llm/retry.js": "fdb90e75be0d",
-    "/src/core/llm/service.js": "b0d50253a357",
+    "/src/core/llm/service.js": "3f92b7bc19ca",
     "/src/core/llm/speech.js": "74dd179cc811",
     "/src/core/llm/sse.js": "656d2989d833",
     "/src/core/llm/trace.js": "ce4c33d5516e",
-    "/src/core/llm/uploads.js": "26306f7df555",
+    "/src/core/llm/uploads.js": "56aa243f1b06",
     "/src/core/llm/kept.js": "1c373440d09a",
     "/src/core/live/activity.js": "d1fe254c6571",
     "/src/core/live/clock.js": "e8699d74a329",
@@ -266,7 +266,7 @@
     "/src/ui/screens/plugin-install.js": "83707a06879b",
     "/src/ui/screens/plugin.js": "db6dce86872f",
     "/src/ui/screens/plugins.js": "5b9559133cf6",
-    "/src/ui/screens/provider.js": "566ae52b86eb",
+    "/src/ui/screens/provider.js": "f79430dd82d0",
     "/src/ui/screens/recap.js": "ff932c9c7165",
     "/src/ui/screens/replay.js": "b6c46d9c0ec7",
     "/src/ui/screens/settings.js": "0822b721f939",
@@ -300,8 +300,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "9cd16ab014d2",
-    "/l10n/zh-Hans.json": "3aee006d0e11",
-    "/l10n/zh-Hant.json": "044afccb2eaa"
+    "/l10n/ja.json": "c99a2fc18b6a",
+    "/l10n/zh-Hans.json": "4a2c1bb1c046",
+    "/l10n/zh-Hant.json": "856c424a8715"
   }
 }

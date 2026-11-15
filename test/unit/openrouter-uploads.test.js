@@ -8,7 +8,7 @@ import { parsePartialJSON } from '../../src/core/llm/partial-json.js';
 import { retry } from '../../src/core/llm/retry.js';
 import { ProviderError, errorFromResponse } from '../../src/core/llm/contract.js';
 import { callOnce } from '../../src/core/llm/call.js';
-import { Uploads, sweepUploads, OURS, uploadName, TEST_UPLOAD } from '../../src/core/llm/uploads.js';
+import { Uploads, sweepUploads, deleteUpload, OURS, uploadName, TEST_UPLOAD } from '../../src/core/llm/uploads.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes } from '../../src/core/scopes.js';
 import { createMemoryStore } from '../fakes/store-memory.js';
@@ -170,10 +170,7 @@ test('the sweep: every page read, annai’s own files over 48 hours old deleted,
   assert.deepEqual(or.held.map((f) => f.filename), ['trip-report.pdf', 'annai-photo.webp']);
 });
 
-test('the sweep: only picks by name (Test’s photo), and a cursor that comes back ends the reading', async () => {
-  const or = mixed();
-  const r = await sweepUploads({ type, endpoint: endpoint(), key: 'k', fetch: or.fetch, now: () => NOW, all: true, only: (n) => n === TEST_UPLOAD });
-  assert.deepEqual(r, { outcome: 'done', deleted: 1, left: 0 });
+test('the sweep: a cursor that comes back ends the reading', async () => {
   let gets = 0;
   const loop = /** @type {any} */ (async () => { gets++; return new Response(JSON.stringify({ data: [], has_more: true, cursor: 'same' })); });
   assert.deepEqual(await sweepUploads({ type, endpoint: endpoint(), key: 'k', fetch: loop }), { outcome: 'done', deleted: 0, left: 0 });
@@ -191,6 +188,8 @@ test('the sweep: no files API, a refused key, a list it can’t read, and no ans
   assert.equal((await at((m) => (m === 'DELETE' ? 403 : null))).outcome, 'refused');
   const odd = /** @type {any} */ (async () => new Response(JSON.stringify({ object: 'list', files: [] })));
   assert.equal((await sweepUploads({ type, endpoint: endpoint(), key: 'k', fetch: odd })).outcome, 'unreadable');
+  const notJson = /** @type {any} */ (async () => new Response('<html>a captive portal</html>'));
+  assert.equal((await sweepUploads({ type, endpoint: endpoint(), key: 'k', fetch: notJson })).outcome, 'unreadable', 'a body that arrived and is not a list');
   const down = /** @type {any} */ (async () => { throw new TypeError('Failed to fetch'); });
   assert.equal((await sweepUploads({ type, endpoint: endpoint(), key: 'k', fetch: down })).outcome, 'unreachable');
   // A redirect is never followed: no answer.
@@ -220,4 +219,56 @@ test('the sweep: requests go only to the endpoint’s own address, and at most 6
   });
   assert.deepEqual(await sweepUploads({ type, endpoint: endpoint(), key: 'k', fetch: slow, now: () => NOW }), { outcome: 'done', deleted: 20, left: 0 });
   assert.equal(most, 6);
+});
+
+test('the sweep: a list whose body breaks off on its way, or stalls past the time limit, is no answer (waits), not a list annai can’t read', async () => {
+  // What a browser does with a connection that drops after the headers, and with the 15 s limit running out on a body: the read rejects.
+  const after = (/** @type {string} */ sent, /** @type {unknown} */ why) => /** @type {any} */ (async () => new Response(new ReadableStream({ start(c) { if (sent) c.enqueue(new TextEncoder().encode(sent)); c.error(why); } }), { status: 200 }));
+  assert.deepEqual(await sweepUploads({ type, endpoint: endpoint(), key: 'k', fetch: after('{"data":[{"id"', new TypeError('network error')) }), { outcome: 'unreachable', deleted: 0, left: 0 });
+  assert.equal((await sweepUploads({ type, endpoint: endpoint(), key: 'k', fetch: after('', new DOMException('The operation timed out.', 'TimeoutError')) })).outcome, 'unreachable');
+});
+
+test('one upload’s deletion by its id: its status, 0 for no answer, a redirect, another origin or a type that can’t delete; Test’s photo is not found by a list', async () => {
+  const or = openRouterFiles({ files: [{ id: 'or_file_one', filename: 'annai-test.png', created_at: iso(NOW) }] });
+  const at = (/** @type {string} */ id, /** @type {any} */ f = or.fetch) => deleteUpload({ type, endpoint: endpoint(), key: 'sk-or-test', fetch: f, id });
+  assert.equal(await at('or_file_one'), 200);
+  assert.equal(or.held.length, 0);
+  assert.equal(await at('or_file_one'), 404, 'already gone: the sweep counts it deleted, Test does not');
+  assert.deepEqual(or.requests.map((r) => r.method), ['DELETE', 'DELETE'], 'no list');
+  assert.equal(or.requests[0].headers.authorization, 'Bearer sk-or-test');
+  assert.equal(await at('x', /** @type {any} */ (async () => { throw new TypeError('Failed to fetch'); })), 0);
+  assert.equal(await at('x', /** @type {any} */ (async () => new Response(null, { status: 302, headers: { location: 'https://elsewhere.example/files/x' } }))), 0);
+  assert.equal(await at('x', /** @type {any} */ (async () => new Response('{}', { status: 503 }))), 503);
+  assert.equal(await deleteUpload({ type: { ...type, deleteUploadRequest: () => ({ url: 'https://evil.example/files/x', headers: {}, method: 'DELETE' }) }, endpoint: endpoint(), key: 'k', fetch: /** @type {any} */ (async () => new Response('{}')), id: 'x' }), 0);
+  assert.equal(await deleteUpload({ type: { ...type, deleteUploadRequest: undefined }, endpoint: endpoint(), key: 'k', fetch: /** @type {any} */ (or.fetch), id: 'x' }), 0);
+});
+
+test('Uploads: an endpoint is off after a failure, and again on for a new key or address (its provider’s id) or a passing Test (its own); one whose provider is going is off while it goes', async () => {
+  const ws = new Workspace(createMemoryStore());
+  await ensureBaseScopes(ws);
+  const going = new Set(['pv-3']);
+  const uploads = new Uploads(ws, (id) => going.has(id.split('/')[0]));
+  for (const e of ['pv-1/chat', 'pv-1/other', 'pv-10/chat']) uploads.off(e);
+  uploads.retry('pv-1/chat');
+  assert.deepEqual(['pv-1/chat', 'pv-1/other', 'pv-10/chat'].map((e) => uploads.isOff(e)), [false, true, true]);
+  uploads.retry('pv-1');
+  assert.deepEqual(['pv-1/chat', 'pv-1/other', 'pv-10/chat'].map((e) => uploads.isOff(e)), [false, false, true], 'pv-10 is another provider');
+  assert.equal(uploads.isOff('pv-3/chat'), true);
+  going.delete('pv-3');
+  assert.equal(uploads.isOff('pv-3/chat'), false, 'a change that is over leaves nothing behind');
+});
+
+test('an older Chat Completions (0.11: no upload hooks) under OpenRouter’s description, which turns uploads on, sends the photo in the request and is never swept', async () => {
+  // provider-openrouter 2.5.0 on chat-completions 0.11 (a page whose plugins updated one at a time): nothing for the core to call.
+  const { uploadRequest, readUpload, deleteUploadRequest, listUploadsRequest, readUploads, ...hooks } = type;
+  void [uploadRequest, readUpload, deleteUploadRequest, listUploadsRequest, readUploads];
+  const old = { ...hooks, tunables: { ...type.tunables } };
+  delete old.tunables.uploads;
+  const or = openRouterFiles();
+  const uploads = await uploadsOf();
+  await callOnce({ type: old, endpoint: endpoint({ tunables: { ...old.tunables, uploads: true } }), model: model(), key: 'k', request: /** @type {any} */ (photo), fetch: /** @type {any} */ (or.fetch), uploads });
+  assert.deepEqual(or.requests.map((r) => r.method + ' ' + new URL(r.url).pathname), ['POST /api/v1/chat/completions']);
+  assert.equal(or.chats[0].messages[0].content[0].type, 'image_url');
+  assert.equal((await sweepUploads({ type: old, endpoint: endpoint(), key: 'k', fetch: /** @type {any} */ (or.fetch) })).outcome, 'none');
+  assert.equal(or.requests.length, 1, 'no list either');
 });

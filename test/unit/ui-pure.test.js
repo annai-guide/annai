@@ -13,7 +13,7 @@ import { follow, announced, wokeText, wokeTitles, reminderParts, movedWords, wen
 import { visibleRegion } from '../../src/ui/photo-viewer.js';
 import { traceSummary, newestFirst } from '../../src/ui/screens/trace.js';
 import { micProblem } from '../../src/ui/mic-help.js';
-import { priceLine, freeTierLabel } from '../../src/ui/screens/provider.js';
+import { priceLine, freeTierLabel, releasesAtAddress } from '../../src/ui/screens/provider.js';
 import { metaLine } from '../../src/ui/talk-panel.js';
 import { mediaKeys } from '../../src/ui/media-keys.js';
 import { restoreFrom } from '../../src/ui/auto-backup.js';
@@ -1010,4 +1010,15 @@ test('addedWords says what a hand-over added once: a file or files, or photos on
   assert.deepEqual(addedWords([photo, note]), { what: '2 files', added: 'Added 2 files' }, 'one file that is not a photo makes them all files');
   assert.deepEqual(addedWords([{ name: '/files/invite', type: 'text/calendar' }]), { what: 'a file', added: 'Added a file' }, 'a name with no ending, a type that is not a photo');
   assert.equal(addedWords([]).added, 'Added 0 files', 'nothing kept is not "0 photos"');
+});
+
+test("an ability's own address lets go first of what its provider holds for it: kept turns, and photo uploads where the type deletes them and the ability has the switch; not for a type that deletes but has no switch", () => {
+  const chatCompletions = { deleteUploadRequest() {} };
+  const responses = { keeps: { days: 30 } };
+  const anthropicMessages = {};
+  assert.equal(releasesAtAddress(chatCompletions, true), true, "OpenRouter's chat: its uploads are deleted at the old address, with the old key");
+  assert.equal(releasesAtAddress(chatCompletions, false), false, "OpenAI's Chat Completions has no switch: its address must not delete the Responses ability's kept turns (6a986115)");
+  assert.equal(releasesAtAddress(responses, false), true, 'turns kept at the old address');
+  assert.equal(releasesAtAddress(responses, true), true);
+  assert.equal(releasesAtAddress(anthropicMessages, true), false, 'a type that keeps nothing and deletes nothing');
 });
