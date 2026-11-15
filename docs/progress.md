@@ -129,6 +129,7 @@ against the code before its row was written. The ones with a question are listed
 
 ## Waiting for the user
 
+- **The release of main a007badb** (BUILD a389d389686f): profile-lang, encoder-card, 固定, strings-stale, turn-end and its follow-up, Build D, words-reader. Gates green (check 5177/5177; full e2e on 7e7deb8b 1873 passed; the turn, hand-over and plugin-words specs on the later merges, every failure passing alone). The push is blocked for the agent: the user runs `git push origin main && /usr/local/sbin/annai-release a007badb` (or a later progress-only commit); then smoke, CI, and the release notes' lines (existing OpenRouter users: none yet, OpenRouter isn't in this release).
 - The phone look of stage 4 and stage 7, after stage 7 ships: see its row.
 - The pre-trip check list's 8-day reminder line, and the page to tick: see its row.
 - G8, once it has a plain account: see its row.
