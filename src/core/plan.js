@@ -33,11 +33,27 @@ export const PLAN_FILE = /^\/plan\/[^/]+\.json$/;
 export const BOOKING_FILE = /^\/bookings\/[^/]+\.json$/;
 
 /**
- * A plan item's `fixed`, as a model is shown it beside the item: what it means, not the field's name, which she translated and said
- * (「(固定)」, Sonnet and Koe, 2026-11-14). A flexible item gets no words: given "can be moved", she said so unasked (the user's pick,
- * 2026-11-14: only say what can't move). The stored field keeps its name. @param {unknown} fixed
+ * A plan row's constraint, as every view shows a model it beside the row: what `fixed` means, not the field's name, which she translated
+ * and said (「(固定)」, Sonnet and Koe, 2026-11-14). A flexible item gets no words: given "can be moved", she said so unasked (the user's
+ * pick, 2026-11-14: only say what can't move). A time Shiori isn't sure of says so, beside "can't be moved": a booking still can't move.
+ * The stored field keeps its name. @param {unknown} fixed @param {{ unsure: boolean }} o unsure: timeUnsure's, for the row's item
  */
-export const fixedWords = (fixed) => /* en */ (fixed ? "can't be moved" : '');
+export const fixedWords = (fixed, { unsure }) => /* en */ [fixed ? "can't be moved" : '', unsure ? 'not sure the time was read right' : ''].filter(Boolean).join('; ');
+
+/**
+ * Whether a plan row's time is one Shiori isn't sure of, as the screens mark it (checkOf): its start or its end is the same moment as its
+ * booking's start or end, and the booking is marked whole or at that time. An end row's item has the end as its start (planRows).
+ * @param {Record<string, any>} item the plan item, or a row's view of it @param {unknown} booking the booking it stands for, if any
+ * @param {{ fallbackTz: string }} o the zone for a time whose own zone annai doesn't know
+ */
+export function timeUnsure(item, booking, { fallbackTz }) {
+  const b = record(booking);
+  if (!b) return false;
+  const moment = (/** @type {any} */ t) => instantAt(t?.at, validZone(t?.tz) ? t.tz : fallbackTz);
+  const marks = checkOf(b);
+  const marked = ['start', 'end'].filter((k) => marks.whole || marks.fields.includes(k)).map((k) => moment(b[k])).filter(Number.isFinite);
+  return [item.start, item.end].some((t) => marked.includes(moment(t)));
+}
 
 /** A booking's title on the Plan when Shiori gave none: its kind's word. */
 const KIND_WORDS = /** @type {Record<string, string>} */ ({ flight: t`Flight`, lodging: t`Stay`, car: t`Car`, rail: t`Train`, event: t`Event`, restaurant: t`Restaurant`, other: t`Booking` });

@@ -1,6 +1,6 @@
 import { meters, travelMinutes, modeFor, kmText, TRAVEL } from './geo.js';
 import { timeIn, validZone, instantAt } from '../time.js';
-import { bookingRef, fixedWords } from '../plan.js';
+import { bookingRef, fixedWords, timeUnsure } from '../plan.js';
 import { t } from '../l10n.js';
 import { sentences, num, when as clockAt } from '../intl.js';
 
@@ -75,6 +75,7 @@ export function planWatches(items, bookings, { fallbackTz }) {
     const short = whatOf(title, booking, flight, x.at, tz, place?.name ?? '');
     const base = {
       type: 'plan', item: slug(x.path), title, at: x.at, end: Number.isFinite(end) && end > x.at ? end : null, tz, fixed: it.fixed === true,
+      unsure: timeUnsure(it, booking, { fallbackTz }),
       what: whatText(short), short,
     };
     const notes = typeof it.notes === 'string' && it.notes.trim() ? it.notes.trim() : '';
@@ -165,8 +166,11 @@ export const planItemWords = (say) => (say.what ? whatWords(say.what) : '');
 
 /** @param {any} w @param {number} [t] */
 const hhmm = (w, t = w.at) => timeIn(t, w.tz);
-/** What a wake says of an item beside its title: "(can't be moved, 12:00)", "(09:45)" for a flexible one. @param {any} w @param {(string | null)[]} more */
-const tag = (w, ...more) => { const p = [fixedWords(w.fixed), ...more].filter(Boolean); return p.length ? ` (${p.join(', ')})` : ''; };
+/**
+ * What a wake says of an item beside its title: "(can't be moved, 12:00)", "(09:45)" for a flexible one, and a time Shiori isn't sure of
+ * says so (fixedWords). @param {any} w @param {(string | null)[]} more
+ */
+const tag = (w, ...more) => { const p = [fixedWords(w.fixed, { unsure: w.unsure === true }), ...more].filter(Boolean); return p.length ? ` (${p.join(', ')})` : ''; };
 /** Where the user is now (not on a catch-up's first look). @param {Moment} m */
 const now = (m) => (m.fix && !m.past ? m.fix : null);
 /** @param {number} km @param {string} activity */

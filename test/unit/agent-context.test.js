@@ -85,7 +85,7 @@ test('the now block: local time to the second and zone, voice, connection, why s
   await ws.write(trip, '/plan/sunset.json', item('sunset', '2026-11-26T16:53:00-08:00', false), { author: 'user' });
   // A time to the second: a reminder "in 1 minute" set from a time to the minute came up to 60 s early, or was refused as passed.
   const now = Date.parse('2026-11-26T16:12:37-08:00');
-  const plan = await nextPlanItems(ws, trip, now);
+  const plan = await nextPlanItems(ws, trip, now, { fallbackTz: 'America/Los_Angeles' });
   assert.deepEqual(plan.map((r) => r[1]), ['sunset', 'dinner']);
   const block = nowBlock({ now, timeZone: 'America/Los_Angeles', voice: 'off', online: true, reasons: ['the user wrote'], plan });
   assert.match(block, /^<now>\ntime: Thursday 2026-11-26 16:12:37, America\/Los_Angeles \(GMT-8\)\n/);
@@ -95,6 +95,19 @@ test('the now block: local time to the second and zone, voice, connection, why s
   // A later step of the turn with nothing new: no "woke for" (the fix pass, S2).
   assert.doesNotMatch(nowBlock({ now, timeZone: 'America/Los_Angeles', voice: 'off', online: true, reasons: [], plan }), /woke for/);
   assert.match(block, /\nnext in the plan:\nstart\ttitle\tconstraint\tplace\n2026-11-26T16:53:00-08:00\tsunset\t\tsunset place\n2026-11-26T18:30:00-08:00\tdinner\tcan't be moved\tdinner place\n<\/now>$/);
+});
+
+test("the now block's plan: an item at its booking's time Shiori isn't sure of says so beside \"can't be moved\"; one at a sure time doesn't (the 固定 re-review's L2)", async () => {
+  const { ws, trip } = await setup();
+  const LA = 'America/Los_Angeles';
+  const t = (/** @type {string} */ local) => ({ at: `${local}-08:00`, tz: LA });
+  await ws.write(trip, '/bookings/inn.json', { id: 'inn', kind: 'lodging', status: 'unverified', source: '/files/inn.pdf', title: 'Harbor Test Inn', unsure: ['end'], start: t('2026-11-26T15:00:00'), end: t('2026-11-27T11:00:00') }, { author: 'user' });
+  await ws.write(trip, '/plan/in.json', { id: 'in', title: 'Check in', fixed: true, booking: '/trip/bookings/inn.json', start: t('2026-11-26T15:00:00') }, { author: 'user' });
+  await ws.write(trip, '/plan/out.json', { id: 'out', title: 'Check out', fixed: true, booking: '/trip/bookings/inn.json', start: t('2026-11-27T11:00:00') }, { author: 'user' });
+  // A booking that isn't there: nothing to be unsure of.
+  await ws.write(trip, '/plan/gone.json', { id: 'gone', title: 'Dinner', fixed: true, booking: '/trip/bookings/gone.json', start: t('2026-11-27T19:00:00') }, { author: 'user' });
+  const plan = await nextPlanItems(ws, trip, Date.parse('2026-11-26T12:00:00-08:00'), { fallbackTz: LA });
+  assert.deepEqual(plan.map((r) => [r[1], r[2]]), [['Check in', "can't be moved"], ['Check out', "can't be moved; not sure the time was read right"], ['Dinner', "can't be moved"]]);
 });
 
 test('warmth: warm within the lifetime of the same prefix; cold after it, or for another prefix', async () => {

@@ -57,6 +57,15 @@ test('the recap is written from the journey in words and lists, never the raw tr
   assert.ok((text.match(/-121\.\d{3,}/g) ?? []).length <= 2, text);
 });
 
+test("the recap's plan says when an item's time is its booking's time Shiori isn't sure of, as every view of the plan does (the 固定 re-review's L2)", async () => {
+  const k = await aTrip();
+  await k.ws.write(k.trip, '/bookings/lodge.json', { id: 'lodge', kind: 'lodging', status: 'unverified', source: '/files/l.pdf', title: 'Cambria Test Lodge', unsure: ['start'], start: { at: iso('18:00'), tz: LA }, end: { at: '2026-11-28T11:00:00-08:00', tz: LA } }, { author: 'user' });
+  await k.ws.write(k.trip, '/plan/lodge.json', { id: 'lodge', title: 'Check in at Cambria Test Lodge', fixed: true, booking: '/trip/bookings/lodge.json', start: { at: iso('18:00'), tz: LA } }, { author: 'user' });
+  const text = recapText(await readJourney({ store: k.store, ws: k.ws, trip: k.trip }));
+  assert.match(text, /\tCheck in at Cambria Test Lodge\t\tcan't be moved; not sure the time was read right\tno\n/);
+  assert.match(text, /Hearst Castle tour\tHearst Castle\tcan't be moved\tno/);
+});
+
 test('a long trip fits the cap: the words are thinned evenly, the road and the stamps stay', async () => {
   const k = await aTrip();
   for (let i = 0; i < 3000; i++) await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: `Message ${i}: ${'blah '.repeat(60)}` } }, at('11:00') + i * 1000);

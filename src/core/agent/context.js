@@ -11,7 +11,7 @@ import { readAppSettings } from '../settings.js';
 import { languageSettings, languagesText, screensText, distancesText } from '../languages.js';
 import { lang, glossary } from '../l10n.js';
 import { blobJSON } from '../reach.js';
-import { fixedWords } from '../plan.js';
+import { fixedWords, timeUnsure, bookingRef } from '../plan.js';
 
 /**
  * The context, in the order that keeps provider caches warm (spec §6.3):
@@ -151,10 +151,20 @@ export async function planItems(ws, trip) {
   return items.sort((a, b) => a.at - b.at);
 }
 
-/** The next plan items, as TSV rows: start, title, constraint (fixedWords), place. @param {import('../workspace.js').Workspace} ws @param {string | null} trip @param {number} now */
-export async function nextPlanItems(ws, trip, now, limit = 5) {
+/**
+ * The next plan items, as TSV rows: start, title, constraint (fixedWords, with timeUnsure from the booking an item stands for), place.
+ * @param {import('../workspace.js').Workspace} ws @param {string | null} trip @param {number} now
+ * @param {{ fallbackTz: string, limit?: number }} o fallbackTz: the zone for a time whose own zone annai doesn't know
+ */
+export async function nextPlanItems(ws, trip, now, { fallbackTz, limit = 5 }) {
   if (!trip) return [];
-  return (await planItems(ws, trip)).filter((x) => x.at >= now).slice(0, limit).map(({ it }) => [it.start.at, it.title, fixedWords(it.fixed), it.place?.name ?? '']);
+  const rows = [];
+  for (const { it } of (await planItems(ws, trip)).filter((x) => x.at >= now).slice(0, limit)) {
+    const ref = bookingRef(it.booking);
+    const booking = ref ? await ws.readJSON(trip, ref).catch(() => null) : null;
+    rows.push([it.start.at, it.title, fixedWords(it.fixed, { unsure: timeUnsure(it, booking, { fallbackTz }) }), it.place?.name ?? '']);
+  }
+  return rows;
 }
 
 /**
