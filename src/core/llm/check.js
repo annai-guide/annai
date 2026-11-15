@@ -28,7 +28,7 @@ const room = (model) => Math.min(4096, model.maxOutput ?? 4096);
  * @typedef {{ type: import('./contract.js').EndpointType, endpoint: import('./config.js').Endpoint, model: import('./config.js').Model,
  *   key: string | null, fetch?: import('./call.js').Fetch, probe?: (url: string) => Promise<boolean>, firstOutputMs?: number,
  *   role?: { id: string, level: string }, uploads?: import('./uploads.js').Uploads }} TestCase  role: a role asking this model at a level of its own (main, koe-classic or utility);
- *   uploads: the endpoints' uploads, turned off where annai can't delete the test photo or read the list, and on again where Test passes
+ *   uploads: the endpoints' uploads, turned off where Test's own upload fails, or annai can't delete the test photo or read the list, and on again where Test passes
  *   detail: what the step found, in the screens' language
  */
 
@@ -116,11 +116,13 @@ export async function testModel(c) {
 }
 
 /**
- * Uploads the test photo, expiring in an hour, the shortest a provider allows (spec §9.8). Where the provider keeps files until they
- * are deleted, annai then deletes it by the id the upload gave, as it will delete each photo: a key that can't (a refusal, or a 404 for
- * the file it just made) sends photos in each request until annai restarts, or a new key or address, or a Test that passes; a delete that
- * gets no answer, a 408, a 429 or a server error says nothing about the key, so photos stay on and the sweep deletes the test photo with
- * the others. A delete that passes reads the list once, as a sweep does (Uploads.listed). @param {TestCase} c @returns {Promise<TestStep>}
+ * Uploads the test photo, expiring in an hour, the shortest a provider allows (spec §9.8). An upload that fails turns uploads off there,
+ * as a call's does: photos go in each request until annai restarts, or a new key or address, or a Test that passes. Where the provider
+ * keeps files until they are deleted, annai then deletes the photo by the id the upload gave, as it will delete each photo: a key that
+ * can't (a refusal, a 404 for the file it just made, or any other 4xx but a 408 or a 429) turns them off the same way; a delete that
+ * gets no answer, a 408, a 429 or a server error says nothing about the key, and the upload worked, so photos stay on and the sweep
+ * deletes the test photo with the others. A delete that passes reads the list once, as a sweep does (Uploads.listed).
+ * @param {TestCase} c @returns {Promise<TestStep>}
  */
 async function testUpload({ type, endpoint, model, key, fetch: get = (url, init) => fetch(url, init), uploads }) {
   /** @type {{ id: string }} */
@@ -135,8 +137,9 @@ async function testUpload({ type, endpoint, model, key, fetch: get = (url, init)
     // The sweeps' time limit for each list or delete request (REQUEST_MS): a stall, body included, ends in no answer, as a failed connection does.
     res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, redirect: 'manual', signal: AbortSignal.timeout(REQUEST_MS) });
     noRedirect(res, endpoint);
-    // A 408, a 429 or a server error says nothing about the key (as in the delete below): a 408 is no answer, the others have the first step's words.
-    if (!res.ok) throw res.status === 408 ? new ProviderError('unreachable', 'HTTP 408') : res.status === 429 || res.status >= 500 ? errorFromResponse(res.status, '', res.headers) : new Error(`HTTP ${res.status}`);
+    // A 408, a 429 or a server error says nothing about the key: a 408 is no answer, the others have the first step's words (a 429's from its body: quota, billing or
+    // credit is the account's; a body that breaks off is read as empty). Unlike after the delete below, where the upload worked, uploads go off for each of them.
+    if (!res.ok) throw res.status === 408 ? new ProviderError('unreachable', 'HTTP 408') : res.status === 429 || res.status >= 500 ? errorFromResponse(res.status, await res.text().catch(() => ''), res.headers) : new Error(`HTTP ${res.status}`);
     // A body that breaks off or stalls is no answer, as the sweep's list reads it; only a body that arrived and isn't an upload is the key's.
     const body = await res.text().catch(() => {
       throw new ProviderError('unreachable', 'no answer');
@@ -145,7 +148,7 @@ async function testUpload({ type, endpoint, model, key, fetch: get = (url, init)
   } catch (e) {
     // The key's words are for an answer that refused the key or wasn't an upload. A redirect, no answer (no reply, a stall, a body that broke off, a 408), a 429
     // and a server error are not the key's: each has the first step's words (no answer: those for an address annai can't reach).
-    const said = e instanceof ProviderError ? (['redirect', 'unreachable', 'rate', 'overloaded', 'server'].includes(e.kind) ? e : null) : !res ? new ProviderError('unreachable', 'no answer') : null;
+    const said = e instanceof ProviderError ? (['redirect', 'unreachable', 'rate', 'credit', 'overloaded', 'server'].includes(e.kind) ? e : null) : !res ? new ProviderError('unreachable', 'no answer') : null;
     // As a call's failed upload does, so the words are true: photos go in each request until annai restarts, or a new key or address, or a Test that passes.
     uploads?.off(endpoint.id);
     return { step: 'upload', ok: false, detail: sentences(said ? explain(said) : t`Uploading photos didn't work with this key.`, t`annai will send photos in each request instead.`) };

@@ -204,9 +204,11 @@ test("the Test button's photo upload has the sweeps' time limit (uploads.js REQU
 
 test("a Test whose photo upload is answered 408, 429 or with a server error is not told as the key's: a 408 is no answer, the others have the words the first step gives them (review of openrouter-f1, F1)", async () => {
   const script = [{ text: 'OK' }, { toolCalls: [{ name: 'report_color', input: { color: 'red' } }] }];
-  const rows = /** @type {[number, string][]} */ ([
+  const rows = /** @type {[number, string, string?][]} */ ([
     [408, "annai couldn't reach this address. It may be down, or it may not allow web apps."],
     [429, 'The provider says too many requests for now.'],
+    // A 429 whose body speaks of quota, billing or credit is the account's, as the first step reads it (the second opinion's lead 5).
+    [429, 'This account is out of credit.', '{"error":{"message":"Insufficient credits: add more to continue."}}'],
     [500, 'The provider had a problem on its side.'],
     [502, 'The provider had a problem on its side.'],
     [503, 'The provider is overloaded right now.'],
@@ -216,12 +218,15 @@ test("a Test whose photo upload is answered 408, 429 or with a server error is n
     [401, "Uploading photos didn't work with this key."],
     [404, "Uploading photos didn't work with this key."],
   ]);
-  for (const [status, words] of rows) {
-    const r = await testModel({ ...withUploads(scriptedCase(script)), fetch: async () => new Response('no', { status }) });
+  for (const [status, words, body = 'no'] of rows) {
+    const r = await testModel({ ...withUploads(scriptedCase(script)), fetch: async () => new Response(body, { status }) });
     const last = /** @type {any} */ (r.steps.at(-1));
-    assert.deepEqual([status, last.step, last.ok, last.detail], [status, 'upload', false, `${words} ${PHOTOS_INSTEAD}`]);
+    assert.deepEqual([status, body, last.step, last.ok, last.detail], [status, body, 'upload', false, `${words} ${PHOTOS_INSTEAD}`]);
     assert.equal(r.ok, true, 'photos still work, sent in each request');
   }
+  // A 429's body that breaks off is read as empty: the answer still came, so it is "too many requests", not no answer.
+  const broken = /** @type {any} */ ((await testModel({ ...withUploads(scriptedCase(script)), fetch: /** @type {any} */ (async () => new Response(new ReadableStream({ start(c) { c.error(new TypeError('network error')); } }), { status: 429 })) })).steps.at(-1));
+  assert.equal(broken.detail, `The provider says too many requests for now. ${PHOTOS_INSTEAD}`);
 });
 
 test("a Test whose photo upload failed turns uploads off there, as a call's failed upload does, so \"annai will send photos in each request instead\" is true; one that passes turns them on (review of openrouter-f1, the second opinion's lead 3)", async () => {

@@ -100,16 +100,21 @@ export class Uploads {
  */
 const AT_ONCE = 6;
 /**
- * Each list or delete request's time limit, a kept turn's deletion's (kept.js), and Test's photo upload's (a 16×16 image). Nothing was
- * measured for 15 s: it is the limit a kept turn's deletion started with, which the sweeps and Test took for their small requests.
+ * Each list or delete request's time limit, a kept turn's deletion's (kept.js), and Test's photo upload's (a 16×16 image). 15 s is
+ * about 35 times the 427 ms a deletion took when measured at the one files API annai deletes from (docs/limitations.md, the entry on
+ * photos that outlive 48 hours), room for a slow link to set up a connection. It began as a kept turn's deletion's limit (0ba2134e),
+ * which the sweeps and Test took for their small requests; the list and the test photo's upload were not measured.
  */
 export const REQUEST_MS = 15_000;
 /**
- * One chat photo's upload (call.js): 30 s, callOnce's default for a whole request, its photos in it as bytes, to go up and begin to answer
- * (firstOutputMs; Koe's classic chat has 8 s). The upload gets the time the request it stands in for would have: a photo at the request
- * cap (1 MiB, photos.js) needs 0.28 Mbit/s up to fit. A cut upload sends the photo in the request, as any failed one does.
+ * One chat photo's upload (call.js): 120 s, a limit that only catches a hang. It stands apart from a role's wait for the first words,
+ * which starts after the uploads and is for a slow model. Sized for the slowest mobile data still in use, 2G EDGE: 59.2 kbit/s up a
+ * timeslot at its best coding (MCS-9), and a class 10 phone uses 2 slots, 118.4 kbit/s, or 1 (59.2), as the network chooses by the traffic
+ * (Wikipedia, General Packet Radio Service, multislot classes). A photo at the request cap (1 MiB, photos.js) is 8,388,608
+ * bits: 71 s at 118.4 kbit/s, and 120 s lets the link run down to 70 kbit/s (59% of that); 1 slot at 59.2 would need 142 s. A cut upload
+ * sends the photo in the request, as any failed one does, and uploads go off there.
  */
-export const UPLOAD_MS = 30_000;
+export const UPLOAD_MS = 120_000;
 
 /**
  * @typedef {{ outcome: 'done' | 'none' | 'refused' | 'unreadable' | 'unreachable', deleted: number, left: number }} Swept
