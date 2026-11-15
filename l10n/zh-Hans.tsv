@@ -95,6 +95,12 @@ provider-gemini:@name	ok	Google Gemini	Google Gemini	plugins-official/provider-g
 provider-gemini:@description	ok	Gemini models through Google's own API, with Google Search on a paid key, its transcription and voices, and Gemini Live for a voice conversation.	通过 Google 原生 API 使用 Gemini 模型。付费密钥可使用 Google 搜索，还提供 Google 的语音转文字和声音，以及可语音对话的 Gemini Live。	plugins-official/provider-gemini/annai-plugin.json:6	
 provider-gemini:@provider.note	ok	Uses Gemini's own API. AI Studio shows each key's tier: a free key's requests are limited per minute and per day. Add more models with Fetch model list.	使用 Gemini 原生 API。可在 AI Studio 查看每个密钥的层级；免费密钥每分钟和每天的请求次数都有限制。可通过“获取模型列表”添加更多模型。	plugins-official/provider-gemini/annai-plugin.json:19	
 provider-gemini:@provider.abilities.chat.noWindowNote	ok	Since version 2.0 this goes through Gemini's own API, not its OpenAI-compatible endpoint. A model without a context window here was added before then, or by id: if it doesn't answer, remove it and add it again with Fetch model list.	从 2.0 版起，这里改用 Gemini 原生 API，不再通过 OpenAI 兼容端点。这里没有标注上下文窗口的模型，是在此之前或按 ID 添加的；如果它没有回应，请移除后用“获取模型列表”重新添加。	plugins-official/provider-gemini/annai-plugin.json:24	Note: remove → 移除, as the model page's button "Remove model" (移除模型).
+provider-gemini:@provider.abilities.chat.models.0.providerTools.0.label	ok	Let Gemini search Google	让 Gemini 使用 Google 搜索	plugins-official/provider-gemini/annai-plugin.json:81	
+provider-gemini:@provider.abilities.chat.models.1.providerTools.0.label	ok	Let Gemini search Google	让 Gemini 使用 Google 搜索	plugins-official/provider-gemini/annai-plugin.json:81	
+provider-gemini:@provider.abilities.chat.models.2.providerTools.0.label	ok	Let Gemini search Google	让 Gemini 使用 Google 搜索	plugins-official/provider-gemini/annai-plugin.json:81	
+provider-gemini:@provider.abilities.chat.models.0.providerTools.0.note	ok	Google gives 5,000 searches a month free on paid projects, then $14 per 1,000: annai counts this phone's. Google keeps searched prompts for 30 days, which annai can't delete.	在 Google 的付费项目中，每月前 5,000 次搜索免费，超出后每 1,000 次收费 $14。annai 只统计这部手机上的搜索次数。用过搜索的提示词会被 Google 保留 30 天，annai 无法删除。	plugins-official/provider-gemini/annai-plugin.json:82	
+provider-gemini:@provider.abilities.chat.models.1.providerTools.0.note	ok	Google gives 5,000 searches a month free on paid projects, then $14 per 1,000: annai counts this phone's. Google keeps searched prompts for 30 days, which annai can't delete.	在 Google 的付费项目中，每月前 5,000 次搜索免费，超出后每 1,000 次收费 $14。annai 只统计这部手机上的搜索次数。用过搜索的提示词会被 Google 保留 30 天，annai 无法删除。	plugins-official/provider-gemini/annai-plugin.json:82	
+provider-gemini:@provider.abilities.chat.models.2.providerTools.0.note	ok	Google gives 5,000 searches a month free on paid projects, then $14 per 1,000: annai counts this phone's. Google keeps searched prompts for 30 days, which annai can't delete.	在 Google 的付费项目中，每月前 5,000 次搜索免费，超出后每 1,000 次收费 $14。annai 只统计这部手机上的搜索次数。用过搜索的提示词会被 Google 保留 30 天，annai 无法删除。	plugins-official/provider-gemini/annai-plugin.json:82	
 provider-gemini:@provider.abilities.transcription.note	ok	Turns what you say into text, for a model that doesn't take audio. Gemini 3.5 Transcribe is Google's own; Flash Lite writes it down when asked, for less. Their prices are estimates from Google's rates for audio, about 25 tokens a second.	把语音转成文字，供不支持音频输入的模型使用。Gemini 3.5 Transcribe 是 Google 官方的语音转文字模型；Flash Lite 也能按要求转成文字，费用更低。价格是根据 Google 的音频费率（约每秒 25 个 token）估算的。	plugins-official/provider-gemini/annai-plugin.json:223	
 provider-gemini:@provider.abilities.voice.note	ok	Shiori's voice, a sentence at a time, each sentence one request. It streams: she starts about half a second after a sentence is written, and on a weak connection she waits until it won't stutter. Switch streaming off to have each sentence arrive whole, as other voices do. On the free tier Google allows each of these voices only 10 requests a day and 3 a minute: far fewer than a day of replies, so after the first few sentences the next voice in the list speaks. Prices are estimates per character from Google's rate for audio, 25 tokens a second. Her voice is Sulafat unless the Tunables here name another (it is the warm one of Google's 30; Achird is friendly, Vindemiatrix gentle, Kore firm), and the Style goes as Google's own speech_metadata style.	Shiori 的声音，逐句合成，每句一次请求。采用流式播放：一句写好后约半秒她就开口；网络较差时，她会等到能流畅播放再开口。关闭流式播放后，每句会完整收到再播放，和其他声音一样。使用免费额度时，Google 对这些声音每个每天只允许 10 次请求、每分钟 3 次，远远不够一天的回复量，所以说完前几句后，会换成列表中的下一个声音。价格是根据 Google 的音频费率（每秒 25 个 token）按字符估算的。除非这里的可调参数指定了其他声音，她用的是 Sulafat（Google 30 种声音中偏温暖的一种；Achird 亲切，Vindemiatrix 温柔，Kore 坚定）；“风格”会作为 Google 的 speech_metadata 中的 style 发送。	plugins-official/provider-gemini/annai-plugin.json:244	Note: free tier → 免费额度, as the zh review settled ("This key is on the free tier" → 此密钥为免费额度).
 provider-gemini:@provider.abilities.live.name	ok	Live voice	实时语音	plugins-official/provider-gemini/annai-plugin.json:269	
@@ -774,25 +780,25 @@ aaicx8	ok	{0} couldn't be checked: {1}	无法检查 {0}：{1}	src/core/package-u
 mlem3w	ok	wasn't installed from an address, so annai has nowhere to look for an update	不是从地址安装的，所以无法查找更新	src/core/package-updates.js:54	
 1nrhfbi	ok	the address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	这个地址现在提供的是另一个包（{0}），因此没有更新。如果想用那个包，请移除这个，再安装那个。	src/core/package-updates.js:58	{0} = pkg.id
 emc8n2	ok	this update adds parts you haven't agreed to: {0}. Check for updates again and look at what it adds.	这次更新会加入你尚未同意的部分：{0}。请重新检查更新，看看它会加入什么。	src/core/package-updates.js:62	{0} = addedWords(added); Note: the English starts in lower case after the plugin's name, which the screen leaves out; a sentence here.
-1wfc5of	ok	This zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.	此 zip 包含多个技能。请逐个安装，或添加一个列出它们的 annai-plugin.json。	src/core/packages.js:337	
-12el2y8	ok	The {0} is in {1}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0} 位于 {1}，层级太深。annai 只会在 zip 的顶层或其中唯一的文件夹里读取它。请单独压缩那个文件夹。	src/core/packages.js:345	{0} = file; {1} = folder
-yeyuzl	ok	The {0} is in {1}, with other files beside that folder: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0} 位于 {1}，但这个文件夹旁边还有其他文件。annai 只会在 zip 的顶层或其中唯一的文件夹里读取它。请单独压缩那个文件夹。	src/core/packages.js:346	{0} = file; {1} = folder
-woxuej	ok	There is no {0} or {1} in this package.	此软件包中没有 {0} 或 {1}。	src/core/packages.js:348	{0} = MANIFEST_FILE; {1} = SKILL_FILE
-1r65tkq	ok	It is too large: it unpacks to more than {0}.	体积太大，解压后会超过 {0}。	src/core/packages.js:366	{0} = size(maxBytes); Note: said of a plugin, whose name is the card's title.
-jg8gk7	ok	That isn't a web address. Paste the address of a zip file, an annai-plugin.json or a SKILL.md.	这不是网址。请粘贴 zip 文件、annai-plugin.json 或 SKILL.md 的地址。	src/core/packages.js:446	
-13j5338	ok	For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.	如果是 GitHub 上的文件夹，请使用其中 SKILL.md 或 annai-plugin.json 的地址。	src/core/packages.js:480	
-1xovhb	ok	annai couldn't reach {0}. Check the address, and that the site lets web apps read it.	无法连接 {0}。请检查地址，并确认该网站允许网页应用读取。	src/core/packages.js:489	{0} = u.host
-4lh0yw	ok	{0} sent a zip annai can't open: {1}	{0} 发来的 zip 无法打开：{1}	src/core/packages.js:502	{0} = url.host; {1} = why; Note: {1} is a developer's detail, in English.
-hm96ty	ok	That package has more than {0} files; annai installs packages of up to {1} from an address. Use a zip instead.	该软件包超过 {0} 个文件，而从地址安装最多只支持 {1} 个文件。请改用 zip。	src/core/packages.js:518	{0} = ADDRESS_MAX_FILES; {1} = ADDRESS_MAX_FILES
-pft16a	ok	{0} answered {1} for {2}, a file its {3} names.	{0} 对 {2}（{3} 中列出的文件）返回了 {1}。	src/core/packages.js:530	{0} = u.host; {1} = status; {2} = name; {3} = from
-apv0y3	ok	annai couldn't read {0} from {1}, a file its {2} names. Check that it is there, and that the site lets web apps read it.	无法从 {1} 读取 {0}（{2} 中列出的文件）。请检查该文件是否存在，以及该网站是否允许网页应用读取。	src/core/packages.js:532	{0} = name; {1} = u.host; {2} = from
-1iuga68	ok	There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.	该地址没有 annai 插件或技能。annai 会查找 zip 文件、annai-plugin.json 或 SKILL.md。	src/core/packages.js:602	
-1toghwz	ok	The {0} at {1} isn't valid JSON.	{1} 上的 {0} 不是有效的 JSON。	src/core/packages.js:612	{0} = MANIFEST_FILE; {1} = url.host
-1rp7aut	ok	code that runs in annai	在 annai 中运行的代码	src/core/packages.js:652	Note: one of a list of what an update adds.
-1tdxuf	ok	the skill {0}	技能 {0}	src/core/packages.js:653	{0} = s.name
-1j0uwka	ok	the personality {0}	性格 {0}	src/core/packages.js:654	{0} = p.name
-14wn58m	ok	a provider that sends keys to {0}	会把密钥发送到 {0} 的提供商	src/core/packages.js:655	{0} = o; Note: one of a list of what an update adds.
-tqmba2	ok	an address your searches are sent to: {0}	会接收搜索内容的地址 {0}	src/core/packages.js:655	{0} = o; Note: one of a list of what an update adds.
+1wfc5of	ok	This zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.	此 zip 包含多个技能。请逐个安装，或添加一个列出它们的 annai-plugin.json。	src/core/packages.js:339	
+12el2y8	ok	The {0} is in {1}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0} 位于 {1}，层级太深。annai 只会在 zip 的顶层或其中唯一的文件夹里读取它。请单独压缩那个文件夹。	src/core/packages.js:347	{0} = file; {1} = folder
+yeyuzl	ok	The {0} is in {1}, with other files beside that folder: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0} 位于 {1}，但这个文件夹旁边还有其他文件。annai 只会在 zip 的顶层或其中唯一的文件夹里读取它。请单独压缩那个文件夹。	src/core/packages.js:348	{0} = file; {1} = folder
+woxuej	ok	There is no {0} or {1} in this package.	此软件包中没有 {0} 或 {1}。	src/core/packages.js:350	{0} = MANIFEST_FILE; {1} = SKILL_FILE
+1r65tkq	ok	It is too large: it unpacks to more than {0}.	体积太大，解压后会超过 {0}。	src/core/packages.js:368	{0} = size(maxBytes); Note: said of a plugin, whose name is the card's title.
+jg8gk7	ok	That isn't a web address. Paste the address of a zip file, an annai-plugin.json or a SKILL.md.	这不是网址。请粘贴 zip 文件、annai-plugin.json 或 SKILL.md 的地址。	src/core/packages.js:448	
+13j5338	ok	For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.	如果是 GitHub 上的文件夹，请使用其中 SKILL.md 或 annai-plugin.json 的地址。	src/core/packages.js:482	
+1xovhb	ok	annai couldn't reach {0}. Check the address, and that the site lets web apps read it.	无法连接 {0}。请检查地址，并确认该网站允许网页应用读取。	src/core/packages.js:491	{0} = u.host
+4lh0yw	ok	{0} sent a zip annai can't open: {1}	{0} 发来的 zip 无法打开：{1}	src/core/packages.js:504	{0} = url.host; {1} = why; Note: {1} is a developer's detail, in English.
+hm96ty	ok	That package has more than {0} files; annai installs packages of up to {1} from an address. Use a zip instead.	该软件包超过 {0} 个文件，而从地址安装最多只支持 {1} 个文件。请改用 zip。	src/core/packages.js:520	{0} = ADDRESS_MAX_FILES; {1} = ADDRESS_MAX_FILES
+pft16a	ok	{0} answered {1} for {2}, a file its {3} names.	{0} 对 {2}（{3} 中列出的文件）返回了 {1}。	src/core/packages.js:532	{0} = u.host; {1} = status; {2} = name; {3} = from
+apv0y3	ok	annai couldn't read {0} from {1}, a file its {2} names. Check that it is there, and that the site lets web apps read it.	无法从 {1} 读取 {0}（{2} 中列出的文件）。请检查该文件是否存在，以及该网站是否允许网页应用读取。	src/core/packages.js:534	{0} = name; {1} = u.host; {2} = from
+1iuga68	ok	There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.	该地址没有 annai 插件或技能。annai 会查找 zip 文件、annai-plugin.json 或 SKILL.md。	src/core/packages.js:604	
+1toghwz	ok	The {0} at {1} isn't valid JSON.	{1} 上的 {0} 不是有效的 JSON。	src/core/packages.js:614	{0} = MANIFEST_FILE; {1} = url.host
+1rp7aut	ok	code that runs in annai	在 annai 中运行的代码	src/core/packages.js:654	Note: one of a list of what an update adds.
+1tdxuf	ok	the skill {0}	技能 {0}	src/core/packages.js:655	{0} = s.name
+1j0uwka	ok	the personality {0}	性格 {0}	src/core/packages.js:656	{0} = p.name
+14wn58m	ok	a provider that sends keys to {0}	会把密钥发送到 {0} 的提供商	src/core/packages.js:657	{0} = o; Note: one of a list of what an update adds.
+tqmba2	ok	an address your searches are sent to: {0}	会接收搜索内容的地址 {0}	src/core/packages.js:657	{0} = o; Note: one of a list of what an update adds.
 18tp402	ok	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	此浏览器无法转换 {0}，因此保留了原文件，可能只有 Safari 浏览器能显示。	src/core/photos.js:135	{0} = name
 1009iza	ok	Restaurant	餐厅	src/core/plan.js:43	
 1lrcegv	ok	Event	活动	src/core/plan.js:43	
@@ -2102,34 +2108,34 @@ l91m05	ok	Its own address	专用地址	src/ui/screens/provider.js:396
 72k1cn#other	ok	# deletions waiting: annai can't send them without this provider's key.	# 项删除请求待发送：没有此提供商的密钥，无法发送。	src/ui/screens/provider.js:412	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
 f85coz#other	ok	# deletions waiting: annai sends them when it can reach {0}.	# 项删除请求待发送：连上 {0} 后会自动发送。	src/ui/screens/provider.js:413	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
 147eqzv	ok	Test {0}	测试 {0}	src/ui/screens/provider.js:424	{0} = first.name
-1eqfcih	ok	{0} doesn't offer search on the free tier.	{0} 的免费额度不包含搜索。	src/ui/screens/provider.js:441	{0} = who
-1cmq8ob	ok	{0} doesn't offer fetch on the free tier.	{0} 的免费额度不包含网页抓取。	src/ui/screens/provider.js:442	{0} = who
-1k4v7dk	ok	{0} doesn't offer {1} on the free tier.	{0} 的免费额度不包含 {1}。	src/ui/screens/provider.js:442	{0} = who; {1} = tool.name
-11x4tx3	ok	This needs the {0} plugin, which isn't running.	需要 {0} 插件，但它没有运行。	src/ui/screens/provider.js:448	{0} = name
-4nyk49	ok	This needs a plugin that isn't running.	需要的插件没有运行。	src/ui/screens/provider.js:448	
-15hdhx3	ok	the provider's model id	提供商的模型 ID	src/ui/screens/provider.js:470	
-1oz4euh	ok	Add model	添加模型	src/ui/screens/provider.js:483	
-tbmsa5	ok	Asking for its models…	正在获取模型列表…	src/ui/screens/provider.js:488	
-1yko1my#other	ok	# models.	共 # 个模型。	src/ui/screens/provider.js:491	plural; # = listed.length; English: "# model." (one), "# models." (other)
-uxqo7a	ok	Fetch model list	获取模型列表	src/ui/screens/provider.js:499	
-1scr2ml	ok	{0}K context	{0}K 上下文	src/ui/screens/provider.js:502	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
-1tqy8k1	ok	Its models	模型	src/ui/screens/provider.js:504	Note: "Its models" as a heading under the ability: モデル alone reads right there.
-bzs1ys	ok	No models yet.	还没有模型。	src/ui/screens/provider.js:505	
-pnxisg	ok	Add a model by id	按 ID 添加模型	src/ui/screens/provider.js:506	
-1mod47e	ok	for example: haiku	例如：haiku	src/ui/screens/provider.js:520	
-uizt0x	ok	{0} · loaded	{0} · 已加载	src/ui/screens/provider.js:530	{0} = named
-1w6mxym	ok	Already added, on {0}	已添加到 {0}	src/ui/screens/provider.js:531	{0} = on
-l7fn8k	ok	Already added, on another provider	已添加到其他提供商	src/ui/screens/provider.js:531	
-19ai2z0	ok	Filter the list	筛选列表	src/ui/screens/provider.js:542	
-11pl9jr	ok	Use the free models	使用免费模型	src/ui/screens/provider.js:550	
-vam64u	ok	Use the recommended models	使用推荐模型	src/ui/screens/provider.js:550	
-1b2yx8m	ok	Suggested models	推荐模型	src/ui/screens/provider.js:551	
-1jnsjoc	ok	{0} suggests a model for each role. Its speech models then go ahead of the browser's own dictation and voice, which are free, so any that cost money are tried before them.	{0} 为每个角色推荐了一个模型。使用推荐后，它的语音模型会排在免费的浏览器自带语音输入和朗读之前，所以会优先尝试收费的模型。	src/ui/screens/provider.js:552	{0} = src.name
-1x5hwmk	ok	{0} suggests a model for each role.	{0} 为每个角色推荐了一个模型。	src/ui/screens/provider.js:553	{0} = src.name
-1iffu2j	ok	{0} switched on.	已开启 {0}。	src/ui/screens/provider.js:560	{0} = n
-1szeqxt	ok	Roles updated.	已更新角色。	src/ui/screens/provider.js:560	
-1egvjs1	ok	{0} couldn't be switched on: {1}	{0} 无法开启：{1}	src/ui/screens/provider.js:561	{0} = f.name; {1} = messageOf(f.error)
-wlh055	ok	Use the {0} models	使用 {0} 模型	src/ui/screens/provider.js:567	{0} = which
+1eqfcih	ok	{0} doesn't offer search on the free tier.	{0} 的免费额度不包含搜索。	src/ui/screens/provider.js:445	{0} = who
+1cmq8ob	ok	{0} doesn't offer fetch on the free tier.	{0} 的免费额度不包含网页抓取。	src/ui/screens/provider.js:446	{0} = who
+1k4v7dk	ok	{0} doesn't offer {1} on the free tier.	{0} 的免费额度不包含 {1}。	src/ui/screens/provider.js:446	{0} = who; {1} = tool.name
+11x4tx3	ok	This needs the {0} plugin, which isn't running.	需要 {0} 插件，但它没有运行。	src/ui/screens/provider.js:452	{0} = name
+4nyk49	ok	This needs a plugin that isn't running.	需要的插件没有运行。	src/ui/screens/provider.js:452	
+15hdhx3	ok	the provider's model id	提供商的模型 ID	src/ui/screens/provider.js:474	
+1oz4euh	ok	Add model	添加模型	src/ui/screens/provider.js:487	
+tbmsa5	ok	Asking for its models…	正在获取模型列表…	src/ui/screens/provider.js:492	
+1yko1my#other	ok	# models.	共 # 个模型。	src/ui/screens/provider.js:495	plural; # = listed.length; English: "# model." (one), "# models." (other)
+uxqo7a	ok	Fetch model list	获取模型列表	src/ui/screens/provider.js:503	
+1scr2ml	ok	{0}K context	{0}K 上下文	src/ui/screens/provider.js:506	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
+1tqy8k1	ok	Its models	模型	src/ui/screens/provider.js:508	Note: "Its models" as a heading under the ability: モデル alone reads right there.
+bzs1ys	ok	No models yet.	还没有模型。	src/ui/screens/provider.js:509	
+pnxisg	ok	Add a model by id	按 ID 添加模型	src/ui/screens/provider.js:510	
+1mod47e	ok	for example: haiku	例如：haiku	src/ui/screens/provider.js:524	
+uizt0x	ok	{0} · loaded	{0} · 已加载	src/ui/screens/provider.js:534	{0} = named
+1w6mxym	ok	Already added, on {0}	已添加到 {0}	src/ui/screens/provider.js:535	{0} = on
+l7fn8k	ok	Already added, on another provider	已添加到其他提供商	src/ui/screens/provider.js:535	
+19ai2z0	ok	Filter the list	筛选列表	src/ui/screens/provider.js:546	
+11pl9jr	ok	Use the free models	使用免费模型	src/ui/screens/provider.js:554	
+vam64u	ok	Use the recommended models	使用推荐模型	src/ui/screens/provider.js:554	
+1b2yx8m	ok	Suggested models	推荐模型	src/ui/screens/provider.js:555	
+1jnsjoc	ok	{0} suggests a model for each role. Its speech models then go ahead of the browser's own dictation and voice, which are free, so any that cost money are tried before them.	{0} 为每个角色推荐了一个模型。使用推荐后，它的语音模型会排在免费的浏览器自带语音输入和朗读之前，所以会优先尝试收费的模型。	src/ui/screens/provider.js:556	{0} = src.name
+1x5hwmk	ok	{0} suggests a model for each role.	{0} 为每个角色推荐了一个模型。	src/ui/screens/provider.js:557	{0} = src.name
+1iffu2j	ok	{0} switched on.	已开启 {0}。	src/ui/screens/provider.js:564	{0} = n
+1szeqxt	ok	Roles updated.	已更新角色。	src/ui/screens/provider.js:564	
+1egvjs1	ok	{0} couldn't be switched on: {1}	{0} 无法开启：{1}	src/ui/screens/provider.js:565	{0} = f.name; {1} = messageOf(f.error)
+wlh055	ok	Use the {0} models	使用 {0} 模型	src/ui/screens/provider.js:571	{0} = which
 1qocxbg	ok	Writing it: {0} is reading the conversation. This can take a minute.	撰写中：{0} 正在读取对话，可能需要一分钟。	src/ui/screens/recap.js:29	{0} = m.name
 1lrfe9k	ok	Write the recap	撰写回顾	src/ui/screens/recap.js:31	
 h6huep	ok	Write it again	重新撰写	src/ui/screens/recap.js:31	

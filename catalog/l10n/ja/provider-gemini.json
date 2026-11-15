@@ -2,6 +2,12 @@
   "manifest": {
     "description": "Google独自のAPIで使うGeminiのモデル。有料キーならGoogle 検索も使えます。Googleの文字起こしと声、音声で会話できるGemini Liveにも対応しています。",
     "name": "Google Gemini",
+    "provider.abilities.chat.models.0.providerTools.0.label": "GeminiにGoogle 検索を使ってもらう",
+    "provider.abilities.chat.models.0.providerTools.0.note": "Googleの有料プロジェクトでは、検索は月5,000回まで無料で、超えると1,000回につき$14かかります。annaiが数えるのは、この端末での検索回数だけです。検索に使われたプロンプトはGoogleに30日間保存され、annaiからは削除できません。",
+    "provider.abilities.chat.models.1.providerTools.0.label": "GeminiにGoogle 検索を使ってもらう",
+    "provider.abilities.chat.models.1.providerTools.0.note": "Googleの有料プロジェクトでは、検索は月5,000回まで無料で、超えると1,000回につき$14かかります。annaiが数えるのは、この端末での検索回数だけです。検索に使われたプロンプトはGoogleに30日間保存され、annaiからは削除できません。",
+    "provider.abilities.chat.models.2.providerTools.0.label": "GeminiにGoogle 検索を使ってもらう",
+    "provider.abilities.chat.models.2.providerTools.0.note": "Googleの有料プロジェクトでは、検索は月5,000回まで無料で、超えると1,000回につき$14かかります。annaiが数えるのは、この端末での検索回数だけです。検索に使われたプロンプトはGoogleに30日間保存され、annaiからは削除できません。",
     "provider.abilities.chat.noWindowNote": "バージョン2.0からは、OpenAI互換のエンドポイントではなくGemini独自のAPIを使います。ここでコンテキストウィンドウが未設定のモデルは、それ以前かIDで追加したものです。応答しない場合は、削除してから「モデルの一覧を取得」で追加し直してください。",
     "provider.abilities.live.name": "ライブ音声",
     "provider.abilities.live.note": "Koe用の、1本のストリームで声をやり取りする会話です（Gemini Live）。セッション中は、話した内容が音声のままGoogleに送られます。AI Studioの無料枠なら無料です。Koeの声は、初期設定ではSulafatです（Gemini Liveプロトコル0.2以降。「設定 → アップデート」で入手できます）。",

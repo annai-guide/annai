@@ -115,7 +115,9 @@ export const L10N_MAX_BYTES = 256 * 1024;
  * added to the English. A name is shown only for annai's own: a third party's is shown as written everywhere. @type {[string, number][]}
  */
 export const TRANSLATED = [['name', 80], ['description', 500], ['featured', 200], ['keywords', 40], ['provider.note', 1000], ['provider.abilities.*.name', 80],
-  ['provider.abilities.*.note', 1000], ['provider.abilities.*.noWindowNote', 1000], ['search.key.note', 300], ['settings.properties.*.title', 200],
+  ['provider.abilities.*.note', 1000], ['provider.abilities.*.noWindowNote', 1000], ['provider.abilities.*.models.*.providerTools.*.label', 120],
+  ['provider.abilities.*.models.*.providerTools.*.note', 1000], ['provider.abilities.*.modelDefaults.providerTools.*.label', 120],
+  ['provider.abilities.*.modelDefaults.providerTools.*.note', 1000], ['search.key.note', 300], ['settings.properties.*.title', 200],
   ['settings.properties.*.description', 1000], ['settings.properties.*.oneOf.*.title', 200]];
 /** The value at a path. @param {any} o @param {string[]} keys */
 const at = (o, keys) => keys.reduce((x, k) => (x && typeof x === 'object' && Object.hasOwn(x, k) ? x[k] : undefined), o);

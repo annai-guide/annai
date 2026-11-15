@@ -170,10 +170,15 @@ test('--find reads files and folders, and says who it guesses reads them', async
   assert.ok(lines.some((l) => l.startsWith('src/bare.mjs:5\t') && l.endsWith('\tNothing here yet.')));
 });
 
-test('--review is a Markdown table of the drafts', async () => {
+test('--review is a Markdown table of the drafts, with their notes (a carried draft says what the English was)', async () => {
   const table = await review(FIXTURE, 'ja');
-  assert.match(table, /^\| English \| Draft \| Where \|\n\| --- \| --- \| --- \|\n\| Open \| 開ける \| src\/a\.mjs:5 \|/);
+  assert.match(table, /^\| English \| Draft \| Where \| Note \|\n\| --- \| --- \| --- \| --- \|\n\| Open \| 開ける \| src\/a\.mjs:5 \| context: verb \|/);
   assert.ok(!table.includes('Gone away'), 'only drafts');
+  await inCopy(async (dir) => {
+    await writeFile(`${dir}/src/a.mjs`, (await readFile(`${dir}/src/a.mjs`, 'utf8')).replace('Saved to ${where} for ${who}', 'Saved to ${where} for ${who} now'));
+    await update(dir);
+    assert.match(await review(dir, 'ja'), /\| Saved to \{0\} for \{1\} now \| \{0\}に保存 \| src\/a\.mjs:6 \| \{0\} = where; \{1\} = who; English was: Saved to \{0\} for \{1\} \|/);
+  });
 });
 
 // ---- the fix pass: imports, templates, concatenation, marks, helpers, CRLF ----
@@ -453,6 +458,102 @@ test("an official plugin's words are rows of the same files, keyed by its id: it
     assert.equal(mine[1].file, 'plugins-official/demo-tides/annai-plugin.json');
     assert.ok(mine[1].line > 1, 'the line its English is on');
     assert.equal(mine.at(-2)?.context, 'verb');
+  });
+});
+
+test("a manifest field keeps its key when its English changes, so its row is compared by English, as a code message whose English changed is: a small edit is a draft that says what the English was, a rewrite is new, and the check fails until strings has run", async () => {
+  await inCopy(async (dir) => {
+    await officialPlugin(dir);
+    await update(dir);
+    const tsv = `${dir}/l10n/ja.tsv`;
+    const rowsOf = async () => new Map(readTsv(await readFile(tsv, 'utf8')).map((r) => [r.key, r]));
+    // Every row of the plugin read and accepted, as after a translator's pass.
+    // The name's row also has a translator's note, which is about the old text.
+    await writeFile(tsv, writeTsv(readTsv(await readFile(tsv, 'utf8')).map((r) => (r.key.startsWith('demo-tides:') ? { ...r, state: 'ok', text: `訳:${r.en}`, note: r.key === 'demo-tides:@name' ? 'Note: read as a table of tides' : r.note } : r))));
+    assert.deepEqual(await update(dir), ['catalog/l10n/ja/demo-tides.json'], 'the accepted texts reach the plugin\'s own file, and nothing else is rewritten');
+    // The fixture has problems of its own: look at the plugin's rows only.
+    const ofPlugin = async (/** @type {{ file: string, line: number, message: string }[]} */ problems) => {
+      const lines = new Set([...(await rowsOf()).values()].filter((r) => r.key.startsWith('demo-tides:')).map((r) => r.line));
+      return problems.filter((p) => p.file === 'l10n/ja.tsv' && lines.has(p.line));
+    };
+    const { problems: current, drafts: counted } = await check(dir, []);
+    assert.deepEqual(await ofPlugin(current), [], 'all current');
+    const manifest = `${dir}/plugins-official/demo-tides/annai-plugin.json`;
+    await writeFile(manifest, (await readFile(manifest, 'utf8')).replace('Tides where you are.', 'Tides where you are now.').replace('Tide tables', 'Sea level forecasts'));
+    // Before strings has run: the check says the rows were written for other English (a code message would have no row at all).
+    const before = await ofPlugin((await check(dir, [])).problems);
+    assert.ok(before.some((p) => p.file === 'l10n/ja.tsv' && /"Tides where you are now\." was written for other English \("Tides where you are\."\): run npm run strings/.test(p.message)), 'a small edit, before strings');
+    assert.ok(before.some((p) => p.file === 'l10n/ja.tsv' && /"Sea level forecasts" was written for other English \("Tide tables"\): run npm run strings/.test(p.message)), 'a rewrite, before strings');
+    await update(dir);
+    const by = await rowsOf();
+    const small = by.get('demo-tides:@description');
+    assert.equal(small?.state, 'draft', 'a small edit carries its text as a draft');
+    assert.equal(small?.text, '訳:Tides where you are.');
+    assert.equal(small?.en, 'Tides where you are now.');
+    assert.equal(small?.note, 'English was: Tides where you are.');
+    const rewritten = by.get('demo-tides:@name');
+    assert.equal(rewritten?.state, 'new', 'a rewrite starts new, as a code message that is no edit of the old one does');
+    assert.equal(rewritten?.text, '');
+    assert.equal(rewritten?.note, '', "a rewrite drops the translator's note about the old text, as a rewritten code message's row has none");
+    assert.equal(by.get('demo-tides:@keywords.0')?.state, 'ok', 'a row whose English did not change is left as it was');
+    assert.equal(by.get('demo-tides:@keywords.0')?.text, '訳:tides');
+    // The same as a code message of the plugin: a small edit is a draft that says what the English was.
+    await writeFile(`${dir}/plugins-official/demo-tides/index.js`, (await readFile(`${dir}/plugins-official/demo-tides/index.js`, 'utf8')).replace('High tide.', 'High tide now.'));
+    await update(dir);
+    const code = [...(await rowsOf()).values()].find((r) => r.en === 'High tide now.');
+    assert.equal(code?.state, 'draft');
+    assert.equal(code?.note, 'English was: High tide.');
+    // The check: the rewrite fails for no text, and the two carried drafts until they are rewritten (their own test, below).
+    const { problems: now, drafts } = await check(dir, []);
+    const failed = (await ofPlugin(now)).map((p) => p.message);
+    assert.equal(failed.length, 3, failed.join('\n'));
+    assert.ok(failed.some((m) => /^ja has no text yet for "Sea level forecasts"/.test(m)));
+    assert.ok(failed.some((m) => m.startsWith("ja's draft for demo-tides:@description was carried over from other English")));
+    assert.ok(failed.some((m) => m.startsWith(`ja's draft for ${code?.key} was carried over from other English`)));
+    assert.equal(drafts.ja.draft, counted.ja.draft + 2, 'the description and the code message are counted as drafts');
+    // The translator writes the new text and accepts it: the row is current, the note goes with the draft state, and a second run changes nothing.
+    await writeFile(tsv, writeTsv([...(await rowsOf()).values()].map((r) => (r.key === 'demo-tides:@name' ? { ...r, state: 'ok', text: '潮位予報' } : r))));
+    await update(dir);
+    assert.equal((await rowsOf()).get('demo-tides:@name')?.text, '潮位予報');
+    assert.deepEqual(await update(dir), [], 'a second run has nothing to write');
+  });
+});
+
+test("a draft carried over from changed English fails the check in every language until it is rewritten: a draft with no such note (a new language's) ships, and a rewritten one passes (the user, 2026-11-14: \"Block until rewritten\")", async () => {
+  await inCopy(async (dir) => {
+    // Two languages with the same words, so a failure in each shows.
+    await writeFile(`${dir}/l10n/languages.json`, JSON.stringify([{ tag: 'ja', status: 'shipped' }, { tag: 'zh-Hans', status: 'experimental' }]));
+    await writeFile(`${dir}/l10n/zh-Hans.tsv`, await readFile(`${dir}/l10n/ja.tsv`, 'utf8'));
+    await update(dir);
+    const carried = (/** @type {{ file: string, line: number, message: string }[]} */ problems) => problems.filter((p) => /was carried over from other English/.test(p.message));
+    const before = await check(dir, []);
+    assert.deepEqual(carried(before.problems), [], 'drafts with no "English was" note ship (the fixture has several): a new language\'s are these');
+    // A code message's English changes by a little: its draft is carried, in each language.
+    const a = `${dir}/src/a.mjs`;
+    await writeFile(a, (await readFile(a, 'utf8')).replace('Hello ${who}.', 'Hello there ${who}.'));
+    await update(dir);
+    const now = await check(dir, []);
+    const k = key('Hello there {0}.');
+    for (const tag of ['ja', 'zh-Hans']) {
+      const row = readTsv(await readFile(`${dir}/l10n/${tag}.tsv`, 'utf8')).find((r) => r.key === k);
+      const found = carried(now.problems).filter((p) => p.file === `l10n/${tag}.tsv` && p.line === row?.line);
+      assert.equal(found.length, 1, `${tag} fails once`);
+      assert.equal(found[0].message, `${tag}'s draft for ${k} was carried over from other English ("Hello {0}.", now "Hello there {0}."): rewrite it for the new English, set its state to ok and delete "English was: …" from its note`, 'it names the key, the old English and the new');
+    }
+    assert.equal(carried(now.problems).length, 2, 'and nothing else is a carried draft');
+    // Not listed, a language's carried draft is a warning, as its other problems are.
+    await writeFile(`${dir}/l10n/languages.json`, JSON.stringify([{ tag: 'ja', status: 'shipped' }]));
+    const unlisted = await check(dir, []);
+    assert.equal(carried(unlisted.problems).length, 1, 'only ja');
+    assert.equal(carried(unlisted.warnings).filter((w) => w.file === 'l10n/zh-Hans.tsv').length, 1);
+    // The translator rewrites ja's: a text for the new English, accepted, the note gone. A translator who sets it ok and leaves the note: strings drops it.
+    const tsv = `${dir}/l10n/ja.tsv`;
+    await writeFile(tsv, writeTsv(readTsv(await readFile(tsv, 'utf8')).map((r) => (r.key === k ? { ...r, state: 'ok', text: 'やあ、{0}。', note: '{0} = who' } : r))));
+    assert.deepEqual(carried((await check(dir, [])).problems), [], 'a rewritten one passes');
+    await writeFile(tsv, writeTsv(readTsv(await readFile(tsv, 'utf8')).map((r) => (r.key === k ? { ...r, note: '{0} = who; English was: Hello {0}.' } : r))));
+    assert.deepEqual(carried((await check(dir, [])).problems), [], 'an accepted row is not a draft, whatever its note says');
+    await update(dir);
+    assert.equal(readTsv(await readFile(tsv, 'utf8')).find((r) => r.key === k)?.note, '{0} = who', 'and the next strings run drops the old note');
   });
 });
 
