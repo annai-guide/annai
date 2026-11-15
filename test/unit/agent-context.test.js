@@ -296,9 +296,8 @@ test("an undated conversation's system text says how it becomes a trip, a dated 
   assert.equal(systemText(kept), systemText(undated));
   const dated = await takeSnapshot({ ws, registry, trip, personalityName: 'shiori' });
   assert.doesNotMatch(systemText(dated), /no dates/);
-  assert.doesNotMatch(systemText(dated), /# No trip is open/, 'a dated trip is open');
-  assert.doesNotMatch(systemText(undated), /# No trip is open/, 'so is a chat');
-  assert.match(systemText(await takeSnapshot({ ws, registry, trip: null, personalityName: 'shiori' })), /# No trip is open/);
+  // Nothing open takes no turn since timeline stage 7, so no text says so.
+  assert.doesNotMatch(systemText(await takeSnapshot({ ws, registry, trip: null, personalityName: 'shiori' })), /No trip is open/);
 });
 
 test("an undated conversation's text says to read another trip and answer here, and to call open_trip only to carry on there, annai asking them itself (stage 6); a dated one's says neither", async () => {

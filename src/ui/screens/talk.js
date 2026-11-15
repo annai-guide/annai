@@ -11,13 +11,13 @@ import { blobBytes } from '../../core/reach.js';
 import { herDatings, undoDating } from '../../core/chats.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { undoTuning } from '../../core/agent/personalities.js';
-import { formatCost, wording, mark, sentences, sentenceGap, list as listed, recordHref, waitingHref, rowName, talkHref } from '../format.js';
+import { formatCost, wording, mark, sentences, sentenceGap, list as listed, recordHref, rowName, talkHref } from '../format.js';
 import { day } from '../../core/intl.js';
 import { upcoming, over } from '../../core/now.js';
 import { tripRows } from '../trip-rows.js';
 import { nowOf, todayOf } from '../today.js';
 import { ask } from '../ask.js';
-import { ME, SYS_WAITING, scopeTitle, talks, tripMirror, kindOf } from '../../core/scopes.js';
+import { ME, scopeTitle, talks, tripMirror, kindOf } from '../../core/scopes.js';
 import { readNames } from '../../core/names.js';
 import { FILES_ONLY, undoable, undoEverywhere } from '../../core/handover.js';
 import { removeTripNow } from './trip.js';
@@ -371,17 +371,17 @@ export async function renderTalk(ctx, route) {
     /** @type {Map<string, Record<string, string>>} */
     const names = new Map();
     for (const f of d.handed) {
-      const m = /^\/(trip|waiting)(\/.+)$/.exec(String(f?.path ?? ''));
-      const where = !m || readOnly ? null : m[1] === 'waiting' ? SYS_WAITING : agent.trip; // `me`'s: as words
-      const there = where ? await ctx.store.tx(['files'], 'readonly', (/** @type {any} */ tx) => tx.getFile(where, m?.[2])) : null;
+      const m = /^\/trip(\/.+)$/.exec(String(f?.path ?? ''));
+      const where = !m || readOnly ? null : agent.trip; // `me`'s, and an older annai's waiting ones: as words
+      const there = where ? await ctx.store.tx(['files'], 'readonly', (/** @type {any} */ tx) => tx.getFile(where, m?.[1])) : null;
       const own = String(f?.name || f?.path || '');
       if (there && where && !names.has(where)) names.set(where, await readNames(ctx.ws, where));
       // Hers, else the name it was handed under (a photo kept as .webp still says .png).
       const theirs = there && where && m ? names.get(where) ?? {} : {};
-      const shown = m && Object.hasOwn(theirs, m[2]) ? theirs[m[2]] : own;
+      const shown = m && Object.hasOwn(theirs, m[1]) ? theirs[m[1]] : own;
       const name = h('span', { class: 'attach-name', dir: 'auto', text: shown });
       const title = shown !== own ? own : undefined;
-      chips.push(there && m ? h('a', { class: 'attach-chip', title, href: where === SYS_WAITING ? waitingHref(m[2]) : recordHref(/** @type {string} */ (where), m[2], talkOf(ctx)) }, name) : h('span', { class: 'attach-chip gone' }, name));
+      chips.push(there && m ? h('a', { class: 'attach-chip', title, href: recordHref(/** @type {string} */ (where), m[1], talkOf(ctx)) }, name) : h('span', { class: 'attach-chip gone' }, name));
     }
     return h('div', { class: 'chips handed' }, ...chips);
   };

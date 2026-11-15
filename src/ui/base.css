@@ -82,9 +82,6 @@ details.archived summary { cursor: pointer; color: var(--ink-2); padding: 6px 0;
 details.dates summary { cursor: pointer; color: var(--ink-2); padding: 12px 0; } /* its disclosure marker kept: no flex; 44 px by padding */
 /* The way back to the conversation outside any trip, above the trip cards. */
 /* What waits with Shiori, on Trips: each file by its name, its buttons beside it, below it on a narrow phone. */
-.waiting-file { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
-.waiting-file .path { flex: 1 1 12em; min-width: 0; overflow-wrap: anywhere; }
-.waiting-file .acts { margin: 0; }
 
 /* forms */
 .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }

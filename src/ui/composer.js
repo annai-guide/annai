@@ -1,7 +1,7 @@
 import { h, t, tc, plural, messageOf, asUser } from './dom.js';
 import { num } from '../core/intl.js';
 import { keepFiles } from './bring-in.js';
-import { SYS_WAITING, ME, newId } from '../core/scopes.js';
+import { newId } from '../core/scopes.js';
 import { FILES_ONLY } from '../core/handover.js';
 import { updateAppSettings, readAppSettings } from '../core/settings.js';
 import { speaksScreens } from './format.js';
@@ -36,8 +36,8 @@ export function pastedName(ms) {
   return `pasted-${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}-${two(d.getHours())}${two(d.getMinutes())}.txt`;
 }
 
-/** A path in a scope as Shiori sees it: the waiting space's under /waiting/, a trip's under /trip/. @param {string} scope @param {string} path */
-export const shownPath = (scope, path) => `${scope === SYS_WAITING ? '/waiting' : '/trip'}${path}`;
+/** A path in a conversation's scope as Shiori sees it, under /trip/. @param {string} _scope @param {string} path */
+export const shownPath = (_scope, path) => `/trip${path}`;
 
 /** A file kept already, as Shiori is told of it (a reference). @param {{ scope: string, path: string }} ref @param {{ type: string, name: string }} o @returns {HandedFile} */
 export const handedOf = (ref, o) => ({ path: shownPath(ref.scope, ref.path), type: o.type, name: o.name, new: false });
@@ -46,14 +46,14 @@ export const handedOf = (ref, o) => ({ path: shownPath(ref.scope, ref.path), typ
 const nameOf = (a) => ('file' in a ? String(a.file.name ?? '') : a.name || (a.path.split('/').pop() ?? a.path));
 
 /**
- * Hands Shiori what is in the box: the new files are kept first (in the open trip's Files, or waiting with Shiori when none is open), one
+ * Hands Shiori what is in the box: the new files are kept first, in the open conversation's Files (the dock opens one first: never none here), one
  * at a time, saying how far it is, then the message goes with them all, and the Conversation shows it. A file that can't be kept (no
  * room) stops the rest: what was kept goes, and a card says what wasn't. A file kept already goes only to its own conversation's Shiori.
  * @param {any} ctx @param {string} text @param {Attachment[]} items
  * @param {{ progress?: (done: number, total: number) => void }} [o] progress: kept so far, of how many
  */
 export async function handOver(ctx, text, items, o = {}) {
-  const scope = ctx.agent.target ?? SYS_WAITING;
+  const scope = /** @type {string} */ (ctx.agent.target);
   const here = location.hash; // a screen they go to meanwhile stands
   /** @type {HandedFile[]} */
   const handed = [];
@@ -85,8 +85,8 @@ export async function handOver(ctx, text, items, o = {}) {
   const handover = handed.length ? { handed, handover: newId('h') } : {};
   // Another conversation was opened while the files were kept: the message goes to the one they were kept for, written into it, and
   // answered when it opens.
-  if ((ctx.agent.target ?? SYS_WAITING) !== scope) {
-    await ctx.agent.wake({ kind: 'user', text: text.trim() || FILES_ONLY, ...handover, scope: scope === SYS_WAITING ? ME : scope });
+  if (ctx.agent.target !== scope) {
+    await ctx.agent.wake({ kind: 'user', text: text.trim() || FILES_ONLY, ...handover, scope });
     return;
   }
   ctx.agent.send(text, handover);
@@ -148,7 +148,7 @@ export function createComposer(ctx, o = {}) {
   };
   // A file kept already belongs to its conversation: opening another lets go of its chip, so it is never asked about in the wrong one.
   const offOpen = ctx.agent.on?.('open', () => {
-    const here = ctx.agent.target ?? SYS_WAITING;
+    const here = ctx.agent.target;
     const before = list.length;
     list = list.filter((a) => 'file' in a || a.scope === here);
     if (list.length !== before) {
@@ -202,13 +202,13 @@ export { openOrTell };
 
 /**
  * Ask Shiori about this (goal 7): the file goes in the box as a chip, the box opens, and the Conversation shows. A trip's file opens
- * that trip first; a file waiting with Shiori is asked about with no trip open, where she sees it.
+ * that trip first.
  * @param {any} ctx @param {Ref | Ref[]} refs name: what its chip calls it; several make several chips, in the first one's conversation
  * @param {{ suggestions?: string[] }} [o]
  */
 export async function askAbout(ctx, refs, o = {}) {
   const list = Array.isArray(refs) ? refs : [refs];
-  const want = list[0].scope === SYS_WAITING ? null : list[0].scope;
+  const want = list[0].scope;
   if (ctx.agent.target !== want) {
     await updateAppSettings(ctx.ws, { activeTrip: want });
     if (!await openOrTell(ctx, want)) return;

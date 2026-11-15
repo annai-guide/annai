@@ -158,8 +158,6 @@ export const SPEAK_RESULT = /* en */ "Shown on screen. Voice is off, so you didn
 
 /** Kokoro's notes that aren't for the user: Koe hears them, and may end quietly. */
 const NOT_FOR_USER = ['nothing-to-add', 'stopped'];
-/** Whether a tool gave back a photo or PDF waiting with Shiori (/waiting/). @param {import('./tools.js').ToolOutput} output */
-const waitingMedia = (output) => [...(output.images ?? []), ...(output.document ? [output.document] : [])].some((m) => String(m.path ?? '').startsWith('/waiting/'));
 
 /** A live Koe's sleep (the drive-test follow-ups). */
 /* en */ const LIVE_SLEEP = 'Stop listening: the live session closes, the microphone with it. Only when the user asks you to sleep or stop listening, or a note from Kokoro tells you to.';
@@ -2895,13 +2893,6 @@ export class Agent {
         const { document, ...rest } = output;
         /* en */
         output = { ...rest, content: `${output.content}\nYou can't read PDFs; ask Kokoro about it.` };
-      }
-      // With no trip open, a file waiting with Shiori is read by a side task, and only what it says is kept here: the no-trip conversation
-      // never holds a waiting file's bytes, so a trip it is filed into, once removed, gives all of its space back.
-      if (scope === ME && waitingMedia(output)) {
-        /* en */
-        const told = { ...output, content: `${output.content}\nFiles waiting with you are read by a side task here, so only what it says is kept in this conversation.` };
-        output = await this.#described(told, o.wakeId, o.signal, { input: ['text'] }, undefined, scope, c.name === 'read', o.reads);
       }
       // A model that can't see photos gets what a tool's photos show in words, from one that can (the tools stay the same).
       if ((output.images?.length && o.model && !o.model.input?.includes('image')) || (output.document && o.model && !o.model.input?.includes('pdf'))) output = await this.#described(output, o.wakeId, o.signal, o.model, undefined, scope, c.name === 'read', o.reads);

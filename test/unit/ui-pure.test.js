@@ -906,8 +906,8 @@ test("wentWords: the chat's line for a move (open_trip), by the trip's title, or
   assert.equal(traceSummary(/** @type {any} */ ({ seq: 1, ts: 0, type: 'conversation.moved', actor: 'shiori', data: { to: 'trip-k', title: 'Kyoto' } })), 'moved to Kyoto · trip-k');
 });
 
-test('parseHash: #/waiting/file?path=/files/a.pdf is the waiting file screen', () => {
-  assert.deepEqual(parseHash('#/waiting/file?path=%2Ffiles%2Fa.pdf'), { name: 'waiting-file', parts: ['waiting', 'file'], params: { path: '/files/a.pdf' } });
+test('parseHash: an old #/waiting/file?path=… names no screen (the shell draws home for it), since timeline stage 7', () => {
+  assert.equal(parseHash('#/waiting/file?path=%2Ffiles%2Fa.pdf').name, 'waiting');
 });
 
 test('Undo tapped while Shiori works stops her turn and waits for it to settle before it takes anything back', async () => {

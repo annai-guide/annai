@@ -59,8 +59,6 @@ export function outcomeText(outcome) {
 export const fileHref = (id, path, from) => `#/trip/${encodeURIComponent(id)}/file?path=${encodeURIComponent(path)}${from ? `&from=${encodeURIComponent(from)}` : ''}`;
 /** A trip's conversation. @param {string} id */
 export const talkHref = (id) => `#/trip/${encodeURIComponent(id)}/talk`;
-/** A file waiting with Shiori: its own screen. @param {string} path in the waiting space (/files/…) */
-export const waitingHref = (path) => `#/waiting/file?path=${encodeURIComponent(path)}`;
 
 /**
  * A trip file's or booking's details; `from` is the screen its crumb goes back to (the trip, the Plan, Now, the Conversation, a plan

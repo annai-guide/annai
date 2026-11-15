@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, buildAndSave, writeEvent, writeRecords, startTrip as startNamed, allFiles, putFile, breakOpen, catchAgent, goToHash, modelSetUp, startModelServer, anthropicToolReply } from './helpers.js';
+import { openApp, buildAndSave, writeEvent, writeRecords, startTrip as startNamed, allFiles, putFile, catchAgent, goToHash, modelSetUp, startModelServer, anthropicToolReply } from './helpers.js';
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
 
@@ -554,21 +554,6 @@ test('Start a trip needs only a name: the trip opens with no dates, and on Trips
   await expect(card.locator('.sub')).not.toHaveText(/^updated /); // a line says when it was last talked in, not a card's facts
 });
 
-test("a Delete in Waiting with Shiori tapped once stays armed when home is drawn again: another file's Delete draws it again", async ({ page }) => {
-  await openApp(page);
-  await writeRecords(page, 'sys:waiting', { text: { '/files/hotel.txt': 'Hotel Aurora Test, Nov 20–27', '/files/note.txt': 'Not a booking' } });
-  await page.reload();
-  const row = (/** @type {string} */ name) => page.locator('.waiting-file', { hasText: name });
-  await row('hotel.txt').getByRole('button', { name: 'Delete' }).click();
-  await row('note.txt').getByRole('button', { name: 'Delete' }).click();
-  await row('note.txt').getByRole('button', { name: 'Tap again to delete' }).click(); // deleted: home is drawn again
-  await expect(row('note.txt')).toHaveCount(0);
-  await expect(row('hotel.txt').getByRole('button', { name: 'Tap again to delete' })).toBeVisible(); // still armed: the next tap is the second
-  await row('hotel.txt').getByRole('button', { name: 'Tap again to delete' }).click();
-  await expect(page.getByText(/^Deleted hotel\.txt\./)).toBeVisible();
-  await expect(row('hotel.txt')).toHaveCount(0);
-});
-
 test("a trip's card says when a file is waiting to be read", async ({ page }) => {
   await openApp(page);
   const trip = await startNamed(page, 'Kyoto', { start: '2026-12-01', end: '2026-12-05' }); // dated: a card, which says what waits to be read
@@ -704,15 +689,15 @@ test('opening #/trip/<b>/talk with a turn running in a stops it; a redraw of a t
     await page.waitForTimeout(5000); // past the model's reply
     expect(await herLines(page, a)).toEqual([]); // stopped: its reply wrote nothing
     expect(await page.evaluate(() => /** @type {any} */ (window).opens)).toEqual([b]);
-    // Shiori moves the conversation to Kyoto (a hand-over's openWhenDone): the screen goes there, and nothing opens Osaka again.
+    // Shiori moves the conversation to Kyoto (the user's Open on annai's card, carryOn): the screen goes there, and nothing opens Osaka again.
     await catchAgent(page);
     await goToHash(page, `#/trip/${a}`);
-    // Details drawn first: else Osaka's conversation from before still shows while Kyoto is the open one, and openWhenDone finds Kyoto open.
+    // Details drawn first: else Osaka's conversation from before still shows while Kyoto is the open one, and the move finds Kyoto open.
     await expect(page.getByRole('heading', { level: 1, name: 'Kyoto' })).toBeVisible();
     await goToHash(page, `#/trip/${b}/talk`);
     await expect(convo(page)).toContainText('Osaka');
     await page.evaluate(async () => { /** @type {any} */ (window).opens = []; });
-    await page.evaluate((a) => /** @type {any} */ (window).agent.openWhenDone(a), a);
+    await page.evaluate((a) => /** @type {any} */ (window).agent.carryOn(a, [], new AbortController().signal), a);
     await expect.poll(() => hashOf(page)).toBe(`#/trip/${a}/talk`);
     await expect(convo(page)).toContainText('Kyoto');
     await page.waitForTimeout(500);
@@ -1262,19 +1247,31 @@ test("Forward after the photo viewer is closed does nothing, also when a screen 
 
 test("after a Forward that does nothing, Trips drawn again keeps its place", async ({ page }) => {
   await openApp(page);
-  await writeRecords(page, 'sys:waiting', { text: Object.fromEntries([...Array(8).keys()].map((i) => [`/files/note-${i}.txt`, `note ${i}`])) });
+  // Enough rows to scroll: chats talked in over the last days.
+  await page.evaluate(async () => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const { createTrip } = await load('/src/core/scopes.js');
+    const { record } = await load('/src/core/agent/log.js');
+    const store = await createIdbStore();
+    for (let i = 0; i < 16; i++) {
+      const id = await createTrip(new Workspace(store), { title: `Chat ${i}` });
+      await record(store, id, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', `Chat ${i}`]], now: Date.now() - (16 - i) * 3_600_000 });
+    }
+    store.close();
+  });
   await startNamed(page, 'Kyoto');
   await removeFromDetails(page, 'Kyoto');
   await markTrips(page);
   await page.goForward(); // the removed trip's entry is ahead: nothing to show
   await page.waitForTimeout(500);
   expect(await stillMarked(page)).toBe(true);
-  await page.locator('.waiting-file .two-step').last().scrollIntoViewIfNeeded();
+  await page.locator('.past .trip-card').first().scrollIntoViewIfNeeded();
+  await page.evaluate(() => scrollBy(0, 240));
   const y = await page.evaluate(() => scrollY);
   expect(y).toBeGreaterThan(200);
-  await page.locator('.waiting-file .two-step').last().click();
-  await page.locator('.waiting-file .two-step').last().click(); // Tap again to delete: Trips is drawn again
-  await expect(page.locator('.waiting-file')).toHaveCount(7);
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); // annai back at the front: Trips is drawn again
   await page.waitForTimeout(300);
   expect(await page.evaluate(() => scrollY)).toBeGreaterThan(y - 120); // not back where it was at the Forward
 });

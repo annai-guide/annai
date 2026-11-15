@@ -1,6 +1,6 @@
 /**
- * Hash routes: "#/<screen>" (shell.js's SCREENS), "#/trip/<id>/<talk, file, plan, booking, item, recap or replay>", "#/waiting/file?path=…"
- * (a file waiting with Shiori), plugins' pages: "#/ext/<plugin>/<screen>", "#/plugin-page/<plugin>/<page>", "#/trip/<id>/ext/<plugin>/<tab>".
+ * Hash routes: "#/<screen>" (shell.js's SCREENS), "#/trip/<id>/<talk, file, plan, booking, item, recap or replay>", "#/talk/me" (`me`'s lines, read-only),
+ * plugins' pages: "#/ext/<plugin>/<screen>", "#/plugin-page/<plugin>/<page>", "#/trip/<id>/ext/<plugin>/<tab>". An old address of a file that waited with Shiori names no screen: home.
  * "#import=<url>" (spec §12.3) becomes the import screen with that URL. A mangled link (a broken %-escape) opens Trips.
  * @param {string} hash
  * @returns {{ name: string, parts: string[], params: Record<string, string> }}
@@ -24,8 +24,7 @@ function parse(hash) {
   const parts = path.split('/').filter(Boolean).map(decodeURIComponent);
   if (!parts.length) parts.push('trips');
   const SUB = { talk: 'talk', file: 'file', plan: 'plan', booking: 'booking', item: 'item', recap: 'recap', replay: 'replay', ext: 'trip-ext' };
-  const name = parts[0] === 'trip' && Object.hasOwn(SUB, parts[2] ?? '') ? SUB[/** @type {keyof typeof SUB} */ (parts[2])]
-    : parts[0] === 'waiting' && parts[1] === 'file' ? 'waiting-file' : parts[0];
+  const name = parts[0] === 'trip' && Object.hasOwn(SUB, parts[2] ?? '') ? SUB[/** @type {keyof typeof SUB} */ (parts[2])] : parts[0];
   return { name, parts, params: Object.fromEntries(new URLSearchParams(query)) };
 }
 

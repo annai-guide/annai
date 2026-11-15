@@ -2495,17 +2495,14 @@ test("the trip screen's open failing says so, as Ask Shiori does", async () => {
   assert.equal(k.agent.target, k.trip, 'the conversation before is still the one open');
 });
 
-test("the trip screen opens a trip when you come to it, never at a redraw: Shiori's move to another trip stays, and a trip that won't open is left alone", async () => {
+test("the trip screen opens a trip when you come to it, never at a redraw: a move to another trip meanwhile stays, and a trip that won't open is left alone", async () => {
   const sleeps = { rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] };
   const k = await agentKit([sleeps], { halves: true, koe: { type: sleeps } });
   const road = await createTrip(k.ws, { title: 'Road' });
   const other = await createTrip(k.ws, { title: 'Other' });
   await k.agent.open(road);
   await k.agent.idle();
-  let went = 0;
-  k.agent.on('went', () => { went++; });
-  k.agent.openWhenDone(other);
-  await until(() => went > 0);
+  await k.agent.open(other); // the move (annai's card's Open, or a notification) while Road's screen shows
   assert.equal(k.agent.target, other);
   /** @type {any[]} */
   const cards = [];

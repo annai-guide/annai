@@ -1,13 +1,10 @@
-import { h, field, t, plural, twoStep, messageOf, whenGone } from '../dom.js';
-import { listTrips, createTrip, backupState, scopeTitle, changesTrip, lastTalked, ME, SYS_WAITING } from '../../core/scopes.js';
-import { readNames, shortName } from '../../core/names.js';
-import { waitingFiles, dropWaiting } from '../../core/waiting.js';
+import { h, field, t, plural, messageOf, whenGone } from '../dom.js';
+import { listTrips, createTrip, backupState, scopeTitle, changesTrip, lastTalked, ME } from '../../core/scopes.js';
 import { filesToRead } from '../../core/handover.js';
-import { askAbout, canAsk } from '../composer.js';
 import { readAppSettings } from '../../core/settings.js';
 import { ValidationError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
-import { relTime, relChange, dateRange, backupText, wording, size, waitingHref, talkHref, day, when, rowName } from '../format.js';
+import { relTime, relChange, dateRange, backupText, wording, talkHref, day, when, rowName } from '../format.js';
 import { requestPersist } from '../platform.js';
 import { openFileButton } from '../open-file.js';
 import { tripStamps, stampMarks, factsWords } from '../stamps.js';
@@ -28,13 +25,12 @@ import { keepRows, covered } from '../keep-rows.js';
 /**
  * Home: the timeline of trips and chats (the timeline design), old to new, the trips happening at the now line and only dated trips below it.
  * A tap opens a row's conversation. What a card shows beyond its dates is read for cards alone, so chats cost no reads. The foot keeps, until
- * stage 8, the waiting panel and Start a trip; then the archived trips, Open a file and the last backup. `me`'s old lines are a row of their own.
+ * stage 8, Start a trip; then the archived trips, Open a file and the last backup. `me`'s old lines are a row of their own.
  * @param {any} ctx
  */
 export async function renderTrips(ctx) {
-  if (ctx.moved) { // come to home anew: the form's last error, what was typed in it and a Delete tapped once are not shown again
+  if (ctx.moved) { // come to home anew: the form's last error and what was typed in it are not shown again
     tripError = tripTyped.title = tripTyped.start = tripTyped.end = '';
-    armed.clear();
   }
   // The trips followed from before the cards read their backups (tripCard), so an entry that lands while home is drawn is kept for followClock: a card
   // that read "backed up" just before it says "changed since" all the same.
@@ -77,7 +73,6 @@ async function drawTrips(ctx, follow, stop) {
   }));
   const ahead = await Promise.all([...happening, ...below].map(row));
   const archivedCards = await Promise.all(archived.map((s) => tripCard(ctx, s, null, o)));
-  const waiting = await waitingFiles(ctx.ws);
   const saved = latest ? { at: latest.last.at, words: (/** @type {number} */ now) => t`Last backup ${relTime(latest.last.at, now)}, to ${latest.name}.` }
     : settings.lastExportAt ? { at: settings.lastExportAt, words: (/** @type {number} */ now) => t`Last export ${relTime(settings.lastExportAt, now)}.` } : null;
   const screen = h('div', { class: 'screen timeline' },
@@ -87,7 +82,6 @@ async function drawTrips(ctx, follow, stop) {
     h('p', { class: 'now-line' }, h('span', { text: t`Now` })),
     h('ul', { class: 'cards rows ahead' }, ...ahead),
     active.length ? null : h('p', { class: 'empty', text: t`Tap + to talk to Shiori.` }),
-    waiting.length ? waitingList(ctx, waiting, await readNames(ctx.ws, SYS_WAITING)) : null,
     newTripForm(ctx),
     archived.length
       ? fold('archived', h('summary', { text: t`Archived (${archived.length})` }), h('ul', { class: 'cards' }, ...archivedCards))
@@ -251,33 +245,6 @@ async function herLast(ctx, scope) {
 let meAt = null;
 /** @param {any} store */
 const meTalked = (store) => (meAt ??= lastTalked(store, ME).catch(() => { meAt = null; return null; }));
-
-/**
- * What the user handed Shiori while no trip was open, waiting for her to file it (My call 3 of the bookings-and-trips design): each
- * file by Shiori's short name (its own name until she gives one, which shows as its title), to open, ask her about, or delete (its space
- * comes back). @param {any} ctx @param {any[]} files @param {Record<string, string>} names the waiting space's
- */
-function waitingList(ctx, files, names) {
-  return h('section', { class: 'panel waiting', 'aria-labelledby': 'waiting-title' },
-    h('h2', { id: 'waiting-title', class: 'section', text: t`Waiting with Shiori` }),
-    h('ul', { class: 'file-list' }, ...files.map((f) => {
-      const real = f.path.split('/').pop() ?? f.path;
-      const name = shortName(names, f.path);
-      return h('li', { class: 'waiting-file' },
-        h('span', { class: 'path', dir: 'auto', title: name !== real ? real : undefined, text: name }),
-        h('span', { class: 'acts' },
-          h('a', { class: 'btn', href: waitingHref(f.path) }, t`Open`),
-          canAsk(ctx) ? h('button', { class: 'btn', type: 'button', onclick: () => askAbout(ctx, { scope: SYS_WAITING, path: f.path, name }) }, t`Ask Shiori about this`) : null,
-          twoStep(t`Delete`, t`Tap again to delete`, async () => {
-            const freed = await dropWaiting(ctx.ws, f.path);
-            ctx.notices.toast(t`Deleted ${name}. ${size(freed)} freed.`);
-            await ctx.render();
-          }, { kept: { key: f.path, armed } })));
-    })));
-}
-
-/** Waiting's Deletes tapped once, by file: a redraw of home (`went`, a plugin's screens, another Delete) leaves them armed (twoStep). @type {Map<string, number>} */
-const armed = new Map();
 
 /**
  * What Start a trip last said went wrong, kept as `unfolded` is so a redraw of home (the clock's) draws it again: it goes when the user types into the form,

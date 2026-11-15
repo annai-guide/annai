@@ -2321,29 +2321,40 @@ test("a change made from home itself (her answer, through the dock, while home s
 
 test("a line that lands in a trip while home draws again, after its card read the backup: the card says \"changed since\" once home is drawn", async ({ page }) => {
   await openApp(page, '#/settings');
+  // An archived trip too: its card, under Archived, is the last thing home reads before it is drawn.
+  const old = await page.evaluate(async () => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const { createTrip, setTripStatus } = await load('/src/core/scopes.js');
+    const store = await createIdbStore();
+    const id = await createTrip(new Workspace(store), { title: 'Oldtown' });
+    await setTripStatus(store, id, 'archived');
+    store.close();
+    return id;
+  });
   const ids = await seed(page, { trips: { Testville: { from: 10, to: 12 } } });
   await backedUpAgo(page, 'Testville', 2 * 60_000);
   await page.goto('/#/trips');
   const card = row(page, 'Testville');
   await expect(card).toContainText('backed up 2 minutes ago');
   await expect(card).not.toContainText('changed since');
-  // Home draws again (annai comes back to the front), and her line commits in the trip once the cards have read their backups: as home lists the
-  // files waiting with Shiori, the last read before it is drawn.
-  await page.evaluate(async (id) => {
+  // Home draws again (annai comes back to the front), and her line commits in the trip once the cards have read their backups: as the archived card
+  // reads its trip.json, the last read before home is drawn (until timeline stage 7, the list of files waiting with Shiori was).
+  await page.evaluate(async ({ id, old }) => {
     const load = (/** @type {string} */ url) => import(url);
     const { Workspace } = await load('/src/core/workspace.js');
-    const { SYS_WAITING } = await load('/src/core/scopes.js');
-    const list = Workspace.prototype.list;
-    Workspace.prototype.list = async function (/** @type {string} */ scope, /** @type {string} */ prefix) {
-      if (scope === SYS_WAITING) {
-        Workspace.prototype.list = list;
+    const readJSON = Workspace.prototype.readJSON;
+    Workspace.prototype.readJSON = async function (/** @type {string} */ scope, /** @type {string} */ path) {
+      if (scope === old && path === '/trip.json') {
+        Workspace.prototype.readJSON = readJSON;
         await this.store.tx(['events', 'scopes'], 'readwrite', (/** @type {any} */ t) => t.appendEvent(id, { ts: Date.now(), type: 'out.speak', actor: 'shiori', data: { text: 'The pier is a short walk.' } }));
         /** @type {any} */ (window).landed = true;
       }
-      return list.call(this, scope, prefix);
+      return readJSON.call(this, scope, path);
     };
     document.dispatchEvent(new Event('visibilitychange'));
-  }, ids.Testville);
+  }, { id: ids.Testville, old });
   await expect.poll(() => page.evaluate(() => /** @type {any} */ (window).landed)).toBe(true);
   // Before, the new card had read its backup before the line and home followed the trips only once drawn: it said nothing until the next redraw.
   await expect(card).toContainText('backed up 2 minutes ago, changed since');

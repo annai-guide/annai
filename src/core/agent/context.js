@@ -125,7 +125,7 @@ export function systemText(s, part = '') {
     // A dated trip's text names no other trip (so nothing done elsewhere moves it), but says they exist: asked about another trip's
     // hotel in a trip's own conversation, every model searched this one and said there was none (stage 5's real-model pass).
     else /* en */ parts.push("# Their other trips\nA trip or place they name that isn't this one may be another of theirs: look in list_trips before you say it isn't there.");
-  } else /* en */ parts.push('# No trip is open\n/trip/ is empty. The user can open a trip from Trips.');
+  }
   return parts.join('\n\n');
 }
 

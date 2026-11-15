@@ -159,8 +159,6 @@ export class Halves {
   #routes = 0;
   /** @type {Set<Promise<unknown>>} annai's own notes from Kokoro to Koe, being written: idle() waits for them */
   #sending = new Set();
-  /** @type {Set<Promise<unknown>>} trips Shiori started, opening once both halves are done (openWhenDone): idle() waits for them */
-  #going = new Set();
   /** @type {string | null | undefined} the trip Koe has open; undefined: none yet */
   #koeTrip = undefined;
   /** Opening another conversation cut a turn of Kokoro's: its paused line is hers, not Koe's. */
@@ -1112,13 +1110,10 @@ export class Halves {
   }
 
   async idle() {
-    do {
-      await this.#quiet();
-      await Promise.all(this.#going);
-    } while (this.busy || this.#going.size);
+    await this.#quiet();
   }
 
-  /** Both halves are done, and what annai sends between them (a trip opening waits for this, so it is not part of it). */
+  /** Both halves are done, and what annai sends between them. */
   async #quiet() {
     do {
       await this.#routing;
@@ -1127,24 +1122,6 @@ export class Halves {
       await this.koe.idle();
       await this.live.idle();
     } while (this.busy);
-  }
-
-  /**
-   * Opens a trip Shiori started for a hand-over once both halves are done, as the user would (it becomes the open trip):
-   * only if the user hasn't opened another conversation meanwhile. Then 'went' tells the screens. @param {string} trip
-   */
-  openWhenDone(trip) {
-    const from = this.target;
-    const going = this.#quiet()
-      .then(async () => {
-        if (this.target !== from || this.target === trip) return;
-        await updateAppSettings(this.ws, { activeTrip: trip });
-        await this.open(trip);
-        this.#emit('went', { trip });
-      })
-      .catch((e) => console.warn(/* en */ "Shiori couldn't open the trip she started", e))
-      .finally(() => this.#going.delete(going));
-    this.#going.add(going);
   }
 
   /**

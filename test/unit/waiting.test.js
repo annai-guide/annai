@@ -5,15 +5,13 @@ import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { ensureBaseScopes, createTrip, listTrips, removeTrip, kindOf, scopeTitle, ME, SYS_WAITING } from '../../src/core/scopes.js';
 import { CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';
-import { resolvePath } from '../../src/core/agent/tools.js';
 import { readNames } from '../../src/core/names.js';
-import { waitingFiles, moveFile, dropWaiting, moveWaitingToChat } from '../../src/core/waiting.js';
+import { waitingFiles, moveFile, moveWaitingToChat } from '../../src/core/waiting.js';
 import { undoEverywhere } from '../../src/core/handover.js';
 import { record } from '../../src/core/agent/log.js';
 import { exportArchive, peekArchive, importArchive, PRESETS } from '../../src/core/archive.js';
 import { agentKit } from './agent-kit.js';
 import { useClock } from './clock.js';
-import { sha256Hex } from '../../src/core/hash.js';
 import { utf8 } from '../../src/core/bytes.js';
 
 async function kit() {
@@ -37,13 +35,6 @@ test('the waiting space is made with the base scopes, outside every trip and out
   assert.equal(kindOf(SYS_WAITING), 'sys');
   assert.equal(scopeTitle({ id: SYS_WAITING, title: 'x' }), 'Waiting with Shiori');
   assert.equal((await listTrips(store)).active.some((s) => s.id === SYS_WAITING), false);
-});
-
-test('Shiori sees /waiting/ only while no trip is open', () => {
-  assert.deepEqual(resolvePath('/waiting/files/a.pdf', null), { scope: SYS_WAITING, path: '/files/a.pdf' });
-  assert.deepEqual(resolvePath('/waiting/', null), { scope: SYS_WAITING, path: '/' });
-  assert.throws(() => resolvePath('/waiting/files/a.pdf', 'trip-1'), /with a trip open/);
-  assert.throws(() => resolvePath('/elsewhere/a.pdf', null), /\/waiting\//);
 });
 
 test('waitingFiles: the files under /files/, not her names', async () => {
@@ -97,35 +88,6 @@ test('moveFile from a trip: deleted there, its history kept', async () => {
   assert.equal((await fileEvents(store, trip)).at(-1).data.handover, 'h-2');
   assert.deepEqual(await readNames(ws, other), { '/files/temple.pdf': 'Temple tickets' });
   assert.deepEqual(await readNames(ws, trip), {});
-});
-
-test('dropWaiting: removes the file, its history and its name, and frees what nothing else names', async () => {
-  const { store, ws, trip, hand } = await kit();
-  await hand('screenshot.png', 'a view', 'image/png');
-  await hand('screenshot.png', 'a view, again', 'image/png');
-  await ws.write(SYS_WAITING, '/names.json', { '/files/screenshot.png': 'A view' }, { author: 'shiori' });
-  // The same bytes kept in a trip too: they stay.
-  await hand('shared.pdf', 'shared');
-  await ws.write(trip, '/files/shared.pdf', utf8('shared'), { author: 'user', type: 'application/pdf' });
-  const hashes = [await sha256Hex(utf8('a view')), await sha256Hex(utf8('a view, again'))];
-  assert.equal(await dropWaiting(ws, '/files/screenshot.png'), 'a view'.length + 'a view, again'.length);
-  for (const h of hashes) assert.equal(await store.tx(['blobs'], 'readonly', (t) => t.hasBlob(h)), false);
-  assert.equal((await fileEvents(store, SYS_WAITING)).some((e) => e.data.path === '/files/screenshot.png'), false);
-  assert.deepEqual(await readNames(ws, SYS_WAITING), {});
-  assert.equal(await dropWaiting(ws, '/files/shared.pdf'), 0);
-  assert.ok(await ws.read(trip, '/files/shared.pdf'));
-});
-
-test("a waiting file dropped for good takes its short name with it, history and all: no stored content keeps it", async () => {
-  const { store, ws, hand } = await kit();
-  await hand('a.pdf', 'a');
-  await hand('b.pdf', 'b');
-  await ws.patch(SYS_WAITING, '/names.json', { '/files/a.pdf': 'Name of the dropped file' }, { author: 'shiori', create: true });
-  await ws.patch(SYS_WAITING, '/names.json', { '/files/b.pdf': 'Name of B' }, { author: 'shiori' });
-  await dropWaiting(ws, '/files/a.pdf');
-  const texts = await store.tx(['blobs'], 'readonly', async (t) => Promise.all((await t.listBlobs()).map(async (b) => new TextDecoder().decode((await t.getBlob(b.hash)).data))));
-  assert.equal(texts.some((x) => x.includes('Name of the dropped file')), false);
-  assert.deepEqual(await readNames(ws, SYS_WAITING), { '/files/b.pdf': 'Name of B' });
 });
 
 /**

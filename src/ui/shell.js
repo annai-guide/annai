@@ -53,11 +53,11 @@ import { uiSignature, syncThemes, cleanUp, slotEntries, component, dockKey, plug
 /** The top bar's tab each screen belongs to, where it isn't the screen's own name. */
 const SECTION = /** @type {Record<string, string>} */ ({
   sees: 'talk', talk: 'talk',
-  trip: 'trips', file: 'trips', 'waiting-file': 'trips', booking: 'plan', item: 'plan', plan: 'plan', recap: 'trips', replay: 'trips', 'trip-ext': 'trips', import: 'trips', drive: 'now',
+  trip: 'trips', file: 'trips', booking: 'plan', item: 'plan', plan: 'plan', recap: 'trips', replay: 'trips', 'trip-ext': 'trips', import: 'trips', drive: 'now',
   plugins: 'settings', add: 'settings', 'plugin-install': 'settings', 'plugin-page': 'settings', models: 'settings', shiori: 'settings', tools: 'settings',
   voice: 'settings', languages: 'settings', backups: 'settings', notifications: 'settings', simulate: 'settings', mcp: 'settings', about: 'settings', experimental: 'settings', updates: 'settings',
 });
-const SCREENS = { sees: renderSees, trips: renderTrips, trip: renderTrip, file: renderFile, 'waiting-file': renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, add: renderAdd, 'plugin-install': renderPluginInstall, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, item: renderItem, voice: renderVoice, now: renderNow, drive: renderDrive, backups: renderBackups, recap: renderRecap, replay: renderReplay, simulate: renderSimulate, notifications: renderNotifications, ext: renderExt, 'plugin-page': renderPluginPage, 'trip-ext': renderTripTab, mcp: renderMcp, welcome: renderWelcome, about: renderAbout, experimental: renderExperimental, updates: renderUpdates, languages: renderLanguages };
+const SCREENS = { sees: renderSees, trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, add: renderAdd, 'plugin-install': renderPluginInstall, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, item: renderItem, voice: renderVoice, now: renderNow, drive: renderDrive, backups: renderBackups, recap: renderRecap, replay: renderReplay, simulate: renderSimulate, notifications: renderNotifications, ext: renderExt, 'plugin-page': renderPluginPage, 'trip-ext': renderTripTab, mcp: renderMcp, welcome: renderWelcome, about: renderAbout, experimental: renderExperimental, updates: renderUpdates, languages: renderLanguages };
 
 /**
  * @param {HTMLElement} root
@@ -521,10 +521,9 @@ export function startShell(root, core) {
     setPendingImport(files);
     ctx.go('#/import');
   });
-  // A trip opened, by Shiori for a hand-over (Halves.openWhenDone) or by the user's choice on annai's card (carryOn, chose). From home the
-  // address follows into the conversation only for the user's choice (the timeline design, "Moving into a trip"), once nothing typed would
-  // be lost: a new entry, so Back returns home, which opens nothing. Otherwise the screen is drawn again: home stays, a conversation left goes
-  // to the open one at its redraw (render: a replace, as its address is stale), Details and Settings stay, their top bar the trip.
+  // A trip opened by the user's choice on annai's card (carryOn, chose). From home the address follows into the conversation (the timeline design,
+  // "Moving into a trip"), once nothing typed would be lost: a new entry, so Back returns home, which opens nothing. Elsewhere the screen is drawn
+  // again: a conversation left goes to the open one at its redraw (render: a replace, as its address is stale), Details and Settings stay, their top bar the trip.
   /** @type {any} */ (core.agent)?.on?.('went', (/** @type {{ trip: string, chose?: boolean }} */ { trip, chose }) => {
     if (!chose || parseHash(location.hash).name !== 'trips') return redraw();
     whenFree(() => { if (parseHash(location.hash).name === 'trips' && core.agent?.target === trip) ctx.go(talkHref(trip)); });

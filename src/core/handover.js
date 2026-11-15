@@ -3,7 +3,7 @@
  * work out what each is and where it goes. The message keeps what was handed (`handed`) and its id (`handover`); every write of hers in
  * the turn that takes it carries the id (workspace.js), so Undo can take back exactly what she did with it.
  * @typedef {{ path: string, type: string, name: string, new: boolean, planned?: number }} HandedFile
- *   path: as Shiori sees it (/trip/files/x.pdf, /waiting/files/x.pdf, /trip/bookings/b.json); name: the file's own name;
+ *   path: as Shiori sees it (/trip/files/x.pdf, /trip/bookings/b.json; an older annai's line, a waiting space's path); name: the file's own name;
  *   new: handed now (stored by this message), else a reference to something kept (Ask Shiori about this);
  *   planned: a calendar file's events annai put on the trip's plan as it was kept, how many (none: it put none there)
  */
@@ -41,7 +41,6 @@ export function handOverText(files, o = {}) {
   const refs = files.filter((f) => !f.new);
   const shown = fresh.slice(0, NAMED).map((f) => `${quotedPath(f.path)} (${shownType(f.type)})`);
   const more = fresh.length > shown.length ? /* en */ `, and ${fresh.length - shown.length} more` : '';
-  const waiting = fresh.some((f) => f.path.startsWith('/waiting/'));
   const inTrip = fresh.some((f) => f.path.startsWith('/trip/'));
   /* en */
   return [
@@ -52,12 +51,11 @@ export function handOverText(files, o = {}) {
       ? `The user is asking about the booking ${quotedPath(f.path)}: read it, and the file its source names, before you answer.`
       : `The user is asking about ${quotedPath(f.path)}: read it before you answer.`)),
     ...(o.koe ? [fresh.length ? "Kokoro reads them and files them: don't ask the user where they go." : ''] : [
-      waiting ? 'No trip is open, so they wait in /waiting/files/. Read each one: what read gives you of a waiting file is what it says, read for you by a side task, and the file itself stays where it is. Work out what each is (a flight, a stay, a car, a train, an event or a reservation, or just a photo) and which trip it fits (list_trips). Then open_trip with the files for a trip that fits: annai asks the user with its own card, so you don\'t ask where they go, and on Not now the files wait here and you start no trip for them unless they ask. Files that fit no trip: start_trip, named and dated from the bookings. One you can\'t place with confidence starts a trip too, and you say what you were unsure of.' : '',
       inTrip ? FILE_HERE : '',
       ...fresh.filter((f) => f.path.startsWith('/trip/') && Number(f.planned) > 0).slice(0, NAMED)
         .map((f) => `${quotedPath(f.path)}: annai put its ${f.planned === 1 ? '1 event' : `${f.planned} events`} on the plan already, so don't add ${f.planned === 1 ? 'it' : 'them'} again.`),
       fresh.some(pasted) ? "A pasted text (pasted-….txt) that isn't a booking: delete it, so it isn't kept. One that is stays with its booking." : '',
-      fresh.length ? `Give each a short name for what it is ("ANNAI AIR flight · Nov 20"), up to 80 characters, in names.json beside it (${waiting ? '/waiting/names.json' : '/trip/names.json'}), with patch, keyed by its path there ("/files/…"). Then say what you did.` : '',
+      fresh.length ? `Give each a short name for what it is ("ANNAI AIR flight · Nov 20"), up to 80 characters, in names.json beside it (/trip/names.json), with patch, keyed by its path there ("/files/…"). Then say what you did.` : '',
     ]),
   ].filter(Boolean).join(' ');
 }

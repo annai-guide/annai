@@ -642,13 +642,12 @@ test('landscape at SE size (568 × 296) with the dock\'s text box open: the page
   await expect(box).toBeHidden();
 });
 
-test('the type box with three chips, Trips with files waiting, and a trip without dates fit a phone 320 px wide, in ja', async ({ page }) => {
+test('the type box with three chips, and a trip without dates, fit a phone 320 px wide, in ja', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 800 });
   await page.addInitScript(() => { try { localStorage.setItem('annai.ui', 'ja'); } catch { /* storage blocked */ } });
   await openApp(page);
   await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
   const long = 'Your flight is booked- TESTQ1 to Anchorage on 11:20:2026 with a very long confirmation name.pdf';
-  await writeRecords(page, 'sys:waiting', { text: { [`/files/${long}`]: 'a', '/files/hotel.txt': 'b', '/files/car.txt': 'c' } });
   // A trip with no dates.
   await page.getByLabel('旅の名前').fill('アンカレッジとその周辺をめぐる長い名前の旅');
   await page.getByRole('button', { name: '旅を始める' }).last().click();
@@ -656,7 +655,6 @@ test('the type box with three chips, Trips with files waiting, and a trip withou
   const wide = async () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(await wide()).toBeLessThanOrEqual(0);
   await page.goto('/#/trips');
-  await expect(page.locator('.waiting-file')).toHaveCount(3);
   expect(await wide()).toBeLessThanOrEqual(0);
   // Three chips in the type box: a long name, cut, and two short. In a conversation: the dock at rest on home has no type button (timeline stage 4).
   await page.goto('/#/talk');

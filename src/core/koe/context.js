@@ -28,7 +28,7 @@ async function items(ws, trip, dir) {
  * @returns {Promise<string>} `<today>…</today>`, at most VIEW_MAX characters
  */
 export async function compactView({ ws, trip, now, timeZone, next }) {
-  if (!trip) /* en */ return '<today>\nNo trip is open.\n</today>';
+  if (!trip) return '<today>\n</today>'; // nothing open (no draft could be made): no turn runs then, and nothing is told
   const days = [local(now, timeZone).slice(0, 10), local(now + DAY, timeZone).slice(0, 10)];
   const at = (/** @type {any} */ t) => Date.parse(t?.at ?? '');
   const e = (/** @type {unknown} */ v) => escapeTags(String(v ?? ''));
