@@ -2,6 +2,7 @@ import { callOnce } from './call.js';
 import { ProviderError, explain, sameOrigin, noRedirect } from './contract.js';
 import { LEVELS, nearestLevel } from './reasoning.js';
 import { fromBase64 } from '../bytes.js';
+import { TEST_UPLOAD, sweepUploads } from './uploads.js';
 import { t } from '../l10n.js';
 import { sentences } from '../intl.js';
 
@@ -26,7 +27,8 @@ const room = (model) => Math.min(4096, model.maxOutput ?? 4096);
  *   upload is advice: when it fails, photos still go in each request, so the model still passes; live: a realtime model answered aloud
  * @typedef {{ type: import('./contract.js').EndpointType, endpoint: import('./config.js').Endpoint, model: import('./config.js').Model,
  *   key: string | null, fetch?: import('./call.js').Fetch, probe?: (url: string) => Promise<boolean>, firstOutputMs?: number,
- *   role?: { id: string, level: string } }} TestCase  role: a role asking this model at a level of its own (main, koe-classic or utility)
+ *   role?: { id: string, level: string }, uploads?: import('./uploads.js').Uploads }} TestCase  role: a role asking this model at a level of its own (main, koe-classic or utility);
+ *   uploads: the endpoints' uploads, turned off where annai can't delete the test photo
  *   detail: what the step found, in the screens' language
  */
 
@@ -113,21 +115,29 @@ export async function testModel(c) {
   return { ok: steps.every((s) => s.ok || s.step === 'upload'), steps };
 }
 
-/** Uploads the test photo, expiring in an hour, the shortest a provider allows (spec §9.8). @param {TestCase} c @returns {Promise<TestStep>} */
-async function testUpload({ type, endpoint, model, key, fetch: get = (url, init) => fetch(url, init) }) {
+/**
+ * Uploads the test photo, expiring in an hour, the shortest a provider allows (spec §9.8). Where the provider keeps files until they
+ * are deleted, annai then finds it in the provider's list and deletes it, as it will delete each photo: a key that can't sends photos
+ * in each request until annai restarts. @param {TestCase} c @returns {Promise<TestStep>}
+ */
+async function testUpload({ type, endpoint, model, key, fetch: get = (url, init) => fetch(url, init), uploads }) {
   try {
     const r = /** @type {NonNullable<typeof type.uploadRequest>} */ (type.uploadRequest)({
-      endpoint, key, tunables: { ...endpoint.tunables, ...model.tunables }, bytes: fromBase64(TEST_IMAGE), mediaType: 'image/png', name: 'annai-test.png', expiresInSeconds: 3600,
+      endpoint, key, tunables: { ...endpoint.tunables, ...model.tunables }, bytes: fromBase64(TEST_IMAGE), mediaType: 'image/png', name: TEST_UPLOAD, expiresInSeconds: 3600,
     });
     sameOrigin(endpoint, r.url);
     const res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, redirect: 'manual' });
     noRedirect(res, endpoint);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     /** @type {NonNullable<typeof type.readUpload>} */ (type.readUpload)(await res.json());
-    return { step: 'upload', ok: true, detail: t`Photo uploads work: each photo is uploaded once, and expires after 48 hours.` };
   } catch (e) {
     return { step: 'upload', ok: false, detail: sentences(e instanceof ProviderError && e.kind === 'redirect' ? explain(e) : t`Uploading photos didn't work with this key.`, t`annai will send photos in each request instead.`) };
   }
+  if (!type.deleteUploadRequest) return { step: 'upload', ok: true, detail: t`Photo uploads work: each photo is uploaded once, and expires after 48 hours.` };
+  const swept = await sweepUploads({ type, endpoint, key, fetch: get, all: true, only: (name) => name === TEST_UPLOAD }).catch(() => null);
+  if (swept?.outcome === 'done' && swept.deleted) return { step: 'upload', ok: true, detail: t`Photo uploads work: each photo is uploaded once, and annai deletes it after 48 hours (it just deleted the test photo).` };
+  uploads?.off(endpoint.id);
+  return { step: 'upload', ok: false, detail: sentences(t`Photos upload, but annai couldn't find and delete the test photo with this key.`, t`annai will send photos in each request instead.`) };
 }
 
 /** A role by the name the screens give it, a label of its own. @param {{ id: string }} role */

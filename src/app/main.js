@@ -274,8 +274,11 @@ async function boot() {
     closeNotifications(await live.newsArrived()).catch(() => {});
   });
   addEventListener('online', () => { push?.sync().catch(() => {}); });
-  // Deletions of what providers keep of the conversations, waiting for a connection.
-  addEventListener('online', () => { llm.drainKept().catch(() => {}); });
+  // Deletions of what providers keep of the conversations, waiting for a connection, and of photo uploads past their 48 hours (spec §4.8).
+  addEventListener('online', () => {
+    llm.drainKept().catch(() => {});
+    llm.sweepUploads().catch(() => {});
+  });
   plugins.connect({ llm, agent, notices: shell.notices });
   // A card the agent names (key) is taken down when a later turn works, and replaced by a newer one of its name.
   /** @type {Map<string, () => void>} */

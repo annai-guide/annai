@@ -368,9 +368,16 @@ async function abilityBody(view, abilityId) {
   if (type.keeps) address.addEventListener('input', () => warnKept(ctx, addressWarn, { provider: id }, true));
   const tunables = jsonField(t`Tunables (JSON)`, /* en */ `ability-${abilityId}-tunables`, a.tunables);
   const extra = jsonField(t`Extra request fields (JSON)`, /* en */ `ability-${abilityId}-extra`, a.extraBody);
-  // Where the protocol stores files, photos go there once, then by id (spec §4.8). The switch is a tunable.
-  const uploads = type.uploadRequest ? savedCheck(t`Upload photos to this provider (each expires after 48 hours)`, a.tunables?.uploads !== false,
-    async (on) => tunables.show((await saveAbility({ tunables: (/** @type {any} */ was) => ({ ...was.tunables, uploads: on }) })).tunables)) : null;
+  // Where the protocol stores files, photos go there once, then by id (spec §4.8). The switch is a tunable, shown where uploads are on
+  // without the user's changes (the type's default, or the provider's description: OpenRouter's, of Chat Completions'). Where annai
+  // deletes them itself (the type lists and deletes), turned off, they all go.
+  const uploadsByDefault = providerBase(rec, tunablesFor).abilities[abilityId]?.tunables?.uploads !== false;
+  const deletes = Boolean(type.deleteUploadRequest);
+  const uploads = type.uploadRequest && uploadsByDefault ? savedCheck(deletes ? t`Upload photos to this provider (annai deletes each once it is 48 hours old, the next time annai starts or comes online)`
+    : t`Upload photos to this provider (each expires after 48 hours)`, a.tunables?.uploads !== false, async (on) => {
+    tunables.show((await saveAbility({ tunables: (/** @type {any} */ was) => ({ ...was.tunables, uploads: on }) })).tunables);
+    if (!on && deletes) await ctx.llm.forgetUploads(`${id}/${abilityId}`);
+  }) : null;
   // Where the protocol can, the provider keeps the conversation between turns (G2): a tunable too. Off, what it keeps is deleted.
   const { name: who, holds, server, note: keepNote } = keeperOf(type.keeps, rec.plugin, providerOf(rec).name);
   const keyless = !(await ctx.llm.keyFor(id));
@@ -398,7 +405,7 @@ async function abilityBody(view, abilityId) {
       const wrong = v ? addressShown(v) : null;
       if (wrong) throw new Error(wrong);
       return v;
-    }, (v) => (keep ? ctx.llm.reconnect(id, () => saveAbility({ baseUrl: v })) : saveAbility({ baseUrl: v })))), // a new address: what it keeps there goes first
+    }, (v) => (keep || deletes ? ctx.llm.reconnect(id, () => saveAbility({ baseUrl: v })) : saveAbility({ baseUrl: v })))), // a new address: what it keeps there goes first
     h('p', { class: 'sub', text: t`Empty: the provider's address. Each setting here is saved as you change it.` }),
     addressWarn,
     uploads?.el ?? null,

@@ -443,6 +443,13 @@ export function safeId(id) {
  * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null, tunables: Record<string, any>, bytes: Uint8Array, mediaType: string, name: string, expiresInSeconds: number }) => { url: string, headers: Record<string, string>, body: FormData }} [uploadRequest]
  *   a photo upload to the provider's files API (spec §4.8)
  * @property {(json: any) => { id: string, expiresAt?: number }} [readUpload]
+ * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null, id: string }) => { url: string, headers: Record<string, string>, method: 'DELETE' }} [deleteUploadRequest]
+ *   one upload's deletion (2xx, or 404 when it is gone), for a files API that keeps files until they are deleted: with listUploadsRequest
+ *   and readUploads, annai deletes its own uploads there 48 hours after each, from the provider's list (spec §4.8)
+ * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null, cursor: string | null }) => { url: string, headers: Record<string, string> }} [listUploadsRequest]
+ *   a page of the files the key can see, after cursor (null: the first)
+ * @property {(json: any) => { files: { id: string, name: string, createdAt: number }[], cursor: string | null }} [readUploads]
+ *   a page's files (createdAt in ms, NaN when unknown) and the next page's cursor (null: the last); throws on a list it can't read
  * @property {{ name?: string, days: number, hours: number, holds?: string, note?: string, provider?: string, perModel?: boolean, minLife?: number }} [keeps]  it keeps turns on the provider's side (G2; docs/plugins.md "Kept turns"):
  *   who, for the switch's words; the longest annai tracks one; how long a chain is continued; holds: how long it keeps one on any key, for the page (else the page tells free from paid keys); note: more for the page to say;
  *   provider: the plugin these words are for (another provider using the protocol gets its own name); perModel: only the model that made a turn continues it; minLife: ms within which a turn is never gone (gone sooner, the server isn't keeping them)

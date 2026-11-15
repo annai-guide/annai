@@ -204,6 +204,9 @@ export function traceSummary(e, { costs: perWake } = {}) {
   // A deletion of a turn the provider kept (G2).
   if (e.type === 'net.request' && d.kind === 'forget') return line(d.outcome === 'ok' ? t`kept turn deleted` : t`kept turn not deleted yet`, d.endpoint, d.status || t`no answer`, `${d.ms ?? '?'} ms`);
   if (e.type === 'net.request' && d.kind === 'look') return line(t`kept turn looked up`, d.endpoint, d.status || t`no answer`, `${d.ms ?? '?'} ms`);
+  // annai's photo uploads, listed and deleted where the provider keeps them until then (spec §4.8).
+  if (e.type === 'net.request' && d.kind === 'upload-list') return line(t`photo uploads listed`, d.endpoint, d.status || t`no answer`, `${d.ms ?? '?'} ms`);
+  if (e.type === 'net.request' && d.kind === 'upload-delete') return line(d.outcome === 'ok' ? t`photo upload deleted` : t`photo upload not deleted yet`, d.endpoint, d.status || t`no answer`, `${d.ms ?? '?'} ms`);
   if (e.type === 'photo.replace') return t`a refused photo sent again as a new copy (${d.mediaType})`;
   // A reading kept for a model that can't take the file; its words are the model's, English.
   if (e.type === 'reading') return line(d.kind === 'pdf' ? (d.how === 'pages' ? t`a PDF's pages kept for models that can't read PDFs` : t`a PDF's words kept for models that can't read PDFs`) : t`a photo's description kept for models that can't see photos`, d.text ? cut(d.text) : null);

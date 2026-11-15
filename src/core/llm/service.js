@@ -16,7 +16,7 @@ import { adjusted, setupOf } from './setup.js';
 import { callRole, Bench, candidates, COOLDOWN_MS } from './fallback.js';
 import { modelTrace } from './trace.js';
 import { forgetPhotoHashes } from './call.js';
-import { Uploads } from './uploads.js';
+import { Uploads, sweepUploads } from './uploads.js';
 import { Kept, keyPrint, keeperOf } from './kept.js';
 import { speechCall } from './speech.js';
 import { withoutSecretsIn } from '../agent/net.js';
@@ -91,6 +91,45 @@ export function createLlm({
     if ((await kept.count()).waiting) await within(drainKept(AbortSignal.timeout(ms)), ms);
   };
   /* en */ ready.then(() => drainKept()).catch((e) => console.warn("kept turns' deletions couldn't be sent", e));
+  /**
+   * The abilities whose photo uploads annai deletes itself (spec §4.8), as calls see them now: their type deletes, uploads are on
+   * there by default (the type's or the description's) or now, and there is a key. all: switched off now, so every upload of
+   * annai's there goes, at each sweep, until none is left. provider: only its own.
+   * @param {string} [provider]
+   */
+  const sweepable = async (provider) => {
+    await ready;
+    /** @type {(NonNullable<Awaited<ReturnType<typeof reach>>> & { all: boolean })[]} */
+    const out = [];
+    for (const pRec of Object.values((await readConfig(ws)).providers)) {
+      if (provider && pRec.id !== provider) continue;
+      for (const abilityId of Object.keys(providerOf(pRec).abilities)) {
+        const to = await reach(pRec, abilityId).catch(() => null);
+        if (!to?.secret || !to.type.deleteUploadRequest || !to.type.listUploadsRequest || !to.type.readUploads) continue;
+        const on = to.endpoint.tunables?.uploads !== false;
+        const byDefault = providerBase(pRec, () => to.type.tunables ?? {}).abilities[abilityId]?.tunables?.uploads !== false;
+        if (on || byDefault) out.push({ ...to, all: !on });
+      }
+    }
+    return out;
+  };
+  /**
+   * annai's uploads deleted at each ability that keeps them (sweepUploads): those over 48 hours old, or all of them where the switch
+   * is off or all is asked. One that can't be listed, or refuses the key, gets no uploads until annai restarts, so annai never makes
+   * files it can't delete; not so as its key or address goes (release), where a refused old key says nothing about the new one.
+   * hold: no ability swept uploads again until annai restarts (it is going for good: a call under way sends its photos in the request
+   * rather than leave a new upload behind).
+   * @param {Awaited<ReturnType<typeof sweepable>>} list @param {{ all?: boolean, release?: boolean, hold?: boolean }} [o]
+   */
+  const sweep = (list, { all = false, release = false, hold = false } = {}) => Promise.all(list.map(async (to) => {
+    if (hold) uploads.off(to.endpoint.id);
+    const r = await sweepUploads({ type: to.type, endpoint: to.endpoint, key: to.key, fetch: get, trace: modelTrace(store, SYS), all: all || to.all }).catch(() => null);
+    if (!release && (r?.outcome === 'refused' || r?.outcome === 'unreadable')) uploads.off(to.endpoint.id);
+    return r;
+  }));
+  /** At start and on coming online: the uploads over 48 hours old, and all of those where the switch is off. */
+  const sweepNow = async () => sweep(await sweepable());
+  /* en */ ready.then(() => sweepNow()).catch((e) => console.warn("photo uploads couldn't be deleted", e));
   /** After a trip went or a switch went off: its turns, deleted. @param {{ scope?: string, endpoint?: string }} which */
   const forgetSoon = async (which) => {
     const queued = await kept.queue(which);
@@ -107,10 +146,15 @@ export function createLlm({
     let done = false;
     try {
       await kept.queue({ provider: id });
-      await drainFor(10_000);
+      // Its photo uploads too, all of them, with the old key and address, beside the turns: the 10 s bound what this waits for,
+      // and deletions not done by then go on.
+      const swept = await sweepable(id).catch(() => []);
+      await within(Promise.all([drainFor(10_000), sweep(swept, { all: true, release: true, hold: gone })]), 10_000);
       const out = await work();
       done = true;
       await kept.drop(id).catch(() => {});
+      // Their ids go: deleted, or kept under a key or at an address no longer used.
+      if (!gone) for (const to of swept) await uploads.forget(to.endpoint.id).catch(() => {});
       return out;
     } finally {
       // A removal that failed leaves the provider as it was, its turns kept again.
@@ -494,6 +538,16 @@ export function createLlm({
     },
     /** An ability's kept turns, its switch saved off. @param {string} endpoint */
     forgetEndpoint: (endpoint) => forgetSoon({ endpoint }),
+    /**
+     * An ability's photo uploads, its switch saved off: all of annai's there deleted, in the background; one not deleted now goes at the
+     * next start's sweep, which deletes them all while the switch is off. @param {string} endpoint
+     */
+    forgetUploads: async (endpoint) => {
+      const list = (await sweepable(endpoint.split('/')[0])).filter((to) => to.endpoint.id === endpoint);
+      sweep(list).then(() => uploads.forget(endpoint)).catch(() => {});
+    },
+    /** annai's photo uploads over 48 hours old deleted, and all of those where the switch is off (spec §4.8): on coming online. */
+    sweepUploads: () => sweepNow(),
     /** A key or address changing, or the key going: what the provider keeps goes first, with the old key. @template T @param {string} id @param {() => Promise<T>} save */
     reconnect: (id, save) => releasing(id, save),
     /**
@@ -507,7 +561,8 @@ export function createLlm({
       // Whatever a call under way did not settle in time, and what a page killed before left pending, is deleted before the wipe too.
       await kept.release();
       await kept.queue();
-      await drainFor(timeoutMs);
+      // And every photo annai uploaded where it deletes them, beside the turns, within the same time.
+      await within(Promise.all([drainFor(timeoutMs), sweepable().then((list) => sweep(list, { all: true, release: true, hold: true }))]), timeoutMs);
       const n = await kept.count();
       return { left: n.turns + n.waiting };
     },
@@ -643,7 +698,7 @@ export function createLlm({
       const { roles } = await readConfig(ws);
       const r = /** @type {const} */ (['main', 'koe-classic', 'utility']).find((x) => roles[x]?.models.includes(modelId) && roles[x].level !== 'off');
       const role = r ? { id: r, level: roles[r].level } : undefined;
-      /* en */ const result = !type.realtime ? await testModel({ type, endpoint, model, key, fetch: get, probe, role })
+      /* en */ const result = !type.realtime ? await testModel({ type, endpoint, model, key, fetch: get, probe, role, uploads })
         : await service.live(modelId, { instructions: 'This is a connection test. Answer in a word or two.', context: '', tools: [] })
           .then((s) => testLive(s, { onAudio: onAudio ? (d) => onAudio(d, s.audioOut) : undefined }), (e) => ({ ok: false, steps: [{ step: /** @type {const} */ ('access'), ok: false, detail: explain(e) }] }));
       const found = Object.fromEntries(result.steps.map((s) => [s.step, s.ok]));

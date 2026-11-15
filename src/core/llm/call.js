@@ -4,7 +4,7 @@ import { levelPatch } from './reasoning.js';
 import { NO_USAGE, mergeUsage, costOf } from './cost.js';
 import { fromBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
-import { UPLOAD_TTL_S, MARGIN_MS } from './uploads.js';
+import { UPLOAD_TTL_S, MARGIN_MS, uploadName } from './uploads.js';
 import { deleteTurn, lookTurn, keyPrint, hash } from './kept.js';
 import { ttlFor } from '../agent/warmth.js';
 import { formatOf } from '../voice/formats.js';
@@ -549,8 +549,6 @@ export function asProviderError(e, signal, type, registry) {
   return new ProviderError('plugin', String(/** @type {any} */ (e)?.message ?? e), { cause: e });
 }
 
-const EXT = /** @type {Record<string, string>} */ ({ 'image/webp': 'webp', 'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif' });
-
 /** Photos' hashes by their data, kept across calls (a conversation sends each again every turn), the latest up to PHOTO_CHARS of data. */
 const photoHashes = new Map();
 let photoChars = 0;
@@ -583,8 +581,8 @@ export async function photoHash(data) {
 
 /**
  * Photos go by id to an endpoint that stores files (spec §4.8): each is uploaded once, named
- * annai-…, expiring after 48 hours. A failed upload sends the bytes, and stops uploading there
- * until annai restarts.
+ * annai-… (uploadName, the rule the sweep deletes by), used for 48 hours. A failed upload sends the bytes, and stops
+ * uploading there until annai restarts.
  * @param {Request} request
  * @param {{ type: EndpointType, endpoint: Endpoint, model: Model, key: string | null, uploads?: import('./uploads.js').Uploads, get: Fetch, trace?: ModelTrace, signal?: AbortSignal, now: () => number, from?: number }} c
  * from: the first message that is sent, the ones before it being held by a kept turn; expires: when the earliest of the photos sent by id expires (0: none)
@@ -611,7 +609,7 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
         expiry.set(hash, (await uploads.expires?.(endpoint.id, hash)) || 0);
         continue;
       }
-      const r = type.uploadRequest({ endpoint, key, tunables: { ...endpoint.tunables, ...model.tunables }, bytes: fromBase64(p.data), mediaType: p.mediaType, name: `annai-${hash.slice(0, 16)}.${EXT[p.mediaType] ?? 'bin'}`, expiresInSeconds: UPLOAD_TTL_S });
+      const r = type.uploadRequest({ endpoint, key, tunables: { ...endpoint.tunables, ...model.tunables }, bytes: fromBase64(p.data), mediaType: p.mediaType, name: uploadName(hash, p.mediaType), expiresInSeconds: UPLOAD_TTL_S });
       const started = now();
       let traced = false;
       try {
