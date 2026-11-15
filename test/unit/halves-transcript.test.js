@@ -409,13 +409,16 @@ test("one Shiori: an error ending a turn of Kokoro's (no model, a budget) settle
 });
 
 // The owed table (real-fix2's re-review): for each kind of line and each way its turn can end or be cut, what each reader owes when the
-// conversation opens again. Readers: Kokoro (Koe still set), Koe's own, and one Shiori (Koe unset since). Logs as the halves write them.
+// conversation opens again. Readers: Kokoro (Koe still set), Koe's own, and one Shiori (Koe unset since). Logs as the halves write them: each
+// reply says the loop logs its turn's end (an old log's Kokoro replies don't), and a turn that ended has that end (fin).
 test("the owed table: every line, every cut, every reader, one answer", async () => {
   const CUT = 'Cut off: another conversation was opened while this ran. It may have finished: check before you do it again.';
   const STOP = 'Stopped by the user.';
   const RESTART = 'interrupted by app restart';
   /** @typedef {{ log: (ev: any) => Promise<any>, turn: (tag: string, parts: any[]) => Promise<any> }} W */
   const call = (/** @type {string} */ id, /** @type {string} */ name) => ({ type: 'tool_call', id, name, input: {} });
+  /** The loop's record that a half's turn ended. @param {W} w @param {string} half */
+  const fin = (w, half) => w.log({ type: 'turn.end', actor: 'system', data: { wake: 'w', half, handover: null } });
   // Every result says whether it was cut short (an open, a Stop, annai restarting), as #runCall and repair write it; an old log's says neither.
   const res = (/** @type {W} */ w, /** @type {string} */ half, /** @type {string} */ id, /** @type {boolean} */ ok, content = 'Done.') => w.log({ type: 'tool.result', actor: 'system', data: { id, name: 'x', ok, half, content, cut: [CUT, STOP, RESTART].includes(content) } });
   const old = (/** @type {W} */ w, /** @type {string} */ half, /** @type {string} */ id) => w.log({ type: 'tool.result', actor: 'system', data: { id, name: 'x', ok: false, half, content: STOP } });
@@ -428,6 +431,7 @@ test("the owed table: every line, every cut, every reader, one answer", async ()
     await said(w, 'koe', 'On it.');
     await res(w, 'koe', 'k', true);
     await res(w, 'koe', 'kz', true);
+    await fin(w, 'koe');
   };
   const heard = (/** @type {W} */ w, source = 'mic') => w.log({ type: 'heard', actor: 'user', data: { id: `s${Math.random()}`, half: 'koe', source, text: 'when is check-in' } });
   const kokoroWorks = (/** @type {W} */ w) => w.turn(TALK_TAG, [call('r', 'read'), call('t', 'tell_koe'), call('z', 'sleep')]);
@@ -449,6 +453,7 @@ test("the owed table: every line, every cut, every reader, one answer", async ()
     await note(w, 'koe');
     await res(w, 'koe', 'b', true, 'sent');
     await res(w, 'koe', 'c', true);
+    await fin(w, 'koe');
   };
   /** @type {[string, (w: W) => Promise<unknown>, [boolean, boolean, boolean]][]} [row, log, owed by [Kokoro, Koe, one Shiori]] */
   const rows = [
@@ -462,18 +467,22 @@ test("the owed table: every line, every cut, every reader, one answer", async ()
       await note(w, 'kokoro');
       await res(w, 'kokoro', 't', true, 'sent');
       await res(w, 'kokoro', 'z', true);
+      await fin(w, 'kokoro');
       await w.turn(KOE_TAG, [call('k2', 'speak'), call('k2z', 'sleep')]);
       await said(w, 'koe', 'Check-in is at 3.');
       await res(w, 'koe', 'k2', true);
       await res(w, 'koe', 'k2z', true);
+      await fin(w, 'koe');
     }, [false, false, false]],
-    ['heard; Koe answered, all done', async (w) => { await heard(w); await w.turn(KOE_TAG, [call('a', 'speak'), call('c', 'sleep')]); await said(w, 'koe', 'Check-in is at 3.'); await res(w, 'koe', 'a', true); await res(w, 'koe', 'c', true); }, [false, false, false]],
-    ['heard; Koe answered, a close while it listened', async (w) => { await heard(w); await w.turn(KOE_TAG, [call('a', 'speak'), call('c', 'sleep')]); await said(w, 'koe', 'Check-in is at 3.'); }, [false, false, false]],
-    ['heard; Koe answered, then annai restarted', async (w) => { await heard(w); await w.turn(KOE_TAG, [call('a', 'speak'), call('c', 'sleep')]); await said(w, 'koe', 'Check-in is at 3.'); await res(w, 'koe', 'a', false, RESTART); await res(w, 'koe', 'c', false, RESTART); }, [false, false, false]],
+    ['heard; Koe answered, all done', async (w) => { await heard(w); await w.turn(KOE_TAG, [call('a', 'speak'), call('c', 'sleep')]); await said(w, 'koe', 'Check-in is at 3.'); await res(w, 'koe', 'a', true); await res(w, 'koe', 'c', true); await fin(w, 'koe'); }, [false, false, false]],
+    // Koe's reply has no end yet: owed by Koe (an open after the kill takes it up anyway, as repair() answers its calls).
+    ['heard; Koe answered, a close while it listened', async (w) => { await heard(w); await w.turn(KOE_TAG, [call('a', 'speak'), call('c', 'sleep')]); await said(w, 'koe', 'Check-in is at 3.'); }, [false, true, false]],
+    ['heard; Koe answered, then annai restarted', async (w) => { await heard(w); await w.turn(KOE_TAG, [call('a', 'speak'), call('c', 'sleep')]); await said(w, 'koe', 'Check-in is at 3.'); await res(w, 'koe', 'a', false, RESTART); await res(w, 'koe', 'c', false, RESTART); }, [false, true, false]],
     ['heard; a live Koe answered', async (w) => { await heard(w, 'live'); await said(w, 'koe', 'Check-in is at 3.', true); }, [false, false, false]],
-    ['heard; Koe let it pass', async (w) => { await heard(w); await w.turn(KOE_TAG, [call('c', 'sleep')]); await res(w, 'koe', 'c', true); }, [false, false, false]],
+    ['heard; Koe let it pass', async (w) => { await heard(w); await w.turn(KOE_TAG, [call('c', 'sleep')]); await res(w, 'koe', 'c', true); await fin(w, 'koe'); }, [false, false, false]],
     ['heard; Koe asked Kokoro', asked, [true, false, true]],
-    ['heard; Koe asked, Kokoro answered', async (w) => { await asked(w); await w.turn(TALK_TAG, [call('t', 'tell_koe')]); }, [false, false, false]],
+    // Kokoro's reply has no end yet: owed by her half.
+    ['heard; Koe asked, Kokoro answered', async (w) => { await asked(w); await w.turn(TALK_TAG, [call('t', 'tell_koe')]); }, [true, false, true]],
     ['heard; Koe asked, Halves set it aside as answered', async (w) => { await asked(w); await error(w, 'kokoro', 'answered'); }, [false, false, false]],
     ['heard; Koe asked, the user stopped her while she gathered', async (w) => { await asked(w); await error(w, 'kokoro', 'stopped'); }, [false, false, false]],
     ['heard; Koe asked, her turn ended in an error the user was shown (no model)', async (w) => { await asked(w); await error(w, 'kokoro', 'model'); }, [false, false, false]],
@@ -485,6 +494,7 @@ test("the owed table: every line, every cut, every reader, one answer", async ()
       await said(w, 'koe', "Okay, I've stopped.");
       await res(w, 'koe', 'e', true);
       await res(w, 'koe', 'f', true);
+      await fin(w, 'koe');
     }, [false, false, false]],
     ['heard; an open cut Koe before it asked; Koe unset, one Shiori takes it up and the user stops her (the re-review 2, second opinion: 3)', async (w) => {
       await koeAsks(w);
@@ -504,33 +514,35 @@ test("the owed table: every line, every cut, every reader, one answer", async ()
     ['heard; an open cut Koe after "Let me check." and before it asked', async (w) => { await koeAsks(w); await res(w, 'koe', 'b', false, CUT); await res(w, 'koe', 'c', false, CUT); }, [false, true, true]],
     ['heard; a reload before Koe asked', async (w) => { await koeAsks(w); await res(w, 'koe', 'b', false, RESTART); await res(w, 'koe', 'c', false, RESTART); }, [false, true, true]],
     ['heard; the user stopped Koe before it asked', async (w) => { await koeAsks(w); await res(w, 'koe', 'b', false, STOP); await res(w, 'koe', 'c', false, STOP); await error(w, 'koe', 'stopped'); }, [false, false, false]],
-    ['heard; Koe\'s reply under way, Kokoro\'s turn ends in an error', async (w) => { await heard(w); await w.turn(KOE_TAG, [call('a', 'speak'), call('b', 'tell_kokoro')]); await error(w, 'kokoro', 'model'); }, [false, false, true]],
+    ['heard; Koe\'s reply under way, Kokoro\'s turn ends in an error', async (w) => { await heard(w); await w.turn(KOE_TAG, [call('a', 'speak'), call('b', 'tell_kokoro')]); await error(w, 'kokoro', 'model'); }, [false, true, true]],
     // annai's card, Kokoro's, took a heard yes from Koe's microphone (the card hears first): the line is the card's answer, settled by its result.
     ['typed; annai\'s card took a spoken yes; its result came, her turn under way', async (w) => { await typed(w); await cardYes(w); }, [true, false, true]],
-    ['typed; annai\'s card took a spoken yes; she read the trip and slept, telling Koe nothing', async (w) => { await typed(w); await cardYes(w); await w.turn(TALK_TAG, [call('z', 'sleep')]); await res(w, 'kokoro', 'z', true); }, [false, false, false]],
+    ['typed; annai\'s card took a spoken yes; she read the trip and slept, telling Koe nothing', async (w) => { await typed(w); await cardYes(w); await w.turn(TALK_TAG, [call('z', 'sleep')]); await res(w, 'kokoro', 'z', true); await fin(w, 'kokoro'); }, [false, false, false]],
     ['typed; annai\'s card took a spoken yes; the user stopped her', async (w) => { await typed(w); await cardYes(w); await error(w, 'kokoro', 'stopped'); }, [false, false, false]],
   ];
   const failed = [];
   for (const [row, steps, want] of rows) {
     const store = createMemoryStore();
-    await steps({ log: (ev) => record(store, SCOPE, ev), turn: (tag, parts) => modelTrace(store, SCOPE).turn(turnInfo(tag, 'w'), '', '', parts) });
+    const logged = (/** @type {string} */ tag) => (row.includes('an old log') && tag === TALK_TAG ? {} : { endLogged: true });
+    await steps({ log: (ev) => record(store, SCOPE, ev), turn: (tag, parts) => modelTrace(store, SCOPE).turn({ ...turnInfo(tag, 'w'), ...logged(tag) }, '', '', parts) });
     const got = [];
     for (const half of /** @type {const} */ (['kokoro', 'koe', 'one'])) got.push((await Transcript.load(store, SCOPE, { half, nonce: NONCE })).unanswered);
     if (JSON.stringify(got) !== JSON.stringify(want)) failed.push(`${row}: owed by [Kokoro, Koe, one] ${JSON.stringify(got)}, wanted ${JSON.stringify(want)}`);
   }
   assert.deepEqual(failed, []);
-  // One Shiori alone (Koe never set): her reply cut during a tool is taken up; one whose sleep alone was cut, after she spoke, is not.
-  const alone = async (/** @type {(w: W) => Promise<unknown>} */ steps) => {
+  // One Shiori alone (Koe never set): her reply cut during a tool is taken up; one whose sleep alone was cut, after she spoke, is not (the loop
+  // logs its end: row 13 of agent-turn-end.test.js). An old log's replies (logged false) say nothing of the end.
+  const alone = async (/** @type {(w: W) => Promise<unknown>} */ steps, logged = true) => {
     const store = createMemoryStore();
-    await steps({ log: (ev) => record(store, SCOPE, ev), turn: (tag, parts) => modelTrace(store, SCOPE).turn(turnInfo(tag, 'w'), '', '', parts) });
+    await steps({ log: (ev) => record(store, SCOPE, ev), turn: (tag, parts) => modelTrace(store, SCOPE).turn({ ...turnInfo(tag, 'w'), ...(logged ? { endLogged: true } : {}) }, '', '', parts) });
     return (await Transcript.load(store, SCOPE, { half: 'one' })).unanswered;
   };
   const asks = (/** @type {W} */ w) => w.log({ type: 'msg.user', actor: 'user', data: { wake: 'w1' }, texts: [['text', 'What is check-in time?']] });
   assert.equal(await alone(async (w) => { await asks(w); await w.turn(TALK_TAG, [call('r', 'read'), call('s', 'speak'), call('z', 'sleep')]); for (const id of ['r', 's', 'z']) await res(w, 'shiori', id, false, CUT); }), true);
-  assert.equal(await alone(async (w) => { await asks(w); await w.turn(TALK_TAG, [call('s', 'speak'), call('z', 'sleep')]); await said(w, 'shiori', 'Check-in is at 3.'); await res(w, 'shiori', 's', true); await res(w, 'shiori', 'z', false, CUT); }), false);
+  assert.equal(await alone(async (w) => { await asks(w); await w.turn(TALK_TAG, [call('s', 'speak'), call('z', 'sleep')]); await said(w, 'shiori', 'Check-in is at 3.'); await res(w, 'shiori', 's', true); await res(w, 'shiori', 'z', false, CUT); await fin(w, 'shiori'); }), false);
   // An old log (S2, F1): a cut written with the Stop's words and no mark, as the released app wrote an open's cut and a Stop from before
   // its record: read as settled, as it was then, a reply still working (no sleep) too.
-  assert.equal(await alone(async (w) => { await asks(w); await w.turn(TALK_TAG, [call('r', 'read'), call('s', 'speak'), call('z', 'sleep')]); for (const id of ['r', 's', 'z']) await old(w, 'shiori', id); }), false);
+  assert.equal(await alone(async (w) => { await asks(w); await w.turn(TALK_TAG, [call('r', 'read'), call('s', 'speak'), call('z', 'sleep')]); for (const id of ['r', 's', 'z']) await old(w, 'shiori', id); }, false), false);
   const olds = {
     '[search]': async (/** @type {W} */ w) => { await w.turn(TALK_TAG, [call('q', 'web_search')]); await old(w, 'shiori', 'q'); },
     '[read]': async (/** @type {W} */ w) => { await w.turn(TALK_TAG, [call('r', 'read')]); await old(w, 'shiori', 'r'); },
@@ -543,7 +555,7 @@ test("the owed table: every line, every cut, every reader, one answer", async ()
     '[ask], waiting for a tap': async (/** @type {W} */ w) => { await w.turn(TALK_TAG, [call('a', 'ask')]); await old(w, 'shiori', 'a'); },
     '[speak "Which day?"], listening': async (/** @type {W} */ w) => { await w.turn(TALK_TAG, [call('s', 'speak')]); await said(w, 'shiori', 'Which day?'); await old(w, 'shiori', 's'); },
   };
-  for (const [reply, steps] of Object.entries(olds)) assert.equal(await alone(async (w) => { await asks(w); await steps(w); }), false, `an old log, ${reply} cut or stopped`);
+  for (const [reply, steps] of Object.entries(olds)) assert.equal(await alone(async (w) => { await asks(w); await steps(w); }, false), false, `an old log, ${reply} cut or stopped`);
 });
 
 test("annai's own wrapper carries Koe's session nonce; a note's words can't close it", () => {

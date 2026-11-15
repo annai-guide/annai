@@ -31,7 +31,7 @@ import { modelOf, saveKoeMode, KOE_CLASSIC, KOE_REALTIME } from '../llm/config.j
  */
 
 /** The events a half marks as its own while Shiori is two halves. */
-const MARKED = new Set(['wake', 'tool.call', 'tool.result', 'error', 'out.speak', 'out.show', 'out.ask', 'note', 'model.turn', 'heard']);
+const MARKED = new Set(['wake', 'tool.call', 'tool.result', 'error', 'out.speak', 'out.show', 'out.ask', 'note', 'model.turn', 'heard', 'turn.end']);
 const BLOCKS = Object.freeze({
   'koe-down': /* en */ "Koe can't speak right now; talk to the user directly.",
   'koe-up': /* en */ 'Koe is speaking again; use tell_koe.',

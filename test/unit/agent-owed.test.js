@@ -207,7 +207,7 @@ test("a hand-over, annai restarted while her card waited (or between her answer 
   ]);
   for (const [what, cs, { result = [], spoke = false }] of shapes) {
     const k = await agentKit([[files]], { open: false });
-    const info = { role: 'main', level: 'medium', answeredBy: 'A', attempts: [], usage: {}, cost: 0, tag: TALK_TAG, wake: 'w-0', handover: 'h-1' };
+    const info = { role: 'main', level: 'medium', answeredBy: 'A', attempts: [], usage: {}, cost: 0, tag: TALK_TAG, wake: 'w-0', handover: 'h-1', endLogged: true };
     await record(k.store, k.trip, { type: 'wake', actor: 'system', data: { id: 'w-0', reasons: [{ kind: 'user', text: 'typed', handover: 'h-1' }] } });
     await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: { text: 'Here', wake: 'w-0', handed: [flight], handover: 'h-1' } });
     await modelTrace(k.store, k.trip).turn(/** @type {any} */ (info), '', '', /** @type {any} */ (calls(...cs)));
