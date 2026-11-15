@@ -71,7 +71,6 @@ records when a turn ends, so the reader stops guessing from her words.
 
 | Part | State | Where it stands | The user's words or pick |
 |---|---|---|---|
-| **Route A, step 1:** take out the two faulted parts (the wake give-back, the cut-ask exemption); the rare shapes left (F2 and its typed-line sibling; a cut turn past the two-wake cap) recorded as deferred to step 2. | merged; release gate green | Main d84b9e39 (2026-11-14): e17900f5, the docs rounds a1eb1be9 and 0d6ed7a5. Gate on main 04cfade0: check exit 0; full e2e 1862 passed, 21 skipped, 1 flaky (the known details-menu WebKit test), 0 failed; privacy check 0 of 23 commits. Next: the release (the user's command), smoke, CI. | "A: remove 2 parts, then record (Recommended)" (2026-11-14) |
 | **Route A, step 2: the loop records a turn's end** (one event type, one key); the reader reads it instead of words; `#settled` and the guessing rules go; the Deferred entries of step 1 close, each shape a passing test. | building | Plan revised after its spec check (2026-11-14) with the user's answers; branch turn-end from main d84b9e39, beside stage 7. Built: 0f344793 (the record), a2a071d8 (tests), d2b51469 (the real-browser check); report written, its full e2e running. Next: the e2e numbers, review with second opinions, merge, release; the user's phone check after. Writes the approved old-log limitation and closes step 1's Deferred entries when it lands. | "A: remove 2 parts, then record (Recommended)"; old logs: "Treat as finished (Recommended)", then "Approve the wider entry (Recommended)" (the entry names each effect, once per update); Koe: "Accept, widen the entry (Recommended)" (2026-11-14) |
 
 ### Shiori answers in the traveller's language
@@ -126,13 +125,13 @@ against the code before its row was written. The ones with a question are listed
 
 ## Waiting for the user
 
-- The release command for main 5ce948f6 (route A step 1 and the progress work): see route A step 1's row.
 - The phone look of stage 4 and stage 7, after stage 7 ships: see its row.
 - The pre-trip check list's 8-day reminder line, and the page to tick: see its row.
 - G8, once it has a plain account: see its row.
 
 ## Closed
 
+- 2026-11-14: an answered question card always gets a reply, route A step 1 (the two faulted parts taken out; e17900f5, docs a1eb1be9 and 0d6ed7a5), "A: remove 2 parts, then record (Recommended)". Released 5ce948f6 (BUILD ebb452279fa3), smoke 10 of 10.
 - 2026-11-14: the shared lesson on quoting words sharpened to fields shown by name, "Sharpen it (Recommended)" (agent-rules affe346).
 - 2026-11-14: Gemini Live's key in the WebSocket address: a known limitation, "Known limitation (Recommended)" (9600cc67).
 - 2026-11-14: the 2026-11-07 Calls-to-confirm page's rows stand as built, "Let them stand (Recommended)" (G8 stays open above).
