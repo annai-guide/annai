@@ -85,7 +85,7 @@ test('Chat Completions: an uploaded photo goes as a file part by its id; one not
   assert.deepEqual(content[1], { type: 'image_url', image_url: { url: 'data:image/png;base64,BBBB' } });
   // Claude through OpenRouter: the cache marker's block may be the file part.
   const claude = { ...s, model: model({ providerId: 'anthropic/claude-haiku-5.5' }), tunables: { ...s.tunables, cacheMarkers: ['anthropic/'] },
-    request: { cacheTtl: '5m', messages: [{ role: 'user', parts: [{ type: 'text', text: 'Which?' }, parts[0]] }] } };
+    request: { system: 'Be brief.', cacheTtl: '5m', messages: [{ role: 'user', parts: [{ type: 'text', text: 'Which?' }, parts[0]] }] } };
   assert.deepEqual(type.build(claude).body.messages.at(-1).content.at(-1), { type: 'file', file: { file_id: 'or_file_x1' }, cache_control: { type: 'ephemeral' } });
 });
 

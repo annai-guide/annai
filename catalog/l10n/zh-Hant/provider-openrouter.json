@@ -3,6 +3,7 @@
     "description": "一個金鑰就能用許多模型，其中包括免費模型，還有語音轉文字和聲音。可以「使用 OpenRouter 登入」，或直接填入金鑰。",
     "featured": "最快的方式是「使用 OpenRouter 登入」，而且一開始會先用免費模型。",
     "name": "OpenRouter",
+    "provider.abilities.chat.note": "照片會存放在 OpenRouter 工作區的檔案中，直到 annai 刪除為止；OpenRouter 的 Zero Data Retention 不適用於儲存的檔案。如要在每次請求中直接附上照片，請關閉上傳。",
     "provider.abilities.transcription.note": "把你說的話轉成文字，供不支援音訊輸入的模型使用。這裡顯示的是 OpenRouter 上的最低價；OpenRouter 可能會把請求轉給收費更高的供應商。",
     "provider.abilities.voice.note": "Shiori 的聲音。每個模型都有自己的一組聲音，可在模型的「聲音」中看到建議（「取得模型清單」會帶入 OpenRouter 列出的聲音）。這裡設定的聲音是 Fish Audio 聲音庫中的 Women KatKat（親切、清晰、年輕明亮），風格是年輕、開朗活潑，同時沉穩溫柔。所有 Fish Audio 模型，無論是下面列出的，還是依 ID 新增的，都預設使用它們（如果不傳送聲音，Fish Audio 每句話都會換一個說話者）。從清單新增的模型，預設使用 OpenRouter 為它列出的第一個溫暖的聲音。只有 Fish Audio、Gemini 和 OpenAI 的 gpt-4o-mini-tts 支援「風格」；其他模型會保留風格設定，但不會傳送。OpenRouter 只傳回 MP3 或 PCM 格式。",
     "provider.note": "一個金鑰即可使用許多供應商。免費模型每天可請求 50 次（儲值 $10 後為每天 1,000 次）。語音轉文字和聲音也用同一個金鑰。語音轉文字模型都不免費；Fish Audio 的免費聲音每說一句，就會用掉一次每日免費請求。其餘的都需要用你在 OpenRouter 儲值的餘額支付。"

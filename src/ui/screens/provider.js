@@ -368,12 +368,12 @@ async function abilityBody(view, abilityId) {
   if (type.keeps) address.addEventListener('input', () => warnKept(ctx, addressWarn, { provider: id }, true));
   const tunables = jsonField(t`Tunables (JSON)`, /* en */ `ability-${abilityId}-tunables`, a.tunables);
   const extra = jsonField(t`Extra request fields (JSON)`, /* en */ `ability-${abilityId}-extra`, a.extraBody);
-  // Where the protocol stores files, photos go there once, then by id (spec §4.8). The switch is a tunable, shown where uploads are on
-  // without the user's changes (the type's default, or the provider's description: OpenRouter's, of Chat Completions'). Where annai
-  // deletes them itself (the type lists and deletes), turned off, they all go.
-  const uploadsByDefault = providerBase(rec, tunablesFor).abilities[abilityId]?.tunables?.uploads !== false;
+  // Where the protocol stores files, photos go there once, then by id (spec §4.8). The switch is a tunable. Where the files stay until
+  // annai deletes them (the type lists and deletes), it shows only where uploads are on without the user's changes (the provider's
+  // description turns them on): annai reads only the files lists it knows. Turned off there, they all go.
   const deletes = Boolean(type.deleteUploadRequest);
-  const uploads = type.uploadRequest && uploadsByDefault ? savedCheck(deletes ? t`Upload photos to this provider (annai deletes each once it is 48 hours old, the next time annai starts or comes online)`
+  const offered = !deletes || providerBase(rec, tunablesFor).abilities[abilityId]?.tunables?.uploads !== false;
+  const uploads = type.uploadRequest && offered ? savedCheck(deletes ? t`Upload photos to this provider (annai deletes each once it is 48 hours old, the next time annai starts or comes online)`
     : t`Upload photos to this provider (each expires after 48 hours)`, a.tunables?.uploads !== false, async (on) => {
     tunables.show((await saveAbility({ tunables: (/** @type {any} */ was) => ({ ...was.tunables, uploads: on }) })).tunables);
     if (!on && deletes) await ctx.llm.forgetUploads(`${id}/${abilityId}`);

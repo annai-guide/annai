@@ -81,10 +81,12 @@ solutions"; every data-saving optimization on by default, and privacy trade-offs
 - **On by default for OpenRouter** (the user's rule). Without it, every step of every turn sends each photo inline, up to about
   1.4 MB; with it, a photo already uploaded goes as about 70 bytes. Existing OpenRouter providers get it at the plugin update
   (`syncProviders` brings the description's new value).
-- **The switch shows on OpenRouter's page only** (the user's pick), by one rule on the provider page: it shows where uploads are
-  on without the user's changes (the type's default, or the description). That keeps it on OpenAI's and Gemini's pages, puts it
-  on OpenRouter's, and keeps it off every other Chat Completions page; Anthropic Messages' off switch goes too (its files API
-  refuses browsers). A Tunables JSON can still set `uploads`.
+- **The switch shows on OpenRouter's page only** (the user's pick), by one rule on the provider page: for a type whose files
+  stay until annai deletes them (it lists and deletes), the switch shows only where uploads are on without the user's changes,
+  that is where the provider's description turns them on, since annai reads only the files lists it knows. That puts it on
+  OpenRouter's page and keeps it off every other Chat Completions page; the pages of types whose uploads expire by themselves
+  (OpenAI Responses, Gemini API, Anthropic Messages, whose off switch a server that takes uploads turns on, spec §4.8) keep
+  theirs. A Tunables JSON can still set `uploads`.
 - **Its words promise only what the design does.** Where the type deletes: "Upload photos to this provider (annai deletes each
   once it is 48 hours old, the next time annai starts or comes online)". Elsewhere they stay "each expires after 48 hours".
 - **OpenRouter's chat ability note:** photos are stored in the workspace's files until annai deletes them, and OpenRouter's Zero

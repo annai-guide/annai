@@ -5,7 +5,7 @@ import { sameOrigin, noRedirect } from './contract.js';
  * Photos uploaded to a provider's files API (spec §4.8): each request copy once, by endpoint
  * ("<provider>/<ability>", since file ids belong to one protocol's files API).
  * Every upload is used for 48 hours; an id within an hour of that is uploaded again. Where the provider keeps
- * files until they are deleted (OpenRouter), annai deletes its own after 48 hours, from the provider's own list (sweepUploads).
+ * files until they are deleted, annai deletes its own after 48 hours, from the provider's own list (sweepUploads).
  * @typedef {import('../workspace.js').Workspace} Workspace
  * @typedef {import('./contract.js').EndpointType} EndpointType
  * @typedef {import('./config.js').Endpoint} Endpoint
@@ -74,8 +74,8 @@ export class Uploads {
 }
 
 /**
- * Deletions sent at once: a browser opens at most 6 connections to one host over HTTP/1.1, so more would only wait there; OpenRouter
- * states no rate limit for its files API (checked 2026-11-14).
+ * Deletions sent at once: a browser opens at most 6 connections to one host over HTTP/1.1, so more would only wait there; the one files
+ * API annai deletes from states no rate limit for it (checked 2026-11-14).
  */
 const AT_ONCE = 6;
 /** Each list or delete request's time limit, a kept turn's deletion's (kept.js). */

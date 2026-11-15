@@ -142,8 +142,9 @@ provider-openrouter:@name	ok	OpenRouter	OpenRouter	plugins-official/provider-ope
 provider-openrouter:@description	ok	One key for many models, free ones among them, with transcription and voices too. Sign in with OpenRouter, or give a key.	一个密钥就能用许多模型，其中包括免费模型，还有语音转文字和声音。可以“使用 OpenRouter 登录”，或直接填入密钥。	plugins-official/provider-openrouter/annai-plugin.json:7	
 provider-openrouter:@featured	ok	Sign in with OpenRouter is the quickest way, and it starts you on free models.	最快的方式是“使用 OpenRouter 登录”，而且一开始会先用免费模型。	plugins-official/provider-openrouter/annai-plugin.json:8	
 provider-openrouter:@provider.note	ok	One key for many providers. Free models allow 50 requests a day (1,000 a day after $10 of credits). Its transcription and voices use the same key: none of the transcription models is free, and Fish Audio's free voice uses one of the free requests a day for each sentence it says. The others need credits you buy at OpenRouter.	一个密钥即可使用许多提供商。免费模型每天可请求 50 次（充值 $10 后为每天 1,000 次）。语音转文字和声音也用同一个密钥。语音转文字模型都不免费；Fish Audio 的免费声音每说一句，就会占用一次每日免费请求。其余的都需要用你在 OpenRouter 充值的余额支付。	plugins-official/provider-openrouter/annai-plugin.json:28	Note: Credits are a prepaid balance (余额), as the zh review settled; "The others" are every speech model but Fish Audio's free voice, so 其余的, not only the voices.
-provider-openrouter:@provider.abilities.transcription.note	ok	Turns what you say into text, for models that don't take audio. The prices are OpenRouter's lowest; it may send a request to a provider that charges more.	把你说的话转成文字，供不支持音频输入的模型使用。这里显示的是 OpenRouter 上的最低价；OpenRouter 可能会把请求转给收费更高的提供商。	plugins-official/provider-openrouter/annai-plugin.json:355	
-provider-openrouter:@provider.abilities.voice.note	ok	Shiori's voice. Each model has voices of its own, suggested in the model's Voice (Fetch model list brings the ones OpenRouter lists). The voice and style set here are Women KatKat, a voice from Fish Audio's library (friendly, clear, young and bright), and a young, cheerful and lively, yet calm and gentle style: every Fish Audio model starts with them, those described below and any added by id (sent no voice, Fish Audio picks another speaker for each sentence). A model added from the list starts with the first warm voice OpenRouter lists for it. Only Fish Audio, Gemini and OpenAI's gpt-4o-mini-tts take a Style; for the others it is kept, not sent. OpenRouter sends MP3 or PCM only.	Shiori 的声音。每个模型都有自己的一组声音，可在模型的“声音”中看到推荐（“获取模型列表”会带入 OpenRouter 列出的声音）。这里设定的声音是 Fish Audio 声音库中的 Women KatKat（亲切、清晰、年轻明亮），风格是年轻、欢快活泼，同时沉稳温柔。所有 Fish Audio 模型，无论是下面列出的，还是按 ID 添加的，都默认使用它们（如果不发送声音，Fish Audio 每句话都会换一个说话人）。从列表添加的模型，默认使用 OpenRouter 为它列出的第一个温暖的声音。只有 Fish Audio、Gemini 和 OpenAI 的 gpt-4o-mini-tts 支持“风格”；其他模型会保留风格设置，但不会发送。OpenRouter 只返回 MP3 或 PCM 格式。	plugins-official/provider-openrouter/annai-plugin.json:398	Note: "the model's Voice" is the model page's Voice field, 声音 (b1qn4p), not the Settings → Voice screen.
+provider-openrouter:@provider.abilities.chat.note	ok	Photos are stored in your OpenRouter workspace's files until annai deletes them, and OpenRouter's Zero Data Retention doesn't cover stored files. Turn uploads off to send each photo in the request instead.	照片会存放在 OpenRouter 工作区的文件中，直到 annai 删除为止；OpenRouter 的 Zero Data Retention 不适用于存储的文件。如需在每次请求中直接附带照片，请关闭上传。	plugins-official/provider-openrouter/annai-plugin.json:33	Note: privacy: says exactly where photos stay and that ZDR does not cover them. Zero Data Retention kept in English, as OpenRouter names it.
+provider-openrouter:@provider.abilities.transcription.note	ok	Turns what you say into text, for models that don't take audio. The prices are OpenRouter's lowest; it may send a request to a provider that charges more.	把你说的话转成文字，供不支持音频输入的模型使用。这里显示的是 OpenRouter 上的最低价；OpenRouter 可能会把请求转给收费更高的提供商。	plugins-official/provider-openrouter/annai-plugin.json:357	
+provider-openrouter:@provider.abilities.voice.note	ok	Shiori's voice. Each model has voices of its own, suggested in the model's Voice (Fetch model list brings the ones OpenRouter lists). The voice and style set here are Women KatKat, a voice from Fish Audio's library (friendly, clear, young and bright), and a young, cheerful and lively, yet calm and gentle style: every Fish Audio model starts with them, those described below and any added by id (sent no voice, Fish Audio picks another speaker for each sentence). A model added from the list starts with the first warm voice OpenRouter lists for it. Only Fish Audio, Gemini and OpenAI's gpt-4o-mini-tts take a Style; for the others it is kept, not sent. OpenRouter sends MP3 or PCM only.	Shiori 的声音。每个模型都有自己的一组声音，可在模型的“声音”中看到推荐（“获取模型列表”会带入 OpenRouter 列出的声音）。这里设定的声音是 Fish Audio 声音库中的 Women KatKat（亲切、清晰、年轻明亮），风格是年轻、欢快活泼，同时沉稳温柔。所有 Fish Audio 模型，无论是下面列出的，还是按 ID 添加的，都默认使用它们（如果不发送声音，Fish Audio 每句话都会换一个说话人）。从列表添加的模型，默认使用 OpenRouter 为它列出的第一个温暖的声音。只有 Fish Audio、Gemini 和 OpenAI 的 gpt-4o-mini-tts 支持“风格”；其他模型会保留风格设置，但不会发送。OpenRouter 只返回 MP3 或 PCM 格式。	plugins-official/provider-openrouter/annai-plugin.json:400	Note: "the model's Voice" is the model page's Voice field, 声音 (b1qn4p), not the Settings → Voice screen.
 provider-openrouter:alllou	ok	Tap Sign in with OpenRouter to start again.	请轻点“使用 OpenRouter 登录”重新开始。	plugins-official/provider-openrouter/index.js:20	
 provider-openrouter:1gjda3m	ok	Paste the code OpenRouter showed you, then tap Connect.	请粘贴 OpenRouter 显示的代码，然后轻点“连接”。	plugins-official/provider-openrouter/index.js:89	
 provider-openrouter:1mdql10	ok	annai has no sign-in waiting for this code: it was used already, or began in another browser.	找不到等待这个代码的登录。代码可能已经用过，或者登录是在另一个浏览器中发起的。	plugins-official/provider-openrouter/index.js:91	
@@ -409,18 +410,18 @@ fki4un	ok	Notifications	通知	src/app/main.js:251
 1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai 现在按提供商来设置：一个提供商只需一个地址和一个密钥，即可使用它提供的全部功能。你原来的端点（{0}）及其密钥已被移除，请在设置 → 模型中重新添加。	src/app/main.js:255	{0} = list(moved.names, 'plain')
 whpd9d	ok	Open Models	前往模型设置	src/app/main.js:256	
 10renyj	ok	Plugins	插件	src/app/main.js:267	
-1sp21de	ok	A new version of the {0} personality	性格“{0}”有新版本	src/app/main.js:363	{0} = o.name
-1yoe82	ok	Yours has your own edits, so it was kept as it is.	你的版本里有你自己的修改，所以已保留原样。	src/app/main.js:364	
-1n8cxuc	ok	Compare	比较	src/app/main.js:366	
-rzp4o3	ok	Keep mine	保留我的	src/app/main.js:367	
-1j662as	ok	Let Shiori merge	让 Shiori 合并	src/app/main.js:368	
-x0ig66	ok	Something went wrong	出了点问题	src/app/main.js:420	
-1oy79dy	ok	annai kept running. The details are in Trace.	annai 仍在运行，详情见“记录”。	src/app/main.js:421	
-c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai 仍在运行，但没能记下发生了什么，所以“记录”里也没有。如果反复出现，请关闭 annai 再重新打开。	src/app/main.js:421	
-11n1kcg	ok	Open Trace	打开记录	src/app/main.js:422	
-gt9ssw	ok	annai couldn't start	annai 无法启动	src/app/main.js:433	
-6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反复出现，可能是浏览器阻止了存储（例如在无痕窗口中）。	src/app/main.js:435	
-982hh6	ok	Try again	重试	src/app/main.js:436	
+1sp21de	ok	A new version of the {0} personality	性格“{0}”有新版本	src/app/main.js:366	{0} = o.name
+1yoe82	ok	Yours has your own edits, so it was kept as it is.	你的版本里有你自己的修改，所以已保留原样。	src/app/main.js:367	
+1n8cxuc	ok	Compare	比较	src/app/main.js:369	
+rzp4o3	ok	Keep mine	保留我的	src/app/main.js:370	
+1j662as	ok	Let Shiori merge	让 Shiori 合并	src/app/main.js:371	
+x0ig66	ok	Something went wrong	出了点问题	src/app/main.js:423	
+1oy79dy	ok	annai kept running. The details are in Trace.	annai 仍在运行，详情见“记录”。	src/app/main.js:424	
+c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai 仍在运行，但没能记下发生了什么，所以“记录”里也没有。如果反复出现，请关闭 annai 再重新打开。	src/app/main.js:424	
+11n1kcg	ok	Open Trace	打开记录	src/app/main.js:425	
+gt9ssw	ok	annai couldn't start	annai 无法启动	src/app/main.js:436	
+6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反复出现，可能是浏览器阻止了存储（例如在无痕窗口中）。	src/app/main.js:438	
+982hh6	ok	Try again	重试	src/app/main.js:439	
 1u3dm1p	ok	This address holds a name or password before an @. Leave it out.	该地址的 @ 前含有用户名或密码，请将其删除。	src/core/address.js:68	
 1f8b0m5	ok	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	停留过的地点和停留时长，用地名表示；没有地名的地点用坐标表示，只精确到约 100 米。绝不发送 GPS 轨迹本身。	src/core/after/recap.js:57	
 imb4zw	ok	How far you drove or walked between, the stamps, and the itinerary.	地点之间开车或步行的距离、纪念章和行程。	src/core/after/recap.js:58	
@@ -648,22 +649,24 @@ ujhqxv	ok	Untitled trip	未命名旅行	src/core/live/sim-run.js:237	Note: a new
 1o5lnqs	ok	{0} (simulation {1})	{0}（模拟 {1}）	src/core/live/sim-run.js:311	{0} = stem; {1} = num(n)
 1vpfjix	ok	{0} (simulation)	{0}（模拟）	src/core/live/sim-run.js:311	{0} = stem; Note: a trip's title; it becomes the user's own once made.
 1cvk0p6	ok	That trip has no recorded track yet: GPS records one while it is on.	这趟旅行还没有记录轨迹。GPS 开启时才会记录。	src/core/live/simulate.js:111	
-h8yuqy	ok	annai can reach this address from the browser.	浏览器可以连接到这个地址。	src/core/llm/check.js:60	
-152u1pq	ok	The key works. The model said: "{0}".	密钥可用。模型回复：“{0}”。	src/core/llm/check.js:61	{0} = r.text.trim().slice(0, 60)
-iiy1hf	ok	The model ran out of room before calling the test tool; it may think at length first. Try a lower reasoning level.	模型还没调用测试工具就达到了输出上限，可能是先思考了太久。请调低推理级别再试。	src/core/llm/check.js:88	
-lh9fzn	ok	Tool calls work.	工具调用可用。	src/core/llm/check.js:88	
-rk5rlm	ok	The model answered but didn't call the test tool.	模型回答了，但没有调用测试工具。	src/core/llm/check.js:88	
-1xj1cuk	ok	Photos work: it saw the red square.	照片可用：它看到了红色方块。	src/core/llm/check.js:94	
-dhnf3r	ok	It didn't see the red square (it said {0}).	它没有看到红色方块（它说：{0}）。	src/core/llm/check.js:94	{0} = answer.slice(0, 60)
-d9hh16	ok	Photo uploads work: each photo is uploaded once, and expires after 48 hours.	照片上传可用：每张照片只上传一次，48 小时后过期。	src/core/llm/check.js:127	
-1u5s6ep	ok	Uploading photos didn't work with this key.	用这个密钥无法上传照片。	src/core/llm/check.js:129	
-1uj9pv4	ok	annai will send photos in each request instead.	将改为在每次请求中附带照片。	src/core/llm/check.js:129	
-16s9khr	ok	Utility	辅助	src/core/llm/check.js:134	
-2qw9g9	ok	Koe · Chat	Koe · 聊天	src/core/llm/check.js:134	
-mlh3jc	ok	Main	主要	src/core/llm/check.js:134	
-1q9bibx	ok	It also answers at {0}'s level ({1}).	在“{0}”的推理级别（{1}）下也能回答。	src/core/llm/check.js:136	{0} = roleName(role); {1} = role.level; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
-1bbu08l	ok	At {0}'s level ({1}), this model refused: {2}	在“{0}”的推理级别（{1}）下，此模型拒绝了请求：{2}	src/core/llm/check.js:138	{0} = roleName(role); {1} = role.level; {2} = said; Note: {0} is a role's name as the screens give it.
-1f0dxr7	ok	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	请在设置 → 模型中调低“{0}”的推理级别，或在此模型的页面上修改其“推理级别”。	src/core/llm/check.js:140	{0} = roleName(role); Note: {0} is a role's name as the screens give it.
+h8yuqy	ok	annai can reach this address from the browser.	浏览器可以连接到这个地址。	src/core/llm/check.js:62	
+152u1pq	ok	The key works. The model said: "{0}".	密钥可用。模型回复：“{0}”。	src/core/llm/check.js:63	{0} = r.text.trim().slice(0, 60)
+iiy1hf	ok	The model ran out of room before calling the test tool; it may think at length first. Try a lower reasoning level.	模型还没调用测试工具就达到了输出上限，可能是先思考了太久。请调低推理级别再试。	src/core/llm/check.js:90	
+lh9fzn	ok	Tool calls work.	工具调用可用。	src/core/llm/check.js:90	
+rk5rlm	ok	The model answered but didn't call the test tool.	模型回答了，但没有调用测试工具。	src/core/llm/check.js:90	
+1xj1cuk	ok	Photos work: it saw the red square.	照片可用：它看到了红色方块。	src/core/llm/check.js:96	
+dhnf3r	ok	It didn't see the red square (it said {0}).	它没有看到红色方块（它说：{0}）。	src/core/llm/check.js:96	{0} = answer.slice(0, 60)
+1u5s6ep	ok	Uploading photos didn't work with this key.	用这个密钥无法上传照片。	src/core/llm/check.js:134	
+1uj9pv4	ok	annai will send photos in each request instead.	将改为在每次请求中附带照片。	src/core/llm/check.js:134	
+d9hh16	ok	Photo uploads work: each photo is uploaded once, and expires after 48 hours.	照片上传可用：每张照片只上传一次，48 小时后过期。	src/core/llm/check.js:136	
+1owzksi	ok	Photo uploads work: each photo is uploaded once, and annai deletes it after 48 hours (it just deleted the test photo).	照片上传可用：每张照片只上传一次，48 小时后由 annai 删除（测试照片刚刚已删除）。	src/core/llm/check.js:138	
+1h3x4us	ok	Photos upload, but annai couldn't find and delete the test photo with this key.	照片可以上传，但用这个密钥无法找到并删除测试照片。	src/core/llm/check.js:140	
+16s9khr	ok	Utility	辅助	src/core/llm/check.js:144	
+2qw9g9	ok	Koe · Chat	Koe · 聊天	src/core/llm/check.js:144	
+mlh3jc	ok	Main	主要	src/core/llm/check.js:144	
+1q9bibx	ok	It also answers at {0}'s level ({1}).	在“{0}”的推理级别（{1}）下也能回答。	src/core/llm/check.js:146	{0} = roleName(role); {1} = role.level; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
+1bbu08l	ok	At {0}'s level ({1}), this model refused: {2}	在“{0}”的推理级别（{1}）下，此模型拒绝了请求：{2}	src/core/llm/check.js:148	{0} = roleName(role); {1} = role.level; {2} = said; Note: {0} is a role's name as the screens give it.
+1f0dxr7	ok	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	请在设置 → 模型中调低“{0}”的推理级别，或在此模型的页面上修改其“推理级别”。	src/core/llm/check.js:150	{0} = roleName(role); Note: {0} is a role's name as the screens give it.
 1nuav0n	ok	That provider no longer exists.	这个提供商已不存在。	src/core/llm/config.js:382	
 1qjc2dh	ok	That provider has no ability called {0}.	这个提供商没有名为 {0} 的功能。	src/core/llm/config.js:384	{0} = rec.ability
 4iiule	ok	Give the provider's model id.	请填写提供商的模型 ID。	src/core/llm/config.js:387	
@@ -754,12 +757,12 @@ tkgxjx	ok	didn't provide a kind of backup place {0}	没有提供备份位置类�
 557vva	ok	{0} isn't a web address: give it with https:// in front.	{0} 不是有效的网址，请在前面加上 https://。	src/core/llm/provider-desc.js:164	{0} = url
 y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	地址必须以 https:// 开头（只有 localhost 或 127.0.0.1 可以用 http://）。浏览器会拦截 https 页面发出的普通 http 请求，而 annai 访问局域网内的服务器时只使用 https，所以另一台电脑上的服务器需要 https 地址。可以用 Tailscale Serve 实现：{0}。服务器还必须允许来自 annai.guide 的 CORS 请求。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)
 1qpfdfv	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1).	地址必须以 https:// 开头（只有 localhost 或 127.0.0.1 可以用 http://）。	src/core/llm/provider-desc.js:166	
-1xwbser	ok	It is turned off.	已关闭。	src/core/llm/service.js:248	Note: said of a plugin named before it on the screen.
-1pqsrb3	ok	It isn't running. Look at it in Settings → Plugins.	没有运行。请在设置 → 插件中查看。	src/core/llm/service.js:250	Note: said of a plugin named before it on the screen.
-sejc5h	ok	{0} was switched off after errors.	{0} 因多次出错已被关闭。	src/core/llm/service.js:265	{0} = shown
-1uno44s	ok	It didn't provide a model provider.	未包含模型提供商。	src/core/llm/service.js:266	Note: said of a plugin.
-2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	该插件不是 annai 官方的。请从原来的来源重新安装。	src/core/llm/service.js:337	
-1fpv184	ok	the plugin it names doesn't provide models, so it wasn't installed.	它指定的插件不提供模型，所以没有安装。	src/core/llm/service.js:346	
+1xwbser	ok	It is turned off.	已关闭。	src/core/llm/service.js:292	Note: said of a plugin named before it on the screen.
+1pqsrb3	ok	It isn't running. Look at it in Settings → Plugins.	没有运行。请在设置 → 插件中查看。	src/core/llm/service.js:294	Note: said of a plugin named before it on the screen.
+sejc5h	ok	{0} was switched off after errors.	{0} 因多次出错已被关闭。	src/core/llm/service.js:309	{0} = shown
+1uno44s	ok	It didn't provide a model provider.	未包含模型提供商。	src/core/llm/service.js:310	Note: said of a plugin.
+2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	该插件不是 annai 官方的。请从原来的来源重新安装。	src/core/llm/service.js:381	
+1fpv184	ok	the plugin it names doesn't provide models, so it wasn't installed.	它指定的插件不提供模型，所以没有安装。	src/core/llm/service.js:390	
 3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:68	{0} = p.title
 1rb0o7n	ok	OpenStreetMap around {0}	{0} 周边的 OpenStreetMap	src/core/pack/download.js:70	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
 hdsgog	ok	OpenStreetMap between {0} and {1}	{0} 与 {1} 之间的 OpenStreetMap	src/core/pack/download.js:70	{0} = a; {1} = b
@@ -1415,29 +1418,29 @@ hirfin	ok	What the model provider you connect charges is yours to pay. What you 
 rq1jha	ok	{0} can't add a provider at {1}: it sends keys only to {2}.	{0} 无法在 {1} 添加提供商，因为它只会把密钥发送到 {2}。	src/ui/provider-setup.js:78	{0} = who; {1} = at; {2} = list(where, 'plain')
 1st0ijv	ok	That provider no longer exists. Add it again in Settings → Models.	该提供商已不存在。请在设置 → 模型中重新添加。	src/ui/provider-setup.js:89	
 1lwfyvo	ok	That provider isn't one of {0}'s, so it can't keep a key for it.	该提供商不属于 {0}，所以无法为它保存密钥。	src/ui/provider-setup.js:91	{0} = mine
-13upi6b	ok	{0} isn't a model provider.	{0} 不是模型提供商。	src/ui/provider-setup.js:119	{0} = officialName(entry.id, entry.name)
-17q3a6l	ok	That plugin isn't a model provider.	该插件不是模型提供商。	src/ui/provider-setup.js:119	
-1p012cf	ok	Connect to the internet to sign in.	请联网后再登录。	src/ui/provider-setup.js:149	
-14m6i84	ok	Finishing the sign-in with {0}…	正在完成 {0} 的登录…	src/ui/provider-setup.js:158	{0} = finishing
-yyxfov	ok	{0}'s sign-in couldn't be shown. Add it from Add a provider instead.	无法显示 {0} 的登录界面。请改用“添加提供商”添加。	src/ui/provider-setup.js:163	{0} = f.name
-15aq08d	ok	The quickest start	最快的上手方式	src/ui/provider-setup.js:165	
-w9nig3	ok	Sign in	登录	src/ui/provider-setup.js:165	
-edml6o	ok	Getting the sign-in ready…	正在准备登录…	src/ui/provider-setup.js:169	
-1rk1a1z	ok	A sign-in came back, but annai no longer expected it: more than 15 minutes passed, or it was finished already. Start it again from Settings → Models.	收到了登录结果，但 annai 已不再等待，因为已超过 15 分钟，或登录已经完成。请在设置 → 模型中重新登录。	src/ui/provider-setup.js:200	
-sv1qqk	ok	A sign-in came back too late	登录结果来得太晚	src/ui/provider-setup.js:200	
-gkf0xx	ok	{0} isn't running. Look at it in Settings → Plugins, then sign in again.	{0} 没有运行。请在设置 → 插件中检查它，然后重新登录。	src/ui/provider-setup.js:214	{0} = name
-1fbojq2	ok	Signing in with {0} didn't finish	{0} 的登录未完成	src/ui/provider-setup.js:220	{0} = name
-1fm7mjz	ok	Speech out	朗读	src/ui/provider-setup.js:228	
-v20s4a	ok	Quick decision	快速判断	src/ui/provider-setup.js:228	
-w8niry	ok	Speech in	语音识别	src/ui/provider-setup.js:228	
-eudybe#other	ok	{0} now use {1}'s free models.	{0}现在使用 {1} 的免费模型。	src/ui/provider-setup.js:244	plural; # = free.length; {0} = list(free.map((r) => ROLE_SHORT[r] ?? r)); {1} = name; English: "{0} now uses {1}'s free models." (one), "{0} now use {1}'s free models." (other)
-14xff7o#other	ok	{0} cost money: {1} has no free model to start with, and Shiori needs one to answer.	{0}需要付费：{1} 没有可以先用的免费模型，而 Shiori 需要模型才能回答。	src/ui/provider-setup.js:245	plural; # = paid.length; {0} = list(paid.map((r) => t`${ROLE_SHORT[r] ?? r} ${costs[r]}`)); {1} = name; English: "{0} costs money: {1} has no free model to start with, and Shiori needs one to answer." (one), "{0} cost money: {1} has no free model to start with, and Shiori needs one to answer." (other)
-1wdrhx6	ok	{0} {1}	{0}（{1}）	src/ui/provider-setup.js:246	{0} = ROLE_SHORT[r] ?? r; {1} = costs[r]; Note: A role and the model that costs money in it ("Main GPT-6.1 Sol"), not two sentences: the model in brackets.
-1c8it09	ok	If your key is on the free tier, switch that on, on this page: its models then cost nothing.	如果是免费额度的密钥，请在本页开启“此密钥属于免费额度”，这样它的模型就不会计费。	src/ui/provider-setup.js:247	Note: "switch that on" names the provider page's switch, "This key is on the free tier".
-1dsri4f	ok	Its speech in models went behind the free entries.	它的语音识别模型已排在免费选项之后。	src/ui/provider-setup.js:248	
-jvtji4	ok	Its speech in and speech out models went behind the free entries.	它的语音识别和朗读模型已排在免费选项之后。	src/ui/provider-setup.js:248	
-1r0x31s	ok	Its speech out models went behind the free entries.	它的朗读模型已排在免费选项之后。	src/ui/provider-setup.js:249	
-1llun41	ok	The provider	提供商	src/ui/provider-setup.js:256	Note: "The provider" stands where a provider's name is unknown.
+13upi6b	ok	{0} isn't a model provider.	{0} 不是模型提供商。	src/ui/provider-setup.js:121	{0} = officialName(entry.id, entry.name)
+17q3a6l	ok	That plugin isn't a model provider.	该插件不是模型提供商。	src/ui/provider-setup.js:121	
+1p012cf	ok	Connect to the internet to sign in.	请联网后再登录。	src/ui/provider-setup.js:151	
+14m6i84	ok	Finishing the sign-in with {0}…	正在完成 {0} 的登录…	src/ui/provider-setup.js:160	{0} = finishing
+yyxfov	ok	{0}'s sign-in couldn't be shown. Add it from Add a provider instead.	无法显示 {0} 的登录界面。请改用“添加提供商”添加。	src/ui/provider-setup.js:165	{0} = f.name
+15aq08d	ok	The quickest start	最快的上手方式	src/ui/provider-setup.js:167	
+w9nig3	ok	Sign in	登录	src/ui/provider-setup.js:167	
+edml6o	ok	Getting the sign-in ready…	正在准备登录…	src/ui/provider-setup.js:171	
+1rk1a1z	ok	A sign-in came back, but annai no longer expected it: more than 15 minutes passed, or it was finished already. Start it again from Settings → Models.	收到了登录结果，但 annai 已不再等待，因为已超过 15 分钟，或登录已经完成。请在设置 → 模型中重新登录。	src/ui/provider-setup.js:202	
+sv1qqk	ok	A sign-in came back too late	登录结果来得太晚	src/ui/provider-setup.js:202	
+gkf0xx	ok	{0} isn't running. Look at it in Settings → Plugins, then sign in again.	{0} 没有运行。请在设置 → 插件中检查它，然后重新登录。	src/ui/provider-setup.js:216	{0} = name
+1fbojq2	ok	Signing in with {0} didn't finish	{0} 的登录未完成	src/ui/provider-setup.js:222	{0} = name
+1fm7mjz	ok	Speech out	朗读	src/ui/provider-setup.js:230	
+v20s4a	ok	Quick decision	快速判断	src/ui/provider-setup.js:230	
+w8niry	ok	Speech in	语音识别	src/ui/provider-setup.js:230	
+eudybe#other	ok	{0} now use {1}'s free models.	{0}现在使用 {1} 的免费模型。	src/ui/provider-setup.js:246	plural; # = free.length; {0} = list(free.map((r) => ROLE_SHORT[r] ?? r)); {1} = name; English: "{0} now uses {1}'s free models." (one), "{0} now use {1}'s free models." (other)
+14xff7o#other	ok	{0} cost money: {1} has no free model to start with, and Shiori needs one to answer.	{0}需要付费：{1} 没有可以先用的免费模型，而 Shiori 需要模型才能回答。	src/ui/provider-setup.js:247	plural; # = paid.length; {0} = list(paid.map((r) => t`${ROLE_SHORT[r] ?? r} ${costs[r]}`)); {1} = name; English: "{0} costs money: {1} has no free model to start with, and Shiori needs one to answer." (one), "{0} cost money: {1} has no free model to start with, and Shiori needs one to answer." (other)
+1wdrhx6	ok	{0} {1}	{0}（{1}）	src/ui/provider-setup.js:248	{0} = ROLE_SHORT[r] ?? r; {1} = costs[r]; Note: A role and the model that costs money in it ("Main GPT-6.1 Sol"), not two sentences: the model in brackets.
+1c8it09	ok	If your key is on the free tier, switch that on, on this page: its models then cost nothing.	如果是免费额度的密钥，请在本页开启“此密钥属于免费额度”，这样它的模型就不会计费。	src/ui/provider-setup.js:249	Note: "switch that on" names the provider page's switch, "This key is on the free tier".
+1dsri4f	ok	Its speech in models went behind the free entries.	它的语音识别模型已排在免费选项之后。	src/ui/provider-setup.js:250	
+jvtji4	ok	Its speech in and speech out models went behind the free entries.	它的语音识别和朗读模型已排在免费选项之后。	src/ui/provider-setup.js:250	
+1r0x31s	ok	Its speech out models went behind the free entries.	它的朗读模型已排在免费选项之后。	src/ui/provider-setup.js:251	
+1llun41	ok	The provider	提供商	src/ui/provider-setup.js:258	Note: "The provider" stands where a provider's name is unknown.
 1c4feqt	ok	This browser can't run annai's offline service, which shows notifications.	此浏览器无法运行 annai 用来显示通知的离线服务。	src/ui/push.js:19	
 1vug986	ok	The phone's push subscription has no keys. Turn notifications off and on again.	手机的推送订阅没有密钥。请关闭通知后再重新开启。	src/ui/push.js:30	
 17sbtk9	ok	The relay's key isn't one annai can use.	annai 无法使用中继的密钥。	src/ui/push.js:78	
@@ -2089,47 +2092,48 @@ r4y7q	ok	Use {0}	启用 {0}	src/ui/screens/provider.js:338	{0} = shownName
 1o304we	ok	New in the last update	上次更新新增	src/ui/screens/provider.js:345	
 1k5huc5	ok	the provider's: {0}	提供商地址：{0}	src/ui/screens/provider.js:365	{0} = providerOf(rec).baseUrl
 1ppqeqd	ok	the provider's: none yet	提供商地址：暂无	src/ui/screens/provider.js:365	
-12dfi3i	ok	Upload photos to this provider (each expires after 48 hours)	把照片上传到此提供商（每张 48 小时后过期）	src/ui/screens/provider.js:372	
-1qia4dd	ok	Let {0} keep the conversation between turns: sends less each time.	让 {0} 在多轮之间保留对话，每次发送的内容更少。	src/ui/screens/provider.js:377	{0} = who
-l91m05	ok	Its own address	专用地址	src/ui/screens/provider.js:396	
-9umgdw	ok	Empty: the provider's address. Each setting here is saved as you change it.	留空则使用提供商的地址。这里的设置更改后会自动保存。	src/ui/screens/provider.js:402	
-1ajunu1	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: as long as that server keeps them.	{0} 会保留你与 Shiori 的对话，包括其中的照片、语音消息，以及她所知道的你的位置，保留多久由那台服务器决定。	src/ui/screens/provider.js:406	{0} = who; Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音).
-1jtdu56	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: {1}.	{0} 会保留你与 Shiori 的对话，包括其中的照片、语音消息，以及她所知道的你的位置：{1}。	src/ui/screens/provider.js:407	{0} = who; {1} = holds; Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音); {1} is the plugin's own words for how long.
-1fcg7pg#other	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.	{0} 会保留你与 Shiori 的对话，包括其中的照片、语音消息，以及她所知道的你的位置：免费密钥保留一天，付费密钥最长 # 天。	src/ui/screens/provider.js:408	plural; # = type.keeps.days; {0} = who; English: "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one." (one), "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one." (other); Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音).
-1gugeu9	ok	annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.	移除对应的旅行、此提供商或全部内容（清除），更换或移除密钥，或关闭此项时，annai 都会删除这些内容。	src/ui/screens/provider.js:410	
-1iorloe	ok	Off, each turn sends the whole conversation.	关闭后，每一轮都会发送整个对话。	src/ui/screens/provider.js:410	
-1wdiu43	ok	It needs this provider's key: without one, each turn sends the whole conversation.	此功能需要提供商的密钥；没有密钥时，每一轮都会发送整个对话。	src/ui/screens/provider.js:411	
-72k1cn#other	ok	# deletions waiting: annai can't send them without this provider's key.	# 项删除请求待发送：没有此提供商的密钥，无法发送。	src/ui/screens/provider.js:412	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
-f85coz#other	ok	# deletions waiting: annai sends them when it can reach {0}.	# 项删除请求待发送：连上 {0} 后会自动发送。	src/ui/screens/provider.js:413	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
-147eqzv	ok	Test {0}	测试 {0}	src/ui/screens/provider.js:424	{0} = first.name
-1eqfcih	ok	{0} doesn't offer search on the free tier.	{0} 的免费额度不包含搜索。	src/ui/screens/provider.js:441	{0} = who
-1cmq8ob	ok	{0} doesn't offer fetch on the free tier.	{0} 的免费额度不包含网页抓取。	src/ui/screens/provider.js:442	{0} = who
-1k4v7dk	ok	{0} doesn't offer {1} on the free tier.	{0} 的免费额度不包含 {1}。	src/ui/screens/provider.js:442	{0} = who; {1} = tool.name
-11x4tx3	ok	This needs the {0} plugin, which isn't running.	需要 {0} 插件，但它没有运行。	src/ui/screens/provider.js:448	{0} = name
-4nyk49	ok	This needs a plugin that isn't running.	需要的插件没有运行。	src/ui/screens/provider.js:448	
-15hdhx3	ok	the provider's model id	提供商的模型 ID	src/ui/screens/provider.js:470	
-1oz4euh	ok	Add model	添加模型	src/ui/screens/provider.js:483	
-tbmsa5	ok	Asking for its models…	正在获取模型列表…	src/ui/screens/provider.js:488	
-1yko1my#other	ok	# models.	共 # 个模型。	src/ui/screens/provider.js:491	plural; # = listed.length; English: "# model." (one), "# models." (other)
-uxqo7a	ok	Fetch model list	获取模型列表	src/ui/screens/provider.js:499	
-1scr2ml	ok	{0}K context	{0}K 上下文	src/ui/screens/provider.js:502	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
-1tqy8k1	ok	Its models	模型	src/ui/screens/provider.js:504	Note: "Its models" as a heading under the ability: モデル alone reads right there.
-bzs1ys	ok	No models yet.	还没有模型。	src/ui/screens/provider.js:505	
-pnxisg	ok	Add a model by id	按 ID 添加模型	src/ui/screens/provider.js:506	
-1mod47e	ok	for example: haiku	例如：haiku	src/ui/screens/provider.js:520	
-uizt0x	ok	{0} · loaded	{0} · 已加载	src/ui/screens/provider.js:530	{0} = named
-1w6mxym	ok	Already added, on {0}	已添加到 {0}	src/ui/screens/provider.js:531	{0} = on
-l7fn8k	ok	Already added, on another provider	已添加到其他提供商	src/ui/screens/provider.js:531	
-19ai2z0	ok	Filter the list	筛选列表	src/ui/screens/provider.js:542	
-11pl9jr	ok	Use the free models	使用免费模型	src/ui/screens/provider.js:550	
-vam64u	ok	Use the recommended models	使用推荐模型	src/ui/screens/provider.js:550	
-1b2yx8m	ok	Suggested models	推荐模型	src/ui/screens/provider.js:551	
-1jnsjoc	ok	{0} suggests a model for each role. Its speech models then go ahead of the browser's own dictation and voice, which are free, so any that cost money are tried before them.	{0} 为每个角色推荐了一个模型。使用推荐后，它的语音模型会排在免费的浏览器自带语音输入和朗读之前，所以会优先尝试收费的模型。	src/ui/screens/provider.js:552	{0} = src.name
-1x5hwmk	ok	{0} suggests a model for each role.	{0} 为每个角色推荐了一个模型。	src/ui/screens/provider.js:553	{0} = src.name
-1iffu2j	ok	{0} switched on.	已开启 {0}。	src/ui/screens/provider.js:560	{0} = n
-1szeqxt	ok	Roles updated.	已更新角色。	src/ui/screens/provider.js:560	
-1egvjs1	ok	{0} couldn't be switched on: {1}	{0} 无法开启：{1}	src/ui/screens/provider.js:561	{0} = f.name; {1} = messageOf(f.error)
-wlh055	ok	Use the {0} models	使用 {0} 模型	src/ui/screens/provider.js:567	{0} = which
+11krxuy	ok	Upload photos to this provider (annai deletes each once it is 48 hours old, the next time annai starts or comes online)	把照片上传到此提供商（超过 48 小时的照片，会在 annai 下次启动或恢复联网时删除）	src/ui/screens/provider.js:376	Note: a switch; the brackets say when annai deletes, no more than it does.
+12dfi3i	ok	Upload photos to this provider (each expires after 48 hours)	把照片上传到此提供商（每张 48 小时后过期）	src/ui/screens/provider.js:377	
+1qia4dd	ok	Let {0} keep the conversation between turns: sends less each time.	让 {0} 在多轮之间保留对话，每次发送的内容更少。	src/ui/screens/provider.js:384	{0} = who
+l91m05	ok	Its own address	专用地址	src/ui/screens/provider.js:403	
+9umgdw	ok	Empty: the provider's address. Each setting here is saved as you change it.	留空则使用提供商的地址。这里的设置更改后会自动保存。	src/ui/screens/provider.js:409	
+1ajunu1	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: as long as that server keeps them.	{0} 会保留你与 Shiori 的对话，包括其中的照片、语音消息，以及她所知道的你的位置，保留多久由那台服务器决定。	src/ui/screens/provider.js:413	{0} = who; Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音).
+1jtdu56	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: {1}.	{0} 会保留你与 Shiori 的对话，包括其中的照片、语音消息，以及她所知道的你的位置：{1}。	src/ui/screens/provider.js:414	{0} = who; {1} = holds; Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音); {1} is the plugin's own words for how long.
+1fcg7pg#other	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.	{0} 会保留你与 Shiori 的对话，包括其中的照片、语音消息，以及她所知道的你的位置：免费密钥保留一天，付费密钥最长 # 天。	src/ui/screens/provider.js:415	plural; # = type.keeps.days; {0} = who; English: "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one." (one), "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one." (other); Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音).
+1gugeu9	ok	annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.	移除对应的旅行、此提供商或全部内容（清除），更换或移除密钥，或关闭此项时，annai 都会删除这些内容。	src/ui/screens/provider.js:417	
+1iorloe	ok	Off, each turn sends the whole conversation.	关闭后，每一轮都会发送整个对话。	src/ui/screens/provider.js:417	
+1wdiu43	ok	It needs this provider's key: without one, each turn sends the whole conversation.	此功能需要提供商的密钥；没有密钥时，每一轮都会发送整个对话。	src/ui/screens/provider.js:418	
+72k1cn#other	ok	# deletions waiting: annai can't send them without this provider's key.	# 项删除请求待发送：没有此提供商的密钥，无法发送。	src/ui/screens/provider.js:419	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
+f85coz#other	ok	# deletions waiting: annai sends them when it can reach {0}.	# 项删除请求待发送：连上 {0} 后会自动发送。	src/ui/screens/provider.js:420	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
+147eqzv	ok	Test {0}	测试 {0}	src/ui/screens/provider.js:431	{0} = first.name
+1eqfcih	ok	{0} doesn't offer search on the free tier.	{0} 的免费额度不包含搜索。	src/ui/screens/provider.js:448	{0} = who
+1cmq8ob	ok	{0} doesn't offer fetch on the free tier.	{0} 的免费额度不包含网页抓取。	src/ui/screens/provider.js:449	{0} = who
+1k4v7dk	ok	{0} doesn't offer {1} on the free tier.	{0} 的免费额度不包含 {1}。	src/ui/screens/provider.js:449	{0} = who; {1} = tool.name
+11x4tx3	ok	This needs the {0} plugin, which isn't running.	需要 {0} 插件，但它没有运行。	src/ui/screens/provider.js:455	{0} = name
+4nyk49	ok	This needs a plugin that isn't running.	需要的插件没有运行。	src/ui/screens/provider.js:455	
+15hdhx3	ok	the provider's model id	提供商的模型 ID	src/ui/screens/provider.js:477	
+1oz4euh	ok	Add model	添加模型	src/ui/screens/provider.js:490	
+tbmsa5	ok	Asking for its models…	正在获取模型列表…	src/ui/screens/provider.js:495	
+1yko1my#other	ok	# models.	共 # 个模型。	src/ui/screens/provider.js:498	plural; # = listed.length; English: "# model." (one), "# models." (other)
+uxqo7a	ok	Fetch model list	获取模型列表	src/ui/screens/provider.js:506	
+1scr2ml	ok	{0}K context	{0}K 上下文	src/ui/screens/provider.js:509	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
+1tqy8k1	ok	Its models	模型	src/ui/screens/provider.js:511	Note: "Its models" as a heading under the ability: モデル alone reads right there.
+bzs1ys	ok	No models yet.	还没有模型。	src/ui/screens/provider.js:512	
+pnxisg	ok	Add a model by id	按 ID 添加模型	src/ui/screens/provider.js:513	
+1mod47e	ok	for example: haiku	例如：haiku	src/ui/screens/provider.js:527	
+uizt0x	ok	{0} · loaded	{0} · 已加载	src/ui/screens/provider.js:537	{0} = named
+1w6mxym	ok	Already added, on {0}	已添加到 {0}	src/ui/screens/provider.js:538	{0} = on
+l7fn8k	ok	Already added, on another provider	已添加到其他提供商	src/ui/screens/provider.js:538	
+19ai2z0	ok	Filter the list	筛选列表	src/ui/screens/provider.js:549	
+11pl9jr	ok	Use the free models	使用免费模型	src/ui/screens/provider.js:557	
+vam64u	ok	Use the recommended models	使用推荐模型	src/ui/screens/provider.js:557	
+1b2yx8m	ok	Suggested models	推荐模型	src/ui/screens/provider.js:558	
+1jnsjoc	ok	{0} suggests a model for each role. Its speech models then go ahead of the browser's own dictation and voice, which are free, so any that cost money are tried before them.	{0} 为每个角色推荐了一个模型。使用推荐后，它的语音模型会排在免费的浏览器自带语音输入和朗读之前，所以会优先尝试收费的模型。	src/ui/screens/provider.js:559	{0} = src.name
+1x5hwmk	ok	{0} suggests a model for each role.	{0} 为每个角色推荐了一个模型。	src/ui/screens/provider.js:560	{0} = src.name
+1iffu2j	ok	{0} switched on.	已开启 {0}。	src/ui/screens/provider.js:567	{0} = n
+1szeqxt	ok	Roles updated.	已更新角色。	src/ui/screens/provider.js:567	
+1egvjs1	ok	{0} couldn't be switched on: {1}	{0} 无法开启：{1}	src/ui/screens/provider.js:568	{0} = f.name; {1} = messageOf(f.error)
+wlh055	ok	Use the {0} models	使用 {0} 模型	src/ui/screens/provider.js:574	{0} = which
 1qocxbg	ok	Writing it: {0} is reading the conversation. This can take a minute.	撰写中：{0} 正在读取对话，可能需要一分钟。	src/ui/screens/recap.js:29	{0} = m.name
 1lrfe9k	ok	Write the recap	撰写回顾	src/ui/screens/recap.js:31	
 h6huep	ok	Write it again	重新撰写	src/ui/screens/recap.js:31	
@@ -2498,73 +2502,76 @@ scvxkf	ok	ok	成功	src/ui/screens/trace.js:201
 7lsal4	ok	no answer	无应答	src/ui/screens/trace.js:205	
 udpknx	ok	kept turn deleted	保留的轮次已删除	src/ui/screens/trace.js:205	Note: A kept turn is one of the conversation turns a provider keeps (轮).
 hnu5xn	ok	kept turn looked up	已查询保留的轮次	src/ui/screens/trace.js:206	Note: A kept turn is one of the conversation turns a provider keeps (轮).
-1t1zawl	ok	a refused photo sent again as a new copy ({0})	被拒的照片作为新副本重新发送（{0}）	src/ui/screens/trace.js:207	{0} = d.mediaType
-gjjwcl	ok	a PDF's words kept for models that can't read PDFs	为无法读取 PDF 的模型保留的 PDF 文字内容	src/ui/screens/trace.js:209	Note: a Trace line: what was kept of a PDF, told in words, for models that can't read PDFs.
-kbptqr	ok	a photo's description kept for models that can't see photos	为无法识别照片的模型保留的照片描述	src/ui/screens/trace.js:209	Note: a Trace line, as above, for a photo's description.
-y6qkfy	ok	a PDF's pages kept for models that can't read PDFs	为无法读取 PDF 的模型保留的 PDF 页面图片	src/ui/screens/trace.js:209	Note: a Trace line, as above, for a PDF's pages as pictures.
-12y45gf	ok	from a backup, annai {0}	来自 annai {0} 的备份	src/ui/screens/trace.js:213	{0} = app
-hq4bg1	ok	from an export, annai {0}	来自 annai {0} 的导出文件	src/ui/screens/trace.js:213	{0} = app
-fgylb4#other	ok	# pieces of content it didn't hold left out	# 项内容不在文件中，已略过	src/ui/screens/trace.js:214	plural; # = n; English: "# piece of content it didn't hold left out" (one), "# pieces of content it didn't hold left out" (other)
-1vkhbgw	ok	asked for content that isn't here, and got none	请求了这里没有的内容，什么也没得到	src/ui/screens/trace.js:217	
-17ybebf	ok	a turn cut off by opening another conversation	因打开另一个对话而中断的回合	src/ui/screens/trace.js:218	
-z082y3	ok	read {0}	读取了“{0}”	src/ui/screens/trace.js:220	{0} = d.title
-1g60658	ok	said	口头	src/ui/screens/trace.js:221	
-1s3wptl	ok	reading {0} allowed	已允许读取 {0}	src/ui/screens/trace.js:221	{0} = d.trip
-guv93	ok	moved to {0}	已转到“{0}”	src/ui/screens/trace.js:223	{0} = d.title; Note: a Trace line: Shiori took the user from this conversation to {0}.
-130nh2w	ok	events {0}–{1} summarized ({2})	已总结事件 {0}–{1}（{2}）	src/ui/screens/trace.js:224	{0} = d.from; {1} = d.to; {2} = d.mode
-vgv0s2	ok	started fresh after event {0}	在事件 {0} 之后重新开始	src/ui/screens/trace.js:224	{0} = d.to
-1nulaw8	ok	late by {0} min	晚了 {0} 分钟	src/ui/screens/trace.js:226	{0} = d.late
-1vzfabu	ok	no connection	无网络连接	src/ui/screens/trace.js:226	
-1l7ac5y	ok	shown	已显示	src/ui/screens/trace.js:227	
-1yfde5	ok	no name	无名称	src/ui/screens/trace.js:229	
-1nk1wxu	ok	audio route {0}	音频路由 {0}	src/ui/screens/trace.js:230	{0} = d.route
-1yo1hz0	ok	the microphone in use: {0}	正在使用的麦克风：{0}	src/ui/screens/trace.js:230	{0} = d.using || unnamed
-swjwya	ok	judged by the devices present	根据现有设备判断	src/ui/screens/trace.js:230	Note: the Trace: the audio route was told from the devices present, not from the microphone in use.
-1rzyxvu	ok	disconnected: {0}	已断开：{0}	src/ui/screens/trace.js:231	{0} = d.gone.join(', ')
-3gdj21	ok	no devices	无设备	src/ui/screens/trace.js:231	
-1ijsnzq	ok	voice on	语音开启	src/ui/screens/trace.js:252	Note: The glossary's Voice on mode (语音开启).
-z2w914	ok	voice off	语音关闭	src/ui/screens/trace.js:252	Note: The glossary's Voice off mode (语音关闭).
-1g1k3by	ok	{0} waiting	{0} 条待发送	src/ui/screens/trace.js:255	{0} = d.waiting ?? 0
-xy6oxk	ok	{0} sent, {1} called off	已发送 {0} 条，已取消 {1} 条	src/ui/screens/trace.js:255	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
-1efflnv	ok	notification shown	通知已显示	src/ui/screens/trace.js:256	
-cjmncb	ok	notification opened	已点开通知	src/ui/screens/trace.js:257	
-3m7wpo#other	ok	# attempts	尝试 # 次	src/ui/screens/trace.js:267	plural; # = n; English: "# attempt" (one), "# attempts" (other)
-r42rpw	ok	{0} ms processing latency	处理延迟 {0} ms	src/ui/screens/trace.js:271	{0} = Math.round(d.baseLatency * 1000)
-1y5g6mq	ok	{0} ms output latency	输出延迟 {0} ms	src/ui/screens/trace.js:272	{0} = Math.round(d.outputLatency * 1000)
-a1oech	ok	live session {0}	实时会话 {0}	src/ui/screens/trace.js:273	{0} = d.state
-beya44	ok	sound at {0} kHz	采样率 {0} kHz	src/ui/screens/trace.js:275	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
-1u50qqt	ok	her voice: {0} played	她的声音：已播放 {0}	src/ui/screens/trace.js:280	{0} = duration(d.ms ?? 0)
-1wcl60z	ok	cut	已中断	src/ui/screens/trace.js:280	
-njy1uz	ok	her voice: cut before it played	她的声音：播放前被中断	src/ui/screens/trace.js:280	
-9atabi	ok	started after {0} ms	{0} ms 后开始	src/ui/screens/trace.js:281	{0} = d.waitMs
-j43x3k	ok	stalled	卡住	src/ui/screens/trace.js:281	
-1qyanji#other	ok	# holes, {0} ms	# 处空白，{0} ms	src/ui/screens/trace.js:282	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
-gw0cwm#other	ok	# holes	# 处空白	src/ui/screens/trace.js:282	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
-1bx4bl6	ok	on {0}	在 {0} 上	src/ui/screens/trace.js:283	{0} = d.player
-1jhbzkn	ok	your voice {0} dB, least to start {1} dB, {2} frames kept out (loudest {3} dB)	你的声音 {0} dB，触发下限 {1} dB，{2} 帧被拦下（最响 {3} dB）	src/ui/screens/trace.js:288	{0} = d.voiceDb ?? '?'; {1} = d.minDb ?? '–'; {2} = d.keptFrames; {3} = d.keptPeakDb ?? '?'
-1mxp5c6	ok	a sound dropped as her voice began: {0} of speech · floor {1} dB, loudest {2} dB	她开口时丢弃了一段声音：语音 {0} · 底噪 {1} dB，最响 {2} dB	src/ui/screens/trace.js:289	{0} = duration(d.speechMs ?? 0); {1} = d.floorDb ?? '?'; {2} = d.peakDb ?? '?'
-1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	你的这一轮结束：{0} · 已发送 {1} · 底噪 {2} dB，最响 {3} dB	src/ui/screens/trace.js:290	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
-7ovnj9	ok	no turn	没有开始一轮	src/ui/screens/trace.js:290	
-khxbvb	ok	audio: {0}	音频：{0}	src/ui/screens/trace.js:294	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
-1wy37ql	ok	{0} sent	已发送 {0}	src/ui/screens/trace.js:296	{0} = size(d.bytes)
-l04i5	ok	{0} sent, after a kept turn	已发送 {0}，接在保留的轮次之后	src/ui/screens/trace.js:296	{0} = size(d.bytes); Note: A kept turn is one of the conversation turns a provider keeps (轮).
-1n96vkk	ok	earlier thinking not sent: something before it changed	之前的思考未发送：前面的内容有变动	src/ui/screens/trace.js:298	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
-yfywm0#other	ok	thinking of # earlier steps sent back	已发回之前 # 步的思考	src/ui/screens/trace.js:298	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
-15hqi4k#other	ok	# guides	# 份指南	src/ui/screens/trace.js:302	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
-4k86ja	ok	{0} failed	{0} 个失败	src/ui/screens/trace.js:302	{0} = d.failed
-1waoe51	ok	at its limit	已达上限	src/ui/screens/trace.js:303	
-66h5i6	ok	by itself on Wi-Fi	Wi-Fi 下自动下载	src/ui/screens/trace.js:303	
-rfe2ef	ok	{0} files sent, {1}	已发送 {0} 个文件，{1}	src/ui/screens/trace.js:305	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
-2601w8	ok	a newer backup from another device is there	有来自另一台设备的较新备份	src/ui/screens/trace.js:306	
-uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	下载 {0}（{1}）后停止，已丢弃	src/ui/screens/trace.js:308	{0} = d.backup; {1} = size(d.bytes ?? 0)
-wgniil	ok	downloaded {0}, {1}	已下载 {0}（{1}）	src/ui/screens/trace.js:308	{0} = d.backup; {1} = size(d.bytes ?? 0)
-1gauo2f	ok	{0} can't be opened: {1}	{0} 无法打开：{1}	src/ui/screens/trace.js:309	{0} = d.backup; {1} = cut(d.problem)
-1rrq0vn	ok	deleted an older backup, {0}	已删除一个较早的备份：{0}	src/ui/screens/trace.js:310	{0} = d.backup
-57gz9u#other	ok	# secrets	# 个密钥	src/ui/screens/trace.js:312	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
-scekw#other	ok	# settings	# 项设置	src/ui/screens/trace.js:312	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
-mp7j1w#other	ok	({0}, # bytes)	（{0}，# 字节）	src/ui/screens/trace.js:335	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
-tqj8t3	ok	(no longer stored)	（已不再保存）	src/ui/screens/trace.js:335	
-1kfziuy	ok	Show what was stored	显示保存的内容	src/ui/screens/trace.js:352	
+1b5ygaa	ok	photo uploads listed	已获取上传照片的列表	src/ui/screens/trace.js:208	Note: a Trace line, beside "kept turn looked up".
+lx223x	ok	photo upload deleted	上传的照片已删除	src/ui/screens/trace.js:209	Note: a Trace line, as "kept turn deleted".
+rpu62e	ok	photo upload not deleted yet	上传的照片尚未删除	src/ui/screens/trace.js:209	Note: a Trace line, as "kept turn not deleted yet".
+1t1zawl	ok	a refused photo sent again as a new copy ({0})	被拒的照片作为新副本重新发送（{0}）	src/ui/screens/trace.js:210	{0} = d.mediaType
+gjjwcl	ok	a PDF's words kept for models that can't read PDFs	为无法读取 PDF 的模型保留的 PDF 文字内容	src/ui/screens/trace.js:212	Note: a Trace line: what was kept of a PDF, told in words, for models that can't read PDFs.
+kbptqr	ok	a photo's description kept for models that can't see photos	为无法识别照片的模型保留的照片描述	src/ui/screens/trace.js:212	Note: a Trace line, as above, for a photo's description.
+y6qkfy	ok	a PDF's pages kept for models that can't read PDFs	为无法读取 PDF 的模型保留的 PDF 页面图片	src/ui/screens/trace.js:212	Note: a Trace line, as above, for a PDF's pages as pictures.
+12y45gf	ok	from a backup, annai {0}	来自 annai {0} 的备份	src/ui/screens/trace.js:216	{0} = app
+hq4bg1	ok	from an export, annai {0}	来自 annai {0} 的导出文件	src/ui/screens/trace.js:216	{0} = app
+fgylb4#other	ok	# pieces of content it didn't hold left out	# 项内容不在文件中，已略过	src/ui/screens/trace.js:217	plural; # = n; English: "# piece of content it didn't hold left out" (one), "# pieces of content it didn't hold left out" (other)
+1vkhbgw	ok	asked for content that isn't here, and got none	请求了这里没有的内容，什么也没得到	src/ui/screens/trace.js:220	
+17ybebf	ok	a turn cut off by opening another conversation	因打开另一个对话而中断的回合	src/ui/screens/trace.js:221	
+z082y3	ok	read {0}	读取了“{0}”	src/ui/screens/trace.js:223	{0} = d.title
+1g60658	ok	said	口头	src/ui/screens/trace.js:224	
+1s3wptl	ok	reading {0} allowed	已允许读取 {0}	src/ui/screens/trace.js:224	{0} = d.trip
+guv93	ok	moved to {0}	已转到“{0}”	src/ui/screens/trace.js:226	{0} = d.title; Note: a Trace line: Shiori took the user from this conversation to {0}.
+130nh2w	ok	events {0}–{1} summarized ({2})	已总结事件 {0}–{1}（{2}）	src/ui/screens/trace.js:227	{0} = d.from; {1} = d.to; {2} = d.mode
+vgv0s2	ok	started fresh after event {0}	在事件 {0} 之后重新开始	src/ui/screens/trace.js:227	{0} = d.to
+1nulaw8	ok	late by {0} min	晚了 {0} 分钟	src/ui/screens/trace.js:229	{0} = d.late
+1vzfabu	ok	no connection	无网络连接	src/ui/screens/trace.js:229	
+1l7ac5y	ok	shown	已显示	src/ui/screens/trace.js:230	
+1yfde5	ok	no name	无名称	src/ui/screens/trace.js:232	
+1nk1wxu	ok	audio route {0}	音频路由 {0}	src/ui/screens/trace.js:233	{0} = d.route
+1yo1hz0	ok	the microphone in use: {0}	正在使用的麦克风：{0}	src/ui/screens/trace.js:233	{0} = d.using || unnamed
+swjwya	ok	judged by the devices present	根据现有设备判断	src/ui/screens/trace.js:233	Note: the Trace: the audio route was told from the devices present, not from the microphone in use.
+1rzyxvu	ok	disconnected: {0}	已断开：{0}	src/ui/screens/trace.js:234	{0} = d.gone.join(', ')
+3gdj21	ok	no devices	无设备	src/ui/screens/trace.js:234	
+1ijsnzq	ok	voice on	语音开启	src/ui/screens/trace.js:255	Note: The glossary's Voice on mode (语音开启).
+z2w914	ok	voice off	语音关闭	src/ui/screens/trace.js:255	Note: The glossary's Voice off mode (语音关闭).
+1g1k3by	ok	{0} waiting	{0} 条待发送	src/ui/screens/trace.js:258	{0} = d.waiting ?? 0
+xy6oxk	ok	{0} sent, {1} called off	已发送 {0} 条，已取消 {1} 条	src/ui/screens/trace.js:258	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
+1efflnv	ok	notification shown	通知已显示	src/ui/screens/trace.js:259	
+cjmncb	ok	notification opened	已点开通知	src/ui/screens/trace.js:260	
+3m7wpo#other	ok	# attempts	尝试 # 次	src/ui/screens/trace.js:270	plural; # = n; English: "# attempt" (one), "# attempts" (other)
+r42rpw	ok	{0} ms processing latency	处理延迟 {0} ms	src/ui/screens/trace.js:274	{0} = Math.round(d.baseLatency * 1000)
+1y5g6mq	ok	{0} ms output latency	输出延迟 {0} ms	src/ui/screens/trace.js:275	{0} = Math.round(d.outputLatency * 1000)
+a1oech	ok	live session {0}	实时会话 {0}	src/ui/screens/trace.js:276	{0} = d.state
+beya44	ok	sound at {0} kHz	采样率 {0} kHz	src/ui/screens/trace.js:278	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
+1u50qqt	ok	her voice: {0} played	她的声音：已播放 {0}	src/ui/screens/trace.js:283	{0} = duration(d.ms ?? 0)
+1wcl60z	ok	cut	已中断	src/ui/screens/trace.js:283	
+njy1uz	ok	her voice: cut before it played	她的声音：播放前被中断	src/ui/screens/trace.js:283	
+9atabi	ok	started after {0} ms	{0} ms 后开始	src/ui/screens/trace.js:284	{0} = d.waitMs
+j43x3k	ok	stalled	卡住	src/ui/screens/trace.js:284	
+1qyanji#other	ok	# holes, {0} ms	# 处空白，{0} ms	src/ui/screens/trace.js:285	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
+gw0cwm#other	ok	# holes	# 处空白	src/ui/screens/trace.js:285	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
+1bx4bl6	ok	on {0}	在 {0} 上	src/ui/screens/trace.js:286	{0} = d.player
+1jhbzkn	ok	your voice {0} dB, least to start {1} dB, {2} frames kept out (loudest {3} dB)	你的声音 {0} dB，触发下限 {1} dB，{2} 帧被拦下（最响 {3} dB）	src/ui/screens/trace.js:291	{0} = d.voiceDb ?? '?'; {1} = d.minDb ?? '–'; {2} = d.keptFrames; {3} = d.keptPeakDb ?? '?'
+1mxp5c6	ok	a sound dropped as her voice began: {0} of speech · floor {1} dB, loudest {2} dB	她开口时丢弃了一段声音：语音 {0} · 底噪 {1} dB，最响 {2} dB	src/ui/screens/trace.js:292	{0} = duration(d.speechMs ?? 0); {1} = d.floorDb ?? '?'; {2} = d.peakDb ?? '?'
+1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	你的这一轮结束：{0} · 已发送 {1} · 底噪 {2} dB，最响 {3} dB	src/ui/screens/trace.js:293	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
+7ovnj9	ok	no turn	没有开始一轮	src/ui/screens/trace.js:293	
+khxbvb	ok	audio: {0}	音频：{0}	src/ui/screens/trace.js:297	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
+1wy37ql	ok	{0} sent	已发送 {0}	src/ui/screens/trace.js:299	{0} = size(d.bytes)
+l04i5	ok	{0} sent, after a kept turn	已发送 {0}，接在保留的轮次之后	src/ui/screens/trace.js:299	{0} = size(d.bytes); Note: A kept turn is one of the conversation turns a provider keeps (轮).
+1n96vkk	ok	earlier thinking not sent: something before it changed	之前的思考未发送：前面的内容有变动	src/ui/screens/trace.js:301	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
+yfywm0#other	ok	thinking of # earlier steps sent back	已发回之前 # 步的思考	src/ui/screens/trace.js:301	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
+15hqi4k#other	ok	# guides	# 份指南	src/ui/screens/trace.js:305	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
+4k86ja	ok	{0} failed	{0} 个失败	src/ui/screens/trace.js:305	{0} = d.failed
+1waoe51	ok	at its limit	已达上限	src/ui/screens/trace.js:306	
+66h5i6	ok	by itself on Wi-Fi	Wi-Fi 下自动下载	src/ui/screens/trace.js:306	
+rfe2ef	ok	{0} files sent, {1}	已发送 {0} 个文件，{1}	src/ui/screens/trace.js:308	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
+2601w8	ok	a newer backup from another device is there	有来自另一台设备的较新备份	src/ui/screens/trace.js:309	
+uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	下载 {0}（{1}）后停止，已丢弃	src/ui/screens/trace.js:311	{0} = d.backup; {1} = size(d.bytes ?? 0)
+wgniil	ok	downloaded {0}, {1}	已下载 {0}（{1}）	src/ui/screens/trace.js:311	{0} = d.backup; {1} = size(d.bytes ?? 0)
+1gauo2f	ok	{0} can't be opened: {1}	{0} 无法打开：{1}	src/ui/screens/trace.js:312	{0} = d.backup; {1} = cut(d.problem)
+1rrq0vn	ok	deleted an older backup, {0}	已删除一个较早的备份：{0}	src/ui/screens/trace.js:313	{0} = d.backup
+57gz9u#other	ok	# secrets	# 个密钥	src/ui/screens/trace.js:315	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
+scekw#other	ok	# settings	# 项设置	src/ui/screens/trace.js:315	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
+mp7j1w#other	ok	({0}, # bytes)	（{0}，# 字节）	src/ui/screens/trace.js:338	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
+tqj8t3	ok	(no longer stored)	（已不再保存）	src/ui/screens/trace.js:338	
+1kfziuy	ok	Show what was stored	显示保存的内容	src/ui/screens/trace.js:355	
 1cnmmj7	ok	Archived	已归档	src/ui/screens/trip.js:43	
 jz8mjk	ok	Unarchive	取消归档	src/ui/screens/trip.js:55	
 qeuftp	ok	Tap again to archive	再点一次以归档	src/ui/screens/trip.js:57	

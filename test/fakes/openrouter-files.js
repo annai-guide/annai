@@ -7,10 +7,11 @@
  * - DELETE /files/{id}: 200 `{ _shape, id, type: "file_deleted" }`, 404 `{ error: { message: "File not found: …", code: 404 } }`;
  * - POST /chat/completions naming a file_id it doesn't have: 400 `{ error: { message: "Invalid file_id: …", code: 400 } }`; one it has
  *   streams a short reply.
- * status(method, path) may answer for any request first (a 401, a 503, a 404 on the list); page: files per list page.
- * @param {{ files?: { id?: string, filename: string, created_at: string | number }[], page?: number, status?: (method: string, path: string) => number | null, now?: () => number }} [o]
+ * status(method, path) may answer for any request first (a 401, a 503, a 404 on the list); page: files per list page; list: what a
+ * list page answers instead (a shape annai can't read).
+ * @param {{ files?: { id?: string, filename: string, created_at: string | number }[], page?: number, status?: (method: string, path: string) => number | null, now?: () => number, list?: (page: any) => any }} [o]
  */
-export function openRouterFiles({ files = [], page = 1000, status = () => null, now = Date.now } = {}) {
+export function openRouterFiles({ files = [], page = 1000, status = () => null, now = Date.now, list = (x) => x } = {}) {
   let n = 0;
   const id = () => `or_file_test${String(++n).padStart(8, '0')}`;
   /** @type {{ id: string, filename: string, created_at: string | number, mime_type: string, size_bytes: number }[]} */
@@ -41,11 +42,11 @@ export function openRouterFiles({ files = [], page = 1000, status = () => null, 
       const from = cursor ? JSON.parse(atob(cursor)).at : 0;
       const take = held.slice(from, from + Math.min(limit, page));
       const more = from + take.length < held.length;
-      return json(200, {
+      return json(200, list({
         _shape: 'openrouter',
         data: take.map((f) => ({ _shape: 'openrouter', ...f, type: 'file', downloadable: false })),
         has_more: more, first_id: take[0]?.id ?? null, last_id: take.at(-1)?.id ?? null, cursor: more ? btoa(JSON.stringify({ at: from + take.length })) : null,
-      });
+      }));
     }
     const one = /^\/files\/([^/]+)$/.exec(path);
     if (one && method === 'DELETE') {

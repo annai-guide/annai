@@ -27,7 +27,7 @@
     {
       "id": "chat-completions",
       "name": "Chat Completions",
-      "version": "0.11.0",
+      "version": "0.12.0",
       "description": "Talks to OpenAI-style chat completion endpoints: OpenAI, OpenRouter, Gemini, Groq, DeepSeek, Mistral and local servers.",
       "category": "developer",
       "keywords": [],
@@ -35,7 +35,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 26606,
+      "size": 29984,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -43,8 +43,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "e9be2336cbc1b1aac0767df8a143faca0a643e241e2d0829f5a326f000035ae7",
-        "index.js": "931c3974fedb9d3f3f76b4ac0592071730fa6a7223a261d9f09a03325ae93ea5"
+        "annai-plugin.json": "14366a3656325fbb6aa6509ae74e04ac771daf92ba9095102d514e99e3015580",
+        "index.js": "a2eb6c94d3af8712b823996c2f8725728ca7d0dcd083e9c2ea50491cc929085d"
       }
     },
     {
@@ -507,7 +507,7 @@
     {
       "id": "provider-openrouter",
       "name": "OpenRouter",
-      "version": "2.4.1",
+      "version": "2.5.0",
       "description": "One key for many models, free ones among them, with transcription and voices too. Sign in with OpenRouter, or give a key.",
       "category": "providers",
       "keywords": [],
@@ -519,7 +519,7 @@
       "free": true,
       "local": false,
       "code": true,
-      "size": 31774,
+      "size": 32026,
       "requires": [
         {
           "id": "chat-completions",
@@ -533,7 +533,7 @@
       "featured": "Sign in with OpenRouter is the quickest way, and it starts you on free models.",
       "provides": {},
       "files": {
-        "annai-plugin.json": "5c786d7d60dca519d528041b8368156b72d0f6a67a8ed3a977bf71befcc49964",
+        "annai-plugin.json": "11077a397b0b7dab7c685ceffc523a94d34aa54f53a064d5f39ee9d5d4ba568d",
         "index.js": "7439f8ee656b239dfa580661d9c724b1bc38466a179c55cbfc21829b360bb417"
       }
     },
