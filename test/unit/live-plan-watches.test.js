@@ -149,3 +149,24 @@ test("a wake shows an item's start: an unsure end of its booking doesn't make a 
   assert.equal(wake(inn), 'Plan: "Stay" (can\'t be moved) starts at 15:00, in 10 min');
   assert.equal(wake({ ...inn, unsure: ['start'] }), 'Plan: "Stay" (can\'t be moved; not sure the time was read right) starts at 15:00, in 10 min');
 });
+
+test("the off-plan wake shows a flexible item's end too, so an unsure end of its booking marks that wake alone (the second opinion on booking-check's fix round)", () => {
+  const items = [{ path: '/plan/dinner.json', item: { id: 'dinner', title: 'Dinner', fixed: false, booking: '/trip/bookings/table.json', start: { at: '2026-11-27T19:00:00-08:00', tz: LA }, end: { at: '2026-11-27T21:00:00-08:00', tz: LA }, place: { name: 'Nepenthe', ...NEPENTHE } } }];
+  const table = { id: 'table', kind: 'restaurant', status: 'unverified', source: '/files/t.pdf', title: 'Nepenthe', unsure: ['end'], start: { at: '2026-11-27T19:00:00-08:00', tz: LA }, end: { at: '2026-11-27T21:00:00-08:00', tz: LA } };
+  const wakes = (/** @type {any} */ b) => {
+    const ws = planWatches(items, new Map([['/bookings/table.json', b]]), { fallbackTz: LA });
+    assert.deepEqual(ws.map((w) => w.id), ['plan:dinner:off-plan', 'plan:dinner:arrived', 'plan:linger']);
+    const offPlan = PLAN.check(ws[0].when, here(RIVER_INN, at('19:15')), {})?.text;
+    const arrived = PLAN.check(ws[1].when, here(NEPENTHE, at('19:05'), { stop: { ...NEPENTHE, since: at('19:00') } }), {})?.text;
+    return [offPlan, arrived];
+  };
+  assert.deepEqual(wakes(table), [
+    'Off plan: "Dinner" (not sure the time was read right) is planned for 19:00–21:00 at Nepenthe, and the user is 7.0 km away. The replanning skill says what to do',
+    'Plan: you arrived at Nepenthe for "Dinner" (19:00)', // the arrived wake shows the start alone, which is sure
+  ]);
+  assert.deepEqual(wakes({ ...table, unsure: [] }), [
+    'Off plan: "Dinner" is planned for 19:00–21:00 at Nepenthe, and the user is 7.0 km away. The replanning skill says what to do',
+    'Plan: you arrived at Nepenthe for "Dinner" (19:00)',
+  ]);
+  assert.match(String(wakes({ ...table, unsure: ['start'] })[1]), /\(not sure the time was read right, 19:00\)$/);
+});
