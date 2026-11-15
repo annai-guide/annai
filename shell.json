@@ -1,5 +1,5 @@
 {
-  "build": "e1a354f2b3e1",
+  "build": "8787f8b59e07",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -74,7 +74,7 @@
     "/src/core/hooks.js": "61bf90a384c1",
     "/src/core/html-text.js": "ad9b5709befa",
     "/src/core/llm/call.js": "76f903d7e4b3",
-    "/src/core/llm/check.js": "f2dc21e9f727",
+    "/src/core/llm/check.js": "13f4e54d60fe",
     "/src/core/llm/config.js": "62d41dab6833",
     "/src/core/llm/contract.js": "6da3a160312f",
     "/src/core/llm/decide.js": "4aff39cf2ab3",

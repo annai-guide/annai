@@ -462,6 +462,29 @@ test("a photo's upload has a time limit of its own (UPLOAD_MS): a stall ends it,
     assert.equal(got[0], made[0], 'the fetch got the limit it was made with');
     assert.deepEqual(bodies.map((b) => b.images), [['bytes', 'bytes']], 'both photos went in the request');
     assert.equal(uploads.isOff('pv-1/chat'), true);
+    // A turn passes its own signal (loop.js), which never fires here: the limit still ends the stall, through the join. A throw inside the stub
+    // is a failed upload too, so whether the limit reached the upload is recorded there and asserted outside it.
+    made.length = 0;
+    bodies.length = 0;
+    const joined = new Uploads(ws);
+    /** @type {boolean[]} */
+    const cut = [];
+    const turn = new AbortController();
+    const slow = async (/** @type {string} */ url, /** @type {any} */ init) => {
+      if (!url.endsWith('/v1/files')) {
+        bodies.push(JSON.parse(init.body));
+        return new Response('');
+      }
+      return new Promise((_, reject) => {
+        init.signal.addEventListener('abort', () => { cut.push(true); reject(init.signal.reason); });
+        setTimeout(() => reject(new Error('the limit did not reach the upload')), 1000);
+      });
+    };
+    await callOnce({ type: t, endpoint: endpoint(), model: m, key: 'k', request: /** @type {any} */ (withPhoto), fetch: /** @type {any} */ (slow), uploads: joined, signal: turn.signal });
+    assert.deepEqual(cut, [true], 'the limit ends the upload of a call that passes its own signal, as every turn does');
+    assert.deepEqual(bodies.map((b) => b.images), [['bytes', 'bytes']]);
+    assert.equal(joined.isOff('pv-1/chat'), true);
+    asked.length = 0;
     // A Stop during the upload is a Stop: not a failed upload, which would turn uploads off and send the photo.
     asked.length = 0;
     made.length = 0;

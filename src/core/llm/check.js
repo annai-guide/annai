@@ -1,5 +1,5 @@
 import { callOnce } from './call.js';
-import { ProviderError, errorFromResponse, explain, sameOrigin, noRedirect } from './contract.js';
+import { ProviderError, typeError, explain, sameOrigin, noRedirect } from './contract.js';
 import { LEVELS, nearestLevel } from './reasoning.js';
 import { fromBase64 } from '../bytes.js';
 import { TEST_UPLOAD, REQUEST_MS, deleteUpload, sweepUploads } from './uploads.js';
@@ -137,17 +137,17 @@ async function testUpload({ type, endpoint, model, key, fetch: get = (url, init)
     // The sweeps' time limit for each list or delete request (REQUEST_MS): a stall, body included, ends in no answer, as a failed connection does.
     res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, redirect: 'manual', signal: AbortSignal.timeout(REQUEST_MS) });
     noRedirect(res, endpoint);
-    // A 408, a 429 or a server error says nothing about the key: a 408 is no answer, the others have the first step's words (a 429's from its body: quota, billing or
-    // credit is the account's; a body that breaks off is read as empty). Unlike after the delete below, where the upload worked, uploads go off for each of them.
-    if (!res.ok) throw res.status === 408 ? new ProviderError('unreachable', 'HTTP 408') : res.status === 429 || res.status >= 500 ? errorFromResponse(res.status, await res.text().catch(() => ''), res.headers) : new Error(`HTTP ${res.status}`);
+    // A failed answer is read as the first step reads it (typeError: the protocol's and the provider's reading first; a body that breaks off is read as empty), but a 408,
+    // which is no answer. A 402, a 429 or a server error says nothing about the key. Unlike after the delete below, where the upload worked, uploads go off for each.
+    if (!res.ok) throw res.status === 408 ? new ProviderError('unreachable', 'HTTP 408') : typeError(type, res.status, await res.text().catch(() => ''), res.headers);
     // A body that breaks off or stalls is no answer, as the sweep's list reads it; only a body that arrived and isn't an upload is the key's.
     const body = await res.text().catch(() => {
       throw new ProviderError('unreachable', 'no answer');
     });
     up = /** @type {NonNullable<typeof type.readUpload>} */ (type.readUpload)(JSON.parse(body));
   } catch (e) {
-    // The key's words are for an answer that refused the key or wasn't an upload. A redirect, no answer (no reply, a stall, a body that broke off, a 408), a 429
-    // and a server error are not the key's: each has the first step's words (no answer: those for an address annai can't reach).
+    // The key's words are for an answer that refused the key or wasn't an upload. A redirect, no answer (no reply, a stall, a body that broke off, a 408), a 402, a 429
+    // and a server error are not the key's: each is read as the first step reads it (no answer: as for an address annai can't reach).
     const said = e instanceof ProviderError ? (['redirect', 'unreachable', 'rate', 'credit', 'overloaded', 'server'].includes(e.kind) ? e : null) : !res ? new ProviderError('unreachable', 'no answer') : null;
     // As a call's failed upload does, so the words are true: photos go in each request until annai restarts, or a new key or address, or a Test that passes.
     uploads?.off(endpoint.id);

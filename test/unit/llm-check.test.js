@@ -202,13 +202,15 @@ test("the Test button's photo upload has the sweeps' time limit (uploads.js REQU
   }
 });
 
-test("a Test whose photo upload is answered 408, 429 or with a server error is not told as the key's: a 408 is no answer, the others have the words the first step gives them (review of openrouter-f1, F1)", async () => {
+test("a Test whose photo upload is answered 408, 402, 429 or with a server error is not told as the key's: a 408 is no answer, the others are read as the first step reads them (typeError: the protocol's and the provider's own reading first) (review of openrouter-f1, F1, G1)", async () => {
   const script = [{ text: 'OK' }, { toolCalls: [{ name: 'report_color', input: { color: 'red' } }] }];
   const rows = /** @type {[number, string, string?][]} */ ([
     [408, "annai couldn't reach this address. It may be down, or it may not allow web apps."],
     [429, 'The provider says too many requests for now.'],
     // A 429 whose body speaks of quota, billing or credit is the account's, as the first step reads it (the second opinion's lead 5).
     [429, 'This account is out of credit.', '{"error":{"message":"Insufficient credits: add more to continue."}}'],
+    // A 402 is the account's too, as the first step reads it (the design check's Call 5).
+    [402, 'This account is out of credit.'],
     [500, 'The provider had a problem on its side.'],
     [502, 'The provider had a problem on its side.'],
     [503, 'The provider is overloaded right now.'],
@@ -224,6 +226,12 @@ test("a Test whose photo upload is answered 408, 429 or with a server error is n
     assert.deepEqual([status, body, last.step, last.ok, last.detail], [status, body, 'upload', false, `${words} ${PHOTOS_INSTEAD}`]);
     assert.equal(r.ok, true, 'photos still work, sent in each request');
   }
+  // The protocol's and the provider's own reading comes first, as on the first step (typeError): Gemini's 429 says "quota" and is too many requests.
+  const { classify } = await import('../../plugins-official/gemini-api/chat.js');
+  const quota = '{"error":{"code":429,"message":"You exceeded your current quota, please check your plan and billing details.","status":"RESOURCE_EXHAUSTED"}}';
+  const g = withUploads(scriptedCase(script));
+  const read = /** @type {any} */ ((await testModel({ ...g, type: { ...g.type, classify }, fetch: async () => new Response(quota, { status: 429 }) })).steps.at(-1));
+  assert.equal(read.detail, `The provider says too many requests for now. ${PHOTOS_INSTEAD}`);
   // A 429's body that breaks off is read as empty: the answer still came, so it is "too many requests", not no answer.
   const broken = /** @type {any} */ ((await testModel({ ...withUploads(scriptedCase(script)), fetch: /** @type {any} */ (async () => new Response(new ReadableStream({ start(c) { c.error(new TypeError('network error')); } }), { status: 429 })) })).steps.at(-1));
   assert.equal(broken.detail, `The provider says too many requests for now. ${PHOTOS_INSTEAD}`);
