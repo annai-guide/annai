@@ -206,3 +206,19 @@ test("a hand-over her sleep settled stays answered across a wake of a later turn
   const t = await Transcript.load(store, SCOPE);
   assert.deepEqual([t.handover, t.owedHandover], [null, null]);
 });
+
+test("a hand-over her turn's end record answered stays answered across a wake of a later turn that joins nothing of hers (a move's recap): the re-review's R1, at the reader, with the record", async () => {
+  const store = createMemoryStore();
+  const handed = [{ path: '/trip/files/flight.pdf', type: 'application/pdf', name: 'flight.pdf', new: true }];
+  await record(store, SCOPE, { type: 'wake', actor: 'system', data: { id: 'w-1', reasons: [{ kind: 'user', text: 'typed' }] } });
+  await record(store, SCOPE, { type: 'msg.user', actor: 'user', data: { wake: 'w-1', handed, handover: 'h-0' }, texts: [['text', 'Our trip']] });
+  await modelTrace(store, SCOPE).turn(/** @type {any} */ ({ ...info, wake: 'w-1', handover: 'h-0', endLogged: true }), '', '', [{ type: 'tool_call', id: 'a', name: 'speak', input: { text: 'Filed.' } }, { type: 'tool_call', id: 'b', name: 'sleep', input: {} }]);
+  await record(store, SCOPE, { type: 'out.speak', actor: 'shiori', data: { id: 'a', wake: 'w-1' }, texts: [['text', 'Filed.']] });
+  for (const [id, name, c] of [['a', 'speak', 'Said.'], ['b', 'sleep', 'asleep']]) await record(store, SCOPE, { type: 'tool.result', actor: 'system', data: { id, name, ok: true, cut: false, ms: 1, wake: 'w-1' }, texts: [['content', c]] });
+  assert.deepEqual([(await Transcript.load(store, SCOPE)).owedHandover, (await Transcript.load(store, SCOPE)).unanswered], ['h-0', true], 'no end logged yet: under way, the hand-over owed');
+  await record(store, SCOPE, { type: 'turn.end', actor: 'system', data: { wake: 'w-1', handover: 'h-0' } });
+  assert.equal((await Transcript.load(store, SCOPE)).owedHandover, null, 'her turn ended, and its end answered it');
+  await record(store, SCOPE, { type: 'wake', actor: 'system', data: { id: 'w-2', meanwhile: true, reasons: [{ kind: 'move', text: 'We found the ramen place.' }] } });
+  const t = await Transcript.load(store, SCOPE);
+  assert.deepEqual([t.handover, t.owedHandover], [null, null]);
+});
