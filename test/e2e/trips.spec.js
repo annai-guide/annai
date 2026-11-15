@@ -554,27 +554,6 @@ test('Start a trip needs only a name: the trip opens with no dates, and on Trips
   await expect(card.locator('.sub')).not.toHaveText(/^updated /); // a line says when it was last talked in, not a card's facts
 });
 
-test('files waiting with Shiori are listed on Trips: one opens, one is asked about (a chip in the type box), one is deleted', async ({ page }) => {
-  await openApp(page);
-  await writeRecords(page, 'sys:waiting', { text: { '/files/hotel.txt': 'Hotel Aurora Test, Nov 20–27', '/files/car.txt': 'Midnight Sun Rentals', '/files/note.txt': 'Not a booking' } });
-  await page.reload();
-  await expect(page.getByRole('heading', { name: 'Waiting with Shiori' })).toBeVisible();
-  const row = (/** @type {string} */ name) => page.locator('.waiting-file', { hasText: name });
-  await row('hotel.txt').getByRole('link', { name: 'Open' }).click();
-  await expect(page.getByRole('heading', { name: 'hotel.txt' })).toBeVisible();
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).first().click();
-  await expect(page.getByRole('heading', { name: 'Waiting with Shiori' })).toBeVisible();
-  await row('note.txt').getByRole('button', { name: 'Delete' }).click();
-  await row('note.txt').getByRole('button', { name: 'Tap again to delete' }).click();
-  await expect(page.getByText(/^Deleted note\.txt\./)).toBeVisible();
-  await expect(row('note.txt')).toHaveCount(0);
-  await row('car.txt').getByRole('button', { name: 'Ask Shiori about this' }).click();
-  await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
-  await expect(page.locator('.type-sheet .attach-chip')).toHaveText(['car.txt×']);
-  await expect(page.getByRole('button', { name: 'Remove car.txt' })).toBeVisible();
-  await expect(page.getByLabel('Message to Shiori')).toBeFocused();
-});
-
 test("a Delete in Waiting with Shiori tapped once stays armed when home is drawn again: another file's Delete draws it again", async ({ page }) => {
   await openApp(page);
   await writeRecords(page, 'sys:waiting', { text: { '/files/hotel.txt': 'Hotel Aurora Test, Nov 20–27', '/files/note.txt': 'Not a booking' } });
@@ -597,28 +576,6 @@ test("a trip's card says when a file is waiting to be read", async ({ page }) =>
   await writeEvent(page, trip, { type: 'wake', data: { id: 'w-1', reasons: [{ kind: 'file', text: 'A file was moved here.', files: ['/files/temple.txt'] }] } });
   await page.goto('/#/trips');
   await expect(page.locator('.trip-card', { hasText: 'Kyoto' })).toContainText('1 file waiting to be read');
-});
-
-test('with a trip open, Trips has a way back to the conversation outside any trip', async ({ page }) => {
-  await openApp(page);
-  await expect(page.getByRole('button', { name: /Shiori, no trip/ })).toHaveCount(0); // none open: the Conversation is that one already
-  await startNamed(page, 'Kyoto');
-  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
-  await page.getByRole('button', { name: /Shiori, no trip/ }).click();
-  await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
-  await expect(page.getByText(/No trip is open/)).toBeVisible();
-  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
-  await expect(page.getByRole('button', { name: /Shiori, no trip/ })).toHaveCount(0);
-});
-
-test("the way back outside any trip that won't open says so, and Trips stays", async ({ page }) => {
-  await openApp(page);
-  await startNamed(page, 'Kyoto');
-  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
-  await breakOpen(page);
-  await page.getByRole('button', { name: /Shiori, no trip/ }).click();
-  await expect(page.getByText("That conversation didn't open")).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
 });
 
 test("the folded dates keep their disclosure marker, and their tap is a phone's size", async ({ page }) => {

@@ -201,8 +201,8 @@ test('Detailed trace: it stays off with no server; on, a turn the microphone hea
     expect(copy.data.text).not.toContain(`${sink.url}/trace`); // an address in a field stays there too
 
     // A route change sends a copy of the new screen.
-    await page.goto('/#/talk');
-    await expect.poll(async () => (await sink.lines()).filter((l) => l.type === 'trace.screen' && l.data.route === '#/talk').length, { timeout: 20_000 }).toBe(1);
+    await page.goto('/#/talk'); // the open conversation's own address: the new one's, as nothing else is open
+    await expect.poll(async () => (await sink.lines()).filter((l) => l.type === 'trace.screen' && /^#\/trip\/trip-[0-9a-z]+\/talk$/.test(l.data.route)).length, { timeout: 20_000 }).toBe(1);
 
     // A real turn through the browser's microphone path: its clip is on the sink's disk, named by the heard entry.
     await page.getByRole('button', { name: 'Shiori' }).click();
