@@ -20,15 +20,22 @@ test("the compact view: today's plan, bookings within 48 hours, the place, the t
   const booking = (/** @type {string} */ id, /** @type {any} */ b) => k.ws.write(k.trip, `/bookings/${id}.json`, { id, status: 'confirmed', source: '/files/x.pdf', ...b }, { author: 'user' });
   await booking('inn', { kind: 'lodging', title: 'Deetjen\'s Big Sur Inn', start: at('2026-11-26T15:00:00'), confirmation: 'DJ42' });
   await booking('far', { kind: 'event', title: 'Castle tour', start: at('2026-11-29T10:00:00') });
+  // A booking from before annai marked fields (no unsure) is checked whole; one of hers she is sure of, nothing.
+  await booking('car', { kind: 'car', status: 'unverified', title: 'Cambria Test Car', start: at('2026-11-27T08:00:00') });
+  await booking('ferry', { kind: 'other', status: 'unverified', unsure: [], title: 'Bay Test Ferry', start: at('2026-11-27T07:00:00') });
   const view = await compactView({ ws: k.ws, trip: k.trip, now, timeZone: LA, next: { when: 'Thu 2026-11-26 12:00 (GMT-8)', text: 'Leave for lunch in 30 minutes' } });
   assert.ok(view.startsWith('<today>\n') && view.endsWith('\n</today>'));
   assert.ok(view.length <= VIEW_MAX);
   assert.match(view, /trip: Big Sur/);
-  assert.match(view, /Lunch at Nepenthe\tno\tNepenthe/);
-  assert.match(view, /Sunset at McWay Falls\tyes/);
+  assert.match(view, /Lunch at Nepenthe\t\tNepenthe/);
+  assert.match(view, /Sunset at McWay Falls\tcan't be moved/);
   assert.match(view, /Drive to Cambria/);
   assert.doesNotMatch(view, /Monterey Aquarium|Hearst Castle tour/);
-  assert.match(view, /lodging\tDeetjen's Big Sur Inn\tconfirmed\tDJ42/);
+  // A booking's check as the screens mark it, never its status word (Koe said 「未確認」 for unverified, 2026-11-14): nothing when nothing is marked.
+  assert.match(view, /start\tkind\ttitle\tcheck\tconfirmation\n/);
+  assert.match(view, /lodging\tDeetjen's Big Sur Inn\t\tDJ42/);
+  assert.match(view, /other\tBay Test Ferry\t\t\n/);
+  assert.match(view, /car\tCambria Test Car\tnot sure it was read right\t\n/);
   assert.doesNotMatch(view, /Castle tour/);
   assert.match(view, /next reminder: Thu 2026-11-26 12:00 \(GMT-8\) Leave for lunch in 30 minutes/);
   // In Koe's tail, after the now block with the time and place, never in its prefix.
@@ -61,7 +68,7 @@ test("the compact view lists today's ends of things over several days at their t
   await write('/plan/car.json', { id: 'car', title: 'Rental car', fixed: true, booking: '/trip/bookings/car.json', start: at('2026-11-20T09:00:00'), end: at('2026-11-27T18:00:00'), place: { name: 'Airport lot' } });
   await write('/plan/lunch.json', { id: 'lunch', title: 'Lunch', fixed: false, start: at('2026-11-26T12:30:00') });
   const view = await compactView({ ws: k.ws, trip: k.trip, now, timeZone: LA, next: null });
-  assert.match(view, /2026-11-26 11:00\t\tCheck out · Cliffside Test Inn\tyes\t\n2026-11-26 12:30\t\tLunch\tno\t\n2026-11-27 18:00\t\tReturn · Rental car\tyes\tAirport lot/);
+  assert.match(view, /2026-11-26 11:00\t\tCheck out · Cliffside Test Inn\tcan't be moved\t\n2026-11-26 12:30\t\tLunch\t\t\n2026-11-27 18:00\t\tReturn · Rental car\tcan't be moved\tAirport lot/);
   assert.doesNotMatch(view, /Pick up|day \d of/);
 });
 
@@ -71,7 +78,7 @@ test("a conversation with no dates: the view says it has none and that the user'
   assert.equal(view, "<today>\ntrip: Big Sur (a conversation with no dates: what is on, and where and when, is in the user's trips, which Kokoro reads)\nnext reminder: none\n</today>");
   // What it does hold is listed, as ever.
   await k.ws.write(k.trip, '/plan/lunch.json', { id: 'lunch', title: 'Lunch', fixed: false, start: at('2026-11-26T12:30:00') }, { author: 'user' });
-  assert.match(await compactView({ ws: k.ws, trip: k.trip, now, timeZone: LA, next: null }), /\(a conversation with no dates[^\n]*\nplan for 2026-11-26 and 2026-11-27:\nstart\tend\ttitle\tfixed\tplace\n2026-11-26 12:30\t\tLunch\tno\t\nnext reminder: none/);
+  assert.match(await compactView({ ws: k.ws, trip: k.trip, now, timeZone: LA, next: null }), /\(a conversation with no dates[^\n]*\nplan for 2026-11-26 and 2026-11-27:\nstart\tend\ttitle\tconstraint\tplace\n2026-11-26 12:30\t\tLunch\t\t\nnext reminder: none/);
   // A dated trip with nothing today is a trip with nothing today.
   const tj = await k.ws.readJSON(k.trip, '/trip.json');
   await k.ws.write(k.trip, '/trip.json', { ...tj, start: '2026-11-25', end: '2026-11-28' }, { author: 'user' });

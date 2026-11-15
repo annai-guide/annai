@@ -1,6 +1,6 @@
 import { meters, travelMinutes, modeFor, kmText, TRAVEL } from './geo.js';
 import { timeIn, validZone, instantAt } from '../time.js';
-import { bookingRef } from '../plan.js';
+import { bookingRef, fixedWords } from '../plan.js';
 import { t } from '../l10n.js';
 import { sentences, num, when as clockAt } from '../intl.js';
 
@@ -165,8 +165,8 @@ export const planItemWords = (say) => (say.what ? whatWords(say.what) : '');
 
 /** @param {any} w @param {number} [t] */
 const hhmm = (w, t = w.at) => timeIn(t, w.tz);
-/** @param {any} w */
-const kind = (w) => (w.fixed ? 'fixed' : 'flexible');
+/** What a wake says of an item beside its title: "(can't be moved, 12:00)", "(09:45)" for a flexible one. @param {any} w @param {(string | null)[]} more */
+const tag = (w, ...more) => { const p = [fixedWords(w.fixed), ...more].filter(Boolean); return p.length ? ` (${p.join(', ')})` : ''; };
 /** Where the user is now (not on a catch-up's first look). @param {Moment} m */
 const now = (m) => (m.fix && !m.past ? m.fix : null);
 /** @param {number} km @param {string} activity */
@@ -197,7 +197,7 @@ const CHECK = {
     if (!l || m.now < l.due || m.now >= w.at) return null;
     const how = l.km === null ? '' : `: ${kmText(l.km * 1000)} away in a straight line, about ${l.minutes} min ${l.words}`;
     return {
-      text: `Plan: time to leave soon for "${w.title}" (${kind(w)}, ${hhmm(w)})${how}`, at: l.due,
+      text: `Plan: time to leave soon for "${w.title}"${tag(w, hhmm(w))}${how}`, at: l.due,
       fallback: l.km === null ? `Leave soon: ${w.what}.` : `Leave in about ${LEAVE_LEAD_MIN} min: ${w.what}. About ${l.minutes} min ${l.words}.`,
       say: l.km === null ? { event: 'leave', what: w.short } : { event: 'leave', what: w.short, minutes: l.minutes, mode: l.mode },
     };
@@ -205,7 +205,7 @@ const CHECK = {
   'coming-up'(w, m) {
     const due = w.at - COMING_UP_MIN * MIN;
     if (m.now < due || m.now >= w.at) return null;
-    return { text: `Plan: "${w.title}" (${kind(w)}) starts at ${hhmm(w)}, in ${Math.max(1, Math.round((w.at - m.now) / MIN))} min`, at: due };
+    return { text: `Plan: "${w.title}"${tag(w)} starts at ${hhmm(w)}, in ${Math.max(1, Math.round((w.at - m.now) / MIN))} min`, at: due };
   },
   arrived(w, m, mem) {
     const fix = now(m);
@@ -223,7 +223,7 @@ const CHECK = {
     const gap = m.gap;
     const back = gap !== null && gap.since !== null && m.newFix && m.now - gap.since >= ARRIVE_STOP_MIN * MIN;
     if (!stopped && !long && !back) return null;
-    return { text: `Plan: you arrived at ${w.place.name} for "${w.title}" (${kind(w)}, ${hhmm(w)})${back && !stopped && !long ? ', inferred on coming back on screen' : ''}`, place: w.place };
+    return { text: `Plan: you arrived at ${w.place.name} for "${w.title}"${tag(w, hhmm(w))}${back && !stopped && !long ? ', inferred on coming back on screen' : ''}`, place: w.place };
   },
   late(w, m) {
     const fix = now(m);
@@ -234,7 +234,7 @@ const CHECK = {
     const eta = m.now + t.minutes * MIN;
     if (eta <= w.at + LATE_GRACE_MIN * MIN) return null;
     return {
-      text: `Plan: running late for "${w.title}" (${kind(w)}, ${hhmm(w)}): ${kmText(km * 1000)} away, about ${t.minutes} min ${t.words}, so about ${Math.round((eta - w.at) / MIN)} min late`,
+      text: `Plan: running late for "${w.title}"${tag(w, hhmm(w))}: ${kmText(km * 1000)} away, about ${t.minutes} min ${t.words}, so about ${Math.round((eta - w.at) / MIN)} min late`,
       fallback: `Running late: ${w.what}. About ${t.minutes} min away.`,
       say: { event: 'late', what: w.short, minutes: t.minutes },
     };
@@ -245,7 +245,7 @@ const CHECK = {
     if (!fix || m.fired(`plan:${w.item}:arrived`) || m.now < w.at + OFF_PLAN_AFTER_MIN * MIN || m.now > end) return null;
     const km = meters(fix, w.place) / 1000;
     if (km <= OFF_PLAN_KM) return null;
-    return { text: `Off plan: "${w.title}" (flexible) is planned for ${hhmm(w)}–${hhmm(w, end)} at ${w.place.name}, and the user is ${kmText(km * 1000)} away. The replanning skill says what to do` };
+    return { text: `Off plan: "${w.title}"${tag(w)} is planned for ${hhmm(w)}–${hhmm(w, end)} at ${w.place.name}, and the user is ${kmText(km * 1000)} away. The replanning skill says what to do` };
   },
   linger(w, m, mem) {
     const fix = now(m);

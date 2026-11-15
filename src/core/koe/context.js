@@ -1,6 +1,7 @@
 import { tsv } from '../tsv.js';
 import { escapeTags } from '../agent/blocks.js';
-import { planRows } from '../plan.js';
+import { planRows, fixedWords } from '../plan.js';
+import { checkWords } from '../bookings.js';
 
 /** Koe's compact view of the trip, in its tail; its words escaped. */
 export const VIEW_MAX = 2000;
@@ -41,12 +42,12 @@ export async function compactView({ ws, trip, now, timeZone, next }) {
     .map((r) => {
       const end = r.from === 'item' ? at(r.item.end) : NaN;
       const name = r.from === 'end' ? `${ENDS[r.set?.kind ?? ''] ?? 'Ends'} · ${r.item.title}` : r.item.title;
-      return [local(/** @type {number} */ (r.at), timeZone), Number.isFinite(end) ? local(end, timeZone) : '', e(name), r.item.fixed ? 'yes' : 'no', e(r.item.place?.name)];
+      return [local(/** @type {number} */ (r.at), timeZone), Number.isFinite(end) ? local(end, timeZone) : '', e(name), fixedWords(r.item.fixed), e(r.item.place?.name)];
     });
   const bookings = bookingFiles.map((f) => f.value)
     .filter((b) => at(b.start) >= now - 6 * 3_600_000 && at(b.start) <= now + 2 * DAY)
     .sort((a, b) => at(a.start) - at(b.start))
-    .map((b) => [local(at(b.start), timeZone), e(b.kind), e(b.title), e(b.status), e(b.confirmation)]);
+    .map((b) => [local(at(b.start), timeZone), e(b.kind), e(b.title), checkWords(b), e(b.confirmation)]);
   const tj = await ws.readJSON(trip, '/trip.json').catch(() => null);
   /* en */ const title = e(tj?.title ?? 'this trip');
   // A conversation with no dates has no plan of its own: an empty one there says nothing of the user's trips, which Kokoro reads (Koe
@@ -58,9 +59,9 @@ export async function compactView({ ws, trip, now, timeZone, next }) {
     /* en */ `trip: ${title}${dated ? '' : " (a conversation with no dates: what is on, and where and when, is in the user's trips, which Kokoro reads)"}`,
     ...(dated || plan.length ? [
       /* en */ `plan for ${days.join(' and ')}:`,
-      plan.length ? tsv(['start', 'end', 'title', 'fixed', 'place'], plan.slice(0, n)) + (n < plan.length ? /* en */ `\n…and ${plan.length - n} more (read /trip/plan/)` : '') : /* en */ 'nothing planned',
+      plan.length ? tsv(['start', 'end', 'title', 'constraint', 'place'], plan.slice(0, n)) + (n < plan.length ? /* en */ `\n…and ${plan.length - n} more (read /trip/plan/)` : '') : /* en */ 'nothing planned',
     ] : []),
-    ...(dated || bookings.length ? [/* en */ 'bookings in the next 48 hours:', bookings.length ? tsv(['start', 'kind', 'title', 'status', 'confirmation'], bookings) : 'none'] : []),
+    ...(dated || bookings.length ? [/* en */ 'bookings in the next 48 hours:', bookings.length ? tsv(['start', 'kind', 'title', 'check', 'confirmation'], bookings) : 'none'] : []),
     /* en */ `next reminder: ${next ? `${e(next.when)} ${e(next.text)}` : 'none'}`,
     '</today>',
   ].join('\n');

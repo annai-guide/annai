@@ -31,6 +31,15 @@ export function checkOf(b) {
   return { whole: false, fields };
 }
 
+/**
+ * What a model is shown of a booking's check, beside it: what the screens mark (checkOf), never the `status` word, which Koe translated
+ * (「未確認」 on bookings with nothing to check, 2026-11-14). Nothing when nothing is marked, as for a confirmed one. @param {any} b
+ */
+export function checkWords(b) {
+  const c = checkOf(b);
+  return /* en */ (c.whole || c.fields.length ? 'not sure it was read right' : '');
+}
+
 /** A trip's booking record. @param {string} scope @param {string} path */
 export function isBookingPath(scope, path) {
   return kindOf(scope) === 'trip' && BOOKING_FILE.test(path);

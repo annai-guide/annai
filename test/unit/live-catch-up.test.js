@@ -47,7 +47,7 @@ test("leaving is inferred from where the user was against where they are; the pl
   const w = k.agent.wakes.at(-1);
   assert.equal(w.kind, 'catch-up');
   assert.ok(w.text.startsWith('Catch-up: annai was off screen for 48 min (since 10:52), and the user moved 14.1 km from near Bixby Creek Bridge. '), w.text);
-  assert.ok(w.text.includes('Plan: time to leave soon for "Lunch at Nepenthe" (fixed, 12:00): 21.2 km away in a straight line, about 36 min by car (late by 31 min: annai was off screen).'), w.text);
+  assert.ok(w.text.includes('Plan: time to leave soon for "Lunch at Nepenthe" (can\'t be moved, 12:00): 21.2 km away in a straight line, about 36 min by car (late by 31 min: annai was off screen).'), w.text);
   assert.ok(w.text.includes(`Your watch ${bye.id} (on leaving Bixby Bridge (200 m)) fired: you left Bixby Bridge, now 14.1 km away. Its reminder: "Bye, Bixby."`), w.text);
 });
 
@@ -62,7 +62,7 @@ test('arriving is inferred on coming back inside a plan place', async () => {
   await k.settle();
   await k.fix(at('11:55:05'), NEPENTHE);
   assert.equal(k.agent.wakes.length, before + 1);
-  assert.ok(k.agent.wakes.at(-1).text.endsWith('Plan: you arrived at Nepenthe for "Lunch at Nepenthe" (fixed, 12:00), inferred on coming back on screen.'));
+  assert.ok(k.agent.wakes.at(-1).text.endsWith('Plan: you arrived at Nepenthe for "Lunch at Nepenthe" (can\'t be moved, 12:00), inferred on coming back on screen.'));
 });
 
 test('nothing came due while away: no wake (choice 12); no fix comes back: the catch-up goes after 15 s with what the clock made due', async () => {
@@ -132,7 +132,7 @@ test('with no connection, annai says each reminder at once and holds the wakes; 
   await k.settle();
   assert.equal(k.agent.wakes.length, 1);
   assert.equal(k.agent.wakes[0].kind, 'trigger');
-  assert.match(k.agent.wakes[0].text, /^While there was no connection \(for 3 h, since 08:30\), these came, and annai showed their reminders by itself: Your watch w-\S+ \(at Fri 2026-11-27 10:00 \(GMT-8\)\) fired: the time came: Fri 2026-11-27 10:00 \(GMT-8\)\. Its reminder: "Tea time\." Plan: time to leave soon for "Lunch at Nepenthe" \(fixed, 12:00\)\.$/);
+  assert.match(k.agent.wakes[0].text, /^While there was no connection \(for 3 h, since 08:30\), these came, and annai showed their reminders by itself: Your watch w-\S+ \(at Fri 2026-11-27 10:00 \(GMT-8\)\) fired: the time came: Fri 2026-11-27 10:00 \(GMT-8\)\. Its reminder: "Tea time\." Plan: time to leave soon for "Lunch at Nepenthe" \(can't be moved, 12:00\)\.$/);
   assert.deepEqual(k.agent.wakes[0].fallbacks, []);
   assert.ok((await k.events(['trigger.fired'])).every((e) => e.data.offline === true));
   k.sensors.online(true);

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { bookingRef, planRows, planDays, legKm, PLAN_FILE, BOOKING_FILE, beforeShiori, shioriUndos, NIGHTS_MAX } from '../../src/core/plan.js';
+import { bookingRef, planRows, planDays, legKm, PLAN_FILE, BOOKING_FILE, beforeShiori, shioriUndos, NIGHTS_MAX, fixedWords } from '../../src/core/plan.js';
 import { upcoming } from '../../src/core/now.js';
 import { tripRows } from '../../src/ui/trip-rows.js';
 import { setWords } from '../../src/core/l10n.js';
@@ -29,6 +29,12 @@ const bookings = [
   { path: '/bookings/hotel.json', booking: { id: 'hotel', kind: 'lodging', status: 'confirmed', source: '/files/hotel.pdf' } },
 ];
 const rows = () => planRows(items, bookings, { fallbackTz: NY });
+
+test("fixedWords: what a plan item's fixed means, as a model is shown it; a flexible item, or one with no fixed field, gets no words", () => {
+  assert.equal(fixedWords(true), "can't be moved");
+  assert.equal(fixedWords(false), '');
+  assert.equal(fixedWords(/** @type {any} */ ({}).fixed), '');
+});
 
 test('bookingRef: with or without /trip, only a booking record', () => {
   assert.equal(bookingRef('/trip/bookings/a.json'), '/bookings/a.json');

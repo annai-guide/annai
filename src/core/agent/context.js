@@ -11,6 +11,7 @@ import { readAppSettings } from '../settings.js';
 import { languageSettings, languagesText, screensText, distancesText } from '../languages.js';
 import { lang, glossary } from '../l10n.js';
 import { blobJSON } from '../reach.js';
+import { fixedWords } from '../plan.js';
 
 /**
  * The context, in the order that keeps provider caches warm (spec §6.3):
@@ -150,10 +151,10 @@ export async function planItems(ws, trip) {
   return items.sort((a, b) => a.at - b.at);
 }
 
-/** The next plan items, as TSV rows: start, title, fixed, place. @param {import('../workspace.js').Workspace} ws @param {string | null} trip @param {number} now */
+/** The next plan items, as TSV rows: start, title, constraint (fixedWords), place. @param {import('../workspace.js').Workspace} ws @param {string | null} trip @param {number} now */
 export async function nextPlanItems(ws, trip, now, limit = 5) {
   if (!trip) return [];
-  return (await planItems(ws, trip)).filter((x) => x.at >= now).slice(0, limit).map(({ it }) => [it.start.at, it.title, it.fixed ? 'yes' : 'no', it.place?.name ?? '']);
+  return (await planItems(ws, trip)).filter((x) => x.at >= now).slice(0, limit).map(({ it }) => [it.start.at, it.title, fixedWords(it.fixed), it.place?.name ?? '']);
 }
 
 /**
@@ -186,7 +187,7 @@ export function nowBlock({ now, timeZone, voice, online, reasons, plan, place = 
     ...(koe ? [`koe: ${KOE[koe] ?? koe}`] : []),
     `connection: ${online ? 'online' : 'offline'}`,
     ...(reasons.length ? [`woke for: ${reasons.join('; ')}`] : []),
-    ...(plan === null ? [] : [plan.length ? `next in the plan:\n${tsv(['start', 'title', 'fixed', 'place'], plan)}` : 'next in the plan: nothing']),
+    ...(plan === null ? [] : [plan.length ? `next in the plan:\n${tsv(['start', 'title', 'constraint', 'place'], plan)}` : 'next in the plan: nothing']),
   ];
   /* en */ return `<now>\n${lines.join('\n')}\n</now>`;
 }

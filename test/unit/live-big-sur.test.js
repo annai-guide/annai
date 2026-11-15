@@ -10,7 +10,7 @@ test('a simulated Big Sur drive produces the expected wakes, and Shiori does wha
   // Unlocked after the phone was locked: what came due and how far they went, in one wake (spec §11.4).
   const catchUp = String(wakes.find((e) => e.data.reasons[0].kind === 'catch-up')?.data.reasons[0].text);
   assert.match(catchUp, /^Catch-up: annai was off screen for 47 min \(since 15:18\), and the user moved \d+\.\d km\. /);
-  assert.match(catchUp, /Plan: time to leave soon for "Hearst Castle tour" \(fixed, 16:30\): .*\(late by 1\d min: annai was off screen\)\./);
+  assert.match(catchUp, /Plan: time to leave soon for "Hearst Castle tour" \(can't be moved, 16:30\): .*\(late by 1\d min: annai was off screen\)\./);
   assert.match(catchUp, /fired: you have travelled \d+\.\d km since this watch last started counting/);
   // With no connection near Lucia, annai said the narration watch's reminder itself, aloud (spec §11.3, §17).
   assert.deepEqual((await k.events(['reminder'])).map((e) => [e.data.text, e.data.aloud]), [[NARRATE, true], [NARRATE, true], [NARRATE, true]]);
