@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, addProvider, savedBy, tapAdd } from './helpers.js';
+import { openApp, waitForServiceWorker, addProvider, savedBy, tapAdd, startOpenRouterFiles } from './helpers.js';
 
 // Settings in the order a user reaches for them, Settings → Experimental, and the Jina key's link (the user, 2026-10-18).
 
@@ -272,24 +272,37 @@ test('a key field says "Saving…" beside its Save button, on screen, until the 
   await page.getByLabel('Token').fill('e2e-token-0123456789');
   await savingBesideIt(page, page.getByRole('button', { name: 'Save', exact: true }));
   await expect(page.getByLabel('Token')).toHaveAttribute('placeholder', 'saved');
-  // A provider's own page.
-  await openApp(page, '#/models');
-  await tapAdd(page, 'OpenRouter');
-  await expect(page.getByRole('heading', { level: 1, name: 'OpenRouter' })).toBeVisible({ timeout: 30_000 });
-  await page.getByRole('button', { name: 'Add by hand' }).click();
-  await expect(page.getByRole('button', { name: 'Remove provider' })).toBeVisible({ timeout: 30_000 });
-  await page.getByLabel('API key').fill('sk-or-typed-key-123');
-  await savingBesideIt(page, page.getByRole('button', { name: 'Save', exact: true }), { label: 'API key', saved: /^saved/ });
-  await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
+  // A provider's own page. A new key reads OpenRouter's files list (spec §4.8), here at a stand-in: no default test reaches openrouter.ai.
+  const files = await startOpenRouterFiles();
+  try {
+    await openApp(page, '#/models');
+    await tapAdd(page, 'OpenRouter');
+    await expect(page.getByRole('heading', { level: 1, name: 'OpenRouter' })).toBeVisible({ timeout: 30_000 });
+    await page.getByRole('button', { name: 'Add by hand' }).click();
+    await expect(page.getByRole('button', { name: 'Remove provider' })).toBeVisible({ timeout: 30_000 });
+    await page.getByLabel('Address', { exact: true }).fill(`${files.origin}/api/v1`);
+    await page.getByLabel('API key').fill('sk-or-typed-key-123');
+    await savingBesideIt(page, page.getByRole('button', { name: 'Save', exact: true }), { label: 'API key', saved: /^saved/ });
+    await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
+  } finally {
+    await files.stop();
+  }
 });
 
 test("a provider's key saved while the screen is drawn again over the save's own draw: the toast still comes only when the field shows the key saved (CI flake: it showed \"not set\")", async ({ page }) => {
-  await openApp(page, '#/models');
-  await tapAdd(page, 'OpenRouter');
-  await expect(page.getByRole('heading', { level: 1, name: 'OpenRouter' })).toBeVisible({ timeout: 30_000 });
-  await page.getByRole('button', { name: 'Add by hand' }).click();
-  await expect(page.getByRole('button', { name: 'Remove provider' })).toBeVisible({ timeout: 30_000 });
-  await page.getByLabel('API key').fill('sk-or-typed-key-123');
-  await savingBesideIt(page, page.getByRole('button', { name: 'Save', exact: true }), { label: 'API key', saved: /^saved/, redraws: true });
-  await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
+  // A new key reads OpenRouter's files list (spec §4.8), here at a stand-in: no default test reaches openrouter.ai.
+  const files = await startOpenRouterFiles();
+  try {
+    await openApp(page, '#/models');
+    await tapAdd(page, 'OpenRouter');
+    await expect(page.getByRole('heading', { level: 1, name: 'OpenRouter' })).toBeVisible({ timeout: 30_000 });
+    await page.getByRole('button', { name: 'Add by hand' }).click();
+    await expect(page.getByRole('button', { name: 'Remove provider' })).toBeVisible({ timeout: 30_000 });
+    await page.getByLabel('Address', { exact: true }).fill(`${files.origin}/api/v1`);
+    await page.getByLabel('API key').fill('sk-or-typed-key-123');
+    await savingBesideIt(page, page.getByRole('button', { name: 'Save', exact: true }), { label: 'API key', saved: /^saved/, redraws: true });
+    await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
+  } finally {
+    await files.stop();
+  }
 });
