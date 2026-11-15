@@ -4,7 +4,7 @@ import { levelPatch } from './reasoning.js';
 import { NO_USAGE, mergeUsage, costOf } from './cost.js';
 import { fromBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
-import { UPLOAD_TTL_S, MARGIN_MS, uploadName } from './uploads.js';
+import { UPLOAD_TTL_S, MARGIN_MS, uploadName, deleteUpload } from './uploads.js';
 import { deleteTurn, lookTurn, keyPrint, hash } from './kept.js';
 import { ttlFor } from '../agent/warmth.js';
 import { formatOf } from '../voice/formats.js';
@@ -582,7 +582,8 @@ export async function photoHash(data) {
 /**
  * Photos go by id to an endpoint that stores files (spec §4.8): each is uploaded once, named
  * annai-… (uploadName, the rule the sweep deletes by), used for 48 hours. A failed upload sends the bytes, and stops
- * uploading there until annai restarts.
+ * uploading there until annai restarts, or its provider's key or address changes, or a Test passes (where the list can be read). An upload
+ * answered after the ability's uploads went off, or its provider began to go, is deleted at once and its photo sent in the request.
  * @param {Request} request
  * @param {{ type: EndpointType, endpoint: Endpoint, model: Model, key: string | null, uploads?: import('./uploads.js').Uploads, get: Fetch, trace?: ModelTrace, signal?: AbortSignal, now: () => number, from?: number }} c
  * from: the first message that is sent, the ones before it being held by a kept turn; expires: when the earliest of the photos sent by id expires (0: none)
@@ -620,6 +621,11 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
         noRedirect(res, endpoint);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const up = type.readUpload(await res.json());
+        if (uploads.isOff(endpoint.id)) {
+          // Answered after a removal, a key or address change or Erase began: the file would stay in the workspace being let go.
+          await deleteUpload({ type, endpoint, key, fetch: get, trace, now, id: up.id });
+          continue;
+        }
         const expiresAt = up.expiresAt ?? now() + UPLOAD_TTL_S * 1000;
         await uploads.set(endpoint.id, hash, up.id, expiresAt, now());
         ids.set(hash, up.id);
@@ -627,7 +633,7 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
       } catch (e) {
         if (signal?.aborted) throw e;
         if (!traced) await trace?.upload({ endpoint: endpoint.name, url: r.url, status: 0, ms: now() - started, error: String(/** @type {any} */ (e)?.message ?? e) });
-        uploads.off(endpoint.id); // photos go as bytes here until annai restarts
+        uploads.off(endpoint.id); // photos go as bytes here until annai restarts, or a new key or address, or a Test that passes
       }
     }
   }

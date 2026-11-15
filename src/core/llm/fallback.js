@@ -622,7 +622,7 @@ export async function callRole(c) {
       try {
         const reply = await callOnce({
           type: set.type, endpoint, model, key, request: sendable, level, fetch: c.fetch, signal: c.signal, onEvent: c.onEvent,
-          trace, registry: c.registry, now, firstOutputMs, uploads: c.uploads, tally: c.tally, keepNative: Boolean(c.keepNative), ...(keeps ? { keep: { kept: keeps, scope: c.scope ?? SYS, chain: !whole, secret: own, ...(c.borrow ? { borrow: true } : {}), ...(again ? { again: true } : {}) } } : {}),
+          trace, registry: c.registry, now, firstOutputMs, uploads: own ? c.uploads : undefined, tally: c.tally, keepNative: Boolean(c.keepNative), ...(keeps ? { keep: { kept: keeps, scope: c.scope ?? SYS, chain: !whole, secret: own, ...(c.borrow ? { borrow: true } : {}), ...(again ? { again: true } : {}) } } : {}),
         });
         usage = addUsage(usage, reply.usage);
         cost = addCost(cost, reply.cost);

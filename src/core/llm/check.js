@@ -2,7 +2,7 @@ import { callOnce } from './call.js';
 import { ProviderError, explain, sameOrigin, noRedirect } from './contract.js';
 import { LEVELS, nearestLevel } from './reasoning.js';
 import { fromBase64 } from '../bytes.js';
-import { TEST_UPLOAD, deleteUpload } from './uploads.js';
+import { TEST_UPLOAD, deleteUpload, sweepUploads, listFailed } from './uploads.js';
 import { t } from '../l10n.js';
 import { sentences } from '../intl.js';
 
@@ -28,7 +28,7 @@ const room = (model) => Math.min(4096, model.maxOutput ?? 4096);
  * @typedef {{ type: import('./contract.js').EndpointType, endpoint: import('./config.js').Endpoint, model: import('./config.js').Model,
  *   key: string | null, fetch?: import('./call.js').Fetch, probe?: (url: string) => Promise<boolean>, firstOutputMs?: number,
  *   role?: { id: string, level: string }, uploads?: import('./uploads.js').Uploads }} TestCase  role: a role asking this model at a level of its own (main, koe-classic or utility);
- *   uploads: the endpoints' uploads, turned off where annai can't delete the test photo, and on again where Test passes
+ *   uploads: the endpoints' uploads, turned off where annai can't delete the test photo or read the list, and on again where Test passes and the list can be read
  *   detail: what the step found, in the screens' language
  */
 
@@ -111,15 +111,18 @@ export async function testModel(c) {
       steps.push({ step: 'level', ok: false, detail: sentences(refusedAt(role, err.message.replace(/[.\s]*$/, '.')), lowerLevel(role)) });
     }
   }
-  if (useImage && type.uploadRequest && type.readUpload && endpoint.tunables?.uploads !== false) steps.push(await testUpload(c));
+  // Not while the provider's uploads are going (a removal, a key or address changing, Erase): the test photo would stay in the workspace being let go.
+  if (useImage && type.uploadRequest && type.readUpload && endpoint.tunables?.uploads !== false && !c.uploads?.going(endpoint.id)) steps.push(await testUpload(c));
   return { ok: steps.every((s) => s.ok || s.step === 'upload'), steps };
 }
 
 /**
  * Uploads the test photo, expiring in an hour, the shortest a provider allows (spec §9.8). Where the provider keeps files until they
  * are deleted, annai then deletes it by the id the upload gave, as it will delete each photo: a key that can't (a refusal, or a 404 for
- * the file it just made) sends photos in each request until annai restarts; a delete that gets no answer, a 429 or a server error says
- * nothing about the key, so photos stay on and the sweep deletes the test photo with the others. @param {TestCase} c @returns {Promise<TestStep>}
+ * the file it just made) sends photos in each request until annai restarts, or a new key or address, or a Test that passes; a delete that
+ * gets no answer, a 408, a 429 or a server error says nothing about the key, so photos stay on and the sweep deletes the test photo with
+ * the others. A delete that passes turns uploads on again only where the list can then be read: the sweep reads it once more, and a list
+ * that is refused or can't be read keeps them off, as it does at each start. @param {TestCase} c @returns {Promise<TestStep>}
  */
 async function testUpload({ type, endpoint, model, key, fetch: get = (url, init) => fetch(url, init), uploads }) {
   /** @type {{ id: string }} */
@@ -142,10 +145,15 @@ async function testUpload({ type, endpoint, model, key, fetch: get = (url, init)
   }
   const status = await deleteUpload({ type, endpoint, key, fetch: get, id: up.id });
   if (status >= 200 && status < 300) {
+    // The list too: the sweep deletes what is over 48 hours old by it, so a list annai can't read means files it couldn't find.
+    if (listFailed(await sweepUploads({ type, endpoint, key, fetch: get }).catch(() => null))) {
+      uploads?.off(endpoint.id);
+      return { step: 'upload', ok: false, detail: sentences(t`Photos upload, but annai can't read the list of its photos there, which it needs to delete them.`, t`annai will send photos in each request instead.`) };
+    }
     uploads?.retry(endpoint.id);
     return { step: 'upload', ok: true, detail: t`Photo uploads work: each photo is uploaded once, and annai deletes it after 48 hours (it just deleted the test photo).` };
   }
-  if (status === 0 || status === 429 || status >= 500) {
+  if (status === 0 || status === 408 || status === 429 || status >= 500) {
     return { step: 'upload', ok: false, detail: sentences(t`Photos upload, but annai couldn't check just now that it can delete the test photo.`, t`Tap Test again later. annai deletes the test photo with the others, after 48 hours.`) };
   }
   uploads?.off(endpoint.id);

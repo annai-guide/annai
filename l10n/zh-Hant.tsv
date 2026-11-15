@@ -656,19 +656,20 @@ lh9fzn	ok	Tool calls work.	工具呼叫可用。	src/core/llm/check.js:90
 rk5rlm	ok	The model answered but didn't call the test tool.	模型回答了，但沒有呼叫測試工具。	src/core/llm/check.js:90	
 1xj1cuk	ok	Photos work: it saw the red square.	照片可用：它看到了紅色方塊。	src/core/llm/check.js:96	
 dhnf3r	ok	It didn't see the red square (it said {0}).	它沒有看到紅色方塊（它說：{0}）。	src/core/llm/check.js:96	{0} = answer.slice(0, 60)
-1u5s6ep	ok	Uploading photos didn't work with this key.	用這個金鑰無法上傳照片。	src/core/llm/check.js:137	
-1uj9pv4	ok	annai will send photos in each request instead.	將改為在每次請求中附上照片。	src/core/llm/check.js:137	
-d9hh16	ok	Photo uploads work: each photo is uploaded once, and expires after 48 hours.	照片上傳可用：每張照片只上傳一次，48 小時後過期。	src/core/llm/check.js:141	
-1owzksi	ok	Photo uploads work: each photo is uploaded once, and annai deletes it after 48 hours (it just deleted the test photo).	照片上傳可用：每張照片只上傳一次，48 小時後由 annai 刪除（測試照片剛剛已刪除）。	src/core/llm/check.js:146	
-qer7un	ok	Tap Test again later. annai deletes the test photo with the others, after 48 hours.	請稍後再點一下「測試」。測試照片會和其他照片一樣，在 48 小時後由 annai 刪除。	src/core/llm/check.js:149	Note: Tap is 點一下 (the fixed words); 「測試」 is the button as it is named (model-check.js:15).
-qpr4b9	ok	Photos upload, but annai couldn't check just now that it can delete the test photo.	照片可以上傳，但暫時無法確認能否刪除測試照片。	src/core/llm/check.js:149	Note: annai is left out as the subject (zh-style rule 3).
-1g1zzzw	ok	Photos upload, but annai couldn't delete the test photo with this key.	照片可以上傳，但用這個金鑰無法刪除測試照片。	src/core/llm/check.js:152	Note: annai is left out as the subject (zh-style rule 3); 金鑰 as in the row before it.
-16s9khr	ok	Utility	輔助	src/core/llm/check.js:156	
-2qw9g9	ok	Koe · Chat	Koe · 聊天	src/core/llm/check.js:156	
-mlh3jc	ok	Main	主要	src/core/llm/check.js:156	
-1q9bibx	ok	It also answers at {0}'s level ({1}).	在「{0}」的推理等級（{1}）下也能回答。	src/core/llm/check.js:158	{0} = roleName(role); {1} = role.level; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
-1bbu08l	ok	At {0}'s level ({1}), this model refused: {2}	在「{0}」的推理等級（{1}）下，此模型拒絕了請求：{2}	src/core/llm/check.js:160	{0} = roleName(role); {1} = role.level; {2} = said; Note: {0} is a role's name as the screens give it.
-1f0dxr7	ok	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	請在設定 → 模型中調低「{0}」的推理等級，或在此模型的頁面上修改其「推理等級」。	src/core/llm/check.js:162	{0} = roleName(role); Note: {0} is a role's name as the screens give it.
+1u5s6ep	ok	Uploading photos didn't work with this key.	用這個金鑰無法上傳照片。	src/core/llm/check.js:140	
+1uj9pv4	ok	annai will send photos in each request instead.	將改為在每次請求中附上照片。	src/core/llm/check.js:140	
+d9hh16	ok	Photo uploads work: each photo is uploaded once, and expires after 48 hours.	照片上傳可用：每張照片只上傳一次，48 小時後過期。	src/core/llm/check.js:144	
+isa2u8	ok	Photos upload, but annai can't read the list of its photos there, which it needs to delete them.	照片可以上傳，但無法讀取刪除所需的照片清單。	src/core/llm/check.js:151	Note: annai is left out as the subject (zh-style rule 3); 清單 as in the other rows (外掛程式清單, 模型清單).
+1owzksi	ok	Photo uploads work: each photo is uploaded once, and annai deletes it after 48 hours (it just deleted the test photo).	照片上傳可用：每張照片只上傳一次，48 小時後由 annai 刪除（測試照片剛剛已刪除）。	src/core/llm/check.js:154	
+qer7un	ok	Tap Test again later. annai deletes the test photo with the others, after 48 hours.	請稍後再點一下「測試」。測試照片會和其他照片一樣，在 48 小時後由 annai 刪除。	src/core/llm/check.js:157	Note: Tap is 點一下 (the fixed words); 「測試」 is the button as it is named (model-check.js:15).
+qpr4b9	ok	Photos upload, but annai couldn't check just now that it can delete the test photo.	照片可以上傳，但暫時無法確認能否刪除測試照片。	src/core/llm/check.js:157	Note: annai is left out as the subject (zh-style rule 3).
+1g1zzzw	ok	Photos upload, but annai couldn't delete the test photo with this key.	照片可以上傳，但用這個金鑰無法刪除測試照片。	src/core/llm/check.js:160	Note: annai is left out as the subject (zh-style rule 3); 金鑰 as in the row before it.
+16s9khr	ok	Utility	輔助	src/core/llm/check.js:164	
+2qw9g9	ok	Koe · Chat	Koe · 聊天	src/core/llm/check.js:164	
+mlh3jc	ok	Main	主要	src/core/llm/check.js:164	
+1q9bibx	ok	It also answers at {0}'s level ({1}).	在「{0}」的推理等級（{1}）下也能回答。	src/core/llm/check.js:166	{0} = roleName(role); {1} = role.level; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
+1bbu08l	ok	At {0}'s level ({1}), this model refused: {2}	在「{0}」的推理等級（{1}）下，此模型拒絕了請求：{2}	src/core/llm/check.js:168	{0} = roleName(role); {1} = role.level; {2} = said; Note: {0} is a role's name as the screens give it.
+1f0dxr7	ok	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	請在設定 → 模型中調低「{0}」的推理等級，或在此模型的頁面上修改其「推理等級」。	src/core/llm/check.js:170	{0} = roleName(role); Note: {0} is a role's name as the screens give it.
 1nuav0n	ok	That provider no longer exists.	這個供應商已不存在。	src/core/llm/config.js:382	
 1qjc2dh	ok	That provider has no ability called {0}.	這個供應商沒有名為 {0} 的功能。	src/core/llm/config.js:384	{0} = rec.ability
 4iiule	ok	Give the provider's model id.	請填寫供應商的模型 ID。	src/core/llm/config.js:387	
@@ -759,12 +760,12 @@ tkgxjx	ok	didn't provide a kind of backup place {0}	沒有提供備份位置類�
 557vva	ok	{0} isn't a web address: give it with https:// in front.	{0} 不是有效的網址，請在前面加上 https://。	src/core/llm/provider-desc.js:164	{0} = url
 y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	網址必須以 https:// 開頭（只有 localhost 或 127.0.0.1 可以用 http://）。瀏覽器會封鎖 https 頁面發出的一般 http 請求，而 annai 存取區域網路內的伺服器時只使用 https，所以另一台電腦上的伺服器需要 https 網址。可以用 Tailscale Serve 做到：{0}。伺服器還必須允許來自 annai.guide 的 CORS 請求。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)
 1qpfdfv	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1).	網址必須以 https:// 開頭（只有 localhost 或 127.0.0.1 可以用 http://）。	src/core/llm/provider-desc.js:166	
-1xwbser	ok	It is turned off.	已關閉。	src/core/llm/service.js:296	Note: said of a plugin named before it on the screen.
-1pqsrb3	ok	It isn't running. Look at it in Settings → Plugins.	沒有在執行。請到設定 → 外掛程式查看。	src/core/llm/service.js:298	Note: said of a plugin named before it on the screen.
-sejc5h	ok	{0} was switched off after errors.	{0} 因多次出錯已被關閉。	src/core/llm/service.js:313	{0} = shown
-1uno44s	ok	It didn't provide a model provider.	未包含模型供應商。	src/core/llm/service.js:314	Note: said of a plugin.
-2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	該外掛程式不是 annai 官方的。請從原來的來源重新安裝。	src/core/llm/service.js:385	
-1fpv184	ok	the plugin it names doesn't provide models, so it wasn't installed.	它指定的外掛程式不提供模型，所以沒有安裝。	src/core/llm/service.js:394	
+1xwbser	ok	It is turned off.	已關閉。	src/core/llm/service.js:308	Note: said of a plugin named before it on the screen.
+1pqsrb3	ok	It isn't running. Look at it in Settings → Plugins.	沒有在執行。請到設定 → 外掛程式查看。	src/core/llm/service.js:310	Note: said of a plugin named before it on the screen.
+sejc5h	ok	{0} was switched off after errors.	{0} 因多次出錯已被關閉。	src/core/llm/service.js:325	{0} = shown
+1uno44s	ok	It didn't provide a model provider.	未包含模型供應商。	src/core/llm/service.js:326	Note: said of a plugin.
+2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	該外掛程式不是 annai 官方的。請從原來的來源重新安裝。	src/core/llm/service.js:397	
+1fpv184	ok	the plugin it names doesn't provide models, so it wasn't installed.	它指定的外掛程式不提供模型，所以沒有安裝。	src/core/llm/service.js:406	
 3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:68	{0} = p.title
 1rb0o7n	ok	OpenStreetMap around {0}	{0} 周邊的 OpenStreetMap	src/core/pack/download.js:70	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
 hdsgog	ok	OpenStreetMap between {0} and {1}	{0} 與 {1} 之間的 OpenStreetMap	src/core/pack/download.js:70	{0} = a; {1} = b

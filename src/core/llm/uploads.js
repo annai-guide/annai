@@ -26,9 +26,9 @@ export const uploadName = (hash, mediaType) => `annai-${hash.slice(0, 16)}.${EXT
 export class Uploads {
   /** @type {Record<string, Record<string, { id: string, expiresAt: number }>> | null} */
   #map = null;
-  /** @type {Set<string>} endpoints whose uploads failed, or can't be deleted, since annai started */
+  /** @type {Set<string>} endpoints whose uploads failed, or can't be deleted: until annai restarts, or their provider's key or address changes, or a Test passes (where the list can be read) */
   #off = new Set();
-  /** @param {Workspace} ws @param {(endpointId: string) => boolean} [going] whether an endpoint's provider is going, or its key or address changing: nothing is uploaded there meanwhile */
+  /** @param {Workspace} ws @param {(endpointId: string) => boolean} [going] whether an endpoint's provider is going, or its key or address changing: nothing is uploaded there meanwhile, and an upload answered meanwhile is deleted (withUploads) */
   constructor(ws, going = () => false) {
     this.ws = ws;
     this.going = going;
@@ -68,7 +68,7 @@ export class Uploads {
   off(endpointId) {
     this.#off.add(endpointId);
   }
-  /** A new key or address, or a Test that passed: what failed with the old ones says nothing about these. @param {string} id a provider's id (all its endpoints) or an endpoint's */
+  /** A new key or address, or a Test that passed: what failed with the old ones says nothing about these. Whoever calls it reads the list at that endpoint next, which sets the mark again where it can't be read (listFailed). @param {string} id a provider's id (all its endpoints) or an endpoint's */
   retry(id) {
     for (const e of [...this.#off]) if (e === id || e.startsWith(`${id}/`)) this.#off.delete(e);
   }
@@ -92,6 +92,12 @@ const REQUEST_MS = 15_000;
  *   none: no files API there (the type has no list, or the list is a 404); refused: a 401 or 403; unreadable: a list annai can't read;
  *   unreachable: no answer, a 429 or a server error on the list or a deletion; left: annai's files it didn't delete
  */
+
+/**
+ * Whether a sweep found the list unusable: refused, or a body annai can't read. Uploads then stop at that endpoint, so annai never makes
+ * files it can't delete; no answer says nothing (the next sweep reads it again). @param {Swept | null | undefined} r
+ */
+export const listFailed = (r) => r?.outcome === 'refused' || r?.outcome === 'unreadable';
 
 /**
  * Deletes annai's own uploads at an endpoint whose provider keeps files until they are deleted (spec §4.8): every file its list

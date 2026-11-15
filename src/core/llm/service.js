@@ -16,7 +16,7 @@ import { adjusted, setupOf } from './setup.js';
 import { callRole, Bench, candidates, COOLDOWN_MS } from './fallback.js';
 import { modelTrace } from './trace.js';
 import { forgetPhotoHashes } from './call.js';
-import { Uploads, sweepUploads } from './uploads.js';
+import { Uploads, sweepUploads, listFailed } from './uploads.js';
 import { Kept, keyPrint, keeperOf } from './kept.js';
 import { speechCall } from './speech.js';
 import { withoutSecretsIn } from '../agent/net.js';
@@ -48,8 +48,8 @@ export function createLlm({
   const bench = new Bench();
   /** Tunables a live model had to open with instead (decision 11: v1beta without proactive audio), until annai restarts. @type {Map<string, Record<string, any>>} */
   const liveTunables = new Map();
-  /** Providers going, or their key or address changing (G2). @type {Set<string>} */
-  const removing = new Set();
+  /** Providers going, or their key or address changing, by how many releases are under way at once: the last to end ends it, a removal's stays (G2). @type {Map<string, number>} */
+  const removing = new Map();
   let erasing = false;
   /** Whether an endpoint's provider is going or changing key or address, or everything is being erased: it keeps and uploads nothing meanwhile. @param {string} endpointId */
   const going = (endpointId) => erasing || removing.has(endpointId.split('/')[0]);
@@ -118,13 +118,14 @@ export function createLlm({
   /**
    * annai's uploads deleted at each ability that keeps them (sweepUploads): those over 48 hours old, or all of them where the switch
    * is off or all is asked. One that can't be listed, or refuses the key, gets no uploads until annai restarts, or its provider's key or
-   * address changes, or a Test passes (Uploads.retry): so annai never makes files it can't delete, and what an old key was refused
-   * says nothing about the new one. A provider going, or changing its key or address, makes no upload meanwhile (going).
+   * address changes, or a Test passes, and the list is then read with the new key and address and can be read (Uploads.retry): so annai
+   * never makes files it can't delete, and what an old key was refused says nothing about the new one. A provider going, or changing
+   * its key or address, makes no upload meanwhile (going).
    * @param {Awaited<ReturnType<typeof sweepable>>} list @param {{ all?: boolean }} [o]
    */
   const sweep = (list, { all = false } = {}) => Promise.all(list.map(async (to) => {
     const r = await sweepUploads({ type: to.type, endpoint: to.endpoint, key: to.key, fetch: get, trace: modelTrace(store, SYS), all: all || to.all }).catch(() => null);
-    if (r?.outcome === 'refused' || r?.outcome === 'unreadable') uploads.off(to.endpoint.id);
+    if (listFailed(r)) uploads.off(to.endpoint.id);
     return r;
   }));
   /** At start and on coming online: the uploads over 48 hours old, and all of those where the switch is off. */
@@ -137,12 +138,13 @@ export function createLlm({
     return { queued };
   };
   /**
-   * The provider marked as going (no photo is uploaded to it meanwhile), its turns and photo uploads are deleted with their key for up to
-   * 10 s; then work runs (a key, an address or the provider going), and once it has, what is left is let go. gone: for good.
+   * The provider marked as going (no photo is uploaded to it, and none answered meanwhile is kept), its turns and photo uploads are deleted
+   * with their key for up to 10 s; then work runs (a key, an address or the provider going), and once it has, what is left is let go. A key
+   * or address that stays gets its uploads back, where the list can be read with it. gone: for good.
    * @template T @param {string} id @param {() => Promise<T>} work @param {boolean} [gone] @returns {Promise<T>}
    */
   const releasing = async (id, work, gone = false) => {
-    removing.add(id);
+    removing.set(id, (removing.get(id) ?? 0) + 1);
     let done = false;
     try {
       await kept.queue({ provider: id });
@@ -154,15 +156,25 @@ export function createLlm({
       done = true;
       await kept.drop(id).catch(() => {});
       if (!gone) {
-        // Their ids go: deleted, or kept under a key or at an address no longer used. And what failed with the old key or address,
-        // uploads turned off, says nothing about the new: they are tried again.
+        // Their ids go: deleted, or kept under a key or at an address no longer used.
         for (const to of swept) await uploads.forget(to.endpoint.id).catch(() => {});
-        uploads.retry(id);
+        // What failed with the old key or address, uploads turned off, says nothing about the new: it is cleared, and the list read once with
+        // the new ones (the sweep every start runs, while the provider is still going) sets it again where it can't be read. With no key
+        // saved, nothing is asked of a list and nothing is cleared.
+        if (await getKey(store, id).catch(() => null)) {
+          uploads.retry(id);
+          await sweep(await sweepable(id).catch(() => []));
+        }
       }
       return out;
     } finally {
-      // A removal that failed leaves the provider as it was, its turns kept again.
-      if (!gone || !done) removing.delete(id);
+      // A removal that is done stays; any other release ends its own part, and the provider is going until the last of them has (a removal
+      // that failed leaves the provider as it was, its turns kept again).
+      if (!gone || !done) {
+        const left = (removing.get(id) ?? 1) - 1;
+        if (left) removing.set(id, left);
+        else removing.delete(id);
+      }
     }
   };
   const types = () => endpointTypes(plugins.registry);

@@ -656,19 +656,20 @@ lh9fzn	ok	Tool calls work.	ツールを呼び出せます。	src/core/llm/check.
 rk5rlm	ok	The model answered but didn't call the test tool.	モデルは答えましたが、テスト用のツールを呼び出しませんでした。	src/core/llm/check.js:90	
 1xj1cuk	ok	Photos work: it saw the red square.	写真を認識できます。赤い四角が見えました。	src/core/llm/check.js:96	
 dhnf3r	ok	It didn't see the red square (it said {0}).	赤い四角を認識できませんでした（返答：{0}）。	src/core/llm/check.js:96	{0} = answer.slice(0, 60)
-1u5s6ep	ok	Uploading photos didn't work with this key.	このキーでは写真をアップロードできませんでした。	src/core/llm/check.js:137	
-1uj9pv4	ok	annai will send photos in each request instead.	代わりに、リクエストごとに写真を送ります。	src/core/llm/check.js:137	
-d9hh16	ok	Photo uploads work: each photo is uploaded once, and expires after 48 hours.	写真をアップロードできます。写真は1枚につき1回だけアップロードされ、48時間後に期限が切れます。	src/core/llm/check.js:141	
-1owzksi	ok	Photo uploads work: each photo is uploaded once, and annai deletes it after 48 hours (it just deleted the test photo).	写真をアップロードできます。写真は1枚につき1回だけアップロードされ、48時間後にannaiが削除します（テスト用の写真はすでに削除しました）。	src/core/llm/check.js:146	
-qer7un	ok	Tap Test again later. annai deletes the test photo with the others, after 48 hours.	あとでもう一度「テスト」をタップしてください。テスト用の写真は、ほかの写真と同じく48時間後にannaiが削除します。	src/core/llm/check.js:149	Note: 「テスト」 is the button as it is named (model-check.js:15), in 「」 as ja-style rule 7 says.
-qpr4b9	ok	Photos upload, but annai couldn't check just now that it can delete the test photo.	写真はアップロードできましたが、テスト用の写真を削除できるかどうか、今は確認できませんでした。	src/core/llm/check.js:149	Note: annai is left out as the subject (ja-style rule 3).
-1g1zzzw	ok	Photos upload, but annai couldn't delete the test photo with this key.	写真はアップロードできましたが、このキーではテスト用の写真を削除できませんでした。	src/core/llm/check.js:152	Note: annai is left out as the subject (ja-style rule 3): the subject is obvious.
-16s9khr	ok	Utility	補助	src/core/llm/check.js:156	
-2qw9g9	ok	Koe · Chat	Koe · チャット	src/core/llm/check.js:156	
-mlh3jc	ok	Main	メイン	src/core/llm/check.js:156	
-1q9bibx	ok	It also answers at {0}'s level ({1}).	{0}のレベル（{1}）でも答えます。	src/core/llm/check.js:158	{0} = roleName(role); {1} = role.level; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
-1bbu08l	ok	At {0}'s level ({1}), this model refused: {2}	{0}のレベル（{1}）では、このモデルは拒否しました：{2}	src/core/llm/check.js:160	{0} = roleName(role); {1} = role.level; {2} = said; Note: {0} is a role's name as the screens give it.
-1f0dxr7	ok	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	「設定 → モデル」で{0}のレベルを下げるか、このモデルのページで推論レベルを変えてください。	src/core/llm/check.js:162	{0} = roleName(role); Note: {0} is a role's name as the screens give it.
+1u5s6ep	ok	Uploading photos didn't work with this key.	このキーでは写真をアップロードできませんでした。	src/core/llm/check.js:140	
+1uj9pv4	ok	annai will send photos in each request instead.	代わりに、リクエストごとに写真を送ります。	src/core/llm/check.js:140	
+d9hh16	ok	Photo uploads work: each photo is uploaded once, and expires after 48 hours.	写真をアップロードできます。写真は1枚につき1回だけアップロードされ、48時間後に期限が切れます。	src/core/llm/check.js:144	
+isa2u8	ok	Photos upload, but annai can't read the list of its photos there, which it needs to delete them.	写真はアップロードできましたが、削除に必要な写真の一覧を読み取れませんでした。	src/core/llm/check.js:151	Note: annai is left out as the subject (ja-style rule 3); 一覧 as in the rows for lists of plugins and models.
+1owzksi	ok	Photo uploads work: each photo is uploaded once, and annai deletes it after 48 hours (it just deleted the test photo).	写真をアップロードできます。写真は1枚につき1回だけアップロードされ、48時間後にannaiが削除します（テスト用の写真はすでに削除しました）。	src/core/llm/check.js:154	
+qer7un	ok	Tap Test again later. annai deletes the test photo with the others, after 48 hours.	あとでもう一度「テスト」をタップしてください。テスト用の写真は、ほかの写真と同じく48時間後にannaiが削除します。	src/core/llm/check.js:157	Note: 「テスト」 is the button as it is named (model-check.js:15), in 「」 as ja-style rule 7 says.
+qpr4b9	ok	Photos upload, but annai couldn't check just now that it can delete the test photo.	写真はアップロードできましたが、テスト用の写真を削除できるかどうか、今は確認できませんでした。	src/core/llm/check.js:157	Note: annai is left out as the subject (ja-style rule 3).
+1g1zzzw	ok	Photos upload, but annai couldn't delete the test photo with this key.	写真はアップロードできましたが、このキーではテスト用の写真を削除できませんでした。	src/core/llm/check.js:160	Note: annai is left out as the subject (ja-style rule 3): the subject is obvious.
+16s9khr	ok	Utility	補助	src/core/llm/check.js:164	
+2qw9g9	ok	Koe · Chat	Koe · チャット	src/core/llm/check.js:164	
+mlh3jc	ok	Main	メイン	src/core/llm/check.js:164	
+1q9bibx	ok	It also answers at {0}'s level ({1}).	{0}のレベル（{1}）でも答えます。	src/core/llm/check.js:166	{0} = roleName(role); {1} = role.level; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
+1bbu08l	ok	At {0}'s level ({1}), this model refused: {2}	{0}のレベル（{1}）では、このモデルは拒否しました：{2}	src/core/llm/check.js:168	{0} = roleName(role); {1} = role.level; {2} = said; Note: {0} is a role's name as the screens give it.
+1f0dxr7	ok	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	「設定 → モデル」で{0}のレベルを下げるか、このモデルのページで推論レベルを変えてください。	src/core/llm/check.js:170	{0} = roleName(role); Note: {0} is a role's name as the screens give it.
 1nuav0n	ok	That provider no longer exists.	そのプロバイダーはもうありません。	src/core/llm/config.js:382	
 1qjc2dh	ok	That provider has no ability called {0}.	そのプロバイダーに{0}という機能はありません。	src/core/llm/config.js:384	{0} = rec.ability
 4iiule	ok	Give the provider's model id.	プロバイダーのモデルIDを入力してください。	src/core/llm/config.js:387	
@@ -759,12 +760,12 @@ tkgxjx	ok	didn't provide a kind of backup place {0}	バックアップ先の種�
 557vva	ok	{0} isn't a web address: give it with https:// in front.	{0}はWebアドレスではありません。先頭に https:// を付けてください。	src/core/llm/provider-desc.js:164	{0} = url
 y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	アドレスは https:// で始めてください（http:// はlocalhostか127.0.0.1の場合のみ）。httpsのページからの暗号化されていないhttp通信はブラウザがブロックし、annaiもネットワーク内ではhttpsのアドレスにしか接続しないため、別のコンピューターのサーバーにはhttpsのアドレスが必要です。Tailscale Serveで用意できます：{0}。サーバーは annai.guide からのCORSも許可している必要があります。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)
 1qpfdfv	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1).	アドレスは https:// で始めてください（http:// はlocalhostか127.0.0.1の場合のみ）。	src/core/llm/provider-desc.js:166	
-1xwbser	ok	It is turned off.	オフになっています。	src/core/llm/service.js:296	Note: said of a plugin named before it on the screen.
-1pqsrb3	ok	It isn't running. Look at it in Settings → Plugins.	動作していません。「設定 → プラグイン」で確認してください。	src/core/llm/service.js:298	Note: said of a plugin named before it on the screen.
-sejc5h	ok	{0} was switched off after errors.	{0}はエラーが続いたためオフになりました。	src/core/llm/service.js:313	{0} = shown
-1uno44s	ok	It didn't provide a model provider.	モデルのプロバイダーが含まれていませんでした。	src/core/llm/service.js:314	Note: said of a plugin.
-2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	そのプラグインはannai公式のものではありません。入手元からもう一度インストールしてください。	src/core/llm/service.js:385	
-1fpv184	ok	the plugin it names doesn't provide models, so it wasn't installed.	指定されているプラグインはモデルを提供していないため、インストールされませんでした。	src/core/llm/service.js:394	
+1xwbser	ok	It is turned off.	オフになっています。	src/core/llm/service.js:308	Note: said of a plugin named before it on the screen.
+1pqsrb3	ok	It isn't running. Look at it in Settings → Plugins.	動作していません。「設定 → プラグイン」で確認してください。	src/core/llm/service.js:310	Note: said of a plugin named before it on the screen.
+sejc5h	ok	{0} was switched off after errors.	{0}はエラーが続いたためオフになりました。	src/core/llm/service.js:325	{0} = shown
+1uno44s	ok	It didn't provide a model provider.	モデルのプロバイダーが含まれていませんでした。	src/core/llm/service.js:326	Note: said of a plugin.
+2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	そのプラグインはannai公式のものではありません。入手元からもう一度インストールしてください。	src/core/llm/service.js:397	
+1fpv184	ok	the plugin it names doesn't provide models, so it wasn't installed.	指定されているプラグインはモデルを提供していないため、インストールされませんでした。	src/core/llm/service.js:406	
 3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:68	{0} = p.title
 1rb0o7n	ok	OpenStreetMap around {0}	{0}周辺のOpenStreetMap	src/core/pack/download.js:70	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
 hdsgog	ok	OpenStreetMap between {0} and {1}	{0}と{1}の間のOpenStreetMap	src/core/pack/download.js:70	{0} = a; {1} = b
