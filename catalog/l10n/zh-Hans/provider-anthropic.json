@@ -4,11 +4,11 @@
     "name": "Anthropic",
     "provider.abilities.chat.modelDefaults.providerTools.0.name": "Anthropic 网页搜索",
     "provider.abilities.chat.models.0.providerTools.0.name": "Anthropic 网页搜索",
-    "provider.abilities.chat.models.0.providerTools.1.name": "Anthropic 网页获取",
+    "provider.abilities.chat.models.0.providerTools.1.name": "Anthropic 网页抓取",
     "provider.abilities.chat.models.1.providerTools.0.name": "Anthropic 网页搜索",
-    "provider.abilities.chat.models.1.providerTools.1.name": "Anthropic 网页获取",
+    "provider.abilities.chat.models.1.providerTools.1.name": "Anthropic 网页抓取",
     "provider.abilities.chat.models.2.providerTools.0.name": "Anthropic 网页搜索",
-    "provider.abilities.chat.models.2.providerTools.1.name": "Anthropic 网页获取"
+    "provider.abilities.chat.models.2.providerTools.1.name": "Anthropic 网页抓取"
   },
   "messages": {}
 }

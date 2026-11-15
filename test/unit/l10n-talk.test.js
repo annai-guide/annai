@@ -11,6 +11,7 @@ setWords('ja', JSON.parse(await readFile(new URL('../../l10n/ja.json', import.me
 after(() => setWords('en', null));
 // Imported once the words are set, as boot.js sets them before main.js loads: words made at a module's top level are Japanese too.
 const { wokeText, reminderParts, announced, movedWords, wentWords, sourceOf } = await import('../../src/ui/screens/talk.js');
+const { traceSummary } = await import('../../src/ui/screens/trace.js');
 const { SYSTEM } = await import('../../src/ui/talk-panel.js');
 const { sample } = await import('../../src/ui/speech-check.js');
 const { speaksScreens } = await import('../../src/ui/format.js');
@@ -77,8 +78,8 @@ test('movedWords in Japanese: whole sentences, the title as a value', () => {
   assert.equal(movedWords({ to: 't', started: false, count: 1 }, null), 'Shioriはファイルを別の会話に移しましたが、その会話は削除されています。');
 });
 
-// Provider words, step 2: the grounded card names its search in the screens' language, as Google writes it, from what every entry
-// holds (Gemini's plugin writes "Google Search"; the oldest none), so a conversation from before this version reads the same.
+// Provider words, step 2: the grounded card names its search in the screens' language, as Google writes it, from what an entry holds
+// (Gemini's plugin writes "Google Search"; another plugin may write none), so a conversation from before this version reads the same.
 test("a grounded reply's card and its line read aloud name Google Search as Google writes it in each language, an older entry's too; another search as it gave it", async () => {
   try {
     for (const [tag, name, title, aloud] of [['ja', 'Google 検索', 'Google 検索から', 'Google 検索より。'], ['zh-Hans', 'Google 搜索', '来自 Google 搜索', '来自 Google 搜索。'],
@@ -89,6 +90,23 @@ test("a grounded reply's card and its line read aloud name Google Search as Goog
       assert.equal(t`From ${sourceOf({ source: 'Google Search' })}`, title);
       assert.equal(t`From ${sourceOf({ source: 'Google Search' })}.`, aloud);
       assert.equal(sourceOf({ source: 'Brave Search' }), 'Brave Search');
+    }
+  } finally {
+    setWords('ja', JSON.parse(await readFile(new URL('../../l10n/ja.json', import.meta.url), 'utf8')));
+  }
+});
+
+// The Trace names the source as the card does (one place gives the name, sourceOf), and an entry with none isn't a bare "from".
+test("the Trace's row for a grounded reply names Google Search in each language as its card does, an entry with no source too; another as it gave it", async () => {
+  try {
+    for (const [tag, name] of [['ja', 'Google 検索'], ['zh-Hans', 'Google 搜索'], ['zh-Hant', 'Google 搜尋']]) {
+      const ui = JSON.parse(await readFile(new URL(`../../l10n/${tag}.json`, import.meta.url), 'utf8'));
+      setWords(tag, ui);
+      const from = (/** @type {string} */ who) => ui.o1nqez.replace('{0}', who);
+      for (const source of ['Google Search', '', undefined]) {
+        assert.equal(traceSummary({ type: 'grounded', data: { source, text: 'Open till 10.', links: [] } }).split(' · ')[0], from(name), `${tag} ${JSON.stringify(source)}`);
+      }
+      assert.equal(traceSummary({ type: 'grounded', data: { source: 'Brave Search', text: 'Open till 10.', links: [] } }).split(' · ')[0], from('Brave Search'));
     }
   } finally {
     setWords('ja', JSON.parse(await readFile(new URL('../../l10n/ja.json', import.meta.url), 'utf8')));

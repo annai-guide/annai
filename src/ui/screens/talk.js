@@ -206,8 +206,8 @@ export function errorWords(d) {
 }
 
 /**
- * Whose search grounded a reply, as its card and the line read aloud name it: Google Search (the name Gemini's plugin gives, as every
- * entry has it, and the default) in the screens' words, as Google writes it; another as it gave it. @param {any} d a grounded entry's data
+ * Whose search grounded a reply, as its card and the line read aloud name it: Google Search, which Gemini's plugin writes and an entry with
+ * no source is given, in the screens' words, as Google writes it; any other source as it gave it. @param {any} d a grounded entry's data
  */
 export const sourceOf = (d) => (!d?.source || d.source === /* en */ 'Google Search' ? t`Google Search` : String(d.source));
 

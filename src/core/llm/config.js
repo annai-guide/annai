@@ -31,8 +31,8 @@ import { kindWords } from './contract.js';
  *   a tool the provider runs itself (spec §9.5): the patch enables it; pricePerCall (USD) × the usage count named by usageKey is its cost.
  *   paidOnly: never on a key marked free tier; freePerMonth: calls a month that cost nothing (this device's count, G4);
  *   label and note: its switch's words on its provider's page, and a line under it (else its switch is only in Settings → Tools);
- *   shows: a reply that used it is shown to the user as written, under these words in English (Google Search's terms), and Shiori is told
- *   it is shown so, never the words: the card names the reply's source, in the screens' language for Google Search
+ *   shows: a reply that used it is shown to the user as written (Google Search's terms), and Shiori is told so while it is on. Only that it
+ *   is there is read; the card is titled by the reply's source (talk.js sourceOf), not by these words, which older annai still quote to her
  * @typedef {{ id: string, plugin: string, template: { version: string, values: ProviderValues, models?: string[], added?: string[] } | null, user: ProviderValues,
  *   verified?: Record<string, any>, created: number }} ProviderRecord
  *   template.version: its plugin's; template.models: the description's, "<ability>/<id>", so a model the user removed

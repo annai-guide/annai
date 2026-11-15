@@ -4,11 +4,11 @@
     "name": "Anthropic",
     "provider.abilities.chat.modelDefaults.providerTools.0.name": "AnthropicのWeb検索",
     "provider.abilities.chat.models.0.providerTools.0.name": "AnthropicのWeb検索",
-    "provider.abilities.chat.models.0.providerTools.1.name": "AnthropicのWebフェッチ",
+    "provider.abilities.chat.models.0.providerTools.1.name": "Anthropicのページ取得",
     "provider.abilities.chat.models.1.providerTools.0.name": "AnthropicのWeb検索",
-    "provider.abilities.chat.models.1.providerTools.1.name": "AnthropicのWebフェッチ",
+    "provider.abilities.chat.models.1.providerTools.1.name": "Anthropicのページ取得",
     "provider.abilities.chat.models.2.providerTools.0.name": "AnthropicのWeb検索",
-    "provider.abilities.chat.models.2.providerTools.1.name": "AnthropicのWebフェッチ"
+    "provider.abilities.chat.models.2.providerTools.1.name": "Anthropicのページ取得"
   },
   "messages": {}
 }

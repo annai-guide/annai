@@ -13,6 +13,35 @@ const GROUP_NAMES = { Talk: tc('tool group')`Talk`, Files: tc('tool group')`File
 /** Jina's main page, which shows the key to copy in its API box: its API page gives none to copy. */
 const JINA_KEYS = 'https://jina.ai/';
 
+/**
+ * The tools the user's models' providers run themselves, one for each, by its name in the screens' language where its plugin has words
+ * for it, else the model's own, and the models that offer it. A plugin's words are its running ones, else its stored ones: nothing here
+ * waits for a plugin to start, so one that hangs starting holds no screen. @param {any} ctx
+ * @returns {Promise<{ id: string, name: string, models: string[] }[]>}
+ */
+export async function ownTools(ctx) {
+  const cfg = await ctx.llm.config();
+  /** @type {Map<string, any>} a plugin's manifest as the screens show it, by its id */
+  const shown = new Map();
+  /** @type {Map<string, { id: string, name: string, models: string[] }>} */
+  const provider = new Map();
+  for (const rec of Object.values(cfg.models)) {
+    const m = modelOf(/** @type {any} */ (rec));
+    const free = cfg.providers[m.provider] ? providerOf(cfg.providers[m.provider]).free : false;
+    // Each tool's name in the screens' language where its plugin has it (as its provider's page has its switch's words), else the model's.
+    const plugin = cfg.providers[m.provider]?.plugin;
+    if (plugin && !shown.has(plugin)) shown.set(plugin, ctx.plugins.shownOf(plugin) ?? (await ctx.plugins.words(plugin).catch(() => null))?.manifest);
+    const said = toolWords(shown.get(plugin)?.provider?.abilities?.[m.ability]);
+    for (const pt of m.providerTools ?? []) {
+      if (pt.paidOnly && free) continue; // not on a key on the free tier (G4)
+      const p = provider.get(pt.id) ?? { id: pt.id, name: String(said.get(pt.id)?.name ?? pt.name), models: [] };
+      p.models.push(m.name);
+      provider.set(pt.id, p);
+    }
+  }
+  return [...provider.values()];
+}
+
 /** A switch for every tool and provider-side tool (spec §7.2, §9.5); switches cover plugins' tools too. @param {any} ctx */
 export async function toolSwitchList(ctx) {
   const switches = await toolSwitches(ctx.ws);
@@ -25,23 +54,7 @@ export async function toolSwitchList(ctx) {
     if (!groups.has(g)) groups.set(g, []);
     groups.get(g)?.push(tool);
   }
-  // Its plugins started, so their words are read (as the provider's page reads them).
-  await ctx.llm.ready;
-  const cfg = await ctx.llm.config();
-  /** @type {Map<string, { id: string, name: string, models: string[] }>} */
-  const provider = new Map();
-  for (const rec of Object.values(cfg.models)) {
-    const m = modelOf(/** @type {any} */ (rec));
-    const free = cfg.providers[m.provider] ? providerOf(cfg.providers[m.provider]).free : false;
-    // Each tool's name in the screens' language where its plugin has it (as its provider's page has its switch's words), else the model's.
-    const said = toolWords(ctx.plugins.shownOf(cfg.providers[m.provider]?.plugin)?.provider?.abilities?.[m.ability]);
-    for (const pt of m.providerTools ?? []) {
-      if (pt.paidOnly && free) continue; // not on a key on the free tier (G4)
-      const p = provider.get(pt.id) ?? { id: pt.id, name: String(said.get(pt.id)?.name ?? pt.name), models: [] };
-      p.models.push(m.name);
-      provider.set(pt.id, p);
-    }
-  }
+  const provider = await ownTools(ctx);
   /** @param {string} key @param {string} label @param {string} [note] @param {boolean} [fixed] */
   const sw = (key, label, note, fixed = false) => {
     const input = h('input', { type: 'checkbox', checked: fixed || switches[key] !== false, disabled: fixed });
@@ -52,8 +65,8 @@ export async function toolSwitchList(ctx) {
   return h('div', { class: 'tool-switches' },
     ...ordered.map((g) => h('div', {}, h('h3', { text: GROUP_NAMES[g] ?? g }), h('ul', { class: 'file-list' },
       ...(groups.get(g) ?? []).map((tool) => sw(tool.name, tool.name, tool.name === 'speak' ? t`(off means voice off)` : ALWAYS_ON.includes(tool.name) ? t`(always on)` : '', ALWAYS_ON.includes(tool.name)))))),
-    provider.size ? h('div', {}, h('h3', { text: t`Your models' own tools` }), h('ul', { class: 'file-list' },
-      ...[...provider.values()].map((p) => sw(`provider:${p.id}`, p.name, t`(${list(p.models, 'plain')})`)))) : null);
+    provider.length ? h('div', {}, h('h3', { text: t`Your models' own tools` }), h('ul', { class: 'file-list' },
+      ...provider.map((p) => sw(`provider:${p.id}`, p.name, t`(${list(p.models, 'plain')})`)))) : null);
 }
 
 /** Where to get a Jina key; the link is a value of the message. */

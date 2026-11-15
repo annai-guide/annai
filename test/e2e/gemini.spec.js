@@ -342,7 +342,7 @@ test("on Japanese screens the provider page shows Google Search's switch and its
 
 // Provider words, step 2: on Japanese and Chinese screens Settings → Tools names a model's own tool in that language, and a grounded
 // reply's card and its line read aloud name Google Search as Google writes it there; so does a card from before, whose entry names it in
-// English, as every entry does.
+// English, as Gemini's plugin writes it.
 for (const tag of /** @type {const} */ (['ja', 'zh-Hans', 'zh-Hant'])) {
   test(`on ${tag} screens, Settings → Tools, a grounded reply's card and its line read aloud name Google Search as Google writes it there, an older card too`, async ({ page }) => {
     const ui = JSON.parse(await readFile(new URL(`../../l10n/${tag}.json`, import.meta.url), 'utf8'));
@@ -385,6 +385,13 @@ for (const tag of /** @type {const} */ (['ja', 'zh-Hans', 'zh-Hant'])) {
       const said = () => page.evaluate(() => /** @type {string[]} */ (/** @type {any} */ (window).announced).find((x) => x.includes('Nepenthe closes')) ?? '');
       await expect.poll(said).toContain(GROUNDED);
       expect((await said()).startsWith(`${aloud}${GROUNDED}`), await said()).toBe(true);
+      // The Trace's row for each of the two names it the same way, and its tool switches too.
+      await page.evaluate(() => { location.hash = '#/trace?type=grounded'; });
+      const rows = page.locator('ol.trace li .d');
+      await expect(rows).toHaveCount(2);
+      const from = ui.o1nqez.replace('{0}', name);
+      for (const row of await rows.all()) await expect(row).toContainText(from);
+      await expect(page.locator('.tool-switches').getByText(name, { exact: true })).toBeVisible();
     } finally {
       await s.close();
     }

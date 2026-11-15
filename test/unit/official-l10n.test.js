@@ -8,6 +8,7 @@ import { wordsOf, leftOut } from '../../src/core/packages.js';
 import { installOfficial, updateOfficial, officialUpdates, fetchTranslations } from '../../src/core/llm/official.js';
 import { addFromCatalog } from '../../src/core/requires.js';
 import { checkPlugins } from '../../src/ui/plugin-updates.js';
+import { ownTools } from '../../src/ui/screens/tools.js';
 import { hostKit } from './package-kit.js';
 import { site } from './provider-kit.js';
 
@@ -262,6 +263,55 @@ test("every official model tool's name is translated in each language annai ship
       }
     }
   }
+});
+
+// Settings → Tools shows a fetch tool's name beside annai's own radio group for fetch ("Fetch via", "Your model's own fetch"): one word for it.
+test("a model's own fetch tool is named with the word the screen's own fetch rows use, not the vendor docs' other word", async () => {
+  const m = JSON.parse(await readFile(new URL('../../plugins-official/provider-anthropic/annai-plugin.json', import.meta.url), 'utf8'));
+  const fetches = m.provider.abilities.chat.models.flatMap((/** @type {any} */ x, /** @type {number} */ i) => x.providerTools.flatMap((/** @type {any} */ pt, /** @type {number} */ j) => (pt.kind === 'fetch' ? [`provider.abilities.chat.models.${i}.providerTools.${j}.name`] : [])));
+  assert.ok(fetches.length);
+  for (const [tag, word] of /** @type {const} */ ([['ja', 'ページ取得'], ['zh-Hans', '抓取'], ['zh-Hant', '抓取']])) {
+    const ui = JSON.parse(await readFile(new URL(`../../l10n/${tag}.json`, import.meta.url), 'utf8'));
+    for (const row of ['1yfc12f', '190j9od']) assert.ok(ui[row].includes(word), `${tag}: the screen's own row ${row} says ${word}`);
+    setWords(tag, {});
+    const bytes = utf8(await readFile(new URL(`../../catalog/l10n/${tag}/provider-anthropic.json`, import.meta.url), 'utf8'));
+    const w = wordsOf(m, () => bytes, { tag, official: true });
+    for (const path of fetches) assert.ok(String(valueAt(w.manifest, path)).includes(word), `${tag} ${path}: ${valueAt(w.manifest, path)}`);
+  }
+});
+
+// Settings → Tools (and the Trace's switches) read a tool's name from its plugin's running words, else its stored ones, and never wait for a
+// plugin to start: one that hangs starting (10 s each, one after another) would hold both screens. Here `ready` never settles.
+test("Settings → Tools names a model's own tool from its plugin's stored words and waits for no plugin to start; a running plugin's words are used as they are", async () => {
+  setWords('ja', {});
+  const bytes = utf8(await readFile(new URL('../../catalog/l10n/ja/provider-gemini.json', import.meta.url), 'utf8'));
+  const words = wordsOf(GEMINI, () => bytes, { tag: 'ja', official: true });
+  const model = GEMINI.provider.abilities.chat.models[0];
+  const cfg = {
+    providers: { p: { id: 'p', plugin: 'provider-gemini', template: { version: '1', values: GEMINI.provider }, user: {}, created: 0 }, q: { id: 'q', plugin: undefined, template: { version: '1', values: GEMINI.provider }, user: {}, created: 0 } },
+    models: { m: { id: 'm', provider: 'p', ability: 'chat', template: { id: 'm', version: '1', values: model }, user: {}, created: 0 }, n: { id: 'n', provider: 'q', ability: 'chat', template: { id: 'n', version: '1', values: { ...model, providerTools: [{ ...model.providerTools[0], id: 'other-search', name: 'Other search' }] } }, user: {}, created: 0 } },
+  };
+  /** @param {any} plugins */
+  const ask = async (plugins) => {
+    const ctx = { llm: { ready: new Promise(() => {}), config: async () => cfg }, plugins };
+    /** @type {ReturnType<typeof setTimeout> | undefined} */
+    let timer;
+    const late = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Settings → Tools is waiting for the plugins to start')), 2000); });
+    try {
+      return await Promise.race([ownTools(ctx), late]);
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+  // Not running: the stored words (what a plugin that hangs starting, or fails to, leaves). One provider has no plugin: the model's own name.
+  const stored = await ask({ shownOf: () => null, words: async () => words });
+  assert.deepEqual(stored.map((x) => [x.id, x.name]), [['gemini-google-search', 'Google 検索'], ['other-search', 'Other search']]);
+  // Running: its words as it shows them, without reading the stored ones.
+  const running = await ask({ shownOf: () => ({ provider: { abilities: { chat: { models: [{ providerTools: [{ id: 'gemini-google-search', name: 'Running words' }] }] } } } }), words: async () => { throw new Error('read'); } });
+  assert.deepEqual(running.map((x) => x.name), ['Running words', 'Other search']);
+  // Words that can't be read: the model's own name, as it was before.
+  const none = await ask({ shownOf: () => null, words: async () => { throw new Error('no words'); } });
+  assert.deepEqual(none.map((x) => x.name), ['Google Search', 'Other search']);
 });
 
 test("annai's own plugin's words: a listed field with a wrong value is skipped alone, the other fields translated; a third party's file is left out", () => {

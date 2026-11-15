@@ -1,5 +1,5 @@
 {
-  "build": "32d872a1b08e",
+  "build": "b6c8e0eb2628",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -75,7 +75,7 @@
     "/src/core/html-text.js": "ad9b5709befa",
     "/src/core/llm/call.js": "7dd560db24c8",
     "/src/core/llm/check.js": "9bf8b31fd2b2",
-    "/src/core/llm/config.js": "4127683f21d8",
+    "/src/core/llm/config.js": "62d41dab6833",
     "/src/core/llm/contract.js": "dc03116de708",
     "/src/core/llm/decide.js": "4aff39cf2ab3",
     "/src/core/llm/fallback.js": "fe721ebfeb39",
@@ -273,9 +273,9 @@
     "/src/ui/screens/simulate.js": "cbdebdf221a5",
     "/src/ui/screens/shiori.js": "6296aaccc836",
     "/src/ui/screens/sees.js": "6a674fc473ae",
-    "/src/ui/screens/talk.js": "d886b2dd86fb",
-    "/src/ui/screens/tools.js": "74acae413e58",
-    "/src/ui/screens/trace.js": "ae89bd55d595",
+    "/src/ui/screens/talk.js": "cbd0416a6e29",
+    "/src/ui/screens/tools.js": "49df83e38d5d",
+    "/src/ui/screens/trace.js": "1ed3ba47b92d",
     "/src/ui/screens/trip.js": "ee28c04974b0",
     "/src/ui/screens/trips.js": "3d39a5e7567d",
     "/src/ui/screens/updates.js": "663857e51861",
