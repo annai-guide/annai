@@ -89,7 +89,9 @@ export function setupUi(ctx, pluginId, { added } = {}) {
       if (!rec) throw new Error(t`That provider no longer exists. Add it again in Settings → Models.`);
       const mine = await pluginName(ctx.plugins, (await ctx.plugins.installed())[pluginId], pluginId, ctx.llm.providers().find((/** @type {any} */ s) => s.plugin === pluginId)?.name ?? pluginId);
       if (rec.plugin !== pluginId) throw new Error(t`That provider isn't one of ${mine}'s, so it can't keep a key for it.`);
-      await setKey(ctx.store, providerId, await take(key));
+      // The new key first (a sign-in's code is exchanged at once), then what the provider holds goes with the old one (spec §4.9).
+      const fresh = await take(key);
+      await ctx.llm.reconnect(providerId, () => setKey(ctx.store, providerId, fresh));
       await ctx.llm.unbench(providerId);
     },
     expectReturn: () => expectReturn(pluginId),

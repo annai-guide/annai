@@ -5,6 +5,7 @@ import http from 'node:http';
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { ZipWriter } from '../../src/core/zip.js';
 import { deferred, resultFor } from '../fakes/anthropic-rules.js';
+import { openRouterFiles } from '../fakes/openrouter-files.js';
 
 /**
  * Changes a Trace screen filter and waits until the list has redrawn for it (the list is aria-busy while it reloads),
@@ -217,6 +218,40 @@ export async function startModelServer(routes) {
     origin: `http://127.0.0.1:${port}`,
     /** @param {string} path */
     bodies: (path) => received.get(path) ?? [],
+    stop: () => new Promise((resolve) => { server.closeAllConnections?.(); server.close(() => resolve(undefined)); }),
+  };
+}
+
+/**
+ * A stand-in for OpenRouter's Files API on a server of its own, in the shapes test/fakes/openrouter-files.js speaks: the OpenRouter
+ * provider's address is set to `${origin}/api/v1` in the test, so both browsers reach it (WebKit can't have page.route stand in for a page's
+ * requests while a service worker controls it) and nothing reaches the real openrouter.ai. Lists and deletions only.
+ * held: the files it has, which a test may add to; requests: what reached it, with the headers.
+ * @param {{ filename: string, created_at: string | number }[]} [files]
+ */
+export async function startOpenRouterFiles(files = []) {
+  const or = openRouterFiles({ files });
+  const server = http.createServer(async (req, res) => {
+    const cors = {
+      'access-control-allow-origin': '*',
+      'access-control-allow-methods': 'GET, POST, DELETE, OPTIONS',
+      'access-control-allow-headers': String(req.headers['access-control-request-headers'] ?? 'content-type'),
+    };
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204, cors).end();
+      return;
+    }
+    const r = await or.fetch(`http://openrouter.test${req.url}`, { method: req.method, headers: /** @type {Record<string, string>} */ (req.headers) });
+    res.writeHead(r.status, { ...cors, 'content-type': 'application/json' }).end(await r.text());
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(undefined)));
+  const { port } = /** @type {import('node:net').AddressInfo} */ (server.address());
+  return {
+    origin: `http://127.0.0.1:${port}`,
+    held: or.held,
+    /** annai's files it holds, by name. */
+    names: () => or.held.map((f) => f.filename).sort(),
+    requests: or.requests,
     stop: () => new Promise((resolve) => { server.closeAllConnections?.(); server.close(() => resolve(undefined)); }),
   };
 }

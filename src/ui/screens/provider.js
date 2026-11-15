@@ -41,6 +41,14 @@ export function priceLine(prices, at = Date.now()) {
 /** The free-tier switch's words: who doesn't charge, as the description names it, else the plugin's name. @param {true | string} freeTier @param {string} pluginName */
 export const freeTierLabel = (freeTier, pluginName) => t`This key is on the free tier (${typeof freeTier === 'string' ? freeTier : pluginName} doesn't charge)`;
 
+/**
+ * Whether an ability's own address lets go of what the provider holds for it first, with the old address and key: the turns a protocol
+ * keeps, and the photo uploads where it deletes them and the ability has the switch for them. Not an ability that can delete uploads but has
+ * no switch (OpenAI's Chat Completions): letting go there would delete the kept turns of the provider's other abilities (6a986115).
+ * @param {{ keeps?: unknown, deleteUploadRequest?: unknown }} type @param {boolean} uploadsSwitch whether the ability shows the uploads switch
+ */
+export const releasesAtAddress = (type, uploadsSwitch) => Boolean(type.keeps) || (Boolean(type.deleteUploadRequest) && uploadsSwitch);
+
 /** What a provider keeps (G2), named before a removal, or a key change (key). @param {{ turns: number, waiting: number, days: number, who: string[] }} k @param {boolean} online @param {boolean} [key] */
 export function keptWords({ turns, waiting, days, who }, online, key = false) {
   const n = turns + waiting;
@@ -368,9 +376,16 @@ async function abilityBody(view, abilityId) {
   if (type.keeps) address.addEventListener('input', () => warnKept(ctx, addressWarn, { provider: id }, true));
   const tunables = jsonField(t`Tunables (JSON)`, /* en */ `ability-${abilityId}-tunables`, a.tunables);
   const extra = jsonField(t`Extra request fields (JSON)`, /* en */ `ability-${abilityId}-extra`, a.extraBody);
-  // Where the protocol stores files, photos go there once, then by id (spec §4.8). The switch is a tunable.
-  const uploads = type.uploadRequest ? savedCheck(t`Upload photos to this provider (each expires after 48 hours)`, a.tunables?.uploads !== false,
-    async (on) => tunables.show((await saveAbility({ tunables: (/** @type {any} */ was) => ({ ...was.tunables, uploads: on }) })).tunables)) : null;
+  // Where the protocol stores files, photos go there once, then by id (spec §4.8). The switch is a tunable. Where the files stay until
+  // annai deletes them (the type lists and deletes), it shows only where uploads are on without the user's changes (the provider's
+  // description turns them on): annai reads only the files lists it knows. Turned off there, they all go.
+  const deletes = Boolean(type.deleteUploadRequest);
+  const offered = !deletes || providerBase(rec, tunablesFor).abilities[abilityId]?.tunables?.uploads !== false;
+  const uploads = type.uploadRequest && offered ? savedCheck(deletes ? t`Upload photos to this provider (annai deletes each once it is 48 hours old, the next time annai starts or comes online)`
+    : t`Upload photos to this provider (each expires after 48 hours)`, a.tunables?.uploads !== false, async (on) => {
+    tunables.show((await saveAbility({ tunables: (/** @type {any} */ was) => ({ ...was.tunables, uploads: on }) })).tunables);
+    if (!on && deletes) await ctx.llm.forgetUploads(`${id}/${abilityId}`);
+  }) : null;
   // Where the protocol can, the provider keeps the conversation between turns (G2): a tunable too. Off, what it keeps is deleted.
   const { name: who, holds, server, note: keepNote } = keeperOf(type.keeps, rec.plugin, providerOf(rec).name);
   const keyless = !(await ctx.llm.keyFor(id));
@@ -398,7 +413,7 @@ async function abilityBody(view, abilityId) {
       const wrong = v ? addressShown(v) : null;
       if (wrong) throw new Error(wrong);
       return v;
-    }, (v) => (keep ? ctx.llm.reconnect(id, () => saveAbility({ baseUrl: v })) : saveAbility({ baseUrl: v })))), // a new address: what it keeps there goes first
+    }, (v) => (releasesAtAddress(type, Boolean(uploads)) ? ctx.llm.reconnect(id, () => saveAbility({ baseUrl: v })) : saveAbility({ baseUrl: v })))), // a new address: what it keeps or holds there goes first
     h('p', { class: 'sub', text: t`Empty: the provider's address. Each setting here is saved as you change it.` }),
     addressWarn,
     uploads?.el ?? null,

@@ -23,6 +23,10 @@ const TUNABLES = Object.freeze({
   // Model-id prefixes whose requests carry Anthropic's cache_control marks on content blocks, every content then an array of blocks:
   // Claude through a server that passes them on (OpenRouter's description sets ["anthropic/"]). Off for any other.
   cacheMarkers: [],
+  // Photos go to {base}/files once, then by id as a file part (spec §4.8). Off: OpenRouter's files take a photo for a chat message (tested
+  // 2026-11-14) and keep it until it is deleted, so annai deletes its own there from the list; the other servers this type reaches were not
+  // tried, so they stay off. OpenRouter's description turns it on.
+  uploads: false,
 });
 /** The reasoning_details a native is kept for: Claude's, as OpenRouter gives them. */
 const CLAUDE = 'anthropic-claude-v1';
@@ -50,6 +54,22 @@ export function activate(annai) {
     /** @param {{ endpoint: any, key: string | null }} c */
     listRequest: ({ endpoint, key }) => ({ url: join(endpoint.baseUrl, '/models'), headers: auth(endpoint, key) }),
     readList,
+    /** A photo to the files API: the file alone, the one field OpenRouter's upload takes; it sets no expiry (spec §4.8). @param {any} c */
+    uploadRequest: ({ endpoint, key, bytes, mediaType, name }) => {
+      const body = new FormData();
+      body.set('file', new Blob([bytes], { type: mediaType }), name);
+      return { url: join(endpoint.baseUrl, '/files'), headers: auth(endpoint, key), body };
+    },
+    /** @param {any} j */
+    readUpload: (j) => {
+      if (typeof j?.id !== 'string' || !j.id) throw new Error('the upload answered without a file id');
+      return { id: j.id };
+    },
+    /** One file's deletion (200, or 404 for one already gone). @param {{ endpoint: any, key: string | null, id: string }} c */
+    deleteUploadRequest: ({ endpoint, key, id }) => ({ url: join(endpoint.baseUrl, `/files/${encodeURIComponent(id)}`), headers: auth(endpoint, key), method: /** @type {const} */ ('DELETE') }),
+    /** A page of the files the key's workspace holds, 1000 at most (OpenRouter's schema says 1 to 1000, and a real list answered limit=1000), after cursor. @param {{ endpoint: any, key: string | null, cursor: string | null }} c */
+    listUploadsRequest: ({ endpoint, key, cursor }) => ({ url: join(endpoint.baseUrl, `/files?limit=1000${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`), headers: auth(endpoint, key) }),
+    readUploads,
   });
 }
 
@@ -184,6 +204,8 @@ function words(rest, t, blocks) {
       if (p.type === 'text') return { type: 'text', text: p.text };
       if (p.type === 'document') return { type: 'file', file: { filename: p.name ?? 'document.pdf', file_data: `data:${p.mediaType};base64,${p.data}` } };
       if (p.type === 'audio') return { type: 'input_audio', input_audio: { data: p.data, format: AUDIO[p.mediaType] ?? 'wav' } };
+      // An uploaded photo by its id: the file part, as image_url can't hold an id (OpenRouter's 400, 2026-11-14).
+      if (p.fileId) return { type: 'file', file: { file_id: p.fileId } };
       return { type: 'image_url', image_url: { url: `data:${p.mediaType};base64,${p.data}`, ...(t.imageDetail ? { detail: t.imageDetail } : {}) } };
     });
 }
@@ -421,10 +443,31 @@ function classify(status, body) {
     // Google's RESOURCE_EXHAUSTED on a 429 (its free tier's limits among them) says "quota", and is too many requests;
     // on a 402 (prepaid credit used up) it is an account out of credit, as the status says.
     if (status === 429 && e?.status === 'RESOURCE_EXHAUSTED') return 'rate';
-    return CODES[String(e?.code ?? e?.type ?? '')] ?? null;
+    const known = CODES[String(e?.code ?? e?.type ?? '')];
+    if (known) return known;
+    // An uploaded photo the server no longer has (OpenRouter's 400 "Invalid file_id: …"): upload it again (spec §9.9). The field and a
+    // word for a dead id, not the whole sentence, so a rewording still matches and a refusal of the part ("not supported") doesn't.
+    const m = String(e?.message ?? '');
+    if (/\bfile_id\b/i.test(m) && /invalid|not found|unknown|expired|does not exist|no such/i.test(m)) return 'upload';
+    return null;
   } catch {
     return null;
   }
+}
+
+/**
+ * A page of an OpenRouter files list: each file's id, name and when it was made (ms; NaN when its time can't be read), and the
+ * cursor of the next page (null: the last). created_at is an ISO time in OpenRouter's shape, seconds in OpenAI's. A list in a
+ * shape this can't read throws, so annai stops making files it can't find to delete. @param {any} j
+ */
+function readUploads(j) {
+  if (!isObject(j) || !Array.isArray(j.data) || typeof j.has_more !== 'boolean') throw new Error('a files list annai can\'t read');
+  const next = j.has_more ? j.cursor : null;
+  if (j.has_more && (typeof next !== 'string' || !next)) throw new Error('a files list with more pages and no cursor');
+  const files = j.data.filter((/** @type {any} */ f) => isObject(f) && typeof f.id === 'string' && typeof f.filename === 'string').map((/** @type {any} */ f) => ({
+    id: f.id, name: f.filename, createdAt: typeof f.created_at === 'number' ? f.created_at * 1000 : typeof f.created_at === 'string' ? Date.parse(f.created_at) : NaN,
+  }));
+  return { files, cursor: next };
 }
 
 /** USD per token, as OpenRouter writes it, to USD per million tokens. @param {any} v */

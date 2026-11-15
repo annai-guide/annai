@@ -148,6 +148,12 @@ test('the Test button checks photo uploads where the endpoint stores files (spec
   assert.deepEqual([last.step, last.ok], ['upload', false]);
   assert.equal(last.detail, "Uploading photos didn't work with this key. annai will send photos in each request instead.");
   assert.equal(refused.ok, true, 'photos still work, sent in each request');
+  // No answer at all is not the key's: it says so in the words every step uses.
+  const down = await testModel({ ...withUploads(scriptedCase(script)), fetch: async () => { throw new TypeError('Failed to fetch'); } });
+  const none = /** @type {any} */ (down.steps.at(-1));
+  assert.deepEqual([none.step, none.ok], ['upload', false]);
+  assert.equal(none.detail, "annai couldn't reach this address. It may be down, or it may not allow web apps. annai will send photos in each request instead.");
+  assert.equal(down.ok, true, 'photos still work, sent in each request');
 });
 
 test("what the Test button says never shows a key, whatever the provider's message holds (spec §9.9)", async () => {
