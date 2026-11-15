@@ -555,16 +555,16 @@ pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	她�
 157dl17	ok	Shiori wants to adjust her personality	Shiori 想調整自己的性格	src/core/agent/personalities.js:130	
 13g1wjf	ok	No thanks	不用了	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
 1izvp43	ok	Agree	同意	src/core/agent/personalities.js:131	
-1llchoj	ok	Read {0}, {1}?	允許 Shiori 讀取「{0}」（{1}）嗎？	src/core/agent/trip-tools.js:364	{0} = title; {1} = dates; Note: annai's card before Shiori reads another of the user's trips, naming which: {0} is its name, {1} its dates as the screens show them ("Apr 1 – 8"). The options: Allow, Always for my trips, Not now. Also said aloud.
-i37hzw	ok	Read {0}?	允許 Shiori 讀取「{0}」嗎？	src/core/agent/trip-tools.js:364	{0} = title; Note: annai asks before Shiori reads another of the user's trips; {0} is that trip's name. The options: Allow, Always for my trips, Not now.
-mowdsi	ok	Read {0}, last talked {1}?	允許 Shiori 讀取「{0}」（上次對話：{1}）嗎？	src/core/agent/trip-tools.js:364	{0} = title; {1} = talked; Note: annai's card before Shiori reads another conversation whose name another one shares: {0} is its name, {1} when the user last talked in it ("Nov 5, 02:30 PM"). Also said aloud.
-1diq3hj	ok	Carry on in {0}?	切換到「{0}」繼續嗎？	src/core/agent/trip-tools.js:369	{0} = title; Note: annai's card when Shiori offers to take the user into another of their conversations to carry on there; {0} is its name. The options: Open, Not now. Also said aloud.
-8xml26	ok	Carry on in {0}, {1}?	切換到「{0}」（{1}）繼續嗎？	src/core/agent/trip-tools.js:369	{0} = title; {1} = dates; Note: annai's card when Shiori offers to take the user into another of their trips to carry on there, naming which: {0} is its name, {1} its dates as the screens show them ("Apr 1 – 8"). The options: Open, Not now. Open opens that trip's conversation. Also said aloud.
-9sjz9j	ok	Carry on in {0}, last talked {1}?	切換到「{0}」（上次對話：{1}）繼續嗎？	src/core/agent/trip-tools.js:369	{0} = title; {1} = talked; Note: annai's card when Shiori offers to take the user into another conversation whose name another one shares: {0} is its name, {1} when the user last talked in it ("Nov 5, 02:30 PM"). The options: Open, Not now. Also said aloud.
-8vx737	ok	Always for my trips	我的旅行一律允許	src/core/agent/trip-tools.js:380	Note: an option on that card: Shiori may read any of the user's own trips from now on, without asking (Settings can turn it off); the Trace's line for that grant shows it too.
-c9wfke	ok	Not now	現在不要	src/core/agent/trip-tools.js:380	Note: 現在不要, as Taiwan's iPhone says Not Now.
-nfb55e	ok	Allow	允許	src/core/agent/trip-tools.js:380	
-n6hn1l	ok	Open	開啟	src/core/agent/trip-tools.js:486	
+1llchoj	ok	Read {0}, {1}?	允許 Shiori 讀取「{0}」（{1}）嗎？	src/core/agent/trip-tools.js:367	{0} = title; {1} = dates; Note: annai's card before Shiori reads another of the user's trips, naming which: {0} is its name, {1} its dates as the screens show them ("Apr 1 – 8"). The options: Allow, Always for my trips, Not now. Also said aloud.
+i37hzw	ok	Read {0}?	允許 Shiori 讀取「{0}」嗎？	src/core/agent/trip-tools.js:367	{0} = title; Note: annai asks before Shiori reads another of the user's trips; {0} is that trip's name. The options: Allow, Always for my trips, Not now.
+mowdsi	ok	Read {0}, last talked {1}?	允許 Shiori 讀取「{0}」（上次對話：{1}）嗎？	src/core/agent/trip-tools.js:367	{0} = title; {1} = talked; Note: annai's card before Shiori reads another conversation whose name another one shares: {0} is its name, {1} when the user last talked in it ("Nov 5, 02:30 PM"). Also said aloud.
+1diq3hj	ok	Carry on in {0}?	切換到「{0}」繼續嗎？	src/core/agent/trip-tools.js:372	{0} = title; Note: annai's card when Shiori offers to take the user into another of their conversations to carry on there; {0} is its name. The options: Open, Not now. Also said aloud.
+8xml26	ok	Carry on in {0}, {1}?	切換到「{0}」（{1}）繼續嗎？	src/core/agent/trip-tools.js:372	{0} = title; {1} = dates; Note: annai's card when Shiori offers to take the user into another of their trips to carry on there, naming which: {0} is its name, {1} its dates as the screens show them ("Apr 1 – 8"). The options: Open, Not now. Open opens that trip's conversation. Also said aloud.
+9sjz9j	ok	Carry on in {0}, last talked {1}?	切換到「{0}」（上次對話：{1}）繼續嗎？	src/core/agent/trip-tools.js:372	{0} = title; {1} = talked; Note: annai's card when Shiori offers to take the user into another conversation whose name another one shares: {0} is its name, {1} when the user last talked in it ("Nov 5, 02:30 PM"). The options: Open, Not now. Also said aloud.
+8vx737	ok	Always for my trips	我的旅行一律允許	src/core/agent/trip-tools.js:383	Note: an option on that card: Shiori may read any of the user's own trips from now on, without asking (Settings can turn it off); the Trace's line for that grant shows it too.
+c9wfke	ok	Not now	現在不要	src/core/agent/trip-tools.js:383	Note: 現在不要, as Taiwan's iPhone says Not Now.
+nfb55e	ok	Allow	允許	src/core/agent/trip-tools.js:383	
+n6hn1l	ok	Open	開啟	src/core/agent/trip-tools.js:489	
 myk8x4	ok	annai couldn't reach {0} ({1}). Is the device offline?	無法連線到 {0}（{1}）。裝置是不是離線了？	src/core/answer.js:18	{0} = where; {1} = s.info; Note: {1} is the browser's own words, often English.
 uc7dg2	ok	annai couldn't reach {0}. Is the device offline?	無法連線到 {0}。裝置是不是離線了？	src/core/answer.js:18	{0} = where
 15czcef	ok	{0} answered {1}.	{0} 傳回了 {1}。	src/core/answer.js:19	{0} = where; {1} = s.status; Note: {1} is an HTTP status code.
@@ -681,20 +681,20 @@ lh9fzn	ok	Tool calls work.	工具呼叫可用。	src/core/llm/check.js:90
 rk5rlm	ok	The model answered but didn't call the test tool.	模型回答了，但沒有呼叫測試工具。	src/core/llm/check.js:90	
 1xj1cuk	ok	Photos work: it saw the red square.	照片可用：它看到了紅色方塊。	src/core/llm/check.js:96	
 dhnf3r	ok	It didn't see the red square (it said {0}).	它沒有看到紅色方塊（它說：{0}）。	src/core/llm/check.js:96	{0} = answer.slice(0, 60)
-1u5s6ep	ok	Uploading photos didn't work with this key.	用這個金鑰無法上傳照片。	src/core/llm/check.js:142	
-1uj9pv4	ok	annai will send photos in each request instead.	將改為在每次請求中附上照片。	src/core/llm/check.js:142	
-d9hh16	ok	Photo uploads work: each photo is uploaded once, and expires after 48 hours.	照片上傳可用：每張照片只上傳一次，48 小時後過期。	src/core/llm/check.js:146	
-isa2u8	ok	Photos upload, but annai can't read the list of its photos there, which it needs to delete them.	照片可以上傳，但無法讀取刪除所需的照片清單。	src/core/llm/check.js:152	Note: annai is left out as the subject (zh-style rule 3); 清單 as in the other rows (外掛程式清單, 模型清單).
-1owzksi	ok	Photo uploads work: each photo is uploaded once, and annai deletes it after 48 hours (it just deleted the test photo).	照片上傳可用：每張照片只上傳一次，48 小時後由 annai 刪除（測試照片剛剛已刪除）。	src/core/llm/check.js:155	
-qer7un	ok	Tap Test again later. annai deletes the test photo with the others, after 48 hours.	請稍後再點一下「測試」。測試照片會和其他照片一樣，在 48 小時後由 annai 刪除。	src/core/llm/check.js:158	Note: Tap is 點一下 (the fixed words); 「測試」 is the button as it is named (model-check.js:15).
-qpr4b9	ok	Photos upload, but annai couldn't check just now that it can delete the test photo.	照片可以上傳，但暫時無法確認能否刪除測試照片。	src/core/llm/check.js:158	Note: annai is left out as the subject (zh-style rule 3).
-1g1zzzw	ok	Photos upload, but annai couldn't delete the test photo with this key.	照片可以上傳，但用這個金鑰無法刪除測試照片。	src/core/llm/check.js:161	Note: annai is left out as the subject (zh-style rule 3); 金鑰 as in the row before it.
-16s9khr	ok	Utility	輔助	src/core/llm/check.js:165	
-2qw9g9	ok	Koe · Chat	Koe · 聊天	src/core/llm/check.js:165	
-mlh3jc	ok	Main	主要	src/core/llm/check.js:165	
-1q9bibx	ok	It also answers at {0}'s level ({1}).	在「{0}」的推理等級（{1}）下也能回答。	src/core/llm/check.js:167	{0} = roleName(role); {1} = role.level; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
-1bbu08l	ok	At {0}'s level ({1}), this model refused: {2}	在「{0}」的推理等級（{1}）下，此模型拒絕了請求：{2}	src/core/llm/check.js:169	{0} = roleName(role); {1} = role.level; {2} = said; Note: {0} is a role's name as the screens give it.
-1f0dxr7	ok	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	請在設定 → 模型中調低「{0}」的推理等級，或在此模型的頁面上修改其「推理等級」。	src/core/llm/check.js:171	{0} = roleName(role); Note: {0} is a role's name as the screens give it.
+1u5s6ep	ok	Uploading photos didn't work with this key.	用這個金鑰無法上傳照片。	src/core/llm/check.js:155	
+1uj9pv4	ok	annai will send photos in each request instead.	將改為在每次請求中附上照片。	src/core/llm/check.js:155	
+d9hh16	ok	Photo uploads work: each photo is uploaded once, and expires after 48 hours.	照片上傳可用：每張照片只上傳一次，48 小時後過期。	src/core/llm/check.js:159	
+isa2u8	ok	Photos upload, but annai can't read the list of its photos there, which it needs to delete them.	照片可以上傳，但無法讀取刪除所需的照片清單。	src/core/llm/check.js:165	Note: annai is left out as the subject (zh-style rule 3); 清單 as in the other rows (外掛程式清單, 模型清單).
+1owzksi	ok	Photo uploads work: each photo is uploaded once, and annai deletes it after 48 hours (it just deleted the test photo).	照片上傳可用：每張照片只上傳一次，48 小時後由 annai 刪除（測試照片剛剛已刪除）。	src/core/llm/check.js:168	
+qer7un	ok	Tap Test again later. annai deletes the test photo with the others, after 48 hours.	請稍後再點一下「測試」。測試照片會和其他照片一樣，在 48 小時後由 annai 刪除。	src/core/llm/check.js:171	Note: Tap is 點一下 (the fixed words); 「測試」 is the button as it is named (model-check.js:15).
+qpr4b9	ok	Photos upload, but annai couldn't check just now that it can delete the test photo.	照片可以上傳，但暫時無法確認能否刪除測試照片。	src/core/llm/check.js:171	Note: annai is left out as the subject (zh-style rule 3).
+1g1zzzw	ok	Photos upload, but annai couldn't delete the test photo with this key.	照片可以上傳，但用這個金鑰無法刪除測試照片。	src/core/llm/check.js:174	Note: annai is left out as the subject (zh-style rule 3); 金鑰 as in the row before it.
+16s9khr	ok	Utility	輔助	src/core/llm/check.js:178	
+2qw9g9	ok	Koe · Chat	Koe · 聊天	src/core/llm/check.js:178	
+mlh3jc	ok	Main	主要	src/core/llm/check.js:178	
+1q9bibx	ok	It also answers at {0}'s level ({1}).	在「{0}」的推理等級（{1}）下也能回答。	src/core/llm/check.js:180	{0} = roleName(role); {1} = role.level; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
+1bbu08l	ok	At {0}'s level ({1}), this model refused: {2}	在「{0}」的推理等級（{1}）下，此模型拒絕了請求：{2}	src/core/llm/check.js:182	{0} = roleName(role); {1} = role.level; {2} = said; Note: {0} is a role's name as the screens give it.
+1f0dxr7	ok	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	請在設定 → 模型中調低「{0}」的推理等級，或在此模型的頁面上修改其「推理等級」。	src/core/llm/check.js:184	{0} = roleName(role); Note: {0} is a role's name as the screens give it.
 1nuav0n	ok	That provider no longer exists.	這個供應商已不存在。	src/core/llm/config.js:383	
 1qjc2dh	ok	That provider has no ability called {0}.	這個供應商沒有名為 {0} 的功能。	src/core/llm/config.js:385	{0} = rec.ability
 4iiule	ok	Give the provider's model id.	請填寫供應商的模型 ID。	src/core/llm/config.js:388	

@@ -3,6 +3,7 @@ import { forget as forgetHistory } from '../forget.js';
 import { sha256Hex } from '../hash.js';
 import { safeId, sameOrigin, noRedirect } from './contract.js';
 import { anySignal } from '../signals.js';
+import { REQUEST_MS } from './uploads.js';
 
 /**
  * Turns a provider keeps (the Gemini design): a conversation's turn is kept there, and the next sends only what is new.
@@ -360,7 +361,7 @@ export async function deleteTurn({ type, endpoint, key, id, fetch, signal, trace
   let retryAfter;
   try {
     sameOrigin(endpoint, r.url);
-    const res = await fetch(r.url, { method: r.method, headers: r.headers, redirect: 'manual', signal: anySignal([signal ?? new AbortController().signal, AbortSignal.timeout(15_000)]) });
+    const res = await fetch(r.url, { method: r.method, headers: r.headers, redirect: 'manual', signal: anySignal([signal ?? new AbortController().signal, AbortSignal.timeout(REQUEST_MS)]) });
     status = res.status;
     retryAfter = Number(res.headers.get('retry-after')) * 1000 || undefined;
     noRedirect(res, endpoint);

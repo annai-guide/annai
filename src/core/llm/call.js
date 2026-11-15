@@ -4,7 +4,7 @@ import { levelPatch } from './reasoning.js';
 import { NO_USAGE, mergeUsage, costOf } from './cost.js';
 import { fromBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
-import { UPLOAD_TTL_S, MARGIN_MS, uploadName, deleteUpload } from './uploads.js';
+import { UPLOAD_TTL_S, UPLOAD_MS, MARGIN_MS, uploadName, deleteUpload } from './uploads.js';
 import { deleteTurn, lookTurn, keyPrint, hash } from './kept.js';
 import { ttlFor } from '../agent/warmth.js';
 import { formatOf } from '../voice/formats.js';
@@ -581,10 +581,10 @@ export async function photoHash(data) {
 
 /**
  * Photos go by id to an endpoint that stores files (spec §4.8): each is uploaded once, named
- * annai-… (uploadName, the rule the sweep deletes by), used for 48 hours. A failed upload sends the bytes, and stops
+ * annai-… (uploadName, the rule the sweep deletes by), used for 48 hours. A failed upload (one over UPLOAD_MS is cut) sends the bytes, and stops
  * uploading there until annai restarts, or its provider's key or address changes, or a Test passes. An upload answered after
- * uploads went off there (a failed upload, a refused key, a list annai can't read), or while its provider goes or changes its key or
- * address, is deleted at once and its photo sent in the request.
+ * uploads went off there (a failed upload, a refused key, a list annai can't read), or while its provider goes, changes its key or
+ * address, or everything is erased (Erase), is deleted at once and its photo sent in the request.
  * @param {Request} request
  * @param {{ type: EndpointType, endpoint: Endpoint, model: Model, key: string | null, uploads?: import('./uploads.js').Uploads, get: Fetch, trace?: ModelTrace, signal?: AbortSignal, now: () => number, from?: number }} c
  * from: the first message that is sent, the ones before it being held by a kept turn; expires: when the earliest of the photos sent by id expires (0: none)
@@ -616,7 +616,9 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
       let traced = false;
       try {
         sameOrigin(endpoint, r.url); // elsewhere: never sent, and the photo goes in the request
-        const res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, signal, redirect: 'manual' });
+        // Its own time limit, body included: a cut upload fails as any other; a Stop is told apart in the catch (the caller's signal aborted).
+        const limit = AbortSignal.timeout(UPLOAD_MS);
+        const res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, signal: signal ? anySignal([signal, limit]) : limit, redirect: 'manual' });
         traced = true;
         await trace?.upload({ endpoint: endpoint.name, url: r.url, status: res.status, ms: now() - started, ...(res.ok ? {} : { error: (await res.text().catch(() => '')).slice(0, 300) }) });
         noRedirect(res, endpoint);

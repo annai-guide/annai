@@ -6,7 +6,7 @@ import { kindOf } from '../../core/scopes.js';
 import { ValidationError, NotFoundError } from '../../core/workspace.js';
 import { sizeLine, healRegion } from '../../core/request-photos.js';
 import { readPass } from '../../core/pkpass.js';
-import { isBookingPath, shioriBooking, unalias } from '../../core/bookings.js';
+import { isBookingPath, shioriBooking, unalias, checkNote } from '../../core/bookings.js';
 import { t } from '../../core/l10n.js';
 import { NAMES_FILE } from '../../core/names.js';
 
@@ -195,9 +195,12 @@ export function activate(annai) {
         if (!isTextType(entry.type)) return `${i.path} is a ${entry.type} file, which can't be read as text.`;
         const all = new TextDecoder().decode(bytes);
         const from = Math.max(0, i.from ?? 0);
-        const piece = cutAt(all.slice(from), TEXT_MAX); // never ends inside an emoji: its pair goes whole into the next piece
+        // A booking's file ends with the screens' check, apart from its JSON (checkNote); the piece leaves it room.
+        const note = checkNote(scope, path, all);
+        const after = note ? `\n${note}` : '';
+        const piece = cutAt(all.slice(from), TEXT_MAX - after.length); // never ends inside an emoji: its pair goes whole into the next piece
         const rest = all.length - from - piece.length;
-        return rest > 0 ? `${piece}\n… ${rest} more characters; read again with from: ${from + piece.length}` : piece;
+        return `${rest > 0 ? `${piece}\n… ${rest} more characters; read again with from: ${from + piece.length}` : piece}${after}`;
       }),
     },
     {
