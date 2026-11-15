@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isBookingPath, shioriBooking, checkOf } from '../../src/core/bookings.js';
+import { isBookingPath, shioriBooking, checkOf, statusWords } from '../../src/core/bookings.js';
 
 const b = { id: 'hotel', kind: 'lodging', status: 'unverified', source: '/files/hotel.pdf', unsure: [] };
 
@@ -29,6 +29,12 @@ test('shioriBooking: new ones unverified, never confirmed by her; her change to 
   assert.equal(shioriBooking(confirmed, { ...confirmed, status: 'unverified' }).status, 'unverified');
   // Not a record: the format check says what is wrong.
   assert.equal(shioriBooking(b, 'text'), 'text');
+});
+
+test("statusWords: what a booking's status means, as a model is shown it; anything but confirmed is unchecked, as checkOf reads it", () => {
+  assert.equal(statusWords('confirmed'), 'checked by the user');
+  assert.equal(statusWords('unverified'), 'not checked by the user yet');
+  assert.equal(statusWords(undefined), 'not checked by the user yet');
 });
 
 test('checkOf: an old unverified booking is marked whole; an old confirmed one not at all; a new one by its unsure fields', () => {
