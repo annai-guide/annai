@@ -75,7 +75,7 @@ export function planWatches(items, bookings, { fallbackTz }) {
     const short = whatOf(title, booking, flight, x.at, tz, place?.name ?? '');
     const base = {
       type: 'plan', item: slug(x.path), title, at: x.at, end: Number.isFinite(end) && end > x.at ? end : null, tz, fixed: it.fixed === true,
-      unsure: timeUnsure(it, booking, { fallbackTz }),
+      unsure: timeUnsure([it.start], booking, { fallbackTz }), // the start: the time a wake says (the off-plan wake's end is for a flexible item)
       what: whatText(short), short,
     };
     const notes = typeof it.notes === 'string' && it.notes.trim() ? it.notes.trim() : '';

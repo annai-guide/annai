@@ -91,6 +91,20 @@ test("a booking with parts Shiori is unsure of: its row names them by what they 
   assert.doesNotMatch(view, /unsure|unverified|status/);
 });
 
+test("Koe's plan row shows both times, so an unsure end marks it: a flight's arrival is a time she says (the review of booking-check, F1)", async () => {
+  const k = await agentKit([[{ text: '' }]], { open: true });
+  const write = (/** @type {string} */ path, /** @type {any} */ v) => k.ws.write(k.trip, path, v, { author: 'user' });
+  const flight = (/** @type {string} */ id, /** @type {string[]} */ unsure) => write(`/bookings/${id}.json`, { id, kind: 'flight', status: 'unverified', source: `/files/${id}.pdf`, title: `${id} Test Air`, unsure, start: at('2026-11-27T09:00:00'), end: at('2026-11-27T11:30:00') });
+  const item = (/** @type {string} */ id) => write(`/plan/${id}.json`, { id, title: `Flight ${id}`, fixed: true, booking: `/trip/bookings/${id}.json`, start: at('2026-11-27T09:00:00'), end: at('2026-11-27T11:30:00') });
+  await flight('endmarked', ['end']);
+  await flight('sure', []);
+  await item('endmarked');
+  await item('sure');
+  const view = await compactView({ ws: k.ws, trip: k.trip, now, timeZone: LA, next: null });
+  assert.match(view, /\n2026-11-27 09:00\t2026-11-27 11:30\tFlight endmarked\tcan't be moved; not sure the time was read right\t\n/);
+  assert.match(view, /\n2026-11-27 09:00\t2026-11-27 11:30\tFlight sure\tcan't be moved\t\n/);
+});
+
 test("a conversation with no dates: the view says it has none and that the user's trips hold what is on, never \"nothing planned\" or \"none\", which read as the user's whole plan (real models, stage 5 finding 1)", async () => {
   const k = await agentKit([[{ text: '' }]], { open: true });
   const view = await compactView({ ws: k.ws, trip: k.trip, now, timeZone: LA, next: null });

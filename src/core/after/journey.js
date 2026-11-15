@@ -19,7 +19,7 @@ import { storedTexts } from '../agent/log.js';
  *   | { kind: 'photo', at: number, path: string, hash: string, type: string, size: number, width: number | null, height: number | null,
  *       place: { lat: number, lng: number } | null }} Entry  a card's tune: a personality tuning's, whose title the screens make
  * @typedef {{ title: string, at: number | null, place: { name: string, lat: number, lng: number } | null, fixed: boolean, unsure: boolean, visited: boolean }} PlanLine
- *   unsure: its time is one Shiori isn't sure of (timeUnsure, from the booking it stands for)
+ *   unsure: its start is a time Shiori isn't sure of (timeUnsure, from the booking it stands for)
  * @typedef {{ trip: string, title: string, tz: string, info: any, points: Point[], legs: Leg[], stamps: Stamp[], entries: Entry[],
  *   plan: PlanLine[], from: number | null, to: number | null, days: string[] }} Journey
  *   info: trip.json; from, to: when the first and last thing happened; days: each day something did, in the trip's zone.
@@ -152,7 +152,7 @@ export async function readJourney({ store, ws, trip, namer = () => null }) {
         const t = Date.parse(item.start?.at ?? '');
         return {
           title: String(item.title ?? slug), at: Number.isFinite(t) ? t : null, fixed: item.fixed === true,
-          unsure: timeUnsure(item, bookings.get(bookingRef(item.booking) ?? ''), { fallbackTz: tz }),
+          unsure: timeUnsure([item.start], bookings.get(bookingRef(item.booking) ?? ''), { fallbackTz: tz }),
           place: hasPoint(item.place) && item.place.name ? { name: String(item.place.name), lat: item.place.lat, lng: item.place.lng } : null,
           visited: fired.some((e) => e.data?.watch === `plan:${slug}:arrived`),
         };

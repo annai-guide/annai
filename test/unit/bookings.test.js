@@ -63,6 +63,18 @@ test("checkWords names each part Shiori is unsure of by what it is, as the scree
   }
 });
 
+test("checkWords: each key whose own words would mislead has its words, never the key's (the table's every entry; the review of booking-check, F2)", () => {
+  const said = {
+    title: 'the name', confirmation: 'the confirmation number', flight: 'the flight number', from: 'where it leaves from', to: 'where it arrives',
+    class: 'the cabin', nights: 'the number of nights', pickup: 'the pick-up place', dropoff: 'the drop-off place', party: 'the party size',
+  };
+  for (const [key, words] of Object.entries(said)) {
+    // title and confirmation are a booking's own fields; the others are keys of `fields`, as Shiori writes them.
+    const got = checkWords({ status: 'unverified', kind: 'flight', unsure: [key], title: 'Test Air', confirmation: 'TQ1', fields: { [key]: 'x' } });
+    assert.equal(got, `not sure ${words} was read right`, key);
+  }
+});
+
 test('checkOf: an old unverified booking is marked whole; an old confirmed one not at all; a new one by its unsure fields', () => {
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified' }), { whole: true, fields: [] });
   assert.deepEqual(checkOf({ kind: 'flight', status: 'confirmed' }), { whole: false, fields: [] });

@@ -36,6 +36,19 @@ test('a typed message wakes Shiori; she speaks and sleeps; the whole turn is in 
   assert.deepEqual(k.requests[0].tools.map((/** @type {any} */ t) => t.name).slice(0, 5), ['speak', 'show', 'ask', 'wait', 'sleep']);
 });
 
+test("the now block's plan reads a restored time with no offset on the phone's zone, the one the block itself names (the review of booking-check, F2)", async (t) => {
+  useClock(t);
+  const LA = 'America/Los_Angeles';
+  const k = await agentKit([[say('Noted.')]], { agent: { now: () => Date.parse('2026-11-26T12:00:00-08:00'), timeZone: () => LA } });
+  await k.ws.write(k.trip, '/bookings/inn.json', { id: 'inn', kind: 'lodging', status: 'unverified', source: '/files/inn.pdf', title: 'Harbor Test Inn', unsure: ['end'], start: { at: '2026-11-26T15:00:00-08:00', tz: LA }, end: { at: '2026-11-27T11:00:00-08:00', tz: LA } }, { author: 'user' });
+  // The check-out as a restored version has it: a wall clock with no offset and no zone of its own (the format check, which asks for an
+  // offset, is skipped by the type). 11:00 on the phone's clock is the booking's end.
+  await k.ws.write(k.trip, '/plan/out.json', { id: 'out', title: 'Check out', fixed: true, booking: '/trip/bookings/inn.json', start: { at: '2026-11-27T11:00:00' } }, { author: 'user', type: 'text/plain' });
+  k.agent.send('Hello');
+  await k.agent.idle();
+  assert.match(k.requests[0].tail, /\ttitle\tconstraint\tplace\n[^\n]*\tCheck out\tcan't be moved; not sure the time was read right\t\n/);
+});
+
 test('tool calls run in order, sleep last, and every call gets a result', async (t) => {
   useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'sleep', input: {} }, { name: 'write', input: { path: '/trip/notes/a.md', content: 'x' } }, { name: 'speak', input: { text: 'Noted.' } }] }]]);

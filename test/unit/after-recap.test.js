@@ -66,6 +66,19 @@ test("the recap's plan says when an item's time is its booking's time Shiori isn
   assert.match(text, /Hearst Castle tour\tHearst Castle\tcan't be moved\tno/);
 });
 
+test("the recap's plan shows an item's start alone: an unsure end of its booking doesn't mark a sure start (the review of booking-check, F1)", async () => {
+  const k = await aTrip();
+  const flight = (/** @type {string} */ id, /** @type {string[]} */ unsure) => k.ws.write(k.trip, `/bookings/${id}.json`, { id, kind: 'flight', status: 'unverified', source: `/files/${id}.pdf`, title: `${id} Test Air`, unsure, start: { at: iso('19:00'), tz: LA }, end: { at: iso('21:30'), tz: LA } }, { author: 'user' });
+  const item = (/** @type {string} */ id) => k.ws.write(k.trip, `/plan/${id}.json`, { id, title: `Flight ${id}`, fixed: true, booking: `/trip/bookings/${id}.json`, start: { at: iso('19:00'), tz: LA }, end: { at: iso('21:30'), tz: LA } }, { author: 'user' });
+  await flight('endmarked', ['end']);
+  await flight('startmarked', ['start']);
+  await item('endmarked');
+  await item('startmarked');
+  const text = recapText(await readJourney({ store: k.store, ws: k.ws, trip: k.trip }));
+  assert.match(text, /\tFlight endmarked\t\tcan't be moved\tno\n/);
+  assert.match(text, /\tFlight startmarked\t\tcan't be moved; not sure the time was read right\tno\n/);
+});
+
 test('a long trip fits the cap: the words are thinned evenly, the road and the stamps stay', async () => {
   const k = await aTrip();
   for (let i = 0; i < 3000; i++) await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: `Message ${i}: ${'blah '.repeat(60)}` } }, at('11:00') + i * 1000);

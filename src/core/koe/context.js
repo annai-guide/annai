@@ -42,7 +42,7 @@ export async function compactView({ ws, trip, now, timeZone, next }) {
     .map((r) => {
       const end = r.from === 'item' ? at(r.item.end) : NaN;
       const name = r.from === 'end' ? `${ENDS[r.set?.kind ?? ''] ?? 'Ends'} · ${r.item.title}` : r.item.title;
-      const unsure = timeUnsure(r.item, r.booking, { fallbackTz: timeZone });
+      const unsure = timeUnsure([r.item.start, r.item.end], r.booking, { fallbackTz: timeZone });
       return [local(/** @type {number} */ (r.at), timeZone), Number.isFinite(end) ? local(end, timeZone) : '', e(name), fixedWords(r.item.fixed, { unsure }), e(r.item.place?.name)];
     });
   const bookings = bookingFiles.map((f) => f.value)

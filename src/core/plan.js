@@ -41,18 +41,20 @@ export const BOOKING_FILE = /^\/bookings\/[^/]+\.json$/;
 export const fixedWords = (fixed, { unsure }) => /* en */ [fixed ? "can't be moved" : '', unsure ? 'not sure the time was read right' : ''].filter(Boolean).join('; ');
 
 /**
- * Whether a plan row's time is one Shiori isn't sure of, as the screens mark it (checkOf): its start or its end is the same moment as its
- * booking's start or end, and the booking is marked whole or at that time. An end row's item has the end as its start (planRows).
- * @param {Record<string, any>} item the plan item, or a row's view of it @param {unknown} booking the booking it stands for, if any
+ * Whether a time a plan row shows is one Shiori isn't sure of, as the screens mark it (checkOf): one of those times is the same moment as
+ * its booking's start or end, and the booking is marked whole or at that time. Only the times the row shows count: a sure check-in beside
+ * an unsure check-out is a sure row when the view shows the start alone. An end row's item has the end as its start (planRows).
+ * @param {unknown[]} shown the row's times: its start, and its end where the view shows it @param {unknown} booking the booking it stands for, if any
  * @param {{ fallbackTz: string }} o the zone for a time whose own zone annai doesn't know
  */
-export function timeUnsure(item, booking, { fallbackTz }) {
+export function timeUnsure(shown, booking, { fallbackTz }) {
   const b = record(booking);
   if (!b) return false;
   const moment = (/** @type {any} */ t) => instantAt(t?.at, validZone(t?.tz) ? t.tz : fallbackTz);
   const marks = checkOf(b);
+  // A booking with no end (an old one, marked whole) has no moment there: NaN, which a row with no time would also read as.
   const marked = ['start', 'end'].filter((k) => marks.whole || marks.fields.includes(k)).map((k) => moment(b[k])).filter(Number.isFinite);
-  return [item.start, item.end].some((t) => marked.includes(moment(t)));
+  return shown.some((t) => marked.includes(moment(t)));
 }
 
 /** A booking's title on the Plan when Shiori gave none: its kind's word. */

@@ -136,3 +136,16 @@ test("a wake says when an item's time is its booking's time Shiori isn't sure of
   assert.equal(wake(inn), 'Plan: "Check out" (can\'t be moved; not sure the time was read right) starts at 11:00, in 10 min');
   assert.equal(wake({ ...inn, unsure: ['start'] }), 'Plan: "Check out" (can\'t be moved) starts at 11:00, in 10 min');
 });
+
+test("a wake shows an item's start: an unsure end of its booking doesn't make a sure start unsure (the review of booking-check, F1)", () => {
+  const items = [{ path: '/plan/stay.json', item: { id: 'stay', title: 'Stay', fixed: true, booking: '/trip/bookings/inn.json', start: { at: '2026-11-27T15:00:00-08:00', tz: LA }, end: { at: '2026-11-28T11:00:00-08:00', tz: LA } } }];
+  const inn = { id: 'inn', kind: 'lodging', status: 'unverified', source: '/files/i.pdf', title: 'Harbor Test Inn', unsure: ['end'], start: { at: '2026-11-27T15:00:00-08:00', tz: LA }, end: { at: '2026-11-28T11:00:00-08:00', tz: LA } };
+  const wake = (/** @type {any} */ b) => {
+    const [w] = planWatches(items, new Map([['/bookings/inn.json', b]]), { fallbackTz: LA });
+    assert.equal(w.id, 'plan:stay:coming-up');
+    assert.ok(planWatches(items, new Map([['/bookings/inn.json', b]]), { fallbackTz: LA }).every((x) => x.when.unsure === (b.unsure[0] === 'start')), 'every wake of the item carries the same answer');
+    return PLAN.check(w.when, moment({ now: Date.parse('2026-11-27T14:50:00-08:00') }), {})?.text;
+  };
+  assert.equal(wake(inn), 'Plan: "Stay" (can\'t be moved) starts at 15:00, in 10 min');
+  assert.equal(wake({ ...inn, unsure: ['start'] }), 'Plan: "Stay" (can\'t be moved; not sure the time was read right) starts at 15:00, in 10 min');
+});

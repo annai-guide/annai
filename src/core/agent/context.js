@@ -152,7 +152,7 @@ export async function planItems(ws, trip) {
 }
 
 /**
- * The next plan items, as TSV rows: start, title, constraint (fixedWords, with timeUnsure from the booking an item stands for), place.
+ * The next plan items, as TSV rows: start, title, constraint (fixedWords, with timeUnsure of the start it shows, from the booking the item stands for), place.
  * @param {import('../workspace.js').Workspace} ws @param {string | null} trip @param {number} now
  * @param {{ fallbackTz: string, limit?: number }} o fallbackTz: the zone for a time whose own zone annai doesn't know
  */
@@ -162,7 +162,7 @@ export async function nextPlanItems(ws, trip, now, { fallbackTz, limit = 5 }) {
   for (const { it } of (await planItems(ws, trip)).filter((x) => x.at >= now).slice(0, limit)) {
     const ref = bookingRef(it.booking);
     const booking = ref ? await ws.readJSON(trip, ref).catch(() => null) : null;
-    rows.push([it.start.at, it.title, fixedWords(it.fixed, { unsure: timeUnsure(it, booking, { fallbackTz }) }), it.place?.name ?? '']);
+    rows.push([it.start.at, it.title, fixedWords(it.fixed, { unsure: timeUnsure([it.start], booking, { fallbackTz }) }), it.place?.name ?? '']);
   }
   return rows;
 }

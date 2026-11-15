@@ -110,6 +110,20 @@ test("the now block's plan: an item at its booking's time Shiori isn't sure of s
   assert.deepEqual(plan.map((r) => [r[1], r[2]]), [['Check in', "can't be moved"], ['Check out', "can't be moved; not sure the time was read right"], ['Dinner', "can't be moved"]]);
 });
 
+test("the now block's plan shows an item's start alone: it is unsure only when the booking's start is, never for an unsure end it doesn't show (the review of booking-check, F1)", async () => {
+  const { ws, trip } = await setup();
+  const LA = 'America/Los_Angeles';
+  const t = (/** @type {string} */ local) => ({ at: `${local}-08:00`, tz: LA });
+  const book = (/** @type {string} */ id, /** @type {string[]} */ unsure) => ws.write(trip, `/bookings/${id}.json`, { id, kind: 'lodging', status: 'unverified', source: `/files/${id}.pdf`, title: `${id} Test Inn`, unsure, start: t('2026-11-26T15:00:00'), end: t('2026-11-29T11:00:00') }, { author: 'user' });
+  // A stay item carries both times of its booking. The sure check-in at 15:00 is not told as unsure when only the check-out is.
+  await book('endmarked', ['end']);
+  await book('startmarked', ['start']);
+  await ws.write(trip, '/plan/a.json', { id: 'a', title: 'Stay A', fixed: true, booking: '/trip/bookings/endmarked.json', start: t('2026-11-26T15:00:00'), end: t('2026-11-29T11:00:00') }, { author: 'user' });
+  await ws.write(trip, '/plan/b.json', { id: 'b', title: 'Stay B', fixed: true, booking: '/trip/bookings/startmarked.json', start: t('2026-11-26T15:00:00'), end: t('2026-11-29T11:00:00') }, { author: 'user' });
+  const plan = await nextPlanItems(ws, trip, Date.parse('2026-11-26T12:00:00-08:00'), { fallbackTz: LA });
+  assert.deepEqual(plan.map((r) => [r[1], r[2]]), [['Stay A', "can't be moved"], ['Stay B', "can't be moved; not sure the time was read right"]]);
+});
+
 test('warmth: warm within the lifetime of the same prefix; cold after it, or for another prefix', async () => {
   const w = new Warmth();
   w.note('m-1', 'fp-a', 300_000, 1000);

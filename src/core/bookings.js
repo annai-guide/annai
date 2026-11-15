@@ -33,7 +33,9 @@ export function checkOf(b) {
 
 /**
  * A booking's parts as a model is told them: by what each is, never the field's name, which a model says, translated (「未確認」, 2026-11-14).
- * Its times by its kind, as the screens name them; a key of its own or of `fields` as the words it is made of, unless those mislead.
+ * Its times by its kind, as people say them (the user's words, 2026-11-14: "how people will actually say"): the screens' own words for a flight
+ * and a stay (Departs, Arrives; Check-in, Check-out), and for a car and a train the Plan's (Pick up, Return; Arrive), though the booking
+ * screen says Starts and Ends there. A key of its own or of `fields` as the words it is made of, unless those mislead.
  */
 /* en */ const TIME_PARTS = /** @type {Record<string, [string, string]>} */ ({
   flight: ['the departure time', 'the arrival time'], rail: ['the departure time', 'the arrival time'],
