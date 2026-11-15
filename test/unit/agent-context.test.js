@@ -420,3 +420,14 @@ test("her instructions' plan item and booking are records of their formats, whic
   assert.equal(typeof booking.fields, 'object');
   assert.ok(CORE.includes(`kind: ${BOOKING_SCHEMA.properties.kind.enum.slice(0, -1).join(', ')} or ${BOOKING_SCHEMA.properties.kind.enum.at(-1)};`), "the kinds are the format's");
 });
+
+test("her instructions say what of a booking the user is asked to check: only what unsure lists, by what it is; never a field's name or the status (booking-say: \"still marked unsure\", 「未確認」, \"not confirmed\")", async () => {
+  const { checkWords } = await import('../../src/core/bookings.js');
+  const line = CORE.split('\n').find((l) => l.startsWith('- What you ask the user to check of a booking'));
+  assert.equal(line, "- What you ask the user to check of a booking is only what unsure lists, each said by what it is (in the example, the check-out time), never by a field's name; never tell them a booking's status, in any words.");
+  // It follows the format's lines, and its example is the part the views name for the example booking (bookings.js checkWords).
+  const lines = CORE.split('\n');
+  assert.ok(lines[lines.indexOf(line) - 1].startsWith('- Write each booking with unsure naming just the fields you are not sure of'));
+  const booking = JSON.parse(/** @type {string} */ (/and a booking like (\{.*?\}) \(kind/.exec(CORE)?.[1]));
+  assert.equal(checkWords(booking), 'not sure the check-out time was read right');
+});

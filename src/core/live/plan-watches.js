@@ -75,7 +75,7 @@ export function planWatches(items, bookings, { fallbackTz }) {
     const short = whatOf(title, booking, flight, x.at, tz, place?.name ?? '');
     const base = {
       type: 'plan', item: slug(x.path), title, at: x.at, end: Number.isFinite(end) && end > x.at ? end : null, tz, fixed: it.fixed === true,
-      unsure: timeUnsure([it.start], booking, { fallbackTz }), // the start: the time a wake says (the off-plan wake's end is for a flexible item)
+      unsure: timeUnsure([it.start], booking, { fallbackTz }), // the start: the time a wake says (the off-plan wake, which says the end too, reads both)
       what: whatText(short), short,
     };
     const notes = typeof it.notes === 'string' && it.notes.trim() ? it.notes.trim() : '';
@@ -89,7 +89,7 @@ export function planWatches(items, bookings, { fallbackTz }) {
         add('leave', `Leave soon: ${base.what}.`, { event: 'leave', what: short }, { ...there, from: prev });
         add('late', `Running late: ${base.what}.`, { event: 'late', what: short }, there);
       } else {
-        add('off-plan', `Planned now: ${title}, at ${place.name}.`, { event: 'off-plan', title, place: place.name }, there);
+        add('off-plan', `Planned now: ${title}, at ${place.name}.`, { event: 'off-plan', title, place: place.name }, { ...there, unsure: timeUnsure([it.start, it.end], booking, { fallbackTz }) });
       }
       add('arrived', `${place.name}: ${title}.${notes ? ` ${notes}` : ''}`, { event: 'arrived', title, place: place.name, ...(notes ? { notes } : {}) }, there);
       prev = place;

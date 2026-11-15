@@ -1,5 +1,5 @@
 {
-  "build": "cfffa3634103",
+  "build": "9b068c08ab94",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -39,8 +39,8 @@
     "/src/core/agent/budgets.js": "ec0a25e840fb",
     "/src/core/agent/compaction.js": "2a22ce610853",
     "/src/core/agent/context.js": "421971abd69a",
-    "/src/core/agent/halves.js": "2458e695babc",
-    "/src/core/agent/instructions.js": "d6382e442037",
+    "/src/core/agent/halves.js": "6a9c1ba9dfd7",
+    "/src/core/agent/instructions.js": "8236ae1c1717",
     "/src/core/agent/listen.js": "ace64ee6f6c6",
     "/src/core/agent/log.js": "be1f6eedd6f8",
     "/src/core/agent/loop.js": "801e0f3a55f4",
@@ -98,7 +98,7 @@
     "/src/core/live/clock.js": "e8699d74a329",
     "/src/core/live/geo.js": "018e805b07f7",
     "/src/core/live/live.js": "a784455a3349",
-    "/src/core/live/plan-watches.js": "b78a15613ba4",
+    "/src/core/live/plan-watches.js": "a19dc59eb23d",
     "/src/core/live/sim-run.js": "91b84ce6a313",
     "/src/core/live/simulate.js": "d42f97c8d368",
     "/src/core/live/triggers.js": "1e07368d82e6",
