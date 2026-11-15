@@ -95,6 +95,12 @@ provider-gemini:@name	ok	Google Gemini	Google Gemini	plugins-official/provider-g
 provider-gemini:@description	ok	Gemini models through Google's own API, with Google Search on a paid key, its transcription and voices, and Gemini Live for a voice conversation.	Google独自のAPIで使うGeminiのモデル。有料キーならGoogle 検索も使えます。Googleの文字起こしと声、音声で会話できるGemini Liveにも対応しています。	plugins-official/provider-gemini/annai-plugin.json:6	
 provider-gemini:@provider.note	ok	Uses Gemini's own API. AI Studio shows each key's tier: a free key's requests are limited per minute and per day. Add more models with Fetch model list.	Gemini独自のAPIを使います。キーが無料枠か有料かはAI Studioで確認できます。無料キーでは、1分あたりと1日あたりのリクエスト数に上限があります。ほかのモデルは「モデルの一覧を取得」で追加できます。	plugins-official/provider-gemini/annai-plugin.json:19	Note: A key's tier is whether it is free or paid; 利用枠 read as a quota. AI Studio's own label for it is not named, since its ja wording isn't confirmed.
 provider-gemini:@provider.abilities.chat.noWindowNote	ok	Since version 2.0 this goes through Gemini's own API, not its OpenAI-compatible endpoint. A model without a context window here was added before then, or by id: if it doesn't answer, remove it and add it again with Fetch model list.	バージョン2.0からは、OpenAI互換のエンドポイントではなくGemini独自のAPIを使います。ここでコンテキストウィンドウが未設定のモデルは、それ以前かIDで追加したものです。応答しない場合は、削除してから「モデルの一覧を取得」で追加し直してください。	plugins-official/provider-gemini/annai-plugin.json:24	
+provider-gemini:@provider.abilities.chat.models.0.providerTools.0.label	ok	Let Gemini search Google	GeminiにGoogle 検索を使ってもらう	plugins-official/provider-gemini/annai-plugin.json:81	
+provider-gemini:@provider.abilities.chat.models.1.providerTools.0.label	ok	Let Gemini search Google	GeminiにGoogle 検索を使ってもらう	plugins-official/provider-gemini/annai-plugin.json:81	
+provider-gemini:@provider.abilities.chat.models.2.providerTools.0.label	ok	Let Gemini search Google	GeminiにGoogle 検索を使ってもらう	plugins-official/provider-gemini/annai-plugin.json:81	
+provider-gemini:@provider.abilities.chat.models.0.providerTools.0.note	ok	Google gives 5,000 searches a month free on paid projects, then $14 per 1,000: annai counts this phone's. Google keeps searched prompts for 30 days, which annai can't delete.	Googleの有料プロジェクトでは、検索は月5,000回まで無料で、超えると1,000回につき$14かかります。annaiが数えるのは、この端末での検索回数だけです。検索に使われたプロンプトはGoogleに30日間保存され、annaiからは削除できません。	plugins-official/provider-gemini/annai-plugin.json:82	
+provider-gemini:@provider.abilities.chat.models.1.providerTools.0.note	ok	Google gives 5,000 searches a month free on paid projects, then $14 per 1,000: annai counts this phone's. Google keeps searched prompts for 30 days, which annai can't delete.	Googleの有料プロジェクトでは、検索は月5,000回まで無料で、超えると1,000回につき$14かかります。annaiが数えるのは、この端末での検索回数だけです。検索に使われたプロンプトはGoogleに30日間保存され、annaiからは削除できません。	plugins-official/provider-gemini/annai-plugin.json:82	
+provider-gemini:@provider.abilities.chat.models.2.providerTools.0.note	ok	Google gives 5,000 searches a month free on paid projects, then $14 per 1,000: annai counts this phone's. Google keeps searched prompts for 30 days, which annai can't delete.	Googleの有料プロジェクトでは、検索は月5,000回まで無料で、超えると1,000回につき$14かかります。annaiが数えるのは、この端末での検索回数だけです。検索に使われたプロンプトはGoogleに30日間保存され、annaiからは削除できません。	plugins-official/provider-gemini/annai-plugin.json:82	
 provider-gemini:@provider.abilities.transcription.note	ok	Turns what you say into text, for a model that doesn't take audio. Gemini 3.5 Transcribe is Google's own; Flash Lite writes it down when asked, for less. Their prices are estimates from Google's rates for audio, about 25 tokens a second.	音声を受け付けないモデルのために、話した内容を文字にします。Gemini 3.5 TranscribeはGoogleの文字起こし専用モデルです。Flash Liteも指示すれば書き起こせて、より安く済みます。料金は、Googleの音声料金（1秒あたり約25トークン）から見積もった値です。	plugins-official/provider-gemini/annai-plugin.json:223	
 provider-gemini:@provider.abilities.voice.note	ok	Shiori's voice, a sentence at a time, each sentence one request. It streams: she starts about half a second after a sentence is written, and on a weak connection she waits until it won't stutter. Switch streaming off to have each sentence arrive whole, as other voices do. On the free tier Google allows each of these voices only 10 requests a day and 3 a minute: far fewer than a day of replies, so after the first few sentences the next voice in the list speaks. Prices are estimates per character from Google's rate for audio, 25 tokens a second. Her voice is Sulafat unless the Tunables here name another (it is the warm one of Google's 30; Achird is friendly, Vindemiatrix gentle, Kore firm), and the Style goes as Google's own speech_metadata style.	Shioriの声です。1文ずつ、1文につき1回のリクエストで話します。ストリーミングするので、文ができてから約0.5秒で話し始めます。通信が不安定なときは、途切れずに話せるようになるまで待ちます。ストリーミングをオフにすると、ほかの声と同じように、1文が丸ごと届いてから話します。無料枠では、Googleはこれらの声それぞれに1日10回・1分3回のリクエストしか許可していません。1日分の返答にはとても足りないため、最初の数文のあとはリストの次の声が話します。料金は、Googleの音声料金（1秒あたり25トークン）から1文字あたりで見積もった値です。ここの調整項目で別の声を指定しない限り、声はSulafatです（Googleの30種類の声のうち、温かみのある声です。Achirdは親しみやすく、Vindemiatrixは穏やか、Koreはきっぱりした声です）。「スタイル」は、Google独自の speech_metadata の style として送られます。	plugins-official/provider-gemini/annai-plugin.json:244	
 provider-gemini:@provider.abilities.live.name	ok	Live voice	ライブ音声	plugins-official/provider-gemini/annai-plugin.json:269	
@@ -774,25 +780,25 @@ aaicx8	ok	{0} couldn't be checked: {1}	{0}を確認できませんでした：{1
 mlem3w	ok	wasn't installed from an address, so annai has nowhere to look for an update	アドレスからインストールしたものではないため、更新を確認できません	src/core/package-updates.js:54	
 1nrhfbi	ok	the address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	そのアドレスのパッケージが別のもの（{0}）に変わっているため、アップデートしませんでした。そちらを使う場合は、これを削除してからインストールしてください。	src/core/package-updates.js:58	{0} = pkg.id
 emc8n2	ok	this update adds parts you haven't agreed to: {0}. Check for updates again and look at what it adds.	このアップデートでは、まだ同意していないものが追加されます：{0}。もう一度更新を確認して、追加される内容を確かめてください。	src/core/package-updates.js:62	{0} = addedWords(added); Note: the English starts in lower case after the plugin's name, which the screen leaves out; a sentence here.
-1wfc5of	ok	This zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.	このzipには複数のスキルが入っています。1つずつインストールするか、それらを記載したannai-plugin.jsonを追加してください。	src/core/packages.js:337	
-12el2y8	ok	The {0} is in {1}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0}が{1}にあり、階層が深すぎます。annaiが読み込むのは、zipの最上位か、zipに1つだけ入ったフォルダーの中です。そのフォルダーだけをzipにしてください。	src/core/packages.js:345	{0} = file; {1} = folder
-yeyuzl	ok	The {0} is in {1}, with other files beside that folder: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0}は{1}にありますが、zipの最上位にほかのファイルもあります。annaiが読み込むのは、zipの最上位か、zipに1つだけ入ったフォルダーの中です。そのフォルダーだけをzipにしてください。	src/core/packages.js:346	{0} = file; {1} = folder
-woxuej	ok	There is no {0} or {1} in this package.	このパッケージには{0}も{1}もありません。	src/core/packages.js:348	{0} = MANIFEST_FILE; {1} = SKILL_FILE
-1r65tkq	ok	It is too large: it unpacks to more than {0}.	サイズが大きすぎます。展開すると{0}を超えます。	src/core/packages.js:366	{0} = size(maxBytes); Note: said of a plugin, whose name is the card's title.
-jg8gk7	ok	That isn't a web address. Paste the address of a zip file, an annai-plugin.json or a SKILL.md.	Webアドレスではありません。zipファイル、annai-plugin.json、SKILL.mdのいずれかのアドレスを貼り付けてください。	src/core/packages.js:446	
-13j5338	ok	For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.	GitHubのフォルダーの場合は、その中のSKILL.mdかannai-plugin.jsonのアドレスを使ってください。	src/core/packages.js:480	
-1xovhb	ok	annai couldn't reach {0}. Check the address, and that the site lets web apps read it.	{0}に接続できませんでした。アドレスが正しいか、そのサイトがWebアプリからの読み込みを許可しているかを確認してください。	src/core/packages.js:489	{0} = u.host
-4lh0yw	ok	{0} sent a zip annai can't open: {1}	{0}から届いたzipを開けません：{1}	src/core/packages.js:502	{0} = url.host; {1} = why; Note: {1} is a developer's detail, in English.
-hm96ty	ok	That package has more than {0} files; annai installs packages of up to {1} from an address. Use a zip instead.	そのパッケージには{0}件を超えるファイルがあります。アドレスからインストールできるパッケージは、ファイル{1}件までです。代わりにzipを使ってください。	src/core/packages.js:518	{0} = ADDRESS_MAX_FILES; {1} = ADDRESS_MAX_FILES
-pft16a	ok	{0} answered {1} for {2}, a file its {3} names.	{3}に記載された{2}を取得しようとしたところ、{0}から{1}が返されました。	src/core/packages.js:530	{0} = u.host; {1} = status; {2} = name; {3} = from
-apv0y3	ok	annai couldn't read {0} from {1}, a file its {2} names. Check that it is there, and that the site lets web apps read it.	{2}に記載された{0}を{1}から読み込めませんでした。ファイルがあるか、そのサイトがWebアプリからの読み込みを許可しているかを確認してください。	src/core/packages.js:532	{0} = name; {1} = u.host; {2} = from
-1iuga68	ok	There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.	そのアドレスにannaiのプラグインやスキルが見つかりません。annaiが読み込めるのは、zipファイル、annai-plugin.json、SKILL.mdです。	src/core/packages.js:602	
-1toghwz	ok	The {0} at {1} isn't valid JSON.	{1}の{0}は正しいJSONではありません。	src/core/packages.js:612	{0} = MANIFEST_FILE; {1} = url.host
-1rp7aut	ok	code that runs in annai	annai内で動作するコード	src/core/packages.js:652	Note: one of a list of what an update adds.
-1tdxuf	ok	the skill {0}	スキル「{0}」	src/core/packages.js:653	{0} = s.name
-1j0uwka	ok	the personality {0}	性格「{0}」	src/core/packages.js:654	{0} = p.name
-14wn58m	ok	a provider that sends keys to {0}	キーを{0}に送信するプロバイダー	src/core/packages.js:655	{0} = o; Note: one of a list of what an update adds.
-tqmba2	ok	an address your searches are sent to: {0}	検索内容の送信先（{0}）	src/core/packages.js:655	{0} = o; Note: one of a list of what an update adds.
+1wfc5of	ok	This zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.	このzipには複数のスキルが入っています。1つずつインストールするか、それらを記載したannai-plugin.jsonを追加してください。	src/core/packages.js:339	
+12el2y8	ok	The {0} is in {1}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0}が{1}にあり、階層が深すぎます。annaiが読み込むのは、zipの最上位か、zipに1つだけ入ったフォルダーの中です。そのフォルダーだけをzipにしてください。	src/core/packages.js:347	{0} = file; {1} = folder
+yeyuzl	ok	The {0} is in {1}, with other files beside that folder: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0}は{1}にありますが、zipの最上位にほかのファイルもあります。annaiが読み込むのは、zipの最上位か、zipに1つだけ入ったフォルダーの中です。そのフォルダーだけをzipにしてください。	src/core/packages.js:348	{0} = file; {1} = folder
+woxuej	ok	There is no {0} or {1} in this package.	このパッケージには{0}も{1}もありません。	src/core/packages.js:350	{0} = MANIFEST_FILE; {1} = SKILL_FILE
+1r65tkq	ok	It is too large: it unpacks to more than {0}.	サイズが大きすぎます。展開すると{0}を超えます。	src/core/packages.js:368	{0} = size(maxBytes); Note: said of a plugin, whose name is the card's title.
+jg8gk7	ok	That isn't a web address. Paste the address of a zip file, an annai-plugin.json or a SKILL.md.	Webアドレスではありません。zipファイル、annai-plugin.json、SKILL.mdのいずれかのアドレスを貼り付けてください。	src/core/packages.js:448	
+13j5338	ok	For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.	GitHubのフォルダーの場合は、その中のSKILL.mdかannai-plugin.jsonのアドレスを使ってください。	src/core/packages.js:482	
+1xovhb	ok	annai couldn't reach {0}. Check the address, and that the site lets web apps read it.	{0}に接続できませんでした。アドレスが正しいか、そのサイトがWebアプリからの読み込みを許可しているかを確認してください。	src/core/packages.js:491	{0} = u.host
+4lh0yw	ok	{0} sent a zip annai can't open: {1}	{0}から届いたzipを開けません：{1}	src/core/packages.js:504	{0} = url.host; {1} = why; Note: {1} is a developer's detail, in English.
+hm96ty	ok	That package has more than {0} files; annai installs packages of up to {1} from an address. Use a zip instead.	そのパッケージには{0}件を超えるファイルがあります。アドレスからインストールできるパッケージは、ファイル{1}件までです。代わりにzipを使ってください。	src/core/packages.js:520	{0} = ADDRESS_MAX_FILES; {1} = ADDRESS_MAX_FILES
+pft16a	ok	{0} answered {1} for {2}, a file its {3} names.	{3}に記載された{2}を取得しようとしたところ、{0}から{1}が返されました。	src/core/packages.js:532	{0} = u.host; {1} = status; {2} = name; {3} = from
+apv0y3	ok	annai couldn't read {0} from {1}, a file its {2} names. Check that it is there, and that the site lets web apps read it.	{2}に記載された{0}を{1}から読み込めませんでした。ファイルがあるか、そのサイトがWebアプリからの読み込みを許可しているかを確認してください。	src/core/packages.js:534	{0} = name; {1} = u.host; {2} = from
+1iuga68	ok	There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.	そのアドレスにannaiのプラグインやスキルが見つかりません。annaiが読み込めるのは、zipファイル、annai-plugin.json、SKILL.mdです。	src/core/packages.js:604	
+1toghwz	ok	The {0} at {1} isn't valid JSON.	{1}の{0}は正しいJSONではありません。	src/core/packages.js:614	{0} = MANIFEST_FILE; {1} = url.host
+1rp7aut	ok	code that runs in annai	annai内で動作するコード	src/core/packages.js:654	Note: one of a list of what an update adds.
+1tdxuf	ok	the skill {0}	スキル「{0}」	src/core/packages.js:655	{0} = s.name
+1j0uwka	ok	the personality {0}	性格「{0}」	src/core/packages.js:656	{0} = p.name
+14wn58m	ok	a provider that sends keys to {0}	キーを{0}に送信するプロバイダー	src/core/packages.js:657	{0} = o; Note: one of a list of what an update adds.
+tqmba2	ok	an address your searches are sent to: {0}	検索内容の送信先（{0}）	src/core/packages.js:657	{0} = o; Note: one of a list of what an update adds.
 18tp402	ok	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	このブラウザでは{0}を変換できないため、元の形式のまま保存しました。Safariでしか表示されない場合があります。	src/core/photos.js:135	{0} = name
 1009iza	ok	Restaurant	レストラン	src/core/plan.js:36	
 1lrcegv	ok	Event	イベント	src/core/plan.js:36	
@@ -2102,34 +2108,34 @@ l91m05	ok	Its own address	個別のアドレス	src/ui/screens/provider.js:396
 72k1cn#other	ok	# deletions waiting: annai can't send them without this provider's key.	削除待ち#件：このプロバイダーのキーがないため送信できません。	src/ui/screens/provider.js:412	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
 f85coz#other	ok	# deletions waiting: annai sends them when it can reach {0}.	削除待ち#件：{0}に接続できたら送信します。	src/ui/screens/provider.js:413	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
 147eqzv	ok	Test {0}	{0}をテスト	src/ui/screens/provider.js:424	{0} = first.name
-1eqfcih	ok	{0} doesn't offer search on the free tier.	{0}の無料枠では検索を使えません。	src/ui/screens/provider.js:441	{0} = who
-1cmq8ob	ok	{0} doesn't offer fetch on the free tier.	{0}の無料枠ではページの取得を使えません。	src/ui/screens/provider.js:442	{0} = who
-1k4v7dk	ok	{0} doesn't offer {1} on the free tier.	{0}の無料枠では{1}を使えません。	src/ui/screens/provider.js:442	{0} = who; {1} = tool.name
-11x4tx3	ok	This needs the {0} plugin, which isn't running.	{0}プラグインが必要ですが、動作していません。	src/ui/screens/provider.js:448	{0} = name
-4nyk49	ok	This needs a plugin that isn't running.	必要なプラグインが動作していません。	src/ui/screens/provider.js:448	
-15hdhx3	ok	the provider's model id	プロバイダーのモデルID	src/ui/screens/provider.js:470	
-1oz4euh	ok	Add model	モデルを追加	src/ui/screens/provider.js:483	
-tbmsa5	ok	Asking for its models…	モデルを取得中…	src/ui/screens/provider.js:488	
-1yko1my#other	ok	# models.	モデルが#個見つかりました。	src/ui/screens/provider.js:491	plural; # = listed.length; English: "# model." (one), "# models." (other)
-uxqo7a	ok	Fetch model list	モデルの一覧を取得	src/ui/screens/provider.js:499	
-1scr2ml	ok	{0}K context	コンテキスト{0}K	src/ui/screens/provider.js:502	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
-1tqy8k1	ok	Its models	モデル	src/ui/screens/provider.js:504	Note: "Its models" as a heading under the ability: モデル alone reads right there.
-bzs1ys	ok	No models yet.	モデルはまだありません。	src/ui/screens/provider.js:505	
-pnxisg	ok	Add a model by id	IDでモデルを追加	src/ui/screens/provider.js:506	
-1mod47e	ok	for example: haiku	例：haiku	src/ui/screens/provider.js:520	
-uizt0x	ok	{0} · loaded	{0} · 読み込み済み	src/ui/screens/provider.js:530	{0} = named
-1w6mxym	ok	Already added, on {0}	追加済み（{0}）	src/ui/screens/provider.js:531	{0} = on
-l7fn8k	ok	Already added, on another provider	追加済み（別のプロバイダー）	src/ui/screens/provider.js:531	
-19ai2z0	ok	Filter the list	一覧を絞り込む	src/ui/screens/provider.js:542	
-11pl9jr	ok	Use the free models	無料のモデルを使う	src/ui/screens/provider.js:550	
-vam64u	ok	Use the recommended models	おすすめのモデルを使う	src/ui/screens/provider.js:550	
-1b2yx8m	ok	Suggested models	おすすめのモデル	src/ui/screens/provider.js:551	
-1jnsjoc	ok	{0} suggests a model for each role. Its speech models then go ahead of the browser's own dictation and voice, which are free, so any that cost money are tried before them.	{0}は役割ごとにおすすめのモデルを用意しています。これを使うと、音声のモデルがブラウザ標準の音声入力と読み上げ（どちらも無料）より前に並ぶため、有料のモデルが先に試されます。	src/ui/screens/provider.js:552	{0} = src.name
-1x5hwmk	ok	{0} suggests a model for each role.	{0}は役割ごとにおすすめのモデルを用意しています。	src/ui/screens/provider.js:553	{0} = src.name
-1iffu2j	ok	{0} switched on.	{0}をオンにしました。	src/ui/screens/provider.js:560	{0} = n
-1szeqxt	ok	Roles updated.	役割を更新しました。	src/ui/screens/provider.js:560	
-1egvjs1	ok	{0} couldn't be switched on: {1}	{0}をオンにできませんでした：{1}	src/ui/screens/provider.js:561	{0} = f.name; {1} = messageOf(f.error)
-wlh055	ok	Use the {0} models	{0}のモデルを使う	src/ui/screens/provider.js:567	{0} = which
+1eqfcih	ok	{0} doesn't offer search on the free tier.	{0}の無料枠では検索を使えません。	src/ui/screens/provider.js:445	{0} = who
+1cmq8ob	ok	{0} doesn't offer fetch on the free tier.	{0}の無料枠ではページの取得を使えません。	src/ui/screens/provider.js:446	{0} = who
+1k4v7dk	ok	{0} doesn't offer {1} on the free tier.	{0}の無料枠では{1}を使えません。	src/ui/screens/provider.js:446	{0} = who; {1} = tool.name
+11x4tx3	ok	This needs the {0} plugin, which isn't running.	{0}プラグインが必要ですが、動作していません。	src/ui/screens/provider.js:452	{0} = name
+4nyk49	ok	This needs a plugin that isn't running.	必要なプラグインが動作していません。	src/ui/screens/provider.js:452	
+15hdhx3	ok	the provider's model id	プロバイダーのモデルID	src/ui/screens/provider.js:474	
+1oz4euh	ok	Add model	モデルを追加	src/ui/screens/provider.js:487	
+tbmsa5	ok	Asking for its models…	モデルを取得中…	src/ui/screens/provider.js:492	
+1yko1my#other	ok	# models.	モデルが#個見つかりました。	src/ui/screens/provider.js:495	plural; # = listed.length; English: "# model." (one), "# models." (other)
+uxqo7a	ok	Fetch model list	モデルの一覧を取得	src/ui/screens/provider.js:503	
+1scr2ml	ok	{0}K context	コンテキスト{0}K	src/ui/screens/provider.js:506	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
+1tqy8k1	ok	Its models	モデル	src/ui/screens/provider.js:508	Note: "Its models" as a heading under the ability: モデル alone reads right there.
+bzs1ys	ok	No models yet.	モデルはまだありません。	src/ui/screens/provider.js:509	
+pnxisg	ok	Add a model by id	IDでモデルを追加	src/ui/screens/provider.js:510	
+1mod47e	ok	for example: haiku	例：haiku	src/ui/screens/provider.js:524	
+uizt0x	ok	{0} · loaded	{0} · 読み込み済み	src/ui/screens/provider.js:534	{0} = named
+1w6mxym	ok	Already added, on {0}	追加済み（{0}）	src/ui/screens/provider.js:535	{0} = on
+l7fn8k	ok	Already added, on another provider	追加済み（別のプロバイダー）	src/ui/screens/provider.js:535	
+19ai2z0	ok	Filter the list	一覧を絞り込む	src/ui/screens/provider.js:546	
+11pl9jr	ok	Use the free models	無料のモデルを使う	src/ui/screens/provider.js:554	
+vam64u	ok	Use the recommended models	おすすめのモデルを使う	src/ui/screens/provider.js:554	
+1b2yx8m	ok	Suggested models	おすすめのモデル	src/ui/screens/provider.js:555	
+1jnsjoc	ok	{0} suggests a model for each role. Its speech models then go ahead of the browser's own dictation and voice, which are free, so any that cost money are tried before them.	{0}は役割ごとにおすすめのモデルを用意しています。これを使うと、音声のモデルがブラウザ標準の音声入力と読み上げ（どちらも無料）より前に並ぶため、有料のモデルが先に試されます。	src/ui/screens/provider.js:556	{0} = src.name
+1x5hwmk	ok	{0} suggests a model for each role.	{0}は役割ごとにおすすめのモデルを用意しています。	src/ui/screens/provider.js:557	{0} = src.name
+1iffu2j	ok	{0} switched on.	{0}をオンにしました。	src/ui/screens/provider.js:564	{0} = n
+1szeqxt	ok	Roles updated.	役割を更新しました。	src/ui/screens/provider.js:564	
+1egvjs1	ok	{0} couldn't be switched on: {1}	{0}をオンにできませんでした：{1}	src/ui/screens/provider.js:565	{0} = f.name; {1} = messageOf(f.error)
+wlh055	ok	Use the {0} models	{0}のモデルを使う	src/ui/screens/provider.js:571	{0} = which
 1qocxbg	ok	Writing it: {0} is reading the conversation. This can take a minute.	作成中：{0}が会話を読んでいます。1分ほどかかることがあります。	src/ui/screens/recap.js:29	{0} = m.name
 1lrfe9k	ok	Write the recap	振り返りを書く	src/ui/screens/recap.js:31	
 h6huep	ok	Write it again	書き直す	src/ui/screens/recap.js:31	

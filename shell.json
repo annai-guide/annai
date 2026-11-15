@@ -1,5 +1,5 @@
 {
-  "build": "ebb452279fa3",
+  "build": "88eb6307c6b0",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -122,7 +122,7 @@
     "/src/core/names.js": "decba54b0a40",
     "/src/core/official-names.js": "13fd35baa42b",
     "/src/core/package-updates.js": "c3a1f89d3bc5",
-    "/src/core/packages.js": "18635b683c78",
+    "/src/core/packages.js": "6d1d65fae0f2",
     "/src/core/requires.js": "9aa09e4a81ad",
     "/src/core/pack/download.js": "03bb12196055",
     "/src/core/pack/keeper.js": "ee866ecb43d7",
@@ -266,7 +266,7 @@
     "/src/ui/screens/plugin-install.js": "83707a06879b",
     "/src/ui/screens/plugin.js": "db6dce86872f",
     "/src/ui/screens/plugins.js": "5b9559133cf6",
-    "/src/ui/screens/provider.js": "3a467679a09a",
+    "/src/ui/screens/provider.js": "7ef03c8e0a51",
     "/src/ui/screens/recap.js": "ff932c9c7165",
     "/src/ui/screens/replay.js": "b6c46d9c0ec7",
     "/src/ui/screens/settings.js": "0822b721f939",

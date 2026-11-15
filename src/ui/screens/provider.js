@@ -387,7 +387,7 @@ async function abilityBody(view, abilityId) {
     for (const { k, el } of choices) for (const input of el.querySelectorAll('input')) input.checked = input.type === 'radio' ? input.value === String(t[k]) : t[k] !== false;
   };
   const models = Object.values(cfg.models).filter((m) => m.provider === id && m.ability === abilityId).map(modelOf);
-  const tools = await providerToolSwitches(ctx, models, providerOf(rec).free, typeof desc?.freeTier === 'string' ? desc.freeTier : providerOf(rec).name);
+  const tools = await providerToolSwitches(ctx, models, providerOf(rec).free, typeof desc?.freeTier === 'string' ? desc.freeTier : providerOf(rec).name, desc?.abilities?.[abilityId], view.shownIn);
   // What to do with a model from before the provider's list gave windows, while there is one.
   const old = desc?.abilities?.[abilityId]?.noWindowNote && models.some((m) => !m.contextWindow) ? h('p', { class: 'sub', text: desc.abilities[abilityId].noWindowNote, lang: view.shownIn }) : null;
   const speech = a.kind === 'transcription' ? 'in' : a.kind === 'voice' ? 'out' : null;
@@ -429,16 +429,20 @@ async function abilityBody(view, abilityId) {
 
 /**
  * Switches for the provider's own tools its models offer with words for this page ("Let Gemini search Google"), the same
- * as Settings → Tools'. One that is paid only is off while the key is on the free tier, saying why. @param {any} ctx
+ * as Settings → Tools'. One that is paid only is off while the key is on the free tier, saying why. The words are the ones its plugin's
+ * description has as the screens show it (shown, by the tool's id), else the model's own, which are English. @param {any} ctx
  * @param {import('../../core/llm/config.js').Model[]} models @param {boolean} free @param {string} who doesn't charge on it
+ * @param {any} shown the ability's description as the screens show it @param {string} [shownIn] the language of its words, when it isn't the screens'
  */
-async function providerToolSwitches(ctx, models, free, who) {
+async function providerToolSwitches(ctx, models, free, who, shown, shownIn) {
   const switches = await toolSwitches(ctx.ws);
+  /** @type {Map<string, { label?: string, note?: string }>} */
+  const said = new Map([...(shown?.models ?? []).flatMap((/** @type {any} */ m) => m.providerTools ?? []), ...(shown?.modelDefaults?.providerTools ?? [])].map((x) => [x.id, x]));
   return [...new Map(models.flatMap((m) => m.providerTools ?? []).filter((x) => x.label).map((x) => [x.id, x])).values()].flatMap((tool) => {
     const out = Boolean(tool.paidOnly && free);
-    const sw = savedCheck(String(tool.label), !out && switches[`provider:${tool.id}`] !== false, (/** @type {boolean} */ v) => setToolSwitch(ctx.ws, `provider:${tool.id}`, v));
+    const sw = savedCheck(String(said.get(tool.id)?.label ?? tool.label), !out && switches[`provider:${tool.id}`] !== false, (/** @type {boolean} */ v) => setToolSwitch(ctx.ws, `provider:${tool.id}`, v));
     sw.input.disabled = out;
-    return [sw.el, h('p', { class: 'sub', text: !out ? tool.note ?? '' : tool.kind === 'search' ? t`${who} doesn't offer search on the free tier.`
+    return [sw.el, h('p', { class: 'sub', lang: out ? undefined : shownIn, text: !out ? said.get(tool.id)?.note ?? tool.note ?? '' : tool.kind === 'search' ? t`${who} doesn't offer search on the free tier.`
       : tool.kind === 'fetch' ? t`${who} doesn't offer fetch on the free tier.` : t`${who} doesn't offer ${tool.name} on the free tier.` })];
   });
 }

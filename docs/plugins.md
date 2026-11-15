@@ -773,7 +773,8 @@ The manifest names the language its own words are written in (`language`, Englis
 
 - **`manifest`** gives the fields the screens show, by their path in your manifest: `description`; `keywords` (added to the
   English ones, so a search in the user's language finds you); a provider's `provider.note`, and each ability's `name`, `note` and
-  `noWindowNote` (`provider.abilities.chat.note`); `search.key.note`; a setting's `title` and `description`, and the `title` of each of its
+  `noWindowNote` (`provider.abilities.chat.note`); a provider tool's `label` and `note` (`provider.abilities.chat.models.0.providerTools.0.label`; `shows`
+  is for Shiori, in English, and is not translated); `search.key.note`; a setting's `title` and `description`, and the `title` of each of its
   choices (`settings.properties.depth.oneOf.0.title`); and `featured`. **A translated `name` is never shown:** the install screen names
   the plugin the user trusts the same way in every language. annai shows only its own plugins' translated names ("Custom provider").
 - **`messages`** are your code's words, by key: the FNV-1a hash (32 bits) of the English as you write it in the code, in base 36,

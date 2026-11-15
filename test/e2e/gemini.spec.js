@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
+import { readFile } from 'node:fs/promises';
 import { openApp, waitForServiceWorker, pickProvider, savedBy, leaveSaved, fakeMicrophone, filterTrace, startTrip } from './helpers.js';
 import { startGeminiServer } from '../fakes/gemini-server.js';
 
@@ -301,6 +302,38 @@ test('Google Search (G4): Shiori\'s request offers it; a grounded reply shows "F
     await expect(savedBy(free)).toHaveText('Saved');
     await expect(search).toBeEnabled();
     await expect(search).toBeChecked();
+  } finally {
+    await s.close();
+  }
+});
+
+test("on Japanese screens the provider page shows Google Search's switch and its note in Japanese (a provider tool's label and note are translated like an ability's note), and none in English", async ({ page }) => {
+  const words = JSON.parse(await readFile(new URL('../../catalog/l10n/ja/provider-gemini.json', import.meta.url), 'utf8')).manifest;
+  const label = words['provider.abilities.chat.models.0.providerTools.0.label'];
+  const note = words['provider.abilities.chat.models.0.providerTools.0.note'];
+  expect(label, 'the catalog has the words').toBeTruthy();
+  const s = await startGeminiServer({ key: KEY });
+  try {
+    await geminiTrip(page, s.url);
+    await expect(page.getByLabel('Let Gemini search Google')).toBeChecked();
+    // Japanese screens: choosing 日本語 fetches the plugin's words before the restart (official-l10n.spec).
+    await page.evaluate(() => { location.hash = '#/languages'; });
+    const restarted = page.waitForEvent('load');
+    await page.locator('#language-ui').selectOption('ja');
+    await restarted;
+    await expect(page.locator('html')).toHaveAttribute('lang', /^ja/);
+    await page.evaluate(() => { location.hash = '#/models'; });
+    await page.locator('a.card', { hasText: 'Google Gemini' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Google Gemini' })).toBeVisible();
+    const search = page.getByLabel(label, { exact: true });
+    await expect(search).toBeChecked();
+    await expect(search).toBeEnabled();
+    await expect(page.getByText(note, { exact: true })).toBeVisible();
+    expect(note, 'the note is the Japanese one').toMatch(/[ぁ-んァ-ン]/);
+    await expect(page.getByLabel('Let Gemini search Google')).toHaveCount(0);
+    await expect(page.getByText(/Google keeps searched prompts/)).toHaveCount(0);
+    // The note has no lang attribute: these are the screens' own words.
+    expect(await page.getByText(note, { exact: true }).getAttribute('lang')).toBeNull();
   } finally {
     await s.close();
   }

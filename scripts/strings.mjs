@@ -7,11 +7,12 @@
 // catalog, catalog/l10n/<tag>/<id>.json, which a phone fetches for its screens' language (plugin-l10n-fetch).
 //   node scripts/strings.mjs                    updates the TSVs, the JSON files (the official plugins' too: run npm run catalog
 //                                               after), src/core/l10n-list.js and sw.js's LANGS
-//   node scripts/strings.mjs --check            exits 1 on any missing, stale or wrong word, any collision, any stale file,
-//                                               and any bare English where a screen surely shows it (npm run check)
+//   node scripts/strings.mjs --check            exits 1 on any missing, stale or wrong word (a draft carried over from changed English
+//                                               too, until it is rewritten), any collision, any stale file, and any bare English
+//                                               where a screen surely shows it (npm run check)
 //   node scripts/strings.mjs --check --glossary-all   the same, warning about the glossary on accepted rows too (after a glossary change)
 //   node scripts/strings.mjs --find [paths]     lists the literals that read as words and are not marked
-//   node scripts/strings.mjs --review <tag>     a language's drafts as a Markdown table
+//   node scripts/strings.mjs --review <tag>     a language's drafts as a Markdown table, with their notes (English was: …)
 import ts from 'typescript';
 import { readFile, writeFile, readdir, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
@@ -330,7 +331,8 @@ function noteParts(note) {
  * A language's rows after the code changed: a row for every message, new ones `new`, rows of vanished messages gone, or, when the
  * English changed by a little in the same file, carried over as a `draft` that says what the English was. A code message's key is made
  * from its English, so changed English is a new key (the pairing below); a manifest field's key is its path and stays, so its row's
- * English is compared with the manifest's, and the same rule is applied to it: a small edit carries the text as a draft, a rewrite is `new`.
+ * English is compared with the manifest's, and the same rule is applied to it: a small edit carries the text as a draft, a rewrite is `new`
+ * (the translator's note goes with the old text). A carried draft fails the check until it is rewritten (check).
  * @param {Row[]} old @param {Map<string, Message>} messages @param {string} tag @returns {Omit<Row, 'line'>[]}
  */
 export function updateRows(old, messages, tag) {
@@ -344,8 +346,10 @@ export function updateRows(old, messages, tag) {
       let state = r?.state ?? 'new';
       let text = r?.text ?? '';
       let past = state === 'draft' ? was : '';
-      if (r && state !== 'new' && r.en !== w.en) [state, text, past] = close(r.en, w.en) ? ['draft', r.text, `${WAS}${r.en}`] : ['new', '', ''];
-      rows.push({ key: w.key, state, en: w.en, text, where: `${m.file}:${m.line}`, note: [w.note, past, mine].filter(Boolean).join('; ') });
+      let own = mine;
+      // A rewrite starts a row of its own, as a code message's does: the translator's note was about the old text.
+      if (r && state !== 'new' && r.en !== w.en) [state, text, past, own] = close(r.en, w.en) ? ['draft', r.text, `${WAS}${r.en}`, mine] : ['new', '', '', ''];
+      rows.push({ key: w.key, state, en: w.en, text, where: `${m.file}:${m.line}`, note: [w.note, past, own].filter(Boolean).join('; ') });
     }
   }
   const now = new Set(rows.map((r) => r.key));
@@ -629,6 +633,7 @@ export async function check(root, files = EXTRACTED, { glossaryAll = false } = {
         if (!r) bag.push({ ...at, message: `${tag} has no row for "${w.en}": run npm run strings` });
         else if (r.state === 'new' || !r.text) bag.push({ file, line: r.line, message: `${tag} has no text yet for "${w.en}" (${m.file}:${m.line})` });
         else if (r.en !== w.en) bag.push({ file, line: r.line, message: `${tag}'s row for "${w.en}" was written for other English ("${r.en}"): run npm run strings` });
+        else if (r.state === 'draft' && noteParts(r.note).was) bag.push({ file, line: r.line, message: `${tag}'s draft for ${w.key} was carried over from other English ("${noteParts(r.note).was.slice(WAS.length)}", now "${w.en}"): rewrite it for the new English, set its state to ok and delete "${WAS}…" from its note` });
         else if (holes(r.text) !== have) bag.push({ file, line: r.line, message: `${tag}'s text for "${w.en}" has the placeholders ${holes(r.text) || 'none'}, the English has ${have || 'none'}` });
       }
     }
@@ -730,7 +735,7 @@ export async function find(root, paths) {
 export async function review(root, tag) {
   const rows = readTsv(await readFile(`${root}/l10n/${tag}.tsv`, 'utf8')).filter((r) => r.state === 'draft');
   const cell = (/** @type {string} */ s) => s.replace(/\|/g, '\\|').replace(/\n/g, ' ');
-  return `${['| English | Draft | Where |', '| --- | --- | --- |', ...rows.map((r) => `| ${cell(r.en)} | ${cell(r.text)} | ${r.where} |`)].join('\n')}\n`;
+  return `${['| English | Draft | Where | Note |', '| --- | --- | --- | --- |', ...rows.map((r) => `| ${cell(r.en)} | ${cell(r.text)} | ${r.where} | ${cell(r.note)} |`)].join('\n')}\n`;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

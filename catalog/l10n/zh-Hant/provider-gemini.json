@@ -2,6 +2,12 @@
   "manifest": {
     "description": "透過 Google 原生 API 使用 Gemini 模型。付費金鑰可使用 Google 搜尋，另提供 Google 的語音轉文字和聲音，以及可語音對話的 Gemini Live。",
     "name": "Google Gemini",
+    "provider.abilities.chat.models.0.providerTools.0.label": "讓 Gemini 使用 Google 搜尋",
+    "provider.abilities.chat.models.0.providerTools.0.note": "在 Google 的付費專案中，每月前 5,000 次搜尋免費，超出後每 1,000 次收費 $14。annai 只統計這支手機上的搜尋次數。用過搜尋的提示詞會被 Google 保留 30 天，annai 無法刪除。",
+    "provider.abilities.chat.models.1.providerTools.0.label": "讓 Gemini 使用 Google 搜尋",
+    "provider.abilities.chat.models.1.providerTools.0.note": "在 Google 的付費專案中，每月前 5,000 次搜尋免費，超出後每 1,000 次收費 $14。annai 只統計這支手機上的搜尋次數。用過搜尋的提示詞會被 Google 保留 30 天，annai 無法刪除。",
+    "provider.abilities.chat.models.2.providerTools.0.label": "讓 Gemini 使用 Google 搜尋",
+    "provider.abilities.chat.models.2.providerTools.0.note": "在 Google 的付費專案中，每月前 5,000 次搜尋免費，超出後每 1,000 次收費 $14。annai 只統計這支手機上的搜尋次數。用過搜尋的提示詞會被 Google 保留 30 天，annai 無法刪除。",
     "provider.abilities.chat.noWindowNote": "從 2.0 版起，這裡改用 Gemini 原生 API，不再透過 OpenAI 相容端點。這裡沒有標示上下文視窗的模型，是在此之前或依 ID 新增的；如果它沒有回應，請移除後用「取得模型清單」重新加入。",
     "provider.abilities.live.name": "即時語音",
     "provider.abilities.live.note": "供 Koe 使用的即時語音對話（Gemini Live），聽和說都在同一個串流中。連線開啟期間，你說的話會以音訊形式傳送給 Google。使用 AI Studio 免費額度時不收費。Koe 預設使用 Sulafat 的聲音（需要 Gemini Live 協定 0.2 以上版本，可在設定 → 更新中取得）。",

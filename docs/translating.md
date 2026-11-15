@@ -38,8 +38,11 @@ npm run strings -- --check --glossary-all   # after changing a glossary word: wa
 
 - `new`: no text yet. The check fails until it has one.
 - `draft`: a translation nobody has read and accepted yet. When English changes a little, the old translation is
-  carried over as a draft, with "English was: …" in its note. A plugin manifest's description or note is the same: its
-  row keeps its key, so a changed English is compared with the row's, and a small change is a draft, a rewrite `new`.
+  carried over as a draft, with "English was: …" in its note. **The check fails on such a draft in every language until it
+  is rewritten:** write the text for the new English, set the state to `ok` and delete "English was: …" from the note
+  (`--review <tag>` prints the notes). A draft with no such note, a new language's first pass, ships as it is. A plugin
+  manifest's field (its name, description, a note, a keyword, a setting's title) is the same: its row keeps its key, so a
+  changed English is compared with the row's, and a small change is a carried draft, a rewrite `new` (its old `Note:` goes).
 - `ok`: read against its English and its place on the screen, and accepted. The check doesn't warn about the
   glossary on an `ok` row: its `Note:` says why it reads as it does.
 
