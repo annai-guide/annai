@@ -123,11 +123,22 @@ export const TRANSLATED = [['name', 80], ['description', 500], ['featured', 200]
 const at = (o, keys) => keys.reduce((x, k) => (x && typeof x === 'object' && Object.hasOwn(x, k) ? x[k] : undefined), o);
 const object = (/** @type {any} */ o) => o && typeof o === 'object' && !Array.isArray(o);
 
+/** What is wrong with one manifest field a translation gives (checkTranslation), or null. @param {any} manifest @param {string} file as the line names it @param {string} path @param {unknown} value */
+function fieldWrong(manifest, file, path, value) {
+  const keys = path.split('.');
+  const max = TRANSLATED.find(([p]) => p.split('.').every((x, i, all) => all.length === keys.length && (x === '*' || x === keys[i])))?.[1];
+  if (!max) /* en */ return `${file} translates ${path}, which isn't a field a translation may give`;
+  if (path !== 'keywords' && typeof at(manifest, keys) !== 'string') /* en */ return `${file} translates ${path}, which this manifest doesn't have`;
+  const ok = (/** @type {unknown} */ x) => typeof x === 'string' && x.length <= max;
+  if (path === 'keywords' ? !Array.isArray(value) || value.length > 20 || !value.every(ok) : !ok(value)) /* en */ return `${file}'s ${path} must be text of up to ${max} characters${path === 'keywords' ? ', up to 20' : ''}`;
+  return null;
+}
+
 /**
  * What is wrong with a plugin's l10n/<tag>.json, for its developer, or null: only manifest and messages; each manifest key a field this
  * manifest has that a translation may give, within its limit; each message text, or plural forms of the language, up to 2,000. One with
- * anything wrong is left out, never a reason to refuse the plugin; an empty text is no translation. official: annai's own plugin's, for
- * the version the catalog lists, which may not be the one installed: a field this manifest hasn't is skipped (wordsOf gives only those it has).
+ * anything wrong is left out, never a reason to refuse the plugin; an empty text is no translation. official: annai's own plugin's, which a
+ * newer annai's catalog may write, for another version: a field that fails is skipped alone, never the file (wordsOf gives those that pass).
  * @param {any} manifest @param {string} tag as listed @param {Uint8Array | undefined} bytes @param {{ official?: boolean }} [o]
  */
 export function checkTranslation(manifest, tag, bytes, { official = false } = {}) {
@@ -143,16 +154,11 @@ export function checkTranslation(manifest, tag, bytes, { official = false } = {}
     /* en */ return `${file} is not valid JSON`;
   }
   if (!object(json) || Object.keys(json).some((k) => k !== 'manifest' && k !== 'messages')) /* en */ return `${file} must be an object with only manifest and messages`;
-  for (const [path, value] of Object.entries(json.manifest ?? {})) {
-    const keys = path.split('.');
-    const max = TRANSLATED.find(([p]) => p.split('.').every((x, i, all) => all.length === keys.length && (x === '*' || x === keys[i])))?.[1];
-    if (!max) /* en */ return `${file} translates ${path}, which isn't a field a translation may give`;
-    if (path !== 'keywords' && typeof at(manifest, keys) !== 'string') {
-      if (official) continue;
-      /* en */ return `${file} translates ${path}, which this manifest doesn't have`;
+  if (!official) {
+    for (const [path, value] of Object.entries(json.manifest ?? {})) {
+      const wrong = fieldWrong(manifest, file, path, value);
+      if (wrong) return wrong;
     }
-    const ok = (/** @type {unknown} */ x) => typeof x === 'string' && x.length <= max;
-    if (path === 'keywords' ? !Array.isArray(value) || value.length > 20 || !value.every(ok) : !ok(value)) /* en */ return `${file}'s ${path} must be text of up to ${max} characters${path === 'keywords' ? ', up to 20' : ''}`;
   }
   const kinds = new Intl.PluralRules(canonical(tag)).resolvedOptions().pluralCategories;
   for (const [k, m] of Object.entries(json.messages ?? {})) {
@@ -208,10 +214,12 @@ export function wordsOf(manifest, read, { tag = translationFor(manifest), offici
   if (!json) return { lang: canonical(manifest?.language) || 'en', messages: null, manifest };
   const shown = structuredClone(manifest);
   for (const [path, value] of Object.entries(json.manifest ?? {})) {
+    // Only a field that passes: a newer catalog's words (official) may give one this annai treats as data.
+    if (!value || fieldWrong(manifest, '', path, value)) continue;
     const keys = path.split('.');
     const last = /** @type {string} */ (keys.pop());
     if (path === 'keywords') shown.keywords = [...new Set([...(shown.keywords ?? []), ...value.filter(Boolean)])];
-    else if (value && typeof at(shown, [...keys, last]) === 'string') at(shown, keys)[last] = value;
+    else at(shown, keys)[last] = value;
   }
   return { lang: lang(), messages: json.messages ?? null, manifest: shown };
 }

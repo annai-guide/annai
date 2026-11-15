@@ -4,7 +4,8 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { extname } from 'node:path';
 import { parseHeaders, headersFor } from '../../scripts/headers.mjs';
-import { waitForServiceWorker } from './helpers.js';
+import { waitForServiceWorker, pickProvider } from './helpers.js';
+import { startGeminiServer } from '../fakes/gemini-server.js';
 
 // annai's own plugins carry no translations in their packages (plugin-l10n-fetch; the user, 2026-10-28: "Build per-language fetch
 // first"): a phone fetches its official plugins' words in its screens' language only, from beside the catalog, checked against the
@@ -169,6 +170,52 @@ test.describe('on Japanese screens', () => {
       await site.stop();
     }
   });
+});
+
+// Provider words, part 2: a phone still on an older annai reads the words a newer catalog wrote, which may translate a field it doesn't
+// list (the strings-stale re-review's R1: the whole Gemini file was refused, so Gemini's words showed in English). Here this annai is the
+// older one: its catalog serves the real Japanese Gemini words with the search tool's name added, a field this annai treats as data.
+test("Gemini's words with a field this annai doesn't know: its provider page still shows the Japanese of every field it knows", async ({ page }) => {
+  const site = await startSite();
+  const key = 'stand-in-key-words-reader';
+  const s = await startGeminiServer({ key });
+  try {
+    const path = '/catalog/l10n/ja/provider-gemini.json';
+    const words = JSON.parse(await readFile(new URL(`.${path}`, root), 'utf8'));
+    const newer = `${JSON.stringify({ ...words, manifest: { ...words.manifest, 'provider.abilities.chat.models.0.providerTools.0.name': 'Google 検索' } }, null, 2)}\n`;
+    const list = JSON.parse(await readFile(new URL('./catalog/l10n/ja.json', root), 'utf8'));
+    list.translations['provider-gemini'] = createHash('sha256').update(newer).digest('hex');
+    site.changed.set(path, newer);
+    site.changed.set('/catalog/l10n/ja.json', JSON.stringify(list));
+    await page.goto(`${site.origin}/#/models`);
+    await waitForServiceWorker(page);
+    await pickProvider(page, 'Google Gemini');
+    await page.getByLabel('Address', { exact: true }).fill(s.url);
+    await page.getByLabel('API key').fill(key);
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
+    // Choosing 日本語 fetches the plugin's words before the restart.
+    await go(page, '#/languages');
+    const restarted = page.waitForEvent('load');
+    await page.locator('#language-ui').selectOption('ja');
+    await restarted;
+    await expect(page.locator('html')).toHaveAttribute('lang', /^ja/);
+    expect(site.under(path).length, 'the newer words were served').toBeGreaterThan(0);
+    await go(page, '#/models');
+    await page.locator('a.card', { hasText: 'Google Gemini' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Google Gemini' })).toBeVisible();
+    await expect(page.getByLabel(words.manifest['provider.abilities.chat.models.0.providerTools.0.label'], { exact: true })).toBeChecked();
+    for (const field of ['provider.abilities.chat.models.0.providerTools.0.note', 'provider.note']) {
+      const shown = page.getByText(words.manifest[field], { exact: true });
+      await expect(shown, field).toBeVisible();
+      expect(await shown.getAttribute('lang'), `${field}: the screens' own words`).toBeNull();
+    }
+    await expect(page.getByLabel('Let Gemini search Google')).toHaveCount(0);
+    await expect(page.getByText(/Google keeps searched prompts/)).toHaveCount(0);
+  } finally {
+    await s.close();
+    await site.stop();
+  }
 });
 
 test('an English phone fetches no translation of an official plugin', async ({ page }) => {
