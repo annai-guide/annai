@@ -136,7 +136,7 @@ against the code before its row was written. The ones with a question are listed
 ## Closed
 
 - 2026-11-14: the shared lesson on fields sharpened again, a field's meaning only where its value is news, "Sharpen it (Recommended)" (agent-rules 910c37e).
-- 2026-11-14: an answered question card always gets a reply, route A step 1 (the two faulted parts taken out; e17900f5, docs a1eb1be9 and 0d6ed7a5), "A: remove 2 parts, then record (Recommended)". Released 5ce948f6 (BUILD ebb452279fa3), smoke 10 of 10.
+- 2026-11-14: an answered question card always gets a reply, route A step 1 (the two faulted parts taken out; e17900f5, docs a1eb1be9 and 0d6ed7a5), "A: remove 2 parts, then record (Recommended)". Released 5ce948f6 (BUILD ebb452279fa3), smoke 10 of 10, CI green (run 43662020214).
 - 2026-11-14: the shared lesson on quoting words sharpened to fields shown by name, "Sharpen it (Recommended)" (agent-rules affe346).
 - 2026-11-14: Gemini Live's key in the WebSocket address: a known limitation, "Known limitation (Recommended)" (9600cc67).
 - 2026-11-14: the 2026-11-07 Calls-to-confirm page's rows stand as built, "Let them stand (Recommended)" (G8 stays open above).
