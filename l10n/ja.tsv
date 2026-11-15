@@ -423,29 +423,29 @@ storage-webdav:kpd7yy	ok	The folder above {0} doesn't exist on the server, so an
 storage-webdav:nr7x2z	ok	Works: annai made the folder {0} and can keep its backups there.	正常に動作しています。フォルダー「{0}」を作成し、そこにバックアップを保存できます。	plugins-official/storage-webdav/index.js:139	{0} = shownOf(w.url)
 storage-webdav:1hxwq6b	ok	Works: annai can keep its backups in {0}.	正常に動作しています。「{0}」にバックアップを保存できます。	plugins-official/storage-webdav/index.js:142	{0} = shownOf(w.url)
 1aajvdy	ok	Opening annai…	annaiを起動しています…	src/app/boot.js:37	
-1v76pcd	ok	annai is open in another tab	annaiは別のタブで開いています	src/app/main.js:89	
-cohfbh	ok	Only one copy of annai runs at a time, so your trips stay consistent.	旅のデータが食い違わないよう、annaiは一度に1つのタブでしか動きません。	src/app/main.js:90	
-u0vojx	ok	Use it here	ここで使う	src/app/main.js:91	
-p4x3of	ok	annai was opened in another tab	annaiが別のタブで開かれました	src/app/main.js:96	
-11qyuy7	ok	This tab has stopped, so your trips stay consistent.	旅のデータが食い違わないよう、このタブでの動作を停止しました。	src/app/main.js:97	
-1ku6bv3	ok	Use it here instead	こちらで使う	src/app/main.js:98	
-fki4un	ok	Notifications	通知	src/app/main.js:251	
-1clzv4	ok	Settings → Models changed	「設定 → モデル」が変わりました	src/app/main.js:254	
-1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	プロバイダー単位で設定するようになりました。1つのアドレスと1つのキーで、そのプロバイダーの機能をすべて使えます。これまでのエンドポイント（{0}）とそのキーは削除されました。「設定 → モデル」で追加し直してください。	src/app/main.js:255	{0} = list(moved.names, 'plain')
-whpd9d	ok	Open Models	モデルを開く	src/app/main.js:256	
-10renyj	ok	Plugins	プラグイン	src/app/main.js:267	
-1sp21de	ok	A new version of the {0} personality	性格「{0}」の新しいバージョン	src/app/main.js:363	{0} = o.name
-1yoe82	ok	Yours has your own edits, so it was kept as it is.	編集済みのため、今のまま残しています。	src/app/main.js:364	
-1n8cxuc	ok	Compare	比較	src/app/main.js:366	
-rzp4o3	ok	Keep mine	今のままにする	src/app/main.js:367	
-1j662as	ok	Let Shiori merge	Shioriに統合してもらう	src/app/main.js:368	
-x0ig66	ok	Something went wrong	問題が起きました	src/app/main.js:420	
-1oy79dy	ok	annai kept running. The details are in Trace.	annaiは動作を続けています。詳細は「記録」にあります。	src/app/main.js:421	
-c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annaiは動作を続けていますが、何が起きたかを書き残せなかったため、「記録」にも残っていません。繰り返し起きる場合は、annaiを閉じて開き直してください。	src/app/main.js:421	
-11n1kcg	ok	Open Trace	記録を開く	src/app/main.js:422	
-gt9ssw	ok	annai couldn't start	annaiを起動できませんでした	src/app/main.js:433	
-6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	繰り返し起きる場合は、ブラウザがデータの保存をブロックしている可能性があります（プライベートウインドウなど）。	src/app/main.js:435	
-982hh6	ok	Try again	再試行	src/app/main.js:436	
+1v76pcd	ok	annai is open in another tab	annaiは別のタブで開いています	src/app/main.js:90	
+cohfbh	ok	Only one copy of annai runs at a time, so your trips stay consistent.	旅のデータが食い違わないよう、annaiは一度に1つのタブでしか動きません。	src/app/main.js:91	
+u0vojx	ok	Use it here	ここで使う	src/app/main.js:92	
+p4x3of	ok	annai was opened in another tab	annaiが別のタブで開かれました	src/app/main.js:97	
+11qyuy7	ok	This tab has stopped, so your trips stay consistent.	旅のデータが食い違わないよう、このタブでの動作を停止しました。	src/app/main.js:98	
+1ku6bv3	ok	Use it here instead	こちらで使う	src/app/main.js:99	
+fki4un	ok	Notifications	通知	src/app/main.js:260	
+1clzv4	ok	Settings → Models changed	「設定 → モデル」が変わりました	src/app/main.js:263	
+1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	プロバイダー単位で設定するようになりました。1つのアドレスと1つのキーで、そのプロバイダーの機能をすべて使えます。これまでのエンドポイント（{0}）とそのキーは削除されました。「設定 → モデル」で追加し直してください。	src/app/main.js:264	{0} = list(moved.names, 'plain')
+whpd9d	ok	Open Models	モデルを開く	src/app/main.js:265	
+10renyj	ok	Plugins	プラグイン	src/app/main.js:276	
+1sp21de	ok	A new version of the {0} personality	性格「{0}」の新しいバージョン	src/app/main.js:372	{0} = o.name
+1yoe82	ok	Yours has your own edits, so it was kept as it is.	編集済みのため、今のまま残しています。	src/app/main.js:373	
+1n8cxuc	ok	Compare	比較	src/app/main.js:375	
+rzp4o3	ok	Keep mine	今のままにする	src/app/main.js:376	
+1j662as	ok	Let Shiori merge	Shioriに統合してもらう	src/app/main.js:377	
+x0ig66	ok	Something went wrong	問題が起きました	src/app/main.js:429	
+1oy79dy	ok	annai kept running. The details are in Trace.	annaiは動作を続けています。詳細は「記録」にあります。	src/app/main.js:430	
+c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annaiは動作を続けていますが、何が起きたかを書き残せなかったため、「記録」にも残っていません。繰り返し起きる場合は、annaiを閉じて開き直してください。	src/app/main.js:430	
+11n1kcg	ok	Open Trace	記録を開く	src/app/main.js:431	
+gt9ssw	ok	annai couldn't start	annaiを起動できませんでした	src/app/main.js:442	
+6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	繰り返し起きる場合は、ブラウザがデータの保存をブロックしている可能性があります（プライベートウインドウなど）。	src/app/main.js:444	
+982hh6	ok	Try again	再試行	src/app/main.js:445	
 1u3dm1p	ok	This address holds a name or password before an @. Leave it out.	このアドレスには、@の前にユーザー名かパスワードが含まれています。その部分を削除してください。	src/core/address.js:68	
 1f8b0m5	ok	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	滞在した場所と滞在時間（場所は名前で。名前がなければ約100 m単位に丸めた位置で）。GPSの軌跡そのものは送りません。	src/core/after/recap.js:58	Note: a stay is any stop in the record, so 滞在した, not 泊まった (overnight).
 imb4zw	ok	How far you drove or walked between, the stamps, and the itinerary.	滞在した場所の間を車や徒歩で移動した距離、スタンプ、旅程。	src/core/after/recap.js:59	
@@ -495,11 +495,11 @@ bo3wjk	ok	Shiori stopped: today's budget is spent	Shioriが止まりました：
 67wvld	ok	Shiori stopped: step limit	Shioriが止まりました：ステップ数が上限に達しました	src/core/agent/budgets.js:123	
 177194c	ok	She took {0} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.	Shioriは頼まれていない作業を自分から{0}ステップ進めたため、そこで止まりました。続けてほしいときは、Shioriに頼んでください。	src/core/agent/budgets.js:124	{0} = num(over.steps); Note: "She" is Shiori in ja, as elsewhere.; Note: "Ask her" is a request (頼んで), not the glossary's Ask (Safari's permission choice, 確認).
 1o4yqf3	ok	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	1回の起動で進められる上限の{0}ステップに達しました（「設定 → Shiori → Shioriが自分から動く頻度」）。続けてほしいときは、Shioriに頼んでください。	src/core/agent/budgets.js:125	{0} = num(over.steps); Note: ja names no subject (the card's title says Shiori stopped); the setting's path as the screens name it.; Note: "Ask her" is a request (頼んで), not the glossary's Ask (Safari's permission choice, 確認).
-1vskjkw	ok	Live is resting; Koe · Chat is answering	ライブは休止中のため、Koe · チャットが答えています	src/core/agent/halves.js:584	
-13gz10	ok	Shiori answers you directly for now. The Trace says why, under Models; Koe tries again in a few minutes.	しばらくはShioriが直接答えます。理由は「記録」の「モデル」で確認できます。Koeは数分後に自動的に再試行します。	src/core/agent/halves.js:663	Note: Models is the Trace's Kind filter, as it is named there.
-yvabm6	ok	Koe's live voice couldn't start	Koeのライブ音声を開始できませんでした	src/core/agent/halves.js:663	
-bzrasi	ok	Shiori answers as one half for now	しばらくはShioriが一人で答えます	src/core/agent/halves.js:834	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
-o0lfar	ok	annai couldn't pass your message to Koe: {0}	メッセージをKoeに渡せませんでした：{0}	src/core/agent/halves.js:834	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+1vskjkw	ok	Live is resting; Koe · Chat is answering	ライブは休止中のため、Koe · チャットが答えています	src/core/agent/halves.js:582	
+13gz10	ok	Shiori answers you directly for now. The Trace says why, under Models; Koe tries again in a few minutes.	しばらくはShioriが直接答えます。理由は「記録」の「モデル」で確認できます。Koeは数分後に自動的に再試行します。	src/core/agent/halves.js:661	Note: Models is the Trace's Kind filter, as it is named there.
+yvabm6	ok	Koe's live voice couldn't start	Koeのライブ音声を開始できませんでした	src/core/agent/halves.js:661	
+bzrasi	ok	Shiori answers as one half for now	しばらくはShioriが一人で答えます	src/core/agent/halves.js:832	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
+o0lfar	ok	annai couldn't pass your message to Koe: {0}	メッセージをKoeに渡せませんでした：{0}	src/core/agent/halves.js:832	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
 15junxn	ok	One moment…	準備中…	src/core/agent/loop.js:145	Note: the dock's words between the user's tap and Listening (Shiori getting ready to hear them).
 1dhsqvv	ok	Tap to talk	タップして話す	src/core/agent/loop.js:145	
 1ldobgc	ok	Tap to interrupt	タップして中断	src/core/agent/loop.js:145	
@@ -510,60 +510,60 @@ g8840o	ok	Waiting for your OK	確認待ち	src/core/agent/loop.js:145
 yydchc	ok	Hearing you	聞き取り中	src/core/agent/loop.js:145	Note: one of Shiori's states: she hears you speaking.
 akjf4d	ok	Working on …	作業中…	src/core/agent/loop.js:146	
 izy3tv	ok	Offline · reminders still work	オフライン · リマインダーは使えます	src/core/agent/loop.js:146	
-gni5zk	ok	Her sound got stuck, and a tap brings it back. Her words are in the conversation.	Shioriの音声が止まってしまいました。タップすると再開します。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:182	
-guullf	ok	Tap the screen so Shiori can speak	Shioriが話せるように画面をタップしてください	src/core/agent/loop.js:182	
-1080xlr	ok	Working on {0}	作業中：{0}	src/core/agent/loop.js:683	{0} = detail; Note: label: value, {0} is what she works on, in her words.
-1h2c64o	ok	Working on tidying up the conversation	会話を整理中	src/core/agent/loop.js:683	
-19793n8	ok	Shiori skipped a wake	Shioriは起動を見送りました	src/core/agent/loop.js:1323	
-16ny0z2	ok	Shiori stopped	Shioriが止まりました	src/core/agent/loop.js:1569	
-1sxm1ou	ok	Something went wrong: {0}	問題が起きました：{0}	src/core/agent/loop.js:1569	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-n7ewdg	ok	Shiori couldn't tidy up the conversation	Shioriは会話を整理できませんでした	src/core/agent/loop.js:1602	
-oeaxaa	ok	She will try again later.	あとで自動的に再試行します。	src/core/agent/loop.js:1602	
-x10s30	ok	Shiori couldn't summarize the conversation	Shioriは会話を要約できませんでした	src/core/agent/loop.js:1791	
-1ds0zov	ok	Reminder	リマインダー	src/core/agent/loop.js:1990	
-1szzjml	ok	Shiori's answer	Shioriの答え	src/core/agent/loop.js:1990	
-nxpady	ok	The message went without it.	メッセージは写真なしで送られました。	src/core/agent/loop.js:2129	
-sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:2129	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
-ssozn1	ok	A photo wasn't sent to Shiori	写真をShioriに送れませんでした	src/core/agent/loop.js:2129	
-311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shioriは作業の途中でした。戻ったら続きから再開します。	src/core/agent/loop.js:2199	
-1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	同じツールを3回呼び出して同じ結果が続いたため、このやり取りを終了しました。言い方を変えて、もう一度聞いてみてください。	src/core/agent/loop.js:2567	Note: "Ask again" is asking Shiori (聞いて), not the glossary's Ask (Safari's permission choice, 確認).
-pydksy	ok	Shiori stopped repeating herself	Shioriは同じことの繰り返しをやめました	src/core/agent/loop.js:2567	
-1nvuxc8	ok	Her model finished without saying anything to you.	Shioriのモデルが、何も返事をしないまま終了しました。	src/core/agent/loop.js:2611	Note: "Her" is Shiori's in ja.
-2bgbpn	ok	Shiori didn't answer	Shioriから返事がありませんでした	src/core/agent/loop.js:2615	
-1mjdfzn	ok	Shiori can't reach her model	Shioriがモデルに接続できません	src/core/agent/loop.js:2689	
-12qfj9m	ok	This model takes photos only as {0}, which this browser can't make. Try another model in Settings → Models.	このモデルが受け付ける写真の形式は{0}だけですが、このブラウザでは作成できません。「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:2716	{0} = names
-1uhz9dg	ok	Shiori couldn't send the photo	Shioriは写真を送れませんでした	src/core/agent/loop.js:2775	
-vjxaph	ok	Your turn	返事待ち	src/core/agent/loop.js:3262	
-19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	このブラウザでは、タップしないと音が出ません。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:3419	
-1h2ina6	ok	Shiori couldn't speak aloud	Shioriは声に出して話せませんでした	src/core/agent/loop.js:3420	
-1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	「設定 → モデル → 読み上げ」の声がどれも使えませんでした。理由は「記録」にあります。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:3420	
-1r1dhd7	ok	Shiori can't hear you yet	Shioriはまだ声を聞き取れません	src/core/agent/loop.js:3577	
-8wd0xv	ok	Listening stopped	聞き取りが止まりました	src/core/agent/loop.js:3782	
-43klog	ok	at most {0} MB	最大{0} MB	src/core/agent/loop.js:4071	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	一辺#ピクセルまで	src/core/agent/loop.js:4072	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一度に#枚まで	src/core/agent/loop.js:4073	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	{0}のみ	src/core/agent/loop.js:4074	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず（受け付けるのは{0}）、受け付けられる形のコピーも作れませんでした。「設定 → 写真 → Shioriに送る写真」で写真を小さくするか、「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:4075	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず、受け付けられる形のコピーも作れませんでした。「設定 → 写真 → Shioriに送る写真」で写真を小さくするか、「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:4076	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	会話が長すぎて、整理するまではShioriのモデルで扱えません。「設定 → モデル」でモデルを確認するか、しばらくしてからもう一度お試しください。	src/core/agent/loop.js:4083	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	プラグイン「{0}」が、設定した上限（1時間に#回）を超えてShioriを起動しようとしました。	src/core/agent/loop.js:4093	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	リマインダーか見守り中の出来事が、設定した上限（1時間に#回）を超えてShioriを起動しようとしました（{0}）。	src/core/agent/loop.js:4094	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	追加したファイルが、設定した上限（1時間に#回）を超えてShioriを起動しようとしました（{0}）。	src/core/agent/loop.js:4095	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	何かが、設定した上限（1時間に#回）を超えてShioriを起動しようとしました。	src/core/agent/loop.js:4096	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+gni5zk	ok	Her sound got stuck, and a tap brings it back. Her words are in the conversation.	Shioriの音声が止まってしまいました。タップすると再開します。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:180	
+guullf	ok	Tap the screen so Shiori can speak	Shioriが話せるように画面をタップしてください	src/core/agent/loop.js:180	
+1080xlr	ok	Working on {0}	作業中：{0}	src/core/agent/loop.js:681	{0} = detail; Note: label: value, {0} is what she works on, in her words.
+1h2c64o	ok	Working on tidying up the conversation	会話を整理中	src/core/agent/loop.js:681	
+19793n8	ok	Shiori skipped a wake	Shioriは起動を見送りました	src/core/agent/loop.js:1327	
+16ny0z2	ok	Shiori stopped	Shioriが止まりました	src/core/agent/loop.js:1579	
+1sxm1ou	ok	Something went wrong: {0}	問題が起きました：{0}	src/core/agent/loop.js:1579	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+n7ewdg	ok	Shiori couldn't tidy up the conversation	Shioriは会話を整理できませんでした	src/core/agent/loop.js:1612	
+oeaxaa	ok	She will try again later.	あとで自動的に再試行します。	src/core/agent/loop.js:1612	
+x10s30	ok	Shiori couldn't summarize the conversation	Shioriは会話を要約できませんでした	src/core/agent/loop.js:1801	
+1ds0zov	ok	Reminder	リマインダー	src/core/agent/loop.js:2000	
+1szzjml	ok	Shiori's answer	Shioriの答え	src/core/agent/loop.js:2000	
+nxpady	ok	The message went without it.	メッセージは写真なしで送られました。	src/core/agent/loop.js:2139	
+sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:2139	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
+ssozn1	ok	A photo wasn't sent to Shiori	写真をShioriに送れませんでした	src/core/agent/loop.js:2139	
+311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shioriは作業の途中でした。戻ったら続きから再開します。	src/core/agent/loop.js:2209	
+1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	同じツールを3回呼び出して同じ結果が続いたため、このやり取りを終了しました。言い方を変えて、もう一度聞いてみてください。	src/core/agent/loop.js:2577	Note: "Ask again" is asking Shiori (聞いて), not the glossary's Ask (Safari's permission choice, 確認).
+pydksy	ok	Shiori stopped repeating herself	Shioriは同じことの繰り返しをやめました	src/core/agent/loop.js:2577	
+1nvuxc8	ok	Her model finished without saying anything to you.	Shioriのモデルが、何も返事をしないまま終了しました。	src/core/agent/loop.js:2621	Note: "Her" is Shiori's in ja.
+2bgbpn	ok	Shiori didn't answer	Shioriから返事がありませんでした	src/core/agent/loop.js:2625	
+1mjdfzn	ok	Shiori can't reach her model	Shioriがモデルに接続できません	src/core/agent/loop.js:2699	
+12qfj9m	ok	This model takes photos only as {0}, which this browser can't make. Try another model in Settings → Models.	このモデルが受け付ける写真の形式は{0}だけですが、このブラウザでは作成できません。「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:2726	{0} = names
+1uhz9dg	ok	Shiori couldn't send the photo	Shioriは写真を送れませんでした	src/core/agent/loop.js:2785	
+vjxaph	ok	Your turn	返事待ち	src/core/agent/loop.js:3265	
+19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	このブラウザでは、タップしないと音が出ません。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:3422	
+1h2ina6	ok	Shiori couldn't speak aloud	Shioriは声に出して話せませんでした	src/core/agent/loop.js:3423	
+1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	「設定 → モデル → 読み上げ」の声がどれも使えませんでした。理由は「記録」にあります。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:3423	
+1r1dhd7	ok	Shiori can't hear you yet	Shioriはまだ声を聞き取れません	src/core/agent/loop.js:3580	
+8wd0xv	ok	Listening stopped	聞き取りが止まりました	src/core/agent/loop.js:3785	
+43klog	ok	at most {0} MB	最大{0} MB	src/core/agent/loop.js:4074	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	一辺#ピクセルまで	src/core/agent/loop.js:4075	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一度に#枚まで	src/core/agent/loop.js:4076	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	{0}のみ	src/core/agent/loop.js:4077	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず（受け付けるのは{0}）、受け付けられる形のコピーも作れませんでした。「設定 → 写真 → Shioriに送る写真」で写真を小さくするか、「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:4078	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず、受け付けられる形のコピーも作れませんでした。「設定 → 写真 → Shioriに送る写真」で写真を小さくするか、「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:4079	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	会話が長すぎて、整理するまではShioriのモデルで扱えません。「設定 → モデル」でモデルを確認するか、しばらくしてからもう一度お試しください。	src/core/agent/loop.js:4086	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	プラグイン「{0}」が、設定した上限（1時間に#回）を超えてShioriを起動しようとしました。	src/core/agent/loop.js:4096	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	リマインダーか見守り中の出来事が、設定した上限（1時間に#回）を超えてShioriを起動しようとしました（{0}）。	src/core/agent/loop.js:4097	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	追加したファイルが、設定した上限（1時間に#回）を超えてShioriを起動しようとしました（{0}）。	src/core/agent/loop.js:4098	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	何かが、設定した上限（1時間に#回）を超えてShioriを起動しようとしました。	src/core/agent/loop.js:4099	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	メッセージにキーが含まれていたため、表示しません。	src/core/agent/net.js:94	
 157dl17	ok	Shiori wants to adjust her personality	Shioriが性格の調整を提案しています	src/core/agent/personalities.js:130	
 13g1wjf	ok	No thanks	やめておく	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
 1izvp43	ok	Agree	同意する	src/core/agent/personalities.js:131	
-1llchoj	ok	Read {0}, {1}?	Shioriが{1}の「{0}」を読んでもいいですか？	src/core/agent/trip-tools.js:372	{0} = title; {1} = dates; Note: annai's card before Shiori reads another of the user's trips, naming which: {0} is its name, {1} its dates as the screens show them ("Apr 1 – 8"). The options: Allow, Always for my trips, Not now. Also said aloud.
-i37hzw	ok	Read {0}?	Shioriが「{0}」を読んでもいいですか？	src/core/agent/trip-tools.js:372	{0} = title; Note: annai asks before Shiori reads another of the user's trips; {0} is that trip's name. The options: Allow, Always for my trips, Not now.
-mowdsi	ok	Read {0}, last talked {1}?	Shioriが、{1}に最後に話した「{0}」を読んでもいいですか？	src/core/agent/trip-tools.js:372	{0} = title; {1} = talked; Note: annai's card before Shiori reads another conversation whose name another one shares: {0} is its name, {1} when the user last talked in it ("Nov 5, 02:30 PM"). Also said aloud.
-1diq3hj	ok	Carry on in {0}?	「{0}」に移って続けますか？	src/core/agent/trip-tools.js:377	{0} = title; Note: annai's card when Shiori offers to take the user into another of their conversations to carry on there; {0} is its name. The options: Open, Not now. Also said aloud.
-8xml26	ok	Carry on in {0}, {1}?	{1}の「{0}」に移って続けますか？	src/core/agent/trip-tools.js:377	{0} = title; {1} = dates; Note: annai's card when Shiori offers to take the user into another of their trips to carry on there, naming which: {0} is its name, {1} its dates as the screens show them ("Apr 1 – 8"). The options: Open, Not now. Open opens that trip's conversation. Also said aloud.
-9sjz9j	ok	Carry on in {0}, last talked {1}?	{1}に最後に話した「{0}」に移って続けますか？	src/core/agent/trip-tools.js:377	{0} = title; {1} = talked; Note: annai's card when Shiori offers to take the user into another conversation whose name another one shares: {0} is its name, {1} when the user last talked in it ("Nov 5, 02:30 PM"). The options: Open, Not now. Also said aloud.
-8vx737	ok	Always for my trips	自分の旅はいつでも許可	src/core/agent/trip-tools.js:388	Note: an option on that card: Shiori may read any of the user's own trips from now on, without asking (Settings can turn it off); the Trace's line for that grant shows it too.
-c9wfke	ok	Not now	今はしない	src/core/agent/trip-tools.js:388	
-nfb55e	ok	Allow	許可	src/core/agent/trip-tools.js:388	
-n6hn1l	ok	Open	開く	src/core/agent/trip-tools.js:495	
+1llchoj	ok	Read {0}, {1}?	Shioriが{1}の「{0}」を読んでもいいですか？	src/core/agent/trip-tools.js:364	{0} = title; {1} = dates; Note: annai's card before Shiori reads another of the user's trips, naming which: {0} is its name, {1} its dates as the screens show them ("Apr 1 – 8"). The options: Allow, Always for my trips, Not now. Also said aloud.
+i37hzw	ok	Read {0}?	Shioriが「{0}」を読んでもいいですか？	src/core/agent/trip-tools.js:364	{0} = title; Note: annai asks before Shiori reads another of the user's trips; {0} is that trip's name. The options: Allow, Always for my trips, Not now.
+mowdsi	ok	Read {0}, last talked {1}?	Shioriが、{1}に最後に話した「{0}」を読んでもいいですか？	src/core/agent/trip-tools.js:364	{0} = title; {1} = talked; Note: annai's card before Shiori reads another conversation whose name another one shares: {0} is its name, {1} when the user last talked in it ("Nov 5, 02:30 PM"). Also said aloud.
+1diq3hj	ok	Carry on in {0}?	「{0}」に移って続けますか？	src/core/agent/trip-tools.js:369	{0} = title; Note: annai's card when Shiori offers to take the user into another of their conversations to carry on there; {0} is its name. The options: Open, Not now. Also said aloud.
+8xml26	ok	Carry on in {0}, {1}?	{1}の「{0}」に移って続けますか？	src/core/agent/trip-tools.js:369	{0} = title; {1} = dates; Note: annai's card when Shiori offers to take the user into another of their trips to carry on there, naming which: {0} is its name, {1} its dates as the screens show them ("Apr 1 – 8"). The options: Open, Not now. Open opens that trip's conversation. Also said aloud.
+9sjz9j	ok	Carry on in {0}, last talked {1}?	{1}に最後に話した「{0}」に移って続けますか？	src/core/agent/trip-tools.js:369	{0} = title; {1} = talked; Note: annai's card when Shiori offers to take the user into another conversation whose name another one shares: {0} is its name, {1} when the user last talked in it ("Nov 5, 02:30 PM"). The options: Open, Not now. Also said aloud.
+8vx737	ok	Always for my trips	自分の旅はいつでも許可	src/core/agent/trip-tools.js:380	Note: an option on that card: Shiori may read any of the user's own trips from now on, without asking (Settings can turn it off); the Trace's line for that grant shows it too.
+c9wfke	ok	Not now	今はしない	src/core/agent/trip-tools.js:380	
+nfb55e	ok	Allow	許可	src/core/agent/trip-tools.js:380	
+n6hn1l	ok	Open	開く	src/core/agent/trip-tools.js:486	
 myk8x4	ok	annai couldn't reach {0} ({1}). Is the device offline?	{0}に接続できませんでした（{1}）。オフラインになっていませんか？	src/core/answer.js:18	{0} = where; {1} = s.info; Note: {1} is the browser's own words, often English.
 uc7dg2	ok	annai couldn't reach {0}. Is the device offline?	{0}に接続できませんでした。オフラインになっていませんか？	src/core/answer.js:18	{0} = where
 15czcef	ok	{0} answered {1}.	{0}が{1}を返しました。	src/core/answer.js:19	{0} = where; {1} = s.status; Note: {1} is an HTTP status code.
@@ -626,30 +626,30 @@ gnrtev	ok	Shiori can't reach her model.	Shioriがモデルに接続できませ�
 1acz027	ok	just now	たった今	src/core/intl.js:130	
 1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	端末のスピーカーでは、Shioriが話している間は声を聞き取れないため、重ねて話した内容は使われません。タップするとShioriが話すのをやめ、聞き取りを始めます。	src/core/koe/live.js:664	
 1ml2kgi	ok	Tap Shiori to talk over her	割り込んで話すときはShioriをタップ	src/core/koe/live.js:664	Note: names what to tap (the dock's Shiori), as the English does.
-3fqfy0	ok	Languages	言語	src/core/languages.js:338	
-1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	話す言語とShioriが答える言語は、聞き取りや読み上げをするすべてのモデルに伝えます。短い返事を別の言語と取り違えないためです。	src/core/languages.js:339	Note: "Hears or speaks" as the glossary's 聞き取り / 読み上げ (Speech in, Speech out).
-1giusr1	ok	Languages you speak	話す言語	src/core/languages.js:340	
-m11rnd	ok	The first is the language phone dictation listens in; the order tells Shiori which you prefer.	最初の言語は、端末の音声入力が聞き取る言語です。並び順で、どれを優先するかをShioriに伝えます。	src/core/languages.js:341	Note: under "Languages you speak" (話す言語); Phone dictation as Settings → Voice's row (端末の音声入力). Replaces "In order of use…" (the user, 2026-10-28: what does the order mean?).
-5h4ntn	ok	Add a language	言語を追加	src/core/languages.js:342	
-17rv3f8	ok	Add	追加	src/core/languages.js:343	
-9c35st	ok	Remove	削除	src/core/languages.js:344	
-oogs2r	ok	Remove {0}	{0}を削除	src/core/languages.js:345	{0} = name
-h355qb	ok	{0} · {1}	{0} · {1}	src/core/languages.js:347	{0} = name; {1} = own
-18uuegb	ok	Added {0}	{0}を追加しました	src/core/languages.js:348	{0} = name
-zu7130	ok	Added {0}. Saved	{0}を追加して保存しました	src/core/languages.js:348	{0} = name; Note: The pair "…しました" then "…して保存しました": one sentence, as Saved follows it.
-14va31	ok	{0} moved to {1}. Saved	{0}を{1}番目に移動して保存しました	src/core/languages.js:349	{0} = name; {1} = place
-ehoetc	ok	{0} moved to {1}	{0}を{1}番目に移動しました	src/core/languages.js:349	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
-cefzcq	ok	{0} removed. Saved	{0}を削除して保存しました	src/core/languages.js:350	{0} = name
-p2yont	ok	{0} removed	{0}を削除しました	src/core/languages.js:350	{0} = name
-1i1xhz6	ok	{0} removed; Shiori answers in the language you speak to her again	{0}を削除しました。Shioriは元どおり、話しかけた言語で答えます	src/core/languages.js:352	{0} = name
-wbdbo7	ok	{0} removed; Shiori answers in the language you speak to her again. Saved	{0}を削除して保存しました。Shioriは元どおり、話しかけた言語で答えます	src/core/languages.js:353	{0} = name
-53lnxp	ok	Shiori answers in {0}	Shioriは{0}で答えます	src/core/languages.js:355	{0} = name
-fhhm2e	ok	Shiori answers in {0}. Saved	Shioriは{0}で答えます。保存しました	src/core/languages.js:355	{0} = name
-1c7ft9k	ok	Shiori answers in the language you speak to her. Saved	Shioriは話しかけた言語で答えます。保存しました	src/core/languages.js:356	
-bgn4sv	ok	Shiori answers in the language you speak to her	Shioriは話しかけた言語で答えます	src/core/languages.js:356	
-1qt7a9v	ok	Shiori answers in	Shioriが答える言語	src/core/languages.js:357	Note: A label for a menu of languages, so a noun: "the language Shiori answers in".
-k4u05v	ok	The language you speak to her	話しかけた言語に合わせる	src/core/languages.js:358	
-cc69cl	ok	None picked: annai uses the browser’s language.	未選択の場合は、ブラウザの言語を使います。	src/core/languages.js:359	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
+3fqfy0	ok	Languages	言語	src/core/languages.js:342	
+1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	話す言語とShioriが答える言語は、聞き取りや読み上げをするすべてのモデルに伝えます。短い返事を別の言語と取り違えないためです。	src/core/languages.js:343	Note: "Hears or speaks" as the glossary's 聞き取り / 読み上げ (Speech in, Speech out).
+1giusr1	ok	Languages you speak	話す言語	src/core/languages.js:344	
+m11rnd	ok	The first is the language phone dictation listens in; the order tells Shiori which you prefer.	最初の言語は、端末の音声入力が聞き取る言語です。並び順で、どれを優先するかをShioriに伝えます。	src/core/languages.js:345	Note: under "Languages you speak" (話す言語); Phone dictation as Settings → Voice's row (端末の音声入力). Replaces "In order of use…" (the user, 2026-10-28: what does the order mean?).
+5h4ntn	ok	Add a language	言語を追加	src/core/languages.js:346	
+17rv3f8	ok	Add	追加	src/core/languages.js:347	
+9c35st	ok	Remove	削除	src/core/languages.js:348	
+oogs2r	ok	Remove {0}	{0}を削除	src/core/languages.js:349	{0} = name
+h355qb	ok	{0} · {1}	{0} · {1}	src/core/languages.js:351	{0} = name; {1} = own
+18uuegb	ok	Added {0}	{0}を追加しました	src/core/languages.js:352	{0} = name
+zu7130	ok	Added {0}. Saved	{0}を追加して保存しました	src/core/languages.js:352	{0} = name; Note: The pair "…しました" then "…して保存しました": one sentence, as Saved follows it.
+14va31	ok	{0} moved to {1}. Saved	{0}を{1}番目に移動して保存しました	src/core/languages.js:353	{0} = name; {1} = place
+ehoetc	ok	{0} moved to {1}	{0}を{1}番目に移動しました	src/core/languages.js:353	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
+cefzcq	ok	{0} removed. Saved	{0}を削除して保存しました	src/core/languages.js:354	{0} = name
+p2yont	ok	{0} removed	{0}を削除しました	src/core/languages.js:354	{0} = name
+1i1xhz6	ok	{0} removed; Shiori answers in the language you speak to her again	{0}を削除しました。Shioriは元どおり、話しかけた言語で答えます	src/core/languages.js:356	{0} = name
+wbdbo7	ok	{0} removed; Shiori answers in the language you speak to her again. Saved	{0}を削除して保存しました。Shioriは元どおり、話しかけた言語で答えます	src/core/languages.js:357	{0} = name
+53lnxp	ok	Shiori answers in {0}	Shioriは{0}で答えます	src/core/languages.js:359	{0} = name
+fhhm2e	ok	Shiori answers in {0}. Saved	Shioriは{0}で答えます。保存しました	src/core/languages.js:359	{0} = name
+1c7ft9k	ok	Shiori answers in the language you speak to her. Saved	Shioriは話しかけた言語で答えます。保存しました	src/core/languages.js:360	
+bgn4sv	ok	Shiori answers in the language you speak to her	Shioriは話しかけた言語で答えます	src/core/languages.js:360	
+1qt7a9v	ok	Shiori answers in	Shioriが答える言語	src/core/languages.js:361	Note: A label for a menu of languages, so a noun: "the language Shiori answers in".
+k4u05v	ok	The language you speak to her	話しかけた言語に合わせる	src/core/languages.js:362	
+cc69cl	ok	None picked: annai uses the browser’s language.	未選択の場合は、ブラウザの言語を使います。	src/core/languages.js:363	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
 1dyfzsg	ok	A simulation is already running.	シミュレーションはすでに実行中です。	src/core/live/live.js:307	
 157qf8n	ok	Flight {0} departs {1}, {2}	フライト{0}（{1}発、{2}）	src/core/live/plan-watches.js:138	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
 1tvx4k9	ok	Flight {0} departs {1}	フライト{0}（{1}発）	src/core/live/plan-watches.js:138	{0} = w.flight; {1} = time
@@ -885,11 +885,11 @@ t7oyho	ok	It needs {0} {1}, and annai's catalog has version {2} ({3} is installe
 ubg3u	ok	It isn't in annai's catalog.	annaiのカタログにありません。	src/core/requires.js:203	
 4umazb	ok	The one installed came from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.	インストールされているものはほかの場所から入手したもので、annai公式のものではありません。公式のものを追加するには、「設定 → プラグイン」で削除してください。	src/core/requires.js:206	
 seoih8	ok	{0}, which you turned off, isn't switched on by adding it.	{0}はオフにしてあるため、追加しただけではオンになりません。	src/core/requires.js:208	{0} = officialName(entry.id, entry.name)
-stkvyf	ok	Me	自分	src/core/scopes.js:72	Note: the conversation that is not a trip's (Shiori and you), as the Trace's list names it.
-1imxpae	ok	System log	システムログ	src/core/scopes.js:73	
-ktdb8o	ok	Settings	設定	src/core/scopes.js:74	
-13w3r95	ok	This device	この端末	src/core/scopes.js:76	
-1jqhjwe	ok	Waiting with Shiori	Shioriが預かっているファイル	src/core/scopes.js:77	Note: the files handed to Shiori while no trip was open, which she holds until she files them: 預かる (holds for you), with ファイル so a heading says what is listed.
+stkvyf	ok	Me	自分	src/core/scopes.js:76	Note: the conversation that is not a trip's (Shiori and you), as the Trace's list names it.
+1imxpae	ok	System log	システムログ	src/core/scopes.js:77	
+ktdb8o	ok	Settings	設定	src/core/scopes.js:78	
+13w3r95	ok	This device	この端末	src/core/scopes.js:80	
+1jqhjwe	ok	Waiting with Shiori	Shioriが預かっているファイル	src/core/scopes.js:81	Note: the files handed to Shiori while no trip was open, which she holds until she files them: 預かる (holds for you), with ファイル so a heading says what is listed.
 ulzb3n	ok	Midnight sun	白夜	src/core/sun.js:78	
 1fjho8h	ok	Polar night	極夜	src/core/sun.js:79	
 tqn1pi	ok	Sunrise {0}	日の出 {0}	src/core/sun.js:82	{0} = hm(sunrise)
@@ -944,10 +944,11 @@ ihf6hd	ok	Her words go to the service behind {0} (Google's), to be spoken; they 
 14jkvn5	ok	Her words go to the service behind {0}, to be spoken; they aren't spoken on this phone.	{0}を提供するサービスに言葉が送られ、音声に変換されます。この端末内では変換しません。	src/core/voice/where.js:78	{0} = voice.name
 i7rrx1	ok	This voice is gone: it is skipped.	この声はもうないため、スキップされます。	src/core/voice/where.js:80	
 mf44l1	ok	Her words go to {0}, which sends back the sound.	言葉は{0}に送られ、音声になって返ってきます。	src/core/voice/where.js:80	{0} = placeOf(cfg, id)
+jy2arc	draft	Waiting with Shiori	Shioriに預けたファイル	src/core/waiting.js:46	context: a conversation's name; Note: the name annai gives the conversation the files handed to Shiori while no trip was open move into (timeline stage 7); a chat's name, so no です・ます; 預けた (handed to her to keep), as 預かる names the old list.
 1izzjz4	ok	Trip record checks	旅データのチェック	src/plugins/core-schemas/index.js:7	
 19upcdj	ok	Checks trip.json, itinerary items, bookings and watches when they are saved.	trip.json、旅程の項目、予約、見守りを保存するときにチェックします。	src/plugins/core-schemas/index.js:10	Note: A watch is what live mode watches for (a time, a place, a change); no screen names one yet, so ja ウォッチ and zh 监测项 are a first pick.
-6t16a0	ok	File tools	ファイルツール	src/plugins/files/index.js:16	
-1dyo7ln	ok	Shiori's tools for the trip's files and your own: list, read, write, edit, patch, search and delete.	旅や自分のファイルを扱うShioriのツール：list、read、write、edit、patch、search、delete。	src/plugins/files/index.js:19	Note: The tools' names stay as written: Settings → Tools lists them by those names.
+6t16a0	ok	File tools	ファイルツール	src/plugins/files/index.js:15	
+1dyo7ln	ok	Shiori's tools for the trip's files and your own: list, read, write, edit, patch, search and delete.	旅や自分のファイルを扱うShioriのツール：list、read、write、edit、patch、search、delete。	src/plugins/files/index.js:18	Note: The tools' names stay as written: Settings → Tools lists them by those names.
 jh5a9s	ok	Go tools	移動ツール	src/plugins/go/index.js:7	Note: Go as its tool group is named in Settings → Tools (移動 / 出行).
 1xge7qy	ok	maps_link and search_link: directions, and prefilled flight, hotel and car searches for you to book.	maps_linkとsearch_link：道順と、条件を入力済みのフライト・ホテル・レンタカー検索（予約は自分で行います）。	src/plugins/go/index.js:10	
 13a1ine	ok	The MCP server {0} speaks an unknown version of MCP; annai speaks 2025-03-26 to 2025-11-25.	MCPサーバー「{0}」のMCPバージョンが不明です。annaiが対応しているのは2025-03-26〜2025-11-25です。	src/plugins/mcp/client.js:86	{0} = this.server; Note: A server's name is quoted (「」, “”) so it stands apart from the words around it.
@@ -1014,12 +1015,12 @@ zsz4na	ok	Backed up.	バックアップしました。	src/ui/auto-backup.js:106
 183eg6b	ok	The backup didn't finish	バックアップが完了しませんでした	src/ui/auto-backup.js:108	
 rs50uy	ok	Opening the backup…	バックアップを開いています…	src/ui/auto-backup.js:125	
 12sejli	ok	Waiting for the backup that's running to finish…	実行中のバックアップが終わるのを待っています…	src/ui/auto-backup.js:144	
-151rypw#other	ok	# photos	#枚の写真	src/ui/bring-in.js:51	plural; # = n; English: "# photo" (one), "# photos" (other)
-1lybcwo#other	ok	Added # photos	写真#枚を追加しました	src/ui/bring-in.js:51	plural; # = n; English: "Added # photo" (one), "Added # photos" (other); Note: a toast after photos were shared to annai and added.
-1az0mug	ok	Added a file	ファイルを追加しました	src/ui/bring-in.js:52	Note: a toast after one file was shared to annai and added.
-8w8k36	ok	a file	ファイル	src/ui/bring-in.js:52	
-q61zku#other	ok	Added # files	ファイル#件を追加しました	src/ui/bring-in.js:52	plural; # = n; English: "Added # file" (one), "Added # files" (other)
-wa8d8i#other	ok	# files	ファイル#件	src/ui/bring-in.js:52	plural; # = n; English: "# file" (one), "# files" (other)
+151rypw#other	ok	# photos	#枚の写真	src/ui/bring-in.js:49	plural; # = n; English: "# photo" (one), "# photos" (other)
+1lybcwo#other	ok	Added # photos	写真#枚を追加しました	src/ui/bring-in.js:49	plural; # = n; English: "Added # photo" (one), "Added # photos" (other); Note: a toast after photos were shared to annai and added.
+1az0mug	ok	Added a file	ファイルを追加しました	src/ui/bring-in.js:50	Note: a toast after one file was shared to annai and added.
+8w8k36	ok	a file	ファイル	src/ui/bring-in.js:50	
+q61zku#other	ok	Added # files	ファイル#件を追加しました	src/ui/bring-in.js:50	plural; # = n; English: "Added # file" (one), "Added # files" (other)
+wa8d8i#other	ok	# files	ファイル#件	src/ui/bring-in.js:50	plural; # = n; English: "# file" (one), "# files" (other)
 1jpt0cn	ok	Shiori	Shiori	src/ui/cards.js:45	
 1qg198k	ok	Shiori · {0}	Shiori · {0}	src/ui/cards.js:45	{0} = String(typed.item.name); Note: The label over a card from a plugin; {0} is the plugin's own name for its kind of card, as written.
 1dn0kon	ok	Open in Maps	マップで開く	src/ui/cards.js:77	
@@ -1047,22 +1048,21 @@ a8awk7	ok	Free web search for web_search, and a reader of pages other readers ca
 1a5kitj	ok	Web search for web_search, with your key, once the Serper Search plugin is installed.	web_searchのWeb検索。Serper検索プラグインをインストールすると、自分のキーで使えます。	src/ui/credits.js:82	Note: Serper 検索 as the plugin's own name reads in Japanese since L7 (annai translates its official plugins' descriptive names, decision 10).
 1yvqge7	ok	Read pages that don't let web apps read them, and search the web, for Shiori's fetch and web_search tools, as Settings → Tools chooses.	Webアプリからは読めないページを読み、Webを検索します。Shioriのfetchとweb_searchツールで、「設定 → ツール」の選択に従って使います。	src/ui/credits.js:89	
 l5jx6y	ok	Shiori's art: designed for annai with AI image generation, then traced into vector art.	Shioriのイラスト：annaiのためにAI画像生成でデザインし、ベクター画像としてトレースしました。	src/ui/credits.js:107	
-gb19et	ok	Message to Shiori	Shioriへのメッセージ	src/ui/dock.js:45	
-1vatbdb	ok	Send	送信	src/ui/dock.js:60	
-abxwjc	ok	Your files didn't reach Shiori	ファイルをShioriに渡せませんでした	src/ui/dock.js:97	Note: a card when keeping the handed files failed (storage full, say); its body says why. Built on 渡す, as the + says.
-1m2zofh	ok	Type	入力	src/ui/dock.js:115	Note: The dock's keyboard button: it opens the box to type in (a verb).
-178hhn0	ok	Photos are kept in a trip. Open one from Trips, then take the photo again.	写真は旅ごとに保存されます。「旅」から旅を開いて、もう一度撮影してください。	src/ui/dock.js:154	
-drtui7	ok	Open a trip first	先に旅を開いてください	src/ui/dock.js:154	
+gb19et	ok	Message to Shiori	Shioriへのメッセージ	src/ui/dock.js:48	
+1vatbdb	ok	Send	送信	src/ui/dock.js:63	
+abxwjc	ok	Your files didn't reach Shiori	ファイルをShioriに渡せませんでした	src/ui/dock.js:106	Note: a card when keeping the handed files failed (storage full, say); its body says why. Built on 渡す, as the + says.
+1m2zofh	ok	Type	入力	src/ui/dock.js:124	Note: The dock's keyboard button: it opens the box to type in (a verb).
 1dcb0v0	ok	The photo wasn't added	写真を追加できませんでした	src/ui/dock.js:165	
-1xmvmzh	ok	Kokoro is working	Kokoroが作業中	src/ui/dock.js:254	
-1ndyc8s	ok	Stop Kokoro	Kokoroを止める	src/ui/dock.js:255	
-ky4lc5	ok	Stop	停止	src/ui/dock.js:255	
-snj02s	ok	In {0} ›	{0}の会話 ›	src/ui/dock.js:273	{0} = scopeTitle(typeof title === 'string' ? { ...rec, title } : rec)
-1s6dmy6	ok	Camera	カメラ	src/ui/dock.js:288	
-1rm0t76	ok	{0} isn't valid JSON.	{0}のJSONが正しくありません。	src/ui/dom.js:162	{0} = label; Note: {0} is a field's label.
-1a791in	ok	{0} has to be an object: { … }.	{0}はオブジェクト（{ … }）で入力してください。	src/ui/dom.js:164	{0} = label; Note: {0} is a field's label.
-1gkm7i5	ok	Saving…	保存中…	src/ui/dom.js:273	
-12ek4is	ok	Saved	保存しました	src/ui/dom.js:320	
+1nyg58x	draft	Take the photo again.	写真を撮り直してください。	src/ui/dock.js:165	
+1xmvmzh	ok	Kokoro is working	Kokoroが作業中	src/ui/dock.js:270	
+1ndyc8s	ok	Stop Kokoro	Kokoroを止める	src/ui/dock.js:271	
+ky4lc5	ok	Stop	停止	src/ui/dock.js:271	
+snj02s	ok	In {0} ›	{0}の会話 ›	src/ui/dock.js:289	{0} = scopeTitle(typeof title === 'string' ? { ...rec, title } : rec)
+1s6dmy6	ok	Camera	カメラ	src/ui/dock.js:304	
+1rm0t76	ok	{0} isn't valid JSON.	{0}のJSONが正しくありません。	src/ui/dom.js:155	{0} = label; Note: {0} is a field's label.
+1a791in	ok	{0} has to be an object: { … }.	{0}はオブジェクト（{ … }）で入力してください。	src/ui/dom.js:157	{0} = label; Note: {0} is a field's label.
+1gkm7i5	ok	Saving…	保存中…	src/ui/dom.js:266	
+12ek4is	ok	Saved	保存しました	src/ui/dom.js:313	
 fj0t7x	ok	History (every version and the log)	履歴（すべてのバージョンとログ）	src/ui/export-panel.js:21	
 oopaku	ok	Memory	記憶	src/ui/export-panel.js:22	Note: What Shiori remembers about you (her memory), not the device's: 記憶, as the recap's list says it; メモリー reads as the device's memory.
 1l4mw9c	ok	Photos	写真	src/ui/export-panel.js:23	
@@ -1143,90 +1143,90 @@ l7u7vc	ok	its plugin is missing	プラグインなし	src/ui/format.js:49
 7jim5c	ok	isn't a chat model	チャットモデルではない	src/ui/format.js:50	
 kis1ax	ok	speech couldn't reach it	音声が届かず	src/ui/format.js:50	Note: a model's outcome: the speech couldn't be passed to it (nothing in the speech-in list worked for it); its detail says "The speech couldn't be sent to it."
 w70v2a	ok	doesn't take audio	音声に非対応	src/ui/format.js:50	
-183e6qo	ok	Ends · {0}	終了 · {0}	src/ui/format.js:89	{0} = name; Note: the end of something over several days, as its own row on the Plan.
-1hdfht8	ok	Return · {0}	返却 · {0}	src/ui/format.js:89	{0} = name; Note: a rental car's return, its last row on the Plan.
-1jmwq9f	ok	Arrive · {0}	到着 · {0}	src/ui/format.js:89	{0} = name; Note: a flight's or train's arrival on a later day, its own row on the Plan.
-1lsabjg	ok	Check out · {0}	チェックアウト · {0}	src/ui/format.js:89	{0} = name; Note: a stay's last row on the Plan; {0} is the hotel's name as Shiori wrote it.
-1rqiggj	ok	Check in · {0}	チェックイン · {0}	src/ui/format.js:90	{0} = name; Note: a stay's first row on the Plan; {0} is the hotel's name.
-jn2a2i	ok	Pick up · {0}	受け取り · {0}	src/ui/format.js:90	{0} = name; Note: a rental car's pick-up, its first row on the Plan.
-cdkfoc	ok	Staying at {0} · night {1} of {2}	{0}に宿泊 · {2}泊中{1}泊目	src/ui/format.js:99	{0} = name; {1} = n; {2} = of; Note: a quiet line on each night of a stay; 3泊中2泊目 is how hotels count nights.
-lraa4q	ok	{0} · day {1} of {2}	{0} · {2}日中{1}日目	src/ui/format.js:99	{0} = name; {1} = n; {2} = of; Note: a quiet line on each day between, for a car or anything over several days; 8日中3日目 as the stay's 泊中泊目.
-ukzedx	ok	Other	その他	src/ui/format.js:103	
-1q4rwjo#other	ok	# stays	宿泊#件	src/ui/format.js:107	plural; # = n; English: "# stay" (one), "# stays" (other); Note: shows in a Files row's second line, as the count of stays a file became.
-1saywzu#other	ok	# flights	フライト#便	src/ui/format.js:107	plural; # = n; English: "# flight" (one), "# flights" (other); Note: shows in a Files row's second line, as the count of flights a file became ("2 flights · Nov 20, Nov 27").
-1usugy8#other	ok	# cars	レンタカー#件	src/ui/format.js:107	plural; # = n; English: "# car" (one), "# cars" (other); Note: shows in a Files row's second line, as the count of car rentals a file became.
-132sfp8#other	ok	# events	イベント#件	src/ui/format.js:108	plural; # = n; English: "# event" (one), "# events" (other); Note: shows in a Files row's second line, as the count of events a file became.
-7f6248#other	ok	# restaurants	レストラン#件	src/ui/format.js:108	plural; # = n; English: "# restaurant" (one), "# restaurants" (other); Note: shows in a Files row's second line, as the count of restaurant bookings a file became.
-qicqbg#other	ok	# trains	列車#本	src/ui/format.js:108	plural; # = n; English: "# train" (one), "# trains" (other); Note: shows in a Files row's second line, as the count of train trips a file became.
-25ugc5	ok	Itinerary items from a calendar	カレンダーから旅程に追加した項目	src/ui/format.js:134	Note: what a calendar file (.ics) became on the trip's Files; 予定 as the Plan.
-1gfvwcc	ok	Nothing yet	まだ何もありません	src/ui/format.js:135	Note: what a file became on the trip's Files: nothing so far.
-jgspu5	ok	Waiting for Shiori to read it	Shioriの読み取り待ち	src/ui/format.js:135	Note: a file on the trip's Files that Shiori hasn't read yet.
-1hlojji	ok	To	到着地	src/ui/format.js:141	context: booking; Note: a booking's detail: where a flight or train goes.
-1uq5tvs	ok	Seat	座席	src/ui/format.js:141	Note: a booking's detail.
-1yz1r2o	ok	Cabin	クラス	src/ui/format.js:141	context: booking; Note: a flight's cabin class (economy, business), as airlines say in Japanese.
-9ihsg5	ok	Airline	航空会社	src/ui/format.js:141	Note: a booking's detail.
-qoo2zd	ok	Flight	便名	src/ui/format.js:141	context: booking; Note: a booking's detail: the flight's number (AN 123), not the kind of booking.
-upnba7	ok	From	出発地	src/ui/format.js:141	context: booking; Note: a booking's detail: where a flight or train leaves from.
-1501knl	ok	Terminal	ターミナル	src/ui/format.js:142	Note: an airport's terminal.
-15rtgdu	ok	Gate	搭乗口	src/ui/format.js:142	Note: an airport's gate.
-193ku12	ok	Bags	手荷物	src/ui/format.js:142	Note: a booking's detail: the bags included.
-1ipbaqc	ok	Room	部屋	src/ui/format.js:142	context: booking; Note: a stay's room.
-1jn3vqu	ok	Nights	泊数	src/ui/format.js:142	Note: how many nights a stay is.
-ean645	ok	Travellers	乗客	src/ui/format.js:142	Note: the people a flight or train booking is for.
-vpb928	ok	Guests	宿泊者	src/ui/format.js:142	Note: the people a stay is booked for.
-1v8ms9v	ok	Train	列車名	src/ui/format.js:143	context: booking; Note: a booking's detail: the train's name or number, not the kind of booking.
-3uyuz4	ok	Drop-off	返却	src/ui/format.js:143	Note: where and when a rental car goes back.
-4f76ga	ok	Notes	メモ	src/ui/format.js:143	Note: notes on a booking or a plan item.
-95yu2i	ok	Pick-up	受け取り	src/ui/format.js:143	Note: where and when a rental car is picked up.
-b2la2e	ok	Car	号車	src/ui/format.js:143	context: train; Note: a train's car (coach) number, not a rental car.
-vzzxl8	ok	Party size	人数	src/ui/format.js:143	Note: how many people a restaurant booking is for.
-1jtckn3	ok	Route	区間	src/ui/format.js:178	context: flight; Note: a flight's from → to, as one line.
-13ne04w	ok	Departs	出発	src/ui/format.js:179	Note: a flight's departure, its day and time in that airport's zone beside it.
-j6u2ti	ok	Starts	開始	src/ui/format.js:179	context: booking; Note: A booking's start, its day and time shown beside it.
-vjjlq9	ok	Check-in	チェックイン	src/ui/format.js:179	Note: a stay's check-in, its day and time beside it.
-1pcvk9l	ok	Ends	終了	src/ui/format.js:180	context: booking
-8md94n	ok	Arrives	到着	src/ui/format.js:180	Note: a flight's arrival, its day and time in that airport's zone beside it.
-8nuh1e	ok	Check-out	チェックアウト	src/ui/format.js:180	Note: a stay's check-out, its day and time beside it.
-16ygujg	ok	Place	場所	src/ui/format.js:181	
-lypvx6	ok	{0}, {1}	{0}（{1}）	src/ui/format.js:181	context: booking; {0} = String(b.place.name); {1} = String(b.place.address); Note: A booking's place: its name, then its address in brackets.
-p3snlg	ok	Confirmation	予約番号	src/ui/format.js:192	Note: A booking's confirmation code.
-t05i6w	ok	Cost	料金	src/ui/format.js:193	
-1vdspge	ok	Getting files: {0} of {1}	ファイルを取得中（{0}/{1}）	src/ui/format.js:227	{0} = num(p.done); {1} = num(p.total)
-zo1gq	ok	Getting the backup…	バックアップを取得中…	src/ui/format.js:227	
-fuj1qb	ok	Getting the backup ready…	バックアップを準備中…	src/ui/format.js:231	
-1a0lh7c	ok	Comparing files {0} of {1}…	ファイルを比較中（{0}/{1}）…	src/ui/format.js:232	{0} = num(p.done); {1} = num(p.total)
-1ofggks	ok	Comparing files…	ファイルを比較中…	src/ui/format.js:232	
-1jbhw8o	ok	Uploading…	アップロード中…	src/ui/format.js:233	
-sg0mn0	ok	Uploading {0} of {1}…	アップロード中（{0}/{1}）…	src/ui/format.js:233	{0} = num(p.done); {1} = num(p.total)
-11y7c1u	ok	Paused: there is a newer backup from an iPad	一時停止中：別のiPadからの新しいバックアップがあります	src/ui/format.js:238	
-1815ss7	ok	Paused: there is a newer backup from an iPhone	一時停止中：別のiPhoneからの新しいバックアップがあります	src/ui/format.js:238	
-1kc2l15	ok	Paused: there is a newer backup from a computer	一時停止中：別のパソコンからの新しいバックアップがあります	src/ui/format.js:239	
-1ytn3n1	ok	Paused: there is a newer backup from an Android phone	一時停止中：別のAndroidスマートフォンからの新しいバックアップがあります	src/ui/format.js:239	
-14m1y56	ok	Paused: there is a newer backup from another device	一時停止中：別の端末からの新しいバックアップがあります	src/ui/format.js:240	
-12hcbva	ok	An iPhone backed up to {0} {1}.	{1}、別のiPhoneが{0}にバックアップしました。	src/ui/format.js:244	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
-1exdtuz	ok	An iPad backed up to {0} {1}.	{1}、別のiPadが{0}にバックアップしました。	src/ui/format.js:244	{0} = where; {1} = ago
-1hmrpdo	ok	A computer backed up to {0} {1}.	{1}、別のパソコンが{0}にバックアップしました。	src/ui/format.js:245	{0} = where; {1} = ago
-dc7u48	ok	An Android phone backed up to {0} {1}.	{1}、別のAndroidスマートフォンが{0}にバックアップしました。	src/ui/format.js:245	{0} = where; {1} = ago
-19kyaez	ok	Another device backed up to {0} {1}.	{1}、別の端末が{0}にバックアップしました。	src/ui/format.js:246	{0} = where; {1} = ago
-mbc651	ok	That was after this phone's last backup.	この端末の前回のバックアップより後のものです。	src/ui/format.js:250	
-vqd7xg	ok	Import it as a copy to bring its trips here, or back up this phone over it.	コピーとして読み込んでその旅をここに追加するか、この端末の内容でそのバックアップを上書きしてください。	src/ui/format.js:250	Note: "Back up this phone over it": this phone's data replaces the newer backup there, as the card's button says it.
-1ce0smb	ok	That was after this iPad's last backup.	このiPadの前回のバックアップより後のものです。	src/ui/format.js:251	
-nmyapy	ok	Import it as a copy to bring its trips here, or back up this iPad over it.	コピーとして読み込んでその旅をここに追加するか、このiPadの内容でそのバックアップを上書きしてください。	src/ui/format.js:251	
-hqymxl	ok	Import it as a copy to bring its trips here, or back up this computer over it.	コピーとして読み込んでその旅をここに追加するか、このパソコンの内容でそのバックアップを上書きしてください。	src/ui/format.js:252	
-wn3ejs	ok	That was after this computer's last backup.	このパソコンの前回のバックアップより後のものです。	src/ui/format.js:252	
-1n6qjpw	ok	Working…	処理中…	src/ui/format.js:267	
-1sw982j	ok	Last backup {0}.	前回のバックアップ：{0}。	src/ui/format.js:272	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
-d1smo3	ok	Not backed up yet.	まだバックアップしていません。	src/ui/format.js:272	
-10ouos4	ok	Waiting for your OK to upload {0}	{0}のアップロードの許可を待っています	src/ui/format.js:273	{0} = size(h.bytes)
-nbshf0	ok	The last try failed.	前回の試行は失敗しました。	src/ui/format.js:275	Note: the reason follows on a line of its own, in English: a hold kept before annai spoke other languages.
-osg3je	ok	The last try failed: {0}	前回の試行は失敗しました：{0}	src/ui/format.js:276	{0} = holdWords(h, target.name)
-1qmdzit	ok	Not set up yet: fill it in, then Save and test	まだ設定されていません。入力してから「保存してテスト」をタップしてください	src/ui/format.js:277	Note: "Save and test" is the backup place's button.
-1e2pygg	ok	Automatic backups are off	自動バックアップはオフです	src/ui/format.js:278	
-173tgfr	ok	Last backup {0}	前回のバックアップ：{0}	src/ui/format.js:279	{0} = at
-1uajbr3	ok	Not backed up yet	まだバックアップしていません	src/ui/format.js:279	
-1j5k2vf	ok	Automatic backups there are paused, so neither device overwrites the other.	互いに上書きしないよう、そこへの自動バックアップを一時停止しています。	src/ui/format.js:291	
-hmr3pn	ok	The other backup stays in its history.	もう一方のバックアップは履歴に残ります。	src/ui/format.js:291	
-8091b1	ok	no limit	上限なし	src/ui/format.js:316	
+183e6qo	ok	Ends · {0}	終了 · {0}	src/ui/format.js:87	{0} = name; Note: the end of something over several days, as its own row on the Plan.
+1hdfht8	ok	Return · {0}	返却 · {0}	src/ui/format.js:87	{0} = name; Note: a rental car's return, its last row on the Plan.
+1jmwq9f	ok	Arrive · {0}	到着 · {0}	src/ui/format.js:87	{0} = name; Note: a flight's or train's arrival on a later day, its own row on the Plan.
+1lsabjg	ok	Check out · {0}	チェックアウト · {0}	src/ui/format.js:87	{0} = name; Note: a stay's last row on the Plan; {0} is the hotel's name as Shiori wrote it.
+1rqiggj	ok	Check in · {0}	チェックイン · {0}	src/ui/format.js:88	{0} = name; Note: a stay's first row on the Plan; {0} is the hotel's name.
+jn2a2i	ok	Pick up · {0}	受け取り · {0}	src/ui/format.js:88	{0} = name; Note: a rental car's pick-up, its first row on the Plan.
+cdkfoc	ok	Staying at {0} · night {1} of {2}	{0}に宿泊 · {2}泊中{1}泊目	src/ui/format.js:97	{0} = name; {1} = n; {2} = of; Note: a quiet line on each night of a stay; 3泊中2泊目 is how hotels count nights.
+lraa4q	ok	{0} · day {1} of {2}	{0} · {2}日中{1}日目	src/ui/format.js:97	{0} = name; {1} = n; {2} = of; Note: a quiet line on each day between, for a car or anything over several days; 8日中3日目 as the stay's 泊中泊目.
+ukzedx	ok	Other	その他	src/ui/format.js:101	
+1q4rwjo#other	ok	# stays	宿泊#件	src/ui/format.js:105	plural; # = n; English: "# stay" (one), "# stays" (other); Note: shows in a Files row's second line, as the count of stays a file became.
+1saywzu#other	ok	# flights	フライト#便	src/ui/format.js:105	plural; # = n; English: "# flight" (one), "# flights" (other); Note: shows in a Files row's second line, as the count of flights a file became ("2 flights · Nov 20, Nov 27").
+1usugy8#other	ok	# cars	レンタカー#件	src/ui/format.js:105	plural; # = n; English: "# car" (one), "# cars" (other); Note: shows in a Files row's second line, as the count of car rentals a file became.
+132sfp8#other	ok	# events	イベント#件	src/ui/format.js:106	plural; # = n; English: "# event" (one), "# events" (other); Note: shows in a Files row's second line, as the count of events a file became.
+7f6248#other	ok	# restaurants	レストラン#件	src/ui/format.js:106	plural; # = n; English: "# restaurant" (one), "# restaurants" (other); Note: shows in a Files row's second line, as the count of restaurant bookings a file became.
+qicqbg#other	ok	# trains	列車#本	src/ui/format.js:106	plural; # = n; English: "# train" (one), "# trains" (other); Note: shows in a Files row's second line, as the count of train trips a file became.
+25ugc5	ok	Itinerary items from a calendar	カレンダーから旅程に追加した項目	src/ui/format.js:132	Note: what a calendar file (.ics) became on the trip's Files; 予定 as the Plan.
+1gfvwcc	ok	Nothing yet	まだ何もありません	src/ui/format.js:133	Note: what a file became on the trip's Files: nothing so far.
+jgspu5	ok	Waiting for Shiori to read it	Shioriの読み取り待ち	src/ui/format.js:133	Note: a file on the trip's Files that Shiori hasn't read yet.
+1hlojji	ok	To	到着地	src/ui/format.js:139	context: booking; Note: a booking's detail: where a flight or train goes.
+1uq5tvs	ok	Seat	座席	src/ui/format.js:139	Note: a booking's detail.
+1yz1r2o	ok	Cabin	クラス	src/ui/format.js:139	context: booking; Note: a flight's cabin class (economy, business), as airlines say in Japanese.
+9ihsg5	ok	Airline	航空会社	src/ui/format.js:139	Note: a booking's detail.
+qoo2zd	ok	Flight	便名	src/ui/format.js:139	context: booking; Note: a booking's detail: the flight's number (AN 123), not the kind of booking.
+upnba7	ok	From	出発地	src/ui/format.js:139	context: booking; Note: a booking's detail: where a flight or train leaves from.
+1501knl	ok	Terminal	ターミナル	src/ui/format.js:140	Note: an airport's terminal.
+15rtgdu	ok	Gate	搭乗口	src/ui/format.js:140	Note: an airport's gate.
+193ku12	ok	Bags	手荷物	src/ui/format.js:140	Note: a booking's detail: the bags included.
+1ipbaqc	ok	Room	部屋	src/ui/format.js:140	context: booking; Note: a stay's room.
+1jn3vqu	ok	Nights	泊数	src/ui/format.js:140	Note: how many nights a stay is.
+ean645	ok	Travellers	乗客	src/ui/format.js:140	Note: the people a flight or train booking is for.
+vpb928	ok	Guests	宿泊者	src/ui/format.js:140	Note: the people a stay is booked for.
+1v8ms9v	ok	Train	列車名	src/ui/format.js:141	context: booking; Note: a booking's detail: the train's name or number, not the kind of booking.
+3uyuz4	ok	Drop-off	返却	src/ui/format.js:141	Note: where and when a rental car goes back.
+4f76ga	ok	Notes	メモ	src/ui/format.js:141	Note: notes on a booking or a plan item.
+95yu2i	ok	Pick-up	受け取り	src/ui/format.js:141	Note: where and when a rental car is picked up.
+b2la2e	ok	Car	号車	src/ui/format.js:141	context: train; Note: a train's car (coach) number, not a rental car.
+vzzxl8	ok	Party size	人数	src/ui/format.js:141	Note: how many people a restaurant booking is for.
+1jtckn3	ok	Route	区間	src/ui/format.js:176	context: flight; Note: a flight's from → to, as one line.
+13ne04w	ok	Departs	出発	src/ui/format.js:177	Note: a flight's departure, its day and time in that airport's zone beside it.
+j6u2ti	ok	Starts	開始	src/ui/format.js:177	context: booking; Note: A booking's start, its day and time shown beside it.
+vjjlq9	ok	Check-in	チェックイン	src/ui/format.js:177	Note: a stay's check-in, its day and time beside it.
+1pcvk9l	ok	Ends	終了	src/ui/format.js:178	context: booking
+8md94n	ok	Arrives	到着	src/ui/format.js:178	Note: a flight's arrival, its day and time in that airport's zone beside it.
+8nuh1e	ok	Check-out	チェックアウト	src/ui/format.js:178	Note: a stay's check-out, its day and time beside it.
+16ygujg	ok	Place	場所	src/ui/format.js:179	
+lypvx6	ok	{0}, {1}	{0}（{1}）	src/ui/format.js:179	context: booking; {0} = String(b.place.name); {1} = String(b.place.address); Note: A booking's place: its name, then its address in brackets.
+p3snlg	ok	Confirmation	予約番号	src/ui/format.js:190	Note: A booking's confirmation code.
+t05i6w	ok	Cost	料金	src/ui/format.js:191	
+1vdspge	ok	Getting files: {0} of {1}	ファイルを取得中（{0}/{1}）	src/ui/format.js:225	{0} = num(p.done); {1} = num(p.total)
+zo1gq	ok	Getting the backup…	バックアップを取得中…	src/ui/format.js:225	
+fuj1qb	ok	Getting the backup ready…	バックアップを準備中…	src/ui/format.js:229	
+1a0lh7c	ok	Comparing files {0} of {1}…	ファイルを比較中（{0}/{1}）…	src/ui/format.js:230	{0} = num(p.done); {1} = num(p.total)
+1ofggks	ok	Comparing files…	ファイルを比較中…	src/ui/format.js:230	
+1jbhw8o	ok	Uploading…	アップロード中…	src/ui/format.js:231	
+sg0mn0	ok	Uploading {0} of {1}…	アップロード中（{0}/{1}）…	src/ui/format.js:231	{0} = num(p.done); {1} = num(p.total)
+11y7c1u	ok	Paused: there is a newer backup from an iPad	一時停止中：別のiPadからの新しいバックアップがあります	src/ui/format.js:236	
+1815ss7	ok	Paused: there is a newer backup from an iPhone	一時停止中：別のiPhoneからの新しいバックアップがあります	src/ui/format.js:236	
+1kc2l15	ok	Paused: there is a newer backup from a computer	一時停止中：別のパソコンからの新しいバックアップがあります	src/ui/format.js:237	
+1ytn3n1	ok	Paused: there is a newer backup from an Android phone	一時停止中：別のAndroidスマートフォンからの新しいバックアップがあります	src/ui/format.js:237	
+14m1y56	ok	Paused: there is a newer backup from another device	一時停止中：別の端末からの新しいバックアップがあります	src/ui/format.js:238	
+12hcbva	ok	An iPhone backed up to {0} {1}.	{1}、別のiPhoneが{0}にバックアップしました。	src/ui/format.js:242	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
+1exdtuz	ok	An iPad backed up to {0} {1}.	{1}、別のiPadが{0}にバックアップしました。	src/ui/format.js:242	{0} = where; {1} = ago
+1hmrpdo	ok	A computer backed up to {0} {1}.	{1}、別のパソコンが{0}にバックアップしました。	src/ui/format.js:243	{0} = where; {1} = ago
+dc7u48	ok	An Android phone backed up to {0} {1}.	{1}、別のAndroidスマートフォンが{0}にバックアップしました。	src/ui/format.js:243	{0} = where; {1} = ago
+19kyaez	ok	Another device backed up to {0} {1}.	{1}、別の端末が{0}にバックアップしました。	src/ui/format.js:244	{0} = where; {1} = ago
+mbc651	ok	That was after this phone's last backup.	この端末の前回のバックアップより後のものです。	src/ui/format.js:248	
+vqd7xg	ok	Import it as a copy to bring its trips here, or back up this phone over it.	コピーとして読み込んでその旅をここに追加するか、この端末の内容でそのバックアップを上書きしてください。	src/ui/format.js:248	Note: "Back up this phone over it": this phone's data replaces the newer backup there, as the card's button says it.
+1ce0smb	ok	That was after this iPad's last backup.	このiPadの前回のバックアップより後のものです。	src/ui/format.js:249	
+nmyapy	ok	Import it as a copy to bring its trips here, or back up this iPad over it.	コピーとして読み込んでその旅をここに追加するか、このiPadの内容でそのバックアップを上書きしてください。	src/ui/format.js:249	
+hqymxl	ok	Import it as a copy to bring its trips here, or back up this computer over it.	コピーとして読み込んでその旅をここに追加するか、このパソコンの内容でそのバックアップを上書きしてください。	src/ui/format.js:250	
+wn3ejs	ok	That was after this computer's last backup.	このパソコンの前回のバックアップより後のものです。	src/ui/format.js:250	
+1n6qjpw	ok	Working…	処理中…	src/ui/format.js:265	
+1sw982j	ok	Last backup {0}.	前回のバックアップ：{0}。	src/ui/format.js:270	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
+d1smo3	ok	Not backed up yet.	まだバックアップしていません。	src/ui/format.js:270	
+10ouos4	ok	Waiting for your OK to upload {0}	{0}のアップロードの許可を待っています	src/ui/format.js:271	{0} = size(h.bytes)
+nbshf0	ok	The last try failed.	前回の試行は失敗しました。	src/ui/format.js:273	Note: the reason follows on a line of its own, in English: a hold kept before annai spoke other languages.
+osg3je	ok	The last try failed: {0}	前回の試行は失敗しました：{0}	src/ui/format.js:274	{0} = holdWords(h, target.name)
+1qmdzit	ok	Not set up yet: fill it in, then Save and test	まだ設定されていません。入力してから「保存してテスト」をタップしてください	src/ui/format.js:275	Note: "Save and test" is the backup place's button.
+1e2pygg	ok	Automatic backups are off	自動バックアップはオフです	src/ui/format.js:276	
+173tgfr	ok	Last backup {0}	前回のバックアップ：{0}	src/ui/format.js:277	{0} = at
+1uajbr3	ok	Not backed up yet	まだバックアップしていません	src/ui/format.js:277	
+1j5k2vf	ok	Automatic backups there are paused, so neither device overwrites the other.	互いに上書きしないよう、そこへの自動バックアップを一時停止しています。	src/ui/format.js:289	
+hmr3pn	ok	The other backup stays in its history.	もう一方のバックアップは履歴に残ります。	src/ui/format.js:289	
+8091b1	ok	no limit	上限なし	src/ui/format.js:314	
 lpx0cl#other	ok	# trips and conversations	旅と会話#件	src/ui/import-state.js:47	plural; # = titles.length; English: "# trip or conversation" (one), "# trips and conversations" (other); Note: a git backup's preview, from its manifest alone, can't tell trips from chats: this is the one row they fold under; also the toast "Imported # trips and conversations" when the user left the import screen (import-state.js).
 12lprg	ok	Imported {0} from {1}.	{1}から{0}を読み込みました。	src/ui/import-state.js:48	{0} = what; {1} = place
 1hzaym7	ok	Imported {0}.	{0}を読み込みました。	src/ui/import-state.js:48	{0} = what
@@ -1378,7 +1378,7 @@ uwd3a2	ok	No offline pack yet.	オフラインパックはまだありません�
 ksuwxs	ok	Offline pack: downloaded.	オフラインパック：ダウンロード済み。	src/ui/offline-pack.js:129	
 r91312	ok	Offline pack: downloaded {0}.	オフラインパック：ダウンロード済み（{0}）。	src/ui/offline-pack.js:129	{0} = when; Note: {0} is a relative time ("2 hours ago").
 8f98y9	ok	Open an annai file	annaiのファイルを開く	src/ui/open-file.js:6	
-13548dd	ok	That conversation didn't open	その会話を開けませんでした	src/ui/open-trip.js:7	Note: a card after Ask Shiori about this, when the trip's or the no-trip conversation fails to open; 会話 as the glossary's Conversation.
+13548dd	ok	That conversation didn't open	その会話を開けませんでした	src/ui/open-trip.js:7	Note: a card when a conversation fails to open (+, the type box, the camera, Ask Shiori about this); 会話 as the glossary's Conversation.
 ow6fak	ok	This browser could not draw the photo.	このブラウザでは写真を描画できませんでした。	src/ui/photo-codec.js:73	
 11dn6um	ok	This browser could not write {0}.	このブラウザでは{0}形式で書き出せませんでした。	src/ui/photo-codec.js:81	{0} = type
 1l0xxoj	ok	Close	閉じる	src/ui/photo-viewer.js:32	
@@ -1677,88 +1677,87 @@ t9ug66	ok	This page belongs to a plugin that isn't on. Turn it on in {0}.	この
 ata72m	ok	Trace	記録	src/ui/screens/ext.js:36	
 1y7aybz	ok	This page couldn't be drawn; the plugin's error is in {0}.	このページを表示できませんでした。プラグインのエラーは{0}で確認できます。	src/ui/screens/ext.js:37	{0} = trace
 12mubvb	ok	Now	いま	src/ui/screens/ext.js:44	
-17o4v1i	ok	Conversation	会話	src/ui/screens/file.js:25	
-1r8pi2g	ok	Recap	振り返り	src/ui/screens/file.js:25	
-43f6md	ok	Details	詳細	src/ui/screens/file.js:25	Note: the crumb back to a plan item's details screen, from the file it came from; also the crumb back to a file's or booking's details screen, from the raw file screen; and the crumb back to a conversation's Details (the screen talk's Details button opens), from its raw file screen.
-drvc96	ok	Deleting this file also deletes {0}.	このファイルを削除すると、{0}も削除されます。	src/ui/screens/file.js:67	{0} = list(also); Note: on the raw file screen of a file the user gave, above Delete file; {0} is a list ("2 bookings and 1 itinerary item").
-1jlj988	ok	Delete file	ファイルを削除	src/ui/screens/file.js:68	
-mnzt43	ok	This file was deleted for good.	このファイルは完全に削除されました。	src/ui/screens/file.js:91	Note: a deleted file's raw screen when Delete freed it, so no version is left to bring back.
-krcze5	ok	This file was deleted. You can bring back a version below.	このファイルは削除されました。下の履歴から以前のバージョンに戻せます。	src/ui/screens/file.js:99	
-d9bfze	ok	This file was deleted. Restore brings it back with {0} that Shiori read from it.	このファイルは削除されました。「復元」すると、Shioriが読み取った{0}もいっしょに戻ります。	src/ui/screens/file.js:107	{0} = list(parts)
-rcgidi	ok	This file was deleted. Restore brings it back.	このファイルは削除されました。「復元」すると元に戻ります。	src/ui/screens/file.js:107	
-18neyl2	ok	Tap again to delete for good	もう一度タップで完全に削除	src/ui/screens/file.js:109	Note: the second tap of 完全に削除; the file cannot be restored after it
-uvd0vy	ok	Delete for good	完全に削除	src/ui/screens/file.js:109	Note: the button on a deleted file's screen that frees its space for good; asks once, then 18neyl2
-xb1ny3	ok	Trips	旅	src/ui/screens/file.js:143	
-1lwovru	ok	This file isn't waiting with Shiori any more.	このファイルはもうShioriが預かっていません。	src/ui/screens/file.js:145	Note: a waiting file's screen once Shiori filed it into a trip, or it was deleted; built on Waiting with Shiori (預かる / 暂存 / 暫存).
-18t12gi	ok	File name: {0}	ファイル名：{0}	src/ui/screens/file.js:167	{0} = real; Note: under a file's short name on its own screen; {0} is the file's real name.
-1hnv6ua	ok	Content	内容	src/ui/screens/file.js:190	
-lewgh4	ok	Save	保存	src/ui/screens/file.js:190	
-1m183es	ok	Open the photo full size	写真を大きく表示	src/ui/screens/file.js:219	
-wbyn1d	ok	Look at this part of {0}.	{0}のこの部分を見てください。	src/ui/screens/file.js:224	{0} = shown; Note: What the user says to Shiori, with the part of the photo on screen.
-129ed1b	ok	This browser can't show this photo. It shows in Safari, and a Share export converts it where it can.	このブラウザではこの写真を表示できません。Safariなら表示できます。「共有」でエクスポートすると、可能な場合は変換されます。	src/ui/screens/file.js:231	
-4g2gbm	ok	Taken {0}	撮影：{0}	src/ui/screens/file.js:250	{0} = takenText(m.taken)
-z4tcw5	ok	Stored as taken	撮影時のまま保存	src/ui/screens/file.js:251	
-1v3hapr	ok	Where it was taken	撮影場所	src/ui/screens/file.js:254	
-1ooqziz	ok	No earlier versions.	以前のバージョンはありません。	src/ui/screens/file.js:264	
-yugfpb	ok	History	履歴	src/ui/screens/file.js:265	
-q1nl48	ok	Not kept in this copy	このコピーには含まれていません	src/ui/screens/file.js:270	
-twulcv	ok	Version restored	バージョンを戻しました	src/ui/screens/file.js:280	
-16qw3bf	ok	Restore this version	このバージョンに戻す	src/ui/screens/file.js:281	
-1dw4k8q	ok	Current	現在	src/ui/screens/file.js:282	
-3g3rkl	ok	changed by you {0}	自分が変更（{0}）	src/ui/screens/file.js:288	{0} = ago; Note: {0} is a relative time ("5 min ago").
-8zkwit	ok	changed by {0} {1}	{0}が変更（{1}）	src/ui/screens/file.js:288	{0} = authorName(entry.author); {1} = ago; Note: {0} is Shiori or annai; {1} is a relative time ("5 min ago").
-1k32hzi	ok	Deleted by you {0}	自分が削除（{0}）	src/ui/screens/file.js:294	{0} = ago
-w8mx56	ok	Deleted by {0} {1}	{0}が削除（{1}）	src/ui/screens/file.js:294	{0} = who; {1} = ago; Note: {0} is Shiori or annai.
-1cdkli8	ok	Saved by you {0}	自分が保存（{0}）	src/ui/screens/file.js:295	{0} = ago
-1xtgqpw	ok	Saved by {0} {1}	{0}が保存（{1}）	src/ui/screens/file.js:295	{0} = who; {1} = ago; Note: {0} is Shiori or annai.
-1azyvjt	ok	Choose a file instead	代わりにファイルを選ぶ	src/ui/screens/import.js:43	
-18kfutv	ok	Choose an annai file (.annai.zip or .annai) to open it.	開くには、annaiのファイル（.annai.zip または .annai）を選んでください。	src/ui/screens/import.js:56	
-s6np2n	ok	Choose a file	ファイルを選ぶ	src/ui/screens/import.js:56	
-9pczbj	ok	Choose another file	別のファイルを選ぶ	src/ui/screens/import.js:60	
-vpnx22	ok	annai couldn't download that file. The site may not allow other web apps to download it.	そのファイルをダウンロードできませんでした。そのサイトが、ほかのWebアプリからのダウンロードを許可していない可能性があります。	src/ui/screens/import.js:80	
-9ekzd	ok	The download failed ({0} {1}).	ダウンロードに失敗しました（{0} {1}）。	src/ui/screens/import.js:83	{0} = res.status; {1} = res.statusText
-1bf856r	ok	file	ファイル	src/ui/screens/import.js:84	Note: A file's name when its address has none.
-1i00iqj	ok	Reading {0}…	{0}を読み込み中…	src/ui/screens/import.js:92	{0} = source.name
-1fn8tif	ok	This backup changed on the server while annai was getting it. Open it again from the backups.	取得中に、このバックアップがサーバー上で変更されました。「バックアップ」からもう一度開いてください。	src/ui/screens/import.js:139	
-t5o4f	ok	{0} is encrypted.	{0}は暗号化されています。	src/ui/screens/import.js:151	{0} = source.name
-17ezgqd	ok	Unlock	ロックを解除	src/ui/screens/import.js:154	
-bqwneo#other	ok	# conversations	会話#件	src/ui/screens/import.js:172	plural; # = grouped.length; English: "# conversation" (one), "# conversations" (other)
-19fmt2v	ok	Add as new ones	新しく追加	src/ui/screens/import.js:175	
-voh4dn	ok	You already have some of them	このうちいくつかはすでにあります	src/ui/screens/import.js:175	
-w63stp	ok	Replace mine (yours move to Archived)	読み込むもので置き換える（この端末のものは「アーカイブ済み」に移ります）	src/ui/screens/import.js:175	
-mp7avp	ok	with history	履歴あり	src/ui/screens/import.js:180	
-1z02pm0	ok	You already have "{0}"	「{0}」はすでにあります	src/ui/screens/import.js:182	{0} = trip.existingTitle
-9jpcd5	ok	Add as a new one	新しいものとして追加	src/ui/screens/import.js:182	
-d7gpc4	ok	Replace mine (yours moves to Archived)	読み込むもので置き換える（この端末のものは「アーカイブ済み」に移ります）	src/ui/screens/import.js:182	
-1pmufvp#other	ok	you already have # of them	うち#件はすでにあります	src/ui/screens/import.js:192	plural; # = mine; English: "you already have # of them" (one), "you already have # of them" (other); Note: after the fold's count and size, how many of its rows are already on this phone (each has its choice inside the fold); "of them" is of the trips and conversations.
-1og8gcf	ok	Replace my profile and memory with the ones in this file	プロフィールと記憶を、このファイルのものに置き換える	src/ui/screens/import.js:195	Note: Shiori's memory is 記憶, as on the export list.
-rfnd00	ok	Replace my settings	設定を置き換える	src/ui/screens/import.js:196	
-1ai6503	ok	Replace my plugins	プラグインを置き換える	src/ui/screens/import.js:197	
-z9765v	ok	Restore API keys (keys already on this device are kept)	APIキーを復元（この端末にあるキーはそのまま）	src/ui/screens/import.js:198	
-tlkozp	ok	Reading…	読み込み中…	src/ui/screens/import.js:207	
-jbong3	ok	Reading {0} of {1}…	読み込み中（{0}/{1}）…	src/ui/screens/import.js:220	{0} = num(Math.min(done + 1, total)); {1} = num(total)
-i4v1g5	ok	Installing the plugins your providers use…	プロバイダーが使うプラグインをインストール中…	src/ui/screens/import.js:228	
-3wbwnq	ok	Open it	開く	src/ui/screens/import.js:239	
-1xgy3zf#other	ok	# older copies moved to Archived.	古いコピー#件を「アーカイブ済み」に移動しました。	src/ui/screens/import.js:240	plural; # = result.archived.length; English: "# older copy moved to Archived." (one), "# older copies moved to Archived." (other)
-j0c8lo	ok	Imported plugins arrive switched off. Turn on the ones you trust in Plugins.	読み込んだプラグインはオフの状態で追加されます。信頼できるものだけを「プラグイン」でオンにしてください。	src/ui/screens/import.js:243	
-3qem9k	ok	annai's next backup to that place builds on this one.	次回その場所にバックアップするときは、これをもとにします。	src/ui/screens/import.js:245	
-o7fto4	ok	Import	読み込む	src/ui/screens/import.js:253	
-18d2xm5	ok	A backup of everything exported {0} from annai {1}.	すべてを含むバックアップです。annai {1}からエクスポート（{0}）。	src/ui/screens/import.js:256	{0} = ago; {1} = app; Note: {0} is a relative time (たった今, 3日前), which can't always take に, so it goes in brackets.
-6fr2dj	ok	A backup of everything exported {0} from annai {1}, encrypted.	すべてを含むバックアップです。annai {1}からエクスポート（{0}）、暗号化済み。	src/ui/screens/import.js:256	{0} = ago; {1} = app; Note: {0} is a relative time, in brackets.
-12hmses	ok	Exported {0} from annai {1}, encrypted.	annai {1}からエクスポート（{0}）、暗号化済み。	src/ui/screens/import.js:257	{0} = ago; {1} = app; Note: {0} is a relative time, in brackets.
-3kii3s	ok	Exported {0} from annai {1}.	annai {1}からエクスポート（{0}）。	src/ui/screens/import.js:257	{0} = ago; {1} = app; Note: {0} is a relative time, in brackets.
-7itrym	ok	There are no trips or conversations in this file.	このファイルには旅も会話もありません。	src/ui/screens/import.js:260	
-1y35b48	ok	Restarting…	再起動中…	src/ui/screens/import.js:276	
-5wjjb4	ok	Restart annai to use the imported settings and plugins.	読み込んだ設定とプラグインを使うには、annaiを再起動してください。	src/ui/screens/import.js:281	
-1p9jpyr	ok	Installed what your providers use: {0}.	プロバイダーが使うものをインストールしました：{0}。	src/ui/screens/import.js:291	{0} = list(g.installed, 'plain')
-c0u62t#other	ok	Kept your own API keys for {0}; the ones in the file weren't used.	{0}のAPIキーは、この端末のものを残しました。ファイル内のキーは使っていません。	src/ui/screens/import.js:300	plural; # = n; {0} = list(names, 'plain'); English: "Kept your own API key for {0}; the one in the file wasn't used." (one), "Kept your own API keys for {0}; the ones in the file weren't used." (other)
-jsttcj#other	ok	Kept your own API keys; the ones in the file weren't used.	APIキーは、この端末のものを残しました。ファイル内のキーは使っていません。	src/ui/screens/import.js:301	plural; # = n; English: "Kept your own API key; the one in the file wasn't used." (one), "Kept your own API keys; the ones in the file weren't used." (other)
-ci7mt7	ok	Add to {0}	{0}に追加	src/ui/screens/import.js:336	{0} = trip.title
-odevmc	ok	Adding {0} of {1}…	追加中（{0}/{1}）…	src/ui/screens/import.js:345	{0} = num(Math.min(done + 1, total)); {1} = num(total)
-6u51xq#other	ok	Added {0}, and # itinerary items from the calendar	{0}と、カレンダーから旅程の項目#件を追加しました	src/ui/screens/import.js:354	plural; # = planned.length; {0} = what; English: "Added {0}, and # itinerary item from the calendar" (one), "Added {0}, and # itinerary items from the calendar" (other); Note: {0} is what was added, in words ("ファイル", "ファイル3件", "2枚の写真"), never a path.
-f30m7u#other	ok	and # more photos	ほか#枚の写真	src/ui/screens/import.js:373	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
-1cj3r6h	ok	Add only what you just shared yourself.	自分で共有したばかりのものだけを追加してください。	src/ui/screens/import.js:376	
-1eim38p	ok	Also here: {0}, an annai backup or export. It isn't added with the rest; open it on its own.	{0}（annaiのバックアップまたはエクスポート）も含まれています。ほかのファイルと一緒には追加されないため、個別に開いてください。	src/ui/screens/import.js:380	{0} = a.file.name
+17o4v1i	ok	Conversation	会話	src/ui/screens/file.js:23	
+1r8pi2g	ok	Recap	振り返り	src/ui/screens/file.js:23	
+43f6md	ok	Details	詳細	src/ui/screens/file.js:23	Note: the crumb back to a plan item's details screen, from the file it came from; also the crumb back to a file's or booking's details screen, from the raw file screen; and the crumb back to a conversation's Details (the screen talk's Details button opens), from its raw file screen.
+drvc96	ok	Deleting this file also deletes {0}.	このファイルを削除すると、{0}も削除されます。	src/ui/screens/file.js:64	{0} = list(also); Note: on the raw file screen of a file the user gave, above Delete file; {0} is a list ("2 bookings and 1 itinerary item").
+1jlj988	ok	Delete file	ファイルを削除	src/ui/screens/file.js:65	
+mnzt43	ok	This file was deleted for good.	このファイルは完全に削除されました。	src/ui/screens/file.js:88	Note: a deleted file's raw screen when Delete freed it, so no version is left to bring back.
+krcze5	ok	This file was deleted. You can bring back a version below.	このファイルは削除されました。下の履歴から以前のバージョンに戻せます。	src/ui/screens/file.js:96	
+d9bfze	ok	This file was deleted. Restore brings it back with {0} that Shiori read from it.	このファイルは削除されました。「復元」すると、Shioriが読み取った{0}もいっしょに戻ります。	src/ui/screens/file.js:104	{0} = list(parts)
+rcgidi	ok	This file was deleted. Restore brings it back.	このファイルは削除されました。「復元」すると元に戻ります。	src/ui/screens/file.js:104	
+18neyl2	ok	Tap again to delete for good	もう一度タップで完全に削除	src/ui/screens/file.js:106	Note: the second tap of 完全に削除; the file cannot be restored after it
+uvd0vy	ok	Delete for good	完全に削除	src/ui/screens/file.js:106	Note: the button on a deleted file's screen that frees its space for good; asks once, then 18neyl2
+18t12gi	ok	File name: {0}	ファイル名：{0}	src/ui/screens/file.js:144	{0} = real; Note: under a file's short name on its own screen; {0} is the file's real name.
+1hnv6ua	ok	Content	内容	src/ui/screens/file.js:167	
+lewgh4	ok	Save	保存	src/ui/screens/file.js:167	
+1m183es	ok	Open the photo full size	写真を大きく表示	src/ui/screens/file.js:196	
+wbyn1d	ok	Look at this part of {0}.	{0}のこの部分を見てください。	src/ui/screens/file.js:201	{0} = shown; Note: What the user says to Shiori, with the part of the photo on screen.
+129ed1b	ok	This browser can't show this photo. It shows in Safari, and a Share export converts it where it can.	このブラウザではこの写真を表示できません。Safariなら表示できます。「共有」でエクスポートすると、可能な場合は変換されます。	src/ui/screens/file.js:208	
+4g2gbm	ok	Taken {0}	撮影：{0}	src/ui/screens/file.js:227	{0} = takenText(m.taken)
+z4tcw5	ok	Stored as taken	撮影時のまま保存	src/ui/screens/file.js:228	
+1v3hapr	ok	Where it was taken	撮影場所	src/ui/screens/file.js:231	
+1ooqziz	ok	No earlier versions.	以前のバージョンはありません。	src/ui/screens/file.js:241	
+yugfpb	ok	History	履歴	src/ui/screens/file.js:242	
+q1nl48	ok	Not kept in this copy	このコピーには含まれていません	src/ui/screens/file.js:247	
+twulcv	ok	Version restored	バージョンを戻しました	src/ui/screens/file.js:257	
+16qw3bf	ok	Restore this version	このバージョンに戻す	src/ui/screens/file.js:258	
+1dw4k8q	ok	Current	現在	src/ui/screens/file.js:259	
+3g3rkl	ok	changed by you {0}	自分が変更（{0}）	src/ui/screens/file.js:265	{0} = ago; Note: {0} is a relative time ("5 min ago").
+8zkwit	ok	changed by {0} {1}	{0}が変更（{1}）	src/ui/screens/file.js:265	{0} = authorName(entry.author); {1} = ago; Note: {0} is Shiori or annai; {1} is a relative time ("5 min ago").
+1k32hzi	ok	Deleted by you {0}	自分が削除（{0}）	src/ui/screens/file.js:271	{0} = ago
+w8mx56	ok	Deleted by {0} {1}	{0}が削除（{1}）	src/ui/screens/file.js:271	{0} = who; {1} = ago; Note: {0} is Shiori or annai.
+1cdkli8	ok	Saved by you {0}	自分が保存（{0}）	src/ui/screens/file.js:272	{0} = ago
+1xtgqpw	ok	Saved by {0} {1}	{0}が保存（{1}）	src/ui/screens/file.js:272	{0} = who; {1} = ago; Note: {0} is Shiori or annai.
+xb1ny3	ok	Trips	旅	src/ui/screens/import.js:40	
+1azyvjt	ok	Choose a file instead	代わりにファイルを選ぶ	src/ui/screens/import.js:44	
+18kfutv	ok	Choose an annai file (.annai.zip or .annai) to open it.	開くには、annaiのファイル（.annai.zip または .annai）を選んでください。	src/ui/screens/import.js:57	
+s6np2n	ok	Choose a file	ファイルを選ぶ	src/ui/screens/import.js:57	
+9pczbj	ok	Choose another file	別のファイルを選ぶ	src/ui/screens/import.js:61	
+vpnx22	ok	annai couldn't download that file. The site may not allow other web apps to download it.	そのファイルをダウンロードできませんでした。そのサイトが、ほかのWebアプリからのダウンロードを許可していない可能性があります。	src/ui/screens/import.js:81	
+9ekzd	ok	The download failed ({0} {1}).	ダウンロードに失敗しました（{0} {1}）。	src/ui/screens/import.js:84	{0} = res.status; {1} = res.statusText
+1bf856r	ok	file	ファイル	src/ui/screens/import.js:85	Note: A file's name when its address has none.
+1i00iqj	ok	Reading {0}…	{0}を読み込み中…	src/ui/screens/import.js:93	{0} = source.name
+1fn8tif	ok	This backup changed on the server while annai was getting it. Open it again from the backups.	取得中に、このバックアップがサーバー上で変更されました。「バックアップ」からもう一度開いてください。	src/ui/screens/import.js:140	
+t5o4f	ok	{0} is encrypted.	{0}は暗号化されています。	src/ui/screens/import.js:152	{0} = source.name
+17ezgqd	ok	Unlock	ロックを解除	src/ui/screens/import.js:155	
+bqwneo#other	ok	# conversations	会話#件	src/ui/screens/import.js:173	plural; # = grouped.length; English: "# conversation" (one), "# conversations" (other)
+19fmt2v	ok	Add as new ones	新しく追加	src/ui/screens/import.js:176	
+voh4dn	ok	You already have some of them	このうちいくつかはすでにあります	src/ui/screens/import.js:176	
+w63stp	ok	Replace mine (yours move to Archived)	読み込むもので置き換える（この端末のものは「アーカイブ済み」に移ります）	src/ui/screens/import.js:176	
+mp7avp	ok	with history	履歴あり	src/ui/screens/import.js:181	
+1z02pm0	ok	You already have "{0}"	「{0}」はすでにあります	src/ui/screens/import.js:183	{0} = trip.existingTitle
+9jpcd5	ok	Add as a new one	新しいものとして追加	src/ui/screens/import.js:183	
+d7gpc4	ok	Replace mine (yours moves to Archived)	読み込むもので置き換える（この端末のものは「アーカイブ済み」に移ります）	src/ui/screens/import.js:183	
+1pmufvp#other	ok	you already have # of them	うち#件はすでにあります	src/ui/screens/import.js:193	plural; # = mine; English: "you already have # of them" (one), "you already have # of them" (other); Note: after the fold's count and size, how many of its rows are already on this phone (each has its choice inside the fold); "of them" is of the trips and conversations.
+1og8gcf	ok	Replace my profile and memory with the ones in this file	プロフィールと記憶を、このファイルのものに置き換える	src/ui/screens/import.js:196	Note: Shiori's memory is 記憶, as on the export list.
+rfnd00	ok	Replace my settings	設定を置き換える	src/ui/screens/import.js:197	
+1ai6503	ok	Replace my plugins	プラグインを置き換える	src/ui/screens/import.js:198	
+z9765v	ok	Restore API keys (keys already on this device are kept)	APIキーを復元（この端末にあるキーはそのまま）	src/ui/screens/import.js:199	
+tlkozp	ok	Reading…	読み込み中…	src/ui/screens/import.js:208	
+jbong3	ok	Reading {0} of {1}…	読み込み中（{0}/{1}）…	src/ui/screens/import.js:221	{0} = num(Math.min(done + 1, total)); {1} = num(total)
+i4v1g5	ok	Installing the plugins your providers use…	プロバイダーが使うプラグインをインストール中…	src/ui/screens/import.js:233	
+3wbwnq	ok	Open it	開く	src/ui/screens/import.js:244	
+1xgy3zf#other	ok	# older copies moved to Archived.	古いコピー#件を「アーカイブ済み」に移動しました。	src/ui/screens/import.js:245	plural; # = result.archived.length; English: "# older copy moved to Archived." (one), "# older copies moved to Archived." (other)
+j0c8lo	ok	Imported plugins arrive switched off. Turn on the ones you trust in Plugins.	読み込んだプラグインはオフの状態で追加されます。信頼できるものだけを「プラグイン」でオンにしてください。	src/ui/screens/import.js:248	
+3qem9k	ok	annai's next backup to that place builds on this one.	次回その場所にバックアップするときは、これをもとにします。	src/ui/screens/import.js:250	
+o7fto4	ok	Import	読み込む	src/ui/screens/import.js:258	
+18d2xm5	ok	A backup of everything exported {0} from annai {1}.	すべてを含むバックアップです。annai {1}からエクスポート（{0}）。	src/ui/screens/import.js:261	{0} = ago; {1} = app; Note: {0} is a relative time (たった今, 3日前), which can't always take に, so it goes in brackets.
+6fr2dj	ok	A backup of everything exported {0} from annai {1}, encrypted.	すべてを含むバックアップです。annai {1}からエクスポート（{0}）、暗号化済み。	src/ui/screens/import.js:261	{0} = ago; {1} = app; Note: {0} is a relative time, in brackets.
+12hmses	ok	Exported {0} from annai {1}, encrypted.	annai {1}からエクスポート（{0}）、暗号化済み。	src/ui/screens/import.js:262	{0} = ago; {1} = app; Note: {0} is a relative time, in brackets.
+3kii3s	ok	Exported {0} from annai {1}.	annai {1}からエクスポート（{0}）。	src/ui/screens/import.js:262	{0} = ago; {1} = app; Note: {0} is a relative time, in brackets.
+7itrym	ok	There are no trips or conversations in this file.	このファイルには旅も会話もありません。	src/ui/screens/import.js:265	
+1y35b48	ok	Restarting…	再起動中…	src/ui/screens/import.js:281	
+5wjjb4	ok	Restart annai to use the imported settings and plugins.	読み込んだ設定とプラグインを使うには、annaiを再起動してください。	src/ui/screens/import.js:286	
+1p9jpyr	ok	Installed what your providers use: {0}.	プロバイダーが使うものをインストールしました：{0}。	src/ui/screens/import.js:296	{0} = list(g.installed, 'plain')
+c0u62t#other	ok	Kept your own API keys for {0}; the ones in the file weren't used.	{0}のAPIキーは、この端末のものを残しました。ファイル内のキーは使っていません。	src/ui/screens/import.js:305	plural; # = n; {0} = list(names, 'plain'); English: "Kept your own API key for {0}; the one in the file wasn't used." (one), "Kept your own API keys for {0}; the ones in the file weren't used." (other)
+jsttcj#other	ok	Kept your own API keys; the ones in the file weren't used.	APIキーは、この端末のものを残しました。ファイル内のキーは使っていません。	src/ui/screens/import.js:306	plural; # = n; English: "Kept your own API key; the one in the file wasn't used." (one), "Kept your own API keys; the ones in the file weren't used." (other)
+ci7mt7	ok	Add to {0}	{0}に追加	src/ui/screens/import.js:341	{0} = trip.title
+odevmc	ok	Adding {0} of {1}…	追加中（{0}/{1}）…	src/ui/screens/import.js:350	{0} = num(Math.min(done + 1, total)); {1} = num(total)
+6u51xq#other	ok	Added {0}, and # itinerary items from the calendar	{0}と、カレンダーから旅程の項目#件を追加しました	src/ui/screens/import.js:359	plural; # = planned.length; {0} = what; English: "Added {0}, and # itinerary item from the calendar" (one), "Added {0}, and # itinerary items from the calendar" (other); Note: {0} is what was added, in words ("ファイル", "ファイル3件", "2枚の写真"), never a path.
+f30m7u#other	ok	and # more photos	ほか#枚の写真	src/ui/screens/import.js:378	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
+1cj3r6h	ok	Add only what you just shared yourself.	自分で共有したばかりのものだけを追加してください。	src/ui/screens/import.js:381	
+1eim38p	ok	Also here: {0}, an annai backup or export. It isn't added with the rest; open it on its own.	{0}（annaiのバックアップまたはエクスポート）も含まれています。ほかのファイルと一緒には追加されないため、個別に開いてください。	src/ui/screens/import.js:385	{0} = a.file.name
 qqpumv	ok	This isn't on the itinerary	この項目は旅程にありません	src/ui/screens/item.js:24	Note: a heading where a link names no plan item.
 15biluu	ok	Go to the itinerary	旅程を開く	src/ui/screens/item.js:25	Note: a link to the trip's Itinerary (旅程).
 1wp3w0c	ok	All day, {0}	終日（{0}）	src/ui/screens/item.js:41	{0} = start; Note: {0} is the day.
@@ -2393,71 +2392,73 @@ yrkvc6	ok	Shiori started {0}.	Shioriが「{0}」を始めました。	src/ui/scr
 1tio19k#other	ok	Shiori took # files to {0}.	Shioriがファイル#件を「{0}」に移しました。	src/ui/screens/talk.js:130	plural; # = d.count; {0} = title; English: "Shiori took # file to {0}." (one), "Shiori took # files to {0}." (other); Note: {0} is the trip's name; 件 counts files, as elsewhere (ファイル1件).
 197gx5s	ok	Shiori moved this to a conversation that has since been removed.	Shioriがこの会話の続きを別の会話に移しましたが、その会話はもう削除されています。	src/ui/screens/talk.js:134	Note: the same line once that trip is removed; 削除/移除 as Remove trip.
 6labnj	ok	Shiori moved this to {0}.	Shioriがこの会話の続きを「{0}」に移しました。	src/ui/screens/talk.js:134	{0} = title; Note: the last line of a conversation Shiori took the user from (open_trip); the conversation stays, and they carry on in {0}, a trip or another conversation.
-141utsf#other	ok	Undone. {0} are removed, and your files are waiting with Shiori.	元に戻しました。{0}を削除し、ファイルはShioriが預かっています。	src/ui/screens/talk.js:144	plural; # = removed.length; {0} = listed(removed); English: "Undone. {0} is removed, and your files are waiting with Shiori." (one), "Undone. {0} are removed, and your files are waiting with Shiori." (other); Note: Undo removed the trips she started; {0} is their names as a list (「…」と「…」); 元に戻しました as Undone, 預かっています as Waiting with Shiori.
-1d428yv#other	ok	Undone. {0} are removed, and your files are back in {1}.	元に戻しました。{0}を削除し、ファイルは{1}に戻しました。	src/ui/screens/talk.js:145	plural; # = removed.length; {0} = listed(removed); {1} = home; English: "Undone. {0} is removed, and your files are back in {1}." (one), "Undone. {0} are removed, and your files are back in {1}." (other); Note: Undo removed the trips she started, and the files went back to the trips they came from; {0} and {1} are trip names as lists.
-svlg0f#other	ok	Undone. {0} are removed.	元に戻しました。{0}を削除しました。	src/ui/screens/talk.js:146	plural; # = removed.length; {0} = listed(removed); English: "Undone. {0} is removed." (one), "Undone. {0} are removed." (other); Note: Undo removed the trips she started, with no files to put anywhere; {0} is their names as a list.
-184j8yg	ok	Undone. Your files are back in {0}.	元に戻しました。ファイルは{0}に戻りました。	src/ui/screens/talk.js:147	{0} = home; Note: Undo put the files back in the trips they came from; {0} is their names as a list; 元に戻しました as Undone.
-1a3hizo	ok	Undone.	元に戻しました。	src/ui/screens/talk.js:147	Note: as the Undone row, a sentence.
-mpifrf	ok	Undone. Your files are waiting with Shiori again.	元に戻しました。ファイルは再びShioriが預かっています。	src/ui/screens/talk.js:147	Note: Undo sent the files back to Waiting with Shiori (Shiori が預かっているファイル).
-cjb6wo	ok	What Shiori did in {0} is undone too.	{0}でShioriがしたことも元に戻しました。	src/ui/screens/talk.js:148	{0} = listed(changed.map((c) => c.title)); Note: the trips that stay whose files or bookings from the hand-over Undo took back too; {0} is their names as a list.
-urusz7#other	ok	Left # files as you changed them.	自分で変更したファイル#件は、そのままにしました。	src/ui/screens/talk.js:149	plural; # = kept; English: "Left # file as you changed it." (one), "Left # files as you changed them." (other); Note: after Undone.: the files the user had changed since, which Undo left; 件 counts files.
-1oe5z73	ok	Reminder, said aloud: {0}	リマインダー（読み上げ）：{0}	src/ui/screens/talk.js:171	{0} = WORDS; Note: {0} is the reminder's words.
-7ew4gb	ok	Shiori's answer: {0}	Shioriの答え：{0}	src/ui/screens/talk.js:171	{0} = WORDS; Note: {0} is her answer, shown by annai.
-n22tq9	ok	Reminder: {0}	リマインダー：{0}	src/ui/screens/talk.js:171	{0} = WORDS; Note: {0} is the reminder's words.
-y16fvl	ok	Shiori's answer, said aloud: {0}	Shioriの答え（読み上げ）：{0}	src/ui/screens/talk.js:171	{0} = WORDS; Note: {0} is her answer, shown by annai.
-qjf670	ok	Three identical tool calls in a row with identical results.	同じ内容のツール呼び出しが3回続き、結果も同じでした。	src/ui/screens/talk.js:200	
-10lkfvk	ok	The watch for "{0}" can't be checked: {1}.	「{0}」の見守りを確認できません：{1}。	src/ui/screens/talk.js:204	{0} = name; {1} = String(d.why ?? '').replace(/[.!?。！？]$/u, ''); Note: a watch is named by its reminder, {0}, in her words; {1} is the trigger's own words.
-1m8lxbu	ok	Google Search	Google 検索	src/ui/screens/talk.js:212	Note: the grounded card's source, "From {0}" (1gblst7) and read aloud (4fzxin): as Google writes it, the glossary's Google row; the same as Settings → Tools.
-6xevdr	ok	Search suggestions from Google	Googleの検索候補	src/ui/screens/talk.js:222	
-137bppl	ok	Heard, not for Shiori: {0}	聞こえた言葉（Shiori宛てではありません）：{0}	src/ui/screens/talk.js:297	{0} = WORDS; Note: {0} is the words annai heard.
-1re6l79	ok	Heard: {0}	聞こえた言葉：{0}	src/ui/screens/talk.js:297	{0} = WORDS; Note: read by a screen reader; {0} is the words annai heard.
-yexh35	ok	Heard, she didn't answer: {0}	聞こえた言葉（返事なし）：{0}	src/ui/screens/talk.js:297	{0} = WORDS
-1v011e1	ok	This trip so far: {0}	この旅のここまでの費用：{0}	src/ui/screens/talk.js:305	{0} = formatCost(c.total)
-glbwh5	ok	This conversation so far: {0}	この会話のここまでの費用：{0}	src/ui/screens/talk.js:305	{0} = formatCost(c.total)
-45z4a3	ok	This was for Shiori	Shiori宛てに送る	src/ui/screens/talk.js:337	
-td8u17	ok	A photo you sent	送った写真	src/ui/screens/talk.js:354	
-9e5yo5	ok	(a photo)	（写真）	src/ui/screens/talk.js:401	
-1sjvjoo	ok	From {0}	「{0}」から	src/ui/screens/talk.js:412	context: a conversation; {0} = scopeTitle(src); Note: under a line the user said in another conversation, copied here when Shiori took them here; a link to that conversation.
-n8s7gz	ok	Tap to answer	タップして答える	src/ui/screens/talk.js:465	Note: a small line under the buttons of annai's own card (Allow, Always for my trips, Not now; Open, Not now) while it waits: only a tap on a button answers it, not a spoken or typed yes. Built as "Tap to talk" is.
-fv3xhc	ok	Kokoro to Koe:	KokoroからKoeへ：	src/ui/screens/talk.js:480	Note: a note from Kokoro to Koe; its words follow.
-upsxi0	ok	Koe to Kokoro:	KoeからKokoroへ：	src/ui/screens/talk.js:480	Note: a note from Koe to Kokoro; its words follow.
-16ol023	ok	Shiori read {0}	Shioriが「{0}」を読みました	src/ui/screens/talk.js:509	{0} = scopeTitle({ id: String(d.trip), title: String(d.title ?? '') })
-e34nbi	ok	Started fresh	新しく始めました	src/ui/screens/talk.js:513	Note: the divider where a fresh start began.
-3r1u8z	ok	Earlier conversation summarized. The full log is in Trace.	これまでの会話を要約しました。会話の全文は「記録」にあります。	src/ui/screens/talk.js:514	
-1o41up	ok	A budget ended her turn	上限に達したため、Shioriが応答を終えました	src/ui/screens/talk.js:524	
-1p4yyw7	ok	Her turn ended	Shioriの応答が終わりました	src/ui/screens/talk.js:524	
-1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	まだ会話はありません。下の「Shiori」か「入力」をタップして話しかけてください。	src/ui/screens/talk.js:539	Note: "Type" is the dock's button: its words must match it.
-4fzxin	ok	From {0}.	{0}より。	src/ui/screens/talk.js:600	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
-1pm5i13	ok	Back to Trips	「旅」に戻る	src/ui/screens/talk.js:633	Note: The Trips screen, quoted so it reads apart from 旅に戻る (Back to trip).
-15g4wel	ok	No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.	開いている旅はありません。「旅」から開くか、ここで話しかけてください。旅がなくても、Shioriは /me/ を使えます。	src/ui/screens/talk.js:641	
-16zeyyr	ok	Next: {0} {1}	次の予定：{0} {1}	src/ui/screens/talk.js:683	{0} = r.time; {1} = name
-puj2r7	ok	Next: {0} {1} {2}	次の予定：{0} {1} {2}	src/ui/screens/talk.js:683	{0} = day(r.day, true); {1} = r.time; {2} = name
-1frlw7l	ok	Undo the dates Shiori set	Shioriが設定した日付を元に戻す	src/ui/screens/talk.js:741	
-1l3merh	ok	Shiori set the dates	Shioriが日付を設定しました	src/ui/screens/talk.js:760	
-159f82q	ok	Undone	元に戻しました	src/ui/screens/talk.js:762	
-1v37fcy	ok	Undo what Shiori did with these files	このファイルについてShioriがしたことを元に戻す	src/ui/screens/talk.js:844	Note: the Undo button's label for screen readers; 元に戻す as Undo.
-1nl0tpx	ok	Conversation menu	会話メニュー	src/ui/screens/talk.js:888	
-7flpxf	ok	Summarizing…	要約中…	src/ui/screens/talk.js:955	
-12707g	ok	She couldn't summarize it. A card says why.	要約できませんでした。理由はカードに表示されています。	src/ui/screens/talk.js:957	
-5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	これまでの会話を要約しました。会話はすべてここに残り、Shioriもあとから見返せます。	src/ui/screens/talk.js:957	
-u82uid	ok	Shiori is working. Try again in a moment.	Shioriは作業中です。少ししてからもう一度お試しください。	src/ui/screens/talk.js:957	
-va2k72	ok	There is not enough yet to summarize.	まだ要約するほどの内容がありません。	src/ui/screens/talk.js:957	
-mienoe	ok	Summarize now	今すぐ要約	src/ui/screens/talk.js:960	
-10sfmur	ok	Starting fresh…	新しく始めています…	src/ui/screens/talk.js:962	
-va77q0	ok	Start fresh?	新しく始めますか？	src/ui/screens/talk.js:975	Note: the glossary's 新しく始める, conjugated as a question (始めますか).
-19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shioriはこれまでのやり取りを踏まえず、ここから新しく始めます。やり取りはすべて会話に残るので、読んだり検索したりでき、Shioriも見返せます。削除されるものはありません。ライブ音声のセッションも開始し直します。	src/ui/screens/talk.js:976	
-czdqlz	ok	Start fresh	新しく始める	src/ui/screens/talk.js:977	
-1h9wwbn	ok	She couldn't start fresh: {0}	新しく始められませんでした：{0}	src/ui/screens/talk.js:987	{0} = messageOf(e)
-1thzla3	ok	Already fresh: nothing has been said since.	新しく始めたあと、まだ何も話していません。	src/ui/screens/talk.js:990	
-3fntk0	ok	Started fresh.	新しく始めました。	src/ui/screens/talk.js:990	
-mg70bg	ok	The conversation is still opening. Try again in a moment.	会話を開いているところです。少ししてからもう一度お試しください。	src/ui/screens/talk.js:990	
-p5pj7b	ok	There is nothing to start fresh from yet.	まだ何も話していないため、新しく始められません。	src/ui/screens/talk.js:990	
-1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	今すぐ要約：これまでの会話をShioriが要約して、会話を短く保ちます。やり取りはすべてここに残り、Shioriもあとから見返せます。	src/ui/screens/talk.js:1012	
-18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	新しく始める：Shioriはこれまでのやり取りを踏まえず、ここから新しく始めます。やり取りはすべて区切り線の上に残ります。	src/ui/screens/talk.js:1013	
-15ve7m7	ok	What each half sees	KoeとKokoroに見えているもの	src/ui/screens/talk.js:1014	
-1u5l4hx	ok	Details: the trip's name and dates, Export, Archive and Remove.	詳細：旅の名前と日付、エクスポート、アーカイブ、削除。	src/ui/screens/talk.js:1025	
-o7tevg	ok	Details: the chat's name and dates, Export, Archive and Remove.	詳細：チャットの名前と日付、エクスポート、アーカイブ、削除。	src/ui/screens/talk.js:1025	
-16pl3gf	ok	Undone. Her old personality applies at her next wake.	元に戻しました。前の性格は、Shioriが次に起動したときから反映されます。	src/ui/screens/talk.js:1041	
+pykhn0	ok	Undone. Some of your files are back in {0}, and the rest are waiting with Shiori.	元に戻しました。一部のファイルは{0}に戻り、残りはShioriが預かっています。	src/ui/screens/talk.js:148	{0} = home; Note: Undo put some of the files back in the trips they came from and sent the rest to wait with Shiori (the chat 「Shioriに預けたファイル」); {0} is the trips' names as a list; 元に戻しました as Undone, 預かっています as the other Waiting with Shiori rows; 戻り and 預かっています both say where the files are now.
+184j8yg	ok	Undone. Your files are back in {0}.	元に戻しました。ファイルは{0}に戻りました。	src/ui/screens/talk.js:149	{0} = home; Note: Undo put the files back in the trips they came from; {0} is their names as a list; 元に戻しました as Undone.
+1a3hizo	ok	Undone.	元に戻しました。	src/ui/screens/talk.js:149	Note: as the Undone row, a sentence.
+mpifrf	ok	Undone. Your files are waiting with Shiori again.	元に戻しました。ファイルは再びShioriが預かっています。	src/ui/screens/talk.js:149	Note: Undo sent the files back to wait with Shiori; they go into a chat named 「Shioriに預けたファイル」 (Waiting with Shiori).
+4d58q9#other	ok	Undone. {0} are removed. Some of your files are back in {1}, and the rest are waiting with Shiori.	元に戻しました。{0}を削除しました。一部のファイルは{1}に戻り、残りはShioriが預かっています。	src/ui/screens/talk.js:151	plural; # = removed.length; {0} = gone; {1} = home; English: "Undone. {0} is removed. Some of your files are back in {1}, and the rest are waiting with Shiori." (one), "Undone. {0} are removed. Some of your files are back in {1}, and the rest are waiting with Shiori." (other); Note: Undo removed the trips she started, put some of the files back in the trips they came from and sent the rest to wait with Shiori; {0} and {1} are trip names as lists; three short sentences (the guide: split a long one) in place of one chain of 、; 元に戻しました as Undone, 預かっています as the other Waiting with Shiori rows.
+141utsf#other	ok	Undone. {0} are removed, and your files are waiting with Shiori.	元に戻しました。{0}を削除し、ファイルはShioriが預かっています。	src/ui/screens/talk.js:153	plural; # = removed.length; {0} = gone; English: "Undone. {0} is removed, and your files are waiting with Shiori." (one), "Undone. {0} are removed, and your files are waiting with Shiori." (other); Note: Undo removed the trips she started; {0} is their names as a list (「…」と「…」); 元に戻しました as Undone, 預かっています as Waiting with Shiori.
+1d428yv#other	ok	Undone. {0} are removed, and your files are back in {1}.	元に戻しました。{0}を削除し、ファイルは{1}に戻しました。	src/ui/screens/talk.js:155	plural; # = removed.length; {0} = gone; {1} = home; English: "Undone. {0} is removed, and your files are back in {1}." (one), "Undone. {0} are removed, and your files are back in {1}." (other); Note: Undo removed the trips she started, and the files went back to the trips they came from; {0} and {1} are trip names as lists.
+svlg0f#other	ok	Undone. {0} are removed.	元に戻しました。{0}を削除しました。	src/ui/screens/talk.js:157	plural; # = removed.length; {0} = gone; English: "Undone. {0} is removed." (one), "Undone. {0} are removed." (other); Note: Undo removed the trips she started, with no files to put anywhere; {0} is their names as a list.
+cjb6wo	ok	What Shiori did in {0} is undone too.	{0}でShioriがしたことも元に戻しました。	src/ui/screens/talk.js:159	{0} = listed(changed.map((c) => c.title)); Note: the trips that stay whose files or bookings from the hand-over Undo took back too; {0} is their names as a list.
+urusz7#other	ok	Left # files as you changed them.	自分で変更したファイル#件は、そのままにしました。	src/ui/screens/talk.js:160	plural; # = kept; English: "Left # file as you changed it." (one), "Left # files as you changed them." (other); Note: after Undone.: the files the user had changed since, which Undo left; 件 counts files.
+1oe5z73	ok	Reminder, said aloud: {0}	リマインダー（読み上げ）：{0}	src/ui/screens/talk.js:182	{0} = WORDS; Note: {0} is the reminder's words.
+7ew4gb	ok	Shiori's answer: {0}	Shioriの答え：{0}	src/ui/screens/talk.js:182	{0} = WORDS; Note: {0} is her answer, shown by annai.
+n22tq9	ok	Reminder: {0}	リマインダー：{0}	src/ui/screens/talk.js:182	{0} = WORDS; Note: {0} is the reminder's words.
+y16fvl	ok	Shiori's answer, said aloud: {0}	Shioriの答え（読み上げ）：{0}	src/ui/screens/talk.js:182	{0} = WORDS; Note: {0} is her answer, shown by annai.
+qjf670	ok	Three identical tool calls in a row with identical results.	同じ内容のツール呼び出しが3回続き、結果も同じでした。	src/ui/screens/talk.js:211	
+10lkfvk	ok	The watch for "{0}" can't be checked: {1}.	「{0}」の見守りを確認できません：{1}。	src/ui/screens/talk.js:215	{0} = name; {1} = String(d.why ?? '').replace(/[.!?。！？]$/u, ''); Note: a watch is named by its reminder, {0}, in her words; {1} is the trigger's own words.
+1m8lxbu	ok	Google Search	Google 検索	src/ui/screens/talk.js:223	Note: the grounded card's source, "From {0}" (1gblst7) and read aloud (4fzxin): as Google writes it, the glossary's Google row; the same as Settings → Tools.
+6xevdr	ok	Search suggestions from Google	Googleの検索候補	src/ui/screens/talk.js:233	
+v84pjn	ok	Shiori, no trip	Shiori（旅なし）	src/ui/screens/talk.js:297	Note: the name of `me`'s row among the chats on Trips, and the title of its read-only lines: the old conversation outside any trip (from before every conversation belonged to a trip), a row of old lines to read, not a button back to a conversation; 旅 / 旅行 as the glossary's trip.
+137bppl	ok	Heard, not for Shiori: {0}	聞こえた言葉（Shiori宛てではありません）：{0}	src/ui/screens/talk.js:313	{0} = WORDS; Note: {0} is the words annai heard.
+1re6l79	ok	Heard: {0}	聞こえた言葉：{0}	src/ui/screens/talk.js:313	{0} = WORDS; Note: read by a screen reader; {0} is the words annai heard.
+yexh35	ok	Heard, she didn't answer: {0}	聞こえた言葉（返事なし）：{0}	src/ui/screens/talk.js:313	{0} = WORDS
+1v011e1	ok	This trip so far: {0}	この旅のここまでの費用：{0}	src/ui/screens/talk.js:321	{0} = formatCost(c.total)
+glbwh5	ok	This conversation so far: {0}	この会話のここまでの費用：{0}	src/ui/screens/talk.js:321	{0} = formatCost(c.total)
+45z4a3	ok	This was for Shiori	Shiori宛てに送る	src/ui/screens/talk.js:353	
+td8u17	ok	A photo you sent	送った写真	src/ui/screens/talk.js:370	
+9e5yo5	ok	(a photo)	（写真）	src/ui/screens/talk.js:417	
+1sjvjoo	ok	From {0}	「{0}」から	src/ui/screens/talk.js:428	context: a conversation; {0} = scopeTitle(src); Note: under a line the user said in another conversation, copied here when Shiori took them here; a link to that conversation.
+n8s7gz	ok	Tap to answer	タップして答える	src/ui/screens/talk.js:485	Note: a small line under the buttons of annai's own card (Allow, Always for my trips, Not now; Open, Not now) while it waits: only a tap on a button answers it, not a spoken or typed yes. Built as "Tap to talk" is.
+fv3xhc	ok	Kokoro to Koe:	KokoroからKoeへ：	src/ui/screens/talk.js:500	Note: a note from Kokoro to Koe; its words follow.
+upsxi0	ok	Koe to Kokoro:	KoeからKokoroへ：	src/ui/screens/talk.js:500	Note: a note from Koe to Kokoro; its words follow.
+16ol023	ok	Shiori read {0}	Shioriが「{0}」を読みました	src/ui/screens/talk.js:529	{0} = scopeTitle({ id: String(d.trip), title: String(d.title ?? '') })
+e34nbi	ok	Started fresh	新しく始めました	src/ui/screens/talk.js:533	Note: the divider where a fresh start began.
+3r1u8z	ok	Earlier conversation summarized. The full log is in Trace.	これまでの会話を要約しました。会話の全文は「記録」にあります。	src/ui/screens/talk.js:534	
+1o41up	ok	A budget ended her turn	上限に達したため、Shioriが応答を終えました	src/ui/screens/talk.js:544	
+1p4yyw7	ok	Her turn ended	Shioriの応答が終わりました	src/ui/screens/talk.js:544	
+1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	まだ会話はありません。下の「Shiori」か「入力」をタップして話しかけてください。	src/ui/screens/talk.js:559	Note: "Type" is the dock's button: its words must match it.
+4fzxin	ok	From {0}.	{0}より。	src/ui/screens/talk.js:620	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
+1pm5i13	ok	Back to Trips	「旅」に戻る	src/ui/screens/talk.js:652	Note: The Trips screen, quoted so it reads apart from 旅に戻る (Back to trip).
+16zeyyr	ok	Next: {0} {1}	次の予定：{0} {1}	src/ui/screens/talk.js:697	{0} = r.time; {1} = name
+puj2r7	ok	Next: {0} {1} {2}	次の予定：{0} {1} {2}	src/ui/screens/talk.js:697	{0} = day(r.day, true); {1} = r.time; {2} = name
+1frlw7l	ok	Undo the dates Shiori set	Shioriが設定した日付を元に戻す	src/ui/screens/talk.js:755	
+1l3merh	ok	Shiori set the dates	Shioriが日付を設定しました	src/ui/screens/talk.js:774	
+159f82q	ok	Undone	元に戻しました	src/ui/screens/talk.js:776	
+1v37fcy	ok	Undo what Shiori did with these files	このファイルについてShioriがしたことを元に戻す	src/ui/screens/talk.js:861	Note: the Undo button's label for screen readers; 元に戻す as Undo.
+1nl0tpx	ok	Conversation menu	会話メニュー	src/ui/screens/talk.js:905	
+7flpxf	ok	Summarizing…	要約中…	src/ui/screens/talk.js:972	
+12707g	ok	She couldn't summarize it. A card says why.	要約できませんでした。理由はカードに表示されています。	src/ui/screens/talk.js:974	
+5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	これまでの会話を要約しました。会話はすべてここに残り、Shioriもあとから見返せます。	src/ui/screens/talk.js:974	
+u82uid	ok	Shiori is working. Try again in a moment.	Shioriは作業中です。少ししてからもう一度お試しください。	src/ui/screens/talk.js:974	
+va2k72	ok	There is not enough yet to summarize.	まだ要約するほどの内容がありません。	src/ui/screens/talk.js:974	
+mienoe	ok	Summarize now	今すぐ要約	src/ui/screens/talk.js:977	
+10sfmur	ok	Starting fresh…	新しく始めています…	src/ui/screens/talk.js:979	
+va77q0	ok	Start fresh?	新しく始めますか？	src/ui/screens/talk.js:992	Note: the glossary's 新しく始める, conjugated as a question (始めますか).
+19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shioriはこれまでのやり取りを踏まえず、ここから新しく始めます。やり取りはすべて会話に残るので、読んだり検索したりでき、Shioriも見返せます。削除されるものはありません。ライブ音声のセッションも開始し直します。	src/ui/screens/talk.js:993	
+czdqlz	ok	Start fresh	新しく始める	src/ui/screens/talk.js:994	
+1h9wwbn	ok	She couldn't start fresh: {0}	新しく始められませんでした：{0}	src/ui/screens/talk.js:1004	{0} = messageOf(e)
+1thzla3	ok	Already fresh: nothing has been said since.	新しく始めたあと、まだ何も話していません。	src/ui/screens/talk.js:1007	
+3fntk0	ok	Started fresh.	新しく始めました。	src/ui/screens/talk.js:1007	
+mg70bg	ok	The conversation is still opening. Try again in a moment.	会話を開いているところです。少ししてからもう一度お試しください。	src/ui/screens/talk.js:1007	
+p5pj7b	ok	There is nothing to start fresh from yet.	まだ何も話していないため、新しく始められません。	src/ui/screens/talk.js:1007	
+1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	今すぐ要約：これまでの会話をShioriが要約して、会話を短く保ちます。やり取りはすべてここに残り、Shioriもあとから見返せます。	src/ui/screens/talk.js:1029	
+18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	新しく始める：Shioriはこれまでのやり取りを踏まえず、ここから新しく始めます。やり取りはすべて区切り線の上に残ります。	src/ui/screens/talk.js:1030	
+15ve7m7	ok	What each half sees	KoeとKokoroに見えているもの	src/ui/screens/talk.js:1031	
+1u5l4hx	ok	Details: the trip's name and dates, Export, Archive and Remove.	詳細：旅の名前と日付、エクスポート、アーカイブ、削除。	src/ui/screens/talk.js:1042	
+o7tevg	ok	Details: the chat's name and dates, Export, Archive and Remove.	詳細：チャットの名前と日付、エクスポート、アーカイブ、削除。	src/ui/screens/talk.js:1042	
+16pl3gf	ok	Undone. Her old personality applies at her next wake.	元に戻しました。前の性格は、Shioriが次に起動したときから反映されます。	src/ui/screens/talk.js:1058	
 11gkctr	ok	Places	場所	src/ui/screens/tools.js:12	context: tool group
 13mxqrp	ok	Talk	会話	src/ui/screens/tools.js:12	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	ok	Go	移動	src/ui/screens/tools.js:12	context: tool group; Note: the tools for getting somewhere (routes, maps).
@@ -2593,50 +2594,48 @@ scekw#other	ok	# settings	設定#件	src/ui/screens/trace.js:313	plural; # = (d.
 mp7j1w#other	ok	({0}, # bytes)	（{0}、#バイト）	src/ui/screens/trace.js:336	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
 tqj8t3	ok	(no longer stored)	（もう保存されていません）	src/ui/screens/trace.js:336	
 1kfziuy	ok	Show what was stored	保存された内容を表示	src/ui/screens/trace.js:353	
-1cnmmj7	ok	Archived	アーカイブ済み	src/ui/screens/trip.js:43	
-jz8mjk	ok	Unarchive	アーカイブを解除	src/ui/screens/trip.js:55	
-qeuftp	ok	Tap again to archive	もう一度タップでアーカイブ	src/ui/screens/trip.js:57	
-w0suw5	ok	Archive	アーカイブ	src/ui/screens/trip.js:57	Note: アーカイブ as Archive trip (旅をアーカイブ) and Unarchive (アーカイブを解除).
-1orcmjh	ok	Give it a name.	名前を入力してください。	src/ui/screens/trip.js:96	
-1cageta	ok	Saved.	保存しました。	src/ui/screens/trip.js:109	
-cymegm	ok	The trip can't end before it starts.	終了日を開始日より前にすることはできません。	src/ui/screens/trip.js:113	
-1yii6kb	ok	Ends	終了日	src/ui/screens/trip.js:120	Note: A date field, so 日 / 日期 say what goes in it.
-fc4c10	ok	Starts	開始日	src/ui/screens/trip.js:120	
-8jz3l7	ok	All files	すべてのファイル	src/ui/screens/trip.js:129	Note: a fold below Files on the trip screen: every file by folder, and the box that adds one by path.
-1s4j38w	ok	Files	ファイル	src/ui/screens/trip.js:155	
-deqm9f	ok	No files yet.	まだファイルはありません。	src/ui/screens/trip.js:161	
-oib8wn	ok	Deleted ({0})	削除済み（{0}）	src/ui/screens/trip.js:163	{0} = num(gone.length); Note: the fold at the foot of a trip's Files listing files deleted but kept (the conversation still has them); {0} is how many. The toasts after Delete call it "Deleted" (削除済み / 已删除 / 已刪除).
-se2paf#other	ok	# turns of this conversation are kept by {0}: annai asks for them to be deleted, once you're back online.	この会話のやり取り#回分が{0}に保存されています。オンラインに戻ったら、annaiが削除を依頼します。	src/ui/screens/trip.js:224	plural; # = n; {0} = who; English: "# turn of this conversation is kept by {0}: annai asks for it to be deleted, once you're back online." (one), "# turns of this conversation are kept by {0}: annai asks for them to be deleted, once you're back online." (other); Note: {0} is the providers that keep turns, as a list.
-1is61d1#other	ok	# turns of this conversation are kept by {0}: annai asks for them to be deleted.	この会話のやり取り#回分が{0}に保存されています。annaiが削除を依頼します。	src/ui/screens/trip.js:225	plural; # = n; {0} = who; English: "# turn of this conversation is kept by {0}: annai asks for it to be deleted." (one), "# turns of this conversation are kept by {0}: annai asks for them to be deleted." (other); Note: {0} is the providers that keep turns, as a list.
-1af3bj3	ok	Remove it?	削除しますか？	src/ui/screens/trip.js:230	
-nn02o3	ok	This removes everything in it from this device: its files, photos, notes and history.	この中のすべて（ファイル、写真、メモ、履歴）をこの端末から削除します。	src/ui/screens/trip.js:230	
-ty94lb	ok	It hasn't been backed up since it last changed.	最後の変更以降、バックアップされていません。	src/ui/screens/trip.js:230	
-1cp5muy	ok	Removed {0}. {1} freed.	{0}を削除しました。空き容量が{1}増えました。	src/ui/screens/trip.js:236	{0} = scopeTitle(scope); {1} = size(freed)
-436oi1	ok	That was already removed.	すでに削除されています。	src/ui/screens/trip.js:240	
-1mbp8t6	ok	It wasn't removed	削除されませんでした	src/ui/screens/trip.js:244	
-1pzhsw4	ok	Nothing was removed. Try again.	何も削除されていません。もう一度お試しください。	src/ui/screens/trip.js:244	
-knyqwh	ok	Add photos or files	写真やファイルを追加	src/ui/screens/trip.js:313	
-12n59th	ok	Take a photo	写真を撮る	src/ui/screens/trip.js:314	
-1kuasfa	ok	That file doesn't match its format: {0}	そのファイルは形式に合っていません：{0}	src/ui/screens/trip.js:326	{0} = why; Note: {0} is the format check's own words, in English.
-1y79g95	ok	{0} already exists. Open it from the list to edit it.	{0}はすでにあります。編集するには一覧から開いてください。	src/ui/screens/trip.js:336	{0} = p
-ecy82r	ok	Add a file	ファイルを追加	src/ui/screens/trip.js:344	
-1bmm5eq	ok	File path	ファイルのパス	src/ui/screens/trip.js:345	
-16gte2l	ok	Create	作成	src/ui/screens/trip.js:347	
-aoc0k0#other	ok	{0}: # chats	{0}：会話#件	src/ui/screens/trips.js:70	plural; # = e.fold.rows.length; {0} = monthName(e.fold.month); English: "{0}: # chat" (one), "{0}: # chats" (other)
-33pqd9	ok	Last backup {0}, to {1}.	前回のバックアップ：{0}（{1}）	src/ui/screens/trips.js:78	{0} = relTime(latest.last.at, now); {1} = latest.name; Note: Label and value, no 。, as "Last export" beside it.
-cvvz5z	ok	Tap + to talk to Shiori.	＋をタップしてShioriと話しましょう。	src/ui/screens/trips.js:86	
-wfhszm	ok	Archived ({0})	アーカイブ済み（{0}）	src/ui/screens/trips.js:91	{0} = archived.length
-in89ko	ok	No backup yet. Export everything from Settings, or set up automatic backups there.	まだバックアップがありません。「設定」からすべてをエクスポートするか、自動バックアップを設定してください。	src/ui/screens/trips.js:94	
-1rrn1xn	ok	Day {0} of {1}	{0}日目（全{1}日）	src/ui/screens/trips.js:221	{0} = d.day; {1} = d.of
-1q78pfk#other	ok	# files waiting to be read	未読のファイル#件	src/ui/screens/trips.js:236	plural; # = unread; English: "# file waiting to be read" (one), "# files waiting to be read" (other); Note: on a trip's card: files Shiori moved there that its conversation hasn't read yet; 件 counts files.
-9q9lbc	ok	Talk with her outside any trip.	旅とは関係なくShioriと話せます。	src/ui/screens/trips.js:259	Note: under Shiori, no trip on Trips: the conversation that is no trip's. Shiori named, as 彼女 reads distant.
-v84pjn	ok	Shiori, no trip	Shiori（旅なし）	src/ui/screens/trips.js:259	Note: the way back from a trip to the conversation outside any trip, above the trip cards on Trips; 旅 / 旅行 as the glossary's trip.
-1ceddv5	ok	Big Sur · Thanksgiving	京都・紅葉	src/ui/screens/trips.js:302	Note: An example trip name (the field's placeholder): a Japanese one, written with ・ as Japanese names are.
-axugy7	ok	Start a trip	旅を始める	src/ui/screens/trips.js:329	
-ero67x	ok	Trip name	旅の名前	src/ui/screens/trips.js:330	
-1776dho	ok	Add dates (optional)	日付を追加（任意）	src/ui/screens/trips.js:332	Note: folds the Starts and Ends fields under Start a trip: a name is enough; 任意 as forms say optional.
-1baslgi	ok	Start trip	旅を始める	src/ui/screens/trips.js:334	Note: The same words as the form's heading, "Start a trip".
-152lnj5	ok	Use real dates for the start and end.	開始日と終了日に正しい日付を入力してください。	src/ui/screens/trips.js:352	
+1cnmmj7	ok	Archived	アーカイブ済み	src/ui/screens/trip.js:44	
+jz8mjk	ok	Unarchive	アーカイブを解除	src/ui/screens/trip.js:56	
+qeuftp	ok	Tap again to archive	もう一度タップでアーカイブ	src/ui/screens/trip.js:58	
+w0suw5	ok	Archive	アーカイブ	src/ui/screens/trip.js:58	Note: アーカイブ as Archive trip (旅をアーカイブ) and Unarchive (アーカイブを解除).
+1orcmjh	ok	Give it a name.	名前を入力してください。	src/ui/screens/trip.js:97	
+1cageta	ok	Saved.	保存しました。	src/ui/screens/trip.js:110	
+cymegm	ok	The trip can't end before it starts.	終了日を開始日より前にすることはできません。	src/ui/screens/trip.js:114	
+1yii6kb	ok	Ends	終了日	src/ui/screens/trip.js:121	Note: A date field, so 日 / 日期 say what goes in it.
+fc4c10	ok	Starts	開始日	src/ui/screens/trip.js:121	
+8jz3l7	ok	All files	すべてのファイル	src/ui/screens/trip.js:130	Note: a fold below Files on the trip screen: every file by folder, and the box that adds one by path.
+1s4j38w	ok	Files	ファイル	src/ui/screens/trip.js:156	
+deqm9f	ok	No files yet.	まだファイルはありません。	src/ui/screens/trip.js:162	
+oib8wn	ok	Deleted ({0})	削除済み（{0}）	src/ui/screens/trip.js:164	{0} = num(gone.length); Note: the fold at the foot of a trip's Files listing files deleted but kept (the conversation still has them); {0} is how many. The toasts after Delete call it "Deleted" (削除済み / 已删除 / 已刪除).
+se2paf#other	ok	# turns of this conversation are kept by {0}: annai asks for them to be deleted, once you're back online.	この会話のやり取り#回分が{0}に保存されています。オンラインに戻ったら、annaiが削除を依頼します。	src/ui/screens/trip.js:228	plural; # = n; {0} = who; English: "# turn of this conversation is kept by {0}: annai asks for it to be deleted, once you're back online." (one), "# turns of this conversation are kept by {0}: annai asks for them to be deleted, once you're back online." (other); Note: {0} is the providers that keep turns, as a list.
+1is61d1#other	ok	# turns of this conversation are kept by {0}: annai asks for them to be deleted.	この会話のやり取り#回分が{0}に保存されています。annaiが削除を依頼します。	src/ui/screens/trip.js:229	plural; # = n; {0} = who; English: "# turn of this conversation is kept by {0}: annai asks for it to be deleted." (one), "# turns of this conversation are kept by {0}: annai asks for them to be deleted." (other); Note: {0} is the providers that keep turns, as a list.
+1af3bj3	ok	Remove it?	削除しますか？	src/ui/screens/trip.js:234	
+nn02o3	ok	This removes everything in it from this device: its files, photos, notes and history.	この中のすべて（ファイル、写真、メモ、履歴）をこの端末から削除します。	src/ui/screens/trip.js:234	
+ty94lb	ok	It hasn't been backed up since it last changed.	最後の変更以降、バックアップされていません。	src/ui/screens/trip.js:234	
+1cp5muy	ok	Removed {0}. {1} freed.	{0}を削除しました。空き容量が{1}増えました。	src/ui/screens/trip.js:240	{0} = scopeTitle(scope); {1} = size(freed)
+436oi1	ok	That was already removed.	すでに削除されています。	src/ui/screens/trip.js:244	
+1mbp8t6	ok	It wasn't removed	削除されませんでした	src/ui/screens/trip.js:248	
+1pzhsw4	ok	Nothing was removed. Try again.	何も削除されていません。もう一度お試しください。	src/ui/screens/trip.js:248	
+knyqwh	ok	Add photos or files	写真やファイルを追加	src/ui/screens/trip.js:317	
+12n59th	ok	Take a photo	写真を撮る	src/ui/screens/trip.js:318	
+1kuasfa	ok	That file doesn't match its format: {0}	そのファイルは形式に合っていません：{0}	src/ui/screens/trip.js:330	{0} = why; Note: {0} is the format check's own words, in English.
+1y79g95	ok	{0} already exists. Open it from the list to edit it.	{0}はすでにあります。編集するには一覧から開いてください。	src/ui/screens/trip.js:340	{0} = p
+ecy82r	ok	Add a file	ファイルを追加	src/ui/screens/trip.js:348	
+1bmm5eq	ok	File path	ファイルのパス	src/ui/screens/trip.js:349	
+16gte2l	ok	Create	作成	src/ui/screens/trip.js:351	
+aoc0k0#other	ok	{0}: # chats	{0}：会話#件	src/ui/screens/trips.js:69	plural; # = e.fold.rows.length; {0} = monthName(e.fold.month); English: "{0}: # chat" (one), "{0}: # chats" (other)
+33pqd9	ok	Last backup {0}, to {1}.	前回のバックアップ：{0}（{1}）	src/ui/screens/trips.js:76	{0} = relTime(latest.last.at, now); {1} = latest.name; Note: Label and value, no 。, as "Last export" beside it.
+cvvz5z	ok	Tap + to talk to Shiori.	＋をタップしてShioriと話しましょう。	src/ui/screens/trips.js:84	
+wfhszm	ok	Archived ({0})	アーカイブ済み（{0}）	src/ui/screens/trips.js:87	{0} = archived.length
+in89ko	ok	No backup yet. Export everything from Settings, or set up automatic backups there.	まだバックアップがありません。「設定」からすべてをエクスポートするか、自動バックアップを設定してください。	src/ui/screens/trips.js:90	
+1rrn1xn	ok	Day {0} of {1}	{0}日目（全{1}日）	src/ui/screens/trips.js:218	{0} = d.day; {1} = d.of
+1q78pfk#other	ok	# files waiting to be read	未読のファイル#件	src/ui/screens/trips.js:233	plural; # = unread; English: "# file waiting to be read" (one), "# files waiting to be read" (other); Note: on a trip's card: files Shiori moved there that its conversation hasn't read yet; 件 counts files.
+1ceddv5	ok	Big Sur · Thanksgiving	京都・紅葉	src/ui/screens/trips.js:264	Note: An example trip name (the field's placeholder): a Japanese one, written with ・ as Japanese names are.
+axugy7	ok	Start a trip	旅を始める	src/ui/screens/trips.js:291	
+ero67x	ok	Trip name	旅の名前	src/ui/screens/trips.js:292	
+1776dho	ok	Add dates (optional)	日付を追加（任意）	src/ui/screens/trips.js:294	Note: folds the Starts and Ends fields under Start a trip: a name is enough; 任意 as forms say optional.
+1baslgi	ok	Start trip	旅を始める	src/ui/screens/trips.js:296	Note: The same words as the form's heading, "Start a trip".
+152lnj5	ok	Use real dates for the start and end.	開始日と終了日に正しい日付を入力してください。	src/ui/screens/trips.js:314	
 ric74d	ok	Checking annai and its plugins…	annaiとプラグインを確認中…	src/ui/screens/updates.js:18	
 1mk4lgq	ok	annai hasn't checked since it started.	起動してからまだ確認していません。	src/ui/screens/updates.js:19	
 cmuwtk	ok	Last checked {0}.	最終確認：{0}。	src/ui/screens/updates.js:19	{0} = relTime(checkedAt, now)
@@ -2781,7 +2780,7 @@ f2eaqi	ok	Find a search plugin	検索プラグインを探す	src/ui/search-pane
 do1m5o	ok	{0}: annai can't show this setting.	{0}：この設定はannaiでは表示できません。	src/ui/settings-form.js:116	{0} = f.label
 1qrgqx0	ok	saved	保存済み	src/ui/settings-form.js:121	
 phutrz	ok	{0} wasn't saved: {1}	{0}を保存できませんでした：{1}	src/ui/settings-form.js:130	{0} = f.label; {1} = messageOf(e)
-1skw031	ok	This screen couldn't open	この画面を開けませんでした	src/ui/shell.js:433	
+1skw031	ok	This screen couldn't open	この画面を開けませんでした	src/ui/shell.js:434	
 1z00dfe	ok	An update is ready	アップデートの準備ができました	src/ui/shell.js:547	
 gt0nrj	ok	It will be used the next time annai starts.	次回annaiを起動したときに適用されます。	src/ui/shell.js:547	
 sntfon	ok	Hello! This is how I sound when I talk to you.	こんにちは。こんな声でお話しします。	src/ui/speech-check.js:10	Note: spoken by the voice being tested, so it is heard in the screens' language.

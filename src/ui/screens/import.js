@@ -11,6 +11,7 @@ import { bringIn, addedWords, isPhoto } from '../bring-in.js';
 import { explainStorageFull } from '../storage-full.js';
 import { restartAnnai } from './plugins.js';
 import { keyNames } from './plugin-install.js';
+import { forgetMeTalked } from './trips.js';
 import { keepUiFrom } from '../languages.js';
 import { FOLD_OVER } from '../../core/timeline.js';
 
@@ -220,6 +221,10 @@ function preview(ctx, body, opened, desc, from, fresh, bring = null) {
             status.textContent = t`Reading ${num(Math.min(done + 1, total))} of ${num(total)}…`;
           },
         });
+        // The "Shiori, no trip" row on home is read from `me`, which a replaced one changes.
+        if (result.me) forgetMeTalked();
+        // Files an older backup had waiting with Shiori go into a conversation of their own, before the results are drawn (timeline stage 7).
+        await ctx.moveWaiting().catch((/** @type {unknown} */ e) => console.warn(/* en */ "the files waiting with Shiori couldn't be moved into a conversation", e));
         // This device has taken in that backup: its next backup there builds on it (spec §12.4).
         if (from) await ctx.backups?.accept(from.target, from.remote).catch(() => {});
         // Live mode takes in the trips that came and lets go of those archived (their reminders leave the relay).

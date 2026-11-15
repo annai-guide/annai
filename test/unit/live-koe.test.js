@@ -1271,7 +1271,7 @@ test('a live session is told the languages: the section in its instructions, the
     k.agent.tap();
     await until(() => k.agent.live.listening);
     const first = got(k, 'setup')[0].setup;
-    assert.match(first.systemInstruction.parts[0].text, /# Languages\nThe user's phone is set to English, and they may speak other languages\. Answer in the language they used\. Never switch to another language because of one word you're unsure of;/);
+    assert.match(first.systemInstruction.parts[0].text, /# Languages\nThe user's phone is set to English, and they may speak other languages\. Answer in the language they used; before they have written or said anything in this conversation, answer in English\. Never switch to another language because of one word you're unsure of;/);
     assert.deepEqual(first.inputAudioTranscription, {}, "nothing chosen: the browser's language is told in words, not as a hint that could mistranscribe another");
     k.agent.hush('away');
     await soon(async () => k.agent.live.state === 'closed');
@@ -1279,7 +1279,7 @@ test('a live session is told the languages: the section in its instructions, the
     k.agent.tap();
     await soon(async () => got(k, 'setup').length === 2);
     const second = got(k, 'setup')[1].setup;
-    assert.match(second.systemInstruction.parts[0].text, /# Languages\nThe user speaks English, Chinese \(Simplified\) and Japanese; they may switch between these\. Answer in the language they used\./);
+    assert.match(second.systemInstruction.parts[0].text, /# Languages\nThe user speaks English, Chinese \(Simplified\) and Japanese; they may switch between these\. Answer in the language they used; before they have written or said anything in this conversation, answer in English\./);
     assert.deepEqual(second.inputAudioTranscription, { languageCodes: ['en', 'zh-Hans', 'ja'] });
   } finally {
     await k.done();

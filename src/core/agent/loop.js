@@ -158,8 +158,6 @@ export const SPEAK_RESULT = /* en */ "Shown on screen. Voice is off, so you didn
 
 /** Kokoro's notes that aren't for the user: Koe hears them, and may end quietly. */
 const NOT_FOR_USER = ['nothing-to-add', 'stopped'];
-/** Whether a tool gave back a photo or PDF waiting with Shiori (/waiting/). @param {import('./tools.js').ToolOutput} output */
-const waitingMedia = (output) => [...(output.images ?? []), ...(output.document ? [output.document] : [])].some((m) => String(m.path ?? '').startsWith('/waiting/'));
 
 /** A live Koe's sleep (the drive-test follow-ups). */
 /* en */ const LIVE_SLEEP = 'Stop listening: the live session closes, the microphone with it. Only when the user asks you to sleep or stop listening, or a note from Kokoro tells you to.';
@@ -759,8 +757,9 @@ export class Agent {
     await this.#keepElsewhere(scope);
     if (generation !== this.#generation) return;
     // Something owed when it opens: a restart wake, unless the other half takes it up (Half.restart). A turn annai was killed in is taken
-    // up whatever its transcript says: what ran then isn't known (a line cut in its playback, a call after it that never ran).
-    const owed = Boolean(repaired || transcript.unanswered) && (await (this.#half.restart?.() ?? true));
+    // up whatever its transcript says: what ran then isn't known (a line cut in its playback, a call after it that never ran). With nothing open,
+    // nothing: `me` takes no more turns (timeline stage 7), so a removal or a failed start never queues a restart there.
+    const owed = scope !== ME && Boolean(repaired || transcript.unanswered) && (await (this.#half.restart?.() ?? true));
     if (generation !== this.#generation) return;
     this.trip = trip;
     this.scope = scope;
@@ -800,7 +799,12 @@ export class Agent {
    * @param {string} scope
    */
   async #keepElsewhere(scope) {
-    const elsewhere = this.#queue.filter((w) => w.scope !== scope);
+    await this.#keepWakes((w) => w.scope !== scope);
+  }
+
+  /** Writes the queued wakes it picks into their conversations' logs, each's reminders said first, and takes them out of the queue. @param {(w: Wake) => boolean} which */
+  async #keepWakes(which) {
+    const elsewhere = this.#queue.filter(which);
     for (const s of new Set(elsewhere.map((w) => /** @type {string} */ (w.scope)))) {
       const those = elsewhere.filter((w) => w.scope === s);
       // A reminder among them is shown now, as one firing for a conversation that isn't open is (live.js): the wake waits for its turn there.
@@ -1560,6 +1564,12 @@ export class Agent {
     this.#clearTimer();
     try {
       while (!this.#opens && !this.#still && this.#queue.some((w) => w.scope === this.scope)) {
+        // Nothing open (no draft could be made): no turn runs in `me`, which takes no more (timeline stage 7). What came is written into its log and its
+        // reminders said, as for a conversation that isn't open; a failed write keeps them queued.
+        if (this.scope === ME) {
+          await this.#keepWakes((w) => w.scope === ME);
+          continue;
+        }
         await this.#gather();
         if (this.#opens) break;
         const wakes = this.#take();
@@ -2907,13 +2917,6 @@ export class Agent {
         const { document, ...rest } = output;
         /* en */
         output = { ...rest, content: `${output.content}\nYou can't read PDFs; ask Kokoro about it.` };
-      }
-      // With no trip open, a file waiting with Shiori is read by a side task, and only what it says is kept here: the no-trip conversation
-      // never holds a waiting file's bytes, so a trip it is filed into, once removed, gives all of its space back.
-      if (scope === ME && waitingMedia(output)) {
-        /* en */
-        const told = { ...output, content: `${output.content}\nFiles waiting with you are read by a side task here, so only what it says is kept in this conversation.` };
-        output = await this.#described(told, o.wakeId, o.signal, { input: ['text'] }, undefined, scope, c.name === 'read', o.reads);
       }
       // A model that can't see photos gets what a tool's photos show in words, from one that can (the tools stay the same).
       if ((output.images?.length && o.model && !o.model.input?.includes('image')) || (output.document && o.model && !o.model.input?.includes('pdf'))) output = await this.#described(output, o.wakeId, o.signal, o.model, undefined, scope, c.name === 'read', o.reads);

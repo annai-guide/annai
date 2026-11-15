@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
-import { kindOf, ensureBaseScopes, createTrip, ME, SYS_WAITING } from '../../src/core/scopes.js';
+import { kindOf, ensureBaseScopes, createTrip, ME } from '../../src/core/scopes.js';
 import { readNames } from '../../src/core/names.js';
 import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
@@ -119,19 +119,18 @@ test("read's line that says how to read on also survives the note a path's other
   }
 });
 
-test("read's line that says how to read on survives a case-differed read at the longest paths a file can have: 500 characters in the trip, and /waiting's 512 (READ_ON)", async () => {
+test("read's line that says how to read on survives a case-differed read at the longest paths a file can have: 500 characters in the trip, and 512 inside it (READ_ON)", async () => {
   const { ws, trip, run, tools } = await setup();
   const text = Array.from({ length: 4000 }, (_, n) => `Line ${n}: the ferry leaves at ${n % 24}:00.`).join('\n');
-  // A path inside a scope holds up to 512 characters (normPath); Shiori sees it after its root, /waiting the longest.
+  // A path inside a scope holds up to 512 characters (normPath); Shiori sees it after its root, /trip the longest.
   const long = `/trip/notes/${'d'.repeat(477)}/ferries.md`;
   assert.equal(long.length, 500);
   await run('write', { path: long, content: text });
   const inner = `/files/${'w'.repeat(494)}/ferries.md`;
   assert.equal(inner.length, 512);
-  await ws.write(SYS_WAITING, inner, text, { author: 'user' });
-  const none = { scope: ME, trip: null, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori' };
+  await ws.write(trip, inner, text, { author: 'user' });
   const open = { scope: trip, trip, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori' };
-  for (const [path, call] of /** @type {const} */ ([[long, open], [`/waiting${inner}`, none]])) {
+  for (const [path, call] of /** @type {const} */ ([[long, open], [`/trip${inner}`, open]])) {
     const out = (await runTool(tools.read, { path: path.replace(/ferries\.md$/, 'Ferries.md') }, /** @type {any} */ (call))).output.content;
     assert.ok(out.startsWith(`(read ${path}: the path's case differed)\n`), 'the note is in front');
     assert.ok(out.length <= RESULT_MAX, `the result (${out.length}) fits its limit`);
@@ -342,51 +341,6 @@ test("Shiori's file tools put the turn's hand-over on what they write and delete
   assert.deepEqual(hers.map((e) => [e.data.path, e.data.handover ?? null]), [
     ['/notes/a.md', 'h-1'], ['/notes/a.md', 'h-1'], ['/names.json', 'h-1'], ['/notes/a.md', 'h-1'], ['/notes/b.md', null],
   ]);
-});
-
-test('with no trip open, list / shows /waiting/ files, and read reads one; with a trip open, /waiting/ is refused in words', async () => {
-  const { ws, trip, tools } = await setup();
-  await ws.write(SYS_WAITING, '/files/confirmation.txt', 'Car: Midnight Sun Rentals, Nov 20', { author: 'user' });
-  const none = { scope: ME, trip: null, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori' };
-  const listed = await tools.list.run({ path: '/' }, none);
-  assert.match(listed, /^\/waiting\/files\/confirmation\.txt\t/m);
-  assert.match(listed, /^\/me\/profile\.md\t/m);
-  assert.match(await tools.list.run({ path: '/waiting/' }, none), /^\/waiting\/files\/confirmation\.txt\t/m);
-  assert.match(await tools.read.run({ path: '/waiting/files/confirmation.txt' }, none), /Midnight Sun/);
-  // Her short name for it, beside it.
-  await tools.patch.run({ path: '/waiting/names.json', changes: { '/files/confirmation.txt': 'Car · Nov 20' } }, none);
-  assert.deepEqual(await readNames(ws, SYS_WAITING), { '/files/confirmation.txt': 'Car · Nov 20' });
-  const open = { ...none, scope: trip, trip };
-  await assert.rejects(tools.read.run({ path: '/waiting/files/confirmation.txt' }, open), /with a trip open, its files are in \/trip\/files\//);
-  assert.doesNotMatch(await tools.list.run({ path: '/' }, open), /waiting/);
-});
-
-test("Shiori's delete of a /waiting/ file drops it: the file, its history and its name go, and its space comes back", async () => {
-  const { ws, tools } = await setup();
-  const body = 'Thanks for your note! See you at the reunion.';
-  const { hash } = await ws.write(SYS_WAITING, '/files/pasted-2026-10-28-0310.txt', body, { author: 'user' });
-  await ws.write(SYS_WAITING, '/names.json', { '/files/pasted-2026-10-28-0310.txt': 'A note' }, { author: 'shiori' });
-  const none = { scope: ME, trip: null, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori' };
-  assert.match(await tools.delete.run({ path: '/waiting/files/pasted-2026-10-28-0310.txt' }, none), /Deleted \/waiting\/files\/pasted-2026-10-28-0310\.txt/);
-  assert.equal(await ws.read(SYS_WAITING, '/files/pasted-2026-10-28-0310.txt'), undefined);
-  assert.deepEqual(await ws.history(SYS_WAITING, '/files/pasted-2026-10-28-0310.txt'), []);
-  assert.deepEqual(await readNames(ws, SYS_WAITING), {});
-  assert.equal(await ws.store.tx(['blobs'], 'readonly', (t) => t.hasBlob(hash)), false);
-});
-
-test("in the waiting space she writes only her short names, and deletes only annai's own pasted texts: the user's files are theirs to delete, on Trips", async () => {
-  const { ws, tools } = await setup();
-  const none = { scope: ME, trip: null, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori' };
-  await ws.write(SYS_WAITING, '/files/flight.pdf', utf8('%PDF-1.4 flight'), { author: 'user', type: 'application/pdf' });
-  await assert.rejects(tools.delete.run({ path: '/waiting/files/flight.pdf' }, none), /theirs to delete[\s\S]*Trips/);
-  assert.ok(await ws.read(SYS_WAITING, '/files/flight.pdf'));
-  for (const [name, input] of /** @type {const} */ ([['write', { path: '/waiting/bookings/stray.json', content: { id: 'stray' } }], ['write', { path: '/waiting/files/flight.pdf', content: 'x' }],
-    ['patch', { path: '/waiting/notes.json', changes: { a: 1 } }]])) {
-    await assert.rejects(tools[name].run(input, none), /only \/waiting\/names\.json/, `${name} ${input.path}`);
-  }
-  assert.deepEqual((await ws.list(SYS_WAITING, '/')).map((f) => f.path), ['/files/flight.pdf']);
-  await tools.patch.run({ path: '/waiting/names.json', changes: { '/files/flight.pdf': 'ANNAI AIR · Nov 20' } }, none);
-  assert.deepEqual(await readNames(ws, SYS_WAITING), { '/files/flight.pdf': 'ANNAI AIR · Nov 20' });
 });
 
 test("a list of the conversation's root ends by saying their other trips aren't in it (list_trips), for Shiori and Kokoro; not for Koe, which has no list_trips, nor a folder's list, nor with no trip open (real models: Sonnet as Kokoro said another trip's hotel wasn't there, item 3)", async () => {

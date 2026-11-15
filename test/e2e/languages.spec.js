@@ -243,7 +243,7 @@ test('the languages are told to the model: Shiori\'s system text holds them, and
     await page.getByLabel('Message to Shiori').fill('Hi');
     await page.getByRole('button', { name: 'Send' }).click();
     await expect.poll(() => llm.bodies('/b/v1/messages').length).toBeGreaterThan(0);
-    expect(system(llm.bodies('/b/v1/messages')[0])).toContain(`# Languages\nThe user speaks English and Japanese; they may switch between these. Answer in the language they used. ${rest}`);
+    expect(system(llm.bodies('/b/v1/messages')[0])).toContain(`# Languages\nThe user speaks English and Japanese; they may switch between these. Answer in the language they used; before they have written or said anything in this conversation, answer in English. ${rest}`);
     // A change made afterwards is in the next turn's request.
     await expect.poll(() => llm.bodies('/b/v1/messages').length).toBeGreaterThan(0);
     const before = llm.bodies('/b/v1/messages').length;
@@ -256,7 +256,7 @@ test('the languages are told to the model: Shiori\'s system text holds them, and
     await page.getByLabel('Message to Shiori').fill('And dinner?');
     await page.getByRole('button', { name: 'Send' }).click();
     await expect.poll(() => llm.bodies('/b/v1/messages').length).toBeGreaterThan(before);
-    expect(system(llm.bodies('/b/v1/messages').at(-1))).toContain(`# Languages\nThe user speaks English, Japanese and Chinese (Simplified); they may switch between these. Answer in the language they used. ${rest}`);
+    expect(system(llm.bodies('/b/v1/messages').at(-1))).toContain(`# Languages\nThe user speaks English, Japanese and Chinese (Simplified); they may switch between these. Answer in the language they used; before they have written or said anything in this conversation, answer in English. ${rest}`);
   } finally {
     await llm.stop();
   }

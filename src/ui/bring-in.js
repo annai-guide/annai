@@ -17,8 +17,6 @@ export async function keepFiles(ctx, scope, files, progress) {
   /** @type {string[]} */ const planned = [];
   /** @type {string[]} */ const problems = [];
   /** @type {Record<string, number>} */ const plannedBy = {};
-  // Calendar files handed over with no trip open wait as files: Shiori reads them like any other once they are in a trip.
-  if (!scope.startsWith('trip-')) return { paths, notes, problems, planned, plannedBy };
   const trip = await ctx.ws.readJSON(scope, '/trip.json').catch(() => null);
   const defaultTz = [trip?.timezones?.[0], deviceZone()].find(validZone) ?? 'UTC';
   const typeOf = new Map((await ctx.ws.list(scope, '/files/')).map((/** @type {any} */ f) => [f.path, f.type]));

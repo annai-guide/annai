@@ -21,8 +21,8 @@ The user: "a bit messy screens and tabs here and there"; "everything come back t
 
 **Existing data:**
 - `trip-*` scopes: untouched.
-- `me`: keeps profile, memory, personalities, instructions. Its old lines become a read-only row, "Shiori, no trip" (`#/talk/me`); it takes no more turns. `agent.open(null)` stays as "nothing open": `send` and `tap` then make a chat first, in `Halves`, so `ui.shiori.send` works too. `me`'s log is also written by `remind`, `setLive`'s `state`, catch-ups, `/me/` file writes and `composer`, and old `me` watches and owed restarts would run turns. So one guard in the loop: with target null, wakes log and `remind` fires, with no turn and nothing owed.
-- `sys:waiting`: at each start its files move into one chat, "Waiting with Shiori", with a `file` wake so she reads them on opening. `moveFile` writes before it drops; a cut-off run resumes. A restored backup's waiting files, and an Undo whose chat is gone, go the same way.
+- `me`: keeps profile, memory, personalities, instructions. Its old lines become a read-only row, "Shiori, no trip" (`#/talk/me`), placed by the user's last line there and shown only when it has one; it takes no more turns. Read-only: no button on an old line talks or changes anything (her questions' options, a card's choices, Try again, "This was for Shiori", a tuning card's Undo; a plugin's kind of card is drawn as annai draws its own, with no plugin buttons), no ⋯, dates or Undo line, and the dock rests as on home, so talking there is the +, a new chat. What is open when nothing else is: the standing draft, at start with no `activeTrip` (or one that's gone) and after the open trip is removed, as + opens it (the user, 2026-11-14, "Open the new conversation (Recommended)"); until stage 8 the Conversation and Itinerary tabs show that empty conversation. `agent.open(null)` is left for a draft that can't be made or opened (a store that fails), and for the moment in a removal before its draft opens; whatever scope is drawn, `me`'s, is read-only. Then the dock's submit, camera and tap open the draft first; if it can't be made, the + card says so, and the typed words and picked files stay in the box (the user, 2026-11-14, "Put it back in the type box (Recommended)"). One guard in the loop covers that case: with nothing open, wakes are written into `me`'s log and their reminders said, with no turn and nothing owed. Old `me` time watches still fire: annai says the reminder and logs the wake, as for any conversation that isn't open (live.js `#looked` looks at a `time` watch in any conversation). Its place, activity and "every" watches are never looked at again, as only the open conversation's were; docs/limitations.md has it as a known limitation (the user, 2026-11-14, "Known limitation (Recommended)").
+- `sys:waiting`: at each start (before the first screen), after an import (before its results) and after an Undo that sends files there (before going home), its files move into a new chat, "Waiting with Shiori", named by annai (system), so she reads the name as a guess. Each file moves in a transaction of its own, with its short name, then its `file` wake is written, which names no file; a cut-off run leaves files in a chat with no wake, never a wake for files that aren't there. The wake tells her one thing for every source (an older annai's waiting files, an old backup's, an Undo's files with nowhere to go back to): say what is there and ask the user what to do, and file nothing until they say (the user, 2026-11-14, "Ask you first (Recommended)": "she says what's there and asks what to do. Nothing gets filed without your word, so an Undo stays undone."); when they say, the usual filing rules hold, a calendar file's events going on the plan on their word. Each run makes its own chat, so a cut-off run's rest goes to a second chat at the next start (the user, 2026-11-14, "A new chat each run (Recommended)"; this replaces "one chat, a cut-off run resumes", told to the user before).
 
 ## The timeline
 
@@ -70,9 +70,9 @@ The move is annai's own card, answered by the user (decided 2026-11-11, below): 
 4. At Open, and only then: the files move, the user's last line (typed, or heard and not set aside; never an answer to annai's card, which a typed yes or no is too, and nothing older than the last move out of this conversation, which carried it) and her recap are made the trip's wakes, the chat gets `conversation.moved`, written last, after the halves have written what they still held of the chat (a line Koe heard, a yes a live session heard, a cue) so that it settles them and the chat owes nothing, and the trip opens at once, as a tap on its row does (`Halves.carryOn`). The turn that asked is let go, settled, with nothing owed in the chat (`open`'s `moved`); the open ends the `open_trip` call, and its result says they chose Open, a success and no cut, as the Trace shows it (decided 2026-11-11); the line and the recap wake her once in the trip, the recap shown below their line, and she answers there. If the user opened something else in the moment before (a Stop or another conversation), nothing opens, and the lines are written into the trip in that order and wait there. The card's buttons end at the first tap.
 5. Anything else ends the card by stage 5's rules: Not now, a line of their own (typed or said), a Stop, another conversation opened. Nothing is written anywhere, nothing moves, and her result says what they chose or said. A trip removed or archived while the card waits is said to be gone after Open. A reminder's turn may call it too: the card shows, and nothing moves unless they answer it.
 6. The chat always stays, ending "Shiori moved this to Kyoto", which her later turns there read; it settles what the chat owed.
-7. `went` (with `chose: true` from the user's own choice, `carryOn`): from home the address follows into the trip as a new entry, so Back returns home (a replace would leave the chat's address under it, and Back would open the chat, stopping her answer in the trip); the chat left goes to the open one at its redraw; Details and Settings stay where they are.
+7. `went` (from the user's own choice, `carryOn`, its only emitter): from home the address follows into the trip as a new entry, so Back returns home (a replace would leave the chat's address under it, and Back would open the chat, stopping her answer in the trip); the chat left goes to the open one at its redraw; Details and Settings stay where they are.
 
-`start_trip` from the no-trip conversation still opens what it started once both halves are done (`openWhenDone`), as released, until stage 7 makes that conversation read-only; its `went` has no `chose`, so a screen on home stays on home, as released. With no trip open `open_trip` asks with the card too: on Not now the files wait, and her hand-over words say she starts no trip for them unless the user asks.
+Done in stage 7: the no-trip conversation is read-only, so `start_trip` there and `openWhenDone`, which opened what it started once both halves were done, are gone; `went` now comes only from the user's choice on annai's card (`carryOn`). `start_trip` stays for a dated trip, where what it starts doesn't open; whether it goes is the user's question at stage 8.
 
 `list_trips` gives dated trips and the 30 newest chats, so she can read the right one for "what was that ramen place?".
 
@@ -94,7 +94,7 @@ With this, "what's on tomorrow?" in a new chat during a trip is answered in plac
 
 ## Opening
 
-`resume.js`, plain start only: `activeTrip`'s conversation if its last user line is under 12 hours old or it's happening; else home. The localStorage note goes. `main.js` still opens `activeTrip` whichever screen shows.
+`resume.js`, plain start only: `activeTrip`'s conversation if its last user line is under 12 hours old or it's happening; else home. Only an active trip or chat counts, never the standing draft. The localStorage note goes (built in stage 7; the stale key is left, as nothing reads it). `main.js` still opens `activeTrip` whichever screen shows, and the draft when there is none.
 
 ## GPS, voice and watches
 
@@ -134,8 +134,8 @@ Display only: files and tools keep `plan`. `l10n/glossary.tsv` changes Plan to I
 
 - Now (`renderNow`, `nowRow`); its helpers move to plan.js and drive.js.
 - The top bar, tabs, swipes, `SECTION`, `lastIn`: about 95 lines of shell.js.
-- Trips' Start a trip form, no-trip card and Waiting panel; `waiting-file`, `waitingHref`.
-- The no-trip conversation: the `/waiting` root (`tools.js`), `waitingMedia` (`loop.js`), `reach.js`'s clause, handover.js's waiting text, composer's branches, the dock's "Open a trip first".
+- Trips' Start a trip form (stage 8). Done in stage 7: the no-trip card and Waiting panel; `waiting-file`, `waitingHref`.
+- Done in stage 7, the no-trip conversation: the `/waiting` root (`tools.js`), `waitingMedia` (`loop.js`), `reach.js`'s clause, handover.js's waiting text, composer's branches, the dock's "Open a trip first", the no-trip words of the trip tools, and `openWhenDone`.
 
 Estimated 300 lines out, 450 in, about +8 KiB: fewer places and concepts, not fewer lines.
 
@@ -159,7 +159,7 @@ Each passes `npm run check` and e2e, and leaves annai working.
 7. Opening rule, `me` read-only, the waiting move, no-trip paths out.
 8. The top bar goes, gear and Trace, with the e2e rewrite as its own stage: 133 `#/trips`, 68 `#/talk` and 22 `#/now` lines, 98 h1 assertions, 43 nav clicks in 21 files, `startTrip` used 130 times (it becomes `createTrip` in the page), and 6 e2e and 30 unit files touching no-trip paths.
 
-Also removable: `start_trip` in chats, the `/waiting` branches (files plugin, `file.js`, `names.js`), hand-over's back-to-waiting Undo, `swipeTabs`.
+Also removable: `start_trip` in chats, the `/waiting` branches (files plugin, `file.js`, `names.js`), `swipeTabs`. Hand-over's back-to-waiting Undo stays (The model, Existing data): files with nowhere to go back to wait, and move into a "Waiting with Shiori" chat.
 
 ## Decided by the user (2026-11-05)
 
@@ -198,11 +198,20 @@ Also removable: `start_trip` in chats, the `/waiting` branches (files plugin, `f
 
 - **The spoken yes is switched off:** the user's stop rule, picked as "Switch to tap only (Recommended)": "No more fix rounds on the spoken yes: turn it off (about 5 lines) and the card takes taps only.", and "Remove the exception (Recommended)": "Stop rule stays: any further wrong grant switches the spoken yes off, no question asked." The review of 2026-11-13 then found one more wrong grant on the live code (one Shiori: a "Yes.", a reminder annai says itself within its 3 s, and the "No, wait" after it unheard). Both cards ("Read Kyoto?", "Carry on in Kyoto?") are answered by tap; this replaces the spoken half of "A spoken yes for reading another trip" (2026-11-05) and of "She asks, I tap or say yes" (2026-11-11).
 
+## Decided by the user (2026-11-14)
+
+- **What is open when nothing is:** "Open the new conversation (Recommended)". At start with no `activeTrip`, and when the open trip is removed, annai opens the standing draft, as + does. Until stage 8 the Conversation and Itinerary tabs show that empty conversation instead of home. This replaces "`agent.open(null)` stays as nothing open" (The model, Existing data).
+- **A line typed when no conversation can be made** (storage full, a store failing): "Put it back in the type box (Recommended)". The words stay in the box, and a card says Shiori couldn't start a conversation, as + does. No line is written into `me`, and there is no known limitation.
+- **The waiting files' move:** "A new chat each run (Recommended)". Each run makes its own "Waiting with Shiori" chat, so a later batch (an old backup, an Undo with nowhere to go back to) sits at now; this replaces "one chat; a cut-off run resumes" (The main session's additions).
+- **What she does in a "Waiting with Shiori" chat:** "Ask you first (Recommended)": "One text for all three sources: she says what's there and asks what to do. Nothing gets filed without your word, so an Undo stays undone." (Stage 7's final review.)
+- **Old watches in `me`:** "Known limitation (Recommended)": place, activity and "every" watches set in the old no-trip conversation before this update are never looked at again (time reminders still fire), and no screen lists or cancels them; "Revisit if one turns up in the Trace or you miss one." (docs/limitations.md.)
+- **The phone look that lets the tabs go:** "After stage 7 ships (Recommended)". One look covers stage 4's list and stage 7's opening.
+
 ## The main session's additions
 
 - A new chat's snapshot lists the names of the last few conversations, quoted (section Reading another trip). "Separate chats forget" was the design's main risk; check it on a real model.
 - With Voice on, + starts listening at once, so voice from home is one tap. The tap is the gesture the mic needs.
-- The waiting files' move: one chat, written before they're dropped. Told to the user.
+- The waiting files' move: one chat, written before they're dropped. Told to the user. (Replaced 2026-11-14: a new chat each run, above.)
 
 ## Calls
 
@@ -221,7 +230,7 @@ The stage plans in `docs/superpowers/plans/2026-11-06-timeline-stage-*.md` read 
 - Now's helpers go to a shared `src/ui/today.js`, because Now stays a screen until stage 8.
 - The `start`/`end`/last-talked mirror lands in stage 2, with a backfill for records released copies wrote.
 - `went` bites at stage 3: a redraw of a talk address after a move would reopen the old trip, so opening happens only on a move, and a stale address is replaced centrally.
-- `#/talk` and `#/plan` redirect only while a trip is open, until stage 7.
+- `#/talk` and `#/plan` redirect only while a trip is open, until stage 7. Since stage 7 they go to the open conversation's address, the draft's too, and home only when nothing is open (no draft could be made).
 - `start_trip`'s refusal and snapshot text ship in stage 4 with chats; `list_trips` changes in stage 5.
 - Notifications open their trip through a new `annai.open` message, because `keepNews` and `onPushMessage` carry no scope.
 - A spoken yes needs `Agent.confirm` and `kokoro.confirmHeard`: `ask` is gated while Koe talks. Halves feeds `confirmHeard` from Koe's entries (the verdict, and a chat Koe's words) and from where each line first exists, with when it began (live: the session's transcript as it arrives, `LiveHost.heard`; a chat Koe: its microphone's segment, `Half.speech`, and then the line itself, before Koe routes it, `Half.card`, which takes one that arms the card, `Agent.cardTakes`), and `confirmSpeech` from who is speaking and whether a line was just said (`LiveHost.speech`: a turn's start and end; `Half.speech`: speech starting, and a segment with its begin time and whether annai's voice was playing then).

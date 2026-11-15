@@ -25,14 +25,11 @@ const bookings = (hotel) => [
   { name: 'sleep', input: {} },
 ];
 
-test("the user's evening: on Trips with no trip open, + with the flight PDF and the hotel screenshot; Shiori starts Anchorage · Nov 20–27 and it opens; the Plan has the flight on Nov 20 with Seattle and Anchorage times, and the stay with its check-in, nights and check-out; the flight's details show the PDF; Open the original and Back; nothing asked where a file goes; Ask Shiori about this with \"the seat is 14D\" fixes the seat", async ({ page }) => {
+test("the user's evening: with no trip open, the type box with the flight PDF and the hotel screenshot; Shiori makes the new conversation Anchorage · Nov 20–27; the Plan has the flight on Nov 20 with Seattle and Anchorage times, and the stay with its check-in, nights and check-out; the flight's details show the PDF; Open the original and Back; nothing asked where a file goes; Ask Shiori about this with \"the seat is 14D\" fixes the seat", async ({ page }) => {
   const llm = await startModelServer({ [MESSAGES]: [
     sse(anthropicToolReply([{ name: 'list_trips', input: {} }])),
-    (/** @type {any} */ body) => sse(anthropicToolReply([{ name: 'start_trip', input: {
-      title: TITLE, start: '2026-11-20', end: '2026-11-27', places: ['Anchorage'], recap: 'A week in Testville with Sam',
-      files: ['/waiting/files/flight.pdf', /\/waiting\/files\/hotel\.[a-z]+/.exec(asText(body))?.[0] ?? '/waiting/files/hotel.png'],
-    } }])),
-    sse(anthropicToolReply([{ name: 'speak', input: { text: `I started ${TITLE}.` } }, { name: 'sleep', input: {} }])),
+    // In the new conversation, open when nothing else is (timeline stage 7): a chat becomes the trip by its own dates.
+    sse(anthropicToolReply([{ name: 'patch', input: { path: '/trip/trip.json', changes: { title: TITLE, start: '2026-11-20', end: '2026-11-27', places: ['Anchorage'] } } }])),
     (/** @type {any} */ body) => sse(anthropicToolReply(bookings((/\/trip(\/files\/hotel\.[a-z]+)/.exec(asText(body))?.[1]) ?? '/files/hotel.png'))),
     // From here on, by what was said: the ask fixes the seat, then she says so; anything else, she sleeps.
     (/** @type {any} */ body) => {
@@ -49,17 +46,19 @@ test("the user's evening: on Trips with no trip open, + with the flight PDF and 
     await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
     await page.getByRole('button', { name: 'Add to main' }).click();
     await expect(page.getByLabel('Add a model to main').locator('option', { hasText: 'b-model' })).toHaveCount(0);
-    await page.goto('/#/talk'); // the no-trip conversation: the dock at rest on home has no type button (timeline stage 4)
-    await expect(page.getByRole('heading', { name: 'Conversation', exact: true })).toBeVisible();
+    await page.goto('/#/talk'); // the open conversation: the new one, as nothing else is open; the dock at rest on home has no type button
+    await expect(page.getByRole('heading', { name: 'Conversation', exact: true })).toBeAttached();
+    const id = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
 
-    // 1. No trip open: + with the flight PDF and the hotel screenshot, no words.
+    // 1. No trip open: the box's + with the flight PDF and the hotel screenshot, no words.
     await page.getByRole('button', { name: 'Type', exact: true }).click();
     await page.getByLabel('Give Shiori photos or files').setInputFiles([await fixture('flight.pdf', 'application/pdf'), await fixture('hotel.png', 'image/png')]);
     await expect(page.locator('.type-sheet .attach-chip')).toHaveCount(2);
     await page.getByRole('button', { name: 'Send', exact: true }).click();
-    // 2. She started the trip, and it opened.
+    // 2. She made this conversation the trip.
     await expect(page.locator('.convo').getByText('Your flights and the stay are on the plan. Is check-out at 11:00?')).toBeVisible({ timeout: 60_000 });
     await expect(page.locator('.talk-head .talk-name')).toHaveText(TITLE); // the trip's name heads its conversation (timeline stage 3)
+    expect(new URL(page.url()).hash).toBe(`#/trip/${id}/talk`); // the same conversation, now a trip
     // 6. Nothing asked where a file goes.
     await expect(page.locator('.convo .shiori .acts button')).toHaveCount(0);
 

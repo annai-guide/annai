@@ -1,5 +1,5 @@
 import { normPath } from '../paths.js';
-import { ME, SYS_WAITING } from '../scopes.js';
+import { ME } from '../scopes.js';
 import { readAppSettings, updateAppSettings } from '../settings.js';
 import { anySignal } from '../signals.js';
 import { cut as cutAt } from '../web-search.js';
@@ -31,10 +31,10 @@ export const RESULT_MAX = 40_000;
 /**
  * The room a long text's piece leaves in its result (read's, read_trip's), so the result's own cut never takes the line that says how to read
  * on. read's needs the most: its note when a path's case differed, "(read <path>: the path's case differed)" and a line break, 34 characters
- * and the path, at most 520 (512 inside a scope, normPath, after /waiting); then "… N more characters; read again with from: N", 63 with
+ * and the path, at most 517 (512 inside a scope, normPath, after /trip, the longest root); then "… N more characters; read again with from: N", 63 with
  * numbers of 10 digits (no string holds 2^31 characters). read_trip's line is 68, its heading counted apart.
  */
-export const READ_ON = 34 + 520 + 63;
+export const READ_ON = 34 + 517 + 63;
 /**
  * How long one tool call may take before the model is told it didn't finish and the turn goes on (a mirror that
  * never answered held a turn 7 minutes). Above the longest a tool of annai's own allows itself, an MCP call's 2
@@ -137,28 +137,25 @@ export class Stuck {
 }
 
 /**
- * A path Shiori gives, as a scope and a path in it (spec §4.3): /trip/… is the open trip, /me/…
- * is the user's own files, and /waiting/… what the user handed her while no trip was open (the waiting space), seen only
- * then. Nothing else is in her view.
+ * A path Shiori gives, as a scope and a path in it (spec §4.3): /trip/… is the open conversation's, /me/… the user's own files. Nothing else is
+ * in her view (the waiting space's root went with the no-trip conversation, timeline stage 7).
  * @param {string} path @param {string | null} trip @returns {{ scope: string, path: string }}
  */
 export function resolvePath(path, trip) {
   const p = String(path ?? '');
-  const m = /^\/(trip|me|waiting)(\/.*)?$/.exec(p);
+  const m = /^\/(trip|me)(\/.*)?$/.exec(p);
   /* en */
-  if (!m) throw new Error(`Paths start with ${trip ? '/trip/ or /me/' : '/me/ or /waiting/ (no trip is open)'}, not ${p || 'nothing'}.`);
-  if (m[1] === 'trip' && !trip) /* en */ throw new Error('No trip is open, so /trip/ has nothing in it. Use /me/ for your own notes.');
-  /* en */
-  if (m[1] === 'waiting' && trip) throw new Error('/waiting/ holds what was handed to you while no trip was open; with a trip open, its files are in /trip/files/.');
+  if (!m) throw new Error(`Paths start with /trip/ or /me/, not ${p || 'nothing'}.`);
+  if (m[1] === 'trip' && !trip) /* en */ throw new Error('Nothing is open, so /trip/ has nothing in it. Use /me/ for your own notes.');
   // A folder keeps its trailing slash, and /trip or /me alone is the root.
   const raw = (m[2] || '/').replace(/\/{2,}/g, '/');
   const inner = raw === '/' ? '/' : `${normPath(raw.replace(/\/$/, ''))}${raw.endsWith('/') ? '/' : ''}`;
   if (inner === '/.annai' || inner.startsWith('/.annai/')) /* en */ throw new Error('/.annai is reserved for annai itself.');
-  return { scope: m[1] === 'trip' ? /** @type {string} */ (trip) : m[1] === 'waiting' ? SYS_WAITING : ME, path: inner };
+  return { scope: m[1] === 'trip' ? /** @type {string} */ (trip) : ME, path: inner };
 }
 
-/** The root a path Shiori gives starts with, as she writes it: /trip, /me or /waiting. @param {string} path */
-export const rootOf = (path) => /^\/(trip|waiting)(?=\/|$)/.exec(String(path))?.[0] ?? '/me';
+/** The root a path Shiori gives starts with, as she writes it: /trip or /me. @param {string} path */
+export const rootOf = (path) => /^\/trip(?=\/|$)/.exec(String(path))?.[0] ?? '/me';
 
 /** @param {import('../workspace.js').Workspace} ws @returns {Promise<Record<string, boolean>>} */
 export async function toolSwitches(ws) {

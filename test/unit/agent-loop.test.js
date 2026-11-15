@@ -1143,19 +1143,16 @@ test('opening another conversation while Shiori works: she stops, and a message 
   assert.match(userTexts(k.requests[1]), /second, typed while she thought/);
 });
 
-test('the "didn\'t answer" cards of two conversations name their own: the trip, or Me (the third emulator pass)', async (t) => {
+test('the "didn\'t answer" cards of two conversations name their own (the third emulator pass)', async (t) => {
   useClock(t);
-  const k = await agentKit([[{ text: 'Plain.' }, { text: 'Plain again.' }, { text: 'Plain.' }, { text: 'Plain again.' }, { text: 'Plain.' }, { text: 'Plain again.' }]]);
+  const k = await agentKit([[{ text: 'Plain.' }, { text: 'Plain again.' }, { text: 'Plain.' }, { text: 'Plain again.' }]]);
   const other = await createTrip(k.ws, { title: 'Kyoto' });
   k.agent.send('Hi');
   await k.agent.idle();
   await k.agent.open(other);
   k.agent.send('Hi');
   await k.agent.idle();
-  await k.agent.open(null);
-  k.agent.send('Hi');
-  await k.agent.idle();
-  assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.body.split(':')[0]), ['Big Sur', 'Kyoto', 'Me']);
+  assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.body.split(':')[0]), ['Big Sur', 'Kyoto']);
 });
 
 test('a turn cut by opening another conversation leaves a line in the one left, and a toast; she still picks it up when the user comes back (the third emulator pass)', async (t) => {
@@ -2506,17 +2503,14 @@ test("the trip screen's open failing says so, as Ask Shiori does", async () => {
   assert.equal(k.agent.target, k.trip, 'the conversation before is still the one open');
 });
 
-test("the trip screen opens a trip when you come to it, never at a redraw: Shiori's move to another trip stays, and a trip that won't open is left alone", async () => {
+test("the trip screen opens a trip when you come to it, never at a redraw: a move to another trip meanwhile stays, and a trip that won't open is left alone", async () => {
   const sleeps = { rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] };
   const k = await agentKit([sleeps], { halves: true, koe: { type: sleeps } });
   const road = await createTrip(k.ws, { title: 'Road' });
   const other = await createTrip(k.ws, { title: 'Other' });
   await k.agent.open(road);
   await k.agent.idle();
-  let went = 0;
-  k.agent.on('went', () => { went++; });
-  k.agent.openWhenDone(other);
-  await until(() => went > 0);
+  await k.agent.open(other); // the move (annai's card's Open, or a notification) while Road's screen shows
   assert.equal(k.agent.target, other);
   /** @type {any[]} */
   const cards = [];

@@ -1,4 +1,4 @@
-import { createTrip, listTrips, SYS_WAITING, kindOf, tripMirror, scopeTitle, talks } from '../scopes.js';
+import { createTrip, listTrips, kindOf, tripMirror, scopeTitle, talks } from '../scopes.js';
 import { resolvePath, rootOf, RESULT_MAX, READ_ON } from './tools.js';
 import { cut as cutAt } from '../web-search.js';
 import { storedTexts, record } from './log.js';
@@ -6,8 +6,7 @@ import { moveFile } from '../waiting.js';
 import { validate } from '../schema.js';
 import { tsv } from '../tsv.js';
 import { quotedPath, FILES_ONLY } from '../handover.js';
-import { importCalendar } from '../imports.js';
-import { validZone, deviceZone, isoInZone } from '../time.js';
+import { deviceZone, isoInZone } from '../time.js';
 import { timelineRows, talkedAt } from '../timeline.js';
 import { normPath, isTextType } from '../paths.js';
 import { theirs, quote, conversationLines } from './blocks.js';
@@ -30,7 +29,7 @@ import { dateRange, when } from '../intl.js';
 
 const DATE = { type: 'string', format: 'date' };
 /* en */
-const FILES = { type: 'array', items: { type: 'string' }, description: 'Paths of the files it is for: /waiting/files/… (no trip open) or /trip/files/…. Leave it out to take every file the user just handed you (in a dated trip, none).' };
+const FILES = { type: 'array', items: { type: 'string' }, description: 'Paths of the files it is for, in /trip/files/. Leave it out to take every file the user just handed you (in a dated trip, none).' };
 /* en */
 const RECAP = { type: 'string', maxLength: 500, description: "What was said before about it, in a sentence or two, written to the user in your own voice and the language you answer in: they see it as your line, first in that trip's conversation." };
 /* en */
@@ -47,7 +46,7 @@ const START = {
 };
 const OPEN = { type: 'object', required: ['trip'], properties: { trip: TRIP, recap: RECAP, files: FILES } };
 /* en */
-const MOVE = { type: 'object', required: ['path', 'trip'], properties: { path: { type: 'string', description: 'A file in /trip/files/ or /waiting/files/.' }, trip: TRIP } };
+const MOVE = { type: 'object', required: ['path', 'trip'], properties: { path: { type: 'string', description: 'A file in /trip/files/.' }, trip: TRIP } };
 /* en */
 const READ = {
   type: 'object', required: ['trip'],
@@ -89,11 +88,11 @@ export function tripTools(app) {
     /* en */
     if (errors.length) throw new Error(`Nothing was done: ${errors.join('; ')}. Dates are YYYY-MM-DD.`);
   };
-  /** A file of the open conversation's that may move: under /waiting/files/ or /trip/files/. @param {string} path @param {ToolCall} call */
+  /** A file of the open conversation's that may move: under /trip/files/. @param {string} path @param {ToolCall} call */
   const movable = (path, call) => {
     const at = resolvePath(path, call.trip);
     /* en */
-    if (!/^\/files\/[^/]+$/i.test(at.path) || (at.scope !== SYS_WAITING && kindOf(at.scope) !== 'trip')) throw new Error(`${path} isn't a file you can move: only files in /waiting/files/ or /trip/files/ move.`);
+    if (!/^\/files\/[^/]+$/i.test(at.path) || kindOf(at.scope) !== 'trip') throw new Error(`${path} isn't a file you can move: only files in /trip/files/ move.`);
     return at;
   };
   /**
@@ -124,18 +123,17 @@ export function tripTools(app) {
   /** Whether the call's conversation is a dated trip, by its trip.json (a chat becomes a trip by its own dates). @param {ToolCall} call */
   const dated = async (call) => Boolean(call.trip && (await ws.readJSON(call.trip, '/trip.json').catch(() => null))?.start);
   /**
-   * The files a call is for: those it names, or, with none named, the fresh files of the hand-over it was made for (waiting ones with no trip
-   * open, the conversation's own in a chat). A dated trip's stay unless named: start_trip there doesn't open what it starts.
+   * The files a call is for: those it names, or, with none named, the fresh files of the hand-over it was made for (the conversation's own, in a
+   * chat). A dated trip's stay unless named: start_trip there doesn't open what it starts.
    * @param {any} i @param {ToolCall} call
    */
   const filesOf = async (i, call) => {
     if (Array.isArray(i.files) && i.files.length) return findAll(i.files, call);
     if (await dated(call)) return [];
-    const root = call.trip ? '/trip' : '/waiting';
     const handed = (await handOvers(call)).flatMap((e) => (Array.isArray(e.data?.handed) ? e.data.handed : []));
-    const fresh = handed.filter((/** @type {any} */ f) => f?.new && String(f.path).startsWith(`${root}/files/`)).map((/** @type {any} */ f) => String(f.path));
+    const fresh = handed.filter((/** @type {any} */ f) => f?.new && String(f.path).startsWith('/trip/files/')).map((/** @type {any} */ f) => String(f.path));
     const there = [];
-    for (const p of fresh) if (await store.tx(['files'], 'readonly', (t) => t.getFile(call.trip ?? SYS_WAITING, p.slice(root.length)))) there.push(p);
+    for (const p of fresh) if (await store.tx(['files'], 'readonly', (t) => t.getFile(/** @type {string} */ (call.trip), p.slice('/trip'.length)))) there.push(p);
     return findAll(there, call);
   };
   /**
@@ -162,13 +160,6 @@ export function tripTools(app) {
       const there = await moveFile(ws, { scope: f.scope, path: f.path }, to, { ...handover, along });
       moved.set(f.shown, `/trip${there}`);
       if (along.length) planned.set(`/trip${there}`, along.length);
-      if (!calendar || f.scope !== SYS_WAITING) continue;
-      // A calendar file from the waiting space has its events planned in the trip it goes to, as one handed in a trip has (keepFiles),
-      // for the hand-over, so Undo takes them back; one it can't read is hers to read.
-      const tj = await ws.readJSON(to, '/trip.json').catch(() => null);
-      const defaultTz = [tj?.timezones?.[0], deviceZone()].find(validZone) ?? 'UTC';
-      const made = await importCalendar(ws, to, there, { defaultTz, author: 'shiori', ...handover }).catch(() => []);
-      if (made.length) planned.set(`/trip${there}`, made.length);
     }
     return moved;
   };
@@ -232,17 +223,18 @@ export function tripTools(app) {
         copies++;
       }
     }
+    const handedCopies = copies; // what the hand-overs left there: her cue says "their message" and "what they handed you" only of these
     // Copied as the user's, so it is their talking there too; a line with no words (yet: a heard one is written down after her turn) has none to copy.
     const last = started ? null : await lastLine(call.scope);
     if (last && !msgs.some((m) => m.seq === last.seq) && !NO_WORDS.includes(last.text.trim())) {
       wakes.push({ kind: 'user', text: last.text, handed: [], fromScope: call.scope });
       copies++;
     }
-    const from = call.trip ? await store.tx(['scopes'], 'readonly', (t) => t.getScope(call.scope)) : null;
+    const from = await store.tx(['scopes'], 'readonly', (t) => t.getScope(call.scope));
     /* en */
     const what = started
-      ? `You started this trip from ${call.trip ? "another trip's conversation" : 'the conversation outside any trip'}${msgs.length ? ', for what the user handed you there (their message is above)' : ''}.`
-      : `You moved the user here from ${from ? `another conversation, ${quote(scopeTitle(from))}` : 'the conversation outside any trip'}${msgs.length ? ', with what they handed you there,' : from ? ',' : ''} to carry on here${copies ? `: ${copies === 1 ? 'their line' : 'their lines'} from there ${copies === 1 ? 'is' : 'are'} above` : ''}.`;
+      ? `You started this trip from another trip's conversation${handedCopies ? ', for what the user handed you there (their message is above)' : ''}.`
+      : `You moved the user here from another conversation, ${quote(scopeTitle(/** @type {any} */ (from)))}${handedCopies ? ', with what they handed you there,' : ','} to carry on here${copies ? `: ${copies === 1 ? 'their line' : 'their lines'} from there ${copies === 1 ? 'is' : 'are'} above` : ''}.`;
     /* en */
     const before = recap ? ` Your recap of what was said there, which they see as your line: ${JSON.stringify(recap)}.` : '';
     // With no files, annai's own line to her (a cue): the screens show none for it, where a file wake would say she looked at files added.
@@ -457,12 +449,12 @@ export function tripTools(app) {
     },
     {
       name: 'start_trip', pluginId: 'core', group: 'Trips',
-      description: "Start a trip, named and dated from the bookings (\"Anchorage · Nov 20–27\"), for files the user handed you that fit no trip. Only a title is needed; with no trip open, the files the user just handed you go with it unless you name others. With no trip open, it opens once you are done here, its conversation beginning with the hand-over; with one open, it doesn't open, and its files wait to be read there.",
+      description: "Start another trip, named and dated from the bookings (\"Anchorage · Nov 20–27\"), for files the user handed you that fit no trip. Use it only in a dated trip: a conversation with no dates becomes a trip by patching its own /trip/trip.json. A title is all it needs. It doesn't open, and the files you name move into it to wait there to be read.",
       input: START,
       run: async (/** @type {any} */ i, /** @type {ToolCall} */ call) => {
         // In a chat it would start a second trip without opening it: a chat becomes a trip by its own trip.json.
         /* en */
-        if (call.trip && !(await dated(call))) throw new Error("This conversation has no dates yet, so it can't start another trip. If it is becoming a trip, patch /trip/trip.json with its title and dates.");
+        if (!(await dated(call))) throw new Error("This conversation has no dates yet, so it can't start another trip. If it is becoming a trip, patch /trip/trip.json with its title and dates.");
         check(START, i);
         const title = String(i.title).trim();
         /* en */
@@ -474,21 +466,20 @@ export function tripTools(app) {
         const m = await moveAll(files, id, call);
         for (const w of await cargo(m, call, { started: true, recap: i.recap })) await app.wake({ ...w, scope: id });
         await moved(id, true, m.size, call);
-        if (!call.trip) app.openWhenDone(id);
         /* en */
-        return `Started ${JSON.stringify(title)} (${id}).${named(m)} ${call.trip ? "A trip is open, so it doesn't open: its files wait to be read there. Tell the user where they went." : 'It opens when you are done here, and its conversation begins with the hand-over: you file the bookings there. Tell the user you started it.'}`;
+        return `Started ${JSON.stringify(title)} (${id}).${named(m)} It doesn't open.${m.size ? ' Its files wait to be read there. Tell the user where they went.' : ''}`;
       },
     },
     {
       name: 'open_trip', pluginId: 'core', group: 'Trips',
-      description: "Take the user into another of their trips or conversations (list_trips), to carry on there. annai asks them itself with its own card (\"Carry on in Kyoto?\", said aloud when voice is on), so don't ask them first or say you are taking them: call it, and their answer comes back. If they choose Open, that trip's conversation opens at once with your recap and the user's last line here, and the files they just handed you unless you name others; you answer them there, and this conversation stays as it is. From a conversation with no dates, only when they want to carry on there, or to look at something there that read_trip can't open; with no trip open, for the trip the files they handed you fit. Not in a dated trip.",
+      description: "Take the user into another of their trips or conversations (list_trips), to carry on there. annai asks them itself with its own card (\"Carry on in Kyoto?\", said aloud when voice is on), so don't ask them first or say you are taking them: call it, and their answer comes back. If they choose Open, that trip's conversation opens at once with your recap and the user's last line here, and the files they just handed you unless you name others; you answer them there, and this conversation stays as it is. From a conversation with no dates, only when they want to carry on there, or to look at something there that read_trip can't open. Not in a dated trip.",
       input: OPEN,
       run: async (/** @type {any} */ i, /** @type {ToolCall} */ call) => {
         check(OPEN, i);
         /* en */
         if (await dated(call)) throw new Error("A dated trip is open, so open_trip doesn't work here: the user can open that trip from Trips and carry on there. (Only to put one of this trip's files into it: move_file.)");
         /* en */
-        if (call.trip && i.trip === call.trip) throw new Error('That is this conversation: you are in it already.');
+        if (i.trip === call.trip) throw new Error('That is this conversation: you are in it already.');
         const rec = await activeTrip(i.trip);
         const files = await filesOf(i, call); // every file found before the card: a call it can't do is refused before the user is asked
         // Only the user moves the user (RULES 9): annai's own card, answered by their tap; nothing is written before.
@@ -499,7 +490,7 @@ export function tripTools(app) {
         if (got.stopped) return { content: STOPPED, isError: true };
         /* en */
         if (got.chosen === no) {
-          return `The user ${got.how === 'voice' ? 'said no' : 'tapped Not now'}: they stay here, and nothing moved. Carry on here, and don't call open_trip for ${quote(rec.title)} again unless they ask.${files.length ? " Start no trip for the files unless they ask." : ''}`;
+          return `The user ${got.how === 'voice' ? 'said no' : 'tapped Not now'}: they stay here, and nothing moved. Carry on here, and don't call open_trip for ${quote(rec.title)} again unless they ask.`;
         }
         if (got.chosen !== open) {
           /* en */

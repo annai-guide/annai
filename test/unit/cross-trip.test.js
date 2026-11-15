@@ -701,10 +701,10 @@ test("an honest import over a record an older annai left without its bytes: read
   }
 });
 
-test("the no-trip conversation reaches waiting files' content by hash; a trip doesn't", async () => {
+test("waiting files' content is reached by no conversation by hash: not `me` since timeline stage 7, nor a trip", async () => {
   const { store, ws, a } = await twoTrips();
   const flight = (await ws.write(SYS_WAITING, '/files/flight.pdf', new TextEncoder().encode('a flight'), { author: 'user', type: 'application/pdf' })).hash;
-  assert.equal(await canRead(store, ME, flight), true);
+  assert.equal(await canRead(store, ME, flight), false);
   assert.equal(await canRead(store, a, flight), false);
 });
 
