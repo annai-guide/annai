@@ -17,12 +17,12 @@ async function services(page) {
   /** @type {{ host: string, url: string, body: string, agent: string }[]} */
   const asked = [];
   const json = (/** @type {any} */ v) => ({ status: 200, contentType: 'application/json', headers: CORS, body: JSON.stringify(v) });
-  await page.route(/^https:\/\/(overpass-api\.de|overpass\.private\.coffee|en\.wikipedia\.org|en\.wikivoyage\.org)\//, (route) => {
+  await page.route(/^https:\/\/(overpass-api\.de|maps\.mail\.ru|en\.wikipedia\.org|en\.wikivoyage\.org)\//, (route) => {
     const req = route.request();
     if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
     const url = new URL(req.url());
     asked.push({ host: url.hostname, url: req.url(), body: decodeURIComponent(req.postData() ?? ''), agent: req.headers()['api-user-agent'] ?? '' });
-    if (url.hostname.includes('overpass')) {
+    if (url.pathname.endsWith('/api/interpreter')) {
       return route.fulfill(json({ elements: [{ type: 'node', id: 1, lat: 36.3712, lon: -121.902, tags: { name: 'Bixby Bridge Vista Point', tourism: 'viewpoint' } }, { type: 'node', id: 2, lat: 36.2203, lon: -121.7612, tags: { name: 'Nepenthe', amenity: 'restaurant' } }] }));
     }
     if (url.hostname === 'en.wikipedia.org') return route.fulfill(json({ query: { pages: [{ title: 'Big Sur', coordinates: [{ lat: 36.2704, lon: -121.8081 }], extract: 'Big Sur is a rugged section of the Central Coast of California.' }] } }));
@@ -53,6 +53,7 @@ test('the offline pack: its size before downloading, then OpenStreetMap, Wikiped
   const overpass = asked.filter((a) => a.host === 'overpass-api.de').map((a) => a.body);
   expect(overpass.some((b) => b.includes('around:5000,36.3715,-121.9017'))).toBe(true);
   expect(overpass.some((b) => b.includes('around:3000,36.3715,-121.9017,36.2213,-121.7567'))).toBe(true);
+  expect(asked.filter((a) => a.host === 'maps.mail.ru')).toEqual([]); // VK's server: its switch is off by default
   for (const a of asked.filter((x) => x.host.startsWith('en.'))) expect(a.agent).toMatch(/^annai\/\d+\.\d+\.\d+ \(https:\/\/annai\.guide\)$/);
   for (const a of asked.filter((x) => x.host === 'en.wikivoyage.org')) expect(a.url).not.toMatch(/coord|36\.\d|121\.\d/); // names, never a position (§11.7)
   await expect(page.getByRole('link', { name: /pack\.json|^o[0-9a-z]+\.json$/ })).toHaveCount(0); // the pack's files stay out of the file list

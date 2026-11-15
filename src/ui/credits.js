@@ -15,8 +15,8 @@ const CC_BY_SA = /* en */ { href: 'https://creativecommons.org/licenses/by-sa/4.
 export const SOURCES = [
   {
     name: 'OpenStreetMap',
-    hosts: ['overpass-api.de', 'overpass.private.coffee'],
-    use: t`Places nearby and along the itinerary, for Shiori's nearby tool and the offline pack, found through Overpass (overpass-api.de, or private.coffee's server when that one is busy).`,
+    hosts: ['overpass-api.de', 'z.overpass-api.de', 'lz4.overpass-api.de', 'maps.mail.ru'],
+    use: t`Places nearby and along the itinerary, for Shiori's nearby tool and the offline pack, found through Overpass at overpass-api.de, and at maps.mail.ru, run by VK, while Settings → Tools has it on.`,
     credit: /* en */ 'Map data © OpenStreetMap contributors, under the Open Database License.',
     links: /* en */ [{ href: 'https://www.openstreetmap.org/copyright', text: 'OpenStreetMap contributors' }],
   },

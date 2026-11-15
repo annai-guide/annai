@@ -42,6 +42,37 @@ test('Settings → Experimental: swiping between tabs is off by default, kept in
   await expect(page.locator('main.view')).toHaveCSS('touch-action', 'pan-y pinch-zoom');
 });
 
+test("Settings → Tools → OpenStreetMap: VK's server is off by default, kept in the app settings when ticked, which nearby and the offline pack read", async ({ page }) => {
+  await openApp(page, '#/tools');
+  const panel = page.getByRole('region', { name: 'OpenStreetMap' });
+  await expect(panel).toContainText('maps.mail.ru, run by VK, is asked too: it gets the point of each search for places nearby (to about 11 m)');
+  const vk = panel.getByRole('checkbox', { name: "Also ask VK's server (maps.mail.ru)" });
+  await expect(vk).not.toBeChecked();
+  const stored = () => page.evaluate(async () => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const { readAppSettings } = await load('/src/core/settings.js');
+    const { overpassServers } = await load('/src/core/pack/osm.js');
+    const store = await createIdbStore();
+    try {
+      return overpassServers(await readAppSettings(new Workspace(store)));
+    } finally {
+      store.close();
+    }
+  });
+  // The pack's list: overpass-api.de's servers in the order they are asked (each only after the one before refuses), and VK's last while ticked
+  // (`nearby` asks VK's at once beside them: overpassChains).
+  const family = ['https://overpass-api.de/api/interpreter', 'https://z.overpass-api.de/api/interpreter', 'https://lz4.overpass-api.de/api/interpreter'];
+  expect(await stored()).toEqual(family);
+  await vk.check();
+  await expect.poll(stored).toEqual([...family, 'https://maps.mail.ru/osm/tools/overpass/api/interpreter']);
+  await page.reload();
+  await expect(page.getByRole('checkbox', { name: "Also ask VK's server (maps.mail.ru)" })).toBeChecked();
+  await page.getByRole('checkbox', { name: "Also ask VK's server (maps.mail.ru)" }).uncheck();
+  await expect.poll(stored).toEqual(family);
+});
+
 test('Settings → Tools links the Jina key to Jina\'s main page, where the key can be copied, opening outside annai', async ({ page }) => {
   await openApp(page, '#/tools');
   const link = page.getByRole('link', { name: 'Get a free key from Jina' });

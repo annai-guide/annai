@@ -766,16 +766,16 @@ sejc5h	ok	{0} was switched off after errors.	{0}はエラーが続いたため�
 1uno44s	ok	It didn't provide a model provider.	モデルのプロバイダーが含まれていませんでした。	src/core/llm/service.js:266	Note: said of a plugin.
 2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	そのプラグインはannai公式のものではありません。入手元からもう一度インストールしてください。	src/core/llm/service.js:337	
 1fpv184	ok	the plugin it names doesn't provide models, so it wasn't installed.	指定されているプラグインはモデルを提供していないため、インストールされませんでした。	src/core/llm/service.js:346	
-3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:68	{0} = p.title
-1rb0o7n	ok	OpenStreetMap around {0}	{0}周辺のOpenStreetMap	src/core/pack/download.js:70	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
-hdsgog	ok	OpenStreetMap between {0} and {1}	{0}と{1}の間のOpenStreetMap	src/core/pack/download.js:70	{0} = a; {1} = b
-1ff3ec8	ok	Wikipedia near {0}	{0}付近のWikipedia	src/core/pack/download.js:71	{0} = a
-i9ok5g	ok	Wikipedia between {0} and {1}	{0}と{1}の間のWikipedia	src/core/pack/download.js:71	{0} = a; {1} = b
-1qn6l15	ok	{0} didn't answer in time.	{0}から時間内に応答がありませんでした。	src/core/pack/download.js:77	{0} = s.where
-16rip5y	ok	{0} stopped early: {1}.	{0}が途中で止まりました：{1}。	src/core/pack/download.js:78	{0} = s.where; {1} = s.remark; Note: {1} is the server's own words, in English.
-cvcpkl	ok	OpenStreetMap didn't answer ({0}).	OpenStreetMapから応答がありませんでした（{0}）。	src/core/pack/download.js:79	{0} = (s.inner ? failWords(s.inner) : s.message).replace(/[.。]$/u, '')
-rhruvr	ok	{0} said: {1}.	{0}の応答：{1}。	src/core/pack/download.js:80	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
-1a1kgp9	ok	Wikivoyage sent no text for {0}.	Wikivoyageから{0}の本文が届きませんでした。	src/core/pack/download.js:81	{0} = s.title
+3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:70	{0} = p.title
+1rb0o7n	ok	OpenStreetMap around {0}	{0}周辺のOpenStreetMap	src/core/pack/download.js:72	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
+hdsgog	ok	OpenStreetMap between {0} and {1}	{0}と{1}の間のOpenStreetMap	src/core/pack/download.js:72	{0} = a; {1} = b
+1ff3ec8	ok	Wikipedia near {0}	{0}付近のWikipedia	src/core/pack/download.js:73	{0} = a
+i9ok5g	ok	Wikipedia between {0} and {1}	{0}と{1}の間のWikipedia	src/core/pack/download.js:73	{0} = a; {1} = b
+1qn6l15	ok	{0} didn't answer in time.	{0}から時間内に応答がありませんでした。	src/core/pack/download.js:79	{0} = s.where
+16rip5y	ok	{0} stopped early: {1}.	{0}が途中で止まりました：{1}。	src/core/pack/download.js:80	{0} = s.where; {1} = s.remark; Note: {1} is the server's own words, in English.
+cvcpkl	ok	OpenStreetMap didn't answer ({0}).	OpenStreetMapから応答がありませんでした（{0}）。	src/core/pack/download.js:81	{0} = (s.inner ? failWords(s.inner) : s.message).replace(/[.。]$/u, '')
+rhruvr	ok	{0} said: {1}.	{0}の応答：{1}。	src/core/pack/download.js:82	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
+1a1kgp9	ok	Wikivoyage sent no text for {0}.	Wikivoyageから{0}の本文が届きませんでした。	src/core/pack/download.js:83	{0} = s.title
 aaicx8	ok	{0} couldn't be checked: {1}	{0}を確認できませんでした：{1}	src/core/package-updates.js:36	{0} = s.name ?? id; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
 mlem3w	ok	wasn't installed from an address, so annai has nowhere to look for an update	アドレスからインストールしたものではないため、更新を確認できません	src/core/package-updates.js:54	
 1nrhfbi	ok	the address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	そのアドレスのパッケージが別のもの（{0}）に変わっているため、アップデートしませんでした。そちらを使う場合は、これを削除してからインストールしてください。	src/core/package-updates.js:58	{0} = pkg.id
@@ -958,8 +958,8 @@ z6ass1	ok	annai sends {0} itself, so it can't be one of these headers. Leave tha
 129gp7y	ok	There is no MCP server called {0}.	「{0}」というMCPサーバーはありません。	src/plugins/mcp/index.js:275	{0} = name
 i69zke	ok	A server's name is 1 to 20 lowercase letters, digits and dashes, like trail.	サーバー名は、英小文字・数字・ハイフンの1〜20文字で入力してください（例：trail）。	src/plugins/mcp/index.js:314	Note: trail is an example name, as the form's placeholder; kept as written.
 ku5jlk	ok	There is a server called {0} already.	「{0}」というサーバーはすでにあります。	src/plugins/mcp/index.js:315	{0} = n
-126nbeu	ok	Places tools	場所ツール	src/plugins/places/index.js:15	Note: Places as its tool group is named in Settings → Tools (場所 / 地点).
-1gghsme	ok	nearby, geocode, reverse, weather and guide, from OpenStreetMap, Wikipedia, Nominatim, Open-Meteo and Wikivoyage.	nearby、geocode、reverse、weather、guide。OpenStreetMap、Wikipedia、Nominatim、Open-Meteo、Wikivoyageのデータを使います。	src/plugins/places/index.js:18	
+126nbeu	ok	Places tools	場所ツール	src/plugins/places/index.js:16	Note: Places as its tool group is named in Settings → Tools (場所 / 地点).
+1gghsme	ok	nearby, geocode, reverse, weather and guide, from OpenStreetMap, Wikipedia, Nominatim, Open-Meteo and Wikivoyage.	nearby、geocode、reverse、weather、guide。OpenStreetMap、Wikipedia、Nominatim、Open-Meteo、Wikivoyageのデータを使います。	src/plugins/places/index.js:19	
 143ff3s	ok	Sensors	センサー	src/plugins/sensors/index.js:6	
 3mo7sf	ok	Where the phone is (GPS, only while GPS is on in annai and annai is on screen), whether annai is on screen, and whether there is a connection.	端末の位置（GPS。annaiでGPSがオンで、annaiが画面に表示されている間だけ）、annaiが画面に表示されているかどうか、通信できるかどうか。	src/plugins/sensors/index.js:9	
 gec6zp	ok	Built-in skills	内蔵スキル	src/plugins/skills/index.js:15	
@@ -1016,7 +1016,7 @@ rcp6ga	ok	A photo was kept as it is	写真をそのまま保存しました	src/
 1uuz7zc	ok	Keeping {0} of {1}…	{1}件中{0}件目を保存しています…	src/ui/composer.js:180	{0} = num(Math.min(/** @type {number} */ (done) + 1, total)); {1} = num(total); Note: under the chips while the handed files are kept on the device, one at a time.
 1npepge	ok	Read it again	もう一度読み直してください	src/ui/composer.js:231	Note: What the user says to Shiori, one tap under a booking or file in the type box; sent as the user's words.
 158qnm7	ok	Ask Shiori about this	Shioriに聞く	src/ui/composer.js:232	Note: the button that puts the file in the type box as a chip, to write what is wrong or missing; 聞く (ask) is plain.
-zvizeb	ok	Places nearby and along the itinerary, for Shiori's nearby tool and the offline pack, found through Overpass (overpass-api.de, or private.coffee's server when that one is busy).	周辺や旅程沿いの場所。Shioriのnearbyツールとオフラインパックで使います。Overpass（overpass-api.de、混雑時はprivate.coffeeのサーバー）を通じて探します。	src/ui/credits.js:19	Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
+1waossz	ok	Places nearby and along the itinerary, for Shiori's nearby tool and the offline pack, found through Overpass at overpass-api.de, and at maps.mail.ru, run by VK, while Settings → Tools has it on.	周辺や旅程沿いの場所。Shioriのnearbyツールとオフラインパックで使います。Overpass（overpass-api.de）を通じて探し、「設定 → ツール」でチェックを入れている間は、VKが運営するmaps.mail.ruでも探します。	src/ui/credits.js:19	Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
 g4c01g	ok	Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.	名前から場所を探したり、地点から地名を調べたりします。Shioriのgeocodeとreverseツールで使い、無料検索の最後の手段として場所の公式サイトを探すのにも使います。利用ポリシーに従い、問い合わせは1秒に1回までにしています。	src/ui/credits.js:26	
 nn3bzj	ok	Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address. Free search's last resort, on whatever you tick, sends it the words searched.	周辺の場所に関する記事と、オフラインパックに入れるその要約。Shioriが読む記事にはそれぞれアドレスが付きます。無料検索の最後の手段は、チェックの有無にかかわらず、検索キーワードをWikipediaに送ります。	src/ui/credits.js:33	
 1ufrhy7	ok	Travel guides, for Shiori's guide tool and the offline pack, and where free search falls back to.	旅行ガイド。Shioriのguideツールとオフラインパックで使うほか、無料検索の予備にもなります。	src/ui/credits.js:40	Note: free search falls back to it; 代わり read as replacing free search.
@@ -2466,9 +2466,11 @@ oh3ukx	ok	Search via	検索方法	src/ui/screens/tools.js:74
 16y03zx	ok	A key is set. It stays on this device and is never shown again.	キーは設定済みです。この端末に保存され、二度と表示されません。	src/ui/screens/tools.js:78	
 7701gj	ok	Key saved.	キーを保存しました。	src/ui/screens/tools.js:85	
 s81kp3	ok	Save key	キーを保存	src/ui/screens/tools.js:87	
-r654x7	ok	Servers that give Shiori tools of their own, with a token or headers kept on this device.	Shioriに独自のツールを追加するサーバーです。トークンやヘッダーはこの端末に保存されます。	src/ui/screens/tools.js:93	
-vayo7x	ok	Tool switches	ツールのオン/オフ	src/ui/screens/tools.js:95	
-a2pqv8	ok	Every tool Shiori has, including plugins' tools. A switched-off tool is left out of her next request.	Shioriが使えるすべてのツール（プラグインのツールも含む）です。オフにしたツールは、次のリクエストから外されます。	src/ui/screens/tools.js:97	
+1g7t653	ok	Also ask VK's server (maps.mail.ru)	VKのサーバー（maps.mail.ru）にも問い合わせる	src/ui/screens/tools.js:94	Note: a tick's label, a short plain verb phrase (ja-style.md rule 4).
+1vzf1ff	ok	Places nearby and in the offline pack come from OpenStreetMap through overpass-api.de, which can be slow or busy; when it refuses or fails, its two backup servers are asked, one after the other. On, maps.mail.ru, run by VK, is asked too: it gets the point of each search for places nearby (to about 11 m) at the same time as overpass-api.de, and, when all three of overpass-api.de's servers fail a part of an offline pack, the trip's stops and the way between them. Off, only overpass-api.de's servers are asked.	周辺の場所とオフラインパックの場所は、OpenStreetMapのデータをoverpass-api.deから取得しています。overpass-api.deは遅くなったり混み合ったりすることがあり、断られたりエラーになったりしたときは予備の2台のサーバーに順番に問い合わせます。チェックを入れると、VKが運営するmaps.mail.ruにも問い合わせます。maps.mail.ruには、周辺の場所を探すたびにその地点（約11mの精度）がoverpass-api.deと同時に送られ、オフラインパックのダウンロードでは、overpass-api.deの3台のサーバーすべてで取得できなかった部分について、旅の立ち寄り先とその間の道のりも送られます。チェックを外すと、問い合わせ先はoverpass-api.deのサーバーだけです。	src/ui/screens/tools.js:95	Note: what is sent where, and when, is said exactly (translating.md: what leaves the phone; the English: the backups one after the other, VK at once for nearby and last for a pack). 立ち寄り先 for stops (ja-style.md).
+r654x7	ok	Servers that give Shiori tools of their own, with a token or headers kept on this device.	Shioriに独自のツールを追加するサーバーです。トークンやヘッダーはこの端末に保存されます。	src/ui/screens/tools.js:98	
+vayo7x	ok	Tool switches	ツールのオン/オフ	src/ui/screens/tools.js:100	
+a2pqv8	ok	Every tool Shiori has, including plugins' tools. A switched-off tool is left out of her next request.	Shioriが使えるすべてのツール（プラグインのツールも含む）です。オフにしたツールは、次のリクエストから外されます。	src/ui/screens/tools.js:102	
 1unt64g	ok	Everything	すべて	src/ui/screens/trace.js:35	
 6qsrkg	ok	Halves	KoeとKokoro	src/ui/screens/trace.js:35	Note: Shiori's two halves (glossary: halves).
 1swmtuu	ok	Errors	エラー	src/ui/screens/trace.js:36	

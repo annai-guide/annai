@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { runTool, TOOL_MS } from '../../src/core/agent/tools.js';
 import { Registry } from '../../src/core/registry.js';
@@ -6,7 +6,7 @@ import { PluginHost } from '../../src/core/plugins.js';
 import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes } from '../../src/core/scopes.js';
-import { ASK_MS, NOMINATIM_GAP } from '../../src/plugins/places/index.js';
+import { ASK_MS, NOMINATIM_GAP, OVERPASS_MS } from '../../src/plugins/places/index.js';
 
 // The emulator pass: a mirror that never answered held Shiori's turn for 7 minutes (shot 274).
 const tool = (/** @type {string} */ name, /** @type {any} */ run) => ({ name, description: `The ${name} tool.`, input: { type: 'object' }, run });
@@ -51,7 +51,8 @@ test('runTool: tools that wait for the user, and the helper of task, have no tim
 
 test('the time limit is above the longest any tool of annai sets itself: an MCP call (2 minutes)', () => {
   assert.ok(TOOL_MS.ms > 120_000);
-  assert.ok(ASK_MS.ms * 3 < TOOL_MS.ms, "three requests one after the other, each at its limit, still end before the tool's (nearby's three go at once)");
+  assert.ok(ASK_MS.ms * 3 < TOOL_MS.ms, "three requests one after the other, each at its limit, still end before the tool's (nearby asks Overpass's servers in turn under one limit of their own, OVERPASS_MS, with Wikipedia beside them)");
+  assert.ok(OVERPASS_MS < TOOL_MS.ms, "nearby's wait for Overpass ends before the tool's limit, which would call the whole tool off");
 });
 
 async function places() {
@@ -63,7 +64,7 @@ async function places() {
   const tools = Object.fromEntries(registry.entries('tool').map((e) => [e.item.name, e.item]));
   /** @type {string[]} */
   const asked = [];
-  /** A server that never answers, as overpass.private.coffee on 2026-10-21, until its request is called off. @param {string} url @param {any} init */
+  /** A server that never answers, as overpass.private.coffee from 2026-10-21 on, until its request is called off. @param {string} url @param {any} init */
   const hang = (url, init) => new Promise((_, reject) => {
     asked.push(url);
     init.signal?.addEventListener('abort', () => reject(init.signal.reason), { once: true });
@@ -71,21 +72,24 @@ async function places() {
   return { tools, asked, hang };
 }
 
-test('places: each request has its own time limit; nearby asks both Overpass mirrors and Wikipedia, and gives what answered', async () => {
-  const was = ASK_MS.ms;
-  ASK_MS.ms = 30;
+test("places: each request has its own time limit; nearby asks Overpass and Wikipedia, and gives what answered by Overpass's limit", async () => {
+  const { tools, asked, hang } = await places();
+  // Fake time, so Overpass's limit takes no real time.
+  mock.timers.enable({ apis: /** @type {any[]} */ (['setTimeout', 'AbortSignal.timeout']) });
   try {
-    const { tools, asked, hang } = await places();
     const wiki = { query: { geosearch: [{ title: 'McWay Falls', lat: 36.1577, lon: -121.6716, dist: 50 }] } };
-    const out = await tools.nearby.run({ lat: 36.158, lng: -121.672 }, {
+    const done = tools.nearby.run({ lat: 36.158, lng: -121.672 }, {
       ...call(), trip: null,
       fetch: async (/** @type {string} */ url, /** @type {any} */ init) => (url.includes('overpass') ? hang(url, init) : new Response(JSON.stringify(wiki))),
     });
-    assert.deepEqual(asked.map((u) => new URL(u).hostname), ['overpass-api.de', 'overpass.private.coffee']);
+    for (let k = 0; !asked.length && k < 1000; k++) await new Promise((r) => setImmediate(r));
+    mock.timers.tick(OVERPASS_MS);
+    const out = await done;
+    assert.deepEqual(asked.map((u) => new URL(u).hostname), ['overpass-api.de']);
     assert.match(out, /McWay Falls/);
     assert.match(out, /OpenStreetMap didn't answer; these are Wikipedia articles only\.$/);
   } finally {
-    ASK_MS.ms = was;
+    mock.timers.reset();
   }
 });
 

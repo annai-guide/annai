@@ -1,12 +1,20 @@
-import { test } from 'node:test';
+import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
 import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes, createTrip, ME } from '../../src/core/scopes.js';
+import { updateAppSettings } from '../../src/core/settings.js';
 import { tracedFetch } from '../../src/core/agent/net.js';
-import { NOMINATIM_GAP, ASK_MS } from '../../src/plugins/places/index.js';
+import { NOMINATIM_GAP, ASK_MS, OVERPASS_MS } from '../../src/plugins/places/index.js';
+
+/**
+ * overpass-api.de's answer to nearby's own default query (sights and food, 1000 m) at Tokyo Station, as it came to one server on
+ * 2026-11-14 through nearby's code, trimmed to a few elements: public landmark data, under the ODbL (its osm3s field says so).
+ */
+const TOKYO_ANSWER = JSON.parse(await readFile(new URL('../fixtures/places/overpass-tokyo.json', import.meta.url), 'utf8'));
 
 async function setup({ trip = false } = {}) {
   const registry = new Registry();
@@ -46,15 +54,6 @@ test('nearby: OpenStreetMap and Wikipedia together, nearest first, as TSV', asyn
   assert.match(body, /around:2000,36\.158,-121\.672/);
 });
 
-test('nearby: the second OpenStreetMap server when the first fails; Wikipedia alone, said so, when both do', async () => {
-  const { run, asked } = await setup();
-  const wiki = { query: { geosearch: [{ title: 'McWay Falls', lat: 36.1577, lon: -121.6716, dist: 50 }] } };
-  await run('nearby', McWay, (url) => (url.includes('overpass-api.de') ? new Response('', { status: 502 }) : url.includes('overpass') ? { elements: [] } : wiki));
-  assert.ok(asked.some((a) => a.url.includes('overpass.private.coffee')));
-  const out = await run('nearby', McWay, (url) => (url.includes('overpass') ? new Response('', { status: 504 }) : wiki));
-  assert.match(out, /OpenStreetMap didn't answer; these are Wikipedia articles only\.$/);
-});
-
 /**
  * A server that answers body after ms, or never (ms null), unless its request is stopped first; each step goes in log as "<step> <host>".
  * @param {string[]} log @param {string} url @param {any} init @param {number | null} ms @param {any} [body]
@@ -79,29 +78,246 @@ function server(log, url, init, ms, body) {
 const place = (/** @type {string} */ name) => ({ elements: [{ type: 'node', lat: 36.1585, lon: -121.6722, tags: { name, tourism: 'viewpoint' } }] });
 const wikiRow = { query: { geosearch: [{ title: 'McWay Falls', lat: 36.1577, lon: -121.6716, dist: 50 }] } };
 
-test('nearby asks both Overpass servers and Wikipedia at once: with neither server answering it waits one time limit, not one per server, and gives Wikipedia\'s rows as before', async () => {
-  const was = ASK_MS.ms;
-  // Short, so the test is quick, with a second's slack for a loaded machine; two limits one after the other (the old way) are twice it.
-  ASK_MS.ms = 1000;
+/** Turns Settings → Tools → "Also ask VK's server" on or off, as its tick saves it. @param {any} ws @param {boolean} on */
+const vk = (ws, on) => updateAppSettings(ws, { places: { vkOverpass: on } });
+
+test('nearby, with the VK switch on: maps.mail.ru\'s answer when overpass-api.de fails; Wikipedia alone, said busy, when both refuse', async () => {
+  const { run, asked, ws } = await setup();
+  await vk(ws, true);
+  const wiki = { query: { geosearch: [{ title: 'McWay Falls', lat: 36.1577, lon: -121.6716, dist: 50 }] } };
+  const other = await run('nearby', McWay, (url) => (url.includes('overpass-api.de') ? new Response('', { status: 502 }) : url.includes('overpass') ? place('VK Server Place') : wiki));
+  assert.ok(asked.some((a) => a.url === 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'));
+  assert.match(other, /VK Server Place\tviewpoint/);
+  const out = await run('nearby', McWay, (url) => (url.includes('overpass') ? new Response('', { status: 504 }) : wiki));
+  assert.match(out, /OpenStreetMap is busy; these are Wikipedia articles only\.$/);
+});
+
+const Tokyo = { lat: 35.6812, lng: 139.7671 };
+/** The name of the answer's first place, which nearby lists. */
+const TOKYO_PLACE = String(TOKYO_ANSWER.elements.find((/** @type {any} */ e) => e.tags?.name)?.tags.name);
+const tokyoWiki = { query: { geosearch: [{ title: 'Tokyo Station', lat: 35.6812, lon: 139.7671, dist: 0 }] } };
+/**
+ * Overpass refusing, as a day of hourly probes from one server saw it (2026-11-13/14): the status, and the remark the probe kept from the body
+ * (annai reads only the status). overpass-api.de: a 502 "Timeout" at 0.55 s; lz4.: a 504 "too busy" at 43 s; maps.mail.ru: a 504 at 1 s.
+ */
+const REFUSED = {
+  timeout: () => new Response('Timeout', { status: 502 }),
+  busy: () => new Response('timeout. The server is probably too busy to handle your request.', { status: 504 }),
+  gateway: () => new Response('', { status: 504 }),
+};
+/** Fake time for the timers nearby's limits use, so a 40 s answer takes no 40 s. */
+const FAKE_TIME = { apis: /** @type {any[]} */ (['setTimeout', 'AbortSignal.timeout']) };
+/** Lets what has started run, a turn at a time, until f holds (setImmediate is real time under FAKE_TIME); a thousand turns at most. @param {() => boolean} f */
+const until = async (f) => {
+  for (let k = 0; !f(); k++) {
+    if (k === 1000) throw new Error(`never came: ${f}`);
+    await new Promise((r) => setImmediate(r));
+  }
+};
+/** Lets what has started run for a few turns. */
+const turns = async () => {
+  for (let k = 0; k < 20; k++) await new Promise((r) => setImmediate(r));
+};
+
+test('nearby: an Overpass answer at 40 s is used, past the 25 s the other services get', async () => {
+  const { run, asked } = await setup();
+  /** @type {string[]} */
+  const log = [];
+  mock.timers.enable(FAKE_TIME);
   try {
-    const { run, asked } = await setup();
-    /** @type {string[]} */
-    const log = [];
-    const started = Date.now();
-    const out = await run('nearby', McWay, (url, init) => (url.includes('overpass') ? server(log, url, init, null) : wikiRow));
-    const took = Date.now() - started;
-    assert.deepEqual(asked.map((a) => new URL(a.url).hostname), ['overpass-api.de', 'overpass.private.coffee', 'en.wikipedia.org']);
-    assert.ok(asked[2].at - asked[0].at < ASK_MS.ms, 'all three asked before the first one\'s limit ran out');
-    assert.ok(took < 2 * ASK_MS.ms, `one wait, not two: ${took} ms`);
-    assert.match(out, /McWay Falls/);
-    assert.match(out, /\nOpenStreetMap didn't answer; these are Wikipedia articles only\.$/);
+    let out = '';
+    const done = run('nearby', Tokyo, (url, init) => (url.includes('overpass') ? server(log, url, init, 40_000, TOKYO_ANSWER) : tokyoWiki)).then((o) => { out = o; });
+    await until(() => asked.length >= 2);
+    mock.timers.tick(40_000);
+    await done;
+    assert.ok(out.split('\n').some((r) => r.startsWith(`${TOKYO_PLACE}\t`)), out);
+    assert.match(out, /\nTokyo Station\twikipedia article\t0\t/);
+    assert.doesNotMatch(out, /didn't answer|busy/);
+    assert.deepEqual(log, ['ask overpass-api.de', 'answer overpass-api.de']);
   } finally {
-    ASK_MS.ms = was;
+    mock.timers.reset();
   }
 });
 
-test('nearby: when both Overpass servers would answer, the first to answer is taken and the other request is stopped', async () => {
+test("nearby: overpass-api.de's answer at 51.3 s, the slowest of 24 hourly probes, is used: its backends are asked only after a refusal", async () => {
+  const { run, asked } = await setup();
+  /** @type {string[]} */
+  const log = [];
+  mock.timers.enable(FAKE_TIME);
+  try {
+    let out = '';
+    const done = run('nearby', Tokyo, (url, init) => (url.includes('overpass') ? server(log, url, init, 51_300, TOKYO_ANSWER) : tokyoWiki)).then((o) => { out = o; });
+    await until(() => asked.length >= 2);
+    mock.timers.tick(51_300);
+    await done;
+    assert.ok(out.split('\n').some((r) => r.startsWith(`${TOKYO_PLACE}\t`)), out);
+    assert.doesNotMatch(out, /didn't answer|busy/);
+    assert.deepEqual(log, ['ask overpass-api.de', 'answer overpass-api.de']);
+    assert.ok(!asked.some((a) => a.url.includes('z.overpass') || a.url.includes('lz4.')), 'z. and lz4. are not asked while it is still answering');
+  } finally {
+    mock.timers.reset();
+  }
+});
+
+test('nearby: every Overpass server refusing is "busy" as soon as the last one refuses, without waiting out the limit', async () => {
+  const { run, ws } = await setup();
+  const started = Date.now();
+  // overpass-api.de's 502 "Timeout", which came at 0.55 s.
+  assert.match(await run('nearby', Tokyo, (url) => (url.includes('overpass') ? REFUSED.timeout() : tokyoWiki)), /\nOpenStreetMap is busy; these are Wikipedia articles only\.$/);
+  await vk(ws, true);
+  const both = await run('nearby', Tokyo, (url) => (url.includes('overpass-api.de') ? REFUSED.busy() : url.includes('overpass') ? REFUSED.gateway() : tokyoWiki));
+  assert.match(both, /\nTokyo Station\t/);
+  assert.match(both, /\nOpenStreetMap is busy; these are Wikipedia articles only\.$/);
+  // Wikipedia down too: the call fails, saying which.
+  await assert.rejects(run('nearby', Tokyo, (url) => (url.includes('overpass') ? REFUSED.busy() : new Response('', { status: 503 }))),
+    { message: "OpenStreetMap is busy and Wikipedia didn't answer. Try again in a moment." });
+  // Overpass's 429 (too many requests) is busy too; a 406, which overpass-api.de sent node's default agent, is no answer.
+  await vk(ws, false);
+  assert.match(await run('nearby', Tokyo, (url) => (url.includes('overpass') ? new Response('', { status: 429 }) : tokyoWiki)), /\nOpenStreetMap is busy; these are Wikipedia articles only\.$/);
+  assert.match(await run('nearby', Tokyo, (url) => (url.includes('overpass') ? new Response('', { status: 406 }) : tokyoWiki)), /\nOpenStreetMap didn't answer; these are Wikipedia articles only\.$/);
+  assert.ok(Date.now() - started < ASK_MS.ms / 5, `no limit waited out: ${Date.now() - started} ms`);
+});
+
+test("nearby: an Overpass server that never answers is \"didn't answer\" at its limit, not before, though the other refused at once", async () => {
+  const { run, asked, ws } = await setup();
+  await vk(ws, true);
+  /** @type {string[]} */
+  const log = [];
+  mock.timers.enable(FAKE_TIME);
+  try {
+    /** @type {string | null} */
+    let out = null;
+    const done = run('nearby', Tokyo, (url, init) => (url.includes('overpass-api.de') ? server(log, url, init, null) : url.includes('overpass') ? REFUSED.gateway() : tokyoWiki))
+      .then((o) => { out = o; });
+    await until(() => asked.length >= 3);
+    mock.timers.tick(OVERPASS_MS - 1);
+    await turns();
+    assert.equal(out, null, 'still waiting for overpass-api.de a moment before its limit');
+    mock.timers.tick(1);
+    await done;
+    assert.match(String(out), /\nTokyo Station\t/);
+    assert.match(String(out), /\nOpenStreetMap didn't answer; these are Wikipedia articles only\.$/);
+    assert.deepEqual(log, ['ask overpass-api.de', 'stopped overpass-api.de']);
+  } finally {
+    mock.timers.reset();
+  }
+});
+
+test('nearby: the VK switch off asks overpass-api.de only (while it answers); on, maps.mail.ru too, at once, with the same query', async () => {
+  const { run, asked, ws } = await setup();
+  const answer = (/** @type {string} */ url) => (url.includes('overpass') ? TOKYO_ANSWER : tokyoWiki);
+  const overpass = () => asked.filter((a) => a.url.includes('overpass'));
+  await run('nearby', Tokyo, answer);
+  assert.deepEqual(overpass().map((a) => a.url), ['https://overpass-api.de/api/interpreter']);
+  asked.length = 0;
+  await vk(ws, true);
+  const out = await run('nearby', Tokyo, answer);
+  assert.deepEqual(overpass().map((a) => a.url), ['https://overpass-api.de/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter']);
+  assert.equal(overpass()[1].init.body, overpass()[0].init.body);
+  assert.ok(asked.indexOf(overpass()[1]) < asked.findIndex((a) => a.url.includes('wikipedia')), 'asked before Wikipedia: at once');
+  assert.ok(out.split('\n').some((r) => r.startsWith(`${TOKYO_PLACE}\t`)));
+  asked.length = 0;
+  await vk(ws, false);
+  await run('nearby', Tokyo, answer);
+  assert.deepEqual(overpass().map((a) => a.url), ['https://overpass-api.de/api/interpreter']);
+});
+
+/** overpass-api.de's three names, as the Overpass servers nearby asks. */
+const FAMILY = ['overpass-api.de', 'z.overpass-api.de', 'lz4.overpass-api.de'];
+/**
+ * Overpass servers that each refuse (with REFUSED's status) after ms, or answer with body, as `by` says; each step goes in log as "<step> <host>".
+ * @param {string[]} log @param {Record<string, any>} by host: the Response a refusal is, or the answer
+ * @param {number} [ms]
+ */
+const inTurn = (log, by, ms = 5) => (/** @type {string} */ url) => {
+  const host = new URL(url).hostname;
+  if (!url.includes('overpass') && !url.includes('mail.ru')) return tokyoWiki;
+  log.push(`ask ${host}`);
+  return new Promise((resolve) => setTimeout(() => {
+    log.push(`${by[host] instanceof Response || typeof by[host] === 'function' ? 'refused' : 'answer'} ${host}`);
+    resolve(typeof by[host] === 'function' ? by[host]() : by[host]);
+  }, ms));
+};
+
+test("nearby asks overpass-api.de, then z., then lz4., each only after the one before refuses: an answer costs one request, and the others aren't asked", async () => {
+  const { run, asked } = await setup();
+  /** @type {string[]} */
+  const log = [];
+  // The refusals of the probe's day: overpass-api.de's and z.'s 502 "Timeout"; lz4. answers.
+  const out = await run('nearby', Tokyo, inTurn(log, { 'overpass-api.de': REFUSED.timeout, 'z.overpass-api.de': REFUSED.timeout, 'lz4.overpass-api.de': TOKYO_ANSWER }));
+  assert.deepEqual(log, ['ask overpass-api.de', 'refused overpass-api.de', 'ask z.overpass-api.de', 'refused z.overpass-api.de', 'ask lz4.overpass-api.de', 'answer lz4.overpass-api.de']);
+  assert.ok(out.split('\n').some((r) => r.startsWith(`${TOKYO_PLACE}\t`)));
+  assert.doesNotMatch(out, /busy|didn't answer/);
+  const bodies = asked.filter((a) => a.url.includes('overpass')).map((a) => a.init.body);
+  assert.equal(new Set(bodies).size, 1, 'the same query each time');
+  // The first answering: the others are never asked.
+  log.length = 0;
+  await run('nearby', Tokyo, inTurn(log, { 'overpass-api.de': TOKYO_ANSWER }));
+  assert.deepEqual(log, ['ask overpass-api.de', 'answer overpass-api.de']);
+});
+
+test('nearby: all three of overpass-api.de\'s servers refusing, one after another, is "busy" when the last refuses, not before', async () => {
   const { run } = await setup();
+  /** @type {string[]} */
+  const log = [];
+  const out = await run('nearby', Tokyo, inTurn(log, { 'overpass-api.de': REFUSED.timeout, 'z.overpass-api.de': REFUSED.busy, 'lz4.overpass-api.de': REFUSED.timeout }));
+  assert.deepEqual(log, FAMILY.flatMap((h) => [`ask ${h}`, `refused ${h}`]));
+  assert.match(out, /\nOpenStreetMap is busy; these are Wikipedia articles only\.$/);
+  // One of them saying something else (a 406, no refusal for load) makes it "didn't answer".
+  const mixed = await run('nearby', Tokyo, inTurn([], { 'overpass-api.de': REFUSED.timeout, 'z.overpass-api.de': () => new Response('', { status: 406 }), 'lz4.overpass-api.de': REFUSED.timeout }));
+  assert.match(mixed, /\nOpenStreetMap didn't answer; these are Wikipedia articles only\.$/);
+});
+
+test("nearby: one limit for the whole turn of servers: overpass-api.de refusing at once, z. never answering, lz4. is never asked, and \"didn't answer\" comes at OVERPASS_MS", async () => {
+  const { run, asked } = await setup();
+  /** @type {string[]} */
+  const log = [];
+  mock.timers.enable(FAKE_TIME);
+  try {
+    /** @type {string | null} */
+    let out = null;
+    const done = run('nearby', Tokyo, (url, init) => (new URL(url).hostname === 'overpass-api.de' ? REFUSED.timeout() : url.includes('overpass') ? server(log, url, init, null) : tokyoWiki))
+      .then((o) => { out = o; });
+    await until(() => asked.some((a) => a.url.includes('z.overpass-api.de')));
+    mock.timers.tick(OVERPASS_MS - 1);
+    await turns();
+    assert.equal(out, null, 'still waiting for z. a moment before the limit');
+    mock.timers.tick(1);
+    await done;
+    assert.match(String(out), /\nOpenStreetMap didn't answer; these are Wikipedia articles only\.$/);
+    assert.deepEqual(log, ['ask z.overpass-api.de', 'stopped z.overpass-api.de']);
+    assert.ok(!asked.some((a) => a.url.includes('lz4.')), 'lz4. is not asked once the limit has run out');
+  } finally {
+    mock.timers.reset();
+  }
+});
+
+test('nearby asks both Overpass servers (the VK switch on) and Wikipedia at once: with neither server answering it waits one limit, not one per server, and gives Wikipedia\'s rows as before', async () => {
+  const { run, asked, ws } = await setup();
+  await vk(ws, true);
+  /** @type {string[]} */
+  const log = [];
+  mock.timers.enable(FAKE_TIME);
+  try {
+    /** @type {string | null} */
+    let out = null;
+    run('nearby', McWay, (url, init) => (url.includes('overpass') ? server(log, url, init, null) : wikiRow)).then((o) => { out = o; });
+    await until(() => asked.length >= 3);
+    assert.deepEqual(asked.map((a) => new URL(a.url).hostname), ['overpass-api.de', 'maps.mail.ru', 'en.wikipedia.org']);
+    // Two limits one after the other (the old way) would leave the second server still waited for here.
+    mock.timers.tick(OVERPASS_MS);
+    await turns();
+    assert.notEqual(out, null, 'one limit, not one per server');
+    assert.match(String(out), /McWay Falls/);
+    assert.match(String(out), /\nOpenStreetMap didn't answer; these are Wikipedia articles only\.$/);
+  } finally {
+    mock.timers.reset();
+  }
+});
+
+test('nearby, with the VK switch on: when both Overpass servers would answer, the first to answer is taken and the other request is stopped', async () => {
+  const { run, ws } = await setup();
+  await vk(ws, true);
   /** @type {string[]} */
   const log = [];
   const out = await run('nearby', McWay, (url, init) => {
@@ -111,26 +327,27 @@ test('nearby: when both Overpass servers would answer, the first to answer is ta
   });
   assert.match(out, /Fast Server Place/);
   assert.doesNotMatch(out, /Slow Server Place|didn't answer/);
-  assert.deepEqual(log, ['ask overpass-api.de', 'ask overpass.private.coffee', 'answer overpass.private.coffee', 'stopped overpass-api.de']);
+  assert.deepEqual(log, ['ask overpass-api.de', 'ask maps.mail.ru', 'answer maps.mail.ru', 'stopped overpass-api.de']);
 });
 
-test('nearby: a first Overpass answer that is no answer ("runtime error") is passed over for the other server\'s, asked at the same time', async () => {
+test('nearby: a first Overpass answer that is no answer ("runtime error") is passed over for the next server\'s, asked once it came', async () => {
   const { run } = await setup();
   /** @type {string[]} */
   const log = [];
   const timedOut = { elements: [], remark: 'runtime error: Query timed out in "query" at line 1 after 21 seconds.' };
   const out = await run('nearby', McWay, (url, init) => {
-    if (url.includes('overpass-api.de')) return server(log, url, init, 5, timedOut);
-    if (url.includes('overpass')) return server(log, url, init, 40, place('Second Server Place'));
+    if (new URL(url).hostname === 'overpass-api.de') return server(log, url, init, 5, timedOut);
+    if (url.includes('overpass')) return server(log, url, init, 5, place('Second Server Place'));
     return { query: { geosearch: [] } };
   });
   assert.match(out, /Second Server Place\tviewpoint/);
   assert.doesNotMatch(out, /didn't answer/);
-  assert.deepEqual(log, ['ask overpass-api.de', 'ask overpass.private.coffee', 'answer overpass-api.de', 'answer overpass.private.coffee']);
+  assert.deepEqual(log, ['ask overpass-api.de', 'answer overpass-api.de', 'ask z.overpass-api.de', 'answer z.overpass-api.de']);
 });
 
-test("nearby: the Trace has a net.request line for each request with its own time, the stopped one's too", async () => {
+test("nearby, with the VK switch on: the Trace has a net.request line for each request with its own time, the stopped one's too", async () => {
   const { run, ws } = await setup();
+  await vk(ws, true);
   /** @type {string[]} */
   const log = [];
   const get = (/** @type {string} */ url, /** @type {any} */ init) => {
@@ -147,22 +364,24 @@ test("nearby: the Trace has a net.request line for each request with its own tim
   assert.equal(lines.length, 3);
   assert.equal(by['overpass-api.de'].status, 200);
   assert.ok(by['overpass-api.de'].ms >= 15, `its own time: ${by['overpass-api.de'].ms} ms`);
-  assert.equal(by['overpass.private.coffee'].status, 0, 'stopped: no answer');
-  assert.equal(by['overpass.private.coffee'].error, 'Stopped: the other Overpass server answered first.');
-  assert.ok(by['overpass.private.coffee'].ms < by['en.wikipedia.org'].ms, 'stopped as the first answered, not at the end');
+  assert.equal(by['maps.mail.ru'].status, 0, 'stopped: no answer');
+  assert.equal(by['maps.mail.ru'].error, 'Stopped: the other Overpass server answered first.');
+  assert.ok(by['maps.mail.ru'].ms < by['en.wikipedia.org'].ms, 'stopped as the first answered, not at the end');
   assert.equal(by['en.wikipedia.org'].status, 200);
   assert.ok(by['en.wikipedia.org'].ms >= 190, `its own time: ${by['en.wikipedia.org'].ms} ms`);
 });
 
-test("nearby: the user's stop stops all three requests at once, and the call ends as stopped, not as a service that didn't answer", async () => {
-  const { run } = await setup();
+test("nearby, with the VK switch on: the user's stop stops all three requests at once, and the call ends as stopped, not as a service that didn't answer", async () => {
+  const { run, ws } = await setup();
+  await vk(ws, true);
   /** @type {string[]} */
   const log = [];
   const stop = new AbortController();
   setTimeout(() => stop.abort(new DOMException('stopped', 'AbortError')), 20);
   const tools = (/** @type {string} */ url, /** @type {any} */ init) => server(log, url, init, null);
   await assert.rejects(run('nearby', McWay, tools, { signal: stop.signal }), { name: 'AbortError' });
-  assert.deepEqual(log.filter((x) => x.startsWith('stopped')).sort(), ['stopped en.wikipedia.org', 'stopped overpass-api.de', 'stopped overpass.private.coffee']);
+  assert.deepEqual(log.filter((x) => x.startsWith('stopped')).sort(), ['stopped en.wikipedia.org', 'stopped maps.mail.ru', 'stopped overpass-api.de']);
+  assert.deepEqual(log.filter((x) => x.startsWith('ask')).sort(), ['ask en.wikipedia.org', 'ask maps.mail.ru', 'ask overpass-api.de'], "stopped, so overpass-api.de's z. and lz4. are never asked after");
 });
 
 test('geocode and reverse through Nominatim, one request a second at most', async () => {
@@ -307,7 +526,9 @@ test("past the pack's edge nearby asks the services, and the pack fills in for a
   assert.match(down, /McWay Falls Overlook/);
   const half = await run('nearby', { ...McWay, radius: 8000 }, (url) => (url.includes('overpass') ? new Response('', { status: 504 }) : wiki));
   assert.match(half, /Partington Cove/);
-  assert.match(half, /\nOpenStreetMap didn't answer, so its places come from the offline pack \(downloaded 2026-10-16\)\.$/);
+  assert.match(half, /\nOpenStreetMap is busy, so its places come from the offline pack \(downloaded 2026-10-16\)\.$/);
+  const busyBoth = await run('nearby', { ...McWay, radius: 8000 }, () => new Response('', { status: 504 }));
+  assert.match(busyBoth, /\nOpenStreetMap is busy and Wikipedia didn't answer, so these come from the offline pack \(downloaded 2026-10-16\)\.$/);
   // Outside the pack, with both services down, it says so as before.
   await assert.rejects(run('nearby', { lat: 36.6, lng: -121.9 }, () => { throw new Error('offline'); }), /Neither OpenStreetMap nor Wikipedia answered/);
 });
@@ -369,8 +590,9 @@ test('a pack whose manifest has no download time says the day of its newest part
   assert.match(await run('guide', { place: 'Cambria' }, nothing), /^Cambria \(California\) \(Wikivoyage, offline pack\) https:\/\/en\.wikivoyage\.org\/wiki\/Cambria_\(California\)\n/);
 });
 
-test("nearby online takes an Overpass answer that says \"runtime error\" as no answer: the next server, then the pack, as for any failure", async () => {
+test("nearby online takes an Overpass answer that says \"runtime error\" as no answer: the next server (the VK switch on), then the pack, as for any failure", async () => {
   const { run, ws, trip } = await setup({ trip: true });
+  await vk(ws, true);
   await mcwayPack(ws, /** @type {string} */ (trip));
   const timedOut = { elements: [], remark: 'runtime error: Query timed out in "query" at line 1 after 21 seconds.' };
   const wiki = { query: { geosearch: [] } };

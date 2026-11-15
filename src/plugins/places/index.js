@@ -2,7 +2,8 @@ import { VERSION } from '../../app/version.js';
 import { sunTimes } from '../../core/sun.js';
 import { deviceZone, timeIn } from '../../core/time.js';
 import { answerJSON } from '../../core/answer.js';
-import { OVERPASS, KINDS, KIND_NAMES, overpassFilters, osmRow } from '../../core/pack/osm.js';
+import { overpassChains, KINDS, KIND_NAMES, overpassFilters, osmRow } from '../../core/pack/osm.js';
+import { readAppSettings } from '../../core/settings.js';
 import { loadPack } from '../../core/pack/read.js';
 import { anySignal } from '../../core/signals.js';
 import { NOMINATIM_GAP, nominatimTurn } from '../../core/nominatim.js';
@@ -24,12 +25,28 @@ const NOMINATIM = 'https://nominatim.openstreetmap.org';
 /* en */
 const CREDIT_OPEN_METEO = 'Weather data by Open-Meteo.com (https://open-meteo.com/, CC BY 4.0)';
 export { NOMINATIM_GAP };
-/** Each request's time limit, so a server that never answers is given up on: Overpass ends a query by 20 s ([timeout:20]), plus 5 to connect. */
+/**
+ * Each request's time limit, so a server that never answers is given up on: Wikipedia, Nominatim, Open-Meteo and Wikivoyage. 25 s,
+ * first sized for Overpass (its [timeout:20] plus 5 to connect), which has its own limit now (OVERPASS_MS); Wikipedia answered nearby's
+ * real checks from one server in 0.2 to 0.3 s (2026-11-14).
+ */
 export const ASK_MS = { ms: 25_000 };
+/**
+ * Overpass's time limit in nearby, one for all its servers together, sized so about 95% of the calls get their places. From 24 hourly
+ * probes (2026-11-14, nearby's default query, sights and food within 1000 m, from one server, at four landmarks), replaying this code's
+ * rule over each run's own times (overpass-api.de first, the next only after a refusal or a failure, one limit): 22 of 24 calls get places at 50 s
+ * and 23 of 24 (96%) at 55 s. The answers those calls would have had came in 27.5 to 51.3 s, the slowest being overpass-api.de's own, so
+ * 55 s (51.3 s rounded up to the next 5 s); the 24th call has all three refuse (in 1.7 s, "busy"), which no wait helps. Overpass's own
+ * "too busy" 504s (lz4.'s once, at 43.1 s; maps.mail.ru's at 43.8 to 50.5 s) came at 43 to 51 s, so waiting longer gains nothing. 24 of the 25 refusals of the three servers came in half a
+ * second (0.49 to 0.61 s, so asking the next in turn costs that much each); the other was lz4.'s 504 at 43.1 s.
+ */
+export const OVERPASS_MS = 55_000;
 
-/** A request within ASK_MS, saying past it who didn't answer. @param {any} call @param {string} url @param {RequestInit} init */
-async function ask(call, url, init) {
-  const late = AbortSignal.timeout(ASK_MS.ms);
+/**
+ * A request within its limit (ASK_MS unless given, or a limit already running that several requests share), saying past it who didn't answer.
+ * @param {any} call @param {string} url @param {RequestInit} init @param {AbortSignal} [late]
+ */
+async function ask(call, url, init, late = AbortSignal.timeout(ASK_MS.ms)) {
   const where = new URL(url).hostname;
   try {
     /* en */
@@ -150,12 +167,17 @@ export function activate(annai) {
         const at = `around:${radius},${round(i.lat)},${round(i.lng)}`;
         // Overpass cuts its output in id order, not by distance, so ask for plenty and keep the nearest 40.
         const query = `[out:json][timeout:20];(${overpassFilters(kinds).map((f) => `nwr(${at})${f};`).join('')});out center tags 400;`;
-        // All asked at once, so a call waits one ASK_MS at most; the first usable Overpass answer stops the other's request, with a
-        // reason the Trace shows (an Error: tracedFetch reads a DOMException AbortError as a stop with none).
+        // One limit, OVERPASS_MS, for all of Overpass, so a call waits that long at most. overpass-api.de's servers are asked in turn, the next
+        // only after the one before refuses or fails (an answer costs one request); VK's, while its switch is on, at once beside them
+        // (VK's switch is read at each call). The first usable answer stops the others' requests, with a reason the Trace shows (an Error:
+        // tracedFetch reads a DOMException AbortError as a stop with none).
+        const chains = overpassChains(await readAppSettings(annai.files));
+        const limit = AbortSignal.timeout(OVERPASS_MS);
         const won = new AbortController();
         const race = { ...call, signal: anySignal([call.signal, won.signal]) };
-        const overpass = Promise.any(OVERPASS.map(async (server) => {
-          const data = await json(server, race, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: `data=${encodeURIComponent(query)}` });
+        /** @param {string} server */
+        const overpassAnswer = async (server) => {
+          const data = await ask(race, server, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: `data=${encodeURIComponent(query)}` }, limit);
           // "runtime error: Query timed out": Overpass stopped early, and its places are cut off: no answer, as the pack takes it.
           if (typeof data?.remark === 'string' && /error/i.test(data.remark)) throw new Error(data.remark);
           /** @type {any[][]} */
@@ -166,22 +188,48 @@ export function activate(annai) {
             if (r) rows.push([r[1], r[2], Math.round(meters(i.lat, i.lng, r[3], r[4])), r[3], r[4], 'osm', [r[5], typeof e.tags?.opening_hours === 'string' ? `hours ${e.tags.opening_hours}` : ''].filter(Boolean).join(' · ')]);
           }
           return rows;
-        })).finally(() => won.abort(Object.assign(new Error(/* en */ 'Stopped: the other Overpass server answered first.'), { name: 'AbortError' })));
+        };
+        /** One operator's servers, in turn; stops asking once the limit has run out or the call is stopped. @param {string[]} servers */
+        const inTurn = async (servers) => {
+          /** @type {unknown[]} */
+          const errors = [];
+          for (const server of servers) {
+            if (limit.aborted || race.signal.aborted) break;
+            try {
+              return await overpassAnswer(server);
+            } catch (e) {
+              errors.push(e);
+            }
+          }
+          throw new AggregateError(errors, 'no Overpass server answered');
+        };
+        const overpass = Promise.any(chains.map(inTurn)).finally(() => won.abort(Object.assign(new Error(/* en */ 'Stopped: the other Overpass server answered first.'), { name: 'AbortError' })));
         const wikipedia = json(`https://en.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${round(i.lat)}%7C${round(i.lng)}&gsradius=${Math.min(radius, 10000)}&gslimit=30&format=json&origin=*`, call)
           .then((w) => (Array.isArray(w?.query?.geosearch) ? w.query.geosearch : []).filter((/** @type {any} */ g) => typeof g?.title === 'string')
             .map((/** @type {any} */ g) => [g.title, 'wikipedia article', Math.round(g.dist), round(g.lat), round(g.lon), 'wikipedia', `https://en.wikipedia.org/wiki/${encodeURIComponent(g.title.replace(/ /g, '_'))}`]));
-        // A service that didn't answer is null; a stopped call is no answer at all.
-        const [osm, wiki] = await Promise.all([overpass.catch(() => null), wikipedia.catch(() => null)]);
+        // A service that didn't answer is null; a stopped call is no answer at all. OpenStreetMap is busy when every server asked said so
+        // (a 429, or a 5xx: the 502 "Timeout" Overpass sends at once, a 504 "too busy"), known as the last one refuses. Another refusal
+        // (the 406 overpass-api.de sends an agent it won't serve) is no answer.
+        let busy = false;
+        const [osm, wiki] = await Promise.all([
+          overpass.catch((e) => {
+            const refusals = e instanceof AggregateError ? e.errors.flatMap((x) => (x instanceof AggregateError ? x.errors : [x])) : [];
+            busy = refusals.length > 0 && refusals.every((x) => x?.said?.code === 'status' && (x.said.status === 429 || x.said.status >= 500));
+            return null;
+          }),
+          wikipedia.catch(() => null),
+        ]);
         if (call.signal.aborted) throw /* en */ new DOMException('Stopped', 'AbortError');
         // What didn't answer comes from the pack, where the pack reaches (spec §17 rule 2).
         const missing = [osm === null ? 'OpenStreetMap' : '', wiki === null ? 'Wikipedia' : ''].filter(Boolean);
+        const why = busy ? `OpenStreetMap is busy${wiki === null ? " and Wikipedia didn't answer" : ''}` : `${missing.join(' and ')} didn't answer`;
         if (missing.length && pack?.touches(i)) {
           const what = missing.length === 2 ? 'these come' : osm === null ? 'its places come' : 'its articles come';
-          return `${answer([...(osm ?? pack.places(i, radius, kinds)), ...(wiki ?? pack.pages(i, radius))])}\n${missing.join(' and ')} didn't answer, so ${what} from the offline pack${pack.downloaded}.`;
+          return `${answer([...(osm ?? pack.places(i, radius, kinds)), ...(wiki ?? pack.pages(i, radius))])}\n${why}, so ${what} from the offline pack${pack.downloaded}.`;
         }
-        if (osm === null && wiki === null) throw new Error('Neither OpenStreetMap nor Wikipedia answered. Try again in a moment.');
+        if (osm === null && wiki === null) throw new Error(busy ? `${why}. Try again in a moment.` : 'Neither OpenStreetMap nor Wikipedia answered. Try again in a moment.');
         const out = answer([...(osm ?? []), ...(wiki ?? [])]);
-        return osm ? out : `${out}\nOpenStreetMap didn't answer; these are Wikipedia articles only.`;
+        return osm ? out : `${out}\n${why}; these are Wikipedia articles only.`;
       },
     },
     {

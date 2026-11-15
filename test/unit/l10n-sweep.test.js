@@ -114,8 +114,8 @@ test("an offline pack whose servers can't be reached: its failure keeps what it 
   const m = await downloadPack({ ws, scope: trip, fetch: tracedFetch(ws.store, trip, { tool: 'offline-pack' }, down), version: '9.9.9', gapMs: 0, busyMs: 1 });
   const [f] = m.failed;
   assert.equal(f.said?.code, 'osm');
-  assert.deepEqual(/** @type {any} */ (f.said).inner, { code: 'unreachable', where: 'overpass.private.coffee', info: 'Failed to fetch' });
-  assert.match(failWords(/** @type {any} */ (f.said)), /^OpenStreetMapから応答がありませんでした（overpass\.private\.coffeeに接続できませんでした（Failed to fetch）。オフラインになっていませんか？）。$/);
+  assert.deepEqual(/** @type {any} */ (f.said).inner, { code: 'unreachable', where: 'lz4.overpass-api.de', info: 'Failed to fetch' });
+  assert.match(failWords(/** @type {any} */ (f.said)), /^OpenStreetMapから応答がありませんでした（lz4\.overpass-api\.deに接続できませんでした（Failed to fetch）。オフラインになっていませんか？）。$/);
 });
 
 test("an export that fails while backing up: the hold keeps what it was in data, English in message, and its card says it in Japanese", async () => {

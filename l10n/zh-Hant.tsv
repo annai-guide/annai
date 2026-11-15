@@ -766,16 +766,16 @@ sejc5h	ok	{0} was switched off after errors.	{0} 因多次出錯已被關閉。	
 1uno44s	ok	It didn't provide a model provider.	未包含模型供應商。	src/core/llm/service.js:266	Note: said of a plugin.
 2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	該外掛程式不是 annai 官方的。請從原來的來源重新安裝。	src/core/llm/service.js:337	
 1fpv184	ok	the plugin it names doesn't provide models, so it wasn't installed.	它指定的外掛程式不提供模型，所以沒有安裝。	src/core/llm/service.js:346	
-3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:68	{0} = p.title
-1rb0o7n	ok	OpenStreetMap around {0}	{0} 周邊的 OpenStreetMap	src/core/pack/download.js:70	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
-hdsgog	ok	OpenStreetMap between {0} and {1}	{0} 與 {1} 之間的 OpenStreetMap	src/core/pack/download.js:70	{0} = a; {1} = b
-1ff3ec8	ok	Wikipedia near {0}	{0} 附近的 Wikipedia	src/core/pack/download.js:71	{0} = a
-i9ok5g	ok	Wikipedia between {0} and {1}	{0} 與 {1} 之間的 Wikipedia	src/core/pack/download.js:71	{0} = a; {1} = b
-1qn6l15	ok	{0} didn't answer in time.	{0} 回應逾時。	src/core/pack/download.js:77	{0} = s.where
-16rip5y	ok	{0} stopped early: {1}.	{0} 中途停止了：{1}。	src/core/pack/download.js:78	{0} = s.where; {1} = s.remark; Note: {1} is the server's own words, in English.
-cvcpkl	ok	OpenStreetMap didn't answer ({0}).	OpenStreetMap 沒有回應（{0}）。	src/core/pack/download.js:79	{0} = (s.inner ? failWords(s.inner) : s.message).replace(/[.。]$/u, '')
-rhruvr	ok	{0} said: {1}.	{0} 回覆：{1}。	src/core/pack/download.js:80	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
-1a1kgp9	ok	Wikivoyage sent no text for {0}.	Wikivoyage 沒有傳來 {0} 的內文。	src/core/pack/download.js:81	{0} = s.title
+3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:70	{0} = p.title
+1rb0o7n	ok	OpenStreetMap around {0}	{0} 周邊的 OpenStreetMap	src/core/pack/download.js:72	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
+hdsgog	ok	OpenStreetMap between {0} and {1}	{0} 與 {1} 之間的 OpenStreetMap	src/core/pack/download.js:72	{0} = a; {1} = b
+1ff3ec8	ok	Wikipedia near {0}	{0} 附近的 Wikipedia	src/core/pack/download.js:73	{0} = a
+i9ok5g	ok	Wikipedia between {0} and {1}	{0} 與 {1} 之間的 Wikipedia	src/core/pack/download.js:73	{0} = a; {1} = b
+1qn6l15	ok	{0} didn't answer in time.	{0} 回應逾時。	src/core/pack/download.js:79	{0} = s.where
+16rip5y	ok	{0} stopped early: {1}.	{0} 中途停止了：{1}。	src/core/pack/download.js:80	{0} = s.where; {1} = s.remark; Note: {1} is the server's own words, in English.
+cvcpkl	ok	OpenStreetMap didn't answer ({0}).	OpenStreetMap 沒有回應（{0}）。	src/core/pack/download.js:81	{0} = (s.inner ? failWords(s.inner) : s.message).replace(/[.。]$/u, '')
+rhruvr	ok	{0} said: {1}.	{0} 回覆：{1}。	src/core/pack/download.js:82	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
+1a1kgp9	ok	Wikivoyage sent no text for {0}.	Wikivoyage 沒有傳來 {0} 的內文。	src/core/pack/download.js:83	{0} = s.title
 aaicx8	ok	{0} couldn't be checked: {1}	無法檢查 {0}：{1}	src/core/package-updates.js:36	{0} = s.name ?? id; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
 mlem3w	ok	wasn't installed from an address, so annai has nowhere to look for an update	不是從網址安裝的，所以無法檢查更新	src/core/package-updates.js:54	
 1nrhfbi	ok	the address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	這個網址現在提供的是另一個套件（{0}），因此沒有更新。如果想用那個套件，請移除這個，再安裝那個。	src/core/package-updates.js:58	{0} = pkg.id; Note: Remove → 移除, as annai's Remove buttons say.
@@ -958,8 +958,8 @@ z6ass1	ok	annai sends {0} itself, so it can't be one of these headers. Leave tha
 129gp7y	ok	There is no MCP server called {0}.	沒有名為「{0}」的 MCP 伺服器。	src/plugins/mcp/index.js:275	{0} = name
 i69zke	ok	A server's name is 1 to 20 lowercase letters, digits and dashes, like trail.	伺服器名稱由 1 到 20 個小寫字母、數字和連字元組成，例如 trail。	src/plugins/mcp/index.js:314	Note: trail is an example name, as the form's placeholder; kept as written.
 ku5jlk	ok	There is a server called {0} already.	已經有名為「{0}」的伺服器了。	src/plugins/mcp/index.js:315	{0} = n
-126nbeu	ok	Places tools	地點工具	src/plugins/places/index.js:15	Note: Places as its tool group is named in Settings → Tools (場所 / 地點).
-1gghsme	ok	nearby, geocode, reverse, weather and guide, from OpenStreetMap, Wikipedia, Nominatim, Open-Meteo and Wikivoyage.	nearby、geocode、reverse、weather 和 guide，資料來自 OpenStreetMap、Wikipedia、Nominatim、Open-Meteo 和 Wikivoyage。	src/plugins/places/index.js:18	
+126nbeu	ok	Places tools	地點工具	src/plugins/places/index.js:16	Note: Places as its tool group is named in Settings → Tools (場所 / 地點).
+1gghsme	ok	nearby, geocode, reverse, weather and guide, from OpenStreetMap, Wikipedia, Nominatim, Open-Meteo and Wikivoyage.	nearby、geocode、reverse、weather 和 guide，資料來自 OpenStreetMap、Wikipedia、Nominatim、Open-Meteo 和 Wikivoyage。	src/plugins/places/index.js:19	
 143ff3s	ok	Sensors	感測器	src/plugins/sensors/index.js:6	
 3mo7sf	ok	Where the phone is (GPS, only while GPS is on in annai and annai is on screen), whether annai is on screen, and whether there is a connection.	手機的位置（GPS，僅在 annai 中開啟 GPS 且 annai 顯示在螢幕上時）、annai 是否顯示在螢幕上，以及是否有網路連線。	src/plugins/sensors/index.js:9	
 gec6zp	ok	Built-in skills	內建技能	src/plugins/skills/index.js:15	
@@ -1016,7 +1016,7 @@ rcp6ga	ok	A photo was kept as it is	照片已按原圖儲存	src/ui/composer.js:
 1uuz7zc	ok	Keeping {0} of {1}…	正在儲存 {0}/{1}…	src/ui/composer.js:180	{0} = num(Math.min(/** @type {number} */ (done) + 1, total)); {1} = num(total); Note: Taiwan wording: 儲存 as Storage (儲存空間).
 1npepge	ok	Read it again	再讀一遍	src/ui/composer.js:231	Note: Taiwan wording; what the user says to Shiori, one tap under a booking or file in the type box.
 158qnm7	ok	Ask Shiori about this	問問 Shiori	src/ui/composer.js:232	Note: Taiwan wording; the file is beside the button, so 問問 Shiori is enough.
-zvizeb	ok	Places nearby and along the itinerary, for Shiori's nearby tool and the offline pack, found through Overpass (overpass-api.de, or private.coffee's server when that one is busy).	附近和行程沿途的地點，供 Shiori 的 nearby 工具和離線資料包使用，透過 Overpass 查詢（overpass-api.de，忙碌時改用 private.coffee 的伺服器）。	src/ui/credits.js:19	Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
+1waossz	ok	Places nearby and along the itinerary, for Shiori's nearby tool and the offline pack, found through Overpass at overpass-api.de, and at maps.mail.ru, run by VK, while Settings → Tools has it on.	附近和行程沿途的地點，供 Shiori 的 nearby 工具和離線資料包使用，透過 Overpass 查詢（overpass-api.de）；在設定 → 工具中勾選時，也會透過 VK 營運的 maps.mail.ru 查詢。	src/ui/credits.js:19	Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
 g4c01g	ok	Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.	依名稱查詢地點，或依位置查出地名，供 Shiori 的 geocode 和 reverse 工具使用；作為免費搜尋的最後備案，還會查詢地點的官網。annai 遵照其使用政策，每秒最多請求一次。	src/ui/credits.js:26	
 nn3bzj	ok	Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address. Free search's last resort, on whatever you tick, sends it the words searched.	附近地點的相關文章，以及離線資料包中的文章摘要。Shiori 讀到的每篇文章都附帶連結。免費搜尋的最後備案不受勾選影響，會把搜尋字詞傳給它查詢。	src/ui/credits.js:33	
 1ufrhy7	ok	Travel guides, for Shiori's guide tool and the offline pack, and where free search falls back to.	旅遊指南，供 Shiori 的 guide 工具和離線資料包使用，也是免費搜尋的備選。	src/ui/credits.js:40	
@@ -2466,9 +2466,11 @@ oh3ukx	ok	Search via	搜尋方式	src/ui/screens/tools.js:74
 16y03zx	ok	A key is set. It stays on this device and is never shown again.	已設定金鑰。金鑰只儲存在本機，不會再次顯示。	src/ui/screens/tools.js:78	
 7701gj	ok	Key saved.	已儲存金鑰。	src/ui/screens/tools.js:85	
 s81kp3	ok	Save key	儲存金鑰	src/ui/screens/tools.js:87	
-r654x7	ok	Servers that give Shiori tools of their own, with a token or headers kept on this device.	為 Shiori 提供自有工具的伺服器，所需權杖或標頭儲存在本機。	src/ui/screens/tools.js:93	
-vayo7x	ok	Tool switches	工具開關	src/ui/screens/tools.js:95	
-a2pqv8	ok	Every tool Shiori has, including plugins' tools. A switched-off tool is left out of her next request.	Shiori 的所有工具，包括外掛程式提供的工具。關閉的工具不會出現在她的下一次請求中。	src/ui/screens/tools.js:97	
+1g7t653	ok	Also ask VK's server (maps.mail.ru)	也詢問 VK 的伺服器（maps.mail.ru）	src/ui/screens/tools.js:94	
+1vzf1ff	ok	Places nearby and in the offline pack come from OpenStreetMap through overpass-api.de, which can be slow or busy; when it refuses or fails, its two backup servers are asked, one after the other. On, maps.mail.ru, run by VK, is asked too: it gets the point of each search for places nearby (to about 11 m) at the same time as overpass-api.de, and, when all three of overpass-api.de's servers fail a part of an offline pack, the trip's stops and the way between them. Off, only overpass-api.de's servers are asked.	附近的地點和離線資料包中的地點來自 OpenStreetMap，透過 overpass-api.de 取得，該伺服器有時較慢或忙碌；它拒絕請求或出錯時，會依序詢問另外兩台備用伺服器。勾選後，也會詢問 VK 營運的 maps.mail.ru：每次搜尋附近地點時，會在詢問 overpass-api.de 的同時，把搜尋的位置（精確到約 11 公尺）傳送給它；下載離線資料包時，如果 overpass-api.de 的三台伺服器都沒能取得某一部分，還會把旅行的停留點及其間的路線傳送給它。取消勾選時，只詢問 overpass-api.de 的伺服器。	src/ui/screens/tools.js:95	Note: what is sent where, and when, is said exactly (translating.md: what leaves the phone; the English: the backups one after the other, VK at once for nearby and last for a pack).
+r654x7	ok	Servers that give Shiori tools of their own, with a token or headers kept on this device.	為 Shiori 提供自有工具的伺服器，所需權杖或標頭儲存在本機。	src/ui/screens/tools.js:98	
+vayo7x	ok	Tool switches	工具開關	src/ui/screens/tools.js:100	
+a2pqv8	ok	Every tool Shiori has, including plugins' tools. A switched-off tool is left out of her next request.	Shiori 的所有工具，包括外掛程式提供的工具。關閉的工具不會出現在她的下一次請求中。	src/ui/screens/tools.js:102	
 1unt64g	ok	Everything	全部	src/ui/screens/trace.js:35	
 6qsrkg	ok	Halves	Koe 和 Kokoro	src/ui/screens/trace.js:35	Note: Shiori's two halves (glossary: halves).
 1swmtuu	ok	Errors	錯誤	src/ui/screens/trace.js:36	

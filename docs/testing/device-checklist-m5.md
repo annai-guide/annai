@@ -40,7 +40,7 @@ Note what you see in the trip's Trace (kind: Live) after each part.
 
 ## The offline pack
 - [ ] On the trip's page, Offline pack shows "Download (about … KB)" before anything is downloaded. On Wi-Fi, tap it: it shows each part as it goes, then "Downloaded just now · … · … places, … Wikipedia summaries, … Wikivoyage guides" and the guides' names. When OpenStreetMap is busy this takes several minutes (8 for Big Sur on 2026-10-16); leave annai open, or tap Stop and later "Download the rest".
-- [ ] Trace → Web: the requests went to overpass-api.de, en.wikipedia.org and en.wikivoyage.org only, one at a time, about a second apart, and a "pack.download" line sums it up.
+- [ ] Trace → Web: the requests went to overpass-api.de (or its z. and lz4. servers, when it refuses a part; maps.mail.ru only with Settings → Tools → "Also ask VK's server" on, and then only after all three fail), en.wikipedia.org and en.wikivoyage.org only, one at a time, about a second apart, and a "pack.download" line sums it up.
 - [ ] Android, on Wi-Fi with the trip open: ask Shiori to add a stop to the plan. Within a few minutes the panel says "Downloaded just now" again, without a tap (Trace → Web: "by itself on Wi-Fi").
 - [ ] iPhone: the panel says Safari doesn't tell annai when it is on Wi-Fi; after a plan change it offers "Update (about … KB)".
 - [ ] Airplane mode, at a stop on the plan: ask "What's around here?" and "Tell me about Big Sur" (or the trip's destination). Shiori answers from the pack, and says it comes from the offline pack; Now says "Near …" a place the pack names.

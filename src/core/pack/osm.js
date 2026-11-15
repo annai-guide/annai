@@ -6,8 +6,31 @@
  *   "historic castle"); note: its website or Wikipedia tag; kinds: the kinds it is, comma-separated
  */
 
-/** The Overpass servers, in the order they are asked. */
-export const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];
+/**
+ * overpass-api.de's servers, asked in turn: the next only after the one before refuses or fails, so an answer costs one request. They are one
+ * operator's under its one usage policy (the OpenStreetMap wiki's Overpass API page: overpass-api.de hands requests round robin to z.
+ * and lz4., and the rule found there is 10,000 requests a day per user, a 2023 note), so a request goes on to the next name only when
+ * the one before refused or failed, never to all at once. A day of hourly probes from one server (2026-11-14, 24 runs of nearby's default query, sights and
+ * food within 1000 m, at four landmarks, to each server at once) chose them: overpass-api.de answered 13 of 24 (it refused 11 in half a
+ * second, in stretches of hours), z. 15, lz4. 18, and one of the three answered in 23 of 24; asked in turn, as nearby does, 23 of 24 calls get
+ * places within 55 s (nearby's OVERPASS_MS: replayed over each run's own times, 22 of 24 within 50 s); each allows a browser (CORS *).
+ * overpass.private.coffee and overpass.kumi.systems answered none in 60 s, so they went. The order is the user's pick: the main name first.
+ */
+const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://z.overpass-api.de/api/interpreter', 'https://lz4.overpass-api.de/api/interpreter'];
+/**
+ * VK's Overpass server, which gets the points asked about: asked too only while its switch is on (Settings → Tools, off by default).
+ * It answered 10 of 24 of the probe's runs, in 14 to 22 s, and refused 14: 7 at once, 7 at 44 to 51 s.
+ */
+const OVERPASS_VK = 'https://maps.mail.ru/osm/tools/overpass/api/interpreter';
+
+/**
+ * The Overpass servers to ask, by the app's settings, one list for each operator: a list's servers are asked in turn, and nearby asks
+ * the lists at once (VK's, while its switch is on, beside overpass-api.de's). @param {Record<string, any>} app
+ * @returns {string[][]}
+ */
+export const overpassChains = (app) => (app?.places?.vkOverpass === true ? [OVERPASS, [OVERPASS_VK]] : [OVERPASS]);
+/** The same servers in one list, in turn, as the pack asks them. @param {Record<string, any>} app */
+export const overpassServers = (app) => overpassChains(app).flat();
 
 /** Each kind's tags: a key, and the values it takes (matched whole), or null for any value. */
 export const KINDS = /** @type {Readonly<Record<string, [string, string | null][]>>} */ (Object.freeze({

@@ -2,11 +2,16 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { downloadPack, readManifest, MANIFEST, pathOf, STALE_MS } from '../../src/core/pack/download.js';
 import { planFor } from '../../src/core/pack/plan.js';
-import { packTrip, services, STOPS } from './pack-kit.js';
+import { updateAppSettings } from '../../src/core/settings.js';
+import { packTrip, services, overpass, STOPS } from './pack-kit.js';
 
 const V = '9.9.9';
 const files = async (/** @type {any} */ ws, /** @type {string} */ trip) => (await ws.list(trip, '/offline/')).map((/** @type {any} */ f) => f.path).sort();
 const body = (/** @type {any} */ a) => decodeURIComponent(String(a.init.body ?? '')).replace(/\+/g, ' ');
+/** The Overpass servers a download asked, each once, in the order first asked. @param {{ url: string }[]} asked */
+const overpassHosts = (asked) => [...new Set(asked.filter((a) => a.url.endsWith('/api/interpreter')).map((a) => new URL(a.url).hostname))];
+/** Turns Settings → Tools → "Also ask VK's server" on, as its tick saves it. @param {any} ws */
+const vkOn = (ws) => updateAppSettings(ws, { places: { vkOverpass: true } });
 
 test('each part once, a moment apart, into named files; the guides by name only', async () => {
   const { ws, trip } = await packTrip();
@@ -63,25 +68,56 @@ test('the next download asks only for what changed, and drops what the plan no l
   assert.equal(m.key, plan.key);
 });
 
-test("the second Overpass server when the first fails; a part that fails is noted, and the rest goes on", async () => {
+test("the VK switch off: a part asks overpass-api.de, then z., then lz4., each only after the one before refuses, and a refusal by all is a failure that names the last", async () => {
   const { ws, trip } = await packTrip();
-  const { fetch, asked } = services({
+  const { fetch, asked } = services({ overpass: () => new Response('', { status: 504 }) });
+  const m = await downloadPack({ ws, scope: trip, fetch, version: V, gapMs: 0, busyMs: 1 });
+  assert.deepEqual(overpassHosts(asked), ['overpass-api.de', 'z.overpass-api.de', 'lz4.overpass-api.de']);
+  assert.deepEqual(asked.filter((a) => a.url.endsWith('/api/interpreter')).slice(0, 3).map((a) => new URL(a.url).hostname), ['overpass-api.de', 'z.overpass-api.de', 'lz4.overpass-api.de'], 'in turn, for the first part');
+  assert.equal(m.failed[0].why, "OpenStreetMap didn't answer (lz4.overpass-api.de answered 504).");
+});
+
+test("a part's answer from overpass-api.de is the only request for it; after its 502 the next server is asked, and its answer is used", async () => {
+  const { ws, trip } = await packTrip();
+  /** @type {string[]} */
+  const log = [];
+  const { fetch } = services({
     overpass: (url, init) => {
-      if (url.includes('overpass-api.de')) return new Response('', { status: 429 });
-      return body({ init }).includes('around:3000') ? new Response('', { status: 504 }) : { elements: [] };
+      const host = new URL(url).hostname;
+      log.push(host);
+      // overpass-api.de refuses the second part's request at once (its 502 "Timeout"); z. answers it.
+      return host === 'overpass-api.de' && log.length === 2 ? new Response('Timeout', { status: 502 }) : overpass(url, init);
     },
   });
   const m = await downloadPack({ ws, scope: trip, fetch, version: V, gapMs: 0, busyMs: 1 });
-  assert.ok(asked.some((a) => a.url.includes('overpass.private.coffee')));
+  assert.deepEqual(log, ['overpass-api.de', 'overpass-api.de', 'z.overpass-api.de', 'overpass-api.de'], 'z. only after the refusal; the next part asks overpass-api.de first again');
+  assert.deepEqual(m.failed, []);
+});
+
+test("the VK switch on: maps.mail.ru, with the same query, when overpass-api.de fails; a part that fails is noted, and the rest goes on", async () => {
+  const { ws, trip } = await packTrip();
+  await vkOn(ws);
+  const { fetch, asked } = services({
+    overpass: (url, init) => {
+      if (url.includes('overpass-api.de')) return new Response('', { status: 429 });
+      return body({ init }).includes('around:3000') ? new Response('', { status: 504 }) : overpass(url, init);
+    },
+  });
+  const m = await downloadPack({ ws, scope: trip, fetch, version: V, gapMs: 0, busyMs: 1 });
+  assert.deepEqual(overpassHosts(asked), ['overpass-api.de', 'z.overpass-api.de', 'lz4.overpass-api.de', 'maps.mail.ru'], 'VK after the three, in turn');
+  const vk = asked.filter((a) => a.url === 'https://maps.mail.ru/osm/tools/overpass/api/interpreter');
+  assert.equal(vk.length, 3, 'once a part');
+  assert.deepEqual(new Set(vk.map(body)), new Set(asked.filter((a) => a.url.includes('overpass-api.de')).map(body)), 'the queries overpass-api.de and its servers were asked');
   // The log's English, and what the panel makes its words from (localization L5h): which part, and what went wrong, as data.
   assert.deepEqual(m.failed, [{
-    label: 'OpenStreetMap between Bixby Creek Bridge and Nepenthe', why: "OpenStreetMap didn't answer (overpass.private.coffee answered 504).",
+    label: 'OpenStreetMap between Bixby Creek Bridge and Nepenthe', why: "OpenStreetMap didn't answer (maps.mail.ru answered 504).",
     part: { source: 'osm', place: { how: 'between', names: ['Bixby Creek Bridge', 'Nepenthe'] } },
-    said: { code: 'osm', inner: { code: 'status', where: 'overpass.private.coffee', status: 504 }, message: 'overpass.private.coffee answered 504' },
+    said: { code: 'osm', inner: { code: 'status', where: 'maps.mail.ru', status: 504 }, message: 'maps.mail.ru answered 504' },
   }]);
   assert.deepEqual((await readManifest(ws, trip))?.failed, m.failed, 'kept as it was written');
   assert.equal(m.stopped, false);
   assert.equal(m.files.filter((f) => f.kind === 'osm').length, 2);
+  assert.deepEqual(JSON.parse(String(await ws.readText(trip, pathOf((await planFor(ws, trip)).parts[0])))).rows[0], ['n1', 'Bixby Bridge Vista Point', 'viewpoint', 36.3712, -121.902, '', 'sights']);
   assert.equal(m.guides.length, 2);
 });
 
@@ -98,7 +134,7 @@ test('three failures in a row stop it: no connection, broken answers and refusal
     wikipedia: () => ({ error: { code: 'maxlag', info: 'Waiting for a database server' } }),
   });
   const b = await downloadPack({ ws, scope: trip, fetch: broken.fetch, version: V, gapMs: 0 });
-  assert.match(b.failed[0].why, /overpass\.private\.coffee sent an answer annai can't read/);
+  assert.match(b.failed[0].why, /overpass-api\.de sent an answer annai can't read/);
   const remark = services({ overpass: () => ({ elements: [], remark: 'runtime error: Query timed out in "query" at line 1 after 61 seconds.' }) });
   const r = await downloadPack({ ws, scope: trip, fetch: remark.fetch, version: V, gapMs: 0 });
   assert.match(r.failed[0].why, /stopped early: runtime error: Query timed out/);
@@ -150,7 +186,7 @@ test("a service that doesn't answer in time is a failure that says so; a stop wh
   const hang = (/** @type {string} */ _url, /** @type {any} */ init) => new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(init.signal.reason)));
   const slow = services({ overpass: hang });
   const m = await downloadPack({ ws, scope: trip, fetch: slow.fetch, version: V, gapMs: 0, answerMs: 30 });
-  assert.equal(m.failed[0].why, "OpenStreetMap didn't answer (overpass.private.coffee didn't answer in time).");
+  assert.equal(m.failed[0].why, "OpenStreetMap didn't answer (lz4.overpass-api.de didn't answer in time).");
   assert.equal(m.stopped, true); // three in a row
   const abort = new AbortController();
   setTimeout(() => abort.abort(), 30);
@@ -159,14 +195,15 @@ test("a service that doesn't answer in time is a failure that says so; a stop wh
   assert.deepEqual(stopped.failed, []);
 });
 
-test("Overpass's 429 (too many requests) is waited out once before the other server is asked", async () => {
+test("Overpass's 429 (too many requests) is waited out once before the other server is asked (the VK switch on): an answer then, and maps.mail.ru isn't asked", async () => {
   const { ws, trip } = await packTrip();
+  await vkOn(ws);
   let busy = 1;
   const { fetch, asked } = services({ overpass: (url, init) => (url.includes('overpass-api.de') && busy-- > 0 ? new Response('', { status: 429 }) : { elements: [] }) });
   const m = await downloadPack({ ws, scope: trip, fetch, version: V, gapMs: 0, busyMs: 40 });
   const first = asked.filter((a) => a.url.includes('overpass')).slice(0, 2);
   assert.deepEqual(first.map((a) => new URL(a.url).hostname), ['overpass-api.de', 'overpass-api.de']);
   assert.ok(first[1].at - first[0].at >= 35, 'it waited');
-  assert.ok(!asked.some((a) => a.url.includes('private.coffee')));
+  assert.deepEqual(overpassHosts(asked), ['overpass-api.de']);
   assert.deepEqual(m.failed, []);
 });

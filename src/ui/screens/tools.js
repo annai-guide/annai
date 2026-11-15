@@ -1,4 +1,4 @@
-import { h, crumb, linkIn, t, field, autosave, savedRadios, savingNote, tc } from '../dom.js';
+import { h, crumb, linkIn, t, field, autosave, savedRadios, savedCheck, savingNote, tc } from '../dom.js';
 import { toolList, toolSwitches, setToolSwitch, ALWAYS_ON } from '../../core/agent/tools.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { modelOf, providerOf } from '../../core/llm/config.js';
@@ -88,6 +88,11 @@ export async function renderTools(ctx) {
         saving,
         hasKey ? h('button', { class: 'btn', type: 'button', onclick: async () => { await ctx.store.tx(['secrets'], 'readwrite', (/** @type {any} */ t) => t.deleteSecret('plugin:web:jina')); ctx.render(); } }, t`Remove key`) : null)),
     await searchPanel(ctx),
+    // VK's Overpass server for nearby and the offline pack (osm.js): off until ticked, since it gets the points asked about.
+    h('section', { class: 'panel', 'aria-label': /* en */ 'OpenStreetMap' },
+      h('h2', { class: 'section', text: /* en */ 'OpenStreetMap' }),
+      savedCheck(t`Also ask VK's server (maps.mail.ru)`, app.places?.vkOverpass === true, (on) => updateAppSettings(ctx.ws, { places: { vkOverpass: on } })).el,
+      h('p', { class: 'sub', text: t`Places nearby and in the offline pack come from OpenStreetMap through overpass-api.de, which can be slow or busy; when it refuses or fails, its two backup servers are asked, one after the other. On, maps.mail.ru, run by VK, is asked too: it gets the point of each search for places nearby (to about 11 m) at the same time as overpass-api.de, and, when all three of overpass-api.de's servers fail a part of an offline pack, the trip's stops and the way between them. Off, only overpass-api.de's servers are asked.` })),
     h('section', { class: 'panel', 'aria-label': t`MCP servers` },
       h('h2', { class: 'section', text: t`MCP servers` }),
       h('p', { class: 'sub', text: t`Servers that give Shiori tools of their own, with a token or headers kept on this device.` }),

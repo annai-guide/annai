@@ -1,6 +1,7 @@
-import { OVERPASS, overpassFilters, osmRow, KIND_NAMES } from './osm.js';
+import { overpassServers, overpassFilters, osmRow, KIND_NAMES } from './osm.js';
 import { planFor, guideTitles, hashId, labelOf, MAX_GUIDES, WIKI_RADIUS_M } from './plan.js';
 import { answerJSON, answerWords } from '../answer.js';
+import { readAppSettings } from '../settings.js';
 import { t } from '../l10n.js';
 import { meters } from '../live/geo.js';
 import { StorageFullError } from '../errors.js';
@@ -10,7 +11,8 @@ import { anySignal } from '../signals.js';
  * Downloads a trip's offline pack (spec §11.5), one request at a time with a second between them: the parts its plan needs that the pack
  * lacks or has from more than a month ago, then the Wikivoyage guides for the names the trip, the plan and the Wikipedia summaries give.
  * Parts the plan no longer needs go. Each part is a file in the trip, so a download that stops keeps what it got and the next goes on.
- * Positions go only to OpenStreetMap and Wikipedia (§11.7); Wikivoyage is asked about names, as the guide tool asks it.
+ * Positions go only to OpenStreetMap and Wikipedia (§11.7), and to VK's Overpass server while its switch is on; Wikivoyage is asked
+ * about names, as the guide tool asks it.
  * @typedef {import('../workspace.js').Workspace} Workspace
  * @typedef {(url: string, init?: RequestInit) => Promise<Response>} Fetch
  * @typedef {import('./plan.js').Part} Part
@@ -202,7 +204,8 @@ export async function downloadPack(o) {
     const part = { source: p.kind, place: p.place };
     progress(part);
     try {
-      const got = p.kind === 'osm' ? await osm(p, ask, () => pause(o.busyMs ?? BUSY_MS, signal)) : await wikipedia(p, ask, headers);
+      // The Overpass servers by the switch as it is now, part by part: turned off, VK's server is asked nothing more.
+      const got = p.kind === 'osm' ? await osm(p, ask, () => pause(o.busyMs ?? BUSY_MS, signal), overpassServers(await readAppSettings(ws))) : await wikipedia(p, ask, headers);
       if (!(await save({ id: p.id, kind: p.kind, path: pathOf(p), items: got.count }, got.content))) break;
       fails = 0;
     } catch (e) {
@@ -278,15 +281,15 @@ async function counted(ws, scope, files) {
 }
 
 /**
- * OpenStreetMap places for a part: every kind nearby knows, from the first Overpass server that answers.
- * @param {import('./plan.js').OsmPart} p @param {Ask} ask @param {() => Promise<unknown>} busy waits after a 429
+ * OpenStreetMap places for a part: every kind nearby knows, from the first Overpass server that answers, asked in turn.
+ * @param {import('./plan.js').OsmPart} p @param {Ask} ask @param {() => Promise<unknown>} busy waits after a 429 @param {string[]} servers
  */
-async function osm(p, ask, busy) {
+async function osm(p, ask, busy, servers) {
   const around = `around:${p.radius},${p.points.map((q) => q.join(',')).join(',')}`;
   const query = `[out:json][timeout:60];(${overpassFilters(KIND_NAMES).map((f) => `nwr(${around})${f};`).join('')});out center tags ${OSM_LIMIT};`;
   /** @type {unknown} */
   let last = null;
-  for (const server of OVERPASS) {
+  for (const server of servers) {
     const host = new URL(server).hostname;
     for (let tries = 0; tries < 2; tries++) {
       try {

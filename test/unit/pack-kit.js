@@ -66,7 +66,8 @@ export function services(o = {}) {
   const fetch = async (url, init = {}) => {
     asked.push({ url, init, at: Date.now() });
     const host = new URL(url).hostname;
-    const answer = host.includes('overpass') ? o.overpass ?? overpass : host === 'en.wikipedia.org' ? o.wikipedia ?? wikipedia : host === 'en.wikivoyage.org' ? o.wikivoyage ?? wikivoyage : () => new Response('', { status: 404 });
+    // Every Overpass server answers at /api/interpreter: overpass-api.de's, and VK's at maps.mail.ru/osm/tools/overpass.
+    const answer = url.endsWith('/api/interpreter') ? o.overpass ?? overpass : host === 'en.wikipedia.org' ? o.wikipedia ?? wikipedia : host === 'en.wikivoyage.org' ? o.wikivoyage ?? wikivoyage : () => new Response('', { status: 404 });
     const a = await answer(url, init);
     return a instanceof Response ? a : new Response(JSON.stringify(a));
   };
