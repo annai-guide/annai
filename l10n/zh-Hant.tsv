@@ -398,29 +398,29 @@ storage-webdav:kpd7yy	ok	The folder above {0} doesn't exist on the server, so an
 storage-webdav:nr7x2z	ok	Works: annai made the folder {0} and can keep its backups there.	測試通過：已建立資料夾 {0}，可以在其中儲存備份。	plugins-official/storage-webdav/index.js:139	{0} = shownOf(w.url)
 storage-webdav:1hxwq6b	ok	Works: annai can keep its backups in {0}.	測試通過：可以把備份儲存在 {0} 中。	plugins-official/storage-webdav/index.js:142	{0} = shownOf(w.url)
 1aajvdy	ok	Opening annai…	正在開啟 annai…	src/app/boot.js:37	
-1v76pcd	ok	annai is open in another tab	annai 已在另一個分頁中開啟	src/app/main.js:89	
-cohfbh	ok	Only one copy of annai runs at a time, so your trips stay consistent.	同一時間只能執行一個 annai，以確保旅行資料一致。	src/app/main.js:90	
-u0vojx	ok	Use it here	在這裡使用	src/app/main.js:91	
-p4x3of	ok	annai was opened in another tab	annai 已在另一個分頁中開啟	src/app/main.js:96	
-11qyuy7	ok	This tab has stopped, so your trips stay consistent.	為確保旅行資料一致，此分頁已停止執行。	src/app/main.js:97	
-1ku6bv3	ok	Use it here instead	改在這裡使用	src/app/main.js:98	
-fki4un	ok	Notifications	通知	src/app/main.js:255	
-1clzv4	ok	Settings → Models changed	設定 → 模型有變動	src/app/main.js:258	
-1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai 現在改以供應商來設定：一個供應商只需一個網址和一個金鑰，即可使用它提供的所有功能。你原本的端點（{0}）及其金鑰已移除，請在設定 → 模型中再新增一次。	src/app/main.js:259	{0} = list(moved.names, 'plain')
-whpd9d	ok	Open Models	前往模型設定	src/app/main.js:260	
-10renyj	ok	Plugins	外掛程式	src/app/main.js:271	
-1sp21de	ok	A new version of the {0} personality	性格「{0}」有新版本	src/app/main.js:367	{0} = o.name
-1yoe82	ok	Yours has your own edits, so it was kept as it is.	你的版本裡有你自己的修改，所以已保留原樣。	src/app/main.js:368	
-1n8cxuc	ok	Compare	比較	src/app/main.js:370	
-rzp4o3	ok	Keep mine	保留我的	src/app/main.js:371	
-1j662as	ok	Let Shiori merge	讓 Shiori 合併	src/app/main.js:372	
-x0ig66	ok	Something went wrong	出了點問題	src/app/main.js:424	
-1oy79dy	ok	annai kept running. The details are in Trace.	annai 仍在執行，詳情見「記錄」。	src/app/main.js:425	
-c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai 仍在執行，但沒能記下發生了什麼，所以「記錄」裡也沒有。如果反覆出現，請關閉 annai 再重新開啟。	src/app/main.js:425	
-11n1kcg	ok	Open Trace	開啟記錄	src/app/main.js:426	
-gt9ssw	ok	annai couldn't start	annai 無法啟動	src/app/main.js:437	
-6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反覆出現，可能是瀏覽器阻止了儲存（例如在無痕視窗中）。	src/app/main.js:439	
-982hh6	ok	Try again	重試	src/app/main.js:440	
+1v76pcd	ok	annai is open in another tab	annai 已在另一個分頁中開啟	src/app/main.js:90	
+cohfbh	ok	Only one copy of annai runs at a time, so your trips stay consistent.	同一時間只能執行一個 annai，以確保旅行資料一致。	src/app/main.js:91	
+u0vojx	ok	Use it here	在這裡使用	src/app/main.js:92	
+p4x3of	ok	annai was opened in another tab	annai 已在另一個分頁中開啟	src/app/main.js:97	
+11qyuy7	ok	This tab has stopped, so your trips stay consistent.	為確保旅行資料一致，此分頁已停止執行。	src/app/main.js:98	
+1ku6bv3	ok	Use it here instead	改在這裡使用	src/app/main.js:99	
+fki4un	ok	Notifications	通知	src/app/main.js:260	
+1clzv4	ok	Settings → Models changed	設定 → 模型有變動	src/app/main.js:263	
+1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai 現在改以供應商來設定：一個供應商只需一個網址和一個金鑰，即可使用它提供的所有功能。你原本的端點（{0}）及其金鑰已移除，請在設定 → 模型中再新增一次。	src/app/main.js:264	{0} = list(moved.names, 'plain')
+whpd9d	ok	Open Models	前往模型設定	src/app/main.js:265	
+10renyj	ok	Plugins	外掛程式	src/app/main.js:276	
+1sp21de	ok	A new version of the {0} personality	性格「{0}」有新版本	src/app/main.js:372	{0} = o.name
+1yoe82	ok	Yours has your own edits, so it was kept as it is.	你的版本裡有你自己的修改，所以已保留原樣。	src/app/main.js:373	
+1n8cxuc	ok	Compare	比較	src/app/main.js:375	
+rzp4o3	ok	Keep mine	保留我的	src/app/main.js:376	
+1j662as	ok	Let Shiori merge	讓 Shiori 合併	src/app/main.js:377	
+x0ig66	ok	Something went wrong	出了點問題	src/app/main.js:429	
+1oy79dy	ok	annai kept running. The details are in Trace.	annai 仍在執行，詳情見「記錄」。	src/app/main.js:430	
+c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai 仍在執行，但沒能記下發生了什麼，所以「記錄」裡也沒有。如果反覆出現，請關閉 annai 再重新開啟。	src/app/main.js:430	
+11n1kcg	ok	Open Trace	開啟記錄	src/app/main.js:431	
+gt9ssw	ok	annai couldn't start	annai 無法啟動	src/app/main.js:442	
+6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反覆出現，可能是瀏覽器阻止了儲存（例如在無痕視窗中）。	src/app/main.js:444	
+982hh6	ok	Try again	重試	src/app/main.js:445	
 1u3dm1p	ok	This address holds a name or password before an @. Leave it out.	這個網址的 @ 前面含有使用者名稱或密碼，請將它刪除。	src/core/address.js:68	
 1f8b0m5	ok	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	停留過的地點和停留時間，以地名表示；沒有地名的地點以座標表示，只精確到約 100 公尺。絕不傳送 GPS 軌跡本身。	src/core/after/recap.js:57	
 imb4zw	ok	How far you drove or walked between, the stamps, and the itinerary.	地點之間開車或步行的距離、紀念章和行程。	src/core/after/recap.js:58	
@@ -919,6 +919,7 @@ ihf6hd	ok	Her words go to the service behind {0} (Google's), to be spoken; they 
 14jkvn5	ok	Her words go to the service behind {0}, to be spoken; they aren't spoken on this phone.	她的話會傳給 {0} 背後的服務來朗讀，而不是在這支手機上朗讀。	src/core/voice/where.js:78	{0} = voice.name
 i7rrx1	ok	This voice is gone: it is skipped.	這個聲音已不存在，已跳過。	src/core/voice/where.js:80	
 mf44l1	ok	Her words go to {0}, which sends back the sound.	她的話會傳給 {0}，由它把聲音傳回。	src/core/voice/where.js:80	{0} = placeOf(cfg, id)
+jy2arc	draft	Waiting with Shiori	交給 Shiori 的檔案	src/core/waiting.js:37	context: a conversation's name; Note: the name annai gives the conversation the files handed to Shiori while no trip was open move into (timeline stage 7); Taiwan wording: 檔案 for files (glossary Files), 交給 for handed to.
 1izzjz4	ok	Trip record checks	旅行資料檢查	src/plugins/core-schemas/index.js:7	
 19upcdj	ok	Checks trip.json, itinerary items, bookings and watches when they are saved.	儲存時檢查 trip.json、行程項目、預訂和提醒條件。	src/plugins/core-schemas/index.js:10	Note: A watch is what live mode watches for (a time, a place, a change); no screen names one yet, so ja ウォッチ and zh 監測項 are a first pick.
 6t16a0	ok	File tools	檔案工具	src/plugins/files/index.js:16	
@@ -1710,28 +1711,28 @@ rfnd00	ok	Replace my settings	替換我的設定	src/ui/screens/import.js:196
 z9765v	ok	Restore API keys (keys already on this device are kept)	還原 API 金鑰（此裝置上已有的金鑰會保留）	src/ui/screens/import.js:198	
 tlkozp	ok	Reading…	正在讀取…	src/ui/screens/import.js:207	
 jbong3	ok	Reading {0} of {1}…	正在讀取（{0}/{1}）…	src/ui/screens/import.js:220	{0} = num(Math.min(done + 1, total)); {1} = num(total)
-i4v1g5	ok	Installing the plugins your providers use…	正在安裝供應商所需的外掛程式…	src/ui/screens/import.js:228	
-3wbwnq	ok	Open it	開啟	src/ui/screens/import.js:239	
-1xgy3zf#other	ok	# older copies moved to Archived.	已將 # 個較早的副本移到「已封存」。	src/ui/screens/import.js:240	plural; # = result.archived.length; English: "# older copy moved to Archived." (one), "# older copies moved to Archived." (other)
-j0c8lo	ok	Imported plugins arrive switched off. Turn on the ones you trust in Plugins.	匯入的外掛程式預設為關閉。請在「外掛程式」中開啟你信任的外掛程式。	src/ui/screens/import.js:243	
-3qem9k	ok	annai's next backup to that place builds on this one.	下次備份到那裡時會以此為基礎。	src/ui/screens/import.js:245	
-o7fto4	ok	Import	匯入	src/ui/screens/import.js:253	
-18d2xm5	ok	A backup of everything exported {0} from annai {1}.	{0}從 annai {1} 匯出的完整備份。	src/ui/screens/import.js:256	{0} = ago; {1} = app
-6fr2dj	ok	A backup of everything exported {0} from annai {1}, encrypted.	{0}從 annai {1} 匯出的完整備份，已加密。	src/ui/screens/import.js:256	{0} = ago; {1} = app
-12hmses	ok	Exported {0} from annai {1}, encrypted.	{0}從 annai {1} 匯出，已加密。	src/ui/screens/import.js:257	{0} = ago; {1} = app
-3kii3s	ok	Exported {0} from annai {1}.	{0}從 annai {1} 匯出。	src/ui/screens/import.js:257	{0} = ago; {1} = app
-7itrym	ok	There are no trips or conversations in this file.	此檔案中沒有旅行或對話。	src/ui/screens/import.js:260	
-1y35b48	ok	Restarting…	正在重新啟動…	src/ui/screens/import.js:276	
-5wjjb4	ok	Restart annai to use the imported settings and plugins.	重新啟動 annai 後即可使用匯入的設定和外掛程式。	src/ui/screens/import.js:281	
-1p9jpyr	ok	Installed what your providers use: {0}.	已安裝供應商所需的外掛程式：{0}。	src/ui/screens/import.js:291	{0} = list(g.installed, 'plain')
-c0u62t#other	ok	Kept your own API keys for {0}; the ones in the file weren't used.	已保留原有的 {0} API 金鑰，未使用檔案中的金鑰。	src/ui/screens/import.js:300	plural; # = n; {0} = list(names, 'plain'); English: "Kept your own API key for {0}; the one in the file wasn't used." (one), "Kept your own API keys for {0}; the ones in the file weren't used." (other)
-jsttcj#other	ok	Kept your own API keys; the ones in the file weren't used.	已保留原有的 API 金鑰，未使用檔案中的金鑰。	src/ui/screens/import.js:301	plural; # = n; English: "Kept your own API key; the one in the file wasn't used." (one), "Kept your own API keys; the ones in the file weren't used." (other)
-ci7mt7	ok	Add to {0}	新增到「{0}」	src/ui/screens/import.js:336	{0} = trip.title
-odevmc	ok	Adding {0} of {1}…	正在新增（{0}/{1}）…	src/ui/screens/import.js:345	{0} = num(Math.min(done + 1, total)); {1} = num(total)
-6u51xq#other	ok	Added {0}, and # itinerary items from the calendar	已新增 {0}，行事曆中的 # 個項目已加入行程	src/ui/screens/import.js:354	plural; # = planned.length; {0} = what; English: "Added {0}, and # itinerary item from the calendar" (one), "Added {0}, and # itinerary items from the calendar" (other); Note: {0} is what was added: a count phrase ("1 個檔案", "3 個檔案", "2 張照片"), never a path, so the space after the verb is right.
-f30m7u#other	ok	and # more photos	還有 # 張照片	src/ui/screens/import.js:373	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
-1cj3r6h	ok	Add only what you just shared yourself.	只新增你自己剛剛分享的內容。	src/ui/screens/import.js:376	
-1eim38p	ok	Also here: {0}, an annai backup or export. It isn't added with the rest; open it on its own.	這裡還有 {0}，是 annai 的備份或匯出檔案。它不會和其他內容一起新增，請單獨開啟。	src/ui/screens/import.js:380	{0} = a.file.name
+i4v1g5	ok	Installing the plugins your providers use…	正在安裝供應商所需的外掛程式…	src/ui/screens/import.js:230	
+3wbwnq	ok	Open it	開啟	src/ui/screens/import.js:241	
+1xgy3zf#other	ok	# older copies moved to Archived.	已將 # 個較早的副本移到「已封存」。	src/ui/screens/import.js:242	plural; # = result.archived.length; English: "# older copy moved to Archived." (one), "# older copies moved to Archived." (other)
+j0c8lo	ok	Imported plugins arrive switched off. Turn on the ones you trust in Plugins.	匯入的外掛程式預設為關閉。請在「外掛程式」中開啟你信任的外掛程式。	src/ui/screens/import.js:245	
+3qem9k	ok	annai's next backup to that place builds on this one.	下次備份到那裡時會以此為基礎。	src/ui/screens/import.js:247	
+o7fto4	ok	Import	匯入	src/ui/screens/import.js:255	
+18d2xm5	ok	A backup of everything exported {0} from annai {1}.	{0}從 annai {1} 匯出的完整備份。	src/ui/screens/import.js:258	{0} = ago; {1} = app
+6fr2dj	ok	A backup of everything exported {0} from annai {1}, encrypted.	{0}從 annai {1} 匯出的完整備份，已加密。	src/ui/screens/import.js:258	{0} = ago; {1} = app
+12hmses	ok	Exported {0} from annai {1}, encrypted.	{0}從 annai {1} 匯出，已加密。	src/ui/screens/import.js:259	{0} = ago; {1} = app
+3kii3s	ok	Exported {0} from annai {1}.	{0}從 annai {1} 匯出。	src/ui/screens/import.js:259	{0} = ago; {1} = app
+7itrym	ok	There are no trips or conversations in this file.	此檔案中沒有旅行或對話。	src/ui/screens/import.js:262	
+1y35b48	ok	Restarting…	正在重新啟動…	src/ui/screens/import.js:278	
+5wjjb4	ok	Restart annai to use the imported settings and plugins.	重新啟動 annai 後即可使用匯入的設定和外掛程式。	src/ui/screens/import.js:283	
+1p9jpyr	ok	Installed what your providers use: {0}.	已安裝供應商所需的外掛程式：{0}。	src/ui/screens/import.js:293	{0} = list(g.installed, 'plain')
+c0u62t#other	ok	Kept your own API keys for {0}; the ones in the file weren't used.	已保留原有的 {0} API 金鑰，未使用檔案中的金鑰。	src/ui/screens/import.js:302	plural; # = n; {0} = list(names, 'plain'); English: "Kept your own API key for {0}; the one in the file wasn't used." (one), "Kept your own API keys for {0}; the ones in the file weren't used." (other)
+jsttcj#other	ok	Kept your own API keys; the ones in the file weren't used.	已保留原有的 API 金鑰，未使用檔案中的金鑰。	src/ui/screens/import.js:303	plural; # = n; English: "Kept your own API key; the one in the file wasn't used." (one), "Kept your own API keys; the ones in the file weren't used." (other)
+ci7mt7	ok	Add to {0}	新增到「{0}」	src/ui/screens/import.js:338	{0} = trip.title
+odevmc	ok	Adding {0} of {1}…	正在新增（{0}/{1}）…	src/ui/screens/import.js:347	{0} = num(Math.min(done + 1, total)); {1} = num(total)
+6u51xq#other	ok	Added {0}, and # itinerary items from the calendar	已新增 {0}，行事曆中的 # 個項目已加入行程	src/ui/screens/import.js:356	plural; # = planned.length; {0} = what; English: "Added {0}, and # itinerary item from the calendar" (one), "Added {0}, and # itinerary items from the calendar" (other); Note: {0} is what was added: a count phrase ("1 個檔案", "3 個檔案", "2 張照片"), never a path, so the space after the verb is right.
+f30m7u#other	ok	and # more photos	還有 # 張照片	src/ui/screens/import.js:375	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
+1cj3r6h	ok	Add only what you just shared yourself.	只新增你自己剛剛分享的內容。	src/ui/screens/import.js:378	
+1eim38p	ok	Also here: {0}, an annai backup or export. It isn't added with the rest; open it on its own.	這裡還有 {0}，是 annai 的備份或匯出檔案。它不會和其他內容一起新增，請單獨開啟。	src/ui/screens/import.js:382	{0} = a.file.name
 qqpumv	ok	This isn't on the itinerary	這不在行程中	src/ui/screens/item.js:24	Note: Taiwan wording; Plan is 行程.
 15biluu	ok	Go to the itinerary	前往行程	src/ui/screens/item.js:25	Note: Taiwan wording; Plan is 行程.
 1wp3w0c	ok	All day, {0}	全天（{0}）	src/ui/screens/item.js:41	{0} = start; Note: Taiwan wording; {0} is the day.
@@ -2407,29 +2408,29 @@ puj2r7	ok	Next: {0} {1} {2}	接下來：{0} {1} {2}	src/ui/screens/talk.js:678	{
 1frlw7l	ok	Undo the dates Shiori set	復原 Shiori 設定的日期	src/ui/screens/talk.js:736	
 1l3merh	ok	Shiori set the dates	Shiori 設定了日期	src/ui/screens/talk.js:755	
 159f82q	ok	Undone	已復原	src/ui/screens/talk.js:757	
-1v37fcy	ok	Undo what Shiori did with these files	復原 Shiori 對這些檔案的操作	src/ui/screens/talk.js:839	Note: Taiwan wording: 復原 as Undo, 檔案.
-1nl0tpx	ok	Conversation menu	對話選單	src/ui/screens/talk.js:883	
-7flpxf	ok	Summarizing…	正在總結…	src/ui/screens/talk.js:950	
-12707g	ok	She couldn't summarize it. A card says why.	她沒能完成總結，原因請見卡片。	src/ui/screens/talk.js:952	
-5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	之前的對話已總結。每句話都還留在這裡，她也隨時能查到。	src/ui/screens/talk.js:952	
-u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在忙，請稍後再試。	src/ui/screens/talk.js:952	
-va2k72	ok	There is not enough yet to summarize.	內容還太少，無法總結。	src/ui/screens/talk.js:952	
-mienoe	ok	Summarize now	立即總結	src/ui/screens/talk.js:955	
-10sfmur	ok	Starting fresh…	正在重新開始…	src/ui/screens/talk.js:957	
-va77q0	ok	Start fresh?	要重新開始嗎？	src/ui/screens/talk.js:970	
-19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 會從這裡重新開始，不再記著之前的內容。之前的每句話都會留在對話裡，你可以隨時查看和搜尋，她也仍能查到。不會刪除任何內容。即時語音連線也會重新開始。	src/ui/screens/talk.js:971	Note: "A live voice session" is the glossary's Live voice (即時語音) and a live session (即時連線), not a voice she speaks with.
-czdqlz	ok	Start fresh	重新開始	src/ui/screens/talk.js:972	
-1h9wwbn	ok	She couldn't start fresh: {0}	她沒能重新開始：{0}	src/ui/screens/talk.js:982	{0} = messageOf(e)
-1thzla3	ok	Already fresh: nothing has been said since.	已經重新開始過了，之後還沒有新的對話。	src/ui/screens/talk.js:985	
-3fntk0	ok	Started fresh.	已重新開始。	src/ui/screens/talk.js:985	
-mg70bg	ok	The conversation is still opening. Try again in a moment.	對話還在載入，請稍後再試。	src/ui/screens/talk.js:985	
-p5pj7b	ok	There is nothing to start fresh from yet.	還沒有可以重新開始的內容。	src/ui/screens/talk.js:985	
-1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即總結：Shiori 現在就把之前的對話總結一下，讓對話保持精簡。每句話都還留在這裡，她也隨時能查到。	src/ui/screens/talk.js:1007	
-18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新開始：Shiori 不再記著之前的內容，從這裡重新開始。之前的每句話都會留在分隔線上方。	src/ui/screens/talk.js:1008	
-15ve7m7	ok	What each half sees	Koe 和 Kokoro 各自看到的內容	src/ui/screens/talk.js:1009	
-1u5l4hx	ok	Details: the trip's name and dates, Export, Archive and Remove.	詳細資料：旅行的名稱和日期、匯出、封存和移除。	src/ui/screens/talk.js:1020	
-o7tevg	ok	Details: the chat's name and dates, Export, Archive and Remove.	詳細資料：對話的名稱和日期、匯出、封存和移除。	src/ui/screens/talk.js:1020	
-16pl3gf	ok	Undone. Her old personality applies at her next wake.	已復原。下次喚醒時，她會恢復原來的性格。	src/ui/screens/talk.js:1036	
+1v37fcy	ok	Undo what Shiori did with these files	復原 Shiori 對這些檔案的操作	src/ui/screens/talk.js:841	Note: Taiwan wording: 復原 as Undo, 檔案.
+1nl0tpx	ok	Conversation menu	對話選單	src/ui/screens/talk.js:885	
+7flpxf	ok	Summarizing…	正在總結…	src/ui/screens/talk.js:952	
+12707g	ok	She couldn't summarize it. A card says why.	她沒能完成總結，原因請見卡片。	src/ui/screens/talk.js:954	
+5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	之前的對話已總結。每句話都還留在這裡，她也隨時能查到。	src/ui/screens/talk.js:954	
+u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在忙，請稍後再試。	src/ui/screens/talk.js:954	
+va2k72	ok	There is not enough yet to summarize.	內容還太少，無法總結。	src/ui/screens/talk.js:954	
+mienoe	ok	Summarize now	立即總結	src/ui/screens/talk.js:957	
+10sfmur	ok	Starting fresh…	正在重新開始…	src/ui/screens/talk.js:959	
+va77q0	ok	Start fresh?	要重新開始嗎？	src/ui/screens/talk.js:972	
+19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 會從這裡重新開始，不再記著之前的內容。之前的每句話都會留在對話裡，你可以隨時查看和搜尋，她也仍能查到。不會刪除任何內容。即時語音連線也會重新開始。	src/ui/screens/talk.js:973	Note: "A live voice session" is the glossary's Live voice (即時語音) and a live session (即時連線), not a voice she speaks with.
+czdqlz	ok	Start fresh	重新開始	src/ui/screens/talk.js:974	
+1h9wwbn	ok	She couldn't start fresh: {0}	她沒能重新開始：{0}	src/ui/screens/talk.js:984	{0} = messageOf(e)
+1thzla3	ok	Already fresh: nothing has been said since.	已經重新開始過了，之後還沒有新的對話。	src/ui/screens/talk.js:987	
+3fntk0	ok	Started fresh.	已重新開始。	src/ui/screens/talk.js:987	
+mg70bg	ok	The conversation is still opening. Try again in a moment.	對話還在載入，請稍後再試。	src/ui/screens/talk.js:987	
+p5pj7b	ok	There is nothing to start fresh from yet.	還沒有可以重新開始的內容。	src/ui/screens/talk.js:987	
+1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即總結：Shiori 現在就把之前的對話總結一下，讓對話保持精簡。每句話都還留在這裡，她也隨時能查到。	src/ui/screens/talk.js:1009	
+18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新開始：Shiori 不再記著之前的內容，從這裡重新開始。之前的每句話都會留在分隔線上方。	src/ui/screens/talk.js:1010	
+15ve7m7	ok	What each half sees	Koe 和 Kokoro 各自看到的內容	src/ui/screens/talk.js:1011	
+1u5l4hx	ok	Details: the trip's name and dates, Export, Archive and Remove.	詳細資料：旅行的名稱和日期、匯出、封存和移除。	src/ui/screens/talk.js:1022	
+o7tevg	ok	Details: the chat's name and dates, Export, Archive and Remove.	詳細資料：對話的名稱和日期、匯出、封存和移除。	src/ui/screens/talk.js:1022	
+16pl3gf	ok	Undone. Her old personality applies at her next wake.	已復原。下次喚醒時，她會恢復原來的性格。	src/ui/screens/talk.js:1038	
 11gkctr	ok	Places	地點	src/ui/screens/tools.js:11	context: tool group
 13mxqrp	ok	Talk	對話	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	ok	Go	交通	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).
@@ -2749,9 +2750,9 @@ f2eaqi	ok	Find a search plugin	尋找搜尋外掛程式	src/ui/search-panel.js:9
 do1m5o	ok	{0}: annai can't show this setting.	{0}：annai 無法顯示此設定。	src/ui/settings-form.js:116	{0} = f.label
 1qrgqx0	ok	saved	已儲存	src/ui/settings-form.js:121	
 phutrz	ok	{0} wasn't saved: {1}	「{0}」未能儲存：{1}	src/ui/settings-form.js:130	{0} = f.label; {1} = messageOf(e)
-1skw031	ok	This screen couldn't open	無法開啟此頁面	src/ui/shell.js:432	
-1z00dfe	ok	An update is ready	更新已就緒	src/ui/shell.js:546	
-gt0nrj	ok	It will be used the next time annai starts.	下次啟動 annai 時生效。	src/ui/shell.js:546	
+1skw031	ok	This screen couldn't open	無法開啟此頁面	src/ui/shell.js:434	
+1z00dfe	ok	An update is ready	更新已就緒	src/ui/shell.js:548	
+gt0nrj	ok	It will be used the next time annai starts.	下次啟動 annai 時生效。	src/ui/shell.js:548	
 sntfon	ok	Hello! This is how I sound when I talk to you.	你好！我跟你說話時就是這個聲音。	src/ui/speech-check.js:10	Note: spoken by the voice being tested, so it is heard in the screens' language.
 n8hyke	ok	{0}. {1}	{0}。{1}	src/ui/speech-check.js:16	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
 1a27ynt	ok	Last tested {0}: it worked.	上次測試（{0}）：可以使用。	src/ui/speech-check.js:26	{0} = relTime(verified.at)

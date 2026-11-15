@@ -1,8 +1,10 @@
-import { SYS_WAITING } from './scopes.js';
+import { SYS_WAITING, createTrip } from './scopes.js';
 import { forgetWith } from './forget.js';
 import { NotFoundError } from './workspace.js';
 import { normPath, freeName } from './paths.js';
 import { NAMES_FILE, readNames } from './names.js';
+import { FILE_BOOKING } from './bookings.js';
+import { tc } from './l10n.js';
 
 /**
  * The waiting space (the bookings-and-trips design, my call 3): what the user hands Shiori while no trip is open waits here, in
@@ -12,6 +14,31 @@ import { NAMES_FILE, readNames } from './names.js';
 
 /** The files waiting with Shiori. @param {Workspace} ws @returns {Promise<FileEntry[]>} */
 export const waitingFiles = (ws) => ws.list(SYS_WAITING, '/files/');
+
+/** How she files what was handed to her in a chat or trip: what belongs to another trip she moves there, the rest she files here. */
+/* en */
+export const FILE_HERE = `First look in list_trips: one that belongs to another of their trips you move_file there, and say so; the rest you file here. ${FILE_BOOKING} A photo that isn't a booking stays among the trip's photos.`;
+/** What she is told in the conversation the waiting files move into, before they move: it names no file, so a run cut off never names one that isn't there. */
+/* en */
+const MOVED_HERE = `While no trip was open, the user handed you files, and they waited with you. annai has moved them into this conversation's /trip/files/, with any short names you gave them. Read each one. ${FILE_HERE} If this conversation becomes a trip, patch /trip/trip.json with its title and dates. Then say what you did.`;
+
+/**
+ * The files waiting with Shiori go into a conversation of their own, "Waiting with Shiori" (timeline stage 7: no screen shows the waiting space any more,
+ * and nothing new waits there). With none, nothing is made. The chat is annai's (system), so her snapshot reads its name as a guess she may improve. Its
+ * wake comes first and names no file, so a run cut off never leaves files she isn't told of; then each file moves with its short name, a transaction each.
+ * The chat isn't open, so no turn starts before the moves end. Each run makes its own chat: a cut run's rest goes to a new one at the next run (the user,
+ * 2026-11-14, "A new chat each run (Recommended)"). No setting is stored. Run at start, after an import and after an Undo that sends files back here.
+ * @param {Workspace} ws @param {(w: { kind: 'file', scope: string, text: string }) => Promise<unknown>} wake Shiori's, which writes it into a conversation that isn't open
+ * @returns {Promise<string | null>} the chat, or null when nothing waited
+ */
+export async function moveWaitingToChat(ws, wake) {
+  const files = await waitingFiles(ws);
+  if (!files.length) return null;
+  const id = await createTrip(ws, { title: tc("a conversation's name")`Waiting with Shiori` }, { author: 'system' });
+  await wake({ kind: 'file', scope: id, text: MOVED_HERE });
+  for (const f of files) await moveFile(ws, { scope: SYS_WAITING, path: f.path }, id, { author: 'system' });
+  return id;
+}
 
 /**
  * Moves a file into a trip's Files (or another folder), under a name no file there has, keeping its type, details, source and author,

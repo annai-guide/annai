@@ -815,8 +815,10 @@ function undoLine(ctx, scope, list) {
         log: (s) => (s === ctx.agent.scope ? (/** @type {any} */ ev) => ctx.agent.log(ev) : undefined),
       });
       const { removed, waiting, back } = outcome;
+      // Files with nowhere to go back to go into a conversation of their own, before home is drawn (timeline stage 7): never nowhere, never in two places.
+      if (waiting) await ctx.moveWaiting?.().catch((/** @type {unknown} */ e) => console.warn(/* en */ "the files waiting with Shiori couldn't be moved into a conversation", e));
       done();
-      // Said where the files went, whether or not a trip went, and shown there: a trip they went back to opens, Waiting is on Trips.
+      // Said where the files went, whether or not a trip went, and shown there: a trip they went back to opens; a new Waiting with Shiori chat is on home, at now.
       ctx.notices.toast(undoneWords(outcome));
       const on = () => { const at = parseHash(location.hash); return at.parts[0] === 'trip' && gone.has(at.parts[1] ?? '') ? at.parts[1] : null; };
       if (!waiting && back.length) {

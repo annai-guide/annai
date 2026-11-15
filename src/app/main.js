@@ -27,6 +27,7 @@ import { deviceZone } from '../core/time.js';
 import { codec } from '../ui/photo-codec.js';
 import { selfTools } from '../core/agent/self-tools.js';
 import { syncNames } from '../core/names.js';
+import { moveWaitingToChat } from '../core/waiting.js';
 import { tripTools } from '../core/agent/trip-tools.js';
 import { loadLinks } from '../core/links.js';
 import { PRESETS, syncPersonalities, keepMine } from '../core/agent/personalities.js';
@@ -214,6 +215,10 @@ async function boot() {
   agent.open(opened).catch((e) => console.warn(/* en */ 'Shiori could not open the conversation', e));
   // Records a released copy wrote get their dates and last talked once; live mode chooses the trip in play from them.
   await backfillTrips(ws).catch((e) => console.warn(/* en */ "trips' dates couldn't be mirrored", e));
+  // The files that waited with Shiori go into a conversation of their own, before the first screen, so its row never lands under the user's eyes (timeline
+  // stage 7); after an import and an Undo too (the shell's core). With none waiting it is one list read; one that fails is tried again at the next start.
+  const moveWaiting = () => moveWaitingToChat(ws, (w) => agent.wake(w));
+  await moveWaiting().catch((e) => console.warn(/* en */ "the files waiting with Shiori couldn't be moved into a conversation", e));
   // Notifications start once live mode has loaded (their reminders are live mode's); each failure says whose it is.
   const liveStarted = live.start();
   liveStarted.then(
@@ -243,7 +248,7 @@ async function boot() {
   updates.agent = agent;
   updates.voice = voice;
   const appended = (/** @type {(evs: any[]) => void} */ fn) => { followers.add(fn); return () => followers.delete(fn); };
-  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, awake, pack, presets, backups, sim, push, updates, chats, appended, version: VERSION });
+  const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, awake, pack, presets, backups, sim, push, updates, chats, appended, moveWaiting, version: VERSION });
   updates.notices = shell.notices;
   // A reload mid-drive starts the shell before live mode has restored the drive; that isn't a change to take over for.
   liveStarted.then(shell.seedActivity, () => {});

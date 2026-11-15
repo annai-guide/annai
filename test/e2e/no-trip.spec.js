@@ -180,3 +180,29 @@ test('with no conversation possible (the store failing), a typed line stays in t
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Conversation' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
 });
+
+test('files an older annai left waiting with Shiori are in a conversation of their own, "Waiting with Shiori", at the next start: a row at now, the files in its Details', async ({ page }) => {
+  await openApp(page, '#/settings');
+  await page.evaluate(async () => {
+    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+    const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    await ws.write('sys:waiting', '/files/hotel.txt', 'Hotel Aurora Test, Nov 20–27', { author: 'user', type: 'text/plain' });
+    await ws.write('sys:waiting', '/names.json', { '/files/hotel.txt': 'Hotel Aurora Test stay' }, { author: 'shiori' });
+    store.close();
+  });
+  await page.goto('/#/trips');
+  await page.reload();
+  const row = page.locator('.trip-card', { has: page.locator('.name', { hasText: 'Waiting with Shiori' }) });
+  await expect(row).toBeVisible(FIRST_DRAW);
+  await expect(row).toHaveClass(/\bline\b/);
+  const id = decodeURIComponent(String(await row.getAttribute('href')).split('/')[2]);
+  await page.goto(`/#/trip/${encodeURIComponent(id)}`);
+  await expect(page.getByRole('heading', { level: 1, name: 'Waiting with Shiori' })).toBeVisible();
+  await expect(page.getByText('Hotel Aurora Test stay')).toBeVisible();
+  // Nothing waits any more: a second start makes no second chat.
+  await page.goto('/#/trips');
+  await page.reload();
+  await expect(page.locator('.trip-card', { has: page.locator('.name', { hasText: 'Waiting with Shiori' }) })).toHaveCount(1, FIRST_DRAW);
+});

@@ -62,8 +62,10 @@ const SCREENS = { sees: renderSees, trips: renderTrips, trip: renderTrip, file: 
 /**
  * @param {HTMLElement} root
  * @param {{ store: any, ws: any, registry: any, plugins: any, llm?: any, agent?: any, voice?: any, live?: any, awake?: any, pack?: any, presets?: Record<string, string>, backups?: any, sim?: any, push?: any,
- *   updates: import('./updates.js').Updates, chats?: import('../core/chats.js').Chats, appended?: (fn: (evs: import('../core/types.js').EventRecord[]) => void) => () => void, version: string }} core
- *   appended: follows the log entries each committed write appended, until what it returns is called
+ *   updates: import('./updates.js').Updates, chats?: import('../core/chats.js').Chats, appended?: (fn: (evs: import('../core/types.js').EventRecord[]) => void) => () => void,
+ *   moveWaiting?: () => Promise<string | null>, version: string }} core
+ *   appended: follows the log entries each committed write appended, until what it returns is called; moveWaiting: the files waiting with Shiori into a
+ *   conversation of their own (waiting.js), after an import and after an Undo that sent files back there, before the screen that follows is drawn
  */
 export function startShell(root, core) {
   const notices = createNotices();

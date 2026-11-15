@@ -220,6 +220,8 @@ function preview(ctx, body, opened, desc, from, fresh, bring = null) {
             status.textContent = t`Reading ${num(Math.min(done + 1, total))} of ${num(total)}…`;
           },
         });
+        // Files an older backup had waiting with Shiori go into a conversation of their own, before the results are drawn (timeline stage 7).
+        await ctx.moveWaiting?.().catch((/** @type {unknown} */ e) => console.warn(/* en */ "the files waiting with Shiori couldn't be moved into a conversation", e));
         // This device has taken in that backup: its next backup there builds on it (spec §12.4).
         if (from) await ctx.backups?.accept(from.target, from.remote).catch(() => {});
         // Live mode takes in the trips that came and lets go of those archived (their reminders leave the relay).

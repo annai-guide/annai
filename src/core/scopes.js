@@ -123,7 +123,7 @@ export async function ensureDeviceScope(store, now = Date.now()) {
  * A new trip: a name is enough. Shiori starts one for a hand-over as hers (the bookings-and-trips design), its first entries carrying it.
  * @param {Workspace} ws
  * @param {{ title: string, start?: string, end?: string, places?: string[], timezones?: string[] }} trip
- * @param {{ author?: 'user' | 'shiori', handover?: string, draft?: boolean }} [o] author: who starts it (the user, unless Shiori did); handover: the hand-over she started it for;
+ * @param {{ author?: 'user' | 'shiori' | 'system', handover?: string, draft?: boolean }} [o] author: who starts it (the user, unless Shiori or annai did); handover: the hand-over she started it for;
  *   draft: the standing draft (chats.js), unless one is there already, whose id it then gives
  * @returns {Promise<string>} the new scope id
  */

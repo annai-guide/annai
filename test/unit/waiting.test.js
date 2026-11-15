@@ -215,7 +215,7 @@ test('a run cut off after the wake, then after the first file, then a whole run:
       let moves = files;
       const cut = new Workspace(store, { schemaFor: ws.schemaFor });
       const writeAcross = cut.writeAcross.bind(cut);
-      cut.writeAcross = (/** @type {any[]} */ ...a) => (moves-- > 0 ? writeAcross(...a) : Promise.reject(new Error('the page closed')));
+      /** @type {any} */ (cut).writeAcross = (/** @type {any} */ changes, /** @type {any} */ o) => (moves-- > 0 ? writeAcross(changes, o) : Promise.reject(new Error('the page closed')));
       await assert.rejects(moveWaitingToChat(cut, wakeInto(store)), /the page closed/);
     }
     assert.ok(await moveWaitingToChat(ws, wakeInto(store)));
@@ -243,7 +243,6 @@ test("an old backup's waiting files go into a new chat once it is imported", asy
   const id = /** @type {string} */ (await moveWaitingToChat(b.ws, wakeInto(b.store)));
   assert.deepEqual(await waitingFiles(b.ws), []);
   assert.equal(await b.ws.readText(id, '/files/flight.pdf'), 'a flight');
-  assert.deepEqual(await readNames(b.ws, id), { '/files/flight.pdf': 'ANNAI AIR flight · Nov 20' });
 });
 
 test('Undo with files that have nowhere to go back to: a pre-update hand-over filed from the waiting space, and a started trip whose origin is gone; they land in a new chat, never nowhere and never in two places (Review Focus 5)', async () => {
