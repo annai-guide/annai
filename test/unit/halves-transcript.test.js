@@ -408,6 +408,23 @@ test("one Shiori: an error ending a turn of Kokoro's (no model, a budget) settle
   assert.equal((await Transcript.load(store, SCOPE, { half: 'one' })).unanswered, true);
 });
 
+test("the loop's record of a turn's end ends only its own half's turn: Koe's turn.end leaves Kokoro's reply under way, and Kokoro's leaves Koe's", async () => {
+  const store = createMemoryStore();
+  const log = (/** @type {any} */ ev) => record(store, SCOPE, ev);
+  const call = (/** @type {string} */ id, /** @type {string} */ name) => /** @type {any} */ ({ type: 'tool_call', id, name, input: {} });
+  const under = async (/** @type {string} */ tag) => modelTrace(store, SCOPE).turn(/** @type {any} */ ({ ...turnInfo(tag, 'w'), endLogged: true }), '', '', [call(tag === KOE_TAG ? 'k' : 'r', 'read')]);
+  const owed = async () => [(await Transcript.load(store, SCOPE, { half: 'kokoro' })).unanswered, (await Transcript.load(store, SCOPE, { half: 'koe', nonce: NONCE })).unanswered];
+  await log({ type: 'msg.user', actor: 'user', data: { wake: 'k1', split: true }, texts: [['text', 'What is check-in time?']] });
+  await under(TALK_TAG);
+  await under(KOE_TAG);
+  assert.deepEqual(await owed(), [true, true], 'both replies are under way');
+  await log({ type: 'turn.end', actor: 'system', data: { wake: 'w', half: 'koe', handover: null } });
+  assert.deepEqual(await owed(), [true, false], "Koe's end ends Koe's turn, not Kokoro's");
+  await under(KOE_TAG);
+  await log({ type: 'turn.end', actor: 'system', data: { wake: 'w', half: 'kokoro', handover: null } });
+  assert.deepEqual(await owed(), [false, true], "Kokoro's end ends Kokoro's turn, not Koe's");
+});
+
 // The owed table (real-fix2's re-review): for each kind of line and each way its turn can end or be cut, what each reader owes when the
 // conversation opens again. Readers: Kokoro (Koe still set), Koe's own, and one Shiori (Koe unset since). Logs as the halves write them: each
 // reply says the loop logs its turn's end (an old log's Kokoro replies don't), and a turn that ended has that end (fin).

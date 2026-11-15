@@ -729,6 +729,12 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** a page one version older (a rollback, a tab not yet updated) reads her turn's end from them, and would misread a newer log without them.
 - **Revisit when:** the next version, as its own change: drop `end` and `awake` from `#runCall`'s and `repair()`'s writes, and from the tests that pin them.
 
+### The restart of a turn annai started carries a hand-over still owed by an older failed turn
+- **Kind:** deferred.
+- **What the user sees:** the user hands Shiori a file, her turn fails ("Shiori can't reach her model") and they don't tap Try again. Later a turn annai starts by itself in that conversation (a watch or a reminder firing, a plugin's wake) is cut by a reload or a kill, or a wake written while the conversation was closed is taken up when it opens. The turn that takes it up carries the old hand-over, so what she files for the watch counts as filed under that hand-over, and tapping its Undo takes that note back too. It needs a failed hand-over left alone, a turn of annai's own, a cut, a write, and then the Undo. Found on 2026-11-14 in the final review of the turn-end record; the same on the version before it (run on both).
+- **Why:** the restart wake takes the reader's `handover`, the newest hand-over no turn's end has answered, whoever's turn was cut; `#open` passes it on without asking whose turn it was.
+- **Revisit when:** the next version, as its own change, in the reader's `handover` getter and `#open`: each reply's record already stores the hand-over its turn carried, so a turn under way can hand back its own, not the conversation's newest owed one; then a test of this shape.
+
 ### The real-voice check measures Koe's words in English
 - **Kind:** deferred.
 - **What the user sees:** nothing. Three checks in `scripts/realtime/` read Koe's words as English: "stopped when told" counts words by spaces, so a long Japanese reply passes; the passed-on question test sees only an ASCII "?", so 「？」 passes; the filler check knows English words only.

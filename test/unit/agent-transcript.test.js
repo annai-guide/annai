@@ -222,3 +222,16 @@ test("a hand-over her turn's end record answered stays answered across a wake of
   const t = await Transcript.load(store, SCOPE);
   assert.deepEqual([t.handover, t.owedHandover], [null, null]);
 });
+
+test("the user carried the conversation on in another trip (open_trip's card): her turn is not under way here any more, and opening this one again takes nothing up", async () => {
+  const store = createMemoryStore();
+  await record(store, SCOPE, { type: 'wake', actor: 'system', data: { id: 'w-1', reasons: [{ kind: 'user', text: 'typed' }] } });
+  await record(store, SCOPE, { type: 'msg.user', actor: 'user', data: { wake: 'w-1' }, texts: [['text', 'Move this to the Kyoto trip']] });
+  await modelTrace(store, SCOPE).turn(/** @type {any} */ ({ ...info, endLogged: true }), '', '', [{ type: 'tool_call', id: 'o', name: 'open_trip', input: { trip: 'trip-2' } }]);
+  assert.equal((await Transcript.load(store, SCOPE)).unanswered, true, 'her reply is under way until the loop logs its end');
+  // As open_trip logs it: the line saying where the conversation went, then the call's result, with no end logged yet.
+  await record(store, SCOPE, { type: 'conversation.moved', actor: 'shiori', data: { to: 'trip-2', title: 'Kyoto' } });
+  assert.equal((await Transcript.load(store, SCOPE)).unanswered, false, 'the move settles it: nobody wakes here');
+  await record(store, SCOPE, { type: 'tool.result', actor: 'system', data: { id: 'o', name: 'open_trip', ok: true, cut: false, ms: 1, wake: 'w-1' }, texts: [['content', 'The user carried this conversation on in Kyoto.']] });
+  assert.equal((await Transcript.load(store, SCOPE)).unanswered, false);
+});

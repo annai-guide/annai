@@ -2247,7 +2247,10 @@ export class Agent {
      * message of theirs that reached it inside its wait. @type {Wake[]}
      */
     let notes = [];
-    /** Her turn ended by its own rule (asleep, back to sleep, or in words with nothing more asked of her) and no call of its last reply was cut. */
+    /**
+     * Her turn ended by its own rule (asleep, back to sleep, or in words with nothing more asked of her, and no call of its last reply cut), or
+     * annai took the notes Koe owed (#owing, at a switch: nothing is left for her turn to do). The record is written when this holds and !cutOwing.
+     */
     let ended = false;
     this.#owing = () => {
       settle(); // not those she has reached the user with since
@@ -2286,6 +2289,8 @@ export class Agent {
     join(wakes, true);
     let nudged = false;
     let silent = false;
+    /** The turn was cut (an open, a Stop) while she still owed the user, before she was asked once more: that is no end, so no record. */
+    let cutOwing = false;
     /** Steps since the cue that still owed the user (Koe's). */
     let after = 0;
     /** She is asked once more, in the same turn: what is owed, in words. */
@@ -2302,7 +2307,11 @@ export class Agent {
      */
     const nudge = async () => {
       settle();
-      if (abort.signal.aborted || !this.#half.voice() || !(owes() || unanswered())) return false;
+      if (!this.#half.voice() || !(owes() || unanswered())) return false;
+      if (abort.signal.aborted) {
+        cutOwing = true;
+        return false;
+      }
       if (nudged) {
         silent = true;
         return false;
@@ -2593,7 +2602,7 @@ export class Agent {
       else if (this.#still) this.#half.left?.(unsaid);
     }
     // The turn's end, written once, where it is known: the log's reader takes it from this record, never from her reply's words.
-    if (ended && !(silent && unanswered())) await this.#log({ type: 'turn.end', actor: 'system', data: { wake: wakeId, handover: this.#handover } });
+    if (ended && !cutOwing && !(silent && unanswered())) await this.#log({ type: 'turn.end', actor: 'system', data: { wake: wakeId, handover: this.#handover } });
     if (silent && unanswered()) {
       // Asked once more, she still said nothing: the user isn't left waiting in silence.
       const body = t`Her model finished without saying anything to you.`;
@@ -2828,7 +2837,7 @@ export class Agent {
       } else {
         // Only when its write failed: the stored turn found is an earlier step's.
         this.#flush();
-        this.transcript.apply({ seq: this.transcript.to + 1, type: 'model.turn', data: { tag: this.#half.tag, wake: wakeId, handover: this.#handover, endLogged: true } }, { texts: { parts: JSON.stringify(parts) }, images: [] });
+        this.transcript.apply({ seq: this.transcript.to + 1, type: 'model.turn', data: { tag: this.#half.tag, wake: wakeId, endLogged: true } }, { texts: { parts: JSON.stringify(parts) }, images: [] });
       }
       this.transcript.carry(null); // a reply read from the log already: it keeps nothing
       this.#calling = false;
