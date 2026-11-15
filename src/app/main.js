@@ -30,7 +30,7 @@ import { syncNames } from '../core/names.js';
 import { tripTools } from '../core/agent/trip-tools.js';
 import { loadLinks } from '../core/links.js';
 import { PRESETS, syncPersonalities, keepMine } from '../core/agent/personalities.js';
-import { readAppSettings } from '../core/settings.js';
+import { readAppSettings, updateAppSettings } from '../core/settings.js';
 import { screensAtStart, nextScreens } from '../ui/languages.js';
 import { setDistances } from '../core/intl.js';
 import { Voice } from '../core/voice/voice.js';
@@ -207,7 +207,11 @@ async function boot() {
   setDistances(settings.languages?.distances);
   const active = settings.activeTrip;
   const exists = active ? await store.tx(['scopes'], 'readonly', (tx) => tx.getScope(active)) : null;
-  agent.open(exists ? active : null).catch((e) => console.warn(/* en */ 'Shiori could not open the conversation', e));
+  // With none open, or the one open gone, the standing draft is open, as after a tap on + (the user, 2026-11-14, "Open the new conversation"); with no
+  // draft possible, nothing is, and no turn runs (the loop's guard).
+  const opened = exists ? active : await chats.whenReady().catch((e) => { console.warn(/* en */ "the new conversation couldn't be made ready", e); return null; });
+  if (opened !== active) updateAppSettings(ws, { activeTrip: opened }).catch(() => {});
+  agent.open(opened).catch((e) => console.warn(/* en */ 'Shiori could not open the conversation', e));
   // Records a released copy wrote get their dates and last talked once; live mode chooses the trip in play from them.
   await backfillTrips(ws).catch((e) => console.warn(/* en */ "trips' dates couldn't be mirrored", e));
   // Notifications start once live mode has loaded (their reminders are live mode's); each failure says whose it is.

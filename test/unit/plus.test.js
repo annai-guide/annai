@@ -10,7 +10,7 @@ function kit(o = {}) {
   g.location = { hash: '#/trips' };
   const ctx = {
     chats: { ready: 'ready' in o ? o.ready : 'trip-d', whenReady: o.whenReady ?? (() => Promise.resolve('trip-d')) },
-    agent: { open: (/** @type {string} */ id) => { log.push(`open ${id}`); return Promise.resolve(); }, tap: () => { log.push('tap'); return o.tap ?? 'listening'; } },
+    agent: { target: /** @type {string | null} */ (null), open(/** @type {string} */ id) { log.push(`open ${id}`); this.target = id; return Promise.resolve(); }, tap: () => { log.push('tap'); return o.tap ?? 'listening'; } },
     voice: { on: o.voice ?? true },
     ws: { update: () => Promise.resolve(), readJSON: () => Promise.resolve({}), write: () => Promise.resolve() },
     notices: { card: (/** @type {any} */ c) => log.push(`card ${c.title}`) },
@@ -43,7 +43,7 @@ test("a plugin's dock, which has no openTyping: nothing throws", () => {
   }
 });
 
-test('no draft ready yet (the first moments): it waits for one, then goes', async () => {
+test('no draft ready yet (the first moments): it waits for one, opens it, then goes (openDraft)', async () => {
   /** @type {(id: string) => void} */
   let ready = () => {};
   const { ctx, log, location } = kit({ ready: null, whenReady: () => new Promise((r) => { ready = (id) => { ctx.chats.ready = id; r(id); }; }) });

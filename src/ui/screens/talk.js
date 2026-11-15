@@ -260,10 +260,13 @@ export async function follow(agent, scope, { read, show, state }) {
 /**
  * The conversation (spec §16.2): what the user wrote, what Shiori said and showed, her questions,
  * and system cards. Her private text and reasoning stay in the trace (§7.1).
- * @param {any} ctx @param {{ parts: string[] }} [route] "#/trip/<id>/talk", or "#/talk" while no trip is open
+ * "#/talk/me" is `me`'s, the conversation outside any trip, read-only (the user, 2026-11-05, "Read-only row": "You can read it; talking starts a new
+ * chat."): it is never opened, takes no more turns, and no button on an old line does anything; the dock rests as on home, so talking is the +.
+ * @param {any} ctx @param {{ parts: string[] }} [route] "#/trip/<id>/talk", or "#/talk/me"
  */
 export async function renderTalk(ctx, route) {
   const agent = ctx.agent;
+  const readOnly = route?.parts[0] === 'talk' && route.parts[1] === ME;
   // At a trip's own address (#/trip/<id>/talk), moving there opens that trip.
   if (route?.parts[0] === 'trip') openTrip(ctx);
   await agent.opening.catch(() => {}); // after a start or a trip change, the conversation is still being read
@@ -273,9 +276,9 @@ export async function renderTalk(ctx, route) {
   // The lines' languages (`lang`): the font and the screen reader's voice follow them. The user's by their text; Shiori's by the language she is set to answer in, else by her text.
   const mine = wording(app);
   const hers = wording(app, true);
-  const scope = agent.scope;
-  const rec = agent.trip ? await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ tx) => tx.getScope(agent.trip)) : null;
-  const title = agent.trip ? (rec ? scopeTitle(rec) : t`Conversation`) : '';
+  const scope = readOnly ? ME : agent.scope;
+  const rec = !readOnly && agent.trip ? await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ tx) => tx.getScope(agent.trip)) : null;
+  const title = readOnly ? t`Shiori, no trip` : rec ? scopeTitle(rec) : t`Conversation`;
   // Not a live region: `announce` says each line of hers once, spoken or not, whatever "Show what she says" is, and words heard once
   // they are in; never what you typed, nor the halves' notes.
   const list = h('ol', { class: 'convo' });
@@ -324,7 +327,7 @@ export async function renderTalk(ctx, route) {
     l.li.className = lineClass(line, quiet ? 'you quiet' : 'you heard');
     // Only real words can be claimed: not before they come, and not the placeholder a sound that was never written down leaves.
     const words = typeof l.data.text === 'string' && l.data.text !== NOT_TRANSCRIBED;
-    const claim = quiet && words && !claimed.has(l.data.id) ? h('button', {
+    const claim = quiet && words && !readOnly && !claimed.has(l.data.id) ? h('button', {
       class: 'claim', type: 'button',
       onclick: () => {
         claimed.add(l.data.id);
@@ -369,7 +372,7 @@ export async function renderTalk(ctx, route) {
     const names = new Map();
     for (const f of d.handed) {
       const m = /^\/(trip|waiting)(\/.+)$/.exec(String(f?.path ?? ''));
-      const where = !m ? null : m[1] === 'waiting' ? SYS_WAITING : agent.trip;
+      const where = !m || readOnly ? null : m[1] === 'waiting' ? SYS_WAITING : agent.trip; // `me`'s: as words
       const there = where ? await ctx.store.tx(['files'], 'readonly', (/** @type {any} */ tx) => tx.getFile(where, m?.[2])) : null;
       const own = String(f?.name || f?.path || '');
       if (there && where && !names.has(where)) names.set(where, await readNames(ctx.ws, where));
@@ -382,8 +385,8 @@ export async function renderTalk(ctx, route) {
     }
     return h('div', { class: 'chips handed' }, ...chips);
   };
-  const undo = undoLine(ctx, scope, list);
-  const dates = agent.trip ? datesLine(ctx, agent.trip, list) : null;
+  const undo = readOnly ? null : undoLine(ctx, scope, list);
+  const dates = !readOnly && agent.trip ? datesLine(ctx, agent.trip, list) : null;
   /** @param {any} e */
   const item = async (e) => {
     const d = e.data ?? {};
@@ -445,21 +448,22 @@ export async function renderTalk(ctx, route) {
       return null;
     }
     if (e.type === 'out.show') {
-      const card = shownCard(d, { ctx, onChoice: (o) => agent.send(o, { chose: true }), say: hers });
-      const undo = d.tune ? tuneUndo(ctx, d.tune) : null;
+      // `me`'s: as it showed, its choices left out.
+      const card = readOnly ? shownCard({ ...d, card: { ...d.card, choice: [] } }, { ctx, say: hers }) : shownCard(d, { ctx, onChoice: (o) => agent.send(o, { chose: true }), say: hers });
+      const undo = d.tune && !readOnly ? tuneUndo(ctx, d.tune) : null;
       const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: e.type, data: d }));
       return h('li', { class: lineClass(line, 'shiori') }, h('span', { class: 'who', text: cardWho(ctx, d.card ?? {}) }), card, undo, lineLabel(line));
     }
     if (e.type === 'grounded') return groundedCard(d, texts, mine); // Google's words: by their script alone, not the language she answers in
     if (e.type === 'out.ask') {
       // annai's own card ends at the first tap: a second, before its result arrives, would be sent as a line of theirs.
-      const buttons = (Array.isArray(d.options) ? d.options : []).slice(0, 6).map((/** @type {string} */ o) => h('button', { ...hers(String(o)), class: 'btn', type: 'button', onclick: () => {
+      const buttons = (Array.isArray(d.options) && !readOnly ? d.options : []).slice(0, 6).map((/** @type {string} */ o) => h('button', { ...hers(String(o)), class: 'btn', type: 'button', onclick: () => {
         if (d.own) for (const b of buttons) b.disabled = true;
         agent.answer(d.tap ?? d.id, o);
       } }, String(o)));
       const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: e.type, data: d }));
       // annai's own (Agent.confirm): the label says who asks; under its buttons, while they wait, that a tap answers it (the user's pick, 2026-11-13).
-      const node = h('li', { class: lineClass(line, 'shiori') }, h('span', { class: 'who', text: d.own ? /* en */ 'annai' : t`Shiori` }), h('p', { ...hers(String(d.question ?? '')), text: String(d.question ?? '') }), h('div', { class: 'acts' }, ...buttons), d.own ? h('span', { class: 'sub tap-hint', text: t`Tap to answer` }) : null, lineLabel(line));
+      const node = h('li', { class: lineClass(line, 'shiori') }, h('span', { class: 'who', text: d.own ? /* en */ 'annai' : t`Shiori` }), h('p', { ...hers(String(d.question ?? '')), text: String(d.question ?? '') }), h('div', { class: 'acts' }, ...buttons), d.own && !readOnly ? h('span', { class: 'sub tap-hint', text: t`Tap to answer` }) : null, lineLabel(line));
       asks.set(d.id, node);
       offered.set(d.id, (Array.isArray(d.options) ? d.options : []).map(String));
       return node;
@@ -499,7 +503,7 @@ export async function renderTalk(ctx, route) {
       return h('li', { class: 'system-line' }, rec?.kind === 'trip' ? h('a', { href: talkHref(rec.id), text: said }) : said);
     }
     if (e.type === 'handover.undo') {
-      if (d.handover === undo.handover) undo.done();
+      if (undo && d.handover === undo.handover) undo.done();
       return null;
     }
     // Shiori read another trip (read_trip): a quiet line, by the name it had then.
@@ -515,7 +519,7 @@ export async function renderTalk(ctx, route) {
     if (e.type === 'error' && (d.quiet || d.aside) && !failed) return null;
     if (e.type === 'error') {
       // Out of sight of the card at the page's top: the note itself offers Try again, until something newer is in the conversation.
-      const again = (d.kind === 'model' || d.kind === 'silent') && !d.quiet && !d.aside ? h('button', { class: 'btn', type: 'button', onclick: (/** @type {Event} */ ev) => { /** @type {HTMLButtonElement} */ (ev.currentTarget).remove(); agent.tryAgain(); } }, t`Try again`) : null;
+      const again = (d.kind === 'model' || d.kind === 'silent') && !d.quiet && !d.aside && !readOnly ? h('button', { class: 'btn', type: 'button', onclick: (/** @type {Event} */ ev) => { /** @type {HTMLButtonElement} */ (ev.currentTarget).remove(); agent.tryAgain(); } }, t`Try again`) : null;
       // Made from its data; an older entry's message is as stored, in annai's English.
       const words = errorWords(d);
       const li = h('li', { class: 'system' }, h('strong', { text: d.kind === 'model' ? t`Shiori can't reach her model` : d.kind === 'compaction' ? t`Shiori couldn't tidy up the conversation` : d.kind === 'budget' ? t`A budget ended her turn` : t`Her turn ended` }),
@@ -570,7 +574,7 @@ export async function renderTalk(ctx, route) {
         }
         empty.remove();
         list.append(node);
-        undo.saw(e);
+        undo?.saw(e);
         dates?.saw(e, node);
         if (e.type === 'heard') {
           const l = unheard.get(e.data?.id);
@@ -610,35 +614,29 @@ export async function renderTalk(ctx, route) {
   });
   built = true;
   showCost();
-  const trip = agent.trip;
-  const tidy = tidyMenu(ctx, trip ? { id: trip, dated } : null);
-  const name = h('a', { class: 'talk-name', href: `#/trip/${encodeURIComponent(trip)}`, dir: 'auto', text: title });
+  const trip = readOnly ? null : agent.trip;
+  const tidy = trip ? tidyMenu(ctx, { id: trip, dated }) : null;
+  const name = trip ? h('a', { class: 'talk-name', href: `#/trip/${encodeURIComponent(trip)}`, dir: 'auto', text: title }) : h('span', { class: 'talk-name', text: title });
   // The name follows trip.json while it shows: the first line names a new conversation, and Shiori may rename it or give it dates (a chat, then a trip).
   const offName = trip ? ctx.ws.onChange((/** @type {{ scope: string, path: string }} */ c) => {
     if (c.scope === trip && c.path === '/trip.json') ctx.ws.readJSON(trip, '/trip.json').then((/** @type {any} */ j) => {
       name.textContent = scopeTitle({ id: trip, title: String(j?.title ?? title) });
       dated = Boolean(tripMirror(j).start);
-      tidy.dated(dated);
+      tidy?.dated(dated);
       showCost();
     }, () => {});
   }) : null;
   const screen = h('div', { class: 'screen' },
-    // A trip's: ← home (never opening anything), its name to Details, and the conversation's ⋯ (Details too, Tidy up), staying under the app's bar on a
-    // long conversation. The heading stays for the top bar's tests until it goes (stage 8).
-    ...(trip ? [
-      h('div', { class: 'talk-head' },
-        h('a', { class: 'btn ghost talk-back', href: '#/trips', 'aria-label': t`Back to Trips`, text: '←' }),
-        name,
-        tidy.el, tidy.status),
-      h('h1', { class: 'visually-hidden', text: t`Conversation` }),
-      await nextLine(ctx, trip),
-    ] : [
-      // The menu is a ⋯ by the title, out of the conversation's way, and stays under the app's bar on a long conversation.
-      h('div', { class: 'title-row' }, h('h1', { class: 'title', text: t`Conversation` }), tidy.el, tidy.status),
-      h('p', { class: 'sub', text: t`No trip is open. Open one from Trips, or talk here: Shiori can still use /me/.` }),
-    ]),
+    // ← home (never opening anything), its name (a trip's to Details), and the conversation's ⋯ (Details too, Tidy up), staying under the app's bar on a
+    // long conversation; `me`'s has its name alone. The heading stays for the top bar's tests until it goes (stage 8).
+    h('div', { class: 'talk-head' },
+      h('a', { class: 'btn ghost talk-back', href: '#/trips', 'aria-label': t`Back to Trips`, text: '←' }),
+      name,
+      ...(tidy ? [tidy.el, tidy.status] : [])),
+    h('h1', { class: 'visually-hidden', text: readOnly ? title : t`Conversation` }),
+    trip ? await nextLine(ctx, trip) : null,
     cost,
-    list.childElementCount ? null : empty,
+    list.childElementCount || readOnly ? null : empty,
     list,
     announce);
   requestAnimationFrame(() => {
@@ -651,7 +649,7 @@ export async function renderTalk(ctx, route) {
     stop();
     dates?.off();
     offName?.();
-    tidy.off();
+    tidy?.off();
     for (const timer of hearing.values()) clearTimeout(timer);
     removeEventListener('message', fit);
     for (const type of USER) removeEventListener(type, own);

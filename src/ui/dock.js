@@ -12,6 +12,7 @@ import { component, mount, cleanUp, slotEntries, runAction, made } from './slots
 import { onTap } from './dock-hides.js';
 import { createComposer, handOver } from './composer.js';
 import { toTalk } from './open-trip.js';
+import { openDraft, cantStart } from './plus.js';
 
 /** How long her last words stay in the bubble once she has stopped, to read them. */
 const CAPTION_LINGER_MS = 2500;
@@ -78,6 +79,11 @@ export function createDock(ctx) {
   input.addEventListener('paste', (/** @type {ClipboardEvent} */ e) => { composer.paste(e, !input.value.trim()); });
   /** The files being kept: the box stays, saying how far it is, until they are all in. */
   let keepingNow = false;
+  /**
+   * Nothing open, which is only when no draft could be made so far: the draft first, as + opens it. Whether it opened; if not, the + card says so, and
+   * whatever was typed or picked stays in the box (the user's pick of 2026-11-14, "Put it back in the type box"). @returns {Promise<boolean>}
+   */
+  const drafted = () => openDraft(ctx).then(() => true, (/** @type {unknown} */ e) => { cantStart(ctx, e); return false; });
   const sheet = h('form', {
     class: 'type-sheet', hidden: true,
     onsubmit: (/** @type {Event} */ e) => {
@@ -86,6 +92,7 @@ export function createDock(ctx) {
       const text = input.value.trim();
       const items = composer.items();
       if (!text && !items.length) return;
+      if (!ctx.agent.target) return void drafted().then((ok) => { if (ok) sheet.requestSubmit(); }); // sent from the box as it is then
       const done = () => {
         input.value = '';
         composer.clear();
@@ -150,10 +157,7 @@ export function createDock(ctx) {
     const files = [...(camera.files ?? [])];
     camera.value = '';
     if (!files.length) return;
-    if (!ctx.agent.target) {
-      ctx.notices.card({ tone: 'warn', title: t`Open a trip first`, body: t`Photos are kept in a trip. Open one from Trips, then take the photo again.` });
-      return;
-    }
+    if (!ctx.agent.target && !(await drafted())) return;
     ctx.agent.photoComing?.(true); // words said while the photo is made wait for it (spec §6.8)
     try {
       const { paths } = await addFiles(ctx, ctx.agent.target, files);
@@ -171,6 +175,8 @@ export function createDock(ctx) {
     class: 'talk', type: 'button', 'aria-label': t`Shiori`,
     onclick: () => {
       // While she speaks, a tap stops her and listens; asleep, it listens, with voice off too (spec §10.4). Typing opens only with no voice here.
+      // With nothing open, in the draft once it is (late for the microphone, as + is in the first moments).
+      if (!ctx.agent.target) return void drafted().then((ok) => { if (ok && ctx.agent.tap() === 'typing') openTyping(); });
       if (ctx.agent.tap() === 'typing') openTyping();
     },
   }, avatar.el, label);

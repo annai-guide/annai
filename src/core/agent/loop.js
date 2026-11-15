@@ -759,8 +759,9 @@ export class Agent {
     await this.#keepElsewhere(scope);
     if (generation !== this.#generation) return;
     // Something owed when it opens: a restart wake, unless the other half takes it up (Half.restart). A turn annai was killed in is taken
-    // up whatever its transcript says: what ran then isn't known (a line cut in its playback, a call after it that never ran).
-    const owed = Boolean(repaired || transcript.unanswered) && (await (this.#half.restart?.() ?? true));
+    // up whatever its transcript says: what ran then isn't known (a line cut in its playback, a call after it that never ran). With nothing open,
+    // nothing: `me` takes no more turns (timeline stage 7), so a removal or a failed start never queues a restart there.
+    const owed = trip !== null && Boolean(repaired || transcript.unanswered) && (await (this.#half.restart?.() ?? true));
     if (generation !== this.#generation) return;
     this.trip = trip;
     this.scope = scope;
@@ -800,7 +801,12 @@ export class Agent {
    * @param {string} scope
    */
   async #keepElsewhere(scope) {
-    const elsewhere = this.#queue.filter((w) => w.scope !== scope);
+    await this.#keepWakes((w) => w.scope !== scope);
+  }
+
+  /** Writes the queued wakes it picks into their conversations' logs, each's reminders said first, and takes them out of the queue. @param {(w: Wake) => boolean} which */
+  async #keepWakes(which) {
+    const elsewhere = this.#queue.filter(which);
     for (const s of new Set(elsewhere.map((w) => /** @type {string} */ (w.scope)))) {
       const those = elsewhere.filter((w) => w.scope === s);
       // A reminder among them is shown now, as one firing for a conversation that isn't open is (live.js): the wake waits for its turn there.
@@ -1560,6 +1566,12 @@ export class Agent {
     this.#clearTimer();
     try {
       while (!this.#opens && !this.#still && this.#queue.some((w) => w.scope === this.scope)) {
+        // Nothing open (no draft could be made): no turn runs in `me`, which takes no more (timeline stage 7). What came is written into its log and its
+        // reminders said, as for a conversation that isn't open; a failed write keeps them queued.
+        if (this.trip === null) {
+          await this.#keepWakes((w) => w.scope === ME);
+          continue;
+        }
         await this.#gather();
         if (this.#opens) break;
         const wakes = this.#take();

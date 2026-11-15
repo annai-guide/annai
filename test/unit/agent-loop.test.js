@@ -1141,19 +1141,16 @@ test('opening another conversation while Shiori works: she stops, and a message 
   assert.match(userTexts(k.requests[1]), /second, typed while she thought/);
 });
 
-test('the "didn\'t answer" cards of two conversations name their own: the trip, or Me (the third emulator pass)', async (t) => {
+test('the "didn\'t answer" cards of two conversations name their own (the third emulator pass)', async (t) => {
   useClock(t);
-  const k = await agentKit([[{ text: 'Plain.' }, { text: 'Plain again.' }, { text: 'Plain.' }, { text: 'Plain again.' }, { text: 'Plain.' }, { text: 'Plain again.' }]]);
+  const k = await agentKit([[{ text: 'Plain.' }, { text: 'Plain again.' }, { text: 'Plain.' }, { text: 'Plain again.' }]]);
   const other = await createTrip(k.ws, { title: 'Kyoto' });
   k.agent.send('Hi');
   await k.agent.idle();
   await k.agent.open(other);
   k.agent.send('Hi');
   await k.agent.idle();
-  await k.agent.open(null);
-  k.agent.send('Hi');
-  await k.agent.idle();
-  assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.body.split(':')[0]), ['Big Sur', 'Kyoto', 'Me']);
+  assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.body.split(':')[0]), ['Big Sur', 'Kyoto']);
 });
 
 test('a turn cut by opening another conversation leaves a line in the one left, and a toast; she still picks it up when the user comes back (the third emulator pass)', async (t) => {

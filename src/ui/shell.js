@@ -397,7 +397,8 @@ export function startShell(root, core) {
     shown = { tab: on?.getAttribute('href') ?? null, hash: location.hash, name: route.name, entry };
     // The welcome is a page of its own: the install warning waits for its last step, which says the same.
     document.body.classList.toggle('welcoming', route.name === 'welcome');
-    document.body.classList.toggle('home', route.name === 'trips');
+    // Home, and `me`'s read-only lines: the dock rests as on home, so talking there is the + (a new chat).
+    document.body.classList.toggle('home', route.name === 'trips' || (route.name === 'talk' && route.parts[0] !== 'trip' && route.parts[1] === 'me'));
     if (on && o.moved) nav.scrollLeft = Math.max(0, Math.min(nav.scrollLeft, on.offsetLeft - nav.offsetLeft), on.offsetLeft - nav.offsetLeft + on.offsetWidth - nav.clientWidth + 32); // clear of the fade
     showMore();
     const screen = SCREENS[route.name] ?? SCREENS.trips;

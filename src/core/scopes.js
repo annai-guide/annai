@@ -287,8 +287,8 @@ function mirrored(rec, trip) {
   return next.title !== rec.title || next.start !== rec.start || next.end !== rec.end ? next : null;
 }
 
-/** When the user last talked in a trip, from its log; null when nobody has. @param {Store} store @param {string} scope @returns {Promise<number | null>} */
-async function lastTalked(store, scope) {
+/** When the user last talked in a trip, or in `me`, from its log; null when nobody has. @param {Store} store @param {string} scope @returns {Promise<number | null>} */
+export async function lastTalked(store, scope) {
   const lines = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['msg.user', 'heard'], reverse: true }));
   return lines.find(talks)?.ts ?? null;
 }

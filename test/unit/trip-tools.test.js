@@ -49,38 +49,6 @@ const cards = (k) => {
   return asks;
 };
 
-test("start_trip with no trip open: a trip of Shiori's, with the waiting files in its Files, its conversation starting with the hand-over and her recap; it opens once she is done", async (t) => {
-  useClock(t);
-  const k = await kit([call('start_trip', START), say('I started Anchorage · Nov 20–27.'), say('Your flight is on Nov 20.')]);
-  /** @type {any[]} */
-  const went = [];
-  k.agent.on('went', (/** @type {any} */ x) => went.push(x));
-  k.agent.send('', { handed: [waitingFlight], handover: 'h-1' });
-  await k.agent.idle();
-  const trip = await tripNamed(k, 'Anchorage · Nov 20–27');
-  assert.ok(trip);
-  assert.deepEqual(went, [{ trip: trip.id }], "not the user's own choice: a screen on home stays where it is");
-  const tj = await k.ws.readJSON(trip.id, '/trip.json');
-  assert.deepEqual([tj.title, tj.start, tj.end], ['Anchorage · Nov 20–27', '2026-11-20', '2026-11-27']);
-  assert.equal((await k.ws.read(trip.id, '/trip.json')).entry.author, 'shiori');
-  assert.deepEqual((await k.ws.list(trip.id, '/files/')).map((/** @type {any} */ f) => f.path), ['/files/flight.pdf']);
-  assert.deepEqual(await readNames(k.ws, trip.id), { '/files/flight.pdf': 'ANNAI AIR flight · Nov 20' });
-  assert.deepEqual(await waitingFiles(k.ws), []);
-  const there = await eventsIn(k, trip.id, ['msg.user', 'wake']);
-  const copy = there.find((/** @type {any} */ e) => e.type === 'msg.user');
-  assert.deepEqual([copy.data.handed[0].path, copy.data.from, copy.data.handover], ['/trip/files/flight.pdf', ME, 'h-1']);
-  const recap = there.filter((/** @type {any} */ e) => e.type === 'wake').flatMap((/** @type {any} */ e) => e.data.reasons).find((/** @type {any} */ r) => r.recap);
-  assert.deepEqual([recap.kind, recap.recap, recap.handover, recap.files], ['file', 'A long weekend in Testville with Sam', 'h-1', ['/files/flight.pdf']]);
-  const [moved] = await eventsIn(k, ME, ['handover.moved']);
-  assert.deepEqual(moved.data, { handover: 'h-1', to: trip.id, started: true, count: 1 });
-  // It opened, and its own turn took the hand-over up there.
-  assert.equal(k.agent.trip, trip.id);
-  assert.equal((await readAppSettings(k.ws)).activeTrip, trip.id);
-  assert.deepEqual((await eventsIn(k, trip.id, ['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Your flight is on Nov 20.']);
-  // The no-trip conversation keeps its own lines.
-  assert.deepEqual((await eventsIn(k, ME, ['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['I started Anchorage · Nov 20–27.']);
-});
-
 test('start_trip while a trip is open: the new trip keeps its files waiting to be read, and the open trip stays open', async (t) => {
   useClock(t);
   const k = await agentKit([[call('start_trip', { title: 'Kyoto · Apr', files: ['/trip/files/temple.pdf'] }), say('That one is for Kyoto: I started a trip for it.')]], { halves: true });
@@ -103,10 +71,12 @@ test('start_trip while a trip is open: the new trip keeps its files waiting to b
 
 test('start_trip needs only a title; a date that is not one is refused in words', async (t) => {
   useClock(t);
-  const k = await kit([call('start_trip', { title: 'Somewhere', start: '20 Nov' }), call('start_trip', { title: 'Just a name' }), say('Started.')]);
+  const k = await agentKit([[call('start_trip', { title: 'Somewhere', start: '20 Nov' }), call('start_trip', { title: 'Just a name' }), say('Started.')]], { halves: true });
+  k.agent.addLoopTools(tripTools(k.agent));
+  await k.ws.patch(k.trip, '/trip.json', { start: '2026-11-20', end: '2026-11-27' }, { author: 'user' }); // a trip, not a chat: it may start another
   k.agent.send('Start a trip for us');
   await k.agent.idle();
-  const [bad, good] = (await eventsIn(k, ME, ['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'start_trip');
+  const [bad, good] = (await eventsIn(k, k.trip, ['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'start_trip');
   assert.equal(bad.data.ok, false);
   assert.match(bad.data.content, /YYYY-MM-DD/);
   assert.equal(await tripNamed(k, 'Somewhere'), undefined);
@@ -199,34 +169,6 @@ test('a trip she started opens later with its hand-over owed: the turn that take
   await fresh.idle();
   const wrote = (await eventsIn(k, kyoto.id, ['file.write'])).find((/** @type {any} */ e) => e.data.path === '/notes/temple.md');
   assert.equal(wrote?.data.handover, 'h-1');
-});
-
-test("the user opening another conversation before she is done keeps that one open: openWhenDone doesn't pull them away", async (t) => {
-  useClock(t);
-  const k = await kit([call('start_trip', START), say('Started.', { delayMs: 80 }), sleep]);
-  k.agent.send('', { handed: [waitingFlight], handover: 'h-1' });
-  const end = Date.now() + 3000;
-  while (!(await tripNamed(k, START.title)) && Date.now() < end) await new Promise((r) => setTimeout(r, 5));
-  await k.agent.open(k.trip);
-  await k.agent.idle();
-  assert.equal(k.agent.trip, k.trip);
-});
-
-test('a PDF handed over with no trip open, filed into a trip she started, then the trip removed: no blob of that PDF is left', async (t) => {
-  useClock(t);
-  const k = await kit([
-    call('read', { path: '/waiting/files/flight.pdf' }), call('start_trip', START), say('Started.'),
-    { toolCalls: [{ name: 'write', input: { path: '/trip/notes/flight.md', content: 'AS 123, Nov 20' } }, { name: 'speak', input: { text: 'Filed.' } }, { name: 'sleep', input: {} }] },
-  ], { utility: [{ text: 'ANNAI AIR AN 123, Nov 20 2026' }], utilityModel: { input: ['text', 'image', 'pdf'] } });
-  k.agent.send('', { handed: [waitingFlight], handover: 'h-1' });
-  await k.agent.idle();
-  const trip = await tripNamed(k, START.title);
-  assert.ok(await k.ws.read(trip.id, '/notes/flight.md'));
-  assert.equal(await k.store.tx(['blobs'], 'readonly', (/** @type {any} */ x) => x.hasBlob(k.pdfHash)), true);
-  await k.agent.open(null);
-  await k.agent.idle();
-  await removeTrip(k.store, trip.id);
-  assert.equal(await k.store.tx(['blobs'], 'readonly', (/** @type {any} */ x) => x.hasBlob(k.pdfHash)), false);
 });
 
 // The fix pass: every file is found before anything is made or moved.
@@ -343,22 +285,6 @@ test("a waiting calendar file filed into a trip she started is not said to be on
   const text = handOverText([{ path: '/trip/files/dinner.ics', type: 'text/calendar', name: 'dinner.ics', new: true }]);
   assert.doesNotMatch(text, /on the plan already/);
   assert.match(handOverText([{ path: '/trip/files/dinner.ics', type: 'text/calendar', name: 'dinner.ics', new: true, planned: 2 }]), /"\/trip\/files\/dinner\.ics": annai put its 2 events on the plan already/);
-});
-
-test('start_trip with no files takes the waiting files of every hand-over its turn took: the flight, then "and the hotel" while she worked', async (t) => {
-  useClock(t);
-  const k = await kit([{ delayMs: 40, toolCalls: [{ name: 'list_trips', input: {} }] }, call('start_trip', { title: 'Anchorage' }), say('Started Anchorage.'), sleep]);
-  await k.ws.write(SYS_WAITING, '/files/hotel.png', utf8('a hotel'), { author: 'user', type: 'image/png' });
-  k.agent.send('', { handed: [waitingFlight], handover: 'h-1' });
-  await new Promise((r) => setTimeout(r, 10));
-  k.agent.send('and the hotel', { handed: [{ path: '/waiting/files/hotel.png', type: 'image/png', name: 'hotel.png', new: true }], handover: 'h-2' });
-  await k.agent.idle();
-  const trip = await tripNamed(k, 'Anchorage');
-  assert.deepEqual((await k.ws.list(trip.id, '/files/')).map((/** @type {any} */ f) => f.path), ['/files/flight.pdf', '/files/hotel.png']);
-  assert.deepEqual(await waitingFiles(k.ws), []);
-  // Each of the user's lines is copied into the trip, with its own files.
-  const copies = await eventsIn(k, trip.id, ['msg.user']);
-  assert.deepEqual(copies.map((/** @type {any} */ e) => [e.data.handover, e.data.handed.map((/** @type {any} */ f) => f.path)]), [['h-1', ['/trip/files/flight.pdf']], ['h-2', ['/trip/files/hotel.png']]]);
 });
 
 test("a waiting calendar file filed by start_trip has its events planned in the trip, and she is told; Undo takes them back", async (t) => {

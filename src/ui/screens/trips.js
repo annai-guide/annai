@@ -1,10 +1,10 @@
 import { h, field, t, plural, twoStep, messageOf, whenGone } from '../dom.js';
-import { listTrips, createTrip, backupState, scopeTitle, changesTrip, SYS_WAITING } from '../../core/scopes.js';
+import { listTrips, createTrip, backupState, scopeTitle, changesTrip, lastTalked, ME, SYS_WAITING } from '../../core/scopes.js';
 import { readNames, shortName } from '../../core/names.js';
 import { waitingFiles, dropWaiting } from '../../core/waiting.js';
 import { filesToRead } from '../../core/handover.js';
-import { askAbout, canAsk, openOrTell } from '../composer.js';
-import { readAppSettings, updateAppSettings } from '../../core/settings.js';
+import { askAbout, canAsk } from '../composer.js';
+import { readAppSettings } from '../../core/settings.js';
 import { ValidationError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
 import { relTime, relChange, dateRange, backupText, wording, size, waitingHref, talkHref, day, when, rowName } from '../format.js';
@@ -28,7 +28,7 @@ import { keepRows, covered } from '../keep-rows.js';
 /**
  * Home: the timeline of trips and chats (the timeline design), old to new, the trips happening at the now line and only dated trips below it.
  * A tap opens a row's conversation. What a card shows beyond its dates is read for cards alone, so chats cost no reads. The foot keeps, until
- * the later stages, the no-trip card, the waiting panel and Start a trip; then the archived trips, Open a file and the last backup.
+ * stage 8, the waiting panel and Start a trip; then the archived trips, Open a file and the last backup. `me`'s old lines are a row of their own.
  * @param {any} ctx
  */
 export async function renderTrips(ctx) {
@@ -60,8 +60,11 @@ async function drawTrips(ctx, follow, stop) {
   const latest = places.filter((/** @type {any} */ p) => p.last).sort((/** @type {any} */ a, /** @type {any} */ b) => b.last.at - a.last.at)[0];
   /** due: when a card's Next stops being next, pushed by the happening cards as they are drawn. */
   const o = { say: wording(settings), now: nowOf(ctx.live), zone: ctx.live?.timeZone?.() ?? deviceZone(), due: /** @type {number[]} */ ([]), since: /** @type {Since[]} */ ([]), backups: /** @type {Backups} */ (new Map()) };
-  const { above, happening, below } = timelineRows(active, o.now, o.zone);
-  const byId = new Map(active.map((s) => [s.id, s]));
+  // `me`'s old lines are a row of their own, by the last line the user said there (the user, 2026-11-05, "Read-only row"); with none, there is nothing of theirs to read back.
+  const meAt = await meTalked(ctx.store);
+  const rows = meAt === null ? active : [...active, { id: ME, title: '', created: meAt, talked: meAt }];
+  const { above, happening, below } = timelineRows(rows, o.now, o.zone);
+  const byId = new Map(rows.map((s) => [s.id, s]));
   const row = (/** @type {Row} */ r) => (r.card ? tripCard(ctx, byId.get(r.id), r, o) : chatLine(byId.get(r.id), r, o));
   const past = await Promise.all(above.map(async (e) => {
     if (e.heading) return h('li', { class: 'when' }, h('h2', { class: 'section', text: e.heading.kind === 'day' ? day(e.heading.key, true) : monthName(e.heading.key) }));
@@ -84,7 +87,6 @@ async function drawTrips(ctx, follow, stop) {
     h('p', { class: 'now-line' }, h('span', { text: t`Now` })),
     h('ul', { class: 'cards rows ahead' }, ...ahead),
     active.length ? null : h('p', { class: 'empty', text: t`Tap + to talk to Shiori.` }),
-    noTrip(ctx),
     waiting.length ? waitingList(ctx, waiting, await readNames(ctx.ws, SYS_WAITING)) : null,
     newTripForm(ctx),
     archived.length
@@ -191,14 +193,15 @@ function fold(key, ...parts) {
 const monthName = (key) => when(Date.parse(`${key}-01T00:00:00Z`), 'UTC', { month: 'long', year: 'numeric' });
 
 /**
- * A chat: one line, its name and its time (under a month's heading, its day too); a tap opens its conversation.
- * @param {any} s @param {Row} r @param {{ say: ReturnType<typeof wording>, now: number, zone: string }} o
+ * A chat: one line, its name and its time (under a month's heading, its day too); a tap opens its conversation. `me`'s is "Shiori, no trip", opening its
+ * lines to read. @param {any} s @param {Row} r @param {{ say: ReturnType<typeof wording>, now: number, zone: string }} o
  */
 function chatLine(s, r, { say, now, zone }) {
-  const name = scopeTitle(s);
+  const me = s.id === ME;
+  const name = me ? t`Shiori, no trip` : scopeTitle(s);
   const monthly = /** @type {string} */ (dayIn(r.at, zone)) < recentFrom(now, zone); // as its heading: by the calendar day, not by 30 times 24 hours
-  return h('li', {}, h('a', { class: 'card trip-card line', href: talkHref(s.id) },
-    h('span', { class: 'name', ...say(name), text: name }),
+  return h('li', {}, h('a', { class: 'card trip-card line', href: me ? '#/talk/me' : talkHref(s.id) },
+    h('span', { class: 'name', ...(me ? {} : say(name)), text: name }),
     h('span', { class: 'sub', text: when(r.at, zone, { ...(monthly ? { month: 'short', day: 'numeric' } : {}), hour: '2-digit', minute: '2-digit' }) })));
 }
 
@@ -244,20 +247,10 @@ async function herLast(ctx, scope) {
   return e ? String({ ...e.data, ...(await storedTexts(ctx.store, e)) }.text ?? '') : '';
 }
 
-/**
- * The way back to the conversation outside any trip, while a trip is open: what she was
- * handed with no trip open, and what she said of it, are there. @param {any} ctx
- */
-function noTrip(ctx) {
-  if (!ctx.agent?.target) return null;
-  return h('button', {
-    class: 'card no-trip', type: 'button',
-    onclick: async () => {
-      await updateAppSettings(ctx.ws, { activeTrip: null });
-      if (await openOrTell(ctx, null)) ctx.go('#/talk');
-    },
-  }, h('span', { class: 'name', text: t`Shiori, no trip` }), h('span', { class: 'sub', text: t`Talk with her outside any trip.` }));
-}
+/** When the user last talked in `me`, read once a page load: it takes no more lines. @type {Promise<number | null> | null} */
+let meAt = null;
+/** @param {any} store */
+const meTalked = (store) => (meAt ??= lastTalked(store, ME).catch(() => { meAt = null; return null; }));
 
 /**
  * What the user handed Shiori while no trip was open, waiting for her to file it (My call 3 of the bookings-and-trips design): each

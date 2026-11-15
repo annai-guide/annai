@@ -30,12 +30,12 @@ function parse(hash) {
 }
 
 /**
- * Where an address that names no trip goes while one is open: "#/talk" and "#/plan" are the open trip's, at its own address, so phone
- * Back never shows another conversation. Null for anything else, and while none is open (they show the no-trip screens until stage 7).
- * @param {{ parts: string[] }} route @param {string | null} target the trip being opened, or open
+ * Where an address that names no trip goes: "#/talk" and "#/plan" are the open conversation's, at its own address, so phone Back never shows
+ * another conversation; with none open (no draft could be made), home. Null for anything else: "#/talk/me", `me`'s read-only lines, included.
+ * @param {{ parts: string[] }} route @param {string | null} target the conversation being opened, or open
  * @returns {string | null}
  */
 export function redirectOf(route, target) {
-  if (!target || route.parts.length !== 1 || !['talk', 'plan'].includes(route.parts[0])) return null;
-  return `#/trip/${encodeURIComponent(target)}/${route.parts[0]}`;
+  if (route.parts.length !== 1 || !['talk', 'plan'].includes(route.parts[0])) return null;
+  return target ? `#/trip/${encodeURIComponent(target)}/${route.parts[0]}` : '#/trips';
 }

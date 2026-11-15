@@ -65,11 +65,13 @@ test('the conversation has an address', () => {
   assert.deepEqual(parseHash(talkHref('trip a/b')).parts, ['trip', 'trip a/b', 'talk']);
 });
 
-test('#/talk and #/plan redirect only while a trip is open', () => {
+test("#/talk and #/plan go to the open conversation's address (the draft's too), and home with none open; #/talk/me is never redirected", () => {
   assert.equal(redirectOf(parseHash('#/talk'), 'trip-a'), '#/trip/trip-a/talk');
   assert.equal(redirectOf(parseHash('#/plan'), 'trip-a'), '#/trip/trip-a/plan');
-  assert.equal(redirectOf(parseHash('#/talk'), null), null);
-  assert.equal(redirectOf(parseHash('#/plan'), null), null);
+  assert.equal(redirectOf(parseHash('#/talk'), null), '#/trips');
+  assert.equal(redirectOf(parseHash('#/plan'), null), '#/trips');
+  assert.equal(redirectOf(parseHash('#/talk/me'), 'trip-a'), null);
+  assert.equal(redirectOf(parseHash('#/talk/me'), null), null);
   assert.equal(redirectOf(parseHash('#/trip/trip-b/talk'), 'trip-a'), null);
   assert.equal(redirectOf(parseHash('#/trip/trip-b/plan'), 'trip-a'), null);
   assert.equal(redirectOf(parseHash('#/trips'), 'trip-a'), null);
