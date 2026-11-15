@@ -50,6 +50,17 @@ async function undo(page, trip) {
 const lastUser = (body) => JSON.stringify([...(body?.messages ?? [])].reverse().find((/** @type {any} */ m) => m.role === 'user')?.content ?? '');
 /** A request's messages without the cache marks, which move from one request to the next. @param {any[]} messages */
 const plain = (messages) => JSON.parse(JSON.stringify(messages, (k, v) => (k === 'cache_control' ? undefined : v)));
+/**
+ * The restart's request is the held one's, and then its own line: every message before the held one's last, and that last one's results,
+ * which the restart line follows in the same message. @param {any} held @param {any} restart
+ */
+function sameBefore(held, restart) {
+  const n = held.messages.length;
+  expect(plain(restart.messages.slice(0, n - 1))).toEqual(plain(held.messages.slice(0, -1)));
+  const results = (/** @type {any} */ m) => (Array.isArray(m?.content) ? m.content.filter((/** @type {any} */ b) => b.type === 'tool_result') : []);
+  expect(results(held.messages.at(-1)).length).toBeGreaterThan(0);
+  expect(plain(results(restart.messages[n - 1]))).toEqual(plain(results(held.messages.at(-1))));
+}
 
 /**
  * Big Sur, with Kyoto made too, on Big Sur's conversation. @param {import('@playwright/test').Page} page @param {string} origin
@@ -101,7 +112,7 @@ for (const how of ['reload', 'crash']) {
       expect(bodies.length).toBe(3);
       expect(lastUser(bodies[2])).toContain('in the middle of your turn');
       // What she is sent: the restart's request is the held one's, and then its own line.
-      expect(plain(bodies[2].messages.slice(0, bodies[1].messages.length - 1))).toEqual(plain(bodies[1].messages.slice(0, -1)));
+      sameBefore(bodies[1], bodies[2]);
       noRecord(bodies);
       await p.waitForTimeout(1000); // nothing more is asked
       expect(llm.bodies(MESSAGES).length).toBe(3);
@@ -161,7 +172,7 @@ test('another trip opened while she works on a hand-over: the conversation left 
     const bodies = llm.bodies(MESSAGES);
     expect(bodies.length).toBe(3);
     expect(lastUser(bodies[2])).toContain('Another conversation was opened in the middle of your turn');
-    expect(plain(bodies[2].messages.slice(0, bodies[1].messages.length - 1))).toEqual(plain(bodies[1].messages.slice(0, -1)));
+    sameBefore(bodies[1], bodies[2]);
     noRecord(bodies);
     const { writes } = await filed(page, bigSur);
     expect(writes.map(([path]) => path)).toEqual(['/notes/a.md', '/notes/b.md']);
