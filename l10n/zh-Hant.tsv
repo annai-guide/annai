@@ -780,25 +780,25 @@ aaicx8	ok	{0} couldn't be checked: {1}	無法檢查 {0}：{1}	src/core/package-u
 mlem3w	ok	wasn't installed from an address, so annai has nowhere to look for an update	不是從網址安裝的，所以無法檢查更新	src/core/package-updates.js:54	
 1nrhfbi	ok	the address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	這個網址現在提供的是另一個套件（{0}），因此沒有更新。如果想用那個套件，請移除這個，再安裝那個。	src/core/package-updates.js:58	{0} = pkg.id; Note: Remove → 移除, as annai's Remove buttons say.
 emc8n2	ok	this update adds parts you haven't agreed to: {0}. Check for updates again and look at what it adds.	這次更新會加入你尚未同意的部分：{0}。請重新檢查更新，看看它會加入什麼。	src/core/package-updates.js:62	{0} = addedWords(added); Note: the English starts in lower case after the plugin's name, which the screen leaves out; a sentence here.
-1wfc5of	ok	This zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.	此 zip 包含多個技能。請逐一安裝，或新增一個列出它們的 annai-plugin.json。	src/core/packages.js:339	
-12el2y8	ok	The {0} is in {1}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0} 位於 {1}，層級太深。annai 只會在 zip 的最上層或其中唯一的資料夾裡讀取它。請單獨壓縮那個資料夾。	src/core/packages.js:347	{0} = file; {1} = folder
-yeyuzl	ok	The {0} is in {1}, with other files beside that folder: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0} 位於 {1}，但這個資料夾旁邊還有其他檔案。annai 只會在 zip 的最上層或其中唯一的資料夾裡讀取它。請單獨壓縮那個資料夾。	src/core/packages.js:348	{0} = file; {1} = folder
-woxuej	ok	There is no {0} or {1} in this package.	此套件中沒有 {0} 或 {1}。	src/core/packages.js:350	{0} = MANIFEST_FILE; {1} = SKILL_FILE
-1r65tkq	ok	It is too large: it unpacks to more than {0}.	體積太大，解壓縮後會超過 {0}。	src/core/packages.js:368	{0} = size(maxBytes); Note: said of a plugin, whose name is the card's title.
-jg8gk7	ok	That isn't a web address. Paste the address of a zip file, an annai-plugin.json or a SKILL.md.	這不是網址。請貼上 zip 檔案、annai-plugin.json 或 SKILL.md 的網址。	src/core/packages.js:448	
-13j5338	ok	For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.	如果是 GitHub 上的資料夾，請使用其中 SKILL.md 或 annai-plugin.json 的網址。	src/core/packages.js:482	
-1xovhb	ok	annai couldn't reach {0}. Check the address, and that the site lets web apps read it.	無法連線到 {0}。請檢查網址，並確認該網站允許網頁應用程式讀取。	src/core/packages.js:491	{0} = u.host
-4lh0yw	ok	{0} sent a zip annai can't open: {1}	{0} 傳來的 zip 無法開啟：{1}	src/core/packages.js:504	{0} = url.host; {1} = why; Note: {1} is a developer's detail, in English.
-hm96ty	ok	That package has more than {0} files; annai installs packages of up to {1} from an address. Use a zip instead.	該套件超過 {0} 個檔案，而從網址安裝最多只支援 {1} 個檔案。請改用 zip。	src/core/packages.js:520	{0} = ADDRESS_MAX_FILES; {1} = ADDRESS_MAX_FILES
-pft16a	ok	{0} answered {1} for {2}, a file its {3} names.	{0} 對 {2}（{3} 中列出的檔案）傳回了 {1}。	src/core/packages.js:532	{0} = u.host; {1} = status; {2} = name; {3} = from
-apv0y3	ok	annai couldn't read {0} from {1}, a file its {2} names. Check that it is there, and that the site lets web apps read it.	無法從 {1} 讀取 {0}（{2} 中列出的檔案）。請檢查該檔案是否存在，以及該網站是否允許網頁應用程式讀取。	src/core/packages.js:534	{0} = name; {1} = u.host; {2} = from
-1iuga68	ok	There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.	該網址沒有 annai 外掛程式或技能。annai 會尋找 zip 檔案、annai-plugin.json 或 SKILL.md。	src/core/packages.js:604	
-1toghwz	ok	The {0} at {1} isn't valid JSON.	{1} 上的 {0} 不是有效的 JSON。	src/core/packages.js:614	{0} = MANIFEST_FILE; {1} = url.host
-1rp7aut	ok	code that runs in annai	在 annai 中執行的程式碼	src/core/packages.js:654	Note: one of a list of what an update adds.
-1tdxuf	ok	the skill {0}	技能 {0}	src/core/packages.js:655	{0} = s.name
-1j0uwka	ok	the personality {0}	性格 {0}	src/core/packages.js:656	{0} = p.name
-14wn58m	ok	a provider that sends keys to {0}	會把金鑰傳送到 {0} 的供應商	src/core/packages.js:657	{0} = o; Note: one of a list of what an update adds.
-tqmba2	ok	an address your searches are sent to: {0}	會接收搜尋內容的網址 {0}	src/core/packages.js:657	{0} = o; Note: one of a list of what an update adds.
+1wfc5of	ok	This zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.	此 zip 包含多個技能。請逐一安裝，或新增一個列出它們的 annai-plugin.json。	src/core/packages.js:347	
+12el2y8	ok	The {0} is in {1}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0} 位於 {1}，層級太深。annai 只會在 zip 的最上層或其中唯一的資料夾裡讀取它。請單獨壓縮那個資料夾。	src/core/packages.js:355	{0} = file; {1} = folder
+yeyuzl	ok	The {0} is in {1}, with other files beside that folder: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0} 位於 {1}，但這個資料夾旁邊還有其他檔案。annai 只會在 zip 的最上層或其中唯一的資料夾裡讀取它。請單獨壓縮那個資料夾。	src/core/packages.js:356	{0} = file; {1} = folder
+woxuej	ok	There is no {0} or {1} in this package.	此套件中沒有 {0} 或 {1}。	src/core/packages.js:358	{0} = MANIFEST_FILE; {1} = SKILL_FILE
+1r65tkq	ok	It is too large: it unpacks to more than {0}.	體積太大，解壓縮後會超過 {0}。	src/core/packages.js:376	{0} = size(maxBytes); Note: said of a plugin, whose name is the card's title.
+jg8gk7	ok	That isn't a web address. Paste the address of a zip file, an annai-plugin.json or a SKILL.md.	這不是網址。請貼上 zip 檔案、annai-plugin.json 或 SKILL.md 的網址。	src/core/packages.js:456	
+13j5338	ok	For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.	如果是 GitHub 上的資料夾，請使用其中 SKILL.md 或 annai-plugin.json 的網址。	src/core/packages.js:490	
+1xovhb	ok	annai couldn't reach {0}. Check the address, and that the site lets web apps read it.	無法連線到 {0}。請檢查網址，並確認該網站允許網頁應用程式讀取。	src/core/packages.js:499	{0} = u.host
+4lh0yw	ok	{0} sent a zip annai can't open: {1}	{0} 傳來的 zip 無法開啟：{1}	src/core/packages.js:512	{0} = url.host; {1} = why; Note: {1} is a developer's detail, in English.
+hm96ty	ok	That package has more than {0} files; annai installs packages of up to {1} from an address. Use a zip instead.	該套件超過 {0} 個檔案，而從網址安裝最多只支援 {1} 個檔案。請改用 zip。	src/core/packages.js:528	{0} = ADDRESS_MAX_FILES; {1} = ADDRESS_MAX_FILES
+pft16a	ok	{0} answered {1} for {2}, a file its {3} names.	{0} 對 {2}（{3} 中列出的檔案）傳回了 {1}。	src/core/packages.js:540	{0} = u.host; {1} = status; {2} = name; {3} = from
+apv0y3	ok	annai couldn't read {0} from {1}, a file its {2} names. Check that it is there, and that the site lets web apps read it.	無法從 {1} 讀取 {0}（{2} 中列出的檔案）。請檢查該檔案是否存在，以及該網站是否允許網頁應用程式讀取。	src/core/packages.js:542	{0} = name; {1} = u.host; {2} = from
+1iuga68	ok	There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.	該網址沒有 annai 外掛程式或技能。annai 會尋找 zip 檔案、annai-plugin.json 或 SKILL.md。	src/core/packages.js:612	
+1toghwz	ok	The {0} at {1} isn't valid JSON.	{1} 上的 {0} 不是有效的 JSON。	src/core/packages.js:622	{0} = MANIFEST_FILE; {1} = url.host
+1rp7aut	ok	code that runs in annai	在 annai 中執行的程式碼	src/core/packages.js:662	Note: one of a list of what an update adds.
+1tdxuf	ok	the skill {0}	技能 {0}	src/core/packages.js:663	{0} = s.name
+1j0uwka	ok	the personality {0}	性格 {0}	src/core/packages.js:664	{0} = p.name
+14wn58m	ok	a provider that sends keys to {0}	會把金鑰傳送到 {0} 的供應商	src/core/packages.js:665	{0} = o; Note: one of a list of what an update adds.
+tqmba2	ok	an address your searches are sent to: {0}	會接收搜尋內容的網址 {0}	src/core/packages.js:665	{0} = o; Note: one of a list of what an update adds.
 18tp402	ok	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	這個瀏覽器無法轉換 {0}，因此保留了原始檔案，可能只有 Safari 能顯示。	src/core/photos.js:135	{0} = name
 1009iza	ok	Restaurant	餐廳	src/core/plan.js:43	
 1lrcegv	ok	Event	活動	src/core/plan.js:43	

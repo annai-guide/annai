@@ -1,8 +1,10 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { setWords, key } from '../../src/core/l10n.js';
 import { SYS_PLUGINS } from '../../src/core/scopes.js';
 import { utf8 } from '../../src/core/bytes.js';
+import { wordsOf, leftOut } from '../../src/core/packages.js';
 import { installOfficial, updateOfficial, officialUpdates, fetchTranslations } from '../../src/core/llm/official.js';
 import { addFromCatalog } from '../../src/core/requires.js';
 import { checkPlugins } from '../../src/ui/plugin-updates.js';
@@ -206,9 +208,65 @@ test("words made for another version of annai's own plugin still give every fiel
   assert.equal(says(), '干潮。');
   assert.equal(k.host.langOf(ID), 'ja');
   // A third party's translation that names a field its manifest hasn't is still left out whole, as L7 has it.
-  const { wordsOf } = await import('../../src/core/packages.js');
   const m = JSON.parse(TIDES()['annai-plugin.json']);
   assert.equal(wordsOf({ ...m, l10n: ['ja'] }, () => utf8(JSON.stringify(JA_NEXT))).lang, 'en');
+});
+
+// Provider words, part 2: a phone still on an older annai reads the words a newer catalog wrote, which may give a field this annai
+// doesn't list as translated (the strings-stale re-review's R1: the whole Gemini file was refused, so its words showed in English).
+// The real Japanese Gemini words, with the provider tool's name added, a field a later annai may translate and this one treats as data.
+const GEMINI = JSON.parse(await readFile(new URL('../../plugins-official/provider-gemini/annai-plugin.json', import.meta.url), 'utf8'));
+const GEMINI_JA = JSON.parse(await readFile(new URL('../../catalog/l10n/ja/provider-gemini.json', import.meta.url), 'utf8'));
+const NEWER = 'provider.abilities.chat.models.0.providerTools.0.name';
+/** The value at a translation's path. @param {any} o @param {string} path */
+const valueAt = (o, path) => path.split('.').reduce((x, k) => x?.[k], o);
+
+test("annai's own plugin's words from a newer catalog: a field this annai doesn't list is skipped, every field it lists is translated", () => {
+  setWords('ja', {});
+  const bytes = utf8(JSON.stringify({ ...GEMINI_JA, manifest: { ...GEMINI_JA.manifest, [NEWER]: 'Google 検索' } }));
+  const w = wordsOf(GEMINI, () => bytes, { tag: 'ja', official: true });
+  assert.equal(w.lang, 'ja');
+  assert.ok(Object.keys(GEMINI_JA.manifest).length > 5);
+  for (const [path, value] of Object.entries(GEMINI_JA.manifest)) assert.equal(valueAt(w.manifest, path), value, path);
+  assert.equal(valueAt(w.manifest, NEWER), 'Google Search', 'a field this annai treats as data keeps its value');
+  assert.equal(valueAt(GEMINI, NEWER), 'Google Search', 'the manifest itself stays English');
+  // A third party's package holds its manifest and words together, so it has no such skew: its file is left out whole, with its line.
+  const theirs = { ...GEMINI, id: 'acme-gemini', l10n: ['ja'] };
+  const read = (/** @type {string} */ path) => (path === 'l10n/ja.json' ? bytes : undefined);
+  assert.deepEqual(leftOut(theirs, read), [{ tag: 'ja', why: `its l10n/ja.json translates ${NEWER}, which isn't a field a translation may give` }]);
+  assert.equal(wordsOf(theirs, read).lang, 'en');
+});
+
+test("annai's own plugin's words: a listed field with a wrong value is skipped alone, the other fields translated; a third party's file is left out", () => {
+  setWords('ja', {});
+  const bad = { ...GEMINI_JA.manifest, description: 'あ'.repeat(501), 'provider.note': 5, keywords: 'ジェミニ' };
+  const bytes = utf8(JSON.stringify({ ...GEMINI_JA, manifest: bad }));
+  const w = wordsOf(GEMINI, () => bytes, { tag: 'ja', official: true });
+  assert.equal(w.lang, 'ja');
+  assert.equal(w.manifest.description, GEMINI.description, 'too long: its English');
+  assert.equal(w.manifest.provider.note, GEMINI.provider.note, 'not text: its English');
+  assert.deepEqual(w.manifest.keywords, GEMINI.keywords, 'not a list: its own keywords');
+  for (const path of Object.keys(GEMINI_JA.manifest).filter((p) => !(p in { description: 1, 'provider.note': 1 }))) {
+    assert.equal(valueAt(w.manifest, path), GEMINI_JA.manifest[path], path);
+  }
+  const theirs = { ...GEMINI, id: 'acme-gemini', l10n: ['ja'] };
+  const read = (/** @type {string} */ path) => (path === 'l10n/ja.json' ? bytes : undefined);
+  assert.deepEqual(leftOut(theirs, read), [{ tag: 'ja', why: "its l10n/ja.json's description must be text of up to 500 characters" }]);
+  assert.equal(wordsOf(theirs, read).lang, 'en');
+});
+
+test("annai's own plugin's words: a part a newer annai may add (a top-level key, a message this one can't read) is skipped alone; a third party's file is left out", () => {
+  setWords('ja', {});
+  const messages = { ...(GEMINI_JA.messages ?? {}), 'made-up-a': 5, 'made-up-b': 'あ'.repeat(2001) };
+  const bytes = utf8(JSON.stringify({ ...GEMINI_JA, messages, notes: { made: 'up' } }));
+  const w = wordsOf(GEMINI, () => bytes, { tag: 'ja', official: true });
+  assert.equal(w.lang, 'ja');
+  for (const path of Object.keys(GEMINI_JA.manifest)) assert.equal(valueAt(w.manifest, path), GEMINI_JA.manifest[path], path);
+  for (const [k, v] of Object.entries(GEMINI_JA.messages ?? {})) assert.deepEqual(w.messages?.[k], v, k);
+  const theirs = { ...GEMINI, id: 'acme-gemini', l10n: ['ja'] };
+  const read = (/** @type {string} */ path) => (path === 'l10n/ja.json' ? bytes : undefined);
+  assert.deepEqual(leftOut(theirs, read), [{ tag: 'ja', why: 'its l10n/ja.json must be an object with only manifest and messages' }]);
+  assert.equal(wordsOf(theirs, read).lang, 'en');
 });
 
 test("a plugin with an update waiting keeps its words at a check; the update brings the new version's", async () => {
