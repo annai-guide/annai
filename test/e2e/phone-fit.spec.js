@@ -299,14 +299,32 @@ const coveredControls = (page) => page.evaluate(() => {
   });
 });
 
+const PNG1 = { name: 'gate.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64') };
+/** The card annai raises when the camera has no conversation to keep its photo in and none can be made (a store that fails), with Dismiss alone. */
+const CARD = "The photo wasn't added";
+/**
+ * A system card, as annai raises one: the dock's camera when nothing is open and no draft can be made (until timeline stage 7, the camera's "Open a trip
+ * first", with no trip open). The page's own classes, as modules are shared: from then on its conversation reads as none, and the draft fails.
+ * @param {import('@playwright/test').Page} page
+ */
+async function raiseCard(page) {
+  await page.evaluate(async () => {
+    const { Chats } = await import(/** @type {string} */ ('/src/core/chats.js'));
+    const { Halves } = await import(/** @type {string} */ ('/src/core/agent/halves.js'));
+    Chats.prototype.whenReady = () => Promise.reject(new Error('The store failed.'));
+    Object.defineProperty(Halves.prototype, 'target', { configurable: true, get: () => null });
+  });
+  await page.locator('#dock-camera').setInputFiles(PNG1);
+}
+
 test("a system card never covers the screen's controls: it comes in at the top and moves the screen down, and the screen scrolls clear of it (the emulator pass)", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 760 });
   await openApp(page, '#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
   expect(await coveredControls(page)).toEqual([]);
-  // The dock's camera with no trip open: a card says to open one.
-  await page.locator('#dock-camera').setInputFiles({ name: 'gate.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64') });
-  const card = page.locator('.notice', { hasText: 'Open a trip first' });
+  // The dock's camera when no conversation can be made: a card says so.
+  await raiseCard(page);
+  const card = page.locator('.notice', { hasText: CARD });
   await expect(card).toBeVisible();
   await expect(page.locator('.notices')).not.toHaveClass(/landed/); // the moment that ignores taps on what it moved is over
   expect(await coveredControls(page)).toEqual([]);
@@ -326,9 +344,6 @@ test("a system card never covers the screen's controls: it comes in at the top a
   await expect(card).toHaveCount(0);
 });
 
-const PNG1 = { name: 'gate.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64') };
-/** A system card, as annai raises one: the dock's camera with no trip open. @param {import('@playwright/test').Page} page */
-const raiseCard = (page) => page.locator('#dock-camera').setInputFiles(PNG1);
 
 test('review S1: scrolled down, a card coming or going keeps the screen where it was, measured, not left to the browser (Safari before 18 has no scroll anchoring)', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 760 });
@@ -365,7 +380,7 @@ for (const [scrolled, moves] of /** @type {const} */ ([[0, true], [40, true], [4
     await openApp(page, '#/settings');
     await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
     await raiseCard(page);
-    await expect(page.locator('.notice', { hasText: 'Open a trip first' })).toBeVisible();
+    await expect(page.locator('.notice', { hasText: CARD })).toBeVisible();
     await expect(page.locator('.notices.landed, .notices.over')).toHaveCount(0); // the card's own moment is over
     await page.evaluate((y) => scrollTo(0, y), scrolled);
     expect(await page.evaluate(() => scrollY)).toBe(scrolled);
@@ -398,7 +413,7 @@ test("one card taller than the box a quarter of the screen high shows its title 
   await openApp(page, '#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
   await raiseCard(page);
-  const card = page.locator('.notice', { hasText: 'Open a trip first' });
+  const card = page.locator('.notice', { hasText: CARD });
   await expect(card).toBeVisible();
   // One card that says a lot: far taller than a quarter of 375 px; looked at again (a turn of the phone).
   await card.locator('p').evaluate((p) => { p.textContent = Array.from({ length: 40 }, (_, i) => `Line ${i + 1} of what this card has to say.`).join('\n'); });
@@ -445,15 +460,15 @@ test('cards of one kind fold into one card that shows each when opened, with one
   await raiseCard(page);
   const stack = page.locator('.notices .notice-stack');
   await expect(stack).toHaveCount(1);
-  await expect(stack.getByText('Open a trip first (2)')).toBeVisible();
+  await expect(stack.getByText(`${CARD} (2)`)).toBeVisible();
   await raiseCard(page);
-  await expect(stack.getByText('Open a trip first (3)')).toBeVisible();
+  await expect(stack.getByText(`${CARD} (3)`)).toBeVisible();
   await expect(stack.locator('.stack-list')).toBeHidden();
   await stack.getByRole('button', { name: 'Show' }).click();
   await expect(stack.locator('.stack-list .notice')).toHaveCount(3);
   // One alone: the stack counts down, and at one it is the card again.
   await stack.locator('.stack-list .notice').first().getByRole('button', { name: 'Dismiss', exact: true }).click();
-  await expect(stack.getByText('Open a trip first (2)')).toBeVisible();
+  await expect(stack.getByText(`${CARD} (2)`)).toBeVisible();
   await stack.locator('.stack-list .notice').first().getByRole('button', { name: 'Dismiss', exact: true }).click();
   await expect(page.locator('.notices .notice-stack')).toHaveCount(0);
   await expect(page.locator('.notices .notice')).toHaveCount(1);
@@ -483,16 +498,16 @@ test('a card with anything to do but Dismiss is never folded into a stack; a sta
   // A stack of plain cards: named, controlled, labelled, announced.
   for (let i = 0; i < 3; i++) await raiseCard(page);
   const stack = page.locator('.notices .notice-stack');
-  await expect(stack).toHaveAttribute('aria-label', 'Open a trip first, 3 cards');
-  const show = stack.getByRole('button', { name: 'Show the 3 cards: Open a trip first' });
+  await expect(stack).toHaveAttribute('aria-label', `${CARD}, 3 cards`);
+  const show = stack.getByRole('button', { name: `Show the 3 cards: ${CARD}` });
   await expect(show).toHaveAttribute('aria-controls', /^stack-\d+$/);
   const list = /** @type {string} */ (await show.getAttribute('aria-controls'));
   expect(await page.locator(`#${list}`).count()).toBe(1);
-  await expect(stack.getByRole('button', { name: 'Dismiss all 3 cards: Open a trip first' })).toBeVisible();
+  await expect(stack.getByRole('button', { name: `Dismiss all 3 cards: ${CARD}` })).toBeVisible();
   // A card joining is announced by its own words, though it sits folded away.
-  await expect(stack.locator('.visually-hidden[role="status"]')).toContainText('Open a trip first');
+  await expect(stack.locator('.visually-hidden[role="status"]')).toContainText(CARD);
   await show.click();
-  await expect(stack.getByRole('button', { name: 'Hide the 3 cards: Open a trip first' })).toHaveAttribute('aria-expanded', 'true');
+  await expect(stack.getByRole('button', { name: `Hide the 3 cards: ${CARD}` })).toHaveAttribute('aria-expanded', 'true');
 });
 
 test('review S2: a card that lands while the screen is at its top moves it down, and for a moment a tap on what slid under the finger does nothing', async ({ page }) => {
@@ -627,13 +642,12 @@ test('landscape at SE size (568 × 296) with the dock\'s text box open: the page
   await expect(box).toBeHidden();
 });
 
-test('the type box with three chips, Trips with files waiting, and a trip without dates fit a phone 320 px wide, in ja', async ({ page }) => {
+test('the type box with three chips, and a trip without dates, fit a phone 320 px wide, in ja', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 800 });
   await page.addInitScript(() => { try { localStorage.setItem('annai.ui', 'ja'); } catch { /* storage blocked */ } });
   await openApp(page);
   await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
   const long = 'Your flight is booked- TESTQ1 to Anchorage on 11:20:2026 with a very long confirmation name.pdf';
-  await writeRecords(page, 'sys:waiting', { text: { [`/files/${long}`]: 'a', '/files/hotel.txt': 'b', '/files/car.txt': 'c' } });
   // A trip with no dates.
   await page.getByLabel('旅の名前').fill('アンカレッジとその周辺をめぐる長い名前の旅');
   await page.getByRole('button', { name: '旅を始める' }).last().click();
@@ -641,7 +655,6 @@ test('the type box with three chips, Trips with files waiting, and a trip withou
   const wide = async () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(await wide()).toBeLessThanOrEqual(0);
   await page.goto('/#/trips');
-  await expect(page.locator('.waiting-file')).toHaveCount(3);
   expect(await wide()).toBeLessThanOrEqual(0);
   // Three chips in the type box: a long name, cut, and two short. In a conversation: the dock at rest on home has no type button (timeline stage 4).
   await page.goto('/#/talk');

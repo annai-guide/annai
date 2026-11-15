@@ -508,10 +508,11 @@ test('a trip that ended has no today top', async ({ page }) => {
   await expect(page.locator('.today-top')).toHaveCount(0);
 });
 
-test('the Plan with nothing in it, and with no trip open', async ({ page }) => {
+test('the Plan with nothing in it: the new conversation\'s, open when nothing else is, and a trip\'s', async ({ page }) => {
   await openApp(page);
   await page.goto('/#/plan');
-  await expect(page.getByText('Open a trip to see its itinerary.')).toBeVisible();
+  await expect(page).toHaveURL(/#\/trip\/trip-[0-9a-z]+\/plan$/);
+  await expect(page.getByText('No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) in Details.')).toBeVisible();
   await page.goto('/#/trips');
   await startTrip(page, 'Empty');
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();

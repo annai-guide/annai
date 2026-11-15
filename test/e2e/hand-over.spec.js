@@ -3,41 +3,26 @@
 // The booking files are synthetic (scripts/make-booking-fixtures.mjs).
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply, modelSetUp, startTrip, savedBy, writeRecords, breakOpen } from './helpers.js';
+import { openApp, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply, modelSetUp, startTrip, writeRecords, breakOpen } from './helpers.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 const fixture = async (/** @type {string} */ name, /** @type {string} */ mimeType) => ({ name, mimeType, buffer: await readFile(new URL(`../fixtures/bookings/${name}`, import.meta.url)) });
-const TITLE = 'Anchorage · Nov 20–27';
-const RECAP = 'A long weekend in Testville with Sam';
 const MESSAGES = '/b/v1/messages';
 /** A request as text, to find what annai chose (a stored file's path, a trip's id). @param {any} body */
 const asText = (body) => JSON.stringify(body ?? {});
 /** A booking she writes, from a file. @param {string} id @param {string} kind @param {string} source */
 const booking = (id, kind, source) => ({ id, kind, status: 'unverified', source, title: `${kind} ${id}`, unsure: [] });
 
-/** Shiori's main model on the stand-in (/b), and with reader, a utility model too (/u); no trip made. @param {import('@playwright/test').Page} page @param {string} origin @param {{ reader?: boolean }} [o] */
-async function setUp(page, origin, { reader = false } = {}) {
+/** Shiori's main model on the stand-in (/b); no trip made, so the new conversation is open (timeline stage 7). @param {import('@playwright/test').Page} page @param {string} origin */
+async function setUp(page, origin) {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
   await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model' });
   await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
   await expect(page.getByLabel('Add a model to main').locator('option', { hasText: 'b-model' })).toHaveCount(0);
-  if (reader) {
-    await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Reader', url: `${origin}/u`, key: 'sk-test-u', model: 'u-model' });
-    await page.getByLabel('Add a model to utility').selectOption({ label: 'u-model' });
-    await page.getByRole('button', { name: 'Add to utility' }).click();
-    await expect(page.getByLabel('Add a model to utility').locator('option', { hasText: 'u-model' })).toHaveCount(0);
-    // The reader takes PDFs, set on its page (a custom model takes text alone until told).
-    await page.getByRole('link', { name: /Reader/ }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'Reader' })).toBeVisible(); // a tap inside the draw lands on the Models screen going away
-    await page.getByRole('link', { name: /^u-model/ }).click();
-    await expect(page.getByLabel('Provider model id')).toHaveValue('u-model');
-    await page.getByLabel('Takes PDFs').check();
-    await expect(savedBy(page.getByLabel('Takes PDFs'))).toHaveText('Saved');
-  }
-  await page.goto('/#/talk'); // the no-trip conversation: the dock at rest on home has no type button (timeline stage 4)
-  await expect(page.getByRole('heading', { name: 'Conversation', exact: true })).toBeVisible();
+  await page.goto('/#/talk'); // the open conversation: the new one, as nothing else is open; the dock at rest on home has no type button
+  await expect(page.getByRole('heading', { name: 'Conversation', exact: true })).toBeAttached();
 }
 
 /** Hands Shiori files from the type box, with words or none. @param {import('@playwright/test').Page} page @param {any[]} files @param {string} [words] */
@@ -59,58 +44,6 @@ async function paste(page, text) {
     el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
   }, text);
 }
-
-/** The no-trip conversation's log. @param {import('@playwright/test').Page} page @param {string[]} types */
-const meLog = (page, types) => page.evaluate(async (types) => {
-  const load = (/** @type {string} */ url) => import(url);
-  const { createIdbStore } = await load('/src/core/store-idb.js');
-  const store = await createIdbStore();
-  const out = await store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents('me', { types }));
-  store.close();
-  return out.map((/** @type {any} */ e) => ({ type: e.type, data: e.data }));
-}, types);
-
-/** With no trip open, she lists the trips, starts one for both files with her recap, and says so; there, she files the flight. */
-const anchorage = () => [
-  sse(anthropicToolReply([{ name: 'list_trips', input: {} }])),
-  (/** @type {any} */ body) => sse(anthropicToolReply([{ name: 'start_trip', input: {
-    title: TITLE, start: '2026-11-20', end: '2026-11-27', places: ['Anchorage'], recap: RECAP,
-    files: ['/waiting/files/flight.pdf', /\/waiting\/files\/hotel\.[a-z]+/.exec(asText(body))?.[0] ?? '/waiting/files/hotel.png'],
-  } }])),
-  sse(anthropicToolReply([{ name: 'speak', input: { text: `I started ${TITLE}.` } }, { name: 'sleep', input: {} }])),
-  sse(anthropicToolReply([{ name: 'write', input: { path: '/trip/bookings/flight.json', content: booking('flight', 'flight', '/files/flight.pdf') } }, { name: 'speak', input: { text: 'Your flight is on Nov 20.' } }, { name: 'sleep', input: {} }])),
-  sse(anthropicToolReply([{ name: 'sleep', input: {} }])),
-];
-
-/** The user's evening: on Trips with no trip open, the flight PDF and the hotel screenshot handed over with no words. @param {import('@playwright/test').Page} page */
-async function handAnchorage(page) {
-  await handOver(page, [await fixture('flight.pdf', 'application/pdf'), await fixture('hotel.png', 'image/png')]);
-  await expect(page.locator('.convo').getByText('Your flight is on Nov 20.')).toBeVisible({ timeout: 60_000 });
-}
-
-test('with no trip open, + hands Shiori a flight PDF and a hotel screenshot: she starts "Anchorage · Nov 20–27", it opens, and its conversation starts with the hand-over and her recap', async ({ page }) => {
-  const llm = await startModelServer({ [MESSAGES]: anchorage() });
-  try {
-    await setUp(page, llm.origin);
-    await handAnchorage(page);
-    await expect(page.locator('.talk-head .talk-name')).toHaveText(TITLE); // the trip's name heads its conversation (timeline stage 3)
-    const lines = page.locator('.convo > li');
-    await expect(lines.nth(0)).toHaveClass(/you/);
-    await expect(lines.nth(0).locator('.attach-chip')).toHaveText(['flight.pdf', 'hotel.png']);
-    await expect(lines.nth(0).locator('p')).toHaveCount(0); // handed with no words
-    await expect(lines.nth(1)).toHaveText(new RegExp(RECAP));
-    await expect(page.locator('.convo .shiori .acts button')).toHaveCount(0); // nothing asked where a file goes
-    await lines.nth(0).getByRole('link', { name: 'flight.pdf' }).click();
-    // The chip for a file the user gave opens its details, whose crumb goes back to the Conversation.
-    await expect(page.getByRole('region', { name: 'The original' })).toContainText('From flight.pdf');
-    await expect(page.getByRole('main').locator('.crumbs a')).toContainText('Conversation');
-    await page.goto('/#/trips');
-    await expect(page.locator('.trip-card', { hasText: TITLE })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Waiting with Shiori' })).toHaveCount(0);
-  } finally {
-    await llm.stop();
-  }
-});
 
 test('Trips, tapped while the handed-over files are still being kept, stays: the message goes when they are kept, and the screen is not taken back to the conversation', async ({ page }) => {
   const llm = await startModelServer({ [MESSAGES]: sse(anthropicToolReply([{ name: 'speak', input: { text: 'Got them.' } }, { name: 'sleep', input: {} }])) });
@@ -137,93 +70,26 @@ test('Trips, tapped while the handed-over files are still being kept, stays: the
   }
 });
 
-test('a trip she starts while the user is on Trips is one more row there: the screen is not taken into it', async ({ page }) => {
-  const [first, ...rest] = anchorage();
-  const llm = await startModelServer({ [MESSAGES]: [{ .../** @type {any} */ (first), delayMs: 3000 }, ...rest] }); // time to go to Trips while she works
+test('a screen the user goes to while Undo runs is kept: Undo does not take them back to the conversation', async ({ page }) => {
+  const llm = await startModelServer({ [MESSAGES]: [
+    sse(anthropicToolReply([{ name: 'list_trips', input: {} }])),
+    sse(anthropicToolReply([{ name: 'start_trip', input: { title: 'Kyoto', start: '2026-12-01', end: '2026-12-05', places: ['Kyoto'], files: ['/trip/files/flight.pdf'] } }])),
+    sse(anthropicToolReply([{ name: 'speak', input: { text: 'That one is for Kyoto: I started it.' } }, { name: 'sleep', input: {} }])),
+    sse(anthropicToolReply([{ name: 'sleep', input: {} }])),
+  ] });
   try {
-    await setUp(page, llm.origin);
-    await handOver(page, [await fixture('flight.pdf', 'application/pdf'), await fixture('hotel.png', 'image/png')]);
-    await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
-    await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
-    await expect(page.locator('.trip-card', { hasText: TITLE })).toBeVisible({ timeout: 30_000 });
-    await page.waitForTimeout(1500); // past anything that would follow it
-    expect(new URL(page.url()).hash).toBe('#/trips');
-    await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
-  } finally {
-    await llm.stop();
-  }
-});
-
-test('the no-trip conversation keeps its lines, and one saying where the files went', async ({ page }) => {
-  const llm = await startModelServer({ [MESSAGES]: anchorage() });
-  try {
-    await setUp(page, llm.origin);
-    await handAnchorage(page);
-    const log = await meLog(page, ['msg.user', 'out.speak', 'handover.moved']);
-    expect(log.map((e) => e.type)).toEqual(['msg.user', 'handover.moved', 'out.speak']);
-    expect(log[0].data.handed.map((/** @type {any} */ f) => f.name)).toEqual(['flight.pdf', 'hotel.png']);
-    expect(log[1].data).toMatchObject({ started: true, count: 2 });
-    expect(log[2].data.text).toBe(`I started ${TITLE}.`);
-  } finally {
-    await llm.stop();
-  }
-});
-
-test('Undo from a start on Trips leaves the trip the way Back does: Trips is the first entry, and Back leaves annai', async ({ page, context }) => {
-  const llm = await startModelServer({ [MESSAGES]: anchorage() });
-  try {
-    await setUp(page, llm.origin);
-    await page.close(); // annai runs in one tab at a time: a new one opens on Trips, its first entry
-    const tab = await context.newPage();
-    await tab.addInitScript(() => { try { localStorage.setItem('annai.forceDownload', '1'); } catch { /* storage blocked */ } });
-    await tab.goto('/#/talk'); // the no-trip conversation: the dock at rest on home has no type button (timeline stage 4)
-    await expect(tab.getByRole('heading', { name: 'Conversation', exact: true })).toBeVisible();
-    await handAnchorage(tab);
-    await tab.getByRole('button', { name: 'Undo what Shiori did with these files' }).click();
-    await expect(tab.getByText(`Undone. ${TITLE} is removed, and your files are waiting with Shiori.`)).toBeVisible();
-    await expect(tab.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
-    await expect.poll(() => tab.evaluate(() => history.state?.annaiIdx ?? null)).toBe(0);
-    await tab.goBack();
-    expect(tab.url().startsWith('http://127.0.0.1:8790/')).toBe(false); // no second Trips before annai is left
-  } finally {
-    await llm.stop();
-  }
-});
-
-test('a screen the user goes to while Undo runs is kept: Undo from the no-trip conversation does not take them to Trips', async ({ page }) => {
-  const llm = await startModelServer({ [MESSAGES]: anchorage() });
-  try {
-    await setUp(page, llm.origin);
-    await handAnchorage(page);
-    await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
-    await page.getByRole('button', { name: /Shiori, no trip/ }).click();
+    await modelSetUp(page, llm.origin, 'Big Sur', { dates: { start: '2026-11-20', end: '2026-11-27' } }); // a trip, which may start another
+    await handOver(page, [await fixture('flight.pdf', 'application/pdf')]);
+    await expect(page.locator('.convo').getByText('That one is for Kyoto: I started it.')).toBeVisible({ timeout: 60_000 });
     await expect(page.getByRole('button', { name: 'Undo what Shiori did with these files' })).toBeVisible();
     await page.evaluate(() => { // Undo, and in the same moment a tap on Settings: Undo ends after it
       /** @type {HTMLButtonElement} */ (document.querySelector('button[aria-label="Undo what Shiori did with these files"]')).click();
       /** @type {HTMLAnchorElement} */ (document.querySelector('nav.topnav a[href="#/settings"]')).click();
     });
-    await expect(page.getByText(`Undone. ${TITLE} is removed, and your files are waiting with Shiori.`)).toBeVisible();
+    await expect(page.getByText('Undone. Kyoto is removed, and your files are back in Big Sur.')).toBeVisible();
     await page.waitForTimeout(400);
     expect(new URL(page.url()).hash).toBe('#/settings');
     await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
-  } finally {
-    await llm.stop();
-  }
-});
-
-test("a screen of the trip Undo removes, gone to while it runs, is left the way Remove trip leaves it, not kept", async ({ page }) => {
-  const llm = await startModelServer({ [MESSAGES]: anchorage() });
-  try {
-    await setUp(page, llm.origin);
-    await handAnchorage(page); // in Anchorage's conversation: Undo takes the trip away
-    await expect(page.getByRole('button', { name: 'Undo what Shiori did with these files' })).toBeVisible();
-    await page.evaluate(() => { // Undo, and in the same moment the trip's Itinerary: Undo ends after it
-      /** @type {HTMLButtonElement} */ (document.querySelector('button[aria-label="Undo what Shiori did with these files"]')).click();
-      /** @type {HTMLAnchorElement} */ (document.querySelector('nav.topnav a[href="#/plan"]')).click();
-    });
-    await expect(page.getByText(`Undone. ${TITLE} is removed, and your files are waiting with Shiori.`)).toBeVisible();
-    await expect.poll(() => new URL(page.url()).hash).toBe('#/trips');
-    await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
   } finally {
     await llm.stop();
   }
@@ -303,56 +169,6 @@ test("after a reload on the conversation Undo left, a Forward over the removed t
   }
 });
 
-for (const iphone of [false, true]) {
-  test(`"Start fresh?" open when Shiori opens the trip she started closes as Cancel: the conversation under it is another one${iphone ? ' (no CloseWatcher, as on an iPhone)' : ''}`, async ({ page }) => {
-    if (iphone) await page.addInitScript(() => { delete (/** @type {any} */ (window)).CloseWatcher; });
-    const replies = /** @type {any[]} */ (anchorage());
-    /** @type {() => void} */
-    let finish = () => {};
-    replies[2] = { ...replies[2], until: new Promise((resolve) => { finish = () => resolve(undefined); }) }; // she is still at work while the question opens
-    const llm = await startModelServer({ [MESSAGES]: replies });
-    try {
-      await setUp(page, llm.origin);
-      await handOver(page, [await fixture('flight.pdf', 'application/pdf'), await fixture('hotel.png', 'image/png')]);
-      await expect(page.getByRole('link', { name: `Shiori started ${TITLE} with these files.` })).toBeVisible(); // the trip is started, her reply held: the line it adds has redrawn the conversation
-      await page.getByRole('button', { name: 'Conversation menu', exact: true }).click();
-      await page.getByRole('group', { name: 'Conversation menu' }).getByRole('button', { name: 'Start fresh' }).click();
-      const question = page.getByRole('dialog', { name: 'Start fresh?' });
-      await expect(question).toBeVisible();
-      finish(); // she opens the trip she started
-      await expect(page.locator('.talk-head .talk-name')).toHaveText(TITLE, { timeout: 60_000 }); // in this entry's place: a replace, no popstate
-      await expect(question).toHaveCount(0);
-      await expect(page.locator('.convo .fresh-divider')).toHaveCount(0);
-    } finally {
-      await llm.stop();
-    }
-  });
-}
-
-test('Undo takes back what she did; the trip she started goes, and the files wait with Shiori again', async ({ page }) => {
-  const llm = await startModelServer({ [MESSAGES]: anchorage() });
-  try {
-    await setUp(page, llm.origin);
-    const entry = () => page.evaluate(() => history.state?.annaiIdx ?? null); // which entry of the shell's history this is
-    const first = await entry();
-    await handAnchorage(page);
-    await page.getByRole('button', { name: 'Undo what Shiori did with these files' }).click();
-    await expect(page.getByText(`Undone. ${TITLE} is removed, and your files are waiting with Shiori.`)).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
-    await expect(page.locator('.trip-card', { hasText: TITLE })).toHaveCount(0);
-    await expect(page.getByRole('heading', { name: 'Waiting with Shiori' })).toBeVisible();
-    await expect(page.locator('.waiting-file .path')).toHaveText([/^flight\.pdf$/, /^hotel\.[a-z]+$/]);
-    // Undo leaves the removed trip's conversation as Remove trip does: Trips is pushed from the screen before the Trips the files were handed
-    // from, so no entry is added and no Trips shows twice.
-    await expect.poll(entry).toBe(first);
-    await page.goBack(); // the screen before
-    await expect.poll(entry).toBe(/** @type {number} */ (first) - 1);
-    await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toHaveCount(0);
-  } finally {
-    await llm.stop();
-  }
-});
-
 test('in a trip, a pasted confirmation email becomes a chip, then a text file in its Files, and Shiori is told about it', async ({ page }) => {
   const text = (await fixture('confirmation.txt', 'text/plain')).buffer.toString('utf8');
   const llm = await startModelServer({ [MESSAGES]: [
@@ -376,50 +192,6 @@ test('in a trip, a pasted confirmation email becomes a chip, then a text file in
     await page.goto(trip);
     // In the trip's Files, with what it became.
     await expect(page.getByRole('region', { name: 'Files', exact: true }).locator('.trip-file', { hasText: 'car car' }).locator('.became')).toHaveText('Car');
-  } finally {
-    await llm.stop();
-  }
-});
-
-test("with no trip open, a pasted text that is not a booking is dropped: once she deletes it, Waiting with Shiori doesn't list it", async ({ page }) => {
-  const llm = await startModelServer({ [MESSAGES]: [
-    (/** @type {any} */ body) => sse(anthropicToolReply([
-      { name: 'delete', input: { path: /\/waiting\/files\/pasted-[0-9-]+\.txt/.exec(asText(body))?.[0] ?? '/waiting/files/pasted.txt' } },
-      { name: 'speak', input: { text: 'That was a note, not a booking, so I let it go.' } }, { name: 'sleep', input: {} },
-    ])),
-    sse(anthropicToolReply([{ name: 'sleep', input: {} }])),
-  ] });
-  try {
-    await setUp(page, llm.origin);
-    await paste(page, 'Thanks for dinner last night!\nIt was lovely to see you.\nSee you at the reunion.\nSam');
-    await page.getByRole('button', { name: 'Send', exact: true }).click();
-    await expect(page.locator('.convo').getByText('That was a note, not a booking, so I let it go.')).toBeVisible({ timeout: 60_000 });
-    await page.goto('/#/trips');
-    await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Waiting with Shiori' })).toHaveCount(0);
-  } finally {
-    await llm.stop();
-  }
-});
-
-test("with no trip open, a handed PDF reaches the stand-in only through the side task: the conversation's requests carry its words, never the PDF", async ({ page }) => {
-  const llm = await startModelServer({
-    [MESSAGES]: [
-      sse(anthropicToolReply([{ name: 'read', input: { path: '/waiting/files/flight.pdf' } }])),
-      sse(anthropicToolReply([{ name: 'speak', input: { text: 'A flight on Nov 20.' } }, { name: 'sleep', input: {} }])),
-      sse(anthropicToolReply([{ name: 'sleep', input: {} }])),
-    ],
-    '/u/v1/messages': sse(anthropicToolReply([], 'ANNAI AIR, flight AN 123, Seattle 11:20 to Anchorage 14:05, Fri Nov 20 2026.')),
-  });
-  try {
-    await setUp(page, llm.origin, { reader: true });
-    await handOver(page, [await fixture('flight.pdf', 'application/pdf')]);
-    await expect(page.locator('.convo').getByText('A flight on Nov 20.')).toBeVisible({ timeout: 60_000 });
-    expect(llm.bodies('/u/v1/messages').some((b) => asText(b).includes('"type":"document"'))).toBe(true);
-    expect(llm.bodies(MESSAGES).some((b) => asText(b).includes('"type":"document"'))).toBe(false);
-    const after = asText(llm.bodies(MESSAGES)[1]);
-    expect(after).toContain('read by a side task');
-    expect(after).toContain('AN 123');
   } finally {
     await llm.stop();
   }

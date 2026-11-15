@@ -65,11 +65,13 @@ test('the conversation has an address', () => {
   assert.deepEqual(parseHash(talkHref('trip a/b')).parts, ['trip', 'trip a/b', 'talk']);
 });
 
-test('#/talk and #/plan redirect only while a trip is open', () => {
+test("#/talk and #/plan go to the open conversation's address (the draft's too), and home with none open; #/talk/me is never redirected", () => {
   assert.equal(redirectOf(parseHash('#/talk'), 'trip-a'), '#/trip/trip-a/talk');
   assert.equal(redirectOf(parseHash('#/plan'), 'trip-a'), '#/trip/trip-a/plan');
-  assert.equal(redirectOf(parseHash('#/talk'), null), null);
-  assert.equal(redirectOf(parseHash('#/plan'), null), null);
+  assert.equal(redirectOf(parseHash('#/talk'), null), '#/trips');
+  assert.equal(redirectOf(parseHash('#/plan'), null), '#/trips');
+  assert.equal(redirectOf(parseHash('#/talk/me'), 'trip-a'), null);
+  assert.equal(redirectOf(parseHash('#/talk/me'), null), null);
   assert.equal(redirectOf(parseHash('#/trip/trip-b/talk'), 'trip-a'), null);
   assert.equal(redirectOf(parseHash('#/trip/trip-b/plan'), 'trip-a'), null);
   assert.equal(redirectOf(parseHash('#/trips'), 'trip-a'), null);
@@ -883,6 +885,14 @@ test("undoneWords: what Undo of a hand-over did, and each trip that stays that i
   assert.equal(undoneWords({ ...none, waiting: true, changed: [{ id: 'k', title: 'Kyoto' }, { id: 'b', title: 'Big Sur' }], kept: 1 }),
     'Undone. Your files are waiting with Shiori again. What Shiori did in Kyoto and Big Sur is undone too. Left 1 file as you changed it.');
   assert.equal(undoneWords({ ...none, back: [{ id: 'a', title: 'Anchorage' }] }), 'Undone. Your files are back in Anchorage.');
+  // Some files went back to a trip and the rest have nowhere to go: both places are said, with or without a removal.
+  assert.equal(undoneWords({ ...none, waiting: true, back: [{ id: 'k', title: 'Kyoto' }, { id: 'b', title: 'Big Sur' }] }),
+    'Undone. Some of your files are back in Kyoto and Big Sur, and the rest are waiting with Shiori.');
+  assert.equal(undoneWords({ ...none, removed: ['Osaka'], waiting: true, back: [{ id: 'k', title: 'Kyoto' }] }),
+    'Undone. Osaka is removed. Some of your files are back in Kyoto, and the rest are waiting with Shiori.');
+  assert.equal(undoneWords({ ...none, removed: ['Osaka', 'Nara'], waiting: true, back: [{ id: 'k', title: 'Kyoto' }] }),
+    'Undone. Osaka and Nara are removed. Some of your files are back in Kyoto, and the rest are waiting with Shiori.');
+  assert.equal(undoneWords({ ...none, removed: ['Osaka'], waiting: true }), 'Undone. Osaka is removed, and your files are waiting with Shiori.');
   assert.equal(undoneWords(none), 'Undone.');
 });
 
@@ -904,8 +914,11 @@ test("wentWords: the chat's line for a move (open_trip), by the trip's title, or
   assert.equal(traceSummary(/** @type {any} */ ({ seq: 1, ts: 0, type: 'conversation.moved', actor: 'shiori', data: { to: 'trip-k', title: 'Kyoto' } })), 'moved to Kyoto · trip-k');
 });
 
-test('parseHash: #/waiting/file?path=/files/a.pdf is the waiting file screen', () => {
-  assert.deepEqual(parseHash('#/waiting/file?path=%2Ffiles%2Fa.pdf'), { name: 'waiting-file', parts: ['waiting', 'file'], params: { path: '/files/a.pdf' } });
+test('an old #/waiting/file?path=… names no screen and goes home, in place of its entry (as the plan says: old bookmarks go home), since timeline stage 7', () => {
+  assert.equal(parseHash('#/waiting/file?path=%2Ffiles%2Fa.pdf').name, 'waiting');
+  assert.equal(redirectOf(parseHash('#/waiting/file?path=%2Ffiles%2Fa.pdf'), 'trip-a'), '#/trips');
+  assert.equal(redirectOf(parseHash('#/waiting/file?path=%2Ffiles%2Fa.pdf'), null), '#/trips');
+  assert.equal(redirectOf(parseHash('#/waiting'), 'trip-a'), '#/trips');
 });
 
 test('Undo tapped while Shiori works stops her turn and waits for it to settle before it takes anything back', async () => {

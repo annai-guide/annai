@@ -16,6 +16,7 @@ import { stampCount } from '../../core/after/stamps.js';
 import { RECAP_FILE } from '../../core/after/recap.js';
 import { slotEntries } from '../slots.js';
 import { openTrip } from '../open-trip.js';
+import { openDraft } from '../plus.js';
 import { mergePatch } from '../../core/patch.js';
 import { explainTrip } from './trips.js';
 import { costs } from '../../core/agent/budgets.js';
@@ -210,6 +211,9 @@ export async function removeTripNow(ctx, id) {
   // Its reminders leave live mode, and so the push relay, at once (spec §4.9); what was heard in it leaves memory.
   await ctx.live?.forget(id);
   ctx.agent?.voice?.memory.forget(id);
+  // With nothing open now, the standing draft is, as after a tap on + (the user, 2026-11-14, "Open the new conversation"): never over a conversation the
+  // user opened meanwhile. With none possible, nothing is, and the dock tries again at the user's next word.
+  if (ctx.agent && ctx.chats && ctx.agent.target === null) await openDraft(ctx).catch((/** @type {unknown} */ e) => console.warn(/* en */ "the new conversation couldn't be opened", e));
   return removed;
 }
 

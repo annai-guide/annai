@@ -1,3 +1,5 @@
+> Superseded by [2026-11-14-timeline-stage-7-plan.md](2026-11-14-timeline-stage-7-plan.md), the plan stage 7 is built from.
+
 # Timeline stage 7, Opening, `me` and the no-trip paths: Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

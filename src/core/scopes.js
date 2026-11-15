@@ -13,7 +13,11 @@ export const ME = 'me';
 export const SYS = 'sys';
 export const SYS_SETTINGS = 'sys:settings';
 export const SYS_PLUGINS = 'sys:plugins';
-/** What the user handed Shiori while no trip was open waits here, outside every trip and outside /me/, until she files it (waiting.js). */
+/**
+ * Once where what the user handed Shiori while no trip was open waited, outside every trip and outside /me/. Nothing handed goes here now (the open conversation takes
+ * it, the draft when nothing else is open): only an Undo whose files have no trip to go back to, and an old backup's import, fill it, and an older annai's files are
+ * in it at the first start. waiting.js moves what is here into a chat of its own.
+ */
 export const SYS_WAITING = 'sys:waiting';
 /** This device's own scope: never exported, never imported (see ensureDeviceScope). */
 export const SYS_DEVICE = 'sys:device';
@@ -141,7 +145,7 @@ export async function ensureDeviceScope(store, now = Date.now()) {
  * A new trip: a name is enough. Shiori starts one for a hand-over as hers (the bookings-and-trips design), its first entries carrying it.
  * @param {Workspace} ws
  * @param {{ title: string, start?: string, end?: string, places?: string[], timezones?: string[] }} trip
- * @param {{ author?: 'user' | 'shiori', handover?: string, draft?: boolean }} [o] author: who starts it (the user, unless Shiori did); handover: the hand-over she started it for;
+ * @param {{ author?: 'user' | 'shiori' | 'system', handover?: string, draft?: boolean }} [o] author: who starts it (the user, unless Shiori or annai did); handover: the hand-over she started it for;
  *   draft: the standing draft (chats.js), unless one is there already, whose id it then gives
  * @returns {Promise<string>} the new scope id
  */
@@ -305,8 +309,8 @@ function mirrored(rec, trip) {
   return next.title !== rec.title || next.start !== rec.start || next.end !== rec.end ? next : null;
 }
 
-/** When the user last talked in a trip, from its log; null when nobody has. @param {Store} store @param {string} scope @returns {Promise<number | null>} */
-async function lastTalked(store, scope) {
+/** When the user last talked in a trip, or in `me`, from its log; null when nobody has. @param {Store} store @param {string} scope @returns {Promise<number | null>} */
+export async function lastTalked(store, scope) {
   const lines = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['msg.user', 'heard'], reverse: true }));
   return lines.find(talks)?.ts ?? null;
 }

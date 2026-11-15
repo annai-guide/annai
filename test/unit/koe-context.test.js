@@ -56,7 +56,7 @@ test('the compact view is cut to fit, and its words are escaped: a plan title is
   assert.ok(view.endsWith('\n</today>'));
   assert.match(view, /…and \d+ more/);
   assert.doesNotMatch(view.slice('<today>'.length, -'</today>'.length), /[<>]/);
-  assert.equal(await compactView({ ws: k.ws, trip: null, now, timeZone: LA, next: null }), '<today>\nNo trip is open.\n</today>');
+  assert.equal(await compactView({ ws: k.ws, trip: null, now, timeZone: LA, next: null }), '<today>\n</today>'); // nothing open: no turn runs, and nothing is told
 });
 
 test("the compact view lists today's ends of things over several days at their times: a check-out, a car's return, an arrival (the drive-test follow-ups, section 2)", async () => {

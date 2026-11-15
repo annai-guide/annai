@@ -38,7 +38,6 @@ import { keepRows } from './keep-rows.js';
 import { isStandalone } from './platform.js';
 import { dockHidesWhileTyping } from './dock-hides.js';
 import { keepAtEnd } from './at-end.js';
-import { noteScreen } from './resume.js';
 import { followDrive, followPlay, isField, drivingTrip } from './today.js';
 import { renderExt, renderPluginPage, renderTripTab } from './screens/ext.js';
 import { renderMcp } from './screens/mcp.js';
@@ -54,17 +53,19 @@ import { uiSignature, syncThemes, cleanUp, slotEntries, component, dockKey, plug
 /** The top bar's tab each screen belongs to, where it isn't the screen's own name. */
 const SECTION = /** @type {Record<string, string>} */ ({
   sees: 'talk', talk: 'talk',
-  trip: 'trips', file: 'trips', 'waiting-file': 'trips', booking: 'plan', item: 'plan', plan: 'plan', recap: 'trips', replay: 'trips', 'trip-ext': 'trips', import: 'trips', drive: 'now',
+  trip: 'trips', file: 'trips', booking: 'plan', item: 'plan', plan: 'plan', recap: 'trips', replay: 'trips', 'trip-ext': 'trips', import: 'trips', drive: 'now',
   plugins: 'settings', add: 'settings', 'plugin-install': 'settings', 'plugin-page': 'settings', models: 'settings', shiori: 'settings', tools: 'settings',
   voice: 'settings', languages: 'settings', backups: 'settings', notifications: 'settings', simulate: 'settings', mcp: 'settings', about: 'settings', experimental: 'settings', updates: 'settings',
 });
-const SCREENS = { sees: renderSees, trips: renderTrips, trip: renderTrip, file: renderFile, 'waiting-file': renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, add: renderAdd, 'plugin-install': renderPluginInstall, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, item: renderItem, voice: renderVoice, now: renderNow, drive: renderDrive, backups: renderBackups, recap: renderRecap, replay: renderReplay, simulate: renderSimulate, notifications: renderNotifications, ext: renderExt, 'plugin-page': renderPluginPage, 'trip-ext': renderTripTab, mcp: renderMcp, welcome: renderWelcome, about: renderAbout, experimental: renderExperimental, updates: renderUpdates, languages: renderLanguages };
+const SCREENS = { sees: renderSees, trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, add: renderAdd, 'plugin-install': renderPluginInstall, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, item: renderItem, voice: renderVoice, now: renderNow, drive: renderDrive, backups: renderBackups, recap: renderRecap, replay: renderReplay, simulate: renderSimulate, notifications: renderNotifications, ext: renderExt, 'plugin-page': renderPluginPage, 'trip-ext': renderTripTab, mcp: renderMcp, welcome: renderWelcome, about: renderAbout, experimental: renderExperimental, updates: renderUpdates, languages: renderLanguages };
 
 /**
  * @param {HTMLElement} root
  * @param {{ store: any, ws: any, registry: any, plugins: any, llm?: any, agent?: any, voice?: any, live?: any, awake?: any, pack?: any, presets?: Record<string, string>, backups?: any, sim?: any, push?: any,
- *   updates: import('./updates.js').Updates, chats?: import('../core/chats.js').Chats, appended?: (fn: (evs: import('../core/types.js').EventRecord[]) => void) => () => void, version: string }} core
- *   appended: follows the log entries each committed write appended, until what it returns is called
+ *   updates: import('./updates.js').Updates, chats?: import('../core/chats.js').Chats, appended?: (fn: (evs: import('../core/types.js').EventRecord[]) => void) => () => void,
+ *   moveWaiting: () => Promise<string | null>, version: string }} core
+ *   appended: follows the log entries each committed write appended, until what it returns is called; moveWaiting: the files waiting with Shiori into a
+ *   conversation of their own (waiting.js), after an import and after an Undo that sent files back there, before the screen that follows is drawn
  */
 export function startShell(root, core) {
   const notices = createNotices();
@@ -396,10 +397,10 @@ export function startShell(root, core) {
     // Where Driving's ← goes: the screen it was entered from.
     if (route.name === 'drive' && shown.name && shown.name !== 'drive') /** @type {any} */ (ctx).drivingFrom = shown.hash || '#/trips';
     shown = { tab: on?.getAttribute('href') ?? null, hash: location.hash, name: route.name, entry };
-    noteScreen(location.hash);
     // The welcome is a page of its own: the install warning waits for its last step, which says the same.
     document.body.classList.toggle('welcoming', route.name === 'welcome');
-    document.body.classList.toggle('home', route.name === 'trips');
+    // Home, and `me`'s read-only lines: the dock rests as on home, so talking there is the + (a new chat).
+    document.body.classList.toggle('home', route.name === 'trips' || (route.name === 'talk' && route.parts[0] !== 'trip' && route.parts[1] === 'me'));
     if (on && o.moved) nav.scrollLeft = Math.max(0, Math.min(nav.scrollLeft, on.offsetLeft - nav.offsetLeft), on.offsetLeft - nav.offsetLeft + on.offsetWidth - nav.clientWidth + 32); // clear of the fade
     showMore();
     const screen = SCREENS[route.name] ?? SCREENS.trips;
@@ -520,12 +521,11 @@ export function startShell(root, core) {
     setPendingImport(files);
     ctx.go('#/import');
   });
-  // A trip opened, by Shiori for a hand-over (Halves.openWhenDone) or by the user's choice on annai's card (carryOn, chose). From home the
-  // address follows into the conversation only for the user's choice (the timeline design, "Moving into a trip"), once nothing typed would
-  // be lost: a new entry, so Back returns home, which opens nothing. Otherwise the screen is drawn again: home stays, a conversation left goes
-  // to the open one at its redraw (render: a replace, as its address is stale), Details and Settings stay, their top bar the trip.
-  /** @type {any} */ (core.agent)?.on?.('went', (/** @type {{ trip: string, chose?: boolean }} */ { trip, chose }) => {
-    if (!chose || parseHash(location.hash).name !== 'trips') return redraw();
+  // A trip opened by the user's choice on annai's card (carryOn). From home the address follows into the conversation (the timeline design,
+  // "Moving into a trip"), once nothing typed would be lost: a new entry, so Back returns home, which opens nothing. Elsewhere the screen is drawn
+  // again: a conversation left goes to the open one at its redraw (render: a replace, as its address is stale), Details and Settings stay, their top bar the trip.
+  /** @type {any} */ (core.agent)?.on?.('went', (/** @type {{ trip: string }} */ { trip }) => {
+    if (parseHash(location.hash).name !== 'trips') return redraw();
     whenFree(() => { if (parseHash(location.hash).name === 'trips' && core.agent?.target === trip) ctx.go(talkHref(trip)); });
   });
   render({ moved: true });

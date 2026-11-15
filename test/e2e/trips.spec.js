@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, buildAndSave, writeEvent, writeRecords, startTrip as startNamed, allFiles, putFile, breakOpen, catchAgent, goToHash, modelSetUp, startModelServer, anthropicToolReply } from './helpers.js';
+import { openApp, buildAndSave, writeEvent, writeRecords, startTrip as startNamed, allFiles, putFile, catchAgent, goToHash, modelSetUp, startModelServer, anthropicToolReply } from './helpers.js';
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
 
@@ -499,32 +499,44 @@ test("review m2: a question's history entry left from before a reload is never t
   await expect(page.getByRole('heading', { level: 1, name: 'Big Sur' })).toBeVisible();
 });
 
-// The user, 2026-10-21: "the trip you had open". A fresh start at "/" reopens the trip's screen that was open.
-test('a fresh start reopens the trip screen that was open, and shows Trips when that trip is gone', async ({ page }) => {
-  await openApp(page);
-  await startTrip(page, 'Big Sur');
-  const id = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
-  await page.evaluate(async () => { // the welcome has been seen on this device
+/**
+ * The welcome has been seen on this device, and the open conversation (activeTrip) was last talked in `ago` ms before now, as its log's write stamps
+ * its record. @param {import('@playwright/test').Page} page @param {string} id @param {number} ago
+ */
+async function talkedAgo(page, id, ago) {
+  await page.evaluate(async ({ id, ago }) => {
     const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
     const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
     const { updateAppSettings } = await import(/** @type {string} */ ('/src/core/settings.js'));
     const store = await createIdbStore();
-    await updateAppSettings(new Workspace(store), { welcomedAt: Date.now() });
+    await updateAppSettings(new Workspace(store), { welcomedAt: Date.now(), activeTrip: id });
+    await store.tx(['scopes'], 'readwrite', async (/** @type {any} */ t) => t.putScope({ ...(await t.getScope(id)), talked: Date.now() - ago }));
     store.close();
-  });
+  }, { id, ago });
+}
+
+// The user, "Last chat if recent, else timeline (Recommended)" (timeline stage 7): a plain start opens the conversation last talked in under 12 hours ago,
+// or one happening; else home. Never Details, a file or Settings.
+test('a plain start opens the conversation talked in under 12 hours ago, else Trips; a link is respected', async ({ page }) => {
+  await openApp(page);
+  const id = await startNamed(page, 'Big Sur');
   await page.getByRole('link', { name: 'Itinerary', exact: true }).first().click();
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('annai.resume'))).toContain('/plan"'); // drawn at the trip's own address, and noted
+  await talkedAgo(page, id, 60 * 60_000);
   await page.goto('/'); // a new launch from the Home Screen icon
-  await expect.poll(() => page.url()).toMatch(/\/plan$/);
+  await expect.poll(() => page.url()).toMatch(new RegExp(`#/trip/${id}/talk$`));
+  await expect(page.locator('.talk-name')).toHaveText('Big Sur');
   // A link that points at a screen is respected.
   await page.goto('/#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
-  // The trip's own page, then gone: removed, with the screen still noted as it was.
+  // Talked in 12 hours and more ago: home.
+  await talkedAgo(page, id, 12 * 60 * 60_000 + 60_000);
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  expect(page.url()).not.toContain('/trip/');
+  // Gone: removed, while it was the one open and talked in a minute ago.
   await page.goto(`/#/trip/${id}`);
   await page.getByRole('button', { name: 'Remove', exact: true }).click();
   await page.getByRole('dialog', { name: 'Big Sur' }).getByRole('button', { name: 'Remove' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
-  await page.evaluate((id) => localStorage.setItem('annai.resume', JSON.stringify({ hash: `#/trip/${id}/plan`, trip: id })), id);
   await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
@@ -542,42 +554,6 @@ test('Start a trip needs only a name: the trip opens with no dates, and on Trips
   await expect(card.locator('.sub')).not.toHaveText(/^updated /); // a line says when it was last talked in, not a card's facts
 });
 
-test('files waiting with Shiori are listed on Trips: one opens, one is asked about (a chip in the type box), one is deleted', async ({ page }) => {
-  await openApp(page);
-  await writeRecords(page, 'sys:waiting', { text: { '/files/hotel.txt': 'Hotel Aurora Test, Nov 20–27', '/files/car.txt': 'Midnight Sun Rentals', '/files/note.txt': 'Not a booking' } });
-  await page.reload();
-  await expect(page.getByRole('heading', { name: 'Waiting with Shiori' })).toBeVisible();
-  const row = (/** @type {string} */ name) => page.locator('.waiting-file', { hasText: name });
-  await row('hotel.txt').getByRole('link', { name: 'Open' }).click();
-  await expect(page.getByRole('heading', { name: 'hotel.txt' })).toBeVisible();
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).first().click();
-  await expect(page.getByRole('heading', { name: 'Waiting with Shiori' })).toBeVisible();
-  await row('note.txt').getByRole('button', { name: 'Delete' }).click();
-  await row('note.txt').getByRole('button', { name: 'Tap again to delete' }).click();
-  await expect(page.getByText(/^Deleted note\.txt\./)).toBeVisible();
-  await expect(row('note.txt')).toHaveCount(0);
-  await row('car.txt').getByRole('button', { name: 'Ask Shiori about this' }).click();
-  await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
-  await expect(page.locator('.type-sheet .attach-chip')).toHaveText(['car.txt×']);
-  await expect(page.getByRole('button', { name: 'Remove car.txt' })).toBeVisible();
-  await expect(page.getByLabel('Message to Shiori')).toBeFocused();
-});
-
-test("a Delete in Waiting with Shiori tapped once stays armed when home is drawn again: another file's Delete draws it again", async ({ page }) => {
-  await openApp(page);
-  await writeRecords(page, 'sys:waiting', { text: { '/files/hotel.txt': 'Hotel Aurora Test, Nov 20–27', '/files/note.txt': 'Not a booking' } });
-  await page.reload();
-  const row = (/** @type {string} */ name) => page.locator('.waiting-file', { hasText: name });
-  await row('hotel.txt').getByRole('button', { name: 'Delete' }).click();
-  await row('note.txt').getByRole('button', { name: 'Delete' }).click();
-  await row('note.txt').getByRole('button', { name: 'Tap again to delete' }).click(); // deleted: home is drawn again
-  await expect(row('note.txt')).toHaveCount(0);
-  await expect(row('hotel.txt').getByRole('button', { name: 'Tap again to delete' })).toBeVisible(); // still armed: the next tap is the second
-  await row('hotel.txt').getByRole('button', { name: 'Tap again to delete' }).click();
-  await expect(page.getByText(/^Deleted hotel\.txt\./)).toBeVisible();
-  await expect(row('hotel.txt')).toHaveCount(0);
-});
-
 test("a trip's card says when a file is waiting to be read", async ({ page }) => {
   await openApp(page);
   const trip = await startNamed(page, 'Kyoto', { start: '2026-12-01', end: '2026-12-05' }); // dated: a card, which says what waits to be read
@@ -585,28 +561,6 @@ test("a trip's card says when a file is waiting to be read", async ({ page }) =>
   await writeEvent(page, trip, { type: 'wake', data: { id: 'w-1', reasons: [{ kind: 'file', text: 'A file was moved here.', files: ['/files/temple.txt'] }] } });
   await page.goto('/#/trips');
   await expect(page.locator('.trip-card', { hasText: 'Kyoto' })).toContainText('1 file waiting to be read');
-});
-
-test('with a trip open, Trips has a way back to the conversation outside any trip', async ({ page }) => {
-  await openApp(page);
-  await expect(page.getByRole('button', { name: /Shiori, no trip/ })).toHaveCount(0); // none open: the Conversation is that one already
-  await startNamed(page, 'Kyoto');
-  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
-  await page.getByRole('button', { name: /Shiori, no trip/ }).click();
-  await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
-  await expect(page.getByText(/No trip is open/)).toBeVisible();
-  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
-  await expect(page.getByRole('button', { name: /Shiori, no trip/ })).toHaveCount(0);
-});
-
-test("the way back outside any trip that won't open says so, and Trips stays", async ({ page }) => {
-  await openApp(page);
-  await startNamed(page, 'Kyoto');
-  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
-  await breakOpen(page);
-  await page.getByRole('button', { name: /Shiori, no trip/ }).click();
-  await expect(page.getByText("That conversation didn't open")).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
 });
 
 test("the folded dates keep their disclosure marker, and their tap is a phone's size", async ({ page }) => {
@@ -735,15 +689,15 @@ test('opening #/trip/<b>/talk with a turn running in a stops it; a redraw of a t
     await page.waitForTimeout(5000); // past the model's reply
     expect(await herLines(page, a)).toEqual([]); // stopped: its reply wrote nothing
     expect(await page.evaluate(() => /** @type {any} */ (window).opens)).toEqual([b]);
-    // Shiori moves the conversation to Kyoto (a hand-over's openWhenDone): the screen goes there, and nothing opens Osaka again.
+    // Shiori moves the conversation to Kyoto (the user's Open on annai's card, carryOn): the screen goes there, and nothing opens Osaka again.
     await catchAgent(page);
     await goToHash(page, `#/trip/${a}`);
-    // Details drawn first: else Osaka's conversation from before still shows while Kyoto is the open one, and openWhenDone finds Kyoto open.
+    // Details drawn first: else Osaka's conversation from before still shows while Kyoto is the open one, and the move finds Kyoto open.
     await expect(page.getByRole('heading', { level: 1, name: 'Kyoto' })).toBeVisible();
     await goToHash(page, `#/trip/${b}/talk`);
     await expect(convo(page)).toContainText('Osaka');
     await page.evaluate(async () => { /** @type {any} */ (window).opens = []; });
-    await page.evaluate((a) => /** @type {any} */ (window).agent.openWhenDone(a), a);
+    await page.evaluate((a) => /** @type {any} */ (window).agent.carryOn(a, [], new AbortController().signal), a);
     await expect.poll(() => hashOf(page)).toBe(`#/trip/${a}/talk`);
     await expect(convo(page)).toContainText('Kyoto');
     await page.waitForTimeout(500);
@@ -1113,15 +1067,7 @@ test("Remove trip from a fresh start puts Trips at the first entry, with nothing
 test("Remove trip after a start that resumed into the trip's conversation puts Trips at the first entry", async ({ page }) => {
   await openApp(page);
   const id = await startNamed(page, 'Kyoto');
-  await page.evaluate(async (id) => { // the welcome has been seen, and the conversation is the screen that was open
-    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
-    const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
-    const { updateAppSettings } = await import(/** @type {string} */ ('/src/core/settings.js'));
-    const store = await createIdbStore();
-    await updateAppSettings(new Workspace(store), { welcomedAt: Date.now() });
-    store.close();
-    localStorage.setItem('annai.resume', JSON.stringify({ hash: `#/trip/${id}/talk`, trip: id }));
-  }, id);
+  await talkedAgo(page, id, 60_000); // the welcome has been seen, and the conversation was talked in a minute ago
   await page.goto('/'); // a new launch: it resumes into the conversation, the first entry
   await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}/talk`);
   await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
@@ -1226,15 +1172,7 @@ test("two Forwards from Trips inside a trip's draw, over a removed trip's entry 
 test("Forward after Remove trip from a resumed start does nothing, twice", async ({ page }) => {
   await openApp(page);
   const id = await startNamed(page, 'Kyoto');
-  await page.evaluate(async (id) => {
-    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
-    const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
-    const { updateAppSettings } = await import(/** @type {string} */ ('/src/core/settings.js'));
-    const store = await createIdbStore();
-    await updateAppSettings(new Workspace(store), { welcomedAt: Date.now() });
-    store.close();
-    localStorage.setItem('annai.resume', JSON.stringify({ hash: `#/trip/${id}/talk`, trip: id }));
-  }, id);
+  await talkedAgo(page, id, 60_000);
   await page.goto('/');
   await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}/talk`);
   await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
@@ -1309,19 +1247,31 @@ test("Forward after the photo viewer is closed does nothing, also when a screen 
 
 test("after a Forward that does nothing, Trips drawn again keeps its place", async ({ page }) => {
   await openApp(page);
-  await writeRecords(page, 'sys:waiting', { text: Object.fromEntries([...Array(8).keys()].map((i) => [`/files/note-${i}.txt`, `note ${i}`])) });
+  // Enough rows to scroll: chats talked in over the last days.
+  await page.evaluate(async () => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const { createTrip } = await load('/src/core/scopes.js');
+    const { record } = await load('/src/core/agent/log.js');
+    const store = await createIdbStore();
+    for (let i = 0; i < 16; i++) {
+      const id = await createTrip(new Workspace(store), { title: `Chat ${i}` });
+      await record(store, id, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', `Chat ${i}`]], now: Date.now() - (16 - i) * 3_600_000 });
+    }
+    store.close();
+  });
   await startNamed(page, 'Kyoto');
   await removeFromDetails(page, 'Kyoto');
   await markTrips(page);
   await page.goForward(); // the removed trip's entry is ahead: nothing to show
   await page.waitForTimeout(500);
   expect(await stillMarked(page)).toBe(true);
-  await page.locator('.waiting-file .two-step').last().scrollIntoViewIfNeeded();
+  await page.locator('.past .trip-card').first().scrollIntoViewIfNeeded();
+  await page.evaluate(() => scrollBy(0, 240));
   const y = await page.evaluate(() => scrollY);
   expect(y).toBeGreaterThan(200);
-  await page.locator('.waiting-file .two-step').last().click();
-  await page.locator('.waiting-file .two-step').last().click(); // Tap again to delete: Trips is drawn again
-  await expect(page.locator('.waiting-file')).toHaveCount(7);
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); // annai back at the front: Trips is drawn again
   await page.waitForTimeout(300);
   expect(await page.evaluate(() => scrollY)).toBeGreaterThan(y - 120); // not back where it was at the Forward
 });

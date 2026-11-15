@@ -14,8 +14,6 @@ import { openPhotoViewer } from '../photo-viewer.js';
 import { saveFile } from '../save.js';
 import { parseHash } from '../router.js';
 import { toTalk } from '../open-trip.js';
-import { SYS_WAITING } from '../../core/scopes.js';
-import { dropWaiting } from '../../core/waiting.js';
 import { fileCard, pdfPages, imgDrawsPdf } from '../preview.js';
 
 /** @type {string | null} */
@@ -42,7 +40,6 @@ export function cameFrom(from, id, open) {
 
 /** @param {any} ctx @param {{ name?: string, parts: string[], params: Record<string, string> }} route */
 export async function renderFile(ctx, route) {
-  if (route.name === 'waiting-file') return waitingFile(ctx, route.params.path ?? '');
   const id = route.parts[1];
   const path = route.params.path ?? '';
   // Back is where the file was opened from (Plan → Check this → Open the original), else the trip.
@@ -132,26 +129,6 @@ async function lastVersion(ctx, id, path, e, history) {
   const entry = { path, type: typeof saved?.data?.type === 'string' ? saved.data.type : typeForPath(path), size: bytes.byteLength, meta: e.data.meta };
   // No "show Shiori this part" on a photo that isn't in the trip now (its viewer's offer names its path).
   return entry.type.startsWith('image/') ? preview({ ...ctx, agent: null }, id, entry, bytes) : entry.type === 'application/pdf' ? await pdfView(entry, bytes) : download(entry, bytes);
-}
-
-/**
- * A file waiting with Shiori (handed over while no trip was open): the file as a trip's file screen shows one (a photo, or Download),
- * by its own name, and Delete, which gives its space back. No editor and no history: it is the user's file as it came, until she files it.
- * @param {any} ctx @param {string} path
- */
-async function waitingFile(ctx, path) {
-  const head = [h('p', { class: 'crumbs' }, crumb('#/trips', t`Trips`)), ...named(await readNames(ctx.ws, SYS_WAITING), path, h('h1', { class: 'title', dir: 'auto', text: path.split('/').pop() ?? path }))];
-  const r = path.startsWith('/files/') ? await ctx.ws.read(SYS_WAITING, path) : undefined;
-  if (!r) return h('div', { class: 'screen' }, ...head, h('p', { class: 'empty', text: t`This file isn't waiting with Shiori any more.` }));
-  const { entry, bytes } = r;
-  return h('div', { class: 'screen' }, ...head,
-    h('p', { class: 'sub', text: [entry.type, size(entry.size), relTime(entry.modified)].join(' · ') }),
-    entry.type.startsWith('image/') ? preview(ctx, SYS_WAITING, entry, bytes) : entry.type === 'application/pdf' ? await pdfView(entry, bytes) : download(entry, bytes),
-    h('div', { class: 'acts' }, twoStep(t`Delete file`, t`Tap again to delete`, async () => {
-      const freed = await dropWaiting(ctx.ws, path);
-      ctx.notices.toast(t`Deleted ${entry.path.split('/').pop() ?? ''}. ${size(freed)} freed.`);
-      ctx.go('#/trips');
-    })));
 }
 
 /**

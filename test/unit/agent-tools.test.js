@@ -102,8 +102,10 @@ test('resolvePath: /trip/… and /me/… only; .annai is reserved', () => {
   assert.deepEqual(resolvePath('/trip/', 'trip-1'), { scope: 'trip-1', path: '/' });
   assert.deepEqual(resolvePath('/trip/notes/', 'trip-1'), { scope: 'trip-1', path: '/notes/' });
   assert.deepEqual(resolvePath('/me', null), { scope: 'me', path: '/' });
-  assert.throws(() => resolvePath('/trip/notes/a.md', null), /No trip is open/);
+  assert.throws(() => resolvePath('/trip/notes/a.md', null), /Nothing is open/);
   assert.throws(() => resolvePath('/etc/passwd', 'trip-1'), /start with \/trip\/ or \/me\//);
+  // The waiting space's root went with the no-trip conversation (timeline stage 7).
+  for (const trip of [null, 'trip-1']) assert.throws(() => resolvePath('/waiting/files/a.pdf', trip), /start with \/trip\/ or \/me\//);
   assert.throws(() => resolvePath('/trip/.annai/meta.json', 'trip-1'), /reserved/);
 });
 

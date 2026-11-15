@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { pasteBecomesFile, pastedName, handedOf, shownPath, handOver } from '../../src/ui/composer.js';
-import { SYS_WAITING, ensureBaseScopes, createTrip, kindOf } from '../../src/core/scopes.js';
+import { ensureBaseScopes, createTrip, kindOf } from '../../src/core/scopes.js';
 import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace, StorageFullError } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
@@ -23,13 +23,12 @@ test("pastedName: the time it was pasted, in the phone's zone", () => {
 });
 
 test('handedOf: a reference, by the path Shiori sees', () => {
-  assert.deepEqual(handedOf({ scope: SYS_WAITING, path: '/files/a.pdf' }, { type: 'application/pdf', name: 'a.pdf' }), { path: '/waiting/files/a.pdf', type: 'application/pdf', name: 'a.pdf', new: false });
+  assert.deepEqual(handedOf({ scope: 'trip-x', path: '/files/a.pdf' }, { type: 'application/pdf', name: 'a.pdf' }), { path: '/trip/files/a.pdf', type: 'application/pdf', name: 'a.pdf', new: false });
   assert.deepEqual(handedOf({ scope: 'trip-x', path: '/bookings/flight.json' }, { type: 'application/json', name: 'flight.json' }).path, '/trip/bookings/flight.json');
 });
 
-test('shownPath: the waiting space as /waiting/, a trip as /trip/', () => {
-  assert.equal(shownPath(SYS_WAITING, '/files/a.pdf'), '/waiting/files/a.pdf');
-  assert.equal(shownPath('trip-x', '/files/a.pdf'), '/trip/files/a.pdf');
+test('shownPath: a conversation\'s file as /trip/ (the waiting space\'s /waiting/ went with the no-trip conversation, timeline stage 7)', () => {
+  assert.equal(shownPath('/files/a.pdf'), '/trip/files/a.pdf');
 });
 
 /** A phone of annai's in memory, as handOver sees it: a trip open, what she is sent, the cards. @param {{ full?: string }} [o] full: a path whose write fails as storage full */

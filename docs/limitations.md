@@ -747,11 +747,11 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** no real run has written a recap in Japanese, so whether it reads translated is not known.
 - **Revisit when:** the next version: run one real Japanese recap; if it reads translated, add the Languages section's native-speaker sentence to the recap's request.
 
-### Summaries pick their language three different ways when no words decide it
+### Summaries pick their language two different ways when no words decide it
 - **Kind:** deferred.
-- **What the user sees:** nothing on screen today: compaction falls back to English (only a model reads it), the recap to the screens' language, Shiori's own answers to the phone's. Compaction also counts annai's "(files)" placeholder as words the user wrote.
+- **What the user sees:** nothing on screen today: compaction and Shiori's own answers fall back to the phone's language (one rule since timeline stage 7), the recap to the screens' language. Compaction also counts annai's "(files)" placeholder as words the user wrote.
 - **Why:** each rule was written for its own place; one answer to one question belongs in one place (RULES #10).
-- **Revisit when:** the next version: one shared function for "the language the user wrote in", used by all three, with annai's placeholders left out everywhere.
+- **Revisit when:** the next version: one shared function for "the language the user wrote in", used by both, with annai's placeholders left out everywhere.
 
 ### A live Koe's line before a tool has no language rule
 - **Kind:** deferred.
@@ -801,3 +801,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the user asked on 2026-10-15 and 10-16 for plugins that add the encoders a browser lacks ("only for the encoders the browser does not have, we supply a way to add that"); they were pushed out of the photo plans (m1b, m2c) and never built. They need a plugin kind for encoders (docs/plugins.md has none), `'wasm-unsafe-eval'` in the page's security policy (`_headers`, spec §15) and a first plugin (WebP for Safari): a build of its own, as is the card that finds one in the catalog when a model refuses a format (spec §9.9). The spec's design for them stays (§4.8 "Encoders", §9.9, §15, §20), each marked later.
 - **Revisit when:** the build after the interface redesign.
 - **Approved:** 2026-11-14, the user picked "Later build; fix the card now (Recommended)".
+
+### Old place, activity and "every" watches set in the no-trip conversation are never looked at again
+- **Kind:** known limitation.
+- **What the user sees:** a place, activity or "every" watch that Shiori set in the old conversation outside any trip, before timeline stage 7, no longer fires, and no screen lists or cancels it (watch_list and watch_cancel are per conversation, and no turn runs in `me` any more). Time reminders set there still fire: annai says the reminder and logs the wake in `me`'s log (src/core/live/live.js `#looked` looks at a `time` watch in any conversation). Only someone with such a watch still pending at the update sees it.
+- **Why:** before stage 7 those watches fired only while the no-trip conversation was open. `me` is never open now, so looking at them takes a new rule in live mode, for a set of watches that can't grow (none can be set there any more).
+- **Revisit when:** one turns up in the Trace, or the user misses one (the user: "Revisit if one turns up in the Trace or you miss one").
+- **Approved:** 2026-11-14, the user's pick "Known limitation (Recommended)", on the final review of timeline stage 7.
