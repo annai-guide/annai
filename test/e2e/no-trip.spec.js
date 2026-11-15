@@ -56,9 +56,11 @@ const OLD = [
   { type: 'out.show', actor: 'shiori', data: { card: { title: 'Hotel Aurora Test', text: 'Two nights.', choice: ['Book it'] } }, ago: 88 },
   { type: 'error', actor: 'system', data: { kind: 'model', message: 'The model could not be reached.' }, ago: 87 },
   { type: 'heard', actor: 'user', data: { id: 'hd-1', text: 'Is it far?', dismissed: true }, ago: 86 },
+  // A conversation left mid-turn by an older annai: nothing in `me` picks it up any more, so the line that promised it is not shown.
+  { type: 'paused', actor: 'system', data: { text: 'Shiori was in the middle of something. She picks it up when you come back.' }, ago: 85 },
 ];
 
-test('#/talk/me shows the old lines and no type box; no button on them does anything; + from there starts a new chat (Review Focus 6)', async ({ page }) => {
+test('#/talk/me shows the old lines and no type box; no button on them talks or changes anything; + from there starts a new chat (Review Focus 6)', async ({ page }) => {
   await openApp(page, '#/trips');
   await writeIn(page, 'me', OLD);
   await page.goto('/#/talk/me');
@@ -69,6 +71,7 @@ test('#/talk/me shows the old lines and no type box; no button on them does anyt
   await expect(convo).toContainText('Shall I note it?');
   await expect(convo).toContainText('Two nights.');
   await expect(convo).toContainText('Is it far?');
+  await expect(convo).not.toContainText('She picks it up when you come back');
   // Her options, the card's choice, Try again and "This was for Shiori" are not there, so a tap can't send a bare "Yes" anywhere.
   await expect(convo.locator('button')).toHaveCount(0);
   await expect(page.locator('.talk-head .tidy-toggle')).toHaveCount(0); // no ⋯
