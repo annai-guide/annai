@@ -104,8 +104,8 @@ const REQUEST_MS = 15_000;
 
 /**
  * @typedef {{ outcome: 'done' | 'none' | 'refused' | 'unreadable' | 'unreachable', deleted: number, left: number }} Swept
- *   none: the type has no list; refused: a 401 or 403; unreadable: a list annai can't read, or none there (a 404) where the type has one;
- *   unreachable: no answer, a 429 or a server error on the list or a deletion; left: annai's files it didn't delete
+ *   none: the type has no list; refused: a 401 or 403; unreadable: a list annai can't read, or none there (a 404, or another 4xx but a 408
+ *   or a 429) where the type has one; unreachable: no answer, a 408, a 429 or a server error on the list or a deletion; left: annai's files it didn't delete
  */
 
 /**
@@ -132,8 +132,9 @@ export async function sweepUploads({ type, endpoint, key, fetch, trace, now = Da
     if (cursor) cursors.add(cursor);
     const r = type.listUploadsRequest({ endpoint, key, cursor });
     const { status, res } = await send(r, 'GET', { endpoint, fetch, trace, now, kind: 'upload-list', shown: r.url.split('?')[0] });
-    if (status === 404) return { outcome: 'unreadable', deleted: 0, left: 0 };
     if (status === 401 || status === 403) return { outcome: 'refused', deleted: 0, left: 0 };
+    // Any other 4xx is an answer, and not a list (a 404, a 405, a 410, a 422: moved or changed); a 408 and a 429 ask for a later try.
+    if (status >= 400 && status < 500 && status !== 408 && status !== 429) return { outcome: 'unreadable', deleted: 0, left: 0 };
     if (!res || status < 200 || status >= 300) return { outcome: 'unreachable', deleted: 0, left: 0 };
     // A body that breaks off or stalls past the time limit is no answer, as no reply at all is; only a body that arrived and can't be read is unreadable.
     /** @type {string} */

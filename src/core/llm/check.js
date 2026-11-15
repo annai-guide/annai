@@ -125,17 +125,21 @@ export async function testModel(c) {
 async function testUpload({ type, endpoint, model, key, fetch: get = (url, init) => fetch(url, init), uploads }) {
   /** @type {{ id: string }} */
   let up;
+  /** @type {Response | undefined} */
+  let res;
   try {
     const r = /** @type {NonNullable<typeof type.uploadRequest>} */ (type.uploadRequest)({
       endpoint, key, tunables: { ...endpoint.tunables, ...model.tunables }, bytes: fromBase64(TEST_IMAGE), mediaType: 'image/png', name: TEST_UPLOAD, expiresInSeconds: 3600,
     });
     sameOrigin(endpoint, r.url);
-    const res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, redirect: 'manual' });
+    res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, redirect: 'manual' });
     noRedirect(res, endpoint);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     up = /** @type {NonNullable<typeof type.readUpload>} */ (type.readUpload)(await res.json());
   } catch (e) {
-    return { step: 'upload', ok: false, detail: sentences(e instanceof ProviderError && e.kind === 'redirect' ? explain(e) : t`Uploading photos didn't work with this key.`, t`annai will send photos in each request instead.`) };
+    // A redirect, or no answer at all, is not the key's: it says so in the words every step uses.
+    const said = e instanceof ProviderError && e.kind === 'redirect' ? e : !res && !(e instanceof ProviderError) ? new ProviderError('unreachable', 'no answer') : null;
+    return { step: 'upload', ok: false, detail: sentences(said ? explain(said) : t`Uploading photos didn't work with this key.`, t`annai will send photos in each request instead.`) };
   }
   if (!type.deleteUploadRequest) {
     uploads?.retry(endpoint.id);

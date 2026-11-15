@@ -96,13 +96,13 @@ for (const c of cases) {
   const cleanUp = () => sweepUploads({ type: orType, endpoint: ep, key: key ?? null, fetch: (u, i) => fetch(u, i), all: true });
 
   test('OpenRouter files: Test uploads its photo and deletes it by the id the upload gave, with this key', { skip }, async () => {
-    /** @type {string[]} */
-    const off = [];
-    const r = await testModel({ type: orType, endpoint: ep, model: model({ providerId: 'openai/gpt-4.1-nano' }), key: key ?? null, uploads: /** @type {any} */ ({ off: (/** @type {string} */ x) => off.push(x), retry: () => {} }) });
+    // A real Uploads, as the service passes: Test turns uploads off in it where the key can't delete or the list can't be read.
+    const uploads = await uploadsHere();
+    const r = await testModel({ type: orType, endpoint: ep, model: model({ providerId: 'openai/gpt-4.1-nano' }), key: key ?? null, uploads });
     const step = r.steps.find((s) => s.step === 'upload');
     assert.equal(step?.ok, true, JSON.stringify(r.steps));
     assert.match(step?.detail ?? '', /deleted the test photo/);
-    assert.deepEqual(off, []);
+    assert.equal(uploads.isOff(ep.id), false);
     assert.deepEqual((await ours()).filter((f) => f.name === 'annai-test.png'), []);
   });
 

@@ -177,13 +177,16 @@ test('the sweep: a cursor that comes back ends the reading', async () => {
   assert.equal(gets, 2);
 });
 
-test('the sweep: a refused key, a list it can’t read (a 404 too: a type that lists must find its list), and no answer each say so; deletions that fail are left for the next', async () => {
+test('the sweep: a refused key, a list it can’t read (any other 4xx too: a type that lists must find its list), and no answer (a 408, a 429, a server error) each say so; deletions that fail are left for the next', async () => {
   const at = (/** @type {(m: string, p: string) => number | null} */ status) => sweepUploads({ type, endpoint: endpoint(), key: 'k', fetch: openRouterFiles({ files: mixed().held, status }).fetch, now: () => NOW });
   assert.equal((await at((m, p) => (m === 'GET' && p === '/files' ? 404 : null))).outcome, 'unreadable');
   assert.equal((await at((m, p) => (m === 'GET' && p === '/files' ? 401 : null))).outcome, 'refused');
   assert.equal((await at((m, p) => (m === 'GET' && p === '/files' ? 403 : null))).outcome, 'refused');
   assert.equal((await at((m, p) => (m === 'GET' && p === '/files' ? 503 : null))).outcome, 'unreachable');
   assert.equal((await at((m, p) => (m === 'GET' && p === '/files' ? 429 : null))).outcome, 'unreachable');
+  assert.equal((await at((m, p) => (m === 'GET' && p === '/files' ? 408 : null))).outcome, 'unreachable', 'a 408 asks for a later try');
+  // Any other 4xx is an answer that isn't a list annai can read, as a 404 is (a list moved, or its request changed).
+  for (const status of [400, 405, 410, 422]) assert.equal((await at((m, p) => (m === 'GET' && p === '/files' ? status : null))).outcome, 'unreadable', `a ${status}`);
   assert.deepEqual(await at((m) => (m === 'DELETE' ? 503 : null)), { outcome: 'unreachable', deleted: 0, left: 3 });
   assert.equal((await at((m) => (m === 'DELETE' ? 403 : null))).outcome, 'refused');
   const odd = /** @type {any} */ (async () => new Response(JSON.stringify({ object: 'list', files: [] })));

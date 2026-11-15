@@ -137,9 +137,9 @@ export function createLlm({
     return { queued };
   };
   /**
-   * The provider marked as going (no photo is uploaded to it, and none answered meanwhile is kept), its turns and photo uploads are deleted
-   * with their key for up to 10 s; then work runs (a key, an address or the provider going), and once it has, what is left is let go. gone:
-   * for good.
+   * The provider marked as going (a call uploads no photo to it, and none answered meanwhile is kept; Test's own photo is uploaded, and
+   * deleted by its id), its turns and photo uploads are deleted with their key for up to 10 s; then work runs (a key, an address or the
+   * provider going), and once it has, what is left is let go. gone: for good.
    * @template T @param {string} id @param {() => Promise<T>} work @param {boolean} [gone] @returns {Promise<T>}
    */
   const releasing = async (id, work, gone = false) => {

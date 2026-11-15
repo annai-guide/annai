@@ -121,6 +121,24 @@ test('a list annai can’t read turns uploads off too, and so does a list that a
   assert.deepEqual(g.ours(), []);
 });
 
+test('a list that answers another 4xx (400, 405, 410, 422) is a list annai can’t read, as a 404 is: uploads stop at the start sweep and at Test, which says so', async () => {
+  for (const status of [400, 405, 410, 422]) {
+    let answer = false;
+    const k = await kit({ status: (m, p) => (answer && m === 'GET' && p === '/files' ? status : null) });
+    answer = true;
+    await k.llm.sweepUploads();
+    assert.equal(await k.llm.uploading(await k.modelId()), false, `a ${status} at a sweep`);
+    await k.send();
+    assert.equal(k.sentAs(), 'image_url', `a ${status}`);
+    assert.deepEqual(k.ours(), [], `a ${status}`);
+    const t = await kit({ status: (m, p) => (answer && m === 'GET' && p === '/files' ? status : null) });
+    const step = (await t.llm.test(await t.modelId())).steps.find((s) => s.step === 'upload');
+    assert.equal(step?.ok, false, `a ${status} at Test`);
+    assert.match(step?.detail ?? '', /can't read the list of its photos there/);
+    assert.equal(await t.llm.uploading(await t.modelId()), false);
+  }
+});
+
 test('removing OpenRouter deletes every upload of annai’s there with its key, first, and leaves the other files', async () => {
   const k = await kit({ files: [{ filename: 'their-photo.jpg', created_at: iso(Date.now()) }] });
   await k.send();
