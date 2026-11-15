@@ -174,14 +174,15 @@ A photo is encoded at two points, each with its own settings: **ingest**, once, 
   - Crops are kept in the conversation, never among the trip's files. Small request settings (1000 px, or 512 KiB for users watching their data) stay usable, because full detail is always one crop away.
 - **Encoders.**
   - The browser's own encoders are built in: JPEG and PNG everywhere, WebP in Chrome and Firefox. annai finds them with a test encode, because a browser that can't make a format silently returns PNG.
-  - Plugins add the formats a browser lacks, for example:
-    - WebP for Safari;
-    - AVIF, which current browsers show but none can encode;
-    - JPEG XL.
-  - A plugin may load its encoder only in browsers that need it.
-  - If some browsers can't show a plugin's format, the plugin also brings a decoder, and Share exports convert such photos (§12.2).
-  - Encoders built with WebAssembly need `'wasm-unsafe-eval'` in the security policy (§15).
-- **Settings → Photos** holds Keep originals, plus quality, longest edge, size and format list for both ingest and request. Encoder plugins carry their own tuning.
+  - **Later: encoder plugins** (deferred: docs/limitations.md, "Photo encoder plugins").
+    - Plugins add the formats a browser lacks, for example:
+      - WebP for Safari;
+      - AVIF, which current browsers show but none can encode;
+      - JPEG XL.
+    - A plugin may load its encoder only in browsers that need it.
+    - If some browsers can't show a plugin's format, the plugin also brings a decoder, and Share exports convert such photos (§12.2).
+    - Encoders built with WebAssembly need `'wasm-unsafe-eval'` in the security policy (§15).
+- **Settings → Photos** holds Keep originals, plus quality, longest edge, size and format list for both ingest and request. Encoder plugins (later, above) carry their own tuning.
   - Space-conscious users can give ingest the same settings as request. Each photo is then stored small and sent as it is.
   - The cost: a closer look shows no more detail, and backups hold only the small copy.
 
@@ -726,7 +727,7 @@ The interface is `decide({prompt, options[]}) → {optionId: probability}`.
   | rate-limited | wait as instructed, or fall back |
   | overloaded | retry, then fall back |
   | context too long | compact and retry |
-  | image refused (format, size, longest edge, count) | make a copy within the new limit, retry, and save the limit on the model (§4.8). If no installed encoder can make a format the model accepts, the utility model searches the plugin catalog and a card offers the plugin; installing it always takes the user's tap. |
+  | image refused (format, size, longest edge, count) | make a copy within the new limit, retry, and save the limit on the model (§4.8). If no installed encoder can make a format the model accepts, a card names the format and says to try another model in Settings → Models. Later (docs/limitations.md, "Photo encoder plugins"), the utility model searches the plugin catalog and a card offers the plugin; installing it always takes the user's tap. |
   | an uploaded photo's id expired or is unknown | upload the photo again and retry |
   | blocked by browser | explain that the endpoint doesn't allow web apps |
   | bad request | hint: check the ability's tunables |
@@ -1139,7 +1140,7 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
   - `worker-src 'self' blob:`
   - `frame-src 'self' blob:` and `frame-ancestors 'self'` (a PDF the user kept, shown by the browser's own viewer in a frame: Open the original, seeing-bookings; the PDF's object URL takes annai's policy, so annai must be allowed to frame its own; no other site can)
   - `object-src 'none'`
-  - `'wasm-unsafe-eval'` joins `script-src` when the first WebAssembly encoder plugin does (§4.8). It allows compiling WebAssembly, not running text as JavaScript.
+  - `'wasm-unsafe-eval'` joins `script-src` when the first WebAssembly encoder plugin does (§4.8; later, docs/limitations.md, "Photo encoder plugins"). It allows compiling WebAssembly, not running text as JavaScript.
 - **Model output never goes into `innerHTML`.** Our own small Markdown renderer builds DOM nodes and escapes everything else. One exception, by Google's terms: Google's search suggestions (§9.5), Google's own HTML, are set with `innerHTML` in `src/ui/grounding.html`, a frame sandboxed without `allow-same-origin` (its origin opaque, so it can't reach annai, its storage or its keys). Its own policy, `default-src 'none'; style-src 'unsafe-inline'; img-src data:; script-src 'self'; frame-ancestors 'self'`, is in `_headers` (which detaches annai's there, as Cloudflare Pages would otherwise join the two) and, but for `frame-ancestors`, in the page itself, for a host that doesn't serve `_headers`: no script runs there but the one that sets the HTML, and that one takes HTML only while sandboxed, and only from annai as its parent. A frame that loads a second time is removed. annai's own policy is unchanged.
 - **API keys:** stored in `secrets`, never in context, redacted from the trace, and excluded from exports by default. A key a realtime protocol gives as a subprotocol, as OpenAI Realtime's does, is held to the same origin rule as one in the address (below), and a refusal that says it back is blanked (K6).
 - **The responsibility model (§2, principle 2):**
@@ -1400,6 +1401,6 @@ Each milestone gets its own implementation plan. The plugin interface exists fro
 | 8 | **Extensions:** skills, MCP client, code-plugin install UX, UI slots (§5, §16.4) | A third-party skill, an MCP server and a code plugin can each be installed and used. |
 | 9 | **Backup targets:** GitHub, S3-compatible, WebDAV (§12.4) | Automatic backup and restore to GitHub works. |
 
-Remaining official plugins (Gemini, more speech and search providers, and photo encoders such as WebP for Safari or AVIF) are added during milestones 2 and 3 as needed. OpenAI Responses joined on 2026-10-18.
+Remaining official plugins (Gemini, more speech and search providers) are added during milestones 2 and 3 as needed. OpenAI Responses joined on 2026-10-18. The photo encoders come later, in the build after the interface redesign (docs/limitations.md, "Photo encoder plugins").
 
 **Providers as plugins** (docs/superpowers/specs/2026-10-18-provider-plugins-design.md, six milestones): providers and abilities with one key, `requires` and data-only provider plugins (M1); servers you run (M2); one catalog with search (M3); OpenRouter as a code provider (M4); "Custom provider" looks for itself (M5); conflicts made explicit (M6).

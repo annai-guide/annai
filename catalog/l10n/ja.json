@@ -19,7 +19,7 @@
     },
     "openai-realtime": {
       "name": "OpenAI Realtime",
-      "description": "OpenAIのRealtime APIに接続します。Koe用の、1本のストリームで双方向にやり取りする音声会話です。"
+      "description": "OpenAIのRealtime APIに接続します。Koe用の、1本のストリームで双方向にやり取りする音声会話です。OpenAIのサービスでは、まだ動作を確認していません。"
     },
     "openai-responses": {
       "name": "OpenAI Responses",
@@ -167,7 +167,7 @@
     "chat-completions": "eb45e870dc59731f82bbae86c6304cb1cf0913c7332cddd3be8959f13ced4c47",
     "gemini-api": "97da6d12dc0225b4b13966ed8ea2af5c1d9f431e140949b6c62a3a10ce3b7520",
     "gemini-live": "bfac6dc37a17c33e59964b5c2bc705216a3bcbb6137225f162a22795bc14b0c4",
-    "openai-realtime": "82c228de26b656b02650541fd1c8d2ca5d2149ed153a0972bee8847147f4f4a1",
+    "openai-realtime": "2cf01ac35c18bfd390c711e89760f46dd9d9009f958b37f582a4e4b24ff63b60",
     "openai-responses": "6d2c319686397798e0bc32c2cc35e77e54c3fe06f7070c1ef168998fde5111f0",
     "pdf-pages": "896b9a93da0d83aa1162994d444a64b4258fc51845d3351bfcce1fb5d1b1084e",
     "provider-another-address": "cd34b2ea111ca0feed51f2bdc5a69f19573b9b7bf3c8b790fb2d5510cab90bf5",

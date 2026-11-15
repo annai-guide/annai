@@ -3,7 +3,7 @@ import { t } from '../core/l10n.js';
 
 /**
  * The browser's own image encoders (spec §4.8): decoding a photo upright, and writing it in the
- * first format of a list that this browser can write. Formats a browser lacks come from plugins.
+ * first format of a list that this browser can write. A format it lacks has no encoder yet (docs/limitations.md).
  */
 
 /** @type {Map<string, Promise<boolean>>} */

@@ -1,5 +1,5 @@
 {
-  "build": "41e1796c6828",
+  "build": "6c065965dad7",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -43,7 +43,7 @@
     "/src/core/agent/instructions.js": "5a8bc872522c",
     "/src/core/agent/listen.js": "ace64ee6f6c6",
     "/src/core/agent/log.js": "be1f6eedd6f8",
-    "/src/core/agent/loop.js": "5d085046084d",
+    "/src/core/agent/loop.js": "d5267e4ac842",
     "/src/core/agent/reading.js": "dfcf146e5005",
     "/src/core/agent/personalities.js": "20c2b7d8981a",
     "/src/core/agent/her-instructions.js": "b90fb982b678",
@@ -233,7 +233,7 @@
     "/src/ui/offline-pack.js": "737465eaad31",
     "/src/ui/open-file.js": "0d6655f94391",
     "/src/ui/open-trip.js": "143474f503ad",
-    "/src/ui/photo-codec.js": "3006ab90b0ab",
+    "/src/ui/photo-codec.js": "df8a044b3288",
     "/src/ui/preview.js": "da6502865335",
     "/src/ui/photo-viewer.js": "e367a335bbda",
     "/src/ui/platform.js": "d92cd56df069",
@@ -300,8 +300,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "916b8ab7b44c",
-    "/l10n/zh-Hans.json": "d4f84a53c246",
-    "/l10n/zh-Hant.json": "57b0bf2a7dd7"
+    "/l10n/ja.json": "c46917f85934",
+    "/l10n/zh-Hans.json": "d38559aa1937",
+    "/l10n/zh-Hant.json": "837e0526667d"
   }
 }

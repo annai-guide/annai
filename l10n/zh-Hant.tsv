@@ -12,7 +12,7 @@ gemini-api:1naj6ho	ok	Stream her voice, so she starts sooner (off: each sentence
 gemini-live:@name	ok	Gemini Live	Gemini Live	plugins-official/gemini-live/annai-plugin.json:3	
 gemini-live:@description	ok	Talks to Gemini's Live API: a voice conversation in one stream, both ways, for Koe.	串接 Gemini 的 Live API，為 Koe 提供語音對話，聽和說同時進行。	plugins-official/gemini-live/annai-plugin.json:7	
 openai-realtime:@name	ok	OpenAI Realtime	OpenAI Realtime	plugins-official/openai-realtime/annai-plugin.json:3	
-openai-realtime:@description	ok	Talks to OpenAI's Realtime API: a voice conversation in one stream, both ways, for Koe.	串接 OpenAI 的 Realtime API，為 Koe 提供語音對話，聽和說都在同一個串流中。	plugins-official/openai-realtime/annai-plugin.json:7	
+openai-realtime:@description	ok	Talks to OpenAI's Realtime API: a voice conversation in one stream, both ways, for Koe. It hasn't been tried with OpenAI's service yet.	串接 OpenAI 的 Realtime API，為 Koe 提供語音對話，聽和說都在同一個串流中。尚未在 OpenAI 的服務上測試過。	plugins-official/openai-realtime/annai-plugin.json:7	
 openai-responses:@name	ok	OpenAI Responses	OpenAI Responses	plugins-official/openai-responses/annai-plugin.json:3	
 openai-responses:@description	ok	Talks to OpenAI's Responses API and to servers that speak it, OpenAI keeping the conversation between turns, so each sends only what is new, and the stored responses deleted when annai is told to.	串接 OpenAI 的 Responses API 及支援它的伺服器。對話由 OpenAI 在各輪之間儲存，所以每輪只需傳送新內容；收到刪除指示時，annai 會刪除已儲存的回覆。	plugins-official/openai-responses/annai-plugin.json:7	
 pdf-pages:@name	ok	PDF pages	PDF 頁面	plugins-official/pdf-pages/annai-plugin.json:3	Note: the plugin's name, as the Models note (1xx9c0t) says it.
@@ -506,7 +506,7 @@ pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重複操作	src/core
 1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什麼也沒對你說就結束了。	src/core/agent/loop.js:2587	
 2bgbpn	ok	Shiori didn't answer	Shiori 沒有回答	src/core/agent/loop.js:2591	
 1mjdfzn	ok	Shiori can't reach her model	Shiori 無法連線到模型	src/core/agent/loop.js:2665	
-1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	這個模型只接受 {0} 格式的照片，但這個瀏覽器無法產生。新增支援 {1} 的外掛程式即可解決（設定 → 外掛程式）。	src/core/agent/loop.js:2692	{0} = names; {1} = names
+12qfj9m	ok	This model takes photos only as {0}, which this browser can't make. Try another model in Settings → Models.	這個模型只接受 {0} 格式的照片，但這個瀏覽器無法產生。可以在設定 → 模型中換一個模型。	src/core/agent/loop.js:2692	{0} = names
 1uhz9dg	ok	Shiori couldn't send the photo	Shiori 無法傳送照片	src/core/agent/loop.js:2751	
 vjxaph	ok	Your turn	輪到你了	src/core/agent/loop.js:3238	
 19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	這個瀏覽器要點一下才能播放聲音。她說的話在對話裡。	src/core/agent/loop.js:3395	

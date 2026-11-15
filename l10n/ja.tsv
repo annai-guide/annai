@@ -12,7 +12,7 @@ gemini-api:1naj6ho	ok	Stream her voice, so she starts sooner (off: each sentence
 gemini-live:@name	ok	Gemini Live	Gemini Live	plugins-official/gemini-live/annai-plugin.json:3	
 gemini-live:@description	ok	Talks to Gemini's Live API: a voice conversation in one stream, both ways, for Koe.	GeminiのLive APIに接続します。Koe用の、1本のストリームで双方向にやり取りする音声会話です。	plugins-official/gemini-live/annai-plugin.json:7	
 openai-realtime:@name	ok	OpenAI Realtime	OpenAI Realtime	plugins-official/openai-realtime/annai-plugin.json:3	
-openai-realtime:@description	ok	Talks to OpenAI's Realtime API: a voice conversation in one stream, both ways, for Koe.	OpenAIのRealtime APIに接続します。Koe用の、1本のストリームで双方向にやり取りする音声会話です。	plugins-official/openai-realtime/annai-plugin.json:7	
+openai-realtime:@description	ok	Talks to OpenAI's Realtime API: a voice conversation in one stream, both ways, for Koe. It hasn't been tried with OpenAI's service yet.	OpenAIのRealtime APIに接続します。Koe用の、1本のストリームで双方向にやり取りする音声会話です。OpenAIのサービスでは、まだ動作を確認していません。	plugins-official/openai-realtime/annai-plugin.json:7	
 openai-responses:@name	ok	OpenAI Responses	OpenAI Responses	plugins-official/openai-responses/annai-plugin.json:3	
 openai-responses:@description	ok	Talks to OpenAI's Responses API and to servers that speak it, OpenAI keeping the conversation between turns, so each sends only what is new, and the stored responses deleted when annai is told to.	OpenAIのResponses APIと、それに対応したサーバーに接続します。会話はOpenAI側で保持されるため、やり取りごとに新しい部分だけを送ります。保存された応答は、annaiで削除を指示すると削除されます。	plugins-official/openai-responses/annai-plugin.json:7	
 pdf-pages:@name	ok	PDF pages	PDFページ	plugins-official/pdf-pages/annai-plugin.json:3	Note: the plugin's name, as the screens and the Models note (1xx9c0t) say it.
@@ -506,7 +506,7 @@ pydksy	ok	Shiori stopped repeating herself	Shioriは同じことの繰り返し�
 1nvuxc8	ok	Her model finished without saying anything to you.	Shioriのモデルが、何も返事をしないまま終了しました。	src/core/agent/loop.js:2587	Note: "Her" is Shiori's in ja.
 2bgbpn	ok	Shiori didn't answer	Shioriから返事がありませんでした	src/core/agent/loop.js:2591	
 1mjdfzn	ok	Shiori can't reach her model	Shioriがモデルに接続できません	src/core/agent/loop.js:2665	
-1m0gt56	ok	This model takes photos only as {0}, which this browser can't make. A plugin that adds {1} would fix it (Settings → Plugins).	このモデルが受け付ける写真の形式は{0}だけですが、このブラウザでは作成できません。{1}に対応するプラグインを追加すると解決します（「設定 → プラグイン」）。	src/core/agent/loop.js:2692	{0} = names; {1} = names
+12qfj9m	ok	This model takes photos only as {0}, which this browser can't make. Try another model in Settings → Models.	このモデルが受け付ける写真の形式は{0}だけですが、このブラウザでは作成できません。「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:2692	{0} = names
 1uhz9dg	ok	Shiori couldn't send the photo	Shioriは写真を送れませんでした	src/core/agent/loop.js:2751	
 vjxaph	ok	Your turn	返事待ち	src/core/agent/loop.js:3238	
 19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	このブラウザでは、タップしないと音が出ません。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:3395	

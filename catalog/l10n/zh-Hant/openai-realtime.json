@@ -1,6 +1,6 @@
 {
   "manifest": {
-    "description": "串接 OpenAI 的 Realtime API，為 Koe 提供語音對話，聽和說都在同一個串流中。",
+    "description": "串接 OpenAI 的 Realtime API，為 Koe 提供語音對話，聽和說都在同一個串流中。尚未在 OpenAI 的服務上測試過。",
     "name": "OpenAI Realtime"
   },
   "messages": {}

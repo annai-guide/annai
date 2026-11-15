@@ -1,6 +1,6 @@
 {
   "manifest": {
-    "description": "OpenAIのRealtime APIに接続します。Koe用の、1本のストリームで双方向にやり取りする音声会話です。",
+    "description": "OpenAIのRealtime APIに接続します。Koe用の、1本のストリームで双方向にやり取りする音声会話です。OpenAIのサービスでは、まだ動作を確認していません。",
     "name": "OpenAI Realtime"
   },
   "messages": {}
