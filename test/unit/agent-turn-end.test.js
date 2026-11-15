@@ -271,6 +271,51 @@ test("row 13: an open that lands on the reply's sleep, every other call done: he
   assert.equal(k.requests.length - before, 0);
 });
 
+// The moment after a silent reply (words only, or a bare sleep): the loop has logged it and not yet decided whether to ask her once more, and
+// the decline it would make for the cut must not be written as her end. One test for each shape and each cut.
+/** @type {[string, any, (e: any) => boolean][]} her silent reply, and the event that is the moment after it */
+const MOMENTS = [
+  ['words only', { text: 'Filing it.' }, (e) => e.type === 'model.turn'],
+  ['a bare sleep', { toolCalls: [sleep] }, (e) => e.type === 'tool.call' && e.data.name === 'sleep'],
+];
+for (const [what, silent, moment] of MOMENTS) {
+  test(`row 15: an open in the moment after a silent reply (${what}): no end is logged, the paused line shows, and the return takes the turn up once with the hand-over`, async (t) => {
+    useClock(t);
+    const k = await agentKit([[silent, files]]);
+    const A = k.trip;
+    const B = await createTrip(k.ws, { title: 'Kyoto' });
+    /** @type {Promise<unknown> | null} */
+    let opening = null;
+    k.agent.on('event', (/** @type {any} */ e) => { if (!opening && moment(e)) opening = k.agent.open(B); });
+    hand(k);
+    await until(() => opening !== null);
+    await opening;
+    await k.agent.idle();
+    assert.deepEqual(await ends(k, A), ['paused']);
+    const [owed, , handover] = await reads(k, A);
+    assert.deepEqual([owed, handover], [true, 'h-1']);
+    const before = k.requests.length;
+    await k.agent.open(A);
+    await k.agent.idle();
+    assert.equal(k.requests.length - before, 1, 'taken up once');
+    assert.deepEqual(await hers(k), [['/notes/f.md', 'h-1']]);
+  });
+
+  test(`row 15: the user's Stop in the moment after a silent reply (${what}): its error alone, and the hand-over is owed to their next line`, async (t) => {
+    useClock(t);
+    const k = await agentKit([[silent, files]]);
+    let stopped = false;
+    k.agent.on('event', (/** @type {any} */ e) => { if (!stopped && moment(e)) { stopped = true; k.agent.interrupt(); } });
+    hand(k);
+    await k.agent.idle();
+    assert.deepEqual(await ends(k), ['error:stopped']);
+    assert.deepEqual(await reads(k), [false, '', 'h-1']);
+    k.agent.send('Put it in Notes');
+    await k.agent.idle();
+    assert.deepEqual(await hers(k), [['/notes/f.md', 'h-1']], 'their next line carries it');
+  });
+}
+
 test('row 14: the page left (or killed) in her model call: nothing logged, a reload reads her turn under way, and the next start takes it up once with the hand-over', async (t) => {
   useClock(t);
   // Every try of the request fails as the page goes (the call retries a network failure), then the next page's model answers.
