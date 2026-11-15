@@ -16,7 +16,7 @@ const JINA_KEYS = 'https://jina.ai/';
 /**
  * The tools the user's models' providers run themselves, one for each, by its name in the screens' language where its plugin has words
  * for it, else the model's own, and the models that offer it. A plugin's words are its running ones, else its stored ones: nothing here
- * waits for a plugin to start, so one that hangs starting holds no screen. @param {any} ctx
+ * waits for a plugin to start, so one that hangs starting holds neither this screen nor the Trace. @param {any} ctx
  * @returns {Promise<{ id: string, name: string, models: string[] }[]>}
  */
 export async function ownTools(ctx) {
