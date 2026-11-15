@@ -115,7 +115,7 @@ async function boot() {
   const registry = new Registry({ log: secretFreeLog(store, SYS) });
   deliver = (evs) => deliverHooks(registry, evs);
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
-  await ensureBaseScopes(ws);
+  await ensureBaseScopes(ws, { locale: navigator.language });
   // What a late request wrote into a removed trip goes now; if this fails, it goes at the next start (spec §4.9).
   await removeLeftovers(store).catch(() => {});
   // Endpoints from before providers go, with their keys, before Models is first drawn; a card says so once the shell is up.

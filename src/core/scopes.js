@@ -2,6 +2,8 @@ import { ValidationError, NotFoundError, notJSON } from './workspace.js';
 import { t } from './l10n.js';
 import { text } from './bytes.js';
 import { isDate } from './schema.js';
+import { languageSettings } from './languages.js';
+import { readAppSettings } from './settings.js';
 
 /** @typedef {import('./types.js').Store} Store @typedef {import('./types.js').ScopeRecord} ScopeRecord @typedef {import('./types.js').Tx} Tx */
 /** @typedef {import('./workspace.js').Workspace} Workspace */
@@ -58,6 +60,8 @@ const PROFILE = '# Profile\n\n- What to call me:\n- Units:\n- Preferences:\n';
 /** What every install before wrote as its profile. A profile that is still exactly this follows the update, as an unedited personality does (agent/personalities.js). */
 /* en */
 const OLD_PROFILE = '# Profile\n\n- What to call me:\n- Language: English\n- Units:\n- Preferences:\n';
+/** That default's Language line, one line with its end: trailing spaces and a CRLF are allowed, nothing looser. */
+const OLD_LANGUAGE = /^- Language: English *\r?\n?$/;
 
 /**
  * A scope's title as the screens show it: "me" and the system scopes by their id, in the screens' language (the stored title is
@@ -75,8 +79,11 @@ export function scopeTitle(rec) {
   }
 }
 
-/** Creates "me" and the system scopes if they are missing. @param {Workspace} ws */
-export async function ensureBaseScopes(ws) {
+/**
+ * Creates "me" and the system scopes if they are missing. @param {Workspace} ws @param {{ locale?: string }} [o]
+ *   locale: the browser's language, which the languages are until the user picks (languageSettings); none given reads as en-US
+ */
+export async function ensureBaseScopes(ws, { locale } = {}) {
   const now = ws.now();
   /** @type {[string, ScopeRecord['kind'], string][]} */
   /* en */
@@ -97,8 +104,19 @@ export async function ensureBaseScopes(ws) {
     await ws.write(ME, '/memory.md', /* en */ '# Memory\n', { author: 'user' });
   } else {
     try {
-      // Nobody changed it: its "Language: English" would be a second answer, beside the Languages setting's. Any other profile is the user's.
-      if ((await ws.readText(ME, '/profile.md')) === OLD_PROFILE) await ws.write(ME, '/profile.md', PROFILE, { author: 'system' });
+      const profile = await ws.readText(ME, '/profile.md');
+      // Nobody changed it: its "Language: English" would be a second answer, beside the Languages setting's. Any other profile is the user's,
+      if (profile === OLD_PROFILE) await ws.write(ME, '/profile.md', PROFILE, { author: 'system' });
+      else if (profile) {
+        // but for that line where the languages she is told of (their pick, else the phone's: languageSettings, as the Languages section names them)
+        // hold no English (the user's pick, 2026-11-14: "Drop it when it contradicts"); every other byte stays.
+        const lines = profile.split(/(?<=\n)/);
+        const kept = lines.filter((l) => !OLD_LANGUAGE.test(l));
+        if (kept.length < lines.length) {
+          const { spoken } = languageSettings(await readAppSettings(ws), locale);
+          if (!spoken.some((l) => l.id === 'en')) await ws.write(ME, '/profile.md', kept.join(''), { author: 'system' });
+        }
+      }
     } catch {
       // A tidy-up must not stop annai opening (a full phone, a missing text): the profile stays as it is, and the next start tries again.
     }

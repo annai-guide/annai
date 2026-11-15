@@ -79,7 +79,7 @@ test("an install's untouched old profile (exactly the old default) gets the new 
 
 // The rewrite is a tidy-up: annai must open when it can't be done (the profile's text missing from storage, or a full phone), leave the
 // profile as it is, and try again at the next start.
-/** An old profile on a store that can be made to lose a blob or to refuse a file. @param {{ unreadable?: boolean, full?: boolean }} o */
+/** An old profile (or the one given) on a store that can be made to lose a blob or to refuse a file. @param {{ unreadable?: boolean, full?: boolean, profile?: string }} o */
 async function oldProfileOn(o) {
   const inner = createMemoryStore();
   /** @type {import('../../src/core/types.js').Store} */
@@ -99,7 +99,7 @@ async function oldProfileOn(o) {
   let clock = 1000;
   const ws = new Workspace(store, { now: () => ++clock, schemaFor: makeSchemaFor({ list: (k) => (k === 'schema' ? CORE_SCHEMAS : []) }, kindOf) });
   await ensureBaseScopes(ws);
-  await ws.write(ME, '/profile.md', OLD_PROFILE, { author: 'user' });
+  await ws.write(ME, '/profile.md', o.profile ?? OLD_PROFILE, { author: 'user' });
   return ws;
 }
 
@@ -125,6 +125,117 @@ test("a full phone doesn't stop start when the old profile is rewritten; the pro
   assert.equal((await ws.history(ME, '/profile.md')).length, wrote);
   await ensureBaseScopes(ws);
   assert.equal(await ws.readText(ME, '/profile.md'), NEW_PROFILE);
+});
+
+// An edited profile keeps the old default's "- Language: English" line, which told her English beside the languages she is told of. The
+// user's pick (2026-11-14): "Drop it when it contradicts": at start, only that line goes, and only when those languages (their pick, else the
+// phone's) hold no English.
+/** @param {import('../../src/core/workspace.js').Workspace} ws @param {string[]} spoken */
+const speaks = (ws, spoken) => updateAppSettings(ws, { languages: { spoken, answer: 'follow' } });
+
+test("an edited profile loses the old Language line at start when the languages picked (which Shiori is told of first) hold no English: that line alone, every other byte as it was", async () => {
+  for (const [before, after] of [
+    ['# Profile\n\n- What to call me: Alex\n- Language: English\n- Units: metric\n- Preferences: window seat\n', '# Profile\n\n- What to call me: Alex\n- Units: metric\n- Preferences: window seat\n'],
+    ['# Profile\r\n\r\n- What to call me: Alex\r\n- Language: English\r\n- Units:\r\n', '# Profile\r\n\r\n- What to call me: Alex\r\n- Units:\r\n'],
+    ['# Profile\n- Language: English   \n- Units:  \n', '# Profile\n- Units:  \n'],
+    ['- Language: English\n# Profile\n', '# Profile\n'],
+    ['# Profile\n- Units:\n- Language: English', '# Profile\n- Units:\n'],
+    ['# Profile\n- Language: English \r\n', '# Profile\n'],
+    ['# Profile\n- Language: English\n\n- Language: English\nnotes\n', '# Profile\n\nnotes\n'],
+  ]) {
+    const { ws } = setup();
+    await ensureBaseScopes(ws);
+    await speaks(ws, ['ja', 'zh']);
+    await ws.write(ME, '/profile.md', before, { author: 'user' });
+    await ensureBaseScopes(ws);
+    assert.equal(await ws.readText(ME, '/profile.md'), after, JSON.stringify(before));
+    assert.equal((await ws.history(ME, '/profile.md')).at(-1).actor, 'system', 'annai wrote it');
+    const wrote = (await ws.history(ME, '/profile.md')).length;
+    await ensureBaseScopes(ws);
+    assert.equal((await ws.history(ME, '/profile.md')).length, wrote, 'once: with the line gone, nothing is written again');
+  }
+});
+
+test("the Language line stays when the languages she is told of hold English (picked, or an English phone's), and when it says anything else", async () => {
+  const edited = '# Profile\n\n- What to call me: Alex\n- Language: English\n- Units:\n';
+  // [the line, what the user picked (null: nothing), the phone's language (undefined: none given, which reads as en-US)]
+  for (const [line, picked, locale] of /** @type {[string, ((ws: any) => Promise<unknown>) | null, string | undefined][]} */ ([
+    ['- Language: English', (ws) => speaks(ws, ['ja', 'en']), 'ja-JP'],
+    ['- Language: English', (ws) => speaks(ws, ['en']), 'ja-JP'],
+    ['- Language: English', (ws) => speaks(ws, ['en']), undefined],
+    // English and Japanese listed, Shiori answers in Japanese: the line stays, since English is among the languages she is told of (the user's pick 2026-11-14, "Keep as built").
+    ['- Language: English', (ws) => updateAppSettings(ws, { languages: { spoken: ['ja', 'en'], answer: 'ja' } }), 'ja-JP'],
+    ['- Language: English', null, undefined],
+    ['- Language: English', null, 'en-GB'],
+    ['- Language: English', null, 'en'],
+    ['- Language: English', (ws) => updateAppSettings(ws, { languages: { answer: 'en' } }), 'en-GB'],
+    ['- Language: English, Japanese', (ws) => speaks(ws, ['ja']), 'ja-JP'],
+    ['- Language: Japanese', (ws) => speaks(ws, ['ja']), 'ja-JP'],
+    ['- Language: english', (ws) => speaks(ws, ['ja']), 'ja-JP'],
+    ['  - Language: English', (ws) => speaks(ws, ['ja']), 'ja-JP'],
+    ['- Language: English.', null, 'ja-JP'],
+    ['- Language: English\t', (ws) => speaks(ws, ['ja']), 'ja-JP'],
+    ['- Language:  English', null, 'zh-TW'],
+  ])) {
+    const { ws } = setup();
+    await ensureBaseScopes(ws);
+    await picked?.(ws);
+    const text = edited.replace('- Language: English', line);
+    await ws.write(ME, '/profile.md', text, { author: 'user' });
+    const wrote = (await ws.history(ME, '/profile.md')).length;
+    await ensureBaseScopes(ws, { locale });
+    const why = `${JSON.stringify(line)} ${picked ? 'picked' : 'nothing picked'} on ${locale ?? 'no phone given'}`;
+    assert.equal(await ws.readText(ME, '/profile.md'), text, why);
+    assert.equal((await ws.history(ME, '/profile.md')).length, wrote, `${why}: nothing written`);
+  }
+});
+
+// What she is told of the user's languages is their pick, else the phone's (languageSettings; the Languages section). With nothing picked a
+// Japanese or Chinese phone is a list with no English, so the line contradicts it, and the user's own Languages screen shows the same list.
+test("with nothing picked the phone's language is the list: a Japanese or Chinese phone loses the Language line, an answer language chosen or not", async () => {
+  const edited = '# Profile\n\n- What to call me: Alex\n- Language: English\n- Units:\n';
+  for (const [locale, languages] of /** @type {[string, Record<string, any> | null][]} */ ([
+    ['ja-JP', null],
+    ['zh-TW', null],
+    ['zh-Hans-CN', null],
+    ['ja-JP', { answer: 'ja' }],
+    ['ja-JP', { answer: 'follow' }],
+  ])) {
+    const { ws } = setup();
+    await ensureBaseScopes(ws);
+    if (languages) await updateAppSettings(ws, { languages });
+    await ws.write(ME, '/profile.md', edited, { author: 'user' });
+    await ensureBaseScopes(ws, { locale });
+    const why = `${locale} ${JSON.stringify(languages)}`;
+    assert.equal(await ws.readText(ME, '/profile.md'), '# Profile\n\n- What to call me: Alex\n- Units:\n', why);
+    assert.equal((await ws.history(ME, '/profile.md')).at(-1).actor, 'system', why);
+  }
+});
+
+test('an untouched old profile still gets the new one whatever the languages, English among them', async () => {
+  for (const spoken of [['en'], ['ja']]) {
+    const { ws } = setup();
+    await ensureBaseScopes(ws);
+    await speaks(ws, spoken);
+    await ws.write(ME, '/profile.md', OLD_PROFILE, { author: 'user' });
+    await ensureBaseScopes(ws);
+    assert.equal(await ws.readText(ME, '/profile.md'), NEW_PROFILE, spoken.join());
+  }
+});
+
+test("a full phone doesn't stop start when the Language line would go; the profile stays and the next start removes it", async () => {
+  const edited = '# Profile\n\n- What to call me: Alex\n- Language: English\n';
+  const o = { full: false, profile: edited };
+  const ws = await oldProfileOn(o);
+  await speaks(ws, ['ja']);
+  const wrote = (await ws.history(ME, '/profile.md')).length;
+  o.full = true;
+  await ensureBaseScopes(ws);
+  o.full = false;
+  assert.equal(await ws.readText(ME, '/profile.md'), edited, 'left as it was');
+  assert.equal((await ws.history(ME, '/profile.md')).length, wrote);
+  await ensureBaseScopes(ws);
+  assert.equal(await ws.readText(ME, '/profile.md'), '# Profile\n\n- What to call me: Alex\n');
 });
 
 test('createTrip makes a scope, trip.json, trip memory and a scope.create event', async () => {

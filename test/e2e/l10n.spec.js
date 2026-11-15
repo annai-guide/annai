@@ -494,6 +494,23 @@ test.describe('on a phone set to Japanese', () => {
     await expect(page.locator('html')).toHaveAttribute('lang', 'ja-JP');
     expect(await page.evaluate(() => localStorage.getItem('annai.ui'))).toBe('ja');
   });
+
+  // Start passes the phone's language to ensureBaseScopes: with no list picked, it is the list she is told of (languageSettings), and holds no English.
+  test('an edited profile loses the old "- Language: English" line at the next start, with no languages picked', async ({ page }) => {
+    await openApp(page);
+    const edited = '# Profile\n\n- What to call me: Alex\n- Language: English\n- Units:\n';
+    await writeRecords(page, 'me', { write: { '/profile.md': edited } });
+    await page.reload();
+    await expect(page.locator('main.view > *')).toBeVisible();
+    await expect.poll(() => page.evaluate(async () => {
+      const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+      const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+      const store = await createIdbStore();
+      const text = await new Workspace(store).readText('me', '/profile.md');
+      store.close();
+      return text;
+    })).toBe('# Profile\n\n- What to call me: Alex\n- Units:\n');
+  });
 });
 
 test.describe('on a phone set to Chinese (China)', () => {
