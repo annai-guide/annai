@@ -137,10 +137,10 @@ test('the languages (phase 2): one section, in the system text of Shiori, Kokoro
   // Nothing chosen: the browser's language.
   const first = await takeSnapshot({ ws, registry, trip, personalityName: 'shiori', locale: 'ja-JP' });
   assert.equal(first.languages, languagesText(languageSettings({}, 'ja-JP')));
-  assert.match(first.languages, /^The user's phone is set to Japanese, and they may speak other languages\. Answer in the language they used\./);
+  assert.match(first.languages, /^The user's phone is set to Japanese, and they may speak other languages\. Answer in the language they used; before they have written or said anything in this conversation, answer in Japanese\./);
   await updateAppSettings(ws, { languages: { spoken: ['en', 'zh', 'ja'] } });
   const snap = await takeSnapshot({ ws, registry, trip, personalityName: 'shiori', locale: 'ja-JP' });
-  const line = "The user speaks English, Chinese (Simplified) and Japanese; they may switch between these. Answer in the language they used. Never switch to another language because of one word you're unsure of; if you can't make out what they said, ask them to say it again. When you answer in a language other than English, say things the way a native speaker of that language would, and say what annai's English words mean instead of translating them word for word (a plan item marked fixed is one that can't be moved).";
+  const line = "The user speaks English, Chinese (Simplified) and Japanese; they may switch between these. Answer in the language they used; before they have written or said anything in this conversation, answer in English. Never switch to another language because of one word you're unsure of; if you can't make out what they said, ask them to say it again. When you answer in a language other than English, say things the way a native speaker of that language would, and say what annai's English words mean instead of translating them word for word (a plan item marked fixed is one that can't be moved).";
   assert.equal(snap.languages, line);
   const section = `# Languages\n${line}`;
   for (const text of [systemText(snap), systemText(snap, 'a half\'s part'), koeSystem(snap), koeSystem(snap, true)]) {

@@ -102,13 +102,17 @@ export function languagesText(s) {
   const list = named(s.spoken);
   /* en */
   const rest = `Never switch to another language because of one word you're unsure of; if you can't make out what they said, ask them to say it again. ${NATIVE}`;
+  // "The language they used" names none until they have said something (a first message annai wakes her for: files moved into a chat, a share into a new
+  // conversation): then the first language listed, which with nothing chosen is the phone's, the screens' language too. Worded by its own condition (fix round 2).
+  /* en */
+  const first = `Answer in the language they used; before they have written or said anything in this conversation, answer in ${s.spoken[0].name}`;
   // Until the user picks, all annai knows is what the phone is set to: not that they speak it, and not that they speak nothing else.
   /* en */
-  if (!s.explicit) return `The user's phone is set to ${list}${s.answer ? `. Always answer in ${s.answer.name}, whatever language they use` : ', and they may speak other languages. Answer in the language they used'}. ${rest}`;
+  if (!s.explicit) return `The user's phone is set to ${list}${s.answer ? `. Always answer in ${s.answer.name}, whatever language they use` : `, and they may speak other languages. ${first}`}. ${rest}`;
   /* en */
   if (s.answer) return `The user speaks ${list}. Always answer in ${s.answer.name}, whatever language they use. ${rest}`;
   /* en */
-  return `The user speaks ${list}${s.spoken.length > 1 ? '; they may switch between these' : ''}. Answer in the language they used. ${rest}`;
+  return `The user speaks ${list}${s.spoken.length > 1 ? '; they may switch between these' : ''}. ${first}. ${rest}`;
 }
 
 /** What Shiori is told of screens not in English: one stable line of their names. @param {string} tag @param {string} names the catalog's, "Settings (設定), …" */

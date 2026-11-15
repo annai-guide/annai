@@ -171,6 +171,7 @@ test('the waiting files move into a new chat, "Waiting with Shiori", named by an
   assert.match(asked, /A calendar file's events go on the plan only if they ask for that/);
   assert.doesNotMatch(asked, /While no trip was open|handed you files, and they waited|Never ask where a file goes/, 'not the old words: they said the user handed the files and told her to file them');
   assert.doesNotMatch(asked, /flight\.pdf|hotel\.png/, 'the wake names no file');
+  assert.doesNotMatch(asked, /Languages section|in their language/, "the language of her first message is the Languages section's rule, said once for every first message (languagesText), not a clause of this wake");
 });
 
 test('a run cut off before its first file, then after it, then a whole run: every file is in a waiting chat once, whole, with its short name; the wake comes after the moves, so none is written for a chat the cut left short; nothing waits (Review Focus 1)', async () => {

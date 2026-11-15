@@ -521,7 +521,7 @@ export function startShell(root, core) {
     setPendingImport(files);
     ctx.go('#/import');
   });
-  // A trip opened by the user's choice on annai's card (carryOn, chose). From home the address follows into the conversation (the timeline design,
+  // A trip opened by the user's choice on annai's card (carryOn). From home the address follows into the conversation (the timeline design,
   // "Moving into a trip"), once nothing typed would be lost: a new entry, so Back returns home, which opens nothing. Elsewhere the screen is drawn
   // again: a conversation left goes to the open one at its redraw (render: a replace, as its address is stale), Details and Settings stay, their top bar the trip.
   /** @type {any} */ (core.agent)?.on?.('went', (/** @type {{ trip: string }} */ { trip }) => {

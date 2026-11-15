@@ -223,6 +223,7 @@ export function tripTools(app) {
         copies++;
       }
     }
+    const handedCopies = copies; // what the hand-overs left there: her cue says "their message" and "what they handed you" only of these
     // Copied as the user's, so it is their talking there too; a line with no words (yet: a heard one is written down after her turn) has none to copy.
     const last = started ? null : await lastLine(call.scope);
     if (last && !msgs.some((m) => m.seq === last.seq) && !NO_WORDS.includes(last.text.trim())) {
@@ -232,8 +233,8 @@ export function tripTools(app) {
     const from = await store.tx(['scopes'], 'readonly', (t) => t.getScope(call.scope));
     /* en */
     const what = started
-      ? `You started this trip from another trip's conversation${msgs.length ? ', for what the user handed you there (their message is above)' : ''}.`
-      : `You moved the user here from another conversation, ${quote(scopeTitle(/** @type {any} */ (from)))}${msgs.length ? ', with what they handed you there,' : ','} to carry on here${copies ? `: ${copies === 1 ? 'their line' : 'their lines'} from there ${copies === 1 ? 'is' : 'are'} above` : ''}.`;
+      ? `You started this trip from another trip's conversation${handedCopies ? ', for what the user handed you there (their message is above)' : ''}.`
+      : `You moved the user here from another conversation, ${quote(scopeTitle(/** @type {any} */ (from)))}${handedCopies ? ', with what they handed you there,' : ','} to carry on here${copies ? `: ${copies === 1 ? 'their line' : 'their lines'} from there ${copies === 1 ? 'is' : 'are'} above` : ''}.`;
     /* en */
     const before = recap ? ` Your recap of what was said there, which they see as your line: ${JSON.stringify(recap)}.` : '';
     // With no files, annai's own line to her (a cue): the screens show none for it, where a file wake would say she looked at files added.

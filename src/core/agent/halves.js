@@ -471,7 +471,7 @@ export class Halves {
   }
 
   /**
-   * saying: a live Koe's words so far, while she speaks them; went: a trip opened, one Shiori started for a hand-over or the user chose on annai's card ({ trip, chose? })
+   * saying: a live Koe's words so far, while she speaks them; went: a trip opened on the user's choice on annai's card ({ trip })
    * @param {'state' | 'event' | 'notice' | 'open' | 'halves' | 'clear' | 'saying' | 'went'} kind @param {(x: any) => void} fn
    */
   on(kind, fn) {
@@ -1126,7 +1126,7 @@ export class Halves {
 
   /**
    * Takes the user into a trip they chose on annai's card (open_trip's Open), at once, as their tap on its row would: the turn that asked is
-   * let go, nothing owed where it was (open's `moved`), and 'went' tells the screens (chose: the user's own choice). Then the trip's lines (their
+   * let go, nothing owed where it was (open's `moved`), and 'went' tells the screens. Then the trip's lines (their
    * line, her recap) go in, for one turn there. If they went elsewhere since (signal: the call's, which a Stop or another open ends), nothing
    * opens: the lines are written into the trip, in order, and wait there. @param {string} trip @param {import('./loop.js').Wake[]} wakes @param {AbortSignal} signal
    */
@@ -1136,7 +1136,7 @@ export class Halves {
     if (opening) {
       updateAppSettings(this.ws, { activeTrip: trip }).catch(() => {});
       left = this.open(trip, { moved: true }).catch((e) => console.warn(/* en */ "the trip the user chose didn't open", e));
-      this.#emit('went', { trip, chose: true });
+      this.#emit('went', { trip });
     }
     // Into its queue at once when it opens (one turn), else written into it, one after the other.
     for (const w of wakes) {

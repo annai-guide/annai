@@ -83,8 +83,8 @@ export const coldSystem = (language) => /* en */ 'You summarize a conversation b
 /**
  * The language a summary is written in, named ("the user's language" got a Spanish summary of an English conversation). With the
  * languages setting: the one Shiori answers in if it is fixed; else the listed language the user wrote in last, told from their last
- * message, else their last few together; else the first they speak. With none: the language the user wrote in last, guessed so; else
- * the app's (spec §14.3: it ships in English).
+ * message, else their last few together; else the first they speak. With none: the language the user wrote in last, guessed so; else, the
+ * same answer as for her first message in a conversation (languagesText): the phone's (with no settings given, the app's: spec §14.3, it ships in English).
  * @param {string | string[]} said their last messages, the newest last @param {import('../languages.js').LanguageSettings} [languages]
  */
 export function summaryLanguage(said, languages) {
@@ -97,7 +97,8 @@ export function summaryLanguage(said, languages) {
     const wrote = guess ? listedFor(guess, languages.spoken, text) : null;
     /* en */ return wrote ? `${wrote.name}, the language the user wrote in last` : `${languages.spoken[0].name}, the first language the user speaks (${named(languages.spoken)})`;
   }
-  if (!last) /* en */ return "English, the app's language (the user hasn't written anything yet)";
+  // With no line of theirs, the same answer as the Languages section's (languagesText): the first language listed (above), with nothing chosen the phone's.
+  if (!last) /* en */ return languages ? `${languages.spoken[0].name}, the language of the user's phone (the user hasn't written anything yet)` : "English, the app's language (the user hasn't written anything yet)";
   const name = languageOf(last) || languageOf(lines.join('\n'));
   /* en */ return name ? `${name}, the language the user wrote in last` : `the language the user wrote in last: ${JSON.stringify(last.slice(0, 80))}`;
 }

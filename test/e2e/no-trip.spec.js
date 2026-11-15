@@ -352,7 +352,11 @@ test("in `me`'s read-only lines a plugin's kind of card is drawn as annai draws 
   const card = { type: 'trail-send', data: { name: 'Pfeiffer Falls' }, title: 'Pfeiffer Falls trail' };
   await page.goto('/#/trips');
   const kyoto = await startTrip(page, 'Kyoto');
-  await writeIn(page, 'me', [{ type: 'msg.user', actor: 'user', text: 'A trail near Testville?', ago: 90 }, { type: 'out.show', actor: 'shiori', data: { card }, ago: 89 }]);
+  // A card of a kind with neither title nor text (its data only, or its plugin since turned off) would be an empty box: its kind is its title.
+  const bare = { type: 'trail-send', data: { name: 'Mist Trail' } };
+  const gone = { type: 'old-kind-of-card', data: {} };
+  await writeIn(page, 'me', [{ type: 'msg.user', actor: 'user', text: 'A trail near Testville?', ago: 90 }, { type: 'out.show', actor: 'shiori', data: { card }, ago: 89 },
+    { type: 'out.show', actor: 'shiori', data: { card: bare }, ago: 88 }, { type: 'out.show', actor: 'shiori', data: { card: gone }, ago: 87 }]);
   await writeIn(page, kyoto, [{ type: 'out.show', actor: 'shiori', data: { card }, ago: 1 }]);
   // The same card in an open conversation is the plugin's, button and all.
   await page.goto(`/#/trip/${encodeURIComponent(kyoto)}/talk`);
@@ -361,6 +365,8 @@ test("in `me`'s read-only lines a plugin's kind of card is drawn as annai draws 
   await page.goto('/#/talk/me');
   await expect(page.locator('ol.convo')).toContainText('A trail near Testville?', FIRST_DRAW);
   await expect(page.locator('ol.convo')).toContainText('Pfeiffer Falls trail');
+  await expect(page.locator('ol.convo .card-title', { hasText: /^Trail send$/ })).toHaveCount(1);
+  await expect(page.locator('ol.convo .card-title', { hasText: /^old-kind-of-card$/ })).toHaveCount(1);
   await expect(page.locator('ol.convo button')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Ask about Pfeiffer Falls' })).toHaveCount(0);
 });

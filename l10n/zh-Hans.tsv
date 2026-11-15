@@ -529,16 +529,16 @@ pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	她�
 157dl17	ok	Shiori wants to adjust her personality	Shiori 想调整自己的性格	src/core/agent/personalities.js:130	
 13g1wjf	ok	No thanks	不用了	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
 1izvp43	ok	Agree	同意	src/core/agent/personalities.js:131	
-1llchoj	ok	Read {0}, {1}?	允许 Shiori 读取“{0}”（{1}）吗？	src/core/agent/trip-tools.js:363	{0} = title; {1} = dates; Note: annai's card before Shiori reads another of the user's trips, naming which: {0} is its name, {1} its dates as the screens show them ("Apr 1 – 8"). The options: Allow, Always for my trips, Not now. Also said aloud.
-i37hzw	ok	Read {0}?	允许 Shiori 读取“{0}”吗？	src/core/agent/trip-tools.js:363	{0} = title; Note: annai asks before Shiori reads another of the user's trips; {0} is that trip's name. The options: Allow, Always for my trips, Not now.
-mowdsi	ok	Read {0}, last talked {1}?	允许 Shiori 读取“{0}”（上次对话：{1}）吗？	src/core/agent/trip-tools.js:363	{0} = title; {1} = talked; Note: annai's card before Shiori reads another conversation whose name another one shares: {0} is its name, {1} when the user last talked in it ("Nov 5, 02:30 PM"). Also said aloud.
-1diq3hj	ok	Carry on in {0}?	切换到“{0}”继续吗？	src/core/agent/trip-tools.js:368	{0} = title; Note: annai's card when Shiori offers to take the user into another of their conversations to carry on there; {0} is its name. The options: Open, Not now. Also said aloud.
-8xml26	ok	Carry on in {0}, {1}?	切换到“{0}”（{1}）继续吗？	src/core/agent/trip-tools.js:368	{0} = title; {1} = dates; Note: annai's card when Shiori offers to take the user into another of their trips to carry on there, naming which: {0} is its name, {1} its dates as the screens show them ("Apr 1 – 8"). The options: Open, Not now. Open opens that trip's conversation. Also said aloud.
-9sjz9j	ok	Carry on in {0}, last talked {1}?	切换到“{0}”（上次对话：{1}）继续吗？	src/core/agent/trip-tools.js:368	{0} = title; {1} = talked; Note: annai's card when Shiori offers to take the user into another conversation whose name another one shares: {0} is its name, {1} when the user last talked in it ("Nov 5, 02:30 PM"). The options: Open, Not now. Also said aloud.
-8vx737	ok	Always for my trips	我的旅行一律允许	src/core/agent/trip-tools.js:379	Note: an option on that card: Shiori may read any of the user's own trips from now on, without asking (Settings can turn it off); the Trace's line for that grant shows it too.
-c9wfke	ok	Not now	暂不	src/core/agent/trip-tools.js:379	
-nfb55e	ok	Allow	允许	src/core/agent/trip-tools.js:379	
-n6hn1l	ok	Open	打开	src/core/agent/trip-tools.js:485	
+1llchoj	ok	Read {0}, {1}?	允许 Shiori 读取“{0}”（{1}）吗？	src/core/agent/trip-tools.js:364	{0} = title; {1} = dates; Note: annai's card before Shiori reads another of the user's trips, naming which: {0} is its name, {1} its dates as the screens show them ("Apr 1 – 8"). The options: Allow, Always for my trips, Not now. Also said aloud.
+i37hzw	ok	Read {0}?	允许 Shiori 读取“{0}”吗？	src/core/agent/trip-tools.js:364	{0} = title; Note: annai asks before Shiori reads another of the user's trips; {0} is that trip's name. The options: Allow, Always for my trips, Not now.
+mowdsi	ok	Read {0}, last talked {1}?	允许 Shiori 读取“{0}”（上次对话：{1}）吗？	src/core/agent/trip-tools.js:364	{0} = title; {1} = talked; Note: annai's card before Shiori reads another conversation whose name another one shares: {0} is its name, {1} when the user last talked in it ("Nov 5, 02:30 PM"). Also said aloud.
+1diq3hj	ok	Carry on in {0}?	切换到“{0}”继续吗？	src/core/agent/trip-tools.js:369	{0} = title; Note: annai's card when Shiori offers to take the user into another of their conversations to carry on there; {0} is its name. The options: Open, Not now. Also said aloud.
+8xml26	ok	Carry on in {0}, {1}?	切换到“{0}”（{1}）继续吗？	src/core/agent/trip-tools.js:369	{0} = title; {1} = dates; Note: annai's card when Shiori offers to take the user into another of their trips to carry on there, naming which: {0} is its name, {1} its dates as the screens show them ("Apr 1 – 8"). The options: Open, Not now. Open opens that trip's conversation. Also said aloud.
+9sjz9j	ok	Carry on in {0}, last talked {1}?	切换到“{0}”（上次对话：{1}）继续吗？	src/core/agent/trip-tools.js:369	{0} = title; {1} = talked; Note: annai's card when Shiori offers to take the user into another conversation whose name another one shares: {0} is its name, {1} when the user last talked in it ("Nov 5, 02:30 PM"). The options: Open, Not now. Also said aloud.
+8vx737	ok	Always for my trips	我的旅行一律允许	src/core/agent/trip-tools.js:380	Note: an option on that card: Shiori may read any of the user's own trips from now on, without asking (Settings can turn it off); the Trace's line for that grant shows it too.
+c9wfke	ok	Not now	暂不	src/core/agent/trip-tools.js:380	
+nfb55e	ok	Allow	允许	src/core/agent/trip-tools.js:380	
+n6hn1l	ok	Open	打开	src/core/agent/trip-tools.js:486	
 myk8x4	ok	annai couldn't reach {0} ({1}). Is the device offline?	无法连接 {0}（{1}）。设备是不是离线了？	src/core/answer.js:18	{0} = where; {1} = s.info; Note: {1} is the browser's own words, often English.
 uc7dg2	ok	annai couldn't reach {0}. Is the device offline?	无法连接 {0}。设备是不是离线了？	src/core/answer.js:18	{0} = where
 15czcef	ok	{0} answered {1}.	{0} 返回了 {1}。	src/core/answer.js:19	{0} = where; {1} = s.status; Note: {1} is an HTTP status code.
@@ -601,30 +601,30 @@ gnrtev	ok	Shiori can't reach her model.	Shiori 无法连接到模型。	src/core
 1acz027	ok	just now	刚刚	src/core/intl.js:130	
 1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	使用手机扬声器时，Shiori 说话期间听不到你的声音，插话会被忽略。轻点一下即可让她停下来听你说。	src/core/koe/live.js:664	
 1ml2kgi	ok	Tap Shiori to talk over her	轻点 Shiori 即可打断她	src/core/koe/live.js:664	Note: The dock's Shiori button: tap it to talk over her.
-3fqfy0	ok	Languages	语言	src/core/languages.js:338	
-1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你说的语言和 Shiori 的回答语言会告知每个负责听和说的模型，以免简短的回复被误认成别的语言。	src/core/languages.js:339	
-1giusr1	ok	Languages you speak	你说的语言	src/core/languages.js:340	
-m11rnd	ok	The first is the language phone dictation listens in; the order tells Shiori which you prefer.	手机语音输入使用排在第一的语言；排列顺序告诉 Shiori 你更喜欢哪种。	src/core/languages.js:341	Note: under "Languages you speak" (你说的语言); Phone dictation as Settings → Voice's row (手机语音输入). Replaces "In order of use…" (the user, 2026-10-28: what does the order mean?).
-5h4ntn	ok	Add a language	添加语言	src/core/languages.js:342	
-17rv3f8	ok	Add	添加	src/core/languages.js:343	
-9c35st	ok	Remove	移除	src/core/languages.js:344	Note: 移除 (take off the list) over 删除 (delete a thing).
-oogs2r	ok	Remove {0}	移除{0}	src/core/languages.js:345	{0} = name; Note: {0} is the language's name in Chinese (英语), so no spaces around it.
-h355qb	ok	{0} · {1}	{0} · {1}	src/core/languages.js:347	{0} = name; {1} = own
-18uuegb	ok	Added {0}	已添加{0}	src/core/languages.js:348	{0} = name
-zu7130	ok	Added {0}. Saved	已添加{0}，已保存	src/core/languages.js:348	{0} = name
-14va31	ok	{0} moved to {1}. Saved	{0}已移到第 {1} 位，已保存	src/core/languages.js:349	{0} = name; {1} = place
-ehoetc	ok	{0} moved to {1}	{0}已移到第 {1} 位	src/core/languages.js:349	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
-cefzcq	ok	{0} removed. Saved	已移除{0}，已保存	src/core/languages.js:350	{0} = name
-p2yont	ok	{0} removed	已移除{0}	src/core/languages.js:350	{0} = name
-1i1xhz6	ok	{0} removed; Shiori answers in the language you speak to her again	已移除{0}，Shiori 改回用你对她说的语言回答	src/core/languages.js:352	{0} = name
-wbdbo7	ok	{0} removed; Shiori answers in the language you speak to her again. Saved	已移除{0}，Shiori 改回用你对她说的语言回答。已保存	src/core/languages.js:353	{0} = name
-53lnxp	ok	Shiori answers in {0}	Shiori 会用{0}回答	src/core/languages.js:355	{0} = name
-fhhm2e	ok	Shiori answers in {0}. Saved	Shiori 会用{0}回答。已保存	src/core/languages.js:355	{0} = name
-1c7ft9k	ok	Shiori answers in the language you speak to her. Saved	Shiori 会用你对她说的语言回答。已保存	src/core/languages.js:356	
-bgn4sv	ok	Shiori answers in the language you speak to her	Shiori 会用你对她说的语言回答	src/core/languages.js:356	
-1qt7a9v	ok	Shiori answers in	Shiori 的回答语言	src/core/languages.js:357	Note: A label, so a noun: "the language Shiori answers in".
-k4u05v	ok	The language you speak to her	你对她说的语言	src/core/languages.js:358	
-cc69cl	ok	None picked: annai uses the browser’s language.	未选择时，annai 使用浏览器的语言。	src/core/languages.js:359	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
+3fqfy0	ok	Languages	语言	src/core/languages.js:342	
+1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你说的语言和 Shiori 的回答语言会告知每个负责听和说的模型，以免简短的回复被误认成别的语言。	src/core/languages.js:343	
+1giusr1	ok	Languages you speak	你说的语言	src/core/languages.js:344	
+m11rnd	ok	The first is the language phone dictation listens in; the order tells Shiori which you prefer.	手机语音输入使用排在第一的语言；排列顺序告诉 Shiori 你更喜欢哪种。	src/core/languages.js:345	Note: under "Languages you speak" (你说的语言); Phone dictation as Settings → Voice's row (手机语音输入). Replaces "In order of use…" (the user, 2026-10-28: what does the order mean?).
+5h4ntn	ok	Add a language	添加语言	src/core/languages.js:346	
+17rv3f8	ok	Add	添加	src/core/languages.js:347	
+9c35st	ok	Remove	移除	src/core/languages.js:348	Note: 移除 (take off the list) over 删除 (delete a thing).
+oogs2r	ok	Remove {0}	移除{0}	src/core/languages.js:349	{0} = name; Note: {0} is the language's name in Chinese (英语), so no spaces around it.
+h355qb	ok	{0} · {1}	{0} · {1}	src/core/languages.js:351	{0} = name; {1} = own
+18uuegb	ok	Added {0}	已添加{0}	src/core/languages.js:352	{0} = name
+zu7130	ok	Added {0}. Saved	已添加{0}，已保存	src/core/languages.js:352	{0} = name
+14va31	ok	{0} moved to {1}. Saved	{0}已移到第 {1} 位，已保存	src/core/languages.js:353	{0} = name; {1} = place
+ehoetc	ok	{0} moved to {1}	{0}已移到第 {1} 位	src/core/languages.js:353	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
+cefzcq	ok	{0} removed. Saved	已移除{0}，已保存	src/core/languages.js:354	{0} = name
+p2yont	ok	{0} removed	已移除{0}	src/core/languages.js:354	{0} = name
+1i1xhz6	ok	{0} removed; Shiori answers in the language you speak to her again	已移除{0}，Shiori 改回用你对她说的语言回答	src/core/languages.js:356	{0} = name
+wbdbo7	ok	{0} removed; Shiori answers in the language you speak to her again. Saved	已移除{0}，Shiori 改回用你对她说的语言回答。已保存	src/core/languages.js:357	{0} = name
+53lnxp	ok	Shiori answers in {0}	Shiori 会用{0}回答	src/core/languages.js:359	{0} = name
+fhhm2e	ok	Shiori answers in {0}. Saved	Shiori 会用{0}回答。已保存	src/core/languages.js:359	{0} = name
+1c7ft9k	ok	Shiori answers in the language you speak to her. Saved	Shiori 会用你对她说的语言回答。已保存	src/core/languages.js:360	
+bgn4sv	ok	Shiori answers in the language you speak to her	Shiori 会用你对她说的语言回答	src/core/languages.js:360	
+1qt7a9v	ok	Shiori answers in	Shiori 的回答语言	src/core/languages.js:361	Note: A label, so a noun: "the language Shiori answers in".
+k4u05v	ok	The language you speak to her	你对她说的语言	src/core/languages.js:362	
+cc69cl	ok	None picked: annai uses the browser’s language.	未选择时，annai 使用浏览器的语言。	src/core/languages.js:363	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
 1dyfzsg	ok	A simulation is already running.	已有模拟正在运行。	src/core/live/live.js:307	
 157qf8n	ok	Flight {0} departs {1}, {2}	航班 {0} 于 {1} 起飞（{2}）	src/core/live/plan-watches.js:138	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
 1tvx4k9	ok	Flight {0} departs {1}	航班 {0} 于 {1} 起飞	src/core/live/plan-watches.js:138	{0} = w.flight; {1} = time
@@ -2367,11 +2367,11 @@ yrkvc6	ok	Shiori started {0}.	Shiori 开始了“{0}”。	src/ui/screens/talk.j
 1tio19k#other	ok	Shiori took # files to {0}.	Shiori 把 # 个文件移到了“{0}”。	src/ui/screens/talk.js:130	plural; # = d.count; {0} = title; English: "Shiori took # file to {0}." (one), "Shiori took # files to {0}." (other); Note: {0} is the trip's name; 个 counts files.
 197gx5s	ok	Shiori moved this to a conversation that has since been removed.	Shiori 把这段对话移到了另一个对话里继续，但那个对话已被移除。	src/ui/screens/talk.js:134	Note: the same line once that trip is removed; 削除/移除 as Remove trip.
 6labnj	ok	Shiori moved this to {0}.	Shiori 把这段对话移到了“{0}”继续。	src/ui/screens/talk.js:134	{0} = title; Note: the last line of a conversation Shiori took the user from (open_trip); the conversation stays, and they carry on in {0}, a trip or another conversation.
-pykhn0	draft	Undone. Some of your files are back in {0}, and the rest are waiting with Shiori.	已撤销。部分文件已回到 {0}，其余已交回 Shiori 暂存。	src/ui/screens/talk.js:148	{0} = home
+pykhn0	ok	Undone. Some of your files are back in {0}, and the rest are waiting with Shiori.	已撤销。部分文件已回到 {0}，其余文件已交回 Shiori 暂存。	src/ui/screens/talk.js:148	{0} = home; Note: Undo put some of the files back in the trips they came from and sent the rest to wait with Shiori; {0} is trip names as a list; 已撤销 as Undone, 暂存 as Waiting with Shiori (as the sibling rows); 其余文件 names the rest, so the sentence reads alone as a toast.
 184j8yg	ok	Undone. Your files are back in {0}.	已撤销。文件已回到 {0}。	src/ui/screens/talk.js:149	{0} = home; Note: {0} is trip names as a list; 已撤销 as Undone.
 1a3hizo	ok	Undone.	已撤销。	src/ui/screens/talk.js:149	Note: as the Undone row, a sentence.
 mpifrf	ok	Undone. Your files are waiting with Shiori again.	已撤销。文件已重新交回 Shiori 暂存。	src/ui/screens/talk.js:149	Note: 暂存 as Waiting with Shiori; 已撤销 as Undone.
-4d58q9#other	draft	Undone. {0} are removed. Some of your files are back in {1}, and the rest are waiting with Shiori.	已撤销。{0} 已移除，部分文件已回到 {1}，其余已交回 Shiori 暂存。	src/ui/screens/talk.js:151	plural; # = removed.length; {0} = gone; {1} = home; English: "Undone. {0} is removed. Some of your files are back in {1}, and the rest are waiting with Shiori." (one), "Undone. {0} are removed. Some of your files are back in {1}, and the rest are waiting with Shiori." (other)
+4d58q9#other	ok	Undone. {0} are removed. Some of your files are back in {1}, and the rest are waiting with Shiori.	已撤销。{0} 已移除，部分文件已回到 {1}，其余文件已交回 Shiori 暂存。	src/ui/screens/talk.js:151	plural; # = removed.length; {0} = gone; {1} = home; English: "Undone. {0} is removed. Some of your files are back in {1}, and the rest are waiting with Shiori." (one), "Undone. {0} are removed. Some of your files are back in {1}, and the rest are waiting with Shiori." (other); Note: Undo removed the trips she started, put some of the files back in the trips they came from and sent the rest to wait with Shiori; {0} and {1} are trip names as lists; 已撤销 as Undone, 暂存 as Waiting with Shiori (as the sibling rows).
 141utsf#other	ok	Undone. {0} are removed, and your files are waiting with Shiori.	已撤销。{0} 已移除，文件已交回 Shiori 暂存。	src/ui/screens/talk.js:153	plural; # = removed.length; {0} = gone; English: "Undone. {0} is removed, and your files are waiting with Shiori." (one), "Undone. {0} are removed, and your files are waiting with Shiori." (other); Note: {0} is the trips' names as a list; 已撤销 as Undone, 暂存 as Waiting with Shiori.
 1d428yv#other	ok	Undone. {0} are removed, and your files are back in {1}.	已撤销。{0} 已移除，文件已回到 {1}。	src/ui/screens/talk.js:155	plural; # = removed.length; {0} = gone; {1} = home; English: "Undone. {0} is removed, and your files are back in {1}." (one), "Undone. {0} are removed, and your files are back in {1}." (other); Note: {0} and {1} are trip names as lists; 已撤销 as Undone.
 svlg0f#other	ok	Undone. {0} are removed.	已撤销。{0} 已移除。	src/ui/screens/talk.js:157	plural; # = removed.length; {0} = gone; English: "Undone. {0} is removed." (one), "Undone. {0} are removed." (other); Note: Undo removed the trips she started, with no files to put anywhere; {0} is their names as a list.
@@ -2394,45 +2394,45 @@ glbwh5	ok	This conversation so far: {0}	这次对话累计花费：{0}	src/ui/sc
 td8u17	ok	A photo you sent	你发送的照片	src/ui/screens/talk.js:367	
 9e5yo5	ok	(a photo)	（照片）	src/ui/screens/talk.js:414	
 1sjvjoo	ok	From {0}	来自“{0}”	src/ui/screens/talk.js:425	context: a conversation; {0} = scopeTitle(src); Note: under a line the user said in another conversation, copied here when Shiori took them here; a link to that conversation.
-n8s7gz	ok	Tap to answer	轻点按钮回答	src/ui/screens/talk.js:480	Note: a small line under the buttons of annai's own card (Allow, Always for my trips, Not now; Open, Not now) while it waits: only a tap on a button answers it, not a spoken or typed yes. Built as "Tap to talk" is.
-fv3xhc	ok	Kokoro to Koe:	Kokoro 对 Koe 说：	src/ui/screens/talk.js:495	Note: a note from Kokoro to Koe; its words follow.
-upsxi0	ok	Koe to Kokoro:	Koe 对 Kokoro 说：	src/ui/screens/talk.js:495	Note: a note from Koe to Kokoro; its words follow.
-16ol023	ok	Shiori read {0}	Shiori 查看了“{0}”	src/ui/screens/talk.js:524	{0} = scopeTitle({ id: String(d.trip), title: String(d.title ?? '') })
-e34nbi	ok	Started fresh	已重新开始	src/ui/screens/talk.js:528	Note: the divider where a fresh start began.
-3r1u8z	ok	Earlier conversation summarized. The full log is in Trace.	之前的对话已总结。完整内容可在“记录”中查看。	src/ui/screens/talk.js:529	
-1o41up	ok	A budget ended her turn	达到上限，她的这一轮结束了	src/ui/screens/talk.js:539	
-1p4yyw7	ok	Her turn ended	她的这一轮结束了	src/ui/screens/talk.js:539	
-1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	还没有内容。轻点下方的 Shiori 或“输入”开始对话。	src/ui/screens/talk.js:554	Note: "Type" is the dock's button: its words must match it.
-4fzxin	ok	From {0}.	来自 {0}。	src/ui/screens/talk.js:615	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
-1pm5i13	ok	Back to Trips	返回“旅行”	src/ui/screens/talk.js:647	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
-16zeyyr	ok	Next: {0} {1}	接下来：{0} {1}	src/ui/screens/talk.js:692	{0} = r.time; {1} = name
-puj2r7	ok	Next: {0} {1} {2}	接下来：{0} {1} {2}	src/ui/screens/talk.js:692	{0} = day(r.day, true); {1} = r.time; {2} = name
-1frlw7l	ok	Undo the dates Shiori set	撤销 Shiori 设置的日期	src/ui/screens/talk.js:750	
-1l3merh	ok	Shiori set the dates	Shiori 设置了日期	src/ui/screens/talk.js:769	
-159f82q	ok	Undone	已撤销	src/ui/screens/talk.js:771	
-1v37fcy	ok	Undo what Shiori did with these files	撤销 Shiori 对这些文件的操作	src/ui/screens/talk.js:856	Note: the Undo button's label; 撤销 as Undo.
-1nl0tpx	ok	Conversation menu	对话菜单	src/ui/screens/talk.js:900	
-7flpxf	ok	Summarizing…	正在总结…	src/ui/screens/talk.js:967	
-12707g	ok	She couldn't summarize it. A card says why.	她没能完成总结，原因见卡片。	src/ui/screens/talk.js:969	
-5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	之前的对话已总结。每句话都还留在这里，她也随时能查到。	src/ui/screens/talk.js:969	
-u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在忙，请稍后再试。	src/ui/screens/talk.js:969	
-va2k72	ok	There is not enough yet to summarize.	内容还太少，无法总结。	src/ui/screens/talk.js:969	
-mienoe	ok	Summarize now	立即总结	src/ui/screens/talk.js:972	
-10sfmur	ok	Starting fresh…	正在重新开始…	src/ui/screens/talk.js:974	
-va77q0	ok	Start fresh?	要重新开始吗？	src/ui/screens/talk.js:987	
-19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 会从这里重新开始，不再记着之前的内容。之前的每句话都会留在对话里，你可以随时查看和搜索，她也仍能查到。不会删除任何内容。实时语音会话也会重新开始。	src/ui/screens/talk.js:988	Note: "A live voice session" is the glossary's Live voice (实时语音) and live session (实时会话), not a voice she speaks with.
-czdqlz	ok	Start fresh	重新开始	src/ui/screens/talk.js:989	
-1h9wwbn	ok	She couldn't start fresh: {0}	她没能重新开始：{0}	src/ui/screens/talk.js:999	{0} = messageOf(e)
-1thzla3	ok	Already fresh: nothing has been said since.	已经重新开始过了，之后还没有新的对话。	src/ui/screens/talk.js:1002	
-3fntk0	ok	Started fresh.	已重新开始。	src/ui/screens/talk.js:1002	
-mg70bg	ok	The conversation is still opening. Try again in a moment.	对话还在加载，请稍后再试。	src/ui/screens/talk.js:1002	
-p5pj7b	ok	There is nothing to start fresh from yet.	还没有可以重新开始的内容。	src/ui/screens/talk.js:1002	
-1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即总结：Shiori 现在就把之前的对话总结一下，让对话保持简短。每句话都还留在这里，她也随时能查到。	src/ui/screens/talk.js:1024	
-18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新开始：Shiori 不再记着之前的内容，从这里重新开始。之前的每句话都会留在分隔线上方。	src/ui/screens/talk.js:1025	
-15ve7m7	ok	What each half sees	Koe 和 Kokoro 各自看到的内容	src/ui/screens/talk.js:1026	
-1u5l4hx	ok	Details: the trip's name and dates, Export, Archive and Remove.	详情：旅行的名称和日期、导出、归档和移除。	src/ui/screens/talk.js:1037	
-o7tevg	ok	Details: the chat's name and dates, Export, Archive and Remove.	详情：对话的名称和日期、导出、归档和移除。	src/ui/screens/talk.js:1037	
-16pl3gf	ok	Undone. Her old personality applies at her next wake.	已撤销。下次唤醒时，她会恢复原来的性格。	src/ui/screens/talk.js:1053	
+n8s7gz	ok	Tap to answer	轻点按钮回答	src/ui/screens/talk.js:482	Note: a small line under the buttons of annai's own card (Allow, Always for my trips, Not now; Open, Not now) while it waits: only a tap on a button answers it, not a spoken or typed yes. Built as "Tap to talk" is.
+fv3xhc	ok	Kokoro to Koe:	Kokoro 对 Koe 说：	src/ui/screens/talk.js:497	Note: a note from Kokoro to Koe; its words follow.
+upsxi0	ok	Koe to Kokoro:	Koe 对 Kokoro 说：	src/ui/screens/talk.js:497	Note: a note from Koe to Kokoro; its words follow.
+16ol023	ok	Shiori read {0}	Shiori 查看了“{0}”	src/ui/screens/talk.js:526	{0} = scopeTitle({ id: String(d.trip), title: String(d.title ?? '') })
+e34nbi	ok	Started fresh	已重新开始	src/ui/screens/talk.js:530	Note: the divider where a fresh start began.
+3r1u8z	ok	Earlier conversation summarized. The full log is in Trace.	之前的对话已总结。完整内容可在“记录”中查看。	src/ui/screens/talk.js:531	
+1o41up	ok	A budget ended her turn	达到上限，她的这一轮结束了	src/ui/screens/talk.js:541	
+1p4yyw7	ok	Her turn ended	她的这一轮结束了	src/ui/screens/talk.js:541	
+1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	还没有内容。轻点下方的 Shiori 或“输入”开始对话。	src/ui/screens/talk.js:556	Note: "Type" is the dock's button: its words must match it.
+4fzxin	ok	From {0}.	来自 {0}。	src/ui/screens/talk.js:617	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
+1pm5i13	ok	Back to Trips	返回“旅行”	src/ui/screens/talk.js:649	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
+16zeyyr	ok	Next: {0} {1}	接下来：{0} {1}	src/ui/screens/talk.js:694	{0} = r.time; {1} = name
+puj2r7	ok	Next: {0} {1} {2}	接下来：{0} {1} {2}	src/ui/screens/talk.js:694	{0} = day(r.day, true); {1} = r.time; {2} = name
+1frlw7l	ok	Undo the dates Shiori set	撤销 Shiori 设置的日期	src/ui/screens/talk.js:752	
+1l3merh	ok	Shiori set the dates	Shiori 设置了日期	src/ui/screens/talk.js:771	
+159f82q	ok	Undone	已撤销	src/ui/screens/talk.js:773	
+1v37fcy	ok	Undo what Shiori did with these files	撤销 Shiori 对这些文件的操作	src/ui/screens/talk.js:858	Note: the Undo button's label; 撤销 as Undo.
+1nl0tpx	ok	Conversation menu	对话菜单	src/ui/screens/talk.js:902	
+7flpxf	ok	Summarizing…	正在总结…	src/ui/screens/talk.js:969	
+12707g	ok	She couldn't summarize it. A card says why.	她没能完成总结，原因见卡片。	src/ui/screens/talk.js:971	
+5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	之前的对话已总结。每句话都还留在这里，她也随时能查到。	src/ui/screens/talk.js:971	
+u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在忙，请稍后再试。	src/ui/screens/talk.js:971	
+va2k72	ok	There is not enough yet to summarize.	内容还太少，无法总结。	src/ui/screens/talk.js:971	
+mienoe	ok	Summarize now	立即总结	src/ui/screens/talk.js:974	
+10sfmur	ok	Starting fresh…	正在重新开始…	src/ui/screens/talk.js:976	
+va77q0	ok	Start fresh?	要重新开始吗？	src/ui/screens/talk.js:989	
+19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 会从这里重新开始，不再记着之前的内容。之前的每句话都会留在对话里，你可以随时查看和搜索，她也仍能查到。不会删除任何内容。实时语音会话也会重新开始。	src/ui/screens/talk.js:990	Note: "A live voice session" is the glossary's Live voice (实时语音) and live session (实时会话), not a voice she speaks with.
+czdqlz	ok	Start fresh	重新开始	src/ui/screens/talk.js:991	
+1h9wwbn	ok	She couldn't start fresh: {0}	她没能重新开始：{0}	src/ui/screens/talk.js:1001	{0} = messageOf(e)
+1thzla3	ok	Already fresh: nothing has been said since.	已经重新开始过了，之后还没有新的对话。	src/ui/screens/talk.js:1004	
+3fntk0	ok	Started fresh.	已重新开始。	src/ui/screens/talk.js:1004	
+mg70bg	ok	The conversation is still opening. Try again in a moment.	对话还在加载，请稍后再试。	src/ui/screens/talk.js:1004	
+p5pj7b	ok	There is nothing to start fresh from yet.	还没有可以重新开始的内容。	src/ui/screens/talk.js:1004	
+1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即总结：Shiori 现在就把之前的对话总结一下，让对话保持简短。每句话都还留在这里，她也随时能查到。	src/ui/screens/talk.js:1026	
+18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新开始：Shiori 不再记着之前的内容，从这里重新开始。之前的每句话都会留在分隔线上方。	src/ui/screens/talk.js:1027	
+15ve7m7	ok	What each half sees	Koe 和 Kokoro 各自看到的内容	src/ui/screens/talk.js:1028	
+1u5l4hx	ok	Details: the trip's name and dates, Export, Archive and Remove.	详情：旅行的名称和日期、导出、归档和移除。	src/ui/screens/talk.js:1039	
+o7tevg	ok	Details: the chat's name and dates, Export, Archive and Remove.	详情：对话的名称和日期、导出、归档和移除。	src/ui/screens/talk.js:1039	
+16pl3gf	ok	Undone. Her old personality applies at her next wake.	已撤销。下次唤醒时，她会恢复原来的性格。	src/ui/screens/talk.js:1055	
 11gkctr	ok	Places	地点	src/ui/screens/tools.js:11	context: tool group
 13mxqrp	ok	Talk	对话	src/ui/screens/tools.js:11	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	ok	Go	出行	src/ui/screens/tools.js:11	context: tool group; Note: the tools for getting somewhere (routes, maps).

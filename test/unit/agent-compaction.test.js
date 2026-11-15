@@ -223,7 +223,9 @@ test('with the languages setting the summary is written in the language it names
   // Nothing chosen (the browser's language is only a default): the guess, as before.
   const none = languageSettings({}, 'en-US');
   assert.equal(summaryLanguage('¿Dónde podemos cenar esta noche?', none), 'Spanish, the language the user wrote in last');
-  assert.equal(summaryLanguage('', none), "English, the app's language (the user hasn't written anything yet)");
+  // With no line of theirs: the same answer as the Languages section gives for her first message (the first listed; with nothing chosen, the phone's).
+  assert.equal(summaryLanguage('', none), "English, the language of the user's phone (the user hasn't written anything yet)");
+  assert.equal(summaryLanguage('', languageSettings({}, 'ja-JP')), "Japanese, the language of the user's phone (the user hasn't written anything yet)");
 });
 
 test('housekeeping reads the setting: a fixed answer language is the summary\'s, whatever the last message looks like (phase 2)', async () => {

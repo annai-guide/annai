@@ -462,7 +462,9 @@ export async function renderTalk(ctx, route) {
     }
     if (e.type === 'out.show') {
       // `me`'s: as annai draws a card, its choices left out, and a plugin's kind of card without its plugin (whose buttons could send into the open conversation).
-      const { type: _kind, data: _data, choice: _choice, ...plain } = d.card ?? {};
+      // One with neither title nor text would be an empty box: its kind is its title.
+      const { type: kind, data: _data, choice: _choice, ...plain } = d.card ?? {};
+      if (typeof kind === 'string' && !plain.title && !plain.text) plain.title = cardKind(ctx, d.card) || kind;
       const card = readOnly ? shownCard({ ...d, card: plain }, { ctx, say: hers }) : shownCard(d, { ctx, onChoice: (o) => agent.send(o, { chose: true }), say: hers });
       const undo = d.tune && !readOnly ? tuneUndo(ctx, d.tune) : null;
       const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: e.type, data: d }));

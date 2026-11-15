@@ -377,6 +377,37 @@ test("start_trip in a dated trip with a hand-over and no files named moves none,
   const kyoto = await tripNamed(k, 'Kyoto');
   assert.deepEqual(await k.ws.list(kyoto.id, '/files/'), []);
   assert.deepEqual((await k.ws.list(k.trip, '/files/')).map((/** @type {any} */ f) => f.path), ['/files/hotel.pdf']);
+  // Nothing of the hand-over was copied (no words, its file not moved), so her cue doesn't say a message of theirs is above (H1-1, fix round 2).
+  assert.deepEqual(await eventsIn(k, kyoto.id, ['msg.user']), [], 'no copy of the hand-over');
+  const [wake] = await eventsIn(k, kyoto.id, ['wake']);
+  assert.equal(wake.data.reasons[0].text, "You started this trip from another trip's conversation.");
+});
+
+test("start_trip with a hand-over that has words says their message is above; open_trip's cue says what they handed only when something of it was copied", async (t) => {
+  useClock(t);
+  const k = await agentKit([[sleep]], { halves: true });
+  k.agent.addLoopTools(tripTools(k.agent));
+  await k.ws.patch(k.trip, '/trip.json', { start: '2026-11-20', end: '2026-11-27' }, { author: 'user' });
+  await k.agent.opening;
+  const hotel = await handIn(k, 'hotel.pdf');
+  k.agent.send('Our Kyoto stay', { handed: [hotel], handover: 'h-1' });
+  await k.agent.idle();
+  await run(k, 'start_trip', { title: 'Kyoto' }, 'h-1');
+  const kyoto = await tripNamed(k, 'Kyoto');
+  const cueOf = (await eventsIn(k, kyoto.id, ['wake'])).flatMap((/** @type {any} */ e) => e.data.reasons).find((/** @type {any} */ r) => /You started this trip/.test(r.text ?? ''));
+  assert.equal(cueOf.text, "You started this trip from another trip's conversation, for what the user handed you there (their message is above).");
+  assert.equal((await eventsIn(k, kyoto.id, ['msg.user'])).length, 1);
+  // open_trip: a hand-over of words-less files she doesn't move copies nothing, so the cue doesn't say they handed anything there, nor that a line is above.
+  const c = await chatKit();
+  const [tickets, other] = [await handIn(c, 'tickets.pdf'), await handIn(c, 'other.pdf')];
+  c.agent.send('', { handed: [tickets], handover: 'h-1' });
+  await c.agent.idle();
+  await openBy(c, { trip: c.kyoto, files: [other.path] }, 'h-1');
+  await c.agent.idle();
+  assert.deepEqual(await eventsIn(c, c.kyoto, ['msg.user']), [], 'no copy of the hand-over');
+  const cue = (await eventsIn(c, c.kyoto, ['wake'])).flatMap((/** @type {any} */ e) => e.data.reasons).find((/** @type {any} */ r) => /You moved the user here/.test(r.text ?? ''));
+  assert.match(cue.text, /^You moved the user here from another conversation, ".*", to carry on here\./);
+  assert.doesNotMatch(cue.text, /handed|above/);
 });
 
 // What the user sees: the card, then at Open the trip at once with their line and her recap; anything else ends the card, nothing moved.
@@ -415,7 +446,7 @@ test("Open, tapped: Kyoto opens at the tap, with the user's line, her recap belo
   assert.deepEqual(await eventsIn(k, k.kyoto, ['msg.user', 'wake']), []);
   k.agent.answer(k.asks[0].data.tap, 'Open');
   await until(() => k.agent.target === k.kyoto);
-  assert.deepEqual(went, [{ trip: k.kyoto, chose: true }], "the user's own choice: from home the screen follows");
+  assert.deepEqual(went, [{ trip: k.kyoto }], 'a trip opened on the user\'s own choice: from home the screen follows');
   await k.agent.idle();
   assert.equal(k.agent.trip, k.kyoto);
   assert.equal((await readAppSettings(k.ws)).activeTrip, k.kyoto);
