@@ -2247,10 +2247,13 @@ export class Agent {
      * message of theirs that reached it inside its wait. @type {Wake[]}
      */
     let notes = [];
+    /** Her turn ended by its own rule (asleep, back to sleep, or in words with nothing more asked of her) and no call of its last reply was cut. */
+    let ended = false;
     this.#owing = () => {
       settle(); // not those she has reached the user with since
       const taken = notes;
       notes = [];
+      if (taken.length && !unanswered()) ended = true; // annai shows them (a switch, Start fresh): nothing is left for her turn to do
       return taken;
     };
     let wrote = false;
@@ -2414,8 +2417,8 @@ export class Agent {
           role, request, level: turn.level, signal: anySignal([abort.signal, cut.signal]), scope: this.scope, prefer,
           // Each reply as its provider returned it, to send back within the turn (the keep-reasoning design §4).
           keepNative: true,
-          // The hand-over the turn carries, null for none, on every reply: a reply that ends a turn settles only its own (transcript.js).
-          record: { tag: this.#half.tag, ...this.#mark('model.turn'), wake: wakeId, prefix: fingerprint.slice(0, 16), context, keepParts: true, handover: this.#handover },
+          // On every reply: the hand-over the turn carries (null for none), and that the loop logs the turn's end (turn.end; transcript.js).
+          record: { tag: this.#half.tag, ...this.#mark('model.turn'), wake: wakeId, prefix: fingerprint.slice(0, 16), context, keepParts: true, handover: this.#handover, endLogged: true },
           repairImages: (/** @type {ProviderError} */ err, /** @type {string} */ modelId, /** @type {any} */ req) => this.#repair(err, modelId, req, wakeId),
           onEvent: (/** @type {any} */ ev) => this.#streamed(ev, wakeId),
           ...(this.voice ? { speech: this.voice.resolver(this.scope, wakeId) } : {}),
@@ -2499,6 +2502,7 @@ export class Agent {
         if (result.reply.stop === 'pause') continue;
         this.#facts.finalText = String(result.reply.text ?? '').trim();
         if (await nudge()) continue;
+        ended = true;
         break;
       }
       const sleeping = calls.some((/** @type {any} */ c) => c.name === 'sleep');
@@ -2510,6 +2514,7 @@ export class Agent {
       /** This step's readings: two reads of one file in one reply read it once. @type {Map<string, Promise<import('./reading.js').Reading>>} */
       const reads = new Map();
       this.#asked = false;
+      let cutCall = false;
       for (const [i, c] of ordered.entries()) {
         const rest = ordered.slice(i + 1);
         // speak doesn't listen when a call after it does (spec §7.1, §10.7): right after it, her question with buttons ('ask': unless a tap cut her line, as it closes the tap's microphone) or a wait; for Koe (listenLast), any later wait or tell_kokoro.
@@ -2524,6 +2529,7 @@ export class Agent {
         const output = await this.#runCall(c, tools, { wakeId, signal: abort.signal, model, sleeping, providerOff: via.off, more, last: i === ordered.length - 1, reads, awake, unsent });
         this.#running = null;
         if (breaks(c.name, Boolean(output.isError))) broke = true;
+        if (abort.signal.aborted && output.isError && c.name !== 'sleep') cutCall = true;
         if (output.endTurn) endTurn = this.#wentToSleep = true;
         if (stuck.see(c.name, c.input, output.content)) stop = true;
       }
@@ -2556,11 +2562,15 @@ export class Agent {
         settle();
         if (owes() && !nudged) await cue();
         else if (owes() && ++after >= AFTER_CUE) {
-          silent = true;
+          silent = ended = true; // annai's backstop shows what Koe still owes
           break;
         }
       }
-      if (abort.signal.aborted || ((asleep || endTurn) && !(await nudge()))) break;
+      if (abort.signal.aborted && (cutCall || !(asleep || endTurn))) break; // cut at its work: no end, so it is taken up
+      if ((asleep || endTurn) && !(await nudge())) {
+        ended = true;
+        break;
+      }
       await this.#writeChatter(wakeId);
       const more = this.#take();
       settle();
@@ -2582,6 +2592,8 @@ export class Agent {
       if (!abort.signal.aborted) await this.#half.unsaid?.(unsaid);
       else if (this.#still) this.#half.left?.(unsaid);
     }
+    // The turn's end, written once, where it is known: the log's reader takes it from this record, never from her reply's words.
+    if (ended && !(silent && unanswered())) await this.#log({ type: 'turn.end', actor: 'system', data: { wake: wakeId, handover: this.#handover } });
     if (silent && unanswered()) {
       // Asked once more, she still said nothing: the user isn't left waiting in silence.
       const body = t`Her model finished without saying anything to you.`;
@@ -2816,7 +2828,7 @@ export class Agent {
       } else {
         // Only when its write failed: the stored turn found is an earlier step's.
         this.#flush();
-        this.transcript.apply({ seq: this.transcript.to + 1, type: 'model.turn', data: { tag: this.#half.tag, wake: wakeId } }, { texts: { parts: JSON.stringify(parts) }, images: [] });
+        this.transcript.apply({ seq: this.transcript.to + 1, type: 'model.turn', data: { tag: this.#half.tag, wake: wakeId, handover: this.#handover, endLogged: true } }, { texts: { parts: JSON.stringify(parts) }, images: [] });
       }
       this.transcript.carry(null); // a reply read from the log already: it keeps nothing
       this.#calling = false;
@@ -2895,7 +2907,7 @@ export class Agent {
       if ((output.images?.length && o.model && !o.model.input?.includes('image')) || (output.document && o.model && !o.model.input?.includes('pdf'))) output = await this.#described(output, o.wakeId, o.signal, o.model, undefined, scope, c.name === 'read', o.reads);
     }
     // Cut short (the turn aborted, the call an error): the user's Stop, or another conversation opening, which is no Stop. Every result
-    // says whether (`cut`), which a refusal or a failure is not: the log is read by the mark; only a result without it, an older page's, by its words.
+    // says whether (`cut`), which a refusal or a failure is not. `end` and `awake` are for a page one version older (deferred).
     // The user's Open on open_trip's card ends that call by opening the trip, which is what it was for: no cut, no error.
     const chose = Boolean(o.signal.aborted && output.isError && this.#cutMoved && !this.#userStop && !unrun && c.name === 'open_trip');
     const cut = Boolean(o.signal.aborted && output.isError) && !chose;

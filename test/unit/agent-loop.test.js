@@ -26,7 +26,7 @@ test('a typed message wakes Shiori; she speaks and sleeps; the whole turn is in 
   k.agent.send('Where should we eat?');
   await k.agent.idle();
   const types = (await k.events()).map((e) => e.type).filter((t) => !['scope.create', 'file.write', 'net.request'].includes(t));
-  assert.deepEqual(types, ['wake', 'msg.user', 'model.turn', 'tool.call', 'out.speak', 'tool.result', 'tool.call', 'tool.result']);
+  assert.deepEqual(types, ['wake', 'msg.user', 'model.turn', 'tool.call', 'out.speak', 'tool.result', 'tool.call', 'tool.result', 'turn.end']);
   const speak = (await k.events(['out.speak']))[0];
   assert.equal(speak.data.text, 'Nepenthe is 25 minutes south.');
   assert.deepEqual(states.at(0), 'thinking');
@@ -838,7 +838,7 @@ test('killed after her tool calls came back, before her next reply: opening the 
   const k = await agentKit([[say('Vegetarian: Nepenthe has options.')]], { open: false });
   await record(k.store, k.trip, { type: 'wake', actor: 'system', data: { id: 'w-0', reasons: [{ kind: 'user', text: 'typed' }] } });
   await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: { text: 'Also, we are vegetarian.', wake: 'w-0' } });
-  await modelTrace(k.store, k.trip).turn({ role: 'main', level: 'medium', answeredBy: 'A', attempts: [], usage: {}, cost: 0, tag: TALK_TAG, wake: 'w-0' }, '', '',
+  await modelTrace(k.store, k.trip).turn(/** @type {any} */ ({ role: 'main', level: 'medium', answeredBy: 'A', attempts: [], usage: {}, cost: 0, tag: TALK_TAG, wake: 'w-0', endLogged: true }), '', '',
     [{ type: 'tool_call', id: 'l1', name: 'list', input: { path: '/trip/' } }]);
   await record(k.store, k.trip, { type: 'tool.result', actor: 'system', data: { id: 'l1', name: 'list', ok: true, ms: 1, wake: 'w-0', content: 'path\ttype' } });
   assert.equal((await Transcript.load(k.store, k.trip)).unanswered, true, 'a result she has not seen is an unfinished turn');
@@ -1780,9 +1780,15 @@ test("the note that takes a turn up names only the cause annai knows: an open in
     ['a restart, her calls back', async (k) => {
       await record(k.store, k.trip, { type: 'wake', actor: 'system', data: { id: 'w-0', reasons: [{ kind: 'user', text: 'typed' }] } });
       await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: { text: 'When is check-in?', wake: 'w-0' } });
-      await modelTrace(k.store, k.trip).turn({ role: 'main', level: 'medium', answeredBy: 'A', attempts: [], usage: {}, cost: 0, tag: TALK_TAG, wake: 'w-0' }, '', '', [{ type: 'tool_call', id: 'l1', name: 'list', input: { path: '/trip/' } }]);
+      await modelTrace(k.store, k.trip).turn(/** @type {any} */ ({ role: 'main', level: 'medium', answeredBy: 'A', attempts: [], usage: {}, cost: 0, tag: TALK_TAG, wake: 'w-0', endLogged: true }), '', '', [{ type: 'tool_call', id: 'l1', name: 'list', input: { path: '/trip/' } }]);
       await record(k.store, k.trip, { type: 'tool.result', actor: 'system', data: { id: 'l1', name: 'list', ok: true, cut: false, ms: 1, wake: 'w-0', content: 'path\ttype' } });
     }, `annai restarted in the middle of your turn: your tool calls had come back, and you had not gone on yet. ${QUIET}`],
+    // A reply with no calls, killed before the loop logged its end (the nudge still deciding): no calls had come back.
+    ['a restart, after a reply with no calls', async (k) => {
+      await record(k.store, k.trip, { type: 'wake', actor: 'system', data: { id: 'w-0', reasons: [{ kind: 'user', text: 'typed' }] } });
+      await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: { text: 'When is check-in?', wake: 'w-0' } });
+      await modelTrace(k.store, k.trip).turn(/** @type {any} */ ({ role: 'main', level: 'medium', answeredBy: 'A', attempts: [], usage: {}, cost: 0, tag: TALK_TAG, wake: 'w-0', endLogged: true }), 'Let me think.', '', [{ type: 'text', text: 'Let me think.' }]);
+    }, `annai restarted before you answered. ${QUIET}`],
     ['a restart, a call running', async (k) => {
       await record(k.store, k.trip, { type: 'wake', actor: 'system', data: { id: 'w-0', reasons: [{ kind: 'user', text: 'typed' }] } });
       await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: { text: 'When is check-in?', wake: 'w-0' } });

@@ -1076,6 +1076,9 @@ for (const [kind, when, again] of /** @type {['words' | 'card', string, number][
     const shownLeft = kind === 'card' ? 'out.show:Fuel' : `reminder:${FUEL}`;
     assert.deepEqual(await seen(left), ['out.speak:Let me look.', shownLeft], 'shown in the conversation left, once');
     assert.deepEqual(await seen(other), [], 'nothing in the one opened');
+    // annai took Koe's owed note to show it: that ends Koe's turn (its call held, or its turn for the queued note begun), so the card is not shown again.
+    const ends = (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(left, { types: ['turn.end'] }))).filter((/** @type {any} */ e) => e.data.half === 'koe');
+    assert.deepEqual(ends.map((/** @type {any} */ e) => e.data.handover), [null], 'one end of Koe\'s, in the conversation left');
     await k.agent.open(left);
     await k.agent.idle();
     await new Promise((r) => setTimeout(r, 60_000)); // whatever coming back sets going

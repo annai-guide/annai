@@ -43,7 +43,7 @@ export const NOT_SAID = new Set(['location', 'trigger.fired']);
  * The log entry types the conversation is made of (what apply() reads; compaction aside), so it is
  * read by type: a day of location points is never walked. A type apply() learns goes here too.
  */
-export const SAID = Object.freeze(['wake', 'msg.user', 'model.turn', 'photo.replace', 'error', 'heard', 'heard.text', 'reminder', 'tool.result', 'note', 'halves', 'out.speak', 'out.show', 'out.ask', 'handover.undo', 'conversation.moved']);
+export const SAID = Object.freeze(['wake', 'msg.user', 'model.turn', 'photo.replace', 'error', 'heard', 'heard.text', 'reminder', 'tool.result', 'note', 'halves', 'out.speak', 'out.show', 'out.ask', 'handover.undo', 'conversation.moved', 'turn.end']);
 /** Koe's window (plan decision 5): its last 12 exchanges, its start moving in jumps of 6. */
 export const KOE_WINDOW = 12;
 export const KOE_JUMP = 6;
@@ -64,9 +64,9 @@ export class Transcript {
   compaction = 0;
   /** The last entry load() read: anything written later wasn't in the log it read. */
   through = 0;
-  /** Whether the last thing in it is the user's (or the app's) with no reply from Shiori yet, or results she hasn't seen: after a reload mid-turn. */
+  /** Whether the last thing in it is the user's (or the app's) with no reply from Shiori yet, or a turn of hers with no end logged: after a reload mid-turn. */
   get unanswered() {
-    return this.#owes || this.#heardOwed > 0;
+    return this.#owes || this.#underway || this.#heardOwed > 0;
   }
 
   set unanswered(v) {
@@ -77,6 +77,8 @@ export class Transcript {
   }
 
   #owes = false;
+  /** A reply of hers whose turn's end the loop has not logged (turn.end, or an error with its wake). */
+  #underway = false;
   /**
    * One Shiori, Koe since unset: the seq of a heard line Koe kept that nothing has settled (0: none). Her turn settles it, or Koe's answer: a
    * line it said after it, unless its reply's question to Kokoro is still to run; all its reply's calls done; the user's Stop.
@@ -102,8 +104,6 @@ export class Transcript {
   #carry = null;
   /** The newest hand-over since her last turn ended (handover.js). @type {string | null} */
   #handover = null;
-  /** The hand-over the last reply settled by its words (a sleep among its calls), until its results say whether that reply ended her turn. @type {string | null} */
-  #settled = null;
   /** @type {Map<string, string>} Shiori's tool calls by id, to their tool names */
   #calls = new Map();
   /** @type {Set<string>} */
@@ -114,10 +114,6 @@ export class Transcript {
   #aside = new Set();
   /** @type {string[]} the last reply's calls: only their results follow until all have one */
   #last = [];
-  /** The last reply ended the turn: it called sleep, or a result says the turn is over (stopped, or back to sleep). */
-  #ends = false;
-  /** Her own line (said, shown, asked) or note since her last reply: she reached the user, or handed on. */
-  #reached = false;
   /** @type {{ seq: number, parts: Part[] }[]} lines held until those results (plan decision 3) */
   #held = [];
   /** @type {{ seq: number, parts: Part[] }[]} lines since the last reply */
@@ -221,19 +217,19 @@ export class Transcript {
         this.#add('assistant', [{ type: 'native', ...keep.native }, ...parts]);
       } else if (parts.length) this.#add('assistant', parts);
       this.#last = parts.flatMap((p) => (p.type === 'tool_call' ? [p.id] : []));
-      this.#ends = parts.some((p) => p.type === 'tool_call' && p.name === 'sleep');
-      this.#reached = false;
-      // A reply that ends her turn (it sleeps, or calls no tool) has answered the hand-over it carried; a reply from before replies said
-      // which (no handover key), whatever came before it. A reminder's turn settles no hand-over. A sleep among the calls is only the reply's
-      // words: its results say whether it ended her turn (a sleep that gave way, a cut), and then the hand-over is owed again (#settled).
-      this.#settled = null;
-      if (this.#mine(d) && (this.#ends || !this.#last.length) && (!('handover' in d) || d.handover === this.#handover)) {
-        this.#settled = this.#handover;
-        this.#handover = null;
-      }
       this.#held.push(...late);
       this.#flushHeld();
       this.unanswered = false;
+      // Her turn is under way until the loop logs its end. A reply from before the loop logged one (no `endLogged` key) is read as its turn's end.
+      this.#underway = 'endLogged' in d;
+      if (this.#underway) this.waiting = this.#last.length ? 'turn' : '';
+      else if (this.#mine(d) && (!('handover' in d) || d.handover === this.#handover)) this.#handover = null;
+    } else if (e.type === 'turn.end') {
+      // The loop's record that her turn ended by its own rule: the hand-over it carried is answered.
+      if (!this.#mine(d)) return;
+      this.#underway = false;
+      if (d.handover === this.#handover) this.#handover = null;
+      return;
     } else if (e.type === 'note') {
       // One Shiori reads no notes, but owes Koe's question as Kokoro did, until her turn.
       if (this.half === 'one' && d.from === 'koe') {
@@ -241,7 +237,6 @@ export class Transcript {
         this.waiting = 'user';
         return;
       }
-      if (d.from === (koe ? 'koe' : 'kokoro')) this.#reached = true;
       if (d.from === (koe ? 'koe' : 'kokoro') || this.half === 'one') return;
       /** @type {Part} */
       const part = { type: 'text', text: koe ? wrapNote(texts.text ?? '', this.nonce, { forUser: texts.forUser }) : /** @type {string} */ (blockFor(e, texts)) };
@@ -253,7 +248,6 @@ export class Transcript {
       if (this.half !== 'kokoro') return;
       this.#line([{ type: 'text', text: /** @type {string} */ (blockFor(e, texts)) }]);
     } else if (e.type === 'out.speak' || e.type === 'out.show' || e.type === 'out.ask') {
-      if (this.#mine(d)) this.#reached = true;
       const line = this.half === 'kokoro' ? (d.half === 'koe' ? blockFor(e, texts) : null) : koe ? saidWithout(e, texts) : null;
       if (!line) return;
       this.#line([{ type: 'text', text: line }]);
@@ -276,7 +270,6 @@ export class Transcript {
     } else if (e.type === 'handover.undo') {
       // The user undid a hand-over (handover.js): she knows what was taken back, and owes it nothing more.
       if (d.handover === this.#handover) this.#handover = null;
-      if (d.handover === this.#settled) this.#settled = null; // undone while her question waited: no result brings it back
       const n = Number(d.undone) || 0;
       const kept = Array.isArray(d.kept) ? d.kept.length : 0;
       const trips = (Array.isArray(d.removed) ? d.removed : typeof d.removed === 'string' ? [d.removed] : []).map((x) => JSON.stringify(String(x)));
@@ -301,9 +294,11 @@ export class Transcript {
       this.#line([{ type: 'text', text: `[annai] The user carried this conversation on in ${JSON.stringify(String(d.title ?? ''))}: their line and your recap went there, where you answer them. Nothing of it is left to do here.` }]);
       // So nothing before it is owed here either (a heard yes Koe hadn't answered): opened again, nobody wakes.
       this.unanswered = false;
+      this.#underway = false;
     } else if (e.type === 'error' && d.wake) {
       // A turn that ended in an error (no model, a budget, housekeeping that failed) is over: the user
       // saw a card, and a later start doesn't wake her again for it (spec §6.7). It isn't in the context.
+      if (this.#mine(d)) this.#underway = false; // the turn it ended is over
       if (this.#mine(d) && d.kind === 'stopped') this.unanswered = false; // her Stop settles all before it, a line Koe heard too
       else if (this.#mine(d)) this.#owes = false; // another error read nothing: it settles only what she owed
       else if (this.half === 'one' && d.kind === 'stopped') this.#heardSettled(); // the user stopped Koe's reply
@@ -371,22 +366,6 @@ export class Transcript {
       });
       this.#add('user', [{ type: 'tool_result', id: d.id, content: texts.content ?? '', ...(d.ok === false ? { isError: true } : {}) }, ...r.images, ...heard]);
       this.#flushHeld();
-      // Every result of a reply that didn't end her turn, and no reply after: her turn was cut off, and she owes the rest.
-      // A call cut short (`cut`: an open, a Stop, a restart; not a refusal) leaves her turn owed though its reply slept, if it was a hand-off
-      // or came before she reached the user. A Stop is settled by its own record. A result with no `cut` at all is an older page's, read as it
-      // read it: the Stop's words (which it also wrote for an open's cut) ended her turn.
-      const name = this.#calls.get(d.id);
-      if (d.end || (!('cut' in d) && texts.content === STOPPED)) this.#ends = true;
-      else if (d.awake) this.#ends = false; // a sleep that gave way (a call failed, or her question came back): the reply's own sleep didn't end her turn
-      else if (d.cut && (name === 'tell_koe' || name === 'tell_kokoro' || (name !== 'sleep' && !this.#reached))) this.#ends = false;
-      if (!this.#ends && this.#settled) {
-        this.#handover ??= this.#settled; // not a newer one's
-        this.#settled = null;
-      }
-      if (this.#last.includes(d.id) && !this.#waitsForResults() && !this.#ends) {
-        this.unanswered = true;
-        this.waiting = 'turn';
-      }
     } else {
       return;
     }
@@ -406,7 +385,7 @@ export class Transcript {
   }
 
   /**
-   * The newest hand-over no reply of hers has answered yet, even when a turn for it ended in an error: Try again's turn, or the user's
+   * The newest hand-over no end of her turns has answered yet, even when a turn for it ended in an error: Try again's turn, or the user's
    * next, carries it, so what she then does with it can be undone. @returns {string | null}
    */
   get owedHandover() {
@@ -582,8 +561,8 @@ export function linesOf(messages) {
 
 /**
  * After a crash or reload mid-turn, every tool call without a result gets one (spec §6.7), so the
- * transcript stays valid for every provider. A sleep among them never ran, and the restart takes her turn up: it gave way (`awake`, as the loop
- * writes it), so the hand-over her reply settled by its words is owed again. @param {Store} store @param {string} scope @param {Transcript} t
+ * transcript stays valid for every provider. A sleep among them never ran, and the restart takes her turn up: stored as one that gave way
+ * (`awake`), for a page one version older. @param {Store} store @param {string} scope @param {Transcript} t
  * @param {Record<string, string>} [mark] its results' half mark
  * @returns {Promise<number>} how many were answered
  */
