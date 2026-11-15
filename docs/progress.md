@@ -62,7 +62,7 @@ tabs go only after the user has said, on a phone, that the timeline is right. St
 
 | Part | State | Where it stands | The user's words or pick |
 |---|---|---|---|
-| **`nearby` waits for Overpass, says "busy" at once; VK's server behind a switch, off.** Closes the deferred entry "Online, `nearby` rarely gets OpenStreetMap's places". | built; finishing (fix round 1) | Branch nearby-wait 1a74715f. The probe of the public Overpass servers finished its 24 hourly runs (2026-11-14). Next: the two values (`OVERPASS_MS`, src/plugins/places/index.js:39; `OVERPASS`, src/core/pack/osm.js:15) set from all 24 runs, today's main merged in, its ja and zh lines to the style guides (running); review with second opinions; merge; release. | "Allow light probes (Recommended)"; "VK behind a switch, off" |
+| **`nearby` waits for Overpass, says "busy" at once; falls back to overpass-api.de's own backends; VK's server behind a switch, off.** Closes the deferred entry "Online, `nearby` rarely gets OpenStreetMap's places". | building (fix round 1, values) | Branch nearby-wait: 1a74715f, main merged in (f5bd49e4). The 24 hourly probe runs (2026-11-14): overpass-api.de alone answered 13 of 24 (it refuses for hours at a time, in half a second); its backends z. and lz4. answered in 10 of those 11 refusals, so asking them one after another after a refusal gives places in 23 of 24; the wait stays 50 s. Next: the fallback order and the reasons written, review with second opinions, merge, release. | "Allow light probes (Recommended)"; "VK behind a switch, off"; "Fall back to its backends (Recommended)" (2026-11-14) |
 
 ### An answered question card always gets a reply
 
