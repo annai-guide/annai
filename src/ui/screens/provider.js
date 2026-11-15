@@ -428,6 +428,13 @@ async function abilityBody(view, abilityId) {
 }
 
 /**
+ * An ability's provider tools as its plugin's description shows them (its models' and modelDefaults'), by the tool's id: their words in
+ * the screens' language where the plugin has them. @param {any} shown the ability's description as the screens show it
+ * @returns {Map<string, { name?: string, label?: string, note?: string }>}
+ */
+export const toolWords = (shown) => new Map([...(shown?.models ?? []).flatMap((/** @type {any} */ m) => m.providerTools ?? []), ...(shown?.modelDefaults?.providerTools ?? [])].map((x) => [x.id, x]));
+
+/**
  * Switches for the provider's own tools its models offer with words for this page ("Let Gemini search Google"), the same
  * as Settings → Tools'. One that is paid only is off while the key is on the free tier, saying why. The words are the ones its plugin's
  * description has as the screens show it (shown, by the tool's id), else the model's own, which are English. @param {any} ctx
@@ -436,8 +443,7 @@ async function abilityBody(view, abilityId) {
  */
 async function providerToolSwitches(ctx, models, free, who, shown, shownIn) {
   const switches = await toolSwitches(ctx.ws);
-  /** @type {Map<string, { label?: string, note?: string }>} */
-  const said = new Map([...(shown?.models ?? []).flatMap((/** @type {any} */ m) => m.providerTools ?? []), ...(shown?.modelDefaults?.providerTools ?? [])].map((x) => [x.id, x]));
+  const said = toolWords(shown);
   return [...new Map(models.flatMap((m) => m.providerTools ?? []).filter((x) => x.label).map((x) => [x.id, x])).values()].flatMap((tool) => {
     const out = Boolean(tool.paidOnly && free);
     const sw = savedCheck(String(said.get(tool.id)?.label ?? tool.label), !out && switches[`provider:${tool.id}`] !== false, (/** @type {boolean} */ v) => setToolSwitch(ctx.ws, `provider:${tool.id}`, v));

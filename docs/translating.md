@@ -12,7 +12,7 @@ Taiwan's words. This page is for anyone who translates them, a person or an agen
   and `note`. Edit `text`, `state` and your own `Note:`; the script writes the rest.
 - **What ships** is `l10n/<tag>.json`, made from the TSV. Never edit it by hand.
 - **annai's official plugins** are in the same files (localization L7): a row keyed `<plugin id>:@<field>` is its manifest's field
-  (its name, description, a provider's notes, a setting's title), and `<plugin id>:<key>` its code's words (`l10n.t`, `l10n.tc`,
+  (its name, description, a provider's notes, a model tool's name, a setting's title), and `<plugin id>:<key>` its code's words (`l10n.t`, `l10n.tc`,
   `l10n.plural` and `l10n.both`, or `t` and the rest taken out of `annai.l10n`). Their `where` names the plugin. `npm run strings`
   writes each plugin's words in each language beside annai's catalog, `catalog/l10n/<tag>/<id>.json`; run `npm run catalog`
   after it, which lists each one's hash in `catalog/l10n/<tag>.json`. **What needs no new version:** changing the words of a

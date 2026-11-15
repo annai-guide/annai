@@ -174,7 +174,8 @@ test.describe('on Japanese screens', () => {
 
 // Provider words, part 2: a phone still on an older annai reads the words a newer catalog wrote, which may translate a field it doesn't
 // list (the strings-stale re-review's R1: the whole Gemini file was refused, so Gemini's words showed in English). Here this annai is the
-// older one: its catalog serves the real Japanese Gemini words with the search tool's name added, a field this annai treats as data.
+// older one: its catalog serves the real Japanese Gemini words with the search tool's id given, a field annai never translates and treats
+// as data. Its value stays: the page finds the switch's words by that id, so a changed one would show them in English.
 test("Gemini's words with a field this annai doesn't know: its provider page still shows the Japanese of every field it knows", async ({ page }) => {
   const site = await startSite();
   const key = 'stand-in-key-words-reader';
@@ -182,7 +183,9 @@ test("Gemini's words with a field this annai doesn't know: its provider page sti
   try {
     const path = '/catalog/l10n/ja/provider-gemini.json';
     const words = JSON.parse(await readFile(new URL(`.${path}`, root), 'utf8'));
-    const newer = `${JSON.stringify({ ...words, manifest: { ...words.manifest, 'provider.abilities.chat.models.0.providerTools.0.name': 'Google 検索' } }, null, 2)}\n`;
+    // On every model's tool, so no other model's words could stand in.
+    const ids = Object.fromEntries([0, 1, 2].map((i) => [`provider.abilities.chat.models.${i}.providerTools.0.id`, 'google-kensaku']));
+    const newer = `${JSON.stringify({ ...words, manifest: { ...words.manifest, ...ids } }, null, 2)}\n`;
     const list = JSON.parse(await readFile(new URL('./catalog/l10n/ja.json', root), 'utf8'));
     list.translations['provider-gemini'] = createHash('sha256').update(newer).digest('hex');
     site.changed.set(path, newer);

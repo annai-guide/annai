@@ -1055,7 +1055,8 @@ test("a reply grounded in the provider's own search is logged for the conversati
 test('a search whose replies are shown as written (Google Search): one Shiori is told so while it is on, in the same words every turn, so she writes that reply for the user; Kokoro, behind Koe, is not (G4)', async (t) => {
   useClock(t);
   const search = { id: 'g-search', name: 'Google Search', kind: 'search', patch: {}, paidOnly: true, shows: 'From Google Search' };
-  const words = 'A reply in which you search with Google Search is shown to the user as you write it, under "From Google Search", with its sources. Write that reply for the user, with no private notes in it. You may still speak or show a shorter version of it, as usual.';
+  // Not the card's title: the screens name it in the user's language, and a quoted name is said as it is (provider words, step 2).
+  const words = 'A reply in which you search with Google Search is shown to the user as you write it, with its sources. Write that reply for the user, with no private notes in it. You may still speak or show a shorter version of it, as usual.';
   const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
   const k = await agentKit([[say('Open till 10.')]], { models: [{ providerTools: [search] }] });
   await k.host.addBuiltin(new URL('../../src/plugins/web/index.js', import.meta.url).href);
@@ -1064,6 +1065,7 @@ test('a search whose replies are shown as written (Google Search): one Shiori is
   k.agent.send('And tomorrow?');
   await k.agent.idle();
   assert.ok(k.requests[0].system.endsWith(`# Google Search\n${words}`));
+  assert.ok(!k.requests[0].system.includes(search.shows), "she isn't told the card's title");
   assert.equal(k.requests[1].system, k.requests[0].system, 'stable, so the cached prefix holds');
   // Switched off in Settings → Tools: no search, no words about it.
   const { setToolSwitch } = await import('../../src/core/agent/tools.js');

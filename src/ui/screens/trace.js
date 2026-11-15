@@ -2,6 +2,7 @@ import { h, t, plural, field, linkIn } from '../dom.js';
 import { formatCost, size, duration, num, when, list } from '../format.js';
 import { costs } from '../../core/agent/budgets.js';
 import { toolSwitchList } from './tools.js';
+import { sourceOf } from './talk.js';
 import { readBlob } from '../../core/reach.js';
 import { scopeTitle } from '../../core/scopes.js';
 
@@ -196,7 +197,7 @@ export function traceSummary(e, { costs: perWake } = {}) {
   if (e.type === 'heard.text') return line(quoted(d.text), d.by ? t`written down by ${d.by}` : null);
   if (e.type === 'out.show') return cut(d.card?.title ?? d.card?.text ?? '');
   if (e.type === 'out.ask') return cut(d.question);
-  if (e.type === 'grounded') return line(t`from ${d.source}`, cut(d.text), plural((d.links ?? []).length, '# link', '# links'));
+  if (e.type === 'grounded') return line(t`from ${sourceOf(d)}`, cut(d.text), plural((d.links ?? []).length, '# link', '# links'));
   if (e.type === 'tool.call') return `${d.name} ${cut(JSON.stringify(d.input ?? {}), 120)}`;
   if (e.type === 'tool.result') return line(d.name, d.ok ? t`ok` : t`error`, `${d.ms ?? 0} ms`, d.content ? cut(d.content) : null);
   if (e.type === 'net.request' && d.kind === 'web') return line(d.tool, `${d.method ?? 'GET'} ${d.url}`, d.status || null, d.error || null, `${d.ms ?? '?'} ms`);
