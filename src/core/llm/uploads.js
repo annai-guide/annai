@@ -99,8 +99,17 @@ export class Uploads {
  * deletion waits for the next sweep.
  */
 const AT_ONCE = 6;
-/** Each list or delete request's time limit, a kept turn's deletion's (kept.js), and Test's photo upload's. */
+/**
+ * Each list or delete request's time limit, a kept turn's deletion's (kept.js), and Test's photo upload's (a 16×16 image). Nothing was
+ * measured for 15 s: it is the limit a kept turn's deletion started with, which the sweeps and Test took for their small requests.
+ */
 export const REQUEST_MS = 15_000;
+/**
+ * One chat photo's upload (call.js): 30 s, callOnce's default for a whole request, its photos in it as bytes, to go up and begin to answer
+ * (firstOutputMs; Koe's classic chat has 8 s). The upload gets the time the request it stands in for would have: a photo at the request
+ * cap (1 MiB, photos.js) needs 0.28 Mbit/s up to fit. A cut upload sends the photo in the request, as any failed one does.
+ */
+export const UPLOAD_MS = 30_000;
 
 /**
  * @typedef {{ outcome: 'done' | 'none' | 'refused' | 'unreadable' | 'unreachable', deleted: number, left: number }} Swept

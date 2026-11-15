@@ -409,3 +409,63 @@ test('uploads: each photo is uploaded once and sent by id; a failed upload sends
   assert.equal(posted.filter((u) => u.endsWith('/v1/files')).length, 2);
   assert.equal(bodies.at(-1).images[0], 'bytes');
 });
+
+test("a photo's upload has a time limit of its own (UPLOAD_MS): a stall ends it, the photo goes in the request and uploads stop there; a Stop still stops (review of openrouter-f1, L1)", async () => {
+  const { Workspace } = await import('../../src/core/workspace.js');
+  const { ensureBaseScopes } = await import('../../src/core/scopes.js');
+  const { Uploads, UPLOAD_MS } = await import('../../src/core/llm/uploads.js');
+  const ws = new Workspace(createMemoryStore());
+  await ensureBaseScopes(ws);
+  // AbortSignal.timeout can't be driven by fake timers: ask for its limit, make it short, and keep the signal it returns.
+  const real = AbortSignal.timeout;
+  /** @type {number[]} */
+  const asked = [];
+  /** @type {AbortSignal[]} */
+  const made = [];
+  AbortSignal.timeout = (ms) => { asked.push(ms); const s = real.call(AbortSignal, 20); made.push(s); return s; };
+  try {
+    /** @type {any[]} */
+    const got = [];
+    /** @type {any[]} */
+    const bodies = [];
+    const t = httpType([{ type: 'text', text: 'ok' }, { type: 'stop', reason: 'end' }], {
+      uploadRequest: (/** @type {any} */ c) => { const f = new FormData(); f.set('file', new Blob([c.bytes], { type: c.mediaType }), c.name); return { url: `${c.endpoint.baseUrl}/v1/files`, headers: {}, body: f }; },
+      readUpload: (/** @type {any} */ j) => ({ id: j.id }),
+      build: (/** @type {any} */ c) => ({ url: `${c.endpoint.baseUrl}/v1/chat`, headers: {}, body: { images: c.request.messages[0].parts.map((/** @type {any} */ p) => p.fileId ?? 'bytes') } }),
+    });
+    // An upload that is accepted and never answered ends only when its signal does (a signal that isn't the limit's fails at once, not after a hang).
+    const stalled = async (/** @type {string} */ url, /** @type {any} */ init) => {
+      if (!url.endsWith('/v1/files')) {
+        bodies.push(JSON.parse(init.body));
+        return new Response('');
+      }
+      got.push(init.signal);
+      if (!made.includes(init.signal)) throw new Error('the upload has no time limit: a stall would wait for ever');
+      return new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(init.signal.reason)));
+    };
+    const withPhoto = { messages: [{ role: 'user', parts: [{ type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1' }, { type: 'image', mediaType: 'image/webp', data: 'AAAB', hash: 'h2' }] }] };
+    const m = model({ input: ['text', 'image'] });
+    const uploads = new Uploads(ws);
+    await callOnce({ type: t, endpoint: endpoint(), model: m, key: 'k', request: /** @type {any} */ (withPhoto), fetch: /** @type {any} */ (stalled), uploads });
+    assert.deepEqual(asked, [UPLOAD_MS], 'one upload was tried, with its own limit: the second photo is not tried once uploads are off');
+    assert.equal(got.length, 1);
+    assert.equal(got[0], made[0], 'the fetch got the limit it was made with');
+    assert.deepEqual(bodies.map((b) => b.images), [['bytes', 'bytes']], 'both photos went in the request');
+    assert.equal(uploads.isOff('pv-1/chat'), true);
+    // A Stop during the upload is a Stop: not a failed upload, which would turn uploads off and send the photo.
+    asked.length = 0;
+    made.length = 0;
+    bodies.length = 0;
+    const stop = new AbortController();
+    const kept = new Uploads(ws);
+    const stoppable = async (/** @type {string} */ _url, /** @type {any} */ init) => new Promise((_, reject) => {
+      init.signal.addEventListener('abort', () => reject(init.signal.reason));
+      stop.abort();
+    });
+    await assert.rejects(callOnce({ type: t, endpoint: endpoint(), model: m, key: 'k', request: /** @type {any} */ (withPhoto), fetch: /** @type {any} */ (stoppable), uploads: kept, signal: stop.signal }), (/** @type {any} */ e) => e.kind === 'cancelled');
+    assert.equal(kept.isOff('pv-1/chat'), false, 'a Stop says nothing about uploads');
+    assert.deepEqual(bodies, []);
+  } finally {
+    AbortSignal.timeout = real;
+  }
+});

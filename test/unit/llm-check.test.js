@@ -12,7 +12,7 @@ import { sse } from '../../src/core/llm/sse.js';
 import { parsePartialJSON } from '../../src/core/llm/partial-json.js';
 import { retry } from '../../src/core/llm/retry.js';
 import { testModel, testLevels, TEST_IMAGE } from '../../src/core/llm/check.js';
-import { REQUEST_MS } from '../../src/core/llm/uploads.js';
+import { REQUEST_MS, Uploads } from '../../src/core/llm/uploads.js';
 import { readConfig, modelOf, saveProvider, saveModel, saveRoles, setKey } from '../../src/core/llm/config.js';
 import { addProvider } from '../../src/core/llm/providers.js';
 import { official } from './provider-kit.js';
@@ -135,11 +135,14 @@ test('the service passes on the model to prefer and the photo repair (spec §9.6
   assert.equal((await llm.call({ role: 'main', request, prefer: 'm-second' })).modelId, 'm-second');
 });
 
+/** A Test case whose endpoint stores files. @param {any} c */
+const withUploads = (c) => ({
+  ...c, endpoint: { ...c.endpoint, baseUrl: 'https://files.test/v1' },
+  type: { ...c.type, uploadRequest: () => ({ url: 'https://files.test/v1/files', headers: {}, body: new FormData() }), readUpload: (/** @type {any} */ j) => ({ id: j.id }) },
+});
+const PHOTOS_INSTEAD = 'annai will send photos in each request instead.';
+
 test('the Test button checks photo uploads where the endpoint stores files (spec §9.8)', async () => {
-  const withUploads = (/** @type {any} */ c) => ({
-    ...c, endpoint: { ...c.endpoint, baseUrl: 'https://files.test/v1' },
-    type: { ...c.type, uploadRequest: () => ({ url: 'https://files.test/v1/files', headers: {}, body: new FormData() }), readUpload: (/** @type {any} */ j) => ({ id: j.id }) },
-  });
   const script = [{ text: 'OK' }, { toolCalls: [{ name: 'report_color', input: { color: 'red' } }] }];
   const ok = await testModel({ ...withUploads(scriptedCase(script)), fetch: async () => new Response(JSON.stringify({ id: 'file_1' })) });
   assert.deepEqual(ok.steps.map((s) => [s.step, s.ok]).at(-1), ['upload', true]);
@@ -149,7 +152,7 @@ test('the Test button checks photo uploads where the endpoint stores files (spec
   assert.deepEqual([last.step, last.ok], ['upload', false]);
   assert.equal(last.detail, "Uploading photos didn't work with this key. annai will send photos in each request instead.");
   assert.equal(refused.ok, true, 'photos still work, sent in each request');
-  // No answer at all is not the key's: it says so in the words every step uses.
+  // No answer at all is not the key's: it has the first step's words for an address annai can't reach.
   const down = await testModel({ ...withUploads(scriptedCase(script)), fetch: async () => { throw new TypeError('Failed to fetch'); } });
   const none = /** @type {any} */ (down.steps.at(-1));
   assert.deepEqual([none.step, none.ok], ['upload', false]);
@@ -166,33 +169,89 @@ test('the Test button checks photo uploads where the endpoint stores files (spec
   assert.equal(odd.detail, "Uploading photos didn't work with this key. annai will send photos in each request instead.", 'a 200 that arrived whole and is no upload is the key\'s words, as before');
 });
 
-test('the Test button\'s photo upload has the same time limit as every other upload request, and a stall ends in the no-answer words (the sweeps: uploads.js REQUEST_MS)', async () => {
-  const withUploads = (/** @type {any} */ c) => ({
-    ...c, endpoint: { ...c.endpoint, baseUrl: 'https://files.test/v1' },
-    type: { ...c.type, uploadRequest: () => ({ url: 'https://files.test/v1/files', headers: {}, body: new FormData() }), readUpload: (/** @type {any} */ j) => ({ id: j.id }) },
-  });
+test("the Test button's photo upload has the sweeps' time limit (uploads.js REQUEST_MS), and a stall ends in the no-answer words", async () => {
   const script = [{ text: 'OK' }, { toolCalls: [{ name: 'report_color', input: { color: 'red' } }] }];
-  // AbortSignal.timeout can't be driven by fake timers: ask for its limit, and make the limit short.
+  // AbortSignal.timeout can't be driven by fake timers: ask for its limit, make it short, and keep the signal it returns.
   const real = AbortSignal.timeout;
   /** @type {number[]} */
   const asked = [];
-  AbortSignal.timeout = (ms) => { asked.push(ms); return real.call(AbortSignal, 20); };
+  /** @type {AbortSignal[]} */
+  const made = [];
+  AbortSignal.timeout = (ms) => { asked.push(ms); const s = real.call(AbortSignal, 20); made.push(s); return s; };
   try {
-    // A connection that is accepted and never answered: the request ends only when its signal does (without one, this says so at once, not after a hang).
+    // A connection that is accepted and never answered: the request ends only when its signal does. The stub records the signal it got; the
+    // test asserts on it outside the stub, where a throw would be taken for the no-answer words it is looking for.
+    /** @type {(AbortSignal | null | undefined)[]} */
+    const got = [];
     const stalled = async (/** @type {string} */ _url, /** @type {RequestInit} */ init) => {
       const { signal } = init;
-      if (!signal) throw new Error('no time limit: a stall would wait for ever');
+      got.push(signal);
+      if (!signal || !made.includes(signal)) throw new Error('not the time limit: a stall would wait for ever');
       return new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason)));
     };
     const r = await testModel({ ...withUploads(scriptedCase(script)), fetch: /** @type {any} */ (stalled) });
     const last = /** @type {any} */ (r.steps.at(-1));
     assert.deepEqual(asked, [REQUEST_MS], 'one request, with the limit the sweeps use');
+    assert.equal(got.length, 1);
+    assert.equal(got[0], made[0], 'the fetch got the limit it was made with');
     assert.deepEqual([last.step, last.ok], ['upload', false]);
-    assert.equal(last.detail, "annai couldn't reach this address. It may be down, or it may not allow web apps. annai will send photos in each request instead.");
+    assert.equal(last.detail, `annai couldn't reach this address. It may be down, or it may not allow web apps. ${PHOTOS_INSTEAD}`);
     assert.equal(r.ok, true, 'photos still work, sent in each request');
   } finally {
     AbortSignal.timeout = real;
   }
+});
+
+test("a Test whose photo upload is answered 408, 429 or with a server error is not told as the key's: a 408 is no answer, the others have the words the first step gives them (review of openrouter-f1, F1)", async () => {
+  const script = [{ text: 'OK' }, { toolCalls: [{ name: 'report_color', input: { color: 'red' } }] }];
+  const rows = /** @type {[number, string][]} */ ([
+    [408, "annai couldn't reach this address. It may be down, or it may not allow web apps."],
+    [429, 'The provider says too many requests for now.'],
+    [500, 'The provider had a problem on its side.'],
+    [502, 'The provider had a problem on its side.'],
+    [503, 'The provider is overloaded right now.'],
+    [504, 'The provider had a problem on its side.'],
+    // An answer about the key or the request is still the key's.
+    [400, "Uploading photos didn't work with this key."],
+    [401, "Uploading photos didn't work with this key."],
+    [404, "Uploading photos didn't work with this key."],
+  ]);
+  for (const [status, words] of rows) {
+    const r = await testModel({ ...withUploads(scriptedCase(script)), fetch: async () => new Response('no', { status }) });
+    const last = /** @type {any} */ (r.steps.at(-1));
+    assert.deepEqual([status, last.step, last.ok, last.detail], [status, 'upload', false, `${words} ${PHOTOS_INSTEAD}`]);
+    assert.equal(r.ok, true, 'photos still work, sent in each request');
+  }
+});
+
+test("a Test whose photo upload failed turns uploads off there, as a call's failed upload does, so \"annai will send photos in each request instead\" is true; one that passes turns them on (review of openrouter-f1, the second opinion's lead 3)", async () => {
+  const script = [{ text: 'OK' }, { toolCalls: [{ name: 'report_color', input: { color: 'red' } }] }];
+  const ws = new Workspace(createMemoryStore());
+  const cut = (/** @type {unknown} */ why) => /** @type {any} */ (async () => new Response(new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode('{"id"')); c.error(why); } }), { status: 200 }));
+  const failures = /** @type {[string, any][]} */ ([
+    ['refused', async () => new Response('no', { status: 403 })],
+    ['a 404', async () => new Response('no', { status: 404 })],
+    ['a 408', async () => new Response('slow', { status: 408 })],
+    ['a 429', async () => new Response('slow down', { status: 429 })],
+    ['a 503', async () => new Response('busy', { status: 503 })],
+    ['no answer', async () => { throw new TypeError('Failed to fetch'); }],
+    ['a body that breaks off', cut(new TypeError('network error'))],
+    ['a body that is no upload', async () => new Response('not json', { status: 200 })],
+  ]);
+  for (const [what, fetch] of failures) {
+    const uploads = new Uploads(ws);
+    const c = withUploads(scriptedCase(script));
+    const r = await testModel({ ...c, fetch, uploads });
+    assert.equal(/** @type {any} */ (r.steps.at(-1)).step, 'upload');
+    assert.equal(uploads.isOff(c.endpoint.id), true, `uploads are off after ${what}`);
+  }
+  // One that works turns them on again (a Test that passes), where an earlier failure had turned them off.
+  const uploads = new Uploads(ws);
+  const c = withUploads(scriptedCase(script));
+  uploads.off(c.endpoint.id);
+  const ok = await testModel({ ...c, fetch: async () => new Response(JSON.stringify({ id: 'file_1' })), uploads });
+  assert.deepEqual(ok.steps.map((x) => [x.step, x.ok]).at(-1), ['upload', true]);
+  assert.equal(uploads.isOff(c.endpoint.id), false);
 });
 
 test("what the Test button says never shows a key, whatever the provider's message holds (spec §9.9)", async () => {

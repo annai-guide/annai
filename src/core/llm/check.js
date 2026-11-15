@@ -1,5 +1,5 @@
 import { callOnce } from './call.js';
-import { ProviderError, explain, sameOrigin, noRedirect } from './contract.js';
+import { ProviderError, errorFromResponse, explain, sameOrigin, noRedirect } from './contract.js';
 import { LEVELS, nearestLevel } from './reasoning.js';
 import { fromBase64 } from '../bytes.js';
 import { TEST_UPLOAD, REQUEST_MS, deleteUpload, sweepUploads } from './uploads.js';
@@ -132,18 +132,22 @@ async function testUpload({ type, endpoint, model, key, fetch: get = (url, init)
       endpoint, key, tunables: { ...endpoint.tunables, ...model.tunables }, bytes: fromBase64(TEST_IMAGE), mediaType: 'image/png', name: TEST_UPLOAD, expiresInSeconds: 3600,
     });
     sameOrigin(endpoint, r.url);
-    // The time limit of every other upload request (a stall ends in no answer, as a failed connection does), body included.
+    // The sweeps' time limit for each list or delete request (REQUEST_MS): a stall, body included, ends in no answer, as a failed connection does.
     res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, redirect: 'manual', signal: AbortSignal.timeout(REQUEST_MS) });
     noRedirect(res, endpoint);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    // A 408, a 429 or a server error says nothing about the key (as in the delete below): a 408 is no answer, the others have the first step's words.
+    if (!res.ok) throw res.status === 408 ? new ProviderError('unreachable', 'HTTP 408') : res.status === 429 || res.status >= 500 ? errorFromResponse(res.status, '', res.headers) : new Error(`HTTP ${res.status}`);
     // A body that breaks off or stalls is no answer, as the sweep's list reads it; only a body that arrived and isn't an upload is the key's.
     const body = await res.text().catch(() => {
       throw new ProviderError('unreachable', 'no answer');
     });
     up = /** @type {NonNullable<typeof type.readUpload>} */ (type.readUpload)(JSON.parse(body));
   } catch (e) {
-    // A redirect, or no answer at all (no reply, or a body that broke off), is not the key's: it says so in the words every step uses.
-    const said = e instanceof ProviderError ? (e.kind === 'redirect' || e.kind === 'unreachable' ? e : null) : !res ? new ProviderError('unreachable', 'no answer') : null;
+    // The key's words are for an answer that refused the key or wasn't an upload. A redirect, no answer (no reply, a stall, a body that broke off, a 408), a 429
+    // and a server error are not the key's: each has the first step's words (no answer: those for an address annai can't reach).
+    const said = e instanceof ProviderError ? (['redirect', 'unreachable', 'rate', 'overloaded', 'server'].includes(e.kind) ? e : null) : !res ? new ProviderError('unreachable', 'no answer') : null;
+    // As a call's failed upload does, so the words are true: photos go in each request until annai restarts, or a new key or address, or a Test that passes.
+    uploads?.off(endpoint.id);
     return { step: 'upload', ok: false, detail: sentences(said ? explain(said) : t`Uploading photos didn't work with this key.`, t`annai will send photos in each request instead.`) };
   }
   if (!type.deleteUploadRequest) {
