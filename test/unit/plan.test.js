@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { bookingRef, planRows, planDays, legKm, PLAN_FILE, BOOKING_FILE, beforeShiori, shioriUndos, NIGHTS_MAX, fixedWords } from '../../src/core/plan.js';
+import { bookingRef, planRows, planDays, legKm, PLAN_FILE, BOOKING_FILE, beforeShiori, shioriUndos, NIGHTS_MAX, fixedWords, timeUnsure } from '../../src/core/plan.js';
 import { upcoming } from '../../src/core/now.js';
 import { tripRows } from '../../src/ui/trip-rows.js';
 import { setWords } from '../../src/core/l10n.js';
@@ -31,9 +31,52 @@ const bookings = [
 const rows = () => planRows(items, bookings, { fallbackTz: NY });
 
 test("fixedWords: what a plan item's fixed means, as a model is shown it; a flexible item, or one with no fixed field, gets no words", () => {
-  assert.equal(fixedWords(true), "can't be moved");
-  assert.equal(fixedWords(false), '');
-  assert.equal(fixedWords(/** @type {any} */ ({}).fixed), '');
+  assert.equal(fixedWords(true, { unsure: false }), "can't be moved");
+  assert.equal(fixedWords(false, { unsure: false }), '');
+  assert.equal(fixedWords(/** @type {any} */ ({}).fixed, { unsure: false }), '');
+  // A time Shiori isn't sure of is never shown as settled: beside "can't be moved" (the booking still can't move), or alone.
+  assert.equal(fixedWords(true, { unsure: true }), "can't be moved; not sure the time was read right");
+  assert.equal(fixedWords(false, { unsure: true }), 'not sure the time was read right');
+});
+
+test("timeUnsure: a time a row shows is the same moment as its booking's start or end, and the screens mark that one or the booking whole", () => {
+  const inn = { kind: 'lodging', status: 'unverified', unsure: ['end'], start: { at: '2026-11-26T15:00:00-08:00', tz: LA }, end: { at: '2026-11-27T11:00:00-08:00', tz: LA } };
+  const o = { fallbackTz: LA };
+  assert.equal(timeUnsure([inn.end], inn, o), true, "an end row: its start is the booking's check-out");
+  assert.equal(timeUnsure([{ at: '2026-11-27T14:00:00-05:00', tz: NY }], inn, o), true, 'the same moment written in another zone');
+  assert.equal(timeUnsure([{ at: '2026-11-27T11:00:00', tz: LA }], inn, o), true, 'or on its zone\'s clock, with no offset');
+  assert.equal(timeUnsure([{ at: '2026-11-27T11:00:00' }], inn, o), true, 'or with no zone: the fallback\'s');
+  assert.equal(timeUnsure([inn.start], inn, o), false, 'the check-in is sure');
+  assert.equal(timeUnsure([{ at: '2026-11-27T10:00:00-08:00', tz: LA }], inn, o), false, 'another time is not the booking\'s');
+  assert.equal(timeUnsure([inn.end], { ...inn, unsure: ['seat', 'start'] }, o), false, 'its other fields are not its time');
+  assert.equal(timeUnsure([inn.end], { ...inn, unsure: [] }, o), false, 'nothing marked');
+  const { unsure: _, ...old } = inn;
+  assert.equal(timeUnsure([inn.start], old, o), true, 'one from before, not confirmed: marked whole, its times too');
+  assert.equal(timeUnsure([inn.start], { ...old, status: 'confirmed' }, o), false, 'a confirmed one from before');
+  assert.equal(timeUnsure([inn.end], null, o), false, 'no booking');
+  assert.equal(timeUnsure([inn.end], { ...inn, end: undefined }, o), false, 'a booking without that time');
+});
+
+test('timeUnsure: only the times the row shows count: a sure start beside an unsure end is sure when the row shows the start alone (the review of booking-check, F1)', () => {
+  const stay = { kind: 'lodging', status: 'unverified', start: { at: '2026-11-26T15:00:00-08:00', tz: LA }, end: { at: '2026-11-27T11:00:00-08:00', tz: LA } };
+  const o = { fallbackTz: LA };
+  const [checkIn, checkOut] = [stay.start, stay.end];
+  // The end is the unsure time: a row that shows the start alone is sure; a row that shows both is not.
+  assert.equal(timeUnsure([checkIn], { ...stay, unsure: ['end'] }, o), false, 'the start alone, the end marked');
+  assert.equal(timeUnsure([checkIn, checkOut], { ...stay, unsure: ['end'] }, o), true, 'both shown, the end marked');
+  // The start is the unsure time: either row is not sure.
+  assert.equal(timeUnsure([checkIn], { ...stay, unsure: ['start'] }, o), true, 'the start alone, the start marked');
+  assert.equal(timeUnsure([checkIn, checkOut], { ...stay, unsure: ['start'] }, o), true, 'both shown, the start marked');
+  assert.equal(timeUnsure([checkOut], { ...stay, unsure: ['start'] }, o), false, 'the end alone, the start marked');
+});
+
+test("timeUnsure: a booking with no end, marked whole, marks no row with no time (a missing time is no moment, though NaN is NaN)", () => {
+  const o = { fallbackTz: LA };
+  const stay = { kind: 'lodging', status: 'unverified', start: { at: '2026-11-26T15:00:00-08:00', tz: LA } }; // from before: no unsure key, no end
+  assert.equal(timeUnsure([stay.start], stay, o), true, 'its start is marked whole');
+  assert.equal(timeUnsure([], stay, o), false, 'a row with no time');
+  assert.equal(timeUnsure([undefined], stay, o), false, 'a row whose time is missing');
+  assert.equal(timeUnsure([{ at: 'sometime' }], stay, o), false, 'or one that is no date');
 });
 
 test('bookingRef: with or without /trip, only a booking record', () => {

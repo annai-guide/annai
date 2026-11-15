@@ -1,6 +1,6 @@
 import { tsv } from '../tsv.js';
 import { escapeTags } from '../agent/blocks.js';
-import { planRows, fixedWords } from '../plan.js';
+import { planRows, fixedWords, timeUnsure } from '../plan.js';
 import { checkWords } from '../bookings.js';
 
 /** Koe's compact view of the trip, in its tail; its words escaped. */
@@ -42,7 +42,8 @@ export async function compactView({ ws, trip, now, timeZone, next }) {
     .map((r) => {
       const end = r.from === 'item' ? at(r.item.end) : NaN;
       const name = r.from === 'end' ? `${ENDS[r.set?.kind ?? ''] ?? 'Ends'} · ${r.item.title}` : r.item.title;
-      return [local(/** @type {number} */ (r.at), timeZone), Number.isFinite(end) ? local(end, timeZone) : '', e(name), fixedWords(r.item.fixed), e(r.item.place?.name)];
+      const unsure = timeUnsure([r.item.start, r.item.end], r.booking, { fallbackTz: timeZone });
+      return [local(/** @type {number} */ (r.at), timeZone), Number.isFinite(end) ? local(end, timeZone) : '', e(name), fixedWords(r.item.fixed, { unsure }), e(r.item.place?.name)];
     });
   const bookings = bookingFiles.map((f) => f.value)
     .filter((b) => at(b.start) >= now - 6 * 3_600_000 && at(b.start) <= now + 2 * DAY)

@@ -1675,7 +1675,7 @@ export class Agent {
   /** The block a request ends with: the half's own, or the now block. @param {Parameters<NonNullable<Half['tail']>>[0]} now */
   async #tailFor(now) {
     const koe = this.#half.koe?.() ?? null;
-    return this.#half.tail ? this.#half.tail(now) : nowBlock({ ...now, plan: await nextPlanItems(this.ws, this.trip, this.now()), ...(koe ? { koe } : {}) });
+    return this.#half.tail ? this.#half.tail(now) : nowBlock({ ...now, plan: await nextPlanItems(this.ws, this.trip, this.now(), { fallbackTz: now.timeZone }), ...(koe ? { koe } : {}) });
   }
 
   /**

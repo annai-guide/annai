@@ -2,7 +2,7 @@ import { pointsOf, legsOf } from './route.js';
 import { stampsOf, isArrival } from './stamps.js';
 import { meters } from '../live/geo.js';
 import { validZone, deviceZone, instantOf, dayIn } from '../time.js';
-import { PLAN_FILE } from '../plan.js';
+import { PLAN_FILE, bookingRef, timeUnsure } from '../plan.js';
 import { storedTexts } from '../agent/log.js';
 
 /**
@@ -18,7 +18,8 @@ import { storedTexts } from '../agent/log.js';
  *   | { kind: 'said', at: number, text: string, spoken: boolean }
  *   | { kind: 'photo', at: number, path: string, hash: string, type: string, size: number, width: number | null, height: number | null,
  *       place: { lat: number, lng: number } | null }} Entry  a card's tune: a personality tuning's, whose title the screens make
- * @typedef {{ title: string, at: number | null, place: { name: string, lat: number, lng: number } | null, fixed: boolean, visited: boolean }} PlanLine
+ * @typedef {{ title: string, at: number | null, place: { name: string, lat: number, lng: number } | null, fixed: boolean, unsure: boolean, visited: boolean }} PlanLine
+ *   unsure: its start is a time Shiori isn't sure of (timeUnsure, from the booking it stands for)
  * @typedef {{ trip: string, title: string, tz: string, info: any, points: Point[], legs: Leg[], stamps: Stamp[], entries: Entry[],
  *   plan: PlanLine[], from: number | null, to: number | null, days: string[] }} Journey
  *   info: trip.json; from, to: when the first and last thing happened; days: each day something did, in the trip's zone.
@@ -65,6 +66,9 @@ export async function readJourney({ store, ws, trip, namer = () => null }) {
     if (item && typeof item === 'object' && !Array.isArray(item)) items.push({ slug: f.path.replace(/^\/plan\//, '').replace(/\.json$/, ''), item });
   }
   const tz = [info?.timezones?.[0], ...items.map((x) => x.item.start?.tz), deviceZone()].find(validZone) ?? 'UTC';
+  /** @type {Map<string, any>} the bookings plan items stand for, by path */
+  const bookings = new Map();
+  for (const ref of new Set(items.map((x) => bookingRef(x.item.booking)))) if (ref) bookings.set(ref, await ws.readJSON(trip, ref).catch(() => null));
   const events = await store.tx(['events'], 'readonly', (t) => t.listEvents(trip, { types: [...JOURNEY_TYPES] }));
   const points = pointsOf(events.filter((e) => e.type === 'location'));
   const fired = events.filter((e) => e.type === 'trigger.fired');
@@ -148,6 +152,7 @@ export async function readJourney({ store, ws, trip, namer = () => null }) {
         const t = Date.parse(item.start?.at ?? '');
         return {
           title: String(item.title ?? slug), at: Number.isFinite(t) ? t : null, fixed: item.fixed === true,
+          unsure: timeUnsure([item.start], bookings.get(bookingRef(item.booking) ?? ''), { fallbackTz: tz }),
           place: hasPoint(item.place) && item.place.name ? { name: String(item.place.name), lat: item.place.lat, lng: item.place.lng } : null,
           visited: fired.some((e) => e.data?.watch === `plan:${slug}:arrived`),
         };

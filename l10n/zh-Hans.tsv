@@ -651,22 +651,22 @@ bgn4sv	ok	Shiori answers in the language you speak to her	Shiori 会用你对她
 k4u05v	ok	The language you speak to her	你对她说的语言	src/core/languages.js:362	
 cc69cl	ok	None picked: annai uses the browser’s language.	未选择时，annai 使用浏览器的语言。	src/core/languages.js:363	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
 1dyfzsg	ok	A simulation is already running.	已有模拟正在运行。	src/core/live/live.js:307	
-157qf8n	ok	Flight {0} departs {1}, {2}	航班 {0} 于 {1} 起飞（{2}）	src/core/live/plan-watches.js:138	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
-1tvx4k9	ok	Flight {0} departs {1}	航班 {0} 于 {1} 起飞	src/core/live/plan-watches.js:138	{0} = w.flight; {1} = time
-1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}，{2}）	src/core/live/plan-watches.js:139	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
-1wwrs1d	ok	{0} at {1}	{0}（{1}）	src/core/live/plan-watches.js:139	{0} = w.title; {1} = time; Note: an item in a few words: its title, then its time.
-ypynbt	ok	Leave soon: {0}.	该出发了：{0}。	src/core/live/plan-watches.js:150	{0} = what
-1nq6h1n	ok	About {0} min by car.	开车约 {0} 分钟。	src/core/live/plan-watches.js:151	{0} = num(say.minutes)
-1s9ayzz	ok	About {0} min on foot.	步行约 {0} 分钟。	src/core/live/plan-watches.js:151	{0} = num(say.minutes)
-osmwu5	ok	Leave in about {0} min: {1}.	约 {0} 分钟后出发：{1}。	src/core/live/plan-watches.js:151	{0} = num(LEAVE_LEAD_MIN); {1} = what
-12cmqu6	ok	Running late: {0}.	要迟到了：{0}。	src/core/live/plan-watches.js:152	{0} = what
-3qig1w	ok	About {0} min away.	还有约 {0} 分钟路程。	src/core/live/plan-watches.js:152	{0} = num(say.minutes)
-ub25px	ok	Planned now: {0}, at {1}.	现在的行程：{0}（{1}）。	src/core/live/plan-watches.js:153	{0} = String(say.title); {1} = String(say.place); Note: label: value, the place in brackets.
-195jjr0	ok	{0}: {1}.	{0}：{1}。	src/core/live/plan-watches.js:154	{0} = String(say.place); {1} = String(say.title); Note: a place, then the plan item there.
-1yqg2at	ok	In {0} min: {1}.	{0} 分钟后：{1}。	src/core/live/plan-watches.js:155	{0} = num(COMING_UP_MIN); {1} = what
-9s8no9	ok	You've stopped somewhere that isn't on the itinerary.	你停留的地方不在行程中。	src/core/live/plan-watches.js:157	
-4lxlla	ok	Nothing more is on the itinerary.	接下来没有其他行程了。	src/core/live/plan-watches.js:158	
-yc6345	ok	Next on the itinerary: {0} at {1}.	下一项行程：{0}（{1}）。	src/core/live/plan-watches.js:158	{0} = say.next.title; {1} = clock(say.next.at, say.next.tz)
+157qf8n	ok	Flight {0} departs {1}, {2}	航班 {0} 于 {1} 起飞（{2}）	src/core/live/plan-watches.js:139	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
+1tvx4k9	ok	Flight {0} departs {1}	航班 {0} 于 {1} 起飞	src/core/live/plan-watches.js:139	{0} = w.flight; {1} = time
+1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}，{2}）	src/core/live/plan-watches.js:140	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
+1wwrs1d	ok	{0} at {1}	{0}（{1}）	src/core/live/plan-watches.js:140	{0} = w.title; {1} = time; Note: an item in a few words: its title, then its time.
+ypynbt	ok	Leave soon: {0}.	该出发了：{0}。	src/core/live/plan-watches.js:151	{0} = what
+1nq6h1n	ok	About {0} min by car.	开车约 {0} 分钟。	src/core/live/plan-watches.js:152	{0} = num(say.minutes)
+1s9ayzz	ok	About {0} min on foot.	步行约 {0} 分钟。	src/core/live/plan-watches.js:152	{0} = num(say.minutes)
+osmwu5	ok	Leave in about {0} min: {1}.	约 {0} 分钟后出发：{1}。	src/core/live/plan-watches.js:152	{0} = num(LEAVE_LEAD_MIN); {1} = what
+12cmqu6	ok	Running late: {0}.	要迟到了：{0}。	src/core/live/plan-watches.js:153	{0} = what
+3qig1w	ok	About {0} min away.	还有约 {0} 分钟路程。	src/core/live/plan-watches.js:153	{0} = num(say.minutes)
+ub25px	ok	Planned now: {0}, at {1}.	现在的行程：{0}（{1}）。	src/core/live/plan-watches.js:154	{0} = String(say.title); {1} = String(say.place); Note: label: value, the place in brackets.
+195jjr0	ok	{0}: {1}.	{0}：{1}。	src/core/live/plan-watches.js:155	{0} = String(say.place); {1} = String(say.title); Note: a place, then the plan item there.
+1yqg2at	ok	In {0} min: {1}.	{0} 分钟后：{1}。	src/core/live/plan-watches.js:156	{0} = num(COMING_UP_MIN); {1} = what
+9s8no9	ok	You've stopped somewhere that isn't on the itinerary.	你停留的地方不在行程中。	src/core/live/plan-watches.js:158	
+4lxlla	ok	Nothing more is on the itinerary.	接下来没有其他行程了。	src/core/live/plan-watches.js:159	
+yc6345	ok	Next on the itinerary: {0} at {1}.	下一项行程：{0}（{1}）。	src/core/live/plan-watches.js:159	{0} = say.next.title; {1} = clock(say.next.at, say.next.tz)
 1jok3pb	ok	A simulation is already running. Stop it first.	已有模拟正在运行，请先停止。	src/core/live/sim-run.js:90	
 ujhqxv	ok	Untitled trip	未命名旅行	src/core/live/sim-run.js:237	Note: a new simulated trip's name when its itinerary has none, before " (simulation)" is added.
 1426icm	ok	That trip isn't on this device any more.	这台设备上已经没有这次旅行了。	src/core/live/sim-run.js:277	
@@ -819,14 +819,14 @@ apv0y3	ok	annai couldn't read {0} from {1}, a file its {2} names. Check that it 
 14wn58m	ok	a provider that sends keys to {0}	会把密钥发送到 {0} 的提供商	src/core/packages.js:667	{0} = o; Note: one of a list of what an update adds.
 tqmba2	ok	an address your searches are sent to: {0}	会接收搜索内容的地址 {0}	src/core/packages.js:667	{0} = o; Note: one of a list of what an update adds.
 18tp402	ok	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	此浏览器无法转换 {0}，因此保留了原文件，可能只有 Safari 浏览器能显示。	src/core/photos.js:135	{0} = name
-1009iza	ok	Restaurant	餐厅	src/core/plan.js:43	
-1lrcegv	ok	Event	活动	src/core/plan.js:43	
-56ee40	ok	Booking	预订	src/core/plan.js:43	
-8cdq15	ok	Train	火车	src/core/plan.js:43	
-d57q3n	ok	Flight	航班	src/core/plan.js:43	
-jj8u9s	ok	Stay	住宿	src/core/plan.js:43	Note: A kind of booking: a hotel or other lodging.
-sksosh	ok	Car	租车	src/core/plan.js:43	Note: A kind of booking: a car, nearly always a rental.
-1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	无法识别时区“{0}”，按 {1} 显示。	src/core/plan.js:77	{0} = String(own ?? ''); {1} = fallbackTz
+1009iza	ok	Restaurant	餐厅	src/core/plan.js:61	
+1lrcegv	ok	Event	活动	src/core/plan.js:61	
+56ee40	ok	Booking	预订	src/core/plan.js:61	
+8cdq15	ok	Train	火车	src/core/plan.js:61	
+d57q3n	ok	Flight	航班	src/core/plan.js:61	
+jj8u9s	ok	Stay	住宿	src/core/plan.js:61	Note: A kind of booking: a hotel or other lodging.
+sksosh	ok	Car	租车	src/core/plan.js:61	Note: A kind of booking: a car, nearly always a rental.
+1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	无法识别时区“{0}”，按 {1} 显示。	src/core/plan.js:95	{0} = String(own ?? ''); {1} = fallbackTz
 o6vv9a	ok	"{0}" is a name annai uses for one of its own parts, so a skill can't have it.	“{0}”已被 annai 自身的某个部分使用，不能用作技能名称。	src/core/plugins.js:179	{0} = id; Note: {0} is the skill's name.
 1fdobr5	ok	It has the same id as a plugin built into annai.	与 annai 内置插件的 ID 相同。	src/core/plugins.js:180	
 wq5ezj	ok	Its name, "{0}", is annai's own name, or the name of one of its parts. Ask its author to rename it.	名称“{0}”与 annai 或其某个部分的名称相同。请联系作者改名。	src/core/plugins.js:184	{0} = pkg.name; Note: Ask here is the plain verb (to ask the author), not Safari's permission choice.

@@ -32,12 +32,37 @@ export function checkOf(b) {
 }
 
 /**
+ * A booking's parts as a model is told them: by what each is, never the field's name, which a model says, translated (「未確認」, 2026-11-14).
+ * Its times by its kind, as people say them (the user's words, 2026-11-14: "how people will actually say"): the screens' own words for a flight
+ * and a stay (Departs, Arrives; Check-in, Check-out), and for a car and a train the Plan's (Pick up, Return; Arrive), though the booking
+ * screen says Starts and Ends there. A key of its own or of `fields` as the words it is made of, unless those mislead.
+ */
+/* en */ const TIME_PARTS = /** @type {Record<string, [string, string]>} */ ({
+  flight: ['the departure time', 'the arrival time'], rail: ['the departure time', 'the arrival time'],
+  lodging: ['the check-in time', 'the check-out time'], car: ['the pick-up time', 'the return time'],
+});
+/* en */ const PARTS = /** @type {Record<string, string>} */ ({
+  title: 'the name', confirmation: 'the confirmation number', flight: 'the flight number', from: 'where it leaves from', to: 'where it arrives',
+  class: 'the cabin', nights: 'the number of nights', pickup: 'the pick-up place', dropoff: 'the drop-off place', party: 'the party size',
+});
+
+/** One part of a booking in words. @param {string} key @param {unknown} kind */
+function partWords(key, kind) {
+  /* en */ if (key === 'start' || key === 'end') return (TIME_PARTS[String(kind)] ?? ['the start time', 'the end time'])[key === 'start' ? 0 : 1];
+  return Object.hasOwn(PARTS, key) ? PARTS[key] : `the ${key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').trim().toLowerCase()}`;
+}
+
+/**
  * What a model is shown of a booking's check, beside it: what the screens mark (checkOf), never the `status` word, which Koe translated
- * (「未確認」 on bookings with nothing to check, 2026-11-14). Nothing when nothing is marked, as for a confirmed one. @param {any} b
+ * (「未確認」 on bookings with nothing to check, 2026-11-14). One marked whole is one phrase; one with fields marked names each, as the
+ * screens mark each beside its value, so she can say which to check. Nothing when nothing is marked, as for a confirmed one. @param {any} b
  */
 export function checkWords(b) {
   const c = checkOf(b);
-  return /* en */ (c.whole || c.fields.length ? 'not sure it was read right' : '');
+  /* en */ if (c.whole) return 'not sure it was read right';
+  if (!c.fields.length) return '';
+  const parts = c.fields.map((k) => partWords(k, b.kind));
+  /* en */ return `not sure ${parts.length > 1 ? `${parts.slice(0, -1).join(', ')} or ${parts.at(-1)}` : parts[0]} was read right`;
 }
 
 /** A trip's booking record. @param {string} scope @param {string} path */
