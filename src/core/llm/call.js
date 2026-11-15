@@ -582,8 +582,8 @@ export async function photoHash(data) {
 /**
  * Photos go by id to an endpoint that stores files (spec §4.8): each is uploaded once, named
  * annai-… (uploadName, the rule the sweep deletes by), used for 48 hours. A failed upload sends the bytes, and stops
- * uploading there until annai restarts, or its provider's key or address changes, or a Test passes (where the list can be read). An upload
- * answered after the ability's uploads went off, or its provider began to go, is deleted at once and its photo sent in the request.
+ * uploading there until annai restarts, or its provider's key or address changes, or a Test passes. An upload answered after the
+ * ability's uploads went off, or while its provider goes, is deleted at once and its photo sent in the request.
  * @param {Request} request
  * @param {{ type: EndpointType, endpoint: Endpoint, model: Model, key: string | null, uploads?: import('./uploads.js').Uploads, get: Fetch, trace?: ModelTrace, signal?: AbortSignal, now: () => number, from?: number }} c
  * from: the first message that is sent, the ones before it being held by a kept turn; expires: when the earliest of the photos sent by id expires (0: none)
@@ -622,7 +622,7 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const up = type.readUpload(await res.json());
         if (uploads.isOff(endpoint.id)) {
-          // Answered after a removal, a key or address change or Erase began: the file would stay in the workspace being let go.
+          // Answered while a removal, a key or address change or Erase is under way: the file would stay in the workspace being let go.
           await deleteUpload({ type, endpoint, key, fetch: get, trace, now, id: up.id });
           continue;
         }

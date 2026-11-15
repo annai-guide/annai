@@ -26,8 +26,10 @@ export const uploadName = (hash, mediaType) => `annai-${hash.slice(0, 16)}.${EXT
 export class Uploads {
   /** @type {Record<string, Record<string, { id: string, expiresAt: number }>> | null} */
   #map = null;
-  /** @type {Set<string>} endpoints whose uploads failed, or can't be deleted: until annai restarts, or their provider's key or address changes, or a Test passes (where the list can be read) */
+  /** @type {Set<string>} endpoints whose upload failed, or whose key was refused or can't delete: until annai restarts, or their provider's key or address changes, or a Test passes */
   #off = new Set();
+  /** @type {Set<string>} endpoints whose list answered and isn't one annai can read: the provider's, not the key's, so until annai restarts or a Test reads the list */
+  #unread = new Set();
   /** @param {Workspace} ws @param {(endpointId: string) => boolean} [going] whether an endpoint's provider is going, or its key or address changing: nothing is uploaded there meanwhile, and an upload answered meanwhile is deleted (withUploads) */
   constructor(ws, going = () => false) {
     this.ws = ws;
@@ -68,13 +70,26 @@ export class Uploads {
   off(endpointId) {
     this.#off.add(endpointId);
   }
-  /** A new key or address, or a Test that passed: what failed with the old ones says nothing about these. Whoever calls it reads the list at that endpoint next, which sets the mark again where it can't be read (listFailed). @param {string} id a provider's id (all its endpoints) or an endpoint's */
+  /** A new key or address, or a Test that passed: what failed with the old ones says nothing about these. A list annai can't read stays (listed). @param {string} id a provider's id (all its endpoints) or an endpoint's */
   retry(id) {
     for (const e of [...this.#off]) if (e === id || e.startsWith(`${id}/`)) this.#off.delete(e);
   }
+  /**
+   * What a read of an endpoint's list found (sweepUploads), the one rule for the sweeps and Test, so annai never makes files it can't delete:
+   * a refusal is the key's, and turns uploads off as a failed upload does; a list that answered and isn't one annai can read is the
+   * provider's, and turns them off whatever key or address comes, until annai restarts or a Test reads the list (test: this read is a
+   * Test's). No answer says nothing. @param {string} endpointId @param {Swept | null} r @param {{ test?: boolean }} [o]
+   * @returns {boolean} whether the list keeps uploads off there
+   */
+  listed(endpointId, r, { test = false } = {}) {
+    if (r?.outcome === 'refused') this.#off.add(endpointId);
+    if (r?.outcome === 'unreadable') this.#unread.add(endpointId);
+    if (r?.outcome === 'done' && test) this.#unread.delete(endpointId);
+    return r?.outcome === 'refused' || this.#unread.has(endpointId);
+  }
   /** @param {string} endpointId */
   isOff(endpointId) {
-    return this.#off.has(endpointId) || this.going(endpointId);
+    return this.#off.has(endpointId) || this.#unread.has(endpointId) || this.going(endpointId);
   }
 }
 
@@ -89,15 +104,9 @@ const REQUEST_MS = 15_000;
 
 /**
  * @typedef {{ outcome: 'done' | 'none' | 'refused' | 'unreadable' | 'unreachable', deleted: number, left: number }} Swept
- *   none: no files API there (the type has no list, or the list is a 404); refused: a 401 or 403; unreadable: a list annai can't read;
+ *   none: the type has no list; refused: a 401 or 403; unreadable: a list annai can't read, or none there (a 404) where the type has one;
  *   unreachable: no answer, a 429 or a server error on the list or a deletion; left: annai's files it didn't delete
  */
-
-/**
- * Whether a sweep found the list unusable: refused, or a body annai can't read. Uploads then stop at that endpoint, so annai never makes
- * files it can't delete; no answer says nothing (the next sweep reads it again). @param {Swept | null | undefined} r
- */
-export const listFailed = (r) => r?.outcome === 'refused' || r?.outcome === 'unreadable';
 
 /**
  * Deletes annai's own uploads at an endpoint whose provider keeps files until they are deleted (spec §4.8): every file its list
@@ -123,7 +132,7 @@ export async function sweepUploads({ type, endpoint, key, fetch, trace, now = Da
     if (cursor) cursors.add(cursor);
     const r = type.listUploadsRequest({ endpoint, key, cursor });
     const { status, res } = await send(r, 'GET', { endpoint, fetch, trace, now, kind: 'upload-list', shown: r.url.split('?')[0] });
-    if (status === 404) return { outcome: 'none', deleted: 0, left: 0 };
+    if (status === 404) return { outcome: 'unreadable', deleted: 0, left: 0 };
     if (status === 401 || status === 403) return { outcome: 'refused', deleted: 0, left: 0 };
     if (!res || status < 200 || status >= 300) return { outcome: 'unreachable', deleted: 0, left: 0 };
     // A body that breaks off or stalls past the time limit is no answer, as no reply at all is; only a body that arrived and can't be read is unreadable.

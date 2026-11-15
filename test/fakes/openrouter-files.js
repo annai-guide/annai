@@ -6,7 +6,8 @@
  * - GET /files?limit=1000: `{ _shape, data, has_more, first_id, last_id, cursor }`, seen empty and with annai's one file (has_more false, cursor null);
  * - DELETE /files/{id}: 200 `{ _shape, id, type: "file_deleted" }`, 404 `{ error: { message: "File not found: …", code: 404 } }`;
  * - POST /chat/completions naming a file_id it doesn't have: 400 `{ error: { message: "Invalid file_id: …", code: 400 } }`; one it has
- *   streams a short reply.
+ *   streams a short reply;
+ * - POST /files and GET /files with no key: 401 `{ error: { message: "No cookie auth credentials found", code: 401 } }` (the research's probe).
  * What the real API was never seen to do, and rests here on its published schema alone (openapi.json) or on nothing: a list of more than one
  * page (the cursor's name and its format, here base64 JSON, and the page size), the order of a list (here oldest first), and other apps'
  * files among annai's. The opt-in real check (test/live/providers.test.js) reads such a list for real.
@@ -34,6 +35,8 @@ export function openRouterFiles({ files = [], page = 1000, status = () => null, 
     const forced = status(method, path);
     if (forced === 0) throw new TypeError('Failed to fetch');
     if (forced) return json(forced, { error: { message: forced === 401 ? 'No cookie auth credentials found' : `HTTP ${forced}`, code: forced } });
+    const keyed = Object.keys(init.headers ?? {}).some((h) => h.toLowerCase() === 'authorization');
+    if (path === '/files' && !keyed) return json(401, { error: { message: 'No cookie auth credentials found', code: 401 } });
     if (path === '/files' && method === 'POST') {
       const file = /** @type {FormData} */ (init.body).get('file');
       if (!(file instanceof Blob)) return json(400, { error: { message: 'No file', code: 400 } });

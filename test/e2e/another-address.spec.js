@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, tapAdd, startOpenRouterFiles } from './helpers.js';
+import { openApp, waitForServiceWorker, tapAdd } from './helpers.js';
 import { startFakeServer } from '../fakes/model-server.js';
 
 // "Custom provider" looks for itself (milestone 5 of providers as plugins): its own Add flow asks a server for
@@ -98,17 +98,10 @@ test("a provider plugin's own Add flow, by hand: OpenRouter's Add shows its sign
   await page.getByRole('button', { name: 'Add by hand' }).click();
   await expect(page.getByRole('button', { name: 'Remove provider' })).toBeVisible({ timeout: 30_000 });
   await expect(page.locator('.toast', { hasText: "now use OpenRouter's free models." })).toBeVisible();
-  // A new key reads OpenRouter's files list (spec §4.8), here at a stand-in: no default test reaches openrouter.ai.
-  const files = await startOpenRouterFiles();
-  try {
-    await page.getByLabel('Address', { exact: true }).fill(`${files.origin}/api/v1`);
-    await page.getByLabel('API key').fill('sk-or-typed-key-123');
-    await page.getByRole('button', { name: 'Save' }).click();
-    await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
-    await expect(page.getByLabel('Use Chat', { exact: true })).toBeChecked();
-  } finally {
-    await files.stop();
-  }
+  await page.getByLabel('API key').fill('sk-or-typed-key-123');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
+  await expect(page.getByLabel('Use Chat', { exact: true })).toBeChecked();
   // Adding put OpenRouter's free models in the empty chat roles, and said so; never the recommended Claude models, which cost money
   // (the second emulator re-check: a summary was paid for that nobody had chosen).
   await page.getByRole('link', { name: 'Models', exact: true }).click();

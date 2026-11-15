@@ -177,9 +177,9 @@ test('the sweep: a cursor that comes back ends the reading', async () => {
   assert.equal(gets, 2);
 });
 
-test('the sweep: no files API, a refused key, a list it can’t read, and no answer each say so; deletions that fail are left for the next', async () => {
+test('the sweep: a refused key, a list it can’t read (a 404 too: a type that lists must find its list), and no answer each say so; deletions that fail are left for the next', async () => {
   const at = (/** @type {(m: string, p: string) => number | null} */ status) => sweepUploads({ type, endpoint: endpoint(), key: 'k', fetch: openRouterFiles({ files: mixed().held, status }).fetch, now: () => NOW });
-  assert.equal((await at((m, p) => (m === 'GET' && p === '/files' ? 404 : null))).outcome, 'none');
+  assert.equal((await at((m, p) => (m === 'GET' && p === '/files' ? 404 : null))).outcome, 'unreadable');
   assert.equal((await at((m, p) => (m === 'GET' && p === '/files' ? 401 : null))).outcome, 'refused');
   assert.equal((await at((m, p) => (m === 'GET' && p === '/files' ? 403 : null))).outcome, 'refused');
   assert.equal((await at((m, p) => (m === 'GET' && p === '/files' ? 503 : null))).outcome, 'unreachable');
@@ -256,6 +256,33 @@ test('Uploads: an endpoint is off after a failure, and again on for a new key or
   assert.equal(uploads.isOff('pv-3/chat'), true);
   going.delete('pv-3');
   assert.equal(uploads.isOff('pv-3/chat'), false, 'a change that is over leaves nothing behind');
+});
+
+test('Uploads: what a read of the list found is one rule for the sweeps and Test: a refusal is the key’s, a list annai can’t read is the provider’s, which no key or address clears, only a Test that reads it', async () => {
+  const ws = new Workspace(createMemoryStore());
+  await ensureBaseScopes(ws);
+  const uploads = new Uploads(ws);
+  const r = (/** @type {'done' | 'none' | 'refused' | 'unreadable' | 'unreachable'} */ outcome) => ({ outcome, deleted: 0, left: 0 });
+  // A refusal: off, and a new key or address (retry) turns it on again.
+  assert.equal(uploads.listed('pv-1/chat', r('refused')), true);
+  assert.equal(uploads.isOff('pv-1/chat'), true);
+  uploads.retry('pv-1');
+  assert.equal(uploads.isOff('pv-1/chat'), false);
+  // No answer says nothing.
+  assert.equal(uploads.listed('pv-1/chat', r('unreachable')), false);
+  assert.equal(uploads.listed('pv-1/chat', null), false);
+  assert.equal(uploads.isOff('pv-1/chat'), false);
+  // A list annai can't read: off through a new key or address, and through a sweep that reads it again; a Test's read decides.
+  assert.equal(uploads.listed('pv-1/chat', r('unreadable')), true);
+  uploads.retry('pv-1');
+  uploads.retry('pv-1/chat');
+  assert.equal(uploads.isOff('pv-1/chat'), true, 'no key or address clears it');
+  assert.equal(uploads.listed('pv-1/chat', r('done')), true, 'a sweep that reads it leaves it to a Test or a restart');
+  assert.equal(uploads.listed('pv-1/chat', r('unreachable'), { test: true }), true, 'a Test that got no answer has not read it');
+  assert.equal(uploads.isOff('pv-1/chat'), true);
+  assert.equal(uploads.listed('pv-1/chat', r('done'), { test: true }), false);
+  assert.equal(uploads.isOff('pv-1/chat'), false);
+  assert.equal(uploads.isOff('pv-2/chat'), false, 'one endpoint’s list is its own');
 });
 
 test('an older Chat Completions (0.11: no upload hooks) under OpenRouter’s description, which turns uploads on, sends the photo in the request and is never swept', async () => {

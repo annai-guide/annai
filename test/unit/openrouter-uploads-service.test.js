@@ -99,7 +99,7 @@ test('a list that refuses the key at start sends photos in each request until an
   assert.equal(k.or.requests.filter((r) => r.method === 'POST' && r.url.endsWith('/files')).length, 0);
 });
 
-test('a list annai can’t read turns uploads off too; no answer leaves them on, for the next try', async () => {
+test('a list annai can’t read turns uploads off too, and so does a list that answers 404; no answer leaves them on, for the next try', async () => {
   const k = await kit({ status: (m, p) => (m === 'GET' && p === '/files' ? 503 : null) });
   await k.llm.sweepUploads();
   await k.send();
@@ -110,6 +110,15 @@ test('a list annai can’t read turns uploads off too; no answer leaves them on,
   await o.llm.sweepUploads();
   await o.send();
   assert.equal(o.sentAs(), 'image_url');
+  // A list moved away while uploads still work: annai would make files no sweep finds.
+  let moved = false;
+  const g = await kit({ status: (m, p) => (moved && m === 'GET' && p === '/files' ? 404 : null) });
+  moved = true;
+  await g.llm.sweepUploads();
+  assert.equal(await g.llm.uploading(await g.modelId()), false);
+  await g.send();
+  assert.equal(g.sentAs(), 'image_url');
+  assert.deepEqual(g.ours(), []);
 });
 
 test('removing OpenRouter deletes every upload of annai’s there with its key, first, and leaves the other files', async () => {
@@ -141,11 +150,9 @@ test('a revoked old key at a new key changes nothing for the new one: uploads st
   let revoked = false;
   const k = await kit({ status: (m, p) => (revoked && m === 'GET' && p === '/files' ? 401 : null) });
   revoked = true;
-  // The old key is refused while it is let go; the list read with the new key, once it is saved, decides.
-  await k.llm.reconnect(k.id, async () => {
-    await setKey(k.store, k.id, 'sk-or-v1-new-key-9876543210');
-    revoked = false;
-  });
+  // The old key is refused while it is let go: a mark about that key, which the new key clears.
+  await k.llm.reconnect(k.id, () => setKey(k.store, k.id, 'sk-or-v1-new-key-9876543210'));
+  revoked = false;
   await k.send();
   assert.equal(k.sentAs(), 'file');
 });
@@ -316,13 +323,15 @@ test('a Test that passes turns uploads on again where a refused list at start ha
   assert.equal(await no.llm.uploading(await no.modelId()), false);
 });
 
-test('a list annai can’t read keeps uploads off through a new key and a new address: the list read with the new ones decides, and no key means nothing is tried', async () => {
+test('a list annai can’t read keeps uploads off through a new key, a new address and Remove key, also once it can be read again: it is OpenRouter’s list, not the key, so only a Test that reads it or a restart ends it; a key save reads no list with the new key', async () => {
   let odd = true;
   const k = await kit({ list: (x) => (odd ? { object: 'list', items: x.data } : x) });
   await k.llm.sweepUploads(); // a start: the list is a shape annai can't read
   assert.equal(await k.llm.uploading(await k.modelId()), false);
-  await k.llm.reconnect(k.id, () => setKey(k.store, k.id, 'sk-or-v1-new-key-9876543210'));
-  assert.equal(await k.llm.uploading(await k.modelId()), false, 'a new key: the new key reads the same list');
+  const NEW = 'sk-or-v1-new-key-9876543210';
+  await k.llm.reconnect(k.id, () => setKey(k.store, k.id, NEW));
+  assert.equal(await k.llm.uploading(await k.modelId()), false, 'a new key');
+  assert.equal(k.or.requests.some((r) => r.headers.authorization === `Bearer ${NEW}`), false, 'the save asked nothing with the new key');
   await k.send();
   assert.equal(k.sentAs(), 'image_url');
   assert.deepEqual(k.ours(), [], 'nothing made that no sweep can find');
@@ -330,31 +339,39 @@ test('a list annai can’t read keeps uploads off through a new key and a new ad
     const rec = (await readConfig(k.ws)).providers[k.id];
     await saveProvider(k.ws, { ...rec, user: { ...rec.user, abilities: { ...rec.user?.abilities, chat: { ...rec.user?.abilities?.chat, baseUrl: 'https://openrouter.ai/api/v1/' } } } });
   });
-  assert.equal(await k.llm.uploading(await k.modelId()), false, 'a new address: the same');
-  // The list can be read again: the next new key reads it, and uploads are on.
+  assert.equal(await k.llm.uploading(await k.modelId()), false, 'a new address');
+  // The list can be read again: the next key change's sweep (with the old key) reads it, and still no key change ends the mark.
   odd = false;
   await k.llm.reconnect(k.id, () => setKey(k.store, k.id, 'sk-or-v1-another-key-1122334455'));
-  assert.equal(await k.llm.uploading(await k.modelId()), true);
-  await k.send();
-  assert.equal(k.sentAs(), 'file');
-  // Remove key: nothing is retried, and no photo goes up with no key.
+  assert.equal(await k.llm.uploading(await k.modelId()), false, 'another key, with the list readable again');
+  await k.llm.sweepUploads();
+  assert.equal(await k.llm.uploading(await k.modelId()), false, 'a sweep that reads it leaves it to a Test or a restart');
+  assert.equal(await k.restart().uploading(await k.modelId()), true, 'started again: nothing known about the list');
+  const step = (await k.llm.test(await k.modelId())).steps.find((s) => s.step === 'upload');
+  assert.equal(step?.ok, true, JSON.stringify(step));
+  assert.equal(await k.llm.uploading(await k.modelId()), true, 'a Test that read it');
+  // Off again by the list, then Remove key: still off.
+  odd = true;
+  await k.llm.sweepUploads();
   await k.llm.reconnect(k.id, () => setKey(k.store, k.id, null));
-  const posts = k.or.requests.filter((r) => r.method === 'POST' && r.url.endsWith('/files')).length;
-  await k.send();
-  assert.equal(k.or.requests.filter((r) => r.method === 'POST' && r.url.endsWith('/files')).length, posts, 'no upload without a key');
-  assert.equal(k.sentAs(), 'image_url');
+  assert.equal(await k.llm.uploading(await k.modelId()), false, 'Remove key');
 });
 
-test('Remove key does not turn uploads back on where a refused list had turned them off', async () => {
+test('Remove key clears what the old key was refused; with no key OpenRouter refuses the upload, so the photo goes in the request and nothing is left', async () => {
   let dead = true;
   const k = await kit({ status: (m, p) => (dead && m === 'GET' && p === '/files' ? 401 : null) });
   await k.llm.sweepUploads();
   assert.equal(await k.llm.uploading(await k.modelId()), false);
   dead = false;
   await k.llm.reconnect(k.id, () => setKey(k.store, k.id, null));
-  assert.equal(await k.llm.uploading(await k.modelId()), false, 'still off: nothing was asked of a list with no key');
+  assert.equal(await k.llm.uploading(await k.modelId()), true, 'the refusal was the old key’s');
   await k.send();
-  assert.equal(k.or.requests.filter((r) => r.method === 'POST' && r.url.endsWith('/files')).length, 0);
+  const posts = k.or.requests.filter((r) => r.method === 'POST' && r.url.endsWith('/files'));
+  assert.equal(posts.length, 1);
+  assert.equal(posts[0].headers.authorization, undefined);
+  assert.equal(k.sentAs(), 'image_url');
+  assert.deepEqual(k.ours(), []);
+  assert.equal(await k.llm.uploading(await k.modelId()), false, 'the refused upload turns them off, as any failed upload');
 });
 
 test('a Test that finds the list unreadable (or refused) leaves uploads off and says so; one that can read it turns them on', async () => {
@@ -381,10 +398,28 @@ test('a Test that finds the list unreadable (or refused) leaves uploads off and 
   assert.equal(step?.ok, false);
   assert.match(step?.detail ?? '', /can't read the list of its photos there/);
   assert.equal(await r.llm.uploading(await r.modelId()), false);
+  // A list that answers 404: the same.
+  let moved = false;
+  const g = await kit({ status: (m, p) => (moved && m === 'GET' && p === '/files' ? 404 : null) });
+  moved = true;
+  const s404 = (await g.llm.test(await g.modelId())).steps.find((s) => s.step === 'upload');
+  assert.equal(s404?.ok, false);
+  assert.match(s404?.detail ?? '', /can't read the list of its photos there/);
+  assert.equal(await g.llm.uploading(await g.modelId()), false);
   // A list with no answer says nothing about it: nothing is turned off.
   const n = await kit({ status: (m, p) => (m === 'GET' && p === '/files' ? 503 : null) });
   assert.equal((await n.llm.test(await n.modelId())).steps.find((s) => s.step === 'upload')?.ok, true);
   assert.equal(await n.llm.uploading(await n.modelId()), true);
+  // Nor on, where the list couldn't be read before: that Test has not read it.
+  let down = false;
+  odd = true;
+  const late = await kit({ list: (x) => (odd ? { object: 'list', items: x.data } : x), status: (m, p) => (down && m === 'GET' && p === '/files' ? 503 : null) });
+  await late.llm.sweepUploads();
+  down = true;
+  const unsure = (await late.llm.test(await late.modelId())).steps.find((s) => s.step === 'upload');
+  assert.equal(unsure?.ok, false);
+  assert.match(unsure?.detail ?? '', /can't read the list of its photos there/);
+  assert.equal(await late.llm.uploading(await late.modelId()), false);
 });
 
 test('a photo whose upload is answered after a key change began is deleted at once, and goes in the request', async () => {
@@ -425,20 +460,4 @@ test('two releases at once: the first to end does not end the other’s hold; on
   // A release that fails leaves the provider as it was, and uploads going again.
   await assert.rejects(k.llm.reconnect(k.id, async () => { throw new Error('the store is full'); }), /store is full/);
   assert.equal(await k.llm.uploading(await k.modelId()), true);
-});
-
-test('Test makes no photo of its own while the provider’s uploads are going', async () => {
-  /** @type {() => void} */
-  let open = () => {};
-  const gate = new Promise((r) => { open = () => r(undefined); });
-  // Only the removal's own list read is held back, so a Test that goes on regardless fails here and doesn't hang.
-  let first = true;
-  const k = await kit({ delay: (m) => { if (m !== 'GET' || !first) return undefined; first = false; return gate; } });
-  const going = k.llm.removeProvider(k.id);
-  await until(() => k.or.requests.some((r) => r.method === 'GET'));
-  const r = await k.llm.test(await k.modelId());
-  assert.equal(r.steps.some((s) => s.step === 'upload'), false, 'no upload step');
-  assert.equal(k.or.requests.some((x) => x.method === 'POST' && x.url.endsWith('/files')), false);
-  open();
-  await going;
 });

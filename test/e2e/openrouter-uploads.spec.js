@@ -12,8 +12,9 @@ const ago = (/** @type {number} */ hours) => new Date(Date.now() - hours * HOUR)
 const SWITCH = /^Upload photos to this provider \(annai deletes each once it is 48 hours old/;
 
 test("OpenRouter's page has the photo-uploads switch and another Chat Completions page has none; annai deletes its uploads from OpenRouter's list on coming online, once a day, all when the switch goes off, and at the old address with the old key when the ability's address changes", async ({ page }) => {
-  // Files at OpenRouter: annai's, of two ages (a third, over 48 hours old, comes later), and someone else's.
+  // Files at OpenRouter: annai's, of three ages, and someone else's.
   const old = await startOpenRouterFiles([
+    { filename: 'annai-1111111111111111.webp', created_at: ago(50) },
     { filename: 'annai-2222222222222222.webp', created_at: ago(30) },
     { filename: 'annai-3333333333333333.jpg', created_at: ago(1) },
     { filename: 'their-notes.pdf', created_at: ago(500) },
@@ -48,12 +49,9 @@ test("OpenRouter's page has the photo-uploads switch and another Chat Completion
     const uploads = chat.getByLabel(SWITCH);
     await expect(uploads).toBeChecked();
     await expect(chat.getByText(/^Photos are stored in your OpenRouter workspace's files until annai deletes them/)).toBeVisible();
-    // The key just saved read the list once, with it (a new key's sweep, which says whether uploads can come on); no start, no coming online since.
-    expect(old.requests.filter((r) => r.method === 'GET')).toHaveLength(1);
-    expect(old.names()).toHaveLength(3);
+    expect(old.requests.filter((r) => r.method === 'GET'), 'nothing listed yet: no start, no coming online since the provider was added').toHaveLength(0);
 
     // Coming online: the list is read, and what is over 48 hours old goes; younger files and the other app's stay.
-    old.held.push({ id: 'or_file_e2e_over', filename: 'annai-1111111111111111.webp', created_at: ago(50), mime_type: 'image/webp', size_bytes: 1 });
     await page.evaluate(() => dispatchEvent(new Event('online')));
     await expect.poll(() => old.names()).toEqual(['annai-2222222222222222.webp', 'annai-3333333333333333.jpg', 'their-notes.pdf']);
     expect(old.requests.every((r) => r.headers.authorization === `Bearer ${KEY}`)).toBe(true);
