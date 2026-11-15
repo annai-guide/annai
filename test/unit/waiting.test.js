@@ -142,7 +142,7 @@ test('moveWaitingToChat with nothing waiting makes nothing', async () => {
   assert.equal(woke.length, 0);
 });
 
-test('the waiting files move into a new chat, "Waiting with Shiori", named by annai, with their short names; its first open asks her once, with the wake\'s words', async (t) => {
+test('the waiting files move into a new chat, "Waiting with Shiori", named by annai, with their short names; its first open asks her once, to say what is there and ask the user, filing nothing', async (t) => {
   useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'speak', input: { text: 'I filed your flight.' } }, { name: 'sleep', input: {} }] }]]);
   await k.ws.write(SYS_WAITING, '/files/flight.pdf', utf8('ANNAI AIR AN 123'), { author: 'user', type: 'application/pdf' });
@@ -162,17 +162,23 @@ test('the waiting files move into a new chat, "Waiting with Shiori", named by an
   await k.agent.idle();
   assert.equal(k.requests.length, 1);
   const asked = JSON.stringify(k.requests[0].messages);
-  assert.match(asked, /While no trip was open, the user handed you files/);
-  assert.match(asked, /move_file/);
+  // One text for every source (an older annai's waiting files, an old backup's, an Undo's): she says what is there and asks; nothing is filed until the user says.
+  assert.match(asked, /has not just handed them to you and has asked for nothing yet/);
+  assert.match(asked, /tell the user what is there, a line for each, and ask what they want done with them/);
+  assert.match(asked, /Until they answer, file nothing: don't move, rename or delete a file, and write no booking or plan item/);
+  assert.match(asked, /When they tell you what to do, do it the way you file a hand-over: .*move_file/);
+  assert.match(asked, /A pasted text \(pasted-….txt\) that isn't a booking: delete it/);
+  assert.match(asked, /A calendar file's events go on the plan only if they ask for that/);
+  assert.doesNotMatch(asked, /While no trip was open|handed you files, and they waited|Never ask where a file goes/, 'not the old words: they said the user handed the files and told her to file them');
   assert.doesNotMatch(asked, /flight\.pdf|hotel\.png/, 'the wake names no file');
 });
 
-test('a run cut off after the wake, then after the first file, then a whole run: every file is in a waiting chat once, whole, with its short name; each chat has its wake; nothing waits (Review Focus 1)', async () => {
+test('a run cut off before its first file, then after it, then a whole run: every file is in a waiting chat once, whole, with its short name; the wake comes after the moves, so none is written for a chat the cut left short; nothing waits (Review Focus 1)', async () => {
   for (const [first, second] of [[0, 1], [1, 0], [1, 1], [0, 0]]) {
     const { store, ws, hand } = await kit();
     for (const n of ['flight.pdf', 'hotel.pdf', 'car.pdf']) await hand(n, `the ${n}`);
     await ws.write(SYS_WAITING, '/names.json', { '/files/flight.pdf': 'ANNAI AIR flight · Nov 20', '/files/car.pdf': 'A car in Testville' }, { author: 'shiori' });
-    // Each cut run: the chat is made and its wake written, then the store fails after `files` moves.
+    // Each cut run: the chat is made, then the store fails after `files` moves: no wake is written (it says files are there, and comes after the moves).
     for (const files of [first, second]) {
       let moves = files;
       const cut = new Workspace(store, { schemaFor: ws.schemaFor });
@@ -184,7 +190,9 @@ test('a run cut off after the wake, then after the first file, then a whole run:
     assert.deepEqual(await waitingFiles(ws), [], `${first}, ${second}`);
     const chats = await waitingChats(store, ws);
     assert.equal(chats.length, 3);
-    for (const c of chats) assert.equal(c.wakes, 1, `${first}, ${second}: each chat has its wake`);
+    // The two cut runs' chats have no wake, whatever they hold; the whole run's chat has its wake and holds files, so no wake says files are there when none are.
+    assert.deepEqual(chats.map((c) => c.wakes).sort(), [0, 0, 1], `${first}, ${second}: only the whole run's chat has its wake`);
+    assert.ok(/** @type {any} */ (chats.find((c) => c.wakes)).files.length > 0, `${first}, ${second}: the chat with the wake holds files`);
     const all = chats.flatMap((c) => c.files).sort();
     assert.deepEqual(all, ['/files/car.pdf', '/files/flight.pdf', '/files/hotel.pdf'], `${first}, ${second}: each file once`);
     for (const c of chats) {

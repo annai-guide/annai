@@ -28,7 +28,7 @@ test('handedOf: a reference, by the path Shiori sees', () => {
 });
 
 test('shownPath: a conversation\'s file as /trip/ (the waiting space\'s /waiting/ went with the no-trip conversation, timeline stage 7)', () => {
-  assert.equal(shownPath('trip-x', '/files/a.pdf'), '/trip/files/a.pdf');
+  assert.equal(shownPath('/files/a.pdf'), '/trip/files/a.pdf');
 });
 
 /** A phone of annai's in memory, as handOver sees it: a trip open, what she is sent, the cards. @param {{ full?: string }} [o] full: a path whose write fails as storage full */

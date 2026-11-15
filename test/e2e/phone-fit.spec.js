@@ -300,8 +300,8 @@ const coveredControls = (page) => page.evaluate(() => {
 });
 
 const PNG1 = { name: 'gate.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64') };
-/** The card annai raises when no conversation can be made (a store that fails), with Dismiss alone. */
-const CARD = "That conversation didn't open";
+/** The card annai raises when the camera has no conversation to keep its photo in and none can be made (a store that fails), with Dismiss alone. */
+const CARD = "The photo wasn't added";
 /**
  * A system card, as annai raises one: the dock's camera when nothing is open and no draft can be made (until timeline stage 7, the camera's "Open a trip
  * first", with no trip open). The page's own classes, as modules are shared: from then on its conversation reads as none, and the draft fails.

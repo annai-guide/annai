@@ -11,7 +11,11 @@ export const ME = 'me';
 export const SYS = 'sys';
 export const SYS_SETTINGS = 'sys:settings';
 export const SYS_PLUGINS = 'sys:plugins';
-/** What the user handed Shiori while no trip was open waits here, outside every trip and outside /me/, until she files it (waiting.js). */
+/**
+ * Once where what the user handed Shiori while no trip was open waited, outside every trip and outside /me/. Nothing handed goes here now (the open conversation takes
+ * it, the draft when nothing else is open): only an Undo whose files have no trip to go back to, and an old backup's import, fill it, and an older annai's files are
+ * in it at the first start. waiting.js moves what is here into a chat of its own.
+ */
 export const SYS_WAITING = 'sys:waiting';
 /** This device's own scope: never exported, never imported (see ensureDeviceScope). */
 export const SYS_DEVICE = 'sys:device';

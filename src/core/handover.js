@@ -9,7 +9,7 @@
  */
 
 import { NAMES_FILE, readNames } from './names.js';
-import { moveFile, FILE_HERE } from './waiting.js';
+import { moveFile, FILE_HERE, PASTED_TEXT } from './waiting.js';
 import { blobJSON, blobBytes } from './reach.js';
 import { SYS_WAITING, DRAFT_TITLE, talks } from './scopes.js';
 
@@ -54,7 +54,7 @@ export function handOverText(files, o = {}) {
       inTrip ? FILE_HERE : '',
       ...fresh.filter((f) => f.path.startsWith('/trip/') && Number(f.planned) > 0).slice(0, NAMED)
         .map((f) => `${quotedPath(f.path)}: annai put its ${f.planned === 1 ? '1 event' : `${f.planned} events`} on the plan already, so don't add ${f.planned === 1 ? 'it' : 'them'} again.`),
-      fresh.some(pasted) ? "A pasted text (pasted-….txt) that isn't a booking: delete it, so it isn't kept. One that is stays with its booking." : '',
+      fresh.some(pasted) ? PASTED_TEXT : '',
       fresh.length ? `Give each a short name for what it is ("ANNAI AIR flight · Nov 20"), up to 80 characters, in names.json beside it (/trip/names.json), with patch, keyed by its path there ("/files/…"). Then say what you did.` : '',
     ]),
   ].filter(Boolean).join(' ');

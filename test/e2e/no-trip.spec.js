@@ -1,5 +1,12 @@
 import { test, expect } from '@playwright/test';
-import { openApp, FIRST_DRAW, startTrip } from './helpers.js';
+import { openApp, FIRST_DRAW, startTrip, startModelServer, anthropicToolReply, addProvider, waitForServiceWorker, pickFile, fixtureFiles, zipOf } from './helpers.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
+import { Workspace } from '../../src/core/workspace.js';
+import { ensureBaseScopes } from '../../src/core/scopes.js';
+import { record } from '../../src/core/agent/log.js';
+import { exportArchive, PRESETS } from '../../src/core/archive.js';
+
+const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 
 // Timeline stage 7: `me`, the old conversation outside any trip, is a read-only row on home (the user, 2026-11-05, "Read-only row (Recommended)": "You
 // can read it; talking starts a new chat."), and with nothing else open the standing draft is (2026-11-14, "Open the new conversation (Recommended)").
@@ -205,4 +212,177 @@ test('files an older annai left waiting with Shiori are in a conversation of the
   await page.goto('/#/trips');
   await page.reload();
   await expect(page.locator('.trip-card', { has: page.locator('.name', { hasText: 'Waiting with Shiori' }) })).toHaveCount(1, FIRST_DRAW);
+});
+
+/** The files a conversation holds, the files still waiting with Shiori, and the conversation's wake texts, as the store has them. @param {import('@playwright/test').Page} page @param {string} scope */
+const spaceOf = (page, scope) => page.evaluate(async (scope) => {
+  const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+  const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+  const store = await createIdbStore();
+  const ws = new Workspace(store);
+  const wakes = await store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types: ['wake'] }));
+  const out = {
+    files: (await ws.list(scope, '/files/')).map((f) => f.path), bookings: (await ws.list(scope, '/bookings/')).map((f) => f.path),
+    waiting: (await ws.list('sys:waiting', '/files/')).map((f) => f.path),
+    wakes: wakes.flatMap((/** @type {any} */ e) => (e.data.reasons ?? []).map((/** @type {any} */ r) => String(r.text ?? ''))),
+  };
+  store.close();
+  return out;
+}, scope);
+
+const waitingRow = (/** @type {import('@playwright/test').Page} */ page) => page.locator('.trip-card', { has: page.locator('.name', { hasText: 'Waiting with Shiori' }) });
+
+test('Undo of a hand-over whose files have nowhere to go back to: the toast says so, home shows a new "Waiting with Shiori" chat holding the file, the draft is open, and she asks what to do first, filing nothing (review probe B)', async ({ page }) => {
+  const llm = await startModelServer({ '/b/v1/messages': [
+    sse(anthropicToolReply([{ name: 'speak', input: { text: 'There is one file here, a flight. What should I do with it?' } }, { name: 'sleep', input: {} }])),
+    sse(anthropicToolReply([{ name: 'sleep', input: {} }])),
+  ] });
+  try {
+    await openApp(page, '#/trips');
+    // A trip she started for a hand-over, from a trip the user removed since: its file has nowhere to go back to. No model yet, so opening it wakes nothing.
+    const started = await page.evaluate(async () => {
+      const load = (/** @type {string} */ u) => import(u);
+      const { createIdbStore } = await load('/src/core/store-idb.js');
+      const { Workspace } = await load('/src/core/workspace.js');
+      const { createTrip, removeTrip } = await load('/src/core/scopes.js');
+      const { record } = await load('/src/core/agent/log.js');
+      const { moveFile } = await load('/src/core/waiting.js');
+      const store = await createIdbStore();
+      const ws = new Workspace(store);
+      const origin = await createTrip(ws, { title: 'Big Sur' });
+      await ws.write(origin, '/files/flight.pdf', 'ANNAI AIR AN 123, Testville to Laterton', { author: 'user', type: 'application/pdf', handover: 'h-2' });
+      const trip = await createTrip(ws, { title: 'Testville · Mar 12' }, { author: 'shiori', handover: 'h-2' });
+      await record(store, trip, { type: 'msg.user', actor: 'user', data: { handed: [], handover: 'h-2', from: origin }, texts: [['text', '(files)']] });
+      await record(store, origin, { type: 'handover.moved', actor: 'shiori', data: { handover: 'h-2', to: trip, started: true, count: 1 } });
+      await moveFile(ws, { scope: origin, path: '/files/flight.pdf' }, trip, { handover: 'h-2' });
+      await record(store, trip, { type: 'out.speak', actor: 'shiori', data: { id: 's-1' }, texts: [['text', 'I started a trip for your flight.']] });
+      await removeTrip(store, origin);
+      store.close();
+      return trip;
+    });
+    await page.reload();
+    await page.goto(`/#/trip/${encodeURIComponent(started)}/talk`);
+    await page.getByRole('button', { name: 'Undo what Shiori did with these files' }).click();
+    await expect(page.getByText('Undone. Testville · Mar 12 is removed, and your files are waiting with Shiori.')).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+    // A new chat holds the file; nothing waits; its wake asks her to ask (and files nothing); the draft is open meanwhile.
+    await expect(waitingRow(page)).toBeVisible();
+    const chat = decodeURIComponent(String(await waitingRow(page).getAttribute('href')).split('/')[2]);
+    const held = await spaceOf(page, chat);
+    expect(held.files).toEqual(['/files/flight.pdf']);
+    expect(held.waiting).toEqual([]);
+    expect(held.wakes.join(' ')).toContain('Until they answer, file nothing');
+    const activeTrip = () => page.evaluate(async () => {
+      const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+      const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+      const { readAppSettings } = await import(/** @type {string} */ ('/src/core/settings.js'));
+      const store = await createIdbStore();
+      const a = (await readAppSettings(new Workspace(store))).activeTrip;
+      store.close();
+      return a;
+    });
+    await expect.poll(async () => (await recordOf(page, String(await activeTrip())))?.draft).toBe(true);
+    // Now she has a model: opening the chat starts her turn, with the wake's words, and she says what is there and asks.
+    await waitForServiceWorker(page);
+    await page.goto('/#/models');
+    await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${llm.origin}/b`, key: 'sk-test-b', model: 'b-model' });
+    await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
+    await page.getByRole('button', { name: 'Add to main' }).click();
+    await page.goto('/#/trips');
+    await waitingRow(page).click();
+    await expect(page.locator('ol.convo')).toContainText('There is one file here, a flight. What should I do with it?', { timeout: 30_000 });
+    const sent = llm.bodies('/b/v1/messages').map((b) => JSON.stringify(b)).find((b) => b.includes('were waiting with you'));
+    expect(sent, 'her first request carries the wake').toBeTruthy();
+    expect(sent).toContain('has not just handed them to you and has asked for nothing yet');
+    expect(sent).toContain('Until they answer, file nothing');
+    // She filed nothing: the file is where it was, and there is no booking.
+    const after = await spaceOf(page, chat);
+    expect(after.files).toEqual(['/files/flight.pdf']);
+    expect(after.bookings).toEqual([]);
+  } finally {
+    await llm.stop();
+  }
+});
+
+test('an old backup imported with "Replace my profile and memory": its waiting files are in a "Waiting with Shiori" chat before the results are drawn, and home shows the "Shiori, no trip" row without a reload', async ({ page }) => {
+  // The backup of an older annai: a file waiting with Shiori, and a line of the user's in `me`.
+  const store = createMemoryStore();
+  const ws = new Workspace(store);
+  await ensureBaseScopes(ws);
+  await ws.write('sys:waiting', '/files/hotel.txt', 'Hotel Aurora Test, Nov 20–27', { author: 'user', type: 'text/plain' });
+  await ws.write('sys:waiting', '/names.json', { '/files/hotel.txt': 'Hotel Aurora Test stay' }, { author: 'shiori' });
+  await record(store, 'me', { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'Anything near Testville?']], now: Date.now() - 3_600_000 });
+  const { blob } = await exportArchive(store, { kind: 'everything', include: PRESETS.backup, app: '0.1.0' });
+  await openApp(page, '#/trips');
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  await expect(meRow(page)).toHaveCount(0); // read once, and `me` has no line of the user's yet
+  await expect(waitingRow(page)).toHaveCount(0);
+  await page.getByLabel('Open an annai file').setInputFiles({ name: 'older-annai.annai.zip', mimeType: 'application/zip', buffer: Buffer.from(await blob.arrayBuffer()) });
+  await page.getByLabel('Replace my profile and memory with the ones in this file').check();
+  await page.getByRole('button', { name: 'Import' }).click();
+  await expect(page.getByText('Imported.')).toBeVisible();
+  // The files moved before the results, the wake is in the new chat, and nothing waits; home, drawn again with no reload, shows both rows.
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
+  await expect(waitingRow(page)).toBeVisible(FIRST_DRAW);
+  await expect(meRow(page)).toBeVisible();
+  const chat = decodeURIComponent(String(await waitingRow(page).getAttribute('href')).split('/')[2]);
+  const held = await spaceOf(page, chat);
+  expect(held.files).toEqual(['/files/hotel.txt']);
+  expect(held.waiting).toEqual([]);
+  expect(held.wakes.join(' ')).toContain('Until they answer, file nothing');
+  await meRow(page).click();
+  await expect(page.locator('ol.convo')).toContainText('Anything near Testville?');
+});
+
+test("an old #/waiting/file?path=… address goes home, in place of its entry", async ({ page }) => {
+  await openApp(page, '#/trips');
+  await page.goto('/#/waiting/file?path=%2Ffiles%2Fa.pdf');
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  expect(hashOf(page)).toBe('#/trips');
+});
+
+test("in `me`'s read-only lines a plugin's kind of card is drawn as annai draws its own: its title, and none of the plugin's buttons, which could send a line into the open conversation", async ({ page }) => {
+  await openApp(page, '#/trips');
+  await pickFile(page, { name: 'trail-send.zip', mimeType: 'application/zip', buffer: await zipOf(await fixtureFiles('trail-send')) });
+  await page.getByRole('button', { name: 'Install anyway', exact: true }).click();
+  await expect(page.locator('.card', { hasText: 'Trail send' }).getByText('On', { exact: true })).toBeVisible();
+  const card = { type: 'trail-send', data: { name: 'Pfeiffer Falls' }, title: 'Pfeiffer Falls trail' };
+  await page.goto('/#/trips');
+  const kyoto = await startTrip(page, 'Kyoto');
+  await writeIn(page, 'me', [{ type: 'msg.user', actor: 'user', text: 'A trail near Testville?', ago: 90 }, { type: 'out.show', actor: 'shiori', data: { card }, ago: 89 }]);
+  await writeIn(page, kyoto, [{ type: 'out.show', actor: 'shiori', data: { card }, ago: 1 }]);
+  // The same card in an open conversation is the plugin's, button and all.
+  await page.goto(`/#/trip/${encodeURIComponent(kyoto)}/talk`);
+  await expect(page.getByRole('button', { name: 'Ask about Pfeiffer Falls' })).toBeVisible(FIRST_DRAW);
+  // In `me`'s old lines it is a title, with nothing to tap.
+  await page.goto('/#/talk/me');
+  await expect(page.locator('ol.convo')).toContainText('A trail near Testville?', FIRST_DRAW);
+  await expect(page.locator('ol.convo')).toContainText('Pfeiffer Falls trail');
+  await expect(page.locator('ol.convo button')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Ask about Pfeiffer Falls' })).toHaveCount(0);
+});
+
+test("a trip's address whose open fails with nothing open shows `me`'s old lines read-only: no answer button, no Try again, no Undo (the scope drawn decides, not the address)", async ({ page }) => {
+  await openApp(page, '#/trips');
+  await startTrip(page, 'Osaka');
+  await page.goto('/#/trips');
+  await startTrip(page, 'Kyoto');
+  await writeIn(page, 'me', OLD);
+  await page.evaluate(async () => {
+    const { Chats } = await import(/** @type {string} */ ('/src/core/chats.js'));
+    Chats.prototype.whenReady = () => Promise.reject(new Error('The store failed.'));
+  });
+  // Removed while open: nothing else is open, and no draft can be opened. Then no conversation opens at all.
+  await page.getByRole('button', { name: 'Remove', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Kyoto' }).getByRole('button', { name: 'Remove' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  const osaka = decodeURIComponent(String(await page.locator('.trip-card', { has: page.locator('.name', { hasText: 'Osaka' }) }).getAttribute('href')).split('/')[2]);
+  await page.evaluate(async () => {
+    const { Halves } = await import(/** @type {string} */ ('/src/core/agent/halves.js'));
+    Halves.prototype.open = () => Promise.reject(new Error('The store failed.'));
+  });
+  await page.goto(`/#/trip/${encodeURIComponent(osaka)}/talk`);
+  await expect(page.locator('ol.convo')).toContainText('Anything near Testville?', FIRST_DRAW);
+  await expect(page.locator('ol.convo')).toContainText('Shall I note it?');
+  await expect(page.locator('ol.convo button')).toHaveCount(0);
 });

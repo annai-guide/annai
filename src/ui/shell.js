@@ -63,7 +63,7 @@ const SCREENS = { sees: renderSees, trips: renderTrips, trip: renderTrip, file: 
  * @param {HTMLElement} root
  * @param {{ store: any, ws: any, registry: any, plugins: any, llm?: any, agent?: any, voice?: any, live?: any, awake?: any, pack?: any, presets?: Record<string, string>, backups?: any, sim?: any, push?: any,
  *   updates: import('./updates.js').Updates, chats?: import('../core/chats.js').Chats, appended?: (fn: (evs: import('../core/types.js').EventRecord[]) => void) => () => void,
- *   moveWaiting?: () => Promise<string | null>, version: string }} core
+ *   moveWaiting: () => Promise<string | null>, version: string }} core
  *   appended: follows the log entries each committed write appended, until what it returns is called; moveWaiting: the files waiting with Shiori into a
  *   conversation of their own (waiting.js), after an import and after an Undo that sent files back there, before the screen that follows is drawn
  */
@@ -524,8 +524,8 @@ export function startShell(root, core) {
   // A trip opened by the user's choice on annai's card (carryOn, chose). From home the address follows into the conversation (the timeline design,
   // "Moving into a trip"), once nothing typed would be lost: a new entry, so Back returns home, which opens nothing. Elsewhere the screen is drawn
   // again: a conversation left goes to the open one at its redraw (render: a replace, as its address is stale), Details and Settings stay, their top bar the trip.
-  /** @type {any} */ (core.agent)?.on?.('went', (/** @type {{ trip: string, chose?: boolean }} */ { trip, chose }) => {
-    if (!chose || parseHash(location.hash).name !== 'trips') return redraw();
+  /** @type {any} */ (core.agent)?.on?.('went', (/** @type {{ trip: string }} */ { trip }) => {
+    if (parseHash(location.hash).name !== 'trips') return redraw();
     whenFree(() => { if (parseHash(location.hash).name === 'trips' && core.agent?.target === trip) ctx.go(talkHref(trip)); });
   });
   render({ moved: true });

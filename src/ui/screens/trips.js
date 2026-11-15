@@ -241,10 +241,12 @@ async function herLast(ctx, scope) {
   return e ? String({ ...e.data, ...(await storedTexts(ctx.store, e)) }.text ?? '') : '';
 }
 
-/** When the user last talked in `me`, read once a page load: it takes no more lines. @type {Promise<number | null> | null} */
+/** When the user last talked in `me`, read once a page load: it takes no more lines, but an import can replace it (forgetMeTalked). @type {Promise<number | null> | null} */
 let meAt = null;
 /** @param {any} store */
 const meTalked = (store) => (meAt ??= lastTalked(store, ME).catch(() => { meAt = null; return null; }));
+/** An import replaced `me`: its row is read again at the next draw of home, so it is right without a reload. */
+export const forgetMeTalked = () => { meAt = null; };
 
 /**
  * What Start a trip last said went wrong, kept as `unfolded` is so a redraw of home (the clock's) draws it again: it goes when the user types into the form,

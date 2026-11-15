@@ -27,7 +27,7 @@ export function openTrip(ctx) {
   return ctx.tripScope;
 }
 
-/** The address of the conversation being opened, or open: a trip's own, else the one outside any trip. @param {any} ctx */
+/** The address of the conversation being opened, or open: its own; with none, "#/talk", which the router sends to the open conversation or home. @param {any} ctx */
 export const talkOf = (ctx) => (ctx.agent?.target ? talkHref(ctx.agent.target) : '#/talk');
 
 /**

@@ -885,6 +885,14 @@ test("undoneWords: what Undo of a hand-over did, and each trip that stays that i
   assert.equal(undoneWords({ ...none, waiting: true, changed: [{ id: 'k', title: 'Kyoto' }, { id: 'b', title: 'Big Sur' }], kept: 1 }),
     'Undone. Your files are waiting with Shiori again. What Shiori did in Kyoto and Big Sur is undone too. Left 1 file as you changed it.');
   assert.equal(undoneWords({ ...none, back: [{ id: 'a', title: 'Anchorage' }] }), 'Undone. Your files are back in Anchorage.');
+  // Some files went back to a trip and the rest have nowhere to go: both places are said, with or without a removal.
+  assert.equal(undoneWords({ ...none, waiting: true, back: [{ id: 'k', title: 'Kyoto' }, { id: 'b', title: 'Big Sur' }] }),
+    'Undone. Some of your files are back in Kyoto and Big Sur, and the rest are waiting with Shiori.');
+  assert.equal(undoneWords({ ...none, removed: ['Osaka'], waiting: true, back: [{ id: 'k', title: 'Kyoto' }] }),
+    'Undone. Osaka is removed. Some of your files are back in Kyoto, and the rest are waiting with Shiori.');
+  assert.equal(undoneWords({ ...none, removed: ['Osaka', 'Nara'], waiting: true, back: [{ id: 'k', title: 'Kyoto' }] }),
+    'Undone. Osaka and Nara are removed. Some of your files are back in Kyoto, and the rest are waiting with Shiori.');
+  assert.equal(undoneWords({ ...none, removed: ['Osaka'], waiting: true }), 'Undone. Osaka is removed, and your files are waiting with Shiori.');
   assert.equal(undoneWords(none), 'Undone.');
 });
 
@@ -906,8 +914,11 @@ test("wentWords: the chat's line for a move (open_trip), by the trip's title, or
   assert.equal(traceSummary(/** @type {any} */ ({ seq: 1, ts: 0, type: 'conversation.moved', actor: 'shiori', data: { to: 'trip-k', title: 'Kyoto' } })), 'moved to Kyoto · trip-k');
 });
 
-test('parseHash: an old #/waiting/file?path=… names no screen (the shell draws home for it), since timeline stage 7', () => {
+test('an old #/waiting/file?path=… names no screen and goes home, in place of its entry (as the plan says: old bookmarks go home), since timeline stage 7', () => {
   assert.equal(parseHash('#/waiting/file?path=%2Ffiles%2Fa.pdf').name, 'waiting');
+  assert.equal(redirectOf(parseHash('#/waiting/file?path=%2Ffiles%2Fa.pdf'), 'trip-a'), '#/trips');
+  assert.equal(redirectOf(parseHash('#/waiting/file?path=%2Ffiles%2Fa.pdf'), null), '#/trips');
+  assert.equal(redirectOf(parseHash('#/waiting'), 'trip-a'), '#/trips');
 });
 
 test('Undo tapped while Shiori works stops her turn and waits for it to settle before it takes anything back', async () => {

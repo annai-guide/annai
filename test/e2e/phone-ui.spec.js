@@ -398,8 +398,8 @@ test('at 320 x 544 a card shows its title and its buttons in one row, clear of e
   await expect(long.getByRole('button', { name: 'More' })).toBeVisible();
   await expect(long.locator('.acts').getByRole('button', { name: 'More' })).toBeInViewport({ ratio: 1 });
   await long.getByRole('button', { name: 'Dismiss' }).click();
-  await raise(page, [{ title: 'Open a trip first', body: 'Photos are kept in a trip. Open one from Trips, then take the photo again.' }]);
-  const short = page.locator('.notice', { hasText: 'Open a trip first' });
+  await raise(page, [{ title: "The photo wasn't added", body: 'annai could not start a conversation to keep it in. Take the photo again.' }]);
+  const short = page.locator('.notice', { hasText: "The photo wasn't added" });
   await expect(short).toBeVisible();
   // Even its two lines would sit behind the buttons: they are behind More, in the buttons' row (the second review: no words behind them).
   await expect(short.locator('.acts').getByRole('button', { name: 'More' })).toBeInViewport({ ratio: 1 });

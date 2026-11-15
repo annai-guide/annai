@@ -1,6 +1,6 @@
 /**
  * Hash routes: "#/<screen>" (shell.js's SCREENS), "#/trip/<id>/<talk, file, plan, booking, item, recap or replay>", "#/talk/me" (`me`'s lines, read-only),
- * plugins' pages: "#/ext/<plugin>/<screen>", "#/plugin-page/<plugin>/<page>", "#/trip/<id>/ext/<plugin>/<tab>". An old address of a file that waited with Shiori names no screen: home.
+ * plugins' pages: "#/ext/<plugin>/<screen>", "#/plugin-page/<plugin>/<page>", "#/trip/<id>/ext/<plugin>/<tab>". An old address of a file that waited with Shiori names no screen: it goes home (redirectOf).
  * "#import=<url>" (spec §12.3) becomes the import screen with that URL. A mangled link (a broken %-escape) opens Trips.
  * @param {string} hash
  * @returns {{ name: string, parts: string[], params: Record<string, string> }}
@@ -30,11 +30,13 @@ function parse(hash) {
 
 /**
  * Where an address that names no trip goes: "#/talk" and "#/plan" are the open conversation's, at its own address, so phone Back never shows
- * another conversation; with none open (no draft could be made), home. Null for anything else: "#/talk/me", `me`'s read-only lines, included.
+ * another conversation; with none open (no draft could be made), home. An old "#/waiting/…" (a file that waited with Shiori, whose screen is gone) goes
+ * home too. Null for anything else: "#/talk/me", `me`'s read-only lines, included.
  * @param {{ parts: string[] }} route @param {string | null} target the conversation being opened, or open
  * @returns {string | null}
  */
 export function redirectOf(route, target) {
+  if (route.parts[0] === 'waiting') return '#/trips';
   if (route.parts.length !== 1 || !['talk', 'plan'].includes(route.parts[0])) return null;
   return target ? `#/trip/${encodeURIComponent(target)}/${route.parts[0]}` : '#/trips';
 }

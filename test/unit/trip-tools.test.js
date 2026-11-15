@@ -67,7 +67,7 @@ test('start_trip while a trip is open: the new trip keeps its files waiting to b
   assert.deepEqual(wake.data.reasons[0].files, ['/files/temple.pdf']);
   assert.equal(await k.ws.read(k.trip, '/files/temple.pdf'), undefined);
   const result = (await k.events(['tool.result'])).find((/** @type {any} */ e) => e.data.name === 'start_trip');
-  assert.match(result.data.content ?? '', /doesn't open/);
+  assert.match(result.data.content ?? '', /Its files: .*It doesn't open\. Its files wait to be read there\. Tell the user where they went\./);
 });
 
 test('start_trip needs only a title; a date that is not one is refused in words', async (t) => {
@@ -82,6 +82,9 @@ test('start_trip needs only a title; a date that is not one is refused in words'
   assert.match(bad.data.content, /YYYY-MM-DD/);
   assert.equal(await tripNamed(k, 'Somewhere'), undefined);
   assert.equal(good.data.ok, true);
+  // No file moved, so it says none wait there.
+  assert.match(good.data.content, /doesn't open\.$/);
+  assert.doesNotMatch(good.data.content, /files wait|Tell the user where/);
   const trip = await tripNamed(k, 'Just a name');
   const tj = await k.ws.readJSON(trip.id, '/trip.json');
   assert.equal('start' in tj || 'end' in tj, false);

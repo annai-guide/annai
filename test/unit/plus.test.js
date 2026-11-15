@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { newConversation } from '../../src/ui/plus.js';
+import { newConversation, openReadyDraft } from '../../src/ui/plus.js';
 
 /** @param {{ ready?: string | null, tap?: string, dock?: any, voice?: boolean, whenReady?: () => Promise<string> }} [o] */
 function kit(o = {}) {
@@ -70,4 +70,16 @@ test("no draft could be made: the card says so, and a + tapped meanwhile fires n
   await new Promise((r) => setTimeout(r, 0));
   assert.equal(log.length, 2);
   assert.equal(location.hash, '#/trips');
+});
+
+test('the dock\'s tap with nothing open: a ready draft opens with nothing awaited, so what the tap does next stays inside the gesture; none ready, nothing opens and the caller waits (openReadyDraft)', () => {
+  const ready = kit();
+  assert.equal(openReadyDraft(ready.ctx), true);
+  assert.deepEqual(ready.log, ['open trip-d']); // synchronously, before this line: the dock taps right after
+  assert.equal(ready.ctx.agent.target, 'trip-d');
+  assert.equal(openReadyDraft(ready.ctx), true);
+  assert.deepEqual(ready.log, ['open trip-d'], 'already open: not opened again');
+  const none = kit({ ready: null });
+  assert.equal(openReadyDraft(none.ctx), false);
+  assert.deepEqual(none.log, []);
 });

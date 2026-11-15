@@ -759,7 +759,7 @@ export class Agent {
     // Something owed when it opens: a restart wake, unless the other half takes it up (Half.restart). A turn annai was killed in is taken
     // up whatever its transcript says: what ran then isn't known (a line cut in its playback, a call after it that never ran). With nothing open,
     // nothing: `me` takes no more turns (timeline stage 7), so a removal or a failed start never queues a restart there.
-    const owed = trip !== null && Boolean(repaired || transcript.unanswered) && (await (this.#half.restart?.() ?? true));
+    const owed = scope !== ME && Boolean(repaired || transcript.unanswered) && (await (this.#half.restart?.() ?? true));
     if (generation !== this.#generation) return;
     this.trip = trip;
     this.scope = scope;
@@ -1566,7 +1566,7 @@ export class Agent {
       while (!this.#opens && !this.#still && this.#queue.some((w) => w.scope === this.scope)) {
         // Nothing open (no draft could be made): no turn runs in `me`, which takes no more (timeline stage 7). What came is written into its log and its
         // reminders said, as for a conversation that isn't open; a failed write keeps them queued.
-        if (this.trip === null) {
+        if (this.scope === ME) {
           await this.#keepWakes((w) => w.scope === ME);
           continue;
         }

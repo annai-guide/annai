@@ -7,8 +7,9 @@ import { FILE_BOOKING } from './bookings.js';
 import { tc } from './l10n.js';
 
 /**
- * The waiting space (the bookings-and-trips design, my call 3): what the user hands Shiori while no trip is open waits here, in
- * a space of its own, so no trip sees it, until she files it into a trip, which gives its space back here.
+ * The waiting space (the bookings-and-trips design, my call 3): once where what the user handed Shiori while no trip was open waited, in a space of its own,
+ * so no trip saw it. Nothing handed goes there now (the draft conversation is open when nothing else is). Only an Undo whose files have no trip to go back
+ * to, and an old backup's waiting files on import, fill it; an older annai's are in it at the first start. `moveWaitingToChat` empties it, into a chat.
  * @typedef {import('./workspace.js').Workspace} Workspace @typedef {import('./types.js').FileEntry} FileEntry
  */
 
@@ -18,16 +19,24 @@ export const waitingFiles = (ws) => ws.list(SYS_WAITING, '/files/');
 /** How she files what was handed to her in a chat or trip: what belongs to another trip she moves there, the rest she files here. */
 /* en */
 export const FILE_HERE = `First look in list_trips: one that belongs to another of their trips you move_file there, and say so; the rest you file here. ${FILE_BOOKING} A photo that isn't a booking stays among the trip's photos.`;
-/** What she is told in the conversation the waiting files move into, before they move: it names no file, so a run cut off never names one that isn't there. */
+/** How she treats a pasted text she files (handOverText says it of a hand-over, the waiting chat's wake of what she files for the user). */
 /* en */
-const MOVED_HERE = `While no trip was open, the user handed you files, and they waited with you. annai has moved them into this conversation's /trip/files/, with any short names you gave them. Read each one. ${FILE_HERE} If this conversation becomes a trip, patch /trip/trip.json with its title and dates. Then say what you did.`;
+export const PASTED_TEXT = "A pasted text (pasted-….txt) that isn't a booking: delete it, so it isn't kept. One that is stays with its booking.";
+/**
+ * What she is told in the conversation the waiting files moved into. One text, true of every source (an older annai's waiting files, an old backup's, an
+ * Undo's files with no trip to go back to): she says what is there and asks the user what to do, and files nothing until they say (the user, 2026-11-14,
+ * "Ask you first": "Nothing gets filed without your word, so an Undo stays undone"). It describes what to say and quotes none of it, for she repeats words she is given.
+ */
+/* en */
+const MOVED_HERE = `annai has moved files that were waiting with you into this conversation's /trip/files/, with any short names you gave them: ones kept for you before (by an older annai, or in an old backup), or ones an Undo took back out of a trip. The user has not just handed them to you and has asked for nothing yet. Read each one, then tell the user what is there, a line for each, and ask what they want done with them, in their language as the Languages section says. Until they answer, file nothing: don't move, rename or delete a file, and write no booking or plan item. When they tell you what to do, do it the way you file a hand-over: ${FILE_HERE} ${PASTED_TEXT} A calendar file's events go on the plan only if they ask for that. Then say what you did.`;
 
 /**
  * The files waiting with Shiori go into a conversation of their own, "Waiting with Shiori" (timeline stage 7: no screen shows the waiting space any more,
- * and nothing new waits there). With none, nothing is made. The chat is annai's (system), so her snapshot reads its name as a guess she may improve. Its
- * wake comes first and names no file, so a run cut off never leaves files she isn't told of; then each file moves with its short name, a transaction each.
- * The chat isn't open, so no turn starts before the moves end. Each run makes its own chat: a cut run's rest goes to a new one at the next run (the user,
- * 2026-11-14, "A new chat each run (Recommended)"). No setting is stored. Run at start, after an import and after an Undo that sends files back here.
+ * and nothing new waits there). With none, nothing is made. The chat is annai's (system), so her snapshot reads its name as a guess she may improve. Each
+ * file moves with its short name, a transaction each, and her wake comes after them: it says files are there, so a run cut off before it never leaves a chat
+ * whose wake is untrue. A cut run leaves files in a chat with no wake (the user finds them in its Details) and the rest for a new chat at the next run (the
+ * user, 2026-11-14, "A new chat each run (Recommended)"). The chat isn't open, so no turn starts before the moves end. No setting is stored. Run at start, after
+ * an import and after an Undo that sends files back here.
  * @param {Workspace} ws @param {(w: { kind: 'file', scope: string, text: string }) => Promise<unknown>} wake Shiori's, which writes it into a conversation that isn't open
  * @returns {Promise<string | null>} the chat, or null when nothing waited
  */
@@ -35,8 +44,8 @@ export async function moveWaitingToChat(ws, wake) {
   const files = await waitingFiles(ws);
   if (!files.length) return null;
   const id = await createTrip(ws, { title: tc("a conversation's name")`Waiting with Shiori` }, { author: 'system' });
-  await wake({ kind: 'file', scope: id, text: MOVED_HERE });
   for (const f of files) await moveFile(ws, { scope: SYS_WAITING, path: f.path }, id, { author: 'system' });
+  await wake({ kind: 'file', scope: id, text: MOVED_HERE });
   return id;
 }
 

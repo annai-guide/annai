@@ -36,11 +36,11 @@ export function pastedName(ms) {
   return `pasted-${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}-${two(d.getHours())}${two(d.getMinutes())}.txt`;
 }
 
-/** A path in a conversation's scope as Shiori sees it, under /trip/. @param {string} _scope @param {string} path */
-export const shownPath = (_scope, path) => `/trip${path}`;
+/** A path in a conversation's scope as Shiori sees it, under /trip/. @param {string} path */
+export const shownPath = (path) => `/trip${path}`;
 
 /** A file kept already, as Shiori is told of it (a reference). @param {{ scope: string, path: string }} ref @param {{ type: string, name: string }} o @returns {HandedFile} */
-export const handedOf = (ref, o) => ({ path: shownPath(ref.scope, ref.path), type: o.type, name: o.name, new: false });
+export const handedOf = (ref, o) => ({ path: shownPath(ref.path), type: o.type, name: o.name, new: false });
 
 /** An attachment's own name, for its chip. @param {Attachment} a */
 const nameOf = (a) => ('file' in a ? String(a.file.name ?? '') : a.name || (a.path.split('/').pop() ?? a.path));
@@ -75,7 +75,7 @@ export async function handOver(ctx, text, items, o = {}) {
   }
   o.progress?.(files.length, files.length);
   const types = new Map((await ctx.ws.list(scope, '/files/')).map((/** @type {any} */ f) => [f.path, f.type]));
-  for (const k of kept) handed.push({ path: shownPath(scope, k.path), type: types.get(k.path) ?? 'application/octet-stream', name: k.name, new: true, ...(k.planned ? { planned: k.planned } : {}) });
+  for (const k of kept) handed.push({ path: shownPath(k.path), type: types.get(k.path) ?? 'application/octet-stream', name: k.name, new: true, ...(k.planned ? { planned: k.planned } : {}) });
   for (const a of items) {
     if ('file' in a || a.scope !== scope) continue;
     const entry = await ctx.store.tx(['files'], 'readonly', (/** @type {any} */ x) => x.getFile(a.scope, a.path));

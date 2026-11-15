@@ -140,11 +140,22 @@ export const wentWords = (title) => (title === null ? t`Shiori moved this to a c
  */
 export function undoneWords({ removed, kept, waiting, back, changed }) {
   const home = listed(back.map((b) => b.title));
-  const said = removed.length
-    ? waiting ? plural(removed.length, 'Undone. {0} is removed, and your files are waiting with Shiori.', 'Undone. {0} are removed, and your files are waiting with Shiori.', listed(removed))
-      : back.length ? plural(removed.length, 'Undone. {0} is removed, and your files are back in {1}.', 'Undone. {0} are removed, and your files are back in {1}.', listed(removed), home)
-        : plural(removed.length, 'Undone. {0} is removed.', 'Undone. {0} are removed.', listed(removed))
-    : waiting ? t`Undone. Your files are waiting with Shiori again.` : back.length ? t`Undone. Your files are back in ${home}.` : t`Undone.`;
+  const gone = listed(removed);
+  // Files with nowhere to go back to wait with Shiori, and those with a trip to go back to are in it: when both happened, both are said.
+  /** @type {string} */
+  let said;
+  if (!removed.length) {
+    said = waiting && back.length ? t`Undone. Some of your files are back in ${home}, and the rest are waiting with Shiori.`
+      : waiting ? t`Undone. Your files are waiting with Shiori again.` : back.length ? t`Undone. Your files are back in ${home}.` : t`Undone.`;
+  } else if (waiting && back.length) {
+    said = plural(removed.length, 'Undone. {0} is removed. Some of your files are back in {1}, and the rest are waiting with Shiori.', 'Undone. {0} are removed. Some of your files are back in {1}, and the rest are waiting with Shiori.', gone, home);
+  } else if (waiting) {
+    said = plural(removed.length, 'Undone. {0} is removed, and your files are waiting with Shiori.', 'Undone. {0} are removed, and your files are waiting with Shiori.', gone);
+  } else if (back.length) {
+    said = plural(removed.length, 'Undone. {0} is removed, and your files are back in {1}.', 'Undone. {0} are removed, and your files are back in {1}.', gone, home);
+  } else {
+    said = plural(removed.length, 'Undone. {0} is removed.', 'Undone. {0} are removed.', gone);
+  }
   return sentences(said, changed.length ? t`What Shiori did in ${listed(changed.map((c) => c.title))} is undone too.` : '',
     kept ? plural(kept, 'Left # file as you changed it.', 'Left # files as you changed them.') : '');
 }
@@ -261,12 +272,13 @@ export async function follow(agent, scope, { read, show, state }) {
  * The conversation (spec §16.2): what the user wrote, what Shiori said and showed, her questions,
  * and system cards. Her private text and reasoning stay in the trace (§7.1).
  * "#/talk/me" is `me`'s, the conversation outside any trip, read-only (the user, 2026-11-05, "Read-only row": "You can read it; talking starts a new
- * chat."): it is never opened, takes no more turns, and no button on an old line does anything; the dock rests as on home, so talking is the +.
+ * chat."): it is never opened and takes no more turns, and no button on an old line talks or changes anything (its photos, "Show what she said" and
+ * links still open); the dock rests as on home, so talking is the +. Whatever the scope drawn is `me`'s is read-only, a trip's address whose open
+ * failed with nothing open included.
  * @param {any} ctx @param {{ parts: string[] }} [route] "#/trip/<id>/talk", or "#/talk/me"
  */
 export async function renderTalk(ctx, route) {
   const agent = ctx.agent;
-  const readOnly = route?.parts[0] === 'talk' && route.parts[1] === ME;
   // At a trip's own address (#/trip/<id>/talk), moving there opens that trip.
   if (route?.parts[0] === 'trip') openTrip(ctx);
   await agent.opening.catch(() => {}); // after a start or a trip change, the conversation is still being read
@@ -276,8 +288,9 @@ export async function renderTalk(ctx, route) {
   // The lines' languages (`lang`): the font and the screen reader's voice follow them. The user's by their text; Shiori's by the language she is set to answer in, else by her text.
   const mine = wording(app);
   const hers = wording(app, true);
-  const scope = readOnly ? ME : agent.scope;
-  const rec = !readOnly && agent.trip ? await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ tx) => tx.getScope(agent.trip)) : null;
+  const scope = route?.parts[0] === 'talk' && route.parts[1] === ME ? ME : agent.scope;
+  const readOnly = scope === ME;
+  const rec = readOnly ? null : await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ tx) => tx.getScope(agent.trip));
   const title = readOnly ? t`Shiori, no trip` : rec ? scopeTitle(rec) : t`Conversation`;
   // Not a live region: `announce` says each line of hers once, spoken or not, whatever "Show what she says" is, and words heard once
   // they are in; never what you typed, nor the halves' notes.
@@ -386,7 +399,7 @@ export async function renderTalk(ctx, route) {
     return h('div', { class: 'chips handed' }, ...chips);
   };
   const undo = readOnly ? null : undoLine(ctx, scope, list);
-  const dates = !readOnly && agent.trip ? datesLine(ctx, agent.trip, list) : null;
+  const dates = readOnly ? null : datesLine(ctx, agent.trip, list);
   /** @param {any} e */
   const item = async (e) => {
     const d = e.data ?? {};
@@ -448,8 +461,9 @@ export async function renderTalk(ctx, route) {
       return null;
     }
     if (e.type === 'out.show') {
-      // `me`'s: as it showed, its choices left out.
-      const card = readOnly ? shownCard({ ...d, card: { ...d.card, choice: [] } }, { ctx, say: hers }) : shownCard(d, { ctx, onChoice: (o) => agent.send(o, { chose: true }), say: hers });
+      // `me`'s: as annai draws a card, its choices left out, and a plugin's kind of card without its plugin (whose buttons could send into the open conversation).
+      const { type: _kind, data: _data, choice: _choice, ...plain } = d.card ?? {};
+      const card = readOnly ? shownCard({ ...d, card: plain }, { ctx, say: hers }) : shownCard(d, { ctx, onChoice: (o) => agent.send(o, { chose: true }), say: hers });
       const undo = d.tune && !readOnly ? tuneUndo(ctx, d.tune) : null;
       const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: e.type, data: d }));
       return h('li', { class: lineClass(line, 'shiori') }, h('span', { class: 'who', text: cardWho(ctx, d.card ?? {}) }), card, undo, lineLabel(line));
@@ -508,8 +522,8 @@ export async function renderTalk(ctx, route) {
     }
     // Shiori read another trip (read_trip): a quiet line, by the name it had then.
     if (e.type === 'trip.read') return h('li', { class: 'system-line', text: t`Shiori read ${scopeTitle({ id: String(d.trip), title: String(d.title ?? '') })}` });
-    // Made from its type: the words stored with it are the card's English.
-    if (e.type === 'paused') return h('li', { class: 'system-line', text: t`Shiori was in the middle of something. She picks it up when you come back.` });
+    // Made from its type: the words stored with it are the card's English. Not in `me`, which takes no more turns: nothing picks it up.
+    if (e.type === 'paused') return readOnly ? null : h('li', { class: 'system-line', text: t`Shiori was in the middle of something. She picks it up when you come back.` });
     // "Start fresh" leaves a divider: everything above stays to read, search and recall; she no longer carries it in mind.
     if (e.type === 'compaction' && d.mode === 'fresh') return h('li', { class: 'fresh-divider', text: t`Started fresh` }); // a list item with its words: a separator has no name
     if (e.type === 'compaction') return h('li', { class: 'system-line', text: t`Earlier conversation summarized. The full log is in Trace.` });
@@ -816,9 +830,10 @@ function undoLine(ctx, scope, list) {
       });
       const { removed, waiting, back } = outcome;
       // Files with nowhere to go back to go into a conversation of their own, before home is drawn (timeline stage 7): never nowhere, never in two places.
-      if (waiting) await ctx.moveWaiting?.().catch((/** @type {unknown} */ e) => console.warn(/* en */ "the files waiting with Shiori couldn't be moved into a conversation", e));
+      if (waiting) await ctx.moveWaiting().catch((/** @type {unknown} */ e) => console.warn(/* en */ "the files waiting with Shiori couldn't be moved into a conversation", e));
       done();
-      // Said where the files went, whether or not a trip went, and shown there: a trip they went back to opens; a new Waiting with Shiori chat is on home, at now.
+      // Said where the files went, whether or not a trip went (both places, when some went back and the rest wait). Shown there: with no file waiting, the trip they
+      // went back to opens; with some, home, where the new Waiting with Shiori chat is, at now.
       ctx.notices.toast(undoneWords(outcome));
       const on = () => { const at = parseHash(location.hash); return at.parts[0] === 'trip' && gone.has(at.parts[1] ?? '') ? at.parts[1] : null; };
       if (!waiting && back.length) {
@@ -874,8 +889,8 @@ function undoLine(ctx, scope, list) {
 /**
  * The Conversation screen's menu, a ⋯: Details (a trip's or a chat's own page, where its name goes too: its name and dates, Export, Archive and
  * Remove), Summarize now, which runs housekeeping as it would run by itself, and Start fresh, which has Shiori start a new context from here.
- * Neither of those deletes a line (spec §6.5, §16.2). A conversation with no trip open has no Details.
- * @param {any} ctx @param {{ id: string, dated: boolean } | null} trip the conversation's trip, and whether it has dates (a trip; else a chat)
+ * Neither of those deletes a line (spec §6.5, §16.2).
+ * @param {any} ctx @param {{ id: string, dated: boolean }} trip the conversation's trip, and whether it has dates (a trip; else a chat)
  * @returns {{ el: HTMLElement, status: HTMLElement, dated: (on: boolean) => void, off: () => void }} the ⋯ and its menu, a line that says "Starting fresh…" while Start
  *   fresh runs, what says whether the conversation has dates now, for the words under Details, and what takes the menu's listeners off window and document
  *   (the screen calls it when it is gone)
@@ -1003,9 +1018,9 @@ function tidyMenu(ctx, trip) {
   };
   document.addEventListener('keydown', escape);
   const el = h('div', { class: 'tidy' }, toggle, menu);
-  const aboutDetails = h('p', { id: 'tidy-details', class: 'sub', text: detailsWords(Boolean(trip?.dated)) });
+  const aboutDetails = h('p', { id: 'tidy-details', class: 'sub', text: detailsWords(trip.dated) });
   menu.append(
-    ...(trip ? [aboutDetails, h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(trip.id)}`, 'aria-describedby': 'tidy-details', text: t`Details` })] : []),
+    aboutDetails, h('a', { class: 'btn', href: `#/trip/${encodeURIComponent(trip.id)}`, 'aria-describedby': 'tidy-details', text: t`Details` }),
     h('p', { id: 'tidy-summarize', class: 'sub', text: t`Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.` }), summarize,
     h('p', { id: 'tidy-fresh', class: 'sub', text: t`Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.` }), fresh,
     h('a', { class: 'btn', href: '#/sees?half=kokoro', text: t`What each half sees` }));
