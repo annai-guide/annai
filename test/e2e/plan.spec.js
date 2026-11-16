@@ -284,7 +284,7 @@ const manyRows = (day, stem) => Object.fromEntries(Array.from({ length: 14 }, (_
 }));
 
 /**
- * A two-week trip around today, longer than the strip on a phone, whose today and late day have many rows, one on each changed by Shiori. Its Itinerary is shown, by the top bar.
+ * A two-week trip around today, longer than the strip on a phone, whose today and late day have many rows, one on each changed by Shiori. Its Itinerary is shown, by its address.
  * @param {import('@playwright/test').Page} page
  */
 async function longTrip(page) {
