@@ -14,7 +14,7 @@ The done criterion is the real Thanksgiving trip (Nov 25–29, 2026), planned an
 ## Planning
 
 - [ ] Ask Shiori to plan the trip. She goes in the brief's order (getting there, getting around, where to stay, the rest) and hands over search links (flights, hotels, cars) and directions as cards; the links open the right sites prefilled.
-- [ ] The Plan shows each day of the trip as a tab, flights and check-ins as ● fixed, the rest as ○ flexible, times in each place's own zone, and the legs between stops with Directions into Apple Maps (iPhone) or Google Maps (Android).
+- [ ] The Plan shows each day of the trip as a tab, plan items Shiori stored as fixed (a flight, a check-in) as ● fixed and the flexible ones as ○ flexible, a booking's own row (one no plan item stands for, such as a check-out when Shiori stored only the check-in) with neither mark, times in each place's own zone, and the legs between stops with Directions into Apple Maps (iPhone) or Google Maps (Android).
 - [ ] Each unconfirmed booking shows "Check this"; on the Booking screen, the original opens, and "Looks right" confirms it. The chip goes away.
 - [ ] Your calendar's export of the trip's dates (.ics) adds plan items once; adding it again changes nothing.
 - [ ] "Add to calendar": on iPhone the share sheet offers Calendar, and the events land at the right local times; on Android, Google Calendar imports the file.

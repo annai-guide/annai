@@ -89,6 +89,17 @@ export function rowName(r) {
   return name;
 }
 
+/**
+ * What a timetable row says of what can move, from its item's fixed (planRows): ● and "Fixed:" for a plan item stored as fixed, ○ and
+ * "Flexible:" for one stored as not, and nothing for a row nobody said anything of (a booking's own row: null), the way Koe's view says
+ * nothing. `word` is for a screen reader; `mark` stays an empty mark, which keeps the row's columns. @param {unknown} fixed
+ */
+export function constraintOf(fixed) {
+  if (fixed === true) return { cls: 'fixed', mark: '●', word: t`Fixed:` };
+  if (fixed === false) return { cls: 'flexible', mark: '○', word: t`Flexible:` };
+  return { cls: '', mark: '', word: '' };
+}
+
 /** A set's quiet line: "Staying at Hotel · night 2 of 4", "Car · day 3 of 8". @param {import('../core/plan.js').PlanRow} r */
 export function lineName(r) {
   const name = String(r.item.title ?? '');

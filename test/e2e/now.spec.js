@@ -13,6 +13,8 @@ test('Now: where you are, the sun, what is next and the latest card; live mode f
     write: {
       '/plan/bixby.json': { id: 'bixby', title: 'Bixby Bridge photo stop', fixed: false, start: { at: soon(30), tz: 'UTC' }, place: { name: 'Bixby Creek Bridge', lat: 36.3715, lng: -121.9017 } },
       '/plan/lunch.json': { id: 'lunch', title: 'Lunch at Nepenthe', fixed: true, start: { at: soon(150), tz: 'UTC' }, place: { name: 'Nepenthe', lat: 36.2213, lng: -121.7567 } },
+      // A booking no plan item stands for says nothing of what can move (the user's answer, 2026-11-15: only what was said fixed).
+      '/bookings/tour.json': { id: 'tour', kind: 'event', status: 'confirmed', source: '/files/t.pdf', title: 'Garden tour ticket', start: { at: soon(90), tz: 'UTC' } },
     },
   });
   await writeEvent(page, trip, { type: 'reminder', data: { watch: 'plan:lunch:leave', text: 'Leave soon: Lunch at Nepenthe.' } });
@@ -22,8 +24,14 @@ test('Now: where you are, the sun, what is next and the latest card; live mode f
   await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
   await expect(page.locator('.now-place')).toHaveText("GPS is off, so annai isn't following where you are.");
   const next = page.getByRole('region', { name: 'Next' });
-  await expect(next.locator('.plan-row')).toHaveCount(2);
+  await expect(next.locator('.plan-row')).toHaveCount(3);
   await expect(next.locator('.plan-row').first()).toContainText('Bixby Bridge photo stop');
+  // ○ for what Shiori stored as flexible, ● for fixed, and neither mark nor word for the booking's own row.
+  await expect(next.locator('.plan-row').first().locator('.mark')).toHaveText('○');
+  await expect(next.locator('.plan-row').nth(1)).toHaveText(/^\d\d:\d\dGarden tour ticket$/);
+  await expect(next.locator('.plan-row').nth(1).locator('.mark')).toHaveText('');
+  await expect(next.locator('.plan-row').nth(1).locator('.visually-hidden')).toHaveCount(0);
+  await expect(next.locator('.plan-row').nth(2).locator('.mark')).toHaveText('●');
   await expect(page.locator('.now .chips')).toContainText(/Sunrise|Golden|Sunset|Dusk/); // worked out at the next stop
   await expect(page.getByRole('region', { name: 'Latest' })).toContainText('Reminder: Leave soon: Lunch at Nepenthe.');
   await page.locator('.live-chip').click();

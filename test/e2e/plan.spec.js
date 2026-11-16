@@ -136,6 +136,53 @@ test("the Plan: the flight on Nov 20 with its times, the stay's check-in, a line
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
+/**
+ * A trip where what Shiori stored as fixed is marked and a booking's own row says nothing (the user's answer, 2026-11-15: only what was
+ * said fixed): a stay and a timed ticket no plan item stands for, a pass with no day, a stay a fixed plan item with both times stands for,
+ * and a flexible plan item over three days.
+ */
+const MARKS = {
+  patch: { '/trip.json': { start: '2026-11-20', end: '2026-11-23', timezones: [AK] } },
+  write: {
+    '/bookings/inn.json': { id: 'inn', kind: 'lodging', status: 'confirmed', source: '/files/inn.pdf', title: 'Hotel Aurora Test', start: { at: '2026-11-20T15:00:00-09:00', tz: AK }, end: { at: '2026-11-22T11:00:00-09:00', tz: AK } },
+    '/bookings/ticket.json': { id: 'ticket', kind: 'event', status: 'confirmed', source: '/files/t.pdf', title: 'Museum timed ticket', start: { at: '2026-11-21T10:00:00-09:00', tz: AK } },
+    '/bookings/pass.json': { id: 'pass', kind: 'event', status: 'confirmed', source: '/files/p.pdf', title: 'Museum pass' },
+    '/bookings/lodge.json': { id: 'lodge', kind: 'lodging', status: 'confirmed', source: '/files/l.pdf', title: 'Lodge Test', start: { at: '2026-11-20T16:00:00-09:00', tz: AK }, end: { at: '2026-11-23T10:00:00-09:00', tz: AK } },
+    '/plan/lodge.json': { id: 'lodge', title: 'Stay at Lodge Test', fixed: true, start: { at: '2026-11-20T16:00:00-09:00', tz: AK }, end: { at: '2026-11-23T10:00:00-09:00', tz: AK }, booking: '/bookings/lodge.json' },
+    '/plan/trek.json': { id: 'trek', title: 'Hut trek', fixed: false, start: { at: '2026-11-21T08:00:00-09:00', tz: AK }, end: { at: '2026-11-23T16:00:00-09:00', tz: AK } },
+  },
+};
+
+test("the Plan: a booking's own rows show neither mark nor word; a plan item stored as fixed, and its booking's end, show ●; a flexible item and its end ○", async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Marks');
+  await records(page, trip, MARKS);
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
+  await expect(page.getByRole('heading', { name: 'Itinerary' })).toBeVisible();
+  const day = page.getByRole('tabpanel');
+  /** A row says nothing of what can move: no mark, no word for a screen reader, neither class. @param {import('@playwright/test').Locator} row @param {RegExp} text */
+  const says = async (row, text) => {
+    await expect(row).toHaveText(text);
+    await expect(row.locator('.mark')).toHaveText('');
+    await expect(row.locator('.visually-hidden')).toHaveCount(0);
+    await expect(row).toHaveAttribute('class', 'plan-row');
+  };
+  await expect(page.getByRole('region', { name: 'Not on a day' }).locator('.plan-row')).toHaveCount(1);
+  await says(page.getByRole('region', { name: 'Not on a day' }).locator('.plan-row'), /^Museum pass$/);
+  await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();
+  await says(day.locator('.plan-row', { hasText: 'Check in · Hotel Aurora Test' }), /^15:00Check in · Hotel Aurora Test$/);
+  // The stay Shiori stored as fixed with both times: its start row is that item's; so is its booking's check-out, below.
+  await expect(day.locator('.plan-row', { hasText: 'Stay at Lodge Test' })).toHaveText(/^16:00●Fixed: Stay at Lodge Test$/);
+  await page.getByRole('tab', { name: 'Sat, Nov 21' }).click();
+  await says(day.locator('.plan-row', { hasText: 'Museum timed ticket' }), /^10:00Museum timed ticket$/);
+  await expect(day.locator('.plan-row', { hasText: 'Hut trek' })).toHaveText(/^08:00○Flexible: Hut trek$/);
+  await page.getByRole('tab', { name: 'Sun, Nov 22' }).click();
+  await says(day.locator('.plan-row', { hasText: 'Check out · Hotel Aurora Test' }), /^11:00Check out · Hotel Aurora Test$/);
+  await page.getByRole('tab', { name: 'Mon, Nov 23' }).click();
+  await expect(day.locator('.plan-row', { hasText: 'Check out · Lodge Test' })).toHaveText(/^10:00●Fixed: Check out · Lodge Test$/);
+  await expect(day.locator('.plan-row', { hasText: 'Ends · Hut trek' })).toHaveText(/^16:00○Flexible: Ends · Hut trek$/);
+});
+
 test('a tap on any row opens its details, never the raw file', async ({ page }) => {
   await openApp(page);
   const trip = await startTrip(page, 'Anchorage');
