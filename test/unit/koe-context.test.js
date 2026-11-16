@@ -28,7 +28,7 @@ test("the compact view: today's plan, bookings within 48 hours, the place, the t
   const booking = (/** @type {string} */ id, /** @type {any} */ b) => k.ws.write(k.trip, `/bookings/${id}.json`, { id, status: 'confirmed', source: '/files/x.pdf', ...b }, { author: 'user' });
   await booking('inn', { kind: 'lodging', title: 'Deetjen\'s Big Sur Inn', start: at('2026-11-26T15:00:00'), confirmation: 'DJ42' });
   await booking('far', { kind: 'event', title: 'Castle tour', start: at('2026-11-29T10:00:00') });
-  // A booking from before annai marked fields (no unsure) is checked whole; one of hers she is sure of, nothing.
+  // A booking from before annai marked fields (no unsure) has every part it has marked, each named; one of hers she is sure of, nothing.
   await booking('car', { kind: 'car', status: 'unverified', title: 'Cambria Test Car', start: at('2026-11-27T08:00:00') });
   await booking('ferry', { kind: 'other', status: 'unverified', unsure: [], title: 'Bay Test Ferry', start: at('2026-11-27T07:00:00') });
   const view = await compactView({ ws: k.ws, trip: k.trip, now, timeZone: LA, next: { when: 'Thu 2026-11-26 12:00 (GMT-8)', text: 'Leave for lunch in 30 minutes' } });
@@ -43,7 +43,8 @@ test("the compact view: today's plan, bookings within 48 hours, the place, the t
   assert.match(view, /start\tkind\ttitle\tcheck\tconfirmation\n/);
   assert.match(view, /lodging\tDeetjen's Big Sur Inn\t\tDJ42/);
   assert.match(view, /other\tBay Test Ferry\t\t\n/);
-  assert.match(view, /car\tCambria Test Car\tnot sure it was read right\t\n/);
+  assert.match(view, /car\tCambria Test Car\tnot sure the name or the pick-up time was read right\t\n/);
+  assert.doesNotMatch(view, /not sure it was read right/, 'no phrase for the whole booking');
   assert.doesNotMatch(view, /Castle tour/);
   assert.match(view, /next reminder: Thu 2026-11-26 12:00 \(GMT-8\) Leave for lunch in 30 minutes/);
   // In Koe's tail, after the now block with the time and place, never in its prefix.
@@ -149,6 +150,20 @@ test("a booking with parts Shiori is unsure of: its row names them by what they 
   const next = await compactView({ ws: k.ws, trip: k.trip, now, timeZone: LA, next: null });
   assert.match(next, /\tother\tBay Test Boat\tnot sure some other detail was read right\t\n/);
   assert.doesNotMatch(next, /meal plan|kkkk/);
+});
+
+test("an old booking (no unsure key, not confirmed) is read as one with every part it has marked: Koe's view names each on the booking's row, and its time rows say the time isn't sure (booking-say's round 4)", async () => {
+  const k = await agentKit([[{ text: '' }]], { open: true });
+  const write = (/** @type {string} */ path, /** @type {any} */ v) => k.ws.write(k.trip, path, v, { author: 'user' });
+  await write('/bookings/old.json', { id: 'old', kind: 'lodging', status: 'unverified', source: '/files/old.pdf', title: 'Old Test Inn', start: at('2026-11-26T15:00:00'), end: at('2026-11-27T11:00:00'), confirmation: 'OT1', fields: { room: '204' } });
+  await write('/plan/checkin.json', { id: 'checkin', title: 'Check in at Old Test Inn', fixed: true, booking: '/trip/bookings/old.json', start: at('2026-11-26T15:00:00') });
+  await write('/bookings/oldok.json', { id: 'oldok', kind: 'lodging', status: 'confirmed', source: '/files/ok.pdf', title: 'Confirmed Test Inn', start: at('2026-11-26T16:00:00'), end: at('2026-11-27T10:00:00') });
+  const view = await compactView({ ws: k.ws, trip: k.trip, now, timeZone: LA, next: null });
+  assert.match(view, /\tlodging\tOld Test Inn\tnot sure the name, the check-in time, the check-out time, the confirmation number or the room was read right\tOT1\n/);
+  assert.match(view, /\n2026-11-26 15:00\t\tCheck in at Old Test Inn\tcan't be moved; not sure the time was read right\t\n/, "a time the booking has is marked, as it was when the whole booking was");
+  assert.match(view, /\n2026-11-27 11:00\t\tCheck out · Old Test Inn\tnot sure the time was read right\t\n/);
+  assert.match(view, /\tlodging\tConfirmed Test Inn\t\t\n/, 'an old confirmed one: nothing');
+  assert.doesNotMatch(view, /not sure it was read right|unsure|unverified|status/);
 });
 
 test("Koe's plan row shows both times, so an unsure end marks it: a flight's arrival is a time she says (the review of booking-check, F1)", async () => {

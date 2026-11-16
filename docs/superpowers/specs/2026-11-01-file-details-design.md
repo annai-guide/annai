@@ -43,7 +43,7 @@ What they saw:
    - **Each booking the file became,** in its own block, in time order. A block has:
      - its kind and day;
      - what Shiori read, with the "check" marks on details she's unsure of;
-     - the old "Check this" banner, where it applies;
+     - the old "Check this" banner, where it applies (gone since 2026-11-16: an old booking's details each carry a check mark);
      - **the plan items that stand for it,** each with its title and day, its notes beneath, and a tap opening its details. Delete removes them (goal 4), so the screen shows them all, not only those with notes (spec check b).
      - With one booking, the screen reads as the booking details do today. When the booking's title differs from the heading, the block shows the title, with its check mark if Shiori is unsure of it.
      - With several, each block has its own heading: its title, else its kind and day.
@@ -88,7 +88,7 @@ What they saw:
 
 - A booking or file shown twice in Files, or any row named by a record's file name.
 - A Back that goes somewhere other than where the user came from.
-- Losing what the booking details show today: the check marks, the "Check this" banner, the notes, Open in Maps, Ask, and Change.
+- Losing what the booking details show today: the check marks, the "Check this" banner, the notes, Open in Maps, Ask, and Change. (The banner went on 2026-11-16, by the user's pick: an old booking's parts each carry a check mark.)
 - A link that worked before no longer working: the booking addresses in Shiori's cards, in the Plan and in Now (`bookingHref`), and the `from=` crumbs.
 - Deleting something the user didn't see on the screen they deleted from.
 

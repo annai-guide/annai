@@ -156,9 +156,8 @@ function row(ctx, id, r, undo, here) {
       ...(c.word ? [h('span', { class: 'visually-hidden', text: c.word }), ' '] : []),
       h('span', { class: 'name', dir: 'auto', text: rowName(r) }),
       it.place?.name ? h('span', { class: 'sub', dir: 'auto', text: String(it.place.name) }) : null),
-    r.check || r.checkFields.length || r.missing || undo.has(r.path) ? h('span', { class: 'chips' },
-      r.check ? h('a', { class: 'chip check', href: detailsHref(id, r, here) }, t`Check this`) : null,
-      // Just the fields Shiori is unsure of: the details mark which.
+    r.checkFields.length || r.missing || undo.has(r.path) ? h('span', { class: 'chips' },
+      // The fields Shiori is unsure of (an old booking's: every part it has): the details mark which.
       r.checkFields.length ? h('a', { class: 'chip check', href: detailsHref(id, r, here) }, plural(r.checkFields.length, 'Check # detail', 'Check # details')) : null,
       r.missing ? h('span', { class: 'chip warn', text: t`Booking missing` }) : null,
       undoChip(ctx, id, r, undo.get(r.path))) : null,

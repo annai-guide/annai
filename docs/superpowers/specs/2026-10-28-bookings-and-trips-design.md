@@ -141,7 +141,7 @@ The mockups the user approved (screens 1, 2b and 3) are at https://claude.ai/art
    - When a file is clear, she files the booking and says what she put where. Nothing waits for a tap.
    - Only a field she is unsure of gets a light "check" mark, and she asks about just that in the conversation. Correcting anything is just telling her.
    - This changes spec §7.3, where every new booking starts `unverified` and the Plan shows it as "Check this": a booking's uncertainty is now per field, kept as data.
-   - The builder shapes the record. Old `unverified` bookings show with their whole booking marked, until the user tells her it's right.
+   - The builder shapes the record. Old `unverified` bookings show with their whole booking marked, until the user tells her it's right. (Changed 2026-11-16, booking-say's round 4, the user's pick "Build the route as one round (Recommended)": such a booking is read as one with every part it has marked, each detail with its own light check; no banner, no "Check this".)
 2. **Undo** takes back exactly what Shiori wrote from that hand-over, and never anything of the user's.
    - It removes the bookings and plan items she made, and a trip she started.
    - If the user has since changed one of them, or added anything to the trip (a message, a note, a photo), Undo leaves that and says so. A trip with anything of the user's in it stays, emptied of her writes.

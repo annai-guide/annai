@@ -64,7 +64,7 @@ for (const [width, height] of [[420, 912], [390, 844], [320, 544]]) {
 }
 
 // "I clicked plan -> check this -> open the original, so dropping me to trip looks weird. Also the top tab shows I am in Trips when I am back to plan."
-test('Plan → Check this → Open the original: back goes to the booking, then to the Plan, and the top bar says Plan all the way (item 8)', async ({ page }) => {
+test('Plan → Check 2 details → Open the original: back goes to the booking, then to the Plan, and the top bar says Plan all the way (item 8)', async ({ page }) => {
   await openApp(page);
   const trip = await startTrip(page, 'Alaska');
   const tz = 'America/Anchorage';
@@ -80,7 +80,7 @@ test('Plan → Check this → Open the original: back goes to the booking, then 
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Itinerary' })).toBeVisible();
   await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();
-  await page.getByRole('tabpanel').getByRole('link', { name: 'Check this' }).click();
+  await page.getByRole('tabpanel').getByRole('link', { name: 'Check 2 details' }).click(); // an old booking: its name and its start
   await expect(page.getByRole('heading', { level: 1, name: 'Avis TESTCAR1' })).toBeVisible();
   await expect(tab()).toHaveText('Itinerary');
   await page.getByRole('link', { name: 'Open', exact: true }).click();

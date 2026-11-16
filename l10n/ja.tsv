@@ -825,14 +825,14 @@ apv0y3	ok	annai couldn't read {0} from {1}, a file its {2} names. Check that it 
 14wn58m	ok	a provider that sends keys to {0}	キーを{0}に送信するプロバイダー	src/core/packages.js:667	{0} = o; Note: one of a list of what an update adds.
 tqmba2	ok	an address your searches are sent to: {0}	検索内容の送信先（{0}）	src/core/packages.js:667	{0} = o; Note: one of a list of what an update adds.
 18tp402	ok	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	このブラウザでは{0}を変換できないため、元の形式のまま保存しました。Safariでしか表示されない場合があります。	src/core/photos.js:135	{0} = name
-1009iza	ok	Restaurant	レストラン	src/core/plan.js:68	
-1lrcegv	ok	Event	イベント	src/core/plan.js:68	
-56ee40	ok	Booking	予約	src/core/plan.js:68	
-8cdq15	ok	Train	列車	src/core/plan.js:68	
-d57q3n	ok	Flight	フライト	src/core/plan.js:68	
-jj8u9s	ok	Stay	宿泊	src/core/plan.js:68	Note: A kind of booking: a hotel or other lodging.
-sksosh	ok	Car	レンタカー	src/core/plan.js:68	Note: A kind of booking: a car, nearly always a rental.
-1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	タイムゾーン「{0}」を認識できないため、{1}で表示しています。	src/core/plan.js:102	{0} = String(own ?? ''); {1} = fallbackTz
+1009iza	ok	Restaurant	レストラン	src/core/plan.js:67	
+1lrcegv	ok	Event	イベント	src/core/plan.js:67	
+56ee40	ok	Booking	予約	src/core/plan.js:67	
+8cdq15	ok	Train	列車	src/core/plan.js:67	
+d57q3n	ok	Flight	フライト	src/core/plan.js:67	
+jj8u9s	ok	Stay	宿泊	src/core/plan.js:67	Note: A kind of booking: a hotel or other lodging.
+sksosh	ok	Car	レンタカー	src/core/plan.js:67	Note: A kind of booking: a car, nearly always a rental.
+1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	タイムゾーン「{0}」を認識できないため、{1}で表示しています。	src/core/plan.js:101	{0} = String(own ?? ''); {1} = fallbackTz
 o6vv9a	ok	"{0}" is a name annai uses for one of its own parts, so a skill can't have it.	「{0}」はannaiの機能で使う名前なので、スキルには使えません。	src/core/plugins.js:179	{0} = id; Note: {0} is the skill's name.
 1fdobr5	ok	It has the same id as a plugin built into annai.	annaiに組み込まれたプラグインと同じIDです。	src/core/plugins.js:180	
 wq5ezj	ok	Its name, "{0}", is annai's own name, or the name of one of its parts. Ask its author to rename it.	名前「{0}」は、annai自体かその機能の名前と同じです。作者に名前の変更を依頼してください。	src/core/plugins.js:184	{0} = pkg.name; Note: Ask here is the plain verb (to ask the author), not Safari's permission choice.
@@ -1623,21 +1623,20 @@ mpbd6l	ok	This file can't be found	ファイルが見つかりません	src/ui/s
 14y1329	ok	It may have been deleted or renamed. The itinerary lists the bookings there are.	削除されたか、名前が変更された可能性があります。予約の一覧は旅程で確認できます。	src/ui/screens/booking.js:32	Note: no 旅, as the English names no trip: a chat has bookings too
 1wk3iyk	ok	This booking can't be found	予約が見つかりません	src/ui/screens/booking.js:32	
 9bzl8d	ok	Itinerary item	旅程の項目	src/ui/screens/booking.js:55	Note: an itinerary item's heading when it has no title.
-7z8wif	ok	Check this: Shiori read it before annai marked details one by one. Tell her if it's right, or what's wrong.	要確認：この予約は、annaiが項目ごとに「要確認」を付けるようになる前にShioriが読み取ったものです。合っているか、どこが違うかをShioriに伝えてください。	src/ui/screens/booking.js:73	Note: a banner on a booking from before: the whole booking is to check, and telling her it's right clears it; 要確認 as the Check this chip.
-193ucme	ok	On the itinerary	旅程に入っている項目	src/ui/screens/booking.js:77	Note: the heading of the itinerary items that stand for a booking, on the details screen of a file or booking (Itinerary: 旅程/行程).
-xzsqye	ok	On the itinerary: {0}	旅程に入っている項目：{0}	src/ui/screens/booking.js:77	{0} = title || kindDay(b); Note: the name screen readers give a booking's plan items on a file's details screen with several bookings; {0} is the booking's title, else its kind and day ("ANNAI AIR AN 123").
-bamrei	ok	Change it	変更	src/ui/screens/booking.js:80	
-2egm5v	ok	The original	元の資料	src/ui/screens/booking.js:98	Note: the section with the file a booking came from; as Open the original (元の資料を開く).
-14bya76	ok	The file	元のファイル	src/ui/screens/booking.js:100	Note: the small heading over the file's preview on a file's details screen with several bookings above it, so the file's part doesn't read as the last booking's.
-1rplq4f	ok	From {0}	ファイル名：{0}	src/ui/screens/booking.js:102	context: a file; {0} = file.real; Note: under a file's preview on its details screen and a plan item's; {0} is the file's real name ("itinerary.pdf").
-t8quxl	ok	Download	ダウンロード	src/ui/screens/booking.js:106	
-1ygxf36	ok	Tap again to delete	もう一度タップで削除	src/ui/screens/booking.js:111	
-oay2cq	ok	Delete	削除	src/ui/screens/booking.js:111	Note: a waiting file's two-step Delete (its space comes back), as Delete file.
-iy42pb	ok	check	要確認	src/ui/screens/booking.js:150	context: a detail to check; Note: a light mark beside one detail of a booking Shiori is unsure of; as the Check this chip.
-1s0er5c	ok	Shiori isn't sure of this	Shioriはこの内容に自信がありません	src/ui/screens/booking.js:151	Note: read by screen readers for the check mark beside a detail.
-1a6z1m2	ok	Itinerary	旅程	src/ui/screens/booking.js:163	
-1eszfxl	ok	The original, {0}, can't be found.	元の資料（{0}）が見つかりません。	src/ui/screens/booking.js:185	{0} = name
-98drsx	ok	Open the original	元の資料を開く	src/ui/screens/booking.js:190	
+193ucme	ok	On the itinerary	旅程に入っている項目	src/ui/screens/booking.js:74	Note: the heading of the itinerary items that stand for a booking, on the details screen of a file or booking (Itinerary: 旅程/行程).
+xzsqye	ok	On the itinerary: {0}	旅程に入っている項目：{0}	src/ui/screens/booking.js:74	{0} = title || kindDay(b); Note: the name screen readers give a booking's plan items on a file's details screen with several bookings; {0} is the booking's title, else its kind and day ("ANNAI AIR AN 123").
+bamrei	ok	Change it	変更	src/ui/screens/booking.js:77	
+2egm5v	ok	The original	元の資料	src/ui/screens/booking.js:95	Note: the section with the file a booking came from; as Open the original (元の資料を開く).
+14bya76	ok	The file	元のファイル	src/ui/screens/booking.js:97	Note: the small heading over the file's preview on a file's details screen with several bookings above it, so the file's part doesn't read as the last booking's.
+1rplq4f	ok	From {0}	ファイル名：{0}	src/ui/screens/booking.js:99	context: a file; {0} = file.real; Note: under a file's preview on its details screen and a plan item's; {0} is the file's real name ("itinerary.pdf").
+t8quxl	ok	Download	ダウンロード	src/ui/screens/booking.js:103	
+1ygxf36	ok	Tap again to delete	もう一度タップで削除	src/ui/screens/booking.js:108	
+oay2cq	ok	Delete	削除	src/ui/screens/booking.js:108	Note: a waiting file's two-step Delete (its space comes back), as Delete file.
+iy42pb	ok	check	要確認	src/ui/screens/booking.js:147	context: a detail to check; Note: a light mark beside one detail of a booking Shiori is unsure of; as the Check # details chip.
+1s0er5c	ok	Shiori isn't sure of this	Shioriはこの内容に自信がありません	src/ui/screens/booking.js:148	Note: read by screen readers for the check mark beside a detail.
+1a6z1m2	ok	Itinerary	旅程	src/ui/screens/booking.js:160	
+1eszfxl	ok	The original, {0}, can't be found.	元の資料（{0}）が見つかりません。	src/ui/screens/booking.js:182	{0} = name
+98drsx	ok	Open the original	元の資料を開く	src/ui/screens/booking.js:187	
 19jra30	ok	What is around us right now that is worth knowing about?	いま、この辺りで知っておくといいことはありますか？	src/ui/screens/drive.js:15	Note: What the user says to Shiori with a tap, as their own words.
 sqqsfd	ok	What's around here?	この辺りに何がある？	src/ui/screens/drive.js:15	
 1gkqhnt	ok	Food	食事	src/ui/screens/drive.js:16	
@@ -1943,16 +1942,15 @@ pxfr8q	ok	Days	日付	src/ui/screens/plan.js:99
 wk7g53	ok	No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) in Details.	まだ旅程はありません。Shioriと一緒に計画するか、「詳細」でカレンダーファイル（.ics）を追加してください。	src/ui/screens/plan.js:102	Note: "Ask" here is asking Shiori, not the permission setting's Ask.
 15yqwep	ok	{0} couldn't be read. Open the files in Details to fix them.	{0}を読み込めませんでした。「詳細」でファイルを開いて修正してください。	src/ui/screens/plan.js:103	{0} = unread
 1hvcdro	ok	{0} couldn't be read. Open the files in Details to fix it.	{0}を読み込めませんでした。「詳細」でファイルを開いて修正してください。	src/ui/screens/plan.js:103	{0} = unread
-1gmgpvl	ok	Check this	要確認	src/ui/screens/plan.js:160	
-wioqt8#other	ok	Check # details	要確認（#件）	src/ui/screens/plan.js:162	plural; # = r.checkFields.length; English: "Check # detail" (one), "Check # details" (other); Note: a chip on a Plan row: how many of a booking's details Shiori is unsure of; 要確認 as the Check this chip.
-1ropcog	ok	Booking missing	予約が見つかりません	src/ui/screens/plan.js:163	
-1u7blsq	ok	Shiori added this to the itinerary. Remove it?	Shioriが旅程に追加した項目です。削除しますか？	src/ui/screens/plan.js:180	
-kmmqyh	ok	Undone: {0} is off the itinerary.	元に戻しました。{0}は旅程から外れました。	src/ui/screens/plan.js:182	{0} = title
-19uog97	ok	Added by Shiori · Undo	Shioriが追加 · 元に戻す	src/ui/screens/plan.js:185	
-1j6c9nb	ok	Undone: {0} is back as it was before Shiori changed it.	元に戻しました。{0}は、Shioriが変更する前の状態です。	src/ui/screens/plan.js:191	{0} = title
-1qeof2p	ok	Changed by Shiori · Undo	Shioriが変更 · 元に戻す	src/ui/screens/plan.js:194	
-pgaz5s	ok	≈ {0} apart	距離：約{0}	src/ui/screens/plan.js:205	{0} = distance(km)
-1gjwkfv	ok	Directions	経路	src/ui/screens/plan.js:206	
+wioqt8#other	ok	Check # details	要確認（#件）	src/ui/screens/plan.js:161	plural; # = r.checkFields.length; English: "Check # detail" (one), "Check # details" (other); Note: a chip on a Plan row: how many of a booking's details Shiori is unsure of; 要確認 as the Check this chip.
+1ropcog	ok	Booking missing	予約が見つかりません	src/ui/screens/plan.js:162	
+1u7blsq	ok	Shiori added this to the itinerary. Remove it?	Shioriが旅程に追加した項目です。削除しますか？	src/ui/screens/plan.js:179	
+kmmqyh	ok	Undone: {0} is off the itinerary.	元に戻しました。{0}は旅程から外れました。	src/ui/screens/plan.js:181	{0} = title
+19uog97	ok	Added by Shiori · Undo	Shioriが追加 · 元に戻す	src/ui/screens/plan.js:184	
+1j6c9nb	ok	Undone: {0} is back as it was before Shiori changed it.	元に戻しました。{0}は、Shioriが変更する前の状態です。	src/ui/screens/plan.js:190	{0} = title
+1qeof2p	ok	Changed by Shiori · Undo	Shioriが変更 · 元に戻す	src/ui/screens/plan.js:193	
+pgaz5s	ok	≈ {0} apart	距離：約{0}	src/ui/screens/plan.js:204	{0} = distance(km)
+1gjwkfv	ok	Directions	経路	src/ui/screens/plan.js:205	
 1a9dl1b	ok	This plugin gets full access to your trips and API keys.	このプラグインは、旅とAPIキーのすべてにアクセスできます。	src/ui/screens/plugin-install.js:17	
 h65i2c	ok	It can read every key saved in annai and send it anywhere: now your keys for {0}.	annaiに保存されているキーをすべて読み取り、どこへでも送信できます。現在保存されているのは{0}のキーです。	src/ui/screens/plugin-install.js:44	{0} = list(names)
 7jgsq6	ok	It can read every key saved in annai and send it anywhere.	annaiに保存されているキーをすべて読み取り、どこへでも送信できます。	src/ui/screens/plugin-install.js:45	

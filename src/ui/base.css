@@ -282,7 +282,6 @@ button.chip.filter[aria-pressed='true'] { background: var(--ai); color: var(--ai
 .facts dt { color: var(--ink-2); }
 .facts dd { margin: 0; overflow-wrap: anywhere; }
 .original { display: flex; flex-direction: column; gap: 8px; }
-.check-banner { margin: 8px 0; padding: 10px 12px; border-radius: var(--radius); background: var(--amber-wash); color: var(--amber); }
 .chip.mark-check { min-height: 22px; padding: 0 8px; font-size: 12px; vertical-align: middle; }
 .details .facts { margin-block: 12px; }
 .details .notes { white-space: pre-wrap; overflow-wrap: anywhere; }

@@ -50,7 +50,7 @@ const THANKSGIVING = {
   text: { '/plan/broken.json': 'not json', '/bookings/broken.json': 'not json either' },
 };
 
-test('the Plan: day tabs, ● fixed and ○ flexible, legs with directions, Check this, and what it could not read', async ({ page }) => {
+test('the Plan: day tabs, ● fixed and ○ flexible, legs with directions, Check 3 details (an old booking: every part it has), and what it could not read', async ({ page }) => {
   await openApp(page);
   const trip = await startTrip(page, 'Thanksgiving');
   await records(page, trip, THANKSGIVING);
@@ -64,7 +64,8 @@ test('the Plan: day tabs, ● fixed and ○ flexible, legs with directions, Chec
   await expect(day.locator('.plan-row')).toHaveCount(2);
   await expect(day.locator('.plan-row').first()).toContainText('08:00–16:30 ET'); // it lands in another zone
   await expect(day.locator('.plan-row').first()).toContainText('●');
-  await expect(day.getByRole('link', { name: 'Check this' })).toHaveCount(1);
+  await expect(day.getByRole('link', { name: 'Check 3 details' })).toHaveCount(1); // the old flight: its name, departure and confirmation number
+  await expect(day.getByRole('link', { name: 'Check this' })).toHaveCount(0);
   await expect(day.locator('.leg')).toHaveCount(0); // SFO to Hoboken is a flight, not a leg
   await tabs.nth(1).click();
   await expect(day.locator('.plan-row').first()).toContainText('○');
@@ -209,7 +210,7 @@ test('a tap on any row opens its details, never the raw file', async ({ page }) 
   await expect(page.locator('textarea')).toHaveCount(0);
 });
 
-test('an old unverified booking says Check this; a new one with an unsure seat says Check 1 detail; an old confirmed one says neither', async ({ page }) => {
+test('an old unverified booking says Check 2 details (every part it has); a new one with an unsure seat says Check 1 detail; an old confirmed one says neither', async ({ page }) => {
   await openApp(page);
   const trip = await startTrip(page, 'Anchorage');
   const at = (/** @type {string} */ h) => ({ at: `2026-11-20T${h}:00-09:00`, tz: AK });
@@ -221,12 +222,37 @@ test('an old unverified booking says Check this; a new one with an unsure seat s
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
   const rows = page.getByRole('tabpanel').locator('.plan-row');
   await expect(rows).toHaveCount(3);
-  await expect(rows.nth(0).getByRole('link', { name: 'Check this' })).toBeVisible();
+  await expect(rows.nth(0).getByRole('link', { name: 'Check 2 details' })).toBeVisible(); // its name and its departure
+  await expect(rows.nth(0).getByText('Check this')).toHaveCount(0);
   await expect(rows.nth(1).getByRole('link', { name: 'Check 1 detail' })).toBeVisible();
   await expect(rows.nth(1).getByText('Check this')).toHaveCount(0);
   await expect(rows.nth(2).locator('.chip')).toHaveCount(0);
   await rows.nth(1).getByRole('link', { name: 'Check 1 detail' }).click();
   await expect(page.getByRole('heading', { name: 'New with a seat' })).toBeVisible();
+});
+
+test("an old stay (no unsure key, not confirmed): its check-in and its check-out rows each say Check 5 details, and its details put a check by the name, the check-in, the check-out, the place and the confirmation number, with no banner (booking-say's round 4)", async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Anchorage');
+  const at = (/** @type {string} */ d, /** @type {string} */ h) => ({ at: `2026-11-${d}T${h}:00:00-09:00`, tz: AK });
+  await records(page, trip, { patch: { '/trip.json': { start: '2026-11-20', end: '2026-11-21', timezones: [AK] } }, write: {
+    '/bookings/inn.json': { id: 'inn', kind: 'lodging', status: 'unverified', source: '/files/inn.pdf', title: 'Hotel Aurora Test', place: { name: 'Hotel Aurora Test', address: '1 Test Street' }, start: at('20', '15'), end: at('21', '11'), confirmation: 'TQ1' },
+  } });
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
+  for (const [tab, words] of [['Fri, Nov 20', /Check in/], ['Sat, Nov 21', /Check out/]]) {
+    await page.getByRole('tab', { name: tab }).click();
+    const row = page.getByRole('tabpanel').locator('.plan-row', { hasText: words });
+    await expect(row.getByRole('link', { name: 'Check 5 details' })).toBeVisible();
+    await expect(row.getByText('Check this')).toHaveCount(0);
+  }
+  await page.getByRole('tabpanel').getByRole('link', { name: 'Check 5 details' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: /Hotel Aurora Test/ })).toBeVisible();
+  await expect(page.getByRole('note')).toHaveCount(0);
+  await expect(page.getByRole('heading', { level: 1 }).locator('.mark-check')).toHaveCount(1);
+  for (const label of ['Check-in', 'Check-out', 'Place', 'Confirmation']) {
+    await expect(page.locator('dl.facts dt', { hasText: label }).locator('xpath=following-sibling::dd[1]').locator('.mark-check'), label).toHaveCount(1);
+  }
+  await expect(page.locator('dl.facts .mark-check')).toHaveCount(4);
 });
 
 // Noon UTC is the same calendar day everywhere from Honolulu to Tokyo, so the test's own clock fixes "today".
@@ -567,15 +593,22 @@ test('the Plan with nothing in it: the new conversation\'s, open when nothing el
   await expect(page.getByRole('button', { name: 'Add to calendar' })).toBeDisabled();
 });
 
-test("Booking details from before: what it says, beside its original, marked whole as Check this, with no confirming step", async ({ page }) => {
+test("Booking details from before: what it says, beside its original, each detail it has with a check beside it and no banner, with no confirming step (booking-say's round 4)", async ({ page }) => {
   await openApp(page);
   const trip = await startTrip(page, 'Thanksgiving');
   await records(page, trip, THANKSGIVING);
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
   await page.getByRole('tab', { name: 'Wed, Nov 25' }).click();
-  await page.getByRole('tabpanel').getByRole('link', { name: 'Check this' }).click();
+  await page.getByRole('tabpanel').getByRole('link', { name: 'Check 3 details' }).click();
   await expect(page.getByRole('heading', { name: 'UA 123' })).toBeVisible();
-  await expect(page.getByRole('note')).toHaveText("Check this: Shiori read it before annai marked details one by one. Tell her if it's right, or what's wrong.");
+  // No banner for the whole booking: each part it has carries its own check, as on a new booking: the name (by the heading), the
+  // departure and the confirmation number (by their lines).
+  await expect(page.getByRole('note')).toHaveCount(0);
+  await expect(page.getByText('Shiori read it before annai marked details one by one')).toHaveCount(0);
+  await expect(page.getByRole('heading', { level: 1 }).locator('.mark-check')).toHaveCount(1);
+  await expect(page.locator('dl.facts .mark-check')).toHaveCount(2);
+  await expect(page.locator('dl.facts dt', { hasText: 'Departs' }).locator('xpath=following-sibling::dd[1]').locator('.mark-check')).toHaveCount(1);
+  await expect(page.locator('dl.facts dt', { hasText: 'Confirmation' }).locator('xpath=following-sibling::dd[1]').locator('.mark-check')).toHaveCount(1);
   await expect(page.locator('dl.facts')).toContainText('ABC123');
   // The booking's zone is named the way people say it, never by its id.
   await expect(page.locator('dl.facts')).toContainText('(PT)');
@@ -757,7 +790,7 @@ test('milestone 4 done: a pass and a calendar are added, Shiori writes the booki
     await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
     await page.getByRole('tab', { name: 'Wed, Nov 25' }).click();
     await expect(page.getByRole('tabpanel')).toContainText('UA 123 to Newark');
-    await expect(page.getByRole('tabpanel').getByRole('link', { name: 'Check this' })).toHaveCount(0);
+    await expect(page.getByRole('tabpanel').getByRole('link', { name: /Check \d+ details?/ })).toHaveCount(0);
     await page.getByRole('tab', { name: 'Thu, Nov 26' }).click();
     await expect(page.getByRole('tabpanel')).toContainText('Thanksgiving dinner');
     const downloading = page.waitForEvent('download');
@@ -778,7 +811,7 @@ test('milestone 4 done: a pass and a calendar are added, Shiori writes the booki
   }
 });
 
-test('a trip from before: unverified and confirmed bookings without unsure, plan items linking them, a trip with no dates; the Plan, the details and Files all show them, the old unverified one marked whole', async ({ page }) => {
+test('a trip from before: unverified and confirmed bookings without unsure, plan items linking them, a trip with no dates; the Plan, the details and Files all show them, the old unverified one with each part it has marked', async ({ page }) => {
   await openApp(page);
   const trip = await startTrip(page, 'Thanksgiving');
   await records(page, trip, { write: THANKSGIVING.write });
@@ -788,13 +821,14 @@ test('a trip from before: unverified and confirmed bookings without unsure, plan
   await expect(page.getByRole('tab')).toHaveText(['Wed, Nov 25', 'Thu, Nov 26', 'Sat, Nov 28', 'Sun, Nov 29', 'No time yet (1)']); // the 29th: a flight's arrival
   await page.getByRole('tab', { name: 'Wed, Nov 25' }).click();
   const day = page.getByRole('tabpanel');
-  await expect(day.locator('.plan-row', { hasText: 'UA 123 to Newark' }).getByRole('link', { name: 'Check this' })).toBeVisible();
+  await expect(day.locator('.plan-row', { hasText: 'UA 123 to Newark' }).getByRole('link', { name: 'Check 3 details' })).toBeVisible();
   await expect(day.locator('.plan-row', { hasText: 'Hoboken Inn' }).locator('.chip')).toHaveCount(0);
   await expect(page.getByRole('region', { name: 'Not on a day' })).toHaveCount(0);
-  // The details: the unverified one marked whole, the confirmed one not at all.
+  // The details: the unverified one with each part it has marked (no banner), the confirmed one not at all.
   await day.getByRole('link', { name: /UA 123 to Newark/ }).click();
   await expect(page.getByRole('heading', { name: 'UA 123' })).toBeVisible();
-  await expect(page.getByRole('note')).toContainText('Check this');
+  await expect(page.getByRole('note')).toHaveCount(0);
+  await expect(page.locator('.mark-check')).toHaveCount(3);
   await page.goBack();
   await page.getByRole('tab', { name: 'Wed, Nov 25' }).click();
   await day.getByRole('link', { name: /Check in: Hoboken Inn/ }).click();

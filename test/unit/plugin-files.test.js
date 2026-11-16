@@ -11,6 +11,7 @@ import { PluginHost } from '../../src/core/plugins.js';
 import { runTool, RESULT_MAX, READ_ON } from '../../src/core/agent/tools.js';
 import { utf8 } from '../../src/core/bytes.js';
 import { wellFormed } from '../../src/core/web-search.js';
+import { checkOf } from '../../src/core/bookings.js';
 
 async function setup() {
   const registry = new Registry();
@@ -242,7 +243,30 @@ test("bookings: Shiori's new booking needs unsure; the schema takes a list of na
   assert.deepEqual((await ws.readJSON(trip, '/bookings/old.json')).unsure, []);
 });
 
-test("read of a booking's file carries the check the screens mark, as a note apart from its JSON, in her words and Koe's: an old unverified one whole, an old confirmed one nothing, an empty unsure nothing, \"end\" the check-out time (booking-say's fix 2: a missing unsure and an empty one read alike to a model)", async () => {
+test("an old booking (no unsure key, not confirmed) Shiori patches: the names she writes are the marks; a patch that doesn't name unsure leaves every part marked, the corrected one too; unsure: [] clears them (booking-say's round 4)", async () => {
+  const { ws, trip, run } = await setup();
+  const LA = 'America/Los_Angeles';
+  const old = { id: 'inn', kind: 'lodging', status: 'unverified', source: '/files/hotel.pdf', title: 'Hotel Aurora Test', start: { at: '2026-11-15T21:00:00-08:00', tz: LA }, end: { at: '2026-11-16T11:00:00-08:00', tz: LA }, place: { name: 'Hotel Aurora Test' }, confirmation: 'TQ1' };
+  const parts = ['title', 'start', 'end', 'place', 'confirmation'];
+  const marked = async (/** @type {string} */ name) => checkOf(await ws.readJSON(trip, `/bookings/${name}.json`)).fields;
+  await ws.write(trip, '/bookings/a.json', old, { author: 'user' });
+  await ws.write(trip, '/bookings/b.json', old, { author: 'user' });
+  await ws.write(trip, '/bookings/c.json', old, { author: 'user' });
+  assert.deepEqual(await marked('a'), parts, 'before any edit: every part');
+  // The hotel confirmed the check-out and two other details: she lists the three she is still unsure of, and those stay marked.
+  await run('patch', { path: '/trip/bookings/a.json', changes: { unsure: ['start', 'place', 'confirmation'] } });
+  assert.deepEqual((await ws.readJSON(trip, '/bookings/a.json')).unsure, ['start', 'place', 'confirmation']);
+  assert.deepEqual(await marked('a'), ['start', 'place', 'confirmation'], 'those three stay marked, the rest are sure: from then on an ordinary booking');
+  // A new check-out only, no unsure written: the file still has no unsure, so every part stays marked, the corrected one too.
+  await run('patch', { path: '/trip/bookings/b.json', changes: { end: { at: '2026-11-16T12:00:00-08:00', tz: LA } } });
+  assert.equal('unsure' in (await ws.readJSON(trip, '/bookings/b.json')), false);
+  assert.deepEqual(await marked('b'), parts, 'all its parts stay marked');
+  // Told all of it is right, she writes unsure: [] and nothing is marked.
+  await run('patch', { path: '/trip/bookings/c.json', changes: { unsure: [] } });
+  assert.deepEqual(await marked('c'), []);
+});
+
+test("read of a booking's file carries the check the screens mark, as a note apart from its JSON, in her words and Koe's: an old unverified one each part it has, an old confirmed one nothing, an empty unsure nothing, \"end\" the check-out time (booking-say's fix 2: a missing unsure and an empty one read alike to a model)", async () => {
   const { ws, trip, run } = await setup();
   const old = { id: 'inn', kind: 'lodging', status: 'unverified', source: '/talk', title: 'Hotel Clockwork Inn', start: { at: '2026-11-15T21:00:00-08:00', tz: 'America/Los_Angeles' }, end: { at: '2026-11-16T11:00:00-08:00', tz: 'America/Los_Angeles' } };
   const read = async (/** @type {string} */ name, /** @type {any} */ booking) => {
@@ -251,10 +275,11 @@ test("read of a booking's file carries the check the screens mark, as a note apa
     const note = out.slice((await ws.readText(trip, `/bookings/${name}.json`)).length);
     return { out, note, stored: await ws.readText(trip, `/bookings/${name}.json`) };
   };
-  // An old booking (saved before unsure, status unverified): marked whole on the screens, so the note says so.
+  // An old booking (saved before unsure, status unverified): every part it has is marked on the screens, so the note names each (booking-say's round 4).
   let got = await read('old', old);
   const oldRead = got.out;
-  assert.equal(got.out, `${got.stored}\n(annai marks this booking for the user to check: not sure it was read right.)`);
+  assert.equal(got.out, `${got.stored}\n(annai marks this booking for the user to check: not sure the name, the check-in time or the check-out time was read right.)`);
+  assert.doesNotMatch(got.note, /whole|it was read right\.\)$/, 'no phrase for the whole booking');
   assert.deepEqual(JSON.parse(got.out.split('\n(annai')[0]), old, 'the JSON is the file, the note after it, apart from it');
   // The user confirmed it: nothing marked, nothing added.
   got = await read('oldok', { ...old, status: 'confirmed' });
