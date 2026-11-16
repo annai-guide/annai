@@ -1,5 +1,5 @@
 {
-  "build": "946ba74230a2",
+  "build": "211b4f6aa535",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -193,7 +193,7 @@
     "/src/plugins/go/index.js": "39ee52f39fc1",
     "/src/plugins/mcp/client.js": "8f2bab66c578",
     "/src/plugins/mcp/index.js": "9b557e1626c7",
-    "/src/plugins/places/index.js": "74f92091eb2f",
+    "/src/plugins/places/index.js": "30f1b39e6013",
     "/src/plugins/sensors/index.js": "816a2602dd98",
     "/src/plugins/skills/index.js": "f3abb206048e",
     "/src/plugins/voice-browser/capture-worklet.js": "1667d451add2",
