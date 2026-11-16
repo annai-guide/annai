@@ -3,6 +3,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit } from './agent-kit.js';
 import { compactView, VIEW_MAX } from '../../src/core/koe/context.js';
+import { nextPlanItems } from '../../src/core/agent/context.js';
+import { planWatches, PLAN } from '../../src/core/live/plan-watches.js';
 
 const LA = 'America/Los_Angeles';
 const now = Date.parse('2026-11-26T10:00:00-08:00');
@@ -68,8 +70,30 @@ test("the compact view lists today's ends of things over several days at their t
   await write('/plan/car.json', { id: 'car', title: 'Rental car', fixed: true, booking: '/trip/bookings/car.json', start: at('2026-11-20T09:00:00'), end: at('2026-11-27T18:00:00'), place: { name: 'Airport lot' } });
   await write('/plan/lunch.json', { id: 'lunch', title: 'Lunch', fixed: false, start: at('2026-11-26T12:30:00') });
   const view = await compactView({ ws: k.ws, trip: k.trip, now, timeZone: LA, next: null });
-  assert.match(view, /2026-11-26 11:00\t\tCheck out · Cliffside Test Inn\tcan't be moved\t\n2026-11-26 12:30\t\tLunch\t\t\n2026-11-27 18:00\t\tReturn · Rental car\tcan't be moved\tAirport lot/);
+  // The inn's check-out is its booking's own row: it says nothing of what can move; the car's return is its fixed plan item's.
+  assert.match(view, /2026-11-26 11:00\t\tCheck out · Cliffside Test Inn\t\t\n2026-11-26 12:30\t\tLunch\t\t\n2026-11-27 18:00\t\tReturn · Rental car\tcan't be moved\tAirport lot/);
   assert.doesNotMatch(view, /Pick up|day \d of/);
+});
+
+test("\"can't be moved\" only for a plan item stored as fixed, in Koe's view, Kokoro's next in the plan and the wake: a hotel with nothing marked and a flexible trek's end say nothing (the user's answer, 2026-11-15: only what was said fixed)", async () => {
+  const k = await agentKit([[{ text: '' }]], { open: true });
+  const hotel = { id: 'hotel', kind: 'lodging', status: 'unverified', source: '/files/h.pdf', title: 'Test Harbor Hotel', unsure: [], start: at('2026-11-26T15:00:00'), end: at('2026-11-27T11:00:00') };
+  const items = {
+    trek: { id: 'trek', title: 'Hut trek', fixed: false, start: at('2026-11-25T08:00:00'), end: at('2026-11-26T16:00:00'), place: { name: 'Test Hut', lat: 36.3, lng: -121.8 } },
+    festival: { id: 'festival', title: 'Festival pass', fixed: true, start: at('2026-11-25T18:00:00'), end: at('2026-11-27T18:00:00') },
+    ticket: { id: 'ticket', title: 'Museum ticket', fixed: true, start: at('2026-11-26T13:00:00') },
+  };
+  await k.ws.write(k.trip, '/bookings/hotel.json', hotel, { author: 'user' });
+  for (const [id, item] of Object.entries(items)) await k.ws.write(k.trip, `/plan/${id}.json`, item, { author: 'user' });
+  const view = await compactView({ ws: k.ws, trip: k.trip, now, timeZone: LA, next: null });
+  assert.match(view, /\n2026-11-26 13:00\t\tMuseum ticket\tcan't be moved\t\n2026-11-26 16:00\t\tEnds · Hut trek\t\tTest Hut\n2026-11-27 11:00\t\tCheck out · Test Harbor Hotel\t\t\n2026-11-27 18:00\t\tEnds · Festival pass\tcan't be moved\t\n/);
+  // Kokoro's next in the plan, and the wakes, are the stored plan items': the hotel has none, the flexible trek's say nothing.
+  assert.deepEqual((await nextPlanItems(k.ws, k.trip, now, { fallbackTz: LA })).map((r) => [r[1], r[2]]), [['Museum ticket', "can't be moved"]]);
+  const watches = planWatches(Object.entries(items).map(([id, item]) => ({ path: `/plan/${id}.json`, item })), new Map([['/bookings/hotel.json', hotel]]), { fallbackTz: LA });
+  assert.deepEqual(watches.map((w) => [w.when.item ?? w.when.event, w.when.fixed]), [['trek', false], ['trek', false], ['festival', true], ['ticket', true], ['linger', undefined]]);
+  const ticket = /** @type {any} */ (watches.find((w) => w.id === 'plan:ticket:coming-up')).when;
+  const moment = { now: Date.parse('2026-11-26T12:50:00-08:00'), fix: null, newFix: false, past: false, live: true, activity: 'still', change: null, odometer: 0, stop: null, gap: null, fastEnded: null, fired: () => false };
+  assert.equal(PLAN.check(ticket, /** @type {any} */ (moment), {})?.text, 'Plan: "Museum ticket" (can\'t be moved) starts at 13:00, in 10 min');
 });
 
 test("a booking with parts Shiori is unsure of: its row names them by what they are, and a plan row at an unsure time says so beside \"can't be moved\" (the 固定 re-review's L2)", async () => {
@@ -84,7 +108,8 @@ test("a booking with parts Shiori is unsure of: its row names them by what they 
   const view = await compactView({ ws: k.ws, trip: k.trip, now, timeZone: LA, next: null });
   assert.match(view, /\n2026-11-26 15:00\t\tCheck in at Harbor Test Inn\tcan't be moved\t\n/);
   assert.match(view, /\n2026-11-27 09:00\t2026-11-27 10:30\tCoast Test Train\tcan't be moved; not sure the time was read right\t\n/);
-  assert.match(view, /\n2026-11-27 11:00\t\tCheck out · Harbor Test Inn\tcan't be moved; not sure the time was read right\t\n/);
+  // The check-out no plan item stands for is the booking's own row: unsure, and nothing said of what can move.
+  assert.match(view, /\n2026-11-27 11:00\t\tCheck out · Harbor Test Inn\tnot sure the time was read right\t\n/);
   assert.match(view, /\tlodging\tHarbor Test Inn\tnot sure the check-out time was read right\tHT7\n/);
   assert.match(view, /\trail\tCoast Test Train\tnot sure the departure time or the seat was read right\t\n/);
   // No field's name: a model says it, translated (「未確認」).

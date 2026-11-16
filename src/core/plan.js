@@ -16,7 +16,8 @@ import { t } from './l10n.js';
  *   checkFields: string[], missing: boolean, note: string }} PlanRow
  *   from: a plan item, a booking no plan item stands for (at its start), the end of a set (at its end), or a set's quiet line;
  *   path: the plan item's, else the booking's; item: the plan item (without its end when it starts a set), or a view of the booking
- *   ({ title, kind: 'booking', fixed, start, end, place }); an end row's item has the end as its start; time and end: "HH:MM" in the
+ *   ({ title, kind: 'booking', fixed: false, start, end, place }); an end row's item has the end as its start; an end row and a quiet line
+ *   keep their start's fixed, so only a plan item stored as fixed is (with its end and lines); time and end: "HH:MM" in the
  *   item's own zones ('' when there is none, for an all-day item, and for a set's start); endDays: how many days after the row's day
  *   the end falls, on the end's own clock; endZone: the end's zone, named ("ET"), when its clock reads differently from the start's ('' when
  *   it doesn't, and when there is no end); set: the row is part of a set, of what kind (the booking's, else the item's); line: which day
@@ -35,8 +36,10 @@ export const BOOKING_FILE = /^\/bookings\/[^/]+\.json$/;
 /**
  * A plan row's constraint, as every view shows a model it beside the row: what `fixed` means, not the field's name, which she translated
  * and said (「(固定)」, Sonnet and Koe, 2026-11-14). A flexible item gets no words: given "can be moved", she said so unasked (the user's
- * pick, 2026-11-14: only say what can't move). A time Shiori isn't sure of says so, beside "can't be moved": a booking still can't move.
- * The stored field keeps its name. @param {unknown} fixed @param {{ unsure: boolean }} o unsure: timeUnsure's, for the row's item
+ * pick, 2026-11-14: only say what can't move). A time Shiori isn't sure of says so, beside "can't be moved" or alone. Only a plan item
+ * Shiori stored as fixed can't be moved (planRows): a booking's own rows say nothing of it (asked a hotel's check-out with nothing marked,
+ * Koe said it couldn't be moved and Kokoro corrected her; the user's answer, 2026-11-15: only what was said fixed). The stored field keeps
+ * its name. @param {unknown} fixed @param {{ unsure: boolean }} o unsure: timeUnsure's, for the row's item
  */
 export const fixedWords = (fixed, { unsure }) => /* en */ [fixed ? "can't be moved" : '', unsure ? 'not sure the time was read right' : ''].filter(Boolean).join('; ');
 
@@ -177,7 +180,7 @@ export function planRows(items, bookings, { fallbackTz }) {
     const drop = record(base.booking?.fields)?.dropoff;
     const dropped = typeof drop === 'string' && drop.trim() ? { name: drop } : record(drop)?.name ? record(drop) : undefined;
     const place = kind === 'flight' || kind === 'rail' ? undefined : kind === 'car' && drop !== undefined && drop !== null ? dropped : view.place;
-    const item = { ...view, fixed: true, start: endAt, place };
+    const item = { ...view, start: endAt, place }; // as fixed as its start: a plan item's own, a booking's never
     /** @type {PlanRow} */
     const end = { ...base, item, from: 'end', ...timesOf(item, fallbackTz), set: { kind, part: 'end' }, line: null };
     // An end in another zone than the start's names it (an Arrive at 07:30 ET after a departure in PT).
@@ -186,7 +189,7 @@ export function planRows(items, bookings, { fallbackTz }) {
     if (end.day && !(base.bookingPath && base.booking && standsFor(base.bookingPath, end, not))) out.push(end);
     const title = view.title;
     span?.between.forEach((day, k) => out.push({
-      ...base, item: { title, kind: view.kind, fixed: true, place: view.place }, from: 'line', at: null, day, time: '', end: '', endDays: 0, endZone: '',
+      ...base, item: { title, kind: view.kind, fixed: view.fixed, place: view.place }, from: 'line', at: null, day, time: '', end: '', endDays: 0, endZone: '',
       set: { kind, part: 'line' }, line: { n: k + 2, of: kind === 'lodging' ? span.apart : span.apart + 1 }, check: false, checkFields: [], missing: false, note: '',
     }));
   };
@@ -214,7 +217,8 @@ export function planRows(items, bookings, { fallbackTz }) {
     // A stay is always its check-in and its check-out (as before); anything else that ends on a later day, its start and its end.
     const split = kind === 'lodging' || setOf(b);
     const base = { path, bookingPath: path, booking: b, check: marks.whole, checkFields: marks.fields, missing: false };
-    const view = { title, kind: 'booking', fixed: true, start: b.start, ...(split ? {} : { end: b.end }), place };
+    // A booking says nothing of what can move: a plan item Shiori stored as fixed does (the user's answer, 2026-11-15).
+    const view = { title, kind: 'booking', fixed: false, start: b.start, ...(split ? {} : { end: b.end }), place };
     /** @type {PlanRow} */
     const start = { ...base, item: view, from: 'booking', ...timesOf(view, fallbackTz), set: split ? { kind, part: 'start' } : null, line: null };
     if (!standsFor(path, start)) out.push(start);
