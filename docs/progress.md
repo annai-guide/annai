@@ -151,7 +151,7 @@ against the code before its row was written. The ones with a question are listed
      6. If files were waiting with Shiori: the "Waiting with Shiori" chat at "now" on home; open it and see what she does with them.
      7. If the phone has old lines outside any trip: the "Shiori, no trip" row (it may sit inside a folded month), its old lines with no buttons, + there starting a new chat, ← and Back going home.
      8. Then one answer: is the timeline right? (Stage 8 removes the top bar, the tabs and Now after it.)
-     Taken off your list: 500 chats (a fixture the main session checks in a test browser) and the Conversation tab with nothing open (the tabs go in stage 8).
+     Taken off your list: 500 chats (a fixture the main session checks in a test browser) and the Conversation tab with nothing open (the tabs go in stage 8). The 500 chats, checked 2026-11-16 (`.superpowers` notes: chats500-check-report.md; Chromium Pixel 7 at 4x CPU and WebKit iPhone 15): home draws in about 1.1 s at 4x (0.3 to 0.5 s unthrottled), scroll frames under 17 ms with the folds closed and under 40 ms with all open, folds open in place with no jump, no errors. Seen in its screenshots: an "October 2026" heading right above the fold "October 2026: 22 chats" (the same name twice; to look at with stage 8).
   4. **The pre-trip page** (38 lines to tick on the phone), with its 8-day reminder line on your second iPhone: see its row.
 - G8, once it has a plain account: see its row.
 
