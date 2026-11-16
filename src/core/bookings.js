@@ -5,7 +5,7 @@ import { validZone, instantAt, isoInZone, offsetMinutes } from './time.js';
 /**
  * Shiori's writes to bookings (spec §4.4, §7.3). There is no confirming step: a booking she writes lists in `unsure` just the fields she
  * isn't sure of (`[]` when none), and only those are marked for the user to check. A booking without the `unsure` key is from before: an
- * unverified one is marked whole until she is told it's right. She still never sets `confirmed`.
+ * unverified one is read as if `unsure` named every part it has (checkOf), until she is told which are right. She still never sets `confirmed`.
  */
 
 /** What Shiori is told to do with a booking she reads (a hand-over, and files added on the trip screen). */
@@ -15,20 +15,25 @@ import { validZone, instantAt, isoInZone, offsetMinutes } from './time.js';
 const TOP = ['title', 'start', 'end', 'place', 'confirmation', 'cost'];
 
 /**
- * What of a booking the screens mark for the user to check: `whole`, an old record (no `unsure` key) not confirmed; `fields`, the names
- * in `unsure` of fields it has (its own, or keys of `fields`, as written), once each. Anything odd marks nothing, and nothing throws.
- * @param {any} b @returns {{ whole: boolean, fields: string[] }}
+ * What of a booking the screens mark for the user to check: the names in `unsure` of fields it has (its own, or keys of `fields`, as
+ * written), once each. A record from before (no `unsure` key) not confirmed reads as if `unsure` named every part it has: its own fields
+ * that `unsure` may name, then the keys of `fields`, through the same rule as a new booking. Reading only: nothing is stored, so the
+ * file keeps no `unsure` until she writes one (booking-say's round 4: a mark of the whole booking was a second answer for one old
+ * shape, and every reader carried a branch for it). Anything odd marks nothing, and nothing throws.
+ * @param {any} b @returns {{ fields: string[] }}
  */
 export function checkOf(b) {
-  if (!b || typeof b !== 'object' || Array.isArray(b)) return { whole: false, fields: [] };
-  if (!('unsure' in b)) return { whole: b.status !== 'confirmed', fields: [] };
-  if (!Array.isArray(b.unsure)) return { whole: false, fields: [] };
+  if (!b || typeof b !== 'object' || Array.isArray(b)) return { fields: [] };
   const extra = b.fields && typeof b.fields === 'object' && !Array.isArray(b.fields) ? b.fields : {};
-  const has = (/** @type {string} */ k) => (TOP.includes(k) ? b[k] !== undefined && b[k] !== null && b[k] !== '' : Object.hasOwn(extra, k));
+  const named = 'unsure' in b ? b.unsure : b.status !== 'confirmed' ? [...TOP, ...Object.keys(extra)] : [];
+  if (!Array.isArray(named)) return { fields: [] };
+  // A part is a value that is there: not null, no blank text. The same rule for a booking's own fields and for the keys of `fields`.
+  const there = (/** @type {unknown} */ v) => v !== undefined && v !== null && !(typeof v === 'string' && !v.trim());
+  const has = (/** @type {string} */ k) => (TOP.includes(k) ? there(b[k]) : Object.hasOwn(extra, k) && there(extra[k]));
   /** @type {string[]} */
   const fields = [];
-  for (const k of b.unsure) if (typeof k === 'string' && !fields.includes(k) && has(k)) fields.push(k);
-  return { whole: false, fields };
+  for (const k of named) if (typeof k === 'string' && !fields.includes(k) && has(k)) fields.push(k);
+  return { fields };
 }
 
 /**
@@ -61,12 +66,12 @@ function partWords(key, kind) {
 
 /**
  * What a model is shown of a booking's check, beside it: what the screens mark (checkOf), never the `status` word, which Koe translated
- * (「未確認」 on bookings with nothing to check, 2026-11-14). One marked whole is one phrase; one with fields marked names each, as the
- * screens mark each beside its value, so she can say which to check. Nothing when nothing is marked, as for a confirmed one. @param {any} b
+ * (「未確認」 on bookings with nothing to check, 2026-11-14). It names each part marked, as the screens mark each beside its value, so she can
+ * say which to check: an old booking's parts too, with no phrase for the whole booking (a phrase for the whole record hides which part to
+ * check). Nothing when nothing is marked, as for a confirmed one. @param {any} b
  */
 export function checkWords(b) {
   const c = checkOf(b);
-  /* en */ if (c.whole) return 'not sure it was read right';
   if (!c.fields.length) return '';
   const parts = [...new Set(c.fields.map((k) => partWords(k, b.kind)))]; // the other-detail phrase once, however many keys
   /* en */ return `not sure ${parts.length > 1 ? `${parts.slice(0, -1).join(', ')} or ${parts.at(-1)}` : parts[0]} was read right`;
@@ -323,6 +328,11 @@ export function shioriBooking(before, next, { schema, changes } = {}) {
   // A new booking, and one written with unsure, always carry it: without it, it would read as one from before.
   if (!('unsure' in next) && (!old || 'unsure' in old)) {
     /* en */ throw new Error('A new booking lists the fields you are unsure of in unsure (an empty list when you are sure of all of them), so the user sees what to check.');
+  }
+  // `unsure+` on a booking with no unsure key adds to the parts marked now (checkOf), so the rest stay marked.
+  const patch = record(changes);
+  if (patch && Object.hasOwn(patch, 'unsure+') && !Object.hasOwn(patch, 'unsure') && old && !('unsure' in old) && Array.isArray(next.unsure)) {
+    next = { ...next, unsure: [...new Set([...checkOf(old).fields, ...next.unsure])] };
   }
   const own = record(record(schema)?.properties);
   const place = record(next.place);

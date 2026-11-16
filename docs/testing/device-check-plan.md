@@ -129,7 +129,7 @@ Setup: the emulator image has Google Play services, so Chrome installs annai as 
 - [ ] **m4 #6**: Two confirmations with the same file name are both kept ("confirmation (2).pdf"). How: screen; storage.
 - [ ] **m4 #7**: "Plan the trip": she goes in order (getting there, getting around, where to stay, the rest) and hands over search links and directions as cards; the links open the right sites, filled in. How: screen; each link's URL. Then C.
 - [ ] **m4 #8**: The Plan: a tab per day, plan items Shiori stored as fixed (a flight, a check-in) as ● fixed and the flexible ones as ○ flexible, a booking's own row (one no plan item stands for, such as a check-out when Shiori stored only the check-in) with neither mark, times in each place's own zone, legs with Directions into Google Maps. How: screen; the Directions link. Then C (Apple Maps).
-- [ ] **m4 #9**: An unconfirmed booking shows "Check this"; on the Booking screen the original opens and "Looks right" confirms it; the chip goes. How: screen. Then C.
+- [ ] **m4 #9**: A booking Shiori read and isn't sure of shows "Check N details" on the Plan; on the Booking screen a light check sits beside each detail she isn't sure of and the original opens; telling Shiori a detail is right takes its check off, and the chip goes when none is left. How: screen. Then C.
 - [ ] **m4 #10**: An .ics of the trip's dates adds plan items once; adding it again changes nothing. How: adb push; screen; storage.
 - [ ] **m4 #12**: Nothing on the Plan or Booking screens scrolls sideways; every button is easy to hit. How: console: `scrollWidth` against `clientWidth` on each screen, and button sizes. Then C.
 
@@ -410,7 +410,7 @@ Claude has backed up the emulator to `annai-backup` (A14).
 - [ ] **m4 #1**: Wallet → a boarding pass → ⋯ → Share → Save to Files; in the trip, "Add photos or files" → the .pkpass: Shiori writes an unverified booking with the right flight, times and confirmation number. Any pass works; the real one shows up at check-in.
 - [ ] **m4 #2**: Mail: a hotel confirmation as a PDF (Share → Print → pinch out → Share → Save to Files), added the same way: Shiori writes the booking and asks only about what she isn't sure of.
 - [ ] **m4 #3**: A screenshot of a car rental confirmation, sent with the dock's camera button (choose the photo): the booking's source is the photo's path.
-- [ ] m4 #9 (counted in A): "Check this" → the original opens (the pass, the PDF) → "Looks right": the chip goes.
+- [ ] m4 #9 (counted in A): "Check N details" → the original opens (the pass, the PDF) → tell Shiori the details are right: the checks and the chip go.
 - [ ] m4 #7, #8 (counted in A): Plan the real Thanksgiving trip here: the search links open in Safari, filled in; Directions open Apple Maps.
 - [ ] m4 #11 (counted in B): Add to calendar: the share sheet offers Calendar, and the events land at the right local times.
 - [ ] m4 #12 (counted in A): Nothing on the Plan or Booking screens scrolls sideways, and every button is easy to hit with a finger.

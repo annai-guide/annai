@@ -825,14 +825,14 @@ apv0y3	ok	annai couldn't read {0} from {1}, a file its {2} names. Check that it 
 14wn58m	ok	a provider that sends keys to {0}	会把密钥发送到 {0} 的提供商	src/core/packages.js:667	{0} = o; Note: one of a list of what an update adds.
 tqmba2	ok	an address your searches are sent to: {0}	会接收搜索内容的地址 {0}	src/core/packages.js:667	{0} = o; Note: one of a list of what an update adds.
 18tp402	ok	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	此浏览器无法转换 {0}，因此保留了原文件，可能只有 Safari 浏览器能显示。	src/core/photos.js:135	{0} = name
-1009iza	ok	Restaurant	餐厅	src/core/plan.js:68	
-1lrcegv	ok	Event	活动	src/core/plan.js:68	
-56ee40	ok	Booking	预订	src/core/plan.js:68	
-8cdq15	ok	Train	火车	src/core/plan.js:68	
-d57q3n	ok	Flight	航班	src/core/plan.js:68	
-jj8u9s	ok	Stay	住宿	src/core/plan.js:68	Note: A kind of booking: a hotel or other lodging.
-sksosh	ok	Car	租车	src/core/plan.js:68	Note: A kind of booking: a car, nearly always a rental.
-1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	无法识别时区“{0}”，按 {1} 显示。	src/core/plan.js:102	{0} = String(own ?? ''); {1} = fallbackTz
+1009iza	ok	Restaurant	餐厅	src/core/plan.js:67	
+1lrcegv	ok	Event	活动	src/core/plan.js:67	
+56ee40	ok	Booking	预订	src/core/plan.js:67	
+8cdq15	ok	Train	火车	src/core/plan.js:67	
+d57q3n	ok	Flight	航班	src/core/plan.js:67	
+jj8u9s	ok	Stay	住宿	src/core/plan.js:67	Note: A kind of booking: a hotel or other lodging.
+sksosh	ok	Car	租车	src/core/plan.js:67	Note: A kind of booking: a car, nearly always a rental.
+1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	无法识别时区“{0}”，按 {1} 显示。	src/core/plan.js:101	{0} = String(own ?? ''); {1} = fallbackTz
 o6vv9a	ok	"{0}" is a name annai uses for one of its own parts, so a skill can't have it.	“{0}”已被 annai 自身的某个部分使用，不能用作技能名称。	src/core/plugins.js:179	{0} = id; Note: {0} is the skill's name.
 1fdobr5	ok	It has the same id as a plugin built into annai.	与 annai 内置插件的 ID 相同。	src/core/plugins.js:180	
 wq5ezj	ok	Its name, "{0}", is annai's own name, or the name of one of its parts. Ask its author to rename it.	名称“{0}”与 annai 或其某个部分的名称相同。请联系作者改名。	src/core/plugins.js:184	{0} = pkg.name; Note: Ask here is the plain verb (to ask the author), not Safari's permission choice.
@@ -1199,42 +1199,42 @@ vjjlq9	ok	Check-in	入住	src/ui/format.js:188	Note: a stay's check-in, its day 
 lypvx6	ok	{0}, {1}	{0}（{1}）	src/ui/format.js:190	context: booking; {0} = String(b.place.name); {1} = String(b.place.address); Note: A booking's place: its name, then its address in brackets.
 p3snlg	ok	Confirmation	确认号	src/ui/format.js:201	Note: A booking's confirmation code.
 t05i6w	ok	Cost	费用	src/ui/format.js:202	
-1vdspge	ok	Getting files: {0} of {1}	正在获取文件：{0}/{1}	src/ui/format.js:236	{0} = num(p.done); {1} = num(p.total)
-zo1gq	ok	Getting the backup…	正在获取备份…	src/ui/format.js:236	
-fuj1qb	ok	Getting the backup ready…	正在准备备份…	src/ui/format.js:240	
-1a0lh7c	ok	Comparing files {0} of {1}…	正在比较文件（{0}/{1}）…	src/ui/format.js:241	{0} = num(p.done); {1} = num(p.total)
-1ofggks	ok	Comparing files…	正在比较文件…	src/ui/format.js:241	
-1jbhw8o	ok	Uploading…	正在上传…	src/ui/format.js:242	
-sg0mn0	ok	Uploading {0} of {1}…	正在上传（{0}/{1}）…	src/ui/format.js:242	{0} = num(p.done); {1} = num(p.total)
-11y7c1u	ok	Paused: there is a newer backup from an iPad	已暂停：有来自 iPad 的较新备份	src/ui/format.js:247	
-1815ss7	ok	Paused: there is a newer backup from an iPhone	已暂停：有来自 iPhone 的较新备份	src/ui/format.js:247	
-1kc2l15	ok	Paused: there is a newer backup from a computer	已暂停：有来自电脑的较新备份	src/ui/format.js:248	
-1ytn3n1	ok	Paused: there is a newer backup from an Android phone	已暂停：有来自 Android 手机的较新备份	src/ui/format.js:248	
-14m1y56	ok	Paused: there is a newer backup from another device	已暂停：有来自另一台设备的较新备份	src/ui/format.js:249	
-12hcbva	ok	An iPhone backed up to {0} {1}.	{1}，一部 iPhone 备份到了 {0}。	src/ui/format.js:253	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
-1exdtuz	ok	An iPad backed up to {0} {1}.	{1}，一台 iPad 备份到了 {0}。	src/ui/format.js:253	{0} = where; {1} = ago
-1hmrpdo	ok	A computer backed up to {0} {1}.	{1}，一台电脑备份到了 {0}。	src/ui/format.js:254	{0} = where; {1} = ago
-dc7u48	ok	An Android phone backed up to {0} {1}.	{1}，一部 Android 手机备份到了 {0}。	src/ui/format.js:254	{0} = where; {1} = ago
-19kyaez	ok	Another device backed up to {0} {1}.	{1}，另一台设备备份到了 {0}。	src/ui/format.js:255	{0} = where; {1} = ago
-mbc651	ok	That was after this phone's last backup.	这比这部手机上次备份的时间更晚。	src/ui/format.js:259	
-vqd7xg	ok	Import it as a copy to bring its trips here, or back up this phone over it.	可以作为副本导入，把其中的旅行带到这里；也可以用这部手机的备份覆盖它。	src/ui/format.js:259	Note: "Back up this phone over it": this phone's backup replaces the newer one there.
-1ce0smb	ok	That was after this iPad's last backup.	这比这台 iPad 上次备份的时间更晚。	src/ui/format.js:260	
-nmyapy	ok	Import it as a copy to bring its trips here, or back up this iPad over it.	可以作为副本导入，把其中的旅行带到这里；也可以用这台 iPad 的备份覆盖它。	src/ui/format.js:260	
-hqymxl	ok	Import it as a copy to bring its trips here, or back up this computer over it.	可以作为副本导入，把其中的旅行带到这里；也可以用这台电脑的备份覆盖它。	src/ui/format.js:261	
-wn3ejs	ok	That was after this computer's last backup.	这比这台电脑上次备份的时间更晚。	src/ui/format.js:261	
-1n6qjpw	ok	Working…	正在处理…	src/ui/format.js:276	
-1sw982j	ok	Last backup {0}.	上次备份：{0}。	src/ui/format.js:281	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
-d1smo3	ok	Not backed up yet.	尚未备份。	src/ui/format.js:281	
-10ouos4	ok	Waiting for your OK to upload {0}	正在等待你同意上传 {0}	src/ui/format.js:282	{0} = size(h.bytes)
-nbshf0	ok	The last try failed.	上次尝试失败了。	src/ui/format.js:284	Note: the reason follows on a line of its own, in English: a hold kept before annai spoke other languages.
-osg3je	ok	The last try failed: {0}	上次尝试失败：{0}	src/ui/format.js:285	{0} = holdWords(h, target.name)
-1qmdzit	ok	Not set up yet: fill it in, then Save and test	尚未设置：请填写后点“保存并测试”	src/ui/format.js:286	Note: "Save and test" is the backup place's button.
-1e2pygg	ok	Automatic backups are off	自动备份已关闭	src/ui/format.js:287	
-173tgfr	ok	Last backup {0}	上次备份：{0}	src/ui/format.js:288	{0} = at
-1uajbr3	ok	Not backed up yet	尚未备份	src/ui/format.js:288	
-1j5k2vf	ok	Automatic backups there are paused, so neither device overwrites the other.	那里的自动备份已暂停，以免两台设备互相覆盖。	src/ui/format.js:300	
-hmr3pn	ok	The other backup stays in its history.	另一个备份仍会保留在历史中。	src/ui/format.js:300	
-8091b1	ok	no limit	不限	src/ui/format.js:325	
+1vdspge	ok	Getting files: {0} of {1}	正在获取文件：{0}/{1}	src/ui/format.js:239	{0} = num(p.done); {1} = num(p.total)
+zo1gq	ok	Getting the backup…	正在获取备份…	src/ui/format.js:239	
+fuj1qb	ok	Getting the backup ready…	正在准备备份…	src/ui/format.js:243	
+1a0lh7c	ok	Comparing files {0} of {1}…	正在比较文件（{0}/{1}）…	src/ui/format.js:244	{0} = num(p.done); {1} = num(p.total)
+1ofggks	ok	Comparing files…	正在比较文件…	src/ui/format.js:244	
+1jbhw8o	ok	Uploading…	正在上传…	src/ui/format.js:245	
+sg0mn0	ok	Uploading {0} of {1}…	正在上传（{0}/{1}）…	src/ui/format.js:245	{0} = num(p.done); {1} = num(p.total)
+11y7c1u	ok	Paused: there is a newer backup from an iPad	已暂停：有来自 iPad 的较新备份	src/ui/format.js:250	
+1815ss7	ok	Paused: there is a newer backup from an iPhone	已暂停：有来自 iPhone 的较新备份	src/ui/format.js:250	
+1kc2l15	ok	Paused: there is a newer backup from a computer	已暂停：有来自电脑的较新备份	src/ui/format.js:251	
+1ytn3n1	ok	Paused: there is a newer backup from an Android phone	已暂停：有来自 Android 手机的较新备份	src/ui/format.js:251	
+14m1y56	ok	Paused: there is a newer backup from another device	已暂停：有来自另一台设备的较新备份	src/ui/format.js:252	
+12hcbva	ok	An iPhone backed up to {0} {1}.	{1}，一部 iPhone 备份到了 {0}。	src/ui/format.js:256	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
+1exdtuz	ok	An iPad backed up to {0} {1}.	{1}，一台 iPad 备份到了 {0}。	src/ui/format.js:256	{0} = where; {1} = ago
+1hmrpdo	ok	A computer backed up to {0} {1}.	{1}，一台电脑备份到了 {0}。	src/ui/format.js:257	{0} = where; {1} = ago
+dc7u48	ok	An Android phone backed up to {0} {1}.	{1}，一部 Android 手机备份到了 {0}。	src/ui/format.js:257	{0} = where; {1} = ago
+19kyaez	ok	Another device backed up to {0} {1}.	{1}，另一台设备备份到了 {0}。	src/ui/format.js:258	{0} = where; {1} = ago
+mbc651	ok	That was after this phone's last backup.	这比这部手机上次备份的时间更晚。	src/ui/format.js:262	
+vqd7xg	ok	Import it as a copy to bring its trips here, or back up this phone over it.	可以作为副本导入，把其中的旅行带到这里；也可以用这部手机的备份覆盖它。	src/ui/format.js:262	Note: "Back up this phone over it": this phone's backup replaces the newer one there.
+1ce0smb	ok	That was after this iPad's last backup.	这比这台 iPad 上次备份的时间更晚。	src/ui/format.js:263	
+nmyapy	ok	Import it as a copy to bring its trips here, or back up this iPad over it.	可以作为副本导入，把其中的旅行带到这里；也可以用这台 iPad 的备份覆盖它。	src/ui/format.js:263	
+hqymxl	ok	Import it as a copy to bring its trips here, or back up this computer over it.	可以作为副本导入，把其中的旅行带到这里；也可以用这台电脑的备份覆盖它。	src/ui/format.js:264	
+wn3ejs	ok	That was after this computer's last backup.	这比这台电脑上次备份的时间更晚。	src/ui/format.js:264	
+1n6qjpw	ok	Working…	正在处理…	src/ui/format.js:279	
+1sw982j	ok	Last backup {0}.	上次备份：{0}。	src/ui/format.js:284	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
+d1smo3	ok	Not backed up yet.	尚未备份。	src/ui/format.js:284	
+10ouos4	ok	Waiting for your OK to upload {0}	正在等待你同意上传 {0}	src/ui/format.js:285	{0} = size(h.bytes)
+nbshf0	ok	The last try failed.	上次尝试失败了。	src/ui/format.js:287	Note: the reason follows on a line of its own, in English: a hold kept before annai spoke other languages.
+osg3je	ok	The last try failed: {0}	上次尝试失败：{0}	src/ui/format.js:288	{0} = holdWords(h, target.name)
+1qmdzit	ok	Not set up yet: fill it in, then Save and test	尚未设置：请填写后点“保存并测试”	src/ui/format.js:289	Note: "Save and test" is the backup place's button.
+1e2pygg	ok	Automatic backups are off	自动备份已关闭	src/ui/format.js:290	
+173tgfr	ok	Last backup {0}	上次备份：{0}	src/ui/format.js:291	{0} = at
+1uajbr3	ok	Not backed up yet	尚未备份	src/ui/format.js:291	
+1j5k2vf	ok	Automatic backups there are paused, so neither device overwrites the other.	那里的自动备份已暂停，以免两台设备互相覆盖。	src/ui/format.js:303	
+hmr3pn	ok	The other backup stays in its history.	另一个备份仍会保留在历史中。	src/ui/format.js:303	
+8091b1	ok	no limit	不限	src/ui/format.js:328	
 lpx0cl#other	ok	# trips and conversations	# 个旅行和对话	src/ui/import-state.js:47	plural; # = titles.length; English: "# trip or conversation" (one), "# trips and conversations" (other); Note: a git backup's preview, from its manifest alone, can't tell trips from chats: this is the one row they fold under; also the toast "Imported # trips and conversations" when the user left the import screen (import-state.js).
 12lprg	ok	Imported {0} from {1}.	已从 {1} 导入 {0}。	src/ui/import-state.js:48	{0} = what; {1} = place
 1hzaym7	ok	Imported {0}.	已导入 {0}。	src/ui/import-state.js:48	{0} = what
@@ -1623,21 +1623,20 @@ mpbd6l	ok	This file can't be found	找不到此文件	src/ui/screens/booking.js:
 14y1329	ok	It may have been deleted or renamed. The itinerary lists the bookings there are.	可能已被删除或重命名。现有的预订都列在行程中。	src/ui/screens/booking.js:32	
 1wk3iyk	ok	This booking can't be found	找不到此预订	src/ui/screens/booking.js:32	
 9bzl8d	ok	Itinerary item	行程项目	src/ui/screens/booking.js:55	Note: an itinerary item's heading when it has no title.
-7z8wif	ok	Check this: Shiori read it before annai marked details one by one. Tell her if it's right, or what's wrong.	请核对：这份预订是 Shiori 在 annai 开始逐项标注之前读取的。告诉她内容是否正确，或者哪里不对。	src/ui/screens/booking.js:73	Note: a banner on a booking from before: the whole booking is to check, and telling her it's right clears it; 请核对 as the Check this chip.
-193ucme	ok	On the itinerary	行程中的项目	src/ui/screens/booking.js:77	Note: the heading of the itinerary items that stand for a booking, on the details screen of a file or booking (Itinerary: 旅程/行程).
-xzsqye	ok	On the itinerary: {0}	行程中的项目：{0}	src/ui/screens/booking.js:77	{0} = title || kindDay(b); Note: the name screen readers give a booking's plan items on a file's details screen with several bookings; {0} is the booking's title, else its kind and day ("ANNAI AIR AN 123").
-bamrei	ok	Change it	修改	src/ui/screens/booking.js:80	
-2egm5v	ok	The original	原件	src/ui/screens/booking.js:98	Note: the section with the file a booking came from; as Open the original.
-14bya76	ok	The file	原文件	src/ui/screens/booking.js:100	Note: the small heading over the file's preview on a file's details screen with several bookings above it, so the file's part doesn't read as the last booking's.
-1rplq4f	ok	From {0}	文件名：{0}	src/ui/screens/booking.js:102	context: a file; {0} = file.real; Note: under a file's preview on its details screen and a plan item's; {0} is the file's real name ("itinerary.pdf").
-t8quxl	ok	Download	下载	src/ui/screens/booking.js:106	
-1ygxf36	ok	Tap again to delete	再点一次以删除	src/ui/screens/booking.js:111	
-oay2cq	ok	Delete	删除	src/ui/screens/booking.js:111	Note: a waiting file's two-step Delete (its space comes back), as Delete file.
-iy42pb	ok	check	待核对	src/ui/screens/booking.js:150	context: a detail to check; Note: a light mark beside one detail Shiori is unsure of.
-1s0er5c	ok	Shiori isn't sure of this	Shiori 不确定这一项	src/ui/screens/booking.js:151	Note: read by screen readers for the check mark beside a detail.
-1a6z1m2	ok	Itinerary	行程	src/ui/screens/booking.js:163	
-1eszfxl	ok	The original, {0}, can't be found.	找不到原件 {0}。	src/ui/screens/booking.js:185	{0} = name
-98drsx	ok	Open the original	打开原件	src/ui/screens/booking.js:190	
+193ucme	ok	On the itinerary	行程中的项目	src/ui/screens/booking.js:74	Note: the heading of the itinerary items that stand for a booking, on the details screen of a file or booking (Itinerary: 旅程/行程).
+xzsqye	ok	On the itinerary: {0}	行程中的项目：{0}	src/ui/screens/booking.js:74	{0} = title || kindDay(b); Note: the name screen readers give a booking's plan items on a file's details screen with several bookings; {0} is the booking's title, else its kind and day ("ANNAI AIR AN 123").
+bamrei	ok	Change it	修改	src/ui/screens/booking.js:77	
+2egm5v	ok	The original	原件	src/ui/screens/booking.js:95	Note: the section with the file a booking came from; as Open the original.
+14bya76	ok	The file	原文件	src/ui/screens/booking.js:97	Note: the small heading over the file's preview on a file's details screen with several bookings above it, so the file's part doesn't read as the last booking's.
+1rplq4f	ok	From {0}	文件名：{0}	src/ui/screens/booking.js:99	context: a file; {0} = file.real; Note: under a file's preview on its details screen and a plan item's; {0} is the file's real name ("itinerary.pdf").
+t8quxl	ok	Download	下载	src/ui/screens/booking.js:103	
+1ygxf36	ok	Tap again to delete	再点一次以删除	src/ui/screens/booking.js:108	
+oay2cq	ok	Delete	删除	src/ui/screens/booking.js:108	Note: a waiting file's two-step Delete (its space comes back), as Delete file.
+iy42pb	ok	check	待核对	src/ui/screens/booking.js:147	context: a detail to check; Note: a light mark beside one detail Shiori is unsure of.
+1s0er5c	ok	Shiori isn't sure of this	Shiori 不确定这一项	src/ui/screens/booking.js:148	Note: read by screen readers for the check mark beside a detail.
+1a6z1m2	ok	Itinerary	行程	src/ui/screens/booking.js:160	
+1eszfxl	ok	The original, {0}, can't be found.	找不到原件 {0}。	src/ui/screens/booking.js:182	{0} = name
+98drsx	ok	Open the original	打开原件	src/ui/screens/booking.js:187	
 19jra30	ok	What is around us right now that is worth knowing about?	我们附近现在有什么值得了解的吗？	src/ui/screens/drive.js:15	Note: What the user says to Shiori with a tap, as their own words.
 sqqsfd	ok	What's around here?	附近有什么？	src/ui/screens/drive.js:15	
 1gkqhnt	ok	Food	吃饭	src/ui/screens/drive.js:16	
@@ -1943,8 +1942,7 @@ pxfr8q	ok	Days	日期	src/ui/screens/plan.js:99
 wk7g53	ok	No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) in Details.	还没有行程。可以让 Shiori 和你一起安排，或在“详情”中添加日历文件（.ics）。	src/ui/screens/plan.js:102	Note: "Ask" here is asking Shiori, not the permission setting's Ask.
 15yqwep	ok	{0} couldn't be read. Open the files in Details to fix them.	{0} 无法读取。请在“详情”中打开这些文件进行修复。	src/ui/screens/plan.js:103	{0} = unread
 1hvcdro	ok	{0} couldn't be read. Open the files in Details to fix it.	{0} 无法读取。请在“详情”中打开该文件进行修复。	src/ui/screens/plan.js:103	{0} = unread
-1gmgpvl	ok	Check this	请核对	src/ui/screens/plan.js:160	
-wioqt8#other	ok	Check # details	请核对 # 项	src/ui/screens/plan.js:162	plural; # = r.checkFields.length; English: "Check # detail" (one), "Check # details" (other); Note: a chip on a Plan row: how many of a booking's details Shiori is unsure of; 请核对 as the Check this chip.
+wioqt8#other	ok	Check # details	请核对 # 项	src/ui/screens/plan.js:162	plural; # = checks; English: "Check # detail" (one), "Check # details" (other); Note: a chip on a Plan row: how many checks the booking's details show, one beside each detail Shiori is unsure of (a flight's route is one); 请核对 as the glossary's Check this.
 1ropcog	ok	Booking missing	缺少预订	src/ui/screens/plan.js:163	
 1u7blsq	ok	Shiori added this to the itinerary. Remove it?	这一项是 Shiori 加入行程的。要移除吗？	src/ui/screens/plan.js:180	
 kmmqyh	ok	Undone: {0} is off the itinerary.	已撤销，“{0}”已从行程中移除。	src/ui/screens/plan.js:182	{0} = title

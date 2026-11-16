@@ -12,7 +12,7 @@ import { t } from './l10n.js';
  * @typedef {{ path: string, booking: Record<string, any> }} BookingFile
  * @typedef {{ path: string, item: Record<string, any>, from: 'item' | 'booking' | 'end' | 'line', at: number | null, day: string | null,
  *   time: string, end: string, endDays: number, endZone: string, set: { kind: string, part: 'start' | 'end' | 'line' } | null,
- *   line: { n: number, of: number } | null, bookingPath: string | null, booking: Record<string, any> | null, check: boolean,
+ *   line: { n: number, of: number } | null, bookingPath: string | null, booking: Record<string, any> | null,
  *   checkFields: string[], missing: boolean, note: string }} PlanRow
  *   from: a plan item, a booking no plan item stands for (at its start), the end of a set (at its end), or a set's quiet line;
  *   path: the plan item's, else the booking's; item: the plan item (without its end when it starts a set), or a view of the booking
@@ -22,8 +22,7 @@ import { t } from './l10n.js';
  *   item's own zones ('' when there is none, for an all-day item, and for a set's start); endDays: how many days after the row's day
  *   the end falls, on the end's own clock; endZone: the end's zone, named ("ET"), when its clock reads differently from the start's ('' when
  *   it doesn't, and when there is no end); set: the row is part of a set, of what kind (the booking's, else the item's); line: which day
- *   or night of how many (quiet lines); check: its booking is from before and not confirmed (checkOf's whole); checkFields: the fields
- *   Shiori is unsure of (checkOf's); missing: it names a booking the trip doesn't have; note: what was wrong with its time
+ *   or night of how many (quiet lines); checkFields: the fields Shiori is unsure of, or of an old booking not confirmed, every part it has (checkOf's); missing: it names a booking the trip doesn't have; note: what was wrong with its time
  */
 
 export const LEG_MAX_KM = 1000; // farther than a day's drive: a flight, not a leg
@@ -49,7 +48,7 @@ const momentOf = (t, fallbackTz) => instantAt(t?.at, validZone(t?.tz) ? t.tz : f
 
 /**
  * Whether a time a plan row shows is one Shiori isn't sure of, as the screens mark it (checkOf): one of those times is the same moment as
- * its booking's start or end, and the booking is marked whole or at that time. Only the times the row shows count: a sure check-in beside
+ * its booking's start or end, and the booking marks that time (an old booking not confirmed marks every part it has). Only the times the row shows count: a sure check-in beside
  * an unsure check-out is a sure row when the view shows the start alone. An end row's item has the end as its start (planRows).
  * @param {unknown[]} shown the row's times: its start, and its end where the view shows it @param {unknown} booking the booking it stands for, if any
  * @param {{ fallbackTz: string }} o the zone for a time whose own zone annai doesn't know
@@ -59,8 +58,8 @@ export function timeUnsure(shown, booking, { fallbackTz }) {
   if (!b) return false;
   const moment = (/** @type {any} */ t) => momentOf(t, fallbackTz);
   const marks = checkOf(b);
-  // A booking with no end (an old one, marked whole) has no moment there: NaN, which a row with no time would also read as.
-  const marked = ['start', 'end'].filter((k) => marks.whole || marks.fields.includes(k)).map((k) => moment(b[k])).filter(Number.isFinite);
+  // A booking with no end has no moment there: NaN, which a row with no time would also read as.
+  const marked = ['start', 'end'].filter((k) => marks.fields.includes(k)).map((k) => moment(b[k])).filter(Number.isFinite);
   return shown.some((t) => marked.includes(moment(t)));
 }
 
@@ -175,7 +174,7 @@ export function planRows(items, bookings, { fallbackTz }) {
   /** @type {PlanRow[]} */
   const out = [];
   /**
-   * A set's end row and its quiet lines. @param {Pick<PlanRow, 'path' | 'bookingPath' | 'booking' | 'check' | 'checkFields' | 'missing'>} base
+   * A set's end row and its quiet lines. @param {Pick<PlanRow, 'path' | 'bookingPath' | 'booking' | 'checkFields' | 'missing'>} base
    * @param {Record<string, any>} view the start's view @param {Record<string, any>} endAt the end's time @param {string} kind
    * @param {{ apart: number, between: string[] } | null} span @param {string} [not] the item drawing the set
    */
@@ -194,7 +193,7 @@ export function planRows(items, bookings, { fallbackTz }) {
     const title = view.title;
     span?.between.forEach((day, k) => out.push({
       ...base, item: { title, kind: view.kind, fixed: view.fixed, place: view.place }, from: 'line', at: null, day, time: '', end: '', endDays: 0, endZone: '',
-      set: { kind, part: 'line' }, line: { n: k + 2, of: kind === 'lodging' ? span.apart : span.apart + 1 }, check: false, checkFields: [], missing: false, note: '',
+      set: { kind, part: 'line' }, line: { n: k + 2, of: kind === 'lodging' ? span.apart : span.apart + 1 }, checkFields: [], missing: false, note: '',
     }));
   };
   for (const { path, item, ref } of own) {
@@ -202,7 +201,7 @@ export function planRows(items, bookings, { fallbackTz }) {
     const span = setOf(item);
     const marks = checkOf(booking);
     const base = {
-      path, bookingPath: ref, booking, check: booking !== null && marks.whole, checkFields: booking ? marks.fields : [],
+      path, bookingPath: ref, booking, checkFields: marks.fields,
       missing: item.booking !== undefined && item.booking !== '' && !booking,
     };
     const kind = String(booking?.kind ?? item.kind ?? '');
@@ -220,7 +219,7 @@ export function planRows(items, bookings, { fallbackTz }) {
     const kind = String(b.kind ?? '');
     // A stay is always its check-in and its check-out (as before); anything else that ends on a later day, its start and its end.
     const split = kind === 'lodging' || setOf(b);
-    const base = { path, bookingPath: path, booking: b, check: marks.whole, checkFields: marks.fields, missing: false };
+    const base = { path, bookingPath: path, booking: b, checkFields: marks.fields, missing: false };
     // A booking says nothing of what can move (null: nobody said): a plan item Shiori stored as fixed does (the user's answer, 2026-11-15).
     const view = { title, kind: 'booking', fixed: null, start: b.start, ...(split ? {} : { end: b.end }), place };
     /** @type {PlanRow} */

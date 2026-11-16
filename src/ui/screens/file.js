@@ -42,7 +42,7 @@ export function cameFrom(from, id, open) {
 export async function renderFile(ctx, route) {
   const id = route.parts[1];
   const path = route.params.path ?? '';
-  // Back is where the file was opened from (Plan → Check this → Open the original), else the trip.
+  // Back is where the file was opened from (Plan → Check # details → Open the original), else the trip.
   const from = cameFrom(route.params.from, id, ctx.agent?.trip ?? null);
   const back = from?.hash ?? `#/trip/${encodeURIComponent(id)}`;
   // Only trips open here (the shell sees to it): a link must not lead someone into editing their profile or annai's own files.

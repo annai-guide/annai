@@ -25,7 +25,7 @@ const items = [
   { path: '/plan/bad.json', item: /** @type {any} */ ('not an object') },
 ];
 const bookings = [
-  { path: '/bookings/flight.json', booking: { id: 'flight', kind: 'flight', status: 'unverified', source: '/files/flight.pkpass' } },
+  { path: '/bookings/flight.json', booking: { id: 'flight', kind: 'flight', status: 'unverified', source: '/files/flight.pkpass', title: 'UA 123' } },
   { path: '/bookings/hotel.json', booking: { id: 'hotel', kind: 'lodging', status: 'confirmed', source: '/files/hotel.pdf' } },
 ];
 const rows = () => planRows(items, bookings, { fallbackTz: NY });
@@ -39,7 +39,7 @@ test("fixedWords: what a plan item's fixed means, as a model is shown it; a flex
   assert.equal(fixedWords(false, { unsure: true }), 'not sure the time was read right');
 });
 
-test("timeUnsure: a time a row shows is the same moment as its booking's start or end, and the screens mark that one or the booking whole", () => {
+test("timeUnsure: a time a row shows is the same moment as its booking's start or end, and the screens mark that one (an old booking, with no unsure, has every part it has marked)", () => {
   const inn = { kind: 'lodging', status: 'unverified', unsure: ['end'], start: { at: '2026-11-26T15:00:00-08:00', tz: LA }, end: { at: '2026-11-27T11:00:00-08:00', tz: LA } };
   const o = { fallbackTz: LA };
   assert.equal(timeUnsure([inn.end], inn, o), true, "an end row: its start is the booking's check-out");
@@ -51,7 +51,9 @@ test("timeUnsure: a time a row shows is the same moment as its booking's start o
   assert.equal(timeUnsure([inn.end], { ...inn, unsure: ['seat', 'start'] }, o), false, 'its other fields are not its time');
   assert.equal(timeUnsure([inn.end], { ...inn, unsure: [] }, o), false, 'nothing marked');
   const { unsure: _, ...old } = inn;
-  assert.equal(timeUnsure([inn.start], old, o), true, 'one from before, not confirmed: marked whole, its times too');
+  assert.equal(timeUnsure([inn.start], old, o), true, 'one from before, not confirmed: every part it has is marked, its start too');
+  assert.equal(timeUnsure([inn.end], old, o), true, 'and its end');
+  assert.equal(timeUnsure([inn.end], { ...old, end: undefined }, o), false, 'an end it has not is no part to mark');
   assert.equal(timeUnsure([inn.start], { ...old, status: 'confirmed' }, o), false, 'a confirmed one from before');
   assert.equal(timeUnsure([inn.end], null, o), false, 'no booking');
   assert.equal(timeUnsure([inn.end], { ...inn, end: undefined }, o), false, 'a booking without that time');
@@ -70,10 +72,10 @@ test('timeUnsure: only the times the row shows count: a sure start beside an uns
   assert.equal(timeUnsure([checkOut], { ...stay, unsure: ['start'] }, o), false, 'the end alone, the start marked');
 });
 
-test("timeUnsure: a booking with no end, marked whole, marks no row with no time (a missing time is no moment, though NaN is NaN)", () => {
+test("timeUnsure: an old booking with no end marks no row with no time (a missing time is no moment, though NaN is NaN)", () => {
   const o = { fallbackTz: LA };
   const stay = { kind: 'lodging', status: 'unverified', start: { at: '2026-11-26T15:00:00-08:00', tz: LA } }; // from before: no unsure key, no end
-  assert.equal(timeUnsure([stay.start], stay, o), true, 'its start is marked whole');
+  assert.equal(timeUnsure([stay.start], stay, o), true, 'its start is a part it has, so it is marked');
   assert.equal(timeUnsure([], stay, o), false, 'a row with no time');
   assert.equal(timeUnsure([undefined], stay, o), false, 'a row whose time is missing');
   assert.equal(timeUnsure([{ at: 'sometime' }], stay, o), false, 'or one that is no date');
@@ -89,8 +91,9 @@ test('bookingRef: with or without /trip, only a booking record', () => {
 test('planRows: each item in its own zone, with its booking, and what is wrong with it', () => {
   const by = Object.fromEntries(rows().map((r) => [r.item.id, r]));
   assert.equal(rows().length, 9);
-  assert.deepEqual([by.flight.day, by.flight.time, by.flight.end, by.flight.check, by.flight.missing], ['2026-11-25', '08:00', '16:30', true, false]);
-  assert.deepEqual([by.hotel.bookingPath, by.hotel.check, by.hotel.missing], ['/bookings/hotel.json', false, false]);
+  assert.deepEqual([by.flight.day, by.flight.time, by.flight.end, by.flight.checkFields, by.flight.missing], ['2026-11-25', '08:00', '16:30', ['title'], false]);
+  assert.deepEqual([by.hotel.bookingPath, by.hotel.checkFields, by.hotel.missing], ['/bookings/hotel.json', [], false]);
+  assert.ok(rows().every((r) => !('check' in r)), 'a row has no mark of its booking as a whole: its parts are checkFields');
   assert.deepEqual([by.late.day, by.late.time], ['2026-11-25', '23:30']); // already the 26th in New York
   assert.equal(by.dinner.missing, true);
   assert.deepEqual([by.museum.day, by.museum.time], ['2026-11-27', '']);
@@ -99,12 +102,12 @@ test('planRows: each item in its own zone, with its booking, and what is wrong w
   assert.deepEqual([by.skate.at, by.skate.day, by.skate.time], [null, null, '']);
 });
 
-test('planRows: a booking in any state but confirmed needs checking, as the Bookings list says', () => {
+test('planRows: a booking in any state but confirmed has every part it has to check (no unsure): its rows carry them', () => {
   const item = (/** @type {string} */ id) => ({ path: `/plan/${id}.json`, item: { id, title: id, fixed: true, booking: `/bookings/${id}.json` } });
-  const booking = (/** @type {string} */ id, /** @type {unknown} */ status) => ({ path: `/bookings/${id}.json`, booking: { id, kind: 'other', status, source: '/files/x.pdf' } });
+  const booking = (/** @type {string} */ id, /** @type {unknown} */ status) => ({ path: `/bookings/${id}.json`, booking: { id, kind: 'other', status, source: '/files/x.pdf', title: id } });
   const got = planRows([item('odd'), item('none'), item('ok'), { path: '/plan/free.json', item: { id: 'free', title: 'free', fixed: false } }],
     [booking('odd', 'pending'), booking('none', undefined), booking('ok', 'confirmed')], { fallbackTz: NY });
-  assert.deepEqual(got.map((r) => [r.item.id, r.check]), [['odd', true], ['none', true], ['ok', false], ['free', false]]);
+  assert.deepEqual(got.map((r) => [r.item.id, r.checkFields]), [['odd', ['title']], ['none', ['title']], ['ok', []], ['free', []]]);
 });
 
 test('planRows: an end in another zone names it; an end a day earlier says so; an end on a later day is a row of its own (the drive-test follow-ups, section 2)', () => {
@@ -213,7 +216,7 @@ const stayTo = (id, end, tz = AK) => ({ path: `/bookings/${id}.json`, booking: {
 test('a flight no plan item stands for is on the day it leaves, at its own clock, its arrival zone named', () => {
   const [r] = planRows([], [flight], { fallbackTz: 'UTC' });
   assert.deepEqual([r.from, r.day, r.time, r.end, r.endZone], ['booking', '2026-11-20', '11:20', '14:05', 'AKT']);
-  assert.deepEqual([r.path, r.bookingPath, r.item.title, r.item.fixed, r.line, r.check, r.missing, r.note], ['/bookings/flight.json', '/bookings/flight.json', 'ANNAI AIR AN 123', null, null, false, false, '']);
+  assert.deepEqual([r.path, r.bookingPath, r.item.title, r.item.fixed, r.line, r.checkFields, r.missing, r.note], ['/bookings/flight.json', '/bookings/flight.json', 'ANNAI AIR AN 123', null, null, [], false, '']);
   assert.equal(r.booking, flight.booking);
 });
 
@@ -315,16 +318,26 @@ test('a booking with a time zone annai does not know, or an end before its start
   }
 });
 
-test('check and checkFields come from checkOf: an old unverified booking is check, a new one lists its fields, an old confirmed one neither', () => {
-  const old = { path: '/bookings/old.json', booking: { id: 'old', kind: 'flight', status: 'unverified', source: '/files/a.pdf', start: flight.booking.start } };
+test('checkFields comes from checkOf: an old unverified booking lists every part it has, a new one its unsure fields, an old confirmed one none; no row has a check of the booking as a whole (booking-say round 4)', () => {
+  const old = { path: '/bookings/old.json', booking: { id: 'old', kind: 'flight', status: 'unverified', source: '/files/a.pdf', start: flight.booking.start, end: flight.booking.end, title: 'ANNAI AIR AN 7', fields: { seat: '14C' } } };
   const seat = { path: '/bookings/seat.json', booking: { ...flight.booking, id: 'seat', unsure: ['seat', 'wings'], fields: { seat: '14C' } } };
   const ok = { path: '/bookings/ok.json', booking: { id: 'ok', kind: 'flight', status: 'confirmed', source: '/files/a.pdf', start: flight.booking.start } };
-  const by = Object.fromEntries(planRows([], [old, seat, ok], { fallbackTz: 'UTC' }).map((r) => [r.path, [r.check, r.checkFields]]));
-  assert.deepEqual(by, { '/bookings/old.json': [true, []], '/bookings/seat.json': [false, ['seat']], '/bookings/ok.json': [false, []] });
+  const bare = { path: '/bookings/bare.json', booking: { id: 'bare', kind: 'flight', status: 'unverified', source: '/files/a.pdf' } };
+  const got = planRows([], [old, seat, ok, bare], { fallbackTz: 'UTC' });
+  assert.deepEqual(Object.fromEntries(got.map((r) => [r.path, r.checkFields])), {
+    '/bookings/old.json': ['title', 'start', 'end', 'seat'], '/bookings/seat.json': ['seat'], '/bookings/ok.json': [], '/bookings/bare.json': [],
+  });
+  assert.ok(got.every((r) => !('check' in r)), 'no row carries a check of the whole booking');
   // A plan item that stands for a booking carries its marks.
   const item = { path: '/plan/fly.json', item: { id: 'fly', title: 'Fly', fixed: true, booking: '/bookings/seat.json' } };
   const [r] = planRows([item], [seat], { fallbackTz: 'UTC' });
-  assert.deepEqual([r.from, r.check, r.checkFields], ['item', false, ['seat']]);
+  assert.deepEqual([r.from, r.checkFields], ['item', ['seat']]);
+  const [o] = planRows([{ path: '/plan/fly.json', item: { ...item.item, booking: '/bookings/old.json' } }], [old], { fallbackTz: 'UTC' });
+  assert.deepEqual([o.from, o.checkFields], ['item', ['title', 'start', 'end', 'seat']], 'an old booking too');
+  // A set's quiet lines carry none of their booking's marks.
+  const nights = planRows([], [{ path: '/bookings/inn.json', booking: { id: 'inn', kind: 'lodging', status: 'unverified', source: '/files/i.pdf', title: 'Old Inn', start: stay.booking.start, end: stay.booking.end } }], { fallbackTz: 'UTC' });
+  assert.deepEqual([...new Set(nights.filter((x) => x.from === 'line').map((x) => JSON.stringify(x.checkFields)))], ['[]']);
+  assert.deepEqual(nights.filter((x) => x.from !== 'line').map((x) => x.checkFields), [['title', 'start', 'end'], ['title', 'start', 'end']], 'its check-in and check-out rows carry them');
 });
 
 test("Now's next items include a flight booking no plan item stands for, and never a night line", async () => {

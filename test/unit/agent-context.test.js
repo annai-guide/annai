@@ -421,6 +421,13 @@ test("her instructions' plan item and booking are records of their formats, whic
   assert.ok(CORE.includes(`kind: ${BOOKING_SCHEMA.properties.kind.enum.slice(0, -1).join(', ')} or ${BOOKING_SCHEMA.properties.kind.enum.at(-1)};`), "the kinds are the format's");
 });
 
+test("her instructions' line on unsure is pinned and names no old shape: when they say a detail is right, take it out of unsure, and no word of a booking without unsure (booking-say's round 4: a parenthetical \"write unsure: []\" was followed to the letter by an edit that cleared every mark for one checked detail)", () => {
+  const lines = CORE.split('\n');
+  const line = lines.find((l) => l.startsWith('- Write each booking with unsure naming just the fields you are not sure of'));
+  assert.equal(line, '- Write each booking with unsure naming just the fields you are not sure of, and ask the user about only those. When they say one is right, take it out of unsure.');
+  assert.doesNotMatch(CORE, /without unsure|no unsure key|write unsure: \[\]/i, 'her instructions tell her nothing of a booking without unsure: annai reads it, and the note names the parts');
+});
+
 test("her instructions say what of a booking the user is asked to check: only what annai marks, the note read puts after it, by what it is, of a booking she read; never a field's name or the status; none of a booking's own fields or shapes (booking-say's fix 2 and 3: the check comes in the read result, whose test is in plugin-files)", async () => {
   const { checkWords } = await import('../../src/core/bookings.js');
   const line = CORE.split('\n').find((l) => l.startsWith('- What you ask the user to check of a booking'));
