@@ -3,7 +3,7 @@
 // The booking files are synthetic (scripts/make-booking-fixtures.mjs).
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply, modelSetUp, startTrip, writeRecords, breakOpen } from './helpers.js';
+import { openApp, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply, modelSetUp, startTrip, writeRecords, breakOpen, atConversation, goHome, goToHash } from './helpers.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 const fixture = async (/** @type {string} */ name, /** @type {string} */ mimeType) => ({ name, mimeType, buffer: await readFile(new URL(`../fixtures/bookings/${name}`, import.meta.url)) });
@@ -22,7 +22,7 @@ async function setUp(page, origin) {
   await page.getByRole('button', { name: 'Add to main' }).click();
   await expect(page.getByLabel('Add a model to main').locator('option', { hasText: 'b-model' })).toHaveCount(0);
   await page.goto('/#/talk'); // the open conversation: the new one, as nothing else is open; the dock at rest on home has no type button
-  await expect(page.getByRole('heading', { name: 'Conversation', exact: true })).toBeAttached();
+  await atConversation(page);
 }
 
 /** Hands Shiori files from the type box, with words or none. @param {import('@playwright/test').Page} page @param {any[]} files @param {string} [words] */
@@ -32,7 +32,7 @@ async function handOver(page, files, words = '') {
   await expect(page.locator('.type-sheet .attach-chip')).toHaveCount(files.length);
   if (words) await page.getByLabel('Message to Shiori').fill(words);
   await page.getByRole('button', { name: 'Send', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+  await atConversation(page);
 }
 
 /** Pastes text into the type box, as a phone's paste does. @param {import('@playwright/test').Page} page @param {string} text */
@@ -59,8 +59,7 @@ test('Trips, tapped while the handed-over files are still being kept, stays: the
       };
     });
     await handOver(page, [await fixture('flight.pdf', 'application/pdf'), await fixture('hotel.png', 'image/png')]);
-    await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
-    await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
+    await goHome(page);
     await expect.poll(() => llm.bodies(MESSAGES).length, { timeout: 30_000 }).toBeGreaterThan(0); // kept, and the message went to her
     await page.waitForTimeout(1000); // past anything that would take the screen back
     expect(new URL(page.url()).hash).toBe('#/trips');
@@ -84,7 +83,7 @@ test('a screen the user goes to while Undo runs is kept: Undo does not take them
     await expect(page.getByRole('button', { name: 'Undo what Shiori did with these files' })).toBeVisible();
     await page.evaluate(() => { // Undo, and in the same moment a tap on Settings: Undo ends after it
       /** @type {HTMLButtonElement} */ (document.querySelector('button[aria-label="Undo what Shiori did with these files"]')).click();
-      /** @type {HTMLAnchorElement} */ (document.querySelector('nav.topnav a[href="#/settings"]')).click();
+      location.hash = '#/settings';
     });
     await expect(page.getByText('Undone. Kyoto is removed, and your files are back in Big Sur.')).toBeVisible();
     await page.waitForTimeout(400);
@@ -151,7 +150,7 @@ test("after a reload on the conversation Undo left, a Forward over the removed t
     });
     await expect(page.getByText('Undone. Kyoto is removed, and your files are back in Big Sur.')).toBeVisible();
     await expect.poll(hash).toBe(`${details}/talk`);
-    await page.getByRole('link', { name: 'Settings', exact: true }).click(); // a screen ahead
+    await goToHash(page, '#/settings'); // a screen ahead
     await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
     await page.goBack();
     await expect(page.locator('.talk-head .talk-name')).toHaveText('Big Sur');
@@ -302,7 +301,7 @@ test('Ask Shiori about this: the booking is a chip in the type box with Read it 
     await modelSetUp(page, llm.origin, 'Anchorage');
     await flightDetails(page);
     await page.getByRole('button', { name: 'Ask Shiori about this' }).click();
-    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    await atConversation(page);
     await expect(page.locator('.type-sheet .attach-chip .attach-name')).toHaveText(['ANNAI AIR AN 123']);
     await page.getByRole('button', { name: 'Read it again' }).click();
     await expect(page.locator('.convo').getByText('I read it again: seat 14C.')).toBeVisible({ timeout: 60_000 });

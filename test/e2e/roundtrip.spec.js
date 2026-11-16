@@ -1,19 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, buildAndSave, pastWelcome, allFiles } from './helpers.js';
+import { openApp, buildAndSave, pastWelcome, allFiles, startTrip, goHome, goToHash } from './helpers.js';
 import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes, createTrip } from '../../src/core/scopes.js';
 import { exportArchive, PRESETS } from '../../src/core/archive.js';
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
-
-/** @param {import('@playwright/test').Page} page @param {string} title */
-async function startTrip(page, title) {
-  await page.getByLabel('Trip name').fill(title);
-  await page.getByRole('button', { name: 'Start trip' }).click();
-  await expect(page.getByRole('heading', { name: title })).toBeVisible();
-}
 
 /** @param {import('@playwright/test').Page} page @param {string} path @param {string} content */
 async function writeNote(page, path, content) {
@@ -37,7 +30,7 @@ test('everything survives export, erase and import', async ({ page }) => {
   await page.getByLabel('Add photos or files').setInputFiles({ name: 'gate.png', mimeType: 'image/png', buffer: PNG });
   await expect(page.getByRole('link', { name: /\/files\/gate\.(webp|jpg)/ })).toBeVisible();
 
-  await page.getByRole('link', { name: 'Settings' }).click();
+  await goToHash(page, '#/settings');
   await page.getByRole('button', { name: 'Export everything' }).click();
   const file = await buildAndSave(page);
 
@@ -72,7 +65,7 @@ test('an encrypted trip opens only with its passphrase, and can replace the copy
   const file = await buildAndSave(page);
   expect((await readFile(file)).subarray(0, 10).toString()).toBe('ANNAI-ENC2');
 
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
+  await goHome(page);
   await page.getByLabel('Open an annai file').setInputFiles(file);
   await page.getByLabel('Passphrase').fill('wrong');
   await page.getByRole('button', { name: 'Unlock' }).click();
@@ -82,7 +75,7 @@ test('an encrypted trip opens only with its passphrase, and can replace the copy
   await page.getByLabel('Replace mine (yours moves to Archived)').check();
   await page.getByRole('button', { name: 'Import' }).click();
   await expect(page.getByText('1 older copy moved to Archived.')).toBeVisible();
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
+  await goHome(page);
   await expect(page.getByText('Archived (1)')).toBeVisible();
 });
 
@@ -91,8 +84,7 @@ test('an opened file can be left without importing: Cancel, or the link back to 
   await startTrip(page, 'Big Sur');
   await page.getByRole('button', { name: 'Export', exact: true }).click();
   const file = await buildAndSave(page);
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  await goHome(page);
   for (const leave of ['Cancel', 'Trips']) {
     await page.getByLabel('Open an annai file').setInputFiles(file);
     await expect(page.getByRole('heading', { name: 'Open an annai file' })).toBeVisible();
@@ -109,8 +101,7 @@ test('opening a file draws the screen at once, saying what it reads, and the pre
   await startTrip(page, 'Big Sur');
   await page.getByRole('button', { name: 'Export', exact: true }).click();
   const file = await buildAndSave(page);
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  await goHome(page);
   // Every read of the file takes a while, as on a slow phone.
   await page.evaluate(() => {
     const read = Blob.prototype.arrayBuffer;

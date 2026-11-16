@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, startModelServer, addProvider, filterTrace, responsesReply, anthropicToolReply, savedBy, leaveSaved, pickProvider, startSettled } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addProvider, filterTrace, responsesReply, anthropicToolReply, savedBy, leaveSaved, pickProvider, startSettled, startTrip, goToHash } from './helpers.js';
 
 /** The plugins installed, by id. @param {import('@playwright/test').Page} page @returns {Promise<string[]>} */
 const installedIds = (page) => page.evaluate(async () => {
@@ -90,7 +90,7 @@ test('a conversation falls back from one provider to another, and the trace show
     await page.getByLabel('Message to Shiori').fill('Hello');
     await page.getByRole('button', { name: 'Send', exact: true }).click();
     await expect(page.locator('.convo .shiori p').last()).toHaveText('Hello from B.');
-    await page.getByRole('link', { name: 'Trace' }).click();
+    await goToHash(page, '#/trace');
     await page.getByLabel('Type contains').fill('model.turn');
     await expect(page.getByText(/main: b-model · 2 attempts/)).toBeVisible();
     await filterTrace(page, { kind: 'Models', type: 'net.request' });
@@ -144,7 +144,7 @@ test('"Try this model" on a model\'s page answers from that model alone: one tha
     expect(llm.bodies('/b/v1/messages')).toHaveLength(1);
     expect(await page.content()).not.toContain('sk-test-secret');
     // Nothing is kept but the trace.
-    await page.getByRole('link', { name: 'Trace' }).click();
+    await goToHash(page, '#/trace');
     await page.getByLabel('Type contains').fill('model.turn');
     await expect(page.getByText(/try: b-model · 1 attempt/)).toBeVisible();
     await expect(page.getByText(/try: no answer · 1 attempt/)).toBeVisible();
@@ -368,9 +368,7 @@ test('Custom provider with OpenAI Responses switched on: its model list, the Tes
     await page.getByRole('button', { name: 'Add to main' }).click();
     await expect(page.getByText('1. gpt-6-luna')).toBeVisible();
     await page.goto('/#/trips');
-    await page.getByLabel('Trip name').fill('Big Sur');
-    await page.getByRole('button', { name: 'Start trip' }).click();
-    await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+    await startTrip(page, 'Big Sur');
     await page.getByRole('button', { name: 'Type' }).click();
     await page.getByLabel('Message to Shiori').fill('When does Nepenthe close?');
     await page.getByRole('button', { name: 'Send' }).click();

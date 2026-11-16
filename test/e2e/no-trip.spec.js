@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, FIRST_DRAW, startTrip, startModelServer, anthropicToolReply, addProvider, waitForServiceWorker, pickFile, fixtureFiles, zipOf } from './helpers.js';
+import { openApp, FIRST_DRAW, startTrip, startModelServer, anthropicToolReply, addProvider, waitForServiceWorker, pickFile, fixtureFiles, zipOf, openTalk, goToHash } from './helpers.js';
 import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes } from '../../src/core/scopes.js';
@@ -143,7 +143,7 @@ test('the "Shiori, no trip" row shows only once `me` has a line of the user\'s, 
 
 test('with nothing open the new conversation is: at a fresh start, and after the open trip is removed, the Conversation tab shows it, empty', async ({ page }) => {
   await openApp(page, '#/trips');
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Conversation' }).click();
+  await openTalk(page);
   await expect(page).toHaveURL(/#\/trip\/trip-[0-9a-z]+\/talk$/);
   const first = decodeURIComponent(hashOf(page).split('/')[2]);
   expect((await recordOf(page, first))?.draft).toBe(true);
@@ -153,7 +153,7 @@ test('with nothing open the new conversation is: at a fresh start, and after the
   await page.getByRole('button', { name: 'Remove', exact: true }).click();
   await page.getByRole('dialog', { name: 'Kyoto' }).getByRole('button', { name: 'Remove' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Conversation' }).click();
+  await openTalk(page);
   await expect(page).toHaveURL(/#\/trip\/trip-[0-9a-z]+\/talk$/);
   const after = decodeURIComponent(hashOf(page).split('/')[2]);
   expect((await recordOf(page, after))?.draft).toBe(true);
@@ -186,8 +186,8 @@ test('with no conversation possible (the store failing), a typed line stays in t
   await expect(box(page)).toBeVisible();
   expect(hashOf(page)).toBe('#/settings');
   expect(await userLines(page, 'me')).toBe(0);
-  // The Conversation tab, with nothing open, is home.
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Conversation' }).click();
+  // The Conversation tab's address, with nothing open, is home.
+  await goToHash(page, '#/talk');
   await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
 });
 
@@ -325,7 +325,7 @@ test('an old backup imported with "Replace my profile and memory": its waiting f
   await page.getByRole('button', { name: 'Import' }).click();
   await expect(page.getByText('Imported.')).toBeVisible();
   // The files moved before the results, the wake is in the new chat, and nothing waits; home, drawn again with no reload, shows both rows.
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
+  await goToHash(page, '#/trips');
   await expect(waitingRow(page)).toBeVisible(FIRST_DRAW);
   await expect(meRow(page)).toBeVisible();
   const chat = decodeURIComponent(String(await waitingRow(page).getAttribute('href')).split('/')[2]);

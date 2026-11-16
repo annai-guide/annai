@@ -1,5 +1,5 @@
 import { test, expect, devices } from '@playwright/test';
-import { openApp, filterTrace, pastWelcome, allFiles, startTrip, goToHash } from './helpers.js';
+import { openApp, filterTrace, pastWelcome, allFiles, startTrip, goToHash, goHome } from './helpers.js';
 import { startGitHub } from '../fakes/github.js';
 
 const REPO = 'me/annai-backup';
@@ -28,7 +28,7 @@ async function writeNote(page, path, content) {
 
 /** Settings → Automatic backups → GitHub, filled in and tested. @param {import('@playwright/test').Page} page @param {any} gh */
 async function addGitHub(page, gh) {
-  await page.getByRole('link', { name: 'Settings' }).click();
+  await goToHash(page, '#/settings');
   await page.getByRole('link', { name: 'Automatic backups' }).click();
   await expect(page.getByRole('heading', { name: 'Backups' })).toBeVisible();
   await page.getByLabel('Add a place to back up to').selectOption({ label: 'GitHub' });
@@ -63,7 +63,7 @@ test('automatic backups go to GitHub, only what changed is sent, and a wiped pho
     expect(files.has('annai-archive.json')).toBe(true);
     expect([...files.keys()].some((p) => /^trips\/[^/]+\/files\/gate\.(webp|jpg)$/.test(p))).toBe(true);
     expect(gh.count('POST', '/git/blobs')).toBe(1);
-    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
+    await goHome(page);
     await expect(page.getByText(/backed up (just now|\d+ seconds? ago)/)).toBeVisible();
 
     // A change goes up by itself too, and the photo isn't sent again.
@@ -75,14 +75,14 @@ test('automatic backups go to GitHub, only what changed is sent, and a wiped pho
     expect(gh.count('POST', '/git/blobs')).toBe(1);
 
     // The trace shows each request annai sent to GitHub.
-    await page.getByRole('link', { name: 'Trace' }).click();
+    await goToHash(page, '#/trace');
     await filterTrace(page, { kind: 'Web' });
     await expect(page.locator('.trace li', { hasText: 'plugin:storage-github · PATCH' }).first()).toBeVisible();
     await filterTrace(page, { kind: 'Backups' });
     await expect(page.locator('.trace li', { hasText: 'github · auto' }).first()).toBeVisible();
 
     // This phone is wiped. The same place, set up again, brings everything back.
-    await page.getByRole('link', { name: 'Settings' }).click();
+    await goToHash(page, '#/settings');
     await page.getByLabel('Type ERASE to confirm').fill('ERASE');
     await page.getByRole('button', { name: 'Erase now' }).click();
     await pastWelcome(page);

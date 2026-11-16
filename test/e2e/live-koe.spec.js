@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
-import { openApp, waitForServiceWorker, addProvider, pickProvider, savedBy, leaveSaved, startModelServer, anthropicToolReply, fakeMicrophone, filterTrace, happeningTrip, userLines } from './helpers.js';
+import { openApp, waitForServiceWorker, addProvider, pickProvider, savedBy, leaveSaved, startModelServer, anthropicToolReply, fakeMicrophone, filterTrace, happeningTrip, userLines, startTrip, atConversation, openTalk } from './helpers.js';
 import { startRealtimeServer } from '../fakes/realtime-server.js';
 
 // Koe live (the Koe and Kokoro plan, K5): Gemini Live as Koe, against the stand-in realtime server, with a
@@ -45,9 +45,7 @@ async function liveSetUp(page, kokoro, live, p = GEMINI) {
   await page.getByRole('button', { name: 'Add to Koe · Live' }).click();
   await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(1).getByText(`1. ${p.model}`)).toBeVisible();
   await page.goto('/#/trips');
-  await page.getByLabel('Trip name').fill('Big Sur');
-  await page.getByRole('button', { name: 'Start trip' }).click();
-  await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+  await startTrip(page, 'Big Sur');
   await page.locator('.voice-chip').click();
   await expect(page.locator('.voice-chip')).toHaveText('Voice on');
 }
@@ -84,7 +82,7 @@ test('voice on, a tap: "Listening live"; a spoken question gets "checking" aloud
     expect(kokoroSaw).toContain('Is Nepenthe open now?');
     expect(kokoroSaw).toContain('[Koe asks]');
     expect(kokoroSaw).toContain('A live voice session opened');
-    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Conversation' }).click();
+    await openTalk(page);
     await expect(page.locator('.convo .you:not(.quiet) p')).toHaveText(['Is Nepenthe open now?']);
     const said = page.locator('.convo .shiori.said');
     await expect(said).toHaveCount(2, { timeout: 20_000 });
@@ -176,7 +174,7 @@ test("on the phone's speaker, her voice coming back into the microphone never cu
     await liveSetUp(page, kokoro.origin, s.origin);
     await page.getByRole('button', { name: 'Shiori' }).click();
     await expect(page.locator('.voice-chip')).toHaveText('Listening live');
-    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Conversation' }).click();
+    await openTalk(page);
     const said = page.locator('.convo .shiori.said');
     await expect(said).toHaveCount(1, { timeout: 20_000 });
     await page.waitForTimeout(1500); // her echo's tail
@@ -210,7 +208,7 @@ test('in Koe · Live the bubble over Shiori holds her words while she speaks, be
     await page.getByRole('button', { name: 'Shiori' }).click();
     await expect.poll(() => page.evaluate(() => /** @type {any} */ (window).sawBubble), { timeout: 20_000 }).toBe(words);
     await expect(page.locator('.dock .caption')).toHaveAttribute('aria-live', 'off');
-    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Conversation' }).click();
+    await openTalk(page);
     await expect(page.locator('.convo .shiori.said')).toContainText(words, { timeout: 20_000 });
   } finally {
     await s.stop();
@@ -226,7 +224,7 @@ test('in Koe · Live the last words heard, coming after her turn, reach the hear
     await fakeMicrophone(page, [clipPath('where-eat')]);
     await liveSetUp(page, kokoro.origin, s.origin);
     await page.goto('/#/talk');
-    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    await atConversation(page);
     await page.evaluate(() => {
       const w = /** @type {any} */ (window);
       const announcer = /** @type {HTMLElement} */ (document.querySelector('main [aria-live="polite"]'));
@@ -272,7 +270,7 @@ test("OpenAI Realtime as Koe: the same conversation: \"Listening live\", a spoke
     expect(kinds.filter((/** @type {string} */ k) => k === 'input_audio_buffer.commit')).toHaveLength(1);
     expect(kinds.filter((/** @type {string} */ k) => k === 'input_audio_buffer.append').length).toBeGreaterThan(5);
     expect(kinds.lastIndexOf('input_audio_buffer.append')).toBeLessThan(kinds.indexOf('input_audio_buffer.commit'));
-    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Conversation' }).click();
+    await openTalk(page);
     await expect(page.locator('.convo .you:not(.quiet) p')).toHaveText(['Is Nepenthe open now?']);
     const said = page.locator('.convo .shiori.said');
     await expect(said).toHaveCount(2, { timeout: 20_000 });
@@ -309,7 +307,7 @@ test("a tap in a pause of her sound, the provider still making the rest of Kokor
     await expect.poll(() => s.received().filter((/** @type {any} */ m) => m.clientContent).length, { timeout: 30_000 }).toBe(1);
     await page.waitForTimeout(2500); // her first 1.2 s have played; the rest comes at 4 s
     await page.getByRole('button', { name: 'Shiori' }).click();
-    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Conversation' }).click();
+    await openTalk(page);
     const shown = page.locator('.convo .line-kokoros-words');
     await expect(shown).toContainText('Nepenthe is open until ten tonight.', { timeout: 15_000 });
     await expect(shown).toContainText("Kokoro's words · shown");

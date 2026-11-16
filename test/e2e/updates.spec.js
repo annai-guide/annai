@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { extname } from 'node:path';
 import { parseHeaders, headersFor } from '../../scripts/headers.mjs';
-import { openApp, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply } from './helpers.js';
+import { openApp, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply, startTrip } from './helpers.js';
 
 // Updates (the user, 2026-10-18): "currently I need to close the added to homescreen app and reopen for annai
 // to check for updates." annai checks when it comes back to the screen, and Settings → Updates checks on a tap.
@@ -70,9 +70,7 @@ test('a new build is found when annai comes back to the screen, without a reload
     await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
     await page.getByRole('button', { name: 'Add to main' }).click();
     await go(page, '#/trips');
-    await page.getByLabel('Trip name').fill('Big Sur');
-    await page.getByRole('button', { name: 'Start trip' }).click();
-    await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+    await startTrip(page, 'Big Sur');
 
     await page.evaluate(() => { /** @type {any} */ (window).__samePage = true; });
     site.changed.set('/sw.js', SW.replace(/const BUILD = '[^']+';/, "const BUILD = 'e2e-next';"));

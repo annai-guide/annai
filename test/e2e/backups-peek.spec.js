@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, pastWelcome, startTrip, allFiles } from './helpers.js';
+import { openApp, pastWelcome, startTrip, allFiles, goHome, goToHash } from './helpers.js';
 import { startForgejo } from '../fakes/forgejo.js';
 
 // A git backup opens from its manifest alone, and its files come on Import (spec §12.3, §12.4).
@@ -7,7 +7,7 @@ const REPO = 'me/annai-backup';
 
 /** Settings → Automatic backups → Forgejo / Gitea, filled in; then Save and test. @param {import('@playwright/test').Page} page @param {any} fj */
 async function addForgejo(page, fj) {
-  await page.getByRole('link', { name: 'Settings' }).click();
+  await goToHash(page, '#/settings');
   await page.getByRole('link', { name: 'Automatic backups' }).click();
   await expect(page.getByRole('heading', { name: 'Backups' })).toBeVisible();
   await page.getByLabel('Add a place to back up to').selectOption({ label: 'Forgejo / Gitea' });
@@ -55,7 +55,7 @@ async function wipedPhone(page, fj, { chats = 0 } = {}) {
   }
   await addForgejo(page, fj);
   await expect(page.getByText(/^Last backup/)).toBeVisible({ timeout: 30_000 });
-  await page.getByRole('link', { name: 'Settings' }).click();
+  await goToHash(page, '#/settings');
   await page.getByLabel('Type ERASE to confirm').fill('ERASE');
   await page.getByRole('button', { name: 'Erase now' }).click();
   await pastWelcome(page);
@@ -90,9 +90,9 @@ test('Import says how far the files are, and a manifest swapped between the prev
     expect(said.filter((/** @type {string} */ s) => /^Getting files: \d+ of \d+$/.test(s)).length).toBeGreaterThan(0);
 
     // Another phone: the preview shows the backup as it was, then the server hands over another manifest with the files.
-    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
+    await goHome(page);
     await page.getByRole('link', { name: /Big Sur/ }).first().click();
-    await page.getByRole('link', { name: 'Settings' }).click();
+    await goToHash(page, '#/settings');
     await page.getByRole('link', { name: 'Automatic backups' }).click();
     await page.getByRole('link', { name: /Forgejo/ }).first().click();
     await page.getByRole('button', { name: 'Show the backups here' }).click();
@@ -157,7 +157,7 @@ for (const way of ['Cancel', 'the crumb']) {
       // Nothing carries on in the background: the files already asked for arrive, no more are asked for, and no trip appears.
       await page.waitForTimeout(1500);
       expect(fileReads(fj) - before).toBe(inFlight);
-      await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
+      await goHome(page);
       await expect(page.getByText('Tap + to talk to Shiori.')).toBeVisible();
     } finally {
       await fj.stop();

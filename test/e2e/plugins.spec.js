@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, pickFile, pickProvider, fixtureFiles, zipOf, allFiles } from './helpers.js';
+import { openApp, waitForServiceWorker, pickFile, pickProvider, fixtureFiles, zipOf, allFiles, startTrip } from './helpers.js';
 import { ZipWriter } from '../../src/core/zip.js';
 
 /** A test plugin from test/fixtures/plugins, as a zip. @param {string} [dir] */
@@ -18,9 +18,7 @@ async function fixtureZip(dir = 'hello', version) {
 test('install a plugin, see it work, turn it off, uninstall it', async ({ page }) => {
   await openApp(page);
   await waitForServiceWorker(page);
-  await page.getByLabel('Trip name').fill('Plugin trip');
-  await page.getByRole('button', { name: 'Start trip' }).click();
-  await expect(page.getByRole('heading', { name: 'Plugin trip' })).toBeVisible();
+  await startTrip(page, 'Plugin trip');
   const tripUrl = page.url();
 
   await page.goto('/#/plugins');
@@ -158,9 +156,7 @@ test('after a reload that skips the service worker, a code plugin still runs', a
   test.skip(browserName !== 'chromium', 'a hard reload over the DevTools protocol is Chromium only');
   await openApp(page);
   await waitForServiceWorker(page);
-  await page.getByLabel('Trip name').fill('Plugin trip');
-  await page.getByRole('button', { name: 'Start trip' }).click();
-  await expect(page.getByRole('heading', { name: 'Plugin trip' })).toBeVisible();
+  await startTrip(page, 'Plugin trip');
   const tripUrl = page.url();
   await page.goto('/#/plugins');
   await pickFile(page, { name: 'hello.zip', mimeType: 'application/zip', buffer: await fixtureZip() });

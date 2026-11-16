@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, startTrip, writeRecords, writeEvent, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply, modelSetUp } from './helpers.js';
+import { openApp, startTrip, writeRecords, writeEvent, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply, modelSetUp, stuckTop } from './helpers.js';
 
 // The screens' side of the user's iPhone findings (2026-10-28, phone-fixes-1).
 
@@ -33,7 +33,7 @@ for (const [width, height] of [[420, 912], [390, 844], [320, 544]]) {
       const { createNotices } = await import(/** @type {string} */ ('/src/ui/notices.js'));
       const notices = createNotices();
       notices.el.id = 'test-notices';
-      document.querySelector('header.topbar')?.after(notices.el);
+      document.querySelector('.notices')?.before(notices.el); // where annai's own box is
       notices.card({ title: 'Plugin updates are ready', body, actions: [{ label: 'Update', primary: true, run: () => {} }] });
     }, OFFER);
     const card = page.locator('.notice', { hasText: 'Plugin updates are ready' });
@@ -164,10 +164,10 @@ for (const width of [390, 320]) {
     expect(await page.evaluate(() => scrollY)).toBeGreaterThan(500);
     const toggle = page.getByRole('button', { name: 'Conversation menu', exact: true });
     await expect(toggle).toBeInViewport({ ratio: 1 });
-    const bar = /** @type {any} */ (await page.locator('header.topbar').boundingBox());
+    const bar = await stuckTop(page);
     const row = /** @type {any} */ (await page.locator('.screen > .talk-head').boundingBox());
     await expect(page.locator('.talk-head .talk-name')).toBeInViewport({ ratio: 1 });
-    expect(Math.abs(row.y - (bar.y + bar.height))).toBeLessThanOrEqual(5); // the row's 4 px of padding is under the bar's edge
+    expect(Math.abs(row.y - bar)).toBeLessThanOrEqual(5); // the row's 4 px of padding is under the bar's edge
     // Opaque: what is under a point of the row, between its text and the lines, is the row, not a line.
     const covered = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('.talk-head') !== null, [width / 2, row.y + 2]);
     expect(covered).toBe(true);
@@ -324,7 +324,7 @@ const cardsShown = (page) => page.evaluate(async () => {
     document.getElementById('tn')?.remove();
     const n = createNotices();
     n.el.id = 'tn';
-    document.querySelector('header.topbar')?.after(n.el);
+    document.querySelector('.notices')?.before(n.el); // where annai's own box is
     make(n);
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     // A card that just came ignores taps a moment (.over, .landed: notices.js), so it isn't on top for a hit test until then.
@@ -372,7 +372,7 @@ test("a card's words behind More are still read by a screen reader (the second r
     const { createNotices } = await import(at('/src/ui/notices.js'));
     const n = createNotices();
     n.el.id = 'tn';
-    document.querySelector('header.topbar')?.after(n.el);
+    document.querySelector('.notices')?.before(n.el); // where annai's own box is
     n.card({ tone: 'warn', title: 'A newer backup is on GitHub', body: 'An iPhone backed up to me/annai-backup 3 hours ago. That was after this phone\'s last backup, 5 hours ago.', actions: [{ label: 'Import it as a copy', primary: true, run() {} }, { label: 'Back up this phone over it', run() {} }] });
   });
   const card = page.locator('#tn > .notice');
@@ -480,7 +480,7 @@ test('an opened stack in a small box shows each of its cards whole: no Dismiss o
   await frames(page);
   // On home the box opens in place: stuck, at most half the room under the bar, scrolling inside itself. Each card scrolled into view there shows whole:
   // a card's sticky Dismiss stays inside its own card, never over another's title.
-  const half = await page.evaluate(() => (document.documentElement.clientHeight - /** @type {HTMLElement} */ (document.querySelector('.topbar')).getBoundingClientRect().bottom) / 2);
+  const half = await page.evaluate((top) => (document.documentElement.clientHeight - top) / 2, await stuckTop(page));
   expect(await page.locator('#tn').evaluate((el) => el.getBoundingClientRect().height)).toBeLessThanOrEqual(half + 1);
   for (const member of await page.locator('#tn .stack-list > .notice').all()) {
     await member.evaluate((m) => m.scrollIntoView({ block: 'nearest' }));

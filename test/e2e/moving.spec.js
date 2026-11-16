@@ -5,7 +5,7 @@
 // the card) decides what the screen does: from home the address follows, as a new entry, so Back returns home; Details and Settings stay
 // where they are. The stand-in model plays her part. Synthetic data only: Kyoto and the ramen place are made up.
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply, startTrip, goToHash } from './helpers.js';
+import { openApp, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply, startTrip, goToHash, atConversation } from './helpers.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 const LINE = "Let's carry on in Kyoto";
@@ -54,7 +54,7 @@ async function cardInChat(page, origin, kyoto) {
   await page.goto('/#/trips');
   const chat = await startTrip(page, 'Ramen crawl');
   await page.goto(`/#/trip/${chat}/talk`);
-  await expect(page.getByRole('heading', { level: 1, name: 'Conversation' })).toBeVisible();
+  await atConversation(page);
   await page.evaluate(async () => {
     const { Halves } = await import(/** @type {string} */ ('/src/core/agent/halves.js'));
     const send = Halves.prototype.send;

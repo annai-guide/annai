@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, pastWelcome, allFiles } from './helpers.js';
+import { openApp, pastWelcome, allFiles, startTrip, goToHash } from './helpers.js';
 import { startS3, ACCESS, SECRET } from '../fakes/s3.js';
 import { startWebDAV, USER, PASSWORD } from '../fakes/webdav.js';
 
@@ -16,9 +16,7 @@ async function fastBackups(page) {
 
 /** @param {import('@playwright/test').Page} page @param {string} title @param {string} path @param {string} content */
 async function tripWithNote(page, title, path, content) {
-  await page.getByLabel('Trip name').fill(title);
-  await page.getByRole('button', { name: 'Start trip' }).click();
-  await expect(page.getByRole('heading', { name: title })).toBeVisible();
+  await startTrip(page, title);
   await allFiles(page);
   await page.getByLabel('File path').fill(path);
   await page.getByRole('button', { name: 'Create' }).click();
@@ -32,7 +30,7 @@ async function tripWithNote(page, title, path, content) {
  * @param {import('@playwright/test').Page} page @param {string} kind @param {Record<string, string>} fields
  */
 async function addPlace(page, kind, fields) {
-  await page.getByRole('link', { name: 'Settings' }).click();
+  await goToHash(page, '#/settings');
   await page.getByRole('link', { name: 'Automatic backups' }).click();
   await page.getByLabel('Add a place to back up to').selectOption({ label: kind });
   await page.getByRole('button', { name: 'Add', exact: true }).click();
@@ -63,7 +61,7 @@ test('S3: encrypted automatic backups, and a wiped phone restores one with its p
     expect(bytes.subarray(0, 10).toString()).toBe('ANNAI-ENC2');
 
     // This phone is wiped; the same bucket brings the trip back, with the passphrase.
-    await page.getByRole('link', { name: 'Settings' }).click();
+    await goToHash(page, '#/settings');
     await page.getByLabel('Type ERASE to confirm').fill('ERASE');
     await page.getByRole('button', { name: 'Erase now' }).click();
     await pastWelcome(page);

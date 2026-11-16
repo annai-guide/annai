@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, startTrip, goToHash } from './helpers.js';
+import { openApp, startTrip, goToHash, goHome, stuckTop } from './helpers.js';
 
 // "For the real on device test, I cannot find how to enter a trip detail... (including deleting a misc one) I assume it to in be the ...
 // but it does not show...." (the user, from the live version, 2026-11-10); with a screenshot: "... is there, I just only see these" (Summarize now,
@@ -80,14 +80,14 @@ for (const [width, height] of SIZES) {
         // It opens at the end of the conversation: the head sticks under the bar. On screen whole, under no other box, and at least a finger's size.
         await expect(toggle).toBeInViewport({ ratio: 1 });
         // A card that has just landed makes the screen ignore taps for a moment (notices.js): the hit is waited for, never assumed.
-        await expect.poll(() => page.evaluate(() => {
+        const top = await stuckTop(page);
+        await expect.poll(() => page.evaluate((top) => {
           const el = /** @type {HTMLElement} */ (document.querySelector('.talk-head .tidy-toggle'));
           const b = el.getBoundingClientRect();
           const over = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2);
-          const bar = /** @type {HTMLElement} */ (document.querySelector('header.topbar')).getBoundingClientRect();
           const dock = /** @type {HTMLElement} */ (document.querySelector('.dock:not(.seat)')).getBoundingClientRect();
-          return { hit: over === el || el.contains(over), fingerSize: Math.min(b.width, b.height) >= 44, clear: b.top >= bar.bottom - 1 && b.bottom <= dock.top && b.right <= innerWidth };
-        })).toEqual({ hit: true, fingerSize: true, clear: true });
+          return { hit: over === el || el.contains(over), fingerSize: Math.min(b.width, b.height) >= 44, clear: b.top >= top - 1 && b.bottom <= dock.top && b.right <= innerWidth };
+        }, top)).toEqual({ hit: true, fingerSize: true, clear: true });
         await toggle.click(); // a tap that would land on another box does not click: it waits, then fails
         const menu = page.locator('.tidy-menu');
         await expect(menu).toBeVisible();
@@ -177,9 +177,9 @@ test('removing a chat end to end at 360x640: home, tap the chat, ⋯, Details, s
   await page.setViewportSize({ width: 360, height: 640 });
   await openApp(page);
   await startTrip(page, 'Misc chat');
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
+  await goHome(page);
   await startTrip(page, 'Keep this chat');
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
+  await goHome(page);
   const rows = page.locator('.timeline .rows');
   await expect(rows.getByRole('link', { name: /Misc chat/ })).toBeVisible();
   await rows.getByRole('link', { name: /Misc chat/ }).click();
@@ -447,7 +447,7 @@ async function lowerToggle(page) {
   if (to > 0) await page.evaluate((px) => {
     const room = document.createElement('div');
     room.style.height = `${px}px`;
-    document.querySelector('header.topbar')?.after(room);
+    document.querySelector('.notices')?.before(room);
   }, to);
   else await page.evaluate((px) => scrollBy(0, px), -to);
   const gap = await page.evaluate(() => /** @type {HTMLElement} */ (document.querySelector('.dock:not(.seat)')).getBoundingClientRect().top - /** @type {HTMLElement} */ (document.querySelector('.tidy-toggle')).getBoundingClientRect().bottom);

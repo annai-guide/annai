@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, pickProvider, startTrip, pastWelcome, savedBy } from './helpers.js';
+import { openApp, waitForServiceWorker, pickProvider, startTrip, pastWelcome, savedBy, goToHash, openTalk } from './helpers.js';
 import { startGeminiServer } from '../fakes/gemini-server.js';
 
 // Google keeps the conversation (G2), against the stand-in Gemini server: the switch and its note, Shiori's next turn sent
@@ -130,8 +130,7 @@ test('turning the switch off deletes what Google keeps, and later turns are sent
     await expect(savedBy(keep)).toHaveText('Saved');
     await expect.poll(() => s.deleted().length, { timeout: 15_000 }).toBe(1);
     expect(s.stored()).toEqual([]);
-    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Conversation' }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'Conversation' })).toBeVisible();
+    await openTalk(page);
     await page.getByRole('button', { name: 'Type' }).click();
     await say(page, 'And the bus stop?', 2);
     const last = s.bodies().at(-1);
@@ -153,7 +152,7 @@ test("Erase while Shiori is answering: her turn stops first, so it leaves nothin
     await page.getByLabel('Message to Shiori').fill('And now a long answer, please.');
     await page.getByRole('button', { name: 'Send' }).click();
     await expect.poll(() => s.bodies().some(long)).toBe(true); // Google has named her turn, and is still answering
-    await page.getByRole('link', { name: 'Settings' }).click();
+    await goToHash(page, '#/settings');
     const erase = page.getByRole('region', { name: 'Erase' });
     await erase.getByLabel('Type ERASE to confirm').fill('ERASE');
     await erase.getByRole('button', { name: 'Erase now' }).click();

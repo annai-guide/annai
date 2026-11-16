@@ -70,13 +70,60 @@ export async function openApp(page, hash = '#/trips') {
 }
 
 /**
- * After Erase, annai starts as on a new device: the welcome, at the plain start. Goes on to Trips by the top bar.
+ * After Erase, annai starts as on a new device: the welcome, at the plain start. Goes on to Trips by its address.
  * @param {import('@playwright/test').Page} page
  */
 export async function pastWelcome(page) {
   await expect(page.getByRole('heading', { level: 1, name: 'Welcome to annai' })).toBeVisible();
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  await goHome(page);
+}
+
+/**
+ * Home (Trips), by its address, as the top bar's Trips tab went there (timeline stage 8 takes the bar away; home keeps its address).
+ * @param {import('@playwright/test').Page} page
+ */
+export async function goHome(page) {
+  await goToHash(page, '#/trips');
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips', exact: true })).toBeVisible();
+}
+
+/**
+ * The conversation is on screen: waits for its head (←, its name, its ⋯) and returns it. In place of the hidden "Conversation" heading,
+ * which stage 8 takes away.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function atConversation(page) {
+  const head = page.locator('main .talk-head');
+  await expect(head).toBeVisible();
+  return head;
+}
+
+/**
+ * The open conversation, by "#/talk", which the shell replaces with its own address (home with none open): one new entry, as the top
+ * bar's Conversation tab made. Returns its head (atConversation).
+ * @param {import('@playwright/test').Page} page
+ */
+export async function openTalk(page) {
+  await goToHash(page, '#/talk');
+  return atConversation(page);
+}
+
+/**
+ * The open conversation's Itinerary, by "#/plan", which the shell replaces with its own address, as the top bar's Itinerary tab went there.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function openItinerary(page) {
+  await goToHash(page, '#/plan');
+  await expect(page.getByRole('heading', { level: 1, name: 'Itinerary', exact: true })).toBeVisible();
+}
+
+/**
+ * Where what sticks at the top of the screen sticks (the conversation's head, home's box of cards): the top bar's bottom while there is a
+ * bar, else 0 (the safe area is 0 in Playwright). Stage 8 takes the bar away, inlines 0 and removes this.
+ * @param {import('@playwright/test').Page} page @returns {Promise<number>}
+ */
+export function stuckTop(page) {
+  return page.evaluate(() => document.querySelector('header.topbar')?.getBoundingClientRect().bottom ?? 0);
 }
 
 /**
@@ -510,19 +557,29 @@ export async function fakeMicrophone(page, clips, { loopback = false } = {}) {
 }
 
 /**
- * Starts a trip from the Trips screen and returns its id. With dates it is a card on the timeline; without, a conversation's row (timeline stage 4).
+ * Starts a trip and returns its id, from any screen: made as annai makes one (createTrip), through a second connection to the page's store as
+ * happeningTrip makes its trip, then opened at its Details, as Start a trip did (timeline stage 8 takes the form away). With dates it is a card on
+ * the timeline; without, a conversation's row (timeline stage 4). The page's own Workspace hears nothing of the writes; live mode reads the
+ * trips again when the trip opens at its Details, so it knows this one from then on.
  * @param {import('@playwright/test').Page} page @param {string} title @param {{ start: string, end: string }} [dates] yyyy-mm-dd
  */
 export async function startTrip(page, title, dates) {
-  await page.getByLabel('Trip name').fill(title);
-  if (dates) {
-    await page.getByText('Add dates (optional)').click();
-    await page.getByLabel('Starts').fill(dates.start);
-    await page.getByLabel('Ends').fill(dates.end);
-  }
-  await page.getByRole('button', { name: 'Start trip' }).click();
-  await expect(page.getByRole('heading', { name: title })).toBeVisible();
-  return decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+  const id = await page.evaluate(async ({ title, dates }) => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const { createTrip } = await load('/src/core/scopes.js');
+    const store = await createIdbStore();
+    try {
+      return /** @type {string} */ (await createTrip(new Workspace(store), { title, start: dates?.start, end: dates?.end }));
+    } finally {
+      store.close();
+    }
+  }, { title, dates });
+  await goToHash(page, `#/trip/${encodeURIComponent(id)}`);
+  // FIRST_DRAW: it may follow a page.goto at once, where the first draw parses the whole app.
+  await expect(page.getByRole('heading', { level: 1, name: title, exact: true })).toBeVisible(FIRST_DRAW);
+  return id;
 }
 
 /**
@@ -669,9 +726,7 @@ export async function koeSetUp(page, origin, trip = 'Big Sur') {
   await page.getByRole('button', { name: 'Add to Koe · Chat' }).click();
   await expect(page.getByText('1. koe-model')).toBeVisible();
   await page.goto('/#/trips');
-  await page.getByLabel('Trip name').fill(trip);
-  await page.getByRole('button', { name: 'Start trip' }).click();
-  await expect(page.getByRole('heading', { name: trip })).toBeVisible();
+  await startTrip(page, trip);
 }
 
 /**

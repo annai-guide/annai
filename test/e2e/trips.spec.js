@@ -1,18 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, buildAndSave, writeEvent, writeRecords, startTrip as startNamed, allFiles, putFile, catchAgent, goToHash, modelSetUp, startModelServer, anthropicToolReply } from './helpers.js';
+import { openApp, buildAndSave, writeEvent, writeRecords, startTrip as startNamed, allFiles, putFile, catchAgent, goToHash, modelSetUp, startModelServer, anthropicToolReply, goHome, openItinerary, atConversation } from './helpers.js';
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
 
 /** @param {import('@playwright/test').Page} page @param {string} title */
 async function startTrip(page, title) {
-  await page.getByLabel('Trip name').fill(title);
-  await page.getByText('Add dates (optional)').click();
-  await page.getByLabel('Starts').fill('2026-11-25');
-  await page.getByLabel('Ends').fill('2026-11-29');
-  await page.getByRole('button', { name: 'Start trip' }).click();
-  await expect(page.getByRole('heading', { name: title })).toBeVisible();
-  return decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+  return startNamed(page, title, { start: '2026-11-25', end: '2026-11-29' });
 }
 
 test('create a trip, edit a note, and restore an earlier version', async ({ page }) => {
@@ -67,7 +61,7 @@ test('archive a trip, then bring it back', async ({ page }) => {
   await page.getByText('Archived (1)').click();
   await page.getByRole('link', { name: /Old trip/ }).click();
   await page.getByRole('button', { name: 'Unarchive' }).click();
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
+  await goHome(page);
   await expect(page.getByRole('link', { name: /Old trip/ })).toBeVisible();
 });
 
@@ -108,12 +102,12 @@ test('a trip card says when the trip was last backed up, and when it changed sin
   await openApp(page);
   const id = await startTrip(page, 'Big Sur');
   const card = page.getByRole('link', { name: /Big Sur/ });
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
+  await goHome(page);
   await expect(card).toContainText('not backed up');
   await goToHash(page, `#/trip/${id}`); // a card's tap opens its conversation (timeline stage 4)
   await page.getByRole('button', { name: 'Export', exact: true }).click();
   await buildAndSave(page);
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
+  await goHome(page);
   await expect(card).toContainText('backed up just now');
   await expect(card).not.toContainText('changed since');
   await goToHash(page, `#/trip/${id}`); // a card's tap opens its conversation (timeline stage 4)
@@ -121,7 +115,7 @@ test('a trip card says when the trip was last backed up, and when it changed sin
   await page.getByLabel('File path').fill('/notes/day1.md');
   await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.getByRole('heading', { name: '/notes/day1.md' })).toBeVisible();
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
+  await goHome(page);
   await expect(card).toContainText('changed since');
 });
 
@@ -425,7 +419,7 @@ for (const iphone of [false, true]) {
     if (iphone) await page.addInitScript(() => { delete (/** @type {any} */ (window)).CloseWatcher; });
     await openApp(page);
     const nara = await startNamed(page, 'Nara');
-    await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+    await goHome(page);
     const kyoto = await startNamed(page, 'Kyoto');
     const question = page.getByRole('dialog', { name: 'Kyoto' });
     if (!iphone && await page.evaluate(() => 'CloseWatcher' in window)) { // no entry of its own: Settings is still ahead
@@ -520,7 +514,7 @@ async function talkedAgo(page, id, ago) {
 test('a plain start opens the conversation talked in under 12 hours ago, else Trips; a link is respected', async ({ page }) => {
   await openApp(page);
   const id = await startNamed(page, 'Big Sur');
-  await page.getByRole('link', { name: 'Itinerary', exact: true }).first().click();
+  await openItinerary(page);
   await talkedAgo(page, id, 60 * 60_000);
   await page.goto('/'); // a new launch from the Home Screen icon
   await expect.poll(() => page.url()).toMatch(new RegExp(`#/trip/${id}/talk$`));
@@ -546,7 +540,10 @@ test('a plain start opens the conversation talked in under 12 hours ago, else Tr
 test('Start a trip needs only a name: the trip opens with no dates, and on Trips it is a conversation\'s line, not a card (timeline stage 4)', async ({ page }) => {
   await openApp(page);
   await expect(page.getByLabel('Starts')).toBeHidden(); // folded under Add dates (optional)
-  await startNamed(page, 'Somewhere north');
+  // By the form, as the test is of it (startTrip makes a trip as annai does, with no form, for timeline stage 8).
+  await page.getByLabel('Trip name').fill('Somewhere north');
+  await page.getByRole('button', { name: 'Start trip' }).click();
+  await expect(page.getByRole('heading', { name: 'Somewhere north' })).toBeVisible();
   await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
   await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
   const card = page.locator('.trip-card', { hasText: 'Somewhere north' });
@@ -640,7 +637,7 @@ const countOpens = (page) => page.evaluate(async () => {
 test('Back from a conversation reached by #/talk goes to where you came from', async ({ page }) => {
   await openApp(page);
   const id = await startNamed(page, 'Kyoto');
-  await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
+  await goToHash(page, '#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
   await goToHash(page, '#/talk'); // a link to the plain address (the top bar's tabs go straight to the trip's own)
   await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}/talk`);
@@ -658,7 +655,7 @@ test('Back from a conversation reached by #/talk goes to where you came from', a
 test('an address whose trip is gone goes home, and Back does not return to it', async ({ page }) => {
   await openApp(page);
   await startNamed(page, 'Kyoto');
-  await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
+  await goToHash(page, '#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
   for (const gone of ['#/trip/trip-gone1/talk', '#/trip/trip-gone1/plan', '#/trip/trip-gone1', '#/trip/me/talk']) {
     await goToHash(page, gone);
@@ -675,7 +672,7 @@ test('opening #/trip/<b>/talk with a turn running in a stops it; a redraw of a t
   try {
     await modelSetUp(page, llm.origin, 'Kyoto');
     const a = decodeURIComponent(hashOf(page).split('/')[2]);
-    await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+    await goHome(page);
     const b = await startNamed(page, 'Osaka');
     await goToHash(page, `#/trip/${a}/talk`);
     await expect(convo(page)).toContainText('Kyoto');
@@ -713,7 +710,7 @@ test('opening #/trip/<b>/talk with a turn running in a stops it; a redraw of a t
 test('a reload on #/trip/<id>/talk shows that conversation, not the last one active', async ({ page }) => {
   await openApp(page);
   const a = await startNamed(page, 'Kyoto');
-  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  await goHome(page);
   const b = await startNamed(page, 'Osaka');
   await writeEvent(page, a, { type: 'out.speak', data: { id: 's1', text: 'A line in Kyoto.' } });
   await writeEvent(page, b, { type: 'out.speak', data: { id: 's2', text: 'A line in Osaka.' } });
@@ -769,7 +766,7 @@ test('Details changes the name and the dates; a cleared date goes, a backward ra
   await form.getByRole('button', { name: 'Save' }).click();
   await expect.poll(async () => 'start' in (await tripJson(page, id))).toBe(false);
   // Shown on Trips by its new name.
-  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  await goHome(page);
   await expect(page.locator('.trip-card', { hasText: 'Kyoto in spring' })).toBeVisible();
 });
 
@@ -818,9 +815,8 @@ test("Details and the conversation say what it has cost by its dates, a chat's c
   await page.keyboard.press('Escape');
   // Its conversation says the same of what it has cost as its Details does, once it shows: Details says these words too, and stays on show
   // until the conversation is drawn. Read before that, they are Details', and the move back finds Details' old form, drawn over by the new one.
-  const talk = main.getByRole('heading', { name: 'Conversation', exact: true });
   await goToHash(page, `#/trip/${id}/talk`);
-  await expect(talk).toBeVisible();
+  await atConversation(page);
   await expect(main).toContainText('This conversation so far: $0.42');
   await expect(main).not.toContainText('This trip so far');
   // Dated there, it is a trip, and both say so.
@@ -833,7 +829,7 @@ test("Details and the conversation say what it has cost by its dates, a chat's c
   await expect(main).not.toContainText('This conversation so far');
   await buttons();
   await goToHash(page, `#/trip/${id}/talk`);
-  await expect(talk).toBeVisible();
+  await atConversation(page);
   await expect(main).toContainText('This trip so far: $0.42');
   await expect(main).not.toContainText('This conversation so far');
   await goToHash(page, '#/welcome');
@@ -892,7 +888,7 @@ test("a plain chat isn't called a trip: its export, opened, says when and from w
   await startNamed(page, 'Kyoto');
   await page.getByRole('button', { name: 'Export', exact: true }).click();
   const file = await buildAndSave(page);
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
+  await goHome(page);
   await page.getByLabel('Open an annai file').setInputFiles(file);
   await expect(page.getByRole('heading', { name: 'Open an annai file' })).toBeVisible();
   await expect(page.getByText(/^Exported .+ from annai \S+\.$/)).toBeVisible();
@@ -913,7 +909,7 @@ test("a plain chat isn't called a trip: its export, opened over the copy you hav
   await startNamed(page, 'Kyoto');
   await page.getByRole('button', { name: 'Export', exact: true }).click();
   const file = await buildAndSave(page);
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
+  await goHome(page);
   await page.getByLabel('Open an annai file').setInputFiles(file);
   const panel = page.locator('main .panel');
   await expect(page.getByRole('heading', { level: 1, name: 'Open an annai file' })).toBeVisible();
@@ -928,18 +924,17 @@ test("a plain chat isn't called a trip: its export, opened over the copy you hav
 
 test("a plain chat isn't called a trip: a file with nothing to open says so for trips and chats alike", async ({ page }) => {
   await openApp(page);
-  await page.getByRole('link', { name: 'Settings' }).click();
+  await goToHash(page, '#/settings');
   await page.getByRole('button', { name: 'Export everything' }).click();
   const file = await buildAndSave(page);
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  await goHome(page);
   await page.getByLabel('Open an annai file').setInputFiles(file);
   await expect(page.getByText('There are no trips or conversations in this file.')).toBeVisible();
 });
 
 test("a plain chat isn't called a trip: Settings says an export someone sent you, not a trip", async ({ page }) => {
   await openApp(page);
-  await page.getByRole('link', { name: 'Settings' }).click();
+  await goToHash(page, '#/settings');
   await expect(page.getByText('An export someone sent you, or a backup to bring back:')).toBeVisible();
   await expect(page.getByLabel('Open an annai file')).toBeAttached();
 });
@@ -1028,9 +1023,9 @@ async function removeFromDetails(page, title) {
 /** Settings, then Trips, a trip started and opened, its conversation, its name (Details again), then Remove trip: the app is on Trips. @returns {Promise<string>} the trip's id */
 async function removedAfterVisits(/** @type {import('@playwright/test').Page} */ page) {
   await openApp(page);
-  await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
+  await goToHash(page, '#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
-  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  await goHome(page);
   const id = await startNamed(page, 'Kyoto'); // its Details
   await page.getByRole('main').locator('.crumbs a').click(); // its conversation
   await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}/talk`);
@@ -1070,8 +1065,7 @@ test("Remove trip after a start that resumed into the trip's conversation puts T
   await talkedAgo(page, id, 60_000); // the welcome has been seen, and the conversation was talked in a minute ago
   await page.goto('/'); // a new launch: it resumes into the conversation, the first entry
   await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}/talk`);
-  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  await goHome(page);
   await goToHash(page, `#/trip/${id}`);
   await removeFromDetails(page, 'Kyoto');
   await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
@@ -1175,8 +1169,7 @@ test("Forward after Remove trip from a resumed start does nothing, twice", async
   await talkedAgo(page, id, 60_000);
   await page.goto('/');
   await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}/talk`);
-  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  await goHome(page);
   await goToHash(page, `#/trip/${id}`);
   await removeFromDetails(page, 'Kyoto');
   await expect.poll(() => idxOf(page)).toBe(0);
@@ -1191,12 +1184,11 @@ test("Forward after Remove trip from a resumed start does nothing, twice", async
 
 test("Forward over a trip removed some other way ends on the Trips it began on, and draws nothing new", async ({ page }) => {
   await openApp(page);
-  await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
+  await goToHash(page, '#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
-  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  await goHome(page);
   const id = await startNamed(page, 'Kyoto'); // Trips, Settings, Trips, Details
-  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  await goHome(page);
   await removeBehind(page, id);
   await page.goBack();
   await expect.poll(() => hashOf(page)).toBe('#/settings');
@@ -1311,7 +1303,7 @@ test("a reload while the photo viewer is open, after the screen ahead of its fil
 test("Back past the entry a photo viewer left behind lands on its screen once, not twice", async ({ page }) => {
   await openApp(page);
   const nara = await startNamed(page, 'Nara');
-  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  await goHome(page);
   const kyoto = await startNamed(page, 'Kyoto');
   const screen = await viewerOverFile(page);
   await page.evaluate((id) => navigator.serviceWorker.dispatchEvent(new MessageEvent('message', { data: { type: 'annai.open', scope: id } })), nara);
@@ -1358,7 +1350,7 @@ test("a screen the user goes to while Remove trip runs is kept: the removal does
   // "Remove", and in the same moment a tap on Settings: the removal ends after it.
   await page.evaluate(() => {
     /** @type {HTMLButtonElement} */ ([...document.querySelectorAll('dialog button')].find((b) => b.textContent === 'Remove')).click();
-    /** @type {HTMLAnchorElement} */ (document.querySelector('nav.topnav a[href="#/settings"]')).click();
+    location.hash = '#/settings';
   });
   await expect(page.getByText(/^Removed Kyoto\./)).toBeVisible();
   await page.evaluate(() => new Promise((done) => setTimeout(done, 400))); // a walk back would be under way by now
@@ -1369,7 +1361,7 @@ test("a screen the user goes to while Remove trip runs is kept: the removal does
 test("Remove trip goes back over the Trips between, to the screen of the other trip before it", async ({ page }) => {
   await openApp(page);
   const a = await startNamed(page, 'Osaka'); // Trips, Osaka's Details
-  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  await goHome(page);
   const x = await startNamed(page, 'Kyoto'); // Trips again, Kyoto's Details
   await removeFromDetails(page, 'Kyoto');
   await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
@@ -1381,12 +1373,11 @@ test("Remove trip goes back over the Trips between, to the screen of the other t
 
 test("Back over a removed trip's entries also passes the Trips it left, which would show Trips again", async ({ page }) => {
   await openApp(page);
-  await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
+  await goToHash(page, '#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
-  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  await goHome(page);
   const id = await startNamed(page, 'Kyoto'); // Trips, Settings, Trips, Details
-  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  await goHome(page);
   await removeBehind(page, id);
   expect(await idxOf(page)).toBe(4);
   await page.goBack(); // Details (gone) and the Trips before it are passed
@@ -1398,7 +1389,7 @@ test("Back over a removed trip's entries also passes the Trips it left, which wo
 test("a removed trip's entry that is the newest, reached by Forward from another screen, becomes Trips: the screen is never blank", async ({ page }) => {
   await openApp(page);
   const id = await startNamed(page, 'Kyoto'); // Trips, then its Details
-  await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
+  await goToHash(page, '#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
   await goToHash(page, `#/trip/${id}`); // Settings, then Details again: the newest entry
   await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}`);
@@ -1420,8 +1411,7 @@ test("a removed trip's entry that is the first, reached by Back, becomes Trips: 
   await second.addInitScript(() => { try { localStorage.setItem('annai.forceDownload', '1'); } catch { /* storage blocked */ } });
   await second.goto(`/#/trip/${id}`); // the trip's Details is the first entry
   await expect(second.getByRole('heading', { level: 1, name: 'Kyoto' })).toBeVisible();
-  await second.getByRole('link', { name: 'Trips', exact: true }).first().click();
-  await expect(second.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+  await goHome(second);
   await second.evaluate(async (id) => {
     const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
     const { removeTrip } = await import(/** @type {string} */ ('/src/core/scopes.js'));
@@ -1482,7 +1472,7 @@ test("a removed trip's file, booking, item, Recap, Replay and plugin-tab entries
     await goToHash(page, to);
     await expect.poll(() => hashOf(page)).toBe(to);
   }
-  await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
+  await goToHash(page, '#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
   await removeBehind(page, id);
   await page.goBack();
@@ -1495,7 +1485,7 @@ test("a link to a removed trip's file, booking, item, Recap, Replay or plugin ta
   await openApp(page);
   const id = await startNamed(page, 'Kyoto');
   await removeBehind(page, id);
-  await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
+  await goToHash(page, '#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
   for (const to of addressesOf(id).slice(3)) {
     const at = await idxOf(page);
@@ -1526,7 +1516,7 @@ async function viewerOverFile(page) {
 test("Back after a trip is removed passes the entry its photo viewer left behind, and lands past the trip's entries", async ({ page }) => {
   await openApp(page);
   const nara = await startNamed(page, 'Nara'); // Trips, Nara's Details
-  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  await goHome(page);
   const kyoto = await startNamed(page, 'Kyoto'); // Trips again, Kyoto's Details
   const screen = await viewerOverFile(page); // Kyoto's file, and over it the viewer
   expect(await idxOf(page)).toBe(screen + 0.5); // between the file's entry and the next
@@ -1534,9 +1524,9 @@ test("Back after a trip is removed passes the entry its photo viewer left behind
   await page.evaluate((id) => navigator.serviceWorker.dispatchEvent(new MessageEvent('message', { data: { type: 'annai.open', scope: id } })), nara);
   await expect.poll(() => hashOf(page)).toBe(`#/trip/${nara}/talk`);
   await expect(page.getByRole('dialog', { name: /^Photo / })).toHaveCount(0);
-  await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
+  await goToHash(page, '#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
-  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  await goHome(page);
   await goToHash(page, `#/trip/${kyoto}`); // its row opens its conversation (timeline stage 4): Details by address, as a link would
   await removeFromDetails(page, 'Kyoto');
   await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
@@ -1588,7 +1578,7 @@ test("a tapped reminder shows its trip's conversation; a hostile scope posted to
   const id = await startNamed(page, 'Kyoto');
   /** @param {unknown} scope */
   const tapped = (scope) => page.evaluate((scope) => navigator.serviceWorker.dispatchEvent(new MessageEvent('message', { data: { type: 'annai.open', scope } })), scope);
-  await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
+  await goToHash(page, '#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
   await page.evaluate(() => { /** @type {any} */ (window).sameDocument = true; });
   await tapped(id);

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, FIRST_DRAW, pastWelcome, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, startTrip, writeRecords, filterTrace } from './helpers.js';
+import { openApp, FIRST_DRAW, pastWelcome, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, startTrip, writeRecords, filterTrace, goToHash } from './helpers.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 const sleep = { name: 'sleep', input: {} };
@@ -43,7 +43,7 @@ test('a watch Shiori sets fires on arriving; she is told where you are; the trac
     await context.setGeolocation({ latitude: 36.40, longitude: -121.90, accuracy: 10 });
     const trip = await setUp(page, llm.origin);
     await writeRecords(page, trip, { write: { '/plan/bixby.json': { id: 'bixby', title: 'Bixby Bridge photo stop', fixed: false, start: { at: plus(Date.now(), 60), tz: 'UTC' }, place: BIXBY } } });
-    await page.goto('/#/now');
+    await goToHash(page, `#/trip/${encodeURIComponent(trip)}`); // a screen with the dock
     await page.reload(); // written outside the app's own files layer: live mode reads the plan again as it starts
     await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
     await liveOn(page);
@@ -101,8 +101,8 @@ test('the phone locked and unlocked: one catch-up wake, with the time away and w
     await context.grantPermissions(['geolocation']);
     await context.setGeolocation({ latitude: 36.40, longitude: -121.90, accuracy: 10 });
     await page.clock.install({ time: start });
-    await setUp(page, llm.origin);
-    await page.goto('/#/now');
+    const trip = await setUp(page, llm.origin);
+    await goToHash(page, `#/trip/${encodeURIComponent(trip)}`); // a screen with the dock
     await liveOn(page);
     await expect.poll(() => llm.bodies('/b/v1/messages').length).toBe(1);
     await expect(page.locator('.talk-label')).toHaveText('Tap to talk');
@@ -126,8 +126,8 @@ test('the drive\'s one record is kept in this browser as the page goes off scree
   await context.grantPermissions(['geolocation']);
   await context.setGeolocation({ latitude: 36.40, longitude: -121.90, accuracy: 10 });
   await openApp(page);
-  await startTrip(page, 'Big Sur');
-  await page.goto('/#/now');
+  const trip = await startTrip(page, 'Big Sur');
+  await goToHash(page, `#/trip/${encodeURIComponent(trip)}`); // a screen with the dock
   await liveOn(page);
   // Off screen and back until the first fix has come: the record then says where the odometer counts from.
   await expect.poll(async () => {
@@ -147,7 +147,7 @@ test('location refused: a card with steps for this phone, and "Where are you?" w
   await openApp(page);
   const trip = await startTrip(page, 'Big Sur');
   await writeRecords(page, trip, { write: { '/plan/bixby.json': { id: 'bixby', title: 'Bixby Bridge photo stop', fixed: false, start: { at: plus(Date.now(), 60), tz: 'UTC' }, place: BIXBY } } });
-  await page.goto('/#/now');
+  await goToHash(page, `#/trip/${encodeURIComponent(trip)}`); // a screen with the dock
   await page.reload(); // written outside the app's own files layer: live mode reads the plan again as it starts
   await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
   await liveOn(page);
@@ -225,7 +225,7 @@ test('the GPS chip is a switch on a narrow phone: no menu; with no location, Dri
   await openApp(page);
   const trip = await startTrip(page, 'Big Sur');
   await writeRecords(page, trip, { write: { '/plan/bixby.json': { id: 'bixby', title: 'Bixby Bridge photo stop', fixed: false, start: { at: plus(Date.now(), 60), tz: 'UTC' }, place: BIXBY } } });
-  await page.goto('/#/now');
+  await goToHash(page, `#/trip/${encodeURIComponent(trip)}`); // a screen with the dock
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
   const chip = page.locator('.live-chip');

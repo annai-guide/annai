@@ -1,16 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, allFiles } from './helpers.js';
+import { openApp, waitForServiceWorker, allFiles, startTrip as startNamed } from './helpers.js';
 import { ZipWriter } from '../../src/core/zip.js';
 import { utf8 } from '../../src/core/bytes.js';
 
 /** A dated trip: Share and a dropped file offer dated trips (timeline stage 4). @param {import('@playwright/test').Page} page @param {string} title */
 async function startTrip(page, title) {
-  await page.getByLabel('Trip name').fill(title);
-  await page.getByText('Add dates (optional)').click();
-  await page.getByLabel('Starts').fill('2026-11-25');
-  await page.getByLabel('Ends').fill('2026-11-29');
-  await page.getByRole('button', { name: 'Start trip' }).click();
-  await expect(page.getByRole('heading', { name: title })).toBeVisible();
+  await startNamed(page, title, { start: '2026-11-25', end: '2026-11-29' });
 }
 
 /** A small Wallet pass. */
