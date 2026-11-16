@@ -38,7 +38,8 @@ export const ASK_MS = { ms: 25_000 };
  * and 23 of 24 (96%) at 55 s. The answers those calls would have had came in 27.5 to 51.3 s, the slowest being overpass-api.de's own, so
  * 55 s (51.3 s rounded up to the next 5 s); the 24th call has all three refuse (in 1.7 s, "busy"), which no wait helps. Overpass's own
  * "too busy" 504s (lz4.'s once, at 43.1 s; maps.mail.ru's at 43.8 to 50.5 s) came at 43 to 51 s, so waiting longer gains nothing. 24 of the 25 refusals of the three servers came in half a
- * second (0.49 to 0.61 s, so asking the next in turn costs that much each); the other was lz4.'s 504 at 43.1 s.
+ * second (0.49 to 0.61 s, so asking the next in turn costs that much each); the other was lz4.'s 504 at 43.1 s. Today's lighter query,
+ * replayed the same way over its own 24 probes (2026-11-15; the probed shape, 300 m then 1000 m): 23 of 24 calls get places, in 27.5 to 51.8 s, so 55 s still holds.
  */
 export const OVERPASS_MS = 55_000;
 
@@ -128,6 +129,8 @@ function extras(f) {
 }
 
 const round = (/** @type {number} */ x) => Math.round(x * 1e4) / 1e4;
+/** The rows nearby gives, nearest first; its Overpass query widens its circle when the small one holds fewer. */
+const ROWS = 40;
 /** The plain answer for a server's answer that isn't what it should be (never a TypeError: spec §5.5). @param {string} where */
 const UNREADABLE = (where) => /* en */ `${where} sent an answer annai can't read.`;
 const POINT = { lat: { type: 'number', minimum: -90, maximum: 90 }, lng: { type: 'number', minimum: -180, maximum: 180 } };
@@ -155,7 +158,7 @@ export function activate(annai) {
       async run(i, call) {
         const radius = Math.round(Math.min(20000, Math.max(50, i.radius ?? 1000)));
         const kinds = i.kinds?.length ? i.kinds : ['sights', 'food'];
-        const answer = (/** @type {any[][]} */ rows) => tsv(['name', 'kind', 'distance_m', 'lat', 'lng', 'source', 'note'], rows.sort((a, b) => a[2] - b[2]).slice(0, 40));
+        const answer = (/** @type {any[][]} */ rows) => tsv(['name', 'kind', 'distance_m', 'lat', 'lng', 'source', 'note'], rows.sort((a, b) => a[2] - b[2]).slice(0, ROWS));
         // The offline pack first (spec §8): where it holds the whole circle, nothing is asked.
         const pack = await loadPack(annai.files, call.trip).catch(() => null);
         if (pack?.covers(i, radius)) return `${answer([...pack.places(i, radius, kinds), ...pack.pages(i, radius)])}\nFrom the offline pack${pack.downloaded}.`;
@@ -164,9 +167,24 @@ export function activate(annai) {
           if (!pack?.touches(i)) return 'Not in the offline pack: ask Kokoro.';
           return `${answer([...pack.places(i, radius, kinds), ...pack.pages(i, radius)])}\nFrom the offline pack${pack.downloaded}, which holds only part of this circle. Kokoro can look further.`;
         }
-        const at = `around:${radius},${round(i.lat)},${round(i.lng)}`;
-        // Overpass cuts its output in id order, not by distance, so ask for plenty and keep the nearest 40.
-        const query = `[out:json][timeout:20];(${overpassFilters(kinds).map((f) => `nwr(${at})${f};`).join('')});out center tags 400;`;
+        const circle = (/** @type {number} */ r) => `(${overpassFilters(kinds).map((f) => `nwr(around:${r},${round(i.lat)},${round(i.lng)})${f};`).join('')});`;
+        // Overpass can't sort by distance, and the 400 cap (ten times the ROWS kept) cuts its output in id order. So circles each half the
+        // next (a quarter of its area), from the radius down to the first of 300 m or less, go in one request, smallest first, each wider
+        // one only while fewer than ROWS came (`if`): the answer is then a circle uncut, and its nearest ROWS are the true nearest, unless
+        // one circle holds fewer than ROWS and the next 400 or more, which is more than ten times as many over a fourfold area (the ring
+        // outside more than three times as dense as the circle inside), or the smallest circle itself holds 400 or more. A step of 0.3 (a tenth of the area, as ROWS is a tenth of 400) left no margin: 36 to 39 places
+        // spread evenly in one circle are 400 to 433 in the next, and the answer at the Sydney Opera House stayed cut; the saved answers'
+        // places grew 10.2 times from 90 to 300 m at Notre-Dame, 5.5 times from 150 to 300 m (counted by centre). 300 m: the smallest
+        // circle is then 151 to 300 m for a radius over 300 m, and the 250 m circle held 52, 89 and 77 sights and food at Tokyo Station, Notre-Dame and Times
+        // Square (counted by centre, probes of 2026-11-15), so there the answer is that circle whole. maxsize 64 MiB, not the default 512:
+        // Overpass's dispatcher starts a query only while what it declares fits in half of what is free (its source, upstream
+        // src/template_db/dispatcher.cc, Global_Resource_Planner::probe, read 2026-11-14), so a smaller declaration may start sooner. In
+        // 24 hourly probes overpass-api.de refused it 6 times against 10 without, and 23 calls got places within OVERPASS_MS against 20;
+        // too few to show the effect (Fisher p 0.36), kept because it costs nothing. It was enough at wide radii (live calls, 2026-11-16: a
+        // dense 15 km circle answering 400, and 20 km with all 8 circles run): no "out of memory" remark.
+        const radii = [radius];
+        while (radii[0] > 300) radii.unshift(Math.round(radii[0] * 0.5));
+        const query = `[out:json][timeout:20][maxsize:67108864];${radii.map((r, k) => (k ? `if (count(nwr) < ${ROWS}) {${circle(r)}}` : circle(r))).join('')}out center tags 400;`;
         // One limit, OVERPASS_MS, for all of Overpass, so a call waits that long at most. overpass-api.de's servers are asked in turn, the next
         // only after the one before refuses or fails (an answer costs one request); VK's, while its switch is on, at once beside them
         // (VK's switch is read at each call). The first usable answer stops the others' requests, with a reason the Trace shows (an Error:
