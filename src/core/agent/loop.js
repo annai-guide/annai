@@ -88,7 +88,8 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  *   after its question began and before its listening opened, so it never opens
  * @typedef {{ id: string, inside: boolean, her?: boolean, kept?: boolean, text?: string, h?: Heard, gate?: string, taken?: boolean }} AskLine  heard while annai's card waits: inside: begun in its
  *   window; her: begun over her voice; kept: the verdict, once it comes; h: this half's own segment; taken: the card took it (cardTakes) and wrote it with its answer
- * @typedef {{ name: StateName, label: string, detail?: string }} State  label: the dock's words for it (LABELS); detail: what she is away doing (TIDYING, or a task's words)
+ * @typedef {{ name: StateName, label: string, detail?: string, wait?: 'ask' | 'wait' }} State  label: the dock's words for it (LABELS); detail: what she is away doing (TIDYING, or a task's words);
+ *   wait: what she waits for while waiting, her question's answer (ask) or the user's turn (wait)
  * @typedef {{ tone: 'warn' | 'info', title: string, body: string, actions?: { label: string, primary?: boolean, run: () => void | Promise<void> }[], key?: string, toast?: boolean }} Notice
  *   key: names a card a later turn takes down (the clear event, when that turn works): model, or silent:<its conversation>
  * @typedef {{ stepsPerWake?: number, spendPerDay?: number, wakesPerHour?: number, quietHours?: { from: string, to: string } }} Budgets
@@ -676,10 +677,10 @@ export class Agent {
     }
   }
 
-  /** @param {StateName} name @param {string} [detail] @param {string} [words] the dock's words, in place of the state's own */
-  #setState(name, detail, words) {
-    const label = words ?? (name !== 'away' || !detail ? LABELS[name] : detail === TIDYING ? t`Working on tidying up the conversation` : t`Working on ${detail}`);
-    this.state = { name, label, ...(detail ? { detail } : {}) };
+  /** @param {StateName} name @param {{ detail?: string, wait?: 'ask' | 'wait' }} [o] detail: what she is away doing; wait: what a waiting waits for */
+  #setState(name, { detail, wait } = {}) {
+    const label = name === 'waiting' && wait === 'wait' ? t`Your turn` : name !== 'away' || !detail ? LABELS[name] : detail === TIDYING ? t`Working on tidying up the conversation` : t`Working on ${detail}`;
+    this.state = { name, label, ...(detail ? { detail } : {}), ...(wait ? { wait } : {}) };
     this.#emit('state', this.state);
     this.poke(); // a turn waiting while the user speaks looks again
   }
@@ -1768,7 +1769,7 @@ export class Agent {
     const first = after.find((e) => e.type === 'msg.user')?.data?.text ?? after.find((e) => e.type === 'wake')?.data?.reasons?.[0]?.text ?? '';
     /* en */
     const marker = first ? `the exchange that begins "${first.slice(0, 80)}"` : `event ${cut}`;
-    this.#setState('away', TIDYING);
+    this.#setState('away', { detail: TIDYING });
     const language = summaryLanguage(said, await this.#languages());
     const summary = mode === 'warm' ? await this.#warmSummary(marker, settings, language, o.frozen) : await this.#coldSummary(cut, language);
     if (!summary) return false;
@@ -1957,7 +1958,7 @@ export class Agent {
 
   /** Shiori steps out of her seat to work on something, or comes back (spec §16.3). @param {string | null} detail */
   working(detail) {
-    this.#setState(detail ? 'away' : 'thinking', detail ?? undefined);
+    this.#setState(detail ? 'away' : 'thinking', { detail: detail ?? undefined });
   }
 
   /** The prefix cache of the model she used last (spec §6.4: plugins can read TTL and warmth). */
@@ -3262,7 +3263,7 @@ export class Agent {
 
   /** The dock while only a tap or typing answers: an ask waits for the user's OK; a wait is their turn. @param {'ask' | 'wait'} kind */
   #waiting(kind) {
-    this.#setState('waiting', undefined, kind === 'wait' ? t`Your turn` : undefined);
+    this.#setState('waiting', { wait: kind });
   }
 
   /**

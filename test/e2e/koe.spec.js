@@ -82,6 +82,41 @@ test('a typed question: Koe\'s bubble at once, the "Kokoro is working" sign, the
   }
 });
 
+// The user, 2026-11-16: "when kokoro is thinking and koe is ready, it currently says your turn. maybe that is confusing? maybe put thinking".
+test("while Kokoro works behind a Koe waiting for the user's turn, the dock says Thinking, not Your turn; once Kokoro is done and Koe waits, Your turn", async ({ page }) => {
+  const sse = (/** @type {{ name: string, input: any }[]} */ calls) => ({ status: 200, type: 'text/event-stream', body: anthropicToolReply(calls) });
+  const wait = { name: 'wait', input: { seconds: 60 } };
+  /** @type {() => void} */
+  let release = () => {};
+  const kokoroAnswers = new Promise((r) => { release = () => r(undefined); });
+  const llm = await startModelServer({
+    '/koe/v1/messages': [
+      sse([{ name: 'speak', input: { text: 'Let me look.' } }, { name: 'tell_kokoro', input: { text: 'Is Nepenthe open now?' } }, wait]),
+      sse([{ name: 'speak', input: { text: "Good news: it's open till 10 tonight." } }, wait]),
+      sse([wait]),
+    ],
+    '/kokoro/v1/messages': [
+      { ...sse([{ name: 'tell_koe', input: { text: 'Nepenthe is open till 10 tonight (nepenthe.com).' } }, { name: 'sleep', input: {} }]), until: kokoroAnswers },
+      sse([{ name: 'sleep', input: {} }]),
+    ],
+  });
+  try {
+    await koeSetUp(page, llm.origin);
+    await type(page, 'Is Nepenthe open?');
+    const label = page.locator('.talk-label');
+    await expect(page.locator('.convo .shiori p').first()).toHaveText('Let me look.');
+    await expect(page.getByRole('status').filter({ hasText: 'Kokoro is working' })).toBeVisible();
+    await expect(label).toHaveText('Thinking');
+    release();
+    await expect(page.locator('.convo .shiori p').last()).toHaveText("Good news: it's open till 10 tonight.", { timeout: 15_000 });
+    await expect(page.getByRole('status').filter({ hasText: 'Kokoro is working' })).toBeHidden();
+    await expect(label).toHaveText('Your turn');
+  } finally {
+    release();
+    await llm.stop();
+  }
+});
+
 test("Trace shows both halves' turns and their notes; the notes show in the conversation by default, and Settings → Shiori hides them", async ({ page }) => {
   const llm = await startModelServer(halves(300));
   try {

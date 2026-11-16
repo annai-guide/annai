@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { openApp, startTrip, writeRecords, goToHash, modelSetUp, startModelServer, anthropicToolReply } from './helpers.js';
+import { FIRST_DRAW } from './helpers.js';
 
 // A line that records what happened ("Shiori set the dates", the hand-over's Undo line) keeps one height in every state: with its Undo
 // button (44 px) and without it, so the lines above it don't move under the user's finger when it changes. Nothing keeps the page's place
@@ -75,7 +76,7 @@ test('Shiori set the dates keeps its height when she changes the dates she set w
   const say = async (/** @type {string} */ text) => {
     await box(page).isVisible() || await page.getByRole('button', { name: 'Type', exact: true }).click();
     await box(page).fill(text);
-    await box(page).press('Enter');
+    await box(page).press('Control+Enter');
   };
   try {
     await modelSetUp(page, llm.origin, 'Elsewhere');
@@ -154,4 +155,31 @@ test("the hand-over's Undo line keeps its height with and without its Undo: a ta
   } finally {
     await llm.stop();
   }
+});
+
+// The dock's box takes several lines (the user, 2026-11-16): as it grows and shrinks, the conversation's last line stays in view above the
+// dock, the page following its end (at-end.js) as the dock changes height.
+test("at the end of a long conversation, the dock's box growing to five lines keeps the last line in view above the dock, and so does the box shrinking back", async ({ page }) => {
+  await openApp(page, '#/trips');
+  const id = await startTrip(page, 'Testville');
+  await lines(page, id, 'Earlier', 20);
+  await goToHash(page, `#/trip/${id}/talk`);
+  await page.reload();
+  await expect(page.locator('.convo > li')).toHaveCount(20, FIRST_DRAW);
+  await expect.poll(() => page.evaluate(() => [document.documentElement.scrollHeight > 2 * innerHeight, innerHeight + scrollY >= document.documentElement.scrollHeight - 1])).toEqual([true, true]);
+  /** The last line's bottom and the dock's top on the screen. */
+  const seen = () => page.evaluate(() => {
+    const last = /** @type {HTMLElement} */ (document.querySelector('.convo > li:last-child')).getBoundingClientRect();
+    const dock = /** @type {HTMLElement} */ (document.querySelector('nav.dock')).getBoundingClientRect();
+    return last.bottom > 0 && last.bottom <= dock.top + 1;
+  });
+  const height = () => box(page).evaluate((el) => Math.round(el.getBoundingClientRect().height));
+  await page.getByRole('button', { name: 'Type', exact: true }).click();
+  await expect.poll(seen).toBe(true);
+  await box(page).fill(['One', 'Two', 'Three', 'Four', 'Five'].join('\n'));
+  await expect.poll(height).toBe(144);
+  await expect.poll(seen).toBe(true);
+  await box(page).fill('One');
+  await expect.poll(height).toBe(48);
+  await expect.poll(seen).toBe(true);
 });

@@ -117,13 +117,16 @@ html.typing-elsewhere body.home .plus { opacity: 0; pointer-events: none; }
 .ib:focus-visible, .talk:focus-visible { outline: 2px solid var(--ai); outline-offset: 2px; }
 .type-sheet { max-width: 560px; margin: 0 auto 8px; }
 .type-box { position: relative; }
-.type-sheet input { width: 100%; box-sizing: border-box; min-height: 48px; font: inherit; border: 1px solid var(--line); border-radius: 24px; padding: 8px 52px 8px 16px; background: var(--sheet); color: var(--ink); }
-/* The send arrow sits inside the box, on its right: for a keyboard with no send key, and for a mouse. */
-.send-arrow { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; padding: 0; border: 0; background: var(--ai); color: var(--ai-ink); cursor: pointer; }
+.type-sheet textarea { display: block; width: 100%; box-sizing: border-box; min-height: 48px; max-height: 144px; resize: none; overflow-y: auto; scrollbar-gutter: stable; font: inherit; line-height: 24px;
+  border: 1px solid var(--line); border-radius: 24px; padding: 11px 52px 11px 16px; background: var(--sheet); color: var(--ink); }
+/* Several lines (dock.js fits its height): 48 px at rest as the single line was (24 px lines, 11 px padding, the border), to five lines (144 px,
+   the reading of "auto expanding" of 2026-11-16), then it scrolls. The scroll bar's room is kept, so words wrap alike as it is measured. */
+/* The send arrow sits inside the box, on its right, at its last line, so iOS's scroll to the caret keeps it on screen above the keyboard. */
+.send-arrow { position: absolute; right: 6px; bottom: 4px; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; padding: 0; border: 0; background: var(--ai); color: var(--ai-ink); cursor: pointer; }
 .send-arrow:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 /* The + sits inside the box before the words; what it picked waits above the box as chips, each with its own Remove. */
-.type-sheet .type-box input { padding-inline-start: 52px; }
-.attach-plus { position: absolute; inset-inline-start: 6px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
+.type-sheet .type-box textarea { padding-inline-start: 52px; }
+.attach-plus { position: absolute; inset-inline-start: 6px; bottom: 4px; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
   border: 1px solid var(--line); background: var(--sheet); color: var(--ink-2); font-size: 24px; line-height: 1; cursor: pointer; }
 .attach:focus-within .attach-plus { outline: 2px solid var(--ai); outline-offset: 2px; }
 .chips, .chip-list { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -208,11 +211,16 @@ a.attach-chip, .attach-chip.gone { padding-inline: 12px; text-decoration: none; 
   .dock.voice .seat.dock { width: 72px; height: 72px; }
   .dock.voice .ib { width: 50px; height: 50px; }
 }
-/* And a phone on its side, which has little height: the box is a single line with no panel around it, so the page keeps a third of the height
-   with it open. */
+/* A short screen: three lines (96 px), so the dock at the box's cap takes the share five lines take on a Pixel 7 (202 of 568 px; 290 of 839). */
+@media (max-height: 600px) {
+  .type-sheet textarea { max-height: 96px; }
+}
+/* And a phone on its side, which has little height: the box stays a single line, scrolling inside, with no panel around it, so the page keeps
+   a third of the height with it open. */
 @media (orientation: landscape) and (max-height: 420px) {
   .type-sheet { margin-bottom: 0; }
-  .type-sheet input { min-height: 44px; }
+  .type-sheet textarea { min-height: 44px; max-height: 44px; padding-block: 9px; }
+  .send-arrow, .attach-plus { bottom: 2px; }
 }
 .convo .shiori.said .btn { align-self: flex-start; }
 /* annai's card's "Tap to answer" goes once it is answered */

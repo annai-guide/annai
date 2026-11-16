@@ -1428,3 +1428,68 @@ test("tell_koe says what a note may say of a booking: no field's name and nothin
   assert.ok(kokoro.includes(" Koe says what it says, without changing what it claims. Of a booking, a note (and its for_user) names no field and says nothing of its status: the user checks only what annai marks (the note read gives), each by what it is. It returns at once."));
   assert.doesNotMatch(koe, /booking|unsure|status/);
 });
+
+// The dock's words while Kokoro works (the user, 2026-11-16: "when kokoro is thinking and koe is ready, it currently says your turn. maybe that
+// is confusing? maybe put thinking maybe?"): "Your turn" only when neither half works; Koe's own states that show something else stay.
+const WAIT = { name: 'wait', input: { seconds: 60 } };
+/**
+ * Koe for a typed line: it says it looks, asks Kokoro, and then makes its last call (a wait, a sleep, a question); Kokoro's note it says, then sleeps,
+ * or with `waits`, waits for the user's turn (again when "nothing to add" ends that wait). @param {any} last @param {{ waits?: boolean }} [o]
+ */
+const koeAsks = (last, { waits = false } = {}) => ({ rules: [
+  { match: 'the user wrote', reply: { toolCalls: [{ name: 'speak', input: { text: 'Let me look.' } }, { name: 'tell_kokoro', input: { text: 'Where did we eat?' } }, last] } },
+  { match: 'a note from Kokoro', reply: waits ? { toolCalls: [{ name: 'speak', input: { text: 'Ramen at the corner.' } }, WAIT] } : calls(['speak', { text: 'Ramen at the corner.' }]), ...(waits ? { then: { toolCalls: [WAIT] } } : {}) },
+] });
+/** Kokoro answers through Koe, its model call held until the test lets it go. */
+const heldKokoro = () => {
+  /** @type {() => void} */
+  let release = () => {};
+  const go = new Promise((r) => { release = () => r(undefined); });
+  return { release, hold: async (/** @type {any} */ c) => { if (c.model.providerId === 'model-0') await go; } };
+};
+const KOKORO_TELLS = { rules: [{ match: 'the user wrote|Koe asks', reply: calls(['tell_koe', { text: 'They ate ramen at the corner.' }]) }] };
+
+test("the dock says Thinking while Kokoro thinks behind a Koe that waits for the user's turn, told as it comes, and Your turn once Kokoro is done", async (t) => {
+  useClock(t);
+  const { release, hold } = heldKokoro();
+  const k = await agentKit([KOKORO_TELLS], { koe: { type: koeAsks(WAIT, { waits: true }) }, hold });
+  /** @type {string[]} */
+  const told = [];
+  k.agent.on('state', (/** @type {any} */ s) => told.push(`${s.name} ${s.label}`));
+  k.agent.send('Where did we eat?');
+  await until(() => k.agent.koe.waiting && k.agent.kokoro.state.name === 'thinking', 20_000);
+  assert.deepEqual([k.agent.koe.state.name, k.agent.koe.state.label], ['waiting', 'Your turn'], "Koe's own state");
+  assert.deepEqual([k.agent.state.name, k.agent.state.label], ['thinking', 'Thinking'], "the dock's");
+  assert.equal(told.at(-1), 'thinking Thinking', 'the dock was told');
+  assert.equal(k.agent.kokoroWorking, true, 'the sign shows too');
+  release();
+  await until(() => !k.agent.kokoro.busy && k.agent.koe.waiting, 20_000);
+  assert.deepEqual([k.agent.state.name, k.agent.state.label], ['waiting', 'Your turn']);
+  assert.equal(told.at(-1), 'waiting Your turn', 'the dock was told');
+  k.agent.interrupt();
+  await k.agent.idle();
+});
+
+test('the dock says Thinking while Kokoro thinks behind a Koe that has gone to sleep, and Tap to talk once both are done', async (t) => {
+  useClock(t);
+  const { release, hold } = heldKokoro();
+  const k = await agentKit([KOKORO_TELLS], { koe: { type: koeAsks({ name: 'sleep', input: {} }) }, hold });
+  k.agent.send('Where did we eat?');
+  await until(() => k.agent.koe.state.name === 'sleeping' && !k.agent.koe.busy && k.agent.kokoro.state.name === 'thinking', 20_000);
+  assert.deepEqual([k.agent.state.name, k.agent.state.label], ['thinking', 'Thinking']);
+  release();
+  await k.agent.idle();
+  assert.deepEqual([k.agent.state.name, k.agent.state.label], ['sleeping', 'Tap to talk']);
+});
+
+test("while Kokoro thinks, Koe's own question waiting for an answer still says so on the dock: Thinking is only for a Koe that rests or waits for the user's turn", async (t) => {
+  useClock(t);
+  const { release, hold } = heldKokoro();
+  const k = await agentKit([KOKORO_TELLS], { koe: { type: koeAsks({ name: 'ask', input: { question: 'Lunch or dinner?', options: ['Lunch', 'Dinner'] } }) }, hold });
+  k.agent.send('Where did we eat?');
+  await until(() => k.agent.koe.state.name === 'waiting' && k.agent.kokoro.state.name === 'thinking', 20_000);
+  assert.deepEqual([k.agent.state.name, k.agent.state.label], ['waiting', 'Waiting for your OK']);
+  release();
+  k.agent.interrupt();
+  await k.agent.idle();
+});

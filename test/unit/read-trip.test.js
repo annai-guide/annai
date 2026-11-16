@@ -3220,7 +3220,7 @@ test("with voice on and no Koe model, a tap while annai's card waits after its q
   await k.agent.idle();
 });
 
-test("with voice off and Koe on a chat model waiting for Kokoro, whose model call is still running (no card): a tap on Shiori shows Koe's listening on the dock, and \"Your turn\" again when its 8 s end", async (t) => {
+test("with voice off and Koe on a chat model waiting for Kokoro, whose model call is still running (no card): the dock says Thinking; a tap on Shiori shows Koe's listening, and Thinking again when its 8 s end; Kokoro's card waiting for the user is \"Your turn\" (the user, 2026-11-16: \"when kokoro is thinking and koe is ready, it currently says your turn\")", async (t) => {
   useClock(t);
   /** @type {() => void} */
   let release = () => {};
@@ -3229,18 +3229,20 @@ test("with voice off and Koe on a chat model waiting for Kokoro, whose model cal
   await voiceOff(k);
   k.agent.send('Where did we eat in Testville?');
   await until(() => k.agent.koe.waiting, 20_000);
-  await until(() => k.agent.state.name === 'waiting');
-  assert.deepEqual(dock(k), ['waiting', 'Your turn']);
+  await until(() => k.agent.kokoro.state.name === 'thinking', 20_000);
+  assert.deepEqual(dock(k), ['thinking', 'Thinking']);
   k.agent.tap();
   await until(() => micLog(k).at(-1) === 'mic open', 20_000);
   await pause(1 * k.agent.secondMs);
   assert.deepEqual(dock(k), ['listening', 'Listening']);
   await pause(8 * k.agent.secondMs);
-  assert.deepEqual([micLog(k).at(-1), ...dock(k)], ['mic close', 'waiting', 'Your turn']);
+  assert.deepEqual([micLog(k).at(-1), ...dock(k)], ['mic close', 'thinking', 'Thinking']);
   assert.ok(k.agent.koe.waiting, 'Koe still waits');
   assert.equal(k.asks.length, 0, 'no card');
   release();
   await until(() => k.asks.length === 1, 20_000);
+  await until(() => k.agent.kokoro.state.name === 'waiting');
+  assert.deepEqual(dock(k), ['waiting', 'Your turn'], "Kokoro's card waits for the user, Koe for their turn: nothing is thinking");
   k.agent.stopKokoro(); // ends the card
   k.agent.interrupt();
   await k.agent.idle();

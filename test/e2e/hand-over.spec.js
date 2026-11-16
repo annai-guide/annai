@@ -269,7 +269,7 @@ test("Undo names a trip of the user's that stays but lost what she did there: th
   }
 });
 
-test('a short paste stays words; a long one into an empty box becomes a chip, which can be put back as words', async ({ page }) => {
+test('a short paste stays words; a long one into an empty box becomes a chip, which can be put back as words, its lines kept', async ({ page }) => {
   await openApp(page, '#/talk'); // the dock at rest on home has no type button (timeline stage 4)
   await paste(page, 'Seat 14D\nAisle, please');
   await expect(page.locator('.type-sheet .attach-chip')).toHaveCount(0);
@@ -283,8 +283,18 @@ test('a short paste stays words; a long one into an empty box becomes a chip, wh
   await expect(page.locator('.type-sheet .attach-chip')).toHaveCount(1);
   await page.getByRole('button', { name: 'Put back as text' }).click();
   await expect(page.locator('.type-sheet .attach-chip')).toHaveCount(0);
-  // Its lines are words with spaces between, never glued together (a one-line box drops line breaks).
-  await expect(page.getByLabel('Message to Shiori')).toHaveValue(text.trim().replace(/\s*\n\s*/g, ' '));
+  // As it was pasted, its lines kept (the box takes several lines since 2026-11-16; a textarea's value has \n for each break).
+  await expect(page.getByLabel('Message to Shiori')).toHaveValue(text.trim().replace(/\r\n?/g, '\n'));
+  // Words typed meanwhile stay, and the paste put back goes on a line of its own after them.
+  await page.getByLabel('Message to Shiori').fill('');
+  await page.getByLabel('Message to Shiori').evaluate((el, t) => {
+    const data = new DataTransfer();
+    data.setData('text/plain', t);
+    el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+  }, text);
+  await page.getByLabel('Message to Shiori').fill('My booking:');
+  await page.getByRole('button', { name: 'Put back as text' }).click();
+  await expect(page.getByLabel('Message to Shiori')).toHaveValue(`My booking:\n${text.trim().replace(/\r\n?/g, '\n')}`);
 });
 
 /** A flight booking in the open trip, with the seat she is unsure of; its details are open. @param {import('@playwright/test').Page} page */
@@ -317,7 +327,7 @@ test('Ask Shiori about this: the booking is a chip in the type box with Read it 
     await expect(chip).toHaveAttribute('href', /from=%23%2Ftrip%2F[^&]*%2Ftalk$/); // back to its conversation, by its own address
     await chip.click();
     await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
-    await expect(page.locator('textarea')).toHaveCount(0);
+    await expect(page.locator('main textarea')).toHaveCount(0);
   } finally {
     await llm.stop();
   }

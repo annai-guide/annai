@@ -24,7 +24,7 @@ const leaksIn = (bodies, who) => bodies.flatMap((b, i) => {
 async function say(page, text) {
   await page.getByRole('button', { name: accented('Type'), exact: true }).click();
   await page.locator('#dock-text').fill(text);
-  await page.locator('#dock-text').press('Enter');
+  await page.locator('#dock-text').press('Control+Enter');
 }
 
 test("under en-XA, every request a model gets is annai's English: tools, refusals, a card, a failed turn and the model's Test", async ({ page }) => {

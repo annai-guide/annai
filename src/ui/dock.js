@@ -44,11 +44,22 @@ export function createDock(ctx) {
   const avatar = dockAvatar(ctx);
   const label = h('span', { class: 'talk-label', text: ctx.agent.state.label });
   // A smart text box: there only while it is needed. The keyboard button opens it and, tapped again, closes it;
-  // sending closes it; Escape closes it; a tap elsewhere closes it while it is empty. A single line, so the keyboard's own key sends.
-  const input = h('input', { id: 'dock-text', type: 'text', 'aria-label': t`Message to Shiori`, enterkeyhint: 'send', autocomplete: 'off', autocapitalize: 'sentences' });
-  // Chinese and Japanese are typed through an IME, whose Enter picks a candidate: it never sends the half-composed text. Chrome and Firefox
-  // say isComposing on that keydown; Safari ends the composition first and sends the Enter with keyCode 229. Some Android keyboards send
-  // every Enter as 229: one with no composition just ended sends. A composition the box loses (blur, closed) holds nothing back after.
+  // sending closes it; Escape closes it; a tap elsewhere closes it while it is empty. Several lines (the user, 2026-11-16: "can you make it
+  // multiline? auto expanding text box would be ideal. also the keyboard button is send not change line, maybe should do that? as we already
+  // have a send button near the text box"): one line at rest, growing with what is typed to its cap (shiori.css), then scrolling inside.
+  // Enter adds a line, the phone's return key too; the send arrow sends, and from a keyboard Ctrl or ⌘ with Enter.
+  const input = h('textarea', { id: 'dock-text', rows: 1, 'aria-label': t`Message to Shiori`, autocomplete: 'off', autocapitalize: 'sentences' });
+  /** As tall as what it holds, up to its cap (max-height), keeping where it is scrolled; hidden, it has no height to fit, and fits as it opens. */
+  const fit = () => {
+    const top = input.scrollTop;
+    input.style.height = '';
+    if (input.scrollHeight > input.clientHeight) input.style.height = `${input.scrollHeight + input.offsetHeight - input.clientHeight}px`;
+    input.scrollTop = top;
+  };
+  // Chinese and Japanese are typed through an IME, whose Enter picks a candidate: it never sends the half-composed text, nor adds a line.
+  // Chrome and Firefox say isComposing on that keydown; Safari ends the composition first and sends the Enter with keyCode 229. Some Android
+  // keyboards send every Enter as 229: one with no composition just ended adds its line. A composition the box loses (blur, closed) holds
+  // nothing back after.
   let composing = false;
   let endedAt = -Infinity;
   input.addEventListener('compositionstart', () => { composing = true; });
@@ -58,7 +69,11 @@ export function createDock(ctx) {
   });
   input.addEventListener('blur', () => { composing = false; });
   input.addEventListener('keydown', (/** @type {KeyboardEvent} */ e) => {
-    if (e.key === 'Enter' && (e.isComposing || composing || (e.keyCode === 229 && e.timeStamp - endedAt < 100))) e.preventDefault();
+    if (e.key !== 'Enter') return;
+    if (e.isComposing || composing || (e.keyCode === 229 && e.timeStamp - endedAt < 100)) return void e.preventDefault();
+    if (!e.ctrlKey && !e.metaKey) return; // a line
+    e.preventDefault();
+    sheet.requestSubmit();
   });
   const sendArrow = h('button', { class: 'send-arrow', type: 'submit', 'aria-label': t`Send`, title: t`Send` }, icon(/* en */ 'M12 19V6M6.5 11.5L12 6l5.5 5.5'));
   // The + inside the box, before the words, and the chips of what it picked (the bookings-and-trips design, goal 1): sent with the
@@ -66,9 +81,10 @@ export function createDock(ctx) {
   const composer = createComposer(ctx, {
     onChange: () => ctx.agent.typing?.(Boolean(input.value.trim() || composer.items().length)),
     onPutBack: (/** @type {string} */ pasted) => {
-      // The box is one line: the paste's lines become words with spaces between, never glued together.
-      const words = pasted.trim().replace(/\s*[\r\n]+\s*/g, ' ');
-      input.value = input.value.trim() ? `${input.value} ${words}` : words;
+      // As it was pasted, its lines kept, on a line of its own after any words typed since.
+      const words = pasted.trim();
+      input.value = input.value.trim() ? `${input.value}\n${words}` : words;
+      fit();
       input.focus();
       ctx.agent.typing?.(true);
     },
@@ -138,6 +154,7 @@ export function createDock(ctx) {
   };
   // While the box holds text, a turn of the user's waits for them (spec §6.1, item 16).
   input.addEventListener('input', () => {
+    fit();
     ctx.agent.typing?.(Boolean(input.value.trim()));
     composer.typing(Boolean(input.value.trim()));
   });
@@ -148,6 +165,7 @@ export function createDock(ctx) {
   });
   const openTyping = () => {
     sheet.hidden = false;
+    fit(); // a draft kept from before, at this width
     typeButton.setAttribute('aria-expanded', 'true');
     input.focus();
     offTap?.();
@@ -192,6 +210,9 @@ export function createDock(ctx) {
   }, avatar.el, label);
   /** @type {((() => void) | undefined)[]} what it listens to, let go of by dispose() */
   const offs = [];
+  // A turn of the phone wraps the words again: the box fits them at the new width.
+  addEventListener('resize', fit);
+  offs.push(() => removeEventListener('resize', fit));
   offs.push(ctx.agent.on('state', (/** @type {any} */ s) => {
     avatar.setState(s.name);
     label.textContent = s.label;

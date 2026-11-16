@@ -27,22 +27,110 @@ test('the keyboard button opens the box with focus, and tapping it again closes 
   await expect(typeButton(page)).toHaveAttribute('aria-expanded', 'false');
 });
 
-test('the box is a single line whose keyboard key says Send; Enter sends, and the box closes after sending', async ({ page }) => {
+// Several lines (the user, 2026-11-16: "can you make it multiline? auto expanding text box would be ideal. also the keyboard button is send
+// not change line, maybe should do that? as we already have a send button near the text box").
+test("the box takes several lines, and its keyboard key is the return key: Enter adds a line and sends nothing; Ctrl+Enter or ⌘+Enter sends them, line breaks and all, and the box closes after sending", async ({ page }) => {
   await inConversation(page);
   await typeButton(page).click();
-  await expect(box(page)).toHaveJSProperty('tagName', 'INPUT');
-  await expect(box(page)).toHaveAttribute('enterkeyhint', 'send');
+  await expect(box(page)).toHaveJSProperty('tagName', 'TEXTAREA');
+  await expect(box(page)).not.toHaveAttribute('enterkeyhint', 'send');
   await box(page).fill('Where is the nearest petrol station?');
   await box(page).press('Enter');
+  await box(page).pressSequentially('And a café?');
+  await expect(box(page)).toHaveValue('Where is the nearest petrol station?\nAnd a café?');
+  await expect(box(page)).toBeVisible();
+  await expect(page.locator('.convo .you')).toHaveCount(0); // nothing sent
+  await box(page).press('Control+Enter');
   await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
-  await expect(page.locator('.convo .you').first()).toContainText('Where is the nearest petrol station?');
+  await expect.poll(() => page.locator('.convo .you p').first().evaluate((el) => /** @type {HTMLElement} */ (el).innerText)).toBe('Where is the nearest petrol station?\nAnd a café?');
   await expect(box(page)).toBeHidden();
-  // Opened again, it is empty.
+  // Opened again, it is empty; ⌘+Enter sends too.
   await typeButton(page).click();
   await expect(box(page)).toHaveValue('');
+  await box(page).fill('Thanks');
+  await box(page).press('Meta+Enter');
+  await expect(page.locator('.convo .you p').last()).toHaveText('Thanks');
+  await expect(box(page)).toBeHidden();
 });
 
-test('a small send arrow sits inside the box, on its right, for a keyboard with no send key and for a mouse; it sends and closes the box', async ({ page }) => {
+/** The box's height, whether it scrolls and shows its last line, and the send arrow's bottom and the box's, in CSS pixels. @param {import('@playwright/test').Page} page */
+const sizes = (page) => page.evaluate(() => {
+  const el = /** @type {HTMLTextAreaElement} */ (document.getElementById('dock-text'));
+  const arrow = /** @type {HTMLElement} */ (document.querySelector('.send-arrow')).getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  // The last line is in view: the browser scrolls to the caret's line, not to the padding under it.
+  const end = el.scrollHeight - Number.parseFloat(getComputedStyle(el).paddingBottom);
+  return { height: Math.round(r.height), bottom: r.bottom, arrowBottom: arrow.bottom, scrolls: el.scrollHeight > el.clientHeight + 1, atEnd: el.scrollTop + el.clientHeight >= end - 1 };
+});
+/** n lines of words, each short enough for one line of the box. @param {number} n */
+const lines = (n) => Array.from({ length: n }, (_, i) => `Line ${i + 1}`).join('\n');
+
+test('the box grows with each line typed, one line high at rest, to five lines, then scrolls inside with the last line in view; the send arrow stays on its last line; sent, it is one line again', async ({ page }) => {
+  await inConversation(page);
+  await typeButton(page).click();
+  const rest = await sizes(page);
+  expect(rest.height).toBe(48);
+  await box(page).fill(lines(3));
+  await expect.poll(async () => (await sizes(page)).height).toBe(96);
+  const three = await sizes(page);
+  expect(three.scrolls).toBe(false);
+  // On its last line: its bottom 4 px above the box's (as at rest, where it is centred), and well below the box's top half.
+  expect(Math.abs(three.bottom - three.arrowBottom - 4)).toBeLessThanOrEqual(1);
+  await box(page).fill(lines(5));
+  await expect.poll(async () => (await sizes(page)).height).toBe(144);
+  expect((await sizes(page)).scrolls).toBe(false);
+  // Typed past five lines, one key at a time as a person types: it stays at five, scrolls, and shows the line being typed.
+  for (const line of ['Line 6', 'Line 7', 'Line 8']) {
+    await box(page).press('Enter');
+    await box(page).pressSequentially(line);
+  }
+  const eight = await sizes(page);
+  expect(eight.height).toBe(144);
+  expect(eight.scrolls).toBe(true);
+  expect(eight.atEnd).toBe(true);
+  // Lines taken away shrink it again.
+  await box(page).fill('One line');
+  await expect.poll(async () => (await sizes(page)).height).toBe(48);
+  await box(page).fill(lines(4));
+  await page.getByRole('button', { name: 'Send', exact: true }).click();
+  await expect(box(page)).toBeHidden();
+  await typeButton(page).click();
+  expect((await sizes(page)).height).toBe(48);
+});
+
+test('a short screen grows the box to three lines; a phone on its side keeps it one line high, scrolling inside, so the page keeps about a third of the height (as phone-fit.spec.js measures it open)', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await inConversation(page);
+  await typeButton(page).click();
+  await box(page).fill(lines(5));
+  await expect.poll(async () => (await sizes(page)).height).toBe(96);
+  expect((await sizes(page)).scrolls).toBe(true);
+  // The dock with the box at its cap takes the share of the screen five lines take on a Pixel 7 (shiori.css: 36%, measured 202 of 568 px).
+  const dock = /** @type {{ height: number }} */ (await page.getByRole('navigation', { name: 'Shiori' }).boundingBox());
+  expect(dock.height / 568).toBeLessThanOrEqual(0.37);
+  await page.setViewportSize({ width: 568, height: 296 });
+  await expect.poll(async () => (await sizes(page)).height).toBe(44);
+  const turned = await sizes(page);
+  expect(turned.scrolls).toBe(true);
+  expect(Math.abs(turned.bottom - turned.arrowBottom - 2)).toBeLessThanOrEqual(1);
+  const top = /** @type {{ y: number }} */ (await page.getByRole('navigation', { name: 'Shiori' }).boundingBox());
+  const bar = await page.evaluate(() => document.querySelector('header, .topbar, nav[aria-label="Main"]')?.getBoundingClientRect().bottom ?? 0);
+  expect(top.y - bar).toBeGreaterThanOrEqual(296 * 0.32);
+});
+
+test("a draft of several lines kept by Escape is as tall as its lines when the box opens again", async ({ page }) => {
+  await inConversation(page);
+  await typeButton(page).click();
+  await box(page).fill(lines(3));
+  await expect.poll(async () => (await sizes(page)).height).toBe(96);
+  await box(page).press('Escape');
+  await expect(box(page)).toBeHidden();
+  await typeButton(page).click();
+  await expect(box(page)).toHaveValue(lines(3));
+  expect((await sizes(page)).height).toBe(96);
+});
+
+test('a small send arrow sits inside the box, on its right, for a keyboard whose key adds a line and for a mouse; it sends and closes the box', async ({ page }) => {
   await inConversation(page);
   await typeButton(page).click();
   const send = page.getByRole('button', { name: 'Send', exact: true });
@@ -103,38 +191,41 @@ test('the box and its send arrow are labelled for a screen reader, and the keybo
   await expect(typeButton(page)).toHaveAttribute('aria-expanded', 'true');
 });
 
-// The user types Chinese and Japanese: Enter that picks a candidate in an IME must never send the half-composed text.
-test('Enter while an IME is composing does not send; nothing is sent until a real Enter after the composition ends', async ({ page }) => {
+// The user types Chinese and Japanese: Enter that picks a candidate in an IME must never send the half-composed text, nor add a line
+// (its default, a line, is prevented: a dispatched event adds no text either way, so what it would do is read from defaultPrevented).
+test('Enter while an IME is composing neither sends nor adds a line, Ctrl+Enter too; nothing is sent until a real Ctrl+Enter after the composition ends', async ({ page }) => {
   await inConversation(page);
   await typeButton(page).click();
   await box(page).fill('にほん');
   const prevented = await page.evaluate(() => {
-    const input = /** @type {HTMLInputElement} */ (document.getElementById('dock-text'));
+    const input = /** @type {HTMLTextAreaElement} */ (document.getElementById('dock-text'));
     input.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
     // Chrome and Firefox say isComposing; Safari's Enter that ends a composition comes after compositionend with keyCode 229.
     const a = new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true, cancelable: true });
     input.dispatchEvent(a);
-    // The form's own submit (implicit submission) while composing.
+    const b = new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, isComposing: true, bubbles: true, cancelable: true });
+    input.dispatchEvent(b);
+    // The form's own submit while composing.
     input.form?.requestSubmit();
-    return a.defaultPrevented;
+    return a.defaultPrevented && b.defaultPrevented;
   });
   expect(prevented).toBe(true);
   await expect(box(page)).toBeVisible();
   await expect(box(page)).toHaveValue('にほん');
   await expect(page.locator('.convo .you')).toHaveCount(0); // nothing sent
   await page.evaluate(() => {
-    const input = /** @type {HTMLInputElement} */ (document.getElementById('dock-text'));
+    const input = /** @type {HTMLTextAreaElement} */ (document.getElementById('dock-text'));
     input.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
     // Safari: keydown Enter with keyCode 229 right after compositionend.
     const b = new KeyboardEvent('keydown', { key: 'Enter', keyCode: 229, bubbles: true, cancelable: true });
     input.dispatchEvent(b);
     return b.defaultPrevented;
-  }).then((p) => expect(p, 'the 229 Enter is not allowed to submit the form').toBe(true));
+  }).then((p) => expect(p, 'the 229 Enter adds no line').toBe(true));
   await expect(box(page)).toHaveValue('にほん');
   await expect(page.locator('.convo .you')).toHaveCount(0); // nothing sent
-  // A real Enter, later, sends.
+  // A real Ctrl+Enter, later, sends.
   await page.waitForTimeout(300);
-  await box(page).press('Enter');
+  await box(page).press('Control+Enter');
   await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
   await expect(page.locator('.convo .you').first()).toContainText('にほん');
 });
@@ -144,12 +235,12 @@ test('after a send from the box, focus is on the keyboard button, and keys typed
   await inConversation(page);
   await typeButton(page).click();
   await box(page).fill('first');
-  await box(page).press('Enter');
+  await box(page).press('Control+Enter');
   await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
   await expect(box(page)).toBeHidden();
   await expect(typeButton(page)).toBeFocused();
   await page.keyboard.type('unseen'); // no space: a space on the focused button opens the box, as it should
-  expect(await page.evaluate(() => /** @type {HTMLInputElement} */ (document.getElementById('dock-text')).value)).toBe('');
+  expect(await page.evaluate(() => /** @type {HTMLTextAreaElement} */ (document.getElementById('dock-text')).value)).toBe('');
 });
 
 // Fix pass 2, item 11: a press elsewhere never closes the box under the finger: it closes with the press's click.
@@ -166,9 +257,9 @@ test('a press elsewhere closes the empty box only with its click, so nothing mov
   await expect(box(page)).toBeHidden();
 });
 
-// Fix pass 2, item 12 and Step's S1: Android keyboards may send Enter as keyCode 229 with no composition: that Enter sends. A 229 Enter is
-// held back only while composing, or right after a composition ended (Safari's confirming Enter), and a composition the box lost (blur,
-// closed) holds nothing back afterwards.
+// Fix pass 2, item 12 and Step's S1: Android keyboards may send Enter as keyCode 229 with no composition: that Enter adds its line. A 229
+// Enter is held back only while composing, or right after a composition ended (Safari's confirming Enter), and a composition the box lost
+// (blur, closed) holds nothing back afterwards.
 test("Enter as keyCode 229 holds back only while composing or right after a composition ended; with none, an Android keyboard's Enter is let through", async ({ page }) => {
   await inConversation(page);
   await typeButton(page).click();
@@ -177,7 +268,7 @@ test("Enter as keyCode 229 holds back only while composing or right after a comp
   // so "right after" has to be right after in the page's own time, not after a round trip to the test, which a slow machine stretches
   // past the 100 ms. "A while after" is a wait in the page too, and a timer never fires early.
   const held = await page.evaluate(async () => {
-    const input = /** @type {HTMLInputElement} */ (document.getElementById('dock-text'));
+    const input = /** @type {HTMLTextAreaElement} */ (document.getElementById('dock-text'));
     const enter229 = () => {
       const e = new KeyboardEvent('keydown', { key: 'Enter', keyCode: 229, bubbles: true, cancelable: true });
       input.dispatchEvent(e);
@@ -199,19 +290,19 @@ test("Enter as keyCode 229 holds back only while composing or right after a comp
   expect(held.later, 'a while after the composition ended').toBe(false);
 });
 
-test('a composition the box lost (it closed, or lost focus) holds back nothing: a real Enter afterwards sends', async ({ page }) => {
+test('a composition the box lost (it closed, or lost focus) holds back nothing: a real Ctrl+Enter afterwards sends', async ({ page }) => {
   await inConversation(page);
   for (const lose of ['close', 'blur']) {
     await typeButton(page).click();
     await box(page).fill(`words after ${lose}`);
-    await page.evaluate(() => { /** @type {HTMLInputElement} */ (document.getElementById('dock-text')).dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true })); });
+    await page.evaluate(() => { /** @type {HTMLTextAreaElement} */ (document.getElementById('dock-text')).dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true })); });
     if (lose === 'close') {
       await typeButton(page).click();
       await expect(box(page)).toBeHidden();
       await typeButton(page).click();
-    } else await page.evaluate(() => { /** @type {HTMLInputElement} */ (document.getElementById('dock-text')).blur(); });
+    } else await page.evaluate(() => { /** @type {HTMLTextAreaElement} */ (document.getElementById('dock-text')).blur(); });
     await page.waitForTimeout(300);
-    await box(page).press('Enter');
+    await box(page).press('Control+Enter');
     await expect(page.locator('.convo .you p').last()).toHaveText(`words after ${lose}`);
   }
 });
