@@ -27,8 +27,11 @@ transcripts date them). A line changes only on the user's word.
   when green" (2026-10-23). The release itself (`annai-release <commit>` for a commit on origin/main with green gates, or a
   rollback to an earlier released one) runs under its own allow rule with that standing OK; tell the user after.
 - **A push to this public repo needs the chief session's OK** (since 2026-11-16; supersedes "the agent can't push, the user
-  runs the command"): run the privacy check (the pre-push hook on origin/main..main, and a private host-name grep) with its
-  output in the transcript, message chief with the repo, the range and the result in one line, then a plain
+  runs the command"): run the privacy check with its output in the transcript: the pre-push hook on origin/main..main, which
+  since 2026-11-16 (chief's decision) checks the added lines and messages twice, against the hand-kept list of real details
+  (private host names added) and with claude-scrub's secret scan (the keys it harvests on this machine and key shapes; values
+  never shown; a public string that must go out is named exactly in .superpowers/scan-expected.txt) and refuses when either
+  can't run; message chief with the repo, the range and the result in one line, then a plain
   `git push origin main` (no --force, no --no-verify) on chief's OK; each push its own OK. The user (2026-11-16, to chief):
   "maybe let's change to push to public repo needs your ok? and you really only need to make sure the session did made sure
   no secrets are leaked to public repo before asking to push because all other opertions cause relatively low impact for the
