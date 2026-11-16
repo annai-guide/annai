@@ -24,7 +24,17 @@ How the project is worked (not what gets built): the user's rulings, one line ea
 transcripts date them). A line changes only on the user's word.
 
 - **Releases ship when green**, without asking each time: "yes release as you go" (2026-10-19); "ok, keep going and release
-  when green" (2026-10-23). When the deploy is blocked for the agent, the user runs the one release command it gives.
+  when green" (2026-10-23). The release itself (`annai-release <commit>` for a commit on origin/main with green gates, or a
+  rollback to an earlier released one) runs under its own allow rule with that standing OK; tell the user after.
+- **A push to this public repo needs the chief session's OK** (since 2026-11-16; supersedes "the agent can't push, the user
+  runs the command"): run the privacy check (the pre-push hook on origin/main..main, and a private host-name grep) with its
+  output in the transcript, message chief with the repo, the range and the result in one line, then a plain
+  `git push origin main` (no --force, no --no-verify) on chief's OK; each push its own OK. The user (2026-11-16, to chief):
+  "maybe let's change to push to public repo needs your ok? and you really only need to make sure the session did made sure
+  no secrets are leaked to public repo before asking to push because all other opertions cause relatively low impact for the
+  main branch github code" (RULES.md "Ops", agent-rules 373596a). Still the user's own word: a force push, anything posted
+  outside, a new public repo. If auto mode denies a push with chief's OK, don't work around it: write the reason here and
+  message chief once.
 - **Simple and robust first:** "I personally often prefer simplicity and robustness. I often try to achieve the maximum
   functionality and reliability with minimal working parts" (2026-10-15); "what I prefer is simple and robust solutions.
   Again that is #1 in our agent rules" (2026-11-12).
