@@ -142,7 +142,16 @@ against the code before its row was written. The ones with a question are listed
 - **Your checks, in this order** (chief's order of work, 2026-11-16; the list grows as the current scope ships):
   1. **Test on OpenRouter's key** (the one from "Sign in with OpenRouter"; live since 3a835d1d): tap its Test. It should pass every step, the photo's upload included.
   2. **The answered-card check** (live since 97d20650): an answer to her question card always gets a reply; a turn cut short is taken up when the conversation is opened again.
-  3. **The phone look of stage 4 and stage 7** (gates stage 8): the list is in `.superpowers` notes: stage7-build-report.md, "The user's phone look", with the final review's three additions in stage7-review.md, and a Japanese Settings → Tools and a searched reply's card; see its row.
+  3. **The phone look of stage 4 and stage 7** (it gates stage 8; about 10 minutes on your iPhone, in this order; made one list 2026-11-16 from the stage 4 plan's and stage 7's, with the stage 7 review's additions):
+     1. Swipe annai away in the app switcher, then tap its Home Screen icon: talked in under 12 hours ago, that conversation opens; later, home; a trip happening today opens its conversation.
+     2. On home, a card in the sticky box: at most half the screen (scroll so Safari's bars show and hide), More and Less open in place, its buttons at the box's bottom edge.
+     3. The dock at rest on home.
+     4. With Voice on, tap +: the microphone opens at once, in the tap.
+     5. Talk a little in that new chat: does she feel right knowing only your profile and memory, and does she name and date the chat well?
+     6. If files were waiting with Shiori: the "Waiting with Shiori" chat at "now" on home; open it and see what she does with them.
+     7. If the phone has old lines outside any trip: the "Shiori, no trip" row (it may sit inside a folded month), its old lines with no buttons, + there starting a new chat, ← and Back going home.
+     8. Then one answer: is the timeline right? (Stage 8 removes the top bar, the tabs and Now after it.)
+     Taken off your list: 500 chats (a fixture the main session checks in a test browser) and the Conversation tab with nothing open (the tabs go in stage 8).
   4. **The pre-trip page** (38 lines to tick on the phone), with its 8-day reminder line on your second iPhone: see its row.
 - G8, once it has a plain account: see its row.
 
