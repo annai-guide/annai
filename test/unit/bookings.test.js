@@ -48,7 +48,7 @@ test("checkNote: what a model reads beside a booking's file, apart from its JSON
   const note = (/** @type {any} */ b, path = '/bookings/inn.json', scope = TRIP) => checkNote(scope, path, typeof b === 'string' ? b : JSON.stringify(b, null, 2));
   assert.equal(note(old), '(annai marks this booking for the user to check: not sure the name was read right.)', 'from before fields were marked, not confirmed: each part it has, as the screens mark them');
   assert.equal(note({ ...old, start: { at: '2026-11-15T21:00:00-08:00', tz: 'America/Los_Angeles' }, end: { at: '2026-11-16T11:00:00-08:00', tz: 'America/Los_Angeles' }, place: { name: 'Test Inn' }, confirmation: 'TQ1' }),
-    '(annai marks this booking for the user to check: not sure the name, the check-in time, the check-out time, the place or the confirmation number was read right.)', 'every part, by what it is, in the order the screens show them');
+    '(annai marks this booking for the user to check: not sure the name, the check-in time, the check-out time, the place or the confirmation number was read right.)', 'every part, by what it is, in the order of the booking\'s own fields (name, check-in, check-out, place, confirmation)');
   assert.equal(note({ ...old, unsure: ['end'], end: { at: '2026-11-16T11:00:00-08:00', tz: 'America/Los_Angeles' } }), '(annai marks this booking for the user to check: not sure the check-out time was read right.)');
   assert.equal(note({ ...old, status: 'confirmed' }), '', 'an old one the user confirmed: nothing');
   assert.equal(note({ ...old, unsure: [] }), '', 'one she is sure of: nothing');
@@ -124,8 +124,12 @@ test('checkOf: an old unverified booking reads as if unsure named every part it 
   assert.deepEqual(checkOf(inn), { fields: ['title', 'start', 'end', 'place', 'confirmation'] });
   assert.deepEqual(checkOf({ ...inn, status: undefined }), { fields: ['title', 'start', 'end', 'place', 'confirmation'] }, 'with no status: not confirmed');
   assert.deepEqual(checkOf({ ...inn, status: 'pending', cost: { amount: 9, currency: 'USD' }, fields: { room: '204', seat: '', title: 'dup', nights: 0, party: null } }),
-    { fields: ['title', 'start', 'end', 'place', 'confirmation', 'cost', 'room', 'seat', 'nights', 'party'] },
-    'then the keys of fields, with any value, each once: a title in fields is not a second one');
+    { fields: ['title', 'start', 'end', 'place', 'confirmation', 'cost', 'room', 'nights'] },
+    'then the keys of fields that have a value (0 is one), each once: a title in fields is not a second one; a null or empty seat or party is no part');
+  // A part is a value that is there, by one rule for a booking's own fields and for `fields`: not null, no text empty after trim. A blank has
+  // nothing to check, and the details would draw a check beside nothing (the unit review of booking-say's round 4, items 4 and 5).
+  assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', title: '  ', confirmation: ' \t', fields: { seat: '  ', gate: null, airline: 'Test Air' } }), { fields: ['airline'] }, 'a blank title, confirmation or extra is no part');
+  assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', unsure: ['title', 'seat', 'airline'], title: ' ', fields: { seat: '', airline: 'Test Air' } }), { fields: ['airline'] }, 'nor a named one: a name with nothing written under it has no line to mark');
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', title: 'AN 1', fields: { seat: '14C', airline: 'Test Air' } }), { fields: ['title', 'seat', 'airline'] });
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', title: '', start: null, confirmation: undefined }), { fields: [] }, 'an empty own field is no part');
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', title: 'AN 1', fields: 'not an object' }), { fields: ['title'] }, 'fields that is no object adds none');

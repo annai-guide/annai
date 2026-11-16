@@ -27,7 +27,9 @@ export function checkOf(b) {
   const extra = b.fields && typeof b.fields === 'object' && !Array.isArray(b.fields) ? b.fields : {};
   const named = 'unsure' in b ? b.unsure : b.status !== 'confirmed' ? [...TOP, ...Object.keys(extra)] : [];
   if (!Array.isArray(named)) return { fields: [] };
-  const has = (/** @type {string} */ k) => (TOP.includes(k) ? b[k] !== undefined && b[k] !== null && b[k] !== '' : Object.hasOwn(extra, k));
+  // A part is a value that is there: not null, no blank text. The same rule for a booking's own fields and for the keys of `fields`.
+  const there = (/** @type {unknown} */ v) => v !== undefined && v !== null && !(typeof v === 'string' && !v.trim());
+  const has = (/** @type {string} */ k) => (TOP.includes(k) ? there(b[k]) : Object.hasOwn(extra, k) && there(extra[k]));
   /** @type {string[]} */
   const fields = [];
   for (const k of named) if (typeof k === 'string' && !fields.includes(k) && has(k)) fields.push(k);
@@ -326,6 +328,11 @@ export function shioriBooking(before, next, { schema, changes } = {}) {
   // A new booking, and one written with unsure, always carry it: without it, it would read as one from before.
   if (!('unsure' in next) && (!old || 'unsure' in old)) {
     /* en */ throw new Error('A new booking lists the fields you are unsure of in unsure (an empty list when you are sure of all of them), so the user sees what to check.');
+  }
+  // `unsure+` on a booking with no unsure key adds to the parts marked now (checkOf), so the rest stay marked.
+  const patch = record(changes);
+  if (patch && Object.hasOwn(patch, 'unsure+') && !Object.hasOwn(patch, 'unsure') && old && !('unsure' in old) && Array.isArray(next.unsure)) {
+    next = { ...next, unsure: [...new Set([...checkOf(old).fields, ...next.unsure])] };
   }
   const own = record(record(schema)?.properties);
   const place = record(next.place);

@@ -223,6 +223,9 @@ export function bookingFacts(b, o = {}) {
   return out;
 }
 
+/** The checks a booking's details draw: one by each fact bookingFacts marks, and its name's. The Plan's chip counts these, so it says what the details show. @param {any} b @param {{ fallbackTz?: string }} [o] */
+export const checkCount = (b, o) => (checkOf(b).fields.includes('title') && typeof b.title === 'string' && b.title.trim() ? 1 : 0) + bookingFacts(b, o).filter((f) => f.unsure).length;
+
 /** A day as YYYY-MM-DD in this device's own zone, not UTC's. @param {number} ms */
 export const localDay = (ms) => {
   const d = new Date(ms);

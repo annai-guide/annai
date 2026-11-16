@@ -3,7 +3,8 @@ import { isArchiveName, takePendingImport, leaveSignal, toldIfLeft } from '../..
 import assert from 'node:assert/strict';
 import { parseHash, redirectOf } from '../../src/ui/router.js';
 import { planRows } from '../../src/core/plan.js';
-import { relTime, size, dateRange, backupText, formatCost, outcomeText, bookingFacts, placeStatus, holdNote, newerText, placeHref, limitFromField, limitField, limitText, localDay, fileLine, recordHref, talkHref } from '../../src/ui/format.js';
+import { checkOf } from '../../src/core/bookings.js';
+import { relTime, size, dateRange, backupText, formatCost, outcomeText, bookingFacts, checkCount, placeStatus, holdNote, newerText, placeHref, limitFromField, limitField, limitText, localDay, fileLine, recordHref, talkHref } from '../../src/ui/format.js';
 import { explainStorageFull } from '../../src/ui/storage-full.js';
 import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
@@ -266,6 +267,53 @@ test('bookingFacts: a flight whose from and to are not words keeps them as field
   assert.match(f[1].value, /SEA.*Seattle/);
   // One in words goes in the route; the other stays a field.
   assert.deepEqual(bookingFacts({ kind: 'flight', unsure: [], fields: { from: 'Seattle (SEA)', to: { code: 'ANC' } } }).map((x) => [x.key, x.value]), [['route', 'Seattle (SEA)'], ['to', '{"code":"ANC"}']]);
+});
+
+test("bookingFacts: an old unverified booking (no unsure key) has a check on every detail it draws, as a new one has on its unsure ones; an old confirmed one, unsure: [] and a blank value have none (booking-say's round 4)", () => {
+  const at = { at: '2026-11-20T11:20:00-08:00', tz: 'America/Los_Angeles' };
+  const marked = (/** @type {any} */ b) => bookingFacts(b).filter((x) => x.unsure).map((x) => x.key);
+  const old = { kind: 'flight', status: 'unverified', title: 'ANNAI AIR AN 123', start: at, end: at, confirmation: 'TESTQ1', fields: { from: 'Seattle (SEA)', to: 'Anchorage (ANC)', seat: '14C', gate: '  ', bags: null } };
+  // Every line the details draw for it has a check: the Route (from and to), the times, the seat, the confirmation; the blank gate and the null bags have none.
+  assert.deepEqual(bookingFacts(old).map((x) => x.key), ['route', 'start', 'end', 'seat', 'bags', 'confirmation', 'gate']);
+  assert.deepEqual(marked(old), ['route', 'start', 'end', 'seat', 'confirmation']);
+  assert.deepEqual(marked({ ...old, status: 'confirmed' }), [], 'an old confirmed one: none');
+  assert.deepEqual(marked({ ...old, unsure: [] }), [], 'unsure: []: none');
+  assert.deepEqual(marked({ ...old, unsure: ['end'] }), ['end'], 'a new one: just what it names');
+  assert.deepEqual(marked({ ...old, status: 'pending' }), ['route', 'start', 'end', 'seat', 'confirmation'], 'any status but confirmed');
+  // A stay: the place, the times and the confirmation are marked too (its name is the heading's, which checkCount adds).
+  const stay = { kind: 'lodging', status: 'unverified', title: 'Hotel Aurora Test', start: at, end: at, place: { name: 'Hotel Aurora Test' }, confirmation: 'TQ1' };
+  assert.deepEqual(marked(stay), ['place', 'start', 'end', 'confirmation']);
+});
+
+test("checkCount: the checks the details draw, which the Plan's chip says: a flight's from and to are one Route line, one check; an old flight with a route says one fewer than the parts it marks (booking-say's round 4, fix 1)", () => {
+  const at = { at: '2026-11-20T11:20:00-08:00', tz: 'America/Los_Angeles' };
+  const marksDrawn = (/** @type {any} */ b) => bookingFacts(b).filter((x) => x.unsure).length + (b.title ? 1 : 0);
+  // An old unverified flight (no unsure key): every part it has is marked: the name, both times, the confirmation, and from, to, flight, airline, seat.
+  const old = { kind: 'flight', status: 'unverified', title: 'ANNAI AIR AN 123', start: at, end: at, confirmation: 'TESTQ1', fields: { from: 'Seattle (SEA)', to: 'Anchorage (ANC)', flight: 'AN 123', airline: 'ANNAI AIR', seat: '14C' } };
+  assert.equal(checkOf(old).fields.length, 9, 'nine parts are marked (checkOf, which Koe is told in words)');
+  assert.equal(checkCount(old), 8, 'the details draw eight checks: the name, the Route, Departs, Arrives, the flight, the airline, the seat, the confirmation');
+  assert.equal(checkCount(old), marksDrawn(old));
+  // A new flight whose unsure names both ends: one Route line, one check.
+  assert.equal(checkCount({ ...old, unsure: ['from', 'to'] }), 1);
+  assert.equal(checkCount({ ...old, unsure: ['to'] }), 1);
+  assert.equal(checkCount({ ...old, unsure: ['from', 'seat'] }), 2);
+  // A train shows from and to as two lines of its own, so two checks.
+  assert.equal(checkCount({ kind: 'rail', status: 'unverified', unsure: ['from', 'to'], fields: { from: 'Seattle', to: 'Portland' } }), 2);
+  // A flight whose route is not in words has no Route line: from and to are fields, two checks.
+  assert.equal(checkCount({ kind: 'flight', status: 'unverified', unsure: ['from', 'to'], fields: { from: { code: 'SEA' }, to: { code: 'ANC' } } }), 2);
+  // The name counts once; nothing marked, nothing counted.
+  assert.equal(checkCount({ kind: 'lodging', status: 'unverified', unsure: ['title'], title: 'Hotel Aurora Test' }), 1);
+  assert.equal(checkCount({ kind: 'lodging', status: 'unverified', unsure: [], title: 'Hotel Aurora Test' }), 0);
+  assert.equal(checkCount({ kind: 'lodging', status: 'confirmed', title: 'Hotel Aurora Test', start: at }), 0);
+  assert.equal(checkCount(null), 0);
+  // A blank name or extra is no part, so no check: an old stay with only a blank name, and an old flight with a blank seat and a null gate.
+  assert.equal(checkCount({ kind: 'lodging', status: 'unverified', title: '  ' }), 0);
+  assert.equal(checkCount({ kind: 'flight', status: 'unverified', title: 'AN 1', fields: { seat: '', gate: null } }), 1);
+  // A marked part the details have no line for is no check: a place with only an address, a cost with no amount, a time that can't be read.
+  assert.equal(checkCount({ kind: 'lodging', status: 'unverified', unsure: ['place', 'cost', 'start', 'end'], place: { address: '1 Test Street' }, cost: { currency: 'USD' }, start: { at: 'not a time', tz: 'America/Los_Angeles' }, end: at }), 1, 'only the check-out is drawn');
+  // A time with no zone of its own reads in the trip's: the chip is given the Plan's.
+  assert.equal(checkCount({ kind: 'lodging', status: 'unverified', unsure: ['start'], start: { at: '2026-11-20T11:20:00' } }), 0);
+  assert.equal(checkCount({ kind: 'lodging', status: 'unverified', unsure: ['start'], start: { at: '2026-11-20T11:20:00' } }, { fallbackTz: 'America/Los_Angeles' }), 1);
 });
 
 test("bookingFacts: a time with no offset (an imported or restored record) reads on its zone's clock, as the Plan does (the review of seeing-bookings, R7)", () => {

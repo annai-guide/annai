@@ -1,5 +1,5 @@
 {
-  "build": "8f5ff8858a4b",
+  "build": "e8a4c2f384d2",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -62,7 +62,7 @@
     "/src/core/backup.js": "644832139162",
     "/src/core/backup-auto.js": "64ed2407b9ec",
     "/src/core/backup-targets.js": "91309d766eea",
-    "/src/core/bookings.js": "415b5c7908af",
+    "/src/core/bookings.js": "59f869b63e5a",
     "/src/core/bytes.js": "b935dfe86a7a",
     "/src/core/catalog-facts.js": "3b27021930f3",
     "/src/core/crc32.js": "0bfef7a8eb00",
@@ -215,7 +215,7 @@
     "/src/ui/bring-in.js": "0373ab0843ad",
     "/src/ui/export-panel.js": "ded8262ee329",
     "/src/ui/file-delete.js": "207b1b0e5902",
-    "/src/ui/format.js": "1c61a5eb1b87",
+    "/src/ui/format.js": "c523df1d3700",
     "/src/ui/grounding.html": "5dab86abb302",
     "/src/ui/grounding.js": "1e27c30fc392",
     "/src/ui/import-state.js": "720544a24fe4",
@@ -262,7 +262,7 @@
     "/src/ui/screens/models.js": "42463274b290",
     "/src/ui/screens/notifications.js": "1596c1a81403",
     "/src/ui/screens/now.js": "b139da61b26a",
-    "/src/ui/screens/plan.js": "ce070fd7f9f7",
+    "/src/ui/screens/plan.js": "209a3702e956",
     "/src/ui/screens/plugin-install.js": "83707a06879b",
     "/src/ui/screens/plugin.js": "db6dce86872f",
     "/src/ui/screens/plugins.js": "5b9559133cf6",

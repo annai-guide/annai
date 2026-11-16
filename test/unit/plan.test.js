@@ -102,7 +102,7 @@ test('planRows: each item in its own zone, with its booking, and what is wrong w
   assert.deepEqual([by.skate.at, by.skate.day, by.skate.time], [null, null, '']);
 });
 
-test('planRows: a booking in any state but confirmed has every part it has to check (no unsure), as the Bookings list says', () => {
+test('planRows: a booking in any state but confirmed has every part it has to check (no unsure): its rows carry them', () => {
   const item = (/** @type {string} */ id) => ({ path: `/plan/${id}.json`, item: { id, title: id, fixed: true, booking: `/bookings/${id}.json` } });
   const booking = (/** @type {string} */ id, /** @type {unknown} */ status) => ({ path: `/bookings/${id}.json`, booking: { id, kind: 'other', status, source: '/files/x.pdf', title: id } });
   const got = planRows([item('odd'), item('none'), item('ok'), { path: '/plan/free.json', item: { id: 'free', title: 'free', fixed: false } }],

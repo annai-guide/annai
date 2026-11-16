@@ -266,6 +266,34 @@ test("an old booking (no unsure key, not confirmed) Shiori patches: the names sh
   assert.deepEqual(await marked('c'), []);
 });
 
+test("an old booking (no unsure key) Shiori adds a mark to with unsure+: the parts the screens mark now stay marked, and the name she adds too; a new booking's list, an explicit unsure beside it and an old confirmed booking are as before (booking-say's round 4, fix 2)", async () => {
+  const { ws, trip, run } = await setup();
+  const LA = 'America/Los_Angeles';
+  const old = { id: 'inn', kind: 'lodging', status: 'unverified', source: '/files/hotel.pdf', title: 'Hotel Aurora Test', start: { at: '2026-11-15T21:00:00-08:00', tz: LA }, place: { name: 'Hotel Aurora Test' }, confirmation: 'TQ1', fields: { room: '204' } };
+  const stored = async (/** @type {string} */ name) => (await ws.readJSON(trip, `/bookings/${name}.json`)).unsure;
+  for (const name of ['a', 'b', 'd', 'e']) await ws.write(trip, `/bookings/${name}.json`, { ...old, id: name }, { author: 'user' });
+  await ws.write(trip, '/bookings/new.json', { ...old, id: 'new', unsure: ['room'] }, { author: 'user' });
+  await ws.write(trip, '/bookings/ok.json', { ...old, id: 'ok', status: 'confirmed' }, { author: 'user' });
+  // Adds a mark: the five parts it has stay marked, the new name once.
+  await run('patch', { path: '/trip/bookings/a.json', changes: { 'unsure+': ['end'] } });
+  assert.deepEqual(await stored('a'), ['title', 'start', 'place', 'confirmation', 'room', 'end']);
+  assert.deepEqual(checkOf(await ws.readJSON(trip, '/bookings/a.json')).fields, ['title', 'start', 'place', 'confirmation', 'room'], 'a name the booking has no part for marks nothing, and nothing else went unmarked');
+  // A name that is already a part is not listed twice; a single name, not a list, is one item.
+  await run('patch', { path: '/trip/bookings/b.json', changes: { 'unsure+': 'confirmation' } });
+  assert.deepEqual(await stored('b'), ['title', 'start', 'place', 'confirmation', 'room']);
+  // An unsure of her own in the same patch is hers, with what she adds to it: no part of the booking is added.
+  await run('patch', { path: '/trip/bookings/d.json', changes: { unsure: ['start'], 'unsure+': ['place'] } });
+  assert.deepEqual(await stored('d'), ['start', 'place']);
+  // The same name twice is one.
+  await run('patch', { path: '/trip/bookings/e.json', changes: { 'unsure+': ['room', 'room'] } });
+  assert.deepEqual(await stored('e'), ['title', 'start', 'place', 'confirmation', 'room']);
+  // A booking that has unsure (a new one) appends to it, as before; an old confirmed one has no marks, so it starts from none.
+  await run('patch', { path: '/trip/bookings/new.json', changes: { 'unsure+': ['start'] } });
+  assert.deepEqual(await stored('new'), ['room', 'start']);
+  await run('patch', { path: '/trip/bookings/ok.json', changes: { 'unsure+': ['start'] } });
+  assert.deepEqual(await stored('ok'), ['start']);
+});
+
 test("read of a booking's file carries the check the screens mark, as a note apart from its JSON, in her words and Koe's: an old unverified one each part it has, an old confirmed one nothing, an empty unsure nothing, \"end\" the check-out time (booking-say's fix 2: a missing unsure and an empty one read alike to a model)", async () => {
   const { ws, trip, run } = await setup();
   const old = { id: 'inn', kind: 'lodging', status: 'unverified', source: '/talk', title: 'Hotel Clockwork Inn', start: { at: '2026-11-15T21:00:00-08:00', tz: 'America/Los_Angeles' }, end: { at: '2026-11-16T11:00:00-08:00', tz: 'America/Los_Angeles' } };

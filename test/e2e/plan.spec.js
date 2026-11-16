@@ -255,6 +255,33 @@ test("an old stay (no unsure key, not confirmed): its check-in and its check-out
   await expect(page.locator('dl.facts .mark-check')).toHaveCount(4);
 });
 
+test("a flight's chip counts the checks its details draw: an old flight with a route says Check 5 details beside five checks (its from and to are one Route line), a new one with unsure from and to says Check 1 detail (booking-say's round 4, fix 1)", async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Anchorage');
+  const at = (/** @type {string} */ h) => ({ at: `2026-11-20T${h}:00-09:00`, tz: AK });
+  const route = { from: 'Seattle (SEA)', to: 'Anchorage (ANC)' };
+  await records(page, trip, { patch: { '/trip.json': { start: '2026-11-20', end: '2026-11-20', timezones: [AK] } }, write: {
+    // The parts it has: the name, the departure, the confirmation number, from, to and the seat: six marked, five checks drawn.
+    '/bookings/old.json': { id: 'old', kind: 'flight', status: 'unverified', source: '/files/a.pdf', title: 'Old with a route', confirmation: 'TQ1', start: at('08:00'), fields: { ...route, seat: '14C' } },
+    '/bookings/new.json': { id: 'new', kind: 'flight', status: 'unverified', source: '/files/b.pdf', title: 'New with a route', unsure: ['from', 'to'], start: at('09:00'), fields: route },
+  } });
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
+  const rows = page.getByRole('tabpanel').locator('.plan-row');
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0).getByRole('link', { name: 'Check 5 details' })).toBeVisible();
+  await expect(rows.nth(1).getByRole('link', { name: 'Check 1 detail' })).toBeVisible();
+  // The details draw as many checks as the chip says: the name's, the Route's, the departure's, the confirmation's and the seat's.
+  await rows.nth(0).getByRole('link', { name: 'Check 5 details' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: /Old with a route/ })).toBeVisible();
+  await expect(page.locator('.mark-check')).toHaveCount(5);
+  await expect(page.locator('dl.facts dt', { hasText: 'Route' }).locator('xpath=following-sibling::dd[1]').locator('.mark-check')).toHaveCount(1);
+  await page.goBack();
+  await rows.nth(1).getByRole('link', { name: 'Check 1 detail' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: /New with a route/ })).toBeVisible();
+  await expect(page.locator('.mark-check')).toHaveCount(1);
+  await expect(page.locator('dl.facts dt', { hasText: 'Route' }).locator('xpath=following-sibling::dd[1]').locator('.mark-check')).toHaveCount(1);
+});
+
 // Noon UTC is the same calendar day everywhere from Honolulu to Tokyo, so the test's own clock fixes "today".
 const NOON = new Date('2030-11-27T12:00:00Z');
 const HAPPENING = {
@@ -791,6 +818,7 @@ test('milestone 4 done: a pass and a calendar are added, Shiori writes the booki
     await page.getByRole('tab', { name: 'Wed, Nov 25' }).click();
     await expect(page.getByRole('tabpanel')).toContainText('UA 123 to Newark');
     await expect(page.getByRole('tabpanel').getByRole('link', { name: /Check \d+ details?/ })).toHaveCount(0);
+    await expect(page.getByRole('tabpanel').getByText('Check this')).toHaveCount(0);
     await page.getByRole('tab', { name: 'Thu, Nov 26' }).click();
     await expect(page.getByRole('tabpanel')).toContainText('Thanksgiving dinner');
     const downloading = page.waitForEvent('download');
