@@ -1,6 +1,7 @@
 import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { gunzipSync } from 'node:zlib';
 import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
 import { createMemoryStore } from '../fakes/store-memory.js';
@@ -52,6 +53,109 @@ test('nearby: OpenStreetMap and Wikipedia together, nearest first, as TSV', asyn
   assert.match(rows[1], /\twikipedia\thttps:\/\/en\.wikipedia\.org\/wiki\/McWay_Falls$/);
   const body = decodeURIComponent(String(asked.find((a) => a.url.includes('overpass'))?.init.body)).replace(/\+/g, ' ');
   assert.match(body, /around:2000,36\.158,-121\.672/);
+});
+
+/** The Overpass query nearby sent, from its form body. @param {{ url: string, init: any }[]} asked */
+const overpassQuery = (asked) => String(new URLSearchParams(String(asked.find((a) => a.url.includes('overpass'))?.init.body)).get('data'));
+const noWiki = { query: { geosearch: [] } };
+
+test("nearby's query at its defaults is the one 24 hourly probes asked (2026-11-15): the 300 m circle first, the 1000 m one only when it holds fewer than 40, declaring 64 MiB", async () => {
+  const { run, asked } = await setup();
+  await run('nearby', { lat: 35.6812, lng: 139.7671 }, (url) => (url.includes('overpass') ? { elements: [] } : noWiki));
+  // Written as the probe's script wrote it (.superpowers/probes/overpass-lighter/probe.sh, its inner64 form), which overpass-api.de and
+  // its backends answered: sights' three tags and food's one, each with a name.
+  const filters = ['[tourism~"^(attraction|viewpoint|museum|gallery|artwork|zoo|aquarium)$"][name]', '[historic][name]',
+    '[natural~"^(waterfall|peak|beach|cave_entrance|arch)$"][name]', '[amenity~"^(restaurant|cafe|fast_food|bar|pub|ice_cream)$"][name]'];
+  const circle = (/** @type {number} */ r) => `(${filters.map((f) => `nwr(around:${r},35.6812,139.7671)${f};`).join('')});`;
+  assert.equal(overpassQuery(asked), `[out:json][timeout:20][maxsize:67108864];${circle(300)}if (count(nwr) < 40) {${circle(1000)}}out center tags 400;`);
+});
+
+test("nearby's query for other radii and kinds: circles each 0.3 of the next (a tenth of the area), down to the first of 300 m or less, each with the asked kinds", async () => {
+  const { run, asked } = await setup();
+  /** The circles nearby asks for, smallest first, each as its radius and its statements with the radius taken out. @param {any} input */
+  const circles = async (input) => {
+    asked.length = 0;
+    await run('nearby', { ...McWay, ...input }, (url) => (url.includes('overpass') ? { elements: [] } : noWiki));
+    const q = overpassQuery(asked);
+    const m = /^\[out:json\]\[timeout:20\]\[maxsize:67108864\];(\(.*?\);)((?:if \(count\(nwr\) < 40\) \{\(.*?\);\})*)out center tags 400;$/.exec(q);
+    assert.ok(m, q);
+    const all = [m[1], ...[...m[2].matchAll(/if \(count\(nwr\) < 40\) \{(\(.*?\);)\}/g)].map((x) => x[1])];
+    return all.map((c) => {
+      const radii = [...new Set([...c.matchAll(/nwr\(around:(\d+),36\.158,-121\.672\)/g)].map((x) => Number(x[1])))];
+      assert.equal(radii.length, 1, c);
+      return { r: radii[0], text: c.replaceAll(`around:${radii[0]},`, 'around:R,') };
+    });
+  };
+  // The driving companion's widest look ahead (skills/driving-companion: 5000 to 15000 m, sights): 15000 × 0.3 = 4500, then 1350, 405
+  // and 121.5, the first of 300 m or less, rounded to 122.
+  const drive = await circles({ radius: 15000, kinds: ['sights'] });
+  assert.deepEqual(drive.map((c) => c.r), [122, 405, 1350, 4500, 15000]);
+  assert.ok(drive.every((c) => c.text === '(nwr(around:R,36.158,-121.672)[tourism~"^(attraction|viewpoint|museum|gallery|artwork|zoo|aquarium)$"][name];'
+    + 'nwr(around:R,36.158,-121.672)[historic][name];nwr(around:R,36.158,-121.672)[natural~"^(waterfall|peak|beach|cave_entrance|arch)$"][name];);'));
+  // Whole meters: 1234 × 0.3 = 370.2, then 111.
+  const food = await circles({ radius: 1234, kinds: ['food'] });
+  assert.deepEqual(food.map((c) => c.r), [111, 370, 1234]);
+  assert.match(food[0].text, /^\(nwr\(around:R,36\.158,-121\.672\)\[amenity~"[^"]+"\]\[name\];\);$/);
+  // A radius past nearby's 20 km asks 20 km.
+  assert.deepEqual((await circles({ radius: 50000, kinds: ['lodging'] })).map((c) => c.r), [162, 540, 1800, 6000, 20000]);
+  // 300 m or less: that circle alone, as one statement per tag, kinds asked without a name without one.
+  assert.deepEqual(await circles({ radius: 300, kinds: ['food'] }).then((c) => c.map((x) => x.r)), [300]);
+  assert.deepEqual(await circles({ radius: 50, kinds: ['toilets', 'parking'] }), [{ r: 50, text: '(nwr(around:R,36.158,-121.672)[amenity=toilets];nwr(around:R,36.158,-121.672)[amenity=parking];);' }]);
+});
+
+/**
+ * Three of the 24 probes' answers (2026-11-15/16, overpass-api.de, the default query at public landmarks, byte for byte as they came,
+ * gzipped; OpenStreetMap data under the ODbL, which their osm3s field says), with what the probe measured in each by its own code (jq,
+ * haversine on 6371 km from each place's full position, a way's centre): its 40th nearest place, in meters. Tokyo's and Paris's 300 m
+ * circles held 81 and 153 places, so that circle came; Sydney's held fewer than 40, so the 1000 m one came, cut at 400 (nodes only, in id order).
+ */
+const LIGHTER = {
+  tokyo: { at: { lat: 35.6812, lng: 139.7671 }, n: 81, near40: 201, nearest: '東京駅丸の内駅舎' },
+  paris: { at: { lat: 48.853, lng: 2.3499 }, n: 153, near40: 171, nearest: 'Cathédrale Notre-Dame de Paris' },
+  sydney: { at: { lat: -33.8568, lng: 151.2153 }, n: 400, near40: 404, nearest: 'midden' },
+};
+/** A probe's answer, from its fixture. @param {string} place */
+const lighter = async (place) => JSON.parse(gunzipSync(await readFile(new URL(`../fixtures/places/overpass-lighter-${place}.json.gz`, import.meta.url))).toString('utf8'));
+
+test("nearby's rows from the probes' real answers: the nearest 40 by distance, from anywhere in the answer, which comes in id order", async () => {
+  const rad = (/** @type {number} */ d) => (d * Math.PI) / 180;
+  for (const [place, p] of Object.entries(LIGHTER)) {
+    const body = await lighter(place);
+    assert.equal(body.elements.length, p.n, place);
+    const { run } = await setup();
+    const rows = (await run('nearby', p.at, (url) => (url.includes('overpass') ? body : noWiki))).split('\n').slice(1).map((r) => r.split('\t'));
+    assert.equal(rows.length, 40, place);
+    assert.ok(rows.every((r) => r[5] === 'osm'), place);
+    const meters = rows.map((r) => Number(r[2]));
+    assert.deepEqual(meters, [...meters].sort((a, b) => a - b), `${place}: nearest first`);
+    assert.equal(rows[0][0], p.nearest, place);
+    // The nearest place comes late in the answer (a way or relation after every node, or a high id): the first 40 as sent would miss it.
+    assert.ok(body.elements.findIndex((/** @type {any} */ e) => e.tags?.name === p.nearest) >= 40, place);
+    // Each place measured as the probe did, from its full position: the 40th is the probe's. nearby measures from the 4-decimal position
+    // it lists (up to about 7 m off), so places clearly nearer than that 40th are all listed, and none clearly farther.
+    const all = body.elements.map((/** @type {any} */ e) => {
+      const [lat, lng] = [e.lat ?? e.center.lat, e.lon ?? e.center.lon];
+      const h = Math.sin(rad(lat - p.at.lat) / 2) ** 2 + Math.cos(rad(p.at.lat)) * Math.cos(rad(lat)) * Math.sin(rad(lng - p.at.lng) / 2) ** 2;
+      const r4 = (/** @type {number} */ x) => Math.round(x * 1e4) / 1e4;
+      return { key: `${e.tags.name}\t${r4(lat)}\t${r4(lng)}`, m: 6_371_000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h)) };
+    }).sort((/** @type {any} */ a, /** @type {any} */ b) => a.m - b.m);
+    assert.equal(Math.round(all[39].m), p.near40, `${place}: the 40th nearest, as the probe measured it`);
+    assert.ok(Math.abs(meters[39] - p.near40) <= 10, `${place}: nearby's 40th, ${meters[39]} m`);
+    const listed = new Set(rows.map((r) => `${r[0]}\t${r[3]}\t${r[4]}`));
+    for (const e of all) {
+      if (e.m < p.near40 - 10) assert.ok(listed.has(e.key), `${place}: ${e.key} at ${Math.round(e.m)} m is listed`);
+      if (e.m > p.near40 + 10) assert.ok(!listed.has(e.key), `${place}: ${e.key} at ${Math.round(e.m)} m is not`);
+    }
+  }
+});
+
+test("nearby's rows from Tokyo's answer: the station building (a relation) first; a historic road reaching into the circle, its centre 77 km off, left out", async () => {
+  const body = await lighter('tokyo');
+  const { run } = await setup();
+  const out = await run('nearby', LIGHTER.tokyo.at, (url) => (url.includes('overpass') ? body : noWiki));
+  assert.match(out.split('\n')[1], /^東京駅丸の内駅舎\thistoric building\t99\t35\.6812\t139\.766\tosm\t/);
+  assert.ok(body.elements.some((/** @type {any} */ e) => e.tags?.name === '甲州道中'));
+  assert.ok(!out.includes('甲州道中'));
 });
 
 /**
