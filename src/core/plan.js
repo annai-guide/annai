@@ -18,7 +18,7 @@ import { t } from './l10n.js';
  *   path: the plan item's, else the booking's; item: the plan item (without its end when it starts a set), or a view of the booking
  *   ({ title, kind: 'booking', fixed: null, start, end, place }); an end row's item has the end as its start; fixed: true or false as a
  *   plan item stored it, and null where nobody said (a booking's own rows: a stay's check-out is a plan item's only when that item is
- *   linked to the booking and ends where it does); an end row and a quiet line keep their start's; time and end: "HH:MM" in the
+ *   linked to the booking and ends where it does); an end row and a quiet line keep their start's, except a booking's (above); time and end: "HH:MM" in the
  *   item's own zones ('' when there is none, for an all-day item, and for a set's start); endDays: how many days after the row's day
  *   the end falls, on the end's own clock; endZone: the end's zone, named ("ET"), when its clock reads differently from the start's ('' when
  *   it doesn't, and when there is no end); set: the row is part of a set, of what kind (the booking's, else the item's); line: which day

@@ -251,7 +251,7 @@ test("a booking's own rows say nobody said (null), and its end is the fixed of a
   assert.deepEqual(fixedOf(planRows([], [redEye], { fallbackTz: 'UTC' })), [['booking', null], ['end', null]]);
 });
 
-test("guard, not the change (these held before it): a stored flexible stay's check-out is flexible, and a plan item over several days gives its end and nights its own fixed, either way", () => {
+test("the build's change, kept by fix 1 (trek(true) held on main too): a stored flexible stay's check-out is flexible, and a plan item over several days gives its end and nights its own fixed, either way", () => {
   const fixedOf = (/** @type {import('../../src/core/plan.js').PlanRow[]} */ rows) => rows.map((r) => [r.from, r.item.fixed]);
   const nights = stayTo('stay', '2026-11-22T11:00:00-09:00');
   const inn = { path: '/plan/inn.json', item: { id: 'inn', title: 'Stay at Hotel Aurora Test', fixed: false, start: nights.booking.start, end: nights.booking.end, booking: '/bookings/stay.json' } };
