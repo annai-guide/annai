@@ -171,11 +171,11 @@ export function activate(annai) {
         // Overpass can't sort by distance, and the 400 cap (ten times the ROWS kept) cuts its output in id order. So circles each half the
         // next (a quarter of its area), from the radius down to the first of 300 m or less, go in one request, smallest first, each wider
         // one only while fewer than ROWS came (`if`): the answer is then a circle uncut, and its nearest ROWS are the true nearest, unless
-        // one circle holds fewer than ROWS and the next 400 or more, which is more than ten times as many over a fourfold area (2.5 times
-        // as dense outside as inside). A step of 0.3 (a tenth of the area, as ROWS is a tenth of 400) left no margin: 36 to 39 places
+        // one circle holds fewer than ROWS and the next 400 or more, which is more than ten times as many over a fourfold area (the ring
+        // outside more than three times as dense as the circle inside), or the smallest circle itself holds 400 or more. A step of 0.3 (a tenth of the area, as ROWS is a tenth of 400) left no margin: 36 to 39 places
         // spread evenly in one circle are 400 to 433 in the next, and the answer at the Sydney Opera House stayed cut; the saved answers'
         // places grew 10.2 times from 90 to 300 m at Notre-Dame, 5.5 times from 150 to 300 m (counted by centre). 300 m: the smallest
-        // circle is then 151 to 300 m, and the 250 m circle held 52, 89 and 77 sights and food at Tokyo Station, Notre-Dame and Times
+        // circle is then 151 to 300 m for a radius over 300 m, and the 250 m circle held 52, 89 and 77 sights and food at Tokyo Station, Notre-Dame and Times
         // Square (counted by centre, probes of 2026-11-15), so there the answer is that circle whole. maxsize 64 MiB, not the default 512:
         // Overpass's dispatcher starts a query only while what it declares fits in half of what is free (its source, upstream
         // src/template_db/dispatcher.cc, Global_Resource_Planner::probe, read 2026-11-14), so a smaller declaration may start sooner. In
