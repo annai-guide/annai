@@ -213,7 +213,7 @@ const stayTo = (id, end, tz = AK) => ({ path: `/bookings/${id}.json`, booking: {
 test('a flight no plan item stands for is on the day it leaves, at its own clock, its arrival zone named', () => {
   const [r] = planRows([], [flight], { fallbackTz: 'UTC' });
   assert.deepEqual([r.from, r.day, r.time, r.end, r.endZone], ['booking', '2026-11-20', '11:20', '14:05', 'AKT']);
-  assert.deepEqual([r.path, r.bookingPath, r.item.title, r.item.fixed, r.line, r.check, r.missing, r.note], ['/bookings/flight.json', '/bookings/flight.json', 'ANNAI AIR AN 123', false, null, false, false, '']);
+  assert.deepEqual([r.path, r.bookingPath, r.item.title, r.item.fixed, r.line, r.check, r.missing, r.note], ['/bookings/flight.json', '/bookings/flight.json', 'ANNAI AIR AN 123', null, null, false, false, '']);
   assert.equal(r.booking, flight.booking);
 });
 
@@ -229,17 +229,36 @@ test('a stay: check-in, a night line on each day between (night 2 of 7 … 7 of 
   assert.deepEqual([rows[2].at, rows[2].time, rows[2].item.place.name, rows[2].path], [null, '', 'Hotel Aurora Test', '/bookings/stay.json']);
 });
 
-test("a row's fixed is its plan item's, as stored: a booking's own rows say nothing of what can move, and a set's end and nights carry their item's (the user's answer, 2026-11-15: only what was said fixed)", () => {
+test("a booking's own rows say nobody said (null), and its end is the fixed of a plan item linked to it that ends there; none, null (the user's answer, 2026-11-15: only what was said fixed)", () => {
   const fixedOf = (/** @type {import('../../src/core/plan.js').PlanRow[]} */ rows) => rows.map((r) => [r.from, r.item.fixed]);
-  // A stay no plan item stands for: its check-in, its check-out and its night.
-  assert.deepEqual(fixedOf(planRows([], [stayTo('s', '2026-11-22T11:00:00-09:00')], { fallbackTz: 'UTC' })), [['booking', false], ['end', false], ['line', false]]);
-  // A plan item over three days: its end row and its night are as fixed as the item is, either way.
+  const nights = stayTo('stay', '2026-11-22T11:00:00-09:00'); // check-in Nov 20 15:00, a night on the 21st, check-out Nov 22 11:00
+  const inn = (/** @type {Record<string, any>} */ more) => ({ path: '/plan/inn.json', item: { id: 'inn', title: 'Stay at Hotel Aurora Test', start: nights.booking.start, booking: '/bookings/stay.json', ...more } });
+  const out = { at: '2026-11-22T11:00:00-09:00', tz: AK };
+  // A stay nothing stands for: its check-in, check-out and night say nothing, not even "flexible".
+  assert.deepEqual(fixedOf(planRows([], [nights], { fallbackTz: 'UTC' })), [['booking', null], ['end', null], ['line', null]]);
+  // A stay item with both times, fixed, linked to the booking (what FILE_BOOKING has her write): its start row is the item's, and the
+  // booking's check-out is as fixed as it, which is the item's end taken off the start row.
+  const rows = planRows([inn({ fixed: true, end: out })], [nights], { fallbackTz: 'UTC' });
+  assert.deepEqual(fixedOf(rows), [['item', true], ['end', true], ['line', true]]);
+  assert.equal('end' in rows[0].item, false);
+  // A fixed check-in item with no end says nothing of the check-out; nor does one that ends at some other time than the booking.
+  assert.deepEqual(fixedOf(planRows([inn({ fixed: true })], [nights], { fallbackTz: 'UTC' })), [['item', true], ['end', null], ['line', null]]);
+  assert.deepEqual(fixedOf(planRows([inn({ fixed: true, end: { at: '2026-11-22T14:00:00-09:00', tz: AK } })], [nights], { fallbackTz: 'UTC' })), [['item', true], ['end', null], ['line', null]]);
+  // A red-eye: its fixed item with both times says its arrival (in the arrival's zone) is fixed too; with no item, the arrival says nothing.
+  const redEye = { path: '/bookings/red.json', booking: { id: 'red', kind: 'flight', status: 'unverified', source: '/files/r.pdf', title: 'ANNAI AIR AN 9', unsure: [], start: { at: '2026-11-20T22:00:00-08:00', tz: LA }, end: { at: '2026-11-21T06:30:00-05:00', tz: 'America/New_York' } } };
+  const fly = { path: '/plan/red.json', item: { id: 'red', title: 'Fly home', fixed: true, start: redEye.booking.start, end: redEye.booking.end, booking: '/bookings/red.json' } };
+  assert.deepEqual(fixedOf(planRows([fly], [redEye], { fallbackTz: 'UTC' })), [['item', true], ['end', true]]);
+  assert.deepEqual(fixedOf(planRows([], [redEye], { fallbackTz: 'UTC' })), [['booking', null], ['end', null]]);
+});
+
+test("guard, not the change (these held before it): a stored flexible stay's check-out is flexible, and a plan item over several days gives its end and nights its own fixed, either way", () => {
+  const fixedOf = (/** @type {import('../../src/core/plan.js').PlanRow[]} */ rows) => rows.map((r) => [r.from, r.item.fixed]);
+  const nights = stayTo('stay', '2026-11-22T11:00:00-09:00');
+  const inn = { path: '/plan/inn.json', item: { id: 'inn', title: 'Stay at Hotel Aurora Test', fixed: false, start: nights.booking.start, end: nights.booking.end, booking: '/bookings/stay.json' } };
+  assert.deepEqual(fixedOf(planRows([inn], [nights], { fallbackTz: 'UTC' })), [['item', false], ['end', false], ['line', false]]);
   const trek = (/** @type {boolean} */ fixed) => ({ path: '/plan/trek.json', item: { id: 'trek', title: 'Hut trek', fixed, start: { at: '2026-11-21T08:00:00-09:00', tz: AK }, end: { at: '2026-11-23T16:00:00-09:00', tz: AK } } });
   assert.deepEqual(fixedOf(planRows([trek(false)], [], { fallbackTz: 'UTC' })), [['item', false], ['end', false], ['line', false]]);
   assert.deepEqual(fixedOf(planRows([trek(true)], [], { fallbackTz: 'UTC' })), [['item', true], ['end', true], ['line', true]]);
-  // A fixed check-in item standing for the stay is fixed; the stay's own check-out and nights, which no item stands for, are not.
-  const checkIn = { path: '/plan/in.json', item: { id: 'in', title: 'Check in', fixed: true, start: stay.booking.start, booking: '/bookings/stay.json' } };
-  assert.deepEqual(fixedOf(planRows([checkIn], [stayTo('stay', '2026-11-22T11:00:00-09:00')], { fallbackTz: 'UTC' })), [['item', true], ['end', false], ['line', false]]);
 });
 
 test("a plan item linking a booking stands for it; a stay's check-out is still shown unless an item is on that day", () => {
@@ -379,8 +398,8 @@ test('a car: Pick up at its time with no end, a quiet line for each day between 
     ...[2, 3, 4, 5, 6, 7].map((n) => `line@2026-11-${19 + n}  Test Rentals compact · day ${n} of 8`)]);
   const ret = rows[1];
   // The return is a link to the booking, at its place, and counts for Now; a line is neither. Like the pick-up, a booking's own row, it
-  // says nothing of what can move.
-  assert.deepEqual([ret.item.fixed, ret.item.place.name, ret.bookingPath, ret.at], [false, 'Airport lot', '/bookings/car.json', Date.parse('2026-11-27T09:00:00-09:00')]);
+  // says nothing of what can move (null: nobody said).
+  assert.deepEqual([ret.item.fixed, ret.item.place.name, ret.bookingPath, ret.at], [null, 'Airport lot', '/bookings/car.json', Date.parse('2026-11-27T09:00:00-09:00')]);
   assert.deepEqual([rows[2].at, rows[2].time, rows[2].line], [null, '', { n: 2, of: 8 }]);
   const next = upcoming(rows, Date.parse('2026-11-21T12:00:00-09:00'), 10);
   assert.deepEqual(next.map((r) => r.from), ['end']);

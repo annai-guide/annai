@@ -50,7 +50,7 @@ New, one rule for everything with a start and an end on a later day (in their ow
   - lodging: "Staying at {name} · night {n} of {N}" (today's line, unchanged);
   - car: "{name} · day {n} of {N}" (N counts the pick-up and return days);
   - anything else: "{name} · day {n} of {N}".
-- **The end row** on its day, at its end time, a regular row (a link to the details, fixed ●, its place):
+- **The end row** on its day, at its end time, a regular row (a link to the details, its place; as fixed as a plan item stored for it that ends there, ● or ○, and with no mark when nobody said, which changed on 2026-11-16 from "fixed ●"):
   - lodging: "Check out · {name}" (today's);
   - car: "Return · {name}"; the start row reads "Pick up · {name}";
   - flight or rail: "Arrive · {name}";

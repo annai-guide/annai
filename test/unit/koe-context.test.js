@@ -10,6 +10,12 @@ const LA = 'America/Los_Angeles';
 const now = Date.parse('2026-11-26T10:00:00-08:00');
 /** @param {string} local @returns {{ at: string, tz: string }} */
 const at = (local) => ({ at: `${local}-08:00`, tz: LA });
+/** Plan items beside a hotel booking: a flexible trek over a night, a fixed festival over two days, a fixed ticket. */
+const PLAN_ITEMS = {
+  trek: { id: 'trek', title: 'Hut trek', fixed: false, start: at('2026-11-25T08:00:00'), end: at('2026-11-26T16:00:00'), place: { name: 'Test Hut', lat: 36.3, lng: -121.8 } },
+  festival: { id: 'festival', title: 'Festival pass', fixed: true, start: at('2026-11-25T18:00:00'), end: at('2026-11-27T18:00:00') },
+  ticket: { id: 'ticket', title: 'Museum ticket', fixed: true, start: at('2026-11-26T13:00:00') },
+};
 
 test("the compact view: today's plan, bookings within 48 hours, the place, the time and the next reminder, under 2,000 characters, in the tail", async () => {
   const k = await agentKit([[{ toolCalls: [{ name: 'sleep', input: {} }] }]], { koe: { type: [{ toolCalls: [{ name: 'sleep', input: {} }] }] }, agent: { now: () => now, timeZone: () => LA } });
@@ -75,25 +81,48 @@ test("the compact view lists today's ends of things over several days at their t
   assert.doesNotMatch(view, /Pick up|day \d of/);
 });
 
-test("\"can't be moved\" only for a plan item stored as fixed, in Koe's view, Kokoro's next in the plan and the wake: a hotel with nothing marked and a flexible trek's end say nothing (the user's answer, 2026-11-15: only what was said fixed)", async () => {
+test("\"can't be moved\" in Koe's view only for a plan item stored as fixed: a hotel with nothing marked and a flexible trek's end say nothing (the user's answer, 2026-11-15: only what was said fixed)", async () => {
   const k = await agentKit([[{ text: '' }]], { open: true });
   const hotel = { id: 'hotel', kind: 'lodging', status: 'unverified', source: '/files/h.pdf', title: 'Test Harbor Hotel', unsure: [], start: at('2026-11-26T15:00:00'), end: at('2026-11-27T11:00:00') };
-  const items = {
-    trek: { id: 'trek', title: 'Hut trek', fixed: false, start: at('2026-11-25T08:00:00'), end: at('2026-11-26T16:00:00'), place: { name: 'Test Hut', lat: 36.3, lng: -121.8 } },
-    festival: { id: 'festival', title: 'Festival pass', fixed: true, start: at('2026-11-25T18:00:00'), end: at('2026-11-27T18:00:00') },
-    ticket: { id: 'ticket', title: 'Museum ticket', fixed: true, start: at('2026-11-26T13:00:00') },
-  };
   await k.ws.write(k.trip, '/bookings/hotel.json', hotel, { author: 'user' });
-  for (const [id, item] of Object.entries(items)) await k.ws.write(k.trip, `/plan/${id}.json`, item, { author: 'user' });
+  for (const [id, item] of Object.entries(PLAN_ITEMS)) await k.ws.write(k.trip, `/plan/${id}.json`, item, { author: 'user' });
   const view = await compactView({ ws: k.ws, trip: k.trip, now, timeZone: LA, next: null });
   assert.match(view, /\n2026-11-26 13:00\t\tMuseum ticket\tcan't be moved\t\n2026-11-26 16:00\t\tEnds · Hut trek\t\tTest Hut\n2026-11-27 11:00\t\tCheck out · Test Harbor Hotel\t\t\n2026-11-27 18:00\t\tEnds · Festival pass\tcan't be moved\t\n/);
-  // Kokoro's next in the plan, and the wakes, are the stored plan items': the hotel has none, the flexible trek's say nothing.
+});
+
+test("guard, not the change (these held before it, from the stored items): Kokoro's next in the plan and the wakes say nothing of a hotel with no plan item or of a flexible trek's end, and \"can't be moved\" of a fixed ticket", async () => {
+  const k = await agentKit([[{ text: '' }]], { open: true });
+  const hotel = { id: 'hotel', kind: 'lodging', status: 'unverified', source: '/files/h.pdf', title: 'Test Harbor Hotel', unsure: [], start: at('2026-11-26T15:00:00'), end: at('2026-11-27T11:00:00') };
+  await k.ws.write(k.trip, '/bookings/hotel.json', hotel, { author: 'user' });
+  for (const [id, item] of Object.entries(PLAN_ITEMS)) await k.ws.write(k.trip, `/plan/${id}.json`, item, { author: 'user' });
   assert.deepEqual((await nextPlanItems(k.ws, k.trip, now, { fallbackTz: LA })).map((r) => [r[1], r[2]]), [['Museum ticket', "can't be moved"]]);
-  const watches = planWatches(Object.entries(items).map(([id, item]) => ({ path: `/plan/${id}.json`, item })), new Map([['/bookings/hotel.json', hotel]]), { fallbackTz: LA });
+  const watches = planWatches(Object.entries(PLAN_ITEMS).map(([id, item]) => ({ path: `/plan/${id}.json`, item })), new Map([['/bookings/hotel.json', hotel]]), { fallbackTz: LA });
   assert.deepEqual(watches.map((w) => [w.when.item ?? w.when.event, w.when.fixed]), [['trek', false], ['trek', false], ['festival', true], ['ticket', true], ['linger', undefined]]);
   const ticket = /** @type {any} */ (watches.find((w) => w.id === 'plan:ticket:coming-up')).when;
   const moment = { now: Date.parse('2026-11-26T12:50:00-08:00'), fix: null, newFix: false, past: false, live: true, activity: 'still', change: null, odometer: 0, stop: null, gap: null, fastEnded: null, fired: () => false };
   assert.equal(PLAN.check(ticket, /** @type {any} */ (moment), {})?.text, 'Plan: "Museum ticket" (can\'t be moved) starts at 13:00, in 10 min');
+});
+
+test("a fixed plan item linked to a booking that has times says \"can't be moved\" on the booking's end: a stay's check-out, a red-eye's arrival; a check-in item with no end, a flexible one and none leave it saying nothing", async () => {
+  const k = await agentKit([[{ text: '' }]], { open: true });
+  const write = (/** @type {string} */ path, /** @type {any} */ v) => k.ws.write(k.trip, path, v, { author: 'user' });
+  const stay = (/** @type {string} */ id, /** @type {string} */ title) => write(`/bookings/${id}.json`, { id, kind: 'lodging', status: 'confirmed', source: '/files/x.pdf', title, start: at('2026-11-26T15:00:00'), end: at('2026-11-27T11:00:00') });
+  const item = (/** @type {string} */ id, /** @type {string} */ title, /** @type {any} */ more) => write(`/plan/${id}.json`, { id, title, booking: `/trip/bookings/${id}.json`, start: at('2026-11-26T15:00:00'), ...more });
+  const out = at('2026-11-27T11:00:00');
+  await stay('fixed', 'Fixed Test Inn');
+  await item('fixed', 'Stay at Fixed Test Inn', { fixed: true, end: out });
+  await stay('checkin', 'Check-in Test Inn');
+  await item('checkin', 'Check in at Check-in Test Inn', { fixed: true });
+  await stay('loose', 'Loose Test Inn');
+  await item('loose', 'Stay at Loose Test Inn', { fixed: false, end: out });
+  await stay('none', 'Unmarked Test Inn');
+  // A red-eye over the night, the arrival in New York's clock (06:30 ET is 03:30 here).
+  const arrive = { at: '2026-11-27T06:30:00-05:00', tz: 'America/New_York' };
+  await write('/bookings/red.json', { id: 'red', kind: 'flight', status: 'confirmed', source: '/files/r.pdf', title: 'ANNAI AIR AN 9', start: at('2026-11-26T22:00:00'), end: arrive });
+  await write('/plan/red.json', { id: 'red', title: 'Fly home', fixed: true, booking: '/trip/bookings/red.json', start: at('2026-11-26T22:00:00'), end: arrive });
+  const view = await compactView({ ws: k.ws, trip: k.trip, now, timeZone: LA, next: null });
+  const words = (/** @type {string} */ name) => view.split('\n').find((l) => l.includes(`Check out · ${name}`) || l.includes(`Arrive · ${name}`))?.split('\t')[3];
+  assert.deepEqual(['Fixed Test Inn', 'Check-in Test Inn', 'Loose Test Inn', 'Unmarked Test Inn', 'ANNAI AIR AN 9'].map(words), ["can't be moved", '', '', '', "can't be moved"]);
 });
 
 test("a booking with parts Shiori is unsure of: its row names them by what they are, and a plan row at an unsure time says so beside \"can't be moved\" (the 固定 re-review's L2)", async () => {

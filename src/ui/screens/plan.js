@@ -11,7 +11,7 @@ import { saveFile } from '../save.js';
 import { todayOf, todayTop, drivingTrip } from '../today.js';
 import { ask } from '../ask.js';
 import { openTrip } from '../open-trip.js';
-import { detailsHref, rowName, lineName, dateRange, day, distance, num, list, sentences, sentenceGap, talkHref } from '../format.js';
+import { detailsHref, rowName, lineName, constraintOf, dateRange, day, distance, num, list, sentences, sentenceGap, talkHref } from '../format.js';
 
 /** The tab picked on each history entry, per trip: a redraw or coming back keeps it, a new entry opens today's. @type {Map<string, string>} */
 const kept = new Map();
@@ -148,11 +148,12 @@ function row(ctx, id, r, undo, here) {
   const later = r.endDays ? `${r.endDays > 0 ? '+' : '−'}${Math.abs(r.endDays)}` : '';
   const when = it.kind === 'all-day' ? t`All day` : r.end ? [`${r.time}–${r.end}`, later, r.endZone].filter(Boolean).join(' ') : [r.time, r.endZone].filter(Boolean).join(' ');
   // A plugin's row (spec §16.4: plan-row), or annai's own, also when the plugin's fails.
-  return planRowOf(ctx, id, r, when, () => h('li', { class: ['plan-row', it.fixed ? 'fixed' : 'flexible'] },
+  const c = constraintOf(it.fixed);
+  return planRowOf(ctx, id, r, when, () => h('li', { class: ['plan-row', c.cls] },
     h('span', { class: 'when', text: when }),
-    h('span', { class: 'mark', 'aria-hidden': 'true', text: it.fixed ? '●' : '○' }),
+    h('span', { class: 'mark', 'aria-hidden': 'true', text: c.mark }),
     h('a', { class: 'what', href: detailsHref(id, r, here) },
-      h('span', { class: 'visually-hidden', text: it.fixed ? t`Fixed:` : t`Flexible:` }), ' ',
+      ...(c.word ? [h('span', { class: 'visually-hidden', text: c.word }), ' '] : []),
       h('span', { class: 'name', dir: 'auto', text: rowName(r) }),
       it.place?.name ? h('span', { class: 'sub', dir: 'auto', text: String(it.place.name) }) : null),
     r.check || r.checkFields.length || r.missing || undo.has(r.path) ? h('span', { class: 'chips' },

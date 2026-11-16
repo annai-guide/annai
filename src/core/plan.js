@@ -16,8 +16,9 @@ import { t } from './l10n.js';
  *   checkFields: string[], missing: boolean, note: string }} PlanRow
  *   from: a plan item, a booking no plan item stands for (at its start), the end of a set (at its end), or a set's quiet line;
  *   path: the plan item's, else the booking's; item: the plan item (without its end when it starts a set), or a view of the booking
- *   ({ title, kind: 'booking', fixed: false, start, end, place }); an end row's item has the end as its start; an end row and a quiet line
- *   keep their start's fixed, so only a plan item stored as fixed is (with its end and lines); time and end: "HH:MM" in the
+ *   ({ title, kind: 'booking', fixed: null, start, end, place }); an end row's item has the end as its start; fixed: true or false as a
+ *   plan item stored it, and null where nobody said (a booking's own rows: a stay's check-out is a plan item's only when that item is
+ *   linked to the booking and ends where it does); an end row and a quiet line keep their start's; time and end: "HH:MM" in the
  *   item's own zones ('' when there is none, for an all-day item, and for a set's start); endDays: how many days after the row's day
  *   the end falls, on the end's own clock; endZone: the end's zone, named ("ET"), when its clock reads differently from the start's ('' when
  *   it doesn't, and when there is no end); set: the row is part of a set, of what kind (the booking's, else the item's); line: which day
@@ -43,6 +44,9 @@ export const BOOKING_FILE = /^\/bookings\/[^/]+\.json$/;
  */
 export const fixedWords = (fixed, { unsure }) => /* en */ [fixed ? "can't be moved" : '', unsure ? 'not sure the time was read right' : ''].filter(Boolean).join('; ');
 
+/** A stored time as an instant: in its own zone when annai knows it, else the fallback's. @param {any} t @param {string} fallbackTz */
+const momentOf = (t, fallbackTz) => instantAt(t?.at, validZone(t?.tz) ? t.tz : fallbackTz);
+
 /**
  * Whether a time a plan row shows is one Shiori isn't sure of, as the screens mark it (checkOf): one of those times is the same moment as
  * its booking's start or end, and the booking is marked whole or at that time. Only the times the row shows count: a sure check-in beside
@@ -53,7 +57,7 @@ export const fixedWords = (fixed, { unsure }) => /* en */ [fixed ? "can't be mov
 export function timeUnsure(shown, booking, { fallbackTz }) {
   const b = record(booking);
   if (!b) return false;
-  const moment = (/** @type {any} */ t) => instantAt(t?.at, validZone(t?.tz) ? t.tz : fallbackTz);
+  const moment = (/** @type {any} */ t) => momentOf(t, fallbackTz);
   const marks = checkOf(b);
   // A booking with no end (an old one, marked whole) has no moment there: NaN, which a row with no time would also read as.
   const marked = ['start', 'end'].filter((k) => marks.whole || marks.fields.includes(k)).map((k) => moment(b[k])).filter(Number.isFinite);
@@ -180,7 +184,7 @@ export function planRows(items, bookings, { fallbackTz }) {
     const drop = record(base.booking?.fields)?.dropoff;
     const dropped = typeof drop === 'string' && drop.trim() ? { name: drop } : record(drop)?.name ? record(drop) : undefined;
     const place = kind === 'flight' || kind === 'rail' ? undefined : kind === 'car' && drop !== undefined && drop !== null ? dropped : view.place;
-    const item = { ...view, start: endAt, place }; // as fixed as its start: a plan item's own, a booking's never
+    const item = { ...view, start: endAt, place }; // as fixed as its start's view: a plan item's own, or null where nobody said
     /** @type {PlanRow} */
     const end = { ...base, item, from: 'end', ...timesOf(item, fallbackTz), set: { kind, part: 'end' }, line: null };
     // An end in another zone than the start's names it (an Arrive at 07:30 ET after a departure in PT).
@@ -217,12 +221,16 @@ export function planRows(items, bookings, { fallbackTz }) {
     // A stay is always its check-in and its check-out (as before); anything else that ends on a later day, its start and its end.
     const split = kind === 'lodging' || setOf(b);
     const base = { path, bookingPath: path, booking: b, check: marks.whole, checkFields: marks.fields, missing: false };
-    // A booking says nothing of what can move: a plan item Shiori stored as fixed does (the user's answer, 2026-11-15).
-    const view = { title, kind: 'booking', fixed: false, start: b.start, ...(split ? {} : { end: b.end }), place };
+    // A booking says nothing of what can move (null: nobody said): a plan item Shiori stored as fixed does (the user's answer, 2026-11-15).
+    const view = { title, kind: 'booking', fixed: null, start: b.start, ...(split ? {} : { end: b.end }), place };
     /** @type {PlanRow} */
     const start = { ...base, item: view, from: 'booking', ...timesOf(view, fallbackTz), set: split ? { kind, part: 'start' } : null, line: null };
     if (!standsFor(path, start)) out.push(start);
-    if (split) rest(base, view, b.end, kind, spanOf(b));
+    if (!split) continue;
+    // The end is a plan item's when one standing for the booking ends where it does (that item's own end is dropped for this row): as
+    // fixed as that item, true or false. With none, nobody said.
+    const said = own.find((x) => x.ref === path && momentOf(x.item.end, fallbackTz) === momentOf(b.end, fallbackTz));
+    rest(base, { ...view, fixed: said ? said.item.fixed : null }, b.end, kind, spanOf(b));
   }
   return out;
 }
