@@ -66,8 +66,8 @@ test("Realtime chosen: voice off, Koe types through Classic (a live reply would 
 });
 
 test("the voice chip's switch applies at once: Classic chosen closes an open session ('pathway') and the loop answers; Realtime chosen again, Koe is live", async () => {
-  // The session's clock is the real one, kept from when the kit's 10 ms a second made the default's 30 s quiet spell 300 ms from her line, and on a
-  // starved CPU it closed the session for quiet before Classic was chosen; the kit's spell is 300 s now, on this clock too.
+  // The session's clock is the real one (secondMs 1000): the kit's quiet spell is 300 s on it, so a starved CPU can't run it out from her line
+  // before Classic is chosen; on the kit's 10 ms a second it is 3 s.
   const k = await liveKit([{ said: 'A taco stand, two minutes ahead.', audio: tone(0.2) }], { koe: { type: { rules: [{ match: '.', reply: sleep }] } }, agent: { secondMs: 1000 } });
   try {
     k.agent.send('Where can we eat?');
