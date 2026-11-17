@@ -108,8 +108,25 @@ export function lineName(r) {
   return r.set?.kind === 'lodging' ? t`Staying at ${name} · night ${n} of ${of}` : t`${name} · day ${n} of ${of}`;
 }
 
-/** A booking's kind in words (a plan item's known kinds too). */
-export const BOOKING_KINDS = /** @type {Record<string, string>} */ ({ flight: t`Flight`, lodging: t`Stay`, car: t`Car`, rail: t`Train`, event: t`Event`, restaurant: t`Restaurant`, other: t`Other` });
+/**
+ * A booking's kind in words, and a plan item's: every word the reminders' table reads (KINDS, src/core/live/plan-watches.js), so a kind Shiori
+ * writes for an item shows in the screens' language: "ferry", "bus", "coach" and "meal" have a name of their own, and the everyday words
+ * ("plane", "hotel", "stay", "train") the name of the kind they stand for.
+ */
+export const BOOKING_KINDS = /** @type {Record<string, string>} */ ({
+  flight: t`Flight`, lodging: t`Stay`, car: t`Car`, rail: t`Train`, event: t`Event`, restaurant: t`Restaurant`, other: t`Other`,
+  plane: t`Flight`, hotel: t`Stay`, stay: t`Stay`, train: t`Train`, ferry: t`Ferry`, bus: t`Bus`, coach: t`Coach`, meal: t`Meal`,
+});
+
+/**
+ * A plan item's kind in the screens' language, the word read as the reminders read it (trimmed, in any case: "Ferry" and " bus " are a ferry
+ * and a bus); undefined for a word annai has no name for. @param {string} kind
+ * @returns {string | undefined}
+ */
+export function kindName(kind) {
+  const word = kind.trim().toLowerCase();
+  return Object.hasOwn(BOOKING_KINDS, word) ? BOOKING_KINDS[word] : undefined;
+}
 
 /** How many of a kind of booking, by its kind. */
 const COUNTS = /** @type {Record<string, (n: number) => string>} */ ({

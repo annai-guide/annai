@@ -426,6 +426,15 @@ test("her instructions' plan item and booking are records of their formats, whic
   assert.ok(CORE.includes(`kind: ${BOOKING_SCHEMA.properties.kind.enum.slice(0, -1).join(', ')} or ${BOOKING_SCHEMA.properties.kind.enum.at(-1)};`), "the kinds are the format's");
 });
 
+test("her instructions' line on a plan item's kind is pinned, and each kind it names is a word of the reminders' table (a word the table lacks reads as no kind, so a flight loses its 2-hour margin)", async () => {
+  const { KINDS } = await import('../../src/core/live/plan-watches.js');
+  const line = CORE.split('\n').find((l) => l.startsWith("- A plan item's kind is"));
+  assert.equal(line, `- A plan item's kind is "flight" for a flight, "rail" for a train, "ferry", "bus" or "coach" for those rides, and "lodging" for a stay's check-in or check-out: annai times its reminders by it.`);
+  const words = [...String(line).matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(words, ['flight', 'rail', 'ferry', 'bus', 'coach', 'lodging']);
+  for (const w of words) assert.equal(KINDS.get(w), w, w); // the table's own word for each, not an alias of another
+});
+
 test("her instructions' line on unsure is pinned and names no old shape: when they say a detail is right, take it out of unsure, and no word of a booking without unsure (booking-say's round 4: a parenthetical \"write unsure: []\" was followed to the letter by an edit that cleared every mark for one checked detail)", () => {
   const lines = CORE.split('\n');
   const line = lines.find((l) => l.startsWith('- Write each booking with unsure naming just the fields you are not sure of'));

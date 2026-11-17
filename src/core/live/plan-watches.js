@@ -50,11 +50,12 @@ export const WINDOW_MIN = 180;
 export const OFF_PLAN_KM = 3;
 export const OFF_PLAN_AFTER_MIN = 10;
 /**
- * Off plan: asked until this long after the start (or the item's end, if sooner). The hour running late gives a fixed item, and the one
- * an item with no end always had. Past it nothing asks about that item: annai sees the traveller only while it is on screen (spec §11.1),
- * so being far late in an item proves little (they may have been and gone). The linger watch wakes her only for a stop made after annai
- * saw them somewhere else (it takes the first place it sees as home): opened 14 km from a 13:00-17:00 item at 14:25, nothing wakes her.
- * Not the whole item: a stay until the next morning woke her "off plan" at the traveller's dinner (the main session's call, 2026-11-16).
+ * Off plan: asked until this long after the start (or the item's end, if sooner). The hour running late gives a fixed item (a flight's,
+ * train's or ride's ends when it departs), and the one an item with no end always had. Past it nothing asks about that item: annai sees
+ * the traveller only while it is on screen (spec §11.1), so being far late in an item proves little (they may have been and gone). The
+ * linger watch wakes her only for a stop made after annai saw them somewhere else (it takes the first place it sees as home): opened 14 km
+ * from a 13:00-17:00 item at 14:25, nothing wakes her. Not the whole item: a stay until the next morning woke her "off plan" at the
+ * traveller's dinner (the main session's call, 2026-11-16).
  */
 export const OFF_PLAN_FOR_MIN = 60;
 /** Off plan: stopped this long, this far from every plan place. */
@@ -64,8 +65,28 @@ export const NOT_PLANNED_M = 500;
 const MIN = 60_000;
 /** @param {any} p @returns {p is { lat: number, lng: number }} */
 const hasPoint = (p) => Boolean(p) && typeof p.lat === 'number' && typeof p.lng === 'number' && Number.isFinite(p.lat) && Number.isFinite(p.lng);
-/** Whether a plan item is of a kind, by its own or its booking's. @param {any} it @param {any} booking @param {string} k */
-const isKind = (it, booking, k) => it.kind === k || booking?.kind === k;
+/**
+ * What a kind word is, for the reminders: one table of the words written for a plan item's kind (free text) and a booking's (a fixed
+ * list), in any case. The booking format's kinds, as the instructions name them and an item may carry its booking's; their everyday
+ * words (an item "hotel" on a stay's booking stays a stay: the plan check's); the rides that carry the traveller as a train does, for
+ * which a booking has no kind (a ferry's is "other"); and "meal", the plan-a-trip skill's own example.
+ */
+export const KINDS = new Map(Object.entries({
+  flight: 'flight', lodging: 'lodging', car: 'car', rail: 'rail', event: 'event', restaurant: 'restaurant', other: 'other',
+  plane: 'flight', hotel: 'lodging', stay: 'lodging', train: 'rail',
+  ferry: 'ferry', bus: 'bus', coach: 'coach',
+  meal: 'meal',
+}));
+/** The kinds that carry the traveller: what comes after one doesn't count from where it leaves, and a fixed one is waited for. */
+const CARRIERS = new Set(['flight', 'rail', 'ferry', 'bus', 'coach']);
+/** A kind word as the table reads it: "Train" and " hotel " too. @param {unknown} k */
+const known = (k) => (typeof k === 'string' ? KINDS.get(k.trim().toLowerCase()) : undefined);
+/**
+ * A plan item's kind: its own word when the table knows it, else its booking's, else ''. Its own decides, so a car pick-up or a
+ * check-out on a flight's booking is no flight; an unknown word or none takes the booking's, so a flight written "transport" on its
+ * booking keeps the 2-hour margin (fix round 2's Call 3). @param {any} it @param {any} booking @returns {string}
+ */
+const kindOf = (it, booking) => known(it.kind) ?? known(booking?.kind) ?? '';
 /** "/plan/nepenthe.json" → "nepenthe". @param {string} path */
 const slug = (path) => path.replace(/^\/plan\//, '').replace(/\.json$/, '');
 
@@ -86,17 +107,17 @@ export function planWatches(items, bookings, { fallbackTz }) {
   const out = [];
   /** @type {Place | null} */
   let prev = null;
-  /** When the fixed flights and trains so far have all arrived. @type {number | null} */
+  /** When the fixed flights, trains and rides so far have all arrived. @type {number | null} */
   let landed = null;
-  // The flight and train legs on each booking: one that several of them link (a trip out and back, with connections, on one confirmation) names
-  // none of them. An item is of its own kind or its booking's (isKind), so on a booking of kind flight or rail every item linked to it is a leg, a
-  // transfer's or a hotel's too; only on a booking of another kind (a package's) is an item of another kind not one.
+  // The legs on each booking, its carrier items: one that several of them link (a trip out and back, with connections, on one confirmation)
+  // names none of them. An item's own known kind decides (kindOf), so a car or a hotel on a flight's booking is no leg; one with no kind, or a
+  // word the table doesn't know, takes the booking's.
   /** @type {Map<string, number>} */
   const onBooking = new Map();
   for (const x of timed) {
     const ref = bookingRef(x.item.booking);
     const booking = ref ? bookings.get(ref) : null;
-    if (ref && (isKind(x.item, booking, 'flight') || isKind(x.item, booking, 'rail'))) onBooking.set(ref, (onBooking.get(ref) ?? 0) + 1);
+    if (ref && CARRIERS.has(kindOf(x.item, booking))) onBooking.set(ref, (onBooking.get(ref) ?? 0) + 1);
   }
   /** @type {Place[]} */
   const places = [];
@@ -104,13 +125,14 @@ export function planWatches(items, bookings, { fallbackTz }) {
     const it = x.item;
     const tz = zone(it);
     const title = String(it.title ?? slug(x.path));
-    const end = instantAt(it.end?.at, validZone(it.end?.tz) ? it.end.tz : tz);
     const place = hasPoint(it.place) ? { name: String(it.place.name ?? title), lat: it.place.lat, lng: it.place.lng } : null;
     const ref = bookingRef(it.booking) ?? '';
     const booking = bookings.get(ref) ?? null;
-    const kind = (/** @type {string} */ k) => isKind(it, booking, k);
-    const flight = kind('flight');
-    const carrier = flight || kind('rail');
+    const kind = kindOf(it, booking);
+    const flight = kind === 'flight';
+    const carrier = CARRIERS.has(kind);
+    const instant = (/** @type {any} */ t) => instantAt(t?.at, validZone(t?.tz) ? t.tz : tz);
+    const end = instant(it.end);
     // A flight is named by its booking, unless the booking has several legs: then by the item's own title, as any item.
     const short = whatOf(title, booking, flight && (onBooking.get(ref) ?? 0) < 2, x.at, tz, place?.name ?? '');
     const base = {
@@ -119,40 +141,56 @@ export function planWatches(items, bookings, { fallbackTz }) {
       what: whatText(short), short,
     };
     const notes = typeof it.notes === 'string' && it.notes.trim() ? it.notes.trim() : '';
+    const before = prev; // the stop before this item, which its own place replaces
     /** @param {string} event @param {string} fallback @param {PlanSay} say @param {Record<string, any>} [extra] */
     const add = (event, fallback, say, extra = {}) => out.push({ id: `plan:${base.item}:${event}`, owner: 'system', repeat: false, fallback, say, when: { ...base, event, ...extra } });
+    // by: the time to be there, a flight's AIRPORT_EARLY_MIN before it departs; late: the time after which arriving is late, a flight's
+    // AIRPORT_LATE_MIN before it departs. A connection (a flight, train or ride whose time to be there comes before the one before
+    // it arrives) is carried there: it gets neither leave nor running late.
+    const by = flight ? x.at - AIRPORT_EARLY_MIN * MIN : x.at;
+    const late = flight ? x.at - AIRPORT_LATE_MIN * MIN : x.at;
+    const carried = carrier && landed !== null && by < landed;
     // fallback: annai's English, for Shiori; say: the data the user's words are made from.
     /* en */
     if (place) {
       const there = { place, radius: flight ? AIRPORT_M : ARRIVE_M };
       if (!base.fixed) {
         add('off-plan', `Planned now: ${title}, at ${place.name}.`, { event: 'off-plan', title, place: place.name }, { ...there, unsure: timeUnsure(base.end === null ? [it.start] : [it.start, it.end], booking, { fallbackTz }) });
-      } else if (!kind('lodging')) {
+      } else if (kind !== 'lodging') {
         // Leave and running late time a trip by car or on foot (spec §11.3). Not for a stay: its check-in is the earliest time to arrive,
         // its check-out the latest to stay (the user's report, 2026-11-16: "Leave in about 15 min" for a check-in 3300 km away).
-        // by: the time to be there, a flight's AIRPORT_EARLY_MIN before it departs; late: the time after which arriving is late, a flight's
-        // AIRPORT_LATE_MIN before it departs. A connection (a flight or train whose time to be there comes before the one before it
-        // arrives) is carried there: it gets neither.
-        const by = flight ? x.at - AIRPORT_EARLY_MIN * MIN : x.at;
-        if (!(carrier && landed !== null && by < landed)) {
-          const go = { ...there, by, late: flight ? x.at - AIRPORT_LATE_MIN * MIN : x.at, after: landed };
+        if (!carried) {
+          const go = { ...there, by, late, after: landed };
           add('leave', `Leave soon: ${base.what}.`, { event: 'leave', what: short }, { ...go, from: prev });
-          add('late', `Running late: ${base.what}.`, { event: 'late', what: short }, go);
+          // until: running late is checked for an hour after its line, and a flight's, train's or ride's only until it departs: by then the
+          // traveller is on it or has missed it (on a train at 07:10 it said "Running late ... About 49 min away": the design check's A2).
+          add('late', `Running late: ${base.what}.`, { event: 'late', what: short }, { ...go, until: carrier ? x.at : late + 60 * MIN });
         }
       }
-      add('arrived', `${place.name}: ${title}.${notes ? ` ${notes}` : ''}`, { event: 'arrived', title, place: place.name, ...(notes ? { notes } : {}) }, there);
+      // A stay with no end of its own is arrived at until its booking's check-out, not only 3 hours past its start: a check-in at 16:00
+      // reached at 21:55 after a late landing got no "arrived", and so no notes.
+      const checkOut = kind === 'lodging' && base.end === null && known(booking?.kind) === 'lodging' ? instant(booking.end) : NaN;
+      add('arrived', `${place.name}: ${title}.${notes ? ` ${notes}` : ''}`, { event: 'arrived', title, place: place.name, ...(notes ? { notes } : {}) }, checkOut > x.at ? { ...there, end: checkOut } : there);
       // Every place is the stop before the next item, a stay's too: with no position, it is the best guess of where the traveller is (the
       // flight home after a stay 100 km from the airport counts from the stay; with the stay left out it said "Leave soon" 1 h 44 min late).
-      // One a flight away from that item is none (leaving()): a check-in sorts between two flights, 2475 km from the second.
+      // That holds whether the check-in sorts after the flight that takes the traveller there or before it, as one timed before the landing
+      // does (the carrier rule below keeps it). One a flight away from that item is none (leaving()): a check-in sorts between two flights,
+      // 2475 km from the second.
       prev = place;
       places.push(place);
     } else if (base.fixed) {
+      // A flight with no place still has a time to be at the airport: its leave reminder comes as for a flight with no position, half an
+      // hour before it (it got only "In 15 min" as it departed). There is no airport to count a drive to, or to be late for or arrive at.
+      if (flight && !carried) add('leave', `Leave soon: ${base.what}.`, { event: 'leave', what: short }, { by, after: landed, from: null });
       add('coming-up', `In ${COMING_UP_MIN} min: ${base.what}.`, { event: 'coming-up', what: short });
     }
-    // A flight or a train carries the traveller: what comes after it doesn't count from its place, where it leaves from, and a fixed
-    // one waits for it to arrive (its end, else its start). A flexible one may move: it holds nothing back (the second opinion's N2).
+    // A flight, a train or a ride (CARRIERS) carries the traveller: what comes after it doesn't count from its place, where it leaves from,
+    // and a fixed one waits for it to arrive (its end, else its start). A flexible one may move: it holds nothing back (the second opinion's N2).
+    // A stop before it a flight away from where it leaves is ahead of it, not behind, and stays the stop before: a check-in at 16:00
+    // where the flight lands at 22:58, or between a flight in and the flight on (the design check's A1: the morning after counted from
+    // nothing, 41 min late, and the flight home 1 h 44 min). With no place to leave from, there is nothing to measure: none.
     if (carrier) {
-      prev = null;
+      prev = place && before && far(before, { place }) ? before : null;
       if (base.fixed) landed = Math.max(landed ?? -Infinity, base.end ?? base.at);
     }
   }
@@ -270,18 +308,19 @@ const drive = (km, w) => km * 1000 > w.radius && km <= LEG_MAX_KM;
  */
 const far = (p, w) => meters(p, w.place) / 1000 > LEG_MAX_KM;
 
-/** Whether the user's position is a flight from the item. @param {any} w @param {Moment} m */
-const away = (w, m) => m.fix !== null && far(m.fix, w);
+/** Whether the user's position is a flight from the item (never, for a flight with no place). @param {any} w @param {Moment} m */
+const away = (w, m) => m.fix !== null && Boolean(w.place) && far(m.fix, w);
 
 /**
  * When to leave for an item: from where the user is (or was, on a catch-up's first look), else from the plan's stop before; with
- * neither, half an hour before; not before the flights and trains before it arrive (after). A position or a stop before a flight away
- * counts as none, so the push relay still holds a copy for what is at the destination (the review's F1) and a stay between two
- * flights isn't counted from; the screen says nothing from such a position (CHECK.leave). Null when it is no drive.
+ * neither, or for a flight with no place, half an hour before; not before the flights, trains and rides before it arrive (after). A
+ * position or a stop before a flight away counts as none, so the push relay still holds a copy for what is at the destination (the
+ * review's F1) and a stay between two flights isn't counted from; the screen says nothing from such a position (CHECK.leave). Null when
+ * it is no drive.
  * @param {any} w @param {Moment} m
  */
 function leaving(w, m) {
-  const from = (away(w, m) ? null : m.fix) ?? (w.from && !far(w.from, w) ? w.from : null);
+  const from = !w.place ? null : (away(w, m) ? null : m.fix) ?? (w.from && !far(w.from, w) ? w.from : null);
   const after = w.after ?? -Infinity;
   if (!from) return { due: Math.max(w.by - 30 * MIN, after), km: null, minutes: null, words: '', mode: '' };
   const km = meters(from, w.place) / 1000;
@@ -335,7 +374,7 @@ const CHECK = {
   },
   late(w, m) {
     const fix = now(m);
-    if (!fix || m.fired(`plan:${w.item}:arrived`) || m.now < Math.max(w.late - WINDOW_MIN * MIN, w.after ?? -Infinity) || m.now > w.late + 60 * MIN) return null;
+    if (!fix || m.fired(`plan:${w.item}:arrived`) || m.now < Math.max(w.late - WINDOW_MIN * MIN, w.after ?? -Infinity) || m.now > w.until) return null;
     const km = meters(fix, w.place) / 1000;
     if (!drive(km, w)) return null;
     const t = trip(km, m.activity);

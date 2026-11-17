@@ -1,5 +1,5 @@
 {
-  "build": "c8817f667153",
+  "build": "fba85a5941c1",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -23,7 +23,7 @@
     "/assets/shiori.svg": "214ef5886a03",
     "/assets/simulations/big-sur.json": "60b158f1e9ab",
     "/skills/driving-companion/SKILL.md": "6e00c40e0c8e",
-    "/skills/plan-a-trip/SKILL.md": "a64048ac57ba",
+    "/skills/plan-a-trip/SKILL.md": "76c2181036fb",
     "/skills/replanning/SKILL.md": "b38405097c65",
     "/src/app/boot.js": "58bba933ce37",
     "/src/app/claim.js": "fc9e510c391d",
@@ -40,7 +40,7 @@
     "/src/core/agent/compaction.js": "2a22ce610853",
     "/src/core/agent/context.js": "236aeb22b18a",
     "/src/core/agent/halves.js": "0d03ac9b9ec1",
-    "/src/core/agent/instructions.js": "2fc0f09bf49d",
+    "/src/core/agent/instructions.js": "c6ce760146d1",
     "/src/core/agent/listen.js": "ace64ee6f6c6",
     "/src/core/agent/log.js": "be1f6eedd6f8",
     "/src/core/agent/loop.js": "20446cb15431",
@@ -97,8 +97,8 @@
     "/src/core/live/activity.js": "d1fe254c6571",
     "/src/core/live/clock.js": "e8699d74a329",
     "/src/core/live/geo.js": "f0c643995eb3",
-    "/src/core/live/live.js": "8a22ab4c8fb4",
-    "/src/core/live/plan-watches.js": "281eddbd44ca",
+    "/src/core/live/live.js": "a3362ac4740d",
+    "/src/core/live/plan-watches.js": "32dcf31a9610",
     "/src/core/live/sim-run.js": "91b84ce6a313",
     "/src/core/live/simulate.js": "d42f97c8d368",
     "/src/core/live/triggers.js": "1e07368d82e6",
@@ -215,7 +215,7 @@
     "/src/ui/bring-in.js": "0373ab0843ad",
     "/src/ui/export-panel.js": "ded8262ee329",
     "/src/ui/file-delete.js": "207b1b0e5902",
-    "/src/ui/format.js": "4b141bcc92cb",
+    "/src/ui/format.js": "4bcdb554309d",
     "/src/ui/grounding.html": "5dab86abb302",
     "/src/ui/grounding.js": "1e27c30fc392",
     "/src/ui/import-state.js": "ac11af4a3775",
@@ -256,7 +256,7 @@
     "/src/ui/screens/ext.js": "2bf551b1f41f",
     "/src/ui/screens/file.js": "6d1a5197e79b",
     "/src/ui/screens/import.js": "6e192da45c2f",
-    "/src/ui/screens/item.js": "dc9f5e4a9fc6",
+    "/src/ui/screens/item.js": "aaf8d3ec01d0",
     "/src/ui/screens/mcp.js": "8594db2419e8",
     "/src/ui/screens/model.js": "6976470d905a",
     "/src/ui/screens/models.js": "63ad69a849f8",
@@ -299,8 +299,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "3138a8ff6c0a",
-    "/l10n/zh-Hans.json": "fedd3401df79",
-    "/l10n/zh-Hant.json": "647d9b7c4147"
+    "/l10n/ja.json": "5b4bdf8036a2",
+    "/l10n/zh-Hans.json": "dcfe25f76457",
+    "/l10n/zh-Hant.json": "198e6df843a2"
   }
 }

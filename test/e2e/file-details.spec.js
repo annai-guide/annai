@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { openApp, allFiles, putFile, writeRecords, startModelServer, anthropicToolReply, modelSetUp, savedBy, openTalk } from './helpers.js';
 import { fileTrip } from './file-details-fixture.js';
+import { accented } from '../../src/core/l10n-pseudo.js';
 
 test('Files: one row per file, by its first booking day then name, each one link with what it is; no record names, no Ask; a plain photo is not listed', async ({ page }) => {
   await openApp(page);
@@ -281,6 +282,26 @@ test('a booking with no file: Delete removes it and its plan item', async ({ pag
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Anchorage');
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/item?path=${encodeURIComponent('/plan/grill.json')}`);
   await expect(page.getByRole('heading', { name: "This isn't on the itinerary" })).toBeVisible();
+});
+
+test("an item screen names its kind as the reminders read the word, trimmed and in any case (\"Ferry\" and \" bus \" are a ferry and a bus); a word annai has no name for shows as written, in English (the re-review's R4)", async ({ page }) => {
+  await openApp(page);
+  const trip = await fileTrip(page);
+  const start = { at: '2026-11-21T09:00:00-09:00', tz: 'America/Anchorage' };
+  await writeRecords(page, trip, { write: {
+    '/plan/ferry.json': { id: 'ferry', title: 'Harbor ferry', kind: 'Ferry', fixed: true, start },
+    '/plan/bus.json': { id: 'bus', title: 'Airport bus', kind: ' bus ', fixed: true, start },
+    '/plan/inn.json': { id: 'inn', title: 'Check in', kind: 'inn', fixed: true, start },
+  } });
+  // Under the pseudo-locale a name is accented, so the word as written (in English) can't pass for it.
+  for (const [slug, name] of [['ferry', accented('Ferry')], ['bus', accented('Bus')]]) {
+    await page.goto(`/?l10n=en-XA#/trip/${encodeURIComponent(trip)}/item?path=${encodeURIComponent(`/plan/${slug}.json`)}`);
+    await expect(page.locator('.details > .title + .sub')).toHaveText(name);
+    await expect(page.locator('.details > .title + .sub [lang]')).toHaveCount(0);
+  }
+  await page.goto(`/?l10n=en-XA#/trip/${encodeURIComponent(trip)}/item?path=${encodeURIComponent('/plan/inn.json')}`);
+  await expect(page.locator('.details > .title + .sub')).toHaveText('inn');
+  await expect(page.locator('.details > .title + .sub [lang="en"]')).toHaveText('inn');
 });
 
 test('the raw file screen says what else its Delete removes, and removes it', async ({ page }) => {

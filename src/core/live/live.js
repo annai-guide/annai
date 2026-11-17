@@ -1144,7 +1144,12 @@ export class Live {
     this.#catch = null;
     if (c.timer !== null) this.clock.clear(c.timer);
     const opened = this.#openedNews.splice(0);
-    if (c.fired.length || opened.length) await this.#deliver(c.fired, 'catch-up', this.#catchUpHeader(c), opened);
+    // An item's leave reminder is left out when the same catch-up fires its arrival: the traveller got there while annai was away, and
+    // "Leave soon" beside "Nepenthe: Lunch at Nepenthe." was of no use. It fired and is logged, so it doesn't come again.
+    const item = (/** @type {Fired} */ x, /** @type {string} */ event) => (x.watch.when.type === 'plan' && /** @type {any} */ (x.watch.when).event === event ? `${x.scope}\n${/** @type {any} */ (x.watch.when).item}` : null);
+    const arrived = new Set(c.fired.map((x) => item(x, 'arrived')).filter(Boolean));
+    const fired = c.fired.filter((x) => !arrived.has(item(x, 'leave')));
+    if (fired.length || opened.length) await this.#deliver(fired, 'catch-up', this.#catchUpHeader(c), opened);
   }
 
   /** "Catch-up: annai was off screen for 47 min (since 15:18), and the user moved 17.0 km from near … to near …." @param {{ how: 'start' | 'shown', since: number | null, from: Fix | null }} c */
