@@ -210,6 +210,7 @@ Also removable: `start_trip` in chats, the `/waiting` branches (files plugin, `f
 ## Decided by the user (2026-11-16)
 
 - **The gate:** after the phone look on their iPhone, "yes timeline looks fine": the tabs go (stage 8).
+- **Now goes:** "yes it is fine removing the now I specifically told it to do that when designing" (to the chief session, ~21:51 PST).
 - **`start_trip` in a dated trip:** "Keep it (Recommended)". Inside a dated trip, Shiori can still start the trip a booking is for, as its own card, with the file in it.
 - **Where the gear and Trace sit on home:** "At the top, beside "Trips" (Recommended)".
 - **A trip ahead on home:** "yeah upcoming trips can get a lighter version": its card gets a lighter version of the happening tint; chats, past and archived trips keep the plain card. (Each trip a colour of its own, lighting up with use, is a later design of its own.)
