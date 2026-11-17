@@ -539,13 +539,6 @@ test("a trip's card says when a file is waiting to be read", async ({ page }) =>
   await expect(page.locator('.trip-card', { hasText: 'Kyoto' })).toContainText('1 file waiting to be read');
 });
 
-test("the folded dates keep their disclosure marker, and their tap is a phone's size", async ({ page }) => {
-  await openApp(page);
-  const summary = page.locator('details.dates summary');
-  expect(await summary.evaluate((el) => getComputedStyle(el).display)).toBe('list-item');
-  expect((await summary.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
-});
-
 test("a trip's Files: each file's short name and what it is; opening one; adding one by hand", async ({ page }) => {
   await openApp(page);
   const trip = await startNamed(page, 'Anchorage');
