@@ -124,8 +124,10 @@ test("nearby's rows from the probes' real answers: the nearest 40 by distance, f
     const body = await lighter(place);
     assert.equal(body.elements.length, p.n, place);
     const { run } = await setup();
-    const rows = (await run('nearby', p.at, (url) => (url.includes('overpass') ? body : noWiki))).split('\n').slice(1).map((r) => r.split('\t'));
-    assert.equal(rows.length, 40, place);
+    const lines = (await run('nearby', p.at, (url) => (url.includes('overpass') ? body : noWiki))).split('\n');
+    // The header and 40 rows; Sydney's answer, at Overpass's 400, then ends with the line saying it was cut (the next test).
+    assert.equal(lines.length, p.n === 400 ? 42 : 41, place);
+    const rows = lines.slice(1, 41).map((r) => r.split('\t'));
     assert.ok(rows.every((r) => r[5] === 'osm'), place);
     const meters = rows.map((r) => Number(r[2]));
     assert.deepEqual(meters, [...meters].sort((a, b) => a - b), `${place}: nearest first`);
@@ -157,6 +159,46 @@ test("nearby's rows from Tokyo's answer: the station building (a relation) first
   assert.match(out.split('\n')[1], /^東京駅丸の内駅舎\thistoric building\t99\t35\.6812\t139\.766\tosm\t/);
   assert.ok(body.elements.some((/** @type {any} */ e) => e.tags?.name === '甲州道中'));
   assert.ok(!out.includes('甲州道中'));
+});
+
+/** The line nearby ends its answer with when OpenStreetMap's answer stopped at its 400 (the query's `out center tags 400`). */
+const CUT = "OpenStreetMap's answer stopped at 400 places, not chosen by distance, so a nearer place may be missing. For the nearest, ask again with half the radius or less.";
+
+test("nearby says when OpenStreetMap's answer stopped at 400, counting what Overpass sent, last, beside the other endings; never at 399", async () => {
+  // Sydney's probe answer (LIGHTER): the 1000 m circle, cut at 400 nodes in id order, the Opera House (an outline) not among them.
+  const body = await lighter('sydney');
+  assert.equal(body.elements.length, 400);
+  const at = LIGHTER.sydney.at;
+  const { run, ws, trip } = await setup({ trip: true });
+  const wiki = { query: { geosearch: [{ title: 'Sydney Opera House', lat: -33.8568, lon: 151.2153, dist: 0 }] } };
+  const lines = (await run('nearby', at, (url) => (url.includes('overpass') ? body : wiki))).split('\n');
+  assert.equal(lines.length, 42);
+  assert.ok(lines.slice(1, 41).every((r) => r.split('\t').length === 7));
+  assert.equal(lines.at(-1), CUT);
+  // 399 of the same places: an answer that didn't reach the limit says nothing.
+  const whole = (await run('nearby', at, (url) => (url.includes('overpass') ? { ...body, elements: body.elements.slice(0, 399) } : wiki))).split('\n');
+  assert.equal(whole.length, 41);
+  assert.equal(whole.at(-1).split('\t').length, 7);
+  // What Overpass sent counts, not the rows kept: 400 elements, five of them with no tags (no row), are still cut.
+  const bare = body.elements.map((/** @type {any} */ e, /** @type {number} */ k) => (k < 5 ? { type: e.type, id: e.id, lat: e.lat, lon: e.lon } : e));
+  assert.equal((await run('nearby', at, (url) => (url.includes('overpass') ? { ...body, elements: bare } : wiki))).split('\n').at(-1), CUT);
+  // Wikipedia not answering, and no pack: OpenStreetMap's rows, then the line.
+  const down = (await run('nearby', at, (url) => (url.includes('overpass') ? body : new Response('', { status: 503 })))).split('\n');
+  assert.equal(down.length, 42);
+  assert.equal(down.at(-1), CUT);
+  // A pack whose area holds the point but not the circle fills in for Wikipedia, saying so; the cut line comes after, last.
+  const day = '2026-10-16T09:00:00.000Z';
+  await ws.write(/** @type {string} */ (trip), '/offline/osm/o1.json', JSON.stringify({ area: { points: [[at.lat, at.lng]], radius: 500 }, rows: [] }), { author: 'system' });
+  await ws.write(/** @type {string} */ (trip), '/offline/wikipedia/w1.json', JSON.stringify({ at: [at.lat, at.lng], radius: 10000, pages: [['Sydney Opera House', -33.8568, 151.2153, 'The Sydney Opera House is a performing arts centre in Sydney.']] }), { author: 'system' });
+  await ws.write(/** @type {string} */ (trip), '/offline/pack.json', JSON.stringify({ format: 1, key: 'k', at: day, failed: [], full: false, stopped: false, bytes: 700,
+    files: [{ id: 'o1', kind: 'osm', path: '/offline/osm/o1.json', bytes: 400, items: 0 }, { id: 'w1', kind: 'wikipedia', path: '/offline/wikipedia/w1.json', bytes: 300, items: 1 }], guides: [] }), { author: 'system' });
+  const filled = (await run('nearby', at, (url) => (url.includes('overpass') ? body : new Response('', { status: 503 })))).split('\n');
+  assert.equal(filled.length, 43);
+  assert.match(filled[1], /^Sydney Opera House\twikipedia article\t0\t/);
+  assert.deepEqual(filled.slice(-2), ["Wikipedia didn't answer, so its articles come from the offline pack (downloaded 2026-10-16).", CUT]);
+  // With the pack, an answer short of the limit ends as before.
+  assert.equal((await run('nearby', at, (url) => (url.includes('overpass') ? { ...body, elements: body.elements.slice(0, 399) } : new Response('', { status: 503 })))).split('\n').at(-1),
+    "Wikipedia didn't answer, so its articles come from the offline pack (downloaded 2026-10-16).");
 });
 
 /**
