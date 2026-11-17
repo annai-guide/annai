@@ -653,22 +653,22 @@ bgn4sv	ok	Shiori answers in the language you speak to her	Shioriは話しかけ�
 k4u05v	ok	The language you speak to her	話しかけた言語に合わせる	src/core/languages.js:362	
 cc69cl	ok	None picked: annai uses the browser’s language.	未選択の場合は、ブラウザの言語を使います。	src/core/languages.js:363	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
 1dyfzsg	ok	A simulation is already running.	シミュレーションはすでに実行中です。	src/core/live/live.js:307	
-157qf8n	ok	Flight {0} departs {1}, {2}	フライト{0}（{1}発、{2}）	src/core/live/plan-watches.js:139	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
-1tvx4k9	ok	Flight {0} departs {1}	フライト{0}（{1}発）	src/core/live/plan-watches.js:139	{0} = w.flight; {1} = time
-1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}、{2}）	src/core/live/plan-watches.js:140	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
-1wwrs1d	ok	{0} at {1}	{0}（{1}）	src/core/live/plan-watches.js:140	{0} = w.title; {1} = time; Note: an item in a few words: its title, then its time.
-ypynbt	ok	Leave soon: {0}.	そろそろ出発：{0}。	src/core/live/plan-watches.js:151	{0} = what
-1nq6h1n	ok	About {0} min by car.	車で約{0}分です。	src/core/live/plan-watches.js:152	{0} = num(say.minutes)
-1s9ayzz	ok	About {0} min on foot.	徒歩で約{0}分です。	src/core/live/plan-watches.js:152	{0} = num(say.minutes)
-osmwu5	ok	Leave in about {0} min: {1}.	約{0}分後に出発：{1}。	src/core/live/plan-watches.js:152	{0} = num(LEAVE_LEAD_MIN); {1} = what
-12cmqu6	ok	Running late: {0}.	遅れています：{0}。	src/core/live/plan-watches.js:153	{0} = what
-3qig1w	ok	About {0} min away.	到着まであと約{0}分です。	src/core/live/plan-watches.js:153	{0} = num(say.minutes)
-ub25px	ok	Planned now: {0}, at {1}.	今の予定：{0}（{1}）。	src/core/live/plan-watches.js:154	{0} = String(say.title); {1} = String(say.place); Note: label: value, the place in brackets.
-195jjr0	ok	{0}: {1}.	{0}：{1}。	src/core/live/plan-watches.js:155	{0} = String(say.place); {1} = String(say.title); Note: a place, then the plan item there.
-1yqg2at	ok	In {0} min: {1}.	あと{0}分：{1}。	src/core/live/plan-watches.js:156	{0} = num(COMING_UP_MIN); {1} = what
-9s8no9	ok	You've stopped somewhere that isn't on the itinerary.	旅程にない場所に立ち寄っています。	src/core/live/plan-watches.js:158	
-4lxlla	ok	Nothing more is on the itinerary.	旅程に残っている予定はありません。	src/core/live/plan-watches.js:159	
-yc6345	ok	Next on the itinerary: {0} at {1}.	次の予定：{0}（{1}）。	src/core/live/plan-watches.js:159	{0} = say.next.title; {1} = clock(say.next.at, say.next.tz)
+157qf8n	ok	Flight {0} departs {1}, {2}	フライト{0}（{1}発、{2}）	src/core/live/plan-watches.js:150	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
+1tvx4k9	ok	Flight {0} departs {1}	フライト{0}（{1}発）	src/core/live/plan-watches.js:150	{0} = w.flight; {1} = time
+1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}、{2}）	src/core/live/plan-watches.js:151	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
+1wwrs1d	ok	{0} at {1}	{0}（{1}）	src/core/live/plan-watches.js:151	{0} = w.title; {1} = time; Note: an item in a few words: its title, then its time.
+ypynbt	ok	Leave soon: {0}.	そろそろ出発：{0}。	src/core/live/plan-watches.js:162	{0} = what
+1nq6h1n	ok	About {0} min by car.	車で約{0}分です。	src/core/live/plan-watches.js:163	{0} = num(say.minutes)
+1s9ayzz	ok	About {0} min on foot.	徒歩で約{0}分です。	src/core/live/plan-watches.js:163	{0} = num(say.minutes)
+osmwu5	ok	Leave in about {0} min: {1}.	約{0}分後に出発：{1}。	src/core/live/plan-watches.js:163	{0} = num(say.left ?? LEAVE_LEAD_MIN); {1} = what
+12cmqu6	ok	Running late: {0}.	遅れています：{0}。	src/core/live/plan-watches.js:164	{0} = what
+3qig1w	ok	About {0} min away.	到着まであと約{0}分です。	src/core/live/plan-watches.js:164	{0} = num(say.minutes)
+ub25px	ok	Planned now: {0}, at {1}.	今の予定：{0}（{1}）。	src/core/live/plan-watches.js:165	{0} = String(say.title); {1} = String(say.place); Note: label: value, the place in brackets.
+195jjr0	ok	{0}: {1}.	{0}：{1}。	src/core/live/plan-watches.js:166	{0} = String(say.place); {1} = String(say.title); Note: a place, then the plan item there.
+1yqg2at	ok	In {0} min: {1}.	あと{0}分：{1}。	src/core/live/plan-watches.js:167	{0} = num(say.left ?? COMING_UP_MIN); {1} = what
+9s8no9	ok	You've stopped somewhere that isn't on the itinerary.	旅程にない場所に立ち寄っています。	src/core/live/plan-watches.js:169	
+4lxlla	ok	Nothing more is on the itinerary.	旅程に残っている予定はありません。	src/core/live/plan-watches.js:170	
+yc6345	ok	Next on the itinerary: {0} at {1}.	次の予定：{0}（{1}）。	src/core/live/plan-watches.js:171	{0} = say.next.title; {1} = say.next.later ? dayClock(say.next.at, say.next.tz) : clock(say.next.at, say.next.tz)
 1jok3pb	ok	A simulation is already running. Stop it first.	シミュレーションはすでに実行中です。先に停止してください。	src/core/live/sim-run.js:90	
 ujhqxv	ok	Untitled trip	名称未設定の旅	src/core/live/sim-run.js:237	Note: a new simulated trip's name when its itinerary has none, before " (simulation)" is added.
 1426icm	ok	That trip isn't on this device any more.	その旅はもうこの端末にありません。	src/core/live/sim-run.js:277	

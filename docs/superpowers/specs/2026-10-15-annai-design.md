@@ -963,7 +963,7 @@ When the app becomes visible:
 
 ### 11.5 Replanning, narration, offline pack
 
-- **Off-plan detection.** The user is far from the current item while it's scheduled, or lingers somewhere not on the plan. Either wakes Shiori, who:
+- **Off-plan detection.** The user is far from the current flexible item in its first hour (from 10 minutes after its start until its end or an hour after its start, whichever is first: a stay that runs overnight isn't "off plan" at dinner; 2026-11-16), or lingers somewhere not on the plan. Either wakes Shiori, who:
   - welcomes the detour
   - says what it costs
   - reshuffles flexible items while protecting fixed ones

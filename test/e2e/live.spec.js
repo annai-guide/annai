@@ -79,11 +79,13 @@ test("no model can be reached: annai shows the plan's reminder itself, and the c
     await writeRecords(page, trip, { write: { '/plan/tea.json': { id: 'tea', title: 'Tea at the inn', fixed: true, start: { at: plus(start, 16), tz: 'UTC' } } } });
     await page.reload(); // written outside the app's own files layer: it reads the plan again as it starts
     await expect(page.locator('main.view > *')).toBeVisible(FIRST_DRAW);
-    await page.clock.fastForward(90_000); // the plan's "coming up" comes 15 minutes before
-    await expect(page.locator('.notice', { hasText: 'Reminder' })).toContainText('In 15 min: Tea at the inn at');
+    // The plan's "coming up" is due 15 minutes before the start, at +1 min; the clock jumps to +4 min, so it fires late and counts the 12 minutes left
+    // (11 if the page ran 30 s or more on its own clock before), as the phone's own notification does.
+    await page.clock.fastForward(240_000);
+    await expect(page.locator('.notice', { hasText: 'Reminder' })).toContainText(/In 1[12] min: Tea at the inn at/);
     await expect(page.locator('.notice', { hasText: "Shiori can't reach her model" })).toBeVisible();
     await page.goto('/#/talk');
-    await expect(page.locator('.convo .line-reminder').filter({ hasText: 'annai · shown' })).toContainText('In 15 min: Tea at the inn at');
+    await expect(page.locator('.convo .line-reminder').filter({ hasText: 'annai · shown' })).toContainText(/In 1[12] min: Tea at the inn at/);
   } finally {
     await llm.stop();
   }
