@@ -198,8 +198,8 @@ export function traceSummary(e, { costs: perWake, names = (n) => n } = {}) {
   const line = (...parts) => parts.filter((x) => x !== null && x !== undefined && x !== '' && x !== false).join(' · ');
   if (e.type.startsWith('file.')) return d.path ?? '';
   if (e.type === 'wake') {
-    // The model's own wake reasons are kept in English; the user's two are the screens' words.
-    const why = (d.reasons ?? []).map((/** @type {any} */ r) => (r.kind === 'user' ? t`the user wrote` : r.kind === 'choice' ? t`the user tapped a choice` : r.text)).join('; ');
+    // The model's own wake reasons are kept in English; the user's two are the screens' words; a turn's take-up of a hand-over (loop.js join) has none.
+    const why = d.meanwhile && 'handover' in d ? t`takes up the files handed over` : (d.reasons ?? []).map((/** @type {any} */ r) => (r.kind === 'user' ? t`the user wrote` : r.kind === 'choice' ? t`the user tapped a choice` : r.text)).join('; ');
     const c = perWake?.get(d.id);
     return `${halfOf(d)}${c !== undefined ? `${why} · ${formatCost(c)}` : why}`;
   }

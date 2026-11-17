@@ -1,5 +1,5 @@
 {
-  "build": "fba85a5941c1",
+  "build": "82ddd39db1b7",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -43,7 +43,7 @@
     "/src/core/agent/instructions.js": "c6ce760146d1",
     "/src/core/agent/listen.js": "ace64ee6f6c6",
     "/src/core/agent/log.js": "be1f6eedd6f8",
-    "/src/core/agent/loop.js": "20446cb15431",
+    "/src/core/agent/loop.js": "836e63334b53",
     "/src/core/agent/reading.js": "dfcf146e5005",
     "/src/core/agent/personalities.js": "20c2b7d8981a",
     "/src/core/agent/her-instructions.js": "b90fb982b678",
@@ -52,7 +52,7 @@
     "/src/core/agent/spoken-yes.js": "066a5f5d247b",
     "/src/core/agent/net.js": "760427139644",
     "/src/core/agent/tools.js": "616bb58c5d19",
-    "/src/core/agent/trip-tools.js": "f50786304b1a",
+    "/src/core/agent/trip-tools.js": "291e37755242",
     "/src/core/agent/transcript.js": "3095c60a16bd",
     "/src/core/agent/via.js": "557657aae006",
     "/src/core/agent/warmth.js": "7f1be5368415",
@@ -272,9 +272,9 @@
     "/src/ui/screens/simulate.js": "16dddd363254",
     "/src/ui/screens/shiori.js": "6296aaccc836",
     "/src/ui/screens/sees.js": "6a674fc473ae",
-    "/src/ui/screens/talk.js": "a1c61f7ec2f1",
+    "/src/ui/screens/talk.js": "5bdf5fca18b5",
     "/src/ui/screens/tools.js": "52d6c4d56a08",
-    "/src/ui/screens/trace.js": "c6942f4b451f",
+    "/src/ui/screens/trace.js": "9e1b879ea0a0",
     "/src/ui/screens/trip.js": "5e463aa96888",
     "/src/ui/screens/trips.js": "c1c4731a64f1",
     "/src/ui/screens/updates.js": "663857e51861",
@@ -299,8 +299,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "5b4bdf8036a2",
-    "/l10n/zh-Hans.json": "dcfe25f76457",
-    "/l10n/zh-Hant.json": "198e6df843a2"
+    "/l10n/ja.json": "6654f1e0e1b1",
+    "/l10n/zh-Hans.json": "d106b4652760",
+    "/l10n/zh-Hant.json": "62101342958f"
   }
 }

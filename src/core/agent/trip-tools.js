@@ -246,7 +246,7 @@ export function tripTools(app) {
     return wakes;
   };
   /**
-   * Says in the call's conversation where the files went, with her turn's wake as her lines have it (the Undo line tells her turn's records by it).
+   * Says in the call's conversation where the files went, with her turn's wake as her lines have it (the Undo line reads it now only on a turn's end and error records; an older page tells these move records by it).
    * @param {string} to @param {boolean} started @param {number} count @param {ToolCall} call
    */
   const moved = (to, started, count, call) => logIn(call, { type: 'handover.moved', actor: 'shiori', data: { handover: call.handover ?? null, wake: call.wake, to, started, count } });

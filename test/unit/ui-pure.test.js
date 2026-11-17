@@ -176,6 +176,8 @@ test("the trace's lines for her live voice (the pops fix): the sound's rate and 
 test("the trace's one-line summaries say what Shiori did, sent and read", () => {
   const e = (/** @type {string} */ type, /** @type {any} */ data) => ({ type, data, ts: 0, seq: 1, actor: 'x', scope: 's' });
   assert.equal(traceSummary(e('wake', { id: 'w-1', reasons: [{ kind: 'user', text: 'typed' }, { kind: 'file', text: 'A new file' }] }), { costs: new Map([['w-1', 0.0123]]) }), `the user wrote; A new file · ${formatCost(0.0123)}`);
+  // Where a running turn takes a hand-over up (loop.js join): a wake record of the turn with the hand-over and no reasons.
+  assert.equal(traceSummary(e('wake', { id: 'w-1', half: 'kokoro', meanwhile: true, reasons: [], handover: 'h-1' })), 'Kokoro · takes up the files handed over');
   assert.equal(traceSummary(e('msg.user', { text: 'Where should we eat?' })), 'Where should we eat?');
   assert.equal(traceSummary(e('out.speak', { text: 'Nepenthe.' })), 'Nepenthe.');
   assert.equal(traceSummary(e('out.show', { card: { title: 'Dinner', text: 'At 6:30' } })), 'Dinner');
