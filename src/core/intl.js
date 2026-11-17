@@ -16,11 +16,11 @@ function make(Ctor, options = {}) {
   return f;
 }
 
-/** A full stop at a text's end (any closing quotes or brackets after it): a sentence that ends there. */
-const ENDED = /[。．！？!?.][)\]）」』"'”’]*$/;
+/** A full stop or an ellipsis at a text's end (any closing quotes or brackets after it): a sentence that ends there. */
+const ENDED = /[。．！？!?.…][)\]）」』"'”’]*$/;
 /**
  * Sentences side by side, the empty left out: a message, so Chinese and Japanese drop the space. A part that doesn't end in a full stop
- * (a plugin's error, say) keeps a space after it in every language, so the next sentence doesn't run into it. @param {...string} parts
+ * or an ellipsis (a plugin's error, say) keeps a space after it in every language, so the next sentence doesn't run into it. @param {...string} parts
  */
 export function sentences(...parts) {
   const some = parts.filter(Boolean);
@@ -29,13 +29,14 @@ export function sentences(...parts) {
 /** What sentences() puts between two: a space, or nothing in Chinese and Japanese; for a sentence drawn apart, as one in bold. */
 export const sentenceGap = () => sentences('.', '.').replace(/[.\u2068\u2069]/g, '');
 /**
- * A text as a sentence of its own, ended as sentences() reads an end: a full stop after it unless it ends in one or in an ellipsis,
- * so the next sentence is joined as after any other; '' for no words, so no empty sentence is left. A plugin's error is no sentence.
- * @param {string} text
+ * A text as a sentence of its own, ended as sentences() reads an end: a full stop after it (a 。 on Japanese and Chinese screens, so no
+ * ASCII stop is left before a Japanese sentence or glued to a Latin name after it) unless it ends as one does (ENDED), so the
+ * next sentence is joined as after any other; '' for no words, so no empty sentence is left. A plugin's error is no sentence.
+ * @param {string} text @param {boolean} [english] annai's English for a model and the log, whatever the screens' language: a "." always
  */
-export function asSentence(text) {
+export function asSentence(text, english = false) {
   const s = text.trimEnd();
-  return !s || ENDED.test(s) || s.endsWith('…') ? s : `${s}.`;
+  return !s || ENDED.test(s) ? s : `${s}${!english && /^(ja|zh)(-|$)/.test(lang()) ? '。' : '.'}`;
 }
 
 /** A number the way this language writes it. @param {number} n @param {Intl.NumberFormatOptions} [options] */
