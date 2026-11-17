@@ -77,8 +77,7 @@ test("a recap that can't be written says why and what to do; with no model the b
     const card = page.locator('.notice', { hasText: "The recap wasn't written" });
     await expect(card).toContainText('Check Settings → Models, then try again.');
     // Each model that failed, by its provider's name first (the user, 2026-11-16).
-    await expect(card).toContainText('Writer / u-model: ');
-    await expect(card).toContainText('Stand-in / b-model: ');
+    await expect(card).toContainText('No model could write it. Writer / u-model: ');
     await expect(page.getByRole('button', { name: 'Write the recap' })).toBeEnabled();
   } finally {
     await llm.stop();
