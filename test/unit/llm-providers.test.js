@@ -494,10 +494,11 @@ test('a started data-only provider plugin registers its description, and a newer
 });
 
 /**
- * Watches a workspace for the first thing every name-taker does, listing the providers (readConfig), and lets the work in memory that
- * can run, run. All of it is promises (no timer and no I/O in the memory store or the Workspace), so one turn of the event loop ends
- * only once every chain has come to a wait, however slow the host: a name-taker that is not held back by the one before it has read by
- * then, and one that is has not (a fixed wait was a guess at how long that takes). The test after the helper checks that premise.
+ * Watches a workspace for the first thing a sync does, and what every name-taker does before it works out a name: listing the providers
+ * (readConfig), and lets the work in memory that can run, run. All of it is promises (no timer and no I/O in the memory store or the
+ * Workspace), so one turn of the event loop ends only once every chain has come to a wait, however slow the host: a name-taker that is
+ * not held back by the one before it has read by then, and one that is has not (a fixed wait was a guess at how long that takes). The
+ * test after the helper checks that premise.
  * @param {import('../../src/core/workspace.js').Workspace} ws
  */
 function watchReads(ws) {

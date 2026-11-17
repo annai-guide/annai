@@ -209,7 +209,6 @@ body.home .notices.scrolls { overscroll-behavior-y: contain; }
 textarea.mono { font-family: var(--f-mono); font-size: 13px; }
 .listed { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 50vh; overflow: auto; }
 .listed li { justify-content: space-between; }
-.listed li .error { flex-basis: 100%; } /* an Add's refusal, on a line under its row */
 
 /* Try this model, and test results */
 .talk { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }

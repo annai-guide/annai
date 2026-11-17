@@ -61,34 +61,82 @@ test("a double tap on a model's Add adds it once, by its id and from the list", 
   }
 });
 
-test("a listed Add that fails, on the last row of a long list, says why where the traveller is looking, and can be tapped again", async ({ page }) => {
+/**
+ * A llama.cpp provider with a 40-model list shown, then its records removed under the open list, so every Add is refused ("That provider
+ * no longer exists."). The list shows up to 50 rows in a box of its own, 50vh tall, so a row can sit anywhere on the screen, behind the dock too.
+ * @param {import('@playwright/test').Page} page @param {{ origin: string }} s @param {string} key
+ * @returns {Promise<import('@playwright/test').Locator>} the page's Chat part
+ */
+async function refusedList(page, s, key) {
+  const chat = await addLlamaCpp(page, s, key);
+  await chat.getByRole('button', { name: 'Fetch model list' }).click();
+  await expect(chat.getByText('40 models.')).toBeVisible();
+  await page.evaluate(async () => {
+    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+    const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+    const { readConfig, removeProviderRecords } = await import(/** @type {string} */ ('/src/core/llm/config.js'));
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    for (const id of Object.keys((await readConfig(ws)).providers)) await removeProviderRecords(ws, store, id);
+    store.close();
+  });
+  // A toast lets taps through (pointer-events: none), so hit-testing skips it: let it take them, to see what is on top at its centre.
+  await page.locator('.toasts').evaluate((el) => { el.style.pointerEvents = 'auto'; });
+  return chat;
+}
+
+/** The refusal's words are in a toast the traveller can see (above the dock, on top), and nowhere in the page's Chat part. @param {import('@playwright/test').Page} page @param {import('@playwright/test').Locator} chat */
+async function expectRefusalToast(page, chat) {
+  const words = 'That provider no longer exists.';
+  const toast = page.locator('.toasts .toast', { hasText: words });
+  await expect(toast).toBeInViewport({ ratio: 1 });
+  expect(await toast.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+  }), 'the toast is on top at its centre, not covered by the dock').toBe(true);
+  await expect(chat.getByText(words), 'said in a toast, not in the models\' status line or a row').toHaveCount(0);
+}
+
+test("a listed Add that fails, on the last row of a long list, says why in a toast, and can be tapped again", async ({ page }) => {
   const key = 'sk-refused-stand-in-0123';
-  // The list shows up to 50 rows in a box of its own, so the last row's refusal can be out of sight above or below it.
   const s = await startFakeServer({
     flavour: 'llamacpp', key,
     models: Array.from({ length: 40 }, (_, i) => ({ id: `long-list-${String(i).padStart(2, '0')}`, object: 'model', owned_by: 'llamacpp' })),
   });
   try {
-    const chat = await addLlamaCpp(page, s, key);
-    await chat.getByRole('button', { name: 'Fetch model list' }).click();
-    await expect(chat.getByText('40 models.')).toBeVisible();
-    // Its provider gone while the list was shown.
-    await page.evaluate(async () => {
-      const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
-      const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
-      const { readConfig, removeProviderRecords } = await import(/** @type {string} */ ('/src/core/llm/config.js'));
-      const store = await createIdbStore();
-      const ws = new Workspace(store);
-      for (const id of Object.keys((await readConfig(ws)).providers)) await removeProviderRecords(ws, store, id);
-      store.close();
-    });
+    const chat = await refusedList(page, s, key);
     const last = chat.getByRole('button', { name: 'Add long-list-39' });
     await last.scrollIntoViewIfNeeded();
     await last.click();
-    const row = chat.locator('ul.listed li', { hasText: 'long-list-39' });
-    await expect(row.getByText('That provider no longer exists.')).toBeInViewport();
-    await expect(chat.getByText('That provider no longer exists.'), 'said in the row, not in the models\' status line above the list').toHaveCount(1);
+    await expectRefusalToast(page, chat);
     await expect(last).toBeEnabled();
+  } finally {
+    await s.stop();
+  }
+});
+
+test("a listed Add that fails, on a row just above the dock, says why in a toast the dock does not cover", async ({ page }) => {
+  const key = 'sk-refused-near-dock-0123';
+  const s = await startFakeServer({
+    flavour: 'llamacpp', key,
+    models: Array.from({ length: 40 }, (_, i) => ({ id: `long-list-${String(i).padStart(2, '0')}`, object: 'model', owned_by: 'llamacpp' })),
+  });
+  try {
+    const chat = await refusedList(page, s, key);
+    const near = chat.getByRole('button', { name: 'Add long-list-05' });
+    await near.scrollIntoViewIfNeeded();
+    // The page scrolled so the button's bottom edge is 4 px above the dock's top: a line in the row, 8 px under it, would be behind the dock.
+    const gap = await near.evaluate((b) => {
+      const dock = /** @type {HTMLElement} */ (document.querySelector('.dock:not(.seat)'));
+      window.scrollBy(0, b.getBoundingClientRect().bottom - (dock.getBoundingClientRect().top - 4));
+      return dock.getBoundingClientRect().top - b.getBoundingClientRect().bottom;
+    });
+    expect(gap, 'the row is set just above the dock').toBeGreaterThanOrEqual(0);
+    expect(gap).toBeLessThanOrEqual(8);
+    // Tapped without Playwright's click, which moved the page here (measured: 194 px, Chromium) where a finger's tap moves nothing.
+    await near.dispatchEvent('click');
+    await expectRefusalToast(page, chat);
+    await expect(near).toBeEnabled();
   } finally {
     await s.stop();
   }

@@ -2157,16 +2157,16 @@ pnxisg	ok	Add a model by id	按 ID 添加模型	src/ui/screens/provider.js:533
 uizt0x	ok	{0} · loaded	{0} · 已加载	src/ui/screens/provider.js:557	{0} = named
 1w6mxym	ok	Already added, on {0}	已添加到 {0}	src/ui/screens/provider.js:558	{0} = on
 l7fn8k	ok	Already added, on another provider	已添加到其他提供商	src/ui/screens/provider.js:558	
-19ai2z0	ok	Filter the list	筛选列表	src/ui/screens/provider.js:581	
-11pl9jr	ok	Use the free models	使用免费模型	src/ui/screens/provider.js:589	
-vam64u	ok	Use the recommended models	使用推荐模型	src/ui/screens/provider.js:589	
-1b2yx8m	ok	Suggested models	推荐模型	src/ui/screens/provider.js:590	
-y5yzjn	ok	{0} suggests a model for each role. Its speech models then go ahead of Phone dictation and Browser voice, which are free, so any that cost money are tried before them.	{0} 为每个角色推荐了一个模型。使用推荐后，它的语音模型会排在免费的手机语音输入和浏览器声音之前，所以会优先尝试收费的模型。	src/ui/screens/provider.js:591	{0} = src.name; Note: 手机语音输入 and 浏览器声音 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
-1x5hwmk	ok	{0} suggests a model for each role.	{0} 为每个角色推荐了一个模型。	src/ui/screens/provider.js:592	{0} = src.name
-1iffu2j	ok	{0} switched on.	已开启 {0}。	src/ui/screens/provider.js:599	{0} = n
-1szeqxt	ok	Roles updated.	已更新角色。	src/ui/screens/provider.js:599	
-1egvjs1	ok	{0} couldn't be switched on: {1}	{0} 无法开启：{1}	src/ui/screens/provider.js:600	{0} = f.name; {1} = messageOf(f.error)
-wlh055	ok	Use the {0} models	使用 {0} 模型	src/ui/screens/provider.js:606	{0} = which
+19ai2z0	ok	Filter the list	筛选列表	src/ui/screens/provider.js:578	
+11pl9jr	ok	Use the free models	使用免费模型	src/ui/screens/provider.js:586	
+vam64u	ok	Use the recommended models	使用推荐模型	src/ui/screens/provider.js:586	
+1b2yx8m	ok	Suggested models	推荐模型	src/ui/screens/provider.js:587	
+y5yzjn	ok	{0} suggests a model for each role. Its speech models then go ahead of Phone dictation and Browser voice, which are free, so any that cost money are tried before them.	{0} 为每个角色推荐了一个模型。使用推荐后，它的语音模型会排在免费的手机语音输入和浏览器声音之前，所以会优先尝试收费的模型。	src/ui/screens/provider.js:588	{0} = src.name; Note: 手机语音输入 and 浏览器声音 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
+1x5hwmk	ok	{0} suggests a model for each role.	{0} 为每个角色推荐了一个模型。	src/ui/screens/provider.js:589	{0} = src.name
+1iffu2j	ok	{0} switched on.	已开启 {0}。	src/ui/screens/provider.js:596	{0} = n
+1szeqxt	ok	Roles updated.	已更新角色。	src/ui/screens/provider.js:596	
+1egvjs1	ok	{0} couldn't be switched on: {1}	{0} 无法开启：{1}	src/ui/screens/provider.js:597	{0} = f.name; {1} = messageOf(f.error)
+wlh055	ok	Use the {0} models	使用 {0} 模型	src/ui/screens/provider.js:603	{0} = which
 1qocxbg	ok	Writing it: {0} is reading the conversation. This can take a minute.	撰写中：{0} 正在读取对话，可能需要一分钟。	src/ui/screens/recap.js:33	{0} = names(m.name)
 1lrfe9k	ok	Write the recap	撰写回顾	src/ui/screens/recap.js:35	
 h6huep	ok	Write it again	重新撰写	src/ui/screens/recap.js:35	
