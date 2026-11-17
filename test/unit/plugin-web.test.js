@@ -387,8 +387,9 @@ test('S9: when every service that ran failed by timeout or network, nobody climb
 
 test('S10: a search ends by its deadline, with a reserve kept for the floor, which answers', async () => {
   const was = [CHAIN.ms, CHAIN.reserve];
-  // In seconds, not a fraction of one: an event-loop stall of a host loaded far past its CPUs (200 to 400 ms, docs/limitations.md) ate a
-  // 150 ms reserve, and the floor was left out. The stuck provider gets 2.5 s; the floor's 1.5 s holds its 100 ms least room past three such stalls.
+  // In seconds, not a fraction of one: on a host loaded far past its CPUs (load about 300 on 32 CPUs) the event loop stalled for 200 to 400 ms, a
+  // stall ate the old 150 ms reserve, and the floor was left out (this test failed once in a real `npm run check` at that load). The stuck provider
+  // gets 2.5 s; the floor's 1.5 s holds its 100 ms least room past three such stalls.
   CHAIN.ms = 4_000;
   CHAIN.reserve = 1_500;
   try {
@@ -398,8 +399,9 @@ test('S10: a search ends by its deadline, with a reserve kept for the floor, whi
     const out = await t.run('web_search', { query: 'nepenthe hours' }, services);
     assert.match(out, /Wikivoyage/);
     const took = Date.now() - started;
-    // At least the stuck provider's 2.5 s, less the moments before it was asked (it was asked, and waited for); at most the deadline and 2 s of
-    // stalls, where a search that waited on the provider would take its 60 s, or the 25 s step limit (STEP_MS).
+    // At least the stuck provider's 2.5 s (the deadline is fixed when the search starts, so it is given the 4 s less the floor's 1.5 s whenever it is
+    // asked; the 100 ms under that is slack); at most the deadline and 2 s of stalls, where a search that waited on the provider would take its
+    // 60 s, or the 25 s step limit (STEP_MS).
     assert.ok(took >= 2_400 && took < 6_000, `took ${took} ms`);
   } finally {
     [CHAIN.ms, CHAIN.reserve] = was;

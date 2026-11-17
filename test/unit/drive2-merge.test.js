@@ -149,9 +149,10 @@ test('Auto, Classic: a tap with Voice.open refusing stuck sound lets the hold go
 });
 
 test('Auto, Realtime: a tap whose microphone can\'t start on stuck sound lets the hold go when the session closes', async () => {
-  const k = await liveKit([{ heard: 'hello' }], { voice: { mode: 'auto' } });
+  // The quiet spell is what closes this session: 1 s (100 s at the kit's 10 ms a second), long enough to see it open past an event-loop stall of a
+  // loaded host (up to 400 ms), and well inside the 3 s each wait below is given; the kit's 300 s would be 3 s, at the bound.
+  const k = await liveKit([{ heard: 'hello' }], { voice: { mode: 'auto', closeAfterSeconds: 100 } });
   try {
-    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 0.2 } });
     await k.voice.unlock();
     k.platform.mic.open = stuckMic(k);
     assert.equal(k.agent.tap(), 'listening');

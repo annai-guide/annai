@@ -168,8 +168,9 @@ test('item 4 (probe H): a tap that cuts Koe off tells the provider how much of h
 });
 
 test('item 5 (probe L): a server that drops every session it resumes is given up on after three tries with no turn between them, waiting longer each time; Koe goes on without it', async () => {
-  // The session's clock is the real one: at the kit's 10 ms a second its quiet spell was the default's 30 s, 300 ms from each resume (the kit's is 300 s
-  // now), and a starved CPU's test, that much later to drop the session again, found it closed for quiet (no resume to count).
+  // The session's clock is the real one, kept from when the kit's 10 ms a second made the default's 30 s quiet spell 300 ms from each resume, and a
+  // starved CPU's test, that much later to drop the session again, found it closed for quiet (no resume to count); the kit's spell is 300 s now,
+  // on this clock too.
   const k = await liveKit([{ said: 'Hi.', audio: tone(0.1), handle: 'h' }], { agent: { secondMs: 1000 } });
   try {
     await k.voice.unlock();
@@ -193,7 +194,8 @@ test('item 5 (probe L): a server that drops every session it resumes is given up
 });
 
 test('item 14 (K6): a drop with no resume handle (OpenAI has none) still goes on, in a fresh session', async () => {
-  // The session's clock is the real one, as item 5's: at the kit's 10 ms a second its quiet spell was 300 ms from her line, and the drop came after it.
+  // The session's clock is the real one, as item 5's, kept from when the kit's 10 ms a second made the quiet spell 300 ms from her line, and the drop
+  // came after it; the kit's spell is 300 s now, on this clock too.
   const k = await liveKit([{ said: 'Hi.', audio: tone(0.1) }, { said: 'Still here.', audio: tone(0.1) }], { live: { type: 'openai-realtime' }, agent: { secondMs: 1000 } });
   try {
     k.agent.send('Hello');
@@ -409,11 +411,13 @@ test("item 13: the quiet spell doesn't run out while Kokoro works on Koe's quest
     { heard: 'Is Nepenthe open?', said: "I'm checking.", audio: tone(0.1), tool: { name: 'tell_kokoro', args: { text: 'Is Nepenthe open now?' } } },
     { said: "It's open until ten tonight.", audio: tone(0.1) },
   ], {
-    // The quiet spell is 1 s here (100 s at the kit's 10 ms a second), shorter than Kokoro's 2 s, so it is Kokoro's work that holds the session;
-    // and longer than the user's 0.3 s before speaking, with room for an event-loop stall of a loaded host (up to 400 ms), which the default's
-    // 300 ms (30 s) wasn't.
+    // The quiet spell is 1 s here (100 s at the kit's 10 ms a second): longer than the user's 0.3 s before speaking, with room for an event-loop
+    // stall of a loaded host (up to 400 ms), which the default's 300 ms (30 s) wasn't. It runs out first at about 1 s, while Koe's own answer
+    // (held 1.2 s after the user's turn ends, half-duplex) is still pending, which re-arms it; then at about 2.2 s, when that answer has been
+    // said and only Kokoro's work is left. Kokoro's 3.5 s outlasts that by 1.3 s, so it is `asked()` that holds the session (with 2 s, Koe's
+    // answer alone held it, and the test passed with `asked()` removed).
     voice: { closeAfterSeconds: 100 },
-    kokoro: [{ rules: [{ match: 'Koe (asks|notes)', reply: { delayMs: 2_000, toolCalls: [{ name: 'tell_koe', input: { text: 'Open until 22:00 (nepenthe.com).' } }, { name: 'sleep', input: {} }] } }, { match: '.', reply: sleep }] }],
+    kokoro: [{ rules: [{ match: 'Koe (asks|notes)', reply: { delayMs: 3_500, toolCalls: [{ name: 'tell_koe', input: { text: 'Open until 22:00 (nepenthe.com).' } }, { name: 'sleep', input: {} }] } }, { match: '.', reply: sleep }] }],
   });
   try {
     k.agent.tap();
