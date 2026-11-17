@@ -136,9 +136,12 @@ export function planWatches(items, bookings, { fallbackTz }) {
         // arrives) is carried there: it gets neither.
         const by = flight ? x.at - AIRPORT_EARLY_MIN * MIN : x.at;
         if (!(carrier && landed !== null && by < landed)) {
-          const go = { ...there, by, late: flight ? x.at - AIRPORT_LATE_MIN * MIN : x.at, after: landed };
+          const late = flight ? x.at - AIRPORT_LATE_MIN * MIN : x.at;
+          const go = { ...there, by, late, after: landed };
           add('leave', `Leave soon: ${base.what}.`, { event: 'leave', what: short }, { ...go, from: prev });
-          add('late', `Running late: ${base.what}.`, { event: 'late', what: short }, go);
+          // until: running late is checked for an hour after its line, and a flight's or train's only until it departs: by then the
+          // traveller is on it or has missed it (on a train at 07:10 it said "Running late ... About 49 min away": the design check's A2).
+          add('late', `Running late: ${base.what}.`, { event: 'late', what: short }, { ...go, until: carrier ? x.at : late + 60 * MIN });
         }
       }
       add('arrived', `${place.name}: ${title}.${notes ? ` ${notes}` : ''}`, { event: 'arrived', title, place: place.name, ...(notes ? { notes } : {}) }, there);
@@ -341,7 +344,7 @@ const CHECK = {
   },
   late(w, m) {
     const fix = now(m);
-    if (!fix || m.fired(`plan:${w.item}:arrived`) || m.now < Math.max(w.late - WINDOW_MIN * MIN, w.after ?? -Infinity) || m.now > w.late + 60 * MIN) return null;
+    if (!fix || m.fired(`plan:${w.item}:arrived`) || m.now < Math.max(w.late - WINDOW_MIN * MIN, w.after ?? -Infinity) || m.now > w.until) return null;
     const km = meters(fix, w.place) / 1000;
     if (!drive(km, w)) return null;
     const t = trip(km, m.activity);

@@ -711,3 +711,16 @@ test("a stay whose check-in sorts before the flight that takes the traveller the
   assert.equal(tour.from, null);
   assert.equal(PLAN.next?.(tour, moment({ now: ny('23:30') }), {}), ny('08:30', '2026-11-28'));
 });
+
+test("a train's running late ends when it departs: on board at 07:10, 33 km down the line, it said \"Running late: Coast train at 07:00, Home station. About 49 min away.\" (the design check's A2)", () => {
+  const ws = planWatches([{ path: '/plan/train.json', item: { title: 'Coast train', kind: 'rail', fixed: true, start: { at: iso('07:00'), tz: LA }, end: { at: iso('09:00'), tz: LA }, place: { name: 'Home station', ...MONTEREY } } }], new Map(), { fallbackTz: LA });
+  const late = /** @type {any} */ (ws.find((w) => w.id === 'plan:train:late')).when;
+  const aboard = off(MONTEREY, 0, -33_000);
+  // Before it departs, 33 km from the station (49 min by car): late, as before.
+  assert.equal(PLAN.check(late, here(aboard, at('06:59')), {})?.fallback, 'Running late: Coast train at 07:00, Home station. About 49 min away.');
+  // Once it has departed, they are on it or have missed it: nothing, where it said running late for an hour.
+  for (const t of ['07:00:01', '07:10', '07:59']) assert.equal(PLAN.check(late, here(aboard, at(t)), {}), null, t);
+  // Anything else keeps its hour: lunch at 12:00, 21 km away at 12:30, is still late.
+  assert.match(String(PLAN.check(find('plan:nepenthe:late').when, here(BIXBY, at('12:30')), {})?.text), /so about 66 min late$/);
+  assert.equal(PLAN.check(find('plan:nepenthe:late').when, here(BIXBY, at('13:00:01')), {}), null);
+});
