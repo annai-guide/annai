@@ -119,6 +119,7 @@ export function planWatches(items, bookings, { fallbackTz }) {
       what: whatText(short), short,
     };
     const notes = typeof it.notes === 'string' && it.notes.trim() ? it.notes.trim() : '';
+    const before = prev; // the stop before this item, which its own place replaces
     /** @param {string} event @param {string} fallback @param {PlanSay} say @param {Record<string, any>} [extra] */
     const add = (event, fallback, say, extra = {}) => out.push({ id: `plan:${base.item}:${event}`, owner: 'system', repeat: false, fallback, say, when: { ...base, event, ...extra } });
     // fallback: annai's English, for Shiori; say: the data the user's words are made from.
@@ -143,7 +144,9 @@ export function planWatches(items, bookings, { fallbackTz }) {
       add('arrived', `${place.name}: ${title}.${notes ? ` ${notes}` : ''}`, { event: 'arrived', title, place: place.name, ...(notes ? { notes } : {}) }, there);
       // Every place is the stop before the next item, a stay's too: with no position, it is the best guess of where the traveller is (the
       // flight home after a stay 100 km from the airport counts from the stay; with the stay left out it said "Leave soon" 1 h 44 min late).
-      // One a flight away from that item is none (leaving()): a check-in sorts between two flights, 2475 km from the second.
+      // That holds whether the check-in sorts after the flight that takes the traveller there or before it, as one timed before the landing
+      // does (the carrier rule below keeps it). One a flight away from that item is none (leaving()): a check-in sorts between two flights,
+      // 2475 km from the second.
       prev = place;
       places.push(place);
     } else if (base.fixed) {
@@ -151,8 +154,11 @@ export function planWatches(items, bookings, { fallbackTz }) {
     }
     // A flight or a train carries the traveller: what comes after it doesn't count from its place, where it leaves from, and a fixed
     // one waits for it to arrive (its end, else its start). A flexible one may move: it holds nothing back (the second opinion's N2).
+    // A stop before it a flight away from where it leaves is ahead of it, not behind, and stays the stop before: a check-in at 16:00
+    // where the flight lands at 22:58, or between a flight in and the flight on (the design check's A1: the morning after counted from
+    // nothing, 41 min late, and the flight home 1 h 44 min). With no place to leave from, there is nothing to measure: none.
     if (carrier) {
-      prev = null;
+      prev = place && before && far(before, { place }) ? before : null;
       if (base.fixed) landed = Math.max(landed ?? -Infinity, base.end ?? base.at);
     }
   }

@@ -658,3 +658,56 @@ test("a stay is the stop before what comes after it, within a day's drive: the f
   ]), new Map(), { fallbackTz: LA });
   assert.equal(PLAN.next?.(/** @type {any} */ (trip.find((w) => w.id === 'plan:dinner:leave')).when, moment({ now: at('08:00') }), {}), at('18:33'));
 });
+
+/**
+ * The traveller's stay at the destination, 3300 km from home, and what comes after the flight there, with no position near (the phone
+ * closed since landing, or GPS off): a tour the morning after, 40 km from the stay (56 min by car); or, with nothing between, the flight
+ * home three days on from an airport 100 km from it (119 min). Made-up places. @param {any[]} flights the flights there, with the
+ * check-in sorted among them @param {'tour' | 'home'} next
+ */
+const stayedAfter = (flights, next) => planWatches(/** @type {any} */ ([
+  ...flights,
+  { path: '/plan/inn.json', item: { title: 'Check in: Harbor Inn', fixed: true, start: { at: '2026-11-27T16:00:00-05:00', tz: NY }, place: { name: 'Harbor Inn', ...FAR }, booking: '/trip/bookings/inn.json' } },
+  next === 'tour'
+    ? { path: '/plan/tour.json', item: { title: 'Lighthouse tour', fixed: true, start: { at: '2026-11-28T09:00:00-05:00', tz: NY }, place: { name: 'Old Lighthouse', ...off(FAR, 0, 40_000) } } }
+    : { path: '/plan/home.json', item: { title: 'Flight home', kind: 'flight', fixed: true, start: { at: '2026-11-30T14:05:00-05:00', tz: NY }, place: { name: 'Home airport', ...off(FAR, 0, -100_000) } } },
+]), INN, { fallbackTz: LA });
+
+test("a stay whose check-in sorts before the flight that takes the traveller there is still the stop before what comes after it (the design check's A1: the tour's reminder came 41 min late, the flight home's 1 h 44 min)", () => {
+  const SFO = { lat: 37.6213, lng: -122.379 };
+  const HUB = off(FAR, 0, 2_475_000); // a flight away from the stay
+  const shapes = /** @type {[string, any[]][]} */ ([
+    // One flight that leaves after the check-in's time there: 14:00 in California is 17:00 at the stay, landing 22:58.
+    ['a flight in that leaves after the check-in time', [
+      { path: '/plan/out.json', item: { title: 'Flight out', kind: 'flight', fixed: true, start: { at: '2026-11-27T14:00:00-08:00', tz: LA }, end: { at: '2026-11-27T22:58:00-05:00', tz: NY }, place: { name: 'SFO', ...SFO } } },
+    ]],
+    // Two flights with the check-in between: in to a hub 2475 km from the stay, landing 13:05, and on at 17:55, landing 21:00.
+    ['two flights with the check-in between', [
+      { path: '/plan/in.json', item: { title: 'Flight in', kind: 'flight', fixed: true, start: { at: '2026-11-27T06:00:00-08:00', tz: LA }, end: { at: '2026-11-27T13:05:00-05:00', tz: NY }, place: { name: 'SFO', ...SFO } } },
+      { path: '/plan/on.json', item: { title: 'Flight on', kind: 'flight', fixed: true, start: { at: '2026-11-27T17:55:00-05:00', tz: NY }, end: { at: '2026-11-27T21:00:00-05:00', tz: NY }, place: { name: 'Hub', ...HUB } } },
+    ]],
+  ]);
+  for (const [name, flights] of shapes) {
+    const leaveOf = (/** @type {'tour' | 'home'} */ id) => /** @type {any} */ (stayedAfter(flights, id).find((w) => w.id === `plan:${id}:leave`)).when;
+    // The morning after: 09:00 less 56 min and the 15 of the lead, 07:49; it came at 08:30, the half hour before. From home, a flight away, the same.
+    assert.equal(leaveOf('tour').from?.name, 'Harbor Inn', name);
+    assert.equal(PLAN.next?.(leaveOf('tour'), moment({ now: ny('23:30') }), {}), ny('07:49', '2026-11-28'), name);
+    assert.equal(PLAN.next?.(leaveOf('tour'), here(MONTEREY, MONDAY), {}), ny('07:49', '2026-11-28'), name);
+    assert.equal(PLAN.check(leaveOf('tour'), moment({ now: ny('07:49', '2026-11-28') }), {})?.fallback, 'Leave in about 15 min: Lighthouse tour at 09:00, Old Lighthouse. About 56 min by car.', name);
+    // The flight home, with no check-out or other stop before it: 12:05 less 119 min and the 15, 09:51; it came at 11:35.
+    assert.equal(leaveOf('home').from?.name, 'Harbor Inn', name);
+    assert.equal(PLAN.next?.(leaveOf('home'), moment({ now: ny('08:00', '2026-11-30') }), {}), ny('09:51', '2026-11-30'), name);
+    // Waiting for the landing stays as it was: nothing before 22:58, or 21:00.
+    assert.ok(/** @type {number} */ (PLAN.next?.(leaveOf('tour'), moment({ now: ny('12:00') }), {})) > ny('21:00'), name);
+  }
+  // A stop before within a day's drive of where the flight leaves is behind it, and wiped as before: a hotel by the airport the night
+  // before the flight out, then the tour at the destination with no stay on the plan: half an hour before it.
+  const behind = planWatches(/** @type {any} */ ([
+    { path: '/plan/night.json', item: { title: 'Airport hotel', kind: 'lodging', fixed: true, start: { at: '2026-11-26T20:00:00-08:00', tz: LA }, place: { name: 'Airport hotel', ...off(SFO, 2000, 0) } } },
+    shapes[0][1][0],
+    { path: '/plan/tour.json', item: { title: 'Lighthouse tour', fixed: true, start: { at: '2026-11-28T09:00:00-05:00', tz: NY }, place: { name: 'Old Lighthouse', ...off(FAR, 0, 40_000) } } },
+  ]), new Map(), { fallbackTz: LA });
+  const tour = /** @type {any} */ (behind.find((w) => w.id === 'plan:tour:leave')).when;
+  assert.equal(tour.from, null);
+  assert.equal(PLAN.next?.(tour, moment({ now: ny('23:30') }), {}), ny('08:30', '2026-11-28'));
+});
