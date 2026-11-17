@@ -13,7 +13,7 @@ test('Driving: Now hands over when moving fast; the road ahead, directions, big 
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
     await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${llm.origin}/b`, key: 'sk-test-b', model: 'b-model' });
-    await page.getByLabel('Add a model to main').selectOption({ label: 'Stand-in · b-model' });
+    await page.getByLabel('Add a model to main').selectOption({ label: 'Stand-in / b-model' });
     await page.getByRole('button', { name: 'Add to main' }).click();
     await page.goto('/#/trips');
     const trip = await startTrip(page, 'Big Sur');
@@ -160,7 +160,7 @@ test("a quick chat open as moving fast begins: Driving shows the trip in play's 
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
     await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${llm.origin}/b`, key: 'sk-test-b', model: 'b-model' });
-    await page.getByLabel('Add a model to main').selectOption({ label: 'Stand-in · b-model' });
+    await page.getByLabel('Add a model to main').selectOption({ label: 'Stand-in / b-model' });
     await page.getByRole('button', { name: 'Add to main' }).click();
     await page.goto('/#/trips');
     const road = await happeningTrip(page, 'Big Sur');

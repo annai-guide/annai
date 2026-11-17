@@ -26,9 +26,9 @@ async function liveSetUp(page, kokoro, live, p = GEMINI) {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
   await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Kokoro stand-in', url: `${kokoro}/kokoro`, key: 'sk-test-kokoro', model: 'kokoro-model' });
-  await page.getByLabel('Add a model to main').selectOption({ label: 'Kokoro stand-in · kokoro-model' });
+  await page.getByLabel('Add a model to main').selectOption({ label: 'Kokoro stand-in / kokoro-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
-  await expect(page.getByText('1. Kokoro stand-in · kokoro-model')).toBeVisible();
+  await expect(page.getByText('1. Kokoro stand-in / kokoro-model')).toBeVisible();
   await pickProvider(page, p.provider);
   await page.getByLabel('API key').fill(p.key);
   await page.getByRole('button', { name: 'Save' }).click();
@@ -41,9 +41,9 @@ async function liveSetUp(page, kokoro, live, p = GEMINI) {
   await address.fill(p.address(live));
   await leaveSaved(address);
   await page.goto('/#/models');
-  await page.getByLabel('Add a model to Koe · Live').selectOption({ label: `${p.provider} · ${p.model}` });
+  await page.getByLabel('Add a model to Koe · Live').selectOption({ label: `${p.provider} / ${p.model}` });
   await page.getByRole('button', { name: 'Add to Koe · Live' }).click();
-  await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(1).getByText(`1. ${p.provider} · ${p.model}`)).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(1).getByText(`1. ${p.provider} / ${p.model}`)).toBeVisible();
   await page.goto('/#/trips');
   await page.getByLabel('Trip name').fill('Big Sur');
   await page.getByRole('button', { name: 'Start trip' }).click();
@@ -102,7 +102,7 @@ test('voice on, a tap: "Listening live"; a spoken question gets "checking" aloud
     expect(await page.evaluate(() => /** @type {any} */ (window).__micOpens)).toBe(1);
     await page.goto('/#/trace');
     await filterTrace(page, { kind: 'Models', type: 'live.session' });
-    const closed = page.getByText(/live session closed · Google Gemini · Gemini 3\.8 Live/).first();
+    const closed = page.getByText(/live session closed · Google Gemini \/ Gemini 3\.8 Live/).first();
     await expect(closed).toBeVisible({ timeout: 15_000 });
     await expect(closed).toContainText('voice off');
     await expect(closed).toContainText(/\d+ kB in, \d+ kB out · \$0\.\d+/);
@@ -155,7 +155,7 @@ test('the page out of view: the session closes and the microphone stops; back in
     expect(await page.evaluate(() => /** @type {any} */ (window).__micOpens)).toBe(1);
     await page.goto('/#/trace');
     await filterTrace(page, { kind: 'Models', type: 'live.session' });
-    await expect(page.getByText(/live session closed · Google Gemini · Gemini 3\.8 Live/).first()).toContainText('away');
+    await expect(page.getByText(/live session closed · Google Gemini \/ Gemini 3\.8 Live/).first()).toContainText('away');
   } finally {
     await s.stop();
     await kokoro.stop();
@@ -281,7 +281,7 @@ test("OpenAI Realtime as Koe: the same conversation: \"Listening live\", a spoke
     await expect(page.locator('.voice-chip')).toHaveText('Voice off');
     await page.goto('/#/trace');
     await filterTrace(page, { kind: 'Models', type: 'live.session' });
-    const closed = page.getByText(/live session closed · OpenAI · GPT Realtime 2\.1/).first();
+    const closed = page.getByText(/live session closed · OpenAI \/ GPT Realtime 2\.1/).first();
     await expect(closed).toBeVisible({ timeout: 15_000 });
     await expect(closed).toContainText('voice off');
     expect(await page.content()).not.toContain(OPENAI.key);

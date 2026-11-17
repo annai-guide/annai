@@ -137,14 +137,14 @@ test("a failure card names each model by its provider's name first; a model read
     { model: 'm-0', name: 'Claude Opus 5.5', outcome: 'credit', ms: 1 },
     { model: 'm-1', name: 'Anthropic: Claude Opus 5.5', outcome: 'benched', ms: 0 },
   ];
-  const names = (/** @type {string} */ n) => ({ 'Claude Opus 5.5': 'Anthropic · Claude Opus 5.5', 'Anthropic: Claude Opus 5.5': 'OpenRouter · Anthropic: Claude Opus 5.5' })[n] ?? n;
+  const names = (/** @type {string} */ n) => ({ 'Claude Opus 5.5': 'Anthropic / Claude Opus 5.5', 'Anthropic: Claude Opus 5.5': 'OpenRouter / Anthropic: Claude Opus 5.5' })[n] ?? n;
   const card = whyWords({ attempts }, false, { names }).split('\n');
-  assert.match(card[0], /^Anthropic · Claude Opus 5\.5: /);
-  assert.equal(card[1], 'OpenRouter · Anthropic: Claude Opus 5.5: It is resting for a few minutes after an error.');
+  assert.match(card[0], /^Anthropic \/ Claude Opus 5\.5: /);
+  assert.equal(card[1], 'OpenRouter / Anthropic: Claude Opus 5.5: It is resting for a few minutes after an error.');
   assert.deepEqual(whyWords({ halves: { koe: { attempts: [attempts[1]] }, kokoro: { attempts: [attempts[0]] } } }, false, { names }).split('\n').map((l) => l.split(': ').slice(0, 2).join(': ')),
-    ['Koe: OpenRouter · Anthropic', 'Kokoro: Anthropic · Claude Opus 5.5'], 'both halves name theirs');
+    ['Koe: OpenRouter / Anthropic', 'Kokoro: Anthropic / Claude Opus 5.5'], 'both halves name theirs');
   const plain = whyWords({ attempts }, true, { names });
-  assert.doesNotMatch(plain, / · /, 'what a model reads is as before');
+  assert.doesNotMatch(plain, / \/ /, 'what a model reads is as before');
   assert.equal(plain, whyWords({ attempts }, true));
 });
 

@@ -16,13 +16,13 @@ test('providers, models and roles are set in Settings → Models, survive a relo
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
   await addProvider(page, 'Custom provider', { ability: 'Chat Completions', name: 'Endpoint A', url: 'https://a.example.test/v1', key: 'sk-test-secret-a', model: 'a-model', look: false });
-  await page.getByLabel('Add a model to main').selectOption({ label: 'Endpoint A · a-model' });
+  await page.getByLabel('Add a model to main').selectOption({ label: 'Endpoint A / a-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
-  await expect(page.getByText('1. Endpoint A · a-model')).toBeVisible();
+  await expect(page.getByText('1. Endpoint A / a-model')).toBeVisible();
   await page.getByLabel('Reasoning for main').selectOption('high');
   await expect(savedBy(page.getByLabel('Reasoning for main'))).toHaveText('Saved');
   await page.reload();
-  await expect(page.getByText('1. Endpoint A · a-model')).toBeVisible();
+  await expect(page.getByText('1. Endpoint A / a-model')).toBeVisible();
   await expect(page.getByLabel('Reasoning for main')).toHaveValue('high');
   await page.getByRole('region', { name: 'Providers' }).getByRole('link', { name: /Endpoint A/ }).click();
   await expect(page.getByLabel('API key')).toHaveValue('');
@@ -80,11 +80,11 @@ test('a conversation falls back from one provider to another, and the trace show
     await waitForServiceWorker(page);
     await addProvider(page, 'Custom provider', { ability: 'Chat Completions', name: 'Endpoint A', url: `${llm.origin}/a/v1`, key: 'sk-test-secret-a', model: 'a-model' });
     await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Endpoint B', url: `${llm.origin}/b`, key: 'sk-test-secret-b', model: 'b-model' });
-    for (const m of ['Endpoint A · a-model', 'Endpoint B · b-model']) {
+    for (const m of ['Endpoint A / a-model', 'Endpoint B / b-model']) {
       await page.getByLabel('Add a model to main').selectOption({ label: m });
       await page.getByRole('button', { name: 'Add to main' }).click();
     }
-    await expect(page.getByText('2. Endpoint B · b-model')).toBeVisible();
+    await expect(page.getByText('2. Endpoint B / b-model')).toBeVisible();
     // Talking to the models is Shiori's conversation now; each model's page has "Try this model" (the user, 2026-10-18).
     await page.getByRole('button', { name: 'Type' }).click();
     await page.getByLabel('Message to Shiori').fill('Hello');
@@ -92,7 +92,7 @@ test('a conversation falls back from one provider to another, and the trace show
     await expect(page.locator('.convo .shiori p').last()).toHaveText('Hello from B.');
     await page.getByRole('link', { name: 'Trace' }).click();
     await page.getByLabel('Type contains').fill('model.turn');
-    await expect(page.getByText(/main: Endpoint B · b-model · 2 attempts/)).toBeVisible();
+    await expect(page.getByText(/main: Endpoint B \/ b-model · 2 attempts/)).toBeVisible();
     await filterTrace(page, { kind: 'Models', type: 'net.request' });
     // The two attempts (Custom provider's look at each server is in the trace too, as web requests without a key).
     await expect(page.locator('ol.trace > li').filter({ hasText: /[ab]-model · / })).toHaveCount(2);
@@ -124,15 +124,15 @@ test("Opus from Anthropic and from OpenRouter are told apart by their provider's
       await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
       await page.getByRole('link', { name: 'Models', exact: true }).click();
     }
-    const router = 'OpenRouter · Anthropic: Claude Opus 5.5';
-    const anthropic = 'Anthropic · Claude Opus 5.5';
+    const router = 'OpenRouter / Anthropic: Claude Opus 5.5';
+    const anthropic = 'Anthropic / Claude Opus 5.5';
     // Main's picker offers both, each by its provider's name first.
     const pick = page.getByLabel('Add a model to main');
     await expect.poll(() => pick.locator('option').allTextContents()).toEqual(expect.arrayContaining([router, anthropic]));
     // Main had Anthropic's recommended model: OpenRouter's Opus goes first, then Anthropic's. Each change draws Models again: the next
     // choice waits for it.
     const main = page.locator('.role', { has: page.getByRole('heading', { name: 'Main: talks with you' }) });
-    await page.getByRole('button', { name: 'Remove Anthropic · Claude Sonnet 5.5 from main' }).click();
+    await page.getByRole('button', { name: 'Remove Anthropic / Claude Sonnet 5.5 from main' }).click();
     await expect(main.locator('.role-item')).toHaveCount(0);
     for (const m of [router, anthropic]) {
       await pick.selectOption({ label: m });
@@ -189,11 +189,11 @@ test('"Try this model" on a model\'s page answers from that model alone: one tha
     await waitForServiceWorker(page);
     await addProvider(page, 'Custom provider', { ability: 'Chat Completions', name: 'Endpoint A', url: `${llm.origin}/a/v1`, key: 'sk-test-secret-a', model: 'a-model' });
     await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Endpoint B', url: `${llm.origin}/b`, key: 'sk-test-secret-b', model: 'b-model' });
-    for (const m of ['Endpoint A · a-model', 'Endpoint B · b-model']) {
+    for (const m of ['Endpoint A / a-model', 'Endpoint B / b-model']) {
       await page.getByLabel('Add a model to main').selectOption({ label: m });
       await page.getByRole('button', { name: 'Add to main' }).click();
     }
-    await expect(page.getByText('2. Endpoint B · b-model')).toBeVisible();
+    await expect(page.getByText('2. Endpoint B / b-model')).toBeVisible();
     await expect(page.getByRole('region', { name: 'Talk to your models' })).toHaveCount(0);
     await expect(page.getByLabel('Message', { exact: true })).toHaveCount(0);
     // B answers itself, with its tokens and cost.
@@ -219,7 +219,7 @@ test('"Try this model" on a model\'s page answers from that model alone: one tha
     // Nothing is kept but the trace.
     await page.getByRole('link', { name: 'Trace' }).click();
     await page.getByLabel('Type contains').fill('model.turn');
-    await expect(page.getByText(/try: Endpoint B · b-model · 1 attempt/)).toBeVisible();
+    await expect(page.getByText(/try: Endpoint B \/ b-model · 1 attempt/)).toBeVisible();
     await expect(page.getByText(/try: no answer · 1 attempt/)).toBeVisible();
   } finally {
     await llm.stop();
@@ -251,7 +251,7 @@ test('Sign in with OpenRouter: the key arrives and free models fill the roles (O
   expect(sent.searchParams.get('callback_url')).toBe(`${origin}/`);
   await page.goto(`/?code=test-code&state=${sent.searchParams.get('state')}`);
   await expect(page.getByText(/Signed in with OpenRouter/)).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText('1. OpenRouter · Google: Gemma 4 31B (free)')).toBeVisible();
+  await expect(page.getByText('1. OpenRouter / Google: Gemma 4 31B (free)')).toBeVisible();
   expect(new URL(page.url()).search).toBe('');
   expect(await page.content()).not.toContain('sk-or-test-key-123');
 });
@@ -437,9 +437,9 @@ test('Custom provider with OpenAI Responses switched on: its model list, the Tes
     expect(photo.find((/** @type {any} */ c) => c.type === 'input_image').image_url).toMatch(/^data:image\/png;base64,/);
     // A conversation: Shiori shows a card, then says she has.
     await page.getByRole('link', { name: 'Models', exact: true }).click();
-    await page.getByLabel('Add a model to main').selectOption({ label: 'Responses stand-in · gpt-6-luna' });
+    await page.getByLabel('Add a model to main').selectOption({ label: 'Responses stand-in / gpt-6-luna' });
     await page.getByRole('button', { name: 'Add to main' }).click();
-    await expect(page.getByText('1. Responses stand-in · gpt-6-luna')).toBeVisible();
+    await expect(page.getByText('1. Responses stand-in / gpt-6-luna')).toBeVisible();
     await page.goto('/#/trips');
     await page.getByLabel('Trip name').fill('Big Sur');
     await page.getByRole('button', { name: 'Start trip' }).click();

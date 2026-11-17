@@ -9,7 +9,7 @@ async function mainModel(page, origin) {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
   await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model' });
-  await page.getByLabel('Add a model to main').selectOption({ label: 'Stand-in · b-model' });
+  await page.getByLabel('Add a model to main').selectOption({ label: 'Stand-in / b-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
   // The role's list is drawn again once a model joins it: wait for that before anything else on the screen.
   await expect(page.getByLabel('Add a model to main').locator('option', { hasText: 'b-model' })).toHaveCount(0);
@@ -61,7 +61,7 @@ test('the Big Sur trip, simulated through the app, is replayed and recapped, and
   try {
     await mainModel(page, llm.origin);
     await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Writer', url: `${llm.origin}/u`, key: 'sk-test-u', model: 'u-model' });
-    await page.getByLabel('Add a model to utility').selectOption({ label: 'Writer · u-model' });
+    await page.getByLabel('Add a model to utility').selectOption({ label: 'Writer / u-model' });
     await page.getByRole('button', { name: 'Add to utility' }).click();
     await expect(page.getByLabel('Add a model to utility').locator('option', { hasText: 'u-model' })).toHaveCount(0);
     await page.goto('/#/simulate');

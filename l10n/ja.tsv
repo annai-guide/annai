@@ -695,11 +695,11 @@ mlh3jc	ok	Main	メイン	src/core/llm/check.js:178
 1q9bibx	ok	It also answers at {0}'s level ({1}).	{0}のレベル（{1}）でも答えます。	src/core/llm/check.js:180	{0} = roleName(role); {1} = role.level; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
 1bbu08l	ok	At {0}'s level ({1}), this model refused: {2}	{0}のレベル（{1}）では、このモデルは拒否しました：{2}	src/core/llm/check.js:182	{0} = roleName(role); {1} = role.level; {2} = said; Note: {0} is a role's name as the screens give it.
 1f0dxr7	ok	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	「設定 → モデル」で{0}のレベルを下げるか、このモデルのページで推論レベルを変えてください。	src/core/llm/check.js:184	{0} = roleName(role); Note: {0} is a role's name as the screens give it.
-1qf30l	ok	{0} · {1}	{0} · {1}	src/core/llm/config.js:106	context: a model, after its provider; {0} = provider; {1} = model; Note: a provider's name, then its model's, both Latin names: the app's spaced middle dot, as in 「Koe · チャット」, so it reads as one name.
-1nuav0n	ok	That provider no longer exists.	そのプロバイダーはもうありません。	src/core/llm/config.js:405	
-1qjc2dh	ok	That provider has no ability called {0}.	そのプロバイダーに{0}という機能はありません。	src/core/llm/config.js:407	{0} = rec.ability
-4iiule	ok	Give the provider's model id.	プロバイダーのモデルIDを入力してください。	src/core/llm/config.js:410	
-3i9i3z	ok	"{0}" is already used by another model	「{0}」はほかのモデルがすでに使っています	src/core/llm/config.js:414	{0} = name
+1f43jmt	ok	{0} / {1}	{0} / {1}	src/core/llm/config.js:107	context: a model, after its provider; {0} = provider; {1} = model; Note: a provider's name, then its model's, both Latin names: a spaced slash, not the middle dot that tells a label's parts apart, as in 「Koe · チャット · Anthropic / Claude Opus 5.5」, so the pair reads as one name.
+1nuav0n	ok	That provider no longer exists.	そのプロバイダーはもうありません。	src/core/llm/config.js:406	
+1qjc2dh	ok	That provider has no ability called {0}.	そのプロバイダーに{0}という機能はありません。	src/core/llm/config.js:408	{0} = rec.ability
+4iiule	ok	Give the provider's model id.	プロバイダーのモデルIDを入力してください。	src/core/llm/config.js:411	
+3i9i3z	ok	"{0}" is already used by another model	「{0}」はほかのモデルがすでに使っています	src/core/llm/config.js:415	{0} = name
 1lqr9y5	ok	The key was rejected. Check it in Settings → Models.	キーが拒否されました。「設定 → モデル」で確認してください。	src/core/llm/contract.js:112	
 1do8abu	ok	This account is out of credit.	このアカウントのクレジットが残っていません。	src/core/llm/contract.js:113	
 99g6ol	ok	The provider says too many requests for now.	プロバイダーへのリクエストが多すぎるため、いまは受け付けられません。	src/core/llm/contract.js:114	

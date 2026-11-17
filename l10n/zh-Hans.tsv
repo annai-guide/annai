@@ -695,11 +695,11 @@ mlh3jc	ok	Main	主要	src/core/llm/check.js:178
 1q9bibx	ok	It also answers at {0}'s level ({1}).	在“{0}”的推理级别（{1}）下也能回答。	src/core/llm/check.js:180	{0} = roleName(role); {1} = role.level; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
 1bbu08l	ok	At {0}'s level ({1}), this model refused: {2}	在“{0}”的推理级别（{1}）下，此模型拒绝了请求：{2}	src/core/llm/check.js:182	{0} = roleName(role); {1} = role.level; {2} = said; Note: {0} is a role's name as the screens give it.
 1f0dxr7	ok	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	请在设置 → 模型中调低“{0}”的推理级别，或在此模型的页面上修改其“推理级别”。	src/core/llm/check.js:184	{0} = roleName(role); Note: {0} is a role's name as the screens give it.
-1qf30l	ok	{0} · {1}	{0} · {1}	src/core/llm/config.js:106	context: a model, after its provider; {0} = provider; {1} = model; Note: a provider's name, then its model's, both Latin names: the app's spaced middle dot, as in “Koe · 实时”, so it reads as one name.
-1nuav0n	ok	That provider no longer exists.	这个提供商已不存在。	src/core/llm/config.js:405	
-1qjc2dh	ok	That provider has no ability called {0}.	这个提供商没有名为 {0} 的功能。	src/core/llm/config.js:407	{0} = rec.ability
-4iiule	ok	Give the provider's model id.	请填写提供商的模型 ID。	src/core/llm/config.js:410	
-3i9i3z	ok	"{0}" is already used by another model	“{0}”已被另一个模型使用	src/core/llm/config.js:414	{0} = name
+1f43jmt	ok	{0} / {1}	{0} / {1}	src/core/llm/config.js:107	context: a model, after its provider; {0} = provider; {1} = model; Note: a provider's name, then its model's, both Latin names: a spaced slash, not the middle dot that tells a label's parts apart, as in “Koe · 实时 · Anthropic / Claude Opus 5.5”, so the pair reads as one name.
+1nuav0n	ok	That provider no longer exists.	这个提供商已不存在。	src/core/llm/config.js:406	
+1qjc2dh	ok	That provider has no ability called {0}.	这个提供商没有名为 {0} 的功能。	src/core/llm/config.js:408	{0} = rec.ability
+4iiule	ok	Give the provider's model id.	请填写提供商的模型 ID。	src/core/llm/config.js:411	
+3i9i3z	ok	"{0}" is already used by another model	“{0}”已被另一个模型使用	src/core/llm/config.js:415	{0} = name
 1lqr9y5	ok	The key was rejected. Check it in Settings → Models.	密钥被拒绝了。请在设置 → 模型中检查。	src/core/llm/contract.js:112	
 1do8abu	ok	This account is out of credit.	这个账户的余额已用完。	src/core/llm/contract.js:113	Note: Credit is a prepaid balance (余额), not a quota (额度).
 99g6ol	ok	The provider says too many requests for now.	提供商表示目前请求过于频繁。	src/core/llm/contract.js:114	

@@ -64,12 +64,12 @@ test('a line names the model as it always has when another answered', () => {
 });
 
 test("a line names its model by its provider's name first, the one it failed over from too (the user, 2026-11-16)", () => {
-  const names = (/** @type {string} */ n) => ({ B: 'Anthropic · B', A: 'OpenRouter · A' })[n] ?? n;
+  const names = (/** @type {string} */ n) => ({ B: 'Anthropic / B', A: 'OpenRouter / A' })[n] ?? n;
   const label = (/** @type {any} */ data) => lineKind({ type: 'out.speak', data }, { names })?.label;
-  assert.equal(label({ by: { name: 'A', first: null, tried: false } }), 'OpenRouter · A');
-  assert.equal(label({ voice: true, by: { name: 'B', first: null, tried: false } }), 'said aloud · Anthropic · B');
-  assert.equal(label({ half: 'koe', by: { name: 'B', first: 'A', tried: true } }), "Koe · text · Anthropic · B · OpenRouter · A didn't answer");
-  assert.equal(label({ by: { name: 'B', first: 'A', tried: false } }), 'Anthropic · B · instead of OpenRouter · A');
+  assert.equal(label({ by: { name: 'A', first: null, tried: false } }), 'OpenRouter / A');
+  assert.equal(label({ voice: true, by: { name: 'B', first: null, tried: false } }), 'said aloud · Anthropic / B');
+  assert.equal(label({ half: 'koe', by: { name: 'B', first: 'A', tried: true } }), "Koe · text · Anthropic / B · OpenRouter / A didn't answer");
+  assert.equal(label({ by: { name: 'B', first: 'A', tried: false } }), 'Anthropic / B · instead of OpenRouter / A');
   assert.equal(label({ by: { name: 'Gone', first: null, tried: false } }), 'Gone', 'a model removed since: its name as stored');
 });
 

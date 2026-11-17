@@ -226,12 +226,12 @@ test("a model is named by its provider's name first, from the one rule every scr
   await addProvider(ctx, await official('provider-openrouter'), { key: 'sk-w', name: 'OpenRouter (work)' });
   const cfg = await readConfig(ctx.ws);
   const names = modelNames(cfg);
-  assert.equal(names('Claude Opus 5.5'), 'Anthropic · Claude Opus 5.5');
-  assert.equal(names('Anthropic: Claude Opus 5.5'), 'OpenRouter · Anthropic: Claude Opus 5.5');
-  assert.equal(names('Anthropic: Claude Opus 5.5 (2)'), 'OpenRouter (work) · Anthropic: Claude Opus 5.5 (2)');
+  assert.equal(names('Claude Opus 5.5'), 'Anthropic / Claude Opus 5.5');
+  assert.equal(names('Anthropic: Claude Opus 5.5'), 'OpenRouter / Anthropic: Claude Opus 5.5');
+  assert.equal(names('Anthropic: Claude Opus 5.5 (2)'), 'OpenRouter (work) / Anthropic: Claude Opus 5.5 (2)');
   // Every model has one, and no two are named alike.
   const shown = Object.values(cfg.models).map((m) => names(modelOf(m).name));
-  assert.ok(shown.every((n) => / · /.test(n)), shown.join());
+  assert.ok(shown.every((n) => / \/ /.test(n)), shown.join());
   assert.equal(new Set(shown).size, shown.length);
 });
 
@@ -240,9 +240,9 @@ test("a model is named by its provider's name as the user renamed it; a name no 
   const p = router();
   const m = newModel(p.id, 'chat', { user: { providerId: 'anthropic/claude-opus-5.5', name: 'Opus' } });
   await saveProvider(ctx.ws, p, [m]);
-  assert.equal(modelNames(await readConfig(ctx.ws))('Opus'), 'OpenRouter · Opus');
+  assert.equal(modelNames(await readConfig(ctx.ws))('Opus'), 'OpenRouter / Opus');
   await saveProvider(ctx.ws, { ...p, user: { name: 'My router' } });
-  assert.equal(modelNames(await readConfig(ctx.ws))('Opus'), 'My router · Opus', "the provider's name as Models' list of providers shows it");
+  assert.equal(modelNames(await readConfig(ctx.ws))('Opus'), 'My router / Opus', "the provider's name as Models' list of providers shows it");
   // A line written by a model removed since, a stand-in's name, and a screen with no configuration read keep the name they have.
   await removeModel(ctx.ws, m.id);
   const now = modelNames(await readConfig(ctx.ws));

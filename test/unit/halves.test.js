@@ -229,7 +229,7 @@ test("both halves' lists fail: the user gets one card, \"Shiori can't reach her 
     await k.agent.idle();
     const cards = [...up.values()].filter((/** @type {any} */ c) => /can't reach her model/.test(c.title));
     assert.equal(cards.length, 1, `once (Koe failing ${koeFirst ? 'first' : 'second'}): Kokoro's own card, if it came first, gave way to the card for both`);
-    assert.deepEqual(cards[0].body.split('\n'), ['Koe: Koe · model-koe: No output started in time.', `Kokoro: E0 · model-0: ${busy}`]); // each model by its provider's name too
+    assert.deepEqual(cards[0].body.split('\n'), ['Koe: Koe / model-koe: No output started in time.', `Kokoro: E0 / model-0: ${busy}`]); // each model by its provider's name too
     assert.ok((await k.events(['error'])).some((e) => !e.data.quiet), 'the conversation says so too');
   }
 });

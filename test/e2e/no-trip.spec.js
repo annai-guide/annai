@@ -289,7 +289,7 @@ test('Undo of a hand-over whose files have nowhere to go back to: the toast says
     await waitForServiceWorker(page);
     await page.goto('/#/models');
     await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${llm.origin}/b`, key: 'sk-test-b', model: 'b-model' });
-    await page.getByLabel('Add a model to main').selectOption({ label: 'Stand-in · b-model' });
+    await page.getByLabel('Add a model to main').selectOption({ label: 'Stand-in / b-model' });
     await page.getByRole('button', { name: 'Add to main' }).click();
     await page.goto('/#/trips');
     await waitingRow(page).click();

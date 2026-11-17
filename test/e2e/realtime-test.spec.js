@@ -40,8 +40,8 @@ test("Gemini's Live voice: switched on, gemini-live installs; Test opens a sessi
     // Trace → Models: the session opened, was ready and closed, and its turn was priced; no key anywhere.
     await page.goto('/#/trace');
     await filterTrace(page, { kind: 'Models', type: 'live.session' });
-    await expect(page.getByText(/live session closed · Google Gemini · Gemini 3\.8 Live/).first()).toBeVisible();
-    await expect(page.getByText(/live session ready · Google Gemini · Gemini 3\.8 Live/).first()).toBeVisible();
+    await expect(page.getByText(/live session closed · Google Gemini \/ Gemini 3\.8 Live/).first()).toBeVisible();
+    await expect(page.getByText(/live session ready · Google Gemini \/ Gemini 3\.8 Live/).first()).toBeVisible();
     expect(await page.content()).not.toContain(KEY);
   } finally {
     await s.stop();
@@ -83,8 +83,8 @@ test("OpenAI's Realtime voice: switched on, openai-realtime installs; Test opens
     expect(item.item.content[0].text).toBe('Say OK.');
     await page.goto('/#/trace');
     await filterTrace(page, { kind: 'Models', type: 'live.session' });
-    await expect(page.getByText(/live session closed · OpenAI · GPT Realtime 2\.1/).first()).toBeVisible();
-    await expect(page.getByText(/live session ready · OpenAI · GPT Realtime 2\.1/).first()).toBeVisible();
+    await expect(page.getByText(/live session closed · OpenAI \/ GPT Realtime 2\.1/).first()).toBeVisible();
+    await expect(page.getByText(/live session ready · OpenAI \/ GPT Realtime 2\.1/).first()).toBeVisible();
     expect(await page.content()).not.toContain(SK);
   } finally {
     await s.stop();

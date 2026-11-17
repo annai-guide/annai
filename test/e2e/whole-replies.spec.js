@@ -52,9 +52,9 @@ for (const kind of /** @type {const} */ (['Chat Completions', 'OpenAI Responses'
       expect(llm.bodies(path).every((/** @type {any} */ b) => b.stream === true), 'a stream is still asked for').toBe(true);
       // A conversation with one tool call.
       await page.getByRole('link', { name: 'Models', exact: true }).click();
-      await page.getByLabel('Add a model to main').selectOption({ label: 'Router · router-model' });
+      await page.getByLabel('Add a model to main').selectOption({ label: 'Router / router-model' });
       await page.getByRole('button', { name: 'Add to main' }).click();
-      await expect(page.getByText('1. Router · router-model')).toBeVisible();
+      await expect(page.getByText('1. Router / router-model')).toBeVisible();
       await page.goto('/#/trips');
       await page.getByLabel('Trip name').fill('Big Sur');
       await page.getByRole('button', { name: 'Start trip' }).click();

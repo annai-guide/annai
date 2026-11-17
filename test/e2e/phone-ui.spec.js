@@ -296,26 +296,26 @@ for (const scheme of ['light', 'dark']) {
 // Roles: "if the user click on the model name, they can enter the model settings page"; "instead of the up down button, make it
 // possible to drag a model to reorder it" (the user, 2026-10-22).
 /** A role entry's handle, by its model's name whatever its place says. @param {import('@playwright/test').Locator} list @param {string} m */
-const gripOf = (list, m) => list.getByRole('button', { name: new RegExp(`^Reorder Endpoint ${m} · ${m}, \\d of \\d$`) });
+const gripOf = (list, m) => list.getByRole('button', { name: new RegExp(`^Reorder Endpoint ${m} / ${m}, \\d of \\d$`) });
 /** A main list of three models, a1, a2 and a3. @param {import('@playwright/test').Page} page */
 async function threeModels(page) {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
   for (const m of ['a1', 'a2', 'a3']) {
     await addProvider(page, 'Custom provider', { ability: 'Chat Completions', name: `Endpoint ${m}`, url: `https://${m}.example.test/v1`, key: `sk-test-${m}`, model: m, look: false });
-    await page.getByLabel('Add a model to main').selectOption({ label: `Endpoint ${m} · ${m}` });
+    await page.getByLabel('Add a model to main').selectOption({ label: `Endpoint ${m} / ${m}` });
     await page.getByRole('button', { name: 'Add to main' }).click();
-    await expect(page.getByText(new RegExp(`\\d\\. Endpoint ${m} · ${m}$`))).toBeVisible();
+    await expect(page.getByText(new RegExp(`\\d\\. Endpoint ${m} / ${m}$`))).toBeVisible();
   }
   const main = page.locator('.role', { has: page.getByRole('heading', { name: 'Main: talks with you' }) });
   const order = () => main.locator('.role-item > span').allTextContents();
-  await expect.poll(order).toEqual(['1. Endpoint a1 · a1', '2. Endpoint a2 · a2', '3. Endpoint a3 · a3']);
+  await expect.poll(order).toEqual(['1. Endpoint a1 / a1', '2. Endpoint a2 / a2', '3. Endpoint a3 / a3']);
   return { main, order };
 }
 
 test('Roles: a model\'s name links to its page; the up and down buttons are gone', async ({ page }) => {
   const { main } = await threeModels(page);
-  await expect(main.getByRole('button', { name: /Move Endpoint a1 · a1 (up|down)/ })).toHaveCount(0);
+  await expect(main.getByRole('button', { name: /Move Endpoint a1 \/ a1 (up|down)/ })).toHaveCount(0);
   await main.getByRole('link', { name: 'a2' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'a2' })).toBeVisible();
   await expect(page.getByLabel('Provider model id')).toHaveValue('a2');
@@ -326,20 +326,20 @@ test('Roles: the handle takes the arrow keys, and a tap on it offers Move up and
   const grip = (/** @type {string} */ m) => gripOf(main, m);
   await grip('a1').focus();
   await page.keyboard.press('ArrowDown');
-  await expect.poll(order).toEqual(['1. Endpoint a2 · a2', '2. Endpoint a1 · a1', '3. Endpoint a3 · a3']);
+  await expect.poll(order).toEqual(['1. Endpoint a2 / a2', '2. Endpoint a1 / a1', '3. Endpoint a3 / a3']);
   await expect(grip('a1')).toBeFocused(); // keys go on
   await page.keyboard.press('ArrowDown');
-  await expect.poll(order).toEqual(['1. Endpoint a2 · a2', '2. Endpoint a3 · a3', '3. Endpoint a1 · a1']);
+  await expect.poll(order).toEqual(['1. Endpoint a2 / a2', '2. Endpoint a3 / a3', '3. Endpoint a1 / a1']);
   await page.keyboard.press('ArrowUp');
-  await expect.poll(order).toEqual(['1. Endpoint a2 · a2', '2. Endpoint a1 · a1', '3. Endpoint a3 · a3']);
+  await expect.poll(order).toEqual(['1. Endpoint a2 / a2', '2. Endpoint a1 / a1', '3. Endpoint a3 / a3']);
   // A menu, for a screen reader and a finger that doesn't drag.
   await grip('a3').click();
-  const menu = main.getByRole('group', { name: 'Move Endpoint a3 · a3' });
+  const menu = main.getByRole('group', { name: 'Move Endpoint a3 / a3' });
   await expect(menu.getByRole('button', { name: 'Move down' })).toBeDisabled();
   await menu.getByRole('button', { name: 'Move up' }).click();
-  await expect.poll(order).toEqual(['1. Endpoint a2 · a2', '2. Endpoint a3 · a3', '3. Endpoint a1 · a1']);
+  await expect.poll(order).toEqual(['1. Endpoint a2 / a2', '2. Endpoint a3 / a3', '3. Endpoint a1 / a1']);
   await page.reload();
-  await expect.poll(order).toEqual(['1. Endpoint a2 · a2', '2. Endpoint a3 · a3', '3. Endpoint a1 · a1']);
+  await expect.poll(order).toEqual(['1. Endpoint a2 / a2', '2. Endpoint a3 / a3', '3. Endpoint a1 / a1']);
 });
 
 test('Roles: dragging the handle with a mouse reorders, and the order is kept', async ({ page }) => {
@@ -353,13 +353,13 @@ test('Roles: dragging the handle with a mouse reorders, and the order is kept', 
   await page.mouse.move(to.x, to.y + 8, { steps: 4 });
   await gripOf(main, 'a1').evaluate((el) => el.setAttribute('data-seen', ''));
   await page.mouse.up();
-  await expect.poll(order).toEqual(['1. Endpoint a2 · a2', '2. Endpoint a3 · a3', '3. Endpoint a1 · a1']);
+  await expect.poll(order).toEqual(['1. Endpoint a2 / a2', '2. Endpoint a3 / a3', '3. Endpoint a1 / a1']);
   // The screen is drawn again once the list is saved (the grip marked before the drop is gone): wait for that before reloading.
   await expect(main.locator('[data-seen]')).toHaveCount(0);
   // A drag opens no menu.
   await expect(main.getByRole('group', { name: /^Move / })).toHaveCount(0);
   await page.reload();
-  await expect.poll(order).toEqual(['1. Endpoint a2 · a2', '2. Endpoint a3 · a3', '3. Endpoint a1 · a1']);
+  await expect.poll(order).toEqual(['1. Endpoint a2 / a2', '2. Endpoint a3 / a3', '3. Endpoint a1 / a1']);
 });
 
 test('Roles: dragging the handle with a finger reorders, and the page does not scroll under it', async ({ page, browserName }) => {
@@ -374,7 +374,7 @@ test('Roles: dragging the handle with a finger reorders, and the page does not s
   await touch('touchStart', from.y);
   for (let k = 1; k <= 6; k++) await touch('touchMove', from.y + ((to.y - 6 - from.y) * k) / 6);
   await touch('touchEnd', to.y);
-  await expect.poll(order).toEqual(['1. Endpoint a3 · a3', '2. Endpoint a1 · a1', '3. Endpoint a2 · a2']);
+  await expect.poll(order).toEqual(['1. Endpoint a3 / a3', '2. Endpoint a1 / a1', '3. Endpoint a2 / a2']);
   expect(await page.evaluate(() => scrollY)).toBe(scrolled);
 });
 
@@ -428,13 +428,13 @@ test('a card is looked at again when the screen turns: More comes and goes with 
 
 test('Roles: the handle says where its model stands, the menu is wired for a screen reader, and a drag closes it', async ({ page }) => {
   const { main } = await threeModels(page);
-  await expect(gripOf(main, 'a1')).toHaveAccessibleName('Reorder Endpoint a1 · a1, 1 of 3');
-  await expect(gripOf(main, 'a3')).toHaveAccessibleName('Reorder Endpoint a3 · a3, 3 of 3');
+  await expect(gripOf(main, 'a1')).toHaveAccessibleName('Reorder Endpoint a1 / a1, 1 of 3');
+  await expect(gripOf(main, 'a3')).toHaveAccessibleName('Reorder Endpoint a3 / a3, 3 of 3');
   const grip = gripOf(main, 'a2');
   await expect(grip).not.toHaveAttribute('aria-haspopup', /.*/);
   await grip.click();
   await expect(grip).toHaveAttribute('aria-expanded', 'true');
-  const menu = main.getByRole('group', { name: 'Move Endpoint a2 · a2' });
+  const menu = main.getByRole('group', { name: 'Move Endpoint a2 / a2' });
   await expect(grip).toHaveAttribute('aria-controls', /.+/);
   expect(await menu.getAttribute('id')).toBe(await grip.getAttribute('aria-controls'));
   // The focus goes into the menu, and Escape gives it back to the handle.
@@ -464,10 +464,10 @@ test('Roles: a drag that is cancelled leaves the list and its numbers as they we
   const touch = (/** @type {'touchStart' | 'touchMove' | 'touchEnd' | 'touchCancel'} */ type, /** @type {number} */ at) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' || type === 'touchCancel' ? [] : [{ x, y: at }] });
   await touch('touchStart', y);
   for (let k = 1; k <= 4; k++) await touch('touchMove', y + k * 40);
-  await expect.poll(order).not.toEqual(['1. Endpoint a1 · a1', '2. Endpoint a2 · a2', '3. Endpoint a3 · a3']); // it was being dragged
+  await expect.poll(order).not.toEqual(['1. Endpoint a1 / a1', '2. Endpoint a2 / a2', '3. Endpoint a3 / a3']); // it was being dragged
   await touch('touchCancel', y + 160);
-  await expect.poll(order).toEqual(['1. Endpoint a1 · a1', '2. Endpoint a2 · a2', '3. Endpoint a3 · a3']);
-  await expect(gripOf(main, 'a1')).toHaveAccessibleName('Reorder Endpoint a1 · a1, 1 of 3');
+  await expect.poll(order).toEqual(['1. Endpoint a1 / a1', '2. Endpoint a2 / a2', '3. Endpoint a3 / a3']);
+  await expect(gripOf(main, 'a1')).toHaveAccessibleName('Reorder Endpoint a1 / a1, 1 of 3');
 });
 
 test('Roles: a touch that moves less than 8 px is a tap, which opens the menu, and does not reorder', async ({ page, browserName }) => {
@@ -481,15 +481,15 @@ test('Roles: a touch that moves less than 8 px is a tap, which opens the menu, a
   await touch('touchStart', y);
   await touch('touchMove', y + 6); // a finger shakes
   await touch('touchEnd', y + 6);
-  await expect(main.getByRole('group', { name: 'Move Endpoint a2 · a2' })).toBeVisible();
-  expect(await order()).toEqual(['1. Endpoint a1 · a1', '2. Endpoint a2 · a2', '3. Endpoint a3 · a3']);
+  await expect(main.getByRole('group', { name: 'Move Endpoint a2 / a2' })).toBeVisible();
+  expect(await order()).toEqual(['1. Endpoint a1 / a1', '2. Endpoint a2 / a2', '3. Endpoint a3 / a3']);
 });
 
 test("Roles: a speech list's entries link to their model's page too", async ({ page }) => {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
   await addProvider(page, 'Custom provider', { ability: 'Voice', name: 'A voice', url: 'https://v.example.test/v1', key: 'sk-test-v', model: 'tts-x', look: false });
-  await page.getByLabel('Add a model to speech-out').selectOption({ label: 'A voice · tts-x' });
+  await page.getByLabel('Add a model to speech-out').selectOption({ label: 'A voice / tts-x' });
   await page.getByRole('button', { name: 'Add to speech-out' }).click();
   const out = page.locator('.role', { has: page.getByRole('heading', { name: "Speech out: Shiori's voice" }) });
   await expect(out.getByRole('link', { name: 'tts-x' })).toBeVisible();

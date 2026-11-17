@@ -67,14 +67,14 @@ test('the trace says what was heard, and what it turned out to say', () => {
 });
 
 test("the Trace names a model by its provider's name first: the one its request kept, else the one that has the name now (the user, 2026-11-16)", () => {
-  const names = (/** @type {string} */ n) => ({ 'Claude Opus 5.5': 'Anthropic · Claude Opus 5.5', 'GPT Transcribe': 'OpenAI · GPT Transcribe' })[n] ?? n;
+  const names = (/** @type {string} */ n) => ({ 'Claude Opus 5.5': 'Anthropic / Claude Opus 5.5', 'GPT Transcribe': 'OpenAI / GPT Transcribe' })[n] ?? n;
   // A request kept its provider's name as it was then (call.js), so a provider renamed since doesn't rename it.
   assert.equal(traceSummary({ type: 'net.request', data: { kind: 'model', endpoint: 'OpenRouter', model: 'Anthropic: Claude Opus 5.5', outcome: 'ok', status: 200, ms: 900 } }, { names }),
-    'OpenRouter · Anthropic: Claude Opus 5.5 · ok (200) · 900 ms');
-  assert.equal(traceSummary({ type: 'live.session', data: { state: 'open', endpoint: 'Gemini', model: 'Gemini 3.8 Live' } }, { names }), 'live session open · Gemini · Gemini 3.8 Live');
+    'OpenRouter / Anthropic: Claude Opus 5.5 · ok (200) · 900 ms');
+  assert.equal(traceSummary({ type: 'live.session', data: { state: 'open', endpoint: 'Gemini', model: 'Gemini 3.8 Live' } }, { names }), 'live session open · Gemini / Gemini 3.8 Live');
   // A turn and a transcript kept only the model's name.
-  assert.equal(traceSummary({ type: 'model.turn', data: { role: 'main', answeredBy: 'Claude Opus 5.5', attempts: [{}] } }, { names }), 'main: Anthropic · Claude Opus 5.5 · 1 attempt');
+  assert.equal(traceSummary({ type: 'model.turn', data: { role: 'main', answeredBy: 'Claude Opus 5.5', attempts: [{}] } }, { names }), 'main: Anthropic / Claude Opus 5.5 · 1 attempt');
   assert.equal(traceSummary({ type: 'model.turn', data: { role: 'main', answeredBy: null, attempts: [] } }, { names }), 'main: no answer · 0 attempts');
-  assert.equal(traceSummary({ type: 'heard.text', data: { of: 's-1', text: 'hi', by: 'GPT Transcribe' } }, { names }), '"hi" · written down by OpenAI · GPT Transcribe');
+  assert.equal(traceSummary({ type: 'heard.text', data: { of: 's-1', text: 'hi', by: 'GPT Transcribe' } }, { names }), '"hi" · written down by OpenAI / GPT Transcribe');
   assert.equal(traceSummary({ type: 'heard.text', data: { of: 's-1', text: 'hi', by: 'Phone dictation' } }, { names }), '"hi" · written down by Phone dictation');
 });

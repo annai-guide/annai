@@ -99,11 +99,12 @@ const KIND_NAMES = /** @type {Record<string, string>} */ ({ chat: 'Chat', transc
 export const abilityName = (a, { shown } = {}) => (a.named ? shown?.abilities?.[a.id]?.name ?? a.name : kindWords(a.kind) ?? a.name);
 
 /**
- * A model as a screen names it away from its provider's own pages: its provider's name, then its own ("<provider> · <model>"), as
- * one model is often had from two providers (the user, 2026-11-16). provider: as Models' list of providers names it; '' for none.
- * @param {string} provider @param {string} model
+ * A model as a screen names it away from its provider's own pages: its provider's name, then its own ("<provider> / <model>"), as
+ * one model is often had from two providers (the user, 2026-11-16). The slash, not the dot a label's parts are told apart by ("Koe ·
+ * text · A / Model 1 · B / Model 1 didn't answer"): the pair stays one name in a chain.
+ * provider: as Models' list of providers names it; '' for none. @param {string} provider @param {string} model
  */
-export const withProvider = (provider, model) => (provider ? tc('a model, after its provider')`${provider} · ${model}` : model);
+export const withProvider = (provider, model) => (provider ? tc('a model, after its provider')`${provider} / ${model}` : model);
 
 /**
  * How the screens name a model from its name (all a line, a failure or the Trace keeps of it): withProvider, by the provider of the model

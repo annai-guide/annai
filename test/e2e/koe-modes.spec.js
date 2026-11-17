@@ -19,12 +19,12 @@ async function setUp(page, models, live) {
   await waitForServiceWorker(page);
   await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Kokoro stand-in', url: `${models}/kokoro`, key: 'sk-test-kokoro', model: 'kokoro-model' });
   await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Koe stand-in', url: `${models}/koe`, key: 'sk-test-koe', model: 'koe-model' });
-  await page.getByLabel('Add a model to main').selectOption({ label: 'Kokoro stand-in · kokoro-model' });
+  await page.getByLabel('Add a model to main').selectOption({ label: 'Kokoro stand-in / kokoro-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
-  await expect(page.getByText('1. Kokoro stand-in · kokoro-model')).toBeVisible();
-  await page.getByLabel('Add a model to Koe · Chat').selectOption({ label: 'Koe stand-in · koe-model' });
+  await expect(page.getByText('1. Kokoro stand-in / kokoro-model')).toBeVisible();
+  await page.getByLabel('Add a model to Koe · Chat').selectOption({ label: 'Koe stand-in / koe-model' });
   await page.getByRole('button', { name: 'Add to Koe · Chat' }).click();
-  await expect(page.getByText('1. Koe stand-in · koe-model')).toBeVisible();
+  await expect(page.getByText('1. Koe stand-in / koe-model')).toBeVisible();
   await pickProvider(page, 'Google Gemini');
   await page.getByLabel('API key').fill(KEY);
   await page.getByRole('button', { name: 'Save' }).click();
@@ -38,9 +38,9 @@ async function setUp(page, models, live) {
   await leaveSaved(address);
   await page.goto('/#/models');
   await expect(page.getByRole('heading', { level: 1, name: 'Models' })).toBeVisible();
-  await page.getByLabel('Add a model to Koe · Live').selectOption({ label: 'Google Gemini · Gemini 3.8 Live' });
+  await page.getByLabel('Add a model to Koe · Live').selectOption({ label: 'Google Gemini / Gemini 3.8 Live' });
   await page.getByRole('button', { name: 'Add to Koe · Live' }).click();
-  await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(1).getByText('1. Google Gemini · Gemini 3.8 Live')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(1).getByText('1. Google Gemini / Gemini 3.8 Live')).toBeVisible();
   await page.goto('/#/trips');
   await page.getByLabel('Trip name').fill('Big Sur');
   await page.getByRole('button', { name: 'Start trip' }).click();
@@ -81,7 +81,7 @@ test("the Live chip: one tap switches which of Koe's lists talks, kept across a 
     await expect(page.locator('.koe-live-chip')).toHaveText('Live');
     // The live voice switched off on Gemini's page: no live model, no chip.
     await page.goto('/#/models');
-    await page.getByRole('button', { name: 'Remove Google Gemini · Gemini 3.8 Live from Koe · Live' }).click();
+    await page.getByRole('button', { name: 'Remove Google Gemini / Gemini 3.8 Live from Koe · Live' }).click();
     await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(1).getByText('Empty: Koe has no live voice', { exact: false })).toBeVisible();
     await page.goto('/#/talk');
     await expect(page.locator('.koe-live-chip')).toBeHidden();

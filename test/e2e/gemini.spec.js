@@ -78,8 +78,8 @@ test('Google Gemini from the catalog speaks Gemini\'s own API: Fetch model list,
     // Koe's two lists: Gemini Live in Realtime, flash-lite in Classic (the user, 2026-10-22).
     await page.goto('/#/models');
     const roles = page.getByRole('region', { name: 'Roles' });
-    await expect(roles.locator('.role').nth(1).locator('.role-item')).toHaveText([/^1\. Google Gemini · Gemini 3\.8 Live/]);
-    await expect(roles.locator('.role').nth(2).locator('.role-item')).toHaveText([/^1\. Google Gemini · Gemini 3\.5 Flash Lite/]);
+    await expect(roles.locator('.role').nth(1).locator('.role-item')).toHaveText([/^1\. Google Gemini \/ Gemini 3\.8 Live/]);
+    await expect(roles.locator('.role').nth(2).locator('.role-item')).toHaveText([/^1\. Google Gemini \/ Gemini 3\.5 Flash Lite/]);
     expect(await page.content()).not.toContain(KEY);
   } finally {
     await s.close();
@@ -415,9 +415,9 @@ test('Google Search with Koe on and the halves\' notes hidden: Kokoro\'s grounde
   try {
     await geminiTrip(page, s.url);
     await page.goto('/#/models');
-    await page.getByLabel('Add a model to Koe · Chat').selectOption({ label: 'Google Gemini · Gemini 3.5 Flash Lite' });
+    await page.getByLabel('Add a model to Koe · Chat').selectOption({ label: 'Google Gemini / Gemini 3.5 Flash Lite' });
     await page.getByRole('button', { name: 'Add to Koe · Chat' }).click();
-    await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(2).getByText('1. Google Gemini · Gemini 3.5 Flash Lite')).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(2).getByText('1. Google Gemini / Gemini 3.5 Flash Lite')).toBeVisible();
     await page.goto('/#/shiori');
     await page.getByLabel('Show what the halves tell each other').uncheck();
     await expect(page.locator('.saving', { hasText: 'Show what the halves tell each other' }).locator('.saved')).toHaveText('Saved');
