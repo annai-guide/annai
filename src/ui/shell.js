@@ -261,6 +261,13 @@ export function startShell(root, core) {
     // Itinerary of the trip in play). A redraw of another trip's conversation (Shiori moved on: a hand-over, an Undo) goes to the open one's the
     // same way, opening nothing.
     const asked = parseHash(location.hash);
+    // The trip in play is live mode's choice from the trips once it has read them; till then the open conversation stands in. "#/now" names it, so a
+    // cold load there waits for that read, drawing nothing; a move made meanwhile is drawn by its own render.
+    if (asked.name === 'now') {
+      const at = location.hash;
+      await core.live?.tripsRead;
+      if (location.hash !== at) return landing.promise;
+    }
     const target = core.agent?.target ?? null;
     const to = redirectOf(asked, target, { play: drivingTrip(core) })
       ?? (!o.moved && asked.name === 'talk' && asked.parts[0] === 'trip' && asked.parts[1] !== target ? talkOf(ctx) : null);

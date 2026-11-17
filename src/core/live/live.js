@@ -188,6 +188,13 @@ export class Live {
   #reminderChanges = new Set();
   /** start has tried its first read. */
   #loaded = false;
+  /** Settles tripsRead. */
+  #readTried = () => {};
+  /**
+   * Settles once start() has tried its first read of the trips, or failed before it: from then the trip in play (play) is chosen from them, where until
+   * then the open conversation stands in for it. A cold load at "#/now" waits for it (shell.js). @type {Promise<void>}
+   */
+  tripsRead = new Promise((done) => { this.#readTried = () => done(undefined); });
   /** start() is starting the sensors: what they say at once is so before its catch-up. */
   #starting = false;
   /** @type {Map<string, { t: number, at?: number }>} reminders whose notification the phone showed, by key: when, and the time it was for (spec §11.6) */
@@ -225,6 +232,14 @@ export class Live {
 
   /** Follows the sensors, the watches and the plan, from the switch as it was left (choice 11). */
   async start() {
+    try {
+      await this.#start();
+    } finally {
+      this.#readTried(); // a start that failed before its first read: the open conversation stays the stand-in
+    }
+  }
+
+  async #start() {
     this.on = Boolean((await readAppSettings(this.ws).catch((e) => { this.#missed(e); return null; }))?.live?.on); // a failed read: Live starts with GPS off, rather than not at all
     this.#restore(); // before anyone can read the activity
     this.#offs.push(
@@ -252,6 +267,7 @@ export class Live {
       await ensureDeviceScope(this.store, this.clock.now());
       await this.#follow();
       this.#loaded = true;
+      this.#readTried();
       const last = await this.#lastSeen().catch((e) => { this.#missed(e); return { since: null, from: null }; });
       this.#starting = true;
       try {

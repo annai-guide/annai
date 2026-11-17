@@ -321,6 +321,60 @@ test("#/now opens today's Itinerary of the trip in play (where you are, the chip
   await expect(page.getByRole('heading', { level: 1, name: 'Trips', exact: true })).toBeVisible();
 });
 
+test("a cold load at #/now opens today's Itinerary of the trip in play, not that of the conversation left open", async ({ page }) => {
+  await openApp(page);
+  const id = await happeningTrip(page, 'Testville');
+  await expect(page.locator('main.view > *')).toBeVisible(FIRST_DRAW);
+  // Another conversation is the open one (Details opens it): until live mode has read the trips, the trip in play is this one's stand-in.
+  const chat = await startTrip(page, 'Kept open');
+  await expect.poll(() => page.evaluate(async () => {
+    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+    const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+    const { readAppSettings } = await import(/** @type {string} */ ('/src/core/settings.js'));
+    const store = await createIdbStore();
+    try { return (await readAppSettings(new Workspace(store))).activeTrip; } finally { store.close(); }
+  })).toBe(chat);
+  // An old bookmark: annai starts at #/now.
+  await page.evaluate(() => history.replaceState(null, '', '#/now'));
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1, name: 'Itinerary', exact: true })).toBeVisible(FIRST_DRAW);
+  expect(new URL(page.url()).hash).toBe(`#/trip/${id}/plan`);
+  await expect(page.locator('main .crumbs')).toContainText('Testville');
+  await expect(page.locator('.today-top').getByRole('link', { name: 'Driving' })).toBeVisible();
+});
+
+test("a move made while a cold #/now waits for live mode's read of the trips stands: the stale redirect doesn't replace it", async ({ page }) => {
+  // The real shell with a real store, its live mode a stand-in whose read of the trips ends when the test says, with a trip in play to be sent to.
+  await page.route('**/probe.html', (r) => r.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: '<!doctype html><html><head><meta charset="utf-8"><title>probe</title></head><body></body></html>' }));
+  await page.goto('/probe.html#/now');
+  await page.evaluate(async () => {
+    const w = /** @type {any} */ (window);
+    const at = (/** @type {string} */ p) => p; // an address the browser loads, not a module the checker follows
+    const { startShell } = await import(at('/src/ui/shell.js'));
+    const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+    const { Workspace } = await import(at('/src/core/workspace.js'));
+    const { createTrip } = await import(at('/src/core/scopes.js'));
+    const { deviceZone } = await import(at('/src/core/time.js'));
+    const { realClock } = await import(at('/src/core/live/clock.js'));
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    const play = await createTrip(ws, { title: 'Testville', start: '2026-11-20', end: '2026-11-27' });
+    const tripsRead = new Promise((done) => { w.readTrips = () => done(undefined); });
+    const live = { tripsRead, play, clock: realClock(), timeZone: deviceZone, onChange() {}, onReminders() {} };
+    const registry = { entries: () => [], onChange: () => () => {}, fail: () => {}, succeeded: () => {}, isDisabled: () => false, clashes: () => [] };
+    const root = document.createElement('div');
+    document.body.replaceChildren(root);
+    startShell(root, { store, ws, registry, live, plugins: { langOf: () => 'en' }, updates: { restart: async () => {}, waiting: false, plugins: async () => [] }, version: 'probe' });
+  });
+  // Nothing is drawn while the read is out. The traveller moves on, to Trips, which is drawn by its own render.
+  await page.evaluate(() => { location.hash = '#/trips'; });
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips', exact: true })).toBeVisible(FIRST_DRAW);
+  // The read ends: the render that waited for it finds the address moved and leaves it be, where it would have sent them to the trip in play.
+  await page.evaluate(() => new Promise((done) => { /** @type {any} */ (window).readTrips(); setTimeout(done, 100); }));
+  expect(new URL(page.url()).hash).toBe('#/trips');
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips', exact: true })).toBeVisible();
+});
+
 test('#/now with nothing in play goes home, by replace', async ({ page }) => {
   await openApp(page, '#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings', exact: true })).toBeVisible();

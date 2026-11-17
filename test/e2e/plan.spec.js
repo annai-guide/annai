@@ -567,14 +567,59 @@ test('with the top above the screen, a fix that moves nothing scrolls nothing, a
   expect((await row.boundingBox())?.y).toBe(y);
 });
 
-test('a trip that ended has no today top', async ({ page }) => {
+test("an Itinerary with no tab for today has the Driving row alone, on every tab, where the trip is in play's: no where-you-are, no sun chips, no empty row elsewhere", async ({ page }) => {
+  await page.clock.setFixedTime(NOON);
+  await openApp(page);
+  const trip = await startTrip(page, 'Testville'); // open, with nothing happening: the trip in play
+  await records(page, trip, { patch: { '/trip.json': { start: '2030-11-20', end: '2030-11-22' } }, write: {
+    '/plan/tea.json': { id: 'tea', title: 'Tea', fixed: false, start: { at: '2030-11-21T13:00:00Z', tz: 'UTC' } },
+    '/plan/walk.json': { id: 'walk', title: 'Walk', fixed: false, start: { at: '2030-11-22T13:00:00Z', tz: 'UTC' } },
+  } });
+  await openItinerary(page);
+  const top = page.locator('.today-top');
+  await expect(page.getByRole('tab')).toHaveCount(3);
+  for (const day of [0, 1, 2]) { // every tab: the first has nothing planned and is not the one opened
+    await page.getByRole('tab').nth(day).click();
+    await expect(page.getByRole('tab').nth(day)).toHaveAttribute('aria-selected', 'true');
+    await expect(top.getByRole('link', { name: 'Driving' })).toBeVisible();
+    await expect(top.locator('.now-card, .now-place, .chip')).toHaveCount(0); // today's, not any day's
+  }
+  await top.getByRole('link', { name: 'Driving' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Driving' })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'The road ahead' })).toBeVisible();
+  // A chat with nothing planned has no tabs at all: the same row.
+  const chat = await startTrip(page, 'A chat');
+  await goToHash(page, `#/trip/${encodeURIComponent(chat)}/plan`);
+  await expect(page.getByText('No itinerary yet.', { exact: false })).toBeVisible();
+  await expect(page.getByRole('tab')).toHaveCount(0);
+  await expect(top.getByRole('link', { name: 'Driving' })).toBeVisible();
+  await expect(top.locator('.now-card, .now-place, .chip')).toHaveCount(0);
+  // A trip happening takes the road: the others' Itineraries have no row at all, not an empty one.
+  await happeningTrip(page, 'Happening');
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
+  await expect(page.getByRole('tab')).toHaveCount(3);
+  await expect(top).toBeHidden();
+  await page.goto(`/#/trip/${encodeURIComponent(chat)}/plan`);
+  await expect(page.getByText('No itinerary yet.', { exact: false })).toBeVisible();
+  await expect(top).toBeHidden();
+});
+
+test("an Itinerary left open past midnight: the new day's tab has the top and the old day's has not, with no reload", async ({ page }) => {
   await page.clock.setFixedTime(NOON);
   await openApp(page);
   const trip = await startTrip(page, 'Testville');
-  await records(page, trip, { patch: { '/trip.json': { start: '2030-11-20', end: '2030-11-22' } }, write: { '/plan/tea.json': { id: 'tea', title: 'Tea', fixed: false, start: { at: '2030-11-21T13:00:00Z', tz: 'UTC' } } } });
+  await records(page, trip, HAPPENING);
   await openItinerary(page);
-  await expect(page.getByRole('tab').first()).toBeVisible();
-  await expect(page.locator('.today-top')).toHaveCount(0);
+  await expect(page.getByRole('tab', { selected: true })).toHaveText('Wed, Nov 27');
+  await expect(page.locator('.today-top .now-place')).toBeVisible();
+  // Half past midnight on the 28th where the test runs (the tab names the day in the browser's own zone, which is this host's), with no reload: the tap on the new day's tab is what reads the day (the two checks after it are that tap's result).
+  await page.clock.setFixedTime(new Date(2030, 10, 28, 0, 30));
+  await page.getByRole('tab', { name: 'Thu, Nov 28' }).click();
+  await expect(page.getByRole('tab', { selected: true })).toHaveText('Thu, Nov 28');
+  await expect(page.locator('.today-top .now-place')).toBeVisible();
+  await page.getByRole('tab', { name: 'Wed, Nov 27' }).click();
+  await expect(page.getByRole('tab', { selected: true })).toHaveText('Wed, Nov 27');
+  await expect(page.locator('.today-top')).toBeHidden();
 });
 
 test('the Plan with nothing in it: the new conversation\'s, open when nothing else is, and a trip\'s', async ({ page }) => {

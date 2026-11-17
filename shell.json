@@ -1,5 +1,5 @@
 {
-  "build": "9da3b3f34dce",
+  "build": "c8817f667153",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -97,7 +97,7 @@
     "/src/core/live/activity.js": "d1fe254c6571",
     "/src/core/live/clock.js": "e8699d74a329",
     "/src/core/live/geo.js": "f0c643995eb3",
-    "/src/core/live/live.js": "a784455a3349",
+    "/src/core/live/live.js": "8a22ab4c8fb4",
     "/src/core/live/plan-watches.js": "281eddbd44ca",
     "/src/core/live/sim-run.js": "91b84ce6a313",
     "/src/core/live/simulate.js": "d42f97c8d368",
@@ -251,17 +251,17 @@
     "/src/ui/screens/add.js": "6d369b0c0548",
     "/src/ui/screens/backups.js": "a30e61a7fbcb",
     "/src/ui/screens/booking.js": "e9afc09cd943",
-    "/src/ui/screens/drive.js": "323822f1aee0",
+    "/src/ui/screens/drive.js": "3a99b84193fb",
     "/src/ui/screens/experimental.js": "48f75a37ecf3",
     "/src/ui/screens/ext.js": "2bf551b1f41f",
     "/src/ui/screens/file.js": "6d1a5197e79b",
-    "/src/ui/screens/import.js": "78fe13eb42e9",
+    "/src/ui/screens/import.js": "6e192da45c2f",
     "/src/ui/screens/item.js": "dc9f5e4a9fc6",
     "/src/ui/screens/mcp.js": "8594db2419e8",
     "/src/ui/screens/model.js": "6976470d905a",
     "/src/ui/screens/models.js": "63ad69a849f8",
     "/src/ui/screens/notifications.js": "1596c1a81403",
-    "/src/ui/screens/plan.js": "4765ae422064",
+    "/src/ui/screens/plan.js": "14ce476afd90",
     "/src/ui/screens/plugin-install.js": "f4e6ece32ec1",
     "/src/ui/screens/plugin.js": "db6dce86872f",
     "/src/ui/screens/plugins.js": "5b9559133cf6",
@@ -281,7 +281,7 @@
     "/src/ui/screens/voice.js": "a15e4d8bb537",
     "/src/ui/screens/welcome.js": "f1b00d351dd3",
     "/src/ui/search-panel.js": "20a5f0a56f48",
-    "/src/ui/shell.js": "5d10aa56acf3",
+    "/src/ui/shell.js": "92c33d96ba8d",
     "/src/ui/slots.js": "4fee1465e94c",
     "/src/ui/stamps.js": "9c0f976db8fa",
     "/src/ui/shiori.css": "e4e1bced0fa6",
@@ -299,8 +299,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "28b8f3a9a2cb",
-    "/l10n/zh-Hans.json": "f7b050273233",
-    "/l10n/zh-Hant.json": "6dc3a31afc7a"
+    "/l10n/ja.json": "3138a8ff6c0a",
+    "/l10n/zh-Hans.json": "fedd3401df79",
+    "/l10n/zh-Hant.json": "647d9b7c4147"
   }
 }

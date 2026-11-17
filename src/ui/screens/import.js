@@ -23,8 +23,16 @@ import { FOLD_OVER } from '../../core/timeline.js';
 /** More chats than this in a file are one row in its preview, more rows than this a git backup's preview can't tell apart fold under one, and more trips than this one link to Trips afterwards: the timeline's fold count, three rows read at a glance. */
 const MANY = FOLD_OVER;
 
+/**
+ * The share screen while its add runs: drawn again meanwhile (Back to it, a redraw), it is this same screen, its status and buttons as the add left
+ * them, so within this page its files can't be added twice (a second annai page on the device, with the share's address opened there, isn't told). One at
+ * a time: an add takes the whole share inbox. @type {HTMLElement | null}
+ */
+let adding = null;
+
 /** @param {any} ctx @param {{ params: Record<string, string> }} route */
 export async function renderImport(ctx, route) {
+  if (route.params.inbox && adding) return adding;
   const pending = route.params.inbox ? null : takePendingImport();
   /** @type {InboxFile[]} */
   const came = route.params.inbox ? await inboxFiles() : (pending?.files ?? []).map((file) => ({ key: null, file }));
@@ -341,10 +349,13 @@ function fileInbox(ctx, items, trips, archives) {
     ...trips.filter((trip) => trip.start).map((trip) => h('button', { class: 'btn pri', type: 'button', onclick: () => add(() => trip.id, false) }, t`Add to ${trip.title}`)),
     ...(ctx.chats ? [h('button', { class: 'btn', type: 'button', onclick: () => add(() => ctx.chats.whenReady(), true) }, t`New conversation`)] : []),
   ];
+  // A share's files wait in annai's inbox until they are added; dropped ones are only here.
+  const shared = items.some((i) => i.key);
   /** @param {() => string | Promise<string>} which the trip's id @param {boolean} chat a new conversation: it opens, as the + does */
   async function add(which, chat) {
     const here = location.hash; // a screen the traveller goes to while the files are added stands (as composer.js's handOver does)
     for (const b of buttons) b.disabled = true;
+    if (shared) adding = screen;
     try {
       const id = await which();
       const { notes, problems, planned } = await bringIn(ctx, id, items.map((i) => i.file), (done, total) => {
@@ -359,9 +370,16 @@ function fileInbox(ctx, items, trips, archives) {
       for (const problem of problems) ctx.notices.card({ tone: 'warn', title: t`A calendar file couldn't be read`, body: problem });
       ctx.notices.toast(planned.length ? plural(planned.length, 'Added {0}, and # itinerary item from the calendar', 'Added {0}, and # itinerary items from the calendar', what) : added);
     } catch (e) {
-      explainStorageFull(ctx, e);
+      const full = explainStorageFull(ctx, e);
       status.textContent = messageOf(e);
       for (const b of buttons) b.disabled = false;
+      // A traveller who left this screen doesn't see its words: a card says so, as full storage's does, and a share, still in the inbox, opens again from it.
+      if (!full && !screen.isConnected) {
+        ctx.notices.card({ tone: 'warn', title: t`Adding ${what} failed`, body: messageOf(e), errors: [e],
+          actions: shared ? [{ label: t`Add ${what}`, primary: true, run: () => ctx.go('#/import?inbox=1') }] : [] });
+      }
+    } finally {
+      if (adding === screen) adding = null;
     }
   }
   /** On the import screen, as if it had come alone; it leaves the share inbox as it opens. @param {InboxFile} a */
@@ -373,7 +391,7 @@ function fileInbox(ctx, items, trips, archives) {
   }
   const shown = photos.slice(0, 12);
   const urls = shown.map((i) => URL.createObjectURL(i.file));
-  return h('div', { class: 'screen' },
+  const screen = h('div', { class: 'screen' },
     // The way out without adding: a share from Android or a dropped file opens here, and nothing else on the screen leads home.
     h('p', { class: 'crumbs' }, crumb('#/trips', t`Trips`)),
     h('h1', { class: 'title', text: t`Add ${what}` }),
@@ -381,12 +399,13 @@ function fileInbox(ctx, items, trips, archives) {
     photos.length > shown.length ? h('p', { class: 'sub', text: plural(photos.length - shown.length, 'and # more photo', 'and # more photos') }) : null,
     others.length ? h('ul', { class: 'file-names' }, ...others.map((i) => h('li', {}, h('span', { text: `${i.file.name} · ${size(i.file.size)}` }), sharedText(i.file)))) : null,
     // Any site can post to the share target (spec §12.3), so the user is asked to add only their own share.
-    items.some((i) => i.key) ? h('p', { class: 'sub', text: t`Add only what you just shared yourself.` }) : null,
+    shared ? h('p', { class: 'sub', text: t`Add only what you just shared yourself.` }) : null,
     h('div', { class: 'acts' }, ...buttons),
     status,
     ...archives.map((a) => h('div', { class: 'panel' },
       h('p', { text: t`Also here: ${a.file.name}, an annai backup or export. It isn't added with the rest; open it on its own.` }),
       h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: () => openAnnaiFile(a) }, t`Open it`)))));
+  return screen;
 }
 
 /** The words of shared text, so the user sees what they would add; nothing for other files. @param {File} file */
