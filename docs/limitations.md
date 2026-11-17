@@ -737,6 +737,13 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** a page one version older (a rollback, a tab not yet updated) reads her turn's end from them, and would misread a newer log without them.
 - **Revisit when:** the next version, as its own change: drop `end` and `awake` from `#runCall`'s and `repair()`'s writes, and from the tests that pin them.
 
+### In a conversation saved before the take-up record, the Undo line of a turn that took a hand-over up partway can sit higher
+- **Kind:** known limitation.
+- **What the user sees:** opening a conversation saved before the update with the take-up record (2026-11-17), where a file was handed over while Shiori was working, the Undo line of that hand-over can sit under an earlier line of hers or under an earlier turn's card ("Her turn ended"), above the user's later words and her last line, where the version before put it under her last line. It shows, Undo takes back exactly what she filed under the hand-over, and nothing moves while the user looks.
+- **Why:** such a log has no record of when the turn took the hand-over up, so the line is looked at only at the turn's `turn.end` and stays where it was; keeping the old placement for these logs would bring back the screen state the take-up record removed (spec §16.2), kept for good for conversations of a few days.
+- **Revisit when:** the user sees it and it bothers them.
+- **Approved:** 2026-11-17, chief's decision C96 (the user's question "Accept it as a known limitation (Recommended)", decided by chief; not the user's words).
+
 ### The restart of a turn annai started carries a hand-over still owed by an older failed turn
 - **Kind:** deferred.
 - **What the user sees:** the user hands Shiori a file, her turn fails ("Shiori can't reach her model") and they don't tap Try again. Later a turn annai starts by itself in that conversation (a watch or a reminder firing, a plugin's wake) is cut by a reload or a kill, or a wake written while the conversation was closed is taken up when it opens. The turn that takes it up carries the old hand-over, so what she files for the watch counts as filed under that hand-over, and tapping its Undo takes that note back too. It needs a failed hand-over left alone, a turn of annai's own, a cut, a write, and then the Undo. Found on 2026-11-14 in the final review of the turn-end record; the same on the version before it (run on both).
