@@ -414,11 +414,14 @@ function fileInbox(ctx, items, trips, archives) {
       const full = explainStorageFull(ctx, e);
       status.textContent = messageOf(e);
       for (const b of buttons) b.disabled = false;
-      // A traveller who left this screen doesn't see its words: a card says so, as full storage's does, and a share, still in the inbox, opens again from it.
-      if (!full && !screen.isConnected) {
-        const { what } = words(items);
-        ctx.notices.card({ tone: 'warn', title: t`Adding ${what} failed`, body: messageOf(e), errors: [e],
-          actions: shared ? [{ label: t`Add ${what}`, primary: true, run: () => ctx.go('#/import?inbox=1') }] : [] });
+      if (!screen.isConnected) {
+        for (const url of urls) URL.revokeObjectURL(url); // no one sees these thumbnails now, those drawn again for the rest too
+        // They don't see its words either: a card says so, as full storage's does, and a share, still in the inbox, opens again from it.
+        if (!full) {
+          const { what } = words(items);
+          ctx.notices.card({ tone: 'warn', title: t`Adding ${what} failed`, body: messageOf(e), errors: [e],
+            actions: shared ? [{ label: t`Add ${what}`, primary: true, run: () => ctx.go('#/import?inbox=1') }] : [] });
+        }
       }
     } finally {
       if (adding === screen) adding = null;

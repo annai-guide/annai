@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, allFiles, goToHash, startTrip as startNamed } from './helpers.js';
+import { openApp, waitForServiceWorker, allFiles, goToHash, userLines, startTrip as startNamed } from './helpers.js';
 import { ZipWriter } from '../../src/core/zip.js';
 import { utf8 } from '../../src/core/bytes.js';
 
@@ -302,12 +302,12 @@ async function sharedThree(page) {
 }
 
 /**
- * one.pdf's first write fails, as when storage runs out (held until release() when `held`, so the traveller can leave first): the page's own
- * Workspace, as annai's modules are shared in the page. The plan items' writes are counted in planWrites.
- * @param {import('@playwright/test').Page} page @param {{ held?: boolean }} [o]
+ * The first write of a file whose path starts with `only` (one.pdf) fails, as when storage runs out (held until release() when `held`, so the
+ * traveller can leave first): the page's own Workspace, as annai's modules are shared in the page. The plan items' writes are counted in planWrites.
+ * @param {import('@playwright/test').Page} page @param {{ held?: boolean, only?: string }} [o]
  */
 async function oneFailsOnce(page, o = {}) {
-  await page.evaluate(async (held) => {
+  await page.evaluate(async ({ held, only }) => {
     const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
     const real = Workspace.prototype.write;
     const w = /** @type {any} */ (window);
@@ -316,11 +316,11 @@ async function oneFailsOnce(page, o = {}) {
     const hold = held ? new Promise((go) => { w.release = go; }) : Promise.resolve();
     Workspace.prototype.write = function (/** @type {string} */ scope, /** @type {string} */ path, /** @type {any[]} */ ...rest) {
       if (path.startsWith('/plan/')) w.planWrites.push(path);
-      if (path !== '/files/one.pdf' || failed) return real.call(this, scope, path, ...rest);
+      if (!path.startsWith(only) || failed) return real.call(this, scope, path, ...rest);
       failed = true;
       return hold.then(() => { throw new Error('The test made this write fail.'); });
     };
-  }, Boolean(o.held));
+  }, { held: Boolean(o.held), only: o.only ?? '/files/one.pdf' });
 }
 
 /** Every file in every trip and conversation, by name, read through annai's own modules in the page. @param {import('@playwright/test').Page} page */
@@ -441,4 +441,81 @@ test('a share whose add to a new conversation stopped partway: New conversation 
   await page.getByRole('button', { name: 'New conversation' }).click();
   await expect(page).toHaveURL(/#\/trip\/[^/]+\/talk$/);
   expect(await filesEverywhere(page)).toEqual(ALL_ONCE);
+});
+
+/** The three files of sharedThree, as the trip screen's picker gives them. */
+const THREE = [
+  { name: 'thanksgiving.ics', mimeType: 'text/calendar', buffer: Buffer.from(ICS) },
+  { name: 'one.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 one') },
+  { name: 'two.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 two') },
+];
+const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+
+test("the trip screen's Add photos or files, stopped partway, says what it kept beside the error, and its calendar is read once", async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Thanksgiving');
+  await oneFailsOnce(page);
+  await page.getByLabel('Add photos or files').setInputFiles(THREE);
+  await expect(page.getByText('Added a file, and 2 itinerary items from the calendar')).toBeVisible();
+  await expect(page.getByRole('alert').filter({ hasText: 'The test made this write fail.' })).toBeVisible();
+  expect(await filesEverywhere(page)).toEqual(['/files/thanksgiving.ics']);
+  // Picked again, as the toast and the error tell: the rest is kept, and the calendar is not read a second time.
+  await page.getByLabel('Add photos or files').setInputFiles(THREE.slice(1));
+  await expect(page.getByText('Added 2 files')).toBeVisible();
+  expect(await filesEverywhere(page)).toEqual(ALL_ONCE);
+  expect(await page.evaluate(() => /** @type {any} */ (window).planWrites)).toHaveLength(2);
+});
+
+test("the camera's photo that can't be kept shows its card, and nothing goes to Shiori", async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Thanksgiving');
+  await oneFailsOnce(page, { only: '/files/' });
+  await page.locator('#dock-camera').setInputFiles({ name: 'gate.png', mimeType: 'image/png', buffer: PNG });
+  await expect(page.locator('.notice', { hasText: "The photo wasn't added" })).toContainText('The test made this write fail.');
+  // No message went, and the screen stays: a photo sent to Shiori would take the traveller to the conversation.
+  expect(await userLines(page, trip)).toEqual([]);
+  await expect(page).not.toHaveURL(/\/talk/);
+  expect(await filesEverywhere(page)).toEqual([]);
+});
+
+test("a share whose add stopped partway after the traveller left lets go of its thumbnails", async ({ page }) => {
+  await openApp(page);
+  await waitForServiceWorker(page);
+  await startTrip(page, 'Thanksgiving');
+  await page.evaluate(async (png) => {
+    const form = new FormData();
+    form.append('files', new File(['%PDF-1.4 one'], 'one.pdf', { type: 'application/pdf' }));
+    form.append('files', new File([new Uint8Array(png)], 'gate.png', { type: 'image/png' }));
+    await fetch('/share-target', { method: 'POST', body: form, redirect: 'manual' });
+  }, [...PNG]);
+  await page.goto('/#/import?inbox=1');
+  await expect(page.getByRole('heading', { name: 'Add 2 files' })).toBeVisible();
+  // Every thumbnail address the screen has made, from the one drawn already: each must be let go of by the end.
+  await page.evaluate(() => {
+    const w = /** @type {any} */ (window);
+    w.blobs = [...document.querySelectorAll('main .thumbs img')].map((i) => /** @type {HTMLImageElement} */ (i).src);
+    const make = URL.createObjectURL;
+    URL.createObjectURL = (/** @type {Blob} */ b) => { const u = make.call(URL, b); w.blobs.push(u); return u; };
+  });
+  // The photo is the one that fails, after one.pdf was kept, so the rest to add is a photo again.
+  await oneFailsOnce(page, { held: true, only: '/files/gate' });
+  await page.getByRole('button', { name: 'Add to Thanksgiving' }).click();
+  await expect(page.getByText('Adding 2 of 2…')).toBeVisible();
+  await page.locator('main .crumbs').getByRole('link', { name: 'Trips' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips', exact: true })).toBeVisible();
+  await page.evaluate(() => /** @type {any} */ (window).release());
+  await expect(page.locator('.notice', { hasText: 'The test made this write fail.' })).toBeVisible();
+  const alive = await page.evaluate(async () => {
+    const urls = /** @type {string[]} */ (/** @type {any} */ (window).blobs);
+    // As an image: the page's policy lets a thumbnail load from a blob address, not fetch it. A revoked address loads nothing.
+    const up = [];
+    for (const u of urls) {
+      const img = new Image();
+      img.src = u;
+      if (await img.decode().then(() => true, () => false)) up.push(u);
+    }
+    return { made: urls.length, up };
+  });
+  expect(alive.made).toBeGreaterThan(0);
+  expect(alive.up).toEqual([]);
 });

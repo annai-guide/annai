@@ -11,12 +11,14 @@ import { codec } from './photo-codec.js';
  * let go of) is done for what was kept, and an add again takes only the rest. Every caller looks at `failed`.
  * @param {any} ctx @param {string} scope @param {(Blob & { name?: string })[]} files
  * @param {(done: number, total: number) => void} [progress] done: kept so far
- * @returns {Promise<{ paths: string[], notes: string[], failed?: unknown }>} paths: one per file kept, in the files' order;
- *   notes: what the user should know, one per photo that needs it; failed: why the file after the kept ones wasn't kept, when one wasn't
+ * @returns {Promise<{ paths: string[], types: Record<string, string>, notes: string[], failed?: unknown }>} paths: one per file kept, in the
+ *   files' order; types: what each kept path was stored as, so nothing reads the folder again after the keep; notes: what the user should know,
+ *   one per photo that needs it; failed: why the file after the kept ones wasn't kept, when one wasn't
  */
 export async function addFiles(ctx, scope, files, progress = () => {}) {
   const settings = photoSettings(await readAppSettings(ctx.ws));
   /** @type {string[]} */ const paths = [];
+  /** @type {Record<string, string>} */ const types = {};
   /** @type {string[]} */ const notes = [];
   for (const [i, file] of files.entries()) {
     progress(i, files.length);
@@ -27,6 +29,7 @@ export async function addFiles(ctx, scope, files, progress = () => {}) {
       if (isPhotoType(type)) {
         const { entry, note } = await ingestPhoto(ctx.ws, scope, file, { settings, codec });
         paths.push(entry.path);
+        types[entry.path] = entry.type;
         if (note) notes.push(note);
       } else {
         // An added file never replaces another, or a booking's source would point at the wrong one (spec §7.3).
@@ -34,11 +37,12 @@ export async function addFiles(ctx, scope, files, progress = () => {}) {
         const path = freeName(normPath(`/files/${name}`), taken);
         await ctx.ws.write(scope, path, new Uint8Array(await file.arrayBuffer()), { author: 'user', type });
         paths.push(path);
+        types[path] = type;
       }
     } catch (e) {
-      return { paths, notes, failed: e };
+      return { paths, types, notes, failed: e };
     }
   }
   progress(files.length, files.length);
-  return { paths, notes };
+  return { paths, types, notes };
 }

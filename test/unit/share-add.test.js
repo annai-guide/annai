@@ -19,7 +19,8 @@ const shared = (name, type, body) => ({ key: /** @type {any} */ (`/inbox/${name}
 /**
  * A phone of annai's in memory, as the share screen's add sees it: a dated trip, a model set (so Shiori is woken), the wakes, annai's
  * share inbox (the Cache API, which Node hasn't), and a write of /files/ that fails, as storage full, the first `fails` times.
- * @param {{ fail?: string, fails?: number }} [o] fail: the path whose write fails
+ * @param {{ fail?: string, fails?: number, listFailsAfter?: number }} [o] fail: the path whose write fails; listFailsAfter: the first read of
+ *   /files/ once this many files were written rejects, as a store that fails right after a write
  */
 async function phone(o = {}) {
   const store = createMemoryStore();
@@ -27,6 +28,7 @@ async function phone(o = {}) {
   await ensureBaseScopes(real);
   const trip = await createTrip(real, { title: 'Thanksgiving', start: '2026-11-25', end: '2026-11-29', timezones: ['America/New_York'] });
   let left = o.fails ?? 1;
+  let listFails = o.listFailsAfter === undefined ? 0 : 1;
   /** @type {string[]} */ const writes = [];
   const ws = Object.create(real);
   ws.write = (/** @type {string} */ scope, /** @type {string} */ path, /** @type {any} */ c, /** @type {any} */ opts) => {
@@ -36,6 +38,13 @@ async function phone(o = {}) {
     }
     writes.push(`${scope}:${path}`);
     return real.write(scope, path, c, opts);
+  };
+  ws.list = (/** @type {string} */ scope, /** @type {string} */ prefix) => {
+    if (prefix === '/files/' && listFails && writes.filter((w) => w.includes(':/files/')).length >= (o.listFailsAfter ?? 0)) {
+      listFails--;
+      return Promise.reject(new Error('The store failed after the write.'));
+    }
+    return real.list(scope, prefix);
   };
   /** @type {any[]} */ const wakes = [];
   /** @type {Set<(e: any) => void>} */ const listeners = new Set();
@@ -57,6 +66,15 @@ test('bringIn: a file that can\'t be kept stops the rest; the calendar kept befo
   assert.equal(wakes.length, 1);
   assert.deepEqual(wakes[0].files, ['/files/thanksgiving.ics']);
   assert.match(wakes[0].text, /annai made 2 plan items from the calendar/);
+});
+
+test('bringIn: with the first file failing nothing was kept, and Shiori is told nothing', async () => {
+  const { ctx, trip, wakes, files } = await phone({ fail: '/files/one.pdf' });
+  const got = await bringIn(ctx, trip, [shared('one.pdf', 'application/pdf', '%PDF one').file, shared('two.pdf', 'application/pdf', '%PDF two').file]);
+  assert.ok(got.failed instanceof StorageFullError);
+  assert.deepEqual(got.paths, []);
+  assert.deepEqual(wakes, []);
+  assert.deepEqual(await files(trip), []);
 });
 
 test('addFiles: one that can\'t be kept comes back as failed, with nothing kept after it', async () => {
@@ -118,4 +136,16 @@ test('files dropped on annai (none in the inbox): the add again on their screen 
   assert.deepEqual(items.map((i) => i.file.name), ['one.pdf', 'two.pdf']);
   await addLeft(ctx, trip, items);
   assert.deepEqual(await files(trip), ['/files/one.pdf', '/files/thanksgiving.ics', '/files/two.pdf']);
+});
+
+test('a read of the folder that fails right after the keep leaves nothing to add twice: the kept files are out of the list and the inbox, and told once', async () => {
+  const { ctx, trip, wakes, inbox, files } = await phone({ listFailsAfter: 3 }); // the read after the third file was written
+  const items = share(inbox);
+  const got = await addLeft(ctx, trip, items);
+  assert.equal(got.failed, undefined);
+  assert.deepEqual(items, []);
+  assert.deepEqual([...inbox.keys()], []);
+  assert.deepEqual(await files(trip), ['/files/one.pdf', '/files/thanksgiving.ics', '/files/two.pdf']);
+  assert.deepEqual(wakes.map((w) => w.files), [['/files/thanksgiving.ics', '/files/one.pdf', '/files/two.pdf']]);
+  assert.match(wakes[0].text, /annai made 2 plan items from the calendar/);
 });

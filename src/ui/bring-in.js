@@ -10,20 +10,19 @@ import { validZone, deviceZone } from '../core/time.js';
  * Shiori isn't told: the caller does that (bringIn, or a hand-over from the type box). A file that can't be kept stops the rest
  * (addFiles): the calendars kept before it are read all the same, and `failed` says why, for the caller to tell.
  * @param {any} ctx @param {string} scope @param {(Blob & { name?: string })[]} files @param {(done: number, total: number) => void} [progress]
- * @returns {Promise<{ paths: string[], notes: string[], problems: string[], planned: string[], plannedBy: Record<string, number>, failed?: unknown }>}
- *   notes: about photos (addFiles); problems: calendar files that couldn't be read; plannedBy: how many plan items each calendar file made;
+ * @returns {Promise<{ paths: string[], types: Record<string, string>, notes: string[], problems: string[], planned: string[], plannedBy: Record<string, number>, failed?: unknown }>}
+ *   types, notes: as addFiles gives them; problems: calendar files that couldn't be read; plannedBy: how many plan items each calendar file made;
  *   failed: why the file after those kept wasn't kept (addFiles)
  */
 export async function keepFiles(ctx, scope, files, progress) {
-  const { paths, notes, failed } = await addFiles(ctx, scope, files, progress);
+  const { paths, types, notes, failed } = await addFiles(ctx, scope, files, progress);
   /** @type {string[]} */ const planned = [];
   /** @type {string[]} */ const problems = [];
   /** @type {Record<string, number>} */ const plannedBy = {};
   const trip = await ctx.ws.readJSON(scope, '/trip.json').catch(() => null);
   const defaultTz = [trip?.timezones?.[0], deviceZone()].find(validZone) ?? 'UTC';
-  const typeOf = new Map((await ctx.ws.list(scope, '/files/')).map((/** @type {any} */ f) => [f.path, f.type]));
   // A calendar by its name, or by its type: a shared invite's name may have no ".ics".
-  const calendar = (/** @type {string} */ p) => /\.ics$/i.test(p) || /^text\/calendar\s*(;|$)/i.test(typeOf.get(p) ?? '');
+  const calendar = (/** @type {string} */ p) => /\.ics$/i.test(p) || /^text\/calendar\s*(;|$)/i.test(types[p]);
   for (const path of paths.filter(calendar)) {
     try {
       const made = await importCalendar(ctx.ws, scope, path, { defaultTz });
@@ -33,7 +32,7 @@ export async function keepFiles(ctx, scope, files, progress) {
       problems.push(`${path}: ${messageOf(e)}`);
     }
   }
-  return { paths, notes, problems, planned, plannedBy, failed };
+  return { paths, types, notes, problems, planned, plannedBy, failed };
 }
 
 /** Whether a file is a photo, by its type or, when that says nothing, by the ending of its name. @param {{ name?: string, type?: string }} i */
@@ -61,12 +60,11 @@ export function addedWords(items) {
  */
 export async function bringIn(ctx, scope, files, progress) {
   const kept = await keepFiles(ctx, scope, files, progress);
-  const { paths, planned } = kept;
+  const { paths, types, planned } = kept;
   const main = (await ctx.llm?.config().catch(() => null))?.roles?.main?.models ?? [];
   if (paths.length && main.length && ctx.agent) {
-    const typeOf = new Map((await ctx.ws.list(scope, '/files/')).map((/** @type {any} */ f) => [f.path, f.type]));
     // For a trip that isn't open, the wake is written into its conversation: wait, so it's there when the trip opens.
-    await ctx.agent.wake({ kind: 'file', scope, files: paths, text: newFilesText(paths.map((p) => ({ path: p, type: typeOf.get(p) ?? 'application/octet-stream' })), planned) });
+    await ctx.agent.wake({ kind: 'file', scope, files: paths, text: newFilesText(paths.map((p) => ({ path: p, type: types[p] })), planned) });
   }
   return kept;
 }

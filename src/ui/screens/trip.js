@@ -299,10 +299,13 @@ function adders(ctx, id) {
       // Said of what was kept, whatever stopped the rest: nothing else says it.
       for (const note of notes) ctx.notices.card({ tone: 'warn', title: t`A photo was kept as it is`, body: note });
       for (const problem of problems) ctx.notices.card({ tone: 'warn', title: t`A calendar file couldn't be read`, body: problem });
+      if (paths.length) {
+        const { what, added } = addedWords(paths.map((name) => ({ name })));
+        ctx.notices.toast(planned.length ? plural(planned.length, 'Added {0}, and # itinerary item from the calendar', 'Added {0}, and # itinerary items from the calendar', what) : added);
+      }
+      // The files listed stay as they were when the rest failed, because the screen drawn again would lose the error written here.
       if (failed) throw failed;
       await ctx.render();
-      const { what, added } = addedWords(paths.map((name) => ({ name })));
-      ctx.notices.toast(planned.length ? plural(planned.length, 'Added {0}, and # itinerary item from the calendar', 'Added {0}, and # itinerary items from the calendar', what) : added);
     } catch (e) {
       status.textContent = '';
       explainStorageFull(ctx, e);
