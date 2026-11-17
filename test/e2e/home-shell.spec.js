@@ -362,3 +362,23 @@ test('home has no Start a trip form and no field to type in: a trip begins with 
   await expect(page.locator('main').locator('textarea, input:not([type=checkbox]):not([type=radio]):not([type=file])')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'New conversation' })).toBeVisible();
 });
+
+test("the conversation's one level-1 heading is its name, which still opens Details; `me`'s is \"Shiori, no trip\"", async ({ page }) => {
+  await openApp(page);
+  const id = await startTrip(page, 'Testville');
+  await goToHash(page, `#/trip/${id}/talk`);
+  const head = await atConversation(page);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Testville');
+  await expect(page.getByRole('heading', { name: 'Conversation' })).toHaveCount(0); // the hidden one is gone
+  // The name looks as it did: one line, 44 px, the row's room.
+  const name = head.locator('.talk-name');
+  expect(await name.evaluate((el) => Math.round(el.getBoundingClientRect().height))).toBe(44);
+  await expect(name).toHaveCSS('font-size', '20px');
+  await page.getByRole('heading', { level: 1, name: 'Testville' }).getByRole('link').click();
+  await expect.poll(() => new URL(page.url()).hash).toBe(`#/trip/${id}`);
+  await expect(page.locator('.trip-edit')).toBeVisible(); // Details drew
+  await goToHash(page, '#/talk/me');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Shiori, no trip');
+  await expect(page.getByRole('heading', { level: 1 }).getByRole('link')).toHaveCount(0);
+});

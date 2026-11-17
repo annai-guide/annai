@@ -650,13 +650,12 @@ export async function renderTalk(ctx, route) {
     }, () => {});
   }) : null;
   const screen = h('div', { class: 'screen' },
-    // ← home (never opening anything), its name (a trip's to Details), and the conversation's ⋯ (Details too, Tidy up), staying under the app's bar on a
-    // long conversation; `me`'s has its name alone. The heading stays for the top bar's tests until it goes (stage 8).
+    // ← home (never opening anything), its name as the screen's heading (a trip's a link to Details), and the conversation's ⋯ (Details too, Tidy up),
+    // staying at the top of the screen on a long conversation; `me`'s has its name alone. The h1 wraps the name, so a rename writes the link's words.
     h('div', { class: 'talk-head' },
       h('a', { class: 'btn ghost talk-back', href: '#/trips', 'aria-label': t`Back to Trips`, text: '←' }),
-      name,
+      h('h1', { class: 'talk-title' }, name),
       ...(tidy ? [tidy.el, tidy.status] : [])),
-    h('h1', { class: 'visually-hidden', text: readOnly ? title : t`Conversation` }),
     trip ? await nextLine(ctx, trip) : null,
     cost,
     list.childElementCount || readOnly ? null : empty,
