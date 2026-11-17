@@ -81,13 +81,13 @@ const ANNAI_NOTES = ['kokoro-failed', 'nothing-to-add', 'stopped'];
 /** The key of the card for both halves' models failing. */
 const BOTH_CARD = 'model:both';
 /**
- * The dock while Kokoro thinks behind a Koe that rests or waits for the user's turn (the user, 2026-11-16: "when kokoro is thinking and koe is
+ * The dock while Kokoro works behind a Koe that rests or waits for the user's turn (the user, 2026-11-16: "when kokoro is thinking and koe is
  * ready, it currently says your turn. maybe that is confusing? maybe put thinking"). No "tap to stop": a tap talks to Koe; the sign's Stop stops Kokoro.
  */
 const THINKING = Object.freeze({ name: /** @type {const} */ ('thinking'), label: t`Thinking` });
 
 /** What the dock shows of a state: a change of either is told. @param {import('./loop.js').State} s */
-const shownKey = (s) => `${s.name}\n${s.label}`;
+const shownKey = (s) => `${s.name}\n${s.label}\n${s.over ?? ''}`;
 
 export class Channel {
   /**
@@ -428,11 +428,19 @@ export class Halves {
   get opening() { return Promise.all([this.kokoro.opening, this.koe.opening]).then(() => {}); }
   /** The half that talks with the user now. */
   get talking() { return this.koeState === 'text' ? this.koe : this.kokoro; }
-  /** The dock's state: the talking half's, or a live session's; THINKING over a Koe that rests or waits for the user's turn. @returns {import('./loop.js').State} */
+  /**
+   * The dock's state: the talking half's, or a live session's, as it is when no one works behind it. While the sign says Kokoro is working (kokoroWorking:
+   * the one answer to that, busy before its own state says thinking) and Koe rests or waits for the user's turn, "Your turn" and "Tap to talk" would
+   * say the opposite of the sign: THINKING stands over them, and Kokoro's own state where it waits for the user (its card). `over` is Koe's own name
+   * beneath it (home shows its whole dock for Koe's states only: shell.js).
+   * @returns {import('./loop.js').State}
+   */
   get state() {
     const s = this.koeState === 'live' ? this.live.view : this.talking.state;
-    const k = this.kokoro.state.name;
-    return this.kokoroWorking && (k === 'thinking' || k === 'away') && (s.name === 'sleeping' || (s.name === 'waiting' && s.wait === 'wait')) ? THINKING : s;
+    if (!this.kokoroWorking || !(s.name === 'sleeping' || (s.name === 'waiting' && s.wait === 'wait'))) return s;
+    const k = this.kokoro.state;
+    if (k.name === 'waiting') return s.name === 'sleeping' ? { ...k, over: s.name } : s; // Kokoro's card waits for the user: Koe's wait says so already
+    return k.name === 'thinking' || k.name === 'away' || k.name === 'sleeping' ? { ...THINKING, over: s.name } : s;
   }
   /** A live session is open or opening, which opening another conversation would close (koeState 'live' only means the route can go live). */
   get sessionOpen() { return this.live.state !== 'closed'; }

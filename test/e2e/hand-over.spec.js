@@ -297,6 +297,52 @@ test('a short paste stays words; a long one into an empty box becomes a chip, wh
   await expect(page.getByLabel('Message to Shiori')).toHaveValue(`My booking:\n${text.trim().replace(/\r\n?/g, '\n')}`);
 });
 
+// The box takes several lines (the user, 2026-11-16): what is put back is as tall as its lines, shows its end when it is longer than the box, and
+// goes on a line of its own after words typed meanwhile, with no blank line when those end in one.
+test('Put back as text: the box is as tall as the lines put back, scrolled to their end when they are more than it holds, and typed words ending in a line break leave no blank line', async ({ page }) => {
+  await openApp(page, '#/talk');
+  const box = page.getByLabel('Message to Shiori');
+  /** The box's height, and whether it scrolls and shows its last line. */
+  const size = () => box.evaluate((el) => {
+    const end = el.scrollHeight - Number.parseFloat(getComputedStyle(el).paddingBottom);
+    return { height: Math.round(el.getBoundingClientRect().height), scrolls: el.scrollHeight > el.clientHeight + 1, atEnd: el.scrollTop + el.clientHeight >= end - 1 };
+  });
+  /** Pastes into the empty box (a chip, being long) and puts it back as words. @param {string} text */
+  const putBack = async (text) => {
+    await box.fill('');
+    await box.evaluate((el, t) => {
+      const data = new DataTransfer();
+      data.setData('text/plain', t);
+      el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+    }, text);
+    await expect(page.locator('.type-sheet .attach-chip')).toHaveCount(1);
+  };
+  await page.getByRole('button', { name: 'Type', exact: true }).click();
+  // Four short lines: a chip (four lines or more), and put back, the box is four lines tall, nothing to scroll.
+  await putBack('Seat 14D\nAisle, please\nVegetarian meal\nWindow shade down');
+  await page.getByRole('button', { name: 'Put back as text' }).click();
+  await expect(box).toHaveValue('Seat 14D\nAisle, please\nVegetarian meal\nWindow shade down');
+  await expect.poll(size).toEqual({ height: 120, scrolls: false, atEnd: true });
+  // A long one: five lines tall, scrolled to its end.
+  const text = (await fixture('confirmation.txt', 'text/plain')).buffer.toString('utf8');
+  await putBack(text);
+  await page.getByRole('button', { name: 'Put back as text' }).click();
+  await expect(box).toHaveValue(text.trim().replace(/\r\n?/g, '\n'));
+  await expect.poll(size).toEqual({ height: 144, scrolls: true, atEnd: true });
+  // Words typed meanwhile, long, with the box scrolled to their start: what is put back goes at their end, and that is what the box shows.
+  await putBack('Seat 14D\nAisle, please\nVegetarian meal\nWindow shade down');
+  await box.fill(Array.from({ length: 8 }, (_, i) => `Line ${i + 1}`).join('\n'));
+  await box.evaluate((el) => { el.scrollTop = 0; });
+  await page.getByRole('button', { name: 'Put back as text' }).click();
+  await expect(box).toHaveValue(`${Array.from({ length: 8 }, (_, i) => `Line ${i + 1}`).join('\n')}\nSeat 14D\nAisle, please\nVegetarian meal\nWindow shade down`);
+  await expect.poll(size).toEqual({ height: 144, scrolls: true, atEnd: true });
+  // Words typed meanwhile that end in a line break: the paste follows on the next line, not after a blank one.
+  await putBack('Seat 14D\nAisle, please\nVegetarian meal\nWindow shade down');
+  await box.fill('My booking:\n');
+  await page.getByRole('button', { name: 'Put back as text' }).click();
+  await expect(box).toHaveValue('My booking:\nSeat 14D\nAisle, please\nVegetarian meal\nWindow shade down');
+});
+
 /** A flight booking in the open trip, with the seat she is unsure of; its details are open. @param {import('@playwright/test').Page} page */
 async function flightDetails(page) {
   const trip = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
@@ -327,7 +373,7 @@ test('Ask Shiori about this: the booking is a chip in the type box with Read it 
     await expect(chip).toHaveAttribute('href', /from=%23%2Ftrip%2F[^&]*%2Ftalk$/); // back to its conversation, by its own address
     await chip.click();
     await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
-    await expect(page.locator('main textarea')).toHaveCount(0);
+    await expect(page.locator('textarea:not(#dock-text)')).toHaveCount(0);
   } finally {
     await llm.stop();
   }

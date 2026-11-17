@@ -47,7 +47,8 @@ export function createDock(ctx) {
   // sending closes it; Escape closes it; a tap elsewhere closes it while it is empty. Several lines (the user, 2026-11-16: "can you make it
   // multiline? auto expanding text box would be ideal. also the keyboard button is send not change line, maybe should do that? as we already
   // have a send button near the text box"): one line at rest, growing with what is typed to its cap (shiori.css), then scrolling inside.
-  // Enter adds a line, the phone's return key too; the send arrow sends, and from a keyboard Ctrl or ⌘ with Enter.
+  // Enter adds a line where the pointer is coarse (a phone or tablet: its touch keyboard's return key), and sends where it is fine (a mouse or
+  // trackpad: a desktop's keyboard, as before), with Shift+Enter adding the line there; Ctrl or ⌘ with Enter sends on both, and so does the send arrow.
   const input = h('textarea', { id: 'dock-text', rows: 1, 'aria-label': t`Message to Shiori`, autocomplete: 'off', autocapitalize: 'sentences' });
   /** As tall as what it holds, up to its cap (max-height), keeping where it is scrolled; hidden, it has no height to fit, and fits as it opens. */
   const fit = () => {
@@ -71,7 +72,7 @@ export function createDock(ctx) {
   input.addEventListener('keydown', (/** @type {KeyboardEvent} */ e) => {
     if (e.key !== 'Enter') return;
     if (e.isComposing || composing || (e.keyCode === 229 && e.timeStamp - endedAt < 100)) return void e.preventDefault();
-    if (!e.ctrlKey && !e.metaKey) return; // a line
+    if (!(e.ctrlKey || e.metaKey || (!e.shiftKey && matchMedia('(pointer: fine)').matches))) return; // a line
     e.preventDefault();
     sheet.requestSubmit();
   });
@@ -81,9 +82,11 @@ export function createDock(ctx) {
   const composer = createComposer(ctx, {
     onChange: () => ctx.agent.typing?.(Boolean(input.value.trim() || composer.items().length)),
     onPutBack: (/** @type {string} */ pasted) => {
-      // As it was pasted, its lines kept, on a line of its own after any words typed since.
+      // As it was pasted, its lines kept, on a line of its own after any words typed since (one they end with is not a second), and the box as tall
+      // as they are; focus() shows the end, where the caret is (checked in Chromium and WebKit with the box scrolled to its start).
       const words = pasted.trim();
-      input.value = input.value.trim() ? `${input.value}\n${words}` : words;
+      const typed = input.value.trimEnd();
+      input.value = typed ? `${typed}\n${words}` : words;
       fit();
       input.focus();
       ctx.agent.typing?.(true);

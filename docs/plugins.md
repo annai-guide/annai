@@ -169,7 +169,7 @@ Every drawing function gets an element annai made, and a `ui` object:
 | `ui.go(hash)` | goes to a screen, such as `'#/now'` |
 | `ui.trip()` | the open trip's id, or null |
 | `ui.toast(text)`, `ui.card({ title, body, tone, actions })` | a toast or a system card (never in Shiori's voice) |
-| `ui.shiori.state()`, `ui.shiori.on(kind, fn)`, `ui.shiori.tap()`, `ui.shiori.send(text)` | Shiori: her state (`{ name, label }`, as the dock shows her: with Koe and Kokoro, Koe's, or Thinking while Kokoro still works behind a Koe that waits), her events (`'state'`, `'event'`), a tap on her, a message to her |
+| `ui.shiori.state()`, `ui.shiori.on(kind, fn)`, `ui.shiori.tap()`, `ui.shiori.send(text)` | Shiori: her state (`{ name, label }`, as the dock shows her: with Koe and Kokoro, Koe's, or Thinking while Kokoro still works behind a Koe that rests or waits; then `over` names Koe's own state beneath it), her events (`'state'`, `'event'`), a tap on her, a message to her |
 | `ui.live.on()`, `ui.live.activity()`, `ui.live.onChange(fn)` | live mode: on or off, `still` / `walking` / `moving-fast`, changes |
 
 A drawing may return a cleanup function, which annai calls when it draws that place again. A drawing that throws counts against your plugin as a tool's crash does; its element stays empty, and the rest of the screen draws.

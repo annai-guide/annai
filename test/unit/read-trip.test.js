@@ -3220,7 +3220,7 @@ test("with voice on and no Koe model, a tap while annai's card waits after its q
   await k.agent.idle();
 });
 
-test("with voice off and Koe on a chat model waiting for Kokoro, whose model call is still running (no card): the dock says Thinking; a tap on Shiori shows Koe's listening, and Thinking again when its 8 s end; Kokoro's card waiting for the user is \"Your turn\" (the user, 2026-11-16: \"when kokoro is thinking and koe is ready, it currently says your turn\")", async (t) => {
+test("with voice off and Koe on a chat model waiting for Kokoro, whose model call is still running (no card): the dock says Thinking; a tap on Shiori shows Koe's listening, and Thinking again when its 8 s end; once Kokoro's card is up, Koe's wait says Your turn again (the user, 2026-11-16: \"when kokoro is thinking and koe is ready, it currently says your turn\")", async (t) => {
   useClock(t);
   /** @type {() => void} */
   let release = () => {};
@@ -3241,9 +3241,25 @@ test("with voice off and Koe on a chat model waiting for Kokoro, whose model cal
   assert.equal(k.asks.length, 0, 'no card');
   release();
   await until(() => k.asks.length === 1, 20_000);
-  await until(() => k.agent.kokoro.state.name === 'waiting');
+  await until(() => k.agent.kokoro.state.name === 'waiting', 20_000);
   assert.deepEqual(dock(k), ['waiting', 'Your turn'], "Kokoro's card waits for the user, Koe for their turn: nothing is thinking");
   k.agent.stopKokoro(); // ends the card
+  k.agent.interrupt();
+  await k.agent.idle();
+});
+
+test("with voice off and Koe's turn ended (it sleeps), annai's card of Kokoro's waiting: the dock says \"Waiting for your OK\" like Kokoro's own, not \"Tap to talk\", and \"Tap to talk\" again once the card is gone (the final review's second opinions)", async (t) => {
+  useClock(t);
+  const k = await gateKit(KOKORO_ASKED, { koe: { type: waitingKoe(0) }, voice: { speechIn: ['m-hear'] } });
+  await voiceOff(k);
+  k.agent.send('Where did we eat in Testville?');
+  await until(() => k.asks.length === 1 && !k.agent.koe.busy, 20_000);
+  await until(() => k.agent.kokoro.state.name === 'waiting', 20_000);
+  assert.equal(k.agent.koe.state.name, 'sleeping', 'Koe sleeps');
+  assert.deepEqual([...dock(k), k.agent.state.over], ['waiting', 'Waiting for your OK', 'sleeping'], 'the dock shows the card\'s words, over Koe\'s own state');
+  k.agent.stopKokoro(); // ends the card
+  await k.agent.idle();
+  assert.deepEqual(dock(k), ['sleeping', 'Tap to talk']);
   k.agent.interrupt();
   await k.agent.idle();
 });

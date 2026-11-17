@@ -1737,3 +1737,32 @@ test("a move with a live session open: annai's card is said aloud, and at Open t
     await k.done();
   }
 });
+
+// The dock while Kokoro works behind Koe (the user, 2026-11-16: "when kokoro is thinking and koe is ready, it currently says your turn. maybe that is
+// confusing? maybe put thinking"): over a live Koe with no session open (it is asleep, as a text Koe is) it is Thinking too. A live view never says
+// Your turn, so only a closed session is changed; a session that is open shows its own states.
+test("Koe live with no session open and Kokoro working on a note: the dock says Thinking, told as the sign comes, and Tap to talk once Kokoro is done", async () => {
+  /** @type {() => void} */
+  let release = () => {};
+  const go = new Promise((r) => { release = () => r(undefined); });
+  const k = await liveKit([], { hold: async (/** @type {any} */ c) => { if (c.model.providerId === 'model-0') await go; } });
+  try {
+    assert.equal(k.agent.koeState, 'live');
+    assert.equal(k.agent.sessionOpen, false);
+    assert.deepEqual([k.agent.state.name, k.agent.state.label], ['sleeping', 'Tap to talk']);
+    /** @type {string[]} */
+    const told = [];
+    k.agent.on('state', (/** @type {any} */ s) => told.push(`${s.name} ${s.label}`));
+    await k.agent.channel.send('koe', 'Is Nepenthe open now?', 'append', 'tool');
+    await until(() => k.agent.kokoroWorking, 20_000);
+    assert.deepEqual([k.agent.state.name, k.agent.state.label, k.agent.state.over], ['thinking', 'Thinking', 'sleeping']);
+    assert.equal(told.at(-1), 'thinking Thinking', 'the dock was told');
+    release();
+    await until(() => !k.agent.kokoroWorking, 20_000);
+    assert.deepEqual([k.agent.state.name, k.agent.state.label], ['sleeping', 'Tap to talk']);
+    assert.equal(told.at(-1), 'sleeping Tap to talk', 'the dock was told');
+  } finally {
+    release();
+    await k.done();
+  }
+});

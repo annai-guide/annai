@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, addProvider, koeSetUp, startModelServer, anthropicToolReply, filterTrace } from './helpers.js';
+import { openApp, waitForServiceWorker, addProvider, koeSetUp, startModelServer, anthropicToolReply, filterTrace, goToHash } from './helpers.js';
 
 // Koe and Kokoro, K1: the text split (docs/superpowers/specs/2026-10-19-koe-kokoro-design.md).
 
@@ -113,6 +113,28 @@ test("while Kokoro works behind a Koe waiting for the user's turn, the dock says
     await expect(label).toHaveText('Your turn');
   } finally {
     release();
+    await llm.stop();
+  }
+});
+
+// Home shows its whole dock for Koe's own states (she speaks, listens, thinks, waits), as before; Kokoro's work behind a Koe that sleeps shows on
+// home as the sign alone, where the dock's words, Thinking now, are the conversation's (the main session told the user, 2026-11-16).
+test("on home, while Kokoro works behind a Koe that has gone to sleep, only the sign shows: the dock's words say Thinking in the conversation, and home's dock stays at rest", async ({ page }) => {
+  const llm = await startModelServer(halves(8000));
+  try {
+    await koeSetUp(page, llm.origin);
+    await type(page, 'Is Nepenthe open?');
+    const sign = page.getByRole('status').filter({ hasText: 'Kokoro is working' });
+    // Koe has answered and its turn is over: until then its own "Thinking · tap to stop" is on the dock, and plain Thinking only before its turn begins.
+    await expect(page.locator('.convo .shiori p').first()).toHaveText("I'm checking.");
+    await expect(sign).toBeVisible();
+    await expect(page.locator('.talk-label')).toHaveText('Thinking'); // Koe asleep behind Kokoro
+    await goToHash(page, '#/trips');
+    await expect(page.locator('body')).toHaveClass(/\bhome\b/);
+    await expect(sign).toBeVisible();
+    // Read once, while Kokoro's turn is held (8 s): a check that retries would pass once it was over and the dock was at rest anyway.
+    expect(await page.evaluate(() => [document.body.classList.contains('dock-busy'), getComputedStyle(/** @type {Element} */ (document.querySelector('.dock-row'))).display])).toEqual([false, 'none']);
+  } finally {
     await llm.stop();
   }
 });

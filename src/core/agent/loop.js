@@ -88,8 +88,8 @@ import { FILES_ONLY, handoverOf } from '../handover.js';
  *   after its question began and before its listening opened, so it never opens
  * @typedef {{ id: string, inside: boolean, her?: boolean, kept?: boolean, text?: string, h?: Heard, gate?: string, taken?: boolean }} AskLine  heard while annai's card waits: inside: begun in its
  *   window; her: begun over her voice; kept: the verdict, once it comes; h: this half's own segment; taken: the card took it (cardTakes) and wrote it with its answer
- * @typedef {{ name: StateName, label: string, detail?: string, wait?: 'ask' | 'wait' }} State  label: the dock's words for it (LABELS); detail: what she is away doing (TIDYING, or a task's words);
- *   wait: what she waits for while waiting, her question's answer (ask) or the user's turn (wait)
+ * @typedef {{ name: StateName, label: string, detail?: string, wait?: 'ask' | 'wait', over?: StateName }} State  label: the dock's words for it (LABELS); detail: what she is away doing (TIDYING, or a task's words);
+ *   wait: what she waits for while waiting, her question's answer (ask) or the user's turn (wait); over: Halves' dock state only, standing over Koe's own state of that name (Halves.state)
  * @typedef {{ tone: 'warn' | 'info', title: string, body: string, actions?: { label: string, primary?: boolean, run: () => void | Promise<void> }[], key?: string, toast?: boolean }} Notice
  *   key: names a card a later turn takes down (the clear event, when that turn works): model, or silent:<its conversation>
  * @typedef {{ stepsPerWake?: number, spendPerDay?: number, wakesPerHour?: number, quietHours?: { from: string, to: string } }} Budgets
@@ -1084,7 +1084,7 @@ export class Agent {
       // A Stop as the card was written found no wait to end: none may eat the user's next line.
       if (call.signal?.aborted) return void p.resolve({ stopped: true });
       this.#pending = p;
-      this.#setState('waiting');
+      this.#setState('waiting', { wait: 'ask' });
       const byHand = () => {
         p.byHand = true;
         this.#remindWaiting();
@@ -1093,7 +1093,7 @@ export class Agent {
         ask.open = p.listening = false;
         if (this.#ear) this.#closeEar(); // whoever opened it: a tap's may be the card's listening
         if (this.#pending !== p) return;
-        this.#setState('waiting');
+        this.#setState('waiting', { wait: 'ask' });
         byHand();
       };
       // A spoken yes counts only while its question is the last thing put to the user: anything else, said (her voice beginning it: annai's line, a chat

@@ -497,11 +497,11 @@ bo3wjk	ok	Shiori stopped: today's budget is spent	Shioriが止まりました：
 177194c	ok	She took {0} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.	Shioriは頼まれていない作業を自分から{0}ステップ進めたため、そこで止まりました。続けてほしいときは、Shioriに頼んでください。	src/core/agent/budgets.js:124	{0} = num(over.steps); Note: "She" is Shiori in ja, as elsewhere.; Note: "Ask her" is a request (頼んで), not the glossary's Ask (Safari's permission choice, 確認).
 1o4yqf3	ok	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	1回の起動で進められる上限の{0}ステップに達しました（「設定 → Shiori → Shioriが自分から動く頻度」）。続けてほしいときは、Shioriに頼んでください。	src/core/agent/budgets.js:125	{0} = num(over.steps); Note: ja names no subject (the card's title says Shiori stopped); the setting's path as the screens name it.; Note: "Ask her" is a request (頼んで), not the glossary's Ask (Safari's permission choice, 確認).
 jkajtp	ok	Thinking	考え中	src/core/agent/halves.js:87	
-1vskjkw	ok	Live is resting; Koe · Chat is answering	ライブは休止中のため、Koe · チャットが答えています	src/core/agent/halves.js:607	
-13gz10	ok	Shiori answers you directly for now. The Trace says why, under Models; Koe tries again in a few minutes.	しばらくはShioriが直接答えます。理由は「記録」の「モデル」で確認できます。Koeは数分後に自動的に再試行します。	src/core/agent/halves.js:686	Note: Models is the Trace's Kind filter, as it is named there.
-yvabm6	ok	Koe's live voice couldn't start	Koeのライブ音声を開始できませんでした	src/core/agent/halves.js:686	
-bzrasi	ok	Shiori answers as one half for now	しばらくはShioriが一人で答えます	src/core/agent/halves.js:857	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
-o0lfar	ok	annai couldn't pass your message to Koe: {0}	メッセージをKoeに渡せませんでした：{0}	src/core/agent/halves.js:857	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+1vskjkw	ok	Live is resting; Koe · Chat is answering	ライブは休止中のため、Koe · チャットが答えています	src/core/agent/halves.js:615	
+13gz10	ok	Shiori answers you directly for now. The Trace says why, under Models; Koe tries again in a few minutes.	しばらくはShioriが直接答えます。理由は「記録」の「モデル」で確認できます。Koeは数分後に自動的に再試行します。	src/core/agent/halves.js:694	Note: Models is the Trace's Kind filter, as it is named there.
+yvabm6	ok	Koe's live voice couldn't start	Koeのライブ音声を開始できませんでした	src/core/agent/halves.js:694	
+bzrasi	ok	Shiori answers as one half for now	しばらくはShioriが一人で答えます	src/core/agent/halves.js:865	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
+o0lfar	ok	annai couldn't pass your message to Koe: {0}	メッセージをKoeに渡せませんでした：{0}	src/core/agent/halves.js:865	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
 15junxn	ok	One moment…	準備中…	src/core/agent/loop.js:146	Note: the dock's words between the user's tap and Listening (Shiori getting ready to hear them).
 1dhsqvv	ok	Tap to talk	タップして話す	src/core/agent/loop.js:146	
 1ldobgc	ok	Tap to interrupt	タップして中断	src/core/agent/loop.js:146	
@@ -1055,17 +1055,17 @@ a8awk7	ok	Free web search for web_search, and a reader of pages other readers ca
 1a5kitj	ok	Web search for web_search, with your key, once the Serper Search plugin is installed.	web_searchのWeb検索。Serper検索プラグインをインストールすると、自分のキーで使えます。	src/ui/credits.js:82	Note: Serper 検索 as the plugin's own name reads in Japanese since L7 (annai translates its official plugins' descriptive names, decision 10).
 1yvqge7	ok	Read pages that don't let web apps read them, and search the web, for Shiori's fetch and web_search tools, as Settings → Tools chooses.	Webアプリからは読めないページを読み、Webを検索します。Shioriのfetchとweb_searchツールで、「設定 → ツール」の選択に従って使います。	src/ui/credits.js:89	
 l5jx6y	ok	Shiori's art: designed for annai with AI image generation, then traced into vector art.	Shioriのイラスト：annaiのためにAI画像生成でデザインし、ベクター画像としてトレースしました。	src/ui/credits.js:107	
-gb19et	ok	Message to Shiori	Shioriへのメッセージ	src/ui/dock.js:51	
-1vatbdb	ok	Send	送信	src/ui/dock.js:78	
-abxwjc	ok	Your files didn't reach Shiori	ファイルをShioriに渡せませんでした	src/ui/dock.js:122	Note: a card when keeping the handed files failed (storage full, say); its body says why. Built on 渡す, as the + says.
-1m2zofh	ok	Type	入力	src/ui/dock.js:140	Note: The dock's keyboard button: it opens the box to type in (a verb).
-1dcb0v0	ok	The photo wasn't added	写真を追加できませんでした	src/ui/dock.js:183	
-1nyg58x	draft	Take the photo again.	写真を撮り直してください。	src/ui/dock.js:183	
-1xmvmzh	ok	Kokoro is working	Kokoroが作業中	src/ui/dock.js:291	
-1ndyc8s	ok	Stop Kokoro	Kokoroを止める	src/ui/dock.js:292	
-ky4lc5	ok	Stop	停止	src/ui/dock.js:292	
-snj02s	ok	In {0} ›	{0}の会話 ›	src/ui/dock.js:310	{0} = scopeTitle(typeof title === 'string' ? { ...rec, title } : rec)
-1s6dmy6	ok	Camera	カメラ	src/ui/dock.js:325	
+gb19et	ok	Message to Shiori	Shioriへのメッセージ	src/ui/dock.js:52	
+1vatbdb	ok	Send	送信	src/ui/dock.js:79	
+abxwjc	ok	Your files didn't reach Shiori	ファイルをShioriに渡せませんでした	src/ui/dock.js:125	Note: a card when keeping the handed files failed (storage full, say); its body says why. Built on 渡す, as the + says.
+1m2zofh	ok	Type	入力	src/ui/dock.js:143	Note: The dock's keyboard button: it opens the box to type in (a verb).
+1dcb0v0	ok	The photo wasn't added	写真を追加できませんでした	src/ui/dock.js:186	
+1nyg58x	draft	Take the photo again.	写真を撮り直してください。	src/ui/dock.js:186	
+1xmvmzh	ok	Kokoro is working	Kokoroが作業中	src/ui/dock.js:294	
+1ndyc8s	ok	Stop Kokoro	Kokoroを止める	src/ui/dock.js:295	
+ky4lc5	ok	Stop	停止	src/ui/dock.js:295	
+snj02s	ok	In {0} ›	{0}の会話 ›	src/ui/dock.js:313	{0} = scopeTitle(typeof title === 'string' ? { ...rec, title } : rec)
+1s6dmy6	ok	Camera	カメラ	src/ui/dock.js:328	
 1rm0t76	ok	{0} isn't valid JSON.	{0}のJSONが正しくありません。	src/ui/dom.js:155	{0} = label; Note: {0} is a field's label.
 1a791in	ok	{0} has to be an object: { … }.	{0}はオブジェクト（{ … }）で入力してください。	src/ui/dom.js:157	{0} = label; Note: {0} is a field's label.
 1gkm7i5	ok	Saving…	保存中…	src/ui/dom.js:266	
@@ -2790,9 +2790,9 @@ f2eaqi	ok	Find a search plugin	検索プラグインを探す	src/ui/search-pane
 do1m5o	ok	{0}: annai can't show this setting.	{0}：この設定はannaiでは表示できません。	src/ui/settings-form.js:116	{0} = f.label
 1qrgqx0	ok	saved	保存済み	src/ui/settings-form.js:121	
 phutrz	ok	{0} wasn't saved: {1}	{0}を保存できませんでした：{1}	src/ui/settings-form.js:130	{0} = f.label; {1} = messageOf(e)
-1skw031	ok	This screen couldn't open	この画面を開けませんでした	src/ui/shell.js:434	
-1z00dfe	ok	An update is ready	アップデートの準備ができました	src/ui/shell.js:547	
-gt0nrj	ok	It will be used the next time annai starts.	次回annaiを起動したときに適用されます。	src/ui/shell.js:547	
+1skw031	ok	This screen couldn't open	この画面を開けませんでした	src/ui/shell.js:435	
+1z00dfe	ok	An update is ready	アップデートの準備ができました	src/ui/shell.js:548	
+gt0nrj	ok	It will be used the next time annai starts.	次回annaiを起動したときに適用されます。	src/ui/shell.js:548	
 sntfon	ok	Hello! This is how I sound when I talk to you.	こんにちは。こんな声でお話しします。	src/ui/speech-check.js:10	Note: spoken by the voice being tested, so it is heard in the screens' language.
 n8hyke	ok	{0}. {1}	{0}。{1}	src/ui/speech-check.js:16	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
 1a27ynt	ok	Last tested {0}: it worked.	最終テスト（{0}）：動作しました。	src/ui/speech-check.js:26	{0} = relTime(verified.at); Note: {0} is a relative time, in brackets as on a model's test line.

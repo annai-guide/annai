@@ -497,11 +497,11 @@ bo3wjk	ok	Shiori stopped: today's budget is spent	Shiori 已停止：今天的�
 177194c	ok	She took {0} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.	她自己在做一件没人让她做的事，已经做了 {0} 步，所以先停在这里。想让她继续，告诉她就行。	src/core/agent/budgets.js:124	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告诉她), not the glossary's Ask, Safari's 询问 choice.
 1o4yqf3	ok	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	这次唤醒最多可以做 {0} 步（设置 → Shiori → 她主动行动的频率），她已经做完了。想让她继续，告诉她就行。	src/core/agent/budgets.js:125	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告诉她), not the glossary's Ask, Safari's 询问 choice; the setting's path as the screens name it.
 jkajtp	ok	Thinking	思考中	src/core/agent/halves.js:87	
-1vskjkw	ok	Live is resting; Koe · Chat is answering	实时语音暂停中，改由 Koe · 聊天 回答	src/core/agent/halves.js:607	
-13gz10	ok	Shiori answers you directly for now. The Trace says why, under Models; Koe tries again in a few minutes.	暂时由 Shiori 直接回答。原因见“记录”中的“模型”；Koe 几分钟后会自动重试。	src/core/agent/halves.js:686	Note: Models is the Trace's Kind filter, as it is named there.
-yvabm6	ok	Koe's live voice couldn't start	Koe 的实时语音无法启动	src/core/agent/halves.js:686	Note: "live voice" is the glossary's Live voice (实时语音), not a voice she speaks with (声音).
-bzrasi	ok	Shiori answers as one half for now	Shiori 暂时独自回答	src/core/agent/halves.js:857	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
-o0lfar	ok	annai couldn't pass your message to Koe: {0}	无法把消息转给 Koe：{0}	src/core/agent/halves.js:857	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+1vskjkw	ok	Live is resting; Koe · Chat is answering	实时语音暂停中，改由 Koe · 聊天 回答	src/core/agent/halves.js:615	
+13gz10	ok	Shiori answers you directly for now. The Trace says why, under Models; Koe tries again in a few minutes.	暂时由 Shiori 直接回答。原因见“记录”中的“模型”；Koe 几分钟后会自动重试。	src/core/agent/halves.js:694	Note: Models is the Trace's Kind filter, as it is named there.
+yvabm6	ok	Koe's live voice couldn't start	Koe 的实时语音无法启动	src/core/agent/halves.js:694	Note: "live voice" is the glossary's Live voice (实时语音), not a voice she speaks with (声音).
+bzrasi	ok	Shiori answers as one half for now	Shiori 暂时独自回答	src/core/agent/halves.js:865	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
+o0lfar	ok	annai couldn't pass your message to Koe: {0}	无法把消息转给 Koe：{0}	src/core/agent/halves.js:865	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
 15junxn	ok	One moment…	请稍候…	src/core/agent/loop.js:146	Note: the dock's words between the user's tap and Listening (Shiori getting ready to hear them).
 1dhsqvv	ok	Tap to talk	轻点说话	src/core/agent/loop.js:146	
 1ldobgc	ok	Tap to interrupt	轻点打断	src/core/agent/loop.js:146	
@@ -1055,17 +1055,17 @@ a8awk7	ok	Free web search for web_search, and a reader of pages other readers ca
 1a5kitj	ok	Web search for web_search, with your key, once the Serper Search plugin is installed.	安装“Serper 搜索”插件后，用你的密钥为 web_search 提供网页搜索。	src/ui/credits.js:82	Note: Names the plugin as its own zh name, Serper 搜索 (L7).
 1yvqge7	ok	Read pages that don't let web apps read them, and search the web, for Shiori's fetch and web_search tools, as Settings → Tools chooses.	读取不允许网页应用读取的网页，并进行网页搜索，供 Shiori 的 fetch 和 web_search 工具按设置 → 工具中的选择使用。	src/ui/credits.js:89	
 l5jx6y	ok	Shiori's art: designed for annai with AI image generation, then traced into vector art.	Shiori 的形象：用 AI 图像生成为 annai 设计，再描摹成矢量图。	src/ui/credits.js:107	
-gb19et	ok	Message to Shiori	发消息给 Shiori	src/ui/dock.js:51	
-1vatbdb	ok	Send	发送	src/ui/dock.js:78	
-abxwjc	ok	Your files didn't reach Shiori	文件没能交给 Shiori	src/ui/dock.js:122	Note: built on 交给, as the + says.
-1m2zofh	ok	Type	输入	src/ui/dock.js:140	Note: The dock's keyboard button: it opens the box to type in (a verb).
-1dcb0v0	ok	The photo wasn't added	未能添加照片	src/ui/dock.js:183	
-1nyg58x	draft	Take the photo again.	请重新拍摄。	src/ui/dock.js:183	
-1xmvmzh	ok	Kokoro is working	Kokoro 正在工作	src/ui/dock.js:291	
-1ndyc8s	ok	Stop Kokoro	停止 Kokoro	src/ui/dock.js:292	
-ky4lc5	ok	Stop	停止	src/ui/dock.js:292	
-snj02s	ok	In {0} ›	{0} 的对话 ›	src/ui/dock.js:310	{0} = scopeTitle(typeof title === 'string' ? { ...rec, title } : rec)
-1s6dmy6	ok	Camera	相机	src/ui/dock.js:325	
+gb19et	ok	Message to Shiori	发消息给 Shiori	src/ui/dock.js:52	
+1vatbdb	ok	Send	发送	src/ui/dock.js:79	
+abxwjc	ok	Your files didn't reach Shiori	文件没能交给 Shiori	src/ui/dock.js:125	Note: built on 交给, as the + says.
+1m2zofh	ok	Type	输入	src/ui/dock.js:143	Note: The dock's keyboard button: it opens the box to type in (a verb).
+1dcb0v0	ok	The photo wasn't added	未能添加照片	src/ui/dock.js:186	
+1nyg58x	draft	Take the photo again.	请重新拍摄。	src/ui/dock.js:186	
+1xmvmzh	ok	Kokoro is working	Kokoro 正在工作	src/ui/dock.js:294	
+1ndyc8s	ok	Stop Kokoro	停止 Kokoro	src/ui/dock.js:295	
+ky4lc5	ok	Stop	停止	src/ui/dock.js:295	
+snj02s	ok	In {0} ›	{0} 的对话 ›	src/ui/dock.js:313	{0} = scopeTitle(typeof title === 'string' ? { ...rec, title } : rec)
+1s6dmy6	ok	Camera	相机	src/ui/dock.js:328	
 1rm0t76	ok	{0} isn't valid JSON.	“{0}”不是有效的 JSON。	src/ui/dom.js:155	{0} = label; Note: {0} is a field's label.
 1a791in	ok	{0} has to be an object: { … }.	“{0}”必须是对象：{ … }。	src/ui/dom.js:157	{0} = label; Note: {0} is a field's label.
 1gkm7i5	ok	Saving…	正在保存…	src/ui/dom.js:266	
@@ -2790,9 +2790,9 @@ f2eaqi	ok	Find a search plugin	查找搜索插件	src/ui/search-panel.js:95
 do1m5o	ok	{0}: annai can't show this setting.	{0}：annai 无法显示此设置。	src/ui/settings-form.js:116	{0} = f.label
 1qrgqx0	ok	saved	已保存	src/ui/settings-form.js:121	
 phutrz	ok	{0} wasn't saved: {1}	“{0}”未能保存：{1}	src/ui/settings-form.js:130	{0} = f.label; {1} = messageOf(e)
-1skw031	ok	This screen couldn't open	无法打开此页面	src/ui/shell.js:434	
-1z00dfe	ok	An update is ready	更新已就绪	src/ui/shell.js:547	
-gt0nrj	ok	It will be used the next time annai starts.	下次启动 annai 时生效。	src/ui/shell.js:547	
+1skw031	ok	This screen couldn't open	无法打开此页面	src/ui/shell.js:435	
+1z00dfe	ok	An update is ready	更新已就绪	src/ui/shell.js:548	
+gt0nrj	ok	It will be used the next time annai starts.	下次启动 annai 时生效。	src/ui/shell.js:548	
 sntfon	ok	Hello! This is how I sound when I talk to you.	你好！我跟你说话时就是这个声音。	src/ui/speech-check.js:10	Note: spoken by the voice being tested, so it is heard in the screens' language.
 n8hyke	ok	{0}. {1}	{0}。{1}	src/ui/speech-check.js:16	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
 1a27ynt	ok	Last tested {0}: it worked.	上次测试（{0}）：可用。	src/ui/speech-check.js:26	{0} = relTime(verified.at)

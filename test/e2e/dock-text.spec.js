@@ -29,8 +29,9 @@ test('the keyboard button opens the box with focus, and tapping it again closes 
 
 // Several lines (the user, 2026-11-16: "can you make it multiline? auto expanding text box would be ideal. also the keyboard button is send
 // not change line, maybe should do that? as we already have a send button near the text box").
-test("the box takes several lines, and its keyboard key is the return key: Enter adds a line and sends nothing; Ctrl+Enter or ⌘+Enter sends them, line breaks and all, and the box closes after sending", async ({ page }) => {
+test("on a touch screen the box takes several lines, and its keyboard key is the return key: Enter adds a line and sends nothing; Ctrl+Enter or ⌘+Enter sends them, line breaks and all, and the box closes after sending", async ({ page }) => {
   await inConversation(page);
+  expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches), 'a touch screen: the phone\'s return key').toBe(true);
   await typeButton(page).click();
   await expect(box(page)).toHaveJSProperty('tagName', 'TEXTAREA');
   await expect(box(page)).not.toHaveAttribute('enterkeyhint', 'send');
@@ -339,4 +340,15 @@ test('a drag elsewhere, or a mouse press with no click, leaves the empty box ope
   });
   await page.waitForTimeout(800);
   await expect(box(page)).toBeVisible();
+});
+
+// A turn of the phone: the words wrap again at the new width, and the box is as tall as they are then (dock.js: the resize handler).
+test('a turn of the phone wraps the words again, and the box fits them at the new width', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await inConversation(page);
+  await typeButton(page).click();
+  await box(page).fill('Where is the nearest petrol station, please?');
+  await expect.poll(async () => (await sizes(page)).height).toBeGreaterThan(48);
+  await page.setViewportSize({ width: 800, height: 900 });
+  await expect.poll(async () => (await sizes(page)).height).toBe(48);
 });
