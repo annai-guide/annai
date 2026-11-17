@@ -428,9 +428,12 @@ test('the screens\' names for Shiori are the glossary\'s rows a traveller is tol
   assert.deepEqual(JSON.parse(shippedJson(rows)), { b: 'やあ' });
 });
 
-test('the line Shiori is told of the screens names exactly the 31 names of TOLD in every language (a glossary row renamed drops one), which measured 241, 199 and 231 cl100k tokens in ja, zh-Hans and zh-Hant on 2026-11-14', async () => {
+test('the line Shiori is told of the screens names exactly the 30 names of TOLD in every language (a glossary row renamed drops one); with 31 it measured 241, 199 and 231 cl100k tokens in ja, zh-Hans and zh-Hant on 2026-11-14; Now left with its screen (timeline stage 8)', async () => {
   const g = readGlossary(await readFile(new URL('../../l10n/glossary.tsv', import.meta.url), 'utf8'));
-  for (const tag of ['ja', 'zh-Hans', 'zh-Hant']) assert.equal(glossaryNames(g, tag).split('), ').length, 31, tag);
+  for (const tag of ['ja', 'zh-Hans', 'zh-Hant']) {
+    assert.equal(glossaryNames(g, tag).split('), ').length, 30, tag);
+    assert.doesNotMatch(glossaryNames(g, tag), /(^|, )Now \(/, tag);
+  }
 });
 
 /** An official plugin in a copy of the fixture: its manifest and code using annai.l10n. @param {string} dir @param {any} [more] */

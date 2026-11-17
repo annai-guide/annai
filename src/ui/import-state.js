@@ -24,8 +24,8 @@ export function isArchiveName(name) {
 }
 
 /**
- * A signal that aborts when the user leaves the screen it was made for (any move to another address: Cancel, a crumb, Back, the dock,
- * a swipe). done() lets go of the listening, for when the work is over; it lets go by itself once the screen is left.
+ * A signal that aborts when the user leaves the screen it was made for (any move to another address: Cancel, a crumb, Back, the dock).
+ * done() lets go of the listening, for when the work is over; it lets go by itself once the screen is left.
  * @param {Pick<EventTarget, 'addEventListener' | 'removeEventListener'>} [target]
  */
 export function leaveSignal(target = globalThis) {

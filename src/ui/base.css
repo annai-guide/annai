@@ -241,7 +241,7 @@ button.chip.filter[aria-pressed='true'] { background: var(--ai); color: var(--ai
 /* The Add screen's and the Plugins page's search, chips and what they find (spec §16.2) */
 .finder, .found, .found .kind { display: flex; flex-direction: column; gap: 12px; }
 .leg { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0 6px calc(6.5em + 1.2em + 16px); color: var(--ink-2); font-size: 14px; border-bottom: 1px dashed var(--line); }
-/* Now and Driving (spec §16.2) */
+/* The top of the Itinerary's today, and Driving (spec §16.2) */
 .now-place { font-family: var(--f-display); font-weight: 700; font-size: 20px; overflow-wrap: anywhere; }
 .now-place.one-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* a name, or "No GPS signal": one line, so a fix coming or going never changes the block's height, and a long name ends in … (the sentences that change only when the user acts wrap) */
 .now-card .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } /* one row that swipes sideways, so the chips changing never move the rows below */
@@ -338,7 +338,7 @@ a.tab { display: inline-flex; align-items: center; text-decoration: none; }
 .simulate progress { width: 100%; height: 12px; accent-color: var(--ai); }
 .sim-time { font-family: var(--f-mono); }
 
-/* What plugins add (spec §16.4): a Now section, a page's body. */
+/* What plugins add (spec §16.4): a section of today's itinerary (now-section), a page's body. */
 .now-section { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--sheet); }
 .now-section[hidden] { display: none; }
 .ext-body { display: flex; flex-direction: column; gap: 12px; }

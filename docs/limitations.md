@@ -573,7 +573,7 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### A short plan item that crosses midnight stays on the Next line for up to half an hour after it ended
 - **Kind:** known limitation.
-- **What the user sees:** a plan item shorter than 30 minutes that starts on one day and ends on the next, in its own time zone (23:55 to 00:09, say), keeps showing on the conversation's "Next:" line after it is over: its start for up to 30 minutes after it began, then "Ends · <item>" until 30 minutes after its end. Then the line moves on or hides. Items within one day hide at their end. The same rows feed Now, Drive's strip and the timeline card's Next.
+- **What the user sees:** a plan item shorter than 30 minutes that starts on one day and ends on the next, in its own time zone (23:55 to 00:09, say), keeps showing on the conversation's "Next:" line after it is over: its start for up to 30 minutes after it began, then "Ends · <item>" until 30 minutes after its end. Then the line moves on or hides. Items within one day hide at their end. The same rows feed Drive's strip and the timeline card's Next (and fed Now until timeline stage 8).
 - **Why:** an item that ends on a later day than it starts is drawn as two rows, its start and its end, and a row with no end of its own lasts half an hour (the drive-test follow-ups design of 2026-11-02: "an end row is a row like any other").
 - **Revisit when:** a user is misled by it; the change is for the start row to carry the item's end.
 - **Approved:** 2026-11-11, the user picked "Accept as a known limitation".

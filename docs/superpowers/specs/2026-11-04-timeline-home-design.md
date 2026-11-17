@@ -40,7 +40,7 @@ The user: "a bit messy screens and tabs here and there"; "everything come back t
 - **Where it opens (the user, 2026-11-09, "Open home at top"):** while annai isn't installed (the data-safety banner shows), a fresh home opens at its top, the banner first: a long past would otherwise put the banner far above the screen, unseen. Installed (no banner), it opens with the now line 40% down as above. Back's and ←'s own place restore is unchanged: this is only where a fresh home opens.
 - **Where cards go on home (the user, 2026-11-08, "Stick under top bar"):** on home only, the notices box sticks under the top bar while it holds a card, so a card that arrives while home is scrolled (it opens at the now line) is in view, over the rows, which don't move. Empty, it takes no room and covers nothing. A card that lands over the rows ignores taps for a moment, so a tap meant for a row doesn't land on its button. Other screens keep the main spec's rule (§16.1): cards in the page, scrolling away with it.
 - **How tall a stuck box may be (the user, 2026-11-09, "Cap every box at half", "Opens in place", "Keep buttons at edge"):** the box sticks whenever it holds a card, and is at most half the room under the top bar (half of 100svh, the page's height with a browser's bars shown); what needs more scrolls inside it, and a swipe on a box that scrolls stays in it. A box never goes into the page above. A card the user opens (More, Show) opens inside the box, and Less joins its buttons. The buttons of an opened card, or of one taller than the box (the newer-backup card in landscape, or in Japanese on a small phone), stay at the box's bottom edge, its text scrolling above them. The page never moves on an open or a close (a jump the user didn't ask for is never wanted). The half is to be confirmed on the user's phone.
-- **While a field on home is typed in (the user, 2026-11-10, "Unstick while typing"):** on a touch screen, while a text field on home has focus and the keyboard is up (the same moment the dock steps aside, §16.2 of the main spec), the box stops sticking and stays at the page's top, so neither it nor the keyboard's scrolling can cover the field; it sticks again as typing ends (at a tap's click, never at its press), its cards ignoring taps a moment as when one lands (with the page scrolled down, where it lands over rows in view; at the page's top it sticks where it was and takes taps at once). The box keeps its place in the page either way, so nothing on the page moves at either moment. A mouse and keyboard keep it stuck, and a field focused under it is scrolled clear of it.
+- **While a field on home is typed in (the user, 2026-11-10, "Unstick while typing"):** *(Stage 8: this pick no longer applies, because its case, a text field on home, is gone with the Start a trip form. Nothing else on home takes typing: notices cards hold text and buttons only, `#/talk/me` has no type box, the dock's own box never counts (dock-hides.js), and Open a file is `type=file`, which `isField` leaves out. Its code went with the form; if a field ever comes back to home, the pick applies again.)* on a touch screen, while a text field on home has focus and the keyboard is up (the same moment the dock steps aside, §16.2 of the main spec), the box stops sticking and stays at the page's top, so neither it nor the keyboard's scrolling can cover the field; it sticks again as typing ends (at a tap's click, never at its press), its cards ignoring taps a moment as when one lands (with the page scrolled down, where it lands over rows in view; at the page's top it sticks where it was and takes taps at once). The box keeps its place in the page either way, so nothing on the page moves at either moment. A mouse and keyboard keep it stuck, and a field focused under it is scrolled clear of it.
 - Only dated trips sit below now, so one being planned stays right under the line, however many chats exist.
 - Before the last 30 days, a month with over three chats folds to "October: 14 chats". Cards never fold.
 - The foot: Archived (a fold, as today), Open a file, last backup.
@@ -132,8 +132,8 @@ Display only: files and tools keep `plan`. `l10n/glossary.tsv` changes Plan to I
 
 ## What goes
 
-- Now (`renderNow`, `nowRow`); its helpers move to plan.js and drive.js.
-- The top bar, tabs, swipes, `SECTION`, `lastIn`: about 95 lines of shell.js.
+- Now (`renderNow`, `nowRow`); its helpers move to plan.js and drive.js. Done in stage 8.
+- The top bar, tabs, swipes, `SECTION`, `lastIn`: about 95 lines of shell.js. Done in stage 8.
 - Trips' Start a trip form: done in stage 8, with what only it needed (home's typing parts; a trip starts with +). Done in stage 7: the no-trip card and Waiting panel; `waiting-file`, `waitingHref`.
 - Done in stage 7, the no-trip conversation: the `/waiting` root (`tools.js`), `waitingMedia` (`loop.js`), `reach.js`'s clause, handover.js's waiting text, composer's branches, the dock's "Open a trip first", the no-trip words of the trip tools, and `openWhenDone`.
 
@@ -157,9 +157,9 @@ Each passes `npm run check` and e2e, and leaves annai working.
 5. Reading another trip.
 6. Moving, cut by what stage 5 shows.
 7. Opening rule, `me` read-only, the waiting move, no-trip paths out.
-8. The top bar goes, gear and Trace, with the e2e rewrite as its own stage: 133 `#/trips`, 68 `#/talk` and 22 `#/now` lines, 98 h1 assertions, 43 nav clicks in 21 files, `startTrip` used 130 times (it becomes `createTrip` in the page), and 6 e2e and 30 unit files touching no-trip paths.
+8. The top bar goes, gear and Trace, with the e2e rewrite as its own stage: 133 `#/trips`, 68 `#/talk` and 22 `#/now` lines, 98 h1 assertions, 43 nav clicks in 21 files, `startTrip` used 130 times (it becomes `createTrip` in the page), and 6 e2e and 30 unit files touching no-trip paths. Built 2026-11-16 (docs/superpowers/plans/2026-11-06-timeline-stage-8-top-bar-goes.md, which recounted them), after the user's phone look ("yes timeline looks fine").
 
-Also removable: `start_trip` in chats, the `/waiting` branches (files plugin, `file.js`, `names.js`), `swipeTabs`. Hand-over's back-to-waiting Undo stays (The model, Existing data): files with nowhere to go back to wait, and move into a "Waiting with Shiori" chat.
+Also removable: `start_trip` in chats, the `/waiting` branches (files plugin, `file.js`, `names.js`), `swipeTabs` (gone in stage 8, its stored key read by nothing). `start_trip` in a dated trip stays (Decided by the user, 2026-11-16). Hand-over's back-to-waiting Undo stays (The model, Existing data): files with nowhere to go back to wait, and move into a "Waiting with Shiori" chat.
 
 ## Decided by the user (2026-11-05)
 
@@ -207,6 +207,13 @@ Also removable: `start_trip` in chats, the `/waiting` branches (files plugin, `f
 - **Old watches in `me`:** "Known limitation (Recommended)": place, activity and "every" watches set in the old no-trip conversation before this update are never looked at again (time reminders still fire), and no screen lists or cancels them; "Revisit if one turns up in the Trace or you miss one." (docs/limitations.md.)
 - **The phone look that lets the tabs go:** "After stage 7 ships (Recommended)". One look covers stage 4's list and stage 7's opening.
 
+## Decided by the user (2026-11-16)
+
+- **The gate:** after the phone look on their iPhone, "yes timeline looks fine": the tabs go (stage 8).
+- **`start_trip` in a dated trip:** "Keep it (Recommended)". Inside a dated trip, Shiori can still start the trip a booking is for, as its own card, with the file in it.
+- **Where the gear and Trace sit on home:** "At the top, beside "Trips" (Recommended)".
+- **A trip ahead on home:** "yeah upcoming trips can get a lighter version": its card gets a lighter version of the happening tint; chats, past and archived trips keep the plain card. (Each trip a colour of its own, lighting up with use, is a later design of its own.)
+
 ## The main session's additions
 
 - A new chat's snapshot lists the names of the last few conversations, quoted (section Reading another trip). "Separate chats forget" was the design's main risk; check it on a real model.
@@ -236,3 +243,15 @@ The stage plans in `docs/superpowers/plans/2026-11-06-timeline-stage-*.md` read 
 - A spoken yes needs `Agent.confirm` and `kokoro.confirmHeard`: `ask` is gated while Koe talks. Halves feeds `confirmHeard` from Koe's entries (the verdict, and a chat Koe's words) and from where each line first exists, with when it began (live: the session's transcript as it arrives, `LiveHost.heard`; a chat Koe: its microphone's segment, `Half.speech`, and then the line itself, before Koe routes it, `Half.card`, which takes one that arms the card, `Agent.cardTakes`), and `confirmSpeech` from who is speaking and whether a line was just said (`LiveHost.speech`: a turn's start and end; `Half.speech`: speech starting, and a segment with its begin time and whether annai's voice was playing then).
 - A moved conversation logs its own `conversation.moved` entry, because an old page would show `handover.moved` as "took 0 files".
 - The stage 8 counts above need a recount when it starts.
+
+## Changed by the stage 8 plan (2026-11-16)
+
+The stage 8 plan (docs/superpowers/plans/2026-11-06-timeline-stage-8-top-bar-goes.md) read this design against the code and settled these; where they differ from the text above, the plan is right.
+
+- **Settings and Trace** get a crumb, "← Trips": without the bar they had no way out in an installed iPhone app. It is fixed, not "back to where you came from": from a card inside a conversation (Export a backup, Open Trace) the way back is Trips, then the conversation's row.
+- **A plugin's screen** (a tab or a `homeFor` take-over) crumbs to Trips; **What Koe/Kokoro sees** keeps its crumb to the conversation, whose ⋯ opens it.
+- **Now's offline-pack line** moves to the Itinerary, on every day, so a trip with no pack still says so before the trip.
+- **The GPS-refused card** gets a "Say where you are" button to Driving (where "Where are you?" is), in place of words describing a path to it.
+- **Home's typing parts** go with the Start a trip form (the note on "Unstick while typing", above); the dock stepping aside while typing elsewhere stays.
+- **`#/now`** (an old bookmark, a history entry, a plugin's `ui.go`) opens today's Itinerary of the trip in play, by the shell's replace, else home; a file opened `?from=#/now` crumbs to its trip's Details; Driving's ← with nowhere it came from goes to Trips.
+- **The conversation's name is its heading** (the hidden "Conversation" h1 goes), and what stuck under the bar sticks at the top of the screen (`--top`, the top safe-area inset).

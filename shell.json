@@ -1,5 +1,5 @@
 {
-  "build": "9c426eb793bb",
+  "build": "02a2753fb4f2",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -201,7 +201,7 @@
     "/src/plugins/voice-browser/index.js": "bf3e200a094a",
     "/src/plugins/web/free.js": "e92d9b1fc0a2",
     "/src/plugins/web/index.js": "6d77440aa5bb",
-    "/src/ui/base.css": "98ed205e9902",
+    "/src/ui/base.css": "7f6959d592df",
     "/src/ui/cards.js": "cc78cef84d11",
     "/src/ui/composer.js": "abe2f688c5db",
     "/src/ui/credits.js": "44878ab0b1bd",
@@ -218,7 +218,7 @@
     "/src/ui/format.js": "4b141bcc92cb",
     "/src/ui/grounding.html": "5dab86abb302",
     "/src/ui/grounding.js": "1e27c30fc392",
-    "/src/ui/import-state.js": "720544a24fe4",
+    "/src/ui/import-state.js": "ac11af4a3775",
     "/src/ui/install.js": "5890fbdf8367",
     "/src/ui/keep-rows.js": "886adfce1df0",
     "/src/ui/languages.js": "cb9ec09656d6",
@@ -255,7 +255,7 @@
     "/src/ui/screens/experimental.js": "48f75a37ecf3",
     "/src/ui/screens/ext.js": "2bf551b1f41f",
     "/src/ui/screens/file.js": "6d1a5197e79b",
-    "/src/ui/screens/import.js": "3482aa9936b8",
+    "/src/ui/screens/import.js": "4bbb655a8a9b",
     "/src/ui/screens/item.js": "dc9f5e4a9fc6",
     "/src/ui/screens/mcp.js": "8594db2419e8",
     "/src/ui/screens/model.js": "6976470d905a",
@@ -284,7 +284,7 @@
     "/src/ui/shell.js": "b60ff98f23ae",
     "/src/ui/slots.js": "4fee1465e94c",
     "/src/ui/stamps.js": "9c0f976db8fa",
-    "/src/ui/shiori.css": "21637e15ceec",
+    "/src/ui/shiori.css": "dc5e2cb71a3f",
     "/src/ui/speech-check.js": "396550d02345",
     "/src/ui/storage-full.js": "6b7d5a2fe9fe",
     "/src/ui/talk-panel.js": "cc1fb4a04f43",
@@ -299,8 +299,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "73c803eb603b",
-    "/l10n/zh-Hans.json": "c3b612486717",
-    "/l10n/zh-Hant.json": "7a6f732cbbc6"
+    "/l10n/ja.json": "91179ae04e6f",
+    "/l10n/zh-Hans.json": "a2aabee77cc7",
+    "/l10n/zh-Hant.json": "c3945dfabadb"
   }
 }

@@ -198,7 +198,7 @@ function preview(ctx, body, opened, desc, from, fresh, bring = null) {
   const plugins = desc.hasPlugins ? checkbox(t`Replace my plugins`, false) : null;
   const keys = desc.hasSecrets ? checkbox(t`Restore API keys (keys already on this device are kept)`, false) : null;
   const status = h('p', { class: 'sub', role: 'status' });
-  // Leaving this screen any way (Cancel, the crumb, Back, the dock, a swipe) is a Cancel: the download stops and nothing is imported.
+  // Leaving this screen any way (Cancel, the crumb, Back, the dock) is a Cancel: the download stops and nothing is imported.
   const leaving = leaveSignal();
   const quit = { signal: leaving.signal, abort: leaving.abort };
   const go = h('button', {
