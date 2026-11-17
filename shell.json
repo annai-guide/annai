@@ -1,5 +1,5 @@
 {
-  "build": "9f4dad960f55",
+  "build": "852e0ddf76f9",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -241,7 +241,7 @@
     "/src/ui/plugin-cards.js": "fe730094dfca",
     "/src/ui/plugin-pending.js": "d0de6d23ce7b",
     "/src/ui/provider-setup.js": "c4b0421feac0",
-    "/src/ui/plugin-updates.js": "bbb5cc3cf0f7",
+    "/src/ui/plugin-updates.js": "8bf86edee744",
     "/src/ui/push.js": "5cd1775505bf",
     "/src/ui/resume.js": "3daeff3debff",
     "/src/ui/router.js": "b8981277e2c8",
