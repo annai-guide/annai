@@ -127,8 +127,9 @@ test('the recap is written in the language the Languages setting and the user\'s
   await k.ws.write(ME, '/profile.md', '# Profile\n\n- Language: English\n', { author: 'user' });
   await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'] } });
   await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: '明日は何時に出発する？' } }, at('10:30'));
+  await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: '夕食はどこで食べますか' } }, at('10:31')); // two against the fixture's one English line, not a tie
   await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'en-US' });
-  assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language the user wrote in last\.$/m);
+  assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language most of what the user wrote is in\.$/m);
   await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'], answer: 'en' } });
   await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'en-US' });
   assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in English, the language Shiori answers in\.$/m);
@@ -152,10 +153,11 @@ test("a heard line annai couldn't write down is not the user's words: the recap'
   const k = await aTrip([{ text: RECAP }]);
   await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'] } });
   await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: '明日は何時に出発する？' } }, at('10:30'));
+  await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: '夕食はどこで食べますか' } }, at('10:31')); // two against the fixture's one English line, not a tie
   await logEvent(k.store, k.trip, { type: 'heard', data: { id: 'h-1' } }, at('11:00'));
   await logEvent(k.store, k.trip, { type: 'heard.text', actor: 'system', data: { of: 'h-1', text: NOT_TRANSCRIBED, by: null } }, at('11:00'));
   await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'en-US' });
-  assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language the user wrote in last\.$/m);
+  assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language most of what the user wrote is in\.$/m);
 });
 
 // With nothing chosen and none of the user's words in the trip, the recap is in the phone's language, as Shiori's answers and compaction's summary
@@ -172,7 +174,7 @@ test("with nothing chosen and none of the user's words, the recap is written in 
     // Their words decide when there are some; a setting decides before either.
     await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: 'Where should we eat tonight?' } }, at('10:30'));
     await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'ja-JP' });
-    assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in English, the language the user wrote in last\.$/m);
+    assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in English, the language most of what the user wrote is in\.$/m);
     await updateAppSettings(k.ws, { languages: { spoken: ['ko'] } });
     await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'ja-JP' });
     assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Korean, the first language the user speaks \(Korean\)\.$/m);
@@ -181,20 +183,25 @@ test("with nothing chosen and none of the user's words, the recap is written in 
   }
 });
 
-// A trip's last lines are often "OK", "thanks" or an emoji: a line of fewer than 3 words decides only when no longer line names a language, so the recap of
-// a Japanese trip is in Japanese, as main's (which read the whole trip) was, and not a quoted "sure" or English because of a "thanks" (the final review of
-// langs-next, second opinion 3; the re-review of fix round 1, R1). A longer line in English is what they wrote in last.
-test("a Japanese trip whose last lines are short replies is recapped in Japanese; a last line of 3 words or more in English is English", async () => {
-  const k = await agentKit([[{ text: '' }]], { utility: [{ text: RECAP }, { text: RECAP }, { text: RECAP }] });
+// A trip's last lines are often "OK", "thanks", an emoji or one closing sentence in English: each line of 3 words or more counts once and the language with
+// the most is the recap's, so a Japanese trip is recapped in Japanese, as main's (which read the whole trip) was, and not a quoted "sure" or English because of
+// a "thanks" (the final review of langs-next, second opinion 3; the re-review of fix round 1, R1; the design check of 2026-11-17: no one line decides). A trip
+// mostly in English is English.
+test("a Japanese trip whose last lines are short replies or one English sentence is recapped in Japanese; a trip mostly in English is English", async () => {
+  const k = await agentKit([[{ text: '' }]], { utility: [{ text: RECAP }, { text: RECAP }, { text: RECAP }, { text: RECAP }] });
   for (const [i, text] of ['今日は楽しかった', '明日は雨ですか', 'ok', 'hmm', 'sure'].entries()) await logEvent(k.store, k.trip, { type: 'msg.user', data: { text } }, at(`10:3${i}`));
   await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'ja-JP' });
-  assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language the user wrote in last\.$/m);
+  assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language most of what the user wrote is in\.$/m);
   await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: 'thanks' } }, at('10:36'));
   await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'ja-JP' });
-  assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language the user wrote in last\.$/m);
+  assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language most of what the user wrote is in\.$/m);
   await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: 'Thank you, that is all for today.' } }, at('10:37'));
   await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'ja-JP' });
-  assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in English, the language the user wrote in last\.$/m);
+  assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language most of what the user wrote is in\.$/m, 'one English line against two Japanese');
+  await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: 'Is the museum open today?' } }, at('10:38'));
+  await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: 'Where should we eat tonight?' } }, at('10:39'));
+  await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'ja-JP' });
+  assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in English, the language most of what the user wrote is in\.$/m, 'three English lines against two Japanese');
 });
 
 // annai's own lines for a message with no words ("(a photo)", "(files)") are not the user's words either: a trip of only photos and files

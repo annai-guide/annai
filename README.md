@@ -83,6 +83,7 @@ memories afterwards.
 
 - annai's screens are in English, Japanese, Chinese (Simplified) and Chinese (Traditional, with Taiwan's words), as your phone is set unless you choose one in Settings → Languages. Distances, beside it, are kilometres or miles by your phone's region unless you choose.
 - Shiori answers in the language you speak to her, among those you list there, whatever the screens are in.
+- The summary of a long conversation and a trip's recap come in the language most of your lines are in. Some mixes are still read wrong (place names written in kanji alone, a language annai doesn't detect such as Polish or Turkish): see [docs/limitations.md](docs/limitations.md).
 - To translate, or to correct a translation: [docs/translating.md](docs/translating.md).
 
 ## Principles
