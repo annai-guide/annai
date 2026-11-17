@@ -7,7 +7,8 @@ import { t } from './l10n.js';
  * The Plan screen's timetable (spec §16.2): rows by local day with ● fixed and ○ flexible, the legs between stops, and each booking on
  * its day (the bookings-and-trips design, goal 5). Anything over several days is a set: its start row on its day, a quiet line on each
  * day between, and its end as a row of its own: a stay's check-in, nights and check-out; a car's pick-up, days and return; a red-eye's
- * departure and arrival. A booking with no time is "Not on a day". A plan item that links a booking stands for it on the item's own day.
+ * departure and arrival. A booking with no time is "Not on a day". A plan item that links a booking stands for it on the item's own day,
+ * unless it is another thing than the booking (`anotherThing`: a car rental on a flight's): it draws its own set, the booking its own rows.
  * @typedef {{ path: string, item: Record<string, any> }} PlanFile
  * @typedef {{ path: string, booking: Record<string, any> }} BookingFile
  * @typedef {{ path: string, item: Record<string, any>, from: 'item' | 'booking' | 'end' | 'line', at: number | null, day: string | null,
@@ -98,6 +99,22 @@ export const kindWord = (k) => (typeof k === 'string' ? KINDS.get(k.trim().toLow
  * @param {any} it @param {any} booking @returns {string}
  */
 export const kindOf = (it, booking) => kindWord(it?.kind) ?? kindWord(booking?.kind) ?? '';
+/**
+ * The kinds that carry the traveller, so one ends somewhere else than it starts: the Plan, Kokoro's view and Driving's strip end it with
+ * "Arrive" and no place, and the reminders count what comes after it from nothing and wait for a fixed one.
+ */
+export const CARRIERS = new Set(['flight', 'rail', 'ferry', 'bus', 'coach']);
+/** The kinds with a day, a place and an end of their own: a plan item of one on a booking of another is not that booking's (anotherThing). */
+const THINGS = new Set(['flight', 'rail', 'car', 'lodging']);
+/**
+ * Whether a plan item is another thing than the booking it links: both are in THINGS and not the same (a car rental on a flight's
+ * booking). It draws its own set, keeps its own end and stands for none of the booking's rows. Any other word for the booking (a ferry
+ * on an "other" booking, a "meal" on its restaurant's) is the booking's thing. @param {any} it @param {any} booking
+ */
+const anotherThing = (it, booking) => {
+  const [a, b] = [kindOf(it, booking), kindOf(null, booking)];
+  return a !== b && THINGS.has(a) && THINGS.has(b);
+};
 
 /**
  * One row's times and where it stands: the start in its own zone (else the fallback's, with a note), the end in its own.
@@ -164,19 +181,22 @@ const withoutEnd = (x) => {
  */
 export function planRows(items, bookings, { fallbackTz }) {
   const byPath = new Map(bookings.filter((b) => record(b.booking)).map((b) => [b.path, b.booking]));
-  const own = items.filter((x) => record(x.item)).map((x) => ({ ...x, ref: bookingRef(x.item.booking) }));
+  const own = items.filter((x) => record(x.item)).map((x) => {
+    const ref = bookingRef(x.item.booking);
+    return { ...x, ref, other: anotherThing(x.item, ref ? byPath.get(ref) : null) };
+  });
   /** @type {Map<string, { path: string, at: number | null }[]>} the plan items that stand for each booking, with their instants */
   const linked = new Map();
   for (const x of own) {
-    if (x.ref && byPath.has(x.ref)) linked.set(x.ref, [...(linked.get(x.ref) ?? []), { path: x.path, at: timesOf(x.item, fallbackTz).at }]);
+    if (x.ref && byPath.has(x.ref) && !x.other) linked.set(x.ref, [...(linked.get(x.ref) ?? []), { path: x.path, at: timesOf(x.item, fallbackTz).at }]);
   }
   // One set per thing. A booking with a good start and end draws its own; one without has the earliest item standing for it that runs
-  // over several days draw it, and adds no rows of its own.
+  // over several days draw it, and adds no rows of its own. An item that is another thing than its booking draws its own set (below).
   /** @type {Map<string, string>} booking path → the plan item that draws its set */
   const drawer = new Map();
   for (const [path, b] of byPath) {
     if (spanOf(b)) continue;
-    const by = own.filter((x) => x.ref === path && setOf(x.item))
+    const by = own.filter((x) => x.ref === path && !x.other && setOf(x.item))
       .sort((p, q) => instantAt(p.item.start.at, p.item.start.tz) - instantAt(q.item.start.at, q.item.start.tz))[0];
     if (by) drawer.set(path, by.path);
   }
@@ -199,27 +219,28 @@ export function planRows(items, bookings, { fallbackTz }) {
   /**
    * A set's end row and its quiet lines. @param {Pick<PlanRow, 'path' | 'bookingPath' | 'booking' | 'checkFields' | 'missing'>} base
    * @param {Record<string, any>} view the start's view @param {Record<string, any>} endAt the end's time @param {string} kind
-   * @param {{ apart: number, between: string[] } | null} span @param {string} [not] the item drawing the set
+   * @param {{ apart: number, between: string[] } | null} span
+   * @param {(end: PlanRow) => boolean} [stands] whether a plan item stands for the end row, which then isn't drawn; none for another thing's set
    */
-  const rest = (base, view, endAt, kind, span, not) => {
-    // The end isn't where the start is for a flight or train, nor for a car dropped somewhere else (named, when fields says where).
+  const rest = (base, view, endAt, kind, span, stands) => {
+    // The end isn't where the start is for a flight, a train or a ride, nor for a car dropped somewhere else (named, when fields says where).
     const drop = record(base.booking?.fields)?.dropoff;
     const dropped = typeof drop === 'string' && drop.trim() ? { name: drop } : record(drop)?.name ? record(drop) : undefined;
-    const place = kind === 'flight' || kind === 'rail' ? undefined : kind === 'car' && drop !== undefined && drop !== null ? dropped : view.place;
+    const place = CARRIERS.has(kind) ? undefined : kind === 'car' && drop !== undefined && drop !== null ? dropped : view.place;
     const item = { ...view, start: endAt, place }; // as fixed as its start's view: a plan item's own, or null where nobody said
     /** @type {PlanRow} */
     const end = { ...base, item, from: 'end', ...timesOf(item, fallbackTz), set: { kind, part: 'end' }, line: null };
     // An end in another zone than the start's names it (an Arrive at 07:30 ET after a departure in PT).
     const [from, to] = [view.start?.tz, endAt?.tz].map((z) => (validZone(z) ? z : fallbackTz));
     if (end.at !== null && offsetMinutes(end.at, to) !== offsetMinutes(end.at, from)) end.endZone = zone(end.at, to);
-    if (end.day && !(base.bookingPath && base.booking && standsFor(base.bookingPath, end, not))) out.push(end);
+    if (end.day && !stands?.(end)) out.push(end);
     const title = view.title;
     span?.between.forEach((day, k) => out.push({
       ...base, item: { title, kind: view.kind, fixed: view.fixed, place: view.place }, from: 'line', at: null, day, time: '', end: '', endDays: 0, endZone: '',
       set: { kind, part: 'line' }, line: { n: k + 2, of: kind === 'lodging' ? span.apart : span.apart + 1 }, checkFields: [], missing: false, note: '',
     }));
   };
-  for (const { path, item, ref } of own) {
+  for (const { path, item, ref, other } of own) {
     const booking = ref ? byPath.get(ref) ?? null : null;
     const span = setOf(item);
     const marks = checkOf(booking);
@@ -228,11 +249,11 @@ export function planRows(items, bookings, { fallbackTz }) {
       missing: item.booking !== undefined && item.booking !== '' && !booking,
     };
     const kind = kindOf(item, booking); // as the reminders read it: a car on a flight's booking is a car's set
-    const draws = span && (!booking || (ref && drawer.get(ref) === path));
+    const draws = span && (!booking || other || (ref && drawer.get(ref) === path));
     // Its end is its own row, or its booking's; an item that is neither keeps its end (a second one for a booking with no times).
     const view = draws || (span && booking && spanOf(booking)) ? withoutEnd(item) : item;
     out.push({ ...base, item: view, from: 'item', ...timesOf(view, fallbackTz), set: draws ? { kind, part: 'start' } : null, line: null });
-    if (draws) rest(base, view, item.end, kind, span, path);
+    if (draws) rest(base, view, item.end, kind, span, ref && booking && !other ? (end) => standsFor(ref, end, path) : undefined);
   }
   for (const [path, b] of byPath) {
     if (drawer.has(path)) continue;
@@ -251,8 +272,8 @@ export function planRows(items, bookings, { fallbackTz }) {
     if (!split) continue;
     // The end is a plan item's when one standing for the booking ends where it does (that item's own end is dropped for this row): as
     // fixed as that item, true or false. With none, nobody said.
-    const said = own.find((x) => x.ref === path && momentOf(x.item.end, fallbackTz) === momentOf(b.end, fallbackTz));
-    rest(base, { ...view, fixed: said ? said.item.fixed : null }, b.end, kind, spanOf(b));
+    const said = own.find((x) => x.ref === path && !x.other && momentOf(x.item.end, fallbackTz) === momentOf(b.end, fallbackTz));
+    rest(base, { ...view, fixed: said ? said.item.fixed : null }, b.end, kind, spanOf(b), (end) => standsFor(path, end));
   }
   return out;
 }

@@ -1,6 +1,6 @@
 import { meters, travelMinutes, modeFor, kmText, TRAVEL } from './geo.js';
 import { timeIn, validZone, instantAt, dayIn, dueWords, isoInZone } from '../time.js';
-import { bookingRef, fixedWords, timeUnsure, LEG_MAX_KM, kindOf, kindWord } from '../plan.js';
+import { bookingRef, fixedWords, timeUnsure, LEG_MAX_KM, kindOf, kindWord, CARRIERS } from '../plan.js';
 import { t } from '../l10n.js';
 import { sentences, num, when as clockAt, dayClock } from '../intl.js';
 
@@ -65,8 +65,6 @@ export const NOT_PLANNED_M = 500;
 const MIN = 60_000;
 /** @param {any} p @returns {p is { lat: number, lng: number }} */
 const hasPoint = (p) => Boolean(p) && typeof p.lat === 'number' && typeof p.lng === 'number' && Number.isFinite(p.lat) && Number.isFinite(p.lng);
-/** The kinds that carry the traveller: what comes after one doesn't count from where it leaves, and a fixed one is waited for. */
-const CARRIERS = new Set(['flight', 'rail', 'ferry', 'bus', 'coach']);
 /** "/plan/nepenthe.json" → "nepenthe". @param {string} path */
 const slug = (path) => path.replace(/^\/plan\//, '').replace(/\.json$/, '');
 

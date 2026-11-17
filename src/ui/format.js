@@ -1,6 +1,6 @@
 import { validZone, dayIn, instantAt } from '../core/time.js';
 import { checkOf, there } from '../core/bookings.js';
-import { BOOKING_FILE, PLAN_FILE, kindWord } from '../core/plan.js';
+import { BOOKING_FILE, PLAN_FILE, kindWord, CARRIERS } from '../core/plan.js';
 import { isGivenFile } from '../core/paths.js';
 import { TIMINGS } from '../core/backup-auto.js';
 import { holdWords, oldHold } from '../core/backup.js';
@@ -79,12 +79,12 @@ export const recordHref = (id, path, from) => (BOOKING_FILE.test(path) || isGive
 export const detailsHref = (id, r, from) => (r.booking && r.bookingPath ? bookingHref(id, r.bookingPath, from) : itemHref(id, r.path, from));
 /**
  * A Plan row's name: a set's start and end say what they are: a stay's Check in and Check out, a
- * car's Pick up and Return, a flight's or train's Arrive, anything else's Ends. @param {import('../core/plan.js').PlanRow} r
+ * car's Pick up and Return, the Arrive of a flight, a train or a ride (CARRIERS), anything else's Ends. @param {import('../core/plan.js').PlanRow} r
  */
 export function rowName(r) {
   const name = String(r.item.title ?? r.path);
   const kind = r.set?.kind;
-  if (r.set?.part === 'end') return kind === 'lodging' ? t`Check out · ${name}` : kind === 'car' ? t`Return · ${name}` : kind === 'flight' || kind === 'rail' ? t`Arrive · ${name}` : t`Ends · ${name}`;
+  if (r.set?.part === 'end') return kind === 'lodging' ? t`Check out · ${name}` : kind === 'car' ? t`Return · ${name}` : CARRIERS.has(kind ?? '') ? t`Arrive · ${name}` : t`Ends · ${name}`;
   if (r.set?.part === 'start') return kind === 'lodging' ? t`Check in · ${name}` : kind === 'car' ? t`Pick up · ${name}` : name;
   return name;
 }

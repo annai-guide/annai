@@ -82,7 +82,7 @@ test("the compact view lists today's ends of things over several days at their t
   assert.doesNotMatch(view, /Pick up|day \d of/);
 });
 
-test("a car rental of kind car on a flight's booking with no times ends as a car in Koe's view, as on the Plan and in the reminders: \"Return · Car rental\" at its place, not a flight's \"Arrive\" with none (the Deferred entry \"The Plan screen reads a booking's kind first\")", async () => {
+test("a car rental of kind car on a flight's booking with no times ends as a car in Koe's view, as on the Plan and in the reminders: \"Return · Car rental\" at its place, not a flight's \"Arrive\" with none", async () => {
   const k = await agentKit([[{ text: '' }]], { open: true });
   const write = (/** @type {string} */ path, /** @type {any} */ v) => k.ws.write(k.trip, path, v, { author: 'user' });
   await write('/bookings/ua.json', { id: 'ua', kind: 'flight', status: 'unverified', source: '/files/ua.pdf', unsure: [], title: 'ANNAI AIR AN 123' });
@@ -90,6 +90,26 @@ test("a car rental of kind car on a flight's booking with no times ends as a car
   const view = await compactView({ ws: k.ws, trip: k.trip, now: Date.parse('2026-11-23T08:00:00-08:00'), timeZone: LA, next: null });
   assert.match(view, /\n2026-11-23 10:00\t\tReturn · Car rental\tcan't be moved\tAirport lot\n/);
   assert.doesNotMatch(view, /Arrive/);
+});
+
+test("a car rental of kind car on the booking of a flight with a start and an end is a car in Koe's view: its return on the 23rd, \"Return · Car rental\" at its place, and on the 20th no end on its start (the review of kind-next, F1)", async () => {
+  const k = await agentKit([[{ text: '' }]], { open: true });
+  const write = (/** @type {string} */ path, /** @type {any} */ v) => k.ws.write(k.trip, path, v, { author: 'user' });
+  await write('/bookings/ua.json', { id: 'ua', kind: 'flight', status: 'unverified', source: '/files/ua.pdf', unsure: [], title: 'ANNAI AIR AN 123', start: at('2026-11-20T07:00:00'), end: at('2026-11-20T09:00:00') });
+  await write('/plan/car.json', { id: 'car', title: 'Car rental', kind: 'car', fixed: true, booking: '/trip/bookings/ua.json', start: at('2026-11-20T10:00:00'), end: at('2026-11-23T10:00:00'), place: { name: 'Airport lot' } });
+  const back = await compactView({ ws: k.ws, trip: k.trip, now: Date.parse('2026-11-23T08:00:00-08:00'), timeZone: LA, next: null });
+  assert.match(back, /\n2026-11-23 10:00\t\tReturn · Car rental\tcan't be moved\tAirport lot\n/);
+  const out = await compactView({ ws: k.ws, trip: k.trip, now: Date.parse('2026-11-20T06:00:00-08:00'), timeZone: LA, next: null });
+  assert.match(out, /\n2026-11-20 10:00\t\tCar rental\tcan't be moved\tAirport lot\n/); // its start row, whose end is the Return row's
+  assert.match(out, /\nbookings in the next 48 hours:\nstart\tkind\ttitle[^\n]*\n2026-11-20 07:00\tflight\tANNAI AIR AN 123\t/); // and the flight is the booking's, as it was
+});
+
+test("an overnight ride of kind bus ends in Koe's view as a flight's or train's does, \"Arrive · Night ride to Osaka\" with no place, not \"Ends\" at the terminal it left (the review of kind-next, F2)", async () => {
+  const k = await agentKit([[{ text: '' }]], { open: true });
+  await k.ws.write(k.trip, '/plan/ride.json', { id: 'ride', title: 'Night ride to Osaka', kind: 'bus', fixed: false, place: { name: 'Shinjuku terminal' }, start: at('2026-11-20T23:00:00'), end: at('2026-11-21T06:30:00') }, { author: 'user' });
+  const view = await compactView({ ws: k.ws, trip: k.trip, now: Date.parse('2026-11-21T05:00:00-08:00'), timeZone: LA, next: null });
+  assert.match(view, /\n2026-11-21 06:30\t\tArrive · Night ride to Osaka\t\t\n/);
+  assert.doesNotMatch(view, /Ends|Shinjuku/);
 });
 
 test("\"can't be moved\" in Koe's view only for a plan item stored as fixed: a hotel with nothing marked and a flexible trek's end say nothing (the user's answer, 2026-11-15: only what was said fixed)", async () => {
