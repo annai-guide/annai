@@ -897,10 +897,24 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** the next version, as its own change: `kindOf` and its table (`KINDS`) move to src/core/plan.js, which plan-watches.js already imports, and the Plan's sets read it too (Kokoro's view reads the same rows), with a test on the Plan for the car on a flight's booking. One answer, as the lessons say: remove one path rather than sync two.
 
 ### A closed annai can say "Leave soon" for an item at the destination, timed before the flight that gets the traveller there
-- **Kind:** deferred.
+- **Kind:** known limitation.
 - **What the traveller sees:** with live mode off, or the phone's last position a flight away (at home or at the departure gate), the push relay holds a "Leave soon" copy for a fixed item at the destination other than a stay (a car pick-up at the arrival airport, a meeting), half an hour before the item. If the plan times it before the last flight there lands, the notification comes while the traveller is at the hub or in the air: "Leave soon: Car pick-up at 16:00, Car hire desk." (no minutes). That holds when the flight is flexible, or fixed and starting after the item's time. The reminder waits only for the flight before it in the plan, not for the one that takes the traveller there. When that flight is fixed and starts before the item's time, it is the flight before it in the plan, and the wait runs past the item's time: a fixed flight 14:00 to 17:00 and the car at 16:00 give no copy at all.
 - **Why:** a position a flight away counts as none, so the copy is counted from the plan's stop before or the half hour (leave-far's F1, so the closed annai still says it at the destination); the wait for a landing is the fixed flights and trains before the item in the plan, and the plan can't tell which flight takes the traveller to it.
-- **Revisit when:** the next version, as its own change: look ahead to the next fixed flight or train after the item, and when the item is timed before it lands, and the traveller's place (or the stop before) is a flight away from the item, hold the copy until that carrier lands (about 8 lines in `planWatches`).
+- **Revisit when:** a traveller reports a "Leave soon" for a destination item before they flew, or the plan comes to know which flight takes the traveller to an item. A look-ahead to the next fixed flight or train after the item, holding the copy until it lands, was weighed (about 8 lines in `planWatches`) and not built: it adds rules to the part that took four fix rounds, and for a real appointment the push is true (the traveller will miss it). The design check of 2026-11-17 recommended no look-ahead.
+- **Approved:** 2026-11-17, chief's decision C91 (the leave re-review's proposed known limitation 5, accepted as worded; not the user's words).
+### A train, bus, coach or ferry arriving under 2 hours before a flight is read as a connection to it
+- **Kind:** known limitation.
+- **What the traveller sees:** a train into a city station, a change between two airports, or an airport bus, coach, train or ferry that arrives under 2 hours before a flight is read as a connection to that flight, so the flight gets no leave reminder and no "Running late" from it. A train into a city station at 10:30 and a flight at 12:00 from an airport 50 km away loses a true "Running late … About 66 min away". Since leave-next (2026-11-17) buses, coaches and ferries carry the traveller as trains do, so they read the same way.
+- **Why:** a plan item stores one place, so annai can't tell an airport station from a city one. Without the connection rule the commoner shape (plane to plane at one airport) would get a false "Running late". Storing where a carrier arrives was weighed in the design check of 2026-11-17 and not taken: it adds state, a stored-format change and a new miss.
+- **Revisit when:** plan items come to store where a carrier arrives for another reason, or a traveller reports a missed leave reminder of this shape.
+- **Approved:** 2026-11-17, chief's decision C91 (the leave re-review's proposed known limitation 2, accepted as worded; not the user's words).
+
+### A position more than 1000 km from an item gets no leave reminder until it comes within 1000 km, then "Leave soon" with no minutes
+- **Kind:** known limitation.
+- **What the traveller sees:** with a position more than 1000 km from a fixed item (mid-air on a flight missing from the plan, or on a road trip of over 1000 km), annai gives no leave reminder for it; when the position comes within 1000 km, "Leave soon" comes with no minutes, and with it "Running late … About N min away" (seen: "About 1053 min away").
+- **Why:** the 1000 km cap is what stops a reminder to leave home for a hotel a flight away (the user's report of 2026-11-16); with no flight in the plan, annai can't tell a plane from a long drive.
+- **Revisit when:** annai reads a position in the air (the trace's speeds in flight, after the trip), or a traveller reports the shape.
+- **Approved:** 2026-11-17, chief's decision C91 (the leave re-review's proposed known limitation 3, with the design check's "Running late" line, accepted as worded; not the user's words).
 
 ### The Driving strip keeps a flight already left as the next stop
 - **Kind:** deferred.
