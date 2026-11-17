@@ -286,9 +286,9 @@ test('with both Chinese listed, the summary is in the one the user wrote in, by 
 });
 
 // The two Chinese rows are one language for the count (the review of summary-count-next, F4; second opinions 1 to 3): a line is counted for the family, and the
-// row is named once, as the one most of the family's lines that tell are in (a line counting once, so one pasted text doesn't outweigh the typed lines, the
-// re-review's R1). Counted row by row, a split trip lost to a third language, and lines whose characters tell nothing (the first listed) outvoted the
-// Traditional ones that do.
+// row is named once, as the one most of the family's lines that tell are in (a line counting once however long, so one pasted text is one line among those that
+// tell, and decides when the typed lines tell nothing; the re-review's R1 and W2). Counted row by row, a split trip lost to a third language, and lines whose
+// characters tell nothing (the first listed) outvoted the Traditional ones that do.
 test("with both Chinese listed, their lines count as one language, and the row is the one most of their lines that tell are in (the review of summary-count-next, F4 and R1)", async () => {
   const { languageSettings } = await import('../../src/core/languages.js');
   const both = languageSettings({ languages: { spoken: ['zh', 'zh-Hant', 'en'] } }, 'en-US');
@@ -305,6 +305,11 @@ test("with both Chinese listed, their lines count as one language, and the row i
   // telling characters than the typed lines together) doesn't name it.
   assert.equal(summaryLanguage([s1, s2, '這個好吃嗎'], both), most('Chinese (Simplified)'), 'two Simplified lines and one Traditional line, which has more telling characters than either');
   assert.equal(summaryLanguage([s1, s2, s3, '這間餐廳的東西很好吃，開門時間是早上十點，關門時間是晚上九點'], both), most('Chinese (Simplified)'), 'three typed Simplified lines and one pasted Traditional text');
+  // A line in another language is no vote for the row, though its characters tell (東 is a Traditional form): the two Chinese lines tie, and the newer is Simplified.
+  assert.equal(summaryLanguage(['我們今晚去哪裡吃飯', '我们明天去哪里', 'Is 東京 far from here?'], both), most('Chinese (Simplified)'), 'an English line is no vote for the row');
+  // None tells, with English listed first: the first listed Chinese row, not the first listed language.
+  const enFirst = languageSettings({ languages: { spoken: ['en', 'zh', 'zh-Hant'] } }, 'en-US');
+  assert.equal(summaryLanguage(['大家好', '好想去看夜景', '大家早上好'], enFirst), most('Chinese (Simplified)'), 'none telling, English listed first: the first listed Chinese row');
   // A Traditional writer whose lines mostly carry no character that tells: three that do, five that don't, four English (counted row by row: Simplified,
   // the first listed, five lines against three).
   const plain = ['好想去看夜景', '今天天氣很好', '我想吃拉麵', '大家好', '想去海邊走走'];

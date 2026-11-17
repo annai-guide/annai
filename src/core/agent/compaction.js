@@ -90,7 +90,7 @@ const MANDARIN_KEY = 'Mandarin';
  * write down) are never the user's, and are left out here for every caller. Each of the rest of 3 words or more (units: a Chinese, Japanese or
  * Korean character is a word, the size a stray short reply has, spec §10.9) that names a language counts once, for the language it is placed as (both Chinese
  * rows, Simplified and Traditional, are one language here: a trip in both, or in lines whose characters tell nothing, is Chinese, and the row is the one
- * most of the lines that tell are in, a line once: a tie goes to the newer, none telling to the first listed), and the language with the most lines is named;
+ * most of the lines that tell are in, a line once however long: a tie goes to the newer, none telling to the first listed Chinese row), and the language with the most lines is named;
  * a tie goes to the one written in more recently. No one line decides: a trip's lines are also a closing
  * "Thank you so much!", a place's name, a pasted booking, a tap on a card or a misheard line, and each is one line among the rest (the edge: five
  * English lines then two Japanese are English). With the languages setting: the one Shiori answers in if it is fixed; else a line counts for the listed
@@ -121,8 +121,9 @@ export function summaryLanguage(said, languages) {
   let most = '';
   for (const [name, n] of count) if (n >= (count.get(most) ?? 0)) most = name;
   if (most === MANDARIN_KEY && languages) {
-    // One of each script is two halves of one language, so the row is the one most of the lines that tell are in, each line once (a pasted text doesn't
-    // outweigh the lines typed): a tie goes to the newer, and with none that tells (大家好), the first listed.
+    // One of each script is two halves of one language, so the row is the one most of the lines that tell are in, each line once however long (a pasted
+    // text is one line among those that tell, and decides when the typed lines tell nothing): a tie goes to the newer, and with none that tells (大家好),
+    // the first listed Chinese row.
     const rows = mandarin.map(hanRow).filter(Boolean);
     const simplified = rows.filter((r) => r === 'zh').length * 2 - rows.length;
     const row = simplified > 0 ? 'zh' : simplified < 0 ? 'zh-Hant' : rows.at(-1);
