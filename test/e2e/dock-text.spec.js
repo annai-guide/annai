@@ -352,3 +352,68 @@ test('a turn of the phone wraps the words again, and the box fits them at the ne
   await page.setViewportSize({ width: 800, height: 900 });
   await expect.poll(async () => (await sizes(page)).height).toBe(48);
 });
+
+// The user, 2026-11-16, from an iPhone (the installed app, a new conversation from +, voice off): "bug report: text box cursor is at the wrong
+// place": the caret was drawn about 106 px under the box, over the dock's buttons; "Only after +", not from the keyboard button inside a
+// conversation. The cause is inferred, not yet verified on the phone: what the app did under the focused box while the keyboard rose. + opens
+// the box in its tap, while home is still drawn, and the conversation's screen comes a moment later. Three things happened under the box: the
+// dock's buttons row came with the screen, which pushed the box up by its height (87 px); the shell scrolled the page to its top as the screen
+// landed; and a home read to its end was put back at its end as the dock grew (at-end.js). The box now takes focus where it stays, and the app
+// scrolls nothing under it: a page already where it should be is not scrolled at the landing, nor a screen being left kept at its end.
+// Where home is read when + is tapped: its top, partway down, or to its end (scrollTo clamps 1e6 to the page's end).
+for (const [read, y] of /** @type {[string, number][]} */ ([['', 0], [', scrolled down', 1500], [', read to its end', 1e6]])) {
+  test(`+ on home${read}, voice off: the box takes focus where it stays; the conversation that opens under it moves it nowhere, and nothing scrolls the page under it`, async ({ page }) => {
+    // Installed, as on the phone: in a browser tab the data-safety banner makes the empty conversation taller than a small phone's screen, and a
+    // page that lands scrolled is put at its top, as before.
+    await page.addInitScript(() => Object.defineProperty(navigator, 'standalone', { value: true, configurable: true }));
+    await openApp(page, '#/trips');
+    // A long home, read partway down or to its end: the conversation is a short page, which a scrolled one is past the end of. Read to its end, the
+    // page is kept at its end as the dock grows (at-end.js), which it is not while the screen is being left.
+    if (y) {
+      await page.evaluate(() => /** @type {HTMLElement} */ (document.querySelector('main.view')).append(Object.assign(document.createElement('div'), { style: 'height: 3000px' })));
+      await page.evaluate((to) => scrollTo(0, to), y);
+      const seen = await page.evaluate(() => ({ y: scrollY, end: scrollY + innerHeight >= document.documentElement.scrollHeight - 1 }));
+      expect(seen.y).toBeGreaterThan(0);
+      expect(seen.end).toBe(y === 1e6);
+    }
+    // Where the box is at its focus, and at every frame after while it keeps it.
+    await page.evaluate(() => {
+      /** @type {number[]} */
+      const tops = [];
+      /** @type {any} */ (window).boxTops = tops;
+      // The page's own scrolls while the box has focus.
+      /** @type {string[]} */
+      const scrolls = [];
+      /** @type {any} */ (window).pageScrolls = scrolls;
+      for (const name of ['scrollTo', 'scrollBy', 'scroll']) {
+        const was = /** @type {any} */ (window)[name];
+        /** @type {any} */ (window)[name] = (/** @type {any[]} */ ...to) => {
+          if (document.activeElement?.id === 'dock-text') scrolls.push(`${name}(${to.join(', ')}) at ${scrollY}`);
+          return was.apply(window, to);
+        };
+      }
+      document.addEventListener('focusin', (e) => {
+        const el = /** @type {HTMLElement} */ (e.target);
+        if (el.id !== 'dock-text') return;
+        const frame = () => {
+          if (document.activeElement !== el) return;
+          tops.push(el.getBoundingClientRect().top);
+          requestAnimationFrame(frame);
+        };
+        frame();
+      });
+    });
+    await page.getByRole('button', { name: 'New conversation', exact: true }).click();
+    await expect(box(page)).toBeFocused();
+    await atConversation(page);
+    await expect(page).toHaveURL(/#\/trip\/trip-[0-9a-z]+\/talk$/);
+    await expect(page.locator('.dock .dock-row')).toBeVisible();
+    // Two more frames: the page has made room for the dock as tall as it is now (the shell's observer).
+    await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(null)))));
+    const tops = /** @type {number[]} */ (await page.evaluate(() => /** @type {any} */ (window).boxTops));
+    expect(tops.length).toBeGreaterThan(2);
+    expect(Math.max(...tops) - Math.min(...tops), `the box's top at its focus and after, frame by frame: ${[...new Set(tops)].join(', ')}`).toBeLessThan(0.5);
+    expect(await page.evaluate(() => /** @type {any} */ (window).pageScrolls)).toEqual([]);
+    expect(await page.evaluate(() => scrollY)).toBe(0); // the conversation opens at its top all the same
+  });
+}

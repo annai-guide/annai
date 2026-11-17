@@ -33,7 +33,7 @@ import { renderSimulate } from './screens/simulate.js';
 import { renderNotifications } from './screens/notifications.js';
 import { createDock } from './dock.js';
 import { newConversation } from './plus.js';
-import { tapKeepsKeyboard } from './tap-keeps-keyboard.js';
+import { tapKeepsKeyboard, takesTyping } from './tap-keeps-keyboard.js';
 import { keepRows } from './keep-rows.js';
 import { isStandalone } from './platform.js';
 import { dockHidesWhileTyping } from './dock-hides.js';
@@ -152,10 +152,14 @@ export function startShell(root, core) {
   }
   // A page read to its end stays there when a phone turns or the dock changes height (at-end.js). After the cards' resize handler, which runs first.
   const { keep } = keepAtEnd();
-  // The page and the cards make room for the dock as tall as it is now: voice on, typing open, or a plugin's.
-  const dockSize = typeof ResizeObserver === 'function' ? new ResizeObserver(([e]) => keep(() => {
-    document.documentElement.style.setProperty('--dock-h', `${Math.ceil(/** @type {HTMLElement} */ (e.target).getBoundingClientRect().height)}px`);
-  })) : null;
+  // The page and the cards make room for the dock as tall as it is now: voice on, typing open, or a plugin's. A screen being left (the address is
+  // no longer the drawn one's: + opens the dock's box in its tap, on home, and the dock grows with its box) is not put back at its end: it is
+  // about to be replaced, and a scroll under the box that has focus is one the app need not make.
+  const dockSize = typeof ResizeObserver === 'function' ? new ResizeObserver(([e]) => {
+    const set = () => document.documentElement.style.setProperty('--dock-h', `${Math.ceil(/** @type {HTMLElement} */ (e.target).getBoundingClientRect().height)}px`);
+    if (location.hash === drawnHash) keep(set);
+    else set();
+  }) : null;
   if (dock) dockSize?.observe(dock.el);
   const remakeDock = () => {
     if (!dock || dockKey(ctx) === dockMadeFor) return false;
@@ -423,7 +427,13 @@ export function startShell(root, core) {
         // installed it opens at its top too, the data-safety banner first: a long past would put the banner far above the screen, unseen.
         const home = route.name === 'trips' && firstVisit && !want;
         const now = home && homeY === null && isStandalone() && main.querySelector('.past > li') ? main.querySelector('.now-line') : null;
-        scrollTo(0, now ? Math.max(0, scrollY + now.getBoundingClientRect().top - 0.4 * innerHeight) : home && homeY !== null ? homeY : want);
+        const to = now ? Math.max(0, scrollY + now.getBoundingClientRect().top - 0.4 * innerHeight) : home && homeY !== null ? homeY : want;
+        // While a field is typed in, a page already there is not scrolled, nor one a phone's keyboard holds past its end, which is there as far as
+        // the page goes: + opens the dock's box in its tap (plus.js), and the iPhone is bringing the dock above its keyboard as this screen lands, so
+        // the app makes no scroll of its own under the box; the keyboard's scroll puts the page. That a scroll here is why an iPhone drew the caret
+        // away from the box after + (the user, 2026-11-16) is inferred, not yet verified on the phone.
+        const held = takesTyping(document.activeElement) && Math.min(scrollY, Math.max(0, document.documentElement.scrollHeight - innerHeight)) === to;
+        if (!held) scrollTo(0, to);
         // A screen that fills in a moment later is scrolled again as it grows, for up to 2 seconds or until you
         // touch it; not the Conversation, which goes to its last message itself, nor home, drawn whole.
         if (want && route.name !== 'talk' && route.name !== 'trips') follow(my, want);
