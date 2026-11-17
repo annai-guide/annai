@@ -625,7 +625,7 @@ gnrtev	ok	Shiori can't reach her model.	Shioriがモデルに接続できませ�
 10s60wn	ok	No file at {0}.	{0}にファイルがありません。	src/core/imports.js:14	{0} = path
 13ujlu9	ok	{0} is too large (over {1}). Export only the dates you need from your calendar, and add that file.	{0}は大きすぎます（{1}超）。カレンダーから必要な期間だけをエクスポートして、そのファイルを追加してください。	src/core/imports.js:15	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:27	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Japanese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
-1acz027	ok	just now	たった今	src/core/intl.js:132	
+1acz027	ok	just now	たった今	src/core/intl.js:139	
 1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	端末のスピーカーでは、Shioriが話している間は声を聞き取れないため、重ねて話した内容は使われません。タップするとShioriが話すのをやめ、聞き取りを始めます。	src/core/koe/live.js:664	
 1ml2kgi	ok	Tap Shiori to talk over her	割り込んで話すときはShioriをタップ	src/core/koe/live.js:664	Note: names what to tap (the dock's Shiori), as the English does.
 3fqfy0	ok	Languages	言語	src/core/languages.js:346	
@@ -690,12 +690,12 @@ isa2u8	ok	Photos upload, but annai can't read the list of its photos there, whic
 qer7un	ok	Tap Test again later. annai deletes the test photo with the others, after 48 hours.	あとでもう一度「テスト」をタップしてください。テスト用の写真は、ほかの写真と同じく48時間後にannaiが削除します。	src/core/llm/check.js:173	Note: 「テスト」 is the button as it is named (model-check.js:15), in 「」 as ja-style rule 7 says.
 qpr4b9	ok	Photos upload, but annai couldn't check just now that it can delete the test photo.	写真はアップロードできましたが、テスト用の写真を削除できるかどうか、今は確認できませんでした。	src/core/llm/check.js:173	Note: annai is left out as the subject (ja-style rule 3).
 1g1zzzw	ok	Photos upload, but annai couldn't delete the test photo with this key.	写真はアップロードできましたが、このキーではテスト用の写真を削除できませんでした。	src/core/llm/check.js:176	Note: annai is left out as the subject (ja-style rule 3): the subject is obvious.
-16s9khr	ok	Utility	補助	src/core/llm/check.js:182	
-2qw9g9	ok	Koe · Chat	Koe · チャット	src/core/llm/check.js:182	
-mlh3jc	ok	Main	メイン	src/core/llm/check.js:182	
-1q9bibx	ok	It also answers at {0}'s level ({1}).	{0}のレベル（{1}）でも答えます。	src/core/llm/check.js:184	{0} = roleName(role); {1} = role.level; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
-1bbu08l	ok	At {0}'s level ({1}), this model refused: {2}	{0}のレベル（{1}）では、このモデルは拒否しました：{2}	src/core/llm/check.js:186	{0} = roleName(role); {1} = role.level; {2} = said; Note: {0} is a role's name as the screens give it.
-1f0dxr7	ok	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	「設定 → モデル」で{0}のレベルを下げるか、このモデルのページで推論レベルを変えてください。	src/core/llm/check.js:188	{0} = roleName(role); Note: {0} is a role's name as the screens give it.
+16s9khr	ok	Utility	補助	src/core/llm/check.js:185	
+2qw9g9	ok	Koe · Chat	Koe · チャット	src/core/llm/check.js:185	
+mlh3jc	ok	Main	メイン	src/core/llm/check.js:185	
+1q9bibx	ok	It also answers at {0}'s level ({1}).	{0}のレベル（{1}）でも答えます。	src/core/llm/check.js:187	{0} = roleName(role); {1} = role.level; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
+1bbu08l	ok	At {0}'s level ({1}), this model refused: {2}	{0}のレベル（{1}）では、このモデルは拒否しました：{2}	src/core/llm/check.js:189	{0} = roleName(role); {1} = role.level; {2} = said; Note: {0} is a role's name as the screens give it.
+1f0dxr7	ok	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	「設定 → モデル」で{0}のレベルを下げるか、このモデルのページで推論レベルを変えてください。	src/core/llm/check.js:191	{0} = roleName(role); Note: {0} is a role's name as the screens give it.
 1f43jmt	ok	{0} / {1}	{0} / {1}	src/core/llm/config.js:107	context: a model, after its provider; {0} = provider; {1} = model; Note: a provider's name, then its model's, both Latin names: a spaced slash, not the middle dot that tells a label's parts apart, as in 「Koe · チャット · Anthropic / Claude Opus 5.5」, so the pair reads as one name.
 1nuav0n	ok	That provider no longer exists.	そのプロバイダーはもうありません。	src/core/llm/config.js:406	
 1qjc2dh	ok	That provider has no ability called {0}.	そのプロバイダーに{0}という機能はありません。	src/core/llm/config.js:408	{0} = rec.ability
@@ -878,11 +878,11 @@ r6odk7	ok	annai can open a live session at this address from the browser.	ブラ
 ip7w4y#other	ok	It didn't answer aloud within # seconds.	#秒待っても音声で応答しませんでした。	src/core/realtime/open.js:302	plural; # = ms / 1000; English: "It didn't answer aloud within # second." (one), "It didn't answer aloud within # seconds." (other)
 1x3q9c3	ok	The session closed before it answered.	応答がないままセッションが終了しました。	src/core/realtime/open.js:303	
 9sqs1k	ok	It answered, but not aloud in words.	応答はありましたが、声に出した言葉ではありませんでした。	src/core/realtime/open.js:303	Note: It answered, but not in spoken words (text, or sound with no words).
-ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.	この名前はannai公式のプラグインが使っているため、ほかから入手したパッケージには使えません。作者に名前の変更を依頼してください。	src/core/registry.js:16	Note: "Ask its author" is asking a person (頼む), not the phones' permission choice Ask (確認).
-1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	この名前はannai公式のプラグインが使っていますが、インストールされているのはほかから入手したものなので、annaiでは使いません。「設定 → プラグイン」で削除してから、もう一度お試しください。	src/core/registry.js:17	
-oabrye	ok	Turn it on in Settings → Plugins, then try again.	「設定 → プラグイン」でオンにしてから、もう一度お試しください。	src/core/registry.js:18	
-mzoa87	ok	It is switched off after repeated errors.	エラーが続いたため、オフになっています。	src/core/registry.js:221	
-dhg5k6	ok	Starting failed: {0}	起動に失敗しました：{0}	src/core/registry.js:233	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
+ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.	この名前はannai公式のプラグインが使っているため、ほかから入手したパッケージには使えません。作者に名前の変更を依頼してください。	src/core/registry.js:17	Note: "Ask its author" is asking a person (頼む), not the phones' permission choice Ask (確認).
+1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	この名前はannai公式のプラグインが使っていますが、インストールされているのはほかから入手したものなので、annaiでは使いません。「設定 → プラグイン」で削除してから、もう一度お試しください。	src/core/registry.js:18	
+oabrye	ok	Turn it on in Settings → Plugins, then try again.	「設定 → プラグイン」でオンにしてから、もう一度お試しください。	src/core/registry.js:19	
+mzoa87	ok	It is switched off after repeated errors.	エラーが続いたため、オフになっています。	src/core/registry.js:222	
+dhg5k6	ok	Starting failed: {0}	起動に失敗しました：{0}	src/core/registry.js:234	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
 19bu7pw	ok	Version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	バージョン{0}にすると{1}が動かなくなります（{1}には{2} {3}が必要です）。先に{4}をアップデートするか、このバージョンのままにしてください。	src/core/requires.js:52	{0} = version; {1} = them; {2} = it; {3} = r.version; {4} = them
 1ee40s4	ok	It needs {0}, which you turned off.	{0}が必要ですが、オフになっています。	src/core/requires.js:79	{0} = shown
 8xu6se	ok	It needs {0}, which isn't installed. Install it from {1} first, then try again.	{0}が必要ですが、インストールされていません。{1} からインストールしてから、もう一度お試しください。	src/core/requires.js:82	{0} = r.id; {1} = r.homepage

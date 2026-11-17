@@ -625,7 +625,7 @@ gnrtev	ok	Shiori can't reach her model.	Shiori 无法连接到模型。	src/core
 10s60wn	ok	No file at {0}.	{0} 处没有文件。	src/core/imports.js:14	{0} = path
 13ujlu9	ok	{0} is too large (over {1}). Export only the dates you need from your calendar, and add that file.	{0} 太大了（超过 {1}）。请在日历中只导出所需日期的日程，再添加导出的文件。	src/core/imports.js:15	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:27	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Chinese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
-1acz027	ok	just now	刚刚	src/core/intl.js:132	
+1acz027	ok	just now	刚刚	src/core/intl.js:139	
 1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	使用手机扬声器时，Shiori 说话期间听不到你的声音，插话会被忽略。轻点一下即可让她停下来听你说。	src/core/koe/live.js:664	
 1ml2kgi	ok	Tap Shiori to talk over her	轻点 Shiori 即可打断她	src/core/koe/live.js:664	Note: The dock's Shiori button: tap it to talk over her.
 3fqfy0	ok	Languages	语言	src/core/languages.js:346	
@@ -690,12 +690,12 @@ isa2u8	ok	Photos upload, but annai can't read the list of its photos there, whic
 qer7un	ok	Tap Test again later. annai deletes the test photo with the others, after 48 hours.	请稍后再轻点“测试”。测试照片会和其他照片一样，在 48 小时后由 annai 删除。	src/core/llm/check.js:173	Note: Tap is 轻点 (the fixed words); “测试” is the button as it is named (model-check.js:15).
 qpr4b9	ok	Photos upload, but annai couldn't check just now that it can delete the test photo.	照片可以上传，但暂时无法确认能否删除测试照片。	src/core/llm/check.js:173	Note: annai is left out as the subject (zh-style rule 3).
 1g1zzzw	ok	Photos upload, but annai couldn't delete the test photo with this key.	照片可以上传，但用这个密钥无法删除测试照片。	src/core/llm/check.js:176	Note: annai is left out as the subject (zh-style rule 3); 密钥 as in the row before it.
-16s9khr	ok	Utility	辅助	src/core/llm/check.js:182	
-2qw9g9	ok	Koe · Chat	Koe · 聊天	src/core/llm/check.js:182	
-mlh3jc	ok	Main	主要	src/core/llm/check.js:182	
-1q9bibx	ok	It also answers at {0}'s level ({1}).	在“{0}”的推理级别（{1}）下也能回答。	src/core/llm/check.js:184	{0} = roleName(role); {1} = role.level; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
-1bbu08l	ok	At {0}'s level ({1}), this model refused: {2}	在“{0}”的推理级别（{1}）下，此模型拒绝了请求：{2}	src/core/llm/check.js:186	{0} = roleName(role); {1} = role.level; {2} = said; Note: {0} is a role's name as the screens give it.
-1f0dxr7	ok	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	请在设置 → 模型中调低“{0}”的推理级别，或在此模型的页面上修改其“推理级别”。	src/core/llm/check.js:188	{0} = roleName(role); Note: {0} is a role's name as the screens give it.
+16s9khr	ok	Utility	辅助	src/core/llm/check.js:185	
+2qw9g9	ok	Koe · Chat	Koe · 聊天	src/core/llm/check.js:185	
+mlh3jc	ok	Main	主要	src/core/llm/check.js:185	
+1q9bibx	ok	It also answers at {0}'s level ({1}).	在“{0}”的推理级别（{1}）下也能回答。	src/core/llm/check.js:187	{0} = roleName(role); {1} = role.level; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
+1bbu08l	ok	At {0}'s level ({1}), this model refused: {2}	在“{0}”的推理级别（{1}）下，此模型拒绝了请求：{2}	src/core/llm/check.js:189	{0} = roleName(role); {1} = role.level; {2} = said; Note: {0} is a role's name as the screens give it.
+1f0dxr7	ok	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	请在设置 → 模型中调低“{0}”的推理级别，或在此模型的页面上修改其“推理级别”。	src/core/llm/check.js:191	{0} = roleName(role); Note: {0} is a role's name as the screens give it.
 1f43jmt	ok	{0} / {1}	{0} / {1}	src/core/llm/config.js:107	context: a model, after its provider; {0} = provider; {1} = model; Note: a provider's name, then its model's, both Latin names: a spaced slash, not the middle dot that tells a label's parts apart, as in “Koe · 实时 · Anthropic / Claude Opus 5.5”, so the pair reads as one name.
 1nuav0n	ok	That provider no longer exists.	这个提供商已不存在。	src/core/llm/config.js:406	
 1qjc2dh	ok	That provider has no ability called {0}.	这个提供商没有名为 {0} 的功能。	src/core/llm/config.js:408	{0} = rec.ability
@@ -878,11 +878,11 @@ r6odk7	ok	annai can open a live session at this address from the browser.	浏览
 ip7w4y#other	ok	It didn't answer aloud within # seconds.	# 秒内没有语音回答。	src/core/realtime/open.js:302	plural; # = ms / 1000; English: "It didn't answer aloud within # second." (one), "It didn't answer aloud within # seconds." (other)
 1x3q9c3	ok	The session closed before it answered.	还没回答，会话就关闭了。	src/core/realtime/open.js:303	
 9sqs1k	ok	It answered, but not aloud in words.	它回答了，但没有用语音说出来。	src/core/realtime/open.js:303	
-ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.	这个名称已被 annai 官方插件使用，其他来源的插件不能再用。请联系作者改名。	src/core/registry.js:16	Note: "Ask its author" is asking a person (请让作者…), not the phones' permission choice Ask (询问).
-1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	这个名称属于 annai 官方插件，但已安装的同名插件来自其他来源，因此不会使用它。请在设置 → 插件中移除它，然后重试。	src/core/registry.js:17	
-oabrye	ok	Turn it on in Settings → Plugins, then try again.	请在设置 → 插件中开启它，然后重试。	src/core/registry.js:18	
-mzoa87	ok	It is switched off after repeated errors.	因多次出错，已自动关闭。	src/core/registry.js:221	
-dhg5k6	ok	Starting failed: {0}	启动失败：{0}	src/core/registry.js:233	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
+ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.	这个名称已被 annai 官方插件使用，其他来源的插件不能再用。请联系作者改名。	src/core/registry.js:17	Note: "Ask its author" is asking a person (请让作者…), not the phones' permission choice Ask (询问).
+1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	这个名称属于 annai 官方插件，但已安装的同名插件来自其他来源，因此不会使用它。请在设置 → 插件中移除它，然后重试。	src/core/registry.js:18	
+oabrye	ok	Turn it on in Settings → Plugins, then try again.	请在设置 → 插件中开启它，然后重试。	src/core/registry.js:19	
+mzoa87	ok	It is switched off after repeated errors.	因多次出错，已自动关闭。	src/core/registry.js:222	
+dhg5k6	ok	Starting failed: {0}	启动失败：{0}	src/core/registry.js:234	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
 19bu7pw	ok	Version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	版本 {0} 会导致 {1} 无法运行，因为它需要 {2} {3}。请先更新 {4}，或保留当前版本。	src/core/requires.js:52	{0} = version; {1} = them; {2} = it; {3} = r.version; {4} = them
 1ee40s4	ok	It needs {0}, which you turned off.	需要 {0}，但你已把它关闭。	src/core/requires.js:79	{0} = shown
 8xu6se	ok	It needs {0}, which isn't installed. Install it from {1} first, then try again.	需要 {0}，但尚未安装。请先从 {1} 安装，然后再试一次。	src/core/requires.js:82	{0} = r.id; {1} = r.homepage
