@@ -134,7 +134,7 @@ Display only: files and tools keep `plan`. `l10n/glossary.tsv` changes Plan to I
 
 - Now (`renderNow`, `nowRow`); its helpers move to plan.js and drive.js.
 - The top bar, tabs, swipes, `SECTION`, `lastIn`: about 95 lines of shell.js.
-- Trips' Start a trip form (stage 8). Done in stage 7: the no-trip card and Waiting panel; `waiting-file`, `waitingHref`.
+- Trips' Start a trip form: done in stage 8, with what only it needed (home's typing parts; a trip starts with +). Done in stage 7: the no-trip card and Waiting panel; `waiting-file`, `waitingHref`.
 - Done in stage 7, the no-trip conversation: the `/waiting` root (`tools.js`), `waitingMedia` (`loop.js`), `reach.js`'s clause, handover.js's waiting text, composer's branches, the dock's "Open a trip first", the no-trip words of the trip tools, and `openWhenDone`.
 
 Estimated 300 lines out, 450 in, about +8 KiB: fewer places and concepts, not fewer lines.

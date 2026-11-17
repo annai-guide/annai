@@ -2624,20 +2624,15 @@ knyqwh	ok	Add photos or files	新增照片或檔案	src/ui/screens/trip.js:317
 ecy82r	ok	Add a file	新增檔案	src/ui/screens/trip.js:348	
 1bmm5eq	ok	File path	檔案路徑	src/ui/screens/trip.js:349	
 16gte2l	ok	Create	建立	src/ui/screens/trip.js:351	
-aoc0k0#other	ok	{0}: # chats	{0}：# 個對話	src/ui/screens/trips.js:70	plural; # = e.fold.rows.length; {0} = monthName(e.fold.month); English: "{0}: # chat" (one), "{0}: # chats" (other)
-33pqd9	ok	Last backup {0}, to {1}.	上次備份：{0}，備份到 {1}。	src/ui/screens/trips.js:77	{0} = relTime(latest.last.at, now); {1} = latest.name; Note: {1} is the backup place's name.
-12mubvb	ok	Now	現在	src/ui/screens/trips.js:83	
-cvvz5z	ok	Tap + to talk to Shiori.	點一下 + 和 Shiori 聊聊。	src/ui/screens/trips.js:85	
-wfhszm	ok	Archived ({0})	已封存（{0}）	src/ui/screens/trips.js:88	{0} = archived.length
-in89ko	ok	No backup yet. Export everything from Settings, or set up automatic backups there.	還沒有備份。可以在設定中點「匯出全部」，或在那裡設定自動備份。	src/ui/screens/trips.js:91	
-1rrn1xn	ok	Day {0} of {1}	第 {0} 天，共 {1} 天	src/ui/screens/trips.js:236	{0} = d.day; {1} = d.of
-1q78pfk#other	ok	# files waiting to be read	# 個檔案待讀取	src/ui/screens/trips.js:251	plural; # = unread; English: "# file waiting to be read" (one), "# files waiting to be read" (other); Note: Taiwan wording: 個檔案; on a trip's card.
-1ceddv5	ok	Big Sur · Thanksgiving	花蓮 · 連假	src/ui/screens/trips.js:282	Note: An example trip name (the field's placeholder): a Taiwanese one (Hualien, a long weekend), as zh-Hans gives a mainland one.
-axugy7	ok	Start a trip	開始旅行	src/ui/screens/trips.js:309	
-ero67x	ok	Trip name	旅行名稱	src/ui/screens/trips.js:310	
-1776dho	ok	Add dates (optional)	新增日期（選填）	src/ui/screens/trips.js:312	Note: Taiwan wording: 新增 as the glossary's Add, 選填 as Taiwan's forms say optional.
-1baslgi	ok	Start trip	開始旅行	src/ui/screens/trips.js:314	Note: The same words as the form's heading, "Start a trip".
-152lnj5	ok	Use real dates for the start and end.	請填寫有效的開始和結束日期。	src/ui/screens/trips.js:332	
+aoc0k0#other	ok	{0}: # chats	{0}：# 個對話	src/ui/screens/trips.js:66	plural; # = e.fold.rows.length; {0} = monthName(e.fold.month); English: "{0}: # chat" (one), "{0}: # chats" (other)
+33pqd9	ok	Last backup {0}, to {1}.	上次備份：{0}，備份到 {1}。	src/ui/screens/trips.js:73	{0} = relTime(latest.last.at, now); {1} = latest.name; Note: {1} is the backup place's name.
+12mubvb	ok	Now	現在	src/ui/screens/trips.js:79	
+cvvz5z	ok	Tap + to talk to Shiori.	點一下 + 和 Shiori 聊聊。	src/ui/screens/trips.js:81	
+wfhszm	ok	Archived ({0})	已封存（{0}）	src/ui/screens/trips.js:83	{0} = archived.length
+in89ko	ok	No backup yet. Export everything from Settings, or set up automatic backups there.	還沒有備份。可以在設定中點「匯出全部」，或在那裡設定自動備份。	src/ui/screens/trips.js:86	
+1rrn1xn	ok	Day {0} of {1}	第 {0} 天，共 {1} 天	src/ui/screens/trips.js:218	{0} = d.day; {1} = d.of
+1q78pfk#other	ok	# files waiting to be read	# 個檔案待讀取	src/ui/screens/trips.js:233	plural; # = unread; English: "# file waiting to be read" (one), "# files waiting to be read" (other); Note: Taiwan wording: 個檔案; on a trip's card.
+152lnj5	ok	Use real dates for the start and end.	請填寫有效的開始和結束日期。	src/ui/screens/trips.js:255	
 ric74d	ok	Checking annai and its plugins…	正在檢查 annai 及其外掛程式…	src/ui/screens/updates.js:18	
 1mk4lgq	ok	annai hasn't checked since it started.	annai 啟動後還沒有檢查過。	src/ui/screens/updates.js:19	
 cmuwtk	ok	Last checked {0}.	上次檢查：{0}。	src/ui/screens/updates.js:19	{0} = relTime(checkedAt, now)

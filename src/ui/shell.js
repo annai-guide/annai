@@ -61,7 +61,7 @@ export function startShell(root, core) {
   const notices = createNotices();
   const main = h('main', { class: 'view', id: 'view', tabindex: '-1' });
   tapKeepsKeyboard();
-  dockHidesWhileTyping(document, { ended: () => notices.hold() });
+  dockHidesWhileTyping(document);
   const ctx = {
     ...core, notices,
     go: (/** @type {string} */ hash) => { if (location.hash === hash) render(); else location.hash = hash; },

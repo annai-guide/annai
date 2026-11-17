@@ -351,3 +351,14 @@ test("the offline pack's line, Now's until stage 8, is on the Itinerary of a tri
   await expect(line).toContainText('No offline pack yet.');
   await expect(line.getByRole('link', { name: 'Offline pack' })).toHaveAttribute('href', `#/trip/${encodeURIComponent(trip)}`);
 });
+
+test('home has no Start a trip form and no field to type in: a trip begins with +', async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Testville'); // a trip on the timeline: home has rows, not only its empty words
+  await goHome(page);
+  await expect(page.getByRole('heading', { name: 'Start a trip' })).toHaveCount(0);
+  await expect(page.getByLabel('Trip name')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Start trip' })).toHaveCount(0);
+  await expect(page.locator('main').locator('textarea, input:not([type=checkbox]):not([type=radio]):not([type=file])')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'New conversation' })).toBeVisible();
+});

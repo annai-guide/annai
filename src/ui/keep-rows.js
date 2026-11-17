@@ -5,7 +5,7 @@ const rowsIn = (el) => [...el.querySelectorAll('.rows a[href]')].filter((a) => !
  * Where the notices box ends on screen, where it sticks at the top (home: base.css), else 0. A stuck box's bottom includes the strip above it (--top);
  * an empty box, or one scrolled out of view, ends at or above 0.
  */
-export const covered = () => Math.max(0, document.querySelector('.notices')?.getBoundingClientRect().bottom ?? 0);
+const covered = () => Math.max(0, document.querySelector('.notices')?.getBoundingClientRect().bottom ?? 0);
 
 /**
  * A change on home (a redraw, or words changed in place): the first row in view that is still shown stays where it was, whatever came or went above it, so a

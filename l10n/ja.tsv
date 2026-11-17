@@ -2624,20 +2624,15 @@ knyqwh	ok	Add photos or files	写真やファイルを追加	src/ui/screens/trip
 ecy82r	ok	Add a file	ファイルを追加	src/ui/screens/trip.js:348	
 1bmm5eq	ok	File path	ファイルのパス	src/ui/screens/trip.js:349	
 16gte2l	ok	Create	作成	src/ui/screens/trip.js:351	
-aoc0k0#other	ok	{0}: # chats	{0}：会話#件	src/ui/screens/trips.js:70	plural; # = e.fold.rows.length; {0} = monthName(e.fold.month); English: "{0}: # chat" (one), "{0}: # chats" (other)
-33pqd9	ok	Last backup {0}, to {1}.	前回のバックアップ：{0}（{1}）	src/ui/screens/trips.js:77	{0} = relTime(latest.last.at, now); {1} = latest.name; Note: Label and value, no 。, as "Last export" beside it.
-12mubvb	ok	Now	いま	src/ui/screens/trips.js:83	
-cvvz5z	ok	Tap + to talk to Shiori.	＋をタップしてShioriと話しましょう。	src/ui/screens/trips.js:85	
-wfhszm	ok	Archived ({0})	アーカイブ済み（{0}）	src/ui/screens/trips.js:88	{0} = archived.length
-in89ko	ok	No backup yet. Export everything from Settings, or set up automatic backups there.	まだバックアップがありません。「設定」からすべてをエクスポートするか、自動バックアップを設定してください。	src/ui/screens/trips.js:91	
-1rrn1xn	ok	Day {0} of {1}	{0}日目（全{1}日）	src/ui/screens/trips.js:236	{0} = d.day; {1} = d.of
-1q78pfk#other	ok	# files waiting to be read	未読のファイル#件	src/ui/screens/trips.js:251	plural; # = unread; English: "# file waiting to be read" (one), "# files waiting to be read" (other); Note: on a trip's card: files Shiori moved there that its conversation hasn't read yet; 件 counts files.
-1ceddv5	ok	Big Sur · Thanksgiving	京都・紅葉	src/ui/screens/trips.js:282	Note: An example trip name (the field's placeholder): a Japanese one, written with ・ as Japanese names are.
-axugy7	ok	Start a trip	旅を始める	src/ui/screens/trips.js:309	
-ero67x	ok	Trip name	旅の名前	src/ui/screens/trips.js:310	
-1776dho	ok	Add dates (optional)	日付を追加（任意）	src/ui/screens/trips.js:312	Note: folds the Starts and Ends fields under Start a trip: a name is enough; 任意 as forms say optional.
-1baslgi	ok	Start trip	旅を始める	src/ui/screens/trips.js:314	Note: The same words as the form's heading, "Start a trip".
-152lnj5	ok	Use real dates for the start and end.	開始日と終了日に正しい日付を入力してください。	src/ui/screens/trips.js:332	
+aoc0k0#other	ok	{0}: # chats	{0}：会話#件	src/ui/screens/trips.js:66	plural; # = e.fold.rows.length; {0} = monthName(e.fold.month); English: "{0}: # chat" (one), "{0}: # chats" (other)
+33pqd9	ok	Last backup {0}, to {1}.	前回のバックアップ：{0}（{1}）	src/ui/screens/trips.js:73	{0} = relTime(latest.last.at, now); {1} = latest.name; Note: Label and value, no 。, as "Last export" beside it.
+12mubvb	ok	Now	いま	src/ui/screens/trips.js:79	
+cvvz5z	ok	Tap + to talk to Shiori.	＋をタップしてShioriと話しましょう。	src/ui/screens/trips.js:81	
+wfhszm	ok	Archived ({0})	アーカイブ済み（{0}）	src/ui/screens/trips.js:83	{0} = archived.length
+in89ko	ok	No backup yet. Export everything from Settings, or set up automatic backups there.	まだバックアップがありません。「設定」からすべてをエクスポートするか、自動バックアップを設定してください。	src/ui/screens/trips.js:86	
+1rrn1xn	ok	Day {0} of {1}	{0}日目（全{1}日）	src/ui/screens/trips.js:218	{0} = d.day; {1} = d.of
+1q78pfk#other	ok	# files waiting to be read	未読のファイル#件	src/ui/screens/trips.js:233	plural; # = unread; English: "# file waiting to be read" (one), "# files waiting to be read" (other); Note: on a trip's card: files Shiori moved there that its conversation hasn't read yet; 件 counts files.
+152lnj5	ok	Use real dates for the start and end.	開始日と終了日に正しい日付を入力してください。	src/ui/screens/trips.js:255	
 ric74d	ok	Checking annai and its plugins…	annaiとプラグインを確認中…	src/ui/screens/updates.js:18	
 1mk4lgq	ok	annai hasn't checked since it started.	起動してからまだ確認していません。	src/ui/screens/updates.js:19	
 cmuwtk	ok	Last checked {0}.	最終確認：{0}。	src/ui/screens/updates.js:19	{0} = relTime(checkedAt, now)

@@ -104,7 +104,6 @@ html.typing-elsewhere .dock:not(.seat) { opacity: 0; pointer-events: none; }
 body.home .plus { display: grid; place-items: center; position: fixed; z-index: 21; inset-inline-end: max(16px, calc(50% - 264px)); bottom: calc(var(--dock-h, 154px) + 14px);
   width: 60px; height: 60px; padding: 0; border-radius: 50%; border: 0; background: var(--ai); color: var(--ai-ink); font-size: 34px; line-height: 1; cursor: pointer; box-shadow: 0 10px 24px -12px var(--shadow); }
 .plus:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-html.typing-elsewhere body.home .plus { opacity: 0; pointer-events: none; }
 .dock-row { display: grid; grid-template-columns: 1fr minmax(0, 176px) 1fr; align-items: center; max-width: 560px; margin: 0 auto; }
 .ib { justify-self: center; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; color: var(--ink-2);
   border: 1px solid var(--line); background: var(--sheet); cursor: pointer; font-size: 20px; }

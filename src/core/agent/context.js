@@ -37,8 +37,9 @@ import { fixedWords, timeUnsure, bookingRef } from '../plan.js';
 export async function takeSnapshot({ ws, registry, trip, personalityName, locale }) {
   const read = async (/** @type {string} */ scope, /** @type {string} */ path) => (await ws.readText(scope, path).catch(() => undefined)) ?? '';
   const tripJson = trip ? await ws.readJSON(trip, '/trip.json').catch(() => null) : null;
-  // Whose name it is: annai's naming (Chats) writes trip.json as the system; a rename in Details and Start a trip are the user's. After a write
-  // of hers to an undated one, whoever wrote the version that first held the name (F7); unknown (no history, a read that failed) is kept.
+  // Whose name it is: annai's naming (Chats) writes trip.json as the system; a rename in Details is the user's, as Start a trip's name was (before
+  // timeline stage 8). After a write of hers to an undated one, whoever wrote the version that first held the name (F7); unknown (no history, a read
+  // that failed) is kept.
   const author = trip && tripJson ? (await ws.read(trip, '/trip.json').catch(() => undefined))?.entry.author : undefined;
   const by = author === 'shiori' && !tripJson.start ? await namedBy(ws, /** @type {string} */ (trip), tripJson.title).catch(() => '') : author;
   const guessed = Boolean(tripJson) && (tripJson.title === DRAFT_TITLE || by === 'system');
@@ -71,7 +72,7 @@ async function namedBy(ws, trip, title) {
   return by;
 }
 
-/** The longest name annai takes (start_trip, Start a trip, Details); a file's record can hold more. */
+/** The longest name annai takes (start_trip, Details; Start a trip too before timeline stage 8); a file's record can hold more. */
 const TITLE_MAX = 200;
 
 /** @param {import('../workspace.js').Workspace} ws @param {string} trip */
