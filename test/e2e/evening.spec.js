@@ -122,6 +122,9 @@ const plusBookings = (/** @type {string} */ hotel) => [
 ];
 
 test("the user's evening from home: + with the files, no words; she dates the new conversation by a patch, its header names it, it is a card below now, and its Plan has the flight", async ({ page }) => {
+  // The trip is dated Nov 20–27 and is a card below Now only until its last day is over, so the test's own clock fixes today, as plan.spec.js does
+  // (noon UTC is the same calendar day everywhere from Honolulu to Tokyo): the real date reaching the trip's days must not turn the gate red.
+  await page.clock.setFixedTime(new Date('2026-11-16T12:00:00Z'));
   const llm = await startModelServer({ [MESSAGES]: [
     sse(anthropicToolReply([{ name: 'patch', input: { path: '/trip/trip.json', changes: { title: TITLE, start: '2026-11-20', end: '2026-11-27' } } }])),
     (/** @type {any} */ body) => sse(anthropicToolReply(plusBookings((/\/trip(\/files\/hotel\.[a-z]+)/.exec(asText(body))?.[1]) ?? '/files/hotel.png'))),
