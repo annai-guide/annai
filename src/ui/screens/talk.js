@@ -175,7 +175,7 @@ export async function settled(agent) {
 export const wokeTitles = (reasons) => reasons.flatMap((r) => (r.kind === 'trigger' && r.titles) || []).map((s) => s.replace(/[.!?。！？]+$/u, ''));
 
 /**
- * A reminder annai showed by itself, for the Conversation and Now, from its data. Her note shown for her (halves.js) is "Shiori's answer", anything else a reminder.
+ * A reminder annai showed by itself, for the Conversation and Driving's latest card, from its data. Her note shown for her (halves.js) is "Shiori's answer", anything else a reminder.
  * A plan watch's words are made from its data, in the screens' language (an older one's are annai's English as stored, so marked). @param {any} d the event's data
  * @param {(text: string) => Record<string, any>} mine @param {(tag: string, attrs: Record<string, any>) => Node | string} [make] h, or a test's own
  */

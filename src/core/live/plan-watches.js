@@ -152,7 +152,7 @@ function whatWords(w) {
 }
 
 /**
- * What a plan reminder says to the user, made from its data where it is shown (the Conversation, Now, its card, a push): in the
+ * What a plan reminder says to the user, made from its data where it is shown (the Conversation, Driving's latest card, its card, a push): in the
  * screens' language. @param {PlanSay} say @returns {string}
  */
 export function planWords(say) {
