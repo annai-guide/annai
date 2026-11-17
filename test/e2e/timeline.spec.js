@@ -766,10 +766,11 @@ for (const long of [false, true]) {
   test(`home at 430 x 932, its foot in view, ${long ? 'a long card' : 'a short card'} stuck; the window 300 px shorter and back: the rows don't move`, async ({ page }) => {
     await page.setViewportSize({ width: 430, height: 932 });
     await scrolledHome(page);
-    // Short of the page's end, its foot still in view: home opens at its end here since timeline stage 8 (no Start a trip form below the rows), and a page
-    // at its end stays at its end as the window changes (at-end.js), its rows moving with the box; that is another test's subject.
-    await page.evaluate(() => scrollBy(0, -80));
-    expect(await page.evaluate(() => document.documentElement.scrollHeight - innerHeight - scrollY)).toBeGreaterThanOrEqual(60);
+    // Short of the page's end by more than the box can shrink (the long card's 101 px), its foot still in view: home opens at its end here since timeline
+    // stage 8 (no Start a trip form below the rows), and a page at its end, or one the shorter window's page height clamps, keeps to its end as the
+    // window changes, its rows moving with the box (at-end.js); that is not this test's subject.
+    await page.evaluate(() => scrollBy(0, -160));
+    expect(await page.evaluate(() => document.documentElement.scrollHeight - innerHeight - scrollY)).toBeGreaterThanOrEqual(140);
     await expect(page.getByText('Open an annai file')).toBeInViewport();
     await page.evaluate((long) => /** @type {any} */ (window).__n.card(long ? { title: 'A long card', body: 'These are many words, and more of them. '.repeat(30), actions: [{ label: 'Go on', run() {} }] } : { title: 'Saved', body: 'One line.' }), long);
     await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
