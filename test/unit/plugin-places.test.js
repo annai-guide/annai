@@ -161,8 +161,8 @@ test("nearby's rows from Tokyo's answer: the station building (a relation) first
   assert.ok(!out.includes('甲州道中'));
 });
 
-/** The line nearby ends its answer with when OpenStreetMap's answer stopped at its 400 (the query's `out center tags 400`). */
-const CUT = "OpenStreetMap's answer stopped at 400 places, not chosen by distance, so a nearer place may be missing. For the nearest, ask again with half the radius or less.";
+/** The line nearby ends its answer with when OpenStreetMap's answer stopped at its 400 (the query's `out center tags 400`), naming the radius to ask again with. @param {number} m */
+const cutLine = (m) => `OpenStreetMap's answer stopped at 400 places, not chosen by distance, so a nearer place may be missing. Ask again with a radius of ${m} m or less to list every place within it.`;
 
 test("nearby says when OpenStreetMap's answer stopped at 400, counting what Overpass sent, last, beside the other endings; never at 399", async () => {
   // Sydney's probe answer (LIGHTER): the 1000 m circle, cut at 400 nodes in id order, the Opera House (an outline) not among them.
@@ -174,18 +174,20 @@ test("nearby says when OpenStreetMap's answer stopped at 400, counting what Over
   const lines = (await run('nearby', at, (url) => (url.includes('overpass') ? body : wiki))).split('\n');
   assert.equal(lines.length, 42);
   assert.ok(lines.slice(1, 41).every((r) => r.split('\t').length === 7));
-  assert.equal(lines.at(-1), CUT);
+  // Of the default 250, 500 and 1000 m circles the 500 m one holds 67 of these places (the 250 m one 18), so that is the circle cut.
+  assert.equal(lines.at(-1), cutLine(250));
   // 399 of the same places: an answer that didn't reach the limit says nothing.
   const whole = (await run('nearby', at, (url) => (url.includes('overpass') ? { ...body, elements: body.elements.slice(0, 399) } : wiki))).split('\n');
   assert.equal(whole.length, 41);
   assert.equal(whole.at(-1).split('\t').length, 7);
-  // What Overpass sent counts, not the rows kept: 400 elements, five of them with no tags (no row), are still cut.
-  const bare = body.elements.map((/** @type {any} */ e, /** @type {number} */ k) => (k < 5 ? { type: e.type, id: e.id, lat: e.lat, lon: e.lon } : e));
-  assert.equal((await run('nearby', at, (url) => (url.includes('overpass') ? { ...body, elements: bare } : wiki))).split('\n').at(-1), CUT);
+  // What Overpass sent counts, not the rows kept: 400 elements, five of them with no position (osmRow makes no row from one; an element
+  // without tags still makes a row), are still cut.
+  const bare = body.elements.map((/** @type {any} */ e, /** @type {number} */ k) => (k < 5 ? { type: e.type, id: e.id, tags: e.tags } : e));
+  assert.equal((await run('nearby', at, (url) => (url.includes('overpass') ? { ...body, elements: bare } : wiki))).split('\n').at(-1), cutLine(250));
   // Wikipedia not answering, and no pack: OpenStreetMap's rows, then the line.
   const down = (await run('nearby', at, (url) => (url.includes('overpass') ? body : new Response('', { status: 503 })))).split('\n');
-  assert.equal(down.length, 42);
-  assert.equal(down.at(-1), CUT);
+  assert.equal(down.length, 43);
+  assert.deepEqual(down.slice(-2), ["Wikipedia didn't answer; these are OpenStreetMap places only.", cutLine(250)]);
   // A pack whose area holds the point but not the circle fills in for Wikipedia, saying so; the cut line comes after, last.
   const day = '2026-10-16T09:00:00.000Z';
   await ws.write(/** @type {string} */ (trip), '/offline/osm/o1.json', JSON.stringify({ area: { points: [[at.lat, at.lng]], radius: 500 }, rows: [] }), { author: 'system' });
@@ -195,10 +197,79 @@ test("nearby says when OpenStreetMap's answer stopped at 400, counting what Over
   const filled = (await run('nearby', at, (url) => (url.includes('overpass') ? body : new Response('', { status: 503 })))).split('\n');
   assert.equal(filled.length, 43);
   assert.match(filled[1], /^Sydney Opera House\twikipedia article\t0\t/);
-  assert.deepEqual(filled.slice(-2), ["Wikipedia didn't answer, so its articles come from the offline pack (downloaded 2026-10-16).", CUT]);
+  assert.deepEqual(filled.slice(-2), ["Wikipedia didn't answer, so its articles come from the offline pack (downloaded 2026-10-16).", cutLine(250)]);
   // With the pack, an answer short of the limit ends as before.
   assert.equal((await run('nearby', at, (url) => (url.includes('overpass') ? { ...body, elements: body.elements.slice(0, 399) } : new Response('', { status: 503 })))).split('\n').at(-1),
     "Wikipedia didn't answer, so its articles come from the offline pack (downloaded 2026-10-16).");
+});
+
+/** An Overpass answer of n named nodes due north of a point, from `from` to `to` m away (about 111195 m to a degree of latitude). @param {{ lat: number, lng: number }} at @param {number} n @param {number} from @param {number} to */
+const ring = (at, n, from, to) => ({ elements: Array.from({ length: n }, (_, k) => ({ type: 'node', id: k + 1, lat: at.lat + (from + ((to - from) * k) / (n - 1)) / 111195, lon: at.lng, tags: { name: `Place ${k}`, tourism: 'attraction' } })) });
+/** The circles of the query nearby sent, smallest first. @param {{ url: string, init: any }[]} asked */
+const circlesOf = (asked) => [...new Set([...overpassQuery(asked).matchAll(/around:(\d+),/g)].map((m) => Number(m[1])))];
+
+test("nearby names the circle to ask again with: half the one cut, which held fewer than 40 and so came whole; the widest, an inner one or the smallest", async () => {
+  const at = { lat: 48.853, lng: 2.3499 };
+  /** One cut answer: the circles asked, the last line, and the circles asked again at the radius it names. @param {any} input @param {number} from @param {number} to */
+  const cutAt = async (input, from, to) => {
+    const { run, asked } = await setup();
+    const lines = (await run('nearby', { ...at, ...input }, (url) => (url.includes('overpass') ? ring(at, 400, from, to) : noWiki))).split('\n');
+    assert.equal(lines.length, 42);
+    const named = /a radius of (\d+) m or less/.exec(lines.at(-1) ?? '');
+    assert.ok(named, String(lines.at(-1)));
+    const first = circlesOf(asked);
+    asked.length = 0;
+    await run('nearby', { ...at, ...input, radius: Number(named[1]) }, (url) => (url.includes('overpass') ? { elements: [] } : noWiki));
+    return { line: lines.at(-1), first, again: circlesOf(asked) };
+  };
+  // The widest circle cut: 400 places between 620 and 980 m, none within 500 m. The 500 m circle came whole before it, so 500 m is asked.
+  const widest = await cutAt({}, 620, 980);
+  assert.deepEqual(widest.first, [250, 500, 1000]);
+  assert.equal(widest.line, cutLine(500));
+  assert.deepEqual(widest.again, [250, 500]);
+  // An inner circle cut: 400 places between 300 and 480 m. The 1000 m circle never ran, and half the radius (500 m) would have been the
+  // same query without it, the same answer again: it is the 500 m circle that was cut, so 250 m is asked.
+  const inner = await cutAt({}, 300, 480);
+  assert.equal(inner.line, cutLine(250));
+  assert.deepEqual(inner.again, [250]);
+  // The smallest circle cut: 400 places within 240 m. Half of it is a new circle, 125 m, which can be cut again and says so again.
+  const smallest = await cutAt({}, 20, 240);
+  assert.equal(smallest.line, cutLine(125));
+  assert.deepEqual(smallest.again, [125]);
+  // A radius of 300 m or less is one circle: half of that.
+  const one = await cutAt({ radius: 200 }, 20, 190);
+  assert.deepEqual(one.first, [200]);
+  assert.equal(one.line, cutLine(100));
+  // The driving companion's 15 km look ahead, the dense area first inside the 7500 m circle (the live call of 2026-11-16, a point in Lake
+  // Michigan, had its first places at 7.6 km): 7500 m was cut, so 3750 m is asked, where half the radius (7500) would repeat the answer.
+  const drive = await cutAt({ radius: 15000 }, 4000, 7400);
+  assert.deepEqual(drive.first, [235, 469, 938, 1875, 3750, 7500, 15000]);
+  assert.equal(drive.line, cutLine(3750));
+  assert.deepEqual(drive.again, [235, 469, 938, 1875, 3750]);
+  // Dense nearer in, the 1875 m circle cut: 938 m.
+  assert.equal((await cutAt({ radius: 15000 }, 1000, 1800)).line, cutLine(938));
+  // A circle is told by the distance each row carries, and an outline's is to its centre: 360 roads reaching the circle but centred
+  // 5 km away don't count in it, so with 40 nodes between 300 and 480 m the 500 m circle is the one cut.
+  const { run } = await setup();
+  const roads = (/** @type {number} */ n) => Array.from({ length: n }, (_, k) => ({ type: 'way', id: 1000 + k, center: { lat: at.lat + 0.045, lon: at.lng }, tags: { name: `Road ${k}`, historic: 'road' } }));
+  const last = async (/** @type {any[]} */ elements) => (await run('nearby', at, (url) => (url.includes('overpass') ? { elements } : noWiki))).split('\n').at(-1);
+  assert.equal(await last([...ring(at, 40, 300, 480).elements, ...roads(360)]), cutLine(250));
+  // No circle holding 40 of the rows that came (400 roads, all centred off): still said, naming half the radius asked.
+  assert.equal(await last(roads(400)), cutLine(500));
+});
+
+test("nearby says so when Wikipedia didn't answer and no pack reaches the point: its own ending, the cut line, if any, still last", async () => {
+  const { run } = await setup();
+  const down = () => new Response('', { status: 503 });
+  // OpenStreetMap's places only, said.
+  const out = (await run('nearby', McWay, (url) => (url.includes('overpass') ? place('Lone Place') : down()))).split('\n');
+  assert.match(out[1], /^Lone Place\t/);
+  assert.equal(out.at(-1), "Wikipedia didn't answer; these are OpenStreetMap places only.");
+  assert.equal(out.length, 3);
+  // Wikipedia answering with no articles is not that: nothing is said.
+  assert.doesNotMatch(await run('nearby', McWay, (url) => (url.includes('overpass') ? place('Lone Place') : noWiki)), /Wikipedia/);
+  // Nothing from OpenStreetMap either way: as before.
+  await assert.rejects(run('nearby', McWay, () => down()), /OpenStreetMap is busy and Wikipedia didn't answer/);
 });
 
 /**
