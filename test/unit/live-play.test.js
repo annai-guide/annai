@@ -182,6 +182,28 @@ test('tripsRead settles when start fails before its first read, so nothing that 
   assert.equal(await Promise.race([live.tripsRead.then(() => 'settled'), new Promise((done) => setTimeout(() => done('waiting'), 1000))]), 'settled');
 });
 
+test("tripsRead settles at the first read of the trips, not when start's catch-up ends: a held catch-up (the service worker's news) does not hold a cold #/now", async () => {
+  const k = await liveKit();
+  const chat = await k.chat('Ramen');
+  await k.settle();
+  k.live.dispose();
+  /** @type {() => void} */
+  let release = () => {};
+  const held = new Promise((done) => { release = () => done(undefined); });
+  const live = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent: fakeAgent(chat), clock: k.clock, keep: k.keep, timeZone: () => LA, news: async () => { await held; return []; } });
+  const started = live.start();
+  try {
+    // The catch-up reads the news first and waits for it; the read of the trips came before that. A second with no answer means it waits for the catch-up.
+    const first = await Promise.race([live.tripsRead.then(() => 'read'), started.then(() => 'started'), new Promise((done) => setTimeout(() => done('waiting'), 1000))]);
+    assert.equal(first, 'read');
+    assert.equal(live.play, k.trip, 'the trips are read: the happening one is in play, where the open chat stood in');
+  } finally {
+    release();
+    await started;
+    live.dispose();
+  }
+});
+
 test('midnight alarm: GPS off, no watches, a trip starting tomorrow: its first reminder comes with nothing else happening', async () => {
   const k = await liveKit({ live: false, start: at('20:00', '2026-11-26'), plan: { bixby: BIX, nepenthe: NEP } });
   const chat = await k.chat('Ramen');

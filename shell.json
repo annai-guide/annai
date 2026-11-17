@@ -1,5 +1,5 @@
 {
-  "build": "62b18d7327d6",
+  "build": "9789e2961f20",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -255,13 +255,13 @@
     "/src/ui/screens/experimental.js": "48f75a37ecf3",
     "/src/ui/screens/ext.js": "2bf551b1f41f",
     "/src/ui/screens/file.js": "6d1a5197e79b",
-    "/src/ui/screens/import.js": "eb13c6e6322c",
+    "/src/ui/screens/import.js": "31453f579734",
     "/src/ui/screens/item.js": "dc9f5e4a9fc6",
     "/src/ui/screens/mcp.js": "8594db2419e8",
     "/src/ui/screens/model.js": "6976470d905a",
     "/src/ui/screens/models.js": "63ad69a849f8",
     "/src/ui/screens/notifications.js": "1596c1a81403",
-    "/src/ui/screens/plan.js": "fb542eb1e160",
+    "/src/ui/screens/plan.js": "14ce476afd90",
     "/src/ui/screens/plugin-install.js": "f4e6ece32ec1",
     "/src/ui/screens/plugin.js": "db6dce86872f",
     "/src/ui/screens/plugins.js": "5b9559133cf6",

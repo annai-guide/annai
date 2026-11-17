@@ -83,6 +83,41 @@ export default function (test, assert) {
     screen.remove();
   });
 
+  test("a long line of Shiori's, still being drawn when a later reminder is shown, does not replace it", async () => {
+    const store = createMemoryStore();
+    const ws = new Workspace(store);
+    const trip = await createTrip(ws, { title: 'Big Sur' });
+    // Over the inline limit, so it is stored as a blob: its drawing reads the store once more, which is held here.
+    await record(store, trip, { type: 'out.speak', actor: 'shiori', data: { id: 's1', half: 'kokoro' }, texts: [['text', `The long way round. ${'It runs along the cliffs. '.repeat(100)}`]] });
+    /** @type {() => void} */
+    let reached = () => {};
+    /** @type {() => void} */
+    let release = () => {};
+    const read = new Promise((done) => { reached = () => done(undefined); });
+    const gate = new Promise((done) => { release = () => done(undefined); });
+    const slow = {
+      ...store,
+      tx: (/** @type {any[]} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => {
+        const r = store.tx(stores, mode, fn);
+        return stores.includes('blobs') ? r.then(async (v) => { reached(); await gate; return v; }) : r;
+      },
+    };
+    const agent = fakeAgent();
+    const live = { play: trip, on: false, gps: 'off', activity: 'unknown', fix: null, onChange: () => () => {}, near: () => null };
+    const drawing = renderDrive({ store: slow, ws, agent, live, notices: { card() {}, toast() {} } });
+    await read;
+    agent.emit(await record(store, trip, { type: 'reminder', actor: 'system', data: { watch: 'plan:dinner:leave', text: 'Leave now: Dinner at Big Sur Bakery.' } }));
+    await new Promise((done) => setTimeout(done, 100)); // the reminder is drawn meanwhile
+    release();
+    const screen = await drawing;
+    document.body.append(screen);
+    const latest = /** @type {HTMLElement} */ (screen.querySelector('.drive-latest'));
+    await new Promise((done) => setTimeout(done, 100)); // the long line's drawing, had it gone on, would land by now
+    assert.ok((latest.textContent ?? '').includes('Dinner'), String(latest.textContent).slice(0, 80));
+    assert.ok(!(latest.textContent ?? '').includes('long way'), String(latest.textContent).slice(0, 80));
+    screen.remove();
+  });
+
   test('with nothing new meanwhile, Driving shows the latest card the log has, and then each new one', async () => {
     const { ctx, agent, store, trip, release } = await kit();
     release();

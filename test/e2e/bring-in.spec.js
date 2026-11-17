@@ -144,6 +144,10 @@ test('back on the share screen while its add runs, the add shows with its button
   await allFiles(page);
   await expect(page.getByRole('link', { name: /\/files\/flight\.pkpass/ })).toBeVisible();
   await expect(page.getByRole('link', { name: /\/files\/flight \(2\)\.pkpass/ })).toHaveCount(0);
+  // The add is over: the share's address, back to, shows the empty import screen, not the add that ended.
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1, name: 'Open an annai file' })).toBeVisible();
+  await expect(page.getByText('Adding 1 of 1…')).toHaveCount(0);
 });
 
 test('an add that fails after the traveller left the share screen says so on a card, which opens the share again', async ({ page }) => {
@@ -174,6 +178,50 @@ test('an add that fails after the traveller left the share screen says so on a c
   await expect(page.getByText('flight.pkpass')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add to Thanksgiving' })).toBeEnabled();
 });
+
+/** Two files shared to annai (Android's share sheet), on its share screen. @param {import('@playwright/test').Page} page */
+async function sharedPair(page) {
+  await page.evaluate(async () => {
+    const form = new FormData();
+    form.append('files', new File(['%PDF-1.4 one'], 'one.pdf', { type: 'application/pdf' }));
+    form.append('files', new File(['%PDF-1.4 two'], 'two.pdf', { type: 'application/pdf' }));
+    await fetch('/share-target', { method: 'POST', body: form, redirect: 'manual' });
+  });
+  await page.goto('/#/import?inbox=1');
+  await expect(page.getByRole('heading', { name: 'Add 2 files' })).toBeVisible();
+}
+
+for (const button of ['Add to Thanksgiving', 'New conversation']) {
+  test(`a share that failed on its second file, with the traveller on its screen: the error shows there alone, and "${button}" again adds the rest, into the same place, once`, async ({ page }) => {
+    await openApp(page);
+    await waitForServiceWorker(page);
+    await startTrip(page, 'Thanksgiving');
+    await sharedPair(page);
+    // The page's own Workspace, as annai's modules are shared in the page: the second file's write fails, once.
+    await page.evaluate(async () => {
+      const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+      const real = Workspace.prototype.write;
+      let files = 0;
+      Workspace.prototype.write = function (/** @type {string} */ scope, /** @type {string} */ path, /** @type {any[]} */ ...rest) {
+        return path.startsWith('/files/') && ++files === 2 ? Promise.reject(new Error('The test made this write fail.')) : real.call(this, scope, path, ...rest);
+      };
+    });
+    await page.getByRole('button', { name: button }).click();
+    await expect(page.locator('main').getByRole('status').filter({ hasText: 'The test made this write fail.' })).toBeVisible();
+    // The traveller is on the screen, which says it: no card says it again.
+    await expect(page.locator('.notice', { hasText: 'failed' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: button })).toBeEnabled();
+    await page.getByRole('button', { name: button }).click();
+    // Where it went: the trip, or the conversation made, whose address is in the hash either way.
+    await expect.poll(() => new URL(page.url()).hash).toMatch(/^#\/trip\//);
+    const at = new URL(page.url()).hash.match(/^#\/trip\/([^/]+)/)?.[1] ?? '';
+    await goToHash(page, `#/trip/${at}`);
+    await allFiles(page);
+    await expect(page.getByRole('link', { name: /\/files\/one\.pdf/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /\/files\/two\.pdf/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /\/files\/(one|two) \(2\)\.pdf/ })).toHaveCount(0);
+  });
+}
 
 test('a share added as a new conversation, left while it is added, does not become the conversation annai reopens', async ({ page }) => {
   await openApp(page);
