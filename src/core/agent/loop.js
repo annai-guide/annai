@@ -398,7 +398,7 @@ export class Agent {
   #opens = 0;
   /** Counts opens: only the latest one does anything. */
   #generation = 0;
-  /** Reminders and the other half's events written while a conversation was being opened, for it once open (#joinLate). @type {{ e: any, r?: Resolved }[]} */
+  /** Reminders and the other half's events written while a conversation was being opened, for it once open (#joinLate), and this half's own writes to the trip being opened again (#write). @type {{ e: any, r?: Resolved }[]} */
   #late = [];
   /** @type {(() => void)[]} waiting for the running turn or housekeeping to end */
   #free = [];
@@ -1999,7 +1999,7 @@ export class Agent {
     }
   }
 
-  /** An entry written while a conversation was being opened: added to the open one's transcript unless the reading had it; this half's own told to the screens either way, as nothing told them yet (Driving's card; the conversation screen skips a seq it drew). @param {any} e @param {Resolved} [r] the other half's, its writer told them */
+  /** An entry written while a conversation was being opened: added to the open one's transcript unless the reading had it; this half's own told to the screens either way, as nothing told them yet (Driving's card; the conversation screen skips a seq it drew). @param {any} e @param {Resolved} [r] set for an entry already written and told by #write or the other half's writer */
   #joinLate(e, r) {
     const missing = e.scope === this.scope && e.seq > this.transcript.through;
     if (r) {
@@ -2022,6 +2022,8 @@ export class Agent {
     if (this.#turning && (ev.type === 'msg.user' || (ev.type === 'heard' && !ev.data?.dismissed))) this.#userIn = true;
     const r = await resolveEvent(this.store, stored);
     this.#apply(stored, r);
+    // The same trip being opened again: its reading may have been made before this write, so #open's splice adds it unless the reading had it (told once, here).
+    if (this.#opens && stored.scope === (this.#target ?? ME)) this.#late.push({ e: stored, r });
     // annai's own card (confirm) is annai's, not her words: it neither answers the user nor settles what she owes them.
     const hers = ev.type.startsWith('out.') && ev.actor !== 'system';
     if (hers) {

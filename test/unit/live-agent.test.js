@@ -9,6 +9,7 @@ import { readWatches } from '../../src/core/live/watches.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { logEvent } from '../../src/core/events.js';
+import { record } from '../../src/core/agent/log.js';
 import { createTrip } from '../../src/core/scopes.js';
 
 const sleep = { name: 'sleep', input: {} };
@@ -305,6 +306,36 @@ test("a reminder written while its conversation is being opened is told to the s
   k.agent.send('Hello');
   await k.agent.idle();
   assert.ok(!JSON.stringify(k.requests[0].messages).includes('Leave for the airport now.'), "nor in Kyoto's first request");
+});
+
+test("a reminder written while the trip that is open is being opened again is in what Shiori knows once, though the reading was made before it was written (a long line in the log is read from its blob, after the write is queued)", async () => {
+  const k = await agentKit([[say('Hi.')]]);
+  /** @type {any[]} */
+  const told = [];
+  k.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'reminder') told.push(e); });
+  await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'Please remember this. '.repeat(120)]] }); // over 2,000 characters: kept as a blob
+  /** @type {Promise<void> | null} */
+  let reminding = null;
+  const tx = k.store.tx.bind(k.store);
+  k.store.tx = (/** @type {any} */ names, /** @type {any} */ mode, /** @type {any} */ fn) => tx(names, mode, (/** @type {any} */ t) => fn(new Proxy(t, {
+    get(o, key) {
+      const v = o[key];
+      if (key !== 'listEvents') return typeof v === 'function' ? v.bind(o) : v;
+      return async (/** @type {string} */ scope, /** @type {any} */ q = {}) => {
+        const out = await o.listEvents(scope, q);
+        if (!reminding && scope === k.trip && q.types?.includes('msg.user')) reminding = k.agent.remind([{ watch: 'w-1', text: 'Leave for the airport now.' }]);
+        return out;
+      };
+    },
+  })));
+  await k.agent.open(k.trip);
+  await reminding;
+  assert.ok(reminding, 'written in the opening window, after the log was listed');
+  k.agent.send('Hello');
+  await k.agent.idle();
+  assert.equal(JSON.stringify(k.requests[0].messages).split('Leave for the airport now.').length, 2, 'Shiori is given it once');
+  assert.equal((await k.events(['reminder'])).length, 1, 'stored once');
+  assert.deepEqual(told.map((e) => e.data.text), ['Leave for the airport now.'], 'told to the screens once');
 });
 
 test("one reminder, one time: Kokoro's watch_set result and Koe's view name it in the same words, its weekday and zone said, whatever the phone's zone (real models: Koe took it back from its own view, item 6)", async () => {
