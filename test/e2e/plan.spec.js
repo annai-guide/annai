@@ -567,14 +567,31 @@ test('with the top above the screen, a fix that moves nothing scrolls nothing, a
   expect((await row.boundingBox())?.y).toBe(y);
 });
 
-test('a trip that ended has no today top', async ({ page }) => {
+test("a trip with no tab for today has the top, with Driving, on every tab: the way to Driving Now's screen gave every day", async ({ page }) => {
   await page.clock.setFixedTime(NOON);
   await openApp(page);
-  const trip = await startTrip(page, 'Testville');
-  await records(page, trip, { patch: { '/trip.json': { start: '2030-11-20', end: '2030-11-22' } }, write: { '/plan/tea.json': { id: 'tea', title: 'Tea', fixed: false, start: { at: '2030-11-21T13:00:00Z', tz: 'UTC' } } } });
+  const trip = await startTrip(page, 'Testville'); // open, with nothing happening: the trip in play
+  await records(page, trip, { patch: { '/trip.json': { start: '2030-11-20', end: '2030-11-22' } }, write: {
+    '/plan/tea.json': { id: 'tea', title: 'Tea', fixed: false, start: { at: '2030-11-21T13:00:00Z', tz: 'UTC' } },
+    '/plan/walk.json': { id: 'walk', title: 'Walk', fixed: false, start: { at: '2030-11-22T13:00:00Z', tz: 'UTC' } },
+  } });
   await openItinerary(page);
-  await expect(page.getByRole('tab').first()).toBeVisible();
-  await expect(page.locator('.today-top')).toHaveCount(0);
+  const top = page.locator('.today-top');
+  for (const day of [1, 2]) { // the day opened (the first with rows), then the next
+    await page.getByRole('tab').nth(day).click();
+    await expect(page.getByRole('tab').nth(day)).toHaveAttribute('aria-selected', 'true');
+    await expect(top.locator('.now-place')).toHaveText("GPS is off, so annai isn't following where you are.");
+    await expect(top.getByRole('link', { name: 'Driving' })).toBeVisible();
+  }
+  await top.getByRole('link', { name: 'Driving' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Driving' })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'The road ahead' })).toBeVisible();
+  // A chat with nothing planned has no tabs at all: the top is there too.
+  const chat = await startTrip(page, 'A chat');
+  await goToHash(page, `#/trip/${encodeURIComponent(chat)}/plan`);
+  await expect(page.getByText('No itinerary yet.', { exact: false })).toBeVisible();
+  await expect(page.getByRole('tab')).toHaveCount(0);
+  await expect(top.getByRole('link', { name: 'Driving' })).toBeVisible();
 });
 
 test('the Plan with nothing in it: the new conversation\'s, open when nothing else is, and a trip\'s', async ({ page }) => {

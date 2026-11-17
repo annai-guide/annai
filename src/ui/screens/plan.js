@@ -51,23 +51,23 @@ export async function renderPlan(ctx, route) {
   const picked = `${ctx.entry} ${id}`;
   const first = startTab(tabs, today, kept.get(picked) ?? null);
   const panel = h('div', { class: 'plan-day', role: 'tabpanel' });
-  // Today's tab opens with where you are, the chips and plugins' sections (todayTop). Driving shows one trip, so only that trip links to it.
-  let top = null;
-  if (tabs.some((x) => x.key === today)) {
-    await ctx.agent?.opening.catch(() => {});
-    const drive = h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/drive' }, t`Driving`));
-    const link = () => { drive.style.visibility = id === drivingTrip(ctx) ? '' : 'hidden'; }; // its room stays, so nothing below moves
-    link();
-    const off = ctx.live?.onReminders(() => { if (drive.isConnected) link(); else off?.(); });
-    top = h('div', { class: 'today-top' }, todayTop(ctx, { title: scope.title, rows, tz: fallbackTz }), drive);
-  }
+  // Today's tab opens with where you are, the chips and plugins' sections (todayTop), and Driving, which shows one trip, so only that trip links to it.
+  // With no tab for today (a trip before or after its dates, a chat with nothing today, a long trip's day past its first 60), it heads every tab, and
+  // an Itinerary with none: Driving is always one tap from the trip's Itinerary, as it was from Now.
+  const hasToday = tabs.some((x) => x.key === today);
+  await ctx.agent?.opening.catch(() => {});
+  const drive = h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/drive' }, t`Driving`));
+  const link = () => { drive.style.visibility = id === drivingTrip(ctx) ? '' : 'hidden'; }; // its room stays, so nothing below moves
+  link();
+  const off = ctx.live?.onReminders(() => { if (drive.isConnected) link(); else off?.(); });
+  const top = h('div', { class: 'today-top' }, todayTop(ctx, { title: scope.title, rows, tz: fallbackTz }), drive);
   /** @type {HTMLButtonElement[]} */
   const buttons = tabs.map((x) => h('button', { type: 'button', role: 'tab', class: 'tab', onclick: () => { kept.set(picked, x.key); show(x); } }, x.label));
   /** @param {typeof tabs[number]} tab */
   function show(tab) {
     buttons.forEach((b, i) => b.setAttribute('aria-selected', String(tabs[i] === tab)));
     panel.setAttribute('aria-label', tab.label);
-    if (top) top.hidden = tab.key !== today;
+    top.hidden = hasToday && tab.key !== today;
     panel.replaceChildren(tab.rows.length ? timetable(ctx, id, tab.rows, links, undo, here, fallbackTz) : h('p', { class: 'empty', text: t`Nothing planned this day.` }));
   }
   if (first) {

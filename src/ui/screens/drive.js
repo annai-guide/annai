@@ -13,6 +13,9 @@ import { knownFix } from '../live-chip.js';
 import { PLAN_FILE } from '../../core/plan.js';
 import { nowOf, driveBack, drivingTrip, askIn } from '../today.js';
 
+/** What Driving shows as Shiori's latest card: her card or words, or a reminder annai showed. */
+const CARDS = ['out.show', 'out.speak', 'reminder'];
+
 /** Big quick-ask buttons (spec §16.2): what each says to Shiori, as the user's own words. @param {boolean} speaks @param {{ name: string } | undefined} next */
 const quickAsks = (speaks, next) => [
   [t`What's around here?`, asUser(speaks)`What is around us right now that is worth knowing about?`],
@@ -113,21 +116,36 @@ export async function renderDrive(ctx) {
       }, p.name))]));
   };
   draw();
-  const first = await latestCard(ctx, id);
-  if (first) latest.replaceChildren(first);
+  // Shiori's latest card: heard from before the log is read, so one that comes while it is read is not missed, and the newest by its place in the log
+  // is shown, whichever drawing ends first. While the screen is being drawn it is not on the page yet: only after that does "not on it" mean left.
+  let drawing = true;
+  let at = -1; // the log's seq of the card shown, or being drawn
+  const show = async (/** @type {any} */ e) => {
+    if (e.seq <= at) return;
+    at = e.seq;
+    const card = await eventCard(ctx, e);
+    if (at === e.seq) latest.replaceChildren(card);
+  };
+  const offEvents = ctx.agent.on('event', (/** @type {any} */ e) => {
+    if (!drawing && !strip.isConnected) {
+      offEvents();
+      return;
+    }
+    if (e.scope === id && CARDS.includes(e.type)) show(e);
+  });
+  try {
+    const [last] = await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(id, { types: CARDS, reverse: true, limit: 1 }));
+    if (last) await show(last);
+  } catch (e) {
+    offEvents(); // no screen: the shell draws the error
+    throw e;
+  }
   const offLive = live?.onChange(() => {
     if (!strip.isConnected) {
       offLive?.();
       return;
     }
     draw();
-  });
-  const offEvents = ctx.agent.on('event', async (/** @type {any} */ e) => {
-    if (!strip.isConnected) {
-      offEvents();
-      return;
-    }
-    if (e.scope === id && ['out.show', 'out.speak', 'reminder'].includes(e.type)) latest.replaceChildren(await eventCard(ctx, e));
   });
   // The big dock while Driving is on screen.
   ctx.dock?.setLarge(true);
@@ -138,16 +156,11 @@ export async function renderDrive(ctx) {
   };
   addEventListener('hashchange', leave);
   const back = driveBack(ctx.drivingFrom);
+  drawing = false;
   return h('div', { class: 'screen drive' },
     h('h1', { class: 'title', text: t`Driving` }),
     strip, maps, ask, latest, where, gps,
     h('p', {}, crumb(back.href, back.label)));
-}
-
-/** The conversation's latest card: Shiori's card or words, or a reminder annai showed. @param {any} ctx @param {string} scope */
-async function latestCard(ctx, scope) {
-  const [e] = await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types: ['out.show', 'out.speak', 'reminder'], reverse: true, limit: 1 }));
-  return e ? eventCard(ctx, e) : null;
 }
 
 /** One of those, drawn: model output as text or through the card renderer, never innerHTML. @param {any} ctx @param {any} e */

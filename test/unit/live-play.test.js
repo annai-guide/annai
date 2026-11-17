@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { liveKit, at, iso, off, LA, MONTEREY, BIXBY, NEPENTHE } from './live-kit.js';
+import { liveKit, fakeAgent, at, iso, off, LA, MONTEREY, BIXBY, NEPENTHE } from './live-kit.js';
+import { Live } from '../../src/core/live/live.js';
 import { removeTrip, setTripStatus, ME } from '../../src/core/scopes.js';
 import { ensureDraft } from '../../src/core/chats.js';
 import { record } from '../../src/core/agent/log.js';
@@ -154,6 +155,31 @@ test('nothing open, a trip happening: it is in play', async () => {
   assert.equal((await k.events(['location'])).length, 1);
   await k.to(at('11:09'));
   assert.deepEqual(said(k), [[LEAVE, k.trip]]);
+});
+
+test("tripsRead: once live mode has read the trips, the trip in play is the happening one, where the open chat stood in (a cold #/now waits for it)", async () => {
+  const k = await liveKit();
+  const chat = await k.chat('Ramen');
+  await k.settle();
+  k.live.dispose(); // the page reloads with the chat open
+  const live = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent: fakeAgent(chat), clock: k.clock, keep: k.keep, timeZone: () => LA });
+  assert.equal(live.play, chat, 'nothing read yet: the open conversation stands in');
+  const started = live.start();
+  await live.tripsRead;
+  assert.equal(live.play, k.trip);
+  await started;
+  live.dispose();
+});
+
+test('tripsRead settles when start fails before its first read, so nothing that waits for it hangs', async () => {
+  const k = await liveKit();
+  await k.settle();
+  k.live.dispose();
+  const agent = { ...fakeAgent(k.trip), on() { throw new Error('No agent to follow.'); } };
+  const live = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent, clock: k.clock, keep: k.keep, timeZone: () => LA });
+  await assert.rejects(live.start(), /No agent to follow/);
+  // Settled, it answers at once; a second without an answer means it never will.
+  assert.equal(await Promise.race([live.tripsRead.then(() => 'settled'), new Promise((done) => setTimeout(() => done('waiting'), 1000))]), 'settled');
 });
 
 test('midnight alarm: GPS off, no watches, a trip starting tomorrow: its first reminder comes with nothing else happening', async () => {

@@ -861,41 +861,11 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **The same cause, two halves (undo-f1's re-review, R1):** with Koe talking, when a running turn of Kokoro's takes a hand-over up partway and either a reminder's turn takes up an owed hand-over or the user says anything while Kokoro works on it, the Undo line ends one row above Koe's last words or a card of Kokoro's (between "Shiori took 1 file to Kyoto." and "I took it to Kyoto."). It still shows and Undo works; one Shiori is fine. Older than undo-f1, which made it better.
 - **Revisit when:** the next version, after a design check of the Undo line's placement by a fresh agent (RULES, "Step back when findings repeat": every round of undo-card and undo-f1 landed in the partway end and `turn.node`); the candidate is one record the loop writes at the take-up (it knows there, loop.js `#handover`), which may let `turn.node`, its reset and the partway branch go and cover every shape here, instead of `handover` stamped on the error records of `#failed`, the silent card, the Stop and the let-go one (`left`).
 
-### A cold load at `#/now` can land on another conversation's Itinerary
-- **Kind:** deferred.
-- **What the user sees:** an old bookmark or a plugin's link to `#/now`, opened as annai starts (a cold load, not from inside the app), can open the Itinerary of the conversation they last had open, or the draft's, or Trips, instead of today's Itinerary of the trip in play. Opened from inside the app, once annai is up, it goes to the trip in play.
-- **Why:** `#/now` is sent on by the trip in play (`live.play`, src/core/live/live.js `#play`), which falls back to the open conversation until live mode has read the trips (main.js starts live mode but doesn't wait for its first read of the trips before the shell's first draw). The Now screen was the old address's own, so it never needed the trip in play at that moment. Found by the final review of stage 8 (a Haiku slice).
-- **Revisit when:** the next version: live mode's read of the trips as a promise the shell awaits in `render()` before `redirectOf` for `now`, and an e2e that loads `#/now` cold.
-
-### Driving is reached only from today's tab of the trip in play
-- **Kind:** deferred.
-- **What the user sees:** where you are and the GPS chips are at the top of the Itinerary's today tab of any trip that has one (src/ui/today.js `todayTop`, drawn by src/ui/screens/plan.js), and the Driving button only there on the trip in play, nowhere else. A trip with nothing planned today and no dates (so no tab for today), a trip that isn't happening (the trip in play is then the open conversation's, which may have no today), and a long trip past its day 60 with nothing planned today (the Itinerary lists a dated trip's first 60 days, plus every day with a planned row) have no way to Driving from the Itinerary. The Now screen had the button on every day the app was open. Driving still opens by itself when the trip in play starts moving fast (`followDrive`), from the GPS problem card's "Say where you are", and from Simulate; there is no other link to it.
-- **Why:** with the top bar and Now gone (timeline stage 8) the top has one home, today's tab, as the spec says; a top on every tab when today has none is a design call for the traveller's checks on the phone, not a bug found by one. Found by the final review of stage 8 (two Haiku slices).
-- **Revisit when:** the next version: the top, or a Driving link, on every tab when today has none (the stage 8 re-review: a deferral is planned, not waiting on a check).
-
-### A share's add that fails after the traveller left its screen is told only when storage is full
-- **Kind:** deferred.
-- **What the user sees:** shared files are being added, the traveller taps "← Trips" (or Back), and the add then fails for a reason other than full storage: the error shows only on the share screen they left (src/ui/screens/import.js `add()`), and the share stays in annai's inbox with nothing listing it until the next share replaces it or they open the share screen again. Older than stage 8's crumb, which makes leaving one tap; found by reading (stage8-f2's re-review), not run.
-- **Why:** the screen owns its error line; a failure after leaving needs a card, a small change of its own with a test that makes the add fail late.
-- **Revisit when:** the next version: an add that fails after its screen was left shows a warning card, as full storage already does.
-
-### Coming back to the share screen while its add runs lets the files be added twice
-- **Kind:** deferred.
-- **What the user sees:** the traveller leaves the share screen while its files are being added and comes back before the add ends: the buttons are live again, and a second tap adds the same files a second time, kept with "(2)" in their names. Older than stage 8; found by reading (stage8-f2's re-review), not run.
-- **Why:** the screen is drawn fresh from the inbox and knows nothing of an add still running from its earlier drawing.
-- **Revisit when:** the next version: the share screen draws an add in progress (its status, the buttons off) until it ends.
-
 ### Some unit tests on a scaled clock fail when the host is loaded far past its CPUs
 - **Kind:** deferred.
 - **What the user sees:** nothing in annai. For whoever runs `npm run check`: on a host loaded far past its CPUs (load 130 to 200 on 32 CPUs), a few tests that run time faster than real (a 200 or 250 ms second) can fail on a wait or a race and pass when run again: in test/unit/live-mic.test.js the sleep note "arriving while a note for the user is in flight" (3 of 80 runs after its neighbours, 0 of 176 alone: the session closed for quiet on its 2 s spell before the note went in), the first non-stop-sound test (its 12 s wait), and four more on the scaled clock; gemini-live.test.js:86 and live-drive2.test.js:158 once each. At the host's usual load they pass.
 - **Why:** test timing, not the product: the scaled clock makes a session's spells a fraction of real time while the work around them still takes real time. live-mic-flake moved the ones that failed under ordinary load to the real clock; the rest failed only under extreme load.
 - **Revisit when:** the next version, or sooner if `npm run check` fails at the host's usual load (under about 70): the same real-clock line (`agent: { secondMs: 1000 }`) or a fix to the sleep-note test's race.
-
-### Driving can miss a card that arrives while it opens
-- **Kind:** deferred.
-- **What the user sees:** a card or a reminder of Shiori's that arrives in the instant Driving is opening (between the read of the latest card and the subscription to new ones, src/ui/screens/drive.js:112-126) is not shown there until the next one arrives. Older than stage 8; the gap runs from the store read through the settings read that drawing the card waits for (drive.js `latestCard`, `eventCard`), not measured.
-- **Why:** `renderDrive` subscribes to `'event'` after `await latestCard`. Subscribing first and drawing the later of the two is a change to the screen's draw order, with its own test.
-- **Revisit when:** the next version: subscribe before the read, keep the newest of the read card and any that came in meanwhile.
 
 ### A delayed flight, or one with no arrival time, lets the next item's reminders fire in the air
 - **Kind:** deferred.

@@ -321,6 +321,28 @@ test("#/now opens today's Itinerary of the trip in play (where you are, the chip
   await expect(page.getByRole('heading', { level: 1, name: 'Trips', exact: true })).toBeVisible();
 });
 
+test("a cold load at #/now opens today's Itinerary of the trip in play, not that of the conversation left open", async ({ page }) => {
+  await openApp(page);
+  const id = await happeningTrip(page, 'Testville');
+  await expect(page.locator('main.view > *')).toBeVisible(FIRST_DRAW);
+  // Another conversation is the open one (Details opens it): until live mode has read the trips, the trip in play is this one's stand-in.
+  const chat = await startTrip(page, 'Kept open');
+  await expect.poll(() => page.evaluate(async () => {
+    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+    const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+    const { readAppSettings } = await import(/** @type {string} */ ('/src/core/settings.js'));
+    const store = await createIdbStore();
+    try { return (await readAppSettings(new Workspace(store))).activeTrip; } finally { store.close(); }
+  })).toBe(chat);
+  // An old bookmark: annai starts at #/now.
+  await page.evaluate(() => history.replaceState(null, '', '#/now'));
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1, name: 'Itinerary', exact: true })).toBeVisible(FIRST_DRAW);
+  expect(new URL(page.url()).hash).toBe(`#/trip/${id}/plan`);
+  await expect(page.locator('main .crumbs')).toContainText('Testville');
+  await expect(page.locator('.today-top').getByRole('link', { name: 'Driving' })).toBeVisible();
+});
+
 test('#/now with nothing in play goes home, by replace', async ({ page }) => {
   await openApp(page, '#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings', exact: true })).toBeVisible();
