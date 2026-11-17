@@ -35,6 +35,12 @@ export const WINDOW_MIN = 180;
 /** Off plan: this far from a flexible item, this long into its time. */
 export const OFF_PLAN_KM = 3;
 export const OFF_PLAN_AFTER_MIN = 10;
+/**
+ * Off plan: asked until this long after the start (or the item's end, if sooner). The hour running late gives a fixed item, and the one
+ * an item with no end always had; past it, the linger watch covers a stop off the plan. Not the whole item: a stay until the next morning
+ * woke her "off plan" at the traveller's dinner (the main session's call, 2026-11-16).
+ */
+export const OFF_PLAN_FOR_MIN = 60;
 /** Off plan: stopped this long, this far from every plan place. */
 export const LINGER_MIN = 20;
 export const NOT_PLANNED_M = 500;
@@ -257,8 +263,8 @@ const CHECK = {
   },
   'off-plan'(w, m) {
     const fix = now(m);
-    // An item with no end may wake her in the hour after its start: when, never an end she is told (span).
-    if (!fix || m.fired(`plan:${w.item}:arrived`) || m.now < w.at + OFF_PLAN_AFTER_MIN * MIN || m.now > (w.end ?? w.at + 60 * MIN)) return null;
+    // Its first hour, or until it ends if sooner: when it may fire, never an end she is told (span).
+    if (!fix || m.fired(`plan:${w.item}:arrived`) || m.now < w.at + OFF_PLAN_AFTER_MIN * MIN || m.now > Math.min(w.end ?? Infinity, w.at + OFF_PLAN_FOR_MIN * MIN)) return null;
     const km = meters(fix, w.place) / 1000;
     if (km <= OFF_PLAN_KM) return null;
     return { text: `Off plan: "${w.title}"${tag(w)} is planned ${span(w)} at ${w.place.name}, and the user is ${kmText(km * 1000)} away. The replanning skill says what to do` };
@@ -311,7 +317,7 @@ const DESCRIBE = {
   'coming-up': (w) => `${COMING_UP_MIN} min before "${w.title}" at ${hhmm(w)}`,
   arrived: (w) => `on arriving at ${w.place.name} for "${w.title}"`,
   late: (w) => `when running late for "${w.title}" at ${hhmm(w)}`,
-  'off-plan': (w) => `when far from "${w.title}" while it is planned`,
+  'off-plan': (w) => `when far from "${w.title}" in the first ${OFF_PLAN_FOR_MIN} min of its time`,
   linger: () => `on stopping ${LINGER_MIN} min somewhere not on the plan`,
 };
 

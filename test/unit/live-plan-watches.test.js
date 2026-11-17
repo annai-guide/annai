@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { planWatches, PLAN } from '../../src/core/live/plan-watches.js';
-import { MONTEREY, BIXBY, RIVER_INN, NEPENTHE, off, at, LA } from './live-kit.js';
+import { MONTEREY, BIXBY, RIVER_INN, NEPENTHE, off, at, LA, liveKit } from './live-kit.js';
 
 /** @param {Partial<import('../../src/core/live/triggers.js').Moment>} o @returns {import('../../src/core/live/triggers.js').Moment} */
 const moment = (o = {}) => ({ now: at('08:00'), fix: null, newFix: false, past: false, live: true, activity: 'still', change: null, odometer: 0, stop: null, gap: null, fastEnded: null, fired: () => false, ...o });
@@ -189,8 +189,9 @@ test("the off-plan wake names both days of an item that ends on a later day, on 
   const night = { title: 'Night at Nepenthe', start: { at: '2026-11-27T19:00:00-08:00', tz: LA }, end: { at: '2026-11-28T11:00:00-08:00', tz: LA }, place: { name: 'Nepenthe', ...NEPENTHE } };
   const said = 'Off plan: "Night at Nepenthe" is planned from Fri 2026-11-27 19:00 (GMT-8) to Sat 2026-11-28 11:00 (GMT-8) at Nepenthe, and the user is 7.0 km away. The replanning skill says what to do';
   assert.equal(offPlanSaid(night, at('19:15')), said);
-  assert.equal(offPlanSaid(night, at('02:00', '2026-11-28')), said); // after midnight, "19:00" alone would read as today's
-  assert.equal(offPlanSaid(night, at('11:01', '2026-11-28')), null);
+  // After midnight, "23:30" alone would read as today's.
+  assert.equal(offPlanSaid({ ...night, start: { at: '2026-11-27T23:30:00-08:00', tz: LA } }, at('00:15', '2026-11-28')),
+    'Off plan: "Night at Nepenthe" is planned from Fri 2026-11-27 23:30 (GMT-8) to Sat 2026-11-28 11:00 (GMT-8) at Nepenthe, and the user is 7.0 km away. The replanning skill says what to do');
   // Over a clock change, each time with its own offset.
   assert.equal(offPlanSaid({ ...night, start: { at: '2026-10-31T19:00:00-07:00', tz: LA }, end: { at: '2026-11-01T11:00:00-08:00', tz: LA } }, Date.parse('2026-10-31T19:15:00-07:00')),
     'Off plan: "Night at Nepenthe" is planned from Sat 2026-10-31 19:00 (GMT-7) to Sun 2026-11-01 11:00 (GMT-8) at Nepenthe, and the user is 7.0 km away. The replanning skill says what to do');
@@ -203,4 +204,37 @@ test("the off-plan wake's doubt follows the times it says: an unsure end it does
     'Off plan: "Dinner" is planned for 19:00 at Nepenthe, and the user is 7.0 km away. The replanning skill says what to do');
   assert.equal(offPlanSaid(dinner, at('19:15'), new Map([['/bookings/table.json', { ...table, unsure: ['start'] }]])),
     'Off plan: "Dinner" (not sure the time was read right) is planned for 19:00 at Nepenthe, and the user is 7.0 km away. The replanning skill says what to do');
+});
+
+test("the off-plan wake asks in an item's first hour: far 30 min into a long flexible item wakes her, 90 min in doesn't", () => {
+  const long = { title: 'Afternoon at Bixby Creek', start: { at: '2026-11-27T13:00:00-08:00', tz: LA }, end: { at: '2026-11-27T17:00:00-08:00', tz: LA }, place: { name: 'Bixby Creek Bridge', ...BIXBY } };
+  assert.equal(offPlanSaid(long, at('13:30')),
+    'Off plan: "Afternoon at Bixby Creek" is planned for 13:00–17:00 at Bixby Creek Bridge, and the user is 14.1 km away. The replanning skill says what to do');
+  assert.equal(offPlanSaid(long, at('14:30')), null); // past its first hour: a stop off the plan is linger's
+  const w = planWatches([{ path: '/plan/long.json', item: { fixed: false, ...long } }], new Map(), { fallbackTz: LA })[0];
+  assert.equal(PLAN.describe(w.when), 'when far from "Afternoon at Bixby Creek" in the first 60 min of its time');
+});
+
+/** A flexible stay from 15:00 to 11:00 the next day at the Big Sur River Inn, and dinner at Nepenthe from 19:00. */
+const STAY = { title: 'Stay at Big Sur River Inn', fixed: false, start: { at: '2026-11-27T15:00:00-08:00', tz: LA }, end: { at: '2026-11-28T11:00:00-08:00', tz: LA }, place: { name: 'Big Sur River Inn', ...RIVER_INN } };
+const DINNER = { title: 'Dinner at Nepenthe', fixed: true, start: { at: '2026-11-27T19:00:00-08:00', tz: LA }, end: { at: '2026-11-27T20:30:00-08:00', tz: LA }, place: { name: 'Nepenthe', ...NEPENTHE } };
+/**
+ * What wakes her when annai is opened at dinner: live mode's first fixes are at Nepenthe from 19:30, 7.0 km from the inn, which the
+ * traveller hasn't reached yet. @param {Record<string, any>} plan @returns {Promise<string[]>}
+ */
+async function openedAtDinner(plan) {
+  const k = await liveKit({ plan, start: at('19:25') });
+  await k.stay(NEPENTHE, at('19:30'), at('19:40'), 60);
+  k.live.dispose();
+  return k.agent.wakes.map((x) => String(x.text));
+}
+
+test("a stay that runs overnight doesn't wake her \"off plan\" at the dinner the plan has (it did: the stay was planned too)", async () => {
+  const texts = await openedAtDinner({ stay: STAY, dinner: DINNER });
+  assert.deepEqual(texts.filter((x) => x.includes('Off plan')), []);
+  assert.ok(texts.some((x) => x.startsWith('Plan: you arrived at Nepenthe for "Dinner at Nepenthe"')), texts.join('\n'));
+});
+
+test("a stay that runs overnight doesn't wake her \"off plan\" at a dinner the plan doesn't have, 4 h after the stay's start", async () => {
+  assert.deepEqual((await openedAtDinner({ stay: STAY })).filter((x) => x.includes('Off plan')), []);
 });
