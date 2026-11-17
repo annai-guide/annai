@@ -67,7 +67,7 @@ export function createNotices() {
   };
   /**
    * A card whose text is more than three lines shows three and a More, which opens it to its full height, and a Less, which closes
-   * it. Open, the box's cap is lifted (on home, to half the room under the bar, scrolling inside); the buttons stay at the box's edge, Dismiss in reach. Looked at once the card is drawn (one in
+   * it. Open, the box's cap is lifted (on home, to half the screen, scrolling inside); the buttons stay at the box's edge, Dismiss in reach. Looked at once the card is drawn (one in
    * a closed stack, when it opens) and when the screen changes size.
    * @type {WeakMap<HTMLElement, () => void>}
    */
