@@ -189,6 +189,10 @@ test('markup in the output transcript never reaches the log; a turn with no real
     const [heard] = await k.events(['heard']);
     const [later] = await k.events(['heard.text']);
     assert.deepEqual([heard.data.text, later.data.of, later.data.text], ['Is it', heard.data.id, 'Is it far?']);
+    // The later words name the model that wrote them by its name, as her line does, never by its id (the Trace shows "written down by" it).
+    const [spoke] = await k.events(['out.speak']);
+    assert.ok(spoke.data.by.name, 'her line names its model');
+    assert.equal(later.data.by, spoke.data.by.name);
     assert.ok(read(k.agent.kokoro).includes('speech:Is it far?'), 'Kokoro reads every word');
   } finally {
     await k.done();
