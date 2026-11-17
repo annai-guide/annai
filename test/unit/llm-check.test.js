@@ -77,8 +77,10 @@ test("Test's level step says the model refused only for an answer that refused t
   assert.deepEqual(await at({ error: 'bad-request', status: 400, message: 'Unsupported reasoning effort' }), {
     step: 'level', ok: false, detail: "At Main's level (high), this model refused: Unsupported reasoning effort. Lower Main's level in Settings → Models, or change this model's Reasoning levels on its page.",
   });
-  // A 400 or a 413 that the core read by its words as another kind is still the provider refusing the request.
+  // A 400 or a 413 that the core read by its words (or its status) as another kind is still the provider refusing the request.
   assert.match(String((await at({ error: 'context', status: 400, message: 'The thinking budget is too long' }, { id: 'utility', level: 'high' }))?.detail), /^At Utility's level \(high\), this model refused: The thinking budget is too long\. Lower Utility's level/);
+  // A 404 too: the access step has just reached this model at this address, so a 404 now is the level's (a router with no route for it, say).
+  assert.match(String((await at({ error: 'not-found', status: 404, message: 'No route for this reasoning setting' }))?.detail), /^At Main's level \(high\), this model refused: No route for this reasoning setting\. Lower Main's level/);
   for (const [failure, words] of /** @type {[any, string][]} */ ([
     [{ error: 'timeout', status: 408, message: 'Your request timed out' }, 'The model took too long to start answering.'],
     [{ error: 'rate', status: 429, message: 'Slow down' }, 'The provider says too many requests for now.'],
