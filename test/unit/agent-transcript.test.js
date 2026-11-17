@@ -199,6 +199,7 @@ test("a log the version before this one wrote, with `end` and `awake` on its res
     const store = createMemoryStore();
     await record(store, SCOPE, { type: 'wake', actor: 'system', data: { id: 'w-1', reasons: [{ kind: 'user', text: 'typed', handover: 'h-1' }], handover: 'h-1' } });
     await record(store, SCOPE, { type: 'msg.user', actor: 'user', data: { wake: 'w-1', handed, handover: 'h-1' }, texts: [['text', 'Our trip']] });
+    /** @type {[string, string, any][]} */
     const calls = shape === 'ended' ? [['a', 'speak', { text: 'Filed.' }]] : [['q', 'ask', { question: 'File it?', options: ['Yes'] }], ['s', 'sleep', {}]];
     await modelTrace(store, SCOPE).turn(/** @type {any} */ ({ ...info, handover: 'h-1', endLogged: true }), '', '', /** @type {any} */ (calls.map(([id, name, input]) => ({ type: 'tool_call', id, name, input }))));
     if (shape === 'ended') {
