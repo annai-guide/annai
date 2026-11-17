@@ -457,15 +457,22 @@ test('"Tap again" comes where the first tap was, on a phone 320 wide, and waits 
   await page.clock.install();
   await openApp(page);
   await startTrip(page, 'Big Sur');
+  // Every web font in before the first measure: a face this screen is the first to use (the back link's weight) could swap in between the
+  // measures and move the whole screen 2 px. A face's load() waits for it in both engines; document.fonts.ready doesn't in WebKit, which
+  // reads a swap face still on its way as "error".
+  await page.evaluate(() => Promise.all([...document.fonts].map((f) => f.load())));
   const archive = page.getByRole('button', { name: 'Archive', exact: true });
   const remove = page.getByRole('button', { name: 'Remove', exact: true });
   await archive.evaluate((el) => el.scrollIntoView({ block: 'center' })); // clear of the dock: the tap then doesn't scroll
   const was = [await archive.boundingBox(), await remove.boundingBox()];
+  // The page's clock runs at real speed until paused, so the 8 seconds count from the first tap as the page saw it, not from when the test
+  // moves the clock: a loaded host takes 500 ms or more over the tap and the checks after it.
+  await page.evaluate(() => document.addEventListener('click', () => { /** @type {any} */ (window).tappedAt = Date.now(); }, { capture: true, once: true }));
   await archive.click();
   const again = page.getByRole('button', { name: 'Tap again to archive' });
   await expect(again).toBeVisible();
   expect([await again.boundingBox(), await remove.boundingBox()]).toEqual(was);
-  await page.clock.fastForward(7_500);
+  await page.clock.pauseAt(await page.evaluate(() => /** @type {any} */ (window).tappedAt + 7_500));
   await expect(again).toBeVisible();
   await page.clock.fastForward(600);
   await expect(archive).toBeVisible();
