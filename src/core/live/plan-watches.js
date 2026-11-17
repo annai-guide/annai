@@ -64,8 +64,28 @@ export const NOT_PLANNED_M = 500;
 const MIN = 60_000;
 /** @param {any} p @returns {p is { lat: number, lng: number }} */
 const hasPoint = (p) => Boolean(p) && typeof p.lat === 'number' && typeof p.lng === 'number' && Number.isFinite(p.lat) && Number.isFinite(p.lng);
-/** Whether a plan item is of a kind, by its own or its booking's. @param {any} it @param {any} booking @param {string} k */
-const isKind = (it, booking, k) => it.kind === k || booking?.kind === k;
+/**
+ * What a kind word is, for the reminders: one table of the words written for a plan item's kind (free text) and a booking's (a fixed
+ * list), in any case. The booking format's kinds, as the instructions name them and an item may carry its booking's; their everyday
+ * words (an item "hotel" on a stay's booking stays a stay: the plan check's); the rides that carry the traveller as a train does, for
+ * which a booking has no kind (a ferry's is "other"); and "meal", the plan-a-trip skill's own example.
+ */
+const KINDS = new Map(Object.entries({
+  flight: 'flight', lodging: 'lodging', car: 'car', rail: 'rail', event: 'event', restaurant: 'restaurant', other: 'other',
+  plane: 'flight', hotel: 'lodging', stay: 'lodging', train: 'rail',
+  ferry: 'ferry', bus: 'bus', coach: 'coach',
+  meal: 'meal',
+}));
+/** The kinds that carry the traveller: what comes after one doesn't count from where it leaves, and a fixed one is waited for. */
+const CARRIERS = new Set(['flight', 'rail', 'ferry', 'bus', 'coach']);
+/** A kind word as the table reads it: "Train" and " hotel " too. @param {unknown} k */
+const known = (k) => (typeof k === 'string' ? KINDS.get(k.trim().toLowerCase()) : undefined);
+/**
+ * A plan item's kind: its own word when the table knows it, else its booking's, else ''. Its own decides, so a car pick-up or a
+ * check-out on a flight's booking is no flight; an unknown word or none takes the booking's, so a flight written "transport" on its
+ * booking keeps the 2-hour margin (fix round 2's Call 3). @param {any} it @param {any} booking @returns {string}
+ */
+const kindOf = (it, booking) => known(it.kind) ?? known(booking?.kind) ?? '';
 /** "/plan/nepenthe.json" → "nepenthe". @param {string} path */
 const slug = (path) => path.replace(/^\/plan\//, '').replace(/\.json$/, '');
 
@@ -86,17 +106,17 @@ export function planWatches(items, bookings, { fallbackTz }) {
   const out = [];
   /** @type {Place | null} */
   let prev = null;
-  /** When the fixed flights and trains so far have all arrived. @type {number | null} */
+  /** When the fixed flights, trains and rides so far have all arrived. @type {number | null} */
   let landed = null;
-  // The flight and train legs on each booking: one that several of them link (a trip out and back, with connections, on one confirmation) names
-  // none of them. An item is of its own kind or its booking's (isKind), so on a booking of kind flight or rail every item linked to it is a leg, a
-  // transfer's or a hotel's too; only on a booking of another kind (a package's) is an item of another kind not one.
+  // The legs on each booking, its carrier items: one that several of them link (a trip out and back, with connections, on one confirmation)
+  // names none of them. An item's own known kind decides (kindOf), so a car or a hotel on a flight's booking is no leg; one with no kind, or a
+  // word the table doesn't know, takes the booking's.
   /** @type {Map<string, number>} */
   const onBooking = new Map();
   for (const x of timed) {
     const ref = bookingRef(x.item.booking);
     const booking = ref ? bookings.get(ref) : null;
-    if (ref && (isKind(x.item, booking, 'flight') || isKind(x.item, booking, 'rail'))) onBooking.set(ref, (onBooking.get(ref) ?? 0) + 1);
+    if (ref && CARRIERS.has(kindOf(x.item, booking))) onBooking.set(ref, (onBooking.get(ref) ?? 0) + 1);
   }
   /** @type {Place[]} */
   const places = [];
@@ -108,9 +128,9 @@ export function planWatches(items, bookings, { fallbackTz }) {
     const place = hasPoint(it.place) ? { name: String(it.place.name ?? title), lat: it.place.lat, lng: it.place.lng } : null;
     const ref = bookingRef(it.booking) ?? '';
     const booking = bookings.get(ref) ?? null;
-    const kind = (/** @type {string} */ k) => isKind(it, booking, k);
-    const flight = kind('flight');
-    const carrier = flight || kind('rail');
+    const kind = kindOf(it, booking);
+    const flight = kind === 'flight';
+    const carrier = CARRIERS.has(kind);
     // A flight is named by its booking, unless the booking has several legs: then by the item's own title, as any item.
     const short = whatOf(title, booking, flight && (onBooking.get(ref) ?? 0) < 2, x.at, tz, place?.name ?? '');
     const base = {
@@ -128,7 +148,7 @@ export function planWatches(items, bookings, { fallbackTz }) {
       const there = { place, radius: flight ? AIRPORT_M : ARRIVE_M };
       if (!base.fixed) {
         add('off-plan', `Planned now: ${title}, at ${place.name}.`, { event: 'off-plan', title, place: place.name }, { ...there, unsure: timeUnsure(base.end === null ? [it.start] : [it.start, it.end], booking, { fallbackTz }) });
-      } else if (!kind('lodging')) {
+      } else if (kind !== 'lodging') {
         // Leave and running late time a trip by car or on foot (spec §11.3). Not for a stay: its check-in is the earliest time to arrive,
         // its check-out the latest to stay (the user's report, 2026-11-16: "Leave in about 15 min" for a check-in 3300 km away).
         // by: the time to be there, a flight's AIRPORT_EARLY_MIN before it departs; late: the time after which arriving is late, a flight's
@@ -155,7 +175,7 @@ export function planWatches(items, bookings, { fallbackTz }) {
     } else if (base.fixed) {
       add('coming-up', `In ${COMING_UP_MIN} min: ${base.what}.`, { event: 'coming-up', what: short });
     }
-    // A flight or a train carries the traveller: what comes after it doesn't count from its place, where it leaves from, and a fixed
+    // A flight, a train or a ride (CARRIERS) carries the traveller: what comes after it doesn't count from its place, where it leaves from, and a fixed
     // one waits for it to arrive (its end, else its start). A flexible one may move: it holds nothing back (the second opinion's N2).
     // A stop before it a flight away from where it leaves is ahead of it, not behind, and stays the stop before: a check-in at 16:00
     // where the flight lands at 22:58, or between a flight in and the flight on (the design check's A1: the morning after counted from
