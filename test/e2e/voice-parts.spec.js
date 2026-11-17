@@ -97,7 +97,7 @@ test('Settings → Voice: a voice that fails gives its sentence to the next one;
     await page.goto('/#/settings');
     await page.getByRole('link', { name: 'Voice', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Voice', exact: true })).toBeVisible();
-    await expect(page.getByText('Voices, tried in order: voice-a, voice-b, Browser voice.')).toBeVisible();
+    await expect(page.getByText('Voices, tried in order: Voice A / voice-a, Voice B / voice-b, Browser voice.')).toBeVisible();
     // What the phone makes and plays, read at run time: Opus in both browsers' builds, WAV always (Koe and Kokoro design, "Audio formats").
     await expect(page.getByText(/^Speech leaves this phone in the smallest format each service takes\. Made here: ogg, webm, (.+, )?wav( \(recorded: [a-z0-9, ]+\))?\. Played here: .*\bogg\b.*\.$/)).toBeVisible();
     await page.getByRole('button', { name: 'Test the voice' }).click();

@@ -127,7 +127,10 @@ test("a Koe line, a Kokoro line and a halves' note name a configured model by it
     await writeEvent(page, trip, { type: 'note', data: { id: 'n1', from: 'koe', mode: 'append', why: 'tool', wake: 'w-1', text: 'Where do bookings go?', by } });
     // Kokoro's answer, which a model no config has now (removed since) didn't give first: the removed one stays as it was stored.
     await writeEvent(page, trip, { type: 'out.speak', data: { id: 's2', half: 'kokoro', by: { name: 'b-model', first: 'Gone model', tried: true }, text: 'The train is on time today.' } });
+    // A turn every model failed: its line names the configured model by its provider too (talk.js passes `names` to errorWords).
+    await writeEvent(page, trip, { type: 'error', data: { kind: 'model', wake: 'w-9', why: { attempts: [{ name: 'b-model', outcome: 'auth', error: 'The key was rejected.' }] }, message: 'b-model: The key was rejected.' } });
     await page.goto('/#/talk');
+    await expect(page.locator('.convo li.system')).toContainText('Stand-in / b-model: ');
     await expect(page.locator('.convo .shiori .line-label')).toHaveText(['Koe · text · Stand-in / b-model', "Kokoro directly · Stand-in / b-model · Gone model didn't answer"]);
     await expect(page.locator('.convo .halves-note .by')).toHaveText(['Stand-in / b-model']);
     const fit = await page.evaluate(() => [...document.querySelectorAll('.convo > li')].flatMap((li) => {
