@@ -159,13 +159,13 @@ test("a booking opened at one of several blocks lands with that block's heading 
   const h = page.getByRole('heading', { name: 'ANNAI AIR AN 124' });
   await expect(h).toBeFocused();
   await expect(h).toBeInViewport({ ratio: 1 });
-  const at = await h.evaluate((el) => {
+  const mine = await h.evaluate((el) => {
     const b = el.getBoundingClientRect();
-    const over = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2); // what a finger meets on it: the heading, not what is stuck over it
-    return { top: b.top, mine: Boolean(over && el.contains(over)) };
+    const x = b.left + b.width / 2;
+    // What a finger meets at the heading's centre and at its top edge: the heading, not what is stuck over it (a bar over the top edge only would pass the centre).
+    return [b.top + b.height / 2, b.top + 1].map((y) => { const over = document.elementFromPoint(x, y); return Boolean(over && el.contains(over)); });
   });
-  expect(at.top).toBeGreaterThanOrEqual(0);
-  expect(at.mine).toBe(true);
+  expect(mine).toEqual([true, true]);
 });
 
 /** Installs a test plugin from test/fixtures/extensions, used at once. @param {import('@playwright/test').Page} page @param {string} dir @param {string} name */

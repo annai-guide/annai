@@ -156,7 +156,7 @@ test('location refused: a card with steps for this phone, and "Where are you?" w
   await writeRecords(page, trip, { write: { '/plan/bixby.json': { id: 'bixby', title: 'Bixby Bridge photo stop', fixed: false, start, place: BIXBY } } });
   await goToHash(page, `#/trip/${encodeURIComponent(trip)}`); // a screen with the dock
   await page.reload(); // written outside the app's own files layer: live mode reads the plan again as it starts
-  await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible(FIRST_DRAW); // a first draw, as openApp's and startTrip's
   await liveOn(page);
   const card = page.locator('.notice', { hasText: "annai can't see where you are" });
   await expect(card).toContainText(/On (iPhone|Android):/);

@@ -162,6 +162,16 @@ test('on a screen too short for it, the conversation menu is cut at the room und
   expect(at.cut).toBe(true); // the menu holds more than the room: the cap is what shows
   expect(at.room).toBeGreaterThan(0);
   expect(Math.abs(at.height - at.room)).toBeLessThanOrEqual(1);
+  // And it scrolls inside: overflow only says it is cut (a menu with overflow visible is cut too, and runs over the dock).
+  const menu = page.getByRole('group', { name: 'Conversation menu' });
+  expect(await menu.evaluate((el) => getComputedStyle(el).overflowY)).toMatch(/^(auto|scroll)$/);
+  expect(await menu.evaluate((el) => { el.scrollTop = el.scrollHeight; return el.scrollTop; })).toBeGreaterThan(0);
+  // Scrolled to its end, the last of its children (a link, not a button) is inside the menu's own box.
+  expect(await menu.evaluate((el) => {
+    const m = el.getBoundingClientRect();
+    const last = /** @type {Element} */ (el.lastElementChild).getBoundingClientRect();
+    return last.bottom <= m.bottom + 1 && last.top >= m.top - 1;
+  })).toBe(true);
 });
 
 // On a long conversation the screen opens at the end; the title and ⋯ stay at the top of the screen (pass 1 of the drive-plan review).
