@@ -131,6 +131,8 @@ function extras(f) {
 const round = (/** @type {number} */ x) => Math.round(x * 1e4) / 1e4;
 /** The rows nearby gives, nearest first; its Overpass query widens its circle when the small one holds fewer. */
 const ROWS = 40;
+/** The most elements nearby's Overpass query asks for, ten times the ROWS kept, to bound the download: Overpass cuts there in id order, not by distance. */
+const OSM_LIMIT = 400;
 /** The plain answer for a server's answer that isn't what it should be (never a TypeError: spec §5.5). @param {string} where */
 const UNREADABLE = (where) => /* en */ `${where} sent an answer annai can't read.`;
 const POINT = { lat: { type: 'number', minimum: -90, maximum: 90 }, lng: { type: 'number', minimum: -180, maximum: 180 } };
@@ -168,7 +170,7 @@ export function activate(annai) {
           return `${answer([...pack.places(i, radius, kinds), ...pack.pages(i, radius)])}\nFrom the offline pack${pack.downloaded}, which holds only part of this circle. Kokoro can look further.`;
         }
         const circle = (/** @type {number} */ r) => `(${overpassFilters(kinds).map((f) => `nwr(around:${r},${round(i.lat)},${round(i.lng)})${f};`).join('')});`;
-        // Overpass can't sort by distance, and the 400 cap (ten times the ROWS kept) cuts its output in id order. So circles each half the
+        // Overpass can't sort by distance, and the OSM_LIMIT cap (400) cuts its output in id order. So circles each half the
         // next (a quarter of its area), from the radius down to the first of 300 m or less, go in one request, smallest first, each wider
         // one only while fewer than ROWS came (`if`): the answer is then a circle uncut, and its nearest ROWS are the true nearest, unless
         // one circle holds fewer than ROWS and the next 400 or more, which is more than ten times as many over a fourfold area (the ring
@@ -184,7 +186,7 @@ export function activate(annai) {
         // dense 15 km circle answering 400, and 20 km with all 8 circles run): no "out of memory" remark.
         const radii = [radius];
         while (radii[0] > 300) radii.unshift(Math.round(radii[0] * 0.5));
-        const query = `[out:json][timeout:20][maxsize:67108864];${radii.map((r, k) => (k ? `if (count(nwr) < ${ROWS}) {${circle(r)}}` : circle(r))).join('')}out center tags 400;`;
+        const query = `[out:json][timeout:20][maxsize:67108864];${radii.map((r, k) => (k ? `if (count(nwr) < ${ROWS}) {${circle(r)}}` : circle(r))).join('')}out center tags ${OSM_LIMIT};`;
         // One limit, OVERPASS_MS, for all of Overpass, so a call waits that long at most. overpass-api.de's servers are asked in turn, the next
         // only after the one before refuses or fails (an answer costs one request); VK's, while its switch is on, at once beside them
         // (VK's switch is read at each call). The first usable answer stops the others' requests, with a reason the Trace shows (an Error:
@@ -205,7 +207,8 @@ export function activate(annai) {
             // The note: its website (or Wikipedia page), and its opening hours where OpenStreetMap has them.
             if (r) rows.push([r[1], r[2], Math.round(meters(i.lat, i.lng, r[3], r[4])), r[3], r[4], 'osm', [r[5], typeof e.tags?.opening_hours === 'string' ? `hours ${e.tags.opening_hours}` : ''].filter(Boolean).join(' · ')]);
           }
-          return rows;
+          // Cut: counted in what Overpass sent, not in the rows kept.
+          return { rows, cut: Array.isArray(data?.elements) && data.elements.length >= OSM_LIMIT };
         };
         /** One operator's servers, in turn; stops asking once the limit has run out or the call is stopped. @param {string[]} servers */
         const inTurn = async (servers) => {
@@ -229,7 +232,7 @@ export function activate(annai) {
         // (a 429, or a 5xx: the 502 "Timeout" Overpass sends at once, a 504 "too busy"), known as the last one refuses. Another refusal
         // (the 406 overpass-api.de sends an agent it won't serve) is no answer.
         let busy = false;
-        const [osm, wiki] = await Promise.all([
+        const [got, wiki] = await Promise.all([
           overpass.catch((e) => {
             const refusals = e instanceof AggregateError ? e.errors.flatMap((x) => (x instanceof AggregateError ? x.errors : [x])) : [];
             busy = refusals.length > 0 && refusals.every((x) => x?.said?.code === 'status' && (x.said.status === 429 || x.said.status >= 500));
@@ -238,16 +241,30 @@ export function activate(annai) {
           wikipedia.catch(() => null),
         ]);
         if (call.signal.aborted) throw /* en */ new DOMException('Stopped', 'AbortError');
+        const osm = got ? got.rows : null;
+        // A cut answer says so last, after where its rows came from, and names the circle to ask again with. The circles ran smallest first,
+        // each wider one only while fewer than ROWS came, so the one cut is the first of `radii` holding ROWS places or more, and the rows
+        // are its places: it is the first circle with ROWS of the rows that came, by the distance each carries (an outline's is to its
+        // centre, so a ring-shaped park around the point counts in a circle it doesn't reach: that can name a smaller circle than the one
+        // cut, which is still whole. A larger one needs fewer than ROWS nodes in the cut circle and nearly all the rest outlines centred
+        // beyond it (Overpass sends every node first): the retry is then cut again, says so, and names a smaller circle). Half of it
+        // is the circle before, which held fewer than ROWS and so came whole, and so does any radius under that; for the smallest circle it
+        // is a new one, which can be cut again and says so again. Half the radius asked would repeat the answer when an inner circle was
+        // cut. What the radius gives is the nearest places within it, few or none (nearby shows the nearest ROWS of OpenStreetMap's and
+        // Wikipedia's together); the places between it and the first answer's rows stay unknown (docs/limitations.md).
+        const cutAt = got?.cut ? radii.find((r) => got.rows.filter((x) => x[2] <= r).length >= ROWS) ?? radius : 0;
+        const cut = cutAt ? `\nOpenStreetMap's answer stopped at ${OSM_LIMIT} places, not chosen by distance, so a nearer place may be missing. Ask again with a radius of ${Math.round(cutAt / 2)} m or less for the nearest places within it.` : '';
         // What didn't answer comes from the pack, where the pack reaches (spec §17 rule 2).
         const missing = [osm === null ? 'OpenStreetMap' : '', wiki === null ? 'Wikipedia' : ''].filter(Boolean);
         const why = busy ? `OpenStreetMap is busy${wiki === null ? " and Wikipedia didn't answer" : ''}` : `${missing.join(' and ')} didn't answer`;
         if (missing.length && pack?.touches(i)) {
           const what = missing.length === 2 ? 'these come' : osm === null ? 'its places come' : 'its articles come';
-          return `${answer([...(osm ?? pack.places(i, radius, kinds)), ...(wiki ?? pack.pages(i, radius))])}\n${why}, so ${what} from the offline pack${pack.downloaded}.`;
+          return `${answer([...(osm ?? pack.places(i, radius, kinds)), ...(wiki ?? pack.pages(i, radius))])}\n${why}, so ${what} from the offline pack${pack.downloaded}.${cut}`;
         }
         if (osm === null && wiki === null) throw new Error(busy ? `${why}. Try again in a moment.` : 'Neither OpenStreetMap nor Wikipedia answered. Try again in a moment.');
         const out = answer([...(osm ?? []), ...(wiki ?? [])]);
-        return osm ? out : `${out}\n${why}; these are Wikipedia articles only.`;
+        if (!osm) return `${out}\n${why}; these are Wikipedia articles only.`;
+        return `${out}${wiki === null ? `\n${why}; these are OpenStreetMap places only.` : ''}${cut}`;
       },
     },
     {
