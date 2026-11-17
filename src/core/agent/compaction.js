@@ -85,8 +85,8 @@ export const coldSystem = (language) => /* en */ 'You summarize a conversation b
  * The language a summary is written in, named ("the user's language" got a Spanish summary of an English conversation): compaction's and the
  * recap's, one answer for both (RULES #10). annai's own lines for no words (NO_WORDS: a photo or files sent alone, a heard line it couldn't
  * write down) are never the user's, and are left out here for every caller. The newest line of 3 words or more (units: a Chinese, Japanese or
- * Korean character is a word, the size a stray short reply has, spec §14) that names a language decides: a trip's last lines may be "OK", "thanks",
- * an emoji or a place's name, and a place in kanji is no Chinese. Only when no such line does, all the lines together (a lone "新宿" is then Chinese).
+ * Korean character is a word, the size a stray short reply has, spec §10.9) that names a language decides: a trip's last lines may be "OK", "thanks",
+ * an emoji or a place's name of one or two words, and such a place in kanji is no Chinese. Only when no such line does, all the lines together (a lone "新宿" is then Chinese).
  * With the languages setting: the one Shiori answers in if it is fixed; else the listed language that text is in; else the first they speak. With
  * none: that text's language, where a script several languages share is placed by the phone's (listedFor: Han alone is a Japanese phone's Japanese,
  * Cyrillic a Bulgarian phone's Bulgarian, as for a listed language); else, the same answer as for her first message in a conversation

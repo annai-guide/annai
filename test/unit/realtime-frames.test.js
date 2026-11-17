@@ -57,7 +57,6 @@ test('parseArgs: words, --name value, and flags that take no value; a missing va
   assert.throws(() => parseArgs(['run', '--only']), /needs a value/);
 });
 
-// --real-model sonet ran Claude Opus 5.5 (the paid one) and said nothing; "Sonnet" was dropped the same way (the final review of langs-next, F7).
 // The wiring of choice() in the command (scripts/realtime-check.mjs): a typo in --real-model ran Claude Opus 5.5, the paid default, and said nothing. The run is
 // given a scenario that doesn't exist, so a command that went past the check would stop at that, with another message, before it made a folder or a browser, and
 // the key is a made-up one: nothing is started and nothing is sent.
@@ -77,6 +76,7 @@ test('the command stops, exit 2, on a --real-model or --kokoro value it does not
   assert.match(known.stderr, /There is no scenario "no-such-scenario"/, 'a known value (any case) goes on, to the scenario that is not there');
 });
 
+// --real-model sonet ran Claude Opus 5.5 (the paid one) and said nothing; "Sonnet" was dropped the same way (the final review of langs-next, F7).
 test('choice: a named value in any case, none when not given, and a value the run does not know stops it', () => {
   const allowed = ['sonnet', 'opus'];
   assert.equal(choice({}, 'real-model', allowed), undefined);

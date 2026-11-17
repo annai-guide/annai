@@ -743,6 +743,12 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the restart wake takes the reader's `handover`, the newest hand-over no turn's end has answered, whoever's turn was cut; `#open` passes it on without asking whose turn it was.
 - **Revisit when:** the next version, as its own change, in the reader's `handover` getter and `#open`: each reply's record already stores the hand-over its turn carried, so a turn under way can hand back its own, not the conversation's newest owed one; then a test of this shape.
 
+### The realtime check's Japanese promise words miss some promises and flag some ordinary sentences
+- **Kind:** deferred.
+- **What the user sees:** nothing in annai. A tester running the realtime check's Japanese filler trap (`relay-filler-ja`) can see "no filler" pass a promise the list doesn't name (「今後は改めます。」, 「以後は改めます。」, 「もうしません。」, 「二度と言いません。」), or fail an ordinary sentence that names 以後 or 今後 with a promise-like verb in the same clause (「今後はこのルートを案内します。」). 「ご承知おきください。」 fails too (承知 has no guard for ご, as 理解 has).
+- **Why:** the check reads Koe's words through a word list (`FILLER_CJK`, scripts/realtime/analyse.mjs); every round of langs-next (2026-11-17) moved its edge (the bare words, then a clause scan), and each move traded one wrong shape for another. Found by the second opinions on rounds 1 and 2; a dev tool only, so it waits for its own change rather than a third patch.
+- **Revisit when:** the next change to the realtime check: decide whether the trap reads promises by a word list at all (bare 以後/今後 flag every use, which costs a tester one read of the record; a false pass hides the rule), with a pinned sentence for each form kept.
+
 ### Kokoro can write its notes to Koe in English in a Japanese conversation
 - **Kind:** deferred.
 - **What the user sees:** with Koe and Kokoro on Claude Sonnet 5.5, Koe's Japanese can come out stiff when Kokoro's note to it was English ("Tell the user in Japanese: …"), seen once in a live run on 2026-11-14. Since 2026-11-17 Kokoro's instructions say to write its notes in the language it answers in; with Kokoro on Gemini its notes were Japanese both before that line and after it (7 of 7, then 6 of 6, `real-relay-fact-ja`), so whether the line moves Sonnet, the model that showed the shape, is not yet known.
