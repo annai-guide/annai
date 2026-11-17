@@ -2,7 +2,7 @@ import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { setWords, plural, key } from '../../src/core/l10n.js';
 import {
-  locale, sentences, sentenceGap, num, numField, parseNum, money, size, distance, setDistances, duration, seconds, relTime, relChange, day, dateRange, when, zone, list, languageName, sortWords, formatCost, BOOKING_KINDS, kindName,
+  locale, sentences, sentenceGap, asSentence, num, numField, parseNum, money, size, distance, setDistances, duration, seconds, relTime, relChange, day, dateRange, when, zone, list, languageName, sortWords, formatCost, BOOKING_KINDS, kindName,
 } from '../../src/ui/format.js';
 
 // The helpers speak the interface language with the phone's region: `as('en', 'de-DE')` is English screens on a German phone.
@@ -346,6 +346,12 @@ test('sentences: a part with no full stop of its own (a plugin\'s error, say) ke
   assert.equal(sentences('annai.foo is not a function', '設定 → プラグインでオフにできます。'), 'annai.foo is not a function 設定 → プラグインでオフにできます。');
   assert.equal(sentences('Steps used up.', 'もう一度お試しください。'), 'Steps used up.もう一度お試しください。');
   assert.equal(sentences('止まりました！', '「ok」でした。', '次へ'), '止まりました！「ok」でした。次へ');
+});
+
+test("asSentence ends a text as a sentence: a full stop unless it ends in one or in an ellipsis; no words, no sentence", () => {
+  for (const [text, ended] of [['boom', 'boom.'], ['boom.', 'boom.'], ['boom\n', 'boom.'], ['Really?', 'Really?'], ['wait…', 'wait…'], ['wait…\n', 'wait…'], ['止まりました。', '止まりました。'], ['', ''], [' \n', '']]) {
+    assert.equal(asSentence(text), ended, JSON.stringify(text));
+  }
 });
 
 test('under Traditional Chinese screens, formats follow the phone\'s region: Taiwan\'s, Hong Kong\'s, or a US phone\'s (l10n-zh-Hant)', () => {

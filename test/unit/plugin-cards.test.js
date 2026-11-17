@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { startCards, reloadCard } from '../../src/ui/plugin-cards.js';
-import { PluginError } from '../../src/core/registry.js';
+import { startCards, reloadCard, disabledCard } from '../../src/ui/plugin-cards.js';
+import { PluginError, Registry } from '../../src/core/registry.js';
 
 const NAMES = /** @type {Record<string, string>} */ ({ hello: 'Hello checks', hola: 'Hola checks', old: 'Old tool' });
 const name = (/** @type {string} */ id) => NAMES[id] ?? id;
@@ -36,4 +36,42 @@ test('the reload card names the plugins, never their ids, and has Reload now; wi
   assert.equal(reloads, 1);
   assert.equal(reloadCard(['Hello checks'], () => {}).body, "It opened without its offline service, so this plugin can't start: Hello checks.");
   assert.equal(reloadCard([], () => {}).body, "It opened without its offline service, so plugins can't start or be installed.");
+});
+
+test("a start error that is a plugin's own words, with no stop of its own, is ended before the next sentence (the cards read \"boom You can turn it off\")", () => {
+  const raw = (/** @type {string} */ message, disabled = false) => [{ id: 'hello', error: new Error(message), disabled }];
+  assert.equal(startCards(raw('boom'), { name, taken: true }).cards[0].body, 'boom. You can turn it off in Settings → Plugins.');
+  assert.equal(startCards(raw('boom', true), { name, taken: true }).cards[0].body,
+    "It didn't start the last few times annai opened. boom. You can turn it back on in Settings → Plugins.");
+  // One that ends in a stop, a question or an ellipsis is left as it is.
+  for (const message of ['boom.', 'Really?', 'wait…']) assert.equal(startCards(raw(message), { name, taken: true }).cards[0].body, `${message} You can turn it off in Settings → Plugins.`);
+  // No words at all: no empty sentence.
+  assert.equal(startCards(raw(''), { name, taken: true }).cards[0].body, 'You can turn it off in Settings → Plugins.');
+  assert.equal(startCards(raw('', true), { name, taken: true }).cards[0].body, "It didn't start the last few times annai opened. You can turn it back on in Settings → Plugins.");
+});
+
+test('the switched-off card leaves its last error out when there are no words for it, and ends one that ends in an ellipsis as it is', () => {
+  const body = (/** @type {string} */ message) => disabledCard({ name: 'Tides', why: { kind: 'failed', count: 2 }, message }).body;
+  assert.equal(body(''), 'It failed 2 times in a row. You can turn it back on in Settings → Plugins.');
+  assert.equal(body(' \n'), 'It failed 2 times in a row. You can turn it back on in Settings → Plugins.');
+  assert.equal(body('wait…'), 'It failed 2 times in a row. The last error: wait… You can turn it back on in Settings → Plugins.');
+});
+
+test("the \"installed, but it didn't start\" card ends the start error as a sentence: a plugin's own words (an import that failed) and annai's frame of a start that threw", async () => {
+  const { installPending } = await import('../../src/ui/screens/plugin-install.js');
+  const { setPendingPackage } = await import('../../src/ui/plugin-pending.js');
+  /** @param {unknown} error */
+  const bodyOf = async (error) => {
+    /** @type {any[]} */
+    const cards = [];
+    setPendingPackage(/** @type {any} */ ({ files: new Map(), pkg: { id: 'hello', name: 'Hello checks' }, from: { source: 'official' } }));
+    const ctx = { plugins: { install: async () => {}, installed: async () => ({ hello: { enabled: true } }), needsRestart: () => false, start: async () => { throw error; } }, notices: { card: (/** @type {any} */ c) => cards.push(c), toast() {} }, go() {} };
+    await installPending(ctx, [], {});
+    return cards[0].body;
+  };
+  const turnOff = 'You can turn it off or remove it in Settings → Plugins.';
+  assert.equal(await bodyOf(new Error('Failed to fetch dynamically imported module')), `Failed to fetch dynamically imported module. ${turnOff}`);
+  assert.equal(await bodyOf(new Error('boom.')), `boom. ${turnOff}`);
+  assert.equal(await bodyOf(new Error('')), turnOff);
+  assert.equal(await bodyOf(await new Registry().guard('hello', 'starting', () => { throw new Error('boom'); })().catch((e) => e)), `Starting failed: boom. ${turnOff}`);
 });
