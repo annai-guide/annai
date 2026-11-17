@@ -347,8 +347,8 @@ export function createLlm({
       return id;
     }),
     /**
-     * Adds a model from an ability's list, or by the provider's own id (the Models screen's adds), in the line adding goes in: each takes the free
-     * names from the models there are, so a sync between the check of a name and the write could give one name to two models.
+     * Adds a model from an ability's list, or by the provider's own id (the Models screen's adds), in the line adding goes in, so a sync between the
+     * check of a name and the write cannot give one name to two models: the list's add takes the first free name, the by-id add is refused when its name is taken.
      * @param {string} providerId @param {string} abilityId @param {import('./contract.js').ListedModel} listed @returns {Promise<string>} the model's id
      */
     addListedModel: (providerId, abilityId, listed) => queued(() => addListedModel({ ws }, providerId, abilityId, listed)),
