@@ -76,7 +76,7 @@ tabs go only after the user has said, on a phone, that the timeline is right. St
 
 | Part | State | Where it stands | The user's words or pick |
 |---|---|---|---|
-| **nearby says when its answer was cut** (cut at 400 in OpenStreetMap's id order, where one circle holds fewer than 40 and the next 400 or more): about six lines and a test, so Shiori is told a nearer place may be missing and can ask a smaller radius. | building (branch nearby-cut from f34b66c7, an Opus xhigh builder, 2026-11-17); next release | docs/limitations.md, "Online, `nearby` can miss a nearer place where places thicken sharply outward" (now a known limitation). | chief's decision, 2026-11-16: "Accept, and nearby says when its answer was cut (Recommended)" (the user may reverse it) |
+| **nearby says when its answer was cut** (cut at 400 in OpenStreetMap's id order, where one circle holds fewer than 40 and the next 400 or more): about six lines and a test, so Shiori is told a nearer place may be missing and can ask a smaller radius. | under review (branch nearby-cut, 2d7c9805: built, check 5324/5324; a Fable final review and two Haiku slices running, 2026-11-17); next release | docs/limitations.md, "Online, `nearby` can miss a nearer place where places thicken sharply outward" (now a known limitation). | chief's decision, 2026-11-16: "Accept, and nearby says when its answer was cut (Recommended)" (the user may reverse it) |
 
 ### An answered question card always gets a reply
 
