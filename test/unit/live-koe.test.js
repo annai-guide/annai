@@ -427,11 +427,17 @@ test("the review's minors: Koe's turn with no word yet when the user starts spea
   }
 });
 
-/** The user speaks into the microphone in real time, 100 ms at a time. @param {any} k @param {Float32Array} pcm */
+/**
+ * The user speaks into the microphone in real time, 100 ms at a time, each piece when its time comes from the start, as a microphone gives it
+ * (live-mic.test.js's realtime()): a wait of 100 ms after each piece made the sound late by every wait's overshoot, so on a starved CPU the
+ * thinking pause outlasted her answer's wait for the quiet after it. @param {any} k @param {Float32Array} pcm
+ */
 async function talk(k, pcm) {
+  const t0 = Date.now();
   for (let i = 0; i < pcm.length; i += 1600) {
     k.platform.mic.feed(pcm.subarray(i, i + 1600), 16_000);
-    await new Promise((r) => setTimeout(r, 100));
+    const next = t0 + ((i + 1600) * 1000) / 16_000;
+    if (Date.now() < next) await new Promise((r) => setTimeout(r, next - Date.now()));
   }
 }
 
