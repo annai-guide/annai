@@ -251,7 +251,7 @@ export class LiveKoe {
    * The urgent note (immediate) last come, until her voice begun after it went in has played out, or a cap passes (URGENT_S with no sound
    * of hers, URGENT_MAX_S however long she talks), or a tap or a close: a bound, never matching her turns to the note, so no turn end can
    * leave it stuck. Meanwhile the microphone is deaf, so music can't cut her, and what waits holds behind it.
-   * sent: when it went in (0: not yet); spoke: her voice begun since has started; timer: the cap now running.
+   * sent: when it went in (0: not yet); spoke: her voice begun since has started, and the provider hasn't cut it off since (#on); timer: the cap now running.
    * @type {Mark | null}
    */
   #urgent = null;
@@ -1302,6 +1302,13 @@ export class LiveKoe {
     } else if (e.type === 'turn' && e.end === 'interrupted') {
       // Cut off: what was said stops where it was heard; words still coming for it are dropped. (A turn is open: none returned above.)
       const t = /** @type {Turn} */ (this.#t);
+      // The provider cut her off for an input sent since (a newer urgent note, or the user's line: the microphone is deaf meanwhile), whose answer
+      // is still to come: the urgent mark waits for her next voice (#play), within the note's cap with no sound. Before #said, which would end it.
+      const u = this.#urgent;
+      if (u?.spoke) {
+        u.spoke = false;
+        this.#capped(u, u.sent + URGENT_S * this.#unit());
+      }
       this.#stop(t); // marks it cut
       this.#trail = t;
       this.#t = null;
