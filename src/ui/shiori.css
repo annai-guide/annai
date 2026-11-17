@@ -324,8 +324,11 @@ body:has(.dock:not(.seat)) .toasts { bottom: calc(var(--dock-h, 140px) + 8px); }
 .now-line { display: flex; align-items: center; gap: 8px; margin: 12px 0; color: var(--ai); font-size: 12px; font-weight: 700; letter-spacing: 0.04em; }
 .now-line::before, .now-line::after { content: ''; height: 2px; background: var(--ai); flex: 1; }
 .now-line::before { flex: 0 0 14px; }
-/* The dock on home: at rest, the chips row and the +; while she speaks, listens or works, the whole dock, saying which conversation. */
-body.home:not(.dock-busy) .dock:not(.seat) .dock-row, body.home:not(.dock-busy) .dock:not(.seat) .caption { display: none; }
+/* The dock on home: at rest, the chips row and the +; while she speaks, listens or works, the whole dock, saying which conversation. With its box open
+   it is whole too, as on every other screen: + opens the box in its tap, on home, and the conversation's screen comes a moment after, so a dock that
+   grew its buttons row then moved the focused box up by 87 px under a rising keyboard, and the iPhone drew the caret under the box (the user,
+   2026-11-16: "text box cursor is at the wrong place"). A box that has focus stays where it took it. */
+body.home:not(.dock-busy) .dock:not(.seat):not(:has(> .type-sheet:not([hidden]))) :is(.dock-row, .caption) { display: none; }
 .in-convo { display: none; }
 body.home.dock-busy .in-convo:not([hidden]) { display: block; max-width: 560px; margin: 0 auto 6px; color: var(--ai); font-size: 14px; font-weight: 700; text-decoration: none;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

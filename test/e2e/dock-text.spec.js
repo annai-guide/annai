@@ -352,3 +352,37 @@ test('a turn of the phone wraps the words again, and the box fits them at the ne
   await page.setViewportSize({ width: 800, height: 900 });
   await expect.poll(async () => (await sizes(page)).height).toBe(48);
 });
+
+// The user, 2026-11-16, from an iPhone (the installed app, a new conversation from +, voice off): "bug report: text box cursor is at the wrong
+// place": the caret was drawn about 105 px under the box, over the dock's buttons. + opens the box in its tap, while home is still drawn, and
+// the conversation's screen comes a moment later: the dock's buttons row came with it, which pushed the focused box up by its height (87 px),
+// under a keyboard already rising. The box now takes focus where it stays.
+test('+ on home, voice off: the box takes focus where it stays; the conversation that opens under it moves it nowhere', async ({ page }) => {
+  await openApp(page, '#/trips');
+  // Where the box is at its focus, and at every frame after while it keeps it.
+  await page.evaluate(() => {
+    /** @type {number[]} */
+    const tops = [];
+    /** @type {any} */ (window).boxTops = tops;
+    document.addEventListener('focusin', (e) => {
+      const el = /** @type {HTMLElement} */ (e.target);
+      if (el.id !== 'dock-text') return;
+      const frame = () => {
+        if (document.activeElement !== el) return;
+        tops.push(el.getBoundingClientRect().top);
+        requestAnimationFrame(frame);
+      };
+      frame();
+    });
+  });
+  await page.getByRole('button', { name: 'New conversation', exact: true }).click();
+  await expect(box(page)).toBeFocused();
+  await atConversation(page);
+  await expect(page).toHaveURL(/#\/trip\/trip-[0-9a-z]+\/talk$/);
+  await expect(page.locator('.dock .dock-row')).toBeVisible();
+  // Two more frames: the page has made room for the dock as tall as it is now (the shell's observer).
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(null)))));
+  const tops = /** @type {number[]} */ (await page.evaluate(() => /** @type {any} */ (window).boxTops));
+  expect(tops.length).toBeGreaterThan(2);
+  expect(Math.max(...tops) - Math.min(...tops), `the box's top at its focus and after, frame by frame: ${[...new Set(tops)].join(', ')}`).toBeLessThan(0.5);
+});
