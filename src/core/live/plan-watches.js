@@ -13,16 +13,16 @@ import { sentences, num, when as clockAt, dayClock } from '../intl.js';
  * @typedef {import('./triggers.js').Firing} Firing
  * @typedef {{ name: string, lat: number, lng: number }} Place
  * @typedef {{ title: string, at: number, tz: string, flight?: string, place?: string }} What  an item in a few words: a flight by its name
- * @typedef {{ event: string, what?: What, title?: string, place?: string, notes?: string, minutes?: number, mode?: string,
+ * @typedef {{ event: string, what?: What, title?: string, place?: string, notes?: string, minutes?: number, left?: number, mode?: string,
  *   next?: { title: string, at: number, tz: string, later?: true } | null }} PlanSay  what a plan reminder says, as data: its event, the item, and for
- *   one worked out as it fired, the minutes away and how (mode), or what is next on the plan (null: nothing; later: it isn't on the moment's day)
+ *   one worked out as it fired, the minutes it names (minutes: away, or to the start of a coming-up; for a leave, the trip, and left: the minutes
+ *   to the time to leave) and how (mode), or what is next on the plan (null: nothing; later: it isn't on the moment's day). One with none of these
+ *   (an older entry, or the words made for the due time) says the lead its reminder comes with: 15 min.
  */
 
-/** The leave reminder comes this long before the estimated departure ("leave in X minutes"). */
+/** The leave reminder comes this long before the estimated departure ("leave in X minutes"; one that fires later says the minutes left). */
 export const LEAVE_LEAD_MIN = 15;
-/** The leave reminder says "in about 15 min" only if it fired within this long of its due time: the lead then still rounds to 15 at 5-min steps. */
-export const LEAVE_SAYS_LEAD_MIN = 2.5;
-/** A fixed item without coordinates is announced this long before it starts. */
+/** A fixed item without coordinates is announced this long before it starts (the words made for that moment; one that fires later says the minutes left). */
 export const COMING_UP_MIN = 15;
 /** Arriving up to this long after the start isn't late. */
 export const LATE_GRACE_MIN = 5;
@@ -159,11 +159,11 @@ export function planWords(say) {
   switch (say.event) {
     case 'leave':
       if (say.minutes === undefined) return t`Leave soon: ${what}.`;
-      return sentences(t`Leave in about ${num(LEAVE_LEAD_MIN)} min: ${what}.`, say.mode === 'walk' ? t`About ${num(say.minutes)} min on foot.` : t`About ${num(say.minutes)} min by car.`);
+      return sentences(t`Leave in about ${num(say.left ?? LEAVE_LEAD_MIN)} min: ${what}.`, say.mode === 'walk' ? t`About ${num(say.minutes)} min on foot.` : t`About ${num(say.minutes)} min by car.`);
     case 'late': return say.minutes === undefined ? t`Running late: ${what}.` : sentences(t`Running late: ${what}.`, t`About ${num(say.minutes)} min away.`);
     case 'off-plan': return t`Planned now: ${String(say.title)}, at ${String(say.place)}.`;
     case 'arrived': return sentences(t`${String(say.place)}: ${String(say.title)}.`, say.notes ?? '');
-    case 'coming-up': return t`In ${num(COMING_UP_MIN)} min: ${what}.`;
+    case 'coming-up': return t`In ${num(say.minutes ?? COMING_UP_MIN)} min: ${what}.`;
     case 'linger':
       if (say.next === undefined) return t`You've stopped somewhere that isn't on the itinerary.`;
       if (!say.next) return t`Nothing more is on the itinerary.`;
@@ -223,18 +223,22 @@ const CHECK = {
     const l = leaving(w, m);
     if (!l || m.now < l.due || m.now >= w.at) return null;
     const how = l.km === null ? '' : `: ${kmText(l.km * 1000)} away in a straight line, about ${l.minutes} min ${l.words}`;
-    // Fired later (annai was closed, or the user moved away), "in about 15 min" is untrue: it says "soon", with no lead.
-    const lead = l.km !== null && m.now - l.due <= LEAVE_SAYS_LEAD_MIN * MIN;
+    // The words name the minutes left to the time to leave as of now (the reminder may fire late: annai was closed, or the user moved away).
+    // With no estimate to count from, or once the time is here or past, they say "soon".
+    const left = l.km === null ? 0 : Math.round((w.at - l.minutes * MIN - m.now) / MIN);
+    const lead = l.km !== null && left >= 1;
     return {
       text: `Plan: time to leave soon for "${w.title}"${tag(w, hhmm(w))}${how}`, at: l.due,
-      fallback: lead ? `Leave in about ${LEAVE_LEAD_MIN} min: ${w.what}. About ${l.minutes} min ${l.words}.` : `Leave soon: ${w.what}.`,
-      say: lead ? { event: 'leave', what: w.short, minutes: l.minutes, mode: l.mode } : { event: 'leave', what: w.short },
+      fallback: lead ? `Leave in about ${left} min: ${w.what}. About ${l.minutes} min ${l.words}.` : `Leave soon: ${w.what}.`,
+      say: lead ? { event: 'leave', what: w.short, minutes: l.minutes, mode: l.mode, left } : { event: 'leave', what: w.short },
     };
   },
   'coming-up'(w, m) {
     const due = w.at - COMING_UP_MIN * MIN;
     if (m.now < due || m.now >= w.at) return null;
-    return { text: `Plan: "${w.title}"${tag(w)} starts at ${hhmm(w)}, in ${Math.max(1, Math.round((w.at - m.now) / MIN))} min`, at: due };
+    // The minutes left now (it may fire late), for Shiori's text, her fallback and the user's words alike.
+    const left = Math.max(1, Math.round((w.at - m.now) / MIN));
+    return { text: `Plan: "${w.title}"${tag(w)} starts at ${hhmm(w)}, in ${left} min`, at: due, fallback: `In ${left} min: ${w.what}.`, say: { event: 'coming-up', what: w.short, minutes: left } };
   },
   arrived(w, m, mem) {
     const fix = now(m);

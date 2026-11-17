@@ -86,6 +86,11 @@ test("a plan's reminder: Shiori reads annai's English, the user's words are made
   const [w] = planWatches(items, new Map(), { fallbackTz: 'UTC' });
   assert.equal(w.fallback, 'In 15 min: Tea at the inn at 12:00.');
   assert.equal(planWords(/** @type {any} */ (w.say)), 'あと15分：Tea at the inn（12:00）。');
+  // Fired later, it counts the minutes left to the start, and a leave reminder those to the time to leave, in the same rows.
+  assert.equal(planWords({ ...w.say, event: 'coming-up', minutes: 8 }), 'あと8分：Tea at the inn（12:00）。');
+  const what = { title: 'Lunch', at, tz: 'America/Los_Angeles' };
+  assert.equal(planWords({ event: 'leave', what, minutes: 12, mode: 'drive', left: 8 }), '約8分後に出発：Lunch（12:00）。車で約12分です。');
+  assert.equal(planWords({ event: 'leave', what, minutes: 12, mode: 'drive' }), '約15分後に出発：Lunch（12:00）。車で約12分です。');
   // Worked out as it fires (late, from where the user is): data too.
   const late = { event: 'late', what: { title: 'Lunch', at, tz: 'America/Los_Angeles' }, minutes: 36 };
   assert.equal(planWords(late), '遅れています：Lunch（12:00）。到着まであと約36分です。');
