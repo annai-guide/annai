@@ -450,6 +450,36 @@ changes no shipped file, so the app and its coverage are as they were, whatever 
 | The heading | `atConversation` | May tighten to the level-1 name |
 | Units | now.test.js, ui-pure.test.js | Done in Step 4 |
 
+#### 2B additions from 2A's review (2026-11-16; `.superpowers` notes: stage8-2a-review.md and the stage8-2a-review-haiku-* files)
+
+2A merged with these left for 2B; Step 8 takes them with the table above:
+- **timeline.spec.js:454** ("a card that arrives sticks under the top bar"): `under()` is main's text again, so it fails visibly once the
+  bar is gone (it reads `.topbar` with no guard); 2B drops `onBar` and the two expects that read it (:474, :485); the card checks
+  (:481-482) and `hitCard` (:484) keep the subject; reword the title and comments.
+- **Literal bar heights,** which the recount's greps don't catch: her-instructions.spec.js:81 (`size.height - 56 - 64 - dock`, predicted to
+  fail once the ⋯ rises 56 px) and phone-fixes.spec.js:142 (`700 - 56 - 64 - dock`, 56 px too tight after): use `stuckTop`; and
+  timeline.spec.js:1149-1150 and :1470 (a literal 60 px "under the top bar").
+- **plan.spec.js:309**'s `place()` reads `.topnav.scrollLeft` with no guard; the row-and-Back test (:334-347) calls it at :340 and :345
+  and would throw: drop `bar` from `place()` (with :324 and :328).
+- **ui-extension.spec.js:54** (`main.getByRole('link', { name: 'Hike' })` count 0) passes vacuously once the bar is gone: assert on home's
+  quiet row instead.
+- **file-details.spec.js:175-186** ("Back from Now and from the Conversation") depends on `#/now` at :178, :179 and :181: retarget or drop
+  as a Now test; the comment at :66 names the bar.
+- **The timeline form tests are 13 by name,** not 11: :1026, :1052, :1090, :1110, :1139, :1382, :1478, :1500, :1517, :1528, :1538, :1563,
+  :1671.
+- **Step 8's recount greps** add what 2A found the plan's greps missed: unscoped `getByRole('link', { name: 'Settings' | 'Trips' | 'Trace' |
+  'Itinerary' })` with or without `.first()`; `querySelector('main h1')`; the Japanese form labels `旅の名前` and `旅を始める`; literal
+  bar heights (56, 60) in geometry.
+- **Titles and comments that name the bar or a tab** (wording; Step 7's sweep covers src and docs, not e2e titles): the builder's Call 7
+  titles; no-trip.spec.js:144; details-menu.spec.js:68, :80, :389, :413; hand-over.spec.js:48, :52; phone-fixes.spec.js:139-140, :150,
+  :152, :162, :166-170; phone-ui.spec.js:382; her-instructions.spec.js:79; file-details.spec.js:66; phone-fit.spec.js:370; trips.spec.js:642,
+  :1059, :1671; timeline's `under` and `boxOf` notes.
+- **Keep, or change with them:** home's level-1 "Trips" (goHome, pastWelcome), the Itinerary's level-1 "Itinerary" (openItinerary), and
+  `main .talk-head` in the conversation (atConversation); `.notices`.before(…) is the test boxes' anchor (2A used it, not this plan's
+  `main.view`.before(…), which would put the box after the real notices box).
+- Low, optional: shell.spec.js:49-54 now proves the router, not a tap on the bar after the error card (click the card's "Open Trace", then
+  goHome); details-menu.spec.js:83, :89 read the bar's bottom once before `expect.poll` (2B's 0 makes it moot).
+
 ### How the two tasks meet
 
 1. 2A starts first (before the look if chief agrees, else beside Task 1), and merges into main once reviewed. Task 1 never edits a spec 2A
