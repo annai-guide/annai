@@ -2,7 +2,7 @@ import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { setWords, plural, key } from '../../src/core/l10n.js';
 import {
-  locale, sentences, sentenceGap, num, numField, parseNum, money, size, distance, setDistances, duration, seconds, relTime, relChange, day, dateRange, when, zone, list, languageName, sortWords, formatCost, BOOKING_KINDS,
+  locale, sentences, sentenceGap, num, numField, parseNum, money, size, distance, setDistances, duration, seconds, relTime, relChange, day, dateRange, when, zone, list, languageName, sortWords, formatCost, BOOKING_KINDS, kindName,
 } from '../../src/ui/format.js';
 
 // The helpers speak the interface language with the phone's region: `as('en', 'de-DE')` is English screens on a German phone.
@@ -366,4 +366,14 @@ test("BOOKING_KINDS names every kind word the reminders read, an everyday word a
     assert.equal(BOOKING_KINDS[word], BOOKING_KINDS[kind], word);
   }
   assert.deepEqual(['ferry', 'bus', 'coach', 'meal', 'plane', 'hotel'].map((w) => BOOKING_KINDS[w]), ['Ferry', 'Bus', 'Coach', 'Meal', 'Flight', 'Stay']);
+  // The same words both ways: the item screen looks a kind up here (kindName), as the reminders look it up in KINDS.
+  assert.deepEqual(Object.keys(BOOKING_KINDS).sort(), [...KINDS.keys()].sort());
+});
+
+test("kindName reads an item's kind as the reminders do, trimmed and in any case: \"Ferry\" and \" bus \" show their names on a Japanese screen, not the words as written (the re-review's R4)", () => {
+  assert.equal(kindName('Ferry'), BOOKING_KINDS.ferry);
+  assert.equal(kindName(' bus '), BOOKING_KINDS.bus);
+  assert.equal(kindName('COACH'), BOOKING_KINDS.coach);
+  assert.equal(kindName(' Plane\t'), BOOKING_KINDS.flight);
+  for (const word of ['inn', 'transport', '', '  ', 'toString', '__proto__']) assert.equal(kindName(word), undefined, JSON.stringify(word));
 });

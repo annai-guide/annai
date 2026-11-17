@@ -118,6 +118,16 @@ export const BOOKING_KINDS = /** @type {Record<string, string>} */ ({
   plane: t`Flight`, hotel: t`Stay`, stay: t`Stay`, train: t`Train`, ferry: t`Ferry`, bus: t`Bus`, coach: t`Coach`, meal: t`Meal`,
 });
 
+/**
+ * A plan item's kind in the screens' language, the word read as the reminders read it (trimmed, in any case: "Ferry" and " bus " are a ferry
+ * and a bus); undefined for a word annai has no name for. @param {string} kind
+ * @returns {string | undefined}
+ */
+export function kindName(kind) {
+  const word = kind.trim().toLowerCase();
+  return Object.hasOwn(BOOKING_KINDS, word) ? BOOKING_KINDS[word] : undefined;
+}
+
 /** How many of a kind of booking, by its kind. */
 const COUNTS = /** @type {Record<string, (n: number) => string>} */ ({
   flight: (n) => plural(n, '# flight', '# flights'), lodging: (n) => plural(n, '# stay', '# stays'), car: (n) => plural(n, '# car', '# cars'),

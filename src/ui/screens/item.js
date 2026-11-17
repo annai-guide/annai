@@ -1,5 +1,5 @@
 import { h, t, tc } from '../dom.js';
-import { BOOKING_KINDS, fileHref, itemHref, bookingHref, when } from '../format.js';
+import { BOOKING_KINDS, kindName, fileHref, itemHref, bookingHref, when } from '../format.js';
 import { PLAN_FILE, bookingRef } from '../../core/plan.js';
 import { validZone, instantAt } from '../../core/time.js';
 import { zone } from '../../core/intl.js';
@@ -44,7 +44,7 @@ export async function renderItem(ctx, route) {
   if (item.place?.name) facts.push([t`Place`, item.place.address ? tc('booking')`${String(item.place.name)}, ${String(item.place.address)}` : String(item.place.name), undefined]);
   return h('div', { class: 'screen details' }, crumbs,
     h('h1', { class: 'title', dir: 'auto', text: title }),
-    kind ? h('p', { class: 'sub' }, Object.hasOwn(BOOKING_KINDS, kind) ? BOOKING_KINDS[kind] : h('span', { lang: 'en', text: kind })) : null,
+    kind ? h('p', { class: 'sub' }, kindName(kind) ?? h('span', { lang: 'en', text: kind })) : null,
     facts.length ? h('dl', { class: 'facts' }, ...facts.flatMap(([k, v]) => [h('dt', { text: k }), h('dd', { dir: 'auto', text: v })])) : null,
     typeof item.notes === 'string' && item.notes.trim() ? h('section', { 'aria-label': t`Notes` }, h('h2', { class: 'section', text: t`Notes` }), h('p', { class: 'notes', dir: 'auto', text: item.notes })) : null,
     has ? h('p', {}, h('a', { href: bookingHref(id, /** @type {string} */ (ref), here) }, t`Booked: ${String(booking.title || BOOKING_KINDS[booking.kind] || t`Booking`)}`)) : null,
