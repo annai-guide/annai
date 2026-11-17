@@ -170,3 +170,37 @@ test("the off-plan wake shows a flexible item's end too, so an unsure end of its
   ]);
   assert.match(String(wakes({ ...table, unsure: ['start'] })[1]), /\(not sure the time was read right, 19:00\)$/);
 });
+
+/** The off-plan wake's words for a flexible item, with the user at the Big Sur River Inn. @param {any} item @param {number} now @param {Map<string, any>} [bookings] */
+const offPlanSaid = (item, now, bookings = new Map()) => {
+  const w = planWatches([{ path: '/plan/x.json', item: { fixed: false, ...item } }], bookings, { fallbackTz: LA }).find((x) => x.when.event === 'off-plan');
+  return PLAN.check(/** @type {any} */ (w).when, here(RIVER_INN, now), {})?.text ?? null;
+};
+
+test("the off-plan wake says no end for an item with none (it said an hour after the start: the scope audit's off-plan range)", () => {
+  const bixby = { title: 'Bixby Bridge photo stop', start: { at: '2026-11-27T09:45:00-08:00', tz: LA }, place: { name: 'Bixby Creek Bridge', ...BIXBY } };
+  const said = 'Off plan: "Bixby Bridge photo stop" is planned for 09:45 at Bixby Creek Bridge, and the user is 14.1 km away. The replanning skill says what to do';
+  assert.equal(offPlanSaid(bixby, at('10:40')), said); // it said "09:45–10:45"
+  assert.equal(offPlanSaid(bixby, at('10:46')), null); // the hour after the start stays as when it may wake her
+  assert.equal(offPlanSaid({ ...bixby, end: { at: '2026-11-27T09:00:00-08:00', tz: LA } }, at('09:56')), said); // an end that isn't after the start is none
+});
+
+test("the off-plan wake names both days of an item that ends on a later day, on the item's own clock (it said \"19:00–11:00\": the scope audit's off-plan range)", () => {
+  const night = { title: 'Night at Nepenthe', start: { at: '2026-11-27T19:00:00-08:00', tz: LA }, end: { at: '2026-11-28T11:00:00-08:00', tz: LA }, place: { name: 'Nepenthe', ...NEPENTHE } };
+  const said = 'Off plan: "Night at Nepenthe" is planned from Fri 2026-11-27 19:00 (GMT-8) to Sat 2026-11-28 11:00 (GMT-8) at Nepenthe, and the user is 7.0 km away. The replanning skill says what to do';
+  assert.equal(offPlanSaid(night, at('19:15')), said);
+  assert.equal(offPlanSaid(night, at('02:00', '2026-11-28')), said); // after midnight, "19:00" alone would read as today's
+  assert.equal(offPlanSaid(night, at('11:01', '2026-11-28')), null);
+  // Over a clock change, each time with its own offset.
+  assert.equal(offPlanSaid({ ...night, start: { at: '2026-10-31T19:00:00-07:00', tz: LA }, end: { at: '2026-11-01T11:00:00-08:00', tz: LA } }, Date.parse('2026-10-31T19:15:00-07:00')),
+    'Off plan: "Night at Nepenthe" is planned from Sat 2026-10-31 19:00 (GMT-7) to Sun 2026-11-01 11:00 (GMT-8) at Nepenthe, and the user is 7.0 km away. The replanning skill says what to do');
+});
+
+test("the off-plan wake's doubt follows the times it says: an unsure end it doesn't say doesn't mark a sure start", () => {
+  const table = { id: 'table', kind: 'restaurant', status: 'unverified', source: '/files/t.pdf', title: 'Nepenthe', unsure: ['end'], start: { at: '2026-11-27T19:00:00-08:00', tz: LA }, end: { at: '2026-11-27T07:00:00-08:00', tz: LA } };
+  const dinner = { title: 'Dinner', booking: '/trip/bookings/table.json', start: table.start, end: table.end, place: { name: 'Nepenthe', ...NEPENTHE } };
+  assert.equal(offPlanSaid(dinner, at('19:15'), new Map([['/bookings/table.json', table]])),
+    'Off plan: "Dinner" is planned for 19:00 at Nepenthe, and the user is 7.0 km away. The replanning skill says what to do');
+  assert.equal(offPlanSaid(dinner, at('19:15'), new Map([['/bookings/table.json', { ...table, unsure: ['start'] }]])),
+    'Off plan: "Dinner" (not sure the time was read right) is planned for 19:00 at Nepenthe, and the user is 7.0 km away. The replanning skill says what to do');
+});

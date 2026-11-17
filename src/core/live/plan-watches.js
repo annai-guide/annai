@@ -1,5 +1,5 @@
 import { meters, travelMinutes, modeFor, kmText, TRAVEL } from './geo.js';
-import { timeIn, validZone, instantAt } from '../time.js';
+import { timeIn, validZone, instantAt, dayIn, dueWords, isoInZone } from '../time.js';
 import { bookingRef, fixedWords, timeUnsure } from '../plan.js';
 import { t } from '../l10n.js';
 import { sentences, num, when as clockAt } from '../intl.js';
@@ -75,7 +75,7 @@ export function planWatches(items, bookings, { fallbackTz }) {
     const short = whatOf(title, booking, flight, x.at, tz, place?.name ?? '');
     const base = {
       type: 'plan', item: slug(x.path), title, at: x.at, end: Number.isFinite(end) && end > x.at ? end : null, tz, fixed: it.fixed === true,
-      unsure: timeUnsure([it.start], booking, { fallbackTz }), // the start: the time a wake says (the off-plan wake, which says the end too, reads both)
+      unsure: timeUnsure([it.start], booking, { fallbackTz }), // the start: the time a wake says (the off-plan wake reads the end too, when it says one)
       what: whatText(short), short,
     };
     const notes = typeof it.notes === 'string' && it.notes.trim() ? it.notes.trim() : '';
@@ -89,7 +89,7 @@ export function planWatches(items, bookings, { fallbackTz }) {
         add('leave', `Leave soon: ${base.what}.`, { event: 'leave', what: short }, { ...there, from: prev });
         add('late', `Running late: ${base.what}.`, { event: 'late', what: short }, there);
       } else {
-        add('off-plan', `Planned now: ${title}, at ${place.name}.`, { event: 'off-plan', title, place: place.name }, { ...there, unsure: timeUnsure([it.start, it.end], booking, { fallbackTz }) });
+        add('off-plan', `Planned now: ${title}, at ${place.name}.`, { event: 'off-plan', title, place: place.name }, { ...there, unsure: timeUnsure(base.end === null ? [it.start] : [it.start, it.end], booking, { fallbackTz }) });
       }
       add('arrived', `${place.name}: ${title}.${notes ? ` ${notes}` : ''}`, { event: 'arrived', title, place: place.name, ...(notes ? { notes } : {}) }, there);
       prev = place;
@@ -166,6 +166,18 @@ export const planItemWords = (say) => (say.what ? whatWords(say.what) : '');
 
 /** @param {any} w @param {number} [t] */
 const hhmm = (w, t = w.at) => timeIn(t, w.tz);
+/**
+ * An item's planned time, on its own clock, as the off-plan wake says it: "for 09:45–10:05"; "for 09:45" with no end (none is made up);
+ * and an end on a later day names both days, in the words a reminder's time is read in (dueWords), so it can't be read as one day.
+ * @param {any} w
+ */
+/* en */
+const span = (w) => {
+  if (w.end === null) return `for ${hhmm(w)}`;
+  if (dayIn(w.end, w.tz) === dayIn(w.at, w.tz)) return `for ${hhmm(w)}–${hhmm(w, w.end)}`;
+  const day = (/** @type {number} */ t) => dueWords(isoInZone(t, w.tz));
+  return `from ${day(w.at)} to ${day(w.end)}`;
+};
 /**
  * What a wake says of an item beside its title: "(can't be moved, 12:00)", "(09:45)" for a flexible one, and a time Shiori isn't sure of
  * says so (fixedWords). @param {any} w @param {(string | null)[]} more
@@ -245,11 +257,11 @@ const CHECK = {
   },
   'off-plan'(w, m) {
     const fix = now(m);
-    const end = w.end ?? w.at + 60 * MIN;
-    if (!fix || m.fired(`plan:${w.item}:arrived`) || m.now < w.at + OFF_PLAN_AFTER_MIN * MIN || m.now > end) return null;
+    // An item with no end may wake her in the hour after its start: when, never an end she is told (span).
+    if (!fix || m.fired(`plan:${w.item}:arrived`) || m.now < w.at + OFF_PLAN_AFTER_MIN * MIN || m.now > (w.end ?? w.at + 60 * MIN)) return null;
     const km = meters(fix, w.place) / 1000;
     if (km <= OFF_PLAN_KM) return null;
-    return { text: `Off plan: "${w.title}"${tag(w)} is planned for ${hhmm(w)}–${hhmm(w, end)} at ${w.place.name}, and the user is ${kmText(km * 1000)} away. The replanning skill says what to do` };
+    return { text: `Off plan: "${w.title}"${tag(w)} is planned ${span(w)} at ${w.place.name}, and the user is ${kmText(km * 1000)} away. The replanning skill says what to do` };
   },
   linger(w, m, mem) {
     const fix = now(m);
