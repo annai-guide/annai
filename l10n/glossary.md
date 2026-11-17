@@ -4,7 +4,7 @@ annai's names for its screens and things in Japanese (ja), Chinese, Simplified (
 
 This page is a review aid. The source is [`glossary.tsv`](glossary.tsv): one row per term, with where the English shows on screen and a note on why each word was chosen. Rows are in this order of kind (screen, thing, mode, platform, never), then by English. Its English is matched as written, so `Voice` (the screen) and `voice` (one she speaks with) are two rows. Some terms are also ordinary words (Now, Add, Ask, Allow, Share, Main, key, card): the strings check should take them as names only where a message uses them as one.
 
-122 rows: 31 screen, 40 thing, 7 mode, 28 platform, 16 never.
+122 rows: 31 screen, 40 thing, 6 mode, 29 platform, 16 never.
 
 ## Screens and sections
 
@@ -108,6 +108,7 @@ This page is a review aid. The source is [`glossary.tsv`](glossary.tsv): one row
 | Apps (in Settings) | アプリ | App | App |
 | Ask | 確認 | 询问 | 詢問 |
 | browser menu (⋮) | ブラウザのメニュー（⋮） | 浏览器菜单（⋮） | 瀏覽器選單（⋮） |
+| Driving Focus | 「運転」の集中モード | “驾驶”专注模式 | 開車專注模式 |
 | Home Screen | ホーム画面 | 主屏幕 | 主畫面 |
 | Home Screen app | ホーム画面のアプリ | 主屏幕上的 App | 主畫面上的 App |
 | Install app | アプリをインストール | 安装应用 | 安裝應用程式 |
