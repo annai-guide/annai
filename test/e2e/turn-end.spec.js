@@ -46,7 +46,16 @@ async function undo(page, trip) {
   return (await filed(page, trip)).there;
 }
 
-/** The words (or with `part` 'strong', the title) of the line just above the hand-over's Undo line. @param {import('@playwright/test').Page} page @param {'p' | 'strong'} [part] */
+/** How many of her turns in a trip have ended (their turn.end records), as the page's store has them. @param {import('@playwright/test').Page} page @param {string} trip */
+const ends = (page, trip) => page.evaluate(async (trip) => {
+  const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+  const store = await createIdbStore();
+  const n = (await store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(trip, { types: ['turn.end'] }))).length;
+  store.close();
+  return n;
+}, trip);
+
+/** The words (or with `part` 'strong', the title; 'a', a link's words) of the line just above the hand-over's Undo line. @param {import('@playwright/test').Page} page @param {'p' | 'strong' | 'a'} [part] */
 const above = (page, part = 'p') => page.locator('.convo li.undo-line').evaluate((li, part) => li.previousElementSibling?.querySelector(part)?.textContent ?? null, part);
 
 /** The text of a request's last user message. @param {any} body */
@@ -136,10 +145,13 @@ test('a reload after her turn ended takes nothing up: the next request is the us
   ] });
   try {
     await modelSetUp(page, llm.origin, 'Big Sur');
+    const trip = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
     await page.getByRole('button', { name: 'Type', exact: true }).click();
     await page.getByLabel('Message to Shiori').fill('What is Big Sur?');
     await page.getByRole('button', { name: 'Send', exact: true }).click();
     await expect(page.locator('.convo').getByText('Big Sur is a coast.')).toBeVisible({ timeout: 30_000 });
+    // Her line shows before her sleep's result and her turn.end are written: a reload before them cuts her turn, which is then taken up.
+    await expect.poll(() => ends(page, trip), { timeout: 30_000 }).toBe(1);
     await page.reload();
     await expect(page.locator('.convo').getByText('Big Sur is a coast.')).toBeVisible({ timeout: 30_000 });
     // A restart would be queued at the open, ahead of the line: the line's request shows it.
@@ -312,6 +324,44 @@ for (const shape of [
     }
   });
 }
+
+// Haiku's finding on undo-card's round 2: the move records carried no wake, so the turn's end put the line back under her earlier line, above the move.
+test('a hand-over that joins her running turn, which ends on her moving its file to another trip: the Undo line shows under the move, with no reload and after one, and Undo takes it back', async ({ page }) => {
+  /** @type {(v?: unknown) => void} */
+  let go = () => {};
+  const gate = new Promise((r) => { go = r; });
+  let kyoto = '';
+  const llm = await startModelServer({ [MESSAGES]: [
+    { ...sse(anthropicToolReply([speak('Looking it up.')])), until: gate }, // her turn for the user's question, answered once the files are handed over
+    () => sse(anthropicToolReply([speak('Let me look at those.'), { name: 'move_file', input: { path: '/trip/files/flight.pdf', trip: kyoto } }, sleep])),
+  ] });
+  try {
+    const trips = await twoTrips(page, llm.origin);
+    kyoto = trips.kyoto;
+    await page.getByRole('button', { name: 'Type', exact: true }).click();
+    await page.getByLabel('Message to Shiori').fill('What is Big Sur?');
+    await page.getByRole('button', { name: 'Send', exact: true }).click();
+    await expect.poll(() => llm.bodies(MESSAGES).length, { timeout: 30_000 }).toBe(1); // her turn runs, its first request waiting
+    await handOver(page, 'This is for Kyoto');
+    await expect(page.locator('.type-sheet')).toBeHidden(); // kept and sent: it joins her turn at its next step
+    go();
+    await expect(page.getByRole('link', { name: 'Shiori took 1 file to Kyoto.' })).toBeVisible({ timeout: 30_000 });
+    await expect.poll(() => ends(page, trips.bigSur), { timeout: 30_000 }).toBe(1);
+    expect(lastUser(llm.bodies(MESSAGES)[1])).toContain('This is for Kyoto'); // the hand-over joined that turn: no turn of its own
+    const button = page.getByRole('button', { name: 'Undo what Shiori did with these files' });
+    await expect(button).toBeVisible({ timeout: 30_000 });
+    expect(await above(page, 'a')).toBe('Shiori took 1 file to Kyoto.');
+    // Drawn again from the log, the line is where it was.
+    await page.reload();
+    await expect(button).toBeVisible({ timeout: 30_000 });
+    expect(await above(page, 'a')).toBe('Shiori took 1 file to Kyoto.');
+    await button.click();
+    await expect(page.getByText('Undone. Your files are back in Big Sur.')).toBeVisible();
+    expect(llm.bodies(MESSAGES).length).toBe(2);
+  } finally {
+    await llm.stop();
+  }
+});
 
 test('drawn from the log: while she is two halves, Kokoro\'s turns place the Undo line (words to Koe while Kokoro files don\'t stop it, the next ones after Kokoro\'s turn ended do, nor does a turn that carries no hand-over); a turn that took the hand-over up partway ends with the line; a log from before wakes named their hand-over keeps the user\'s words as the stop', async ({ page }) => {
   await openApp(page, '#/trips');
@@ -500,6 +550,51 @@ test('Undo tapped while she works, with more files handed over and waiting: the 
     await button.click();
     await expect(page.locator('.convo li.undo-line')).toHaveText('Undone');
     expect((await filed(page, trip)).there).toEqual([]);
+  } finally {
+    await llm.stop();
+  }
+});
+
+// Undo stops her turn as Kokoro's Stop does (talk.js settled). While she is one Shiori, Koe has no model: a note to it ran a turn of Koe's that wrote a
+// false "can't reach her model" card, whose Try again answered the hand-over again (undo-card's re-review 2, P1 and P3).
+test('Undo tapped while one Shiori works: her turn stops, and nothing follows it: no note between halves, no "can\'t reach her model" card, and her next request is the user\'s next line', async ({ page }) => {
+  const llm = await startModelServer({ [MESSAGES]: [
+    sse(anthropicToolReply([write('a.md'), speak('Filed the first.')])),
+    held(),
+    sse(anthropicToolReply([speak('You are welcome.'), sleep])),
+  ] });
+  try {
+    await modelSetUp(page, llm.origin, 'Big Sur');
+    const trip = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+    await handOver(page, 'File this');
+    const button = page.getByRole('button', { name: 'Undo what Shiori did with these files' });
+    await expect(button).toBeVisible({ timeout: 30_000 });
+    await expect.poll(() => llm.bodies(MESSAGES).length, { timeout: 30_000 }).toBe(2); // her turn goes on: the next request is held
+    await button.click();
+    await expect(page.getByText('Undone.', { exact: true })).toBeVisible({ timeout: 30_000 });
+    expect((await filed(page, trip)).there).toEqual([]);
+    // Undo waited for both halves to be done (their notes sent included), so a note would be in the log by now.
+    const notes = await page.evaluate(async (trip) => {
+      const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+      const store = await createIdbStore();
+      const n = (await store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(trip, { types: ['note'] }))).length;
+      store.close();
+      return n;
+    }, trip);
+    expect(notes).toBe(0);
+    // The user writes again: by her answer, a turn the Stop set off (Koe's, a restart) would have run and shown its card.
+    await page.getByRole('button', { name: 'Type', exact: true }).click();
+    await page.getByLabel('Message to Shiori').fill('Thanks');
+    await page.getByRole('button', { name: 'Send', exact: true }).click();
+    await expect(page.locator('.convo').getByText('You are welcome.')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("can't reach her model")).toHaveCount(0);
+    await expect(page.locator('.convo .halves-note')).toHaveCount(0);
+    await expect(page.locator('.convo').getByText('Shiori woke to pick up where she left off.')).toHaveCount(0);
+    const bodies = llm.bodies(MESSAGES);
+    expect(bodies.length).toBe(3);
+    expect(lastUser(bodies[2])).toContain('Thanks');
+    expect(lastUser(bodies[2])).not.toContain('restarted');
+    await expect(page.locator('.convo li.undo-line')).toHaveText('Undone');
   } finally {
     await llm.stop();
   }

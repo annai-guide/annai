@@ -245,8 +245,11 @@ export function tripTools(app) {
     });
     return wakes;
   };
-  /** Says in the call's conversation where the files went. @param {string} to @param {boolean} started @param {number} count @param {ToolCall} call */
-  const moved = (to, started, count, call) => logIn(call, { type: 'handover.moved', actor: 'shiori', data: { handover: call.handover ?? null, to, started, count } });
+  /**
+   * Says in the call's conversation where the files went, with her turn's wake as her lines have it (the Undo line tells her turn's records by it).
+   * @param {string} to @param {boolean} started @param {number} count @param {ToolCall} call
+   */
+  const moved = (to, started, count, call) => logIn(call, { type: 'handover.moved', actor: 'shiori', data: { handover: call.handover ?? null, wake: call.wake, to, started, count } });
   /** @param {Map<string, string>} m */
   const named = (m) => (m.size ? /* en */ ` Its files: ${[...m.values()].map(quotedPath).join(', ')}.` : '');
 
@@ -507,7 +510,7 @@ export function tripTools(app) {
         // (the yes Koe heard, a cue) is written, so that line settles it, and no line after it is owed.
         if (m.size || call.handover) await moved(rec.id, false, m.size, call);
         await app.carryOn(rec.id, wakes, call.signal);
-        await logIn(call, { type: 'conversation.moved', actor: 'shiori', data: { to: rec.id, title: rec.title } });
+        await logIn(call, { type: 'conversation.moved', actor: 'shiori', data: { to: rec.id, title: rec.title, wake: call.wake } });
         // In her turn the open has ended this call, and #runCall wrote MOVED: the same words.
         return MOVED;
       },

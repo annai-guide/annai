@@ -121,7 +121,7 @@ test("move_file: from the open trip into another trip's Files with its short nam
   const [wake] = await eventsIn(k, kyoto, ['wake']);
   assert.deepEqual([wake.data.reasons[0].kind, wake.data.reasons[0].files, wake.data.reasons[0].handover], ['file', ['/files/temple.pdf'], 'h-1']);
   const [moved] = await k.events(['handover.moved']);
-  assert.deepEqual(moved.data, { handover: 'h-1', to: kyoto, started: false, count: 1 });
+  assert.deepEqual(moved.data, { handover: 'h-1', wake: 'w', to: kyoto, started: false, count: 1 }); // the wake of the turn that moved it, as her lines carry it
   // Refused: to the open trip; a path outside /trip/files/; an archived trip.
   await k.ws.write(k.trip, '/files/b.pdf', utf8('b'), { author: 'user', type: 'application/pdf' });
   await assert.rejects(run(k, 'move_file', { path: '/trip/files/b.pdf', trip: k.trip }), /open trip/);
@@ -472,11 +472,13 @@ test("Open, tapped: Kyoto opens at the tap, with the user's line, her recap belo
   assert.match(recap[0], /^\[annai\] You moved the user here from another conversation, "Big Sur", to carry on here: their line from there is above\. Your recap/);
   assert.ok(sent.indexOf("Let's carry on in Kyoto") < sent.indexOf(recap[0]), 'their line, then the recap');
   assert.ok(!sent.includes('Where was the ramen place in Kyoto?') && !sent.some((x) => x.includes('by the station.') && !x.includes(RECAP)), 'nothing else of the chat');
-  // The chat stays, its lines all there, then the card, its answer, and its own line saying where they went; nothing of hers after it.
+  // The chat stays, its lines all there, then the card, its answer, and its own line saying where they went, with the wake of her turn that moved
+  // them; nothing of hers after it.
   const chat = await eventsIn(k, k.trip, ['msg.user', 'out.speak', 'out.ask', 'conversation.moved', 'handover.moved', 'paused']);
+  const turn = (await eventsIn(k, k.trip, ['wake'])).filter((/** @type {any} */ e) => !e.data.meanwhile).at(-1).data.id;
   assert.deepEqual(chat.map((/** @type {any} */ e) => [e.type, e.data.text ?? e.data.question ?? e.data]), [
     ['msg.user', 'Where was the ramen place in Kyoto?'], ['out.speak', 'The ramen place is by the station.'], ['msg.user', "Let's carry on in Kyoto"],
-    ['out.ask', question], ['msg.user', 'Open'], ['conversation.moved', { to: k.kyoto, title: 'Kyoto' }],
+    ['out.ask', question], ['msg.user', 'Open'], ['conversation.moved', { to: k.kyoto, title: 'Kyoto', wake: turn }],
   ]);
   // The move is what the call was for: its result says they chose Open, a success and no cut (the Trace shows it so), and the chat's own line
   // about the move is its conversation's last record.
@@ -636,7 +638,7 @@ test("a hand-over and a line after it, then the move: the hand-over's message wi
   ]);
   // The files went too: both lines say so in the chat, where Undo finds the trip.
   assert.deepEqual((await eventsIn(k, k.trip, ['handover.moved', 'conversation.moved'])).map((/** @type {any} */ e) => [e.type, e.data]), [
-    ['handover.moved', { handover: 'h-1', to: k.kyoto, started: false, count: 1 }], ['conversation.moved', { to: k.kyoto, title: 'Kyoto' }],
+    ['handover.moved', { handover: 'h-1', wake: 'w', to: k.kyoto, started: false, count: 1 }], ['conversation.moved', { to: k.kyoto, title: 'Kyoto', wake: 'w' }],
   ]);
 });
 
