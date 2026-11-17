@@ -9,7 +9,7 @@ import {
 } from '../../src/core/llm/config.js';
 import { addProvider } from '../../src/core/llm/providers.js';
 import { official } from './provider-kit.js';
-import { setWords } from '../../src/core/l10n.js';
+import { setWords, key } from '../../src/core/l10n.js';
 import { readFile } from 'node:fs/promises';
 
 async function setup() {
@@ -252,11 +252,26 @@ test("a model is named by its provider's name as the user renamed it; a name no 
   assert.equal(withProvider('', 'Opus'), 'Opus');
 });
 
-test("the provider's name comes first in each language's own words for the pair", async (t) => {
+test("a name two providers' models both have names no provider, never the wrong one: a catalog update can rename a model to another's name (the final review's finding src1-D)", async () => {
+  const ctx = await setup();
+  const [a, b] = [router(), router()];
+  await saveProvider(ctx.ws, { ...a, user: { name: 'Provider A' } }, [newModel(a.id, 'chat', { user: { providerId: 'x/one', name: 'Shared' } }), newModel(a.id, 'chat', { user: { providerId: 'x/two', name: 'Only A' } })]);
+  await saveProvider(ctx.ws, { ...b, user: { name: 'Provider B' } }, [newModel(b.id, 'chat', { user: { providerId: 'y/one', name: 'Shared' } })]);
+  const names = modelNames(await readConfig(ctx.ws));
+  assert.equal(names('Shared'), 'Shared', 'either provider could be meant');
+  assert.equal(names('Only A'), 'Provider A / Only A', 'a name only one has keeps its provider');
+});
+
+test("the provider's name comes first in each language's own row for the pair, the slash that binds tighter than a label's dots", async (t) => {
   t.after(() => setWords('en', null));
+  assert.equal(withProvider('OpenRouter', 'Claude Opus 5.5'), 'OpenRouter / Claude Opus 5.5');
   for (const tag of ['ja', 'zh-Hans', 'zh-Hant']) {
     const words = JSON.parse(await readFile(new URL(`../../l10n/${tag}.json`, import.meta.url), 'utf8'));
+    // The row is the language's own: the one with the context "a model, after its provider" (a message's key is its context and its English).
+    const row = words[key('{0} / {1}', 'a model, after its provider')];
+    assert.equal(typeof row, 'string', `${tag} has the row`);
     setWords(tag, words);
-    assert.match(withProvider('OpenRouter', 'Claude Opus 5.5'), /^OpenRouter\s?\S\s?Claude Opus 5\.5$/u, tag);
+    assert.equal(withProvider('OpenRouter', 'Claude Opus 5.5'), row.replace('{0}', 'OpenRouter').replace('{1}', 'Claude Opus 5.5'), tag);
+    assert.match(withProvider('OpenRouter', 'Claude Opus 5.5'), /^OpenRouter ?\/ ?Claude Opus 5\.5$/, `${tag}: the pair is one name with a slash, never the label's dot`);
   }
 });
