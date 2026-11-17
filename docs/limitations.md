@@ -743,17 +743,11 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the restart wake takes the reader's `handover`, the newest hand-over no turn's end has answered, whoever's turn was cut; `#open` passes it on without asking whose turn it was.
 - **Revisit when:** the next version, as its own change, in the reader's `handover` getter and `#open`: each reply's record already stores the hand-over its turn carried, so a turn under way can hand back its own, not the conversation's newest owed one; then a test of this shape.
 
-### A live Koe's line before a tool has no language rule
-- **Kind:** deferred.
-- **What the user sees:** possibly, with live voice in Japanese, a word in English before Koe looks something up. Not seen: no live run has exercised that line in Japanese.
-- **Why:** Koe's pass-on and okay words name the answer's language since 2026-11-14; the pre-tool line (koe/instructions.js) was left as it was.
-- **Revisit when:** the next version: describe it the same way, then one live run in Japanese.
-
 ### Kokoro can write its notes to Koe in English in a Japanese conversation
 - **Kind:** deferred.
-- **What the user sees:** with Koe and Kokoro, Koe's Japanese can come out stiff when Kokoro's note to it was English ("Tell the user in Japanese: …"), seen once in a live run on 2026-11-14.
-- **Why:** nothing tells Kokoro which language its notes to Koe are in.
-- **Revisit when:** the next version: say it in the note tool's description or the halves' text, then a live run in Japanese.
+- **What the user sees:** with Koe and Kokoro on Claude Sonnet 5.5, Koe's Japanese can come out stiff when Kokoro's note to it was English ("Tell the user in Japanese: …"), seen once in a live run on 2026-11-14. Since 2026-11-17 Kokoro's instructions say to write its notes in the language it answers in; with Kokoro on Gemini its notes were Japanese both before that line and after it (7 of 7, then 6 of 6, `real-relay-fact-ja`), so whether the line moves Sonnet, the model that showed the shape, is not yet known.
+- **Why:** the run on Sonnet couldn't be made: the Anthropic key had no credit on 2026-11-17 (a credit 400 on the first request).
+- **Revisit when:** the Anthropic key has credit: `real-relay-fact-ja` with `--real-model sonnet --ui ja --times 2` (docs/testing/realtime-check.md, "Koe's own words in Japanese"); Japanese notes close this entry, English ones need other words.
 
 ### Her reply to the "you haven't answered" cue can still be private text
 - **Kind:** deferred.
