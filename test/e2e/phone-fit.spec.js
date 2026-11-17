@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { openApp, turnOnSwipes, waitForServiceWorker, pickFile, zipOf, writeRecords, stuckTop, startTrip } from './helpers.js';
+import { openApp, waitForServiceWorker, pickFile, zipOf, writeRecords, startTrip } from './helpers.js';
 
-// In headless WebKit no tap unlocks sound, so every tap, a swipe's pointerup too, starts the silent clip again; and a
-// page that goes away while one starts can wedge WebKit's process on Linux (the Erase hang, 2026-10-18). A swipe test
-// ends right after a swipe, and once hung in WebKit under load: each test here ends once the clips it started have.
+// In headless WebKit no tap unlocks sound, so every tap starts the silent clip again; and a page that goes away while one
+// starts can wedge WebKit's process on Linux (the Erase hang, 2026-10-18). A test that ended right after a tap (a swipe
+// test, before timeline stage 8) once hung in WebKit under load: each test here ends once the clips it started have.
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     const play = HTMLMediaElement.prototype.play;
@@ -23,7 +23,7 @@ test.afterEach(async ({ page }) => {
 
 // What the user saw on an iPhone (2026-10-18): the page scrolled sideways, a date box stuck out of
 // its card, Shiori sat over the camera button in a corner, and the top bar hid that it scrolls.
-const SCREENS = ['#/trips', '#/now', '#/talk', '#/plan', '#/trace', '#/settings', '#/models', '#/voice', '#/tools', '#/plugins', '#/add', '#/backups', '#/notifications', '#/shiori',
+const SCREENS = ['#/trips', '#/talk', '#/plan', '#/trace', '#/settings', '#/models', '#/voice', '#/tools', '#/plugins', '#/add', '#/backups', '#/notifications', '#/shiori',
   '#/languages', '#/about', '#/experimental', '#/welcome'];
 
 // In English, and in Japanese and both Chinese (localization L6; Traditional, l10n-zh-Hant): short words, tall glyphs and no spaces to break at.
@@ -117,20 +117,6 @@ test('the dock keeps camera, Shiori and type apart, Shiori in the middle', async
   expect(Math.abs(seat.x + seat.width / 2 - 160)).toBeLessThan(24);
 });
 
-test('the top bar shows there is more of it, and keeps the screen you are on in view', async ({ page }) => {
-  await page.setViewportSize({ width: 320, height: 700 });
-  await openApp(page);
-  const nav = page.locator('.topnav');
-  await expect(nav).toHaveClass(/\bmore\b/);
-  await page.evaluate(() => { location.hash = '#/settings'; });
-  const current = page.locator('.topnav a[aria-current="page"]');
-  await expect(current).toHaveText('Settings');
-  await expect(current).toBeInViewport({ ratio: 0.9 });
-  // Scrolled to its end, nothing more to show.
-  await nav.evaluate((el) => { el.scrollLeft = el.scrollWidth; el.dispatchEvent(new Event('scroll')); });
-  await expect(nav).not.toHaveClass(/\bmore\b/);
-});
-
 test('a screen you go to opens at its top, and Back brings you back to where you were', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 640 });
   await openApp(page, '#/settings');
@@ -144,48 +130,6 @@ test('a screen you go to opens at its top, and Back brings you back to where you
   await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
   await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(was - 3);
   expect(Math.abs(await page.evaluate(() => scrollY) - was)).toBeLessThan(3);
-});
-
-/**
- * A sideways swipe on the screen, from x to x at height y, as a touch.
- * @param {import('@playwright/test').Page} page @param {number} from @param {number} to @param {number} [y]
- */
-const swipe = (page, from, to, y = 400) => page.evaluate(([a, b, yy]) => {
-  const main = /** @type {HTMLElement} */ (document.querySelector('main'));
-  const at = (/** @type {number} */ x) => document.elementFromPoint(x, yy) ?? main;
-  const opts = (/** @type {number} */ x) => ({ bubbles: true, pointerType: 'touch', isPrimary: true, clientX: x, clientY: yy, pointerId: 7 });
-  at(a).dispatchEvent(new PointerEvent('pointerdown', opts(a)));
-  at(b).dispatchEvent(new PointerEvent('pointerup', opts(b)));
-}, [from, to, y]);
-
-// Swiping between tabs is experimental and off by default (the user, 2026-10-18): Settings → Experimental.
-test('swiping between tabs is off by default: a sideways swipe stays on its screen, which leaves sideways panning to the browser', async ({ page }) => {
-  await page.setViewportSize({ width: 360, height: 640 });
-  await openApp(page, '#/trips');
-  const current = page.locator('.topnav a[aria-current="page"]');
-  await expect(current).toHaveText('Trips');
-  await swipe(page, 280, 120);
-  await page.waitForTimeout(200);
-  await expect(current).toHaveText('Trips');
-  await expect(page.locator('main.view')).toHaveCSS('touch-action', 'auto');
-});
-
-test('swiping a screen sideways moves along the top bar; not from its edge, nor on something that scrolls sideways', async ({ page }) => {
-  await page.setViewportSize({ width: 360, height: 640 });
-  await openApp(page, '#/trips');
-  await turnOnSwipes(page);
-  await page.evaluate(() => { location.hash = '#/trips'; });
-  const current = page.locator('.topnav a[aria-current="page"]');
-  await expect(current).toHaveText('Trips');
-  await expect(page.locator('main.view')).toHaveCSS('touch-action', 'pan-y pinch-zoom');
-  await swipe(page, 280, 120);
-  await expect(current).toHaveText('Itinerary');
-  await swipe(page, 100, 280);
-  await expect(current).toHaveText('Trips');
-  await swipe(page, 10, 200); // from the left edge: the phone's own back gesture
-  await expect(current).toHaveText('Trips');
-  await swipe(page, 280, 250); // too short
-  await expect(current).toHaveText('Trips');
 });
 
 test('Settings → Shiori shows every way she can look, with the words the dock shows under her', async ({ page }) => {
@@ -228,75 +172,21 @@ test('where you were survives a reload: Back after one still brings you there', 
   await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(was - 3);
 });
 
-test('a Settings page belongs to the Settings tab, and swiping from it moves along the top bar', async ({ page }) => {
-  await page.setViewportSize({ width: 360, height: 640 });
-  await openApp(page, '#/models');
-  await turnOnSwipes(page);
-  await page.evaluate(() => { location.hash = '#/models'; });
-  await expect(page.getByRole('heading', { name: 'Models', level: 1 })).toBeVisible();
-  const current = page.locator('.topnav a[aria-current="page"]');
-  await expect(current).toHaveText('Settings');
-  await page.evaluate(() => {
-    const main = /** @type {HTMLElement} */ (document.querySelector('main'));
-    const opts = (/** @type {number} */ x) => ({ bubbles: true, pointerType: 'touch', isPrimary: true, clientX: x, clientY: 300, pointerId: 7 });
-    main.dispatchEvent(new PointerEvent('pointerdown', opts(100)));
-    main.dispatchEvent(new PointerEvent('pointerup', opts(280)));
-  });
-  await expect(current).toHaveText('Trace');
-});
-
-test('a swipe never brings back a screen you pass through, such as opening a file', async ({ page }) => {
-  await page.setViewportSize({ width: 360, height: 640 });
-  await openApp(page, '#/trips');
-  await turnOnSwipes(page);
-  await page.evaluate(() => { location.hash = '#/import'; });
-  await expect(page.getByRole('heading', { name: 'Open an annai file', level: 1 })).toBeVisible();
-  const current = page.locator('.topnav a[aria-current="page"]');
-  await expect(current).toHaveText('Trips');
-  await swipe(page, 280, 100, 300);
-  await expect(current).toHaveText('Itinerary');
-  await swipe(page, 100, 280, 300);
-  await expect(page.getByRole('heading', { name: 'Trips', level: 1 })).toBeVisible();
-});
-
-// The bug the user found (2026-10-18): swiping away from a Settings page and back opened Settings itself, at its top.
-test('swiping back into a tab brings back the screen you last had open in it, where you were on it', async ({ page }) => {
-  await page.setViewportSize({ width: 360, height: 640 });
-  await openApp(page, '#/settings');
-  await turnOnSwipes(page);
-  await page.evaluate(() => { location.hash = '#/models'; });
-  await expect(page.getByRole('heading', { name: 'Models', level: 1 })).toBeVisible();
-  await page.evaluate(() => scrollTo(0, 300));
-  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(250);
-  const was = await page.evaluate(() => scrollY);
-  const current = page.locator('.topnav a[aria-current="page"]');
-  await swipe(page, 100, 280, 300);
-  await expect(current).toHaveText('Trace');
-  await expect(page.getByRole('heading', { name: 'Trace', level: 1 })).toBeVisible();
-  await swipe(page, 280, 100, 300);
-  await expect(page.getByRole('heading', { name: 'Models', level: 1 })).toBeVisible();
-  expect(new URL(page.url()).hash).toBe('#/models');
-  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(was - 3);
-  // Tapping the tab still opens its first screen.
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Settings' }).click();
-  await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
-});
-
 /**
  * The controls of the screen (main) whose middle is on screen, above the dock, but under something else: a card, say.
  * @param {import('@playwright/test').Page} page
  */
-const coveredControls = async (page) => page.evaluate((barBottom) => {
+const coveredControls = async (page) => page.evaluate(() => {
   const dockTop = document.querySelector('nav.dock')?.getBoundingClientRect().top ?? innerHeight;
   return [...document.querySelectorAll('main.view :is(a[href], button, input, select, textarea, summary)')].flatMap((el) => {
     const r = el.getBoundingClientRect();
     const x = r.left + r.width / 2;
     const y = r.top + r.height / 2;
-    if (!r.width || !r.height || y <= barBottom || y >= dockTop || x < 0 || x > innerWidth) return [];
+    if (!r.width || !r.height || y <= 0 || y >= dockTop || x < 0 || x > innerWidth) return [];
     const hit = document.elementFromPoint(x, y);
     return hit && (el === hit || el.contains(hit) || [.../** @type {any} */ (el).labels ?? []].some((l) => l.contains(hit))) ? [] : [`${el.textContent?.trim() || el.getAttribute('aria-label') || el.tagName} under ${hit?.closest('.notice, .toast') ? 'a card' : hit?.tagName}`];
   });
-}, await stuckTop(page));
+});
 
 const PNG1 = { name: 'gate.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64') };
 /** The card annai raises when the camera has no conversation to keep its photo in and none can be made (a store that fails), with Dismiss alone. */
@@ -367,7 +257,7 @@ test('review S1: scrolled down, a card coming or going keeps the screen where it
 // The re-review of defer-home (R2): the rows (main) ignore taps for a moment when a card's coming or going moves them on screen, and they move when the
 // page was at its top, or scrolled by less than the box changes (the scroll back is clamped at 0). Scrolled further, the scroll absorbs the change and
 // nothing moves. A phone 360 x 640, one card, Dismiss clicked from up there: the rows measured in the same task as the click, before any 400 ms.
-/** In the page: whether a tap in the middle of the screen, between where stuck things stop (bar, by stuckTop) and the dock, lands on the rows (main, and the data-safety warning above it), or goes through them (they ignore taps a moment). */
+/** In the page: whether a tap in the middle of the screen, between where stuck things stop (the top of the screen, 0) and the dock, lands on the rows (main, and the data-safety warning above it), or goes through them (they ignore taps a moment). */
 const landsOnRows = (/** @type {number} */ bar) => {
   const dock = document.querySelector('nav.dock')?.getBoundingClientRect().top ?? innerHeight;
   return document.elementFromPoint(innerWidth / 2, (bar + dock) / 2)?.closest('main.view, .risk') != null;
@@ -382,7 +272,7 @@ for (const [scrolled, moves] of /** @type {const} */ ([[0, true], [40, true], [4
     await expect(page.locator('.notices.landed, .notices.over')).toHaveCount(0); // the card's own moment is over
     await page.evaluate((y) => scrollTo(0, y), scrolled);
     expect(await page.evaluate(() => scrollY)).toBe(scrolled);
-    const top = await stuckTop(page);
+    const top = 0; // what sticks, sticks at the top of the screen
     expect(await page.evaluate(landsOnRows, top), 'before: a tap lands on the rows').toBe(true);
     /** @type {{ rose: number, held: boolean, lands: boolean }} */
     const after = await page.evaluate(`(() => {
@@ -623,7 +513,7 @@ test('landscape at SE size (568 × 296) with the dock\'s text box open: the page
   await page.getByRole('button', { name: 'Type' }).click();
   const box = page.getByLabel('Message to Shiori');
   await expect(box).toBeVisible();
-  const top = await stuckTop(page);
+  const top = 0; // the page's room starts at the top of the screen
   const room = () => page.evaluate((top) => {
     const dock = /** @type {HTMLElement} */ (document.querySelector('nav.dock')).getBoundingClientRect();
     return { dock: dock.height, page: dock.top - top, barBottom: top };

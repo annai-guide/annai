@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, watchConsole, pastWelcome, goHome, goToHash } from './helpers.js';
+import { openApp, watchConsole, pastWelcome, goToHash, startTrip } from './helpers.js';
 
 test('starts without errors and shows Trips', async ({ page }) => {
   const errors = watchConsole(page);
@@ -51,7 +51,11 @@ test('an unexpected error shows a card and annai keeps running', async ({ page }
   await page.evaluate(() => { setTimeout(() => { throw new Error('test boom'); }, 0); });
   await expect(page.getByText('Something went wrong')).toBeVisible();
   await expect(page.getByText('annai kept running. The details are in Trace.')).toBeVisible();
-  await goHome(page);
+  // It keeps running: the card's way to Trace works, and Trace's crumb comes home.
+  await page.locator('.notice').getByRole('button', { name: 'Open Trace' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trace' })).toBeVisible();
+  await page.getByRole('main').locator('.crumbs').getByRole('link', { name: 'Trips' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips', exact: true })).toBeVisible();
 });
 
 test("an unexpected error whose details can't be written down says so, rather than that they are in Trace", async ({ page }) => {
@@ -98,18 +102,19 @@ test('Erase everything starts annai again as on a new device, the welcome then a
   expect(await page.evaluate(() => sessionStorage.getItem('erase-error'))).toBeNull();
 });
 
-test("minors 26: a field in a column keeps its own height: no empty gap between a trip's name and its dates", async ({ page }) => {
+test("minors 26: a field in a column keeps its own height: no empty gap between a trip's name and its dates (in Details, since the Start a trip form went in timeline stage 8)", async ({ page }) => {
   await openApp(page);
-  await page.getByText('Add dates (optional)').click();
-  const name = page.locator('label.field', { has: page.getByLabel('Trip name') });
-  const dates = page.locator('details.dates');
+  await startTrip(page, 'Testville'); // its Details
+  const form = page.locator('form.trip-edit');
+  const name = form.locator('label.field', { has: page.getByLabel('Name', { exact: true }) });
+  const dates = form.locator('.row');
   const [a, b] = [await name.boundingBox(), await dates.boundingBox()];
   expect(a && b).toBeTruthy();
   if (!a || !b) return;
   expect(a.height).toBeLessThan(100);
   expect(b.y - (a.y + a.height)).toBeLessThan(30);
   // In a row, fields still share it.
-  const [start, end] = [await page.locator('label.field', { has: page.getByLabel('Starts') }).boundingBox(), await page.locator('label.field', { has: page.getByLabel('Ends') }).boundingBox()];
+  const [start, end] = [await form.locator('label.field', { has: page.getByLabel('Starts') }).boundingBox(), await form.locator('label.field', { has: page.getByLabel('Ends') }).boundingBox()];
   expect(Math.abs((start?.width ?? 0) - (end?.width ?? 1))).toBeLessThan(2);
 });
 

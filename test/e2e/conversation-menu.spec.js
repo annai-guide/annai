@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, startTrip, writeRecords, writeEvent, goToHash, atConversation, goHome, stuckTop } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, startTrip, writeRecords, writeEvent, goToHash, atConversation, goHome } from './helpers.js';
 
 // "do you think we should have some way to let the user compact or clear the transcript / session manually?" (the user, 2026-10-23):
 // a menu on the Conversation screen, Summarize now and Start fresh (spec §6.5, §16.2).
@@ -217,8 +217,7 @@ test('the header stays in view as the conversation scrolls', async ({ page }) =>
   const head = page.locator('.talk-head');
   await expect(head.getByRole('link', { name: 'Back to Trips' })).toBeInViewport();
   const top = await head.evaluate((el) => el.getBoundingClientRect().top);
-  const bar = await stuckTop(page);
-  expect(Math.abs(top - bar)).toBeLessThanOrEqual(2);
+  expect(Math.abs(top)).toBeLessThanOrEqual(2); // at the top of the screen
 });
 
 /**

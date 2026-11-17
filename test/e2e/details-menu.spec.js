@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, startTrip, goToHash, goHome, stuckTop } from './helpers.js';
+import { openApp, startTrip, goToHash, goHome } from './helpers.js';
 
 // "For the real on device test, I cannot find how to enter a trip detail... (including deleting a misc one) I assume it to in be the ...
 // but it does not show...." (the user, from the live version, 2026-11-10); with a screenshot: "... is there, I just only see these" (Summarize now,
@@ -65,7 +65,7 @@ const LANGS = /** @type {const} */ ([
 
 for (const [width, height] of SIZES) {
   for (const lang of LANGS) {
-    test(`the ⋯ is on screen and tappable, and its menu, with Details first, fits between the bar and the dock, at ${width}x${height} in ${lang.tag}, for a chat and a dated trip, with a short and a very long name`, async ({ page }) => {
+    test(`the ⋯ is on screen and tappable, and its menu, with Details first, fits between the top of the screen and the dock, at ${width}x${height} in ${lang.tag}, for a chat and a dated trip, with a short and a very long name`, async ({ page }) => {
       await page.setViewportSize({ width, height });
       if (lang.tag === 'ja') await page.addInitScript(() => { try { localStorage.setItem('annai.ui', 'ja'); } catch { /* storage blocked */ } });
       await openApp(page, lang.start);
@@ -77,17 +77,16 @@ for (const [width, height] of SIZES) {
         await goToHash(page, `#/trip/${id}/talk`);
         const toggle = page.locator('.talk-head .tidy-toggle');
         await expect(toggle).toBeVisible();
-        // It opens at the end of the conversation: the head sticks under the bar. On screen whole, under no other box, and at least a finger's size.
+        // It opens at the end of the conversation: the head sticks at the top. On screen whole, under no other box, and at least a finger's size.
         await expect(toggle).toBeInViewport({ ratio: 1 });
         // A card that has just landed makes the screen ignore taps for a moment (notices.js): the hit is waited for, never assumed.
-        const top = await stuckTop(page);
-        await expect.poll(() => page.evaluate((top) => {
+        await expect.poll(() => page.evaluate(() => {
           const el = /** @type {HTMLElement} */ (document.querySelector('.talk-head .tidy-toggle'));
           const b = el.getBoundingClientRect();
           const over = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2);
           const dock = /** @type {HTMLElement} */ (document.querySelector('.dock:not(.seat)')).getBoundingClientRect();
-          return { hit: over === el || el.contains(over), fingerSize: Math.min(b.width, b.height) >= 44, clear: b.top >= top - 1 && b.bottom <= dock.top && b.right <= innerWidth };
-        }, top)).toEqual({ hit: true, fingerSize: true, clear: true });
+          return { hit: over === el || el.contains(over), fingerSize: Math.min(b.width, b.height) >= 44, clear: b.top >= -1 && b.bottom <= dock.top && b.right <= innerWidth };
+        })).toEqual({ hit: true, fingerSize: true, clear: true });
         await toggle.click(); // a tap that would land on another box does not click: it waits, then fails
         const menu = page.locator('.tidy-menu');
         await expect(menu).toBeVisible();
@@ -107,7 +106,7 @@ for (const [width, height] of SIZES) {
 }
 
 // A short conversation's page can't scroll: the title sits where the cards and banner above it leave it, low on a tall phone, and the menu under it must
-// still end above the dock, with every control reachable (the page can't lift the title under the bar).
+// still end above the dock, with every control reachable (the page can't lift the title to the top).
 for (const [width, height] of /** @type {const} */ ([[360, 640], [390, 844], [430, 932]])) {
   test(`a short conversation, its title low on the page: the menu ends above the dock and every control can be reached, at ${width}x${height}, chat and dated trip`, async ({ page }) => {
     await page.setViewportSize({ width, height });
@@ -307,7 +306,7 @@ const gapAboveDock = (page) => page.evaluate(() => {
 
 // The menu's height was measured as it opened and on a scroll or a resize, so what moved the ⋯ or the dock with neither left it as it was, under the dock (the review
 // of details-menu, finding 3): (a) a card that lands above a short conversation, at the top of its page, (b) a dock that grows or shrinks (voice on, her words in a
-// bubble, a plugin's dock), (c) a phone turned back upright, where the shell's observers update the dock's and the bar's heights a frame after the resize.
+// bubble, a plugin's dock), (c) a phone turned back upright, where the shell's observer updates the dock's height a frame after the resize.
 test.describe('the open menu is measured again when what is under or above it moves, and stays 16 px above the dock', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 640 });
@@ -386,7 +385,7 @@ test.describe('the open menu is measured again when what is under or above it mo
     });
   }
 
-  // The shell sets --dock-h and --topbar-h from observers, which run after the frame's resize event: a menu measured by that event read last frame's heights.
+  // The shell sets --dock-h from an observer, which runs after the frame's resize event: a menu measured by that event read last frame's height.
   test('(c) the dock grows in the frame a resize comes in, which is before the shell has updated --dock-h', async ({ page }) => {
     await page.evaluate(() => {
       const el = document.createElement('div');
@@ -407,29 +406,6 @@ test.describe('the open menu is measured again when what is under or above it mo
     await page.waitForTimeout(500); // and it stays so: not right for a frame only
     expect(await gapAboveDock(page)).toBeGreaterThanOrEqual(15);
   });
-});
-
-// The bar's height is --topbar-h, which the stuck head sits under: a taller bar (the phone upright, the status bar's room) moves the ⋯ down with no scroll.
-test('(c) the bar grows while the head is stuck under it and the menu is open: the menu still ends 16 px above the dock', async ({ page }) => {
-  await page.setViewportSize({ width: 360, height: 640 });
-  await openApp(page);
-  const [id] = await makeConversations(page, [{ title: 'Pelican chat', lines: 12 }]);
-  await goToHash(page, `#/trip/${id}/talk`);
-  await expect(page.locator('.talk-head .tidy-toggle')).toBeVisible();
-  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(300); // opened at the end of the conversation: the head is stuck under the bar
-  await page.locator('.talk-head .tidy-toggle').click();
-  await expect(page.locator('.tidy-menu')).toBeVisible();
-  expect(await gapAboveDock(page)).toBeGreaterThanOrEqual(15);
-  await page.evaluate(() => {
-    // The page may scroll itself as the bar grows (it follows the end of the conversation); that scroll is not what this checks: none reaches the menu.
-    addEventListener('scroll', (e) => e.stopImmediatePropagation(), true);
-    /** @type {HTMLElement} */ (document.querySelector('header.topbar')).style.minHeight = '104px'; // 48 px taller: its content grows, which the shell's observer sees
-    dispatchEvent(new Event('resize'));
-  });
-  await expect.poll(() => page.evaluate(() => Math.round(/** @type {HTMLElement} */ (document.querySelector('.talk-head')).getBoundingClientRect().top - /** @type {HTMLElement} */ (document.querySelector('header.topbar')).getBoundingClientRect().bottom))).toBeLessThanOrEqual(1); // the head followed the bar down
-  await expect.poll(() => gapAboveDock(page)).toBeGreaterThanOrEqual(15);
-  await page.waitForTimeout(300);
-  expect(await gapAboveDock(page)).toBeGreaterThanOrEqual(15);
 });
 
 // With the ⋯ as low as it can be tapped (a card and the install banner above a short conversation, or a phone on its side), the room under it, less the dock,

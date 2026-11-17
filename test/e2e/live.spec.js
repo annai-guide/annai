@@ -156,10 +156,13 @@ test('location refused: a card with steps for this phone, and "Where are you?" w
   const card = page.locator('.notice', { hasText: "annai can't see where you are" });
   await expect(card).toContainText(/On (iPhone|Android):/);
   await expect(page.locator('.live-chip')).toHaveText('No GPS');
-  await page.goto('/#/drive');
+  // The card's button goes to Driving, where "Where are you?" is (timeline stage 8: in place of the path in words, through Now).
+  await card.getByRole('button', { name: 'Say where you are' }).click();
+  await expect.poll(() => new URL(page.url()).hash).toBe('#/drive');
+  await expect(card).toHaveCount(0); // a card's button dismisses it
   await page.getByRole('button', { name: 'Bixby Creek Bridge' }).click();
-  await page.goto('/#/now');
-  await expect(page.locator('.now-place')).toHaveText('At Bixby Creek Bridge');
+  await goToHash(page, `#/trip/${encodeURIComponent(trip)}/plan`); // today's Itinerary says where you are (Now did until stage 8)
+  await expect(page.locator('.today-top .now-place')).toHaveText('At Bixby Creek Bridge');
   // annai starts again with location still refused: the card isn't shown again.
   await page.reload();
   await expect(page.locator('.live-chip')).toHaveText('No GPS');

@@ -59,8 +59,8 @@ test('the offline pack: its size before downloading, then OpenStreetMap, Wikiped
   await expect(page.getByRole('link', { name: /pack\.json|^o[0-9a-z]+\.json$/ })).toHaveCount(0); // the pack's files stay out of the file list
   await page.reload();
   await expect(panel).toContainText(/Downloaded .+ · /);
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Now' }).click();
-  await expect(page.locator('.pack-line')).toContainText('Offline pack: downloaded');
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`); // the pack's line is on the Itinerary (Now's until timeline stage 8)
+  await expect(page.locator('main .pack-line')).toContainText('Offline pack: downloaded');
   await writeRecords(page, trip, { write: { '/plan/mcway.json': { id: 'mcway', title: 'McWay Falls', fixed: false, start: { at: at(21), tz: 'America/Los_Angeles' }, place: { name: 'McWay Falls', lat: 36.158, lng: -121.672 } } } });
   await page.goto(`/#/trip/${encodeURIComponent(trip)}`);
   await expect(panel).toContainText('The itinerary changed since.');

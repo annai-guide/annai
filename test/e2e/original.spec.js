@@ -47,7 +47,7 @@ test('Open shows a PDF in the browser where it can, else a card with Open and Do
     await page.getByRole('button', { name: 'Download' }).click();
     expect((await downloading).suggestedFilename()).toBe('flight.pdf');
   }
-  // Its crumb goes back to the booking it was opened from, and the top bar stays on Plan.
+  // Its crumb goes back to the booking it was opened from.
   await page.getByRole('main').getByRole('link', { name: 'Details' }).click();
   await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
 });

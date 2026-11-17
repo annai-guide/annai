@@ -58,7 +58,7 @@ test('no screen says "null": providers, their abilities, Live voice, a look at a
     await expect(page.getByText(/doesn't allow web apps like annai to call it/)).toBeVisible({ timeout: 30_000 });
     expect(await nulls(page)).toEqual([]);
 
-    // A trip with a place ahead on the plan, for Now, the plan and Driving.
+    // A trip with a place ahead on the plan, for the plan and Driving ("#/now" below is its old address, a redirect since timeline stage 8).
     await page.goto('/#/trips');
     const trip = await startTrip(page, 'Big Sur');
     const lunch = new Date(Date.now() + 2 * 3_600_000).toISOString().replace(/\.\d+Z$/, 'Z');

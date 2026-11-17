@@ -65,13 +65,6 @@ test('archive a trip, then bring it back', async ({ page }) => {
   await expect(page.getByRole('link', { name: /Old trip/ })).toBeVisible();
 });
 
-test('a bad trip name gets a plain explanation', async ({ page }) => {
-  await openApp(page);
-  await page.getByLabel('Trip name').fill('   ');
-  await page.getByRole('button', { name: 'Start trip' }).click();
-  await expect(page.getByRole('alert')).toContainText('Give it a name.');
-});
-
 test('a full device says what to do, and nothing is half-saved', async ({ page }) => {
   await openApp(page);
   await startTrip(page, 'Big Sur');
@@ -537,20 +530,6 @@ test('a plain start opens the conversation talked in under 12 hours ago, else Tr
   expect(page.url()).not.toContain('/trip/');
 });
 
-test('Start a trip needs only a name: the trip opens with no dates, and on Trips it is a conversation\'s line, not a card (timeline stage 4)', async ({ page }) => {
-  await openApp(page);
-  await expect(page.getByLabel('Starts')).toBeHidden(); // folded under Add dates (optional)
-  // By the form, as the test is of it (startTrip makes a trip as annai does, with no form, for timeline stage 8).
-  await page.getByLabel('Trip name').fill('Somewhere north');
-  await page.getByRole('button', { name: 'Start trip' }).click();
-  await expect(page.getByRole('heading', { name: 'Somewhere north' })).toBeVisible();
-  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
-  await expect(page.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible();
-  const card = page.locator('.trip-card', { hasText: 'Somewhere north' });
-  await expect(card).toHaveClass(/\bline\b/);
-  await expect(card.locator('.sub')).not.toHaveText(/^updated /); // a line says when it was last talked in, not a card's facts
-});
-
 test("a trip's card says when a file is waiting to be read", async ({ page }) => {
   await openApp(page);
   const trip = await startNamed(page, 'Kyoto', { start: '2026-12-01', end: '2026-12-05' }); // dated: a card, which says what waits to be read
@@ -639,9 +618,8 @@ test('Back from a conversation reached by #/talk goes to where you came from', a
   const id = await startNamed(page, 'Kyoto');
   await goToHash(page, '#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
-  await goToHash(page, '#/talk'); // a link to the plain address (the top bar's tabs go straight to the trip's own)
+  await goToHash(page, '#/talk'); // a link to the plain address (as a plugin's or an old bookmark's)
   await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}/talk`);
-  await expect(page.getByRole('link', { name: 'Conversation', exact: true }).first()).toHaveAttribute('aria-current', 'page'); // its tab stays lit
   await page.goBack();
   await expect.poll(() => hashOf(page)).toBe('#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
@@ -955,20 +933,6 @@ test('the crumb goes back to the conversation', async ({ page }) => {
   await expect(crumb).toContainText('Conversation');
   await crumb.click();
   await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}/talk`);
-});
-
-test('a tab tapped again on its own screen adds nothing for Back to show again', async ({ page }) => {
-  await openApp(page);
-  const id = await startNamed(page, 'Kyoto'); // on its Details
-  const tab = (/** @type {string} */ name) => page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name, exact: true });
-  for (const [name, sub] of [['Conversation', 'talk'], ['Itinerary', 'plan']]) {
-    await tab(name).click();
-    await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}/${sub}`);
-    await tab(name).click();
-    await page.waitForTimeout(300);
-    await page.goBack();
-    await expect.poll(() => hashOf(page)).toBe(`#/trip/${id}`);
-  }
 });
 
 test("Save in Details writes only what was changed there, so dates Shiori wrote meanwhile stay", async ({ page }) => {

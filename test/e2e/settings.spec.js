@@ -17,31 +17,6 @@ test('Settings lists what a user reaches for most often first, and Erase last', 
   await expect(page.locator('section.panel', { has: page.getByRole('heading', { name: 'About' }) })).toContainText('annai 0.1.0');
 });
 
-test('Settings → Experimental: swiping between tabs is off by default, kept in the app settings when turned on', async ({ page }) => {
-  await openApp(page, '#/settings');
-  await page.getByRole('link', { name: 'Experimental' }).click();
-  await expect(page.getByRole('heading', { name: 'Experimental', level: 1 })).toBeVisible();
-  await expect(page.getByText('Features that are still being tried. They may have bugs, and their fixes may come slower than the rest of annai.')).toBeVisible();
-  const swipe = page.getByRole('checkbox', { name: 'Swipe sideways to move between tabs' });
-  await expect(swipe).not.toBeChecked();
-  await swipe.check();
-  await expect.poll(() => page.evaluate(async () => {
-    const load = (/** @type {string} */ url) => import(url);
-    const { createIdbStore } = await load('/src/core/store-idb.js');
-    const { Workspace } = await load('/src/core/workspace.js');
-    const { readAppSettings } = await load('/src/core/settings.js');
-    const store = await createIdbStore();
-    try {
-      return (await readAppSettings(new Workspace(store))).experimental?.swipeTabs;
-    } finally {
-      store.close();
-    }
-  })).toBe(true);
-  await page.reload();
-  await expect(page.getByRole('checkbox', { name: 'Swipe sideways to move between tabs' })).toBeChecked();
-  await expect(page.locator('main.view')).toHaveCSS('touch-action', 'pan-y pinch-zoom');
-});
-
 test("Settings → Tools → OpenStreetMap: VK's server is off by default, kept in the app settings when ticked, which nearby and the offline pack read", async ({ page }) => {
   await openApp(page, '#/tools');
   const panel = page.getByRole('region', { name: 'OpenStreetMap' });
@@ -236,7 +211,7 @@ const holdSaves = (page) => page.evaluate(async () => {
 });
 
 /**
- * Taps Save with the queue held: "Saving…" is on screen, beside the button on its line (not at the top of the page, under the bar),
+ * Taps Save with the queue held: "Saving…" is on screen, beside the button on its line (not at the top of the page, with the cards),
  * until the queue is let go; with field, until the field shows the key saved, and the toast no sooner.
  * @param {import('@playwright/test').Page} page @param {import('@playwright/test').Locator} save @param {{ label: string, saved: RegExp, redraws?: boolean }} [field]
  *   redraws: the screen is asked to draw again just as the save's own draw begins, as a plugin or a setting changing can, so that draw is superseded
@@ -250,7 +225,7 @@ async function savingBesideIt(page, save, field) {
   const [n, b] = [await note.boundingBox(), await save.boundingBox()];
   expect(Math.abs((n?.y ?? -999) - (b?.y ?? 999)), 'on the button\'s line').toBeLessThan(30);
   expect(n?.x).toBeGreaterThan((b?.x ?? 0) + (b?.width ?? 0) - 1);
-  expect(n?.y).toBeGreaterThan(60); // under the top bar, not at the top of the page
+  expect(n?.y).toBeGreaterThan(60); // beside its button, not at the top of the page
   // What the key's field says the moment "Saving…" goes, and as the toast first shows (the re-check: it went 2 to 3 s
   // before the field showed the key saved, with "Saved" in between).
   if (field) {

@@ -166,8 +166,8 @@ test("Opus from Anthropic and from OpenRouter are told apart by their provider's
     const label = /** @type {any} */ (await line.locator('.line-label').boundingBox());
     expect(label.x + label.width).toBeLessThanOrEqual(box.x + box.width + 0.5);
     await line.screenshot({ path: `.superpowers/evidence/model-provider/her-line-360-${testInfo.project.name}.png` });
-    // The Trace names them the same way.
-    await page.getByRole('link', { name: 'Trace' }).click();
+    // The Trace names them the same way (by its address: the top bar's Trace went in timeline stage 8).
+    await goToHash(page, '#/trace');
     await filterTrace(page, { kind: 'Models', type: 'model.turn' });
     await expect(page.getByText(`main: ${anthropic} · 2 attempts`, { exact: false })).toBeVisible();
     await filterTrace(page, { kind: 'Models', type: 'net.request' });

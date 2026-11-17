@@ -76,9 +76,9 @@ test("the Conversation's ⋯ opens what each half sees: its instructions and its
     const height = async () => /** @type {any} */ ((await menu.boundingBox())).height;
     for (const size of [{ width: 844, height: 390 }, { width: 320, height: 568 }, { width: 390, height: 844 }]) {
       await page.setViewportSize(size);
-      await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight)); // as a finger brings the title up under the bar (a page with room to scroll)
+      await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight)); // as a finger brings the title up to the top (a page with room to scroll)
       const dock = /** @type {any} */ (await page.locator('.dock:not(.seat)').boundingBox()).height; // the dock is over the page's bottom: the menu stops above it
-      const most = size.height - 56 - 64 - dock; // the screen less the bar (56 px), the room the title and its ⋯ take, and the dock
+      const most = size.height - 64 - dock; // the screen less the room the title and its ⋯ take, and the dock (no top bar since timeline stage 8)
       await expect.poll(height, { message: `open, ${size.width}x${size.height}` }).toBeLessThanOrEqual(most + 1);
       await toggle.click();
       await toggle.click();

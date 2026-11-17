@@ -141,7 +141,7 @@ test('the "Shiori, no trip" row shows only once `me` has a line of the user\'s, 
   expect(Object.values(ids)).not.toContain(open);
 });
 
-test('with nothing open the new conversation is: at a fresh start, and after the open trip is removed, the Conversation tab shows it, empty', async ({ page }) => {
+test('with nothing open the new conversation is: at a fresh start, and after the open trip is removed, the address of the open conversation (#/talk, the Conversation tab until timeline stage 8) shows it, empty', async ({ page }) => {
   await openApp(page, '#/trips');
   await openTalk(page);
   await expect(page).toHaveURL(/#\/trip\/trip-[0-9a-z]+\/talk$/);
@@ -186,7 +186,7 @@ test('with no conversation possible (the store failing), a typed line stays in t
   await expect(box(page)).toBeVisible();
   expect(hashOf(page)).toBe('#/settings');
   expect(await userLines(page, 'me')).toBe(0);
-  // The Conversation tab's address, with nothing open, is home.
+  // The open conversation's address (#/talk), with nothing open, is home.
   await goToHash(page, '#/talk');
   await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
 });
