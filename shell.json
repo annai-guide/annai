@@ -1,5 +1,5 @@
 {
-  "build": "e36f43b6b858",
+  "build": "ba99f8ad89d9",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -282,10 +282,10 @@
     "/src/ui/screens/voice.js": "a15e4d8bb537",
     "/src/ui/screens/welcome.js": "f1b00d351dd3",
     "/src/ui/search-panel.js": "20a5f0a56f48",
-    "/src/ui/shell.js": "6ea1fff2e59a",
+    "/src/ui/shell.js": "66ad2d2b48a0",
     "/src/ui/slots.js": "4fee1465e94c",
     "/src/ui/stamps.js": "9c0f976db8fa",
-    "/src/ui/shiori.css": "27335919bf4e",
+    "/src/ui/shiori.css": "e8f05ff55cd7",
     "/src/ui/speech-check.js": "396550d02345",
     "/src/ui/storage-full.js": "6b7d5a2fe9fe",
     "/src/ui/talk-panel.js": "cc1fb4a04f43",

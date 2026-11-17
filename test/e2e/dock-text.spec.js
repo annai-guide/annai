@@ -354,25 +354,27 @@ test('a turn of the phone wraps the words again, and the box fits them at the ne
 });
 
 // The user, 2026-11-16, from an iPhone (the installed app, a new conversation from +, voice off): "bug report: text box cursor is at the wrong
-// place": the caret was drawn about 105 px under the box, over the dock's buttons. + opens the box in its tap, while home is still drawn, and
-// the conversation's screen comes a moment later: the dock's buttons row came with it, which pushed the focused box up by its height (87 px),
-// under a keyboard already rising. The box now takes focus where it stays. The shell also scrolled the page to its top as the screen landed, where
-// it was already: on the iPhone a page's own scroll stops the keyboard's (WebKit, -[WKWebView _scrollToContentScrollPosition:…]: it stops a
-// scroll in progress, then goes where the page said), which is the scroll that brings the dock above the keyboard. A page already where it
-// should be is not scrolled.
-for (const scrolled of [false, true]) {
-  test(`+ on home${scrolled ? ', scrolled down' : ''}, voice off: the box takes focus where it stays; the conversation that opens under it moves it nowhere, and nothing scrolls the page under it`, async ({ page }) => {
+// place": the caret was drawn about 106 px under the box, over the dock's buttons; "Only after +", not from the keyboard button inside a
+// conversation. The cause is inferred, not yet verified on the phone: what the app did under the focused box while the keyboard rose. + opens
+// the box in its tap, while home is still drawn, and the conversation's screen comes a moment later. Three things happened under the box: the
+// dock's buttons row came with the screen, which pushed the box up by its height (87 px); the shell scrolled the page to its top as the screen
+// landed; and a home read to its end was put back at its end as the dock grew (at-end.js). The box now takes focus where it stays, and the app
+// scrolls nothing under it: a page already where it should be is not scrolled at the landing, nor a screen being left kept at its end.
+// Where home is read when + is tapped: its top, partway down, or to its end (scrollTo clamps 1e6 to the page's end).
+for (const [read, y] of /** @type {[string, number][]} */ ([['', 0], [', scrolled down', 1500], [', read to its end', 1e6]])) {
+  test(`+ on home${read}, voice off: the box takes focus where it stays; the conversation that opens under it moves it nowhere, and nothing scrolls the page under it`, async ({ page }) => {
     // Installed, as on the phone: in a browser tab the data-safety banner makes the empty conversation taller than a small phone's screen, and a
     // page that lands scrolled is put at its top, as before.
     await page.addInitScript(() => Object.defineProperty(navigator, 'standalone', { value: true, configurable: true }));
     await openApp(page, '#/trips');
-    // A long home, read partway down: the conversation is a short page, which a scrolled one is past the end of.
-    if (scrolled) {
-      await page.evaluate(() => {
-        /** @type {HTMLElement} */ (document.querySelector('main.view')).append(Object.assign(document.createElement('div'), { style: 'height: 3000px' }));
-        scrollTo(0, 1500);
-      });
-      expect(await page.evaluate(() => scrollY)).toBe(1500);
+    // A long home, read partway down or to its end: the conversation is a short page, which a scrolled one is past the end of. Read to its end, the
+    // page is kept at its end as the dock grows (at-end.js), which it is not while the screen is being left.
+    if (y) {
+      await page.evaluate(() => /** @type {HTMLElement} */ (document.querySelector('main.view')).append(Object.assign(document.createElement('div'), { style: 'height: 3000px' })));
+      await page.evaluate((to) => scrollTo(0, to), y);
+      const seen = await page.evaluate(() => ({ y: scrollY, end: scrollY + innerHeight >= document.documentElement.scrollHeight - 1 }));
+      expect(seen.y).toBeGreaterThan(0);
+      expect(seen.end).toBe(y === 1e6);
     }
     // Where the box is at its focus, and at every frame after while it keeps it.
     await page.evaluate(() => {
