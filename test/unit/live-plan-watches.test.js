@@ -436,3 +436,30 @@ test("what comes after a flight or a train waits for it to arrive: no leave or r
   assert.equal(PLAN.check(pier, moment({ now: at('07:05') }), {}), null);
   assert.equal(PLAN.check(pier, moment({ now: at('11:00') }), {})?.fallback, 'Leave soon: Pier tour at 11:30, South pier.');
 });
+
+test("a flight's leave reminder aims to be at the airport 2 h before it departs, and running late means missing that (it said to leave so as to arrive at 14:05 for a 14:05 flight)", () => {
+  const SFO = { lat: 37.6213, lng: -122.379 };
+  const home = off(SFO, 0, 30_000); // 30 km: about 51 min by car
+  const day = '2026-11-29';
+  const leave = find('plan:flight:leave').when;
+  const late = find('plan:flight:late').when;
+  // 14:05 − 2 h − 51 min − the 15-minute lead: due at 10:59, to leave at 11:14 and be there by 12:05.
+  assert.equal(PLAN.next?.(leave, here(home, at('08:00', day)), {}), at('10:59', day));
+  assert.equal(PLAN.check(leave, here(home, at('10:58', day)), {}), null);
+  const f = PLAN.check(leave, here(home, at('10:59', day)), {});
+  assert.equal(f?.fallback, 'Leave in about 15 min: Flight UA 123 departs 14:05, SFO T3. About 51 min by car.');
+  assert.equal(f?.text, 'Plan: time to leave soon for "UA 123 home" (can\'t be moved, 14:05): 30.0 km away in a straight line, about 51 min by car, to be there by 12:05');
+  assert.equal(PLAN.describe(leave), '15 min before leaving for "UA 123 home" at 14:05, to be there by 12:05');
+  // Past the time to be there, the leave reminder has nothing left to say: running late does.
+  assert.equal(PLAN.check(leave, here(home, at('12:30', day)), {}), null);
+  // Running late: arriving after 12:05 and the usual 5 min of grace, not after the departure, which would come too late to act on.
+  assert.equal(PLAN.next?.(late, here(home, at('08:00', day)), {}), at('11:19:01', day));
+  assert.equal(PLAN.check(late, here(home, at('11:19', day)), {}), null); // there at 12:10
+  const l = PLAN.check(late, here(home, at('11:20', day)), {});
+  assert.equal(l?.fallback, 'Running late: Flight UA 123 departs 14:05, SFO T3. About 51 min away.');
+  assert.equal(l?.text, 'Plan: running late for "UA 123 home" (can\'t be moved, 14:05): 30.0 km away, about 51 min by car, so about 6 min late to be there by 12:05');
+  assert.ok(PLAN.check(late, here(home, at('12:30', day)), {})); // opened late, still far: said once
+  assert.equal(PLAN.check(late, here(home, at('13:06', day)), {}), null); // an hour past the time to be there, as for any item
+  // Anything else keeps its own time: lunch at 12:00 from 7 km is due at 11:33, as before.
+  assert.equal(PLAN.next?.(find('plan:nepenthe:leave').when, here(RIVER_INN, at('10:30')), {}), at('11:33'));
+});

@@ -331,3 +331,12 @@ test("the user's shape on the live engine: home four days before a trip flown to
   assert.deepEqual(fired.filter((w) => w.startsWith('plan:inn:') || w.startsWith('plan:tour:')), []);
   k.live.dispose();
 });
+
+test("a flight's \"leave soon\" at the push relay is when the phone would say it: 2 h before the departure, less the drive and the lead", async () => {
+  const SFO = { lat: 37.6213, lng: -122.379 };
+  const k = await liveKit({ plan: { fly: { title: 'Flight home', kind: 'flight', fixed: true, start: { at: iso('14:05'), tz: LA }, place: { name: 'SFO', ...SFO } } } });
+  await k.fix(at('08:31'), { lat: SFO.lat + 30_000 / ((6_371_000 * Math.PI) / 180), lng: SFO.lng }); // 30 km north: about 51 min by car
+  const leave = ((await k.live.reminders()) ?? []).find((r) => r.watch === 'plan:fly:leave');
+  assert.equal(leave?.due, at('10:59')); // 14:05 − 120 − 51 − 15
+  k.live.dispose();
+});

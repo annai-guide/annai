@@ -30,6 +30,11 @@ export const LATE_GRACE_MIN = 5;
 /** Arrived: within this many meters of the place; an airport is bigger. */
 export const ARRIVE_M = 300;
 export const AIRPORT_M = 2000;
+/**
+ * A flight's leave and running late aim to be at the airport this long before it departs: airlines' usual advice for a domestic
+ * flight, one number for every flight as annai can't always tell domestic from international (the user's pick, 2026-11-16).
+ */
+export const AIRPORT_EARLY_MIN = 120;
 /** Arrived: stopped there this long, or inside this long. */
 export const ARRIVE_STOP_MIN = 2;
 export const ARRIVE_INSIDE_MIN = 5;
@@ -104,8 +109,10 @@ export function planWatches(items, bookings, { fallbackTz }) {
       } else if (!kind('lodging')) {
         // Leave and running late time a trip by car or on foot (spec §11.3). Not for a stay: its check-in is the earliest time to arrive,
         // its check-out the latest to stay (the user's report, 2026-11-16: "Leave in about 15 min" for a check-in 3300 km away).
-        add('leave', `Leave soon: ${base.what}.`, { event: 'leave', what: short }, { ...there, from: prev, after: landed });
-        add('late', `Running late: ${base.what}.`, { event: 'late', what: short }, { ...there, after: landed });
+        // by: the time to be there, a flight's AIRPORT_EARLY_MIN before it departs.
+        const go = { ...there, by: flight ? x.at - AIRPORT_EARLY_MIN * MIN : x.at, after: landed };
+        add('leave', `Leave soon: ${base.what}.`, { event: 'leave', what: short }, { ...go, from: prev });
+        add('late', `Running late: ${base.what}.`, { event: 'late', what: short }, go);
       }
       add('arrived', `${place.name}: ${title}.${notes ? ` ${notes}` : ''}`, { event: 'arrived', title, place: place.name, ...(notes ? { notes } : {}) }, there);
       prev = place;
@@ -206,6 +213,8 @@ const span = (w) => {
  * says so (fixedWords). @param {any} w @param {(string | null)[]} more
  */
 const tag = (w, ...more) => { const p = [fixedWords(w.fixed, { unsure: w.unsure === true }), ...more].filter(Boolean); return p.length ? ` (${p.join(', ')})` : ''; };
+/** A flight's time to be there, for Shiori: "to be there by 12:05" after sep; nothing for an item whose time it is. @param {any} w @param {string} sep */
+const byWords = (w, sep) => (w.by < w.at ? `${sep}to be there by ${hhmm(w, w.by)}` : '');
 /** Where the user is now (not on a catch-up's first look). @param {Moment} m */
 const now = (m) => (m.fix && !m.past ? m.fix : null);
 /** @param {number} km @param {string} activity */
@@ -228,11 +237,11 @@ const drive = (km, w) => km * 1000 > w.radius && km <= LEG_MAX_KM;
 function leaving(w, m) {
   const from = m.fix ?? w.from ?? null;
   const after = w.after ?? -Infinity;
-  if (!from) return { due: Math.max(w.at - 30 * MIN, after), km: null, minutes: null, words: '', mode: '' };
+  if (!from) return { due: Math.max(w.by - 30 * MIN, after), km: null, minutes: null, words: '', mode: '' };
   const km = meters(from, w.place) / 1000;
   if (!drive(km, w)) return null;
   const t = trip(km, m.activity);
-  return { due: Math.max(w.at - (t.minutes + LEAVE_LEAD_MIN) * MIN, after), km, minutes: t.minutes, words: t.words, mode: t.mode };
+  return { due: Math.max(w.by - (t.minutes + LEAVE_LEAD_MIN) * MIN, after), km, minutes: t.minutes, words: t.words, mode: t.mode };
 }
 
 /** What fired, for Shiori, and its fallback: annai's English. @type {Record<string, (w: any, m: Moment, mem: Record<string, any>) => Firing | null>} */
@@ -240,12 +249,12 @@ function leaving(w, m) {
 const CHECK = {
   leave(w, m) {
     const l = leaving(w, m);
-    if (!l || m.now < l.due || m.now >= w.at) return null;
-    const how = l.km === null ? '' : `: ${kmText(l.km * 1000)} away in a straight line, about ${l.minutes} min ${l.words}`;
+    if (!l || m.now < l.due || m.now >= w.by) return null;
+    const how = l.km === null ? '' : `: ${kmText(l.km * 1000)} away in a straight line, about ${l.minutes} min ${l.words}${byWords(w, ', ')}`;
     // The words name the minutes left to the time to leave as of now (the reminder may fire late: annai was closed, or the user moved away).
     // With no estimate to count from, or once the time is here or past, they say "soon"; so they do on a catch-up's first look, which
     // counts from where the user was when annai went away: a count from there may be false by the time they read it.
-    const left = l.km === null ? 0 : Math.round((w.at - l.minutes * MIN - m.now) / MIN);
+    const left = l.km === null ? 0 : Math.round((w.by - l.minutes * MIN - m.now) / MIN);
     const lead = l.km !== null && !m.past && left >= 1;
     return {
       text: `Plan: time to leave soon for "${w.title}"${tag(w, hhmm(w))}${how}`, at: l.due,
@@ -280,14 +289,14 @@ const CHECK = {
   },
   late(w, m) {
     const fix = now(m);
-    if (!fix || m.fired(`plan:${w.item}:arrived`) || m.now < Math.max(w.at - WINDOW_MIN * MIN, w.after ?? -Infinity) || m.now > w.at + 60 * MIN) return null;
+    if (!fix || m.fired(`plan:${w.item}:arrived`) || m.now < Math.max(w.by - WINDOW_MIN * MIN, w.after ?? -Infinity) || m.now > w.by + 60 * MIN) return null;
     const km = meters(fix, w.place) / 1000;
     if (!drive(km, w)) return null;
     const t = trip(km, m.activity);
     const eta = m.now + t.minutes * MIN;
-    if (eta <= w.at + LATE_GRACE_MIN * MIN) return null;
+    if (eta <= w.by + LATE_GRACE_MIN * MIN) return null;
     return {
-      text: `Plan: running late for "${w.title}"${tag(w, hhmm(w))}: ${kmText(km * 1000)} away, about ${t.minutes} min ${t.words}, so about ${Math.round((eta - w.at) / MIN)} min late`,
+      text: `Plan: running late for "${w.title}"${tag(w, hhmm(w))}: ${kmText(km * 1000)} away, about ${t.minutes} min ${t.words}, so about ${Math.round((eta - w.by) / MIN)} min late${byWords(w, ' ')}`,
       fallback: `Running late: ${w.what}. About ${t.minutes} min away.`,
       say: { event: 'late', what: w.short, minutes: t.minutes },
     };
@@ -325,7 +334,7 @@ const CHECK = {
 const NEXT = {
   leave: (w, m) => {
     const l = leaving(w, m);
-    return l && l.due < w.at ? l.due : null;
+    return l && l.due < w.by ? l.due : null;
   },
   'coming-up': (w) => w.at - COMING_UP_MIN * MIN,
   arrived: (w, m, mem) => {
@@ -339,7 +348,7 @@ const NEXT = {
     const km = meters(fix, w.place) / 1000;
     if (km > LEG_MAX_KM) return null;
     const t = trip(km, m.activity);
-    return Math.max(w.at - WINDOW_MIN * MIN, w.after ?? -Infinity, w.at + (LATE_GRACE_MIN - t.minutes) * MIN + 1000);
+    return Math.max(w.by - WINDOW_MIN * MIN, w.after ?? -Infinity, w.by + (LATE_GRACE_MIN - t.minutes) * MIN + 1000);
   },
   'off-plan': (w) => w.at + OFF_PLAN_AFTER_MIN * MIN,
   linger: (w, m) => (m.stop ? m.stop.since + LINGER_MIN * MIN : null),
@@ -348,10 +357,10 @@ const NEXT = {
 /** @type {Record<string, (w: any) => string>} */
 /* en */
 const DESCRIBE = {
-  leave: (w) => `${LEAVE_LEAD_MIN} min before leaving for "${w.title}" at ${hhmm(w)}`,
+  leave: (w) => `${LEAVE_LEAD_MIN} min before leaving for "${w.title}" at ${hhmm(w)}${byWords(w, ', ')}`,
   'coming-up': (w) => `${COMING_UP_MIN} min before "${w.title}" at ${hhmm(w)}`,
   arrived: (w) => `on arriving at ${w.place.name} for "${w.title}"`,
-  late: (w) => `when running late for "${w.title}" at ${hhmm(w)}`,
+  late: (w) => `when running late for "${w.title}" at ${hhmm(w)}${byWords(w, ', ')}`,
   'off-plan': (w) => `when far from "${w.title}" in the first ${OFF_PLAN_FOR_MIN} min of its time`,
   linger: () => `on stopping ${LINGER_MIN} min somewhere not on the plan`,
 };

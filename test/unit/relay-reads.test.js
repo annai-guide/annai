@@ -334,7 +334,7 @@ test('a booking read failing as play moves sends no short words: no copy goes, t
     assert.deepEqual(calls(k), { off: was.off, sent: was.sent + 1 });
     k.sensors.visible(false);
     await k.settle();
-    await k.deliver(at('19:01'));
+    await k.deliver(at('16:31')); // with no position, half an hour before the time to be at the airport: 2 h before 19:00
     assert.deepEqual(k.pushed().filter((p) => p.scope === side).map((p) => p.body), ['Leave soon: Flight UA 1 departs 19:00, SFO T2.']);
   } finally {
     await k.stop();
