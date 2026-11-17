@@ -11,6 +11,7 @@ import { ProviderError, errorFromResponse } from '../../src/core/llm/contract.js
 import { sse } from '../../src/core/llm/sse.js';
 import { parsePartialJSON } from '../../src/core/llm/partial-json.js';
 import { retry } from '../../src/core/llm/retry.js';
+import { setWords } from '../../src/core/l10n.js';
 import { testModel, testLevels, TEST_IMAGE } from '../../src/core/llm/check.js';
 import { REQUEST_MS, Uploads } from '../../src/core/llm/uploads.js';
 import { readConfig, modelOf, saveProvider, saveModel, saveRoles, setKey } from '../../src/core/llm/config.js';
@@ -81,12 +82,33 @@ test("Test's level step says the model refused only for an answer that refused t
   assert.match(String((await at({ error: 'context', status: 400, message: 'The thinking budget is too long' }, { id: 'utility', level: 'high' }))?.detail), /^At Utility's level \(high\), this model refused: The thinking budget is too long\. Lower Utility's level/);
   // A 404 too: the access step has just reached this model at this address, so a 404 now is the level's (a router with no route for it, say).
   assert.match(String((await at({ error: 'not-found', status: 404, message: 'No route for this reasoning setting' }))?.detail), /^At Main's level \(high\), this model refused: No route for this reasoning setting\. Lower Main's level/);
+  // A refusal that ends as a sentence already (a Chinese 。, a "?", an ellipsis) gets no second stop, and the next sentence follows it as after any other.
+  for (const [said, ended] of [['API 调用参数有误，请检查文档。', 'API 调用参数有误，请检查文档。'], ['Is reasoning supported?', 'Is reasoning supported?'], ['Not supported…', 'Not supported…'], ['Unsupported reasoning effort.', 'Unsupported reasoning effort.']]) {
+    assert.equal((await at({ error: 'bad-request', status: 400, message: said }))?.detail, `At Main's level (high), this model refused: ${ended} Lower Main's level in Settings → Models, or change this model's Reasoning levels on its page.`, said);
+  }
   for (const [failure, words] of /** @type {[any, string][]} */ ([
     [{ error: 'timeout', status: 408, message: 'Your request timed out' }, 'The model took too long to start answering.'],
     [{ error: 'rate', status: 429, message: 'Slow down' }, 'The provider says too many requests for now.'],
     [{ error: 'server', status: 500, message: 'Boom' }, 'The provider had a problem on its side.'],
     [{ error: 'auth', status: 401, message: 'Bad key' }, 'The key was rejected. Check it in Settings → Models.'],
   ])) assert.deepEqual(await at(failure), { step: 'level', ok: false, detail: words }, failure.error);
+});
+
+test("Test's level step on Japanese and Chinese screens ends the provider's refusal with 。 and no ASCII stop, whatever language it came in, and the next sentence follows it as after any other", async () => {
+  const ok = [{ text: 'OK' }, { toolCalls: [{ name: 'report_color', input: { color: 'red' } }] }];
+  try {
+    for (const tag of ['ja', 'zh-Hans', 'zh-Hant']) {
+      setWords(tag, JSON.parse(await readFile(new URL(`../../l10n/${tag}.json`, import.meta.url), 'utf8')));
+      for (const said of ['Unsupported reasoning effort', 'API 调用参数有误，请检查文档。', 'Is reasoning supported?']) {
+        const r = await testModel({ ...scriptedCase([...ok, { error: 'bad-request', status: 400, message: said }], { reasoning: { off: { a: 0 }, high: { a: 1 } } }), role: { id: 'main', level: 'high' } });
+        const detail = String(r.steps.find((x) => x.step === 'level')?.detail);
+        const ended = said.endsWith('?') || said.endsWith('。') ? said : `${said}。`;
+        const at = detail.indexOf(ended);
+        assert.ok(at > 0, `${tag}: ${detail}`);
+        assert.match(detail.slice(at + ended.length), /^[^ .]/, `${tag} joins the next sentence with no space and no ASCII stop: ${detail}`);
+      }
+    }
+  } finally { setWords('en', null); }
 });
 
 test("a model that ignores the tool and doesn't see the square fails those steps only", async () => {

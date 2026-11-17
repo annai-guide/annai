@@ -4,7 +4,7 @@ import { LEVELS, nearestLevel } from './reasoning.js';
 import { fromBase64 } from '../bytes.js';
 import { TEST_UPLOAD, REQUEST_MS, deleteUpload, sweepUploads } from './uploads.js';
 import { t } from '../l10n.js';
-import { sentences } from '../intl.js';
+import { sentences, asSentence } from '../intl.js';
 
 /** A 16×16 red PNG: the small image the Test button sends (spec §9.8). */
 export const TEST_IMAGE = 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAFklEQVR42mO4IydHEmIY1TCqYfhqAACaMxgQdrf9VwAAAABJRU5ErkJggg==';
@@ -110,7 +110,7 @@ export async function testModel(c) {
       const err = asError(e);
       // Only a provider that read the request and refused it (REFUSALS: a 400, a 413 or a 404) refused the level, and the level is the
       // traveller's to lower; a key, credit, a rate or time limit, a server's failure or a dropped connection says nothing about it.
-      steps.push({ step: 'level', ok: false, detail: REFUSALS.has(err.kind) ? sentences(refusedAt(role, err.message.replace(/[.\s]*$/, '.')), lowerLevel(role)) : explain(err) });
+      steps.push({ step: 'level', ok: false, detail: REFUSALS.has(err.kind) ? sentences(refusedAt(role, asSentence(err.message)), lowerLevel(role)) : explain(err) });
     }
   }
   if (useImage && type.uploadRequest && type.readUpload && endpoint.tunables?.uploads !== false) steps.push(await testUpload(c));
