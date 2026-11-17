@@ -103,8 +103,8 @@ test('the cached clips are 16 kHz mono 16-bit WAV files, small, each a clip with
     assert.ok(!/AIza/.test(Buffer.from(bytes).toString('latin1')), `${f} holds a key`);
   }
   // 2.1 MB before stage 5's card; its eleven clips (a user's line, the answers that are and are not a yes, a passenger, annai's own question) are 0.5 MB more;
-  // the nine lines Koe passes on (2 to 3 s each, at 32 KB a second, as the questions are) about 0.8 MB more; the seven of the Japanese runs (2026-11-14 and the
-  // languages build of 2026-11-17: 3,715,146 bytes in all then) 0.51 MB more.
+  // the nine lines Koe passes on (2 to 3 s each, at 32 KB a second, as the questions are) about 0.8 MB more; the seven the Japanese runs' scenarios play (2026-11-14 and the
+  // languages build of 2026-11-17: 3,715,146 bytes in all then; six are Japanese, and `stop` is the English one real-stop plays) 0.51 MB more.
   assert.ok(total < 4_100_000, `${total} bytes in all`);
   const loaded = await loadClips();
   assert.deepEqual(Object.keys(loaded).sort(), Object.keys(CLIPS).filter((n) => madeHere(CLIPS[n]) || files.includes(`${n}.wav`)).sort());

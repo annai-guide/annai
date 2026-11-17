@@ -158,14 +158,17 @@ change to Japanese before she listens. The clips are synthetic (Gemini TTS, `lan
 | real-relay-fact-ja (and real-relay-fact, English) | real | Koe's hold-on words, and the language of Kokoro's notes to Koe and of Koe's saying of them |
 | real-typed-live-ja | real | a typed greeting and a typed request to save a note, in Japanese: one line, then two |
 | real-stop-ja (and real-stop) | real | 「ストップ。」 100 ms into Kokoro's own note: what Koe says after it (**stopped when told**) |
-| relay-stop-request-ja | stand-in | a request Koe does with its own tools (`watch_list`): **acted on it**, and her line before a tool of her own, in the record |
-| relay-filler-ja | stand-in | the filler trap: a Japanese question, then the scold: **no filler** |
+| relay-stop-request-ja | stand-in | a request Koe does with its own tools (`watch_list`; the clip, 「ホテルのリマインダー、消しといて。」, has no stop word, so it doesn't test the stop): **acted on it**; the language of her word before a tool of her own is read by eye in the record |
+| relay-filler-ja | stand-in | the filler trap: a Japanese question, then the scold: **no filler**, read over every line she says in the scenario, as in the English one |
 
 A real Kokoro is Claude Opus 5.5 with the Anthropic key, or Claude Sonnet 5.5 with `--real-model sonnet`; with `--kokoro gemini` (no Anthropic key) it is
-Gemini's chat model on the free key, as for typed-live. The checks read Japanese and Chinese by character, as the recall check does: **passed on** takes 「？」 as
-a question back as it takes "?"; **stopped when told** allows 8 characters after the stop in a Chinese or Japanese line (かしこまりました, the longest one-word okay;
-two words in English); **no filler** knows the Japanese and Chinese apologies, stock "understood"s (承知, かしこまりました; 明白, 知道了, 收到) and promises, and
-lets a plain okay pass (分かりました, はい; 好的).
+Gemini's chat model on the free key, as for typed-live. A scenario for a real Kokoro with no Anthropic key and `--kokoro stand-in` (the default) stops before the
+browser starts, naming `--anthropic-key <file>` and `--kokoro gemini`; `--real-model` and `--kokoro` take their values in any case, and a value they don't know stops
+the run. The checks read Japanese and Chinese by character, as the recall check does: **passed on** takes 「？」 as
+a question back as it takes "?"; **stopped when told** allows 10 characters after the stop in a Chinese or Japanese line (「はい、かしこまりました。」, the longest
+two-part okay; two words between spaces in English); **no filler** knows the Japanese and Chinese apologies, "I understood"s (理解しました; 明白, 知道了, 收到) and
+promises, and lets an okay pass (分かりました, はい, かしこまりました, 承知しました; 好的): Koe's instructions allow an okay, and main's Koe answered the scold with
+「かしこまりました。」 in 2 of 2 runs. A check that could place none of her answers in a language (**language kept**) is a warning, not a pass.
 
 ```sh
 ...  scripts/realtime-check.mjs run --keys-file /keys --lines 1-11 --ui ja --only relay-stop-request-ja,relay-filler-ja --times 2

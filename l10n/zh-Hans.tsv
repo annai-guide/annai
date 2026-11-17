@@ -457,8 +457,8 @@ rntcrc	ok	No model is set for the utility or main role. Add one in Settings → 
 1hy1f74	ok	No model could write it.	所有模型都没能写出回顾。	src/core/after/recap.js:176	Note: "it" is the recap (振り返り / 回顾).
 h5o9ec	ok	Check Settings → Models, then try again.	请检查设置 → 模型，然后再试一次。	src/core/after/recap.js:176	
 1ocmp3v	ok	Try again in a while.	请稍后再试。	src/core/after/recap.js:178	
-11vzyc7	ok	No model is set up to write the recap. Add one in Settings → Models.	没有设置用来写回顾的模型。请在设置 → 模型中添加。	src/core/after/recap.js:193	
-tbxeeg	ok	The model sent back an empty recap. Try again, or put another model first in the utility role (Settings → Models).	模型返回的回顾是空的。请重试，或在设置 → 模型中，把另一个模型移到“辅助”角色的第一位。	src/core/after/recap.js:239	
+11vzyc7	ok	No model is set up to write the recap. Add one in Settings → Models.	没有设置用来写回顾的模型。请在设置 → 模型中添加。	src/core/after/recap.js:194	
+tbxeeg	ok	The model sent back an empty recap. Try again, or put another model first in the utility role (Settings → Models).	模型返回的回顾是空的。请重试，或在设置 → 模型中，把另一个模型移到“辅助”角色的第一位。	src/core/after/recap.js:240	
 1sob3wf	ok	1 hour a second	每秒 1 小时	src/core/after/replay.js:22	Note: a playback speed: one hour of the trip a second.
 6jq1bh	ok	1 minute a second	每秒 1 分钟	src/core/after/replay.js:22	
 7013qq	ok	10 minutes a second	每秒 10 分钟	src/core/after/replay.js:22	

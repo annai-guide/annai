@@ -147,7 +147,9 @@ test("cold: what the utility model is sent fits its window, so a huge exchange c
   }
   assert.equal(await k.agent.compact('cold'), true);
   const sent = k.requests.at(-1);
-  assert.equal(sent.system, coldSystem(summaryLanguage(`Message 4 ${'y'.repeat(6000)}`)));
+  // The kit's phone has no language of its own (voice.locale unset), so the setting is the default one; the loop passes the user's lines, the last of them 'Message 4 …'.
+  const { languageSettings } = await import('../../src/core/languages.js');
+  assert.equal(sent.system, coldSystem(summaryLanguage(`Message 4 ${'y'.repeat(6000)}`, languageSettings({}, undefined))));
   assert.ok(sent.messages[0].parts[0].text.length <= 2000 * 3.5 * 0.5, `${sent.messages[0].parts[0].text.length}`);
 });
 
@@ -195,7 +197,7 @@ test("warm housekeeping, whose request still offers the model's own search (so t
   assert.match(instruction('event 12', 'English'), /Don't search the web now\./);
 });
 
-test("a few words in another script don't decide the language: the script must make up most of the letters; and the last few messages are read, not one (review A6)", async () => {
+test("a few words in another script don't decide the language: the script must make up most of the letters; and the newest line that names one decides, not the newest line (review A6)", async () => {
   const { languageOf } = await import('../../src/core/agent/compaction.js');
   assert.equal(languageOf('Is 一蘭 near 渋谷駅 still open tonight?'), 'English');
   assert.equal(languageOf('Can we try the ラーメン place by the station?'), 'English');
@@ -204,7 +206,7 @@ test("a few words in another script don't decide the language: the script must m
   assert.equal(languageOf('我们今晚去哪里吃饭'), 'Chinese');
   assert.equal(languageOf('Где можно поужинать сегодня вечером?'), 'Russian');
   assert.equal(summaryLanguage(['We are vegetarian.', 'Also no nuts, please.', 'OK']), 'English, the language the user wrote in last');
-  assert.equal(summaryLanguage(['OK']), 'the language the user wrote in last: "OK"');
+  assert.equal(summaryLanguage(['OK']), "English, the app's language (nothing the user wrote names a language)", "no line names one: the phone's answer, never a quoted line");
 });
 
 test('the summary is asked for in a language named: the one the user wrote in last, else the app\'s (emulator pass: a Spanish summary of an English talk)', async () => {
@@ -213,7 +215,7 @@ test('the summary is asked for in a language named: the one the user wrote in la
   assert.equal(summaryLanguage('Où est le restaurant ?'), 'French, the language the user wrote in last');
   assert.equal(summaryLanguage('今日の夕食はどこにしますか'), 'Japanese, the language the user wrote in last');
   assert.equal(summaryLanguage(''), "English, the app's language (the user hasn't written anything yet)");
-  assert.equal(summaryLanguage('OK'), 'the language the user wrote in last: "OK"');
+  assert.equal(summaryLanguage('OK'), "English, the app's language (nothing the user wrote names a language)");
   const k = await agentKit([[say('ok')]], { utility: [{ text: 'Summary.' }] });
   for (const m of ['Where should we eat tonight?', 'And tomorrow?', 'We are vegetarian, by the way.', 'Is it far?', 'Thanks, that is all for today.']) {
     k.agent.send(m);
@@ -314,13 +316,49 @@ test("annai's lines for no words are never the user's words: summaryLanguage lea
   const { languageSettings } = await import('../../src/core/languages.js');
   const { NOT_TRANSCRIBED } = await import('../../src/core/voice/resolve.js');
   const phone = languageSettings({}, 'ja-JP');
-  for (const none of ['(files)', '(a photo)', NOT_TRANSCRIBED]) {
-    assert.equal(summaryLanguage([none], phone), "Japanese, the language of the user's phone (the user hasn't written anything yet)", none);
+  // '': an empty dictation or reply logged as a heard line (loop.js heard.text) is no line of theirs either.
+  for (const none of ['(files)', '(a photo)', NOT_TRANSCRIBED, '', '  ']) {
+    assert.equal(summaryLanguage([none], phone), "Japanese, the language of the user's phone (the user hasn't written anything yet)", JSON.stringify(none));
   }
   const both = languageSettings({ languages: { spoken: ['en', 'ja'] } }, 'en-US');
   assert.equal(summaryLanguage(['今日の夕食はどこにしますか', '(files)', '(a photo)', '(files)', '(files)'], both), 'Japanese, the language the user wrote in last');
-  // Their last few lines are read, not all of them: a Japanese trip whose last three lines can't be placed is the first listed language.
-  assert.equal(summaryLanguage(['今日の夕食はどこにしますか', 'OK', 'OK!', 'OK.'], both), 'English, the first language the user speaks (English and Japanese)');
+  assert.equal(summaryLanguage(['今日の夕食はどこにしますか', ''], languageSettings({}, 'en-US')), 'Japanese, the language the user wrote in last');
+});
+
+// The newest line that names a language decides, not the newest line: a trip's last lines are "OK", an emoji or a place's name (the final review of
+// langs-next, F1; second opinions 1, 2 and 3). Main's recap read the whole trip; reading the last three lost the trip's language to three of those.
+test('the newest line that names a language decides; only when none does, all the lines together; only when that names none, the phone\'s answer', async () => {
+  const { languageSettings } = await import('../../src/core/languages.js');
+  const trip = '今日の夕食はどこにしますか';
+  const phone = languageSettings({}, 'en-US');
+  const both = languageSettings({ languages: { spoken: ['en', 'ja'] } }, 'en-US');
+  // A Japanese trip that ends in lines naming no language is Japanese, for the recap and for compaction, chosen or not.
+  assert.equal(summaryLanguage([trip, '😀', '😀', '😀'], phone), 'Japanese, the language the user wrote in last');
+  assert.equal(summaryLanguage([trip, 'OK', 'OK', 'OK'], both), 'Japanese, the language the user wrote in last');
+  assert.equal(summaryLanguage([...Array(10).fill('Where should we eat tonight?'), 'はい', '今日はどこに行きますか', 'OK'], phone), 'Japanese, the language the user wrote in last');
+  assert.equal(summaryLanguage([trip, 'Nepenthe'], phone), 'Japanese, the language the user wrote in last');
+  // The newest line that does name one decides, so a Japanese trip's last words in English are English: that is what they wrote in last.
+  const ja = languageSettings({}, 'ja-JP');
+  assert.equal(summaryLanguage(['今日は楽しかった', '明日は雨ですか', 'ok', 'thanks', 'bye'], ja), 'English, the language the user wrote in last');
+  assert.equal(summaryLanguage(['今日は楽しかった', '明日は雨ですか', 'ok', 'thanks', 'bye'], both), 'English, the language the user wrote in last');
+  assert.equal(summaryLanguage(['今日は楽しかった', '明日は雨ですか', 'ok', 'hmm', 'sure'], ja), 'Japanese, the language the user wrote in last');
+  // No single line names one (each ties: Spanish with English, Spanish with French), the lines together do: Spanish leads. Only a tie in a line leaves it unnamed,
+  // so this is the one way the lines together can name what no line does.
+  assert.equal(summaryLanguage(['hola thanks', 'hola bonjour', 'OK'], phone), 'Spanish, the language the user wrote in last');
+  // Nothing names one: chosen, the first listed; not chosen, the phone's, never a quoted line.
+  assert.equal(summaryLanguage(['OK', 'OK!', 'OK.'], both), 'English, the first language the user speaks (English and Japanese)');
+  assert.equal(summaryLanguage(['OK'], ja), "Japanese, the language of the user's phone (nothing the user wrote names a language)");
+});
+
+// Han characters alone say Chinese; a Japanese phone's 「了解」 is Japanese: with nothing chosen the phone's language places them, as a listed
+// Japanese does (the final review of langs-next, F1).
+test("with nothing chosen, Han characters alone are the phone's Japanese, as with Japanese listed", async () => {
+  const { languageSettings } = await import('../../src/core/languages.js');
+  const ja = languageSettings({}, 'ja-JP');
+  assert.equal(summaryLanguage(['了解'], ja), 'Japanese, the language the user wrote in last');
+  assert.equal(summaryLanguage(['今日の夕食はどこにしますか', '大丈夫'], ja), 'Japanese, the language the user wrote in last');
+  assert.equal(summaryLanguage(['東京駅'], languageSettings({ languages: { spoken: ['en', 'ja'] } }, 'en-US')), 'Japanese, the language the user wrote in last');
+  assert.equal(summaryLanguage(['我们今晚去哪里吃饭'], languageSettings({}, 'en-US')), 'Chinese, the language the user wrote in last', 'no Japanese anywhere: Chinese');
 });
 
 test("files sent alone don't push the user's words out of what housekeeping reads for the summary's language", async () => {

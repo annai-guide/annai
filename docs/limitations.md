@@ -747,7 +747,13 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Kind:** deferred.
 - **What the user sees:** with Koe and Kokoro on Claude Sonnet 5.5, Koe's Japanese can come out stiff when Kokoro's note to it was English ("Tell the user in Japanese: …"), seen once in a live run on 2026-11-14. Since 2026-11-17 Kokoro's instructions say to write its notes in the language it answers in; with Kokoro on Gemini its notes were Japanese both before that line and after it (7 of 7, then 6 of 6, `real-relay-fact-ja`), so whether the line moves Sonnet, the model that showed the shape, is not yet known.
 - **Why:** the run on Sonnet couldn't be made: the Anthropic key had no credit on 2026-11-17 (a credit 400 on the first request).
-- **Revisit when:** the Anthropic key has credit: `real-relay-fact-ja` with `--real-model sonnet --ui ja --times 2` (docs/testing/realtime-check.md, "Koe's own words in Japanese"); Japanese notes close this entry, English ones need other words.
+- **Revisit when:** the Anthropic key has credit: `real-relay-fact-ja` with `--real-model sonnet --anthropic-key <file> --ui ja --times 5` (docs/testing/realtime-check.md, "Koe's own words in Japanese"). Five runs, because on 2026-11-14 English notes came in 1 of 2 runs, so two runs with the line doing nothing show no English note about 1 time in 4 (five, about 3%). Every note's words for Koe in Japanese, with no English text to translate, closes this entry; an English note needs other words.
+
+### A realtime model's markup in its transcript can leave a word of it on screen as Koe's
+- **Kind:** deferred.
+- **What the user sees:** once in about 22 live sessions (`relay-stop-request-ja`, run on main, 2026-11-17) Koe's transcript was `かしこまりました。<ratings>\n<rating>positive</rating>\n</ratings>`: `cleanSaid` strips each tag and keeps what is between them, so the bubble shows 「かしこまりました。 positive」, the conversation logs it as her line, and Kokoro reads it in its "[Koe said]" (and annai's own voice would say it if her sound stalled). Whether her audio said "positive" isn't known: no recording was kept. Found in the final review of the languages build.
+- **Why:** `cleanSaid` (src/core/koe/live.js:129) drops every tag on its own and keeps the text inside a pair.
+- **Revisit when:** the next version, as its own change: drop a paired element with its content before dropping lone tags, with this real sample as the test. It is the only sample there is, so the rule stays that narrow.
 
 ### Her reply to the "you haven't answered" cue can still be private text
 - **Kind:** deferred.

@@ -1741,7 +1741,7 @@ export class Agent {
     const events = (await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: [...SAID], ...(latest ? { after: latest.data.to } : {}) })))
       .filter((e) => !NOT_SAID.has(e.type) && (e.data?.half !== 'koe' || e.type === 'heard') && e.data?.tag !== 'koe' && (split || !['note', 'halves'].includes(e.type)) && !e.type.startsWith('out.'));
     const items = [];
-    /** What the user wrote and said, the newest last, for the summary's language: summaryLanguage reads its last few and leaves annai's own lines out. @type {string[]} */
+    /** What the user wrote and said, the newest last, for the summary's language: summaryLanguage leaves annai's own lines out and takes the newest that names a language. @type {string[]} */
     const said = [];
     /** Heard lines the gate set aside as chatter, whose words may be written down later. @type {Set<string>} */
     const aside = new Set();

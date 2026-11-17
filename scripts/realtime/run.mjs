@@ -62,6 +62,16 @@ export async function reanalyse(dir, clips) {
 }
 
 /**
+ * A scenario that asks for a real Kokoro, run with no Anthropic key and the stand-in Kokoro, would run on the stand-in and report PASS or FAIL for a real one:
+ * refused, before anything starts. --kokoro gemini with no key is the free Gemini chat model, which these scenarios allow.
+ * @param {string[]} names @param {{ anthropic?: unknown, kokoro?: string }} o
+ */
+export function realKokoroGiven(names, { anthropic, kokoro = 'stand-in' }) {
+  const wantsReal = names.filter((n) => SCENARIOS[n].real);
+  if (wantsReal.length && !anthropic && kokoro === 'stand-in') throw new Error(`${wantsReal.join(', ')} ask${wantsReal.length === 1 ? 's' : ''} for a real Kokoro, and there is no Anthropic key: give --anthropic-key <file> (or ANNAI_LIVE_ANTHROPIC_KEY), or --kokoro gemini for Gemini's chat model on the free key.`);
+}
+
+/**
  * @param {{ keys: import('./keys.mjs').Keys, only?: string[], out: URL, port?: number, roomDb?: number | null, settleMs?: number, answerTimeoutMs?: number,
  *   maxSessions?: number, kokoro?: 'stand-in' | 'gemini', app?: string, ui?: string, asr?: string, anthropic?: import('./keys.mjs').Keys, realModel?: string, times?: number, log?: (s: string) => void }} o
  *   ui: the screens' language to run under (localization L6), chosen in Settings → Shiori once annai is set up; asr: the origin of a speech-to-text server the
@@ -78,6 +88,7 @@ export async function runChecks({ keys, only, out, port = 18061, roomDb = -60, s
   // A clip some of these scenarios play that isn't made yet: said before anything starts, with the command that makes it.
   const missing = missingClips(names.map((n) => SCENARIOS[n]), clips);
   if (missing.length) throw new Error(`These clips aren't made yet: ${missing.join(', ')}. Make them (Gemini TTS, a free key): node scripts/realtime-check.mjs clips --only ${missing.join(',')}`);
+  realKokoroGiven(names, { anthropic, kokoro });
   const files = await clipFiles(clips);
   await mkdir(out, { recursive: true });
   /** Everything written is checked first. @param {string} name @param {string} text */

@@ -2,7 +2,7 @@
 // analysis to checks. Koe passes on what it can't answer, as it was said, and asks nothing back; an acknowledgement gets no reply; a note cut as she says it is
 // shown, never asked for again, and heard whole once at most, and after a "stop" not at all; a typed line gets no more lines of hers than it needs; a reminder
 // is said once. Tested without a browser (test/unit/realtime-relay.test.js).
-import { wordRecall, words as wordsOf, characters, CJK } from './analyse.mjs';
+import { wordRecall, characters, CJK } from './analyse.mjs';
 
 /**
  * How much of a line Kokoro must be given for it to have been passed on as said: 0.8 of its words, so one word in five may be lost to how each side wrote
@@ -22,11 +22,12 @@ const ASK = /^\[annai\] "(Kokoro's note hasn't reached the user|Sound cut you of
 const WHOLE = 1 / 3;
 /**
  * After a "stop", a line of hers this long at most: an okay (NO_FILLER's one word when a word is needed, said in the answer's language; "Okay." in an English run)
- * or "Got it."; no note's claim fits in two words. Japanese and Chinese are counted by character, as wordRecall reads them: 8, the longest one-word okay
- * (かしこまりました; 分かりました, the 2026-11-14 live run's, is 6; Chinese's 好的 and 明白了 are 2 and 3), where a claim needs a name or a number and more
- * (「ビクスビー橋まで、あと20分ほどです。」 is 15).
+ * or "Got it."; no note's claim fits in two words. English is counted by the words between spaces, as the first drive counted it ("It's okay." with a curly
+ * apostrophe is two). Japanese and Chinese are counted by character, as wordRecall reads them: 10, the longest two-part okay (「はい、かしこまりました。」;
+ * かしこまりました alone is 8, 分かりました, the 2026-11-14 live run's, is 6; Chinese's 好的 and 明白了 are 2 and 3), where a claim needs a name or a number
+ * and more (「ビクスビー橋まで、あと20分ほどです。」 is 17).
  */
-const SHORT = { words: 2, characters: 8 };
+const SHORT = { words: 2, characters: 10 };
 /** annai's line for a user turn the session gave nothing back to (live.js, #silent): the model's choice, never retried. */
 const LET_GO = /taken as let go/;
 
@@ -149,7 +150,7 @@ export function analyseRelay(rec, a, sc, clips) {
       const fresh = frames.filter((f) => f.at > from && f.dir === 'out' && f.kind === 'setup').length;
       const errs = rec.trace.filter((t) => t.at > from && t.type === 'error' && (t.data?.kind === 'live-dropped' || (t.data?.kind === 'live-silent' && !LET_GO.test(t.data?.message ?? ''))));
       const letGo = rec.trace.some((t) => t.at > from && t.type === 'error' && t.data?.kind === 'live-silent' && LET_GO.test(t.data?.message ?? ''));
-      const quiet = CJK.test(told) ? characters(told).length <= SHORT.characters : wordsOf(told).length <= SHORT.words;
+      const quiet = CJK.test(told) ? characters(told).length <= SHORT.characters : words.length <= SHORT.words;
       const ok = !why && quiet && !passed && !fresh && !errs.length && shown.length === 1 && asks.length === 0;
       checks.push({
         name: 'stopped when told', ok,

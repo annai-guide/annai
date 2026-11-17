@@ -25,3 +25,30 @@ test('the languages scenarios (phase 2): short English replies with English set,
     sc.steps.forEach((s, i) => { if ('say' in s) assert.ok('answered' in sc.steps[i + 1], 'each clip is followed by her answer being heard out'); });
   }
 });
+
+// A scenario for a real Kokoro, run with no Anthropic key and the stand-in Kokoro, would report PASS or FAIL for a stand-in: refused before the browser starts
+// (the final review of langs-next, second opinion 6; runChecks calls realKokoroGiven before it starts anything).
+test('a real-Kokoro scenario with no Anthropic key and the stand-in Kokoro is refused, naming what to give; a key, or --kokoro gemini, allows it', async () => {
+  const { realKokoroGiven } = await import('../../scripts/realtime/run.mjs');
+  assert.throws(() => realKokoroGiven(['real-stop-ja'], {}), /real-stop-ja asks for a real Kokoro.*--anthropic-key.*--kokoro gemini/);
+  assert.throws(() => realKokoroGiven(['real-stop', 'relay-filler-ja', 'real-typed-live-ja'], { kokoro: 'stand-in' }), /real-stop, real-typed-live-ja ask for a real Kokoro/);
+  realKokoroGiven(['real-stop-ja'], { anthropic: {} });
+  realKokoroGiven(['real-stop-ja'], { kokoro: 'gemini' });
+  realKokoroGiven(['relay-filler-ja', 'questions-a'], {}); // no real Kokoro asked: nothing to refuse
+  for (const [name, sc] of Object.entries(SCENARIOS)) if (sc.real) assert.throws(() => realKokoroGiven([name], {}), /--anthropic-key/, name);
+});
+
+// Under --ui the harness looks buttons up by the screens' words (drive.mjs `w`), and a word with no entry silently stays English: every button a scenario taps or the
+// harness presses has one in each catalog the screens come in (the final review of langs-next, second opinion 4: the card's buttons were looked up in English).
+test('the buttons a scenario taps and the harness presses have words in each screens language, so --ui finds them', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { key } = await import('../../src/core/l10n.js');
+  const taps = [...new Set(Object.values(SCENARIOS).flatMap((sc) => sc.steps.flatMap((st) => ('tap' in st ? [st.tap] : []))))];
+  assert.ok(taps.includes('Allow') && taps.includes('Not now'), taps.join(', '));
+  for (const tag of ['ja', 'zh-Hans', 'zh-Hant']) {
+    const words = JSON.parse(await readFile(new URL(`../../l10n/${tag}.json`, import.meta.url), 'utf8'));
+    for (const en of [...taps, 'Shiori', 'Type', 'Send', 'Listening live']) assert.ok(words[key(en, '')], `${tag}: no words for "${en}"`);
+    assert.notEqual(words[key('Allow', '')], 'Allow');
+    assert.notEqual(words[key('Not now', '')], 'Not now');
+  }
+});

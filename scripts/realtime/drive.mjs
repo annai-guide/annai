@@ -122,7 +122,7 @@ export async function addToKoe(page, model) {
  * classic (with a stand-in, and card): classic voice, no live session: Koe has no live model (Gemini's Live voice stays off), the user's own speech-to-text
  * server is Speech in (Local speech server, at the stand-in's /asr, which passes transcription requests on), and Gemini 3.5 Flash Lite, which adding
  * Gemini puts in Quick decision, is the gate.
- * real (with a stand-in, for its voice, and card): Kokoro is the real model, Claude Opus 5.5 through the Anthropic provider (given its key), and the utility
+ * real (with a stand-in, for its voice, and card): Kokoro is the real model, Claude Opus 5.5 (Claude Sonnet 5.5 with real.model 'sonnet': --real-model sonnet) through the Anthropic provider (given its key), and the utility
  * and quick-decision models Claude Haiku 5.5, which adding the provider put there; Koe is on Gemini Live as before, and Gemini's chat models are taken out of
  * Main, Utility and Quick decision so that no free model answers for a real one that fails.
  * koeChat (with classic): Koe on a chat model, Gemini 3.5 Flash Lite in Koe · Chat, so the two halves talk through classic voice.
@@ -611,7 +611,7 @@ export async function runScenario(browser, name, sc, env) {
         log(`    + ${((Date.now() - opened) / 1000).toFixed(1)} s  types "${step.type}"`);
       } else if ('shiori' in step) {
         // A tap on Shiori: classic voice listens for a window at a time, and asleep she hears nothing until tapped.
-        await page.getByRole('button', { name: 'Shiori' }).click({ timeout: 8000 }).catch(() => notes.push('no Shiori button to tap'));
+        await page.getByRole('button', { name: w('Shiori') }).click({ timeout: 8000 }).catch(() => notes.push('no Shiori button to tap'));
         log(`    + ${((Date.now() - opened) / 1000).toFixed(1)} s  taps Shiori`);
       } else if ('tap' in step) {
         if (step.afterHeard !== undefined) {
@@ -629,7 +629,8 @@ export async function runScenario(browser, name, sc, env) {
           await wait(Math.max(0, step.afterHeard - (Date.now() - (heard || Date.now()))));
         }
         const at = Date.now();
-        const button = page.locator('.convo li').filter({ hasText: /Read Testville/ }).last().getByRole('button', { name: step.tap, exact: true });
+        // The card's buttons are named by the screens' words (--ui): found by the button's name, in the conversation, the newest first.
+        const button = page.locator('.convo').getByRole('button', { name: w(step.tap), exact: true }).last();
         const ok = await button.click({ timeout: 5000 }).then(() => true, () => false);
         taps.push({ at, label: step.tap, ok });
         log(`    + ${((at - opened) / 1000).toFixed(1)} s  taps ${step.tap}${ok ? '' : ' (the button was not there to tap)'}`);

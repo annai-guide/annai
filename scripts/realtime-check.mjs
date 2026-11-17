@@ -11,7 +11,7 @@
 // Each is read inside the process, never printed or written.
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
-import { parseArgs, keysFrom } from './realtime/args.mjs';
+import { parseArgs, keysFrom, choice } from './realtime/args.mjs';
 
 /** A folder given on the command line, as an address with its slash. @param {string} path */
 const folder = (path) => pathToFileURL(`${resolve(path)}/`);
@@ -68,12 +68,14 @@ if (command === 'clips') {
   const anthropic = await anthropicFrom(opts, process.env);
   const out = new URL(`../.superpowers/evidence/realtime-harness/${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}/`, import.meta.url);
   try {
+    const kokoro = choice(opts, 'kokoro', ['gemini', 'stand-in']);
+    const realModel = choice(opts, 'real-model', ['sonnet', 'opus']);
     const r = await runChecks({
       keys, out: typeof opts.out === 'string' ? folder(opts.out) : out,
       ...(typeof opts.only === 'string' ? { only: opts.only.split(',') } : {}),
       ...(typeof opts.port === 'string' ? { port: Number(opts.port) } : {}),
       ...(typeof opts['room-db'] === 'string' ? { roomDb: opts['room-db'] === 'off' ? null : Number(opts['room-db']) } : {}),
-      ...(opts.kokoro === 'gemini' || opts.kokoro === 'stand-in' ? { kokoro: opts.kokoro } : {}),
+      ...(kokoro ? { kokoro: /** @type {'gemini' | 'stand-in'} */ (kokoro) } : {}),
       ...(typeof opts.app === 'string' ? { app: resolve(opts.app) } : {}),
       ...(typeof opts['answer-timeout'] === 'string' ? { answerTimeoutMs: Number(opts['answer-timeout']) * 1000 } : {}),
       ...(typeof opts['max-sessions'] === 'string' ? { maxSessions: Number(opts['max-sessions']) } : {}),
@@ -81,7 +83,7 @@ if (command === 'clips') {
       ...(typeof opts.asr === 'string' ? { asr: opts.asr } : {}),
       ...(typeof opts.times === 'string' ? { times: Math.max(1, Number(opts.times) || 1) } : {}),
       ...(anthropic ? { anthropic } : {}),
-      ...(opts['real-model'] === 'sonnet' || opts['real-model'] === 'opus' ? { realModel: opts['real-model'] } : {}),
+      ...(realModel ? { realModel } : {}),
     });
     process.exit(r.pass ? 0 : 1);
   } catch (e) {

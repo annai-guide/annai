@@ -80,11 +80,13 @@ export function soundRuns(level) {
 /** Filler: an apology, "I understand" or "understood", a promise ("I'll adjust", "I will stop"), "noted". */
 const FILLER = /\b(sorry|apolog\w*|understand\w*|understood|noted|my bad|i['’]ll|i will|i['’]m going to)\b/i;
 /**
- * The same in Japanese and Chinese, which have no spaces to mark a word: an apology (すみません, 申し訳, 失礼しました; 对不起, 抱歉, 不好意思), the stock
- * "understood" or "noted" (承知, かしこまりました, 理解し; 明白, 知道了, 收到), and a promise (気をつけます, 以後, 今後は, …ないようにします, やめます; 我会, 以后,
- * 不会再). A plain okay passes, as "Okay." does: 分かりました, はい, 了解です; 好的, 好.
+ * The same in Japanese and Chinese, which have no spaces to mark a word: an apology (すみません, 申し訳, 失礼しました; 对不起, 抱歉, 不好意思), an "I understood" or
+ * "I understand" (理解しました, not ご理解; 明白, 知道了, 收到) and a promise (気をつけます, 今後は, …ないようにします, やめます; 我会, 不会再). An okay passes, as "Okay."
+ * does: 分かりました, はい, 了解です; 好的, 好; and so do かしこまりました and 承知しました, the polite okay that Koe's instructions allow ("say okay in the language you answer
+ * in"; main's Koe answered the scold with 「かしこまりました。」 in 2 of 2 live runs, 2026-11-17). 以後 and 以后 are no promise on their own ("三点以后开门").
+ * Each alternative has a test sentence of its own (realtime-analyse.test.js).
  */
-const FILLER_CJK = /すみません|すいません|ごめん|申し訳|失礼(?:しました|いたしました)|お詫び|承知|かしこまりました|理解し|お気持ち|気を(?:つけ|付け)ます|以後|今後は|ないようにします|やめます|止めます|控えます|对不起|對不起|抱歉|不好意思|道歉|明白|知道了|收到|理解|我会|我會|我将|我將|以后|不会再|不會再/;
+export const FILLER_CJK = /すみません|すいません|ごめん|申し訳|失礼(?:しました|いたしました)|お詫び|(?<!ご)理解|お気持ち|気を(?:つけ|付け)ます|今後は|ないようにします|やめます|止めます|控えます|对不起|對不起|抱歉|不好意思|道歉|明白|知道了|收到|我会|我會|我将|我將|不会再|不會再/;
 
 /**
  * @param {Rec} rec @param {Record<string, { kind: string, words: string, lang?: string }>} clips
@@ -229,13 +231,16 @@ export function analyse(rec, clips, { endLagMs = END_LAG_MS, expectCut = false, 
     { name: 'turn ends in time', ok: lagged.length === 0, detail: lagged.length ? `late: ${lagged.map((r) => `${r.name} ${r.endLagMs === null ? 'never ended' : `${(r.endLagMs / 1000).toFixed(2)} s`}`).join(', ')}` : `every turn ended within ${endLagMs / 1000} s of the user stopping` },
     { name: 'no errors', ok: errors.length === 0, detail: errors.length ? errors.join('; ') : 'none' },
   ];
-  // Her language (phase 2): each answer in the language its clip was spoken in. An answer too short to place passes: it can't be told.
+  // Her language (phase 2): each answer in the language its clip was spoken in. An answer too short to place can't be told, and is no failure; but a check that
+  // placed none (no clip was answered, or every answer was too short) read nothing, so it is a warning, not a pass: her language is read in the record.
   if (rec.languages) {
-    const wrong = asked.filter((r) => r.answered && r.saidLang && r.saidLang !== LANGUAGE_NAME[r.lang ?? 'en']);
+    const placed = asked.filter((r) => r.answered && r.saidLang);
+    const wrong = placed.filter((r) => r.saidLang !== LANGUAGE_NAME[r.lang ?? 'en']);
     checks.push({
-      name: 'language kept', ok: wrong.length === 0,
+      name: 'language kept', ok: wrong.length === 0 && placed.length > 0, soft: wrong.length === 0,
       detail: wrong.length ? wrong.map((r) => `${r.name} answered in ${r.saidLang} (spoken in ${LANGUAGE_NAME[r.lang ?? 'en']}): "${r.said.slice(0, 80)}"`).join('; ')
-        : `every answer that could be placed was in the language it was spoken in (${asked.filter((r) => r.saidLang).length} of ${asked.length} could be placed)`,
+        : placed.length ? `every answer that could be placed was in the language it was spoken in (${placed.length} of ${asked.length} could be placed)`
+          : `no answer could be placed (${asked.length} asked): her language is not read here, read it in the record`,
     });
   }
   // Whether all that was said reached Gemini: a sentence cut at its pause, or a question begun over her voice, arrives in part.

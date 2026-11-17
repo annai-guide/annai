@@ -179,6 +179,9 @@ test('a note cut by a spoken "stop": a word like "Okay." after it at most, nothi
   const okay = stopRec([f(8000, 'in', 'audio', { bytes: 4800 })], [[8000, 8400]], [speak(8500, 'Okay.')]);
   assert.equal(check(okay).ok, true, 'a word is fine');
   assert.match(check(okay).detail, /^after the "stop": "Okay\."/);
+  // Gemini writes a curly apostrophe: "It’s okay." is two words, as the first drive counted it, not three.
+  for (const word of ['It’s okay.', 'I’ll stop.', "It's okay."]) assert.equal(check(stopRec([f(8000, 'in', 'audio', { bytes: 4800 })], [[8000, 8400]], [speak(8500, word)])).ok, true, word);
+  assert.equal(check(stopRec([f(8000, 'in', 'audio', { bytes: 4800 })], [[8000, 8400]], [speak(8500, 'It’s okay, got it.')])).ok, false, 'four words are not an okay');
   const letGo = stopRec([], [], [{ at: 16_000, type: 'error', data: { kind: 'live-silent', message: 'The live session gave nothing back within 8 seconds of a turn: taken as let go.' } }]);
   assert.equal(check(letGo).ok, true, 'a turn the session let go is its choice');
   assert.match(check(letGo).detail, /the turn was let go/);
@@ -208,9 +211,9 @@ test('in Japanese, a question back is told by 「？」 as by "?", and after 「
   /** @param {string} said */
   const stopRec = (said) => rec({ route: 'headphones', plays: [q.play, stop], frames: [...q.frames, ...after, f(8000, 'in', 'audio', { bytes: 4800 })], level: levels([[6000, 6400], [8000, 8400]]), trace: [speak(6400, 'ビクスビー✂', { cut: true }), card(6290), speak(8500, said)] });
   const check = (/** @type {any} */ r) => analyseRelay(r, analyse(r, JA, { expectCut: true }), /** @type {any} */ ({ noteCut: 'stop', steps: [] }), JA).checks[0];
-  // The okays a Japanese or Chinese speaker hears (the 2026-11-14 live run's 「分かりました。」; the longest, かしこまりました, 8 characters).
-  for (const okay of ['分かりました。', 'はい。', 'かしこまりました。', '好的。', '明白了。']) assert.equal(check(stopRec(okay)).ok, true, okay);
-  for (const more of ['ビクスビー橋までは、あと20分ほどです。', '分かりました。また何かあれば聞いてください。']) {
+  // The okays a Japanese or Chinese speaker hears (the 2026-11-14 live run's 「分かりました。」; the longest, 「はい、かしこまりました。」, 10 characters).
+  for (const okay of ['分かりました。', 'はい。', 'かしこまりました。', 'はい、かしこまりました。', '好的。', '明白了。']) assert.equal(check(stopRec(okay)).ok, true, okay);
+  for (const more of ['ビクスビー橋までは、あと20分ほどです。', '分かりました。また何かあれば聞いてください。', 'はい、かしこまりましたね。']) {
     const c = check(stopRec(more));
     assert.equal(c.ok, false, more);
     assert.match(c.detail, /^she said ".+" after the "stop"/);

@@ -182,9 +182,10 @@ export function recapError(e, { names } = {}) {
 /**
  * Writes /trip/recap.md with the utility model (spec §13), and logs a recap entry that names
  * the photo copies it sent (§4.9). Errors are plain: what happened and what to do next.
- * locale: the phone's language (navigator.language), which Shiori's answers and compaction take when nothing else names one.
+ * locale: the phone's language (navigator.language), which Shiori's answers and compaction take when nothing else names one. Required, so the typecheck
+ * pins every caller: without it the request says the phone is English, a false claim on a Japanese phone.
  * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace, llm: any, trip: string,
- *   codec?: import('../photos.js').Codec | null, namer?: (p: { lat: number, lng: number }) => { name: string, m: number } | null, locale?: string, signal?: AbortSignal }} c
+ *   codec?: import('../photos.js').Codec | null, namer?: (p: { lat: number, lng: number }) => { name: string, m: number } | null, locale: string, signal?: AbortSignal }} c
  * @returns {Promise<{ text: string, photos: number, chars: number }>}
  */
 export async function writeRecap({ store, ws, llm, trip, codec = null, namer, locale, signal }) {

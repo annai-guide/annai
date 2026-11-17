@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { framesOf } from '../../scripts/realtime/frames.mjs';
 import { startKokoro } from '../../scripts/realtime/kokoro.mjs';
-import { parseArgs } from '../../scripts/realtime/args.mjs';
+import { parseArgs, choice } from '../../scripts/realtime/args.mjs';
 
 const j = (/** @type {any} */ o) => Buffer.from(JSON.stringify(o));
 
@@ -55,6 +55,17 @@ test('the stand-in Kokoro refuses an empty request as a real server does, gives 
 test('parseArgs: words, --name value, and flags that take no value; a missing value is an error', () => {
   assert.deepEqual(parseArgs(['run', '--only', 'a,b', '--force', '--lines', '1-11'], { flags: ['force'] }), { words: ['run'], opts: { only: 'a,b', force: true, lines: '1-11' } });
   assert.throws(() => parseArgs(['run', '--only']), /needs a value/);
+});
+
+// --real-model sonet ran Claude Opus 5.5 (the paid one) and said nothing; "Sonnet" was dropped the same way (the final review of langs-next, F7).
+test('choice: a named value in any case, none when not given, and a value the run does not know stops it', () => {
+  const allowed = ['sonnet', 'opus'];
+  assert.equal(choice({}, 'real-model', allowed), undefined);
+  assert.equal(choice({ 'real-model': 'sonnet' }, 'real-model', allowed), 'sonnet');
+  assert.equal(choice({ 'real-model': 'Sonnet' }, 'real-model', allowed), 'sonnet');
+  assert.equal(choice({ 'real-model': 'OPUS' }, 'real-model', allowed), 'opus');
+  assert.throws(() => choice({ 'real-model': 'sonet' }, 'real-model', allowed), /--real-model takes sonnet or opus, not "sonet"/);
+  assert.throws(() => choice({ kokoro: 'gemni' }, 'kokoro', ['gemini', 'stand-in']), /--kokoro takes gemini or stand-in/);
 });
 
 test('the setup frame says which language hints it carried and whether its instructions name the languages, never the instructions themselves (phase 2)', () => {

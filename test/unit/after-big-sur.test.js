@@ -17,7 +17,7 @@ test('the Big Sur drive, simulated through live mode and Shiori, is recapped by 
   assert.ok(j.entries.some((e) => e.kind === 'move' && e.gap), 'the phone was locked from 15:18 to 16:05');
   assert.deepEqual(j.days, ['2026-11-27']);
 
-  await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip });
+  await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'en-US' });
   assert.equal(await k.ws.readText(k.trip, '/recap.md'), `${RECAP}\n`);
   const asked = k.requests.at(-1);
   assert.equal(asked.system, RECAP_SYSTEM);
