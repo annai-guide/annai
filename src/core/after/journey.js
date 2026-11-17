@@ -3,7 +3,7 @@ import { stampsOf, isArrival } from './stamps.js';
 import { meters } from '../live/geo.js';
 import { validZone, deviceZone, instantOf, dayIn } from '../time.js';
 import { PLAN_FILE, bookingRef, timeUnsure } from '../plan.js';
-import { storedTexts } from '../agent/log.js';
+import { conversationLines, USER_LINES } from '../agent/blocks.js';
 
 /**
  * A trip as it went (spec §13), read once from its log and files for the recap and the replay: the
@@ -117,23 +117,12 @@ export async function readJourney({ store, ws, trip, namer = () => null }) {
     const stamp = stamps.find((x) => x.name.toLowerCase() === name.toLowerCase() && dayIn(x.at, tz) === day) ?? null;
     entries.push({ kind: 'stay', at: a.ts, to: a.ts, lat: a.data.place.lat, lng: a.data.place.lng, name, stamp });
   }
-  /** @type {Map<string, { text: string }>} heard segments whose words come later */
-  const waiting = new Map();
-  for (const e of events) {
-    const d = e.data ?? {};
+  // Shiori's cards, and the user's lines as compaction reads them (conversationLines): typed or heard and not set aside, a heard line with its last words.
+  for (const { e, d, text } of await conversationLines(store, events.filter((x) => x.type === 'out.show' || USER_LINES.includes(x.type)))) {
+    const words = String(text ?? '').trim();
     if (e.type === 'out.show') {
       if (d.card && typeof d.card === 'object' && !Array.isArray(d.card)) entries.push({ kind: 'card', at: e.ts, card: d.card, ...(d.tune ? { tune: true } : {}) });
-    } else if (e.type === 'msg.user') {
-      const text = String({ ...d, ...(d.stored ? await storedTexts(store, e) : {}) }.text ?? '').trim();
-      if (text) entries.push({ kind: 'said', at: e.ts, text, spoken: Boolean(d.claim) }); // a claim ("This was for Shiori") is words that were spoken
-    } else if (e.type === 'heard' && !d.dismissed) {
-      const said = { kind: /** @type {const} */ ('said'), at: e.ts, text: typeof d.text === 'string' ? d.text.trim() : '', spoken: true };
-      entries.push(said);
-      if (typeof d.text !== 'string' && typeof d.id === 'string') waiting.set(d.id, said);
-    } else if (e.type === 'heard.text') {
-      const said = waiting.get(d.of);
-      if (said) said.text = String(d.text ?? '').trim();
-    }
+    } else if (words) entries.push({ kind: 'said', at: e.ts, text: words, spoken: e.type === 'heard' || Boolean(d.claim) }); // a claim ("This was for Shiori") is words that were spoken
   }
   for (const f of await ws.list(trip, '/files/')) {
     if (!f.type.startsWith('image/')) continue;
@@ -143,10 +132,10 @@ export async function readJourney({ store, ws, trip, namer = () => null }) {
       width: m.width ?? null, height: m.height ?? null, place: hasPoint(m.place) ? { lat: m.place.lat, lng: m.place.lng } : null,
     });
   }
-  const kept = entries.filter((e) => e.kind !== 'said' || e.text).sort((a, b) => a.at - b.at);
-  const times = [...kept.flatMap((e) => ('to' in e ? [e.at, e.to] : [e.at])), ...(points.length ? [points[0].at, points[points.length - 1].at] : [])];
+  entries.sort((a, b) => a.at - b.at);
+  const times = [...entries.flatMap((e) => ('to' in e ? [e.at, e.to] : [e.at])), ...(points.length ? [points[0].at, points[points.length - 1].at] : [])];
   /* en */ return {
-    trip, title: scope?.title ?? String(info.title ?? 'Trip'), tz, info, points, legs, stamps, entries: kept,
+    trip, title: scope?.title ?? String(info.title ?? 'Trip'), tz, info, points, legs, stamps, entries,
     plan: items
       .map(({ slug, item }) => {
         const t = Date.parse(item.start?.at ?? '');

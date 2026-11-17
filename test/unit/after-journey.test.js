@@ -91,6 +91,18 @@ test('an arrival the road shows no stay for is still in the timeline; live mode 
   assert.deepEqual([/** @type {any} */ (stays[0]).name, stays[0].at, /** @type {any} */ (stays[0]).to], ['Cambria Pines Lodge', at('18:25'), at('19:30')]);
 });
 
+// A live line's first words are logged with it and all of them later (koe/live.js): the journey keeps the later ones, as every reader of the
+// conversation's lines does (conversationLines); a line set aside stays out with whatever is written for it later.
+test("the journey: a heard line's words written down later are its words, its first ones too; a set-aside line's later words stay out", async () => {
+  const k = await liveKit({ live: false, plan: PLAN });
+  await logEvent(k.store, k.trip, { type: 'heard', data: { id: 'h1', source: 'live', text: 'Is it' } }, at('09:40'));
+  await logEvent(k.store, k.trip, { type: 'heard.text', data: { of: 'h1', text: 'Is it far?' } }, at('09:41'));
+  await logEvent(k.store, k.trip, { type: 'heard', data: { id: 'h2', source: 'live', dismissed: true, text: 'Did you' } }, at('09:42'));
+  await logEvent(k.store, k.trip, { type: 'heard.text', data: { of: 'h2', text: 'Did you lock the car?' } }, at('09:43'));
+  const j = await readJourney({ store: k.store, ws: k.ws, trip: k.trip, namer: () => null });
+  assert.deepEqual(j.entries.filter((x) => x.kind === 'said').map((x) => [x.text, x.spoken, x.at]), [['Is it far?', true, at('09:40')]]);
+});
+
 test('the journey: words claimed with "This was for Shiori" were spoken; typed words were not', async () => {
   const k = await liveKit({ live: false, plan: PLAN });
   await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'Typed words']], now: at('09:36') });

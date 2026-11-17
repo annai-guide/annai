@@ -1,4 +1,4 @@
-import { claimLine, quote, conversationLines } from './blocks.js';
+import { claimLine, quote, conversationLines, USER_LINES } from './blocks.js';
 import { ME, newId } from '../scopes.js';
 import { readAppSettings } from '../settings.js';
 import { languageSettings, strayLanguage } from '../languages.js';
@@ -1741,17 +1741,8 @@ export class Agent {
     const events = (await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: [...SAID], ...(latest ? { after: latest.data.to } : {}) })))
       .filter((e) => !NOT_SAID.has(e.type) && (e.data?.half !== 'koe' || e.type === 'heard') && e.data?.tag !== 'koe' && (split || !['note', 'halves'].includes(e.type)) && !e.type.startsWith('out.'));
     const items = [];
-    /** What the user wrote and said, the newest last, for the summary's language: summaryLanguage leaves annai's own lines out and names the language most of those of 3 words or more are in. @type {string[]} */
-    const said = [];
-    /** Heard lines the gate set aside as chatter, whose words may be written down later. @type {Set<string>} */
-    const aside = new Set();
     for (const e of events) {
       const texts = await storedTexts(this.store, e);
-      const text = texts.text ?? e.data?.text; // a short text is kept in data
-      // What the user wrote, and what they said aloud (a heard line with its words, or the words written down for it later).
-      if (e.type === 'heard' && e.data?.dismissed) aside.add(e.data.id); // talk among themselves: not the user's to this
-      const spoken = (e.type === 'heard' && !e.data?.dismissed) || (e.type === 'heard.text' && !aside.has(e.data?.of));
-      if ((e.type === 'msg.user' || spoken) && typeof text === 'string') said.push(text);
       const size = JSON.stringify(e.data ?? {}).length + Object.values(texts).reduce((n, s) => n + s.length, 0);
       items.push({ seq: e.seq, tokens: Math.ceil(size / 3.5) + (e.data?.images?.length ?? 0) * 1600, exchange: e.type === 'wake' && !e.data?.meanwhile });
     }
@@ -1766,6 +1757,9 @@ export class Agent {
     /* en */
     const marker = first ? `the exchange that begins "${first.slice(0, 80)}"` : `event ${cut}`;
     this.#setState('away', { detail: TIDYING });
+    // What the user wrote and said since the last summary, the newest last, a heard line once with its last words, as the recap reads them
+    // (conversationLines): summaryLanguage leaves annai's own lines out and names the language most of those of 3 words or more are in.
+    const said = (await conversationLines(this.store, events.filter((e) => USER_LINES.includes(e.type)))).flatMap(({ text }) => (typeof text === 'string' ? [text] : []));
     const language = summaryLanguage(said, await this.#languages());
     const summary = mode === 'warm' ? await this.#warmSummary(marker, settings, language, o.frozen) : await this.#coldSummary(cut, language);
     if (!summary) return false;
