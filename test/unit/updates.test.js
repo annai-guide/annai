@@ -331,19 +331,21 @@ test('a check the time limit gave up on writes nothing when it answers late: no 
   k.t += DAILY;
   const given = await k.updates.auto();
   assert.deepEqual(given?.failed, ['The check took too long. Check the connection, and try again.']);
-  k.updates.limitMs = 45_000; // the shipped limit for the check that answers: at 20 ms a starved CPU's check gave up too, and wrote that it had
-  k.appCheck = async () => {};
-  k.t += 1000;
-  await k.updates.checkNow();
+  // The stalled check answers before any other check starts, so only the time limit's own generation step can make its answer stale.
   const at = k.updates.checkedAt;
   k.serve(SKILL.replace('version: "1.2"', 'version: "1.3"'));
   k.t += 1000;
   go(); // the stalled check answers now
   for (let i = 0; i < 50; i++) await tick();
-  assert.deepEqual(k.updates.last?.failed, []);
+  assert.deepEqual(k.updates.last?.failed, ['The check took too long. Check the connection, and try again.']);
   assert.equal(k.updates.checkedAt, at);
   assert.equal(k.notices.cards.length, 0);
   assert.deepEqual(await k.updates.plugins(), []);
+  k.updates.limitMs = 45_000; // the shipped limit for the check that answers: at 20 ms a starved CPU's check gave up too, and wrote that it had
+  k.appCheck = async () => {};
+  k.t += 1000;
+  await k.updates.checkNow();
+  assert.deepEqual(k.updates.last?.failed, []);
 });
 
 test("a new version that didn't finish downloading is said, and Settings → Updates is drawn again", async () => {

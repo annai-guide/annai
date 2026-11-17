@@ -182,9 +182,9 @@ test('item 5 (probe L): a server that drops every session it resumes is given up
       await soon(async () => k.agent.live.state === 'open' && !k.agent.live.busy);
     }
     k.server.close(1011, 'Internal error encountered.');
-    await soon(async () => (await blocks(k)).includes('live-dropped'));
-    await wait(100);
+    await wait(2500); // past a fourth try's backoff (250 ms * 2^3 = 2 s on the real clock), were there one
     assert.equal(k.server.connections().length, 4, 'no fourth resume');
+    await soon(async () => (await blocks(k)).includes('live-dropped'));
     assert.notEqual(k.agent.koeState, 'live');
     assert.ok(k.llm.bench.until('m-live') > Date.now(), 'the live model rests');
   } finally {

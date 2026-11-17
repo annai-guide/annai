@@ -1278,9 +1278,9 @@ for (const [name, clips, ms] of /** @type {[string, string[], number][]} */ ([
       ...Array.from({ length: 4 }, () => ({ heard: 'la la', delayMs: ms })),
       { heard: 'is there a gas station', said: 'There is one in two miles.', audio: tone(0.8), delayMs: ms },
       { tool: { name: 'sleep', args: {} } },
-    ], { agent: { secondMs: 200 }, kokoro: [{ rules: [{ match: 'non-stop sound', reply: { delayMs: 1500, toolCalls: [{ name: 'tell_koe', input: { text: 'Only music: go to sleep.' } }, { name: 'sleep', input: {} }] } }, { match: '.', reply: sleep }] }] });
+    ], { agent: { secondMs: 250 }, kokoro: [{ rules: [{ match: 'non-stop sound', reply: { delayMs: 1500, toolCalls: [{ name: 'tell_koe', input: { text: 'Only music: go to sleep.' } }, { name: 'sleep', input: {} }] } }, { match: '.', reply: sleep }] }] });
     try {
-      await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 10 } }); // 2 s here
+      await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 10 } }); // 2.5 s here; at 250 ms a second, as :67 and :1390, the 8 s silence watchdog is 2 s, 600 ms past her answer at 1400 ms (at 200 ms it was 1.6 s, and a 200 ms stall lost her answer)
       await k.voice.unlock();
       k.agent.tap();
       await until(() => k.agent.live.listening, 3000);
@@ -1399,7 +1399,7 @@ test("Kokoro's sleep note waiting on the user's question, whose answer comes dur
     { tool: { name: 'sleep', args: {} } },
   ], { agent: { secondMs: 250 }, kokoro: [{ rules: [{ match: 'non-stop sound', reply: { delayMs: 1500, toolCalls: [{ name: 'tell_koe', input: { text: 'Only music: go to sleep.' } }, { name: 'sleep', input: {} }] } }, { match: '.', reply: sleep }] }] });
   try {
-    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 8 } }); // 2 s here
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 10 } }); // 2.5 s here (the setting's least is 10: 8 read as the default 30)
     await k.voice.unlock();
     k.agent.tap();
     await until(() => k.agent.live.listening, 3000);
