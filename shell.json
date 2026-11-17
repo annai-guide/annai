@@ -1,5 +1,5 @@
 {
-  "build": "36a697bc96bc",
+  "build": "cfe170f7bc94",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -260,7 +260,7 @@
     "/src/ui/screens/mcp.js": "8594db2419e8",
     "/src/ui/screens/model.js": "6976470d905a",
     "/src/ui/screens/models.js": "63ad69a849f8",
-    "/src/ui/screens/notifications.js": "115202bc39c5",
+    "/src/ui/screens/notifications.js": "d1de25d1c4ae",
     "/src/ui/screens/plan.js": "14ce476afd90",
     "/src/ui/screens/plugin-install.js": "0fd5c4f14737",
     "/src/ui/screens/plugin.js": "db6dce86872f",
@@ -299,8 +299,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "2dab26adfa86",
-    "/l10n/zh-Hans.json": "ec2bbb009652",
-    "/l10n/zh-Hant.json": "b5ce0b2d9718"
+    "/l10n/ja.json": "c92879f2ac53",
+    "/l10n/zh-Hans.json": "7824ebeb151d",
+    "/l10n/zh-Hant.json": "b2c4e1c4534e"
   }
 }

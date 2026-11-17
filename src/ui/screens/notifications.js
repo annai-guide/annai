@@ -142,11 +142,13 @@ export async function renderNotifications(ctx) {
     }, t`Send a test notification`);
     acts.push(trial);
   }
-  // Driving Focus lets only people through, never an app (Apple's "Use the Driving Focus on your iPhone", support.apple.com/108384,
-  // read 2026-11-17), so with a navigation app in front annai's reminders come silenced (the user's pick 2026-11-17). A fact only: whether
-  // Driving Focus turns on by itself is the traveller's choice, and annai doesn't advise on a safety feature (the main session, 2026-11-17).
+  // Driving Focus has a list of allowed people and no list of allowed apps (Apple's "Use the Driving Focus on your iPhone",
+  // support.apple.com/108384, read 2026-11-17), so with a navigation app in front annai's reminders come silenced (the user's pick
+  // 2026-11-17). Not "no app gets through": with Apple Intelligence an Intelligent Breakthrough & Silencing switch can let important
+  // ones through (nav-notify-next's final review). A fact only: whether Driving Focus turns on by itself is the traveller's choice,
+  // and annai doesn't advise on a safety feature (the main session, 2026-11-17).
   const driving = where === 'ios' && st.supported === 'yes'
-    ? h('p', { class: 'sub', text: t`While Driving Focus is on, iOS silences annai's reminders (it lets no app through): they come with no sound or banner until it ends.` })
+    ? h('p', { class: 'sub', text: t`While Driving Focus is on, iOS silences annai's reminders (it has no list of allowed apps): they come with no sound or banner until it ends.` })
     : null;
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, crumb('#/settings', t`Settings`)),
