@@ -1123,7 +1123,8 @@ export class Halves {
 
   /**
    * The sign's Stop: Kokoro's turn alone (spec §16.2), and what Koe asked of it meanwhile; Koe's notes start no new turn until Koe
-   * has heard of the Stop or the user asks again (a live Koe's late question would start the plan over).
+   * has heard of the Stop or the user asks again (a live Koe's late question would start the plan over). While she is one Shiori (no
+   * Koe model, or Koe down), it is her whole Stop, and Koe hears nothing: with no model, its turn on the note wrote a false card.
    */
   stopKokoro() {
     this.#stopped = { on: true, seq: Infinity };
@@ -1137,6 +1138,7 @@ export class Halves {
     this.kokoro.drop((w) => (w.kind === 'note' && w.from === 'koe') || (!started && w.scope === scope));
     this.kokoro.poke();
     this.kokoro.idle().then(() => this.#emitHalves(), () => {}); // the sign: that write ends after her last change of state
+    if (!this.#works()) return;
     // Koe hears of it, waiting or not: once its model has seen this, its questions reach Kokoro again.
     this.#nothingTold = false;
     this.#nothingToAdd(/* en */ 'Kokoro was stopped.', 'stopped');

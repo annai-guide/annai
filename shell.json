@@ -1,5 +1,5 @@
 {
-  "build": "8eb14bf4ccb8",
+  "build": "c9334bdf5a6f",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -39,7 +39,7 @@
     "/src/core/agent/budgets.js": "ec0a25e840fb",
     "/src/core/agent/compaction.js": "2a22ce610853",
     "/src/core/agent/context.js": "236aeb22b18a",
-    "/src/core/agent/halves.js": "ef4d85603a79",
+    "/src/core/agent/halves.js": "0d03ac9b9ec1",
     "/src/core/agent/instructions.js": "2fc0f09bf49d",
     "/src/core/agent/listen.js": "ace64ee6f6c6",
     "/src/core/agent/log.js": "be1f6eedd6f8",
@@ -52,7 +52,7 @@
     "/src/core/agent/spoken-yes.js": "066a5f5d247b",
     "/src/core/agent/net.js": "760427139644",
     "/src/core/agent/tools.js": "616bb58c5d19",
-    "/src/core/agent/trip-tools.js": "57f2d95e0afe",
+    "/src/core/agent/trip-tools.js": "f50786304b1a",
     "/src/core/agent/transcript.js": "3095c60a16bd",
     "/src/core/agent/via.js": "557657aae006",
     "/src/core/agent/warmth.js": "7f1be5368415",
@@ -272,7 +272,7 @@
     "/src/ui/screens/simulate.js": "16dddd363254",
     "/src/ui/screens/shiori.js": "6296aaccc836",
     "/src/ui/screens/sees.js": "6a674fc473ae",
-    "/src/ui/screens/talk.js": "85dd27ab3d90",
+    "/src/ui/screens/talk.js": "a1c61f7ec2f1",
     "/src/ui/screens/tools.js": "52d6c4d56a08",
     "/src/ui/screens/trace.js": "c6942f4b451f",
     "/src/ui/screens/trip.js": "5e463aa96888",

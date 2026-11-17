@@ -814,7 +814,7 @@ function datesLine(ctx, scope, list) {
 
 /**
  * The Undo line of the newest hand-over (spec §16.2): under the hand-over's line, then under each record of her work on it. Her turns carry it when their wake
- * names it (loop.js #steps) or their turn.end does (one that took it up partway: the line goes under its last line). Her lines move it while she tells of the
+ * names it (loop.js #steps) or their turn.end does (one that took it up partway: the line goes under its last record if her lines didn't already place it). Her lines move it while she tells of the
  * work: from the hand-over and each such turn's start, until a turn of hers that carries none starts or the user's words come with none running; her turn's
  * card moves it too. Two halves: Kokoro's turns carry it, Koe's lines tell of them. Nothing else moves it (another turn, another job, the user). In a log from
  * before wakes named their hand-over, her lines move it until the user writes or speaks again. Shown while there is something to take back, looked at at each
@@ -922,10 +922,10 @@ function undoLine(ctx, scope, list) {
       // Her turn on it ends: at its turn.end, which names the hand-over the turn ended with (also one it took up partway), or at the error that ends one with
       // none. Another job's error names no turn of hers, and Koe's records name Koe's turns.
       const end = ours && (e.type === 'turn.end' ? handover !== null && d.handover === handover : e.type === 'error' && carries());
-      /** Where the line goes: under the record; at the end of a turn that took the hand-over up partway, under that turn's last line. @type {Element | null} */
+      /** Where the line goes: under the record; at the end of a turn that took the hand-over up partway, under that turn's last line, unless her lines placed it as drawn (telling). @type {Element | null} */
       let under = null;
       if (end) {
-        under = carries() ? node : turn.node;
+        under = carries() ? node : telling ? null : turn.node;
         turn.handover = handover;
         turn.ended = true;
         telling = true; // after a turn that took it up partway too: what she says of it next (Koe's "Filed.") tells of it

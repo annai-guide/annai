@@ -853,6 +853,47 @@ test("Stop while Koe isn't waiting: Koe is told all the same, and once its model
   assert.ok(k.sent['model-0'].length > before, "Koe's later question reached Kokoro");
 });
 
+// Undo tapped while she works stops her through stopKokoro (talk.js settled): while she is one Shiori, Koe has no model, and a note to it ran a
+// turn of Koe's that wrote a false "can't reach her model" card (undo-card's re-review 2, P1).
+test("one Shiori (no Koe model): Kokoro's Stop is her whole Stop, and Koe hears nothing: no note between the halves, no turn of Koe's, no card", async (t) => {
+  useClock(t);
+  const k = await agentKit([{ rules: [{ match: '.', reply: { ...calls(['speak', { text: 'Planned.' }]), delayMs: 300 } }] }], { halves: true });
+  k.agent.send('Plan our afternoon');
+  await until(() => (k.sent['model-0'] ?? []).length > 0, 3000);
+  k.agent.stopKokoro();
+  await k.agent.idle();
+  assert.equal(k.agent.koeState, 'off');
+  assert.deepEqual(await k.events(['note']), []);
+  assert.deepEqual((await k.events(['error'])).map((e) => [e.data.kind, e.data.quiet ?? false, e.data.half ?? '']), [['stopped', true, '']]);
+  assert.deepEqual(k.notices, []);
+  assert.equal(k.agent.busy, false);
+  // The user asks again: she answers, as after any Stop.
+  k.agent.send('Plan it after all');
+  await k.agent.idle();
+  assert.equal(k.sent['model-0'].length, 2);
+  assert.deepEqual(await shown(k), [['msg.user', '', 'Plan our afternoon'], ['msg.user', '', 'Plan it after all'], ['out.speak', '', 'Planned.']]);
+});
+
+test("Koe down (Kokoro talking directly): Kokoro's Stop is her whole Stop too, and Koe hears nothing: no note, no turn of Koe's, no card", async (t) => {
+  useClock(t);
+  const k = await agentKit([{ rules: [
+    { match: '.', reply: calls(['speak', { text: 'Hello.' }]), times: 1 },
+    { match: '.', reply: { ...calls(['speak', { text: 'Planned.' }]), delayMs: 300 } },
+  ] }], { koe: { type: [{ delayMs: 5, error: 'auth', message: 'bad key' }] } });
+  k.agent.send('Hi');
+  await k.agent.idle();
+  assert.equal(k.agent.koeState, 'down');
+  const [requests, errors] = [k.sent['model-0'].length, (await k.events(['error'])).length];
+  k.agent.send('Plan our afternoon');
+  await until(() => k.sent['model-0'].length > requests, 3000);
+  k.agent.stopKokoro();
+  await k.agent.idle();
+  assert.deepEqual(await k.events(['note']), []);
+  assert.deepEqual((await k.events(['error'])).slice(errors).map((e) => [e.data.kind, e.data.quiet ?? false, e.data.half ?? '']), [['stopped', true, 'kokoro']]);
+  assert.equal(k.notices.filter((/** @type {any} */ n) => /can't reach her model/.test(n.title)).length, 0);
+  assert.ok(!(await shown(k)).some(([, , text]) => text === 'Planned.'));
+});
+
 // Fix pass 5 (the review's no-koe-identity probe): with no Koe model, Halves sends and logs exactly what Shiori as one did.
 test('with no Koe model, Halves and the one Agent send the same requests and write the same log, a tapped answer included', async (t) => {
   useClock(t);
