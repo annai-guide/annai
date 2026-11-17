@@ -245,13 +245,15 @@ export function activate(annai) {
         // A cut answer says so last, after where its rows came from, and names the circle to ask again with. The circles ran smallest first,
         // each wider one only while fewer than ROWS came, so the one cut is the first of `radii` holding ROWS places or more, and the rows
         // are its places: it is the first circle with ROWS of the rows that came, by the distance each carries (an outline's is to its
-        // centre, so a park around the point counts in a circle it doesn't reach: that can name a smaller circle than the one cut, which is
-        // still whole, and a larger one only if nearly all 400 are outlines centred outside it). Half of it is the circle before, which
-        // held fewer than ROWS and so came whole, and so does any radius under that; for the smallest circle it is a new one, which can be
-        // cut again and says so again. Half the radius asked would repeat the answer when an inner circle was cut. What the radius gives is
-        // every place within it, few or none; the places between it and the first answer's rows stay unknown (docs/limitations.md).
+        // centre, so a ring-shaped park around the point counts in a circle it doesn't reach: that can name a smaller circle than the one
+        // cut, which is still whole. A larger one needs fewer than ROWS nodes in the cut circle and nearly all the rest outlines centred
+        // beyond it, though Overpass sends every node first: the retry is then cut again, says so, and names a smaller circle). Half of it
+        // is the circle before, which held fewer than ROWS and so came whole, and so does any radius under that; for the smallest circle it
+        // is a new one, which can be cut again and says so again. Half the radius asked would repeat the answer when an inner circle was
+        // cut. What the radius gives is the nearest places within it, few or none (nearby shows the nearest ROWS of OpenStreetMap's and
+        // Wikipedia's together); the places between it and the first answer's rows stay unknown (docs/limitations.md).
         const cutAt = got?.cut ? radii.find((r) => got.rows.filter((x) => x[2] <= r).length >= ROWS) ?? radius : 0;
-        const cut = cutAt ? `\nOpenStreetMap's answer stopped at ${OSM_LIMIT} places, not chosen by distance, so a nearer place may be missing. Ask again with a radius of ${Math.round(cutAt / 2)} m or less to list every place within it.` : '';
+        const cut = cutAt ? `\nOpenStreetMap's answer stopped at ${OSM_LIMIT} places, not chosen by distance, so a nearer place may be missing. Ask again with a radius of ${Math.round(cutAt / 2)} m or less for the nearest places within it.` : '';
         // What didn't answer comes from the pack, where the pack reaches (spec §17 rule 2).
         const missing = [osm === null ? 'OpenStreetMap' : '', wiki === null ? 'Wikipedia' : ''].filter(Boolean);
         const why = busy ? `OpenStreetMap is busy${wiki === null ? " and Wikipedia didn't answer" : ''}` : `${missing.join(' and ')} didn't answer`;

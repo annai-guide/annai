@@ -162,7 +162,7 @@ test("nearby's rows from Tokyo's answer: the station building (a relation) first
 });
 
 /** The line nearby ends its answer with when OpenStreetMap's answer stopped at its 400 (the query's `out center tags 400`), naming the radius to ask again with. @param {number} m */
-const cutLine = (m) => `OpenStreetMap's answer stopped at 400 places, not chosen by distance, so a nearer place may be missing. Ask again with a radius of ${m} m or less to list every place within it.`;
+const cutLine = (m) => `OpenStreetMap's answer stopped at 400 places, not chosen by distance, so a nearer place may be missing. Ask again with a radius of ${m} m or less for the nearest places within it.`;
 
 test("nearby says when OpenStreetMap's answer stopped at 400, counting what Overpass sent, last, beside the other endings; never at 399", async () => {
   // Sydney's probe answer (LIGHTER): the 1000 m circle, cut at 400 nodes in id order, the Opera House (an outline) not among them.
@@ -174,7 +174,8 @@ test("nearby says when OpenStreetMap's answer stopped at 400, counting what Over
   const lines = (await run('nearby', at, (url) => (url.includes('overpass') ? body : wiki))).split('\n');
   assert.equal(lines.length, 42);
   assert.ok(lines.slice(1, 41).every((r) => r.split('\t').length === 7));
-  // Of the default 250, 500 and 1000 m circles the 500 m one holds 67 of these places (the 250 m one 18), so that is the circle cut.
+  // nearby reads this saved answer of the earlier query as cut in the 500 m circle, which holds 67 of these places by full position (the
+  // 250 m one 18): it names 250 m. Today's query stops at 500 m there, whole.
   assert.equal(lines.at(-1), cutLine(250));
   // 399 of the same places: an answer that didn't reach the limit says nothing.
   const whole = (await run('nearby', at, (url) => (url.includes('overpass') ? { ...body, elements: body.elements.slice(0, 399) } : wiki))).split('\n');
@@ -184,7 +185,7 @@ test("nearby says when OpenStreetMap's answer stopped at 400, counting what Over
   // without tags still makes a row), are still cut.
   const bare = body.elements.map((/** @type {any} */ e, /** @type {number} */ k) => (k < 5 ? { type: e.type, id: e.id, tags: e.tags } : e));
   assert.equal((await run('nearby', at, (url) => (url.includes('overpass') ? { ...body, elements: bare } : wiki))).split('\n').at(-1), cutLine(250));
-  // Wikipedia not answering, and no pack: OpenStreetMap's rows, then the line.
+  // Wikipedia not answering, and no pack: OpenStreetMap's rows, then the Wikipedia line, then the cut line.
   const down = (await run('nearby', at, (url) => (url.includes('overpass') ? body : new Response('', { status: 503 })))).split('\n');
   assert.equal(down.length, 43);
   assert.deepEqual(down.slice(-2), ["Wikipedia didn't answer; these are OpenStreetMap places only.", cutLine(250)]);
@@ -240,25 +241,30 @@ test("nearby names the circle to ask again with: half the one cut, which held fe
   const one = await cutAt({ radius: 200 }, 20, 190);
   assert.deepEqual(one.first, [200]);
   assert.equal(one.line, cutLine(100));
-  // The driving companion's 15 km look ahead, the dense area first inside the 7500 m circle (the live call of 2026-11-16, a point in Lake
-  // Michigan, had its first places at 7.6 km): 7500 m was cut, so 3750 m is asked, where half the radius (7500) would repeat the answer.
+  // The driving companion's 15 km look ahead, on a synthetic ring with the dense area inside the 7500 m circle (the live call of
+  // 2026-11-16, a point in Lake Michigan, held fewer than 40 up to 7500 m, was cut at 15 km and named 7500 m): here 7500 m is cut, so
+  // 3750 m is asked, where half the radius (7500) would repeat the answer.
   const drive = await cutAt({ radius: 15000 }, 4000, 7400);
   assert.deepEqual(drive.first, [235, 469, 938, 1875, 3750, 7500, 15000]);
   assert.equal(drive.line, cutLine(3750));
   assert.deepEqual(drive.again, [235, 469, 938, 1875, 3750]);
   // Dense nearer in, the 1875 m circle cut: 938 m.
   assert.equal((await cutAt({ radius: 15000 }, 1000, 1800)).line, cutLine(938));
-  // A circle is told by the distance each row carries, and an outline's is to its centre: 360 roads reaching the circle but centred
-  // 5 km away don't count in it, so with 40 nodes between 300 and 480 m the 500 m circle is the one cut.
+  // A circle is told by the distance each row carries, and an outline's is to its centre: 360 roads counted by their centre, 5 km away
+  // (the mock roads have no outline; Overpass would count one reaching the circle), don't count in it, so with 40 nodes between 300 and
+  // 480 m the 500 m circle is the one cut.
   const { run } = await setup();
   const roads = (/** @type {number} */ n) => Array.from({ length: n }, (_, k) => ({ type: 'way', id: 1000 + k, center: { lat: at.lat + 0.045, lon: at.lng }, tags: { name: `Road ${k}`, historic: 'road' } }));
   const last = async (/** @type {any[]} */ elements) => (await run('nearby', at, (url) => (url.includes('overpass') ? { elements } : noWiki))).split('\n').at(-1);
   assert.equal(await last([...ring(at, 40, 300, 480).elements, ...roads(360)]), cutLine(250));
+  // 39 nodes in the 500 m circle and 361 roads centred off: no circle holds 40 rows, so it is the radius asked, 1000 m, halved. The 40 is
+  // pinned from below: with 39 enough, the 500 m circle would be the one cut and 250 m named.
+  assert.equal(await last([...ring(at, 39, 300, 480).elements, ...roads(361)]), cutLine(500));
   // No circle holding 40 of the rows that came (400 roads, all centred off): still said, naming half the radius asked.
   assert.equal(await last(roads(400)), cutLine(500));
 });
 
-test("nearby says so when Wikipedia didn't answer and no pack reaches the point: its own ending, the cut line, if any, still last", async () => {
+test("nearby says so when Wikipedia didn't answer and no pack reaches the point: its own ending", async () => {
   const { run } = await setup();
   const down = () => new Response('', { status: 503 });
   // OpenStreetMap's places only, said.
