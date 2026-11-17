@@ -217,9 +217,9 @@ export function listedFor(guess, spoken, text = '') {
   return written ?? same ?? (guess === 'Chinese' ? spoken.find((l) => l.id === 'ja') ?? null : null);
 }
 /** The two Chinese rows, Simplified and Traditional. */
-const MANDARIN = ['zh', 'zh-Hant'];
+export const MANDARIN = ['zh', 'zh-Hant'];
 /** The Chinese row a text's characters say, or '' when they don't tell. @param {string} text */
-const hanRow = (text) => { const [hans, hant] = [count(text, HANS), count(text, HANT)]; return hans > hant ? 'zh' : hant > hans ? 'zh-Hant' : ''; };
+export const hanRow = (text) => { const [hans, hant] = [count(text, HANS), count(text, HANT)]; return hans > hant ? 'zh' : hant > hans ? 'zh-Hant' : ''; };
 
 /** Whether a locale is written in Traditional characters: its script when it names one (zh-Hans-HK is Simplified), else its region's. @param {string} locale */
 const traditional = (locale) => { try { return new Intl.Locale(locale).maximize().script === 'Hant'; } catch { return false; } };

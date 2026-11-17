@@ -206,6 +206,9 @@ test("a few words in another script don't decide the language: the script must m
   assert.equal(languageOf('我们今晚去哪里吃饭'), 'Chinese');
   assert.equal(languageOf('Где можно поужинать сегодня вечером?'), 'Russian');
   assert.equal(summaryLanguage(['We are vegetarian.', 'Also no nuts, please.', 'OK']), 'English, the language most of what the user wrote is in');
+  // Lines of two words that do name a language ('はい' is kana, 'Big Sur' reads as French) count for nothing, however many.
+  assert.equal(summaryLanguage(['We are vegetarian.', 'Also no nuts, please.', 'はい', 'はい']), 'English, the language most of what the user wrote is in');
+  assert.equal(summaryLanguage(['Big Sur', 'はい']), "English, the app's language (nothing the user wrote names a language)");
   assert.equal(summaryLanguage(['OK']), "English, the app's language (nothing the user wrote names a language)", "no line names one: the phone's answer, never a quoted line");
 });
 
@@ -282,6 +285,35 @@ test('with both Chinese listed, the summary is in the one the user wrote in, by 
   assert.equal(summaryLanguage('我們今晚去邊度食飯', cantonese), 'Cantonese, the language most of what the user wrote is in', 'Cantonese listed first keeps Traditional characters');
 });
 
+// The two Chinese rows are one language for the count (the review of summary-count-next, F4; second opinions 1 to 3): a line is counted for the family, and the
+// row is named once, from the family's lines together. Counted row by row, a split trip lost to a third language, and lines whose characters tell nothing (the
+// first listed) outvoted the Traditional ones that do.
+test("with both Chinese listed, their lines count as one language, and the row is named from all of them together (the review of summary-count-next, F4)", async () => {
+  const { languageSettings } = await import('../../src/core/languages.js');
+  const both = languageSettings({ languages: { spoken: ['zh', 'zh-Hant', 'en'] } }, 'en-US');
+  const most = (/** @type {string} */ name) => `${name}, the language most of what the user wrote is in`;
+  const [e1, e2] = ['Where should we eat tonight?', 'Is the museum open today?'];
+  const [s1, s2, s3] = ['我们今晚去哪里吃饭', '我们明天去哪里', '我们这个周末去哪里'];
+  const [t1, t2] = ['我們今晚去哪裡吃飯', '我們明天去哪裡'];
+  // Two Simplified, two Traditional and three English lines: Chinese is four lines, English three (counted row by row: English).
+  assert.equal(summaryLanguage([e1, s1, t1, e2, s2, t2, e1], both), most('Chinese (Traditional)'), 'the characters tie: the newest line that tells');
+  assert.equal(summaryLanguage([e1, t1, s1, e2, t2, s2, e1], both), most('Chinese (Simplified)'), 'the characters tie: the newest line that tells');
+  assert.equal(summaryLanguage([e1, s1, t1, e2, s2, s3, e1, t2], both), most('Chinese (Simplified)'), 'more Simplified characters than Traditional ones, whatever the newest');
+  // A Traditional writer whose lines mostly carry no character that tells: three that do, five that don't, four English (counted row by row: Simplified,
+  // the first listed, five lines against three).
+  const plain = ['好想去看夜景', '今天天氣很好', '我想吃拉麵', '大家好', '想去海邊走走'];
+  assert.equal(summaryLanguage([e1, plain[0], t1, plain[1], e2, plain[2], t2, plain[3], e1, plain[4], '我們這個週末去哪裡', e2], both), most('Chinese (Traditional)'));
+  // The listed order, not the lines, places lines that tell nothing: with Traditional first, they are Traditional.
+  const hantFirst = languageSettings({ languages: { spoken: ['zh-Hant', 'zh', 'en'] } }, 'en-US');
+  assert.equal(summaryLanguage([e1, ...plain, e2, e1], hantFirst), most('Chinese (Traditional)'));
+  // One Chinese row listed, or Cantonese (not of the family): as before.
+  const simplified = languageSettings({ languages: { spoken: ['zh', 'en'] } }, 'en-US');
+  assert.equal(summaryLanguage([e1, t1, t2, t1, e2], simplified), most('Chinese (Simplified)'), 'Traditional lines with only Simplified listed');
+  const cantonese = languageSettings({ languages: { spoken: ['yue', 'zh', 'en'] } }, 'en-US');
+  assert.equal(summaryLanguage([e1, s1, s2, s3, e2], cantonese), most('Cantonese'), 'Cantonese listed first takes the characters of both');
+  assert.equal(summaryLanguage([e1, s1, t1, s2, e2], languageSettings({ languages: { spoken: ['zh', 'yue', 'zh-Hant', 'en'] } }, 'en-US')), most('Chinese (Simplified)'), 'with Cantonese between them, the family is still the two Chinese rows');
+});
+
 test('what the user said aloud counts for the summary\'s language, not only what they typed (review item 5, Step S7)', async () => {
   const { updateAppSettings } = await import('../../src/core/settings.js');
   const k = await agentKit([[say('ok')]], { utility: [{ text: 'Summary.' }] });
@@ -344,6 +376,10 @@ test("each line of 3 words or more that names a language counts once; the langua
   assert.equal(summaryLanguage(['今日は楽しかった', '明日は雨ですか', 'ok', 'thanks', 'bye'], both), 'Japanese, the language most of what the user wrote is in');
   assert.equal(summaryLanguage(['今日は楽しかった', '明日は雨ですか', 'thanks', 'ok'], phone), 'Japanese, the language most of what the user wrote is in');
   assert.equal(summaryLanguage(['今日は楽しかった', '明日は雨ですか', 'ok', 'hmm', 'sure'], ja), 'Japanese, the language most of what the user wrote is in');
+  // The language with the most lines is named, not the one of the newest line that names one: here that line is English, and Japanese has two.
+  assert.equal(summaryLanguage(['今日は楽しかった', '明日は雨ですか', 'Is it far?'], phone), 'Japanese, the language most of what the user wrote is in');
+  assert.equal(summaryLanguage(['今日は楽しかった', '明日は雨ですか', 'Is it far?', 'ok'], both), 'Japanese, the language most of what the user wrote is in');
+  assert.equal(summaryLanguage(['Is it far?', 'Where should we eat tonight?', '今日は楽しかった'], ja), 'English, the language most of what the user wrote is in');
   // No line of 3 words counts: the short lines are not read together either (joined, these read as Spanish), so the phone's answer.
   assert.equal(summaryLanguage(['hola thanks', 'hola bonjour', 'OK'], phone), "English, the language of the user's phone (nothing the user wrote names a language)");
   // Nothing names one: chosen, the first listed; not chosen, the phone's, never a quoted line.
@@ -380,6 +416,9 @@ test("most of the user's lines name the summary's language, not the newest: a cl
   assert.equal(summaryLanguage([j1, e1], phone), most('English'));
   assert.equal(summaryLanguage([e1, j1, e2, j2], phone), most('Japanese'));
   assert.equal(summaryLanguage([j1, e1, j2, e2], jaPhone), most('English'));
+  // More recently written in, not first written later: Japanese was written in last here, English first written in later (without the Map's delete, English).
+  assert.equal(summaryLanguage([j1, e1, e2, j2], phone), most('Japanese'));
+  assert.equal(summaryLanguage([e1, j1, j2, e2], jaPhone), most('English'));
   // With [en, ja] listed, the Spanish line is none of theirs: English and Japanese tie, and Japanese is the newer (main: English, the first listed).
   assert.equal(summaryLanguage([e1, j1, spanish], both), most('Japanese'));
 });
@@ -426,7 +465,7 @@ test("a line of fewer than 3 words counts for no language in the summary's", asy
   assert.equal(summaryLanguage(['Booking confirmation: Hotel Nikko Tokyo, 2 nights from 12 March, reference ABC123, check-in after 3 pm, breakfast included', 'はい', '今日はどこに行きますか', 'ok'], phone), 'Japanese, the language most of what the user wrote is in');
   // Only short lines: none counts, so a lone 新宿 is the phone's answer (the round's rule read the lines together: Chinese on an English phone).
   assert.equal(summaryLanguage(['新宿'], phone), "English, the language of the user's phone (nothing the user wrote names a language)");
-  // Short lines count whether the languages are chosen or not, and 'answer' still decides before any line.
+  // The size applies whether the languages are chosen or not (a short line counts for no language), and 'answer' still decides before any line.
   assert.equal(summaryLanguage([eat, '新宿', 'ok'], languageSettings({ languages: { spoken: ['en', 'ja'], answer: 'ja' } }, 'en-US')), 'Japanese, the language Shiori answers in');
 });
 
@@ -470,6 +509,28 @@ test("housekeeping counts every line since the last summary: a Japanese talk tha
   }
   assert.equal(await k.agent.compact('cold'), true);
   assert.match(k.requests.at(-1).system, /as plain text, in Japanese, the language most of what the user wrote is in\.$/);
+});
+
+// The window is the lines since the last summary (loop.js compact: the events after the last compaction's end): the second summary of a trip that
+// changed language is in the new one, though the whole trip has more lines in the old (the review of summary-count-next, second opinion 3).
+test("housekeeping counts the lines since the last summary, not the whole trip: a trip that changed language is summarized in the new one the second time", async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  const k = await agentKit([[say('ok')]], { utility: [{ text: 'First summary.' }, { text: 'Second summary.' }] });
+  await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'] } });
+  const english = ['Where should we eat tonight?', 'Is the museum open today?', 'What is the weather like there?', 'Can we get tickets for the show?', 'How far is it from here?'];
+  for (const m of english) {
+    k.agent.send(m);
+    await k.agent.idle();
+  }
+  assert.equal(await k.agent.compact('cold'), true);
+  assert.match(k.requests.at(-1).system, /as plain text, in English, the language most of what the user wrote is in\.$/);
+  // The first summary kept the last three English exchanges word for word; the second window is those three and four Japanese lines.
+  for (const m of ['今日の夕食はどこにしますか', 'ラーメンがいいな', '明日の予定は？', '駅の近くで']) {
+    k.agent.send(m);
+    await k.agent.idle();
+  }
+  assert.equal(await k.agent.compact('cold'), true);
+  assert.match(k.requests.at(-1).system, /as plain text, in Japanese, the language most of what the user wrote is in\.$/, 'the whole trip is five English lines against four Japanese');
 });
 
 test("a call that failed after reporting its prompt doesn't add to the next prompt's size: housekeeping isn't due early (the third review of phone-fixes-1, R3)", async () => {

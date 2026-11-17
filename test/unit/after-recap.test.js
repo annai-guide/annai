@@ -127,6 +127,7 @@ test('the recap is written in the language the Languages setting and the user\'s
   await k.ws.write(ME, '/profile.md', '# Profile\n\n- Language: English\n', { author: 'user' });
   await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'] } });
   await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: '明日は何時に出発する？' } }, at('10:30'));
+  await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: '夕食はどこで食べますか' } }, at('10:31')); // two against the fixture's one English line, not a tie
   await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'en-US' });
   assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language most of what the user wrote is in\.$/m);
   await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'], answer: 'en' } });
@@ -152,6 +153,7 @@ test("a heard line annai couldn't write down is not the user's words: the recap'
   const k = await aTrip([{ text: RECAP }]);
   await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'] } });
   await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: '明日は何時に出発する？' } }, at('10:30'));
+  await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: '夕食はどこで食べますか' } }, at('10:31')); // two against the fixture's one English line, not a tie
   await logEvent(k.store, k.trip, { type: 'heard', data: { id: 'h-1' } }, at('11:00'));
   await logEvent(k.store, k.trip, { type: 'heard.text', actor: 'system', data: { of: 'h-1', text: NOT_TRANSCRIBED, by: null } }, at('11:00'));
   await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'en-US' });
