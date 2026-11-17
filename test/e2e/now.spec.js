@@ -58,6 +58,24 @@ test('an empty plan: Now and Driving say nothing more is planned, with live mode
   await expect(page.locator('.notice', { hasText: 'Something went wrong' })).toHaveCount(0);
 });
 
+test("Driving with only a stop a flight away (a position far from the trip) says nothing is planned within a day's drive, not nothing at all", async ({ page, context }) => {
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation({ latitude: 36.27, longitude: -121.807, accuracy: 10 }); // Big Sur
+  await openApp(page);
+  const trip = await startTrip(page, 'Alaska');
+  // Made up: lunch in Anchorage, about 3,300 km from where the phone is.
+  await writeRecords(page, trip, { write: { '/plan/lunch.json': { id: 'lunch', title: 'Lunch in Anchorage', fixed: true, start: { at: soon(150), tz: 'UTC' }, place: { name: 'A cafe', lat: 61.2, lng: -149.9 } } } });
+  await page.goto('/#/now');
+  await expect(page.getByRole('heading', { name: 'Alaska' })).toBeVisible();
+  await page.locator('.live-chip').click();
+  await expect(page.locator('.live-chip')).toHaveText(/^GPS on\b/);
+  await page.goto('/#/drive');
+  await expect(page.getByRole('heading', { name: 'Driving' })).toBeVisible();
+  const strip = page.getByRole('list', { name: 'The road ahead' });
+  await expect(strip).toContainText("Nothing more is planned within a day's drive.");
+  await expect(strip).not.toContainText('Nothing more is planned with a place.');
+});
+
 test('a trip with thousands of location points: Now, the Plan and the conversation still show the latest card and the plan', async ({ page }) => {
   await openApp(page);
   const trip = await startTrip(page, 'Big Sur');

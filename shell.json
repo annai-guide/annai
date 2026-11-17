@@ -1,5 +1,5 @@
 {
-  "build": "c16a67dcb2ea",
+  "build": "d31e52415e23",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -96,9 +96,9 @@
     "/src/core/llm/kept.js": "312be2a7089a",
     "/src/core/live/activity.js": "d1fe254c6571",
     "/src/core/live/clock.js": "e8699d74a329",
-    "/src/core/live/geo.js": "2ac332367fbe",
+    "/src/core/live/geo.js": "f0c643995eb3",
     "/src/core/live/live.js": "a784455a3349",
-    "/src/core/live/plan-watches.js": "4174024df20f",
+    "/src/core/live/plan-watches.js": "9fd13a7f8c5f",
     "/src/core/live/sim-run.js": "91b84ce6a313",
     "/src/core/live/simulate.js": "d42f97c8d368",
     "/src/core/live/triggers.js": "1e07368d82e6",
@@ -251,7 +251,7 @@
     "/src/ui/screens/add.js": "6d369b0c0548",
     "/src/ui/screens/backups.js": "a30e61a7fbcb",
     "/src/ui/screens/booking.js": "5a278fa32ad2",
-    "/src/ui/screens/drive.js": "a54e821e305d",
+    "/src/ui/screens/drive.js": "0182673e6b44",
     "/src/ui/screens/experimental.js": "9f8609693e3b",
     "/src/ui/screens/ext.js": "83c0244cf0d6",
     "/src/ui/screens/file.js": "850b43de0461",
@@ -300,8 +300,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "19d21ca4201e",
-    "/l10n/zh-Hans.json": "61d4171b542a",
-    "/l10n/zh-Hant.json": "325c10641bec"
+    "/l10n/ja.json": "fa7f7a30b343",
+    "/l10n/zh-Hans.json": "503b53ca728f",
+    "/l10n/zh-Hant.json": "08718ac27311"
   }
 }

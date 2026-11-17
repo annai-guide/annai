@@ -64,6 +64,8 @@ export const NOT_PLANNED_M = 500;
 const MIN = 60_000;
 /** @param {any} p @returns {p is { lat: number, lng: number }} */
 const hasPoint = (p) => Boolean(p) && typeof p.lat === 'number' && typeof p.lng === 'number' && Number.isFinite(p.lat) && Number.isFinite(p.lng);
+/** Whether a plan item is of a kind, by its own or its booking's. @param {any} it @param {any} booking @param {string} k */
+const isKind = (it, booking, k) => it.kind === k || booking?.kind === k;
 /** "/plan/nepenthe.json" → "nepenthe". @param {string} path */
 const slug = (path) => path.replace(/^\/plan\//, '').replace(/\.json$/, '');
 
@@ -86,12 +88,14 @@ export function planWatches(items, bookings, { fallbackTz }) {
   let prev = null;
   /** When the fixed flights and trains so far have all arrived. @type {number | null} */
   let landed = null;
-  // The items on each booking: one that several flight items link (a trip out and back, with connections, on one confirmation) names none of them.
+  // The flight and train legs on each booking: one that several of them link (a trip out and back, with connections, on one confirmation) names
+  // none of them. Another item linked to it (a transfer, a hotel) isn't a leg.
   /** @type {Map<string, number>} */
   const onBooking = new Map();
   for (const x of timed) {
     const ref = bookingRef(x.item.booking);
-    if (ref) onBooking.set(ref, (onBooking.get(ref) ?? 0) + 1);
+    const booking = ref ? bookings.get(ref) : null;
+    if (ref && (isKind(x.item, booking, 'flight') || isKind(x.item, booking, 'rail'))) onBooking.set(ref, (onBooking.get(ref) ?? 0) + 1);
   }
   /** @type {Place[]} */
   const places = [];
@@ -103,7 +107,7 @@ export function planWatches(items, bookings, { fallbackTz }) {
     const place = hasPoint(it.place) ? { name: String(it.place.name ?? title), lat: it.place.lat, lng: it.place.lng } : null;
     const ref = bookingRef(it.booking) ?? '';
     const booking = bookings.get(ref) ?? null;
-    const kind = (/** @type {string} */ k) => it.kind === k || booking?.kind === k;
+    const kind = (/** @type {string} */ k) => isKind(it, booking, k);
     const flight = kind('flight');
     const carrier = flight || kind('rail');
     // A flight is named by its booking, unless the booking has several legs: then by the item's own title, as any item.
@@ -136,9 +140,10 @@ export function planWatches(items, bookings, { fallbackTz }) {
         }
       }
       add('arrived', `${place.name}: ${title}.${notes ? ` ${notes}` : ''}`, { event: 'arrived', title, place: place.name, ...(notes ? { notes } : {}) }, there);
-      // A stay's check-in is the earliest time to arrive, not where the traveller is when the next item comes: it can sort between two
-      // flights (the main session's check of a real plan, 2026-11-16: it became the second flight's "from", 2475 km away).
-      if (!kind('lodging')) prev = place;
+      // Every place is the stop before the next item, a stay's too: with no position, it is the best guess of where the traveller is (the
+      // flight home after a stay 100 km from the airport counts from the stay; with the stay left out it said "Leave soon" 1 h 44 min late).
+      // One a flight away from that item is none (leaving()): a check-in sorts between two flights, 2475 km from the second.
+      prev = place;
       places.push(place);
     } else if (base.fixed) {
       add('coming-up', `In ${COMING_UP_MIN} min: ${base.what}.`, { event: 'coming-up', what: short });
@@ -252,18 +257,24 @@ const trip = (km, activity) => {
  */
 const drive = (km, w) => km * 1000 > w.radius && km <= LEG_MAX_KM;
 
-/** Whether the user's position is a flight from the item (farther than LEG_MAX_KM): no place to count a drive from. @param {any} w @param {Moment} m */
-const away = (w, m) => m.fix !== null && meters(m.fix, w.place) / 1000 > LEG_MAX_KM;
+/**
+ * Whether a place is a flight from the item (farther than LEG_MAX_KM): no place to count a drive from. One rule for the user's position
+ * and the plan's stop before alike. @param {{ lat: number, lng: number }} p @param {any} w
+ */
+const far = (p, w) => meters(p, w.place) / 1000 > LEG_MAX_KM;
+
+/** Whether the user's position is a flight from the item. @param {any} w @param {Moment} m */
+const away = (w, m) => m.fix !== null && far(m.fix, w);
 
 /**
  * When to leave for an item: from where the user is (or was, on a catch-up's first look), else from the plan's stop before; with
- * neither, half an hour before; not before the flights and trains before it arrive (after). A position a flight away counts as
- * none, so the push relay still holds a copy for what is at the destination (the review's F1); the screen says nothing then (CHECK.leave).
- * Null when it is no drive.
+ * neither, half an hour before; not before the flights and trains before it arrive (after). A position or a stop before a flight away
+ * counts as none, so the push relay still holds a copy for what is at the destination (the review's F1) and a stay between two
+ * flights isn't counted from; the screen says nothing from such a position (CHECK.leave). Null when it is no drive.
  * @param {any} w @param {Moment} m
  */
 function leaving(w, m) {
-  const from = (away(w, m) ? null : m.fix) ?? w.from ?? null;
+  const from = (away(w, m) ? null : m.fix) ?? (w.from && !far(w.from, w) ? w.from : null);
   const after = w.after ?? -Infinity;
   if (!from) return { due: Math.max(w.by - 30 * MIN, after), km: null, minutes: null, words: '', mode: '' };
   const km = meters(from, w.place) / 1000;

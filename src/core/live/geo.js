@@ -44,7 +44,10 @@ export function keep(last, fix, moving) {
   return moving && fix.at - last.at >= KEEP_MS;
 }
 
-/** The rough travel estimate (spec §11.3): straight-line distance × a detour factor ÷ a typical speed, so reminders err early. */
+/**
+ * The rough travel estimate (spec §11.3): straight-line distance × a detour factor, at a typical speed, so reminders err early. TRAVEL has
+ * the town speed (a drive's first TOWN_KM of road, and all of a walk); a drive's road beyond it goes at HIGHWAY_KMH (below).
+ */
 /* en */ export const TRAVEL = Object.freeze({ drive: { detour: 1.4, kmh: 50, words: 'by car' }, walk: { detour: 1.3, kmh: 4.5, words: 'on foot' } });
 /**
  * A drive's first TOWN_KM of road go at TRAVEL's 50 km/h (town driving, with lights and stops: the speed the estimate always had, and

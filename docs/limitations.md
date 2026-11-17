@@ -869,7 +869,7 @@ Each entry here was approved by the user. Reviewers read this file first and don
 ### Stays, flights and trains are recognised only by the kinds `lodging`, `flight` and `rail`
 - **Kind:** deferred.
 - **What the traveller sees:** a stay or a train written as a plan item that is linked to no booking, with a kind such as "hotel" or "train" (a plan item's kind is any string), isn't recognised. An unlinked "hotel" keeps its leave and running late within 1000 km; an unlinked "train" is no carrier, so a fixed item after it counts a drive from where the train left (on screen, on the train: "Leave soon" with the minutes of a long drive); an unlinked flight gets no 2-hour margin and a 300 m arrival circle.
-- **Why:** the plan item's kind is free text (`src/plugins/core-schemas/schemas.js`), and the plan-item example in Shiori's instructions has no kind.
+- **Why:** the plan item's kind is free text (`src/plugins/core-schemas/schemas.js`), and neither plan-item example in Shiori's text gives a kind a reminder reads: the one in her instructions (`src/core/agent/instructions.js`) has none, and the plan-a-trip skill's has `"kind": "meal"`; the kinds `flight`, `rail` and `lodging` are named only for a booking.
 - **Revisit when:** the next version, as its own change: an enum for the plan item's kind with the synonyms a stored format accepts ("train" for `rail`, "hotel" and "stay" for `lodging`), one line in the instructions, and a look at the plans that exist first.
 
 ### A check-in reached more than 3 hours late gets no "arrived" cue
@@ -883,3 +883,15 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the traveller sees:** a fixed flight item with no place gets "In 15 min: Flight … departs 14:05" and nothing earlier, so the 2-hour airport pick doesn't reach it.
 - **Why:** without a place there is no drive to count and no airport to be at; the plan's other items work the same way. Older than leave-far.
 - **Revisit when:** the next version: take the airport's place from the linked booking, or time it by the half hour before the 2-hour mark as a flight with no position is.
+
+### A closed annai can say "Leave soon" for an item at the destination, timed before the flight that gets the traveller there
+- **Kind:** deferred.
+- **What the traveller sees:** with live mode off, or the phone's last position a flight away (at home or at the departure gate), the push relay holds a "Leave soon" copy for a fixed item at the destination other than a stay (a car pick-up at the arrival airport, a meeting), half an hour before the item. If the plan times it before the last flight there lands, the notification comes while the traveller is at the hub or in the air: "Leave soon: Car pick-up at 16:00, Car hire desk." (no minutes). The reminder waits only for the flight before it in the plan, not for the one that takes the traveller there.
+- **Why:** a position a flight away counts as none, so the copy is counted from the plan's stop before or the half hour (leave-far's F1, so the closed annai still says it at the destination); the wait for a landing is the fixed flights and trains before the item in the plan, and the plan can't tell which flight takes the traveller to it.
+- **Revisit when:** the next version, as its own change: look ahead to the next fixed flight or train after the item, and when the item is timed before it lands, and the traveller's place (or the stop before) is a flight away from the item, hold the copy until that carrier lands (about 8 lines in `planWatches`).
+
+### The Driving strip keeps a flight already left as the next stop
+- **Kind:** deferred.
+- **What the traveller sees:** a flight or train stays "not over" until its end (else half an hour from its start), and its place is the place it leaves from. Driving while a flight is in the air (a position within a day's drive of the departure airport, such as the first hour of the flight, or a train on its way) lists it as the next stop: "SFO T3, 475 km, 512 min".
+- **Why:** the strip counts an item over by its end, as Now does, and has no notion of an item the traveller has already left from. Older than leave-far.
+- **Revisit when:** the next version, as its own change: the strip leaves out a flight or train once its start has passed.

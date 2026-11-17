@@ -653,22 +653,22 @@ bgn4sv	ok	Shiori answers in the language you speak to her	Shioriは話しかけ�
 k4u05v	ok	The language you speak to her	話しかけた言語に合わせる	src/core/languages.js:362	
 cc69cl	ok	None picked: annai uses the browser’s language.	未選択の場合は、ブラウザの言語を使います。	src/core/languages.js:363	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
 1dyfzsg	ok	A simulation is already running.	シミュレーションはすでに実行中です。	src/core/live/live.js:307	
-157qf8n	ok	Flight {0} departs {1}, {2}	フライト{0}（{1}発、{2}）	src/core/live/plan-watches.js:191	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
-1tvx4k9	ok	Flight {0} departs {1}	フライト{0}（{1}発）	src/core/live/plan-watches.js:191	{0} = w.flight; {1} = time
-1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}、{2}）	src/core/live/plan-watches.js:192	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
-1wwrs1d	ok	{0} at {1}	{0}（{1}）	src/core/live/plan-watches.js:192	{0} = w.title; {1} = time; Note: an item in a few words: its title, then its time.
-ypynbt	ok	Leave soon: {0}.	そろそろ出発：{0}。	src/core/live/plan-watches.js:203	{0} = what
-1nq6h1n	ok	About {0} min by car.	車で約{0}分です。	src/core/live/plan-watches.js:204	{0} = num(say.minutes)
-1s9ayzz	ok	About {0} min on foot.	徒歩で約{0}分です。	src/core/live/plan-watches.js:204	{0} = num(say.minutes)
-osmwu5	ok	Leave in about {0} min: {1}.	約{0}分後に出発：{1}。	src/core/live/plan-watches.js:204	{0} = num(say.left ?? LEAVE_LEAD_MIN); {1} = what
-12cmqu6	ok	Running late: {0}.	遅れています：{0}。	src/core/live/plan-watches.js:205	{0} = what
-3qig1w	ok	About {0} min away.	到着まであと約{0}分です。	src/core/live/plan-watches.js:205	{0} = num(say.minutes)
-ub25px	ok	Planned now: {0}, at {1}.	今の予定：{0}（{1}）。	src/core/live/plan-watches.js:206	{0} = String(say.title); {1} = String(say.place); Note: label: value, the place in brackets.
-195jjr0	ok	{0}: {1}.	{0}：{1}。	src/core/live/plan-watches.js:207	{0} = String(say.place); {1} = String(say.title); Note: a place, then the plan item there.
-1yqg2at	ok	In {0} min: {1}.	あと{0}分：{1}。	src/core/live/plan-watches.js:208	{0} = num(say.left ?? COMING_UP_MIN); {1} = what
-9s8no9	ok	You've stopped somewhere that isn't on the itinerary.	旅程にない場所に立ち寄っています。	src/core/live/plan-watches.js:210	
-4lxlla	ok	Nothing more is on the itinerary.	旅程に残っている予定はありません。	src/core/live/plan-watches.js:211	
-yc6345	ok	Next on the itinerary: {0} at {1}.	次の予定：{0}（{1}）。	src/core/live/plan-watches.js:212	{0} = say.next.title; {1} = say.next.later ? dayClock(say.next.at, say.next.tz) : clock(say.next.at, say.next.tz)
+157qf8n	ok	Flight {0} departs {1}, {2}	フライト{0}（{1}発、{2}）	src/core/live/plan-watches.js:196	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
+1tvx4k9	ok	Flight {0} departs {1}	フライト{0}（{1}発）	src/core/live/plan-watches.js:196	{0} = w.flight; {1} = time
+1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}、{2}）	src/core/live/plan-watches.js:197	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
+1wwrs1d	ok	{0} at {1}	{0}（{1}）	src/core/live/plan-watches.js:197	{0} = w.title; {1} = time; Note: an item in a few words: its title, then its time.
+ypynbt	ok	Leave soon: {0}.	そろそろ出発：{0}。	src/core/live/plan-watches.js:208	{0} = what
+1nq6h1n	ok	About {0} min by car.	車で約{0}分です。	src/core/live/plan-watches.js:209	{0} = num(say.minutes)
+1s9ayzz	ok	About {0} min on foot.	徒歩で約{0}分です。	src/core/live/plan-watches.js:209	{0} = num(say.minutes)
+osmwu5	ok	Leave in about {0} min: {1}.	約{0}分後に出発：{1}。	src/core/live/plan-watches.js:209	{0} = num(say.left ?? LEAVE_LEAD_MIN); {1} = what
+12cmqu6	ok	Running late: {0}.	遅れています：{0}。	src/core/live/plan-watches.js:210	{0} = what
+3qig1w	ok	About {0} min away.	到着まであと約{0}分です。	src/core/live/plan-watches.js:210	{0} = num(say.minutes)
+ub25px	ok	Planned now: {0}, at {1}.	今の予定：{0}（{1}）。	src/core/live/plan-watches.js:211	{0} = String(say.title); {1} = String(say.place); Note: label: value, the place in brackets.
+195jjr0	ok	{0}: {1}.	{0}：{1}。	src/core/live/plan-watches.js:212	{0} = String(say.place); {1} = String(say.title); Note: a place, then the plan item there.
+1yqg2at	ok	In {0} min: {1}.	あと{0}分：{1}。	src/core/live/plan-watches.js:213	{0} = num(say.left ?? COMING_UP_MIN); {1} = what
+9s8no9	ok	You've stopped somewhere that isn't on the itinerary.	旅程にない場所に立ち寄っています。	src/core/live/plan-watches.js:215	
+4lxlla	ok	Nothing more is on the itinerary.	旅程に残っている予定はありません。	src/core/live/plan-watches.js:216	
+yc6345	ok	Next on the itinerary: {0} at {1}.	次の予定：{0}（{1}）。	src/core/live/plan-watches.js:217	{0} = say.next.title; {1} = say.next.later ? dayClock(say.next.at, say.next.tz) : clock(say.next.at, say.next.tz)
 1jok3pb	ok	A simulation is already running. Stop it first.	シミュレーションはすでに実行中です。先に停止してください。	src/core/live/sim-run.js:90	
 ujhqxv	ok	Untitled trip	名称未設定の旅	src/core/live/sim-run.js:237	Note: a new simulated trip's name when its itinerary has none, before " (simulation)" is added.
 1426icm	ok	That trip isn't on this device any more.	その旅はもうこの端末にありません。	src/core/live/sim-run.js:277	
@@ -1655,20 +1655,21 @@ iw9ebk	ok	Restroom	トイレ	src/ui/screens/drive.js:18
 7quqpk	ok	Go to Trips	「旅」へ	src/ui/screens/drive.js:51	
 ov2ou9	ok	Open a trip to see the road ahead.	旅を開くと、この先の道が表示されます。	src/ui/screens/drive.js:51	
 sxc7mr	ok	The road ahead	この先の道	src/ui/screens/drive.js:57	
-1b4mdx5	ok	You (finding where)	現在地（確認中）	src/ui/screens/drive.js:71	
-591tvw	ok	You (GPS off)	現在地（GPSオフ）	src/ui/screens/drive.js:71	
-lawr3a	ok	You	現在地	src/ui/screens/drive.js:71	context: route strip; Note: the first row of Driving's route strip, where you are now (with a GPS fix); the rows beside it are "You (finding where)" and "You (GPS off)". Replay's speaker tag "You" is its own row.
-ugf9pe	ok	at {0}	{0}予定	src/ui/screens/drive.js:74	{0} = s.row.time; Note: A stop's time on the plan, on the road ahead ("at 14:00").
-102oezx	ok	Nothing more is planned with a place.	場所の決まった予定はもうありません。	src/ui/screens/drive.js:75	
-l329ve	ok	Directions to {0}	{0}への経路	src/ui/screens/drive.js:81	{0} = next.name
-kb2apf	ok	annai hasn't downloaded its maps links yet; it needs to be online once.	地図のリンクがまだダウンロードされていません。一度インターネットに接続すると使えるようになります。	src/ui/screens/drive.js:83	
-1tuqp1	ok	Asked Shiori: {0}	Shioriに聞きました：{0}	src/ui/screens/drive.js:89	{0} = text
-1imrexv	ok	Shiori wasn't asked	Shioriに聞けませんでした	src/ui/screens/drive.js:91	
-bigbss	ok	Try again.	もう一度お試しください。	src/ui/screens/drive.js:91	
-ah9gez	ok	Turn GPS on	GPSをオンにする	src/ui/screens/drive.js:96	
-14ltb7u	ok	The itinerary has no places to choose from yet.	旅程にはまだ選べる場所がありません。	src/ui/screens/drive.js:99	
-1sedy1m	ok	Where are you?	いまどこにいますか？	src/ui/screens/drive.js:99	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
-1w8zbso	ok	annai now knows you're at {0}.	現在地を{0}に設定しました。	src/ui/screens/drive.js:104	{0} = p.name
+1b4mdx5	ok	You (finding where)	現在地（確認中）	src/ui/screens/drive.js:75	
+591tvw	ok	You (GPS off)	現在地（GPSオフ）	src/ui/screens/drive.js:75	
+lawr3a	ok	You	現在地	src/ui/screens/drive.js:75	context: route strip; Note: the first row of Driving's route strip, where you are now (with a GPS fix); the rows beside it are "You (finding where)" and "You (GPS off)". Replay's speaker tag "You" is its own row.
+ugf9pe	ok	at {0}	{0}予定	src/ui/screens/drive.js:78	{0} = s.row.time; Note: A stop's time on the plan, on the road ahead ("at 14:00").
+102oezx	ok	Nothing more is planned with a place.	場所の決まった予定はもうありません。	src/ui/screens/drive.js:79	
+1mx989x	ok	Nothing more is planned within a day's drive.	車で1日以内に行ける場所の予定は、もうありません。	src/ui/screens/drive.js:79	
+l329ve	ok	Directions to {0}	{0}への経路	src/ui/screens/drive.js:85	{0} = next.name
+kb2apf	ok	annai hasn't downloaded its maps links yet; it needs to be online once.	地図のリンクがまだダウンロードされていません。一度インターネットに接続すると使えるようになります。	src/ui/screens/drive.js:87	
+1tuqp1	ok	Asked Shiori: {0}	Shioriに聞きました：{0}	src/ui/screens/drive.js:93	{0} = text
+1imrexv	ok	Shiori wasn't asked	Shioriに聞けませんでした	src/ui/screens/drive.js:95	
+bigbss	ok	Try again.	もう一度お試しください。	src/ui/screens/drive.js:95	
+ah9gez	ok	Turn GPS on	GPSをオンにする	src/ui/screens/drive.js:100	
+14ltb7u	ok	The itinerary has no places to choose from yet.	旅程にはまだ選べる場所がありません。	src/ui/screens/drive.js:103	
+1sedy1m	ok	Where are you?	いまどこにいますか？	src/ui/screens/drive.js:103	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
+1w8zbso	ok	annai now knows you're at {0}.	現在地を{0}に設定しました。	src/ui/screens/drive.js:108	{0} = p.name
 amdsnu	ok	Swipe sideways to move between tabs	横スワイプでタブを切り替える	src/ui/screens/experimental.js:14	
 1py6vf8	ok	Unfinished translations	未完成の翻訳	src/ui/screens/experimental.js:19	
 13a0vz9	ok	Features that are still being tried. They may have bugs, and their fixes may come slower than the rest of annai.	開発中の機能です。不具合が起きることがあり、その修正もほかの機能より遅れる場合があります。	src/ui/screens/experimental.js:25	
