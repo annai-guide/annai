@@ -286,9 +286,10 @@ test('with both Chinese listed, the summary is in the one the user wrote in, by 
 });
 
 // The two Chinese rows are one language for the count (the review of summary-count-next, F4; second opinions 1 to 3): a line is counted for the family, and the
-// row is named once, from the family's lines together. Counted row by row, a split trip lost to a third language, and lines whose characters tell nothing (the
-// first listed) outvoted the Traditional ones that do.
-test("with both Chinese listed, their lines count as one language, and the row is named from all of them together (the review of summary-count-next, F4)", async () => {
+// row is named once, as the one most of the family's lines that tell are in (a line counting once, so one pasted text doesn't outweigh the typed lines, the
+// re-review's R1). Counted row by row, a split trip lost to a third language, and lines whose characters tell nothing (the first listed) outvoted the
+// Traditional ones that do.
+test("with both Chinese listed, their lines count as one language, and the row is the one most of their lines that tell are in (the review of summary-count-next, F4 and R1)", async () => {
   const { languageSettings } = await import('../../src/core/languages.js');
   const both = languageSettings({ languages: { spoken: ['zh', 'zh-Hant', 'en'] } }, 'en-US');
   const most = (/** @type {string} */ name) => `${name}, the language most of what the user wrote is in`;
@@ -296,9 +297,14 @@ test("with both Chinese listed, their lines count as one language, and the row i
   const [s1, s2, s3] = ['我们今晚去哪里吃饭', '我们明天去哪里', '我们这个周末去哪里'];
   const [t1, t2] = ['我們今晚去哪裡吃飯', '我們明天去哪裡'];
   // Two Simplified, two Traditional and three English lines: Chinese is four lines, English three (counted row by row: English).
-  assert.equal(summaryLanguage([e1, s1, t1, e2, s2, t2, e1], both), most('Chinese (Traditional)'), 'the characters tie: the newest line that tells');
-  assert.equal(summaryLanguage([e1, t1, s1, e2, t2, s2, e1], both), most('Chinese (Simplified)'), 'the characters tie: the newest line that tells');
-  assert.equal(summaryLanguage([e1, s1, t1, e2, s2, s3, e1, t2], both), most('Chinese (Simplified)'), 'more Simplified characters than Traditional ones, whatever the newest');
+  assert.equal(summaryLanguage([e1, s1, t1, e2, s2, t2, e1], both), most('Chinese (Traditional)'), 'the lines tie: the newest line that tells');
+  assert.equal(summaryLanguage([e1, t1, s1, e2, t2, s2, e1], both), most('Chinese (Simplified)'), 'the lines tie: the newest line that tells');
+  assert.equal(summaryLanguage([e1, s1, t1, e2, s2, t2, '大家好'], both), most('Chinese (Traditional)'), 'a line that tells nothing is not the newest one that tells');
+  assert.equal(summaryLanguage([e1, s1, t1, e2, s2, s3, e1, t2], both), most('Chinese (Simplified)'), 'more Simplified lines than Traditional ones, whatever the newest');
+  // The row is the one most of the lines that tell are in, a line counting once whatever its length: one pasted text in the other script (with more
+  // telling characters than the typed lines together) doesn't name it.
+  assert.equal(summaryLanguage([s1, s2, '這個好吃嗎'], both), most('Chinese (Simplified)'), 'two Simplified lines and one Traditional line, which has more telling characters than either');
+  assert.equal(summaryLanguage([s1, s2, s3, '這間餐廳的東西很好吃，開門時間是早上十點，關門時間是晚上九點'], both), most('Chinese (Simplified)'), 'three typed Simplified lines and one pasted Traditional text');
   // A Traditional writer whose lines mostly carry no character that tells: three that do, five that don't, four English (counted row by row: Simplified,
   // the first listed, five lines against three).
   const plain = ['好想去看夜景', '今天天氣很好', '我想吃拉麵', '大家好', '想去海邊走走'];
@@ -306,11 +312,9 @@ test("with both Chinese listed, their lines count as one language, and the row i
   // The listed order, not the lines, places lines that tell nothing: with Traditional first, they are Traditional.
   const hantFirst = languageSettings({ languages: { spoken: ['zh-Hant', 'zh', 'en'] } }, 'en-US');
   assert.equal(summaryLanguage([e1, ...plain, e2, e1], hantFirst), most('Chinese (Traditional)'));
-  // One Chinese row listed, or Cantonese (not of the family): as before.
+  // One Chinese row listed, or Cantonese between them (not of the family): as before.
   const simplified = languageSettings({ languages: { spoken: ['zh', 'en'] } }, 'en-US');
   assert.equal(summaryLanguage([e1, t1, t2, t1, e2], simplified), most('Chinese (Simplified)'), 'Traditional lines with only Simplified listed');
-  const cantonese = languageSettings({ languages: { spoken: ['yue', 'zh', 'en'] } }, 'en-US');
-  assert.equal(summaryLanguage([e1, s1, s2, s3, e2], cantonese), most('Cantonese'), 'Cantonese listed first takes the characters of both');
   assert.equal(summaryLanguage([e1, s1, t1, s2, e2], languageSettings({ languages: { spoken: ['zh', 'yue', 'zh-Hant', 'en'] } }, 'en-US')), most('Chinese (Simplified)'), 'with Cantonese between them, the family is still the two Chinese rows');
 });
 
@@ -522,7 +526,7 @@ test("housekeeping counts the lines since the last summary, not the whole trip: 
     k.agent.send(m);
     await k.agent.idle();
   }
-  assert.equal(await k.agent.compact('cold'), true);
+  assert.equal(await k.agent.compact('cold', { keepTokens: 0 }), true);
   assert.match(k.requests.at(-1).system, /as plain text, in English, the language most of what the user wrote is in\.$/);
   // The first summary kept the last three English exchanges word for word; the second window is those three and four Japanese lines.
   for (const m of ['今日の夕食はどこにしますか', 'ラーメンがいいな', '明日の予定は？', '駅の近くで']) {

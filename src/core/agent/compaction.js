@@ -89,9 +89,9 @@ const MANDARIN_KEY = 'Mandarin';
  * recap's, one answer for both (RULES #10). annai's own lines for no words (NO_WORDS: a photo or files sent alone, a heard line it couldn't
  * write down) are never the user's, and are left out here for every caller. Each of the rest of 3 words or more (units: a Chinese, Japanese or
  * Korean character is a word, the size a stray short reply has, spec §10.9) that names a language counts once, for the language it is placed as (both Chinese
- * rows, Simplified and Traditional, are one language here: a trip in both, or in lines whose characters tell nothing, is Chinese, and the row is named from
- * all their lines' characters together, the newest line that tells when those tie), and the language with the most lines is named; a tie goes to the one
- * written in more recently. No one line decides: a trip's lines are also a closing
+ * rows, Simplified and Traditional, are one language here: a trip in both, or in lines whose characters tell nothing, is Chinese, and the row is the one
+ * most of the lines that tell are in, a line once: a tie goes to the newer, none telling to the first listed), and the language with the most lines is named;
+ * a tie goes to the one written in more recently. No one line decides: a trip's lines are also a closing
  * "Thank you so much!", a place's name, a pasted booking, a tap on a card or a misheard line, and each is one line among the rest (the edge: five
  * English lines then two Japanese are English). With the languages setting: the one Shiori answers in if it is fixed; else a line counts for the listed
  * language its text is in, and a line in none of them doesn't count; with no line counted, the first they speak. With none: a line counts for its
@@ -105,7 +105,7 @@ export function summaryLanguage(said, languages) {
   if (languages?.answer) /* en */ return `${languages.answer.name}, the language Shiori answers in`;
   /** How many lines each language has, in the order each was last written in (so of a tie, the newer comes later). @type {Map<string, number>} */
   const count = new Map();
-  /** The lines placed as either Chinese row (Simplified or Traditional), which count as one language: the row is named from all of them together. @type {string[]} */
+  /** The lines placed as either Chinese row (Simplified or Traditional), which count as one language: the row is the one most of them that tell are in. @type {string[]} */
   const mandarin = [];
   for (const x of lines) {
     const guess = units(x) >= 3 ? languageOf(x) : '';
@@ -121,10 +121,12 @@ export function summaryLanguage(said, languages) {
   let most = '';
   for (const [name, n] of count) if (n >= (count.get(most) ?? 0)) most = name;
   if (most === MANDARIN_KEY && languages) {
-    // A line whose characters tell nothing (大家好) is placed as the first listed row, and one of each script is two halves of one language, so the row is
-    // what all the lines' characters say together; when they tie, the newest line that tells.
-    const all = mandarin.join(' ');
-    most = listedFor('Chinese', languages.spoken, hanRow(all) ? all : mandarin.findLast(hanRow) ?? all)?.name ?? most;
+    // One of each script is two halves of one language, so the row is the one most of the lines that tell are in, each line once (a pasted text doesn't
+    // outweigh the lines typed): a tie goes to the newer, and with none that tells (大家好), the first listed.
+    const rows = mandarin.map(hanRow).filter(Boolean);
+    const simplified = rows.filter((r) => r === 'zh').length * 2 - rows.length;
+    const row = simplified > 0 ? 'zh' : simplified < 0 ? 'zh-Hant' : rows.at(-1);
+    most = (languages.spoken.find((l) => l.id === row) ?? listedFor('Chinese', languages.spoken))?.name ?? most;
   }
   if (most) /* en */ return `${most}, the language most of what the user wrote is in`;
   if (languages?.explicit) /* en */ return `${languages.spoken[0].name}, the first language the user speaks (${named(languages.spoken)})`;
