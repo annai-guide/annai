@@ -1740,7 +1740,7 @@ test("a move with a live session open: annai's card is said aloud, and at Open t
 
 // The dock while Kokoro works behind Koe (the user, 2026-11-16: "when kokoro is thinking and koe is ready, it currently says your turn. maybe that is
 // confusing? maybe put thinking"): over a live Koe with no session open (it is asleep, as a text Koe is) it is Thinking too. A live view never says
-// Your turn, so only a closed session is changed; a session that is open shows its own states.
+// Your turn, so it is Thinking while the session is closed, or open and not listening; listening, hearing or speaking show their own states.
 test("Koe live with no session open and Kokoro working on a note: the dock says Thinking, told as the sign comes, and Tap to talk once Kokoro is done", async () => {
   /** @type {() => void} */
   let release = () => {};
