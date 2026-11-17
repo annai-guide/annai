@@ -8,7 +8,8 @@ test('every scenario plays clips that exist, and a scenario that sets the langua
   for (const [name, sc] of Object.entries(SCENARIOS)) {
     for (const step of sc.steps) if ('say' in step) assert.ok(CLIPS[step.say], `${name}: no clip "${step.say}"`);
     for (const id of sc.languages?.spoken ?? []) assert.ok(LANGUAGES.some((l) => l.id === id), `${name}: no language "${id}"`);
-    if (sc.languages) assert.equal(sc.languages.spoken[0], 'en', `${name}: the browser's language (English) is the list's first, and the harness adds the rest`);
+    // The browser's language is the list's first (English, or a scenario's own phone's: ja-JP for the Japanese runs), and the harness adds the rest.
+    if (sc.languages) assert.equal(sc.languages.spoken[0], (sc.locale ?? 'en').split('-')[0], `${name}: the browser's language is the list's first, and the harness adds the rest`);
   }
 });
 

@@ -409,6 +409,31 @@ test('a scold she answers with "Okay." passes; "Understood. I will stop.", "I\'l
   }
 });
 
+// The filler trap in Japanese (the languages build's entry 1), with the recorded clip relay-filler-ja plays: an apology, a stock "understood" or
+// "noted", or a promise, in Japanese or Chinese, fails as its English does; a plain okay passes, as "Okay." does.
+test('a scold in Japanese: 「かしこまりました。」 (as main\'s Koe answered it live), an apology or a promise fails "no filler"; 「分かりました。」 or silence passes', async () => {
+  const { loadClips } = await import('../../scripts/realtime/clips.mjs');
+  const recorded = (await loadClips())['annoyed-ja'];
+  assert.equal(recorded?.lang, 'ja', 'the clip is recorded, and listed as Japanese');
+  const JA = { ...CLIPS, 'annoyed-ja': { kind: 'scold', words: recorded.words, lang: 'ja' } };
+  /** @param {string | null} said */
+  const scoldedJa = (said) => {
+    const r = spoke('annoyed-ja', recorded.words, said ?? '');
+    if (said === null) {
+      r.frames = r.frames.filter((/** @type {any} */ x) => !(x.dir === 'in' && ['audio', 'said'].includes(x.kind)));
+      r.level = levels([]);
+    }
+    return r;
+  };
+  assert.equal(filler(analyse(scoldedJa(null), JA))?.ok, true);
+  for (const said of ['分かりました。', 'はい。', '好的。']) assert.equal(filler(analyse(scoldedJa(said), JA))?.ok, true, said);
+  for (const said of ['かしこまりました。', '申し訳ありません。', 'すみません、以後気をつけます。', '承知しました。もう謝らないようにします。', '对不起。', '抱歉，我会注意的。', '明白了，以后不会再说了。']) {
+    const a = analyse(scoldedJa(said), JA);
+    assert.equal(filler(a)?.ok, false, said);
+    assert.equal(a.pass, false, said);
+  }
+});
+
 test('"no filler" belongs to the scenarios with a scold in them', () => {
   assert.equal(filler(run(clean())), undefined);
 });

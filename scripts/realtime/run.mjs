@@ -63,13 +63,13 @@ export async function reanalyse(dir, clips) {
 
 /**
  * @param {{ keys: import('./keys.mjs').Keys, only?: string[], out: URL, port?: number, roomDb?: number | null, settleMs?: number, answerTimeoutMs?: number,
- *   maxSessions?: number, kokoro?: 'stand-in' | 'gemini', app?: string, ui?: string, asr?: string, anthropic?: import('./keys.mjs').Keys, times?: number, log?: (s: string) => void }} o
+ *   maxSessions?: number, kokoro?: 'stand-in' | 'gemini', app?: string, ui?: string, asr?: string, anthropic?: import('./keys.mjs').Keys, realModel?: string, times?: number, log?: (s: string) => void }} o
  *   ui: the screens' language to run under (localization L6), chosen in Settings → Shiori once annai is set up; asr: the origin of a speech-to-text server the
  *   stand-in passes transcription requests to (classic voice, stage 5); anthropic: the Anthropic key (a file's one line, read inside the process, used only by the
- *   scenarios that ask for a real Kokoro, typed into annai's own key field, and checked out of everything written); times: each scenario is run that many times,
+ *   scenarios that ask for a real Kokoro, typed into annai's own key field, and checked out of everything written); realModel: that Kokoro's model, 'sonnet' for Claude Sonnet 5.5, else Claude Opus 5.5; times: each scenario is run that many times,
  *   one session each (a bar over more lines than one run says, such as 9 of 10), its records numbered from the second
  */
-export async function runChecks({ keys, only, out, port = 18061, roomDb = -60, settleMs = 3000, answerTimeoutMs = 40_000, maxSessions = 10, kokoro = 'stand-in', app, ui, asr, anthropic, times = 1, log = console.log }) {
+export async function runChecks({ keys, only, out, port = 18061, roomDb = -60, settleMs = 3000, answerTimeoutMs = 40_000, maxSessions = 10, kokoro = 'stand-in', app, ui, asr, anthropic, realModel, times = 1, log = console.log }) {
   const names = (only ?? Object.keys(SCENARIOS).filter((n) => !SCENARIOS[n].extra)).filter((n) => {
     if (!SCENARIOS[n]) throw new Error(`There is no scenario "${n}". They are: ${Object.keys(SCENARIOS).join(', ')}.`);
     return true;
@@ -104,7 +104,7 @@ export async function runChecks({ keys, only, out, port = 18061, roomDb = -60, s
           break;
         }
         log(`\n[${name}${run > 1 ? ` #${run}` : ''}] ${sc.about}${keys.line ? ` (key line ${keys.line})` : ''}`);
-        const env = { origin: server.origin, ...(standIn ? { standIn: standIn.origin, kokoro: standIn } : {}), key: keys.key, clips: files, roomDb, settleMs, answerTimeoutMs, log, scrub: (/** @type {string} */ s) => (anthropic ? anthropic.scrub(keys.scrub(s)) : keys.scrub(s)), ...(ui ? { ui } : {}), ...(sc.real && anthropic ? { real: { anthropic: anthropic.key, cap: 30 } } : {}) };
+        const env = { origin: server.origin, ...(standIn ? { standIn: standIn.origin, kokoro: standIn } : {}), key: keys.key, clips: files, roomDb, settleMs, answerTimeoutMs, log, scrub: (/** @type {string} */ s) => (anthropic ? anthropic.scrub(keys.scrub(s)) : keys.scrub(s)), ...(ui ? { ui } : {}), ...(sc.real && anthropic ? { real: { anthropic: anthropic.key, cap: 30, ...(realModel ? { model: realModel } : {}) } } : {}) };
         standIn?.repeatNote(sc.repeatNote === true);
         const rec = await runScenario(browser, name, sc, env);
         rec.keyLine = keys.line;

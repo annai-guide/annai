@@ -7,6 +7,7 @@
 //   node scripts/realtime-check.mjs cards <run folder>...                              stage 5's card runs as a table, a row a scenario (no network)
 //   node scripts/realtime-check.mjs lateness <folder>... [--settle s] [--rows f.json]  how late the words of a live line arrive, from finished runs (no network)
 // A key: GEMINI_KEY, or --keys-file <path> --lines <1-11>; a real Kokoro's: ANNAI_LIVE_ANTHROPIC_KEY, or --anthropic-key <file> (its first line).
+// --real-model sonnet: that real Kokoro on Claude Sonnet 5.5, not Opus 5.5.
 // Each is read inside the process, never printed or written.
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
@@ -80,6 +81,7 @@ if (command === 'clips') {
       ...(typeof opts.asr === 'string' ? { asr: opts.asr } : {}),
       ...(typeof opts.times === 'string' ? { times: Math.max(1, Number(opts.times) || 1) } : {}),
       ...(anthropic ? { anthropic } : {}),
+      ...(opts['real-model'] === 'sonnet' || opts['real-model'] === 'opus' ? { realModel: opts['real-model'] } : {}),
     });
     process.exit(r.pass ? 0 : 1);
   } catch (e) {

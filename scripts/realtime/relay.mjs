@@ -2,7 +2,7 @@
 // analysis to checks. Koe passes on what it can't answer, as it was said, and asks nothing back; an acknowledgement gets no reply; a note cut as she says it is
 // shown, never asked for again, and heard whole once at most, and after a "stop" not at all; a typed line gets no more lines of hers than it needs; a reminder
 // is said once. Tested without a browser (test/unit/realtime-relay.test.js).
-import { wordRecall } from './analyse.mjs';
+import { wordRecall, words as wordsOf, characters, CJK } from './analyse.mjs';
 
 /**
  * How much of a line Kokoro must be given for it to have been passed on as said: 0.8 of its words, so one word in five may be lost to how each side wrote
@@ -20,8 +20,13 @@ const ASK = /^\[annai\] "(Kokoro's note hasn't reached the user|Sound cut you of
  * partial ("It's about twenty.", "ahead on Highway 1.") 27% at most; a third lies between.
  */
 const WHOLE = 1 / 3;
-/** After a "stop", a line of hers this long at most: an okay (NO_FILLER's one word when a word is needed, said in the answer's language; "Okay." in an English run) or "Got it."; no note's claim fits in two words. */
-const SHORT_WORDS = 2;
+/**
+ * After a "stop", a line of hers this long at most: an okay (NO_FILLER's one word when a word is needed, said in the answer's language; "Okay." in an English run)
+ * or "Got it."; no note's claim fits in two words. Japanese and Chinese are counted by character, as wordRecall reads them: 8, the longest one-word okay
+ * (かしこまりました; 分かりました, the 2026-11-14 live run's, is 6; Chinese's 好的 and 明白了 are 2 and 3), where a claim needs a name or a number and more
+ * (「ビクスビー橋まで、あと20分ほどです。」 is 15).
+ */
+const SHORT = { words: 2, characters: 8 };
 /** annai's line for a user turn the session gave nothing back to (live.js, #silent): the model's choice, never retried. */
 const LET_GO = /taken as let go/;
 
@@ -70,7 +75,7 @@ export function analyseRelay(rec, a, sc, clips) {
       const note = fs.find((f) => f.dir === 'out' && f.kind === 'text' && (f.text ?? '').startsWith('<from_kokoro'));
       const before = fs.filter((f) => f.at < (note?.at ?? Infinity));
       const words = said(before);
-      const asked = /\?/.test(words) || before.some((f) => f.dir === 'in' && f.kind === 'toolCall' && f.name === 'ask');
+      const asked = /[?？]/.test(words) || before.some((f) => f.dir === 'in' && f.kind === 'toolCall' && f.name === 'ask');
       const given = tell ? passedText((rec.kokoro ?? []).find((k) => k.kind === 'request' && k.at >= tell.at && /\[Koe (asks|notes)\]/.test(k.text ?? ''))?.text ?? '') : '';
       const recall = given ? Math.max(wordRecall(c.heard, given), wordRecall(clips[c.name]?.words ?? '', given)) : null;
       const passed = Boolean(tell) && !asked;
@@ -138,12 +143,13 @@ export function analyseRelay(rec, a, sc, clips) {
       // Told to stop over the note: from the end of the stop, her lines (what was heard of her, annai's record) a short word at most (an okay), nothing passed
       // on, and no try of annai's again.
       const from = by ? by.end + (by.endLagMs ?? 0) : Infinity;
-      const words = rec.trace.filter((t) => t.type === 'out.speak' && t.at > from).map((t) => spoken(t).replace(/✂$/, '')).join(' ').split(/\s+/).filter(Boolean);
+      const told = rec.trace.filter((t) => t.type === 'out.speak' && t.at > from).map((t) => spoken(t).replace(/✂$/, '')).join(' ');
+      const words = told.split(/\s+/).filter(Boolean);
       const passed = frames.some((f) => f.at > from && f.dir === 'in' && f.kind === 'toolCall' && f.name === 'tell_kokoro');
       const fresh = frames.filter((f) => f.at > from && f.dir === 'out' && f.kind === 'setup').length;
       const errs = rec.trace.filter((t) => t.at > from && t.type === 'error' && (t.data?.kind === 'live-dropped' || (t.data?.kind === 'live-silent' && !LET_GO.test(t.data?.message ?? ''))));
       const letGo = rec.trace.some((t) => t.at > from && t.type === 'error' && t.data?.kind === 'live-silent' && LET_GO.test(t.data?.message ?? ''));
-      const quiet = words.length <= SHORT_WORDS;
+      const quiet = CJK.test(told) ? characters(told).length <= SHORT.characters : wordsOf(told).length <= SHORT.words;
       const ok = !why && quiet && !passed && !fresh && !errs.length && shown.length === 1 && asks.length === 0;
       checks.push({
         name: 'stopped when told', ok,

@@ -31,11 +31,11 @@ const ECHO_WINDOW_MS = 1000;
 export const END_LAG_MS = 2000;
 
 /** The words of a text, lower case, no punctuation. @param {string} text */
-const words = (text) => String(text).toLowerCase().replace(/[^\p{L}\p{N}' ]+/gu, ' ').split(/\s+/).filter(Boolean);
+export const words = (text) => String(text).toLowerCase().replace(/[^\p{L}\p{N}' ]+/gu, ' ').split(/\s+/).filter(Boolean);
 
 /** Japanese and Chinese have no spaces between words: they are read by character. @param {string} text */
-const characters = (text) => [...String(text).replace(/[^\p{L}\p{N}]/gu, '')];
-const CJK = /[\u3040-\u30ff\u4e00-\u9fff]/;
+export const characters = (text) => [...String(text).replace(/[^\p{L}\p{N}]/gu, '')];
+export const CJK = /[\u3040-\u30ff\u4e00-\u9fff]/;
 
 /** How much of what was said was heard: the share of its words (a Japanese or Chinese text's characters) found among the heard. @param {string} said @param {string} heard */
 export function wordRecall(said, heard) {
@@ -79,6 +79,12 @@ export function soundRuns(level) {
 
 /** Filler: an apology, "I understand" or "understood", a promise ("I'll adjust", "I will stop"), "noted". */
 const FILLER = /\b(sorry|apolog\w*|understand\w*|understood|noted|my bad|i['’]ll|i will|i['’]m going to)\b/i;
+/**
+ * The same in Japanese and Chinese, which have no spaces to mark a word: an apology (すみません, 申し訳, 失礼しました; 对不起, 抱歉, 不好意思), the stock
+ * "understood" or "noted" (承知, かしこまりました, 理解し; 明白, 知道了, 收到), and a promise (気をつけます, 以後, 今後は, …ないようにします, やめます; 我会, 以后,
+ * 不会再). A plain okay passes, as "Okay." does: 分かりました, はい, 了解です; 好的, 好.
+ */
+const FILLER_CJK = /すみません|すいません|ごめん|申し訳|失礼(?:しました|いたしました)|お詫び|承知|かしこまりました|理解し|お気持ち|気を(?:つけ|付け)ます|以後|今後は|ないようにします|やめます|止めます|控えます|对不起|對不起|抱歉|不好意思|道歉|明白|知道了|收到|理解|我会|我會|我将|我將|以后|不会再|不會再/;
 
 /**
  * @param {Rec} rec @param {Record<string, { kind: string, words: string, lang?: string }>} clips
@@ -244,7 +250,7 @@ export function analyse(rec, clips, { endLagMs = END_LAG_MS, expectCut = false, 
   if (strays.length) checks.push({ name: 'strays left alone', ok: strays.every((r) => r.firstSoundMs === null), detail: strays.map((r) => `${r.name}: ${r.firstSoundMs !== null ? `she answered "${String(r.said ?? '').slice(0, 80)}"` : `no sound${r.said ? ` (silent audio, "${String(r.said).slice(0, 40)}")` : ''}`}`).join('; ') });
   // What she should say little of (the second drive): told off for filler, silence is right and filler is the failure. Whatever she said in the scenario is read.
   if (results.some((r) => r.expect === 'scold')) {
-    const filled = results.filter((r) => FILLER.test(r.said)).map((r) => `${r.name}: "${r.said.slice(0, 80)}"`);
+    const filled = results.filter((r) => FILLER.test(r.said) || FILLER_CJK.test(r.said)).map((r) => `${r.name}: "${r.said.slice(0, 80)}"`);
     checks.push({ name: 'no filler', ok: filled.length === 0, detail: filled.length ? filled.join('; ') : results.filter((r) => r.expect === 'scold').map((r) => `${r.name}: ${r.firstSoundMs !== null ? `she said "${r.said.slice(0, 80)}"` : 'no sound'}`).join('; ') });
   }
   if (expectCut) checks.push({ name: 'she is cut by the user', ok: cuts.some((c) => c.cause === 'user'), detail: cuts.some((c) => c.cause === 'user') ? 'the user speaking over her cut her off' : 'the user spoke over her and she was not cut' });

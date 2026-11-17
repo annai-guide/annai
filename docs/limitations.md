@@ -743,12 +743,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the restart wake takes the reader's `handover`, the newest hand-over no turn's end has answered, whoever's turn was cut; `#open` passes it on without asking whose turn it was.
 - **Revisit when:** the next version, as its own change, in the reader's `handover` getter and `#open`: each reply's record already stores the hand-over its turn carried, so a turn under way can hand back its own, not the conversation's newest owed one; then a test of this shape.
 
-### The real-voice check measures Koe's words in English
-- **Kind:** deferred.
-- **What the user sees:** nothing. Three checks in `scripts/realtime/` read Koe's words as English: "stopped when told" counts words by spaces, so a long Japanese reply passes; the passed-on question test sees only an ASCII "?", so 「？」 passes; the filler check knows English words only.
-- **Why:** found on 2026-11-14 while checking Koe's new pass-on words in Japanese; each check predates that change and none is in the app.
-- **Revisit when:** the next version: count CJK by character as the recall check already does, accept 「？」, and give the filler check its Japanese and Chinese words (with a recorded Japanese clip to test them).
-
 ### Shiori's written recap gets no native-speaker sentence
 - **Kind:** deferred.
 - **What the user sees:** a recap written in Japanese or Chinese may still read translated: its request names the language but carries no sentence on how it should sound, unlike her answers since 2026-11-14.

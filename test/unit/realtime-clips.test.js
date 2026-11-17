@@ -78,7 +78,9 @@ test('the clip set: 5 to 10 travel questions, a quick yes, a sentence with a thi
   assert.match(CLIPS.ja.text ?? '', /[\u3040-\u30ff]/, 'kana');
   assert.match(CLIPS.zh.text ?? '', /[\u4e00-\u9fff]/);
   assert.doesNotMatch(CLIPS.zh.text ?? '', /[\u3040-\u30ff]/);
-  for (const [n, c] of Object.entries(CLIPS)) if (c.kind !== 'silence' && !['ja', 'zh', 'ko-word', 'hai', 'hai-q', 'hao', 'mm-q'].includes(n)) assert.ok((c.lang ?? 'en') === 'en', `${n} is English`);
+  const others = ['ja', 'zh', 'ko-word', 'hai', 'hai-q', 'hao', 'mm-q', 'ja-auto-gps', 'ja-built', 'ja-bixby', 'ja-stop', 'ja-stop-reminder', 'annoyed-ja'];
+  for (const [n, c] of Object.entries(CLIPS)) if (c.kind !== 'silence' && !others.includes(n)) assert.ok((c.lang ?? 'en') === 'en', `${n} is English`);
+  for (const n of others.slice(7)) assert.equal(CLIPS[n].lang, 'ja', `${n} is Japanese`);
 });
 
 test('the cached clips are 16 kHz mono 16-bit WAV files, small, each a clip with speech, one for every clip a plain run plays, none with a key in it', async () => {
@@ -101,8 +103,9 @@ test('the cached clips are 16 kHz mono 16-bit WAV files, small, each a clip with
     assert.ok(!/AIza/.test(Buffer.from(bytes).toString('latin1')), `${f} holds a key`);
   }
   // 2.1 MB before stage 5's card; its eleven clips (a user's line, the answers that are and are not a yes, a passenger, annai's own question) are 0.5 MB more;
-  // the nine lines Koe passes on (2 to 3 s each, at 32 KB a second, as the questions are) about 0.8 MB more.
-  assert.ok(total < 3_600_000, `${total} bytes in all`);
+  // the nine lines Koe passes on (2 to 3 s each, at 32 KB a second, as the questions are) about 0.8 MB more; the seven of the Japanese runs (2026-11-14 and the
+  // languages build of 2026-11-17: 3,715,146 bytes in all then) 0.51 MB more.
+  assert.ok(total < 4_100_000, `${total} bytes in all`);
   const loaded = await loadClips();
   assert.deepEqual(Object.keys(loaded).sort(), Object.keys(CLIPS).filter((n) => madeHere(CLIPS[n]) || files.includes(`${n}.wav`)).sort());
   // The noise is made here, as loud as the clips' speech, and lasts what it says.

@@ -59,7 +59,7 @@ rm -f core.[0-9]*        # a browser crash dump, if one was left in the reposito
 `<name>.timeline.txt` and `<name>.json`, and `report.txt` and `report.json`. Options: `--list` (the scenarios), `--only a,b`
 (some of them), `--times <n>` (each scenario n times, one session each, its later records `<name>.2.json` and on: for a bar over more
 lines than one run holds), `--kokoro stand-in|gemini`, `--room-db -60|off`, `--answer-timeout <s>` (default 40), `--max-sessions <n>` (default
-10: the harness stops before a scenario that would pass it), `--ui <tag>` (annai's screens in that language, `ja` or `zh-Hans`: chosen in Settings → Shiori once annai is set up in English, and the setup note then says the instructions name the screens in it), `--app <folder>` (serve another build of annai, for a control run:
+10: the harness stops before a scenario that would pass it), `--ui <tag>` (annai's screens in that language, `ja` or `zh-Hans`: chosen in Settings → Shiori once annai is set up in English, and the setup note then says the instructions name the screens in it), `--real-model sonnet` (a real Kokoro on Claude Sonnet 5.5, not Opus 5.5), `--app <folder>` (serve another build of annai, for a control run:
 `git archive <commit> | tar -x -C <folder>` and mount it), `--port`. Exit status 0 when every scenario passes, 1 when one fails,
 2 when the harness itself broke. `report <folder>` makes the reports and timelines of a finished run again from its records,
 with no network, after the analysis changed.
@@ -146,6 +146,32 @@ timeout 2700 docker run --rm --ipc=host --memory=6g \
 
 `report <folder>` reads a run again with no network, the bars included.
 
+## Koe's own words in Japanese
+
+These (by name only) run a Japanese speaker's annai: the phone `ja-JP` in Asia/Tokyo (the scenario's `locale` and `zone`), the languages list [Japanese], and the
+screens Japanese with `--ui ja`. The setup is driven in English (the harness's locators), with English chosen in Settings → Languages first, then the screens
+change to Japanese before she listens. The clips are synthetic (Gemini TTS, `lang: 'ja'`): `ja-auto-gps`, `ja-built`, `ja-bixby`, `ja-stop`, `ja-stop-reminder`
+(「ホテルのリマインダー、消しといて。」) and `annoyed-ja` (「さっきから謝ってばっかりで、ほんとにうっとうしい。それ、やめて。」).
+
+| name | Kokoro | what it shows |
+|---|---|---|
+| real-relay-fact-ja (and real-relay-fact, English) | real | Koe's hold-on words, and the language of Kokoro's notes to Koe and of Koe's saying of them |
+| real-typed-live-ja | real | a typed greeting and a typed request to save a note, in Japanese: one line, then two |
+| real-stop-ja (and real-stop) | real | 「ストップ。」 100 ms into Kokoro's own note: what Koe says after it (**stopped when told**) |
+| relay-stop-request-ja | stand-in | a request Koe does with its own tools (`watch_list`): **acted on it**, and her line before a tool of her own, in the record |
+| relay-filler-ja | stand-in | the filler trap: a Japanese question, then the scold: **no filler** |
+
+A real Kokoro is Claude Opus 5.5 with the Anthropic key, or Claude Sonnet 5.5 with `--real-model sonnet`; with `--kokoro gemini` (no Anthropic key) it is
+Gemini's chat model on the free key, as for typed-live. The checks read Japanese and Chinese by character, as the recall check does: **passed on** takes 「？」 as
+a question back as it takes "?"; **stopped when told** allows 8 characters after the stop in a Chinese or Japanese line (かしこまりました, the longest one-word okay;
+two words in English); **no filler** knows the Japanese and Chinese apologies, stock "understood"s (承知, かしこまりました; 明白, 知道了, 收到) and promises, and
+lets a plain okay pass (分かりました, はい; 好的).
+
+```sh
+...  scripts/realtime-check.mjs run --keys-file /keys --lines 1-11 --ui ja --only relay-stop-request-ja,relay-filler-ja --times 2
+...  scripts/realtime-check.mjs run --keys-file /keys --lines 1-11 --ui ja --only real-relay-fact-ja --kokoro gemini --answer-timeout 90 --times 2
+```
+
 ## Stage 5's card (read_trip): the spoken yes, with real speech
 
 Since 2026-11-13 the card is answered by tap only (the user's stop rule; docs/limitations.md, "annai's card's question is answered by tap only"): a spoken yes grants nothing, so the scenarios below that expected a grant now end without one. They stay as the record of how the spoken yes was measured.
@@ -223,7 +249,8 @@ the detector or the half-duplex rules: `git archive dd393c2 | tar -x -C /tmp/old
   what to suspect first.
 - *"Listening live" never shows*: the key (the closed session's `kind` in the trace), the quota (a 429 on every key), or
   the setup screens changed (the selectors are in `scripts/realtime/drive.mjs`, copied from the e2e tests' helpers). The report's
-  notes hold the failing step.
+  notes hold the failing step. Settings → Models names a model "<provider> / <model>" in a role's list and picker since 2026-11-16 (the setup matches
+  either), and trips are made in the page as annai makes them, since the Trips screen has no form (timeline stage 8).
 - *Gemini's TTS gives 429*: its free tier is about 3 requests a minute and 10 a day for each key and model; the script moves to the next line.
 
 ## The classic gate
