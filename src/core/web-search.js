@@ -45,8 +45,8 @@ export const isFloor = (p) => p.kind === 'knowledge';
 
 /**
  * Providers in the order they are tried: the user's list (web.search) first, as saved, the floor last whatever was saved. A provider
- * that isn't in it (a plugin installed since) takes its place by its rank among those that are: keyed before the first saved free or
- * knowledge one, free before the first saved knowledge one, knowledge last. Switched-off ones are in it.
+ * that isn't in it (a plugin installed since) takes its place by its rank among those that are, the floor's saved place counting for
+ * nothing (the screen shows it last): keyed before the first saved free one, free after the rest, knowledge last. Switched-off ones are in it.
  * @template {{ id: string, kind?: string, free?: boolean }} T @param {T[]} list @param {{ search?: unknown } | undefined} web @returns {T[]}
  */
 export function orderSearch(list, web) {
@@ -56,7 +56,7 @@ export function orderSearch(list, web) {
   const out = [...new Set(set)].map((id) => base.find((p) => p.id === id)).filter((p) => p !== undefined);
   for (const p of base) {
     if (out.includes(p)) continue;
-    const at = out.findIndex((q) => rank(q) > rank(p));
+    const at = out.findIndex((q) => !isFloor(q) && rank(q) > rank(p));
     out.splice(at < 0 ? out.length : at, 0, p);
   }
   return [...out.filter((p) => !isFloor(p)), ...out.filter(isFloor)];

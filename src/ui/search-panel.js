@@ -76,11 +76,12 @@ export async function searchPanel(ctx) {
   };
   // The floor stays last with no handle (orderSearch puts it there), so the handles count the rest.
   const moving = all.filter((p) => !isFloor(p)).length;
-  /** @param {string} id @param {number} by */
+  const floor = all.filter(isFloor).map((p) => p.id);
+  /** A row moves only among the rows with a handle: ArrowDown on the last one changes nothing, as its menu's Move down can't. @param {string} id @param {number} by */
   const move = (id, by) => list('search', (ids) => {
     const next = ids.slice();
     const i = next.indexOf(id);
-    if (i >= 0 && next[i + by]) [next[i], next[i + by]] = [next[i + by], next[i]];
+    if (i >= 0 && next[i + by] && !floor.includes(next[i + by])) [next[i], next[i + by]] = [next[i + by], next[i]];
     return next;
   });
   // A provider's name and why are Shiori's (English); shown is the screen's, where it has one.

@@ -73,7 +73,7 @@ test('Settings → Tools → Search lists the providers in the order web_search 
   await expect(page.getByRole('checkbox', { name: 'Use Exa' })).toBeChecked();
 });
 
-test('the floor has no handle and is last, though a saved list put it first; the last handle cannot move down onto it', async ({ page }) => {
+test('the floor has no handle and is last, though a saved list put it first; the last handle cannot move down onto it, by its menu or ArrowDown', async ({ page }) => {
   await openApp(page, '#/tools');
   await expect(page.locator('#search-order li').first()).toBeVisible();
   await page.evaluate(async () => {
@@ -98,6 +98,12 @@ test('the floor has no handle and is last, though a saved list put it first; the
   await page.getByRole('button', { name: 'Reorder Firecrawl, 4 of 4' }).click();
   await expect(page.getByRole('group', { name: 'Move Firecrawl' }).getByRole('button', { name: 'Move down' })).toBeDisabled();
   await expect(page.getByRole('group', { name: 'Move Firecrawl' }).getByRole('button', { name: 'Move up' })).toBeEnabled();
+  // ArrowDown on the last handle moves nothing: the list saved is the one shown, the floor last, so a plugin installed later isn't put above Firecrawl.
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Reorder Firecrawl, 4 of 4' }).focus();
+  await page.keyboard.press('ArrowDown');
+  await expect.poll(async () => (await appSettings(page)).web?.search).toEqual(['jina', 'exa', 'parallel', 'firecrawl', 'wiki']);
+  await expect.poll(() => order(page)).toEqual(['Jina Search', 'Exa', 'Parallel', 'Firecrawl', 'Wikivoyage, Wikipedia and Nominatim']);
 });
 
 test('free search through Shiori: Exa at its limit hands on to Parallel and rests; Parallel unticked, Firecrawl answers and Parallel is never asked', async ({ page, browserName }) => {
