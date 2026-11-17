@@ -346,31 +346,20 @@ function fileInbox(ctx, items, trips, archives) {
   // The dated trips, and a new conversation: with chats there could be hundreds of undated ones, and a share opens one of its own.
   /** @type {HTMLButtonElement[]} */
   const buttons = [
-    ...trips.filter((trip) => trip.start).map((trip) => h('button', { class: 'btn pri', type: 'button', onclick: target(() => trip.id, false) }, t`Add to ${trip.title}`)),
-    ...(ctx.chats ? [h('button', { class: 'btn', type: 'button', onclick: target(() => ctx.chats.whenReady(), true) }, t`New conversation`)] : []),
+    ...trips.filter((trip) => trip.start).map((trip) => h('button', { class: 'btn pri', type: 'button', onclick: () => add(() => trip.id, false) }, t`Add to ${trip.title}`)),
+    ...(ctx.chats ? [h('button', { class: 'btn', type: 'button', onclick: () => add(() => ctx.chats.whenReady(), true) }, t`New conversation`)] : []),
   ];
   // A share's files wait in annai's inbox until they are added; dropped ones are only here.
   const shared = items.some((i) => i.key);
-  /**
-   * A button's add. Where a failed add left its files and how many it kept (progress's count) stay with the button, so its retry adds the rest, into the same
-   * place (a new conversation's draft is spent by the files already in it), and no file is kept twice: addFiles names a second copy "name (2)".
-   * @param {() => string | Promise<string>} which the trip's id @param {boolean} chat a new conversation: it opens, as the + does
-   */
-  function target(which, chat) {
-    const at = { id: '', kept: 0 };
-    return () => add(which, chat, at);
-  }
-  /** @param {() => string | Promise<string>} which @param {boolean} chat @param {{ id: string, kept: number }} at */
-  async function add(which, chat, at) {
+  /** @param {() => string | Promise<string>} which the trip's id @param {boolean} chat a new conversation: it opens, as the + does */
+  async function add(which, chat) {
     const here = location.hash; // a screen the traveller goes to while the files are added stands (as composer.js's handOver does)
     for (const b of buttons) b.disabled = true;
     if (shared) adding = screen;
     try {
-      const id = at.id ||= await which();
-      const from = at.kept;
-      const { notes, problems, planned } = await bringIn(ctx, id, items.slice(from).map((i) => i.file), (done) => {
-        at.kept = from + done;
-        status.textContent = t`Adding ${num(Math.min(at.kept + 1, items.length))} of ${num(items.length)}…`;
+      const id = await which();
+      const { notes, problems, planned } = await bringIn(ctx, id, items.map((i) => i.file), (done, total) => {
+        status.textContent = t`Adding ${num(Math.min(done + 1, total))} of ${num(total)}…`;
       });
       const inbox = await caches.open('annai-inbox');
       for (const i of items) if (i.key) await inbox.delete(i.key);

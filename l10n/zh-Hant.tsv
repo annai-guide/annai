@@ -1762,12 +1762,12 @@ o7fto4	ok	Import	匯入	src/ui/screens/import.js:266
 c0u62t#other	ok	Kept your own API keys for {0}; the ones in the file weren't used.	已保留原有的 {0} API 金鑰，未使用檔案中的金鑰。	src/ui/screens/import.js:313	plural; # = n; {0} = list(names, 'plain'); English: "Kept your own API key for {0}; the one in the file wasn't used." (one), "Kept your own API keys for {0}; the ones in the file weren't used." (other)
 jsttcj#other	ok	Kept your own API keys; the ones in the file weren't used.	已保留原有的 API 金鑰，未使用檔案中的金鑰。	src/ui/screens/import.js:314	plural; # = n; English: "Kept your own API key; the one in the file wasn't used." (one), "Kept your own API keys; the ones in the file weren't used." (other)
 ci7mt7	ok	Add to {0}	新增到「{0}」	src/ui/screens/import.js:349	{0} = trip.title
-odevmc	ok	Adding {0} of {1}…	正在新增（{0}/{1}）…	src/ui/screens/import.js:373	{0} = num(Math.min(at.kept + 1, items.length)); {1} = num(items.length)
-6u51xq#other	ok	Added {0}, and # itinerary items from the calendar	已新增 {0}，行事曆中的 # 個項目已加入行程	src/ui/screens/import.js:382	plural; # = planned.length; {0} = what; English: "Added {0}, and # itinerary item from the calendar" (one), "Added {0}, and # itinerary items from the calendar" (other); Note: {0} is what was added: a count phrase ("1 個檔案", "3 個檔案", "2 張照片"), never a path, so the space after the verb is right.
-1ol4sj	draft	Adding {0} failed	未能新增 {0}	src/ui/screens/import.js:389	{0} = what; Note: a card's title when the share screen's add failed after the traveller left it; {0} is what was being added, as in "Add {0}" ("a file", "3 files", "2 photos"); worded as "{0} wasn't added".
-f30m7u#other	ok	and # more photos	還有 # 張照片	src/ui/screens/import.js:410	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
-1cj3r6h	ok	Add only what you just shared yourself.	只新增你自己剛剛分享的內容。	src/ui/screens/import.js:413	
-1eim38p	ok	Also here: {0}, an annai backup or export. It isn't added with the rest; open it on its own.	這裡還有 {0}，是 annai 的備份或匯出檔案。它不會和其他內容一起新增，請單獨開啟。	src/ui/screens/import.js:417	{0} = a.file.name
+odevmc	ok	Adding {0} of {1}…	正在新增（{0}/{1}）…	src/ui/screens/import.js:362	{0} = num(Math.min(done + 1, total)); {1} = num(total)
+6u51xq#other	ok	Added {0}, and # itinerary items from the calendar	已新增 {0}，行事曆中的 # 個項目已加入行程	src/ui/screens/import.js:371	plural; # = planned.length; {0} = what; English: "Added {0}, and # itinerary item from the calendar" (one), "Added {0}, and # itinerary items from the calendar" (other); Note: {0} is what was added: a count phrase ("1 個檔案", "3 個檔案", "2 張照片"), never a path, so the space after the verb is right.
+1ol4sj	draft	Adding {0} failed	未能新增 {0}	src/ui/screens/import.js:378	{0} = what; Note: a card's title when the share screen's add failed after the traveller left it; {0} is what was being added, as in "Add {0}" ("a file", "3 files", "2 photos"); worded as "{0} wasn't added".
+f30m7u#other	ok	and # more photos	還有 # 張照片	src/ui/screens/import.js:399	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
+1cj3r6h	ok	Add only what you just shared yourself.	只新增你自己剛剛分享的內容。	src/ui/screens/import.js:402	
+1eim38p	ok	Also here: {0}, an annai backup or export. It isn't added with the rest; open it on its own.	這裡還有 {0}，是 annai 的備份或匯出檔案。它不會和其他內容一起新增，請單獨開啟。	src/ui/screens/import.js:406	{0} = a.file.name
 qqpumv	ok	This isn't on the itinerary	這不在行程中	src/ui/screens/item.js:24	Note: Taiwan wording; Plan is 行程.
 15biluu	ok	Go to the itinerary	前往行程	src/ui/screens/item.js:25	Note: Taiwan wording; Plan is 行程.
 1wp3w0c	ok	All day, {0}	全天（{0}）	src/ui/screens/item.js:41	{0} = start; Note: Taiwan wording; {0} is the day.
