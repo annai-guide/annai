@@ -159,7 +159,7 @@ test("a hand-over undone while her question waited stays undone when the sleep g
   assert.equal(newer.owedHandover, 'h-2');
 });
 
-test("annai restarted while her question waited: no end was logged, so the hand-over is owed before repair() and after; repair() still stores the sleep as one that gave way, for an older page (the final reviews' F1s)", async () => {
+test("annai restarted while her question waited: no end was logged, so the hand-over is owed before repair() and after; repair() stores no `awake` for the sleep (the final reviews' F1s)", async () => {
   const handed = [{ path: '/trip/files/flight.pdf', type: 'application/pdf', name: 'flight.pdf', new: true }];
   /** Her reply [ask, sleep] with a hand-over, her question shown and waiting: what the log holds when annai was killed (old: an older page wrote it). */
   const killed = async (old = false) => {
@@ -177,7 +177,7 @@ test("annai restarted while her question waited: no end was logged, so the hand-
   assert.deepEqual(owed(t), ['h-1', 'h-1', true], 'under way: no end was logged');
   assert.equal(await repair(store, SCOPE, t), 2);
   const stored = await store.tx(['events'], 'readonly', (x) => x.listEvents(SCOPE, { types: ['tool.result'] }));
-  assert.deepEqual(stored.map((e) => [e.data.name, e.data.awake ?? null]), [['ask', null], ['sleep', true]]);
+  assert.deepEqual(stored.map((e) => [e.data.name, 'awake' in e.data]), [['ask', false], ['sleep', false]]);
   assert.deepEqual(owed(t), ['h-1', 'h-1', true]);
   assert.deepEqual(owed(await Transcript.load(store, SCOPE)), ['h-1', 'h-1', true], 'a reload reads what the live one did');
   // The re-review's R2: a log an older page wrote (its restart wrote no `awake` for the sleep, and its restart turn ran without the hand-over, answered and
@@ -190,6 +190,31 @@ test("annai restarted while her question waited: no end was logged, so the hand-
   await record(older, SCOPE, { type: 'out.speak', actor: 'shiori', data: { id: 'a', wake: 'w-2' }, texts: [['text', 'We got cut off. File it?']] });
   for (const [id, name, c] of [['a', 'speak', 'Said.'], ['b', 'sleep', 'asleep']]) await record(older, SCOPE, { type: 'tool.result', actor: 'system', data: { id, name, ok: true, cut: false, ms: 1, wake: 'w-2' }, texts: [['content', c]] });
   assert.deepEqual(owed(await Transcript.load(older, SCOPE)), [null, null, false], 'after the older restart turn ended');
+});
+
+test("a log the version before this one wrote, with `end` and `awake` on its results, reads exactly as the same log without them: her turn's end is its turn.end record", async () => {
+  const handed = [{ path: '/trip/files/flight.pdf', type: 'application/pdf', name: 'flight.pdf', new: true }];
+  /** A hand-over, then her reply: [speak] whose window passed in silence (`end`, then turn.end), or [ask, sleep] whose sleep gave way (`awake`, no end yet). */
+  const logged = async (/** @type {'ended' | 'gave way'} */ shape, /** @type {boolean} */ keys) => {
+    const store = createMemoryStore();
+    await record(store, SCOPE, { type: 'wake', actor: 'system', data: { id: 'w-1', reasons: [{ kind: 'user', text: 'typed', handover: 'h-1' }], handover: 'h-1' } });
+    await record(store, SCOPE, { type: 'msg.user', actor: 'user', data: { wake: 'w-1', handed, handover: 'h-1' }, texts: [['text', 'Our trip']] });
+    const calls = shape === 'ended' ? [['a', 'speak', { text: 'Filed.' }]] : [['q', 'ask', { question: 'File it?', options: ['Yes'] }], ['s', 'sleep', {}]];
+    await modelTrace(store, SCOPE).turn(/** @type {any} */ ({ ...info, handover: 'h-1', endLogged: true }), '', '', /** @type {any} */ (calls.map(([id, name, input]) => ({ type: 'tool_call', id, name, input }))));
+    if (shape === 'ended') {
+      await record(store, SCOPE, { type: 'out.speak', actor: 'shiori', data: { id: 'a', wake: 'w-1' }, texts: [['text', 'Filed.']] });
+      await record(store, SCOPE, { type: 'tool.result', actor: 'system', data: { id: 'a', name: 'speak', ok: true, ms: 1, wake: 'w-1', cut: false, ...(keys ? { end: true } : {}) }, texts: [['content', 'Said aloud. Heard nothing (20 seconds).']] });
+      await record(store, SCOPE, { type: 'turn.end', actor: 'system', data: { wake: 'w-1', handover: 'h-1' } });
+    } else {
+      await record(store, SCOPE, { type: 'tool.result', actor: 'system', data: { id: 'q', name: 'ask', ok: true, ms: 1, wake: 'w-1', cut: false }, texts: [['content', 'The user chose: Yes']] });
+      await record(store, SCOPE, { type: 'tool.result', actor: 'system', data: { id: 's', name: 'sleep', ok: true, ms: 0, wake: 'w-1', cut: false, ...(keys ? { awake: true } : {}) }, texts: [['content', 'Not asleep: your question came back answered or closed (its result is above), so your turn goes on.']] });
+    }
+    const t = await Transcript.load(store, SCOPE);
+    return { messages: t.messages, read: [t.unanswered, t.unanswered ? t.waiting : '', t.handover, t.owedHandover] };
+  };
+  for (const shape of /** @type {const} */ (['ended', 'gave way'])) assert.deepEqual(await logged(shape, true), await logged(shape, false), shape);
+  assert.deepEqual((await logged('ended', true)).read, [false, '', null, null], 'ended: by its record');
+  assert.deepEqual((await logged('gave way', true)).read, [true, 'turn', 'h-1', 'h-1'], 'gave way: under way, the hand-over owed');
 });
 
 test("a hand-over her sleep settled stays answered across a wake of a later turn that joins nothing of hers (a move's recap): the re-review's R1, at the reader", async () => {

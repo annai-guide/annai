@@ -320,6 +320,10 @@ test("classic: a speak that listened and heard nothing ends the turn with no mod
   await tapAndSay(k, 'where-eat');
   assert.equal(k.requests.length, 1, 'one model call');
   assert.equal(k.platform.mic.isOpen(), false);
+  // Her turn's end is its turn.end record; the speak's stored result says nothing of it (no `end`, which only the version before turn.end read).
+  const [speak] = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'speak');
+  assert.equal('end' in speak.data, false);
+  assert.equal((await k.events(['turn.end'])).length, 1);
 });
 
 test("classic: the window after a turn isn't a tap's: chatter goes through the gate and is written as such; it neither closes the window nor extends it, which ends that long after her last words", async (t) => {

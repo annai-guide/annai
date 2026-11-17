@@ -725,12 +725,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** a user reports a "She picks it up when you come back" line that was never picked up after an update, or an Undo after the update that left a file.
 - **Approved:** 2026-11-14, the user picked "Treat as finished (Recommended)" for old logs, and "Approve the wider entry (Recommended)" for this entry with all five effects.
 
-### Tool results still carry `end` and `awake`, which this version doesn't read
-- **Kind:** deferred.
-- **What the user sees:** nothing. Each tool result still stores `end: true` (her line's listening heard chatter) and, for a sleep that gave way, `awake: true` (also stamped by a restart's repair), as the version before this one reads them; this version reads her turn's end from its `turn.end` record.
-- **Why:** a page one version older (a rollback, a tab not yet updated) reads her turn's end from them, and would misread a newer log without them.
-- **Revisit when:** the next version, as its own change: drop `end` and `awake` from `#runCall`'s and `repair()`'s writes, and from the tests that pin them.
-
 ### In a conversation saved before the take-up record, the Undo line of a turn that took a hand-over up partway can sit higher
 - **Kind:** known limitation.
 - **What the user sees:** opening a conversation saved before the update with the take-up record (2026-11-17), where a file was handed over while Shiori was working, the Undo line of that hand-over can sit under an earlier line of hers or under an earlier turn's card ("Her turn ended"), above the user's later words and her last line, where the version before put it under her last line. It shows, Undo takes back exactly what she filed under the hand-over, and nothing moves while the user looks.

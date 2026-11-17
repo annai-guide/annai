@@ -2937,7 +2937,7 @@ export class Agent {
       if ((output.images?.length && o.model && !o.model.input?.includes('image')) || (output.document && o.model && !o.model.input?.includes('pdf'))) output = await this.#described(output, o.wakeId, o.signal, o.model, undefined, scope, c.name === 'read', o.reads);
     }
     // Cut short (the turn aborted, the call an error): the user's Stop, or another conversation opening, which is no Stop. Every result
-    // says whether (`cut`), which a refusal or a failure is not. `end` and `awake` are for a page one version older (deferred).
+    // says whether (`cut`), which a refusal or a failure is not. Where her turn ends is its turn.end record, not a result's.
     // The user's Open on open_trip's card ends that call by opening the trip, which is what it was for: no cut, no error.
     const chose = Boolean(o.signal.aborted && output.isError && this.#cutMoved && !this.#userStop && !unrun && c.name === 'open_trip');
     const cut = Boolean(o.signal.aborted && output.isError) && !chose;
@@ -2976,7 +2976,7 @@ export class Agent {
     }
     await this.#log({
       type: 'tool.result', actor: 'system',
-      data: { id: c.id, name: c.name, ok: !output.isError, ms, wake: o.wakeId, cut, ...(images.length ? { images } : {}), ...(document ? { document } : {}), ...(output.heard?.length ? { heard: output.heard } : {}), ...(output.endTurn ? { end: true } : {}), ...(o.awake ? { awake: true } : {}) },
+      data: { id: c.id, name: c.name, ok: !output.isError, ms, wake: o.wakeId, cut, ...(images.length ? { images } : {}), ...(document ? { document } : {}), ...(output.heard?.length ? { heard: output.heard } : {}) },
       texts: [['content', output.content]], blobs,
     });
     return output;

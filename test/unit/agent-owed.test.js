@@ -395,7 +395,7 @@ test("a hand-over, annai restarted while her card waited (or between her answer 
   }
 });
 
-test("a sleep that gave way is stored as such whatever became of its input: one that was not an object, beside an answered question, is taken up after a reload", async (t) => {
+test("a sleep that gave way whatever became of its input (one that was not an object, beside an answered question): no end is logged, so it is taken up after a reload", async (t) => {
   useClock(t);
   const k = await agentKit([[{ toolCalls: [ask, { name: 'sleep', input: 'not-an-object' }] }, { delayMs: 300, ...say('Moved to 7.') }, say('Taken up.')]]);
   const other = await createTrip(k.ws, { title: 'Kyoto' });
@@ -404,7 +404,7 @@ test("a sleep that gave way is stored as such whatever became of its input: one 
   k.agent.answer(/** @type {string} */ (k.agent.pendingId), 'Move it');
   await until(() => k.requests.length === 2);
   const stored = (await k.events(['tool.result'])).find((/** @type {any} */ e) => e.data.name === 'sleep');
-  assert.equal(stored.data.awake, true, 'the stored result says the sleep gave way');
+  assert.equal('awake' in stored.data, false, 'no `awake`: the turn is under way because no turn.end was logged');
   await k.agent.open(other);
   await k.agent.idle();
   await k.agent.open(k.trip);
@@ -413,7 +413,7 @@ test("a sleep that gave way is stored as such whatever became of its input: one 
   assert.equal((await k.events(['out.speak'])).at(-1).data.text, 'Taken up.');
 });
 
-test("a question waiting with a sleep beside it, and another conversation opened: let go as the question alone is (the sleep cut with it is stored as one that gave way, and nothing is taken up on return)", async (t) => {
+test("a question waiting with a sleep beside it, and another conversation opened: let go as the question alone is (the sleep cut with it stores no `awake`, and nothing is taken up on return)", async (t) => {
   useClock(t);
   for (const calls of [[ask], [ask, sleep]]) {
     const k = await agentKit([[{ toolCalls: calls }, say('Back to it.')]]);
@@ -423,7 +423,7 @@ test("a question waiting with a sleep beside it, and another conversation opened
     await k.agent.idle();
     const events = (/** @type {string[]} */ types) => k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(k.trip, { types }));
     const stored = (await events(['tool.result'])).find((/** @type {any} */ e) => e.data.name === 'sleep');
-    assert.equal(stored?.data.awake, calls.length === 2 ? true : undefined, 'a sleep cut before it ran, whose turn was going on, says so');
+    assert.equal(stored && 'awake' in stored.data, calls.length === 2 ? false : undefined, 'a sleep cut before it ran stores no `awake`');
     const before = k.requests.length;
     await k.agent.open(k.trip);
     await k.agent.idle();

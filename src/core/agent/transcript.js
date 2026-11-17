@@ -561,15 +561,15 @@ export function linesOf(messages) {
 
 /**
  * After a crash or reload mid-turn, every tool call without a result gets one (spec §6.7), so the
- * transcript stays valid for every provider. A sleep among them never ran, and the restart takes her turn up: stored as one that gave way
- * (`awake`), for a page one version older. @param {Store} store @param {string} scope @param {Transcript} t
+ * transcript stays valid for every provider. A sleep among them never ran, and the restart takes her turn up (no turn.end was logged).
+ * @param {Store} store @param {string} scope @param {Transcript} t
  * @param {Record<string, string>} [mark] its results' half mark
  * @returns {Promise<number>} how many were answered
  */
 export async function repair(store, scope, t, mark = {}) {
   const open = t.open();
   for (const c of open) {
-    const ev = await record(store, scope, { type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: false, cut: true, ms: 0, ...(c.name === 'sleep' ? { awake: true } : {}), ...mark, content: RESTARTED } });
+    const ev = await record(store, scope, { type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: false, cut: true, ms: 0, ...mark, content: RESTARTED } });
     t.apply(ev, { texts: {}, images: [] });
   }
   return open.length;
