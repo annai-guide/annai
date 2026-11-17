@@ -974,7 +974,7 @@ test("a flight item with no coordinates gets its leave reminder half an hour bef
   assert.equal(PLAN.next?.(afterIt, moment({ now: at('06:00', day) }), {}), at('12:00', day));
   // A flight with no coordinates has no place to leave from, so it wipes the stop before, as any flight does (the re-review's R3): an inn 5 km
   // from the home airport, this flight 16:00 to 17:30, and a dinner 600 km away at 21:00 is half an hour before it, 20:30. Kept, the stop
-  // would count the 600 km drive from the inn and the copy would come at 17:30, when the flight lands, 3 h 30 min early.
+  // would count the 600 km drive from the inn and the copy would come at 17:30, when the flight lands, 3 h early.
   const sfo = { lat: 37.6213, lng: -122.379 };
   const dinner = planWatches(/** @type {any} */ ([
     { path: '/plan/inn.json', item: { title: 'Check in: Airport inn', kind: 'lodging', fixed: true, start: { at: iso('12:00', day), tz: LA }, place: { name: 'Airport inn', ...off(sfo, 5000, 0) } } },
@@ -985,7 +985,7 @@ test("a flight item with no coordinates gets its leave reminder half an hour bef
   assert.equal(dinnerLeave.from, null);
   assert.equal(PLAN.next?.(dinnerLeave, moment({ now: at('12:00', day) }), {}), at('20:30', day));
   // Any other fixed item with no place, a train's too, keeps "coming up" alone; a flexible flight with no place gets nothing, as before.
-  const train ={ path: '/plan/t.json', item: { title: 'Coast train', kind: 'rail', fixed: true, start: { at: iso('07:00', day), tz: LA } } };
+  const train = { path: '/plan/t.json', item: { title: 'Coast train', kind: 'rail', fixed: true, start: { at: iso('07:00', day), tz: LA } } };
   assert.deepEqual(planWatches(/** @type {any} */ ([train]), new Map(), { fallbackTz: LA }).map((w) => w.id), ['plan:t:coming-up']);
   assert.deepEqual(planWatches(/** @type {any} */ ([{ ...bare, item: { ...bare.item, fixed: false } }]), BOOKINGS, { fallbackTz: LA }).map((w) => w.id), []);
 });
