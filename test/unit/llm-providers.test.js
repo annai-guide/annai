@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes, SYS } from '../../src/core/scopes.js';
-import { readConfig, modelOf, providerOf, getKey, saveProvider, saveModel, saveRoles, removeModel, removeProviderRecords, diffLayer, providerBase, modelNames as screenNames } from '../../src/core/llm/config.js';
+import { readConfig, modelOf, providerOf, getKey, saveProvider, saveModel, saveRoles, removeModel, removeProviderRecords, diffLayer, providerBase, updateModel, modelNames as screenNames } from '../../src/core/llm/config.js';
 import { addProvider, syncProviders, useSuggestion, addListedModel, addModelById, withSpeech, speechAdd, speechBehind } from '../../src/core/llm/providers.js';
 import { ttlFor } from '../../src/core/agent/warmth.js';
 import { OPENAI_SRC, ROUTER_SRC, ANTHROPIC_SRC, ANOTHER_SRC, PROTO, PROVIDER, site } from './provider-kit.js';
@@ -563,6 +563,111 @@ test("the Models screen's adds (a model from a list, a model by its id) and a sy
     const all = Object.values(cfg.models).map((m) => modelOf(m).name.toLowerCase());
     assert.equal(new Set(all).size, all.length, `${how}: no two models are named alike`);
   }
+});
+
+/**
+ * provider-y's Add, held at its first download (a connection gone dead): reached once it is held, go to let it on.
+ * @param {any} k the service kit
+ */
+function holdDownload(k) {
+  const fetch = k.s.fetch;
+  /** @type {() => void} */
+  let go = () => {};
+  /** @type {() => void} */
+  let reach = () => {};
+  const reached = new Promise((resolve) => { reach = () => resolve(undefined); });
+  const letOn = new Promise((resolve) => { go = () => resolve(undefined); });
+  let first = true;
+  k.s.fetch = async (/** @type {any} */ url) => {
+    if (first && new URL(String(url), 'http://annai.test').pathname.startsWith('/plugins-official/provider-y/')) {
+      first = false;
+      reach();
+      await letOn;
+    }
+    return fetch(url);
+  };
+  return { adding: k.llm.addProvider('provider-y', {}), reached, go };
+}
+/**
+ * Whether work ends within 5 s. All of it is in memory, a few ms; 5 s leaves room for a loaded host, and work waiting behind a held
+ * download never ends while it is held. @param {Promise<unknown>} work @returns {Promise<boolean>}
+ */
+async function endsSoon(work) {
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let timer;
+  const late = new Promise((resolve) => { timer = setTimeout(() => resolve(false), 5000); });
+  try {
+    return await Promise.race([work.then(() => true), late]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+test("a sync runs at once while a provider's Add waits on a download: the install line is for installs (model-names-next, P1)", async () => {
+  const k = await serviceKit();
+  await k.llm.addProvider('provider-x', { key: 'sk-x' });
+  const next = PX('1.1.0', { chat: { kind: 'chat', type: 'type-a', models: [{ providerId: 'x-1', name: 'X first' }] } });
+  await k.host.install(new Map(Object.entries(next).map(([n, t]) => [n, new TextEncoder().encode(t)])), { source: 'official' });
+  await k.host.start('provider-x');
+  const held = holdDownload(k);
+  await held.reached;
+  assert.ok(await endsSoon(k.llm.syncProviders()), 'the sync ended while the download was held');
+  assert.ok(modelNames(await readConfig(k.ws)).includes('X first'), 'and it brought the update in');
+  held.go();
+  await held.adding;
+});
+
+test("the Models screen's adds run at once while a provider's Add waits on a download (model-names-next, P2)", async () => {
+  const k = await serviceKit();
+  const xId = await k.llm.addProvider('provider-x', { key: 'sk-x' });
+  const held = holdDownload(k);
+  await held.reached;
+  const adds = Promise.all([k.llm.addListedModel(xId, 'chat', { providerId: 'z-new', name: 'Z two' }), k.llm.addModelById(xId, 'chat', 'z-three')]);
+  assert.ok(await endsSoon(adds), 'both added while the download was held');
+  held.go();
+  await held.adding;
+  const all = modelNames(await readConfig(k.ws));
+  assert.ok(all.includes('Z two') && all.includes('z-three'), all.join());
+  assert.equal(new Set(all.map((n) => n.toLowerCase())).size, all.length, 'no two models are named alike');
+});
+
+test("a rename saved on a model's page and a sync that renames another model to the same name: the names stay unique (model-names-next, P4)", async () => {
+  const k = await serviceKit();
+  await k.llm.addProvider('provider-x', { key: 'sk-x' });
+  const yId = await k.llm.addProvider('provider-y', {});
+  const yOne = /** @type {any} */ (Object.values((await readConfig(k.ws)).models).find((m) => m.provider === yId));
+  // The page's rename is held where it has checked the name is free and is about to write it.
+  const update = k.ws.update.bind(k.ws);
+  /** @type {() => void} */
+  let release = () => {};
+  /** @type {() => void} */
+  let reached = () => {};
+  const held = new Promise((resolve) => { reached = () => resolve(undefined); });
+  let first = true;
+  k.ws.update = async (scope, path, fn, opts) => {
+    if (first && path.startsWith('/llm/models/')) {
+      first = false;
+      reached();
+      await new Promise((go) => { release = () => go(undefined); });
+    }
+    return update(scope, path, fn, opts);
+  };
+  const renaming = updateModel(k.ws, yOne.id, (rec) => ({ ...rec, user: { ...rec.user, name: 'Renamed' } }));
+  await held;
+  // provider-x 1.1.0 renames its chat model to the name the page is about to save.
+  const next = PX('1.1.0', { chat: { kind: 'chat', type: 'type-a', models: [{ providerId: 'x-1', name: 'Renamed' }] } });
+  await k.host.install(new Map(Object.entries(next).map(([n, t]) => [n, new TextEncoder().encode(t)])), { source: 'official' });
+  await k.host.start('provider-x');
+  const syncing = k.llm.syncProviders();
+  // A sync that doesn't wait would read the names and write its rename within this wait: it is all in memory, so a few ms at the most.
+  await new Promise((r) => setTimeout(r, 25));
+  release();
+  await Promise.all([renaming, syncing]);
+  const cfg = await readConfig(k.ws);
+  const chat = (/** @type {string} */ plugin) => Object.values(cfg.models).filter((m) => cfg.providers[m.provider].plugin === plugin && m.ability === 'chat').map((m) => modelOf(m).name);
+  assert.deepEqual([chat('provider-y'), chat('provider-x')], [['Renamed'], ['Renamed (2)']], 'the rename came first, the sync after it took the next free name');
+  const all = Object.values(cfg.models).map((m) => modelOf(m).name.toLowerCase());
+  assert.equal(new Set(all).size, all.length, 'no two models are named alike');
 });
 
 test("listing an ability's models: by its address, with the provider's key; an address that doesn't allow web apps says so by its host, not the browser's \"Load failed\"", async () => {

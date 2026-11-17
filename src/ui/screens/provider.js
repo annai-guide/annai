@@ -497,11 +497,14 @@ function modelsPart(ctx, id, abilityId, models) {
     onclick: async () => {
       const value = providerId.value.trim();
       if (!value) return;
+      // Busy from the tap: a second tap would only be refused, its name taken by the first.
+      add.disabled = true;
       try {
         await ctx.llm.addModelById(id, abilityId, value);
         ctx.render();
       } catch (e) {
         showError(status, e);
+        add.disabled = false;
       }
     },
   }, t`Add model`);
@@ -513,7 +516,7 @@ function modelsPart(ctx, id, abilityId, models) {
       try {
         const listed = await ctx.llm.listModels(id, abilityId);
         status.textContent = plural(listed.length, '# model.', '# models.');
-        listSlot.replaceChildren(listedModels(ctx, id, abilityId, listed, models, await ctx.llm.config()));
+        listSlot.replaceChildren(listedModels(ctx, id, abilityId, listed, models, await ctx.llm.config(), status));
       } catch (e) {
         showError(status, e);
       } finally {
@@ -534,11 +537,11 @@ function modelsPart(ctx, id, abilityId, models) {
 
 /**
  * The models an ability listed, minus those already added, with a filter. One whose name another model has says where
- * that is, as adding it by id refuses it, rather than adding it again as "name (2)".
+ * that is, as adding it by id refuses it, rather than adding it again as "name (2)". An Add that fails says why in status, as Add model does.
  * @param {any} ctx @param {string} id @param {string} abilityId @param {import('../../core/llm/contract.js').ListedModel[]} listed @param {import('../../core/llm/config.js').Model[]} have
- * @param {import('../../core/llm/config.js').ModelConfig} cfg
+ * @param {import('../../core/llm/config.js').ModelConfig} cfg @param {HTMLElement} status the models' status line
  */
-function listedModels(ctx, id, abilityId, listed, have, cfg) {
+function listedModels(ctx, id, abilityId, listed, have, cfg, status) {
   const owned = new Set(have.map((m) => m.providerId));
   const taken = new Map(Object.values(cfg.models).map(modelOf).map((m) => [m.name.toLowerCase(), cfg.providers[m.provider] ? providerOf(cfg.providers[m.provider]).name : '']));
   const filter = h('input', { id: `model-filter-${abilityId}`, autocomplete: 'off', placeholder: t`for example: haiku` });
@@ -550,15 +553,23 @@ function listedModels(ctx, id, abilityId, listed, have, cfg) {
       const on = taken.get((m.name || m.providerId).toLowerCase());
       const { loaded, ...model } = m; // said here, never kept on the model
       const named = m.name && m.name !== m.providerId ? `${m.name} (${m.providerId})` : m.providerId;
-      return h('li', { class: 'acts' },
-        h('span', { text: loaded ? t`${named} · loaded` : named }),
-        on !== undefined ? h('span', { class: 'sub', text: on ? t`Already added, on ${on}` : t`Already added, on another provider` }) : h('button', {
-          class: 'btn', type: 'button', 'aria-label': t`Add ${m.providerId}`,
-          onclick: async () => {
+      const label = h('span', { text: loaded ? t`${named} · loaded` : named });
+      if (on !== undefined) return h('li', { class: 'acts' }, label, h('span', { class: 'sub', text: on ? t`Already added, on ${on}` : t`Already added, on another provider` }));
+      const add = h('button', {
+        class: 'btn', type: 'button', 'aria-label': t`Add ${m.providerId}`,
+        onclick: async () => {
+          // Busy from the tap: a second tap would add it again, as "name (2)".
+          add.disabled = true;
+          try {
             await ctx.llm.addListedModel(id, abilityId, model);
             ctx.render();
-          },
-        }, t`Add`));
+          } catch (e) {
+            showError(status, e);
+            add.disabled = false;
+          }
+        },
+      }, t`Add`);
+      return h('li', { class: 'acts' }, label, add);
     }));
   };
   filter.addEventListener('input', show);

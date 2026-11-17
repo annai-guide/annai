@@ -1,4 +1,4 @@
-import { CHAT_ROLES, readConfig, newProvider, newModel, saveProvider, saveModel, saveRoles, setKey, modelOf, modelBase, providerOf, SPEECH_ROLES, SPEECH_DEFAULTS, STAND_INS, KOE_ROLES, KOE_REALTIME, KOE_CLASSIC } from './config.js';
+import { CHAT_ROLES, readConfig, newProvider, newModel, saveProvider, saveModel, saveRoles, setKey, modelOf, modelBase, providerOf, takingNames, SPEECH_ROLES, SPEECH_DEFAULTS, STAND_INS, KOE_ROLES, KOE_REALTIME, KOE_CLASSIC } from './config.js';
 import { ROLE_KINDS } from './provider-desc.js';
 import { pricesAt } from './cost.js';
 import { t } from '../l10n.js';
@@ -156,55 +156,57 @@ function picker(cfg, providerId) {
  * Adds a provider from its description (spec §9.8): it, every ability's models, its one key, and the
  * suggestion for chat roles still empty (by default only its free models: an empty chat role falls back to Main, so
  * a model that costs money there would go ahead of something free); speech models go behind, the recommended
- * suggestion's when the chosen one has none, so "free" still brings a voice. @param {{ ws: Workspace, store: Store }} c @param {ProviderSource} src @param {AddOptions} [o]
- * @returns {Promise<string>} the provider's id
+ * suggestion's when the chosen one has none, so "free" still brings a voice. It and its models take free names, in takingNames (config.js).
+ * @param {{ ws: Workspace, store: Store }} c @param {ProviderSource} src @param {AddOptions} [o] @returns {Promise<string>} the provider's id
  */
 export async function addProvider({ ws, store }, src, { key = null, roles = 'free', name, baseUrl, abilities = {}, filled, costs, free: onFree } = {}) {
-  const cfg = await readConfig(ws);
-  const taken = new Set(Object.values(cfg.models).map((m) => modelOf(m).name.toLowerCase()));
-  const values = providerValues(src);
-  /** @type {ProviderValues} */
-  const user = {};
-  // A name given is the user's; with none, the plugin's, or "<plugin's> (2)"… where a provider has it (a second key of one plugin), as its models get.
-  const unique = freeName(src.name, new Set(Object.values(cfg.providers).map((p) => providerOf(p).name.toLowerCase())));
-  if (name || unique !== src.name) user.name = name || unique;
-  if (baseUrl) user.baseUrl = baseUrl;
-  if (onFree) user.free = true;
-  for (const [id, a] of Object.entries(abilities)) {
-    if (!values.abilities?.[id]) continue;
-    const mine = { ...(a.on !== values.abilities[id].on ? { on: a.on } : {}), ...(a.baseUrl ? { baseUrl: a.baseUrl } : {}) };
-    if (Object.keys(mine).length) user.abilities = { ...user.abilities, [id]: mine };
-  }
-  const listed = descModels(src);
-  const rec = newProvider(src.plugin, { template: { version: src.version, values, models: listed.map((m) => m.key) }, user });
-  const models = listed.map((m) => named(newModel(rec.id, m.ability, { template: { id: `${src.plugin}/${m.key}`, version: src.version, values: m.values } }), taken));
-  await saveProvider(ws, rec, models);
-  if (key) await setKey(store, rec.id, key);
-  const all = src.provider.roles ?? {};
-  if (roles) {
-    const after = { ...cfg, providers: { ...cfg.providers, [rec.id]: rec }, models: { ...cfg.models, ...Object.fromEntries(models.map((m) => [m.id, m])) } };
-    const pick = picker(after, rec.id);
-    const speechIn = (/** @type {Record<string, string[]> | undefined} */ s) => Object.keys(s ?? {}).some((r) => SPEECH_ROLES.includes(r));
-    let next = suggested(cfg.roles, pick, all[roles], { onlyEmpty: true, behind: true, speech: true, chat: true });
-    if (!speechIn(all[roles]) && roles !== 'recommended') next = suggested(next, pick, all.recommended, { onlyEmpty: true, behind: true, speech: true, chat: false });
-    if (roles === 'free') {
-      // Still empty: nothing here is free. An empty role that would fall back to a free Main stays empty; any other, Main
-      // above all, gets the provider's recommended model, so Shiori can answer, and the page says it costs money (spec §9.8).
-      for (const role of CHAT_ROLES) {
-        if (next[role]?.models.length) continue;
-        const main = next.main?.models[0];
-        if (role !== 'main' && main && free(after, main)) continue;
-        const got = suggested(next, pick, { [role]: all.recommended?.[role] ?? [] }, { onlyEmpty: true, behind: true, speech: false, chat: true });
-        const id = got[role]?.models[0];
-        if (!id || next[role]?.models.length === got[role].models.length) continue;
-        next = got;
-        if (costs && !free(after, id)) costs[role] = modelOf(after.models[id]).name;
-      }
+  return takingNames(ws, async () => {
+    const cfg = await readConfig(ws);
+    const taken = new Set(Object.values(cfg.models).map((m) => modelOf(m).name.toLowerCase()));
+    const values = providerValues(src);
+    /** @type {ProviderValues} */
+    const user = {};
+    // A name given is the user's; with none, the plugin's, or "<plugin's> (2)"… where a provider has it (a second key of one plugin), as its models get.
+    const unique = freeName(src.name, new Set(Object.values(cfg.providers).map((p) => providerOf(p).name.toLowerCase())));
+    if (name || unique !== src.name) user.name = name || unique;
+    if (baseUrl) user.baseUrl = baseUrl;
+    if (onFree) user.free = true;
+    for (const [id, a] of Object.entries(abilities)) {
+      if (!values.abilities?.[id]) continue;
+      const mine = { ...(a.on !== values.abilities[id].on ? { on: a.on } : {}), ...(a.baseUrl ? { baseUrl: a.baseUrl } : {}) };
+      if (Object.keys(mine).length) user.abilities = { ...user.abilities, [id]: mine };
     }
-    await saveRoles(ws, next);
-    filled?.push(...Object.keys(next).filter((r) => JSON.stringify(next[r]?.models) !== JSON.stringify(cfg.roles[r]?.models)));
-  }
-  return rec.id;
+    const listed = descModels(src);
+    const rec = newProvider(src.plugin, { template: { version: src.version, values, models: listed.map((m) => m.key) }, user });
+    const models = listed.map((m) => named(newModel(rec.id, m.ability, { template: { id: `${src.plugin}/${m.key}`, version: src.version, values: m.values } }), taken));
+    await saveProvider(ws, rec, models);
+    if (key) await setKey(store, rec.id, key);
+    const all = src.provider.roles ?? {};
+    if (roles) {
+      const after = { ...cfg, providers: { ...cfg.providers, [rec.id]: rec }, models: { ...cfg.models, ...Object.fromEntries(models.map((m) => [m.id, m])) } };
+      const pick = picker(after, rec.id);
+      const speechIn = (/** @type {Record<string, string[]> | undefined} */ s) => Object.keys(s ?? {}).some((r) => SPEECH_ROLES.includes(r));
+      let next = suggested(cfg.roles, pick, all[roles], { onlyEmpty: true, behind: true, speech: true, chat: true });
+      if (!speechIn(all[roles]) && roles !== 'recommended') next = suggested(next, pick, all.recommended, { onlyEmpty: true, behind: true, speech: true, chat: false });
+      if (roles === 'free') {
+        // Still empty: nothing here is free. An empty role that would fall back to a free Main stays empty; any other, Main
+        // above all, gets the provider's recommended model, so Shiori can answer, and the page says it costs money (spec §9.8).
+        for (const role of CHAT_ROLES) {
+          if (next[role]?.models.length) continue;
+          const main = next.main?.models[0];
+          if (role !== 'main' && main && free(after, main)) continue;
+          const got = suggested(next, pick, { [role]: all.recommended?.[role] ?? [] }, { onlyEmpty: true, behind: true, speech: false, chat: true });
+          const id = got[role]?.models[0];
+          if (!id || next[role]?.models.length === got[role].models.length) continue;
+          next = got;
+          if (costs && !free(after, id)) costs[role] = modelOf(after.models[id]).name;
+        }
+      }
+      await saveRoles(ws, next);
+      filled?.push(...Object.keys(next).filter((r) => JSON.stringify(next[r]?.models) !== JSON.stringify(cfg.roles[r]?.models)));
+    }
+    return rec.id;
+  });
 }
 
 /** Koe · Realtime when a drop would empty it: the description's recommended model for that ability, else its first with a record. @param {ProviderSource} src @param {string} ability @param {ModelRecord[]} models */
@@ -219,64 +221,67 @@ function liveInstead(src, ability, models) {
  * models new to the description (in no role), and new abilities switched off. The user's
  * layers stay; models gone from the description, or removed by the user, stay as they are, except that a model leaves Koe · Realtime (a refused session first)
  * at the update that dropped it: the previous description named it, this one doesn't, and lists that ability's models. A list it would empty gets the description's model.
- * A model the description renames, or a new one, takes the first free name (renamed, named). @param {{ ws: Workspace }} c @param {ProviderSource[]} sources @returns {Promise<number>} the providers refreshed
+ * A model the description renames, or a new one, takes the first free name (renamed, named), in takingNames (config.js).
+ * @param {{ ws: Workspace }} c @param {ProviderSource[]} sources @returns {Promise<number>} the providers refreshed
  */
 export async function syncProviders({ ws }, sources) {
-  const bySrc = new Map(sources.map((s) => [s.plugin, s]));
-  const cfg = await readConfig(ws);
-  const taken = new Set(Object.values(cfg.models).map((m) => modelOf(m).name.toLowerCase()));
-  let realtime = cfg.roles[KOE_REALTIME];
-  let n = 0;
-  for (const rec of Object.values(cfg.providers)) {
-    const src = bySrc.get(rec.plugin);
-    if (!src || !rec.template || rec.template.version === src.version) continue;
-    const values = providerValues(src);
-    const user = structuredClone(rec.user ?? {});
-    /** @type {string[]} */
-    const added = [];
-    for (const id of Object.keys(values.abilities ?? {})) {
-      if (rec.template.values.abilities?.[id]) continue;
-      added.push(id);
-      if (user.abilities?.[id]?.on === undefined) user.abilities = { ...user.abilities, [id]: { ...user.abilities?.[id], on: false } };
+  return takingNames(ws, async () => {
+    const bySrc = new Map(sources.map((s) => [s.plugin, s]));
+    const cfg = await readConfig(ws);
+    const taken = new Set(Object.values(cfg.models).map((m) => modelOf(m).name.toLowerCase()));
+    let realtime = cfg.roles[KOE_REALTIME];
+    let n = 0;
+    for (const rec of Object.values(cfg.providers)) {
+      const src = bySrc.get(rec.plugin);
+      if (!src || !rec.template || rec.template.version === src.version) continue;
+      const values = providerValues(src);
+      const user = structuredClone(rec.user ?? {});
+      /** @type {string[]} */
+      const added = [];
+      for (const id of Object.keys(values.abilities ?? {})) {
+        if (rec.template.values.abilities?.[id]) continue;
+        added.push(id);
+        if (user.abilities?.[id]?.on === undefined) user.abilities = { ...user.abilities, [id]: { ...user.abilities?.[id], on: false } };
+      }
+      const listed = descModels(src);
+      const known = new Set(rec.template.models ?? []);
+      const mine = Object.values(cfg.models).filter((m) => m.provider === rec.id);
+      /** @type {ModelRecord[]} */
+      const changed = [];
+      /** @type {Set<string>} */
+      const dropped = new Set();
+      for (const m of mine) {
+        const d = listed.find((x) => m.template?.id === `${src.plugin}/${x.key}`);
+        if (d && m.template) changed.push(renamed(m, { ...m, template: { id: m.template.id, version: src.version, values: d.values } }, taken));
+        else if (!m.template || m.template.id.startsWith('list/')) {
+          // A model added from the list or by id started with its ability's modelDefaults then: a default new since (Claude's photos
+          // and PDFs) reaches it, in the layer that holds its start, unless it or the user has that field.
+          const was = rec.template.values.abilities?.[m.ability]?.modelDefaults ?? {};
+          const now = /** @type {Record<string, any>} */ (values.abilities?.[m.ability]?.modelDefaults ?? {});
+          const start = /** @type {Record<string, any>} */ (m.template ? m.template.values : m.user ?? {});
+          const fresh = Object.keys(now).filter((k) => !(k in was) && !(k in start) && !(k in (m.user ?? {})));
+          if (!fresh.length) continue;
+          const add = Object.fromEntries(fresh.map((k) => [k, structuredClone(now[k])]));
+          changed.push(m.template ? { ...m, template: { ...m.template, values: { ...m.template.values, ...add } } } : { ...m, user: { ...m.user, ...add } });
+        } else if (known.has(m.template.id.slice(src.plugin.length + 1)) && listed.some((x) => x.ability === m.ability)) dropped.add(m.id);
+      }
+      for (const d of listed) {
+        if (known.has(d.key) || mine.some((m) => m.template?.id === `${src.plugin}/${d.key}`)) continue;
+        changed.push(named(newModel(rec.id, d.ability, { template: { id: `${src.plugin}/${d.key}`, version: src.version, values: d.values } }), taken));
+      }
+      /** @type {Roles | null} */
+      let roles = null;
+      if (realtime?.models.some((id) => dropped.has(id))) {
+        const kept = realtime.models.filter((id) => !dropped.has(id));
+        realtime = { ...realtime, models: kept.length ? kept : liveInstead(src, cfg.models[realtime.models[0]].ability, [...changed, ...mine]) };
+        roles = { ...cfg.roles, [KOE_REALTIME]: realtime };
+      }
+      // One write: the model put in may be new, so a kill between two would leave a list naming nothing.
+      await saveProvider(ws, { ...rec, template: { version: src.version, values, models: listed.map((d) => d.key), ...(added.length ? { added } : {}) }, user }, changed, roles);
+      n++;
     }
-    const listed = descModels(src);
-    const known = new Set(rec.template.models ?? []);
-    const mine = Object.values(cfg.models).filter((m) => m.provider === rec.id);
-    /** @type {ModelRecord[]} */
-    const changed = [];
-    /** @type {Set<string>} */
-    const dropped = new Set();
-    for (const m of mine) {
-      const d = listed.find((x) => m.template?.id === `${src.plugin}/${x.key}`);
-      if (d && m.template) changed.push(renamed(m, { ...m, template: { id: m.template.id, version: src.version, values: d.values } }, taken));
-      else if (!m.template || m.template.id.startsWith('list/')) {
-        // A model added from the list or by id started with its ability's modelDefaults then: a default new since (Claude's photos
-        // and PDFs) reaches it, in the layer that holds its start, unless it or the user has that field.
-        const was = rec.template.values.abilities?.[m.ability]?.modelDefaults ?? {};
-        const now = /** @type {Record<string, any>} */ (values.abilities?.[m.ability]?.modelDefaults ?? {});
-        const start = /** @type {Record<string, any>} */ (m.template ? m.template.values : m.user ?? {});
-        const fresh = Object.keys(now).filter((k) => !(k in was) && !(k in start) && !(k in (m.user ?? {})));
-        if (!fresh.length) continue;
-        const add = Object.fromEntries(fresh.map((k) => [k, structuredClone(now[k])]));
-        changed.push(m.template ? { ...m, template: { ...m.template, values: { ...m.template.values, ...add } } } : { ...m, user: { ...m.user, ...add } });
-      } else if (known.has(m.template.id.slice(src.plugin.length + 1)) && listed.some((x) => x.ability === m.ability)) dropped.add(m.id);
-    }
-    for (const d of listed) {
-      if (known.has(d.key) || mine.some((m) => m.template?.id === `${src.plugin}/${d.key}`)) continue;
-      changed.push(named(newModel(rec.id, d.ability, { template: { id: `${src.plugin}/${d.key}`, version: src.version, values: d.values } }), taken));
-    }
-    /** @type {Roles | null} */
-    let roles = null;
-    if (realtime?.models.some((id) => dropped.has(id))) {
-      const kept = realtime.models.filter((id) => !dropped.has(id));
-      realtime = { ...realtime, models: kept.length ? kept : liveInstead(src, cfg.models[realtime.models[0]].ability, [...changed, ...mine]) };
-      roles = { ...cfg.roles, [KOE_REALTIME]: realtime };
-    }
-    // One write: the model put in may be new, so a kill between two would leave a list naming nothing.
-    await saveProvider(ws, { ...rec, template: { version: src.version, values, models: listed.map((d) => d.key), ...(added.length ? { added } : {}) }, user }, changed, roles);
-    n++;
-  }
-  return n;
+    return n;
+  });
 }
 
 /**
@@ -300,20 +305,29 @@ function startFor(cfg, providerId, abilityId) {
   return structuredClone(a.modelDefaults ?? {});
 }
 
-/** Adds a model from an ability's list: what the list said, over modelDefaults, is its template layer. @param {{ ws: Workspace }} c @param {string} providerId @param {string} abilityId @param {import('./contract.js').ListedModel} listed
- * @returns {Promise<string>} the model's id
+/**
+ * Adds a model from an ability's list: what the list said, over modelDefaults, is its template layer. It takes the first free name (named),
+ * in takingNames (config.js). @param {{ ws: Workspace }} c @param {string} providerId @param {string} abilityId
+ * @param {import('./contract.js').ListedModel} listed @returns {Promise<string>} the model's id
  */
 export async function addListedModel({ ws }, providerId, abilityId, listed) {
-  const cfg = await readConfig(ws);
-  const taken = new Set(Object.values(cfg.models).map((m) => modelOf(m).name.toLowerCase()));
-  const rec = named(newModel(providerId, abilityId, { template: { id: `list/${listed.providerId}`, version: '', values: { ...startFor(cfg, providerId, abilityId), ...listed } } }), taken);
-  await saveModel(ws, rec);
-  return rec.id;
+  return takingNames(ws, async () => {
+    const cfg = await readConfig(ws);
+    const taken = new Set(Object.values(cfg.models).map((m) => modelOf(m).name.toLowerCase()));
+    const rec = named(newModel(providerId, abilityId, { template: { id: `list/${listed.providerId}`, version: '', values: { ...startFor(cfg, providerId, abilityId), ...listed } } }), taken);
+    await saveModel(ws, rec);
+    return rec.id;
+  });
 }
 
-/** Adds a model to an ability by its provider id. @param {{ ws: Workspace }} c @param {string} providerId @param {string} abilityId @param {string} providerModelId @returns {Promise<string>} its id */
+/**
+ * Adds a model to an ability by its provider id, in takingNames (config.js): refused when its name is taken (saveModel).
+ * @param {{ ws: Workspace }} c @param {string} providerId @param {string} abilityId @param {string} providerModelId @returns {Promise<string>} its id
+ */
 export async function addModelById({ ws }, providerId, abilityId, providerModelId) {
-  const rec = newModel(providerId, abilityId, { user: { ...startFor(await readConfig(ws), providerId, abilityId), providerId: providerModelId } });
-  await saveModel(ws, rec);
-  return rec.id;
+  return takingNames(ws, async () => {
+    const rec = newModel(providerId, abilityId, { user: { ...startFor(await readConfig(ws), providerId, abilityId), providerId: providerModelId } });
+    await saveModel(ws, rec);
+    return rec.id;
+  });
 }
