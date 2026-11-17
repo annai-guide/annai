@@ -1,5 +1,5 @@
 {
-  "build": "ae2bcf2b4e6d",
+  "build": "a175c874eeeb",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -23,7 +23,7 @@
     "/assets/shiori.svg": "214ef5886a03",
     "/assets/simulations/big-sur.json": "60b158f1e9ab",
     "/skills/driving-companion/SKILL.md": "6e00c40e0c8e",
-    "/skills/plan-a-trip/SKILL.md": "3723455c17b0",
+    "/skills/plan-a-trip/SKILL.md": "76c2181036fb",
     "/skills/replanning/SKILL.md": "b38405097c65",
     "/src/app/boot.js": "58bba933ce37",
     "/src/app/claim.js": "fc9e510c391d",
@@ -98,7 +98,7 @@
     "/src/core/live/clock.js": "e8699d74a329",
     "/src/core/live/geo.js": "f0c643995eb3",
     "/src/core/live/live.js": "637cac4c0619",
-    "/src/core/live/plan-watches.js": "6ada939de416",
+    "/src/core/live/plan-watches.js": "32dcf31a9610",
     "/src/core/live/sim-run.js": "91b84ce6a313",
     "/src/core/live/simulate.js": "d42f97c8d368",
     "/src/core/live/triggers.js": "1e07368d82e6",
@@ -215,7 +215,7 @@
     "/src/ui/bring-in.js": "0373ab0843ad",
     "/src/ui/export-panel.js": "ded8262ee329",
     "/src/ui/file-delete.js": "207b1b0e5902",
-    "/src/ui/format.js": "4b141bcc92cb",
+    "/src/ui/format.js": "560f7dd02b54",
     "/src/ui/grounding.html": "5dab86abb302",
     "/src/ui/grounding.js": "1e27c30fc392",
     "/src/ui/import-state.js": "ac11af4a3775",
@@ -299,8 +299,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "28b8f3a9a2cb",
-    "/l10n/zh-Hans.json": "f7b050273233",
-    "/l10n/zh-Hant.json": "6dc3a31afc7a"
+    "/l10n/ja.json": "b7a4296546da",
+    "/l10n/zh-Hans.json": "ec844a1d6a92",
+    "/l10n/zh-Hant.json": "5a29b4574306"
   }
 }

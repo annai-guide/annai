@@ -16,7 +16,7 @@ Research with web_search, fetch, geocode, nearby, weather and guide. Never book 
   "booking": "/trip/bookings/nepenthe.json", "notes": "Window table if they have one." }
 
 - fixed is true for what is booked or can't move (flights, reservations, check-ins, last ferries), false for what can.
-- kind is "flight" for a flight, "rail" for a train, "ferry", "bus" or "coach" for those rides, and "lodging" for a stay's check-in or check-out: annai times reminders by these (a flight's leave reminder aims at the airport 2 hours early; a stay gets none). Anything else takes a word of your own, such as "meal".
+- kind is "flight" for a flight, "rail" for a train, "ferry", "bus" or "coach" for those rides, and "lodging" for a stay's check-in or check-out: annai times reminders by these (a flight's leave reminder aims at the airport 2 hours early; a stay gets no leave or running-late reminder). Anything else takes a word of your own, such as "meal".
 - priority: 0 nice to have, 1 would like, 2 important, 3 must.
 - Times are ISO 8601 with the offset in force at that place on that date, plus its IANA zone. A flight starts in the departure airport's zone and ends in the arrival's.
 - Something that takes the whole day (a day at a theme park, a wedding) has "kind": "all-day" and starts at 00:00 that day where it is, such as "2026-11-27T00:00:00-05:00" with "tz": "America/New_York". The plan shows it as "All day", and the calendar file gets just its date.

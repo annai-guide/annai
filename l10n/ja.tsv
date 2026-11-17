@@ -653,22 +653,22 @@ bgn4sv	ok	Shiori answers in the language you speak to her	Shioriは話しかけ�
 k4u05v	ok	The language you speak to her	話しかけた言語に合わせる	src/core/languages.js:362	
 cc69cl	ok	None picked: annai uses the browser’s language.	未選択の場合は、ブラウザの言語を使います。	src/core/languages.js:363	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
 1dyfzsg	ok	A simulation is already running.	シミュレーションはすでに実行中です。	src/core/live/live.js:307	
-157qf8n	ok	Flight {0} departs {1}, {2}	フライト{0}（{1}発、{2}）	src/core/live/plan-watches.js:250	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
-1tvx4k9	ok	Flight {0} departs {1}	フライト{0}（{1}発）	src/core/live/plan-watches.js:250	{0} = w.flight; {1} = time
-1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}、{2}）	src/core/live/plan-watches.js:251	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
-1wwrs1d	ok	{0} at {1}	{0}（{1}）	src/core/live/plan-watches.js:251	{0} = w.title; {1} = time; Note: an item in a few words: its title, then its time.
-ypynbt	ok	Leave soon: {0}.	そろそろ出発：{0}。	src/core/live/plan-watches.js:262	{0} = what
-1nq6h1n	ok	About {0} min by car.	車で約{0}分です。	src/core/live/plan-watches.js:263	{0} = num(say.minutes)
-1s9ayzz	ok	About {0} min on foot.	徒歩で約{0}分です。	src/core/live/plan-watches.js:263	{0} = num(say.minutes)
-osmwu5	ok	Leave in about {0} min: {1}.	約{0}分後に出発：{1}。	src/core/live/plan-watches.js:263	{0} = num(say.left ?? LEAVE_LEAD_MIN); {1} = what
-12cmqu6	ok	Running late: {0}.	遅れています：{0}。	src/core/live/plan-watches.js:264	{0} = what
-3qig1w	ok	About {0} min away.	到着まであと約{0}分です。	src/core/live/plan-watches.js:264	{0} = num(say.minutes)
-ub25px	ok	Planned now: {0}, at {1}.	今の予定：{0}（{1}）。	src/core/live/plan-watches.js:265	{0} = String(say.title); {1} = String(say.place); Note: label: value, the place in brackets.
-195jjr0	ok	{0}: {1}.	{0}：{1}。	src/core/live/plan-watches.js:266	{0} = String(say.place); {1} = String(say.title); Note: a place, then the plan item there.
-1yqg2at	ok	In {0} min: {1}.	あと{0}分：{1}。	src/core/live/plan-watches.js:267	{0} = num(say.left ?? COMING_UP_MIN); {1} = what
-9s8no9	ok	You've stopped somewhere that isn't on the itinerary.	旅程にない場所に立ち寄っています。	src/core/live/plan-watches.js:269	
-4lxlla	ok	Nothing more is on the itinerary.	旅程に残っている予定はありません。	src/core/live/plan-watches.js:270	
-yc6345	ok	Next on the itinerary: {0} at {1}.	次の予定：{0}（{1}）。	src/core/live/plan-watches.js:271	{0} = say.next.title; {1} = say.next.later ? dayClock(say.next.at, say.next.tz) : clock(say.next.at, say.next.tz)
+157qf8n	ok	Flight {0} departs {1}, {2}	フライト{0}（{1}発、{2}）	src/core/live/plan-watches.js:241	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
+1tvx4k9	ok	Flight {0} departs {1}	フライト{0}（{1}発）	src/core/live/plan-watches.js:241	{0} = w.flight; {1} = time
+1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}、{2}）	src/core/live/plan-watches.js:242	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
+1wwrs1d	ok	{0} at {1}	{0}（{1}）	src/core/live/plan-watches.js:242	{0} = w.title; {1} = time; Note: an item in a few words: its title, then its time.
+ypynbt	ok	Leave soon: {0}.	そろそろ出発：{0}。	src/core/live/plan-watches.js:253	{0} = what
+1nq6h1n	ok	About {0} min by car.	車で約{0}分です。	src/core/live/plan-watches.js:254	{0} = num(say.minutes)
+1s9ayzz	ok	About {0} min on foot.	徒歩で約{0}分です。	src/core/live/plan-watches.js:254	{0} = num(say.minutes)
+osmwu5	ok	Leave in about {0} min: {1}.	約{0}分後に出発：{1}。	src/core/live/plan-watches.js:254	{0} = num(say.left ?? LEAVE_LEAD_MIN); {1} = what
+12cmqu6	ok	Running late: {0}.	遅れています：{0}。	src/core/live/plan-watches.js:255	{0} = what
+3qig1w	ok	About {0} min away.	到着まであと約{0}分です。	src/core/live/plan-watches.js:255	{0} = num(say.minutes)
+ub25px	ok	Planned now: {0}, at {1}.	今の予定：{0}（{1}）。	src/core/live/plan-watches.js:256	{0} = String(say.title); {1} = String(say.place); Note: label: value, the place in brackets.
+195jjr0	ok	{0}: {1}.	{0}：{1}。	src/core/live/plan-watches.js:257	{0} = String(say.place); {1} = String(say.title); Note: a place, then the plan item there.
+1yqg2at	ok	In {0} min: {1}.	あと{0}分：{1}。	src/core/live/plan-watches.js:258	{0} = num(say.left ?? COMING_UP_MIN); {1} = what
+9s8no9	ok	You've stopped somewhere that isn't on the itinerary.	旅程にない場所に立ち寄っています。	src/core/live/plan-watches.js:260	
+4lxlla	ok	Nothing more is on the itinerary.	旅程に残っている予定はありません。	src/core/live/plan-watches.js:261	
+yc6345	ok	Next on the itinerary: {0} at {1}.	次の予定：{0}（{1}）。	src/core/live/plan-watches.js:262	{0} = say.next.title; {1} = say.next.later ? dayClock(say.next.at, say.next.tz) : clock(say.next.at, say.next.tz)
 1jok3pb	ok	A simulation is already running. Stop it first.	シミュレーションはすでに実行中です。先に停止してください。	src/core/live/sim-run.js:90	
 ujhqxv	ok	Untitled trip	名称未設定の旅	src/core/live/sim-run.js:237	Note: a new simulated trip's name when its itinerary has none, before " (simulation)" is added.
 1426icm	ok	That trip isn't on this device any more.	その旅はもうこの端末にありません。	src/core/live/sim-run.js:277	
@@ -1161,82 +1161,86 @@ jn2a2i	ok	Pick up · {0}	受け取り · {0}	src/ui/format.js:88	{0} = name; Not
 tdmj58	ok	Flexible:	時間変更可：	src/ui/format.js:99	Note: Read aloud before a plan item whose time can move.
 cdkfoc	ok	Staying at {0} · night {1} of {2}	{0}に宿泊 · {2}泊中{1}泊目	src/ui/format.js:108	{0} = name; {1} = n; {2} = of; Note: a quiet line on each night of a stay; 3泊中2泊目 is how hotels count nights.
 lraa4q	ok	{0} · day {1} of {2}	{0} · {2}日中{1}日目	src/ui/format.js:108	{0} = name; {1} = n; {2} = of; Note: a quiet line on each day between, for a car or anything over several days; 8日中3日目 as the stay's 泊中泊目.
-ukzedx	ok	Other	その他	src/ui/format.js:112	
-1q4rwjo#other	ok	# stays	宿泊#件	src/ui/format.js:116	plural; # = n; English: "# stay" (one), "# stays" (other); Note: shows in a Files row's second line, as the count of stays a file became.
-1saywzu#other	ok	# flights	フライト#便	src/ui/format.js:116	plural; # = n; English: "# flight" (one), "# flights" (other); Note: shows in a Files row's second line, as the count of flights a file became ("2 flights · Nov 20, Nov 27").
-1usugy8#other	ok	# cars	レンタカー#件	src/ui/format.js:116	plural; # = n; English: "# car" (one), "# cars" (other); Note: shows in a Files row's second line, as the count of car rentals a file became.
-132sfp8#other	ok	# events	イベント#件	src/ui/format.js:117	plural; # = n; English: "# event" (one), "# events" (other); Note: shows in a Files row's second line, as the count of events a file became.
-7f6248#other	ok	# restaurants	レストラン#件	src/ui/format.js:117	plural; # = n; English: "# restaurant" (one), "# restaurants" (other); Note: shows in a Files row's second line, as the count of restaurant bookings a file became.
-qicqbg#other	ok	# trains	列車#本	src/ui/format.js:117	plural; # = n; English: "# train" (one), "# trains" (other); Note: shows in a Files row's second line, as the count of train trips a file became.
-25ugc5	ok	Itinerary items from a calendar	カレンダーから旅程に追加した項目	src/ui/format.js:143	Note: what a calendar file (.ics) became on the trip's Files; 予定 as the Plan.
-1gfvwcc	ok	Nothing yet	まだ何もありません	src/ui/format.js:144	Note: what a file became on the trip's Files: nothing so far.
-jgspu5	ok	Waiting for Shiori to read it	Shioriの読み取り待ち	src/ui/format.js:144	Note: a file on the trip's Files that Shiori hasn't read yet.
-1hlojji	ok	To	到着地	src/ui/format.js:150	context: booking; Note: a booking's detail: where a flight or train goes.
-1uq5tvs	ok	Seat	座席	src/ui/format.js:150	Note: a booking's detail.
-1yz1r2o	ok	Cabin	クラス	src/ui/format.js:150	context: booking; Note: a flight's cabin class (economy, business), as airlines say in Japanese.
-9ihsg5	ok	Airline	航空会社	src/ui/format.js:150	Note: a booking's detail.
-qoo2zd	ok	Flight	便名	src/ui/format.js:150	context: booking; Note: a booking's detail: the flight's number (AN 123), not the kind of booking.
-upnba7	ok	From	出発地	src/ui/format.js:150	context: booking; Note: a booking's detail: where a flight or train leaves from.
-1501knl	ok	Terminal	ターミナル	src/ui/format.js:151	Note: an airport's terminal.
-15rtgdu	ok	Gate	搭乗口	src/ui/format.js:151	Note: an airport's gate.
-193ku12	ok	Bags	手荷物	src/ui/format.js:151	Note: a booking's detail: the bags included.
-1ipbaqc	ok	Room	部屋	src/ui/format.js:151	context: booking; Note: a stay's room.
-1jn3vqu	ok	Nights	泊数	src/ui/format.js:151	Note: how many nights a stay is.
-ean645	ok	Travellers	乗客	src/ui/format.js:151	Note: the people a flight or train booking is for.
-vpb928	ok	Guests	宿泊者	src/ui/format.js:151	Note: the people a stay is booked for.
-1v8ms9v	ok	Train	列車名	src/ui/format.js:152	context: booking; Note: a booking's detail: the train's name or number, not the kind of booking.
-3uyuz4	ok	Drop-off	返却	src/ui/format.js:152	Note: where and when a rental car goes back.
-4f76ga	ok	Notes	メモ	src/ui/format.js:152	Note: notes on a booking or a plan item.
-95yu2i	ok	Pick-up	受け取り	src/ui/format.js:152	Note: where and when a rental car is picked up.
-b2la2e	ok	Car	号車	src/ui/format.js:152	context: train; Note: a train's car (coach) number, not a rental car.
-vzzxl8	ok	Party size	人数	src/ui/format.js:152	Note: how many people a restaurant booking is for.
-1jtckn3	ok	Route	区間	src/ui/format.js:187	context: flight; Note: a flight's from → to, as one line.
-13ne04w	ok	Departs	出発	src/ui/format.js:188	Note: a flight's departure, its day and time in that airport's zone beside it.
-j6u2ti	ok	Starts	開始	src/ui/format.js:188	context: booking; Note: A booking's start, its day and time shown beside it.
-vjjlq9	ok	Check-in	チェックイン	src/ui/format.js:188	Note: a stay's check-in, its day and time beside it.
-1pcvk9l	ok	Ends	終了	src/ui/format.js:189	context: booking
-8md94n	ok	Arrives	到着	src/ui/format.js:189	Note: a flight's arrival, its day and time in that airport's zone beside it.
-8nuh1e	ok	Check-out	チェックアウト	src/ui/format.js:189	Note: a stay's check-out, its day and time beside it.
-16ygujg	ok	Place	場所	src/ui/format.js:190	
-lypvx6	ok	{0}, {1}	{0}（{1}）	src/ui/format.js:190	context: booking; {0} = String(b.place.name); {1} = String(b.place.address); Note: A booking's place: its name, then its address in brackets.
-p3snlg	ok	Confirmation	予約番号	src/ui/format.js:201	Note: A booking's confirmation code.
-t05i6w	ok	Cost	料金	src/ui/format.js:202	
-1vdspge	ok	Getting files: {0} of {1}	ファイルを取得中（{0}/{1}）	src/ui/format.js:239	{0} = num(p.done); {1} = num(p.total)
-zo1gq	ok	Getting the backup…	バックアップを取得中…	src/ui/format.js:239	
-fuj1qb	ok	Getting the backup ready…	バックアップを準備中…	src/ui/format.js:243	
-1a0lh7c	ok	Comparing files {0} of {1}…	ファイルを比較中（{0}/{1}）…	src/ui/format.js:244	{0} = num(p.done); {1} = num(p.total)
-1ofggks	ok	Comparing files…	ファイルを比較中…	src/ui/format.js:244	
-1jbhw8o	ok	Uploading…	アップロード中…	src/ui/format.js:245	
-sg0mn0	ok	Uploading {0} of {1}…	アップロード中（{0}/{1}）…	src/ui/format.js:245	{0} = num(p.done); {1} = num(p.total)
-11y7c1u	ok	Paused: there is a newer backup from an iPad	一時停止中：別のiPadからの新しいバックアップがあります	src/ui/format.js:250	
-1815ss7	ok	Paused: there is a newer backup from an iPhone	一時停止中：別のiPhoneからの新しいバックアップがあります	src/ui/format.js:250	
-1kc2l15	ok	Paused: there is a newer backup from a computer	一時停止中：別のパソコンからの新しいバックアップがあります	src/ui/format.js:251	
-1ytn3n1	ok	Paused: there is a newer backup from an Android phone	一時停止中：別のAndroidスマートフォンからの新しいバックアップがあります	src/ui/format.js:251	
-14m1y56	ok	Paused: there is a newer backup from another device	一時停止中：別の端末からの新しいバックアップがあります	src/ui/format.js:252	
-12hcbva	ok	An iPhone backed up to {0} {1}.	{1}、別のiPhoneが{0}にバックアップしました。	src/ui/format.js:256	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
-1exdtuz	ok	An iPad backed up to {0} {1}.	{1}、別のiPadが{0}にバックアップしました。	src/ui/format.js:256	{0} = where; {1} = ago
-1hmrpdo	ok	A computer backed up to {0} {1}.	{1}、別のパソコンが{0}にバックアップしました。	src/ui/format.js:257	{0} = where; {1} = ago
-dc7u48	ok	An Android phone backed up to {0} {1}.	{1}、別のAndroidスマートフォンが{0}にバックアップしました。	src/ui/format.js:257	{0} = where; {1} = ago
-19kyaez	ok	Another device backed up to {0} {1}.	{1}、別の端末が{0}にバックアップしました。	src/ui/format.js:258	{0} = where; {1} = ago
-mbc651	ok	That was after this phone's last backup.	この端末の前回のバックアップより後のものです。	src/ui/format.js:262	
-vqd7xg	ok	Import it as a copy to bring its trips here, or back up this phone over it.	コピーとして読み込んでその旅をここに追加するか、この端末の内容でそのバックアップを上書きしてください。	src/ui/format.js:262	Note: "Back up this phone over it": this phone's data replaces the newer backup there, as the card's button says it.
-1ce0smb	ok	That was after this iPad's last backup.	このiPadの前回のバックアップより後のものです。	src/ui/format.js:263	
-nmyapy	ok	Import it as a copy to bring its trips here, or back up this iPad over it.	コピーとして読み込んでその旅をここに追加するか、このiPadの内容でそのバックアップを上書きしてください。	src/ui/format.js:263	
-hqymxl	ok	Import it as a copy to bring its trips here, or back up this computer over it.	コピーとして読み込んでその旅をここに追加するか、このパソコンの内容でそのバックアップを上書きしてください。	src/ui/format.js:264	
-wn3ejs	ok	That was after this computer's last backup.	このパソコンの前回のバックアップより後のものです。	src/ui/format.js:264	
-1n6qjpw	ok	Working…	処理中…	src/ui/format.js:279	
-1sw982j	ok	Last backup {0}.	前回のバックアップ：{0}。	src/ui/format.js:284	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
-d1smo3	ok	Not backed up yet.	まだバックアップしていません。	src/ui/format.js:284	
-10ouos4	ok	Waiting for your OK to upload {0}	{0}のアップロードの許可を待っています	src/ui/format.js:285	{0} = size(h.bytes)
-nbshf0	ok	The last try failed.	前回の試行は失敗しました。	src/ui/format.js:287	Note: the reason follows on a line of its own, in English: a hold kept before annai spoke other languages.
-osg3je	ok	The last try failed: {0}	前回の試行は失敗しました：{0}	src/ui/format.js:288	{0} = holdWords(h, target.name)
-1qmdzit	ok	Not set up yet: fill it in, then Save and test	まだ設定されていません。入力してから「保存してテスト」をタップしてください	src/ui/format.js:289	Note: "Save and test" is the backup place's button.
-1e2pygg	ok	Automatic backups are off	自動バックアップはオフです	src/ui/format.js:290	
-173tgfr	ok	Last backup {0}	前回のバックアップ：{0}	src/ui/format.js:291	{0} = at
-1uajbr3	ok	Not backed up yet	まだバックアップしていません	src/ui/format.js:291	
-1j5k2vf	ok	Automatic backups there are paused, so neither device overwrites the other.	互いに上書きしないよう、そこへの自動バックアップを一時停止しています。	src/ui/format.js:303	
-hmr3pn	ok	The other backup stays in its history.	もう一方のバックアップは履歴に残ります。	src/ui/format.js:303	
-8091b1	ok	no limit	上限なし	src/ui/format.js:328	
+ukzedx	ok	Other	その他	src/ui/format.js:117	
+1cyh7n5	draft	Coach	長距離バス	src/ui/format.js:118	Note: a plan item's kind, shown under its title: a long-distance coach, not a train carriage.
+1imb8nt	draft	Bus	バス	src/ui/format.js:118	Note: a plan item's kind, shown under its title: a bus or shuttle ride.
+1lq4x97	draft	Ferry	フェリー	src/ui/format.js:118	Note: a plan item's kind, shown under its title: a ferry ride.
+25bpne	draft	Meal	食事	src/ui/format.js:118	Note: a plan item's kind, shown under its title: a meal.
+1q4rwjo#other	ok	# stays	宿泊#件	src/ui/format.js:123	plural; # = n; English: "# stay" (one), "# stays" (other); Note: shows in a Files row's second line, as the count of stays a file became.
+1saywzu#other	ok	# flights	フライト#便	src/ui/format.js:123	plural; # = n; English: "# flight" (one), "# flights" (other); Note: shows in a Files row's second line, as the count of flights a file became ("2 flights · Nov 20, Nov 27").
+1usugy8#other	ok	# cars	レンタカー#件	src/ui/format.js:123	plural; # = n; English: "# car" (one), "# cars" (other); Note: shows in a Files row's second line, as the count of car rentals a file became.
+132sfp8#other	ok	# events	イベント#件	src/ui/format.js:124	plural; # = n; English: "# event" (one), "# events" (other); Note: shows in a Files row's second line, as the count of events a file became.
+7f6248#other	ok	# restaurants	レストラン#件	src/ui/format.js:124	plural; # = n; English: "# restaurant" (one), "# restaurants" (other); Note: shows in a Files row's second line, as the count of restaurant bookings a file became.
+qicqbg#other	ok	# trains	列車#本	src/ui/format.js:124	plural; # = n; English: "# train" (one), "# trains" (other); Note: shows in a Files row's second line, as the count of train trips a file became.
+25ugc5	ok	Itinerary items from a calendar	カレンダーから旅程に追加した項目	src/ui/format.js:150	Note: what a calendar file (.ics) became on the trip's Files; 予定 as the Plan.
+1gfvwcc	ok	Nothing yet	まだ何もありません	src/ui/format.js:151	Note: what a file became on the trip's Files: nothing so far.
+jgspu5	ok	Waiting for Shiori to read it	Shioriの読み取り待ち	src/ui/format.js:151	Note: a file on the trip's Files that Shiori hasn't read yet.
+1hlojji	ok	To	到着地	src/ui/format.js:157	context: booking; Note: a booking's detail: where a flight or train goes.
+1uq5tvs	ok	Seat	座席	src/ui/format.js:157	Note: a booking's detail.
+1yz1r2o	ok	Cabin	クラス	src/ui/format.js:157	context: booking; Note: a flight's cabin class (economy, business), as airlines say in Japanese.
+9ihsg5	ok	Airline	航空会社	src/ui/format.js:157	Note: a booking's detail.
+qoo2zd	ok	Flight	便名	src/ui/format.js:157	context: booking; Note: a booking's detail: the flight's number (AN 123), not the kind of booking.
+upnba7	ok	From	出発地	src/ui/format.js:157	context: booking; Note: a booking's detail: where a flight or train leaves from.
+1501knl	ok	Terminal	ターミナル	src/ui/format.js:158	Note: an airport's terminal.
+15rtgdu	ok	Gate	搭乗口	src/ui/format.js:158	Note: an airport's gate.
+193ku12	ok	Bags	手荷物	src/ui/format.js:158	Note: a booking's detail: the bags included.
+1ipbaqc	ok	Room	部屋	src/ui/format.js:158	context: booking; Note: a stay's room.
+1jn3vqu	ok	Nights	泊数	src/ui/format.js:158	Note: how many nights a stay is.
+ean645	ok	Travellers	乗客	src/ui/format.js:158	Note: the people a flight or train booking is for.
+vpb928	ok	Guests	宿泊者	src/ui/format.js:158	Note: the people a stay is booked for.
+1v8ms9v	ok	Train	列車名	src/ui/format.js:159	context: booking; Note: a booking's detail: the train's name or number, not the kind of booking.
+3uyuz4	ok	Drop-off	返却	src/ui/format.js:159	Note: where and when a rental car goes back.
+4f76ga	ok	Notes	メモ	src/ui/format.js:159	Note: notes on a booking or a plan item.
+95yu2i	ok	Pick-up	受け取り	src/ui/format.js:159	Note: where and when a rental car is picked up.
+b2la2e	ok	Car	号車	src/ui/format.js:159	context: train; Note: a train's car (coach) number, not a rental car.
+vzzxl8	ok	Party size	人数	src/ui/format.js:159	Note: how many people a restaurant booking is for.
+1jtckn3	ok	Route	区間	src/ui/format.js:194	context: flight; Note: a flight's from → to, as one line.
+13ne04w	ok	Departs	出発	src/ui/format.js:195	Note: a flight's departure, its day and time in that airport's zone beside it.
+j6u2ti	ok	Starts	開始	src/ui/format.js:195	context: booking; Note: A booking's start, its day and time shown beside it.
+vjjlq9	ok	Check-in	チェックイン	src/ui/format.js:195	Note: a stay's check-in, its day and time beside it.
+1pcvk9l	ok	Ends	終了	src/ui/format.js:196	context: booking
+8md94n	ok	Arrives	到着	src/ui/format.js:196	Note: a flight's arrival, its day and time in that airport's zone beside it.
+8nuh1e	ok	Check-out	チェックアウト	src/ui/format.js:196	Note: a stay's check-out, its day and time beside it.
+16ygujg	ok	Place	場所	src/ui/format.js:197	
+lypvx6	ok	{0}, {1}	{0}（{1}）	src/ui/format.js:197	context: booking; {0} = String(b.place.name); {1} = String(b.place.address); Note: A booking's place: its name, then its address in brackets.
+p3snlg	ok	Confirmation	予約番号	src/ui/format.js:208	Note: A booking's confirmation code.
+t05i6w	ok	Cost	料金	src/ui/format.js:209	
+1vdspge	ok	Getting files: {0} of {1}	ファイルを取得中（{0}/{1}）	src/ui/format.js:246	{0} = num(p.done); {1} = num(p.total)
+zo1gq	ok	Getting the backup…	バックアップを取得中…	src/ui/format.js:246	
+fuj1qb	ok	Getting the backup ready…	バックアップを準備中…	src/ui/format.js:250	
+1a0lh7c	ok	Comparing files {0} of {1}…	ファイルを比較中（{0}/{1}）…	src/ui/format.js:251	{0} = num(p.done); {1} = num(p.total)
+1ofggks	ok	Comparing files…	ファイルを比較中…	src/ui/format.js:251	
+1jbhw8o	ok	Uploading…	アップロード中…	src/ui/format.js:252	
+sg0mn0	ok	Uploading {0} of {1}…	アップロード中（{0}/{1}）…	src/ui/format.js:252	{0} = num(p.done); {1} = num(p.total)
+11y7c1u	ok	Paused: there is a newer backup from an iPad	一時停止中：別のiPadからの新しいバックアップがあります	src/ui/format.js:257	
+1815ss7	ok	Paused: there is a newer backup from an iPhone	一時停止中：別のiPhoneからの新しいバックアップがあります	src/ui/format.js:257	
+1kc2l15	ok	Paused: there is a newer backup from a computer	一時停止中：別のパソコンからの新しいバックアップがあります	src/ui/format.js:258	
+1ytn3n1	ok	Paused: there is a newer backup from an Android phone	一時停止中：別のAndroidスマートフォンからの新しいバックアップがあります	src/ui/format.js:258	
+14m1y56	ok	Paused: there is a newer backup from another device	一時停止中：別の端末からの新しいバックアップがあります	src/ui/format.js:259	
+12hcbva	ok	An iPhone backed up to {0} {1}.	{1}、別のiPhoneが{0}にバックアップしました。	src/ui/format.js:263	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
+1exdtuz	ok	An iPad backed up to {0} {1}.	{1}、別のiPadが{0}にバックアップしました。	src/ui/format.js:263	{0} = where; {1} = ago
+1hmrpdo	ok	A computer backed up to {0} {1}.	{1}、別のパソコンが{0}にバックアップしました。	src/ui/format.js:264	{0} = where; {1} = ago
+dc7u48	ok	An Android phone backed up to {0} {1}.	{1}、別のAndroidスマートフォンが{0}にバックアップしました。	src/ui/format.js:264	{0} = where; {1} = ago
+19kyaez	ok	Another device backed up to {0} {1}.	{1}、別の端末が{0}にバックアップしました。	src/ui/format.js:265	{0} = where; {1} = ago
+mbc651	ok	That was after this phone's last backup.	この端末の前回のバックアップより後のものです。	src/ui/format.js:269	
+vqd7xg	ok	Import it as a copy to bring its trips here, or back up this phone over it.	コピーとして読み込んでその旅をここに追加するか、この端末の内容でそのバックアップを上書きしてください。	src/ui/format.js:269	Note: "Back up this phone over it": this phone's data replaces the newer backup there, as the card's button says it.
+1ce0smb	ok	That was after this iPad's last backup.	このiPadの前回のバックアップより後のものです。	src/ui/format.js:270	
+nmyapy	ok	Import it as a copy to bring its trips here, or back up this iPad over it.	コピーとして読み込んでその旅をここに追加するか、このiPadの内容でそのバックアップを上書きしてください。	src/ui/format.js:270	
+hqymxl	ok	Import it as a copy to bring its trips here, or back up this computer over it.	コピーとして読み込んでその旅をここに追加するか、このパソコンの内容でそのバックアップを上書きしてください。	src/ui/format.js:271	
+wn3ejs	ok	That was after this computer's last backup.	このパソコンの前回のバックアップより後のものです。	src/ui/format.js:271	
+1n6qjpw	ok	Working…	処理中…	src/ui/format.js:286	
+1sw982j	ok	Last backup {0}.	前回のバックアップ：{0}。	src/ui/format.js:291	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
+d1smo3	ok	Not backed up yet.	まだバックアップしていません。	src/ui/format.js:291	
+10ouos4	ok	Waiting for your OK to upload {0}	{0}のアップロードの許可を待っています	src/ui/format.js:292	{0} = size(h.bytes)
+nbshf0	ok	The last try failed.	前回の試行は失敗しました。	src/ui/format.js:294	Note: the reason follows on a line of its own, in English: a hold kept before annai spoke other languages.
+osg3je	ok	The last try failed: {0}	前回の試行は失敗しました：{0}	src/ui/format.js:295	{0} = holdWords(h, target.name)
+1qmdzit	ok	Not set up yet: fill it in, then Save and test	まだ設定されていません。入力してから「保存してテスト」をタップしてください	src/ui/format.js:296	Note: "Save and test" is the backup place's button.
+1e2pygg	ok	Automatic backups are off	自動バックアップはオフです	src/ui/format.js:297	
+173tgfr	ok	Last backup {0}	前回のバックアップ：{0}	src/ui/format.js:298	{0} = at
+1uajbr3	ok	Not backed up yet	まだバックアップしていません	src/ui/format.js:298	
+1j5k2vf	ok	Automatic backups there are paused, so neither device overwrites the other.	互いに上書きしないよう、そこへの自動バックアップを一時停止しています。	src/ui/format.js:310	
+hmr3pn	ok	The other backup stays in its history.	もう一方のバックアップは履歴に残ります。	src/ui/format.js:310	
+8091b1	ok	no limit	上限なし	src/ui/format.js:335	
 lpx0cl#other	ok	# trips and conversations	旅と会話#件	src/ui/import-state.js:47	plural; # = titles.length; English: "# trip or conversation" (one), "# trips and conversations" (other); Note: a git backup's preview, from its manifest alone, can't tell trips from chats: this is the one row they fold under; also the toast "Imported # trips and conversations" when the user left the import screen (import-state.js).
 12lprg	ok	Imported {0} from {1}.	{1}から{0}を読み込みました。	src/ui/import-state.js:48	{0} = what; {1} = place
 1hzaym7	ok	Imported {0}.	{0}を読み込みました。	src/ui/import-state.js:48	{0} = what

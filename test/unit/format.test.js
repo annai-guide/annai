@@ -2,7 +2,7 @@ import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { setWords, plural, key } from '../../src/core/l10n.js';
 import {
-  locale, sentences, sentenceGap, num, numField, parseNum, money, size, distance, setDistances, duration, seconds, relTime, relChange, day, dateRange, when, zone, list, languageName, sortWords, formatCost,
+  locale, sentences, sentenceGap, num, numField, parseNum, money, size, distance, setDistances, duration, seconds, relTime, relChange, day, dateRange, when, zone, list, languageName, sortWords, formatCost, BOOKING_KINDS,
 } from '../../src/ui/format.js';
 
 // The helpers speak the interface language with the phone's region: `as('en', 'de-DE')` is English screens on a German phone.
@@ -357,4 +357,13 @@ test('under Traditional Chinese screens, formats follow the phone\'s region: Tai
   as('zh-Hant', 'en-US');
   assert.equal(locale(), 'zh-Hant-US');
   assert.equal(num(1234.5), '1,234.5');
+});
+
+test("BOOKING_KINDS names every kind word the reminders read, an everyday word as the kind it stands for (an item's kind not in it shows in English on a Japanese screen: \"ferry\", \"bus\", \"coach\")", async () => {
+  const { KINDS } = await import('../../src/core/live/plan-watches.js');
+  for (const [word, kind] of KINDS) {
+    assert.ok(Object.hasOwn(BOOKING_KINDS, word), word);
+    assert.equal(BOOKING_KINDS[word], BOOKING_KINDS[kind], word);
+  }
+  assert.deepEqual(['ferry', 'bus', 'coach', 'meal', 'plane', 'hotel'].map((w) => BOOKING_KINDS[w]), ['Ferry', 'Bus', 'Coach', 'Meal', 'Flight', 'Stay']);
 });

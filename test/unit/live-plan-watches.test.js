@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { planWatches, planWords, PLAN } from '../../src/core/live/plan-watches.js';
-import { MONTEREY, BIXBY, RIVER_INN, NEPENTHE, HEARST, CAMBRIA, off, at, iso, LA, liveKit } from './live-kit.js';
+import { MONTEREY, BIXBY, RIVER_INN, NEPENTHE, MCWAY, HEARST, CAMBRIA, off, at, iso, LA, liveKit } from './live-kit.js';
 
 /** @param {Partial<import('../../src/core/live/triggers.js').Moment>} o @returns {import('../../src/core/live/triggers.js').Moment} */
 const moment = (o = {}) => ({ now: at('08:00'), fix: null, newFix: false, past: false, live: true, activity: 'still', change: null, odometer: 0, stop: null, gap: null, fastEnded: null, fired: () => false, ...o });
@@ -375,11 +375,28 @@ test("a catch-up that fires an item's arrival leaves out its leave reminder: the
   assert.deepEqual(wakes[0].fallbacks.map((/** @type {any} */ f) => [f.plan?.event, f.text]), [['arrived', 'Nepenthe: Lunch at Nepenthe. Window table if they have one.']]);
   assert.match(String(wakes[0].text), /you arrived at Nepenthe for "Lunch at Nepenthe"/);
   assert.doesNotMatch(String(wakes[0].text), /time to leave/);
-  // It fired, and the log keeps it, so it doesn't come again: only the catch-up's words leave it out.
+  // It fired, and the log keeps it: only the catch-up's words leave it out.
   assert.ok((await k.events(['trigger.fired'])).some((e) => e.data.watch === 'plan:nepenthe:leave'));
-  await k.to(at('11:55'));
-  assert.equal(k.agent.wakes.filter((w) => w.kind === 'catch-up').length, 1);
-  assert.ok(!k.agent.wakes.some((w) => (w.fallbacks ?? []).some((/** @type {any} */ f) => f.plan?.event === 'leave')));
+  k.live.dispose();
+});
+
+test("an arrival in a catch-up leaves out only its own item's leave reminder: another item's leave, fired in the same catch-up, stays", async () => {
+  // As above, with a walk at McWay Falls at 12:20 too: its leave is due already at 11:40 from the River Inn, and the traveller is at Nepenthe, not there.
+  const falls = { title: 'Falls walk', fixed: true, start: { at: iso('12:20'), tz: LA }, place: { name: 'McWay Falls', ...MCWAY } };
+  const k = await liveKit({ plan: { nepenthe: ITEMS[0].item, falls } });
+  await k.stay(RIVER_INN, at('11:00'), at('11:20'));
+  k.sensors.visible(false);
+  await k.settle();
+  await k.to(at('11:40'));
+  k.sensors.visible(true);
+  await k.settle();
+  await k.fix(at('11:40:05'), NEPENTHE);
+  const wakes = k.agent.wakes.filter((w) => w.kind === 'catch-up');
+  assert.equal(wakes.length, 1);
+  assert.deepEqual(wakes[0].fallbacks.map((/** @type {any} */ f) => [f.plan?.event, f.text]), [
+    ['leave', 'Leave soon: Falls walk at 12:20, McWay Falls.'],
+    ['arrived', 'Nepenthe: Lunch at Nepenthe. Window table if they have one.'],
+  ]);
   k.live.dispose();
 });
 
@@ -737,6 +754,16 @@ test("a stay whose check-in sorts before the flight that takes the traveller the
   const tour = /** @type {any} */ (behind.find((w) => w.id === 'plan:tour:leave')).when;
   assert.equal(tour.from, null);
   assert.equal(PLAN.next?.(tour, moment({ now: ny('23:30') }), {}), ny('08:30', '2026-11-28'));
+  // The line is a day's drive, 1000 km (LEG_MAX_KM, as everywhere): a stop 1500 km from where the flight leaves is ahead of it and kept, one
+  // 900 km away is a drive behind it, and wiped.
+  for (const [km, from] of /** @type {[number, string | null][]} */ ([[1500, 'Hub hotel'], [900, null]])) {
+    const stop = planWatches(/** @type {any} */ ([
+      { path: '/plan/night.json', item: { title: 'Hub hotel', kind: 'lodging', fixed: true, start: { at: '2026-11-26T20:00:00-08:00', tz: LA }, place: { name: 'Hub hotel', ...off(SFO, 0, km * 1000) } } },
+      shapes[0][1][0],
+      { path: '/plan/tour.json', item: { title: 'Lighthouse tour', fixed: true, start: { at: '2026-11-28T09:00:00-05:00', tz: NY }, place: { name: 'Old Lighthouse', ...off(FAR, 0, 40_000) } } },
+    ]), new Map(), { fallbackTz: LA });
+    assert.equal(/** @type {any} */ (stop.find((w) => w.id === 'plan:tour:leave')).when.from?.name ?? null, from, `${km} km`);
+  }
 });
 
 test("a train's running late ends when it departs: on board at 07:10, 33 km down the line, it said \"Running late: Coast train at 07:00, Home station. About 49 min away.\" (the design check's A2)", () => {
@@ -766,6 +793,8 @@ test("an item's own kind word decides, read through one table, and only an unkno
     assert.equal(w.when.from?.name, 'Harbor Inn', kind);
     assert.equal(PLAN.next?.(w.when, moment({ now: at('08:00', '2026-11-30') }), {}), at('09:51', '2026-11-30'), kind);
     assert.equal(w.fallback, 'Leave soon: Flight UA 123 departs 14:05, SFO T3.', kind);
+    // A stay gets only its arrival (spec §11.3): no leave and no running late, whatever word says it is one.
+    assert.deepEqual(planWatches(/** @type {any} */ ([out({ kind }), home]), ON_FLIGHT, { fallbackTz: LA }).filter((x) => x.id.startsWith('plan:out:')).map((x) => x.id), ['plan:out:arrived'], kind);
   }
   // With no kind, or a word the table doesn't know, it takes its booking's, as before: a flight leg, so no stop before (11:35), and
   // the flight is one of two legs, named by its own title.
@@ -787,11 +816,30 @@ test("an item's own kind word decides, read through one table, and only an unkno
   assert.equal(/** @type {any} */ (landed.find((w) => w.id === 'plan:car:leave')).fallback, 'Leave soon: Car pick-up at 17:00, Car hire desk.');
   assert.equal(PLAN.next?.(/** @type {any} */ (landed.find((w) => w.id === 'plan:dinner:leave')).when, moment({ now: at('12:00') }), {}), at('16:46'));
   assert.equal(/** @type {any} */ (landed.find((w) => w.id === 'plan:in:leave')).fallback, 'Leave soon: Flight UA 123 departs 12:00, Home airport T3.');
+  // The booking's other kinds and "meal" are known words, so an item of one on a flight's booking is no flight either: no 2-hour margin, the
+  // 300 m circle, and no leg of the booking. Each word taken out of the table gives it back to the booking (11:51 for a 14:05 flight: 09:51's
+  // margin and the drive).
+  for (const kind of ['other', 'meal', 'event', 'restaurant', ' Other ']) {
+    const list = planWatches(/** @type {any} */ ([{ ...home, item: { ...home.item, kind } }]), ON_FLIGHT, { fallbackTz: LA });
+    assert.equal(/** @type {any} */ (list.find((w) => w.id === 'plan:home:leave')).when.by, at('14:05', '2026-11-30'), kind);
+    assert.equal(/** @type {any} */ (list.find((w) => w.id === 'plan:home:arrived')).when.radius, 300, kind);
+    assert.equal(/** @type {any} */ (list.find((w) => w.id === 'plan:home:late')).when.until, at('15:05', '2026-11-30'), kind); // not a carrier: its line and an hour
+  }
   // A flight written with a word the table doesn't know ("transport") on its flight's booking keeps the 2-hour margin, from its booking.
   const transport = planWatches(/** @type {any} */ ([{ ...home, item: { ...home.item, kind: 'transport' } }]), ON_FLIGHT, { fallbackTz: LA });
   assert.equal(/** @type {any} */ (transport.find((w) => w.id === 'plan:home:leave')).when.by, at('12:05', '2026-11-30'));
-  // Linked to no booking, the everyday words are known too: a "plane" has the margin and the airport's circle; a "Train" is a carrier;
-  // a "hotel" gets no leave or running late (the plan check's: an item "hotel" on a stay's booking keeps a stay's rules, as below).
+  // Linked to no booking, the everyday words are known too: a "plane" has the margin and the airport's circle; a "Train" is a carrier (what
+  // comes after it counts from none and waits for its end); a "hotel" gets no leave or running late (the plan check's: an item "hotel" on
+  // a stay's booking keeps a stay's rules, as below).
+  for (const kind of ['train', ' Train ', 'rail']) {
+    const list = planWatches(/** @type {any} */ ([
+      { path: '/plan/train.json', item: { title: 'Coast train', kind, fixed: true, start: { at: iso('07:00'), tz: LA }, end: { at: iso('09:00'), tz: LA }, place: { name: 'Station', ...MONTEREY } } },
+      { path: '/plan/lunch.json', item: { title: 'Lunch', fixed: true, start: { at: iso('13:00'), tz: LA }, place: { name: 'Pier', ...off(MONTEREY, 0, -30_000) } } },
+    ]), new Map(), { fallbackTz: LA });
+    const lunch = /** @type {any} */ (list.find((w) => w.id === 'plan:lunch:leave')).when;
+    assert.equal(lunch.from, null, kind);
+    assert.equal(lunch.after, at('09:00'), kind);
+  }
   const alone = (/** @type {string} */ kind) => planWatches(/** @type {any} */ ([{ path: '/plan/x.json', item: { title: 'X', kind, fixed: true, start: { at: iso('14:05'), tz: LA }, end: { at: iso('16:00'), tz: LA }, place: { name: 'P', ...SFO } } }]), new Map(), { fallbackTz: LA });
   assert.equal(/** @type {any} */ (alone('plane').find((w) => w.id === 'plan:x:leave')).when.by, at('12:05'));
   assert.equal(/** @type {any} */ (alone('plane').find((w) => w.id === 'plan:x:arrived')).when.radius, 2000);
@@ -826,40 +874,46 @@ test("ferries, buses and coaches carry the traveller as flights and trains do: w
   }
 });
 
-test("a flight item with no end takes its booking's: what comes after waits for the landing, not the departure (in the air it said \"Leave soon\" and \"Running late ... About 329 min away\")", () => {
+test("a flight, train or ride item with no end waits for its departure only, whatever its booking's end: a booking's end is often a return's, a tour's or a stay's, not this ride's arrival (it held back the reminders of the day's other items)", () => {
   const SFO = { lat: 37.6213, lng: -122.379 };
-  const UA = { id: 'ua', kind: 'flight', status: 'confirmed', source: '/files/ua.pdf', title: 'UA 9', start: { at: '2026-11-27T09:00:00-08:00', tz: LA }, end: { at: '2026-11-27T17:30:00-05:00', tz: NY } };
-  const out = (/** @type {any} */ o = {}) => ({ path: '/plan/out.json', item: { title: 'Flight out', kind: 'flight', fixed: true, start: { at: '2026-11-27T09:00:00-08:00', tz: LA }, place: { name: 'SFO', ...SFO }, booking: '/trip/bookings/ua.json', ...o } });
-  const tourOf = (/** @type {any[]} */ items, /** @type {any} */ booking = UA) => {
-    const ws = planWatches(/** @type {any} */ ([...items, FLOWN[2]]), new Map([['/bookings/ua.json', booking]]), { fallbackTz: LA });
-    return { leave: /** @type {any} */ (ws.find((w) => w.id === 'plan:tour:leave')).when, late: /** @type {any} */ (ws.find((w) => w.id === 'plan:tour:late')).when };
-  };
-  // On the plane at 17:00, 300 km from the tour at 19:00 (329 min by car): with the booking's end the tour waits for the landing at 17:30.
-  const plane = off(FAR, 0, -300_000);
-  const taken = tourOf([out()]);
-  assert.equal(taken.leave.after, ny('17:30'));
-  assert.equal(PLAN.check(taken.leave, here(plane, ny('17:00')), {}), null);
-  assert.equal(PLAN.check(taken.late, here(plane, ny('17:00')), {}), null);
-  assert.equal(PLAN.next?.(taken.leave, here(plane, ny('17:00')), {}), ny('17:30'));
-  // Its own end wins over the booking's.
-  assert.equal(tourOf([out({ end: { at: '2026-11-27T18:00:00-05:00', tz: NY } })]).leave.after, ny('18:00'));
-  // Not the booking's end when it isn't this leg's: with its departure as the wait, as before. A booking two carrier items link (an out
-  // and back; its end is the return's), and one whose end comes more than a day after the departure (a trip out and back with only the
-  // way out on the plan: taken, it would hold back the trip's reminders until the return).
-  const back = { path: '/plan/back.json', item: { title: 'Flight back', kind: 'flight', fixed: true, start: { at: '2026-11-30T08:00:00-05:00', tz: NY }, end: { at: '2026-11-30T11:00:00-08:00', tz: LA }, place: { name: 'Home airport', ...AIRPORT }, booking: '/trip/bookings/ua.json' } };
-  const roundTrip = { ...UA, end: { at: '2026-11-30T11:00:00-08:00', tz: LA } };
-  assert.equal(tourOf([out(), back], roundTrip).leave.after, ny('12:00')); // 09:00 in California
-  assert.equal(tourOf([out()], roundTrip).leave.after, ny('12:00'));
-  // A booking with no end, or one before the departure, gives none.
-  const { end: _, ...noEnd } = UA;
-  assert.equal(tourOf([out()], noEnd).leave.after, ny('12:00'));
-  assert.equal(tourOf([out()], { ...UA, end: { at: '2026-11-27T08:00:00-08:00', tz: LA } }).leave.after, ny('12:00'));
-  // A train on its booking alike.
-  const rail = { ...UA, kind: 'rail' };
-  assert.equal(tourOf([out({ kind: 'rail' })], rail).leave.after, ny('17:30'));
-  // A flight that only takes the booking's end, the wait is as if Shiori had written it: the flight's own arrival counts until it.
-  const flight = planWatches(/** @type {any} */ ([out()]), new Map([['/bookings/ua.json', UA]]), { fallbackTz: LA });
-  assert.equal(/** @type {any} */ (flight.find((w) => w.id === 'plan:out:arrived')).when.end, ny('17:30'));
+  const st = (/** @type {string} */ hhmm, day = '2026-11-27') => ({ at: iso(hhmm, day), tz: LA });
+  const book = (/** @type {string} */ kind, /** @type {any} */ start, /** @type {any} */ end) => new Map([['/bookings/b.json', { id: 'b', kind, status: 'confirmed', source: '/files/b.pdf', title: 'B', start, end }]]);
+  const item = (/** @type {string} */ path, /** @type {any} */ o) => ({ path: `/plan/${path}.json`, item: { fixed: true, ...o } });
+  const ws = (/** @type {any[]} */ items, /** @type {Map<string, any>} */ bookings) => planWatches(/** @type {any} */ (items), bookings, { fallbackTz: LA });
+  const when = (/** @type {import('../../src/core/live/watches.js').Watch[]} */ list, /** @type {string} */ id) => /** @type {any} */ (list.find((w) => w.id === id))?.when;
+  // A same-day round trip by air on one booking (07:00 to 23:00): the way out linked with no end, a meeting at 15:00 at the destination,
+  // the flight back at 19:00 an item of its own. Phone closed: the meeting 14:30 and the flight back 16:11, as before (they came to nothing).
+  const DEST = off(SFO, 0, 1_200_000);
+  const air = ws([
+    item('out', { title: 'Flight out', kind: 'flight', start: st('07:00'), place: { name: 'SFO', ...SFO }, booking: '/trip/bookings/b.json' }),
+    item('meet', { title: 'Meeting', start: st('15:00'), place: { name: 'Office', ...off(DEST, 20_000, 0) } }),
+    item('back', { title: 'Flight back', kind: 'flight', start: st('19:00'), place: { name: 'Destination airport', ...DEST } }),
+  ], book('flight', st('07:00'), st('23:00')));
+  assert.equal(when(air, 'plan:meet:leave').after, at('07:00'));
+  assert.equal(PLAN.next?.(when(air, 'plan:meet:leave'), moment({ now: at('06:00') }), {}), at('14:30'));
+  assert.equal(PLAN.next?.(when(air, 'plan:back:leave'), moment({ now: at('06:00') }), {}), at('16:11'));
+  assert.ok(when(air, 'plan:back:late'));
+  // The way out's "arrived" window is its own (none: 3 hours past its start), not the booking's 23:00.
+  assert.equal(when(air, 'plan:out:arrived').end, null);
+  // A ride on a booking that isn't its own: a ferry on a day-return booking (09:00 to 17:30), a shuttle on a stay's booking (15:00 to 11:00
+  // the next day), a coach on a day tour's booking (08:00 to 18:00), a train on a flight's. What comes after waits for its departure, so it
+  // keeps its leave (a ride is no flight: half an hour before with no stop to count from) and, on screen, its running late.
+  const TOWN = off(MONTEREY, 0, 12_000);
+  for (const [kind, on, first, then, from, by] of /** @type {[string, string, string, string, any, string][]} */ ([
+    ['ferry', 'other', '09:00', '12:30', off(TOWN, 0, 3_000), '12:00'],
+    ['coach', 'event', '08:00', '12:30', off(TOWN, 0, 3_000), '12:00'],
+    ['bus', 'lodging', '14:00', '19:30', off(TOWN, 0, 3_000), '19:00'],
+    ['rail', 'flight', '09:00', '12:30', off(TOWN, 0, 3_000), '12:00'],
+  ])) {
+    const list = ws([
+      item('ride', { title: 'Ride', kind, start: st(first), place: { name: 'Start', ...MONTEREY }, booking: '/trip/bookings/b.json' }),
+      item('next', { title: 'Next', start: st(then), place: { name: 'There', ...TOWN } }),
+    ], book(on, st(first), st('18:00')));
+    assert.equal(when(list, 'plan:next:leave').after, at(first), kind);
+    assert.equal(PLAN.next?.(when(list, 'plan:next:leave'), moment({ now: at('06:00') }), {}), at(by), kind);
+    assert.ok(PLAN.check(when(list, 'plan:next:late'), here(from, at(`${then.slice(0, 2)}:40`)), {}), kind);
+    assert.equal(when(list, 'plan:ride:arrived').end, null, kind);
+  }
 });
 
 test("a stay's check-in counts arriving until its booking's check-out: reached at 21:55 for 16:00 after a late landing, it gets its \"arrived\" cue with its notes (it got none past 19:00)", () => {
@@ -878,7 +932,13 @@ test("a stay's check-in counts arriving until its booking's check-out: reached a
   const { end: _, ...open } = STAYED;
   assert.equal(PLAN.check(arrivedOf(checkIn, open).when, stopped(ny('21:55')), {}), null);
   assert.equal(PLAN.check(arrivedOf({ ...checkIn, item: { ...checkIn.item, booking: undefined } }).when, stopped(ny('21:55')), {}), null);
-  assert.equal(PLAN.check(arrivedOf({ ...checkIn, item: { ...checkIn.item, kind: 'meal' } }, { ...STAYED, kind: 'restaurant' }).when, stopped(ny('21:55')), {}), null);
+  // Each of its two kind tests alone: an item of another kind on the stay's booking (a dinner at the inn), and a stay on a booking of another
+  // kind (a check-in linked to a restaurant's) keep the 3 hours. One with no kind of its own, on a lodging booking, is the stay.
+  assert.equal(arrivedOf({ ...checkIn, item: { ...checkIn.item, kind: 'meal' } }).when.end, null);
+  assert.equal(PLAN.check(arrivedOf({ ...checkIn, item: { ...checkIn.item, kind: 'meal' } }).when, stopped(ny('21:55')), {}), null);
+  assert.equal(arrivedOf(checkIn, { ...STAYED, kind: 'restaurant' }).when.end, null);
+  assert.equal(PLAN.check(arrivedOf(checkIn, { ...STAYED, kind: 'restaurant' }).when, stopped(ny('21:55')), {}), null);
+  assert.equal(arrivedOf({ ...checkIn, item: { ...checkIn.item, kind: undefined } }).when.end, ny('11:00', '2026-11-29'));
   // A stay item with its own end keeps it.
   const own = arrivedOf({ ...checkIn, item: { ...checkIn.item, end: { at: '2026-11-28T10:00:00-05:00', tz: NY } } });
   assert.equal(own.when.end, ny('10:00', '2026-11-28'));
@@ -905,6 +965,11 @@ test("a flight item with no coordinates gets its leave reminder half an hour bef
   // A connection with no coordinates is carried there, as one with them: nothing to leave for.
   const first = { path: '/plan/a.json', item: { title: 'Flight a', kind: 'flight', fixed: true, start: { at: iso('08:00', day), tz: LA }, end: { at: iso('13:00', day), tz: LA }, place: { name: 'SFO', lat: 37.6213, lng: -122.379 } } };
   assert.deepEqual(planWatches(/** @type {any} */ ([first, bare]), BOOKINGS, { fallbackTz: LA }).filter((w) => w.id.startsWith('plan:f:')).map((w) => w.id), ['plan:f:coming-up']);
+  // Not before the flight before it lands, as any leave: the plane lands at 12:00, just under the time to be there (12:05), so the copy
+  // half an hour before it (11:35) waits for the landing.
+  const lands = { path: '/plan/a.json', item: { title: 'Flight a', kind: 'flight', fixed: true, start: { at: iso('08:00', day), tz: LA }, end: { at: iso('12:00', day), tz: LA }, place: { name: 'SFO', lat: 37.6213, lng: -122.379 } } };
+  const afterIt = /** @type {any} */ (planWatches(/** @type {any} */ ([lands, bare]), BOOKINGS, { fallbackTz: LA }).find((w) => w.id === 'plan:f:leave')).when;
+  assert.equal(PLAN.next?.(afterIt, moment({ now: at('06:00', day) }), {}), at('12:00', day));
   // Any other fixed item with no place, a train's too, keeps "coming up" alone; a flexible flight with no place gets nothing, as before.
   const train = { path: '/plan/t.json', item: { title: 'Coast train', kind: 'rail', fixed: true, start: { at: iso('07:00', day), tz: LA } } };
   assert.deepEqual(planWatches(/** @type {any} */ ([train]), new Map(), { fallbackTz: LA }).map((w) => w.id), ['plan:t:coming-up']);
