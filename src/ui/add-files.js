@@ -6,10 +6,13 @@ import { codec } from './photo-codec.js';
 
 /**
  * Adds files to a trip one at a time, so a hundred photos never sit in memory together: photos
- * through ingest (spec §4.8), anything else as it is, under /files/.
+ * through ingest (spec §4.8), anything else as it is, under /files/. A file that can't be kept (no room) stops the rest, and what
+ * was kept before it comes back with why (`failed`), so whatever follows a keep (a calendar read, Shiori's wake, the share inbox
+ * let go of) is done for what was kept, and an add again takes only the rest. Every caller looks at `failed`.
  * @param {any} ctx @param {string} scope @param {(Blob & { name?: string })[]} files
- * @param {(done: number, total: number) => void} [progress]
- * @returns {Promise<{ paths: string[], notes: string[] }>} notes: what the user should know, one per photo that needs it
+ * @param {(done: number, total: number) => void} [progress] done: kept so far
+ * @returns {Promise<{ paths: string[], notes: string[], failed?: unknown }>} paths: one per file kept, in the files' order;
+ *   notes: what the user should know, one per photo that needs it; failed: why the file after the kept ones wasn't kept, when one wasn't
  */
 export async function addFiles(ctx, scope, files, progress = () => {}) {
   const settings = photoSettings(await readAppSettings(ctx.ws));
@@ -17,19 +20,23 @@ export async function addFiles(ctx, scope, files, progress = () => {}) {
   /** @type {string[]} */ const notes = [];
   for (const [i, file] of files.entries()) {
     progress(i, files.length);
-    const name = file.name || 'file';
-    const head = new Uint8Array(await file.slice(0, 64).arrayBuffer());
-    const type = sniffImageType(head) ?? (file.type || typeForPath(name));
-    if (isPhotoType(type)) {
-      const { entry, note } = await ingestPhoto(ctx.ws, scope, file, { settings, codec });
-      paths.push(entry.path);
-      if (note) notes.push(note);
-    } else {
-      // An added file never replaces another, or a booking's source would point at the wrong one (spec §7.3).
-      const taken = new Set((await ctx.ws.list(scope, '/files/')).map((/** @type {any} */ f) => f.path));
-      const path = freeName(normPath(`/files/${name}`), taken);
-      await ctx.ws.write(scope, path, new Uint8Array(await file.arrayBuffer()), { author: 'user', type });
-      paths.push(path);
+    try {
+      const name = file.name || 'file';
+      const head = new Uint8Array(await file.slice(0, 64).arrayBuffer());
+      const type = sniffImageType(head) ?? (file.type || typeForPath(name));
+      if (isPhotoType(type)) {
+        const { entry, note } = await ingestPhoto(ctx.ws, scope, file, { settings, codec });
+        paths.push(entry.path);
+        if (note) notes.push(note);
+      } else {
+        // An added file never replaces another, or a booking's source would point at the wrong one (spec §7.3).
+        const taken = new Set((await ctx.ws.list(scope, '/files/')).map((/** @type {any} */ f) => f.path));
+        const path = freeName(normPath(`/files/${name}`), taken);
+        await ctx.ws.write(scope, path, new Uint8Array(await file.arrayBuffer()), { author: 'user', type });
+        paths.push(path);
+      }
+    } catch (e) {
+      return { paths, notes, failed: e };
     }
   }
   progress(files.length, files.length);

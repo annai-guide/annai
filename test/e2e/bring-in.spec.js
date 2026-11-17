@@ -287,3 +287,158 @@ test('a backup shared with a pass is named, and opens on its own', async ({ page
   await expect(page.getByText('flight.pkpass')).toBeVisible();
   await expect(page.getByText(/trip\.annai\.zip/)).toHaveCount(0);
 });
+
+/** A calendar and two files shared to annai, on their share screen. @param {import('@playwright/test').Page} page */
+async function sharedThree(page) {
+  await page.evaluate(async (ics) => {
+    const form = new FormData();
+    form.append('files', new File([ics], 'thanksgiving.ics', { type: 'text/calendar' }));
+    form.append('files', new File(['%PDF-1.4 one'], 'one.pdf', { type: 'application/pdf' }));
+    form.append('files', new File(['%PDF-1.4 two'], 'two.pdf', { type: 'application/pdf' }));
+    await fetch('/share-target', { method: 'POST', body: form, redirect: 'manual' });
+  }, ICS);
+  await page.goto('/#/import?inbox=1');
+  await expect(page.getByRole('heading', { name: 'Add 3 files' })).toBeVisible();
+}
+
+/**
+ * one.pdf's first write fails, as when storage runs out (held until release() when `held`, so the traveller can leave first): the page's own
+ * Workspace, as annai's modules are shared in the page. The plan items' writes are counted in planWrites.
+ * @param {import('@playwright/test').Page} page @param {{ held?: boolean }} [o]
+ */
+async function oneFailsOnce(page, o = {}) {
+  await page.evaluate(async (held) => {
+    const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+    const real = Workspace.prototype.write;
+    const w = /** @type {any} */ (window);
+    w.planWrites = [];
+    let failed = false;
+    const hold = held ? new Promise((go) => { w.release = go; }) : Promise.resolve();
+    Workspace.prototype.write = function (/** @type {string} */ scope, /** @type {string} */ path, /** @type {any[]} */ ...rest) {
+      if (path.startsWith('/plan/')) w.planWrites.push(path);
+      if (path !== '/files/one.pdf' || failed) return real.call(this, scope, path, ...rest);
+      failed = true;
+      return hold.then(() => { throw new Error('The test made this write fail.'); });
+    };
+  }, Boolean(o.held));
+}
+
+/** Every file in every trip and conversation, by name, read through annai's own modules in the page. @param {import('@playwright/test').Page} page */
+function filesEverywhere(page) {
+  return page.evaluate(async () => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const store = await createIdbStore();
+    try {
+      const ws = new Workspace(store);
+      const scopes = await store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.listScopes());
+      const names = [];
+      for (const s of scopes) for (const f of await ws.list(s.id, '/files/')) names.push(f.path);
+      return names.sort();
+    } finally {
+      store.close();
+    }
+  });
+}
+
+const ALL_ONCE = ['/files/one.pdf', '/files/thanksgiving.ics', '/files/two.pdf'];
+
+test('a share whose add stopped partway, added again from its screen: only the rest, one copy of each, the plan items written once', async ({ page }) => {
+  await openApp(page);
+  await waitForServiceWorker(page);
+  await startTrip(page, 'Thanksgiving');
+  await sharedThree(page);
+  await oneFailsOnce(page);
+  await page.getByRole('button', { name: 'Add to Thanksgiving' }).click();
+  await expect(page.locator('main').getByRole('status').filter({ hasText: 'The test made this write fail.' })).toBeVisible();
+  await page.getByRole('button', { name: 'Add to Thanksgiving' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Thanksgiving', exact: true })).toBeVisible();
+  expect(await filesEverywhere(page)).toEqual(ALL_ONCE);
+  const plan = await page.evaluate(() => /** @type {any} */ (window).planWrites);
+  expect(plan).toHaveLength(2);
+  expect(new Set(plan).size).toBe(2);
+  await allFiles(page);
+  await expect(page.getByRole('link', { name: /\/plan\/ics-dinner-example-com-[0-9a-f]{8}\.json/ })).toBeVisible();
+});
+
+test('a share whose add stopped partway says what it kept, and its screen shows only the rest', async ({ page }) => {
+  await openApp(page);
+  await waitForServiceWorker(page);
+  await startTrip(page, 'Thanksgiving');
+  await sharedThree(page);
+  await oneFailsOnce(page);
+  await page.getByRole('button', { name: 'Add to Thanksgiving' }).click();
+  await expect(page.locator('main').getByRole('status').filter({ hasText: 'The test made this write fail.' })).toBeVisible();
+  await expect(page.getByText('Added a file, and 2 itinerary items from the calendar')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Add 2 files' })).toBeVisible();
+  await expect(page.locator('main .file-names li')).toHaveText([/^one\.pdf/, /^two\.pdf/]);
+  await expect(page.getByRole('button', { name: 'Add to Thanksgiving' })).toBeEnabled();
+});
+
+test('a share whose add stopped partway after the traveller left: the card adds only the rest', async ({ page }) => {
+  await openApp(page);
+  await waitForServiceWorker(page);
+  await startTrip(page, 'Thanksgiving');
+  await sharedThree(page);
+  await oneFailsOnce(page, { held: true });
+  await page.getByRole('button', { name: 'Add to Thanksgiving' }).click();
+  await expect(page.getByText('Adding 2 of 3…')).toBeVisible();
+  await page.locator('main .crumbs').getByRole('link', { name: 'Trips' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips', exact: true })).toBeVisible();
+  await page.evaluate(() => /** @type {any} */ (window).release());
+  const card = page.locator('.notice', { hasText: 'The test made this write fail.' });
+  const title = await card.locator('strong').textContent();
+  await card.getByRole('button', { name: /^Add \d files$/ }).click();
+  await page.getByRole('button', { name: 'Add to Thanksgiving' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Thanksgiving', exact: true })).toBeVisible();
+  expect(await filesEverywhere(page)).toEqual(ALL_ONCE);
+  expect(title).toBe('Adding 2 files failed'); // what is left, which its button adds
+});
+
+test('a share whose add stopped partway after the traveller left: Back to the share adds only the rest', async ({ page }) => {
+  await openApp(page);
+  await waitForServiceWorker(page);
+  await startTrip(page, 'Thanksgiving');
+  await sharedThree(page);
+  await oneFailsOnce(page, { held: true });
+  await page.getByRole('button', { name: 'Add to Thanksgiving' }).click();
+  await expect(page.getByText('Adding 2 of 3…')).toBeVisible();
+  await page.locator('main .crumbs').getByRole('link', { name: 'Trips' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips', exact: true })).toBeVisible();
+  await page.evaluate(() => /** @type {any} */ (window).release());
+  await expect(page.locator('.notice', { hasText: 'The test made this write fail.' })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: /^Add \d files$/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Add to Thanksgiving' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Thanksgiving', exact: true })).toBeVisible();
+  expect(await filesEverywhere(page)).toEqual(ALL_ONCE);
+});
+
+test('a share whose add stopped partway, opened again after a reload: only the rest is added', async ({ page }) => {
+  await openApp(page);
+  await waitForServiceWorker(page);
+  await startTrip(page, 'Thanksgiving');
+  await sharedThree(page);
+  await oneFailsOnce(page);
+  await page.getByRole('button', { name: 'Add to Thanksgiving' }).click();
+  await expect(page.locator('main').getByRole('status').filter({ hasText: 'The test made this write fail.' })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: /^Add \d files$/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Add to Thanksgiving' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Thanksgiving', exact: true })).toBeVisible();
+  expect(await filesEverywhere(page)).toEqual(ALL_ONCE);
+});
+
+test('a share whose add to a new conversation stopped partway: New conversation again puts only the rest in the next one', async ({ page }) => {
+  await openApp(page);
+  await waitForServiceWorker(page);
+  await startTrip(page, 'Thanksgiving');
+  await sharedThree(page);
+  await oneFailsOnce(page);
+  await page.getByRole('button', { name: 'New conversation' }).click();
+  await expect(page.locator('main').getByRole('status').filter({ hasText: 'The test made this write fail.' })).toBeVisible();
+  await page.getByRole('button', { name: 'New conversation' }).click();
+  await expect(page).toHaveURL(/#\/trip\/[^/]+\/talk$/);
+  expect(await filesEverywhere(page)).toEqual(ALL_ONCE);
+});

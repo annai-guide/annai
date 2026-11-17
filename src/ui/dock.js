@@ -190,7 +190,8 @@ export function createDock(ctx) {
     }
     ctx.agent.photoComing?.(true); // words said while the photo is made wait for it (spec §6.8)
     try {
-      const { paths } = await addFiles(ctx, ctx.agent.target, files);
+      const { paths, failed } = await addFiles(ctx, ctx.agent.target, files);
+      if (failed) throw failed;
       // Snap and ask: the photo goes to Shiori, who guesses why it was taken (spec §16.2).
       ctx.agent.typing?.(false); // text left in the box isn't being typed now
       ctx.agent.send('', { photos: paths.map((/** @type {string} */ p) => ({ path: `/trip${p}` })) });

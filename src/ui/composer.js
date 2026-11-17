@@ -63,7 +63,8 @@ export async function handOver(ctx, text, items, o = {}) {
   for (const [i, file] of files.entries()) {
     o.progress?.(i, files.length);
     try {
-      const { paths, notes, problems, plannedBy } = await keepFiles(ctx, scope, [file]);
+      const { paths, notes, problems, plannedBy, failed } = await keepFiles(ctx, scope, [file]);
+      if (failed) throw failed;
       for (const note of notes) ctx.notices.card({ tone: 'warn', title: t`A photo was kept as it is`, body: note });
       for (const problem of problems) ctx.notices.card({ tone: 'warn', title: t`A calendar file couldn't be read`, body: problem });
       for (const p of paths) kept.push({ path: p, name: file.name || p.split('/').pop() || p, planned: plannedBy[p] ?? 0 });
