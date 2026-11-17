@@ -961,7 +961,7 @@ Leave and running late time a trip by car or on foot, so they say nothing of one
 When the app becomes visible:
 - time watches that came due while frozen fire late, labelled "late by N min"
 - arriving at and leaving places is inferred from the last known position versus the current one
-- everything goes into one catch-up wake, with the elapsed time and distance
+- everything goes into one catch-up wake, with the elapsed time and distance; a plan item's leave reminder is left out of it when the same catch-up fires that item's arrival (the traveller got there while annai was away)
 
 ### 11.5 Replanning, narration, offline pack
 

@@ -344,8 +344,8 @@ test("the leave reminder on a catch-up's first look says \"soon\": the place it 
 test("a reopened annai says \"soon\" for the leave reminder wherever the traveller is by its first fix, on the live engine (it said \"about 8 min\" from the place before the lock)", async () => {
   const soon = 'Leave soon: Lunch at Nepenthe at 12:00.';
   // On the live engine: on screen at the River Inn until 11:20, the phone locks, annai is back at 11:40 and the traveller is 12 km north of Nepenthe,
-  // or at the place they were, or at Nepenthe itself; in every shape the leave reminder says "soon", beside whatever else fires.
-  for (const [where, p] of /** @type {[string, { lat: number, lng: number }][]} */ ([['12 km north', off(NEPENTHE, 0, 12_000)], ['the old place', RIVER_INN], ['Nepenthe', NEPENTHE]])) {
+  // or at the place they were; in both shapes the leave reminder says "soon", beside whatever else fires. At Nepenthe itself it is left out (the next test).
+  for (const [where, p] of /** @type {[string, { lat: number, lng: number }][]} */ ([['12 km north', off(NEPENTHE, 0, 12_000)], ['the old place', RIVER_INN]])) {
     const k = await liveKit({ plan: { nepenthe: ITEMS[0].item } });
     await k.stay(RIVER_INN, at('11:00'), at('11:20'));
     k.sensors.visible(false);
@@ -358,6 +358,29 @@ test("a reopened annai says \"soon\" for the leave reminder wherever the travell
     assert.deepEqual(said, [[soon, soon]], where);
     k.live.dispose();
   }
+});
+
+test("a catch-up that fires an item's arrival leaves out its leave reminder: the traveller got there while annai was off screen (it said \"Leave soon: Lunch at Nepenthe at 12:00.\" beside \"Nepenthe: Lunch at Nepenthe.\")", async () => {
+  // On screen at the River Inn until 11:20; the phone locks, the traveller drives to Nepenthe, and annai is back on screen there at 11:40.
+  const k = await liveKit({ plan: { nepenthe: ITEMS[0].item } });
+  await k.stay(RIVER_INN, at('11:00'), at('11:20'));
+  k.sensors.visible(false);
+  await k.settle();
+  await k.to(at('11:40'));
+  k.sensors.visible(true);
+  await k.settle();
+  await k.fix(at('11:40:05'), NEPENTHE);
+  const wakes = k.agent.wakes.filter((w) => w.kind === 'catch-up');
+  assert.equal(wakes.length, 1);
+  assert.deepEqual(wakes[0].fallbacks.map((/** @type {any} */ f) => [f.plan?.event, f.text]), [['arrived', 'Nepenthe: Lunch at Nepenthe. Window table if they have one.']]);
+  assert.match(String(wakes[0].text), /you arrived at Nepenthe for "Lunch at Nepenthe"/);
+  assert.doesNotMatch(String(wakes[0].text), /time to leave/);
+  // It fired, and the log keeps it, so it doesn't come again: only the catch-up's words leave it out.
+  assert.ok((await k.events(['trigger.fired'])).some((e) => e.data.watch === 'plan:nepenthe:leave'));
+  await k.to(at('11:55'));
+  assert.equal(k.agent.wakes.filter((w) => w.kind === 'catch-up').length, 1);
+  assert.ok(!k.agent.wakes.some((w) => (w.fallbacks ?? []).some((/** @type {any} */ f) => f.plan?.event === 'leave')));
+  k.live.dispose();
 });
 
 // A trip flown to, with made-up names: a flight out of SFO on the Friday, landing at 17:30 on the other coast, after the 16:00
