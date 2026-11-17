@@ -141,7 +141,7 @@ The entries are grouped into builds by the code they share; each build's entries
 | **Languages** | not started; live runs in Japanese | — | the real-voice check in English; the recap's native-speaker sentence; summaries' two ways; Koe's line before a tool; Kokoro's notes to Koe in English |
 | **Words and names** | not started | — | the testing docs' "Realtime"/"Classic"; plugin errors in lower case; the translation pass's second look; an old flight's place and six details; OpenAI's and Groq's speech names |
 | **Small fixes** | not started | — | the search order's two rare ways; a 408; Test's two upload readings |
-| **The gate under extreme load** | building (branch gate-load from main, an Opus xhigh builder, 2026-11-17) | brief and report in the `.superpowers` notes (gate-load-*) | the scaled-clock unit tests |
+| **The gate under extreme load** | under review (branch gate-load 758318cc: tests only; two sound feeders keep to the clock, four tests on the real clock, four races fixed in the tests' own order; under load main 1 of 3 whole-suite runs clean, the branch 3 of 3; check 356 s against 361-377 s on main; a Fable final review and a Haiku second opinion, 2026-11-17) | brief and report in the `.superpowers` notes (gate-load-*) | the scaled-clock unit tests |
 
 ### Standing
 
