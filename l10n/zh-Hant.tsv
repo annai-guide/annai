@@ -2700,7 +2700,7 @@ qyfmia	ok	Listen for an answer (seconds)	等待回答（秒）	src/ui/screens/vo
 4xxyqf	ok	On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".	開啟：她出聲說的話會顯示在對話中，並標為「已朗讀」；她說話時，上方的氣泡裡也會顯示。關閉：螢幕保持簡潔，她說過的話在對話中收合，點一下「檢視她說的話」才會顯示。	src/ui/screens/voice.js:153	Note: "said aloud" and "Show what she said" are the conversation's own words: they must match those rows.
 y61lbz	ok	Shiori's voice	Shiori 的聲音	src/ui/screens/voice.js:154	
 1879vb9	ok	Voices, tried in order: none.	依次嘗試的聲音：無。	src/ui/screens/voice.js:155	
-1su08w7	ok	Voices, tried in order: {0}.	依次嘗試的聲音：{0}。	src/ui/screens/voice.js:155	{0} = list(entries.map((/** @type {any} */ e) => e.name), 'plain')
+1su08w7	ok	Voices, tried in order: {0}.	依次嘗試的聲音：{0}。	src/ui/screens/voice.js:155	{0} = list(entries.map((/** @type {any} */ e) => names(e.name)), 'plain')
 1oc2cqc	ok	The browser’s own voice. Some of its voices speak on this phone; those marked online send her words to their service.	瀏覽器內建的聲音。部分聲音在本機朗讀；標示「線上」的會把她的話傳送到相應的服務。	src/ui/screens/voice.js:158	
 t9jotl	ok	This browser has no voice of its own.	此瀏覽器沒有內建聲音。	src/ui/screens/voice.js:158	
 154la7x	ok	The speed goes from 0.5 (slow) to 2 (fast); 1 is normal.	速度範圍為 0.5（慢）到 2（快），1 為正常速度。	src/ui/screens/voice.js:161	

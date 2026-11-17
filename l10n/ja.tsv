@@ -2700,7 +2700,7 @@ qyfmia	ok	Listen for an answer (seconds)	返事を待つ時間（秒）	src/ui/s
 4xxyqf	ok	On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".	オン：Shioriが声に出して話した言葉が、「読み上げ」の印付きで会話に表示され、話している間はShioriの上に吹き出しでも表示されます。オフ：画面は静かなままです。読み上げた言葉は、「話した言葉を見る」をタップするまで会話の中でたたまれます。	src/ui/screens/voice.js:153	Note: "said aloud" and "Show what she said" are the conversation's own words: they must match those rows.
 y61lbz	ok	Shiori's voice	Shioriの声	src/ui/screens/voice.js:154	
 1879vb9	ok	Voices, tried in order: none.	声（この順に試します）：なし。	src/ui/screens/voice.js:155	
-1su08w7	ok	Voices, tried in order: {0}.	声（この順に試します）：{0}。	src/ui/screens/voice.js:155	{0} = list(entries.map((/** @type {any} */ e) => e.name), 'plain')
+1su08w7	ok	Voices, tried in order: {0}.	声（この順に試します）：{0}。	src/ui/screens/voice.js:155	{0} = list(entries.map((/** @type {any} */ e) => names(e.name)), 'plain')
 1oc2cqc	ok	The browser’s own voice. Some of its voices speak on this phone; those marked online send her words to their service.	ブラウザに内蔵の声です。端末内で話す声もあります。「オンライン」と表示された声は、Shioriの言葉をそのサービスに送ります。	src/ui/screens/voice.js:158	
 t9jotl	ok	This browser has no voice of its own.	このブラウザには内蔵の声がありません。	src/ui/screens/voice.js:158	
 154la7x	ok	The speed goes from 0.5 (slow) to 2 (fast); 1 is normal.	速さは0.5（ゆっくり）から2（速い）までです。1が標準です。	src/ui/screens/voice.js:161	
