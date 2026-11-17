@@ -697,10 +697,10 @@ mlh3jc	ok	Main	主要	src/core/llm/check.js:178
 1bbu08l	ok	At {0}'s level ({1}), this model refused: {2}	在“{0}”的推理级别（{1}）下，此模型拒绝了请求：{2}	src/core/llm/check.js:182	{0} = roleName(role); {1} = role.level; {2} = said; Note: {0} is a role's name as the screens give it.
 1f0dxr7	ok	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	请在设置 → 模型中调低“{0}”的推理级别，或在此模型的页面上修改其“推理级别”。	src/core/llm/check.js:184	{0} = roleName(role); Note: {0} is a role's name as the screens give it.
 1f43jmt	ok	{0} / {1}	{0} / {1}	src/core/llm/config.js:107	context: a model, after its provider; {0} = provider; {1} = model; Note: a provider's name, then its model's, both Latin names: a spaced slash, not the middle dot that tells a label's parts apart, as in “Koe · 实时 · Anthropic / Claude Opus 5.5”, so the pair reads as one name.
-1nuav0n	ok	That provider no longer exists.	这个提供商已不存在。	src/core/llm/config.js:406	
-1qjc2dh	ok	That provider has no ability called {0}.	这个提供商没有名为 {0} 的功能。	src/core/llm/config.js:408	{0} = rec.ability
-4iiule	ok	Give the provider's model id.	请填写提供商的模型 ID。	src/core/llm/config.js:411	
-3i9i3z	ok	"{0}" is already used by another model	“{0}”已被另一个模型使用	src/core/llm/config.js:415	{0} = name
+1nuav0n	ok	That provider no longer exists.	这个提供商已不存在。	src/core/llm/config.js:424	
+1qjc2dh	ok	That provider has no ability called {0}.	这个提供商没有名为 {0} 的功能。	src/core/llm/config.js:426	{0} = rec.ability
+4iiule	ok	Give the provider's model id.	请填写提供商的模型 ID。	src/core/llm/config.js:429	
+3i9i3z	ok	"{0}" is already used by another model	“{0}”已被另一个模型使用	src/core/llm/config.js:433	{0} = name
 1lqr9y5	ok	The key was rejected. Check it in Settings → Models.	密钥被拒绝了。请在设置 → 模型中检查。	src/core/llm/contract.js:112	
 1do8abu	ok	This account is out of credit.	这个账户的余额已用完。	src/core/llm/contract.js:113	Note: Credit is a prepaid balance (余额), not a quota (额度).
 99g6ol	ok	The provider says too many requests for now.	提供商表示目前请求过于频繁。	src/core/llm/contract.js:114	
@@ -2145,28 +2145,28 @@ f85coz#other	ok	# deletions waiting: annai sends them when it can reach {0}.	# �
 11x4tx3	ok	This needs the {0} plugin, which isn't running.	需要 {0} 插件，但它没有运行。	src/ui/screens/provider.js:472	{0} = name
 4nyk49	ok	This needs a plugin that isn't running.	需要的插件没有运行。	src/ui/screens/provider.js:472	
 15hdhx3	ok	the provider's model id	提供商的模型 ID	src/ui/screens/provider.js:494	
-1oz4euh	ok	Add model	添加模型	src/ui/screens/provider.js:507	
-tbmsa5	ok	Asking for its models…	正在获取模型列表…	src/ui/screens/provider.js:512	
-1yko1my#other	ok	# models.	共 # 个模型。	src/ui/screens/provider.js:515	plural; # = listed.length; English: "# model." (one), "# models." (other)
-uxqo7a	ok	Fetch model list	获取模型列表	src/ui/screens/provider.js:523	
-1scr2ml	ok	{0}K context	{0}K 上下文	src/ui/screens/provider.js:526	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
-1tqy8k1	ok	Its models	模型	src/ui/screens/provider.js:528	Note: "Its models" as a heading under the ability: モデル alone reads right there.
-bzs1ys	ok	No models yet.	还没有模型。	src/ui/screens/provider.js:529	
-pnxisg	ok	Add a model by id	按 ID 添加模型	src/ui/screens/provider.js:530	
-1mod47e	ok	for example: haiku	例如：haiku	src/ui/screens/provider.js:544	
-uizt0x	ok	{0} · loaded	{0} · 已加载	src/ui/screens/provider.js:554	{0} = named
-1w6mxym	ok	Already added, on {0}	已添加到 {0}	src/ui/screens/provider.js:555	{0} = on
-l7fn8k	ok	Already added, on another provider	已添加到其他提供商	src/ui/screens/provider.js:555	
-19ai2z0	ok	Filter the list	筛选列表	src/ui/screens/provider.js:566	
-11pl9jr	ok	Use the free models	使用免费模型	src/ui/screens/provider.js:574	
-vam64u	ok	Use the recommended models	使用推荐模型	src/ui/screens/provider.js:574	
-1b2yx8m	ok	Suggested models	推荐模型	src/ui/screens/provider.js:575	
-y5yzjn	ok	{0} suggests a model for each role. Its speech models then go ahead of Phone dictation and Browser voice, which are free, so any that cost money are tried before them.	{0} 为每个角色推荐了一个模型。使用推荐后，它的语音模型会排在免费的手机语音输入和浏览器声音之前，所以会优先尝试收费的模型。	src/ui/screens/provider.js:576	{0} = src.name; Note: 手机语音输入 and 浏览器声音 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
-1x5hwmk	ok	{0} suggests a model for each role.	{0} 为每个角色推荐了一个模型。	src/ui/screens/provider.js:577	{0} = src.name
-1iffu2j	ok	{0} switched on.	已开启 {0}。	src/ui/screens/provider.js:584	{0} = n
-1szeqxt	ok	Roles updated.	已更新角色。	src/ui/screens/provider.js:584	
-1egvjs1	ok	{0} couldn't be switched on: {1}	{0} 无法开启：{1}	src/ui/screens/provider.js:585	{0} = f.name; {1} = messageOf(f.error)
-wlh055	ok	Use the {0} models	使用 {0} 模型	src/ui/screens/provider.js:591	{0} = which
+1oz4euh	ok	Add model	添加模型	src/ui/screens/provider.js:510	
+tbmsa5	ok	Asking for its models…	正在获取模型列表…	src/ui/screens/provider.js:515	
+1yko1my#other	ok	# models.	共 # 个模型。	src/ui/screens/provider.js:518	plural; # = listed.length; English: "# model." (one), "# models." (other)
+uxqo7a	ok	Fetch model list	获取模型列表	src/ui/screens/provider.js:526	
+1scr2ml	ok	{0}K context	{0}K 上下文	src/ui/screens/provider.js:529	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
+1tqy8k1	ok	Its models	模型	src/ui/screens/provider.js:531	Note: "Its models" as a heading under the ability: モデル alone reads right there.
+bzs1ys	ok	No models yet.	还没有模型。	src/ui/screens/provider.js:532	
+pnxisg	ok	Add a model by id	按 ID 添加模型	src/ui/screens/provider.js:533	
+1mod47e	ok	for example: haiku	例如：haiku	src/ui/screens/provider.js:548	
+uizt0x	ok	{0} · loaded	{0} · 已加载	src/ui/screens/provider.js:557	{0} = named
+1w6mxym	ok	Already added, on {0}	已添加到 {0}	src/ui/screens/provider.js:558	{0} = on
+l7fn8k	ok	Already added, on another provider	已添加到其他提供商	src/ui/screens/provider.js:558	
+19ai2z0	ok	Filter the list	筛选列表	src/ui/screens/provider.js:578	
+11pl9jr	ok	Use the free models	使用免费模型	src/ui/screens/provider.js:586	
+vam64u	ok	Use the recommended models	使用推荐模型	src/ui/screens/provider.js:586	
+1b2yx8m	ok	Suggested models	推荐模型	src/ui/screens/provider.js:587	
+y5yzjn	ok	{0} suggests a model for each role. Its speech models then go ahead of Phone dictation and Browser voice, which are free, so any that cost money are tried before them.	{0} 为每个角色推荐了一个模型。使用推荐后，它的语音模型会排在免费的手机语音输入和浏览器声音之前，所以会优先尝试收费的模型。	src/ui/screens/provider.js:588	{0} = src.name; Note: 手机语音输入 and 浏览器声音 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
+1x5hwmk	ok	{0} suggests a model for each role.	{0} 为每个角色推荐了一个模型。	src/ui/screens/provider.js:589	{0} = src.name
+1iffu2j	ok	{0} switched on.	已开启 {0}。	src/ui/screens/provider.js:596	{0} = n
+1szeqxt	ok	Roles updated.	已更新角色。	src/ui/screens/provider.js:596	
+1egvjs1	ok	{0} couldn't be switched on: {1}	{0} 无法开启：{1}	src/ui/screens/provider.js:597	{0} = f.name; {1} = messageOf(f.error)
+wlh055	ok	Use the {0} models	使用 {0} 模型	src/ui/screens/provider.js:603	{0} = which
 1qocxbg	ok	Writing it: {0} is reading the conversation. This can take a minute.	撰写中：{0} 正在读取对话，可能需要一分钟。	src/ui/screens/recap.js:33	{0} = names(m.name)
 1lrfe9k	ok	Write the recap	撰写回顾	src/ui/screens/recap.js:35	
 h6huep	ok	Write it again	重新撰写	src/ui/screens/recap.js:35	

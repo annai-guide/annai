@@ -1,0 +1,143 @@
+import { test, expect } from '@playwright/test';
+import { openApp, waitForServiceWorker, pickProvider } from './helpers.js';
+import { startFakeServer } from '../fakes/model-server.js';
+
+// A provider page's model adds, Add model (by its id) and a listed model's Add, are busy from the tap (model-names-next): a double tap adds
+// once. Two clicks in the same instant are the closest a double tap comes; a later one finds the row already gone.
+
+/**
+ * Clicks a button twice in the same instant. @param {import('@playwright/test').Locator} button
+ * @returns {Promise<boolean>} whether the first click left it disabled
+ */
+const doubleTap = (button) => button.evaluate((b) => {
+  const btn = /** @type {HTMLButtonElement} */ (b);
+  btn.click();
+  const busy = btn.disabled;
+  btn.click();
+  return busy;
+});
+
+/**
+ * A llama.cpp provider on the stand-in server, its page open. @param {import('@playwright/test').Page} page @param {{ origin: string }} s @param {string} key
+ * @returns {Promise<import('@playwright/test').Locator>} the page's Chat part
+ */
+async function addLlamaCpp(page, s, key) {
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  await pickProvider(page, 'llama.cpp');
+  await page.getByLabel('Address', { exact: true }).fill(`${s.origin}/v1`);
+  await page.getByLabel('API key').fill(key);
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
+  return page.getByRole('region', { name: 'Chat', exact: true });
+}
+
+test("a double tap on a model's Add adds it once, by its id and from the list", async ({ page }) => {
+  const key = 'sk-double-tap-stand-in-0123';
+  const s = await startFakeServer({
+    flavour: 'llamacpp', key,
+    models: [{ id: 'qwen3.8-flash', object: 'model', owned_by: 'llamacpp' }, { id: 'gemma5-small', object: 'model', owned_by: 'llamacpp' }],
+  });
+  try {
+    const chat = await addLlamaCpp(page, s, key);
+    // By its id.
+    await chat.getByLabel('Add a model by id').fill('by-id-1');
+    expect.soft(await doubleTap(chat.getByRole('button', { name: 'Add model' })), 'Add model is busy from the tap').toBe(true);
+    await expect(chat.getByRole('link', { name: /^by-id-1/ })).toBeVisible();
+    // From the list.
+    await chat.getByRole('button', { name: 'Fetch model list' }).click();
+    await expect(chat.getByText('2 models.')).toBeVisible();
+    expect.soft(await doubleTap(chat.getByRole('button', { name: 'Add qwen3.8-flash' })), 'a listed Add is busy from the tap').toBe(true);
+    await expect(chat.getByRole('link', { name: /^qwen3\.8-flash/ })).toBeVisible();
+    // One more add after them: where a second tap had landed, its add would have ended before this one shows (they went one at a time).
+    await chat.getByLabel('Add a model by id').fill('by-id-2');
+    await chat.getByRole('button', { name: 'Add model' }).click();
+    await expect(chat.getByRole('link', { name: /^by-id-2/ })).toBeVisible();
+    await expect(chat.getByRole('link', { name: /^qwen3\.8-flash/ }), 'one model, not "qwen3.8-flash (2)" too').toHaveCount(1);
+    await expect(chat.getByRole('link', { name: /^by-id-1/ })).toHaveCount(1);
+    await expect(chat.getByText(/already used by another model/), 'no second add was refused').toHaveCount(0);
+  } finally {
+    await s.stop();
+  }
+});
+
+/**
+ * A llama.cpp provider with a 40-model list shown, then its records removed under the open list, so every Add is refused ("That provider
+ * no longer exists."). The list shows up to 50 rows in a box of its own, 50vh tall, so a row can sit anywhere on the screen, behind the dock too.
+ * @param {import('@playwright/test').Page} page @param {{ origin: string }} s @param {string} key
+ * @returns {Promise<import('@playwright/test').Locator>} the page's Chat part
+ */
+async function refusedList(page, s, key) {
+  const chat = await addLlamaCpp(page, s, key);
+  await chat.getByRole('button', { name: 'Fetch model list' }).click();
+  await expect(chat.getByText('40 models.')).toBeVisible();
+  await page.evaluate(async () => {
+    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+    const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+    const { readConfig, removeProviderRecords } = await import(/** @type {string} */ ('/src/core/llm/config.js'));
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    for (const id of Object.keys((await readConfig(ws)).providers)) await removeProviderRecords(ws, store, id);
+    store.close();
+  });
+  // A toast lets taps through (pointer-events: none), so hit-testing skips it: let it take them, to see what is on top at its centre.
+  await page.locator('.toasts').evaluate((el) => { el.style.pointerEvents = 'auto'; });
+  return chat;
+}
+
+/** The refusal's words are in a toast the traveller can see (above the dock, on top), and nowhere in the page's Chat part. @param {import('@playwright/test').Page} page @param {import('@playwright/test').Locator} chat */
+async function expectRefusalToast(page, chat) {
+  const words = 'That provider no longer exists.';
+  const toast = page.locator('.toasts .toast', { hasText: words });
+  await expect(toast).toBeInViewport({ ratio: 1 });
+  expect(await toast.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+  }), 'the toast is on top at its centre, not covered by the dock').toBe(true);
+  await expect(chat.getByText(words), 'said in a toast, not in the models\' status line or a row').toHaveCount(0);
+}
+
+test("a listed Add that fails, on the last row of a long list, says why in a toast, and can be tapped again", async ({ page }) => {
+  const key = 'sk-refused-stand-in-0123';
+  const s = await startFakeServer({
+    flavour: 'llamacpp', key,
+    models: Array.from({ length: 40 }, (_, i) => ({ id: `long-list-${String(i).padStart(2, '0')}`, object: 'model', owned_by: 'llamacpp' })),
+  });
+  try {
+    const chat = await refusedList(page, s, key);
+    const last = chat.getByRole('button', { name: 'Add long-list-39' });
+    await last.scrollIntoViewIfNeeded();
+    await last.click();
+    await expectRefusalToast(page, chat);
+    await expect(last).toBeEnabled();
+  } finally {
+    await s.stop();
+  }
+});
+
+test("a listed Add that fails, on a row just above the dock, says why in a toast the dock does not cover", async ({ page }) => {
+  const key = 'sk-refused-near-dock-0123';
+  const s = await startFakeServer({
+    flavour: 'llamacpp', key,
+    models: Array.from({ length: 40 }, (_, i) => ({ id: `long-list-${String(i).padStart(2, '0')}`, object: 'model', owned_by: 'llamacpp' })),
+  });
+  try {
+    const chat = await refusedList(page, s, key);
+    const near = chat.getByRole('button', { name: 'Add long-list-05' });
+    await near.scrollIntoViewIfNeeded();
+    // The page scrolled so the button's bottom edge is 4 px above the dock's top: a line in the row, 8 px under it, would be behind the dock.
+    const gap = await near.evaluate((b) => {
+      const dock = /** @type {HTMLElement} */ (document.querySelector('.dock:not(.seat)'));
+      window.scrollBy(0, b.getBoundingClientRect().bottom - (dock.getBoundingClientRect().top - 4));
+      return dock.getBoundingClientRect().top - b.getBoundingClientRect().bottom;
+    });
+    expect(gap, 'the row is set just above the dock').toBeGreaterThanOrEqual(0);
+    expect(gap).toBeLessThanOrEqual(8);
+    // Tapped without Playwright's click, which moved the page here (measured: 194 px, Chromium) where a finger's tap moves nothing.
+    await near.dispatchEvent('click');
+    await expectRefusalToast(page, chat);
+    await expect(near).toBeEnabled();
+  } finally {
+    await s.stop();
+  }
+});

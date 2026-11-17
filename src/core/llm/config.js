@@ -395,6 +395,24 @@ export async function saveProvider(ws, rec, models = [], roles = null) {
   ], { author: 'user' });
 }
 
+/** @type {WeakMap<Workspace, Promise<unknown>>} each workspace's name-takers: the end of the last one started */
+const naming = new WeakMap();
+/**
+ * Runs work once every name-taker started before it on ws has ended, so a name it works out from what it reads is still free when it
+ * writes it: no two models share a name (checkModel; the screens name a model by it, modelNames). Models are a file each, so reading
+ * every name and writing one can't be one transaction. The name-takers: adding a provider or a model, a plugin update's refresh
+ * (providers.js), a model's page and the agent loop's photo-limit write (both updateModel). Nothing in one waits on the network (a key, a
+ * download, is had before it), so it holds for milliseconds. No workspace listener may await a name-taker: a write awaits its listeners
+ * (the Workspace's #emit) before it ends, inside the lock, so a listener awaiting a name-taker would wait for the lock held by the write
+ * that waits for it. A promise chain in memory, as the Workspace's locks are: annai is one running copy per device (lock.js).
+ * @template T @param {Workspace} ws @param {() => Promise<T>} work @returns {Promise<T>}
+ */
+export function takingNames(ws, work) {
+  const run = (naming.get(ws) ?? Promise.resolve()).then(work);
+  naming.set(ws, run.catch(() => {}));
+  return run;
+}
+
 /** What makes a model record unsaveable: its provider must exist with its ability, and no other model may have its name. @param {Workspace} ws @param {ModelRecord} rec */
 async function checkModel(ws, rec) {
   const path = modelPath(rec.id);
@@ -426,23 +444,25 @@ export async function saveModel(ws, rec) {
 /**
  * Changes a model as it is stored, read and written in the file's lock, so what is recorded between (a Test's result, a field saved
  * from another page) is not lost. The checks that scan other records run first, before the lock, so an autosave doesn't hold it across
- * a scan; in the lock they run again only if provider, ability or name came out otherwise. fn is called more than once, so it makes its
- * answer from the record alone.
+ * a scan; in the lock they run again only if provider, ability or name came out otherwise. All of it is a name-taker's (takingNames): a
+ * name checked free is still free at the write. fn is called more than once, so it makes its answer from the record alone.
  * @param {Workspace} ws @param {string} id @param {(rec: ModelRecord) => ModelRecord} fn @returns {Promise<ModelRecord>} the record as saved
  */
 export async function updateModel(ws, id, fn) {
-  const path = modelPath(id);
-  const seen = await ws.readJSON(SYS_SETTINGS, path);
-  if (seen === undefined) throw new NotFoundError(path);
-  const checked = fn(seen);
-  await checkModel(ws, checked);
-  const key = (/** @type {ModelRecord} */ r) => JSON.stringify([r.provider, r.ability, modelOf(r).name.toLowerCase()]);
-  return ws.update(SYS_SETTINGS, path, async (/** @type {ModelRecord} */ rec) => {
-    const next = fn(rec);
-    if (key(next) === key(checked)) check(MODEL_SCHEMA, next, path);
-    else await checkModel(ws, next);
-    return next;
-  }, { author: 'user' });
+  return takingNames(ws, async () => {
+    const path = modelPath(id);
+    const seen = await ws.readJSON(SYS_SETTINGS, path);
+    if (seen === undefined) throw new NotFoundError(path);
+    const checked = fn(seen);
+    await checkModel(ws, checked);
+    const key = (/** @type {ModelRecord} */ r) => JSON.stringify([r.provider, r.ability, modelOf(r).name.toLowerCase()]);
+    return ws.update(SYS_SETTINGS, path, async (/** @type {ModelRecord} */ rec) => {
+      const next = fn(rec);
+      if (key(next) === key(checked)) check(MODEL_SCHEMA, next, path);
+      else await checkModel(ws, next);
+      return next;
+    }, { author: 'user' });
+  });
 }
 
 /**

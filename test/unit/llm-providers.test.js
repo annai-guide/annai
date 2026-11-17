@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes, SYS } from '../../src/core/scopes.js';
-import { readConfig, modelOf, providerOf, getKey, saveProvider, saveModel, saveRoles, removeModel, removeProviderRecords, diffLayer, providerBase, modelNames as screenNames } from '../../src/core/llm/config.js';
+import { readConfig, modelOf, providerOf, getKey, saveProvider, saveModel, saveRoles, removeModel, removeProviderRecords, diffLayer, providerBase, updateModel, modelNames as screenNames } from '../../src/core/llm/config.js';
 import { addProvider, syncProviders, useSuggestion, addListedModel, addModelById, withSpeech, speechAdd, speechBehind } from '../../src/core/llm/providers.js';
 import { ttlFor } from '../../src/core/agent/warmth.js';
 import { OPENAI_SRC, ROUTER_SRC, ANTHROPIC_SRC, ANOTHER_SRC, PROTO, PROVIDER, site } from './provider-kit.js';
@@ -280,6 +280,15 @@ test("a model added by id or from a list starts with its ability's modelDefaults
   await assert.rejects(addModelById(ctx, claude, 'voice', 'x'), /ability/);
 });
 
+test("a model added to a provider that was removed meanwhile is refused with the words for that, whichever add it was (model-names-next)", async () => {
+  const ctx = await setup();
+  const id = await addProvider(ctx, OPENAI_SRC, { key: 'sk-o' });
+  await removeProviderRecords(ctx.ws, ctx.store, id);
+  const gone = (/** @type {any} */ e) => e.shown === 'That provider no longer exists.' && e.message === 'That provider no longer exists.';
+  await assert.rejects(addModelById(ctx, id, 'chat', 'x'), gone);
+  await assert.rejects(addListedModel(ctx, id, 'chat', { providerId: 'x', name: 'X' }), gone);
+});
+
 test("a default new to an ability's modelDefaults reaches the models added from its list or by id before it, unless the user set that field (phone-fixes-1 item 2: Claude read only text)", async () => {
   const ctx = await setup();
   const claude = await addProvider(ctx, ANTHROPIC_SRC, { key: 'sk-ant' });
@@ -484,6 +493,37 @@ test('a started data-only provider plugin registers its description, and a newer
   assert.ok(Object.values(cfg.models).some((m) => modelOf(m).name === 'X ears'));
 });
 
+/**
+ * Watches a workspace for the first thing a sync does, and what every name-taker does before it works out a name: listing the providers
+ * (readConfig), and lets the work in memory that can run, run. All of it is promises (no timer and no I/O in the memory store or the
+ * Workspace), so one turn of the event loop ends only once every chain has come to a wait, however slow the host: a name-taker that is
+ * not held back by the one before it has read by then, and one that is has not (a fixed wait was a guess at how long that takes). The
+ * test after the helper checks that premise.
+ * @param {import('../../src/core/workspace.js').Workspace} ws
+ */
+function watchReads(ws) {
+  let reads = 0;
+  /** @type {any} */
+  const watched = ws;
+  const list = ws.list.bind(ws);
+  watched.list = (/** @type {any[]} */ ...a) => {
+    if (a[1] === '/llm/providers/') reads++;
+    return /** @type {any} */ (list)(...a);
+  };
+  return { reads: () => reads, settle: () => new Promise((done) => setImmediate(done)) };
+}
+
+test("a sync that nothing holds has read within one turn of the event loop: what the lock tests wait on", async () => {
+  const k = await serviceKit();
+  await k.llm.addProvider('provider-x', { key: 'sk-x' });
+  await k.llm.syncProviders(); // after the start-up sync and the add: the line is empty
+  const watch = watchReads(k.ws);
+  const syncing = k.llm.syncProviders();
+  await watch.settle();
+  assert.ok(watch.reads() > 0, 'a sync with nothing in its way had not read after one turn: the lock tests would no longer catch a lock that lets it through');
+  await syncing;
+});
+
 test("an add and a sync that run together never give one free name to two models: the sync waits its turn behind the add (words-next)", async () => {
   const k = await serviceKit();
   await k.llm.addProvider('provider-x', { key: 'sk-x' });
@@ -509,9 +549,10 @@ test("an add and a sync that run together never give one free name to two models
   };
   const adding = k.llm.addProvider('provider-y', { key: 'sk-y' });
   await held;
+  const watch = watchReads(k.ws);
   const syncing = k.llm.syncProviders();
-  // A sync that doesn't wait would read the names and write its rename within this wait: it is all in memory, so a few ms at the most.
-  await new Promise((r) => setTimeout(r, 25));
+  await watch.settle();
+  assert.equal(watch.reads(), 0, 'the sync read the names while the add, which was about to write its models, still held its turn');
   release();
   await Promise.all([adding, syncing]);
   const cfg = await readConfig(k.ws);
@@ -552,9 +593,10 @@ test("the Models screen's adds (a model from a list, a model by its id) and a sy
     };
     const adding = add(k, yId);
     await held;
+    const watch = watchReads(k.ws);
     const syncing = k.llm.syncProviders();
-    // A sync that doesn't wait would read the names and write its rename within this wait: it is all in memory, so a few ms at the most.
-    await new Promise((r) => setTimeout(r, 25));
+    await watch.settle();
+    assert.equal(watch.reads(), 0, `${how}: the sync read the names while the add, which was about to write its model, still held its turn`);
     release();
     await Promise.all([adding, syncing]);
     const cfg = await readConfig(k.ws);
@@ -563,6 +605,133 @@ test("the Models screen's adds (a model from a list, a model by its id) and a sy
     const all = Object.values(cfg.models).map((m) => modelOf(m).name.toLowerCase());
     assert.equal(new Set(all).size, all.length, `${how}: no two models are named alike`);
   }
+});
+
+/**
+ * provider-y's Add, held at its first download (a connection gone dead): reached once it is held, go to let it on.
+ * @param {any} k the service kit
+ */
+function holdDownload(k) {
+  const fetch = k.s.fetch;
+  /** @type {() => void} */
+  let go = () => {};
+  /** @type {() => void} */
+  let reach = () => {};
+  const reached = new Promise((resolve) => { reach = () => resolve(undefined); });
+  const letOn = new Promise((resolve) => { go = () => resolve(undefined); });
+  let first = true;
+  k.s.fetch = async (/** @type {any} */ url) => {
+    if (first && new URL(String(url), 'http://annai.test').pathname.startsWith('/plugins-official/provider-y/')) {
+      first = false;
+      reach();
+      await letOn;
+    }
+    return fetch(url);
+  };
+  return { adding: k.llm.addProvider('provider-y', {}), reached, go };
+}
+/**
+ * Whether work ends within 5 s. All of it is in memory, a few ms; 5 s leaves room for a loaded host, and work waiting behind a held
+ * download never ends while it is held. @param {Promise<unknown>} work @returns {Promise<boolean>}
+ */
+async function endsSoon(work) {
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let timer;
+  const late = new Promise((resolve) => { timer = setTimeout(() => resolve(false), 5000); });
+  try {
+    return await Promise.race([work.then(() => true), late]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+test("a sync runs at once while a provider's Add waits on a download: the install line is for installs (model-names-next, P1)", async () => {
+  const k = await serviceKit();
+  await k.llm.addProvider('provider-x', { key: 'sk-x' });
+  const next = PX('1.1.0', { chat: { kind: 'chat', type: 'type-a', models: [{ providerId: 'x-1', name: 'X first' }] } });
+  await k.host.install(new Map(Object.entries(next).map(([n, t]) => [n, new TextEncoder().encode(t)])), { source: 'official' });
+  await k.host.start('provider-x');
+  const held = holdDownload(k);
+  await held.reached;
+  assert.ok(await endsSoon(k.llm.syncProviders()), 'the sync ended while the download was held');
+  assert.ok(modelNames(await readConfig(k.ws)).includes('X first'), 'and it brought the update in');
+  held.go();
+  await held.adding;
+});
+
+test("the Models screen's adds run at once while a provider's Add waits on a download (model-names-next, P2)", async () => {
+  const k = await serviceKit();
+  const xId = await k.llm.addProvider('provider-x', { key: 'sk-x' });
+  const held = holdDownload(k);
+  await held.reached;
+  const adds = Promise.all([k.llm.addListedModel(xId, 'chat', { providerId: 'z-new', name: 'Z two' }), k.llm.addModelById(xId, 'chat', 'z-three')]);
+  assert.ok(await endsSoon(adds), 'both added while the download was held');
+  held.go();
+  await held.adding;
+  const all = modelNames(await readConfig(k.ws));
+  assert.ok(all.includes('Z two') && all.includes('z-three'), all.join());
+  assert.equal(new Set(all.map((n) => n.toLowerCase())).size, all.length, 'no two models are named alike');
+});
+
+test("a refused name-taker leaves the lock free: the add after it saves, so do a page's save and a sync (model-names-next)", async () => {
+  const k = await serviceKit();
+  const xId = await k.llm.addProvider('provider-x', { key: 'sk-x' });
+  await k.llm.addModelById(xId, 'chat', 'taken-id');
+  // An add refused for its name, then another: the first one's failure is not carried to it.
+  await assert.rejects(k.llm.addModelById(xId, 'chat', 'taken-id'), /already used by another model/);
+  const second = await k.llm.addModelById(xId, 'chat', 'free-id');
+  assert.ok(modelNames(await readConfig(k.ws)).includes('free-id'), 'the add after a refused add saved');
+  // A page's save refused for its name, then one that is fine.
+  await assert.rejects(updateModel(k.ws, second, (rec) => ({ ...rec, user: { ...rec.user, name: 'taken-id' } })), /already used by another model/);
+  await updateModel(k.ws, second, (rec) => ({ ...rec, user: { ...rec.user, name: 'Free one' } }));
+  assert.ok(modelNames(await readConfig(k.ws)).includes('Free one'), 'the page save after a refused one saved');
+  // A refused add, then a plugin update's refresh brings its new model in.
+  await assert.rejects(k.llm.addModelById(xId, 'chat', 'taken-id'), /already used by another model/);
+  const next = PX('1.1.0', { chat: { kind: 'chat', type: 'type-a', models: [{ providerId: 'x-1', name: 'X one' }, { providerId: 'x-3', name: 'X three' }] } });
+  await k.host.install(new Map(Object.entries(next).map(([n, t]) => [n, new TextEncoder().encode(t)])), { source: 'official' });
+  await k.host.start('provider-x');
+  assert.equal(await k.llm.syncProviders(), 1, 'the sync after a refused add ran');
+  assert.ok(modelNames(await readConfig(k.ws)).includes('X three'), 'and brought the update in');
+});
+
+test("a rename saved on a model's page and a sync that renames another model to the same name: the names stay unique (model-names-next, P4)", async () => {
+  const k = await serviceKit();
+  await k.llm.addProvider('provider-x', { key: 'sk-x' });
+  const yId = await k.llm.addProvider('provider-y', {});
+  const yOne = /** @type {any} */ (Object.values((await readConfig(k.ws)).models).find((m) => m.provider === yId));
+  // The page's rename is held where it has checked the name is free and is about to write it.
+  const update = k.ws.update.bind(k.ws);
+  /** @type {() => void} */
+  let release = () => {};
+  /** @type {() => void} */
+  let reached = () => {};
+  const held = new Promise((resolve) => { reached = () => resolve(undefined); });
+  let first = true;
+  k.ws.update = async (scope, path, fn, opts) => {
+    if (first && path.startsWith('/llm/models/')) {
+      first = false;
+      reached();
+      await new Promise((go) => { release = () => go(undefined); });
+    }
+    return update(scope, path, fn, opts);
+  };
+  const renaming = updateModel(k.ws, yOne.id, (rec) => ({ ...rec, user: { ...rec.user, name: 'Renamed' } }));
+  await held;
+  // provider-x 1.1.0 renames its chat model to the name the page is about to save.
+  const next = PX('1.1.0', { chat: { kind: 'chat', type: 'type-a', models: [{ providerId: 'x-1', name: 'Renamed' }] } });
+  await k.host.install(new Map(Object.entries(next).map(([n, t]) => [n, new TextEncoder().encode(t)])), { source: 'official' });
+  await k.host.start('provider-x');
+  const watch = watchReads(k.ws);
+  const syncing = k.llm.syncProviders();
+  await watch.settle();
+  assert.equal(watch.reads(), 0, 'the sync read the names while the rename, which was about to write its name, still held its turn');
+  release();
+  await Promise.all([renaming, syncing]);
+  const cfg = await readConfig(k.ws);
+  const chat = (/** @type {string} */ plugin) => Object.values(cfg.models).filter((m) => cfg.providers[m.provider].plugin === plugin && m.ability === 'chat').map((m) => modelOf(m).name);
+  assert.deepEqual([chat('provider-y'), chat('provider-x')], [['Renamed'], ['Renamed (2)']], 'the rename came first, the sync after it took the next free name');
+  const all = Object.values(cfg.models).map((m) => modelOf(m).name.toLowerCase());
+  assert.equal(new Set(all).size, all.length, 'no two models are named alike');
 });
 
 test("listing an ability's models: by its address, with the provider's key; an address that doesn't allow web apps says so by its host, not the browser's \"Load failed\"", async () => {

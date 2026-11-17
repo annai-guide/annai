@@ -261,10 +261,10 @@ export function createLlm({
     }
   };
   /**
-   * Brings providers up to date with their plugins' descriptions (decision 4); writes only when a version differs. In the line adding goes in:
-   * each takes the free names from the models there are, so one that ran beside another could give one name to two models.
+   * Brings providers up to date with their plugins' descriptions (decision 4); writes only when a version differs. Not in the line: its
+   * free names are ordered with the adds' by takingNames (config.js), and it never waits behind an add's downloads.
    */
-  const sync = () => queued(() => syncProviders({ ws }, providers()));
+  const sync = () => syncProviders({ ws }, providers());
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let syncing;
   ready.then(() => {
@@ -347,13 +347,13 @@ export function createLlm({
       return id;
     }),
     /**
-     * Adds a model from an ability's list, or by the provider's own id (the Models screen's adds), in the line adding goes in, so a sync between the
-     * check of a name and the write cannot give one name to two models: the list's add takes the first free name, the by-id add is refused when its name is taken.
+     * Adds a model from an ability's list, or by the provider's own id (the Models screen's adds). Not in the line: nothing is installed, and
+     * takingNames (config.js) orders their names with a sync's: the list's add takes the first free name, the by-id add is refused when its name is taken.
      * @param {string} providerId @param {string} abilityId @param {import('./contract.js').ListedModel} listed @returns {Promise<string>} the model's id
      */
-    addListedModel: (providerId, abilityId, listed) => queued(() => addListedModel({ ws }, providerId, abilityId, listed)),
+    addListedModel: (providerId, abilityId, listed) => addListedModel({ ws }, providerId, abilityId, listed),
     /** @param {string} providerId @param {string} abilityId @param {string} providerModelId @returns {Promise<string>} the model's id */
-    addModelById: (providerId, abilityId, providerModelId) => queued(() => addModelById({ ws }, providerId, abilityId, providerModelId)),
+    addModelById: (providerId, abilityId, providerModelId) => addModelById({ ws }, providerId, abilityId, providerModelId),
     /**
      * Add's tap on a provider with code: its plugin, with what it requires; then null when the plugin has its own
      * Add flow (a panel, decision 15), which adds it, or the provider added. @param {string} plugin
