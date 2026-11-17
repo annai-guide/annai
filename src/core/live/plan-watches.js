@@ -46,6 +46,12 @@ export const ARRIVE_STOP_MIN = 2;
 export const ARRIVE_INSIDE_MIN = 5;
 /** Arriving counts from this long before the start until the end (or this long after the start); running late, from then. */
 export const WINDOW_MIN = 180;
+/**
+ * A flight, train or ride item with no end takes its booking's when that comes within this long of its departure: the longest scheduled
+ * flight is under 19 hours (Singapore to New York), and a journey of connections on one booking is mostly over within a day. A later end
+ * is most likely a trip out and back on one booking, the return's: taken, it would hold back the trip's reminders until the return.
+ */
+const LEG_END_MAX_MIN = 24 * 60;
 /** Off plan: this far from a flexible item, this long into its time. */
 export const OFF_PLAN_KM = 3;
 export const OFF_PLAN_AFTER_MIN = 10;
@@ -124,17 +130,22 @@ export function planWatches(items, bookings, { fallbackTz }) {
     const it = x.item;
     const tz = zone(it);
     const title = String(it.title ?? slug(x.path));
-    const end = instantAt(it.end?.at, validZone(it.end?.tz) ? it.end.tz : tz);
     const place = hasPoint(it.place) ? { name: String(it.place.name ?? title), lat: it.place.lat, lng: it.place.lng } : null;
     const ref = bookingRef(it.booking) ?? '';
     const booking = bookings.get(ref) ?? null;
     const kind = kindOf(it, booking);
     const flight = kind === 'flight';
     const carrier = CARRIERS.has(kind);
+    const legs = onBooking.get(ref) ?? 0;
+    const instant = (/** @type {any} */ t) => instantAt(t?.at, validZone(t?.tz) ? t.tz : tz);
+    // Its end, else a carrier's booking's when that is this leg's: the booking links no other carrier item, and ends within LEG_END_MAX_MIN
+    // of the departure. With none, what comes after waited only for the departure, and fired in the air ("Running late ... About 329 min away").
+    const booked = carrier && legs < 2 && instant(booking?.end) > x.at && instant(booking?.end) - x.at <= LEG_END_MAX_MIN * MIN;
+    const endTime = instant(it.end) > x.at ? it.end : booked ? booking.end : null;
     // A flight is named by its booking, unless the booking has several legs: then by the item's own title, as any item.
-    const short = whatOf(title, booking, flight && (onBooking.get(ref) ?? 0) < 2, x.at, tz, place?.name ?? '');
+    const short = whatOf(title, booking, flight && legs < 2, x.at, tz, place?.name ?? '');
     const base = {
-      type: 'plan', item: slug(x.path), title, at: x.at, end: Number.isFinite(end) && end > x.at ? end : null, tz, fixed: it.fixed === true,
+      type: 'plan', item: slug(x.path), title, at: x.at, end: endTime === null ? null : instant(endTime), tz, fixed: it.fixed === true,
       unsure: timeUnsure([it.start], booking, { fallbackTz }), // the start: the time a wake says (the off-plan wake reads the end too, when it says one)
       what: whatText(short), short,
     };
@@ -147,7 +158,7 @@ export function planWatches(items, bookings, { fallbackTz }) {
     if (place) {
       const there = { place, radius: flight ? AIRPORT_M : ARRIVE_M };
       if (!base.fixed) {
-        add('off-plan', `Planned now: ${title}, at ${place.name}.`, { event: 'off-plan', title, place: place.name }, { ...there, unsure: timeUnsure(base.end === null ? [it.start] : [it.start, it.end], booking, { fallbackTz }) });
+        add('off-plan', `Planned now: ${title}, at ${place.name}.`, { event: 'off-plan', title, place: place.name }, { ...there, unsure: timeUnsure(endTime === null ? [it.start] : [it.start, endTime], booking, { fallbackTz }) });
       } else if (kind !== 'lodging') {
         // Leave and running late time a trip by car or on foot (spec §11.3). Not for a stay: its check-in is the earliest time to arrive,
         // its check-out the latest to stay (the user's report, 2026-11-16: "Leave in about 15 min" for a check-in 3300 km away).

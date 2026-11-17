@@ -802,3 +802,39 @@ test("ferries, buses and coaches carry the traveller as flights and trains do: w
     assert.equal(/** @type {any} */ (ws.find((w) => w.id === 'plan:ride:arrived')).when.radius, 300, kind);
   }
 });
+
+test("a flight item with no end takes its booking's: what comes after waits for the landing, not the departure (in the air it said \"Leave soon\" and \"Running late ... About 329 min away\")", () => {
+  const SFO = { lat: 37.6213, lng: -122.379 };
+  const UA = { id: 'ua', kind: 'flight', status: 'confirmed', source: '/files/ua.pdf', title: 'UA 9', start: { at: '2026-11-27T09:00:00-08:00', tz: LA }, end: { at: '2026-11-27T17:30:00-05:00', tz: NY } };
+  const out = (/** @type {any} */ o = {}) => ({ path: '/plan/out.json', item: { title: 'Flight out', kind: 'flight', fixed: true, start: { at: '2026-11-27T09:00:00-08:00', tz: LA }, place: { name: 'SFO', ...SFO }, booking: '/trip/bookings/ua.json', ...o } });
+  const tourOf = (/** @type {any[]} */ items, /** @type {any} */ booking = UA) => {
+    const ws = planWatches(/** @type {any} */ ([...items, FLOWN[2]]), new Map([['/bookings/ua.json', booking]]), { fallbackTz: LA });
+    return { leave: /** @type {any} */ (ws.find((w) => w.id === 'plan:tour:leave')).when, late: /** @type {any} */ (ws.find((w) => w.id === 'plan:tour:late')).when };
+  };
+  // On the plane at 17:00, 300 km from the tour at 19:00 (329 min by car): with the booking's end the tour waits for the landing at 17:30.
+  const plane = off(FAR, 0, -300_000);
+  const taken = tourOf([out()]);
+  assert.equal(taken.leave.after, ny('17:30'));
+  assert.equal(PLAN.check(taken.leave, here(plane, ny('17:00')), {}), null);
+  assert.equal(PLAN.check(taken.late, here(plane, ny('17:00')), {}), null);
+  assert.equal(PLAN.next?.(taken.leave, here(plane, ny('17:00')), {}), ny('17:30'));
+  // Its own end wins over the booking's.
+  assert.equal(tourOf([out({ end: { at: '2026-11-27T18:00:00-05:00', tz: NY } })]).leave.after, ny('18:00'));
+  // Not the booking's end when it isn't this leg's: with its departure as the wait, as before. A booking two carrier items link (an out
+  // and back; its end is the return's), and one whose end comes more than a day after the departure (a trip out and back with only the
+  // way out on the plan: taken, it would hold back the trip's reminders until the return).
+  const back = { path: '/plan/back.json', item: { title: 'Flight back', kind: 'flight', fixed: true, start: { at: '2026-11-30T08:00:00-05:00', tz: NY }, end: { at: '2026-11-30T11:00:00-08:00', tz: LA }, place: { name: 'Home airport', ...AIRPORT }, booking: '/trip/bookings/ua.json' } };
+  const roundTrip = { ...UA, end: { at: '2026-11-30T11:00:00-08:00', tz: LA } };
+  assert.equal(tourOf([out(), back], roundTrip).leave.after, ny('12:00')); // 09:00 in California
+  assert.equal(tourOf([out()], roundTrip).leave.after, ny('12:00'));
+  // A booking with no end, or one before the departure, gives none.
+  const { end: _, ...noEnd } = UA;
+  assert.equal(tourOf([out()], noEnd).leave.after, ny('12:00'));
+  assert.equal(tourOf([out()], { ...UA, end: { at: '2026-11-27T08:00:00-08:00', tz: LA } }).leave.after, ny('12:00'));
+  // A train on its booking alike.
+  const rail = { ...UA, kind: 'rail' };
+  assert.equal(tourOf([out({ kind: 'rail' })], rail).leave.after, ny('17:30'));
+  // A flight that only takes the booking's end, the wait is as if Shiori had written it: the flight's own arrival counts until it.
+  const flight = planWatches(/** @type {any} */ ([out()]), new Map([['/bookings/ua.json', UA]]), { fallbackTz: LA });
+  assert.equal(/** @type {any} */ (flight.find((w) => w.id === 'plan:out:arrived')).when.end, ny('17:30'));
+});

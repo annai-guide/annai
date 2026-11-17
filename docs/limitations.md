@@ -897,11 +897,11 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** `renderDrive` subscribes to `'event'` after `await latestCard`. Subscribing first and drawing the later of the two is a change to the screen's draw order, with its own test.
 - **Revisit when:** the next version: subscribe before the read, keep the newest of the read card and any that came in meanwhile.
 
-### A delayed flight, or one with no arrival time, lets the next item's reminders fire in the air
+### A delayed flight, or one with no arrival time on the plan or its booking, lets the next item's reminders fire in the air
 - **Kind:** deferred.
-- **What the traveller sees:** what comes after a flight (or train) waits for its end on the plan, else its start (leave-far, 2026-11-16). A plane that lands late, or a flight item with no end, lets the next fixed item's "Leave soon" and "Running late" come while the traveller is still in the air (with a position within 1000 km of the item, "Running late: … About N min away" with a big N), and the push relay's copy comes at the scheduled landing.
-- **Why:** annai doesn't know where the plane is; the plan's time is all it has. The skill tells Shiori to write a flight's end, so a missing one should be rare.
-- **Revisit when:** the next version, as its own change: count the wait from the first stop annai sees after the flight (`m.stop`, live.js) instead of the scheduled end, and take the linked booking's end for a flight item with none. The relay can't see a stop while annai is closed, so its copy stays at the scheduled time.
+- **What the traveller sees:** what comes after a flight (or a train or ride) waits for its end on the plan (leave-far, 2026-11-16); with none, for its booking's end when the booking links no other flight, train or ride item and ends within a day of the departure (leave-next); else for its start. A plane that lands late, or a flight item with no end and no such booking end, lets the next fixed item's "Leave soon" and "Running late" come while the traveller is still in the air (with a position within 1000 km of the item, "Running late: … About N min away" with a big N), and the push relay's copy comes at the scheduled landing.
+- **Why:** annai doesn't know where the plane is; the plan's time is all it has. The skill tells Shiori to write a flight's end, so a missing one should be rare. Counting the wait from the first stop annai sees after the flight is not built (the design check, 2026-11-17): it would hold back true reminders whenever annai sees no stop after the landing, and the relay can't see a stop while annai is closed.
+- **Revisit when:** after the trip, with the design check's part 5: read the speeds annai logged in flight from the trace, then decide between one fact at the activity sensor ("faster than any car": no leave, no running late, no Driving at that speed) and accepting this entry.
 
 ### A stay, flight or train item whose kind is a word annai's table doesn't have isn't recognised
 - **Kind:** deferred.
