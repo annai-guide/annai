@@ -477,6 +477,7 @@ changes no shipped file, so the app and its coverage are as they were, whatever 
 - **Keep, or change with them:** home's level-1 "Trips" (goHome, pastWelcome), the Itinerary's level-1 "Itinerary" (openItinerary), and
   `main .talk-head` in the conversation (atConversation); `.notices`.before(…) is the test boxes' anchor (2A used it, not this plan's
   `main.view`.before(…), which would put the box after the real notices box).
+- **From dock-box (merged after 2A):** dock-text.spec.js:118 reads `document.querySelector('header, .topbar, nav[aria-label="Main"]')` for the short-screen check: re-derive it with the bar gone.
 - Low, optional: shell.spec.js:49-54 now proves the router, not a tap on the bar after the error card (click the card's "Open Trace", then
   goHome); details-menu.spec.js:83, :89 read the bar's bottom once before `expect.poll` (2B's 0 makes it moot).
 
