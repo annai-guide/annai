@@ -1356,16 +1356,16 @@ q21uv	ok	Trying each reasoning level…	正在逐一嘗試推理等級…	src/ui
 la23qc	ok	This model has no reasoning levels to try.	這個模型沒有可嘗試的推理等級。	src/ui/model-check.js:56	
 18nnh3z	ok	{0}: works	{0}：可用	src/ui/model-check.js:57	{0} = LEVELS[level] ?? level
 edkut8	ok	Test reasoning levels	測試推理等級	src/ui/model-check.js:64	
-1qfy6dp	ok	Hide	隱藏	src/ui/notices.js:157	
-bi2jq4	ok	Show	顯示	src/ui/notices.js:157	
-icn7kg	ok	Dismiss all	全部關閉	src/ui/notices.js:162	
-14jq62w#other	ok	{0}, # cards	{0}，# 張卡片	src/ui/notices.js:175	plural; # = n; {0} = title; English: "{0}, # card" (one), "{0}, # cards" (other)
-1w0wlmk#other	ok	Show the # cards: {0}	顯示 # 張卡片：{0}	src/ui/notices.js:176	plural; # = n; {0} = title; English: "Show the # card: {0}" (one), "Show the # cards: {0}" (other)
-1wucd5m#other	ok	Hide the # cards: {0}	隱藏 # 張卡片：{0}	src/ui/notices.js:176	plural; # = n; {0} = title; English: "Hide the # card: {0}" (one), "Hide the # cards: {0}" (other)
-1dg2v9a#other	ok	Dismiss all # cards: {0}	關閉全部 # 張卡片：{0}	src/ui/notices.js:177	plural; # = n; {0} = title; English: "Dismiss the # card: {0}" (one), "Dismiss all # cards: {0}" (other)
-18u3mqg	ok	Less	收起	src/ui/notices.js:259	Note: Closes a long card back to three lines.
-lz65mo	ok	More	展開	src/ui/notices.js:259	Note: Opens a long card to its full height.
-an1pf7	ok	Dismiss	關閉	src/ui/notices.js:269	
+1qfy6dp	ok	Hide	隱藏	src/ui/notices.js:159	
+bi2jq4	ok	Show	顯示	src/ui/notices.js:159	
+icn7kg	ok	Dismiss all	全部關閉	src/ui/notices.js:164	
+14jq62w#other	ok	{0}, # cards	{0}，# 張卡片	src/ui/notices.js:177	plural; # = n; {0} = title; English: "{0}, # card" (one), "{0}, # cards" (other)
+1w0wlmk#other	ok	Show the # cards: {0}	顯示 # 張卡片：{0}	src/ui/notices.js:178	plural; # = n; {0} = title; English: "Show the # card: {0}" (one), "Show the # cards: {0}" (other)
+1wucd5m#other	ok	Hide the # cards: {0}	隱藏 # 張卡片：{0}	src/ui/notices.js:178	plural; # = n; {0} = title; English: "Hide the # card: {0}" (one), "Hide the # cards: {0}" (other)
+1dg2v9a#other	ok	Dismiss all # cards: {0}	關閉全部 # 張卡片：{0}	src/ui/notices.js:179	plural; # = n; {0} = title; English: "Dismiss the # card: {0}" (one), "Dismiss all # cards: {0}" (other)
+18u3mqg	ok	Less	收起	src/ui/notices.js:261	Note: Closes a long card back to three lines.
+lz65mo	ok	More	展開	src/ui/notices.js:261	Note: Opens a long card to its full height.
+an1pf7	ok	Dismiss	關閉	src/ui/notices.js:271	
 16ujpkf#other	ok	# Wikipedia summaries	# 篇 Wikipedia 摘要	src/ui/offline-pack.js:15	plural; # = m.summaries; English: "# Wikipedia summary" (one), "# Wikipedia summaries" (other)
 18s5rc#other	ok	# places	# 個地點	src/ui/offline-pack.js:15	plural; # = m.places; English: "# place" (one), "# places" (other)
 1bid1z0#other	ok	# Wikivoyage guides	# 篇 Wikivoyage 指南	src/ui/offline-pack.js:15	plural; # = m.guides.length; English: "# Wikivoyage guide" (one), "# Wikivoyage guides" (other)
