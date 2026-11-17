@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, startTrip, writeRecords, writeEvent, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply, modelSetUp, openItinerary } from './helpers.js';
+import { openApp, startTrip, writeRecords, writeEvent, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply, modelSetUp, openItinerary, goToHash } from './helpers.js';
 
 // The screens' side of the user's iPhone findings (2026-10-28, phone-fixes-1).
 
@@ -130,16 +130,39 @@ for (const width of [390, 320]) {
     expect(m.y).toBeGreaterThanOrEqual(at.y + at.height - 1);
     expect(m.x).toBeGreaterThanOrEqual(0);
     expect(m.x + m.width).toBeLessThanOrEqual(width);
-    // No taller than the screen less the title and the dock (CSS only). The title is below the top here (the page's first lines are above it): the
-    // page scrolls it up to the top, as a finger does, and then the whole menu is in view, above the dock.
+    // No taller than the room under the ⋯ (talk.js's room: down to 16 px above the dock, measured where the ⋯ is at the top of the page); the menu is a
+    // little taller than that room here, so the cap is what holds it, and the next test has a screen where the room is a fraction of the menu. Then the
+    // page scrolls to its end, as a finger does, and the whole menu is in view, above the dock.
     const dock = /** @type {any} */ (await page.locator('.dock:not(.seat)').boundingBox());
-    expect(m.height).toBeLessThanOrEqual(700 - 64 - dock.height + 1);
+    expect(m.height).toBeLessThanOrEqual(700 - dock.height - (at.y + at.height) - 16 + 1);
     await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
     await expect(menu).toBeInViewport({ ratio: 1 });
     await expect.poll(async () => /** @type {any} */ (await menu.boundingBox()).y + /** @type {any} */ (await menu.boundingBox()).height).toBeLessThanOrEqual(dock.y + 1);
     await expect(menu.getByRole('button')).toHaveText(['Summarize now', 'Start fresh']);
   });
 }
+
+test('on a screen too short for it, the conversation menu is cut at the room under the ⋯ (16 px above the dock) and scrolls inside', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 240 });
+  await openApp(page);
+  const trip = await startTrip(page, 'Alaska');
+  for (let i = 0; i < 6; i++) await writeEvent(page, trip, { type: 'out.speak', data: { text: `Answer ${i}: a line long enough to take a little room on a phone.` } });
+  await goToHash(page, `#/trip/${trip}/talk`);
+  await expect(page.locator('.convo .shiori')).toHaveCount(6);
+  await page.waitForFunction(() => scrollY > 0 || document.documentElement.scrollHeight <= innerHeight);
+  await page.evaluate(() => scrollTo(0, 0));
+  await page.getByRole('button', { name: 'Conversation menu', exact: true }).click();
+  await expect(page.getByRole('group', { name: 'Conversation menu' })).toBeVisible();
+  const at = await page.evaluate(() => {
+    const menu = /** @type {HTMLElement} */ (document.querySelector('.tidy-menu'));
+    const toggle = /** @type {HTMLElement} */ (document.querySelector('.talk-head .tidy-toggle')).getBoundingClientRect();
+    const dock = /** @type {HTMLElement} */ (document.querySelector('.dock:not(.seat)')).getBoundingClientRect();
+    return { room: innerHeight - dock.height - toggle.bottom - 16, height: menu.getBoundingClientRect().height, cut: menu.scrollHeight > menu.clientHeight };
+  });
+  expect(at.cut).toBe(true); // the menu holds more than the room: the cap is what shows
+  expect(at.room).toBeGreaterThan(0);
+  expect(Math.abs(at.height - at.room)).toBeLessThanOrEqual(1);
+});
 
 // On a long conversation the screen opens at the end; the title and ⋯ stay at the top of the screen (pass 1 of the drive-plan review).
 for (const width of [390, 320]) {

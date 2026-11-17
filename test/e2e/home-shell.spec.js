@@ -67,6 +67,7 @@ test('Settings → Experimental has no swipe switch; Remote trace stays, and Set
   await expect(page.getByText('Features still being tried, and developer tools such as Remote trace.')).toBeVisible();
   await goToHash(page, '#/experimental');
   await expect(page.getByRole('heading', { level: 1, name: 'Experimental', exact: true })).toBeVisible();
+  await expect(page.getByText('Features that are still being tried. They may have bugs, and their fixes may come slower than the rest of annai.')).toBeVisible();
   await expect(page.getByRole('region', { name: 'Remote trace (for developers)' })).toBeVisible();
   await expect(page.getByRole('checkbox', { name: 'Swipe sideways to move between tabs' })).toHaveCount(0);
   await expect(page.getByRole('region', { name: 'Swiping between tabs' })).toHaveCount(0);
@@ -88,7 +89,7 @@ test("what stuck under the bar sticks at the top: a long conversation's head, op
     return { top: b.top, paper: getComputedStyle(el).backgroundColor, mine: Boolean(over && el.contains(over)) };
   });
   expect(Math.abs(at.top)).toBeLessThanOrEqual(1);
-  expect(at.paper).not.toBe('rgba(0, 0, 0, 0)');
+  expect(at.paper).toMatch(/^rgb\(/); // opaque: a colour with an alpha (rgba) lets the lines under it show
   expect(at.mine).toBe(true);
   await head.locator('.tidy-toggle').click();
   const menu = page.locator('.tidy-menu');
@@ -158,8 +159,13 @@ test("a booking opened at one of several blocks lands with that block's heading 
   const h = page.getByRole('heading', { name: 'ANNAI AIR AN 124' });
   await expect(h).toBeFocused();
   await expect(h).toBeInViewport({ ratio: 1 });
-  const top = await h.evaluate((el) => el.getBoundingClientRect().top);
-  expect(top).toBeGreaterThanOrEqual(0);
+  const at = await h.evaluate((el) => {
+    const b = el.getBoundingClientRect();
+    const over = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2); // what a finger meets on it: the heading, not what is stuck over it
+    return { top: b.top, mine: Boolean(over && el.contains(over)) };
+  });
+  expect(at.top).toBeGreaterThanOrEqual(0);
+  expect(at.mine).toBe(true);
 });
 
 /** Installs a test plugin from test/fixtures/extensions, used at once. @param {import('@playwright/test').Page} page @param {string} dir @param {string} name */
@@ -266,14 +272,30 @@ test('a trip ahead gets the lighter tint; a chat, a past trip and the happening 
   await expect(row('Pastville')).not.toHaveClass(/\bahead\b/);
   await expect(row('Nowville')).toHaveClass(/\bhappening\b/);
   await expect(row('Nowville')).not.toHaveClass(/\bahead\b/);
-  // Lighter than the happening tint, darker than a plain card, in the theme the page shows.
-  const paint = () => page.evaluate(() => ['Laterton', 'Nowville', 'Pastville'].map((n) => getComputedStyle(/** @type {Element} */ ([...document.querySelectorAll('.trip-card')].find((c) => c.querySelector('.name')?.textContent === n))).backgroundColor));
+  // A lighter version of the happening tint: in the theme the page shows, its luminance lies between a plain card's and the happening one's
+  // (the happening tint is the darker of the two on light paper, the lighter on dark). The computed colour is rgb() or, for a mix, color(srgb …).
+  const paint = () => page.evaluate(() => {
+    const lin = (/** @type {number} */ c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+    const luminance = (/** @type {string} */ css) => {
+      const m = css.match(/^rgb\((\d+), (\d+), (\d+)\)$/) ?? css.match(/^color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)\)$/);
+      if (!m) throw new Error(`a colour this test can't read: ${css}`);
+      const [r, g, b] = m.slice(1).map((v) => (css.startsWith('rgb') ? Number(v) / 255 : Number(v)));
+      return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    };
+    /** @param {string} name */
+    const of = (name) => luminance(getComputedStyle(/** @type {Element} */ ([...document.querySelectorAll('.trip-card')].find((c) => c.querySelector('.name')?.textContent === name))).backgroundColor);
+    return { plain: of('Pastville'), ahead: of('Laterton'), happening: of('Nowville') };
+  });
   const light = await paint();
-  expect(new Set(light).size).toBe(3);
   await page.emulateMedia({ colorScheme: 'dark' });
   const dark = await paint();
-  expect(new Set(dark).size).toBe(3);
-  expect(dark).not.toEqual(light);
+  for (const l of [light, dark]) {
+    expect(l.happening).not.toBeCloseTo(l.plain, 3);
+    expect(l.ahead).toBeGreaterThan(Math.min(l.plain, l.happening));
+    expect(l.ahead).toBeLessThan(Math.max(l.plain, l.happening));
+  }
+  expect(light.happening).toBeLessThan(light.plain); // light paper: the happening tint is the darker
+  expect(dark.happening).toBeGreaterThan(dark.plain); // dark paper: the lighter
 });
 
 /** Home is drawn and the trip in play is known to live mode: its happening card shows. @param {import('@playwright/test').Page} page @param {string} name */
@@ -292,7 +314,7 @@ test("#/now opens today's Itinerary of the trip in play (where you are, the chip
   await expect(page.getByRole('heading', { level: 1, name: 'Itinerary', exact: true })).toBeVisible();
   await expect(page.locator('.today-top')).toBeVisible(); // shown on today's tab only
   await expect(page.locator('.today-top .now-place')).toHaveText("GPS is off, so annai isn't following where you are.");
-  await expect(page.locator('.today-top .chips')).toBeAttached();
+  await expect(page.locator('.today-top .chips .chip', { hasText: 'GPS off' })).toBeVisible(); // a chip, not an empty row
   await expect(page.locator('.today-top').getByRole('link', { name: 'Driving' })).toBeVisible();
   await page.goBack();
   await expect.poll(() => new URL(page.url()).hash).toBe('#/trips');

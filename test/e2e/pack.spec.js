@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, startTrip, writeRecords } from './helpers.js';
+import { openApp, startTrip, writeRecords, goToHash } from './helpers.js';
 
 // Playwright stands in for OpenStreetMap, Wikipedia and Wikivoyage. In WebKit it can't for a page a
 // service worker controls, so the service worker is off here, as in the hosted-archive test.
@@ -59,7 +59,7 @@ test('the offline pack: its size before downloading, then OpenStreetMap, Wikiped
   await expect(page.getByRole('link', { name: /pack\.json|^o[0-9a-z]+\.json$/ })).toHaveCount(0); // the pack's files stay out of the file list
   await page.reload();
   await expect(panel).toContainText(/Downloaded .+ · /);
-  await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`); // the pack's line is on the Itinerary (Now's until timeline stage 8)
+  await goToHash(page, `#/trip/${encodeURIComponent(trip)}/plan`); // the pack's line is on the Itinerary (Now's until timeline stage 8)
   await expect(page.locator('main .pack-line')).toContainText('Offline pack: downloaded');
   await writeRecords(page, trip, { write: { '/plan/mcway.json': { id: 'mcway', title: 'McWay Falls', fixed: false, start: { at: at(21), tz: 'America/Los_Angeles' }, place: { name: 'McWay Falls', lat: 36.158, lng: -121.672 } } } });
   await page.goto(`/#/trip/${encodeURIComponent(trip)}`);

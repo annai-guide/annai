@@ -29,6 +29,8 @@ test("today's Itinerary: where you are, the sun and the timetable; live mode fro
   await page.reload(); // written outside the app's own files layer: live mode reads the plan again as it starts
   await expect(page.locator('main.view > *')).toBeVisible(FIRST_DRAW);
   await goToHash(page, `#/trip/${encodeURIComponent(trip)}/plan`);
+  await expect(page.locator('main .crumbs')).toContainText('Big Sur'); // the trip's own Itinerary: its name is the crumb and the sub line
+  await expect(page.locator('main .screen > .sub').first()).toContainText('Big Sur');
   const top = page.locator('.today-top');
   await expect(top.locator('.now-place')).toHaveText("GPS is off, so annai isn't following where you are.");
   const rows = page.getByRole('tabpanel').locator('.plan-row');
@@ -36,8 +38,9 @@ test("today's Itinerary: where you are, the sun and the timetable; live mode fro
   await expect(rows.first()).toContainText('Bixby Bridge photo stop');
   // ○ for what Shiori stored as flexible, ● for fixed, and neither mark nor word for the booking's own row.
   await expect(rows.first().locator('.mark')).toHaveText('○');
-  await expect(rows.nth(1)).toContainText('Garden tour ticket');
+  await expect(rows.nth(1)).toHaveText(/^\d\d:\d\dGarden tour ticket$/);
   await expect(rows.nth(1).locator('.mark')).toHaveText('');
+  await expect(rows.nth(1).locator('.visually-hidden')).toHaveCount(0);
   await expect(rows.nth(2).locator('.mark')).toHaveText('●');
   await expect(top.locator('.chips')).toContainText(/Sunrise|Golden|Sunset|Dusk/); // worked out at the next stop
   await page.locator('.live-chip').click();
@@ -48,7 +51,7 @@ test("today's Itinerary: where you are, the sun and the timetable; live mode fro
   // The latest card, Now's until stage 8, is Driving's.
   await top.getByRole('link', { name: 'Driving' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Driving' })).toBeVisible();
-  await expect(page.getByRole('main')).toContainText('Leave soon: Lunch at Nepenthe.');
+  await expect(page.locator('.drive-latest')).toContainText('Reminder: Leave soon: Lunch at Nepenthe.');
 });
 
 test("an empty plan: today's Itinerary and Driving say nothing is planned, with live mode on and the sun where you are, and nothing goes wrong", async ({ page, context }) => {
@@ -88,7 +91,7 @@ test('a trip with thousands of location points: Driving, the Itinerary and the c
   await page.reload();
   await expect(page.locator('main.view > *')).toBeVisible(FIRST_DRAW);
   await page.goto('/#/drive');
-  await expect(page.getByRole('main')).toContainText('Leave soon: Lunch at Nepenthe.');
+  await expect(page.locator('.drive-latest')).toContainText('Reminder: Leave soon: Lunch at Nepenthe.');
   await expect(page.getByRole('list', { name: 'The road ahead' })).toContainText('Nepenthe');
   await page.goto('/#/plan');
   await expect(page.locator('.plan-row', { hasText: 'Lunch at Nepenthe' })).toBeVisible();

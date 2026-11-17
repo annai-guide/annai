@@ -373,6 +373,8 @@ function fileInbox(ctx, items, trips, archives) {
   const shown = photos.slice(0, 12);
   const urls = shown.map((i) => URL.createObjectURL(i.file));
   return h('div', { class: 'screen' },
+    // The way out without adding: a share from Android or a dropped file opens here, and nothing else on the screen leads home.
+    h('p', { class: 'crumbs' }, crumb('#/trips', t`Trips`)),
     h('h1', { class: 'title', text: t`Add ${what}` }),
     shown.length ? h('ul', { class: 'thumbs' }, ...shown.map((i, k) => h('li', {}, h('img', { src: urls[k], alt: i.file.name, decoding: 'async' })))) : null,
     photos.length > shown.length ? h('p', { class: 'sub', text: plural(photos.length - shown.length, 'and # more photo', 'and # more photos') }) : null,

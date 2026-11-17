@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, pickFile, zipOf, writeRecords, startTrip } from './helpers.js';
+import { openApp, waitForServiceWorker, pickFile, zipOf, writeRecords, startTrip, happeningTrip } from './helpers.js';
 
 // In headless WebKit no tap unlocks sound, so every tap starts the silent clip again; and a page that goes away while one
 // starts can wedge WebKit's process on Linux (the Erase hang, 2026-10-18). A test that ended right after a tap (a swipe
@@ -32,10 +32,12 @@ for (const [ui, width] of /** @type {const} */ ([['', 320], ['', 420], ['ja', 32
     await page.setViewportSize({ width, height: 800 });
     if (ui) await page.addInitScript((tag) => { try { localStorage.setItem('annai.ui', tag); } catch { /* storage blocked */ } }, ui);
     await openApp(page);
+    // Today's Itinerary of a trip in play, where Now's screen went (timeline stage 8): where you are, the chips and Driving's button.
+    const trip = await happeningTrip(page, 'Testville');
     if (ui) await expect(page.locator('html')).toHaveAttribute('lang', ui);
     /** @type {string[]} */
     const wide = [];
-    for (const s of SCREENS) {
+    for (const s of [...SCREENS, `#/trip/${encodeURIComponent(trip)}/plan`]) {
       // Wait for this screen to be drawn, not a fixed time: a slow screen would pass without being looked at.
       // The screen open already (Trips, as openApp opens it) is looked at as it is.
       await page.evaluate((hash) => { if (location.hash === hash) return; document.querySelector('main')?.firstElementChild?.setAttribute('data-old', ''); location.hash = hash; }, s);

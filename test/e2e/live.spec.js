@@ -148,7 +148,12 @@ test('the drive\'s one record is kept in this browser as the page goes off scree
 test('location refused: a card with steps for this phone, and "Where are you?" with the plan\'s places (spec §17)', async ({ page }) => {
   await openApp(page);
   const trip = await startTrip(page, 'Big Sur');
-  await writeRecords(page, trip, { write: { '/plan/bixby.json': { id: 'bixby', title: 'Bixby Bridge photo stop', fixed: false, start: { at: plus(Date.now(), 60), tz: 'UTC' }, place: BIXBY } } });
+  // At this moment in the phone's own zone, so the Itinerary has a today tab at any hour (the item's day in UTC is another day for hours of every day elsewhere).
+  const start = await page.evaluate(async () => {
+    const { isoInZone, deviceZone } = await import(/** @type {string} */ ('/src/core/time.js'));
+    return { at: isoInZone(Date.now(), deviceZone()), tz: deviceZone() };
+  });
+  await writeRecords(page, trip, { write: { '/plan/bixby.json': { id: 'bixby', title: 'Bixby Bridge photo stop', fixed: false, start, place: BIXBY } } });
   await goToHash(page, `#/trip/${encodeURIComponent(trip)}`); // a screen with the dock
   await page.reload(); // written outside the app's own files layer: live mode reads the plan again as it starts
   await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();

@@ -731,7 +731,7 @@ entries go last, in the same commit as the change:
 
 - What changed (timeline stage 8): the top bar, its six tabs, plugins' tabs and the experimental swipe between tabs went, and Now with them. The addresses and plugin APIs that named them:
   - `#/now` (an old bookmark, a history entry, a plugin's `ui.go('#/now')`) opens today's Itinerary of the trip in play (`#/trip/<play>/plan`), else home, by the shell's replace; Back never lands on it again. `redirectOf(route, target, { play })` takes the trip in play in an options object.
-  - A file, booking or item opened `?from=#/now` crumbs to its trip's Details (`now` left file.js's BACK).
+  - An address opened `?from=#/now` names no screen now (`now` left file.js's BACK), so each screen's own fallback crumb answers: a file's goes to its trip's Details, a booking's to the trip (by its name), an item's to the trip's Itinerary.
   - A plugin's `ui:screen` with `tab: true` is a link in a quiet row under the head of Trips (was a top-bar tab); a plugin's screen crumbs to Trips (was Now). `homeFor`'s take-over is unchanged, from home, the conversation and the Itinerary.
   - `now-card` and `now-section` are drawn at the top of the Itinerary's today only, with the same arguments; `plan-row` draws the Itinerary's timetable only.
   - The class `no-swipe` is no longer needed: annai takes no sideways swipes of its own; harmless where a plugin still sets it.

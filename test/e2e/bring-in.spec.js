@@ -59,6 +59,11 @@ test('a shared pass and shared text go to the trip you choose', async ({ page })
   // Any site can post to the share target, so what was shared is shown before it is added.
   await expect(page.getByText('Your stay at Hoboken Inn')).toBeVisible();
   await expect(page.getByText('Add only what you just shared yourself.')).toBeVisible();
+  // A way out without adding (the top bar was it once): the crumb goes home, and the share stays in the inbox.
+  await page.locator('main .crumbs').getByRole('link', { name: 'Trips' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips', exact: true })).toBeVisible();
+  await page.goto('/#/import?inbox=1');
+  await expect(page.getByRole('heading', { name: 'Add 2 files' })).toBeVisible();
   await page.getByRole('button', { name: 'Add to Thanksgiving' }).click();
   await expect(page.getByRole('heading', { name: 'Thanksgiving' })).toBeVisible();
   await allFiles(page);

@@ -77,6 +77,9 @@ test("a plugin can replace the avatar, the Now card (the top of the Itinerary's 
     await page.locator('.card', { hasText: 'Trail look' }).getByRole('button', { name: 'Turn off' }).click();
     await expect(dock.getByRole('button', { name: 'Type' })).toBeVisible();
     await expect(dock.getByRole('button', { name: 'Talk to Shiori' })).toHaveCount(0);
+    await page.goto('/#/plan'); // and today's top on the Itinerary is annai's own again
+    await expect(page.locator('.today-top .now-place')).toBeVisible();
+    await expect(page.getByText('Trail Now card')).toHaveCount(0);
   } finally {
     await llm.stop();
   }

@@ -853,3 +853,21 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** the phone locks on the way to a fixed item, and the traveller arrives while annai is off screen. When annai comes back on screen, one catch-up says both lines: "Leave soon: Lunch at Nepenthe at 12:00." and, from the first fix, "Nepenthe: Lunch at Nepenthe." The leave line is no longer of use. Older than offplan-range: before it, the same shape said "Leave in about 15 min" there. offplan-range keeps its words true ("soon", with no count, on a catch-up's first look).
 - **Why:** the leave reminder is checked on the catch-up's first look, from where the traveller was before annai went away, before the first fix says they are already there. Dropping the leave line when the same catch-up fires that item's arrival is a rule in how a catch-up is delivered (live.js `#endCatchUp`), not in the words of a plan reminder, so it is its own change with its own tests. Making the leave reminder wait for the first fix instead would lose it when live mode is off, since no fix ever comes.
 - **Revisit when:** the next version: `#endCatchUp` leaves out an item's leave reminder when the same catch-up fires its arrival, with a unit test on the live engine for the River Inn to Nepenthe shape.
+
+### A cold load at `#/now` can land on another conversation's Itinerary
+- **Kind:** deferred.
+- **What the user sees:** an old bookmark or a plugin's link to `#/now`, opened as annai starts (a cold load, not from inside the app), can open the Itinerary of the conversation they last had open, or the draft's, or Trips, instead of today's Itinerary of the trip in play. Opened from inside the app, once annai is up, it goes to the trip in play.
+- **Why:** `#/now` is sent on by the trip in play (`live.play`, src/core/live/live.js `#play`), which falls back to the open conversation until live mode has read the trips (main.js starts live mode but doesn't wait for its first read of the trips before the shell's first draw). The Now screen was the old address's own, so it never needed the trip in play at that moment. Found by the final review of stage 8 (a Haiku slice).
+- **Revisit when:** the next version: live mode's read of the trips as a promise the shell awaits in `render()` before `redirectOf` for `now`, and an e2e that loads `#/now` cold.
+
+### Driving and today's top are reached only from today's tab of the trip in play
+- **Kind:** deferred.
+- **What the user sees:** the Driving button, where you are and the GPS chips are at the top of the Itinerary's today tab (src/ui/screens/plan.js, `todayTop`), and nowhere else. A trip with nothing planned today and no dates (so no tab for today), a trip that isn't happening (the trip in play is then the open conversation's, which may have no today), and a long trip past its day 60 (the Itinerary lists 60 days at most) have no way to Driving from the Itinerary. The Now screen had the button on every day the app was open. Driving still opens by itself when the trip in play starts moving fast (`followDrive`), from the GPS problem card's "Say where you are", and from Simulate; there is no other link to it.
+- **Why:** with the top bar and Now gone (timeline stage 8) the top has one home, today's tab, as the spec says; a top on every tab when today has none is a design call for the traveller's checks on the phone, not a bug found by one. Found by the final review of stage 8 (two Haiku slices).
+- **Revisit when:** the next version, after the traveller's checks on the phone name the path they use: the top (or a Driving link) on every tab when today has none.
+
+### Driving can miss a card that arrives while it opens
+- **Kind:** deferred.
+- **What the user sees:** a card or a reminder of Shiori's that arrives in the instant Driving is opening (between the read of the latest card and the subscription to new ones, src/ui/screens/drive.js:112-126) is not shown there until the next one arrives. Older than stage 8; it is one event in a gap of a few milliseconds.
+- **Why:** `renderDrive` subscribes to `'event'` after `await latestCard`. Subscribing first and drawing the later of the two is a change to the screen's draw order, with its own test.
+- **Revisit when:** the next version: subscribe before the read, keep the newest of the read card and any that came in meanwhile.

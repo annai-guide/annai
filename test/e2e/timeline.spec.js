@@ -844,7 +844,7 @@ test("a card that goes from a box over half: the one left stays stuck at the top
 });
 
 for (const size of SIZES) {
-  test(`two cards together over half on a scrolled home: the box sticks at the top, at most half, and scrolls inside; the rows don't move (${size.join(' x ')})`, async ({ page }) => {
+  test(`two cards together over half on a scrolled home: the box sticks at the top, at most half, and scrolls inside; the rows don't move (${size.join(' x ')})`, async ({ page, browserName }) => {
     await page.setViewportSize({ width: size[0], height: size[1] });
     await scrolledHome(page);
     const before = await placeOf(page);
@@ -853,9 +853,14 @@ for (const size of SIZES) {
     await expect(page.locator('.notices > .notice')).toHaveCount(2);
     await stuckInHalf(page);
     expect((await boxOf(page)).inside).toBeGreaterThan(0); // more than its cap: it scrolls inside
-    // WebKit keeps the page at whole px while a card's height is fractional, so each card the box takes can leave the rows up to a px off (measured
-    // 1.5 px for these two at 393 x 659, the same with the top bar and without; no one sees it): 2 px here, where two cards come.
-    const rowsHeld = async () => expect(Math.abs((await placeOf(page)).now - before.now)).toBeLessThanOrEqual(2);
+    // WebKit keeps the page at whole px while a card's height is fractional, so the two cards the box takes can leave the rows 1.5 px off, and they stay
+    // so (measured at 393 x 659 in WebKit, 4 of 4 runs, after two frames; no one sees it): 2 px there only, 1 px
+    // everywhere else, once the page has settled (two frames).
+    const slack = browserName === 'webkit' && size[0] === 393 && size[1] === 659 ? 2 : 1;
+    const rowsHeld = async () => {
+      await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+      expect(Math.abs((await placeOf(page)).now - before.now)).toBeLessThanOrEqual(slack);
+    };
     await rowsHeld();
     await page.locator('.notices').evaluate((el) => { el.scrollTop = el.scrollHeight; }); // the second card's buttons, inside the box
     await expect(page.locator('.notices > .notice').nth(1).getByRole('button', { name: 'Dismiss' })).toBeInViewport();
@@ -1420,6 +1425,38 @@ test("a simulation played at ten times real time: home is drawn again when a Nex
   await expect(card.locator('.next')).toContainText('Museum');
   await page.clock.fastForward('09:30'); // 95 minutes on the simulation's clock: Museum (10:00, half an hour) is over
   await expect(card.locator('.next')).toContainText('Lunch');
+});
+
+test("home draws again when what plugins add changes (a plugin's screen with a tab arrived, Shiori started a trip): the trip and the plugin's link show, with no keystroke or leaving", async ({ page }) => {
+  // The real shell with a real store, and a registry the test can change: the shell draws again when what plugins add changes (as when Shiori opens a trip).
+  await page.route('**/probe.html', (r) => r.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: '<!doctype html><html><head><meta charset="utf-8"><title>probe</title></head><body></body></html>' }));
+  await page.goto('/probe.html#/trips');
+  await page.evaluate(async () => {
+    const w = /** @type {any} */ (window);
+    const at = (/** @type {string} */ p) => p; // an address the browser loads, not a module the checker follows
+    const { startShell } = await import(at('/src/ui/shell.js'));
+    const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+    const { Workspace } = await import(at('/src/core/workspace.js'));
+    w.store = await createIdbStore();
+    w.ws = new Workspace(w.store);
+    w.screens = [];
+    const registry = { entries: (/** @type {string} */ k) => (k === 'ui:screen' ? w.screens : []), onChange: (/** @type {() => void} */ fn) => { w.changed = fn; return () => {}; }, fail: () => {}, succeeded: () => {}, isDisabled: () => false, clashes: () => [] };
+    const root = document.createElement('div');
+    document.body.replaceChildren(root);
+    startShell(root, { store: w.store, ws: w.ws, registry, plugins: { langOf: () => 'en' }, updates: { restart: async () => {}, waiting: false, plugins: async () => [] }, version: 'probe' });
+  });
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips', exact: true })).toBeVisible(FIRST_DRAW);
+  await expect(page.locator('main .home-links')).toHaveCount(0); // no plugin screen with a tab yet: no row
+  await page.evaluate(async () => {
+    const w = /** @type {any} */ (window);
+    const at = (/** @type {string} */ p) => p;
+    const { createTrip } = await import(at('/src/core/scopes.js'));
+    await createTrip(w.ws, { title: 'Testville', start: '2026-11-20', end: '2026-11-27' });
+    w.screens = [{ pluginId: 'probe', item: { id: 'a', title: 'A', tab: true, render: (/** @type {any} */ body) => { body.textContent = 'ext A'; } } }];
+    w.changed();
+  });
+  await expect(row(page, 'Testville')).toBeVisible({ timeout: 5000 }); // home drawn again, with no keystroke or leaving
+  await expect(page.locator('main .home-links').getByRole('link', { name: 'A', exact: true })).toHaveAttribute('href', '#/ext/probe/a');
 });
 
 test("a trip ahead says how soon in days, as its dates are: one that starts tomorrow says \"tomorrow\" all day, then it is happening", async ({ page }) => {
