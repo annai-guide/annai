@@ -838,3 +838,25 @@ test("a flight item with no end takes its booking's: what comes after waits for 
   const flight = planWatches(/** @type {any} */ ([out()]), new Map([['/bookings/ua.json', UA]]), { fallbackTz: LA });
   assert.equal(/** @type {any} */ (flight.find((w) => w.id === 'plan:out:arrived')).when.end, ny('17:30'));
 });
+
+test("a stay's check-in counts arriving until its booking's check-out: reached at 21:55 for 16:00 after a late landing, it gets its \"arrived\" cue with its notes (it got none past 19:00)", () => {
+  const STAYED = { id: 'inn', kind: 'lodging', status: 'confirmed', source: '/files/inn.pdf', title: 'Harbor Inn', start: { at: '2026-11-27T16:00:00-05:00', tz: NY }, end: { at: '2026-11-29T11:00:00-05:00', tz: NY } };
+  const checkIn = { path: '/plan/inn.json', item: { title: 'Check in: Harbor Inn', kind: 'lodging', fixed: true, start: { at: '2026-11-27T16:00:00-05:00', tz: NY }, place: { name: 'Harbor Inn', ...FAR }, booking: '/trip/bookings/inn.json', notes: 'The key is in the lockbox.' } };
+  const arrivedOf = (/** @type {any} */ item, /** @type {any} */ booking = STAYED) => /** @type {any} */ (planWatches(/** @type {any} */ ([item]), new Map([['/bookings/inn.json', booking]]), { fallbackTz: LA }).find((w) => w.id === 'plan:inn:arrived'));
+  const stopped = (/** @type {number} */ t) => here(FAR, t, { stop: { ...FAR, since: t - 3 * 60_000 } });
+  const w = arrivedOf(checkIn);
+  const f = PLAN.check(w.when, stopped(ny('21:55')), {});
+  assert.equal(f?.text, 'Plan: you arrived at Harbor Inn for "Check in: Harbor Inn" (can\'t be moved, 16:00)');
+  assert.equal(w.fallback, 'Harbor Inn: Check in: Harbor Inn. The key is in the lockbox.');
+  // The next morning too, and not past the check-out.
+  assert.ok(PLAN.check(w.when, stopped(ny('09:00', '2026-11-28')), {}));
+  assert.equal(PLAN.check(w.when, stopped(ny('11:01', '2026-11-29')), {}), null);
+  // With no check-out on the booking, or no booking, or an item that isn't a stay: 3 hours after the start, as before.
+  const { end: _, ...open } = STAYED;
+  assert.equal(PLAN.check(arrivedOf(checkIn, open).when, stopped(ny('21:55')), {}), null);
+  assert.equal(PLAN.check(arrivedOf({ ...checkIn, item: { ...checkIn.item, booking: undefined } }).when, stopped(ny('21:55')), {}), null);
+  assert.equal(PLAN.check(arrivedOf({ ...checkIn, item: { ...checkIn.item, kind: 'meal' } }, { ...STAYED, kind: 'restaurant' }).when, stopped(ny('21:55')), {}), null);
+  // A stay item with its own end keeps it.
+  const own = arrivedOf({ ...checkIn, item: { ...checkIn.item, end: { at: '2026-11-28T10:00:00-05:00', tz: NY } } });
+  assert.equal(own.when.end, ny('10:00', '2026-11-28'));
+});

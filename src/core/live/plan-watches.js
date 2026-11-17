@@ -175,7 +175,10 @@ export function planWatches(items, bookings, { fallbackTz }) {
           add('late', `Running late: ${base.what}.`, { event: 'late', what: short }, { ...go, until: carrier ? x.at : late + 60 * MIN });
         }
       }
-      add('arrived', `${place.name}: ${title}.${notes ? ` ${notes}` : ''}`, { event: 'arrived', title, place: place.name, ...(notes ? { notes } : {}) }, there);
+      // A stay with no end of its own is arrived at until its booking's check-out, not only 3 hours past its start: a check-in at 16:00
+      // reached at 21:55 after a late landing got no "arrived", and so no notes.
+      const checkOut = kind === 'lodging' && base.end === null && known(booking?.kind) === 'lodging' ? instant(booking.end) : NaN;
+      add('arrived', `${place.name}: ${title}.${notes ? ` ${notes}` : ''}`, { event: 'arrived', title, place: place.name, ...(notes ? { notes } : {}) }, checkOut > x.at ? { ...there, end: checkOut } : there);
       // Every place is the stop before the next item, a stay's too: with no position, it is the best guess of where the traveller is (the
       // flight home after a stay 100 km from the airport counts from the stay; with the stay left out it said "Leave soon" 1 h 44 min late).
       // That holds whether the check-in sorts after the flight that takes the traveller there or before it, as one timed before the landing
