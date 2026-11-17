@@ -402,7 +402,7 @@ export class Agent {
   #opens = 0;
   /** Counts opens: only the latest one does anything. */
   #generation = 0;
-  /** Reminders and the other half's events written while a conversation was being opened, for it once open. @type {{ scope: string, e: any, r?: Resolved }[]} */
+  /** Reminders and the other half's events written while a conversation was being opened, for it once open (#joinLate). @type {{ e: any, r?: Resolved }[]} */
   #late = [];
   /** @type {(() => void)[]} waiting for the running turn or housekeeping to end */
   #free = [];
@@ -768,7 +768,7 @@ export class Agent {
     this.#seen = transcript.through;
     this.#inbox = [];
     this.#lastTurn = 0; // seqs are each conversation's own
-    for (const l of this.#late.splice(0)) if (l.scope === scope) this.#joinLate(l.e, l.r);
+    for (const l of this.#late.splice(0)) this.#joinLate(l.e, l.r);
     this.#snapshot = null;
     // The last conversation's housekeeping stays with it: it is checked again at its next turn.
     this.#due = false;
@@ -1409,7 +1409,7 @@ export class Agent {
   /** The other half's event, added once by this half's rules, in the log's order (plan decision 2). @param {any} e @param {Resolved} r */
   async observe(e, r) {
     if (this.#opens && e.scope === (this.#target ?? ME)) {
-      this.#late.push({ scope: e.scope, e, r });
+      this.#late.push({ e, r });
       return;
     }
     if (e.scope !== this.scope) return;
@@ -2003,14 +2003,18 @@ export class Agent {
     }
   }
 
-  /** An entry written while the open conversation was being read: added unless the reading had it. @param {any} e @param {Resolved} [r] the other half's */
+  /**
+   * An entry written while a conversation was being opened: added to the transcript if it is the open one's and the reading didn't have it
+   * (another open may have overtaken the one it was held for). This half's own is told to the screens either way, as nothing told them yet
+   * (Driving's latest card); the conversation screen skips a seq it drew (follow). The other half's writer told them. @param {any} e @param {Resolved} [r] the other half's
+   */
   #joinLate(e, r) {
-    if (e.seq <= this.transcript.through) return;
+    const missing = e.scope === this.scope && e.seq > this.transcript.through;
     if (r) {
-      this.#apply(e, r);
+      if (missing) this.#apply(e, r);
       return;
     }
-    this.transcript.apply(e, { texts: {}, images: [] });
+    if (missing) this.transcript.apply(e, { texts: {}, images: [] });
     this.#emit('event', e);
   }
 
@@ -2055,7 +2059,7 @@ export class Agent {
       const e = await record(this.store, scope, { now: this.#stamp(scope), ...this.#marked(ev) });
       if (!open) this.#emit('event', e); // heard as a held wake's writer's are (#keptIn): a draft is named by a spoken line, live mode follows its rows
       else if (scope === this.scope) this.#joinLate(e);
-      else this.#late.push({ scope, e });
+      else this.#late.push({ e });
       return e;
     });
   }

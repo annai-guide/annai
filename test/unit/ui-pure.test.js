@@ -211,6 +211,7 @@ test('follow: it listens before it reads, so what happens meanwhile is shown onc
     },
     state: () => state,
   });
+  emit(ev(2)); // one the log had, told only now (a reminder written while its conversation was being opened: Loop's #joinLate): drawn once
   emit(ev(5)); // the screen isn't on the page yet: still shown
   emit(ev(6, 'trip-2')); // another conversation's
   await new Promise((r) => setTimeout(r, 0));

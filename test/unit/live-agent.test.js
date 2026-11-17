@@ -9,6 +9,7 @@ import { readWatches } from '../../src/core/live/watches.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { logEvent } from '../../src/core/events.js';
+import { createTrip } from '../../src/core/scopes.js';
 
 const sleep = { name: 'sleep', input: {} };
 const say = (/** @type {string} */ text) => ({ toolCalls: [{ name: 'speak', input: { text } }, sleep] });
@@ -251,6 +252,54 @@ test('a reminder annai says while the conversation is still being opened (as ann
   await k.agent.idle();
   assert.ok(JSON.stringify(k.requests[0].messages).includes('Leave for the airport now.'));
   assert.deepEqual((await k.events(['reminder'])).length, 1);
+});
+
+test("a reminder written while its conversation is being opened, before its log is read, is told to the screens once (Driving's latest card hears it), and is in what Shiori knows once", async () => {
+  const k = await agentKit([[say('Hi.')]], { open: false });
+  /** @type {any[]} */
+  const told = [];
+  k.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'reminder') told.push(e); });
+  // The open has begun (its trip is the target) and nothing of its log is read yet: the reminder is written first, so the reading has it.
+  let reminded = false;
+  const tx = k.store.tx.bind(k.store);
+  k.store.tx = (/** @type {any} */ names, /** @type {any} */ mode, /** @type {any} */ fn) => {
+    if (reminded || k.agent.target !== k.trip) return tx(names, mode, fn);
+    reminded = true; // before remind, whose own write comes through here
+    return k.agent.remind([{ watch: 'w-1', text: 'Leave for the airport now.' }]).then(() => tx(names, mode, fn));
+  };
+  await k.agent.open(k.trip);
+  assert.ok(reminded, 'written in the opening window');
+  const [r] = await k.events(['reminder']);
+  assert.ok(r.seq <= k.agent.transcript.through, 'the reading had it');
+  assert.deepEqual(told.map((e) => [e.scope, e.seq, e.data.text]), [[k.trip, r.seq, 'Leave for the airport now.']]);
+  k.agent.send('Hello');
+  await k.agent.idle();
+  assert.equal(JSON.stringify(k.requests[0].messages).split('Leave for the airport now.').length, 2, 'Shiori is given it once');
+});
+
+test("a reminder written while its conversation is being opened is told to the screens too when another open overtakes that one: it is then a write to a conversation that isn't open", async () => {
+  const k = await agentKit([[say('Hi.')]], { open: false });
+  const other = await createTrip(k.ws, { title: 'Kyoto' });
+  /** @type {any[]} */
+  const told = [];
+  k.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'reminder') told.push(e); });
+  let reminded = false;
+  /** @type {Promise<void> | null} */
+  let overtaking = null;
+  const tx = k.store.tx.bind(k.store);
+  k.store.tx = (/** @type {any} */ names, /** @type {any} */ mode, /** @type {any} */ fn) => {
+    if (reminded || k.agent.target !== k.trip) return tx(names, mode, fn);
+    reminded = true;
+    return k.agent.remind([{ watch: 'w-1', text: 'Leave for the airport now.' }]).then(() => {
+      overtaking = k.agent.open(other); // the user moved on before the first open was read
+      return tx(names, mode, fn);
+    });
+  };
+  await k.agent.open(k.trip);
+  await overtaking;
+  assert.equal(k.agent.scope, other);
+  const [r] = await k.events(['reminder']);
+  assert.deepEqual(told.map((e) => [e.scope, e.seq, e.data.text]), [[k.trip, r.seq, 'Leave for the airport now.']]);
 });
 
 test("one reminder, one time: Kokoro's watch_set result and Koe's view name it in the same words, its weekday and zone said, whatever the phone's zone (real models: Koe took it back from its own view, item 6)", async () => {
