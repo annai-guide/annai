@@ -939,7 +939,7 @@ function tidyMenu(ctx, trip) {
   };
   /**
    * While it is open the room is measured every frame: that holds whatever moves the ⋯ or the dock with no scroll or resize (a card landing above a short
-   * conversation at the top of its page, the dock growing or shrinking, a phone turned back upright: the shell's observers update --dock-h and --topbar-h a
+   * conversation at the top of its page, the dock growing or shrinking, a phone turned back upright: the shell's observer updates --dock-h a
    * frame after the resize event). A frame costs about 0.001 ms with a clean layout, 0.04 ms at worst (360x640, Chromium and WebKit, a loaded host).
    */
   let frame = 0;

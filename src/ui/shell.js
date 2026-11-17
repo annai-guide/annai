@@ -89,7 +89,7 @@ export function startShell(root, core) {
   let dock = core.agent ? makeDock() : null;
   let dockMadeFor = dockKey(ctx);
   /** @type {any} */ (ctx).dock = dock;
-  // The cards sit under the top bar, in the page (base.css: what a landing card moves follows them).
+  // The cards sit at the top of the page (base.css: what a landing card moves follows them).
   // The + is the shell's, shown on home whatever the dock (a plugin's has none): a new conversation, with no naming step.
   const plus = core.agent && core.chats ? h('button', { class: 'plus', type: 'button', 'aria-label': t`New conversation`, onclick: () => newConversation(ctx) }, '+') : null;
   root.replaceChildren(notices.el, installBanner(), main, notices.toasts, ...(dock ? [dock.el] : []), ...(plus ? [plus] : []));

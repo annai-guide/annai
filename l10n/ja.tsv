@@ -1634,11 +1634,11 @@ bamrei	ok	Change it	変更	src/ui/screens/booking.js:77
 t8quxl	ok	Download	ダウンロード	src/ui/screens/booking.js:103	
 1ygxf36	ok	Tap again to delete	もう一度タップで削除	src/ui/screens/booking.js:108	
 oay2cq	ok	Delete	削除	src/ui/screens/booking.js:108	Note: a waiting file's two-step Delete (its space comes back), as Delete file.
-iy42pb	ok	check	要確認	src/ui/screens/booking.js:147	context: a detail to check; Note: a light mark beside one detail of a booking Shiori is unsure of; as the Check # details chip.
-1s0er5c	ok	Shiori isn't sure of this	Shioriはこの内容に自信がありません	src/ui/screens/booking.js:148	Note: read by screen readers for the check mark beside a detail.
-1a6z1m2	ok	Itinerary	旅程	src/ui/screens/booking.js:160	
-1eszfxl	ok	The original, {0}, can't be found.	元の資料（{0}）が見つかりません。	src/ui/screens/booking.js:182	{0} = name
-98drsx	ok	Open the original	元の資料を開く	src/ui/screens/booking.js:187	
+iy42pb	ok	check	要確認	src/ui/screens/booking.js:145	context: a detail to check; Note: a light mark beside one detail of a booking Shiori is unsure of; as the Check # details chip.
+1s0er5c	ok	Shiori isn't sure of this	Shioriはこの内容に自信がありません	src/ui/screens/booking.js:146	Note: read by screen readers for the check mark beside a detail.
+1a6z1m2	ok	Itinerary	旅程	src/ui/screens/booking.js:158	
+1eszfxl	ok	The original, {0}, can't be found.	元の資料（{0}）が見つかりません。	src/ui/screens/booking.js:180	{0} = name
+98drsx	ok	Open the original	元の資料を開く	src/ui/screens/booking.js:185	
 19jra30	ok	What is around us right now that is worth knowing about?	いま、この辺りで知っておくといいことはありますか？	src/ui/screens/drive.js:15	Note: What the user says to Shiori with a tap, as their own words.
 sqqsfd	ok	What's around here?	この辺りに何がある？	src/ui/screens/drive.js:15	
 1gkqhnt	ok	Food	食事	src/ui/screens/drive.js:16	

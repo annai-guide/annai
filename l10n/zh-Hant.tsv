@@ -1634,11 +1634,11 @@ bamrei	ok	Change it	修改	src/ui/screens/booking.js:77
 t8quxl	ok	Download	下載	src/ui/screens/booking.js:103	
 1ygxf36	ok	Tap again to delete	再點一次以刪除	src/ui/screens/booking.js:108	
 oay2cq	ok	Delete	刪除	src/ui/screens/booking.js:108	Note: a waiting file's two-step Delete (its space comes back), as Delete file.
-iy42pb	ok	check	待核對	src/ui/screens/booking.js:147	context: a detail to check; Note: Taiwan wording; a light mark beside one detail Shiori is unsure of.
-1s0er5c	ok	Shiori isn't sure of this	Shiori 不確定這一項	src/ui/screens/booking.js:148	Note: Taiwan wording; read by screen readers for the check mark.
-1a6z1m2	ok	Itinerary	行程	src/ui/screens/booking.js:160	
-1eszfxl	ok	The original, {0}, can't be found.	找不到原件 {0}。	src/ui/screens/booking.js:182	{0} = name
-98drsx	ok	Open the original	開啟原件	src/ui/screens/booking.js:187	
+iy42pb	ok	check	待核對	src/ui/screens/booking.js:145	context: a detail to check; Note: Taiwan wording; a light mark beside one detail Shiori is unsure of.
+1s0er5c	ok	Shiori isn't sure of this	Shiori 不確定這一項	src/ui/screens/booking.js:146	Note: Taiwan wording; read by screen readers for the check mark.
+1a6z1m2	ok	Itinerary	行程	src/ui/screens/booking.js:158	
+1eszfxl	ok	The original, {0}, can't be found.	找不到原件 {0}。	src/ui/screens/booking.js:180	{0} = name
+98drsx	ok	Open the original	開啟原件	src/ui/screens/booking.js:185	
 19jra30	ok	What is around us right now that is worth knowing about?	我們附近現在有什麼值得了解的嗎？	src/ui/screens/drive.js:15	Note: What the user says to Shiori with a tap, as their own words.
 sqqsfd	ok	What's around here?	附近有什麼？	src/ui/screens/drive.js:15	
 1gkqhnt	ok	Food	吃飯	src/ui/screens/drive.js:16	

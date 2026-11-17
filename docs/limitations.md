@@ -376,8 +376,8 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### In landscape, an opened stack is read by scrolling inside a short box
 - **Kind:** known limitation.
-- **What the user sees:** on a phone turned on its side (740 x 360), Show on a stuck stack opens it in a box of about 152 px, half the room under the top bar. A card of 168 to 193 px doesn't show whole: its title and Dismiss show, and its middle scrolls under the Dismiss; while a card's top is in the lower part of the box, its own Dismiss covers its title for a moment. In portrait every card shows whole.
-- **Why:** every stuck box on home is at most half the room under the bar, so the page never moves (the user's "Cap every box at half" and "Opens in place"); a short screen leaves a short box.
+- **What the user sees:** on a phone turned on its side (740 x 360), Show on a stuck stack opens it in a box of 180 px, half the screen (measured again 2026-11-16 in Chromium and WebKit, once timeline stage 8 took the top bar away; it was about 152 px, half the room under the bar). A card taller than the box doesn't show whole: its title and Dismiss show, and its middle scrolls under the Dismiss; while a card's top is in the lower part of the box, its own Dismiss covers its title for a moment. Of the cards measured on 2026-11-09 (168 to 193 px), only those over 180 px still do; a newer-backup card is 155 px there and shows whole. In portrait every card shows whole.
+- **Why:** every stuck box on home is at most half the screen, so the page never moves (the user's "Cap every box at half" and "Opens in place"); a short screen leaves a short box.
 - **Revisit when:** the user's phone check finds it in the way, or a landscape layout for home is designed.
 - **Approved:** 2026-11-09, the user chose "Known limitation".
 

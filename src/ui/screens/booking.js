@@ -115,9 +115,7 @@ export async function renderBooking(ctx, route) {
     requestAnimationFrame(() => {
       if (!target.isConnected) return;
       target.scrollIntoView({ block: 'start' });
-      // The top bar sticks over the first of the screen: its block starts under it.
-      const bar = document.querySelector('header.topbar');
-      if (bar) scrollBy(0, -(bar.getBoundingClientRect().height + 8));
+      scrollBy(0, -8); // 8 px of room above its heading
       target.focus({ preventScroll: true });
     });
   }
