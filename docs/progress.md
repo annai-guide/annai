@@ -129,6 +129,14 @@ against the code before its row was written. The ones with a question are listed
 | **The Languages section's example names a mark the view no longer shows** (src/core/languages.js:91, "a plan item marked fixed is one that can't be moved"; plan rows now say "can't be moved" themselves): replace or drop it, with real runs (it was measured to move Opus). | not started | From the 固定 re-review's second opinion (2026-11-14). | — |
 | **Koe (Sonnet) takes back a correct booking answer** at the next line (「…確認が取れていません」), on main too, not from the booking's fields. | not started (look into) | From the 固定 re-review (2026-11-14), one run of the builder's; main's control run did the same. | — |
 
+### From chief's audit and notes (2026-11-16)
+
+| Part | State | Where it stands | The user's words or pick |
+|---|---|---|---|
+| **The gate stays green with the clock inside the trip days and after them** (tests that made up trips on 2026-11-20 to 29 may fail once the calendar reaches them, and a red gate blocks a release while travelling). | building (branch trip-clock from main, Sonnet xhigh, `.superpowers` notes: trip-clock-brief.md): the gate at 2026-11-23 and 2026-12-01, failing tests' clocks pinned | A side agent's reading, not verified; chief's direction. | "my trip is this friday so I want the current scope to be done and tested asap" (2026-11-16) |
+| **The model label under her lines, with the provider's name, at an iPhone's width** (may wrap to two lines). | checking (read-only, Opus xhigh, label-wrap-brief.md) | A side agent's reading, not verified; chief's direction. | the provider ask (2026-11-16) |
+| **The push check reads paths and non-text files** (machine-only hook). | done 2026-11-16: added and renamed paths checked against the list, gzip text unpacked and read, any new or changed non-text file (a NUL in its first 8000 bytes, or not UTF-8) refused unless named by blob id in the `.superpowers` notes' binary-expected.txt; tested on five ranges and a scratch clone. | Chief's audit found both unread. | chief's direction |
+
 ### Standing
 
 | Part | State | Where it stands |
