@@ -653,22 +653,22 @@ bgn4sv	ok	Shiori answers in the language you speak to her	Shiori 會用你對她
 k4u05v	ok	The language you speak to her	你對她說的語言	src/core/languages.js:362	
 cc69cl	ok	None picked: annai uses the browser’s language.	未選擇時，annai 使用瀏覽器的語言。	src/core/languages.js:363	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
 1dyfzsg	ok	A simulation is already running.	已有模擬正在執行。	src/core/live/live.js:307	
-157qf8n	ok	Flight {0} departs {1}, {2}	航班 {0} 於 {1} 起飛（{2}）	src/core/live/plan-watches.js:150	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
-1tvx4k9	ok	Flight {0} departs {1}	航班 {0} 於 {1} 起飛	src/core/live/plan-watches.js:150	{0} = w.flight; {1} = time
-1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}，{2}）	src/core/live/plan-watches.js:151	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
-1wwrs1d	ok	{0} at {1}	{0}（{1}）	src/core/live/plan-watches.js:151	{0} = w.title; {1} = time; Note: an item in a few words: its title, then its time.
-ypynbt	ok	Leave soon: {0}.	該出發了：{0}。	src/core/live/plan-watches.js:162	{0} = what
-1nq6h1n	ok	About {0} min by car.	開車約 {0} 分鐘。	src/core/live/plan-watches.js:163	{0} = num(say.minutes)
-1s9ayzz	ok	About {0} min on foot.	步行約 {0} 分鐘。	src/core/live/plan-watches.js:163	{0} = num(say.minutes)
-osmwu5	ok	Leave in about {0} min: {1}.	約 {0} 分鐘後出發：{1}。	src/core/live/plan-watches.js:163	{0} = num(say.left ?? LEAVE_LEAD_MIN); {1} = what
-12cmqu6	ok	Running late: {0}.	要遲到了：{0}。	src/core/live/plan-watches.js:164	{0} = what
-3qig1w	ok	About {0} min away.	還有約 {0} 分鐘路程。	src/core/live/plan-watches.js:164	{0} = num(say.minutes)
-ub25px	ok	Planned now: {0}, at {1}.	現在的行程：{0}（{1}）。	src/core/live/plan-watches.js:165	{0} = String(say.title); {1} = String(say.place); Note: label: value, the place in brackets.
-195jjr0	ok	{0}: {1}.	{0}：{1}。	src/core/live/plan-watches.js:166	{0} = String(say.place); {1} = String(say.title); Note: a place, then the plan item there.
-1yqg2at	ok	In {0} min: {1}.	{0} 分鐘後：{1}。	src/core/live/plan-watches.js:167	{0} = num(say.left ?? COMING_UP_MIN); {1} = what
-9s8no9	ok	You've stopped somewhere that isn't on the itinerary.	你停留的地方不在行程中。	src/core/live/plan-watches.js:169	
-4lxlla	ok	Nothing more is on the itinerary.	接下來沒有其他行程了。	src/core/live/plan-watches.js:170	
-yc6345	ok	Next on the itinerary: {0} at {1}.	下一項行程：{0}（{1}）。	src/core/live/plan-watches.js:171	{0} = say.next.title; {1} = say.next.later ? dayClock(say.next.at, say.next.tz) : clock(say.next.at, say.next.tz)
+157qf8n	ok	Flight {0} departs {1}, {2}	航班 {0} 於 {1} 起飛（{2}）	src/core/live/plan-watches.js:203	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
+1tvx4k9	ok	Flight {0} departs {1}	航班 {0} 於 {1} 起飛	src/core/live/plan-watches.js:203	{0} = w.flight; {1} = time
+1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}，{2}）	src/core/live/plan-watches.js:204	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
+1wwrs1d	ok	{0} at {1}	{0}（{1}）	src/core/live/plan-watches.js:204	{0} = w.title; {1} = time; Note: an item in a few words: its title, then its time.
+ypynbt	ok	Leave soon: {0}.	該出發了：{0}。	src/core/live/plan-watches.js:215	{0} = what
+1nq6h1n	ok	About {0} min by car.	開車約 {0} 分鐘。	src/core/live/plan-watches.js:216	{0} = num(say.minutes)
+1s9ayzz	ok	About {0} min on foot.	步行約 {0} 分鐘。	src/core/live/plan-watches.js:216	{0} = num(say.minutes)
+osmwu5	ok	Leave in about {0} min: {1}.	約 {0} 分鐘後出發：{1}。	src/core/live/plan-watches.js:216	{0} = num(say.left ?? LEAVE_LEAD_MIN); {1} = what
+12cmqu6	ok	Running late: {0}.	要遲到了：{0}。	src/core/live/plan-watches.js:217	{0} = what
+3qig1w	ok	About {0} min away.	還有約 {0} 分鐘路程。	src/core/live/plan-watches.js:217	{0} = num(say.minutes)
+ub25px	ok	Planned now: {0}, at {1}.	現在的行程：{0}（{1}）。	src/core/live/plan-watches.js:218	{0} = String(say.title); {1} = String(say.place); Note: label: value, the place in brackets.
+195jjr0	ok	{0}: {1}.	{0}：{1}。	src/core/live/plan-watches.js:219	{0} = String(say.place); {1} = String(say.title); Note: a place, then the plan item there.
+1yqg2at	ok	In {0} min: {1}.	{0} 分鐘後：{1}。	src/core/live/plan-watches.js:220	{0} = num(say.left ?? COMING_UP_MIN); {1} = what
+9s8no9	ok	You've stopped somewhere that isn't on the itinerary.	你停留的地方不在行程中。	src/core/live/plan-watches.js:222	
+4lxlla	ok	Nothing more is on the itinerary.	接下來沒有其他行程了。	src/core/live/plan-watches.js:223	
+yc6345	ok	Next on the itinerary: {0} at {1}.	下一項行程：{0}（{1}）。	src/core/live/plan-watches.js:224	{0} = say.next.title; {1} = say.next.later ? dayClock(say.next.at, say.next.tz) : clock(say.next.at, say.next.tz)
 1jok3pb	ok	A simulation is already running. Stop it first.	已有模擬正在執行，請先停止。	src/core/live/sim-run.js:90	
 ujhqxv	ok	Untitled trip	未命名旅行	src/core/live/sim-run.js:237	Note: a new simulated trip's name when its itinerary has none, before " (simulation)" is added.
 1426icm	ok	That trip isn't on this device any more.	這台裝置上已經沒有這趟旅行了。	src/core/live/sim-run.js:277	
@@ -1656,22 +1656,23 @@ iw9ebk	ok	Restroom	洗手間	src/ui/screens/drive.js:21
 7quqpk	ok	Go to Trips	前往「旅行」	src/ui/screens/drive.js:54	
 ov2ou9	ok	Open a trip to see the road ahead.	開啟旅行後就能查看前方的路。	src/ui/screens/drive.js:54	
 sxc7mr	ok	The road ahead	前方的路	src/ui/screens/drive.js:60	
-1b4mdx5	ok	You (finding where)	我的位置（定位中）	src/ui/screens/drive.js:74	
-591tvw	ok	You (GPS off)	我的位置（GPS 已關閉）	src/ui/screens/drive.js:74	
-lawr3a	ok	You	我的位置	src/ui/screens/drive.js:74	context: route strip; Note: the first row of Driving's route strip, where you are now (with a GPS fix); the rows beside it are "You (finding where)" and "You (GPS off)". Replay's speaker tag "You" is its own row.
-ugf9pe	ok	at {0}	預定 {0}	src/ui/screens/drive.js:77	{0} = s.row.time; Note: A stop's time on the plan, on the road ahead ("at 14:00").
-102oezx	ok	Nothing more is planned with a place.	之後沒有帶地點的安排了。	src/ui/screens/drive.js:78	
-l329ve	ok	Directions to {0}	前往 {0} 的路線	src/ui/screens/drive.js:84	{0} = next.name
-kb2apf	ok	annai hasn't downloaded its maps links yet; it needs to be online once.	還沒有下載地圖連結，需要先連網一次。	src/ui/screens/drive.js:86	
-1tuqp1	ok	Asked Shiori: {0}	已向 Shiori 提問：{0}	src/ui/screens/drive.js:92	{0} = text
-1imrexv	ok	Shiori wasn't asked	無法向 Shiori 提問	src/ui/screens/drive.js:94	
-bigbss	ok	Try again.	請重試。	src/ui/screens/drive.js:94	
-ah9gez	ok	Turn GPS on	開啟 GPS	src/ui/screens/drive.js:99	Note: 開啟, as "你開啟了 GPS" and the chip's GPS 開啟.
-14ltb7u	ok	The itinerary has no places to choose from yet.	行程裡還沒有可選的地點。	src/ui/screens/drive.js:102	
-1sedy1m	ok	Where are you?	你在哪裡？	src/ui/screens/drive.js:102	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
-1w8zbso	ok	annai now knows you're at {0}.	已將你的位置設為 {0}。	src/ui/screens/drive.js:107	{0} = p.name
-16ocoht	ok	Show what she said	檢視她說的話	src/ui/screens/drive.js:162	
-1yj7glf	ok	Said aloud	已朗讀	src/ui/screens/drive.js:163	
+1b4mdx5	ok	You (finding where)	我的位置（定位中）	src/ui/screens/drive.js:78	
+591tvw	ok	You (GPS off)	我的位置（GPS 已關閉）	src/ui/screens/drive.js:78	
+lawr3a	ok	You	我的位置	src/ui/screens/drive.js:78	context: route strip; Note: the first row of Driving's route strip, where you are now (with a GPS fix); the rows beside it are "You (finding where)" and "You (GPS off)". Replay's speaker tag "You" is its own row.
+ugf9pe	ok	at {0}	預定 {0}	src/ui/screens/drive.js:81	{0} = s.row.time; Note: A stop's time on the plan, on the road ahead ("at 14:00").
+102oezx	ok	Nothing more is planned with a place.	之後沒有帶地點的安排了。	src/ui/screens/drive.js:82	
+1mx989x	ok	Nothing more is planned within a day's drive.	一天車程內沒有後續安排了。	src/ui/screens/drive.js:82	
+l329ve	ok	Directions to {0}	前往 {0} 的路線	src/ui/screens/drive.js:88	{0} = next.name
+kb2apf	ok	annai hasn't downloaded its maps links yet; it needs to be online once.	還沒有下載地圖連結，需要先連網一次。	src/ui/screens/drive.js:90	
+1tuqp1	ok	Asked Shiori: {0}	已向 Shiori 提問：{0}	src/ui/screens/drive.js:96	{0} = text
+1imrexv	ok	Shiori wasn't asked	無法向 Shiori 提問	src/ui/screens/drive.js:98	
+bigbss	ok	Try again.	請重試。	src/ui/screens/drive.js:98	
+ah9gez	ok	Turn GPS on	開啟 GPS	src/ui/screens/drive.js:103	Note: 開啟, as "你開啟了 GPS" and the chip's GPS 開啟.
+14ltb7u	ok	The itinerary has no places to choose from yet.	行程裡還沒有可選的地點。	src/ui/screens/drive.js:106	
+1sedy1m	ok	Where are you?	你在哪裡？	src/ui/screens/drive.js:106	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
+1w8zbso	ok	annai now knows you're at {0}.	已將你的位置設為 {0}。	src/ui/screens/drive.js:111	{0} = p.name
+16ocoht	ok	Show what she said	檢視她說的話	src/ui/screens/drive.js:166	
+1yj7glf	ok	Said aloud	已朗讀	src/ui/screens/drive.js:167	
 1py6vf8	ok	Unfinished translations	未完成的翻譯	src/ui/screens/experimental.js:16	
 13a0vz9	ok	Features that are still being tried. They may have bugs, and their fixes may come slower than the rest of annai.	仍在試驗中的功能，可能有錯誤，修正速度也可能比 annai 的其他部分慢。	src/ui/screens/experimental.js:22	
 15b29xu	ok	Translations that nobody who reads the language has checked yet. On, you can choose them in Settings → Languages. Their wording may be wrong, and what isn't translated yet stays in English.	還沒有懂該語言的人檢查過的翻譯。開啟後，可以在設定 → 語言中選擇。用詞可能有誤，尚未翻譯的部分仍顯示英文。	src/ui/screens/experimental.js:25	Note: the place moved from 設定 → Shiori → 語言 to 設定 → 語言 (2026-10-28).

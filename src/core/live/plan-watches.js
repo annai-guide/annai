@@ -1,6 +1,6 @@
 import { meters, travelMinutes, modeFor, kmText, TRAVEL } from './geo.js';
 import { timeIn, validZone, instantAt, dayIn, dueWords, isoInZone } from '../time.js';
-import { bookingRef, fixedWords, timeUnsure } from '../plan.js';
+import { bookingRef, fixedWords, timeUnsure, LEG_MAX_KM } from '../plan.js';
 import { t } from '../l10n.js';
 import { sentences, num, when as clockAt, dayClock } from '../intl.js';
 
@@ -30,6 +30,17 @@ export const LATE_GRACE_MIN = 5;
 /** Arrived: within this many meters of the place; an airport is bigger. */
 export const ARRIVE_M = 300;
 export const AIRPORT_M = 2000;
+/**
+ * A flight's leave and running late aim to be at the airport this long before it departs: airlines' usual advice for a domestic
+ * flight, one number for every flight as annai can't always tell domestic from international (the user's pick, 2026-11-16).
+ */
+export const AIRPORT_EARLY_MIN = 120;
+/**
+ * A flight's running late fires when the traveller would reach the airport less than this long before it departs: about when check-in
+ * and bag drop close, so the warning means the flight is at risk (the user's pick, 2026-11-16, "Under 1 hour before"). The 2-hour aim
+ * is only the leave reminder's.
+ */
+export const AIRPORT_LATE_MIN = 60;
 /** Arrived: stopped there this long, or inside this long. */
 export const ARRIVE_STOP_MIN = 2;
 export const ARRIVE_INSIDE_MIN = 5;
@@ -53,6 +64,8 @@ export const NOT_PLANNED_M = 500;
 const MIN = 60_000;
 /** @param {any} p @returns {p is { lat: number, lng: number }} */
 const hasPoint = (p) => Boolean(p) && typeof p.lat === 'number' && typeof p.lng === 'number' && Number.isFinite(p.lat) && Number.isFinite(p.lng);
+/** Whether a plan item is of a kind, by its own or its booking's. @param {any} it @param {any} booking @param {string} k */
+const isKind = (it, booking, k) => it.kind === k || booking?.kind === k;
 /** "/plan/nepenthe.json" → "nepenthe". @param {string} path */
 const slug = (path) => path.replace(/^\/plan\//, '').replace(/\.json$/, '');
 
@@ -73,6 +86,18 @@ export function planWatches(items, bookings, { fallbackTz }) {
   const out = [];
   /** @type {Place | null} */
   let prev = null;
+  /** When the fixed flights and trains so far have all arrived. @type {number | null} */
+  let landed = null;
+  // The flight and train legs on each booking: one that several of them link (a trip out and back, with connections, on one confirmation) names
+  // none of them. An item is of its own kind or its booking's (isKind), so on a booking of kind flight or rail every item linked to it is a leg, a
+  // transfer's or a hotel's too; only on a booking of another kind (a package's) is an item of another kind not one.
+  /** @type {Map<string, number>} */
+  const onBooking = new Map();
+  for (const x of timed) {
+    const ref = bookingRef(x.item.booking);
+    const booking = ref ? bookings.get(ref) : null;
+    if (ref && (isKind(x.item, booking, 'flight') || isKind(x.item, booking, 'rail'))) onBooking.set(ref, (onBooking.get(ref) ?? 0) + 1);
+  }
   /** @type {Place[]} */
   const places = [];
   for (const x of timed) {
@@ -81,9 +106,13 @@ export function planWatches(items, bookings, { fallbackTz }) {
     const title = String(it.title ?? slug(x.path));
     const end = instantAt(it.end?.at, validZone(it.end?.tz) ? it.end.tz : tz);
     const place = hasPoint(it.place) ? { name: String(it.place.name ?? title), lat: it.place.lat, lng: it.place.lng } : null;
-    const booking = bookings.get(bookingRef(it.booking) ?? '') ?? null;
-    const flight = it.kind === 'flight' || booking?.kind === 'flight';
-    const short = whatOf(title, booking, flight, x.at, tz, place?.name ?? '');
+    const ref = bookingRef(it.booking) ?? '';
+    const booking = bookings.get(ref) ?? null;
+    const kind = (/** @type {string} */ k) => isKind(it, booking, k);
+    const flight = kind('flight');
+    const carrier = flight || kind('rail');
+    // A flight is named by its booking, unless the booking has several legs: then by the item's own title, as any item.
+    const short = whatOf(title, booking, flight && (onBooking.get(ref) ?? 0) < 2, x.at, tz, place?.name ?? '');
     const base = {
       type: 'plan', item: slug(x.path), title, at: x.at, end: Number.isFinite(end) && end > x.at ? end : null, tz, fixed: it.fixed === true,
       unsure: timeUnsure([it.start], booking, { fallbackTz }), // the start: the time a wake says (the off-plan wake reads the end too, when it says one)
@@ -96,17 +125,35 @@ export function planWatches(items, bookings, { fallbackTz }) {
     /* en */
     if (place) {
       const there = { place, radius: flight ? AIRPORT_M : ARRIVE_M };
-      if (base.fixed) {
-        add('leave', `Leave soon: ${base.what}.`, { event: 'leave', what: short }, { ...there, from: prev });
-        add('late', `Running late: ${base.what}.`, { event: 'late', what: short }, there);
-      } else {
+      if (!base.fixed) {
         add('off-plan', `Planned now: ${title}, at ${place.name}.`, { event: 'off-plan', title, place: place.name }, { ...there, unsure: timeUnsure(base.end === null ? [it.start] : [it.start, it.end], booking, { fallbackTz }) });
+      } else if (!kind('lodging')) {
+        // Leave and running late time a trip by car or on foot (spec §11.3). Not for a stay: its check-in is the earliest time to arrive,
+        // its check-out the latest to stay (the user's report, 2026-11-16: "Leave in about 15 min" for a check-in 3300 km away).
+        // by: the time to be there, a flight's AIRPORT_EARLY_MIN before it departs; late: the time after which arriving is late, a flight's
+        // AIRPORT_LATE_MIN before it departs. A connection (a flight or train whose time to be there comes before the one before it
+        // arrives) is carried there: it gets neither.
+        const by = flight ? x.at - AIRPORT_EARLY_MIN * MIN : x.at;
+        if (!(carrier && landed !== null && by < landed)) {
+          const go = { ...there, by, late: flight ? x.at - AIRPORT_LATE_MIN * MIN : x.at, after: landed };
+          add('leave', `Leave soon: ${base.what}.`, { event: 'leave', what: short }, { ...go, from: prev });
+          add('late', `Running late: ${base.what}.`, { event: 'late', what: short }, go);
+        }
       }
       add('arrived', `${place.name}: ${title}.${notes ? ` ${notes}` : ''}`, { event: 'arrived', title, place: place.name, ...(notes ? { notes } : {}) }, there);
+      // Every place is the stop before the next item, a stay's too: with no position, it is the best guess of where the traveller is (the
+      // flight home after a stay 100 km from the airport counts from the stay; with the stay left out it said "Leave soon" 1 h 44 min late).
+      // One a flight away from that item is none (leaving()): a check-in sorts between two flights, 2475 km from the second.
       prev = place;
       places.push(place);
     } else if (base.fixed) {
       add('coming-up', `In ${COMING_UP_MIN} min: ${base.what}.`, { event: 'coming-up', what: short });
+    }
+    // A flight or a train carries the traveller: what comes after it doesn't count from its place, where it leaves from, and a fixed
+    // one waits for it to arrive (its end, else its start). A flexible one may move: it holds nothing back (the second opinion's N2).
+    if (carrier) {
+      prev = null;
+      if (base.fixed) landed = Math.max(landed ?? -Infinity, base.end ?? base.at);
     }
   }
   /* en */
@@ -123,13 +170,19 @@ export function planWatches(items, bookings, { fallbackTz }) {
 }
 
 /**
- * The item for a reminder, as data (spec §11.3): a flight by its name, the place where it says more than the title.
- * @param {string} title @param {any} booking @param {boolean} flight @param {number} at @param {string} tz @param {string} placeName
+ * The item for a reminder, as data (spec §11.3): a flight by its name (its booking's title), the place where it says more than the title.
+ * The words for a named flight are "Flight <name> departs <time>", in Shiori's English and the user's alike, so a name that already begins
+ * with the word for a flight (flight, flights, フライト, 航班, 班機: add a new language's here) is an item's title instead: "Flight to Seattle at 09:05".
+ * @param {string} title @param {any} booking @param {boolean} flight named by its booking @param {number} at @param {string} tz @param {string} placeName
  * @returns {What}
  */
 function whatOf(title, booking, flight, at, tz, placeName) {
   const terminal = typeof booking?.fields?.terminal === 'string' && booking.fields.terminal.trim() ? ` ${booking.fields.terminal.trim()}` : '';
-  if (flight) return { title, at, tz, flight: String(booking?.title ?? title), ...(placeName ? { place: `${placeName}${terminal}` } : {}) };
+  if (flight) {
+    const name = String(booking?.title ?? title);
+    const place = placeName ? { place: `${placeName}${terminal}` } : {};
+    return /^\s*(?:flights?\b|フライト|航班|班機)/i.test(name) ? { title: name, at, tz, ...place } : { title, at, tz, flight: name, ...place };
+  }
   return { title, at, tz, ...(placeName && !title.toLowerCase().includes(placeName.toLowerCase()) ? { place: placeName } : {}) };
 }
 
@@ -195,6 +248,8 @@ const span = (w) => {
  * says so (fixedWords). @param {any} w @param {(string | null)[]} more
  */
 const tag = (w, ...more) => { const p = [fixedWords(w.fixed, { unsure: w.unsure === true }), ...more].filter(Boolean); return p.length ? ` (${p.join(', ')})` : ''; };
+/** A flight's time to be there (by: the leave reminder's aim; late: after it is late), for Shiori: "to be there by 12:05" after sep; nothing for an item whose time it is. @param {any} w @param {string} sep @param {number} t */
+const byWords = (w, sep, t) => (t < w.at ? `${sep}to be there by ${hhmm(w, t)}` : '');
 /** Where the user is now (not on a catch-up's first look). @param {Moment} m */
 const now = (m) => (m.fix && !m.past ? m.fix : null);
 /** @param {number} km @param {string} activity */
@@ -204,17 +259,35 @@ const trip = (km, activity) => {
 };
 
 /**
- * When to leave for an item: from where the user is (or was, on a catch-up's first look), else
- * from the plan's stop before; with neither, half an hour before. Null once the user is there.
+ * Whether leave and running late time a trip of km to the item: not once there, nor from farther than LEG_MAX_KM (the Plan's line
+ * between a day's drive and a flight), whatever the plan has. @param {number} km @param {any} w
+ */
+const drive = (km, w) => km * 1000 > w.radius && km <= LEG_MAX_KM;
+
+/**
+ * Whether a place is a flight from the item (farther than LEG_MAX_KM): no place to count a drive from. One rule for the user's position
+ * and the plan's stop before alike. @param {{ lat: number, lng: number }} p @param {any} w
+ */
+const far = (p, w) => meters(p, w.place) / 1000 > LEG_MAX_KM;
+
+/** Whether the user's position is a flight from the item. @param {any} w @param {Moment} m */
+const away = (w, m) => m.fix !== null && far(m.fix, w);
+
+/**
+ * When to leave for an item: from where the user is (or was, on a catch-up's first look), else from the plan's stop before; with
+ * neither, half an hour before; not before the flights and trains before it arrive (after). A position or a stop before a flight away
+ * counts as none, so the push relay still holds a copy for what is at the destination (the review's F1) and a stay between two
+ * flights isn't counted from; the screen says nothing from such a position (CHECK.leave). Null when it is no drive.
  * @param {any} w @param {Moment} m
  */
 function leaving(w, m) {
-  const from = m.fix ?? w.from ?? null;
-  if (!from) return { due: w.at - 30 * MIN, km: null, minutes: null, words: '', mode: '' };
+  const from = (away(w, m) ? null : m.fix) ?? (w.from && !far(w.from, w) ? w.from : null);
+  const after = w.after ?? -Infinity;
+  if (!from) return { due: Math.max(w.by - 30 * MIN, after), km: null, minutes: null, words: '', mode: '' };
   const km = meters(from, w.place) / 1000;
-  if (km * 1000 <= w.radius) return null;
+  if (!drive(km, w)) return null;
   const t = trip(km, m.activity);
-  return { due: w.at - (t.minutes + LEAVE_LEAD_MIN) * MIN, km, minutes: t.minutes, words: t.words, mode: t.mode };
+  return { due: Math.max(w.by - (t.minutes + LEAVE_LEAD_MIN) * MIN, after), km, minutes: t.minutes, words: t.words, mode: t.mode };
 }
 
 /** What fired, for Shiori, and its fallback: annai's English. @type {Record<string, (w: any, m: Moment, mem: Record<string, any>) => Firing | null>} */
@@ -222,12 +295,12 @@ function leaving(w, m) {
 const CHECK = {
   leave(w, m) {
     const l = leaving(w, m);
-    if (!l || m.now < l.due || m.now >= w.at) return null;
-    const how = l.km === null ? '' : `: ${kmText(l.km * 1000)} away in a straight line, about ${l.minutes} min ${l.words}`;
+    if (!l || away(w, m) || m.now < l.due || m.now >= w.by) return null;
+    const how = l.km === null ? '' : `: ${kmText(l.km * 1000)} away in a straight line, about ${l.minutes} min ${l.words}${byWords(w, ', ', w.by)}`;
     // The words name the minutes left to the time to leave as of now (the reminder may fire late: annai was closed, or the user moved away).
     // With no estimate to count from, or once the time is here or past, they say "soon"; so they do on a catch-up's first look, which
     // counts from where the user was when annai went away: a count from there may be false by the time they read it.
-    const left = l.km === null ? 0 : Math.round((w.at - l.minutes * MIN - m.now) / MIN);
+    const left = l.km === null ? 0 : Math.round((w.by - l.minutes * MIN - m.now) / MIN);
     const lead = l.km !== null && !m.past && left >= 1;
     return {
       text: `Plan: time to leave soon for "${w.title}"${tag(w, hhmm(w))}${how}`, at: l.due,
@@ -262,14 +335,14 @@ const CHECK = {
   },
   late(w, m) {
     const fix = now(m);
-    if (!fix || m.fired(`plan:${w.item}:arrived`) || m.now < w.at - WINDOW_MIN * MIN || m.now > w.at + 60 * MIN) return null;
+    if (!fix || m.fired(`plan:${w.item}:arrived`) || m.now < Math.max(w.late - WINDOW_MIN * MIN, w.after ?? -Infinity) || m.now > w.late + 60 * MIN) return null;
     const km = meters(fix, w.place) / 1000;
-    if (km * 1000 <= w.radius) return null;
+    if (!drive(km, w)) return null;
     const t = trip(km, m.activity);
     const eta = m.now + t.minutes * MIN;
-    if (eta <= w.at + LATE_GRACE_MIN * MIN) return null;
+    if (eta <= w.late + LATE_GRACE_MIN * MIN) return null;
     return {
-      text: `Plan: running late for "${w.title}"${tag(w, hhmm(w))}: ${kmText(km * 1000)} away, about ${t.minutes} min ${t.words}, so about ${Math.round((eta - w.at) / MIN)} min late`,
+      text: `Plan: running late for "${w.title}"${tag(w, hhmm(w))}: ${kmText(km * 1000)} away, about ${t.minutes} min ${t.words}, so about ${Math.round((eta - w.late) / MIN)} min late${byWords(w, ' ', w.late)}`,
       fallback: `Running late: ${w.what}. About ${t.minutes} min away.`,
       say: { event: 'late', what: w.short, minutes: t.minutes },
     };
@@ -307,7 +380,7 @@ const CHECK = {
 const NEXT = {
   leave: (w, m) => {
     const l = leaving(w, m);
-    return l && l.due < w.at ? l.due : null;
+    return l && l.due < w.by ? l.due : null;
   },
   'coming-up': (w) => w.at - COMING_UP_MIN * MIN,
   arrived: (w, m, mem) => {
@@ -318,8 +391,10 @@ const NEXT = {
   late: (w, m) => {
     const fix = now(m);
     if (!fix) return null;
-    const t = trip(meters(fix, w.place) / 1000, m.activity);
-    return Math.max(w.at - WINDOW_MIN * MIN, w.at + (LATE_GRACE_MIN - t.minutes) * MIN + 1000);
+    const km = meters(fix, w.place) / 1000;
+    if (km > LEG_MAX_KM) return null;
+    const t = trip(km, m.activity);
+    return Math.max(w.late - WINDOW_MIN * MIN, w.after ?? -Infinity, w.late + (LATE_GRACE_MIN - t.minutes) * MIN + 1000);
   },
   'off-plan': (w) => w.at + OFF_PLAN_AFTER_MIN * MIN,
   linger: (w, m) => (m.stop ? m.stop.since + LINGER_MIN * MIN : null),
@@ -328,10 +403,10 @@ const NEXT = {
 /** @type {Record<string, (w: any) => string>} */
 /* en */
 const DESCRIBE = {
-  leave: (w) => `${LEAVE_LEAD_MIN} min before leaving for "${w.title}" at ${hhmm(w)}`,
+  leave: (w) => `${LEAVE_LEAD_MIN} min before leaving for "${w.title}" at ${hhmm(w)}${byWords(w, ', ', w.by)}`,
   'coming-up': (w) => `${COMING_UP_MIN} min before "${w.title}" at ${hhmm(w)}`,
   arrived: (w) => `on arriving at ${w.place.name} for "${w.title}"`,
-  late: (w) => `when running late for "${w.title}" at ${hhmm(w)}`,
+  late: (w) => `when running late for "${w.title}" at ${hhmm(w)}${byWords(w, ', ', w.late)}`,
   'off-plan': (w) => `when far from "${w.title}" in the first ${OFF_PLAN_FOR_MIN} min of its time`,
   linger: () => `on stopping ${LINGER_MIN} min somewhere not on the plan`,
 };

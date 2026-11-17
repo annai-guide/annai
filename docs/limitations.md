@@ -890,3 +890,62 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** a card or a reminder of Shiori's that arrives in the instant Driving is opening (between the read of the latest card and the subscription to new ones, src/ui/screens/drive.js:112-126) is not shown there until the next one arrives. Older than stage 8; the gap runs from the store read through the settings read that drawing the card waits for (drive.js `latestCard`, `eventCard`), not measured.
 - **Why:** `renderDrive` subscribes to `'event'` after `await latestCard`. Subscribing first and drawing the later of the two is a change to the screen's draw order, with its own test.
 - **Revisit when:** the next version: subscribe before the read, keep the newest of the read card and any that came in meanwhile.
+
+### A delayed flight, or one with no arrival time, lets the next item's reminders fire in the air
+- **Kind:** deferred.
+- **What the traveller sees:** what comes after a flight (or train) waits for its end on the plan, else its start (leave-far, 2026-11-16). A plane that lands late, or a flight item with no end, lets the next fixed item's "Leave soon" and "Running late" come while the traveller is still in the air (with a position within 1000 km of the item, "Running late: … About N min away" with a big N), and the push relay's copy comes at the scheduled landing.
+- **Why:** annai doesn't know where the plane is; the plan's time is all it has. The skill tells Shiori to write a flight's end, so a missing one should be rare.
+- **Revisit when:** the next version, as its own change: count the wait from the first stop annai sees after the flight (`m.stop`, live.js) instead of the scheduled end, and take the linked booking's end for a flight item with none. The relay can't see a stop while annai is closed, so its copy stays at the scheduled time.
+
+### Ferries, buses and coaches aren't carriers
+- **Kind:** deferred.
+- **What the traveller sees:** a fixed item after a ferry, bus or coach ride gets its leave and running late as if the traveller were driving from where the ride began. On a coach, annai on screen can say "Leave soon: Harbor tour at 11:30" with the distance still to go; with live mode off, the relay's copy can come before the coach has left.
+- **Why:** only a flight or a train (kind `flight` or `rail`, on the item or its booking) carries the traveller in `planWatches`; a booking's kinds have no ferry, bus or coach (`src/plugins/core-schemas/schemas.js`).
+- **Revisit when:** the next version, as its own change: treat an item of kind `ferry`, `bus` or `coach` as a carrier the same way (and add them to the plan item's kind in the instructions).
+
+### Stays, flights and trains are recognised only by the kinds `lodging`, `flight` and `rail`
+- **Kind:** deferred.
+- **What the traveller sees:** a stay or a train written as a plan item that is linked to no booking, with a kind such as "hotel" or "train" (a plan item's kind is any string), isn't recognised. An unlinked "hotel" keeps its leave and running late within 1000 km; an unlinked "train" is no carrier, so a fixed item after it counts a drive from where the train left (on screen, on the train: "Leave soon" with the minutes of a long drive); an unlinked flight gets no 2-hour margin and a 300 m arrival circle.
+- **Why:** the plan item's kind is free text (`src/plugins/core-schemas/schemas.js`), and neither plan-item example in Shiori's text gives a kind a reminder reads: the one in her instructions (`src/core/agent/instructions.js`) has none, and the plan-a-trip skill's has `"kind": "meal"`; the kinds `flight`, `rail` and `lodging` are named only for a booking.
+- **Revisit when:** the next version, as its own change: an enum for the plan item's kind with the synonyms a stored format accepts ("train" for `rail`, "hotel" and "stay" for `lodging`), one line in the instructions, and a look at the plans that exist first.
+
+### An item that is not a flight, linked to a flight booking, takes the flight's rules
+- **Kind:** deferred.
+- **What the traveller sees:** an item linked to a booking of kind `flight` or `rail` is of that kind too (`isKind` in `src/core/live/plan-watches.js`, and `src/core/plan.js`), whatever the item is: a bag drop, an airport shuttle, a car pick-up, a hotel. It takes the carrier rules (what comes after it doesn't count from its place, and waits for it to land when it is fixed), and on a flight's booking a flight's 2-hour margin and its late line of 1 hour before; a stay written with the kind `lodging` gets no leave or running late, but is a carrier all the same. So:
+  - A "Bag drop closes" item at 13:05 on the booking of a 14:05 flight gets a "Leave soon" an hour before the flight's own would have come, and, on screen, a "Running late" while the traveller is in time for it. The flight itself is then read as a connection and gets neither.
+  - A car pick-up at 17:00 on the booking of a flight that lands at 16:30 is the connection: no leave, no running late (off the booking: "Leave soon: Car pick-up at 17:00, Car hire desk."). The flight is then named by its own title, with no terminal, as one of two legs; a car or hotel alone on a flight's booking is named as the flight, with its terminal ("Flight UA123 departs 17:00, Car hire desk T3").
+  - A fixed car rental with an end (Nov 20 10:00 to Nov 23 10:00) on the booking holds back the leave and running late of every fixed item after it until that end; one before the end (a museum on Nov 21) gets neither.
+  - An item on a flight's booking is no stop before, so the next item's leave reminder can come late with no position near (live mode off, or the phone's last position a flight away): the flight home after a check-out at 11:00, 100 km from the airport, says "Leave soon" at 11:35 for its 14:05 departure, half an hour before its 2-hour mark, where the same stay on a booking of its own gives 09:51, 1 h 44 min earlier (a check-out of kind `lodging` does the same); a dinner at 19:00, 100 km from the airport, after the car pick-up above gets it at 18:30, not 16:46.
+  - The other leave reminders come early; the false "Running late" is on screen only, never pushed.
+- **Why:** the plan item's kind is free text, and an item's own kind can't decide first: a flight Shiori wrote with another kind, left to its booking, would lose its 2-hour margin, which errs late (the fix round 2 fixer's Call 3). A bag-drop item written with no kind can't be told from a flight leg.
+- **Revisit when:** the next version, with the design check of this part: the enum for the plan item's kind (the entry above) lets an item's own kind decide first without that risk. The narrow fix the design check can take now: an item's own kind `lodging` decides before its booking's, so a stay is never a carrier (no flight is written with that kind); a stay with no kind stays covered only by the enum. Until then, link such an item to no booking, or to a booking of its own kind (a stay to a `lodging` one); giving the flight a booking of its own does not help, as the other item is still a carrier.
+
+### A check-in reached more than 3 hours late gets no "arrived" cue
+- **Kind:** deferred.
+- **What the traveller sees:** a stay's check-in item has no end, so arriving counts only until 3 hours after its start. Landing at 20:58 for a 16:00 check-in, and reaching the stay at 21:55, fires no "arrived", so its notes aren't shown. Silent, not false.
+- **Why:** `arrived` counts from 3 hours before the start until the item's end, else 3 hours after the start (`WINDOW_MIN`).
+- **Revisit when:** the next version, as its own change: a stay's arrival counts until its booking's check-out.
+
+### A flight item with no coordinates gets no leave reminder, only "coming up"
+- **Kind:** deferred.
+- **What the traveller sees:** a fixed flight item with no place gets "In 15 min: Flight … departs 14:05" and nothing earlier, so the 2-hour airport pick doesn't reach it.
+- **Why:** without a place there is no drive to count and no airport to be at; the plan's other items work the same way. Older than leave-far.
+- **Revisit when:** the next version: take the airport's place from the linked booking, or time it by the half hour before the 2-hour mark as a flight with no position is.
+
+### A closed annai can say "Leave soon" for an item at the destination, timed before the flight that gets the traveller there
+- **Kind:** deferred.
+- **What the traveller sees:** with live mode off, or the phone's last position a flight away (at home or at the departure gate), the push relay holds a "Leave soon" copy for a fixed item at the destination other than a stay (a car pick-up at the arrival airport, a meeting), half an hour before the item. If the plan times it before the last flight there lands, the notification comes while the traveller is at the hub or in the air: "Leave soon: Car pick-up at 16:00, Car hire desk." (no minutes). The reminder waits only for the flight before it in the plan, not for the one that takes the traveller there.
+- **Why:** a position a flight away counts as none, so the copy is counted from the plan's stop before or the half hour (leave-far's F1, so the closed annai still says it at the destination); the wait for a landing is the fixed flights and trains before the item in the plan, and the plan can't tell which flight takes the traveller to it.
+- **Revisit when:** the next version, as its own change: look ahead to the next fixed flight or train after the item, and when the item is timed before it lands, and the traveller's place (or the stop before) is a flight away from the item, hold the copy until that carrier lands (about 8 lines in `planWatches`).
+
+### The Driving strip keeps a flight already left as the next stop
+- **Kind:** deferred.
+- **What the traveller sees:** a flight or train stays "not over" until its end (else half an hour from its start), and its place is the place it leaves from. Driving while a flight is in the air (a position within a day's drive of the departure airport, such as the first hour of the flight, or a train on its way) lists it as the next stop: "SFO T3, 475 km, 512 min".
+- **Why:** the strip counts an item over by its end, as Now does, and has no notion of an item the traveller has already left from. Older than leave-far.
+- **Revisit when:** the next version, as its own change: the strip leaves out a flight or train once its start has passed.
+
+### The Driving strip during a flight lists the destination's stops, with car times
+- **Kind:** deferred.
+- **What the traveller sees:** a phone at flight speed counts as moving fast, so Driving takes over, and the strip lists the stops ahead that are within a day's drive of the plane's position, with a drive's minutes. On a plane 804 km from a tour at the destination, 40 minutes before it lands: "Old Lighthouse, 804 km, 858 min". It is the arrival side of the entry above on a flight already left. Reminders are not affected: a fixed item after a fixed flight waits for it to land.
+- **Why:** the strip (`routeStrip`, `src/core/now.js`) has no notion of a carrier that has not landed; the reminders have (`landed` in `planWatches`).
+- **Revisit when:** the next version, as its own change: the strip leaves out a stop after a fixed flight or train that has not landed, by the way the reminders wait for it (its end, else its start), with a test.

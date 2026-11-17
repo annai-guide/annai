@@ -1,5 +1,6 @@
 import { meters, travelMinutes, modeFor } from './live/geo.js';
 import { instantAt, validZone } from './time.js';
+import { LEG_MAX_KM } from './plan.js';
 
 /**
  * What the Itinerary's today, Driving and the conversation's Next line show (spec §16.2), from the Itinerary's rows: what is next,
@@ -29,12 +30,14 @@ export function upcoming(rows, now, limit = 4) {
 
 /**
  * The route strip (spec §16.2): the next stops with places, with the straight-line distance from
- * where the user is and about how long it takes, by the rough estimate (§11.3).
+ * where the user is and about how long it takes, by the rough estimate (§11.3). A stop farther than a day's drive (LEG_MAX_KM, the
+ * Plan's line between a leg and a flight) is no stop on this drive and is left out: it said "about 3 d 21 h" for a stay a flight away.
  * @param {PlanRow[]} rows @param {Point | null} here @param {number} now @param {string} activity
  * @returns {{ row: PlanRow, name: string, place: Point, km: number | null, minutes: number | null }[]}
  */
 export function routeStrip(rows, here, now, activity, limit = 3) {
-  return upcoming(rows.filter((r) => hasPoint(r.item.place)), now, limit).map((row) => {
+  const reach = (/** @type {PlanRow} */ r) => !here || meters(here, r.item.place) / 1000 <= LEG_MAX_KM;
+  return upcoming(rows.filter((r) => hasPoint(r.item.place) && reach(r)), now, limit).map((row) => {
     const p = row.item.place;
     const km = here ? meters(here, p) / 1000 : null;
     return { row, name: String(p.name ?? row.item.title), place: { lat: p.lat, lng: p.lng }, km, minutes: km === null ? null : travelMinutes(km, modeFor(km, activity)) };

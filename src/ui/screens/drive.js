@@ -69,13 +69,17 @@ export async function renderDrive(ctx) {
   let asked; // the stop they're for: a fix moves their start, and rebuilds nothing under a finger
   const draw = () => {
     const here = live ? knownFix(live) : null; // not a position from before the GPS was lost
-    const stops = routeStrip(rows, here, nowOf(live), live?.activity ?? 'unknown');
+    const now = nowOf(live);
+    const stops = routeStrip(rows, here, now, live?.activity ?? 'unknown');
+    // An empty strip says what is true: a stop farther than a day's drive is left out of the strip, so with one on the plan nothing is
+    // planned within a day's drive, not nothing at all (a position mid-flight, or a manual one far from the trip).
+    const farOnly = !stops.length && Boolean(here) && routeStrip(rows, null, now, 'unknown', 1).length > 0;
     strip.replaceChildren(
       h('li', { class: 'you' }, here ? tc('route strip')`You` : live?.on ? t`You (finding where)` : t`You (GPS off)`),
       ...stops.map((s) => h('li', {},
         h('span', { class: 'name', text: s.name }),
         h('span', { class: 'sub', text: [s.row.time ? t`at ${s.row.time}` : '', roadText(s)].filter(Boolean).join(' · ') }))),
-      ...(stops.length ? [] : [h('li', { class: 'empty', text: t`Nothing more is planned with a place.` })]));
+      ...(stops.length ? [] : [h('li', { class: 'empty', text: farOnly ? t`Nothing more is planned within a day's drive.` : t`Nothing more is planned with a place.` })]));
     const next = stops[0];
     const go = next && links ? mapsLinks(links, { destination: `${next.place.lat},${next.place.lng}`, ...(here ? { origin: `${here.lat},${here.lng}` } : {}), mode: 'drive' }) : [];
     if (asked === (asked = next ? next.name : null)) maps.querySelectorAll('a').forEach((a, i) => { a.href = go[i].url; });
