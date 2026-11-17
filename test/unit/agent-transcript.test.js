@@ -249,6 +249,75 @@ test("a hand-over her turn's end record answered stays answered across a wake of
   assert.deepEqual([t.handover, t.owedHandover], [null, null]);
 });
 
+test("what a restart carries is read from the records of what it takes up: a cut turn's own wake records, a wake written while the conversation was closed, and the user's lines; an older hand-over a failed turn left owed only for the user's", async () => {
+  const handed = [{ path: '/trip/files/flight.pdf', type: 'application/pdf', name: 'flight.pdf', new: true }];
+  /** A log: a hand-over's turn (w-0, h-1) that failed, then what the shape adds. keyed: the turn's wake names its hand-over (since 2026-11-16). */
+  const after = async (/** @type {(log: (type: string, data: any, texts?: any) => Promise<void>, store: any) => Promise<void>} */ then, keyed = true) => {
+    const store = createMemoryStore();
+    const log = async (/** @type {string} */ type, /** @type {any} */ data, /** @type {any} */ texts = []) => { await record(store, SCOPE, { type, actor: type === 'msg.user' ? 'user' : 'system', data, texts }); };
+    await log('wake', { id: 'w-0', reasons: [{ kind: 'user', text: 'typed', handover: 'h-1' }], ...(keyed ? { handover: 'h-1' } : {}) });
+    await log('msg.user', { wake: 'w-0', handed, handover: 'h-1' }, [['text', 'Our trip']]);
+    await log('error', { kind: 'model', wake: 'w-0', message: "Shiori can't reach her model." });
+    await then(log, store);
+    const t = await Transcript.load(store, SCOPE);
+    return [t.unanswered, t.handover, t.owedHandover];
+  };
+  /** @type {[string, (log: any, store: any) => Promise<void>, boolean, any[]][]} */
+  const shapes = [
+    ["a watch's turn under way (its wake: none)", async (log) => {
+      await log('wake', { id: 'w-1', reasons: [{ kind: 'trigger', text: 'The watch fired.' }], handover: null });
+    }, true, [true, null, 'h-1']],
+    ["the same written before the turn's wake named its hand-over (read by its wakes' kinds)", async (log) => {
+      await log('wake', { id: 'w-1', reasons: [{ kind: 'trigger', text: 'The watch fired.' }] });
+    }, false, [true, null, 'h-1']],
+    ["a turn of the user's under way, written before the key: the owed one, as before", async (log) => {
+      await log('wake', { id: 'w-1', reasons: [{ kind: 'user', text: 'typed' }] });
+      await log('msg.user', { wake: 'w-1' }, [['text', 'Please file it']]);
+    }, false, [true, 'h-1', 'h-1']],
+    ["a watch's turn that took it up partway (the take-up record)", async (log) => {
+      await log('wake', { id: 'w-1', reasons: [{ kind: 'trigger', text: 'The watch fired.' }], handover: null });
+      await log('msg.user', { wake: 'w-1', meanwhile: true }, [['text', 'Please file it']]);
+      await log('wake', { id: 'w-1', meanwhile: true, reasons: [], handover: 'h-1' });
+    }, true, [true, 'h-1', 'h-1']],
+    // A log saved before the take-up record (2026-11-17): the turn's wake named none, and nothing marks where the user's words took h-1 up, so
+    // the restart carries none and what she files then is outside h-1's Undo (the version before carried h-1, the newest owed, which was right
+    // here by chance). A reply after the take-up says h-1, but a turn killed before that reply has none to read, so replies are not read.
+    ["a watch's turn the user's words joined, in a log from before the take-up record: none", async (log, store) => {
+      await log('wake', { id: 'w-1', reasons: [{ kind: 'trigger', text: 'The watch fired.' }], handover: null });
+      await log('msg.user', { wake: 'w-1', meanwhile: true }, [['text', 'Please file it']]);
+      await modelTrace(store, SCOPE).turn(/** @type {any} */ ({ ...info, wake: 'w-1', handover: 'h-1', endLogged: true }), '', '', [{ type: 'tool_call', id: 'w', name: 'write', input: { path: '/trip/notes/f.md', content: 'x' } }]);
+    }, true, [true, null, 'h-1']],
+    ["a watch written while the conversation was closed", async (log) => {
+      await log('wake', { id: 'w-2', reasons: [{ kind: 'trigger', text: 'The watch fired.' }] });
+    }, true, [true, null, 'h-1']],
+    ["a line of the user's written while it was closed: the owed one, as their next turn would take it", async (log) => {
+      await log('wake', { id: 'w-2', reasons: [{ kind: 'trigger', text: 'The watch fired.' }] });
+      await log('wake', { id: 'w-3', reasons: [{ kind: 'user', text: 'typed' }] });
+      await log('msg.user', { wake: 'w-3' }, [['text', 'Please file it']]);
+    }, true, [true, 'h-1', 'h-1']],
+    ["a Try again tapped while it was closed: the owed one", async (log) => {
+      await log('wake', { id: 'w-2', reasons: [{ kind: 'cue', text: 'Try again.' }] });
+    }, true, [true, 'h-1', 'h-1']],
+    ["a file she moved here from another conversation, not under a hand-over, written while it was closed: none", async (log) => {
+      await log('wake', { id: 'w-2', reasons: [{ kind: 'file', text: 'Shiori moved a file here.', files: ['/files/menu.pdf'] }] });
+    }, true, [true, null, 'h-1']],
+    ["the restart of a watch's cut turn, written into it when another conversation opened before it ran: still none", async (log) => {
+      await log('wake', { id: 'w-1', reasons: [{ kind: 'trigger', text: 'The watch fired.' }], handover: null });
+      await log('wake', { id: 'w-2', reasons: [{ kind: 'restart', text: 'annai restarted before you answered.' }] });
+    }, true, [true, null, 'h-1']],
+    ["files handed to it while it was closed: theirs", async (log) => {
+      await log('wake', { id: 'w-2', reasons: [{ kind: 'file', text: 'Files were added.', files: ['/files/hotel.pdf'], handover: 'h-2' }] });
+      await log('wake', { id: 'w-3', reasons: [{ kind: 'trigger', text: 'The watch fired.' }] });
+    }, true, [true, 'h-2', 'h-2']],
+    ["the user undid the hand-over the cut turn carried", async (log) => {
+      await log('wake', { id: 'w-1', reasons: [{ kind: 'user', text: 'typed', handover: 'h-2' }], handover: 'h-2' });
+      await log('msg.user', { wake: 'w-1', handover: 'h-2' }, [['text', 'And this']]);
+      await log('handover.undo', { handover: 'h-2', undone: 0, kept: [] });
+    }, true, [true, null, null]],
+  ];
+  for (const [what, then, keyed, read] of shapes) assert.deepEqual(await after(then, keyed), read, what);
+});
+
 test("the user carried the conversation on in another trip (open_trip's card): her turn is not under way here any more, and opening this one again takes nothing up", async () => {
   const store = createMemoryStore();
   await record(store, SCOPE, { type: 'wake', actor: 'system', data: { id: 'w-1', reasons: [{ kind: 'user', text: 'typed' }] } });

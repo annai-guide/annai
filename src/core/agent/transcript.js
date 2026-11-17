@@ -49,6 +49,8 @@ export const KOE_WINDOW = 12;
 export const KOE_JUMP = 6;
 /** Wake reasons that are lines of their own elsewhere. */
 const OWN_LINES = ['user', 'heard', 'note', 'halves'];
+/** Wake reasons of the user's own, which take up a hand-over still owed, as their turn does (loop.js owesAnswer); Try again is a cue. */
+const TAKES_OWED = ['user', 'choice', 'heard', 'cue'];
 
 export class Transcript {
   /** @type {Message[]} */
@@ -104,6 +106,12 @@ export class Transcript {
   #carry = null;
   /** The newest hand-over since her last turn ended (handover.js). @type {string | null} */
   #handover = null;
+  /**
+   * The hand-over that what is owed now carries when it is taken up (the restart's): her turn under way's own, as its wake records name it (its
+   * first, and a later one where it takes one up); a wake written while the conversation was closed, what it brought, or for one of annai's own
+   * none; undefined when nothing says, so the newest owed (a line of the user's takes it up, as their next turn would). @type {string | null | undefined}
+   */
+  #carried = undefined;
   /** @type {Map<string, string>} Shiori's tool calls by id, to their tool names */
   #calls = new Map();
   /** @type {Set<string>} */
@@ -140,7 +148,7 @@ export class Transcript {
     const koe = this.half === 'koe';
     this.#at = e.seq;
     if (e.type === 'msg.user') this.newestPhoto = r.images.length > 0;
-    if (e.type === 'msg.user' && typeof d.handover === 'string') this.#handover = d.handover;
+    if (e.type === 'msg.user' && typeof d.handover === 'string') this.#handover = this.#carried = d.handover;
     if (e.type === 'compaction') {
       this.messages = [];
       this.#calls.clear();
@@ -158,7 +166,16 @@ export class Transcript {
       else if (!koe) /* en */ this.#add('user', [{ type: 'text', text: `[Earlier conversation, summarized (events ${d.from}–${d.to}); recall brings back the exact words]\n${texts.summary ?? ''}` }]);
     } else if (e.type === 'wake') {
       if (!this.#mine(d)) return;
-      for (const w of d.reasons ?? []) if (typeof w?.handover === 'string') this.#handover = w.handover;
+      const reasons = Array.isArray(d.reasons) ? d.reasons : [];
+      /** @type {string | null} */
+      let brought = null;
+      for (const w of reasons) if (typeof w?.handover === 'string') this.#handover = brought = w.handover;
+      // Her turn's first wake, or one where it takes a hand-over up, names what it carries (null for none); a wake joining it brings its own or
+      // changes nothing; one written while the conversation was closed (no key) joins what a cut turn carried, as join() would, and takes up
+      // an older one still owed only for the user's (a watch, a reminder, a plugin's or a move's wake never does).
+      if ('handover' in d) this.#carried = typeof d.handover === 'string' ? d.handover : null;
+      else if (brought || this.#carried || d.meanwhile) this.#carried = brought ?? this.#carried;
+      else this.#carried = reasons.some((/** @type {any} */ w) => TAKES_OWED.includes(w?.kind)) ? undefined : null;
       const others = (d.reasons ?? []).filter((/** @type {any} */ w) => !OWN_LINES.includes(w.kind) && w.text);
       if (others.length) {
         // Two halves read it quoted, so it can't pass for a label; one half as before.
@@ -223,11 +240,15 @@ export class Transcript {
       // Her turn is under way until the loop logs its end. A reply from before the loop logged one (no `endLogged` key) is read as its turn's end.
       this.#underway = 'endLogged' in d;
       if (this.#underway) this.waiting = this.#last.length ? 'turn' : '';
-      else if (this.#mine(d) && (!('handover' in d) || d.handover === this.#handover)) this.#handover = null;
+      else if (this.#mine(d)) {
+        if (!('handover' in d) || d.handover === this.#handover) this.#handover = null;
+        this.#carried = undefined;
+      }
     } else if (e.type === 'turn.end') {
       // The loop's record that her turn ended by its own rule: the hand-over it carried is answered.
       if (!this.#mine(d)) return;
       this.#underway = false;
+      this.#carried = undefined;
       if (d.handover === this.#handover) this.#handover = null;
       return;
     } else if (e.type === 'note') {
@@ -270,6 +291,7 @@ export class Transcript {
     } else if (e.type === 'handover.undo') {
       // The user undid a hand-over (handover.js): she knows what was taken back, and owes it nothing more.
       if (d.handover === this.#handover) this.#handover = null;
+      if (d.handover === this.#carried) this.#carried = null;
       const n = Number(d.undone) || 0;
       const kept = Array.isArray(d.kept) ? d.kept.length : 0;
       const trips = (Array.isArray(d.removed) ? d.removed : typeof d.removed === 'string' ? [d.removed] : []).map((x) => JSON.stringify(String(x)));
@@ -295,10 +317,14 @@ export class Transcript {
       // So nothing before it is owed here either (a heard yes Koe hadn't answered): opened again, nobody wakes.
       this.unanswered = false;
       this.#underway = false;
+      this.#carried = undefined;
     } else if (e.type === 'error' && d.wake) {
       // A turn that ended in an error (no model, a budget, housekeeping that failed) is over: the user
       // saw a card, and a later start doesn't wake her again for it (spec §6.7). It isn't in the context.
-      if (this.#mine(d)) this.#underway = false; // the turn it ended is over
+      if (this.#mine(d)) {
+        this.#underway = false; // the turn it ended is over
+        this.#carried = undefined;
+      }
       if (this.#mine(d) && d.kind === 'stopped') this.unanswered = false; // her Stop settles all before it, a line Koe heard too
       else if (this.#mine(d)) this.#owes = false; // another error read nothing: it settles only what she owed
       else if (this.half === 'one' && d.kind === 'stopped') this.#heardSettled(); // the user stopped Koe's reply
@@ -379,9 +405,13 @@ export class Transcript {
     this.#koeCalls = null;
   }
 
-  /** The hand-over the conversation still owes an answer, or null (the restart wake carries it). */
+  /**
+   * The hand-over the restart wake carries, or null: what is owed now carries it (#carried), else the newest one still owed. A turn of annai's own
+   * cut, or written while the conversation was closed, never carries an older one a failed turn left owed: that one is the user's next line's.
+   */
   get handover() {
-    return this.unanswered ? this.#handover : null;
+    if (!this.unanswered) return null;
+    return this.#carried === undefined ? this.#handover : this.#carried;
   }
 
   /**

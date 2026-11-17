@@ -732,12 +732,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** the user sees it and it bothers them.
 - **Approved:** 2026-11-17, chief's decision C96 (the user's question "Accept it as a known limitation (Recommended)", decided by chief; not the user's words).
 
-### The restart of a turn annai started carries a hand-over still owed by an older failed turn
-- **Kind:** deferred.
-- **What the user sees:** the user hands Shiori a file, her turn fails ("Shiori can't reach her model") and they don't tap Try again. Later a turn annai starts by itself in that conversation (a watch or a reminder firing, a plugin's wake) is cut by a reload or a kill, or a wake written while the conversation was closed is taken up when it opens. The turn that takes it up carries the old hand-over, so what she files for the watch counts as filed under that hand-over, and tapping its Undo takes that note back too. It needs a failed hand-over left alone, a turn of annai's own, a cut, a write, and then the Undo. Found on 2026-11-14 in the final review of the turn-end record; the same on the version before it (run on both).
-- **Why:** the restart wake takes the reader's `handover`, the newest hand-over no turn's end has answered, whoever's turn was cut; `#open` passes it on without asking whose turn it was.
-- **Revisit when:** the next version, as its own change, in the reader's `handover` getter and `#open`: the turn's own `wake` records name the hand-over it carries (its first, and since 2026-11-17 a later one where it takes one up partway), so a turn under way can hand back its own, not the conversation's newest owed one; read those rather than its replies' records, which say it only from the reply after a take-up, and miss a turn cut before its first reply. Then a test of this shape.
-
 ### The realtime check's Japanese promise words miss some promises and flag some ordinary sentences
 - **Kind:** deferred.
 - **What the user sees:** nothing in annai. A tester running the realtime check's Japanese filler trap (`relay-filler-ja`) can see "no filler" pass a promise the list doesn't name (「今後は改めます。」, 「以後は改めます。」, 「もうしません。」, 「二度と言いません。」), or fail an ordinary sentence that names 以後 or 今後 with a promise-like verb in the same clause (「今後はこのルートを案内します。」). 「ご承知おきください。」 fails too (承知 has no guard for ご, as 理解 has).

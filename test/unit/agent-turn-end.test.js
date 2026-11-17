@@ -11,7 +11,7 @@ import { modelTrace } from '../../src/core/llm/trace.js';
 import { ProviderError } from '../../src/core/llm/contract.js';
 import { createTrip } from '../../src/core/scopes.js';
 import { Agent } from '../../src/core/agent/loop.js';
-import { NETWORK_RETRIES } from '../../src/core/llm/fallback.js';
+import { NETWORK_RETRIES, OVERLOAD_RETRIES } from '../../src/core/llm/fallback.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { undoHandover } from '../../src/core/handover.js';
 import { useClock } from './clock.js';
@@ -336,6 +336,99 @@ test('row 14: the page left (or killed) in her model call: nothing logged, a rel
   assert.deepEqual(restarts.map((/** @type {any} */ r) => r.handover), ['h-1']);
   assert.deepEqual(await hers(k), [['/notes/a.md', 'h-1'], ['/notes/f.md', 'h-1']]);
   assert.deepEqual((await undoHandover(k.ws, k.trip, 'h-1')).undone.sort(), ['/notes/a.md', '/notes/f.md']);
+});
+
+// The restart of a cut turn carries the hand-over that turn carried, as its own wake records name it (its first, and a take-up), never an older
+// one still owed by a turn that failed; a wake written while the conversation was closed carries what it brought, and for one of annai's own,
+// nothing more (the Deferred entry "The restart of a turn annai started carries a hand-over still owed by an older failed turn").
+/** The page is killed in her model call: every try of it fails as the page goes (the call retries a network failure). */
+const KILLED = Array(1 + NETWORK_RETRIES.length).fill({ delayMs: 30, error: 'network', message: 'Load failed' });
+/** Every try of her model call fails: "Shiori can't reach her model". */
+const FAILED = Array(1 + OVERLOAD_RETRIES.length).fill(fails);
+/** A write of hers, alone in its reply. @param {string} name */
+const note = (name) => ({ toolCalls: [{ name: 'write', input: { path: `/trip/notes/${name}.md`, content: name } }] });
+/** The next page opens the conversation and takes up what is owed: the restart wakes' reasons. @param {any} k */
+const nextPage = async (k) => {
+  k.llm.bench.clear('m-0'); // a new page starts with no model benched
+  const next = new Agent({ store: k.store, ws: k.ws, llm: k.llm, registry: k.registry, timeZone: () => 'UTC', secondMs: 10 });
+  await next.open(k.trip);
+  await next.idle();
+  return (await k.events(['wake'])).flatMap((/** @type {any} */ e) => e.data.reasons).filter((/** @type {any} */ r) => r.kind === 'restart');
+};
+const WATCH = 'The watch fired: Nepenthe is 2 km away.';
+
+for (const cut of ['before her first reply', 'after a write']) {
+  test(`a hand-over's turn fails and is left alone, then a watch's turn is killed ${cut}: the restart carries no hand-over, and the hand-over's Undo leaves what she filed for the watch`, async (t) => {
+    useClock(t);
+    const first = cut === 'after a write' ? [note('watch-1')] : [];
+    const k = await agentKit([[...FAILED, ...first, ...KILLED, { toolCalls: [...note('watch-2').toolCalls, speak('Noted.'), sleep] }]]);
+    hand(k);
+    await k.agent.idle();
+    assert.deepEqual(await ends(k), ['error:model'], "Shiori can't reach her model; no Try again");
+    k.agent.wake({ kind: 'trigger', text: WATCH });
+    await until(() => k.requests.length === FAILED.length + first.length + 1);
+    k.agent.leaving();
+    await k.agent.idle();
+    const t0 = await Transcript.load(k.store, k.trip);
+    assert.deepEqual([t0.unanswered, t0.handover, t0.owedHandover], [true, null, 'h-1'], "under way, carrying none; h-1 still owed to the user's next line");
+    const restarts = await nextPage(k);
+    assert.equal(restarts.length, 1);
+    assert.equal(restarts[0].handover, undefined, 'the restart carries none');
+    assert.deepEqual(await hers(k), [...(first.length ? [['/notes/watch-1.md', null]] : []), ['/notes/watch-2.md', null]]);
+    assert.deepEqual((await undoHandover(k.ws, k.trip, 'h-1')).undone, [], "the hand-over's Undo takes back nothing she filed for the watch");
+    assert.notEqual(await k.ws.read(k.trip, '/notes/watch-2.md'), undefined);
+  });
+}
+
+test("a hand-over's turn fails and is left alone, then a watch fires while another conversation is open: the wake written into this one carries no hand-over when it is taken up, and the hand-over's Undo leaves what she filed for it", async (t) => {
+  useClock(t);
+  const k = await agentKit([[...FAILED, { toolCalls: [...note('watch-1').toolCalls, speak('Noted.'), sleep] }]]);
+  hand(k);
+  await k.agent.idle();
+  const { A, back } = await away(k);
+  await k.agent.wake({ kind: 'trigger', text: WATCH, scope: A });
+  const t0 = await Transcript.load(k.store, A);
+  assert.deepEqual([t0.unanswered, t0.handover, t0.owedHandover], [true, null, 'h-1']);
+  assert.equal(await back(), 1, 'taken up once');
+  const restarts = (await k.events(['wake'])).flatMap((/** @type {any} */ e) => e.data.reasons).filter((/** @type {any} */ r) => r.kind === 'restart');
+  assert.match(restarts[0].text, /came while this conversation was closed/);
+  assert.equal(restarts[0].handover, undefined);
+  assert.deepEqual(await hers(k), [['/notes/watch-1.md', null]]);
+  assert.deepEqual((await undoHandover(k.ws, A, 'h-1')).undone, []);
+});
+
+test("a cut turn that did carry a hand-over still restarts with it: the user's hand-over killed before her first reply, and a watch's turn that took the owed hand-over up when the user's words joined it, killed after its write", async (t) => {
+  useClock(t);
+  // The user's own: killed in her first model call.
+  const own = await agentKit([[...KILLED, files]]);
+  hand(own);
+  await until(() => own.requests.length === 1);
+  own.agent.leaving();
+  await own.agent.idle();
+  assert.deepEqual((await nextPage(own)).map((/** @type {any} */ r) => r.handover), ['h-1']);
+  assert.deepEqual(await hers(own), [['/notes/f.md', 'h-1']]);
+  assert.deepEqual((await undoHandover(own.ws, own.trip, 'h-1')).undone, ['/notes/f.md']);
+  // A watch's turn, carrying none; the user's words join it while h-1 is owed (the take-up record), she writes, and the page is killed.
+  let calls = 0;
+  /** @type {() => void} */
+  let release = () => {};
+  const held = new Promise((r) => { release = () => r(undefined); });
+  const k = await agentKit([[...FAILED, { toolCalls: [speak('The watch fired.')] }, note('watch-1'), ...KILLED, files]], { hold: async () => { if (++calls === FAILED.length + 1) await held; } });
+  hand(k);
+  await k.agent.idle();
+  k.agent.wake({ kind: 'trigger', text: WATCH });
+  await until(() => calls === FAILED.length + 1);
+  k.agent.send('Please file my flight');
+  await new Promise((r) => setTimeout(r, 30));
+  release();
+  await until(() => k.requests.length === FAILED.length + 3);
+  k.agent.leaving();
+  await k.agent.idle();
+  const took = (await k.events(['wake'])).filter((/** @type {any} */ e) => e.data.meanwhile && 'handover' in e.data);
+  assert.deepEqual(took.map((/** @type {any} */ e) => e.data.handover), ['h-1'], 'the take-up record');
+  assert.deepEqual((await nextPage(k)).map((/** @type {any} */ r) => r.handover), ['h-1']);
+  assert.deepEqual(await hers(k), [['/notes/watch-1.md', 'h-1'], ['/notes/f.md', 'h-1']]);
+  assert.deepEqual((await undoHandover(k.ws, k.trip, 'h-1')).undone.sort(), ['/notes/f.md', '/notes/watch-1.md']);
 });
 
 // A log the version before this one wrote has no turn.end and no endLogged key: each of its replies is read as the end of its turn (the approved
