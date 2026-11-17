@@ -830,7 +830,7 @@ A plugin that reads it says `"api": 2` in its manifest: an annai from before `an
 | `annai.l10n.format.num(n, options?)` | a number as the language writes it (`Intl.NumberFormat` options: `{ style: 'percent' }`) |
 | `annai.l10n.format.size(bytes)` | a size by 1024s: "512 bytes", "2.0 kB", "12 MB" |
 | `annai.l10n.format.list(items, kind?)` | a list: `'and'` (the default), `'or'`, or `'plain'` (commas alone) |
-| `annai.l10n.format.sentences(...parts)` | sentences side by side, as the language writes them (no space in Chinese and Japanese), the empty left out |
+| `annai.l10n.format.sentences(...parts)` | sentences side by side, as the language writes them (no space in Chinese and Japanese), the empty left out; every part but the last is ended as a sentence where it has no stop of its own (a full stop, 。 in Chinese and Japanese), so an error's own words never run into the next sentence |
 
 The formats are in the screens' language with the phone's region. More can come on request.
 

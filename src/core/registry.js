@@ -230,8 +230,9 @@ export class Registry {
         const message = String(was?.message ?? e);
         // What went wrong: annai's words for the screens where it has them (shown), else the plugin's own, or annai's own English check (en).
         const why = typeof was?.shown === 'string' ? was.shown : message.startsWith(`${pluginId}: `) ? message.slice(pluginId.length + 2) : message;
-        // annai's own words are the frame, in the screens' words; only a start reaches a screen (a hook's error is counted and logged, nothing more).
-        const shown = name === 'starting' ? asSentence(t`Starting failed: ${why}`) : undefined;
+        // annai's own words are the frame, in the screens' words, a sentence of its own when there are no words to frame; only a start
+        // reaches a screen (a hook's error is counted and logged, nothing more).
+        const shown = name !== 'starting' ? undefined : why.trim() ? asSentence(t`Starting failed: ${why}`) : t`Starting failed.`;
         // The English inside it, for lang="en": all of `why` where annai marked all of it, or the part it named; the plugin's own words never.
         const en = was?.en === true ? (shown === undefined ? true : why) : typeof was?.en === 'string' ? was.en : false;
         throw new PluginError(pluginId, /* en */ `${name} failed: ${message}`, { cause: e, shown, en });

@@ -83,8 +83,7 @@ export async function packPanel(ctx, id) {
   const go = () => {
     keeper.download(id).catch((/** @type {unknown} */ e) => {
       if (explainStorageFull(ctx, e)) return;
-      const why = messageOf(e).replace(/[.!?]?$/, '.');
-      ctx.notices.card({ tone: 'warn', title: t`The offline pack didn't download`, body: sentences(why, t`What came is kept. Try again in a moment.`) });
+      ctx.notices.card({ tone: 'warn', title: t`The offline pack didn't download`, body: sentences(messageOf(e), t`What came is kept. Try again in a moment.`) });
     });
   };
   const draw = async () => {

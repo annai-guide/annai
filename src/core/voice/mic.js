@@ -18,7 +18,7 @@ export function micProblem(e, where) {
   }
   if (name === 'NotFoundError' || name === 'OverconstrainedError') return { title: t`No microphone found`, body: t`This device has no microphone annai can use. Connect one, or type to Shiori instead.`, plain: /* en */ 'No microphone found' };
   if (name === 'NotReadableError' || name === 'AbortError') return { title: t`The microphone is busy`, body: t`Another app is using it, such as a call or a voice recorder. Close it, then try again.`, plain: /* en */ 'The microphone is busy' };
-  // What the browser or the voice plugin said, as a sentence of its own, then annai's.
-  const said = String(/** @type {any} */ (e)?.message ?? e).trim();
-  return { title: t`The microphone didn't start`, body: sentences(/[.!?。！？]$/u.test(said) ? said : `${said}.`, t`Try again; if it keeps happening, restart annai.`), plain: /* en */ "The microphone didn't start" };
+  // What the browser or the voice plugin said, a sentence of its own (sentences() ends it), then annai's.
+  const said = String(/** @type {any} */ (e)?.message ?? e);
+  return { title: t`The microphone didn't start`, body: sentences(said, t`Try again; if it keeps happening, restart annai.`), plain: /* en */ "The microphone didn't start" };
 }

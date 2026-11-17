@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { startModelServer, anthropicToolReply, fixtureFiles, zipOf, modelSetUp, pickFile, pickAddress } from './helpers.js';
+import { readFileSync } from 'node:fs';
+import { startModelServer, anthropicToolReply, fixtureFiles, zipOf, modelSetUp, pickFile, pickAddress, openApp, waitForServiceWorker, goToHash } from './helpers.js';
+import { key } from '../../src/core/l10n.js';
+
+/** The Japanese that ships. @type {Record<string, string>} */
+const JA = JSON.parse(readFileSync(new URL('../../l10n/ja.json', import.meta.url), 'utf8'));
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 const file = (/** @type {Buffer} */ body, type = 'text/plain') => ({ status: 200, type, body });
@@ -192,6 +197,49 @@ test('an update from an address is offered after a reload and changes nothing un
     await llm.stop();
   }
 });
+
+// Outside words end as sentences at the source (sentences-next): the failed-updates card joins two plugins' own words, each ended
+// once, and on Japanese screens a Latin end keeps its space before the next plugin's name ("…use it. rock-pools：…", not "it.rock-pools").
+for (const [locale, words] of /** @type {[string, Record<string, string> | null][]} */ ([['en-US', null], ['ja-JP', JA]])) {
+  test.describe(`on ${locale} screens`, () => {
+    test.use({ locale });
+    test("two updates that fail with words of their own share one card, each a sentence, the next plugin's name never glued to them", async ({ page }) => {
+      const say = (/** @type {string} */ en) => words?.[key(en)] ?? en;
+      const skill = (await fixtureFiles('tide-pools'))['SKILL.md'].toString();
+      const as = (/** @type {string} */ name, /** @type {string} */ version, described = true) => file(Buffer.from(skill.replace('name: tide-pools', `name: ${name}`)
+        .replace('version: "1.2"', `version: "${version}"`).replace(/^description: .*\n/m, described ? '$&' : '').replace(/\[the safety notes\]\([^)]*\)/, 'the safety notes')), 'text/markdown');
+      /** @type {Record<string, any>} */
+      const routes = { '/kits/tide-pools/SKILL.md': as('tide-pools', '1.2'), '/kits/rock-pools/SKILL.md': as('rock-pools', '1.2') };
+      const site = await startModelServer(routes);
+      try {
+        await openApp(page, '#/add');
+        await waitForServiceWorker(page);
+        for (const name of ['tide-pools', 'rock-pools']) {
+          await goToHash(page, '#/add'); // as pickAddress does, in the screens' language
+          await page.locator('#plugin-address').fill(`${site.origin}/kits/${name}/SKILL.md`);
+          await page.locator('#plugin-address').press('Enter');
+          await page.locator('.plugin-install .acts .btn.pri').click();
+          await expect(page.getByText(`${name} 1.2`, { exact: true })).toBeVisible();
+        }
+        // A new version of each is offered; by the tap on Update, each address serves one annai can't read (no description).
+        routes['/kits/tide-pools/SKILL.md'] = as('tide-pools', '1.3');
+        routes['/kits/rock-pools/SKILL.md'] = as('rock-pools', '1.3');
+        await page.reload();
+        await expect(page.getByText(say('Plugin updates are ready'))).toBeVisible({ timeout: 30_000 });
+        routes['/kits/tide-pools/SKILL.md'] = as('tide-pools', '1.3', false);
+        routes['/kits/rock-pools/SKILL.md'] = as('rock-pools', '1.3', false);
+        await page.getByRole('status').getByRole('button', { name: say('Update'), exact: true }).first().click();
+        const body = page.locator('section.notice', { hasText: say("Some plugins weren't updated") }).locator('p').first();
+        await expect(body).toBeVisible();
+        const why = 'SKILL.md needs a description: what the skill is for and when to use it.';
+        const colon = words ? '：' : ': ';
+        await expect(body).toHaveText(`tide-pools${colon}${why} rock-pools${colon}${why}`);
+      } finally {
+        await site.stop();
+      }
+    });
+  });
+}
 
 test('a package without code brings a skill and a personality; Settings → Shiori offers the personality to add', async ({ page }) => {
   const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });

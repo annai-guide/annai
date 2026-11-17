@@ -244,8 +244,7 @@ async function askAndRemove(ctx, id, scope) {
       ctx.notices.toast(t`That was already removed.`);
       ctx.removed(id);
     } else if (!explainStorageFull(ctx, e)) {
-      const why = messageOf(e).replace(/[.!?]?$/, '.');
-      ctx.notices.card({ tone: 'warn', title: t`It wasn't removed`, body: sentences(why, t`Nothing was removed. Try again.`) });
+      ctx.notices.card({ tone: 'warn', title: t`It wasn't removed`, body: sentences(messageOf(e), t`Nothing was removed. Try again.`) });
     }
   }
 }

@@ -18,13 +18,19 @@ function make(Ctor, options = {}) {
 
 /** A full stop or an ellipsis at a text's end (any closing quotes or brackets after it): a sentence that ends there. */
 const ENDED = /[。．！？!?.…][)\]）」』"'”’]*$/;
+/** A Latin word's own end ("20s.", "Found.", "wait…", `done?"`), and a text that starts with a Latin word ("Haiku", "(code 5)"). */
+const LATIN_END = /[\p{Script=Latin}\d][.!?…]+[)\]"'”’]*$/u;
+const LATIN_START = /^[^\p{L}\p{N}]*[\p{Script=Latin}\d]/u;
 /**
- * Sentences side by side, the empty left out: a message, so Chinese and Japanese drop the space. A part that doesn't end in a full stop
- * or an ellipsis (a plugin's error, say) keeps a space after it in every language, so the next sentence doesn't run into it. @param {...string} parts
+ * Sentences side by side, the empty and the blank left out: a message, so Chinese and Japanese drop the space. Every part but the last
+ * is ended as a sentence here (asSentence), so outside words with no stop of their own (a plugin's error, say) never run into the next
+ * one and no caller has to end them; the last is left as it is (a status line has no stop). A Latin end before a Latin start keeps its
+ * space in every language, as Japanese and Chinese keep one between two Latin words ("…in 20s. Haiku：…"). @param {...string} parts
  */
 export function sentences(...parts) {
-  const some = parts.filter(Boolean);
-  return some.length ? some.reduce((a, b) => (ENDED.test(a) ? tc('sentences')`${a} ${b}` : `${a} ${b}`)) : '';
+  const some = parts.filter(Boolean).map(String).filter((p) => p.trim());
+  const ended = some.map((p, i) => (i < some.length - 1 ? asSentence(p) : p));
+  return ended.length ? ended.reduce((a, b) => (LATIN_END.test(a) && LATIN_START.test(b) ? `${a} ${b}` : tc('sentences')`${a} ${b}`)) : '';
 }
 /** What sentences() puts between two: a space, or nothing in Chinese and Japanese; for a sentence drawn apart, as one in bold. */
 export const sentenceGap = () => sentences('.', '.').replace(/[.\u2068\u2069]/g, '');

@@ -624,8 +624,8 @@ gnrtev	ok	Shiori can't reach her model.	Shiori 无法连接到模型。	src/core
 98c05r	ok	This calendar has more than {0} events. Export only the dates you need from your calendar, and add that file.	此日历中的日程超过 {0} 个。请在日历中只导出需要的日期，再添加导出的文件。	src/core/ics.js:115	{0} = num(MAX_EVENTS)
 10s60wn	ok	No file at {0}.	{0} 处没有文件。	src/core/imports.js:14	{0} = path
 13ujlu9	ok	{0} is too large (over {1}). Export only the dates you need from your calendar, and add that file.	{0} 太大了（超过 {1}）。请在日历中只导出所需日期的日程，再添加导出的文件。	src/core/imports.js:15	{0} = path; {1} = size(MAX_ICS_BYTES)
-1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:27	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Chinese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
-1acz027	ok	just now	刚刚	src/core/intl.js:140	
+1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:33	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Chinese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
+1acz027	ok	just now	刚刚	src/core/intl.js:146	
 1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	使用手机扬声器时，Shiori 说话期间听不到你的声音，插话会被忽略。轻点一下即可让她停下来听你说。	src/core/koe/live.js:664	
 1ml2kgi	ok	Tap Shiori to talk over her	轻点 Shiori 即可打断她	src/core/koe/live.js:664	Note: The dock's Shiori button: tap it to talk over her.
 3fqfy0	ok	Languages	语言	src/core/languages.js:346	
@@ -652,7 +652,7 @@ bgn4sv	ok	Shiori answers in the language you speak to her	Shiori 会用你对她
 1qt7a9v	ok	Shiori answers in	Shiori 的回答语言	src/core/languages.js:365	Note: A label, so a noun: "the language Shiori answers in".
 k4u05v	ok	The language you speak to her	你对她说的语言	src/core/languages.js:366	
 cc69cl	ok	None picked: annai uses the browser’s language.	未选择时，annai 使用浏览器的语言。	src/core/languages.js:367	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
-1dyfzsg	ok	A simulation is already running.	已有模拟正在运行。	src/core/live/live.js:323	
+1dyfzsg	ok	A simulation is already running.	已有模拟正在运行。	src/core/live/live.js:324	
 157qf8n	ok	Flight {0} departs {1}, {2}	航班 {0} 于 {1} 起飞（{2}）	src/core/live/plan-watches.js:241	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
 1tvx4k9	ok	Flight {0} departs {1}	航班 {0} 于 {1} 起飞	src/core/live/plan-watches.js:241	{0} = w.flight; {1} = time
 1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}，{2}）	src/core/live/plan-watches.js:242	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
@@ -882,7 +882,8 @@ ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't h
 1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	这个名称属于 annai 官方插件，但已安装的同名插件来自其他来源，因此不会使用它。请在设置 → 插件中移除它，然后重试。	src/core/registry.js:18	
 oabrye	ok	Turn it on in Settings → Plugins, then try again.	请在设置 → 插件中开启它，然后重试。	src/core/registry.js:19	
 mzoa87	ok	It is switched off after repeated errors.	因多次出错，已自动关闭。	src/core/registry.js:222	
-dhg5k6	ok	Starting failed: {0}	启动失败：{0}	src/core/registry.js:234	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
+dhg5k6	ok	Starting failed: {0}	启动失败：{0}	src/core/registry.js:235	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
+do211k	ok	Starting failed.	启动失败。	src/core/registry.js:235	Note: a plugin's start failed with no words to frame (an empty error): a sentence of its own, as the frame "Starting failed: {0}" reads without its words.
 19bu7pw	ok	Version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	版本 {0} 会导致 {1} 无法运行，因为它需要 {2} {3}。请先更新 {4}，或保留当前版本。	src/core/requires.js:52	{0} = version; {1} = them; {2} = it; {3} = r.version; {4} = them
 1ee40s4	ok	It needs {0}, which you turned off.	需要 {0}，但你已把它关闭。	src/core/requires.js:79	{0} = shown
 8xu6se	ok	It needs {0}, which isn't installed. Install it from {1} first, then try again.	需要 {0}，但尚未安装。请先从 {1} 安装，然后再试一次。	src/core/requires.js:82	{0} = r.id; {1} = r.homepage
@@ -1392,13 +1393,13 @@ o81vpw	ok	Try again (about {0})	重试（约 {0}）	src/ui/offline-pack.js:65	{0
 1vwbp7l	ok	This browser doesn't tell annai when it is on Wi-Fi, so update it here.	此浏览器无法告诉 annai 何时连上了 Wi-Fi，请在这里手动更新。	src/ui/offline-pack.js:70	
 p6stxk	ok	On Wi-Fi, annai keeps it up to date by itself while this conversation is open.	连着 Wi-Fi 时，只要这个对话开着，annai 就会自动更新离线包。	src/ui/offline-pack.js:70	
 5pklax	ok	Offline pack	离线包	src/ui/offline-pack.js:80	
-1bk5sw	ok	What came is kept. Try again in a moment.	已下载的部分会保留。请稍后再试。	src/ui/offline-pack.js:87	
-v6p0ku	ok	The offline pack didn't download	离线包下载失败	src/ui/offline-pack.js:87	
-qtuxek	ok	Places © {0}; summaries from Wikipedia and guides from Wikivoyage, {1}.	地点 © {0}；摘要来自 Wikipedia，指南来自 Wikivoyage，{1}。	src/ui/offline-pack.js:119	{0} = osm.textContent; {1} = cc.textContent; Note: {0} and {1} are the licence's own words ("OpenStreetMap contributors", "CC BY-SA"), links, and stay English.
-uwd3a2	ok	No offline pack yet.	还没有离线包。	src/ui/offline-pack.js:130	
-1k132lx	ok	The offline pack is from before the itinerary changed.	离线包是行程变动前下载的。	src/ui/offline-pack.js:131	
-ksuwxs	ok	Offline pack: downloaded.	离线包：已下载。	src/ui/offline-pack.js:132	
-r91312	ok	Offline pack: downloaded {0}.	离线包：{0}下载。	src/ui/offline-pack.js:132	{0} = when; Note: {0} is a relative time ("2 hours ago").
+1bk5sw	ok	What came is kept. Try again in a moment.	已下载的部分会保留。请稍后再试。	src/ui/offline-pack.js:86	
+v6p0ku	ok	The offline pack didn't download	离线包下载失败	src/ui/offline-pack.js:86	
+qtuxek	ok	Places © {0}; summaries from Wikipedia and guides from Wikivoyage, {1}.	地点 © {0}；摘要来自 Wikipedia，指南来自 Wikivoyage，{1}。	src/ui/offline-pack.js:118	{0} = osm.textContent; {1} = cc.textContent; Note: {0} and {1} are the licence's own words ("OpenStreetMap contributors", "CC BY-SA"), links, and stay English.
+uwd3a2	ok	No offline pack yet.	还没有离线包。	src/ui/offline-pack.js:129	
+1k132lx	ok	The offline pack is from before the itinerary changed.	离线包是行程变动前下载的。	src/ui/offline-pack.js:130	
+ksuwxs	ok	Offline pack: downloaded.	离线包：已下载。	src/ui/offline-pack.js:131	
+r91312	ok	Offline pack: downloaded {0}.	离线包：{0}下载。	src/ui/offline-pack.js:131	{0} = when; Note: {0} is a relative time ("2 hours ago").
 8f98y9	ok	Open an annai file	打开 annai 文件	src/ui/open-file.js:6	
 13548dd	ok	That conversation didn't open	没能打开那段对话	src/ui/open-trip.js:7	Note: 对话 as the glossary's Conversation.
 ow6fak	ok	This browser could not draw the photo.	此浏览器无法处理这张照片。	src/ui/photo-codec.js:73	
@@ -1425,17 +1426,18 @@ i8x2zk	ok	{0} {1} → {2}	{0} {1} → {2}	src/ui/plugin-updates.js:78	{0} = u.na
 1qhkyk	ok	Nothing changes until you update. An updated plugin that is running now is off until annai restarts.	更新之前不会有任何变化。正在运行的插件更新后会暂时关闭，直到 annai 重启。	src/ui/plugin-updates.js:85	
 1x9jer0	ok	New versions: {0}.	新版本：{0}。	src/ui/plugin-updates.js:85	{0} = list(updates.map(offerWords), 'plain')
 uk4kus	ok	Update	更新	src/ui/plugin-updates.js:86	
-1agymuw	ok	Some plugins weren't updated	部分插件未能更新	src/ui/plugin-updates.js:121	
-1vsv4vh	ok	Restart annai to use the new versions	重启 annai 即可使用新版本	src/ui/plugin-updates.js:125	
-1k0lt4v	ok	Until then, {0} can't be used.	在此之前，{0} 暂时无法使用。	src/ui/plugin-updates.js:126	{0} = list(waiting)
-2jfvhf	ok	The update is installed and runs the next time annai starts.	更新已安装，下次启动 annai 时生效。	src/ui/plugin-updates.js:126	
-nb21do	ok	Restart now	立即重启	src/ui/plugin-updates.js:127	
-1do1igm	ok	Plugins updated.	插件已更新。	src/ui/plugin-updates.js:130	
-eaf3fx	ok	{0} {1} brings something new	{0} {1} 包含新内容	src/ui/plugin-updates.js:146	{0} = u.name; {1} = u.available
-127j3cm	ok	New in this version: {0}.	此版本新增：{0}。	src/ui/plugin-updates.js:147	{0} = semicolons(whatItBrings(added))
-zymqne	ok	Only update if you trust where it came from.	请仅在信任其来源时更新。	src/ui/plugin-updates.js:147	
-1dfe53s	ok	Nothing changes until you tap Update.	轻点“更新”之前，不会有任何变化。	src/ui/plugin-updates.js:148	
-15ziixp	ok	Update anyway	仍然更新	src/ui/plugin-updates.js:150	
+1hwvled	ok	{0} failed with an unknown error.	{0} 因未知错误未能更新。	src/ui/plugin-updates.js:119	{0} = nameOf(u); Note: one line of the "Some plugins weren't updated" card, for a plugin whose update failed with an empty error; {0} is the plugin's name.
+1agymuw	ok	Some plugins weren't updated	部分插件未能更新	src/ui/plugin-updates.js:123	
+1vsv4vh	ok	Restart annai to use the new versions	重启 annai 即可使用新版本	src/ui/plugin-updates.js:127	
+1k0lt4v	ok	Until then, {0} can't be used.	在此之前，{0} 暂时无法使用。	src/ui/plugin-updates.js:128	{0} = list(waiting)
+2jfvhf	ok	The update is installed and runs the next time annai starts.	更新已安装，下次启动 annai 时生效。	src/ui/plugin-updates.js:128	
+nb21do	ok	Restart now	立即重启	src/ui/plugin-updates.js:129	
+1do1igm	ok	Plugins updated.	插件已更新。	src/ui/plugin-updates.js:132	
+eaf3fx	ok	{0} {1} brings something new	{0} {1} 包含新内容	src/ui/plugin-updates.js:148	{0} = u.name; {1} = u.available
+127j3cm	ok	New in this version: {0}.	此版本新增：{0}。	src/ui/plugin-updates.js:149	{0} = semicolons(whatItBrings(added))
+zymqne	ok	Only update if you trust where it came from.	请仅在信任其来源时更新。	src/ui/plugin-updates.js:149	
+1dfe53s	ok	Nothing changes until you tap Update.	轻点“更新”之前，不会有任何变化。	src/ui/plugin-updates.js:150	
+15ziixp	ok	Update anyway	仍然更新	src/ui/plugin-updates.js:152	
 vq7cdg#other	ok	# pages	# 页	src/ui/preview.js:133	plural; # = pages; English: "# page" (one), "# pages" (other); Note: a PDF's page count on its file card.
 1cjjnaq	ok	Kept on this device.	保存在此设备上。	src/ui/privacy.js:21	
 tct7be	ok	Your trips, files, settings and keys are stored in this browser, on this device. annai has no accounts, and no server of annai's keeps your trips or your keys.	旅行、文件、设置和密钥都保存在这台设备上的这个浏览器里。annai 没有账户系统，annai 的任何服务器也都不会保存你的旅行或密钥。	src/ui/privacy.js:21	
@@ -2420,58 +2422,58 @@ urusz7#other	ok	Left # files as you changed them.	保留了你对 # 个文件的
 n22tq9	ok	Reminder: {0}	提醒：{0}	src/ui/screens/talk.js:185	{0} = WORDS; Note: {0} is the reminder's words.
 y16fvl	ok	Shiori's answer, said aloud: {0}	Shiori 的回答（已朗读）：{0}	src/ui/screens/talk.js:185	{0} = WORDS; Note: {0} is her answer, shown by annai.
 qjf670	ok	Three identical tool calls in a row with identical results.	连续三次完全相同的工具调用，返回的结果也一样。	src/ui/screens/talk.js:215	
-10lkfvk	ok	The watch for "{0}" can't be checked: {1}.	无法检查“{0}”的提醒条件：{1}。	src/ui/screens/talk.js:219	{0} = name; {1} = String(d.why ?? '').replace(/[.!?。！？]$/u, ''); Note: a watch is named by its reminder, {0}, in her words; {1} is the trigger's own words.
-1m8lxbu	ok	Google Search	Google 搜索	src/ui/screens/talk.js:227	Note: the grounded card's source, "From {0}" (1gblst7) and read aloud (4fzxin): as Google writes it, the glossary's Google row; the same as Settings → Tools.
-6xevdr	ok	Search suggestions from Google	来自 Google 的搜索建议	src/ui/screens/talk.js:237	
-v84pjn	ok	Shiori, no trip	Shiori（不在旅行中）	src/ui/screens/talk.js:303	Note: the name of `me`'s row among the chats on Trips, and the title of its read-only lines: the old conversation outside any trip (from before every conversation belonged to a trip), a row of old lines to read, not a button back to a conversation; 旅 / 旅行 as the glossary's trip.
-137bppl	ok	Heard, not for Shiori: {0}	听到的话（不是对 Shiori 说的）：{0}	src/ui/screens/talk.js:319	{0} = WORDS; Note: {0} is the words annai heard.
-1re6l79	ok	Heard: {0}	听到的话：{0}	src/ui/screens/talk.js:319	{0} = WORDS; Note: read by a screen reader; {0} is the words annai heard.
-yexh35	ok	Heard, she didn't answer: {0}	听到的话（她没有回答）：{0}	src/ui/screens/talk.js:319	{0} = WORDS
-1v011e1	ok	This trip so far: {0}	这次旅行累计花费：{0}	src/ui/screens/talk.js:327	{0} = formatCost(c.total)
-glbwh5	ok	This conversation so far: {0}	这次对话累计花费：{0}	src/ui/screens/talk.js:327	{0} = formatCost(c.total)
-45z4a3	ok	This was for Shiori	这是对 Shiori 说的	src/ui/screens/talk.js:359	
-td8u17	ok	A photo you sent	你发送的照片	src/ui/screens/talk.js:376	
-9e5yo5	ok	(a photo)	（照片）	src/ui/screens/talk.js:423	
-1sjvjoo	ok	From {0}	来自“{0}”	src/ui/screens/talk.js:434	context: a conversation; {0} = scopeTitle(src); Note: under a line the user said in another conversation, copied here when Shiori took them here; a link to that conversation.
-n8s7gz	ok	Tap to answer	轻点按钮回答	src/ui/screens/talk.js:491	Note: a small line under the buttons of annai's own card (Allow, Always for my trips, Not now; Open, Not now) while it waits: only a tap on a button answers it, not a spoken or typed yes. Built as "Tap to talk" is.
-fv3xhc	ok	Kokoro to Koe:	Kokoro 对 Koe 说：	src/ui/screens/talk.js:506	Note: a note from Kokoro to Koe; its words follow.
-upsxi0	ok	Koe to Kokoro:	Koe 对 Kokoro 说：	src/ui/screens/talk.js:506	Note: a note from Koe to Kokoro; its words follow.
-16ol023	ok	Shiori read {0}	Shiori 查看了“{0}”	src/ui/screens/talk.js:535	{0} = scopeTitle({ id: String(d.trip), title: String(d.title ?? '') })
-e34nbi	ok	Started fresh	已重新开始	src/ui/screens/talk.js:539	Note: the divider where a fresh start began.
-3r1u8z	ok	Earlier conversation summarized. The full log is in Trace.	之前的对话已总结。完整内容可在“记录”中查看。	src/ui/screens/talk.js:540	
-1o41up	ok	A budget ended her turn	达到上限，她的这一轮结束了	src/ui/screens/talk.js:550	
-1p4yyw7	ok	Her turn ended	她的这一轮结束了	src/ui/screens/talk.js:550	
-1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	还没有内容。轻点下方的 Shiori 或“输入”开始对话。	src/ui/screens/talk.js:565	Note: "Type" is the dock's button: its words must match it.
-4fzxin	ok	From {0}.	来自 {0}。	src/ui/screens/talk.js:631	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
-1pm5i13	ok	Back to Trips	返回“旅行”	src/ui/screens/talk.js:663	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
-16zeyyr	ok	Next: {0} {1}	接下来：{0} {1}	src/ui/screens/talk.js:707	{0} = r.time; {1} = name
-puj2r7	ok	Next: {0} {1} {2}	接下来：{0} {1} {2}	src/ui/screens/talk.js:707	{0} = day(r.day, true); {1} = r.time; {2} = name
-1frlw7l	ok	Undo the dates Shiori set	撤销 Shiori 设置的日期	src/ui/screens/talk.js:765	
-1l3merh	ok	Shiori set the dates	Shiori 设置了日期	src/ui/screens/talk.js:784	
-159f82q	ok	Undone	已撤销	src/ui/screens/talk.js:786	
-1v37fcy	ok	Undo what Shiori did with these files	撤销 Shiori 对这些文件的操作	src/ui/screens/talk.js:885	Note: the Undo button's label; 撤销 as Undo.
-1nl0tpx	ok	Conversation menu	对话菜单	src/ui/screens/talk.js:949	
-7flpxf	ok	Summarizing…	正在总结…	src/ui/screens/talk.js:1016	
-12707g	ok	She couldn't summarize it. A card says why.	她没能完成总结，原因见卡片。	src/ui/screens/talk.js:1018	
-5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	之前的对话已总结。每句话都还留在这里，她也随时能查到。	src/ui/screens/talk.js:1018	
-u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在忙，请稍后再试。	src/ui/screens/talk.js:1018	
-va2k72	ok	There is not enough yet to summarize.	内容还太少，无法总结。	src/ui/screens/talk.js:1018	
-mienoe	ok	Summarize now	立即总结	src/ui/screens/talk.js:1021	
-10sfmur	ok	Starting fresh…	正在重新开始…	src/ui/screens/talk.js:1023	
-va77q0	ok	Start fresh?	要重新开始吗？	src/ui/screens/talk.js:1036	
-19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 会从这里重新开始，不再记着之前的内容。之前的每句话都会留在对话里，你可以随时查看和搜索，她也仍能查到。不会删除任何内容。实时语音会话也会重新开始。	src/ui/screens/talk.js:1037	Note: "A live voice session" is the glossary's Live voice (实时语音) and live session (实时会话), not a voice she speaks with.
-czdqlz	ok	Start fresh	重新开始	src/ui/screens/talk.js:1038	
-1h9wwbn	ok	She couldn't start fresh: {0}	她没能重新开始：{0}	src/ui/screens/talk.js:1048	{0} = messageOf(e)
-1thzla3	ok	Already fresh: nothing has been said since.	已经重新开始过了，之后还没有新的对话。	src/ui/screens/talk.js:1051	
-3fntk0	ok	Started fresh.	已重新开始。	src/ui/screens/talk.js:1051	
-mg70bg	ok	The conversation is still opening. Try again in a moment.	对话还在加载，请稍后再试。	src/ui/screens/talk.js:1051	
-p5pj7b	ok	There is nothing to start fresh from yet.	还没有可以重新开始的内容。	src/ui/screens/talk.js:1051	
-1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即总结：Shiori 现在就把之前的对话总结一下，让对话保持简短。每句话都还留在这里，她也随时能查到。	src/ui/screens/talk.js:1073	
-18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新开始：Shiori 不再记着之前的内容，从这里重新开始。之前的每句话都会留在分隔线上方。	src/ui/screens/talk.js:1074	
-15ve7m7	ok	What each half sees	Koe 和 Kokoro 各自看到的内容	src/ui/screens/talk.js:1075	
-1u5l4hx	ok	Details: the trip's name and dates, Export, Archive and Remove.	详情：旅行的名称和日期、导出、归档和移除。	src/ui/screens/talk.js:1086	
-o7tevg	ok	Details: the chat's name and dates, Export, Archive and Remove.	详情：对话的名称和日期、导出、归档和移除。	src/ui/screens/talk.js:1086	
-16pl3gf	ok	Undone. Her old personality applies at her next wake.	已撤销。下次唤醒时，她会恢复原来的性格。	src/ui/screens/talk.js:1102	
+10jxiq6	ok	The watch for "{0}" can't be checked: {1}	无法检查“{0}”的提醒条件：{1}	src/ui/screens/talk.js:220	{0} = name; {1} = String(d.why ?? ''); Note: a watch is named by its reminder, {0}, in her words; {1} is the trigger's own words, last, with their own end: annai adds 。 only where they have none, so no stop here.
+1m8lxbu	ok	Google Search	Google 搜索	src/ui/screens/talk.js:228	Note: the grounded card's source, "From {0}" (1gblst7) and read aloud (4fzxin): as Google writes it, the glossary's Google row; the same as Settings → Tools.
+6xevdr	ok	Search suggestions from Google	来自 Google 的搜索建议	src/ui/screens/talk.js:238	
+v84pjn	ok	Shiori, no trip	Shiori（不在旅行中）	src/ui/screens/talk.js:304	Note: the name of `me`'s row among the chats on Trips, and the title of its read-only lines: the old conversation outside any trip (from before every conversation belonged to a trip), a row of old lines to read, not a button back to a conversation; 旅 / 旅行 as the glossary's trip.
+137bppl	ok	Heard, not for Shiori: {0}	听到的话（不是对 Shiori 说的）：{0}	src/ui/screens/talk.js:320	{0} = WORDS; Note: {0} is the words annai heard.
+1re6l79	ok	Heard: {0}	听到的话：{0}	src/ui/screens/talk.js:320	{0} = WORDS; Note: read by a screen reader; {0} is the words annai heard.
+yexh35	ok	Heard, she didn't answer: {0}	听到的话（她没有回答）：{0}	src/ui/screens/talk.js:320	{0} = WORDS
+1v011e1	ok	This trip so far: {0}	这次旅行累计花费：{0}	src/ui/screens/talk.js:328	{0} = formatCost(c.total)
+glbwh5	ok	This conversation so far: {0}	这次对话累计花费：{0}	src/ui/screens/talk.js:328	{0} = formatCost(c.total)
+45z4a3	ok	This was for Shiori	这是对 Shiori 说的	src/ui/screens/talk.js:360	
+td8u17	ok	A photo you sent	你发送的照片	src/ui/screens/talk.js:377	
+9e5yo5	ok	(a photo)	（照片）	src/ui/screens/talk.js:424	
+1sjvjoo	ok	From {0}	来自“{0}”	src/ui/screens/talk.js:435	context: a conversation; {0} = scopeTitle(src); Note: under a line the user said in another conversation, copied here when Shiori took them here; a link to that conversation.
+n8s7gz	ok	Tap to answer	轻点按钮回答	src/ui/screens/talk.js:492	Note: a small line under the buttons of annai's own card (Allow, Always for my trips, Not now; Open, Not now) while it waits: only a tap on a button answers it, not a spoken or typed yes. Built as "Tap to talk" is.
+fv3xhc	ok	Kokoro to Koe:	Kokoro 对 Koe 说：	src/ui/screens/talk.js:507	Note: a note from Kokoro to Koe; its words follow.
+upsxi0	ok	Koe to Kokoro:	Koe 对 Kokoro 说：	src/ui/screens/talk.js:507	Note: a note from Koe to Kokoro; its words follow.
+16ol023	ok	Shiori read {0}	Shiori 查看了“{0}”	src/ui/screens/talk.js:536	{0} = scopeTitle({ id: String(d.trip), title: String(d.title ?? '') })
+e34nbi	ok	Started fresh	已重新开始	src/ui/screens/talk.js:540	Note: the divider where a fresh start began.
+3r1u8z	ok	Earlier conversation summarized. The full log is in Trace.	之前的对话已总结。完整内容可在“记录”中查看。	src/ui/screens/talk.js:541	
+1o41up	ok	A budget ended her turn	达到上限，她的这一轮结束了	src/ui/screens/talk.js:551	
+1p4yyw7	ok	Her turn ended	她的这一轮结束了	src/ui/screens/talk.js:551	
+1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	还没有内容。轻点下方的 Shiori 或“输入”开始对话。	src/ui/screens/talk.js:566	Note: "Type" is the dock's button: its words must match it.
+4fzxin	ok	From {0}.	来自 {0}。	src/ui/screens/talk.js:632	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
+1pm5i13	ok	Back to Trips	返回“旅行”	src/ui/screens/talk.js:664	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
+16zeyyr	ok	Next: {0} {1}	接下来：{0} {1}	src/ui/screens/talk.js:708	{0} = r.time; {1} = name
+puj2r7	ok	Next: {0} {1} {2}	接下来：{0} {1} {2}	src/ui/screens/talk.js:708	{0} = day(r.day, true); {1} = r.time; {2} = name
+1frlw7l	ok	Undo the dates Shiori set	撤销 Shiori 设置的日期	src/ui/screens/talk.js:766	
+1l3merh	ok	Shiori set the dates	Shiori 设置了日期	src/ui/screens/talk.js:785	
+159f82q	ok	Undone	已撤销	src/ui/screens/talk.js:787	
+1v37fcy	ok	Undo what Shiori did with these files	撤销 Shiori 对这些文件的操作	src/ui/screens/talk.js:886	Note: the Undo button's label; 撤销 as Undo.
+1nl0tpx	ok	Conversation menu	对话菜单	src/ui/screens/talk.js:950	
+7flpxf	ok	Summarizing…	正在总结…	src/ui/screens/talk.js:1017	
+12707g	ok	She couldn't summarize it. A card says why.	她没能完成总结，原因见卡片。	src/ui/screens/talk.js:1019	
+5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	之前的对话已总结。每句话都还留在这里，她也随时能查到。	src/ui/screens/talk.js:1019	
+u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在忙，请稍后再试。	src/ui/screens/talk.js:1019	
+va2k72	ok	There is not enough yet to summarize.	内容还太少，无法总结。	src/ui/screens/talk.js:1019	
+mienoe	ok	Summarize now	立即总结	src/ui/screens/talk.js:1022	
+10sfmur	ok	Starting fresh…	正在重新开始…	src/ui/screens/talk.js:1024	
+va77q0	ok	Start fresh?	要重新开始吗？	src/ui/screens/talk.js:1037	
+19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 会从这里重新开始，不再记着之前的内容。之前的每句话都会留在对话里，你可以随时查看和搜索，她也仍能查到。不会删除任何内容。实时语音会话也会重新开始。	src/ui/screens/talk.js:1038	Note: "A live voice session" is the glossary's Live voice (实时语音) and live session (实时会话), not a voice she speaks with.
+czdqlz	ok	Start fresh	重新开始	src/ui/screens/talk.js:1039	
+1h9wwbn	ok	She couldn't start fresh: {0}	她没能重新开始：{0}	src/ui/screens/talk.js:1049	{0} = messageOf(e)
+1thzla3	ok	Already fresh: nothing has been said since.	已经重新开始过了，之后还没有新的对话。	src/ui/screens/talk.js:1052	
+3fntk0	ok	Started fresh.	已重新开始。	src/ui/screens/talk.js:1052	
+mg70bg	ok	The conversation is still opening. Try again in a moment.	对话还在加载，请稍后再试。	src/ui/screens/talk.js:1052	
+p5pj7b	ok	There is nothing to start fresh from yet.	还没有可以重新开始的内容。	src/ui/screens/talk.js:1052	
+1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即总结：Shiori 现在就把之前的对话总结一下，让对话保持简短。每句话都还留在这里，她也随时能查到。	src/ui/screens/talk.js:1074	
+18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新开始：Shiori 不再记着之前的内容，从这里重新开始。之前的每句话都会留在分隔线上方。	src/ui/screens/talk.js:1075	
+15ve7m7	ok	What each half sees	Koe 和 Kokoro 各自看到的内容	src/ui/screens/talk.js:1076	
+1u5l4hx	ok	Details: the trip's name and dates, Export, Archive and Remove.	详情：旅行的名称和日期、导出、归档和移除。	src/ui/screens/talk.js:1087	
+o7tevg	ok	Details: the chat's name and dates, Export, Archive and Remove.	详情：对话的名称和日期、导出、归档和移除。	src/ui/screens/talk.js:1087	
+16pl3gf	ok	Undone. Her old personality applies at her next wake.	已撤销。下次唤醒时，她会恢复原来的性格。	src/ui/screens/talk.js:1103	
 11gkctr	ok	Places	地点	src/ui/screens/tools.js:12	context: tool group
 13mxqrp	ok	Talk	对话	src/ui/screens/tools.js:12	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	ok	Go	出行	src/ui/screens/tools.js:12	context: tool group; Note: the tools for getting somewhere (routes, maps).
@@ -2631,15 +2633,15 @@ nn02o3	ok	This removes everything in it from this device: its files, photos, not
 ty94lb	ok	It hasn't been backed up since it last changed.	最近的更改还没有备份。	src/ui/screens/trip.js:234	
 1cp5muy	ok	Removed {0}. {1} freed.	已移除 {0}，释放了 {1}。	src/ui/screens/trip.js:240	{0} = scopeTitle(scope); {1} = size(freed)
 436oi1	ok	That was already removed.	已经移除过了。	src/ui/screens/trip.js:244	
-1mbp8t6	ok	It wasn't removed	未能移除	src/ui/screens/trip.js:248	
-1pzhsw4	ok	Nothing was removed. Try again.	没有移除任何内容。请重试。	src/ui/screens/trip.js:248	
-knyqwh	ok	Add photos or files	添加照片或文件	src/ui/screens/trip.js:322	
-12n59th	ok	Take a photo	拍照	src/ui/screens/trip.js:323	
-1kuasfa	ok	That file doesn't match its format: {0}	文件格式不符：{0}	src/ui/screens/trip.js:335	{0} = why; Note: {0} is the format check's own words, in English.
-1y79g95	ok	{0} already exists. Open it from the list to edit it.	{0} 已存在。如需编辑，请从列表中打开。	src/ui/screens/trip.js:345	{0} = p
-ecy82r	ok	Add a file	添加文件	src/ui/screens/trip.js:353	
-1bmm5eq	ok	File path	文件路径	src/ui/screens/trip.js:354	
-16gte2l	ok	Create	创建	src/ui/screens/trip.js:356	
+1mbp8t6	ok	It wasn't removed	未能移除	src/ui/screens/trip.js:247	
+1pzhsw4	ok	Nothing was removed. Try again.	没有移除任何内容。请重试。	src/ui/screens/trip.js:247	
+knyqwh	ok	Add photos or files	添加照片或文件	src/ui/screens/trip.js:321	
+12n59th	ok	Take a photo	拍照	src/ui/screens/trip.js:322	
+1kuasfa	ok	That file doesn't match its format: {0}	文件格式不符：{0}	src/ui/screens/trip.js:334	{0} = why; Note: {0} is the format check's own words, in English.
+1y79g95	ok	{0} already exists. Open it from the list to edit it.	{0} 已存在。如需编辑，请从列表中打开。	src/ui/screens/trip.js:344	{0} = p
+ecy82r	ok	Add a file	添加文件	src/ui/screens/trip.js:352	
+1bmm5eq	ok	File path	文件路径	src/ui/screens/trip.js:353	
+16gte2l	ok	Create	创建	src/ui/screens/trip.js:355	
 aoc0k0#other	ok	{0}: # chats	{0}：# 个对话	src/ui/screens/trips.js:66	plural; # = e.fold.rows.length; {0} = monthName(e.fold.month); English: "{0}: # chat" (one), "{0}: # chats" (other)
 33pqd9	ok	Last backup {0}, to {1}.	上次备份：{0}，备份到 {1}。	src/ui/screens/trips.js:73	{0} = relTime(latest.last.at, now); {1} = latest.name; Note: {1} is the backup place's name.
 12mubvb	ok	Now	现在	src/ui/screens/trips.js:79	

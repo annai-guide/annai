@@ -12,7 +12,7 @@ import { blobBytes } from '../../core/reach.js';
 import { herDatings, undoDating } from '../../core/chats.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { undoTuning } from '../../core/agent/personalities.js';
-import { formatCost, wording, mark, sentences, sentenceGap, list as listed, recordHref, rowName, talkHref } from '../format.js';
+import { formatCost, wording, mark, sentences, sentenceGap, asSentence, list as listed, recordHref, rowName, talkHref } from '../format.js';
 import { day } from '../../core/intl.js';
 import { upcoming, over } from '../../core/now.js';
 import { tripRows } from '../trip-rows.js';
@@ -216,7 +216,8 @@ export function errorWords(d, { names } = {}) {
   // A watch is named briefly, as the user knows it, never by its id or its trigger's code: a plan watch by its item's title, another
   // by its reminder's first words. An older plan watch's entry kept its English fallback, no name for these words: shown as stored.
   const name = d.kind !== 'trigger' ? '' : typeof d.title === 'string' ? d.title : typeof d.reminder === 'string' && !String(d.watch).startsWith('plan:') ? brief(d.reminder) : '';
-  if (name) return t`The watch for "${name}" can't be checked: ${String(d.why ?? '').replace(/[.!?。！？]$/u, '')}.`;
+  // The trigger's words keep their own end ("Really?", "wait…"); asSentence adds one where they have none.
+  if (name) return asSentence(t`The watch for "${name}" can't be checked: ${String(d.why ?? '')}`);
   return null;
 }
 
